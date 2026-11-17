@@ -6,78 +6,6 @@
       "error": "{\"success\": false, \"message\": \"Ran macro 'flow_lenia': applied=14 skipped=0 errors=0. Execution failed: Box interrupted: Runloop stalled 273525 ms in '3 \\u2014 The parameter field blending (MEAN mixing)' (flow_lenia_drift) (watchdog)\", \"name\": \"flow_lenia\", \"operationCount\": 14, \"direction\": \"do\", \"applied\": 14, \"output\": [{\"uid\": \"flow_lenia_conservation\", \"line\": 13, \"html\": \"<div class='value-viz afield-appendable-output' style='font-family: \\\"Iosevka Web\\\", monospace; font-size: 12px; color:",
       "since": "2026-11-17"
     },
-    "assets/agent_transcripts/path_tracing_gltf/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/path_tracing_hidden_environment/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/path_tracing_materials/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/pattern_condense/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/pattern_language_composition/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/pattern_particles/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/pattern_rewrite_worked_example/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/penrose_spectra/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/petri_sound/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/petri_sparks/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/petri_state_space/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/petri_state_space_sculpture/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
     "assets/agent_transcripts/petri_tala_layout/metadata.edn": {
       "attempts": 0,
       "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
@@ -4122,13 +4050,13 @@
       ]
     },
     "assets/agent_transcripts/path_tracing_gltf/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:29:07.031Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:33:35.029Z",
       "channels": 1,
       "file": "assets/web_publications/path_tracing_gltf/document/metadata.edn",
       "files": {
-        "assets/web_publications/path_tracing_gltf/document/metadata.edn": "ef0f5e975f91e5b7a119b4a78caa56d5565186d26b5ef1ef10a38b370b57c191",
-        "assets/web_publications/path_tracing_gltf/document/outputs.json": "3a6ac18ad3864da471b9b6257e1f33041451362a11f92bc5025ff8a29c519f8e",
+        "assets/web_publications/path_tracing_gltf/document/metadata.edn": "7f27a4da8051be68aa94b28ab8f70c6ce04a8b4bdbe82a7a5c91bdc802c845eb",
+        "assets/web_publications/path_tracing_gltf/document/outputs.json": "f65d8a700dd425e762efaf6957a6e998f940b06f1b6dad75565510eddcf80ca6",
         "assets/web_publications/path_tracing_gltf/outputs/0.html": "e2c53b38e3929e4496e5cc79248f6ea3fa208b0c7c6c3a4eeb2b0bfda91b2b23"
       },
       "kinds": [
@@ -4150,13 +4078,13 @@
       ]
     },
     "assets/agent_transcripts/path_tracing_hidden_environment/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:29:13.718Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:33:42.740Z",
       "channels": 1,
       "file": "assets/web_publications/path_tracing_hidden_environment/document/metadata.edn",
       "files": {
-        "assets/web_publications/path_tracing_hidden_environment/document/metadata.edn": "e53e170b56ab5edc04206bd3ebc811a1caa09189955ccc11547789318a89271a",
-        "assets/web_publications/path_tracing_hidden_environment/document/outputs.json": "e1cbfa86730a0d43552aba41788e240e4bd877e561bdc2b17e4e4733f762718a",
+        "assets/web_publications/path_tracing_hidden_environment/document/metadata.edn": "0e4353e820e61546b6b23f6d1b74a481a2d517924c30a00c11c7e6396fabdd4c",
+        "assets/web_publications/path_tracing_hidden_environment/document/outputs.json": "a868b4f5efc32858ee78432ad63ba1e2e2e013f468f256969f8150591d40b1b2",
         "assets/web_publications/path_tracing_hidden_environment/outputs/0.html": "5495cea955a079388b5715df4c071c75b3b72dcfa5f957637dac6fd3247ee1e3"
       },
       "kinds": [
@@ -4178,13 +4106,13 @@
       ]
     },
     "assets/agent_transcripts/path_tracing_materials/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:28:21.634Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:33:48.866Z",
       "channels": 1,
       "file": "assets/web_publications/path_tracing_materials/document/metadata.edn",
       "files": {
-        "assets/web_publications/path_tracing_materials/document/metadata.edn": "00941eb56674599b5d5c6479171eb853f72a1ca5763bc13150fa9f7af3f4841b",
-        "assets/web_publications/path_tracing_materials/document/outputs.json": "00ae5e0c210607554ffb43f442402f1fd355b9d737ef2077c02cf6b587ec251d",
+        "assets/web_publications/path_tracing_materials/document/metadata.edn": "7770d5229b482601a82ce3989f86badecf5a4d87a4ae6fd2c2d9b525203f2049",
+        "assets/web_publications/path_tracing_materials/document/outputs.json": "57d3107935c1603b21bf316551fda6cba8e2a11274bb145b76379d0632dc3fd4",
         "assets/web_publications/path_tracing_materials/outputs/0.html": "94b8d4d916fba19b714a5093aedeb9077d69082410afd801c22f126dd1d3f024"
       },
       "kinds": [
@@ -4206,20 +4134,20 @@
       ]
     },
     "assets/agent_transcripts/pattern_condense/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:05:20.969Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:34:05.468Z",
       "channels": 7,
       "file": "assets/web_publications/pattern_condense/document/metadata.edn",
       "files": {
-        "assets/web_publications/pattern_condense/document/metadata.edn": "4adb292f19fc35fb7966c88e2b23ff4782931ad5a0f207e465d51146e3f52f91",
-        "assets/web_publications/pattern_condense/document/outputs.json": "2a67dd4d9371e1ea1ec74b8deb75d3cb8a25125d0cffb9555c6bfbb437e845bb",
-        "assets/web_publications/pattern_condense/outputs/0.html": "719231a9ab2e10b02ee2f7e08a7c31298b250131a35d88881e48e9e248955383",
-        "assets/web_publications/pattern_condense/outputs/1.html": "b72a79031da61f896e1583d452acfd948dafbceed66e6d63a8dea9871095d378",
-        "assets/web_publications/pattern_condense/outputs/2.html": "b72a79031da61f896e1583d452acfd948dafbceed66e6d63a8dea9871095d378",
-        "assets/web_publications/pattern_condense/outputs/3.html": "03fefdc3c618725de53eab7eadfb2699c96db0f433930591d3543e1f8ed99c9a",
-        "assets/web_publications/pattern_condense/outputs/4.html": "29250a60405d887cafd054cbca7651b435f0fea4242e84f3ee8321b5fad5e040",
-        "assets/web_publications/pattern_condense/outputs/5.html": "a94351c08a974a30896a44f8ee55cfebe507d050c1eacd104d9ccdc31d618cf4",
-        "assets/web_publications/pattern_condense/outputs/6.html": "0cfd272ae9eeb5524c60107d4e7b7c077e8b2bb17581c2c5a75314bab64aa3ce"
+        "assets/web_publications/pattern_condense/document/metadata.edn": "6f717cdaed2b18509aba9ed3d1d2dcf2a0c6cbab390855db935218f3d5899a5b",
+        "assets/web_publications/pattern_condense/document/outputs.json": "4ebd381296dfbe90d931d0db434a549fb83cad96a3c931c0b9b219a5837000f3",
+        "assets/web_publications/pattern_condense/outputs/0.html": "7438c501d1adef439ca861be9e8963c67aa75e7a99c21a4ae52c57e9f124b2b8",
+        "assets/web_publications/pattern_condense/outputs/1.html": "61f20f36af899bbcb5130605453a27cc96ad4d55fe7fb80cdb15af8e99f7d08a",
+        "assets/web_publications/pattern_condense/outputs/2.html": "61f20f36af899bbcb5130605453a27cc96ad4d55fe7fb80cdb15af8e99f7d08a",
+        "assets/web_publications/pattern_condense/outputs/3.html": "7ab4cbe751ecb5179ae76dd8a10ab09b14d695158d1451a8efbeaaabe04c373f",
+        "assets/web_publications/pattern_condense/outputs/4.html": "5672655d6e6a64dd0334c5dee2ffbd747c681b9300b1174fe38fa740aae9955c",
+        "assets/web_publications/pattern_condense/outputs/5.html": "6bde1d969a5c78f1d4a3ff536294aa599b05f1d66cdcbce5d2fd87b43ffedfcc",
+        "assets/web_publications/pattern_condense/outputs/6.html": "b3c78e699e8a7f8d71df1fe6d7dcda57637f1208a7add0322d3a4df659788611"
       },
       "kinds": [
         "svg"
@@ -4235,31 +4163,31 @@
       }
     },
     "assets/agent_transcripts/pattern_language_composition/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T14:31:46.465Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:34:37.996Z",
       "channels": 18,
       "file": "assets/web_publications/pattern_language_composition/document/metadata.edn",
       "files": {
-        "assets/web_publications/pattern_language_composition/document/metadata.edn": "7615022a90ef267f1ace5864d986c59d6a4fa4f85588f20b14ffa731cbfdb13c",
-        "assets/web_publications/pattern_language_composition/document/outputs.json": "8b0aefb861dd85d6b69fbe2f212a5f2fd61e658fbafeb4ed32593be8d6d50c93",
-        "assets/web_publications/pattern_language_composition/outputs/0.html": "c3db1ab1aabcd9b28c86500c33e12fe15d933b85dd55da59ee3e210ef3459ccd",
-        "assets/web_publications/pattern_language_composition/outputs/1.html": "034b8cbb9ae7761b1d538543b39f3e6223452adb83ce925aca5344daf2a6fa52",
-        "assets/web_publications/pattern_language_composition/outputs/10.html": "802112e9c1e391fb76228f7527ad7a13c63ff83d662b01a59a4f48fc07e5ca80",
-        "assets/web_publications/pattern_language_composition/outputs/11.html": "1762ccb9870176e32dbc7ca834961343d302701c81b987fbff4a32a52bfe187d",
-        "assets/web_publications/pattern_language_composition/outputs/12.html": "802112e9c1e391fb76228f7527ad7a13c63ff83d662b01a59a4f48fc07e5ca80",
-        "assets/web_publications/pattern_language_composition/outputs/13.html": "802112e9c1e391fb76228f7527ad7a13c63ff83d662b01a59a4f48fc07e5ca80",
-        "assets/web_publications/pattern_language_composition/outputs/14.html": "29064df9cf1eae67f0b3b59f4d9bcb240d3a6ccbfa27990bed65b94dd5c51ebe",
-        "assets/web_publications/pattern_language_composition/outputs/15.html": "802112e9c1e391fb76228f7527ad7a13c63ff83d662b01a59a4f48fc07e5ca80",
-        "assets/web_publications/pattern_language_composition/outputs/16.html": "a65f77a88311c034722afdc3a53582f9fee3d7ebfe6f264027993557baa35dcc",
-        "assets/web_publications/pattern_language_composition/outputs/17.html": "802112e9c1e391fb76228f7527ad7a13c63ff83d662b01a59a4f48fc07e5ca80",
-        "assets/web_publications/pattern_language_composition/outputs/2.html": "100b5f9fdb0604f9f56c98cd1a8843eff63582035612d0744f87a1d123fa4b1f",
-        "assets/web_publications/pattern_language_composition/outputs/3.html": "c561a47f0047d4905b7e373bce475753c24faa32f8740efe4c4ed144d2eccb0b",
-        "assets/web_publications/pattern_language_composition/outputs/4.html": "802112e9c1e391fb76228f7527ad7a13c63ff83d662b01a59a4f48fc07e5ca80",
-        "assets/web_publications/pattern_language_composition/outputs/5.html": "802112e9c1e391fb76228f7527ad7a13c63ff83d662b01a59a4f48fc07e5ca80",
-        "assets/web_publications/pattern_language_composition/outputs/6.html": "802112e9c1e391fb76228f7527ad7a13c63ff83d662b01a59a4f48fc07e5ca80",
-        "assets/web_publications/pattern_language_composition/outputs/7.html": "4cf4f4bfa2beeea287447c8f3fd280e16720d8c39d80c400f0729b5c6f73f3a3",
-        "assets/web_publications/pattern_language_composition/outputs/8.html": "802112e9c1e391fb76228f7527ad7a13c63ff83d662b01a59a4f48fc07e5ca80",
-        "assets/web_publications/pattern_language_composition/outputs/9.html": "0049edcde3aecea02e247b061c0ebb923c8a333f8503962f16b5ba0588dfaf2b"
+        "assets/web_publications/pattern_language_composition/document/metadata.edn": "76a0dec7b904cf50834d4e5c3254405336ab6ceb628d31aef704601afb0ce76e",
+        "assets/web_publications/pattern_language_composition/document/outputs.json": "19dda31abfc74fef0b322eaaf158210b3fdb0f2ff20d0f6b7a354da5a6875367",
+        "assets/web_publications/pattern_language_composition/outputs/0.html": "00d79873dce39fa645fda3a293b3cbe477dd6cc07db3c6bd1d3461c2f2db381a",
+        "assets/web_publications/pattern_language_composition/outputs/1.html": "1dfb83248c429191c68318a297f0c2a976658bfa8b9b89ad4c9babecb50472f9",
+        "assets/web_publications/pattern_language_composition/outputs/10.html": "86cd780a44713a7b82b7601206ef9827055b23c7a1a09dd645b3d01e61419e71",
+        "assets/web_publications/pattern_language_composition/outputs/11.html": "9d85b8e292ef318870fdf28c67b0d421cb834e4f778442960771778bb1a216bd",
+        "assets/web_publications/pattern_language_composition/outputs/12.html": "86cd780a44713a7b82b7601206ef9827055b23c7a1a09dd645b3d01e61419e71",
+        "assets/web_publications/pattern_language_composition/outputs/13.html": "86cd780a44713a7b82b7601206ef9827055b23c7a1a09dd645b3d01e61419e71",
+        "assets/web_publications/pattern_language_composition/outputs/14.html": "e1c2fe91f5525457de66b729b8dfc8784b53a6a002fa2c9362d2ef1baffe1881",
+        "assets/web_publications/pattern_language_composition/outputs/15.html": "86cd780a44713a7b82b7601206ef9827055b23c7a1a09dd645b3d01e61419e71",
+        "assets/web_publications/pattern_language_composition/outputs/16.html": "aaf2da84c8f71874570b9557d6e181bde2d2f4f2e8dc21686031bae4d569f163",
+        "assets/web_publications/pattern_language_composition/outputs/17.html": "86cd780a44713a7b82b7601206ef9827055b23c7a1a09dd645b3d01e61419e71",
+        "assets/web_publications/pattern_language_composition/outputs/2.html": "a59a2f4263c62406727c4f2d8f2af97059b77c7919a6e7770b8014fbbb001f7f",
+        "assets/web_publications/pattern_language_composition/outputs/3.html": "ef0d8a3bc4176a4bf549ebf2fe05e64f441741068125fd30a3c88a261294d4a0",
+        "assets/web_publications/pattern_language_composition/outputs/4.html": "86cd780a44713a7b82b7601206ef9827055b23c7a1a09dd645b3d01e61419e71",
+        "assets/web_publications/pattern_language_composition/outputs/5.html": "86cd780a44713a7b82b7601206ef9827055b23c7a1a09dd645b3d01e61419e71",
+        "assets/web_publications/pattern_language_composition/outputs/6.html": "86cd780a44713a7b82b7601206ef9827055b23c7a1a09dd645b3d01e61419e71",
+        "assets/web_publications/pattern_language_composition/outputs/7.html": "e37d535401985e893a132ee8f8205d57d20e2b5b0da56cdf4b0e9a2b00427e4b",
+        "assets/web_publications/pattern_language_composition/outputs/8.html": "86cd780a44713a7b82b7601206ef9827055b23c7a1a09dd645b3d01e61419e71",
+        "assets/web_publications/pattern_language_composition/outputs/9.html": "123d465868fe524c79fac0e00da631343f86fb9d1506145c143c5c8c239f7820"
       },
       "kinds": [
         "svg"
@@ -4280,13 +4208,13 @@
       }
     },
     "assets/agent_transcripts/pattern_particles/metadata.edn": {
-      "captureDigest": "aaa64f59f3bd08f0c6c6c24821b783f71a13d8daf22ddaa23dc1523bcc6bc322",
-      "capturedAt": "2026-11-17T10:26:36.032Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:34:40.669Z",
       "channels": 1,
       "file": "assets/web_publications/pattern_particles/document/metadata.edn",
       "files": {
-        "assets/web_publications/pattern_particles/document/metadata.edn": "eca371c9c780237030a875ee130e394446af88890ddfeb1de65e96400c152f71",
-        "assets/web_publications/pattern_particles/document/outputs.json": "e6512ae53960d067ed714bc403bf46729b9695f77434ebf38f5dbbeb44a1b665",
+        "assets/web_publications/pattern_particles/document/metadata.edn": "6f6cd302547b337325fa6a3b50585e8c9896311d9cc0b7bc8592176b64cd2241",
+        "assets/web_publications/pattern_particles/document/outputs.json": "25591ad2ae32aba29a1421e335fa5b17382e2a22adbec387d8105ff2f84ff0fa",
         "assets/web_publications/pattern_particles/outputs/0.html": "19ba7aa5b38f8ea7ec1312221a5bf6e828fa999d6a00c8ed780b4f1fd7a1ffa1"
       },
       "kinds": [
@@ -4313,28 +4241,28 @@
       ]
     },
     "assets/agent_transcripts/penrose_spectra/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:19:18.649Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:35:08.892Z",
       "channels": 15,
       "file": "assets/web_publications/penrose_spectra/document/metadata.edn",
       "files": {
-        "assets/web_publications/penrose_spectra/document/metadata.edn": "f5a4082f591f81051417e393fc276e91bf0bae840cbf82ce6d61798b5b0ed31e",
-        "assets/web_publications/penrose_spectra/document/outputs.json": "daa34fbbc46dbeaea7e0656a0cc3f05df99e19211e941c0140f09b9aeccb3c8b",
-        "assets/web_publications/penrose_spectra/outputs/0.html": "ff3d171a3e5daa41c4a3745930708888efa49f164099cc6bd2ff16178c5f7707",
-        "assets/web_publications/penrose_spectra/outputs/1.html": "05007fbce795ed01583608a6252cfab9e5868157be64fc236513d377c7d718c2",
-        "assets/web_publications/penrose_spectra/outputs/10.html": "2c9c17ea0fd4a26eee516ae9e459b07b134c528e8cfc859f49d07d0e902286c5",
-        "assets/web_publications/penrose_spectra/outputs/11.html": "fae9872acebdb4995199f3733872065f227c9e4c4258c04e3b13710fa7f791b6",
-        "assets/web_publications/penrose_spectra/outputs/12.html": "7f3436fe99531a63fe9168e05478727e0da4ca16b885b4b844fe93a2b73f497c",
-        "assets/web_publications/penrose_spectra/outputs/13.html": "5d8e4af83549a288cf047d02cc1c8fba19966ad92bf295e5eb14ceb161671c90",
-        "assets/web_publications/penrose_spectra/outputs/14.html": "6cdc6f303fb43d4833c609881225c7f660fbd6587cce582aa2f9f7197d049b46",
-        "assets/web_publications/penrose_spectra/outputs/2.html": "a8982d32bb708aa859659f5e084cd90fa522cbf3aabcc8d0ab2d6aa2267bafd6",
-        "assets/web_publications/penrose_spectra/outputs/3.html": "7772dd04b8fea6e407f8fc030fae3844ce501f982efcdcbeec571bd8564766f6",
-        "assets/web_publications/penrose_spectra/outputs/4.html": "63528b58eb8f42f0bcac1aaf558804f67574232ba6bdc150db1f6939f2b3bc5d",
-        "assets/web_publications/penrose_spectra/outputs/5.html": "4a18001b580009bc054306abeffd86b91ed9eb1234766ded219b59c000058613",
-        "assets/web_publications/penrose_spectra/outputs/6.html": "f6704447b97feec05ff09ce13b62b8561f72ba42f8ed918c9d0929b500a922c8",
-        "assets/web_publications/penrose_spectra/outputs/7.html": "8360a05d2985320d6d44fe95c67a5dfba0a1bb59eb637f36f1add6b3af8e7741",
-        "assets/web_publications/penrose_spectra/outputs/8.html": "0c61fd9dcc46bd8fb46e0ca0961297d450f797ff71e8738c06c101d978582f1c",
-        "assets/web_publications/penrose_spectra/outputs/9.html": "79ea7a1512ec167b5a9068c18ef9a391ac5ccc8da4586d4471dd96b53fc8e90b"
+        "assets/web_publications/penrose_spectra/document/metadata.edn": "89e0a65e3e991326d1df844a631c06c2acd1e7bcbdc9e68bd841f96d979a0bc7",
+        "assets/web_publications/penrose_spectra/document/outputs.json": "325f8f03c6c76d9b00c489f76380e857ff343c8f8d8166322b215dda15a01127",
+        "assets/web_publications/penrose_spectra/outputs/0.html": "c458e87cbb2a521b366bcd09ab289877e466d181c8a847e5c7b06e2d451b7428",
+        "assets/web_publications/penrose_spectra/outputs/1.html": "6aad7ba6490987862aeec74463a15b5fc5e8ba152e48b88efa0056fc31ac9f20",
+        "assets/web_publications/penrose_spectra/outputs/10.html": "e2449317c550dbeaff711e9b8a3942ec219fdffa9648fd9a2a10144087feb4f2",
+        "assets/web_publications/penrose_spectra/outputs/11.html": "dfd5c7e98257d65ba5ce3937c5df57752017fb6cfc0fb5d32e80c1c8496e16c2",
+        "assets/web_publications/penrose_spectra/outputs/12.html": "c929635261e53c1360c54df4ca69abba7ef32d307669b140b66cc440b63bc210",
+        "assets/web_publications/penrose_spectra/outputs/13.html": "6a4092e2c9426dfe07a73d1fac28d95941b7ca8046560903d81f8ed4aa44b6e9",
+        "assets/web_publications/penrose_spectra/outputs/14.html": "be4874083a2493f88445a3a127adf1a0ac513fdc10c4286d005ab0aab16ebc48",
+        "assets/web_publications/penrose_spectra/outputs/2.html": "20a036529cf4423204005992e59e052a59bc3c71cfc63a6de422a2722ad4e84a",
+        "assets/web_publications/penrose_spectra/outputs/3.html": "42c70b4de185dd8bfa7195b1a1445a72b3495e8323ef927e0445f1615587e0a2",
+        "assets/web_publications/penrose_spectra/outputs/4.html": "f6e4a2633c859ad6584a8767d797d93ea247323b352da9f7fddb1c44965fbc7c",
+        "assets/web_publications/penrose_spectra/outputs/5.html": "41216159c72043ae87e9c6604f891cc03ed83e8cad9d3f65ff8b506a7916d860",
+        "assets/web_publications/penrose_spectra/outputs/6.html": "f72a89ed1c1856b3a892cc12093a0a7cb46920e6f7053ec7ce73246feff2f021",
+        "assets/web_publications/penrose_spectra/outputs/7.html": "cc46910ced9a70708b3fd734ac96888d282672f8b169d4d5f67b3253b4b15770",
+        "assets/web_publications/penrose_spectra/outputs/8.html": "215f77375153928484aadf86b4933ccce056b56273904d57429427019121cc12",
+        "assets/web_publications/penrose_spectra/outputs/9.html": "66779a5ecc6880373690a92b8ef56d3b7aca5d34879619a61cbbc344d8587a02"
       },
       "kinds": [
         "svg"
@@ -4355,32 +4283,32 @@
       }
     },
     "assets/agent_transcripts/petri_sound/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T14:32:40.254Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:35:29.799Z",
       "channels": 19,
       "file": "assets/web_publications/petri_sound/document/metadata.edn",
       "files": {
-        "assets/web_publications/petri_sound/document/metadata.edn": "14d2b168716bd6b5de67a6b88ba567b795d8845232b082b4dfa37e75ef8857d0",
-        "assets/web_publications/petri_sound/document/outputs.json": "ea991354f92d403f7c6e68a5db1a49e9466b26c27f1cdb9c57923d7c3b202aa7",
-        "assets/web_publications/petri_sound/outputs/0.html": "5f4a5156cc44fcf3a907cc1491ad21204825a338823c95db4c69d880d272dee0",
-        "assets/web_publications/petri_sound/outputs/1.html": "9140c35819b1ceec1dadd1def75591e8d587ec94870092af0f9979d2e6508930",
-        "assets/web_publications/petri_sound/outputs/10.html": "ba355b2be07c984c3a01cb5cf0ecbcebcaa42a3dbc7af88ea4c93998c0da919b",
-        "assets/web_publications/petri_sound/outputs/11.html": "1115e5ea8fd3459e6331a6bb3ff91426d1826206812d641312e3687054d96c3f",
-        "assets/web_publications/petri_sound/outputs/12.html": "96bf3a96b7df219d78e8e13f72166088795a29bd3c383ddada5a783a2eab2b7d",
-        "assets/web_publications/petri_sound/outputs/13.html": "d3c2ae72f00cc8620b9e00caa84e3367390aa12aa005967a749dde4077b706f6",
-        "assets/web_publications/petri_sound/outputs/14.html": "624c4c4c43025c7b292d3be99bd4c1bddf6481de2ac373cc542e8629a893667c",
-        "assets/web_publications/petri_sound/outputs/15.html": "ba355b2be07c984c3a01cb5cf0ecbcebcaa42a3dbc7af88ea4c93998c0da919b",
-        "assets/web_publications/petri_sound/outputs/16.html": "b488cb38374fb8fd78982d33a1d6f9845f3a0f0a7750269d00f7c7e762fb5455",
-        "assets/web_publications/petri_sound/outputs/17.html": "abf73d9d827585f41838eafcaa0b19596e633edd1280b9376ac701473a9330a7",
-        "assets/web_publications/petri_sound/outputs/18.html": "ba355b2be07c984c3a01cb5cf0ecbcebcaa42a3dbc7af88ea4c93998c0da919b",
-        "assets/web_publications/petri_sound/outputs/2.html": "ba355b2be07c984c3a01cb5cf0ecbcebcaa42a3dbc7af88ea4c93998c0da919b",
-        "assets/web_publications/petri_sound/outputs/3.html": "4d33334869f69cca96d27c809e8574676ef4ff720c142a4264583d2dc4bfbb18",
-        "assets/web_publications/petri_sound/outputs/4.html": "4e6d50e08f289e15dbf2b5e24f324b82a838b61da2630b07bd0a85efb12c55c0",
-        "assets/web_publications/petri_sound/outputs/5.html": "ba355b2be07c984c3a01cb5cf0ecbcebcaa42a3dbc7af88ea4c93998c0da919b",
-        "assets/web_publications/petri_sound/outputs/6.html": "8d6b3b1ed800dad1b560375c5708bf32f9168dbd942e531166353a2ddb67d309",
-        "assets/web_publications/petri_sound/outputs/7.html": "da43f4b53b634aa585fe44c148d37816a161544c5c230b6a60c3f763c9f714be",
-        "assets/web_publications/petri_sound/outputs/8.html": "a776cd231175b1d7af369ac4b41908ba3b86ef0595978387f98077597025c2cd",
-        "assets/web_publications/petri_sound/outputs/9.html": "da43f4b53b634aa585fe44c148d37816a161544c5c230b6a60c3f763c9f714be"
+        "assets/web_publications/petri_sound/document/metadata.edn": "5b0a0fb9ede20bf70ef311775f0ae4c523dba7b7a41d1ae03f65b600060519c5",
+        "assets/web_publications/petri_sound/document/outputs.json": "7373cf548ad95e03e2f1a049b00ce0a8f15bb9727551ce86e120d07bbd55f126",
+        "assets/web_publications/petri_sound/outputs/0.html": "a039828c3df3c1921e2d66003dcc78533199bf1c9e5e80e4d02cd1601e6c3761",
+        "assets/web_publications/petri_sound/outputs/1.html": "897bc19c7ef5b002404bfb08baf00ab20aeb3124dc6752d5acb8131f85c258ab",
+        "assets/web_publications/petri_sound/outputs/10.html": "c824c01f0cc5213bcfdc77a19e8d229ac3533cc08a9ae62a898352e492030785",
+        "assets/web_publications/petri_sound/outputs/11.html": "ea2fcae2d6df3f94022b6d1b68e0b06f77e5ecadd6067650101bcdcf0526a902",
+        "assets/web_publications/petri_sound/outputs/12.html": "46730fc2c26593257747523f7e597577e24e8f27fce93839bbd775abfa4ee445",
+        "assets/web_publications/petri_sound/outputs/13.html": "8e62ed92cb59709aa0bb131dbc92f792909c15c5ea49850857cfc884edcf98f0",
+        "assets/web_publications/petri_sound/outputs/14.html": "e6d2b007081f565966e89c3f902cd2d737ba814a727345fd82d30018471267a5",
+        "assets/web_publications/petri_sound/outputs/15.html": "c824c01f0cc5213bcfdc77a19e8d229ac3533cc08a9ae62a898352e492030785",
+        "assets/web_publications/petri_sound/outputs/16.html": "73bda5685535d7963d6f1fb11480712dc6c6991cf8dc6438c8de6d3833417fc8",
+        "assets/web_publications/petri_sound/outputs/17.html": "137db50acbca8bc1505cc180adac455cea8010827b4b85dff323975f2bb27772",
+        "assets/web_publications/petri_sound/outputs/18.html": "c824c01f0cc5213bcfdc77a19e8d229ac3533cc08a9ae62a898352e492030785",
+        "assets/web_publications/petri_sound/outputs/2.html": "c824c01f0cc5213bcfdc77a19e8d229ac3533cc08a9ae62a898352e492030785",
+        "assets/web_publications/petri_sound/outputs/3.html": "cc11b0d200d6b761e5686aba8ee0498d96ef5505c33ec0db8e1a69b0112860a9",
+        "assets/web_publications/petri_sound/outputs/4.html": "f16c1e432f550193a49ad5323c68710a05b1c80fd995f0f9c63521ec74938b7c",
+        "assets/web_publications/petri_sound/outputs/5.html": "c824c01f0cc5213bcfdc77a19e8d229ac3533cc08a9ae62a898352e492030785",
+        "assets/web_publications/petri_sound/outputs/6.html": "d42835cc16da293d869167648642a3bd758fba2afb10f65eb2622caf29d85f31",
+        "assets/web_publications/petri_sound/outputs/7.html": "17495ba17514d5d9bda72ae00d80cc6db3ec1c0952241e67ae0976241ce34a7c",
+        "assets/web_publications/petri_sound/outputs/8.html": "6d60d8bd1aae6758bb360e83361612b33c604fae51d3aebed5e5afb92d9db337",
+        "assets/web_publications/petri_sound/outputs/9.html": "17495ba17514d5d9bda72ae00d80cc6db3ec1c0952241e67ae0976241ce34a7c"
       },
       "kinds": [
         "svg"
@@ -4400,13 +4328,13 @@
       }
     },
     "assets/agent_transcripts/petri_sparks/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:26:05.964Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:35:32.538Z",
       "channels": 1,
       "file": "assets/web_publications/petri_sparks/document/metadata.edn",
       "files": {
-        "assets/web_publications/petri_sparks/document/metadata.edn": "2c43c121f30cb0eceaeb45a3dd5b215ee338f07bc4673806b87e0b1e592e8f38",
-        "assets/web_publications/petri_sparks/document/outputs.json": "4c2484cf47a90d826abb1a0ae345a8dd1849d2bb759357d176c3b546cd964c1e",
+        "assets/web_publications/petri_sparks/document/metadata.edn": "8722e2ddf37298b18a8ce9ae68be72314274b2a1ecd984ca106935d02e7add93",
+        "assets/web_publications/petri_sparks/document/outputs.json": "20bb7a5f0f1635699f1c213709cf792addd338982607b5ded37100579cf73755",
         "assets/web_publications/petri_sparks/outputs/0.html": "9358a98bf0d8f26612cd9ebd06261eb1473fb2ccff968638746be980f7d419cc"
       },
       "kinds": [
@@ -4431,23 +4359,23 @@
       ]
     },
     "assets/agent_transcripts/petri_state_space/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T14:33:08.775Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:35:59.881Z",
       "channels": 10,
       "file": "assets/web_publications/petri_state_space/document/metadata.edn",
       "files": {
-        "assets/web_publications/petri_state_space/document/metadata.edn": "db1b3727195e189aba82aac00009a720f37478d1765a85a0b7ce4e5f6a390615",
-        "assets/web_publications/petri_state_space/document/outputs.json": "ce775565fca445c96624e2f5366ed199275b55640f3f3f4e3218bf08db2ce61d",
-        "assets/web_publications/petri_state_space/outputs/0.html": "a996b1b518da81e7be8a3c6bd79e0398e11bdbbf4f55ac18675cce572873d433",
-        "assets/web_publications/petri_state_space/outputs/1.html": "9c27f40418c571251ddec0cd3cd9a63596c0f89298741f8d0044b4dfd8385a0d",
-        "assets/web_publications/petri_state_space/outputs/2.html": "ca92d4c87470571c8223f1df0bfd7afc7ff5fc29011e42f587b5fb6404e5a5d7",
-        "assets/web_publications/petri_state_space/outputs/3.html": "14b01ad1aa75aa78c0ef019b36251b2860c6bc35f6b20bffa34becc9f7741ca9",
-        "assets/web_publications/petri_state_space/outputs/4.html": "e352bfb10d6a0a06f31fd24eba008ad44898985369186e8a57cab542738cb7a5",
-        "assets/web_publications/petri_state_space/outputs/5.html": "6d925c5d9aafcb0ae9a8efea56293e6d5a5d30a1a7136732009fe283862f4662",
-        "assets/web_publications/petri_state_space/outputs/6.html": "32fa4d089e81bb01ef3becc3992e729906a5bec7a5db57fcc2281cbfc973c24d",
-        "assets/web_publications/petri_state_space/outputs/7.html": "ef4574e861596bfd5363cf83fad99faf4a7178d560b3defbda36e4d47f7f4f2d",
-        "assets/web_publications/petri_state_space/outputs/8.html": "c161c32a8c8b2d8fcaae7da9fdb37dcf3de5d63dfaa1f2855ad41f31fd360268",
-        "assets/web_publications/petri_state_space/outputs/9.html": "955d3ba4d543ec68a062a45866abbbd70082931f97c1ff8d9e9f5d88282c88d9"
+        "assets/web_publications/petri_state_space/document/metadata.edn": "5991ae2903453a100866e3ead800ee27a3958c18de6eab34038a83a72de912b7",
+        "assets/web_publications/petri_state_space/document/outputs.json": "b4c53d7330d3d72e3ecb8ae4373902106b7c511b909095ea16fc3e90e5743508",
+        "assets/web_publications/petri_state_space/outputs/0.html": "063a1f22dad6da804ccc5cb15940196e4ea9014a42ae77a2a5cdc08bb5e0321f",
+        "assets/web_publications/petri_state_space/outputs/1.html": "61616c5faff78928ee7d8ae8ba2a8ff23ae7619695f3099745ad1c28a7ea79bf",
+        "assets/web_publications/petri_state_space/outputs/2.html": "a31a329ecdfaba6f08eea9578e942327f6faac46d287e1abdee7645084b27d33",
+        "assets/web_publications/petri_state_space/outputs/3.html": "ea4173d722924b4e6f9ff2061dbca6a623dfb8af146399b94108af40d24aba84",
+        "assets/web_publications/petri_state_space/outputs/4.html": "e9a99c14e7aa4de8f4cbc8cb0a9a31546835fe082cc415e05da74d64859ad38c",
+        "assets/web_publications/petri_state_space/outputs/5.html": "a25ea8f1a7b1f702344141b77a6cab176a93b654431d7ad2a86165ee8b60a0db",
+        "assets/web_publications/petri_state_space/outputs/6.html": "69bb5fe1fbb4c8b6badbc503772d48ab526fc4bcf5de7db8c07875bf03adce29",
+        "assets/web_publications/petri_state_space/outputs/7.html": "c3df6eb0988bd885298eaf7defec2f4eef8b3c1d4c19a5ee91f1417433653bac",
+        "assets/web_publications/petri_state_space/outputs/8.html": "6bdd00eb968f3df6653371c78f98b62c2ceb1f7a5632dc3d14ae4095ca039d03",
+        "assets/web_publications/petri_state_space/outputs/9.html": "e7a254409ac091b9bc75f7e415d78a603427a5603e32394633ce34cb0e71657c"
       },
       "kinds": [
         "svg"
@@ -4466,13 +4394,13 @@
       }
     },
     "assets/agent_transcripts/petri_state_space_sculpture/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:26:00.692Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:36:02.653Z",
       "channels": 1,
       "file": "assets/web_publications/petri_state_space_sculpture/document/metadata.edn",
       "files": {
-        "assets/web_publications/petri_state_space_sculpture/document/metadata.edn": "9d1dd37270b294528d3bf21c88f5024168238f9b47b4737aff88570017136dd5",
-        "assets/web_publications/petri_state_space_sculpture/document/outputs.json": "ada9d573f7c9198b50153efe793201d82f4d640d0870a1d210a8f7ad24a6b3aa",
+        "assets/web_publications/petri_state_space_sculpture/document/metadata.edn": "0d7ede8cec162de5d4c5d91f1098b0161156edd6bdf0b1574becfec609f01f4b",
+        "assets/web_publications/petri_state_space_sculpture/document/outputs.json": "7c646de1b701e8e2045a37fefacf9afd8cfb51ca23753b6c25ceaeff536cfa5c",
         "assets/web_publications/petri_state_space_sculpture/outputs/0.html": "898fcf7da04eea1b2b31777ed249d45b36ab7df776e38bc2ecc9786541b128f3"
       },
       "kinds": [
@@ -7025,7 +6953,7 @@
       }
     },
     "assets/agent_transcripts/pattern_rewrite_worked_example/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
       "channels": 0,
       "reason": "No output-area channels; the code remains available.",
       "sources": {
