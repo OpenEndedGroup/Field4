@@ -34,7 +34,9 @@ const initQuickPick = (is) => {
                         return
                 }
 
-                if (document.activeElement == document.body) {
+                const focused = document.activeElement
+                const canvasReaderFocused = focused?.matches?.('[data-field-canvas-keyboard="true"]') && !quickpickIsEditableTarget(e.target)
+                if (focused === document.body || canvasReaderFocused) {
                         qpLog(e.key)
 
                         let k = e.key
@@ -45,6 +47,9 @@ const initQuickPick = (is) => {
                                 return a
                         })
                         if (found) {
+                                // A command may focus a new text input; consume its triggering character first.
+                                e.preventDefault()
+                                e.stopPropagation()
                                 qpLog(" running ")
                                 found.run()
                         }

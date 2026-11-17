@@ -232,13 +232,13 @@ fun monacoStartSelectionMonitor() {
 }
 
 /**
- * True while the keyboard is in a text field inside a box's output area — the AI chat input, a
- * `stringInput`. Clicking one selects its box, and the editor that opens must not take the
+ * True while the keyboard is in a box's text input, including canvas Markdown and output controls.
+ * Clicking one selects its box, and the editor that opens must not take the
  * keyboard back out of it.
  */
 private fun keyboardIsInOutputField(): Boolean {
     val el: dynamic = kotlinx.browser.document.activeElement ?: return false
-    if (el.closest(".outputArea") == null) return false
+    if (el.closest(".outputArea, .text-frame-editor, .text-frame-settings") == null) return false
     val tag = ((el.tagName as? String) ?: "").lowercase()
     return tag == "input" || tag == "textarea" || tag == "select" || el.isContentEditable == true
 }
@@ -275,7 +275,8 @@ private fun monitorSelection() {
         } else null
         val hasEmbeddedPeer = embeddedPeer != null && embeddedPeer != undefined
 
-        if (hasEmbeddedPeer && !mainEditorHasFocus && nc != propertyValue) {
+        val hasCanvasPeer = codeDiv.box_kind == "text-frame" && currentSelectedProperty == "contents"
+        if ((hasEmbeddedPeer || hasCanvasPeer) && !mainEditorHasFocus && nc != propertyValue) {
             notifyPotentialEditedPropertyHasBeenRemoteUpdated(
                 codeDiv.uid as String,
                 currentSelectedProperty,
@@ -293,6 +294,7 @@ private fun monitorSelection() {
 
             if (nc != propertyValue) {
                 codeDiv[currentSelectedProperty] = nc
+                if (hasCanvasPeer && w.syncTextFrame != null) w.syncTextFrame(codeDiv, "contents")
                 if (hasEmbeddedPeer) {
                     notifyEmbeddedEditorOfRemoteUpdate(codeDiv.uid as String, currentSelectedProperty, nc)
                 }
@@ -465,6 +467,21 @@ private fun forceEditedPropertyToRemoteValue(w: dynamic, selected: dynamic, edit
     recentChangeCache.add(normalized)
     if (recentChangeCache.size > 5) recentChangeCache.removeAt(0)
     if (property == "notes" || property == "contents") {
+        syncNotesMarkdownPreview()
+    }
+}
+
+/** A local canvas editor owns this edit; establish the same baseline in the property editor. */
+internal fun notifyCanvasTextFrameContents(uid: String, value: String) {
+    val w = window.asDynamic()
+    val selection = w.currentSelectedCode
+    if (selection?.length != 1 || selection[0].uid != uid || w.currentSelectedProperty != "contents") return
+    val editor = w.globalEditor ?: return
+    val normalized = value.replace("\r\n", "\n")
+    if (editor.getValue() != normalized) {
+        forceEditedPropertyToRemoteValue(w, selection, editor, "contents", normalized)
+    } else {
+        currentValueAtOrigination = normalized
         syncNotesMarkdownPreview()
     }
 }

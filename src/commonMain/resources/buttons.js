@@ -403,7 +403,11 @@ const makeDivAt = (text, x, y, originx, originy, r, callbackUp, divs = []) => {
                 newDiv.classList.remove("markingHover")
         });
 
+        // The button's mouseup and the menu-wide finish path can both reach this option.
+        let didFinish = false;
         newDiv.finish = (e) => {
+                if (didFinish) return;
+                didFinish = true;
                 callbackUp(e);
         };
 

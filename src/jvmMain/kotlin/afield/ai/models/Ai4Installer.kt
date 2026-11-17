@@ -1061,31 +1061,37 @@ fun installAi4() {
         Handled.yes
     })
 
-    // Inline autocomplete for the chat composer: the fast model's guess at how the draft goes on. The box is
+    // Inline continuations for chat drafts and canvas Markdown. The box is
     // read here, on the handler's thread; only the model call runs on ai4Scope.
-    handlers["ai-chat-suggest"] = mutableSetOf({ message, reply ->
-        val request = Json.decodeFromJsonElement<AiChatSuggestRequest>(message.payload!!)
-        fun answer(suggestion: String = "", disabled: Boolean = false, error: String? = null) =
-            reply(Message("ai-chat-suggest").payload(AiChatSuggestReply(request.uid, request.seq, request.draft, suggestion, disabled, error)))
-        val target = thisSessionInfo.get()?.boxes?.get(request.uid)
-        when {
-            !afield.ai.completion.Ai4ChatAutocomplete.enabled() -> answer(disabled = true)
-            target == null || request.draft.isBlank() -> answer()
-            else -> {
-                val boxName = target.name
-                val code = target.getPropertyRaw(request.property, "") as? String ?: ""
-                val history = AiBoxConversation.read(target)
-                ai4Scope.launch {
-                    val suggestion = runCatching {
-                        afield.ai.completion.Ai4ChatAutocomplete.complete(boxName, request.property, code, history, request.draft)
+    listOf("ai-chat-suggest", "ai-text-frame-suggest").forEach { suggestionName ->
+        handlers[suggestionName] = mutableSetOf({ message, reply ->
+            val request = Json.decodeFromJsonElement<AiChatSuggestRequest>(message.payload!!)
+            fun answer(suggestion: String = "", disabled: Boolean = false, error: String? = null) =
+                reply(Message(suggestionName).payload(AiChatSuggestReply(request.uid, request.seq, request.draft, suggestion, disabled, error)))
+            val target = thisSessionInfo.get()?.boxes?.get(request.uid)
+            when {
+                !afield.ai.completion.Ai4ChatAutocomplete.enabled() -> answer(disabled = true)
+                target == null || request.draft.isBlank() -> answer()
+                suggestionName == "ai-text-frame-suggest" && target.getPropertyRaw("box_kind") != "text-frame" -> answer()
+                else -> {
+                    val boxName = target.name
+                    val code = target.getPropertyRaw(request.property, "") as? String ?: ""
+                    val history = if (suggestionName == "ai-chat-suggest") AiBoxConversation.read(target) else ""
+                    ai4Scope.launch {
+                        val suggestion = runCatching {
+                            if (suggestionName == "ai-text-frame-suggest")
+                                afield.ai.completion.Ai4ChatAutocomplete.completeTextFrame(boxName, code, request.draft)
+                            else afield.ai.completion.Ai4ChatAutocomplete.complete(boxName, request.property, code, history, request.draft)
+                        }
+                        suggestion.onFailure { lprintln("info,ai_completions", "chat autocomplete failed: ${it.javaClass.simpleName}: ${it.message}") }
+                        answer(suggestion.getOrDefault(""), error = suggestion.exceptionOrNull()?.let { it.message ?: it.javaClass.simpleName })
                     }
-                    suggestion.onFailure { lprintln("info,ai_completions", "chat autocomplete failed: ${it.javaClass.simpleName}: ${it.message}") }
-                    answer(suggestion.getOrDefault(""), error = suggestion.exceptionOrNull()?.let { it.message ?: it.javaClass.simpleName })
                 }
             }
-        }
-        Handled.yes
-    })
+            Handled.yes
+        })
+
+    }
 
     // After a rewind, and only when the person says so: undo the document edits the abandoned turns made
     // (by their OperationTranscript origin, strictly — an edit changed since is skipped, not overwritten)

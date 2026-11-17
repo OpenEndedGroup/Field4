@@ -50,7 +50,8 @@ internal val monacoPropertyNames = arrayOf(
     "attic",
     "notes",
     "metadata",
-    "contents"
+    "contents",
+    "textFrame"
 )
 internal val monacoPropertyDescriptions = arrayOf(
     "Kotlin (main)",
@@ -85,7 +86,8 @@ internal val monacoPropertyDescriptions = arrayOf(
     "Kotlin (attic)",
     "Notes (Markdown)",
     "Metadata about this box",
-    "File contents"
+    "Contents (Markdown or file)",
+    "Text frame settings (JSON)"
 )
 internal val monacoPropertyLanguages = arrayOf(
     "kotlin",
@@ -120,7 +122,8 @@ internal val monacoPropertyLanguages = arrayOf(
     "kotlin",
     "markdown",
     "yaml",
-    "plaintext"
+    "plaintext",
+    "json"
 )
 
 private fun propertyIndexOf(name: String?): Int {

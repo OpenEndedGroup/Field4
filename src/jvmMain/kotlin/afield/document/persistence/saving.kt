@@ -294,6 +294,8 @@ class SavingContext {
             box.properties.forEach { (name, rawValue) ->
                 if (!patterns.any { name.matches(it) }) return@forEach
                 if (Box.isNeverPersisted(name)) return@forEach
+                // A proxy's contents are a cache of its file, whereas text frame contents belong to the document.
+                if (name == "contents" && box.getPropertyRaw("file_proxy_mode") != null) return@forEach
                 val value = withoutMetarootTopology(name, rawValue)
                 if (value == null) return@forEach
 
@@ -321,6 +323,8 @@ class SavingContext {
             box.properties.forEach { (name, rawValue) ->
                 if (!patterns.any { name.matches(it) }) return@forEach
                 if (Box.isNeverPersisted(name)) return@forEach
+                // A proxy's contents are a cache of its file, whereas text frame contents belong to the document.
+                if (name == "contents" && box.getPropertyRaw("file_proxy_mode") != null) return@forEach
                 val value = withoutMetarootTopology(name, rawValue)
                 if (value == null) return@forEach
 
@@ -495,6 +499,8 @@ class SavingContext {
             box.properties.forEach { (name, value) ->
                 if (!patterns.any { name.matches(it) }) return@forEach
                 if (Box.isNeverPersisted(name)) return@forEach
+                // A proxy's contents are a cache of its file, whereas text frame contents belong to the document.
+                if (name == "contents" && box.getPropertyRaw("file_proxy_mode") != null) return@forEach
                 if (value == null) return@forEach
 
                 // For separate properties, capture the content now

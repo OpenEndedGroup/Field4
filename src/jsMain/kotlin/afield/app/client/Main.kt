@@ -6608,6 +6608,10 @@ suspend fun main() {
         val found = defaultCreate(u)
 
         found.unsafeCast<dynamic>()[set.property] = null
+        if (set.property in setOf("box_kind", "contents", "textFrame")) {
+            val sync = window.asDynamic().syncTextFrame
+            if (sync != null) sync(found, set.property)
+        }
         if (set.property == "name") {
             found.getElementsByClassName("doubleClickToEdit").asList().firstOrNull()?.innerHTML = ""
             applyAi4AutoNameStyle(found.unsafeCast<HTMLElement>(), found.asDynamic().ai4_auto_name == true)
@@ -6912,6 +6916,10 @@ suspend fun main() {
             }
         }
 
+        if (set.property in setOf("box_kind", "contents", "textFrame")) {
+            val sync = window.asDynamic().syncTextFrame
+            if (sync != null) sync(found, set.property)
+        }
         if (set.property in monacoRemoteTextProperties) {
             notifyPotentialEditedPropertyHasBeenRemoteUpdated(u, set.property, set.value)
         }
@@ -7744,6 +7752,7 @@ suspend fun main() {
 
         val originalTarget = event.target as? Element
         val outputArea = originalTarget?.closest(".outputArea")
+        if (originalTarget?.closest(".text-frame-editor, .text-frame-controls, .text-frame-settings, .text-frame-conflict, .text-frame-overflow, .text-frame-preview a") != null) return@on
         val insideOutputArea = outputArea != null
         val clickedBox = originalTarget?.closest(".box")
         // Output controls (including their SVG tracks) must not select their host or
@@ -7755,6 +7764,10 @@ suspend fun main() {
             val uid = target.uid as? String ?: return@on
             val stamp = (event.timeStamp as? Double) ?: js("Date.now()") as Double
             val continueRequested = (event.shiftKey as? Boolean) == true
+            if (target.box_kind == "text-frame") {
+                requestCustomMarkingMenu(uid, event.x as Double, event.y as Double, event)
+                return@on
+            }
 
             // Shift+Alt+Click: custom marking menu
             if (continueRequested) {
@@ -7864,7 +7877,7 @@ suspend fun main() {
         }
     }
 
-    interactable.draggable(json("ignoreFrom" to ".outputArea", "onmove" to { event: dynamic ->
+    interactable.draggable(json("ignoreFrom" to ".outputArea, .text-frame-editor, .text-frame-controls, .text-frame-settings, .text-frame-conflict, .text-frame-overflow, .text-frame-preview a", "onmove" to { event: dynamic ->
         if (event.altKey) {
         } else if (originatingMouseDown.altKey) {
         } else {
@@ -8274,4 +8287,32 @@ fun applyBoxTint(box: HTMLElement, value: String?) {
         box.style.setProperty("--box-tint", value)
         box.classList.add("tinted")
     }
+}
+
+/** Grow a text frame in world units through the same path as a resize gesture. */
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun growTextFrame(uid: String, height: Double) {
+    val box = findBoxByUid(uid) ?: return
+    if (box.asDynamic().box_kind != "text-frame" || !height.isFinite()) return
+    val d = box.asDynamic()
+    val oldHeight = (d.data_h as? Number)?.toDouble() ?: return
+    if (height <= oldHeight + 1.0) return
+    val frame = Rect((d.data_x as Number).toDouble(), (d.data_y as Number).toDouble(),
+        (d.data_w as Number).toDouble(), height)
+    applyFrameToBox(box, frame)
+    send(Message("set-rect").payload(Set_rect(uid, "frame", frame)))
+    canvasGestures.requestConnectionGroupRebuild()
+}
+
+/** Publish a canvas edit to editor peers immediately, before the next Monaco polling tick. */
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun setTextFrameContents(uid: String, value: String) {
+    val box = findBoxByUid(uid) ?: return
+    if (box.asDynamic().box_kind != "text-frame") return
+    box.asDynamic().contents = value
+    afield.app.editor.notifyCanvasTextFrameContents(uid, value)
+    notifyEmbeddedEditorOfRemoteUpdate(uid, "contents", value)
+    afield.app.protocol.send("set-string", json("uid" to uid, "property" to "contents", "value" to value))
 }

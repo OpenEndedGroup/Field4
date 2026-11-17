@@ -4877,6 +4877,17 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--uid", "@last", "--with-editor", "--open-outputs", "--no-pan", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="text-frames",
+            description="Canvas Markdown editing, spellcheck, clipping, vertical growth, incoming edit conflicts and connected text frames.",
+            commands=[
+                "viewport 1200x900",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/text-frames.js"), "--timeout", pw_timeout]),
+                shell_join(["macro", "write", "text_frame_gestures", "--file", str(TOOLS_ROOT / "ui_regressions/text-frames-gestures.yaml")]),
+                "macro run text_frame_gestures",
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="directory-proxy",
             description="Drop a real directory, select its context-proxy menu action, catalogue/search/read eligible files and observe a live disk edit without a model request.",
             commands=[
