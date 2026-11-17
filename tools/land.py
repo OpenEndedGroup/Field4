@@ -94,6 +94,14 @@ MAX_MAIN_RACES = 3
 # so a page that is slow on this machine cannot hold the queue forever.
 MACHINE_STATE_EXIT = 75
 MAX_MACHINE_RETRIES = 2
+# A landing no longer recaptures the publications that only a change to the capture code made stale
+# (merge_regen's `sync --defer-digest-only`): they keep their previous capture, recorded under
+# `deferred` in the catalog. While the queue is empty the lander recaptures them, CATCH_UP_PAGES at a
+# time, each chunk its own commit on main, so a landing that arrives waits for one chunk, not for all
+# of them. On 2026-11-16/17 each viewer change held its landing for 60-90 minutes of recapture.
+CATCH_UP_PAGES = int(os.environ.get("FIELD_LAND_CATCH_UP_PAGES", "12"))
+CATCHUP_FILE = "catchup.json"
+CATALOG = "public/docs/assets/web_publications/catalog.json"
 
 
 def _git(cwd: Path, *args: str, check: bool = True) -> str:
@@ -840,6 +848,8 @@ def _pretty_status(queue: Path, recent: int) -> None:
     else:
         print(f"{st.red(g['down'])} {st.bold(st.red('lander down'))}  nothing lands. "
               + st.cyan("uv run python tools/land.py run"))
+    if catch_up := _catch_up_line(queue, _primary(Path.cwd())):
+        print(st.dim(catch_up))
     print()
 
     def fixed_line(item: dict) -> str:
@@ -1020,6 +1030,8 @@ def cmd_status(args: argparse.Namespace) -> int:
         print(_describe(PENDING, item, queue))
     if not active:
         print("landing  nothing")
+    if catch_up := _catch_up_line(queue, _primary(Path.cwd())):
+        print(catch_up)
     if waiting:
         # A rough start time: what is left of the current landing plus a typical landing per item ahead.
         typical = _typical(queue, True) or _typical(queue, False) or 0.0
@@ -1952,6 +1964,87 @@ def _covering_doc(queue: Path, item: dict, head: str) -> dict | None:
     return None
 
 
+def _main_deferrals(primary: Path) -> int:
+    """How many publications main's catalog has deferred to the catch-up."""
+    try:
+        return len(json.loads(_git(primary, "show", f"refs/heads/main:{CATALOG}", check=False) or "{}").get("deferred", {}))
+    except json.JSONDecodeError:
+        return 0
+
+
+def _catch_up_publications(primary: Path, wt: Path, queue: Path) -> str:
+    """Recapture up to CATCH_UP_PAGES deferred publications on main and fast-forward main to the result.
+
+    Returns "more" when a chunk landed and deferred pages are left to try, "done" when there is
+    nothing (more) to do on this main, and "failed" when the catch-up or its check failed; the caller
+    waits for main to move before trying again after "done" or "failed"."""
+    if not _main_deferrals(primary):
+        return "done"
+    main_sha = _git(primary, "rev-parse", "refs/heads/main")
+    log = queue / "logs" / f"catchup-{dt.datetime.now().strftime('%Y%m%d-%H%M%S')}.log"
+    record = queue / CATCHUP_FILE
+    record.write_text(json.dumps({"started": _now(), "log": str(log), "main": main_sha,
+                                  "deferred": _main_deferrals(primary)}) + "\n")
+    env = {**os.environ, "PYTHONUNBUFFERED": "1"}
+    if gradle_home := _lander_gradle_home():
+        env["GRADLE_USER_HOME"] = str(gradle_home)
+    try:
+        _reset(wt, main_sha)
+        script = wt / "tools/docs_publications.py"
+        with log.open("w") as out:
+            out.write(f"=== {_now()} publication catch-up on main {main_sha[:9]}: up to {CATCH_UP_PAGES} page(s)\n")
+            out.flush()
+            code = _run_watched([sys.executable, str(script), "catch-up", "--limit", str(CATCH_UP_PAGES)], wt, env, log, out)
+            try:
+                summary = json.loads((wt / "build/docs-publications-catch-up.json").read_text())
+            except (OSError, json.JSONDecodeError):
+                summary = {}
+            changed = _git(wt, "status", "--porcelain", "--", "public/docs/assets/web_publications", check=False)
+            if code != 0:
+                out.write(f"land: catch-up {'went silent' if code is None else f'exited {code}'}; main unchanged\n")
+                _record_event(queue, "catch-up", main=main_sha, error=_first_error(log), log=str(log))
+                return "failed"
+            if not changed:
+                return "done"
+            out.write("land: checking the catalog before committing\n")
+            out.flush()
+            if subprocess.run([sys.executable, str(script), "check"], cwd=wt, stdout=out, stderr=subprocess.STDOUT, env=env).returncode:
+                _record_event(queue, "catch-up", main=main_sha, error="docs_publications.py check failed", log=str(log))
+                return "failed"
+            done = summary.get("recaptured", [])
+            message = (f"Publication catch-up: recaptured {len(done)} page(s), {summary.get('remaining', '?')} still deferred\n\n"
+                       + "".join(f"- {name}\n" for name in done)
+                       + ("".join(f"- failed: {name}\n" for name in summary.get("failed", []))))
+            _git(wt, "add", "-A", "--", "public/docs/assets/web_publications")
+            subprocess.run(["git", "commit", "-q", "-m", message], cwd=wt, stdout=out, stderr=subprocess.STDOUT, env=env)
+            new = _git(wt, "rev-parse", "HEAD")
+            why = _fast_forward_main(primary, main_sha, new) if new != main_sha else "nothing committed"
+            out.write(f"land: catch-up {'landed ' + new[:9] if why is None else 'not landed: ' + why}\n")
+        _record_event(queue, "catch-up", main=main_sha, sha=new if why is None else None, recaptured=len(done),
+                      failed=len(summary.get("failed", [])), remaining=summary.get("remaining"), error=why, log=str(log))
+        if why is not None:
+            return "failed"
+        return "more" if summary.get("retryable") else "done"
+    finally:
+        record.unlink(missing_ok=True)
+
+
+def _catch_up_line(queue: Path, primary: Path) -> str | None:
+    """What the catch-up is doing, or how many publications wait for it; None when neither."""
+    try:
+        info = json.loads((queue / CATCHUP_FILE).read_text())
+        return (f"catch-up  recapturing deferred publications ({info.get('deferred', '?')} deferred on main) for "
+                f"{_span(_since(info.get('started')))}; a landing waits for this chunk only\n         log: {info.get('log')}")
+    except (OSError, json.JSONDecodeError):
+        pass
+    deferred = _main_deferrals(primary)
+    if deferred:
+        last = (_events(queue, "catch-up") or [{}])[-1]
+        tail = f"; last catch-up: {last['error']}" if last.get("error") else ""
+        return f"deferred {deferred} publication(s) keep their previous capture until the idle catch-up{tail}"
+    return None
+
+
 def _run_doc(item: dict, primary: Path, queue: Path) -> None:
     """Build the served checkout after earlier queue items, without changing Git history."""
     checkout = Path(item["checkout"])
@@ -2034,6 +2127,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         signal.signal(signal.SIGINT, stop)
         print(f"land: lander up in {wt}; queue {queue}", flush=True)
         limit, bisecting, suspects = args.batch, None, set()
+        catch_up_seen = None
         while True:
             pending = _items(queue, PENDING)
             # A docs item is an exact boundary. Later landings cannot pass it, and it cannot
@@ -2097,6 +2191,15 @@ def cmd_run(args: argparse.Namespace) -> int:
                                      coalesced_into=item["id"])
                         _move(queue, other, state)
                 continue
+            if not pending and not args.once:
+                head = _git(primary, "rev-parse", "refs/heads/main")
+                if catch_up_seen != head:
+                    print(f"land: {_now()} queue empty; publication catch-up on main {head[:9]}", flush=True)
+                    result = _catch_up_publications(primary, _lander_worktree(primary, args.worktree), queue)
+                    print(f"land: catch-up {result}", flush=True)
+                    if result != "more":
+                        catch_up_seen = _git(primary, "rev-parse", "refs/heads/main")
+                    continue
             if args.once and not _items(queue, PENDING):
                 return 0
             if args.once:

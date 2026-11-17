@@ -772,5 +772,77 @@ class LogAttemptsStartAtTheLanderHeader(unittest.TestCase):
                 self.assertTrue(land._ran_gradle(item))
 
 
+# Stands in for tools/docs_publications.py in the catch-up tests: `catch-up` recaptures one deferred
+# page per call; the mode file beside the lander's worktree makes it crash or fail `check`.
+PUBLICATIONS_STUB = '''
+import json, pathlib, sys
+mode_file = pathlib.Path.cwd().parent / "CATCHUP_MODE"
+mode = mode_file.read_text().strip() if mode_file.exists() else "ok"
+if sys.argv[1] == "check":
+    sys.exit(1 if mode == "badcheck" else 0)
+assert sys.argv[1:] == ["catch-up", "--limit", "12"], sys.argv
+catalog = pathlib.Path("public/docs/assets/web_publications/catalog.json")
+index = json.loads(catalog.read_text())
+first = sorted(index["deferred"])[0]
+del index["deferred"][first]
+if not index["deferred"]:
+    del index["deferred"]
+catalog.write_text(json.dumps(index))
+left = len(index.get("deferred", {}))
+pathlib.Path("build").mkdir(exist_ok=True)
+pathlib.Path("build/docs-publications-catch-up.json").write_text(
+    json.dumps({"recaptured": [first], "failed": [], "remaining": left, "retryable": left}))
+sys.exit(1 if mode == "crash" else 0)
+'''
+
+
+class PublicationCatchUp(unittest.TestCase):
+    """While the queue is empty the lander recaptures deferred publications one chunk at a time,
+    each chunk its own commit on main."""
+
+    setUp = LandQueueTest.setUp
+    tearDown = LandQueueTest.tearDown
+    git = LandQueueTest.git
+    land = LandQueueTest.land
+
+    def seed(self, deferred: int) -> None:
+        (self.primary / "tools/docs_publications.py").write_text(PUBLICATIONS_STUB)
+        catalog = self.primary / "public/docs/assets/web_publications/catalog.json"
+        catalog.parent.mkdir(parents=True)
+        catalog.write_text(json.dumps({"documents": {}, "deferred": {f"page{n}": {"captureDigest": "v2"} for n in range(deferred)}}))
+        self.git(self.primary, "add", "-A")
+        self.git(self.primary, "commit", "-q", "-m", "deferred publications")
+
+    def catch_up(self) -> str:
+        from unittest import mock
+        from tools import land
+        with mock.patch.dict(os.environ, self.env, clear=True):
+            wt = land._lander_worktree(self.primary, str(self.lander))
+            return land._catch_up_publications(self.primary, wt, land._queue_dir(self.primary))
+
+    def test_chunks_land_on_main_until_nothing_is_deferred(self) -> None:
+        self.seed(2)
+        self.assertIn("deferred 2 publication(s)", self.land(self.primary, "status", "--plain").stdout)
+        self.assertEqual(self.catch_up(), "more")
+        self.assertEqual(self.git(self.primary, "log", "-1", "--format=%s", "main"),
+                         "Publication catch-up: recaptured 1 page(s), 1 still deferred")
+        self.assertEqual(self.catch_up(), "done")
+        catalog = json.loads(self.git(self.primary, "show", "main:public/docs/assets/web_publications/catalog.json"))
+        self.assertNotIn("deferred", catalog)
+        head = self.git(self.primary, "rev-parse", "main")
+        self.assertEqual(self.catch_up(), "done")
+        self.assertEqual(self.git(self.primary, "rev-parse", "main"), head, "nothing deferred, nothing to commit")
+        self.assertNotIn("deferred", self.land(self.primary, "status", "--plain").stdout)
+
+    def test_a_crash_or_a_failed_check_leaves_main_alone(self) -> None:
+        self.seed(2)
+        head = self.git(self.primary, "rev-parse", "main")
+        for mode in ("crash", "badcheck"):
+            (Path(self._tmp.name) / "CATCHUP_MODE").write_text(mode)
+            self.assertEqual(self.catch_up(), "failed")
+            self.assertEqual(self.git(self.primary, "rev-parse", "main"), head)
+        self.assertIn("last catch-up:", self.land(self.primary, "status", "--plain").stdout)
+
+
 if __name__ == "__main__":
     unittest.main()
