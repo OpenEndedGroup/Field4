@@ -15,7 +15,8 @@
  * Delaunay triangle; there is no 3D one, because Field has no 3D Delaunay of a point set), Voronoi diagram/dual ([vec2VoronoiDiagram], [vec2VoronoiDualGraph]) and convex
  * hull ([vec2ConvexHull], [vec2ConvexHullGraph], [vec2HullProjectionGraph]).
  *
- * Traversal / analysis: BFS/DFS/A* path search, [GraphEdgeVisitState] greedy walks and
+ * Traversal / analysis: BFS/DFS/A* path search ([graphAStarSearch] reports expanded nodes;
+ * [GraphLandmarks] is the landmark/ALT heuristic; [vec2GridGraph] builds grid graphs), [GraphEdgeVisitState] greedy walks and
  * graph-diameter path decomposition (see the search/path functions below), plus FLine rendering
  * integration in `fline_graph_connectivity.kt`.
  *
@@ -367,6 +368,11 @@ fun graphDfsPath(
 /**
  * Find a weighted path from [start] to [goal] using A*.
  *
+ * With the default heuristic (always 0) this is Dijkstra's algorithm stopped at [goal]. Pass an
+ * admissible heuristic — one that never overestimates the remaining cost, such as straight-line
+ * distance or [GraphLandmarks.heuristic] — and the path is still shortest while fewer nodes are
+ * expanded. Use [graphAStarSearch] to also get the nodes the search expanded.
+ *
  * @param graph Graph to traverse
  * @param start Start node index
  * @param goal Goal node index
@@ -380,21 +386,53 @@ fun graphAStarPath(
     goal: Int,
     heuristic: (Int, Int) -> Double = { _, _ -> 0.0 },
     allowedEdges: Set<GraphEdge>? = null
-): GraphPath? {
-    validatePointGraph(graph, "graphAStarPath")
-    validatePointIndex(start, graph.pointCount, "graphAStarPath", "start")
-    validatePointIndex(goal, graph.pointCount, "graphAStarPath", "goal")
+): GraphPath? = graphAStarSearch(graph, start, goal, heuristic, allowedEdges).path
 
-    if (start == goal) return GraphPath(listOf(start), emptyList(), 0.0)
+/**
+ * The outcome of an A* search: the path, if any, and every node the search expanded.
+ *
+ * @param path Shortest path from start to goal, or null when the goal is unreachable
+ * @param expanded Nodes in the order they were taken off the open queue (the goal last, when
+ *                 reached). Its size is the usual measure of how much work a heuristic saved.
+ */
+data class GraphSearchResult(
+    val path: GraphPath?,
+    val expanded: List<Int>
+) {
+    /** Number of nodes expanded. */
+    val expandedCount: Int get() = expanded.size
+}
+
+/**
+ * Run A* from [start] to [goal] and report which nodes it expanded as well as the path.
+ *
+ * Same search as [graphAStarPath]. Compare `expandedCount` between heuristics on the same query:
+ * the zero heuristic (Dijkstra), straight-line distance ([vec2AStarSearch]) and landmarks
+ * ([GraphLandmarks.search]).
+ */
+fun graphAStarSearch(
+    graph: PointGraph,
+    start: Int,
+    goal: Int,
+    heuristic: (Int, Int) -> Double = { _, _ -> 0.0 },
+    allowedEdges: Set<GraphEdge>? = null
+): GraphSearchResult {
+    validatePointGraph(graph, "graphAStarSearch")
+    validatePointIndex(start, graph.pointCount, "graphAStarSearch", "start")
+    validatePointIndex(goal, graph.pointCount, "graphAStarSearch", "goal")
+
+    if (start == goal) return GraphSearchResult(GraphPath(listOf(start), emptyList(), 0.0), listOf(start))
 
     val filteredEdges = filterGraphEdges(graph, allowedEdges)
-    requireNonNegativeEdgeWeights(filteredEdges, "graphAStarPath")
+    requireNonNegativeEdgeWeights(filteredEdges, "graphAStarSearch")
 
     val adjacency = buildAdjacency(graph.pointCount, filteredEdges)
     val edgeLookup = buildEdgeLookup(filteredEdges)
     val gScore = DoubleArray(graph.pointCount) { Double.POSITIVE_INFINITY }
     val fScore = DoubleArray(graph.pointCount) { Double.POSITIVE_INFINITY }
     val previous = IntArray(graph.pointCount) { -1 }
+    val closed = BooleanArray(graph.pointCount)
+    val expanded = mutableListOf<Int>()
     val queue = PriorityQueue<PriorityNode>(compareBy<PriorityNode> { it.priority }.thenBy { it.node })
 
     gScore[start] = 0.0
@@ -404,6 +442,10 @@ fun graphAStarPath(
     while (queue.isNotEmpty()) {
         val current = queue.poll()
         if (current.priority > fScore[current.node] + GRAPH_SEARCH_EPSILON) continue
+        if (!closed[current.node]) {
+            closed[current.node] = true
+            expanded += current.node
+        }
         if (current.node == goal) break
 
         for (entry in adjacency[current.node]) {
@@ -417,10 +459,182 @@ fun graphAStarPath(
         }
     }
 
-    if (gScore[goal].isInfinite()) return null
-    val nodes = reconstructPathNodes(previous, start, goal) ?: return null
+    if (gScore[goal].isInfinite()) return GraphSearchResult(null, expanded)
+    val nodes = reconstructPathNodes(previous, start, goal) ?: return GraphSearchResult(null, expanded)
     val path = pathFromNodes(nodes, edgeLookup)
-    return path.copy(totalWeight = gScore[goal])
+    return GraphSearchResult(path.copy(totalWeight = gScore[goal]), expanded)
+}
+
+/**
+ * [graphAStarSearch] with straight-line distance between 2D [points] as the heuristic.
+ */
+fun vec2AStarSearch(
+    graph: PointGraph,
+    points: List<Vec2>,
+    start: Int,
+    goal: Int,
+    allowedEdges: Set<GraphEdge>? = null
+): GraphSearchResult {
+    require(points.size >= graph.pointCount) {
+        "vec2AStarSearch: points must contain at least graph.pointCount values (${graph.pointCount}), found ${points.size}"
+    }
+    return graphAStarSearch(graph, start, goal, { a, b -> distance2D(points[a], points[b]) }, allowedEdges)
+}
+
+/**
+ * Shortest-path distance from [source] to every node (Dijkstra). Unreachable nodes are
+ * `Double.POSITIVE_INFINITY`. Edge weights must be non-negative.
+ */
+fun graphDijkstraDistances(
+    graph: PointGraph,
+    source: Int,
+    allowedEdges: Set<GraphEdge>? = null
+): DoubleArray {
+    validatePointGraph(graph, "graphDijkstraDistances")
+    validatePointIndex(source, graph.pointCount, "graphDijkstraDistances", "source")
+    val filteredEdges = filterGraphEdges(graph, allowedEdges)
+    requireNonNegativeEdgeWeights(filteredEdges, "graphDijkstraDistances")
+    return runDijkstra(buildAdjacency(graph.pointCount, filteredEdges), source).distances
+}
+
+/**
+ * Landmark ("ALT", Goldberg & Harrelson 2005) heuristic for A*: a few chosen nodes, each with
+ * its exact shortest-path distance to every node.
+ *
+ * By the triangle inequality, for any landmark L the remaining cost from n to the goal is at
+ * least |d(L, goal) − d(L, n)|, so [heuristic] — the largest such bound over all landmarks — never
+ * overestimates and A* stays exact. It is sharpest when a landmark lies behind the goal or behind
+ * the start, so the shortest path runs roughly towards or away from it.
+ * Build with [graphFarthestPointLandmarks] or [graphLandmarks].
+ *
+ * @param graph The graph the distance tables were computed on
+ * @param landmarks Landmark node indices
+ * @param distances One table per landmark: `distances[k][n]` = d(landmarks[k], n)
+ */
+class GraphLandmarks(
+    val graph: PointGraph,
+    val landmarks: List<Int>,
+    val distances: List<DoubleArray>
+) {
+    init {
+        require(landmarks.size == distances.size) {
+            "GraphLandmarks: ${landmarks.size} landmarks but ${distances.size} distance tables"
+        }
+        distances.forEachIndexed { k, d ->
+            require(d.size == graph.pointCount) {
+                "GraphLandmarks: table $k has ${d.size} entries, graph has ${graph.pointCount} nodes"
+            }
+        }
+    }
+
+    /** Stored distances: landmarks × nodes. This is the price of the heuristic. */
+    val memory: Int get() = landmarks.size * graph.pointCount
+
+    /** Lower bound on the shortest-path distance from [node] to [goal]; 0 with no landmarks. */
+    fun heuristic(node: Int, goal: Int): Double {
+        var best = 0.0
+        for (d in distances) {
+            val dn = d[node]
+            val dg = d[goal]
+            if (dn.isInfinite() || dg.isInfinite()) continue
+            val bound = abs(dg - dn)
+            if (bound > best) best = bound
+        }
+        return best
+    }
+
+    /** A* from [start] to [goal] guided by [heuristic]. */
+    fun search(start: Int, goal: Int): GraphSearchResult =
+        graphAStarSearch(graph, start, goal, ::heuristic)
+
+    /** Shortest path from [start] to [goal] guided by [heuristic]. */
+    fun path(start: Int, goal: Int): GraphPath? = search(start, goal).path
+}
+
+/**
+ * Landmarks at the given [nodes] of [graph], one Dijkstra run each.
+ */
+fun graphLandmarks(graph: PointGraph, nodes: List<Int>): GraphLandmarks {
+    nodes.forEach { validatePointIndex(it, graph.pointCount, "graphLandmarks", "node") }
+    return GraphLandmarks(graph, nodes.toList(), nodes.map { graphDijkstraDistances(graph, it) })
+}
+
+/**
+ * Place [count] landmarks by farthest-point selection: start at [first], then repeatedly add the
+ * node whose shortest-path distance to its nearest landmark so far is largest. This spreads them
+ * around the edge of the graph, which is where landmarks help most.
+ */
+fun graphFarthestPointLandmarks(graph: PointGraph, count: Int, first: Int = 0): GraphLandmarks {
+    require(count >= 0) { "graphFarthestPointLandmarks: count must be >= 0, found $count" }
+    validatePointGraph(graph, "graphFarthestPointLandmarks")
+    if (count == 0 || graph.pointCount == 0) return GraphLandmarks(graph, emptyList(), emptyList())
+    validatePointIndex(first, graph.pointCount, "graphFarthestPointLandmarks", "first")
+
+    val chosen = mutableListOf(first)
+    val tables = mutableListOf(graphDijkstraDistances(graph, first))
+    val nearest = tables[0].copyOf()
+    while (chosen.size < count) {
+        var next = -1
+        var far = -1.0
+        for (n in nearest.indices) {
+            val d = nearest[n]
+            if (d.isFinite() && d > far) {
+                far = d
+                next = n
+            }
+        }
+        if (next < 0 || far <= 0.0) break
+        val table = graphDijkstraDistances(graph, next)
+        chosen += next
+        tables += table
+        for (n in nearest.indices) nearest[n] = min(nearest[n], table[n])
+    }
+    return GraphLandmarks(graph, chosen, tables)
+}
+
+/**
+ * A grid of points with 4-connected edges of length [spacing], for pathfinding examples.
+ *
+ * @param points Cell centres, row by row: `index(col, row) = row * cols + col`
+ * @param graph Edges between neighbouring open cells
+ */
+data class GridGraph(
+    val cols: Int,
+    val rows: Int,
+    val points: List<Vec2>,
+    val graph: PointGraph,
+    val blocked: Set<Int>
+) {
+    fun index(col: Int, row: Int): Int = row * cols + col
+}
+
+/**
+ * Build a [cols] × [rows] grid graph. Cells for which [blocked] returns true keep their point
+ * but get no edges, so they act as walls.
+ */
+fun vec2GridGraph(
+    cols: Int,
+    rows: Int,
+    spacing: Double = 1.0,
+    origin: Vec2 = vec(0.0, 0.0),
+    blocked: (col: Int, row: Int) -> Boolean = { _, _ -> false }
+): GridGraph {
+    require(cols > 0 && rows > 0) { "vec2GridGraph: cols and rows must be > 0, found $cols x $rows" }
+    require(spacing > 0.0) { "vec2GridGraph: spacing must be > 0, found $spacing" }
+    val points = ArrayList<Vec2>(cols * rows)
+    val walls = mutableSetOf<Int>()
+    for (r in 0 until rows) for (c in 0 until cols) {
+        points += vec(origin.x + c * spacing, origin.y + r * spacing)
+        if (blocked(c, r)) walls += r * cols + c
+    }
+    val edges = mutableListOf<GraphEdge>()
+    for (r in 0 until rows) for (c in 0 until cols) {
+        val i = r * cols + c
+        if (i in walls) continue
+        if (c + 1 < cols && (i + 1) !in walls) edges += GraphEdge(i, i + 1, spacing)
+        if (r + 1 < rows && (i + cols) !in walls) edges += GraphEdge(i, i + cols, spacing)
+    }
+    return GridGraph(cols, rows, points, PointGraph(edges, cols * rows), walls)
 }
 
 /**
