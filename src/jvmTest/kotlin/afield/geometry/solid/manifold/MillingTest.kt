@@ -9,7 +9,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * [closedBy] and [ballMilled] against shapes whose milled form is known without computing it.
+ * [closedBy], [ballMilled] and [beyond] against shapes whose milled form is known without computing it.
  *
  * The ball is a polyhedron, so volumes are compared with a tolerance sized to its faceting; the
  * reachability checks (is this point still solid?) are exact questions with exact answers.
@@ -25,28 +25,45 @@ class MillingTest {
     }
 
     @Test
-    fun `a sloping convex part gains no slivers`() {
+    fun `beyond shows nothing on a sloping convex part`() {
         if (!ManifoldLibrary.isAvailable) return
-        // Re-derived sloping faces land a few epsilon outside the originals; none of that may survive.
+        // Re-derived sloping faces land a few epsilon off the originals. A plain difference keeps
+        // those zero-thickness sheets; beyond must not.
         val slab = Solid.cube(3.0, 0.1, 2.0).rotated(23.0, 0.0, 11.5)
         for (milled in [slab.ballMilled(0.0125, segments = 12), slab.ballMilled(0.0125, from = [vec(0, 1, 0), vec(0, -1, 0)], segments = 12)]) {
-            val extra = milled - slab
-            assertEquals(0, extra.decompose().size, "nothing outside a convex part, not even a zero-thickness patch")
+            assertEquals(0, milled.beyond(slab).decompose().size, "nothing outside a convex part, not even a zero-thickness patch")
         }
     }
 
     @Test
-    fun `faceted holes keep their topology`() {
+    fun `faceted holes stay open`() {
         if (!ManifoldLibrary.isAvailable) return
-        // Every crease between two facets of a hole is shallowly concave. Filling those hairline wedges
-        // and fusing them back used to open a tunnel at each one: genus 4 came back as 47.
+        // The shallow creases between a hole's facets are concave too. Whatever the closing does
+        // there, the hole itself must stay open from end to end.
         val plate = Solid.cube(60.0, 40.0, 8.0, center = true)
         val holes = (0..3).map { Solid.cylinder(30.0, 3.0, segments = 48, center = true).translated(-21.0 + 14.0 * it, 0.0, 0.0) }
         val pocket = Solid.cube(30.0, 14.0, 6.0, center = true).translated(0.0, 12.0, 4.0)
         val part = plate - Solid.union(holes) - pocket
         val milled = part.ballMilled(1.5)
-        assertEquals(part.genus, milled.genus, "four holes are still four holes")
-        assertTrue(milled.volume - part.volume > 40.0, "and the pocket's inside edges are still filleted")
+        for (h in 0..3) for (z in [-3.9, 0.0, 3.9]) {
+            assertFalse(milled.contains(-21.0 + 14.0 * h, 0.0, z), "hole $h is open at z = $z")
+        }
+        assertTrue(milled.beyond(part).volume > 40.0, "and the pocket's inside edges are filleted")
+    }
+
+    @Test
+    fun `a sloping stepped part keeps its fillets`() {
+        if (!ManifoldLibrary.isAvailable) return
+        // Like a roof panel: a thin slab with a two-step rebate, tilted, so every face is re-derived
+        // off-axis. Its two inside edges must still come back filleted, by a quarter-round each.
+        val r = 0.0125
+        val slab = (Solid.cube(3.0, 0.1, 2.0) - Solid.cube(1.0, 0.05, 2.0).translated(0.0, 0.05, 0.0) -
+            Solid.cube(0.5, 0.025, 2.0).translated(1.0, 0.075, 0.0)).rotated(9.09, 0.0, 9.09)
+        val expected = 2 * (1 - PI / 4) * r * r * 2.0
+        val milled = slab.ballMilled(r)
+        for (added in [milled.volume - slab.volume, milled.beyond(slab).volume]) {
+            assertTrue(abs(added - expected) / expected < 0.06, "fillets add $added, two quarter-rounds $expected")
+        }
     }
 
     @Test

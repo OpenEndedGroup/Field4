@@ -286,12 +286,12 @@ hole.
 A ball-end mill cannot cut a sharp inside corner. Wherever two faces meet in a concave edge, the
 ball leaves a fillet of its own radius; a pocket corner comes out rounded; a slot narrower than the
 ball is never cut at all. Convex edges are untouched. `ballMilled(radius)` gives you the part as the
-mill would leave it, as a `Solid`, so it can be measured, drawn, and subtracted from the design to
-see exactly what the tool adds:
+mill would leave it, as a `Solid`, so it can be measured, drawn, and compared with the design to see
+exactly what the tool adds:
 
 ```diffstatic {data-lang=kotlin}
 val milled = part.ballMilled(1.5) // a 3 mm ball, from any direction
-val fillets = milled - part // the material the mill leaves that the design does not have
+val fillets = milled.beyond(part) // the material the mill leaves that the design does not have
 ```
 
 With no directions, the ball may approach from anywhere, the way an idealised five-axis machine
@@ -368,8 +368,11 @@ for any tool shape you build as a `Solid`. The ball is Manifold's faceted `Solid
 fillets are faceted too, and very slightly tighter than the radius: by at most
 `radius * (1 - cos(π / segments))`, about 2% at the default of 16 segments. Raising `segments`
 costs time steeply, because Manifold's Minkowski operations on a non-convex part cost roughly one
-convex hull per boundary triangle. Fill thinner than a hundredth of the radius is left out, so the
-shallow creases between the facets of a polygonal hole come back as they were designed.
+convex hull per boundary triangle.
+
+To see only the fillets, use `milled.beyond(part)` rather than `milled - part`. The Minkowski steps
+re-derive every face of the part, which leaves zero-thickness sheets lying on its flat faces. The
+plain difference keeps them, and they draw as stray patches; `beyond` removes them.
 
 ## Solids from a field
 

@@ -4,7 +4,7 @@
 
 Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side.
 
-421 source file(s), 10282 public symbol(s), 6498 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+421 source file(s), 10283 public symbol(s), 6499 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -6276,7 +6276,8 @@ What a part looks like after milling: the material a cutting tool cannot remove,
 [`ballMilled`](graphics.md#milling-kt--ballmilled) previews a ball-end mill of a given radius, either from any direction or from one or
 more fixed setups. Every concave edge comes back filleted, every pocket corner rounded, and every
 slot narrower than the ball filled in, while convex edges stay sharp. [`closedBy`](graphics.md#milling-kt--closedby) is the general
-operation underneath, the morphological closing of a part by any tool shape.
+operation underneath, the morphological closing of a part by any tool shape, and [`beyond`](graphics.md#milling-kt--beyond) picks out
+just the material the tool leaves that the design does not have.
 
 `src/jvmMain/kotlin/afield/geometry/solid/manifold/Milling.kt` — [read the source](source/jvmMain/afield/geometry/solid/manifold/Milling/)
 
@@ -6286,8 +6287,9 @@ operation underneath, the morphological closing of a part by any tool shape.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="milling-kt--closedby"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Solid</span><span class="p">.</span><span class="nf">closedBy</span><span class="p">(</span><span class="n">tool</span><span class="p">:</span> <span class="nc">Solid</span><span class="p">)</span><span class="p">:</span> <span class="nc">Solid</span></code>](source/jvmMain/afield/geometry/solid/manifold/Milling/#L38) | The morphological **closing** of this solid by `tool`: everything `tool` cannot reach without passing through this solid. |
-| <a id="milling-kt--ballmilled"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Solid</span><span class="p">.</span><span class="nf">ballMilled</span><span class="p">(</span><span class="n">radius</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">from</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">segments</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">16</span><span class="p">,</span> <span class="n">stock</span><span class="p">:</span> <span class="nc">Solid</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Solid</span></code>](source/jvmMain/afield/geometry/solid/manifold/Milling/#L112) | This part as a ball-end mill of `radius` would leave it: concave edges filleted, pocket corners rounded, slots narrower than `2 * radius` filled in, convex edges kept sharp. |
+| <a id="milling-kt--closedby"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Solid</span><span class="p">.</span><span class="nf">closedBy</span><span class="p">(</span><span class="n">tool</span><span class="p">:</span> <span class="nc">Solid</span><span class="p">)</span><span class="p">:</span> <span class="nc">Solid</span></code>](source/jvmMain/afield/geometry/solid/manifold/Milling/#L37) | The morphological **closing** of this solid by `tool`: everything `tool` cannot reach without passing through this solid. |
+| <a id="milling-kt--beyond"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Solid</span><span class="p">.</span><span class="nf">beyond</span><span class="p">(</span><span class="n">part</span><span class="p">:</span> <span class="nc">Solid</span><span class="p">)</span><span class="p">:</span> <span class="nc">Solid</span></code>](source/jvmMain/afield/geometry/solid/manifold/Milling/#L63) | What this solid has that `part` does not: the fillets and filled corners of a milled part, ready to draw in a colour of their own. |
+| <a id="milling-kt--ballmilled"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Solid</span><span class="p">.</span><span class="nf">ballMilled</span><span class="p">(</span><span class="n">radius</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">from</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">segments</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">16</span><span class="p">,</span> <span class="n">stock</span><span class="p">:</span> <span class="nc">Solid</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Solid</span></code>](source/jvmMain/afield/geometry/solid/manifold/Milling/#L113) | This part as a ball-end mill of `radius` would leave it: concave edges filleted, pocket corners rounded, slots narrower than `2 * radius` filled in, convex edges kept sharp. |
 
 ## PlanarContact.kt { #planarcontact-kt }
 
