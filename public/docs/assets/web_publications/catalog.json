@@ -6,78 +6,6 @@
       "error": "{\"success\": false, \"message\": \"Ran macro 'flow_lenia': applied=14 skipped=0 errors=0. Execution failed: Box interrupted: Runloop stalled 273525 ms in '3 \\u2014 The parameter field blending (MEAN mixing)' (flow_lenia_drift) (watchdog)\", \"name\": \"flow_lenia\", \"operationCount\": 14, \"direction\": \"do\", \"applied\": 14, \"output\": [{\"uid\": \"flow_lenia_conservation\", \"line\": 13, \"html\": \"<div class='value-viz afield-appendable-output' style='font-family: \\\"Iosevka Web\\\", monospace; font-size: 12px; color:",
       "since": "2026-11-17"
     },
-    "assets/agent_transcripts/open_dlss_nr_cubes/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/openxr_eye_intersection/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/ordered_group_keyframes/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/paint_blow_fingers/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/paint_canvas/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/paint_fold_press/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/particle_lenia/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/particle_video_reader/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/particles_sketchbook/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/pat_fn_graph_fit/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/path_tracing_camera/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/path_tracing_glass/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
     "assets/agent_transcripts/path_tracing_gltf/metadata.edn": {
       "attempts": 0,
       "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
@@ -3866,13 +3794,13 @@
       ]
     },
     "assets/agent_transcripts/open_dlss_nr_cubes/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:28:13.802Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:30:57.306Z",
       "channels": 1,
       "file": "assets/web_publications/open_dlss_nr_cubes/document/metadata.edn",
       "files": {
-        "assets/web_publications/open_dlss_nr_cubes/document/metadata.edn": "5314aa635c72caf81eef18689a162b1582241f6c59455db5cff19927f65878f0",
-        "assets/web_publications/open_dlss_nr_cubes/document/outputs.json": "e37a30f8c1143bff4548c24f2cbe619895a761db9a3414614299fb149c3fb7f8",
+        "assets/web_publications/open_dlss_nr_cubes/document/metadata.edn": "5a3cdccb86f18657cb1ed109b9bdde91de42aca3a4617ae433af409c92f22742",
+        "assets/web_publications/open_dlss_nr_cubes/document/outputs.json": "7b4ca27c1b1a865d56da248688df9adb80c83f4c45b17de51cc8cf908fbfe710",
         "assets/web_publications/open_dlss_nr_cubes/outputs/0.html": "e0b0a112b3dabe05e1605d6128efdcaf495a4f93781522ce1c2f2d3d77d3d3c2"
       },
       "kinds": [
@@ -3897,13 +3825,13 @@
       ]
     },
     "assets/agent_transcripts/openxr_eye_intersection/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:28:17.384Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:31:00.654Z",
       "channels": 1,
       "file": "assets/web_publications/openxr_eye_intersection/document/metadata.edn",
       "files": {
-        "assets/web_publications/openxr_eye_intersection/document/metadata.edn": "7e90f5089dad23fbb5c0c3daa29df8299f144155931c859ab0f5e855ba10b9e0",
-        "assets/web_publications/openxr_eye_intersection/document/outputs.json": "8b9052027df599b6ecb094cd32089a934075cf58fbb4c17cb0bd66b8dfa2dd22",
+        "assets/web_publications/openxr_eye_intersection/document/metadata.edn": "c1e8c3eef30e757b472fa06565201aa046b9036f9a54eaf299ce63a6eb22584d",
+        "assets/web_publications/openxr_eye_intersection/document/outputs.json": "da8346fcd749a30ae96a88a0abeaeb46174b1445f5a15755e3fcfda474070673",
         "assets/web_publications/openxr_eye_intersection/outputs/0.html": "526c64e396541d183ffd4cb9fadc180ad28eb4170b78e1f047d4f6924b44ecdd"
       },
       "kinds": [
@@ -3927,14 +3855,14 @@
       ]
     },
     "assets/agent_transcripts/ordered_group_keyframes/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T14:22:34.393Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:31:06.833Z",
       "channels": 1,
       "file": "assets/web_publications/ordered_group_keyframes/document/metadata.edn",
       "files": {
-        "assets/web_publications/ordered_group_keyframes/document/metadata.edn": "de5b6ada2551042a728e1572cf5416d72a117b230ca54e241fd924b1ba3e8702",
-        "assets/web_publications/ordered_group_keyframes/document/outputs.json": "b846ba2079e752653e98cbbbc7cadac4ec519daa9fc1e67289bf282ed0c48d7e",
-        "assets/web_publications/ordered_group_keyframes/outputs/0.html": "9272dd350d8cea6aaf9a558e4c2682da76dc3cc47ca6d667551ee10705a249d4"
+        "assets/web_publications/ordered_group_keyframes/document/metadata.edn": "a6b7c5dd50bb0d302861287667a804feb567e302339e9e424b7d348a03687946",
+        "assets/web_publications/ordered_group_keyframes/document/outputs.json": "9ae2c9a8a1ef2237de774e0cb60dca2455ff9b7b91b4ab8f08a65ecf0f251516",
+        "assets/web_publications/ordered_group_keyframes/outputs/0.html": "d2e4de96ac69403f3cc00179e9b6333e12aefabb36b83cde36a14c482dcd2f7f"
       },
       "kinds": [],
       "outputs": "assets/web_publications/ordered_group_keyframes/document/outputs.json",
@@ -3947,15 +3875,15 @@
       }
     },
     "assets/agent_transcripts/paint_blow_fingers/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:21:28.416Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:31:10.730Z",
       "channels": 2,
       "file": "assets/web_publications/paint_blow_fingers/document/metadata.edn",
       "files": {
-        "assets/web_publications/paint_blow_fingers/document/metadata.edn": "f0003de486824d416dd0c6ab147ad57f259a62e301e5482afe2b8113d488a25b",
-        "assets/web_publications/paint_blow_fingers/document/outputs.json": "2e12fa475d4e5fb1c0f07643ef52e5fa104579fe26cadacb4fd3d0f9542819cc",
-        "assets/web_publications/paint_blow_fingers/outputs/0.html": "71739bcff30d690cbfb587cdb36da382bb31d6ecf3a6b4749549fe5c451efec1",
-        "assets/web_publications/paint_blow_fingers/outputs/1.html": "71739bcff30d690cbfb587cdb36da382bb31d6ecf3a6b4749549fe5c451efec1"
+        "assets/web_publications/paint_blow_fingers/document/metadata.edn": "42882572b30a3e83a5285f16b87b6fea588c97283150b033f0abb10d5969e56e",
+        "assets/web_publications/paint_blow_fingers/document/outputs.json": "ea34aba4af639d664a32b12cb75e71595303c468a3a6714045a7dc29ee3da77e",
+        "assets/web_publications/paint_blow_fingers/outputs/0.html": "c20a2886e308976505de579b2a6f6503ce78848f9040b15480bc71b106cfb32e",
+        "assets/web_publications/paint_blow_fingers/outputs/1.html": "c20a2886e308976505de579b2a6f6503ce78848f9040b15480bc71b106cfb32e"
       },
       "kinds": [],
       "outputs": "assets/web_publications/paint_blow_fingers/document/outputs.json",
@@ -3968,16 +3896,16 @@
       }
     },
     "assets/agent_transcripts/paint_canvas/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:21:17.974Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:31:14.565Z",
       "channels": 3,
       "file": "assets/web_publications/paint_canvas/document/metadata.edn",
       "files": {
-        "assets/web_publications/paint_canvas/document/metadata.edn": "2e124166c92e75d7146ce8bef2899077064dbe17bfbab666019b0d5c867f86c2",
-        "assets/web_publications/paint_canvas/document/outputs.json": "f5ea75e5da004fac7640a09ce51f38260ef419a531cf0e5e687490671b96daa7",
-        "assets/web_publications/paint_canvas/outputs/0.html": "5f4141200158fe47af488627395329f787210519f4ffe3b3aecbddb1ac1b9640",
-        "assets/web_publications/paint_canvas/outputs/1.html": "5f4141200158fe47af488627395329f787210519f4ffe3b3aecbddb1ac1b9640",
-        "assets/web_publications/paint_canvas/outputs/2.html": "5f4141200158fe47af488627395329f787210519f4ffe3b3aecbddb1ac1b9640"
+        "assets/web_publications/paint_canvas/document/metadata.edn": "d601cd2d60c7672cc616e46cce5f62575a5b55d5c6d904d1554c4b497971aebd",
+        "assets/web_publications/paint_canvas/document/outputs.json": "bb4826b403f527fd2cddd34882d8565d637dac3d793d399083b1e260a07a59fd",
+        "assets/web_publications/paint_canvas/outputs/0.html": "c49a15f010487992d1df68de9da1306c1a67c4eeacd307373c177b96c4bd3d68",
+        "assets/web_publications/paint_canvas/outputs/1.html": "c49a15f010487992d1df68de9da1306c1a67c4eeacd307373c177b96c4bd3d68",
+        "assets/web_publications/paint_canvas/outputs/2.html": "c49a15f010487992d1df68de9da1306c1a67c4eeacd307373c177b96c4bd3d68"
       },
       "kinds": [],
       "outputs": "assets/web_publications/paint_canvas/document/outputs.json",
@@ -3991,16 +3919,16 @@
       }
     },
     "assets/agent_transcripts/paint_fold_press/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:21:23.112Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:31:17.718Z",
       "channels": 3,
       "file": "assets/web_publications/paint_fold_press/document/metadata.edn",
       "files": {
-        "assets/web_publications/paint_fold_press/document/metadata.edn": "76d3bdfd0d0cbc6f95e3da2526b39ffaa0dbf59343dbf57c28dfff104e218de8",
-        "assets/web_publications/paint_fold_press/document/outputs.json": "785675dd20e828793c77824192748868ddc1aaf265b9a1237497fdeee37ee71a",
-        "assets/web_publications/paint_fold_press/outputs/0.html": "ee28665f15fe5fa9150472c8e318b3c9126c7ad6c2fbecac1b909a5afc252b7d",
-        "assets/web_publications/paint_fold_press/outputs/1.html": "ee28665f15fe5fa9150472c8e318b3c9126c7ad6c2fbecac1b909a5afc252b7d",
-        "assets/web_publications/paint_fold_press/outputs/2.html": "ee28665f15fe5fa9150472c8e318b3c9126c7ad6c2fbecac1b909a5afc252b7d"
+        "assets/web_publications/paint_fold_press/document/metadata.edn": "1e86ed9a6fe1ec8d6ee6e557a3f5e125df4e4de07fb97c1193c41f572a9d3aab",
+        "assets/web_publications/paint_fold_press/document/outputs.json": "f8e1dbef974879f02718a2de678bcc409f444fe0056599e0a76b892c8af22450",
+        "assets/web_publications/paint_fold_press/outputs/0.html": "c033b65e8a0da945262373f47df781f0486fd491843e27745ba034eed621bb55",
+        "assets/web_publications/paint_fold_press/outputs/1.html": "c033b65e8a0da945262373f47df781f0486fd491843e27745ba034eed621bb55",
+        "assets/web_publications/paint_fold_press/outputs/2.html": "c033b65e8a0da945262373f47df781f0486fd491843e27745ba034eed621bb55"
       },
       "kinds": [],
       "outputs": "assets/web_publications/paint_fold_press/document/outputs.json",
@@ -4014,17 +3942,17 @@
       }
     },
     "assets/agent_transcripts/particle_lenia/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T14:44:22.341Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:31:31.513Z",
       "channels": 4,
       "file": "assets/web_publications/particle_lenia/document/metadata.edn",
       "files": {
-        "assets/web_publications/particle_lenia/document/metadata.edn": "0fe3339ea9948479d3a51fb83f046a9dfd8242cd121fd2005e1c4721c0061fbe",
-        "assets/web_publications/particle_lenia/document/outputs.json": "407b792469073dd160a578d116d195c85d20d99c236ff7236f85dc6d69434823",
-        "assets/web_publications/particle_lenia/outputs/0.html": "9a7159fe6c8677d3e5d5dceb9ddf1546425178306533cc09e871d8bc86eb8e0a",
-        "assets/web_publications/particle_lenia/outputs/1.html": "ba9cea2162bef060becf263a4486c22727f94aee532cc55f8b2a7f9314b23386",
-        "assets/web_publications/particle_lenia/outputs/2.html": "4cb1946d464ca9f27e391e23b1e2a77f73417692337c2877c49c2540c76c2247",
-        "assets/web_publications/particle_lenia/outputs/3.html": "e5ec5d651f32b4d11a278e81b28f14b5789fb8d31448bd01c512798501b1a1be"
+        "assets/web_publications/particle_lenia/document/metadata.edn": "92943eceeebc8542cec81d9d5e7f45362826c0cc2697a75ddc60159398dab47d",
+        "assets/web_publications/particle_lenia/document/outputs.json": "16755d14b714ec7dfaecbf21577511731f6ed90ebe78201435e6cbe519c336dd",
+        "assets/web_publications/particle_lenia/outputs/0.html": "9ccae7729fefd7cb7a76579336f6656e50219014fae0ced6fbe5294830c63290",
+        "assets/web_publications/particle_lenia/outputs/1.html": "8d283236a971a0eac0504fc818b3c2aaec7134dd5de94577b529864c4b689f9e",
+        "assets/web_publications/particle_lenia/outputs/2.html": "437ab9605261103ee41c255d00b52f11469a0345498c05d4a4752b766296a2a6",
+        "assets/web_publications/particle_lenia/outputs/3.html": "83a2c260b0b96eed6f054889458d9bbc625a493ebac52cc4512b9c31594e0308"
       },
       "kinds": [],
       "outputs": "assets/web_publications/particle_lenia/document/outputs.json",
@@ -4042,15 +3970,15 @@
       }
     },
     "assets/agent_transcripts/particle_video_reader/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T14:11:01.615Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:31:34.250Z",
       "channels": 2,
       "file": "assets/web_publications/particle_video_reader/document/metadata.edn",
       "files": {
-        "assets/web_publications/particle_video_reader/document/metadata.edn": "b9b96b0aec0fb0fc2766f5d3253637529e0ccb34edea437416da81925b363e71",
-        "assets/web_publications/particle_video_reader/document/outputs.json": "3adf67bc78663cd4f18bf55178a2ddc6a4f5ced64c07708aca157cf42c67dbc5",
-        "assets/web_publications/particle_video_reader/outputs/0.html": "a0734a870d3cdc68ba20f24908dcba0415c5ce8e76737cfe4c844d166db7ede4",
-        "assets/web_publications/particle_video_reader/outputs/1.html": "94b7b0e04a802e7ddcf717a2e57e981ce9e6edbd73795ad0df8b732a73df9053"
+        "assets/web_publications/particle_video_reader/document/metadata.edn": "ca2a1ec393478d3aa40e39962cf48a9ad377cba4332027ed3d2928e8c307823d",
+        "assets/web_publications/particle_video_reader/document/outputs.json": "3cea978233c7358639f8831315d0436fade425690d6ae36b92727b0d55318f23",
+        "assets/web_publications/particle_video_reader/outputs/0.html": "a1cd18f9f796540d129e896a078f29af060e09a0a655ead0066aa2a19764f2ff",
+        "assets/web_publications/particle_video_reader/outputs/1.html": "62f248d1557d574367ee5fe84ba3b3897ce90804380229a49d7ee048c5e752bd"
       },
       "kinds": [
         "svg"
@@ -4064,13 +3992,13 @@
       }
     },
     "assets/agent_transcripts/particles_sketchbook/metadata.edn": {
-      "captureDigest": "aaa64f59f3bd08f0c6c6c24821b783f71a13d8daf22ddaa23dc1523bcc6bc322",
-      "capturedAt": "2026-11-17T10:26:26.244Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:31:36.661Z",
       "channels": 1,
       "file": "assets/web_publications/particles_sketchbook/document/metadata.edn",
       "files": {
-        "assets/web_publications/particles_sketchbook/document/metadata.edn": "d9231b89f259782e6fda4a5712ba414c4edd326df3abdd5b3100028db65bf805",
-        "assets/web_publications/particles_sketchbook/document/outputs.json": "4e26f51704ccb80c845d5e609db7f1db64b560267281227fb04af574907e6806",
+        "assets/web_publications/particles_sketchbook/document/metadata.edn": "7e45f50d93d01ad15ad85a52c5df6484af3d0719ec7f5fba72a9baa31621f5df",
+        "assets/web_publications/particles_sketchbook/document/outputs.json": "adbd10a0765cd93e59f9a8cf15cf1fb73665bcb4128cee268a3c633b6074ab41",
         "assets/web_publications/particles_sketchbook/outputs/0.html": "e66e34d6a205f4e1fa9974cc31e6981d3836edb3299cb3e8f80f7fc689d94823"
       },
       "kinds": [
@@ -4111,17 +4039,17 @@
       ]
     },
     "assets/agent_transcripts/pat_fn_graph_fit/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T14:30:55.005Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:31:39.894Z",
       "channels": 4,
       "file": "assets/web_publications/pat_fn_graph_fit/document/metadata.edn",
       "files": {
-        "assets/web_publications/pat_fn_graph_fit/document/metadata.edn": "8e8aba7e2d2f774af2d875d327f35c9706acbc9a1fd7fdc0a53a605da96335bd",
-        "assets/web_publications/pat_fn_graph_fit/document/outputs.json": "d8a5c173e3ded553f8064c38d8441c1a04d001ca407d914ef988c77bda330b45",
-        "assets/web_publications/pat_fn_graph_fit/outputs/0.html": "5bab0ea576878ec67bbcbfe994f0a3afab854b3b8f8bb1dafe210bdded63edc2",
-        "assets/web_publications/pat_fn_graph_fit/outputs/1.html": "c7970e7bfe7ec7e9da692562d5ac9cf7cc9961fd9bac5a27837366524974a8dc",
-        "assets/web_publications/pat_fn_graph_fit/outputs/2.html": "e0ace0a6b42cdd7abc1490ee54e55572b46d01926bfa244990f62b64276dbe0c",
-        "assets/web_publications/pat_fn_graph_fit/outputs/3.html": "a059c8aa6727c38c75d16cc14d8f312c5c3b192d29131bd75312ef08d2796726"
+        "assets/web_publications/pat_fn_graph_fit/document/metadata.edn": "d304e91aad34f510b74a5e77d6124cd88abb6c72782632628dd206adbd36af13",
+        "assets/web_publications/pat_fn_graph_fit/document/outputs.json": "f7fc4ee4281133bba54b046f040a994c1338b4a804c91edb9282f54d0c0fc4e9",
+        "assets/web_publications/pat_fn_graph_fit/outputs/0.html": "bfe4fa41b461c98d33fd33cbe072d0ea573fb8857784be9f9c515898ebdbac44",
+        "assets/web_publications/pat_fn_graph_fit/outputs/1.html": "b62f0e00f6c2abcccc995ac8308ef4dbf885f3055ca7128de10091d0fe0fb973",
+        "assets/web_publications/pat_fn_graph_fit/outputs/2.html": "86fff9edc155abb9b82e7769a9ab08a32a39b433dc2388ea44c0169a0d2e8661",
+        "assets/web_publications/pat_fn_graph_fit/outputs/3.html": "00b5e0a21b0ec544bd983d370048ab447ed0780f12cc298799474edbad20978d"
       },
       "kinds": [
         "plotly",
@@ -4138,13 +4066,13 @@
       }
     },
     "assets/agent_transcripts/path_tracing_camera/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:28:26.263Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:31:42.130Z",
       "channels": 1,
       "file": "assets/web_publications/path_tracing_camera/document/metadata.edn",
       "files": {
-        "assets/web_publications/path_tracing_camera/document/metadata.edn": "6c14472b6c70675a4b76afebe5f4c285611879111481e1ec3a030da202b9ec6e",
-        "assets/web_publications/path_tracing_camera/document/outputs.json": "c5f805397170741c045909c91aa90982debf4340b23178b4796e6a0a46265031",
+        "assets/web_publications/path_tracing_camera/document/metadata.edn": "d0b2605f07f537c0fc03fd82f5eab4fd68f46b3dc1eaee6e1b97e21e31bbacf2",
+        "assets/web_publications/path_tracing_camera/document/outputs.json": "701067f73b80ae331417bcc7876b991ec16bf71d4a2f5777c3bef089b5a855d2",
         "assets/web_publications/path_tracing_camera/outputs/0.html": "74b26465ec49676af653d6e7fa7fadc93dd80b17d1ee1be5b6651c443ce6b122"
       },
       "kinds": [
@@ -4166,13 +4094,13 @@
       ]
     },
     "assets/agent_transcripts/path_tracing_glass/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:29:25.842Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:31:45.543Z",
       "channels": 1,
       "file": "assets/web_publications/path_tracing_glass/document/metadata.edn",
       "files": {
-        "assets/web_publications/path_tracing_glass/document/metadata.edn": "1a7523fe33976c2e121d424126a4b8b5eb76ba1783208d2252bd704d015829c3",
-        "assets/web_publications/path_tracing_glass/document/outputs.json": "e07ae409ea97dc2fbf0236979cc3ffa53e3c22fbf3ca92ad80363c239172980d",
+        "assets/web_publications/path_tracing_glass/document/metadata.edn": "169676ca8d1de08bf4b6787b3ba44df0e9208e7823072ee5d0f16c0a1fb72336",
+        "assets/web_publications/path_tracing_glass/document/outputs.json": "f39234cb9fe15040e2ab55432b17620f94b185ec5ae1fc605733c73effe73f2e",
         "assets/web_publications/path_tracing_glass/outputs/0.html": "9851065e049c4272d3250f8254a34f79660ca022dc673833145c480a06cfad12"
       },
       "kinds": [
