@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-17T11:04:39.337Z",
+  "capturedAt": "2026-11-17T14:18:28.876Z",
   "documentName": "muse_sequencer",
   "outputs": [
     {
@@ -12,7 +12,7 @@
         "svg"
       ],
       "width": 1116,
-      "height": 256,
+      "height": 275,
       "path": "outputs/0.html"
     },
     {
@@ -24,7 +24,7 @@
         "svg"
       ],
       "width": 1116,
-      "height": 256,
+      "height": 275,
       "path": "outputs/1.html"
     },
     {
@@ -36,7 +36,7 @@
         "svg"
       ],
       "width": 1116,
-      "height": 256,
+      "height": 275,
       "path": "outputs/2.html"
     },
     {
@@ -60,7 +60,7 @@
         "svg"
       ],
       "width": 2096,
-      "height": 245,
+      "height": 262,
       "path": "outputs/4.html"
     },
     {
@@ -72,7 +72,7 @@
         "svg"
       ],
       "width": 2096,
-      "height": 245,
+      "height": 262,
       "path": "outputs/5.html"
     },
     {

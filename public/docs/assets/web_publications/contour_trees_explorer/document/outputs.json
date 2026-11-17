@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-17T09:18:01.139Z",
+  "capturedAt": "2026-11-17T14:11:22.825Z",
   "documentName": "contour_trees_explorer",
   "outputs": [
     {
@@ -31,7 +31,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 475,
+      "width": 471,
       "height": 310,
       "path": "outputs/2.html"
     }
