@@ -1,4 +1,4 @@
-import {send, growTextFrame, setTextFrameContents, flushTextFramePropertyEditor, syncTextFrameSettingsEditor} from './afield.mjs';
+import {send, growTextFrame, setTextFrameContents, flushTextFramePropertyEditor, syncTextFrameSettingsEditor, syncSelectedPropertyEditor} from './afield.mjs';
 import {mountChatAutocomplete} from './aiChatAutocomplete.js';
 import {renderFieldMarkdown} from './markdownView.js';
 import {markdownOffsetAtPoint, revealTextareaCaret} from './markdownCaret.js';
@@ -208,7 +208,7 @@ function mount(box) {
     const body = node('div', 'text-frame-body');
     const preview = node('div', 'text-frame-preview');
     preview.title = 'Double-click to edit Markdown';
-    preview.tabIndex = 0;
+    preview.tabIndex = -1;
     preview.dataset.fieldCanvasKeyboard = 'true';
     preview.setAttribute('aria-label', 'Text frame; press Enter to edit Markdown');
     const editor = node('textarea', 'text-frame-editor');
@@ -243,7 +243,6 @@ function mount(box) {
         const offset = markdownOffsetAtPoint(preview, e.clientX, e.clientY, e.target);
         begin(state, offset, state.previewSource);
     });
-    preview.addEventListener('keydown', e => { if (e.target === preview && e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); begin(state); } });
     editor.addEventListener('input', () => {
         state.dirty = true;
         if (!state.composing) { clearTimeout(state.saveTimer); state.saveTimer = setTimeout(() => flush(state), 150); }
@@ -318,3 +317,42 @@ document.addEventListener('pointerdown', event => {
         if (state.box.classList.contains('text-frame-editing') && !state.box.contains(event.target)) finish(state);
     }
 }, true);
+
+// DOM focus can outlive a canvas selection (notably after spatial navigation). The selected
+// box owns Return; a previously focused reader must never reopen itself instead.
+const canvasSelection = () => Array.from(window.selectedList || []).filter(box =>
+    box.isConnected && !box.classList.contains('tombstoned'));
+window.addEventListener('field-selection-changed', () => {
+    const selection = canvasSelection();
+    for (const state of frames.values()) if (!selection.includes(state.box)) {
+        if (state.box.classList.contains('text-frame-editing')) finish(state);
+        const focused = document.activeElement;
+        if (focused === state.editor || state.preview.contains(focused)) focused.blur();
+    }
+    const focused = document.activeElement;
+    const mainEditor = focused?.closest?.('.monaco-editor-container');
+    if (mainEditor) {
+        const style = getComputedStyle(mainEditor);
+        if (style.visibility === 'hidden' || style.display === 'none' || mainEditor.style.opacity === '0' || style.opacity === '0') focused.blur();
+    }
+});
+function editSelectedCanvasBox() {
+    const selection = canvasSelection();
+    if (selection.length !== 1) return;
+    const box = selection[0];
+    if (box.box_kind === 'text-frame') window.editTextFrame(box);
+    else {
+        // The normal editor polls selection. Synchronize before focusing it so an immediate
+        // keystroke cannot reach the preceding box's model.
+        syncSelectedPropertyEditor();
+        window.switchToProperty(box.uid, window.selectedProperty || box.default_property || 'code');
+    }
+}
+window.editSelectedCanvasBox = editSelectedCanvasBox;
+window.allActions.textFrames = [{
+    id: 'edit-selected-box', label: 'Edit Selected Box', keys: 'enter', keyScope: 'canvas',
+    detail: 'Edit the selected text frame, or open the selected box’s property editor',
+    canvasGuard: event => !event.isComposing && canvasSelection().length === 1,
+    run: editSelectedCanvasBox
+}];
+window.updateActions?.();

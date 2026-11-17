@@ -4957,6 +4957,14 @@ private fun installSpatialNavigationShortcut() {
                     }
                 }
 
+                "Enter" -> {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    deactivateSpatialNavMode()
+                    val edit = window.asDynamic().editSelectedCanvasBox
+                    if (edit != null && edit != undefined) edit()
+                }
+
                 "Escape" -> {
                     event.preventDefault()
                     event.stopPropagation()

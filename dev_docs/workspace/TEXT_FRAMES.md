@@ -7,14 +7,17 @@ character-level collaborative document editor.
 
 ## Writing
 
-Press **Shift+N**, or choose **New Text Frame** in the palette. Double-click the text, press Enter on
-a focused reader. Write Markdown as plain text, in Field’s normal Iosevka at 12px. Click away,
+Press **Shift+N**, or choose **New Text Frame** in the palette. Double-click the text, or select a frame and press Enter. Write Markdown as plain text, in Field’s normal Iosevka at 12px. Click away,
 press Escape, or press Cmd/Ctrl+Enter to show formatted text. Native spellcheck stays enabled, with
 Electron's existing spelling-suggestion context menu. Spellcheck dictionaries/languages follow the
 browser or OS configuration. Double-clicking a passage places the Markdown cursor at that character,
 scrolling the source into view even when hidden syntax or link destinations make it much taller than
 the reader. Re-entering with Enter restores the previous source selection and scroll position.
 A typeset formula or image opens at the beginning of its source expression.
+
+After double-tapping Command and using the arrow keys to navigate, Return edits the selected box.
+It also accepts the navigation while Command is still held. Moving selection away from a frame
+releases its old editor focus and preserves the draft.
 
 Shift-select boxes and press **g** to connect them as usual. Alt-click a text frame to open its marking
 menu; **down** chooses **New text frame below**, which creates a child at the same X and width, 32 world units below the bottom,

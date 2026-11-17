@@ -250,13 +250,20 @@ internal fun shouldAutoDisplayEditor(): Boolean {
             (displayMode != "no-editor" && w.fieldAutoDisplayEditor != false)
 }
 
-private fun monitorSelection() {
+/** Synchronize the selected property before an explicit canvas command focuses its editor. */
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun syncSelectedPropertyEditor() {
+    monitorSelection(scheduleNext = false)
+}
+
+private fun monitorSelection(scheduleNext: Boolean = true) {
     val w = js("window")
     val next = w.selectedList ?: js("[]")
     val nextProperty = w.selectedProperty as? String ?: currentSelectedProperty
     val globalEditor = w.globalEditor
     if (globalEditor == null) {
-        window.setTimeout({ monitorSelection() }, 100)
+        if (scheduleNext) window.setTimeout({ monitorSelection() }, 100)
         return
     }
 
@@ -405,7 +412,7 @@ private fun monitorSelection() {
         updateProvisionalDiff()
     }
 
-    window.setTimeout({ monitorSelection() }, 100)
+    if (scheduleNext) window.setTimeout({ monitorSelection() }, 100)
 }
 
 fun notifyPotentialEditedPropertyHasHadLanguageChanged(uid: String, property: String, language: String) {
