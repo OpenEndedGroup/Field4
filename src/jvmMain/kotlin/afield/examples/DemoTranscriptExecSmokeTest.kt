@@ -148,6 +148,9 @@ object DemoTranscriptExecSmokeTest {
         // Five CPU boxes: the coopiano port rendered offline (A4, string shape, a pattern, pedal takes,
         // audio-rate stiffness) into audio players. The sixth, `live`, is created but not executed.
         "physical_piano",
+        // PatMuse: pitched rolls of weighted, locked and improvised hands, and one offline piano render;
+        // the fifth box, `live`, plays on the audio engine and is created but not executed.
+        "muse_sequencer",
         // Three CPU boxes: a SourceFramesStudy of a box property with registerStudyTools, then two
         // children that publish a SetNumbers revision and sweep/try variants. Frames come from a CPU
         // painter at 256 px at most; no Window, no Renderer.

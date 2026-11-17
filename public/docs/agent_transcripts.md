@@ -114,6 +114,17 @@ controls on an instrument you can play. See `Piano` in [Synthesis](reference/syn
 
 [Open →](offline.html?file=assets/agent_transcripts/physical_piano/metadata.edn)
 
+### muse_sequencer
+
+Weights, then lock what you liked: a two-hand sequencer that draws scale degrees, chords and note
+lengths from weights on sliders, over a piano roll that redraws as you move them. Raise
+`lock length` to freeze the last events into a loop, then move `start`, `end`, `direction` and
+`improvise`; re-run `muse` to hear it on the physical piano. `lock`, `ornaments` and `edit` show a
+loop locked, improvised with mordents, turns and trills, and changed by hand; `live` plays on the
+audio engine. See [Weights, then lock what you liked](pattern_language.md#weights-then-lock-what-you-liked).
+
+[Open →](offline.html?file=assets/agent_transcripts/muse_sequencer/metadata.edn)
+
 ### uncrossed_leapers
 
 **Knight paths that never cross.** The starting point for [uncrossed paths](knight_tour_workshop.md#uncrossed-paths):
