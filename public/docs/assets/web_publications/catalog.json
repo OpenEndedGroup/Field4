@@ -270,6 +270,12 @@
       "error": "not tried: a landing defers digest-only pages to the publication catch-up",
       "since": "2026-11-17"
     },
+    "assets/agent_transcripts/cuda_particles/metadata.edn": {
+      "attempts": 0,
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
+      "since": "2026-11-17"
+    },
     "assets/agent_transcripts/dataframe_typed_columns/metadata.edn": {
       "attempts": 0,
       "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
@@ -354,7 +360,19 @@
       "error": "not tried: a landing defers digest-only pages to the publication catch-up",
       "since": "2026-11-17"
     },
+    "assets/agent_transcripts/fern_iterated_systems/metadata.edn": {
+      "attempts": 0,
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
+      "since": "2026-11-17"
+    },
     "assets/agent_transcripts/field_ui_browser_texture/metadata.edn": {
+      "attempts": 0,
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
+      "since": "2026-11-17"
+    },
+    "assets/agent_transcripts/field_vr_ide/metadata.edn": {
       "attempts": 0,
       "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
       "error": "not tried: a landing defers digest-only pages to the publication catch-up",
@@ -378,6 +396,12 @@
       "error": "not tried: a landing defers digest-only pages to the publication catch-up",
       "since": "2026-11-17"
     },
+    "assets/agent_transcripts/flow_grain/metadata.edn": {
+      "attempts": 0,
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
+      "since": "2026-11-17"
+    },
     "assets/agent_transcripts/flow_islands/metadata.edn": {
       "attempts": 0,
       "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
@@ -385,6 +409,12 @@
       "since": "2026-11-17"
     },
     "assets/agent_transcripts/flow_lenia/metadata.edn": {
+      "attempts": 0,
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
+      "since": "2026-11-17"
+    },
+    "assets/agent_transcripts/fm1_simulator/metadata.edn": {
       "attempts": 0,
       "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
       "error": "not tried: a landing defers digest-only pages to the publication catch-up",
@@ -606,6 +636,12 @@
       "error": "not tried: a landing defers digest-only pages to the publication catch-up",
       "since": "2026-11-17"
     },
+    "assets/agent_transcripts/madp_boids/metadata.edn": {
+      "attempts": 0,
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
+      "since": "2026-11-17"
+    },
     "assets/agent_transcripts/madp_ga/metadata.edn": {
       "attempts": 0,
       "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
@@ -661,6 +697,12 @@
       "since": "2026-11-17"
     },
     "assets/agent_transcripts/morpho_circuit_search/metadata.edn": {
+      "attempts": 0,
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
+      "since": "2026-11-17"
+    },
+    "assets/agent_transcripts/muse_sequencer/metadata.edn": {
       "attempts": 0,
       "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
       "error": "not tried: a landing defers digest-only pages to the publication catch-up",
@@ -756,6 +798,12 @@
       "error": "not tried: a landing defers digest-only pages to the publication catch-up",
       "since": "2026-11-17"
     },
+    "assets/agent_transcripts/particles_sketchbook/metadata.edn": {
+      "attempts": 0,
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
+      "since": "2026-11-17"
+    },
     "assets/agent_transcripts/pat_fn_graph_fit/metadata.edn": {
       "attempts": 0,
       "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
@@ -799,6 +847,12 @@
       "since": "2026-11-17"
     },
     "assets/agent_transcripts/pattern_language_composition/metadata.edn": {
+      "attempts": 0,
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
+      "since": "2026-11-17"
+    },
+    "assets/agent_transcripts/pattern_particles/metadata.edn": {
       "attempts": 0,
       "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
       "error": "not tried: a landing defers digest-only pages to the publication catch-up",
@@ -990,6 +1044,12 @@
       "error": "not tried: a landing defers digest-only pages to the publication catch-up",
       "since": "2026-11-17"
     },
+    "assets/agent_transcripts/shadertrinket/metadata.edn": {
+      "attempts": 0,
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
+      "since": "2026-11-17"
+    },
     "assets/agent_transcripts/shared_types_demo/metadata.edn": {
       "attempts": 0,
       "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
@@ -1086,6 +1146,18 @@
       "error": "not tried: a landing defers digest-only pages to the publication catch-up",
       "since": "2026-11-17"
     },
+    "assets/agent_transcripts/spinny_algebras/metadata.edn": {
+      "attempts": 0,
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
+      "since": "2026-11-17"
+    },
+    "assets/agent_transcripts/splat_shader/metadata.edn": {
+      "attempts": 0,
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
+      "since": "2026-11-17"
+    },
     "assets/agent_transcripts/spreadsheet_constraints/metadata.edn": {
       "attempts": 0,
       "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
@@ -1105,6 +1177,12 @@
       "since": "2026-11-17"
     },
     "assets/agent_transcripts/stacksl_fit_demo/metadata.edn": {
+      "attempts": 0,
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
+      "since": "2026-11-17"
+    },
+    "assets/agent_transcripts/stacktrinket_feedback/metadata.edn": {
       "attempts": 0,
       "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
       "error": "not tried: a landing defers digest-only pages to the publication catch-up",
@@ -1279,6 +1357,12 @@
       "since": "2026-11-17"
     },
     "assets/fieldml_suspend_demo/metadata.edn": {
+      "attempts": 0,
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
+      "since": "2026-11-17"
+    },
+    "assets/fline_examples/metadata.edn": {
       "attempts": 0,
       "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
       "error": "not tried: a landing defers digest-only pages to the publication catch-up",
@@ -6710,6 +6794,29 @@
         "public/docs/assets/agent_transcripts/teaching_a_pen/tp_switch_code_.kt": "671dab0923fabda2dabf1fc9cb4d54e6542561915089fe8cfa6cc683191e4a6e",
         "public/docs/assets/agent_transcripts/teaching_a_pen/tp_taste_code_.kt": "60336e31805867222b3551d88c7eb88f5c89b576694b9901df3ada1c063d4cb3",
         "public/docs/assets/agent_transcripts/teaching_a_pen/tp_yours_code_.kt": "136f6c019ee62fa3296e751461213394f48bc59d60b1ec14083208896b159216"
+      }
+    },
+    "assets/agent_transcripts/three_handles/metadata.edn": {
+      "captureDigest": "8ca26f3844345c6e7e29c7844d0aa5a8e67348467dae06f3a288c218afe53f85",
+      "capturedAt": "2026-11-17T19:47:34.642Z",
+      "channels": 2,
+      "file": "assets/web_publications/three_handles/document/metadata.edn",
+      "files": {
+        "assets/web_publications/three_handles/document/metadata.edn": "cd9f70ed53ce1921d75d3b34641408fa51a49c991207e118beea2fb1d115850c",
+        "assets/web_publications/three_handles/document/outputs.json": "0a1ee99bca0c1889ad7c3b7bf927c400e61e487511b0f56ed84e2f86fce46fef",
+        "assets/web_publications/three_handles/outputs/0.html": "7434059b0faeab9025c02c9fccfa6b31a00c21b2fc04bb4cf7f6a9001754fa43",
+        "assets/web_publications/three_handles/outputs/1.html": "9f220f49a15b722c28263fb4b9089e5202a73e6243b8dc596b698de4b1d6fe5d"
+      },
+      "kinds": [
+        "three"
+      ],
+      "outputs": "assets/web_publications/three_handles/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/three_handles.yaml": "c023a0b5a55955c56fbf840d7a7f93244ff3d104fd7065d9a5070cb831289ce1",
+        "public/docs/assets/agent_transcripts/three_handles/curve_code_.kt": "973eadc37eb3232864971d7b670d9d06cee914eb30a4fc58be7773a4e424856a",
+        "public/docs/assets/agent_transcripts/three_handles/guides/three_output-drag-handles.md": "fb4086ff34c9238ea8359af66de37b0c240310cec4f84072d15f69eebecb6de3",
+        "public/docs/assets/agent_transcripts/three_handles/metadata.edn": "e69429ef37137c796f81172e1feba42f869f2fb44d09e4967d467867716ea473",
+        "public/docs/assets/agent_transcripts/three_handles/slab_code_.kt": "54c223bd8c631deff5ed180d4cf1ff1a81d2f01b016a203d63b9f6691f48dd70"
       }
     },
     "assets/agent_transcripts/three_inspector_wall/metadata.edn": {

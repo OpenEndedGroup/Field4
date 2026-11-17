@@ -31,12 +31,12 @@ fun HasBuffer.asParticles(): Particles =
 fun BufferParameters.asParticles(): Particles =
     buffer.asParticles()
 /*end*/
-/*graphics-pc-structure:particles*/ var Structure.particles by Structure.FromStructure<Any>()
-/*graphics-pc-binding:particles*/ var Mesh.particles by Mesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
-/*graphics-pc-binding-group:particles*/ var MeshGroup.particles by MeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
-/*graphics-pc-structure:aspectRatio*/ var Structure.aspectRatio by Structure.FromStructure<Any>()
-/*graphics-pc-binding:aspectRatio*/ var Mesh.aspectRatio by Mesh.BoundFromStructure<Number>()
-/*graphics-pc-binding-group:aspectRatio*/ var MeshGroup.aspectRatio by MeshGroup.BoundFromStructure<Number>()
+/*graphics-pc-structure:particles*/ var Structure.particles by Structure.FromStructure<Any>() // shared CUDA/Vulkan float4 buffer
+/*graphics-pc-binding:particles*/ var Mesh.particles by Mesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>() // shared CUDA/Vulkan float4 buffer
+/*graphics-pc-binding-group:particles*/ var MeshGroup.particles by MeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>() // shared CUDA/Vulkan float4 buffer
+/*graphics-pc-structure:aspectRatio*/ var Structure.aspectRatio by Structure.FromStructure<Any>() // window width / height
+/*graphics-pc-binding:aspectRatio*/ var Mesh.aspectRatio by Mesh.BoundFromStructure<Number>() // window width / height
+/*graphics-pc-binding-group:aspectRatio*/ var MeshGroup.aspectRatio by MeshGroup.BoundFromStructure<Number>() // window width / height
 var Box.cudaParticles by Inheritance<VulkanBuffer>() /*from:cuda_flow*/ /**/
 val Once.cudaParticles by Onceing<VulkanBuffer>() /*from:cuda_flow*/ /**/
 val Why.cudaParticles by Whying() /*from:cuda_flow*/ /**/

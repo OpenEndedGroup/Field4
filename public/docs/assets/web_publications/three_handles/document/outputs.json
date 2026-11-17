@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-17T19:47:34.642Z",
+  "documentName": "three_handles",
+  "outputs": [
+    {
+      "uid": "curve",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 480,
+      "height": 488,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "slab",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 480,
+      "height": 488,
+      "path": "outputs/1.html"
+    }
+  ]
+}

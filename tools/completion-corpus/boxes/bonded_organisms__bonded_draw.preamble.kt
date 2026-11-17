@@ -21,8 +21,8 @@ class Cell(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    var pv by Structure.FromStructure<afield.math.linalg.Vector4f>()
-    var e by Structure.FromStructure<afield.math.linalg.Vector4f>()
+    var pv by Structure.FromStructure<afield.math.linalg.Vector4f>() // world position xy, velocity zw
+    var e by Structure.FromStructure<afield.math.linalg.Vector4f>() // energy, cell kind, organism id, padding
 }
 fun CellByteSize(): Long = 32L
 fun CellLayoutMembers(): List<Introspected.Member> =
@@ -114,27 +114,27 @@ fun HasBuffer.asBondBuf(): BondBuf =
 fun BufferParameters.asBondBuf(): BondBuf =
     buffer.asBondBuf()
 /*end*/
-/*graphics-pc-structure:cells*/ var Structure.cells by Structure.FromStructure<Any>()
-/*graphics-pc-binding:cells*/ var Mesh.cells by Mesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
-/*graphics-pc-binding-group:cells*/ var MeshGroup.cells by MeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
-/*graphics-pc-structure:bonds*/ var Structure.bonds by Structure.FromStructure<Any>()
-/*graphics-pc-binding:bonds*/ var Mesh.bonds by Mesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
-/*graphics-pc-binding-group:bonds*/ var MeshGroup.bonds by MeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
-/*graphics-pc-structure:latest*/ var Structure.latest by Structure.FromStructure<Any>()
-/*graphics-pc-binding:latest*/ var Mesh.latest by Mesh.BoundFromStructure<Any>()
-/*graphics-pc-binding-group:latest*/ var MeshGroup.latest by MeshGroup.BoundFromStructure<Any>()
-/*graphics-pc-structure:capacity*/ var Structure.capacity by Structure.FromStructure<Any>()
-/*graphics-pc-binding:capacity*/ var Mesh.capacity by Mesh.BoundFromStructure<Any>()
-/*graphics-pc-binding-group:capacity*/ var MeshGroup.capacity by MeshGroup.BoundFromStructure<Any>()
+/*graphics-pc-structure:cells*/ var Structure.cells by Structure.FromStructure<Any>() // two capacity-sized halves; step parity selects the source
+/*graphics-pc-binding:cells*/ var Mesh.cells by Mesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>() // two capacity-sized halves; step parity selects the source
+/*graphics-pc-binding-group:cells*/ var MeshGroup.cells by MeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>() // two capacity-sized halves; step parity selects the source
+/*graphics-pc-structure:bonds*/ var Structure.bonds by Structure.FromStructure<Any>() // four neighbour slots per cell; -1 marks an empty slot
+/*graphics-pc-binding:bonds*/ var Mesh.bonds by Mesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>() // four neighbour slots per cell; -1 marks an empty slot
+/*graphics-pc-binding-group:bonds*/ var MeshGroup.bonds by MeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>() // four neighbour slots per cell; -1 marks an empty slot
+/*graphics-pc-structure:latest*/ var Structure.latest by Structure.FromStructure<Any>() // most recently written cell half, 0 or 1
+/*graphics-pc-binding:latest*/ var Mesh.latest by Mesh.BoundFromStructure<Any>() // most recently written cell half, 0 or 1
+/*graphics-pc-binding-group:latest*/ var MeshGroup.latest by MeshGroup.BoundFromStructure<Any>() // most recently written cell half, 0 or 1
+/*graphics-pc-structure:capacity*/ var Structure.capacity by Structure.FromStructure<Any>() // stride between the two cell halves
+/*graphics-pc-binding:capacity*/ var Mesh.capacity by Mesh.BoundFromStructure<Any>() // stride between the two cell halves
+/*graphics-pc-binding-group:capacity*/ var MeshGroup.capacity by MeshGroup.BoundFromStructure<Any>() // stride between the two cell halves
 /*graphics-pc-structure:viewX*/ var Structure.viewX by Structure.FromStructure<Any>()
 /*graphics-pc-binding:viewX*/ var Mesh.viewX by Mesh.BoundFromStructure<Number>()
 /*graphics-pc-binding-group:viewX*/ var MeshGroup.viewX by MeshGroup.BoundFromStructure<Number>()
 /*graphics-pc-structure:viewY*/ var Structure.viewY by Structure.FromStructure<Any>()
 /*graphics-pc-binding:viewY*/ var Mesh.viewY by Mesh.BoundFromStructure<Number>()
 /*graphics-pc-binding-group:viewY*/ var MeshGroup.viewY by MeshGroup.BoundFromStructure<Number>()
-/*graphics-pc-structure:viewHalfHeight*/ var Structure.viewHalfHeight by Structure.FromStructure<Any>()
-/*graphics-pc-binding:viewHalfHeight*/ var Mesh.viewHalfHeight by Mesh.BoundFromStructure<Number>()
-/*graphics-pc-binding-group:viewHalfHeight*/ var MeshGroup.viewHalfHeight by MeshGroup.BoundFromStructure<Number>()
+/*graphics-pc-structure:viewHalfHeight*/ var Structure.viewHalfHeight by Structure.FromStructure<Any>() // visible world units above and below the view centre
+/*graphics-pc-binding:viewHalfHeight*/ var Mesh.viewHalfHeight by Mesh.BoundFromStructure<Number>() // visible world units above and below the view centre
+/*graphics-pc-binding-group:viewHalfHeight*/ var MeshGroup.viewHalfHeight by MeshGroup.BoundFromStructure<Number>() // visible world units above and below the view centre
 /*graphics-pc-structure:aspect*/ var Structure.aspect by Structure.FromStructure<Any>()
 /*graphics-pc-binding:aspect*/ var Mesh.aspect by Mesh.BoundFromStructure<Number>()
 /*graphics-pc-binding-group:aspect*/ var MeshGroup.aspect by MeshGroup.BoundFromStructure<Number>()
