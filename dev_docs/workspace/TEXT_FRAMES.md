@@ -8,7 +8,7 @@ character-level collaborative document editor.
 ## Writing
 
 Press **Shift+N**, or choose **New Text Frame** in the palette. Double-click the text, press Enter on
-a focused reader. Write Markdown as plain text, in the same Iosevka font and size as the normal editor. Click away,
+a focused reader. Write Markdown as plain text, in Field’s normal Iosevka at 12px. Click away,
 press Escape, or press Cmd/Ctrl+Enter to show formatted text. Native spellcheck stays enabled, with
 Electron's existing spelling-suggestion context menu. Spellcheck dictionaries/languages follow the
 browser or OS configuration. Double-clicking a passage places the Markdown cursor at that character,
@@ -23,9 +23,9 @@ A new frame receives keyboard focus immediately. **Right** chooses **Open settin
 the normal editor on the `textFrame` YAML property, even with automatic editor opening switched off,
 and fills missing defaults. Existing YAML comments and unknown keys are preserved.
 
-Text starts at the frame's configured padding, without a title or button bar. The outline appears
-on selection or while editing, and the background is pure black while editing. Unselected reading
-text is bare on the canvas; an overset **+** remains visible when a fixed frame clips content. Clicking
+Text starts at the frame's configured padding, without a title or button bar. Selection shows Field’s
+cyan outline with its normal 5px corners. Editing uses a pure black background without an outline.
+Unselected reading text is bare on the canvas; an overset **+** remains visible when a fixed frame clips content. Clicking
 it opens the full source in a scrollable editor. Selecting a frame follows the existing editor-on-selection
 setting; turn that off for an inline-only writing session.
 
@@ -52,7 +52,7 @@ within the same nesting context, skips hidden frames, and leaves regular/proxy b
 
 ```yaml
 fontFamily: '"Field Etoile", serif'
-fontSize: 18
+fontSize: 11
 fontWeight: 400
 lineHeight: 1.5
 padding: 16
