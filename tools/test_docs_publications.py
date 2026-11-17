@@ -380,6 +380,66 @@ class PublicationRefreshTest(unittest.TestCase):
 
 
 
+class DigestOnlyFailuresKeepTheirCapture(unittest.TestCase):
+    """2026-11-16..17: every viewer change recaptured all 227 publications and bounced on whichever
+    untouched page stalled. A page pending only for the capture digest that fails keeps its
+    previous capture, recorded as deferred."""
+
+    setUp = PublicationRefreshTest.setUp
+    record = PublicationRefreshTest.record
+
+    def failing(self):
+        return patch.object(publications, 'capture', new=AsyncMock(return_value=[
+            {'name': 'example', 'ok': False, 'error': "Uncaptured channels: ['fit: No rendered output']"}]))
+
+    def test_a_digest_only_failure_keeps_the_record_and_check_accepts_the_deferral(self):
+        self.record()
+        with patch.object(publications, 'capture_digest', return_value='publisher-v2'):
+            with self.failing():
+                publications.sync_publications()
+            index = publications.catalog()
+            self.assertEqual(index['emptyDocuments'][self.source]['captureDigest'], 'publisher-v1')
+            self.assertEqual(index['deferred'][self.source]['captureDigest'], 'publisher-v2')
+            self.assertIn('No rendered output', index['deferred'][self.source]['error'])
+            publications.sync_publications(mode='never')
+
+    def test_the_next_sync_retries_the_deferred_page_and_success_clears_it(self):
+        self.record()
+        with patch.object(publications, 'capture_digest', return_value='publisher-v2'):
+            with self.failing():
+                publications.sync_publications()
+            async def capture(recipes, **kwargs):
+                self.assertEqual(recipes, [self.recipe])
+                self.record()
+                return [{'name': 'example', 'ok': True, 'channels': 0}]
+            with patch.object(publications, 'capture', new=AsyncMock(side_effect=capture)):
+                publications.sync_publications()
+            self.assertNotIn('deferred', publications.catalog())
+
+    def test_a_deferral_for_an_older_digest_does_not_satisfy_check(self):
+        self.record()
+        with patch.object(publications, 'capture_digest', return_value='publisher-v2'), self.failing():
+            publications.sync_publications()
+        with patch.object(publications, 'capture_digest', return_value='publisher-v3'):
+            with self.assertRaisesRegex(ValueError, 'need refresh'):
+                publications.sync_publications(mode='never')
+
+    def test_a_page_whose_sources_changed_still_fails(self):
+        self.record()
+        self.file.write_text('changed')
+        with patch.object(publications, 'capture_digest', return_value='publisher-v2'), self.failing():
+            with self.assertRaisesRegex(ValueError, 'No rendered output'):
+                publications.sync_publications()
+        self.assertNotIn('deferred', publications.catalog())
+
+    def test_too_many_deferrals_is_the_machine_and_fails(self):
+        self.record()
+        with patch.object(publications, 'capture_digest', return_value='publisher-v2'), self.failing(), \
+                patch.object(publications, 'MAX_DEFERRED', 0):
+            with self.assertRaisesRegex(ValueError, 'No rendered output'):
+                publications.sync_publications()
+
+
 class LongComputeNamesRealRecipes(unittest.TestCase):
     """Against the real tree: a LONG_COMPUTE entry that names no recipe protects nothing."""
 

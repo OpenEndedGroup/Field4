@@ -108,6 +108,28 @@ class UnifyAfterMerge(unittest.TestCase):
         self.assertEqual(r.inconsistent(), [])
         self.assertEqual((r.capture("a"), r.capture("b")), ("a-v2", "b-v2"))
 
+    def test_a_deferral_travels_with_the_entry_the_merge_keeps(self):
+        """docs_publications.py records a page whose digest-only refresh failed under `deferred`;
+        when the merge takes their entry, their deferral comes too, and ours goes when ours is
+        replaced."""
+        r = self.repo
+        git(r.root, "switch", "-q", "-c", "topic")
+        r.publish("a", "a-v2")
+        catalog = r.catalog()
+        catalog["deferred"] = {"assets/agent_transcripts/b/metadata.edn": {"captureDigest": "v2"}}
+        r.write(f"{PUB}/catalog.json", json.dumps(catalog, indent=2, sort_keys=True) + "\n")
+        r.commit("branch recaptures a, defers b")
+        git(r.root, "switch", "-q", "main")
+        catalog = r.catalog()
+        catalog["deferred"] = {"assets/agent_transcripts/a/metadata.edn": {"captureDigest": "v1"}}
+        r.write(f"{PUB}/catalog.json", json.dumps(catalog, indent=2, sort_keys=True) + "\n")
+        r.commit("main defers a")
+        self.merge("topic")
+        publication_merge.unify(r.root)
+        # a: theirs changed the entry, so theirs (no deferral for a). b: neither changed its entry,
+        # so ours, and ours records no deferral for b.
+        self.assertNotIn("deferred", r.catalog())
+
     def test_a_new_publication_on_their_side_is_kept(self):
         r = self.repo
         git(r.root, "switch", "-q", "-c", "topic")
