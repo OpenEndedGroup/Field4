@@ -6,78 +6,6 @@
       "error": "{\"success\": false, \"message\": \"Ran macro 'flow_lenia': applied=14 skipped=0 errors=0. Execution failed: Box interrupted: Runloop stalled 273525 ms in '3 \\u2014 The parameter field blending (MEAN mixing)' (flow_lenia_drift) (watchdog)\", \"name\": \"flow_lenia\", \"operationCount\": 14, \"direction\": \"do\", \"applied\": 14, \"output\": [{\"uid\": \"flow_lenia_conservation\", \"line\": 13, \"html\": \"<div class='value-viz afield-appendable-output' style='font-family: \\\"Iosevka Web\\\", monospace; font-size: 12px; color:",
       "since": "2026-11-17"
     },
-    "assets/agent_transcripts/keyframe_code_blend/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/keyframe_editor/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/keyframe_key_discovery/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/keyframer_worked_example/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/kmeans_emeans/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/knight_tour_workshop/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/kolakoski_euclid/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/learned_boids/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/learned_pen/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/letter_interpolation_panels/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/life3d_manifold_path_trace/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/linalg_thumbnails_demo/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
     "assets/agent_transcripts/logging_layer/metadata.edn": {
       "attempts": 0,
       "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
@@ -3103,18 +3031,18 @@
       }
     },
     "assets/agent_transcripts/keyframe_code_blend/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T14:22:26.629Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:13:33.994Z",
       "channels": 5,
       "file": "assets/web_publications/keyframe_code_blend/document/metadata.edn",
       "files": {
-        "assets/web_publications/keyframe_code_blend/document/metadata.edn": "1230c37a803446ab095f5663e5ae21f6120e29c7f9153ac3a786b6971f70d9f5",
-        "assets/web_publications/keyframe_code_blend/document/outputs.json": "4fbc56d48870a803c419c75ad92b7880c738c45c9f1470347a7289d0740c0dc2",
-        "assets/web_publications/keyframe_code_blend/outputs/0.html": "5fc0eaea5c70683eeab4ec716047e139155b75bfdafcd5db227cd11be265e66b",
-        "assets/web_publications/keyframe_code_blend/outputs/1.html": "626532423d093bead74263e8b58a0d76cecb2c5b255609a9b94c0ca5de4b70ca",
-        "assets/web_publications/keyframe_code_blend/outputs/2.html": "661f689c1cfde25ce13097d608716abbb8158039de905e3e134112e542d65f94",
-        "assets/web_publications/keyframe_code_blend/outputs/3.html": "e3d4a7f733dac64f365d5b114cd50603c4106bfd0beda805036a4da50fad8f2a",
-        "assets/web_publications/keyframe_code_blend/outputs/4.html": "cd72444e344bd96cae36dd01b88003e8f00b065ceccbae43d9f3df2a00e7fde3"
+        "assets/web_publications/keyframe_code_blend/document/metadata.edn": "fefcbe36589fcc78750fae8d4a932f14be36b0b0f9ca66959134a315d7f8fa88",
+        "assets/web_publications/keyframe_code_blend/document/outputs.json": "61761d27f80ae9d17fb9ce7642581fadf93b70b99173a9deae05896a7f99aafc",
+        "assets/web_publications/keyframe_code_blend/outputs/0.html": "2513ea9876a41509147bdeb96cdaeee47602966d5793d5934bb8aafb8afb89e5",
+        "assets/web_publications/keyframe_code_blend/outputs/1.html": "1fde3a15175466d5bda7d2edc5fd58981e3c1336f647a1e26e0c7ab61cb5a2a1",
+        "assets/web_publications/keyframe_code_blend/outputs/2.html": "27bb4a83fc36a185160741ef8a4db4b8de25985c8a829848c68aac5b8a8f39d8",
+        "assets/web_publications/keyframe_code_blend/outputs/3.html": "df239e6f4a34dd2d052c3415bfd109bd3b53eecd09c49d0b0e825442f1873ddd",
+        "assets/web_publications/keyframe_code_blend/outputs/4.html": "aa6454e469042f59b99657bde5db6f42d47bc8d41cd0a0bb0fd28b54187327b8"
       },
       "kinds": [],
       "outputs": "assets/web_publications/keyframe_code_blend/document/outputs.json",
@@ -3130,18 +3058,18 @@
       }
     },
     "assets/agent_transcripts/keyframe_editor/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T14:20:01.705Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:13:41.801Z",
       "channels": 5,
       "file": "assets/web_publications/keyframe_editor/document/metadata.edn",
       "files": {
-        "assets/web_publications/keyframe_editor/document/metadata.edn": "e4ae45e00be0a46328e896ecec7e063a1d4670ba3eff346886e9ab25227b33eb",
-        "assets/web_publications/keyframe_editor/document/outputs.json": "76c1706d101c4803a1915aa1ea73a4679e65ea9a1e4d92bb75efe70fc10a4a9c",
-        "assets/web_publications/keyframe_editor/outputs/0.html": "726da4f10c29f55ecacac324606c402dde10cf07500866385ea57a5c80cb3010",
-        "assets/web_publications/keyframe_editor/outputs/1.html": "441782ba2e6dbb21927faa347a4eb73ae5d4a7c425b3004f3950e2ffe8c20b43",
-        "assets/web_publications/keyframe_editor/outputs/2.html": "cc0f322d831a537e3a618343fe7e9d10e4b8080c8afde4620839a25756bf1e89",
-        "assets/web_publications/keyframe_editor/outputs/3.html": "3d0992fe880001a2578d5ef4dcf62e06f5850d62c257ac204219d7e801d09131",
-        "assets/web_publications/keyframe_editor/outputs/4.html": "1ef1d9a450d20ed61cc1d4c26a8b0379e0ad3d2dc9450c7dd570c5f3a6efc2de"
+        "assets/web_publications/keyframe_editor/document/metadata.edn": "40b42c266e6e338f0151df9701b09a155046408ab55c3febefa237bfa331fd6c",
+        "assets/web_publications/keyframe_editor/document/outputs.json": "466c56a0a51de6dc265a77c293095f10c9db56334e73e29058266fe22344828c",
+        "assets/web_publications/keyframe_editor/outputs/0.html": "9b21393e39085f312da94124dbb939188cce46aa7b922b1c40ba21ded479b213",
+        "assets/web_publications/keyframe_editor/outputs/1.html": "10d1decf403b2617426c82fa1f252a697e3775abc230f9153f28e056099fd4fe",
+        "assets/web_publications/keyframe_editor/outputs/2.html": "bd1b3b60fc9710e252e3b3588959a19174d04a8eaebd542f1fae7e9843d698d7",
+        "assets/web_publications/keyframe_editor/outputs/3.html": "3321e71bcf3cbb4c5a0f4f571484aaa473bb7f8acdf2b67321d2012aba473dd3",
+        "assets/web_publications/keyframe_editor/outputs/4.html": "3a6841d0278874de1d57aeb69dbc9d69b1f1db13d95aa0a886fb4e688f8096bf"
       },
       "kinds": [
         "svg"
@@ -3158,17 +3086,17 @@
       }
     },
     "assets/agent_transcripts/keyframe_key_discovery/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:04:02.984Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:13:48.847Z",
       "channels": 4,
       "file": "assets/web_publications/keyframe_key_discovery/document/metadata.edn",
       "files": {
-        "assets/web_publications/keyframe_key_discovery/document/metadata.edn": "2f80eeb96b50be1503c80df6a0edfea3ee141b8f23d98633ddf042edffccab04",
-        "assets/web_publications/keyframe_key_discovery/document/outputs.json": "6371a2352d6148f2958e187ef2f15965877a914060c304ad7b672c2484e73b3d",
-        "assets/web_publications/keyframe_key_discovery/outputs/0.html": "23f9f7715f44bca78f02b7b1abd3eb62ecbc7dcd8ad8b8d61f2eb70feefe7176",
-        "assets/web_publications/keyframe_key_discovery/outputs/1.html": "e92cf13bcc3f8cfe3d4bdb36eeb019b1764fdfc403020bf424a7413487719a8f",
-        "assets/web_publications/keyframe_key_discovery/outputs/2.html": "4566832939c29785ac16df31f82de84bba227368dbc1e50165fbdc016642fb9a",
-        "assets/web_publications/keyframe_key_discovery/outputs/3.html": "7f6af3466a09d59096f96a41dbf7392f117ccb2d77795bb51bc480a07ab27fb3"
+        "assets/web_publications/keyframe_key_discovery/document/metadata.edn": "fba021d29e6023ae11bbaa591846ce185857ce8692c9237af8f8f2a2e3b5c676",
+        "assets/web_publications/keyframe_key_discovery/document/outputs.json": "25338abfd1b6b02c1c8e5fc8f39dbed4f21c54a5ac3bdc444078074972731aaa",
+        "assets/web_publications/keyframe_key_discovery/outputs/0.html": "e25c5836688b8b1f130b895d328a72f19037a1227ccd85e940905334bd1de9f1",
+        "assets/web_publications/keyframe_key_discovery/outputs/1.html": "eb2629e09fb9e7ff67e01accd2f0256f01be34f372bde3b251da408f8b0a4107",
+        "assets/web_publications/keyframe_key_discovery/outputs/2.html": "73c5a5e724a2053874dc4aebb84f1372dbee1bcef064488f38076cbed5d1fbb5",
+        "assets/web_publications/keyframe_key_discovery/outputs/3.html": "033ae683590d617f07a8b45512b773bee7c67d7d15365c870ed25d0e64a15090"
       },
       "kinds": [],
       "outputs": "assets/web_publications/keyframe_key_discovery/document/outputs.json",
@@ -3182,18 +3110,18 @@
       }
     },
     "assets/agent_transcripts/keyframer_worked_example/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:07:59.519Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:13:57.319Z",
       "channels": 5,
       "file": "assets/web_publications/keyframer_worked_example/document/metadata.edn",
       "files": {
-        "assets/web_publications/keyframer_worked_example/document/metadata.edn": "619c89d01f029a74ce777a9655fef349c844f2ae6a462b19081ebb4fb0ba9bbd",
-        "assets/web_publications/keyframer_worked_example/document/outputs.json": "889181aac20e14dc2a1a1fa0e9a0073180e82b7abfd44678600ec1cacb7a7c3d",
-        "assets/web_publications/keyframer_worked_example/outputs/0.html": "46ed3581cf1debf39958777d1b6ec511fd4652068a627c09b202fe7e803ee3e6",
-        "assets/web_publications/keyframer_worked_example/outputs/1.html": "6aaf81376889decc8728812062060fa64cca4ce62d0d5aaba9f0b7aa6447d163",
-        "assets/web_publications/keyframer_worked_example/outputs/2.html": "29d1fec6b75f885f97100b375e0f84f95895acca34582bc1b28caa352d3e0737",
-        "assets/web_publications/keyframer_worked_example/outputs/3.html": "bddca494fa2f26ae3519f2ea2013bc17a7b41eefe883f435576805a1bf122bae",
-        "assets/web_publications/keyframer_worked_example/outputs/4.html": "86888ec0d6364ec1ebc5aab29ab63e588d13bdfb50f86ace23066a160dbbf1ca"
+        "assets/web_publications/keyframer_worked_example/document/metadata.edn": "83fd3929bdf0d707492087c0dd3b297e3293ddc7f9846daa3becb5f27a5d15da",
+        "assets/web_publications/keyframer_worked_example/document/outputs.json": "daa60e682fbfe3291f10aa42ac253404990a731d594a63b7fabbf6091926c3cb",
+        "assets/web_publications/keyframer_worked_example/outputs/0.html": "14a405b6bb5778380b748e1ccfc2d8180e5ec3c2367cd7c1392a50224d42ddbb",
+        "assets/web_publications/keyframer_worked_example/outputs/1.html": "63c871a5d3574c22787e2f764842a434839a75574b63a0a196a7e09a78e21373",
+        "assets/web_publications/keyframer_worked_example/outputs/2.html": "e5deb6bf210b4364523f0109ed064a69af1e4fa904c1ea34b7114339e936db3b",
+        "assets/web_publications/keyframer_worked_example/outputs/3.html": "0017e56709d850df2f8a37ca0f81ab1bc233860ce98b2cd2cd0a1e404590c795",
+        "assets/web_publications/keyframer_worked_example/outputs/4.html": "d98b066d7f567cacae5b946d4bfeaaf9998570838d75c914c5073001477cd705"
       },
       "kinds": [
         "svg"
@@ -3210,18 +3138,18 @@
       }
     },
     "assets/agent_transcripts/kmeans_emeans/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T14:40:23.685Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:17:15.767Z",
       "channels": 5,
       "file": "assets/web_publications/kmeans_emeans/document/metadata.edn",
       "files": {
-        "assets/web_publications/kmeans_emeans/document/metadata.edn": "03dcbbb63dd035f62a4bbfcf58c9fb62d8463411e251aa63b6169ae805fd6e8e",
-        "assets/web_publications/kmeans_emeans/document/outputs.json": "9708193eca5035013ed59b3ca9264169d81577450d248d13b01e71f073ce27e5",
-        "assets/web_publications/kmeans_emeans/outputs/0.html": "63b5186794679a76ca93dc2858984858ac6e72c9615cb0864609bc47ba47fa3c",
-        "assets/web_publications/kmeans_emeans/outputs/1.html": "0d50a260c12a2ff4c173bb1680a7bfda7a84822b105080ed86d733ee10971c15",
-        "assets/web_publications/kmeans_emeans/outputs/2.html": "780141685cfef8b3e150681c73aadfc7723fb2c92779ab92039b20cf1a52ee30",
-        "assets/web_publications/kmeans_emeans/outputs/3.html": "b9eb45ee3b028e9a107653633b4135f4c99a7b7d1889ff04e27560d066ae87a9",
-        "assets/web_publications/kmeans_emeans/outputs/4.html": "8764aa0abe461ba90671393071de42cb293ce5e8431599d6758137d5f5e2b009"
+        "assets/web_publications/kmeans_emeans/document/metadata.edn": "f48b69f63c725b1e955415957b0ff7d2fc672302099fcfd2345ab7e36c6d9faa",
+        "assets/web_publications/kmeans_emeans/document/outputs.json": "eb5ebb0bb47941af3c45fb612f2fb1ff507012d3b96c738ce7b904559e29bd99",
+        "assets/web_publications/kmeans_emeans/outputs/0.html": "962e044ca1b482cf62441926c885a1a30ba859c3bde2c8e2634a7c140ec5b17b",
+        "assets/web_publications/kmeans_emeans/outputs/1.html": "4d354fcb8880749b42317ecff5771d1b1e57b54a49f218271242e11997311ecb",
+        "assets/web_publications/kmeans_emeans/outputs/2.html": "9db025437a70695ccacfb2c0d92e4fe22e1532c51c16ec12b8f2095f24d98361",
+        "assets/web_publications/kmeans_emeans/outputs/3.html": "40fac66bf31d6288cffc80d54a860ac9e7d781f5762e032316e25a54d66f0d51",
+        "assets/web_publications/kmeans_emeans/outputs/4.html": "efe00cd24e694be4a20a7a0695ff0121e423bfe137694009250cbfb642e6e5b2"
       },
       "kinds": [
         "svg"
@@ -3238,18 +3166,18 @@
       }
     },
     "assets/agent_transcripts/knight_tour_workshop/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T14:23:39.265Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:18:14.005Z",
       "channels": 5,
       "file": "assets/web_publications/knight_tour_workshop/document/metadata.edn",
       "files": {
-        "assets/web_publications/knight_tour_workshop/document/metadata.edn": "6704238133801c11df2866fc70b7dac98d71acd638a204def732e01da2d2dba7",
-        "assets/web_publications/knight_tour_workshop/document/outputs.json": "f78a201cb8e53b7be68b5ac4e81c34593566bd5e5ecf14923033caedf13b169c",
-        "assets/web_publications/knight_tour_workshop/outputs/0.html": "7c3d318bf75aa03c3ef39ea7d21d90fb549304be3102a9aacd25b024aaa20a08",
-        "assets/web_publications/knight_tour_workshop/outputs/1.html": "1f9cc49b419e7fa62b6aaca3c1876e90f2132edd2aba05f565ee58c1b3379de3",
-        "assets/web_publications/knight_tour_workshop/outputs/2.html": "261b895eb96773b9577ef3f1a9b96fecd1a030bfb907c54ea2e5317488ddb0f1",
-        "assets/web_publications/knight_tour_workshop/outputs/3.html": "3f176691f0db32726edb3d37da2239df85497535bf0aeee44046bbb5d509e798",
-        "assets/web_publications/knight_tour_workshop/outputs/4.html": "8aba8544b20d7f352d293a609554adbbf5e9e08aa1ef4a48367a5e0aa1c6f8b4"
+        "assets/web_publications/knight_tour_workshop/document/metadata.edn": "09e9f4ce9281c8dee0cf4022421dfaa4f6a7d5b6d443e5743f3457d603a2381d",
+        "assets/web_publications/knight_tour_workshop/document/outputs.json": "0b040e7944684430b50bc010a7aa12382d83175c7314f1d767747b5ab84747e7",
+        "assets/web_publications/knight_tour_workshop/outputs/0.html": "a0df966509bf27359c9379e0996896e0b0cb6d4d0fe30299cc906a03354725e4",
+        "assets/web_publications/knight_tour_workshop/outputs/1.html": "bacd7216fc953c4a311f24a4425035eae8e18bd75d5d033d78defe227dc604b5",
+        "assets/web_publications/knight_tour_workshop/outputs/2.html": "abf0ab96d329f059ab161a1449ee557a3981e1f8d98c8c823bd62c6a75cba3b8",
+        "assets/web_publications/knight_tour_workshop/outputs/3.html": "4206dde3f983f105612a9bac9119b5aa55d05304f9e3e25f7456c6250c74f805",
+        "assets/web_publications/knight_tour_workshop/outputs/4.html": "f6309976e5840c9a2c14a6faefa8ab3928f0fde53859ed3927a7daa7b2712f4a"
       },
       "kinds": [
         "svg"
@@ -3267,21 +3195,21 @@
       }
     },
     "assets/agent_transcripts/kolakoski_euclid/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:07:49.669Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:18:20.902Z",
       "channels": 8,
       "file": "assets/web_publications/kolakoski_euclid/document/metadata.edn",
       "files": {
-        "assets/web_publications/kolakoski_euclid/document/metadata.edn": "0623f99363c36f5ccf217a6ac7b8eeb627b5ffac7d0b7b6234d6d3e1be307700",
-        "assets/web_publications/kolakoski_euclid/document/outputs.json": "0d995c233d351861df50fce0762563b3c4d8ab77c7106812e9f9b366002f35d6",
-        "assets/web_publications/kolakoski_euclid/outputs/0.html": "0bf77f3724dc1ef03b396fe5d6d0e77abea52b78a3cf2c5208893230e9703750",
-        "assets/web_publications/kolakoski_euclid/outputs/1.html": "ef0e3ad15f6b44e570896f2370d426baac451d75a4ac6c9de846a34f614fbee4",
-        "assets/web_publications/kolakoski_euclid/outputs/2.html": "52ea627c6bf41470c645f7a7ab6141e6ec64cfcb5ee51c692b7df2add3b7147f",
-        "assets/web_publications/kolakoski_euclid/outputs/3.html": "d37d16b066b29f689d613e9ca7936d5229677ea7a0809c12dec88c3a91eef579",
-        "assets/web_publications/kolakoski_euclid/outputs/4.html": "74ae9a22899d9cf11e21f4aaf25a6b6cf1952243ac73641a3570241eee86af0e",
-        "assets/web_publications/kolakoski_euclid/outputs/5.html": "52ea627c6bf41470c645f7a7ab6141e6ec64cfcb5ee51c692b7df2add3b7147f",
-        "assets/web_publications/kolakoski_euclid/outputs/6.html": "52ea627c6bf41470c645f7a7ab6141e6ec64cfcb5ee51c692b7df2add3b7147f",
-        "assets/web_publications/kolakoski_euclid/outputs/7.html": "6f30de4ad97e98b19a3238c65422e9364e58b74d625b14d88f9bb8ded4cd3f1e"
+        "assets/web_publications/kolakoski_euclid/document/metadata.edn": "1474f4c98027628855626ed47011b510c6dfa442eb75ed97917f5acacb406e27",
+        "assets/web_publications/kolakoski_euclid/document/outputs.json": "de4592667ed9154c70b67fc3033763d82ee2f7e4c416e0cafce7164f988177c4",
+        "assets/web_publications/kolakoski_euclid/outputs/0.html": "af3c27bf706d2f1783467dad1104c3e74b81c4d31d0f73dcb193e2abb4699f9b",
+        "assets/web_publications/kolakoski_euclid/outputs/1.html": "7f54b4debaa8cb3a55538afe29567e7a0202f92e9436c38a077a9fb25530ff22",
+        "assets/web_publications/kolakoski_euclid/outputs/2.html": "057df705f4deed172516930d11f684c68b7f5bdec805493caf10217f9c4bd18b",
+        "assets/web_publications/kolakoski_euclid/outputs/3.html": "b396081f9bed678d267e9b66eefb0020f85b496ea2463a23ef748f1ace65cbfb",
+        "assets/web_publications/kolakoski_euclid/outputs/4.html": "15e156ea0f0ce7541687ad54088830ac3c0b85e337a53eec663e468bbc932790",
+        "assets/web_publications/kolakoski_euclid/outputs/5.html": "057df705f4deed172516930d11f684c68b7f5bdec805493caf10217f9c4bd18b",
+        "assets/web_publications/kolakoski_euclid/outputs/6.html": "057df705f4deed172516930d11f684c68b7f5bdec805493caf10217f9c4bd18b",
+        "assets/web_publications/kolakoski_euclid/outputs/7.html": "8b4ea58e9e0962e8e33d4ad8ee6561a0e3236e5a7f680e00434df7579b9a78c2"
       },
       "kinds": [
         "svg"
@@ -3297,13 +3225,13 @@
       }
     },
     "assets/agent_transcripts/learned_boids/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:28:04.954Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:18:22.966Z",
       "channels": 1,
       "file": "assets/web_publications/learned_boids/document/metadata.edn",
       "files": {
-        "assets/web_publications/learned_boids/document/metadata.edn": "2a7fe386843e1336b5283e2710ab596bf9a522e49be198f1a6cfbe5b1aeee440",
-        "assets/web_publications/learned_boids/document/outputs.json": "86cda4818efb0cd7be7e10287d57feaa5a206abee0f0816518cd7bc47e5b6273",
+        "assets/web_publications/learned_boids/document/metadata.edn": "a9eeedaff4669efb8e2a49bcc220bec2ad5e31a2f6940fc2c9eaecb6f447e7eb",
+        "assets/web_publications/learned_boids/document/outputs.json": "b5b789938a7ea1d4547ed3f1b775f28efe0d65e628d054220c87b8725ce059a2",
         "assets/web_publications/learned_boids/outputs/0.html": "ec3590540d08a84d2f99ec53abff956c11e25af8500cf7ed690b8528f341067f"
       },
       "kinds": [
@@ -3327,21 +3255,21 @@
       ]
     },
     "assets/agent_transcripts/learned_pen/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:13:41.119Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:18:33.229Z",
       "channels": 8,
       "file": "assets/web_publications/learned_pen/document/metadata.edn",
       "files": {
-        "assets/web_publications/learned_pen/document/metadata.edn": "139cedaac0345cbde186c80d233ebf68c1da28e0e7b8cff635cd2295b1831386",
-        "assets/web_publications/learned_pen/document/outputs.json": "cd5a9d01154ef78c47b5e0f74e9c29e7823b566e561d5f1e4c668bf82252e626",
-        "assets/web_publications/learned_pen/outputs/0.html": "f9489b48b2389283405a736864f6bd5e73ca5597958ed648ca4909bd37c60ed0",
-        "assets/web_publications/learned_pen/outputs/1.html": "f3176ea332ce6f4000cd18358be2a0546a76a2d8f9d25fd82bac5a21f26dbaaa",
-        "assets/web_publications/learned_pen/outputs/2.html": "449ae9d68b0978a1b26e44f93b0ebe9837194030561d2e8a847904b9c223cf6d",
-        "assets/web_publications/learned_pen/outputs/3.html": "08a051904883d9f91afd43e04a66757db23c205570182f535b2f40bd00b59a82",
-        "assets/web_publications/learned_pen/outputs/4.html": "41723bc3ac61252c93011ac96915eaee203ca1eb88cff043f0000e91e18a985e",
-        "assets/web_publications/learned_pen/outputs/5.html": "e7961655febe79eaa5dc4a4c9a3ceb5d9716383df3bcb806ac6ee4add62e9b72",
-        "assets/web_publications/learned_pen/outputs/6.html": "c9a35fc944a79ad08966e4eeb9c855c27291d0b82ca8e5a98a5809c6f18c8cbe",
-        "assets/web_publications/learned_pen/outputs/7.html": "03cd345ff23ff6ede1e78bd87a4960ac9a18f342f7a40861b6be9d43c3192999"
+        "assets/web_publications/learned_pen/document/metadata.edn": "26bf7725bcd005ae29a9d537897e5afb01e02f1a9ef2889360d7e113f43156e0",
+        "assets/web_publications/learned_pen/document/outputs.json": "00b9f883bdb3135604f051421e18dbae8ae123032c99c8c2566da880be19cd39",
+        "assets/web_publications/learned_pen/outputs/0.html": "fc361bf1b79fdb7208602e6eb0a1e5b4e36e874784eae1e5dad48890d00d9945",
+        "assets/web_publications/learned_pen/outputs/1.html": "ec8169372f7250053eed6f1ed6aedb26649173773e2847a4bfbef44bd3a16ce7",
+        "assets/web_publications/learned_pen/outputs/2.html": "ca6fea3faaa61cdb7c8537f929798c3684ba909942bd736d317432c8d4d5bc07",
+        "assets/web_publications/learned_pen/outputs/3.html": "44e56ace890b3da1b42cdf68d3dcfb98bed2a2c9b225a54ea85ceef98962e74b",
+        "assets/web_publications/learned_pen/outputs/4.html": "92ca7e0765f4045ad7d4d671e8aa8fddd9335b25f1eb28768334d00757ae4811",
+        "assets/web_publications/learned_pen/outputs/5.html": "bdbcebb9ec3a2be756f10e4cc9698c85a514d592c22629f398b8921e505298c4",
+        "assets/web_publications/learned_pen/outputs/6.html": "5166a43388e0442ecaac20325df714da579cb77f57765653b53ae0dadfe3c929",
+        "assets/web_publications/learned_pen/outputs/7.html": "9adc9925488d090492d5118a1b6a11177548b44ba3ee4b48f61d1e5577c82a48"
       },
       "kinds": [
         "svg"
@@ -3360,13 +3288,13 @@
       }
     },
     "assets/agent_transcripts/letter_interpolation_panels/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:27:57.350Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:18:35.477Z",
       "channels": 1,
       "file": "assets/web_publications/letter_interpolation_panels/document/metadata.edn",
       "files": {
-        "assets/web_publications/letter_interpolation_panels/document/metadata.edn": "5d99b2f71ab17fe1b7846d3b83bb23d2d506f8c6316448045792123769ffdea1",
-        "assets/web_publications/letter_interpolation_panels/document/outputs.json": "ad83ed1cd0273105e60ae9f9e2ec2df346c2bb0eac9370647074a67203d3420e",
+        "assets/web_publications/letter_interpolation_panels/document/metadata.edn": "56ba86c0b908bc66017522cafd848aeff5b2bba68c835202628030b4720ba42b",
+        "assets/web_publications/letter_interpolation_panels/document/outputs.json": "fa2b78c00057d693ed9d3fd82e7633e8efac0af160650d876027741320d797ca",
         "assets/web_publications/letter_interpolation_panels/outputs/0.html": "9ce55eed5530cc7896b75499a79768128f889f7a04ffa8ddd7ac9314669616d9"
       },
       "kinds": [
@@ -3389,13 +3317,13 @@
       ]
     },
     "assets/agent_transcripts/life3d_manifold_path_trace/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:25:51.169Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:18:37.536Z",
       "channels": 1,
       "file": "assets/web_publications/life3d_manifold_path_trace/document/metadata.edn",
       "files": {
-        "assets/web_publications/life3d_manifold_path_trace/document/metadata.edn": "593a45318f53f6aae273fe7fe8957b79a06ed98c000294607402ef26ff695fb4",
-        "assets/web_publications/life3d_manifold_path_trace/document/outputs.json": "4fd9271bc181db69569118adfadbca0ba77770951189f4f123a8d24c3786d36c",
+        "assets/web_publications/life3d_manifold_path_trace/document/metadata.edn": "fb9156d1f9af4c7e434978cd708e4da6af2fc47f8df3e73c90295b774da6fc38",
+        "assets/web_publications/life3d_manifold_path_trace/document/outputs.json": "1007c1dc76b22230f7db8dddfb68f2a2ae02c27e8d06c0cd8435bc83f62e7dff",
         "assets/web_publications/life3d_manifold_path_trace/outputs/0.html": "f7ac7d827e4a15c0d119fec74238307f5fb4cae6e9b2617104956d8b34ee5183"
       },
       "kinds": [
@@ -7263,7 +7191,7 @@
       }
     },
     "assets/agent_transcripts/linalg_thumbnails_demo/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
       "channels": 0,
       "reason": "No output-area channels; the code remains available.",
       "sources": {
