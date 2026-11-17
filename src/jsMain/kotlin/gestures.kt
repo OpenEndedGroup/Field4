@@ -524,7 +524,7 @@ private fun addTextFrameConnectionBorder(
     layer: SVGElement, box: HTMLElement, rect: DOMRect, attachment: Point, opacity: Double, color: String
 ) {
     if (!box.classList.contains("text-frame-box") || rect.width <= 0.0 || rect.height <= 0.0) return
-    val pixels = box.getAttribute("data-connection-border-length")?.toDoubleOrNull() ?: 24.0
+    val pixels = box.getAttribute("data-connection-border-length")?.toDoubleOrNull() ?: 100.0
     if (!pixels.isFinite() || pixels <= 0.0) return
     val half = pixels.coerceAtMost(200.0) / mainZoom
     // Match textFrames.css. Rectangles and corner radii are world units; the dash length is screen pixels.

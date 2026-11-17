@@ -20,7 +20,7 @@ const resize = async (box, frame) => {
 const borders = box => [...document.querySelectorAll('.text-frame-connection-border')].filter(p => p.dataset.boxUid === box.uid);
 const config = async (box, length) => {
     set(box, 'textFrame', JSON.stringify({sizing: 'fixed', connectionBorderLength: length}));
-    await wait(() => box.getAttribute('data-connection-border-length') === String(length), 'Border setting did not sync');
+    await wait(() => box.getAttribute('data-connection-border-length') === String(length ?? 100), 'Border setting did not sync');
     await delay(100);
 };
 const geometry = path => {
@@ -59,6 +59,10 @@ const assertCornerRouting = () => {
     if (fromText) checkEndpoint(source, a, trim(a, start, end));
     if (toText) checkEndpoint(child, b, trim(b, end, start));
 };
+await config(child);
+await wait(() => borders(child).length === 1, 'Default attachment border missing');
+check(Math.abs(geometry(borders(child)[0]).length - 200) < .01, 'Default attachment is not 100px on either side');
+// Use a shorter custom arm to exercise wrapping on the small corner-routing fixtures below.
 await config(source, 24);
 await config(child, 24);
 await resize(child, {x: 450, y: 350, w: 300, h: 200});
@@ -68,7 +72,7 @@ for (const [x, y] of [[70, 90], [1030, 90], [1030, 730], [70, 730]]) {
     await wait(() => borders(child).length === 1, 'Child should have one attachment border');
     const path = borders(child)[0];
     const {length, at} = geometry(path);
-    check(Math.abs(length - 48) < .01, 'Default attachment is not 24px on either side');
+    check(Math.abs(length - 48) < .01, 'Configured attachment is not 24px on either side');
     for (const distance of [-21, 0, 21]) check(path.isPointInStroke(at(distance)), 'Visible border dash has a gap');
     for (const distance of [-28, 28]) check(!path.isPointInStroke(at(distance)), 'Border extends beyond its configured length');
     assertCornerRouting();

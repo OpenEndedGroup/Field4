@@ -36,7 +36,7 @@ turn that off for an inline-only writing session.
 - `textFrame` holds JSON, editable through Settings or the property editor. Defaults are:
 
 ```json
-{"fontFamily":"\"Field Etoile\", serif","fontSize":18,"fontWeight":400,"lineHeight":1.5,"padding":16,"sizing":"grow","autocomplete":false,"connectionBorderLength":24}
+{"fontFamily":"\"Field Etoile\", serif","fontSize":18,"fontWeight":400,"lineHeight":1.5,"padding":16,"sizing":"grow","autocomplete":false,"connectionBorderLength":100}
 ```
 
 The default is **Field Etoile**, the bundled Iosevka Etoile text face with Field's reverse-slashed zero.
@@ -47,7 +47,7 @@ Connections reveal a short portion of the frame border on each side of their att
 the rounded corners. Routing starts 10 screen pixels inside the source's bottom-right corner and
 the destination's top-left corner, then trims the connecting ray to each frame boundary. Each ordinary
 box endpoint still uses its centre. Frame curve radii respect the room along the endpoint normals so
-wide frames with a small gap do not force large looping turns. `connectionBorderLength` sets the border distance in screen pixels (default 24,
+wide frames with a small gap do not force large looping turns. `connectionBorderLength` sets the border distance in screen pixels (default 100,
 range 0–200; 0 hides it), independent of canvas zoom. These segments follow the connection's color
 and selection visibility; ordinary boxes and nested proxy viewport terminations keep their existing rendering.
 

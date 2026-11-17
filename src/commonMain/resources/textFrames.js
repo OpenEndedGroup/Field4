@@ -4,7 +4,7 @@ import {renderFieldMarkdown} from './markdownView.js';
 
 // Text belongs to the box. DOM, editing state and uncommitted conflict drafts are local to a view.
 const frames = new Map();
-const defaults = {fontFamily: '"Field Etoile", serif', fontSize: 18, fontWeight: 400, lineHeight: 1.5, padding: 16, sizing: 'grow', connectionBorderLength: 24};
+const defaults = {fontFamily: '"Field Etoile", serif', fontSize: 18, fontWeight: 400, lineHeight: 1.5, padding: 16, sizing: 'grow', connectionBorderLength: 100};
 const node = (tag, cls, text) => {
     const result = document.createElement(tag);
     result.className = cls;
