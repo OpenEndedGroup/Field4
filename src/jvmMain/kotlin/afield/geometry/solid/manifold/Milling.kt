@@ -39,8 +39,8 @@ fun Solid.closed(tool: Solid): Solid {
     reflected.close()
     val closing = forbidden.minkowskiDifference(tool)
     forbidden.close()
-    val size = tool.bounds.size.let { maxOf(it.x, it.y, it.z).toDouble() }
-    val result = withAdded(closing, thinnest = 1e-6 * size)
+    val reach = tool.bounds.size.let { maxOf(it.x, it.y, it.z).toDouble() } / 2.0
+    val result = withAdded(closing, thinnest = 0.01 * reach)
     closing.close()
     return result
 }
@@ -49,10 +49,15 @@ fun Solid.closed(tool: Solid): Solid {
  * This solid united with whatever of [added] lies outside it, leaving out pieces thinner than [thinnest].
  *
  * The closing contains the part mathematically, but the Minkowski sum and difference re-derive every
- * face, and a sloping face comes back a few ε outside the original. Those flat, zero-thickness pieces
- * draw as stray patches on the face. Uniting the part with only the substantial pieces of the
- * difference keeps the part's own faces exactly where they were. A piece counts as substantial when
- * its volume over its surface area, a measure of thickness, exceeds [thinnest].
+ * face, and a re-derived face lands a few ε away from the original. Two kinds of piece come out of
+ * that. A sloping face leaves flat, zero-thickness patches, which draw as stray specks. A shallow
+ * concave crease, such as the one between two facets of a polygonal hole, leaves a hairline wedge
+ * whose sides sit ε clear of the part's faces, so uniting it back opens a tunnel at every crease. A
+ * 48-sided hole gains dozens of handles that way. Neither is anything a mill would leave that a viewer
+ * could see. Uniting the part with only the substantial pieces keeps the part's own faces exactly
+ * where they were. A piece counts as substantial when its volume over its surface area, a measure of
+ * thickness, exceeds [thinnest]; at one percent of the tool's radius, that drops the fill of concave
+ * creases shallower than about 16°, which is under a five-hundredth of the radius deep.
  */
 internal fun Solid.withAdded(added: Solid, thinnest: Double): Solid {
     val residue = added - this
@@ -133,7 +138,7 @@ fun Solid.ballMilled(
         }
         val removedByNone = if (setups.size == 1) setups[0] else Solid.batchBoolean(setups, BooleanOp.INTERSECTION)
         val reachable = removedByNone and blank
-        val result = withAdded(reachable, thinnest = 1e-6 * radius)
+        val result = withAdded(reachable, thinnest = 0.01 * radius)
         reachable.close()
         if (removedByNone !== setups[0]) removedByNone.close()
         setups.forEach { it.close() }

@@ -36,6 +36,20 @@ class MillingTest {
     }
 
     @Test
+    fun `faceted holes keep their topology`() {
+        if (!ManifoldLibrary.isAvailable) return
+        // Every crease between two facets of a hole is shallowly concave. Filling those hairline wedges
+        // and fusing them back used to open a tunnel at each one: genus 4 came back as 47.
+        val plate = Solid.cube(60.0, 40.0, 8.0, center = true)
+        val holes = (0..3).map { Solid.cylinder(30.0, 3.0, segments = 48, center = true).translated(-21.0 + 14.0 * it, 0.0, 0.0) }
+        val pocket = Solid.cube(30.0, 14.0, 6.0, center = true).translated(0.0, 12.0, 4.0)
+        val part = plate - Solid.union(holes) - pocket
+        val milled = part.ballMilled(1.5)
+        assertEquals(part.genus, milled.genus, "four holes are still four holes")
+        assertTrue(milled.volume - part.volume > 40.0, "and the pocket's inside edges are still filleted")
+    }
+
+    @Test
     fun `point reflection keeps the tool a positive volume`() {
         if (!ManifoldLibrary.isAvailable) return
         val offCentre = Solid.cube(1.0, 2.0, 3.0)
