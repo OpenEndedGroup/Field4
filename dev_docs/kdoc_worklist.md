@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 24808 of 41639 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 24811 of 41643 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2042 undocumented entry points** (types, top-level functions and values) and 14062 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2043 undocumented entry points** (types, top-level functions and values) and 14062 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -20,7 +20,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [TidalPatterns.kt](../src/jvmMain/kotlin/afield/audio/synth/TidalPatterns.kt) | Patterns | pattern_language, marf, petri_nets | 43 | 82 | 21% |
 | [Visualizers.kt](../src/jvmMain/kotlin/afield/audio/synth/Visualizers.kt) | Synthesis | visualizers, explainer_sound | 37 | 11 | 5% |
 | [outputs.kt](../src/jvmMain/kotlin/afield/ui/output/outputs.kt) | Visualization | visualizers, stereo_video, box_output | 32 | 55 | 41% |
-| [Boxes.kt](../src/jvmMain/kotlin/afield/document/graph/Boxes.kt) | Workspace | ai4_tools, keybindings, keyframer_examples | 23 | 40 | 30% |
+| [Boxes.kt](../src/jvmMain/kotlin/afield/document/graph/Boxes.kt) | Workspace | ai4_tools, keybindings, keyframer_examples | 24 | 40 | 31% |
 | [wfc.kt](../src/jvmMain/kotlin/afield/simulation/automata/wfc.kt) | Data | wfc_examples | 20 | 67 | 29% |
 | [FabricateScene.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/FabricateScene.kt) | Renderers | fabricate_renderer, geometry_from_disk | 19 | 114 | 5% |
 | [FieldGraphTools.kt](../src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt) | AI4 | ai4_tools, ai4_experiments | 18 | 100 | 18% |
@@ -1005,7 +1005,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [PetriSmokeTest.kt](../src/jvmMain/kotlin/afield/simulation/petri/PetriSmokeTest.kt) | Simulation | — | 0 | 2 | 33% |
 | [StudyReport.kt](../src/jvmMain/kotlin/afield/study/evidence/StudyReport.kt) | Workspace | — | 0 | 2 | 33% |
 | [StudyKnob.kt](../src/jvmMain/kotlin/afield/study/ui/StudyKnob.kt) | Workspace | — | 0 | 2 | 81% |
-| [Ai4ChatAutocomplete.kt](../src/jvmMain/kotlin/afield/ai/completion/Ai4ChatAutocomplete.kt) | AI4 | — | 0 | 1 | 66% |
+| [Ai4ChatAutocomplete.kt](../src/jvmMain/kotlin/afield/ai/completion/Ai4ChatAutocomplete.kt) | AI4 | — | 0 | 1 | 75% |
 | [ClipSmokeTest.kt](../src/jvmMain/kotlin/afield/ai/inference/onnx/ClipSmokeTest.kt) | Machine learning | — | 0 | 1 | 50% |
 | [LpipsSmokeTest.kt](../src/jvmMain/kotlin/afield/ai/inference/onnx/LpipsSmokeTest.kt) | Machine learning | — | 0 | 1 | 50% |
 | [OnnxSmokeTest.kt](../src/jvmMain/kotlin/afield/ai/inference/onnx/OnnxSmokeTest.kt) | Machine learning | — | 0 | 1 | 50% |
@@ -1366,4 +1366,4 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `SawOsc` | class | `src/jvmMain/kotlin/afield/audio/synth/Oscillators.kt:113` |
 | `SquareOsc` | class | `src/jvmMain/kotlin/afield/audio/synth/Oscillators.kt:140` |
 
-…and **1922 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
+…and **1923 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
