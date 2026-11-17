@@ -349,6 +349,64 @@ far-outside sentinel, and `levelSet` rethrows once the native call is over: you 
 **not** re-mesh, so put `refined()` in front of it or a 12-triangle cube's eight corners move and
 nothing looks different.
 
+## Backing off some faces: clearance between parts
+
+Parts designed to meet exactly have no room to go together. `insetFaces(distance, except = [...])`
+moves every face of a solid inward by `distance`, except the faces parallel to the planes whose
+normals you name, which stay exactly where they are. Keep the faces parallel to a panel and move the
+rest, and panels that met along their edges get a gap between them without getting any thinner:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/manifold/inset_faces.png" alt="two wide cards stacked, each a cross-section of two panels joined by a lap, the left panel in light blue and the right in orange, each the full thickness except for a tongue half as thick where they overlap: the blue tongue runs under the orange one. 'as designed, sectioned at z = 15' shows them meeting with no gap anywhere. 'the faces that are not parallel to the panels backed off 0.6 mm' shows the same two panels, the same thickness, still resting on each other along the horizontal step between the tongues, but with a narrow dark vertical gap at each of the two risers where they met side on" wait="4" capture="box" open-outputs="true" padding="20" requires="manifold" name="inset_faces" embed=true}
+:::static
+import afield.geometry.solid.manifold.*
+
+// Two 10 mm panels joined by a lap: each has a tongue half as thick, and a's runs under b's. They
+// touch on the step between the tongues and at both risers.
+val a = Solid.cube(60.0, 10.0, 30.0) - Solid.cube(15.0, 5.0, 30.0).translated(45.0, 5.0, 0.0)
+val b = Solid.cube(60.0, 10.0, 30.0).translated(45.0, 0.0, 0.0) - Solid.cube(15.0, 5.0, 30.0).translated(45.0, 0.0, 0.0)
+
+// Keep the faces parallel to the panels; back the others off by 0.6 mm.
+val up = vec(0, 1, 0)
+val clearA = a.insetFaces(0.6, except = [up])
+val clearB = b.insetFaces(0.6, except = [up])
+:::fold measure the gap, then draw a section through both panels
+println("as designed: closest ${a.minGap(b, 5.0).f3} mm, thickness ${a.bounds.size.y.f3} mm")
+println("backed off:  closest ${clearA.minGap(clearB, 5.0).f3} mm, thickness ${clearA.bounds.size.y.f3} mm")
+// Lift b clear of the step to see the gap the risers now have.
+println("at the risers: ${clearA.minGap(clearB.translated(0.0, 2.0, 0.0), 5.0).f3} mm once b is lifted 2 mm")
+
+fun section(part: Solid, colour: Vec4) = part.slice(15.0).toFLines().onEach {
+    it.color = colour
+    it.filled = true
+    it.stroked = false
+}
+
+val blue = vec(0.45, 0.85, 1.0, 0.9)
+val orange = vec(1.0, 0.62, 0.3, 0.9)
+showPlaneGrid(
+    "as designed, sectioned at z = 15" to (section(a, blue) + section(b, orange)),
+    "the faces that are not parallel to the panels backed off 0.6 mm" to
+        (section(clearA, blue) + section(clearB, orange)),
+    columns = 1,
+    cellWidth = 720,
+    cellHeight = 200,
+    yUp = true,
+)
+```
+
+The step the tongues bear on is parallel to the panels, so it stays put and they still rest on each
+other there. Every riser and end face moved back 0.6 mm, so the two panels are 1.2 mm apart wherever
+they met side on. A face counts as parallel when its normal is within `toleranceDegrees` (default 1°)
+of one of the planes, in either direction, so one normal keeps both a panel's top and its bottom. For
+any other rule, pass a function of each face's outward normal instead:
+`part.insetFaces(0.6) { n -> abs(n[1]) < 0.99 }`.
+
+Corners stay sharp: every vertex goes to where its planes meet once the moved ones have shifted, the
+same construction as `Section.offset` with `JoinType.MITER`, and a kept face grows or shrinks to meet
+the faces beside it. `distance` has to be smaller than the part's narrowest feature across a moved
+face. Two pieces of one part that only meet along an edge come apart, since no inset can keep an edge
+contact.
+
 ## Back down to 2D: slicing
 
 `slice(z)` is a real cross section, not a silhouette — the primitive under every fabrication path.
