@@ -86,7 +86,7 @@ enum ThreeMeshBuilder {
         let mesh: (MeshResource, [any RealityKit.Material])?
         switch drawable.kind {
         case .surface: mesh = surface(drawable, built: &built)
-        case .lines: mesh = lines(drawable, built: &built)
+        case .lines: mesh = lines(drawable, diag: diag, built: &built)
         case .points: mesh = points(drawable, radius: diag * 0.004, built: &built)
         }
         guard let (resource, materials) = mesh else { return nil }
@@ -277,6 +277,28 @@ enum ThreeMeshBuilder {
         return m
     }
 
+    /// `LineOffset.usda`, loaded once at launch by [loadLineMaterial]; `nil` until then, or if it failed.
+    @MainActor static var lineTemplate: ShaderGraphMaterial?
+
+    @MainActor
+    static func loadLineMaterial() async {
+        do { lineTemplate = try await ShaderGraphMaterial(named: "/Root/LineOffset", from: "LineOffset.usda", in: .main) }
+        catch { print("LineOffset.usda did not load, lines fall back to UnlitMaterial: \(error)") }
+    }
+
+    /// Lines lying on a surface (`edges = true`) fight it for depth and shimmer, and RealityKit has no
+    /// polygon offset: this material moves each vertex [offset] model units toward the eye, so a line
+    /// wins against the face it lies on and nothing else. Plain unlit if the graph did not load.
+    @MainActor
+    private static func lineMaterial(_ c: SIMD4<Float>, offset: Float) -> any RealityKit.Material {
+        guard var m = lineTemplate else { return unlit(c) }
+        try? m.setParameter(name: "color", value: .color(CGColor(red: CGFloat(c.x), green: CGFloat(c.y), blue: CGFloat(c.z), alpha: 1)))
+        try? m.setParameter(name: "opacity", value: .float(max(c.w, 0)))
+        try? m.setParameter(name: "offset", value: .float(offset))
+        m.faceCulling = .none
+        return m
+    }
+
     private static func unlit(_ c: SIMD4<Float>) -> any RealityKit.Material {
         var m = UnlitMaterial(color: UIColor(red: CGFloat(c.x), green: CGFloat(c.y), blue: CGFloat(c.z), alpha: 1))
         if c.w < 0.999 { m.blending = .transparent(opacity: .init(floatLiteral: max(c.w, 0))) }
@@ -289,7 +311,7 @@ enum ThreeMeshBuilder {
     /// Segments as a `LowLevelMesh` line list: one pixel wide at any distance, as sharp as the
     /// bounding cage. (Swept tubes had a world-space radius, so they read thick close up.)
     @MainActor
-    private static func lines(_ d: ThreeDrawable, built: inout Built) -> (MeshResource, [any RealityKit.Material])? {
+    private static func lines(_ d: ThreeDrawable, diag: Float, built: inout Built) -> (MeshResource, [any RealityKit.Material])? {
         let g = d.geometry
         let opacity = d.style.opacity ?? 1
         var keys: [UInt32: Int] = [:]
@@ -311,20 +333,8 @@ enum ThreeMeshBuilder {
             segments[bucket].append(g.positions[a]); segments[bucket].append(g.positions[b])
             built.segments += 1
         }
-        // RealityKit has no polygon offset, so lines lying on a surface (`edges = true`) fight it for
-        // depth and shimmer. Push every line a hair out from its own centre, as the web viewer pushes
-        // surfaces back: 0.2% of the lines' extent, too little to see as a gap.
-        var lo = SIMD3<Float>(repeating: .infinity), hi = -lo
-        for part in segments { for v in part { lo = simd_min(lo, v); hi = simd_max(hi, v) } }
-        if lo.x <= hi.x {
-            let centre = (lo + hi) / 2, eps = 0.002 * simd_length(hi - lo)
-            segments = segments.map { $0.map { v in
-                let d = v - centre, len = simd_length(d)
-                return len > 0 ? v + d / len * eps : v
-            } }
-        }
         guard let resource = lineList(segments) else { return nil }
-        return (resource, colors.map(unlit))
+        return (resource, colors.map { lineMaterial($0, offset: diag * 0.002) })
     }
 
     /// Endpoint pairs, one list per material, as a single line-topology mesh with a part per list.
