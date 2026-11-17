@@ -50,7 +50,10 @@ LONG_TRANSCRIPT_SECONDS = 900
 # refreshes on 2026-11-14 and captured cleanly in the run between.
 # The browser-side freeze budget per channel on an idle machine (`publication-capture.js`).
 CAPTURE_BUDGET_SECONDS = 60
-TRANSIENT_CAPTURE_ERRORS = ("Output capture exceeded", "ConnectionClosedError", "code=1006", "TimeoutError")
+# An output frame that had not loaded in its wait is the same kind (three_output_gallery, 2026-11-16,
+# at load ~100; it captured in the two refreshes before).
+TRANSIENT_CAPTURE_ERRORS = ("Output capture exceeded", "ConnectionClosedError", "code=1006", "TimeoutError",
+                            "Output frame did not finish loading")
 # The backdoor's refusal when another checkout's Field answers the port this one started on.
 PORT_COLLISION = "is answered by a Field this session did not start"
 PORT_COLLISION_ATTEMPTS = 3

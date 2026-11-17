@@ -253,7 +253,8 @@ export async function captureOutputs(sources, {fontCss = '', three = null, progr
         }
         try {
             api?.open(source.channel);
-            await waitForContent(root, Date.now() + 12000);
+            // The wait for a channel to render scales with the freeze budget: 12 s at the default 60 s.
+            await waitForContent(root, Date.now() + captureBudgetMs / 5);
             entry.width = Math.max(160, Math.min(4096, root.offsetWidth || 640));
             entry.height = Math.max(40, Math.min(8192, root.offsetHeight || 420));
             const ctx = {resources, warnings:new Set(), kinds:new Set(), nodes:0, budgetMs:captureBudgetMs, deadline:Date.now() + captureBudgetMs, fontCss, three};
