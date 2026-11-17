@@ -6,7 +6,7 @@ import {load, dump, CORE_SCHEMA} from './vendor/js-yaml/js-yaml.mjs';
 
 // Text belongs to the box. DOM, editing state and uncommitted conflict drafts are local to a view.
 const frames = new Map();
-const defaults = {fontFamily: '"Field Etoile", serif', fontSize: 18, fontWeight: 400, lineHeight: 1.5, padding: 16, sizing: 'grow', connectionBorderLength: 100, autocomplete: false, minHeight: 80, reflow: true};
+const defaults = {fontFamily: '"Field Etoile", serif', fontSize: 11, fontWeight: 400, lineHeight: 1.5, padding: 16, sizing: 'grow', connectionBorderLength: 100, autocomplete: false, minHeight: 80, reflow: true};
 const node = (tag, cls, text) => {
     const result = document.createElement(tag);
     result.className = cls;

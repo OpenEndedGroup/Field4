@@ -8,14 +8,14 @@
 @font-face { font-family: "Field Etoile"; src: url("woff2/field-etoile-light-italic.woff2") format("woff2"); font-style: italic; font-weight: 300; font-display: swap; }
 .box.text-frame-box {
     --text-frame-font: "Field Etoile", serif;
-    --text-frame-size: 18px;
+    --text-frame-size: 11px;
     --text-frame-weight: 400;
     --text-frame-leading: 1.5;
     --text-frame-padding: 16px;
     background: var(--field-bg, #080808) !important;
     color: var(--field-box-fg, #ddd);
     border: 1px solid var(--field-border, #555) !important;
-    border-radius: 3px !important;
+    border-radius: 5px !important;
     box-sizing: border-box;
 }
 .box.text-frame-box.tombstoned { display: none !important; }
@@ -25,6 +25,8 @@
 .text-frame-box button:hover, .text-frame-box button:focus-visible { border-color: currentColor; }
 .text-frame-body { position: absolute; inset: 0; overflow: hidden; }
 .text-frame-preview, .text-frame-editor { box-sizing: border-box; width: 100%; height: 100%; padding: var(--text-frame-padding); margin: 0; font-family: var(--text-frame-font); font-stretch: normal; font-feature-settings: normal; font-size: var(--text-frame-size); font-weight: var(--text-frame-weight); line-height: var(--text-frame-leading); color: inherit; overflow-wrap: anywhere; }
+.text-frame-preview .ai-chat-markdown { font: inherit; color: inherit; }
+.text-frame-preview :is(h1, h2, h3, h4, h5, h6) { font-family: inherit; }
 .text-frame-preview { overflow: hidden; user-select: text; cursor: text; }
 .text-frame-preview > :first-child { margin-top: 0; }
 .text-frame-preview > :last-child { margin-bottom: 0; }
@@ -41,15 +43,15 @@
 .text-frame-preview td, .text-frame-preview th { border: 1px solid #555; padding: .3em .5em; }
 .text-frame-preview .ai-chat-code-header { display: none; }
 .text-frame-empty { opacity: .45; font-size: 14px; }
-.text-frame-editor { display: block; resize: none; border: 0; outline: 0; border-radius: 0; background: transparent; overflow: auto; user-select: text; font-family: var(--field-editor-font-family, "Iosevka Web"), monospace; font-size: var(--field-editor-font-size, 15px); font-weight: var(--field-editor-font-weight, 300); line-height: var(--field-editor-line-height, 21px); font-feature-settings: var(--field-editor-font-features, normal); }
+.text-frame-editor { display: block; resize: none; border: 0; outline: 0; border-radius: 0; background: transparent; overflow: auto; user-select: text; font-family: var(--field-editor-font-family, "Iosevka Web"), monospace; font-size: 12px; font-weight: var(--field-editor-font-weight, 300); line-height: 18px; font-feature-settings: var(--field-editor-font-features, normal); }
 .text-frame-overflow { position: absolute; bottom: 4px; right: 4px; z-index: 2; }
 .text-frame-conflict { position: absolute; bottom: 4px; right: 6px; width: 250px; padding: 12px; background: var(--field-bg, #080808); border: 1px solid #777; z-index: 20; font: 13px var(--field-font, monospace); color: inherit; user-select: text; }
 .text-frame-conflict span { display: block; margin-bottom: 8px; }
 .text-frame-box [hidden] { display: none !important; }
 /* The writing is the canvas object; its frame and chrome appear when selected or being edited. */
 .box.text-frame-box { border-color: var(--text-frame-border, transparent) !important; background: var(--text-frame-background, transparent) !important; backdrop-filter: none !important; }
-.box.text-frame-box.selected, .box.text-frame-box.text-frame-editing { border-color: var(--text-frame-border, #888) !important; }
-.box.text-frame-box.text-frame-editing { background: #000 !important; }
+.box.text-frame-box.selected { border-color: var(--text-frame-border, var(--field-box-selected-border)) !important; }
+.box.text-frame-box.text-frame-editing { background: #000 !important; border-color: transparent !important; }
 /* The formatted preview remains measurable while editing, without painting or receiving input. */
 .box.text-frame-box.text-frame-editing .text-frame-preview[hidden] { display: block !important; visibility: hidden; position: absolute; inset: 0; pointer-events: none; }
 .text-frame-editing .text-frame-editor { position: absolute; inset: 0; }
