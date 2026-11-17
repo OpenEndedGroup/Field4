@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-17T14:27:04.315Z",
+  "capturedAt": "2026-11-17T23:14:24.140Z",
   "documentName": "stippling",
   "outputs": [
     {
@@ -41,7 +41,7 @@
       "kinds": [
         "plotly"
       ],
-      "width": 720,
+      "width": 712,
       "height": 458,
       "path": "outputs/3.html"
     }

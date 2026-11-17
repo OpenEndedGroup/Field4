@@ -6,72 +6,6 @@
       "error": "{\"success\": false, \"message\": \"Ran macro 'flow_lenia': applied=14 skipped=0 errors=0. Execution failed: Box interrupted: Runloop stalled 273525 ms in '3 \\u2014 The parameter field blending (MEAN mixing)' (flow_lenia_drift) (watchdog)\", \"name\": \"flow_lenia\", \"operationCount\": 14, \"direction\": \"do\", \"applied\": 14, \"output\": [{\"uid\": \"flow_lenia_conservation\", \"line\": 13, \"html\": \"<div class='value-viz afield-appendable-output' style='font-family: \\\"Iosevka Web\\\", monospace; font-size: 12px; color:",
       "since": "2026-11-17"
     },
-    "assets/agent_transcripts/stacktrinket_feedback/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/staged_project/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/statistics_examples/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/stencil_bridges/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/stereo_rtt_composite/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/stipple_sheet/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/stippling/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/studies_rings/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/teaching_a_pen/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/three_inspector_wall/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "8ca26f3844345c6e7e29c7844d0aa5a8e67348467dae06f3a288c218afe53f85",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/threebox/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
     "assets/agent_transcripts/two_box_context/metadata.edn": {
       "attempts": 0,
       "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
@@ -147,12 +81,6 @@
     "assets/agent_transcripts/youtube_vr_browser/metadata.edn": {
       "attempts": 0,
       "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/three_output_gallery/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "8ca26f3844345c6e7e29c7844d0aa5a8e67348467dae06f3a288c218afe53f85",
       "error": "not tried: a landing defers digest-only pages to the publication catch-up",
       "since": "2026-11-17"
     }
@@ -5298,13 +5226,13 @@
       }
     },
     "assets/agent_transcripts/stacktrinket_feedback/metadata.edn": {
-      "captureDigest": "aaa64f59f3bd08f0c6c6c24821b783f71a13d8daf22ddaa23dc1523bcc6bc322",
-      "capturedAt": "2026-11-17T10:26:33.466Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T23:13:03.656Z",
       "channels": 2,
       "file": "assets/web_publications/stacktrinket_feedback/document/metadata.edn",
       "files": {
-        "assets/web_publications/stacktrinket_feedback/document/metadata.edn": "4c0091bbd61bca6e4d13c68a3c0260d199fe3ea9ac38a9820ea7669b579f768b",
-        "assets/web_publications/stacktrinket_feedback/document/outputs.json": "2dab23dc1632f229a158c6a86cd75801eb1cfe6a10b8b54899ef028a1a414c60",
+        "assets/web_publications/stacktrinket_feedback/document/metadata.edn": "6db9b1e4d5faa76a80459d0e01937a8199bed1a59cfd77ea73b00f3cb2f62a37",
+        "assets/web_publications/stacktrinket_feedback/document/outputs.json": "030d45b072927ec586f8f58be81781d116914720253eb9ca875db41841a1c6f0",
         "assets/web_publications/stacktrinket_feedback/outputs/0.html": "1bb4016cbd60e516d25378f0128a9b0278db7c7098ed6cd1070c80af917b44de",
         "assets/web_publications/stacktrinket_feedback/outputs/1.html": "67b7a016ba4e0c66349aa06e3560a6655c659ae1b0741185111b6f1f2216ce90"
       },
@@ -5352,18 +5280,18 @@
       ]
     },
     "assets/agent_transcripts/staged_project/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T14:11:53.835Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T23:13:24.017Z",
       "channels": 5,
       "file": "assets/web_publications/staged_project/document/metadata.edn",
       "files": {
-        "assets/web_publications/staged_project/document/metadata.edn": "169464454751e067b3761836d4b7f96e5a87bbf0a148676d5b499ed8a44d3af6",
-        "assets/web_publications/staged_project/document/outputs.json": "f43b44a990385d5b70886c58abcc677b9f7236b0cc9cdb4049d1d2ab9c7079b2",
-        "assets/web_publications/staged_project/outputs/0.html": "064ca818ae5db7700cbc636f949f37c019e6efc2e60b2758cb1bf8f0ee059ef9",
-        "assets/web_publications/staged_project/outputs/1.html": "1b1925ed4eddf1421b22a358991dd162836df96c4dec8635b64018fc2be6b7da",
-        "assets/web_publications/staged_project/outputs/2.html": "c7ec71dc197651bd0cdd3578129f1379ad4f55bb613d1da32d591b8d0c69555d",
-        "assets/web_publications/staged_project/outputs/3.html": "af9e57427a9e58a08000fd47ba1e495b0bb3273df0e744792941f81a9b8be3dd",
-        "assets/web_publications/staged_project/outputs/4.html": "01de6661b51dbe22054c70a2798fdea7ad7b09ff81d9396af1e9e708fa1e59ab"
+        "assets/web_publications/staged_project/document/metadata.edn": "e9d7a9ec54daf4babc577fe3ab58ff122afcc6369531b1a22a5f612be5db6971",
+        "assets/web_publications/staged_project/document/outputs.json": "aaea45488dbeb0125b1d89b39e71aa8b8ca8419050245dd81d049184f0d1f774",
+        "assets/web_publications/staged_project/outputs/0.html": "d02b6df71989c956fcfa6fa7653a91f29ef5d38b5b73e6333c3445930c42375a",
+        "assets/web_publications/staged_project/outputs/1.html": "b443ce774b9614f346408fdf1db49da2dd50e607569a3205347ab08fbd1fa3ab",
+        "assets/web_publications/staged_project/outputs/2.html": "4d7b976e6e936dd413496a8edce4b9b74b353bf172fd536472c6233be4ffb861",
+        "assets/web_publications/staged_project/outputs/3.html": "2ca9d550198c419154a9eff0115f9e79c9cf639ddf9104f032b1774dc54753e8",
+        "assets/web_publications/staged_project/outputs/4.html": "a635541b85726ab57771d9414473f4907905d997faee62f86601103037281d47"
       },
       "kinds": [
         "svg"
@@ -5381,20 +5309,20 @@
       }
     },
     "assets/agent_transcripts/statistics_examples/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T14:55:04.914Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T23:14:02.515Z",
       "channels": 7,
       "file": "assets/web_publications/statistics_examples/document/metadata.edn",
       "files": {
-        "assets/web_publications/statistics_examples/document/metadata.edn": "dbe446622d228c83c1c6aaafc2acceb7bbd2e02c8c8ae7be24db3ec4d98d9a6c",
-        "assets/web_publications/statistics_examples/document/outputs.json": "34b60379f82751d828d2cb16f51837346857395acf8e784951de942c89c36a8d",
-        "assets/web_publications/statistics_examples/outputs/0.html": "adea2d62604a9373db91608d07cac54896083ae3c66acf4be745ef5589c8e8bf",
-        "assets/web_publications/statistics_examples/outputs/1.html": "2242799547f0fde6d06a3e6f90e9bbdafd87fe24e15a22fc95f7771c39d55889",
-        "assets/web_publications/statistics_examples/outputs/2.html": "3ecfbcb56d18199152c7627a58ece0ef6e2ec984033d1aa3f4d601062fb4f512",
-        "assets/web_publications/statistics_examples/outputs/3.html": "86b36609455fc3b16b7d9b0b51642a393723ff486bb40b6ae08458da7b9bdc39",
-        "assets/web_publications/statistics_examples/outputs/4.html": "4e36760406307661573fbf17fd1140fca8117c8bf8543c458af2aa0f91205436",
-        "assets/web_publications/statistics_examples/outputs/5.html": "06ee9e7515f5ed47cdca327501db1b8d61d4f0a5972c308e6756280c96ef04c2",
-        "assets/web_publications/statistics_examples/outputs/6.html": "80768961963bb43ba701cbb100c9fa01730df23110483a519ad88cf6542a89bd"
+        "assets/web_publications/statistics_examples/document/metadata.edn": "e0b0c51f93197100f79aab88f9453ffaf201cd26b20e29dbe118fef7d52fc80c",
+        "assets/web_publications/statistics_examples/document/outputs.json": "0dff2d846aeb0d9a86e2ac6717a94ad771c9e36d46689b5c7e2dd567cf1cbb56",
+        "assets/web_publications/statistics_examples/outputs/0.html": "d6c143b8cff0162b22f5d7738c946f314a5227f1b81cee190914207824c0453e",
+        "assets/web_publications/statistics_examples/outputs/1.html": "c9cfd3a1f1d9064a58339c5952fe837709d254f970a6ea65e87247eda6adb076",
+        "assets/web_publications/statistics_examples/outputs/2.html": "3a84b8b0349cfe00924e28ee9ce70e67f31296e28c80956f6067850e3636c92a",
+        "assets/web_publications/statistics_examples/outputs/3.html": "c3b41955589731876a99353310711e94748990ca974bf5bbb30eb6fc9d848d66",
+        "assets/web_publications/statistics_examples/outputs/4.html": "8e67eaa1e035ce81f120657e438804726a1d91a7bc8bb6e321e04b03ee3290b6",
+        "assets/web_publications/statistics_examples/outputs/5.html": "0ea2e1c9eb243f69c9525fb5ed297f42f8e8430acede763b587e442f74d7c63f",
+        "assets/web_publications/statistics_examples/outputs/6.html": "eefbd754071d679232271d5e9d01655b0b90725a5346b0b99e487fa9829ad2b6"
       },
       "kinds": [
         "plotly",
@@ -5413,17 +5341,17 @@
       }
     },
     "assets/agent_transcripts/stencil_bridges/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T14:21:00.742Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T23:14:07.373Z",
       "channels": 4,
       "file": "assets/web_publications/stencil_bridges/document/metadata.edn",
       "files": {
-        "assets/web_publications/stencil_bridges/document/metadata.edn": "e6e98d76870fe44ca50ba33dbc7c30564fff261c1282618dd7beae1e92b602a6",
-        "assets/web_publications/stencil_bridges/document/outputs.json": "6ff8272f4408e8f70253790b4b7943ef95df75833890e62b83ea28df519056e6",
-        "assets/web_publications/stencil_bridges/outputs/0.html": "84b9fe582f68068108b73459edda47593dce00d7932f6af2e32ad7f86daef582",
-        "assets/web_publications/stencil_bridges/outputs/1.html": "300950b6e16243320a0eba90d2f70f8e9b75e741890daea5b93df91d2ed25286",
-        "assets/web_publications/stencil_bridges/outputs/2.html": "b21581e7678e17497fe1534c053d21322e7c31ceb006a67352384b7bfa0a937d",
-        "assets/web_publications/stencil_bridges/outputs/3.html": "aa3224fef19fe4271e24aa332dd252e3ce9619262f65b118ea0774566001fcbd"
+        "assets/web_publications/stencil_bridges/document/metadata.edn": "25f657d1a951535126f00c9f2ff37c4d3be737cccd720781e291cd2e2c14d9fe",
+        "assets/web_publications/stencil_bridges/document/outputs.json": "6edd855fb049eb1fed37dcb6d1958074c4a09fe12664ce25f0406544a6bb26c9",
+        "assets/web_publications/stencil_bridges/outputs/0.html": "db64eaa552d5dc6c9b49571342faf74b8375c16885539a9ba37cc150955d0759",
+        "assets/web_publications/stencil_bridges/outputs/1.html": "7cf633f40b5865ba2a959289825e9fda5e057c749ab31c37877db287c2d7bf0b",
+        "assets/web_publications/stencil_bridges/outputs/2.html": "c21b8c274c4c7c08abf737c0c3eb53eb2156d4bf4d87be68e10167277bd6c881",
+        "assets/web_publications/stencil_bridges/outputs/3.html": "0ab9c60c23baec5fc3884669b4ecfcf44df75841cf9b0fed1ec8c45729dde634"
       },
       "kinds": [
         "svg"
@@ -5439,13 +5367,13 @@
       }
     },
     "assets/agent_transcripts/stereo_rtt_composite/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:30:00.305Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T23:14:10.700Z",
       "channels": 1,
       "file": "assets/web_publications/stereo_rtt_composite/document/metadata.edn",
       "files": {
-        "assets/web_publications/stereo_rtt_composite/document/metadata.edn": "f519f6cc50e6c5e2df33149d75de08b43a9533511b9089be91c9011f45e69530",
-        "assets/web_publications/stereo_rtt_composite/document/outputs.json": "5023b9b69b9f029191f7e67421a65b95f2fab6503a74022234903138da09db10",
+        "assets/web_publications/stereo_rtt_composite/document/metadata.edn": "f42fab476ef69658ca406b1a81d4402f23a9e7696b450825922d4bede8ade8d9",
+        "assets/web_publications/stereo_rtt_composite/document/outputs.json": "d72ca92e46b67da19fa5d7647186f803d0d32bb9a54ac37f7c7b6f51727adc47",
         "assets/web_publications/stereo_rtt_composite/outputs/0.html": "58f72468bd67b80700399dc87b08b94633a36c3af59dca4d50805ed77e4f8e31"
       },
       "kinds": [
@@ -5476,16 +5404,16 @@
       ]
     },
     "assets/agent_transcripts/stipple_sheet/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:13:23.434Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T23:14:16.347Z",
       "channels": 3,
       "file": "assets/web_publications/stipple_sheet/document/metadata.edn",
       "files": {
-        "assets/web_publications/stipple_sheet/document/metadata.edn": "7d94a73808f7a439a44ab08b04ec32ebdb4b3753d2a07d53e3746ef797608ca2",
-        "assets/web_publications/stipple_sheet/document/outputs.json": "28869756abf1f01d21099baa71b7ec3186f98e976a7a7281d635239f615f125a",
-        "assets/web_publications/stipple_sheet/outputs/0.html": "d692e44aeae1d819e1ed619b5089e3407e9c0c5cee2d126ca6ad5bd971dbd2c7",
-        "assets/web_publications/stipple_sheet/outputs/1.html": "b610d6b7ac5a318ddb643c53d314f3f3427f2eb429674ee53035254bc8512e32",
-        "assets/web_publications/stipple_sheet/outputs/2.html": "c6eb93e886148fef17ff4f753d289d7c7cede700a1cb2d46cf1ea5826a8c09f3"
+        "assets/web_publications/stipple_sheet/document/metadata.edn": "8225bc7c1bca39f6557d555b72cd8e8d25a865ecaf6ac27493baa618b42dedd7",
+        "assets/web_publications/stipple_sheet/document/outputs.json": "83c1f29c7f6fd586192c4c0fb39e45139f4598ba1adad0441172cc72adee7a59",
+        "assets/web_publications/stipple_sheet/outputs/0.html": "cb8ab97f27848841b716ef894642f790e02d4bdac5319bba6fa0f1a5e9a58562",
+        "assets/web_publications/stipple_sheet/outputs/1.html": "aec8248385f6121722d38cf68558dda25a3c5c161ec7335075c168cf384eaabd",
+        "assets/web_publications/stipple_sheet/outputs/2.html": "773c69da42b622b5e131aaf4beb563a33b43e41c4825bec2a789a02413205d9b"
       },
       "kinds": [
         "svg"
@@ -5499,17 +5427,17 @@
       }
     },
     "assets/agent_transcripts/stippling/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T14:27:04.315Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T23:14:24.140Z",
       "channels": 4,
       "file": "assets/web_publications/stippling/document/metadata.edn",
       "files": {
-        "assets/web_publications/stippling/document/metadata.edn": "c0659d0c570d45a232cd9bb98b69c8a07c4e9509a387a10a08bf76363177b430",
-        "assets/web_publications/stippling/document/outputs.json": "4ebd7d765810a30c6ced13214b5c86f9547a160bbb3f8e4a96285b4133967002",
-        "assets/web_publications/stippling/outputs/0.html": "47160dc48454c4f22342c67dfa2da0d1c8c45ed401676a7868170613dcba4654",
-        "assets/web_publications/stippling/outputs/1.html": "8d1380b3ebf37fa4107e9a9123f055238fe873c9322a3972da60e1628543cbda",
-        "assets/web_publications/stippling/outputs/2.html": "a88ea6c81ca4eb9ad22e33936b01a4c9e8cfd20ff02ab7998defe56d325a60dd",
-        "assets/web_publications/stippling/outputs/3.html": "4f6565006cfd6e906bbe5c276fa2419cbf05d5cad374a73446ae6ad595025e72"
+        "assets/web_publications/stippling/document/metadata.edn": "ba532300a3abead64284c1821e0cedaaf6846370a53086a3f4e9dbd07a875098",
+        "assets/web_publications/stippling/document/outputs.json": "d8034c78c98ac8aa0f8d51e8edeb3f8e9e8c3ea102246ebf95cfac6350339b51",
+        "assets/web_publications/stippling/outputs/0.html": "4d30fa977b0bfaefb9f30856af0dc3ba56c31908cd30cdcdb4f188c39702ac72",
+        "assets/web_publications/stippling/outputs/1.html": "f7f310f230498defe0b8d1f817eee0baa096669004d28de1ac9b821982a52898",
+        "assets/web_publications/stippling/outputs/2.html": "728f0821a493d14b09152f099e4fe62358cc0306b4360ba1c513f4f455cb10b9",
+        "assets/web_publications/stippling/outputs/3.html": "7fcfffc57792dd6141258e3bffc64dadc5b2fea52eefcccc83f3801a84f75fba"
       },
       "kinds": [
         "plotly"
@@ -5524,15 +5452,15 @@
       }
     },
     "assets/agent_transcripts/studies_rings/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T14:18:37.534Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T23:14:28.942Z",
       "channels": 2,
       "file": "assets/web_publications/studies_rings/document/metadata.edn",
       "files": {
-        "assets/web_publications/studies_rings/document/metadata.edn": "9e1255e48ede7d6fa73a1acd73e9c2a16d7ef01ae1da88c4446fddfde15a08ce",
-        "assets/web_publications/studies_rings/document/outputs.json": "4ec13f287c1d278bb71050e2066cee0692f34e41ce159beaf80d0135ed34e444",
-        "assets/web_publications/studies_rings/outputs/0.html": "b29073030212969f33192facb6e89b3af0c0e6d916432ccdeffd520a7f738225",
-        "assets/web_publications/studies_rings/outputs/1.html": "af6b4b0d14f94fbd7be240096591dbfed938936905bb1150156573196f871043"
+        "assets/web_publications/studies_rings/document/metadata.edn": "4f48c939bbeb52a41022529b336c65a20a3692e2d7459e25a4666672ef39f018",
+        "assets/web_publications/studies_rings/document/outputs.json": "c6460bc83bd6f67f4ed62da9e3e1862a7c1551ac2f2e4891f72b43f92d963d5b",
+        "assets/web_publications/studies_rings/outputs/0.html": "baa968410c83d09e624815873263504f6918451f58034d93156948986b07291a",
+        "assets/web_publications/studies_rings/outputs/1.html": "f51081712054332c26efe0c178377685ca3aecce2abef5f3f98e6efead37185a"
       },
       "kinds": [],
       "outputs": "assets/web_publications/studies_rings/document/outputs.json",
@@ -5546,20 +5474,20 @@
       }
     },
     "assets/agent_transcripts/teaching_a_pen/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:14:26.218Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T23:15:02.334Z",
       "channels": 7,
       "file": "assets/web_publications/teaching_a_pen/document/metadata.edn",
       "files": {
-        "assets/web_publications/teaching_a_pen/document/metadata.edn": "fa8c914152e5fc4e7bd3a7fb8d6fbe62282dafa0c1dcd2c99beab6a97af67a6b",
-        "assets/web_publications/teaching_a_pen/document/outputs.json": "ebef033b723f6c924ab038a02d662ba9573169fe3aab84b03143b48b73c7b19a",
-        "assets/web_publications/teaching_a_pen/outputs/0.html": "1b1801f66e1fd1ef5b05c9b398fc51a7a5dd4d12be67c8bb0cbd77d3edc3ea2c",
-        "assets/web_publications/teaching_a_pen/outputs/1.html": "4a8f34b5b0dca6d423bba7086d427c3aeba931ceacd385afb3b6cfd9cdab245d",
-        "assets/web_publications/teaching_a_pen/outputs/2.html": "0ce17ba4da00c3db13039d4735f41f2ec24da1efb3b36b3c2a1ff745259b972a",
-        "assets/web_publications/teaching_a_pen/outputs/3.html": "7e5f591de4b2e1cadc1c1b31c2d88e50d029a438fb3b55547c797833265a2ca4",
-        "assets/web_publications/teaching_a_pen/outputs/4.html": "4323eb4db221f7ff907bbf819e69753c5caba11a55d6b7bbb2d06699d0972883",
-        "assets/web_publications/teaching_a_pen/outputs/5.html": "f4080149d4a93cac99fb32844354a4aac804eca29cf4c5702e2e6f8519307bac",
-        "assets/web_publications/teaching_a_pen/outputs/6.html": "4ad33bd99cd5e61e4cd1257a7a101933f29ba0baae6b475296fc2261f19e41ae"
+        "assets/web_publications/teaching_a_pen/document/metadata.edn": "dc38328b2a743bfb2980ac6b3a83b7cc7297e24d33cb4187862482e48a8adef8",
+        "assets/web_publications/teaching_a_pen/document/outputs.json": "6ed1a09952c9a018e2ce3363d3e2c622343e36ddd62b9dbd0e74205516717666",
+        "assets/web_publications/teaching_a_pen/outputs/0.html": "91ac4026f8cff4c04101eb4d84d84abd7eaf09bc8e15ab462758ebd0c73c33c1",
+        "assets/web_publications/teaching_a_pen/outputs/1.html": "8c72cc1b295337765bb70d163eabd3b2e8d22f89a862bc5b8e3aabdbd05872ce",
+        "assets/web_publications/teaching_a_pen/outputs/2.html": "5ef7d1b0ed3ec5b1d4abffaf9a684543da68051f9013f520020c454dc7ceea15",
+        "assets/web_publications/teaching_a_pen/outputs/3.html": "09a00355f92445afd291d6f0106d90250ebe865ec0e5261367d7430bedb00fef",
+        "assets/web_publications/teaching_a_pen/outputs/4.html": "c2be9d0eb327c364be2b0e4bbce9ca20e51793b6376aa90bfc802460f4d5a10a",
+        "assets/web_publications/teaching_a_pen/outputs/5.html": "d28c5dee8342b2d37240f36527ea6239231711d172fa530871d7aad195ae9366",
+        "assets/web_publications/teaching_a_pen/outputs/6.html": "b18368bd096b871078260b019c5ee2c2b10d5c69b9030bea70a61bd423027428"
       },
       "kinds": [
         "svg"
@@ -5602,14 +5530,14 @@
       }
     },
     "assets/agent_transcripts/three_inspector_wall/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:13:16.491Z",
+      "captureDigest": "8ca26f3844345c6e7e29c7844d0aa5a8e67348467dae06f3a288c218afe53f85",
+      "capturedAt": "2026-11-17T23:15:04.913Z",
       "channels": 1,
       "file": "assets/web_publications/three_inspector_wall/document/metadata.edn",
       "files": {
-        "assets/web_publications/three_inspector_wall/document/metadata.edn": "fb992b84fbce7a5bd8afeb574bf4375bfe1a8af43c6642611be86577d7c8801d",
-        "assets/web_publications/three_inspector_wall/document/outputs.json": "4303af4088789afcea5ec206aebbc05dfc9e4cc0fe3c0c8c02f17f5bc146737e",
-        "assets/web_publications/three_inspector_wall/outputs/0.html": "72d26b5ae3e0428bac0b8599b7556b30fe34970b2927bd488e4add535e8af14f"
+        "assets/web_publications/three_inspector_wall/document/metadata.edn": "42a7780afcb0b9d5ab826dde927f62ed1d3841808ba996cafd4c8cc6198d7ad5",
+        "assets/web_publications/three_inspector_wall/document/outputs.json": "41ee93f0774cb99bc2b2fe1f10bcd94999d43aaa5fb0bebfd88775e235c32b5c",
+        "assets/web_publications/three_inspector_wall/outputs/0.html": "d38b357873e48d8fb13452c94831224b8a2aad0b264221c7b037503a6a3d2f93"
       },
       "kinds": [
         "three"
@@ -5624,13 +5552,13 @@
       }
     },
     "assets/agent_transcripts/threebox/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:27:22.484Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T23:15:21.498Z",
       "channels": 1,
       "file": "assets/web_publications/threebox/document/metadata.edn",
       "files": {
-        "assets/web_publications/threebox/document/metadata.edn": "cccf372854ce9f5df66b0149b00263cba49e0b43c54c570e3f9e78cbb4171a0f",
-        "assets/web_publications/threebox/document/outputs.json": "9562bc3d293751090383e1f6eb7336d7405c8c223c219f6ba33cba36f5da7467",
+        "assets/web_publications/threebox/document/metadata.edn": "5921de2152d1bf8f515fe03a67887248fb6db61e0142424e17742fc21b8a9c6d",
+        "assets/web_publications/threebox/document/outputs.json": "3289907abf66b6392addb29effb4b2b284f96d5d6366bb4beb83a46e20074203",
         "assets/web_publications/threebox/outputs/0.html": "845b72f6e5bcc73ab4319b6eb4a9783ed585192f04876443f0a1915515acb9d7"
       },
       "kinds": [
@@ -6489,21 +6417,21 @@
       }
     },
     "assets/three_output_gallery/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T13:48:44.637Z",
+      "captureDigest": "8ca26f3844345c6e7e29c7844d0aa5a8e67348467dae06f3a288c218afe53f85",
+      "capturedAt": "2026-11-17T23:15:17.124Z",
       "channels": 8,
       "file": "assets/web_publications/three_output_gallery/document/metadata.edn",
       "files": {
-        "assets/web_publications/three_output_gallery/document/metadata.edn": "5b74d2f4276b2956c872226e062ce88efac66bc0597035f93029cf9a37cb31ba",
-        "assets/web_publications/three_output_gallery/document/outputs.json": "ec5238acc56312c9a7f6b70019905dd43793b29d4737715b03552f0419846db9",
-        "assets/web_publications/three_output_gallery/outputs/0.html": "8d5580618c2fb0c2f94b5d83d35411bd99fb2f798f9b0d60340a6f4c7de15747",
-        "assets/web_publications/three_output_gallery/outputs/1.html": "1aa859dbf1b21a4d36ff64431e61ec70a0986eb1ac95a7ab05bebc3b35fa01cf",
-        "assets/web_publications/three_output_gallery/outputs/2.html": "6676328871f2364f35043dde1947790357fc5c002834a356f760aefe4674b1bf",
-        "assets/web_publications/three_output_gallery/outputs/3.html": "10c5d085e26045d1cb7a013f44cfdc17f98e7e65c34027e9b0a6e86e75fd5fcf",
-        "assets/web_publications/three_output_gallery/outputs/4.html": "8ce8a227f2b9034410528a96de2490e4921325ed39297268b3fbfff46828421d",
-        "assets/web_publications/three_output_gallery/outputs/5.html": "1e1cff92b5eb32c336a3a0ca84b858547f5961d55ffac050b1eae98ca2ee7e3a",
-        "assets/web_publications/three_output_gallery/outputs/6.html": "facd9da52429f65291826a860724f7609b48ec7a6ced7357ef0d152c70d29d0b",
-        "assets/web_publications/three_output_gallery/outputs/7.html": "64f8613e0e6de3a735fb2c9dd92fcffcdc3433a7a2efdf4f0232a0d094a6d169"
+        "assets/web_publications/three_output_gallery/document/metadata.edn": "a78ebb04398d968258db1bf377ea1bbf562d9950685bf8e338376db8fc6980ac",
+        "assets/web_publications/three_output_gallery/document/outputs.json": "a57af7e249ad551995e367573fbbfea984e1196c54ed7d0f098b7bd3e3b6740d",
+        "assets/web_publications/three_output_gallery/outputs/0.html": "4c5e973bab5acbececc3fd7d965d18a49a8fa3910a71e1356f450abac592e6a2",
+        "assets/web_publications/three_output_gallery/outputs/1.html": "3c60a0c99f9803899b3d0f74fd578a87f53ef476e52d8b6523e4097220cc7bdc",
+        "assets/web_publications/three_output_gallery/outputs/2.html": "35f2833cfe38847ab48b3cb46da435d2e26021c98ad73ac0fe1db0bccfc92258",
+        "assets/web_publications/three_output_gallery/outputs/3.html": "a46a65c1e78227ffe23b86884b090eb7343af3be24888ed7870092b9731a3c3a",
+        "assets/web_publications/three_output_gallery/outputs/4.html": "ad86e24a0cd4c9999ab181700b5ccbae0558e09a359d044aa0a8fc338782630c",
+        "assets/web_publications/three_output_gallery/outputs/5.html": "4e5762c3b4ad9c6802724a8873f979e81fdbe6ee1caee5a604ddd8a125f85a76",
+        "assets/web_publications/three_output_gallery/outputs/6.html": "5de8d076923f52459c6e0be428bb35eaa1ddff83b03d951c27c43ed5207e3aa9",
+        "assets/web_publications/three_output_gallery/outputs/7.html": "ac390e619797c0a07440abc5d8fc61a3a1829cd22a1e56fec6301038bb258d43"
       },
       "kinds": [
         "three"
