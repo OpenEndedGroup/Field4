@@ -19,7 +19,7 @@ features below are additive server-side niceties.
 
 ## Default layout
 
-At launch the main window holds **one dock, Welcome**, selected, in a 196pt rail (was 220pt with a
+At launch the main window holds **one dock, Welcome**, selected, in a 150pt rail of slim rows with no header or tooltips (was a 220pt list with a
 second, empty glass-canvas dock on `file=default` selected on top of it, which looked like an empty
 workspace). Welcome lists the server's workspace; opening a document (or **Start here**) navigates
 the same dock in place and the rail relabels it. More docks only appear when asked for: **Canvas**
