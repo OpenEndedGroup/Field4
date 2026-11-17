@@ -134,10 +134,12 @@ var tip = vec(30, 50, 0)
 fun draw() {
     three(name = "tip") {
         mesh(boxMesh(120, 20, 60), id = "slab")
-        lines(fline {
-            moveTo(0, 10, 0)
-            lineTo(tip.x, tip.y, tip.z)
-        })
+        lines(
+            fline {
+                moveTo(0, 10, 0)
+                lineTo(tip.x, tip.y, tip.z)
+            },
+        )
         handle("tip", at = tip, label = "tip") { drag ->
             tip = drag.position
             draw()
