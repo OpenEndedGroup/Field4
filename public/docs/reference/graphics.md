@@ -4,7 +4,7 @@
 
 Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side.
 
-420 source file(s), 10280 public symbol(s), 6496 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+421 source file(s), 10282 public symbol(s), 6498 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -6222,6 +6222,24 @@ Utility classes for manipulating and traversing FLines.
 | <a id="flinesandjavashapes-kt--flinesandjavashapes-companion--intersect"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">intersect</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nc">FLine</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">FLine</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span></code>](source/jvmMain/afield/geometry/path/java2d/FLinesAndJavaShapes/#L2441) | Every point where `a` crosses `b`. |
 | <a id="flinesandjavashapes-kt--flinesandjavashapes-companion--intersectx"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">intersectX</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nc">FLine</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span></code>](source/jvmMain/afield/geometry/path/java2d/FLinesAndJavaShapes/#L2490) | Where `a` crosses the vertical line `x`. Same `i - 1` rules as [`intersect`](graphics.md#flinesandjavashapes-kt--flinesandjavashapes-companion--intersect). |
 | <a id="flinesandjavashapes-kt--flinesandjavashapes-companion--intersecty"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">intersectY</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nc">FLine</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span></code>](source/jvmMain/afield/geometry/path/java2d/FLinesAndJavaShapes/#L2521) | Where `a` crosses the horizontal line `x`. Same `i - 1` rules as [`intersect`](graphics.md#flinesandjavashapes-kt--flinesandjavashapes-companion--intersect). |
+
+## FaceInset.kt { #faceinset-kt }
+
+Moving some faces of a solid inward and leaving the rest where they are: a clearance between parts
+that meet, without thinning them.
+
+[`insetFaces`](graphics.md#faceinset-kt--insetfaces) backs every face off by a distance, except the faces parallel to planes you name. Edges
+and corners stay sharp, and the faces you keep stay exactly where they were, growing or shrinking
+to meet the faces that moved.
+
+`src/jvmMain/kotlin/afield/geometry/solid/manifold/FaceInset.kt` — [read the source](source/jvmMain/afield/geometry/solid/manifold/FaceInset/)
+
+### Top-level functions { #faceinset-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="faceinset-kt--insetfaces"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Solid</span><span class="p">.</span><span class="nf">insetFaces</span><span class="p">(</span><span class="n">distance</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">except</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">toleranceDegrees</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">Solid</span></code>](source/jvmMain/afield/geometry/solid/manifold/FaceInset/#L50) | This solid with every face moved `distance` inward along its own normal, except the faces parallel to one of the planes whose normals are in `except`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Solid</span><span class="p">.</span><span class="nf">insetFaces</span><span class="p">(</span><span class="n">distance</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">move</span><span class="p">:</span> <span class="p">(</span><span class="nc">DoubleArray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Boolean</span><span class="p">)</span><span class="p">:</span> <span class="nc">Solid</span></code>](source/jvmMain/afield/geometry/solid/manifold/FaceInset/#L71) | This solid with the faces `move` picks moved `distance` inward along their normals; the others stay. |
 
 ## ManifoldHeaderCheck.kt { #manifoldheadercheck-kt }
 
