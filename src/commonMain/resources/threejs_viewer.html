@@ -6457,6 +6457,178 @@ function featureRectangleBox(region) {
     box.style.width=(region.width*rect.width)+'px';box.style.height=(region.height*rect.height)+'px';
     box.style.transform=`translate(-50%,-50%) rotate(${region.angle||0}deg)`;
 }
+// `three { handle(...) }`: markers the person drags. The viewer moves a held marker itself and tells
+// Field as `three-handle` (start, moves at most every 33 ms, end); Field applies the same constraint,
+// calls the box's callback and relays the drag to the view's other viewers (the visionOS one) as
+// `three/handle`. See ThreeHandles.kt.
+// [viewer-region handle-constraint] BEGIN
+/** [p] held to the handle's line (`axis`) or plane (`normal`) through its position, as `constrainHandle` in ThreeHandles.kt. */
+function handleConstrain(spec, p) {
+    const o = spec.position, d = [p[0] - o[0], p[1] - o[1], p[2] - o[2]];
+    const a = spec.axis;
+    if (a && a.length >= 3) {
+        const len2 = a[0] * a[0] + a[1] * a[1] + a[2] * a[2];
+        if (len2 > 0) {
+            const t = (d[0] * a[0] + d[1] * a[1] + d[2] * a[2]) / len2;
+            return [o[0] + a[0] * t, o[1] + a[1] * t, o[2] + a[2] * t];
+        }
+    }
+    const n = spec.normal;
+    if (n && n.length >= 3) {
+        const len2 = n[0] * n[0] + n[1] * n[1] + n[2] * n[2];
+        if (len2 > 0) {
+            const t = (d[0] * n[0] + d[1] * n[1] + d[2] * n[2]) / len2;
+            return [p[0] - n[0] * t, p[1] - n[1] * t, p[2] - n[2] * t];
+        }
+    }
+    return [p[0], p[1], p[2]];
+}
+// [viewer-region handle-constraint] END
+const HANDLE_SEND_INTERVAL_MS = 33;
+const handleRoot = new THREE.Group();
+let sceneHandles = [];
+let handleDrag = null;
+let handleRadiusWorld = 1;
+
+function applyHandles(payload) {
+    if (!handleRoot.parent) scene.add(handleRoot);
+    const held = handleDrag ? handleDrag.id : null;
+    const previous = new Map(sceneHandles.map(h => [h.spec.id, h]));
+    sceneHandles.forEach(h => { if (h.spec.id !== held) { handleRoot.remove(h.mesh); h.labelEl && h.labelEl.remove(); } });
+    const b = payload.bounds;
+    const diag = b ? Math.hypot(b.max[0] - b.min[0], b.max[1] - b.min[1], b.max[2] - b.min[2]) : 1;
+    handleRadiusWorld = Math.max(diag * 0.012, 1e-6);
+    sceneHandles = (payload.handles || []).map(spec => {
+        if (spec.id === held && previous.has(held)) {
+            const h = previous.get(held); h.spec = spec; handleDrag.spec = spec;
+            if (h.labelEl && !h.labelEl.isConnected) labelLayer.appendChild(h.labelEl);
+            return h;
+        }
+        const material = new THREE.MeshBasicMaterial({ color: new THREE.Color(spec.color || '#ffd23f'), depthTest: false, transparent: true, opacity: 0.95 });
+        const mesh = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), material);
+        mesh.renderOrder = 1000;
+        mesh.scale.setScalar(handleRadiusWorld);
+        mesh.position.set(spec.position[0], spec.position[1], spec.position[2]);
+        mesh.userData.handleId = spec.id;
+        handleRoot.add(mesh);
+        let labelEl = null;
+        if (spec.label) {
+            labelEl = document.createElement('div');
+            labelEl.className = 'scene-label tag';
+            labelEl.textContent = spec.label;
+            labelLayer.appendChild(labelEl);
+        }
+        return { spec, mesh, labelEl };
+    });
+    requestRender();
+}
+
+function updateHandleLabels(cam) {
+    const width = container.clientWidth, height = container.clientHeight;
+    for (const h of sceneHandles) {
+        if (!h.labelEl) continue;
+        labelProjection.copy(h.mesh.position).project(cam);
+        const visible = labelProjection.z > -1 && labelProjection.z < 1;
+        h.labelEl.style.display = visible ? '' : 'none';
+        if (!visible) continue;
+        h.labelEl.style.left = ((labelProjection.x * 0.5 + 0.5) * width + 14) + 'px';
+        h.labelEl.style.top = ((-labelProjection.y * 0.5 + 0.5) * height - 12) + 'px';
+    }
+}
+
+/** Move a marker another viewer is dragging. */
+function handleReceive(message) {
+    const h = sceneHandles.find(x => x.spec.id === message.id);
+    if (!h || (handleDrag && handleDrag.id === message.id) || !Array.isArray(message.position)) return;
+    h.mesh.position.set(message.position[0], message.position[1], message.position[2]);
+    requestRender();
+}
+
+function handleAt(event) {
+    if (!sceneHandles.length) return null;
+    setPointerFromEvent(event);
+    raycaster.setFromCamera(pointer, camera);
+    const hit = raycaster.intersectObjects(sceneHandles.map(h => h.mesh), false)[0];
+    return hit ? sceneHandles.find(h => h.mesh === hit.object) : null;
+}
+
+/** The plane a drag moves on: the handle's own plane, the plane through its axis that faces the camera, or the camera's. */
+function handleDragPlane(h) {
+    const at = h.mesh.position.clone();
+    const view = camera.getWorldDirection(new THREE.Vector3()).normalize();
+    const n = h.spec.normal, a = h.spec.axis;
+    if (a && a.length >= 3) {
+        const axis = new THREE.Vector3(a[0], a[1], a[2]).normalize();
+        const facing = new THREE.Vector3().crossVectors(axis, new THREE.Vector3().crossVectors(view, axis));
+        if (facing.lengthSq() > 1e-10) return new THREE.Plane().setFromNormalAndCoplanarPoint(facing.normalize(), at);
+    } else if (n && n.length >= 3) {
+        const normal = new THREE.Vector3(n[0], n[1], n[2]);
+        if (normal.lengthSq() > 0 && Math.abs(normal.clone().normalize().dot(view)) > 0.05)
+            return new THREE.Plane().setFromNormalAndCoplanarPoint(normal.normalize(), at);
+    }
+    return new THREE.Plane().setFromNormalAndCoplanarPoint(view, at);
+}
+
+function handleSend(phase) {
+    const p = handleDrag.mesh.position;
+    sendMessage({ type: 'three-handle', id: handleDrag.id, position: [p.x, p.y, p.z], phase });
+    handleDrag.sentAt = performance.now();
+    handleDrag.pending = false;
+}
+
+renderer.domElement.addEventListener('pointerdown', event => {
+    if (event.button !== 0) return;
+    const h = handleAt(event);
+    if (!h) return;
+    const plane = handleDragPlane(h);
+    const start = intersectPlaneFromEvent(event, plane);
+    if (!start) return;
+    handleDrag = { id: h.spec.id, mesh: h.mesh, spec: h.spec, plane, grab: start.sub(h.mesh.position), pointerId: event.pointerId, sentAt: 0, pending: false };
+    renderer.domElement.setPointerCapture(event.pointerId);
+    controls.enabled = false;
+    renderer.domElement.style.cursor = 'grabbing';
+    event.preventDefault(); event.stopImmediatePropagation();
+    handleSend('start');
+}, true);
+renderer.domElement.addEventListener('pointermove', event => {
+    if (!handleDrag) {
+        if (sceneHandles.length && event.buttons === 0) renderer.domElement.style.cursor = handleAt(event) ? 'grab' : '';
+        return;
+    }
+    if (event.pointerId !== handleDrag.pointerId) return;
+    const hit = intersectPlaneFromEvent(event, handleDrag.plane);
+    if (hit) {
+        const p = handleConstrain(handleDrag.spec, hit.sub(handleDrag.grab).toArray());
+        handleDrag.mesh.position.set(p[0], p[1], p[2]);
+        requestRender();
+        if (performance.now() - handleDrag.sentAt >= HANDLE_SEND_INTERVAL_MS) handleSend('move');
+        else handleDrag.pending = true;
+    }
+    event.preventDefault(); event.stopImmediatePropagation();
+}, true);
+function handleRelease(event) {
+    if (!handleDrag || (event && event.pointerId !== handleDrag.pointerId)) return;
+    handleSend('end');
+    try { renderer.domElement.releasePointerCapture(handleDrag.pointerId); } catch (e) {}
+    handleDrag = null;
+    controls.enabled = true;
+    renderer.domElement.style.cursor = '';
+    if (event) { event.preventDefault(); event.stopImmediatePropagation(); }
+}
+/** For probes and tests: each handle's id, where its marker is, and where that is on screen (client px). */
+window.FieldHandles = {
+    list() {
+        const rect = renderer.domElement.getBoundingClientRect();
+        return sceneHandles.map(h => {
+            const v = h.mesh.position.clone().project(camera);
+            return { id: h.spec.id, position: h.mesh.position.toArray(), drawnAt: h.spec.position.slice(),
+                     client: [rect.left + (v.x * 0.5 + 0.5) * rect.width, rect.top + (-v.y * 0.5 + 0.5) * rect.height] };
+        });
+    },
+};
+renderer.domElement.addEventListener('pointerup', handleRelease, true);
+renderer.domElement.addEventListener('pointercancel', handleRelease, true);
+
 function featureDragRegion(event) {
     const rect=renderer.domElement.getBoundingClientRect();
     const x=Math.max(0,Math.min(1,(event.clientX-rect.left)/rect.width)),y=Math.max(0,Math.min(1,(event.clientY-rect.top)/rect.height));
@@ -7770,6 +7942,7 @@ function applyGeometry(payload) {
     axes.visible = wantHelpers;
     applyStudio(payload.studio, payload.bounds, payload.camera?.upAxis, wantHelpers);
     applyLabels(payload);
+    applyHandles(payload);
     if (!hasFramedInitialGeometry && payload.bounds && payload.autoFrame !== false) {
         frameBounds(payload.bounds);
         hasFramedInitialGeometry = true;
@@ -7890,6 +8063,7 @@ function connectWs() {
         if(message.type==='three-review-ack'){featureSaving=false; featureHud(); featureMessage(message.message,!message.ok);return;}
         if (message.type === 'three/snapshot-request') { answerSnapshot(message.id); return; }
         if (message.type === 'three/view-command') { viewCommandReceive(message); return; }
+        if (message.type === 'three/handle') { handleReceive(message); return; }
         if (message.type === 'three/view-state') return;
         wireReceive(message);
     });
@@ -8654,6 +8828,7 @@ function render() {
         renderGeometry(camera);
     }
     updateLabels(camera);
+    updateHandleLabels(camera);
 }
 
 /** Every panel of a contact sheet, each through its own camera into its own rectangle. */

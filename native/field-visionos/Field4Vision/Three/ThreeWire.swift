@@ -120,6 +120,43 @@ struct ThreeWireDescription: Decodable {
     let partStyles: [String: ThreeSceneStyle]?
     /// Text pinned to points in the scene (`three { label(...) }`).
     let labels: [ThreeLabel]?
+    /// Markers the person can drag (`three { handle(...) }`, `ThreeHandles.kt`).
+    let handles: [ThreeHandle]?
+}
+
+/// `ThreeHandle` in `ThreeHandles.kt`: a draggable marker, maybe held to a line or a plane.
+struct ThreeHandle: Decodable, Hashable {
+    let id: String
+    let position: [Double]
+    let label: String?
+    let color: String?
+    let axis: [Double]?
+    let normal: [Double]?
+
+    /// [p] held to the handle's line or plane, as `constrainHandle` in `ThreeHandles.kt` and
+    /// `handleConstrain` in the browser viewer.
+    func constrain(_ p: SIMD3<Double>) -> SIMD3<Double> {
+        guard position.count >= 3 else { return p }
+        let o = SIMD3(position[0], position[1], position[2])
+        let d = p - o
+        if let a = axis, a.count >= 3 {
+            let v = SIMD3(a[0], a[1], a[2]), len2 = simd_dot(v, v)
+            if len2 > 0 { return o + v * (simd_dot(d, v) / len2) }
+        }
+        if let n = normal, n.count >= 3 {
+            let v = SIMD3(n[0], n[1], n[2]), len2 = simd_dot(v, v)
+            if len2 > 0 { return p - v * (simd_dot(d, v) / len2) }
+        }
+        return p
+    }
+}
+
+/// `three/handle`: another viewer is dragging a handle.
+struct ThreeHandleMessage: Decodable {
+    let uid: String
+    let id: String
+    let position: [Double]
+    let phase: String?
 }
 
 /// `ThreeLabel` in `ThreeScene.kt`: `chip` (a boxed name), `tag` (small dim text) or `diamond` (a marker).
@@ -262,6 +299,7 @@ struct ThreeScene {
     /// The geometry message as it arrived, kept so a `three/appearance` message can be applied to it.
     var appearance: [String: ThreePartStyle] = [:]
     var labels: [ThreeLabel] = []
+    var handles: [ThreeHandle] = []
 
     /// The scene with part styles applied: replaced, or merged into the current ones.
     func styled(_ parts: [String: ThreePartStyle], replace: Bool) -> ThreeScene {
@@ -336,7 +374,7 @@ enum ThreeBinding {
         return ThreeScene(uid: d.uid, revision: d.revision, generation: d.buffers?.generation,
                           drawables: drawables, bounds: bounds,
                           inspector: d.inspector?.enabled == false ? nil : d.inspector,
-                          appearance: d.partAppearance ?? [:], labels: d.labels ?? [])
+                          appearance: d.partAppearance ?? [:], labels: d.labels ?? [], handles: d.handles ?? [])
     }
 
     /// The FLine half's primitives bucketed by the group of their first vertex, each bucket compacted

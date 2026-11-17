@@ -123,6 +123,51 @@ three(name = "samples", channel = "samples") {
 
 See [FLine styling](fline_examples.md) for stroke, fill, point and callback properties.
 
+### Drag handles
+
+`handle` puts a marker in the scene that you can pick up and move. Its callback hears the drag as it
+happens, so the box can redraw whatever depends on the point. Here a line runs from the slab to a
+point you drag:
+
+```diffstatic {data-lang=kotlin}
+var tip = vec(30, 50, 0)
+fun draw() {
+    three(name = "tip") {
+        mesh(boxMesh(120, 20, 60), id = "slab")
+        lines(
+            fline {
+                moveTo(0, 10, 0)
+                lineTo(tip.x, tip.y, tip.z)
+            },
+        )
+        handle("tip", at = tip, label = "tip") { drag ->
+            tip = drag.position
+            draw()
+        }
+    }
+}
+draw()
+```
+
+The viewer moves a held marker itself, so the drag stays smooth however long the box takes to answer.
+The callback receives a `ThreeHandleDrag` for the press (`START`), the moves (`MOVE`), and the release
+(`END`). If moves arrive faster than the callback finishes, only the newest one is delivered, so a slow
+callback never falls behind your hand. Handle `END` alone if the work is expensive.
+
+| `handle` argument | Default | What it controls |
+| --- | --- | --- |
+| `id` | required | Names the handle within the scene; two handles cannot share one. |
+| `at` | required | Where the marker is, in scene coordinates. |
+| `label` | none | A name drawn beside the marker. |
+| `color` | yellow | The marker's colour, as a CSS colour. |
+| `axis` | none | Hold the handle to the line along this direction through `at`. |
+| `normal` | none | Hold the handle to the plane through `at` with this normal. |
+
+With neither `axis` nor `normal`, the browser moves a handle on the plane facing the camera. The
+visionOS viewer draws the same handles, and there you pinch a marker and move it anywhere in 3D.
+Both viewers send the same drag, and Field applies `axis` or `normal` before your callback sees the
+position. While one viewer drags a handle, the others show the marker moving.
+
 ### Toolbar controls
 
 A view starts with no toolbar controls, so it is a picture you can orbit. Ask for the ones you
