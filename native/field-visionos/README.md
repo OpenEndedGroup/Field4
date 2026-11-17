@@ -53,9 +53,9 @@ This shell is the **receiver** end of that pipeline (see `RTT/` below).
   to a new window; `didFinish` relabels docks; `isOpaque = false` so transparent pages show the
   window glass; pushes `--shell-corner-inset` (CSS var) so web toasts tuck clear of the window's
   rounded corner. `shellLog` (subsystem `com.field4.vision`) for diagnostics.
-- **ServerConfig.swift** — `baseURL` (currently `https://10.0.0.4:9092`, the Mac's plain-LAN
-  address — see Running), overridable at runtime with `FIELD4_SERVER` so you can point at a
-  Tailscale name or another port without a rebuild.
+- **ServerConfig.swift** — `baseURL` (currently `https://mi2.finch-eel.ts.net:9092`, the Mac's Tailscale name),
+  overridable at runtime with `FIELD4_SERVER` so you can point at a LAN address or another port
+  without a rebuild.
   `documentURL(file:flags:selectionContext:)` builds `/index.html?…` URLs.
 - **RTT/** — the GPU/immersive half: the receiver for the `field-encode` UDP stream (see
   `native/field-encode/WIRE_FORMAT.md` in the field4 repo). One-way, lossy, no jitter buffer.

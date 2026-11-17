@@ -4,21 +4,20 @@ import Foundation
 /// (`afield.Server`, default HTTPS on port 9092). The shell points WKWebView docks at its
 /// existing endpoints — see dev_docs/vision_frontend.md.
 ///
-/// Addressing: device testing runs over the **plain LAN** by default — the Mac's Wi-Fi address,
-/// no Tailscale in the path. Tailscale's MagicDNS name (`mi2`, or the FQDN `mi2.<tailnet>.ts.net`)
-/// still works and is the right answer when the two machines aren't on the same subnet; select it
-/// without rebuilding via the `FIELD4_SERVER` environment variable (Xcode scheme → Run →
-/// Arguments → Environment Variables), e.g. `FIELD4_SERVER=https://mi2:9092`.
+/// Addressing: the Mac's Tailscale name by default, so the headset finds it whatever the LAN
+/// address is today (a hard-coded Wi-Fi address went stale). The headset needs to be on the
+/// tailnet. To use the plain LAN or another port without rebuilding, set `FIELD4_SERVER` (Xcode
+/// scheme → Run → Arguments → Environment Variables), e.g. `FIELD4_SERVER=https://10.0.0.67:9092`.
 ///
-/// Either way the server must be reachable off-loopback — the HTTPS connector binds `0.0.0.0`.
+/// Either way the server must be reachable off-loopback: start Field with `AFIELD_BIND_HOST=0.0.0.0`.
 struct ServerConfig {
     var baseURL: URL
 
-    /// The Mac's LAN address. Both this and the Tailscale name are covered by the dev-cert trust
-    /// override below, since the self-signed cert's SAN matches neither an IP literal nor `mi2`.
-    static let lanBaseURL = URL(string: "https://10.0.0.4:9092")!
+    /// The Mac's Tailscale MagicDNS name. It and private-range IP literals are covered by the
+    /// dev-cert trust override below, since the self-signed cert's SAN matches neither.
+    static let tailscaleBaseURL = URL(string: "https://mi2.finch-eel.ts.net:9092")!
 
-    static let `default` = ServerConfig(baseURL: envBaseURL ?? lanBaseURL)
+    static let `default` = ServerConfig(baseURL: envBaseURL ?? tailscaleBaseURL)
 
     /// `FIELD4_SERVER` override, ignored unless it parses as an absolute http(s) URL.
     private static var envBaseURL: URL? {
