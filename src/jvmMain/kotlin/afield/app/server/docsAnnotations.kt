@@ -256,7 +256,11 @@ internal fun isSameSiteRequest(secFetchSite: String?, origin: String?, hostHeade
 /**
  * The authorities Field can safely recognise without asking DNS: its conventional
  * `localhost` name and literal IPv4/IPv6 addresses, each optionally carrying a port.
- * A local operator can additionally register exact DNS authorities through [fieldBrowserHosts].
+ * A local operator can additionally register DNS authorities through [fieldBrowserHosts]: an
+ * entry with a port matches only that port; an entry without one (`mi2.example.ts.net`) matches
+ * that host on any port. A browser always sends the port when it is not the scheme default, so a
+ * port-less entry used to match nothing for Field on 9092 and its pages were refused their own
+ * fonts and API calls.
  */
 internal fun isAllowedFieldHost(hostHeader: String?, browserHosts: Set<String> = fieldBrowserHosts()): Boolean {
     val authority = hostHeader?.trim().orEmpty()
@@ -276,7 +280,9 @@ internal fun isAllowedFieldHost(hostHeader: String?, browserHosts: Set<String> =
     }
     if (host.equals("localhost", ignoreCase = true)) return true
     return runCatching { InetAddress.ofLiteral(host) }.isSuccess ||
-        (validFieldDnsAuthority(authority) && browserHosts.any { it.equals(authority, ignoreCase = true) })
+        (validFieldDnsAuthority(authority) && browserHosts.any {
+            it.equals(authority, ignoreCase = true) || (':' !in it && it.equals(host, ignoreCase = true))
+        })
 }
 
 private fun isValidAuthorityPort(suffix: String): Boolean =
