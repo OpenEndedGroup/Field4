@@ -6,78 +6,6 @@
       "error": "{\"success\": false, \"message\": \"Ran macro 'flow_lenia': applied=14 skipped=0 errors=0. Execution failed: Box interrupted: Runloop stalled 273525 ms in '3 \\u2014 The parameter field blending (MEAN mixing)' (flow_lenia_drift) (watchdog)\", \"name\": \"flow_lenia\", \"operationCount\": 14, \"direction\": \"do\", \"applied\": 14, \"output\": [{\"uid\": \"flow_lenia_conservation\", \"line\": 13, \"html\": \"<div class='value-viz afield-appendable-output' style='font-family: \\\"Iosevka Web\\\", monospace; font-size: 12px; color:",
       "since": "2026-11-17"
     },
-    "assets/agent_transcripts/petri_tala_layout/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/photo_mount_path_trace/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/photo_to_solid_chain/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/physical_piano/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/physics_manifold_path_trace/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/pitch_transcription_roundtrip/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/point_matching/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/polytope_canonical_gallery/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "8ca26f3844345c6e7e29c7844d0aa5a8e67348467dae06f3a288c218afe53f85",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/polytope_conway_demo/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "8ca26f3844345c6e7e29c7844d0aa5a8e67348467dae06f3a288c218afe53f85",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/polytope_conway_gallery/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "8ca26f3844345c6e7e29c7844d0aa5a8e67348467dae06f3a288c218afe53f85",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/polytope_holes_and_chains/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "8ca26f3844345c6e7e29c7844d0aa5a8e67348467dae06f3a288c218afe53f85",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/polytope_layer_stack_path_trace/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
     "assets/agent_transcripts/polytope_manifold_path_trace/metadata.edn": {
       "attempts": 0,
       "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
@@ -4422,18 +4350,18 @@
       ]
     },
     "assets/agent_transcripts/petri_tala_layout/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T14:34:14.956Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:38:14.478Z",
       "channels": 5,
       "file": "assets/web_publications/petri_tala_layout/document/metadata.edn",
       "files": {
-        "assets/web_publications/petri_tala_layout/document/metadata.edn": "2adb9d58f8e0738061786c6effef53c1a70e5a448f884748fb6ef3b0853e1771",
-        "assets/web_publications/petri_tala_layout/document/outputs.json": "22e152e722b5173afebb3f1aa76999f0459568ea638f0b1c67eaa52728d70b82",
-        "assets/web_publications/petri_tala_layout/outputs/0.html": "cca9e005405468e8638ebe1ac33948e0d059c1e0e44cb9bcb8ff87efdb174356",
-        "assets/web_publications/petri_tala_layout/outputs/1.html": "c6de9ecf5993262d0b829d461a8a1697024ff850a5ef92734614bbc7b4e287bf",
-        "assets/web_publications/petri_tala_layout/outputs/2.html": "cca9e005405468e8638ebe1ac33948e0d059c1e0e44cb9bcb8ff87efdb174356",
-        "assets/web_publications/petri_tala_layout/outputs/3.html": "c6de9ecf5993262d0b829d461a8a1697024ff850a5ef92734614bbc7b4e287bf",
-        "assets/web_publications/petri_tala_layout/outputs/4.html": "85e9723341f78bc61e1868a5b0108a85b9cc9af401d6ed2b2045555441180002"
+        "assets/web_publications/petri_tala_layout/document/metadata.edn": "2215cc2417bc99b3cc5d85c409a460ac7e1d9826572fd51e8ad2a64c166865f5",
+        "assets/web_publications/petri_tala_layout/document/outputs.json": "4a07b31a98a16cd89e2948a058a7c21ab8828ea92d249227406a89df7ab79c13",
+        "assets/web_publications/petri_tala_layout/outputs/0.html": "d16018d65577642738cc67a0db465422ff79956fd1a674d248960cef40afa8e1",
+        "assets/web_publications/petri_tala_layout/outputs/1.html": "fe9477c1011fd55913eb7b62479e607fe0d44e916c7c9e1056d50de46fced1d0",
+        "assets/web_publications/petri_tala_layout/outputs/2.html": "d16018d65577642738cc67a0db465422ff79956fd1a674d248960cef40afa8e1",
+        "assets/web_publications/petri_tala_layout/outputs/3.html": "fe9477c1011fd55913eb7b62479e607fe0d44e916c7c9e1056d50de46fced1d0",
+        "assets/web_publications/petri_tala_layout/outputs/4.html": "9c3f743332c7d9254c7e0f7a6dd7304a3613ff6e38f27a5bbeb2edbaed30d4f7"
       },
       "kinds": [
         "svg"
@@ -4449,13 +4377,13 @@
       }
     },
     "assets/agent_transcripts/photo_mount_path_trace/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:26:10.028Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:38:42.322Z",
       "channels": 1,
       "file": "assets/web_publications/photo_mount_path_trace/document/metadata.edn",
       "files": {
-        "assets/web_publications/photo_mount_path_trace/document/metadata.edn": "a6e6eb570fcde3643f31305e06ba9868aacde78f4eb0b1dde4fedae482ffcb57",
-        "assets/web_publications/photo_mount_path_trace/document/outputs.json": "17b7a8a5b398b3601a1ea50cd4e3034a40695fd961fd5d6a21dde9c15a7ab241",
+        "assets/web_publications/photo_mount_path_trace/document/metadata.edn": "a50ac19d74e7e7ccbd8a6e4f9c96fb81a84cfb0eb191a10f99094fcc5d6e6194",
+        "assets/web_publications/photo_mount_path_trace/document/outputs.json": "ec98e375c03c493ff74176f8a8c02d5351b37d9b677f19fc5d92c2fabc914513",
         "assets/web_publications/photo_mount_path_trace/outputs/0.html": "cf63632cd6a4b7783251480b5b00084d9efd3f427cf672baa2ddafdb2762276f"
       },
       "kinds": [
@@ -4477,17 +4405,17 @@
       ]
     },
     "assets/agent_transcripts/photo_to_solid_chain/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T14:27:16.145Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:38:59.076Z",
       "channels": 4,
       "file": "assets/web_publications/photo_to_solid_chain/document/metadata.edn",
       "files": {
-        "assets/web_publications/photo_to_solid_chain/document/metadata.edn": "5687af8af5ace16c452abd7c31798e68032b02691ab5b210ba33c5da0c572135",
-        "assets/web_publications/photo_to_solid_chain/document/outputs.json": "f7da3c4cbdcae0ba5fd8c801309aafde36ec1e03ed5faeeca0f9ebe4fb2e505d",
-        "assets/web_publications/photo_to_solid_chain/outputs/0.html": "75e2a0245c9f2bae3584f551a8186f15198ee78acd66eae96a5a6632e4224115",
-        "assets/web_publications/photo_to_solid_chain/outputs/1.html": "d235f46a44e67d608b64f8a4b5d905f45719f0e848710190835ecdc85e38e5bd",
-        "assets/web_publications/photo_to_solid_chain/outputs/2.html": "fd93d4493c901dbd38f316b03ccc9ec2d07f1e404f753f38115ac44523bc807f",
-        "assets/web_publications/photo_to_solid_chain/outputs/3.html": "0c1d8849e3de894c4710d5a6dd72263a28fd17fb4e2dd7aaef7517ad1a7f5585"
+        "assets/web_publications/photo_to_solid_chain/document/metadata.edn": "dd61f14065c4ea06426f0b90227aa3db9222a0a5bcd3acfb17db855050dc2901",
+        "assets/web_publications/photo_to_solid_chain/document/outputs.json": "0e907a77c71b66c0549184ed7143f1ebfc1039fa89a840f6641ebd10a7026a2e",
+        "assets/web_publications/photo_to_solid_chain/outputs/0.html": "d443f9e636f1fe69da9953cb416d3f4b764bfc35ca58b76cb60533366db39f6d",
+        "assets/web_publications/photo_to_solid_chain/outputs/1.html": "78e1d4bf9a42e4aeba78f63de8e626aa0a791b6ef9ce54529991f8830bc1d286",
+        "assets/web_publications/photo_to_solid_chain/outputs/2.html": "6d985b2a187de04951d297a4698829c79990baf48208bc94ee1214b58591a3ba",
+        "assets/web_publications/photo_to_solid_chain/outputs/3.html": "bc0797e2f9088ee69f08f4464b89e6c5a4f9d6d67c945db1fd5070c655443f43"
       },
       "kinds": [],
       "outputs": "assets/web_publications/photo_to_solid_chain/document/outputs.json",
@@ -4502,33 +4430,33 @@
       }
     },
     "assets/agent_transcripts/physical_piano/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T14:16:47.861Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:40:05.601Z",
       "channels": 20,
       "file": "assets/web_publications/physical_piano/document/metadata.edn",
       "files": {
-        "assets/web_publications/physical_piano/document/metadata.edn": "fc0c73bef34ccf579d8ba085943213cdb2578b7a938971e65734f119c4291fa5",
-        "assets/web_publications/physical_piano/document/outputs.json": "b87650a90ce12c5f9f7f84cbe4e62d52a85d16bb6745d1f1dd369e10647ba0bc",
-        "assets/web_publications/physical_piano/outputs/0.html": "95de64972b0f70931af3da060de5ea7a4ba48f018b548028e0d291d345438c6d",
-        "assets/web_publications/physical_piano/outputs/1.html": "95de64972b0f70931af3da060de5ea7a4ba48f018b548028e0d291d345438c6d",
-        "assets/web_publications/physical_piano/outputs/10.html": "95de64972b0f70931af3da060de5ea7a4ba48f018b548028e0d291d345438c6d",
-        "assets/web_publications/physical_piano/outputs/11.html": "ed5732ea22dcfe52b1c2c5ae2c567dada0d2b2f32331e1b226fe77a29e5f2749",
-        "assets/web_publications/physical_piano/outputs/12.html": "ad03e53abbf79303c3bbe1db3ac5741e2b08092613e197faa52ccd28d38308e1",
-        "assets/web_publications/physical_piano/outputs/13.html": "95de64972b0f70931af3da060de5ea7a4ba48f018b548028e0d291d345438c6d",
-        "assets/web_publications/physical_piano/outputs/14.html": "95de64972b0f70931af3da060de5ea7a4ba48f018b548028e0d291d345438c6d",
-        "assets/web_publications/physical_piano/outputs/15.html": "22aca0d714e303d3b6a604a86a00b1b791ea7b0716a04cc144c35edccb2ca314",
-        "assets/web_publications/physical_piano/outputs/16.html": "95de64972b0f70931af3da060de5ea7a4ba48f018b548028e0d291d345438c6d",
-        "assets/web_publications/physical_piano/outputs/17.html": "95de64972b0f70931af3da060de5ea7a4ba48f018b548028e0d291d345438c6d",
-        "assets/web_publications/physical_piano/outputs/18.html": "3ee7898db264ee0c16ecc5faff59ec6f7ad4cfd6186f3d95d5178b633ac6b6c8",
-        "assets/web_publications/physical_piano/outputs/19.html": "95de64972b0f70931af3da060de5ea7a4ba48f018b548028e0d291d345438c6d",
-        "assets/web_publications/physical_piano/outputs/2.html": "b2fc85c8e3b69617b90b0b1d78430de635dd44bb011e0955e9cf893f26ce19f1",
-        "assets/web_publications/physical_piano/outputs/3.html": "95de64972b0f70931af3da060de5ea7a4ba48f018b548028e0d291d345438c6d",
-        "assets/web_publications/physical_piano/outputs/4.html": "95de64972b0f70931af3da060de5ea7a4ba48f018b548028e0d291d345438c6d",
-        "assets/web_publications/physical_piano/outputs/5.html": "95de64972b0f70931af3da060de5ea7a4ba48f018b548028e0d291d345438c6d",
-        "assets/web_publications/physical_piano/outputs/6.html": "95de64972b0f70931af3da060de5ea7a4ba48f018b548028e0d291d345438c6d",
-        "assets/web_publications/physical_piano/outputs/7.html": "95de64972b0f70931af3da060de5ea7a4ba48f018b548028e0d291d345438c6d",
-        "assets/web_publications/physical_piano/outputs/8.html": "95de64972b0f70931af3da060de5ea7a4ba48f018b548028e0d291d345438c6d",
-        "assets/web_publications/physical_piano/outputs/9.html": "95de64972b0f70931af3da060de5ea7a4ba48f018b548028e0d291d345438c6d"
+        "assets/web_publications/physical_piano/document/metadata.edn": "13dc7502f9869690191e967da4a9d444fc8e296555a9d1bad5d024b2fe77c777",
+        "assets/web_publications/physical_piano/document/outputs.json": "3aa51d2ee1c0473e4d3c256151503e7bdefa45783992b243094e70ce5ed3b933",
+        "assets/web_publications/physical_piano/outputs/0.html": "2537c9a1a5c5accf5fdbc457e951ae8628ce130e3426ea06c4f144eb19dad9f2",
+        "assets/web_publications/physical_piano/outputs/1.html": "2537c9a1a5c5accf5fdbc457e951ae8628ce130e3426ea06c4f144eb19dad9f2",
+        "assets/web_publications/physical_piano/outputs/10.html": "2537c9a1a5c5accf5fdbc457e951ae8628ce130e3426ea06c4f144eb19dad9f2",
+        "assets/web_publications/physical_piano/outputs/11.html": "2e96688ab6ec248ec59c1928a4a41638b0af950f5b5f0688b3177cfa22069615",
+        "assets/web_publications/physical_piano/outputs/12.html": "7886c1cefba8bdea759050d13888ec2b2fb929b3ca9d65868e9df937d43e63ae",
+        "assets/web_publications/physical_piano/outputs/13.html": "2537c9a1a5c5accf5fdbc457e951ae8628ce130e3426ea06c4f144eb19dad9f2",
+        "assets/web_publications/physical_piano/outputs/14.html": "2537c9a1a5c5accf5fdbc457e951ae8628ce130e3426ea06c4f144eb19dad9f2",
+        "assets/web_publications/physical_piano/outputs/15.html": "6fcad533c7765f825b85043b6ef6b095c186a46cff40db168018864a19eb137f",
+        "assets/web_publications/physical_piano/outputs/16.html": "2537c9a1a5c5accf5fdbc457e951ae8628ce130e3426ea06c4f144eb19dad9f2",
+        "assets/web_publications/physical_piano/outputs/17.html": "2537c9a1a5c5accf5fdbc457e951ae8628ce130e3426ea06c4f144eb19dad9f2",
+        "assets/web_publications/physical_piano/outputs/18.html": "6a78370000883c8a9299d42b9d5417f5518af2403fd5e9eee5087974952a98fe",
+        "assets/web_publications/physical_piano/outputs/19.html": "2537c9a1a5c5accf5fdbc457e951ae8628ce130e3426ea06c4f144eb19dad9f2",
+        "assets/web_publications/physical_piano/outputs/2.html": "b4d75e2d3e33e3b7a81f01c5bbc9d47f02ee2f778cbbdc49fa3331b4c62af3dc",
+        "assets/web_publications/physical_piano/outputs/3.html": "2537c9a1a5c5accf5fdbc457e951ae8628ce130e3426ea06c4f144eb19dad9f2",
+        "assets/web_publications/physical_piano/outputs/4.html": "2537c9a1a5c5accf5fdbc457e951ae8628ce130e3426ea06c4f144eb19dad9f2",
+        "assets/web_publications/physical_piano/outputs/5.html": "2537c9a1a5c5accf5fdbc457e951ae8628ce130e3426ea06c4f144eb19dad9f2",
+        "assets/web_publications/physical_piano/outputs/6.html": "2537c9a1a5c5accf5fdbc457e951ae8628ce130e3426ea06c4f144eb19dad9f2",
+        "assets/web_publications/physical_piano/outputs/7.html": "2537c9a1a5c5accf5fdbc457e951ae8628ce130e3426ea06c4f144eb19dad9f2",
+        "assets/web_publications/physical_piano/outputs/8.html": "2537c9a1a5c5accf5fdbc457e951ae8628ce130e3426ea06c4f144eb19dad9f2",
+        "assets/web_publications/physical_piano/outputs/9.html": "2537c9a1a5c5accf5fdbc457e951ae8628ce130e3426ea06c4f144eb19dad9f2"
       },
       "kinds": [
         "svg"
@@ -4555,13 +4483,13 @@
       }
     },
     "assets/agent_transcripts/physics_manifold_path_trace/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:26:14.962Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:40:08.383Z",
       "channels": 1,
       "file": "assets/web_publications/physics_manifold_path_trace/document/metadata.edn",
       "files": {
-        "assets/web_publications/physics_manifold_path_trace/document/metadata.edn": "edd251f3bd06d0985f213e1291e7c92eefe124fe114bae2bf43e84592b08108c",
-        "assets/web_publications/physics_manifold_path_trace/document/outputs.json": "072ff4778410919940c74820dae4d78ffd190f51d9a75659c0c15738dcd33e60",
+        "assets/web_publications/physics_manifold_path_trace/document/metadata.edn": "99b6b56bc36110758c5c5d05c3520b79808ce371a75abe68e42d714d5dafb386",
+        "assets/web_publications/physics_manifold_path_trace/document/outputs.json": "1433de86ca0d7168fb5ca833dc42c822e10d817e5ea1ae8f401e4a023a86ce17",
         "assets/web_publications/physics_manifold_path_trace/outputs/0.html": "666a8c2cbcdd43ff6e42c699c56617bd61247aee870ede3191d40036e008b61f"
       },
       "kinds": [
@@ -4583,31 +4511,31 @@
       ]
     },
     "assets/agent_transcripts/pitch_transcription_roundtrip/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T14:32:13.980Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:40:30.735Z",
       "channels": 18,
       "file": "assets/web_publications/pitch_transcription_roundtrip/document/metadata.edn",
       "files": {
-        "assets/web_publications/pitch_transcription_roundtrip/document/metadata.edn": "42b0ea914fca34c9f1816950d28b4c322e2e0cb4790bd9b7389793800fc9be9e",
-        "assets/web_publications/pitch_transcription_roundtrip/document/outputs.json": "50982e17ea520c91212a254eba7164a05040c0cc56c594bd8d629c8873949a3c",
-        "assets/web_publications/pitch_transcription_roundtrip/outputs/0.html": "54e6187e9c8590cd063637ffcd62499f257e8ee220acee8775dc077d85d093b5",
-        "assets/web_publications/pitch_transcription_roundtrip/outputs/1.html": "044b51809d8e525dd267a9d749bc0a6a6487b3aeea0888ebfec018eff17a516a",
-        "assets/web_publications/pitch_transcription_roundtrip/outputs/10.html": "2f1a3cc9672f6c5e0d99c71c642fe3f6bd9f33ef06ba6e796090443f832735d4",
-        "assets/web_publications/pitch_transcription_roundtrip/outputs/11.html": "27295635b7e2f0512f9f8c1cc8db883c7a44b98dc7c12965d43064978e576920",
-        "assets/web_publications/pitch_transcription_roundtrip/outputs/12.html": "60161c750902b344bec1177f65622f9ade16828571e72c01eca9749211e7b6b9",
-        "assets/web_publications/pitch_transcription_roundtrip/outputs/13.html": "2ab1a63c5bde8fb81412e87463d268bb03dd7da3c70bbe485d10ea9a87663d0a",
-        "assets/web_publications/pitch_transcription_roundtrip/outputs/14.html": "dee11e3c914b0dbbf1565b308c855fc97ab8395ff9de15fbb400eb3b500eece6",
-        "assets/web_publications/pitch_transcription_roundtrip/outputs/15.html": "0602b0c54bb38c35582a235d50dec8d327b458828df90e35a73c7bbeb02163d8",
-        "assets/web_publications/pitch_transcription_roundtrip/outputs/16.html": "f70f9a1c056b9e0fd38cd44803ce360ad6cf1ad22d86eca7cc902f143bd5d273",
-        "assets/web_publications/pitch_transcription_roundtrip/outputs/17.html": "5ba7cf6b1f85ee7d56c120ebea50f874f461134e28baee0906911d08843c7b29",
-        "assets/web_publications/pitch_transcription_roundtrip/outputs/2.html": "71579c2b5c9fddb6086b3caea908b57b9130f9a9c58affacaf85395283300775",
-        "assets/web_publications/pitch_transcription_roundtrip/outputs/3.html": "e199c25f187af068df599a5a0b2c5071028a0ddc1497d3067cffde3b01d8e967",
-        "assets/web_publications/pitch_transcription_roundtrip/outputs/4.html": "8382ab8680acaf635e6760458e8cc3486a6913dd0bf9139153c615079cc52c9b",
-        "assets/web_publications/pitch_transcription_roundtrip/outputs/5.html": "9b1e2889eb8dd3efcf70c51dc2085ba04c980dc4fdccb1de8f31715830bd3886",
-        "assets/web_publications/pitch_transcription_roundtrip/outputs/6.html": "ae7074ece9704674e022e2ebade78dd35bcf066e7a603e2214f90da9cedbb42e",
-        "assets/web_publications/pitch_transcription_roundtrip/outputs/7.html": "6d69225f9de518345dd9e9dfa4d8cb9fc663e515efe171fc9bd3cd91ef62a46b",
-        "assets/web_publications/pitch_transcription_roundtrip/outputs/8.html": "a19e0fc89e617008ddfa475d4a0cee028d2d8f12134a9ddcf26fd37543a5991d",
-        "assets/web_publications/pitch_transcription_roundtrip/outputs/9.html": "f20f33e6afc826e551471179376dcbe884227276248ae6dac448e67a5fa8ce60"
+        "assets/web_publications/pitch_transcription_roundtrip/document/metadata.edn": "3edd352078ffb74250c41d9febffb0d9e125f648da964ea1acc9725b0c7a76da",
+        "assets/web_publications/pitch_transcription_roundtrip/document/outputs.json": "0a0787f7d3fddd0d995ccdade79c827ec9904b64da8e38f2f37cde59e15e0357",
+        "assets/web_publications/pitch_transcription_roundtrip/outputs/0.html": "708dd64437e00b8c9df29895cc01dc553b8bd26dff7c722ea443855107fb1834",
+        "assets/web_publications/pitch_transcription_roundtrip/outputs/1.html": "47b9555f878b8ba28f4eb418dc8b6402b46daff3ea346194836d6c75b46aa3ec",
+        "assets/web_publications/pitch_transcription_roundtrip/outputs/10.html": "7ab4229fc0aff4b2d23ac431e8af10e3f0e5832886244719ff39aa65307aa794",
+        "assets/web_publications/pitch_transcription_roundtrip/outputs/11.html": "587d3c858deddf6811e594aa674b052cd5ab4ee4f830ff36f8635a786fa0e94c",
+        "assets/web_publications/pitch_transcription_roundtrip/outputs/12.html": "bcbc558aac1d905cc053107623e16e59cbc06e459c187ee7759aec63c2c18601",
+        "assets/web_publications/pitch_transcription_roundtrip/outputs/13.html": "d9b07aadd6ce7de19bd322c71c29fc28966b6f10ceb159fd713e3724c1074f8e",
+        "assets/web_publications/pitch_transcription_roundtrip/outputs/14.html": "91790eba40fc1601540fcc676ebb6c382b4894b9241f8b7ce7d96618911ad0ea",
+        "assets/web_publications/pitch_transcription_roundtrip/outputs/15.html": "5ada0c6e73de73a1d2a6461fd3d0f4a56e33d8ae4b1ef7932162e128c7c6f736",
+        "assets/web_publications/pitch_transcription_roundtrip/outputs/16.html": "dce5d3752d8956592d390770afaa9d7db2e87f449605b944248363127b46a85e",
+        "assets/web_publications/pitch_transcription_roundtrip/outputs/17.html": "4588eb296cb2bfe0c3bccf66f4bda8a7a09b63e1fffe1d9183ae0535564e17f5",
+        "assets/web_publications/pitch_transcription_roundtrip/outputs/2.html": "d70175ca32d6842335b772eb91f45c40fa41f882f7d571bd1540b289c5648b70",
+        "assets/web_publications/pitch_transcription_roundtrip/outputs/3.html": "c67dc22c489c2f24767b3eeb00393b0778f1a5b045225b8236609f8f12cc80f4",
+        "assets/web_publications/pitch_transcription_roundtrip/outputs/4.html": "43517229c8cd775a63d6ebab3384267bacb3960ab28ae9ca407b2304f0119963",
+        "assets/web_publications/pitch_transcription_roundtrip/outputs/5.html": "238c273b5dcb52c344d04594979071579108856f68e00a224bdee07c3f174ca4",
+        "assets/web_publications/pitch_transcription_roundtrip/outputs/6.html": "d6af6a0b2eb27ae342fd9a36cdf8c768cea3ef1989a05e1f9775523a026e3576",
+        "assets/web_publications/pitch_transcription_roundtrip/outputs/7.html": "515a4316fc571b925235f4ae6aa504c354aac8849a028fcef6fa2da35a163655",
+        "assets/web_publications/pitch_transcription_roundtrip/outputs/8.html": "dea2d1e3f3375c9e6e6f67632eb84cadcd84cdc1c587ac85f55006eb0eeb16da",
+        "assets/web_publications/pitch_transcription_roundtrip/outputs/9.html": "d3f304a524b2a7201fee7d9ca7a40a6eb5daadeb6980474ab3b9c46d9b0bda85"
       },
       "kinds": [
         "svg"
@@ -4625,16 +4553,16 @@
       }
     },
     "assets/agent_transcripts/point_matching/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T14:20:42.926Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:41:02.542Z",
       "channels": 3,
       "file": "assets/web_publications/point_matching/document/metadata.edn",
       "files": {
-        "assets/web_publications/point_matching/document/metadata.edn": "5ac378ac17311e843a4b81fe8ce1a962e3ab8864bff25c846f3affbad2c5b204",
-        "assets/web_publications/point_matching/document/outputs.json": "9c33f787b4c317adf74b2c6e040e6f14299cb57281d2a52e822ecb1398182411",
-        "assets/web_publications/point_matching/outputs/0.html": "2b18dd5d38106c08b730b221a3daac52076ad5295f72265a5e419631fe93416c",
-        "assets/web_publications/point_matching/outputs/1.html": "a541de443b156bae2dcb24b7831198edb5d61c42f59c559d152554ec8c8de1a7",
-        "assets/web_publications/point_matching/outputs/2.html": "a91d21ddcd9e226caa232ea6cc6a05e48b7ccc91d0986d6700b273d79cc6fb8e"
+        "assets/web_publications/point_matching/document/metadata.edn": "f029c2ee41a84a661901cd3b7728e3bf28bf1d9f76725a0b7c0f11a62f1a0c6a",
+        "assets/web_publications/point_matching/document/outputs.json": "0dd3c417701380e54d5cdf292a66263b185ca14e325ac9b7464eceb98d5d9d92",
+        "assets/web_publications/point_matching/outputs/0.html": "c5b6eac1d1d74f7faea6ef09cb3c1d45cf79963e80aca3a77682acf8d4ca1c51",
+        "assets/web_publications/point_matching/outputs/1.html": "597325847f9df388316181e447b19258d19e7a100699ecf61eda139812965f94",
+        "assets/web_publications/point_matching/outputs/2.html": "a4addd3d378cd1a2dd9fcf8bc35a1122293c818c9433c8e2e0c59e24cabfe8a5"
       },
       "kinds": [
         "svg"
@@ -4650,15 +4578,15 @@
       }
     },
     "assets/agent_transcripts/polytope_canonical_gallery/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:12:24.804Z",
+      "captureDigest": "8ca26f3844345c6e7e29c7844d0aa5a8e67348467dae06f3a288c218afe53f85",
+      "capturedAt": "2026-11-17T22:41:10.152Z",
       "channels": 2,
       "file": "assets/web_publications/polytope_canonical_gallery/document/metadata.edn",
       "files": {
-        "assets/web_publications/polytope_canonical_gallery/document/metadata.edn": "accf73a48c0681fa2087af817bb3989048647ba8f4b5f4b97f909aad5ad5c439",
-        "assets/web_publications/polytope_canonical_gallery/document/outputs.json": "8076895421535d351749232f599b9a198b5e3646a836821bffa3fef7b8dd4b65",
-        "assets/web_publications/polytope_canonical_gallery/outputs/0.html": "49c9d5fa7cb24859ed41e8502e5fc8eb75f70d4f98a5855461c17440d325d48f",
-        "assets/web_publications/polytope_canonical_gallery/outputs/1.html": "d2a9d257e9173d7a95fcbd22fa22df517bf7327ce1f1c699bb749a35a89e4115"
+        "assets/web_publications/polytope_canonical_gallery/document/metadata.edn": "ac9d7c6231e05b631c2fa3a15a5fbe4c3523cecd2ceda512a8ff07b41de2ff5d",
+        "assets/web_publications/polytope_canonical_gallery/document/outputs.json": "457bbb7b4fb56aa340f441d824c3dceabfebe5d91b6863de9892fea36991b8dd",
+        "assets/web_publications/polytope_canonical_gallery/outputs/0.html": "aaedaefc83fa284d5a95ed2f67dcc2592ed3ed4c8e9f1012179e238f12e9df5d",
+        "assets/web_publications/polytope_canonical_gallery/outputs/1.html": "28f60c3cecc98459723caa6b99fbfb5608a59f0cb407d6f4e4d76133eae9256f"
       },
       "kinds": [
         "svg",
@@ -4673,15 +4601,15 @@
       }
     },
     "assets/agent_transcripts/polytope_conway_demo/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:12:03.228Z",
+      "captureDigest": "8ca26f3844345c6e7e29c7844d0aa5a8e67348467dae06f3a288c218afe53f85",
+      "capturedAt": "2026-11-17T22:41:16.279Z",
       "channels": 2,
       "file": "assets/web_publications/polytope_conway_demo/document/metadata.edn",
       "files": {
-        "assets/web_publications/polytope_conway_demo/document/metadata.edn": "946bb7c6e8d36a301332cfb82769db59defea9714ced5851d49745c3fc60e97d",
-        "assets/web_publications/polytope_conway_demo/document/outputs.json": "961cb7b6530623c7e31249371a8834bd90cd273a56a8a52b111acad121c1f6b4",
-        "assets/web_publications/polytope_conway_demo/outputs/0.html": "4cb9dea9955535e85c2d76f45222e7140b412e6147fab2c333a3390bcd4fe86d",
-        "assets/web_publications/polytope_conway_demo/outputs/1.html": "feb791c47b6a656a162f933af14a94d2d4e17a6bd3b1c0a2ec7927a6f6bff2fd"
+        "assets/web_publications/polytope_conway_demo/document/metadata.edn": "f9c998f0659d713660092519281515b0215928d7473edcb583eaa2fdee5ed075",
+        "assets/web_publications/polytope_conway_demo/document/outputs.json": "3baa5ac980f26c6104557ac5b90691ad3c4353d728de7c0200ce4b58acb01f21",
+        "assets/web_publications/polytope_conway_demo/outputs/0.html": "70abb43eddcad4a7a63d17ad3ebe826f224813952be8082cd4b5169a31cfb957",
+        "assets/web_publications/polytope_conway_demo/outputs/1.html": "9b08b30b368a10886667db119861718fd4123dac651cb92dd6da28321d94bf2f"
       },
       "kinds": [
         "three"
@@ -4695,18 +4623,18 @@
       }
     },
     "assets/agent_transcripts/polytope_conway_gallery/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:12:16.558Z",
+      "captureDigest": "8ca26f3844345c6e7e29c7844d0aa5a8e67348467dae06f3a288c218afe53f85",
+      "capturedAt": "2026-11-17T22:41:35.762Z",
       "channels": 5,
       "file": "assets/web_publications/polytope_conway_gallery/document/metadata.edn",
       "files": {
-        "assets/web_publications/polytope_conway_gallery/document/metadata.edn": "7ce500da185f85daceaadfb7075cc2f9c326356fe77f8a64e7c9f7a3ea59e3a7",
-        "assets/web_publications/polytope_conway_gallery/document/outputs.json": "113f8df830f07b1052ef8bec30a10438a1cfdcfeba4d31921d40e41e37dbe3dc",
-        "assets/web_publications/polytope_conway_gallery/outputs/0.html": "c255383cce85f3d473657c868c01c51c1eaabdc7dbe0239fe242819cbb36e0b4",
-        "assets/web_publications/polytope_conway_gallery/outputs/1.html": "49e029aa322881085216ec77da398490285b194c6921bcd80f751ff5a658f744",
-        "assets/web_publications/polytope_conway_gallery/outputs/2.html": "bd8b844c7fa0773e2c829f1951b075547f0a9c44ecf452809b4a0be5e92ba590",
-        "assets/web_publications/polytope_conway_gallery/outputs/3.html": "38a0a2d5215ee8adf8a075a318280b8ef7b1cced00d780a23ca22607349fb32a",
-        "assets/web_publications/polytope_conway_gallery/outputs/4.html": "9452d63f060a88107ab425c006addf81fe9403b185a47c503f28322988ddb84c"
+        "assets/web_publications/polytope_conway_gallery/document/metadata.edn": "bdda938f9f3cdbbb8ff806693bd9187888de17537a2a8c4fd27a512c91f8e6d2",
+        "assets/web_publications/polytope_conway_gallery/document/outputs.json": "aaf384399f07b5e6fb6b6e2cbb6a30e892ab7cc9cabc2292e6221e722a779344",
+        "assets/web_publications/polytope_conway_gallery/outputs/0.html": "967c4f049842d90529a262f5700ebf18e583323582be789da74c03b4ba8b6c57",
+        "assets/web_publications/polytope_conway_gallery/outputs/1.html": "d3a355f97dfce2db0bc8416d52a1c6663343014b8fdd4f20ff24f16e2d4d1e6b",
+        "assets/web_publications/polytope_conway_gallery/outputs/2.html": "a190028abf5a1f175f2ee8e2d990fbf7c021872eb1979aa114aaa3a878ede545",
+        "assets/web_publications/polytope_conway_gallery/outputs/3.html": "0da572c648e37e99d2ad91696a3542e7aeabae589f952c72a8fcf74047a6a015",
+        "assets/web_publications/polytope_conway_gallery/outputs/4.html": "2a91484de17b27c1fc954381e2af9c18fb2b9d0782af6ff9324d0e5389af1ec3"
       },
       "kinds": [
         "three"
@@ -4723,18 +4651,18 @@
       }
     },
     "assets/agent_transcripts/polytope_holes_and_chains/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:12:36.708Z",
+      "captureDigest": "8ca26f3844345c6e7e29c7844d0aa5a8e67348467dae06f3a288c218afe53f85",
+      "capturedAt": "2026-11-17T22:41:47.470Z",
       "channels": 5,
       "file": "assets/web_publications/polytope_holes_and_chains/document/metadata.edn",
       "files": {
-        "assets/web_publications/polytope_holes_and_chains/document/metadata.edn": "39cd1c1267dc7b5418dd9c82c156ea08d44acf23b7ee066e5e0da427e6ecaeae",
-        "assets/web_publications/polytope_holes_and_chains/document/outputs.json": "0a3d671ec7d8e8f069edeb21a2d412bc7d690a9d591fba0e4dd7dd664782e257",
-        "assets/web_publications/polytope_holes_and_chains/outputs/0.html": "4550a6641b4f9c277017e20ab4d060802660a3cbea85eea380d36726cb8348bd",
-        "assets/web_publications/polytope_holes_and_chains/outputs/1.html": "837bf5025786a45d8d5847ccce8f26998038bb8d8e52a59b035ea1a533c3b305",
-        "assets/web_publications/polytope_holes_and_chains/outputs/2.html": "7e8f51ded7f3a403842ce5728fd5a81ca92b70b768c8afa8e68e168947f46c54",
-        "assets/web_publications/polytope_holes_and_chains/outputs/3.html": "9a30cbf0b1c0243f55dc2c53edd3b4ed0c54704247529256021e4a1d1d650cad",
-        "assets/web_publications/polytope_holes_and_chains/outputs/4.html": "f2887e0b668ba3b3bd9973d75a34957d48519edd4a5b06376410b14995f2ae8f"
+        "assets/web_publications/polytope_holes_and_chains/document/metadata.edn": "bec4e1ea1af2de44f5765453bf1cc6d9f3d50e6fbc2f9c1513aab5ca81e266ba",
+        "assets/web_publications/polytope_holes_and_chains/document/outputs.json": "3db3f84baff9463ff7d028c609fbdf1ae4f0ee0ff2a7c423bb5429bfbcd1365e",
+        "assets/web_publications/polytope_holes_and_chains/outputs/0.html": "b06c26ab562b82a35c17908ecefa78b6312219557cb6a4c651222a155fbe81e5",
+        "assets/web_publications/polytope_holes_and_chains/outputs/1.html": "a594c35374d0506c6a7533b8e43e5c4727be083ecac69c546fd1bedc20b48905",
+        "assets/web_publications/polytope_holes_and_chains/outputs/2.html": "502823e4fd05ae98e6d9d8b5289527a07af8ea2dd9a9874daf60eb5712cd2fc2",
+        "assets/web_publications/polytope_holes_and_chains/outputs/3.html": "2ac202e49dad4c3ef5f21bfb6a07a7daa4f0c08ff0dea5acab248a1cd0a8202e",
+        "assets/web_publications/polytope_holes_and_chains/outputs/4.html": "1ae00e01e8cb5083b2fcaee8038dc1858a5710bb94c32d97931405399ac6919d"
       },
       "kinds": [
         "three"
@@ -4750,13 +4678,13 @@
       }
     },
     "assets/agent_transcripts/polytope_layer_stack_path_trace/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:25:46.378Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:41:51.710Z",
       "channels": 1,
       "file": "assets/web_publications/polytope_layer_stack_path_trace/document/metadata.edn",
       "files": {
-        "assets/web_publications/polytope_layer_stack_path_trace/document/metadata.edn": "41dfeb676fb3d357668817cd9a31082b07314ed73242050a41a85fcb982ee0e3",
-        "assets/web_publications/polytope_layer_stack_path_trace/document/outputs.json": "3652721f4897db3611430b9966d46fc37adb998ec0cedab34d7c2051de084153",
+        "assets/web_publications/polytope_layer_stack_path_trace/document/metadata.edn": "eebe1c966c3f617c315bc1d0a4b8feea9a2fe3284b35fad32f48389bf831caa6",
+        "assets/web_publications/polytope_layer_stack_path_trace/document/outputs.json": "57f1c47bc10d345ae8e039f8e4be644d48fc2115287831624fcf40fd01ae1164",
         "assets/web_publications/polytope_layer_stack_path_trace/outputs/0.html": "5f5102de1a62bc5e07eefe255abac404319946f973b816112465e205ee67d635"
       },
       "kinds": [
