@@ -6,78 +6,6 @@
       "error": "{\"success\": false, \"message\": \"Ran macro 'flow_lenia': applied=14 skipped=0 errors=0. Execution failed: Box interrupted: Runloop stalled 273525 ms in '3 \\u2014 The parameter field blending (MEAN mixing)' (flow_lenia_drift) (watchdog)\", \"name\": \"flow_lenia\", \"operationCount\": 14, \"direction\": \"do\", \"applied\": 14, \"output\": [{\"uid\": \"flow_lenia_conservation\", \"line\": 13, \"html\": \"<div class='value-viz afield-appendable-output' style='font-family: \\\"Iosevka Web\\\", monospace; font-size: 12px; color:",
       "since": "2026-11-17"
     },
-    "assets/agent_transcripts/shader_boids_separation/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/shadertrinket/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/shared_types_demo/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/simdverlet_world/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/simulation_clock/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/skinned_volume_path_trace/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/slideshow_guide/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/slideshow_own_tour/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/smpte_timecode/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/solidcraft_intro/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/solidsl_gallery/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "8ca26f3844345c6e7e29c7844d0aa5a8e67348467dae06f3a288c218afe53f85",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/solidsl_inverse/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "8ca26f3844345c6e7e29c7844d0aa5a8e67348467dae06f3a288c218afe53f85",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
     "assets/agent_transcripts/solidsl_notation/metadata.edn": {
       "attempts": 0,
       "captureDigest": "8ca26f3844345c6e7e29c7844d0aa5a8e67348467dae06f3a288c218afe53f85",
@@ -4842,13 +4770,13 @@
       }
     },
     "assets/agent_transcripts/shader_boids_separation/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:28:01.191Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T23:02:48.536Z",
       "channels": 1,
       "file": "assets/web_publications/shader_boids_separation/document/metadata.edn",
       "files": {
-        "assets/web_publications/shader_boids_separation/document/metadata.edn": "a9b6cfbfd774cecc1e57e225205e3f69488adbbca8fad175e2be51bee7906d8e",
-        "assets/web_publications/shader_boids_separation/document/outputs.json": "2c0004715d0860de11ff0ad415bdb6624e1db68ff7ea83a4d19bb213577fc71e",
+        "assets/web_publications/shader_boids_separation/document/metadata.edn": "9df4138d3a4c2f6206999bee057c6e3cb4ffb4f4c9374d80ae3428891def9c9e",
+        "assets/web_publications/shader_boids_separation/document/outputs.json": "a9a9f902429a4fefaa6c0b214218d3c944d5434689d9c6ebf5d560515d5647ba",
         "assets/web_publications/shader_boids_separation/outputs/0.html": "462924b61e8683aa166fc8523a4281511a58a30454070d7d3aca7e1ba1bba894"
       },
       "kinds": [
@@ -4871,13 +4799,13 @@
       ]
     },
     "assets/agent_transcripts/shadertrinket/metadata.edn": {
-      "captureDigest": "aaa64f59f3bd08f0c6c6c24821b783f71a13d8daf22ddaa23dc1523bcc6bc322",
-      "capturedAt": "2026-11-17T10:26:30.956Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T23:02:57.502Z",
       "channels": 1,
       "file": "assets/web_publications/shadertrinket/document/metadata.edn",
       "files": {
-        "assets/web_publications/shadertrinket/document/metadata.edn": "8dea89cb3c7dee3bfbb2c10383db942c27189a6340afec297c1728f63ad96215",
-        "assets/web_publications/shadertrinket/document/outputs.json": "8a0c4c2f349862f7736ee60332954bdaa0054371931f6a8c7bea765402237150",
+        "assets/web_publications/shadertrinket/document/metadata.edn": "f70e3a6328bcd11bf47c80a5cd1f9ae28b54022320c3958a32d1557ecdd2a431",
+        "assets/web_publications/shadertrinket/document/outputs.json": "0a35ad20b94af03ccadc88b4584ef7be04dd55d3e8e83247e5f1b8dcca5781ba",
         "assets/web_publications/shadertrinket/outputs/0.html": "d76ccba0af19de74d40bf0d5235ffef988acd2936067ca030ab137a331bea682"
       },
       "kinds": [
@@ -4921,17 +4849,17 @@
       ]
     },
     "assets/agent_transcripts/simdverlet_world/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T14:19:37.206Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T23:03:36.323Z",
       "channels": 4,
       "file": "assets/web_publications/simdverlet_world/document/metadata.edn",
       "files": {
-        "assets/web_publications/simdverlet_world/document/metadata.edn": "160123e7147f08407f47499bd193166350385dbeb3abc165c4227dea309fffd8",
-        "assets/web_publications/simdverlet_world/document/outputs.json": "aa7f1dd34d759ea620b6170e693f5b007c8ae07770a31ea26a109acefae05eab",
-        "assets/web_publications/simdverlet_world/outputs/0.html": "901fab0c99293137efe0516d0c721a4ba3f0d7efbd45dbb97a50e74ce59aaa3d",
-        "assets/web_publications/simdverlet_world/outputs/1.html": "5a83ddf99e907b4c60239e510daa346d6f3f0e61ef1be581e2363b8b43dff183",
-        "assets/web_publications/simdverlet_world/outputs/2.html": "ddb16b3048738664c3dc6e949c8aa40054e6674f7fba3f69de53fa36b8248877",
-        "assets/web_publications/simdverlet_world/outputs/3.html": "4ea2d83ea5cdd6a5ec52ffa860a5b772d8f2ae327d7b81a6017def956854f9e2"
+        "assets/web_publications/simdverlet_world/document/metadata.edn": "c78b7aabd3ded4276d3b1a4cd43f4c7bbf7c44dc6da7dfe03f2f7730e3419225",
+        "assets/web_publications/simdverlet_world/document/outputs.json": "164f383b5d53bc780bfcd30ab0f3369b6c26feeeab33edcb64446611362598ba",
+        "assets/web_publications/simdverlet_world/outputs/0.html": "f3fff0ac1c9579a1bfb7401eeba1dab1d13b1501fc6ec2cfe9653f4d48e514f4",
+        "assets/web_publications/simdverlet_world/outputs/1.html": "5084cf7d0e156f7618a054f4ca51d5c9bd63e030447769457cd6c0e8c8d71817",
+        "assets/web_publications/simdverlet_world/outputs/2.html": "d3a6995f7e57456a33b890623c304e8673113f74b5e6ab09e18db0b963e597d2",
+        "assets/web_publications/simdverlet_world/outputs/3.html": "10bec0d92a30629f06b66080409e90ea47b8013356dccbfda94c46e25f3002d2"
       },
       "kinds": [
         "svg"
@@ -4948,15 +4876,15 @@
       }
     },
     "assets/agent_transcripts/simulation_clock/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T14:19:17.516Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T23:03:45.864Z",
       "channels": 2,
       "file": "assets/web_publications/simulation_clock/document/metadata.edn",
       "files": {
-        "assets/web_publications/simulation_clock/document/metadata.edn": "9a3091ebb62ef75cffd11243e663a18029122d8d06037ff7d34281655b01e461",
-        "assets/web_publications/simulation_clock/document/outputs.json": "d79d518b702a2b351eecfbe2fcd87f9b66898492688a7947bf5a1993f877337f",
-        "assets/web_publications/simulation_clock/outputs/0.html": "dd314d6806ba5889b381aac9ec73d326c3bd82e2486e557619513bea1440b9b0",
-        "assets/web_publications/simulation_clock/outputs/1.html": "a2e8a75cd4a4c6e63c5781af380a45c3ee391ddbd776e74cf3ef223581594d7c"
+        "assets/web_publications/simulation_clock/document/metadata.edn": "639c251f177f113007754ec5b68dc07318a4ce0b0860595c17672ceac55e38c8",
+        "assets/web_publications/simulation_clock/document/outputs.json": "42bff808921d3a500f860765e1e37ebc26b6a84a1a5f79f73c8da115767acebb",
+        "assets/web_publications/simulation_clock/outputs/0.html": "a1adb537e4a4d755328fd8ef54edbc6d558f76be953cae8dc2f3f45faabf97a2",
+        "assets/web_publications/simulation_clock/outputs/1.html": "c9fd52b7564acf2b6555627c3ccd37ef8ca71c7d3a6fddf3021e3d2fce287f74"
       },
       "kinds": [
         "svg"
@@ -4971,13 +4899,13 @@
       }
     },
     "assets/agent_transcripts/skinned_volume_path_trace/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:26:32.238Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T23:03:49.676Z",
       "channels": 1,
       "file": "assets/web_publications/skinned_volume_path_trace/document/metadata.edn",
       "files": {
-        "assets/web_publications/skinned_volume_path_trace/document/metadata.edn": "e6c3490abd43f8c2802d326dbdca58fe6f6f5119aad9695eaad1c8a40225b5a2",
-        "assets/web_publications/skinned_volume_path_trace/document/outputs.json": "86b3af0a125d4ea73f62a72bcea2ec1a104bcfc4d52d4e5b2d7247ef10d74344",
+        "assets/web_publications/skinned_volume_path_trace/document/metadata.edn": "ba68b88b50a4fa6654809a4c8036ca8475682da4f816d5fc1e93871cc7e6ba8d",
+        "assets/web_publications/skinned_volume_path_trace/document/outputs.json": "97e28e5ca403074d5a1371b2a52c977446c332d5d89b332daabda6f1a4e52e6a",
         "assets/web_publications/skinned_volume_path_trace/outputs/0.html": "8a356d0c59931bbf6b3f78342cb3548aab9e0e971c80405d2ac0915defedb2dc"
       },
       "kinds": [
@@ -4999,18 +4927,18 @@
       ]
     },
     "assets/agent_transcripts/smpte_timecode/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:04:35.315Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T23:04:15.645Z",
       "channels": 5,
       "file": "assets/web_publications/smpte_timecode/document/metadata.edn",
       "files": {
-        "assets/web_publications/smpte_timecode/document/metadata.edn": "9799bf9d1ec038d7a8e3c9f8916e1331f57da162dd3948016abce85904929e5a",
-        "assets/web_publications/smpte_timecode/document/outputs.json": "4e9f5cc40fad8877b9b90cc533a4420acdcbec27199ee37413e5e587d78f51b1",
-        "assets/web_publications/smpte_timecode/outputs/0.html": "61a224fa26fd84cf8b1f66f2ecfde06f05e286fdab6841882cd76dadf68a646c",
-        "assets/web_publications/smpte_timecode/outputs/1.html": "5e3809229e7a65f2366098a9d649afd7bfa75b270812f12e2c768025be23d876",
-        "assets/web_publications/smpte_timecode/outputs/2.html": "e0e963033ab6d98d047e5188184ea79b554d0a627dd861b18d3868cc49d4e849",
-        "assets/web_publications/smpte_timecode/outputs/3.html": "302c7fc88285f4feb9acc989eaad5185709d145d807643bdfa4adf5cacba4a88",
-        "assets/web_publications/smpte_timecode/outputs/4.html": "189b95467aa2ecd8e14e862b68a5ee6dbb9d52c6544f36a67142419a122b94f6"
+        "assets/web_publications/smpte_timecode/document/metadata.edn": "cccee33b31093a97a49587024362605ef93642265594248c49600cc3fd48e245",
+        "assets/web_publications/smpte_timecode/document/outputs.json": "7d21fad37d04af6a31a8bba5ae1314163d47f5b00724f9421c7f29eba0c1dace",
+        "assets/web_publications/smpte_timecode/outputs/0.html": "0654dd3c44642fb47f031cb40b3443f36506fb56247d5f9f5250f8e3862847d0",
+        "assets/web_publications/smpte_timecode/outputs/1.html": "68b595ed3565e7560c4136472da393d6a4c0bf59ca10161d5b06a582016b3213",
+        "assets/web_publications/smpte_timecode/outputs/2.html": "3d4432b79564810219e5a9ec7d3abdb714f9d90e0396e1df087524871d81d137",
+        "assets/web_publications/smpte_timecode/outputs/3.html": "f8c070425798999f669e06a87586e5b244412edc8b751333665a5bd59ea83924",
+        "assets/web_publications/smpte_timecode/outputs/4.html": "48c1664f6204a11a5e99832087ff9534e196a38e038a993fc4c921978085e482"
       },
       "kinds": [
         "svg"
@@ -5027,14 +4955,14 @@
       }
     },
     "assets/agent_transcripts/solidcraft_intro/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:21:13.457Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T23:04:17.663Z",
       "channels": 1,
       "file": "assets/web_publications/solidcraft_intro/document/metadata.edn",
       "files": {
-        "assets/web_publications/solidcraft_intro/document/metadata.edn": "2345904569bcfdc275e18bb09be5eb2f29bedb4e320d602f277aa7bbf94c5f68",
-        "assets/web_publications/solidcraft_intro/document/outputs.json": "e51cea9574058b3f6dfd48b72696e2297fdd3e3215fb1d396d3a6baee6e288b3",
-        "assets/web_publications/solidcraft_intro/outputs/0.html": "c429ff869e6cac3ca7cc3dca94b6bea18bcd1dfff346e95f5cb9f750382d89b7"
+        "assets/web_publications/solidcraft_intro/document/metadata.edn": "c77117171af6f2c8c1ed831e8c1c1b58701ec99fcd4c22b6f74f4701df570161",
+        "assets/web_publications/solidcraft_intro/document/outputs.json": "c699c397ee28223600fef01cc84a13677a083fef177e5f8f6c9e9dbd110778b2",
+        "assets/web_publications/solidcraft_intro/outputs/0.html": "986c591e5e468f76e4374950ee7bf8cf982b434dbb16aae8236d6f33768dccfb"
       },
       "kinds": [],
       "outputs": "assets/web_publications/solidcraft_intro/document/outputs.json",
@@ -5046,16 +4974,16 @@
       }
     },
     "assets/agent_transcripts/solidsl_gallery/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:23:08.498Z",
+      "captureDigest": "8ca26f3844345c6e7e29c7844d0aa5a8e67348467dae06f3a288c218afe53f85",
+      "capturedAt": "2026-11-17T23:04:26.124Z",
       "channels": 3,
       "file": "assets/web_publications/solidsl_gallery/document/metadata.edn",
       "files": {
-        "assets/web_publications/solidsl_gallery/document/metadata.edn": "a554b5d789ed8a25d2b218c03fe942bf269ab2f5ecb3d2b9bf96fed7ed9591bc",
-        "assets/web_publications/solidsl_gallery/document/outputs.json": "20227f5782c4252038a75377c41332129dcc5008f59f8c109f14b86a8b57aac6",
-        "assets/web_publications/solidsl_gallery/outputs/0.html": "551d4663c9418d8f9b5a3991177bcb8f37489f5c334eb05802e0766d4343eb62",
-        "assets/web_publications/solidsl_gallery/outputs/1.html": "1bde22d904c90540af1dc8b83fb6740155d20c5126e8a34cf6516cc036a76ca5",
-        "assets/web_publications/solidsl_gallery/outputs/2.html": "fe511daee3765b0c97d19257e3babf346445f5e542f7faa75c8782cb1fac2c1e"
+        "assets/web_publications/solidsl_gallery/document/metadata.edn": "cf7f4c30d8572eee2f4334dda9076d0b4a087327de83fefc28f98e7b808b60d6",
+        "assets/web_publications/solidsl_gallery/document/outputs.json": "458f353ca70c6f8e3f2ced441a632da55de40e78448e86ca3725d6feb101f75a",
+        "assets/web_publications/solidsl_gallery/outputs/0.html": "0d11478119ac4d553729f2c1532e2b7df6e8ca8477a74b6a7aeda20d13c68650",
+        "assets/web_publications/solidsl_gallery/outputs/1.html": "dbbde4f4f7580a09551d014b69409213d2ddc9dca7dca18d3139a2aeac4225e6",
+        "assets/web_publications/solidsl_gallery/outputs/2.html": "05157fe1c912bcaf6f3050351205bc0dba61ed7a58764c8b9bb6382f72cacacc"
       },
       "kinds": [
         "three"
@@ -5071,17 +4999,17 @@
       }
     },
     "assets/agent_transcripts/solidsl_inverse/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:05:34.121Z",
+      "captureDigest": "8ca26f3844345c6e7e29c7844d0aa5a8e67348467dae06f3a288c218afe53f85",
+      "capturedAt": "2026-11-17T23:04:34.678Z",
       "channels": 4,
       "file": "assets/web_publications/solidsl_inverse/document/metadata.edn",
       "files": {
-        "assets/web_publications/solidsl_inverse/document/metadata.edn": "9bf7eed4a53b3d59cb23d302079f78c8dc464e1cfac790493c398b9c9b8be5a2",
-        "assets/web_publications/solidsl_inverse/document/outputs.json": "0ca5333a4e798ef4724d0a57a00364d04a1df68c80a9fc7fd7cee41051dfefe7",
-        "assets/web_publications/solidsl_inverse/outputs/0.html": "081e92477d8bcf3372bc38aa23fb30559ac3c0d46acacc9da67239088a838260",
-        "assets/web_publications/solidsl_inverse/outputs/1.html": "6ff3c69cf4c4b33c982a767b2e0d80a2d16d88420305b522b066cd3aaa0155bf",
-        "assets/web_publications/solidsl_inverse/outputs/2.html": "6891a725ef93d8b12b16fa87f7473e6238a3314ad73f2307758aaca141c2b043",
-        "assets/web_publications/solidsl_inverse/outputs/3.html": "84c521a471ff942921ea8db430df944335c5ead73c08801a5d4d3314ab8678eb"
+        "assets/web_publications/solidsl_inverse/document/metadata.edn": "0a443dc9c221d3548b3638912a1fc385ed0532306429dc77de17f4595c53feee",
+        "assets/web_publications/solidsl_inverse/document/outputs.json": "044c82b85dc0b8d0b0b0415fed0099f4fb09de08a29e42a7122e3e13e18e36d7",
+        "assets/web_publications/solidsl_inverse/outputs/0.html": "e67f934e918423beb9dcfaa2067f897d1b4f9073e9e3cddfa21bf4ea5ce2b848",
+        "assets/web_publications/solidsl_inverse/outputs/1.html": "b6af3ff0d99d1e46af027afa1872419ab70003b122d1cee3ad85a2ce034f5714",
+        "assets/web_publications/solidsl_inverse/outputs/2.html": "7c09b6bf4eb8b4d939d7bff3f1469b67fa75338f19393b773fb3576aa19aa4c6",
+        "assets/web_publications/solidsl_inverse/outputs/3.html": "0bfff68ef0d6da185e6e74bfd1f7110d03ad12c4d83584345bf7443f659aee2d"
       },
       "kinds": [
         "plotly",
@@ -6882,7 +6810,7 @@
       }
     },
     "assets/agent_transcripts/shared_types_demo/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
       "channels": 0,
       "reason": "No output-area channels; the code remains available.",
       "sources": {
@@ -6896,7 +6824,7 @@
       }
     },
     "assets/agent_transcripts/slideshow_guide/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
       "channels": 0,
       "reason": "No output-area channels; the code remains available.",
       "sources": {
@@ -6909,7 +6837,7 @@
       }
     },
     "assets/agent_transcripts/slideshow_own_tour/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
       "channels": 0,
       "reason": "No output-area channels; the code remains available.",
       "sources": {
