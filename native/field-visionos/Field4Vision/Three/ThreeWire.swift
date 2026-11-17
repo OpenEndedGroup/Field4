@@ -118,6 +118,19 @@ struct ThreeWireDescription: Decodable {
     let partAppearance: [String: ThreePartStyle]?
     /// The scene's own part styles from `three { style(id, …) }`: colour, opacity, emphasis.
     let partStyles: [String: ThreeSceneStyle]?
+    /// Text pinned to points in the scene (`three { label(...) }`).
+    let labels: [ThreeLabel]?
+}
+
+/// `ThreeLabel` in `ThreeScene.kt`: `chip` (a boxed name), `tag` (small dim text) or `diamond` (a marker).
+struct ThreeLabel: Decodable, Hashable {
+    let position: [Double]
+    let text: String?
+    let style: String?
+    /// CSS colours.
+    let color: String?
+    let background: String?
+    let border: String?
 }
 
 /// `ThreePartStyle.kt`: how the box styles a part. A stored part appearance wins over it.
@@ -232,6 +245,10 @@ struct ThreeDrawable {
     var appearance: ThreePartStyle?
     /// The scene's style for this part, if any.
     var sceneStyle: ThreeSceneStyle? = nil
+    /// Unique within the scene, for the entity. `id` is the part's stable id, which several drawables
+    /// can share: `mesh(..., edges = true)` sends the surface and its edge lines under one id, and the
+    /// browser's placements, hidden list and selection all speak in ids.
+    var key: String = ""
 }
 
 struct ThreeScene {
@@ -244,6 +261,7 @@ struct ThreeScene {
     var inspector: ThreeWireInspector?
     /// The geometry message as it arrived, kept so a `three/appearance` message can be applied to it.
     var appearance: [String: ThreePartStyle] = [:]
+    var labels: [ThreeLabel] = []
 
     /// The scene with part styles applied: replaced, or merged into the current ones.
     func styled(_ parts: [String: ThreePartStyle], replace: Bool) -> ThreeScene {
@@ -302,6 +320,13 @@ enum ThreeBinding {
                 sceneStyle: w.id.flatMap { d.partStyles?[$0] }))
         }
 
+        var seen: [String: Int] = [:]
+        for i in drawables.indices {
+            let n = seen[drawables[i].id, default: 0]
+            seen[drawables[i].id] = n + 1
+            drawables[i].key = n == 0 ? drawables[i].id : "\(drawables[i].id)~\(n)"
+        }
+
         var bounds: (min: SIMD3<Float>, max: SIMD3<Float>)?
         if let b = d.bounds, b.min.count >= 3, b.max.count >= 3 {
             bounds = (SIMD3(b.min[0], b.min[1], b.min[2]), SIMD3(b.max[0], b.max[1], b.max[2]))
@@ -311,7 +336,7 @@ enum ThreeBinding {
         return ThreeScene(uid: d.uid, revision: d.revision, generation: d.buffers?.generation,
                           drawables: drawables, bounds: bounds,
                           inspector: d.inspector?.enabled == false ? nil : d.inspector,
-                          appearance: d.partAppearance ?? [:])
+                          appearance: d.partAppearance ?? [:], labels: d.labels ?? [])
     }
 
     /// The FLine half's primitives bucketed by the group of their first vertex, each bucket compacted
