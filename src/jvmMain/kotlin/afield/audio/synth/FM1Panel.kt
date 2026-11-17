@@ -12,6 +12,9 @@ import afield.ui.output.controlGroup
  * that press the panel's buttons, play its 27 keys and turn its seven encoders.
  */
 
+/** The most 10 ms simulator blocks a pulling panel renders in one runloop frame (100 ms of sound). */
+private const val MAX_PULL_BLOCKS = 10
+
 /** The panel buttons in the order [fm1Panel] lays them out, with the index [FM1Sim.button] takes. */
 private val PANEL_BUTTONS = listOf(
     "PLAY" to FM1Sim.Button.PLAY, "REC" to FM1Sim.Button.REC, "SEQ" to FM1Sim.Button.SEQ,
@@ -79,8 +82,13 @@ fun Box.fm1Panel(
     return loop {
         val now = AnimationClock.nowSeconds()
         if (pull) {
-            // 480 frames at 48 kHz is 10 ms: the simulator advances in step with this clock.
-            while (pulledTo < now) { fm1.render(l, r, 480, 48_000f); pulledTo += 0.01 }
+            // 480 frames at 48 kHz is 10 ms: the simulator advances in step with this clock. This runs on
+            // the runloop, so it catches up at most MAX_PULL_BLOCKS a frame and drops what is left: a
+            // simulator slower than real time (or a clock that jumped) otherwise never catches up and
+            // starves every other box, which is how docs captures after this panel timed out.
+            var blocks = 0
+            while (pulledTo < now && blocks < MAX_PULL_BLOCKS) { fm1.render(l, r, 480, 48_000f); pulledTo += 0.01; blocks++ }
+            if (pulledTo < now) pulledTo = now
         }
         if (now - lastDraw >= 1.0 / maxFps) {
             val revision = fm1.screenRevision
