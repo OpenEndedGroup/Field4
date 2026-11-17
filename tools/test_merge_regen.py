@@ -33,7 +33,9 @@ class MergeRegenTest(unittest.TestCase):
              mock.patch('conversation_packagers.repackage_stale', return_value=(0, [])):
             code, _ = merge_regen.regenerate(self.repo, {'public/docs/assets/web_publications/catalog.json'})
         self.assertEqual(code, 0)
-        self.assertTrue(any(call.args[0][-2:] == [str(self.repo/'tools/docs_publications.py'), 'sync']
+        # A landing defers pages only the capture code made stale; the lander's catch-up takes them.
+        self.assertTrue(any(call.args[0][-3:] == [str(self.repo/'tools/docs_publications.py'), 'sync',
+                                                  '--defer-digest-only']
                             for call in run.call_args_list))
         git_call.assert_any_call(self.repo, 'add', '-A', '--', 'public/docs/assets/web_publications')
 
