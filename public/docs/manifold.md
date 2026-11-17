@@ -506,6 +506,12 @@ the faces beside it. `distance` has to be smaller than the part's narrowest feat
 face. Two pieces of one part that only meet along an edge come apart, since no inset can keep an edge
 contact.
 
+A part built as a union of cells that meet face to face can come back from `Solid.union` as several
+pieces: Manifold keeps pieces that only touch apart, with a zero-width crack between them.
+`insetFaces` calls `fused()` first, which fills each crack where its two walls overlap, so a crack
+stays closed instead of opening into a slot. `part.fused().decompose().size` tells you how many
+pieces the material really makes.
+
 ## Back down to 2D: slicing
 
 `slice(z)` is a real cross section, not a silhouette — the primitive under every fabrication path.

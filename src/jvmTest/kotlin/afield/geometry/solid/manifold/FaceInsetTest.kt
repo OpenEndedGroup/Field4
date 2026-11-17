@@ -135,6 +135,39 @@ class FaceInsetTest {
         assertEquals(d, inset.bounds.min.y.toDouble(), 1e-7)
     }
 
+    @Test
+    fun `a crack inside a solid stays closed`() {
+        if (!ManifoldLibrary.isAvailable) return
+        // Two halves of one panel that meet only up to rounding, as cells computed separately do: the
+        // union keeps both faces at x = 1, back to back, with its own material either side. (A
+        // compose of exactly touching halves merges them, so it would not test this.)
+        val half = Solid.cube(1.0, 0.1, 1.0)
+        val cracked = Solid.union(half, half.translated(1.0 + 1e-12, 0.0, 0.0))
+        assertEquals(2, cracked.decompose().size, "the fixture holds a crack")
+        val inset = cracked.insetFaces(d, except = [vec(0, 1, 0)])
+        // As if it were the whole panel: only the outer edges move.
+        assertEquals((2 - 2 * d) * 0.1 * (1 - 2 * d), inset.volume, 1e-12)
+        for (x in [1.0 - 0.5 * d, 1.0 + 0.5 * d]) assertTrue(inset.contains(x, 0.05, 0.5), "no slot opened at the crack, x = $x")
+        assertTrue(inset.contains(1.0, 0.05, 1.5 * d) && !inset.contains(1.0, 0.05, 0.5 * d), "the edge across the crack moved by d")
+    }
+
+    @Test
+    fun `a face that is a crack over only part of it moves only where it is outside`() {
+        if (!ManifoldLibrary.isAvailable) return
+        // An L of panel, from two cells that meet up to rounding at x = 1: the long cell's +x face is
+        // a crack for z < 1, against the short cell, and the outside of the L's inner corner beyond.
+        val long = Solid.cube(1.0, 0.1, 2.0)
+        val short = Solid.cube(1.0, 0.1, 1.0).translated(1.0 + 1e-12, 0.0, 0.0)
+        val l = Solid.union(long, short)
+        assertEquals(2, l.decompose().size, "the fixture holds a crack")
+        val inset = l.insetFaces(d, except = [vec(0, 1, 0)])
+        // The L's outline offset inward by d, mitered: two overlapping rectangles.
+        val area = (2 - 2 * d) * (1 - 2 * d) + (1 - 2 * d) * (2 - 2 * d) - (1 - 2 * d) * (1 - 2 * d)
+        assertEquals(area * 0.1, inset.volume, 1e-9)
+        for (x in [1.0 - 0.5 * d, 1.0 + 0.5 * d]) assertTrue(inset.contains(x, 0.05, 0.5), "no slot at the crack, x = $x")
+        assertTrue(!inset.contains(1.0 - 0.5 * d, 0.05, 1.5) && inset.contains(1.0 - 1.5 * d, 0.05, 1.5), "the outside part moved by d")
+    }
+
     private data class Probe(val part: Solid, val x: Double, val y: Double, val inward: Double)
 
     /** Where the z axis points after `rotated(9.09, 0.0, 9.09)`, read off a rotated needle. */

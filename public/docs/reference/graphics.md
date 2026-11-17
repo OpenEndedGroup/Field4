@@ -4,7 +4,7 @@
 
 Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side.
 
-423 source file(s), 10299 public symbol(s), 6513 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+424 source file(s), 10300 public symbol(s), 6514 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -6240,15 +6240,32 @@ they were, growing or shrinking to meet the faces that moved.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="faceinset-kt--insetfaces"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Solid</span><span class="p">.</span><span class="nf">insetFaces</span><span class="p">(</span><span class="n">distance</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">except</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">toleranceDegrees</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">Solid</span></code>](source/jvmMain/afield/geometry/solid/manifold/FaceInset/#L50) | This solid with every face moved `distance` inward along its own normal, except the faces parallel to one of the planes whose normals are in `except`. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">Solid</span><span class="p">.</span><span class="nf">insetFaces</span><span class="p">(</span><span class="n">distance</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">exceptOn</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FacePlane</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">toleranceDegrees</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">toleranceDistance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.1</span> <span class="o">&#42;</span> <span class="n">distance</span><span class="p">)</span><span class="p">:</span> <span class="nc">Solid</span></code>](source/jvmMain/afield/geometry/solid/manifold/FaceInset/#L96) | This solid with every face moved `distance` inward, except the faces lying on one of the planes in `exceptOn`. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">Solid</span><span class="p">.</span><span class="nf">insetFaces</span><span class="p">(</span><span class="n">distance</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">move</span><span class="p">:</span> <span class="p">(</span><span class="nc">DoubleArray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Boolean</span><span class="p">)</span><span class="p">:</span> <span class="nc">Solid</span></code>](source/jvmMain/afield/geometry/solid/manifold/FaceInset/#L130) | This solid with the faces `move` picks moved `distance` inward along their normals; the others stay. |
+| <a id="faceinset-kt--insetfaces"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Solid</span><span class="p">.</span><span class="nf">insetFaces</span><span class="p">(</span><span class="n">distance</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">except</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">toleranceDegrees</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">Solid</span></code>](source/jvmMain/afield/geometry/solid/manifold/FaceInset/#L54) | This solid with every face moved `distance` inward along its own normal, except the faces parallel to one of the planes whose normals are in `except`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Solid</span><span class="p">.</span><span class="nf">insetFaces</span><span class="p">(</span><span class="n">distance</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">exceptOn</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FacePlane</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">toleranceDegrees</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">toleranceDistance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.1</span> <span class="o">&#42;</span> <span class="n">distance</span><span class="p">)</span><span class="p">:</span> <span class="nc">Solid</span></code>](source/jvmMain/afield/geometry/solid/manifold/FaceInset/#L100) | This solid with every face moved `distance` inward, except the faces lying on one of the planes in `exceptOn`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Solid</span><span class="p">.</span><span class="nf">insetFaces</span><span class="p">(</span><span class="n">distance</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">move</span><span class="p">:</span> <span class="p">(</span><span class="nc">DoubleArray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Boolean</span><span class="p">)</span><span class="p">:</span> <span class="nc">Solid</span></code>](source/jvmMain/afield/geometry/solid/manifold/FaceInset/#L134) | This solid with the faces `move` picks moved `distance` inward along their normals; the others stay. |
 
 ### FacePlane { #faceinset-kt-faceplane }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FacePlane</span><span class="p">(</span><span class="k">val</span> <span class="n">point</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="k">val</span> <span class="n">normal</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/solid/manifold/FaceInset/#L69)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FacePlane</span><span class="p">(</span><span class="k">val</span> <span class="n">point</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="k">val</span> <span class="n">normal</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/solid/manifold/FaceInset/#L73)
 
 A plane given by a `point` on it and its `normal`, for [`insetFaces`](graphics.md#faceinset-kt--insetfaces)'s `exceptOn`. Which way the normal points does not matter there: a face on the plane is kept whichever side its material is on.
+
+## Fusing.kt { #fusing-kt }
+
+Joining the pieces of a solid that touch face to face, which a union leaves apart.
+
+Manifold keeps two pieces that only touch, with no volume in common, as separate components of one
+solid. A union of cells that share faces, each computed on its own, can therefore come back as
+several pieces with zero-width cracks between them: two faces back to back, with material on both
+sides. [`fused`](graphics.md#fusing-kt--fused) fills those cracks, so the result is one piece wherever the material is continuous.
+
+`src/jvmMain/kotlin/afield/geometry/solid/manifold/Fusing.kt` — [read the source](source/jvmMain/afield/geometry/solid/manifold/Fusing/)
+
+### Top-level functions { #fusing-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="fusing-kt--fused"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Solid</span><span class="p">.</span><span class="nf">fused</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Solid</span></code>](source/jvmMain/afield/geometry/solid/manifold/Fusing/#L37) | This solid with every crack between pieces that touch face to face filled, so they become one. |
 
 ## ManifoldHeaderCheck.kt { #manifoldheadercheck-kt }
 

@@ -43,6 +43,10 @@ import kotlin.math.sqrt
  * planes meet and stop meeting at one point once moved, the apex of a pyramid say, stays on every
  * kept plane and goes as near as it can to the moved ones.
  *
+ * Pieces of the solid that touch face to face are [fused] first. A union of cells that share faces
+ * can leave them as separate pieces with a zero-width crack between, and the walls of a crack are not
+ * faces of the part.
+ *
  * @param distance how far to move each face, in the part's units; positive moves it inward.
  * @param except normals of the planes whose parallel faces stay where they are.
  * @param toleranceDegrees how far a face's normal may be from one of [except] and still count as parallel.
@@ -132,6 +136,17 @@ fun Solid.insetFaces(distance: Double, move: (DoubleArray) -> Boolean): Solid = 
 internal fun Solid.insetFaces(distance: Double, liftFraction: Double, move: (DoubleArray) -> Boolean): Solid {
     require(distance.isFinite() && distance >= 0.0) { "an inset needs a non-negative distance, got $distance" }
     if (isEmpty || distance == 0.0) return translated(0.0, 0.0, 0.0)
+    // The walls of a crack between pieces that touch face to face are not faces of the part: fused,
+    // they are gone, and do not move or pull their corners two ways.
+    val whole = fused()
+    try {
+        return whole.insetFused(distance, liftFraction, move)
+    } finally {
+        whole.close()
+    }
+}
+
+private fun Solid.insetFused(distance: Double, liftFraction: Double, move: (DoubleArray) -> Boolean): Solid {
     val mesh = toPlanarMesh()
     val p = mesh.positions
     val tri = mesh.indices
