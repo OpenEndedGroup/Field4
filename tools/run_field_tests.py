@@ -1806,6 +1806,12 @@ def collect_output_gap(test: dict[str, Any], backdoor_results: list[dict[str, An
     # how a Kotlin or Python box draws, `(lines …)` is how a Clojure one does. Matching only the
     # first made this check quietly vacuous for every Lisp snippet — a box that drew nothing passed.
     expects_svg = re.search(r"\blines\s*\(|\(\s*lines\b", snippet) is not None
+    # `three { lines(...) }` draws its FLines in a three.js viewer, whose output is an iframe on
+    # /threejs, not an SVG. That viewer is the drawing the box was asked for.
+    if expects_svg and re.search(r"\bthree\s*\(", snippet) and any(
+        "/threejs?" in str(payload.get("value", "")) for payload in set_output_events
+    ):
+        expects_svg = False
     expects_display = re.search(r"\bdisplay\s*\(|\(\s*display\b", snippet) is not None
     expects_output_area = expects_svg or expects_display
 
