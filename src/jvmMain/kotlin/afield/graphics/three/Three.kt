@@ -13,6 +13,8 @@ import afield.lang.remotejs.JsFun
 import afield.ui.visualization.inspect
 
 import afield.geometry.path.FLine
+import afield.graphics.render.hoverColor
+import afield.graphics.render.onClick
 import afield.geometry.path.length
 import afield.ui.visualization.lines
 
@@ -313,6 +315,61 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         threeCallSite(sourceBox)?.let { at -> lines.forEach { lineProvenance[it] = at } }
         flines += lines
     }
+
+    /**
+     * Add FLines as one named part: an entry in the Parts list that hides, selects and takes a [style]
+     * as a [mesh] does, and folds under [layer].
+     *
+     * The strokes keep their colours, and fills and node points are drawn as in the unnamed [lines].
+     * Clicking and hovering are not carried: an FLine with an `onClick` or a `hoverColor` is refused
+     * here, so put it in an unnamed [lines] call instead. Several calls may share one [id]; they are
+     * then one part.
+     *
+     * @param id the part's name in the Parts list, in [style] and in viewer tools' `parts()`.
+     * @param label what the Parts list shows instead of [id].
+     * @param layer the part's place in the scene's layer tree, outermost first.
+     * @param panel which viewport draws it; `-1` for all of them. Left out, the panel declared most recently.
+     * @param metadata free data for the part, handed to viewer tools with it.
+     * @param hidden start hidden. Applied the first time the view sees this [id].
+     * @param style colour, opacity and emphasis for the part, as [style] sets them. A colour replaces
+     * the strokes' own.
+     */
+    fun lines(
+        lines: Collection<FLine>,
+        id: String,
+        label: String? = null,
+        layer: List<String> = emptyList(),
+        panel: Int? = null,
+        metadata: Map<String, Any?> = emptyMap(),
+        hidden: Boolean = false,
+        style: ThreePartStyle? = null,
+    ) {
+        require(id.isNotBlank()) { "a named group of lines needs a non-blank id" }
+        lines.firstOrNull { it.onClick != null || it.hoverColor != null }?.let {
+            throw IllegalArgumentException(
+                "lines(id = \"$id\") cannot carry onClick or hoverColor on an FLine; add that line with lines(...) without an id",
+            )
+        }
+        if (lines.isEmpty()) return
+        @Suppress("NAME_SHADOWING") val panel = panel ?: (panels.size - 1).coerceAtLeast(0)
+        val provenance = threeCallSite(sourceBox)
+        val sampled = buildThreeGeometryPayload("", lines, samplesPerCubic, autoFrame = false, editable = false)
+        fun add(geometry: ThreeGeometryData?, drawStyle: ThreeDrawStyle) {
+            if (geometry == null) return
+            drawables += ThreeDrawable(geometry, drawStyle, label = label, panel = panel, id = id)
+                .withIdentity(layer, metadata, hidden).copy(provenance = provenance)
+        }
+        add(sampled.fills, ThreeDrawStyle.flineFills)
+        add(sampled.lines, ThreeDrawStyle.lines)
+        add(sampled.points, ThreeDrawStyle.points)
+        namedLineSegments += sampled.meta?.lineSegments ?: 0
+        namedLinePoints += sampled.meta?.points ?: 0
+        if (style != null) style(id, style)
+    }
+
+    /** What the named [lines] groups add to the HUD's line and point counts; their triangles are counted with every drawable's. */
+    private var namedLineSegments = 0
+    private var namedLinePoints = 0
 
     /** Where the camera starts. Setting it turns auto-framing off — you picked an angle, keep it. */
     fun camera(
@@ -787,9 +844,9 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
             bounds = fitBox ?: tracker.toBounds(),
             fitBounds = fitBox != null,
             meta = ThreeMeta(
-                lineSegments = base?.meta?.lineSegments ?: 0,
+                lineSegments = (base?.meta?.lineSegments ?: 0) + namedLineSegments,
                 triangles = (base?.meta?.triangles ?: 0) + drawableTriangles,
-                points = base?.meta?.points ?: 0,
+                points = (base?.meta?.points ?: 0) + namedLinePoints,
             ),
             autoFrame = autoFrame,
             drawables = drawables.toList(),

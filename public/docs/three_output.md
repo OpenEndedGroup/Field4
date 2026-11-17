@@ -121,7 +121,9 @@ three(name = "samples", channel = "samples") {
 }
 ```
 
-See [FLine styling](fline_examples.md) for stroke, fill, point and callback properties.
+See [FLine styling](fline_examples.md) for stroke, fill, point and callback properties. To make a
+group of lines one entry in the Parts list, give the call an `id`
+([Parts by id](#parts-by-id-layers-metadata-and-styles)).
 
 ### Drag handles
 
@@ -914,6 +916,23 @@ even if their geometry has changed. `hidden = true` applies only the first time 
 From the page, `FieldViewer.parts()` lists the parts with their layers, metadata and visibility, and
 `FieldViewer.hidePart(id)` hides one; a viewer tool has the same through `ctx.parts()`, `ctx.part(id)`,
 `ctx.metadata()` and `ctx.hidePart(id)`, with each part's three.js objects.
+
+FLines can be a part too. Give `lines` an `id` and the FLines in that call become one entry in the
+**Parts** list, with the same `layer`, `metadata`, `hidden` and `style` a mesh takes. The strokes keep
+their own colours unless a style sets one. Here each edge colour of a network is its own part, so the
+reader can switch off one family of lines at a time:
+
+```diffstatic {data-lang=kotlin}
+three(name = "network") {
+    for ((name, family) in edgesByColour) lines(family, id = "edges-$name", layer = ["Edges"])
+    lines(outline, id = "outline", layer = ["Edges"], hidden = true)
+    mesh(faces, id = "faces", layer = ["Polygons"], wireframe = false, opacity = 0.3)
+    controls(parts = true)
+}
+```
+
+Lines in a named group cannot be clicked or hovered, so the call refuses an FLine with `onClick` or
+`hoverColor`. Keep those in a `lines(...)` call without an `id`.
 
 `style(id, ThreePartStyle)` sets a part's colour, opacity and emphasis (`ThreePartStyle.highlight()`,
 `ThreePartStyle.muted()`). The viewer draws a style as a material on the geometry it already has, so a box
