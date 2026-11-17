@@ -13,5 +13,30 @@
 	     socket. Without the key the first connection fails silently. -->
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Field4Vision connects to the Field server running on your Mac to display documents, receive FLine geometry, and receive the rendered video stream.</string>
+	<!-- Field serves a self-signed dev certificate. ATS exempts IP literals but not names, so reaching
+	     the Mac by its Tailscale name (ServerConfig's default) failed the handshake with -1200 before
+	     FieldServerTrustDelegate could accept the certificate. Scoped to the tailnet and `mi2`. -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>ts.net</key>
+			<dict>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+				<key>NSExceptionRequiresForwardSecrecy</key>
+				<false/>
+			</dict>
+			<key>mi2</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+				<key>NSExceptionRequiresForwardSecrecy</key>
+				<false/>
+			</dict>
+		</dict>
+	</dict>
 </dict>
 </plist>
