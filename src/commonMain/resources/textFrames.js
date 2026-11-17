@@ -1,6 +1,7 @@
 import {send, growTextFrame, setTextFrameContents, flushTextFramePropertyEditor, syncTextFrameSettingsEditor} from './afield.mjs';
 import {mountChatAutocomplete} from './aiChatAutocomplete.js';
 import {renderFieldMarkdown} from './markdownView.js';
+import {markdownOffsetAtPoint, revealTextareaCaret} from './markdownCaret.js';
 import {load, dump, CORE_SCHEMA} from './vendor/js-yaml/js-yaml.mjs';
 
 // Text belongs to the box. DOM, editing state and uncommitted conflict drafts are local to a view.
@@ -107,7 +108,8 @@ function flush(state) {
 }
 function render(state) {
     const text = state.box.contents || '';
-    renderFieldMarkdown(state.preview, text);
+    state.previewSource = text;
+    renderFieldMarkdown(state.preview, text, {sourcePositions: true});
     state.preview.classList.toggle('text-frame-empty', !text.trim());
     if (!text.trim()) state.preview.textContent = 'Double-click to write Markdown';
     layout(state);
@@ -131,6 +133,7 @@ function layout(state) {
         // inside the same frame; measuring it would make every edit/release change the graph.
         if (editing && state.measuredDraft !== state.editor.value) {
             state.measuredDraft = state.editor.value;
+            state.previewSource = state.measuredDraft;
             renderFieldMarkdown(state.preview, state.measuredDraft);
             state.preview.classList.remove('text-frame-empty');
         }
@@ -148,7 +151,7 @@ function layout(state) {
         state.box.classList.toggle('text-frame-has-overflow', overflow && !editing);
     });
 }
-function begin(state) {
+function begin(state, clickedOffset, clickedSource) {
     if (window.currentDocumentReadOnly) return;
     if (state.box.classList.contains('text-frame-editing')) { state.editor.focus(); return; }
     // The main property editor polls its model. Drain a final keystroke before switching surfaces.
@@ -160,13 +163,26 @@ function begin(state) {
     state.editor.hidden = false;
     state.preview.hidden = true;
     state.editor.focus({preventScroll: true});
+    const saved = state.sourceSelection;
+    if (Number.isFinite(clickedOffset) && clickedSource?.replace(/\r\n/g, '\n') === state.editor.value) {
+        const offset = Math.max(0, Math.min(clickedOffset, state.editor.value.length));
+        state.editor.setSelectionRange(offset, offset);
+    } else if (saved?.value === state.editor.value) {
+        state.editor.setSelectionRange(saved.start, saved.end, saved.direction);
+        state.editor.scrollTop = saved.scrollTop;
+    } else state.editor.setSelectionRange(0, 0);
     layout(state);
+    requestAnimationFrame(() => {
+        if (!state.editor.hidden && document.activeElement === state.editor) revealTextareaCaret(state.editor);
+    });
 }
 function finish(state) {
-    if (state.composing) return;
+    if (state.composing || !state.box.classList.contains('text-frame-editing')) return;
     flush(state);
     // A concurrent edit never silently discards this view's draft. Resolve it before closing.
     if (state.incoming !== null) return;
+    state.sourceSelection = {value: state.editor.value, start: state.editor.selectionStart,
+        end: state.editor.selectionEnd, direction: state.editor.selectionDirection, scrollTop: state.editor.scrollTop};
     state.autocomplete?.clear();
     state.box.classList.remove('text-frame-editing');
     state.editor.hidden = true;
@@ -207,7 +223,26 @@ function mount(box) {
         button('Keep my version', () => resolveConflict(state, true)), button('Use incoming', () => resolveConflict(state, false)));
     body.append(preview, editor); box.append(body, state.overflow, conflict);
     box.classList.add('text-frame-box');
-    preview.addEventListener('dblclick', e => { if (!e.target.closest('a,button')) { e.stopPropagation(); begin(state); } });
+    // Let a double-click edit a link label without following its first click. Modified clicks
+    // keep normal browser navigation; an ordinary single click follows after the double-click window.
+    preview.addEventListener('click', e => {
+        const anchor = e.target.closest('a[href]');
+        if (!anchor || state.followingLink || window.currentDocumentReadOnly || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+        e.preventDefault(); e.stopImmediatePropagation();
+        clearTimeout(state.linkTimer);
+        if (e.detail < 2) state.linkTimer = setTimeout(() => {
+            if (!anchor.isConnected || !state.editor.hidden) return;
+            state.followingLink = true;
+            try { anchor.click(); } finally { state.followingLink = false; }
+        }, 500);
+    }, true);
+    preview.addEventListener('dblclick', e => {
+        if (window.currentDocumentReadOnly || e.target.closest('button')) return;
+        clearTimeout(state.linkTimer);
+        e.preventDefault(); e.stopPropagation();
+        const offset = markdownOffsetAtPoint(preview, e.clientX, e.clientY, e.target);
+        begin(state, offset, state.previewSource);
+    });
     preview.addEventListener('keydown', e => { if (e.target === preview && e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); begin(state); } });
     editor.addEventListener('input', () => {
         state.dirty = true;

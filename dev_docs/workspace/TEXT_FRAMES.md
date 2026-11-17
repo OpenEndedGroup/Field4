@@ -11,7 +11,10 @@ Press **Shift+N**, or choose **New Text Frame** in the palette. Double-click the
 a focused reader. Write Markdown as plain text, in the same Iosevka font and size as the normal editor. Click away,
 press Escape, or press Cmd/Ctrl+Enter to show formatted text. Native spellcheck stays enabled, with
 Electron's existing spelling-suggestion context menu. Spellcheck dictionaries/languages follow the
-browser or OS configuration.
+browser or OS configuration. Double-clicking a passage places the Markdown cursor at that character,
+scrolling the source into view even when hidden syntax or link destinations make it much taller than
+the reader. Re-entering with Enter restores the previous source selection and scroll position.
+A typeset formula or image opens at the beginning of its source expression.
 
 Shift-select boxes and press **g** to connect them as usual. Alt-click a text frame to open its marking
 menu; **down** chooses **New text frame below**, which creates a child at the same X and width, 32 world units below the bottom,
@@ -103,6 +106,6 @@ remain separate work.
 
 Verification: `TextFramePersistenceTest` exercises save/read and protects proxy cache behavior;
 `tools/run_ui_regressions.py --id text-frames` exercises real canvas creation, editing, overflow,
-typography, YAML settings, source-font matching, typeset sizing, column reflow, incoming updates and connected creation in an independent browser. The existing
+typography, YAML settings, source-font matching, click-to-source cursor placement and scrolling, typeset sizing, column reflow, incoming updates and connected creation in an independent browser. The existing
 `ai-chat-autocomplete` regression protects the shared ghost-text interaction with controlled transport;
 a live provider call is separate evidence.

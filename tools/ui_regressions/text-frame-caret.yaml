@@ -1,0 +1,31 @@
+name: text_frame_caret
+operations:
+  - drive:
+      warmCompletion: false
+      script: |
+        ui.eval("window.__caretLinkFollowed=0;document.querySelector('[data-caret-fixture] .text-frame-preview').addEventListener('click',e=>{if(e.target.closest('a')){window.__caretLinkFollowed++;if(window.__caretPreventNavigation)e.preventDefault();}});return true;")
+        ui.clickAt(1100.0, 820.0)
+        val linkX = ui.eval("const n=document.querySelector('[data-caret-fixture] a').firstChild.firstChild;const r=document.createRange();r.setStart(n,0);r.setEnd(n,1);return r.getBoundingClientRect().left+1;").toString().toDouble()
+        val linkY = ui.eval("const b=document.querySelector('[data-caret-fixture] a').getBoundingClientRect();return (b.top+b.bottom)/2;").toString().toDouble()
+        ui.doubleClickAt(linkX, linkY)
+        ui.waitForSelector("[data-caret-fixture] .text-frame-editor:focus", 10000.0)
+        ui.pause(600)
+        check(ui.eval("return window.__caretLinkFollowed===0 && document.activeElement.selectionStart===document.querySelector('[data-caret-fixture]').contents.indexOf('[repeated]')+1;").toString()=="true") { "Double-click followed the link or misplaced its source caret" }
+        ui.press("Escape")
+        ui.pause(600)
+        ui.eval("window.__caretPreventNavigation=true;return true;")
+        ui.clickAt(linkX, linkY)
+        ui.pause(650)
+        check(ui.eval("return window.__caretLinkFollowed===1;").toString()=="true") { "A single click no longer follows the link" }
+        ui.clickAt(1100.0, 820.0)
+        val x = ui.eval("const n=document.querySelector('[data-caret-fixture] strong').firstChild.firstChild; const r=document.createRange(); r.setStart(n,0);r.setEnd(n,1);const b=r.getBoundingClientRect();return b.left+1;").toString().toDouble()
+        val y = ui.eval("const b=document.querySelector('[data-caret-fixture] strong').getBoundingClientRect();return (b.top+b.bottom)/2;").toString().toDouble()
+        ui.doubleClickAt(x, y)
+        ui.waitForSelector("[data-caret-fixture] .text-frame-editor:focus", 10000.0)
+        ui.pause(150)
+        check(ui.eval("const e=document.querySelector('[data-caret-fixture] .text-frame-editor');return e.selectionStart===window.__textFrameCaret.expected && e.selectionEnd===window.__textFrameCaret.expected && e.scrollTop>200;").toString()=="true") { "Trusted double-click did not place/reveal the source caret" }
+        ui.type("HERE")
+        ui.press("Escape")
+        ui.pause(300)
+        check(ui.eval("return document.querySelector('[data-caret-fixture]').contents.includes('**HERErepeated**');").toString()=="true") { "Typing after double-click changed the wrong source occurrence" }
+        ui.eval("const {send}=await import('./afield.mjs');send('perform-action',{uid_currentSelection:[window.__textFrameCaret.uid],uid_action:'-delete-box'});return true;")

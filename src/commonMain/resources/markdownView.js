@@ -1,4 +1,4 @@
-import { aiChatMarkdownToHtml } from "./afield.mjs";
+import { aiChatMarkdownToHtml, textFrameMarkdownToHtml } from "./afield.mjs";
 import { typesetAiChatMath } from "./aiChatMath.js";
 import { classifyGuideLink, docsPageUrl, guideAssetUrl, headingSlug } from "./documentGuideModel.js";
 
@@ -221,7 +221,7 @@ const highlightNotesMarkdown = (root) => {
 
 /** The shared reader for box notes, Markdown proxies and the document guide panel. */
 export function renderFieldMarkdown(root, markdown, options = {}) {
-    root.innerHTML = aiChatMarkdownToHtml(markdown);
+    root.innerHTML = options.sourcePositions ? textFrameMarkdownToHtml(markdown) : aiChatMarkdownToHtml(markdown);
     sanitizeNotesMarkdown(root);
     highlightNotesMarkdown(root);
     typesetAiChatMath(root);

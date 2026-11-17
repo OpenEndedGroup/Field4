@@ -22,7 +22,7 @@ operations:
         ui.pause(150)
         ui.press("g")
         ui.pause(500)
-        check(ui.eval("""const source = [...document.querySelectorAll('.text-frame-box')].find(b => b.uid === window.__textFrameTest.source); return source.box_children.includes(window.__shortcutFrame.uid);""").toString() == "true") { "Shift selection and g did not connect text frames" }
+        check(ui.eval("""const source = [...document.querySelectorAll('.text-frame-box')].find(b => b.uid === window.__textFrameTest.source); for(let i=0;i<200;i++){if(source.box_children.includes(window.__shortcutFrame.uid))return true;await new Promise(r=>setTimeout(r,50));}return false;""").toString() == "true") { "Shift selection and g did not connect text frames" }
         ui.moveMouse(700.0, 140.0)
         ui.down("Alt")
         ui.mouseDown()
