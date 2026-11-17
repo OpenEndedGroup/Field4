@@ -97,6 +97,7 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -569,6 +570,9 @@ data class ThreeGeometryPayload(
     /** Text pinned to points in the scene. See [ThreeSceneBuilder.label]. */
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val labels: List<ThreeLabel> = emptyList(),
+    /** Markers the person can drag. See [ThreeSceneBuilder.handle]. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val handles: List<ThreeHandle> = emptyList(),
     /** HTML blocks in the corners of the view. See [ThreeSceneBuilder.overlay]. */
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val overlays: List<ThreeOverlay> = emptyList(),
@@ -631,6 +635,8 @@ class ThreeGeometryViewState(val uid: String) {
         reviewInbox.owner = box
         reviewInbox.localViewId = localViewId
     }
+    /** The box that draws this view, whose callback lane its handle drags run in. */
+    internal fun sourceBoxId(): String? = reviewInbox.owner?.id
     /** Most recent human selection and unresolved notes. Set [includeResolved] for completed notes and their history. */
     fun reviews(includeResolved: Boolean = false): kotlinx.serialization.json.JsonObject = reviewInbox.snapshot(includeResolved)
 
@@ -713,6 +719,21 @@ class ThreeGeometryViewState(val uid: String) {
             put("type", kotlinx.serialization.json.JsonPrimitive("three/view-command"))
             put("uid", kotlinx.serialization.json.JsonPrimitive(uid))
             put("command", command)
+        }.toString().encodeToByteArray()
+        sessions.forEach { if (it != from) sendTo(it, message) }
+    }
+
+    /**
+     * A handle being dragged in one viewer, for the others to show live: `three/handle` with the handle's
+     * id, its constrained position and the phase. Not stored; the box's own re-run is the lasting answer.
+     */
+    internal fun relayHandle(from: WebSocketSession, id: String, position: List<Double>, phase: String) {
+        val message = kotlinx.serialization.json.buildJsonObject {
+            put("type", kotlinx.serialization.json.JsonPrimitive("three/handle"))
+            put("uid", kotlinx.serialization.json.JsonPrimitive(uid))
+            put("id", kotlinx.serialization.json.JsonPrimitive(id))
+            put("position", kotlinx.serialization.json.JsonArray(position.map { kotlinx.serialization.json.JsonPrimitive(it) }))
+            put("phase", kotlinx.serialization.json.JsonPrimitive(phase))
         }.toString().encodeToByteArray()
         sessions.forEach { if (it != from) sendTo(it, message) }
     }
@@ -1199,6 +1220,16 @@ fun installThreeJsHandler() {
             "three-view-state" -> {
                 val state = payload["state"] as? kotlinx.serialization.json.JsonObject ?: return@add Handled.no
                 knownThreeViews[uid]?.relayViewState(session, state)
+            }
+            "three-handle" -> {
+                // A drag of a `handle(...)`, from the browser viewer or the visionOS one.
+                val id = payload["id"]?.jsonPrimitive?.contentOrNull ?: return@add Handled.no
+                val position = (payload["position"] as? kotlinx.serialization.json.JsonArray)
+                    ?.mapNotNull { it.jsonPrimitive.doubleOrNull } ?: return@add Handled.no
+                val phase = payload["phase"]?.jsonPrimitive?.contentOrNull ?: "move"
+                val view = knownThreeViews[uid]
+                val placed = deliverThreeHandle(uid, view?.sourceBoxId(), id, position, phase) ?: return@add Handled.no
+                view?.relayHandle(session, id, placed, phase)
             }
             "three-view-command" -> {
                 val command = payload["command"] as? kotlinx.serialization.json.JsonObject ?: return@add Handled.no

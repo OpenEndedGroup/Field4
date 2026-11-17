@@ -32,6 +32,9 @@ final class ThreeClient {
     private(set) var revision = 0
     /// The browser viewer's explode and hidden parts, by view uid, mirrored onto the built scene.
     private(set) var viewStates: [String: ThreeViewState] = [:]
+    /// Where handles are while another viewer drags them, by view uid then handle id; cleared by the
+    /// next geometry of that view, which carries the box's answer.
+    private(set) var liveHandles: [String: [String: SIMD3<Double>]] = [:]
     /// How many viewer volumes are on screen: the 3D View button opens one only when there is none.
     var openVolumes = 0
 
@@ -144,6 +147,11 @@ final class ThreeClient {
             if let m = try? Self.decoder.decode(ThreeViewStateMessage.self, from: data), attached.contains(m.uid) {
                 viewStates[m.uid] = m.state
             }
+        case "three/handle":
+            if let m = try? Self.decoder.decode(ThreeHandleMessage.self, from: data), attached.contains(m.uid),
+               m.position.count >= 3 {
+                liveHandles[m.uid, default: [:]][m.id] = SIMD3(m.position[0], m.position[1], m.position[2])
+            }
         case "three/appearance":
             if let m = try? Self.decoder.decode(ThreeAppearanceMessage.self, from: data), attached.contains(m.uid) {
                 appearance(m)
@@ -193,6 +201,7 @@ final class ThreeClient {
 
     private func receive(_ description: ThreeWireDescription) {
         guard attached.contains(description.uid) else { return }
+        liveHandles[description.uid] = nil
         let key = description.buffers?.generation ?? description.revision ?? UUID().uuidString
         latest[description.uid] = key
         guard let table = description.buffers else {
@@ -277,6 +286,16 @@ final class ThreeClient {
         var state = viewStates[uid] ?? ThreeViewState()
         state.selected = id
         viewStates[uid] = state
+    }
+
+    /// Tell Field a handle of the shown view has been put at [position] (`three-handle`, as the browser sends).
+    func dragHandle(_ id: String, to position: SIMD3<Double>, phase: String) {
+        guard let uid = shownUID else { return }
+        guard let data = try? JSONSerialization.data(withJSONObject: [
+            "channel": "__threejs__", "debug_uid": uid, "type": "three-handle", "id": id,
+            "position": [position.x, position.y, position.z], "phase": phase] as [String: Any]),
+              let text = String(data: data, encoding: .utf8) else { return }
+        task?.send(.string(text)) { _ in }
     }
 
     private static func width(_ type: String) -> Int {
