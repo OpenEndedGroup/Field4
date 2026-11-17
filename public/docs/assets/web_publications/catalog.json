@@ -1,18 +1,4 @@
 {
-  "deferred": {
-    "assets/agent_transcripts/flow_lenia/metadata.edn": {
-      "attempts": 1,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "{\"success\": false, \"message\": \"Ran macro 'flow_lenia': applied=14 skipped=0 errors=0. Execution failed: Box interrupted: Runloop stalled 273525 ms in '3 \\u2014 The parameter field blending (MEAN mixing)' (flow_lenia_drift) (watchdog)\", \"name\": \"flow_lenia\", \"operationCount\": 14, \"direction\": \"do\", \"applied\": 14, \"output\": [{\"uid\": \"flow_lenia_conservation\", \"line\": 13, \"html\": \"<div class='value-viz afield-appendable-output' style='font-family: \\\"Iosevka Web\\\", monospace; font-size: 12px; color:",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/youtube_vr_browser/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    }
-  },
   "documents": {
     "assets/agent_transcripts/a_pen_that_sees/metadata.edn": {
       "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
@@ -1790,18 +1776,18 @@
       }
     },
     "assets/agent_transcripts/flow_lenia/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T14:48:59.924Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T23:23:21.639Z",
       "channels": 5,
       "file": "assets/web_publications/flow_lenia/document/metadata.edn",
       "files": {
-        "assets/web_publications/flow_lenia/document/metadata.edn": "603b4f5231393380d6f88d4925b40fcba7cfdcaca1f8d9e9ae75fb7e3fe01396",
-        "assets/web_publications/flow_lenia/document/outputs.json": "6cdb6f67efe27c03c8c5aa456814cb0d644824bc6ec26b20739b7eec79351714",
-        "assets/web_publications/flow_lenia/outputs/0.html": "157cd5808f73b039d003e8337cd9dcb4af83de8a22fec9d78050fa5b483ab63a",
-        "assets/web_publications/flow_lenia/outputs/1.html": "5d554fe95d61c383a5856fec8b5456008c77e7e858da650871b36c7d274ca460",
-        "assets/web_publications/flow_lenia/outputs/2.html": "123ac921df702e6a2390b4c9699e3563a044a5dd1b3d1bf7dbc8a32edc306dea",
-        "assets/web_publications/flow_lenia/outputs/3.html": "01445f04b1faf886c6976824d5f277bce92dcbb75b8a9dc5e51f5b83e9402d40",
-        "assets/web_publications/flow_lenia/outputs/4.html": "398190b44981ae8cdc8050bf7b6dec05b8739b5172d756301ace219b511373f0"
+        "assets/web_publications/flow_lenia/document/metadata.edn": "34b8bef88f6feb8343ab104768872fe9e07358f3ad1dfe9529ddea340d0260e3",
+        "assets/web_publications/flow_lenia/document/outputs.json": "10efb70cfd13417d96f84f4531dddf94c46790fec0fd2e30f335137dce0a9ac0",
+        "assets/web_publications/flow_lenia/outputs/0.html": "7d0ca2a760755ba95546d44faeecb584260c38d800181f32c0be5977266589e4",
+        "assets/web_publications/flow_lenia/outputs/1.html": "5cb4f2788569a43802a55925385cbae35923136f8a64bc433154bd5f539fd71a",
+        "assets/web_publications/flow_lenia/outputs/2.html": "4decf662a5dcf178c932bf9f867e4fc67279cd30729e5bb760516b74e222b164",
+        "assets/web_publications/flow_lenia/outputs/3.html": "81a1f720087dba0e53bc4b2702a33db90a151b70215756374dcf8618a8b04a41",
+        "assets/web_publications/flow_lenia/outputs/4.html": "cfcc553bc8f539da576feb9f96ea699f68fe813443e9c0be4979a6b631b0164d"
       },
       "kinds": [],
       "outputs": "assets/web_publications/flow_lenia/document/outputs.json",
@@ -5827,13 +5813,13 @@
       ]
     },
     "assets/agent_transcripts/youtube_vr_browser/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:29:37.643Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T23:20:21.429Z",
       "channels": 1,
       "file": "assets/web_publications/youtube_vr_browser/document/metadata.edn",
       "files": {
-        "assets/web_publications/youtube_vr_browser/document/metadata.edn": "d292676ac63cdd4c7141aa2aade383eadaacefdcd148727e16805c1044637099",
-        "assets/web_publications/youtube_vr_browser/document/outputs.json": "438c2d0df7cdb2ed210a2a612ad26a994e4821630cbdc262d5fcb32c0c875725",
+        "assets/web_publications/youtube_vr_browser/document/metadata.edn": "0737fa195fcab9679ef71749a75988860a221df618c1c6339c28f0d8ead755e9",
+        "assets/web_publications/youtube_vr_browser/document/outputs.json": "e5046814374f72416faa4fae174c093857409cb683880441a5581ca0b3480f86",
         "assets/web_publications/youtube_vr_browser/outputs/0.html": "4ffe1841c28dcf2d75d16f4f5dc9058d4cfba0df2e2f82d83998ca1dc8327762"
       },
       "kinds": [
