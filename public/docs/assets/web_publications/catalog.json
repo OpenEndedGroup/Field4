@@ -6,78 +6,6 @@
       "error": "{\"success\": false, \"message\": \"Ran macro 'flow_lenia': applied=14 skipped=0 errors=0. Execution failed: Box interrupted: Runloop stalled 273525 ms in '3 \\u2014 The parameter field blending (MEAN mixing)' (flow_lenia_drift) (watchdog)\", \"name\": \"flow_lenia\", \"operationCount\": 14, \"direction\": \"do\", \"applied\": 14, \"output\": [{\"uid\": \"flow_lenia_conservation\", \"line\": 13, \"html\": \"<div class='value-viz afield-appendable-output' style='font-family: \\\"Iosevka Web\\\", monospace; font-size: 12px; color:",
       "since": "2026-11-17"
     },
-    "assets/agent_transcripts/polytope_manifold_path_trace/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/polytope_path_trace_lineage/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/popup_prior_inspect/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/profiling_timeline/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/read_only_session/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/rectsl_glsl_sdf/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/rectsl_heading_fit/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/rectsl_inverse_animation/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/rectsl_spacetime_path_trace/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/rewrite_strategies_demo/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/satellites/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/sentence_diagrams/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
     "assets/agent_transcripts/shader_boids_separation/metadata.edn": {
       "attempts": 0,
       "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
@@ -4706,13 +4634,13 @@
       ]
     },
     "assets/agent_transcripts/polytope_manifold_path_trace/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:26:23.534Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:48:15.518Z",
       "channels": 1,
       "file": "assets/web_publications/polytope_manifold_path_trace/document/metadata.edn",
       "files": {
-        "assets/web_publications/polytope_manifold_path_trace/document/metadata.edn": "15bd3186bb29915b131c25d33d105acf264d58a4c9a94c6b556b5fabe31360ca",
-        "assets/web_publications/polytope_manifold_path_trace/document/outputs.json": "26c8492b7f486c34d6354dbe63367bec857fcebba1fb6a4bafac76fce5d6ec9a",
+        "assets/web_publications/polytope_manifold_path_trace/document/metadata.edn": "82329ef36813335fffedece4943b07be24a51516bccaaf6c679a5777b7159b75",
+        "assets/web_publications/polytope_manifold_path_trace/document/outputs.json": "8ecba5a1587137c70e34fc3bda73d612090d38ac6be3edae3de988f20f6b366d",
         "assets/web_publications/polytope_manifold_path_trace/outputs/0.html": "1f7ca43dac03ae2d702709237dc378241d506d3cc0d94a77281e9c08216bbeb6"
       },
       "kinds": [
@@ -4734,13 +4662,13 @@
       ]
     },
     "assets/agent_transcripts/polytope_path_trace_lineage/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:26:19.540Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:48:20.131Z",
       "channels": 1,
       "file": "assets/web_publications/polytope_path_trace_lineage/document/metadata.edn",
       "files": {
-        "assets/web_publications/polytope_path_trace_lineage/document/metadata.edn": "0cbd37b19b88e35e024f6c85e472f3276b9c806ecc494f936ca4ef363e582d2d",
-        "assets/web_publications/polytope_path_trace_lineage/document/outputs.json": "b99ecf9540be5493766f690deb5c835056e9d54b3b924c40d7af364ede8d3c25",
+        "assets/web_publications/polytope_path_trace_lineage/document/metadata.edn": "3ef295af15877218cb425561f315eb164febe16d80f1502c53ec0dcf2b8309f9",
+        "assets/web_publications/polytope_path_trace_lineage/document/outputs.json": "ec0a4b600f3177e7b1faaa5ef9d038481db2f2706482416cf6af99936558e20e",
         "assets/web_publications/polytope_path_trace_lineage/outputs/0.html": "8d48c10596bd12b96b3c84947beb179be57808a30e41555696a20557d499adfd"
       },
       "kinds": [
@@ -4762,14 +4690,14 @@
       ]
     },
     "assets/agent_transcripts/popup_prior_inspect/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:23:49.614Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:48:25.480Z",
       "channels": 1,
       "file": "assets/web_publications/popup_prior_inspect/document/metadata.edn",
       "files": {
-        "assets/web_publications/popup_prior_inspect/document/metadata.edn": "4ef1a75573363fa231b6e06ee30b9d16cd491ad39f2cca634e5d2976f1887d59",
-        "assets/web_publications/popup_prior_inspect/document/outputs.json": "6e4c61f2046fc51ba19ee14aaf01d8331da8bb1e24f0898f3f1d8383c26bb670",
-        "assets/web_publications/popup_prior_inspect/outputs/0.html": "7d52175cebb017ba9e18a1fdcc97a67b9af081b955e8fe13e8fe36799e5c7f12"
+        "assets/web_publications/popup_prior_inspect/document/metadata.edn": "276abc1ad65b59b8e76ecf653cbc53b3f51ff3d02092fac5e54b15906dd2caf1",
+        "assets/web_publications/popup_prior_inspect/document/outputs.json": "a385b432447dd95539389611d7086888a414a0a3bc75e0907ef719fac59b31a1",
+        "assets/web_publications/popup_prior_inspect/outputs/0.html": "04eec781a9156e451ded25fc9a1ed935ae9f92087d8337057f92e15f8ac10e28"
       },
       "kinds": [],
       "outputs": "assets/web_publications/popup_prior_inspect/document/outputs.json",
@@ -4781,14 +4709,14 @@
       }
     },
     "assets/agent_transcripts/rectsl_heading_fit/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:23:41.958Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:48:46.922Z",
       "channels": 1,
       "file": "assets/web_publications/rectsl_heading_fit/document/metadata.edn",
       "files": {
-        "assets/web_publications/rectsl_heading_fit/document/metadata.edn": "eda81489bcd0a39f939c6375353f1281d2ebd26d9c1305e7a3e50cf1c29bb1cf",
-        "assets/web_publications/rectsl_heading_fit/document/outputs.json": "c3f2d9e4a22315019e1f6844cdb5197e2e45d668249d2df639b29922f3efb427",
-        "assets/web_publications/rectsl_heading_fit/outputs/0.html": "357fc47cd9dea233df094e1d3b5949a2ed2034c04309f8201e71bf13bcb96f58"
+        "assets/web_publications/rectsl_heading_fit/document/metadata.edn": "b0e77dcfc6a42ad6f5c14fb27485ee402ef0378e425fec9d1f90255881fe5314",
+        "assets/web_publications/rectsl_heading_fit/document/outputs.json": "ff52baec4fbbe7d216cb7f9562e540ffa42eadd7a956b024ed5f8c0ff44d0f2e",
+        "assets/web_publications/rectsl_heading_fit/outputs/0.html": "771fcda1ceecb3f2652c7b504fb028a1114ee6538e1c7a6250e68ae4a1042154"
       },
       "kinds": [],
       "outputs": "assets/web_publications/rectsl_heading_fit/document/outputs.json",
@@ -4801,16 +4729,16 @@
       }
     },
     "assets/agent_transcripts/rectsl_inverse_animation/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:23:31.322Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:48:51.182Z",
       "channels": 3,
       "file": "assets/web_publications/rectsl_inverse_animation/document/metadata.edn",
       "files": {
-        "assets/web_publications/rectsl_inverse_animation/document/metadata.edn": "6260660af5cdaf76f5af020142dfe3420a7fc8acbc4a5fb82f55e8f4a78879d4",
-        "assets/web_publications/rectsl_inverse_animation/document/outputs.json": "ecdd23eacdf8641ec200849bb55fc5d54152612a6135f49ac16722d57cd10502",
-        "assets/web_publications/rectsl_inverse_animation/outputs/0.html": "4d7246b7fb86af66232bd8c0ad1c318e15c1cc6c2ff70432bdb1bde9eb7a650b",
-        "assets/web_publications/rectsl_inverse_animation/outputs/1.html": "f3dfdfebcda887c1d1687e0c7f0536e61381d0ec0e35e5b8fd40198de61cf986",
-        "assets/web_publications/rectsl_inverse_animation/outputs/2.html": "c1bbfd045e60659bd135cc44eaaa960d05c658c087adeb6180dcd0f80217f1f7"
+        "assets/web_publications/rectsl_inverse_animation/document/metadata.edn": "5f5534f5d90909da25d80ea777c09a445c98a7221e762f1234a82f3b05c4d5a9",
+        "assets/web_publications/rectsl_inverse_animation/document/outputs.json": "9dbb25784ee566cb5319c8672c49f6e5301725095a8b2e10944421f6fdd50004",
+        "assets/web_publications/rectsl_inverse_animation/outputs/0.html": "1bb2a0af4e9c8ef72b95c7ac42a5a982d960c4f5d293a8a5a5acdae513a7e34e",
+        "assets/web_publications/rectsl_inverse_animation/outputs/1.html": "6ba8de5a9e4424821626d144461016291d4c1e5e3031cd896e99cd8986eb461d",
+        "assets/web_publications/rectsl_inverse_animation/outputs/2.html": "abd33d6b7385e6d5136d5dba7d739db85e0a205a6b20682b19abc433d38443ba"
       },
       "kinds": [],
       "outputs": "assets/web_publications/rectsl_inverse_animation/document/outputs.json",
@@ -4823,13 +4751,13 @@
       }
     },
     "assets/agent_transcripts/rectsl_spacetime_path_trace/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:26:27.728Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:48:53.285Z",
       "channels": 1,
       "file": "assets/web_publications/rectsl_spacetime_path_trace/document/metadata.edn",
       "files": {
-        "assets/web_publications/rectsl_spacetime_path_trace/document/metadata.edn": "06489f371e5bde2c3d9bcb7e2a01f9edf856f2a9150ff2e1cb746897d857f3ef",
-        "assets/web_publications/rectsl_spacetime_path_trace/document/outputs.json": "e21fe2091237bb9269e4946bfa03ff02dab323b135ea84e645cf4891cc8842aa",
+        "assets/web_publications/rectsl_spacetime_path_trace/document/metadata.edn": "138e602cd62b8e1341b54edef90c7d4e96eb0874a8a3168a348f5841321a7666",
+        "assets/web_publications/rectsl_spacetime_path_trace/document/outputs.json": "7a09cba6c6f7719abf0dd6c3439f3fb0c7ef73b55bdb8e0001d591c4cd96d50e",
         "assets/web_publications/rectsl_spacetime_path_trace/outputs/0.html": "3da88f07af930c294beea9084fc4d490a87a6e8aa271ee5f59240d0e44fbb1aa"
       },
       "kinds": [
@@ -4851,13 +4779,13 @@
       ]
     },
     "assets/agent_transcripts/satellites/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:29:53.118Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:49:09.593Z",
       "channels": 1,
       "file": "assets/web_publications/satellites/document/metadata.edn",
       "files": {
-        "assets/web_publications/satellites/document/metadata.edn": "38751f426b703e6f99af2bb2e1c806cde6b2ae4f2666c06cbec20e4d60f2c911",
-        "assets/web_publications/satellites/document/outputs.json": "4b4a193bdb18bd4250c49fed32c58af3550cf982b4897154417126ce79c7dd3f",
+        "assets/web_publications/satellites/document/metadata.edn": "49394ae3282766b906a14c4c86fdf7ec550debb9230305df4517484e285abe74",
+        "assets/web_publications/satellites/document/outputs.json": "fc079c219071d97b8df9c4fb0617ae6990538e8aae6a0a1366df5df3f0095e97",
         "assets/web_publications/satellites/outputs/0.html": "2555cf246fb256298039f2839643829ea27dbf27215d7ace14af74d38cf683dc"
       },
       "kinds": [
@@ -4887,17 +4815,17 @@
       ]
     },
     "assets/agent_transcripts/sentence_diagrams/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T14:05:54.694Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T22:49:16.985Z",
       "channels": 4,
       "file": "assets/web_publications/sentence_diagrams/document/metadata.edn",
       "files": {
-        "assets/web_publications/sentence_diagrams/document/metadata.edn": "9d407efeab5802cbe4d74bf424cbb84695a83b21d156a841eaf3f030b88da767",
-        "assets/web_publications/sentence_diagrams/document/outputs.json": "6f6da05487da75b62cc7c62c9ad844d497c7caeea0ae2f23721f6cbb73112aaa",
-        "assets/web_publications/sentence_diagrams/outputs/0.html": "35c6dc9158b875a4843dcf21018b8c6bcd22aee230d7d1568f8fe4ad7e457985",
-        "assets/web_publications/sentence_diagrams/outputs/1.html": "307e3caeee07bb95d4817ecbf7064b6ac53c224bcadb0710a99950f1ddb2faa1",
-        "assets/web_publications/sentence_diagrams/outputs/2.html": "516bc778c33ef95eb2a00292f4cdac0f39dc2a1da85bacf04130321076cdd334",
-        "assets/web_publications/sentence_diagrams/outputs/3.html": "5160b8681eac88f97163e55da68d08a3b9f5aafb134d89e5957bf529fbdce67f"
+        "assets/web_publications/sentence_diagrams/document/metadata.edn": "db556eef0bd46105b6025562b7e99238de75f3134d1f9710111f66cb87985462",
+        "assets/web_publications/sentence_diagrams/document/outputs.json": "397bd26c90a2bb2e7fca403d4ebf2ffed718a7be6487a2ef587261379c07cb86",
+        "assets/web_publications/sentence_diagrams/outputs/0.html": "3b41ee7110515560a691c171bb57b7a6b7bc9a295685c43c3e515384f52303b8",
+        "assets/web_publications/sentence_diagrams/outputs/1.html": "f45f66bce2994631b142556dbbade07f156152c8d860aa2fb4760866cda6d11f",
+        "assets/web_publications/sentence_diagrams/outputs/2.html": "23973d4e1422172da1bfdfce9bb58fda3c59b147e5a638c4d70dee6170d43d6f",
+        "assets/web_publications/sentence_diagrams/outputs/3.html": "5caa0c8b8ec97ecfb75bf9bc2b56ca8ae5d5a8023dbc874a16c4ae6790472480"
       },
       "kinds": [
         "svg"
@@ -6898,7 +6826,7 @@
       }
     },
     "assets/agent_transcripts/profiling_timeline/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
       "channels": 0,
       "reason": "No output-area channels; the code remains available.",
       "sources": {
@@ -6912,7 +6840,7 @@
       }
     },
     "assets/agent_transcripts/read_only_session/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
       "channels": 0,
       "reason": "No output-area channels; the code remains available.",
       "sources": {
@@ -6923,7 +6851,7 @@
       }
     },
     "assets/agent_transcripts/rectsl_glsl_sdf/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
       "channels": 0,
       "reason": "No output-area channels; the code remains available.",
       "sources": {
@@ -6935,7 +6863,7 @@
       }
     },
     "assets/agent_transcripts/rewrite_strategies_demo/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
       "channels": 0,
       "reason": "No output-area channels; the code remains available.",
       "sources": {
