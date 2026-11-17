@@ -13,13 +13,15 @@ import simd
 enum ThreeMeshBuilder {
     struct Built {
         let root = Entity()
-        /// Drawable entities by drawable id. Each sits at the origin of `root` so explode can move it by
+        /// Drawable entities by drawable key (unique; see `ThreeDrawable.key`). Each sits at the origin of `root` so explode can move it by
         /// setting its position; its child (`placed`) carries the drawable's own transform, or the
         /// placement the browser viewer mirrors.
         var parts: [String: Entity] = [:]
         var placed: [String: Entity] = [:]
         /// Surface parts, which x-ray makes see-through (lines and points stay as they are, as in the browser).
         var surfaces: Set<String> = []
+        /// Each key's part id, which the browser's state and Field's selection use.
+        var ids: [String: String] = [:]
         var triangles = 0
         var segments = 0
         var points = 0
@@ -50,7 +52,7 @@ enum ThreeMeshBuilder {
             if let style = drawable.appearance { applyAppearance(style, to: &drawable) }
             else if let style = drawable.sceneStyle { applySceneStyle(style, to: &drawable) }
             let entity = Entity()
-            entity.name = drawable.id
+            entity.name = drawable.key
             entity.isEnabled = !drawable.hidden
             let placed = Entity()
             placed.transform = Transform(matrix: drawable.transform)
@@ -61,9 +63,10 @@ enum ThreeMeshBuilder {
                 placed.addChild(model)
             }
             built.root.addChild(entity)
-            built.parts[drawable.id] = entity
-            built.placed[drawable.id] = placed
-            if drawable.kind == .surface { built.surfaces.insert(drawable.id) }
+            built.parts[drawable.key] = entity
+            built.placed[drawable.key] = placed
+            built.ids[drawable.key] = drawable.id
+            if drawable.kind == .surface { built.surfaces.insert(drawable.key) }
         }
         if let cache { cache.entries = cache.entries.filter { cache.used.contains($0.key) } }
         return built
@@ -83,7 +86,7 @@ enum ThreeMeshBuilder {
         let mesh: (MeshResource, [any RealityKit.Material])?
         switch drawable.kind {
         case .surface: mesh = surface(drawable, built: &built)
-        case .lines: mesh = lines(drawable, radius: diag * 0.0015, built: &built)
+        case .lines: mesh = lines(drawable, built: &built)
         case .points: mesh = points(drawable, radius: diag * 0.004, built: &built)
         }
         guard let (resource, materials) = mesh else { return nil }
@@ -283,77 +286,67 @@ enum ThreeMeshBuilder {
 
     // MARK: - Lines
 
+    /// Segments as a `LowLevelMesh` line list: one pixel wide at any distance, as sharp as the
+    /// bounding cage. (Swept tubes had a world-space radius, so they read thick close up.)
     @MainActor
-    private static func lines(_ d: ThreeDrawable, radius: Float, built: inout Built) -> (MeshResource, [any RealityKit.Material])? {
+    private static func lines(_ d: ThreeDrawable, built: inout Built) -> (MeshResource, [any RealityKit.Material])? {
         let g = d.geometry
         let opacity = d.style.opacity ?? 1
-        var buckets = Buckets()
-        // Segment pairs (three.js LineSegments), or an index of pairs. Consecutive segments sharing an
-        // endpoint and a colour are welded into one polyline so the tube has no gaps at the joints.
+        var keys: [UInt32: Int] = [:]
+        var colors: [SIMD4<Float>] = []
+        var segments: [[SIMD3<Float>]] = []
         let pairs: [(Int, Int)] = {
             if let ix = g.indices { return stride(from: 0, to: ix.count - 1, by: 2).map { (Int(ix[$0]), Int(ix[$0 + 1])) } }
             return stride(from: 0, to: g.positions.count - 1, by: 2).map { ($0, $0 + 1) }
         }()
-        var chain: [SIMD3<Float>] = []
-        var chainBucket = -1
-        func flush() {
-            if chain.count >= 2, chainBucket >= 0, let tube = tube(chain, radius: radius) {
-                buckets.append(chainBucket, verts: tube.0, norms: tube.1, tris: tube.2)
-            }
-            chain = []
-        }
         for (a, b) in pairs {
             guard a < g.positions.count, b < g.positions.count else { continue }
-            let bucket = buckets.bucket(color(g, a, base: SIMD3(1, 1, 1), opacity: opacity))
-            let pa = g.positions[a], pb = g.positions[b]
-            if bucket == chainBucket, let last = chain.last, simd_distance_squared(last, pa) < 1e-12 {
-                chain.append(pb)
-            } else {
-                flush()
-                chain = [pa, pb]
-                chainBucket = bucket
-            }
+            let c = color(g, a, base: SIMD3(1, 1, 1), opacity: opacity)
+            let q = simd_clamp(c, .zero, .one) * 31
+            let key = UInt32(q.x) | UInt32(q.y) << 5 | UInt32(q.z) << 10 | UInt32(q.w) << 15
+            let bucket: Int
+            if let known = keys[key] { bucket = known }
+            else if colors.count < maxBuckets { bucket = colors.count; keys[key] = bucket; colors.append(c); segments.append([]) }
+            else { bucket = colors.indices.min { simd_distance_squared(colors[$0], c) < simd_distance_squared(colors[$1], c) } ?? 0 }
+            segments[bucket].append(g.positions[a]); segments[bucket].append(g.positions[b])
             built.segments += 1
         }
-        flush()
-        guard let (resource, colors) = buckets.resource(name: d.id) else { return nil }
+        guard let resource = lineList(segments) else { return nil }
         return (resource, colors.map(unlit))
     }
 
-    /// A swept n-gon tube along a polyline with a parallel-transport frame, so the cross-section does not twist.
-    static func tube(_ raw: [SIMD3<Float>], radius: Float, sides: Int = 6) -> ([SIMD3<Float>], [SIMD3<Float>], [UInt32])? {
-        var pts: [SIMD3<Float>] = []
-        for p in raw where pts.last.map({ simd_distance_squared($0, p) >= 1e-14 }) ?? true { pts.append(p) }
-        guard pts.count >= 2 else { return nil }
-        let n = pts.count
-        let tangents: [SIMD3<Float>] = (0..<n).map { i in
-            let t = i == 0 ? pts[1] - pts[0] : (i == n - 1 ? pts[n - 1] - pts[n - 2] : pts[i + 1] - pts[i - 1])
-            return normalizeSafe(t, fallback: SIMD3(0, 0, 1))
+    /// Endpoint pairs, one list per material, as a single line-topology mesh with a part per list.
+    @MainActor
+    static func lineList(_ parts: [[SIMD3<Float>]]) -> MeshResource? {
+        let total = parts.reduce(0) { $0 + $1.count }
+        guard total >= 2 else { return nil }
+        var desc = LowLevelMesh.Descriptor()
+        desc.vertexCapacity = total
+        desc.indexCapacity = total
+        desc.vertexAttributes = [LowLevelMesh.Attribute(semantic: .position, format: .float3, layoutIndex: 0, offset: 0)]
+        desc.vertexLayouts = [LowLevelMesh.Layout(bufferIndex: 0, bufferStride: MemoryLayout<SIMD3<Float>>.stride)]
+        guard let mesh = try? LowLevelMesh(descriptor: desc) else { return nil }
+        mesh.withUnsafeMutableBytes(bufferIndex: 0) { raw in
+            let p = raw.baseAddress!.assumingMemoryBound(to: SIMD3<Float>.self)
+            var i = 0
+            for part in parts { for v in part { p[i] = v; i += 1 } }
         }
-        var normal = perpendicular(tangents[0])
-        var verts: [SIMD3<Float>] = [], norms: [SIMD3<Float>] = [], tris: [UInt32] = []
-        verts.reserveCapacity(n * sides); norms.reserveCapacity(n * sides)
-        for i in 0..<n {
-            if i > 0 {
-                normal = normalizeSafe(normal - dot(normal, tangents[i]) * tangents[i], fallback: perpendicular(tangents[i]))
-            }
-            let binormal = cross(tangents[i], normal)
-            for j in 0..<sides {
-                let theta = 2 * Float.pi * Float(j) / Float(sides)
-                let dir = cos(theta) * normal + sin(theta) * binormal
-                verts.append(pts[i] + radius * dir)
-                norms.append(dir)
-            }
+        mesh.withUnsafeMutableIndices { raw in
+            let idx = raw.baseAddress!.assumingMemoryBound(to: UInt32.self)
+            for i in 0..<total { idx[i] = UInt32(i) }
         }
-        for i in 0..<(n - 1) {
-            for j in 0..<sides {
-                let jn = (j + 1) % sides
-                let a = UInt32(i * sides + j), b = UInt32(i * sides + jn)
-                let c = UInt32((i + 1) * sides + j), d = UInt32((i + 1) * sides + jn)
-                tris.append(contentsOf: [a, c, b, b, c, d])
-            }
+        var lowParts: [LowLevelMesh.Part] = []
+        var offset = 0
+        for (k, part) in parts.enumerated() {
+            defer { offset += part.count }
+            guard part.count >= 2 else { continue }
+            var lo = part[0], hi = part[0]
+            for v in part { lo = simd_min(lo, v); hi = simd_max(hi, v) }
+            lowParts.append(LowLevelMesh.Part(indexOffset: offset * MemoryLayout<UInt32>.stride, indexCount: part.count,
+                                              topology: .line, materialIndex: k, bounds: BoundingBox(min: lo, max: hi)))
         }
-        return (verts, norms, tris)
+        mesh.parts.replaceAll(lowParts)
+        return try? MeshResource(from: mesh)
     }
 
     // MARK: - Points
@@ -375,6 +368,14 @@ enum ThreeMeshBuilder {
     }
 
     // MARK: - Bounding cage
+
+    /// Three 1 px lines from the origin along +x, +y, +z, coloured red, green, blue.
+    @MainActor
+    static func axisMarker(length: Float) -> ModelEntity? {
+        let parts: [[SIMD3<Float>]] = [[.zero, [length, 0, 0]], [.zero, [0, length, 0]], [.zero, [0, 0, length]]]
+        guard let resource = lineList(parts) else { return nil }
+        return ModelEntity(mesh: resource, materials: [unlit([1, 0.2, 0.2, 1]), unlit([0.2, 1, 0.3, 1]), unlit([0.3, 0.5, 1, 1])])
+    }
 
     /// A 1 px wireframe cuboid centred at the origin (a `LowLevelMesh` line list over 8 corners).
     @MainActor
@@ -404,14 +405,4 @@ enum ThreeMeshBuilder {
         guard let resource = try? MeshResource(from: mesh) else { return nil }
         return ModelEntity(mesh: resource, materials: [unlit(color)])
     }
-}
-
-private func normalizeSafe(_ v: SIMD3<Float>, fallback: SIMD3<Float>) -> SIMD3<Float> {
-    let len = length(v)
-    return len > 1e-8 ? v / len : fallback
-}
-
-private func perpendicular(_ t: SIMD3<Float>) -> SIMD3<Float> {
-    let ref: SIMD3<Float> = abs(dot(t, SIMD3(0, 1, 0))) < 0.9 ? SIMD3(0, 1, 0) : SIMD3(1, 0, 0)
-    return normalizeSafe(cross(t, ref), fallback: SIMD3(1, 0, 0))
 }

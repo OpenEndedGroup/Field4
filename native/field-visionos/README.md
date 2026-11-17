@@ -201,8 +201,12 @@ Four improvements on top of the PoC:
     (`/three-buffers?only=`); a drawable whose arrays and style are unchanged reuses its built mesh.
   - **Lights:** one key light plus the volume's environment lighting; the browser's studio and
     path-trace modes are not mirrored.
-  - **Not yet:** drag-design handles (the interactive FLine objects are not drawn), labels and
-    overlays, section cuts, multi-panel scenes (every panel is drawn superimposed). Surfaces are
+  - **Drawn here:** lines are 1 px line-topology meshes (as sharp as the bounding cage), labels
+    (`label(...)`) are SwiftUI attachments that face the viewer, and an x/y/z marker in red, green and
+    blue sits at the cage's most negative corner. The fit sizes the bounds' sphere, not the longest
+    axis, so orbiting never pushes a corner out of the volume. Entities are keyed per drawable, not
+    per part id: `mesh(..., edges = true)` sends a surface and its edges under one id.
+  - **Not yet:** drag-design handles (the interactive FLine objects are not drawn), overlays, section cuts, multi-panel scenes (every panel is drawn superimposed). Surfaces are
     de-indexed, so a vertex is stored once per triangle. Spatial input can only be checked on the device.
 
 ## Live Metal — programmable native graphics
