@@ -190,6 +190,11 @@ running this guard. A failed capture retains the previous files but fails the re
 cannot be presented as a successful new publication. Removed or reclassified recipes are retired
 from the registry. Refresh results are written to `build/docs-publications-refresh.json`.
 Capture timeouts get one retry in a fresh Field session; a second timeout still fails the build.
+One exception: a page pending only because the capture digest changed (the viewer or capture
+code, which makes every page pending) that fails keeps its previous publication and is recorded
+under `deferred` in `catalog.json` with the digest it missed. `check` accepts that deferral for that
+digest only, and the next sync retries just the deferred pages. More than `MAX_DEFERRED` failures in
+one refresh still fail it.
 
 `tools/docs_publications.py capture --group pilot` opens copies of the existing FLine and
 Three.js companion documents in an isolated Field, runs their boxes, and captures the actual

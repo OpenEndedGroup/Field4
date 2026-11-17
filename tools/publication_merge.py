@@ -30,6 +30,7 @@ from pathlib import Path, PurePosixPath
 ROOT_REL = "public/docs/assets/web_publications"
 CATALOG_REL = f"{ROOT_REL}/catalog.json"
 SECTIONS = ("documents", "emptyDocuments")
+DEFERRED = "deferred"
 
 
 def _git(repo: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess:
@@ -106,8 +107,16 @@ def unify(repo: Path, ours: str = "HEAD", theirs: str = "MERGE_HEAD") -> list[st
                 result.setdefault(section, {})[source] = entry
             if take_theirs:
                 taken.append(PurePosixPath(source).parent.name)
+            # A deferral (docs_publications.py DEFERRED) belongs to the entry it describes.
+            deferral = cats["theirs" if take_theirs else "ours"].get(DEFERRED, {}).get(source)
+            if deferral is None:
+                result.get(DEFERRED, {}).pop(source, None)
+            else:
+                result.setdefault(DEFERRED, {})[source] = deferral
             for folder in {f for f in (_folder(b), _folder(o), _folder(t)) if f}:
                 _restore(repo, theirs if take_theirs else ours, folder)
+    if DEFERRED in result and not result[DEFERRED]:
+        del result[DEFERRED]
     path = repo / CATALOG_REL
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")

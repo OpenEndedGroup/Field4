@@ -261,16 +261,66 @@ def publication_problem(entry: dict) -> str | None:
     return None
 
 
+# A change to the viewer or capture code (the capture digest) makes every publication pending, and a
+# full refresh of ~200 pages on a loaded lander nearly always loses one to a stall or an unrendered
+# channel. From 2026-11-16 to 11-17 every landing that touched the three viewer recaptured all 227
+# for 80 minutes, and avp-threejs-viewer bounced three times on pages it never touched
+# (fn_differentiable_fit_demo, uncrossed_leapers, stacksl_fit_demo, ...). So a page that is pending
+# only for the digest and fails keeps its previous publication, which still works (its runtime
+# files are content-addressed and kept), and is recorded under `deferred` with the digest it
+# missed. `check` accepts a deferral for that digest; the next sync retries just those pages. A page
+# whose own sources changed still fails the sync, and so does a refresh that defers more than
+# MAX_DEFERRED pages, which is the machine or the capture code, not one slow page.
+DEFERRED = 'deferred'
+MAX_DEFERRED = 10
+
+
+def previous_entry(index: dict, source: str) -> dict | None:
+    return index['documents'].get(source) or index.get('emptyDocuments', {}).get(source)
+
+
+def digest_only(previous: dict | None, recipe: dict) -> bool:
+    """Whether [recipe] is pending only because the capture digest moved past [previous]."""
+    return (bool(previous) and previous.get('captureDigest') != capture_digest()
+            and previous['sources'] == recipe_sources(recipe)
+            and not (previous.get('file') and publication_problem(previous)))
+
+
 def pending_recipes(available: list[dict], *, mode: str) -> list[dict]:
     index = catalog()
     pending = []
     for recipe in available:
-        previous = index['documents'].get(recipe['source']) or index.get('emptyDocuments', {}).get(recipe['source'])
+        previous = previous_entry(index, recipe['source'])
         if (mode == 'always' or not previous or previous['sources'] != recipe_sources(recipe)
                 or previous.get('captureDigest') != capture_digest()
                 or (previous.get('file') and publication_problem(previous))):
             pending.append(recipe)
     return pending
+
+
+def accepted_deferrals(pending: list[dict]) -> list[dict]:
+    """The [pending] recipes a recorded deferral covers: still pending only for the digest it missed."""
+    index = catalog()
+    deferred = index.get(DEFERRED, {})
+    return [r for r in pending if deferred.get(r['source'], {}).get('captureDigest') == capture_digest()
+            and digest_only(previous_entry(index, r['source']), r)]
+
+
+def record_deferrals(failed: list[dict], by_name: dict[str, dict]) -> None:
+    """Record [failed] digest-only captures as deferred, and drop deferrals a capture has since met."""
+    index = catalog()
+    deferred = index.setdefault(DEFERRED, {})
+    for row in failed:
+        source = by_name[row['name']]['source']
+        deferred[source] = {'captureDigest': capture_digest(), 'error': row.get('error', '')[:500],
+                            'since': deferred.get(source, {}).get('since') or time.strftime('%Y-%m-%d')}
+    for source in list(deferred):
+        previous = previous_entry(index, source)
+        if not previous or previous.get('captureDigest') == capture_digest():
+            del deferred[source]
+    if not deferred:
+        index.pop(DEFERRED)
+    write_catalog(index)
 
 
 def record_empty(recipe: dict, sources: dict[str, str]) -> None:
@@ -296,6 +346,11 @@ def sync_publications(*, mode: str = 'incremental', port: int | None = None) -> 
     supported = {r['source'] for r in available}
     index = catalog()
     orphaned = (set(index['documents']) | set(index.get('emptyDocuments', {}))) - supported
+    if mode == 'never' and (accepted := accepted_deferrals(pending)):
+        print(f'Docs publications: {len(accepted)} kept their previous capture after a failed refresh '
+              '(deferred in catalog.json; the next sync retries them): '
+              + ', '.join(r['name'] for r in accepted), flush=True)
+        pending = [r for r in pending if r not in accepted]
     if pending and mode == 'never':
         raise ValueError(f"{len(pending)} publications need refresh: " + ', '.join(r['name'] for r in pending)
                          + '; run tools/docs_publications.py sync or build with FIELD_DOCS_RUNNER_MODE=incremental')
@@ -309,6 +364,7 @@ def sync_publications(*, mode: str = 'incremental', port: int | None = None) -> 
                    'refreshed': 0, 'retained': len(available)}
         print('Docs publications: ' + json.dumps(summary), flush=True)
         return summary
+    catch_up = {r['name'] for r in pending if digest_only(previous_entry(index, r['source']), r)}
     report = asyncio.run(capture(pending, port=port, force=True)) if pending else []
     retry_names = {r['name'] for r in report
                    if not r['ok'] and any(mark in r.get('error', '') for mark in TRANSIENT_CAPTURE_ERRORS)}
@@ -322,14 +378,22 @@ def sync_publications(*, mode: str = 'incremental', port: int | None = None) -> 
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(json.dumps(report, indent=2) + '\n')
     failed = [r for r in report if not r['ok']]
-    if failed:
+    tolerated = [r for r in failed if r['name'] in catch_up]
+    if len(tolerated) < len(failed) or len(tolerated) > MAX_DEFERRED:
         raise ValueError('Publication capture failed: ' + '; '.join(f"{r['name']}: {r['error']}" for r in failed))
+    record_deferrals(tolerated, {r['name']: r for r in pending})
+    if tolerated:
+        print(f'Docs publications: {len(tolerated)} page(s) pending only for the capture digest failed and keep '
+              'their previous capture (deferred; the next sync retries them): '
+              + ', '.join(r['name'] for r in tolerated), flush=True)
     # Removed or reclassified recipes must not leave a misleading publication behind.
     index = catalog()
-    for section in ('documents', 'emptyDocuments'):
+    for section in ('documents', 'emptyDocuments', DEFERRED):
         for source in list(index.get(section, {})):
             if source not in supported:
                 del index[section][source]
+    if DEFERRED in index and not index[DEFERRED]:
+        del index[DEFERRED]
     registry(index=index)
     # Upgrade existing snapshots without altering their captured data. Future merge damage is
     # detected by these hashes and repaired by replaying the affected recipe.
