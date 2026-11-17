@@ -425,6 +425,146 @@ later ones are the leftovers, so a long path far from the anchor is not
 necessarily something the anchor reached. The A* overlay is a
 single route by cost, drawn on top of the cover.
 
+## Seeing what A* explored
+
+`graphAStarPath` returns only the route. `graphAStarSearch` runs the same search and also
+returns `expanded`, the nodes it took off its queue, in order. That is the work the search did,
+and it is what a heuristic is for: A* expands nodes in order of *cost so far + estimated cost
+to go*, so a better estimate keeps it from expanding nodes that lead away from the goal.
+With the default estimate of zero, A* is Dijkstra's algorithm and spreads out evenly in every
+direction until it reaches the goal.
+
+The estimate has to be a lower bound — never more than the real remaining cost — or A* can
+return a longer route. Straight-line distance is the usual one (`vec2AStarSearch` uses it), but
+it only knows geometry: around a wall it guesses far too low, and on a graph whose edge
+weights are not lengths it means nothing.
+
+## Landmarks: a heuristic made from distance tables
+
+Landmarks (the "ALT" method of Goldberg and Harrelson, explained interactively by
+[Red Blob Games](https://www.redblobgames.com/pathfinding/heuristics/differential.html)) buy a
+better estimate with memory. Pick a few nodes L, and run Dijkstra once from each to store its
+distance to every node. For any node n and goal g, the triangle inequality gives
+
+    d(n, g) ≥ |d(L, g) − d(L, n)|
+
+so the largest of those bounds over all landmarks is an estimate that never overestimates. It
+uses real path distances, so it already accounts for walls. It is exact when the shortest path
+runs straight towards or away from a landmark, and it costs `landmarks × nodes` stored distances
+(`memory`). `graphFarthestPointLandmarks(graph, count)` places them: it starts from one node,
+then repeatedly adds the node farthest, by path distance, from all landmarks chosen so far, which
+pushes them out to the edges of the graph where they help most.
+
+This example runs the same query on a grid with a wall four ways and draws, in blue, every cell
+each search expanded. The yellow route is the same length in all four.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_connectivity_examples/landmark_explored.png" wait="1.0" capture="box"}
+:::static
+val grid = vec2GridGraph(36, 24, spacing = 20.0) { c, r -> c == 18 && r in 4 until 24 }
+val start = grid.index(5, 12)
+val goal = grid.index(31, 12)
+
+val dijkstra = graphAStarSearch(grid.graph, start, goal)
+val one = graphLandmarks(grid.graph, listOf(grid.index(0, 12)))
+val several = graphFarthestPointLandmarks(grid.graph, 4)
+val sideways = graphLandmarks(grid.graph, listOf(grid.index(18, 0)))
+
+fun dots(nodes: Iterable<Int>, dx: Double, dy: Double, size: Double, c: Vec4) = fline {
+    nodes.forEach { n -> moveTo(grid.points[n].x + dx, grid.points[n].y + dy) }
+    pointed = true
+    pointSize = size
+    stroked = false
+    color = c
+}
+
+fun panel(result: GraphSearchResult, landmarks: List<Int>, dx: Double, dy: Double): List<FLine> {
+    val open = grid.points.indices.filter { it !in grid.blocked }
+    val route = fline {
+        result.path!!.nodes.forEachIndexed { i, n ->
+            val p = grid.points[n]
+            if (i == 0) moveTo(p.x + dx, p.y + dy) else lineTo(p.x + dx, p.y + dy)
+        }
+        color = vec(1.0, 0.9, 0.3, 1.0)
+        thickness = 4.0
+    }
+    return listOf(
+        dots(open, dx, dy, 3.0, vec(0.6, 0.65, 0.75, 0.4)),
+        dots(result.expanded, dx, dy, 9.0, vec(0.25, 0.55, 1.0, 0.85)),
+        dots(grid.blocked, dx, dy, 10.0, vec(0.8, 0.82, 0.88, 1.0)),
+        route,
+        dots(landmarks, dx, dy, 13.0, vec(1.0, 0.3, 0.5, 1.0)),
+        dots(listOf(start, goal), dx, dy, 11.0, vec(1.0, 0.9, 0.3, 1.0))
+    )
+}
+
+val out = panel(dijkstra, emptyList(), 0.0, 0.0) +
+    panel(one.search(start, goal), one.landmarks, 800.0, 0.0) +
+    panel(several.search(start, goal), several.landmarks, 0.0, 560.0) +
+    panel(sideways.search(start, goal), sideways.landmarks, 800.0, 560.0)
+
+lines(out, channel = "landmarks", w = 1180.0, h = 820.0, fitToSize = true)
+```
+
+![four copies of the same grid, each with a vertical wall rising from the bottom edge to near the top in the middle (pale grey), a start cell on the left and a goal on the right joined by a yellow route that climbs over the top of the wall. Top left, no landmarks: blue expanded cells fill almost the whole grid. Top right, one pink landmark on the left edge behind the start: the blue region is a band along the route. Bottom left, four pink landmarks spread to the corners and edges by farthest-point placement: the blue region is narrow. Bottom right, one landmark at the top of the wall, to the side of the route: blue fills most of the grid again](assets/graph_connectivity_examples/landmark_explored.png)
+
+Top left is plain Dijkstra. Top right has one landmark on the left edge, behind the start:
+moving right means moving away from it, so its bound is close to the true distance along the
+whole route. Bottom left lets `graphFarthestPointLandmarks` place four.
+
+## When a landmark does not help
+
+Bottom right is the landmark placed badly: in the gap above the wall, which the route passes
+through. Going from start to goal first moves towards it and then away from it, so d(L, n) and
+d(L, goal) are nearly equal along most of the route, the bound is close to zero, and the search
+falls back to spreading out like Dijkstra. It is still correct — the bound is still a lower
+bound — it just stops saving work. This is why landmarks are placed at the edges of the graph, and why several are kept:
+for any query, some landmark is likely to lie roughly behind the start or the goal.
+
+## How many nodes each heuristic visits
+
+The heuristics also work on graphs Field builds from points. This example counts expanded nodes
+for one query on the grid above and on a Delaunay graph of random points, where straight-line
+distance is also available.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_connectivity_examples/landmark_counts.png" wait="1.0" capture="box"}
+:::static
+val grid = vec2GridGraph(36, 24, spacing = 20.0) { c, r -> c == 18 && r in 4 until 24 }
+val gs = grid.index(5, 12)
+val gg = grid.index(31, 12)
+
+val rng = java.util.Random(4)
+val points = List(600) { vec(rng.nextDouble() * 1000.0, rng.nextDouble() * 600.0) }
+val delaunay = vec2DelaunayGraph(points)
+val ds = points.indices.minBy { points[it].x }
+val dg = points.indices.maxBy { points[it].x }
+
+fun row(name: String, graph: PointGraph, s: Int, g: Int, euclid: GraphSearchResult?): String {
+    val n0 = graphAStarSearch(graph, s, g).expandedCount
+    val lm1 = graphFarthestPointLandmarks(graph, 1, first = s).search(s, g).expandedCount
+    val lm4 = graphFarthestPointLandmarks(graph, 4).search(s, g).expandedCount
+    val lm8 = graphFarthestPointLandmarks(graph, 8).search(s, g).expandedCount
+    return "| $name | ${graph.pointCount} | $n0 | ${euclid?.expandedCount ?: "–"} | $lm1 | $lm4 | $lm8 |"
+}
+
+markdown(
+    """
+    | graph | nodes | Dijkstra | straight line | 1 landmark | 4 landmarks | 8 landmarks |
+    |---|---|---|---|---|---|---|
+    ${row("grid with wall", grid.graph, gs, gg, vec2AStarSearch(grid.graph, grid.points, gs, gg))}
+    ${row("Delaunay, 600 points", delaunay, ds, dg, vec2AStarSearch(delaunay, points, ds, dg))}
+    """.trimIndent()
+)
+```
+
+![a table with columns graph, nodes, Dijkstra, straight line, 1 landmark, 4 landmarks and 8 landmarks, and two rows, the grid with a wall and a Delaunay graph of 600 points, each giving the number of nodes that search expanded. On both, counts fall from left to right, except that one landmark on the Delaunay graph expands more than straight-line distance does](assets/graph_connectivity_examples/landmark_counts.png)
+
+On the grid, straight-line distance is fooled by the wall and every landmark column beats it. On
+the Delaunay graph the edges are straight-line lengths, so straight-line distance is already a
+good estimate: one landmark at the start does worse, and it takes four to match it. Landmarks
+earn their keep where geometry says little about path cost — walls, mazes, weighted edges.
+More landmarks cost memory (`memory` is 8 × 600 distances for the last column of the Delaunay
+row) and pay off across many queries, not just this one.
+
 Everything on this page assumes the points sit still. When the cloud moves every
 frame and its edges have to be proposed, strengthened and forgotten as it goes,
 see [graphs that change while you watch](dynamic_graph_systems_examples.md). Its
