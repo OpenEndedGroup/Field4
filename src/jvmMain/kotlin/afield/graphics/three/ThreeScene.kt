@@ -465,6 +465,8 @@ data class ThreeStudioSpec(
     val ambientOcclusion: Boolean = true,
     /** Start with the toolbar's **Path trace** pressed: the scene path traced, with bouncing light. Single views only. */
     val pathTrace: Boolean = false,
+    /** Let the path tracer set its own exposure from the traced image, on top of [exposure]. */
+    val autoExposure: Boolean = true,
 )
 
 /**

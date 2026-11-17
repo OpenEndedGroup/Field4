@@ -382,6 +382,10 @@ three(name = "pavilion", width = 760, height = 440) {
 In a box of your own, `controls(realism = true, pathTrace = true)` shows both buttons without
 starting either.
 
+The traced image sets its own exposure: once it has settled, the viewer measures it and brightens
+or darkens it until the brightest faces sit just below white, without tracing it again.
+`studio(autoExposure = false)` traces at the `exposure` you give instead.
+
 !!! note
     Path tracing traces surfaces with a standard material that are not close to fully transparent;
     other surfaces are drawn over the traced image. It draws in a single view, not in a contact

@@ -980,6 +980,7 @@ studioRoot.add(studioHemi, studioKey, studioKey.target, studioRim, studioRim.tar
 function applyStudio(spec, bounds, upAxis, helpers) {
     Object.assign(realismState, {payload: spec || null, bounds: bounds || null, upAxis: upAxis === 'Z' ? 'Z' : 'Y', helpers});
     if (pathTraceState.user === null) pathTraceState.on = urlParams.get('pathtrace') === '1' || !!spec?.pathTrace;
+    pathTraceExposure.enabled = urlParams.get('autoexposure') !== '0' && spec?.autoExposure !== false;
     applyRealism();
 }
 function applyRealism() {
@@ -1504,10 +1505,11 @@ function pathTraceSettling() {
  * rarely suits it. Once a frame is worth judging, this meters the image on screen (a 48-pixel copy,
  * covered pixels only) and scales the exposure so the brightest 2 % sit just below white: keyed to highlights,
  * since a dark ground or room fills most of the frame and would drag a median-keyed meter bright. It is a feedback loop on what is displayed, so it needs no tone-curve inverse. Changing
- * exposure only re-blits the accumulated samples, so it costs no samples. `?autoexposure=0` turns it off.
+ * exposure only re-blits the accumulated samples, so it costs no samples. `studio(autoExposure = false)` or
+ * `?autoexposure=0` turns it off.
  */
 const pathTraceExposure = {factor: 1, steps: 0, enabled: urlParams.get('autoexposure') !== '0', meter: null};
-const AUTO_EXPOSURE_HIGH = 0.9, AUTO_EXPOSURE_MAX_STEPS = 8;
+const AUTO_EXPOSURE_HIGH = 0.85, AUTO_EXPOSURE_MAX_STEPS = 8;
 function pathTraceExposureValue() { return renderer.toneMappingExposure * (pathTraceExposure.enabled ? pathTraceExposure.factor : 1); }
 /** A new picture (geometry, lights or room light changed) is metered again; camera moves keep the setting. */
 function resetPathTraceExposure() { pathTraceExposure.steps = 0; }
@@ -1529,8 +1531,9 @@ function meterPathTraceExposure(canvas) {
     if (values.length < 32) return false;
     values.sort((a, b) => a - b);
     const at = q => Math.max(values[Math.floor(q * (values.length - 1))], 1e-3);
-    // Displayed values are sRGB-encoded: square them for a rough linear ratio; damp the step so it settles.
-    const ratio = (AUTO_EXPOSURE_HIGH / at(0.98)) ** 2;
+    // Displayed values are sRGB-encoded, so squaring gives a rough linear ratio, but ACES flattens toward
+    // white: up there a small displayed change is a large exposure change, so push much harder.
+    const high = at(0.98), ratio = (AUTO_EXPOSURE_HIGH / high) ** (high > 0.8 ? 6 : 2);
     if (Math.abs(Math.log(ratio)) < 0.06) { state.steps = AUTO_EXPOSURE_MAX_STEPS; return false; }
     state.factor = Math.min(20, Math.max(0.05, state.factor * Math.min(2.5, Math.max(0.4, ratio ** 0.8))));
     return true;

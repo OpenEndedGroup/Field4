@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-17T02:48:32.777Z",
+  "capturedAt": "2026-11-17T04:03:37.328Z",
   "documentName": "interaction_nets_lambda",
   "outputs": [
     {
@@ -12,7 +12,7 @@
         "svg"
       ],
       "width": 2385,
-      "height": 1284,
+      "height": 2240,
       "path": "outputs/0.html"
     }
   ]

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-17T01:59:24.442Z",
+  "capturedAt": "2026-11-17T03:35:45.859Z",
   "documentName": "stacksl_fit_demo",
   "outputs": [
     {
@@ -19,7 +19,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 398,
+      "width": 402,
       "height": 200,
       "path": "outputs/1.html"
     },
@@ -29,7 +29,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 228,
+      "width": 232,
       "height": 228,
       "path": "outputs/2.html"
     }
