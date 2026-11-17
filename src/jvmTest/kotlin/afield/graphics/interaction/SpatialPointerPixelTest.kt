@@ -554,9 +554,13 @@ class SpatialPointerPixelTest {
 
         val dOk = decode(fileOk.readBytes())
         val dBad = decode(fileBad.readBytes())
-        // Both must be real renders — a black frame would "differ" too, and prove nothing.
-        assertTrue(dOk.argb.toHashSet().size > 200 && dBad.argb.toHashSet().size > 200,
-            "both captures must be real renders, not black frames")
+        // Both must be real renders — a black frame would "differ" too, and prove nothing. A black
+        // frame has a handful of colours. The flat-shaded house has 151 and 195 since the wireframe
+        // stopped drawing the diagonals across flat faces (it had over 200 when it did).
+        val coloursOk = dOk.argb.toHashSet().size
+        val coloursBad = dBad.argb.toHashSet().size
+        assertTrue(coloursOk > 100 && coloursBad > 100,
+            "both captures must be real renders, not black frames: $coloursOk and $coloursBad distinct colours")
         val litOk = litPixels(dOk)
         val litBad = litPixels(dBad)
         assertTrue(litOk > 500 && litBad > 500, "both must light something: $litOk and $litBad pixels")

@@ -113,7 +113,8 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
      * Add a solid.
      *
      * @param wireframe depth-tested wireframe over the shading. On by default for the same reason it
-     * is on in [MeshView]: it turns "a smooth blob" into "a mesh you can count the triangles in".
+     * is on in [MeshView]: it turns "a smooth blob" into "a mesh you can count the triangles in". An edge
+     * between two coplanar triangles is left out, so a flat face shows its outline, not its triangulation.
      * @param cullBackFaces on by default, so an inside-out face is a *missing* face — the diagnostic
      * the rasterizer has always given and the switch of renderer must not silently drop.
      * @param panel which viewport draws it; `-1` for all of them. Left out, the panel declared most recently.

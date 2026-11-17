@@ -425,7 +425,11 @@ data class MeshView(
     val width: Int = 720,
     /** Output height in pixels. */
     val height: Int = 540,
-    /** Draw a depth-tested wireframe over the shading. On by default: it turns "a smooth blob" into "a mesh you can count the triangles in". */
+    /**
+     * Draw a depth-tested wireframe over the shading. On by default: it turns "a smooth blob" into "a mesh
+     * you can count the triangles in". Edges between two coplanar triangles are left out, so a flat face
+     * shows its outline rather than the diagonals that triangulate it.
+     */
     val wireframe: Boolean = true,
     /** Render at this multiple in each axis and box-filter down. `2` is a good anti-aliasing default. */
     val supersample: Int = 2,

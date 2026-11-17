@@ -281,6 +281,99 @@ rather than Clipper's `EVEN_ODD`, because it is the rule under which winding *me
 overlapping same-wound outlines are one shape, where `EVEN_ODD` would punch their overlap out as a
 hole.
 
+## Previewing a ball-end mill
+
+A ball-end mill cannot cut a sharp inside corner. Wherever two faces meet in a concave edge, the
+ball leaves a fillet of its own radius; a pocket corner comes out rounded; a slot narrower than the
+ball is never cut at all. Convex edges are untouched. `ballMilled(radius)` gives you the part as the
+mill would leave it, as a `Solid`, so it can be measured, drawn, and compared with the design to see
+exactly what the tool adds:
+
+```diffstatic {data-lang=kotlin}
+val milled = part.ballMilled(1.5) // a 3 mm ball, from any direction
+val fillets = milled.beyond(part) // the material the mill leaves that the design does not have
+```
+
+With no directions, the ball may approach from anywhere, the way an idealised five-axis machine
+would. A real 3-axis job cuts from one side at a time. Name the tool axis of each setup with `from`,
+pointing from the part towards the spindle, and anything the part overhangs as seen from that side
+stays solid, as does the stock underneath it. Pass two opposite axes for a part that is milled, then
+turned over:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/manifold/ball_milled.png" alt="four wide cards stacked, each the same cross-section of a stepped plate drawn as a solid light-blue silhouette with the design's outline in white over it. From the left the plate has a two-step rebate, a narrow slot down from the top, a pocket in its underside and a wide pocket in its top. 'as designed, sectioned at z = 20' is all sharp corners. 'a 3 mm ball from any direction, adds 361.2 mm³' fills every inside corner with a small rounded fillet, fills the narrow slot except for a shallow round dip at its mouth, and rounds the corners of both pockets. 'from above only, adds 1325.4 mm³' is the same except that the underside pocket is filled solid. 'from above, then turned over, adds 361.2 mm³' matches the any-direction card" wait="6" capture="box" open-outputs="true" padding="20" requires="manifold" name="ball_milled" embed=true}
+:::static
+import afield.geometry.solid.manifold.*
+
+// A plate with a two-step rebate down its left edge, a slot narrower than the ball, a pocket in
+// its top and a pocket in its underside. All four cross the plane z = 20, where they are drawn.
+val part = Solid.scope {
+    val plate = Solid.cube(60.0, 10.0, 40.0)
+    val cuts = [
+        Solid.cube(12.0, 5.0, 40.0).translated(0.0, 5.0, 0.0),
+        Solid.cube(6.0, 2.5, 40.0).translated(0.0, 2.5, 0.0),
+        Solid.cube(2.0, 4.0, 30.0).translated(17.0, 6.0, 5.0),
+        Solid.cube(14.0, 3.0, 24.0).translated(22.0, 0.0, 8.0),
+        Solid.cube(18.0, 4.0, 24.0).translated(38.0, 6.0, 8.0),
+    ]
+    (plate - Solid.union(cuts)).copy()
+}
+
+val ball = 1.5
+val up = vec(0, 1, 0)
+val down = vec(0, -1, 0)
+val t0 = System.nanoTime()
+val anyDirection = part.ballMilled(ball)
+val fromAbove = part.ballMilled(ball, from = [up])
+val turnedOver = part.ballMilled(ball, from = [up, down])
+val seconds = (System.nanoTime() - t0) / 1e9
+:::fold measure what each one adds, then draw them
+println("three previews in ${seconds.f1} s")
+for ((name, milled) in ["any direction" to anyDirection, "from above" to fromAbove, "turned over" to turnedOver]) {
+    println("$name: the mill leaves ${(milled.volume - part.volume).f1} mm³ the design does not have")
+}
+
+// Each version cut through z = 20: the milled section filled, the design's outline in white over it.
+val designed = part.slice(20.0)
+
+fun outline() = designed.toFLines().onEach {
+    it.color = vec(1.0, 1.0, 1.0, 0.95)
+    it.thickness = 1.6
+}
+
+fun section(milled: Solid) = milled.slice(20.0).toFLines().onEach {
+    it.color = vec(0.45, 0.85, 1.0, 0.85)
+    it.filled = true
+    it.stroked = false
+} + outline()
+
+showPlaneGrid(
+    "as designed, sectioned at z = 20" to section(part),
+    "a 3 mm ball from any direction\nadds ${(anyDirection.volume - part.volume).f1} mm³" to section(anyDirection),
+    "from above only\nadds ${(fromAbove.volume - part.volume).f1} mm³" to section(fromAbove),
+    "from above, then turned over\nadds ${(turnedOver.volume - part.volume).f1} mm³" to section(turnedOver),
+    columns = 1,
+    cellWidth = 720,
+    cellHeight = 200,
+    yUp = true,
+)
+```
+
+From above only, the underside pocket never opens: the tool cannot reach it, and the stock under
+the part stays. Turned over, the pocket is cut, with its own inside corners filleted. In every
+version the 2 mm slot stays filled, apart from the shallow dip the ball makes in its mouth, because a
+3 mm ball does not fit into it, and the rebate's two inside corners come out rounded.
+
+`ballMilled` is the morphological closing of the part by the tool, and `closedBy(tool)` does the same
+for any tool shape you build as a `Solid`. The ball is Manifold's faceted `Solid.sphere`, so the
+fillets are faceted too, and very slightly tighter than the radius: by at most
+`radius * (1 - cos(π / segments))`, about 2% at the default of 16 segments. Raising `segments`
+costs time steeply, because Manifold's Minkowski operations on a non-convex part cost roughly one
+convex hull per boundary triangle.
+
+To see only the fillets, use `milled.beyond(part)` rather than `milled - part`. The Minkowski steps
+re-derive every face of the part, which leaves zero-thickness sheets lying on its flat faces. The
+plain difference keeps them, and they draw as stray patches; `beyond` removes them.
+
 ## Solids from a field
 
 `Solid.levelSet` takes a Kotlin lambda of `x, y, z` and marches it into a solid. Manifold calls the

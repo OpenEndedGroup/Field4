@@ -21,6 +21,7 @@ import kotlinx.serialization.json.Json
 import java.io.File
 import java.nio.file.Files
 import java.util.concurrent.TimeUnit
+import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.cos
@@ -1059,6 +1060,7 @@ object VisionGeometryPreview {
         // is on by default. Drawn with the same depth buffer plus a small bias, so hidden edges stay
         // hidden — a wireframe that shows through is unreadable on anything but a cube.
         val seen = HashSet<Long>(mesh.indices.size)
+        val (welded, flat) = flatDiagonals(mesh)
         fun screen(i: Int): DoubleArray? {
             val p = toView(mesh.positionX(i).toDouble(), mesh.positionY(i).toDouble(), mesh.positionZ(i).toDouble())
             if (p[2] < nearZ) return null
@@ -1082,14 +1084,72 @@ object VisionGeometryPreview {
                 if (area > 0) continue
             }
             fun edge(p: DoubleArray, q: DoubleArray, i: Int, j: Int) {
-                val key = if (i < j) i.toLong() * 1_000_003L + j else j.toLong() * 1_000_003L + i
-                if (!seen.add(key)) return
+                val key = edgeKey(welded[i], welded[j])
+                if (key in flat || !seen.add(key)) return
                 drawDepthLine(pixels, depth, w, h, p, q)
             }
             edge(sa, sb, ia, ib)
             edge(sb, sc, ib, ic)
             edge(sc, sa, ic, ia)
         }
+    }
+
+    private fun edgeKey(a: Int, b: Int): Long =
+        if (a < b) (a.toLong() shl 32) or b.toLong() else (b.toLong() shl 32) or a.toLong()
+
+    /**
+     * Vertex ids welded by exact position, and the welded edges that only triangulate a flat face:
+     * shared by exactly two triangles whose normals agree within 0.01°.
+     *
+     * The wireframe skips those, because on a Boolean or Manifold result they are a fan of arbitrary
+     * diagonals across every flat face. Curved surfaces keep every edge. The browser viewer's
+     * `wireframeWithoutFlatDiagonals` applies the same rule.
+     */
+    private fun flatDiagonals(mesh: CapturedMesh): Pair<IntArray, Set<Long>> {
+        val ids = HashMap<Triple<Float, Float, Float>, Int>()
+        val welded = IntArray(mesh.vertexCount) { i ->
+            ids.getOrPut(Triple(mesh.positionX(i), mesh.positionY(i), mesh.positionZ(i))) { ids.size }
+        }
+        val first = HashMap<Long, Int>()
+        val count = HashMap<Long, Int>()
+        val second = HashMap<Long, Int>()
+        val normals = DoubleArray(mesh.triangleCount * 3)
+        for (t in 0 until mesh.triangleCount) {
+            val c = IntArray(3) { mesh.indices[t * 3 + it] }
+            if (c.any { it !in 0 until mesh.vertexCount }) continue
+            val ux = mesh.positionX(c[1]).toDouble() - mesh.positionX(c[0])
+            val uy = mesh.positionY(c[1]).toDouble() - mesh.positionY(c[0])
+            val uz = mesh.positionZ(c[1]).toDouble() - mesh.positionZ(c[0])
+            val vx = mesh.positionX(c[2]).toDouble() - mesh.positionX(c[0])
+            val vy = mesh.positionY(c[2]).toDouble() - mesh.positionY(c[0])
+            val vz = mesh.positionZ(c[2]).toDouble() - mesh.positionZ(c[0])
+            val nx = uy * vz - uz * vy
+            val ny = uz * vx - ux * vz
+            val nz = ux * vy - uy * vx
+            val length = sqrt(nx * nx + ny * ny + nz * nz)
+            if (length > 0) {
+                normals[t * 3] = nx / length; normals[t * 3 + 1] = ny / length; normals[t * 3 + 2] = nz / length
+            }
+            for (k in 0 until 3) {
+                val p = welded[c[k]]
+                val q = welded[c[(k + 1) % 3]]
+                if (p == q) continue
+                val key = edgeKey(p, q)
+                val n = (count[key] ?: 0) + 1
+                count[key] = n
+                if (n == 1) first[key] = t else second[key] = t
+            }
+        }
+        val coplanar = cos(0.01 * PI / 180)
+        val flat = HashSet<Long>()
+        for ((key, n) in count) {
+            if (n != 2) continue
+            val a = first.getValue(key) * 3
+            val b = second.getValue(key) * 3
+            val dot = normals[a] * normals[b] + normals[a + 1] * normals[b + 1] + normals[a + 2] * normals[b + 2]
+            if (dot > coplanar) flat += key
+        }
+        return welded to flat
     }
 
     private fun drawDepthLine(
