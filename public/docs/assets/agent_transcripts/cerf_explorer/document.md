@@ -48,7 +48,7 @@ loop {
 <!-- field-box id="cerf_churn" index="1" -->
 
 ```edn [field-box id="cerf_churn" role="properties"]
-{"id" "cerf_churn" "index" 1 "name" "2 - Scrubbing a run whose topology churns" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Scrubbing a run whose topology churns" "_tombstone" false "frame" #afield/rect [560.0 60.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cerf_churn_code_.kt" "lines" 38 "characters" 1461 "sha256" "2ecfdd0c906392a7612db3bae89c0b6ed1a3df81a7b5a29ba95619f0ffcff9aa"}]}
+{"id" "cerf_churn" "index" 1 "name" "2 - Scrubbing a run whose topology churns" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Scrubbing a run whose topology churns" "_tombstone" false "frame" #afield/rect [560.0 60.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cerf_churn_code_.kt" "lines" 37 "characters" 1461 "sha256" "16cc9f60109b2f0e94f6f0930d81643d515c6167293814e2667759fa795c9c3b"}]}
 ```
 
 ```kotlin [field-property box="cerf_churn" name="code" path="cerf_churn_code_.kt"]
@@ -57,8 +57,7 @@ import afield.geometry.topology.tracking.*
 
 /*
 Run this one (Alt-Enter), then drag the slider. Three seed patches in Gray–Scott's spot regime, where each spot
-grows, splits in two and pushes its
-daughters apart until the spots fill the field. 120 frames, 40 steps apart: 4,800 steps in all.
+grows, splits in two and pushes its daughters apart until the spots fill the field. 120 frames, 40 steps apart: 4,800 steps in all.
 */
 var state = grayScottSeed(96, 96, patches = 3, patchSize = 10, seed = 7)
 val frames = ArrayList<Img>()

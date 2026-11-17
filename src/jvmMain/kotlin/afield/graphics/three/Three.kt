@@ -81,6 +81,7 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
     internal var shot: ThreeShotSpec? = null
     internal var studio: ThreeStudioSpec? = null
     internal val labels = ArrayList<ThreeLabel>()
+    internal val handles = LinkedHashMap<String, ThreeHandleBinding>()
     internal val overlays = ArrayList<ThreeOverlay>()
     internal var dimmed: Boolean = false
     internal var note: String? = null
@@ -437,6 +438,48 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
     }
 
     /**
+     * A marker the person can drag, in this view and in the visionOS viewer of it. [onDrag] hears the
+     * press (`START`), each move (`MOVE`, newest winning, so a slow callback never falls behind) and the
+     * release (`END`), with the position the handle has been put at.
+     *
+     * The viewer moves the marker itself while it is held; the box usually answers by drawing the scene
+     * again with the handle, and whatever depends on it, where it was put:
+     *
+     * ```kotlin
+     * var tip = vec(0, 40, 0)
+     * fun draw() { three {
+     *     mesh(boxMesh(120, 20, 60), id = "base")
+     *     lines(listOf(FLine().moveTo(0, 10, 0).lineTo(tip.x, tip.y, tip.z)))
+     *     handle("tip", at = tip, label = "tip") { drag -> tip = drag.position; draw() }
+     * } }
+     * draw()
+     * ```
+     *
+     * @param id names the handle within the view; it must be unique.
+     * @param axis when set, the handle moves only along this direction through [at].
+     * @param normal when set (and [axis] is not), the handle moves only in the plane through [at] with this
+     *   normal. With neither, it moves freely: on the plane facing the camera in the browser, anywhere in 3D
+     *   in the visionOS viewer.
+     * @param color the marker's colour as a CSS colour.
+     */
+    fun handle(
+        id: String,
+        at: Vec3,
+        label: String? = null,
+        color: String? = null,
+        axis: Vec3? = null,
+        normal: Vec3? = null,
+        onDrag: (ThreeHandleDrag) -> Unit,
+    ) {
+        require(id.isNotBlank()) { "a handle needs an id" }
+        require(id !in handles) { "two handles in this scene are called '$id'" }
+        fun list(v: Vec3) = listOf(v.x.toDouble(), v.y.toDouble(), v.z.toDouble())
+        require(list(at).all { it.isFinite() }) { "handle '$id' is at a non-finite position" }
+        handles[id] = ThreeHandleBinding(
+            ThreeHandle(id, list(at), label, color, axis?.let(::list), normal?.let(::list)), onDrag)
+    }
+
+    /**
      * Fix an HTML block to a corner of the view — a legend, a table, a key. It does not move with the
      * camera and does not take the pointer, so the view still orbits underneath it. The HTML is
      * inserted as written, as `display(...)` output is.
@@ -764,6 +807,7 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
             shot = shot,
             studio = studio,
             labels = labels.toList(),
+            handles = handles.values.map { it.handle },
             overlays = overlays.toList(),
             dimmed = dimmed,
             note = note,
@@ -909,6 +953,7 @@ fun Box.three(
     )
     val view = threeViewFor(uid)
     view.bindSource(this, "${this.id}_$name")
+    registerThreeHandles(uid, builder.handles.toMap())
     view.update(builder.payload(uid, frameWidth = width, frameHeight = height))
     return view
 }

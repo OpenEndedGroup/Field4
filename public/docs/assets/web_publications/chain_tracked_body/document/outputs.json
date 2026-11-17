@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-17T09:19:07.358Z",
+  "capturedAt": "2026-11-17T14:13:41.417Z",
   "documentName": "chain_tracked_body",
   "outputs": [
     {
@@ -50,13 +50,13 @@
     {
       "uid": "ctb_heard",
       "channel": "audio",
-      "open": true,
+      "open": false,
       "warnings": [
         "Live media omitted"
       ],
       "kinds": [],
-      "width": 428,
-      "height": 62,
+      "width": 200,
+      "height": 40,
       "path": "outputs/4.html"
     }
   ]
