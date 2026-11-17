@@ -13,9 +13,9 @@ import kotlin.math.sqrt
  * Moving some faces of a solid inward and leaving the rest where they are: a clearance between parts
  * that meet, without thinning them.
  *
- * [insetFaces] backs every face off by a distance, except the faces parallel to planes you name. Edges
- * and corners stay sharp, and the faces you keep stay exactly where they were, growing or shrinking
- * to meet the faces that moved.
+ * [insetFaces] backs every face off by a distance, except the faces parallel to planes you name, or
+ * only those lying in them. Edges and corners stay sharp, and the faces you keep stay exactly where
+ * they were, growing or shrinking to meet the faces that moved.
  */
 
 /**
@@ -57,15 +57,74 @@ fun Solid.insetFaces(distance: Double, except: List<Vec3>, toleranceDegrees: Dou
         doubleArrayOf(x / length, y / length, z / length)
     }
     val parallel = cos(toleranceDegrees * PI / 180.0)
-    return insetFaces(distance) { normal ->
-        keep.none { k -> abs(k[0] * normal[0] + k[1] * normal[1] + k[2] * normal[2]) >= parallel }
+    return insetFaces(distance) { plane ->
+        keep.none { k -> abs(k[0] * plane[0] + k[1] * plane[1] + k[2] * plane[2]) >= parallel }
+    }
+}
+
+/**
+ * A plane given by a `point` on it and its `normal`, for [insetFaces]'s `exceptOn`. Which way the
+ * normal points does not matter there: a face on the plane is kept whichever side its material is on.
+ */
+data class FacePlane(val point: Vec3, val normal: Vec3)
+
+/**
+ * This solid with every face moved [distance] inward, except the faces lying on one of the planes in
+ * [exceptOn].
+ *
+ * The overload taking `except` keeps every face *parallel* to a plane; this one keeps only the faces
+ * *in* it. Faces parallel to a plane but somewhere else, a step part-way through a panel or a panel's
+ * other side, move like any other face.
+ *
+ * ```kotlin
+ * val panel = Solid.cube(4.0, 0.1, 3.0)
+ * val top = FacePlane(vec(0, 0.1, 0), vec(0, 1, 0))
+ * val clear = panel.insetFaces(0.002, exceptOn = [top])   // 3.996 x 0.098 x 2.996, still up to y = 0.1
+ * ```
+ *
+ * A face is on a plane when its normal is within [toleranceDegrees] of the plane's, either way round,
+ * and the face's plane passes within [toleranceDistance] of [FacePlane.point] along that normal. The
+ * default, a tenth of [distance], absorbs the rounding a Boolean leaves in a face's position, while
+ * keeping apart faces that are as far from each other as the gap being cut. Everything else is as in
+ * the overload that takes normals.
+ *
+ * @param distance how far to move each face, in the part's units; positive moves it inward.
+ * @param exceptOn the planes whose faces stay where they are.
+ * @param toleranceDegrees how far a face's normal may be from a plane's and still count as on it.
+ * @param toleranceDistance how far a face's plane may be from [FacePlane.point] and still count as on it.
+ */
+fun Solid.insetFaces(
+    distance: Double,
+    exceptOn: List<FacePlane>,
+    toleranceDegrees: Double = 1.0,
+    toleranceDistance: Double = 0.1 * distance,
+): Solid {
+    require(distance.isFinite() && distance >= 0.0) { "an inset needs a non-negative distance, got $distance" }
+    require(toleranceDegrees in 0.0..90.0) { "the tolerance is an angle in degrees, got $toleranceDegrees" }
+    require(toleranceDistance.isFinite() && toleranceDistance >= 0.0) { "the distance tolerance must be non-negative, got $toleranceDistance" }
+    val keep = exceptOn.map { (point, n) ->
+        val x = n.x.toDouble(); val y = n.y.toDouble(); val z = n.z.toDouble()
+        val length = sqrt(x * x + y * y + z * z)
+        require(length > 0.0 && length.isFinite()) { "a plane normal must be a non-zero vector, got $n" }
+        val offset = (x * point.x + y * point.y + z * point.z) / length
+        require(offset.isFinite()) { "a plane's point must be finite, got $point" }
+        doubleArrayOf(x / length, y / length, z / length, offset)
+    }
+    val parallel = cos(toleranceDegrees * PI / 180.0)
+    return insetFaces(distance) { plane ->
+        keep.none { k ->
+            val cosine = k[0] * plane[0] + k[1] * plane[1] + k[2] * plane[2]
+            // The face's plane is n . x = c; with n flipped against k, the same plane is -n . x = -c.
+            abs(cosine) >= parallel && abs(if (cosine > 0) plane[3] - k[3] else plane[3] + k[3]) <= toleranceDistance
+        }
     }
 }
 
 /**
  * This solid with the faces [move] picks moved [distance] inward along their normals; the others stay.
  *
- * [move] is asked once per plane of the solid, with that plane's outward unit normal as `[x, y, z]`.
+ * [move] is asked once per plane of the solid, with that plane as `[x, y, z, c]`: its outward unit
+ * normal, and its offset along it, so the plane is the points where `x * px + y * py + z * pz = c`.
  * Everything else is as in the overload that takes a list of normals to keep.
  */
 fun Solid.insetFaces(distance: Double, move: (DoubleArray) -> Boolean): Solid = insetFaces(distance, 1e-7, move)
@@ -113,7 +172,7 @@ internal fun Solid.insetFaces(distance: Double, liftFraction: Double, move: (Dou
         if (id < 0) { id = planes.size; planes += doubleArrayOf(nx, ny, nz, offset) }
         for (t in face.triangles) planeOfTriangle[t] = id
     }
-    val moved = BooleanArray(planes.size) { move(planes[it].copyOfRange(0, 3)) }
+    val moved = BooleanArray(planes.size) { move(planes[it].copyOf()) }
     if (moved.none { it }) return translated(0.0, 0.0, 0.0)
 
     // Where each vertex goes: the least displacement that puts it on every one of its planes after
