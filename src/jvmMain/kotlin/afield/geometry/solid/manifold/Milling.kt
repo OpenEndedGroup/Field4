@@ -39,10 +39,28 @@ fun Solid.closed(tool: Solid): Solid {
     reflected.close()
     val closing = forbidden.minkowskiDifference(tool)
     forbidden.close()
-    // The closing contains the part mathematically; taking the union keeps the part's own faces
-    // exactly where they were, rather than as re-derived by the sum and the difference.
-    val result = this + closing
+    val size = tool.bounds.size.let { maxOf(it.x, it.y, it.z).toDouble() }
+    val result = withAdded(closing, thinnest = 1e-6 * size)
     closing.close()
+    return result
+}
+
+/**
+ * This solid united with whatever of [added] lies outside it, leaving out pieces thinner than [thinnest].
+ *
+ * The closing contains the part mathematically, but the Minkowski sum and difference re-derive every
+ * face, and a sloping face comes back a few ε outside the original. Those flat, zero-thickness pieces
+ * draw as stray patches on the face. Uniting the part with only the substantial pieces of the
+ * difference keeps the part's own faces exactly where they were. A piece counts as substantial when
+ * its volume over its surface area, a measure of thickness, exceeds [thinnest].
+ */
+internal fun Solid.withAdded(added: Solid, thinnest: Double): Solid {
+    val residue = added - this
+    val pieces = residue.decompose()
+    residue.close()
+    val kept = pieces.filter { it.volume > thinnest * it.surfaceArea }
+    val result = Solid.union(listOf(this) + kept)
+    pieces.forEach { it.close() }
     return result
 }
 
@@ -97,16 +115,16 @@ fun Solid.ballMilled(
     try {
         if (from.isEmpty()) return closed(ball)
 
-        val box = bounds
-        val blank = stock ?: Solid.cube(
-            (box.max.x - box.min.x).toDouble(),
-            (box.max.y - box.min.y).toDouble(),
-            (box.max.z - box.min.z).toDouble(),
-        ).translated(box.min.x.toDouble(), box.min.y.toDouble(), box.min.z.toDouble())
+        // The part's bounds in double precision: [bounds] narrows to Float, which would leave a
+        // stock face a fraction of a micron proud of the part.
+        val positions = toPlanarMesh().positions
+        val low = DoubleArray(3) { axis -> (axis until positions.size step 3).minOf { positions[it] } }
+        val high = DoubleArray(3) { axis -> (axis until positions.size step 3).maxOf { positions[it] } }
+        val blank = stock ?: Solid.cube(high[0] - low[0], high[1] - low[1], high[2] - low[2])
+            .translated(low[0], low[1], low[2])
         // Long enough that the far end of the shadow, and anything the closing does there, lies
         // beyond the part by more than the ball's diameter on any axis.
-        val reach = box.size.let { sqrt(it.x.toDouble() * it.x + it.y.toDouble() * it.y + it.z.toDouble() * it.z) } +
-            4.0 * radius
+        val reach = sqrt((0..2).sumOf { (high[it] - low[it]) * (high[it] - low[it]) }) + 4.0 * radius
         val setups = from.map { axis ->
             val shadowed = withShadow(axis, reach)
             val closing = shadowed.closed(ball)
@@ -114,8 +132,9 @@ fun Solid.ballMilled(
             closing
         }
         val removedByNone = if (setups.size == 1) setups[0] else Solid.batchBoolean(setups, BooleanOp.INTERSECTION)
-        // Intersect in two steps so the part's own faces survive exactly, as in [closed].
-        val result = this + (removedByNone and blank)
+        val reachable = removedByNone and blank
+        val result = withAdded(reachable, thinnest = 1e-6 * radius)
+        reachable.close()
         if (removedByNone !== setups[0]) removedByNone.close()
         setups.forEach { it.close() }
         if (stock == null) blank.close()

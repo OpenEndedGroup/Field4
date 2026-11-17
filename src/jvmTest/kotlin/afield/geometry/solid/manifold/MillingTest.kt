@@ -25,6 +25,17 @@ class MillingTest {
     }
 
     @Test
+    fun `a sloping convex part gains no slivers`() {
+        if (!ManifoldLibrary.isAvailable) return
+        // Re-derived sloping faces land a few epsilon outside the originals; none of that may survive.
+        val slab = Solid.cube(3.0, 0.1, 2.0).rotated(23.0, 0.0, 11.5)
+        for (milled in [slab.ballMilled(0.0125, segments = 12), slab.ballMilled(0.0125, from = [vec(0, 1, 0), vec(0, -1, 0)], segments = 12)]) {
+            val extra = milled - slab
+            assertEquals(0, extra.decompose().size, "nothing outside a convex part, not even a zero-thickness patch")
+        }
+    }
+
+    @Test
     fun `point reflection keeps the tool a positive volume`() {
         if (!ManifoldLibrary.isAvailable) return
         val offCentre = Solid.cube(1.0, 2.0, 3.0)
