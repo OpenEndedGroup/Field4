@@ -24,6 +24,12 @@ recovers hidden branches even when no box is selected. Hiding a selected box cle
 **Back**, in the centre of a submenu, returns to its parent. Escape goes back one level and cancels
 at the root. Moving into a submenu does not execute an action until a leaf is chosen.
 
+## Box-code menus
+
+`Box.markingMenu { item("N", "Action") { ... }; submenu("E", "More") { ... } }` installs
+a live backend menu, with nested serializable entries and callbacks. The legacy `customMarking` map
+still works. See the public [marking menu guide](../../public/docs/marking_menus.md).
+
 ## Frontend submenu entries
 
 The existing `goMarkingMenu` accepts a `children` array in place of an entry's callback. Children use

@@ -4898,6 +4898,20 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="text-frame-content",
+            description="FileManager Markdown images and a box-installed backend marking menu with two nested levels and a real callback.",
+            commands=[
+                "viewport 1060x720",
+                shell_join(["macro", "write", "text_frames_docs", "--file", str(REPO_ROOT / "dev_docs/agents/transcripts/docs_capture/text_frames.yaml")]),
+                "macro run text_frames_docs",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/text-frame-content.js"), "--timeout", pw_timeout]),
+                shell_join(["macro", "write", "text_frame_backend_menu", "--file", str(TOOLS_ROOT / "ui_regressions/text-frame-backend-menu.yaml")]),
+                "macro run text_frame_backend_menu",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/text-frame-content-assert.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="graph-visibility",
             description="Nested marking menus and ancestor/descendant visibility across cycles and shared branches, with palette recovery.",
             commands=[

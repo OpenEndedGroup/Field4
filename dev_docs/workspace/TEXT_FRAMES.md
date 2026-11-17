@@ -100,6 +100,19 @@ provider/fast model, and a prose-specific prompt. Only a bounded document openin
 sent; chat tools are unavailable. Suggestions are never saved until accepted. This is not factual
 verification or a substitute for editing.
 
+## Images and AI4
+
+Local Markdown images resolve through the owning session's FileManager, including `%document/`,
+`%project/`, named directories, search roots, home/absolute paths and globs. The image route requires
+an exact reference authored in a live text frame, permits image extensions up to 20 MiB, and uses
+sandbox CSP and nosniff. Raw HTML and arbitrary iframes remain escaped.
+
+AI4 live content listings include `contents`, notes and YAML settings. Saved inline text-frame
+Markdown is indexed alongside sidecars with box names and Markdown headings; it is not necessary
+to turn the text into code or copy it into notes. Current unsaved text is read through the box property.
+The public guide is [Writing on the canvas](../../public/docs/text_frames.md), with reproducible
+reading, inline editing and YAML settings captures.
+
 ## Synchronization and remaining work
 
 Each edit uses the existing box property synchronization, autosave and history. An incoming contents

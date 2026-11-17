@@ -59,13 +59,24 @@ private fun inlineFormat(text: String, positions: List<Int>? = null): String {
     return out.toString()
 }
 
-private fun formatProse(text: String): String {
-    var out = text
-    out = out.replace(Regex("\\*\\*([^*]+)\\*\\*"), "<strong>$1</strong>")
-    out = out.replace(Regex("\\*([^*\\s][^*]*)\\*"), "<em>$1</em>")
-    out = replaceImages(out)
-    out = replaceLinks(out)
-    return out
+internal val markdownLinkSpan = Regex("""!?\[([^\]]*)\]\(([^)]+)\)""")
+
+private fun formatEmphasis(text: String): String = text
+    .replace(Regex("\\*\\*([^*]+)\\*\\*"), "<strong>$1</strong>")
+    .replace(Regex("\\*([^*\\s][^*]*)\\*"), "<em>$1</em>")
+
+private fun formatProse(text: String): String = buildString {
+    var cursor = 0
+    for (match in markdownLinkSpan.findAll(text)) {
+        append(formatEmphasis(text.substring(cursor, match.range.first)))
+        if (match.value.startsWith("!")) append(replaceImages(match.value))
+        else {
+            val label = formatEmphasis(match.groupValues[1])
+            append(replaceLinks("[$label](${match.groupValues[2]})"))
+        }
+        cursor = match.range.last + 1
+    }
+    append(formatEmphasis(text.substring(cursor)))
 }
 
 private fun replaceImages(text: String): String {

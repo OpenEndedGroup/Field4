@@ -19,7 +19,7 @@ import kotlin.test.assertTrue
 /** No ONNX model, checkout corpus scan, or live Field server needed. */
 class SemanticDirectoryProxyTest {
     private fun fixture(test: (Path, Path) -> Unit) {
-        val root = Files.createTempDirectory("semantic-directory-proxy")
+        val root = Files.createTempDirectory("semantic-directory-proxy").toRealPath()
         val document = Files.createDirectories(root.resolve("document"))
         val external = Files.createDirectories(root.resolve("external"))
         Files.writeString(document.resolve("metadata.edn"), """
@@ -77,6 +77,18 @@ class SemanticDirectoryProxyTest {
                 }
             }
         }
+    }
+
+    @Test fun textFrameMarkdownIsIndexedWithItsBoxAndHeadings() = fixture { root, _ ->
+        Files.writeString(root.resolve("document/metadata.edn"), """
+            {"version" 2 "boxes" [{"id" "writer" "properties" {
+              "name" "Research notes" "box_kind" "text-frame" "contents" "# Quartz observations\n\nquartzneedle is a writing sample."}}]}
+        """.trimIndent())
+        val all = capsules(root)
+        assertTrue(all.isNotEmpty())
+        assertTrue(all.all { it.boxId == "writer" && it.property == "contents" && it.language == "markdown" })
+        assertTrue(all.any { "quartzneedle" in it.source })
+        assertTrue(all.any { it.symbol.contains("Quartz") || it.title.contains("Quartz") })
     }
 
     @Test fun exclusionsBinaryInvalidUtf8AndOversizedChildrenAreNotIndexed() = fixture { root, external ->

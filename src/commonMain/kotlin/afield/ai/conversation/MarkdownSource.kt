@@ -45,24 +45,31 @@ private fun markup(text: String) = MappedHtml(text, List(text.length) { -1 })
 
 internal fun mappedMarkdownInline(text: String, positions: List<Int>): String {
     val source = MappedHtml(text, positions)
+    fun emphasis(value: MappedHtml): MappedHtml = value.replace(Regex("\\*\\*([^*]+)\\*\\*")) { input, match ->
+        markup("<strong>") + input.group(match, 1) + markup("</strong>")
+    }.replace(Regex("\\*([^*\\s][^*]*)\\*")) { input, match ->
+        markup("<em>") + input.group(match, 1) + markup("</em>")
+    }
     fun prose(value: MappedHtml): MappedHtml {
-        var out = value.replace(Regex("\\*\\*([^*]+)\\*\\*")) { input, match ->
-            markup("<strong>") + input.group(match, 1) + markup("</strong>")
-        }.replace(Regex("\\*([^*\\s][^*]*)\\*")) { input, match ->
-            markup("<em>") + input.group(match, 1) + markup("</em>")
-        }
-        out = out.replace(Regex("!\\[([^\\]]*)\\]\\(([^)]+)\\)")) { input, match ->
-            val alt = match.groupValues[1]
+        var result = markup("")
+        var cursor = 0
+        for (match in markdownLinkSpan.findAll(value.text)) {
+            result += emphasis(value.slice(cursor, match.range.first))
             val url = match.groupValues[2]
-            val lazy = if (url.startsWith("data:")) "" else " loading=\"lazy\""
-            val start = input.offsets[match.range.first]
-            markup("<img class=\"ai-chat-inline-image\" data-markdown-start=\"$start\" src=\"$url\" alt=\"$alt\"$lazy />")
+            if (match.value.startsWith("!")) {
+                val alt = match.groupValues[1]
+                val lazy = if (url.startsWith("data:")) "" else " loading=\"lazy\""
+                val start = value.offsets[match.range.first]
+                result += markup("<img class=\"ai-chat-inline-image\" data-markdown-start=\"$start\" src=\"$url\" alt=\"$alt\"$lazy />")
+            } else if (match.groupValues[1].isEmpty()) {
+                result += value.slice(match.range.first, match.range.last + 1)
+            } else {
+                val target = if (url.startsWith("field:", ignoreCase = true)) "" else " target=\"_blank\" rel=\"noopener noreferrer\""
+                result += markup("<a href=\"$url\"$target>") + emphasis(value.group(match, 1)) + markup("</a>")
+            }
+            cursor = match.range.last + 1
         }
-        return out.replace(Regex("\\[([^\\]]+)\\]\\(([^)]+)\\)")) { input, match ->
-            val url = match.groupValues[2]
-            val target = if (url.startsWith("field:", ignoreCase = true)) "" else " target=\"_blank\" rel=\"noopener noreferrer\""
-            markup("<a href=\"$url\"$target>") + input.group(match, 1) + markup("</a>")
-        }
+        return result + emphasis(value.slice(cursor, value.text.length))
     }
     val chunks = mutableListOf<MappedHtml>()
     var start = 0

@@ -167,7 +167,7 @@ data class ListDefinitionsResult(val definitions: List<DefinitionInfo>)
 data class DefinitionInfo(val name: String, val type: String, val fileRef: String, val language: String)
 
 /** Tool: get full contents of text properties for the current box/file context. */
-@JsonClassDescription("Return full contents for available text properties (code and shaders) in the current Field box and graph-relevant boxes, with file refs, languages, box names, relation labels, and preamble hints. Preamble hints distinguish inherited Box properties from shader-generated Mesh/Module binding helpers. Use it when you need the code of several related boxes at once, or the file refs EditFileRequest takes; for one property of a named box, GetBoxPropertyRequest is smaller. Unavailable (an error) outside a box's chat. e.g. a result entry's fileRef = `afield://doc/box-uid/code`.")
+@JsonClassDescription("Return full contents for available text properties (Markdown contents, notes, textFrame YAML, code and shaders) in the current Field box and graph-relevant boxes, with file refs, languages, box names, relation labels, and preamble hints. Preamble hints distinguish inherited Box properties from shader-generated Mesh/Module binding helpers. Use it when you need the code of several related boxes at once, or the file refs EditFileRequest takes; for one property of a named box, GetBoxPropertyRequest is smaller. Unavailable (an error) outside a box's chat. e.g. a result entry's fileRef = `afield://doc/box-uid/code`.")
 @AgentToolMeta("kotlin", effects = [ToolEffect.READ_DOCUMENT])
 data class ListContentsRequest(val unused: Int = 0)
 

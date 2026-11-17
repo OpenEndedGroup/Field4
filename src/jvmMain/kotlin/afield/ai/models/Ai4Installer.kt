@@ -1347,6 +1347,7 @@ fun installAi4() {
             }
         }
         val textProperties = linkedSetOf(
+            "contents", "notes", "textFrame",
             "code",
             "vertex",
             "fragment",
@@ -1401,7 +1402,9 @@ fun installAi4() {
             "intersection_s" -> "Slang (intersection)"
             "callable_s" -> "Slang (callable)"
             "customization", "remote_js" -> "JavaScript"
-            "metadata" -> "YAML"
+            "metadata", "textFrame" -> "YAML"
+            "notes" -> "Markdown"
+            "contents" -> if (target.getPropertyRaw("box_kind") == "text-frame") "Markdown" else (target.getPropertyRaw("contents_language") as? String ?: "text")
             else -> languageNameForProperty(target, property)
         }
 

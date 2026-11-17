@@ -3,6 +3,7 @@ package afield.app.client
 import afield.app.canvas.invoke
 
 import afield.app.protocol.CustomMarkingFire
+import afield.app.protocol.CustomMarkingEntry
 import afield.app.protocol.CustomMarkingRequest
 import afield.app.protocol.CustomMarkingResponse
 import afield.app.protocol.Handled
@@ -60,8 +61,8 @@ fun requestCustomMarkingMenu(uid: String, x: Double, y: Double, event: dynamic) 
                 )
             )
         }
-        val menus = (response.entries.map { entry ->
-            json(
+        fun menuEntry(entry: CustomMarkingEntry): dynamic {
+            val result = json(
                 "text" to entry.label,
                 "callback" to {
                     send(Message("custom-marking-fire").payload(CustomMarkingFire(entry.callbackId)))
@@ -69,7 +70,10 @@ fun requestCustomMarkingMenu(uid: String, x: Double, y: Double, event: dynamic) 
                 "radius" to entry.radius,
                 "angle" to entry.angle
             )
-        } + builtins).toTypedArray()
+            if (entry.children.isNotEmpty()) result["children"] = entry.children.map(::menuEntry).toTypedArray()
+            return result
+        }
+        val menus = (response.entries.map { menuEntry(it) } + builtins).toTypedArray()
         goMarkingMenu(x, y, menus.asJsObject(), event, {})
         Handled.yes_remove
     }

@@ -106,10 +106,18 @@ function flush(state) {
     state.dirty = false;
     write(state.box, 'contents', state.editor.value);
 }
+function markdownOptions(state, sourcePositions = false) {
+    return {sourcePositions, resolveImage: src => {
+        if (/^(https?:|data:)/i.test(src)) return src;
+        if (/^[a-z][a-z0-9+.-]*:/i.test(src)) return '';
+        const params = new URLSearchParams({document: window.currentDocumentSessionKey || window.currentDocumentFilename || '', box: state.box.uid, path: src});
+        return '/api/text-frame-asset?' + params;
+    }};
+}
 function render(state) {
     const text = state.box.contents || '';
     state.previewSource = text;
-    renderFieldMarkdown(state.preview, text, {sourcePositions: true});
+    renderFieldMarkdown(state.preview, text, markdownOptions(state, true));
     state.preview.classList.toggle('text-frame-empty', !text.trim());
     if (!text.trim()) state.preview.textContent = 'Double-click to write Markdown';
     layout(state);
@@ -134,7 +142,7 @@ function layout(state) {
         if (editing && state.measuredDraft !== state.editor.value) {
             state.measuredDraft = state.editor.value;
             state.previewSource = state.measuredDraft;
-            renderFieldMarkdown(state.preview, state.measuredDraft);
+            renderFieldMarkdown(state.preview, state.measuredDraft, markdownOptions(state));
             state.preview.classList.remove('text-frame-empty');
         }
         if (config.sizing === 'grow' && !window.currentDocumentReadOnly) {

@@ -106,6 +106,7 @@ mutation; it is a different one.
 | `GET /api/docs-search` | `Server.kt` | none |
 | `GET /api/docs-source-file` | `docsSourceFile.kt` | loopback + same-site |
 | `GET /api/document-guide-asset` | `documentGuides.kt` | none |
+| `GET /api/text-frame-asset` | `textFrameAssets.kt` | none |
 | `GET /api/export-tagged-documents` | `Server.kt` | none |
 | `GET /api/instance-info` | `Server.kt` | none |
 | `GET /api/kits` | `KitRoutes.kt` | none |
@@ -151,11 +152,11 @@ mutation; it is a different one.
 | `GET /three-review` | `Server.kt` | loopback + same-site |
 | `GET /three-review-image` | `Server.kt` | loopback + same-site |
 
-### The six that serve files off disk, which deserve reading twice
+### The seven that serve files off disk, which deserve reading twice
 
-`/project/{...}`, `/min/{...}`, `/extension-web/{...}`, `/local/{...}`, `/field-docs/{...}` and
-`/api/document-guide-asset` turn a URL into a path on your machine. Five enforce path
-boundaries and one does not:
+`/project/{...}`, `/min/{...}`, `/extension-web/{...}`, `/local/{...}`, `/field-docs/{...}`,
+`/api/document-guide-asset` and `/api/text-frame-asset` turn a URL into a path on your machine. Five enforce path
+boundaries, one requires an image reference authored in an open text frame, and one does not:
 
 - `Server.kt#project file not found or outside project directory` canonicalises the
   resolved file and requires `Path.startsWith` against the canonical workspace. The comment
@@ -173,6 +174,11 @@ boundaries and one does not:
   path containment, an image-extension allowlist, and a 20 MiB limit. Responses include a
   sandbox Content Security Policy and `nosniff`; these are content restrictions, not an
   origin guard;
+- `/api/text-frame-asset` requires an existing, non-deleted text frame in an already-open document
+  and an exact image reference in its current Markdown. It then uses that session's FileManager,
+  including explicitly registered directories, home and absolute paths. Only image extensions
+  up to 20 MiB are served, with sandbox CSP and `nosniff`. It cannot resolve an arbitrary spec
+  absent from the frame. This is an author-selected file capability, not document containment.
 - **`/local/{...}` has no containment check at all.** It takes the longest matching prefix
   from `dynamicRoutes`, joins the remainder onto the mapped directory with `File(parent,
   child)`, and calls `respondFile` if the result exists. No canonicalisation, and

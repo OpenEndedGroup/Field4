@@ -223,6 +223,11 @@ const highlightNotesMarkdown = (root) => {
 export function renderFieldMarkdown(root, markdown, options = {}) {
     root.innerHTML = options.sourcePositions ? textFrameMarkdownToHtml(markdown) : aiChatMarkdownToHtml(markdown);
     sanitizeNotesMarkdown(root);
+    if (options.resolveImage) root.querySelectorAll('img[src]').forEach(img => {
+        const resolved = options.resolveImage(img.getAttribute('src'));
+        if (resolved) img.setAttribute('src', resolved);
+        else img.remove();
+    });
     highlightNotesMarkdown(root);
     typesetAiChatMath(root);
     const used = new Map();

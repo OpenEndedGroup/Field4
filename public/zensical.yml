@@ -132,6 +132,8 @@ nav:
     # Beside moving_around_the_canvas.md: which boxes are on the canvas at all, and where each one
     # sits, per layer.
     - Layers: layers.md
+    - Text Frames: text_frames.md
+    - Custom Marking Menus: marking_menus.md
     # Beside layers.md: putting boxes on the canvas, here copies of saved ones (cmd+t).
     - Templates: templates.md
     - File Management: files_and_paths.md

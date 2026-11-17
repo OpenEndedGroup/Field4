@@ -3800,7 +3800,9 @@ class Server {
 
             handlers["custom-marking-fire"] = mutableSetOf({ message, reply ->
                 val fire = Json.decodeFromJsonElement<CustomMarkingFire>(message.payload!!)
-                GlobalScope.launch {
+                val ownerSession = thisSessionInfo.get()
+                val ownerSocket = thisSession.get()
+                GlobalScope.launch(Runloop.runLoop.main + thisSessionInfo.asContextElement(ownerSession) + thisSession.asContextElement(ownerSocket)) {
                     try {
                         fireCustomMarkingCallback(fire.callbackId)
                     } catch (e: Exception) {
@@ -4306,6 +4308,7 @@ class Server {
                         installSignalViewerRoutes()
                         installDocsAnnotationRoutes()
                         installDocumentGuideRoutes()
+                        installTextFrameAssetRoutes()
                         installKitRoutes(::restartForKits)
                         installChatlogRoutes()
 

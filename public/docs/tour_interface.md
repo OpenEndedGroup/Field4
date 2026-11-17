@@ -41,6 +41,9 @@ Windows and Linux; ++alt++ is Option or Alt.
 | Profiling timeline | `show-profiling-timeline` | none |
 | Publish for the web | `publish-document-web` | none |
 
+[Text frames](text_frames.md) put editable Markdown directly on the canvas. Boxes can also add
+[custom marking menus](marking_menus.md) with Kotlin callbacks and nested choices.
+
 ## The code editor
 
 Click a box to select it, and its code opens in the editor on the right. The editor is
