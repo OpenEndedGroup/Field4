@@ -1,13 +1,16 @@
 /**
  * boxLayout.kt
  *
- * Two layout helpers for documents whose boxes carry large output panels (converted notebooks
+ * Layout helpers for documents whose boxes carry large output panels (converted notebooks
  * especially), both measuring a box together with every panel in its output area:
  *
  * - **Pack Boxes** ([BoxLayout.pack]) moves boxes so that no box or output panel overlaps another,
  *   with [BoxLayout.PAD] between them. Boxes are visited in reading order (top, then left); the
  *   first stays where it is, and each later one keeps its place if it is clear, otherwise moves
  *   right and/or down by the least distance that clears everything already placed.
+ * - **Clean Up Layout** ([BoxLayout.cleanUp]) lines the selection (or, with fewer than two
+ *   selected, every box) up in rows and columns sized to each box's footprint, so nothing
+ *   overlaps; boxes outside a selection that the grid would cover move down out of its way.
  * - **Make Room for Outputs** ([BoxLayout.makeRoom]) is a mode: whenever an output area changes
  *   size (a panel opens, closes, grows or is resized) boxes it would overlap move down out of its
  *   way, and boxes it pushed come back up, never above where they were left, when it shrinks.
@@ -29,6 +32,7 @@ import afield.app.client.applyFrameToBox
 import afield.app.client.canvasGestures
 import afield.app.client.hasRenderableFrame
 import afield.app.client.isBoxVisible
+import afield.app.client.selected
 import afield.app.notifications.notify
 import afield.app.client.LoadingTracker
 import afield.app.client.figureModeActive
@@ -186,6 +190,88 @@ object BoxLayout {
     }
 
     /**
+     * Clean Up Layout: puts [boxes] (the selection, or every top-level box when fewer than two are
+     * selected) on an aligned grid of rows and columns, measured with every open output panel, so nothing
+     * overlaps. Rows come from where the boxes are now: in order of their tops, a box joins the
+     * current row while its top is above the middle of that row's shortest frame; within a row
+     * boxes keep their left-to-right order. Every column is as wide as its widest footprint and
+     * every row as tall as its tallest, plus [PAD]. The grid starts at the top-left of the boxes.
+     *
+     * When only a selection is cleaned up, boxes outside it that the new grid would overlap move
+     * down (keeping their x) until they clear it and each other. Returns how many boxes moved.
+     */
+    fun cleanUp(selection: Collection<HTMLElement>): Int {
+        val all = topLevelBoxes()
+        val chosenSet = selection.filter { it in all }.toSet().takeIf { it.size >= 2 } ?: all.toSet()
+        val items = all.filter { it in chosenSet }.map { measure(it) }
+        if (items.isEmpty()) return 0
+
+        val rows = mutableListOf<MutableList<Item>>()
+        var rowTop = 0.0
+        var rowLimit = 0.0
+        for (item in items.sortedWith(compareBy({ it.frame.y }, { it.frame.x }))) {
+            if (rows.isEmpty() || item.frame.y >= rowLimit) {
+                rows += mutableListOf(item)
+                rowTop = item.frame.y
+                rowLimit = rowTop + max(20.0, item.frame.h / 2)
+            } else {
+                rows.last() += item
+                rowLimit = min(rowLimit, rowTop + max(20.0, item.frame.h / 2))
+            }
+        }
+        rows.forEach { row -> row.sortBy { it.frame.x } }
+
+        // Frames line up down each column and along each row; panels that hang left of or above
+        // their box (a panel's arrow does) get room from the column's or row's largest overhang.
+        val columns = rows.maxOf { it.size }
+        val colLead = DoubleArray(columns)
+        val colTail = DoubleArray(columns)
+        rows.forEach { row -> row.forEachIndexed { c, it -> colLead[c] = max(colLead[c], -it.minX); colTail[c] = max(colTail[c], it.maxX) } }
+        val originX = items.minOf { it.frame.x + it.minX }
+        val originY = items.minOf { it.frame.y + it.minY }
+
+        val frames = mutableMapOf<Item, Rect>()
+        val placed = mutableListOf<Rect>()
+        var y = originY
+        for (row in rows) {
+            val rowLead = row.maxOf { -it.minY }
+            var x = originX
+            row.forEachIndexed { c, item ->
+                val frame = Rect(x + colLead[c], y + rowLead, item.frame.w, item.frame.h)
+                frames[item] = frame
+                item.parts.forEach { placed += it.at(frame.x, frame.y) }
+                x += colLead[c] + colTail[c] + PAD * 2
+            }
+            y += rowLead + row.maxOf { it.maxY } + PAD * 2
+        }
+
+        // Boxes left out of a selection clean-up get out of the grid's way, downwards only.
+        val others = all.filter { it !in chosenSet }.map { measure(it) }.sortedWith(compareBy({ it.frame.y }, { it.frame.x }))
+        val otherMoves = mutableListOf<Pair<Item, Rect>>()
+        for (item in others) {
+            val x = item.frame.x
+            var oy = item.frame.y
+            var moved = true
+            while (moved) {
+                moved = false
+                for (part in item.parts) {
+                    val r = part.at(x, oy)
+                    val hit = placed.filter { clashes(r, it) }.maxOfOrNull { it.bottom } ?: continue
+                    oy = hit + PAD - part.y
+                    moved = true
+                }
+            }
+            item.parts.forEach { placed += it.at(x, oy) }
+            if (oy != item.frame.y) otherMoves += item to Rect(x, oy, item.frame.w, item.frame.h)
+        }
+
+        val moves = frames.filter { (item, f) -> f.x != item.frame.x || f.y != item.frame.y }.map { it.key to it.value } + otherMoves
+        homes.clear()
+        commit(moves)
+        return moves.size
+    }
+
+    /**
      * Arrange Boxes by Presentation, on this client's measurements: the boxes in the request's order,
      * in one row from where the first one is. Each box goes [ArrangeBoxesRequest.gap] after the
      * previous one's footprint (its frame and every open panel), and the second box
@@ -337,6 +423,15 @@ fun registerBoxLayoutActions(builtin: dynamic) {
         notify(if (n == 0) "Nothing overlaps" else "Moved $n box${if (n == 1) "" else "es"}", "command")
     }
     builtin.push(pack)
+    val tidy: dynamic = js("({})")
+    tidy.id = "clean-up-layout"
+    tidy.label = "Clean Up Layout"
+    tidy.detail = "Line up the selected boxes (or the whole document) in rows and columns, with room for every open output panel"
+    tidy.run = {
+        val n = BoxLayout.cleanUp(selected)
+        notify(if (n == 0) "Already tidy" else "Moved $n box${if (n == 1) "" else "es"}", "command")
+    }
+    builtin.push(tidy)
     val room: dynamic = js("({})")
     room.id = "toggle-make-room-for-outputs"
     room.keyLabel = "Toggle Make Room for Outputs"
@@ -365,6 +460,7 @@ fun registerBoxLayoutActions(builtin: dynamic) {
         Handled.yes
     }
     window.asDynamic().packBoxes = { BoxLayout.pack() }
+    window.asDynamic().cleanUpLayout = { BoxLayout.cleanUp(selected) }
     window.asDynamic().toggleMakeRoomForOutputs = { BoxLayout.toggleMakeRoom() }
     window.asDynamic().boxLayoutState = { BoxLayout.state() }
 }
