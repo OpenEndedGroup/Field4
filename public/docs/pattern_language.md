@@ -901,7 +901,7 @@ fun redraw() = showPatRollOf(
     "left" to muse.leftPattern(), "right" to muse.rightPattern(),
     title = "PatMuse(seed = 3)", cycles = 4, pitched = true, channel = "roll",
 )
-controlGroup("right hand", columns = 4) {
+controlGroup("right hand", columns = 2) {
     weights("degree", muse.right.degree) { redraw() }
     weights("length", muse.right.rhythm) { redraw() }
 }
