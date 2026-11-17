@@ -3362,7 +3362,7 @@ Karplus-Strong resonator driven by its input signal.
 
 `src/jvmMain/kotlin/afield/audio/synth/Piano.kt` — [read the source](source/jvmMain/afield/audio/synth/Piano/)
 
-**Used in:** [Sound: from a pattern to something you can hear](../sound.md)
+**Used in:** [Sound: from a pattern to something you can hear](../sound.md), [Patterns: writing rhythm as a function of time](../pattern_language.md)
 
 ### Top-level functions { #piano-kt-functions }
 

@@ -4,7 +4,7 @@
 
 Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. `SoundPathMap.kt` is the one to read first: the declared, re-derived-from-the-code map of every route Field has from a box to something audible, which [Making a sound in Field: every path there is](../sound_paths.md) renders as a page. [Sonic Pi](../sonic_pi.md) covers owned mode in full.
 
-98 source file(s), 2595 public symbol(s), 1397 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+99 source file(s), 2658 public symbol(s), 1430 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -4892,6 +4892,154 @@ Runs the Standard MIDI File smoke checks; `main` is the `synth.midi-file.smoke` 
 | <a id="midismoketest-kt--midismoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/MidiSmokeTest/#L42) | The `synth.midi-file.smoke` entrypoint. An optional first argument is a directory to write into; without one the run works in a temp directory and deletes it. Throws when a check fails, so the runner sees a non-zero exit. |
 | <a id="midismoketest-kt--midismoketest--runtests"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">runTests</span><span class="p">(</span><span class="n">outputDirectory</span><span class="p">:</span> <span class="nc">File</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/audio/synth/MidiSmokeTest/#L54) | Runs every check in turn and reports whether they all passed, printing `Midi smoke tests passed` on success and the first failure's stack trace otherwise. |
 
+## PatMuse.kt { #patmuse-kt }
+
+A probabilistic sequencer for the pattern language: set weights, listen, then lock what you liked.
+
+A [`PatMuseChannel`](audio.md#patmuse-kt-patmusechannel) draws each event from three weight tables — scale degree, chord type and
+rhythm (how many steps the event lasts) — so the stream it plays is shaped by the tables rather
+than written down. When a stretch of it is worth keeping, [`PatMuseChannel.lock`](audio.md#patmuse-kt--patmusechannel--lock) freezes the last
+`n` events (up to 64) into a [`PatLoop`](audio.md#patmuse-kt-patloop). The loop repeats exactly, between its own [`PatLoop.start`](audio.md#patmuse-kt--patloop--start)
+and [`PatLoop.end`](audio.md#patmuse-kt--patloop--end), forwards, backwards or back and forth; its [`PatLoop.improvise`](audio.md#patmuse-kt--patloop--improvise) probability lets
+each pass vary the loop's velocities and decorate its notes with Baroque ornaments (mordent, turn,
+trill, passing tone) without changing the loop itself.
+
+Both the free stream and the loop are ordinary `PatPattern<String>`s whose atoms are MIDI note
+numbers with a `gain` annotation, so everything that plays a pattern plays them:
+[`Piano.play`](synthesis.md#piano-kt--piano--play) (one channel per hand), `showPatRollOf(..., pitched = true)`, `notes()` and the
+inline `pianoRoll` visualizer, `respond`, and every pattern transform.
+
+The method follows the description of the norns script *Muses* (llllllll.co/t/muses); no code
+comes from it. Everything is a pure function of the seed and the weights: the same seed and
+tables give the same stream, and the same loop and seed give the same improvisation on every
+pass `k`. Tests: `PatMuseTest`.
+
+`src/jvmMain/kotlin/afield/audio/synth/PatMuse.kt` — [read the source](source/jvmMain/afield/audio/synth/PatMuse/)
+
+**Used in:** [Patterns: writing rhythm as a function of time](../pattern_language.md)
+
+### Top-level functions { #patmuse-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="patmuse-kt--weights"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">ControlGroupBuilder</span><span class="p">.</span><span class="nf">weights</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">table</span><span class="p">:</span> <span class="nc">PatWeights</span><span class="p">,</span> <span class="n">top</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">8.0</span><span class="p">,</span> <span class="n">onChange</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span> <span class="o">=</span> <span class="p">{</span><span class="p">}</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L435) | One slider per entry of `table`, labelled `"$name ${label}"`, each writing its weight; `onChange` runs after every write (redraw a roll there). |
+
+### PatWeights { #patmuse-kt-patweights }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">PatWeights</span><span class="p">(</span><span class="k">val</span> <span class="n">labels</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">vararg</span> <span class="n">initial</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L38)
+
+A row of weights, one per choice, sampled in proportion — the table a [`PatMuseChannel`](audio.md#patmuse-kt-patmusechannel) draws from.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="patmuse-kt--patweights--version"></a>[<code class="highlight"><span class="k">var</span> <span class="n">version</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L42) | Bumped on every change, so a channel knows its generated stream is stale. |
+| <a id="patmuse-kt--patweights--size"></a>[<code class="highlight"><span class="k">val</span> <span class="n">size</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L45) |  |
+| <a id="patmuse-kt--patweights--get"></a>[<code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">get</span><span class="p">(</span><span class="n">i</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L47) |  |
+| <a id="patmuse-kt--patweights--set"></a>[<code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">set</span><span class="p">(</span><span class="n">i</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L49) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">set</span><span class="p">(</span><span class="k">vararg</span> <span class="n">weights</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L55) | Replaces every weight at once. |
+| <a id="patmuse-kt--patweights--tolist"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">toList</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L58) | The weights as a list, in `labels` order. |
+| <a id="patmuse-kt--patweights--sample"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">sample</span><span class="p">(</span><span class="n">unit</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L61) | The index chosen by `unit` in `[0, 1)`: each entry owns a share of the line as wide as its weight. |
+| <a id="patmuse-kt--patweights--tostring"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L73) |  |
+
+### PatMuseEvent { #patmuse-kt-patmuseevent }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PatMuseEvent</span><span class="p">(</span><span class="k">val</span> <span class="n">step</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">length</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">degrees</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">velocity</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L83)
+
+One event of a [`PatMuseChannel`](audio.md#patmuse-kt-patmusechannel): [`length`](graphics.md#flinemeasure-kt--length) steps from `step`, sounding scale [`degrees`](patterns.md#tidalpatterns-kt--degrees) (empty for a rest) at [`velocity`](audio.md#patmuse-kt--patmusechannel--velocity).
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="patmuse-kt--patmuseevent--isrest"></a>[<code class="highlight"><span class="k">val</span> <span class="n">isRest</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L84) |  |
+
+### PatLoopDirection { #patmuse-kt-patloopdirection }
+
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">PatLoopDirection</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L88)
+
+The direction a [`PatLoop`](audio.md#patmuse-kt-patloop) plays its window in.
+
+Constants: `Forward`, `Reverse`, `PingPong`.
+
+### PatOrnament { #patmuse-kt-patornament }
+
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">PatOrnament</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L91)
+
+The ornaments a [`PatLoop`](audio.md#patmuse-kt-patloop) can add while improvising.
+
+Constants: `Mordent`, `Turn`, `Trill`, `Passing`.
+
+### PatMuseChannel { #patmuse-kt-patmusechannel }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">PatMuseChannel</span><span class="p">(</span><span class="k">var</span> <span class="n">seed</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="k">var</span> <span class="n">scale</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;major&quot;</span><span class="p">,</span> <span class="k">var</span> <span class="n">root</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">60</span><span class="p">,</span> <span class="k">val</span> <span class="n">stepsPerCycle</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;muse&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L142)
+
+One voice of the sequencer: three weight tables and the stream they produce.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="patmuse-kt--patmusechannel--seed"></a><code class="highlight"><span class="k">var</span> <span class="n">seed</span><span class="p">:</span> <span class="nc">Long</span></code> |  |
+| <a id="patmuse-kt--patmusechannel--scale"></a><code class="highlight"><span class="k">var</span> <span class="n">scale</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="patmuse-kt--patmusechannel--root"></a><code class="highlight"><span class="k">var</span> <span class="n">root</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <a id="patmuse-kt--patmusechannel--stepspercycle"></a><code class="highlight"><span class="k">val</span> <span class="n">stepsPerCycle</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <a id="patmuse-kt--patmusechannel--name"></a><code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="patmuse-kt--patmusechannel--degree"></a>[<code class="highlight"><span class="k">val</span> <span class="n">degree</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L149) |  |
+| <a id="patmuse-kt--patmusechannel--chord"></a>[<code class="highlight"><span class="k">val</span> <span class="n">chord</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L150) |  |
+| <a id="patmuse-kt--patmusechannel--rhythm"></a>[<code class="highlight"><span class="k">val</span> <span class="n">rhythm</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L151) |  |
+| <a id="patmuse-kt--patmusechannel--rest"></a>[<code class="highlight"><span class="k">var</span> <span class="n">rest</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L154) | Chance in `[0, 1]` that an event is a rest. |
+| <a id="patmuse-kt--patmusechannel--velocity"></a>[<code class="highlight"><span class="k">var</span> <span class="n">velocity</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L158) | Base velocity; each event varies around it by up to ±[`velocitySpread`](audio.md#patmuse-kt--patmusechannel--velocityspread). |
+| <a id="patmuse-kt--patmusechannel--velocityspread"></a>[<code class="highlight"><span class="k">var</span> <span class="n">velocitySpread</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L160) |  |
+| <a id="patmuse-kt--patmusechannel--eventsuntil"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">eventsUntil</span><span class="p">(</span><span class="n">untilStep</span><span class="p">:</span> <span class="nc">Long</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PatMuseEvent</span><span class="p">&gt;</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L171) | The events up to (and including the one sounding at) `untilStep`, generating as needed. |
+| <a id="patmuse-kt--patmusechannel--midi"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">midi</span><span class="p">(</span><span class="n">degree</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L196) | MIDI pitch of scale `degree` in this channel. |
+| <a id="patmuse-kt--patmusechannel--pattern"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">pattern</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L199) | The free-running stream as a pattern: a new event each time the last one ends. |
+| <a id="patmuse-kt--patmusechannel--lock"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">lock</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">atCycle</span><span class="p">:</span> <span class="nc">Number</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatLoop</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L218) | Freezes the last `n` events (at most 64) that begin before cycle `atCycle` into a loop. |
+| <a id="patmuse-kt--patmusechannel-companion--rhythm-steps"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">RHYTHM&#95;STEPS</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L229) | The event lengths, in steps, that [`rhythm`](audio.md#patmuse-kt--patmusechannel--rhythm) weighs. |
+
+### PatLoop { #patmuse-kt-patloop }
+
+[<code class="highlight"><span class="k">class</span> <span class="nc">PatLoop</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="n">events</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PatMuseEvent</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">scale</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">root</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">stepsPerCycle</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">var</span> <span class="n">seed</span><span class="p">:</span> <span class="nc">Long</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L242)
+
+A locked stretch of a [`PatMuseChannel`](audio.md#patmuse-kt-patmusechannel), played as a loop.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="patmuse-kt--patloop--scale"></a><code class="highlight"><span class="k">val</span> <span class="n">scale</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="patmuse-kt--patloop--root"></a><code class="highlight"><span class="k">val</span> <span class="n">root</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <a id="patmuse-kt--patloop--stepspercycle"></a><code class="highlight"><span class="k">val</span> <span class="n">stepsPerCycle</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <a id="patmuse-kt--patloop--name"></a><code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="patmuse-kt--patloop--seed"></a><code class="highlight"><span class="k">var</span> <span class="n">seed</span><span class="p">:</span> <span class="nc">Long</span></code> |  |
+| <a id="patmuse-kt--patloop--events"></a>[<code class="highlight"><span class="k">val</span> <span class="n">events</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PatMuseEvent</span><span class="p">&gt;</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L253) | The loop's events, each with its length, degrees and velocity (their `step` is unused). |
+| <a id="patmuse-kt--patloop--size"></a>[<code class="highlight"><span class="k">val</span> <span class="n">size</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L255) |  |
+| <a id="patmuse-kt--patloop--start"></a>[<code class="highlight"><span class="k">var</span> <span class="n">start</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L257) |  |
+| <a id="patmuse-kt--patloop--end"></a>[<code class="highlight"><span class="k">var</span> <span class="n">end</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L258) |  |
+| <a id="patmuse-kt--patloop--direction"></a>[<code class="highlight"><span class="k">var</span> <span class="n">direction</span><span class="p">:</span> <span class="nc">PatLoopDirection</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L259) |  |
+| <a id="patmuse-kt--patloop--improvise"></a>[<code class="highlight"><span class="k">var</span> <span class="n">improvise</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L262) | Chance in `[0, 1]`, per event per pass, of an improvised variation. |
+| <a id="patmuse-kt--patloop--velocityjitter"></a>[<code class="highlight"><span class="k">var</span> <span class="n">velocityJitter</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L265) | How far an improvised velocity may move, as a fraction of the original. |
+| <a id="patmuse-kt--patloop--ornaments"></a>[<code class="highlight"><span class="k">var</span> <span class="n">ornaments</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">PatOrnament</span><span class="p">&gt;</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L268) | Which ornaments improvisation may choose from. |
+| <a id="patmuse-kt--patloop--set"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">set</span><span class="p">(</span><span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">degrees</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">velocity</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">length</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatLoop</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L271) | Changes event `index`; pass only what should change. Degrees empty makes it a rest. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">set</span><span class="p">(</span><span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">degree</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatLoop</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L277) | Shorthand for `set(index, degrees = listOf(degree))`. |
+| <a id="patmuse-kt--patloop--order"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">order</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L280) | The event indices one pass plays, in order. |
+| <a id="patmuse-kt--patloop--passsteps"></a>[<code class="highlight"><span class="k">val</span> <span class="n">passSteps</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L292) | The length of one pass, in steps. |
+| <a id="patmuse-kt--patloop--copy"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">copy</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatLoop</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L359) | An independent copy: same events and settings, edited separately from here on. |
+| <a id="patmuse-kt--patloop--pattern"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">pattern</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L370) | The loop as a pattern: passes back to back from cycle 0, pass `k` improvised with seed `(seed, k)`. |
+| <a id="patmuse-kt--patloop--tostring"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L380) |  |
+
+### PatMuse { #patmuse-kt-patmuse }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">PatMuse</span><span class="p">(</span><span class="n">seed</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">scale</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;major&quot;</span><span class="p">,</span> <span class="n">stepsPerCycle</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L396)
+
+Two [`PatMuseChannel`](audio.md#patmuse-kt-patmusechannel)s on one seed — a left hand and a right — and their loops.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="patmuse-kt--patmuse--left"></a>[<code class="highlight"><span class="k">val</span> <span class="n">left</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L397) |  |
+| <a id="patmuse-kt--patmuse--right"></a>[<code class="highlight"><span class="k">val</span> <span class="n">right</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L404) |  |
+| <a id="patmuse-kt--patmuse--leftloop"></a>[<code class="highlight"><span class="k">var</span> <span class="n">leftLoop</span><span class="p">:</span> <span class="nc">PatLoop</span><span class="o">?</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L409) | Each hand's loop, or null while it plays free. |
+| <a id="patmuse-kt--patmuse--rightloop"></a>[<code class="highlight"><span class="k">var</span> <span class="n">rightLoop</span><span class="p">:</span> <span class="nc">PatLoop</span><span class="o">?</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L410) |  |
+| <a id="patmuse-kt--patmuse--scale"></a>[<code class="highlight"><span class="k">var</span> <span class="n">scale</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L413) | Sets both hands' scale. |
+| <a id="patmuse-kt--patmuse--lock"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">lock</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">atCycle</span><span class="p">:</span> <span class="nc">Number</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatMuse</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L417) | Locks both hands' last `n` events before `atCycle`. |
+| <a id="patmuse-kt--patmuse--release"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">release</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatMuse</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L422) |  |
+| <a id="patmuse-kt--patmuse--leftpattern"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">leftPattern</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L424) |  |
+| <a id="patmuse-kt--patmuse--rightpattern"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">rightPattern</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L425) |  |
+| <a id="patmuse-kt--patmuse--pattern"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">pattern</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/audio/synth/PatMuse/#L428) | Both hands together. |
+
 ## PatSpatialHeadTrackedDocs.kt { #patspatialheadtrackeddocs-kt }
 
 Renders the head-tracked binaural clip on the spatial patterns page offline through Steam Audio, and checks that it repeats exactly and that leaning moves the level.
@@ -5065,8 +5213,8 @@ The piano clips on `public/docs/sound.md`, rendered offline for the docs runner'
 | Declaration | Summary |
 | --- | --- |
 | <a id="pianodocs-kt--pianodocs--scenes"></a>[<code class="highlight"><span class="k">val</span> <span class="n">scenes</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">PianoRender</span><span class="p">&gt;</span></code>](source/jvmMain/afield/audio/synth/PianoDocs/#L18) | Every scene by name: the piano it plays through. |
-| <a id="pianodocs-kt--pianodocs--prepared"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">PREPARED</span></code>](source/jvmMain/afield/audio/synth/PianoDocs/#L83) | The table of preparations the prepared scenes share: bolts in the middle, rubber in the bass, a loose nut above. |
-| <a id="pianodocs-kt--pianodocs--renderwav"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">renderWav</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">outPath</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/PianoDocs/#L90) | Offline-renders scene `name` to a stereo 16-bit WAV at `outPath`, peak-normalised to 0.89. |
+| <a id="pianodocs-kt--pianodocs--prepared"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">PREPARED</span></code>](source/jvmMain/afield/audio/synth/PianoDocs/#L91) | The table of preparations the prepared scenes share: bolts in the middle, rubber in the bass, a loose nut above. |
+| <a id="pianodocs-kt--pianodocs--renderwav"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">renderWav</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">outPath</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/PianoDocs/#L98) | Offline-renders scene `name` to a stereo 16-bit WAV at `outPath`, peak-normalised to 0.89. |
 
 ## PrettyPrint.kt { #prettyprint-kt }
 
