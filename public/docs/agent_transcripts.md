@@ -2719,6 +2719,16 @@ renderer: the scene's root node and its transform, meshes, materials and animati
 
 [Open ↗](offline.html?file=assets/agent_transcripts/assimp_browsing/metadata.edn)
 
+### spinny_algebras
+
+**Spinny algebras.** Multiply the plane by w = 0.9 + 0.5ε and drag ε² from -1 to +1. At -1 the grid
+turns (complex numbers), at 0 it shears (dual numbers), at +1 it squeezes along the diagonals
+(split-complex numbers). A second slider does the same for j² in the quaternions. Four figure boxes
+draw the grid, exp(tε) as a 30-term series, and exp in the quaternions against the bicomplex numbers.
+[Linear Algebra](linear_algebra.md#spinny-algebras-complex-dual-and-quaternion-numbers) has the walkthrough.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/spinny_algebras/metadata.edn)
+
 ## Service-backed composition scenes
 
 <!-- transcript-index: verified-by = execute -->

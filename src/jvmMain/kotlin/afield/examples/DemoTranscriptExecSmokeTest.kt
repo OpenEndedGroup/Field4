@@ -97,6 +97,8 @@ object DemoTranscriptExecSmokeTest {
     /** Pure-compute demos that are safe to run to completion headless. */
     internal val EXECUTE = setOf(
         "sentence_diagrams",
+        // linear_algebra.md, Spinny algebras: two ε²/j² sliders and four SVG figure boxes; pure CPU.
+        "spinny_algebras",
         // sentence_diagrams.md, Dependency length: measures five retained parsed texts against random reorderings; no parser.
         "dependency_length",
         // visualizers.md's presets demo: a preset bar, record button and MIDI learn; the MIDI box feeds stand-in CCs.
