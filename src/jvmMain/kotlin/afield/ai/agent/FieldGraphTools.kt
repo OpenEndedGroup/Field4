@@ -274,6 +274,12 @@ interface FieldGraphHost {
     /** A picture of [box]'s output area. The default host cannot take one and says so. */
     fun captureOutput(info: SessionInformation, box: Box, settleMs: Int): BoxOutputShot =
         BoxOutputShot.failed("This Field host cannot capture box output.")
+    /**
+     * A picture of the canvas over the world rectangle [world], drawing layer included. [liveMarks] is
+     * how many marks the server's scene holds, so the page can wait until its drawing has them all.
+     */
+    fun captureRegion(info: SessionInformation, world: Rect, showBoxes: Boolean, liveMarks: Int): RegionShot =
+        RegionShot.failed("This Field host cannot capture the canvas.")
 }
 
 object LiveFieldGraphHost : FieldGraphHost {
@@ -312,6 +318,9 @@ object LiveFieldGraphHost : FieldGraphHost {
 
     override fun captureOutput(info: SessionInformation, box: Box, settleMs: Int): BoxOutputShot =
         BoxOutputCapture.capture(info, box.id, settleMs)
+
+    override fun captureRegion(info: SessionInformation, world: Rect, showBoxes: Boolean, liveMarks: Int): RegionShot =
+        BoxOutputCapture.captureRegion(info, world, showBoxes, liveMarks)
 }
 
 // ---- the tools ---------------------------------------------------------------------------------
@@ -737,6 +746,12 @@ class FieldGraphTools(
     /** A picture of [box]'s output area, through the host. Used by [viewOutput] and by picture checks. */
     fun captureOutput(box: Box, settleMs: Int = 300): BoxOutputShot = host.captureOutput(info, box, settleMs)
 
+    /** A picture of the world rectangle [world] of the canvas, through the host. Used by [viewNotation]. */
+    fun captureRegion(world: Rect, showBoxes: Boolean, liveMarks: Int): RegionShot = host.captureRegion(info, world, showBoxes, liveMarks)
+
+    /** Run [action] where the box graph is read and changed, with this session bound. */
+    fun <T> onOwner(action: () -> T): T = host.onOwner(info, action)
+
     fun viewOutput(req: ViewBoxOutputRequest): BoxOutputView {
         val box = host.onOwner(info) { resolve(req.box) }
         val shot = captureOutput(box, if (req.settleMs <= 0) 300 else req.settleMs.coerceIn(0, 5000))
@@ -810,6 +825,7 @@ internal fun registerFieldGraphTools(tools: ToolRegistry) {
     tools.register(ReadBoxOutputRequest::class.java, on) { ctx, req -> ctx.fieldGraph!!.readOutput(req) }
     tools.register(SymbolAtRequest::class.java, on) { ctx, req -> ctx.fieldGraph!!.symbolAt(req) }
     tools.register(ViewBoxOutputRequest::class.java, { ctx -> ctx.fieldGraph?.seesOutput == true }) { ctx, req -> ctx.fieldGraph!!.viewOutput(req) }
+    registerNotationTools(tools)
 }
 
 /** The tool names [registerFieldGraphTools] adds, for instructions and tests. */
@@ -817,7 +833,7 @@ val fieldGraphToolNames: List<String> = listOf(
     ListBoxesRequest::class, NewBoxRequest::class, DeleteBoxRequest::class, SetBoxPropertyRequest::class,
     GetBoxPropertyRequest::class, PatchBoxTextRequest::class, ConnectBoxesRequest::class, DisconnectBoxesRequest::class, RunBoxRequest::class,
     LaunchBoxRequest::class, StopBoxRequest::class, ReadBoxOutputRequest::class, ViewBoxOutputRequest::class, SymbolAtRequest::class
-).map { it.java.simpleName }
+).map { it.java.simpleName } + notationToolNames
 
 
 internal class PatchEditsResult(val text: String, val failures: List<String>, val diff: String)
