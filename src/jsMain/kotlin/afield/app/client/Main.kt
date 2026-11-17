@@ -4878,6 +4878,12 @@ private fun installSpatialNavigationShortcut() {
     var lastMetaWasPure = false
     var lastCtrlWasPure = false
     var keydownSerial = 0
+    // Held Control snaps a drag in progress (BoxSnapping.kt), so tapping it twice mid-drag must
+    // not also open spatial navigation.
+    var pointerButtonsDown = 0
+    window.addEventListener("pointerdown", { pointerButtonsDown = ((it as MouseEvent).buttons as Number).toInt() }, js("({capture: true})"))
+    window.addEventListener("pointerup", { pointerButtonsDown = ((it as MouseEvent).buttons as Number).toInt() }, js("({capture: true})"))
+    window.addEventListener("blur", { pointerButtonsDown = 0 })
 
     fun trackTrigger(key: String, event: KeyboardEvent) {
         val now = window.performance.now()
@@ -4892,6 +4898,7 @@ private fun installSpatialNavigationShortcut() {
         }
         val noInterveningKey = lastSerial != 0 && lastSerial == keydownSerial - 1
         val shouldTrigger = !alreadyPressed &&
+                pointerButtonsDown == 0 &&
                 lastPure &&
                 isPure &&
                 noInterveningKey &&
@@ -7678,7 +7685,7 @@ suspend fun main() {
 
         var t = window.getComputedStyle(event.target).borderWidth.split("px")[0].toDouble() * 0.0
 
-        // Apply snapping if Caps Lock is enabled
+        // Apply snapping if Caps Lock, held Control or the palette toggle enables it
         val targetElement = target as HTMLElement
         val width =
             ((target.data_w as? Number)?.toDouble() ?: (event.rect?.width as? Number)?.toDouble() ?: 0.0) - t * 2
@@ -7931,7 +7938,7 @@ suspend fun main() {
 //        (target as HTMLElement).style.transform = "translate(${x}px, ${y}px)" // round-trip to server?
         // renable this for serverless
 
-        // Apply snapping if Caps Lock is enabled
+        // Apply snapping if Caps Lock, held Control or the palette toggle enables it
         val targetElement = target as HTMLElement
         val snappedRect = boxSnappingSystem.applySnappingForResize(
             targetElement,

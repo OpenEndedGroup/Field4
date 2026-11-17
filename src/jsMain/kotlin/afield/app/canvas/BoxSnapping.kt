@@ -29,6 +29,7 @@ import afield.app.client.isBoxVisible
 import afield.app.client.main
 import afield.app.protocol.Rect
 import kotlinx.browser.document
+import kotlinx.browser.window
 import org.w3c.dom.HTMLElement
 import org.w3c.dom.events.KeyboardEvent
 import org.w3c.dom.events.MouseEvent
@@ -82,9 +83,10 @@ data class SnapLine(
  * - [initialize] is called once at startup; it installs keydown/keyup listeners
  *   that track Caps Lock via `getModifierState("CapsLock")` (also toggled on the
  *   "CapsLock" key). All snapping is gated on [isSnappingEnabled]: that
- *   [capsLockEnabled] flag, or [commandEnabled], which the "Toggle Box Snapping"
- *   palette command flips (and which no key event resyncs, so it also works where
- *   the browser reports no lock state, as headless Chromium does).
+ *   [capsLockEnabled] flag, [ctrlHeld] (Control held down, so pressing and releasing
+ *   it mid-drag turns snapping on and off), or [commandEnabled], which the "Toggle Box
+ *   Snapping" palette command flips (and which no key event resyncs, so it also works
+ *   where the browser reports no lock state, as headless Chromium does).
  * - Drag: [applySnapping] is called from the drag move handler and returns the
  *   snapped (x, y); [clearSnapGuides] is called on drag end.
  * - Resize: [applySnappingForResize] is called from the resize move handler and
@@ -145,6 +147,7 @@ class BoxSnappingSystem {
     // Track Caps Lock state
     private var capsLockEnabled = false
     private var commandEnabled = false
+    private var ctrlHeld = false
     
     // SVG group for snap guides
     private var snapGuidesGroup: SVGElement? = null
@@ -190,12 +193,23 @@ class BoxSnappingSystem {
             }
         })
         
-        // Check on any mouse event as well
-        document.addEventListener("mousemove", { event ->
-            val e = event as MouseEvent
-            // We can't directly check Caps Lock from MouseEvent in a reliable way
-            // but KeyboardEvent handlers above should keep state updated
+        // Holding Control snaps while held, so a mid-drag press/release turns snapping on and
+        // off (click first, then Control: Control-click is the context menu on macOS).
+        document.addEventListener("keydown", { event ->
+            if ((event as KeyboardEvent).key == "Control") ctrlHeld = true
         })
+        document.addEventListener("keyup", { event ->
+            if ((event as KeyboardEvent).key == "Control") {
+                ctrlHeld = false
+                if (!isSnappingEnabled()) clearSnapGuides()
+            }
+        })
+        // A keyup lost to another window would leave Control stuck; every pointer move carries the
+        // real state. pointermove, not mousemove: interact.js drags suppress compatibility mouse events.
+        document.addEventListener("pointermove", { event ->
+            ctrlHeld = (event as MouseEvent).ctrlKey
+        }, js("({capture: true})"))
+        window.addEventListener("blur", { ctrlHeld = false })
     }
     
     /**
@@ -203,7 +217,7 @@ class BoxSnappingSystem {
      */
     fun isCapsLockEnabled(): Boolean = capsLockEnabled
 
-    fun isSnappingEnabled(): Boolean = capsLockEnabled || commandEnabled
+    fun isSnappingEnabled(): Boolean = capsLockEnabled || commandEnabled || ctrlHeld
 
     /** Flip snapping independently of Caps Lock; returns whether snapping is now on. */
     fun toggleFromCommand(): Boolean {
