@@ -490,8 +490,14 @@ showPlaneGrid(
 The step the tongues bear on is parallel to the panels, so it stays put and they still rest on each
 other there. Every riser and end face moved back 0.6 mm, so the two panels are 1.2 mm apart wherever
 they met side on. A face counts as parallel when its normal is within `toleranceDegrees` (default 1°)
-of one of the planes, in either direction, so one normal keeps both a panel's top and its bottom. For
-any other rule, pass a function of each face's outward normal instead:
+of one of the planes, in either direction, so one normal keeps both a panel's top and its bottom.
+
+To keep only the faces that lie *in* a plane, rather than every face parallel to it, name each plane
+by a point on it and its normal. `a.insetFaces(0.6, exceptOn = [FacePlane(vec(0, 5, 0), up)])` keeps
+just the step at y = 5, whichever side of it the material is on, and moves a's top and bottom in with
+the rest. A face is on the plane when it is parallel within `toleranceDegrees` and within
+`toleranceDistance` of the point, a tenth of the inset by default. For any other rule, pass a
+function of each face's plane, its outward normal and offset as `[x, y, z, c]`:
 `part.insetFaces(0.6) { n -> abs(n[1]) < 0.99 }`.
 
 Corners stay sharp: every vertex goes to where its planes meet once the moved ones have shifted, the

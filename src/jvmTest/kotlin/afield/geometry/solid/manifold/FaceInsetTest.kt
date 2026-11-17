@@ -107,6 +107,34 @@ class FaceInsetTest {
         for (piece in pieces) assertEquals((1 - 2 * d) * 1.0 * (1 - 2 * d), piece.volume, 1e-12)
     }
 
+    @Test
+    fun `kept planes keep only the faces in them, not every parallel face`() {
+        if (!ManifoldLibrary.isAvailable) return
+        // An L in x-y run along z: bottom at y = 0, top at y = 0.1 over x < 1, a step at y = 0.05 over x > 1.
+        val stepped = Solid.cube(2.0, 0.1, 1.0) - Solid.cube(1.0, 0.05, 1.0).translated(1.0, 0.05, 0.0)
+        val parallel = stepped.insetFaces(d, except = [vec(0, 1, 0)])
+        assertEquals(((2 - 2 * d) * 0.05 + (1 - 2 * d) * 0.05) * (1 - 2 * d), parallel.volume, 1e-8, "parallel keeps the step")
+        val coplanar = stepped.insetFaces(d, exceptOn = [
+            FacePlane(vec(0, 0, 0), vec(0, 1, 0)), FacePlane(vec(0.5, 0.1, 0.5), vec(0, 1, 0)),
+        ])
+        // The step is parallel to both planes and in neither, so it drops by d like a side face.
+        assertEquals(((2 - 2 * d) * (0.05 - d) + (1 - 2 * d) * (0.05 + d)) * (1 - 2 * d), coplanar.volume, 1e-8)
+        assertTrue(!coplanar.contains(1.5, 0.05 - 0.5 * d, 0.5) && coplanar.contains(1.5, 0.05 - 1.5 * d, 0.5), "the step moved by d")
+        assertEquals(0.0, coplanar.bounds.min.y.toDouble(), 1e-7, "the bottom stays")
+        assertEquals(0.1, coplanar.bounds.max.y.toDouble(), 1e-7, "and so does the top")
+    }
+
+    @Test
+    fun `a kept plane holds its face whichever way its normal points`() {
+        if (!ManifoldLibrary.isAvailable) return
+        val cube = Solid.cube(1.0, 1.0, 1.0)
+        // The cube's top faces up; the plane is given facing down. Its bottom is parallel, and moves.
+        val inset = cube.insetFaces(d, exceptOn = [FacePlane(vec(0, 1, 0), vec(0, -1, 0))])
+        assertEquals((1 - 2 * d) * (1 - d) * (1 - 2 * d), inset.volume, 1e-12)
+        assertEquals(1.0, inset.bounds.max.y.toDouble(), 1e-7)
+        assertEquals(d, inset.bounds.min.y.toDouble(), 1e-7)
+    }
+
     private data class Probe(val part: Solid, val x: Double, val y: Double, val inward: Double)
 
     /** Where the z axis points after `rotated(9.09, 0.0, 9.09)`, read off a rotated needle. */
