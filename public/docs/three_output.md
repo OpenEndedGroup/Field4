@@ -129,7 +129,7 @@ See [FLine styling](fline_examples.md) for stroke, fill, point and callback prop
 happens, so the box can redraw whatever depends on the point. Here a line runs from the slab to a
 point you drag:
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/three_output/handles.png" alt="an orange slab seen from above and to one side, with a thin white line rising from its centre to a yellow dot labelled tip, up and to the right of the slab" wait="4" capture="box" open-outputs="true" padding="20" name="three-handles"}
 var tip = vec(30, 50, 0)
 fun draw() {
     three(name = "tip") {
@@ -162,6 +162,39 @@ callback never falls behind your hand. Handle `END` alone if the work is expensi
 | `color` | yellow | The marker's colour, as a CSS colour. |
 | `axis` | none | Hold the handle to the line along this direction through `at`. |
 | `normal` | none | Hold the handle to the plane through `at` with this normal. |
+
+`axis` and `normal` give a handle a rail. Here the blue handle only moves up and down, and sets the
+slab's height; the orange one slides across the slab's top, whatever height that is:
+
+```diffstatic {data-lang=kotlin}
+var height = 20.0
+var post = vec(20, 0, 10)
+
+fun draw() {
+    three(name = "slab") {
+        mesh(boxMesh(120, height, 60).translated(0.0, height / 2, 0.0), id = "slab", wireframe = false)
+        mesh(
+            boxMesh(6, 40, 6).translated(post.x.toDouble(), height + 20, post.z.toDouble()),
+            id = "post",
+            wireframe = false,
+        )
+        handle("height", at = vec(-60.0, height, 30.0), axis = vec(0, 1, 0), color = "#4fc3f7") { drag ->
+            height = maxOf(2.0, drag.position.y.toDouble())
+            draw()
+        }
+        handle(
+            "post",
+            at = vec(post.x.toDouble(), height, post.z.toDouble()),
+            normal = vec(0, 1, 0),
+            color = "#ff8a65",
+        ) { drag ->
+            post = drag.position
+            draw()
+        }
+    }
+}
+draw()
+```
 
 With neither `axis` nor `normal`, the browser moves a handle on the plane facing the camera. The
 visionOS viewer draws the same handles, and there you pinch a marker and move it anywhere in 3D.
