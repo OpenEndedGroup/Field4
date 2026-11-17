@@ -16,6 +16,10 @@ struct ContentView: View {
     /// transition, so the animated-effect update never happens. See the two crash reports at
     /// 2026-07-25 11:44:40 and 13:23:54.
     @State private var railVisible = true
+    /// The rail was 220pt for at most a couple of rows; 196pt still fits a middle-truncated
+    /// document name and gives the dock's web content back the difference.
+    private let railWidth: CGFloat = 196
+    private var fieldFont = FieldFont.shared
     @State private var didAutoOpenEditor = false
     @State private var immersiveOpen = false
     @Environment(\.openWindow) private var openWindow
@@ -29,7 +33,7 @@ struct ContentView: View {
         HStack(spacing: 0) {
             if railVisible {
                 railList
-                    .frame(width: 220)
+                    .frame(width: railWidth)
                     .transition(.move(edge: .leading).combined(with: .opacity))
             }
             detailContent
@@ -43,6 +47,7 @@ struct ContentView: View {
         // toolbar came with the `NavigationSplitView` that had to go — see `railVisible`.
         .ornament(attachmentAnchor: .scene(.bottom)) { controlBar }
         .task {
+            fieldFont.load(from: manager.server)
             // The floating editor is OPT-IN now. It used to open itself ~1.2s into every launch so
             // the shared-selection pair was up immediately, but in practice a second window that
             // steals keyboard focus costs more than the pairing saves — you spend the session
@@ -78,9 +83,12 @@ struct ContentView: View {
     /// The dock rail. Previously the `NavigationSplitView` sidebar; now a plain column.
     private var railList: some View {
         List(selection: $manager.selection) {
-            Section("Docks") {
+            Section {
                 ForEach(manager.docks) { dock in
                     Label(dock.title, systemImage: icon(for: dock.kind))
+                        // Field's own face, fetched from the server (see FieldFont) — SF here sat
+                        // badly next to the Iosevka web content.
+                        .font(fieldFont.font(size: 16))
                         // Document names run long and wrapped to two or three lines in a 220pt
                         // rail, which looked terrible and made rows different heights. Truncate
                         // in the MIDDLE, not the tail: Field documents are commonly distinguished
@@ -103,6 +111,8 @@ struct ContentView: View {
                             }
                         }
                 }
+            } header: {
+                Text("Docks").font(fieldFont.font(size: 13))
             }
         }
     }

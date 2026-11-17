@@ -27,9 +27,12 @@ final class DockManager {
     init(server: ServerConfig = .default) {
         self.server = server
         let welcome = Dock(title: "Welcome", url: server.welcomeURL, kind: .welcome)
+        // Compact default: one dock, the welcome page. It lists the server's workspace and opens a
+        // document in place (the dock relabels itself, see `updateDock`). We used to also open a
+        // glass canvas onto `file=default` and land on it: an empty document that read as "the
+        // wrong, empty workspace". The Canvas ornament button still opens one on demand.
         docks = [welcome]
         selection = welcome.id
-        openGlassCanvas()   // On visionOS the glass canvas IS the default view; land on it.
     }
 
     /// The selection context shared by a document's canvas + its floating editor. Keyed by file

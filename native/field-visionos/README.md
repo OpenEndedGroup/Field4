@@ -16,6 +16,20 @@ features below are additive server-side niceties.
 > still built as its own Xcode project — visionOS can't be built from the Field4/Gradle toolchain,
 > so there's no cross-build integration, just a shared repo. Xcode 26.5 / visionOS 26.x SDK.
 
+
+## Default layout
+
+At launch the main window holds **one dock, Welcome**, selected, in a 196pt rail (was 220pt with a
+second, empty glass-canvas dock on `file=default` selected on top of it, which looked like an empty
+workspace). Welcome lists the server's workspace; opening a document (or **Start here**) navigates
+the same dock in place and the rail relabels it. More docks only appear when asked for: **Canvas**
+(glass canvas), **Floating Editor**, **Undock**, and `window.open` links. The rail toggle in the
+ornament hides it entirely.
+
+Headless check: `SIMCTL_CHILD_FIELD4_WEB_PROBE=1` logs each page's fonts, console errors and failed
+loads (`log stream --predicate 'subsystem == "com.field4.vision" AND category == "probe"'`), and
+`SIMCTL_CHILD_FIELD4_WEB_PROBE_CLICK='#open-first-steps'` taps an element once, since simctl can't.
+
 ## Companion code (the field4 backend + senders)
 
 The Field backend, its Vulkan renderer, and the **RTT stream senders** live in this same repo,
@@ -45,9 +59,11 @@ This shell is the **receiver** end of that pipeline (see `RTT/` below).
   + one **bottom ornament** carrying every control (toggle · Welcome · Canvas · `</>` Floating
   Editor · Undock). There is **no top title bar** — visionOS won't shrink it via title modifiers,
   so we dropped it and reclaimed the height (the doc name shows in the rail).
-- **DockManager.swift** — dock model + open/close/relabel. `openGlassCanvas` (the default view),
+- **DockManager.swift** — dock model + open/close/relabel. `openGlassCanvas` (opened from the Canvas button),
   `floatingEditorURL`, `openWelcome` (single-welcome invariant), `updateDock`/`classify`
   (relabel on in-place navigation), `selectionContext(for:)` = `field:<file>`.
+- **FieldFont.swift** — fetches `/woff2/iosevka-semicondensedlight.woff2` from the server and
+  registers it, so the native rail is set in Field's Iosevka like the web docks (SF until it loads).
 - **WebDock.swift** — `UIViewRepresentable` `WKWebView`. Trust override for the self-signed cert
   (`mi2` / `*.ts.net` / loopback); `WKUIDelegate.createWebViewWith` routes `window.open(_blank)`
   to a new window; `didFinish` relabels docks; `isOpaque = false` so transparent pages show the
