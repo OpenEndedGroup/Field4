@@ -34,7 +34,9 @@ const initQuickPick = (is) => {
                         return
                 }
 
-                if (document.activeElement == document.body) {
+                const focused = document.activeElement
+                const canvasReaderFocused = focused?.matches?.('[data-field-canvas-keyboard="true"]') && !quickpickIsEditableTarget(e.target)
+                if (focused === document.body || canvasReaderFocused) {
                         qpLog(e.key)
 
                         let k = e.key
@@ -45,6 +47,9 @@ const initQuickPick = (is) => {
                                 return a
                         })
                         if (found) {
+                                // A command may focus a new text input; consume its triggering character first.
+                                e.preventDefault()
+                                e.stopPropagation()
                                 qpLog(" running ")
                                 found.run()
                         }
@@ -1343,6 +1348,7 @@ const PALETTE_PROPERTY_INFO = {
         attic: ["Kotlin (attic)", "A scratch holding area for code you may want later."],
         notes: ["Notes (Markdown)", "Markdown notes for the selected box."],
         metadata: ["Metadata", "YAML metadata about this box."],
+        textFrame: ["Text frame settings", "YAML typography and sizing for a text frame."],
         contents: ["File contents", "Plain file-like contents associated with this box."],
 }
 
@@ -1378,6 +1384,7 @@ const PALETTE_PROPERTY_LANGUAGE = {
         attic: "kotlin",
         notes: "markdown",
         metadata: "yaml",
+        textFrame: "yaml",
         contents: "plaintext",
 }
 

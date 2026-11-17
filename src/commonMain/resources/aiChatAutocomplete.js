@@ -51,7 +51,8 @@ export function setChatAutocomplete(on) {
  * Lays the suggestion mirror over `textarea` (inside `inputWrap`, which must be positioned) and returns
  * `{clear}`; call `clear()` whenever the panel empties or replaces the draft itself.
  */
-export function mountChatAutocomplete(inputWrap, textarea, { chatUid, chatProperty, requestSuggestion = sendWithReply }) {
+export function mountChatAutocomplete(inputWrap, textarea, { chatUid, chatProperty, requestSuggestion = sendWithReply,
+        requestName = "ai-chat-suggest", isEnabled = () => true }) {
         const ghost = document.createElement("div");
         ghost.className = "ai-chat-ghost";
         ghost.setAttribute("aria-hidden", "true");
@@ -110,7 +111,7 @@ export function mountChatAutocomplete(inputWrap, textarea, { chatUid, chatProper
 
         function eligible(ignoreBackoff = false) {
                 const value = textarea.value;
-                return chatAutocompleteOn() && (ignoreBackoff || Date.now() >= backoffUntil) && document.activeElement === textarea
+                return chatAutocompleteOn() && isEnabled() && (ignoreBackoff || Date.now() >= backoffUntil) && document.activeElement === textarea
                         && !textarea.disabled && cursorAtEnd() && value.trim().length >= 3 && !value.trimStart().startsWith("/");
         }
 
@@ -129,7 +130,7 @@ export function mountChatAutocomplete(inputWrap, textarea, { chatUid, chatProper
                 inFlight = true;
                 const started = Date.now();
                 note("requested", {draftChars: draft.length});
-                requestSuggestion("ai-chat-suggest", { uid, property: chatProperty(), draft, seq: mine },
+                requestSuggestion(requestName, { uid, property: chatProperty(), draft, seq: mine },
                         `ai-chat-suggest-${uid}-${mine}-${Date.now()}`, (_message, response) => {
                                 inFlight = false;
                                 const retryLatest = pendingRequest;
@@ -233,7 +234,8 @@ export function mountChatAutocomplete(inputWrap, textarea, { chatUid, chatProper
         });
         textarea.addEventListener("blur", clear);
         textarea.addEventListener("scroll", () => { ghost.scrollTop = textarea.scrollTop; });
-        new ResizeObserver(render).observe(textarea);
+        const resizeObserver = new ResizeObserver(render);
+        resizeObserver.observe(textarea);
 
-        return { clear };
+        return { clear, dispose() { clear(); resizeObserver.disconnect(); ghost.remove(); } };
 }

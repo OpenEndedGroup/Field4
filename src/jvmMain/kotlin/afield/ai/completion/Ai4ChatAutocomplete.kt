@@ -67,6 +67,20 @@ object Ai4ChatAutocomplete {
         }
     }
 
+    /** A continuation of the person's Markdown prose, using the configured fast model without chat tools. */
+    fun completeTextFrame(boxName: String, contents: String, draft: String): String {
+        val instructions = """
+            Continue Markdown that a person is writing in a text frame on a shared canvas.
+            Write in their voice and language. Complete only a few words or the current sentence.
+            Return ONLY the continuation to insert at the cursor; no commentary, quotes or fences.
+            Do not repeat the draft, answer it as an assistant, or invent facts. Match its Markdown syntax.
+            Finish a partial word, or begin with a space for a new word. Return nothing if uncertain.
+        """.trimIndent()
+        val reply = bridge().completeText(instructions, draftPrompt(draft.takeLast(8_000)),
+            context = "Frame: $boxName\nDocument opening:\n${contents.take(MAX_CODE_CHARS)}")
+        return suggestion(reply, draft)
+    }
+
     private fun draftPrompt(draft: String) = "The person's draft, which ends where the cursor is:\n<<<$draft>>>"
 
     internal fun prompt(boxName: String, property: String, code: String, history: String, draft: String): String =

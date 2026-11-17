@@ -1151,6 +1151,8 @@ const switchFromNotesPreviewToCode = () => {
 
 window.addEventListener("keydown", (e) => {
         if (quickInputIsVisible()) return
+        // Canvas text frames own Escape and editing shortcuts even while this preview is open.
+        if (e.target?.closest?.(".text-frame-box")) return
         const key = e.key || ""
         const isToggle = (e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && key.toLowerCase() === "m"
         const isEscape = key === "Escape" || key === "Esc"

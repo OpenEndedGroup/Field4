@@ -22,7 +22,7 @@ private fun escapeHtml(text: String): String {
  * hug their content and the closing one is not followed by a digit (Pandoc's rule), so "$5 and $10" stays
  * prose. The first match wins, so a `$` inside a code span is code and a backtick inside math is TeX.
  */
-private val literalSpan = Regex(
+internal val literalSpan = Regex(
     "`([^`]+)`" +
         "|\\$\\$(.+?)\\$\\$" +
         "|\\\\\\[(.+?)\\\\\\]" +
@@ -37,7 +37,8 @@ private val literalSpan = Regex(
  * all, with the TeX in `data-tex`; the browser typesets it (aiChatMath.js), and anywhere that does not still
  * reads the source.
  */
-private fun inlineFormat(text: String): String {
+private fun inlineFormat(text: String, positions: List<Int>? = null): String {
+    if (positions != null) return mappedMarkdownInline(text, positions)
     val out = StringBuilder(text.length + 16)
     var index = 0
     for (span in literalSpan.findAll(text)) {
@@ -159,18 +160,24 @@ private val numberMarker = Regex("^\\d+[.)]\\s+")
  * items (`<ul>`) or `1.` / `1)` items (`<ol>`); an indented line after an item continues that item,
  * so a list item may wrap over several source lines as Markdown allows.
  */
-private fun renderTextBlock(text: String): String {
+private fun renderTextBlock(text: String, source: MarkdownSource? = null): String {
     val lines = text.split("\n")
+    val lineStarts = mutableListOf(0)
+    lines.dropLast(1).forEach { lineStarts.add(lineStarts.last() + it.length + 1) }
     val html = StringBuilder()
     // "ul", "ol", or null when not in a list
     var listTag: String? = null
-    val item = mutableListOf<String>()
-    val paragraph = mutableListOf<String>()
+    val item = mutableListOf<MarkdownSourcePart>()
+    val paragraph = mutableListOf<MarkdownSourcePart>()
+
+    fun format(parts: List<MarkdownSourcePart>): String = inlineFormat(
+        parts.joinToString(" ") { it.text }, source?.positions(parts)
+    )
 
     fun flushParagraph() {
         if (paragraph.isEmpty()) return
         html.append("<p>")
-        html.append(inlineFormat(paragraph.joinToString(" ")))
+        html.append(format(paragraph))
         html.append("</p>")
         paragraph.clear()
     }
@@ -178,7 +185,7 @@ private fun renderTextBlock(text: String): String {
     fun flushItem() {
         if (item.isEmpty()) return
         html.append("<li>")
-        html.append(inlineFormat(item.joinToString(" ")))
+        html.append(format(item))
         html.append("</li>")
         item.clear()
     }
@@ -195,6 +202,7 @@ private fun renderTextBlock(text: String): String {
     while (lineIndex < lines.size) {
         val raw = lines[lineIndex]
         val line = raw.trim()
+        val lineStart = lineStarts[lineIndex] + raw.indexOf(line)
         if (line.isEmpty()) {
             flushParagraph()
             closeList()
@@ -210,7 +218,7 @@ private fun renderTextBlock(text: String): String {
             html.append("<h")
             html.append(level)
             html.append(">")
-            html.append(inlineFormat(headingMatch.groupValues[2]))
+            html.append(inlineFormat(headingMatch.groupValues[2], source?.positions(listOf(MarkdownSourcePart(headingMatch.groupValues[2], lineStart + line.length - headingMatch.groupValues[2].length)))))
             html.append("</h")
             html.append(level)
             html.append(">")
@@ -221,15 +229,15 @@ private fun renderTextBlock(text: String): String {
         if (lineIndex + 1 < lines.size && looksLikeMarkdownTableHeader(line, lines[lineIndex + 1].trim())) {
             flushParagraph()
             closeList()
-            val tableLines = mutableListOf(line, lines[lineIndex + 1].trim())
+            val tableLines = mutableListOf(MarkdownSourcePart(line, lineStart), MarkdownSourcePart(lines[lineIndex + 1].trim(), lineStarts[lineIndex + 1] + lines[lineIndex + 1].indexOf(lines[lineIndex + 1].trim())))
             lineIndex += 2
             while (lineIndex < lines.size) {
                 val tableLine = lines[lineIndex].trim()
                 if (tableLine.isEmpty() || !looksLikeMarkdownTableRow(tableLine)) break
-                tableLines.add(tableLine)
+                tableLines.add(MarkdownSourcePart(tableLine, lineStarts[lineIndex] + lines[lineIndex].indexOf(tableLine)))
                 lineIndex++
             }
-            html.append(renderMarkdownTable(tableLines))
+            html.append(renderMarkdownTable(tableLines, source))
             continue
         }
 
@@ -243,20 +251,20 @@ private fun renderTextBlock(text: String): String {
                 listTag = tag
             }
             flushItem()
-            item.add(line.substring(marker.range.last + 1))
+            item.add(MarkdownSourcePart(line.substring(marker.range.last + 1), lineStart + marker.range.last + 1))
             lineIndex++
             continue
         }
 
         // an indented line straight after an item is more of that item
         if (listTag != null && item.isNotEmpty() && raw.firstOrNull()?.isWhitespace() == true) {
-            item.add(line)
+            item.add(MarkdownSourcePart(line, lineStart))
             lineIndex++
             continue
         }
 
         closeList()
-        paragraph.add(line)
+        paragraph.add(MarkdownSourcePart(line, lineStart))
         lineIndex++
     }
 
@@ -288,9 +296,17 @@ private fun isMarkdownTableDividerCell(cell: String): Boolean {
     return Regex("^:?-{3,}:?$").matches(cell.trim())
 }
 
-private fun renderMarkdownTable(lines: List<String>): String {
-    val headerCells = splitMarkdownTableRow(lines[0])
-    val alignments = splitMarkdownTableRow(lines[1]).map {
+private fun renderMarkdownTable(lines: List<MarkdownSourcePart>, source: MarkdownSource? = null): String {
+    fun cells(line: MarkdownSourcePart): List<MarkdownSourcePart> {
+        var cursor = if (line.text.startsWith("|")) 1 else 0
+        return splitMarkdownTableRow(line.text).map { cell ->
+            val start = line.text.indexOf(cell, cursor)
+            cursor = start + cell.length + 1
+            MarkdownSourcePart(cell, line.start + start)
+        }
+    }
+    val headerCells = cells(lines[0])
+    val alignments = splitMarkdownTableRow(lines[1].text).map {
         val cell = it.trim()
         when {
             cell.startsWith(":") && cell.endsWith(":") -> "center"
@@ -301,7 +317,7 @@ private fun renderMarkdownTable(lines: List<String>): String {
     val columnCount = headerCells.size
     val html = StringBuilder()
 
-    fun appendCell(tag: String, content: String, column: Int) {
+    fun appendCell(tag: String, content: MarkdownSourcePart, column: Int) {
         val align = alignments.getOrNull(column).orEmpty()
         html.append("<")
         html.append(tag)
@@ -311,7 +327,7 @@ private fun renderMarkdownTable(lines: List<String>): String {
             html.append("\"")
         }
         html.append(">")
-        html.append(inlineFormat(content))
+        html.append(inlineFormat(content.text, source?.positions(listOf(content))))
         html.append("</")
         html.append(tag)
         html.append(">")
@@ -322,10 +338,10 @@ private fun renderMarkdownTable(lines: List<String>): String {
     html.append("</tr></thead><tbody>")
 
     lines.drop(2).forEach { row ->
-        val cells = splitMarkdownTableRow(row)
+        val cells = cells(row)
         html.append("<tr>")
         for (column in 0 until columnCount) {
-            appendCell("td", cells.getOrNull(column).orEmpty(), column)
+            appendCell("td", cells.getOrNull(column) ?: MarkdownSourcePart("", row.start), column)
         }
         html.append("</tr>")
     }
@@ -334,11 +350,12 @@ private fun renderMarkdownTable(lines: List<String>): String {
     return html.toString()
 }
 
-private fun renderMarkdown(markdown: String?): String {
+private fun renderMarkdown(markdown: String?, sourcePositions: Boolean = false): String {
     if (markdown == null) return ""
     val normalized = markdown.replace("\r\n", "\n")
     val blocks = normalized.split("```")
     val html = StringBuilder()
+    var blockStart = 0
     blocks.forEachIndexed { index, block ->
         if (index % 2 == 1) {
             var trimmed = block
@@ -354,11 +371,16 @@ private fun renderMarkdown(markdown: String?): String {
                     code = rest
                 }
             }
-            html.append(aiChatCodeBlockHtml(code, language, closed = index < blocks.lastIndex))
+            val rendered = aiChatCodeBlockHtml(code, language, closed = index < blocks.lastIndex)
+            if (sourcePositions) {
+                val start = blockStart + block.length - code.length
+                html.append(rendered.replace("<code", "<code data-markdown-start=\"$start\""))
+            } else html.append(rendered)
         } else {
             val escaped = escapeHtml(block)
-            html.append(renderTextBlock(escaped))
+            html.append(renderTextBlock(escaped, if (sourcePositions) MarkdownSource(block, blockStart) else null))
         }
+        blockStart += block.length + 3
     }
     return html.toString()
 }
@@ -376,8 +398,11 @@ fun aiChatCodeBlockHtml(code: String, language: String = "", closed: Boolean = t
 
 // The transcript parser is shared with the chat archive: parseAiChatBlocks (commonMain, aiChatBlocks.kt).
 
-fun aiChatMarkdownHtml(markdown: String?): String {
-    return "<div class=\"ai-chat-markdown\">" + renderMarkdown(markdown) + "</div>"
+fun aiChatMarkdownHtml(markdown: String?): String = aiChatMarkdownSourceHtml(markdown, false)
+
+/** The editable reader can retain source character positions across formatting. */
+fun aiChatMarkdownSourceHtml(markdown: String?, sourcePositions: Boolean): String {
+    return "<div class=\"ai-chat-markdown\">" + renderMarkdown(markdown, sourcePositions) + "</div>"
 }
 
 /**

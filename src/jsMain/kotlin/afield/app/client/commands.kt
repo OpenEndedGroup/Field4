@@ -1,5 +1,7 @@
 package afield.app.client
 
+import kotlin.js.json
+
 import afield.app.editor.Keybindings
 import afield.app.protocol.Metadata
 import afield.app.protocol.Output
@@ -1812,20 +1814,51 @@ fun normalizeNestedPanForSelection() {
 @OptIn(ExperimentalJsExport::class)
 @JsExport
 fun newBox(options: Any? = null) {
-    val o = options?.asDynamic()
+    val o: dynamic = options
     fun num(v: dynamic): Double? = (v as? Number)?.toDouble()
+    val textFrame = o?.kind == "text-frame"
     val fr = o?.frame
-    val w = num(fr?.w) ?: num(fr?.width) ?: 100.0
-    val h = num(fr?.h) ?: num(fr?.height) ?: 100.0
+    val w = num(fr?.w) ?: num(fr?.width) ?: if (textFrame) 360.0 else 100.0
+    val h = num(fr?.h) ?: num(fr?.height) ?: if (textFrame) 180.0 else 100.0
     val x = num(fr?.x) ?: num(fr?.left) ?: (lastMouse.first - w / 2)
     val y = num(fr?.y) ?: num(fr?.top) ?: (lastMouse.second - h / 2)
     val name = (o?.name as? String)?.takeIf { it.isNotBlank() } ?: "Untitled"
     val code = (o?.code as? String)?.takeIf { it.isNotBlank() }
 
+    val frameContents = (o?.contents as? String) ?: ""
+    val frameStyle = (o?.textFrame as? String) ?: "{}"
+    val parentUid = o?.parentUid as? String
     var createdUid: String? = null
     mainCanvas.append {
         val el = createBox(name, frame = Rect(x, y, w, h))
         createdUid = el.asDynamic().uid as? String
+        if (textFrame) {
+            val properties = mapOf(
+                "contents" to frameContents,
+                "contents_language" to "markdown",
+                "default_property" to "contents",
+                "textFrame" to frameStyle,
+                "box_kind" to "text-frame"
+            )
+            properties.forEach { (property, value) ->
+                el.asDynamic()[property] = value
+                // Stamp creation values too: their delayed echoes must not undo the first canvas edit.
+                send("set-string", json("uid" to createdUid!!, "property" to property, "value" to value))
+            }
+            val sync = window.asDynamic().syncTextFrame
+            if (sync != null) sync(el)
+        }
+    }
+    if (textFrame && createdUid != null) {
+        if (parentUid != null) {
+            send(Message("perform-action").payload(Perform_action(listOf(parentUid, createdUid!!), "-connect")))
+        }
+        findBoxByUid(createdUid)?.let { box ->
+            selected.toList().forEach { deselectBox(it) }
+            selectBox(box)
+            val edit = window.asDynamic().editTextFrame
+            if (edit != null) edit(box)
+        }
     }
     // The code property is a sidecar; push it through the normal set-string sync once the box exists.
     if (code != null) {
@@ -2772,6 +2805,12 @@ fun registerBuiltinCommands() {
                 newBox(args)
             }
         },{
+            id:'new-text-frame',
+            label:"New Text Frame",
+            keys:'shift+n', keyScope:'canvas',
+            detail:"Write Markdown directly on the canvas",
+            run: (args) => newBox({...args, kind:'text-frame', name:args?.name || 'Text'})
+        },{
             id:'set-main-language',
             label:"Set Main Language",
             detail:"Choose the language used by child boxes of the selected language root",
@@ -3135,4 +3174,18 @@ fun registerBuiltinCommands() {
                 .toList())
         true
     }
+}
+
+/** A connected writing frame below the source, with the same width and typography. */
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun newTextFrameBelow(uid: String) {
+    val source = findBoxByUid(uid) ?: return
+    val d = source.asDynamic()
+    newBox(json(
+        "kind" to "text-frame", "name" to "Text", "parentUid" to uid,
+        "textFrame" to ((d.textFrame as? String) ?: "{}"),
+        "frame" to json("x" to d.data_x, "y" to ((d.data_y as Number).toDouble() +
+            (d.data_h as Number).toDouble() + 32.0), "w" to d.data_w, "h" to 180.0)
+    ))
 }

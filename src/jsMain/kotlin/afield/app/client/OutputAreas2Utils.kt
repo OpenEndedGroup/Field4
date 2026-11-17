@@ -9,11 +9,16 @@ import afield.ai.conversation.parseAiChatHistory
 import afield.ai.conversation.aiChatHistoryHtml
 import afield.ai.conversation.aiChatHistoryUnits
 import afield.ai.conversation.aiChatMarkdownHtml
+import afield.ai.conversation.aiChatMarkdownSourceHtml
 // The renderer is shared with JVM-served pages: aiChatMarkdownHtml / aiChatHistoryHtml (commonMain, aiChatHtml.kt).
 
 @OptIn(ExperimentalJsExport::class)
 @JsExport
 fun aiChatMarkdownToHtml(markdown: String?): String = aiChatMarkdownHtml(markdown)
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun textFrameMarkdownToHtml(markdown: String?): String = aiChatMarkdownSourceHtml(markdown, true)
 
 private var toolFamilies: AiChatToolFamilies? = null
 

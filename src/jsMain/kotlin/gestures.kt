@@ -171,7 +171,11 @@ private fun connect_center_with_terminal(
     terminals: ConnectionTerminals = ConnectionTerminals(),
     terminalLabels: ConnectionTerminalLabels = ConnectionTerminalLabels()
 ) {
-    val (rawA, rawB) = connectCenters(a_rect, b_rect)
+    val (rawA, rawB) = boxConnectionEndpoints(
+        a_box, a_rect, b_box, b_rect,
+        terminals.start.style == ConnectionTerminalStyle.PerpendicularTick,
+        terminals.end.style == ConnectionTerminalStyle.PerpendicularTick
+    )
 
     val maxStartInset = max(0.0, rawA.point.distance(rawB.point) - MIN_CONNECTION_LENGTH)
     val clampedStartInset = min(terminals.start.endpointInset, maxStartInset)
@@ -210,7 +214,18 @@ private fun connect_center_with_terminal(
 
     val straight = a.point.distance(b.point)
     val maxAllowedRadius = max(1.0, straight / 3.1)
-    val radius = min(dubinsMinRadius, maxAllowedRadius)
+    var radius = min(dubinsMinRadius, maxAllowedRadius)
+    if ((a_box.classList.contains("text-frame-box") && terminals.start.style != ConnectionTerminalStyle.PerpendicularTick) ||
+        (b_box.classList.contains("text-frame-box") && terminals.end.style != ConnectionTerminalStyle.PerpendicularTick)) {
+        // Corner anchors can cross a wide frame through a very narrow gap. Limit the turn by
+        // room along the endpoint normals, rather than by the much longer diagonal distance.
+        val dx = b.point.x - a.point.x
+        val dy = b.point.y - a.point.y
+        val exitRoom = max(0.0, dx * a.normal.x + dy * a.normal.y)
+        val entryRoom = max(0.0, -dx * b.normal.x - dy * b.normal.y)
+        radius = min(radius, max(1.0 / mainZoom, min(exitRoom, entryRoom) / 2.0))
+        radius *= 1.15
+    }
 
     val key = "${(a_box.asDynamic().uid ?: a_box.hashCode()).toString()}->${(b_box.asDynamic().uid ?: b_box.hashCode()).toString()}"
     currentFrameKeys += key
@@ -227,6 +242,12 @@ private fun connect_center_with_terminal(
     val visibilityScale = if (isHighlighted) HIGHLIGHTED_CONNECTION_VISIBILITY else DIMMED_CONNECTION_VISIBILITY
     val drawOpacity = (opacity * visibilityScale).coerceIn(0.0, 1.0)
     val markerLayer = currentFrontMarkerLayer ?: svg
+    if (terminals.start.style != ConnectionTerminalStyle.PerpendicularTick) {
+        addTextFrameConnectionBorder(markerLayer, a_box, a_rect, rawA.point, drawOpacity, color)
+    }
+    if (terminals.end.style != ConnectionTerminalStyle.PerpendicularTick) {
+        addTextFrameConnectionBorder(markerLayer, b_box, b_rect, rawB.point, drawOpacity, color)
+    }
     val startMarkerPoint = Point(a.point.x - a.normal.x * TERMINAL_MARKER_OFFSET, a.point.y - a.normal.y * TERMINAL_MARKER_OFFSET)
     val endMarkerPoint = Point(b.point.x + b.normal.x * TERMINAL_MARKER_OFFSET, b.point.y + b.normal.y * TERMINAL_MARKER_OFFSET)
     val startLabel = if (isHighlighted) terminalLabels.start else null
@@ -497,6 +518,77 @@ private fun addPerpendicularTerminalTick(layer: SVGElement, point: Point, endNor
         this.path.setAttribute("stroke-linecap", "round")
         appendTo(layer)
     }
+}
+
+/** A dash of the actual rounded frame perimeter, centred on the connection's attachment. */
+private fun addTextFrameConnectionBorder(
+    layer: SVGElement, box: HTMLElement, rect: DOMRect, attachment: Point, opacity: Double, color: String
+) {
+    if (!box.classList.contains("text-frame-box") || rect.width <= 0.0 || rect.height <= 0.0) return
+    val pixels = box.getAttribute("data-connection-border-length")?.toDoubleOrNull() ?: 100.0
+    if (!pixels.isFinite() || pixels <= 0.0) return
+    val half = pixels.coerceAtMost(200.0) / mainZoom
+    // Match textFrames.css. Rectangles and corner radii are world units; the dash length is screen pixels.
+    val r = min(3.0, min(rect.width, rect.height) / 2.0)
+    val x = rect.x
+    val y = rect.y
+    val right = rect.right
+    val bottom = rect.bottom
+    val horizontal = rect.width - 2 * r
+    val vertical = rect.height - 2 * r
+    val quarter = PI * r / 2
+    val perimeter = 2 * (horizontal + vertical) + 4 * quarter
+    var nearestDistance = Double.POSITIVE_INFINITY
+    var position = 0.0
+    var offset = 0.0
+    fun candidate(px: Double, py: Double, along: Double) {
+        val distance = hypot(px - attachment.x, py - attachment.y)
+        if (distance < nearestDistance) {
+            nearestDistance = distance
+            position = offset + along
+        }
+    }
+    fun line(ax: Double, ay: Double, bx: Double, by: Double, length: Double) {
+        val t = if (length > 0) ((attachment.x - ax) * (bx - ax) +
+            (attachment.y - ay) * (by - ay)).div(length * length).coerceIn(0.0, 1.0) else 0.0
+        candidate(ax + (bx - ax) * t, ay + (by - ay) * t, length * t)
+        offset += length
+    }
+    fun corner(cx: Double, cy: Double, start: Double) {
+        var angle = atan2(attachment.y - cy, attachment.x - cx)
+        while (angle < start) angle += 2 * PI
+        // Include both ends: a point outside this quadrant can be closer to either one.
+        candidate(cx + r * cos(start), cy + r * sin(start), 0.0)
+        candidate(cx + r * cos(start + PI / 2), cy + r * sin(start + PI / 2), quarter)
+        if (angle <= start + PI / 2) candidate(cx + r * cos(angle), cy + r * sin(angle), (angle - start) * r)
+        offset += quarter
+    }
+    line(x + r, y, right - r, y, horizontal)
+    corner(right - r, y + r, -PI / 2)
+    line(right, y + r, right, bottom - r, vertical)
+    corner(right - r, bottom - r, 0.0)
+    line(right - r, bottom, x + r, bottom, horizontal)
+    corner(x + r, bottom - r, PI / 2)
+    line(x, bottom - r, x, y + r, vertical)
+    corner(x + r, y + r, PI)
+
+    val border = document.createElementNS("http://www.w3.org/2000/svg", "path") as SVGElement
+    border.setAttribute("d", "M ${x + r} $y H ${right - r} A $r $r 0 0 1 $right ${y + r} " +
+        "V ${bottom - r} A $r $r 0 0 1 ${right - r} $bottom H ${x + r} " +
+        "A $r $r 0 0 1 $x ${bottom - r} V ${y + r} A $r $r 0 0 1 ${x + r} $y Z")
+    border.setAttribute("class", "text-frame-connection-border")
+    border.setAttribute("data-box-uid", elementUidOrNull(box) ?: "")
+    border.setAttribute("fill", "none")
+    border.setAttribute("stroke", color)
+    border.setAttribute("stroke-width", (1.0 / mainZoom).toString())
+    border.setAttribute("stroke-linecap", "round")
+    border.setAttribute("opacity", opacity.toString())
+    if (2 * half < perimeter) {
+        // A period of exactly one perimeter also carries the dash across the closed-path seam.
+        border.setAttribute("stroke-dasharray", "${2 * half} ${perimeter - 2 * half}")
+        border.setAttribute("stroke-dashoffset", (half - position).toString())
+    }
+    layer.appendChild(border)
 }
 
 private fun addTerminalDecoration(
@@ -1719,12 +1811,16 @@ class CanvasGestures(
                                 val toNestedUid = to.unsafeCast<dynamic>().box_nestedIn as? String
                                 if (fromNestedUid == null && toNestedUid == null) return
 
-                                val endpoints = connectCenters(effectiveFromRect, effectiveToRect)
+                                fun endpoints() = boxConnectionEndpoints(
+                                    from, effectiveFromRect, to, effectiveToRect,
+                                    effectiveFromProxy != null, effectiveToProxy != null
+                                )
+                                val initialEndpoints = endpoints()
 
                                 // Check "from" endpoint: if from is nested, not proxied, and endpoint is outside viewport
                                 if (fromNestedUid != null && effectiveFromProxy == null) {
                                     val viewportRect = nestedDisclosureSnapshot(fromNestedUid).viewportWorldRect
-                                    if (viewportRect != null && !pointInRect(endpoints.first.point, viewportRect)) {
+                                    if (viewportRect != null && !pointInRect(initialEndpoints.first.point, viewportRect)) {
                                         val parentEl = cachedBoxByUid[fromNestedUid]
                                         if (parentEl != null) {
                                             effectiveFromProxy = parentEl
@@ -1737,7 +1833,7 @@ class CanvasGestures(
                                 // Check "to" endpoint: if to is nested, not proxied, and endpoint is outside viewport
                                 if (toNestedUid != null && effectiveToProxy == null) {
                                     // Recompute endpoints since fromRect may have changed
-                                    val endpoints2 = connectCenters(effectiveFromRect, effectiveToRect)
+                                    val endpoints2 = endpoints()
                                     val viewportRect = nestedDisclosureSnapshot(toNestedUid).viewportWorldRect
                                     if (viewportRect != null && !pointInRect(endpoints2.second.point, viewportRect)) {
                                         val parentEl = cachedBoxByUid[toNestedUid]
@@ -1754,7 +1850,7 @@ class CanvasGestures(
                                     // Already proxied to parent — nothing more to do
                                 } else if (fromNestedUid != null && effectiveFromProxy == null) {
                                     // Recheck: overriding "to" may have shifted from's endpoint
-                                    val endpoints3 = connectCenters(effectiveFromRect, effectiveToRect)
+                                    val endpoints3 = endpoints()
                                     val viewportRect = nestedDisclosureSnapshot(fromNestedUid).viewportWorldRect
                                     if (viewportRect != null && !pointInRect(endpoints3.first.point, viewportRect)) {
                                         val parentEl = cachedBoxByUid[fromNestedUid]
@@ -2279,16 +2375,20 @@ data class ClippedResult(val point: Point, val normal: Point)
 fun getCenter(rect: DOMRect): Point = Point((rect.left + rect.right) / 2.0, (rect.top + rect.bottom) / 2.0)
 
 /**
- * Given a rectangle and a ray direction (dx, dy) from its center,
+ * Given a rectangle and a ray direction (dx, dy) from an interior origin (the centre by default),
  * returns a ClippedResult containing:
  *  - the intersection point on the rectangle's boundary (possibly adjusted so that
- *    it is at least EDGE_CHEAT pixels away from the corner along that edge), and
+ *    it is at least cornerClearance world units away from the corner along that edge), and
  *  - the normal to the edge that was hit.
  *
  * The rectangle is assumed to be axis-aligned.
  */
-fun clipRay(rect: DOMRect, dx: Double, dy: Double): ClippedResult {
-    val center = getCenter(rect)
+fun clipRay(
+    rect: DOMRect, dx: Double, dy: Double,
+    origin: Point = getCenter(rect), cornerClearance: Double = EDGE_CHEAT
+): ClippedResult {
+    val center = origin
+    if (dx == 0.0 && dy == 0.0) return ClippedResult(origin, Point(0.0, 0.0))
 
     // Compute the scale factors (t) needed to reach each vertical or horizontal edge.
     val tX = when {
@@ -2335,49 +2435,75 @@ fun clipRay(rect: DOMRect, dx: Double, dy: Double): ClippedResult {
     val intersection = Point(center.x + t * dx, center.y + t * dy)
 
     // --- Corner Adjustment ---
-    // If the intersection is within EDGE_CHEAT pixels of a corner along the edge,
-    // slide it along the edge so that it's at least EDGE_CHEAT pixels from the corner.
+    // Keep the attachment clear of the corner itself, or of the larger ordinary-box clearance.
     var adjusted = intersection
 
     // When the normal is strictly horizontal, the edge is vertical.
     if (abs(normal.x) > eps && abs(normal.y) < eps) {
         // p.x is fixed (either rect.left or rect.right).
-        if (adjusted.y - rect.top < EDGE_CHEAT) {
-            adjusted = Point(adjusted.x, rect.top + EDGE_CHEAT)
-        } else if (rect.bottom - adjusted.y < EDGE_CHEAT) {
-            adjusted = Point(adjusted.x, rect.bottom - EDGE_CHEAT)
+        if (adjusted.y - rect.top < cornerClearance) {
+            adjusted = Point(adjusted.x, rect.top + cornerClearance)
+        } else if (rect.bottom - adjusted.y < cornerClearance) {
+            adjusted = Point(adjusted.x, rect.bottom - cornerClearance)
         }
     }
     // When the normal is strictly vertical, the edge is horizontal.
     else if (abs(normal.y) > eps && abs(normal.x) < eps) {
         // p.y is fixed (either rect.top or rect.bottom).
-        if (adjusted.x - rect.left < EDGE_CHEAT) {
-            adjusted = Point(rect.left + EDGE_CHEAT, adjusted.y)
-        } else if (rect.right - adjusted.x < EDGE_CHEAT) {
-            adjusted = Point(rect.right - EDGE_CHEAT, adjusted.y)
+        if (adjusted.x - rect.left < cornerClearance) {
+            adjusted = Point(rect.left + cornerClearance, adjusted.y)
+        } else if (rect.right - adjusted.x < cornerClearance) {
+            adjusted = Point(rect.right - cornerClearance, adjusted.y)
         }
     }
     // For a corner hit (or blended normal), decide which edge to treat as active.
     else {
         if (abs(dx) >= abs(dy)) {
             // Treat as if on a vertical edge.
-            if (adjusted.y - rect.top < EDGE_CHEAT) {
-                adjusted = Point(adjusted.x, rect.top + EDGE_CHEAT)
-            } else if (rect.bottom - adjusted.y < EDGE_CHEAT) {
-                adjusted = Point(adjusted.x, rect.bottom - EDGE_CHEAT)
+            if (adjusted.y - rect.top < cornerClearance) {
+                adjusted = Point(adjusted.x, rect.top + cornerClearance)
+            } else if (rect.bottom - adjusted.y < cornerClearance) {
+                adjusted = Point(adjusted.x, rect.bottom - cornerClearance)
             }
         } else {
             // Treat as if on a horizontal edge.
-            if (adjusted.x - rect.left < EDGE_CHEAT) {
-                adjusted = Point(rect.left + EDGE_CHEAT, adjusted.y)
-            } else if (rect.right - adjusted.x < EDGE_CHEAT) {
-                adjusted = Point(rect.right - EDGE_CHEAT, adjusted.y)
+            if (adjusted.x - rect.left < cornerClearance) {
+                adjusted = Point(rect.left + cornerClearance, adjusted.y)
+            } else if (rect.right - adjusted.x < cornerClearance) {
+                adjusted = Point(rect.right - cornerClearance, adjusted.y)
             }
         }
     }
     // --- End Corner Adjustment ---
 
     return ClippedResult(adjusted, normal)
+}
+
+/** Text-frame rays start near the writing's end and arrive near the next frame's beginning. */
+private fun boxConnectionEndpoints(
+    from: HTMLElement, fromRect: DOMRect, to: HTMLElement, toRect: DOMRect,
+    fromProxy: Boolean = false, toProxy: Boolean = false
+): Pair<ClippedResult, ClippedResult> {
+    val fromText = !fromProxy && from.classList.contains("text-frame-box")
+    val toText = !toProxy && to.classList.contains("text-frame-box")
+    if (!fromText && !toText) return connectCenters(fromRect, toRect)
+    fun anchor(rect: DOMRect, text: Boolean, outgoing: Boolean): Point {
+        if (!text) return getCenter(rect)
+        val ix = min(10.0 / mainZoom, rect.width / 2)
+        val iy = min(10.0 / mainZoom, rect.height / 2)
+        return if (outgoing) Point(rect.right - ix, rect.bottom - iy) else Point(rect.left + ix, rect.top + iy)
+    }
+    val start = anchor(fromRect, fromText, true)
+    val end = anchor(toRect, toText, false)
+    // Coincident inset points can occur when frames touch or overlap. Fall back to their centres.
+    val direction = if (start.distance(end) < 1e-6) {
+        Point(getCenter(toRect).x - getCenter(fromRect).x, getCenter(toRect).y - getCenter(fromRect).y)
+    } else Point(end.x - start.x, end.y - start.y)
+    // Only keep clear of the rounded corner itself; the old 20-unit clearance defeats corner anchors.
+    fun clearance(rect: DOMRect, text: Boolean) =
+        if (text) min(3.0, min(rect.width, rect.height) / 2) else EDGE_CHEAT
+    return clipRay(fromRect, direction.x, direction.y, start, clearance(fromRect, fromText)) to
+        clipRay(toRect, -direction.x, -direction.y, end, clearance(toRect, toText))
 }
 
 /**

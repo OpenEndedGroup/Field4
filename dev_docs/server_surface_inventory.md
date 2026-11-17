@@ -289,7 +289,7 @@ Ktor's containment check applies to it as it does to the five above.
 
 ## The `/ws` command surface
 
-137 command names, in the `handlers` table. This is the real command API, it is roughly twice
+157 command names, in the `handlers` table. This is the real command API, it is roughly twice
 the size of the HTTP write surface, and until this page nothing enumerated it. It is not the
 only `/ws` dispatch table: ten more channels live in `rawHandlers` and are counted in
 [their own section](#the-other-ws-dispatch-table-rawhandlers) below.
@@ -309,7 +309,7 @@ the file, and the reach is described per file below in prose that a human checke
 | `agent_backdoor.kt` | 28 |
 | `history.kt` | 14 |
 | `executing.kt` | 10 |
-| `Ai4Installer.kt` | 12 |
+| `Ai4Installer.kt` | 13 |
 | `importing.kt` | 4 |
 | `NotationServer.kt` | 3 |
 | `templating.kt` | 3 |
@@ -338,7 +338,7 @@ What each of those reaches, checked against the code rather than inferred from t
 | `agent_backdoor.kt` | the agent path: read/write boxes, run transcripts, screenshot, macros. The published automation surface |
 | `history.kt` | the document history store — versions, screenshots, restore |
 | `executing.kt` | **box execution.** `launch-all`, `launch-batch`, `launch-fragment`, `stop-box`, `stop-all`, `interrupt-box`. This is arbitrary Kotlin in Field's own JVM |
-| `Ai4Installer.kt` | AI chat sessions and tool use; reads, initializes and queues anchored conversation-garden replies or dispatches them through the existing agent harness (`ai-garden`, attached document and box); reads or clears the attached document’s per-box saved chat, reports the last turn’s context metadata (`ai-chat-context`, no text), rewinds or switches a chat’s branches, and — when asked — undoes a rewound turn’s recorded edits and created boxes (`ai-chat-rewind-world`), reads the attached document’s saved state trees and bounded state details (`ai-state-tree`, including read/inspect callbacks registered by box code; no restore or fork), runs a document’s agent-extension chat commands (`ai-chat-command`, box code), suggests a completion of the chat draft from the fast model (`ai-chat-suggest`), and reads the saved document chat (`chat_history`, `<document>/ai4_document_chat.md`, which `chat_input` appends to), behind the existing `/ws` boundary |
+| `Ai4Installer.kt` | AI chat sessions and tool use; reads, initializes and queues anchored conversation-garden replies or dispatches them through the existing agent harness (`ai-garden`, attached document and box); reads or clears the attached document’s per-box saved chat, reports the last turn’s context metadata (`ai-chat-context`, no text), rewinds or switches a chat’s branches, and — when asked — undoes a rewound turn’s recorded edits and created boxes (`ai-chat-rewind-world`), reads the attached document’s saved state trees and bounded state details (`ai-state-tree`, including read/inspect callbacks registered by box code; no restore or fork), runs a document’s agent-extension chat commands (`ai-chat-command`, box code), suggests a completion of the chat draft (`ai-chat-suggest`) or a bounded Markdown text-frame continuation (`ai-text-frame-suggest`, text-frame boxes only) from the fast model, and reads the saved document chat (`chat_history`, `<document>/ai4_document_chat.md`, which `chat_input` appends to), behind the existing `/ws` boundary |
 | `importing.kt` | notebook and EDN import — parses foreign documents into boxes |
 | `NotationServer.kt` | the attached document's drawing (the root box's `drawing` property): merges a client's scene into it, records the drawing-layer selection (memory only), anchors marks to boxes. No reach beyond what `set-string` on `root.drawing` already had; it runs box code only as the `onNotation` reactions that box code itself registered |
 | `StrokeSketch.kt` | `stroke-layer-ack`: a window says it has drawn the last stroke-layer frame, which only lets the next frame be sent to it. Reads nothing, writes nothing, runs no code |
@@ -421,6 +421,7 @@ reach to a client that `agent-eval` and `launch-all` already let run arbitrary c
 | `ai-chat-screenshot` | `Ai4Installer.kt` |
 | `ai-chat-suggest` | `Ai4Installer.kt` |
 | `ai-state-tree` | `Ai4Installer.kt` |
+| `ai-text-frame-suggest` | `Ai4Installer.kt` |
 | `ai-transcribe` | `VoiceTranscriber.kt` |
 | `ai-transcribe-warm` | `VoiceTranscriber.kt` |
 | `arrange-boxes-result` | `Server.kt` |
@@ -586,7 +587,7 @@ publishes head and per-eye viewing geometry up it, so the Mac can render the fra
 about to display. Everything else on `/ws` is the browser or a native client asking this process for
 something.
 
-These sit behind the same `/ws` upgrade as the 131 commands, so the same sentence applies: the
+These sit behind the same `/ws` upgrade as the 157 commands, so the same sentence applies: the
 guard arrived 2026-08-19 in `3aa64af4d` and is off by default.
 
 ## What the guard does and does not prove
