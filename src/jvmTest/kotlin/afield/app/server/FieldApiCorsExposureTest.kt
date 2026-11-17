@@ -585,6 +585,7 @@ class FieldApiCorsExposureTest {
             // The three viewer's Export GLB through the optional gltfpack binary (2026-10): bytes in,
             // compressed bytes out, no document state; guarded because it runs a local process.
             "POST /three-gltfpack" to "loopback + same-site",
+            "POST /three-review-ask" to "loopback + same-site",
             "POST /three-review-note" to "loopback + same-site",
             "PUT /api/docs-annotations/{id}/resolve" to "loopback + same-site",
             "PUT /api/document-tags" to "none",
