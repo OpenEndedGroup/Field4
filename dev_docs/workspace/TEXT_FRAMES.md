@@ -44,7 +44,10 @@ Light, regular and bold each have real upright and italic webfont faces; Markdow
 The reproducible webfont derivation and license are documented in `tools/fonts/README.md`.
 
 Connections reveal a short portion of the frame border on each side of their attachment, following
-the rounded corners. `connectionBorderLength` sets that distance in screen pixels (default 24,
+the rounded corners. Routing starts 10 screen pixels inside the source's bottom-right corner and
+the destination's top-left corner, then trims the connecting ray to each frame boundary. Each ordinary
+box endpoint still uses its centre. Frame curve radii respect the room along the endpoint normals so
+wide frames with a small gap do not force large looping turns. `connectionBorderLength` sets the border distance in screen pixels (default 24,
 range 0–200; 0 hides it), independent of canvas zoom. These segments follow the connection's color
 and selection visibility; ordinary boxes and nested proxy viewport terminations keep their existing rendering.
 
