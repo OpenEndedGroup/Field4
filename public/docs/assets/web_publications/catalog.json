@@ -1,77 +1,5 @@
 {
   "deferred": {
-    "assets/agent_transcripts/a_pen_that_sees/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/agent_eval_corpus/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/ai4_chat_archive/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/ai4_cold_reader/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/ai4_iframe_hello/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/ai4_paint_studio/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/ai4_repo_tools/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/alife_evolution/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/alife_grains/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/alife_script/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/alife_search_comparison/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/alife_tree_growth/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
     "assets/agent_transcripts/alife_walls/metadata.edn": {
       "attempts": 0,
       "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
@@ -1377,23 +1305,23 @@
   },
   "documents": {
     "assets/agent_transcripts/a_pen_that_sees/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:15:57.303Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T20:16:47.201Z",
       "channels": 10,
       "file": "assets/web_publications/a_pen_that_sees/document/metadata.edn",
       "files": {
         "assets/web_publications/a_pen_that_sees/document/metadata.edn": "067b839b46196b9098c19b8437e16b9592cb56196e4cd34725946541319f0c2a",
-        "assets/web_publications/a_pen_that_sees/document/outputs.json": "84f21e10e6e5e02e3097a0855e1ffceb854ce38126f15716b0ab76863e4e2cc5",
-        "assets/web_publications/a_pen_that_sees/outputs/0.html": "fe2dbf673b3adb38fc4669437e1764aa8533d06f9d9b4fc00476692e4f57256d",
-        "assets/web_publications/a_pen_that_sees/outputs/1.html": "031e40c969058a77bee0d2728e8095c8701de1551ded3a8fa0499106e9a63828",
-        "assets/web_publications/a_pen_that_sees/outputs/2.html": "212a490485eb41743fb725acc287911e2027a97d7eb60b6ca98661a337f3eeb6",
-        "assets/web_publications/a_pen_that_sees/outputs/3.html": "2207472d06b134c8cf93ca86b80b395f51865fbb9bbdbedd508c07b88b21e7bb",
-        "assets/web_publications/a_pen_that_sees/outputs/4.html": "02f573803b9ceab0f271f9a4a123c2bb8878102a5bc98334b86065e38c639058",
-        "assets/web_publications/a_pen_that_sees/outputs/5.html": "5f9d9ddb54522ec168af9913458b398bbfb7edd3954876b88497744e58d54815",
-        "assets/web_publications/a_pen_that_sees/outputs/6.html": "abbfa83d19d171f0fd8aaa1198da5b145d84fdc8e7c0294b7fd348f8646512a5",
-        "assets/web_publications/a_pen_that_sees/outputs/7.html": "0d45346f665b8c326d75668e745da6a5598e76ea17dd9de4c153d441b82893fd",
-        "assets/web_publications/a_pen_that_sees/outputs/8.html": "c3ccc34dc23eee9951b029bf4830ee4a50c8e2fe294fb51283aabaf5664e02e2",
-        "assets/web_publications/a_pen_that_sees/outputs/9.html": "3abfc194e99c83379a527f3298cd025b63e2b04564d785886eb16a6c67457dcd"
+        "assets/web_publications/a_pen_that_sees/document/outputs.json": "9d8ed90286bec1b6d8d4358dbd35c9ff1a7394eccd7a4eeb05f7b82194ec48e4",
+        "assets/web_publications/a_pen_that_sees/outputs/0.html": "f9a1feb9d298882dca4f11781ca1c0789f591fc5afb25b6a86656ea8bbf418a1",
+        "assets/web_publications/a_pen_that_sees/outputs/1.html": "2bf6b0612134df3a5e2c9e2cd597cccf2e155249fb305fee588fa92727731715",
+        "assets/web_publications/a_pen_that_sees/outputs/2.html": "38c7cd15a7a2d4537fb4910e14cb8c0c444f00044d8a4661e3ed0650e7ad16e5",
+        "assets/web_publications/a_pen_that_sees/outputs/3.html": "860221f6b71f29ff443a98711e4a7d8302cf63de75d495b788c2bf5505d1f539",
+        "assets/web_publications/a_pen_that_sees/outputs/4.html": "77740cfdc33fcec6751b2cef82d9df9354e8fc13881c55a0cef025bc09989199",
+        "assets/web_publications/a_pen_that_sees/outputs/5.html": "530e8efd53b28d802f47c7bbee7b44c9f1f974337f0266b62781e6f3770a9859",
+        "assets/web_publications/a_pen_that_sees/outputs/6.html": "58881292e5d1e057dc563547d897328c94675cd4a5b4c60079ee4fb45e5c15f0",
+        "assets/web_publications/a_pen_that_sees/outputs/7.html": "77343db96897b282620229537df612be30688cb83d40efb5ee73f38611df26c0",
+        "assets/web_publications/a_pen_that_sees/outputs/8.html": "68c6d7345479e0a527f1e41d764a8c7c957f5f5ae53a936b823a2d535db7eabd",
+        "assets/web_publications/a_pen_that_sees/outputs/9.html": "79b8a601371d8df01a627b5f0a4dab577aa349682729e7a8610532ef15d09a62"
       },
       "kinds": [
         "svg"
@@ -1415,14 +1343,14 @@
       }
     },
     "assets/agent_transcripts/agent_eval_corpus/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:00:52.191Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T20:17:26.251Z",
       "channels": 1,
       "file": "assets/web_publications/agent_eval_corpus/document/metadata.edn",
       "files": {
         "assets/web_publications/agent_eval_corpus/document/metadata.edn": "7f1a2af174feb7901bf0b4737054c152b84307b5d7720d63765b43e9b17889e5",
-        "assets/web_publications/agent_eval_corpus/document/outputs.json": "f8635fe02074a53d6c9ed6f2f5b7bc95cdfe44e094d5c47f979d83b944fd89a9",
-        "assets/web_publications/agent_eval_corpus/outputs/0.html": "e144f4c9fb835dd96006b6a4b95ec538de72ad893940953ab779eba3ce8df5c3"
+        "assets/web_publications/agent_eval_corpus/document/outputs.json": "ea4743ca2da48932745bc568de1cc419c4170d41f296fe8c7b47a0c8307fb893",
+        "assets/web_publications/agent_eval_corpus/outputs/0.html": "43396221ecb44e23cbb6f289445873fa7fc8cfb49cd72916b1e9a25d291633fa"
       },
       "kinds": [],
       "outputs": "assets/web_publications/agent_eval_corpus/document/outputs.json",
@@ -1434,17 +1362,17 @@
       }
     },
     "assets/agent_transcripts/ai4_chat_archive/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T14:10:49.534Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T20:17:49.958Z",
       "channels": 4,
       "file": "assets/web_publications/ai4_chat_archive/document/metadata.edn",
       "files": {
-        "assets/web_publications/ai4_chat_archive/document/metadata.edn": "b3d7cf738b5412756f66c125cfc1cef755cb16f2b820979c2d703ed829c91676",
-        "assets/web_publications/ai4_chat_archive/document/outputs.json": "7e57424892f5fdd572cdf7ac5abe96a42ab7367575e1d8cbdf1bd83fb465be25",
-        "assets/web_publications/ai4_chat_archive/outputs/0.html": "7abde55477ba7ad368b6ba1f59418fa7f9a8e8909163688c1b82e3a03dc34946",
-        "assets/web_publications/ai4_chat_archive/outputs/1.html": "6227817830c1d433f763ffa1f87227bdb2f5455fc1be4e9e054d4a4f4b0b6748",
-        "assets/web_publications/ai4_chat_archive/outputs/2.html": "6665472c0c29105cf2cebf663d52c0b71e2d12bdda8dce3183fb0dddec645e60",
-        "assets/web_publications/ai4_chat_archive/outputs/3.html": "4279358ed56d45fafaa300442991ecd631d1fbc96e4762bcc1a925ea20e1b16a"
+        "assets/web_publications/ai4_chat_archive/document/metadata.edn": "c400a560d2b72bea3490762fd9d26de4ea5b73867493f524cae064a9b84216e1",
+        "assets/web_publications/ai4_chat_archive/document/outputs.json": "f3536846fbd03427f88d8c4772c469379b172df26694249f23dc064988be2dcc",
+        "assets/web_publications/ai4_chat_archive/outputs/0.html": "3e3ec6d64f6ac91c2ef7b8eae8f219eeb8ab0af973e59066ac75758fa9e67703",
+        "assets/web_publications/ai4_chat_archive/outputs/1.html": "14cf144d4f4125a28e891840b481a08e423477e2d819ceccca60414a9de9a9b7",
+        "assets/web_publications/ai4_chat_archive/outputs/2.html": "dcedaa1b0b2483f108643678d7f744959f9dec6e38cbb4135ea8b573deeddcdb",
+        "assets/web_publications/ai4_chat_archive/outputs/3.html": "81d0d692d3d51311a73eed49591ec64c31b12c89bbfee70610c0b4e540e9019d"
       },
       "kinds": [
         "svg"
@@ -1461,14 +1389,14 @@
       }
     },
     "assets/agent_transcripts/ai4_cold_reader/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T14:24:55.729Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T20:17:55.741Z",
       "channels": 1,
       "file": "assets/web_publications/ai4_cold_reader/document/metadata.edn",
       "files": {
         "assets/web_publications/ai4_cold_reader/document/metadata.edn": "db71aa89af43d6a2cbed953fbe6a9e8076145cf74771cab21b90aab32f374bcf",
-        "assets/web_publications/ai4_cold_reader/document/outputs.json": "6d14479b995e40e79010d7a9f0e5f083b9098b817079111063b445f232a6153b",
-        "assets/web_publications/ai4_cold_reader/outputs/0.html": "94a63ae165146e42e9077fdab47e3e358b2a681ee47e4ccfa2e25d8acd4b168c"
+        "assets/web_publications/ai4_cold_reader/document/outputs.json": "c9e542900deaacc9e507664edeacca4b4c20f18617a9cea020a3bab89635ec58",
+        "assets/web_publications/ai4_cold_reader/outputs/0.html": "04ecbedd110c3690488d30f55ee23f90030c2d6316fb13b730c139690076d43c"
       },
       "kinds": [],
       "outputs": "assets/web_publications/ai4_cold_reader/document/outputs.json",
@@ -1480,14 +1408,14 @@
       }
     },
     "assets/agent_transcripts/ai4_iframe_hello/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T14:24:50.998Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T20:17:59.842Z",
       "channels": 1,
       "file": "assets/web_publications/ai4_iframe_hello/document/metadata.edn",
       "files": {
         "assets/web_publications/ai4_iframe_hello/document/metadata.edn": "1416ca6b9f220217409596921906a0fbd05cca19ed1c478bdb8b52111410761a",
-        "assets/web_publications/ai4_iframe_hello/document/outputs.json": "0fd267b741adc5e6492388edb6a861eab2d20366037b62a0e4ebdb5b7ad834a0",
-        "assets/web_publications/ai4_iframe_hello/outputs/0.html": "86a987ba013893a06f8943705ad6149a1adf59cc727bca8dc476167ea231b296"
+        "assets/web_publications/ai4_iframe_hello/document/outputs.json": "f336fc842905dc3d3f666e0e5e34fc003f850ab3a7d2c4dda02fe4b5817d002b",
+        "assets/web_publications/ai4_iframe_hello/outputs/0.html": "c084588b2e7b61cf7333106e0583e0be3cebcdfee0f39e3ff258f72b074d479f"
       },
       "kinds": [],
       "outputs": "assets/web_publications/ai4_iframe_hello/document/outputs.json",
@@ -1499,14 +1427,14 @@
       }
     },
     "assets/agent_transcripts/ai4_paint_studio/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:21:38.439Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T20:18:13.997Z",
       "channels": 1,
       "file": "assets/web_publications/ai4_paint_studio/document/metadata.edn",
       "files": {
         "assets/web_publications/ai4_paint_studio/document/metadata.edn": "fc5c0fd73883d45ea3e8590f22b73916854a2b256611b463ca23ffbdad265927",
-        "assets/web_publications/ai4_paint_studio/document/outputs.json": "db8f086461e336b661026d7e1982b1aaee3dcad8898dbec1e8e0d99ae44d4f23",
-        "assets/web_publications/ai4_paint_studio/outputs/0.html": "1ff4145e121368483a1510d3dd0352d39674c49d902689c71a88bfe6f1003cb4"
+        "assets/web_publications/ai4_paint_studio/document/outputs.json": "6f7851418734b6eddb74960b8bb0e6d4a3821c8db789510bc176ba47d0e2cbb7",
+        "assets/web_publications/ai4_paint_studio/outputs/0.html": "1cd7fc615fd567a58fe22489e756cf72603e66e13d2b66d03a8d468cafe3502a"
       },
       "kinds": [],
       "outputs": "assets/web_publications/ai4_paint_studio/document/outputs.json",
@@ -1520,17 +1448,17 @@
       }
     },
     "assets/agent_transcripts/alife_evolution/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T14:42:06.473Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T20:20:06.758Z",
       "channels": 4,
       "file": "assets/web_publications/alife_evolution/document/metadata.edn",
       "files": {
         "assets/web_publications/alife_evolution/document/metadata.edn": "9f5756038fcab0a280acf5ee903b58656be3c2fe8109bff06a2a5f13d605f670",
-        "assets/web_publications/alife_evolution/document/outputs.json": "6cd73a5fa5e27e5de38ac4e37884a440944aab94eb06f3626367c1a1e5887543",
-        "assets/web_publications/alife_evolution/outputs/0.html": "154d1851b971cad55c5a712112a7e0ec39ad84b8d39239d1515af383d0125a06",
-        "assets/web_publications/alife_evolution/outputs/1.html": "4cf924c8b6d64c50bc579b66924821a89377833410d51d01bfa4dfb523b11e9a",
-        "assets/web_publications/alife_evolution/outputs/2.html": "0f3819b604cd5995de6ba23e8f2213e71cf01919641edb834e93e2dc4dcdeaad",
-        "assets/web_publications/alife_evolution/outputs/3.html": "572ea695d8a3562357cd6863d453b1a52e6eab0cb592169448873819cce5fb71"
+        "assets/web_publications/alife_evolution/document/outputs.json": "af7f12c53af14ef2e7fb71e6e3dde84cdeeed80b2a5927f454c75ecee6b3b099",
+        "assets/web_publications/alife_evolution/outputs/0.html": "3b33034398d48b6cf8413bf277cf98099016881d782e287c0aa8b363ecc817c5",
+        "assets/web_publications/alife_evolution/outputs/1.html": "3767822656c359c4c497cdb869c1ae732eaf3353a6b8a17d90bd924845a36963",
+        "assets/web_publications/alife_evolution/outputs/2.html": "24cf9f6bfcb4fc137a1dd17e05aec1df2538416febeb74bb9decb1488e6eaab8",
+        "assets/web_publications/alife_evolution/outputs/3.html": "1cee8d5ab221bff762e072bca609fc1b83073a36f8060eb2f982457c22d93a49"
       },
       "kinds": [
         "plotly"
@@ -1547,37 +1475,37 @@
       }
     },
     "assets/agent_transcripts/alife_grains/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T14:43:02.066Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T20:21:04.526Z",
       "channels": 24,
       "file": "assets/web_publications/alife_grains/document/metadata.edn",
       "files": {
         "assets/web_publications/alife_grains/document/metadata.edn": "51af41da3f6db32ef8bd0984fc1ea75f0568e19a249b818572cae5a8bc591407",
-        "assets/web_publications/alife_grains/document/outputs.json": "046ae373281842bda981661607bb04315613ba274afd5fba007f594cb3007881",
-        "assets/web_publications/alife_grains/outputs/0.html": "9602f96314974cf25935e174e1e7e25f1f590dacc72bb0112290a522262a3558",
-        "assets/web_publications/alife_grains/outputs/1.html": "66c5eb64a8a2ef8f5f4180cbc0754aa8d35bfe6958061057df6065fcfa72b789",
-        "assets/web_publications/alife_grains/outputs/10.html": "4eec17db8061d15a71b570b7cefafe8eba581025c98e6bf79576cc02755d213d",
-        "assets/web_publications/alife_grains/outputs/11.html": "0716808b5d75ca4867b57f2904953f819001775527bfcc5976c575afb14d7926",
-        "assets/web_publications/alife_grains/outputs/12.html": "95e7eb0e92e5da7edc2fdff81575d9157469215f55f640229fcfd57600bf30ea",
-        "assets/web_publications/alife_grains/outputs/13.html": "c527911468402be979a38c2f94f27fdd1027eca9ffb903f00301a0ecb9948c2e",
-        "assets/web_publications/alife_grains/outputs/14.html": "7c4209da368228064b596b556cc54cbed8d7bb31df41234578fd85d15e4d86d3",
-        "assets/web_publications/alife_grains/outputs/15.html": "12989fec85c7a1ea0af2df6afd82e9f26e530b5e0318b8fc4ec9dfd06136f1a4",
-        "assets/web_publications/alife_grains/outputs/16.html": "c527911468402be979a38c2f94f27fdd1027eca9ffb903f00301a0ecb9948c2e",
-        "assets/web_publications/alife_grains/outputs/17.html": "0a712908557ff78ff4a8f4f5c42aa05e1ee3a845fe079601b0450d2d08746222",
-        "assets/web_publications/alife_grains/outputs/18.html": "c527911468402be979a38c2f94f27fdd1027eca9ffb903f00301a0ecb9948c2e",
-        "assets/web_publications/alife_grains/outputs/19.html": "4298c855a4be9625ff636451605d60f9f48f8af69a21951d1126db206d9cb6f7",
-        "assets/web_publications/alife_grains/outputs/2.html": "fb397832dba32448401c3b05b635cc92c95df92b51ea15d4795305e41b0ec8c1",
-        "assets/web_publications/alife_grains/outputs/20.html": "c527911468402be979a38c2f94f27fdd1027eca9ffb903f00301a0ecb9948c2e",
-        "assets/web_publications/alife_grains/outputs/21.html": "c527911468402be979a38c2f94f27fdd1027eca9ffb903f00301a0ecb9948c2e",
-        "assets/web_publications/alife_grains/outputs/22.html": "c527911468402be979a38c2f94f27fdd1027eca9ffb903f00301a0ecb9948c2e",
-        "assets/web_publications/alife_grains/outputs/23.html": "c527911468402be979a38c2f94f27fdd1027eca9ffb903f00301a0ecb9948c2e",
-        "assets/web_publications/alife_grains/outputs/3.html": "fa446f93ae153925f85b1affd8403f2a8cc18aff1d548c41ed6c1eb92f488d69",
-        "assets/web_publications/alife_grains/outputs/4.html": "b1fba63900d9c6b2a570e0d5275a5fa4c6b3446d8885c963ae60d2b083ea28f0",
-        "assets/web_publications/alife_grains/outputs/5.html": "493194b00684623e7e2ebc6b48c4484a50cc6e0785133b47812b133f80465a62",
-        "assets/web_publications/alife_grains/outputs/6.html": "97d18c0a59d7e455a7afb7db5e699d8b1b33ee1969f11c38cefbb0d26030d88a",
-        "assets/web_publications/alife_grains/outputs/7.html": "c527911468402be979a38c2f94f27fdd1027eca9ffb903f00301a0ecb9948c2e",
-        "assets/web_publications/alife_grains/outputs/8.html": "c527911468402be979a38c2f94f27fdd1027eca9ffb903f00301a0ecb9948c2e",
-        "assets/web_publications/alife_grains/outputs/9.html": "c527911468402be979a38c2f94f27fdd1027eca9ffb903f00301a0ecb9948c2e"
+        "assets/web_publications/alife_grains/document/outputs.json": "b21cb3b49e1bd58825f928c477d8d91e4d809f394439dbd0751c0d895e7f0f0d",
+        "assets/web_publications/alife_grains/outputs/0.html": "dea40cea28221a2cd9c024eaebeed55605f9bbad472682cee397e8cb6b6a220c",
+        "assets/web_publications/alife_grains/outputs/1.html": "bb0032e38643927319ffe852d8aedc411cdad8de4a66211fd7b13bae84ab2425",
+        "assets/web_publications/alife_grains/outputs/10.html": "d0753d498ed3587e061e19ab5f3053cef3a7214aaf9660a0b9236d3d471a2b0f",
+        "assets/web_publications/alife_grains/outputs/11.html": "99b24752d141d2a6f2d4cff58fad8a701830b08cddf4a95ff6671ebc3a28aa91",
+        "assets/web_publications/alife_grains/outputs/12.html": "ee5a1c9776f2c090a81ea486ee1efe8cf1d2a418921bdbf5d4210b57ef0ed539",
+        "assets/web_publications/alife_grains/outputs/13.html": "070f80f20c46f3c28a72b74d3a63c87716972779e1c6df77082088943adc14c6",
+        "assets/web_publications/alife_grains/outputs/14.html": "51147c5fc0fdaafc8242aab1501a4b432029e680a128e72676dc778407287844",
+        "assets/web_publications/alife_grains/outputs/15.html": "56cf3d11e3fde45566983b36bf0be9b18f20ec64023d88c505fef920ed804c31",
+        "assets/web_publications/alife_grains/outputs/16.html": "070f80f20c46f3c28a72b74d3a63c87716972779e1c6df77082088943adc14c6",
+        "assets/web_publications/alife_grains/outputs/17.html": "42029a11967db7294d0fae2b6aad1f8d0e4d01ba10f039205da67b610d0c09a4",
+        "assets/web_publications/alife_grains/outputs/18.html": "070f80f20c46f3c28a72b74d3a63c87716972779e1c6df77082088943adc14c6",
+        "assets/web_publications/alife_grains/outputs/19.html": "6b534daba786f8254440ca74eac808fb0dab9c6b556735445a1c949015e65f5a",
+        "assets/web_publications/alife_grains/outputs/2.html": "30a1570c4723774f58e40225e822adf1c3d24842e0adbda940f7228185e8ae1d",
+        "assets/web_publications/alife_grains/outputs/20.html": "070f80f20c46f3c28a72b74d3a63c87716972779e1c6df77082088943adc14c6",
+        "assets/web_publications/alife_grains/outputs/21.html": "070f80f20c46f3c28a72b74d3a63c87716972779e1c6df77082088943adc14c6",
+        "assets/web_publications/alife_grains/outputs/22.html": "070f80f20c46f3c28a72b74d3a63c87716972779e1c6df77082088943adc14c6",
+        "assets/web_publications/alife_grains/outputs/23.html": "070f80f20c46f3c28a72b74d3a63c87716972779e1c6df77082088943adc14c6",
+        "assets/web_publications/alife_grains/outputs/3.html": "c18b9eca8ede0cd77b13de5efbd0e0dbf44863863720ab2ffbc14ce692422c69",
+        "assets/web_publications/alife_grains/outputs/4.html": "de462f0a8c670287c0335287a56377b857812bcc0b744797b68112d66fdf28c0",
+        "assets/web_publications/alife_grains/outputs/5.html": "879122d442bbee633d9be38297c07c418cc5afeda99a2f99a5742c6e65b34d63",
+        "assets/web_publications/alife_grains/outputs/6.html": "6473d6ac2b54f72eecb14a5ff80af20754b7c6cd3e8824228c2daef4a734a2fd",
+        "assets/web_publications/alife_grains/outputs/7.html": "070f80f20c46f3c28a72b74d3a63c87716972779e1c6df77082088943adc14c6",
+        "assets/web_publications/alife_grains/outputs/8.html": "070f80f20c46f3c28a72b74d3a63c87716972779e1c6df77082088943adc14c6",
+        "assets/web_publications/alife_grains/outputs/9.html": "070f80f20c46f3c28a72b74d3a63c87716972779e1c6df77082088943adc14c6"
       },
       "kinds": [
         "svg"
@@ -1596,16 +1524,16 @@
       }
     },
     "assets/agent_transcripts/alife_script/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:01:00.803Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T20:21:13.093Z",
       "channels": 3,
       "file": "assets/web_publications/alife_script/document/metadata.edn",
       "files": {
         "assets/web_publications/alife_script/document/metadata.edn": "bbe24b32aba6757cf55b4e448d9105facc1cc71e9254cb400302d1e40c997e6a",
-        "assets/web_publications/alife_script/document/outputs.json": "26971cbe142728c588ed57e6fa5b70de53f42869c6983637433170997914ae7f",
-        "assets/web_publications/alife_script/outputs/0.html": "334b2a3af1899bd285fddc4b2be6b9f1efd6c93d3c3c8242501dc4afb700455f",
-        "assets/web_publications/alife_script/outputs/1.html": "bcde8973588ebeb02938f3ebc518aa57d2fea8fa47a46c100a3153616ad852bf",
-        "assets/web_publications/alife_script/outputs/2.html": "d9eb639da9bbd7a08e8f74d317b5e07758bbccbaac79e21f63474ea63a168528"
+        "assets/web_publications/alife_script/document/outputs.json": "ffab533277c0fe358262acbeb45f9615673888f02ada4b8ff909f23b0aaa3308",
+        "assets/web_publications/alife_script/outputs/0.html": "9b657b8c8a1476658713596a5a8d26ee13291c09cd2b33afeade510a0a89517d",
+        "assets/web_publications/alife_script/outputs/1.html": "091b5e540b080f60e78195598b0872e69a1806ceaf092e21f27a44f51e09e075",
+        "assets/web_publications/alife_script/outputs/2.html": "cfcc14587e912783292ada4378829a44d121ca896edc9f3dd01a8969f83aff67"
       },
       "kinds": [
         "plotly",
@@ -1622,16 +1550,16 @@
       }
     },
     "assets/agent_transcripts/alife_search_comparison/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T14:54:18.141Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T20:22:33.386Z",
       "channels": 3,
       "file": "assets/web_publications/alife_search_comparison/document/metadata.edn",
       "files": {
         "assets/web_publications/alife_search_comparison/document/metadata.edn": "09b68ce95779ac3698e86cf13f794bca9a75b0387668a3a7618323054d987b8f",
-        "assets/web_publications/alife_search_comparison/document/outputs.json": "35424996a11c52b3b84efbd93b3d6bd856b247ab1c71d4af79b6a2c2a02e0407",
-        "assets/web_publications/alife_search_comparison/outputs/0.html": "417f20fac77f8e4bf020af6e6f1fb0ff25eea520b1eb32820170fee80366b4a4",
-        "assets/web_publications/alife_search_comparison/outputs/1.html": "99b02f083cd232a8614b7677c5e05e19932c9e7e2e2df320fa7a40da94bc5f2b",
-        "assets/web_publications/alife_search_comparison/outputs/2.html": "f63ff4a3ae0dcc80c32f5427f7ef138f52f28fdb715fbd37e8a7c448c62a1c71"
+        "assets/web_publications/alife_search_comparison/document/outputs.json": "6019f27a7d358536fb9ae16787c10685ca2c0a376f7fe232aeb61533ece6bc7b",
+        "assets/web_publications/alife_search_comparison/outputs/0.html": "b4ea4a93cfc555a909d4ae170850bfdaf2f812fd37e598e3f324bf7b0f683484",
+        "assets/web_publications/alife_search_comparison/outputs/1.html": "b46249f92cac9f8f7d57c760a714b542db0e93bcb7f0a14ee7fd7d1a05d57ccf",
+        "assets/web_publications/alife_search_comparison/outputs/2.html": "eab42204a7b0b43e22946eb314a31b4b347cbfa71326bcda740a1bd2c10280c5"
       },
       "kinds": [],
       "outputs": "assets/web_publications/alife_search_comparison/document/outputs.json",
@@ -1645,16 +1573,16 @@
       }
     },
     "assets/agent_transcripts/alife_tree_growth/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T14:44:03.173Z",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-17T20:22:40.548Z",
       "channels": 3,
       "file": "assets/web_publications/alife_tree_growth/document/metadata.edn",
       "files": {
         "assets/web_publications/alife_tree_growth/document/metadata.edn": "d48cb12ccbd38ea124dada6c04e38a671136ba934376a53dfaf87a6a1bbd0c01",
-        "assets/web_publications/alife_tree_growth/document/outputs.json": "9674dcc8e533560708a3e43ff596e3553541bf16975574659066f4b645782376",
-        "assets/web_publications/alife_tree_growth/outputs/0.html": "b5b96f350cfd4a78b9f0e42fb91d2e6ab66bd77ac807e9928ea7752bd048a949",
-        "assets/web_publications/alife_tree_growth/outputs/1.html": "34cc4087f9c8bc65a1f9fa7887aebcd62952df216b795e8e7035556e50cb4a8d",
-        "assets/web_publications/alife_tree_growth/outputs/2.html": "186acdb8d6abd23be74f4eb4145f4ed05b7ecc20193277f35d860ac6799e02f8"
+        "assets/web_publications/alife_tree_growth/document/outputs.json": "90ef389624dc7627bfda7d943d1a4448e474efe57ba8947ac755844e982cbc52",
+        "assets/web_publications/alife_tree_growth/outputs/0.html": "a1f55faf65e409840df23bb28acf8c9dd326e125c9504db0501966dcc7752941",
+        "assets/web_publications/alife_tree_growth/outputs/1.html": "c02bd4b18b915cfcc9492306f6c4a1e8e085e0bce03d73302202b54cbdf860fb",
+        "assets/web_publications/alife_tree_growth/outputs/2.html": "91c54b59b5bb277bd531b4d97ba7604196c56f4d8807b76ee939170e9b1eeb7d"
       },
       "kinds": [
         "svg"
@@ -7734,7 +7662,7 @@
   },
   "emptyDocuments": {
     "assets/agent_transcripts/ai4_repo_tools/metadata.edn": {
-      "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
       "channels": 0,
       "reason": "No output-area channels; the code remains available.",
       "sources": {
