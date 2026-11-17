@@ -263,7 +263,9 @@ struct ThreeViewerView: View {
     }
 
     private func applyTransform() {
-        let q = simd_quatf(angle: yaw, axis: [0, 1, 0]) * simd_quatf(angle: pitch, axis: [1, 0, 0])
+        // Pitch about the viewer's own x axis, applied after yaw: tipping the model always tips the face
+        // nearest the hand, even after it has been turned round (yaw-then-model-x pitched the back).
+        let q = simd_quatf(angle: pitch, axis: [1, 0, 0]) * simd_quatf(angle: yaw, axis: [0, 1, 0])
         let s = (targetRadius / modelRadius) * userScale
         pivot.orientation = q
         pivot.scale = SIMD3(repeating: s)
