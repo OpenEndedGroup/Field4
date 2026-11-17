@@ -636,20 +636,15 @@ class ThreeGeometryViewState(val uid: String) {
 
     private val sessions = CopyOnWriteArraySet<WebSocketSession>()
 
-    /** Sessions whose hello asked for `buffers`. The rest are native clients; see [forNativeClient]. */
-    private val bufferSessions = CopyOnWriteArraySet<WebSocketSession>()
-
     /**
      * The geometry as published: the description sent over the websocket (UTF-8 JSON), the part styles
-     * it was encoded with, the buffers `/three-buffers` serves for [generation], and the JSON a native
-     * client gets instead — encoded only once one asks, and `null` when it would be over the limit.
+     * it was encoded with, and the buffers `/three-buffers` serves for [generation].
      */
     private class Published(
         val generation: String,
         val description: ByteArray,
         val appearance: Map<String, ThreePartAppearance>,
         val buffers: ThreeGeometryBuffers?,
-        val native: Lazy<ByteArray?>,
     )
     private var published: Published? = null
     /**
@@ -680,19 +675,51 @@ class ThreeGeometryViewState(val uid: String) {
     /**
      * Attach a websocket session to this viewer and replay the latest payload.
      *
-     * This is used by the server's Three.js websocket handler. A session that does not fetch [buffers] —
-     * a native client, which sent a hello without them — is sent [forNativeClient] JSON instead.
+     * This is used by the server's Three.js websocket handler. Every client — the browser iframe and the
+     * native visionOS viewer alike — is sent descriptions and fetches their arrays from `/three-buffers`.
      */
     @Synchronized
-    fun attach(session: WebSocketSession, buffers: Boolean = false) {
+    fun attach(session: WebSocketSession) {
         sessions.add(session)
-        if (buffers) {
-            bufferSessions.add(session)
-            replayMessages().forEach { sendTo(session, it) }
-        } else {
-            bufferSessions.remove(session)
-            published?.let { sendNative(session, it) }
-        }
+        replayMessages().forEach { sendTo(session, it) }
+        viewState?.let { sendTo(session, it) }
+    }
+
+    /**
+     * What a viewer of this view last said it shows — explode amount and hidden part ids — as the
+     * `three/view-state` message relayed to the others. Kept so a client attaching later (the headset,
+     * opened after the parts were hidden) starts from it rather than from the assembled default.
+     */
+    @Volatile private var viewState: ByteArray? = null
+
+    /** A viewer's state changed: keep it and send it to every other client of the view. */
+    internal fun relayViewState(from: WebSocketSession, state: kotlinx.serialization.json.JsonElement) {
+        val message = kotlinx.serialization.json.buildJsonObject {
+            put("type", kotlinx.serialization.json.JsonPrimitive("three/view-state"))
+            put("uid", kotlinx.serialization.json.JsonPrimitive(uid))
+            put("state", state)
+        }.toString().encodeToByteArray()
+        viewState = message
+        sessions.forEach { if (it != from) sendTo(it, message) }
+    }
+
+    /**
+     * A command from one client of the view to the others, as `three/view-command`: the native viewer's
+     * pick, `{select: drawableId}`, which the browser viewer applies as a click. Not stored; a command
+     * is an event, not state.
+     */
+    internal fun relayViewCommand(from: WebSocketSession, command: kotlinx.serialization.json.JsonElement) {
+        val message = kotlinx.serialization.json.buildJsonObject {
+            put("type", kotlinx.serialization.json.JsonPrimitive("three/view-command"))
+            put("uid", kotlinx.serialization.json.JsonPrimitive(uid))
+            put("command", command)
+        }.toString().encodeToByteArray()
+        sessions.forEach { if (it != from) sendTo(it, message) }
+    }
+
+    /** Stop sending this view to [session]: a viewer that follows the selection has moved on. */
+    fun detach(session: WebSocketSession) {
+        sessions.remove(session)
     }
 
     /**
@@ -741,12 +768,6 @@ class ThreeGeometryViewState(val uid: String) {
         if (description.size + bufferBytes > payloadLimitBytes) {
             throw threePayloadTooLarge(uid, description.size + bufferBytes, payloadLimitBytes, costs, measured = true)
         }
-        val limit = payloadLimitBytes
-        val native = lazy {
-            encodeForNativeClient(threeJson, payload.stamped(), limit).also { if (it != null) encodes.incrementAndGet() }
-        }
-        // Encoded here, outside the lock, when a native client is already listening.
-        if (sessions.any { it !in bufferSessions } || threeGlobalListeners.isNotEmpty()) native.value
         synchronized(this) {
             val nextSession = payload.scene?.sessionId?.takeIf { it.isNotEmpty() }
             if (ticket < updatesCommitted) {
@@ -761,7 +782,7 @@ class ThreeGeometryViewState(val uid: String) {
             if (editSessionId != nextSession) editSessionId?.let(::removeFLineEditSession)
             editSessionId = nextSession
 
-            val next = Published(generation, description, appearance, split.buffers, native)
+            val next = Published(generation, description, appearance, split.buffers)
             published?.let { old -> old.buffers?.let { recentBuffers.addLast(old.generation to it) } }
             while (recentBuffers.size > RECENT_GENERATIONS) recentBuffers.removeFirst()
             published = next
@@ -769,10 +790,8 @@ class ThreeGeometryViewState(val uid: String) {
                 split.description.buffers?.entries?.size ?: 0, description.size.toLong(), split.buffers?.bytes ?: 0L,
                 (System.nanoTime() - began) / 1e6)
             onBroadcast?.invoke(description)
-            sessions.forEach { if (it in bufferSessions) sendTo(it, description) else sendNative(it, next) }
-            // Global listeners (native "subscribe-all" viewers) see every view's updates, including
-            // newly-created views: threeLines() calls update() right after creating the view.
-            threeGlobalListeners.forEach { sendNative(it, next) }
+            sessions.forEach { sendTo(it, description) }
+            threeFollowViewPublished(this)
             // A style that landed while this was encoding is not in it.
             val current = storedAppearance()[appearanceKey()].orEmpty()
             if (current != appearance) broadcast(appearanceMessage(replace = true, parts = current))
@@ -866,29 +885,9 @@ class ThreeGeometryViewState(val uid: String) {
         else listOf(appearanceMessage(replace = true, parts = current, beforeGeometry = true), geometry.description)
     }
 
-    /** What a native client attaching now is sent: [forNativeClient] JSON, or nothing when over the limit. */
-    internal fun nativeMessage(): ByteArray? = synchronized(this) { published }?.native?.value
-
     private fun broadcast(message: ByteArray) {
         onBroadcast?.invoke(message)
         sessions.forEach { sendTo(it, message) }
-        threeGlobalListeners.forEach { sendTo(it, message) }
-    }
-
-    /**
-     * Send [geometry]'s native JSON. When nobody has asked for it yet it is encoded off this thread —
-     * which may be a websocket thread — and sent only if it is still the view's geometry by then.
-     */
-    private fun sendNative(session: WebSocketSession, geometry: Published) {
-        if (geometry.native.isInitialized()) {
-            geometry.native.value?.let { sendTo(session, it) }
-            return
-        }
-        @OptIn(DelicateCoroutinesApi::class)
-        GlobalScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            val bytes = geometry.native.value ?: return@launch
-            synchronized(this@ThreeGeometryViewState) { if (published === geometry) sendTo(session, bytes) }
-        }
     }
 
     private fun sendTo(session: WebSocketSession, message: ByteArray) {
@@ -900,7 +899,7 @@ class ThreeGeometryViewState(val uid: String) {
     private val pendingSnapshots = java.util.concurrent.ConcurrentHashMap<String, kotlinx.coroutines.CompletableDeferred<ByteArray>>()
 
     /** Whether a browser viewer is attached, so [snapshot] has someone to ask. */
-    val hasViewer: Boolean get() = sessions.any { it in bufferSessions }
+    val hasViewer: Boolean get() = sessions.isNotEmpty()
 
     /**
      * A PNG of the view as a person sees it — the viewer's own canvas, drawn with its camera where the
@@ -919,7 +918,7 @@ class ThreeGeometryViewState(val uid: String) {
                 put("type", kotlinx.serialization.json.JsonPrimitive("three/snapshot-request"))
                 put("id", kotlinx.serialization.json.JsonPrimitive(id))
             }.toString().toByteArray(Charsets.UTF_8)
-            sessions.filter { it in bufferSessions }.forEach { sendTo(it, request) }
+            sessions.forEach { sendTo(it, request) }
             return kotlinx.coroutines.withTimeoutOrNull(timeoutMs) { answer.await() }
         } finally {
             pendingSnapshots.remove(id)
@@ -931,12 +930,6 @@ class ThreeGeometryViewState(val uid: String) {
         val answer = pendingSnapshots[id] ?: return
         val b64 = dataUrl.substringAfter("base64,", "")
         runCatching { java.util.Base64.getDecoder().decode(b64) }.getOrNull()?.takeIf { it.isNotEmpty() }?.let { answer.complete(it) }
-    }
-
-    /** Send the last payload to a newly-attached global listener (replay on subscribe-all). */
-    @Synchronized
-    fun replayTo(session: WebSocketSession) {
-        published?.let { sendNative(session, it) }
     }
 
     internal fun cameraLinkScope(): String? = reviewInbox.owner?.let(::threeDocumentScope)
@@ -1007,23 +1000,77 @@ internal fun threeGeometryReviewImage(uid: String, hash: String): ByteArray? = (
  * The view for a uid, created on first use.
  *
  * `internal` so [Box.three] can register a view the same way [Box.threeLines] does. Going through one
- * function rather than two `computeIfAbsent` calls on a private map is what keeps `subscribe-all` and
+ * function rather than two `computeIfAbsent` calls on a private map is what keeps [threeFollowers] and
  * the websocket attach path seeing every view, however it was made.
  */
 internal fun threeViewFor(uid: String): ThreeGeometryViewState =
     knownThreeViews.computeIfAbsent(uid) { ThreeGeometryViewState(uid) }
 
 /**
- * Sessions that asked to see *every* live Three.js view, not just one keyed by uid (the web viewer
- * always knows its uid from the iframe URL; a native/headless client that wants to discover live
- * views does not). [ThreeGeometryViewState.update] broadcasts to these in addition to a view's own
- * attached sessions, so a global listener receives new views the moment they publish.
+ * A client that shows whatever views belong to the box selected in Field — the native visionOS viewer,
+ * which has no iframe URL to learn a uid from. It sends `follow` (optionally naming a `document`) and is
+ * sent a `three/follow` message whenever the selection or the set of its views changes; it then attaches
+ * to those uids with an ordinary hello and gets the same descriptions and buffers a browser does.
  */
-private val threeGlobalListeners = CopyOnWriteArraySet<WebSocketSession>()
+private class ThreeFollower(val document: String?) {
+    /** The last announcement, so an unchanged one is not resent on every geometry update. */
+    @Volatile var announced: String? = null
+}
 
-/** Remove a session from the global-listener set — called from the `/ws` finally block. */
-fun detachThreeGlobalListener(session: WebSocketSession) {
-    threeGlobalListeners.remove(session)
+private val threeFollowers = ConcurrentHashMap<WebSocketSession, ThreeFollower>()
+
+/** The most recent selection made in any Field window, per document name; `""` holds the newest of all. */
+private val threeFollowedSelection = ConcurrentHashMap<String, List<Box>>()
+
+/**
+ * Field's selection changed in [document]: tell every follower of it what to show. Called from
+ * [recordControllerSelection], which every front end's `controller-selection` reaches.
+ */
+fun threeFollowSelection(document: String, selected: List<Box>) {
+    threeFollowedSelection[document] = selected
+    threeFollowedSelection[""] = selected
+    threeFollowers.forEach { (session, follower) -> announceFollow(session, follower) }
+}
+
+/** A view's geometry was published: a follower of its owner may be seeing this view for the first time. */
+private fun threeFollowViewPublished(view: ThreeGeometryViewState) {
+    if (threeFollowers.isEmpty()) return
+    val owner = view.reviewInbox.owner ?: return
+    threeFollowers.forEach { (session, follower) ->
+        if (threeFollowedSelection[follower.document.orEmpty()].orEmpty().any { it === owner }) announceFollow(session, follower)
+    }
+}
+
+private fun announceFollow(session: WebSocketSession, follower: ThreeFollower) {
+    val selected = threeFollowedSelection[follower.document.orEmpty()].orEmpty()
+    val views = threeViewsOwnedBy(selected).filter { it.sourcePayload != null }
+    val message = kotlinx.serialization.json.buildJsonObject {
+        put("type", kotlinx.serialization.json.JsonPrimitive("three/follow"))
+        put("selected", kotlinx.serialization.json.JsonArray(selected.map { box ->
+            kotlinx.serialization.json.buildJsonObject {
+                put("box", kotlinx.serialization.json.JsonPrimitive(box.id))
+                put("name", kotlinx.serialization.json.JsonPrimitive(box.getPropertyRaw("name") as? String ?: box.id))
+            }
+        }))
+        put("views", kotlinx.serialization.json.JsonArray(views.map { view ->
+            kotlinx.serialization.json.buildJsonObject {
+                put("uid", kotlinx.serialization.json.JsonPrimitive(view.uid))
+                put("box", kotlinx.serialization.json.JsonPrimitive(view.reviewInbox.owner?.id.orEmpty()))
+                // `<scope>_<box id>_<name>` (threeViewerUid): what the author called the view.
+                val owner = view.reviewInbox.owner?.id
+                put("name", kotlinx.serialization.json.JsonPrimitive(owner?.let { view.uid.substringAfter("${it}_", view.uid) } ?: view.uid))
+            }
+        }))
+    }.toString()
+    if (message == follower.announced) return
+    follower.announced = message
+    inMain { runCatching { session.send(Frame.Text(message)) } }
+}
+
+/** Forget a closed `/ws` session everywhere a Three.js view or follower holds it — from the `/ws` finally block. */
+fun detachThreeSession(session: WebSocketSession) {
+    threeFollowers.remove(session)
+    knownThreeViews.values.forEach { it.detach(session) }
 }
 
 @RunsAt(installHandlers)
@@ -1140,18 +1187,26 @@ fun installThreeJsHandler() {
                     runCatching { editSession.clear() }
                 }
             }
-            "subscribe-all" -> {
-                // A discovery client (e.g. the native visionOS viewer) that wants every live view,
-                // not one uid. Register it as a global listener and replay all known views' last
-                // payloads immediately; future updates arrive via update()'s global broadcast.
-                threeGlobalListeners.add(session)
-                knownThreeViews.values.forEach { it.replayTo(session) }
+            "follow" -> {
+                // A client that shows the selected box's views (the native visionOS viewer). `debug_uid`
+                // is not a view here; the views arrive in `three/follow` and are attached by hello.
+                val document = payload["document"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
+                val follower = ThreeFollower(document)
+                threeFollowers[session] = follower
+                announceFollow(session, follower)
+            }
+            "detach" -> knownThreeViews[uid]?.detach(session)
+            "three-view-state" -> {
+                val state = payload["state"] as? kotlinx.serialization.json.JsonObject ?: return@add Handled.no
+                knownThreeViews[uid]?.relayViewState(session, state)
+            }
+            "three-view-command" -> {
+                val command = payload["command"] as? kotlinx.serialization.json.JsonObject ?: return@add Handled.no
+                knownThreeViews[uid]?.relayViewCommand(session, command)
             }
             else -> {
-                // Default: treat as a hello/attach message. The web viewer's hello asks for `buffers`;
-                // a native client's does not, and it is sent JSON it can decode.
-                val viewer = knownThreeViews.computeIfAbsent(uid) { ThreeGeometryViewState(uid) }
-                viewer.attach(session, buffers = payload["buffers"] != null)
+                // Default: treat as a hello/attach message.
+                threeViewFor(uid).attach(session)
             }
         }
         Handled.yes

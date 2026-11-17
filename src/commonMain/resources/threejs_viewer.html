@@ -5761,6 +5761,7 @@ function inspectorCapture(payload) {
         inspectorState.interactive.push({ index: index, group: Number.isFinite(obj.group) ? obj.group : -1 });
     });
 
+    inspectorState.groupOffsets = [];
     if (!spec || !spec.enabled) {
         inspectorState.centroids = [];
         return;
@@ -5877,6 +5878,7 @@ function inspectorApplyExplode() {
         explodeBoundsCentre(inspectorState.bounds),
         { amount: inspectorState.explodeAmount, mode: explode.mode || 'radial', axis: explode.axis || [0, 1, 0] }
     );
+    inspectorState.groupOffsets = offsets;
     inspectorMovableSlots().forEach((slot) => {
         if (!slot.base) return;
         const attribute = slot.object.geometry.getAttribute('position');
@@ -6933,7 +6935,79 @@ function inspectorRefresh() {
     if (motionState.entries.length) motionReadout();
     inspectorPartsSync();
     inspectorRebuildOverlay();
+    viewStateSend();
 }
+
+// [viewer-region view-state-mirror] BEGIN
+// What this viewer is showing, sent to Field, which relays it to every other client of the view
+// (`three-view-state` in ThreeJsViewer.kt). The native visionOS viewer mirrors it, so the controls stay
+// here, in the Field you are coding in. At most one message a frame, the last state always sent; an
+// unchanged state is not resent. It is sent after every frame drawn, so whatever moved a part — the
+// explode slider, a motion slider, an assembly step, a shot's keyframes — reaches the mirror as the
+// result, never as a second implementation of the arithmetic:
+//
+//  * `placements`: each drawable's matrix, column-major, relative to the geometry root, by drawable id.
+//  * `groupOffsets`: the explode offset of each assembly group, which the batched FLines move by.
+//  * `hidden`, `explode`, `selected` (a drawable id), `xray` ({enabled, opacity}).
+//  * `shot`: while a shot plays, its look's `explode` (scaling each drawable's per-vertex `explode`
+//    attribute) and `xray` (mixing a surface between its `solidOpacity` and authored opacity).
+//
+// The other way, `three/view-command` from Field carries `{select: id}`: a part picked on the headset.
+const viewStateOut = { last: '', timer: null };
+/** The shot's look this frame: how far its per-vertex explode is applied and its x-ray mix. */
+const viewStateShot = { explode: 0, xray: 0 };
+const viewStateRound = (v) => Math.abs(v) < 1e-9 ? 0 : Number(v.toPrecision(6));
+const viewStateRootInverse = new THREE.Matrix4();
+const viewStateMatrix = new THREE.Matrix4();
+function viewStateCollect() {
+    const hidden = [];
+    for (const source of featureSources()) {
+        const id = source.slot && source.slot.stableId;
+        if (id && inspectorState.hidden.has(source.id)) hidden.push(id);
+    }
+    baseGeometryRoot.updateMatrixWorld();
+    viewStateRootInverse.copy(baseGeometryRoot.matrixWorld).invert();
+    const placements = {};
+    for (const slot of payloadGeometrySlots.drawables) {
+        if (!slot || !slot.object || !slot.stableId) continue;
+        viewStateMatrix.multiplyMatrices(viewStateRootInverse, slot.object.matrixWorld);
+        placements[slot.stableId] = viewStateMatrix.elements.map(viewStateRound);
+        if (!slot.object.visible) hidden.push(slot.stableId);
+    }
+    const selected = featureSources().find((s) => s.id === inspectorState.selectedPart)?.slot?.stableId || null;
+    return {
+        explode: inspectorState.explodeAmount || 0,
+        hidden: [...new Set(hidden)].sort(),
+        placements,
+        groupOffsets: (inspectorState.groupOffsets || []).map((o) => o.map(viewStateRound)),
+        selected,
+        xray: { enabled: !!xrayState.enabled, opacity: xrayState.opacity },
+        shot: shot.active() ? { explode: viewStateRound(viewStateShot.explode), xray: viewStateRound(viewStateShot.xray) } : null,
+    };
+}
+function viewStateSend() {
+    if (viewStateOut.timer) return;
+    viewStateOut.timer = setTimeout(() => {
+        viewStateOut.timer = null;
+        const state = viewStateCollect();
+        const text = JSON.stringify(state);
+        if (text === viewStateOut.last) return;
+        viewStateOut.last = text;
+        sendMessage({ type: 'three-view-state', state });
+    }, 16);
+}
+/** A command from a mirror: select the part it picked, as a click here would. */
+function viewCommandReceive(message) {
+    const id = message && message.command && message.command.select;
+    if (id === undefined) return;
+    const source = id ? featureSources().find((s) => s.slot && s.slot.stableId === id) : null;
+    inspectorState.selection = null;
+    inspectorState.selectedTriangle = null;
+    inspectorState.selectedPart = source ? source.id : null;
+    inspectorRefresh();
+    requestRender();
+}
+// [viewer-region view-state-mirror] END
 
 function inspectorUpdateHud() {
     const spec = inspectorState.spec;
@@ -7815,6 +7889,8 @@ function connectWs() {
         }
         if(message.type==='three-review-ack'){featureSaving=false; featureHud(); featureMessage(message.message,!message.ok);return;}
         if (message.type === 'three/snapshot-request') { answerSnapshot(message.id); return; }
+        if (message.type === 'three/view-command') { viewCommandReceive(message); return; }
+        if (message.type === 'three/view-state') return;
         wireReceive(message);
     });
     ws.addEventListener('close', () => {
@@ -8529,6 +8605,7 @@ function renderGeometry(viewCamera) {
 
 /** This frame's shot: explode the parts, mix the surfaces' opacity, and dolly the camera. */
 function applyShotLook(look) {
+    viewStateShot.explode = look.explode; viewStateShot.xray = look.xray;
     for (const slot of payloadGeometrySlots.drawables) {
         if (!slot?.object) continue;
         if (slot.explode && Math.abs(slot.explode.applied - look.explode) > 1e-5) {
@@ -8553,6 +8630,7 @@ function applyShotLook(look) {
 }
 
 function render() {
+    viewStateSend();
     if (cameraFollow.step()) requestRender();
     const turn = film ? null : turntable.step();
     if (turn !== null) { turnCamera(turn); requestRender(); }

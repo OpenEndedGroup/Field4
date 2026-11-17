@@ -65,7 +65,7 @@ struct ServerConfig {
 /// address, and the Tailscale machine (`mi2` / any `*.ts.net`). Overriding trust here also covers
 /// the cert's hostname mismatch — it is issued for `localhost`, so reaching it as `mi2` or as a bare
 /// IP literal fails both the self-signed *and* the name-check tests. Shared by the WebView docks
-/// (`WebDock`) and the FLine WebSocket client (`FLineViewerClient`). Anything else falls back to
+/// (`WebDock`) and the three.js viewer client (`ThreeClient`). Anything else falls back to
 /// normal validation.
 ///
 /// The private-range allowance is deliberately narrow: RFC1918 + link-local only, so a public host

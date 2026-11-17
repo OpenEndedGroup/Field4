@@ -20,7 +20,7 @@ struct ContentView: View {
     @State private var immersiveOpen = false
     @Environment(\.openWindow) private var openWindow
     @Environment(RTTStream.self) private var rtt
-    @Environment(FLineViewerClient.self) private var flineClient
+    @Environment(ThreeClient.self) private var threeClient
     @Environment(LiveMetalClient.self) private var liveMetalClient
     @Environment(\.openImmersiveSpace) private var openImmersiveSpace
     @Environment(\.dismissImmersiveSpace) private var dismissImmersiveSpace
@@ -61,12 +61,12 @@ struct ContentView: View {
             if ProcessInfo.processInfo.environment["FIELD4_RTT_AUTOSTART"] == "1", !immersiveOpen {
                 await toggleImmersive()
             }
-            // Headless testing: `FIELD4_FLINE_AUTOSTART=1` starts the FLine discovery client and opens
-            // the native viewer window on launch (simctl can't tap the "FLine 3D" ornament button).
-            // Pass via `SIMCTL_CHILD_FIELD4_FLINE_AUTOSTART=1`.
-            if ProcessInfo.processInfo.environment["FIELD4_FLINE_AUTOSTART"] == "1" {
-                flineClient.start()
-                openWindow(id: Field4VisionApp.flineWindowID)
+            // Headless testing: `FIELD4_THREE_AUTOSTART=1` starts the selection-following three.js
+            // client and opens its volume on launch (simctl can't tap the "3D View" ornament button).
+            // Pass via `SIMCTL_CHILD_FIELD4_THREE_AUTOSTART=1`.
+            if ProcessInfo.processInfo.environment["FIELD4_THREE_AUTOSTART"] == "1" {
+                threeClient.start()
+                if threeClient.openVolumes == 0 { openWindow(id: Field4VisionApp.threeWindowID) }
             }
             if ProcessInfo.processInfo.environment["FIELD4_LIVE_METAL_AUTOSTART"] == "1",
                !liveMetalClient.immersiveRequested {
@@ -133,14 +133,13 @@ struct ContentView: View {
             } label: {
                 Label("Floating Editor", systemImage: "chevron.left.forwardslash.chevron.right")
             }
-            // The first native viewer: opens the RealityKit FLine viewer window and starts
-            // its discovery subscription (idempotent). Shows any live threeLines() view.
+            // Opens the native three.js viewer and starts following Field's selection (idempotent).
             Button {
-                shellLog.notice("tap: fline-3d")
-                flineClient.start()
-                openWindow(id: Field4VisionApp.flineWindowID)
+                shellLog.notice("tap: three-3d")
+                threeClient.start()
+                if threeClient.openVolumes == 0 { openWindow(id: Field4VisionApp.threeWindowID) }
             } label: {
-                Label("FLine 3D", systemImage: "scribble.variable")
+                Label("3D View", systemImage: "cube.transparent")
             }
             Button {
                 shellLog.notice("tap: undock (selected=\(manager.selectedDock?.title ?? "nil", privacy: .public))")
@@ -280,6 +279,6 @@ struct ContentView: View {
 #Preview(windowStyle: .automatic) {
     ContentView()
         .environment(RTTStream())
-        .environment(FLineViewerClient())
+        .environment(ThreeClient())
         .environment(LiveMetalClient())
 }
