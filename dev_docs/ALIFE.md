@@ -525,26 +525,19 @@ box printed an error — so "195 iso-contour FLines" was a number nobody could c
   Euler characteristic with a non-zero triangle count (an empty mesh is vacuously watertight, and the
   first version of that figure passed that way).
 
-**`isoContourFLines` does not encode a hole by winding direction, and nothing said so.** An annulus
-contours to two loops whose signed areas are **both positive** (15408.2 and 3862.2 for `R = 70`,
-`r = 35`). Each loop is right to better than 0.4 % of its own circle, so the geometry is fine — but the
-orientation carries no information, and the consequence is concrete:
+**`isoContourFLines` encodes a hole by winding direction.** Since `ea0fbf2170` (2026-10-27)
+`contours.kt` orients every segment with the inside on its left, so an outer boundary comes back
+counter-clockwise and a hole clockwise. An annulus (`R = 70`, `r = 35`) contours to two loops with signed
+areas of opposite sign (-15408.2 and 3862.2 in image coordinates), and their sum is the annulus:
 
 ```kotlin
-loops.sumOf { flineSignedArea(listOf(it)) }        // 19270 — 67 % too high for an annulus
-abs(outer) - abs(inner)                            // 11546 vs the exact 11545.4 — 0.006 %
+abs(loops.sumOf { flineSignedArea(listOf(it)) })   // 11546 vs the exact 11545.4 — 0.006 %
 ```
 
-Anything that fills, booleans or exports these curves has to identify the hole by some means other than
-its winding — containment, or area magnitude. This is **not a violated contract**: `contours.kt` promises
-no winding convention anywhere (its one "counter-clockwise" comment is about a marching cell's corner
-ordering, not the output loop). It is undocumented behaviour, which is why it is now an assertion.
-
-That assertion is also a deliberate tripwire on a live coupling. `contours.kt` is shared code and its
-marching-squares behaviour is being changed on another branch as of 2026-07-29. **This branch only ever
-*consumes* `contours.kt` — it does not edit it.** If winding becomes orientation-aware there, the
-same-sign assertion in `figureBridgeFLines` fails and names the reason in one line, rather than the
-annulus area quietly starting to come out right for a reason nobody wrote down. Every other claim in that
+Before that change both loops came back with the same sign, the naive sum read 19270 (67 % high), and
+`figureBridgeFLines` pinned that as a tripwire on `contours.kt`. It tripped as intended; the stdlib
+gallery smoke was red from then until 2026-11-17, when the figure was changed to assert the contract
+instead. Every other claim in that
 figure is stated as the area or perimeter of a circle, which is the form that survives a correct
 reimplementation and still fails a wrong one.
 
