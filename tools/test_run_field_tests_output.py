@@ -7,7 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from tools.run_field_tests import evaluate_expectations, render_event_text
+from tools.run_field_tests import collect_output_gap, evaluate_expectations, render_event_text
 
 
 class OutputExpectationTests(unittest.TestCase):
@@ -94,6 +94,20 @@ class TimeoutFlagTests(unittest.TestCase):
         args = parse_args(["--id", "a.b", "--port", "9690"])
         self.assertEqual(args.ids, ["a.b"])
         self.assertEqual(args.port, 9690)
+
+
+class OutputGapTests(unittest.TestCase):
+    @staticmethod
+    def gap(snippet, *values):
+        events = [{"name": "set-output", "payload": {"channel": "main", "value": v}} for v in values]
+        return collect_output_gap({"snippet": snippet}, [{"events": events}])
+
+    def test_lines_inside_a_three_viewer_draw_into_its_iframe(self):
+        frame = "<iframe src='/threejs?uid=a_b_strip'></iframe>"
+        self.assertIsNone(self.gap('three(name = "strip") {\n    lines(poses)\n}', frame))
+
+    def test_lines_without_svg_still_fails(self):
+        self.assertIn("no SVG output", self.gap("lines(poses)", "<div>text</div>"))
 
 
 if __name__ == "__main__":

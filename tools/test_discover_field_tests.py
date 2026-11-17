@@ -240,6 +240,18 @@ class MarkdownSectionTests(unittest.TestCase):
         sections = split_markdown_sections(body, body_start_line=10)
         self.assertEqual("val a = 1\nprintln(a)", sections["static"]["text"])
 
+    def test_lines_above_the_first_marker_run_with_the_fence(self) -> None:
+        """The docs runner runs an import written above `:::static`; a smoke must too."""
+        body = "import kotlinx.coroutines.*\n\n:::static\n:::fold setup\nval a = 1\n:::endfold\nprintln(a)\n"
+        sections = split_markdown_sections(body, body_start_line=10)
+        self.assertEqual("import kotlinx.coroutines.*\n\nval a = 1\nprintln(a)", sections["static"]["text"])
+        self.assertEqual(10, sections["static"]["line"])
+
+    def test_lines_above_after_are_the_before_section(self) -> None:
+        sections = split_markdown_sections("val a = 1\n:::after\nval a = 2\n", body_start_line=5)
+        self.assertEqual("val a = 1", sections["before"]["text"])
+        self.assertEqual("val a = 2", sections["after"]["text"])
+
 
 if __name__ == "__main__":
     unittest.main()

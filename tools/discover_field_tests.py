@@ -585,14 +585,22 @@ def split_markdown_sections(body: str, *, body_start_line: int) -> dict[str, dic
         if stripped.startswith(":::"):
             candidate = stripped[3:].strip()
             if candidate in DIFF_SECTION_NAMES:
+                # Lines above the first marker are code too. The docs runner skips `:::static` as a
+                # marker line and starts a diff fence in `before` (public/docs_hooks.py,
+                # split_diff_sections), so an `import` written above `:::static` runs there; a smoke
+                # that dropped it failed to compile what the page compiles.
+                leading = current_lines if current_name is None else []
                 if current_name is not None:
                     sections[current_name] = {
                         "text": "\n".join(current_lines).strip("\n"),
                         "line": current_line,
                     }
+                elif any(l.strip() for l in leading) and candidate == "after":
+                    sections["before"] = {"text": "\n".join(leading).strip("\n"), "line": body_start_line}
+                    leading = []
                 current_name = candidate
-                current_lines = []
-                current_line = body_start_line + offset + 1
+                current_lines = list(leading) if any(l.strip() for l in leading) else []
+                current_line = body_start_line if current_lines else body_start_line + offset + 1
                 continue
             # Fold markers collapse setup on the page; the docs runner drops the marker and runs
             # what it encloses (public/docs_hooks.py, is_marker_line), and so does a smoke.
