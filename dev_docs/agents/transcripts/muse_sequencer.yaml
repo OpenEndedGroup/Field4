@@ -50,19 +50,45 @@ operations:
               val m = hands()
               val state = if (lockLength >= 1) "locked: ${m.rightLoop}" else "free"
               showPatRollOf(
-                  "left" to m.leftPattern(), "right" to m.rightPattern(),
-                  title = "PatMuse(seed = ${seed.toInt()})", subtitle = state, cycles = 8, pitched = true, channel = "roll",
+                  "left" to m.leftPattern(),
+                  "right" to m.rightPattern(),
+                  title = "PatMuse(seed = ${seed.toInt()})",
+                  subtitle = state,
+                  cycles = 8,
+                  pitched = true,
+                  channel = "roll",
               )
           }
 
           controlGroup("loop", columns = 4) {
-              slider("seed", 1.0, 64.0, 1.0, seed) { seed = it; redraw() }
-              slider("lock length (0 = free)", 0.0, 64.0, 1.0, lockLength) { lockLength = it; redraw() }
-              slider("lock at cycle", 1.0, 16.0, 1.0, lockAt) { lockAt = it; redraw() }
-              slider("improvise", 0.0, 1.0, 0.05, improvise) { improvise = it; redraw() }
-              slider("start", 0.0, 63.0, 1.0, start) { start = it; redraw() }
-              slider("end", 1.0, 64.0, 1.0, end) { end = it; redraw() }
-              slider("direction", 0.0, 2.0, 1.0, direction) { direction = it; redraw() }
+              slider("seed", 1.0, 64.0, 1.0, seed) {
+                  seed = it
+                  redraw()
+              }
+              slider("lock length (0 = free)", 0.0, 64.0, 1.0, lockLength) {
+                  lockLength = it
+                  redraw()
+              }
+              slider("lock at cycle", 1.0, 16.0, 1.0, lockAt) {
+                  lockAt = it
+                  redraw()
+              }
+              slider("improvise", 0.0, 1.0, 0.05, improvise) {
+                  improvise = it
+                  redraw()
+              }
+              slider("start", 0.0, 63.0, 1.0, start) {
+                  start = it
+                  redraw()
+              }
+              slider("end", 1.0, 64.0, 1.0, end) {
+                  end = it
+                  redraw()
+              }
+              slider("direction", 0.0, 2.0, 1.0, direction) {
+                  direction = it
+                  redraw()
+              }
           }
           controlGroup("right hand", columns = 4) {
               weights("degree", muse.right.degree) { redraw() }
@@ -75,7 +101,9 @@ operations:
               weights("length", muse.left.rhythm) { redraw() }
           }
           redraw()
-          val r = pianoRender(17.0, Piano(sampleRate = 44_100)) { play(hands().pattern(), cycles = 8, cps = 0.5, velocity = 1.0, startFrame = 0) }
+          val r = pianoRender(17.0, Piano(sampleRate = 44_100)) {
+              play(hands().pattern(), cycles = 8, cps = 0.5, velocity = 1.0, startFrame = 0)
+          }
           showPianoAudio(r, "listen")
           ["loop", "roll", "listen"].forEach { displayOpen(it) }
 
@@ -89,9 +117,11 @@ operations:
           val free = muse.rightPattern()
           muse.lock(8, atCycle = 4)
           showPatRollOf(
-              "free" to free, "locked" to muse.rightPattern(),
+              "free" to free,
+              "locked" to muse.rightPattern(),
               title = "right hand: free, then the last 8 events before cycle 4, locked",
-              cycles = 8, pitched = true,
+              cycles = 8,
+              pitched = true,
           )
 
   - create:
@@ -105,8 +135,11 @@ operations:
           val plain = loop.pattern()
           loop.improvise = 0.4
           showPatRollOf(
-              "locked" to plain, "improvise 0.4" to loop.pattern(),
-              title = "the same loop, plain and improvising", cycles = 8, pitched = true,
+              "locked" to plain,
+              "improvise 0.4" to loop.pattern(),
+              title = "the same loop, plain and improvising",
+              cycles = 8,
+              pitched = true,
           )
 
   - create:
@@ -120,7 +153,13 @@ operations:
           val before = loop.pattern()
           loop.set(2, degrees = listOf(7, 9, 11), velocity = 0.8)
           loop.set(7, degrees = emptyList())
-          showPatRollOf("as locked" to before, "edited" to loop.pattern(), title = "editing a locked loop", cycles = 4, pitched = true)
+          showPatRollOf(
+              "as locked" to before,
+              "edited" to loop.pattern(),
+              title = "editing a locked loop",
+              cycles = 4,
+              pitched = true,
+          )
           println(loop)
 
   - create:

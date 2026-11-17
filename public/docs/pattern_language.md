@@ -898,8 +898,12 @@ draws both hands as a roll and redraws it whenever a slider moves:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/pattern_language/muse-weights.png" wait="3" capture="box" open-outputs="true" name="pat-doc-muse-weights"}
 val muse = PatMuse(seed = 3)
 fun redraw() = showPatRollOf(
-    "left" to muse.leftPattern(), "right" to muse.rightPattern(),
-    title = "PatMuse(seed = 3)", cycles = 4, pitched = true, channel = "roll",
+    "left" to muse.leftPattern(),
+    "right" to muse.rightPattern(),
+    title = "PatMuse(seed = 3)",
+    cycles = 4,
+    pitched = true,
+    channel = "roll",
 )
 controlGroup("right hand", columns = 2) {
     weights("degree", muse.right.degree) { redraw() }
@@ -926,9 +930,11 @@ val muse = PatMuse(seed = 3)
 val free = muse.rightPattern()
 muse.lock(8, atCycle = 4)
 showPatRollOf(
-    "free" to free, "locked" to muse.rightPattern(),
+    "free" to free,
+    "locked" to muse.rightPattern(),
     title = "right hand: free, then the last 8 events before cycle 4, locked",
-    cycles = 8, pitched = true,
+    cycles = 8,
+    pitched = true,
 )
 ```
 
@@ -962,8 +968,11 @@ val loop = muse.rightLoop!!
 val plain = loop.pattern()
 loop.improvise = 0.4
 showPatRollOf(
-    "locked" to plain, "improvise 0.4" to loop.pattern(),
-    title = "the same loop, plain and improvising", cycles = 8, pitched = true,
+    "locked" to plain,
+    "improvise 0.4" to loop.pattern(),
+    title = "the same loop, plain and improvising",
+    cycles = 8,
+    pitched = true,
 )
 ```
 
