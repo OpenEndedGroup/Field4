@@ -268,9 +268,9 @@ struct ThreeViewerView: View {
         let label: ThreeLabel
     }
 
-    /// An attachment's points come out a few millimetres tall at the volume's distance; this makes a
-    /// chip about as legible as the browser's 12 px one.
-    private static let labelScale: Float = 2.5
+    /// An attachment's points come out a few millimetres tall at the volume's distance; on the headset this
+    /// matches the browser's 12 px chip (2.5, judged in the simulator, read twice as large on the device).
+    private static let labelScale: Float = 1.25
 
     private var labelItems: [LabelItem] {
         guard let scene = client.shownScene else { return [] }
