@@ -3031,6 +3031,38 @@
         "public/docs/assets/agent_transcripts/morpho_circuit_search/morpho_search_recursion_code_.kt": "87c3d4297324a59069f153b1585ca8c4e7d6af518c1f48a58f766584bc507cb2"
       }
     },
+    "assets/agent_transcripts/muse_sequencer/metadata.edn": {
+      "captureDigest": "cd0d895ab146dbd5ef911e3f6bb1ac6b101799610fa996220d33d772c2d94244",
+      "capturedAt": "2026-11-17T11:04:39.337Z",
+      "channels": 8,
+      "file": "assets/web_publications/muse_sequencer/document/metadata.edn",
+      "files": {
+        "assets/web_publications/muse_sequencer/document/metadata.edn": "3bf6510cbfc1ffe736e0d4c91512681bad773da0921b8473f500fc6e09928795",
+        "assets/web_publications/muse_sequencer/document/outputs.json": "517441c9bd32349b55116c3515d55758a4f4d67f7a2c2c4891a5ae0ee1a81fac",
+        "assets/web_publications/muse_sequencer/outputs/0.html": "b6c034c6726c8863e57317aa90158d9d954ddf93eb985b2db30c8582a6ab7775",
+        "assets/web_publications/muse_sequencer/outputs/1.html": "68b141b4050efa67ba0a2ef79025fa6c11ef4515faf47b3b48471e5fd6bb9203",
+        "assets/web_publications/muse_sequencer/outputs/2.html": "27eb72ba87af921ecb21d22024f6a7f961f3bcd45900a9d4e8d50c94a50f5a2a",
+        "assets/web_publications/muse_sequencer/outputs/3.html": "95f160c976b2a26b4e3348334766345e5350bc64d265d2ac60012ca36c3a6899",
+        "assets/web_publications/muse_sequencer/outputs/4.html": "47aa061c6aadab1cce8f382e82aea34051ecf23100e06ddb89ceb2b6caf0a578",
+        "assets/web_publications/muse_sequencer/outputs/5.html": "ecc4a191511087c6ace82a62a83b06d467cd15986e681d9f5bbd1c555c0560a7",
+        "assets/web_publications/muse_sequencer/outputs/6.html": "f18bf66da957ce993250a10073f910dba6990a00fcb8d1c0fa0a83c4e315d1c8",
+        "assets/web_publications/muse_sequencer/outputs/7.html": "fed2d60acabc0785449201a136597212e422dbb8fdf6132fdc83fd30b0b0b001"
+      },
+      "kinds": [
+        "svg"
+      ],
+      "outputs": "assets/web_publications/muse_sequencer/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/muse_sequencer.yaml": "e32f3d74f27bb5e1f90246d6bcf0783e4b7024ce35a4ab319a38adeeda0c4f0a",
+        "public/docs/assets/agent_transcripts/muse_sequencer/guides/pattern_language.md": "4810eceef952da33e4500533770d2eeaac786452852588d00fb8e06f8a0e2aff",
+        "public/docs/assets/agent_transcripts/muse_sequencer/metadata.edn": "3b3c3ab2c06ad8c269f6bbf9cc47634672af7fa19b6cf14827f98281b8f3cdbf",
+        "public/docs/assets/agent_transcripts/muse_sequencer/muse_edit_code_.kt": "b28004885bcab136b4f3f072fc4d0064041e9e16b6de699423a1411c3824ed67",
+        "public/docs/assets/agent_transcripts/muse_sequencer/muse_live_code_.kt": "7f0abb408453d8053ca48eb081136359b3318497af28427938a499f450019851",
+        "public/docs/assets/agent_transcripts/muse_sequencer/muse_lock_code_.kt": "83a177f5c0d6a6d5f5e1c109ae449352405e07e620597a60a94b48d0b3a9196e",
+        "public/docs/assets/agent_transcripts/muse_sequencer/muse_ornaments_code_.kt": "24234be121cc9f362cb4921a07c6da45c736cc6b8844b729875e4f2109bd762d",
+        "public/docs/assets/agent_transcripts/muse_sequencer/muse_sliders_code_.kt": "1e9b429fcff9b4340b55ec76f94b20f02273ee20e70af74a46918fe05c1bb2d1"
+      }
+    },
     "assets/agent_transcripts/neural_clouds/metadata.edn": {
       "captureDigest": "cd0d895ab146dbd5ef911e3f6bb1ac6b101799610fa996220d33d772c2d94244",
       "capturedAt": "2026-11-17T10:26:10.287Z",

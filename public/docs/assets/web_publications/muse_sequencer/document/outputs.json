@@ -1,0 +1,103 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-17T11:04:39.337Z",
+  "documentName": "muse_sequencer",
+  "outputs": [
+    {
+      "uid": "muse_lock",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 1116,
+      "height": 256,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "muse_edit",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 1116,
+      "height": 256,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "muse_ornaments",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 1116,
+      "height": 256,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "muse_sliders",
+      "channel": "loop",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 2096,
+      "height": 106,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "muse_sliders",
+      "channel": "right hand",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 2096,
+      "height": 245,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "muse_sliders",
+      "channel": "left hand",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 2096,
+      "height": 245,
+      "path": "outputs/5.html"
+    },
+    {
+      "uid": "muse_sliders",
+      "channel": "roll",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 1116,
+      "height": 275,
+      "path": "outputs/6.html"
+    },
+    {
+      "uid": "muse_sliders",
+      "channel": "listen",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/7.html"
+    }
+  ]
+}
