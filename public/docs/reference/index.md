@@ -679,7 +679,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**41552 public symbols across 1839 source files**, 24776 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**41554 public symbols across 1840 source files**, 24778 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -692,7 +692,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Video](video.md) | 14 | 195 | 194 (99%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 60 | 2524 | 1904 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 26 | 1123 | 528 (47%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 420 | 10280 | 6496 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 421 | 10282 | 6498 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 46 | 845 | 449 (53%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 596 | 440 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 787 | 530 (67%) | Nonlinear least squares, aimed at geometry. |
@@ -1668,6 +1668,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [MidiDevices.kt](audio.md#mididevices-kt) | Audio | 52 | 34 | Live MIDI device I/O, and offline rendering of a `MidiClip` to a WAV through the JDK's own software synthesizer. | [SMPTE Timecode: LTC and MIDI Time Code](../smpte_timecode.md), [FM-1 simulator](../fm1.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [MidiPat.kt](audio.md#midipat-kt) | Audio | 18 | 12 | The bridge between the pattern algebra and `MidiClip`, plus a piano roll drawn as FLines. | [FM-1 simulator](../fm1.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [MidiSmokeTest.kt](audio.md#midismoketest-kt) | Audio · internal | 3 | 3 | Smoke cover for the Standard MIDI File surface: writes a clip, reads it back, exports a pattern, imports one, draws a roll, enumerates devices and opens a real output port. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>solid/<wbr>manifold/<wbr></small> [Milling.kt](graphics.md#milling-kt) | Graphics | 2 | 2 | What a part looks like after milling: the material a cutting tool cannot remove, as a `Solid`. | [Solids that cannot fail: Manifold in Field](../manifold.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>physics/<wbr>pressure/<wbr></small> [MinimumSearch.kt](simulation.md#minimumsearch-kt) | Simulation | 9 | 2 | A sampled check of whether a solved membrane sits at an energy minimum: `MinimumSearch` estimates the lowest curvature with a finite-difference Lanczos iteration and tries displacements along it and along eight smoothed random directions. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>targets/<wbr></small> [MndxXDevSpace.kt](graphics.md#mndxxdevspace-kt) | Graphics | 0 | 0 | Hand-rolled bindings for `XR_MNDX_xdev_space`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>modal/<wbr></small> [ModalDrum.kt](audio.md#modaldrum-kt) | Audio | 16 | 7 |  |  |

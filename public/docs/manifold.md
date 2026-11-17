@@ -289,9 +289,9 @@ ball is never cut at all. Convex edges are untouched. `ballMilled(radius)` gives
 mill would leave it, as a `Solid`, so it can be measured, drawn, and subtracted from the design to
 see exactly what the tool adds:
 
-```kotlin
-val milled = part.ballMilled(1.5)            // a 3 mm ball, from any direction
-val fillets = milled - part                  // the material the mill leaves that the design does not have
+```diffstatic {data-lang=kotlin}
+val milled = part.ballMilled(1.5) // a 3 mm ball, from any direction
+val fillets = milled - part // the material the mill leaves that the design does not have
 ```
 
 With no directions, the ball may approach from anywhere, the way an idealised five-axis machine
@@ -300,20 +300,20 @@ pointing from the part towards the spindle, and anything the part overhangs as s
 stays solid, as does the stock underneath it. Pass two opposite axes for a part that is milled, then
 turned over:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/manifold/ball_milled.png" alt="four shaded grey meshes of the same stepped plate in a two-by-two grid, each seen from above at an angle" wait="6" capture="box" open-outputs="true" padding="20" requires="manifold" name="ball_milled" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/manifold/ball_milled.png" alt="four wide cards stacked, each the same cross-section of a stepped plate drawn as a solid light-blue silhouette with the design's outline in white over it. From the left the plate has a two-step rebate, a narrow slot down from the top, a pocket in its underside and a wide pocket in its top. 'as designed, sectioned at z = 20' is all sharp corners. 'a 3 mm ball from any direction, adds 361.2 mm³' fills every inside corner with a small rounded fillet, fills the narrow slot except for a shallow round dip at its mouth, and rounds the corners of both pockets. 'from above only, adds 1325.4 mm³' is the same except that the underside pocket is filled solid. 'from above, then turned over, adds 361.2 mm³' matches the any-direction card" wait="6" capture="box" open-outputs="true" padding="20" requires="manifold" name="ball_milled" embed=true}
 :::static
 import afield.geometry.solid.manifold.*
 
-// A plate with a two-step rebate along its front edge, a pocket in its top, a slot narrower than
-// the ball, and a pocket on its underside.
+// A plate with a two-step rebate down its left edge, a slot narrower than the ball, a pocket in
+// its top and a pocket in its underside. All four cross the plane z = 20, where they are drawn.
 val part = Solid.scope {
     val plate = Solid.cube(60.0, 10.0, 40.0)
     val cuts = [
-        Solid.cube(60.0, 5.0, 12.0).translated(0.0, 5.0, 0.0),
-        Solid.cube(60.0, 2.5, 6.0).translated(0.0, 2.5, 0.0),
-        Solid.cube(20.0, 6.0, 14.0).translated(32.0, 4.0, 20.0),
-        Solid.cube(2.0, 4.0, 22.0).translated(14.0, 6.0, 16.0),
-        Solid.cube(16.0, 4.0, 14.0).translated(36.0, 0.0, 20.0),
+        Solid.cube(12.0, 5.0, 40.0).translated(0.0, 5.0, 0.0),
+        Solid.cube(6.0, 2.5, 40.0).translated(0.0, 2.5, 0.0),
+        Solid.cube(2.0, 4.0, 30.0).translated(17.0, 6.0, 5.0),
+        Solid.cube(14.0, 3.0, 24.0).translated(22.0, 0.0, 8.0),
+        Solid.cube(18.0, 4.0, 24.0).translated(38.0, 6.0, 8.0),
     ]
     (plate - Solid.union(cuts)).copy()
 }
@@ -332,26 +332,44 @@ for ((name, milled) in ["any direction" to anyDirection, "from above" to fromAbo
     println("$name: the mill leaves ${(milled.volume - part.volume).f1} mm³ the design does not have")
 }
 
-showMeshGrid(
-    "as designed" to part.toTriMesh(),
-    "a 3 mm ball from any direction" to anyDirection.toTriMesh(),
-    "from above only" to fromAbove.toTriMesh(),
-    "from above, then turned over" to turnedOver.toTriMesh(),
-    columns = 2,
-    view = MeshView(yawDegrees = 30.0, pitchDegrees = 38.0),
+// Each version cut through z = 20: the milled section filled, the design's outline in white over it.
+val designed = part.slice(20.0)
+
+fun outline() = designed.toFLines().onEach {
+    it.color = vec(1.0, 1.0, 1.0, 0.95)
+    it.thickness = 1.6
+}
+
+fun section(milled: Solid) = milled.slice(20.0).toFLines().onEach {
+    it.color = vec(0.45, 0.85, 1.0, 0.85)
+    it.filled = true
+    it.stroked = false
+} + outline()
+
+showPlaneGrid(
+    "as designed, sectioned at z = 20" to section(part),
+    "a 3 mm ball from any direction\nadds ${(anyDirection.volume - part.volume).f1} mm³" to section(anyDirection),
+    "from above only\nadds ${(fromAbove.volume - part.volume).f1} mm³" to section(fromAbove),
+    "from above, then turned over\nadds ${(turnedOver.volume - part.volume).f1} mm³" to section(turnedOver),
+    columns = 1,
+    cellWidth = 720,
+    cellHeight = 200,
+    yUp = true,
 )
 ```
 
 From above only, the underside pocket never opens: the tool cannot reach it, and the stock under
-the part stays. Turned over, it opens with its own inside corners filleted. In every version the
-2 mm slot is filled, because a 3 mm ball does not fit into it.
+the part stays. Turned over, the pocket is cut, with its own inside corners filleted. In every
+version the 2 mm slot stays filled, apart from the shallow dip the ball makes in its mouth, because a
+3 mm ball does not fit into it, and the rebate's two inside corners come out rounded.
 
-`ballMilled` is the morphological closing of the part by the tool, and `closed(tool)` does the same
+`ballMilled` is the morphological closing of the part by the tool, and `closedBy(tool)` does the same
 for any tool shape you build as a `Solid`. The ball is Manifold's faceted `Solid.sphere`, so the
 fillets are faceted too, and very slightly tighter than the radius: by at most
 `radius * (1 - cos(π / segments))`, about 2% at the default of 16 segments. Raising `segments`
 costs time steeply, because Manifold's Minkowski operations on a non-convex part cost roughly one
-convex hull per boundary triangle.
+convex hull per boundary triangle. Fill thinner than a hundredth of the radius is left out, so the
+shallow creases between the facets of a polygonal hole come back as they were designed.
 
 ## Solids from a field
 

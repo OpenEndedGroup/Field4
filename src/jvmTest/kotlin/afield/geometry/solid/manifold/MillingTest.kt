@@ -9,7 +9,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * [closed] and [ballMilled] against shapes whose milled form is known without computing it.
+ * [closedBy] and [ballMilled] against shapes whose milled form is known without computing it.
  *
  * The ball is a polyhedron, so volumes are compared with a tolerance sized to its faceting; the
  * reachability checks (is this point still solid?) are exact questions with exact answers.

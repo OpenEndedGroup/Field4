@@ -10,7 +10,7 @@ import kotlin.math.sqrt
  *
  * [ballMilled] previews a ball-end mill of a given radius, either from any direction or from one or
  * more fixed setups. Every concave edge comes back filleted, every pocket corner rounded, and every
- * slot narrower than the ball filled in, while convex edges stay sharp. [closed] is the general
+ * slot narrower than the ball filled in, while convex edges stay sharp. [closedBy] is the general
  * operation underneath, the morphological closing of a part by any tool shape.
  */
 
@@ -25,15 +25,17 @@ import kotlin.math.sqrt
  *
  * ```kotlin
  * val ball = Solid.sphere(0.5, segments = 24)
- * val milled = part.closed(ball)          // concave edges filleted by 0.5, convex edges untouched
+ * val milled = part.closedBy(ball)        // concave edges filleted by 0.5, convex edges untouched
  * ```
  *
  * It is `this ⊕ (−tool)` followed by Manifold's Minkowski difference with [tool]. The result always
- * contains this solid. Minkowski sums of a non-convex part are expensive: they cost roughly one
+ * contains this solid, with its faces exactly as they were. Added material thinner than a hundredth of
+ * the tool's half-width is left out: it is what re-deriving the faces leaves behind, plus the
+ * imperceptible fill in creases shallower than about 16°. Minkowski sums of a non-convex part are expensive: they cost roughly one
  * convex hull per boundary triangle. A tool with fewer vertices, set with `segments` on [Solid.sphere],
  * is the main lever on speed. [ballMilled] is the convenience for the usual case.
  */
-fun Solid.closed(tool: Solid): Solid {
+fun Solid.closedBy(tool: Solid): Solid {
     val reflected = tool.scaled(-1.0, -1.0, -1.0)
     val forbidden = minkowskiSum(reflected)
     reflected.close()
@@ -83,7 +85,7 @@ internal fun Solid.withAdded(added: Solid, thinnest: Double): Solid {
  * val fillets = fromTop - part        // just the material the mill leaves that the design does not have
  * ```
  *
- * With [from] empty, the ball may approach from any direction. That is the plain [closed] by a
+ * With [from] empty, the ball may approach from any direction. That is the plain [closedBy] a
  * sphere, an idealised five-axis machine. It assumes every pocket the ball fits into is also
  * reachable, so a sealed internal void stays open.
  *
@@ -118,7 +120,7 @@ fun Solid.ballMilled(
     if (isEmpty) return translated(0.0, 0.0, 0.0)
     val ball = Solid.sphere(radius, segments)
     try {
-        if (from.isEmpty()) return closed(ball)
+        if (from.isEmpty()) return closedBy(ball)
 
         // The part's bounds in double precision: [bounds] narrows to Float, which would leave a
         // stock face a fraction of a micron proud of the part.
@@ -132,7 +134,7 @@ fun Solid.ballMilled(
         val reach = sqrt((0..2).sumOf { (high[it] - low[it]) * (high[it] - low[it]) }) + 4.0 * radius
         val setups = from.map { axis ->
             val shadowed = withShadow(axis, reach)
-            val closing = shadowed.closed(ball)
+            val closing = shadowed.closedBy(ball)
             shadowed.close()
             closing
         }
