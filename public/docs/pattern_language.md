@@ -860,10 +860,9 @@ movement becomes 9, and the pitch-class sets are identical.
 
 ## Weights, then lock what you liked
 
-Everything so far writes the music down. `PatMuse` lets the pattern write itself from weights. You
-set how often each scale degree, chord size and note length should come up, listen, and when a
-stretch is worth keeping you lock it into a loop. The method follows the norns script
-[Muses](https://llllllll.co/t/muses/75854).
+Give `PatMuse` weights for scale degrees, chord sizes and note lengths, and it makes a pattern from
+them. Listen as you change the weights; when you hear a stretch you like, lock it into a loop. The
+method follows the norns script [Muses](https://llllllll.co/t/muses/75854).
 
 A `PatMuse` has two hands, `left` and `right`, each a `PatMuseChannel` with three weight tables:
 
@@ -978,7 +977,7 @@ showPatRollOf(
 
 ![Two pitched lanes over eight cycles: the plain loop repeats exactly; the improvising lane splits some notes into short mordents, turns and trills that differ from pass to pass](assets/pattern_language/muse-improvise.png)
 
-Both hands locked at cycle 4, the right hand improvising at 0.4:
+Here are both hands locked at cycle 4, with the right hand improvising at 0.4:
 
 ```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/muse-locked-improvised.wav" audio-spec="muse-locked-improvised" audio-renderer="afield.audio.synth.PianoDocs" embed=true hidden=true name="pat-doc-muse-locked-audio"}
 // val muse = PatMuse(seed = 3).lock(8, atCycle = 4); muse.rightLoop!!.improvise = 0.4

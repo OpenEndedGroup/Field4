@@ -175,9 +175,9 @@ The moved hills score about a tenth of the different field. The entropic solver 
 
 A tracker says where each feature went. A **Cerf diagram** says when the field's topology changed.
 It plots the value of every critical point (every minimum, saddle and maximum) against time. A
-changing field alters its critical points in only two ways. A pair of neighbouring index can appear or
-cancel together: a maximum with a saddle, or a minimum with a saddle. And two critical values can swap
-order. `CerfDiagram` follows every critical point with a `FeatureTracker` and marks both kinds of event.
+minimum or maximum can appear or disappear together with a neighbouring saddle, and two critical
+values can swap order. `CerfDiagram` follows the points with a `FeatureTracker` and marks both
+kinds of event.
 
 This example puts a small hill on the flank of a broad one and raises it from nothing and back down.
 At first the flank only has a shoulder. Once the small hill is tall enough, a maximum (red) and a saddle
@@ -213,9 +213,9 @@ lines along the bottom are critical points on the edge of the grid, where the fi
 
 ### A simulation whose topology churns
 
-The diagram is most useful beside a field you did not design. This box runs a
-[Gray–Scott reaction](alife_examples.md) from three seed patches in its spot regime, where every
-spot grows, splits in two and pushes its daughters apart until spots fill the field. It records
+Try the diagram on a field whose changes are harder to predict. This box runs a
+[Gray–Scott reaction](alife_examples.md) from three seed patches in its spot regime. Each spot
+grows and splits, pushing its daughters apart until spots fill the field. It records
 120 frames, 40 steps apart, and draws the diagram with its cursor at frame 70 beside the field at that frame.
 `fieldMarkers(t)` marks the critical points alive at `t`, and puts a large orange or violet dot
 where a pair is born or cancels within `window` frames of it:

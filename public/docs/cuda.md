@@ -1,9 +1,8 @@
 # CUDA Beside the Renderer
 
-On Linux with an NVIDIA GPU, a Field box can run CUDA kernels on the same GPU the renderer draws
-with, reading and writing the renderer's own buffers in place. A kernel moves particles and a mesh
-draws them from the same memory, and nothing is copied through the CPU. Native libraries built on
-CUDA, such as Intel's Open Image Denoise, can work on Field's buffers the same way.
+A Field box can run CUDA kernels on the same GPU that draws your scene. Move particles in a kernel,
+then draw them from the renderer's buffer without copying them through the CPU. Native libraries
+such as Intel's Open Image Denoise can use those buffers too. This works on Linux with an NVIDIA GPU.
 
 You need the NVIDIA driver; the CUDA toolkit is optional. Kernels written in CUDA C are compiled
 when the box runs by NVRTC, which ships with the toolkit and with the `cuda-nvrtc` package that
@@ -62,8 +61,8 @@ val program =
 val flow = program.function("flow")
 ```
 
-The same source is not compiled twice, so rerunning the box with unchanged kernels costs nothing.
-A compile error stops the box with NVRTC's message, line number included.
+Field caches compiled kernels, so a rerun with unchanged source skips compilation. A compile error
+stops the box with NVRTC's message, line number included.
 
 `launch` takes the number of blocks, the threads per block, the stream, and then the kernel's
 arguments in order. `Int`, `Float`, `Long` and `Double` map to `int`, `float`, a pointer or 64-bit

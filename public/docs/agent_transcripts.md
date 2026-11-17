@@ -1408,16 +1408,13 @@ or an n and re-run it.
 
 ### spectral_examples
 
-[Spectral examples](spectral_examples.md) as five independent boxes over the
-same chirp. *One spectrum* runs `fft` with a Hann window and plots the one-sided magnitude against
-real Hz, with the centroid and the 85 % rolloff drawn in as dashed marks rather than left as numbers.
-*Spectrogram* takes the same chirp through `stft`, converts to dB relative to peak with an explicit
-−80 dB floor, and overlays the centroid trace on the heatmap. *Mel* runs two chirps crossing in
-opposite directions through a 48-band filter bank, so the picture is an X and the bands are the only
-thing you have to trust. *Resonator bank* is the control arm and does no transform at all: 96
-log-spaced resonators from 120 Hz to 3900 Hz recover the same structure by filtering. *Streaming features* pushes samples one at a time through
-`EMAFilter then SpectralCentroidFilter`, plus flux and RMS, into two injected onsets planted a third
-and two thirds of the way through, so spectral flux has something it should spike at.
+Ten [spectral examples](spectral_examples.md) in their own boxes. Start with a chirp and two tones:
+*One spectrum* plots an FFT with its centroid and rolloff; *Spectrogram* follows those frequencies
+over time. *Mel* shows two crossing chirps on a mel scale, and *Resonator bank* finds frequencies
+with filters. *Streaming features* tracks centroid, flux and RMS as samples arrive. Two more boxes
+compare filter chains and distribution-based event detectors. The last three use linear prediction
+to plot a vowel's spectral envelope, continue a drawn stroke and make a talking synth. The synth
+renders a clip offline; set `live = true` in that box to play it through an audio device.
 
 ![A spectrogram of a chirp: a rising diagonal ridge with two horizontal tone lines, the spectral centroid traced over it](assets/spectral_examples/spectrogram.png)
 
@@ -2377,12 +2374,12 @@ here; the voice wants an audio device and the last one is meant to fail.
 
 ### fm1_simulator
 
-Two boxes around the [FM-1 simulator](fm1.md): the M-VAVE FM-1 pocket synth's own browser simulator,
-compiled from its open firmware to WebAssembly and played by Field's audio engine. *FM-1, playing* is the
-one to click: it loads a factory project, presses PLAY, and returns the simulator as the box's last
-expression, so the box stays lit while the sequencer runs. *Offline, four projects* renders each factory
-project for three seconds after PLAY and prints its level every 100 ms as a row of bars, which shows the
-four patterns without a sound card. Only the offline box is replayed here; the other wants an audio device.
+Four boxes around the [FM-1 simulator](fm1.md), compiled from the M-VAVE pocket synth's open
+firmware and played by Field's audio engine. Launch *FM-1, playing* to hear a factory project and
+use its front panel. *A pattern on track 2* plays a Field pattern over the project while a signal
+turns the 303's filter. The other two run offline: *Offline, four projects* prints each project's
+level as a row of bars, and *The screen* shows the FM-1's display. The two live boxes need an audio
+device.
 
 [Open →](offline.html?file=assets/agent_transcripts/fm1_simulator/metadata.edn)
 
