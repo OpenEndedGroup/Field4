@@ -1,5 +1,5 @@
 {
-  "state": "source and focused verification complete; precheck pending",
+  "state": "verified; ready to enqueue",
   "scope": "scope.json",
   "review": "review.json",
   "reviewedBodies": 114,
@@ -10,10 +10,11 @@
   "preambles": "Verified unchanged.",
   "hardwareLimit": "No NVIDIA device on this Mac; CUDA compiler-input string equals the canonical runnable source exactly; Linux/NVIDIA captures retained.",
   "remaining": [
-    "precheck",
     "landing"
   ],
   "publications": "Three changed publications refreshed through actual canonical sources: Muse (8 channels), FM1 (1) and CUDA (1); other 225 retained.",
   "additionalLanguageReview": "Five public PostScript fences reviewed separately because the inherited Markdown scanner omits that new language; unchanged. 119 total reviewed bodies across 23 files.",
-  "site": "Full site built and link gate passed: 4577 local references and 58322 fragment pairs resolve, plus the single registered theme exception."
+  "site": "Full site built and link gate passed: 4577 local references and 58322 fragment pairs resolve, plus the single registered theme exception.",
+  "merge": "Brought in main through tools/merge_regen.py; retained 225 publications whole, refreshed 3; generated-artifact and citation guards passed.",
+  "precheck": "Passed after publication merge repair; 1810 Python tests passed, 59 skipped. Six transcripts compiled, actual formatting and documented API coverage green."
 }
