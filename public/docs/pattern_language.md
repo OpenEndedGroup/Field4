@@ -858,6 +858,128 @@ movement becomes 9, and the pitch-class sets are identical.
 
 ---
 
+## Weights, then lock what you liked
+
+Everything so far writes the music down. `PatMuse` lets the pattern write itself from weights. You
+set how often each scale degree, chord size and note length should come up, listen, and when a
+stretch is worth keeping you lock it into a loop. The method follows the norns script
+[Muses](https://llllllll.co/t/muses/75854).
+
+A `PatMuse` has two hands, `left` and `right`, each a `PatMuseChannel` with three weight tables:
+
+- `degree` weighs scale degrees 1 to 8 (root to octave) in the channel's `scale` above its `root`;
+- `chord` weighs playing a single note, a third, a triad or a seventh built on that degree in the scale;
+- `rhythm` weighs how many steps an event lasts: 1, 2, 3, 4, 6 or 8, with eight steps to a cycle.
+
+`rest` is the chance an event is silent. Each event is drawn when the one before it ends. The draw
+is a hash of the seed and the event's index, so the same seed and weights always give the same
+music, and asking for cycle 40 gives the same answer as playing up to it.
+
+Both hands are ordinary patterns of MIDI numbers with a `gain` annotation, so a piano plays them
+directly, one hand each:
+
+```diffstatic {data-lang=kotlin}
+val muse = PatMuse(seed = 3)
+muse.right.degree.set(4.0, 1.0, 2.0, 1.0, 3.0, 1.0, 0.5, 1.0)
+val piano = Piano()
+piano.play(muse.pattern(), cycles = 8, cps = 0.5)
+audio(piano, gain = 1f)
+```
+
+```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/muse-free.wav" audio-spec="muse-free" audio-renderer="afield.audio.synth.PianoDocs" embed=true hidden=true name="pat-doc-muse-free-audio"}
+// pianoRender(17.0, Piano()) { play(PatMuse(seed = 3).pattern(), cycles = 8, cps = 0.5) }
+```
+
+### The weights as sliders
+
+`weights(name, table)` puts one slider per entry of a table into a `controlGroup`. The box below
+draws both hands as a roll and redraws it whenever a slider moves:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/pattern_language/muse-weights.png" wait="3" capture="box" open-outputs="true" name="pat-doc-muse-weights"}
+val muse = PatMuse(seed = 3)
+fun redraw() = showPatRollOf(
+    "left" to muse.leftPattern(), "right" to muse.rightPattern(),
+    title = "PatMuse(seed = 3)", cycles = 4, pitched = true, channel = "roll",
+)
+controlGroup("right hand", columns = 4) {
+    weights("degree", muse.right.degree) { redraw() }
+    weights("length", muse.right.rhythm) { redraw() }
+}
+redraw()
+displayOpen("roll")
+```
+
+![Sliders for the right hand's degree and length weights above a four-cycle pitched piano roll of both hands](assets/pattern_language/muse-weights.png)
+
+The left hand starts with heavier weights on the root and fifth, longer notes and more chords;
+the right hand plays mostly single notes of one or two steps.
+
+### Locking a loop
+
+`lock(n, atCycle)` takes the last `n` events (up to 64) that began before `atCycle` and loops
+them. The loop is a copy, so moving the weights afterwards changes the free stream and leaves the
+loop alone. `release()` lets both hands run free again. Here the same muse plays four cycles
+free, and below it the eight events before cycle 4 are locked and repeat:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/pattern_language/muse-lock.png" wait="3" capture="box" open-outputs="true" name="pat-doc-muse-lock"}
+val muse = PatMuse(seed = 3)
+val free = muse.rightPattern()
+muse.lock(8, atCycle = 4)
+showPatRollOf(
+    "free" to free, "locked" to muse.rightPattern(),
+    title = "right hand: free, then the last 8 events before cycle 4, locked",
+    cycles = 8, pitched = true,
+)
+```
+
+![Two pitched lanes over eight cycles: the free right hand never repeats; the locked lane plays the eight events that ended cycle 3, over and over](assets/pattern_language/muse-lock.png)
+
+A loop (`muse.rightLoop`, a `PatLoop`) has a window and a direction. `start` and `end` choose
+which of its events play (`end` is exclusive), and `direction` is `Forward`, `Reverse` or
+`PingPong`. `set(i, degree = 7)` changes one event's degree in place, and `set(i, degrees = listOf(0, 2, 4), velocity = 0.8)`
+makes it a louder triad, so a loop can be corrected by hand after it is locked. A `pattern()` is a
+snapshot of the loop when you ask for it; ask again after changing the loop.
+
+### Improvising on the loop
+
+`improvise` is the chance, per event per pass, that the loop varies the event. A varied event
+has its velocity moved by up to `velocityJitter` and is often decorated with an ornament on its
+top note:
+
+- a **mordent**: the note, the scale step above, then the note held;
+- a **turn**: above, the note, below, the note;
+- a **trill**: alternating from the step above, every half step;
+- a **passing tone**: the second half of the note moves a step towards the next one, when the
+  next note is at least a third away.
+
+Ornaments need an event at least two steps long. `ornaments` restricts the set. The loop's
+`seed` fixes the choices, so pass 3 sounds the same every time you ask for it, while passes
+differ from each other:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/pattern_language/muse-improvise.png" wait="3" capture="box" open-outputs="true" name="pat-doc-muse-improvise"}
+val muse = PatMuse(seed = 3).lock(8, atCycle = 4)
+val loop = muse.rightLoop!!
+val plain = loop.pattern()
+loop.improvise = 0.4
+showPatRollOf(
+    "locked" to plain, "improvise 0.4" to loop.pattern(),
+    title = "the same loop, plain and improvising", cycles = 8, pitched = true,
+)
+```
+
+![Two pitched lanes over eight cycles: the plain loop repeats exactly; the improvising lane splits some notes into short mordents, turns and trills that differ from pass to pass](assets/pattern_language/muse-improvise.png)
+
+Both hands locked at cycle 4, the right hand improvising at 0.4:
+
+```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/muse-locked-improvised.wav" audio-spec="muse-locked-improvised" audio-renderer="afield.audio.synth.PianoDocs" embed=true hidden=true name="pat-doc-muse-locked-audio"}
+// val muse = PatMuse(seed = 3).lock(8, atCycle = 4); muse.rightLoop!!.improvise = 0.4
+```
+
+The events carry `ornament` and `improvised` annotations, so anything downstream can tell an
+ornament from the loop it decorates.
+
+---
+
 ## A rhythm as a curve — and as a graph you can fit
 
 A pattern schedules *events*. Sometimes you want those events to trigger something other than a note, such as a

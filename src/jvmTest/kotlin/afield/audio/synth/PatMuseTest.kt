@@ -124,6 +124,17 @@ class PatMuseTest {
     }
 
     @Test
+    fun aLoopPatternIsASnapshot() {
+        val loop = PatMuseChannel(seed = 3).apply { rest = 0.0 }.lock(8, atCycle = 4)
+        val plain = loop.pattern()
+        val before = plain.onsets(8)
+        loop.improvise = 1.0
+        loop.direction = PatLoopDirection.Reverse
+        assertEquals(before, plain.onsets(8), "changing the loop leaves an earlier pattern alone")
+        assertNotEquals(before, loop.pattern().onsets(8))
+    }
+
+    @Test
     fun ornamentsHaveTheirShape() {
         val ch = PatMuseChannel(seed = 1, root = 60).apply {
             rest = 0.0

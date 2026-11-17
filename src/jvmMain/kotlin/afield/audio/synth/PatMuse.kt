@@ -234,7 +234,7 @@ class PatMuseChannel(
  * A locked stretch of a [PatMuseChannel], played as a loop.
  *
  * [events] is the loop's content in the order it was played; edit it with [set] (change a
- * degree, a chord or a velocity) and the pattern follows. [start] and [end] choose the window
+ * degree, a chord or a velocity) and the next [pattern] plays the change. [start] and [end] choose the window
  * of events that plays (end exclusive), and [direction] the order. With [improvise] above zero
  * each event of each pass is, with that probability, played with a changed velocity and often an
  * ornament; [seed] fixes which, so pass `k` sounds the same every time it is asked for.
@@ -355,12 +355,26 @@ class PatLoop internal constructor(
         }
     }
 
-    /** The loop as a pattern: passes back to back from cycle 0, pass `k` improvised with seed `(seed, k)`. */
-    fun pattern(): PatPattern<String> = soundingPattern(stepsPerCycle, name) { from, to ->
-        val passTicks = passSteps.toLong() * TICKS_PER_STEP
-        val first = Math.floorDiv(from, passTicks)
-        val last = Math.floorDiv(to - 1, passTicks)
-        (first..last).flatMap { k -> pass(k, k * passTicks) }.filter { it.end > from && it.start < to }
+    /** An independent copy: same events and settings, edited separately from here on. */
+    fun copy(): PatLoop = PatLoop(content, scale, root, stepsPerCycle, name, seed).also {
+        it.start = start; it.end = end; it.direction = direction
+        it.improvise = improvise; it.velocityJitter = velocityJitter; it.ornaments = ornaments
+    }
+
+    /**
+     * The loop as a pattern: passes back to back from cycle 0, pass `k` improvised with seed `(seed, k)`.
+     *
+     * The pattern takes a copy of the loop as it is now, so a pattern is a value: changing
+     * [improvise] or the window afterwards changes the next `pattern()`, not this one.
+     */
+    fun pattern(): PatPattern<String> {
+        val frozen = copy()
+        val passTicks = frozen.passSteps.toLong() * TICKS_PER_STEP
+        return soundingPattern(stepsPerCycle, name) { from, to ->
+            val first = Math.floorDiv(from, passTicks)
+            val last = Math.floorDiv(to - 1, passTicks)
+            (first..last).flatMap { k -> frozen.pass(k, k * passTicks) }.filter { it.end > from && it.start < to }
+        }
     }
 
     override fun toString(): String =

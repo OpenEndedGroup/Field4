@@ -1,0 +1,150 @@
+name: muse_sequencer
+description: >
+  PatMuse, the weighted two-hand sequencer from "Weights, then lock what you liked" on
+  public/docs/pattern_language.md, in five boxes. `muse` puts the loop controls and both hands'
+  degree, chord and length weights on sliders over a pitched roll that redraws as they move, and
+  renders the current settings through the physical piano into a player (re-run it to hear a
+  change; slider values survive the run). Set `lock length` above 0 to lock. `lock` rolls the
+  right hand free and locked at cycle 4; `ornaments` the same loop plain and improvising at 0.4;
+  `edit` changes two events of a locked loop by hand. `live` plays both hands on the audio engine
+  and is not run on replay.
+docs:
+  - page: pattern_language.md
+    why: "The section Weights, then lock what you liked documents PatMuse, PatLoop and weights()."
+operations:
+  - create:
+      box: muse_sliders
+      name: muse
+      frame: { x: 20.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          // Two hands drawn from weights. Move a slider and the roll redraws; re-run the box to hear the
+          // current settings through the piano (every slider keeps its value across runs).
+          val muse = PatMuse(seed = 3)
+          var seed = 3.0
+          var lockLength = 0.0
+          var lockAt = 4.0
+          var start = 0.0
+          var end = 64.0
+          var direction = 0.0
+          var improvise = 0.0
+
+          fun hands(): PatMuse {
+              muse.left.seed = seed.toLong()
+              muse.right.seed = seed.toLong()
+              muse.release()
+              if (lockLength >= 1) {
+                  muse.lock(lockLength.toInt(), atCycle = lockAt)
+                  for (loop in listOf(muse.leftLoop!!, muse.rightLoop!!)) {
+                      loop.start = start.toInt()
+                      loop.end = end.toInt()
+                      loop.direction = PatLoopDirection.entries[direction.toInt()]
+                      loop.improvise = improvise
+                      loop.seed = seed.toLong()
+                  }
+              }
+              return muse
+          }
+
+          fun redraw() {
+              val m = hands()
+              val state = if (lockLength >= 1) "locked: ${m.rightLoop}" else "free"
+              showPatRollOf(
+                  "left" to m.leftPattern(), "right" to m.rightPattern(),
+                  title = "PatMuse(seed = ${seed.toInt()})", subtitle = state, cycles = 8, pitched = true, channel = "roll",
+              )
+          }
+
+          controlGroup("loop", columns = 4) {
+              slider("seed", 1.0, 64.0, 1.0, seed) { seed = it; redraw() }
+              slider("lock length (0 = free)", 0.0, 64.0, 1.0, lockLength) { lockLength = it; redraw() }
+              slider("lock at cycle", 1.0, 16.0, 1.0, lockAt) { lockAt = it; redraw() }
+              slider("improvise", 0.0, 1.0, 0.05, improvise) { improvise = it; redraw() }
+              slider("start", 0.0, 63.0, 1.0, start) { start = it; redraw() }
+              slider("end", 1.0, 64.0, 1.0, end) { end = it; redraw() }
+              slider("direction", 0.0, 2.0, 1.0, direction) { direction = it; redraw() }
+          }
+          controlGroup("right hand", columns = 4) {
+              weights("degree", muse.right.degree) { redraw() }
+              weights("chord", muse.right.chord) { redraw() }
+              weights("length", muse.right.rhythm) { redraw() }
+          }
+          controlGroup("left hand", columns = 4) {
+              weights("degree", muse.left.degree) { redraw() }
+              weights("chord", muse.left.chord) { redraw() }
+              weights("length", muse.left.rhythm) { redraw() }
+          }
+          redraw()
+          val r = pianoRender(17.0, Piano(sampleRate = 44_100)) { play(hands().pattern(), cycles = 8, cps = 0.5, velocity = 1.0, startFrame = 0) }
+          showPianoAudio(r, "listen")
+          ["loop", "roll", "listen"].forEach { displayOpen(it) }
+
+  - create:
+      box: muse_lock
+      name: lock
+      frame: { x: 20.0, y: 1500.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          val muse = PatMuse(seed = 3)
+          val free = muse.rightPattern()
+          muse.lock(8, atCycle = 4)
+          showPatRollOf(
+              "free" to free, "locked" to muse.rightPattern(),
+              title = "right hand: free, then the last 8 events before cycle 4, locked",
+              cycles = 8, pitched = true,
+          )
+
+  - create:
+      box: muse_ornaments
+      name: ornaments
+      frame: { x: 760.0, y: 1500.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          val muse = PatMuse(seed = 3).lock(8, atCycle = 4)
+          val loop = muse.rightLoop!!
+          val plain = loop.pattern()
+          loop.improvise = 0.4
+          showPatRollOf(
+              "locked" to plain, "improvise 0.4" to loop.pattern(),
+              title = "the same loop, plain and improvising", cycles = 8, pitched = true,
+          )
+
+  - create:
+      box: muse_edit
+      name: edit
+      frame: { x: 20.0, y: 2100.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          // A locked loop corrected by hand: the third event becomes a triad on the octave, the last a rest.
+          val loop = PatMuseChannel(seed = 3).lock(8, atCycle = 4)
+          val before = loop.pattern()
+          loop.set(2, degrees = listOf(7, 9, 11), velocity = 0.8)
+          loop.set(7, degrees = emptyList())
+          showPatRollOf("as locked" to before, "edited" to loop.pattern(), title = "editing a locked loop", cycles = 4, pitched = true)
+          println(loop)
+
+  - create:
+      box: muse_live
+      name: live
+      frame: { x: 760.0, y: 2100.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          // On the audio engine: the left hand locked and plain, the right hand locked and improvising.
+          val muse = PatMuse(seed = 3).lock(8, atCycle = 4)
+          muse.rightLoop!!.improvise = 0.4
+          val piano = Piano()
+          piano.play(muse.pattern(), cycles = 32, cps = 0.5, velocity = 1.0)
+          audio(piano, gain = 1f)
+
+  - execute:
+      box: muse_sliders
+      property: code
+  - execute:
+      box: muse_lock
+      property: code
+  - execute:
+      box: muse_ornaments
+      property: code
+  - execute:
+      box: muse_edit
+      property: code
