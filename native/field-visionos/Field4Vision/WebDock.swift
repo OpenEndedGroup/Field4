@@ -67,6 +67,7 @@ struct WebDock: UIViewRepresentable {
     func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
         config.defaultWebpagePreferences.allowsContentJavaScript = true
+        if WebProbe.enabled { WebProbe.install(into: config) }
 
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
@@ -122,6 +123,7 @@ struct WebDock: UIViewRepresentable {
             loadedURL = current
             applyCornerInset()   // survive (re)loads — inline nav resets inline styles
             onNavigate?(current)
+            if WebProbe.enabled { WebProbe.report(webView) }
         }
 
         /// Fix 1 — honor `window.open(…, "_blank")`. WKWebView silently drops these unless a
@@ -158,6 +160,53 @@ struct WebDock: UIViewRepresentable {
 
         private static func isTrustedDevHost(_ host: String) -> Bool {
             isTrustedFieldDevHost(host)   // shared with ThreeClient — see ServerConfig.swift
+        }
+    }
+}
+
+/// Headless diagnostics for the web docks (simctl cannot tap or open Web Inspector). With
+/// `FIELD4_WEB_PROBE=1` every page records its console errors and failed loads, and after each
+/// navigation the shell logs fonts, the welcome page's workspace and its document count:
+///   log stream --predicate 'subsystem == "com.field4.vision" AND category == "probe"'
+/// `FIELD4_WEB_PROBE_CLICK=<css selector>` additionally clicks that element once, a few seconds
+/// after the first page that has it finishes loading (e.g. `#open-first-steps`).
+enum WebProbe {
+    static let log = Logger(subsystem: "com.field4.vision", category: "probe")
+    static var enabled: Bool { ProcessInfo.processInfo.environment["FIELD4_WEB_PROBE"] == "1" }
+    static var clickSelector: String? { ProcessInfo.processInfo.environment["FIELD4_WEB_PROBE_CLICK"] }
+    nonisolated(unsafe) static var clicked = false
+
+    static func install(into config: WKWebViewConfiguration) {
+        let js = """
+        window.__probe = [];
+        const keep = (m) => { try { window.__probe.push(String(m).slice(0, 400)); } catch (_) {} };
+        const oe = console.error; console.error = function(...a) { keep('console.error ' + a.join(' ')); oe.apply(console, a); };
+        window.addEventListener('error', (e) => keep('error ' + (e.message || (e.target && (e.target.src || e.target.href)) || e)), true);
+        window.addEventListener('unhandledrejection', (e) => keep('rejection ' + (e.reason && (e.reason.stack || e.reason))));
+        """
+        config.userContentController.addUserScript(
+            WKUserScript(source: js, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+    }
+
+    static func report(_ webView: WKWebView) {
+        let js = """
+        JSON.stringify({ url: location.href,
+          bodyFont: getComputedStyle(document.body).fontFamily,
+          iosevka: document.fonts.check('300 16px "Iosevka Web"'),
+          fonts: [...document.fonts].filter(f => f.status !== 'unloaded').map(f => f.family + ' ' + f.weight + ' ' + f.stretch + ' ' + f.status),
+          workspace: (document.getElementById('current-workspace') || {}).textContent,
+          docRows: document.querySelectorAll('[data-filename], .doc-row, .document-row').length,
+          errors: window.__probe || [] })
+        """
+        DispatchQueue.main.asyncAfter(deadline: .now() + 6) { [weak webView] in
+            webView?.evaluateJavaScript(js) { result, error in
+                log.notice("probe: \(String(describing: result ?? error), privacy: .public)")
+            }
+            guard let sel = clickSelector, !clicked, let webView else { return }
+            let esc = sel.replacingOccurrences(of: "'", with: "\\'")
+            webView.evaluateJavaScript("(() => { const n = document.querySelector('\(esc)'); if (!n) return false; n.click(); return true; })()") { r, _ in
+                if (r as? Bool) == true { clicked = true; log.notice("probe: clicked \(sel, privacy: .public)") }
+            }
         }
     }
 }
