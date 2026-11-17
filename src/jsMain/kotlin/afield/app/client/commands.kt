@@ -1842,7 +1842,8 @@ fun newBox(options: Any? = null) {
             )
             properties.forEach { (property, value) ->
                 el.asDynamic()[property] = value
-                send(Message("set-string").payload(Set_string(createdUid!!, property, value)))
+                // Stamp creation values too: their delayed echoes must not undo the first canvas edit.
+                send("set-string", json("uid" to createdUid!!, "property" to property, "value" to value))
             }
             val sync = window.asDynamic().syncTextFrame
             if (sync != null) sync(el)

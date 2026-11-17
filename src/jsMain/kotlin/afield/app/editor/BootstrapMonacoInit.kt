@@ -87,7 +87,7 @@ internal val monacoPropertyDescriptions = arrayOf(
     "Notes (Markdown)",
     "Metadata about this box",
     "Contents (Markdown or file)",
-    "Text frame settings (JSON)"
+    "Text frame settings (YAML)"
 )
 internal val monacoPropertyLanguages = arrayOf(
     "kotlin",
@@ -123,7 +123,7 @@ internal val monacoPropertyLanguages = arrayOf(
     "markdown",
     "yaml",
     "plaintext",
-    "json"
+    "yaml"
 )
 
 private fun propertyIndexOf(name: String?): Int {
@@ -482,6 +482,26 @@ fun monacoInit(monaco: dynamic): dynamic {
     w.globalEditor = ed
     w.globalMonacoEditor = ed
     w.globalMonaco = monaco
+    var publishedFont = ""
+    fun publishEditorFont() {
+        val font = ed.getOption(monaco.editor.EditorOption.fontInfo)
+        val features = ed.getOption(monaco.editor.EditorOption.fontLigatures)
+        val signature = "${font.fontFamily}/${font.fontSize}/${font.fontWeight}/${font.lineHeight}/$features"
+        if (signature == publishedFont) return
+        publishedFont = signature
+        val style = document.documentElement?.asDynamic()?.style
+        style?.setProperty("--field-editor-font-family", font.fontFamily)
+        style?.setProperty("--field-editor-font-size", "${font.fontSize}px")
+        style?.setProperty("--field-editor-font-weight", font.fontWeight)
+        style?.setProperty("--field-editor-line-height", "${font.lineHeight}px")
+        style?.setProperty("--field-editor-font-features", if (js("typeof features === 'string'") as Boolean) features else "normal")
+        w.dispatchEvent(js("new Event('field-editor-font-changed')"))
+    }
+    ed.onDidChangeConfiguration { event: dynamic ->
+        if (event.hasChanged(monaco.editor.EditorOption.fontInfo) as Boolean ||
+            event.hasChanged(monaco.editor.EditorOption.fontLigatures) as Boolean) publishEditorFont()
+    }
+    publishEditorFont()
     w.globalMonacoEditor._domElement.parentElement.parentElement.style.borderRadius = "5px"
     ed.getModel().setEOL(0)
 

@@ -67,6 +67,7 @@ const PROPERTY_LANGUAGES = {
 	attic:        "kotlin",
 	notes:        "markdown",
 	metadata:     "yaml",
+	textFrame:    "yaml",
 	contents:     "plaintext",
 	customization:"javascript",
 	remote_js:    "javascript",

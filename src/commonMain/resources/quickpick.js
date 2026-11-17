@@ -1348,6 +1348,7 @@ const PALETTE_PROPERTY_INFO = {
         attic: ["Kotlin (attic)", "A scratch holding area for code you may want later."],
         notes: ["Notes (Markdown)", "Markdown notes for the selected box."],
         metadata: ["Metadata", "YAML metadata about this box."],
+        textFrame: ["Text frame settings", "YAML typography and sizing for a text frame."],
         contents: ["File contents", "Plain file-like contents associated with this box."],
 }
 
@@ -1383,6 +1384,7 @@ const PALETTE_PROPERTY_LANGUAGE = {
         attic: "kotlin",
         notes: "markdown",
         metadata: "yaml",
+        textFrame: "yaml",
         contents: "plaintext",
 }
 

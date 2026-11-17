@@ -1,10 +1,11 @@
-import {send, growTextFrame, setTextFrameContents} from './afield.mjs';
+import {send, growTextFrame, setTextFrameContents, flushTextFramePropertyEditor, syncTextFrameSettingsEditor} from './afield.mjs';
 import {mountChatAutocomplete} from './aiChatAutocomplete.js';
 import {renderFieldMarkdown} from './markdownView.js';
+import {load, dump, CORE_SCHEMA} from './vendor/js-yaml/js-yaml.mjs';
 
 // Text belongs to the box. DOM, editing state and uncommitted conflict drafts are local to a view.
 const frames = new Map();
-const defaults = {fontFamily: '"Field Etoile", serif', fontSize: 18, fontWeight: 400, lineHeight: 1.5, padding: 16, sizing: 'grow', connectionBorderLength: 100};
+const defaults = {fontFamily: '"Field Etoile", serif', fontSize: 18, fontWeight: 400, lineHeight: 1.5, padding: 16, sizing: 'grow', connectionBorderLength: 100, autocomplete: false, minHeight: 80, reflow: true};
 const node = (tag, cls, text) => {
     const result = document.createElement(tag);
     result.className = cls;
@@ -17,17 +18,75 @@ const button = (label, action, cls = '') => {
     b.addEventListener('click', action);
     return b;
 };
+function readSettings(source) {
+    const raw = load(source || '{}', {schema: CORE_SCHEMA}) ?? {};
+    if (typeof raw !== 'object' || Array.isArray(raw)) throw new Error('Text frame settings must be a YAML mapping.');
+    return raw;
+}
+let diagnosticsEditor, diagnosticsSubscription;
+function installSettingsDiagnostics() {
+    const editor = window.globalEditor, monaco = window.globalMonaco;
+    if (!editor || !monaco || diagnosticsEditor === editor) return;
+    diagnosticsSubscription?.dispose();
+    diagnosticsEditor = editor;
+    const update = () => {
+        const model = editor.getModel();
+        if (!model) return;
+        let markers = [];
+        if (window.currentSelectedProperty === 'textFrame') {
+            try { readSettings(model.getValue()); } catch (error) {
+                const line = (error.mark?.line ?? 0) + 1, column = (error.mark?.column ?? 0) + 1;
+                markers = [{severity: monaco.MarkerSeverity.Error, message: error.reason || error.message,
+                    startLineNumber: line, endLineNumber: line, startColumn: column, endColumn: column + 1}];
+            }
+        }
+        monaco.editor.setModelMarkers(model, 'text-frame-settings', markers);
+    };
+    diagnosticsSubscription = editor.onDidChangeModelContent(() => queueMicrotask(update));
+    update();
+}
+function openSettings(uid) {
+    const box = [...frames.keys()].find(box => box.uid === uid);
+    if (!box || window.currentDocumentReadOnly) return;
+    const state = frames.get(box);
+    flushTextFramePropertyEditor(uid);
+    if (box.classList.contains('text-frame-editing')) finish(state);
+    if (state.incoming !== null) return;
+    const source = box.textFrame || '';
+    try {
+        const raw = readSettings(source);
+        const missing = Object.fromEntries(Object.entries(defaults).filter(([key]) => !Object.hasOwn(raw, key)));
+        // JSON is valid YAML: keep old documents readable, and turn the settings page into YAML on open.
+        // Append missing defaults to existing YAML so the person's comments and ordering survive.
+        const next = source.trim().startsWith('{')
+            ? dump({...defaults, ...raw}, {schema: CORE_SCHEMA, lineWidth: 100, noRefs: true})
+            : source.trimEnd() + (source.trim() && Object.keys(missing).length ? '\n' : '') +
+                (Object.keys(missing).length ? dump(missing, {schema: CORE_SCHEMA, lineWidth: 100, noRefs: true}) : '');
+        if (next !== source) write(box, 'textFrame', next);
+    } catch (_) { /* Open invalid YAML intact for repair in the normal editor. */ }
+    window.switchToProperty(box.uid, 'textFrame');
+    installSettingsDiagnostics();
+    window.globalEditor?.focus();
+}
+window.openTextFrameSettings = openSettings;
+installSettingsDiagnostics();
+window.addEventListener('field-editor-font-changed', () => {
+    installSettingsDiagnostics();
+    for (const state of frames.values()) layout(state);
+});
 function settingsFor(box) {
-    let raw = {};
-    try { raw = JSON.parse(box.textFrame || '{}'); } catch (_) { /* Keep malformed settings editable in the property editor. */ }
-    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) raw = {};
+    let raw;
+    try { raw = readSettings(box.textFrame); } catch (_) { return frames.get(box)?.config || defaults; }
     const number = (key, low, high) => Number.isFinite(Number(raw[key])) && raw[key] !== null
         ? Math.max(low, Math.min(high, Number(raw[key]))) : defaults[key];
-    return {...raw,
+    const config = {...raw,
         fontFamily: typeof raw.fontFamily === 'string' && raw.fontFamily.trim() ? raw.fontFamily : defaults.fontFamily,
         fontSize: number('fontSize', 8, 120), fontWeight: number('fontWeight', 100, 900), lineHeight: number('lineHeight', 1, 3), padding: number('padding', 0, 96),
         connectionBorderLength: number('connectionBorderLength', 0, 200),
+        minHeight: number('minHeight', 40, 2000), reflow: raw.reflow !== false,
         sizing: raw.sizing === 'fixed' ? 'fixed' : 'grow'};
+    if (frames.has(box)) frames.get(box).config = config;
+    return config;
 }
 function write(box, property, value) {
     if (window.currentDocumentReadOnly) return;
@@ -36,6 +95,7 @@ function write(box, property, value) {
         setTextFrameContents(box.uid, value);
     } else {
         box[property] = value;
+        if (property === 'textFrame') syncTextFrameSettingsEditor(box.uid, value);
         send('set-string', {uid: box.uid, property, value});
     }
 }
@@ -55,7 +115,7 @@ function render(state) {
 function layout(state) {
     cancelAnimationFrame(state.layoutFrame);
     state.layoutFrame = requestAnimationFrame(() => {
-        if (!state.box.isConnected || !(state.box.data_w > 0 && state.box.data_h > 0)) return;
+        if (!state.box.isConnected || state.box.classList.contains('tombstoned') || !(state.box.data_w > 0 && state.box.data_h > 0)) return;
         const config = settingsFor(state.box);
         if (state.box.getAttribute('data-connection-border-length') !== String(config.connectionBorderLength)) {
             state.box.setAttribute('data-connection-border-length', config.connectionBorderLength);
@@ -67,10 +127,20 @@ function layout(state) {
         state.box.style.setProperty('--text-frame-leading', config.lineHeight);
         state.box.style.setProperty('--text-frame-padding', `${config.padding}px`);
         const editing = state.box.classList.contains('text-frame-editing');
-        const surface = editing ? state.editor : state.preview;
+        // Formatted content owns the persistent geometry. A taller Markdown source scrolls
+        // inside the same frame; measuring it would make every edit/release change the graph.
+        if (editing && state.measuredDraft !== state.editor.value) {
+            state.measuredDraft = state.editor.value;
+            renderFieldMarkdown(state.preview, state.measuredDraft);
+            state.preview.classList.remove('text-frame-empty');
+        }
         if (config.sizing === 'grow' && !window.currentDocumentReadOnly) {
-            // scrollHeight and data_h are both unscaled world/CSS units, including in split panes.
-            growTextFrame(state.box.uid, Math.ceil(surface.scrollHeight + 32));
+            // The hidden preview still lays out at the real frame width, including in split panes.
+            const height = state.preview.style.height, bottom = state.preview.style.bottom;
+            state.preview.style.height = 'auto'; state.preview.style.bottom = 'auto';
+            const measured = Math.max(config.minHeight, Math.ceil(state.preview.scrollHeight + 2));
+            state.preview.style.height = height; state.preview.style.bottom = bottom;
+            growTextFrame(state.box.uid, measured, config.reflow);
         }
         const overflow = state.preview.scrollHeight > state.preview.clientHeight + 1 ||
             state.preview.scrollWidth > state.preview.clientWidth + 1;
@@ -82,11 +152,8 @@ function begin(state) {
     if (window.currentDocumentReadOnly) return;
     if (state.box.classList.contains('text-frame-editing')) { state.editor.focus(); return; }
     // The main property editor polls its model. Drain a final keystroke before switching surfaces.
-    const selection = window.currentSelectedCode;
-    if (selection?.length === 1 && selection[0].uid === state.box.uid && window.currentSelectedProperty === 'contents') {
-        const model = window.globalEditor?.getModel();
-        if (model && model.getValue() !== (state.box.contents || '')) write(state.box, 'contents', model.getValue());
-    }
+    flushTextFramePropertyEditor(state.box.uid);
+    state.measuredDraft = null;
     state.editor.value = state.incoming !== null ? state.editor.value : (state.box.contents || '');
     state.autocomplete?.clear();
     state.box.classList.add('text-frame-editing');
@@ -121,45 +188,6 @@ function resolveConflict(state, useMine) {
     state.editor.focus({preventScroll: true});
     layout(state);
 }
-function makeSettings(state) {
-    const panel = node('div', 'text-frame-settings');
-    panel.hidden = true;
-    panel.setAttribute('role', 'group');
-    panel.setAttribute('aria-label', 'Text frame settings');
-    const config = settingsFor(state.box);
-    for (const [key, label, type, min, max, step] of [
-        ['fontFamily', 'Font family', 'text'], ['fontSize', 'Font size', 'number', 8, 120, 1],
-        ['fontWeight', 'Font weight', 'weight'], ['lineHeight', 'Line height', 'number', 1, 3, 0.1], ['padding', 'Padding', 'number', 0, 96, 1],
-        ['sizing', 'Frame sizing', 'select'], ['autocomplete', 'AI4 autocomplete', 'checkbox']
-    ]) {
-        const row = node('label', '', label);
-        const input = node(type === 'select' || type === 'weight' ? 'select' : 'input', '');
-        input.name = key;
-        if (type === 'select' || type === 'weight') for (const [value, text] of (type === 'weight'
-            ? [['300', 'Light'], ['400', 'Regular'], ['700', 'Bold']]
-            : [['grow', 'Grow vertically'], ['fixed', 'Fixed / clip overflow']])) {
-            const option = node('option', '', text); option.value = value; input.append(option);
-        } else {
-            input.type = type;
-            if (type === 'number') { input.min = min; input.max = max; input.step = step; }
-        }
-        if (type === 'checkbox') input.checked = config[key] === true;
-        else input.value = config[key];
-        input.addEventListener('change', () => {
-            if (!input.checkValidity()) return;
-            const next = {...settingsFor(state.box), [key]: type === 'checkbox' ? input.checked : type === 'number' || type === 'weight' ? Number(input.value) : input.value};
-            write(state.box, 'textFrame', JSON.stringify(next));
-            layout(state);
-        });
-        row.append(input); panel.append(row);
-    }
-    panel.append(button('Done', () => { panel.hidden = true; state.settingsButton.setAttribute('aria-expanded', 'false'); }));
-    panel.addEventListener('keydown', e => {
-        e.stopPropagation();
-        if (e.key === 'Escape') { panel.hidden = true; state.settingsButton.setAttribute('aria-expanded', 'false'); state.settingsButton.focus(); }
-    });
-    return panel;
-}
 function mount(box) {
     const body = node('div', 'text-frame-body');
     const preview = node('div', 'text-frame-preview');
@@ -170,29 +198,14 @@ function mount(box) {
     const editor = node('textarea', 'text-frame-editor');
     editor.setAttribute('aria-label', 'Markdown contents');
     editor.placeholder = 'Write Markdown…'; editor.spellcheck = true; editor.hidden = true;
-    const controls = node('div', 'text-frame-controls');
     const conflict = node('div', 'text-frame-conflict'); conflict.hidden = true; conflict.setAttribute('role', 'alert');
-    const state = {box, body, preview, editor, controls, conflict, seenContents: box.contents || '', incoming: null, dirty: false, composing: false};
+    const state = {box, body, preview, editor, conflict, seenContents: box.contents || '', incoming: null, dirty: false, composing: false};
     state.overflow = button('+', () => begin(state), 'text-frame-overflow');
     state.overflow.title = 'Text overflows this frame. Click to edit all text.';
     state.overflow.setAttribute('aria-label', 'Overflowed text; edit all text'); state.overflow.hidden = true;
-    controls.append(button('Edit', () => begin(state)));
-    state.settingsButton = button('Settings', () => {
-        const open = state.settings.hidden;
-        state.settings.hidden = !open;
-        state.settingsButton.setAttribute('aria-expanded', String(open));
-        if (open) {
-            const config = settingsFor(box);
-            state.settings.querySelectorAll('[name]').forEach(input => { if (input.type === 'checkbox') input.checked = config[input.name] === true; else input.value = config[input.name]; });
-            state.settings.querySelector('input').focus();
-        }
-    });
-    state.settingsButton.setAttribute('aria-expanded', 'false');
-    controls.append(state.settingsButton);
-    state.settings = makeSettings(state);
     conflict.append(node('span', '', 'Contents changed elsewhere. Your draft is kept here.'),
         button('Keep my version', () => resolveConflict(state, true)), button('Use incoming', () => resolveConflict(state, false)));
-    body.append(preview, editor); box.append(body, controls, state.overflow, state.settings, conflict);
+    body.append(preview, editor); box.append(body, state.overflow, conflict);
     box.classList.add('text-frame-box');
     preview.addEventListener('dblclick', e => { if (!e.target.closest('a,button')) { e.stopPropagation(); begin(state); } });
     preview.addEventListener('keydown', e => { if (e.target === preview && e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); begin(state); } });
@@ -214,8 +227,11 @@ function mount(box) {
             e.preventDefault(); finish(state); if (state.incoming === null) preview.focus({preventScroll: true});
         }
     });
-    editor.addEventListener('blur', () => finish(state));
-    for (const element of [editor, controls, state.settings, conflict, state.overflow]) {
+    editor.addEventListener('blur', () => queueMicrotask(() => {
+        // Monaco can briefly focus its own input while syncing a peer value, then restore us.
+        if (document.activeElement !== editor) finish(state);
+    }));
+    for (const element of [editor, conflict, state.overflow]) {
         for (const name of ['pointerdown', 'mousedown', 'dblclick', 'wheel', 'keyup', 'contextmenu']) element.addEventListener(name, e => e.stopPropagation());
     }
     // Loaded images, math typesetting and a width resize can all change the amount of text that fits.
@@ -231,7 +247,7 @@ export function syncTextFrame(box, property) {
     if (box.box_kind !== 'text-frame') {
         if (state) {
             flush(state); state.observer.disconnect(); state.autocomplete.dispose(); cancelAnimationFrame(state.layoutFrame);
-            for (const part of [state.body, state.controls, state.overflow, state.settings, state.conflict]) part.remove();
+            for (const part of [state.body, state.overflow, state.conflict]) part.remove();
             box.classList.remove('text-frame-box', 'text-frame-editing', 'text-frame-has-overflow'); frames.delete(box);
         }
         return;

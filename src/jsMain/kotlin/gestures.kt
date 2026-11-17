@@ -224,6 +224,7 @@ private fun connect_center_with_terminal(
         val exitRoom = max(0.0, dx * a.normal.x + dy * a.normal.y)
         val entryRoom = max(0.0, -dx * b.normal.x - dy * b.normal.y)
         radius = min(radius, max(1.0 / mainZoom, min(exitRoom, entryRoom) / 2.0))
+        radius *= 1.15
     }
 
     val key = "${(a_box.asDynamic().uid ?: a_box.hashCode()).toString()}->${(b_box.asDynamic().uid ?: b_box.hashCode()).toString()}"

@@ -471,6 +471,40 @@ private fun forceEditedPropertyToRemoteValue(w: dynamic, selected: dynamic, edit
     }
 }
 
+/** Drain an unpolled property-editor edit before opening a text-frame editing surface. */
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun flushTextFramePropertyEditor(uid: String) {
+    val w = window.asDynamic()
+    val selection = w.currentSelectedCode
+    if (selection?.length != 1 || selection[0].uid != uid || selection[0].box_kind != "text-frame") return
+    val property = w.currentSelectedProperty as? String ?: return
+    if (property != "contents" && property != "textFrame") return
+    val value = w.globalEditor?.getModel()?.getValue() as? String ?: return
+    // A differing box value can also be an incoming edit that the editor has not applied yet.
+    // Only drain a model that actually changed since its last synchronization baseline.
+    if (value == currentValueAtOrigination) return
+    if (property == "contents") {
+        afield.app.client.setTextFrameContents(uid, value)
+    } else {
+        selection[0][property] = value
+        send("set-string", kotlin.js.json("uid" to uid, "property" to property, "value" to value))
+    }
+    currentValueAtOrigination = value
+}
+
+/** Keep an already open settings model in step when Open settings fills missing YAML defaults. */
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun syncTextFrameSettingsEditor(uid: String, value: String) {
+    notifyEmbeddedEditorOfRemoteUpdate(uid, "textFrame", value)
+    val w = window.asDynamic()
+    val selection = w.currentSelectedCode
+    if (selection?.length != 1 || selection[0].uid != uid || w.currentSelectedProperty != "textFrame") return
+    val editor = w.globalEditor ?: return
+    forceEditedPropertyToRemoteValue(w, selection, editor, "textFrame", value)
+}
+
 /** A local canvas editor owns this edit; establish the same baseline in the property editor. */
 internal fun notifyCanvasTextFrameContents(uid: String, value: String) {
     val w = window.asDynamic()

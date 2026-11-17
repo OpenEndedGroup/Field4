@@ -27,6 +27,8 @@ operations:
         ui.down("Alt")
         ui.mouseDown()
         ui.waitForSelector(".markingButton:has-text('New text frame below')", 10000.0)
+        check(ui.eval("const r = [...document.querySelectorAll('.markingButton')].find(b=>b.textContent==='New text frame below').getBoundingClientRect(); return r.top > 160;").toString() == "true") { "New text frame below is not below the marking origin" }
+        check(ui.eval("const r = [...document.querySelectorAll('.markingButton')].find(b=>b.textContent==='Open settings').getBoundingClientRect(); return r.left > 720;").toString() == "true") { "Open settings is not right of the marking origin" }
         ui.hoverSelector(".markingButton:has-text('New text frame below')")
         ui.mouseUp()
         ui.up("Alt")
@@ -39,7 +41,7 @@ operations:
         ui.clickAt(160.0, 170.0)
         ui.pause(500)
         check(ui.eval("""return window.currentSelectedProperty === 'contents' && getComputedStyle(document.querySelector('.monaco-editor-container')).visibility === 'visible';""").toString() == "true") { "Frame selection did not honor automatic editor opening" }
-        ui.eval("""const box = [...document.querySelectorAll('.text-frame-box')].find(b => b.uid === window.__textFrameTest.source); window.globalEditor.getModel().setValue(box.contents + '\n\nA last property-editor keystroke.'); box.querySelector('.text-frame-controls button').click(); return true;""")
+        ui.eval("""const box = [...document.querySelectorAll('.text-frame-box')].find(b => b.uid === window.__textFrameTest.source); window.globalEditor.getModel().setValue(box.contents + '\n\nA last property-editor keystroke.'); box.querySelector('.text-frame-preview').dispatchEvent(new MouseEvent('dblclick', {bubbles:true})); return true;""")
         ui.waitForSelector(".text-frame-editor:focus", 10000.0)
         check(ui.eval("return document.activeElement.value.includes('A last property-editor keystroke.');").toString() == "true") { "Switching surfaces lost an unpolled property-editor edit" }
         ui.pause(500)
@@ -53,3 +55,30 @@ operations:
         ui.clickAt(1100.0, 100.0)
         ui.clickAt(700.0, 320.0)
         ui.pause(250)
+  - drive:
+      warmCompletion: false
+      script: |
+        ui.eval("window.__shortcutFrame.dataset.settingsTarget='true'; return true;")
+        ui.hoverSelector("[data-settings-target='true'] .text-frame-preview")
+        ui.down("Alt")
+        ui.mouseDown()
+        ui.waitForSelector(".markingButton:has-text('Open settings')", 10000.0)
+        ui.hoverSelector(".markingButton:has-text('Open settings')")
+        ui.mouseUp()
+        ui.up("Alt")
+        ui.pause(600)
+        check(ui.eval("return window.currentSelectedProperty==='textFrame' && window.globalEditor.getModel().getLanguageId()==='yaml' && getComputedStyle(document.querySelector('.monaco-editor-container')).visibility==='visible';").toString() == "true") { "Marking-menu settings did not force open the YAML property editor" }
+        check(ui.eval("return window.fieldAutoDisplayEditor===false && window.globalEditor.getModel().getValue().includes('connectionBorderLength: 100') && window.globalEditor.getModel().getValue().includes('reflow: true');").toString() == "true") { "Settings did not populate defaults, or changed the editor preference" }
+        ui.eval("""window.globalEditor.getModel().setValue('# My reading settings\nfontSize: 21\nsizing: fixed\nextraNote: \"notes: #1\"\n'); return true;""")
+        ui.pause(700)
+        check(ui.eval("return getComputedStyle(window.__shortcutFrame.querySelector('.text-frame-preview')).fontSize==='21px';").toString() == "true") { "Editing YAML in Monaco did not update the reader" }
+        ui.eval("window.openTextFrameSettings(window.__shortcutFrame.uid); return true;")
+        ui.pause(400)
+        check(ui.eval("return window.globalEditor.getModel().getValue().startsWith('# My reading settings') && window.globalEditor.getModel().getValue().includes('extraNote:') && window.globalEditor.getModel().getValue().includes('fontWeight: 400');").toString() == "true") { "Settings lost comments or unknown YAML keys when filling defaults" }
+        ui.eval("""window.globalEditor.getModel().setValue('fontSize: ['); return true;""")
+        ui.pause(500)
+        check(ui.eval("return window.globalMonaco.editor.getModelMarkers({owner:'text-frame-settings'}).length > 0 && getComputedStyle(window.__shortcutFrame.querySelector('.text-frame-preview')).fontSize==='21px';").toString() == "true") { "Invalid YAML did not retain the reader and report an editor diagnostic" }
+        ui.eval("""window.globalEditor.getModel().setValue('fontSize: 18\nsizing: grow\n'); return true;""")
+        ui.pause(600)
+        ui.clickAt(1100.0, 830.0)
+        ui.pause(300)

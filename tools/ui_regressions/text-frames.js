@@ -1,5 +1,6 @@
 // Real boxes, property RPC and canvas editor. No model request: completion is opt-in.
 const {newBox, newTextFrameBelow, send, sendWithReply} = await import('./afield.mjs');
+const {load} = await import('./vendor/js-yaml/js-yaml.mjs');
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const check = (condition, message) => { if (!condition) throw new Error(message); };
 const wait = async (fn, message) => {
@@ -20,7 +21,14 @@ const preview = box.querySelector('.text-frame-preview');
 await wait(() => document.activeElement === editor, 'New frame did not focus its Markdown editor');
 check(editor.spellcheck && editor.tagName === 'TEXTAREA', 'Editor lost native spellcheck');
 await Promise.all(['300 18px', 'italic 300 18px', '18px', 'italic 18px', 'bold 18px', 'bold italic 18px'].map(style => document.fonts.load(`${style} "Field Etoile"`)));
-check(document.fonts.check('18px "Field Etoile"') && getComputedStyle(editor).fontFamily.includes('Field Etoile'), 'Customized Etoile webfont is not loaded as the default: ' + JSON.stringify({family: getComputedStyle(editor).fontFamily, variable: getComputedStyle(box).getPropertyValue('--text-frame-font'), loaded: document.fonts.check('18px "Field Etoile"'), faces: [...document.fonts].filter(f => f.family.includes('Etoile')).map(f => ({family:f.family,status:f.status,weight:f.weight,style:f.style}))}));
+check(document.fonts.check('18px "Field Etoile"') && getComputedStyle(preview).fontFamily.includes('Field Etoile'), 'Reader lost the customized Etoile face');
+const mainFontSize = window.globalEditor.getOption(window.globalMonaco.editor.EditorOption.fontSize);
+check(getComputedStyle(editor).fontFamily.includes('Iosevka Web') && parseFloat(getComputedStyle(editor).fontSize) === mainFontSize, 'Markdown source does not match Field’s editor font');
+window.globalEditor.updateOptions({fontSize: 17});
+check(parseFloat(getComputedStyle(editor).fontSize) === 17, 'Inline source did not follow editor font changes');
+window.globalEditor.updateOptions({fontSize: mainFontSize});
+check(!box.querySelector('.text-frame-controls,.text-frame-settings') && getComputedStyle(box.querySelector('.box-title-stack')).display === 'none', 'Frame still has a title or button toolbar');
+check(Math.abs(box.querySelector('.text-frame-body').getBoundingClientRect().top - box.getBoundingClientRect().top) < 2, 'Frame kept the old title/header gap');
 const source = '# Canvas notes\n\n2026: 0 is for text.\n\nWrite **together**, with [a safe link](https://example.org).\n\n- Ideas\n- Decisions';
 editor.value = source;
 editor.dispatchEvent(new Event('input', {bubbles: true}));
@@ -28,7 +36,7 @@ editor.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true,
 await wait(() => preview.querySelector('h1') && preview.querySelector('strong'), 'Markdown was not formatted');
 await delay(600);
 check(box.contents === source && editor.hidden, 'Local contents were lost to another editor or failed to commit');
-check(!box.textFrame || !JSON.parse(box.textFrame).autocomplete, 'Completion must be opt-in');
+check(!box.textFrame || !load(box.textFrame).autocomplete, 'Completion must be opt-in');
 // Overset indicator is based on real rendered content and keeps all source available.
 send('set-string', {uid: box.uid, property: 'textFrame', value: JSON.stringify({sizing: 'fixed', fontSize: 22})});
 await wait(() => box.textFrame?.includes('fixed'), 'Settings did not sync');
@@ -65,14 +73,32 @@ await wait(() => !box.querySelector('.text-frame-conflict').hidden, 'Second inco
 check(box.contents === 'A local version deliberately kept.', 'Explicit keep-mine resolution failed');
 editor.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true, cancelable: true}));
 await wait(() => editor.hidden, 'Resolved editor did not close');
-// Settings UI writes JSON; growing uses world units and never changes the width.
-box.querySelector('.text-frame-controls button:nth-child(2)').click();
-const weight = box.querySelector('[name=fontWeight]');
-weight.value = '300'; weight.dispatchEvent(new Event('change', {bubbles: true}));
-await wait(() => getComputedStyle(preview).fontWeight === '300', 'Light weight did not apply');
-const sizing = box.querySelector('[name=sizing]');
-sizing.value = 'grow'; sizing.dispatchEvent(new Event('change', {bubbles: true}));
-box.querySelector('.text-frame-settings > button').click();
+// YAML settings share the normal property protocol. Old JSON remains readable above.
+const yaml = '# Reader typography\nfontWeight: 300\nfontSize: 22\nsizing: grow\nminHeight: 200\nreflow: false\nautocomplete: false\ncustomReading: "notes: #1"\n';
+send('set-string', {uid: box.uid, property: 'textFrame', value: yaml});
+await wait(() => getComputedStyle(preview).fontWeight === '300', 'YAML light weight did not apply');
+send('set-string', {uid: box.uid, property: 'textFrame', value: 'fontSize: [\n'});
+await wait(() => box.textFrame === 'fontSize: [\n', 'Invalid YAML did not sync');
+await delay(150);
+check(parseFloat(getComputedStyle(preview).fontSize) === 22, 'Partial YAML destroyed the last valid appearance');
+send('set-string', {uid: box.uid, property: 'textFrame', value: yaml});
+await wait(() => box.textFrame === yaml, 'YAML did not restore');
+send('set-rect', {uid: box.uid, property: 'frame', value: {x: 80, y: 90, w: 380, h: 200}});
+await wait(() => box.data_h === 200, 'Could not prepare the source-height fixture');
+preview.dispatchEvent(new MouseEvent('dblclick', {bubbles: true}));
+check(getComputedStyle(box).backgroundColor === 'rgb(0, 0, 0)', 'Editing frame is not pure black');
+const verboseSource = '[Small rendered text](https://example.org/' + 'long-source-'.repeat(160) + ')';
+editor.value = verboseSource; editor.dispatchEvent(new Event('input', {bubbles: true}));
+await delay(600);
+check(editor.scrollHeight > editor.clientHeight && box.data_h === 200, 'Raw Markdown height changed the persistent frame');
+check(preview.textContent.trim() === 'Small rendered text', 'Hidden typeset preview was not measured during typing');
+editor.value = source + '\n\n' + 'A visible paragraph.\n\n'.repeat(8); editor.dispatchEvent(new Event('input', {bubbles: true}));
+await delay(500);
+const typedHeight = box.data_h;
+check(typedHeight > 200, 'Growing frames did not follow the formatted draft while typing: ' + JSON.stringify({height:typedHeight,settings:box.textFrame,previewHeight:preview.scrollHeight,html:preview.innerHTML,editing:box.classList.contains('text-frame-editing')}));
+editor.dispatchEvent(new KeyboardEvent('keydown', {key:'Escape',bubbles:true,cancelable:true}));
+await delay(250);
+check(Math.abs(box.data_h - typedHeight) <= 1, 'Releasing Markdown changed the frame height');
 const oldHeight = box.data_h, width = box.data_w;
 send('set-string', {uid: box.uid, property: 'contents', value: long});
 await wait(() => box.data_h > oldHeight + 200, 'Frame failed to grow for rendered text');
@@ -80,6 +106,8 @@ check(box.data_w === width, 'Typing changed the frame width');
 // Restore compact copy for the screenshot and create a real graph child at a world-space standoff.
 send('set-string', {uid: box.uid, property: 'contents', value: source});
 await delay(300);
+send('set-string', {uid: box.uid, property: 'textFrame', value: yaml.replace('sizing: grow', 'sizing: fixed')});
+await wait(() => box.textFrame.includes('sizing: fixed'), 'Could not fix the visual fixture height');
 send('set-rect', {uid: box.uid, property: 'frame', value: {x: 80, y: 90, w: 380, h: 480}});
 await wait(() => box.data_h === 480, 'Frame resize did not sync');
 newTextFrameBelow(box.uid);
@@ -93,4 +121,4 @@ await delay(300);
 check(getComputedStyle(box).borderTopColor === 'rgba(0, 0, 0, 0)' && getComputedStyle(box, '::before').borderTopWidth === '0px', 'Unselected frame outline is visible');
 window.__textFrameTest = {source: box.uid, child: child.uid};
 return {ok: true, markdown: true, spellcheck: true, fixedOverflow: true, conflictDraftPreserved: true,
-    growth: true, widthPreserved: true, connectedBelow: true, shiftNRegistered: true, noModelRequest: true};
+    yamlSettings: true, editorFont: true, noTitleOrButtons: true, renderedHeightWhileTyping: true, growth: true, widthPreserved: true, connectedBelow: true, shiftNRegistered: true, noModelRequest: true};

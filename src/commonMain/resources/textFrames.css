@@ -19,12 +19,11 @@
     border-radius: 3px !important;
     box-sizing: border-box;
 }
-.text-frame-box > .box-title-stack { position: absolute; top: 7px; left: 12px; right: 120px; font-size: 12px; opacity: .6; overflow: hidden; white-space: nowrap; }
+.text-frame-box > .box-title-stack { display: none !important; }
 .text-frame-box > .statusArea { right: -12px; }
-.text-frame-controls { position: absolute; top: 4px; right: 6px; display: flex; gap: 4px; }
 .text-frame-box button { font: 12px var(--field-font, monospace); color: inherit; background: var(--field-bg, #080808); border: 1px solid #555; border-radius: 2px; cursor: pointer; padding: 2px 6px; }
 .text-frame-box button:hover, .text-frame-box button:focus-visible { border-color: currentColor; }
-.text-frame-body { position: absolute; inset: 30px 0 0; overflow: hidden; }
+.text-frame-body { position: absolute; inset: 0; overflow: hidden; }
 .text-frame-preview, .text-frame-editor { box-sizing: border-box; width: 100%; height: 100%; padding: var(--text-frame-padding); margin: 0; font-family: var(--text-frame-font); font-stretch: normal; font-feature-settings: normal; font-size: var(--text-frame-size); font-weight: var(--text-frame-weight); line-height: var(--text-frame-leading); color: inherit; overflow-wrap: anywhere; }
 .text-frame-preview { overflow: hidden; user-select: text; cursor: text; }
 .text-frame-preview > :first-child { margin-top: 0; }
@@ -42,19 +41,18 @@
 .text-frame-preview td, .text-frame-preview th { border: 1px solid #555; padding: .3em .5em; }
 .text-frame-preview .ai-chat-code-header { display: none; }
 .text-frame-empty { opacity: .45; font-size: 14px; }
-.text-frame-editor { display: block; resize: none; border: 0; outline: 0; border-radius: 0; background: transparent; overflow: auto; user-select: text; }
+.text-frame-editor { display: block; resize: none; border: 0; outline: 0; border-radius: 0; background: transparent; overflow: auto; user-select: text; font-family: var(--field-editor-font-family, "Iosevka Web"), monospace; font-size: var(--field-editor-font-size, 15px); font-weight: var(--field-editor-font-weight, 300); line-height: var(--field-editor-line-height, 21px); font-feature-settings: var(--field-editor-font-features, normal); }
 .text-frame-overflow { position: absolute; bottom: 4px; right: 4px; z-index: 2; }
-.text-frame-settings, .text-frame-conflict { position: absolute; top: 32px; right: 6px; width: 250px; padding: 12px; background: var(--field-bg, #080808); border: 1px solid #777; z-index: 20; font: 13px var(--field-font, monospace); color: inherit; user-select: text; }
-.text-frame-settings label { display: flex; flex-direction: column; gap: 3px; margin-bottom: 10px; }
-.text-frame-settings input, .text-frame-settings select { font: inherit; color: inherit; background: var(--field-bg, #080808); border: 1px solid #555; padding: 4px; min-width: 0; }
-.text-frame-conflict { top: auto; bottom: 4px; }
+.text-frame-conflict { position: absolute; bottom: 4px; right: 6px; width: 250px; padding: 12px; background: var(--field-bg, #080808); border: 1px solid #777; z-index: 20; font: 13px var(--field-font, monospace); color: inherit; user-select: text; }
 .text-frame-conflict span { display: block; margin-bottom: 8px; }
 .text-frame-box [hidden] { display: none !important; }
 /* The writing is the canvas object; its frame and chrome appear when selected or being edited. */
 .box.text-frame-box { border-color: var(--text-frame-border, transparent) !important; background: var(--text-frame-background, transparent) !important; backdrop-filter: none !important; }
 .box.text-frame-box.selected, .box.text-frame-box.text-frame-editing { border-color: var(--text-frame-border, #888) !important; }
-.text-frame-box:not(.selected):not(.text-frame-editing) > .box-title-stack,
-.text-frame-box:not(.selected):not(.text-frame-editing) > .text-frame-controls { visibility: hidden; }
+.box.text-frame-box.text-frame-editing { background: #000 !important; }
+/* The formatted preview remains measurable while editing, without painting or receiving input. */
+.box.text-frame-box.text-frame-editing .text-frame-preview[hidden] { display: block !important; visibility: hidden; position: absolute; inset: 0; pointer-events: none; }
+.text-frame-editing .text-frame-editor { position: absolute; inset: 0; }
 .text-frame-body .ai-chat-ghost { position: absolute; box-sizing: border-box; pointer-events: none; overflow: hidden; white-space: pre-wrap; z-index: 1; }
 .text-frame-body .ai-chat-ghost-typed { color: transparent; }
 .text-frame-body .ai-chat-ghost-rest { color: var(--field-box-fg, #ddd); opacity: .4; }

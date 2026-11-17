@@ -157,7 +157,7 @@ var Box.attic by Delegation<String>(defaultValue = { "" })
 var Box.notes by Delegation<String>(defaultValue = { "" })
 /** Markdown source for a text frame; file proxies use the same property for their disk contents. */
 var Box.contents by Delegation<String>(defaultValue = { "" })
-/** Text frame typography and sizing as JSON; see dev_docs/workspace/TEXT_FRAMES.md. */
+/** Text frame typography and sizing as YAML (legacy JSON is also accepted); see dev_docs/workspace/TEXT_FRAMES.md. */
 var Box.textFrame by Delegation<String>(defaultValue = { "{}" })
 var Box.box_kind by Delegation<String>(defaultValue = { "" })
 /**

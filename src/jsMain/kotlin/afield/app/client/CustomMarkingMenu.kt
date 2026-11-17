@@ -14,6 +14,7 @@ import kotlinext.js.asJsObject
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlin.js.json
+import kotlinx.browser.window
 
 /**
  * Requests and displays a custom marking menu for a box.
@@ -27,11 +28,19 @@ fun requestCustomMarkingMenu(uid: String, x: Double, y: Double, event: dynamic) 
         callbackName
     ) { message, _ ->
         val response = Json.decodeFromJsonElement<CustomMarkingResponse>(message.payload!!)
-        val builtins = listOf(json(
+        val builtins = mutableListOf(json(
             "text" to "New text frame below",
             "callback" to { newTextFrameBelow(uid) },
-            "radius" to 1.0, "angle" to 90.0
+            "radius" to 1.0, "angle" to 0.0
         ))
+        if (findBoxByUid(uid)?.asDynamic()?.box_kind == "text-frame") {
+            builtins += json(
+                "text" to "Open settings",
+                // Release the marking gesture and its pointer capture before Monaco takes focus.
+                "callback" to { window.setTimeout({ window.asDynamic().openTextFrameSettings(uid) }, 100) },
+                "radius" to 1.0, "angle" to 90.0
+            )
+        }
         val menus = (response.entries.map { entry ->
             json(
                 "text" to entry.label,
