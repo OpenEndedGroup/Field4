@@ -49,8 +49,7 @@ operations:
 
           /*
           Run this one (Alt-Enter), then drag the slider. Three seed patches in Gray–Scott's spot regime, where each spot
-          grows, splits in two and pushes its
-          daughters apart until the spots fill the field. 120 frames, 40 steps apart: 4,800 steps in all.
+          grows, splits in two and pushes its daughters apart until the spots fill the field. 120 frames, 40 steps apart: 4,800 steps in all.
           */
           var state = grayScottSeed(96, 96, patches = 3, patchSize = 10, seed = 7)
           val frames = ArrayList<Img>()

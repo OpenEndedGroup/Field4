@@ -481,6 +481,7 @@ The first-order filters and the tilt, with Field's older impulse-invariant `OneP
 :::fold responseDb, as above
 fun responseDb(filter: SignalProcessor) =
     fft(impulseResponse(filter, 48_000), 48_000.0).magnitudeDbOneSided().take(5000)
+
 :::endfold
 
 showSignals(
@@ -504,6 +505,7 @@ And a `Resonator` at 1 kHz with three decays:
 :::fold responseDb, as above
 fun responseDb(filter: SignalProcessor) =
     fft(impulseResponse(filter, 48_000), 48_000.0).magnitudeDbOneSided().take(5000)
+
 :::endfold
 
 showSignals(
@@ -589,8 +591,8 @@ val voice = Impulse(120.p) * 4f / FormantFilter(0.p) // the vowel "a"
 val frame = renderSignalsOffline(0.2, voice)[0].copyOfRange(4096, 4096 + 2048)
 
 val bins = 214 // 0 .. 5 kHz at 48 kHz / 2048
-val spectrum = fft(DoubleArray(frame.size) { frame[it].toDouble() }, WindowType.HANN, 48_000.0)
-    .magnitudeDbOneSided().take(bins)
+val spectrum =
+    fft(DoubleArray(frame.size) { frame[it].toDouble() }, WindowType.HANN, 48_000.0).magnitudeDbOneSided().take(bins)
 fun envelope(order: Int) = Lpc.analyze(frame, order).envelopeDb(1025).take(bins)
 fun peakAtZero(db: List<Double>) = db.max().let { top -> db.map { it - top } }
 
@@ -688,28 +690,39 @@ predictor, and returns a `StrokeLpc`:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/spectral_examples/lpc_scribble.png" wait="2.0" capture="box" open-outputs="true" padding="20"}
 :::static
 // A looping stroke whose loops swell and shrink, and a wobbling zigzag.
-val loops = FLine().also { f ->
-    for (i in 0..420) {
-        val t = i / 420.0 * 2 * PI * 6
-        val r = 45.0 * (1 + 0.3 * sin(t * 0.4))
-        val (x, y) = 14.0 * t - r * sin(t) to r * cos(t)
-        if (i == 0) f.moveTo(x, y) else f.lineTo(x, y)
+val loops =
+    FLine().also { f ->
+        for (i in 0..420) {
+            val t = i / 420.0 * 2 * PI * 6
+            val r = 45.0 * (1 + 0.3 * sin(t * 0.4))
+            val (x, y) = 14.0 * t - r * sin(t) to r * cos(t)
+            if (i == 0) f.moveTo(x, y) else f.lineTo(x, y)
+        }
     }
-}
-val zigzag = FLine().also { f ->
-    for (i in 0..300) {
-        val (x, y) = i * 2.0 to 25.0 * sin(i * 0.35) + 10.0 * sin(i * 0.09)
-        if (i == 0) f.moveTo(x, y) else f.lineTo(x, y)
+val zigzag =
+    FLine().also { f ->
+        for (i in 0..300) {
+            val (x, y) = i * 2.0 to 25.0 * sin(i * 0.35) + 10.0 * sin(i * 0.09)
+            if (i == 0) f.moveTo(x, y) else f.lineTo(x, y)
+        }
     }
-}
 
 val fit = loops.lpc(order = 8, samples = 300)
 val other = zigzag.lpc(order = 8, samples = 300)
 
 lines(
-    fit.resampled().also { it.color = vec(1.0, 1.0, 1.0, 0.9); it.thickness = 1.5 },
-    fit.continued(150, includeStroke = false).also { it.color = vec(1.0, 0.6, 0.1, 1.0); it.thickness = 2.5 },
-    fit.drivenBy(other, startX = 0.0, startY = 220.0).also { it.color = vec(0.3, 0.8, 1.0, 1.0); it.thickness = 1.5 },
+    fit.resampled().also {
+        it.color = vec(1.0, 1.0, 1.0, 0.9)
+        it.thickness = 1.5
+    },
+    fit.continued(150, includeStroke = false).also {
+        it.color = vec(1.0, 0.6, 0.1, 1.0)
+        it.thickness = 2.5
+    },
+    fit.drivenBy(other, startX = 0.0, startY = 220.0).also {
+        it.color = vec(0.3, 0.8, 1.0, 1.0)
+        it.thickness = 1.5
+    },
     w = 900.0,
     h = 420.0,
     fitToSize = true,
@@ -744,27 +757,38 @@ next 180 steps. The faint stroke under the orange one is what the pen really dre
 // A pen pushed by three wheels: each step is the sum of three rotating arms.
 var x = 0.0
 var y = 0.0
-val wheels = FLine().also { f ->
-    f.moveTo(x, y)
-    for (n in 0 until 300) {
-        x += 6.0 * cos(0.21 * n) + 3.5 * cos(-0.52 * n) + 1.5 * cos(0.87 * n)
-        y += 6.0 * sin(0.21 * n) + 3.5 * sin(-0.52 * n) + 1.5 * sin(0.87 * n)
-        f.lineTo(x, y)
+val wheels =
+    FLine().also { f ->
+        f.moveTo(x, y)
+        for (n in 0 until 300) {
+            x += 6.0 * cos(0.21 * n) + 3.5 * cos(-0.52 * n) + 1.5 * cos(0.87 * n)
+            y += 6.0 * sin(0.21 * n) + 3.5 * sin(-0.52 * n) + 1.5 * sin(0.87 * n)
+            f.lineTo(x, y)
+        }
     }
-}
 
 // Fit on the first 120 points at each order, ask for the next 180, and lay the rows side by side.
-val drawn = [1, 2, 3, 4].mapIndexed { k, order ->
-    val whole = wheels.lpc(order = order, removeDrift = false, alongLength = false)
-    val head = whole.head(120)
-    println("order ${order}: residual / step energy ${head.residualRatio.f3}")
-    val shift = vec(k * 130.0, 0.0)
-    [
-        (whole.resampled() + shift).also { it.color = vec(1.0, 1.0, 1.0, 0.2); it.thickness = 1.0 },
-        (head.resampled() + shift).also { it.color = vec(1.0, 1.0, 1.0, 0.9); it.thickness = 1.5 },
-        (head.continued(180, includeStroke = false) + shift).also { it.color = vec(1.0, 0.6, 0.1, 1.0); it.thickness = 1.5 },
-    ]
-}
+val drawn =
+    [1, 2, 3, 4].mapIndexed { k, order ->
+        val whole = wheels.lpc(order = order, removeDrift = false, alongLength = false)
+        val head = whole.head(120)
+        println("order ${order}: residual / step energy ${head.residualRatio.f3}")
+        val shift = vec(k * 130.0, 0.0)
+        [
+            (whole.resampled() + shift).also {
+                it.color = vec(1.0, 1.0, 1.0, 0.2)
+                it.thickness = 1.0
+            },
+            (head.resampled() + shift).also {
+                it.color = vec(1.0, 1.0, 1.0, 0.9)
+                it.thickness = 1.5
+            },
+            (head.continued(180, includeStroke = false) + shift).also {
+                it.color = vec(1.0, 0.6, 0.1, 1.0)
+                it.thickness = 1.5
+            },
+        ]
+    }
 lines(drawn.flatten(), w = 900.0, h = 300.0, fitToSize = true)
 ```
 
@@ -781,26 +805,37 @@ change of direction, and a predictor that sees only the last few steps cannot kn
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/spectral_examples/lpc_scribble_zigzag.png" wait="2.0" capture="box" open-outputs="true" padding="20"}
 :::static
 // Nine teeth over 300 steps: a corner every 16.7 steps, the same shape each time.
-val zigzag = FLine().also { f ->
-    for (i in 0..300) {
-        val phase = (i / 300.0 * 9) % 1.0
-        val (x, y) = i * 1.8 to 60.0 * (if (phase < 0.5) 4 * phase - 1 else 3 - 4 * phase)
-        if (i == 0) f.moveTo(x, y) else f.lineTo(x, y)
+val zigzag =
+    FLine().also { f ->
+        for (i in 0..300) {
+            val phase = (i / 300.0 * 9) % 1.0
+            val (x, y) = i * 1.8 to 60.0 * (if (phase < 0.5) 4 * phase - 1 else 3 - 4 * phase)
+            if (i == 0) f.moveTo(x, y) else f.lineTo(x, y)
+        }
     }
-}
 
 // Fit the first 180 points at four orders and ask each for the last 120.
-val drawn = [4, 12, 24, 40].mapIndexed { row, order ->
-    val whole = zigzag.lpc(order = order, alongLength = false)
-    val head = whole.head(180)
-    println("order ${order}: residual / step energy ${head.residualRatio.f3}")
-    val shift = vec(0.0, row * 160.0)
-    [
-        (whole.resampled() + shift).also { it.color = vec(1.0, 1.0, 1.0, 0.2); it.thickness = 1.0 },
-        (head.resampled() + shift).also { it.color = vec(1.0, 1.0, 1.0, 0.9); it.thickness = 1.5 },
-        (head.continued(120, includeStroke = false) + shift).also { it.color = vec(1.0, 0.6, 0.1, 1.0); it.thickness = 2.0 },
-    ]
-}
+val drawn =
+    [4, 12, 24, 40].mapIndexed { row, order ->
+        val whole = zigzag.lpc(order = order, alongLength = false)
+        val head = whole.head(180)
+        println("order ${order}: residual / step energy ${head.residualRatio.f3}")
+        val shift = vec(0.0, row * 160.0)
+        [
+            (whole.resampled() + shift).also {
+                it.color = vec(1.0, 1.0, 1.0, 0.2)
+                it.thickness = 1.0
+            },
+            (head.resampled() + shift).also {
+                it.color = vec(1.0, 1.0, 1.0, 0.9)
+                it.thickness = 1.5
+            },
+            (head.continued(120, includeStroke = false) + shift).also {
+                it.color = vec(1.0, 0.6, 0.1, 1.0)
+                it.thickness = 2.0
+            },
+        ]
+    }
 lines(drawn.flatten(), w = 900.0, h = 520.0, fitToSize = true)
 ```
 
@@ -821,39 +856,53 @@ than travels:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/spectral_examples/lpc_scribble_fates.png" wait="2.0" capture="box" open-outputs="true" padding="20"}
 :::static
-fun stroke(n: Int, at: (Double) -> Pair<Double, Double>) = FLine().also { f ->
-    for (i in 0..n) {
-        val (x, y) = at(i / n.toDouble())
-        if (i == 0) f.moveTo(x, y) else f.lineTo(x, y)
+fun stroke(n: Int, at: (Double) -> Pair<Double, Double>) =
+    FLine().also { f ->
+        for (i in 0..n) {
+            val (x, y) = at(i / n.toDouble())
+            if (i == 0) f.moveTo(x, y) else f.lineTo(x, y)
+        }
     }
-}
 
 // Three strokes of 300 steps; each predictor sees the first 180 points and draws the rest.
-val spiral = stroke(300) { u ->
-    val t = u * 2 * PI * 3.5
-    val r = 20.0 * exp(0.12 * t)
-    r * cos(t) to r * sin(t)
-}
-val fading = stroke(300) { u ->
-    val t = u * 2 * PI * 6
-    val r = 50.0 * exp(-0.025 * t)
-    12.0 * t - 0.6 * r * sin(t) to r * cos(t)
-}
-val signature = stroke(300) { u ->
-    val t = u * 2 * PI
-    90.0 * t + 50 * sin(3 * t) * (1 - u) to 55.0 * sin(5.3 * t + 2 * sin(1.7 * t)) + 30 * u * u * sin(11 * t)
-}
+val spiral =
+    stroke(300) { u ->
+        val t = u * 2 * PI * 3.5
+        val r = 20.0 * exp(0.12 * t)
+        r * cos(t) to r * sin(t)
+    }
+val fading =
+    stroke(300) { u ->
+        val t = u * 2 * PI * 6
+        val r = 50.0 * exp(-0.025 * t)
+        12.0 * t - 0.6 * r * sin(t) to r * cos(t)
+    }
+val signature =
+    stroke(300) { u ->
+        val t = u * 2 * PI
+        90.0 * t + 50 * sin(3 * t) * (1 - u) to 55.0 * sin(5.3 * t + 2 * sin(1.7 * t)) + 30 * u * u * sin(11 * t)
+    }
 
-val drawn = [spiral, fading, signature].mapIndexed { k, stroke ->
-    val whole = stroke.lpc(order = 8, removeDrift = k != 0, alongLength = false)
-    val head = whole.head(180)
-    val shift = [vec(0.0, 0.0), vec(330.0, 40.0), vec(330.0, -170.0)][k]
-    [
-        (whole.resampled() + shift).also { it.color = vec(1.0, 1.0, 1.0, 0.2); it.thickness = 1.0 },
-        (head.resampled() + shift).also { it.color = vec(1.0, 1.0, 1.0, 0.9); it.thickness = 1.5 },
-        (head.continued(120, includeStroke = false) + shift).also { it.color = vec(1.0, 0.6, 0.1, 1.0); it.thickness = 2.5 },
-    ]
-}
+val drawn =
+    [spiral, fading, signature].mapIndexed { k, stroke ->
+        val whole = stroke.lpc(order = 8, removeDrift = k != 0, alongLength = false)
+        val head = whole.head(180)
+        val shift = [vec(0.0, 0.0), vec(330.0, 40.0), vec(330.0, -170.0)][k]
+        [
+            (whole.resampled() + shift).also {
+                it.color = vec(1.0, 1.0, 1.0, 0.2)
+                it.thickness = 1.0
+            },
+            (head.resampled() + shift).also {
+                it.color = vec(1.0, 1.0, 1.0, 0.9)
+                it.thickness = 1.5
+            },
+            (head.continued(120, includeStroke = false) + shift).also {
+                it.color = vec(1.0, 0.6, 0.1, 1.0)
+                it.thickness = 2.5
+            },
+        ]
+    }
 lines(drawn.flatten(), w = 900.0, h = 480.0, fitToSize = true)
 ```
 
@@ -877,32 +926,42 @@ the stroke perfectly it is a straight line along the drift, and each surprise is
 :::static
 // The zigzag again, and the fading loops with a hand's tremor added.
 val tremor = kotlin.random.Random(4)
-val zigzag = FLine().also { f ->
-    for (i in 0..300) {
-        val phase = (i / 300.0 * 9) % 1.0
-        val (x, y) = i * 1.8 to 60.0 * (if (phase < 0.5) 4 * phase - 1 else 3 - 4 * phase)
-        if (i == 0) f.moveTo(x, y) else f.lineTo(x, y)
+val zigzag =
+    FLine().also { f ->
+        for (i in 0..300) {
+            val phase = (i / 300.0 * 9) % 1.0
+            val (x, y) = i * 1.8 to 60.0 * (if (phase < 0.5) 4 * phase - 1 else 3 - 4 * phase)
+            if (i == 0) f.moveTo(x, y) else f.lineTo(x, y)
+        }
     }
-}
-val shaky = FLine().also { f ->
-    for (i in 0..300) {
-        val t = i / 300.0 * 2 * PI * 6
-        val r = 50.0 * exp(-0.025 * t)
-        val (x, y) = 12.0 * t - 0.6 * r * sin(t) + tremor.nextDouble(-1.5, 1.5) to r * cos(t) + tremor.nextDouble(-1.5, 1.5)
-        if (i == 0) f.moveTo(x, y) else f.lineTo(x, y)
+val shaky =
+    FLine().also { f ->
+        for (i in 0..300) {
+            val t = i / 300.0 * 2 * PI * 6
+            val r = 50.0 * exp(-0.025 * t)
+            val (x, y) =
+                12.0 * t - 0.6 * r * sin(t) + tremor.nextDouble(-1.5, 1.5) to r * cos(t) + tremor.nextDouble(-1.5, 1.5)
+            if (i == 0) f.moveTo(x, y) else f.lineTo(x, y)
+        }
     }
-}
 
 // Each stroke in white, and below it, in blue, its residual drawn as a stroke of its own.
-val drawn = [zigzag, shaky].mapIndexed { k, stroke ->
-    val fit = stroke.lpc(order = 8, alongLength = false)
-    println("residual / step energy ${fit.residualRatio.f3}")
-    val shift = vec(k * 620.0, 0.0)
-    [
-        (fit.resampled() + shift).also { it.color = vec(1.0, 1.0, 1.0, 0.9); it.thickness = 1.5 },
-        (fit.residualStroke() + shift + vec(0.0, 160.0)).also { it.color = vec(0.3, 0.8, 1.0, 1.0); it.thickness = 1.5 },
-    ]
-}
+val drawn =
+    [zigzag, shaky].mapIndexed { k, stroke ->
+        val fit = stroke.lpc(order = 8, alongLength = false)
+        println("residual / step energy ${fit.residualRatio.f3}")
+        val shift = vec(k * 620.0, 0.0)
+        [
+            (fit.resampled() + shift).also {
+                it.color = vec(1.0, 1.0, 1.0, 0.9)
+                it.thickness = 1.5
+            },
+            (fit.residualStroke() + shift + vec(0.0, 160.0)).also {
+                it.color = vec(0.3, 0.8, 1.0, 1.0)
+                it.thickness = 1.5
+            },
+        ]
+    }
 lines(drawn.flatten(), w = 900.0, h = 320.0, fitToSize = true)
 ```
 
@@ -925,15 +984,16 @@ points the pen has drawn, and the orange line is where it expects the pen to go 
 var x = 0.0
 var y = 0.0
 var heading = 0.0
-val pen = FLine().also { f ->
-    f.moveTo(x, y)
-    for (n in 0 until 400) {
-        heading += if (n < 200) 0.3 else -0.45
-        x += 2.5 + 6.0 * cos(heading)
-        y += 6.0 * sin(heading)
-        f.lineTo(x, y)
+val pen =
+    FLine().also { f ->
+        f.moveTo(x, y)
+        for (n in 0 until 400) {
+            heading += if (n < 200) 0.3 else -0.45
+            x += 2.5 + 6.0 * cos(heading)
+            y += 6.0 * sin(heading)
+            f.lineTo(x, y)
+        }
     }
-}
 val fit = pen.lpc(order = 4, alongLength = false)
 
 val seconds = 7.0
@@ -945,8 +1005,14 @@ loop {
     val n = (20 + t.coerceIn(0.0, 1.0) * 380).toInt()
     val recent = fit.span((n - window).coerceAtLeast(0), n)
     lines(
-        fit.head(n).resampled().also { it.color = vec(1.0, 1.0, 1.0, 0.9); it.thickness = 1.5 },
-        recent.continued(80, includeStroke = false).also { it.color = vec(1.0, 0.6, 0.1, 1.0); it.thickness = 2.5 },
+        fit.head(n).resampled().also {
+            it.color = vec(1.0, 1.0, 1.0, 0.9)
+            it.thickness = 1.5
+        },
+        recent.continued(80, includeStroke = false).also {
+            it.color = vec(1.0, 0.6, 0.1, 1.0)
+            it.thickness = 2.5
+        },
         w = 900.0,
         h = 136.0,
         fitToSize = true,
@@ -1027,3 +1093,8 @@ Then edit the signal, or swap `WindowType.HANN` for `HAMMING` / `BLACKMAN`, and 
 watch its figure change.
 
 *The public declarations used on this page are listed, with their KDoc, in the codebase reference: [`timeseries.kt`](reference/math.md#timeseries-kt) for the time-domain filters and detectors, [`spectral.kt`](reference/math.md#spectral-kt) for the frequency-domain half. Start from [what's already in the box](reference/index.md).*
+
+## API reference
+
+- Filter implementations: [`Korg35`](reference/synthesis.md#filters-kt-korg35), [`TptOnePole`](reference/synthesis.md#filters-kt-tptonepole), [`TiltEQ`](reference/synthesis.md#filters-kt-tilteq).
+- Prediction and resynthesis: [`Lpc`](reference/audio.md#lpc-kt-lpc), [`Lpc.analyze`](reference/audio.md#lpc-kt--lpc--analyze), [`LpcVocoder`](reference/audio.md#lpc-kt-lpcvocoder).

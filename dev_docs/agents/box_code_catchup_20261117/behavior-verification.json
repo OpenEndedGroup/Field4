@@ -1,0 +1,101 @@
+{
+  "fm1": [
+    {
+      "source": "dev_docs/agents/transcripts/fm1_simulator.yaml",
+      "case": "levels",
+      "variant": false,
+      "label": "before",
+      "token": "CATCHUP_PROOF_0"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/fm1_simulator.yaml",
+      "case": "levels",
+      "variant": false,
+      "label": "after",
+      "token": "CATCHUP_PROOF_1"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/fm1_simulator.yaml",
+      "case": "levels",
+      "variant": true,
+      "label": "before",
+      "token": "CATCHUP_PROOF_2"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/fm1_simulator.yaml",
+      "case": "levels",
+      "variant": true,
+      "label": "after",
+      "token": "CATCHUP_PROOF_3"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/fm1_simulator.yaml",
+      "case": "screen",
+      "variant": false,
+      "label": "before",
+      "token": "CATCHUP_PROOF_4"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/fm1_simulator.yaml",
+      "case": "screen",
+      "variant": false,
+      "label": "after",
+      "token": "CATCHUP_PROOF_5"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/fm1_simulator.yaml",
+      "case": "screen",
+      "variant": true,
+      "label": "before",
+      "token": "CATCHUP_PROOF_6"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/fm1_simulator.yaml",
+      "case": "screen",
+      "variant": true,
+      "label": "after",
+      "token": "CATCHUP_PROOF_7"
+    }
+  ],
+  "results": {
+    "CATCHUP_PROOF_0": "0:1588951027:114823728:\u2586\u2583\u2582\u2582\u2582\u2581     \u2585\u2584\u2582\u2582\u2582\u2581\u2581     \u2586\u2582\u2582\u2582\u2581\u2581 ;1:1676409731:1901839841:\u2587\u2583\u2581\u2582\u2584\u2583\u2583\u2583\u2581\u2587\u2584\u2582\u2583\u2583\u2584\u2583\u2583\u2581\u2586\u2586\u2582 \u2583\u2585\u2583\u2583\u2582\u2586\u2586\u2581;2:1207399440:-158397837:\u2586\u2583\u2582\u2582\u2582\u2582\u2582\u2581      \u2583\u2585\u2583\u2582\u2584\u2583\u2582\u2581\u2581      \u2585;3:-1833706896:1518497926:\u2582\u2583\u2582\u2582\u2582\u2581\u2581\u2581\u2581\u2581\u2581\u2581\u2582\u2582\u2582\u2582\u2582\u2582\u2582\u2582\u2582\u2582\u2581\u2582\u2581\u2582\u2581\u2581\u2581\u2581",
+    "CATCHUP_PROOF_1": "0:1588951027:114823728:\u2586\u2583\u2582\u2582\u2582\u2581     \u2585\u2584\u2582\u2582\u2582\u2581\u2581     \u2586\u2582\u2582\u2582\u2581\u2581 ;1:1676409731:1901839841:\u2587\u2583\u2581\u2582\u2584\u2583\u2583\u2583\u2581\u2587\u2584\u2582\u2583\u2583\u2584\u2583\u2583\u2581\u2586\u2586\u2582 \u2583\u2585\u2583\u2583\u2582\u2586\u2586\u2581;2:1207399440:-158397837:\u2586\u2583\u2582\u2582\u2582\u2582\u2582\u2581      \u2583\u2585\u2583\u2582\u2584\u2583\u2582\u2581\u2581      \u2585;3:-1833706896:1518497926:\u2582\u2583\u2582\u2582\u2582\u2581\u2581\u2581\u2581\u2581\u2581\u2581\u2582\u2582\u2582\u2582\u2582\u2582\u2582\u2582\u2582\u2582\u2581\u2582\u2581\u2582\u2581\u2581\u2581\u2581",
+    "CATCHUP_PROOF_2": "0:648407403:1893978217:\u2586\u2583\u2582\u2582\u2582\u2581    ;1:661406322:559788851:\u2587\u2583\u2581\u2582\u2584\u2583\u2583\u2583\u2581\u2587;2:-1945511722:-732858160:\u2586\u2583\u2582\u2582\u2582\u2582\u2582\u2581  ;3:1686582976:1151227350:\u2582\u2583\u2582\u2582\u2582\u2581\u2581\u2581\u2581\u2581",
+    "CATCHUP_PROOF_3": "0:648407403:1893978217:\u2586\u2583\u2582\u2582\u2582\u2581    ;1:661406322:559788851:\u2587\u2583\u2581\u2582\u2584\u2583\u2583\u2583\u2581\u2587;2:-1945511722:-732858160:\u2586\u2583\u2582\u2582\u2582\u2582\u2582\u2581  ;3:1686582976:1151227350:\u2582\u2583\u2582\u2582\u2582\u2581\u2581\u2581\u2581\u2581",
+    "CATCHUP_PROOF_4": "-187160575:-187160575:-236564825",
+    "CATCHUP_PROOF_5": "-187160575:-187160575:-236564825",
+    "CATCHUP_PROOF_6": "-187160575:-187160575:-125073134",
+    "CATCHUP_PROOF_7": "-187160575:-187160575:-125073134"
+  },
+  "equivalencePairs": 4,
+  "shaders": [
+    {
+      "path": "dev_docs/agents/transcripts/bonded_organisms.yaml",
+      "property": "compute",
+      "sha256": "1a53e2c32438d2883a33cf53e1ef007b9ec7504f70b3f007007bca9e9403ceea"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/bonded_organisms.yaml",
+      "property": "vertex",
+      "sha256": "0689234ab664ebdb86b2f010f225800c8684b3b31896ce047bd6694252cc912b"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/bonded_organisms.yaml",
+      "property": "fragment",
+      "sha256": "3f5b70f68e47e38ca487241956d6a2a1b20ca8355f123521b22281282cebe9cb"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/cuda_particles.yaml",
+      "property": "vertex",
+      "sha256": "ceba45314a14bf415f4037b3d84a0222ffddfb0614509e8508d0b1a23f044fd0"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/cuda_particles.yaml",
+      "property": "fragment",
+      "sha256": "dd101111b7bb099431ec1872abb3aa807bdbc84543ce89db7dd80a9e7ee3a5f5"
+    }
+  ],
+  "shaderCount": 5,
+  "method": "Actual before/after authored private simulators: channel sample hashes plus level traces or screen PNG hash; defaults and changed render duration/project. Actual shaderc SPIR-V compilation of every touched shader.",
+  "hardwareLimit": "CUDA execution and committed linux-nvidia figures retained; no NVIDIA device on this Mac."
+}

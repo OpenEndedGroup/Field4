@@ -493,14 +493,15 @@ fun panel(result: GraphSearchResult, landmarks: List<Int>, dx: Double, dy: Doubl
         dots(grid.blocked, dx, dy, 10.0, vec(0.8, 0.82, 0.88, 1.0)),
         route,
         dots(landmarks, dx, dy, 13.0, vec(1.0, 0.3, 0.5, 1.0)),
-        dots([start, goal], dx, dy, 11.0, vec(1.0, 0.9, 0.3, 1.0))
+        dots([start, goal], dx, dy, 11.0, vec(1.0, 0.9, 0.3, 1.0)),
     ]
 }
 
-val out = panel(dijkstra, emptyList(), 0.0, 0.0) +
-    panel(one.search(start, goal), one.landmarks, 800.0, 0.0) +
-    panel(several.search(start, goal), several.landmarks, 0.0, 560.0) +
-    panel(sideways.search(start, goal), sideways.landmarks, 800.0, 560.0)
+val out =
+    panel(dijkstra, emptyList(), 0.0, 0.0) +
+        panel(one.search(start, goal), one.landmarks, 800.0, 0.0) +
+        panel(several.search(start, goal), several.landmarks, 0.0, 560.0) +
+        panel(sideways.search(start, goal), sideways.landmarks, 800.0, 560.0)
 
 lines(out, channel = "landmarks", w = 1180.0, h = 820.0, fitToSize = true)
 ```
@@ -552,7 +553,7 @@ markdown(
     |---|---|---|---|---|---|---|
     ${row("grid with wall", grid.graph, gs, gg, vec2AStarSearch(grid.graph, grid.points, gs, gg))}
     ${row("Delaunay, 600 points", delaunay, ds, dg, vec2AStarSearch(delaunay, points, ds, dg))}
-    """.trimIndent()
+    """.trimIndent(),
 )
 ```
 

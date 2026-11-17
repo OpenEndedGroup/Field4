@@ -1,0 +1,190 @@
+{
+  "links": [
+    {
+      "path": "public/docs/fm1.md",
+      "symbol": "FM1Sim",
+      "target": "reference/synthesis.md#fm1sim-kt-fm1sim"
+    },
+    {
+      "path": "public/docs/fm1.md",
+      "symbol": "FM1Sim.create",
+      "target": "reference/synthesis.md#fm1sim-kt--fm1sim-companion--create"
+    },
+    {
+      "path": "public/docs/fm1.md",
+      "symbol": "FM1Sim.render",
+      "target": "reference/synthesis.md#fm1sim-kt--fm1sim--render"
+    },
+    {
+      "path": "public/docs/fm1.md",
+      "symbol": "FM1Sim.preset",
+      "target": "reference/synthesis.md#fm1sim-kt--fm1sim--preset"
+    },
+    {
+      "path": "public/docs/fm1.md",
+      "symbol": "FM1Sim.play",
+      "target": "reference/synthesis.md#fm1sim-kt--fm1sim--play"
+    },
+    {
+      "path": "public/docs/fm1.md",
+      "symbol": "FM1Sim.modulate",
+      "target": "reference/synthesis.md#fm1sim-kt--fm1sim--modulate"
+    },
+    {
+      "path": "public/docs/fm1.md",
+      "symbol": "FM1Sim.sample",
+      "target": "reference/synthesis.md#fm1sim-kt--fm1sim--sample"
+    },
+    {
+      "path": "public/docs/fm1.md",
+      "symbol": "FM1Sim.voice",
+      "target": "reference/synthesis.md#fm1sim-kt--fm1sim--voice"
+    },
+    {
+      "path": "public/docs/fm1.md",
+      "symbol": "FM1Firmware",
+      "target": "reference/synthesis.md#fm1firmware-kt-fm1firmware"
+    },
+    {
+      "path": "public/docs/fm1.md",
+      "symbol": "FM1Firmware.checkout",
+      "target": "reference/synthesis.md#fm1firmware-kt--fm1firmware--checkout"
+    },
+    {
+      "path": "public/docs/fm1.md",
+      "symbol": "FM1Firmware.patch",
+      "target": "reference/synthesis.md#fm1firmware-kt--fm1firmware--patch"
+    },
+    {
+      "path": "public/docs/fm1.md",
+      "symbol": "FM1Firmware.build",
+      "target": "reference/synthesis.md#fm1firmware-kt--fm1firmware--build"
+    },
+    {
+      "path": "public/docs/pattern_language.md",
+      "symbol": "PatMuse",
+      "target": "reference/audio.md#patmuse-kt-patmuse"
+    },
+    {
+      "path": "public/docs/pattern_language.md",
+      "symbol": "PatMuse.pattern",
+      "target": "reference/audio.md#patmuse-kt--patmuse--pattern"
+    },
+    {
+      "path": "public/docs/pattern_language.md",
+      "symbol": "PatMuse.lock",
+      "target": "reference/audio.md#patmuse-kt--patmuse--lock"
+    },
+    {
+      "path": "public/docs/pattern_language.md",
+      "symbol": "PatMuseChannel",
+      "target": "reference/audio.md#patmuse-kt-patmusechannel"
+    },
+    {
+      "path": "public/docs/pattern_language.md",
+      "symbol": "PatMuseChannel.lock",
+      "target": "reference/audio.md#patmuse-kt--patmusechannel--lock"
+    },
+    {
+      "path": "public/docs/pattern_language.md",
+      "symbol": "PatLoop",
+      "target": "reference/audio.md#patmuse-kt-patloop"
+    },
+    {
+      "path": "public/docs/pattern_language.md",
+      "symbol": "PatLoop.set",
+      "target": "reference/audio.md#patmuse-kt--patloop--set"
+    },
+    {
+      "path": "public/docs/pattern_language.md",
+      "symbol": "PatLoop.pattern",
+      "target": "reference/audio.md#patmuse-kt--patloop--pattern"
+    },
+    {
+      "path": "public/docs/spectral_examples.md",
+      "symbol": "Korg35",
+      "target": "reference/synthesis.md#filters-kt-korg35"
+    },
+    {
+      "path": "public/docs/spectral_examples.md",
+      "symbol": "TptOnePole",
+      "target": "reference/synthesis.md#filters-kt-tptonepole"
+    },
+    {
+      "path": "public/docs/spectral_examples.md",
+      "symbol": "TiltEQ",
+      "target": "reference/synthesis.md#filters-kt-tilteq"
+    },
+    {
+      "path": "public/docs/spectral_examples.md",
+      "symbol": "Lpc",
+      "target": "reference/audio.md#lpc-kt-lpc"
+    },
+    {
+      "path": "public/docs/spectral_examples.md",
+      "symbol": "Lpc.analyze",
+      "target": "reference/audio.md#lpc-kt--lpc--analyze"
+    },
+    {
+      "path": "public/docs/spectral_examples.md",
+      "symbol": "LpcVocoder",
+      "target": "reference/audio.md#lpc-kt-lpcvocoder"
+    },
+    {
+      "path": "public/docs/alife_examples.md",
+      "symbol": "BondedWorld",
+      "target": "reference/simulation.md#alife-bonded-kt-bondedworld"
+    },
+    {
+      "path": "public/docs/alife_examples.md",
+      "symbol": "BondedWorld.grow",
+      "target": "reference/simulation.md#alife-bonded-kt--bondedworld--grow"
+    },
+    {
+      "path": "public/docs/alife_examples.md",
+      "symbol": "BondedWorld.run",
+      "target": "reference/simulation.md#alife-bonded-kt--bondedworld--run"
+    },
+    {
+      "path": "public/docs/alife_examples.md",
+      "symbol": "BondedWorld.centroid",
+      "target": "reference/simulation.md#alife-bonded-kt--bondedworld--centroid"
+    },
+    {
+      "path": "public/docs/topology_tracking.md",
+      "symbol": "CerfDiagram",
+      "target": "reference/graphics.md#cerfdiagram-kt-cerfdiagram"
+    },
+    {
+      "path": "public/docs/topology_tracking.md",
+      "symbol": "CerfDiagram.add",
+      "target": "reference/graphics.md#cerfdiagram-kt--cerfdiagram--add"
+    },
+    {
+      "path": "public/docs/topology_tracking.md",
+      "symbol": "CerfDiagram.toFLines",
+      "target": "reference/graphics.md#cerfdiagram-kt--cerfdiagram--toflines"
+    },
+    {
+      "path": "public/docs/topology_tracking.md",
+      "symbol": "CerfDiagram.fieldMarkers",
+      "target": "reference/graphics.md#cerfdiagram-kt--cerfdiagram--fieldmarkers"
+    },
+    {
+      "path": "public/docs/path_tracing.md",
+      "symbol": "OidnComputeDenoiser",
+      "target": "reference/internal.md#oidncompute-kt-oidncomputedenoiser"
+    },
+    {
+      "path": "public/docs/path_tracing.md",
+      "symbol": "OidnComputeDenoiser.install",
+      "target": "reference/internal.md#oidncompute-kt--oidncomputedenoiser--install"
+    },
+    {
+      "path": "public/docs/path_tracing.md",
+      "symbol": "OidnComputeDenoiser.request",
+      "target": "reference/internal.md#oidncompute-kt--oidncomputedenoiser--request"
+    }
+  ],
+  "policy": "Explicit curated class/member pairs for retained algorithms, simulators and resource APIs; every anchor resolved from generated reference."
+}

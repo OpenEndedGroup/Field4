@@ -1130,3 +1130,5 @@ crosses bar lines plays correctly without the consumer knowing anything about cy
 Implementation and parameter details for the helpers used above:
 
 - [`PatArc`](reference/patterns.md#tidalpatterns-kt-patarc)
+
+- Weighted hands and editable loops: [`PatMuse`](reference/audio.md#patmuse-kt-patmuse), [`PatMuse.pattern`](reference/audio.md#patmuse-kt--patmuse--pattern), [`PatMuse.lock`](reference/audio.md#patmuse-kt--patmuse--lock), [`PatMuseChannel`](reference/audio.md#patmuse-kt-patmusechannel), [`PatMuseChannel.lock`](reference/audio.md#patmuse-kt--patmusechannel--lock), [`PatLoop`](reference/audio.md#patmuse-kt-patloop), [`PatLoop.set`](reference/audio.md#patmuse-kt--patloop--set), [`PatLoop.pattern`](reference/audio.md#patmuse-kt--patloop--pattern).

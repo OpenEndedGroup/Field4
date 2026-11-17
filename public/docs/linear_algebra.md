@@ -543,17 +543,17 @@ all three, and only `ε²` changes:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/spinny_algebras/grid.png" embed=true name="spinny-grid" alt="Three copies of a 7×7 grid, each multiplied by 0.9 + 0.5ε, over the faint original: on the left (ε² = -1) the grid is turned and enlarged but still square; in the middle (ε² = 0) it is sheared upward; on the right (ε² = +1) it is squeezed into a long thin parallelogram along the diagonal"}
 :::static
 // Multiply every point of a grid by one fixed number w = a + bε, in three algebras that differ only in ε².
-fun times(a: Double, b: Double, c: Double, d: Double, eps2: Double) =
-    vec(a * c + eps2 * b * d, a * d + b * c)
+fun times(a: Double, b: Double, c: Double, d: Double, eps2: Double) = vec(a * c + eps2 * b * d, a * d + b * c)
 
 fun gridTimes(a: Double, b: Double, eps2: Double, ox: Double, tint: Vec4): List<FLine> {
     val s = 40.0
-    val grid = (-3..3).flatMap { k ->
-        listOf(
-            (0..60).map { vec(k / 3.0, -1 + it / 30.0) }, // a vertical line of the grid
-            (0..60).map { vec(-1 + it / 30.0, k / 3.0) }, // a horizontal one
-        )
-    }
+    val grid =
+        (-3..3).flatMap { k ->
+            [
+                (0..60).map { vec(k / 3.0, -1 + it / 30.0) }, // a vertical line of the grid
+                (0..60).map { vec(-1 + it / 30.0, k / 3.0) }, // a horizontal one
+            ]
+        }
     fun draw(pts: List<Vec2>, col: Vec4, t: Double) = fline {
         pts.forEachIndexed { i, p ->
             val q = times(a, b, p.x.toDouble(), p.y.toDouble(), eps2)
@@ -562,18 +562,25 @@ fun gridTimes(a: Double, b: Double, eps2: Double, ox: Double, tint: Vec4): List<
         color = col
         thickness = t
     }
-    val before = grid.map { pts -> fline {
-        pts.forEachIndexed { i, p -> if (i == 0) moveTo(ox + s * p.x, -s * p.y) else lineTo(ox + s * p.x, -s * p.y) }
-        color = vec(1, 1, 1, 0.15)
-    } }
+    val before = grid.map { pts ->
+        fline {
+            pts.forEachIndexed { i, p ->
+                if (i == 0) moveTo(ox + s * p.x, -s * p.y) else lineTo(ox + s * p.x, -s * p.y)
+            }
+            color = vec(1, 1, 1, 0.15)
+        }
+    }
     return before + grid.map { draw(it, tint, 1.5) }
 }
 
 lines(
-    *(gridTimes(0.9, 0.5, -1.0, 0.0, vec(0.35, 0.8, 1.0, 0.9)) +   // complex: ε² = -1
-      gridTimes(0.9, 0.5, 0.0, 170.0, vec(0.95, 0.85, 0.3, 0.9)) +  // dual: ε² = 0
-      gridTimes(0.9, 0.5, 1.0, 340.0, vec(1.0, 0.45, 0.55, 0.9))).toTypedArray(), // split-complex: ε² = +1
-    w = 760.0, h = 260.0, fitToSize = true,
+    *(gridTimes(0.9, 0.5, -1.0, 0.0, vec(0.35, 0.8, 1.0, 0.9)) + // complex: ε² = -1
+            gridTimes(0.9, 0.5, 0.0, 170.0, vec(0.95, 0.85, 0.3, 0.9)) + // dual: ε² = 0
+            gridTimes(0.9, 0.5, 1.0, 340.0, vec(1.0, 0.45, 0.55, 0.9)))
+        .toTypedArray(), // split-complex: ε² = +1
+    w = 760.0,
+    h = 260.0,
+    fitToSize = true,
 )
 ```
 
@@ -589,8 +596,7 @@ and `*`, so every algebra has one. Sum `exp(tε)` for `t` from -π to π and plo
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/spinny_algebras/taylor.png" embed=true name="spinny-taylor" alt="Left: exp(tε) for t from -π to π in three algebras, the 30-term sums drawn bold over faint 3- and 5-term sums: a blue unit circle (ε² = -1), a yellow vertical line through 1 (ε² = 0), and a red hyperbola opening to the right (ε² = +1)"}
 :::static
 // exp(tε) = 1 + tε + (tε)²/2! + ..., summed with nothing but the algebra's own multiplication.
-fun times(p: Vec2, q: Vec2, eps2: Double) =
-    vec(p.x * q.x + eps2 * p.y * q.y, p.x * q.y + p.y * q.x)
+fun times(p: Vec2, q: Vec2, eps2: Double) = vec(p.x * q.x + eps2 * p.y * q.y, p.x * q.y + p.y * q.x)
 
 fun expSeries(t: Double, eps2: Double, terms: Int): Vec2 {
     var sum = vec(0.0, 0.0)
@@ -616,14 +622,24 @@ fun curve(eps2: Double, terms: Int, col: Vec4, ox: Double, width: Double = 1.5) 
 }
 
 val axes = [
-    fline { moveTo(-3 * s, 0); lineTo(4 * s, 0); color = vec(1, 1, 1, 0.25) },
-    fline { moveTo(0, -3 * s); lineTo(0, 3 * s); color = vec(1, 1, 1, 0.25) },
+    fline {
+        moveTo(-3 * s, 0)
+        lineTo(4 * s, 0)
+        color = vec(1, 1, 1, 0.25)
+    },
+    fline {
+        moveTo(0, -3 * s)
+        lineTo(0, 3 * s)
+        color = vec(1, 1, 1, 0.25)
+    },
 ]
 
 // The three named algebras, with the series cut off after 3, 5 and 30 terms.
-val named = [-1.0 to vec(0.35, 0.8, 1.0), 0.0 to vec(0.95, 0.85, 0.3), 1.0 to vec(1.0, 0.45, 0.55)]
-    .flatMap { (k, c) ->
-        [3 to 0.25, 5 to 0.5, 30 to 1.0].map { (n, a) -> curve(k, n, vec(c.x, c.y, c.z, a), 0.0, if (n == 30) 2.0 else 1.0) }
+val named =
+    [-1.0 to vec(0.35, 0.8, 1.0), 0.0 to vec(0.95, 0.85, 0.3), 1.0 to vec(1.0, 0.45, 0.55)].flatMap { (k, c) ->
+        [3 to 0.25, 5 to 0.5, 30 to 1.0].map { (n, a) ->
+            curve(k, n, vec(c.x, c.y, c.z, a), 0.0, if (n == 30) 2.0 else 1.0)
+        }
     }
 
 lines(*(axes + named).toTypedArray(), w = 760.0, h = 340.0, fitToSize = true)
@@ -641,8 +657,7 @@ running along it. The bar underneath shows where `ε²` is:
 ```diffstatic_runner {data-lang=kotlin video="assets/spinny_algebras/eps_sweep.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="10" fps="20" timeout="300" w="1000" embed=true name="spinny-eps-sweep" alt="ε² sliding from -1 to +1 and back. Left, a 7×7 grid multiplied by 0.9 + 0.5ε turns while square, shears, then stretches along a diagonal. Right, exp(tε) is a unit circle with a dot going round it; it stretches into an ellipse, opens into a vertical line and bends into a hyperbola that the dot runs off, then closes again. A bar at the bottom tracks ε²"}
 :::static
 :::fold the product, exp, and the fixed frame
-fun times(p: Vec2, q: Vec2, eps2: Double) =
-    vec(p.x * q.x + eps2 * p.y * q.y, p.x * q.y + p.y * q.x)
+fun times(p: Vec2, q: Vec2, eps2: Double) = vec(p.x * q.x + eps2 * p.y * q.y, p.x * q.y + p.y * q.x)
 
 fun expSeries(t: Double, eps2: Double): Vec2 {
     var sum = vec(0.0, 0.0)
@@ -660,7 +675,10 @@ val expX = 420.0
 val barY = 200.0
 
 // A fixed border, drawn every frame, so fitToSize does not rescale the view as the shapes move.
-val border = fline { rect(-220.0, -190.0, 880.0, 420.0); color = vec(1, 1, 1, 0.08) }
+val border = fline {
+    rect(-220.0, -190.0, 880.0, 420.0)
+    color = vec(1, 1, 1, 0.08)
+}
 
 // Blue at ε² = -1, yellow at 0, red at +1, as in the figures above.
 fun tint(k: Double, a: Double = 0.95): Vec4 {
@@ -675,9 +693,11 @@ fun polyline(pts: List<Vec2>, col: Vec4, width: Double) = fline {
     thickness = width
 }
 
-val gridLines = (-3..3).flatMap { j ->
-    [(0..40).map { vec(j / 3.0, -1 + it / 20.0) }, (0..40).map { vec(-1 + it / 20.0, j / 3.0) }]
-}
+val gridLines =
+    (-3..3).flatMap { j ->
+        [(0..40).map { vec(j / 3.0, -1 + it / 20.0) }, (0..40).map { vec(-1 + it / 20.0, j / 3.0) }]
+    }
+
 :::endfold
 
 // While ε² < 0 the curve closes after t = 2π / √(-ε²), so draw one whole period. Past that the
@@ -691,9 +711,11 @@ fun draw(k: Double, phase: Double) {
     val grid = gridLines.map { pts ->
         polyline(pts.map { p -> times(w, p, k).let { q -> vec(gridX + s * q.x, -s * q.y) } }, tint(k, 0.9), 1.4)
     }
-    val curve = (0..240).map { expSeries(span * (-1.0 + it / 120.0), k) }
-        .filter { it.length() < 3.2 }
-        .map { vec(expX + s * it.x, -s * it.y) }
+    val curve =
+        (0..240)
+            .map { expSeries(span * (-1.0 + it / 120.0), k) }
+            .filter { it.length() < 3.2 }
+            .map { vec(expX + s * it.x, -s * it.y) }
     val p = expSeries(tau, k)
     val dot = fline {
         if (p.length() < 3.2) circle(expX + s * p.x, -s * p.y, 6.0, segments = 20)
@@ -702,13 +724,25 @@ fun draw(k: Double, phase: Double) {
         stroked = false
     }
     val axes = [
-        fline { moveTo(expX - 3 * s, 0); lineTo(expX + 3.5 * s, 0); color = vec(1, 1, 1, 0.25) },
-        fline { moveTo(expX, -3 * s); lineTo(expX, 3 * s); color = vec(1, 1, 1, 0.25) },
+        fline {
+            moveTo(expX - 3 * s, 0)
+            lineTo(expX + 3.5 * s, 0)
+            color = vec(1, 1, 1, 0.25)
+        },
+        fline {
+            moveTo(expX, -3 * s)
+            lineTo(expX, 3 * s)
+            color = vec(1, 1, 1, 0.25)
+        },
     ]
     // The ε² bar: a track from -1 to +1 with ticks at -1, 0 and +1, and a marker at k.
     val track = fline {
-        moveTo(100.0, barY); lineTo(340.0, barY)
-        for (x in [100.0, 220.0, 340.0]) { moveTo(x, barY - 6); lineTo(x, barY + 6) }
+        moveTo(100.0, barY)
+        lineTo(340.0, barY)
+        for (x in [100.0, 220.0, 340.0]) {
+            moveTo(x, barY - 6)
+            lineTo(x, barY + 6)
+        }
         color = vec(1, 1, 1, 0.4)
     }
     val marker = fline {
@@ -717,8 +751,19 @@ fun draw(k: Double, phase: Double) {
         filled = true
         stroked = false
     }
-    lines(border, *grid.toTypedArray(), *axes.toTypedArray(), polyline(curve, tint(k), 2.2), dot, track, marker,
-        channel = "main", w = 1000.0, h = 480.0, fitToSize = true)
+    lines(
+        border,
+        *grid.toTypedArray(),
+        *axes.toTypedArray(),
+        polyline(curve, tint(k), 2.2),
+        dot,
+        track,
+        marker,
+        channel = "main",
+        w = 1000.0,
+        h = 480.0,
+        fitToSize = true,
+    )
 }
 
 val started = AnimationClock.nowSeconds()
@@ -795,15 +840,20 @@ fun biExp(u: Vec4, t: Double): Vec4 {
 
 // Draw (real, i, j) in an oblique projection and colour by k: blue for k < 0, red for k > 0.
 val s = 55.0
-fun path(points: List<Vec4>, ox: Double) = points.zipWithNext().filter { (a, _) -> a.length() < 3.5 }.map { (a, b) ->
-    fun at(p: Vec4) = vec(ox + s * (p.y + 0.45 * p.x), -s * (p.z + 0.3 * p.x))
-    val c = (a.w * 0.8).coerceIn(-1.0, 1.0)
-    fline {
-        moveTo(at(a)); lineTo(at(b))
-        color = vec(0.6 + 0.4 * c, 0.65 - 0.25 * kotlin.math.abs(c), 0.6 - 0.4 * c, 0.95)
-        thickness = 1.8
-    }
-}
+fun path(points: List<Vec4>, ox: Double) =
+    points
+        .zipWithNext()
+        .filter { (a, _) -> a.length() < 3.5 }
+        .map { (a, b) ->
+            fun at(p: Vec4) = vec(ox + s * (p.y + 0.45 * p.x), -s * (p.z + 0.3 * p.x))
+            val c = (a.w * 0.8).coerceIn(-1.0, 1.0)
+            fline {
+                moveTo(at(a))
+                lineTo(at(b))
+                color = vec(0.6 + 0.4 * c, 0.65 - 0.25 * kotlin.math.abs(c), 0.6 - 0.4 * c, 0.95)
+                thickness = 1.8
+            }
+        }
 
 val ts = (0..240).map { it * 2 * Math.PI / 240 }
 val angles = (0..6).map { it * Math.PI / 6 } // u = cos θ·i + sin θ·j, a unit "imaginary"
@@ -865,24 +915,35 @@ fun panel(kappa: Double, ox: Double): List<FLine> {
     return (0..6).flatMap { step ->
         val th = step * Math.PI / 6
         val u = vec(0.0, kotlin.math.cos(th), kotlin.math.sin(th), 0.0)
-        ts.map { exp(u, it, kappa) }.zipWithNext().filter { (a, _) -> a.length() < 3.5 }.map { (a, b) ->
-            fun at(p: Vec4) = vec(ox + s * (p.y + 0.45 * p.x), -s * (p.z + 0.3 * p.x))
-            val c = (a.w * 0.8).coerceIn(-1.0, 1.0)
-            fline {
-                moveTo(at(a)); lineTo(at(b))
-                color = vec(0.6 + 0.4 * c, 0.65 - 0.25 * kotlin.math.abs(c), 0.6 - 0.4 * c, 0.95)
-                thickness = 1.6
+        ts.map { exp(u, it, kappa) }
+            .zipWithNext()
+            .filter { (a, _) -> a.length() < 3.5 }
+            .map { (a, b) ->
+                fun at(p: Vec4) = vec(ox + s * (p.y + 0.45 * p.x), -s * (p.z + 0.3 * p.x))
+                val c = (a.w * 0.8).coerceIn(-1.0, 1.0)
+                fline {
+                    moveTo(at(a))
+                    lineTo(at(b))
+                    color = vec(0.6 + 0.4 * c, 0.65 - 0.25 * kotlin.math.abs(c), 0.6 - 0.4 * c, 0.95)
+                    thickness = 1.6
+                }
             }
-        }
     }
 }
 
 // A fixed border so fitToSize does not rescale as the paths move, and a bar for κ.
-val border = fline { rect(-260.0, -260.0, 520.0, 400.0); color = vec(1, 1, 1, 0.08) }
+val border = fline {
+    rect(-260.0, -260.0, 520.0, 400.0)
+    color = vec(1, 1, 1, 0.08)
+}
 fun bar(kappa: Double) = [
     fline {
-        moveTo(-120.0, 115.0); lineTo(120.0, 115.0)
-        for (x in [-120.0, 0.0, 120.0]) { moveTo(x, 109.0); lineTo(x, 121.0) }
+        moveTo(-120.0, 115.0)
+        lineTo(120.0, 115.0)
+        for (x in [-120.0, 0.0, 120.0]) {
+            moveTo(x, 109.0)
+            lineTo(x, 121.0)
+        }
         color = vec(1, 1, 1, 0.4)
     },
     fline {
@@ -897,8 +958,14 @@ val started = AnimationClock.nowSeconds()
 loop {
     val t = AnimationClock.nowSeconds() - started
     val kappa = -kotlin.math.cos(2 * Math.PI * t / 10.0) // -1 → +1 → -1 every ten seconds
-    lines(border, *(panel(kappa, 0.0) + bar(kappa)).toTypedArray(),
-        channel = "main", w = 1000.0, h = 760.0, fitToSize = true)
+    lines(
+        border,
+        *(panel(kappa, 0.0) + bar(kappa)).toTypedArray(),
+        channel = "main",
+        w = 1000.0,
+        h = 760.0,
+        fitToSize = true,
+    )
 }
 ```
 

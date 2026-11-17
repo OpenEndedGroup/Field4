@@ -1,0 +1,12 @@
+{
+  "spans": 108,
+  "uniqueBodies": 100,
+  "formattedBodies": 4,
+  "changedPaths": [
+    "dev_docs/agents/transcripts/fm1_simulator.yaml",
+    "public/docs/fm1.md"
+  ],
+  "skips": [],
+  "tokenLiteralsFoldsAndFragmentMarkersVerified": true,
+  "formatter": "Actual Field editor imports, ktfmt and GLSL formatting"
+}

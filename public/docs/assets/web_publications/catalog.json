@@ -1156,12 +1156,12 @@
     },
     "assets/agent_transcripts/cuda_particles/metadata.edn": {
       "captureDigest": "cd0d895ab146dbd5ef911e3f6bb1ac6b101799610fa996220d33d772c2d94244",
-      "capturedAt": "2026-11-17T10:24:00.426Z",
+      "capturedAt": "2026-11-17T15:42:06.601Z",
       "channels": 1,
       "file": "assets/web_publications/cuda_particles/document/metadata.edn",
       "files": {
         "assets/web_publications/cuda_particles/document/metadata.edn": "8e7c3fc524ddc355f77ec254953ff22229bdd04471fce86b6899d94b24b37dd3",
-        "assets/web_publications/cuda_particles/document/outputs.json": "1855cf75548c7f684a3fad53d4d8cb8bbb6d52250262bc7677262406bd56b4e4",
+        "assets/web_publications/cuda_particles/document/outputs.json": "71565e8c5dc584fe3097c211d5e98cbf0375c35021de88dd78addd2d2e7fde34",
         "assets/web_publications/cuda_particles/outputs/0.html": "3f9ac275e95fbfec6109587183c9712fb137111dd482dc7acc8a245186f64551"
       },
       "kinds": [
@@ -1169,7 +1169,7 @@
       ],
       "outputs": "assets/web_publications/cuda_particles/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/cuda_particles.yaml": "f71f85f18cf633a54bbd476458dd2c141490fa5a433fe4c97cd8472a737c1b42",
+        "dev_docs/agents/transcripts/cuda_particles.yaml": "49e4ee3737f35a3191f072b5f695b592c2a203e30272fa9061b522bbf2b846e9",
         "public/docs/assets/agent_transcripts/cuda_particles/cuda_draw_code_.kt": "ca96505a7039ae67422881762801868f0df484011ae698513cefea4992581ab3",
         "public/docs/assets/agent_transcripts/cuda_particles/cuda_draw_fragment_.glsl": "dd101111b7bb099431ec1872abb3aa807bdbc84543ce89db7dd80a9e7ee3a5f5",
         "public/docs/assets/agent_transcripts/cuda_particles/cuda_draw_vertex_.glsl": "37f53cc4f76ca7df72acfff45aed3f5b2100cbabf2d2cf3ba8639cd9fa8152d8",
@@ -1805,18 +1805,18 @@
     },
     "assets/agent_transcripts/fm1_simulator/metadata.edn": {
       "captureDigest": "cd0d895ab146dbd5ef911e3f6bb1ac6b101799610fa996220d33d772c2d94244",
-      "capturedAt": "2026-11-17T09:26:42.160Z",
+      "capturedAt": "2026-11-17T15:42:02.672Z",
       "channels": 1,
       "file": "assets/web_publications/fm1_simulator/document/metadata.edn",
       "files": {
-        "assets/web_publications/fm1_simulator/document/metadata.edn": "27f63dcd8bb8d1be1d4a94728ce29ddc73a3eeafa9ea4c997169819d90d1a321",
-        "assets/web_publications/fm1_simulator/document/outputs.json": "2c59ac37b5239529e4f044a871ba7b3af96f2f895a68a300f3d7d6f3e14e633e",
-        "assets/web_publications/fm1_simulator/outputs/0.html": "d983349d00d8320446f6e773b8084ea8150d3c91b63291ff8823f480b4ec410e"
+        "assets/web_publications/fm1_simulator/document/metadata.edn": "8c1b309029277d14af53106087c7f454877397822a7a41a54c46f8729cb7cc2d",
+        "assets/web_publications/fm1_simulator/document/outputs.json": "7d7d7f91c942ee3af4df8d65c6d659ece726b33b6edd7e0b5d7e755e7e4206f6",
+        "assets/web_publications/fm1_simulator/outputs/0.html": "a6e3bb833d6411a67ad8b05b46cd1e02185a50b2c8d8e92e0899250cbdac11ad"
       },
       "kinds": [],
       "outputs": "assets/web_publications/fm1_simulator/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/fm1_simulator.yaml": "6db7be5e3bdd28eda48d03e46bdb43b01e836df274ac1949245fdb7420fcb12b",
+        "dev_docs/agents/transcripts/fm1_simulator.yaml": "e9af27409be5696201f0423007c7ce8c0f03eb245d862781cf933395a91954f7",
         "public/docs/assets/agent_transcripts/fm1_simulator/fm1_offline_code_.kt": "0515777811cd708b2d05ab810d1e9fdd659dadfd5f848ea10771644f4172c2b3",
         "public/docs/assets/agent_transcripts/fm1_simulator/fm1_pattern_code_.kt": "160c4f6141ff792f39483bfeb44491eb76c273b419224dc95fc6b14ed276de21",
         "public/docs/assets/agent_transcripts/fm1_simulator/fm1_play_code_.kt": "07ea96f0f04a79921b9e4e4e4f07368e73a073fdd1eeb8dafb22509c5bba986e",
@@ -3033,27 +3033,27 @@
     },
     "assets/agent_transcripts/muse_sequencer/metadata.edn": {
       "captureDigest": "cd0d895ab146dbd5ef911e3f6bb1ac6b101799610fa996220d33d772c2d94244",
-      "capturedAt": "2026-11-17T11:04:39.337Z",
+      "capturedAt": "2026-11-17T15:41:41.851Z",
       "channels": 8,
       "file": "assets/web_publications/muse_sequencer/document/metadata.edn",
       "files": {
-        "assets/web_publications/muse_sequencer/document/metadata.edn": "3bf6510cbfc1ffe736e0d4c91512681bad773da0921b8473f500fc6e09928795",
-        "assets/web_publications/muse_sequencer/document/outputs.json": "517441c9bd32349b55116c3515d55758a4f4d67f7a2c2c4891a5ae0ee1a81fac",
-        "assets/web_publications/muse_sequencer/outputs/0.html": "b6c034c6726c8863e57317aa90158d9d954ddf93eb985b2db30c8582a6ab7775",
-        "assets/web_publications/muse_sequencer/outputs/1.html": "68b141b4050efa67ba0a2ef79025fa6c11ef4515faf47b3b48471e5fd6bb9203",
-        "assets/web_publications/muse_sequencer/outputs/2.html": "27eb72ba87af921ecb21d22024f6a7f961f3bcd45900a9d4e8d50c94a50f5a2a",
-        "assets/web_publications/muse_sequencer/outputs/3.html": "95f160c976b2a26b4e3348334766345e5350bc64d265d2ac60012ca36c3a6899",
-        "assets/web_publications/muse_sequencer/outputs/4.html": "47aa061c6aadab1cce8f382e82aea34051ecf23100e06ddb89ceb2b6caf0a578",
-        "assets/web_publications/muse_sequencer/outputs/5.html": "ecc4a191511087c6ace82a62a83b06d467cd15986e681d9f5bbd1c555c0560a7",
-        "assets/web_publications/muse_sequencer/outputs/6.html": "f18bf66da957ce993250a10073f910dba6990a00fcb8d1c0fa0a83c4e315d1c8",
-        "assets/web_publications/muse_sequencer/outputs/7.html": "fed2d60acabc0785449201a136597212e422dbb8fdf6132fdc83fd30b0b0b001"
+        "assets/web_publications/muse_sequencer/document/metadata.edn": "b5d92e78acd06b1ff15cf45ead0af501ceda556e71164739ce60a39ced5b2b41",
+        "assets/web_publications/muse_sequencer/document/outputs.json": "1a7f6792ac6aa32a1a9c8474d35e20503043214283d613d09b13acb344e76219",
+        "assets/web_publications/muse_sequencer/outputs/0.html": "285a6529035ecb8dca04366f10e5c56483d332b39c52d9d79a0de0b3f14c7b62",
+        "assets/web_publications/muse_sequencer/outputs/1.html": "82af53c3c574c004e849724a341a63f6ae825dbb62504aec5c9dee182fddef9b",
+        "assets/web_publications/muse_sequencer/outputs/2.html": "77b6edec368bcf315a2a3a048f303edc68a236a0471a31541064a8b3f47668e5",
+        "assets/web_publications/muse_sequencer/outputs/3.html": "9ef571f37bcd93384fd4236b31b220423c1c361e127fc8d53a8c5bae8e569b15",
+        "assets/web_publications/muse_sequencer/outputs/4.html": "8a3d4e185cfa8b0d31dce13bfdf126713de808346b710a40d143cda67c80a6e2",
+        "assets/web_publications/muse_sequencer/outputs/5.html": "c30992d24804c57d1e7e2fc6ec9833723c82b8b6869a95d523081b5143ee2496",
+        "assets/web_publications/muse_sequencer/outputs/6.html": "2e1afdf3164abc60bbadf10c679eeb328a3a701b0e85b9a58fda01c33cb6ef0e",
+        "assets/web_publications/muse_sequencer/outputs/7.html": "9e3b858fa70b63a77ca0469180bfd78342042721e539f9d4e083fc341840ec7d"
       },
       "kinds": [
         "svg"
       ],
       "outputs": "assets/web_publications/muse_sequencer/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/muse_sequencer.yaml": "e32f3d74f27bb5e1f90246d6bcf0783e4b7024ce35a4ab319a38adeeda0c4f0a",
+        "dev_docs/agents/transcripts/muse_sequencer.yaml": "32a8ced1fb9dea5c52ba5af290c373738616ecce1decde95bae0e25ad259ccb3",
         "public/docs/assets/agent_transcripts/muse_sequencer/guides/pattern_language.md": "4810eceef952da33e4500533770d2eeaac786452852588d00fb8e06f8a0e2aff",
         "public/docs/assets/agent_transcripts/muse_sequencer/metadata.edn": "3b3c3ab2c06ad8c269f6bbf9cc47634672af7fa19b6cf14827f98281b8f3cdbf",
         "public/docs/assets/agent_transcripts/muse_sequencer/muse_edit_code_.kt": "b28004885bcab136b4f3f072fc4d0064041e9e16b6de699423a1411c3824ed67",

@@ -1,0 +1,94 @@
+{
+  "paths": [
+    {
+      "path": "dev_docs/agents/demos/evieve_filters/korg_response_code_.kt",
+      "preambles": 0
+    },
+    {
+      "path": "dev_docs/agents/demos/evieve_filters/korg_sweep_code_.kt",
+      "preambles": 0
+    },
+    {
+      "path": "dev_docs/agents/demos/evieve_filters/resonator_code_.kt",
+      "preambles": 0
+    },
+    {
+      "path": "dev_docs/agents/transcripts/bonded_organisms.yaml",
+      "preambles": 0
+    },
+    {
+      "path": "dev_docs/agents/transcripts/cerf_explorer.yaml",
+      "preambles": 0
+    },
+    {
+      "path": "dev_docs/agents/transcripts/cuda_particles.yaml",
+      "preambles": 0
+    },
+    {
+      "path": "dev_docs/agents/transcripts/evieve_filters.yaml",
+      "preambles": 0
+    },
+    {
+      "path": "dev_docs/agents/transcripts/fm1_simulator.yaml",
+      "preambles": 0
+    },
+    {
+      "path": "dev_docs/agents/transcripts/muse_sequencer.yaml",
+      "preambles": 0
+    },
+    {
+      "path": "dev_docs/agents/transcripts/postscript_demo.yaml",
+      "preambles": 0
+    },
+    {
+      "path": "dev_docs/agents/transcripts/spectral_examples.yaml",
+      "preambles": 0
+    },
+    {
+      "path": "public/docs/aiFeatures.md",
+      "preambles": 0
+    },
+    {
+      "path": "public/docs/alife_examples.md",
+      "preambles": 0
+    },
+    {
+      "path": "public/docs/cuda.md",
+      "preambles": 0
+    },
+    {
+      "path": "public/docs/fm1.md",
+      "preambles": 0
+    },
+    {
+      "path": "public/docs/graph_connectivity_examples.md",
+      "preambles": 0
+    },
+    {
+      "path": "public/docs/linear_algebra.md",
+      "preambles": 0
+    },
+    {
+      "path": "public/docs/path_tracing.md",
+      "preambles": 0
+    },
+    {
+      "path": "public/docs/pattern_language.md",
+      "preambles": 0
+    },
+    {
+      "path": "public/docs/spectral_examples.md",
+      "preambles": 0
+    },
+    {
+      "path": "public/docs/three_output.md",
+      "preambles": 0
+    },
+    {
+      "path": "public/docs/topology_tracking.md",
+      "preambles": 0
+    }
+  ],
+  "changedPreambleSidecars": [],
+  "policy": "Authored code/GLSL only; no preamble formatting."
+}

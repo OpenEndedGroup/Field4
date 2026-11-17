@@ -52,12 +52,12 @@ operations:
                   params.wallY = 18f
                   // where each one starts and the way it heads (radians): the straight worms cross the
                   // world, the L and R worms turn
-                  val starts = listOf(
+                  val starts = [
                       Triple(-22f, -12f, 0f),
                       Triple(-16f, 8f, 0f),
                       Triple(21f, 8f, PI.toFloat()),
                       Triple(16f, -2f, PI.toFloat()),
-                  )
+                  ]
                   genomes.forEachIndexed { k, g ->
                       val (sx, sy, heading) = starts[k]
                       grow(g, sx, sy, angle = heading)
@@ -124,8 +124,8 @@ operations:
           // BondedWorld.step, one invocation per cell. Every bond is stored at both its ends,
           // so a cell only ever writes itself.
           struct Cell {
-              vec4 pv;
-              vec4 e;
+              vec4 pv; // world position xy, velocity zw
+              vec4 e; // energy, cell kind, organism id, padding
           }; // (x, y, vx, vy), (energy, kind, owner, 0)
           struct Bonds {
               vec4 partner;
@@ -143,12 +143,12 @@ operations:
           };
 
           layout(push_constant) uniform P {
-              CellBuf cells;
-              BondBuf bonds;
+              CellBuf cells; // two capacity-sized halves; step parity selects the source
+              BondBuf bonds; // four neighbour slots per cell; -1 marks an empty slot
               float tick; // the step number; -1 freezes the world
               uint count;
-              uint capacity;
-              float dt;
+              uint capacity; // stride between the two cell halves
+              float dt; // simulated seconds per step
               float stiffness;
               float bondDamping;
               float dragNormal;
@@ -248,8 +248,8 @@ operations:
           #version 450
           #extension GL_EXT_buffer_reference : require
           struct Cell {
-              vec4 pv;
-              vec4 e;
+              vec4 pv; // world position xy, velocity zw
+              vec4 e; // energy, cell kind, organism id, padding
           };
           struct Bonds {
               vec4 partner;
@@ -266,13 +266,13 @@ operations:
               Bonds b[];
           };
           layout(push_constant) uniform P {
-              CellBuf cells;
-              BondBuf bonds;
-              uint latest;
-              uint capacity;
+              CellBuf cells; // two capacity-sized halves; step parity selects the source
+              BondBuf bonds; // four neighbour slots per cell; -1 marks an empty slot
+              uint latest; // most recently written cell half, 0 or 1
+              uint capacity; // stride between the two cell halves
               float viewX;
               float viewY;
-              float viewHalfHeight;
+              float viewHalfHeight; // visible world units above and below the view centre
               float aspect;
           } pc;
           layout(location = 0) out vec2 tc;

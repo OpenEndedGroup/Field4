@@ -35,7 +35,7 @@ operations:
               muse.release()
               if (lockLength >= 1) {
                   muse.lock(lockLength.toInt(), atCycle = lockAt)
-                  for (loop in listOf(muse.leftLoop!!, muse.rightLoop!!)) {
+                  for (loop in [muse.leftLoop!!, muse.rightLoop!!]) {
                       loop.start = start.toInt()
                       loop.end = end.toInt()
                       loop.direction = PatLoopDirection.entries[direction.toInt()]
@@ -106,7 +106,6 @@ operations:
           }
           showPianoAudio(r, "listen")
           ["loop", "roll", "listen"].forEach { displayOpen(it) }
-
   - create:
       box: muse_lock
       name: lock
@@ -123,7 +122,6 @@ operations:
               cycles = 8,
               pitched = true,
           )
-
   - create:
       box: muse_ornaments
       name: ornaments
@@ -141,7 +139,6 @@ operations:
               cycles = 8,
               pitched = true,
           )
-
   - create:
       box: muse_edit
       name: edit
@@ -151,8 +148,8 @@ operations:
           // A locked loop corrected by hand: the third event becomes a triad on the octave, the last a rest.
           val loop = PatMuseChannel(seed = 3).lock(8, atCycle = 4)
           val before = loop.pattern()
-          loop.set(2, degrees = listOf(7, 9, 11), velocity = 0.8)
-          loop.set(7, degrees = emptyList())
+          loop.set(2, degrees = [7, 9, 11], velocity = 0.8)
+          loop.set(7, degrees = [])
           showPatRollOf(
               "as locked" to before,
               "edited" to loop.pattern(),
@@ -161,7 +158,6 @@ operations:
               pitched = true,
           )
           println(loop)
-
   - create:
       box: muse_live
       name: live
@@ -174,7 +170,6 @@ operations:
           val piano = Piano()
           piano.play(muse.pattern(), cycles = 32, cps = 0.5, velocity = 1.0)
           audio(piano, gain = 1f)
-
   - execute:
       box: muse_sliders
       property: code

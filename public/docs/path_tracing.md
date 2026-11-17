@@ -1697,3 +1697,5 @@ Implementation and parameter details for the helpers used above:
 - [A learned shader function](learned_shader.md) fits a network to a shader's output on the GPU.
 - [Path-traced reconstruction](path_traced_reconstruction.md) cleans up a noisy path-traced frame.
 - [Denoising a still](#denoising-a-still) cleans up an accumulated image once, on any Vulkan GPU.
+
+- Installing and requesting compute denoising: [`OidnComputeDenoiser`](reference/internal.md#oidncompute-kt-oidncomputedenoiser), [`OidnComputeDenoiser.install`](reference/internal.md#oidncompute-kt--oidncomputedenoiser--install), [`OidnComputeDenoiser.request`](reference/internal.md#oidncompute-kt--oidncomputedenoiser--request).
