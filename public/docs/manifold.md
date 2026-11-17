@@ -281,6 +281,78 @@ rather than Clipper's `EVEN_ODD`, because it is the rule under which winding *me
 overlapping same-wound outlines are one shape, where `EVEN_ODD` would punch their overlap out as a
 hole.
 
+## Previewing a ball-end mill
+
+A ball-end mill cannot cut a sharp inside corner. Wherever two faces meet in a concave edge, the
+ball leaves a fillet of its own radius; a pocket corner comes out rounded; a slot narrower than the
+ball is never cut at all. Convex edges are untouched. `ballMilled(radius)` gives you the part as the
+mill would leave it, as a `Solid`, so it can be measured, drawn, and subtracted from the design to
+see exactly what the tool adds:
+
+```kotlin
+val milled = part.ballMilled(1.5)            // a 3 mm ball, from any direction
+val fillets = milled - part                  // the material the mill leaves that the design does not have
+```
+
+With no directions, the ball may approach from anywhere, the way an idealised five-axis machine
+would. A real 3-axis job cuts from one side at a time. Name the tool axis of each setup with `from`,
+pointing from the part towards the spindle, and anything the part overhangs as seen from that side
+stays solid, as does the stock underneath it. Pass two opposite axes for a part that is milled, then
+turned over:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/manifold/ball_milled.png" alt="four shaded grey meshes of the same stepped plate in a two-by-two grid, each seen from above at an angle" wait="6" capture="box" open-outputs="true" padding="20" requires="manifold" name="ball_milled" embed=true}
+:::static
+import afield.geometry.solid.manifold.*
+
+// A plate with a two-step rebate along its front edge, a pocket in its top, a slot narrower than
+// the ball, and a pocket on its underside.
+val part = Solid.scope {
+    val plate = Solid.cube(60.0, 10.0, 40.0)
+    val cuts = [
+        Solid.cube(60.0, 5.0, 12.0).translated(0.0, 5.0, 0.0),
+        Solid.cube(60.0, 2.5, 6.0).translated(0.0, 2.5, 0.0),
+        Solid.cube(20.0, 6.0, 14.0).translated(32.0, 4.0, 20.0),
+        Solid.cube(2.0, 4.0, 22.0).translated(14.0, 6.0, 16.0),
+        Solid.cube(16.0, 4.0, 14.0).translated(36.0, 0.0, 20.0),
+    ]
+    (plate - Solid.union(cuts)).copy()
+}
+
+val ball = 1.5
+val up = vec(0, 1, 0)
+val down = vec(0, -1, 0)
+val t0 = System.nanoTime()
+val anyDirection = part.ballMilled(ball)
+val fromAbove = part.ballMilled(ball, from = [up])
+val turnedOver = part.ballMilled(ball, from = [up, down])
+val seconds = (System.nanoTime() - t0) / 1e9
+:::fold measure what each one adds, then draw them
+println("three previews in ${seconds.f1} s")
+for ((name, milled) in ["any direction" to anyDirection, "from above" to fromAbove, "turned over" to turnedOver]) {
+    println("$name: the mill leaves ${(milled.volume - part.volume).f1} mm³ the design does not have")
+}
+
+showMeshGrid(
+    "as designed" to part.toTriMesh(),
+    "a 3 mm ball from any direction" to anyDirection.toTriMesh(),
+    "from above only" to fromAbove.toTriMesh(),
+    "from above, then turned over" to turnedOver.toTriMesh(),
+    columns = 2,
+    view = MeshView(yawDegrees = 30.0, pitchDegrees = 38.0),
+)
+```
+
+From above only, the underside pocket never opens: the tool cannot reach it, and the stock under
+the part stays. Turned over, it opens with its own inside corners filleted. In every version the
+2 mm slot is filled, because a 3 mm ball does not fit into it.
+
+`ballMilled` is the morphological closing of the part by the tool, and `closed(tool)` does the same
+for any tool shape you build as a `Solid`. The ball is Manifold's faceted `Solid.sphere`, so the
+fillets are faceted too, and very slightly tighter than the radius: by at most
+`radius * (1 - cos(π / segments))`, about 2% at the default of 16 segments. Raising `segments`
+costs time steeply, because Manifold's Minkowski operations on a non-convex part cost roughly one
+convex hull per boundary triangle.
+
 ## Solids from a field
 
 `Solid.levelSet` takes a Kotlin lambda of `x, y, z` and marches it into a solid. Manifold calls the
