@@ -270,12 +270,6 @@
       "error": "not tried: a landing defers digest-only pages to the publication catch-up",
       "since": "2026-11-17"
     },
-    "assets/agent_transcripts/cuda_particles/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
     "assets/agent_transcripts/dataframe_typed_columns/metadata.edn": {
       "attempts": 0,
       "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
@@ -409,12 +403,6 @@
       "since": "2026-11-17"
     },
     "assets/agent_transcripts/flow_lenia/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/fm1_simulator/metadata.edn": {
       "attempts": 0,
       "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
       "error": "not tried: a landing defers digest-only pages to the publication catch-up",
@@ -697,12 +685,6 @@
       "since": "2026-11-17"
     },
     "assets/agent_transcripts/morpho_circuit_search/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-17"
-    },
-    "assets/agent_transcripts/muse_sequencer/metadata.edn": {
       "attempts": 0,
       "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
       "error": "not tried: a landing defers digest-only pages to the publication catch-up",
@@ -2526,12 +2508,12 @@
     },
     "assets/agent_transcripts/cuda_particles/metadata.edn": {
       "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T15:27:11.790Z",
+      "capturedAt": "2026-11-17T16:33:28.927Z",
       "channels": 1,
       "file": "assets/web_publications/cuda_particles/document/metadata.edn",
       "files": {
-        "assets/web_publications/cuda_particles/document/metadata.edn": "8e7c3fc524ddc355f77ec254953ff22229bdd04471fce86b6899d94b24b37dd3",
-        "assets/web_publications/cuda_particles/document/outputs.json": "f813ef9fa37876d267b72add9d5a52d345a9f8b3cf324a52f0839e737ecf0958",
+        "assets/web_publications/cuda_particles/document/metadata.edn": "593f6c3ec4c651382fd38390a3033faa8bb03e7ac42c45784377eb7c4f749d92",
+        "assets/web_publications/cuda_particles/document/outputs.json": "1824c7273af04e1ea44c1b06fe596215c07193dd103c92ea55dd5e97d0217efe",
         "assets/web_publications/cuda_particles/outputs/0.html": "3f9ac275e95fbfec6109587183c9712fb137111dd482dc7acc8a245186f64551"
       },
       "kinds": [
@@ -2539,14 +2521,14 @@
       ],
       "outputs": "assets/web_publications/cuda_particles/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/cuda_particles.yaml": "f71f85f18cf633a54bbd476458dd2c141490fa5a433fe4c97cd8472a737c1b42",
+        "dev_docs/agents/transcripts/cuda_particles.yaml": "49e4ee3737f35a3191f072b5f695b592c2a203e30272fa9061b522bbf2b846e9",
         "public/docs/assets/agent_transcripts/cuda_particles/cuda_draw_code_.kt": "ca96505a7039ae67422881762801868f0df484011ae698513cefea4992581ab3",
         "public/docs/assets/agent_transcripts/cuda_particles/cuda_draw_fragment_.glsl": "dd101111b7bb099431ec1872abb3aa807bdbc84543ce89db7dd80a9e7ee3a5f5",
-        "public/docs/assets/agent_transcripts/cuda_particles/cuda_draw_vertex_.glsl": "37f53cc4f76ca7df72acfff45aed3f5b2100cbabf2d2cf3ba8639cd9fa8152d8",
+        "public/docs/assets/agent_transcripts/cuda_particles/cuda_draw_vertex_.glsl": "ceba45314a14bf415f4037b3d84a0222ffddfb0614509e8508d0b1a23f044fd0",
         "public/docs/assets/agent_transcripts/cuda_particles/cuda_flow_code_.kt": "ee226bae75d3f5fa70ed654790c2e0407687a0b8bb7a71eea0d247e7875b3185",
         "public/docs/assets/agent_transcripts/cuda_particles/cuda_renderer_code_.kt": "0be5fac9c7f639379667e24ce0233269befb5bf7b6d84cef6c16964a7c6fd132",
         "public/docs/assets/agent_transcripts/cuda_particles/guides/cuda-a-kernel-that-moves-particles.md": "b46f2bb5c758e1073ea2acbaa52d272607955c7e3106f489cf696f142b1f5410",
-        "public/docs/assets/agent_transcripts/cuda_particles/metadata.edn": "8390a4658854bbf2f20498c50968b070d869f0bef57c7c96d6fde8342fa9ed39",
+        "public/docs/assets/agent_transcripts/cuda_particles/metadata.edn": "3c9effdbfa570ed8c0fe810b7164a6f1ad6036d01d908e4610778658cfc1cd1f",
         "public/docs/assets/cuda/particles.png": "f9076de730803f89fd9807337d3071522914aa084a8bbaeab67bc51b2ffcac03",
         "public/docs/cuda.md#capture-box=cuda_flow": "a8cefb7ddb6bbe4f760b01127a1642391501a5d9d7d54182496a6ca1a6a2b4e3"
       },
@@ -3175,24 +3157,24 @@
     },
     "assets/agent_transcripts/fm1_simulator/metadata.edn": {
       "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T14:29:29.531Z",
+      "capturedAt": "2026-11-17T16:33:25.406Z",
       "channels": 1,
       "file": "assets/web_publications/fm1_simulator/document/metadata.edn",
       "files": {
-        "assets/web_publications/fm1_simulator/document/metadata.edn": "27f63dcd8bb8d1be1d4a94728ce29ddc73a3eeafa9ea4c997169819d90d1a321",
-        "assets/web_publications/fm1_simulator/document/outputs.json": "3b3ba59b4236c0e18f87b9574f0b05824bfe0dc8883485c33f1c915b07277eca",
-        "assets/web_publications/fm1_simulator/outputs/0.html": "1c73965b649883c3635fa5e2e03be84b4f86e7fd3bddfabac978b1e37ec0595c"
+        "assets/web_publications/fm1_simulator/document/metadata.edn": "f787aea6374ada84c63a7dfe0b76fa1c1bec33cd4bc07c4fa41771bdcecdb4f8",
+        "assets/web_publications/fm1_simulator/document/outputs.json": "e8dd9b075fcbf82367a51387dd1de4ff9c089f4a5f9275b1db5da2387f3ea8fc",
+        "assets/web_publications/fm1_simulator/outputs/0.html": "97c5dcd0f3f90fde9f53a5e797435cb7dd5566bc32dc3e347bf109f307403dc4"
       },
       "kinds": [],
       "outputs": "assets/web_publications/fm1_simulator/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/fm1_simulator.yaml": "6db7be5e3bdd28eda48d03e46bdb43b01e836df274ac1949245fdb7420fcb12b",
-        "public/docs/assets/agent_transcripts/fm1_simulator/fm1_offline_code_.kt": "0515777811cd708b2d05ab810d1e9fdd659dadfd5f848ea10771644f4172c2b3",
+        "dev_docs/agents/transcripts/fm1_simulator.yaml": "e9af27409be5696201f0423007c7ce8c0f03eb245d862781cf933395a91954f7",
+        "public/docs/assets/agent_transcripts/fm1_simulator/fm1_offline_code_.kt": "0363ad4476bc0df7ed323deaff150361603b51061c30ed4e25f66c2d5bdcca9c",
         "public/docs/assets/agent_transcripts/fm1_simulator/fm1_pattern_code_.kt": "160c4f6141ff792f39483bfeb44491eb76c273b419224dc95fc6b14ed276de21",
         "public/docs/assets/agent_transcripts/fm1_simulator/fm1_play_code_.kt": "07ea96f0f04a79921b9e4e4e4f07368e73a073fdd1eeb8dafb22509c5bba986e",
-        "public/docs/assets/agent_transcripts/fm1_simulator/fm1_screen_code_.kt": "e749f886c576a34bfc08156f53cdd4b18eb67140545e2e07f73ed54c4dd00090",
+        "public/docs/assets/agent_transcripts/fm1_simulator/fm1_screen_code_.kt": "74ea9558472c7a99be57c051b270476bac18c8eaadcae438ae124e6d28bbc26b",
         "public/docs/assets/agent_transcripts/fm1_simulator/guides/faust.md": "532e4b87c5704047e793863ce01db55f7c5ade419a19a8e0b357b880026527d6",
-        "public/docs/assets/agent_transcripts/fm1_simulator/metadata.edn": "19cd884bbeaf769efa99901dc92b59724dd8a353df19d149f77ae4e84282b551"
+        "public/docs/assets/agent_transcripts/fm1_simulator/metadata.edn": "cc20f3ee716342b8e902750befa6e0ce0e52ac62067a2c451816964374a40820"
       }
     },
     "assets/agent_transcripts/fn_differentiable_fit_demo/metadata.edn": {
@@ -4403,34 +4385,34 @@
     },
     "assets/agent_transcripts/muse_sequencer/metadata.edn": {
       "captureDigest": "adc0ea7e621df510538cc20f2fe9634d362402e248e74faf671416f70252190b",
-      "capturedAt": "2026-11-17T14:18:28.876Z",
+      "capturedAt": "2026-11-17T16:33:10.848Z",
       "channels": 8,
       "file": "assets/web_publications/muse_sequencer/document/metadata.edn",
       "files": {
-        "assets/web_publications/muse_sequencer/document/metadata.edn": "3bf6510cbfc1ffe736e0d4c91512681bad773da0921b8473f500fc6e09928795",
-        "assets/web_publications/muse_sequencer/document/outputs.json": "b250165df8a7bc3b232c2e0526f4d7e9b4a2b850abc5795a2b68e4c41b49462b",
-        "assets/web_publications/muse_sequencer/outputs/0.html": "277ffb46c5b84cf7ad2e85d3638c945b7901ef302da9a58b2f3d337e0f525bc5",
-        "assets/web_publications/muse_sequencer/outputs/1.html": "73b1f3f3c3b5fb571a5dd03255a29a492540a1caced86c39665df67077c41bff",
-        "assets/web_publications/muse_sequencer/outputs/2.html": "3c81245b387447b9908a2dc5c182b909334ac8d0dd0e92c7bb09b12e4a8a3c5e",
-        "assets/web_publications/muse_sequencer/outputs/3.html": "a61eaf49548e0af0790ea454b30614721a8282df676e809b1ab7863b79018786",
-        "assets/web_publications/muse_sequencer/outputs/4.html": "562891ae3a21c80b021f9706d64b632bbff283ee861242864cfd66ef03f5c332",
-        "assets/web_publications/muse_sequencer/outputs/5.html": "8e96422cfbfdee67f846e38057b0ec6a913da5d4e7ab7dadb70e1edf4bef9086",
-        "assets/web_publications/muse_sequencer/outputs/6.html": "6c0889fd0fc1354e510db86450b50a6fd8cb77edea96f4a3b0c3a85b3e9fe588",
-        "assets/web_publications/muse_sequencer/outputs/7.html": "78c955eaf72ded95cf20562e9583b215d525f4166406f95a99677932a3098eb9"
+        "assets/web_publications/muse_sequencer/document/metadata.edn": "b5d92e78acd06b1ff15cf45ead0af501ceda556e71164739ce60a39ced5b2b41",
+        "assets/web_publications/muse_sequencer/document/outputs.json": "5466bc21cda6142d361f9b5a509bdc692295fe76307084c9adac2845bbced89b",
+        "assets/web_publications/muse_sequencer/outputs/0.html": "5202b6ffa74dd6598e6718a57bdd18f5ed1ee757b7487a19e1024936b969825e",
+        "assets/web_publications/muse_sequencer/outputs/1.html": "6d58cbb3d487d15f8cac816c06c32f2f16d233d10fccf0044eb15dbe4cd246e3",
+        "assets/web_publications/muse_sequencer/outputs/2.html": "5a42e772ae69f86f332b3f86b48e1d794c5a46381899839f2806a854cabad44b",
+        "assets/web_publications/muse_sequencer/outputs/3.html": "9d825bd7c007fe7ace24ee5463337c6f86255e2cc336ecd9bb717241089460dc",
+        "assets/web_publications/muse_sequencer/outputs/4.html": "87e4214681fa2c16fa828ccffe0593ad4847a0e00e17000fb2036ec69a376641",
+        "assets/web_publications/muse_sequencer/outputs/5.html": "3821755cdfef9602b9092b1a90fd663f50d6ec6eabda7a513a63f68b55da0df0",
+        "assets/web_publications/muse_sequencer/outputs/6.html": "d76c903d98a4aae0fb0b2e2f22dd4f4ae6047d16574743cbf0275658e902d6ed",
+        "assets/web_publications/muse_sequencer/outputs/7.html": "36006f423a88779934eea1231e24ceee387944724c68ffe40ed1508a1c4ee9b5"
       },
       "kinds": [
         "svg"
       ],
       "outputs": "assets/web_publications/muse_sequencer/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/muse_sequencer.yaml": "e32f3d74f27bb5e1f90246d6bcf0783e4b7024ce35a4ab319a38adeeda0c4f0a",
+        "dev_docs/agents/transcripts/muse_sequencer.yaml": "32a8ced1fb9dea5c52ba5af290c373738616ecce1decde95bae0e25ad259ccb3",
         "public/docs/assets/agent_transcripts/muse_sequencer/guides/pattern_language.md": "4810eceef952da33e4500533770d2eeaac786452852588d00fb8e06f8a0e2aff",
-        "public/docs/assets/agent_transcripts/muse_sequencer/metadata.edn": "3b3c3ab2c06ad8c269f6bbf9cc47634672af7fa19b6cf14827f98281b8f3cdbf",
-        "public/docs/assets/agent_transcripts/muse_sequencer/muse_edit_code_.kt": "b28004885bcab136b4f3f072fc4d0064041e9e16b6de699423a1411c3824ed67",
+        "public/docs/assets/agent_transcripts/muse_sequencer/metadata.edn": "3796b9f92d174f16fd8c9a731fc6bee2a7b96e475007410c418fde25c7b72344",
+        "public/docs/assets/agent_transcripts/muse_sequencer/muse_edit_code_.kt": "6e9381d468f1bea2494ec759ff5a3056496b0fff402dcee1f00c87eb640a066a",
         "public/docs/assets/agent_transcripts/muse_sequencer/muse_live_code_.kt": "7f0abb408453d8053ca48eb081136359b3318497af28427938a499f450019851",
         "public/docs/assets/agent_transcripts/muse_sequencer/muse_lock_code_.kt": "83a177f5c0d6a6d5f5e1c109ae449352405e07e620597a60a94b48d0b3a9196e",
         "public/docs/assets/agent_transcripts/muse_sequencer/muse_ornaments_code_.kt": "24234be121cc9f362cb4921a07c6da45c736cc6b8844b729875e4f2109bd762d",
-        "public/docs/assets/agent_transcripts/muse_sequencer/muse_sliders_code_.kt": "1e9b429fcff9b4340b55ec76f94b20f02273ee20e70af74a46918fe05c1bb2d1"
+        "public/docs/assets/agent_transcripts/muse_sequencer/muse_sliders_code_.kt": "7bfca898fcba7352769cf99b80d397cc1619b037084ac25416d2eef5cf3be238"
       }
     },
     "assets/agent_transcripts/neural_clouds/metadata.edn": {

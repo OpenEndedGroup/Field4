@@ -11,15 +11,15 @@ val l = FloatArray(4800)
 val r = FloatArray(4800)
 
 for (slot in 0 until 4) {
-    val sim = FM1Sim.create()
-    sim.preset(slot)
-    repeat(5) { sim.render(l, r, 4800, 48000f) }
-    sim.start()
-    val levels = (0 until 30).map {
-        sim.render(l, r, 4800, 48000f)
-        kotlin.math.sqrt(l.indices.sumOf { i -> (l[i] * l[i] + r[i] * r[i]).toDouble() } / (2 * l.size))
+    FM1Sim.create().use { sim ->
+        sim.preset(slot)
+        repeat(5) { sim.render(l, r, 4800, 48000f) }
+        sim.start()
+        val levels = (0 until 30).map {
+            sim.render(l, r, 4800, 48000f)
+            kotlin.math.sqrt(l.indices.sumOf { i -> (l[i] * l[i] + r[i] * r[i]).toDouble() } / (2 * l.size))
+        }
+        val trace = levels.joinToString("") { bars[(it / 0.14 * 8).toInt().coerceIn(0, 8)].toString() }
+        println("project $slot  playing=${sim.isPlaying}  $trace")
     }
-    val trace = levels.joinToString("") { bars[(it / 0.14 * 8).toInt().coerceIn(0, 8)].toString() }
-    println("project $slot  playing=${sim.isPlaying}  $trace")
-    sim.close()
 }

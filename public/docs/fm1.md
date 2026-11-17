@@ -256,19 +256,19 @@ A track can send its notes out of the simulator as well as, or instead of, playi
 808's parts as a piano roll:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fm1/acid_alley_roll.png" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" wait-output-channel="lines" w="900" timeout="240" embed=true name="fm1-roll" alt="a piano roll of four bars of ACID ALLEY, the 303's bass line and the 808's drums together: a steady row of low notes, a busier row above it, and a few high notes climbing at the end of each bar"}
-val fm1 = FM1Sim.create()
-fm1.preset(1)
-fm1.midiOut(0, FM1Sim.MidiOut.ALSO)
-fm1.midiOut(1, FM1Sim.MidiOut.ALSO)
+FM1Sim.create().use { fm1 ->
+    fm1.preset(1)
+    fm1.midiOut(0, FM1Sim.MidiOut.ALSO)
+    fm1.midiOut(1, FM1Sim.MidiOut.ALSO)
 
-val l = FloatArray(4800)
-val r = FloatArray(4800)
-repeat(5) { fm1.render(l, r, 4800, 48000f) }
-fm1.start()
-repeat(75) { fm1.render(l, r, 4800, 48000f) } // 7.5 seconds: four bars at 130 bpm
+    val l = FloatArray(4800)
+    val r = FloatArray(4800)
+    repeat(5) { fm1.render(l, r, 4800, 48000f) }
+    fm1.start()
+    repeat(75) { fm1.render(l, r, 4800, 48000f) } // 7.5 seconds: four bars at 130 bpm
 
-showMidiRoll(fm1.drainMidi().toMidiClip(fm1.bpm.toDouble()))
-fm1.close()
+    showMidiRoll(fm1.drainMidi().toMidiClip(fm1.bpm.toDouble()))
+}
 ```
 
 With `MidiOut.ONLY` the FM-1's sequencer plays something else: drain its notes in a loop and hand them
@@ -350,17 +350,17 @@ val l = FloatArray(4800)
 val r = FloatArray(4800)
 
 for (slot in 0 until 4) {
-    val sim = FM1Sim.create()
-    sim.preset(slot)
-    repeat(5) { sim.render(l, r, 4800, 48000f) }
-    sim.start()
-    val levels = (0 until 30).map {
-        sim.render(l, r, 4800, 48000f)
-        kotlin.math.sqrt(l.indices.sumOf { i -> (l[i] * l[i] + r[i] * r[i]).toDouble() } / (2 * l.size))
+    FM1Sim.create().use { sim ->
+        sim.preset(slot)
+        repeat(5) { sim.render(l, r, 4800, 48000f) }
+        sim.start()
+        val levels = (0 until 30).map {
+            sim.render(l, r, 4800, 48000f)
+            kotlin.math.sqrt(l.indices.sumOf { i -> (l[i] * l[i] + r[i] * r[i]).toDouble() } / (2 * l.size))
+        }
+        val trace = levels.joinToString("") { bars[(it / 0.14 * 8).toInt().coerceIn(0, 8)].toString() }
+        println("project $slot  playing=${sim.isPlaying}  $trace")
     }
-    val trace = levels.joinToString("") { bars[(it / 0.14 * 8).toInt().coerceIn(0, 8)].toString() }
-    println("project $slot  playing=${sim.isPlaying}  $trace")
-    sim.close()
 }
 ```
 
@@ -569,3 +569,9 @@ What to build next, most useful first:
   delay.
 * **Firmware edited in the box's own editor**: open a source file as a box property, so saving it
   rebuilds and swaps the firmware, with compile errors marked on their lines.
+
+## API reference
+
+- Simulator and offline rendering: [`FM1Sim`](reference/synthesis.md#fm1sim-kt-fm1sim), [`FM1Sim.create`](reference/synthesis.md#fm1sim-kt--fm1sim-companion--create), [`FM1Sim.render`](reference/synthesis.md#fm1sim-kt--fm1sim--render), [`FM1Sim.preset`](reference/synthesis.md#fm1sim-kt--fm1sim--preset).
+- Pattern and control inputs: [`FM1Sim.play`](reference/synthesis.md#fm1sim-kt--fm1sim--play), [`FM1Sim.modulate`](reference/synthesis.md#fm1sim-kt--fm1sim--modulate), [`FM1Sim.sample`](reference/synthesis.md#fm1sim-kt--fm1sim--sample), [`FM1Sim.voice`](reference/synthesis.md#fm1sim-kt--fm1sim--voice).
+- Firmware editing: [`FM1Firmware`](reference/synthesis.md#fm1firmware-kt-fm1firmware), [`FM1Firmware.checkout`](reference/synthesis.md#fm1firmware-kt--fm1firmware--checkout), [`FM1Firmware.patch`](reference/synthesis.md#fm1firmware-kt--fm1firmware--patch), [`FM1Firmware.build`](reference/synthesis.md#fm1firmware-kt--fm1firmware--build).

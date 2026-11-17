@@ -5,8 +5,8 @@ layout(local_size_x = 64) in;
 // BondedWorld.step, one invocation per cell. Every bond is stored at both its ends,
 // so a cell only ever writes itself.
 struct Cell {
-    vec4 pv;
-    vec4 e;
+    vec4 pv; // world position xy, velocity zw
+    vec4 e; // energy, cell kind, organism id, padding
 }; // (x, y, vx, vy), (energy, kind, owner, 0)
 struct Bonds {
     vec4 partner;
@@ -24,12 +24,12 @@ layout(std430, buffer_reference) buffer BondBuf {
 };
 
 layout(push_constant) uniform P {
-    CellBuf cells;
-    BondBuf bonds;
+    CellBuf cells; // two capacity-sized halves; step parity selects the source
+    BondBuf bonds; // four neighbour slots per cell; -1 marks an empty slot
     float tick; // the step number; -1 freezes the world
     uint count;
-    uint capacity;
-    float dt;
+    uint capacity; // stride between the two cell halves
+    float dt; // simulated seconds per step
     float stiffness;
     float bondDamping;
     float dragNormal;

@@ -1,0 +1,89 @@
+{
+  "edits": [
+    {
+      "path": "dev_docs/agents/transcripts/bonded_organisms.yaml",
+      "span": 1,
+      "language": "kotlin",
+      "beforeSha256": "da8612522d6660f4455d45477820aeef23516f0abdb390c046f6cc05d0f1b75d",
+      "afterSha256": "6760a967e389ffb9df70f81bdc4a2ff2c12087ff35ae54002224ea6c8958fd65"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/bonded_organisms.yaml",
+      "span": 2,
+      "language": "glsl",
+      "beforeSha256": "647fe01dfc9a6c89b70afedd8878cd2c1c4e4a0e25fd731170fddc1fc27ea1e3",
+      "afterSha256": "1a53e2c32438d2883a33cf53e1ef007b9ec7504f70b3f007007bca9e9403ceea"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/bonded_organisms.yaml",
+      "span": 4,
+      "language": "glsl",
+      "beforeSha256": "d5f8527e0dc24d5f9b6ba9bc876931776ac81dbb13bf732fa08219e91c947e5e",
+      "afterSha256": "0689234ab664ebdb86b2f010f225800c8684b3b31896ce047bd6694252cc912b"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/cerf_explorer.yaml",
+      "span": 1,
+      "language": "kotlin",
+      "beforeSha256": "2ecfdd0c906392a7612db3bae89c0b6ed1a3df81a7b5a29ba95619f0ffcff9aa",
+      "afterSha256": "16cc9f60109b2f0e94f6f0930d81643d515c6167293814e2667759fa795c9c3b"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/cuda_particles.yaml",
+      "span": 2,
+      "language": "glsl",
+      "beforeSha256": "37f53cc4f76ca7df72acfff45aed3f5b2100cbabf2d2cf3ba8639cd9fa8152d8",
+      "afterSha256": "ceba45314a14bf415f4037b3d84a0222ffddfb0614509e8508d0b1a23f044fd0"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/fm1_simulator.yaml",
+      "span": 1,
+      "language": "kotlin",
+      "beforeSha256": "0515777811cd708b2d05ab810d1e9fdd659dadfd5f848ea10771644f4172c2b3",
+      "afterSha256": "cf12494537558c91797600afbbb9007dbd563d988d89fcfc15f814467a4977e3"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/fm1_simulator.yaml",
+      "span": 3,
+      "language": "kotlin",
+      "beforeSha256": "e749f886c576a34bfc08156f53cdd4b18eb67140545e2e07f73ed54c4dd00090",
+      "afterSha256": "0350b9f4ed62894a18d318fe4d4aed617507a191c0bc765e51177fc63d77019f"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/muse_sequencer.yaml",
+      "span": 0,
+      "language": "kotlin",
+      "beforeSha256": "1e9b429fcff9b4340b55ec76f94b20f02273ee20e70af74a46918fe05c1bb2d1",
+      "afterSha256": "7bfca898fcba7352769cf99b80d397cc1619b037084ac25416d2eef5cf3be238"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/muse_sequencer.yaml",
+      "span": 3,
+      "language": "kotlin",
+      "beforeSha256": "b28004885bcab136b4f3f072fc4d0064041e9e16b6de699423a1411c3824ed67",
+      "afterSha256": "6e9381d468f1bea2494ec759ff5a3056496b0fff402dcee1f00c87eb640a066a"
+    },
+    {
+      "path": "public/docs/fm1.md",
+      "span": 15,
+      "language": "kotlin",
+      "beforeSha256": "fd55f621b65ecf2f9203c57dde0fc25bb80f783fdde2ce6ebd7383b63990243a",
+      "afterSha256": "6aa54270abf1aab53885398e61837d1ac7d7a15a08c47cf860a88b3c1d5db175"
+    },
+    {
+      "path": "public/docs/fm1.md",
+      "span": 18,
+      "language": "kotlin",
+      "beforeSha256": "35ffc357ce2d3d666be876a907ca5a1ff898fda069e057d2704be0d028acfc4d",
+      "afterSha256": "d52ea69dc7759500ee2077d6e54f81304e00e3e9d5c783a0fa3e215f077b0f4e"
+    },
+    {
+      "path": "public/docs/linear_algebra.md",
+      "span": 30,
+      "language": "kotlin",
+      "beforeSha256": "910c0355db3ad95e6d2ef679540e69e98b1d76be2035bba295266c024c401dde",
+      "afterSha256": "daff4bfcadd3c479e9a057016b6c72d9ecb7dc8633f99bccaffb3b4ea27e54b5"
+    }
+  ],
+  "cuda": "Added the exact seed kernel from the canonical transcript and its missing function handle; corrected the buffer-reuse/rerun explanation."
+}

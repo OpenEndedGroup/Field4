@@ -34,7 +34,8 @@ val particles = cuda.sharedBuffer("particles", count * 16L)
 
 `particles.buffer` is an ordinary `VulkanBuffer` for shaders, and `particles.pointer` is the
 address a kernel writes to. Asking again for `"particles"` at the same size returns the same buffer,
-so rerunning the box keeps the particles where they are; a new size makes a new buffer.
+so requesting the buffer again preserves its contents; a new size makes a new buffer.
+The explicit `seed.launch` below resets those contents when this example is rerun.
 
 Next comes the CUDA C, as a string compiled for this GPU by
 [`compile`](reference/graphics.md#cudavulkan-kt--cudavulkan--compile). Two kernels: `seed` scatters the
@@ -45,6 +46,17 @@ Kernels are declared `extern "C"` so they can be found by name:
 val program =
     cuda.compile(
         """
+    extern "C" __global__ void seed(float4* p, int n) {
+        int i = blockIdx.x * blockDim.x + threadIdx.x;
+        if (i >= n) return;
+        unsigned h = i * 747796405u + 2891336453u;
+        h = ((h >> ((h >> 28) + 4u)) ^ h) * 277803737u;
+        h = (h >> 22) ^ h;
+        float a = (h & 0xffffu) / 65535.0f * 6.2831853f;
+        float r = 2.0f * sqrtf((h >> 16) / 65535.0f);
+        p[i] = make_float4(r * cosf(a), r * sinf(a), a, 0.4f + 0.3f * r);
+    }
+
     // Advect every particle through a flow that turns slowly with t.
     extern "C" __global__ void flow(float4* p, int n, float t, float dt) {
         int i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -58,6 +70,7 @@ val program =
     }
     """,
     )
+val seed = program.function("seed")
 val flow = program.function("flow")
 ```
 

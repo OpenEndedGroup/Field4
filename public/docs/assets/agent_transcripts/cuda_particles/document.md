@@ -102,7 +102,7 @@ frames {
 <!-- field-box id="cuda_draw" index="2" -->
 
 ```edn [field-box id="cuda_draw" role="properties"]
-{"id" "cuda_draw" "index" 2 "name" "draw particles" "parents" ["root" "cuda_flow"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "cuda_flow"} "name" "draw particles" "_tombstone" false "frame" #afield/rect [680.0 320.0 300.0 100.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "cuda_draw_vertex_.glsl" "lines" 32 "characters" 774 "sha256" "37f53cc4f76ca7df72acfff45aed3f5b2100cbabf2d2cf3ba8639cd9fa8152d8"} {"name" "fragment" "language" "glsl" "path" "cuda_draw_fragment_.glsl" "lines" 13 "characters" 440 "sha256" "dd101111b7bb099431ec1872abb3aa807bdbc84543ce89db7dd80a9e7ee3a5f5"} {"name" "code" "language" "kotlin" "path" "cuda_draw_code_.kt" "lines" 15 "characters" 365 "sha256" "ca96505a7039ae67422881762801868f0df484011ae698513cefea4992581ab3"}]}
+{"id" "cuda_draw" "index" 2 "name" "draw particles" "parents" ["root" "cuda_flow"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "cuda_flow"} "name" "draw particles" "_tombstone" false "frame" #afield/rect [680.0 320.0 300.0 100.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "cuda_draw_vertex_.glsl" "lines" 32 "characters" 835 "sha256" "ceba45314a14bf415f4037b3d84a0222ffddfb0614509e8508d0b1a23f044fd0"} {"name" "fragment" "language" "glsl" "path" "cuda_draw_fragment_.glsl" "lines" 13 "characters" 440 "sha256" "dd101111b7bb099431ec1872abb3aa807bdbc84543ce89db7dd80a9e7ee3a5f5"} {"name" "code" "language" "kotlin" "path" "cuda_draw_code_.kt" "lines" 15 "characters" 365 "sha256" "ca96505a7039ae67422881762801868f0df484011ae698513cefea4992581ab3"}]}
 ```
 
 ```glsl [field-property box="cuda_draw" name="vertex" path="cuda_draw_vertex_.glsl"]
@@ -119,8 +119,8 @@ layout(location = 0) out vec2 tc;
 layout(location = 1) out float phase;
 
 layout(push_constant) uniform push {
-    Particles particles;
-    float aspectRatio;
+    Particles particles; // shared CUDA/Vulkan float4 buffer
+    float aspectRatio; // window width / height
 } pc;
 
 // The six corners of a unit square, as two triangles

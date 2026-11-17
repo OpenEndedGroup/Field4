@@ -295,3 +295,7 @@ a dense motion estimate, and expect tracks that last for parts of a shot rather 
     real clips were tried for the footage section: the 1896 serpentine dance from the particle-video
     page, a veil dance and a high-speed butterfly. None gave tracks worth showing without dense
     motion guidance, which is why that section is advice rather than a figure.
+
+## API reference
+
+- Tracking critical points over time: [`CerfDiagram`](reference/graphics.md#cerfdiagram-kt-cerfdiagram), [`CerfDiagram.add`](reference/graphics.md#cerfdiagram-kt--cerfdiagram--add), [`CerfDiagram.toFLines`](reference/graphics.md#cerfdiagram-kt--cerfdiagram--toflines), [`CerfDiagram.fieldMarkers`](reference/graphics.md#cerfdiagram-kt--cerfdiagram--fieldmarkers).

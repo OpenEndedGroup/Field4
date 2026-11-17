@@ -3467,3 +3467,5 @@ Implementation and parameter details for the helpers used above:
   [`seed`](reference/alife.md#alife-continuous-kt--leniacreature--seed).
 - The catalogue lifeform: [`LeniaPresets`](reference/alife.md#alife-continuous-kt-leniapresets) —
   [`orbium`](reference/alife.md#alife-continuous-kt--leniapresets--orbium).
+
+- Growing and advancing bonded bodies: [`BondedWorld`](reference/simulation.md#alife-bonded-kt-bondedworld), [`BondedWorld.grow`](reference/simulation.md#alife-bonded-kt--bondedworld--grow), [`BondedWorld.run`](reference/simulation.md#alife-bonded-kt--bondedworld--run), [`BondedWorld.centroid`](reference/simulation.md#alife-bonded-kt--bondedworld--centroid).

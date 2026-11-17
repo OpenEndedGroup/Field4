@@ -1,0 +1,73 @@
+{
+  "figures": [
+    {
+      "path": "public/docs/assets/spinny_algebras/grid.png",
+      "beforeSize": [
+        1833,
+        1041
+      ],
+      "afterSize": [
+        1833,
+        1041
+      ],
+      "inspected": true,
+      "beforeBytes": 366800,
+      "afterBytes": 366800,
+      "sameDimensions": true,
+      "byteIdentical": true,
+      "sha256": "1ed68ef49e1b5c053769ad12e9c0d5b01605dd3f9b1424d29fdaa465676e2f05"
+    },
+    {
+      "path": "public/docs/assets/spinny_algebras/taylor.png",
+      "beforeSize": [
+        1833,
+        1041
+      ],
+      "afterSize": [
+        1833,
+        1041
+      ],
+      "inspected": true,
+      "beforeBytes": 344992,
+      "afterBytes": 344992,
+      "sameDimensions": true,
+      "byteIdentical": true,
+      "sha256": "98da5a8bd2260b79fd9867efc4e3f7f5e5c2a3ba2e13811dafcd4bf3bbde50f5"
+    },
+    {
+      "path": "public/docs/assets/spinny_algebras/quat.png",
+      "beforeSize": [
+        1833,
+        1041
+      ],
+      "afterSize": [
+        1833,
+        1041
+      ],
+      "inspected": true,
+      "beforeBytes": 504913,
+      "afterBytes": 504913,
+      "sameDimensions": true,
+      "byteIdentical": true,
+      "sha256": "c211bba5af4124c915849533cdeba935639f792992424ae0a494a59349355c6f"
+    },
+    {
+      "path": "public/docs/assets/fm1/acid_alley_roll.png",
+      "beforeSize": [
+        1833,
+        1041
+      ],
+      "afterSize": [
+        1833,
+        1041
+      ],
+      "inspected": true,
+      "beforeBytes": 324743,
+      "afterBytes": 324743,
+      "sameDimensions": true,
+      "byteIdentical": true,
+      "sha256": "a6a2083dd49ef2aac3d66b9ed6aa99e3ce4aa21adf451a2b8e398d75eb5a2828"
+    }
+  ],
+  "method": "Real runner captures visually inspected; numerical FM1 equivalence separately verified; rendering details may differ."
+}

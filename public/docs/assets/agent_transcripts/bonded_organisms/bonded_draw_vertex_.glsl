@@ -1,8 +1,8 @@
 #version 450
 #extension GL_EXT_buffer_reference : require
 struct Cell {
-    vec4 pv;
-    vec4 e;
+    vec4 pv; // world position xy, velocity zw
+    vec4 e; // energy, cell kind, organism id, padding
 };
 struct Bonds {
     vec4 partner;
@@ -19,13 +19,13 @@ layout(std430, buffer_reference) buffer BondBuf {
     Bonds b[];
 };
 layout(push_constant) uniform P {
-    CellBuf cells;
-    BondBuf bonds;
-    uint latest;
-    uint capacity;
+    CellBuf cells; // two capacity-sized halves; step parity selects the source
+    BondBuf bonds; // four neighbour slots per cell; -1 marks an empty slot
+    uint latest; // most recently written cell half, 0 or 1
+    uint capacity; // stride between the two cell halves
     float viewX;
     float viewY;
-    float viewHalfHeight;
+    float viewHalfHeight; // visible world units above and below the view centre
     float aspect;
 } pc;
 layout(location = 0) out vec2 tc;

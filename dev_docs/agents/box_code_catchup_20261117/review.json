@@ -1,0 +1,934 @@
+{
+  "groups": {
+    "g0": "Actual filters, small-signal impulse amplitudes and drift graphs already visible. Format imports and keep saved sidecars unchanged where their code already follows style.",
+    "g1": "Genomes, spawn positions, compute forces/energy transport and draw geometry are explicit. Retain CPU BondedWorld and clock/resource APIs; document packed fields, parity and dimensions.",
+    "g2": "Seed field, blur, stepping, persistence thresholds, event counting and cursor output are visible; retain topology matching and public diagram/drawing algorithms.",
+    "g3": "Explicit CUDA seed/flow kernels, launch sizes and native resource ownership; repair missing seed kernel/handle in the walkthrough. CUDA execution requires Linux/NVIDIA; retain that committed capture profile.",
+    "g4": "Retain actual firmware/simulator APIs; the examples expose patterns, schedules, voices, samples and firmware patches. Private offline simulators now close on failure; audio-render hooks are comments for real media generation.",
+    "g5": "Retain seeded PatMuse weighted-event/locking algorithms. The box exposes weights, seeds, loop bounds, directions and edits; use collection literals and class/method reference links.",
+    "g6": "Keep the native PostScript stack language; root code remains Kotlin. Intentional error example is labelled and unexecuted. Existing small definitions are readable, no Kotlin formatter applied.",
+    "g7": "The signal graphs, sample/frame selection, predictor settings, point-generation loops and output mappings are visible. Retain actual FFT/filter/LPC algorithms; link their reference. Renderer-hook comments are capture support.",
+    "g8": "Explicit tool parameters/actions/results and standard Markdown output; no helper hides the tool contract.",
+    "g9": "Retain the public body-genome interpreter and simulation API; the genome is visible and GPU force implementation is provided in the runnable transcript. Add class/member reference links.",
+    "g10": "Explicit graph/wall, endpoints, landmark choices and comparisons; retain the A*/landmark algorithm API. Format drawing and tables, preserve all routes and seed values.",
+    "g11": "Multiplication and exponential power series are already explicit; preserve the equations and sampling, replace listOf, and format actual Kotlin. No new helper should hide these operations.",
+    "g12": "Retain OIDN native denoiser/resource ownership; link both class and install/request methods. Committed hardware-profile captures remain retained.",
+    "g13": "Expose editable weighted hands, seed, lock point and improvisation; retain reusable seeded pattern algorithms and link them.",
+    "g14": "Explicit editable pavilion geometry, camera and studio controls. Retain genuine Three viewer path-tracing/ownership API.",
+    "g15": "Explicit time-varying fields and Gray\u2013Scott study; retain Morse-Smale and Cerf algorithms. Add direct class/member reference links."
+  },
+  "bodies": [
+    {
+      "id": 0,
+      "path": "dev_docs/agents/demos/evieve_filters/korg_response_code_.kt",
+      "language": "kotlin",
+      "baselineSha256": "e5de59db5dfd336180206e200c0bed81f50d566eff5980878f59b370ff2e1d7e",
+      "decision": "reviewed",
+      "reasonGroup": "g0"
+    },
+    {
+      "id": 1,
+      "path": "dev_docs/agents/demos/evieve_filters/korg_sweep_code_.kt",
+      "language": "kotlin",
+      "baselineSha256": "204b7e76721ac915a2694afe1dca169ab51628ad1170c532de09d16f8f1e3a36",
+      "decision": "reviewed",
+      "reasonGroup": "g0"
+    },
+    {
+      "id": 2,
+      "path": "dev_docs/agents/demos/evieve_filters/resonator_code_.kt",
+      "language": "kotlin",
+      "baselineSha256": "be6c87d32da30eca3aa28b7d7d0438464aa977f8b1f5bf236382e897519dee67",
+      "decision": "reviewed",
+      "reasonGroup": "g0"
+    },
+    {
+      "id": 3,
+      "path": "dev_docs/agents/transcripts/bonded_organisms.yaml",
+      "language": "kotlin",
+      "baselineSha256": "7daceac6185b5129daede12d275199318de60655b5ca640e0ca82138348abd21",
+      "decision": "reviewed",
+      "reasonGroup": "g1"
+    },
+    {
+      "id": 4,
+      "path": "dev_docs/agents/transcripts/bonded_organisms.yaml",
+      "language": "kotlin",
+      "baselineSha256": "da8612522d6660f4455d45477820aeef23516f0abdb390c046f6cc05d0f1b75d",
+      "decision": "reviewed",
+      "reasonGroup": "g1"
+    },
+    {
+      "id": 5,
+      "path": "dev_docs/agents/transcripts/bonded_organisms.yaml",
+      "language": "glsl",
+      "baselineSha256": "647fe01dfc9a6c89b70afedd8878cd2c1c4e4a0e25fd731170fddc1fc27ea1e3",
+      "decision": "reviewed",
+      "reasonGroup": "g1"
+    },
+    {
+      "id": 6,
+      "path": "dev_docs/agents/transcripts/bonded_organisms.yaml",
+      "language": "kotlin",
+      "baselineSha256": "c4318d0ab55b29765476d1dc0eab54767c55c70f9aa31ee5f08975137f8e3062",
+      "decision": "reviewed",
+      "reasonGroup": "g1"
+    },
+    {
+      "id": 7,
+      "path": "dev_docs/agents/transcripts/bonded_organisms.yaml",
+      "language": "glsl",
+      "baselineSha256": "d5f8527e0dc24d5f9b6ba9bc876931776ac81dbb13bf732fa08219e91c947e5e",
+      "decision": "reviewed",
+      "reasonGroup": "g1"
+    },
+    {
+      "id": 8,
+      "path": "dev_docs/agents/transcripts/bonded_organisms.yaml",
+      "language": "glsl",
+      "baselineSha256": "3f5b70f68e47e38ca487241956d6a2a1b20ca8355f123521b22281282cebe9cb",
+      "decision": "reviewed",
+      "reasonGroup": "g1"
+    },
+    {
+      "id": 9,
+      "path": "dev_docs/agents/transcripts/bonded_organisms.yaml",
+      "language": "kotlin",
+      "baselineSha256": "8460304106799289f7c386b6bb294a4c1e2605c82d6f8ff5af8d61123df20206",
+      "decision": "reviewed",
+      "reasonGroup": "g1"
+    },
+    {
+      "id": 10,
+      "path": "dev_docs/agents/transcripts/cerf_explorer.yaml",
+      "language": "kotlin",
+      "baselineSha256": "7bacd1a71b44ba299d722168bea22c96cd94fe091c600bbc7df5496128aef39a",
+      "decision": "reviewed",
+      "reasonGroup": "g2"
+    },
+    {
+      "id": 11,
+      "path": "dev_docs/agents/transcripts/cerf_explorer.yaml",
+      "language": "kotlin",
+      "baselineSha256": "2ecfdd0c906392a7612db3bae89c0b6ed1a3df81a7b5a29ba95619f0ffcff9aa",
+      "decision": "reviewed",
+      "reasonGroup": "g2"
+    },
+    {
+      "id": 12,
+      "path": "dev_docs/agents/transcripts/cuda_particles.yaml",
+      "language": "kotlin",
+      "baselineSha256": "0be5fac9c7f639379667e24ce0233269befb5bf7b6d84cef6c16964a7c6fd132",
+      "decision": "reviewed",
+      "reasonGroup": "g3"
+    },
+    {
+      "id": 13,
+      "path": "dev_docs/agents/transcripts/cuda_particles.yaml",
+      "language": "kotlin",
+      "baselineSha256": "ee226bae75d3f5fa70ed654790c2e0407687a0b8bb7a71eea0d247e7875b3185",
+      "decision": "reviewed",
+      "reasonGroup": "g3"
+    },
+    {
+      "id": 14,
+      "path": "dev_docs/agents/transcripts/cuda_particles.yaml",
+      "language": "glsl",
+      "baselineSha256": "37f53cc4f76ca7df72acfff45aed3f5b2100cbabf2d2cf3ba8639cd9fa8152d8",
+      "decision": "reviewed",
+      "reasonGroup": "g3"
+    },
+    {
+      "id": 15,
+      "path": "dev_docs/agents/transcripts/cuda_particles.yaml",
+      "language": "glsl",
+      "baselineSha256": "dd101111b7bb099431ec1872abb3aa807bdbc84543ce89db7dd80a9e7ee3a5f5",
+      "decision": "reviewed",
+      "reasonGroup": "g3"
+    },
+    {
+      "id": 16,
+      "path": "dev_docs/agents/transcripts/cuda_particles.yaml",
+      "language": "kotlin",
+      "baselineSha256": "ca96505a7039ae67422881762801868f0df484011ae698513cefea4992581ab3",
+      "decision": "reviewed",
+      "reasonGroup": "g3"
+    },
+    {
+      "id": 17,
+      "path": "dev_docs/agents/transcripts/evieve_filters.yaml",
+      "language": "kotlin",
+      "baselineSha256": "e5de59db5dfd336180206e200c0bed81f50d566eff5980878f59b370ff2e1d7e",
+      "decision": "reviewed",
+      "reasonGroup": "g0"
+    },
+    {
+      "id": 18,
+      "path": "dev_docs/agents/transcripts/evieve_filters.yaml",
+      "language": "kotlin",
+      "baselineSha256": "204b7e76721ac915a2694afe1dca169ab51628ad1170c532de09d16f8f1e3a36",
+      "decision": "reviewed",
+      "reasonGroup": "g0"
+    },
+    {
+      "id": 19,
+      "path": "dev_docs/agents/transcripts/evieve_filters.yaml",
+      "language": "kotlin",
+      "baselineSha256": "be6c87d32da30eca3aa28b7d7d0438464aa977f8b1f5bf236382e897519dee67",
+      "decision": "reviewed",
+      "reasonGroup": "g0"
+    },
+    {
+      "id": 20,
+      "path": "dev_docs/agents/transcripts/fm1_simulator.yaml",
+      "language": "kotlin",
+      "baselineSha256": "07ea96f0f04a79921b9e4e4e4f07368e73a073fdd1eeb8dafb22509c5bba986e",
+      "decision": "reviewed",
+      "reasonGroup": "g4"
+    },
+    {
+      "id": 21,
+      "path": "dev_docs/agents/transcripts/fm1_simulator.yaml",
+      "language": "kotlin",
+      "baselineSha256": "0515777811cd708b2d05ab810d1e9fdd659dadfd5f848ea10771644f4172c2b3",
+      "decision": "reviewed",
+      "reasonGroup": "g4"
+    },
+    {
+      "id": 22,
+      "path": "dev_docs/agents/transcripts/fm1_simulator.yaml",
+      "language": "kotlin",
+      "baselineSha256": "160c4f6141ff792f39483bfeb44491eb76c273b419224dc95fc6b14ed276de21",
+      "decision": "reviewed",
+      "reasonGroup": "g4"
+    },
+    {
+      "id": 23,
+      "path": "dev_docs/agents/transcripts/fm1_simulator.yaml",
+      "language": "kotlin",
+      "baselineSha256": "e749f886c576a34bfc08156f53cdd4b18eb67140545e2e07f73ed54c4dd00090",
+      "decision": "reviewed",
+      "reasonGroup": "g4"
+    },
+    {
+      "id": 24,
+      "path": "dev_docs/agents/transcripts/muse_sequencer.yaml",
+      "language": "kotlin",
+      "baselineSha256": "1e9b429fcff9b4340b55ec76f94b20f02273ee20e70af74a46918fe05c1bb2d1",
+      "decision": "reviewed",
+      "reasonGroup": "g5"
+    },
+    {
+      "id": 25,
+      "path": "dev_docs/agents/transcripts/muse_sequencer.yaml",
+      "language": "kotlin",
+      "baselineSha256": "83a177f5c0d6a6d5f5e1c109ae449352405e07e620597a60a94b48d0b3a9196e",
+      "decision": "reviewed",
+      "reasonGroup": "g5"
+    },
+    {
+      "id": 26,
+      "path": "dev_docs/agents/transcripts/muse_sequencer.yaml",
+      "language": "kotlin",
+      "baselineSha256": "24234be121cc9f362cb4921a07c6da45c736cc6b8844b729875e4f2109bd762d",
+      "decision": "reviewed",
+      "reasonGroup": "g5"
+    },
+    {
+      "id": 27,
+      "path": "dev_docs/agents/transcripts/muse_sequencer.yaml",
+      "language": "kotlin",
+      "baselineSha256": "b28004885bcab136b4f3f072fc4d0064041e9e16b6de699423a1411c3824ed67",
+      "decision": "reviewed",
+      "reasonGroup": "g5"
+    },
+    {
+      "id": 28,
+      "path": "dev_docs/agents/transcripts/muse_sequencer.yaml",
+      "language": "kotlin",
+      "baselineSha256": "7f0abb408453d8053ca48eb081136359b3318497af28427938a499f450019851",
+      "decision": "reviewed",
+      "reasonGroup": "g5"
+    },
+    {
+      "id": 29,
+      "path": "dev_docs/agents/transcripts/postscript_demo.yaml",
+      "language": "postscript",
+      "baselineSha256": "96345da7fff50fcd9c5ec9d6883adcdc8c2215ac83275089f424c78c66e1e77e",
+      "decision": "reviewed",
+      "reasonGroup": "g6"
+    },
+    {
+      "id": 30,
+      "path": "dev_docs/agents/transcripts/postscript_demo.yaml",
+      "language": "postscript",
+      "baselineSha256": "38230c0d807a19a4ed220fc605b680c5a8e6c66bd91d5a44d10c8e6d1581cea3",
+      "decision": "reviewed",
+      "reasonGroup": "g6"
+    },
+    {
+      "id": 31,
+      "path": "dev_docs/agents/transcripts/postscript_demo.yaml",
+      "language": "postscript",
+      "baselineSha256": "f8e6cac2bb570348423249c5193b99d973b3361f75dd3624cc3d17f05917a67f",
+      "decision": "reviewed",
+      "reasonGroup": "g6"
+    },
+    {
+      "id": 32,
+      "path": "dev_docs/agents/transcripts/postscript_demo.yaml",
+      "language": "postscript",
+      "baselineSha256": "827cbe0e012c90be5fae9fbcae273d48ca5ba605884f3e1bbd439aa1cadf6bed",
+      "decision": "reviewed",
+      "reasonGroup": "g6"
+    },
+    {
+      "id": 33,
+      "path": "dev_docs/agents/transcripts/postscript_demo.yaml",
+      "language": "postscript",
+      "baselineSha256": "7b9038919b42f6019dfd467f3c48c6760ae37f5f7b1b63a2e55622fdeadb3466",
+      "decision": "reviewed",
+      "reasonGroup": "g6"
+    },
+    {
+      "id": 34,
+      "path": "dev_docs/agents/transcripts/postscript_demo.yaml",
+      "language": "postscript",
+      "baselineSha256": "2034743e285c267bdf094c6388081b61137f28ff1a61caa4103f8aff0bf27021",
+      "decision": "reviewed",
+      "reasonGroup": "g6"
+    },
+    {
+      "id": 35,
+      "path": "dev_docs/agents/transcripts/spectral_examples.yaml",
+      "language": "kotlin",
+      "baselineSha256": "fa825d2d05c991d8fda8feebf08c4f3f5255c4e2435830011dcb36a05ce2a681",
+      "decision": "reviewed",
+      "reasonGroup": "g7"
+    },
+    {
+      "id": 36,
+      "path": "dev_docs/agents/transcripts/spectral_examples.yaml",
+      "language": "kotlin",
+      "baselineSha256": "36c319b4587d236e41eab476a23ea89a712176cca660e3cfeb3961a84d5cbe81",
+      "decision": "reviewed",
+      "reasonGroup": "g7"
+    },
+    {
+      "id": 37,
+      "path": "dev_docs/agents/transcripts/spectral_examples.yaml",
+      "language": "kotlin",
+      "baselineSha256": "12be19d05f045817f7cdd17b1398f8ea2349999a67074ca0e890697cf89d69c3",
+      "decision": "reviewed",
+      "reasonGroup": "g7"
+    },
+    {
+      "id": 38,
+      "path": "public/docs/aiFeatures.md",
+      "language": "kotlin",
+      "baselineSha256": "e81722c3ca7858c0d186df6f371512f9a1c69e70fc19090c8666839779b36f6e",
+      "decision": "reviewed",
+      "reasonGroup": "g8"
+    },
+    {
+      "id": 39,
+      "path": "public/docs/aiFeatures.md",
+      "language": "kotlin",
+      "baselineSha256": "f634f2554aa14541d3d5cea297b59ae221ca282dca46a3cfea511410bdcc91c1",
+      "decision": "reviewed",
+      "reasonGroup": "g8"
+    },
+    {
+      "id": 40,
+      "path": "public/docs/aiFeatures.md",
+      "language": "kotlin",
+      "baselineSha256": "ba169d21bd137b4d3464749f82bff5eef690630d05032eb3a6d9758e968dd5f5",
+      "decision": "reviewed",
+      "reasonGroup": "g8"
+    },
+    {
+      "id": 41,
+      "path": "public/docs/alife_examples.md",
+      "language": "kotlin",
+      "baselineSha256": "8d7bd20ba1b132a2a8db8ef4fe809065469e23244de30fc73be4a41f188d0171",
+      "decision": "reviewed",
+      "reasonGroup": "g9"
+    },
+    {
+      "id": 42,
+      "path": "public/docs/alife_examples.md",
+      "language": "kotlin",
+      "baselineSha256": "f80ce131c44b4e54aab69af0c87e9805075a0439d40c0e76802b678988f74c98",
+      "decision": "reviewed",
+      "reasonGroup": "g9"
+    },
+    {
+      "id": 43,
+      "path": "public/docs/alife_examples.md",
+      "language": "kotlin",
+      "baselineSha256": "4c4cb8bf1fc41ca99def3ada4222b906b0602447c867a1cfd7022541683a34c4",
+      "decision": "reviewed",
+      "reasonGroup": "g9"
+    },
+    {
+      "id": 44,
+      "path": "public/docs/cuda.md",
+      "language": "kotlin",
+      "baselineSha256": "cc739db143fbc695db2077b89b84ff39256586eb96e415cb46bf5a3d48198c0d",
+      "decision": "reviewed",
+      "reasonGroup": "g3"
+    },
+    {
+      "id": 45,
+      "path": "public/docs/cuda.md",
+      "language": "kotlin",
+      "baselineSha256": "5a3f689236ff07a7e13da6f2347e4f20101560f0c8d3371b45b262e6abba5f3c",
+      "decision": "reviewed",
+      "reasonGroup": "g3"
+    },
+    {
+      "id": 46,
+      "path": "public/docs/cuda.md",
+      "language": "kotlin",
+      "baselineSha256": "b56cd8ffd5a3850175619fa1a4a77e5108ecfd126e78ef18a9b6f41e139af422",
+      "decision": "reviewed",
+      "reasonGroup": "g3"
+    },
+    {
+      "id": 47,
+      "path": "public/docs/cuda.md",
+      "language": "kotlin",
+      "baselineSha256": "e08388b4f359df7a135f386dd52fa0d91693d8be3c3592fdaba401cfdc1580b6",
+      "decision": "reviewed",
+      "reasonGroup": "g3"
+    },
+    {
+      "id": 48,
+      "path": "public/docs/cuda.md",
+      "language": "kotlin",
+      "baselineSha256": "ca96505a7039ae67422881762801868f0df484011ae698513cefea4992581ab3",
+      "decision": "reviewed",
+      "reasonGroup": "g3"
+    },
+    {
+      "id": 49,
+      "path": "public/docs/fm1.md",
+      "language": "kotlin",
+      "baselineSha256": "8ddbc1aae4fa7a07790294fd7a20672ea28903b0e90fb89917e5df9332dc279a",
+      "decision": "reviewed",
+      "reasonGroup": "g4"
+    },
+    {
+      "id": 50,
+      "path": "public/docs/fm1.md",
+      "language": "kotlin",
+      "baselineSha256": "eb72f95adc5ef670b26986586376b0d5766ec833420d15cdd2687b3145a0a97a",
+      "decision": "reviewed",
+      "reasonGroup": "g4"
+    },
+    {
+      "id": 51,
+      "path": "public/docs/fm1.md",
+      "language": "kotlin",
+      "baselineSha256": "8bad8b1147cde63f456b621aed56b486267645c700d079d24a79d79639d85283",
+      "decision": "reviewed",
+      "reasonGroup": "g4"
+    },
+    {
+      "id": 52,
+      "path": "public/docs/fm1.md",
+      "language": "kotlin",
+      "baselineSha256": "daee3ab93c4264087f3904e42efbf6a181c6212e9d45dc5312ec2ce8509c9821",
+      "decision": "reviewed",
+      "reasonGroup": "g4"
+    },
+    {
+      "id": 53,
+      "path": "public/docs/fm1.md",
+      "language": "kotlin",
+      "baselineSha256": "760b43e1f746213ea1a4404ed48c159bbaf594f4d5ceac387dbd5e60295b1451",
+      "decision": "reviewed",
+      "reasonGroup": "g4"
+    },
+    {
+      "id": 54,
+      "path": "public/docs/fm1.md",
+      "language": "kotlin",
+      "baselineSha256": "2f92bda6e3d4b07b50b9ba68d12a2c51655cedf901976e9d370754cbec646793",
+      "decision": "reviewed",
+      "reasonGroup": "g4"
+    },
+    {
+      "id": 55,
+      "path": "public/docs/fm1.md",
+      "language": "kotlin",
+      "baselineSha256": "716f6682a486200616b70215b0ac67bb63cd316f082418b31029f8a6225c3f29",
+      "decision": "reviewed",
+      "reasonGroup": "g4"
+    },
+    {
+      "id": 56,
+      "path": "public/docs/fm1.md",
+      "language": "kotlin",
+      "baselineSha256": "c6aee18db3e7d21436bacf57ada23a1d6fb7c98dd9da7b27022b86359ccb91cd",
+      "decision": "reviewed",
+      "reasonGroup": "g4"
+    },
+    {
+      "id": 57,
+      "path": "public/docs/fm1.md",
+      "language": "kotlin",
+      "baselineSha256": "335c58f536b5ba2bb00f75e1df6f5d86b18e93209b7a39bb77cea87ac7f7c2d5",
+      "decision": "reviewed",
+      "reasonGroup": "g4"
+    },
+    {
+      "id": 58,
+      "path": "public/docs/fm1.md",
+      "language": "kotlin",
+      "baselineSha256": "4c3dd5af4ec0dede9b1df8d659bfda21bb77a350b9284ebbbbe860577d527cb8",
+      "decision": "reviewed",
+      "reasonGroup": "g4"
+    },
+    {
+      "id": 59,
+      "path": "public/docs/fm1.md",
+      "language": "kotlin",
+      "baselineSha256": "28cb2ae3578fa485a07f4a9a35e46c4161492ce69413561c85bd276c4895188a",
+      "decision": "reviewed",
+      "reasonGroup": "g4"
+    },
+    {
+      "id": 60,
+      "path": "public/docs/fm1.md",
+      "language": "kotlin",
+      "baselineSha256": "697c79d5407994576fcfc4780f706b8b2c71370ab36e14b10e56ffa740c8fb7b",
+      "decision": "reviewed",
+      "reasonGroup": "g4"
+    },
+    {
+      "id": 61,
+      "path": "public/docs/fm1.md",
+      "language": "kotlin",
+      "baselineSha256": "c9fb1bfc0c91e77d2dd06c0a8f82e0ef5ee7ae758b213b61b327206ffe8c5e6f",
+      "decision": "reviewed",
+      "reasonGroup": "g4"
+    },
+    {
+      "id": 62,
+      "path": "public/docs/fm1.md",
+      "language": "kotlin",
+      "baselineSha256": "8131ba6c2184bb8bb45fc0de917ed0dda7a57f0225ccd056f9d71afc3ac4ef5e",
+      "decision": "reviewed",
+      "reasonGroup": "g4"
+    },
+    {
+      "id": 63,
+      "path": "public/docs/fm1.md",
+      "language": "kotlin",
+      "baselineSha256": "ca805d5dd342429a5352b5bc92fccd6444e1b3d639bc6d11056ec98b646b0a03",
+      "decision": "reviewed",
+      "reasonGroup": "g4"
+    },
+    {
+      "id": 64,
+      "path": "public/docs/fm1.md",
+      "language": "kotlin",
+      "baselineSha256": "fd55f621b65ecf2f9203c57dde0fc25bb80f783fdde2ce6ebd7383b63990243a",
+      "decision": "reviewed",
+      "reasonGroup": "g4"
+    },
+    {
+      "id": 65,
+      "path": "public/docs/fm1.md",
+      "language": "kotlin",
+      "baselineSha256": "01233d411ea71d6023fe0cb1ac68cd428eb48e9d32a5dee73f985a45be4c48b0",
+      "decision": "reviewed",
+      "reasonGroup": "g4"
+    },
+    {
+      "id": 66,
+      "path": "public/docs/fm1.md",
+      "language": "kotlin",
+      "baselineSha256": "16039aa8ae4dfc861f71b7cfced3ada8840fed1ded59c9ca3ef94e3cab5b498c",
+      "decision": "reviewed",
+      "reasonGroup": "g4"
+    },
+    {
+      "id": 67,
+      "path": "public/docs/fm1.md",
+      "language": "kotlin",
+      "baselineSha256": "35ffc357ce2d3d666be876a907ca5a1ff898fda069e057d2704be0d028acfc4d",
+      "decision": "reviewed",
+      "reasonGroup": "g4"
+    },
+    {
+      "id": 68,
+      "path": "public/docs/fm1.md",
+      "language": "kotlin",
+      "baselineSha256": "df097a103ff649285416b2484c19a08669a2e7c6effe36084f82626e55f7d129",
+      "decision": "reviewed",
+      "reasonGroup": "g4"
+    },
+    {
+      "id": 69,
+      "path": "public/docs/fm1.md",
+      "language": "kotlin",
+      "baselineSha256": "b64390694a07b1b94983248ce38570b0b98294d9eb270c4323c0d70d971a9e8c",
+      "decision": "reviewed",
+      "reasonGroup": "g4"
+    },
+    {
+      "id": 70,
+      "path": "public/docs/fm1.md",
+      "language": "kotlin",
+      "baselineSha256": "2420cd3ea8fb9ad891aa7ba6532c899a526d34844259316c582eb0eae2357868",
+      "decision": "reviewed",
+      "reasonGroup": "g4"
+    },
+    {
+      "id": 71,
+      "path": "public/docs/fm1.md",
+      "language": "kotlin",
+      "baselineSha256": "f5648afeaed4657f7171e5df319e76f7c68976d190ffc3db5971c421c3365cd6",
+      "decision": "reviewed",
+      "reasonGroup": "g4"
+    },
+    {
+      "id": 72,
+      "path": "public/docs/fm1.md",
+      "language": "kotlin",
+      "baselineSha256": "8bc521264a8491a5b8c86670a835c73f5da89d6268e343444078338aaf3cab2b",
+      "decision": "reviewed",
+      "reasonGroup": "g4"
+    },
+    {
+      "id": 73,
+      "path": "public/docs/fm1.md",
+      "language": "kotlin",
+      "baselineSha256": "ab970c563b483584885d817957428509fb1107c6ce85d2a5ccbd404cc1c4b540",
+      "decision": "reviewed",
+      "reasonGroup": "g4"
+    },
+    {
+      "id": 74,
+      "path": "public/docs/graph_connectivity_examples.md",
+      "language": "kotlin",
+      "baselineSha256": "20e1d152549a9d6e9742633985f34e92a4ddf1436b20007f1f3f62a307965839",
+      "decision": "reviewed",
+      "reasonGroup": "g10"
+    },
+    {
+      "id": 75,
+      "path": "public/docs/graph_connectivity_examples.md",
+      "language": "kotlin",
+      "baselineSha256": "4bac744e52cdb926ad42ff6e2b515c50d711ee6c06bfef123b17ae957922bb5d",
+      "decision": "reviewed",
+      "reasonGroup": "g10"
+    },
+    {
+      "id": 76,
+      "path": "public/docs/linear_algebra.md",
+      "language": "kotlin",
+      "baselineSha256": "a2229e183bacacc634b6019fa5bc64b56a743c1533de588e872eaa64ecf163bd",
+      "decision": "reviewed",
+      "reasonGroup": "g11"
+    },
+    {
+      "id": 77,
+      "path": "public/docs/linear_algebra.md",
+      "language": "kotlin",
+      "baselineSha256": "46d13d428eca0a834772d22df60c267f51c24ef54441cc75bf384b597d9b52d7",
+      "decision": "reviewed",
+      "reasonGroup": "g11"
+    },
+    {
+      "id": 78,
+      "path": "public/docs/linear_algebra.md",
+      "language": "kotlin",
+      "baselineSha256": "3702bc4b9272b1ef1cd29d9be5c6ff06c639bfbe49ccd1c6f7bdb17fcd30f70e",
+      "decision": "reviewed",
+      "reasonGroup": "g11"
+    },
+    {
+      "id": 79,
+      "path": "public/docs/linear_algebra.md",
+      "language": "kotlin",
+      "baselineSha256": "be17af41ceb970ab74ac5f60c6cc290cb805ea6dd034dbd9956c940589e59628",
+      "decision": "reviewed",
+      "reasonGroup": "g11"
+    },
+    {
+      "id": 80,
+      "path": "public/docs/linear_algebra.md",
+      "language": "kotlin",
+      "baselineSha256": "c05a271b0849e5d8f72eccab3eca5102966e7475aa466d45e81822b060c1f2bb",
+      "decision": "reviewed",
+      "reasonGroup": "g11"
+    },
+    {
+      "id": 81,
+      "path": "public/docs/path_tracing.md",
+      "language": "kotlin",
+      "baselineSha256": "c9d8d6a9e458cb94784996a380036fc9e817d19269891568669dbf23f2394c03",
+      "decision": "reviewed",
+      "reasonGroup": "g12"
+    },
+    {
+      "id": 82,
+      "path": "public/docs/pattern_language.md",
+      "language": "kotlin",
+      "baselineSha256": "5b7e97e439411ccfd5d96d60bc6d0d300e0ff3522f261d12ad24533002faec49",
+      "decision": "reviewed",
+      "reasonGroup": "g13"
+    },
+    {
+      "id": 83,
+      "path": "public/docs/pattern_language.md",
+      "language": "kotlin",
+      "baselineSha256": "5e7c973840d743414d13810f6d23fcaf75cd3d9bf0ff34ba33462d4d8e830f6d",
+      "decision": "reviewed",
+      "reasonGroup": "g13"
+    },
+    {
+      "id": 84,
+      "path": "public/docs/pattern_language.md",
+      "language": "kotlin",
+      "baselineSha256": "54b4c758cffefdd94c8b0d0dc218c755c8f435a03061a0480392b41d7ab463b2",
+      "decision": "reviewed",
+      "reasonGroup": "g13"
+    },
+    {
+      "id": 85,
+      "path": "public/docs/pattern_language.md",
+      "language": "kotlin",
+      "baselineSha256": "83a177f5c0d6a6d5f5e1c109ae449352405e07e620597a60a94b48d0b3a9196e",
+      "decision": "reviewed",
+      "reasonGroup": "g13"
+    },
+    {
+      "id": 86,
+      "path": "public/docs/pattern_language.md",
+      "language": "kotlin",
+      "baselineSha256": "24234be121cc9f362cb4921a07c6da45c736cc6b8844b729875e4f2109bd762d",
+      "decision": "reviewed",
+      "reasonGroup": "g13"
+    },
+    {
+      "id": 87,
+      "path": "public/docs/pattern_language.md",
+      "language": "kotlin",
+      "baselineSha256": "6ebf1efcbe488c72ab30d801b1748795d11ea67dbc80f238b5e83c3bd1ee7e6c",
+      "decision": "reviewed",
+      "reasonGroup": "g13"
+    },
+    {
+      "id": 88,
+      "path": "public/docs/spectral_examples.md",
+      "language": "kotlin",
+      "baselineSha256": "7fabd71e9e68ae894b83e46532580adce2936f7d54a961b8278b84270003bd9a",
+      "decision": "reviewed",
+      "reasonGroup": "g7"
+    },
+    {
+      "id": 89,
+      "path": "public/docs/spectral_examples.md",
+      "language": "kotlin",
+      "baselineSha256": "4e5a0446f20959c5617579f0deb67e4dd8f1c8663ff309e6f41f6d8ee02bdb36",
+      "decision": "reviewed",
+      "reasonGroup": "g7"
+    },
+    {
+      "id": 90,
+      "path": "public/docs/spectral_examples.md",
+      "language": "kotlin",
+      "baselineSha256": "8468963e48052ac17b6290d918b1f43412b7b81dacb33a581133d0b403a78f42",
+      "decision": "reviewed",
+      "reasonGroup": "g7"
+    },
+    {
+      "id": 91,
+      "path": "public/docs/spectral_examples.md",
+      "language": "kotlin",
+      "baselineSha256": "78e7b525e24848a8fdb4d6727506abfe294796993e93a4cd00cea52b877a1967",
+      "decision": "reviewed",
+      "reasonGroup": "g7"
+    },
+    {
+      "id": 92,
+      "path": "public/docs/spectral_examples.md",
+      "language": "kotlin",
+      "baselineSha256": "b34e8a06b8a05dce5e20eec92042443b8493e2dae9b8d8050edbfee2354da8bb",
+      "decision": "reviewed",
+      "reasonGroup": "g7"
+    },
+    {
+      "id": 93,
+      "path": "public/docs/spectral_examples.md",
+      "language": "kotlin",
+      "baselineSha256": "8a1ef05972952149351652dc573c02fab1f498439770134d926b5ebe15674827",
+      "decision": "reviewed",
+      "reasonGroup": "g7"
+    },
+    {
+      "id": 94,
+      "path": "public/docs/spectral_examples.md",
+      "language": "kotlin",
+      "baselineSha256": "024fdbb8f0891980d21b235bd693886b67735ee04242c4f456a37c0f32e85153",
+      "decision": "reviewed",
+      "reasonGroup": "g7"
+    },
+    {
+      "id": 95,
+      "path": "public/docs/spectral_examples.md",
+      "language": "kotlin",
+      "baselineSha256": "089c6e6944b3bacbe32ee8d3ca9d732ce0d56de4c30b2762379c34a4282aaae1",
+      "decision": "reviewed",
+      "reasonGroup": "g7"
+    },
+    {
+      "id": 96,
+      "path": "public/docs/spectral_examples.md",
+      "language": "kotlin",
+      "baselineSha256": "ebc3e1ede457ca8758b7e27e863ca49c7fbda4cb2443a27d5597b88c37ca3452",
+      "decision": "reviewed",
+      "reasonGroup": "g7"
+    },
+    {
+      "id": 97,
+      "path": "public/docs/spectral_examples.md",
+      "language": "kotlin",
+      "baselineSha256": "9e0ebd478106a6988bd49d57be09fe45ec832df8d3b412544de0f5e234fcf5e7",
+      "decision": "reviewed",
+      "reasonGroup": "g7"
+    },
+    {
+      "id": 98,
+      "path": "public/docs/spectral_examples.md",
+      "language": "kotlin",
+      "baselineSha256": "1a51a1e9fae8eff85b9b6d3e700516dfdbc68c9fb1bc4dccf5d877c11281b74c",
+      "decision": "reviewed",
+      "reasonGroup": "g7"
+    },
+    {
+      "id": 99,
+      "path": "public/docs/spectral_examples.md",
+      "language": "kotlin",
+      "baselineSha256": "61901151fecd98270458b2d86c109e0d7991dfb97f0a229818aac75ddaf5df02",
+      "decision": "reviewed",
+      "reasonGroup": "g7"
+    },
+    {
+      "id": 100,
+      "path": "public/docs/spectral_examples.md",
+      "language": "kotlin",
+      "baselineSha256": "1de213c0f9c87fb4a76183179bf1345efcd14bdbf324738adc7e2ff7d4e11f32",
+      "decision": "reviewed",
+      "reasonGroup": "g7"
+    },
+    {
+      "id": 101,
+      "path": "public/docs/spectral_examples.md",
+      "language": "kotlin",
+      "baselineSha256": "0731f1e607ade1792978700145654f6ef105c6a8251d2528a204dc3939987f80",
+      "decision": "reviewed",
+      "reasonGroup": "g7"
+    },
+    {
+      "id": 102,
+      "path": "public/docs/spectral_examples.md",
+      "language": "kotlin",
+      "baselineSha256": "4adf71b1d633ba5b41f40e189e573cf0abe5be87422f7ffa29009d211c82b63b",
+      "decision": "reviewed",
+      "reasonGroup": "g7"
+    },
+    {
+      "id": 103,
+      "path": "public/docs/spectral_examples.md",
+      "language": "kotlin",
+      "baselineSha256": "55130a5fb328d99ca6486ed34cf393d3be68275d60d20a38374889ecce518fc4",
+      "decision": "reviewed",
+      "reasonGroup": "g7"
+    },
+    {
+      "id": 104,
+      "path": "public/docs/spectral_examples.md",
+      "language": "kotlin",
+      "baselineSha256": "d5a8a808cc18ee3de562d7598ef4bc09f1d18dc18d1b7ecb972f207d854e4091",
+      "decision": "reviewed",
+      "reasonGroup": "g7"
+    },
+    {
+      "id": 105,
+      "path": "public/docs/spectral_examples.md",
+      "language": "kotlin",
+      "baselineSha256": "b84fa98986e5e70dd4f8d86dba8d69aa8890c83cd8f6851b642b996cf52e9e96",
+      "decision": "reviewed",
+      "reasonGroup": "g7"
+    },
+    {
+      "id": 106,
+      "path": "public/docs/spectral_examples.md",
+      "language": "kotlin",
+      "baselineSha256": "c2d49ffc02f5146aea8aaa50d6ce11e00c3cbe3eb2976dd9066f62f13316b8ef",
+      "decision": "reviewed",
+      "reasonGroup": "g7"
+    },
+    {
+      "id": 107,
+      "path": "public/docs/spectral_examples.md",
+      "language": "kotlin",
+      "baselineSha256": "55ca11d67cca35be253a647f7848824103e88e2290253346398b654d2e930e7b",
+      "decision": "reviewed",
+      "reasonGroup": "g7"
+    },
+    {
+      "id": 108,
+      "path": "public/docs/spectral_examples.md",
+      "language": "kotlin",
+      "baselineSha256": "30ec9d3e108333b2d861aacec11e9d78cbb033076ecda2a483b5ace60d5bbfe3",
+      "decision": "reviewed",
+      "reasonGroup": "g7"
+    },
+    {
+      "id": 109,
+      "path": "public/docs/spectral_examples.md",
+      "language": "kotlin",
+      "baselineSha256": "bc14fe0ab10a3377053fb12086358952eafd11a44cc314ac74b3ce341d0d17ea",
+      "decision": "reviewed",
+      "reasonGroup": "g7"
+    },
+    {
+      "id": 110,
+      "path": "public/docs/spectral_examples.md",
+      "language": "kotlin",
+      "baselineSha256": "41789a5c76817bce658722c7bce116404be02d19ece116e3258e5917dad472a5",
+      "decision": "reviewed",
+      "reasonGroup": "g7"
+    },
+    {
+      "id": 111,
+      "path": "public/docs/three_output.md",
+      "language": "kotlin",
+      "baselineSha256": "add737234bced8a431a98307def4b62ddfaf8658912543bc92bf7866fab91bd0",
+      "decision": "reviewed",
+      "reasonGroup": "g14"
+    },
+    {
+      "id": 112,
+      "path": "public/docs/topology_tracking.md",
+      "language": "kotlin",
+      "baselineSha256": "d3984ebf8160a92f2cb779bd64a623665bbbb74546c085b00d4bc220f89ab850",
+      "decision": "reviewed",
+      "reasonGroup": "g15"
+    },
+    {
+      "id": 113,
+      "path": "public/docs/topology_tracking.md",
+      "language": "kotlin",
+      "baselineSha256": "02c4d30cb9e94cb1c9f4f9778b6563afdce08aeac70130da99044106a37bb3a3",
+      "decision": "reviewed",
+      "reasonGroup": "g15"
+    }
+  ]
+}
