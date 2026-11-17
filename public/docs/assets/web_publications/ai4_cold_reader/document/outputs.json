@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-16T13:56:50.939Z",
+  "capturedAt": "2026-11-17T03:42:00.228Z",
   "documentName": "ai4_cold_reader",
   "outputs": [
     {
@@ -9,7 +9,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 319,
+      "width": 364,
       "height": 40,
       "path": "outputs/0.html"
     }

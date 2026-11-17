@@ -12,7 +12,7 @@ AI4 is the agent that lives inside Field: the chat panel on every box, the docum
 
 Start from [AI features](../aiFeatures.md) and [AI4's built-in tools](../ai4_tools.md), which show these at work. The other user pages: [Let AI4 wait for long builds](../ai4_long_builds.md), [Experimenting with AI4](../ai4_experiments.md), [Let AI4 drive a live webpage](../ai4_live_iframe.md), [AI4 Paints](../ai4_painting.md) and [Reading saved AI4 chats](../ai4_chat_archive.md). Model training, ONNX inference and semantic retrieval are under [Machine learning](machine-learning.md).
 
-100 source file(s), 2225 public symbol(s), 845 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+101 source file(s), 2225 public symbol(s), 845 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -2292,6 +2292,10 @@ The tool outputs of the round that suspended a turn, which the provider has not 
 [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PendingToolOutput</span><span class="p">(</span><span class="k">val</span> <span class="n">callId</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">outputJson</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">isError</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span></code>](source/jvmMain/afield/ai/conversation/TurnSuspension/#L82)
 
 A finished call's output as the provider will receive it. `isError` marks a failed call (Anthropic).
+
+## aiChatBlocksJvm.kt { #aichatblocksjvm-kt }
+
+`src/jvmMain/kotlin/afield/ai/conversation/aiChatBlocksJvm.kt` — [read the source](source/jvmMain/afield/ai/conversation/aiChatBlocksJvm/)
 
 ## ChatArchive.kt { #chatarchive-kt }
 

@@ -48,6 +48,8 @@ LONG_TRANSCRIPT_SECONDS = 900
 # (spreadsheet_constraints) and 2026-11-10 (fline_exact_booleans), a different document each time.
 # A bare TimeoutError (a backdoor wait that ran out) is the same kind: flow_lenia hit it in two
 # refreshes on 2026-11-14 and captured cleanly in the run between.
+# The browser-side freeze budget per channel on an idle machine (`publication-capture.js`).
+CAPTURE_BUDGET_SECONDS = 60
 TRANSIENT_CAPTURE_ERRORS = ("Output capture exceeded", "ConnectionClosedError", "code=1006", "TimeoutError")
 # The backdoor's refusal when another checkout's Field answers the port this one started on.
 PORT_COLLISION = "is answered by a Field this session did not start"
@@ -62,7 +64,9 @@ PORT_COLLISION_ATTEMPTS = 3
 # documents is one the batch changed, so the lander retries instead of bouncing.
 MACHINE_STATE_ERRORS = TRANSIENT_CAPTURE_ERRORS + (
     "TimeoutError", "(watchdog)", "Runloop stalled", "No space left on device",
-    "this session did not start", "No free Field automation port")
+    "this session did not start", "No free Field automation port",
+    # A managed JVM that missed its start budget (the 2026-11-16 avp-threejs-viewer bounce).
+    "did not answer within its")
 MACHINE_STATE_EXIT = 75  # EX_TEMPFAIL
 # Publication capture starts its own Field. Its ports are disjoint from the backdoor, smoke and docs
 # runners (first free from 9477) and the UI runner (9490 up), which every worktree shares: the
@@ -782,8 +786,13 @@ async def capture(selected: list[dict], *, port: int | None, force: bool) -> lis
                         width, height = struct.unpack('>II', data[16:24])
                         native_images.append({'uid':image['uid'], 'width':width, 'height':height,
                             'dataUrl':'data:image/png;base64,' + base64.b64encode(data).decode(), 'alt':image['alt']})
-                    result = await publish_document(client, str(path), timeout=240, include_viewer=False,
-                                                    native_images=native_images)
+                    # Each channel's freeze budget, and the whole publication's, stretch with the
+                    # machine's load: a slow freeze on a busy lander is not a broken page.
+                    from verification_runtime import load_factor
+                    stretch = load_factor()
+                    result = await publish_document(client, str(path), timeout=240 * stretch, include_viewer=False,
+                                                    native_images=native_images,
+                                                    capture_budget_ms=int(CAPTURE_BUDGET_SECONDS * 1000 * stretch))
                     if not result['capturedOutputs']:
                         record_empty(recipe, sources)
                         report.append({'name': name, 'ok': True, 'channels': 0,

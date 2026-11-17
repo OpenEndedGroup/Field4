@@ -186,16 +186,16 @@
         #part-inspector > details[open] > summary { color: var(--accent); background: #242424; }
         #part-inspector .part-list {
             position: absolute; top: calc(100% + 8px); right: 0; width: min(360px, calc(100vw - 12px));
-            max-height: min(65vh, calc(100vh - 240px), 560px); overflow: auto; padding: 12px; border-radius: 8px; background: #000;
+            max-height: min(65vh, calc(100vh - 240px), 560px); overflow: auto; padding: 10px; border-radius: 8px; background: #000; font-size: 90%;
         }
-        #part-inspector .part-actions { padding: 4px 6px 12px; }
-        #part-inspector .part-hint { color: var(--muted); margin: 8px 0 0; white-space: normal; }
-        #part-inspector .part-children { margin-left: 14px; }
+        #part-inspector .part-actions { padding: 3px 5px 10px; }
+        #part-inspector .part-hint { color: var(--muted); margin: 6px 0 0; white-space: normal; }
+        #part-inspector .part-children { margin-left: 11px; }
         #part-inspector .part-row { display: flex; align-items: center; gap: 4px; border-radius: 4px; }
         #part-inspector .part-row:hover { background: #181818; }
-        #part-inspector .part-row label { flex: 1; min-width: 0; padding: 6px; cursor: pointer; overflow-wrap: anywhere; }
-        #part-inspector .part-toggle { width: 20px; height: 28px; padding: 0; flex-shrink: 0; }
-        #part-inspector .part-spacer { width: 20px; flex-shrink: 0; }
+        #part-inspector .part-row label { flex: 1; min-width: 0; padding: 5px; cursor: pointer; overflow-wrap: anywhere; }
+        #part-inspector .part-toggle { width: 16px; height: 22px; padding: 0; flex-shrink: 0; }
+        #part-inspector .part-spacer { width: 16px; flex-shrink: 0; }
         #part-inspector .part-count { color: var(--muted); margin-left: auto; padding-left: 6px; white-space: nowrap; }
         #part-inspector .part-row[data-solo="true"] > label { color: var(--accent); }
 
@@ -340,7 +340,9 @@
            split the rows by frame width alone: a view that asked for few controls still wrapped as if
            it carried all of them. */
         #hud { flex-wrap: wrap; }
-        #hud-left { flex: 1 1 auto; min-width: 0; flex-wrap: wrap; }
+        /* A zero basis: the left side's groups wrap among themselves beside the right side instead of
+           claiming their one-row width, which pushed the right side below every wrapped left row. */
+        #hud-left { flex: 1 1 0; min-width: min(260px, 100%); flex-wrap: wrap; }
         #hud-right { flex-shrink: 1; }
         @media (max-width: 760px) { #hud-right { max-width: 100%; } }
         /* Published views have fewer tools, so both sides fit on the top row in a box. */
@@ -1567,6 +1569,30 @@ labelStyleSheet.textContent = `
   .scene-overlay { max-width:calc(100% - 24px); font-size:11px; }
   .scene-overlay.top-right { top:12px; right:12px; } .scene-overlay.top-left { top:12px; left:12px; }
   .scene-overlay.bottom-right { bottom:12px; right:12px; } .scene-overlay.bottom-left { bottom:12px; left:12px; }
+  .scene-overlay.panel { padding:8px 11px; line-height:1.55; color:#d6dde3; background:rgba(16,16,16,.82);
+    border:1px solid rgba(255,255,255,.14); border-radius:6px; max-width:min(560px, calc(100% - 24px)); }
+  .scene-overlay.panel { padding-right:28px; }
+  .scene-overlay.panel .overlay-toggle { position:absolute; top:4px; right:4px; width:20px; height:20px; padding:0;
+    pointer-events:auto; cursor:pointer; font:inherit; line-height:18px; color:rgba(255,255,255,.6);
+    background:transparent; border:1px solid rgba(255,255,255,.14); border-radius:4px; }
+  .scene-overlay.panel .overlay-toggle:hover { color:#fff; border-color:rgba(255,255,255,.4); }
+  .scene-overlay.panel .overlay-head { pointer-events:auto; cursor:pointer; }
+  .scene-overlay.panel.collapsed > :not(.overlay-toggle):not(.overlay-head) { display:none; }
+  .scene-overlay.panel.collapsed > .overlay-head { margin:0; display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden; }
+  .scene-overlay.panel.collapsed > .overlay-toggle:first-child + :not(.overlay-head) { display:none; }
+  .scene-overlay.panel > :nth-child(2) { margin-top:0; } .scene-overlay.panel > :last-child { margin-bottom:0; }
+  .scene-overlay.panel p, .scene-overlay.panel ul, .scene-overlay.panel ol, .scene-overlay.panel table { margin:.35em 0; }
+  .scene-overlay.panel ul, .scene-overlay.panel ol { padding-left:1.2em; }
+  .scene-overlay.panel h1, .scene-overlay.panel h2, .scene-overlay.panel h3, .scene-overlay.panel h4 {
+    margin:.2em 0 .4em; font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:#fff; }
+  .scene-overlay.panel strong { color:#fff; }
+  .scene-overlay.panel code { font:inherit; color:#fff; background:rgba(255,255,255,.08); padding:0 .25em; border-radius:3px; }
+  .scene-overlay.panel table { border-collapse:collapse; font-variant-numeric:tabular-nums; }
+  .scene-overlay.panel th, .scene-overlay.panel td { padding:1px 8px 1px 0; text-align:left; }
+  .scene-overlay.panel th { color:rgba(255,255,255,.55); font-weight:400; border-bottom:1px solid rgba(255,255,255,.14); }
+  .scene-overlay.panel .field-md-row { display:flex; gap:12px; }
+  .field-md-accent { color:#8be9fd; } .field-md-muted { color:rgba(255,255,255,.6); } .field-md-dim { color:rgba(255,255,255,.4); }
+  .field-md-ok { color:#50fa7b; } .field-md-warn { color:#f1c40f; } .field-md-bad { color:#ff79c6; }
   body.hud-off #hud { display:none; }
   .scene-note { left:16px; bottom:14px; color:rgba(255,255,255,.35); font-size:11px; letter-spacing:.05em; text-transform:uppercase; }
 `;
@@ -1576,6 +1602,31 @@ let sceneOverlayEls = [];
 const sceneNote = document.createElement('div');
 sceneNote.className = 'scene-note';
 container.appendChild(sceneNote);
+
+/**
+ * A markdown legend folds to its first line (its heading, if it has one) with a click on the
+ * panel's head or its toggle; the rest of the panel stays click-through so the view still orbits.
+ * The folded state survives a re-run, keyed by the overlay's position in the list.
+ */
+const collapsedOverlays = new Set();
+function makeOverlayCollapsible(el, index) {
+    const toggle = document.createElement('button');
+    toggle.className = 'overlay-toggle';
+    toggle.type = 'button';
+    const head = el.firstElementChild;
+    if (head) head.classList.add('overlay-head');
+    const set = folded => {
+        el.classList.toggle('collapsed', folded);
+        toggle.textContent = folded ? '+' : '−';
+        toggle.title = folded ? 'Show legend' : 'Fold legend';
+        if (folded) collapsedOverlays.add(index); else collapsedOverlays.delete(index);
+    };
+    const flip = e => { e.stopPropagation(); set(!el.classList.contains('collapsed')); };
+    toggle.addEventListener('click', flip);
+    if (head) head.addEventListener('click', flip);
+    el.prepend(toggle);
+    set(collapsedOverlays.has(index));
+}
 
 function applyLabels(payload) {
     labelLayer.replaceChildren();
@@ -1594,10 +1645,11 @@ function applyLabels(payload) {
         return {el, at: new THREE.Vector3(spec.position[0], spec.position[1], spec.position[2])};
     });
     sceneOverlayEls.forEach(el => el.remove());
-    sceneOverlayEls = (payload.overlays || []).map(spec => {
+    sceneOverlayEls = (payload.overlays || []).map((spec, index) => {
         const el = document.createElement('div');
-        el.className = 'scene-overlay ' + (spec.corner || 'top-right');
+        el.className = 'scene-overlay ' + (spec.corner || 'top-right') + (spec.panel ? ' panel' : '');
         el.innerHTML = spec.html || '';
+        if (spec.panel) makeOverlayCollapsible(el, index);
         container.appendChild(el);
         return el;
     });

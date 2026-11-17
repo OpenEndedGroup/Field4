@@ -449,6 +449,34 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
     }
 
     /**
+     * A legend in a corner of the view, written as markdown — the usual way to put a key, a few
+     * readings or a warning over a scene. It is drawn on a dark panel in the viewer's own font, so
+     * there is no styling to write: headings, lists, tables, `code` and the [FieldMarkdown] roles
+     * (`{accent:…}`, `{muted:…}`, `{ok:…}`, `{warn:…}`, `{bad:…}`) all read correctly over geometry.
+     * The text is dedented for you. Reach for [overlay] only when you need HTML markdown cannot say.
+     *
+     * ```kotlin
+     * three {
+     *     mesh(solid)
+     *     markdown("""
+     *         **SUB-VOLUMES**
+     *
+     *         - ${'$'}{parts.size} regions · exact positions at explode 0
+     *         - colour = origin: {accent:A} · B · C · D
+     *
+     *         ${'$'}{warnings.joinToString("\n") { "{bad:${'$'}it}  " }}
+     *     """, corner = "bottom-left")
+     * }
+     * ```
+     *
+     * @param corner `"top-right"`, `"top-left"`, `"bottom-right"` or `"bottom-left"`.
+     */
+    fun markdown(text: String, corner: String = "top-right") {
+        require(corner in OVERLAY_CORNERS) { "overlay corner must be one of $OVERLAY_CORNERS, got \"$corner\"" }
+        overlays += ThreeOverlay(afield.ui.output.FieldMarkdown.render(text), corner, panel = true)
+    }
+
+    /**
      * Grey the scene and its labels out: the picture is older than what it shows, and a newer one is
      * on its way. Corner [overlay]s and the [note] stay as they are.
      */

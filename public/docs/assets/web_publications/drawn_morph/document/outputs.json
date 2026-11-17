@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-16T13:50:22.133Z",
+  "capturedAt": "2026-11-17T03:37:34.000Z",
   "documentName": "drawn_morph",
   "outputs": [
     {
@@ -30,13 +30,13 @@
     {
       "uid": "dm_play",
       "channel": "by list index",
-      "open": true,
+      "open": false,
       "warnings": [
         "Live media omitted"
       ],
       "kinds": [],
-      "width": 428,
-      "height": 62,
+      "width": 200,
+      "height": 40,
       "path": "outputs/2.html"
     },
     {

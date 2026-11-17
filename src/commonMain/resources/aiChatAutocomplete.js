@@ -11,7 +11,10 @@ const STORAGE_KEY = "afield.ai4.chatAutocomplete";
 const DELAY_MS = 450;
 const ERROR_BACKOFF_MS = 30000;
 // Text metrics the mirror copies so its words wrap where the textarea's do.
-const MIRRORED = ["fontFamily", "fontSize", "fontWeight", "fontStyle", "fontVariant", "letterSpacing", "lineHeight",
+// Iosevka's faces differ by font-stretch, so a mirror missing it picks another width and wraps elsewhere.
+const MIRRORED = ["fontFamily", "fontSize", "fontWeight", "fontStyle", "fontVariant", "fontStretch",
+        "fontFeatureSettings", "fontVariationSettings", "fontKerning", "fontOpticalSizing", "fontVariantLigatures",
+        "textRendering", "letterSpacing", "lineHeight",
         "textTransform", "wordSpacing", "textIndent", "tabSize", "paddingTop", "paddingRight", "paddingBottom",
         "paddingLeft", "whiteSpace", "wordBreak", "overflowWrap", "direction"];
 
