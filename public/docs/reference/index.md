@@ -679,7 +679,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**41464 public symbols across 1838 source files**, 24729 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**41489 public symbols across 1838 source files**, 24743 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -692,7 +692,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Video](video.md) | 14 | 195 | 194 (99%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 60 | 2524 | 1904 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 26 | 1123 | 528 (47%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 420 | 10255 | 6482 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 420 | 10280 | 6496 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 46 | 845 | 449 (53%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 596 | 440 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 787 | 530 (67%) | Nonlinear least squares, aimed at geometry. |
@@ -1391,7 +1391,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr></small> [GpuSkinningEvidence.kt](graphics.md#gpuskinningevidence-kt) | Graphics | 3 | 1 | A program that draws GPU-skinned characters through the real Vulkan path and writes the frames out as PNGs, each one paired with a CPU-skinned frame of the same pose. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [GpuSkinningSmoke.kt](examples.md#gpuskinningsmoke-kt) | Examples | 3 | 2 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>gp/<wbr></small> [GpVectorProcess.kt](math.md#gpvectorprocess-kt) | Math | 19 | 18 | Vector-valued Gaussian processes with separable covariance, for fitting curves and fields whose outputs are several coordinates. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>graph/<wbr></small> [graph_connectivity.kt](graphics.md#graph-connectivity-kt) | Graphics | 82 | 52 | Self-contained graph / computational-geometry library over 2D and 3D point sets (`Vec2`/`Vec3`). | [Neighbours and graphs on a point cloud](../graph_connectivity_examples.md), [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>graph/<wbr></small> [graph_connectivity.kt](graphics.md#graph-connectivity-kt) | Graphics | 107 | 66 | Self-contained graph / computational-geometry library over 2D and 3D point sets (`Vec2`/`Vec3`). | [Neighbours and graphs on a point cloud](../graph_connectivity_examples.md), [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>stdlib/<wbr></small> [GraphConnectivityExample.kt](examples.md#graphconnectivityexample-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>stdlib/<wbr></small> [GraphConnectivitySmokeTest.kt](examples.md#graphconnectivitysmoketest-kt) | Examples · internal | 3 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>modal/<wbr></small> [GraphModes.kt](audio.md#graphmodes-kt) | Audio | 20 | 18 |  |  |
