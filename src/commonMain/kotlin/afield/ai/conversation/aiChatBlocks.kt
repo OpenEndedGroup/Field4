@@ -161,7 +161,15 @@ fun parseAiChatHistory(history: String?, previous: AiChatParse? = null): AiChatP
 
 /** Text with no block of its own (no markers, or only empty ones) shows as one ai block, as it always has. */
 private fun withFallback(blocks: List<AiChatBlock>, text: String): List<AiChatBlock> =
-    if (blocks.isEmpty() && text.trim().isNotEmpty()) listOf(AiChatBlock("ai", text.trim())) else blocks
+    if (blocks.isEmpty() && text.trim().isNotEmpty()) listOf(AiChatBlock("ai", detached(text.trim()))) else blocks
+
+/**
+ * [s] as a string of its own. On Kotlin/JS a substring or a StringBuilder of substrings is a V8 sliced or
+ * concatenated string that keeps the whole transcript it was cut from alive. A streaming chat reparses a new
+ * transcript per append and keeps the earlier blocks, so each kept block held a full copy: 138 copies of an
+ * 8 MB chat, 1.2 GB, crashed the Electron page.
+ */
+internal expect fun detached(s: String): String
 
 private class TranscriptBlocks(val blocks: List<AiChatBlock>, val lastMarkerAt: Int, val stableBlocks: Int)
 
@@ -183,7 +191,7 @@ private fun parseTranscript(text: String, from: Int, runModel: AiChatModelIdenti
             // An ai block with no model of its own takes the run's, marked as such; a lens block keeps none.
             val fromRun = model == null && role == "ai" && runModel != null && markers.sources.isEmpty()
             // A block that was only marker lines still renders (a model badge with no text yet), as it always has.
-            blocks.add(AiChatBlock(role, markers.body, if (fromRun) runModel else model, markers.sources, markers.address, fromRun))
+            blocks.add(AiChatBlock(role, detached(markers.body), if (fromRun) runModel else model, markers.sources, markers.address, fromRun))
         }
         buffer.clear()
     }

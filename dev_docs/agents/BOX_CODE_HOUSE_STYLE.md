@@ -31,3 +31,5 @@ boxes, examples, docs and starting places.
 
 For mechanics and exceptions, see [Box code revision pass](BOX_CODE_REVISION_PASS.md) and the
 [agent guide](../../AGENTS.md).
+
+- **Legends over a `three { }` scene are `markdown("""…""", corner = …)`, not `overlay("<div style=…>")`.** The panel is already styled in the viewer's font, folds to its heading, and takes `{bad:…}`-style roles; never set a `font-family`.
