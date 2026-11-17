@@ -104,6 +104,9 @@ CORPUS = {
     # 2026-10-29, a slideshow tour over two existing boxes (interactive_guides.md). Ships a
     # `build.yaml`, so the count below moved 11 -> 12 (it landed after controls_surface).
     "slideshow_own_tour",
+    # 2026-11-17: drag handles in three { } scenes (three_output.md#drag-handles). Ships a
+    # `build.yaml`, so the count below moved 12 -> 13; registered EXECUTE as three_handles.yaml.
+    "three_handles",
     # Landed 2026-09-22 in `b5b9ad9e0`, the twenty-second directory and the only one that is not a
     # saved document: no `metadata.edn`, no `build.yaml` (so the nine below is unchanged), and no
     # `_code_.kt` sidecars. It is the *source* of a transcript — `tools/demos/build_flow_grain.py`
@@ -237,7 +240,7 @@ class DemoBuildScriptTest(unittest.TestCase):
             "dev_docs/DEMO_CORPUS_AUDIT.md together",
         )
         self.assertEqual(
-            12,
+            13,
             len(self.scripts),
             "the number of demos shipping a build.yaml has changed; a new one is unchecked "
             "until it is measured",
