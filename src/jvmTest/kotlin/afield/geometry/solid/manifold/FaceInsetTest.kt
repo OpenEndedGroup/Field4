@@ -181,4 +181,66 @@ class FaceInsetTest {
         }
         return vec(p[far * 3] - p[0], p[far * 3 + 1] - p[1], p[far * 3 + 2] - p[2])
     }
+
+    // A square pyramid, base +-5 on z = 0 and apex (0, 0, 10): four planes meet at the apex.
+    private val k = 1 / kotlin.math.sqrt(5.0)
+    private val sides = mapOf(
+        "+x" to doubleArrayOf(2 * k, 0.0, k), "-x" to doubleArrayOf(-2 * k, 0.0, k),
+        "+y" to doubleArrayOf(0.0, 2 * k, k), "-y" to doubleArrayOf(0.0, -2 * k, k),
+    )
+    private fun pyramid() = Solid.hullOfPointsD(doubleArrayOf(-5.0, -5.0, 0.0, 5.0, -5.0, 0.0, 5.0, 5.0, 0.0, -5.0, 5.0, 0.0, 0.0, 0.0, 10.0))
+
+    /**
+     * The solid where n . x <= c for every plane: what moving planes of a convex part has to give.
+     * Cut from a cube only a little larger than the parts here: from a 200 cube, planes came out
+     * about 1e-9 of its size off, a film 2.4e-7 thick over the walls a test compares.
+     */
+    private fun halfSpaces(planes: List<Pair<DoubleArray, Double>>): Solid {
+        var solid = Solid.cube(30.0, center = true)
+        for ((n, c) in planes) solid = solid.trimByPlane(-n[0], -n[1], -n[2], -c).also { solid.close() }
+        return solid
+    }
+
+    private fun moving(normals: Collection<DoubleArray>): (DoubleArray) -> Boolean =
+        { plane -> normals.any { n -> n[0] * plane[0] + n[1] * plane[1] + n[2] * plane[2] > 1 - 1e-9 } }
+
+    @Test
+    fun `a pyramid's apex opens into a ridge where its sides stop meeting at one point`() {
+        if (!ManifoldLibrary.isAvailable) return
+        // One side, or two opposite ones, moved: the four planes no longer meet at one point, and the
+        // apex becomes an edge. Two adjacent sides, or all four, still meet at one and the apex moves.
+        // A least-squares apex left 296.07 and 258.80 where these give 277.66 and 223.39.
+        for (moved in [setOf("+x"), setOf("+x", "-x"), setOf("+x", "+y"), sides.keys]) {
+            val inset = pyramid().insetFaces(1.0, moving(moved.map { sides.getValue(it) }))
+            val exact = halfSpaces(sides.map { (name, n) -> n to 10 * k - if (name in moved) 1.0 else 0.0 } + (doubleArrayOf(0.0, 0.0, -1.0) to 0.0))
+            assertEquals(exact.volume, inset.volume, 1e-6 * exact.volume, "volume with $moved moved")
+            val extra = inset - exact
+            val missing = exact - inset
+            // Not just the same volume: the same solid, up to the hair (1e-7 of the part's size) the
+            // cut is pushed across kept faces so no skin is left on them. An inset a tenth of the
+            // part slides a wide strip over the base, so that comes to 3.2e-5 with two sides moved.
+            val hair = 1e-6 * exact.volume
+            assertTrue(extra.volume < hair && missing.volume < hair, "same solid with $moved moved: ${extra.volume} extra in ${extra.bounds}, ${missing.volume} missing in ${missing.bounds}")
+        }
+    }
+
+    @Test
+    fun `a pyramid-shaped pit grows exactly when one of its walls moves`() {
+        if (!ManifoldLibrary.isAvailable) return
+        // A block with a pit whose walls meet at a point (0, 0, 2) below its top: the material there
+        // is the outside of a convex cone. Moving one wall back opens the pit's bottom into an edge.
+        val block = Solid.cube(20.0, 20.0, 20.0, center = true)
+        val wall = 1 / kotlin.math.sqrt(89.0)
+        // The pit's own outward normals, and the plane of each through (0, 0, 2); its top is far above.
+        val pit = [doubleArrayOf(8 * wall, 0.0, -5 * wall), doubleArrayOf(-8 * wall, 0.0, -5 * wall), doubleArrayOf(0.0, 8 * wall, -5 * wall), doubleArrayOf(0.0, -8 * wall, -5 * wall)]
+        fun pitOf(grow: Double) = halfSpaces(pit.mapIndexed { i, n -> n to -10 * wall + if (i == 0) grow else 0.0 } + (doubleArrayOf(0.0, 0.0, 1.0) to 14.0))
+        val part = block - pitOf(0.0)
+        val inset = part.insetFaces(0.5, moving([pit[0].map { -it }.toDoubleArray()]))
+        val exact = block - pitOf(0.5)
+        assertEquals(exact.volume, inset.volume, 1e-6 * exact.volume)
+        val extra = inset - exact
+        val missing = exact - inset
+        val hair = 1e-6 * exact.volume
+        assertTrue(extra.volume < hair && missing.volume < hair, "same solid: ${extra.volume} extra in ${extra.bounds}, ${missing.volume} missing in ${missing.bounds}")
+    }
 }
