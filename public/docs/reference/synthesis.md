@@ -2467,7 +2467,7 @@ self-oscillate cleanly at their cutoff. [`Smoother`](synthesis.md#filters-kt-smo
 
 `src/jvmMain/kotlin/afield/audio/synth/Filters.kt` — [read the source](source/jvmMain/afield/audio/synth/Filters/)
 
-**Used in:** [Signal examples: time and frequency](../spectral_examples.md), [Subharmonic Synthesis: an Octave Below](../subharmonic_sound.md), [Agent transcript gallery](../agent_transcripts.md)
+**Used in:** [Signal examples: time and frequency](../spectral_examples.md), [Agent transcript gallery](../agent_transcripts.md), [Subharmonic Synthesis: an Octave Below](../subharmonic_sound.md)
 
 ### Top-level functions { #filters-kt-functions }
 
