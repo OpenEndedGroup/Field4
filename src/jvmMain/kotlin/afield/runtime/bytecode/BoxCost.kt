@@ -191,6 +191,10 @@ object BoxCost {
     /** One thread's open frames and everything it has charged, by site id. Only that thread writes. */
     internal class CostStack(thread: Thread) {
         val thread = WeakReference(thread)
+
+        // Strong, but only compared: identity of the owner for [mine]'s fast path. Cleared when the
+        // thread is gone (see [stacks]), so a dead thread is not kept by its stack for long.
+        @JvmField var owner: Thread? = thread
         val threadName: String = thread.name
 
         var sites = IntArray(32)
@@ -272,9 +276,27 @@ object BoxCost {
     /** Every stack ever made. A stack outlives its thread so its totals stay in the snapshot. */
     private val stacks = CopyOnWriteArrayList<CostStack>()
 
-    private fun stack(): CostStack = local.get() ?: CostStack(Thread.currentThread()).also {
+    /**
+     * The stack the last probe used, read before the [ThreadLocal]: box code mostly runs on one
+     * thread (the Runloop), and `Thread.currentThread()` is an intrinsic where `ThreadLocal.get` is a
+     * hash lookup. A plain field: a probe on another thread sees a stack whose owner is not its
+     * thread, and takes the slow path. A stack is only ever used by its own thread.
+     */
+    private var last: CostStack? = null
+
+    private fun mine(): CostStack? {
+        val l = last
+        val t = Thread.currentThread()
+        if (l != null && l.owner === t) return l
+        val s = local.get() ?: return null
+        last = s
+        return s
+    }
+
+    private fun stack(): CostStack = mine() ?: CostStack(Thread.currentThread()).also {
         local.set(it)
         stacks += it
+        last = it
         active = true
     }
 
@@ -287,7 +309,7 @@ object BoxCost {
     /** Immediately before an instrumented method returns. */
     @JvmStatic
     fun exit(site: Int) {
-        val s = local.get() ?: return
+        val s = mine() ?: return
         s.pop(site, System.nanoTime())
     }
 
@@ -297,7 +319,7 @@ object BoxCost {
      */
     @JvmStatic
     fun caught(site: Int) {
-        val s = local.get() ?: return
+        val s = mine() ?: return
         val j = s.find(site)
         if (j >= 0 && j < s.depth - 1) s.unwind(j + 1, System.nanoTime())
     }
@@ -402,6 +424,7 @@ object BoxCost {
         val out = Sums(n)
         for (s in stacks) {
             @Suppress("UNUSED_VARIABLE") val fence = s.stamp
+            if (s.owner?.isAlive == false) s.owner = null
             val self = s.self; val total = s.total; val calls = s.calls
             for (i in 0 until minOf(n, self.size, total.size, calls.size)) {
                 out.self[i] += self[i]; out.total[i] += total[i]; out.calls[i] += calls[i]

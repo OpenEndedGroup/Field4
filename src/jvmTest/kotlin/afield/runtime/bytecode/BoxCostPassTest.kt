@@ -51,8 +51,8 @@ class BoxCostShapes {
     }
 
     fun spin(): Long {
-        var n = 0L
-        while (!stop) n++ // COST:spin
+        var n = 0L // COST:spin
+        while (!stop) n++
         return n
     }
 
