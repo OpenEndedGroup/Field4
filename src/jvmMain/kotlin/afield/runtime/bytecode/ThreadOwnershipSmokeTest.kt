@@ -124,7 +124,8 @@ object ThreadOwnershipSmokeTest {
             val a = run(info, one, oneCode)
             check("G box runs", a.ok && "rendered" in a.stdout, a.error.ifBlank { "succeeded" })
             val r1 = reports(one.id)
-            val render = r1.filter { it.target == "Signal.render" }
+            // Named by the call's owner: `sine` is a SineOsc, so the call is `SineOsc.render`.
+            val render = r1.filter { it.target == "SineOsc.render" }
             check("G1 render with the audio thread's context reported once, at box line 5",
                 render.size == 1 && render[0].box?.line == 5 && render[0].owner == ThreadOwner.AUDIO && render[0].ownerThread == "'smoke-audio'", describe(r1))
             check("G1 found by the pass (a thread-guard site)", render.firstOrNull()?.site?.kind == "thread-guard", "site=${render.firstOrNull()?.site}")
