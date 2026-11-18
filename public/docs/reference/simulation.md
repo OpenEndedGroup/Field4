@@ -855,7 +855,7 @@ it. [`WeightCubeLearner`](simulation.md#alife-weight-cube-kt-weightcubelearner) 
 
 `src/jvmMain/kotlin/afield/simulation/agents/alife_weight_cube.kt` — [read the source](source/jvmMain/afield/simulation/agents/alife_weight_cube/)
 
-**Used in:** [Braitenberg vehicles with memory](../braitenberg_vehicles.md)
+**Used in:** [Braitenberg vehicles with memory](../braitenberg_vehicles.md), [Agent transcript gallery](../agent_transcripts.md)
 
 ### CubeWiring { #alife-weight-cube-kt-cubewiring }
 

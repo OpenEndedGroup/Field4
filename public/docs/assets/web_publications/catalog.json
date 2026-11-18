@@ -745,6 +745,31 @@
         "public/docs/assets/agent_transcripts/braitenberg_brain_search/metadata.edn": "48fffc5be35b8bd4f799a14067c7559201129d497dbba2f4ee4b28f06ab259cc"
       }
     },
+    "assets/agent_transcripts/braitenberg_weight_cube/metadata.edn": {
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-18T10:41:25.040Z",
+      "channels": 3,
+      "file": "assets/web_publications/braitenberg_weight_cube/document/metadata.edn",
+      "files": {
+        "assets/web_publications/braitenberg_weight_cube/document/metadata.edn": "2f15c4ffdc6b0ca5de00256f641f5020c71ae892e033449e124f101c448522bb",
+        "assets/web_publications/braitenberg_weight_cube/document/outputs.json": "9bfd18a6332f9c29dd9e451d0c73ea18d2d19b26a69d2dcfb631e82fa962500b",
+        "assets/web_publications/braitenberg_weight_cube/outputs/0.html": "185c85204c911a60ebbd00e46039e819f6c93efe09db8675ff71bcbf2db9defd",
+        "assets/web_publications/braitenberg_weight_cube/outputs/1.html": "cbaa07ce070b27eebb69ea5f3076829b86e3bd3a39001d8e4780a831d92281a9",
+        "assets/web_publications/braitenberg_weight_cube/outputs/2.html": "66c0e364981d2429b722f7c89be51f4d27b5bf1aaf036996d41ba2d034f5e801"
+      },
+      "kinds": [
+        "svg"
+      ],
+      "outputs": "assets/web_publications/braitenberg_weight_cube/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/braitenberg_weight_cube.yaml": "d140bd55f332cfad06f74a314b903913207fede539ed5d2fd7be969841845cea",
+        "public/docs/assets/agent_transcripts/braitenberg_weight_cube/cube_many_code_.kt": "24b3b992a9db43cdebea405a8b2e75fb1c72db454d943b11d483fcb1c63a03a0",
+        "public/docs/assets/agent_transcripts/braitenberg_weight_cube/cube_path_code_.kt": "5ac28f5165c29546a4d06e844f7cd804a3246ccadab1c21b7d38eaaef1f7cd3c",
+        "public/docs/assets/agent_transcripts/braitenberg_weight_cube/cube_rewards_code_.kt": "45b2f4c1d531b218303fc515b4236da90970a92ab4d11b08d9307a6f6aa2dc69",
+        "public/docs/assets/agent_transcripts/braitenberg_weight_cube/guides/braitenberg_vehicles.md": "6af574188cf142b269a89111456f3d122b3e4a982d80a4c73bb4f746b94556d1",
+        "public/docs/assets/agent_transcripts/braitenberg_weight_cube/metadata.edn": "f868c310d09361801467647b295c8a054171940c489489bc99c6355459bdc815"
+      }
+    },
     "assets/agent_transcripts/braitenberg_where_next/metadata.edn": {
       "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
       "capturedAt": "2026-11-17T21:13:31.599Z",

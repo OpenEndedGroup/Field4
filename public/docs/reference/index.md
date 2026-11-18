@@ -518,6 +518,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 ### io
 
 - [dmx](lighting.md#artnet-kt)
+- [drawingon](networking.md#drawingon-kt)
 - midi
     - [rtp](networking.md#rtpmidibox-kt)
 - [mocap](data.md#bvh-kt)
@@ -679,7 +680,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**41665 public symbols across 1846 source files**, 24829 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**41733 public symbols across 1849 source files**, 24869 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -688,7 +689,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Examples](examples.md) | 238 | 750 | 328 (43%) | Runnable examples, galleries and verification programs. |
 | [Internal](internal.md) | 25 | 195 | 77 (39%) | Implementation details explicitly marked Internal by their source. |
 | [Lighting](lighting.md) | 8 | 216 | 208 (96%) | Light sources, fixtures and control protocols for working with physical and rendered lighting. |
-| [Networking](networking.md) | 18 | 453 | 282 (62%) | OSC messages, discovery and query interfaces for connecting Field to other applications and devices. |
+| [Networking](networking.md) | 19 | 478 | 290 (60%) | OSC messages, discovery and query interfaces for connecting Field to other applications and devices. |
 | [Video](video.md) | 14 | 195 | 194 (99%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 60 | 2524 | 1904 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 26 | 1123 | 528 (47%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
@@ -696,7 +697,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Renderers](renderers.md) | 46 | 845 | 449 (53%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 596 | 440 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 787 | 530 (67%) | Nonlinear least squares, aimed at geometry. |
-| [Simulation](simulation.md) | 56 | 1827 | 1074 (58%) | Making a shape behave. |
+| [Simulation](simulation.md) | 57 | 1869 | 1105 (59%) | Making a shape behave. |
 | [Imaging](imaging.md) | 55 | 917 | 475 (51%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
 | [ALife](alife.md) | 24 | 1381 | 1252 (90%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 16 | 632 | 424 (67%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
@@ -707,7 +708,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Audio](audio.md) | 99 | 2658 | 1430 (53%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 22 | 592 | 592 (100%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 131 | 3348 | 1689 (50%) | Field's small languages, from the host side. |
-| [Workspace](workspace.md) | 245 | 3391 | 1377 (40%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
+| [Workspace](workspace.md) | 246 | 3392 | 1378 (40%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [AI4](ai4.md) | 102 | 2296 | 863 (37%) | AI4 is the agent that lives inside Field: the chat panel on every box, the document chat, editor completion, and headless agent tasks. |
 | [Machine learning](machine-learning.md) | 26 | 727 | 444 (61%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Animation](animation.md) | 10 | 186 | 43 (23%) |  |
@@ -807,6 +808,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>agents/<wbr></small> [alife_vehicle_brains.kt](alife.md#alife-vehicle-brains-kt) | ALife | 75 | 71 | A larger Braitenberg vehicle genome, and an equal-budget comparison of the searches that look for one. | [Braitenberg vehicles with memory](../braitenberg_vehicles.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>agents/<wbr></small> [alife_vehicles.kt](simulation.md#alife-vehicles-kt) | Simulation | 98 | 91 | Braitenberg vehicles whose neurons have internal state: two light sensors, two motor neurons, two wheels, and between them a small dynamical system rather than a wire. | [Braitenberg vehicles with memory](../braitenberg_vehicles.md), [Agent transcript gallery](../agent_transcripts.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>agents/<wbr></small> [alife_walls.kt](alife.md#alife-walls-kt) | ALife | 60 | 44 | Walls for `alife_script.kt`: obstacles, swept circle collision, and radius-aware routing around them. | [Spatial artificial life](../alife_examples.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>agents/<wbr></small> [alife_weight_cube.kt](simulation.md#alife-weight-cube-kt) | Simulation | 42 | 31 | Learning a symmetric Braitenberg wiring by trial and error, small enough to draw. | [Braitenberg vehicles with memory](../braitenberg_vehicles.md), [Agent transcript gallery](../agent_transcripts.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>stdlib/<wbr></small> [AlifeEvolveGallery.kt](examples.md#alifeevolvegallery-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>stdlib/<wbr></small> [AlifeGallery.kt](examples.md#alifegallery-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>stdlib/<wbr></small> [AlifeScriptGallery.kt](examples.md#alifescriptgallery-kt) | Examples | 2 | 1 |  |  |
@@ -1129,6 +1131,8 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [DoughDspSmokeTest.kt](audio.md#doughdspsmoketest-kt) | Audio · internal | 3 | 1 | Smoke test for the dough DSP ports: approximations, filter, phaser, reverb and envelope, checked by behaviour rather than by exact samples. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [DoughDspSoundDocs.kt](synthesis.md#doughdspsounddocs-kt) | Synthesis | 16 | 14 | Headless **offline sound-render harness** for the dough DSP ports in `DoughDsp.kt`: every audible example on the docs page is produced by running one of those primitives on the CPU. | [DoughDSP: hear the primitives](../dough_dsp_sound.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [DoughLive.kt](synthesis.md#doughlive-kt) | Synthesis | 30 | 28 | Box-level dough: `sound("/dough/play/note/60/s/sine/...")` from any box, and `thisRMS`, the level that box's own sounds are making right now. |  |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [drawingon.kt](workspace.md#drawingon-kt) | Workspace · internal | 1 | 1 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>io/<wbr>drawingon/<wbr></small> [DrawingOn.kt](networking.md#drawingon-kt) | Networking | 25 | 8 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [DrawnMorphDocs.kt](patterns.md#drawnmorphdocs-kt) | Patterns | 22 | 13 | The harness that renders the sound on `chain_drawn_morph.md` from two strokes in a document's drawing. | [A Drawn Morph, Heard](../chain_drawn_morph.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [DrawnScoreDocs.kt](patterns.md#drawnscoredocs-kt) | Patterns | 32 | 21 | A drawn score, heard — the harness behind `public/docs/chain_drawn_score.md`. | [A Drawn Score, Heard](../chain_drawn_score.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>memory/<wbr></small> [Dreaming.kt](machine-learning.md#dreaming-kt) | Machine learning | 18 | 11 |  |  |
