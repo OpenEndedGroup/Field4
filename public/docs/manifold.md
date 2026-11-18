@@ -502,8 +502,10 @@ function of each face's plane, its outward normal and offset as `[x, y, z, c]`:
 
 Corners stay sharp: every vertex goes to where its planes meet once the moved ones have shifted, the
 same construction as `Section.offset` with `JoinType.MITER`, and a kept face grows or shrinks to meet
-the faces beside it. `distance` has to be smaller than the part's narrowest feature across a moved
-face. Two pieces of one part that only meet along an edge come apart, since no inset can keep an edge
+the faces beside it. Where more than three planes meet at a point and stop meeting there once some
+move, the point opens into an edge: move one side of a pyramid and its apex becomes a short ridge
+where the other three planes meet the moved one. `distance` has to be smaller than the part's
+narrowest feature across a moved face. Two pieces of one part that only meet along an edge come apart, since no inset can keep an edge
 contact.
 
 A part built as a union of cells that meet face to face can come back from `Solid.union` as several
