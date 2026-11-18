@@ -98,7 +98,7 @@ pad.onEvent { event ->
                 val marker = FLine().moveTo(x - 12, y).lineTo(x + 12, y)
                     .moveTo(x, y - 12).lineTo(x, y + 12)
                 marker.color = vec(1.0, 1.0, 1.0, 0.8)
-                showPlan(listOf(marker))
+                showPlan([marker])
                 println("Pencil endpoint ($x, $y) at ${event.time}s")
             }
         }
