@@ -121,7 +121,7 @@ Publish an empty collection to clear it.
 
 The default `DrawingOnPlane()` maps Field X and Y directly to drawing points, with Y down. The
 recorded iPad view transform then pans, rotates and scales the scene. For a Y-up model, pass a
-plane with `yAxis = listOf(0.0, -1.0, 0.0)` and a suitable offset to `publish`. For a 3D model,
+plane with `yAxis = [0.0, -1.0, 0.0]` and a suitable offset to `publish`. For a 3D model,
 choose explicit independent `xAxis` and `yAxis` vectors and an origin. Projection is
 `dot(position - origin, axis) * scale + offset`, recorded with each reference revision.
 
