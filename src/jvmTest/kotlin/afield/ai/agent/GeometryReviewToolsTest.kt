@@ -140,7 +140,9 @@ class GeometryReviewToolsTest {
         val names = setOf("ListGeometryViewsRequest", "ReadGeometryReviewsRequest", "ReadGeometryNoteRequest", "ReplyGeometryNoteRequest", "ReviewGeometryNoteRequest", "InspectGeometryViewRequest", "ReportGeometryFindingRequest", "StyleGeometryPartsRequest")
         val context = f.ctx.copy(promoted = mutableSetOf())
         fun schemas(r: ToolRegistry) = r.describe(context).filter { it.jsonObject["name"]!!.jsonPrimitive.content in names }
-        assertEquals(listOf("ListGeometryViewsRequest"), schemas(registry).map { it.jsonObject["name"]!!.jsonPrimitive.content })
+        // Direct: listing and inspecting views (InspectGeometryView was in 13% of sessions, 2026-11-18); the rest load on request.
+        assertEquals(setOf("InspectGeometryViewRequest", "ListGeometryViewsRequest"),
+            schemas(registry).map { it.jsonObject["name"]!!.jsonPrimitive.content }.toSet())
         registry.executeByName(context, "DescribeToolsRequest", """{"namespace":"geometry"}""")
         assertEquals(names.size, schemas(registry).size)
         assertEquals(schemas(registry), schemas(Ai4BackdoorTools.registry))

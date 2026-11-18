@@ -64,9 +64,14 @@ class StateToolsTest {
         try {
             val ctx = ToolExecutionContext(documentGuides = DocumentGuideTools(dir, states=states) { false })
             val registry = ToolRegistry().also { registerBuiltInAgentTools(it) }
-            fun names(r: ToolRegistry) = r.describe(ctx).map { it.jsonObject["name"]!!.jsonPrimitive.content }.filter { it.startsWith("State") }
-            assertEquals(setOf("StateListRequest", "StateReadRequest", "StateShowRequest", "StateForkRequest"), names(registry).toSet())
+            val all = setOf("StateListRequest", "StateReadRequest", "StateShowRequest", "StateForkRequest")
+            fun names(r: ToolRegistry, c: ToolExecutionContext = ctx, face: ToolFace = ToolFace.MCP) =
+                r.describe(c, face).map { it.jsonObject["name"]!!.jsonPrimitive.content }.filter { it.startsWith("State") }
+            assertEquals(all, names(registry).toSet())
             assertEquals(names(registry), names(Ai4BackdoorTools.registry))
+            // Deferred: a model sees them only once the conversation has loaded them with DescribeToolsRequest.
+            assertEquals(emptyList(), names(registry, ctx.copy(promoted = mutableSetOf()), ToolFace.MODEL))
+            assertEquals(all, names(registry, ctx.copy(promoted = all.toMutableSet()), ToolFace.MODEL).toSet())
             val listing = states.list(StateListRequest("Saved designs"))
             assertEquals(3, listing.total); assertEquals("", listing.contents); assertFalse(listing.canFork)
             val encoded = aiToolMapper.writeValueAsString(registry.executeByName(ctx, "StateReadRequest", """{"history":"Saved designs","state":"Courtyard","maxChars":80}"""))

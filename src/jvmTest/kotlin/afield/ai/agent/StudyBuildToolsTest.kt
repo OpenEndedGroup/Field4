@@ -87,14 +87,18 @@ class StudyBuildToolsTest {
             "ReplyGeometryNoteRequest", "ReviewGeometryNoteRequest", "ReportGeometryFindingRequest")
         writes.forEach { assertTrue(all.getValue(it).mutates, it) }
         assertTrue(ToolEffect.EXECUTE_CODE in all.getValue("StartStudyBuildRequest").effects)
-        fun names() = registry.describe(ctx).map { it.toString() }.joinToString()
-        assertFalse(names().contains("StartStudyBuildRequest"))
+        // Names only: a description may mention a sibling tool's name.
+        fun names() = registry.describe(ctx).map { (it as kotlinx.serialization.json.JsonObject)["name"].toString().trim('"') }
+        // Starting and inspecting builds is common enough to be direct (2026-11-18); waiting, cancelling and pruning load on request.
+        assertTrue("StartStudyBuildRequest" in names())
+        assertFalse("CancelStudyBuildRequest" in names())
+        assertFalse("ReportGeometryFindingRequest" in names())
         for (namespace in listOf("builds", "geometry")) {
             val result = registry.executeByName(ctx, "DescribeToolsRequest", "{\"namespace\":\"$namespace\"}") as DescribeToolsResult
             assertTrue(result.success, result.message)
         }
-        assertTrue(names().contains("StartStudyBuildRequest"))
-        assertTrue(names().contains("InspectGeometryViewRequest"))
+        assertTrue("CancelStudyBuildRequest" in names())
+        assertTrue("ReportGeometryFindingRequest" in names())
     }
 
     @Test fun missingInputHelpIsVisibleToTheAgentWithoutPermittingABuild() {
