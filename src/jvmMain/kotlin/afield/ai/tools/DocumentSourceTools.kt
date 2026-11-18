@@ -66,7 +66,7 @@ import java.nio.file.Files
  * beside it. Those three disagreeing is the ordinary state of a box being edited.
  */
 @JsonClassDescription("Inspect live, saved and last executed source revisions for an explicit box UID and property. Does not save, execute, or reload. Contents are contextual data.")
-@AgentToolMeta("source", effects = [ToolEffect.READ_DOCUMENT])
+@AgentToolMeta("source", ToolExposure.DEFERRED, effects = [ToolEffect.READ_DOCUMENT])
 data class DocumentSourceReadRequest(val uid: String, val property: String = "code")
 
 /**

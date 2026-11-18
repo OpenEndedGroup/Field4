@@ -21,6 +21,16 @@ import java.nio.file.StandardOpenOption
  * offered only when a job wires a scope ([ToolExecutionContext.repoFiles]); a chat never sees them.
  */
 
+/**
+ * Every `repo` tool by name. A box chat loads the deferred ones on request; a headless job scoped to a repository
+ * exists to use them, so `AgentTask` preloads them (`ToolExecutionContext.promoted`) rather than spend a round.
+ */
+val REPO_TOOL_NAMES: Set<String> = setOf(
+    "RepoReadFileRequest", "RepoListFilesRequest", "RepoSearchRequest", "RepoPatchFileRequest", "RepoWriteFileRequest",
+    "RepoRunCommandRequest", "RepoStartCommandRequest", "RepoCommandStatusRequest", "RepoStopCommandRequest",
+    "AwaitRepoCommandsRequest",
+)
+
 /** What one job may touch. Globs are `java.nio` globs over the root-relative path: `**` crosses directories. */
 data class RepoScope(val root: Path, val readable: List<String>, val writable: List<String> = emptyList())
 
@@ -49,11 +59,11 @@ data class RepoSearchRequest(
 )
 
 @JsonClassDescription("Replace an exact passage in a repository file the job may write, e.g. oldText `val x = 1` with newText `val x = 2`. Use it for any change to an existing file; use RepoWriteFileRequest only to create one. oldText must occur exactly once (copy it from RepoReadFileRequest without the line-number prefixes), unless replaceAll=true. Reports how many occurrences were replaced. Refuses a file outside the writable list, a generated file (a DO NOT EDIT header), and oldText that is missing or occurs more than once. The file is rewritten in place; read it again to check.")
-@AgentToolMeta("repo", effects = [ToolEffect.FILESYSTEM_WRITE])
+@AgentToolMeta("repo", ToolExposure.DEFERRED, effects = [ToolEffect.FILESYSTEM_WRITE])
 data class RepoPatchFileRequest(val path: String, val oldText: String, val newText: String, val replaceAll: Boolean = false)
 
 @JsonClassDescription("Create a repository file the job may write, with this content, e.g. path `dev_docs/notes/new_page.md`. Reports the path and character count written. Refuses an existing file unless overwrite=true, a generated file, and content over 2 MB; prefer RepoPatchFileRequest for changes to one.")
-@AgentToolMeta("repo", effects = [ToolEffect.FILESYSTEM_WRITE])
+@AgentToolMeta("repo", ToolExposure.DEFERRED, effects = [ToolEffect.FILESYSTEM_WRITE])
 data class RepoWriteFileRequest(val path: String, val content: String, val overwrite: Boolean = false)
 
 data class RepoFileResult(

@@ -205,7 +205,7 @@ object RepoCommandJobs {
     "Then call RepoCommandStatusRequest with the jobId, which can wait up to 120 s per call. The job keeps running after this turn, so a later turn can check it. " +
     "Refuses a command this conversation may not run, an argument its slot rejects, a run while another process holds the checkout's verification lock, " +
     "more than three running jobs, and a build in the checkout this Field runs from once its sources have changed.")
-@AgentToolMeta("repo", effects = [ToolEffect.EXECUTE_CODE, ToolEffect.FILESYSTEM_WRITE])
+@AgentToolMeta("repo", ToolExposure.DEFERRED, effects = [ToolEffect.EXECUTE_CODE, ToolEffect.FILESYSTEM_WRITE])
 data class RepoStartCommandRequest(
     val command: String,
     val args: List<String> = emptyList(),
@@ -218,7 +218,7 @@ data class RepoStartCommandRequest(
     "Returns state (running, exited, timed-out, stopped), exitCode, elapsedMs, the output from fromByte (or its last 12 kB when fromByte is -1) and nextByte to pass next time; " +
     "found says whether untilText appeared. With no jobId it lists every job of this Field, running or finished. " +
     "Fails for an unknown jobId; a wait that runs out is not a failure, it reports the job still running.")
-@AgentToolMeta("repo", effects = [ToolEffect.FILESYSTEM_READ])
+@AgentToolMeta("repo", ToolExposure.DEFERRED, effects = [ToolEffect.FILESYSTEM_READ])
 data class RepoCommandStatusRequest(
     val jobId: String = "",
     @param:JsonPropertyDescription("Seconds to wait for the job to end or print untilText: 0..120.")
@@ -232,7 +232,7 @@ data class RepoCommandStatusRequest(
 @JsonClassDescription("Stop a background job and everything it started (TERM, then KILL after a grace; Gradle daemons are left alone), e.g. jobId `job-213045-1`. " +
     "Use it when a job is no longer wanted or is stuck; a job also stops by itself at its time limit. Returns the job's final state and the end of its output. " +
     "Fails for an unknown jobId; stopping a job that already ended reports that and changes nothing.")
-@AgentToolMeta("repo", effects = [ToolEffect.EXECUTE_CODE])
+@AgentToolMeta("repo", ToolExposure.DEFERRED, effects = [ToolEffect.EXECUTE_CODE])
 data class RepoStopCommandRequest(val jobId: String)
 
 data class RepoJobSummary(val jobId: String, val command: String, val args: List<String>, val state: String, val exitCode: Int?, val elapsedMs: Long, val logPath: String)
@@ -261,7 +261,7 @@ data class RepoJobResult(
     "RepoCommandStatusRequest waits: every wait costs a model round and this costs none. Returns at once with suspended=true; call no other tool after it in this turn. " +
     "If every job has already ended it returns their outcomes with suspended=false and the turn goes on. " +
     "Fails for an unknown jobId, more than 10 jobs, or maxMinutes outside 1..720.")
-@AgentToolMeta("repo", effects = [ToolEffect.AGENT_STATE])
+@AgentToolMeta("repo", ToolExposure.DEFERRED, effects = [ToolEffect.AGENT_STATE])
 data class AwaitRepoCommandsRequest(val jobIds: List<String>, val maxMinutes: Int = 60)
 
 data class RepoAwaitResult(

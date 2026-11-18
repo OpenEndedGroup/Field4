@@ -30,9 +30,10 @@ object FieldCheckoutRepo {
 
     /** What the chat's instructions say about these tools, or null when they are withheld. */
     fun guidance(commands: RepoCommandTools): String =
-        "- Repository: Field's own checkout, `${commands.files.scope.root}`. Read, search, list, patch and create its files with " +
-            "RepoReadFileRequest, RepoSearchRequest, RepoListFilesRequest, RepoPatchFileRequest and RepoWriteFileRequest (paths relative to the root). " +
-            "Run its named commands with RepoRunCommandRequest (waits; for quick ones) or RepoStartCommandRequest (background; anything over a minute), " +
+        "- Repository: Field's own checkout, `${commands.files.scope.root}`. Read, search and list its files with " +
+            "RepoReadFileRequest, RepoSearchRequest and RepoListFilesRequest (paths relative to the root). The tools that change it or run " +
+            "commands are deferred: load them with DescribeToolsRequest, namespace = `repo`. Then patch and create files with " +
+            "RepoPatchFileRequest and RepoWriteFileRequest, run its named commands with RepoRunCommandRequest (waits; for quick ones) or RepoStartCommandRequest (background; anything over a minute), " +
             "then follow a job with RepoCommandStatusRequest(waitSeconds up to 120), or end the turn on AwaitRepoCommandsRequest when it will take longer. " +
             "Use these, not java.io.File or ProcessBuilder inside EvaluateKotlinExpressionRequest, for anything outside the document: they hold the " +
             "checkout's verification lock, stop what they start, keep a log, and refuse a build that would recompile classes under this running Field. " +
