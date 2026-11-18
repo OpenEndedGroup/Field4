@@ -1056,6 +1056,13 @@ enum class SmootherMode {
  * The first sample is passed through as the starting value, so a smoother never ramps up from zero
  * when a graph starts. [Param.smoothed] wraps a parameter in one, which is the usual way in:
  * `ZdfLadder(cutoff = cutoffParam.smoothed(0.03f))`.
+ *
+ * Two neighbours do similar jobs differently. [Slew] limits the *rate*: its times are per unit of
+ * change, so a jump of 2000 Hz takes two thousand times as long as a jump of 1, rising and falling
+ * can differ, and it starts from zero — right for portamento, wrong for a cutoff slider. `LINEAR`
+ * here instead reaches every new value in the same `time`, whatever the size of the step. `EXP` is
+ * the same lag as an [OnePole] lowpass, set by a time constant instead of a cutoff and primed with
+ * the first sample instead of zero.
  */
 class Smoother(
     val time: Param = Param(0.02f),
