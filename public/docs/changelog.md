@@ -6,6 +6,77 @@ fixes and wording changes, open **Changelog** on the Welcome screen.
 
 ## November 2026
 
+<!-- changelog: aa2da87105..bf3dd896b5 -->
+### Drawing On from an iPad, alias-free saturation and virtual shadow maps
+
+*18 November 2026*
+
+- **Drawing On**: draw on an iPad into Field, replay the captures, and read ink and hover back as
+  FLines. [Drawing On](drawing_on.md).
+- **Saturation without aliasing**: ADAA waveshapers, a nonlinear ZDF ladder and SVF, and a
+  parameter smoother. [Saturation without aliasing](spectral_examples.md#saturation-without-aliasing-and-filters-that-sing).
+- **Virtual shadow maps**, opt-in in the fabricated renderer. [Virtual shadow maps](fabricate_renderer.md#virtual-shadow-maps).
+- **SolidCraft** starting points that chamfer or fillet every edge of a body.
+  [Chamfer every edge](solidcraft.md#chamfer-every-edge).
+- The [AI4 tools](ai4_tools.md) page lists every tool's full description and parameters.
+
+<!-- changelog: 8738e01b21..a485996239 -->
+### Ceres perspective, text frames and marking menus
+
+*17–18 November 2026*
+
+- **A Ceres guide**, from fitting a square to dragging the vanishing points of two-point
+  perspective. [Ceres](ceres.md).
+- **Text frames**: Markdown boxes on the canvas with reading styles and connections that attach to
+  their edges. [Text frames](text_frames.md).
+- **Marking menus** on live output. [Marking menus](marking_menus.md).
+- **Learning in the weight cube**: Braitenberg vehicles that learn by trial.
+  [The path through the weight cube](braitenberg_vehicles.md#the-path-through-the-weight-cube).
+- Boxes snap while Control is held, even mid-drag; solids that touch face to face fuse.
+
+<!-- changelog: f13bfd77cf..ea30f6b062 -->
+### Ball-end milling, drag handles in the 3D viewer, and AI4 reads your drawings
+
+*17 November 2026*
+
+- **Previewing a ball-end mill**: see what a mill leaves of a part, fillets and all.
+  [Previewing a ball-end mill](manifold.md#previewing-a-ball-end-mill).
+- **Backing off faces** inward for clearance between parts.
+  [Backing off some faces](manifold.md#backing-off-some-faces-clearance-between-parts).
+- **Drag handles** with `three { handle(...) }`, in the browser and on Vision Pro, and FLines as
+  named parts. [Drag handles](three_output.md#drag-handles).
+- **AI4 reads and looks at the drawing layer**. [Chat about one box](aiFeatures.md#chat-about-one-box).
+
+<!-- changelog: 8c42501128..99e6749ee4 -->
+### A smoother AI4 chat, A* landmarks and a two-handed sequencer
+
+*16–17 November 2026*
+
+- **AI4 chat** streams without redrawing the thread, edits several places in a box at once, and
+  takes a pick from the three.js viewer with the line that drew it.
+  [Chat about one box](aiFeatures.md#chat-about-one-box).
+- **Auto-exposure** for the path tracer in the three.js viewer.
+  [Realism and path tracing](three_output.md#realism-and-path-tracing).
+- **Seeing what A\* explored**, and landmark heuristics.
+  [Landmarks](graph_connectivity_examples.md#landmarks-a-heuristic-made-from-distance-tables).
+- **PatMuse**: a weighted two-hand sequencer with loop lock and improvisation.
+  [Weights, then lock what you liked](pattern_language.md#weights-then-lock-what-you-liked).
+- **Clean Up Layout** arranges boxes in aligned rows and columns; the Vision Pro viewer follows
+  Field's selection.
+
+<!-- changelog: 03b2dc877b..608fc683ea -->
+### PostScript boxes, spinny algebras and linear prediction
+
+*15–16 November 2026*
+
+- **PostScript** as a box language that draws into FLines, with editor highlighting.
+  [PostScript](postscript.md).
+- **Spinny algebras**: complex, dual, split-complex, quaternion and bicomplex numbers.
+  [Spinny algebras](linear_algebra.md#spinny-algebras-complex-dual-and-quaternion-numbers).
+- **Linear prediction**: LPC vocoding, and predicting where a scribble goes next.
+  [Linear prediction](spectral_examples.md#linear-prediction-a-voices-envelope-on-anything).
+- **Open Anything** matches fuzzily. [Open Anything](tour_interface.md#the-command-palette-and-open-anything).
+
 <!-- changelog: f9bc7add6a..204f1d2bba -->
 ### Bonded organisms, Cerf diagrams, evieve filters and live FM-1 firmware
 
