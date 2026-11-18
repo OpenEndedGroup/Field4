@@ -1,6 +1,7 @@
 package afield.runtime.bytecode
 
 import afield.app.diagnostics.logging.lprintln
+import afield.runtime.lifecycle.BoxInstrumentation
 import org.jetbrains.org.objectweb.asm.ClassReader
 import org.jetbrains.org.objectweb.asm.ClassVisitor
 import org.jetbrains.org.objectweb.asm.ClassWriter
@@ -300,7 +301,10 @@ object BoxBytecode {
      * drive it without a compiler. Returns the passes the module now carries.
      */
     internal fun instrumentFiles(module: Any, files: MutableMap<String, ByteArray>, origin: SnippetOrigin, passes: List<BoxBytecodePass>): List<BoxBytecodePass> {
-        val wanted = passes.filter { p -> runCatching { p.wants(origin) }.getOrDefault(false) }
+        // Instrumentation off is the master switch: no pass rewrites anything, and a snippet
+        // rewritten earlier goes back to its compiled bytes on its next evaluation.
+        val wanted = if (!BoxInstrumentation.instrumenting) emptyList()
+            else passes.filter { p -> runCatching { p.wants(origin) }.getOrDefault(false) }
         val signature = wanted.joinToString(",") { it.id }
         // One module is rewritten by one thread at a time; different modules (boxes) in parallel.
         synchronized(module) {

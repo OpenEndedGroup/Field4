@@ -64,21 +64,16 @@ object BoxInterrupt {
     /** Listeners told about every interrupt that actually fired (the UI and tests). */
     val onInterrupted = CopyOnWriteArrayList<(BoxInterruptedError) -> Unit>()
 
-    /** `AFIELD_BOX_INTERRUPT` / `-Dafield.boxInterrupt`, when set; it overrides the welcome-page preference. */
-    private val override: Boolean? = setting("AFIELD_BOX_INTERRUPT", "afield.boxInterrupt")?.let { it != "0" && it != "off" && it != "false" }
-
     /**
-     * Whether newly compiled box code polls, and whether the [Watchdog] may interrupt. Off, the
+     * Whether newly compiled box code polls: [BoxInstrumentation.instrumenting], which also decides
+     * (with [BoxInstrumentation.watchdogInterrupts]) whether the [Watchdog] may interrupt. Off, the
      * watchdog still reports stalls. Code already loaded while it was on stays interruptible; a
-     * re-evaluation of a cached snippet follows the switch as it is then.
+     * re-evaluation of a cached snippet follows the mode as it is then.
      */
-    @Volatile
-    var enabled: Boolean = override ?: true
+    val enabled: Boolean get() = BoxInstrumentation.instrumenting
 
-    /** Apply the persisted preference (`FieldPreferences.boxInterrupt`), unless the env/property override is set. */
-    fun applyPreference(on: Boolean) {
-        enabled = override ?: on
-    }
+    /** Snippet classes rewritten so far this session. */
+    fun instrumentedClassCount(): Int = classOwners.size
 
     /**
      * Called by instrumented box code at every method entry and loop back-edge. Must stay cheap:
@@ -226,6 +221,9 @@ object BoxInterrupt {
 
         @Volatile private var thread: Thread? = null
 
+        /** False until [start], and for good when `AFIELD_RUNLOOP_WATCHDOG=0` kept it from starting. */
+        fun isRunning(): Boolean = thread?.isAlive == true
+
         @Synchronized
         fun start() {
             if (thread != null) return
@@ -261,7 +259,7 @@ object BoxInterrupt {
                             (who?.let { "; box code from $it is running" } ?: "") + "\n    at " + top)
                     onStall.forEach { runCatching { it(who, stalledMs, stack) } }
                 }
-                if (enabled && !interrupted && interruptAfterMs > 0 && stalledMs >= interruptAfterMs) {
+                if (BoxInstrumentation.watchdogInterrupts && !interrupted && interruptAfterMs > 0 && stalledMs >= interruptAfterMs) {
                     val who = culprit(main.stackTrace)
                     // Only box code polls, so only ask when box code is on the stack.
                     if (who != null) {

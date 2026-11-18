@@ -1,5 +1,6 @@
 package afield.runtime.bytecode
 
+import afield.runtime.lifecycle.BoxInstrumentation
 import afield.runtime.lifecycle.BoxInterrupt
 import org.jetbrains.org.objectweb.asm.MethodVisitor
 import org.jetbrains.org.objectweb.asm.Opcodes
@@ -151,6 +152,29 @@ class BoxBytecodeTest {
         BoxBytecode.instrumentFiles(module, files, origin, listOf(a, b))
         assertTrue(files.values.first().contentEquals(original))
         assertEquals(1, files["META-INF/x.kotlin_module"]!!.size)
+    }
+
+    @Test
+    fun instrumentationOffWantsNoPassAndRestoresTheCompiledBytes() {
+        val a = CountingPass("a")
+        val original = bytesOf(shapes)
+        val key = "${shapes.name.replace('.', '/')}.class"
+        val files = mutableMapOf(key to original)
+        val module = Any()
+        val origin = SnippetOrigin.detached("'master switch' (test)")
+        try {
+            assertEquals(listOf("a"), BoxBytecode.instrumentFiles(module, files, origin, listOf(a)).map { it.id })
+            assertTrue(!files[key]!!.contentEquals(original))
+            // Off: a pass that wants the snippet still gets nothing, and the original comes back.
+            BoxInstrumentation.mode = BoxInstrumentation.Mode.OFF
+            assertEquals(emptyList(), BoxBytecode.instrumentFiles(module, files, origin, listOf(a, BoxInterrupt.PollPass)))
+            assertTrue(files[key]!!.contentEquals(original))
+            // Instrument without the watchdog: the passes come back.
+            BoxInstrumentation.mode = BoxInstrumentation.Mode.INSTRUMENT
+            assertEquals(listOf("a", "interrupt"), BoxBytecode.instrumentFiles(module, files, origin, listOf(a, BoxInterrupt.PollPass)).map { it.id })
+        } finally {
+            BoxInstrumentation.clearSession()
+        }
     }
 
     @Test
