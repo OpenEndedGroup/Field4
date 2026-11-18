@@ -1,47 +1,5 @@
 {
   "deferred": {
-    "assets/agent_transcripts/evolving_water_bugs/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/faust_polyphony/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/faust_voice/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/fern_iterated_systems/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/field_ui_browser_texture/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/field_vr_ide/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/fline_exact_booleans/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
     "assets/agent_transcripts/fline_hit_records/metadata.edn": {
       "attempts": 0,
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
@@ -985,36 +943,6 @@
       "since": "2026-11-18"
     },
     "assets/agent_transcripts/youtube_vr_browser/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/fieldml_frames_demo/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/fieldml_frames_sequence_demo/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/fieldml_macro_module_demo/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/fieldml_mesh_demo/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/fieldml_suspend_demo/metadata.edn": {
       "attempts": 0,
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
       "error": "not tried: a landing defers digest-only pages to the publication catch-up",
@@ -2572,21 +2500,21 @@
       }
     },
     "assets/agent_transcripts/faust_polyphony/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "capturedAt": "2026-11-17T21:45:01.820Z",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-18T14:59:38.767Z",
       "channels": 8,
       "file": "assets/web_publications/faust_polyphony/document/metadata.edn",
       "files": {
         "assets/web_publications/faust_polyphony/document/metadata.edn": "f46d6fd0225994f5d267754c03ba02cfc8a5ce18cc400c9163f945b6863fa618",
-        "assets/web_publications/faust_polyphony/document/outputs.json": "bbd9d71c1dfeca903e5069eb940c259a1871df48963a87bf9dd4ba086ab88292",
-        "assets/web_publications/faust_polyphony/outputs/0.html": "0a5746f9bb8cac2592383e783de4e1efd71360e533aa861bd25b81e243c691fa",
-        "assets/web_publications/faust_polyphony/outputs/1.html": "52f0e2279342d3a17f41470ad23d3c9687b4621c661f591de589b5dcc2c34aac",
-        "assets/web_publications/faust_polyphony/outputs/2.html": "0a5746f9bb8cac2592383e783de4e1efd71360e533aa861bd25b81e243c691fa",
-        "assets/web_publications/faust_polyphony/outputs/3.html": "0a5746f9bb8cac2592383e783de4e1efd71360e533aa861bd25b81e243c691fa",
-        "assets/web_publications/faust_polyphony/outputs/4.html": "0a5746f9bb8cac2592383e783de4e1efd71360e533aa861bd25b81e243c691fa",
-        "assets/web_publications/faust_polyphony/outputs/5.html": "e0b5399cc887ced7bf4ea9487404b24ef8324d67c75afb8621ca611b671f69fb",
-        "assets/web_publications/faust_polyphony/outputs/6.html": "0a5746f9bb8cac2592383e783de4e1efd71360e533aa861bd25b81e243c691fa",
-        "assets/web_publications/faust_polyphony/outputs/7.html": "0a5746f9bb8cac2592383e783de4e1efd71360e533aa861bd25b81e243c691fa"
+        "assets/web_publications/faust_polyphony/document/outputs.json": "8a1e85f10f8b4a278e4b01e3ce8f7102319fbcb912b4069b202e838f8162b836",
+        "assets/web_publications/faust_polyphony/outputs/0.html": "f950b3701a60e4964adde049bc314fc51c20fd8eb6d84a4eac4077b66f9fb75c",
+        "assets/web_publications/faust_polyphony/outputs/1.html": "211ceff00e67a0f52aab0d2d69377dccca6706d121164a21ea5b3f281965003e",
+        "assets/web_publications/faust_polyphony/outputs/2.html": "f950b3701a60e4964adde049bc314fc51c20fd8eb6d84a4eac4077b66f9fb75c",
+        "assets/web_publications/faust_polyphony/outputs/3.html": "f950b3701a60e4964adde049bc314fc51c20fd8eb6d84a4eac4077b66f9fb75c",
+        "assets/web_publications/faust_polyphony/outputs/4.html": "f950b3701a60e4964adde049bc314fc51c20fd8eb6d84a4eac4077b66f9fb75c",
+        "assets/web_publications/faust_polyphony/outputs/5.html": "7051374a32307ad5ed465bad50fa3f76a35254e25c0ab87d5f64975f35b4e91e",
+        "assets/web_publications/faust_polyphony/outputs/6.html": "f950b3701a60e4964adde049bc314fc51c20fd8eb6d84a4eac4077b66f9fb75c",
+        "assets/web_publications/faust_polyphony/outputs/7.html": "f950b3701a60e4964adde049bc314fc51c20fd8eb6d84a4eac4077b66f9fb75c"
       },
       "kinds": [
         "plotly"
@@ -2605,15 +2533,15 @@
       }
     },
     "assets/agent_transcripts/faust_voice/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "capturedAt": "2026-11-17T21:47:26.123Z",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-18T14:59:44.059Z",
       "channels": 2,
       "file": "assets/web_publications/faust_voice/document/metadata.edn",
       "files": {
         "assets/web_publications/faust_voice/document/metadata.edn": "c4401224250602294783bc252f187a5111947d8f52e89e9ad2ab5260ae29c647",
-        "assets/web_publications/faust_voice/document/outputs.json": "8d6778e369590029149638f11ede4760287f02799d9ce68bfb225c42dd507ba6",
-        "assets/web_publications/faust_voice/outputs/0.html": "2667f7689a2204b84d675e63c8213c07cae2363779a35db16417bb1890e1df7a",
-        "assets/web_publications/faust_voice/outputs/1.html": "e9dbc7c20cd07dcb4fa00a6cb1a96736a0d2e2bcdce1c52caac87896a1a4bc23"
+        "assets/web_publications/faust_voice/document/outputs.json": "3ef2e10f58475726a9e9107786ebf6cfb4ee14b0aaf7e0a432ee14a608cdf87c",
+        "assets/web_publications/faust_voice/outputs/0.html": "ba99752bc65eb95ec1316fdc5c8ae868e8536e1ee882bea2d7ca4934a1c057bd",
+        "assets/web_publications/faust_voice/outputs/1.html": "2dbd02c2b2ff881a6805bd772450eb2f2b16ea2db7b5af01d573626e88ce5778"
       },
       "kinds": [
         "plotly",
@@ -2632,13 +2560,13 @@
       }
     },
     "assets/agent_transcripts/fern_iterated_systems/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "capturedAt": "2026-11-17T21:47:32.650Z",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-18T14:59:46.768Z",
       "channels": 1,
       "file": "assets/web_publications/fern_iterated_systems/document/metadata.edn",
       "files": {
         "assets/web_publications/fern_iterated_systems/document/metadata.edn": "036598a1f4c92dabaf58ea5fd38460457a52756ffc5f54ef455d41b8ff9beb3e",
-        "assets/web_publications/fern_iterated_systems/document/outputs.json": "a9b0e05199b082019dfbfd748f87f8c690c8bb0b1df86b7fdc745fa0114e51e7",
+        "assets/web_publications/fern_iterated_systems/document/outputs.json": "ef628601200a7415b835ee11267831deeb8684aab1ec53eb9d66014e213b9c66",
         "assets/web_publications/fern_iterated_systems/outputs/0.html": "1a1cd2d24cd09d55b046a35f6a4a8c4a0bfcf563de72f8f4b26adedd777695aa"
       },
       "kinds": [
@@ -2670,13 +2598,13 @@
       ]
     },
     "assets/agent_transcripts/field_ui_browser_texture/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "capturedAt": "2026-11-17T21:47:37.979Z",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-18T14:59:48.880Z",
       "channels": 1,
       "file": "assets/web_publications/field_ui_browser_texture/document/metadata.edn",
       "files": {
         "assets/web_publications/field_ui_browser_texture/document/metadata.edn": "07778fc9c4d2c4ce511a14aa39fa241ebacf4b12c2f7e91102f5add53081b749",
-        "assets/web_publications/field_ui_browser_texture/document/outputs.json": "c29eb3f12acc4c662d155426cc95417f7938fcd02e7f2579914abc2cf5a5c7f5",
+        "assets/web_publications/field_ui_browser_texture/document/outputs.json": "7b68ad106aada20c1e6ff823de1f733d7bd965805e6e3ce19fb19400b16c4f6c",
         "assets/web_publications/field_ui_browser_texture/outputs/0.html": "734abf543e47d293cb86f273b55d0501e448b448fc70ccf6ff3c59a2c1deea91"
       },
       "kinds": [
@@ -2700,13 +2628,13 @@
       ]
     },
     "assets/agent_transcripts/field_vr_ide/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "capturedAt": "2026-11-17T21:47:42.445Z",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-18T14:59:51.092Z",
       "channels": 1,
       "file": "assets/web_publications/field_vr_ide/document/metadata.edn",
       "files": {
         "assets/web_publications/field_vr_ide/document/metadata.edn": "80404b82511062bfc150d657e75d57cfb7b6b0b8ec4c2eef6e9664569ff8b58a",
-        "assets/web_publications/field_vr_ide/document/outputs.json": "6e109d1a9b8ed7d398c7bf9206e33d6c2a54e2e783fe804feb26f8ccf5513294",
+        "assets/web_publications/field_vr_ide/document/outputs.json": "e421aaf7b9b7e11fe31c5e7ff00a8f08ae410f98928dd51c2c95f54150bfd68f",
         "assets/web_publications/field_vr_ide/outputs/0.html": "22d9ca55f19b2cb384460edd9c62fd0fdf62ace49fd7ef8dc44fed4a66a15f84"
       },
       "kinds": [
@@ -2752,15 +2680,15 @@
       }
     },
     "assets/agent_transcripts/fline_exact_booleans/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "capturedAt": "2026-11-17T21:48:40.588Z",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-18T15:00:42.498Z",
       "channels": 2,
       "file": "assets/web_publications/fline_exact_booleans/document/metadata.edn",
       "files": {
         "assets/web_publications/fline_exact_booleans/document/metadata.edn": "3bc78fa70d14356320b2a57cd0249388caf82787b3d43217eca8acbc858903f1",
-        "assets/web_publications/fline_exact_booleans/document/outputs.json": "bb2f225a0678fdf590eed0312e523820ab508bf888d951e18d40dc5d191bd30f",
-        "assets/web_publications/fline_exact_booleans/outputs/0.html": "40e5183a6bf38996ba745fdd2dd4496bfd0fae9b347974d1047329501b74c46e",
-        "assets/web_publications/fline_exact_booleans/outputs/1.html": "8fa6582beed9ea2ec6731c57de5d344249644b5d1d013d8706a82313c902551f"
+        "assets/web_publications/fline_exact_booleans/document/outputs.json": "f444fcf6a16458765694e92650875ee0d6d60f985b5320a8cc7f7d481bd6bfc9",
+        "assets/web_publications/fline_exact_booleans/outputs/0.html": "8dd7b694aabf2119598eef69b2fde1495a1c94fc4e755b19b181283b2fadcc1d",
+        "assets/web_publications/fline_exact_booleans/outputs/1.html": "29820f14cc063871f5da8eeb023a38675a6eca2605ca7718e587165f4acdf083"
       },
       "kinds": [
         "svg"
@@ -7278,15 +7206,15 @@
       }
     },
     "assets/fieldml_frames_demo/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "capturedAt": "2026-11-17T21:47:53.322Z",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-18T15:00:00.796Z",
       "channels": 2,
       "file": "assets/web_publications/fieldml_frames_demo/document/metadata.edn",
       "files": {
         "assets/web_publications/fieldml_frames_demo/document/metadata.edn": "ff61966eaf639ff4627184a9d378d43f047be5f7cc37a5ec2b171f5ab8123178",
-        "assets/web_publications/fieldml_frames_demo/document/outputs.json": "67e639ffb1e9c707f050bb81f7d922854f127275ae793dccc3d80b9d0822f8bb",
-        "assets/web_publications/fieldml_frames_demo/outputs/0.html": "635c064e8ea86966ff8f7291ba501020eaebc8626beadc1760ea724051c2ee61",
-        "assets/web_publications/fieldml_frames_demo/outputs/1.html": "7251e1c46f37fea2e9b5e7db8283c3920db7453ce70a56e52b66140a80ac5eab"
+        "assets/web_publications/fieldml_frames_demo/document/outputs.json": "01fb0da0a0c5d27f2183b02501aa6f2c72149f85e728548b287a32ef02d1eb3d",
+        "assets/web_publications/fieldml_frames_demo/outputs/0.html": "98ca3d29ae394f1980ca64055a1b52e847d0e1064fb8ce1ddf4e27140494c938",
+        "assets/web_publications/fieldml_frames_demo/outputs/1.html": "fea65ffad0b370ec3a03dd3b36b666543b016c2b0e90222dc1015475c9b5a488"
       },
       "kinds": [
         "native-image"
@@ -7302,15 +7230,15 @@
       }
     },
     "assets/fieldml_frames_sequence_demo/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "capturedAt": "2026-11-17T21:48:00.144Z",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-18T15:00:07.263Z",
       "channels": 2,
       "file": "assets/web_publications/fieldml_frames_sequence_demo/document/metadata.edn",
       "files": {
         "assets/web_publications/fieldml_frames_sequence_demo/document/metadata.edn": "ff4fd0feed58eed7b327ce7810ddb858ab3f6a2080f4a772b9ed885838fa2766",
-        "assets/web_publications/fieldml_frames_sequence_demo/document/outputs.json": "7d49a30cf60a4af01f84257b8578d5130e53722e4abedf2682dade2240f8331e",
-        "assets/web_publications/fieldml_frames_sequence_demo/outputs/0.html": "cb9e3ce9b9d0fda5cb1b42d63bcd8b20ba7eac01f56a454ea7c4d1a8a0bfe023",
-        "assets/web_publications/fieldml_frames_sequence_demo/outputs/1.html": "1e80ccb216eb0d132d0f3e3cfddfff6ac2e43d8cd280a788516ea3d4e90f7842"
+        "assets/web_publications/fieldml_frames_sequence_demo/document/outputs.json": "c144c888fc3622334d8759d1280aa6a2956fe0c3dbb155f656c903ae50c36cf5",
+        "assets/web_publications/fieldml_frames_sequence_demo/outputs/0.html": "4fec4306d6126fc944fbdd137207db611f94e0aded651d4f01313c5276b420e7",
+        "assets/web_publications/fieldml_frames_sequence_demo/outputs/1.html": "b8b5d6f4ae9442c04e4c0474d8a560ff20e4014376677f78d9febbbbbecf2405"
       },
       "kinds": [
         "native-image"
@@ -7324,15 +7252,15 @@
       }
     },
     "assets/fieldml_macro_module_demo/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "capturedAt": "2026-11-17T21:48:07.573Z",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-18T15:00:13.579Z",
       "channels": 2,
       "file": "assets/web_publications/fieldml_macro_module_demo/document/metadata.edn",
       "files": {
         "assets/web_publications/fieldml_macro_module_demo/document/metadata.edn": "18af503c689e4e664060d638e9578c063e839a0a5c431781dab92895d451d9a0",
-        "assets/web_publications/fieldml_macro_module_demo/document/outputs.json": "fdfbd8a7c7a37b37eb0086046bee9dcd2de322224a996217eeda5d5d9a7ac993",
-        "assets/web_publications/fieldml_macro_module_demo/outputs/0.html": "00e0899a3d0abb2ae64878bd5ce54d6e39c80a337f39d7a84f0e80a085f26217",
-        "assets/web_publications/fieldml_macro_module_demo/outputs/1.html": "cb7514899a9a763e316f9e768091376472f08b66b076c6f20ec88df4ff1f51d0"
+        "assets/web_publications/fieldml_macro_module_demo/document/outputs.json": "a0f7ea0042b8d84e2309b2d12046277729d5fd64c6896361e6f2e4f49cf90d7b",
+        "assets/web_publications/fieldml_macro_module_demo/outputs/0.html": "c1c48c7b7d4dbf18f334311238e1057f8ed1e878951ce76ed1806d135bbb7f8f",
+        "assets/web_publications/fieldml_macro_module_demo/outputs/1.html": "135e2a42afdee8f26e684bbc133484f7a44480a9b54b998a6c274140e9967b60"
       },
       "kinds": [
         "native-image"
@@ -7343,15 +7271,15 @@
       }
     },
     "assets/fieldml_mesh_demo/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "capturedAt": "2026-11-17T21:48:15.122Z",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-18T15:00:19.328Z",
       "channels": 2,
       "file": "assets/web_publications/fieldml_mesh_demo/document/metadata.edn",
       "files": {
         "assets/web_publications/fieldml_mesh_demo/document/metadata.edn": "2bd69390bbaaabc228e6f6fe731b4c557d4d90cd86cb233a613796c4a36a8ce9",
-        "assets/web_publications/fieldml_mesh_demo/document/outputs.json": "b365d69d3645d9d01ad911ff087a07a042f7cf48ee430bcae1339aff447e80df",
-        "assets/web_publications/fieldml_mesh_demo/outputs/0.html": "83be5f241db558b647126ea2283d42d49b42ab5dc146b19cd110d7dc54557885",
-        "assets/web_publications/fieldml_mesh_demo/outputs/1.html": "7063b726fc887ba86ec42c7a9501a68de8a3f5eb00a67c621b1467b535b602e3"
+        "assets/web_publications/fieldml_mesh_demo/document/outputs.json": "a5458297f5f9e356127c0310acfb15e0f9d8942a0e4abd5473d364a64710393a",
+        "assets/web_publications/fieldml_mesh_demo/outputs/0.html": "98b3d379fdfd29ffe5a89fe9811767850981463b609bdd25080d94e24ffa414c",
+        "assets/web_publications/fieldml_mesh_demo/outputs/1.html": "51bf57b82a481a16ce9277373db41abad76a74f9817645c83ea1fa43a929c15a"
       },
       "kinds": [
         "native-image"
@@ -7367,15 +7295,15 @@
       }
     },
     "assets/fieldml_suspend_demo/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "capturedAt": "2026-11-17T21:48:21.382Z",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-18T15:00:25.845Z",
       "channels": 2,
       "file": "assets/web_publications/fieldml_suspend_demo/document/metadata.edn",
       "files": {
         "assets/web_publications/fieldml_suspend_demo/document/metadata.edn": "3298beab79765b3bc8cbe3f4508aec4a140f8ee1eeaa73d0c2ab744dcef2441f",
-        "assets/web_publications/fieldml_suspend_demo/document/outputs.json": "30eafa2afcf25e3e8ac6886e8005f3baf1e931498f1cd30c5fa15cdf2c5f2d02",
-        "assets/web_publications/fieldml_suspend_demo/outputs/0.html": "83cc642807497555b4287a8be9d9ee556989c2f0ed04c090e1b419f8ea9765e1",
-        "assets/web_publications/fieldml_suspend_demo/outputs/1.html": "5a501f09c0df274a54a8196f7215e196b71f2312ce5b0aecf839e875fb391e11"
+        "assets/web_publications/fieldml_suspend_demo/document/outputs.json": "99bd21bfac4225bf41da330344af5ad3ffee2f45462fe861f4cf0d97cbb53fb2",
+        "assets/web_publications/fieldml_suspend_demo/outputs/0.html": "a8fa3cc334d0570fbd5359ab31baa564c91ed9dea3a84a570ae2a1599114b68c",
+        "assets/web_publications/fieldml_suspend_demo/outputs/1.html": "7be383334391447d2e67a0f2d1e2a5eed0375972aa04ac782754461f9db6f249"
       },
       "kinds": [
         "native-image"
@@ -7542,7 +7470,7 @@
       }
     },
     "assets/agent_transcripts/evolving_water_bugs/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
       "channels": 0,
       "reason": "No output-area channels; the code remains available.",
       "sources": {
