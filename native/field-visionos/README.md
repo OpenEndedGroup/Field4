@@ -1,36 +1,27 @@
-# Field4Vision — visionOS shell (handoff)
+# Field4Vision
 
-[Spatial Ink](SPATIAL_INK.md) adds pinch drawing in an immersive space with asynchronous curve cleanup on Field.
+Field4Vision is the native toolbar for Field on Apple Vision Pro. Use Field's regular editor
+over Mac Virtual Display or in Safari. The headset app runs the selection-following 3D FLine
+viewer, windowed and immersive RTT video, Live Metal, and [Spatial Ink](SPATIAL_INK.md).
 
-For an existing desktop OpenXR scene on AVP over Wi-Fi, use the working
-[Linux CloudXR route](../../tools/cloudxr/README.md) and its
-[optional streaming client](../field-cloudxr/README.md). This project remains the separate
-native RTT video-surface receiver and Kotlin → Live Metal presentation path. The public
-[route comparison](../../public/docs/vision.md) describes the different uses.
+## Connect to Field
 
-A SwiftUI + WKWebView shell that hosts the existing Field4 web front end as spatial "docks"
-on visionOS. It is a **thin third RPC client** alongside the browser and the Python backdoor —
-it renders the *existing* Field server endpoints (`/welcome`, `/index.html?file=…`) in
-`WKWebView`s that float in space. No Field4 changes are required to *run* it; the display-mode
-features below are additive server-side niceties.
+Start Field on a host the headset can reach. For LAN or tailnet access, launch it with
+`AFIELD_BIND_HOST=0.0.0.0` on your trusted network. Its HTTPS port defaults to 9092.
 
-> This directory is vendored into the field4 repo (single source of truth, one git history) but
-> still built as its own Xcode project — visionOS can't be built from the Field4/Gradle toolchain,
-> so there's no cross-build integration, just a shared repo. Xcode 26.5 / visionOS 26.x SDK.
+Enter a host with an optional port, such as `field.local:9093`, or a full HTTP(S) URL and
+choose **Connect**. The panel displays the active URL, Field port, and reachability. The clock
+menu recalls the last eight hosts that answered. Your last selection returns when you reopen the
+app. The optional `FIELD4_SERVER` launch environment variable takes precedence at startup and is
+useful for scripted runs.
 
+The 3D viewer reconnects when you change hosts. Exit Spatial Ink or Live Metal first to finish
+their immersive session before changing the connection. RTT receives UDP independently. Send
+video to the headset's address and the UDP port shown in the panel, which defaults to 9000 and can
+be overridden with `FIELD4_RTT_PORT`.
 
-## Default layout
-
-At launch the main window holds **one dock, Welcome**, selected, in a 150pt rail of slim rows with no header or tooltips (was a 220pt list with a
-second, empty glass-canvas dock on `file=default` selected on top of it, which looked like an empty
-workspace). Welcome lists the server's workspace; opening a document (or **Start here**) navigates
-the same dock in place and the rail relabels it. More docks only appear when asked for: **Canvas**
-(glass canvas), **Floating Editor**, **Undock**, and `window.open` links. The rail toggle in the
-ornament hides it entirely.
-
-Headless check: `SIMCTL_CHILD_FIELD4_WEB_PROBE=1` logs each page's fonts, console errors and failed
-loads (`log stream --predicate 'subsystem == "com.field4.vision" AND category == "probe"'`), and
-`SIMCTL_CHILD_FIELD4_WEB_PROBE_CLICK='#open-first-steps'` taps an element once, since simctl can't.
+For an existing desktop OpenXR scene on AVP over Wi-Fi, see the separate
+[Linux CloudXR route](../../tools/cloudxr/README.md) and [route comparison](../../public/docs/vision.md).
 
 ## Companion code (the field4 backend + senders)
 
@@ -54,27 +45,10 @@ This shell is the **receiver** end of that pipeline (see `RTT/` below).
 
 ## Files
 
-- **Field4VisionApp.swift** — `@main` App. Two scenes: the main `WindowGroup { ContentView() }`
-  and `WindowGroup(for: URL.self)` for floating windows (undocked docks + `window.open` +
-  the floating editor). `UndockedWebDockWindow` wraps a `WebDock` for those.
-- **ContentView.swift** — `DockManager`-backed `NavigationSplitView`: a collapsible rail of docks
-  + one **bottom ornament** carrying every control (toggle · Welcome · Canvas · `</>` Floating
-  Editor · Undock). There is **no top title bar** — visionOS won't shrink it via title modifiers,
-  so we dropped it and reclaimed the height (the doc name shows in the rail).
-- **DockManager.swift** — dock model + open/close/relabel. `openGlassCanvas` (opened from the Canvas button),
-  `floatingEditorURL`, `openWelcome` (single-welcome invariant), `updateDock`/`classify`
-  (relabel on in-place navigation), `selectionContext(for:)` = `field:<file>`.
-- **FieldFont.swift** — fetches `/woff2/iosevka-semicondensedlight.woff2` from the server and
-  registers it, so the native rail is set in Field's Iosevka like the web docks (SF until it loads).
-- **WebDock.swift** — `UIViewRepresentable` `WKWebView`. Trust override for the self-signed cert
-  (`mi2` / `*.ts.net` / loopback); `WKUIDelegate.createWebViewWith` routes `window.open(_blank)`
-  to a new window; `didFinish` relabels docks; `isOpaque = false` so transparent pages show the
-  window glass; pushes `--shell-corner-inset` (CSS var) so web toasts tuck clear of the window's
-  rounded corner. `shellLog` (subsystem `com.field4.vision`) for diagnostics.
-- **ServerConfig.swift** — `baseURL` (currently `https://mi2.finch-eel.ts.net:9092`, the Mac's Tailscale name),
-  overridable at runtime with `FIELD4_SERVER` so you can point at a LAN address or another port
-  without a rebuild.
-  `documentURL(file:flags:selectionContext:)` builds `/index.html?…` URLs.
+- **Field4VisionApp.swift** — native launcher, volumetric windows and immersive scenes.
+- **ContentView.swift** — connection panel, recent hosts and native head controls.
+- **FieldConnection.swift** — reachability and host history.
+- **ServerConfig.swift** — host normalization and WebSocket addressing.
 - **RTT/** — the GPU/immersive half: the receiver for the `field-encode` UDP stream (see
   `native/field-encode/WIRE_FORMAT.md` in the field4 repo). One-way, lossy, no jitter buffer.
   - **RTTWireFormat.swift** — the 20-byte big-endian header parser (`RTTPacket`); a direct mirror
@@ -121,20 +95,8 @@ This shell is the **receiver** end of that pipeline (see `RTT/` below).
     the pose that travels is the pose that drawable was rendered from. That association is the point;
     re-querying ARKit in the uplink would make it a guess that happens to be close.
 
-## What works (as of this handoff)
+## Native heads
 
-- **Multiple windows** — floating editor / undock / `window.open` all open real windows via
-  `openWindow`. (If this ever silently no-ops again, see "Multiple scenes" below.)
-- **Collapsible rail; all controls in a bottom ornament; no top title bar.**
-- **Glass field** — translucent frosted backdrop with a translucent vignette + the pannable
-  scroll-dots preserved; **opaque, black-bordered box "islands"** float on it; Monaco stays solid.
-- **Shared selection** — an editor dock and a canvas dock that pass the same
-  `?shaderSelectionContext` track one selection (server-mediated; works across separate WKWebView
-  processes). Verified cross-client (a browser drove a selection; the sim followed).
-- **`editorOnly`** — server skips the box-placeholder pre-render; an **idle editor is glassy**,
-  going solid only when a box is selected (`:has(.box.selected)`).
-- **Toasts** tuck clear of the window's rounded corner (state-aware `--shell-corner-inset`:
-  0 when the rail covers the corner, ~56 when collapsed or in a standalone window).
 - **RTT streaming — full spine, end-to-end, on both sender backends.** The "Immersive" ornament
   button starts the receiver and opens a dimmed theatre showing the decoded stream on a
   world-locked screen. **Verified with the real Field sender** (`FieldRTTStreamer`, see Companion
@@ -162,20 +124,6 @@ Four improvements on top of the PoC:
   `Field4VisionApp`). The receiver is ref-counted (`RTTStream.acquire()/release()`): it starts on the
   first presentation opened and stops only when the last closes, so the window and theatre are
   independent. Ornament button: "Stream Window".
-- **Editor placement.** The floating editor's `WindowGroup(for: URL.self)` placement moved from
-  `.utilityPanel` (tilted) to `.automatic` (upright, forward, in front of the active window). Relative
-  `.leading/.trailing(mainWindow)` is still avoided — it resolves off-display and fails to open.
-  It is **opt-in**: it no longer opens itself on launch, because a second window that takes keyboard
-  focus costs more in focus-juggling than the immediate shared-selection pairing is worth. Open it
-  with the `</>` ornament button, or set `FIELD4_AUTO_EDITOR=1` to restore launch auto-open (for
-  headless/paired-client testing, where nothing can tap a button).
-- **Canvas-owned panel routing.** The context formerly used only for shared selection now also
-  carries short-lived `shared-ui-intent` messages. Choosing **Show Document History** in the
-  floating editor's command palette opens the history overlay in its paired canvas WKWebView,
-  where box/history interaction belongs, rather than inside the editor panel. The `noeditor`
-  projection keeps Monaco/docs hidden but now permits the full-width history overlay. The
-  `visionos-shared-history-panel` browser regression drives two independent clients to protect the
-  handoff.
 - **Native three.js viewer — `Three/`.** A RealityKit volume that shows the 3D views of the box
   selected in Field: select a box on the Mac (in Mac Virtual Display) and its `three { }` /
   `threeLines(...)` views appear in the volume. Ornament button "3D View" (scene `threeWindowID`).
@@ -235,12 +183,10 @@ Four improvements on top of the PoC:
 ## Live Metal — programmable native graphics
 
 `Field4Vision/LiveMetal/` is a second native head, independent of the RealityKit FLine viewer. It
-keeps the Field UI in its existing WKWebView windows and opens a mixed-immersion Compositor Services
-scene with its own Metal render thread. Press **Live Metal** in the bottom ornament (or launch with
+opens a mixed-immersion Compositor Services scene with its own Metal render thread. Press **Live Metal** in the bottom ornament (or launch with
 `FIELD4_LIVE_METAL_AUTOSTART=1`).
 
-The renderer subscribes directly to Field's `/ws` bus on channel `__visionmetal__`; WKWebView is not
-in the graphics or animation path.
+The renderer subscribes directly to Field's `/ws` bus on channel `__visionmetal__`.
 
 A program has three explicit parts, each authored somewhere different and each independently
 reloadable:
@@ -464,83 +410,8 @@ spatial input, and real display timing. Those remain device-verify.
 Textures, compute functions, multiple draw items, and interaction sit on top of this resident
 runtime; none of them needs another architectural bridge.
 
-## Field host-side dependencies (server must serve these)
+## RTT follow-up
 
-These now live alongside the shell in this Field4 repository. To run the shell with all features,
-the Field server build must include:
-
-- `rpc.kt` — `Hello.shaderSelectionContext` + the ephemeral `SharedUiIntent` payload.
-- `Server.kt` — `selectionContextSessions` registry + `controller-selection`/`shared-ui-intent` rebroadcast to
-  context peers; join on `hello`, leave in the `/ws` finally; `injectInitialFramePreview` skips
-  `editorOnly`; HTTPS connector binds `0.0.0.0`.
-- `graphics/VisionMetal.kt` — the replayable, part-wise `__visionmetal__` program/status channel; the
-  `Box.msl` property; the box-facing `visionMetal(...)` API; and the explicit reload commands.
-- `graphics/VisionMetalKotlinJs.kt` — the Kotlin/JS surface, including the `geometry { … }` builder.
-- `graphics/MslEditorLanguage.kt` + `msl.js` — the Monaco `msl` language, registered as
-  `bithero/msl` in `bootstrapMonaco.js`.
-- Property/language registrations for `msl`: `Boxes.ioSeparateProperties` (`msl` → `.metal`),
-  `saving.kt`, `server/fileproxy.kt`, `KotlinCompletionSupport.kt`, `embeddedEditors.js`, and the
-  three parallel arrays in `BootstrapMonacoInit.kt` (which must stay aligned).
-- `BootstrapMonacoActions.kt` — `msl` → `visionMetal_reload`, which is what binds `alt r` in the MSL
-  pane to a headset recompile.
-- `Main.kt` — parse `editorOnly` / `noeditor` / `transparent` / `shaderSelectionContext`;
-  `fieldDisplayMode` + body classes; inbound `controller-selection` handler → `applyRemoteSelection`
-  (echo-guarded); canvas-side `shared-ui-intent` handling; `shaderSelectionContext` passed in `Hello`.
-- `BootstrapMonacoRuntime.kt` — the Monaco selection monitor gated on display mode
-  (no-editor never shows / steals focus; editor-only stays visible with no selection).
-- `field.css` — `mode-editor-only` / `mode-no-editor` / `mode-transparent`; black box border +
-  `11px` `::before` radius; `--shell-corner-inset` toast tuck; glassy empty editor-only.
-
-### URL params understood by the front end
-
-- `?editorOnly` — Monaco fills the window, canvas hidden.
-- `?noeditor` — canvas only; editor/docs hidden, canvas-owned overlays such as History remain available.
-- `?transparent` — glass field backdrop, opaque boxes/outputs (Monaco keeps its solid theme).
-- `?shaderSelectionContext=NAME` — join a shared UI context (selection + ephemeral panel intents,
-  bidirectional; the legacy parameter name is retained for compatibility).
-
-All are additive and orthogonal (e.g. `?noeditor&transparent&shaderSelectionContext=field:default`).
-
-## Running
-
-1. On the Mac, start the Field server: `./gradlew runJvm` in the field4 repo (default port 9092).
-   The HTTPS connector binds `0.0.0.0`, so it is reachable over the plain LAN — and over Tailscale
-   as `mi2` if that is running. If a CI loop is bouncing 9092, use `PORT=9093 ./gradlew runJvm`
-   and point the shell at it with `FIELD4_SERVER=https://10.0.0.4:9093` rather than editing source.
-2. Build/run this project against a **visionOS ≥ 26** simulator or device (older runtimes reject
-   the app — the sim list has 1.0/1.2/2.2 devices that will fail to install).
-3. Cert: self-signed, issued for `localhost`. `isTrustedFieldDevHost` overrides trust for loopback,
-   `mi2`/`*.ts.net`, and RFC1918/link-local IP literals — which covers the LAN address, whose SAN
-   would never match anyway.
-4. Over plain LAN the app needs **Local Network** permission (`NSLocalNetworkUsageDescription`,
-   in the root `Info.plist`). Accept the prompt on first launch or nothing connects. Tailscale
-   addresses are exempt — they go out a `utun` interface — which is why this only bit once we
-   moved off Tailscale.
-
-## Gotchas (hard-won)
-
-- **9092 can be bounced by a CI loop** → if that bites, run on 9093 and select it with
-  `FIELD4_SERVER=https://10.0.0.4:9093` instead of editing `ServerConfig`.
-- **`field.css` / `index.html` are served from `build/…` dirs, not `src/`** — a webpack /
-  `processResources` run (or a manual `cp` into `build/js/packages/afield/kotlin/` +
-  `build/processedResources/{js,jvm}/main/`) is needed for edits to reach a running server.
-- **WKWebView caches CSS** — `simctl uninstall` + `install` to clear when iterating on CSS.
-- **Headless simulator limits:** you cannot tap ornament buttons from `simctl` (needs the
-  interactive Simulator or a real device / XCUITest), the screenshot camera is locked forward so
-  a second spatial window lands off-frame, and `defaultSize` / `defaultWindowPlacement` have
-  interacted badly with `openWindow` in the sim. **Window placement + interaction is device work.**
-- WKWebView content paints a second or two after launch (brief black pane) — wait before judging.
-
-## Next / queued
-
-- **Editor window placement** — land it as a utility panel floating *just in front* of the canvas,
-  ~half width, right-inset. `.utilityPanel` is the right primitive; it's draggable by its bar for
-  free. Verify on device (sim placement is finicky).
-- **Command palette** — per-window is essentially free: each `WKWebView` has its own JS + keyboard
-  focus, so ⌘P / ⌘⇧P / double-tap-shift render their palette in whichever window has focus.
-  ~~Route the canvas-scoped History panel over the shared context~~ **done** via
-  `shared-ui-intent`, including a two-client browser regression. Double-tap-⌘ to evict editor focus
-  is native + minor → deferred.
 - **RTT streaming — spine done, verified end-to-end, on both sender backends** (receiver in `RTT/`
   here; senders `FieldRTTStreamer` + `field-encode`/`field-encode-linux` one level up). Field
   renders into an RTT → HEVC → UDP → this receiver decodes and presents, correct colour, and
@@ -585,7 +456,7 @@ All are additive and orthogonal (e.g. `?noeditor&transparent&shaderSelectionCont
 
 `openWindow` requires the app to support multiple scenes, else it silently no-ops (the symptom
 was a `"Unable to open a window when the app does not support multiple scenes"` runtime issue and
-dead Floating-Editor / Undock buttons). This is **fixed and in the repo**: the root **`Info.plist`**
+unopened native heads). This is **fixed and in the repo**: the root **`Info.plist`**
 sets `UIApplicationSceneManifest → UIApplicationSupportsMultipleScenes = true`. It lives at the
 project root (not in `Field4Vision/`) on purpose — inside the Xcode-16 synchronized file group it
 would also be copied as a bundle resource and trigger "Multiple commands produce Info.plist".

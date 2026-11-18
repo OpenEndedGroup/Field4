@@ -285,7 +285,7 @@ final class LiveMetalRenderer {
     private let javaScript = LiveMetalJavaScript()
     /// Publishes the pose this renderer is *already* tracking up to the Field backend, so the
     /// Mac's Vulkan renderer can draw for this head. See `Pose/PoseUplink.swift`.
-    private let poseUplink = PoseUplink()
+    private let poseUplink: PoseUplink
 
     private var pipeline: MTLRenderPipelineState
     private var vertexBuffer: MTLBuffer
@@ -305,11 +305,12 @@ final class LiveMetalRenderer {
     private var residentGeometryOrigin: LiveMetalGeometryOrigin?
     private var reportedEmptyGeometry = false
 
-    init(layerRenderer: LayerRenderer, mailbox: LiveMetalMailbox, reporter: @escaping Reporter) throws {
+    init(layerRenderer: LayerRenderer, mailbox: LiveMetalMailbox, server: ServerConfig, reporter: @escaping Reporter) throws {
         self.layerRenderer = layerRenderer
         self.device = layerRenderer.device
         self.mailbox = mailbox
         self.reporter = reporter
+        self.poseUplink = PoseUplink(server: server)
         guard let commandQueue = device.makeCommandQueue() else {
             throw NSError(domain: "FieldVisionMetal", code: 3,
                           userInfo: [NSLocalizedDescriptionKey: "Unable to create Metal command queue"])
@@ -339,10 +340,10 @@ final class LiveMetalRenderer {
     }
 
     @MainActor
-    static func start(_ layerRenderer: LayerRenderer, mailbox: LiveMetalMailbox, reporter: @escaping Reporter) {
+    static func start(_ layerRenderer: LayerRenderer, mailbox: LiveMetalMailbox, server: ServerConfig, reporter: @escaping Reporter) {
         Task(executorPreference: LiveMetalRenderTaskExecutor.shared) {
             do {
-                let renderer = try LiveMetalRenderer(layerRenderer: layerRenderer, mailbox: mailbox, reporter: reporter)
+                let renderer = try LiveMetalRenderer(layerRenderer: layerRenderer, mailbox: mailbox, server: server, reporter: reporter)
                 let session = ARKitSession()
                 try? await session.run([renderer.worldTracking])
                 renderer.poseUplink.start(viewCount: layerRenderer.properties.viewCount,

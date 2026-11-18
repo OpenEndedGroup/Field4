@@ -38,7 +38,8 @@ final class ThreeClient {
     /// How many viewer volumes are on screen: the 3D View button opens one only when there is none.
     var openVolumes = 0
 
-    private let server: ServerConfig
+    private var server: ServerConfig
+    private var reconnect: Task<Void, Never>?
     private let trustDelegate = FieldServerTrustDelegate()
     private var session: URLSession?
     private var task: URLSessionWebSocketTask?
@@ -65,6 +66,27 @@ final class ThreeClient {
 
     // MARK: - Lifecycle
 
+    func setServer(_ server: ServerConfig) {
+        guard self.server != server else { return }
+        let restart = running
+        stop()
+        self.server = server
+        selected = []
+        views = []
+        scenes = [:]
+        shownUID = nil
+        shownBoxName = nil
+        isHolding = false
+        viewStates = [:]
+        liveHandles = [:]
+        held = [:]
+        pendingAppearance = [:]
+        latest = [:]
+        lastFetch = (0, 0)
+        revision += 1
+        if restart { start() }
+    }
+
     func start() {
         guard !running else { return }
         running = true
@@ -73,6 +95,9 @@ final class ThreeClient {
 
     func stop() {
         running = false
+        reconnect?.cancel()
+        reconnect = nil
+        reconnectAttempt = 0
         task?.cancel(with: .goingAway, reason: nil)
         task = nil
         session?.invalidateAndCancel()
@@ -82,6 +107,7 @@ final class ThreeClient {
     }
 
     private func connect() {
+        session?.invalidateAndCancel()
         let session = URLSession(configuration: .default, delegate: trustDelegate, delegateQueue: nil)
         let task = session.webSocketTask(with: server.webSocketURL)
         task.maximumMessageSize = 64 << 20
@@ -104,9 +130,9 @@ final class ThreeClient {
         reconnectAttempt += 1
         let delay = Swift.min(1.2 * Double(reconnectAttempt), 6.0)
         status = "Reconnecting in \(String(format: "%.1f", delay))s…"
-        Task { [weak self] in
+        reconnect = Task { [weak self] in
             try? await Task.sleep(for: .seconds(delay))
-            guard let self, self.running else { return }
+            guard !Task.isCancelled, let self, self.running else { return }
             self.connect()
         }
     }
@@ -114,9 +140,10 @@ final class ThreeClient {
     // MARK: - Receive
 
     private func receiveNext() {
-        task?.receive { [weak self] result in
+        guard let task else { return }
+        task.receive { [weak self, weak task] result in
             Task { @MainActor in
-                guard let self, self.running else { return }
+                guard let self, let task, self.task === task, self.running else { return }
                 switch result {
                 case .failure(let error):
                     shellLog.error("three ws receive failed: \(error.localizedDescription, privacy: .public)")
@@ -226,7 +253,7 @@ final class ThreeClient {
                 let (bytes, response) = try await session.data(from: url)
                 let code = (response as? HTTPURLResponse)?.statusCode ?? 0
                 await MainActor.run {
-                    guard let self, self.latest[description.uid] == key else { return }
+                    guard let self, self.session === session, self.latest[description.uid] == key else { return }
                     // 404: superseded, and the description that replaced it is on its way.
                     if code == 404 { return }
                     guard code == 200 else { self.status = "Geometry buffers: HTTP \(code)"; return }
@@ -236,7 +263,10 @@ final class ThreeClient {
                     self.publish(description, bytes: full)
                 }
             } catch {
-                await MainActor.run { self?.status = "Geometry buffers: \(error.localizedDescription)" }
+                await MainActor.run {
+                    guard let self, self.session === session else { return }
+                    self.status = "Geometry buffers: \(error.localizedDescription)"
+                }
             }
         }
     }
@@ -340,8 +370,7 @@ final class ThreeClient {
     }
 }
 
-/// Accepts the Field server's self-signed dev cert for trusted hosts only (`isTrustedFieldDevHost`) —
-/// the URLSession equivalent of `WebDock`'s trust override, for the websocket and `/three-buffers` alike.
+/// Accepts the Field development certificate on the existing local and tailnet hosts.
 final class FieldServerTrustDelegate: NSObject, URLSessionDelegate {
     func urlSession(_ session: URLSession,
                     didReceive challenge: URLAuthenticationChallenge,
