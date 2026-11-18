@@ -32,6 +32,10 @@ import kotlin.math.sqrt
  * Point arithmetic ([PointExpr], `a + b`, `0.5 * c`) creates synthetic "trace" points that are
  * recomputed from their expression before every solve. The default backend is `FfmCeresBackend`, so
  * these entry points need the native Ceres library present.
+ *
+ * [Shapes from constraints](../ceres.md) works through this DSL with drag handles in a `three`
+ * viewer: a square solved from a rough start, a cube held only by flat faces, and boxes in one- and
+ * two-point perspective.
  */
 
 /**
