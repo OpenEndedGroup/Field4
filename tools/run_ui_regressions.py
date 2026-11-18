@@ -4166,6 +4166,16 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="three-context-budget",
+            description="Twenty three.js views: every view on screen draws, views off screen give their WebGL contexts back, and a pan restores the ones it reaches.",
+            commands=[
+                "new-box --name ContextBudgetRegression",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/three-context-budget.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/three-context-budget.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="kotlin-line-notes",
             description="A Kotlin box's run leaves a line note on each top-level val or var, with its value.",
             commands=[

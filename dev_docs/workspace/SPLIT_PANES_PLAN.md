@@ -232,7 +232,7 @@ What P1 built:
 - **Placing boxes.** `place(box)` runs from `applyFrameToBox`, from a MutationObserver on
   `mainCanvas` (every box is created there), and at drag end.
 - **Background.** `fieldWebglBackground.js` takes an optional 7th argument: a list of panes,
-  each drawn scissored with its own translation and its own vignette (`u_pane`). The inline
+  each drawn clipped with its own translation and its own vignette (a 2D canvas since the WebGL context budget work; it was a shader with `u_pane`). The inline
   fallback in Main.kt ignores it and draws the main camera across the window.
 - **Persistence.** The root property `panes` holds `{sx, wx, sy, wy}` and is listed in
   `uiResyncProperties`, `ioPersistentProperties` and `triggersSave`.

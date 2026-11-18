@@ -68,6 +68,8 @@ async function freezeNode(node, ctx, depth = 0) {
                     ctx.kinds.add('three');
                 } catch (error) {
                     // A still fallback contains only the real canvas image, never inert viewer controls.
+                    // A view off screen may have given its WebGL context back (threejs_viewer.html, context budget).
+                    await viewer.ensureContext?.();
                     const image = doc.createElement('img'); image.src = viewer.snapshotImage();
                     image.alt = 'Three.js view at publication time'; image.style.cssText='display:block;width:100%;height:100%;object-fit:contain';
                     image.style.background = child.defaultView.getComputedStyle(child.querySelector('#canvas-wrap') || child.body).backgroundColor;
@@ -108,6 +110,7 @@ async function freezeNode(node, ctx, depth = 0) {
             const image = doc.createElement('img');
             const viewer = win.FieldViewer;
             if (!viewer?.snapshotImage && !node.getContext('2d')) throw new Error('This WebGL canvas needs a publication capture adapter');
+            if (viewer?.snapshotImage) await viewer.ensureContext?.();
             image.src = viewer?.snapshotImage && node === doc.querySelector('#canvas-wrap canvas')
                 ? viewer.snapshotImage() : node.toDataURL('image/png');
             image.style.cssText = `width:${node.clientWidth || node.width}px;height:${node.clientHeight || node.height}px;max-width:100%`;
