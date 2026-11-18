@@ -25,6 +25,21 @@ class FabricateShaderCompileTest {
         compiles("fabricate-lighting.frag", StandardRenderer.lightingFragment)
     }
 
+    /**
+     * The virtual shadow map's paths, which are compiled in only under `FIELD_VSM`
+     * ([StandardRenderer.withVirtualShadows]), so the plain compile above never sees them: the
+     * lighting fragment's windowed page lookup and marking, the shadow vertex shader's page
+     * placement, and the tile-clearing vertex shader.
+     */
+    @Test
+    fun virtualShadowPathsCompile() {
+        compiles("fabricate-lighting-vsm.frag", StandardRenderer.withVirtualShadows(StandardRenderer.lightingFragment))
+        val shadow = ShaderSPIRVUtils.compileShader("fabricate-shadow-vsm.vert", StandardRenderer.withVirtualShadows(StandardRenderer.shadowVertex), ShaderKind.VERTEX_SHADER)
+        assertTrue((shadow.bytecode()?.remaining() ?: 0) > 0, "VSM shadow vertex produced empty SPIR-V")
+        val clear = ShaderSPIRVUtils.compileShader("fabricate-vsm-clear.vert", StandardRenderer.vsmClearVertex, ShaderKind.VERTEX_SHADER)
+        assertTrue((clear.bytecode()?.remaining() ?: 0) > 0, "VSM clear vertex produced empty SPIR-V")
+    }
+
     @Test
     fun toneMapFragmentCompiles() {
         compiles("fabricate-tonemap.frag", TONEMAP_FRAGMENT)
