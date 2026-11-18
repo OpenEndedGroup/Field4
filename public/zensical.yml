@@ -265,6 +265,7 @@ nav:
       - Imaging & Computer Vision: imaging_examples.md
       - Depth & CLIP (ONNX): onnx.md
     - Geometry & Solids:
+      - Drawing on iPad: drawing_on.md
       - Meshes & 3D Geometry: mesh_examples.md
       - Solids & Booleans (Manifold): manifold.md
       - Moving Parts and Clearance: swept_clearance.md

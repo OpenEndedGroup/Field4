@@ -1,0 +1,21 @@
+#!/bin/zsh
+set -euo pipefail
+TASK_ROOT=${0:A:h:h:h}
+TASK_BUILD="$TASK_ROOT/.build/offline-review"
+TASK_BINARY="$TASK_BUILD/drawingon-review"
+TASK_SOURCES=("$TASK_ROOT/DrawingOn/Model.swift" "$TASK_ROOT/DrawingOn/FieldReference.swift" "$TASK_ROOT/DrawingOn/Journal.swift" "$TASK_ROOT/tools/offline-review/ReviewCore.swift" "$TASK_ROOT/tools/offline-review/ReviewRender.swift" "$TASK_ROOT/tools/offline-review/main.swift")
+TASK_REBUILD=0
+[[ -x "$TASK_BINARY" ]] || TASK_REBUILD=1
+for TASK_SOURCE in "${TASK_SOURCES[@]}"; do
+    [[ "$TASK_SOURCE" -nt "$TASK_BINARY" ]] && TASK_REBUILD=1
+done
+if (( TASK_REBUILD )); then
+    mkdir -p "$TASK_BUILD"
+    TASK_TEMP="$TASK_BUILD/drawingon-review.$$.tmp"
+    trap 'rm -f "$TASK_TEMP"' EXIT
+    /usr/bin/xcrun swiftc -O -module-name DrawingOnReview "${TASK_SOURCES[@]}" -o "$TASK_TEMP"
+    mv -f "$TASK_TEMP" "$TASK_BINARY"
+    trap - EXIT
+fi
+export DRAWINGON_REPO_ROOT="$TASK_ROOT"
+exec "$TASK_BINARY" "$@"

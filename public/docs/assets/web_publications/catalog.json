@@ -1303,6 +1303,29 @@
         "public/docs/assets/agent_transcripts/dependency_length/metadata.edn": "4a75616db058f24bf93976ba39432ab5c23bf5a8d56de853a845397137cf6b2e"
       }
     },
+    "assets/agent_transcripts/drawing_on/metadata.edn": {
+      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "capturedAt": "2026-11-18T10:20:26.623Z",
+      "channels": 2,
+      "file": "assets/web_publications/drawing_on/document/metadata.edn",
+      "files": {
+        "assets/web_publications/drawing_on/document/metadata.edn": "766063d713f52e47fb2c0dd6d66a009645a98361bbea9c7a60906f66a807a331",
+        "assets/web_publications/drawing_on/document/outputs.json": "8309bee234ffb87e946fbc9e51bdbe7eb6d8c62da57f29f5a37df66766d0d6e5",
+        "assets/web_publications/drawing_on/outputs/0.html": "6993c8fc975c15f6a21f90f1956bd86d3d090873e7403ec599c87d7c48398c84",
+        "assets/web_publications/drawing_on/outputs/1.html": "e9093114f5a0e3f955a9c388816ac46d609fe2fead30bff74cfa021a9f15a255"
+      },
+      "kinds": [
+        "svg"
+      ],
+      "outputs": "assets/web_publications/drawing_on/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/drawing_on.yaml": "d9209a2c00f8770a2f080b60141cd178e89af4dac0f7f93552f05937e02466d7",
+        "public/docs/assets/agent_transcripts/drawing_on/drawing-on-guide_code_.kt": "5ee104b8e06e54c8f3edfd26b51f4563161286e07cac949347f71be0d04c0fe7",
+        "public/docs/assets/agent_transcripts/drawing_on/drawing-on-head_code_.kt": "33077654b8d5557ed6347facf8a31c2e25d60e6a1fed640f67f34b2de026c385",
+        "public/docs/assets/agent_transcripts/drawing_on/guides/drawing_on.md": "c1d349407ed52ac3f9676fe8bb51e8acf00a55da1be82d0273e9a5fbc3557fc0",
+        "public/docs/assets/agent_transcripts/drawing_on/metadata.edn": "1aa8acd40acd25e75b63c221e58f5614b83245a69a382d38a97417c5fa95c9fc"
+      }
+    },
     "assets/agent_transcripts/drawn_morph/metadata.edn": {
       "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
       "capturedAt": "2026-11-17T21:41:52.079Z",

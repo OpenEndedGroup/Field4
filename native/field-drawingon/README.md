@@ -1,19 +1,46 @@
-# Drawing On: optional native iPad head
+# Drawing On
 
-Drawing On captures Pencil data and microphone audio on a shared timeline, records offline, uploads saved captures, and displays FLine reference geometry streamed back from Field. The native app is maintained as a companion checkout (`/Users/marc/temp/drawingon` in the development workspace), containing `DrawingOn.xcodeproj`, its independent Swift package, tests, and the complete protocol/setup guide at `docs/FIELD_EXTENSION.md`. Field's JVM build has no Xcode dependency. The app sources have not been vendored into this repository.
+Optional native iPad drawing and voice capture for Field. This directory is the source of truth for the app and its offline save-file reader, alongside Field's optional visionOS clients. Build the app independently in Xcode; Field's JVM/JS build does not require Xcode or build an iPad application.
 
-Open that Xcode project, choose an iPad and your signing team, and run. Connect to `wss://YOUR-FIELD-HOST:9092/drawingon/ws`, target `ipad`, with a host certificate trusted by the iPad. A physical iPad also needs Field started with `AFIELD_BIND_HOST=0.0.0.0` for LAN reachability; keep the default browser-origin policy enabled. The default Field development certificate only covers localhost. A simulator can use the existing loopback mirror at `ws://127.0.0.1:19092/drawingon/ws`.
+Read [Drawing on iPad](../../public/docs/drawing_on.md), open the **drawing_on** starting place from Field's Welcome screen, and run its drawing-head box. [Example.kt](Example.kt) is the same editable example: publish a plan, draw over it on the iPad, and receive a crosshair at the last measured Pencil point. [Protocol](docs/PROTOCOL.md) documents every captured event; [Field integration](docs/FIELD_EXTENSION.md) covers target ownership, projection and archive access.
 
-Paste [Example.kt](Example.kt) into a Field box. It publishes a plan, receives committed native input, and adds a response when a human stroke ends. Re-run to edit the plan or callback. `drawingOn("ipad")` owns an explicit target; unrelated desktop selection cannot change it. Geometry comes from Field's existing AVP Three description/buffer encoder, with an explicit 2D projection in `DrawingOnPlane`.
+## Build and connect
 
-`pad.onEvent` receives the original JSON payload in `event.data`, the monotonic capture time in `event.time`, the session UUID in `event.session`, and a historical-upload flag in `event.upload`. Callbacks run on the Field main Runloop after durable append; filter event types and keep expensive computation outside the callback. `pad.sessions` lists bound captures and `pad.readCapture(session) { ... }` streams their history. The archive is `WORKSPACE/.drawingon/`, including uploaded audio and returned reference assets. Acknowledgements follow disk sync; replay is deduplicated by session and sequence. Callback delivery itself is not a transactional job queue: recover derived processing from the archive after a server crash.
+Open `DrawingOn.xcodeproj`, select the **DrawingOn** scheme, choose an iPad, and set your development team under Signing & Capabilities. The app requires iPadOS 18 or later. It uses UIKit for Pencil input, SwiftUI for its menu, and bundled Iosevka Light. No external iOS dependencies or App Store setup are needed.
 
-One Field reference layer per target supports hide/solo without entering human undo. Responses are hashed, retained locally, and chunked into the recording, so later exports/uploads need no running Field server. Disconnection leaves the last reference visible and local recording continues. Saved uploads do not subscribe to returned geometry. FLine stroke/fill/point geometry uses an explicit drawing plane; the initial native renderer uses constant-width lines and flat primitive colours, rather than a 3D camera or materials.
+Start Field with `AFIELD_BIND_HOST=0.0.0.0` for LAN access. In the app set the address to `wss://YOUR-FIELD-HOST:9092/drawingon/ws`, target `ipad`, and enable **Stream live**. Use an HTTPS certificate matching that hostname and trusted by the iPad; Field's default localhost development certificate needs replacing for a physical device. Configure Field through `AFIELD_KEYSTORE_PATH`, `AFIELD_KEYSTORE_PASS` and `AFIELD_KEYSTORE_ALIAS`. Certificate validation stays enabled. The simulator on the same Mac can use Field's loopback mirror at `ws://127.0.0.1:19092/drawingon/ws` with default ports.
 
-Verify against a real native URLSession client on macOS:
+Pencil draws; freehand, line and circle tools sit at the bottom left. Two fingers pan, rotate and scale. Two-finger tap undoes, three-finger tap redoes. The menu manages layers, hide/solo, microphone recording and transfer. Undo is an appended visibility operation; it preserves original samples. Field output occupies a separate reference layer. Portrait and landscape are supported; light mode inverts the canvas.
+
+Leave streaming off to record offline. **Finish capture** saves an immutable recording and opens a new canvas. **Saved captures** uploads later, resumes interrupted transfers, and retains originals on the iPad. **Share capture** exports one self-contained `.ndjson` file, including audio, undone strokes and received Field geometry. Captures are also accessible through Finder/Files file sharing. Microphone recording is explicit and stops in the background.
+
+## Read a save file offline
+
+From this directory on a Mac:
 
 ```sh
-DRAWINGON_NATIVE_PATH=/absolute/path/to/drawingon ./gradlew fastTest --tests 'afield.io.drawingon.DrawingOnTest'
+tools/offline-review/review /path/to/capture.ndjson --output /path/to/capture.review
+open /path/to/capture.review/index.html
 ```
 
-The test starts an isolated Ktor receiver and exchanges actual FLine binary geometry, drawing, audio, undo, and saved uploads. It checks asset reconstruction and reconnect deduplication without a desktop server or user workspace. Without that environment variable, the three JVM archive/ownership tests run and the cross-language case is explicitly skipped. Run `swift test` separately in the native checkout for its full core suite. These tests do not validate physical Pencil or microphone latency.
+This creates PNG contact sheets and individual viewport images, speech-candidate WAVs, a local review page, and a capture-aligned JSON manifest for downstream agents. The reader shares the app's replay model and Field buffer decoder. Rendering and heuristic energy VAD need only macOS frameworks and the installed Swift compiler. Optional STT uses an explicitly supplied existing local Whisper executable/model and downloads nothing. See the [offline reader guide](tools/offline-review/README.md).
+
+## Verify
+
+Run the core/replay tests and offline-reader tests from this directory:
+
+```sh
+swift test
+tools/offline-review/test
+xcodebuild -project DrawingOn.xcodeproj -scheme DrawingOn -sdk iphonesimulator \
+  -destination 'generic/platform=iOS Simulator' -derivedDataPath .build/xcode \
+  CODE_SIGNING_ALLOWED=NO build
+```
+
+From the Field repository root, exercise the real Ktor receiver and native URLSession client together:
+
+```sh
+DRAWINGON_NATIVE_PATH="$PWD/native/field-drawingon" ./gradlew fastTest --tests 'afield.io.drawingon.DrawingOnTest'
+```
+
+The standalone `tools/receiver.py` and its tests remain an input-only diagnostic receiver. Field's native `/drawingon/ws` route is the normal bidirectional destination. `python3 tools/make_project.py` regenerates the checked-in Xcode project when Swift files are added. Sensor precision and Pencil/microphone latency still need a physical iPad check.

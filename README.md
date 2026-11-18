@@ -24,6 +24,10 @@ for desktop OpenXR scenes over Wi-Fi, with head and hand tracking. With a Mac, C
 connected to the Linux Field server is a usable editor through Mac Virtual Display.
 The [optional native client](native/field-cloudxr/) ships as source without a signing identity.
 
+[Drawing On](public/docs/drawing_on.md) is the optional native iPad head for Pencil drawing and
+voice capture, offline recording, and FLine geometry sent back from Field. Its
+[app and Mac offline reader](native/field-drawingon/) ship as source with an independent Xcode build.
+
 ## Requirements
 
 The core of Field runs on Apple silicon macOS, glibc Linux (x86-64; ARM64 experimental), or Windows x64
