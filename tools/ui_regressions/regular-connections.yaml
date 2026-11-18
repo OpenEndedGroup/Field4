@@ -1,0 +1,16 @@
+name: regular_connections
+operations:
+  - create:
+      box: curve_a
+      name: Curve A
+      frame: { x: 70.0, y: 70.0, w: 290.0, h: 105.0 }
+  - create:
+      box: curve_b
+      name: Curve B
+      frame: { x: 340.0, y: 310.0, w: 330.0, h: 80.0 }
+  - create:
+      box: curve_c
+      name: Curve C
+      frame: { x: 300.0, y: 500.0, w: 120.0, h: 110.0 }
+  - connect: { parent: curve_a, child: curve_b }
+  - connect: { parent: curve_b, child: curve_c }

@@ -62,3 +62,23 @@
 .box.text-frame-box::before { border: none !important; }
 
 .text-frame-preview strong, .text-frame-preview b { font-weight: 700; }
+
+.text-frame-preview {
+    color: var(--text-frame-color, inherit);
+    background-color: var(--text-frame-fill, transparent);
+    text-align: var(--text-frame-align, left);
+    font-style: var(--text-frame-style, normal);
+    letter-spacing: var(--text-frame-tracking, normal);
+}
+.text-frame-preview .ai-chat-copy {
+    width: max-content;
+    height: auto;
+    min-height: 24px;
+    white-space: nowrap;
+    overflow-wrap: normal;
+    letter-spacing: normal;
+    text-align: center;
+    background-image: none;
+    color: var(--field-fg, #ddd);
+    transform: none;
+}

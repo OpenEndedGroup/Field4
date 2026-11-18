@@ -4898,6 +4898,17 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="regular-connections",
+            description="Ordinary box connections retain curved routing while their minimum radius eases down near neighbouring boxes, without oversized loops.",
+            commands=[
+                "viewport 1060x760",
+                shell_join(["macro", "write", "regular_connections", "--file", str(TOOLS_ROOT / "ui_regressions/regular-connections.yaml")]),
+                "macro run regular_connections",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/regular-connections.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="text-frame-content",
             description="FileManager Markdown images and a box-installed backend marking menu with two nested levels and a real callback.",
             commands=[
