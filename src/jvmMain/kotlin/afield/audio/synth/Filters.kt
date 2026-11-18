@@ -21,6 +21,12 @@ import kotlin.math.*
  * between A, E, I, O and U on a single control. [DCBlocker] is the one-line high-pass that removes
  * the offset rectification and asymmetric shaping leave behind. [Saturator] is a bare `tanh` with a
  * drive in front of it, which is often what a ladder filter's output wants next.
+ *
+ * At the end of the file are the nonlinear ones. [AdaaShaper] is a waveshaper ([AdaaShape.TANH], hard
+ * clip, cubic) with antiderivative anti-aliasing, which keeps a hard-driven curve from folding
+ * harmonics back below Nyquist. [ZdfLadder] and [ZdfSvf] are a four-pole ladder and a state-variable
+ * filter with the saturation inside a zero-delay-feedback loop solved every sample, so both
+ * self-oscillate cleanly at their cutoff. [Smoother] takes the steps out of a control signal.
  */
 
 // ═══════════════════════════════════════════════════════════════════
@@ -744,4 +750,347 @@ fun impulseResponse(processor: SignalProcessor, frames: Int = 8192, sampleRate: 
     val h = renderSignalsOffline(frames.toDouble() / sampleRate, processor, sampleRate = sampleRate)[0]
     if (amplitude != 1f) for (i in h.indices) h[i] /= amplitude
     return h
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  Antiderivative anti-aliasing and nonlinear zero-delay-feedback filters (after evieve)
+// ═══════════════════════════════════════════════════════════════════
+//
+// The shapers and filters below follow evieve's saturation and nonlinear-filter families
+// (https://github.com/steadykammer/evieve, © Peter Dowling, GPL v3), written in Kotlin from the methods
+// those files rest on: antiderivative anti-aliasing after Parker, Zavalishin, Le Bivic and Bilbao
+// ("Reducing the aliasing of nonlinear waveshaping using continuous-time convolution", DAFx 2016) and
+// Bilbao, Esqueda, Parker and Välimäki ("Antiderivative antialiasing for memoryless nonlinearities",
+// IEEE SPL 2017); the nonlinear ladder and SVF from Zavalishin's "The Art of VA Filter Design",
+// with the instantaneous loop solved by Newton's method each sample.
+
+/** The curve an [AdaaShaper] applies. Each one carries its antiderivatives, which is what ADAA needs. */
+enum class AdaaShape {
+    /** `tanh(x)`: the smooth saturator. First order only (its second antiderivative needs the dilogarithm). */
+    TANH,
+    /** `x` clamped to ±1: the hardest corner, and the one that aliases most when computed naively. */
+    HARD_CLIP,
+    /** The cubic soft clip `x − x³/3` inside ±1, flat at ±2/3 outside: a corner in the second derivative only. */
+    CUBIC;
+
+    /** The curve itself. */
+    fun f(x: Double): Double = when (this) {
+        TANH -> tanh(x)
+        HARD_CLIP -> x.coerceIn(-1.0, 1.0)
+        CUBIC -> if (abs(x) <= 1.0) x - x * x * x / 3.0 else sign(x) * 2.0 / 3.0
+    }
+
+    /** Its first antiderivative, zero at zero. For `tanh` it is `ln cosh x`, written so large `x` does not overflow. */
+    fun f1(x: Double): Double {
+        val a = abs(x)
+        return when (this) {
+            TANH -> a + ln1p(exp(-2.0 * a)) - ln(2.0)
+            HARD_CLIP -> if (a <= 1.0) 0.5 * x * x else a - 0.5
+            CUBIC -> if (a <= 1.0) 0.5 * x * x - x * x * x * x / 12.0 else 2.0 * a / 3.0 - 0.25
+        }
+    }
+
+    /** Its second antiderivative, zero at zero; [TANH] has none in closed form and throws. */
+    fun f2(x: Double): Double {
+        val a = abs(x)
+        return when (this) {
+            TANH -> throw UnsupportedOperationException("tanh has no elementary second antiderivative")
+            HARD_CLIP -> if (a <= 1.0) x * x * x / 6.0 else sign(x) * (0.5 * a * a - 0.5 * a + 1.0 / 6.0)
+            CUBIC -> if (a <= 1.0) x * x * x / 6.0 - x.pow(5) / 60.0 else sign(x) * (a * a / 3.0 - 0.25 * a + 1.0 / 15.0)
+        }
+    }
+}
+
+/**
+ * A waveshaper with antiderivative anti-aliasing (ADAA): instead of the curve's value at each
+ * sample it outputs the curve's average over the straight line joining this sample to the last,
+ * `(F₁(x[n]) − F₁(x[n−1])) / (x[n] − x[n−1])`. That average is a continuous-time lowpass applied to
+ * the shaped signal before it is sampled, so the harmonics the curve makes above Nyquist come back
+ * down much quieter. A 4.1 kHz sine driven by 8 through `tanh` at 48 kHz carries 8 dB less total
+ * alias power than [Waveshaper.tanh] gives (−25 dB against −17 dB relative to the fundamental), with
+ * no oversampling; through the hard clip, order 1 gains 8 dB and order 2 another 7.
+ *
+ * [order] 2 averages twice (second antiderivative, three samples), which suppresses aliases further
+ * for [AdaaShape.HARD_CLIP] and [AdaaShape.CUBIC]; [AdaaShape.TANH] supports order 1 only. When two
+ * successive inputs are closer than the division can be trusted the shaper falls back to the curve at
+ * their midpoint, which is the limit of the same expression, so the output stays continuous.
+ *
+ * The averaging costs a half-sample delay per order and a gentle high-frequency roll-off (about
+ * −3 dB at 0.7 × Nyquist for order 1). [drive] scales the input before the curve, as in [Waveshaper],
+ * and may be modulated at audio rate.
+ *
+ * ```kotlin
+ * SineOsc(4000.p) / AdaaShaper(AdaaShape.TANH, drive = 8.p)
+ * ```
+ */
+class AdaaShaper(
+    val shape: AdaaShape = AdaaShape.TANH,
+    val drive: Param = Param(1f),
+    val order: Int = 1
+) : SignalProcessor() {
+    init {
+        require(order == 1 || order == 2) { "AdaaShaper order must be 1 or 2, was $order" }
+        require(order == 1 || shape != AdaaShape.TANH) { "AdaaShaper: TANH supports order 1 only" }
+    }
+
+    private var x1 = 0.0; private var x2 = 0.0
+    private var inBuf = FloatArray(0); private var dBuf = FloatArray(0)
+
+    override fun generate(output: FloatArray, numFrames: Int, ctx: SynthContext) {
+        if (inBuf.size < numFrames) { inBuf = FloatArray(numFrames); dBuf = FloatArray(numFrames) }
+        input.render(inBuf, numFrames, ctx)
+        drive.render(dBuf, numFrames, ctx)
+        for (i in 0 until numFrames) {
+            val x0 = inBuf[i].toDouble() * dBuf[i].toDouble()
+            output[i] = (if (order == 1) first(shape, x0, x1) else second(shape, x0, x1, x2)).toFloat()
+            x2 = x1; x1 = x0
+        }
+    }
+
+    companion object {
+        /** Below this input difference the first-order quotient is replaced by the midpoint value. */
+        const val EPS1: Double = 1e-5
+        /** The same threshold for the second-order quotients, larger because they divide twice. */
+        const val EPS2: Double = 1e-3
+
+        /** First-order ADAA of [shape] between the previous input [xPrev] and this one [x]. */
+        fun first(shape: AdaaShape, x: Double, xPrev: Double): Double {
+            val d = x - xPrev
+            return if (abs(d) > EPS1) (shape.f1(x) - shape.f1(xPrev)) / d else shape.f(0.5 * (x + xPrev))
+        }
+
+        private fun d1(shape: AdaaShape, a: Double, b: Double): Double {
+            val d = a - b
+            return if (abs(d) > EPS2) (shape.f2(a) - shape.f2(b)) / d else shape.f1(0.5 * (a + b))
+        }
+
+        /** Second-order ADAA of [shape] over the three inputs `x0` (now), `x1`, `x2` (two samples ago). */
+        fun second(shape: AdaaShape, x0: Double, x1: Double, x2: Double): Double {
+            val d = x0 - x2
+            if (abs(d) > EPS2) return 2.0 / d * (d1(shape, x0, x1) - d1(shape, x1, x2))
+            val xb = 0.5 * (x0 + x2)
+            val delta = xb - x1
+            if (abs(delta) <= EPS2) return shape.f(0.5 * (xb + x1))
+            return 2.0 / delta * (shape.f1(xb) + (shape.f2(x1) - shape.f2(xb)) / delta)
+        }
+    }
+}
+
+/** The response [ZdfLadder] reads from its four stages. */
+enum class ZdfLadderMode { LP4, LP2, HP4 }
+
+/**
+ * A four-pole transistor ladder in zero-delay-feedback form, with a `tanh` at the input of the loop
+ * and the loop solved exactly every sample: the one-saturator ladder of Zavalishin's *Art of VA
+ * Filter Design*, chapter 6, as in evieve's nonlinear ladder.
+ *
+ * Each stage is a trapezoidal one-pole prewarped to [cutoff], so at small signal the lowpass is
+ * `L⁴/(1 + kL⁴)` with `L = 1/(1 + s)` and `k = 4·resonance`, exact under the bilinear transform. At
+ * `resonance = 1` the loop gain at the cutoff reaches one; above it the filter self-oscillates at
+ * [cutoff] with an amplitude the `tanh` sets (about `1/drive`). A noise floor near −120 dB is mixed in
+ * so it starts to sing with no input at all. Unlike [MoogLadder], whose explicit update detunes the
+ * cutoff as it rises, this one stays where it is told.
+ *
+ * [drive] is the gain into the `tanh` (the output is divided back down by it), so it changes how
+ * soon the filter saturates and not its small-signal level. As in the circuit, the passband drops by
+ * `1 + k` as resonance rises. `LP2` taps the second stage; `HP4` mixes the stages into a four-pole
+ * highpass with the same resonant denominator.
+ *
+ * ```kotlin
+ * SawOsc(55.p) / ZdfLadder(Param(600f).also { it.mod = SineOsc(0.2.p) * 400f }, resonance = 0.9.p)
+ * ```
+ */
+class ZdfLadder(
+    val cutoff: Param = Param(1000f),
+    val resonance: Param = Param(0.5f),
+    val drive: Param = Param(1f),
+    val mode: ZdfLadderMode = ZdfLadderMode.LP4
+) : SignalProcessor() {
+    private val s = DoubleArray(4)
+    private var yPrev = 0.0
+    private var noise = 0x2545F491L
+    /** Newton iterations taken on the last sample (diagnostic; at most [MAX_ITERATIONS]). */
+    var lastIterations: Int = 0; private set
+    private var inBuf = FloatArray(0); private var cBuf = FloatArray(0)
+    private var rBuf = FloatArray(0); private var dBuf = FloatArray(0)
+
+    override fun generate(output: FloatArray, numFrames: Int, ctx: SynthContext) {
+        if (inBuf.size < numFrames) {
+            inBuf = FloatArray(numFrames); cBuf = FloatArray(numFrames)
+            rBuf = FloatArray(numFrames); dBuf = FloatArray(numFrames)
+        }
+        input.render(inBuf, numFrames, ctx)
+        cutoff.render(cBuf, numFrames, ctx)
+        resonance.render(rBuf, numFrames, ctx)
+        drive.render(dBuf, numFrames, ctx)
+        val sr = ctx.sampleRate.toDouble()
+        for (i in 0 until numFrames) {
+            val g = tan(PI * cBuf[i].toDouble().coerceIn(10.0, sr * 0.45) / sr)
+            val G = g / (1.0 + g); val c = 1.0 - G
+            val k = 4.0 * rBuf[i].toDouble().coerceIn(0.0, 1.2)
+            val d = dBuf[i].toDouble().coerceAtLeast(1e-3)
+            noise = noise * 6364136223846793005L + 1442695040888963407L
+            val x = inBuf[i].toDouble() + 1e-6 * ((noise ushr 11).toDouble() / (1L shl 53) - 0.5)
+
+            val G2 = G * G; val G4 = G2 * G2
+            val S = G2 * G * c * s[0] + G2 * c * s[1] + G * c * s[2] + c * s[3]
+            // Solve y = G⁴·tanh(d(x − k·y))/d + S; the left side minus the right is increasing in y.
+            var y = yPrev
+            var it = 0
+            while (it < MAX_ITERATIONS) {
+                val t = tanh(d * (x - k * y))
+                val h = y - G4 * t / d - S
+                val step = h / (1.0 + G4 * k * (1.0 - t * t))
+                y -= step
+                it++
+                if (abs(step) < 1e-12 * (1.0 + abs(y))) break
+            }
+            lastIterations = it
+            val u = tanh(d * (x - k * y)) / d
+            var stageIn = u
+            val ys = DoubleArray(4)
+            for (j in 0 until 4) {
+                val v = (stageIn - s[j]) * G
+                val lp = v + s[j]
+                s[j] = lp + v
+                ys[j] = lp
+                stageIn = lp
+            }
+            yPrev = ys[3]
+            output[i] = when (mode) {
+                ZdfLadderMode.LP4 -> ys[3]
+                ZdfLadderMode.LP2 -> ys[1]
+                ZdfLadderMode.HP4 -> u - 4.0 * ys[0] + 6.0 * ys[1] - 4.0 * ys[2] + ys[3]
+            }.toFloat()
+        }
+    }
+
+    companion object {
+        /** The cap on Newton steps per sample; the loop is monotone, so two or three is typical. */
+        const val MAX_ITERATIONS: Int = 8
+    }
+}
+
+/**
+ * A state-variable filter in zero-delay-feedback form whose damping saturates, solved per sample by
+ * Newton's method: the nonlinear SVF of Zavalishin's *Art of VA Filter Design* (chapter 6), as in
+ * evieve's nonlinear SVF.
+ *
+ * The damping path carries `2R·bp + 2(bp − tanh(drive·bp)/drive)` with `R = 1 − resonance`. At small
+ * signal the second term vanishes, so the response is exactly [SVF]'s, `1/(s² + 2Rs + 1)` for the
+ * lowpass. Past `resonance = 1` the small-signal damping goes negative and the filter self-oscillates
+ * at [cutoff]; the saturating term adds damping as the band-pass grows, which holds the oscillation
+ * at an amplitude of roughly `1/drive` instead of letting it run away. Below `resonance = 1` it adds
+ * damping only to loud signals, which is the soft, rounded resonance of an analog SVF.
+ *
+ * ```kotlin
+ * WhiteNoise() * 0.1f / ZdfSvf(SVFMode.BP, 800.p, resonance = 1.05.p)
+ * ```
+ */
+class ZdfSvf(
+    val mode: SVFMode = SVFMode.LP,
+    val cutoff: Param = Param(1000f),
+    val resonance: Param = Param(0.5f),
+    val drive: Param = Param(1f)
+) : SignalProcessor() {
+    private var s1 = 0.0; private var s2 = 0.0
+    private var noise = 0x5DEECE66DL
+    private var inBuf = FloatArray(0); private var cBuf = FloatArray(0)
+    private var rBuf = FloatArray(0); private var dBuf = FloatArray(0)
+
+    override fun generate(output: FloatArray, numFrames: Int, ctx: SynthContext) {
+        if (inBuf.size < numFrames) {
+            inBuf = FloatArray(numFrames); cBuf = FloatArray(numFrames)
+            rBuf = FloatArray(numFrames); dBuf = FloatArray(numFrames)
+        }
+        input.render(inBuf, numFrames, ctx)
+        cutoff.render(cBuf, numFrames, ctx)
+        resonance.render(rBuf, numFrames, ctx)
+        drive.render(dBuf, numFrames, ctx)
+        val sr = ctx.sampleRate.toDouble()
+        for (i in 0 until numFrames) {
+            val g = tan(PI * cBuf[i].toDouble().coerceIn(10.0, sr * 0.45) / sr)
+            val R = 1.0 - rBuf[i].toDouble().coerceIn(0.0, 1.2)
+            val d = dBuf[i].toDouble().coerceAtLeast(1e-3)
+            noise = noise * 6364136223846793005L + 1442695040888963407L
+            val x = inBuf[i].toDouble() + 1e-6 * ((noise ushr 11).toDouble() / (1L shl 53) - 0.5)
+
+            // bp = g·(x − D(bp) − g·bp − s2) + s1, D(b) = 2R·b + 2(b − tanh(d·b)/d); increasing in bp for R ≥ −0.2.
+            val rhs = g * (x - s2) + s1
+            var b = rhs / (1.0 + g * g + 2.0 * R * g)
+            for (it in 0 until 8) {
+                val t = tanh(d * b)
+                val h = b * (1.0 + g * g) + g * (2.0 * R * b + 2.0 * (b - t / d)) - rhs
+                val step = h / (1.0 + g * g + g * (2.0 * R + 2.0 * t * t))
+                b -= step
+                if (abs(step) < 1e-12 * (1.0 + abs(b))) break
+            }
+            val damp = 2.0 * R * b + 2.0 * (b - tanh(d * b) / d)
+            val lp = g * b + s2
+            val hp = x - damp - lp
+            s1 = 2.0 * b - s1
+            s2 = 2.0 * lp - s2
+            output[i] = when (mode) {
+                SVFMode.LP -> lp
+                SVFMode.BP -> b
+                SVFMode.HP -> hp
+                SVFMode.NOTCH -> hp + lp
+            }.toFloat()
+        }
+    }
+}
+
+/** How a [Smoother] moves toward a new value. */
+enum class SmootherMode {
+    /** A one-pole lag: 63 % of the way in `time`, never quite arriving. */
+    EXP,
+    /** A straight ramp that reaches each new value in exactly `time`, then holds. */
+    LINEAR
+}
+
+/**
+ * Smooths a stepped control signal so a filter or gain fed from it does not click. A slider writing
+ * a constant [Param]'s `base` jumps between audio blocks; a sequence of steps jumps on the sample;
+ * either, fed to a cutoff, is a zipper. `stepped / Smoother(0.02.p)` takes the corner off every step.
+ *
+ * The first sample is passed through as the starting value, so a smoother never ramps up from zero
+ * when a graph starts. [Param.smoothed] wraps a parameter in one, which is the usual way in:
+ * `ZdfLadder(cutoff = cutoffParam.smoothed(0.03f))`.
+ */
+class Smoother(
+    val time: Param = Param(0.02f),
+    val mode: SmootherMode = SmootherMode.EXP
+) : SignalProcessor() {
+    private var y = Double.NaN
+    private var target = 0.0; private var step = 0.0
+    private var inBuf = FloatArray(0); private var tBuf = FloatArray(0)
+
+    override fun generate(output: FloatArray, numFrames: Int, ctx: SynthContext) {
+        if (inBuf.size < numFrames) { inBuf = FloatArray(numFrames); tBuf = FloatArray(numFrames) }
+        input.render(inBuf, numFrames, ctx)
+        time.render(tBuf, numFrames, ctx)
+        val sr = ctx.sampleRate.toDouble()
+        for (i in 0 until numFrames) {
+            val x = inBuf[i].toDouble()
+            if (y.isNaN()) { y = x; target = x }
+            val samples = (tBuf[i].toDouble() * sr).coerceAtLeast(1.0)
+            when (mode) {
+                SmootherMode.EXP -> y += (x - y) * (1.0 - exp(-1.0 / samples))
+                SmootherMode.LINEAR -> {
+                    if (x != target) { target = x; step = (target - y) / samples }
+                    y = if (abs(target - y) <= abs(step)) target else y + step
+                }
+            }
+            output[i] = y.toFloat()
+        }
+    }
+}
+
+/**
+ * This parameter through a [Smoother] of [seconds], as a new [Param] to hand to a filter: set this
+ * one's `base` from a slider and the filter sees the value glide rather than jump.
+ */
+fun Param.smoothed(seconds: Float = 0.02f, mode: SmootherMode = SmootherMode.EXP): Param {
+    val source: Signal = this
+    return Param(0f).also { it.mod = source / Smoother(Param(seconds), mode) }
 }

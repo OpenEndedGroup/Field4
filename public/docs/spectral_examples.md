@@ -562,6 +562,221 @@ White noise through three `Resonator`s near 300 Hz, 750 Hz and 2.1 kHz. Each fre
 // Offline-rendered by TptFilterDocs.renderWav("resonator").
 ```
 
+## Saturation without aliasing, and filters that sing
+
+A waveshaper bends a signal through a curve, and a hard bend makes harmonics far above Nyquist.
+Sampled naively, those harmonics fold back down as inharmonic tones: the whistle under a driven
+`Waveshaper.tanh`. `AdaaShaper` uses *antiderivative anti-aliasing*: instead of the curve's value at
+each sample it takes the curve's average along the line from the previous sample to this one, which
+is the difference of the curve's antiderivative divided by the difference of the inputs. That
+average is a lowpass applied before sampling, so most of what would fold back never does. There is
+no oversampling and no extra filter.
+
+- `AdaaShaper(shape, drive, order)`: `AdaaShape.TANH`, `HARD_CLIP` or `CUBIC` (the soft clip
+  `x − x³/3`), driven by `drive`. `order = 2` averages twice and suppresses more; `TANH` takes order 1
+  only. When two inputs are nearly equal it uses the curve at their midpoint, which is the limit of
+  the same quotient, so a slow or constant input passes through cleanly.
+- `ZdfLadder(cutoff, resonance, drive, mode)`: a four-pole transistor ladder with a `tanh` inside its
+  feedback loop, the loop solved by Newton's method every sample. At `resonance` 1 it begins to
+  self-oscillate at exactly `cutoff`; `LP2` and `HP4` are the other outputs.
+- `ZdfSvf(mode, cutoff, resonance, drive)`: the state-variable filter with saturating damping. At low
+  level it is `SVF`; past `resonance` 1 it oscillates at `cutoff` with an amplitude the saturation holds.
+- `Smoother(time, mode)` and `param.smoothed(seconds)`: take the steps out of a control signal.
+
+These follow evieve's saturation and nonlinear-filter code. They are written from the papers it
+rests on: Parker, Zavalishin and Le Bivic's continuous-time-convolution paper (DAFx 2016), Bilbao,
+Esqueda, Parker and Välimäki's second-order extension (IEEE SPL 2017), and chapter 6 of *The Art of
+VA Filter Design*.
+
+A sine swept from 200 Hz to 8 kHz, driven by 6 into `tanh`. The left half of the spectrogram is the
+naive `Waveshaper.tanh`, the right half `AdaaShaper`. The odd harmonics climbing in parallel are
+wanted. The lines that bounce down off the top edge are aliases. ADAA does not remove them, but in
+the right half they are fainter, and the ones that fold furthest down fade out first:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/tpt_filters/adaa_spectrogram.png" wait="3.0" capture="box" open-outputs="true" padding="20" scale="1.5"}
+:::static
+fun sweep() = SineOsc(Param { 200f * 40f.pow((time / 2f).coerceAtMost(1f)) })
+
+fun spectrogramDb(shaper: SignalProcessor): Array<DoubleArray> {
+    val samples = renderSignalsOffline(2.0, sweep() / shaper)[0].map { it.toDouble() }.toDoubleArray()
+    val spec = stft(samples, fftSize = 2048, hopSize = 512, window = WindowType.HANN, sampleRate = 48_000.0)
+    val mags = spec.magnitudes()
+    val peak = spec.maxMagnitude()
+    return Array(spec.numFrames) { f -> DoubleArray(spec.numBins) { b -> 20.0 * log10((mags[f][b] / peak).coerceAtLeast(1e-5)) } }
+}
+
+showHeatmap(
+    spectrogramDb(Waveshaper.tanh(6.p)) + spectrogramDb(AdaaShaper(AdaaShape.TANH, 6.p)),
+    colormap = "cyanorange",
+    channel = "main",
+    width = 1600,
+    height = 700,
+    vmin = -100.0,
+    vmax = 0.0,
+    transpose = true,
+    flipY = true,
+)
+```
+
+![Two spectrograms side by side on a dark ground, time left to right, frequency upward. In each, an orange fundamental curves up from the bottom left and a fan of fainter cyan harmonics curves up above it. Many cyan lines reflect off the top edge and run back down, crossing the fan in a lattice. The lattice is bright in the left half and visibly dimmer in the right half, especially low in the frame](assets/tpt_filters/adaa_spectrogram.png)
+
+The same comparison at one frequency, a 4.1 kHz sine at drive 8, for `tanh` and for the hard clip
+at both orders. Every peak that is not a multiple of 4.1 kHz is an alias:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/tpt_filters/adaa_spectrum.png" wait="2.0" capture="box" open-outputs="true" padding="20"}
+:::static
+// dB relative to the fundamental, floored at −120
+fun spectrumDb(shaper: SignalProcessor): List<Double> {
+    val db = fft(renderSignalsOffline(1.0, SineOsc(4100.p) / shaper)[0], 48_000.0).magnitudeDbOneSided(floorDb = -200.0)
+    return db.map { (it - db[4100]).coerceAtLeast(-120.0) }
+}
+
+showSignals(
+    "tanh, naive" to spectrumDb(Waveshaper.tanh(8.p)),
+    "tanh, ADAA" to spectrumDb(AdaaShaper(AdaaShape.TANH, 8.p)),
+    "hard clip, ADAA order 2" to spectrumDb(AdaaShaper(AdaaShape.HARD_CLIP, 8.p, order = 2)),
+    channel = "main",
+    xTitle = "frequency (Hz)",
+    yTitle = "dB",
+)
+```
+
+![Three spectra of a 4.1 kHz sine at drive 8 in dB relative to the fundamental, to 24 kHz. All share the fundamental at 0 dB and harmonics near −10 dB at 12.3 kHz and −15 dB at 20.5 kHz. Between them the naive tanh in blue has alias spikes up to about −20 dB, the loudest near 19.3 kHz and 11.1 kHz. The ADAA tanh in orange has spikes at the same places, mostly 5 to 25 dB lower, over a flat floor near −90 dB; the green order-2 hard clip is lower still at most aliases](assets/tpt_filters/adaa_spectrum.png)
+
+`NonlinearTptTest` measures the same signal and sums the power in every bin that is not a
+harmonic. Relative to the fundamental, naive `tanh` puts −17 dB there and ADAA `tanh` −25 dB. The
+hard clip goes from −15 dB naive to −23 dB at order 1 and −31 dB at order 2. ADAA trades this for
+a gentle treble roll-off (about −3 dB at 0.7 × Nyquist for order 1) and a half-sample delay per
+order. For bright material that still needs more, oversample as well.
+
+The ladder's small-signal response, measured the same way as the filters above (a `drive` of 0.01
+keeps its `tanh` linear for a unit impulse). As resonance rises the peak at 1 kHz sharpens and the
+passband sinks, as it does in the circuit:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/tpt_filters/zdf_ladder_response.png" wait="2.0" capture="box" open-outputs="true" padding="20"}
+:::static
+fun responseDb(filter: SignalProcessor) =
+    fft(impulseResponse(filter, 48_000), 48_000.0).magnitudeDbOneSided().take(5000)
+
+showSignals(
+    "resonance 0" to responseDb(ZdfLadder(1000.p, 0.p, 0.01.p)),
+    "resonance 0.5" to responseDb(ZdfLadder(1000.p, 0.5.p, 0.01.p)),
+    "resonance 0.9" to responseDb(ZdfLadder(1000.p, 0.9.p, 0.01.p)),
+    "HP4, resonance 0.7" to responseDb(ZdfLadder(1000.p, 0.7.p, 0.01.p, ZdfLadderMode.HP4)),
+    "ZdfSvf BP, resonance 0.9" to responseDb(ZdfSvf(SVFMode.BP, 1000.p, 0.9.p, 0.01.p)),
+    channel = "main",
+    xTitle = "frequency (Hz)",
+    yTitle = "dB",
+)
+```
+
+![Five responses on a linear axis to 5 kHz. Three ZdfLadder lowpass curves: resonance 0 flat at 0 dB and falling past 1 kHz to about −58 dB at 5 kHz; resonance 0.5 starting near −10 dB with a small bump below 1 kHz; resonance 0.9 starting near −13 dB with a sharp peak of about +11 dB at 1 kHz. A yellow HP4 curve rises steeply from the bottom to a small peak at 1 kHz and settles at 0 dB. A purple ZdfSvf band-pass peaks at about +14 dB at 1 kHz](assets/tpt_filters/zdf_ladder_response.png)
+
+Past `resonance` 1 neither filter needs an input. Both are fed silence here (each mixes in a noise
+floor near −120 dB, which is enough to start it), and the plot is the first 25 ms of output. The
+oscillation grows from nothing and levels off where the saturation holds it:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/tpt_filters/zdf_self_oscillation.png" wait="2.0" capture="box" open-outputs="true" padding="20"}
+:::static
+fun sing(filter: SignalProcessor) = renderSignalsOffline(0.3, Param(0f) / filter)[0].toList()
+
+val ms = List(14_400) { it / 48.0 }
+showSignals(
+    "ZdfLadder, 1 kHz, resonance 1.1" to sing(ZdfLadder(1000.p, 1.1.p)),
+    "ZdfSvf BP, 440 Hz, resonance 1.05" to sing(ZdfSvf(SVFMode.BP, 440.p, 1.05.p)),
+    x = ms,
+    channel = "main",
+    xTitle = "time (ms)",
+)
+```
+
+![Two waveforms over 300 ms from silence. Both stay at zero for about 70 ms, then grow: the blue ZdfLadder output swells to a steady band of about ±0.15 by 110 ms, and the orange ZdfSvf output grows to a steady ±0.46 by about 130 ms and stays there](assets/tpt_filters/zdf_self_oscillation.png)
+
+`NonlinearTptTest` checks each filter's small-signal response against its bilinear prototype
+(`L⁴/(1 + 4·resonance·L⁴)` with `L = 1/(1+s)` for the ladder, `1/(s² + 2(1 − resonance)s + 1)` for
+the SVF lowpass) and checks that each sings within 2 % of its cutoff at 220 Hz, 1 kHz and 5 kHz.
+
+### Smoothing a stepped control
+
+A slider sets a constant `Param`'s value between audio blocks, and a sequencer steps on the sample.
+Either one, fed to a cutoff, clicks at every step. `cutoff.smoothed(0.03f)` returns a `Param` that
+follows `cutoff` through a `Smoother`: an exponential lag by default, or with `SmootherMode.LINEAR`
+a ramp that reaches each new value in exactly that time. A smoother starts at its input's first
+value, so it never ramps up from zero when a sound starts. Here a cutoff steps eight times a second:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/tpt_filters/smoother.png" wait="2.0" capture="box" open-outputs="true" padding="20"}
+:::static
+val steps = floatArrayOf(300f, 1200f, 600f, 2400f, 900f)
+fun stepped() = SamplesSignal(FloatArray(36_000) { steps[it / 6000 % steps.size] })
+
+fun control(smoother: SignalProcessor?): List<Float> {
+    val signal = if (smoother == null) stepped() else stepped() / smoother
+    return renderSignalsOffline(0.75, signal)[0].filterIndexed { i, _ -> i % 24 == 0 }
+}
+
+val ms = List(1500) { it / 2.0 }
+showSignals(
+    "stepped" to control(null),
+    "Smoother 30 ms" to control(Smoother(0.03.p)),
+    "Smoother 60 ms, LINEAR" to control(Smoother(0.06.p, SmootherMode.LINEAR)),
+    x = ms,
+    channel = "main",
+    xTitle = "time (ms)",
+    yTitle = "cutoff (Hz)",
+)
+```
+
+![A blue step function jumping between 300, 1200, 600, 2400, 900 and 300 Hz every 125 ms. An orange curve follows each step as an exponential rise or fall, nearly arriving before the next step; a green curve follows each one as a straight ramp that arrives 60 ms after the step and then holds flat](assets/tpt_filters/smoother.png)
+
+### Listening: saturation and the singing filters
+
+The 200 Hz to 8 kHz sweep through `tanh` at drive 6, first naive, then with ADAA. Listen in the last
+second, where the aliases fall in pitch as the sweep rises:
+
+```diffstatic_runner {data-lang=kotlin audio="assets/tpt_filters/tanh-naive.wav" audio-spec="tanh-naive" audio-renderer="afield.audio.synth.TptFilterDocs" embed=true hidden=true name="tpt-filters-tanh-naive-audio"}
+// Offline-rendered by TptFilterDocs.renderWav("tanh-naive").
+```
+
+```diffstatic_runner {data-lang=kotlin audio="assets/tpt_filters/tanh-adaa.wav" audio-spec="tanh-adaa" audio-renderer="afield.audio.synth.TptFilterDocs" embed=true hidden=true name="tpt-filters-tanh-adaa-audio"}
+// Offline-rendered by TptFilterDocs.renderWav("tanh-adaa").
+```
+
+A 55 Hz saw through `ZdfLadder`, the cutoff sweeping slowly while resonance rises from 0.6 to past 1
+over four seconds, until the filter's own tone takes over:
+
+```diffstatic {data-lang=kotlin}
+SawOsc(55.p) * 0.5f /
+    ZdfLadder(
+        Param(700f).also { it.mod = SineOsc(0.25.p) * 500f },
+        Param { 0.6f + 0.55f * (time / 4f).coerceAtMost(1f) },
+        drive = 1.5.p,
+    )
+```
+
+```diffstatic_runner {data-lang=kotlin audio="assets/tpt_filters/zdf-ladder.wav" audio-spec="zdf-ladder" audio-renderer="afield.audio.synth.TptFilterDocs" embed=true hidden=true name="tpt-filters-zdf-ladder-audio"}
+// Offline-rendered by TptFilterDocs.renderWav("zdf-ladder").
+```
+
+A self-oscillating `ZdfSvf` band-pass played as an oscillator: faint noise in, its cutoff stepping
+through five pitches and smoothed over 40 ms, so each step is a glide:
+
+```diffstatic_runner {data-lang=kotlin audio="assets/tpt_filters/zdf-svf.wav" audio-spec="zdf-svf" audio-renderer="afield.audio.synth.TptFilterDocs" embed=true hidden=true name="tpt-filters-zdf-svf-audio"}
+// Offline-rendered by TptFilterDocs.renderWav("zdf-svf").
+```
+
+A saw through a ladder whose cutoff steps eight times a second, raw and then through `smoothed(0.03f)`.
+The first one clicks on every step:
+
+```diffstatic_runner {data-lang=kotlin audio="assets/tpt_filters/stepped-raw.wav" audio-spec="stepped-raw" audio-renderer="afield.audio.synth.TptFilterDocs" embed=true hidden=true name="tpt-filters-stepped-raw-audio"}
+// Offline-rendered by TptFilterDocs.renderWav("stepped-raw").
+```
+
+```diffstatic_runner {data-lang=kotlin audio="assets/tpt_filters/stepped-smoothed.wav" audio-spec="stepped-smoothed" audio-renderer="afield.audio.synth.TptFilterDocs" embed=true hidden=true name="tpt-filters-stepped-smoothed-audio"}
+// Offline-rendered by TptFilterDocs.renderWav("stepped-smoothed").
+```
+
+To play them with sliders, open [`nonlinear_filters`](agent_transcripts.md#nonlinear_filters).
+
 ## Linear prediction: a voice's envelope, on anything
 
 Linear predictive coding (LPC) predicts each sample from the few before it:
@@ -1093,5 +1308,5 @@ watch its figure change.
 
 ## API reference
 
-- Filter implementations: [`Korg35`](reference/synthesis.md#filters-kt-korg35), [`TptOnePole`](reference/synthesis.md#filters-kt-tptonepole), [`TiltEQ`](reference/synthesis.md#filters-kt-tilteq).
+- Filter implementations: [`Korg35`](reference/synthesis.md#filters-kt-korg35), [`TptOnePole`](reference/synthesis.md#filters-kt-tptonepole), [`TiltEQ`](reference/synthesis.md#filters-kt-tilteq), [`AdaaShaper`](reference/synthesis.md#filters-kt-adaashaper), [`ZdfLadder`](reference/synthesis.md#filters-kt-zdfladder), [`ZdfSvf`](reference/synthesis.md#filters-kt-zdfsvf), [`Smoother`](reference/synthesis.md#filters-kt-smoother).
 - Prediction and resynthesis: [`Lpc`](reference/audio.md#lpc-kt-lpc), [`Lpc.analyze`](reference/audio.md#lpc-kt--lpc--analyze), [`LpcVocoder`](reference/audio.md#lpc-kt-lpcvocoder).

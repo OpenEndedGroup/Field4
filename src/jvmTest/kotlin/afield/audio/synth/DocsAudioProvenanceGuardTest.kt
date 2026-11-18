@@ -325,7 +325,11 @@ class DocsAudioProvenanceGuardTest {
          * `spectral_examples.md` added five more (2026-11-16), [Origin.DOUGH_DSP]: [LpcDocs] renders a
          * synthesized formant voice, its LPC residual, and its envelope driving pulses (robot), noise
          * (whisper) and a saw synth.
+         *
+         * `spectral_examples.md` added six more (2026-11-18), [Origin.DOUGH_DSP]: [TptFilterDocs] renders a
+         * swept sine through naive and ADAA tanh, the ZdfLadder rising into self-oscillation, a singing
+         * ZdfSvf with a smoothed stepped pitch, and a stepped-cutoff ladder raw and smoothed.
          */
-        const val EXPECTED_FENCE_COUNT = 154
+        const val EXPECTED_FENCE_COUNT = 160
     }
 }

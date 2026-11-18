@@ -2896,6 +2896,17 @@ Resonators on white noise. Boxes 2 and 3 need the audio device.
 
 [Open →](offline.html?file=assets/agent_transcripts/evieve_filters/metadata.edn)
 
+### nonlinear_filters
+
+[Saturation without aliasing, and filters that sing](spectral_examples.md#saturation-without-aliasing-and-filters-that-sing):
+the nonlinear filters after evieve, played with sliders. Box 1 plays a 55 Hz saw through `ZdfLadder`
+with cutoff, resonance (past 1 it sings on its own) and drive, each smoothed so dragging never
+clicks. Box 2 plays a self-oscillating `ZdfSvf` band-pass as an oscillator, its pitch on a slider.
+Box 3 drives a sine into `tanh` with and without ADAA and crossfades between them. Each box needs
+the audio device; stop one before running the next.
+
+[Open →](offline.html?file=assets/agent_transcripts/nonlinear_filters/metadata.edn)
+
 ### datalog_rhythm_drawn
 
 [Rules that listen to the drawing](datalog.md#rules-that-listen-to-the-drawing): Datalog rhythm
