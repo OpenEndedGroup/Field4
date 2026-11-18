@@ -332,11 +332,11 @@ hill climber and the small evolving population in §10.
 
 ### Changing the reward
 
-Score the same trials differently and the learners end in different places. Five learners per
+Score the same trials differently and the learners end in different places. Three learners per
 reward, all starting from the centre: `SEEK` scores the light at the body as before, `FLEE` scores
 minus the light, `FREEZE` minus the speed, and `CHARGE` the light plus the speed.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/braitenberg_vehicles/cube_rewards.png" embed=true wait="10.0" timeout="300" capture="box" open-outputs="true" padding="20" w="640" trim="true" alt="twenty learner paths from the centre of the weight cube in four colours: seek runs to negative same, flee to positive same, freeze straight down in drive and charge straight up"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/braitenberg_vehicles/cube_rewards.png" embed=true wait="10.0" timeout="300" capture="box" open-outputs="true" padding="20" w="640" trim="true" alt="twelve learner paths from the centre of the weight cube in four colours: seek runs to negative same, flee to positive same, freeze straight down in drive and charge straight up"}
 val lights = [Light(60.0, 60.0), Light(180.0, 70.0), Light(120.0, 180.0), Light(200.0, 200.0)]
 val view = CubeView(size = 560.0)
 val colours = [
@@ -346,9 +346,9 @@ val colours = [
     CubeReward.CHARGE to vec(1.0, 0.35, 0.35, 1.0),
 ]
 
-// Five learners per reward, all from the centre of the cube, trained in parallel.
+// Three learners per reward, all from the centre of the cube, trained in parallel.
 val learners = colours.associate { (reward, _) ->
-    reward to (1..5).map { k -> WeightCubeLearner(lights, reward, seed = 100L + k) }
+    reward to (1..3).map { k -> WeightCubeLearner(lights, reward, seed = 100L + k) }
 }
 learners.values.flatten().parallelStream().forEach { it.train(2000) }
 val drawn = colours.flatMap { (reward, colour) ->
@@ -366,11 +366,11 @@ val start = view.dot(CubeWiring(0.0, 0.0, 0.0), vec(1.0, 1.0, 1.0, 1.0), 4.0)
 lines(view.frame() + drawn + start, w = 560.0, h = 560.0)
 ```
 
-Each reward has its own basin. The seekers end, on average, at `same = −2.9, cross = 1.2,
-drive = 0.6`, the lover-and-aggressor of the first figure, with light 0.69. The fleers end at
-`same = 2.4, cross = −0.7, drive = −0.7`, Braitenberg's coward with a little explorer in it: they
+Each reward has its own basin. The seekers end, on average, at `same = −2.9, cross = 1.3,
+drive = 0.7`, the lover-and-aggressor of the first figure, with light 0.72. The fleers end at
+`same = 2.4, cross = −0.8, drive = −0.6`, Braitenberg's coward with a little explorer in it: they
 speed up on the side facing a lamp, turn away and slow down in the dark, and the light at their
-bodies falls from 0.30 to 0.20. The freezers move only along `drive`, to −1.6: once the motor
+bodies falls from 0.30 to 0.20. The freezers move only along `drive`, to −1.7: once the motor
 neurons are off the weights do nothing, so the learner never moves them, and the speed falls from
 0.75 to 0.17, just above the wheels' idle speed of 0.15. The chargers move only up `drive`, to
 1.75, and drive at 1.33 with light 0.26, slightly worse than where they started. Speed is worth

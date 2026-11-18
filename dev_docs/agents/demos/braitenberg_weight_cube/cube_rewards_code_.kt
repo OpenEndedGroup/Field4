@@ -7,9 +7,9 @@ val colours = [
     CubeReward.CHARGE to vec(1.0, 0.35, 0.35, 1.0),
 ]
 
-// Five learners per reward, all from the centre of the cube, trained in parallel.
+// Three learners per reward, all from the centre of the cube, trained in parallel.
 val learners = colours.associate { (reward, _) ->
-    reward to (1..5).map { k -> WeightCubeLearner(lights, reward, seed = 100L + k) }
+    reward to (1..3).map { k -> WeightCubeLearner(lights, reward, seed = 100L + k) }
 }
 learners.values.flatten().parallelStream().forEach { it.train(2000) }
 val drawn = colours.flatMap { (reward, colour) ->
