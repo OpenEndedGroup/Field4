@@ -20,12 +20,13 @@ import afield.graphics.vulkan.*
 import afield.media.stream.*
 import afield.media.video.*
 import afield.document.properties.Delegation
+import java.util.ArrayDeque
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Custom marking menus: [Box.customMarking] maps a direction and a label to a callback, and the frontend
- * shows the entries as a radial menu on the box.
+ * Custom marking menus: [Box.markingMenu] builds callbacks and nested submenus; the older
+ * [Box.customMarking] map adds flat entries. The frontend shows them as a radial menu on the box.
  *
  * [MarkingDirections] names the directions and their angles. When the menu is shown the server
  * registers each callback under an id and sends the frontend serialisable entries; choosing an
@@ -67,8 +68,74 @@ object MarkingDirections {
 // Values are callbacks to invoke when that direction is selected.
 var Box.customMarking by Delegation<MutableMap<Pair<String, String>, () -> Unit>>(defaultValue = { mutableMapOf() })
 
+/** A callback item or a submenu created by [MarkingMenuBuilder]. */
+class MarkingMenuItem internal constructor(
+    val direction: String, val label: String,
+    internal val callback: (() -> Unit)? = null,
+    val children: List<MarkingMenuItem> = emptyList(),
+    val outputChannel: String = "", val outputWidth: Int = 360, val outputHeight: Int = 240
+)
+
+/** Build a radial level with [item] callbacks and nested [submenu] levels. */
+class MarkingMenuBuilder {
+    internal val entries = mutableListOf<MarkingMenuItem>()
+
+    private fun validate(direction: String, label: String) {
+        require(direction in MarkingDirections.directions) { "Unknown marking direction '$direction'; use N, NE, E, SE, S, SW, W, NW, optionally followed by 2" }
+        require(label.isNotBlank()) { "A marking item needs a label" }
+    }
+
+    /** Put a callback in a compass direction, e.g. `item("N", "Refresh") { println("refresh") }`. */
+    fun item(direction: String, label: String, callback: () -> Unit) {
+        validate(direction, label)
+        entries.add(MarkingMenuItem(direction, label, callback))
+    }
+
+    /**
+     * Put an existing output channel inside the menu. Controls, SVG/canvas visualizers and iframe
+     * views keep their live state and callbacks. Back/Escape returns them to their output area.
+     * Create the channel with the normal `controlGroup`, `display` or visualization API first.
+     */
+    fun output(direction: String, label: String, channel: String, width: Int = 360, height: Int = 240) {
+        validate(direction, label)
+        require(channel.isNotBlank() && channel != "nested" && !channel.startsWith("*")) {
+            "Use a named output channel; nested canvases and inline-value channels stay on the canvas"
+        }
+        require(width in 80..1200 && height in 40..900) { "Menu output size must be 80..1200 by 40..900 pixels" }
+        entries.add(MarkingMenuItem(direction, label, outputChannel = channel, outputWidth = width, outputHeight = height))
+    }
+
+    /** Open another radial level by hovering or releasing on this label. */
+    fun submenu(direction: String, label: String, build: MarkingMenuBuilder.() -> Unit) {
+        validate(direction, label)
+        val children = MarkingMenuBuilder().apply(build).entries.toList()
+        require(children.isNotEmpty()) { "A marking submenu needs at least one item" }
+        entries.add(MarkingMenuItem(direction, label, children = children))
+    }
+}
+
+private var Box.customMarkingMenu by Delegation<List<MarkingMenuItem>>(defaultValue = { emptyList() })
+
+/**
+ * Replace this box's live custom marking menu. Rerunning replaces callbacks rather than accumulating
+ * entries. Shift+Alt-click opens it (Alt-click also works on text frames). N is up, E right, S down,
+ * W left; append 2 for the outer ring. Use [MarkingMenuBuilder.submenu] for another radial level.
+ * The older [customMarking] map remains available and its entries are included alongside this menu.
+ * Menus are runtime state: run the installing code again after reopening a document.
+ */
+fun Box.markingMenu(build: MarkingMenuBuilder.() -> Unit) {
+    val entries = MarkingMenuBuilder().apply(build).entries.toList()
+    customMarkingCallbackIds.remove(markingOwnerKey())?.flatten()?.forEach { customMarkingCallbacks.remove(it) }
+    customMarkingMenu = entries
+}
+
 // Registry for custom marking callbacks (maps callbackId -> callback)
 private val customMarkingCallbacks = ConcurrentHashMap<String, () -> Unit>()
+private val customMarkingCallbackIds = ConcurrentHashMap<String, ArrayDeque<Set<String>>>()
+
+private fun Box.markingOwnerKey(): String =
+    if (isInsideInitialized()) "${inside.filename}\u0000$id" else "unbound:${System.identityHashCode(this)}"
+
 
 internal fun registerCustomMarkingCallback(callbackId: String, callback: () -> Unit) {
     customMarkingCallbacks[callbackId] = callback
@@ -88,20 +155,31 @@ internal fun fireCustomMarkingCallback(callbackId: String): Boolean {
  * serializable entries for the frontend.
  */
 internal fun prepareCustomMarkingEntries(box: Box): List<CustomMarkingEntry> {
-    val marking = box.customMarking
-    if (marking.isEmpty()) return emptyList()
-
-    return marking.mapNotNull { (key, callback) ->
-        val (direction, label) = key
-        val info = MarkingDirections.directions[direction] ?: return@mapNotNull null
-        val callbackId = "cm-${box.id}-${UUID.randomUUID()}"
-        registerCustomMarkingCallback(callbackId, callback)
-        CustomMarkingEntry(
-            direction = direction,
-            label = label,
-            callbackId = callbackId,
-            radius = info.radius,
-            angle = info.angle
-        )
+    val ids = mutableSetOf<String>()
+    fun prepare(item: MarkingMenuItem): CustomMarkingEntry {
+        val info = MarkingDirections.directions.getValue(item.direction)
+        val callbackId = if (item.callback != null) "cm-${box.id}-${UUID.randomUUID()}" else ""
+        item.callback?.let { callback ->
+            ids.add(callbackId)
+            registerCustomMarkingCallback(callbackId) {
+                Box.withBoxContextNow(box) { callback() }
+            }
+        }
+        return CustomMarkingEntry(item.direction, item.label, callbackId, info.radius, info.angle,
+            item.children.map(::prepare), item.outputChannel, item.outputWidth, item.outputHeight)
     }
+    val legacy = box.customMarking.mapNotNull { (key, callback) ->
+        val (direction, label) = key
+        if (direction !in MarkingDirections.directions) return@mapNotNull null
+        MarkingMenuItem(direction, label, callback)
+    }
+    val result = (legacy + box.customMarkingMenu).map(::prepare)
+    // Keep recent menus independently usable in several views, with bounded callback retention.
+    customMarkingCallbackIds.compute(box.markingOwnerKey()) { _, previous ->
+        val snapshots = previous ?: ArrayDeque()
+        snapshots.addLast(ids.toSet())
+        while (snapshots.size > 32) snapshots.removeFirst().forEach { customMarkingCallbacks.remove(it) }
+        snapshots
+    }
+    return result
 }

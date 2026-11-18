@@ -81,6 +81,18 @@ class SemanticDirectoryProxyTest {
         }
     }
 
+    @Test fun textFrameMarkdownIsIndexedWithItsBoxAndHeadings() = fixture { root, _ ->
+        Files.writeString(root.resolve("document/metadata.edn"), """
+            {"version" 2 "boxes" [{"id" "writer" "properties" {
+              "name" "Research notes" "box_kind" "text-frame" "contents" "# Quartz observations\n\nquartzneedle is a writing sample."}}]}
+        """.trimIndent())
+        val all = capsules(root)
+        assertTrue(all.isNotEmpty())
+        assertTrue(all.all { it.boxId == "writer" && it.property == "contents" && it.language == "markdown" })
+        assertTrue(all.any { "quartzneedle" in it.source })
+        assertTrue(all.any { it.symbol.contains("Quartz") || it.title.contains("Quartz") })
+    }
+
     @Test fun exclusionsBinaryInvalidUtf8AndOversizedChildrenAreNotIndexed() = fixture { root, external ->
         Files.writeString(external.resolve("good.txt"), "allowedneedle")
         Files.writeString(external.resolve(".gitignore"), "ignored.txt\n")

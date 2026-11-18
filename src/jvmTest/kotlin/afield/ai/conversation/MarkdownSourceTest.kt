@@ -16,6 +16,7 @@ class MarkdownSourceTest {
             "- -\n- **repeated** repeated\n   wrapped text\n\n1) first\n2. second",
             "[same](https://same.example/same) same [**label**](field:box)",
             "![**bold** alt](https://example.org/pic.png) [label](https://example.org/a**b**)",
+            "![glob](**/*.png) [**label**](https://example.org/a**b**) prose *italic*",
             "![a picture](https://example.org/pic.png) ![](data:image/png;base64,AA==)",
             "inline \\(x^2\\) and \$x\$ and \$\$a+b\$\$ and `\$x\$`.",
             "| A | B |\n| :--- | ---: |\n| *same* | same |\n| | & |",
@@ -23,6 +24,12 @@ class MarkdownSourceTest {
             "```\nno language\n```\n\n```glsl\nfloat a = 0.;"
         )
         for (source in examples) assertEquals(aiChatMarkdownHtml(source), withoutPositions(aiChatMarkdownSourceHtml(source, true)), source)
+    }
+
+    @Test fun `image paths are literal even when they contain FileManager globs`() {
+        for (html in listOf(aiChatMarkdownHtml("![scan](**/*.png)"), aiChatMarkdownSourceHtml("![scan](**/*.png)", true))) {
+            assertTrue("src=\"**/*.png\"" in html, html)
+        }
     }
 
     @Test

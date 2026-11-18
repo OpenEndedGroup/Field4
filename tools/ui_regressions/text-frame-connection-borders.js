@@ -47,7 +47,7 @@ const assertCornerRouting = () => {
         return {x: origin.x + t * dx, y: origin.y + t * dy};
     };
     const checkEndpoint = (box, rect, expected) => {
-        const radius = 3 * window.canvasZoom();
+        const radius = 5 * window.canvasZoom() + 5;
         const nearCorner = Math.min(Math.abs(expected.x - rect.left), Math.abs(expected.x - rect.right)) < radius &&
             Math.min(Math.abs(expected.y - rect.top), Math.abs(expected.y - rect.bottom)) < radius;
         const error = Math.min(...borders(box).map(path => {
@@ -56,8 +56,9 @@ const assertCornerRouting = () => {
         }));
         check(error < (nearCorner ? radius + .1 : .1), 'Connection did not trim the 10px inset-corner ray: ' + JSON.stringify({expected, error}));
     };
-    if (fromText) checkEndpoint(source, a, trim(a, start, end));
-    if (toText) checkEndpoint(child, b, trim(b, end, start));
+    const outset = r => ({left:r.left-5,right:r.right+5,top:r.top-5,bottom:r.bottom+5});
+    if (fromText) {const r=outset(a);checkEndpoint(source,r,trim(r,start,end));}
+    if (toText) {const r=outset(b);checkEndpoint(child,r,trim(r,end,start));}
 };
 await config(child);
 await wait(() => borders(child).length === 1, 'Default attachment border missing');
@@ -80,13 +81,16 @@ for (const [x, y] of [[70, 90], [1030, 90], [1030, 730], [70, 730]]) {
     wrapped ||= Math.abs(a.x - b.x) > 4 && Math.abs(a.y - b.y) > 4;
     const boxRect = child.getBoundingClientRect(), matrix = path.getScreenCTM(), bounds = path.getBBox();
     const topLeft = new DOMPoint(bounds.x, bounds.y).matrixTransform(matrix);
-    check(Math.abs(topLeft.x - boxRect.x) < 1 && Math.abs(topLeft.y - boxRect.y) < 1, 'Border does not follow the real frame');
+    check(Math.abs(topLeft.x - (boxRect.x - 5)) < .1 && Math.abs(topLeft.y - (boxRect.y - 5)) < .1, 'Connection border is not outset by 5px');
 }
 check(wrapped, 'Border failed to wrap around the inset corner attachment');
 for (const zoom of [.5, 2]) {
     window.setCanvasZoom(zoom, 600, 450);
     await delay(250);
     const path = borders(child)[0], {length} = geometry(path), matrix = path.getScreenCTM();
+    const bounds=path.getBBox(), boxRect=child.getBoundingClientRect();
+    const corner=new DOMPoint(bounds.x,bounds.y).matrixTransform(matrix);
+    check(Math.abs(corner.x-boxRect.left+5)<.1 && Math.abs(corner.y-boxRect.top+5)<.1,'Connection outset changes with canvas zoom');
     check(Math.abs(length * Math.hypot(matrix.a, matrix.b) - 48) < .1, 'Border length changes with canvas zoom');
     check(Math.abs(Number(path.getAttribute('stroke-width')) * Math.hypot(matrix.a, matrix.b) - 1) < .01, 'Border stroke changes with canvas zoom');
     assertCornerRouting();

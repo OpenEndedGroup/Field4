@@ -9,10 +9,20 @@ const markLog = (...args) => {
 var originatingMouseDown = null
 
 var masterMousedownCallbackTable = {}
+let activeMarkingMenu = null;
+let submenuHoverTimer = null;
+let liveDivs = [];
+const handledMarkingMouseups = new WeakSet();
 
 const forceClearMarkingMenu = () => {
+        clearTimeout(submenuHoverTimer);
+        submenuHoverTimer = null;
+        activeMarkingMenu?.releaseWidget?.();
+        activeMarkingMenu = null;
+        liveDivs = [];
+        missingMouseupHandler = () => {};
         try {
-                document.querySelectorAll(".markingButton, .markingButtonBackground").forEach(el => {
+                document.querySelectorAll(".markingButton, .markingButtonBackground, .markingWidgetPanel").forEach(el => {
                         if (el.parentElement) el.parentElement.removeChild(el);
                 });
         } catch (e) {
@@ -66,22 +76,7 @@ function initMenuSupport() {
                 });
 
                 window.addEventListener("mousemove", (event) => {
-                        if (live) {
-                                let is = closestOption(event.x, event.y)
-                                markLog("window move -- compute closest ", event.x,  event.y, is)
-                                if (is)
-                                {
-                                        for(var d of liveDivs) {
-                                                d.mouseIsOver = false
-                                                d.classList.remove("markingHover")
-                                        }
-                                        is.mouseIsOver = true
-                                        is.classList.add("markingHover")
-                                }
-                        }
-                        else {
-                                markLog("window mousemove, but not live ")
-                        }
+                        if (live) activeMarkingMenu?.move(event);
                 });
 
                 canvas.addEventListener("drag", (event) => {
@@ -98,6 +93,7 @@ function initMenuSupport() {
                 window.addEventListener("mousedown", (event) => {
                         markLog("master mousedown event ", event)
                         originatingMouseDown = event
+                        if (live) activeMarkingMenu?.press(event);
 
                         import("./afield.mjs").then( (afield) => {
                                 event.target.classList.forEach(x => {
@@ -115,28 +111,21 @@ function initMenuSupport() {
                 });
 
                 window.addEventListener("keydown", (event) => {
-                        if (event.key === "Escape")
-                                if (mainFinish) {
-                                        mainFinish();
-                                        event.stopPropagation();
-                                }
-                });
+                        if (!activeMarkingMenu) return;
+                        if (event.key === "Escape") {
+                                event.preventDefault(); event.stopImmediatePropagation();
+                                activeMarkingMenu.back();
+                        } else if (event.key === "Enter" && !event.target.closest?.('.markingWidgetPanel,input,textarea,select,[contenteditable="true"]')) {
+                                event.preventDefault(); event.stopImmediatePropagation();
+                                activeMarkingMenu.choose(event);
+                        }
+                }, true);
 
                 window.addEventListener("mouseup", (event) => {
-                        markLog("master mouseup event ", event, live)
-                        if (live) {
-                                const best = closestOption(event.x, event.y);
-                                if (best && best.finish) {
-                                        best.finish(event);
-                                } else {
-                                        missingMouseupHandler(event);
-                                }
-                        } else {
-                                missingMouseupHandler(event);
-                        }
-                        // Force-clear UI even if finish callbacks fail or live is stale
-                        forceClearMarkingMenu()
-                })
+                        if (handledMarkingMouseups.has(event)) return;
+                        if (live && activeMarkingMenu) activeMarkingMenu.choose(event);
+                        else missingMouseupHandler(event);
+                });
         };
         resizeCanvas();
         window.addEventListener("resize", resizeCanvas);
@@ -166,119 +155,157 @@ let contextMenuFinish = null;
 let mainFinish = null;
 let live = false
 
+// Entries may have `children` instead of a callback. A short hover opens a sub-menu;
+// releasing on its parent also opens it, and Back/Escape returns one level.
 const goMarkingMenu = (originx, originy, menus, originatingEvent, cancelCallback) => {
-        let rr = 10;
-        let r = 120;
-
-        let debounce = Date.now();
-
-        canvas.style.pointerEvents = "auto";
-        canvas.classList.add("fadeToBlack")
-
-        let finish = (selected) => {
-                let foundOver = false
-                live = false
-                divs.forEach((d) => {
-                        if (d.mouseIsOver) {
-                                markLog("found element with mouse over, calling finish on it")
-                                mainFinish = null
-                                if (d.finish) {
-                                        was = d.finish
-                                        d.finish = null
-                                        was()
-                                }
-                                d.mouseIsOver = false
-                                foundOver = true
-                        } else {
-
+        if (activeMarkingMenu) activeMarkingMenu.close(true);
+        else forceClearMarkingMenu();
+        const rr = 10, radius = 120;
+        const stack = [{menus, x: originx, y: originy}];
+        let generation = 0, pointer = {x: originx, y: originy}, level, closed = false;
+        const childrenOf = entry => Array.isArray(entry?.children) && entry.children.length ? entry.children : null;
+        const opensLevel = entry => childrenOf(entry) || typeof entry?.mount === 'function';
+        let widgetPanel = null, releaseWidget = null;
+        const clearHover = () => { clearTimeout(submenuHoverTimer); submenuHoverTimer = null; };
+        const session = {
+                releaseWidget() {
+                        const release = releaseWidget; releaseWidget = null;
+                        try { release?.(); } finally { widgetPanel?.remove(); widgetPanel = null; }
+                },
+                close(cancelled = false) {
+                        if (closed) return;
+                        closed = true;
+                        forceClearMarkingMenu();
+                        if (cancelled) cancelCallback?.();
+                },
+                back() {
+                        if (stack.length === 1) session.close(true);
+                        else { stack.pop(); show(true); }
+                },
+                press(event) {
+                        level.ready = true;
+                        if (Number.isFinite(event?.clientX)) pointer = {x: event.clientX, y: event.clientY};
+                },
+                move(event) {
+                        if (widgetPanel) return;
+                        pointer = {x: event.clientX, y: event.clientY};
+                        if (!level.ready && Math.hypot(pointer.x - level.openedAt.x, pointer.y - level.openedAt.y) >= 12) level.ready = true;
+                        const best = level.ready ? closestOption(pointer.x, pointer.y) : level.center;
+                        for (const div of liveDivs) {
+                                div.mouseIsOver = div === best;
+                                div.classList.toggle('markingHover', div === best);
                         }
-                        if (d === selected) {
-                                setTimeout(() => {
-                                        if (document.body.contains(d)) document.body.removeChild(d);
-                                        if (d.subDiv)
-                                                if (document.body.contains(d.subDiv))
-                                                        document.body.removeChild(d.subDiv);
-                                }, 250);
-                        } else {
-                                if (document.body.contains(d)) document.body.removeChild(d);
-                                if (d.subDiv) {
-                                        if (document.body.contains(d.subDiv))
-                                                document.body.removeChild(d.subDiv);
-                                }
-                        }
-                });
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                canvas.style.pointerEvents = "none";
-                canvas.classList.remove("fadeToBlack")
-                contextMenuFinish = null;
-                mainFinish = null;
-                live = false;
-                if (!foundOver) {
-                        if (cancelCallback) cancelCallback()
+                        if (best !== level.hovered) { clearHover(); level.hovered = best; }
+                        if (!opensLevel(best?.markingEntry)) return;
+                        const rect = best.getBoundingClientRect();
+                        if (pointer.x < rect.left - 10 || pointer.x > rect.right + 10 || pointer.y < rect.top - 10 || pointer.y > rect.bottom + 10) { clearHover(); return; }
+                        if (submenuHoverTimer) return;
+                        const current = generation;
+                        submenuHoverTimer = setTimeout(() => {
+                                if (activeMarkingMenu === session && generation === current && level.hovered === best) enter(best);
+                        }, 180);
+                },
+                choose(event) {
+                        if (widgetPanel) return true;
+                        if (event && handledMarkingMouseups.has(event)) return true;
+                        if (!level.ready) { if (event) handledMarkingMouseups.add(event); return true; }
+                        const x = Number.isFinite(event?.clientX) ? event.clientX : pointer.x;
+                        const y = Number.isFinite(event?.clientY) ? event.clientY : pointer.y;
+                        const best = closestOption(x, y);
+                        if (!best) { session.close(true); return false; }
+                        return best.finish(event);
                 }
-                forceClearMarkingMenu()
         };
-        mainFinish = finish;
-
-        if (contextMenuFinish) {
-                contextMenuFinish();
+        function enter(div) {
+                if (!opensLevel(div.markingEntry)) return;
+                const rect = div.getBoundingClientRect();
+                // Leave room for six labels near canvas edges. The new level is disarmed until
+                // the pointer moves, so releasing where its parent was cannot pick a leaf.
+                const mx = Math.min(320, window.innerWidth / 2), my = Math.min(200, window.innerHeight / 2);
+                stack.push({menus: childrenOf(div.markingEntry), widget: div.markingEntry,
+                        x: Math.max(mx, Math.min(window.innerWidth - mx, rect.x + rect.width / 2)),
+                        y: Math.max(my, Math.min(window.innerHeight - my, rect.y + rect.height / 2))});
+                show(true);
         }
-
-        contextMenuFinish = finish;
-
-        missingMouseupHandler = () => {
-                if (mainFinish != null) {
-                        let was = mainFinish
-                        mainFinish = null
-                        was()
-                        live = false
-                        forceClearMarkingMenu()
+        function show(disarm = false) {
+                clearHover(); generation++; session.releaseWidget();
+                for (const div of liveDivs) { div.remove(); div.subDiv?.remove(); }
+                liveDivs = [];
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                const frame = stack[stack.length - 1], current = generation;
+                level = {ready: !disarm, openedAt: {...pointer}, hovered: null};
+                if (typeof frame.widget?.mount === 'function') {
+                        const entry = frame.widget;
+                        const panel = document.createElement('section');
+                        panel.className = 'markingWidgetPanel outputArea';
+                        panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', entry.text);
+                        const width = Math.min(entry.outputWidth || 360, window.innerWidth - 24);
+                        const height = Math.min(entry.outputHeight || 240, window.innerHeight - 76);
+                        panel.style.width = width + 'px';
+                        panel.style.left = Math.max(12, Math.min(window.innerWidth - width - 12, frame.x - width / 2)) + 'px';
+                        panel.style.top = Math.max(12, Math.min(window.innerHeight - height - 64, frame.y - height / 2)) + 'px';
+                        const header = document.createElement('header');
+                        const back = document.createElement('button'); back.textContent = 'Back'; back.title = 'Back (Esc)';
+                        back.addEventListener('click', () => session.back());
+                        const title = document.createElement('span'); title.textContent = entry.text;
+                        const close = document.createElement('button'); close.textContent = 'Close';
+                        close.addEventListener('click', () => session.close(true));
+                        header.append(back, title, close);
+                        const host = document.createElement('div'); host.className = 'markingWidgetBody'; host.style.height = height + 'px';
+                        panel.append(header, host);
+                        for (const type of ['mousedown','click','dblclick','wheel','keydown','keyup','contextmenu']) {
+                                panel.addEventListener(type, event => event.stopPropagation());
+                        }
+                        document.body.append(panel); widgetPanel = panel;
+                        try { releaseWidget = entry.mount(host); }
+                        catch (error) { host.textContent = error.message || String(error); }
+                        back.focus({preventScroll: true});
+                        return;
+                }
+                const center = makeDivAt(stack.length > 1 ? 'Back' : '&nbsp;&nbsp;&nbsp;', frame.x, frame.y,
+                        frame.x, frame.y, rr, event => {
+                                if (event) handledMarkingMouseups.add(event);
+                                if (activeMarkingMenu !== session || generation !== current) return false;
+                                if (!level.ready) return true;
+                                session.back(); return !closed;
+                        });
+                center.title = stack.length > 1 ? 'Back (Esc)' : 'Cancel (Esc)';
+                center.dataset.markingBack = stack.length > 1 ? 'true' : 'false';
+                level.center = center; liveDivs.push(center);
+                drawCircle(ctx, frame.x, frame.y, rr, 'rgba(255,255,255,0.5)');
+                for (const entry of frame.menus) {
+                        const children = opensLevel(entry);
+                        const [cx, cy] = polarToRect(frame.x, frame.y, (entry.radius ?? 1) * radius, entry.angle);
+                        let div;
+                        div = makeDivAt(entry.text + (children ? ' ›' : ''), cx, cy, frame.x, frame.y, rr, event => {
+                                if (event) handledMarkingMouseups.add(event);
+                                if (activeMarkingMenu !== session || generation !== current) return false;
+                                if (!level.ready) return true;
+                                if (children) { enter(div); return true; }
+                                // Close before running the callback; it may itself open another menu.
+                                session.close(false);
+                                entry.callback?.(originatingEvent);
+                                return false;
+                        }, liveDivs);
+                        div.markingEntry = entry;
+                        div.dataset.markingDepth = String(stack.length - 1);
+                        if (children) { div.dataset.markingSubmenu = 'true'; div.setAttribute('aria-haspopup', 'menu'); }
+                        liveDivs.push(div);
                 }
         }
-
-        let divs = [];
-
-        drawCircle(ctx, originx, originy, rr, "rgba(255,255,255,0.5)");
-        let d = makeDivAt(
-            "&nbsp;&nbsp;&nbsp;",
-            originx,
-            originy,
-            originx,
-            originy,
-            rr,
-            (event) => {
-                    markLog(" -- main finish on center")
-                    if (mainFinish) mainFinish(null);
-                    cancelCallback()
-                    live = false
-            },
-        );
-        d.title = "Cancel (Esc)";
-        divs.push(d);
-
-        for (let m of menus) {
-                let [cx, cy] = polarToRect(originx, originy, (m.radius ?? 1) * r, m.angle);
-                let d = makeDivAt(
-                    m.text,
-                    cx,
-                    cy,
-                    originx,
-                    originy,
-                    rr,
-                    (event) => {
-
-                            m.callback(originatingEvent);
-
-                            if (mainFinish) mainFinish(d);
-                            live = false
-
-                    },
-                    divs,
-                );
-                divs.push(d);
-        }
-        live = true
-        liveDivs = divs
+        activeMarkingMenu = session;
+        mainFinish = () => session.close(true);
+        contextMenuFinish = mainFinish;
+        missingMouseupHandler = event => {
+                const current = generation;
+                // interact.js can deliver dragend before the native mouseup. Let that mouseup
+                // choose first, and only fall back if it never arrived for this menu level.
+                setTimeout(() => {
+                        if (activeMarkingMenu === session && generation === current) session.choose(event);
+                }, 0);
+        };
+        canvas.style.pointerEvents = 'auto'; canvas.classList.add('fadeToBlack');
+        live = true; show();
 };
 
 const closestOption = (x, y) => {
@@ -383,42 +410,24 @@ const makeDivAt = (text, x, y, originx, originy, r, callbackUp, divs = []) => {
                 newDiv.subDiv = backingDiv;
         }
 
-        newDiv.addEventListener("mouseover", () => {
-                newDiv.mouseIsOver = true;
-                newDiv.classList.add("markingHover")
-        });
-
-        newDiv.subDiv.addEventListener("mouseover", () => {
-                newDiv.mouseIsOver = true;
-                newDiv.classList.add("markingHover")
-        });
-
-        newDiv.addEventListener("mouseout", () => {
-                newDiv.mouseIsOver = false;
-                newDiv.classList.remove("markingHover")
-        });
-
-        newDiv.subDiv.addEventListener("mouseout", () => {
-                newDiv.mouseIsOver = false;
-                newDiv.classList.remove("markingHover")
-        });
-
         // The button's mouseup and the menu-wide finish path can both reach this option.
         let didFinish = false;
         newDiv.finish = (e) => {
                 if (didFinish) return;
                 didFinish = true;
-                callbackUp(e);
+                const keepOpen = callbackUp(e);
+                if (keepOpen === true) didFinish = false;
+                return keepOpen;
         };
 
         if (text.indexOf("<") == -1) {
-                newDiv.addEventListener("mouseup", () => {
+                newDiv.addEventListener("mouseup", event => {
                         markLog("got a mouse up")
-                        newDiv.finish()
+                        newDiv.finish(event)
                 });
-                newDiv.subDiv.addEventListener("mouseup", () => {
+                newDiv.subDiv.addEventListener("mouseup", event => {
                         markLog("got a mouse up")
-                        newDiv.finish()
+                        newDiv.finish(event)
                 });
         }
 

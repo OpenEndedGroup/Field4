@@ -1869,6 +1869,13 @@ fun newBox(options: Any? = null) {
     canvasGestures.rebuildConnectionGroup()
 }
 
+/** Recover hidden graph branches even when no box remains visible or selected. */
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun revealAllBoxes() {
+    send(Message("perform-action").payload(Perform_action(emptyList(), "-reveal-all-boxes")))
+}
+
 @OptIn(ExperimentalJsExport::class)
 @JsExport
 fun deleteSelectedBoxes() {
@@ -2932,6 +2939,12 @@ fun registerBuiltinCommands() {
             run: () => {
                     moveSelectedBoxesForward()
             }
+        },{
+            id:'reveal-all-boxes',
+            label:"Reveal All Boxes",
+            detail:"Reveal hidden branches without changing the active layer filters",
+            isAvailable: () => !window.currentDocumentReadOnly,
+            run: () => { revealAllBoxes(); }
         },{
             id:'show-all-layers',
             label:"Show All Layers",

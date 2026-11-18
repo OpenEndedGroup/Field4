@@ -1,4 +1,4 @@
-import {send, growTextFrame, setTextFrameContents, flushTextFramePropertyEditor, syncTextFrameSettingsEditor} from './afield.mjs';
+import {send, growTextFrame, setTextFrameContents, flushTextFramePropertyEditor, syncTextFrameSettingsEditor, syncSelectedPropertyEditor} from './afield.mjs';
 import {mountChatAutocomplete} from './aiChatAutocomplete.js';
 import {renderFieldMarkdown} from './markdownView.js';
 import {markdownOffsetAtPoint, revealTextareaCaret} from './markdownCaret.js';
@@ -106,10 +106,18 @@ function flush(state) {
     state.dirty = false;
     write(state.box, 'contents', state.editor.value);
 }
+function markdownOptions(state, sourcePositions = false) {
+    return {sourcePositions, eagerImages: true, resolveImage: src => {
+        if (/^(https?:|data:)/i.test(src)) return src;
+        if (/^[a-z][a-z0-9+.-]*:/i.test(src)) return '';
+        const params = new URLSearchParams({document: window.currentDocumentSessionKey || window.currentDocumentFilename || '', box: state.box.uid, path: src});
+        return '/api/text-frame-asset?' + params;
+    }};
+}
 function render(state) {
     const text = state.box.contents || '';
     state.previewSource = text;
-    renderFieldMarkdown(state.preview, text, {sourcePositions: true});
+    renderFieldMarkdown(state.preview, text, markdownOptions(state, true));
     state.preview.classList.toggle('text-frame-empty', !text.trim());
     if (!text.trim()) state.preview.textContent = 'Double-click to write Markdown';
     layout(state);
@@ -118,6 +126,9 @@ function layout(state) {
     cancelAnimationFrame(state.layoutFrame);
     state.layoutFrame = requestAnimationFrame(() => {
         if (!state.box.isConnected || state.box.classList.contains('tombstoned') || !(state.box.data_w > 0 && state.box.data_h > 0)) return;
+        // A resync drains large property batches over several turns. Never persist layout from
+        // a partial box (empty contents or default reflow), or move its neighbours during load.
+        if (window.fieldPropertySyncPending?.()) { layout(state); return; }
         const config = settingsFor(state.box);
         if (state.box.getAttribute('data-connection-border-length') !== String(config.connectionBorderLength)) {
             state.box.setAttribute('data-connection-border-length', config.connectionBorderLength);
@@ -134,10 +145,13 @@ function layout(state) {
         if (editing && state.measuredDraft !== state.editor.value) {
             state.measuredDraft = state.editor.value;
             state.previewSource = state.measuredDraft;
-            renderFieldMarkdown(state.preview, state.measuredDraft);
+            renderFieldMarkdown(state.preview, state.measuredDraft, markdownOptions(state));
             state.preview.classList.remove('text-frame-empty');
         }
-        if (config.sizing === 'grow' && !window.currentDocumentReadOnly) {
+        const face = getComputedStyle(state.preview);
+        const fontReady = !document.fonts || document.fonts.check(`${face.fontStyle} ${face.fontWeight} ${face.fontSize} ${face.fontFamily}`);
+        if (config.sizing === 'grow' && !window.currentDocumentReadOnly && fontReady && document.fonts?.status !== 'loading' &&
+            [...state.preview.querySelectorAll('img')].every(img => img.complete)) {
             // The hidden preview still lays out at the real frame width, including in split panes.
             const height = state.preview.style.height, bottom = state.preview.style.bottom;
             state.preview.style.height = 'auto'; state.preview.style.bottom = 'auto';
@@ -208,7 +222,7 @@ function mount(box) {
     const body = node('div', 'text-frame-body');
     const preview = node('div', 'text-frame-preview');
     preview.title = 'Double-click to edit Markdown';
-    preview.tabIndex = 0;
+    preview.tabIndex = -1;
     preview.dataset.fieldCanvasKeyboard = 'true';
     preview.setAttribute('aria-label', 'Text frame; press Enter to edit Markdown');
     const editor = node('textarea', 'text-frame-editor');
@@ -243,7 +257,6 @@ function mount(box) {
         const offset = markdownOffsetAtPoint(preview, e.clientX, e.clientY, e.target);
         begin(state, offset, state.previewSource);
     });
-    preview.addEventListener('keydown', e => { if (e.target === preview && e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); begin(state); } });
     editor.addEventListener('input', () => {
         state.dirty = true;
         if (!state.composing) { clearTimeout(state.saveTimer); state.saveTimer = setTimeout(() => flush(state), 150); }
@@ -271,6 +284,7 @@ function mount(box) {
     }
     // Loaded images, math typesetting and a width resize can all change the amount of text that fits.
     body.addEventListener('load', () => layout(state), true);
+    body.addEventListener('error', () => layout(state), true);
     state.observer = new ResizeObserver(() => layout(state));
     state.observer.observe(box); state.observer.observe(preview);
     frames.set(box, state);
@@ -318,3 +332,43 @@ document.addEventListener('pointerdown', event => {
         if (state.box.classList.contains('text-frame-editing') && !state.box.contains(event.target)) finish(state);
     }
 }, true);
+
+// DOM focus can outlive a canvas selection (notably after spatial navigation). The selected
+// box owns Return; a previously focused reader must never reopen itself instead.
+const canvasSelection = () => Array.from(window.selectedList || []).filter(box =>
+    box.isConnected && !box.classList.contains('tombstoned') &&
+    getComputedStyle(box).display !== 'none' && getComputedStyle(box).visibility !== 'hidden');
+window.addEventListener('field-selection-changed', () => {
+    const selection = canvasSelection();
+    for (const state of frames.values()) if (!selection.includes(state.box)) {
+        if (state.box.classList.contains('text-frame-editing')) finish(state);
+        const focused = document.activeElement;
+        if (focused === state.editor || state.preview.contains(focused)) focused.blur();
+    }
+    const focused = document.activeElement;
+    const mainEditor = focused?.closest?.('.monaco-editor-container');
+    if (mainEditor) {
+        const style = getComputedStyle(mainEditor);
+        if (style.visibility === 'hidden' || style.display === 'none' || mainEditor.style.opacity === '0' || style.opacity === '0') focused.blur();
+    }
+});
+function editSelectedCanvasBox() {
+    const selection = canvasSelection();
+    if (selection.length !== 1) return;
+    const box = selection[0];
+    if (box.box_kind === 'text-frame') window.editTextFrame(box);
+    else {
+        // The normal editor polls selection. Synchronize before focusing it so an immediate
+        // keystroke cannot reach the preceding box's model.
+        syncSelectedPropertyEditor();
+        window.switchToProperty(box.uid, window.selectedProperty || box.default_property || 'code');
+    }
+}
+window.editSelectedCanvasBox = editSelectedCanvasBox;
+window.allActions.textFrames = [{
+    id: 'edit-selected-box', label: 'Edit Selected Box', keys: 'enter', keyScope: 'canvas',
+    detail: 'Edit the selected text frame, or open the selected box’s property editor',
+    canvasGuard: event => !event.isComposing && canvasSelection().length === 1,
+    run: editSelectedCanvasBox
+}];
+window.updateActions?.();

@@ -131,7 +131,7 @@ group of lines one entry in the Parts list, give the call an `id`
 happens, so the box can redraw whatever depends on the point. Here a line runs from the slab to a
 point you drag:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/three_output/handles.png" alt="an orange slab seen from above and to one side, with a thin white line rising from its centre to a yellow dot labelled tip, up and to the right of the slab" wait="4" capture="box" open-outputs="true" padding="20" name="three-handles"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/three_output/handles.png" alt="an orange slab seen from above and to one side, with a thin white line rising from its centre to a yellow dot labelled tip, up and to the right of the slab" wait="4" capture="box" open-outputs="true" padding="20" name="three-handles" embed=true}
 var tip = vec(30, 50, 0)
 fun draw() {
     three(name = "tip") {

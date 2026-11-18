@@ -76,13 +76,13 @@ check(marker.offsetTop >= editor.scrollTop && marker.offsetTop+marker.offsetHeig
 mirror.remove();
 editor.setSelectionRange(expected-2,expected+3,'backward');const savedScroll=editor.scrollTop;
 close();await delay(50);
-preview.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));
+preview.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',code:'Enter',keyCode:13,which:13,bubbles:true,cancelable:true}));
 await delay(80);
 check(editor.selectionStart===expected-2 && editor.selectionEnd===expected+3 && editor.selectionDirection==='backward' && Math.abs(editor.scrollTop-savedScroll)<2,
     'Keyboard re-entry lost the source selection or scroll: '+JSON.stringify({start:editor.selectionStart,end:editor.selectionEnd,direction:editor.selectionDirection,scroll:editor.scrollTop,expected,savedScroll}));
 editor.setSelectionRange(0,expected,'backward'); editor.scrollTop=0;
 close(); await delay(50);
-preview.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));
+preview.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',code:'Enter',keyCode:13,which:13,bubbles:true,cancelable:true}));
 await delay(80);
 check(editor.selectionStart===0 && editor.selectionEnd===expected && editor.selectionDirection==='backward' && editor.scrollTop===0,
     'Backward selection did not retain its active caret and scroll');

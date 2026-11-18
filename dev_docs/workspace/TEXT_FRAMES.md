@@ -7,8 +7,7 @@ character-level collaborative document editor.
 
 ## Writing
 
-Press **Shift+N**, or choose **New Text Frame** in the palette. Double-click the text, press Enter on
-a focused reader. Write Markdown as plain text, in Field’s normal Iosevka at 12px. Click away,
+Press **Shift+N**, or choose **New Text Frame** in the palette. Double-click the text, or select a frame and press Enter. Write Markdown as plain text, in Field’s normal Iosevka at 12px. Click away,
 press Escape, or press Cmd/Ctrl+Enter to show formatted text. Native spellcheck stays enabled, with
 Electron's existing spelling-suggestion context menu. Spellcheck dictionaries/languages follow the
 browser or OS configuration. Double-clicking a passage places the Markdown cursor at that character,
@@ -16,12 +15,17 @@ scrolling the source into view even when hidden syntax or link destinations make
 the reader. Re-entering with Enter restores the previous source selection and scroll position.
 A typeset formula or image opens at the beginning of its source expression.
 
+After double-tapping Command and using the arrow keys to navigate, Return edits the selected box.
+It also accepts the navigation while Command is still held. Moving selection away from a frame
+releases its old editor focus and preserves the draft.
+
 Shift-select boxes and press **g** to connect them as usual. Alt-click a text frame to open its marking
 menu; **down** chooses **New text frame below**, which creates a child at the same X and width, 32 world units below the bottom,
 with matching typography. For other box kinds this entry is in their Shift+Alt-click custom menu.
 A new frame receives keyboard focus immediately. **Right** chooses **Open settings**: this force-opens
 the normal editor on the `textFrame` YAML property, even with automatic editor opening switched off,
 and fills missing defaults. Existing YAML comments and unknown keys are preserved.
+The **Hide / Reveal** submenu hides or reveals descendants and ancestors; see [graph visibility](GRAPH_VISIBILITY.md).
 
 Text starts at the frame's configured padding, without a title or button bar. Selection shows Field’s
 cyan outline with its normal 5px corners. Editing uses a pure black background without an outline.
@@ -68,8 +72,9 @@ Light, regular and bold each have real upright and italic webfont faces; Markdow
 The reproducible webfont derivation and license are documented in `tools/fonts/README.md`.
 
 Connections reveal a short portion of the frame border on each side of their attachment, following
-the rounded corners. Routing starts 10 screen pixels inside the source's bottom-right corner and
-the destination's top-left corner, then trims the connecting ray to each frame boundary. Each ordinary
+the rounded corners, with the trace and connection endpoints outset 5 screen pixels from the frame
+border at every zoom. Routing starts 10 screen pixels inside the source's bottom-right corner and
+the destination's top-left corner, then trims the connecting ray to the outset boundary. Each ordinary
 box endpoint still uses its centre. Frame curve radii respect the room along the endpoint normals so
 wide frames with a small gap do not force large looping turns. The resulting bend radius is then
 increased by 15% for a small switchback. `connectionBorderLength` sets the border distance in screen pixels (default 100,
@@ -94,6 +99,19 @@ browser and server switches still apply. Requests use `ai-text-frame-suggest`, t
 provider/fast model, and a prose-specific prompt. Only a bounded document opening and draft suffix are
 sent; chat tools are unavailable. Suggestions are never saved until accepted. This is not factual
 verification or a substitute for editing.
+
+## Images and AI4
+
+Local Markdown images resolve through the owning session's FileManager, including `%document/`,
+`%project/`, named directories, search roots, home/absolute paths and globs. The image route requires
+an exact reference authored in a live text frame, permits image extensions up to 20 MiB, and uses
+sandbox CSP and nosniff. Raw HTML and arbitrary iframes remain escaped.
+
+AI4 live content listings include `contents`, notes and YAML settings. Saved inline text-frame
+Markdown is indexed alongside sidecars with box names and Markdown headings; it is not necessary
+to turn the text into code or copy it into notes. Current unsaved text is read through the box property.
+The public guide is [Writing on the canvas](../../public/docs/text_frames.md), with reproducible
+reading, inline editing and YAML settings captures.
 
 ## Synchronization and remaining work
 

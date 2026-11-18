@@ -1,0 +1,39 @@
+name: text_frame_focus
+operations:
+  - drive:
+      warmCompletion: false
+      script: |
+        ui.clickSelector("[data-focus-fixture='A'] .text-frame-preview")
+        check(ui.eval("const {a,b}=window.__textFrameFocus;return window.selectedList.length===1 && window.selectedList[0]===a && !b.contains(document.activeElement);").toString()=="true") { "Click selection retained the preceding reader's focus" }
+        ui.eval("document.querySelector('[data-focus-fixture=A] .text-frame-preview').focus();return true;")
+        ui.press("ArrowDown")
+        check(ui.eval("return getComputedStyle(document.activeElement).outlineStyle==='none';").toString()=="true") { "Arrow key exposed a second reader focus outline" }
+        ui.eval("document.querySelector('[data-focus-fixture=B] .text-frame-preview').focus();return true;")
+        ui.press("Enter")
+        ui.waitForSelector("[data-focus-fixture='A'] .text-frame-editor:focus",10000.0)
+        check(ui.eval("return document.querySelector('[data-focus-fixture=B] .text-frame-editor').hidden;").toString()=="true") { "Return edited the stale focused frame" }
+        ui.type("A draft kept during navigation. ")
+        ui.down("Meta")
+        ui.up("Meta")
+        ui.pause(60)
+        ui.down("Meta")
+        ui.press("ArrowRight")
+        check(ui.eval("const {a,b}=window.__textFrameFocus;return window.selectedList.length===1 && window.selectedList[0]===b && !a.contains(document.activeElement) && a.querySelector('.text-frame-editor').hidden && a.contents.startsWith('A draft kept during navigation. ');").toString()=="true") { "Command navigation retained focus or lost the previous frame's draft" }
+        ui.press("Enter")
+        ui.up("Meta")
+        ui.waitForSelector("[data-focus-fixture='B'] .text-frame-editor:focus",10000.0)
+        check(ui.eval("return document.activeElement.value==='Bravo';").toString()=="true") { "Return did not edit the navigated-to frame" }
+        ui.press("Escape")
+        ui.down("Meta")
+        ui.up("Meta")
+        ui.pause(60)
+        ui.down("Meta")
+        ui.press("ArrowRight")
+        ui.up("Meta")
+        check(ui.eval("return window.selectedList.length===1 && window.selectedList[0]===window.__textFrameFocus.c;").toString()=="true") { "Navigation did not select the regular box" }
+        ui.press("Enter")
+        ui.waitForSelector(".monaco-editor textarea:focus",10000.0)
+        check(ui.eval("return window.globalEditor.getModel().getValue()==='// Regular focus target' && window.currentSelectedCode[0].uid===window.__textFrameFocus.c.uid && window.fieldAutoDisplayEditor===false;").toString()=="true") { "Return opened a stale property model or changed the editor preference" }
+        ui.type("// Only C. ")
+        ui.press("Enter")
+        check(ui.eval("return window.globalEditor.getModel().getValue().includes('Only C.') && window.globalEditor.getModel().getValue().includes('\\n') && !window.__textFrameFocus.a.contents.includes('Only C.') && window.__textFrameFocus.b.contents==='Bravo';").toString()=="true") { "Typing or Return reached the wrong box after opening Monaco" }

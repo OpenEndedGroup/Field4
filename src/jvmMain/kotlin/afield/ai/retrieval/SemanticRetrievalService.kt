@@ -1262,7 +1262,8 @@ object SemanticRetrievalService {
         val sizeBytes: Long,
         val modifiedEpochMs: Long,
         val proxyRoot: Path? = null,
-        val proxyRelative: String = ""
+        val proxyRelative: String = "",
+        val inlineSource: String? = null
     )
 
     private data class WorkspaceSourceFragment(
@@ -1313,7 +1314,8 @@ object SemanticRetrievalService {
     private fun workspaceSidecarCapsules(records: List<WorkspaceSidecarRecord>, corpus: String = "workspace"): List<SemanticCapsule> {
         return records.flatMap { record ->
             val source = runCatching {
-                if (record.proxyRoot == null) Files.readString(record.file, StandardCharsets.UTF_8)
+                if (record.inlineSource != null) record.inlineSource
+                else if (record.proxyRoot == null) Files.readString(record.file, StandardCharsets.UTF_8)
                 else {
                     val file = DirectoryProxyFiles.resolve(record.proxyRoot.toFile(), record.proxyRelative)
                     val bytes = file.inputStream().use { it.readNBytes(2 * 1024 * 1024 + 1) }
@@ -1689,6 +1691,15 @@ object SemanticRetrievalService {
                         modifiedEpochMs = runCatching { Files.getLastModifiedTime(sidecar).toMillis() }.getOrDefault(0L)
                     )
                 }
+                // Text frames persist Markdown inline in metadata, rather than as a code sidecar.
+                if (transfer.properties["box_kind"] == "text-frame") {
+                    val text = transfer.properties["contents"] as? String
+                    if (!text.isNullOrBlank()) out += WorkspaceSidecarRecord(
+                        documentName, documentDir, metadataMtime, transfer.id, boxName, "contents", "markdown",
+                        metadataFile, "afield://$documentName/${transfer.id}/contents", text.toByteArray(StandardCharsets.UTF_8).size.toLong(),
+                        metadataMtime, inlineSource = text
+                    )
+                }
                 // File-proxy boxes keep their editable text in the linked file, not in a Field
                 // sidecar. Index that same file so a presentation attached to a document joins
                 // the normal workspace semantic-search corpus and stays fresh after edits.
@@ -1825,7 +1836,8 @@ object SemanticRetrievalService {
                 append(record.language).append('\t')
                 append(record.sizeBytes).append('\t')
                 append(record.modifiedEpochMs).append('\t')
-                append(record.metadataMtime).append('\n')
+                append(record.metadataMtime).append('\t')
+                append(record.inlineSource?.sha256Id().orEmpty()).append('\n')
             }
         }
         return payload.sha256Id()

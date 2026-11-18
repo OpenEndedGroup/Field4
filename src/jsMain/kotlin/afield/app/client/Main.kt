@@ -4964,6 +4964,14 @@ private fun installSpatialNavigationShortcut() {
                     }
                 }
 
+                "Enter" -> {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    deactivateSpatialNavMode()
+                    val edit = window.asDynamic().editSelectedCanvasBox
+                    if (edit != null && edit != undefined) edit()
+                }
+
                 "Escape" -> {
                     event.preventDefault()
                     event.stopPropagation()
@@ -5919,6 +5927,8 @@ suspend fun main() {
                 null
             }
 
+        fun hasPending(): Boolean = scheduled || deferred.isNotEmpty()
+
         fun shouldDefer(message: Message): Boolean {
             if (message.name == "message-batch") return true
             if (message.name == "describe-action") return true
@@ -5954,6 +5964,8 @@ suspend fun main() {
             }
         }
     }
+
+    window.asDynamic().fieldPropertySyncPending = { batchedMessageDrain.hasPending() }
 
     handlers.put("message-batch") { message, reply ->
         val batch = Json.decodeFromJsonElement<MessageBatch>(message.payload!!)
@@ -6194,6 +6206,7 @@ suspend fun main() {
                     )
                     box.asDynamic().server_visible = set.number
                     applyBoxVisibilityImmediate(box)
+                    if (!isBoxVisible(box) && selected.contains(box)) deselectBox(box)
                     requestConnectionGroupRebuild()
                 }
             }

@@ -167,7 +167,7 @@ data class ListDefinitionsResult(val definitions: List<DefinitionInfo>)
 data class DefinitionInfo(val name: String, val type: String, val fileRef: String, val language: String)
 
 /** Tool: get full contents of text properties for the current box/file context. */
-@JsonClassDescription("Return full contents for available text properties (code and shaders) in the current Field box and graph-relevant boxes, with file refs, languages, box names, relation labels, and preamble hints. Preamble hints distinguish inherited Box properties from shader-generated Mesh/Module binding helpers. Use it when you need the code of several related boxes at once, or the file refs EditFileRequest takes; for one property of a named box, GetBoxPropertyRequest is smaller. Unavailable (an error) outside a box's chat. e.g. a result entry's fileRef = `afield://doc/box-uid/code`.")
+@JsonClassDescription("Return full contents for available text properties (Markdown contents, notes, textFrame YAML, code and shaders) in the current Field box and graph-relevant boxes, with file refs, languages, box names, relation labels, and preamble hints. Preamble hints distinguish inherited Box properties from shader-generated Mesh/Module binding helpers. Use it when you need the code of several related boxes at once, or the file refs EditFileRequest takes; for one property of a named box, GetBoxPropertyRequest is smaller. Unavailable (an error) outside a box's chat. e.g. a result entry's fileRef = `afield://doc/box-uid/code`.")
 @AgentToolMeta("kotlin", effects = [ToolEffect.READ_DOCUMENT])
 data class ListContentsRequest(val unused: Int = 0)
 
@@ -636,7 +636,7 @@ data class CodeUseSemanticAnalyzeCodeRequest(
 
 /** Semantic retrieval tools ------------------------------------------------ */
 
-@JsonClassDescription("Search Field's native Lucene semantic retrieval index across Field internals, current workspace code, and documentation. This is natural-language to code/docs retrieval, not compiler resolution. Set corpus for one corpus, or corpora for combinations. Available corpora are field-internals, workspace, and documentation. Leave both blank to search all corpora. Use documentName with corpus/workspace to search a specific current workspace document. Results include BM25/symbol/vector ranks when available; vector search is active only when the local ONNX embedder is configured.")
+@JsonClassDescription("Search Field's native Lucene semantic retrieval index across Field internals, current workspace code and saved Markdown text frames, and documentation. This is natural-language to code/docs retrieval, not compiler resolution. Set corpus for one corpus, or corpora for combinations. Available corpora are field-internals, workspace, and documentation. Leave both blank to search all corpora. Use documentName with corpus/workspace to search a specific current workspace document. Results include BM25/symbol/vector ranks when available; vector search is active only when the local ONNX embedder is configured.")
 @AgentToolMeta("retrieval", effects = [ToolEffect.FILESYSTEM_READ])
 data class SemanticRetrievalSearchRequest(
     val query: String,
