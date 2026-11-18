@@ -1,5 +1,7 @@
 # Field4Vision — visionOS shell (handoff)
 
+[Spatial Ink](SPATIAL_INK.md) adds pinch drawing in an immersive space with asynchronous curve cleanup on Field.
+
 For an existing desktop OpenXR scene on AVP over Wi-Fi, use the working
 [Linux CloudXR route](../../tools/cloudxr/README.md) and its
 [optional streaming client](../field-cloudxr/README.md). This project remains the separate
