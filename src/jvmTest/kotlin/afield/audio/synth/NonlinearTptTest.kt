@@ -89,9 +89,28 @@ class NonlinearTptTest {
         return bins.maxOf { db[it] } - ref to total
     }
 
+    /**
+     * One second of [s] after a tenth of a second of warm-up. A shaper with memory starts with its
+     * history at zero, which a running sine never has; inside a one-second rectangular FFT that
+     * first sample is an impulse, and it shows as a flat floor near −91 dB under every bin.
+     */
+    private fun warmed(s: Signal): FloatArray {
+        val out = renderSignalsOffline(1.1, s)[0]
+        return out.copyOfRange(out.size - sr, out.size)
+    }
+
+    /** Off the harmonics and aliases, a warmed ADAA `tanh` sits at float rounding, not at a start-up floor. */
+    @Test fun adaaHasNoNoiseFloorOnceWarm() {
+        val db = fft(warmed(SineOsc(Param(4100f)) / AdaaShaper(AdaaShape.TANH, Param(8f))), sr.toDouble())
+            .magnitudeDbOneSided(floorDb = -200.0)
+        val off = db.indices.filter { it % 100 != 0 }.map { db[it] - db[4100] }.sorted()
+        val median = off[off.size / 2]
+        assertTrue(median < -130.0, "median off-line bin of a warmed ADAA tanh is $median dB, expected below -130")
+    }
+
     @Test fun adaaAliasesLessThanNaiveShaping() {
         val f0 = 4100
-        fun through(p: SignalProcessor) = aliasDb(renderSignalsOffline(1.0, SineOsc(Param(f0.toFloat())) / p)[0], f0)
+        fun through(p: SignalProcessor) = aliasDb(warmed(SineOsc(Param(f0.toFloat())) / p), f0)
         val tn = through(Waveshaper.tanh(Param(8f)))
         val ta = through(AdaaShaper(AdaaShape.TANH, Param(8f)))
         val c0 = through(Waveshaper.hardClip(Param(8f)))

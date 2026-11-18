@@ -620,14 +620,28 @@ showHeatmap(
 
 ![Two spectrograms side by side on a dark ground, time left to right, frequency upward. In each, an orange fundamental curves up from the bottom left and a fan of fainter cyan harmonics curves up above it. Many cyan lines reflect off the top edge and run back down, crossing the fan in a lattice. The lattice is bright in the left half and visibly dimmer in the right half, especially low in the frame](assets/tpt_filters/adaa_spectrogram.png)
 
+To hear it: the 200 Hz to 8 kHz sweep through `tanh` at drive 6, first naive, then with ADAA. Listen in the last
+second, where the aliases fall in pitch as the sweep rises:
+
+```diffstatic_runner {data-lang=kotlin audio="assets/tpt_filters/tanh-naive.wav" audio-spec="tanh-naive" audio-renderer="afield.audio.synth.TptFilterDocs" embed=true hidden=true name="tpt-filters-tanh-naive-audio"}
+// Offline-rendered by TptFilterDocs.renderWav("tanh-naive").
+```
+
+```diffstatic_runner {data-lang=kotlin audio="assets/tpt_filters/tanh-adaa.wav" audio-spec="tanh-adaa" audio-renderer="afield.audio.synth.TptFilterDocs" embed=true hidden=true name="tpt-filters-tanh-adaa-audio"}
+// Offline-rendered by TptFilterDocs.renderWav("tanh-adaa").
+```
+
 The same comparison at one frequency, a 4.1 kHz sine at drive 8, for `tanh` and for the hard clip
 at both orders. Every peak that is not a multiple of 4.1 kHz is an alias:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/tpt_filters/adaa_spectrum.png" wait="2.0" capture="box" open-outputs="true" padding="20"}
 :::static
-// dB relative to the fundamental, floored at −120
+// dB relative to the fundamental, floored at −120. The first 0.1 s is dropped: a shaper's
+// history starts at zero, which a running sine never has, and that first sample would show as a
+// flat floor under every bin.
 fun spectrumDb(shaper: SignalProcessor): List<Double> {
-    val db = fft(renderSignalsOffline(1.0, SineOsc(4100.p) / shaper)[0], 48_000.0).magnitudeDbOneSided(floorDb = -200.0)
+    val out = renderSignalsOffline(1.1, SineOsc(4100.p) / shaper)[0]
+    val db = fft(out.copyOfRange(4800, out.size), 48_000.0).magnitudeDbOneSided(floorDb = -200.0)
     return db.map { (it - db[4100]).coerceAtLeast(-120.0) }
 }
 
@@ -641,7 +655,7 @@ showSignals(
 )
 ```
 
-![Three spectra of a 4.1 kHz sine at drive 8 in dB relative to the fundamental, to 24 kHz. All share the fundamental at 0 dB and harmonics near −10 dB at 12.3 kHz and −15 dB at 20.5 kHz. Between them the naive tanh in blue has alias spikes up to about −20 dB, the loudest near 19.3 kHz and 11.1 kHz. The ADAA tanh in orange has spikes at the same places, mostly 5 to 25 dB lower, over a flat floor near −90 dB; the green order-2 hard clip is lower still at most aliases](assets/tpt_filters/adaa_spectrum.png)
+![Three spectra of a 4.1 kHz sine at drive 8 in dB relative to the fundamental, to 24 kHz. All share the fundamental at 0 dB and harmonics near −10 dB at 12.3 kHz and −15 dB at 20.5 kHz. Between them the naive tanh in blue has alias spikes up to about −20 dB, the loudest near 19.3 kHz and 11.1 kHz. The ADAA tanh in orange has spikes at the same places, mostly 5 to 25 dB lower; the green order-2 hard clip is lower still at most aliases](assets/tpt_filters/adaa_spectrum.png)
 
 `NonlinearTptTest` measures the same signal and sums the power in every bin that is not a
 harmonic. Relative to the fundamental, naive `tanh` puts −17 dB there and ADAA `tanh` −25 dB. The
@@ -692,6 +706,29 @@ showSignals(
 
 ![Two waveforms over 300 ms from silence. Both stay at zero for about 70 ms, then grow: the blue ZdfLadder output swells to a steady band of about ±0.15 by 110 ms, and the orange ZdfSvf output grows to a steady ±0.46 by about 130 ms and stays there](assets/tpt_filters/zdf_self_oscillation.png)
 
+A 55 Hz saw through `ZdfLadder`, the cutoff sweeping slowly while resonance rises from 0.6 to past 1
+over four seconds, until the filter's own tone takes over:
+
+```diffstatic {data-lang=kotlin}
+SawOsc(55.p) * 0.5f /
+    ZdfLadder(
+        Param(700f).also { it.mod = SineOsc(0.25.p) * 500f },
+        Param { 0.6f + 0.55f * (time / 4f).coerceAtMost(1f) },
+        drive = 1.5.p,
+    )
+```
+
+```diffstatic_runner {data-lang=kotlin audio="assets/tpt_filters/zdf-ladder.wav" audio-spec="zdf-ladder" audio-renderer="afield.audio.synth.TptFilterDocs" embed=true hidden=true name="tpt-filters-zdf-ladder-audio"}
+// Offline-rendered by TptFilterDocs.renderWav("zdf-ladder").
+```
+
+A self-oscillating `ZdfSvf` band-pass played as an oscillator: faint noise in, its cutoff stepping
+through five pitches and smoothed over 40 ms, so each step is a glide:
+
+```diffstatic_runner {data-lang=kotlin audio="assets/tpt_filters/zdf-svf.wav" audio-spec="zdf-svf" audio-renderer="afield.audio.synth.TptFilterDocs" embed=true hidden=true name="tpt-filters-zdf-svf-audio"}
+// Offline-rendered by TptFilterDocs.renderWav("zdf-svf").
+```
+
 `NonlinearTptTest` checks each filter's small-signal response against its bilinear prototype
 (`L⁴/(1 + 4·resonance·L⁴)` with `L = 1/(1+s)` for the ladder, `1/(s² + 2(1 − resonance)s + 1)` for
 the SVF lowpass) and checks that each sings within 2 % of its cutoff at 220 Hz, 1 kHz and 5 kHz.
@@ -727,42 +764,6 @@ showSignals(
 ```
 
 ![A blue step function jumping between 300, 1200, 600, 2400, 900 and 300 Hz every 125 ms. An orange curve follows each step as an exponential rise or fall, nearly arriving before the next step; a green curve follows each one as a straight ramp that arrives 60 ms after the step and then holds flat](assets/tpt_filters/smoother.png)
-
-### Listening: saturation and the singing filters
-
-The 200 Hz to 8 kHz sweep through `tanh` at drive 6, first naive, then with ADAA. Listen in the last
-second, where the aliases fall in pitch as the sweep rises:
-
-```diffstatic_runner {data-lang=kotlin audio="assets/tpt_filters/tanh-naive.wav" audio-spec="tanh-naive" audio-renderer="afield.audio.synth.TptFilterDocs" embed=true hidden=true name="tpt-filters-tanh-naive-audio"}
-// Offline-rendered by TptFilterDocs.renderWav("tanh-naive").
-```
-
-```diffstatic_runner {data-lang=kotlin audio="assets/tpt_filters/tanh-adaa.wav" audio-spec="tanh-adaa" audio-renderer="afield.audio.synth.TptFilterDocs" embed=true hidden=true name="tpt-filters-tanh-adaa-audio"}
-// Offline-rendered by TptFilterDocs.renderWav("tanh-adaa").
-```
-
-A 55 Hz saw through `ZdfLadder`, the cutoff sweeping slowly while resonance rises from 0.6 to past 1
-over four seconds, until the filter's own tone takes over:
-
-```diffstatic {data-lang=kotlin}
-SawOsc(55.p) * 0.5f /
-    ZdfLadder(
-        Param(700f).also { it.mod = SineOsc(0.25.p) * 500f },
-        Param { 0.6f + 0.55f * (time / 4f).coerceAtMost(1f) },
-        drive = 1.5.p,
-    )
-```
-
-```diffstatic_runner {data-lang=kotlin audio="assets/tpt_filters/zdf-ladder.wav" audio-spec="zdf-ladder" audio-renderer="afield.audio.synth.TptFilterDocs" embed=true hidden=true name="tpt-filters-zdf-ladder-audio"}
-// Offline-rendered by TptFilterDocs.renderWav("zdf-ladder").
-```
-
-A self-oscillating `ZdfSvf` band-pass played as an oscillator: faint noise in, its cutoff stepping
-through five pitches and smoothed over 40 ms, so each step is a glide:
-
-```diffstatic_runner {data-lang=kotlin audio="assets/tpt_filters/zdf-svf.wav" audio-spec="zdf-svf" audio-renderer="afield.audio.synth.TptFilterDocs" embed=true hidden=true name="tpt-filters-zdf-svf-audio"}
-// Offline-rendered by TptFilterDocs.renderWav("zdf-svf").
-```
 
 A saw through a ladder whose cutoff steps eight times a second, raw and then through `smoothed(0.03f)`.
 The first one clicks on every step:
