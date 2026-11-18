@@ -47,6 +47,8 @@ import afield.runtime.lifecycle.inMain
 import afield.runtime.lifecycle.then
 import afield.ui.output.templates.filter
 import afield.ui.visualization.h
+import afield.runtime.bytecode.CallSites
+import afield.runtime.bytecode.StackAware
 
 import afield.app.diagnostics.logging.lprintln
 import afield.document.properties.Delegation
@@ -210,8 +212,9 @@ fun <K, V> MutableMap<K, in V>.update(key: K, d: V, u: (V) -> V): V {
  * The decoration is anchored to the `.toggle(` text in the current stack frame.
  * Clicking the decoration invokes [cb].
  */
+@StackAware
 fun Marker.toggle(cb: () -> Unit) {
-    val location = locationForTextStringOnStack(".toggle(", this.box, end = true, offset = 1)
+    val location = anchoredLocation(this.box, "toggle", ".toggle(", end = true, offset = 1)
     if (location != null) this.box.decorationState.put(
         this.name + "toggle", RawDecoration(
             location, "toggle${this.name}", mapOf(
@@ -233,10 +236,11 @@ fun Marker.toggle(cb: () -> Unit) {
  *
  * Used as a lightweight "I was here" visual pulse when re-running code.
  */
+@StackAware
 fun Marker.beep(
     tick: Int = properties.update("beep", 0) { it + 1 }
 ) {
-    val location = locationForTextStringOnStack(".beep(", this.box, end = true, offset = 1)
+    val location = anchoredLocation(this.box, "beep", ".beep(", end = true, offset = 1)
     val color = if (tick % 2 == 0) "white" else "white"
     val glyph = if (tick % 2 == 0) "🞊" else "🞅"
     val q = tick % 2
@@ -263,8 +267,9 @@ class BoppableString(val s: String, val inside: Marker) : () -> String {
      *
      * Multiple calls can stack, using [index] to offset the glyph horizontally.
      */
+    @StackAware
     fun bop(index: Int, color: String = "white", filled: Boolean = true) {
-        val location = locationForTextStringOnStack(".bop(", inside.box, end = true, offset = 1)
+        val location = anchoredLocation(inside.box, "bop", ".bop(", end = true, offset = 1)
         val glyph = if (filled) "🞊" else "🞅"
         val className = "d${index}_${inside.name}"
         if (location != null) inside.box.decorationState.put(
@@ -371,8 +376,9 @@ private fun Marker.summaryBuffer(): LittleHistory =
  *
  * The call site is used as the output anchor, so the histogram appears next to the code line.
  */
+@StackAware
 fun <T> Marker.histogram(value: T, dur: Int = 100): T {
-    val location = locationForTextStringOnStack("histogram", this.box, end = true, offset = 1)
+    val location = anchoredLocation(this.box, "histogram", "histogram", end = true, offset = 1)
     val h = summaryBuffer()
     h.add(value as? Number, size = dur)
     h.outputRateLimiter {
@@ -386,8 +392,9 @@ fun <T> Marker.histogram(value: T, dur: Int = 100): T {
  *
  * The call site is used as the output anchor, so the chart appears next to the code line.
  */
+@StackAware
 fun <T> Marker.history(value: T, dur: Int = 100): T {
-    val location = locationForTextStringOnStack("history", this.box, end = true, offset = 1)
+    val location = anchoredLocation(this.box, "history", "history", end = true, offset = 1)
     val h = summaryBuffer() // intentional shared state
     h.add(value as? Number, size = dur)
     h.outputRateLimiter {
@@ -399,8 +406,9 @@ fun <T> Marker.history(value: T, dur: Int = 100): T {
 /**
  * Track rolling summary stats and emit a compact summary panel next to the call site.
  */
+@StackAware
 fun <T> Marker.stats(value: T, dur: Int = 100): T {
-    val location = locationForTextStringOnStack("stats", this.box, end = true, offset = 1)
+    val location = anchoredLocation(this.box, "stats", "stats", end = true, offset = 1)
     val h = summaryBuffer()
     h.add(value as? Number, size = dur)
     h.outputRateLimiter {
@@ -409,6 +417,18 @@ fun <T> Marker.stats(value: T, dur: Int = 100): T {
     return value
 }
 
+
+/**
+ * Where the [StackAware] helper [name] was called from in [box]'s code: from the call-site slot box
+ * bytecode armed for this call ([CallSites.take]), else by searching the stack
+ * ([locationForTextStringOnStack]) for callers the anchor pass did not rewrite (library helpers,
+ * Python, the pass switched off, a line edited since it was compiled). Both position the column the
+ * same way: at [code]'s occurrence on the line, past its end when [end], plus [offset].
+ *
+ * Call it first thing in the helper: it also clears the slot.
+ */
+fun anchoredLocation(box: Box?, name: String, code: String, end: Boolean = true, offset: Int = 1): Location? =
+    CallSites.take(box, name, code, end, offset) ?: locationForTextStringOnStack(code, box, end = end, offset = offset)
 
 /**
  * Locate the call site of [code] inside a box's current source text.
@@ -489,9 +509,10 @@ fun locationForTextStringOnStack(
  * @param defaultValue The initial value to use on first call if source cannot be found or parsed
  * @return The numeric value extracted from the source code, or the last known good value if extraction fails
  */
+@StackAware
 fun Marker.liveNumber(defaultValue: Number = 0.0): Double {
     // Find the location where liveNumber was called in the source code
-    val location = locationForTextStringOnStack(".liveNumber(", this.box, end = true, offset = 0)
+    val location = anchoredLocation(this.box, "liveNumber", ".liveNumber(", end = true, offset = 0)
 
     // Create a unique key for this specific liveNumber call based on its location
     // This allows multiple liveNumber calls on the same marker to maintain separate cached values
