@@ -92,6 +92,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Decorations.kt](../src/jvmMain/kotlin/afield/graphics/text/sentences/Decorations.kt) | Graphics | fline_examples | 1 | 64 | 23% |
 | [Functions.kt](../src/jvmMain/kotlin/afield/math/functions/Functions.kt) | Math | functions_examples | 1 | 47 | 84% |
 | [NeuralClouds.kt](../src/jvmMain/kotlin/afield/graphics/volume/NeuralClouds.kt) | Graphics | path_tracing | 1 | 19 | 66% |
+| [DrawingOn.kt](../src/jvmMain/kotlin/afield/io/drawingon/DrawingOn.kt) | Networking | drawing_on | 1 | 16 | 32% |
 | [FunctionStudy.kt](../src/jvmMain/kotlin/afield/math/functions/FunctionStudy.kt) | Function | function_conversation | 1 | 13 | 51% |
 | [DlssReconstruction.kt](../src/jvmMain/kotlin/afield/media/reconstruction/DlssReconstruction.kt) | Imaging | reconstruction_plumbing, neural_reconstruction, ray_reconstruction | 1 | 13 | 30% |
 | [OpenDlssNrPass.kt](../src/jvmMain/kotlin/afield/graphics/render/neural/OpenDlssNrPass.kt) | Graphics | open_dlss_nr | 1 | 11 | 36% |
@@ -451,7 +452,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [VolumetricNoise.kt](../src/jvmMain/kotlin/afield/lang/stacksl/VolumetricNoise.kt) | Languages | — | 1 | 18 | 57% |
 | [transcript.kt](../src/jvmMain/kotlin/afield/tools/automation/transcript.kt) | Workspace | — | 1 | 17 | 0% |
 | [Physical.kt](../src/jvmMain/kotlin/afield/audio/synth/Physical.kt) | Synthesis | — | 1 | 16 | 10% |
-| [DrawingOn.kt](../src/jvmMain/kotlin/afield/io/drawingon/DrawingOn.kt) | Networking | — | 1 | 16 | 32% |
 | [FrameArena.kt](../src/jvmMain/kotlin/afield/math/linalg/arena/FrameArena.kt) | Math | — | 1 | 16 | 22% |
 | [FabricateMaterialLibrary.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/FabricateMaterialLibrary.kt) | Renderers | — | 1 | 14 | 11% |
 | [DiagramGeometry.kt](../src/jvmMain/kotlin/afield/graphics/scene/reading/DiagramGeometry.kt) | Graphics | — | 1 | 14 | 28% |
