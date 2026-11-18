@@ -107,6 +107,8 @@ CORPUS = {
     # 2026-11-17: drag handles in three { } scenes (three_output.md#drag-handles). Ships a
     # `build.yaml`, so the count below moved 12 -> 13; registered EXECUTE as three_handles.yaml.
     "three_handles",
+    # 2026-11-18, Braitenberg weight cube. No build.yaml, so the count below is unchanged.
+    "braitenberg_weight_cube",
     # Landed 2026-09-22 in `b5b9ad9e0`, the twenty-second directory and the only one that is not a
     # saved document: no `metadata.edn`, no `build.yaml` (so the nine below is unchanged), and no
     # `_code_.kt` sidecars. It is the *source* of a transcript — `tools/demos/build_flow_grain.py`

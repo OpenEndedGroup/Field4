@@ -8,6 +8,6 @@ boxes; they are the three figures of "The path through the weight cube" in
 | --- | --- |
 | 1 | one `WeightCubeLearner` on the light reward, its path through (same, cross, drive) with dots at 0/50/250/500/2000 tries |
 | 2 | twelve learners from random starts: five reach the lover basin, seven stay where `drive` pins the motors |
-| 3 | five learners for each of `SEEK`, `FLEE`, `FREEZE` and `CHARGE`, each reward ending in its own basin |
+| 3 | three learners for each of `SEEK`, `FLEE`, `FREEZE` and `CHARGE`, each reward ending in its own basin |
 
 Method after Aatish Bhatia and Arkarup Banerjee, [Watch a Brain Learn](https://aatishb.com/myriad/how-brains-learn/).

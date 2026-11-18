@@ -1,0 +1,126 @@
+name: braitenberg_weight_cube
+description: >
+  Three pure-CPU boxes for public/docs/braitenberg_vehicles.md section 4: WeightCubeLearner learning the
+  (same, cross, drive) wiring by trial perturbation against a running baseline, drawn through CubeView as
+  a path in the weight cube; twelve learners from random starts; and the SEEK, FLEE, FREEZE and CHARGE
+  rewards each ending in its own basin. Method after Bhatia and Banerjee, "Watch a Brain Learn".
+  None opens a Window or a Renderer.
+docs:
+  - page: braitenberg_vehicles.md
+    why: "The three weight-cube figures of section 4, one box each."
+operations:
+  - create:
+      box: cube_path
+      name: "1 - One learner's path through the weight cube"
+      frame:
+        x: 60.0
+        y: 60.0
+        w: 600.0
+        h: 136.0
+      properties:
+        code: |
+          val lights = [Light(60.0, 60.0), Light(180.0, 70.0), Light(120.0, 180.0), Light(200.0, 200.0)]
+          val learner = WeightCubeLearner(lights, CubeReward.SEEK, seed = 2L).train(2000)
+          val view = CubeView(size = 560.0)
+
+          // Colour the path by time, blue for the first tries and orange for the last, and drop a faint
+          // shadow of it onto the floor of the cube so its depth reads.
+          val path = learner.path
+          val shadow = view.path(path.map { it.copy(drive = -3.0) }, vec(1.0, 1.0, 1.0, 0.18), 1.0)
+          val segments =
+              (0 until path.size - 1 step 10).map { i ->
+                  val t = sqrt(i / 2000.0)
+                  view.path(path.subList(i, min(i + 11, path.size)), vec(0.3 + 0.7 * t, 0.6, 1.0 - 0.7 * t, 0.9))
+              }
+          val marks =
+              [0, 50, 250, 500, 2000].flatMap { n ->
+                  val w = path[n]
+                  println(n.toString() + " tries: " + w + ", light " + learner.measure(w, 99999).light.f2)
+                  [view.dot(w, vec(1.0, 1.0, 1.0, 1.0))] + view.label(n.toString(), w, vec(1.0, 1.0, 1.0, 0.9), 18.0)
+              }
+          lines(view.frame() + shadow + segments + marks, w = 560.0, h = 560.0)
+  - create:
+      box: cube_many
+      name: "2 - Twelve learners, five find the lover basin"
+      frame:
+        x: 720.0
+        y: 60.0
+        w: 600.0
+        h: 136.0
+      properties:
+        code: |
+          val lights = [Light(60.0, 60.0), Light(180.0, 70.0), Light(120.0, 180.0), Light(200.0, 200.0)]
+          val view = CubeView(size = 560.0)
+          val starts = kotlin.random.Random(11)
+
+          // Twelve learners, each starting at a random wiring and each with its own trials. They are
+          // independent, so they train in parallel.
+          val learners =
+              (1..12).map { k ->
+                  val start = CubeWiring(
+                      starts.nextDouble(-2.5, 2.5),
+                      starts.nextDouble(-2.5, 2.5),
+                      starts.nextDouble(-2.5, 2.5),
+                  )
+                  WeightCubeLearner(lights, CubeReward.SEEK, start = start, seed = k.toLong())
+              }
+          learners.parallelStream().forEach { it.train(2000) }
+          val drawn = learners.flatMap { l ->
+              val end = l.measure(l.wiring, 99999)
+              println("" + l.path[0] + " -> " + l.wiring + ", light " + end.light.f2)
+              [
+                  view.path(l.path, vec(0.45, 0.75, 1.0, 0.55), 1.2),
+                  view.dot(l.path[0], vec(1.0, 1.0, 1.0, 0.6), 3.0),
+                  view.dot(l.wiring, vec(1.0, 0.6, 0.2, 1.0), 4.5),
+              ]
+          }
+          lines(view.frame() + drawn, w = 560.0, h = 560.0)
+  - create:
+      box: cube_rewards
+      name: "3 - Four rewards, four basins"
+      frame:
+        x: 1380.0
+        y: 60.0
+        w: 600.0
+        h: 136.0
+      properties:
+        code: |
+          val lights = [Light(60.0, 60.0), Light(180.0, 70.0), Light(120.0, 180.0), Light(200.0, 200.0)]
+          val view = CubeView(size = 560.0)
+          val colours = [
+              CubeReward.SEEK to vec(1.0, 0.75, 0.25, 1.0),
+              CubeReward.FLEE to vec(0.4, 0.75, 1.0, 1.0),
+              CubeReward.FREEZE to vec(0.75, 0.75, 0.8, 1.0),
+              CubeReward.CHARGE to vec(1.0, 0.35, 0.35, 1.0),
+          ]
+
+          // Three learners per reward, all from the centre of the cube, trained in parallel.
+          val learners = colours.associate { (reward, _) ->
+              reward to (1..3).map { k -> WeightCubeLearner(lights, reward, seed = 100L + k) }
+          }
+          learners.values.flatten().parallelStream().forEach { it.train(2000) }
+          val drawn = colours.flatMap { (reward, colour) ->
+              val group = learners[reward]!!
+              val ends = group.map { it.wiring }
+              val mean =
+                  CubeWiring(ends.map { it.same }.average(), ends.map { it.cross }.average(), ends.map { it.drive }.average())
+              val trial = group[0].measure(mean, 99999)
+              println(reward.toString() + ": mean end " + mean + ", light " + trial.light.f2 + ", speed " + trial.speed.f2)
+              group.flatMap { l ->
+                  [view.path(l.path, vec(colour.x, colour.y, colour.z, 0.45), 1.0), view.dot(l.wiring, colour, 4.0)]
+              } + view.label(reward.name.lowercase(), mean, colour, 18.0)
+          }
+          val start = view.dot(CubeWiring(0.0, 0.0, 0.0), vec(1.0, 1.0, 1.0, 1.0), 4.0)
+          lines(view.frame() + drawn + start, w = 560.0, h = 560.0)
+  - execute:
+      box: cube_path
+      property: code
+      type: fragment
+  - execute:
+      box: cube_many
+      property: code
+      type: fragment
+  - execute:
+      box: cube_rewards
+      property: code
+      type: fragment
