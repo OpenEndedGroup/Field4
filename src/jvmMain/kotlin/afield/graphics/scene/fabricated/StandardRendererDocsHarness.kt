@@ -363,6 +363,56 @@ object StandardRendererDocsHarness {
         }
     }
 
+    /**
+     * The grounded torus from a standing height, two ways: the virtual shadow map's debug view,
+     * where the clipmap levels show as nested squares of colour around the camera, and the shaded
+     * scene after the torus has been slid sideways, whose shadow follows it with nothing left behind.
+     * Writes the page counters before and after the move to `<outputPath>.txt`.
+     */
+    suspend fun renderVirtualShadowLevels(
+        outputPath: String,
+        renderer: Renderer = rendererFromContextOrDocument()
+    ): File {
+        val bundle = StandardRenderer.build(renderer, StandardRenderer.Config(virtualShadows = true))
+        configureGroundedTorusScene(bundle, renderer)
+        bundle.scene.aoStrength = 0f
+        bundle.scene.lightIntensity = 1.5f
+        bundle.scene.shadowSoftness = 0.5f
+        bundle.scene.camera.at.set(-0.4f, 0.9f, -2.6f)
+        bundle.scene.camera.target.set(0.4f, -0.85f, 0.6f)
+        bundle.present(renderer = renderer)
+        bundle.applyScenePlan()
+        bundle.attachTo(renderer)
+        val vsm = bundle.virtualShadows ?: error("bundle built without a virtual shadow map")
+        val torus = bundle.sceneGraph.root.walk().first { it.name == "torus" }
+
+        val debugPng = captureScene(tempPng("fabricate-vsm-levels"), bundle, renderer) { vsm.debugView = 1 }
+        vsm.debugView = 0
+        val settled = captureScene(tempPng("fabricate-vsm-settled"), bundle, renderer) {}
+        settled.delete()
+        val before = vsm.describe()
+        val renderedBefore = vsm.pages.renderedTotal
+        val redrawnBefore = vsm.pages.redrawnTotal
+        val movedPng = captureScene(tempPng("fabricate-vsm-moved"), bundle, renderer) {
+            torus.translate(0.9f, 0f, 0.35f)
+        }
+        val after = vsm.describe()
+        val rendered = vsm.pages.renderedTotal - renderedBefore
+        val redrawn = vsm.pages.redrawnTotal - redrawnBefore
+        bundle.detachEverywhere()
+
+        val report = "settled: $before\nafter moving the torus: rendered $rendered pages ($redrawn redrawn in place); $after\n"
+        File("$outputPath.txt").writeText(report)
+        lprintln("info,doc", "virtual shadow map levels: $report")
+
+        return try {
+            composeHorizontal(debugPng, movedPng, File(outputPath))
+        } finally {
+            debugPng.delete()
+            movedPng.delete()
+        }
+    }
+
     suspend fun renderAoComparison(
         outputPath: String,
         renderer: Renderer = rendererFromContextOrDocument(),

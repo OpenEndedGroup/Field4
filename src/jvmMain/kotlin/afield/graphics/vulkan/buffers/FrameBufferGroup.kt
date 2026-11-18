@@ -121,7 +121,17 @@ class FrameBufferGroup(
      */
     fun markAsWritten(imageIndex: Int = renderer.currentImage) {
         lastWritten = imageIndex % buffers.size
+        writeCount++
     }
+
+    /**
+     * How many writes [markAsWritten] has recorded, counting from zero. A reader that keeps
+     * something derived from the contents (a bounding box, a checksum) compares it to know the
+     * contents may have changed. Writes the GPU makes are not counted.
+     */
+    @Volatile
+    var writeCount = 0L
+        private set
 
     /**
      * Fills the group with [n] buffers, calling [builder] once per index. Any buffers already
