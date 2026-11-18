@@ -160,7 +160,7 @@ On a Mac, run the reader from the Field checkout. The first invocation compiles 
 installed Xcode command-line tools. Rendering and segmentation use macOS frameworks, with no
 server, network connection or external model:
 
-```sh
+```diffstatic {data-lang=sh}
 native/field-drawingon/tools/offline-review/review capture.ndjson --output capture.review
 open capture.review/index.html
 ```
@@ -184,7 +184,7 @@ The tool reports when its frame cap omits candidate states.
 For local transcription, add an installed Whisper CLI and an existing model file. This example
 uses OpenAI Whisper with a multilingual model and automatic language detection:
 
-```sh
+```diffstatic {data-lang=sh}
 native/field-drawingon/tools/offline-review/review capture.ndjson --output spoken.review \
   --stt openai --stt-executable /path/to/whisper --stt-model /path/to/base.pt
 ```

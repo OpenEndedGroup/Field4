@@ -215,16 +215,22 @@ private fun connect_center_with_terminal(
     val straight = a.point.distance(b.point)
     val maxAllowedRadius = max(1.0, straight / 3.1)
     var radius = min(dubinsMinRadius, maxAllowedRadius)
-    if ((a_box.classList.contains("text-frame-box") && terminals.start.style != ConnectionTerminalStyle.PerpendicularTick) ||
-        (b_box.classList.contains("text-frame-box") && terminals.end.style != ConnectionTerminalStyle.PerpendicularTick)) {
-        // Corner anchors can cross a wide frame through a very narrow gap. Limit the turn by
-        // room along the endpoint normals, rather than by the much longer diagonal distance.
-        val dx = b.point.x - a.point.x
-        val dy = b.point.y - a.point.y
-        val exitRoom = max(0.0, dx * a.normal.x + dy * a.normal.y)
-        val entryRoom = max(0.0, -dx * b.normal.x - dy * b.normal.y)
-        radius = min(radius, max(1.0 / mainZoom, min(exitRoom, entryRoom) / 2.0))
-        radius *= 1.15
+    val dx = b.point.x - a.point.x
+    val dy = b.point.y - a.point.y
+    val exitRoom = max(0.0, dx * a.normal.x + dy * a.normal.y)
+    val entryRoom = max(0.0, -dx * b.normal.x - dy * b.normal.y)
+    val room = min(exitRoom, entryRoom)
+    val textToText = a_box.classList.contains("text-frame-box") && b_box.classList.contains("text-frame-box") &&
+        terminals.start.style != ConnectionTerminalStyle.PerpendicularTick && terminals.end.style != ConnectionTerminalStyle.PerpendicularTick
+    if (textToText) {
+        // Preserve the deliberate switchback on text-frame connections.
+        radius = min(radius, max(1.0 / mainZoom, room / 2.0)) * 1.15
+    } else {
+        // Double the flowing bend allowance before the smooth proximity easing:
+        // twice the usual radius at long distances, tending to half the gap nearby. Keep the
+        // existing centre-ray attachments for ordinary boxes.
+        radius = if (room > 1e-6) max(1.0 / mainZoom, room * -expm1(-4.0 * radius / room) / 2.0)
+            else min(radius, 1.0 / mainZoom)
     }
 
     val key = "${(a_box.asDynamic().uid ?: a_box.hashCode()).toString()}->${(b_box.asDynamic().uid ?: b_box.hashCode()).toString()}"
@@ -283,6 +289,9 @@ private fun connect_center_with_terminal(
         strokeWidth = 1
         fill = "none"
         this.path.setAttribute("opacity", drawOpacity.toString())
+        this.path.setAttribute("data-connection-from", elementUidOrNull(a_box) ?: "")
+        this.path.setAttribute("data-connection-to", elementUidOrNull(b_box) ?: "")
+        this.path.setAttribute("data-connection-radius", radius.toString())
         appendTo(svg)
     }
 

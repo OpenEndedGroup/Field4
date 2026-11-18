@@ -29,8 +29,10 @@ operations:
 
           ![Observe, write, connect](%document/frame-diagram.svg)
 
-          - Keep the evidence close.
-          - Turn a thought into a connected frame.
+          ```kotlin
+          val x = 10
+          println(x)
+          ```
 
           The source stays ordinary Markdown.
   - create:

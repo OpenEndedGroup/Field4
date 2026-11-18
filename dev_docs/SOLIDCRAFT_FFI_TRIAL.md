@@ -1,7 +1,7 @@
 # Optional SolidCraft FFM trial
 
 Field keeps its existing Manifold binding. This trial adds a separate, optional path to SolidCraft's
-document and B-rep engine at pinned upstream release v0.41.0 (commit `3c8efdb51952ed9a5f3ebc722c2bad1454fe6d80`;
+document and B-rep engine at pinned upstream release v0.44.1 (commit `e151d5ea6866fb055e011379153fb1cae0566f22`;
 the pin lives in `tools/build_solidcraft_native.py`).
 Ordinary `compileKotlinJvm`, `check`, and Field startup do not download or load SolidCraft.
 
@@ -56,7 +56,8 @@ call, so expensive evaluations block the calling thread.
 
 `solidCraft { ... }` (`SolidCraftBuilder.kt`) builds a design instead of opening one: sketches of
 lines, arcs, circles, splines and 3D wires (`wire(fline)` samples a Field `FLine`), then extrude,
-revolve, sweep (twist, scale, guide rails with `scale`/`stretch` fit), loft, pipe, fillet, and
+revolve, sweep (twist, scale, guide rails with `scale`/`stretch` fit), loft (closing to an apex
+point), pipe, fillet, chamfer (equal, two distances, distance and angle), offset faces, and
 the surface sweep (with rails), loft (end continuity G0–G3), revolve, boundary patch and thicken.
 `feature(type, json)` adds any other `FeatureKind` by its JSON fields.
 
@@ -92,6 +93,27 @@ Facts found doing so, rechecked at v0.41.0, where sweeps go through SolidCraft's
   helix fails with `SMLib failed (status 1001)` at `wire(line, spacing = 0.5f)` and builds at
   1 mm (the default), 1.5 mm and 2 mm, within 0.1% of πr²L. It is the spacing and not the point
   count: half the knot at 0.5 mm (~230 points) fails where the whole knot at 1 mm (~230) builds.
+- Chamfers and face offsets are exact (v0.44.1). On a 20 × 10 × 10 block, a chamfer of one edge,
+  of one edge by 1 × 2, by 1 at 30° (the second leg is `tan 30°`, measured from the face facing
+  up most), and of the four top edges mitred at the corners (`d²(L + W) − 4d³/3` removed) all
+  match their closed forms to 1e-9; so does a base edge of a pyramid, where the faces meet at
+  atan 2 rather than 90°.
+- Chamfering *every* edge (`mesh().edges()` lists them from the tessellation's face IDs, each
+  marked convex or concave) works in one feature only while no outside and inside edge meet at a
+  corner: a block, a drilled block, a hex nut and a stepped shaft build; a pocketed block, an L
+  bracket and plates of bosses fail with SMLib's "Fillet Corner Error: Vertex Computation
+  Failure", in under a second. The same edges as two chamfers, outside then inside, build every
+  one of them. A pyramid's apex (four chamfers meeting) is refused outright ("not supported yet");
+  a fillet of every edge builds on all of these, the pyramid included. Two chamfers of a 4 × 4
+  plate of bosses (204 edges) take about 5 s, a fillet about the same; the 3 × 3 plate (120 edges)
+  about 1.7 s. The `chamfer_everything` document runs the ladder.
+- An offset face moves the plane and re-intersects its neighbours, so the result is the exact
+  half-space intersection even where vertices change. A square pyramid (apex four planes at a
+  point) with one side, two opposite sides or all four moved ±1 matches Manifold's half-space
+  volume to 1e-6. One side or two opposite sides open the apex into a ridge (six vertices); two
+  adjacent sides moved alike still meet the fixed two at one point on the diagonal, so the apex
+  slides and stays one vertex. Field's Manifold `insetFaces`, which moves vertices by least
+  squares, can only approximate the ridge cases; the smoke prints both volumes.
 - `surfaceBoundary` builds from three curves as well as two; the curves must run the same way.
 - Sketch points the builder draws are fixed and it adds no constraints; parametric dimensions go
   through expressions (`param`) in feature fields, not sketch constraints.

@@ -203,6 +203,10 @@ visionOS viewer draws the same handles, and there you pinch a marker and move it
 Both viewers send the same drag, and Field applies `axis` or `normal` before your callback sees the
 position. While one viewer drags a handle, the others show the marker moving.
 
+A handle's callback can hand the position to a constraint solver instead of using it directly.
+[Shapes from constraints](ceres.md) drags the corners of a cube whose faces must stay flat, and of
+boxes whose edges run toward vanishing points, with Ceres re-solving the shape on every move.
+
 ### Toolbar controls
 
 A view starts with no toolbar controls, so it is a picture you can orbit. Ask for the ones you
@@ -1256,3 +1260,12 @@ loading its document. This does not re-run code. The latest panel per channel, e
 open/close state, and current control values are replayed; cleared panels stay cleared.
 Retention is in memory (up to 128 panels and eight million HTML characters per box), not
 saved output across a server restart. Older panels are evicted when that budget is exceeded.
+
+## Where to go next
+
+- [Shapes from constraints](ceres.md) puts drag handles on a Ceres model: a cube held only by
+  flat faces, and boxes in one- and two-point perspective, re-solved as you drag.
+- [Solids & Booleans (Manifold)](manifold.md) builds the closed solids these viewers often show.
+- [Meshes and 3D geometry](mesh_examples.md) covers `triMesh`, `boxMesh` and the other mesh
+  builders used above.
+
