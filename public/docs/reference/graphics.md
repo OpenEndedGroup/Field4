@@ -5113,7 +5113,7 @@ Everything whose answer only exists in the xy plane says so in its name: [`FLine
 
 `src/jvmMain/kotlin/afield/geometry/path/FLineMeasure.kt` — [read the source](source/jvmMain/afield/geometry/path/FLineMeasure/)
 
-**Used in:** [FLine examples (Field graphics)](../fline_examples.md), [Body and hand tracking](../body_tracking.md)
+**Used in:** [FLine examples (Field graphics)](../fline_examples.md), [Body and hand tracking](../body_tracking.md), [Shapes from constraints: Ceres in Field](../ceres.md)
 
 ### Top-level functions { #flinemeasure-kt-functions }
 
