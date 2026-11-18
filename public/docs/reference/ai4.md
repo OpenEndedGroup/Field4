@@ -1072,6 +1072,8 @@ moved to frame the region; the user's camera is never touched.
 
 `src/jvmMain/kotlin/afield/ai/agent/NotationTools.kt` — [read the source](source/jvmMain/afield/ai/agent/NotationTools/)
 
+**Used in:** [AI4's built-in tools](../ai4_tools.md)
+
 ### Top-level functions { #notationtools-kt-functions }
 
 | Declaration | Summary |
