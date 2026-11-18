@@ -60,7 +60,7 @@ pad.onEvent { event ->
 <!-- field-box id="drawing-on-guide" index="1" -->
 
 ```edn [field-box id="drawing-on-guide" role="properties"]
-{"id" "drawing-on-guide" "index" 1 "name" "Drawing On · start here" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Drawing On · start here" "_tombstone" false "frame" #afield/rect [40.0 40.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "drawing-on-guide_code_.kt" "lines" 19 "characters" 925 "sha256" "5ee104b8e06e54c8f3edfd26b51f4563161286e07cac949347f71be0d04c0fe7"}]}
+{"id" "drawing-on-guide" "index" 1 "name" "Drawing On · start here" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Drawing On · start here" "_tombstone" false "frame" #afield/rect [40.0 40.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "drawing-on-guide_code_.kt" "lines" 20 "characters" 1013 "sha256" "40c16c65894e0e8f2258c7ef051ae6f1616a88d5d07dc99fc5c54d6e686ceb2b"}]}
 ```
 
 ```kotlin [field-property box="drawing-on-guide" name="code" path="drawing-on-guide_code_.kt"]
@@ -69,6 +69,7 @@ markdown(
     # Drawing On
     Run **iPad drawing head** to publish the plan and watch its preview here.
 
+    On a Mac, **./field.sh --setup** offers Drawing On and prepares its offline reader.
     Build the optional app in **native/field-drawingon/DrawingOn.xcodeproj**.
     Connect it to **/drawingon/ws**, target **ipad**, and enable **Stream live**.
     Finish a Pencil stroke: Field sends a crosshair at its last measured point.

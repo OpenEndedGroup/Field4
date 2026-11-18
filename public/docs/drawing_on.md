@@ -12,6 +12,11 @@ try the Field side before connecting an iPad.
 
 ## Install and connect
 
+On a Mac, run `./field.sh --setup` and select **Drawing On iPad app / offline reader**. The BUILD
+step compiles the offline reader with your installed Apple tools and prints the Xcode steps.
+The iPad app is signed and installed from Xcode; optional transcription models are supplied separately.
+Field’s drawing-head server adapter already ships on every supported Field platform.
+
 The app's [Xcode project and build guide](https://github.com/OpenEndedGroup/Field4/tree/main/native/field-drawingon)
 ship in `native/field-drawingon/`, alongside Field's optional native headset clients. Open
 `DrawingOn.xcodeproj`, choose your iPad and development team, and run the **DrawingOn** scheme.

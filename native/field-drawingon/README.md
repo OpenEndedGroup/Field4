@@ -6,6 +6,8 @@ Read [Drawing on iPad](../../public/docs/drawing_on.md), open the **drawing_on**
 
 ## Build and connect
 
+On a Mac, `./field.sh --setup` from the Field root offers **Drawing On iPad app / offline reader**. Its BUILD step compiles only the local reader and prints the Xcode steps below. It does not install models, sign the app, or install it on a device.
+
 Open `DrawingOn.xcodeproj`, select the **DrawingOn** scheme, choose an iPad, and set your development team under Signing & Capabilities. The app requires iPadOS 18 or later. It uses UIKit for Pencil input, SwiftUI for its menu, and bundled Iosevka Light. No external iOS dependencies or App Store setup are needed.
 
 Start Field with `AFIELD_BIND_HOST=0.0.0.0` for LAN access. In the app set the address to `wss://YOUR-FIELD-HOST:9092/drawingon/ws`, target `ipad`, and enable **Stream live**. Use an HTTPS certificate matching that hostname and trusted by the iPad; Field's default localhost development certificate needs replacing for a physical device. Configure Field through `AFIELD_KEYSTORE_PATH`, `AFIELD_KEYSTORE_PASS` and `AFIELD_KEYSTORE_ALIAS`. Certificate validation stays enabled. The simulator on the same Mac can use Field's loopback mirror at `ws://127.0.0.1:19092/drawingon/ws` with default ports.

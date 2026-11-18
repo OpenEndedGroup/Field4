@@ -518,6 +518,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 ### io
 
 - [dmx](lighting.md#artnet-kt)
+- [drawingon](networking.md#drawingon-kt)
 - midi
     - [rtp](networking.md#rtpmidibox-kt)
 - [mocap](data.md#bvh-kt)
@@ -679,7 +680,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**41656 public symbols across 1846 source files**, 24821 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**41682 public symbols across 1848 source files**, 24830 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -688,7 +689,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Examples](examples.md) | 238 | 750 | 328 (43%) | Runnable examples, galleries and verification programs. |
 | [Internal](internal.md) | 25 | 195 | 77 (39%) | Implementation details explicitly marked Internal by their source. |
 | [Lighting](lighting.md) | 8 | 216 | 208 (96%) | Light sources, fixtures and control protocols for working with physical and rendered lighting. |
-| [Networking](networking.md) | 18 | 453 | 282 (62%) | OSC messages, discovery and query interfaces for connecting Field to other applications and devices. |
+| [Networking](networking.md) | 19 | 478 | 290 (60%) | OSC messages, discovery and query interfaces for connecting Field to other applications and devices. |
 | [Video](video.md) | 14 | 195 | 194 (99%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 60 | 2524 | 1904 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 26 | 1123 | 528 (47%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
@@ -707,7 +708,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Audio](audio.md) | 99 | 2658 | 1430 (53%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 22 | 592 | 592 (100%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 131 | 3348 | 1689 (50%) | Field's small languages, from the host side. |
-| [Workspace](workspace.md) | 245 | 3391 | 1377 (40%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
+| [Workspace](workspace.md) | 246 | 3392 | 1378 (40%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [AI4](ai4.md) | 102 | 2296 | 863 (37%) | AI4 is the agent that lives inside Field: the chat panel on every box, the document chat, editor completion, and headless agent tasks. |
 | [Machine learning](machine-learning.md) | 26 | 727 | 444 (61%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Animation](animation.md) | 10 | 186 | 43 (23%) |  |
@@ -1129,6 +1130,8 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [DoughDspSmokeTest.kt](audio.md#doughdspsmoketest-kt) | Audio · internal | 3 | 1 | Smoke test for the dough DSP ports: approximations, filter, phaser, reverb and envelope, checked by behaviour rather than by exact samples. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [DoughDspSoundDocs.kt](synthesis.md#doughdspsounddocs-kt) | Synthesis | 16 | 14 | Headless **offline sound-render harness** for the dough DSP ports in `DoughDsp.kt`: every audible example on the docs page is produced by running one of those primitives on the CPU. | [DoughDSP: hear the primitives](../dough_dsp_sound.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [DoughLive.kt](synthesis.md#doughlive-kt) | Synthesis | 30 | 28 | Box-level dough: `sound("/dough/play/note/60/s/sine/...")` from any box, and `thisRMS`, the level that box's own sounds are making right now. |  |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [drawingon.kt](workspace.md#drawingon-kt) | Workspace · internal | 1 | 1 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>io/<wbr>drawingon/<wbr></small> [DrawingOn.kt](networking.md#drawingon-kt) | Networking | 25 | 8 |  | [Drawing on iPad](../drawing_on.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [DrawnMorphDocs.kt](patterns.md#drawnmorphdocs-kt) | Patterns | 22 | 13 | The harness that renders the sound on `chain_drawn_morph.md` from two strokes in a document's drawing. | [A Drawn Morph, Heard](../chain_drawn_morph.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [DrawnScoreDocs.kt](patterns.md#drawnscoredocs-kt) | Patterns | 32 | 21 | A drawn score, heard — the harness behind `public/docs/chain_drawn_score.md`. | [A Drawn Score, Heard](../chain_drawn_score.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>memory/<wbr></small> [Dreaming.kt](machine-learning.md#dreaming-kt) | Machine learning | 18 | 11 |  |  |

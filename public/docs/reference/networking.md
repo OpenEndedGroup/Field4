@@ -4,9 +4,80 @@
 
 OSC messages, discovery and query interfaces for connecting Field to other applications and devices.
 
-18 source file(s), 453 public symbol(s), 282 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+19 source file(s), 478 public symbol(s), 290 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
+
+## DrawingOn.kt { #drawingon-kt }
+
+`src/jvmMain/kotlin/afield/io/drawingon/DrawingOn.kt` — [read the source](source/jvmMain/afield/io/drawingon/DrawingOn/)
+
+**Used in:** [Drawing on iPad](../drawing_on.md)
+
+### Top-level functions { #drawingon-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="drawingon-kt--drawingon"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">drawingOn</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;ipad&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">DrawingOnTarget</span></code>](source/jvmMain/afield/io/drawingon/DrawingOn/#L118) | Publish/receive an optional native Drawing On head. Connect the iPad to `/drawingon/ws?target=name`. |
+
+### DrawingOnPlane { #drawingon-kt-drawingonplane }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DrawingOnPlane</span><span class="p">(</span><span class="k">val</span> <span class="n">origin</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">listOf</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">xAxis</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">listOf</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">yAxis</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">listOf</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">scale</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">offsetX</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">offsetY</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span></code>](source/jvmMain/afield/io/drawingon/DrawingOn/#L24)
+
+Orthographic drawing plane. The default uses Field X/Y directly as iPad drawing points, with Y down.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="drawingon-kt--drawingonplane--origin"></a><code class="highlight"><span class="k">val</span> <span class="n">origin</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code> |  |
+| <a id="drawingon-kt--drawingonplane--xaxis"></a><code class="highlight"><span class="k">val</span> <span class="n">xAxis</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code> |  |
+| <a id="drawingon-kt--drawingonplane--yaxis"></a><code class="highlight"><span class="k">val</span> <span class="n">yAxis</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code> |  |
+| <a id="drawingon-kt--drawingonplane--scale"></a><code class="highlight"><span class="k">val</span> <span class="n">scale</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="drawingon-kt--drawingonplane--offsetx"></a><code class="highlight"><span class="k">val</span> <span class="n">offsetX</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="drawingon-kt--drawingonplane--offsety"></a><code class="highlight"><span class="k">val</span> <span class="n">offsetY</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+
+### DrawingOnEvent { #drawingon-kt-drawingonevent }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DrawingOnEvent</span><span class="p">(</span><span class="k">val</span> <span class="n">session</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">upload</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">event</span><span class="p">:</span> <span class="nc">JsonObject</span><span class="p">)</span></code>](source/jvmMain/afield/io/drawingon/DrawingOn/#L45)
+
+A committed capture event; `upload` distinguishes historical imports from a live gesture.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="drawingon-kt--drawingonevent--type"></a>[<code class="highlight"><span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/io/drawingon/DrawingOn/#L46) |  |
+| <a id="drawingon-kt--drawingonevent--time"></a>[<code class="highlight"><span class="k">val</span> <span class="n">time</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/io/drawingon/DrawingOn/#L47) |  |
+| <a id="drawingon-kt--drawingonevent--data"></a>[<code class="highlight"><span class="k">val</span> <span class="k">data</span><span class="p">:</span> <span class="nc">JsonObject</span></code>](source/jvmMain/afield/io/drawingon/DrawingOn/#L48) |  |
+
+### DrawingOnTarget { #drawingon-kt-drawingontarget }
+
+[<code class="highlight"><span class="k">class</span> <span class="nc">DrawingOnTarget</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">owner</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">ownerBox</span><span class="p">:</span> <span class="nc">Box</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/io/drawingon/DrawingOn/#L60)
+
+One explicitly named drawing head. [`publish`](networking.md#drawingon-kt--drawingontarget--publish) uses the AVP FLine geometry/buffer wire; [`onEvent`](networking.md#drawingon-kt--drawingontarget--onevent) receives committed Pencil, layer, view and audio events on Field's main Runloop.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="drawingon-kt--drawingontarget--onevent"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">onEvent</span><span class="p">(</span><span class="n">callback</span><span class="p">:</span> <span class="p">(</span><span class="nc">DrawingOnEvent</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/io/drawingon/DrawingOn/#L65) |  |
+| <a id="drawingon-kt--drawingontarget--publish"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">publish</span><span class="p">(</span><span class="n">lines</span><span class="p">:</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;Field · $name&quot;</span><span class="p">,</span> <span class="n">plane</span><span class="p">:</span> <span class="nc">DrawingOnPlane</span> <span class="o">=</span> <span class="nc">DrawingOnPlane</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">samplesPerCubic</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">32</span><span class="p">)</span></code>](source/jvmMain/afield/io/drawingon/DrawingOn/#L74) | Replace this head's Field reference layer, in drawing-plane coordinates. An empty list clears it. |
+| <a id="drawingon-kt--drawingontarget--sessions"></a>[<code class="highlight"><span class="k">val</span> <span class="n">sessions</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/io/drawingon/DrawingOn/#L95) | Saved sessions bound to this target, including uploaded captures. |
+| <a id="drawingon-kt--drawingontarget--readcapture"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">readCapture</span><span class="p">(</span><span class="n">session</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">consume</span><span class="p">:</span> <span class="p">(</span><span class="nc">JsonObject</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/io/drawingon/DrawingOn/#L98) | Stream a recording without loading all of its audio into memory. |
+
+### DrawingOnServices { #drawingon-kt-drawingonservices }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">DrawingOnServices</span></code>](source/jvmMain/afield/io/drawingon/DrawingOn/#L120)
+
+### DrawingOnArchive { #drawingon-kt-drawingonarchive }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">DrawingOnArchive</span><span class="p">(</span><span class="k">val</span> <span class="n">directory</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span></code>](source/jvmMain/afield/io/drawingon/DrawingOn/#L149)
+
+Append-only receiver archive. Acknowledgements are issued only after the file descriptor syncs.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="drawingon-kt--drawingonarchive--head"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">head</span><span class="p">(</span><span class="n">session</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/io/drawingon/DrawingOn/#L155) |  |
+| <a id="drawingon-kt--drawingonarchive--bind"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">bind</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">session</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/io/drawingon/DrawingOn/#L175) |  |
+| <a id="drawingon-kt--drawingonarchive--sessions"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">sessions</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/io/drawingon/DrawingOn/#L181) |  |
+| <a id="drawingon-kt--drawingonarchive--read"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">read</span><span class="p">(</span><span class="n">session</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">consume</span><span class="p">:</span> <span class="p">(</span><span class="nc">JsonObject</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/io/drawingon/DrawingOn/#L183) |  |
+| <a id="drawingon-kt--drawingonarchive--commit"></a>[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Commit</span><span class="p">(</span><span class="k">val</span> <span class="n">reply</span><span class="p">:</span> <span class="nc">JsonObject</span><span class="p">,</span> <span class="k">val</span> <span class="n">fresh</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">JsonObject</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/io/drawingon/DrawingOn/#L187) |  |
+| <a id="drawingon-kt--drawingonarchive--commit-2"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">commit</span><span class="p">(</span><span class="n">session</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">events</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">JsonObject</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Commit</span></code>](source/jvmMain/afield/io/drawingon/DrawingOn/#L188) |  |
 
 ## RtpMidiBox.kt { #rtpmidibox-kt }
 

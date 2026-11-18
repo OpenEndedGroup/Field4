@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-18T10:20:26.623Z",
+  "capturedAt": "2026-11-18T10:42:44.724Z",
   "documentName": "drawing_on",
   "outputs": [
     {
@@ -22,7 +22,7 @@
       "warnings": [],
       "kinds": [],
       "width": 479,
-      "height": 271,
+      "height": 290,
       "path": "outputs/1.html"
     }
   ]

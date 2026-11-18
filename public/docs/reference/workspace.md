@@ -4,7 +4,7 @@
 
 The box's own surroundings: properties, persistence, and the handful of names every box already has in scope.
 
-245 source file(s), 3391 public symbol(s), 1377 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+246 source file(s), 3392 public symbol(s), 1378 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1298,7 +1298,7 @@ options such as `--workspace` and `--document` are read here as [`home`](workspa
 | <a id="server-kt--parselayerslist"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">parseLayersList</span><span class="p">(</span><span class="n">layersString</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/app/server/Server/#L820) |  |
 | <a id="server-kt--scheduleautorunboxes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">SessionInformation</span><span class="p">.</span><span class="nf">scheduleAutorunBoxes</span><span class="p">(</span><span class="n">delayMs</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">500L</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/Server/#L830) |  |
 | <a id="server-kt--autorunboxes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">SessionInformation</span><span class="p">.</span><span class="nf">autorunBoxes</span><span class="p">(</span><span class="n">targetBoxes</span><span class="p">:</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">Box</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">delayMs</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">500L</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/Server/#L841) |  |
-| <a id="server-kt--languagenameforproperty"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">languageNameForProperty</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">property</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/app/server/Server/#L6320) |  |
+| <a id="server-kt--languagenameforproperty"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">languageNameForProperty</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">property</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/app/server/Server/#L6321) |  |
 
 ### Top-level values { #server-kt-values }
 
@@ -1425,8 +1425,8 @@ Tracks per-session back pressure for output messages. When the frontend is slow 
 | <a id="server-kt--server-companion--ai-thread"></a>[<code class="highlight"><span class="k">var</span> <span class="n">ai&#95;thread</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="k">by</span> <span class="nf">PersistentString</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/Server/#L2553) |  |
 | <a id="server-kt--server-companion--args"></a>[<code class="highlight"><span class="k">var</span> <span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/app/server/Server/#L2555) |  |
 | <a id="server-kt--server-companion--server"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">server</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/Server/#L2663) |  |
-| <a id="server-kt--server-companion--stop"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">stop</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">entrypoint</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;server.stop&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/Server/#L6235) | Stop `box` — the stop button, `stop-box`/`stop-all`, a transcript's stop, and the stop pass of `retireBoxes`. When this returns, "stopped" means: |
-| <a id="server-kt--server-companion--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/Server/#L6252) |  |
+| <a id="server-kt--server-companion--stop"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">stop</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">entrypoint</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;server.stop&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/Server/#L6236) | Stop `box` — the stop button, `stop-box`/`stop-all`, a transcript's stop, and the stop pass of `retireBoxes`. When this returns, "stopped" means: |
+| <a id="server-kt--server-companion--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/Server/#L6253) |  |
 
 ## StopWatch.kt { #stopwatch-kt }
 
@@ -1945,6 +1945,16 @@ nothing else: no `dev_docs/`, no `config/`, no build output, no path that leaves
 | --- | --- |
 | <a id="documentguides-kt--documentguidehandlers"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">documentGuideHandlers</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/documentGuides/#L290) |  |
 | <a id="documentguides-kt--installdocumentguideroutes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Route</span><span class="p">.</span><span class="nf">installDocumentGuideRoutes</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/documentGuides/#L351) | Assets are served only from an already-open document, with the same canonical-path boundary as reads. |
+
+## drawingon.kt { #drawingon-kt }
+
+`src/jvmMain/kotlin/afield/app/server/drawingon.kt` — [read the source](source/jvmMain/afield/app/server/drawingon/)
+
+### Top-level functions { #drawingon-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="drawingon-kt--installdrawingonroutes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Route</span><span class="p">.</span><span class="nf">installDrawingOnRoutes</span><span class="p">(</span><span class="n">archive</span><span class="p">:</span> <span class="nc">DrawingOnArchive</span> <span class="o">=</span> <span class="nc">DrawingOnServices</span><span class="p">.</span><span class="nf">archiveAt</span><span class="p">(</span><span class="nc">File</span><span class="p">(</span><span class="n">home</span><span class="p">,</span> <span class="s">&quot;.drawingon&quot;</span><span class="p">)</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/drawingon/#L19) | The optional native drawing head: durable input and the AVP FLine geometry return wire. |
 
 ## dynamicRouting.kt { #dynamicrouting-kt }
 

@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 24821 of 41656 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 24830 of 41682 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2043 undocumented entry points** (types, top-level functions and values) and 14065 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2044 undocumented entry points** (types, top-level functions and values) and 14081 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -92,6 +92,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Decorations.kt](../src/jvmMain/kotlin/afield/graphics/text/sentences/Decorations.kt) | Graphics | fline_examples | 1 | 64 | 23% |
 | [Functions.kt](../src/jvmMain/kotlin/afield/math/functions/Functions.kt) | Math | functions_examples | 1 | 47 | 84% |
 | [NeuralClouds.kt](../src/jvmMain/kotlin/afield/graphics/volume/NeuralClouds.kt) | Graphics | path_tracing | 1 | 19 | 66% |
+| [DrawingOn.kt](../src/jvmMain/kotlin/afield/io/drawingon/DrawingOn.kt) | Networking | drawing_on | 1 | 16 | 32% |
 | [FunctionStudy.kt](../src/jvmMain/kotlin/afield/math/functions/FunctionStudy.kt) | Function | function_conversation | 1 | 13 | 51% |
 | [DlssReconstruction.kt](../src/jvmMain/kotlin/afield/media/reconstruction/DlssReconstruction.kt) | Imaging | reconstruction_plumbing, neural_reconstruction, ray_reconstruction | 1 | 13 | 30% |
 | [OpenDlssNrPass.kt](../src/jvmMain/kotlin/afield/graphics/render/neural/OpenDlssNrPass.kt) | Graphics | open_dlss_nr | 1 | 11 | 36% |
@@ -1366,4 +1367,4 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `SawOsc` | class | `src/jvmMain/kotlin/afield/audio/synth/Oscillators.kt:113` |
 | `SquareOsc` | class | `src/jvmMain/kotlin/afield/audio/synth/Oscillators.kt:140` |
 
-…and **1923 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
+…and **1924 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.

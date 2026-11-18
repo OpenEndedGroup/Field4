@@ -3,6 +3,7 @@ markdown(
     # Drawing On
     Run **iPad drawing head** to publish the plan and watch its preview here.
 
+    On a Mac, **./field.sh --setup** offers Drawing On and prepares its offline reader.
     Build the optional app in **native/field-drawingon/DrawingOn.xcodeproj**.
     Connect it to **/drawingon/ws**, target **ipad**, and enable **Stream live**.
     Finish a Pencil stroke: Field sends a crosshair at its last measured point.
