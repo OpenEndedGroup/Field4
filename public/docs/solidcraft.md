@@ -245,7 +245,7 @@ lists a body's edges, read off the mesh where two of its faces meet. Each one ha
 to hand to `chamfer` or `fillet`, and says whether it is `convex`: an outside corner, which a
 chamfer cuts away, or an inside one, which it fills.
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val edges = part.mesh().edges()
 chamfer("0.5", *edges.filter { it.convex }.map { it.pick }.toTypedArray())
 chamfer("0.5", *edges.filter { !it.convex }.map { it.pick }.toTypedArray())
