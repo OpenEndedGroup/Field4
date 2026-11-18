@@ -59,7 +59,7 @@
 .text-frame-body .ai-chat-ghost-typed { color: transparent; }
 .text-frame-body .ai-chat-ghost-rest { color: var(--field-box-fg, #ddd); opacity: .4; }
 
-.box.text-frame-box::before { border: none !important; }
+.box.text-frame-box::before { border: none !important; background: none !important; }
 
 .text-frame-preview strong, .text-frame-preview b { font-weight: 700; }
 

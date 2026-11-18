@@ -4523,11 +4523,23 @@ accent so it marks the control without boxing it in.
     left: -6px;
     right: -6px;
     bottom: -6px;
-    border: var(--box-border, 5px solid var(--field-border-dark-strong));
+    /* The frame's colour is `color`, so the border (currentColor) and the corner fills below share
+       it: override `color`, not `border-color`. */
+    color: var(--field-border-dark-strong);
+    border: var(--box-border, 5px solid);
     width: 100%;
     height: 100%;
     padding: 1px;
     border-radius: 5px;
+    /* A 5px border with a 5px radius leaves the frame a square inside corner around the box's
+       rounded one. Its inside edge is the box's outside edge, so fill each corner up to the box's
+       5px curve. Clipped to the padding box, inside the semi-transparent border, and stopping at
+       the curve, so the selection colour on the box's own 1px border stays visible. */
+    background:
+        radial-gradient(circle at 100% 100%, transparent 4.5px, currentColor 5px) left top / 5px 5px no-repeat padding-box,
+        radial-gradient(circle at 0 100%, transparent 4.5px, currentColor 5px) right top / 5px 5px no-repeat padding-box,
+        radial-gradient(circle at 100% 0, transparent 4.5px, currentColor 5px) left bottom / 5px 5px no-repeat padding-box,
+        radial-gradient(circle at 0 0, transparent 4.5px, currentColor 5px) right bottom / 5px 5px no-repeat padding-box;
     pointer-events: none;
 }
 
@@ -4536,7 +4548,7 @@ accent so it marks the control without boxing it in.
    interact.js, whose 20 px edge margin, measured against the box's own rect, then picks the resize
    edge. z-index -1 keeps it under the box's content; the child selector outranks `.box *`. */
 [data-field-theme="light"] .box.selected::before {
-    border-color: var(--field-box-selected-frame);
+    color: var(--field-box-selected-frame);
 }
 
 .box > .box-resize-halo {
@@ -6336,11 +6348,11 @@ body.mode-transparent .outputArea {
     -webkit-backdrop-filter: none !important;
 }
 body.mode-transparent .box::before {
-    border-color: #000 !important;
+    color: #000 !important;
     /* ::before sits 6px outside the box's 5px-radius corner, so it needs 5+6=11px to stay
        concentric — otherwise the black ring leaves tiny gaps at each corner. */
     border-radius: 11px !important;
-    transition: border-color 90ms ease-out, box-shadow 90ms ease-out;
+    transition: color 90ms ease-out, box-shadow 90ms ease-out;
 }
 
 /* Gaze hover on a box, the web-side equivalent of the native FLine handles' HoverEffectComponent.
@@ -6357,12 +6369,12 @@ body.mode-transparent .box::before {
    layout or the box's own content: only the ring lightens and gains a soft halo. `.selected`
    deliberately wins, so hovering never masks what is actually selected. */
 body.mode-transparent .box:hover::before {
-    border-color: #6a6a6a !important;
+    color: #6a6a6a !important;
     box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.22), 0 0 14px 2px rgba(255, 255, 255, 0.10);
 }
 
 body.mode-transparent .box.selected:hover::before {
-    border-color: #000 !important;
+    color: #000 !important;
     box-shadow: none;
 }
 
