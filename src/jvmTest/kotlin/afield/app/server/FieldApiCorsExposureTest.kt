@@ -427,6 +427,7 @@ class FieldApiCorsExposureTest {
                     val handler = text.substring(match.range.last + 1, end)
                     val role = if (
                         "handleControllerInput(" in handler ||
+                        "handleDrawingOnInput(" in handler ||
                         "rawHandlers.values" in handler ||
                         "handle(message)" in handler
                     ) "commands" else if ("process.outputStream" in handler) "terminal input" else "server notifications"
@@ -594,6 +595,7 @@ class FieldApiCorsExposureTest {
         )
 
         val EXPECTED_WEBSOCKET_SURFACE = sortedMapOf(
+            "/drawingon/ws" to "commands; same-site",
             "/controllers/ws" to "commands; same-site",
             // Keystrokes into a pty (terminal.kt): the revision pass's boundary, hatches shut.
             "/pty/{id}" to "terminal input; loopback + same-site",
