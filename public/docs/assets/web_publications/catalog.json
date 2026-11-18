@@ -1,30 +1,4 @@
 {
-  "deferred": {
-    "assets/agent_transcripts/wfc_worked_example/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/youtube_kaleidoscope/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/youtube_mouse_keyboard_browser/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/youtube_vr_browser/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    }
-  },
   "documents": {
     "assets/agent_transcripts/a_pen_that_sees/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
@@ -5837,24 +5811,24 @@
       ]
     },
     "assets/agent_transcripts/wfc_worked_example/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "capturedAt": "2026-11-18T06:37:54.614Z",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-18T16:14:50.901Z",
       "channels": 11,
       "file": "assets/web_publications/wfc_worked_example/document/metadata.edn",
       "files": {
-        "assets/web_publications/wfc_worked_example/document/metadata.edn": "346b7c5070f1d7e3fa5f3906c6efbf2f7f77b22623fdede64048151e268bccde",
-        "assets/web_publications/wfc_worked_example/document/outputs.json": "090c1d70132b832d092b8b88591f191c1c49bdbef431747dcc6691b9cf2e5456",
-        "assets/web_publications/wfc_worked_example/outputs/0.html": "247e1a9ca35fa6699870c503cb6b85a00190b4dfa07ab7149387c434f0a5172f",
-        "assets/web_publications/wfc_worked_example/outputs/1.html": "97efbecbeb978edec4dea3baddbb692f75b8444a9515994aa2d367625abb2f21",
-        "assets/web_publications/wfc_worked_example/outputs/10.html": "5b8f3b6ce94d887114f71f9bae3f240f6c6dc123b3e8f6c6e6d977b05a4a6718",
-        "assets/web_publications/wfc_worked_example/outputs/2.html": "33f20b7679151ab98c1886e3e33712cc5b348a4876f1109fcbf1e1dcf7707e84",
-        "assets/web_publications/wfc_worked_example/outputs/3.html": "13ba27061e76b796c5ad275551f3d9a3e36b8af7c68b2740a5a12f38ad1c753b",
-        "assets/web_publications/wfc_worked_example/outputs/4.html": "2ec5d41c0f15e0454d912137ab00405b070b90b9a53813d258bd1dabe97b2d7f",
-        "assets/web_publications/wfc_worked_example/outputs/5.html": "7d15e5b7be9659d0feef2bcf4ec1d88a794fb5384b95f8af0fe2faff0083b48c",
-        "assets/web_publications/wfc_worked_example/outputs/6.html": "43f01df3820a2ef8d2d0e36d99d4a26d2fa8b7f52ac14070a9f5798425861669",
-        "assets/web_publications/wfc_worked_example/outputs/7.html": "782429cfcc058e6d18e3893435c8cb68fc5ed16cbac765d7dea4aeb84bcdfdcc",
-        "assets/web_publications/wfc_worked_example/outputs/8.html": "3c8bbee44dfe96fa472e1c47fa1fd6b133c78497d161b212adc65d3bab522e0a",
-        "assets/web_publications/wfc_worked_example/outputs/9.html": "29d89d37989f2424be1788cee3a0d9761059d5be01686fae94bd59429c0c677c"
+        "assets/web_publications/wfc_worked_example/document/metadata.edn": "ebc7e6df6ef1e6c48cad5e7437afd3b7ace1dd72b51257f55740ee51b843c7a4",
+        "assets/web_publications/wfc_worked_example/document/outputs.json": "283de3c555b5cb81294dce5bcc236f4392da2c664d78243529f00664f865eec1",
+        "assets/web_publications/wfc_worked_example/outputs/0.html": "07e2564d2056b37aff3876a789eca4cd1e87e8c85acdd632da1daf3ecc106cf9",
+        "assets/web_publications/wfc_worked_example/outputs/1.html": "c0b102c30fcc630cb7ea58b7ed4263d50ab6d2b386f09a560f91b1be21a83b5e",
+        "assets/web_publications/wfc_worked_example/outputs/10.html": "49eb2338590bf511527a56fa31958a524cb3eadfaf418b916631e1c6a7cfbf1b",
+        "assets/web_publications/wfc_worked_example/outputs/2.html": "e24fc593615740c6bec8bddc9c53c23541f9264cf5e064a2df0d7da011a75733",
+        "assets/web_publications/wfc_worked_example/outputs/3.html": "6604f91c94a523c1490d392a5eb9b562adeeb1d60b931a81be6942465cd66c27",
+        "assets/web_publications/wfc_worked_example/outputs/4.html": "1eb635d9d98f0bebc87b247a2694af2a37ead78988d74f4fc59d6f6c5c199263",
+        "assets/web_publications/wfc_worked_example/outputs/5.html": "0931848f8f3913ec958fcf77e5e4133ad9c659779611d31e853d54e4bcd6613b",
+        "assets/web_publications/wfc_worked_example/outputs/6.html": "8e3e376db75c5d6b81e2da10a51a312df72b0db0837e53999042b2b643747318",
+        "assets/web_publications/wfc_worked_example/outputs/7.html": "ad2d8505e88586fa5f436dbe41fd1f1b8c555a087f4f1453ee676f6ce996dc33",
+        "assets/web_publications/wfc_worked_example/outputs/8.html": "167a50d70ef994be71a7b7c310f4a541c01956c5dedf878a753023699a9fa33e",
+        "assets/web_publications/wfc_worked_example/outputs/9.html": "9438658b617c06768767c230156757e648ea25eeac50db1379f939a8ba50dfc7"
       },
       "kinds": [
         "svg"
@@ -5875,13 +5849,13 @@
       }
     },
     "assets/agent_transcripts/youtube_kaleidoscope/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "capturedAt": "2026-11-18T06:45:38.451Z",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-18T16:14:53.191Z",
       "channels": 1,
       "file": "assets/web_publications/youtube_kaleidoscope/document/metadata.edn",
       "files": {
         "assets/web_publications/youtube_kaleidoscope/document/metadata.edn": "761dbefc6851e53fc1a4fbce469a58f80dc77850168585b98262b2c17c612488",
-        "assets/web_publications/youtube_kaleidoscope/document/outputs.json": "ac66771f2d49c24081d1674fb596f4710db54499e897f2c2e3c8540dd9d5bd7b",
+        "assets/web_publications/youtube_kaleidoscope/document/outputs.json": "16a74b0e72ee5e1f4eed23b5730e92c8510bb5cf8cf1e7130dec62dcb0a0e1e5",
         "assets/web_publications/youtube_kaleidoscope/outputs/0.html": "a374e1182f0989f52eed491aedcc14f080b0c85b988bd4726de69bd9ec489665"
       },
       "kinds": [
@@ -5903,13 +5877,13 @@
       ]
     },
     "assets/agent_transcripts/youtube_mouse_keyboard_browser/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "capturedAt": "2026-11-18T06:45:32.114Z",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-18T16:14:55.921Z",
       "channels": 1,
       "file": "assets/web_publications/youtube_mouse_keyboard_browser/document/metadata.edn",
       "files": {
         "assets/web_publications/youtube_mouse_keyboard_browser/document/metadata.edn": "ccc89cd51771b50eb4ce4416687624385f9a08616810a3b4575414879a06082c",
-        "assets/web_publications/youtube_mouse_keyboard_browser/document/outputs.json": "689fa8b11c8716e636b6147a8e8b861373abcbfe5f73cfb180837021c040f1cd",
+        "assets/web_publications/youtube_mouse_keyboard_browser/document/outputs.json": "ee0133183cdc17aa61692f3606a5cc03b368c2ea433e1c4015097f00b2dc3872",
         "assets/web_publications/youtube_mouse_keyboard_browser/outputs/0.html": "e2208e2af707466d80b35bac00781d4c0051f4c0e40eef18d63915dfe6e272d5"
       },
       "kinds": [
@@ -5931,13 +5905,13 @@
       ]
     },
     "assets/agent_transcripts/youtube_vr_browser/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "capturedAt": "2026-11-18T06:45:35.211Z",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-18T16:14:58.202Z",
       "channels": 1,
       "file": "assets/web_publications/youtube_vr_browser/document/metadata.edn",
       "files": {
         "assets/web_publications/youtube_vr_browser/document/metadata.edn": "0737fa195fcab9679ef71749a75988860a221df618c1c6339c28f0d8ead755e9",
-        "assets/web_publications/youtube_vr_browser/document/outputs.json": "88f6482201a47b9aef2ba4a980cfb95b12e684ffc2720e17e91758da7fe9a2d1",
+        "assets/web_publications/youtube_vr_browser/document/outputs.json": "2b3300ed1381ac09024ae3d5ed8139a33fa660317dc7406b07f250a52aaddff6",
         "assets/web_publications/youtube_vr_browser/outputs/0.html": "4ffe1841c28dcf2d75d16f4f5dc9058d4cfba0df2e2f82d83998ca1dc8327762"
       },
       "kinds": [
