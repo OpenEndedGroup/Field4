@@ -4505,6 +4505,20 @@ The scene renders at 1280 × 720; surface-guided reconstruction is enabled, with
 
 [Open →](offline.html?file=assets/agent_transcripts/direct_lighting/metadata.edn)
 
+### virtual_shadow_maps
+
+The [fabricated renderer](fabricate_renderer.md) with `StandardRenderer.Config(virtualShadows = true)`:
+an 8192² virtual shadow map in 128² pages over four clipmap levels, with only the pages the visible
+pixels need allocated from a 32 × 32 physical pool and rendered. It needs the `agent_graphics_context`
+renderer above it. One frame shows the fixed 1024² shadow map, the virtual one and `debugView`,
+which tints each pixel by the level and physical page its shadow came from, side by side. Move the
+camera close to the contact edge: the fixed map shows a staircase and the virtual map stays sharp.
+Method after the GPU Zen 3 chapter on [virtual shadow maps](https://graphics-programming.org/blog/virtual-shadow-maps).
+
+![The same contact shadow three ways: a fixed shadow map with a staircase edge, a virtual shadow map with a smooth edge, and the debug view tinting each page](assets/fabricate-virtual-shadows.png)
+
+[Open →](offline.html?file=assets/agent_transcripts/virtual_shadow_maps/metadata.edn)
+
 ### open_dlss_nr
 
 Draw animated ink in an editable Field fragment shader, pass it through OpenDLSS-NR at

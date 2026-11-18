@@ -49,6 +49,10 @@ FABRICATE_DOCS_SCENES: dict[str, tuple[str, str]] = {
         "renderShadowComparison",
         "fabricate shadow comparison ready",
     ),
+    "virtual-shadows": (
+        "renderVirtualShadowComparison",
+        "fabricate virtual shadow comparison ready",
+    ),
     "ambient-occlusion": (
         "renderAoComparison",
         "fabricate ao comparison ready",

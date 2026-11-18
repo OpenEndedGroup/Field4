@@ -75,7 +75,21 @@ object StandardRenderer {
 			val environmentTexture: LoadedTexture? = null,
 			val environmentStrength: Float = 0f,
 			val environmentRotation: Float = 0f,
-			val backgroundColor: Vector3f = Vector3f(0f, 0f, 0f)
+			val backgroundColor: Vector3f = Vector3f(0f, 0f, 0f),
+			/**
+			 * Build the shadow pass as a virtual shadow map ([FabricateVirtualShadowMap]) instead of a
+			 * fixed [shadowWidth] × [shadowHeight] map. The shadow target then becomes the page pool,
+			 * [virtualShadowPoolPages] × [virtualShadowPageSize] texels on a side.
+			 */
+			val virtualShadows: Boolean = false,
+			/** Pages on a side of the virtual shadow map's finest level. */
+			val virtualShadowPages: Int = 64,
+			/** Physical pages on a side of the virtual shadow map's pool. */
+			val virtualShadowPoolPages: Int = 32,
+			/** Texels on a side of one virtual shadow map page. */
+			val virtualShadowPageSize: Int = 128,
+			/** Levels of the virtual shadow map, each half the resolution of the one before. */
+			val virtualShadowLevels: Int = 4
 		)
 
 		data class SceneDefaults(
@@ -205,6 +219,20 @@ object StandardRenderer {
 		 * live here — it stays in the built-in `LightData` uniform so it can drive the shadow map.
 		 */
 		var lightsBuffer: FrameBufferGroup? = null
+
+		/**
+		 * The virtual shadow map, when the bundle was built with [Config.virtualShadows]: its page
+		 * table, counters and debug view. Null for the fixed-resolution shadow map.
+		 */
+		var virtualShadows: FabricateVirtualShadowMap? = null
+			internal set
+
+		internal var virtualShadowClearMesh: Mesh? = null
+
+		/** Advance the virtual shadow map one frame; the auto-sync hook calls this, so only call it yourself when not attached. */
+		fun updateVirtualShadows() {
+			virtualShadows?.update(scene.lightViewProjection(), shadowModule, virtualShadowClearMesh)
+		}
 		val maxLights: Int = DEFAULT_MAX_LIGHTS
 
 		/**
@@ -359,9 +387,19 @@ object StandardRenderer {
 			fun attachTo(renderer: Renderer, window: Window): RenderTarget =
 				remembering(frameGraph()) { it.attachTo(renderer, window) }
 
+			/** Take this bundle's passes off every target [attachTo] put them on; its auto-sync hook then ends itself. */
+			fun detachEverywhere() {
+				synchronized(attachedGraphs) {
+					attachedGraphs.forEach { (target, graph) -> graph.detachFrom(target) }
+					attachedGraphs.clear()
+				}
+			}
+
 			private fun remembering(graph: FabricateFrameGraph, attach: (FabricateFrameGraph) -> RenderTarget): RenderTarget {
 				val target = attach(graph)
 				synchronized(attachedGraphs) { attachedGraphs[target] = graph }
+				// Bind the virtual shadow map's references on every caster before the first frame records.
+				updateVirtualShadows()
 				installAutoSync()
 				return target
 			}
@@ -1032,15 +1070,28 @@ object StandardRenderer {
 				clearColor = vec(0f, 0f, 0f, 1f)
 			}
 
+		val virtualShadows = if (config.virtualShadows) FabricateVirtualShadowMap(
+			renderer,
+			pagesPerSide = config.virtualShadowPages,
+			poolPagesPerSide = config.virtualShadowPoolPages,
+			pageSize = config.virtualShadowPageSize,
+			levels = config.virtualShadowLevels
+		) else null
+
 		val shadow = RenderToTexture {
-			width = resolved.shadowWidth
-			height = resolved.shadowHeight
+			width = virtualShadows?.poolSize ?: resolved.shadowWidth
+			height = virtualShadows?.poolSize ?: resolved.shadowHeight
 			colorAttachments = 1 // simple depth-only pass with a throwaway color attachment
-			colorFormats = listOf(config.positionFormat)
+			colorFormats = listOf(if (virtualShadows != null) VK_FORMAT_R8_UNORM else config.positionFormat)
 			useDepth = true
 			depthSampled = true
 			colorSampled = false
 			clearColor = vec(1f, 1f, 1f, 1f)
+			if (virtualShadows != null) {
+				// The pool keeps its pages from frame to frame; only the pages being rendered are cleared.
+				clearFirst = false
+				depthLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD
+			}
 		}
 
 		val ao = RenderToTexture {
@@ -1108,11 +1159,29 @@ object StandardRenderer {
 			name = "prefab-shadow"
 			+shadow
 			blend = false
-			vertex = shadowVertex
+			vertex = if (virtualShadows != null) withVirtualShadows(shadowVertex) else shadowVertex
 			fragment = shadowFragment
 			colorFormats = shadow.parameters.colorFormats
 			depthFormat = shadow.parameters.depthFormat
 		}).pointer()
+		val vsmClearMesh = virtualShadows?.let {
+			val clearModule = Module(parameters {
+				name = "prefab-vsm-clear"
+				+shadow
+				blend = false
+				vertex = vsmClearVertex
+				fragment = shadowFragment
+				depthCompareOp = VK_COMPARE_OP_ALWAYS
+				colorFormats = shadow.parameters.colorFormats
+				depthFormat = shadow.parameters.depthFormat
+			}).pointer()
+			shadow += "vsm-clear" to clearModule
+			val mesh = Mesh(renderer, clearModule)
+			mesh.resize(6, 0, clearModule)
+			mesh.instanceCount = 0
+			clearModule.current.meshes["vsmClearQuads"] = mesh
+			mesh
+		}
 		shadow += "shadow" to shadowModule
 
 				val gBufferSampler = TextureSampler(renderer, gBuffer.parameters.mipLevels, true)
@@ -1147,7 +1216,7 @@ object StandardRenderer {
 			+lighting
 			blend = false
 			vertex = fullscreenVertex
-			fragment = lightingFragment
+			fragment = if (virtualShadows != null) withVirtualShadows(lightingFragment) else lightingFragment
 			depth = 0
 			color = lighting.parameters.colorAttachments
 			textureResolver = { tex ->
@@ -1285,9 +1354,26 @@ object StandardRenderer {
 				)
 				val bundle = Bundle(gBuffer, shadow, ao, lighting, transparentComposite, motionBlur, antiAlias, gBufferModule, shadowModule, aoModule, lightingModule, transparentCopyModule, transparentModule, motionBlurModule, antiAliasModule, scene, postStack = postStack)
 				bundle.lightsBuffer = lightsBuffer
+				if (virtualShadows != null) {
+					bundle.virtualShadows = virtualShadows
+					bundle.virtualShadowClearMesh = vsmClearMesh
+					if (lightingQuad.push.offsets.containsKey("vsmPageTable")) {
+						lightingQuad.push.bind("vsmPageTable") { virtualShadows.pageTable }
+						lightingQuad.push.bind("vsmMarks") { virtualShadows.marks }
+						lightingQuad.push["vsmMode"] = 1
+					}
+				}
 				bundle.applyRenderProfile(bundle.sceneGraph.renderProfile)
 				return bundle
 			}
+
+	/**
+	 * [source] with the virtual-shadow-map paths (`#ifdef FIELD_VSM`) switched on. The built-in
+	 * shadow and lighting shaders carry both paths; a bundle without a virtual shadow map compiles
+	 * them without, so its push constants carry no page-table references to leave unassigned.
+	 */
+	internal fun withVirtualShadows(source: String): String =
+		source.replaceFirst("#version 450", "#version 450\n#define FIELD_VSM 1")
 
 	/** Quick fullscreen triangle helper to avoid having to allocate vertex buffers for post passes. */
 	fun ModulePointer.ensureFullscreenTriangle(name: String = "fullscreen"): Mesh {
@@ -2016,6 +2102,12 @@ object StandardRenderer {
 			vec4 positions[];
 		};
 
+		#ifdef FIELD_VSM
+		layout(std430, buffer_reference) readonly buffer VsmRenderList {
+			int data[];
+		};
+		#endif
+
 		layout(push_constant) uniform ModelData {
 			VertexPositions positionBuffer;
 			mat4 model;
@@ -2023,6 +2115,10 @@ object StandardRenderer {
 			float metallic;
 			float roughness;
 			float ao;
+			#ifdef FIELD_VSM
+			VsmRenderList vsmPages;
+			int vsmMode;
+			#endif
 		} push;
 
 		layout(set = 0, binding = 5) uniform LightData {
@@ -2033,17 +2129,72 @@ object StandardRenderer {
 			float lightIntensity;
 		} uLight;
 
+		layout(location = 0) out vec2 vPageLocal;
+
 		void main() {
 			vec3 pos = push.positionBuffer.positions[gl_VertexIndex].xyz;
-			gl_Position = uLight.lightViewProj * push.model * vec4(pos, 1.0);
+			vec4 p = uLight.lightViewProj * push.model * vec4(pos, 1.0);
+			vPageLocal = vec2(0.5);
+			#ifdef FIELD_VSM
+			if (push.vsmMode != 0) {
+				// Virtual shadow map: instance i draws into the pool tile of the i-th page to render.
+				// Shadow-map uv is (0.5 + 0.5 x, 0.5 - 0.5 y), the mapping the lighting pass samples with.
+				ivec2 entry = ivec2(push.vsmPages.data[2 + 2 * gl_InstanceIndex], push.vsmPages.data[3 + 2 * gl_InstanceIndex]);
+				int level = entry.x >> 24;
+				ivec2 page = ivec2(entry.x & 0xFFF, (entry.x >> 12) & 0xFFF);
+				float pages = float(push.vsmPages.data[0] >> level);
+				int pool = push.vsmPages.data[1];
+				vec2 ndc = p.xy / p.w;
+				vec2 uv = vec2(0.5 + 0.5 * ndc.x, 0.5 - 0.5 * ndc.y);
+				vec2 local = uv * pages - vec2(page);
+				vPageLocal = local;
+				vec2 puv = (vec2(entry.y % pool, entry.y / pool) + local) / float(pool);
+				p.xy = vec2(puv.x * 2.0 - 1.0, 1.0 - puv.y * 2.0) * p.w;
+			}
+			#endif
+			gl_Position = p;
 		}
 	"""
 
 	private const val shadowFragment = """
 		#version 450
+		layout(location = 0) in vec2 vPageLocal;
 		layout(location = 0) out float outDepth;
 		void main() {
+			// Virtual shadow map: keep each page's draw inside its own pool tile.
+			if (any(lessThan(vPageLocal, vec2(0.0))) || any(greaterThan(vPageLocal, vec2(1.0)))) discard;
 			outDepth = gl_FragCoord.z;
+		}
+	"""
+
+	/**
+	 * Clears the pool tiles of a virtual shadow map's pages about to be rendered: six vertices per
+	 * instance, a quad over tile `i` of the render list at depth 1 (drawn with depth test ALWAYS).
+	 */
+	private const val vsmClearVertex = """
+		#version 450
+		#extension GL_EXT_buffer_reference : require
+		#extension GL_EXT_scalar_block_layout : require
+
+		layout(std430, buffer_reference) readonly buffer VsmRenderList {
+			int data[];
+		};
+
+		layout(push_constant) uniform ClearData {
+			VsmRenderList vsmPages;
+			int vsmMode;
+		} push;
+
+		layout(location = 0) out vec2 vPageLocal;
+
+		void main() {
+			const vec2 corners[6] = vec2[](vec2(0, 0), vec2(1, 0), vec2(1, 1), vec2(0, 0), vec2(1, 1), vec2(0, 1));
+			vec2 c = corners[gl_VertexIndex % 6];
+			int physical = push.vsmPages.data[3 + 2 * gl_InstanceIndex];
+			int pool = push.vsmPages.data[1];
+			vec2 puv = (vec2(physical % pool, physical / pool) + c) / float(pool);
+			vPageLocal = vec2(0.5);
+			gl_Position = vec4(puv.x * 2.0 - 1.0, 1.0 - puv.y * 2.0, 1.0, 1.0);
 		}
 	"""
 
@@ -2510,6 +2661,19 @@ object StandardRenderer {
 				GpuLight lights[];
 			};
 
+			#ifdef FIELD_VSM
+			// Virtual shadow map: a four-int header (pages per side, pool pages per side, levels,
+			// debug view) then one physical page (or -1) per virtual page, level by level.
+			layout(std430, buffer_reference) readonly buffer VsmPageTable {
+				int data[];
+			};
+
+			// Virtual shadow map: set to 1 for every virtual page a pixel samples; read back on the CPU.
+			layout(std430, buffer_reference) writeonly buffer VsmMarks {
+				int marks[];
+			};
+			#endif
+
 			layout(location = 0) in vec2 vUv;
 			layout(set = 0, binding = 0) uniform sampler2D gAlbedoRoughness;
 		layout(set = 0, binding = 1) uniform sampler2D gNormalMetallic;
@@ -2541,6 +2705,11 @@ object StandardRenderer {
 				int lightCount;
 				float showEnvBackground;
 				float envBackgroundIntensity;
+				#ifdef FIELD_VSM
+				VsmPageTable vsmPageTable;
+				VsmMarks vsmMarks;
+				int vsmMode;
+				#endif
 			} push;
 
 		layout(location = 0) out vec4 outColor;
@@ -2647,10 +2816,105 @@ object StandardRenderer {
 			return clamp(shadow, 0.0, 1.0);
 		}
 
+		#ifdef FIELD_VSM
+		int vsmLevelOffset(int level) {
+			int pages = push.vsmPageTable.data[0];
+			int offset = 0;
+			for (int l = 0; l < level; ++l) offset += (pages >> l) * (pages >> l);
+			return offset;
+		}
+
+		// Depth of one virtual shadow map tap, from the finest resident level at or above [level].
+		// Writes the level it actually used to usedLevel and its physical page to usedPage.
+		float vsmTap(vec2 uv, int level, out int usedLevel, out int usedPage) {
+			int pages = push.vsmPageTable.data[0];
+			int pool = push.vsmPageTable.data[1];
+			int levels = push.vsmPageTable.data[2];
+			float pageTexels = float(textureSize(shadowMap, 0).x) / float(pool);
+			uv = clamp(uv, vec2(0.0), vec2(0.999999));
+			for (int l = level; l < levels; ++l) {
+				int n = pages >> l;
+				ivec2 page = ivec2(uv * float(n));
+				int physical = push.vsmPageTable.data[4 + vsmLevelOffset(l) + page.y * n + page.x];
+				if (physical < 0) continue;
+				vec2 local = clamp(uv * float(n) - vec2(page), vec2(0.5 / pageTexels), vec2(1.0 - 0.5 / pageTexels));
+				vec2 puv = (vec2(physical % pool, physical / pool) + local) / float(pool);
+				usedLevel = l;
+				usedPage = physical;
+				return textureLod(shadowMap, puv, 0.0).r;
+			}
+			usedLevel = levels;
+			usedPage = -1;
+			return 1.0;
+		}
+
+		void vsmMark(vec2 uv, int level) {
+			int n = push.vsmPageTable.data[0] >> level;
+			ivec2 page = ivec2(clamp(uv, vec2(0.0), vec2(0.999999)) * float(n));
+			push.vsmMarks.marks[vsmLevelOffset(level) + page.y * n + page.x] = 1;
+		}
+
+		// The level whose texels best match this pixel's footprint: one level-0 texel per pixel is
+		// level 0, two is level 1, and so on. uvFootprint is the shadow-map uv one pixel spans.
+		int vsmLevel(float uvFootprint) {
+			int pages = push.vsmPageTable.data[0];
+			int pool = push.vsmPageTable.data[1];
+			int levels = push.vsmPageTable.data[2];
+			float virtualTexels = float(pages) * float(textureSize(shadowMap, 0).x) / float(pool);
+			float texelsPerPixel = uvFootprint * virtualTexels;
+			return clamp(int(floor(log2(max(texelsPerPixel, 1.0)))), 0, levels - 1);
+		}
+
+		vec3 vsmDebugColor = vec3(0.0);
+
+		float pcfVirtualShadow(vec3 worldPos, float uvFootprint) {
+			vec4 lightSpace = uLight.lightViewProj * vec4(worldPos, 1.0);
+			vec3 projCoords = lightSpace.xyz / lightSpace.w;
+			projCoords = vec3(projCoords.x * 0.5 + 0.5, 0.5 - projCoords.y * 0.5, projCoords.z);
+			if (projCoords.x < 0.0 || projCoords.x > 1.0 || projCoords.y < 0.0 || projCoords.y > 1.0) return 0.0;
+			if (projCoords.z <= 0.0 || projCoords.z > 1.0) return 0.0;
+
+			int level = vsmLevel(uvFootprint);
+			int pages = push.vsmPageTable.data[0];
+			int pool = push.vsmPageTable.data[1];
+			float levelTexels = float(pages >> level) * float(textureSize(shadowMap, 0).x) / float(pool);
+			vec2 filterTexel = vec2(max(push.shadowSoftness, 0.0) / levelTexels);
+			// Mark the pages the filter footprint touches, at the level this pixel wants.
+			vsmMark(projCoords.xy - filterTexel, level);
+			vsmMark(projCoords.xy + filterTexel, level);
+			vsmMark(projCoords.xy + vec2(filterTexel.x, -filterTexel.y), level);
+			vsmMark(projCoords.xy + vec2(-filterTexel.x, filterTexel.y), level);
+
+			float shadow = 0.0;
+			int usedLevel = 0;
+			int usedPage = -1;
+			for (int x = -1; x <= 1; ++x) {
+				for (int y = -1; y <= 1; ++y) {
+					int tapLevel;
+					int tapPage;
+					float pcfDepth = vsmTap(projCoords.xy + vec2(x, y) * filterTexel, level, tapLevel, tapPage);
+					if (x == 0 && y == 0) { usedLevel = tapLevel; usedPage = tapPage; }
+					shadow += projCoords.z > pcfDepth + uLight.shadowBias * float(1 << tapLevel) ? 1.0 : 0.0;
+				}
+			}
+			float h = fract(sin(float(usedPage) * 12.9898) * 43758.5453);
+			vec3 levelColors[5] = vec3[](vec3(0.15, 0.75, 0.3), vec3(0.2, 0.45, 0.95), vec3(0.95, 0.65, 0.15), vec3(0.85, 0.2, 0.6), vec3(0.9, 0.1, 0.1));
+			vsmDebugColor = levelColors[min(usedLevel, 4)] * mix(0.55, 1.0, h);
+			return clamp(shadow / 9.0, 0.0, 1.0);
+		}
+		#endif
+
 		void main() {
 			vec4 albedoRough = texture(gAlbedoRoughness, vUv);
 					vec4 normalMetallic = texture(gNormalMetallic, vUv);
 					vec4 positionDepth = texture(gPositionDepth, vUv);
+					#ifdef FIELD_VSM
+					// Shadow-map uv one pixel spans, for the virtual shadow map's level choice. Taken here,
+					// before any pixel leaves, so the derivative is defined everywhere.
+					vec4 lightClip = uLight.lightViewProj * vec4(positionDepth.xyz, 1.0);
+					vec2 lightUv = 0.5 * lightClip.xy / lightClip.w;
+					float vsmFootprint = min(length(dFdx(lightUv)), length(dFdy(lightUv)));
+					#endif
 					vec4 motionMaterial = texture(gMotionMaterial, vUv);
 					if (length(normalMetallic.xyz) < 0.01) {
 					if (push.showEnvBackground > 0.5) {
@@ -2693,7 +2957,11 @@ object StandardRenderer {
 			vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
 			float nDotL = max(dot(n, l), 0.0);
 
+			#ifdef FIELD_VSM
+			float shadow = (push.vsmMode != 0 ? pcfVirtualShadow(worldPos, vsmFootprint) : pcfShadow(worldPos)) * push.shadowStrength;
+			#else
 			float shadow = pcfShadow(worldPos) * push.shadowStrength;
+			#endif
 			float ao = mix(1.0, texture(aoTex, vUv).r, push.aoStrength);
 
 					float clearcoatEnvRoughness = max(clearcoatRoughness, 0.22);
@@ -2727,6 +2995,13 @@ object StandardRenderer {
 					vec3 radiance = lightRadiance(gl, worldPos, li);
 					color += shadePBR(n, v, li, radiance, albedo, roughness, metallic, F0);
 				}
+			#ifdef FIELD_VSM
+			if (push.vsmMode != 0 && push.vsmPageTable.data[3] != 0) {
+				// Debug view: tint by the level (green finest, then blue, orange, magenta) and
+				// physical page (brightness) the centre tap's depth came from.
+				color = vsmDebugColor * (0.35 + 0.65 * (1.0 - 0.6 * shadow));
+			}
+			#endif
 			outColor = vec4(color, 1.0);
 		}
 	"""
@@ -2768,5 +3043,6 @@ internal fun standardRendererAutoSyncStep(ref: java.lang.ref.WeakReference<Stand
 	val lights = bundle.sceneGraph.lights.toString()
 	if (lights != lastLights) runCatching { bundle.syncLights() }
 	runCatching { bundle.sortTransparentMeshes() }
+	bundle.updateVirtualShadows()
 	return lights
 }

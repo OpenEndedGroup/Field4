@@ -796,6 +796,52 @@ expect:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-shadows.png" alt="one dark olive torus standing on a large pale grey sphere used as the ground, rendered twice side by side. Unshadowed, the ring meets the ground with nothing beneath it and the two shapes read as separate. Shadowed, a soft dark ellipse lies on the ground offset from where the ring touches down, and that contact is the whole of the difference: the lighting on the ring itself is unchanged" source-image="/tmp/docs-fabricate-shadow-native.png" wait="30.0" timeout="180" execution="launch" embed=true graphics-context=true name="fabricate-shadows" hidden=true fabricate-scene="shadows"}
 ```
 
+## Virtual shadow maps
+
+A fixed shadow map spreads its 1024 × 1024 texels evenly over the light's whole box, so the floor right in front of the camera gets exactly as many as the floor at the far edge of the scene. Close to a contact edge the shadow turns into stair steps. A virtual shadow map treats the light's view as one far larger map (8192 × 8192 here) cut into 128-texel pages, and only renders the pages that some visible pixel actually needs, at the resolution that pixel needs.
+
+Turn it on when you build the renderer:
+
+```diffstatic {data-lang=kotlin}
+val bundle = StandardRenderer.build(renderer, StandardRenderer.Config(virtualShadows = true))
+
+// after a few frames
+println(bundle.virtualShadows!!.describe())
+
+// tint every pixel by where its shadow came from
+bundle.virtualShadows!!.debugView = 1
+```
+
+Each frame:
+
+1. While the lighting pass shades a pixel, it works out how many texels of the finest level one screen pixel covers and picks a level from that: one texel per pixel is level 0, two is level 1, and so on, each level half the resolution of the one before. It writes a mark for the page it is about to read.
+2. On the CPU, before the next frame, the marks are read back and cleared. Each newly marked page gets a free physical page in a 4096 × 4096 pool texture (32 × 32 pages). When the pool is full, the page that has gone unmarked longest is given up.
+3. The shadow pass clears the newly allocated tiles and draws every shadow caster once per new page, instanced, each copy squeezed into its page's tile of the pool.
+4. The lighting pass reads depth through the page table. Where a fine page is not ready yet it falls back to the next coarser level. The coarsest level is always fully resident, so no pixel goes without a shadow.
+
+Pages already in the pool are kept from frame to frame, and that cache is what makes this cheap: once the camera settles, a frame renders no shadow pages at all. The cache is thrown away when the light's direction or box changes. It cannot see a caster move, so call `bundle.virtualShadows!!.invalidate()` after moving one, or set `caching = false` to re-render every needed page each frame.
+
+Below, left to right: the fixed 1024² map, the virtual shadow map, and the virtual map's debug view. In the debug view green is the finest level, blue the next, then orange and magenta, and the brightness changes from one physical page to the next, so you can see the page grid and the levels getting coarser with distance.
+
+<!--
+FIELD_TEST
+id: docs.fabricate.virtual-shadows
+runner: backdoor-box
+graphicsContext: true
+tags: [docs, fabricate, renderer, graphics, shadows]
+timeoutSec: 240
+execution: launch
+waitSec: 45.0
+expect:
+  allowMissingOutput: true
+  image:
+    path: /tmp/docs-fabricate-vsm-native.png
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-virtual-shadows.png" alt="three close-ups of the foot of a dark ring standing on a pale floor, side by side. In the fixed shadow map the edge of the ring's shadow on the floor is a ragged staircase. In the virtual shadow map the same edge is a clean smooth curve. In the debug view everything is green, cut into a patchwork of slightly different shades: each patch is one 128-texel page, small near the camera and growing toward the horizon" source-image="/tmp/docs-fabricate-vsm-native.png" wait="45.0" timeout="240" execution="launch" embed=true graphics-context=true name="fabricate-virtual-shadows" hidden=true fabricate-scene="virtual-shadows"}
+```
+
+The marking, allocation and page rendering are those described in [Virtual Shadow Maps](https://graphics-programming.org/blog/virtual-shadow-maps), Timberdoodle's GPU Zen 3 chapter. That design centres a set of clipmaps on the camera and allocates pages on the GPU. Here the levels are halvings of the light's fixed box and allocation runs on the CPU from marks read back a frame late. The class is [`FabricateVirtualShadowMap`](reference/renderers.md).
+
 ## Ambient occlusion
 
 The left side disables ambient occlusion; the right side turns it on. Both show the same cluster of matte spheres resting together on the floor. AO only modulates the ambient term here (direct light is never occluded), so its effect is clearest in the contact valleys between touching spheres, where the surfaces are starved of direct light and lit mostly by ambient. Turning AO on darkens those valleys from a soft grey to a firm crease.
