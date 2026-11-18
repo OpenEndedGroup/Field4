@@ -1,4 +1,138 @@
 {
+  "deferred": {
+    "assets/agent_transcripts/ceres_free_variables/metadata.edn": {
+      "attempts": 0,
+      "captureDigest": "347d26bd16f6fc14afd40b75579b70acc28d27cf578abbbca016cdda71b69c95",
+      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
+      "since": "2026-11-18"
+    },
+    "assets/agent_transcripts/confluence_grid/metadata.edn": {
+      "attempts": 0,
+      "captureDigest": "347d26bd16f6fc14afd40b75579b70acc28d27cf578abbbca016cdda71b69c95",
+      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
+      "since": "2026-11-18"
+    },
+    "assets/agent_transcripts/debruijn_tilings_3d_demo/metadata.edn": {
+      "attempts": 0,
+      "captureDigest": "347d26bd16f6fc14afd40b75579b70acc28d27cf578abbbca016cdda71b69c95",
+      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
+      "since": "2026-11-18"
+    },
+    "assets/agent_transcripts/debruijn_tilings_demo/metadata.edn": {
+      "attempts": 0,
+      "captureDigest": "347d26bd16f6fc14afd40b75579b70acc28d27cf578abbbca016cdda71b69c95",
+      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
+      "since": "2026-11-18"
+    },
+    "assets/agent_transcripts/geometry_from_disk/metadata.edn": {
+      "attempts": 0,
+      "captureDigest": "347d26bd16f6fc14afd40b75579b70acc28d27cf578abbbca016cdda71b69c95",
+      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
+      "since": "2026-11-18"
+    },
+    "assets/agent_transcripts/lp_curves/metadata.edn": {
+      "attempts": 0,
+      "captureDigest": "347d26bd16f6fc14afd40b75579b70acc28d27cf578abbbca016cdda71b69c95",
+      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
+      "since": "2026-11-18"
+    },
+    "assets/agent_transcripts/lp_curves_3d/metadata.edn": {
+      "attempts": 0,
+      "captureDigest": "347d26bd16f6fc14afd40b75579b70acc28d27cf578abbbca016cdda71b69c95",
+      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
+      "since": "2026-11-18"
+    },
+    "assets/agent_transcripts/madp_geometry/metadata.edn": {
+      "attempts": 0,
+      "captureDigest": "347d26bd16f6fc14afd40b75579b70acc28d27cf578abbbca016cdda71b69c95",
+      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
+      "since": "2026-11-18"
+    },
+    "assets/agent_transcripts/manifold_solids/metadata.edn": {
+      "attempts": 0,
+      "captureDigest": "347d26bd16f6fc14afd40b75579b70acc28d27cf578abbbca016cdda71b69c95",
+      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
+      "since": "2026-11-18"
+    },
+    "assets/agent_transcripts/mesh_geometry_examples/metadata.edn": {
+      "attempts": 0,
+      "captureDigest": "347d26bd16f6fc14afd40b75579b70acc28d27cf578abbbca016cdda71b69c95",
+      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
+      "since": "2026-11-18"
+    },
+    "assets/agent_transcripts/mesh_repair_demo/metadata.edn": {
+      "attempts": 0,
+      "captureDigest": "347d26bd16f6fc14afd40b75579b70acc28d27cf578abbbca016cdda71b69c95",
+      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
+      "since": "2026-11-18"
+    },
+    "assets/agent_transcripts/polytope_canonical_gallery/metadata.edn": {
+      "attempts": 0,
+      "captureDigest": "347d26bd16f6fc14afd40b75579b70acc28d27cf578abbbca016cdda71b69c95",
+      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
+      "since": "2026-11-18"
+    },
+    "assets/agent_transcripts/polytope_conway_demo/metadata.edn": {
+      "attempts": 0,
+      "captureDigest": "347d26bd16f6fc14afd40b75579b70acc28d27cf578abbbca016cdda71b69c95",
+      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
+      "since": "2026-11-18"
+    },
+    "assets/agent_transcripts/polytope_conway_gallery/metadata.edn": {
+      "attempts": 0,
+      "captureDigest": "347d26bd16f6fc14afd40b75579b70acc28d27cf578abbbca016cdda71b69c95",
+      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
+      "since": "2026-11-18"
+    },
+    "assets/agent_transcripts/polytope_holes_and_chains/metadata.edn": {
+      "attempts": 0,
+      "captureDigest": "347d26bd16f6fc14afd40b75579b70acc28d27cf578abbbca016cdda71b69c95",
+      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
+      "since": "2026-11-18"
+    },
+    "assets/agent_transcripts/solidsl_gallery/metadata.edn": {
+      "attempts": 0,
+      "captureDigest": "347d26bd16f6fc14afd40b75579b70acc28d27cf578abbbca016cdda71b69c95",
+      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
+      "since": "2026-11-18"
+    },
+    "assets/agent_transcripts/solidsl_inverse/metadata.edn": {
+      "attempts": 0,
+      "captureDigest": "347d26bd16f6fc14afd40b75579b70acc28d27cf578abbbca016cdda71b69c95",
+      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
+      "since": "2026-11-18"
+    },
+    "assets/agent_transcripts/solidsl_notation/metadata.edn": {
+      "attempts": 0,
+      "captureDigest": "347d26bd16f6fc14afd40b75579b70acc28d27cf578abbbca016cdda71b69c95",
+      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
+      "since": "2026-11-18"
+    },
+    "assets/agent_transcripts/three_handles/metadata.edn": {
+      "attempts": 0,
+      "captureDigest": "347d26bd16f6fc14afd40b75579b70acc28d27cf578abbbca016cdda71b69c95",
+      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
+      "since": "2026-11-18"
+    },
+    "assets/agent_transcripts/three_inspector_wall/metadata.edn": {
+      "attempts": 0,
+      "captureDigest": "347d26bd16f6fc14afd40b75579b70acc28d27cf578abbbca016cdda71b69c95",
+      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
+      "since": "2026-11-18"
+    },
+    "assets/agent_transcripts/typography_worked_example/metadata.edn": {
+      "attempts": 0,
+      "captureDigest": "347d26bd16f6fc14afd40b75579b70acc28d27cf578abbbca016cdda71b69c95",
+      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
+      "since": "2026-11-18"
+    },
+    "assets/three_output_gallery/metadata.edn": {
+      "attempts": 0,
+      "captureDigest": "347d26bd16f6fc14afd40b75579b70acc28d27cf578abbbca016cdda71b69c95",
+      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
+      "since": "2026-11-18"
+    }
+  },
   "documents": {
     "assets/agent_transcripts/a_pen_that_sees/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
