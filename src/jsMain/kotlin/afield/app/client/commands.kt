@@ -3069,6 +3069,21 @@ fun registerBuiltinCommands() {
                 window.showProfilingTimeline();
             }
         },{
+            id:'measure-box-function-cost',
+            label:"Measure Function Cost of Selected Box",
+            detail:"From its next run, time each function of the selected box (self and total); see Profiling → Box functions",
+            isAvailable: () => !!window.selectedList && window.selectedList.length === 1,
+            run: () => {
+                const uid = window.selectedList[0].uid;
+                if (!uid) return;
+                import("./afield.mjs").then((afield) => {
+                    afield.sendWithReply("box-cost", {action: "measure", uid: uid}, "box-cost-measure-" + Date.now(), (_m, r) => {
+                        if (typeof window.notify === 'function') window.notify(r && r.ok ? 'Measuring function cost from the next run' : ((r && r.error) || 'Could not measure'), 'command');
+                        return "remove";
+                    });
+                });
+            }
+        },{
             id:'disable-auto-displaying-editor',
             label:"Disable Auto-displaying Editor",
             detail:"Hide the editor and stop selection changes from opening it; remember this preference",

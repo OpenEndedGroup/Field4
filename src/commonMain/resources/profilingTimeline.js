@@ -1,6 +1,7 @@
 import { sendWithReply, clearReplyHandler } from "./afield.mjs";
 import { selectedSpans, profileSummary, profileFrameSummary, profileFrameBuckets, mergeProfileSpans } from "./profileTimelineModel.js";
 import { createProfileStacks } from "./profilingStacks.js";
+import { createProfileBoxCost } from "./profilingBoxCost.js";
 
 const ROW = 32;
 let panel, canvas, overview, rows, detail, status, summary, filter, metric, laneViewport;
@@ -9,7 +10,7 @@ let visible = false, timer = null, pending = false, serial = 0, epoch = 0, dragg
 let documentName = "", laneOrder = [];
 let replyName = "", replyTimeout = null;
 let queuedAction = null;
-let stackSamples=[],frameRecords=[],stackViewer,stackPanel,coroutineBody,framePanel;
+let stackSamples=[],frameRecords=[],stackViewer,stackPanel,coroutineBody,framePanel,boxCostPanel,boxCost,tabMode="coroutines";
 const fmt = n => Number(n).toFixed(2);
 const bytes = n => n === null || n < 0 ? "unavailable" : n >= 1048576 ? `${fmt(n/1048576)} MiB` : `${fmt(n/1024)} KiB`;
 const el = (tag, cls, text) => { const n=document.createElement(tag); if(cls)n.className=cls; if(text!==undefined)n.textContent=text; return n; };
@@ -56,15 +57,17 @@ function build() {
     stackViewer=createProfileStacks(stackPanel,compact);
     const tabs=el("div","profile-tabs");
     framePanel=el("div","profile-frames");framePanel.id="profile-frames";framePanel.hidden=true;
-    for(const [id,label,mode] of [["profile-tab-coroutines","Coroutines & scopes","coroutines"],["profile-tab-frames","Frame budgets","frames"],["profile-tab-stacks","Hot code","stacks"]]) {
-        const b=button(label,()=>{body.hidden=mode!=="coroutines";stackPanel.hidden=mode!=="stacks";framePanel.hidden=mode!=="frames";
+    boxCostPanel=el("div","profile-box-cost");boxCostPanel.id="profile-box-cost";boxCostPanel.hidden=true;
+    boxCost=createProfileBoxCost(boxCostPanel);
+    for(const [id,label,mode] of [["profile-tab-coroutines","Coroutines & scopes","coroutines"],["profile-tab-frames","Frame budgets","frames"],["profile-tab-stacks","Hot code","stacks"],["profile-tab-box-cost","Box functions","boxcost"]]) {
+        const b=button(label,()=>{body.hidden=mode!=="coroutines";stackPanel.hidden=mode!=="stacks";framePanel.hidden=mode!=="frames";boxCostPanel.hidden=mode!=="boxcost";tabMode=mode;boxCost.setShown(mode==="boxcost");
             focusLane=null;selected=null;metric.value=mode==="stacks"?"sampleCpu":mode==="frames"?"frameWall":"wall";
             tabs.querySelectorAll("button").forEach(n=>n.classList.toggle("profile-tab-active",n===b));render();},id);
         b.classList.toggle("profile-tab-active",mode==="coroutines");tabs.append(b);
     }
     metric.value="wall";
     const note=el("footer","", "Brush time to inspect work. All-lane totals use self costs; a selected lane includes its children. Frames are explicit application intervals. Amber marks GC pauses across the whole JVM.");
-    panel.append(header,toolbar,overview,ticks,summary,tabs,body,framePanel,stackPanel,note);document.body.append(panel);
+    panel.append(header,toolbar,overview,ticks,summary,tabs,body,framePanel,stackPanel,boxCostPanel,note);document.body.append(panel);
     installResize();
     lanes.addEventListener("scroll", drawLanes);
     overview.addEventListener("pointerdown",e=>{if(!capture)return;dragging=overviewTime(e);overview.setPointerCapture(e.pointerId);brush=[dragging,dragging];render();});
@@ -209,7 +212,7 @@ function request(action="snapshot", seconds=10){
 
 function schedule(ms){clearTimeout(timer);if(visible)timer=setTimeout(()=>request(),ms);}
 function save(){if(!capture?.captureId||document.getElementById("profile-save").disabled)return;const blob=new Blob([JSON.stringify({formatVersion:3,document:documentName,...capture,spans,stackSamples,frameRecords},null,2)],{type:"application/json"});const u=URL.createObjectURL(blob),a=el("a");a.href=u;a.download=`field-profile-${capture.captureId}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);}
-function close(){visible=false;epoch++;pending=false;queuedAction=null;stackViewer?.clearMarks();clearTimeout(timer);clearTimeout(replyTimeout);if(replyName)clearReplyHandler(replyName);if(panel)panel.hidden=true;}
+function close(){visible=false;epoch++;boxCost?.setShown(false);pending=false;queuedAction=null;stackViewer?.clearMarks();clearTimeout(timer);clearTimeout(replyTimeout);if(replyName)clearReplyHandler(replyName);if(panel)panel.hidden=true;}
 function compact(){panel.style.width=`${Math.max(550,window.innerWidth*.5-24)}px`;panel.style.right="auto";render();}
 function installResize(){
     // Use Field's existing Interact edge/corner gestures, with a visible corner affordance.
@@ -222,5 +225,5 @@ function installResize(){
         Object.assign(panel.style,{left:`${left}px`,top:`${top}px`,right:"auto",bottom:"auto",width:`${width}px`,height:`${height}px`});
     });
 }
-window.showProfilingTimeline=()=>{build();const name=window.currentDocumentFilename||"";if(documentName!==name){capture=null;spans=[];stackSamples=[];frameRecords=[];brush=null;view=null;documentName=name;}visible=true;panel.hidden=false;render();request();};
+window.showProfilingTimeline=()=>{build();const name=window.currentDocumentFilename||"";if(documentName!==name){capture=null;spans=[];stackSamples=[];frameRecords=[];brush=null;view=null;documentName=name;}visible=true;panel.hidden=false;boxCost.setShown(tabMode==="boxcost");render();request();};
 window.closeProfilingTimeline=close;
