@@ -21,7 +21,9 @@ this run's workspace written ``<workspace>``. Arguments may use ``{{uid:Name}}``
 Between ``<!-- ai4-tools-reference:begin -->`` and ``<!-- ai4-tools-reference:end -->`` the page
 carries the catalogue as ``agent-ai-tools-list`` reports it for a box-focused chat on that document,
 less any tool whose class is declared under ``src/personal``. It lists twice, the second time as a
-box chat's turn (``suspendable``), and marks the tools only that turn is offered.
+box chat's turn (``suspendable``), and marks the tools only that turn is offered. Between
+``<!-- ai4-tools-descriptions:begin -->`` and ``<!-- ai4-tools-descriptions:end -->`` it carries the
+same tools' full descriptions and parameters, verbatim, which the table's names link to.
 
 ``--update-page`` writes what the run produced into the page instead of failing on a difference.
 
@@ -48,6 +50,7 @@ PAGE = ROOT / "public/docs/ai4_tools.md"
 ASSETS = ROOT / "public/docs/assets/ai4_tools"
 PERSONAL = ROOT / "src/personal"
 REF_BEGIN, REF_END = "<!-- ai4-tools-reference:begin -->", "<!-- ai4-tools-reference:end -->"
+DESC_BEGIN, DESC_END = "<!-- ai4-tools-descriptions:begin -->", "<!-- ai4-tools-descriptions:end -->"
 CALL = re.compile(
     r"<!-- ai4-call (?P<tool>\w+)(?P<opts>[^>]*?) -->\n"
     r"```diffstatic \{data-lang=json\}\n(?P<args>.*?)\n```\n\n"
@@ -67,6 +70,7 @@ NAMESPACES = {
     "source": "A box's live, saved and last-run source, and edits to it.",
     "states": "The document's saved histories and the states in them.",
     "guides": "Markdown guides that live in the document and outlast the chat.",
+    "context": "Files and references attached to the chat, read in bounded excerpts.",
     "memory": "The chat's own scratchpad and checklist, which last the session; notes kept across sessions and documents, and the saved chats they cite.",
     "program": "One call that runs a short JavaScript program over the other tools.",
     "search": "Field's tutorials and the workspace's files, by what they do.",
@@ -115,8 +119,61 @@ def reference(tools: list[dict], chat_only: set[str]) -> str:
             x = t["x-field"]
             name = f"`{t['name']}`" + (" \\*" if x["exposure"] == "DEFERRED" else "") + (" †" if t["name"] in chat_only else "")
             effects = ", ".join(e.lower().replace("_", " ") for e in x["effects"] if e != "UNDECLARED") or "—"
-            out.append(f"| {name} | {first_sentence(t.get('description', ''))} | {effects} |")
+            out.append(f"| [{name}](#{anchor(t['name'])}) | {prose(first_sentence(t.get('description', '')))} | {effects} |")
         out.append("")
+    return "\n".join(out).rstrip()
+
+
+def anchor(tool: str) -> str:
+    return "tool-" + tool.lower()
+
+
+def prose(text: str) -> str:
+    """A description as Markdown text: angle brackets outside code spans would read as HTML tags."""
+    parts = re.split(r"(`[^`]*`)", " ".join((text or "").split()))
+    return "".join(p if p.startswith("`") else p.replace("<", "&lt;").replace(">", "&gt;") for p in parts)
+
+
+def schema_type(s: dict) -> str:
+    t = s.get("type", "")
+    if t == "array":
+        inner = schema_type(s.get("items") or {})
+        return f"list of {inner}" if inner else "list"
+    if "enum" in s:
+        return " \\| ".join(f"`{e}`" for e in s["enum"])
+    return t or "any"
+
+
+def descriptions(tools: list[dict], chat_only: set[str]) -> str:
+    """Every tool's description and parameters, verbatim: the text a model is given about it."""
+    by_ns: dict[str, list[dict]] = defaultdict(list)
+    for t in tools:
+        by_ns[t["x-field"]["namespace"]].append(t)
+    out: list[str] = []
+    for ns in NAMESPACES:
+        if ns not in by_ns:
+            continue
+        out += [f"### `{ns}` tools", ""]
+        for t in sorted(by_ns[ns], key=lambda t: t["name"]):
+            x = t["x-field"]
+            effects = ", ".join(e.lower().replace("_", " ") for e in x["effects"] if e != "UNDECLARED") or "none declared"
+            shown = "loaded on request" if x["exposure"] == "DEFERRED" else "sent with every request"
+            if t["name"] in chat_only:
+                shown += "; box chats only"
+            out += [f"#### `{t['name']}` {{ #{anchor(t['name'])} }}", "", f"*Effects: {effects}. Schema {shown}.*", ""]
+            out += [prose(t.get("description", "")) or "*(No description.)*", ""]
+            schema = t.get("inputSchema") or {}
+            props = schema.get("properties") or {}
+            required = set(schema.get("required") or [])
+            if props:
+                out += ["| Parameter | Type | Description |", "| --- | --- | --- |"]
+                for p, s in props.items():
+                    name = f"`{p}`" + (" (required)" if p in required else "")
+                    desc = prose(s.get("description", "")).replace("|", "\\|") or "—"
+                    out.append(f"| {name} | {schema_type(s)} | {desc} |")
+                out.append("")
+            else:
+                out += ["No parameters.", ""]
     return "\n".join(out).rstrip()
 
 
@@ -205,6 +262,11 @@ async def capture(port: int, update_page: bool) -> None:
     if text[begin:end] != table:
         failures.append("reference table")
     text = text[:begin] + table + text[end:]
+    begin, end = text.index(DESC_BEGIN) + len(DESC_BEGIN), text.index(DESC_END)
+    full = "\n" + descriptions(catalogue, chat_only) + "\n"
+    if text[begin:end] != full:
+        failures.append("tool descriptions")
+    text = text[:begin] + full + text[end:]
     if update_page:
         PAGE.write_text(text)
         print(f"wrote {PAGE.relative_to(ROOT)}")
