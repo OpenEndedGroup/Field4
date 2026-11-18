@@ -603,6 +603,48 @@ fun draw() {
 draw()
 ```
 
+Here is a drag on each vanishing point in turn, `V` and then `Vz`. The corners follow, and both
+families of edges keep meeting their points:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="box" capture-box="ceres_two_vp" video="assets/ceres/two_vanishing_points_drag.mp4" fps="15" transcript="../../dev_docs/agents/transcripts/docs_capture/ceres_two_vanishing_points.yaml" hide-toasts=true padding="8" wait="0" timeout="300" embed=true hidden=true name="ceres-two-vanishing-points-drag" requires="ceres" alt="The two-point-perspective box being dragged. First V, the vanishing point above the box, is pulled to the left, and the four uprights lean to follow it while the box stays standing on its front edge. Then Vz, far to the lower left, is pulled up and to the right, and the depth edges swing round to meet it. The legend's two misses stay below 1e-6 throughout"}
+// The setup transcript creates and runs the box; drag V, then Vz, with the real mouse.
+fun handleAt(id: String): Pair<Double, Double> {
+    val at =
+        ui.eval(
+                """
+        const f = document.querySelector('iframe[src*="/threejs"]');
+        const h = f && f.contentWindow.FieldHandles && f.contentWindow.FieldHandles.list().find((h) => h.id === '$id');
+        if (!h) return 'missing';
+        const r = f.getBoundingClientRect();
+        return (r.left + h.client[0]) + ',' + (r.top + h.client[1]);
+    """,
+            )
+            .toString()
+            .trim('"')
+    check(at != "missing") { "no handle $id in the three view" }
+    val (x, y) = at.split(',').map { it.toDouble() }
+    return x to y
+}
+
+fun drag(id: String, dx: Double, dy: Double) {
+    val (x, y) = handleAt(id)
+    ui.moveMouse(x, y, 10)
+    ui.pause(300)
+    ui.mouseDown()
+    for (k in 1..45) {
+        ui.moveMouse(x + dx * k / 45, y + dy * k / 45)
+        ui.pause(40)
+    }
+    ui.pause(300)
+    ui.mouseUp()
+    ui.pause(1000)
+}
+
+ui.pause(800)
+drag("V", -170.0, 30.0)
+drag("Vz", 130.0, -90.0)
+```
+
 The box has two independent freedoms now: how tall it is, measured along the rays to `V`, and how
 deep it is, measured along the rays to `Vz`. A drag on one corner should change only one of them.
 Left to itself, the solver spreads a drag over both, because both moves satisfy the target equally
