@@ -58,7 +58,7 @@ run {
             val volume = body.getDouble("volume")
             val exact = roundedBlock(r)
             rows.append(
-                "| $r mm | ${"%.4f".format(volume)} | ${"%.4f".format(exact)} | ${"%.1e".format(volume - exact)} | ${body.getInt("faces")} | $millis ms |\n",
+                "| $r mm | ${volume.f4} | ${exact.f4} | ${"%.1e".format(volume - exact)} | ${body.getInt("faces")} | $millis ms |\n",
             )
             panels += "r = $r" to part.mesh(tolerance = 0.02).toTriMesh().weld()
         }

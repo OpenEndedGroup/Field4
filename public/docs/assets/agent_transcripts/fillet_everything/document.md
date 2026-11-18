@@ -96,7 +96,7 @@ run {
 <!-- field-box id="fillet_block" index="1" -->
 
 ```edn [field-box id="fillet_block" role="properties"]
-{"id" "fillet_block" "index" 1 "name" "Every edge of a block, checked" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Every edge of a block, checked" "_tombstone" false "frame" #afield/rect [80.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fillet_block_code_.kt" "lines" 77 "characters" 2992 "sha256" "541e57af5a13a0a2159c6c9f5ef1793778eae88db1b7601d3e34bb7378b35a39"}]}
+{"id" "fillet_block" "index" 1 "name" "Every edge of a block, checked" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Every edge of a block, checked" "_tombstone" false "frame" #afield/rect [80.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fillet_block_code_.kt" "lines" 77 "characters" 2968 "sha256" "af78d6cc35d602a33589f1ed5f66db19a029e1a1edeaf0371ed4dd771df32860"}]}
 ```
 
 ```kotlin [field-property box="fillet_block" name="code" path="fillet_block_code_.kt"]
@@ -160,7 +160,7 @@ run {
             val volume = body.getDouble("volume")
             val exact = roundedBlock(r)
             rows.append(
-                "| $r mm | ${"%.4f".format(volume)} | ${"%.4f".format(exact)} | ${"%.1e".format(volume - exact)} | ${body.getInt("faces")} | $millis ms |\n",
+                "| $r mm | ${volume.f4} | ${exact.f4} | ${"%.1e".format(volume - exact)} | ${body.getInt("faces")} | $millis ms |\n",
             )
             panels += "r = $r" to part.mesh(tolerance = 0.02).toTriMesh().weld()
         }
@@ -184,7 +184,7 @@ run {
 <!-- field-box id="fillet_ladder" index="2" -->
 
 ```edn [field-box id="fillet_ladder" role="properties"]
-{"id" "fillet_ladder" "index" 2 "name" "How round can it go" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "How round can it go" "_tombstone" false "frame" #afield/rect [2080.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fillet_ladder_code_.kt" "lines" 157 "characters" 6557 "sha256" "5a225fd5d773670b4aadba9661cae30c8fcce74a6ec299864a8f5a48469366f7"}]}
+{"id" "fillet_ladder" "index" 2 "name" "How round can it go" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "How round can it go" "_tombstone" false "frame" #afield/rect [2080.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fillet_ladder_code_.kt" "lines" 157 "characters" 6545 "sha256" "c0696ef2e7a5bd3e9c612b541a13d63a37cd08762656a515f12f32eba68f0faf"}]}
 ```
 
 ```kotlin [field-property box="fillet_ladder" name="code" path="fillet_ladder_code_.kt"]
@@ -342,7 +342,7 @@ run {
             view = MeshView(yawDegrees = 35.0, pitchDegrees = 35.0, distance = 2.0),
         )
         val seconds = (System.nanoTime() - started) / 1e9
-        markdown("$title$header$rows\nAll ${parts.size} parts in ${"%.0f".format(seconds)} s.", width = 1000)
+        markdown("$title$header$rows\nAll ${parts.size} parts in ${seconds.f0} s.", width = 1000)
     }
 }
 ```

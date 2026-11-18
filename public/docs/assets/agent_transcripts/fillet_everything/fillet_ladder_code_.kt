@@ -152,6 +152,6 @@ run {
             view = MeshView(yawDegrees = 35.0, pitchDegrees = 35.0, distance = 2.0),
         )
         val seconds = (System.nanoTime() - started) / 1e9
-        markdown("$title$header$rows\nAll ${parts.size} parts in ${"%.0f".format(seconds)} s.", width = 1000)
+        markdown("$title$header$rows\nAll ${parts.size} parts in ${seconds.f0} s.", width = 1000)
     }
 }

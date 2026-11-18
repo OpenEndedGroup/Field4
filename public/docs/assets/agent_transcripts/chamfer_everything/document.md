@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="chamfer_ladder" index="0" -->
 
 ```edn [field-box id="chamfer_ladder" role="properties"]
-{"id" "chamfer_ladder" "index" 0 "name" "Which parts take it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Which parts take it" "_tombstone" false "frame" #afield/rect [1080.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chamfer_ladder_code_.kt" "lines" 158 "characters" 6666 "sha256" "3b4beeb188aa6ade2645882b0c8bbcca51a52d29ae23babd6292147c66fc35a0"}]}
+{"id" "chamfer_ladder" "index" 0 "name" "Which parts take it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Which parts take it" "_tombstone" false "frame" #afield/rect [1080.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chamfer_ladder_code_.kt" "lines" 158 "characters" 6654 "sha256" "19003d1d2bbb479a837d4ced85e685a5d6c539b096e9174c40d428a73cc9ddb7"}]}
 ```
 
 ```kotlin [field-property box="chamfer_ladder" name="code" path="chamfer_ladder_code_.kt"]
@@ -168,7 +168,7 @@ run {
         )
         val seconds = (System.nanoTime() - started) / 1e9
         markdown(
-            "**Every edge, $size mm.** Times include building the part.\n\n$header$rows\nAll ${parts.size} parts in ${"%.0f".format(seconds)} s.",
+            "**Every edge, $size mm.** Times include building the part.\n\n$header$rows\nAll ${parts.size} parts in ${seconds.f0} s.",
             width = 1040,
         )
     }

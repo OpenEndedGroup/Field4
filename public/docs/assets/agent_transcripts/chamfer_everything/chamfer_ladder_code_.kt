@@ -151,7 +151,7 @@ run {
         )
         val seconds = (System.nanoTime() - started) / 1e9
         markdown(
-            "**Every edge, $size mm.** Times include building the part.\n\n$header$rows\nAll ${parts.size} parts in ${"%.0f".format(seconds)} s.",
+            "**Every edge, $size mm.** Times include building the part.\n\n$header$rows\nAll ${parts.size} parts in ${seconds.f0} s.",
             width = 1040,
         )
     }
