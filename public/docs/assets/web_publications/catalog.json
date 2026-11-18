@@ -1,77 +1,5 @@
 {
   "deferred": {
-    "assets/agent_transcripts/dataframe_typed_columns/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/datalog_rhythm_rules/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/debruijn_tilings_3d_demo/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "59a4e8714b57651704fdbf9db280ae2bcde6d5e4fef8d5099c63adea8edc89a1",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/debruijn_tilings_demo/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "59a4e8714b57651704fdbf9db280ae2bcde6d5e4fef8d5099c63adea8edc89a1",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/dependency_length/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/drawing_notation/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/drawing_on/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/drawn_morph/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/drawn_paint/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/drawn_score/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/dynamic_graph_systems_examples/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/eigendrum/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
     "assets/agent_transcripts/evolving_water_bugs/metadata.edn": {
       "attempts": 0,
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
@@ -2338,15 +2266,15 @@
       ]
     },
     "assets/agent_transcripts/datalog_rhythm_rules/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "capturedAt": "2026-11-17T21:40:17.622Z",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-18T14:54:54.655Z",
       "channels": 2,
       "file": "assets/web_publications/datalog_rhythm_rules/document/metadata.edn",
       "files": {
         "assets/web_publications/datalog_rhythm_rules/document/metadata.edn": "605202d576f6c1c4067a63f25e4ebbb9e3ecd1fee4a020325a1d35559d0fba89",
-        "assets/web_publications/datalog_rhythm_rules/document/outputs.json": "d31e3919a41f75c3bb4504d13b4a427095759da47b75798d193b79271f46f6d0",
-        "assets/web_publications/datalog_rhythm_rules/outputs/0.html": "7e5b71a26e7ed36cf6b3e722d95e3dc59fa8225a5ac0aaf1dc597a0ebe25fa9b",
-        "assets/web_publications/datalog_rhythm_rules/outputs/1.html": "2cbc52e063ae5ea8437a585f696397c8c91f72abf0304dfa96282501b6ae16dc"
+        "assets/web_publications/datalog_rhythm_rules/document/outputs.json": "3bbe59b827b834331366dbc1f0475fc542a422504164ed462cd0be642c5efb45",
+        "assets/web_publications/datalog_rhythm_rules/outputs/0.html": "e7bb7ee53810e5c29b84a3e2f358ae7604ff6b6fecbfd6abc4d1ee13cf41c300",
+        "assets/web_publications/datalog_rhythm_rules/outputs/1.html": "1536a938cc346d824059a62b9db4bfb07ad09ac61f1212003ab7015b393e6e26"
       },
       "kinds": [],
       "outputs": "assets/web_publications/datalog_rhythm_rules/document/outputs.json",
@@ -2359,19 +2287,19 @@
       }
     },
     "assets/agent_transcripts/debruijn_tilings_3d_demo/metadata.edn": {
-      "captureDigest": "8ca26f3844345c6e7e29c7844d0aa5a8e67348467dae06f3a288c218afe53f85",
-      "capturedAt": "2026-11-17T21:40:33.666Z",
+      "captureDigest": "59a4e8714b57651704fdbf9db280ae2bcde6d5e4fef8d5099c63adea8edc89a1",
+      "capturedAt": "2026-11-18T14:55:00.706Z",
       "channels": 6,
       "file": "assets/web_publications/debruijn_tilings_3d_demo/document/metadata.edn",
       "files": {
         "assets/web_publications/debruijn_tilings_3d_demo/document/metadata.edn": "80989d9ecc4ab9645894e6a77ab4770a145514e2252e899910506f52abc88e5f",
-        "assets/web_publications/debruijn_tilings_3d_demo/document/outputs.json": "e4c830a21c56b7f0d32e2f6e56943f7398234d9472e9d87f45e5141c9b5a2037",
-        "assets/web_publications/debruijn_tilings_3d_demo/outputs/0.html": "65549600c97605ad76eccde9383d0c852ea315092e47427ab4a7fb0d1551516d",
-        "assets/web_publications/debruijn_tilings_3d_demo/outputs/1.html": "b2e5a6f8260032868cf48a0ea1754ce7f3eca38f37181d0595ceb7a2bee22eff",
-        "assets/web_publications/debruijn_tilings_3d_demo/outputs/2.html": "05f3e527a9a53b187e689deb84a842ca4e136011655291f38cc60c7229d25396",
-        "assets/web_publications/debruijn_tilings_3d_demo/outputs/3.html": "9788a4a64feff9270184fe35cd2cc81db01d7ee247d5f4614c5aff3c961132ea",
-        "assets/web_publications/debruijn_tilings_3d_demo/outputs/4.html": "df4f5754e4bd2ba5edbe589538f8a51925bb59a21f4abafdf280e1fbc6b6c788",
-        "assets/web_publications/debruijn_tilings_3d_demo/outputs/5.html": "913ef8b1b176b9b0731ea1f03617e5e32428d780f0b8ab63ca6ee2b6363269e2"
+        "assets/web_publications/debruijn_tilings_3d_demo/document/outputs.json": "6f12db1a05ee07c0792a4a125ece8741bf944ac4ed65f1aad3779842d50a5135",
+        "assets/web_publications/debruijn_tilings_3d_demo/outputs/0.html": "80d9a392dde1f6225dbf4056ed0c3bbe06e59198393c3c04be5dad0207477d7c",
+        "assets/web_publications/debruijn_tilings_3d_demo/outputs/1.html": "e454bbd6e23a4cdae96200c0c599f1e200de3b1c3e32393c6cec7a9b244d012e",
+        "assets/web_publications/debruijn_tilings_3d_demo/outputs/2.html": "3f589d07948e7324bfdbb015eb792c943c7e1b9cd8fedb8a873ba0821243b228",
+        "assets/web_publications/debruijn_tilings_3d_demo/outputs/3.html": "b28bace963926f116ece4358b8129ccf00493827886559418becea7f3947366b",
+        "assets/web_publications/debruijn_tilings_3d_demo/outputs/4.html": "c0267315b42313871a79156180f790888decd7dc0fa4a1f35674f834cb3fe541",
+        "assets/web_publications/debruijn_tilings_3d_demo/outputs/5.html": "fcd210bfd1ce76b2b6cab69a60cb4875146fd8f11f9e59a8be545b618ec4f2ac"
       },
       "kinds": [
         "svg",
@@ -2391,21 +2319,21 @@
       }
     },
     "assets/agent_transcripts/debruijn_tilings_demo/metadata.edn": {
-      "captureDigest": "8ca26f3844345c6e7e29c7844d0aa5a8e67348467dae06f3a288c218afe53f85",
-      "capturedAt": "2026-11-17T21:40:44.192Z",
+      "captureDigest": "59a4e8714b57651704fdbf9db280ae2bcde6d5e4fef8d5099c63adea8edc89a1",
+      "capturedAt": "2026-11-18T14:55:05.500Z",
       "channels": 8,
       "file": "assets/web_publications/debruijn_tilings_demo/document/metadata.edn",
       "files": {
         "assets/web_publications/debruijn_tilings_demo/document/metadata.edn": "9e2d76ceb86e53daf394a3fda1d946b12f50ed5971e4d7ad8993267b77fd05d6",
-        "assets/web_publications/debruijn_tilings_demo/document/outputs.json": "6e8854e09871fbd745b4a8cf34c3faa1d9bd9ed7d1dba2296953e6db1abb134b",
-        "assets/web_publications/debruijn_tilings_demo/outputs/0.html": "59c539c71776aae6a6faeed8c9eea58e9bb80b30d947e49c1e3c7775d39c6d49",
-        "assets/web_publications/debruijn_tilings_demo/outputs/1.html": "8f37b427b138de8b072e908dc47b499cb2b212bc36eed98e2fc535e442cb951b",
-        "assets/web_publications/debruijn_tilings_demo/outputs/2.html": "419a41a6ae7f330911266cf8172f7792c060cd015a78b57dc0783b8b0e23971c",
-        "assets/web_publications/debruijn_tilings_demo/outputs/3.html": "6d002c09096d7d13ae732e93e9296d5e15747e04d756d94b14fda5afc34cefa1",
-        "assets/web_publications/debruijn_tilings_demo/outputs/4.html": "86446f4af956f0f133707f8401a3f70382cf4d58b8b0c1f91e692d3de27131e4",
-        "assets/web_publications/debruijn_tilings_demo/outputs/5.html": "674f8d6286d0fa4aa4f0f92f453f110b4ff6c673e3096cf1cd3a85ddf21f09c0",
-        "assets/web_publications/debruijn_tilings_demo/outputs/6.html": "d6fdcc9fc0f101a4a7b04960ed01bea1ac0f0860e1d37eb5073b5bbed1fab5f1",
-        "assets/web_publications/debruijn_tilings_demo/outputs/7.html": "44ce7b7d7ba06c478f306890f5f105b45721f57ee3066cb23e3ee1c2d3dd48a9"
+        "assets/web_publications/debruijn_tilings_demo/document/outputs.json": "5a3a4ad8c2fb66364a078a26eb685ca5b58322e68cd143365164697a3ce03e82",
+        "assets/web_publications/debruijn_tilings_demo/outputs/0.html": "025ceb65f81693167e03bdb758ee01b71da5e307c8a0ffb6b0cdb173e7224e5a",
+        "assets/web_publications/debruijn_tilings_demo/outputs/1.html": "1ffea06a5829baf9e24ac2fe0c4486eecb6847bf51ac9cd20a906f34b4547e40",
+        "assets/web_publications/debruijn_tilings_demo/outputs/2.html": "f63fb788a6fd257ccca690057747d1a569dd1eae50d08b626c903151562126c4",
+        "assets/web_publications/debruijn_tilings_demo/outputs/3.html": "e0516f3255c1156c8c95baf3edaa4c7cc27828aa6678f698dd582edae112042d",
+        "assets/web_publications/debruijn_tilings_demo/outputs/4.html": "223fbfa19fa82bcaeb5b7d8b189e8ccab3d07a15bdc7c50759581fca28860bc2",
+        "assets/web_publications/debruijn_tilings_demo/outputs/5.html": "2605f3907e886bf4774711f881d93c8e7a9a4b2e94605445dc658a321fe795f8",
+        "assets/web_publications/debruijn_tilings_demo/outputs/6.html": "d327f7b706644e84ffd4a28a5f88fa9c0689858bb77ff9719887a691cdd13a29",
+        "assets/web_publications/debruijn_tilings_demo/outputs/7.html": "2c0d1c3da7c0c177a4e42225267a99548e08fb76326a0bb0de26db9a49937fb2"
       },
       "kinds": [
         "svg",
@@ -2426,18 +2354,18 @@
       }
     },
     "assets/agent_transcripts/dependency_length/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "capturedAt": "2026-11-17T21:41:04.480Z",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-18T14:55:18.680Z",
       "channels": 5,
       "file": "assets/web_publications/dependency_length/document/metadata.edn",
       "files": {
         "assets/web_publications/dependency_length/document/metadata.edn": "2e06e44e98b0bea5683fde332757921bbbe1a83c4f99cd014f2c0f23b06ee358",
-        "assets/web_publications/dependency_length/document/outputs.json": "cfedf86acc930cd8cc168c270aad71c18931fc17ddc0455be35262ffce8849eb",
-        "assets/web_publications/dependency_length/outputs/0.html": "7b41490c5be3b32bc5db5d41762c8e25164f510ffe69906073b0f38f805339df",
-        "assets/web_publications/dependency_length/outputs/1.html": "47f1f8f74df1f5390429ad7e6a96c287156606d2eeb3c1fba437ab002a04f8fd",
-        "assets/web_publications/dependency_length/outputs/2.html": "a30e57425545649b21eef809f8aaeaa7c1b9a734c53af6825d5b55fc6d2101ed",
-        "assets/web_publications/dependency_length/outputs/3.html": "506b037157a38b8de5ef5a7cf217337ab1fa281b195e13e0c8d7bdd99cf5d9a5",
-        "assets/web_publications/dependency_length/outputs/4.html": "b0f4a533ccb09243be9b44f536f07fe6314dbac4bcbbe4537490b928c7072c78"
+        "assets/web_publications/dependency_length/document/outputs.json": "9a33b61c0df9aed52ac554d90bcb9b68c3e2760857080b30dc13cbba66550c5e",
+        "assets/web_publications/dependency_length/outputs/0.html": "c23953b24d88ef945baa30565820f9c8f68ffcdcdb59464e79f92af18a963a14",
+        "assets/web_publications/dependency_length/outputs/1.html": "14ca8eee232dbba20411b15cc2855d828b51244023e9e6c2767d3e2a1a942eff",
+        "assets/web_publications/dependency_length/outputs/2.html": "e642d96e1d907821e455d57b805d01abfa4e891b1b331459e42ffa4dfb178375",
+        "assets/web_publications/dependency_length/outputs/3.html": "3eba8416368e5191bd71993481e294a8ccc8aeb5cc4c6e78fc9331d48ac73c43",
+        "assets/web_publications/dependency_length/outputs/4.html": "3960ea6efb08b0dddd3d7684cd23ebf07971a4ed14c320d856e23dc282655f10"
       },
       "kinds": [
         "plotly",
@@ -2456,15 +2384,15 @@
       }
     },
     "assets/agent_transcripts/drawing_on/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "capturedAt": "2026-11-18T10:42:44.724Z",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-18T14:55:23.998Z",
       "channels": 2,
       "file": "assets/web_publications/drawing_on/document/metadata.edn",
       "files": {
         "assets/web_publications/drawing_on/document/metadata.edn": "58b74287bb8dde7eb9bda24540adb42380d3118538310ea868351b983ab8b096",
-        "assets/web_publications/drawing_on/document/outputs.json": "d082f3ce771580ee0b0fcfd759cb669493d1d9b06008bd3a826bcf36e6927dbe",
-        "assets/web_publications/drawing_on/outputs/0.html": "435615426f40e978b78685eb4441f0a443ccddd139918a5793b8f9c751398246",
-        "assets/web_publications/drawing_on/outputs/1.html": "3d6e8395a2bf17c26665dd9860c67c5eb23724aa36a94c29ff9a6b722685f4e5"
+        "assets/web_publications/drawing_on/document/outputs.json": "2fe3957f81bd1555c9e409097fb0ac7aebf413e143daf78de1d09b9bbc9a00bd",
+        "assets/web_publications/drawing_on/outputs/0.html": "0d557e6f529b087b22301bd5b31a512fc20a965d444216f70af15df0f754d2f6",
+        "assets/web_publications/drawing_on/outputs/1.html": "597760e0139d8bc372b20343dca8d7be48d6e5356af7fb998868abe3751f569d"
       },
       "kinds": [
         "svg"
@@ -2479,18 +2407,18 @@
       }
     },
     "assets/agent_transcripts/drawn_morph/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "capturedAt": "2026-11-17T21:41:52.079Z",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-18T14:55:51.720Z",
       "channels": 5,
       "file": "assets/web_publications/drawn_morph/document/metadata.edn",
       "files": {
-        "assets/web_publications/drawn_morph/document/metadata.edn": "f50fd3465e50197e0f409508f107d01360554f26f9a0b88a296be019302089ae",
-        "assets/web_publications/drawn_morph/document/outputs.json": "01292832d37a30f7d4d45106f0d49e88ab24b86a5c46d79fd3ff4206000fe43d",
-        "assets/web_publications/drawn_morph/outputs/0.html": "817e7ca3d7eec1339678f39df7e498f09a5f4257a56b3f4a219a8a33ef829995",
-        "assets/web_publications/drawn_morph/outputs/1.html": "99344647e33165e5fee4a608fc4d3f549e031060018703dbe8b38561b815262d",
-        "assets/web_publications/drawn_morph/outputs/2.html": "c152fe10aac8ffbcef593fb789e9de7cc32a343ae5e3ed2fa1c5de52ba0f5f3b",
-        "assets/web_publications/drawn_morph/outputs/3.html": "62d881ff45bf6a4a82419e42335162b8f7c9b524dd3c4dfbca90c35a806d145d",
-        "assets/web_publications/drawn_morph/outputs/4.html": "e3cfad829f71f610aa354d3984f8fdf894a8cb65e46c016ed569b7e86064c29e"
+        "assets/web_publications/drawn_morph/document/metadata.edn": "70eb69b2bb50d4d1d30deccdb42af121dd441673c617ab83ed5802cfb7492c1e",
+        "assets/web_publications/drawn_morph/document/outputs.json": "a72520d6b1f531e30e3af064fd2617f31ef67260702d782b3e10c2e7ae6d005f",
+        "assets/web_publications/drawn_morph/outputs/0.html": "af463909218bcb7f48f5d479202bf73c471e9d2f71dc61df74d3c61afdea9d8b",
+        "assets/web_publications/drawn_morph/outputs/1.html": "5e56df7d4c052130e7f3ed3eaae5234d788fb4d7db1445848732e03c5765fee0",
+        "assets/web_publications/drawn_morph/outputs/2.html": "25dfd4340e6604fe91f414db014137c88201069eeff098fe60c12c8edd786693",
+        "assets/web_publications/drawn_morph/outputs/3.html": "3f94abaab39154880b7cd2b387c9c7b1cd1f03fc67627af0bb41b89cafa20a53",
+        "assets/web_publications/drawn_morph/outputs/4.html": "6c83beefcdac68f7bc8a3f14d594b6463b493eef9576ae9fe1fb4e307936b5b8"
       },
       "kinds": [
         "plotly",
@@ -2510,20 +2438,20 @@
       }
     },
     "assets/agent_transcripts/drawn_paint/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "capturedAt": "2026-11-17T21:41:55.839Z",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-18T14:55:55.563Z",
       "channels": 7,
       "file": "assets/web_publications/drawn_paint/document/metadata.edn",
       "files": {
-        "assets/web_publications/drawn_paint/document/metadata.edn": "c3a987939304b932b79ce4e0aba740e4c37cd3b605ec87a1bb5e7f49f9496aad",
-        "assets/web_publications/drawn_paint/document/outputs.json": "ab3b9547b58dbfd176714420718a87c6e177e00776d457ada07d0603eddfd027",
-        "assets/web_publications/drawn_paint/outputs/0.html": "5c9052ffa2f6ff9e2d12c38c224b76cba6f660752284cbfe1a6aeda65f18749a",
-        "assets/web_publications/drawn_paint/outputs/1.html": "98ea51e151d466585e1b58b90eafc50f16233edfdc56a07bbcd9e5a9c2d1ab69",
-        "assets/web_publications/drawn_paint/outputs/2.html": "714d00eff3e43aeca798b218248d87083f3852d047a161d872cce29d2abd5e4a",
-        "assets/web_publications/drawn_paint/outputs/3.html": "5c9052ffa2f6ff9e2d12c38c224b76cba6f660752284cbfe1a6aeda65f18749a",
-        "assets/web_publications/drawn_paint/outputs/4.html": "5c9052ffa2f6ff9e2d12c38c224b76cba6f660752284cbfe1a6aeda65f18749a",
-        "assets/web_publications/drawn_paint/outputs/5.html": "5c9052ffa2f6ff9e2d12c38c224b76cba6f660752284cbfe1a6aeda65f18749a",
-        "assets/web_publications/drawn_paint/outputs/6.html": "5c9052ffa2f6ff9e2d12c38c224b76cba6f660752284cbfe1a6aeda65f18749a"
+        "assets/web_publications/drawn_paint/document/metadata.edn": "d0a2ebb44f30534acd030eb4374ac825612fd14ea45947bae187d2b9941efbe0",
+        "assets/web_publications/drawn_paint/document/outputs.json": "23e260df43c4456343dde15e570028026abb0c8c2f31cdb488a304ad6da5bdaf",
+        "assets/web_publications/drawn_paint/outputs/0.html": "114ff7a63001f9ea28778ec14b1f5f7019ab119addd3441965455000f2b13f85",
+        "assets/web_publications/drawn_paint/outputs/1.html": "b1553ed8931f434e29f7a1a0ced097070fa7fe483180269aa52d4772c8e81c67",
+        "assets/web_publications/drawn_paint/outputs/2.html": "394a623c000d0723b2a2a326840ddaddb274f0338c07d743e13bd394a4c0952a",
+        "assets/web_publications/drawn_paint/outputs/3.html": "114ff7a63001f9ea28778ec14b1f5f7019ab119addd3441965455000f2b13f85",
+        "assets/web_publications/drawn_paint/outputs/4.html": "114ff7a63001f9ea28778ec14b1f5f7019ab119addd3441965455000f2b13f85",
+        "assets/web_publications/drawn_paint/outputs/5.html": "114ff7a63001f9ea28778ec14b1f5f7019ab119addd3441965455000f2b13f85",
+        "assets/web_publications/drawn_paint/outputs/6.html": "114ff7a63001f9ea28778ec14b1f5f7019ab119addd3441965455000f2b13f85"
       },
       "kinds": [
         "plotly"
@@ -2543,18 +2471,18 @@
       }
     },
     "assets/agent_transcripts/drawn_score/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "capturedAt": "2026-11-17T21:42:03.162Z",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-18T14:56:00.065Z",
       "channels": 5,
       "file": "assets/web_publications/drawn_score/document/metadata.edn",
       "files": {
-        "assets/web_publications/drawn_score/document/metadata.edn": "57016cea16e0b31884154482deb3bc76fb46f613de33485d8e41fb2cba407560",
-        "assets/web_publications/drawn_score/document/outputs.json": "d6643a9fe41325660108cf6fa9cfce11c5e5be064fa318436e9be260584162c7",
-        "assets/web_publications/drawn_score/outputs/0.html": "b51449bb291af551af1761a067852b797ac3efa84863ece36103cf0a3f68d88d",
-        "assets/web_publications/drawn_score/outputs/1.html": "0da12daaa915ff51ade45df141fd4f93aa99d54e2c54d2f7a28e148316b50ac9",
-        "assets/web_publications/drawn_score/outputs/2.html": "8c68c3116f138e178e5595bc68a3ef06417a5893d0bfaadb2da23e54ae96f13d",
-        "assets/web_publications/drawn_score/outputs/3.html": "b0be378c2fede6c6de393dc8708192a7481c3a42b507ab7b14eb30bca4b1a500",
-        "assets/web_publications/drawn_score/outputs/4.html": "0da12daaa915ff51ade45df141fd4f93aa99d54e2c54d2f7a28e148316b50ac9"
+        "assets/web_publications/drawn_score/document/metadata.edn": "fce5ef7dd9a29c2a72831e1faa320e1bd02b69f16133e15d1294fc8dacc115db",
+        "assets/web_publications/drawn_score/document/outputs.json": "2966b6767a8d24e181ec0cc357c112256655b4aa5203cd10db8660b6fe8bc635",
+        "assets/web_publications/drawn_score/outputs/0.html": "e929927985a858ff36946a0a79f4402bb15c2fd1dd32625d29af5404fe7d87c1",
+        "assets/web_publications/drawn_score/outputs/1.html": "bc553aabb62ba26ce42a5fee765d78c0a77d62496e4c2fb7c4537e7ed57bbe6d",
+        "assets/web_publications/drawn_score/outputs/2.html": "e6346906e8fa946eb2080518b697555b6fbe29bd20bfddb7462d0aaee3c3b60d",
+        "assets/web_publications/drawn_score/outputs/3.html": "a84b4d13163014a0bb57c15fbe20b709fcd1e80333ed298221314664b18cf522",
+        "assets/web_publications/drawn_score/outputs/4.html": "bc553aabb62ba26ce42a5fee765d78c0a77d62496e4c2fb7c4537e7ed57bbe6d"
       },
       "kinds": [
         "plotly",
@@ -2574,17 +2502,17 @@
       }
     },
     "assets/agent_transcripts/dynamic_graph_systems_examples/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "capturedAt": "2026-11-17T21:44:03.195Z",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-18T14:57:31.197Z",
       "channels": 4,
       "file": "assets/web_publications/dynamic_graph_systems_examples/document/metadata.edn",
       "files": {
         "assets/web_publications/dynamic_graph_systems_examples/document/metadata.edn": "1650b73527c9894e2019e5b17dafd12c907bf412b4c192030eac49a3513c3818",
-        "assets/web_publications/dynamic_graph_systems_examples/document/outputs.json": "0a35ad58f5f3a1f0ade5d1f6a5c058e96aff4decbca4161d79365c99fc3fe92d",
-        "assets/web_publications/dynamic_graph_systems_examples/outputs/0.html": "241b4d7b5afc0310061705e611399a0a0ab5361067fc79c460eec1e3a5e5169a",
-        "assets/web_publications/dynamic_graph_systems_examples/outputs/1.html": "cd81d9c15f8b76e7f4ae89a81ee7b07fa44f37d7adfbe9495b6e79b0e5294a7c",
-        "assets/web_publications/dynamic_graph_systems_examples/outputs/2.html": "00b6611eb9012d0e7605761b1c8c2d1b9729957a2860f42ca6756e68d0be9150",
-        "assets/web_publications/dynamic_graph_systems_examples/outputs/3.html": "0991a858111fef15e1f5f965480dbbe496887e5c3fdf438f4a80669635efefb9"
+        "assets/web_publications/dynamic_graph_systems_examples/document/outputs.json": "67e83e9c53bbc31373659d61c0bf7bd5579b1a2ca98e5750b117235d251702a8",
+        "assets/web_publications/dynamic_graph_systems_examples/outputs/0.html": "74af606f457bc7b09707830423e33819cad6a60166202283910bcafe0ef6a22c",
+        "assets/web_publications/dynamic_graph_systems_examples/outputs/1.html": "841467f943b0a4a68125671db802e6072fa7bb3f5189010aadd9ff3e7350266c",
+        "assets/web_publications/dynamic_graph_systems_examples/outputs/2.html": "efa8cee2797b6022936522151fbcd1838d805cad4fcf22b64d86d26bdb779029",
+        "assets/web_publications/dynamic_graph_systems_examples/outputs/3.html": "2f86e2f16c2cce8748bc7609ce430cf0cfc6ce6eb398d9241d75a88f85e6a90e"
       },
       "kinds": [
         "plotly",
@@ -2604,27 +2532,27 @@
       }
     },
     "assets/agent_transcripts/eigendrum/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "capturedAt": "2026-11-17T21:44:31.494Z",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-18T14:57:50.813Z",
       "channels": 14,
       "file": "assets/web_publications/eigendrum/document/metadata.edn",
       "files": {
-        "assets/web_publications/eigendrum/document/metadata.edn": "40c76e67b1b276e958a5ae27e17d06628c1ff04544f50ac991651b1d6a9e63f2",
-        "assets/web_publications/eigendrum/document/outputs.json": "094c12ae315ed38734deeebbb9dd37fb1d452c526f193b5fa386b94eeccfbdc0",
-        "assets/web_publications/eigendrum/outputs/0.html": "859f2e1afb1abf1a18fcd4f624553e15e62b1efd009bf68b905d97555d1c3dee",
-        "assets/web_publications/eigendrum/outputs/1.html": "449bebf19e7b9a521ec5039bfd946478cde65c5d458b22b61446e98506ca4079",
-        "assets/web_publications/eigendrum/outputs/10.html": "0f701479bd512049d3f6edcbc059622be2eb456818a4f90a2ffd08430906961f",
-        "assets/web_publications/eigendrum/outputs/11.html": "08ece196df7930a9e4f7a45dffd1c3b2de32d485429fed4bfa91f662d489266c",
-        "assets/web_publications/eigendrum/outputs/12.html": "f6905c82981551237b636f227b0b16214840e5a20aa9b920e35d546a0ffa0b8f",
-        "assets/web_publications/eigendrum/outputs/13.html": "2b5a86ffa3488ef8f9761fae7edebb21105516cd5151775009e517f20cc425f4",
-        "assets/web_publications/eigendrum/outputs/2.html": "df0071c7fbcde50fc3fab07327afff9a2ec548dbf21cffd77d46fe9d2a4399df",
-        "assets/web_publications/eigendrum/outputs/3.html": "0f701479bd512049d3f6edcbc059622be2eb456818a4f90a2ffd08430906961f",
-        "assets/web_publications/eigendrum/outputs/4.html": "0f701479bd512049d3f6edcbc059622be2eb456818a4f90a2ffd08430906961f",
-        "assets/web_publications/eigendrum/outputs/5.html": "0f701479bd512049d3f6edcbc059622be2eb456818a4f90a2ffd08430906961f",
-        "assets/web_publications/eigendrum/outputs/6.html": "a5bb8118cb82111366ed0ca27c7ff27029831a4ecfbad1def293176e6cf19f92",
-        "assets/web_publications/eigendrum/outputs/7.html": "49ae2f106a0250cfc292c55d7aab9896caf359f249ac0c7e4c1944a4035ef441",
-        "assets/web_publications/eigendrum/outputs/8.html": "204e940dacf2b6c6b245f8e1f6ec0f4479fc4d708d126c6e126822a1b0ad7e85",
-        "assets/web_publications/eigendrum/outputs/9.html": "0f701479bd512049d3f6edcbc059622be2eb456818a4f90a2ffd08430906961f"
+        "assets/web_publications/eigendrum/document/metadata.edn": "d1f46a0dd2f7812ae708308c9fe86793ce8c18339a3e0d58a52a4ffb89d38b3a",
+        "assets/web_publications/eigendrum/document/outputs.json": "011cb5bb9f9209b342c59802a29c450dea4bce4d55714e31cdee4c57fe904a30",
+        "assets/web_publications/eigendrum/outputs/0.html": "60db88492e10ca05684b1f286c8e8b8f48c158c95adf3fef41aadb30307849be",
+        "assets/web_publications/eigendrum/outputs/1.html": "df222fce34d6c72a682c9c5f05f18ea34490457382c537dcbe0efbb42c6e274c",
+        "assets/web_publications/eigendrum/outputs/10.html": "89c2deac9ee21e2113af60a1634beef69aaae58b674ccbe8f3dbe4a1241e4ae5",
+        "assets/web_publications/eigendrum/outputs/11.html": "643212365616f606a18706ba81fb09a7cb589b080f675cee238045818678b443",
+        "assets/web_publications/eigendrum/outputs/12.html": "4ac3115c3c91957e36025b1ab5c6155fa387d7a20c0be20c889131540094d20e",
+        "assets/web_publications/eigendrum/outputs/13.html": "44851df90c086df4dcc85af90e70ee3be87a73e5f373f5da92b5743dfa8239fb",
+        "assets/web_publications/eigendrum/outputs/2.html": "fc929cd52ed2cd3e6c168e9ce77160e5b85c67ed1db1b14adbad686aca206b2e",
+        "assets/web_publications/eigendrum/outputs/3.html": "89c2deac9ee21e2113af60a1634beef69aaae58b674ccbe8f3dbe4a1241e4ae5",
+        "assets/web_publications/eigendrum/outputs/4.html": "89c2deac9ee21e2113af60a1634beef69aaae58b674ccbe8f3dbe4a1241e4ae5",
+        "assets/web_publications/eigendrum/outputs/5.html": "89c2deac9ee21e2113af60a1634beef69aaae58b674ccbe8f3dbe4a1241e4ae5",
+        "assets/web_publications/eigendrum/outputs/6.html": "79c04d48a2aa185a96b20210f1173e3f3f8d246da7c97efa4c2cde87c40bc065",
+        "assets/web_publications/eigendrum/outputs/7.html": "09f0bfb1e1ae433b0a319ca05133151e24cc3a2cec595e1a746052363cb46728",
+        "assets/web_publications/eigendrum/outputs/8.html": "59849afd6c5062dbe276f1e6d0b77cc414ae0164cf7bc5619048b40d607cf4f2",
+        "assets/web_publications/eigendrum/outputs/9.html": "89c2deac9ee21e2113af60a1634beef69aaae58b674ccbe8f3dbe4a1241e4ae5"
       },
       "kinds": [
         "svg"
@@ -7584,7 +7512,7 @@
       }
     },
     "assets/agent_transcripts/dataframe_typed_columns/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
       "channels": 0,
       "reason": "No output-area channels; the code remains available.",
       "sources": {
@@ -7598,7 +7526,7 @@
       }
     },
     "assets/agent_transcripts/drawing_notation/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
       "channels": 0,
       "reason": "No output-area channels; the code remains available.",
       "sources": {
