@@ -518,6 +518,9 @@ class FieldAudioEngine private constructor(
         if (started.compareAndSet(false, true)) {
             shouldStop.set(false)
             audioThread = thread(start = true, isDaemon = true, name = "FieldAudioEngine") {
+                // The graphs this engine renders belong to this thread from here on; a render from any
+                // other is reported (afield.runtime.bytecode.ThreadOwnership).
+                synthContext.claimOwnership(Thread.currentThread())
                 try {
                     runLoop()
                 } catch (t: Throwable) {
@@ -529,6 +532,7 @@ class FieldAudioEngine private constructor(
                     lprintln("error,audio", t.stackTraceToString())
                     throw t
                 } finally {
+                    synthContext.claimOwnership(null)
                     outputActive = false
                     inputActive = false
                     startLatch.countDown()

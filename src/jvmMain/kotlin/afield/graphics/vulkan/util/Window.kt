@@ -372,6 +372,8 @@ class Window(val title : String, val fullscreen : Boolean = false, initialDimens
      */
     var onPoll = MapOfSequences<String>()
 
+    /** GLFW's event pump and the box [onPoll] hooks: Runloop work, like the frame it belongs to. */
+    @afield.runtime.bytecode.ThreadOwned(afield.runtime.bytecode.ThreadOwner.RUNLOOP)
     fun pollEvents() {
         GLFW.glfwPollEvents()
         onPoll.update()
