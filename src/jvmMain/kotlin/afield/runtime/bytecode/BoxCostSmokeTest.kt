@@ -111,7 +111,9 @@ object BoxCostSmokeTest {
             check("B inner: 2 calls on box line 2", c["inner"]?.calls == 2L && c["inner"]?.line == 2, c["inner"].toString())
             check("B outer: 1 call on box line 6", c["outer"]?.calls == 1L && c["outer"]?.line == 6, c["outer"].toString())
             check("B fails and guarded: 1 call each", c["fails"]?.calls == 1L && c["guarded"]?.calls == 1L, "${c["fails"]} / ${c["guarded"]}")
-            check("B the box body ran once", c["box body"]?.calls == 1L, c["box body"].toString())
+            // The engine's prelude snippets, evaluated for the box, are not its code and carry no sites.
+            check("B one box body, run once", c["box body"]?.calls == 1L, c["box body"].toString())
+            check("B only the box's own snippet has sites", sites.map { it.className }.toSet().size == 1, sites.map { it.className }.toSet().toString())
             val o = c["outer"]; val i = c["inner"]
             check("B outer total = outer self + inner total", o != null && i != null && o.totalNs == o.selfNs + i.totalNs, "$o / $i")
             check("B nothing is left running", c.values.none { it.running }, c.values.filter { it.running }.toString())

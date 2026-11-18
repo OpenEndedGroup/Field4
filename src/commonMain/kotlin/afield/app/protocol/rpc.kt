@@ -2647,7 +2647,11 @@ data class BoxCostFunction(
     val running: Boolean = false,
 )
 
-/** One opted-in box in a [BoxCostSnapshot]: its runs and their wall time, measured at the run boundary. */
+/**
+ * One opted-in box in a [BoxCostSnapshot], measured at the run boundary: [runs] counts its snippet
+ * evaluations (the engine's prelude and warm-up evaluations for the box included) and its coroutine
+ * resumes, and [totalMs] their wall time.
+ */
 @Serializable
 data class BoxCostBox(val boxId: String, val name: String, val measuring: Boolean, val runs: Long, val totalMs: Double)
 

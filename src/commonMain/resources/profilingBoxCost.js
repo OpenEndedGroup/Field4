@@ -56,7 +56,7 @@ export function createProfileBoxCost(parent) {
         if (!data.boxes.length) boxes.append(node("p", "", "No box is measured. Select a box, press Measure selected box, then run it."));
         for (const b of data.boxes) {
             const row = node("div", "profile-box-cost-box"); row.dataset.boxId = b.boxId;
-            row.append(node("strong", "", b.name), node("span", "", ` · ${b.runs} runs · ${ms(b.totalMs)} ms `));
+            row.append(node("strong", "", b.name), node("span", "", ` · ${b.runs} evaluations and resumes · ${ms(b.totalMs)} ms `));
             const toggle = node("button", "", b.measuring ? "Stop measuring" : "Measure");
             toggle.addEventListener("click", () => { pending = false; request(b.measuring ? "unmeasure" : "measure", b.boxId); });
             row.append(toggle);

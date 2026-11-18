@@ -54,7 +54,15 @@ object BoxCostPass : BoxBytecodePass {
     /** [Site.kind] of every cost site. */
     const val KIND = "box-cost"
 
-    override fun wants(origin: SnippetOrigin): Boolean = BoxCost.isMeasured(origin)
+    /**
+     * A measured box's snippets, except one none of whose lines is a line of the box's code: the
+     * engine's prelude and warm-up snippets, which are evaluated for the box but are not its code.
+     */
+    override fun wants(origin: SnippetOrigin): Boolean {
+        if (!BoxCost.isMeasured(origin)) return false
+        if (origin.sourceText == null) return true
+        return (1..origin.sourceLineCount).any { origin.boxLine(it) > 0 }
+    }
 
     /** Whether method [m] gets probes; see the class comment for what is left out and why. */
     internal fun instrumentable(m: MethodScope): Boolean {
@@ -69,7 +77,10 @@ object BoxCostPass : BoxBytecodePass {
     override fun method(cls: ClassScope, m: MethodScope, next: MethodVisitor): MethodVisitor {
         if (!instrumentable(m)) return next
         val lines = cls.origin.sourceLineCount
-        val first = m.facts.lines.firstOrNull { it in 1..lines } ?: m.facts.lines.firstOrNull() ?: 0
+        // The first line that is proven to be a box line (a macro may have rewritten the first
+        // statement, `println(` into `_printlnHere(`), else the first inside the snippet's source.
+        val inSource = m.facts.lines.filter { it in 1..lines }
+        val first = inSource.firstOrNull { cls.origin.boxLine(it) > 0 } ?: inSource.firstOrNull() ?: m.facts.lines.firstOrNull() ?: 0
         val site = cls.site(m, KIND, detail = BoxCost.functionName(cls.className, m.name), line = first)
         val id = site.id
         return object : MethodVisitor(Opcodes.API_VERSION, next) {
