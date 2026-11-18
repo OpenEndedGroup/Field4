@@ -104,6 +104,105 @@ private object Native {
 /** Double-precision SolidCraft tessellation plus B-rep face IDs, copied out of Rust memory. */
 data class SolidCraftMesh(val positions: DoubleArray, val indices: IntArray, val faceIds: IntArray) {
     fun toTriMesh(): TriMesh = TriMesh(FloatArray(positions.size) { positions[it].toFloat() }, indices.copyOf())
+
+    /**
+     * The body's edges as the tessellation shows them: every run of triangle sides where two
+     * B-rep faces meet, one [SolidCraftEdge] per connected run. Pass their [SolidCraftEdge.pick]
+     * points to a chamfer or fillet to take every edge of a part:
+     *
+     * ```kotlin
+     * val edges = part.mesh().edges()
+     * chamfer("0.5", *edges.map { it.pick }.toTypedArray())
+     * ```
+     *
+     * A curved edge comes back as the chords the mesh drew it with, so its points are within the
+     * mesh's tolerance of the true edge, which is as near as a pick needs.
+     */
+    fun edges(): List<SolidCraftEdge> {
+        // Triangles of different faces repeat their shared corners: weld by position first.
+        var extent = 0.0
+        for (axis in 0 until 3) {
+            var lo = Double.MAX_VALUE; var hi = -Double.MAX_VALUE
+            for (i in axis until positions.size step 3) { lo = minOf(lo, positions[i]); hi = maxOf(hi, positions[i]) }
+            extent = maxOf(extent, hi - lo)
+        }
+        val grid = maxOf(extent * 1e-9, 1e-12)
+        val welded = HashMap<Triple<Long, Long, Long>, Int>()
+        val corners = ArrayList<DoubleArray>()
+        val vertexOf = IntArray(positions.size / 3) { v ->
+            val key = Triple(Math.round(positions[3 * v] / grid), Math.round(positions[3 * v + 1] / grid), Math.round(positions[3 * v + 2] / grid))
+            welded.getOrPut(key) { corners += doubleArrayOf(positions[3 * v], positions[3 * v + 1], positions[3 * v + 2]); corners.size - 1 }
+        }
+        // Each triangle side, by its two welded corners, with the faces on either side of it.
+        val sides = HashMap<Long, MutableSet<Int>>()
+        val trianglesOn = HashMap<Long, MutableList<Int>>()
+        fun key(a: Int, b: Int) = minOf(a, b).toLong() shl 32 or maxOf(a, b).toLong()
+        for (t in 0 until indices.size / 3) for (k in 0 until 3) {
+            val a = vertexOf[indices[3 * t + k]]; val b = vertexOf[indices[3 * t + (k + 1) % 3]]
+            if (a == b) continue
+            sides.getOrPut(key(a, b)) { HashSet(2) } += faceIds[t]
+            trianglesOn.getOrPut(key(a, b)) { ArrayList(2) } += t
+        }
+        // Convex where the second face falls away behind the first one's plane.
+        fun convex(a: Int, b: Int): Boolean {
+            val (t, u) = trianglesOn.getValue(key(a, b)).let { it[0] to it[it.size - 1] }
+            fun corner(t: Int, k: Int) = corners[vertexOf[indices[3 * t + k]]]
+            val (p0, p1, p2) = Triple(corner(t, 0), corner(t, 1), corner(t, 2))
+            val e1 = DoubleArray(3) { p1[it] - p0[it] }; val e2 = DoubleArray(3) { p2[it] - p0[it] }
+            val n = doubleArrayOf(e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0])
+            val far = (0 until 3).map { vertexOf[indices[3 * u + it]] }.first { it != a && it != b }
+            return (0 until 3).sumOf { n[it] * (corners[far][it] - corners[a][it]) } < 0
+        }
+        // The sides between two faces, grouped by that pair, then walked into connected runs.
+        val byPair = HashMap<Pair<Int, Int>, MutableList<Pair<Int, Int>>>()
+        for ((key, faces) in sides) {
+            if (faces.size != 2) continue
+            val (f, g) = faces.sorted()
+            byPair.getOrPut(f to g) { ArrayList() } += (key ushr 32).toInt() to (key and 0xffffffffL).toInt()
+        }
+        val edges = ArrayList<SolidCraftEdge>()
+        for ((pair, segments) in byPair) {
+            val next = HashMap<Int, MutableList<Int>>()
+            for ((a, b) in segments) { next.getOrPut(a) { ArrayList(2) } += b; next.getOrPut(b) { ArrayList(2) } += a }
+            val used = HashSet<Long>()
+            fun take(a: Int, b: Int) = used.add(minOf(a, b).toLong() shl 32 or maxOf(a, b).toLong())
+            // Open runs start at an end; whatever is left afterwards is closed loops.
+            val starts = next.keys.sortedBy { next.getValue(it).size != 1 }
+            for (start in starts) {
+                for (first in next.getValue(start)) {
+                    if (!take(start, first)) continue
+                    val run = arrayListOf(start, first)
+                    while (true) {
+                        val here = run.last()
+                        val onward = next.getValue(here).firstOrNull { take(here, it) } ?: break
+                        run += onward
+                    }
+                    val middle = (run.size - 2) / 2
+                    edges += SolidCraftEdge(pair, run.map { corners[it] }, convex(run[middle], run[middle + 1]))
+                }
+            }
+        }
+        return edges
+    }
+}
+
+/**
+ * One edge of a SolidCraft body: the two B-rep faces it separates, its points in order, and
+ * whether it is [convex] (an outside corner, which a chamfer cuts away) or concave (an inside one,
+ * which a chamfer fills).
+ */
+class SolidCraftEdge internal constructor(val faces: Pair<Int, Int>, val points: List<DoubleArray>, val convex: Boolean) {
+    /** Whether it is a loop, such as a hole's rim, rather than a run between two ends. */
+    val closed: Boolean get() = points.size > 2 && points.first().contentEquals(points.last())
+
+    /** A point on the edge for picking it: the middle of its middle segment. */
+    val pick: DoubleArray get() {
+        val i = (points.size - 2) / 2
+        return DoubleArray(3) { (points[i][it] + points[i + 1][it]) / 2 }
+    }
+
+    /** Its length along the mesh. */
+    val length: Double get() = points.zipWithNext().sumOf { (a, b) -> kotlin.math.sqrt((0 until 3).sumOf { (a[it] - b[it]) * (a[it] - b[it]) }) }
 }
 
 /** A saved SolidCraft design with an incremental evaluator. Close it when finished. */

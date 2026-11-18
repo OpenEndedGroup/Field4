@@ -98,6 +98,15 @@ Facts found doing so, rechecked at v0.41.0, where sweeps go through SolidCraft's
   up most), and of the four top edges mitred at the corners (`d²(L + W) − 4d³/3` removed) all
   match their closed forms to 1e-9; so does a base edge of a pyramid, where the faces meet at
   atan 2 rather than 90°.
+- Chamfering *every* edge (`mesh().edges()` lists them from the tessellation's face IDs, each
+  marked convex or concave) works in one feature only while no outside and inside edge meet at a
+  corner: a block, a drilled block, a hex nut and a stepped shaft build; a pocketed block, an L
+  bracket and plates of bosses fail with SMLib's "Fillet Corner Error: Vertex Computation
+  Failure", in under a second. The same edges as two chamfers, outside then inside, build every
+  one of them. A pyramid's apex (four chamfers meeting) is refused outright ("not supported yet");
+  a fillet of every edge builds on all of these, the pyramid included. Two chamfers of a 4 × 4
+  plate of bosses (204 edges) take about 5 s, a fillet about the same; the 3 × 3 plate (120 edges)
+  about 1.7 s. The `chamfer_everything` document runs the ladder.
 - An offset face moves the plane and re-intersects its neighbours, so the result is the exact
   half-space intersection even where vertices change. A square pyramid (apex four planes at a
   point) with one side, two opposite sides or all four moved ±1 matches Manifold's half-space

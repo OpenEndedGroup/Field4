@@ -116,6 +116,33 @@ object SolidCraftBuilderSmokeTest {
             near("sloped chamfer", body(d).getDouble("volume"), halfSpaces(pyramidPlanes(emptySet(), 0.0) + (n to cut)), 1e-6)
         }
 
+        // Every edge, from the mesh: a block's twelve, all outside corners, 4 × (20 + 10 + 10) long.
+        case("edges of a block", solidCraft { block() }) { d ->
+            val edges = d.mesh().edges()
+            check(edges.size == 12 && edges.all { it.convex }) { "block edges: ${edges.size}, convex ${edges.count { it.convex }}" }
+            near("edge length", edges.sumOf { it.length }, 160.0, 1e-9)
+        }
+        // A pocket adds eight inside edges at its floor and walls. Chamfering all 24 at once fails
+        // where outside and inside edges meet (SMLib "Vertex Computation Failure" at v0.44.1);
+        // outside then inside, as two chamfers, builds. The one-chamfer outcome is reported, not
+        // required, so a rev that fixes it shows up here.
+        val pocketed: SolidCraftBuilder.() -> Unit = {
+            block()
+            extrude(sketch(offsetPlane("XY", "6")) { rectangle(5.0, 3.0, 15.0, 7.0) }, "10", SolidCraftOperation.CUT)
+        }
+        val pocketEdges = solidCraft { pocketed() }.open().use { it.mesh().edges() }
+        case("chamfer every edge, outside then inside", solidCraft {
+            pocketed()
+            chamfer("0.5", *pocketEdges.filter { it.convex }.map { it.pick }.toTypedArray())
+            chamfer("0.5", *pocketEdges.filter { !it.convex }.map { it.pick }.toTypedArray())
+        }) { d ->
+            check(pocketEdges.count { it.convex } == 16 && pocketEdges.count { !it.convex } == 8) { "pocket edges ${pocketEdges.size}" }
+            val v = body(d).getDouble("volume")
+            check(v < 2000.0 - 160.0 && v > 1800.0) { "chamfered pocket volume $v" }
+            val once = runCatching { solidCraft { pocketed(); chamfer("0.5", *pocketEdges.map { it.pick }.toTypedArray()) }.open().close() }
+            report.append("    one chamfer of all ${pocketEdges.size}: ${once.exceptionOrNull()?.message?.substringBefore("\n")?.takeLast(60) ?: "builds"}\n")
+        }
+
         // Offsets on the block: out on the top, in on a side.
         case("offset a face out", solidCraft { block(); offsetFaces("2", doubleArrayOf(10.0, 5.0, 10.0)) }) { d -> near("top out 2", body(d).getDouble("volume"), 2400.0, 1e-9) }
         case("offset a face in", solidCraft { block(); offsetFaces("-2", doubleArrayOf(20.0, 5.0, 5.0)) }) { d -> near("side in 2", body(d).getDouble("volume"), 1800.0, 1e-9) }
