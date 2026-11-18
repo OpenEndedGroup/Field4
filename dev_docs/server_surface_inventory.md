@@ -137,6 +137,7 @@ mutation; it is a different one.
 | `GET /controllers` | `controllers.kt` | none |
 | `GET /controllers/controls` | `controllers.kt` | none |
 | `GET /controllers/outputs` | `controllers.kt` | none |
+| `GET /drawingon/buffers` | `drawingon.kt` | none |
 | `GET /docs-pass-site/{...}` | `docsPass.kt` | loopback + same-site |
 | `GET /extension-web/{...}` | `extensionWeb.kt` | none |
 | `GET /field-audio/{...}` | `fieldAudioProxy.kt` | none |
@@ -734,3 +735,9 @@ control values to the requesting WebSocket session after its DOM is ready. It
 uses the existing document WebSocket access boundary, accepts no file path or
 code, does not execute boxes, and does not broadcast replay to other viewers.
 It adds no stronger authentication than the other document read commands.
+
+### Native Drawing On head
+
+`/drawingon/ws?target=<name>` receives versioned Pencil/audio/layer/view capture events, appends them under `WORKSPACE/.drawingon/`, and invokes the named box target's callback after durable commit. It is a command WebSocket: the upgrade applies `refuseCrossSiteFieldWebSocket`, and a native client without browser-origin headers is accepted. Session IDs are canonical UUIDs, never paths; batches contain at most 64 events and frames at most 1 MiB. The target is an explicit box-owned name. Upload handshakes receive acknowledgements but never subscribe to reference geometry. This uses Field's existing trusted-client boundary and does not add authentication.
+
+`GET /drawingon/buffers?target=<name>&generation=<id>` reads only that target's current FLine reference buffers, at most 32 MiB. It accepts no file path, returns 404 for a superseded generation, and has no route-specific guard, like `/three-buffers`; the application-wide origin policy still protects browser reads. References use the AVP Three typed-buffer format and SHA-256 verification in the native client. The route shares one synchronized receiver archive across the HTTPS application and loopback mirror.
