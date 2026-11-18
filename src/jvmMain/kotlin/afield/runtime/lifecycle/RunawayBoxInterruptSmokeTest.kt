@@ -9,6 +9,7 @@ import afield.app.server.executeAllRequest
 import afield.app.server.thisSessionInfo
 import afield.document.graph.Box
 import afield.document.persistence.SavingContext
+import afield.ui.output.decorationState
 import java.io.File
 import java.nio.file.Files
 import java.util.concurrent.CompletableFuture
@@ -46,6 +47,10 @@ expect:
  *  - **F.** The box-bytecode pipeline the poll runs in (`afield.runtime.bytecode.BoxBytecode`) places
  *    a frame of a `//%-` box's second fragment on its box line, and reads Field's classes as
  *    resources through the engine's loader.
+ *  - **G.** Call-site anchors (`afield.runtime.bytecode.CallSiteAnchorPass`): after a `//%-` break,
+ *    `liveNumber` and `toggle` find their own box line from the slot armed in bytecode, where the old
+ *    fragment-relative stack search lands on a decoy the line above; and `history()` is timed per call
+ *    with the pass on and off.
  */
 object RunawayBoxInterruptSmokeTest {
 
@@ -153,6 +158,42 @@ object RunawayBoxInterruptSmokeTest {
             // raw=2: the bytecode's own line is fragment-relative, which is why lines map by text.
             check("F a fragment's frame names its box line", "placed line=4 raw=2" in f.stdout, f.stdout.lineSequence().filter { "placed" in it }.joinToString(" | "))
             check("F CallTargets reads Field classes through the engine loader", "placed reads=true" in f.stdout, f.stdout.lineSequence().filter { "placed" in it }.joinToString(" | "))
+
+            // G. Call-site anchors (afield.runtime.bytecode.CallSiteAnchorPass) under a real K2
+            // snippet. Box line 5 is line 4 of its fragment, so the old stack search starts at box
+            // line 4 and lands on the decoy comment there; the anchor names line 5.
+            val gCode = listOf(
+                "println(\"first fragment\")",
+                "//%-",
+                "val m = __m(\"g\")",
+                "// decoy: m.liveNumber(1.0) m.toggle { }",
+                "println(\"anchored live=\" + m.liveNumber(7.5)); m.toggle { }",
+                "fun timeHistory(n: Int): Long { val t0 = System.nanoTime(); for (i in 0 until n) m.history(i); return (System.nanoTime() - t0) / n }",
+                "timeHistory(5000)",
+                "println(\"anchored history ns=\" + timeHistory(20000))",
+            ).joinToString("\n")
+            val gLine = gCode.lines()[4]
+            fun runG(name: String): Pair<Outcome, afield.ui.output.RawDecoration?> {
+                val b = createAgentBox(info, name, Rect(0.0, 0.0, 100.0, 100.0), emptyMap())
+                b.properties["code"] = gCode
+                val o = run(info, b, gCode)
+                return o to b.decorationState["gtoggle"]
+            }
+            val refusedBefore = afield.runtime.bytecode.CallSites.refused
+            val (g, gToggle) = runG("anchored")
+            val gOut = g.stdout.lineSequence().filter { "anchored" in it }.joinToString(" | ")
+            check("G anchored box runs", g.ok, g.error.ifBlank { "succeeded" })
+            check("G liveNumber reads its own line after a //%- break", "anchored live=7.5" in g.stdout, gOut)
+            check("G toggle is placed on box line 5, at its own .toggle(", gToggle?.lineStart == 5 && gToggle.colStart == gLine.indexOf(".toggle(") + ".toggle(".length + 1,
+                "line=${gToggle?.lineStart} col=${gToggle?.colStart} (want 5/${gLine.indexOf(".toggle(") + ".toggle(".length + 1})")
+            check("G no slot was refused", afield.runtime.bytecode.CallSites.refused == refusedBefore, "refused +${afield.runtime.bytecode.CallSites.refused - refusedBefore}")
+
+            // The same code with the pass off: the stack-search fallback, for the before/after cost
+            // and as the control that shows the scenario discriminates (it reads the decoy).
+            afield.runtime.bytecode.CallSiteAnchorPass.enabled = false
+            val (u, uToggle) = try { runG("unanchored") } finally { afield.runtime.bytecode.CallSiteAnchorPass.enabled = true }
+            check("G unanchored box runs", u.ok, u.error.ifBlank { "succeeded" })
+            println("  info G control, pass off: ${u.stdout.lineSequence().filter { "anchored" in it }.joinToString(" | ")} toggle line=${uToggle?.lineStart}")
         } catch (t: Throwable) {
             failures += "harness threw ${t.javaClass.simpleName}: ${t.message}"
             t.printStackTrace(System.err)

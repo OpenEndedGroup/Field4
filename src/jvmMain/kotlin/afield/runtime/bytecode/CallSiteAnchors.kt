@@ -67,6 +67,7 @@ class CallSiteAnchor(val target: String, val ordinal: Int, val count: Int) {
         return Location(box, site.origin.property, line, at + (if (end) text.length else 0) + offset)
     }
 
+    /** `history #1/2`: the target, then this call's ordinal of the count on its line. */
     override fun toString(): String = "$target #$ordinal/$count"
 
     companion object {
@@ -172,7 +173,10 @@ object CallSites {
  * or [enabled] turns it off for code compiled from then on, and the helpers fall back to the stack.
  */
 object CallSiteAnchorPass : BoxBytecodePass {
+    /** `anchors`, in logs, dumps and a module's record of its passes. */
     override val id = "anchors"
+
+    /** Only [CallSites]: its `arm` is the one call this pass inserts. */
     override val inserts = setOf(CallSites.OWNER)
 
     private const val STACK_AWARE = "Lafield/runtime/bytecode/StackAware;"
@@ -183,10 +187,15 @@ object CallSiteAnchorPass : BoxBytecodePass {
     var enabled: Boolean = BoxInterrupt.setting("AFIELD_BOX_CALLSITE_ANCHORS", "afield.boxBytecode.callSiteAnchors")
         .let { it == null || (it != "0" && it != "off" && it != "false") }
 
+    /** While [enabled], for any snippet whose loader is alive (annotations are read through it). */
     override fun wants(origin: SnippetOrigin): Boolean = enabled && origin.classLoader != null
 
     private fun baseName(name: String) = name.removeSuffix("\$default")
 
+    /**
+     * [next] itself for a method with no call to a [StackAware] target (decided from the scan, before
+     * anything is emitted); otherwise a visitor that arms a fresh site before each such call.
+     */
     override fun method(cls: ClassScope, m: MethodScope, next: MethodVisitor): MethodVisitor {
         val loader = cls.origin.classLoader ?: return next
         val calls = m.facts.calls
