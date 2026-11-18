@@ -23,6 +23,8 @@ struct ContentView: View {
     @State private var immersiveOpen = false
     @Environment(\.openWindow) private var openWindow
     @Environment(RTTStream.self) private var rtt
+    @Environment(SpatialInk.self) private var spatialInk
+    @State private var switchingInk = false
     @Environment(ThreeClient.self) private var threeClient
     @Environment(LiveMetalClient.self) private var liveMetalClient
     @Environment(\.openImmersiveSpace) private var openImmersiveSpace
@@ -193,6 +195,32 @@ struct ContentView: View {
                 Label(liveMetalClient.immersiveRequested ? "Exit Live Metal" : "Live Metal",
                       systemImage: liveMetalClient.immersiveRequested ? "xmark.circle" : "cube.transparent.fill")
             }
+            Button {
+                Task { await toggleSpatialInk() }
+            } label: {
+                Label(spatialInk.isOpen ? "Exit Spatial Ink" : "Spatial Ink",
+                      systemImage: spatialInk.isOpen ? "xmark.circle" : "scribble.variable")
+            }
+            .disabled(switchingInk)
+            if spatialInk.isOpen {
+                Button {
+                    spatialInk.arm(!spatialInk.isArmed)
+                } label: {
+                    Label(spatialInk.isArmed ? "Pause Drawing" : "Arm Draw",
+                          systemImage: spatialInk.isArmed ? "pause.circle.fill" : "pencil.tip")
+                }
+                .disabled(!spatialInk.canDraw)
+                Button { spatialInk.undo() } label: {
+                    Label("Undo Stroke", systemImage: "arrow.uturn.backward")
+                }
+                .disabled(!spatialInk.canUndo)
+                if spatialInk.syncFailed {
+                    Button { spatialInk.retry() } label: {
+                        Label("Retry Field Sync", systemImage: "arrow.clockwise")
+                    }
+                }
+                Text(spatialInk.status).font(.caption).lineLimit(1)
+            }
             if rtt.isRunning {
                 Text(rtt.status)
                     .font(.caption)
@@ -224,7 +252,21 @@ struct ContentView: View {
     /// Open/close the RTT theatre. Acquiring the stream starts the receiver (if not already running
     /// for the windowed viewer) before the space so packets are already being reassembled when the
     /// screen appears; releasing stops it only when no other presentation is open.
+    private func toggleSpatialInk() async {
+        guard !switchingInk else { return }
+        switchingInk = true
+        defer { switchingInk = false }
+        if spatialInk.isOpen {
+            await dismissImmersiveSpace()
+            return
+        }
+        if immersiveOpen { await toggleImmersive() }
+        if liveMetalClient.immersiveRequested { await toggleLiveMetal() }
+        _ = await openImmersiveSpace(id: Field4VisionApp.spatialInkSpaceID)
+    }
+
     private func toggleImmersive() async {
+        if spatialInk.isOpen { await dismissImmersiveSpace() }
         if immersiveOpen {
             await dismissImmersiveSpace()
             rtt.release()
@@ -247,6 +289,7 @@ struct ContentView: View {
     }
 
     private func toggleLiveMetal() async {
+        if spatialInk.isOpen { await dismissImmersiveSpace() }
         if liveMetalClient.immersiveRequested {
             await dismissImmersiveSpace()
             liveMetalClient.stop()
@@ -304,4 +347,5 @@ struct ContentView: View {
         .environment(RTTStream())
         .environment(ThreeClient())
         .environment(LiveMetalClient())
+        .environment(SpatialInk())
 }

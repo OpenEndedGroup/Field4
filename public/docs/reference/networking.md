@@ -4,7 +4,7 @@
 
 OSC messages, discovery and query interfaces for connecting Field to other applications and devices.
 
-21 source file(s), 532 public symbol(s), 318 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+22 source file(s), 537 public symbol(s), 322 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1027,6 +1027,33 @@ Latest-only playhead following. All Resolve calls run on one daemon, never on th
 | <a id="resolveplayheadlink-kt--resolveplayheadlink--offer"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">offer</span><span class="p">(</span><span class="n">seconds</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/io/resolve/ResolvePlayheadLink/#L68) | Offer source-video seconds (null while unloaded). Replaces the previous target without enqueueing work. |
 | <a id="resolveplayheadlink-kt--resolveplayheadlink--getplayhead"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">getPlayhead</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">ResolvePlayhead</span><span class="p">&gt;</span></code>](source/jvmMain/afield/io/resolve/ResolvePlayheadLink/#L74) | Disable following and asynchronously read Resolve. Apply the result to Field on its own loop. |
 | <a id="resolveplayheadlink-kt--resolveplayheadlink--close"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/io/resolve/ResolvePlayheadLink/#L137) | Close without interrupting an in-flight worker exchange or blocking Field's loop. |
+
+## SpatialInk.kt { #spatialink-kt }
+
+`src/jvmMain/kotlin/afield/io/spatialink/SpatialInk.kt` — [read the source](source/jvmMain/afield/io/spatialink/SpatialInk/)
+
+### Top-level functions { #spatialink-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="spatialink-kt--readspatialink"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">readSpatialInk</span><span class="p">(</span><span class="n">file</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span></code>](source/jvmMain/afield/io/spatialink/SpatialInk/#L51) | Read the last fitted snapshot from a Field spatial ink session's JSON file. |
+
+### SpatialInkPoint { #spatialink-kt-spatialinkpoint }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SpatialInkPoint</span><span class="p">(</span><span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span></code>](source/jvmMain/afield/io/spatialink/SpatialInk/#L17)
+
+Position in the headset's immersive tracking origin, in metres.
+
+### SpatialInkEdge { #spatialink-kt-spatialinkedge }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SpatialInkEdge</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">from</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">to</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">SpatialInkPoint</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/io/spatialink/SpatialInk/#L32)
+
+An edge in the spatial sketch, with shared endpoint IDs and a sampled curve in metres.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="spatialink-kt--spatialinkedge--id"></a><code class="highlight"><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">from</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">to</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">SpatialInkPoint</span><span class="p">&gt;</span></code> |  |
+| <a id="spatialink-kt--spatialinkedge--tofline"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">toFLine</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLine</span></code>](source/jvmMain/afield/io/spatialink/SpatialInk/#L36) | Convert to a Field path, retaining the source stroke and graph endpoints as properties. |
 
 ## Ltc.kt { #ltc-kt }
 

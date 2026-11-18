@@ -10,6 +10,7 @@ struct Field4VisionApp: App {
     // The RTT stream (GPU/immersive half) is app-scoped: the main window drives it (start/stop,
     // status) and the ImmersiveSpace presents it, so both share one instance via the environment.
     @State private var rtt = RTTStream()
+    @State private var spatialInk = SpatialInk()
 
     // The native three.js viewer's client is app-scoped too: the main window opens the viewer
     // window and both share this one selection-following subscription via the environment.
@@ -37,6 +38,7 @@ struct Field4VisionApp: App {
                 .environment(rtt)
                 .environment(threeClient)
                 .environment(liveMetalClient)
+                .environment(spatialInk)
         }
         // NOT `.windowResizability(.contentSize)`. This is a shell window whose content is a
         // NavigationSplitView hosting web views — it has no meaningful intrinsic size, and asking
@@ -99,6 +101,11 @@ struct Field4VisionApp: App {
         }
         .immersionStyle(selection: .constant(.mixed), in: .mixed)
 
+        ImmersiveSpace(id: Field4VisionApp.spatialInkSpaceID) {
+            SpatialInkSpace(ink: spatialInk)
+        }
+        .immersionStyle(selection: .constant(.mixed), in: .mixed)
+
         // Field's programmable native graphics head. The WKWebView editor remains in the app's
         // windows while this mixed immersive scene owns a dedicated Metal render loop.
         ImmersiveSpace(id: Field4VisionApp.liveMetalSpaceID) {
@@ -107,6 +114,7 @@ struct Field4VisionApp: App {
         .immersionStyle(selection: .constant(.mixed), in: .mixed)
     }
 
+    static let spatialInkSpaceID = "SpatialInk"
     static let rttSpaceID = "RTTImmersive"
     static let rttWindowID = "RTTWindow"
     static let threeWindowID = "ThreeViewer"

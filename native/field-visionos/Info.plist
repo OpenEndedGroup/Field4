@@ -11,6 +11,8 @@
 	     rather than over Tailscale. Reaching a Tailscale address goes out a utun interface and is not
 	     gated by this privacy check; a plain-LAN address is, and so is the RTT receiver's inbound UDP
 	     socket. Without the key the first connection fails silently. -->
+	<key>NSHandsTrackingUsageDescription</key>
+	<string>Spatial Ink draws at the position of your pinching fingers.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Field4Vision connects to the Field server running on your Mac to display documents, receive FLine geometry, and receive the rendered video stream.</string>
 	<!-- Field serves a self-signed dev certificate. ATS exempts IP literals but not names, so reaching

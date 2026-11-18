@@ -741,3 +741,12 @@ It adds no stronger authentication than the other document read commands.
 `/drawingon/ws?target=<name>` receives versioned Pencil/audio/layer/view capture events, appends them under `WORKSPACE/.drawingon/`, and invokes the named box target's callback after durable commit. It is a command WebSocket: the upgrade applies `refuseCrossSiteFieldWebSocket`, and a native client without browser-origin headers is accepted. Session IDs are canonical UUIDs, never paths; batches contain at most 64 events and frames at most 1 MiB. The target is an explicit box-owned name. Upload handshakes receive acknowledgements but never subscribe to reference geometry. This uses Field's existing trusted-client boundary and does not add authentication.
 
 `GET /drawingon/buffers?target=<name>&generation=<id>` reads only that target's current FLine reference buffers, at most 32 MiB. It accepts no file path, returns 404 for a superseded generation, and has no route-specific guard, like `/three-buffers`; the application-wide origin policy still protects browser reads. References use the AVP Three typed-buffer format and SHA-256 verification in the native client. The route shares one synchronized receiver archive across the HTTPS application and loopback mirror.
+
+
+### Spatial Ink
+
+`/spatial-ink/ws` accepts versioned snapshots of completed 3D strokes from Field4Vision.
+This command WebSocket uses `refuseCrossSiteFieldWebSocket`. The handler assigns a session UUID
+and writes raw and fitted snapshots under the workspace's `.spatial-ink` directory. A client cannot
+choose a path. Each request is limited to 1.5 MiB, 96 strokes and 384 samples per stroke. The fit
+runs on the compute dispatcher and the snapshot write runs on the I/O dispatcher.

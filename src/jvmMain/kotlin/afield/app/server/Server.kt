@@ -4314,6 +4314,7 @@ class Server {
 
                         installControllerRoutes(::currentFieldPreferences)
                         installDrawingOnRoutes()
+                        installSpatialInkRoutes()
 
                         get("/app-url") {
                             val preferences = currentFieldPreferences().also(::applyFieldPreferences)
