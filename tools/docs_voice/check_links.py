@@ -57,8 +57,10 @@ import urllib.parse
 FENCE = re.compile(r"^\s*(```|~~~)")
 # Inline code spans, longest-run-first so ``a ` b`` is one span and not two.
 CODE_SPAN = re.compile(r"(`+)(?:(?!\1).)*\1")
-# Inline links and images: `](target)` / `](target "title")`. Angle-bracket targets too.
-INLINE_LINK = re.compile(r"\]\(\s*(<[^>]*>|[^)\s]+)(?:\s+[\"'][^\"']*[\"'])?\s*\)")
+# Inline links and images: `](target)` / `](target "title")`. Angle-bracket targets too. An escaped
+# bracket, `\]`, is literal text and closes no link: `tools\["x"\]({...})` on ai4_tools.md is code
+# written in prose, which Markdown renders as typed (2026-11-18).
+INLINE_LINK = re.compile(r"(?<!\\)\]\(\s*(<[^>]*>|[^)\s]+)(?:\s+[\"'][^\"']*[\"'])?\s*\)")
 # Reference definitions: `[label]: target "title"` at the head of a line.
 REF_DEF = re.compile(r"^\s{0,3}\[[^\]]+\]:\s*(<[^>]*>|\S+)")
 

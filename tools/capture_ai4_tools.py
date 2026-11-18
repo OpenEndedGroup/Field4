@@ -21,7 +21,9 @@ this run's workspace written ``<workspace>``. Arguments may use ``{{uid:Name}}``
 Between ``<!-- ai4-tools-reference:begin -->`` and ``<!-- ai4-tools-reference:end -->`` the page
 carries the catalogue as ``agent-ai-tools-list`` reports it for a box-focused chat on that document,
 less any tool whose class is declared under ``src/personal``. It lists twice, the second time as a
-box chat's turn (``suspendable``), and marks the tools only that turn is offered.
+box chat's turn (``suspendable``), and marks the tools only that turn is offered. Between
+``<!-- ai4-tools-descriptions:begin -->`` and ``<!-- ai4-tools-descriptions:end -->`` it carries the
+same tools' full descriptions and parameters, verbatim, which the table's names link to.
 
 ``--update-page`` writes what the run produced into the page instead of failing on a difference.
 
@@ -48,6 +50,7 @@ PAGE = ROOT / "public/docs/ai4_tools.md"
 ASSETS = ROOT / "public/docs/assets/ai4_tools"
 PERSONAL = ROOT / "src/personal"
 REF_BEGIN, REF_END = "<!-- ai4-tools-reference:begin -->", "<!-- ai4-tools-reference:end -->"
+DESC_BEGIN, DESC_END = "<!-- ai4-tools-descriptions:begin -->", "<!-- ai4-tools-descriptions:end -->"
 CALL = re.compile(
     r"<!-- ai4-call (?P<tool>\w+)(?P<opts>[^>]*?) -->\n"
     r"```diffstatic \{data-lang=json\}\n(?P<args>.*?)\n```\n\n"
@@ -67,6 +70,7 @@ NAMESPACES = {
     "source": "A box's live, saved and last-run source, and edits to it.",
     "states": "The document's saved histories and the states in them.",
     "guides": "Markdown guides that live in the document and outlast the chat.",
+    "context": "Files and references attached to the chat, read in bounded excerpts.",
     "memory": "The chat's own scratchpad and checklist, which last the session; notes kept across sessions and documents, and the saved chats they cite.",
     "program": "One call that runs a short JavaScript program over the other tools.",
     "search": "Field's tutorials and the workspace's files, by what they do.",
@@ -97,7 +101,7 @@ def first_sentence(text: str) -> str:
         if not re.search(r"\b(e\.g|i\.e|etc|vs)\.$", text[: m.end()]):
             text = text[: m.end()]
             break
-    return text.replace("|", "\\|")
+    return text
 
 
 def reference(tools: list[dict], chat_only: set[str]) -> str:
@@ -115,8 +119,103 @@ def reference(tools: list[dict], chat_only: set[str]) -> str:
             x = t["x-field"]
             name = f"`{t['name']}`" + (" \\*" if x["exposure"] == "DEFERRED" else "") + (" †" if t["name"] in chat_only else "")
             effects = ", ".join(e.lower().replace("_", " ") for e in x["effects"] if e != "UNDECLARED") or "—"
-            out.append(f"| {name} | {first_sentence(t.get('description', ''))} | {effects} |")
+            out.append(f"| [{name}](#{anchor(t['name'])}) | {cell(first_sentence(t.get('description', '')))} | {effects} |")
         out.append("")
+    return "\n".join(out).rstrip()
+
+
+def anchor(tool: str) -> str:
+    return "tool-" + tool.lower()
+
+
+KEY_NAMES = {
+    "command": "cmd", "⌘": "cmd", "control": "ctrl", "option": "alt", "opt": "alt", "⌥": "alt", "⇧": "shift",
+    "return": "enter", "escape": "esc", "del": "delete", "pageup": "page-up", "pagedown": "page-down",
+    "↑": "arrow-up", "↓": "arrow-down", "←": "arrow-left", "→": "arrow-right",
+    "up": "arrow-up", "down": "arrow-down", "left": "arrow-left", "right": "arrow-right",
+    "[": "bracket-left", "]": "bracket-right", "/": "slash", "\\": "backslash", ",": "comma",
+    ".": "period", ";": "semicolon", "=": "equal", "`": "grave", "'": "quote",
+}
+MOUSE = {"click", "double-click", "drag", "scroll", "wheel"}
+
+
+def keycap(chord: str) -> str:
+    """A shortcut as the docs' keycap: `Alt+D` -> ++alt+d++, alt/option-click -> ++alt++-click."""
+    keys = [KEY_NAMES.get(k.lower(), k.lower()) for k in re.split(r"(?<=\S)\s*[-+]\s*(?=\S)", chord.strip())]
+    keys = [k.split("/")[0] for k in keys]  # alt/option -> alt
+    if keys[-1] in MOUSE:
+        return "++" + "+".join(keys[:-1]) + "++-" + keys[-1]
+    return "++" + "+".join(keys) + "++"
+
+
+def prose(text: str) -> str:
+    """A tool description as Markdown text. The descriptions are plain text written for a model, so
+    Markdown punctuation outside code spans is escaped (`tools["x"]({...})` would otherwise become a
+    link, `<T>` a tag) and shortcuts become keycaps, which `tools/test_docs_keycaps.py` requires."""
+    from test_docs_keycaps import BARE_CHORD, CODE_CHORD
+
+    def plain(s: str) -> str:
+        s = re.sub(r"([\\`*_\[\]])", r"\\\1", s)
+        return s.replace("<", "&lt;").replace(">", "&gt;")
+
+    out = []
+    for p in re.split(r"(`[^`]*`)", " ".join((text or "").split())):
+        if p.startswith("`") and p.endswith("`") and len(p) > 1:
+            out.append(keycap(p.strip("` ")) if CODE_CHORD.fullmatch(p) else p)
+            continue
+        pos = 0
+        for m in BARE_CHORD.finditer(p):
+            out += [plain(p[pos:m.start()]), keycap(m.group(0))]
+            pos = m.end()
+        out.append(plain(p[pos:]))
+    return "".join(out)
+
+
+def cell(text: str) -> str:
+    """[prose] for a table cell, where a bare `|` would end the cell."""
+    return prose(text).replace("|", "\\|")
+
+
+def schema_type(s: dict) -> str:
+    t = s.get("type", "")
+    if t == "array":
+        inner = schema_type(s.get("items") or {})
+        return f"list of {inner}" if inner else "list"
+    if "enum" in s:
+        return " \\| ".join(f"`{e}`" for e in s["enum"])
+    return t or "any"
+
+
+def descriptions(tools: list[dict], chat_only: set[str]) -> str:
+    """Every tool's description and parameters, verbatim: the text a model is given about it."""
+    by_ns: dict[str, list[dict]] = defaultdict(list)
+    for t in tools:
+        by_ns[t["x-field"]["namespace"]].append(t)
+    out: list[str] = []
+    for ns in NAMESPACES:
+        if ns not in by_ns:
+            continue
+        out += [f"### `{ns}` tools", ""]
+        for t in sorted(by_ns[ns], key=lambda t: t["name"]):
+            x = t["x-field"]
+            effects = ", ".join(e.lower().replace("_", " ") for e in x["effects"] if e != "UNDECLARED") or "none declared"
+            shown = "loaded on request" if x["exposure"] == "DEFERRED" else "sent with every request"
+            if t["name"] in chat_only:
+                shown += "; box chats only"
+            out += [f"#### `{t['name']}` {{ #{anchor(t['name'])} }}", "", f"*Effects: {effects}. Schema {shown}.*", ""]
+            out += [prose(t.get("description", "")) or "*(No description.)*", ""]
+            schema = t.get("inputSchema") or {}
+            props = schema.get("properties") or {}
+            required = set(schema.get("required") or [])
+            if props:
+                out += ["| Parameter | Type | Description |", "| --- | --- | --- |"]
+                for p, s in props.items():
+                    name = f"`{p}`" + (" (required)" if p in required else "")
+                    desc = cell(s.get("description", "")) or "—"
+                    out.append(f"| {name} | {schema_type(s)} | {desc} |")
+                out.append("")
+            else:
+                out += ["No parameters.", ""]
     return "\n".join(out).rstrip()
 
 
@@ -205,6 +304,15 @@ async def capture(port: int, update_page: bool) -> None:
     if text[begin:end] != table:
         failures.append("reference table")
     text = text[:begin] + table + text[end:]
+    begin, end = text.index(DESC_BEGIN) + len(DESC_BEGIN), text.index(DESC_END)
+    full = "\n" + descriptions(catalogue, chat_only) + "\n"
+    from test_docs_keycaps import offending
+
+    unconverted = offending(table + full)
+    assert not unconverted, f"shortcuts prose() did not turn into keycaps: {unconverted}"
+    if text[begin:end] != full:
+        failures.append("tool descriptions")
+    text = text[:begin] + full + text[end:]
     if update_page:
         PAGE.write_text(text)
         print(f"wrote {PAGE.relative_to(ROOT)}")
