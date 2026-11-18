@@ -238,13 +238,7 @@ object ThreadOwnership {
         val s = SnippetSites[site]
         val key = s?.let { "${it.className}:${it.line}:${guard.owner}" } ?: "site:$site"
         if (!warnedKeys.add(key)) return
-        val stack = Thread.currentThread().stackTrace
-        // The guarded call's own line, when it is proven; else the innermost proven box frame.
-        val line = s?.boxLine() ?: -1
-        val frame = if (s != null && line > 0) {
-            BoxFrame(s.origin, line, StackTraceElement(s.className.replace('/', '.'), s.methodName, null, s.line))
-        } else SnippetClasses.boxFrame(stack)
-        report(guard.owner, guard.target, t, owner, frame, s, null)
+        report(guard.owner, guard.target, t, owner, s, null, null)
     }
 
     /**
@@ -265,12 +259,12 @@ object ThreadOwnership {
         if (last != 0L && now - last < LIBRARY_WALK_NS) return
         lastLibraryWalk = now
         val stack = Thread.currentThread().stackTrace
-        val frame = SnippetClasses.boxFrame(stack)
+        val frame = boxFrameOf(null, stack)
         val caller = callerOf(stack)
         val key = if (frame != null) "${frame.element.className.replace('.', '/')}:${frame.element.lineNumber}:${ThreadOwner.AUDIO}"
         else "lib:${what.javaClass.name}:${caller?.className}.${caller?.methodName}"
         if (!warnedKeys.add(key)) return
-        report(ThreadOwner.AUDIO, "${what.javaClass.simpleName.ifEmpty { what.javaClass.name }} ($target)", t, owner, frame, null, caller)
+        report(ThreadOwner.AUDIO, "${what.javaClass.simpleName.ifEmpty { what.javaClass.name }} ($target)", t, owner, null, stack, caller)
     }
 
     // The first frame below the guarded API: past `getStackTrace`, this object, and the render/generate
@@ -281,10 +275,28 @@ object ThreadOwnership {
     }
 
     /**
-     * The one place a violation is reported: a `warning,execution` log line naming the box and line
-     * (or the library caller), the [recentReports] list and the [onReport] listeners.
+     * Where a violation is in box code. A guarded call's [site] names its own line when that is proven.
+     * When it is not (a line the macro pass rewrote, `println(` compiled as `_printlnHere(`; a box
+     * edited since) the innermost proven frame would be some *caller's* line, which reads as the
+     * culprit and is not, so the answer is null and the report gives the compiled line. With no site
+     * (the library check) it is [SnippetClasses.boxFrame] of [stack].
      */
-    internal fun report(owner: ThreadOwner, target: String, t: Thread, ownerThread: Thread, box: BoxFrame?, site: Site?, caller: StackTraceElement?) {
+    private fun boxFrameOf(site: Site?, stack: Array<StackTraceElement>?): BoxFrame? {
+        if (site != null) {
+            val line = site.boxLine()
+            return if (line > 0) BoxFrame(site.origin, line, StackTraceElement(site.className.replace('/', '.'), site.methodName, null, site.line)) else null
+        }
+        return SnippetClasses.boxFrame(stack ?: Thread.currentThread().stackTrace)
+    }
+
+    /**
+     * The one place a violation is reported, for the pass's check (with its [site]) and the library
+     * check (with the [stack] it saw): it finds the box line ([boxFrameOf]), then writes a
+     * `warning,execution` log line naming the box and line (or the library [caller]), adds it to
+     * [recentReports] and tells the [onReport] listeners.
+     */
+    internal fun report(owner: ThreadOwner, target: String, t: Thread, ownerThread: Thread, site: Site?, stack: Array<StackTraceElement>?, caller: StackTraceElement?) {
+        val box = boxFrameOf(site, stack)
         val where = box?.let { "${it.origin.label} line ${it.line}: " }
             ?: site?.let { "${it.origin.label} (compiled line ${it.line}, not proven in the box's code): " }
             ?: caller?.let { "$it: " }

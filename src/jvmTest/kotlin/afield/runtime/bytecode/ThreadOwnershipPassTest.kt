@@ -217,6 +217,20 @@ class ThreadOwnershipPassTest {
     }
 
     @Test
+    fun anUnprovenLineIsReportedAsItsCompiledLineNotACallersLine() {
+        // The box has been edited since it was compiled: the guarded line's text no longer matches.
+        val edited = source.replace("frameOnly(1) // runloop-call", "frameOnly(2) // runloop-call, edited")
+        val editedOrigin = SnippetOrigin(null, "code", "'guards edited' (test)", source, GuardBoxCode::class.java.classLoader) { edited }
+        val out = assertNotNull(BoxBytecode.rewriteClass(BoxBytecodeTestSupport.bytesOf(GuardBoxCode::class.java), editedOrigin, listOf(ThreadOwnershipPass)))
+        val code = BoxBytecodeTestSupport.load(GuardBoxCode::class.java.name, out, GuardBoxCode::class.java.classLoader).getDeclaredConstructor().newInstance()
+        runloopIs(otherThread("fake-runloop"))
+        call<Int>(code, "runloopCall")
+        val r = reportsFor("frameOnly").single()
+        assertNull(r.box, r.message)
+        assertTrue(r.message.contains("compiled line ${tagged("runloop-call")}, not proven"), r.message)
+    }
+
+    @Test
     fun anAudioCallSeesItsContextThroughADupOfTheLastArgument() {
         val out = bytes(listOf(ThreadOwnershipPass))
         val ins = instructions(out, "audioCall")
