@@ -612,7 +612,17 @@ let pageActive = true, contextAvailable = true;
 const renderScheduler = createDemandRenderer(render,
     callback => requestAnimationFrame(callback), id => cancelAnimationFrame(id),
     () => pageActive && contextAvailable && !document.hidden);
-function requestRender() { renderScheduler.request(); }
+function requestRender() { renderScheduler.request(); if (!contextAvailable) maybeRestoreContext(); }
+// WebGL context budget. Chromium keeps at most 16 live WebGL contexts per renderer process and, past
+// that, evicts the one drawn least recently; a document with more views than that used to lose some of
+// them for good. Views in one page share a registry on the top window: a view off screen for
+// CONTEXT_RELEASE_MS gives its context back while more than CONTEXT_BUDGET are live, and a view that is
+// lost but on screen takes one back, first asking the view longest off screen to give its context
+// up, so the browser never has to choose an on-screen view to evict. A view evicted again within
+// CONTEXT_THRASH_MS of taking one back (more views on screen than the browser keeps) waits for a click.
+const CONTEXT_BUDGET = 12, CONTEXT_RELEASE_MS = 15000, CONTEXT_THRASH_MS = 2000;
+const contextState = {released: false, blocked: false, restoredAt: -Infinity, offscreenSince: null,
+    restoreTimer: null, releaseTimer: null, releases: 0, restores: 0, evictions: 0};
 // Read-only telemetry for live idle/render regression checks, separate from saved review state.
 const viewerTools = createViewerTools({
     host: document.getElementById('viewer-tools'), requestRender,
@@ -672,6 +682,9 @@ window.FieldViewer = Object.freeze({followStatus: () => cameraFollow.status(),
     setCamera,
     renderStats: () => renderScheduler.stats(), exportGLB, tools:viewerTools,
     snapshotImage: () => { render(); return (gpuPathTraceComposite() || renderer.domElement).toDataURL('image/png'); },
+    // Resolves once this view holds a WebGL context; a view off screen may have given its context back.
+    ensureContext: () => new Promise(resolve => withContext(resolve)),
+    contextStatus: () => contextStatus(),
     snapshotForPublication,
     turntable: () => turntable.status(), cameraLink: () => cameraLink.status(), shot: () => shot.status(),
     film: Object.freeze({begin: filmBegin, at: filmAt, end: filmEnd, status: filmStatus}),
@@ -733,9 +746,9 @@ async function exportGLB({download=true, compress=download && !isPublication} = 
     } finally { button.disabled = false; glbExporting = false; }
 }
 document.getElementById('export-glb').addEventListener('click', () => { exportGLB().catch(() => {}); });
-document.addEventListener('visibilitychange', () => renderScheduler.visibilityChanged());
+document.addEventListener('visibilitychange', () => { renderScheduler.visibilityChanged(); maybeRestoreContext(); });
 window.addEventListener('pagehide', () => { pageActive = false; renderScheduler.visibilityChanged(); });
-window.addEventListener('pageshow', () => { pageActive = true; renderScheduler.visibilityChanged(); });
+window.addEventListener('pageshow', () => { pageActive = true; renderScheduler.visibilityChanged(); maybeRestoreContext(); });
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
 // How much larger than its layout size this viewer's frame is drawn: a zoomed canvas or a
@@ -800,7 +813,7 @@ function cameraUp(up) {
 let onScreen = true;
 if (typeof IntersectionObserver === 'function') new IntersectionObserver(entries => {
     const next = entries[entries.length - 1].isIntersecting;
-    if (next !== onScreen) { onScreen = next; requestRender(); }
+    if (next !== onScreen) { onScreen = next; contextOnScreenChanged(); requestRender(); }
 }).observe(container);
 const turntable = createTurntable({key: `${urlParams.get('uid') || ''} ${Math.random().toString(36).slice(2)}`,
     visible: () => onScreen, wake: ms => setTimeout(requestRender, ms)});
@@ -918,8 +931,128 @@ for (const type of ['pointerdown', 'wheel', 'keydown'])
     document.addEventListener(type, () => { turntable.nudge(); shot.nudge(); cameraLink.busy(); }, { capture: true, passive: true });
 window.addEventListener('pagehide',()=>cameraLink.dispose());
 let appliedCameraSpec = null, cameraViewport = null;
-renderer.domElement.addEventListener('webglcontextlost', () => { contextAvailable = false; renderScheduler.visibilityChanged(); });
-renderer.domElement.addEventListener('webglcontextrestored', () => { contextAvailable = true; renderScheduler.visibilityChanged(); });
+// The context budget (CONTEXT_BUDGET, above). Every entry is read from other views' frames, so it
+// measures its own durations with its own clock.
+const contextRegistry = (() => {
+    try { const top = window.top; if (top && top.document) return top.__fieldThreeContexts ??= new Set(); } catch (_) { /* another origin */ }
+    return window.__fieldThreeContexts ??= new Set();
+})();
+const contextEntry = {
+    live: () => !renderer.getContext().isContextLost(),
+    offscreenMs: () => contextState.offscreenSince === null ? -1 : performance.now() - contextState.offscreenSince,
+    release: () => releaseContext(),
+};
+contextRegistry.add(contextEntry);
+// Held from the start: three asks for the extension lazily, and a context the browser has already evicted
+// answers `getExtension` with null, so `renderer.forceContextRestore()` could never bring it back.
+const loseContextExtension = renderer.getContext().getExtension('WEBGL_lose_context');
+window.addEventListener('pagehide', () => contextRegistry.delete(contextEntry));
+const contextHint = document.createElement('div');
+contextHint.textContent = 'More 3D views are on screen than the browser can draw. Click to draw this one.';
+contextHint.style.cssText = 'position:absolute;inset:auto 8px 8px 8px;padding:6px 8px;font:12px/1.3 system-ui,sans-serif;' +
+    'color:#ddd;background:rgba(0,0,0,.6);border-radius:4px;pointer-events:none;display:none';
+container.appendChild(contextHint);
+function contextHud() { contextHint.style.display = contextState.blocked ? 'block' : 'none'; }
+function liveContexts() {
+    const live = [];
+    for (const entry of contextRegistry) {
+        try { if (entry.live()) live.push(entry); } catch (_) { contextRegistry.delete(entry); }
+    }
+    return live;
+}
+/** Releases off-screen views, longest off screen first, until at most [limit] are live. */
+function enforceContextBudget(limit, minOffscreenMs) {
+    const live = liveContexts();
+    if (live.length <= limit) return;
+    const candidates = live.filter(e => e !== contextEntry && e.offscreenMs() >= minOffscreenMs)
+        .sort((a, b) => b.offscreenMs() - a.offscreenMs());
+    let count = live.length;
+    for (const entry of candidates) {
+        if (count <= limit) break;
+        try { if (entry.release()) count--; } catch (_) { contextRegistry.delete(entry); }
+    }
+}
+function releaseContext() {
+    if (!contextEntry.live() || onScreen) return false;
+    contextState.released = true;
+    contextState.releases++;
+    loseContextExtension?.loseContext();
+    return true;
+}
+function restoreContextNow() {
+    // Make room first, so the browser does not evict a view of its own choosing.
+    enforceContextBudget(CONTEXT_BUDGET - 1, 0);
+    contextState.restoredAt = performance.now();
+    contextState.restores++;
+    try { loseContextExtension?.restoreContext(); } catch (error) { console.warn('three viewer: could not restore the WebGL context', error); }
+}
+function wantsContext() { return onScreen && pageActive && !document.hidden; }
+/** Takes a context back when this view is lost and showing. Deferred: a restore is refused during the lost event. */
+function maybeRestoreContext() {
+    if (contextState.blocked || contextState.restoreTimer !== null || !wantsContext() || contextEntry.live()) return;
+    contextState.restoreTimer = setTimeout(() => {
+        contextState.restoreTimer = null;
+        if (contextState.blocked || !wantsContext() || contextEntry.live()) return;
+        restoreContextNow();
+        // A restore the browser refused raises no event; ask again while this view still wants one.
+        setTimeout(() => { if (!contextEntry.live()) maybeRestoreContext(); }, 1000);
+    }, 50);
+}
+/** Runs [then] once this view holds a context, restoring it even off screen (a snapshot was asked for). */
+function withContext(then) {
+    if (contextEntry.live() && contextAvailable) { then(); return; }
+    let done = false;
+    const finish = () => { if (!done) { done = true; then(); } };
+    renderer.domElement.addEventListener('webglcontextrestored', () => setTimeout(finish, 0), {once: true});
+    setTimeout(finish, 3000);
+    contextState.blocked = false;
+    contextHud();
+    setTimeout(restoreContextNow, 0);
+}
+function contextOnScreenChanged() {
+    clearTimeout(contextState.releaseTimer);
+    contextState.releaseTimer = null;
+    if (onScreen) { contextState.offscreenSince = null; maybeRestoreContext(); return; }
+    contextState.offscreenSince = performance.now();
+    contextState.releaseTimer = setTimeout(() => enforceContextBudget(CONTEXT_BUDGET, CONTEXT_RELEASE_MS), CONTEXT_RELEASE_MS + 50);
+}
+function contextStatus() {
+    return {live: contextEntry.live(), released: contextState.released, blocked: contextState.blocked,
+        onScreen, offscreenMs: contextEntry.offscreenMs(), liveInPage: liveContexts().length, viewsInPage: contextRegistry.size,
+        releases: contextState.releases, restores: contextState.restores, evictions: contextState.evictions};
+}
+/** Render targets come back empty after a restore; the studio room was drawn into one once. */
+function recaptureAfterRestore() {
+    if (!studioEnv.texture) return;
+    if (scene.environment === studioEnv.texture) scene.environment = null;
+    studioEnv.texture.dispose();
+    studioEnv.texture = null;
+    studioEnv.loading = null;
+    applyRealism();
+}
+renderer.domElement.addEventListener('webglcontextlost', () => {
+    contextAvailable = false;
+    renderScheduler.visibilityChanged();
+    if (contextState.released) return;
+    contextState.evictions++;
+    if (performance.now() - contextState.restoredAt < CONTEXT_THRASH_MS) { contextState.blocked = true; contextHud(); }
+    else maybeRestoreContext();
+});
+renderer.domElement.addEventListener('webglcontextrestored', () => {
+    contextAvailable = true;
+    contextState.released = false;
+    recaptureAfterRestore();
+    contextHud();
+    renderScheduler.visibilityChanged();
+});
+document.addEventListener('pointerdown', () => {
+    if (!contextState.blocked) return;
+    contextState.blocked = false;
+    contextHud();
+    restoreContextNow();
+}, {capture: true, passive: true});
+// Views that were off screen when this one arrived may be able to give their contexts back already.
+enforceContextBudget(CONTEXT_BUDGET, CONTEXT_RELEASE_MS);
 
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
 scene.add(ambientLight);
@@ -8123,7 +8256,7 @@ function connectWs() {
             window.fieldThreeWireStats.descriptionBytes = event.data.length;
         }
         if(message.type==='three-review-ack'){featureSaving=false; featureHud(); featureMessage(message.message,!message.ok);return;}
-        if (message.type === 'three/snapshot-request') { answerSnapshot(message.id); return; }
+        if (message.type === 'three/snapshot-request') { withContext(() => answerSnapshot(message.id)); return; }
         if (message.type === 'three/view-command') { viewCommandReceive(message); return; }
         if (message.type === 'three/handle') { handleReceive(message); return; }
         if (message.type === 'three/view-state') return;
