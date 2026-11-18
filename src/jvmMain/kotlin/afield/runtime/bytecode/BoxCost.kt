@@ -79,8 +79,15 @@ object BoxCostPass : BoxBytecodePass {
         val lines = cls.origin.sourceLineCount
         // The first line that is proven to be a box line (a macro may have rewritten the first
         // statement, `println(` into `_printlnHere(`), else the first inside the snippet's source.
+        // A comment line can carry a LINENUMBER (the end of `$$eval`) and is never the function's.
+        val code = cls.attachment(BoxCostPass) { cls.origin.currentCode()?.replace("\r\n", "\n")?.split('\n') ?: emptyList() }
+        fun statement(l: Int): Boolean {
+            val b = cls.origin.boxLine(l)
+            val t = code.getOrNull(b - 1)?.trim() ?: return false
+            return t.isNotEmpty() && !t.startsWith("//")
+        }
         val inSource = m.facts.lines.filter { it in 1..lines }
-        val first = inSource.firstOrNull { cls.origin.boxLine(it) > 0 } ?: inSource.firstOrNull() ?: m.facts.lines.firstOrNull() ?: 0
+        val first = inSource.firstOrNull(::statement) ?: inSource.firstOrNull() ?: m.facts.lines.firstOrNull() ?: 0
         val site = cls.site(m, KIND, detail = BoxCost.functionName(cls.className, m.name), line = first)
         val id = site.id
         return object : MethodVisitor(Opcodes.API_VERSION, next) {

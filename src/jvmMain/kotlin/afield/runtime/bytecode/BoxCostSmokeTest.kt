@@ -113,6 +113,9 @@ object BoxCostSmokeTest {
             check("B fails and guarded: 1 call each", c["fails"]?.calls == 1L && c["guarded"]?.calls == 1L, "${c["fails"]} / ${c["guarded"]}")
             // The engine's prelude snippets, evaluated for the box, are not its code and carry no sites.
             check("B one box body, run once", c["box body"]?.calls == 1L, c["box body"].toString())
+            // Its only statement is line 9, a `println` the macro pass rewrote, so no line is proven;
+            // the `// measured` comment after it carries a LINENUMBER but is never a function's line.
+            check("B the box body is not placed on a comment", c["box body"]?.line == -1, c["box body"].toString())
             check("B only the box's own snippet has sites", sites.map { it.className }.toSet().size == 1, sites.map { it.className }.toSet().toString())
             val o = c["outer"]; val i = c["inner"]
             check("B outer total = outer self + inner total", o != null && i != null && o.totalNs == o.selfNs + i.totalNs, "$o / $i")
