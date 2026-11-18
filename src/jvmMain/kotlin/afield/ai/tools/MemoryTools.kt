@@ -63,7 +63,7 @@ data class MemoryWriteRequest(
 @JsonClassDescription("Delete a memory note that is wrong or no longer useful, with the reason, which the memory's history keeps. Use it " +
     "when a note turned out false, or after merging it into another note; prefer MemoryWriteRequest when the note only needs correcting. " +
     "Returns what was deleted. Fails when there is no such note or no reason is given. e.g. name = `old-shader-path`, reason = `merged into shader-includes`.")
-@AgentToolMeta("memory", effects = [ToolEffect.AGENT_STATE, ToolEffect.FILESYSTEM_WRITE])
+@AgentToolMeta("memory", ToolExposure.DEFERRED, effects = [ToolEffect.AGENT_STATE, ToolEffect.FILESYSTEM_WRITE])
 data class MemoryDeleteRequest(
     @JsonPropertyDescription("The note to delete.")
     val name: String,
