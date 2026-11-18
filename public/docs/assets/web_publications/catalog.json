@@ -1,77 +1,5 @@
 {
   "deferred": {
-    "assets/agent_transcripts/life3d_manifold_path_trace/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/linalg_thumbnails_demo/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/logging_layer/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/lp_curves/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "59a4e8714b57651704fdbf9db280ae2bcde6d5e4fef8d5099c63adea8edc89a1",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/lp_curves_3d/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "59a4e8714b57651704fdbf9db280ae2bcde6d5e4fef8d5099c63adea8edc89a1",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/lua_demo/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/macro_recorder_stamp/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/madp_boids/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/madp_ga/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/madp_geometry/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "59a4e8714b57651704fdbf9db280ae2bcde6d5e4fef8d5099c63adea8edc89a1",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/manifold_solids/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "59a4e8714b57651704fdbf9db280ae2bcde6d5e4fef8d5099c63adea8edc89a1",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/mapper_explorer/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
     "assets/agent_transcripts/marf_field_clocks/metadata.edn": {
       "attempts": 0,
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
@@ -3421,13 +3349,13 @@
       ]
     },
     "assets/agent_transcripts/life3d_manifold_path_trace/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "capturedAt": "2026-11-17T22:18:37.536Z",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-18T15:23:59.805Z",
       "channels": 1,
       "file": "assets/web_publications/life3d_manifold_path_trace/document/metadata.edn",
       "files": {
         "assets/web_publications/life3d_manifold_path_trace/document/metadata.edn": "fb9156d1f9af4c7e434978cd708e4da6af2fc47f8df3e73c90295b774da6fc38",
-        "assets/web_publications/life3d_manifold_path_trace/document/outputs.json": "1007c1dc76b22230f7db8dddfb68f2a2ae02c27e8d06c0cd8435bc83f62e7dff",
+        "assets/web_publications/life3d_manifold_path_trace/document/outputs.json": "032d7a203590000f4ed9c6344fc70de5dad19b6440f960516e29660abce37530",
         "assets/web_publications/life3d_manifold_path_trace/outputs/0.html": "f7ac7d827e4a15c0d119fec74238307f5fb4cae6e9b2617104956d8b34ee5183"
       },
       "kinds": [
@@ -3449,19 +3377,19 @@
       ]
     },
     "assets/agent_transcripts/logging_layer/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "capturedAt": "2026-11-17T22:20:12.668Z",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-18T15:24:11.017Z",
       "channels": 6,
       "file": "assets/web_publications/logging_layer/document/metadata.edn",
       "files": {
         "assets/web_publications/logging_layer/document/metadata.edn": "b4e3f3e67ff4b4f15d23619e9e804c2ed55c257f994196c9fe7fe32cd9c96a9e",
-        "assets/web_publications/logging_layer/document/outputs.json": "a4c8e51b9d3872ee72a073cbe4c3c856505f2f497bad33cb10732f282cbc86cb",
-        "assets/web_publications/logging_layer/outputs/0.html": "ba1bcca58160bb685aa30646f531bd9928e01404287be9e6bcb35e53f30e1052",
-        "assets/web_publications/logging_layer/outputs/1.html": "bdc9969ac70a96fa126814d2d288de453b6a6da1c92ff5efe5b426de67715e12",
-        "assets/web_publications/logging_layer/outputs/2.html": "53345d64d429583cb21e92f48c87435136247515a6a96bebe96947a0c76c299b",
-        "assets/web_publications/logging_layer/outputs/3.html": "a8d18bae437e9c3c6fae7d7c119deba9a542c39c9fe23e89d12bf513de2070ee",
-        "assets/web_publications/logging_layer/outputs/4.html": "79b9ed0bbae569b07fabe11d80c032205e4c9952992b6b32725398a594184e3f",
-        "assets/web_publications/logging_layer/outputs/5.html": "3a0097ba30de71a85d0a1157ec15f98e8894a2b883373069be585244aa49f080"
+        "assets/web_publications/logging_layer/document/outputs.json": "8773565d900bd952f1aea12523f680b177dbcfab0934ba8e5d3421475e4d1a86",
+        "assets/web_publications/logging_layer/outputs/0.html": "cffff4c9ac2d7f9138badc6d65c22db1da40c4af4470b3b188da73242bb710f9",
+        "assets/web_publications/logging_layer/outputs/1.html": "dfa440ceab16d00098e786457d4d7afcdc9d0fdfabebb36aa7c43fdbecb60980",
+        "assets/web_publications/logging_layer/outputs/2.html": "9f45c2994d9c8b2dd493a40a931065c9099f2b7624dc9e67b935d95fdb846a41",
+        "assets/web_publications/logging_layer/outputs/3.html": "2a8bfc5262e9b61001ad130a2acb721ca6d12e3963ff639b3ee5870535265e71",
+        "assets/web_publications/logging_layer/outputs/4.html": "06fc089e06f8ff6c89b53c0a8823bfab8865c812a41950992b37df36c6c192ad",
+        "assets/web_publications/logging_layer/outputs/5.html": "38ffc5e718a0a6ae31a2c003158a48c0deb17eeee34faaadbeb79967adfce641"
       },
       "kinds": [],
       "outputs": "assets/web_publications/logging_layer/document/outputs.json",
@@ -3478,16 +3406,16 @@
       }
     },
     "assets/agent_transcripts/lp_curves/metadata.edn": {
-      "captureDigest": "8ca26f3844345c6e7e29c7844d0aa5a8e67348467dae06f3a288c218afe53f85",
-      "capturedAt": "2026-11-17T22:20:18.897Z",
+      "captureDigest": "59a4e8714b57651704fdbf9db280ae2bcde6d5e4fef8d5099c63adea8edc89a1",
+      "capturedAt": "2026-11-18T15:24:16.722Z",
       "channels": 3,
       "file": "assets/web_publications/lp_curves/document/metadata.edn",
       "files": {
         "assets/web_publications/lp_curves/document/metadata.edn": "6862d23aed448f0b896ba11991d18df86332a98b255aff7301eb7c475362da10",
-        "assets/web_publications/lp_curves/document/outputs.json": "3f12453f02302a678946fb291420f312702bd770e234b05ad62c8d235f0d691c",
-        "assets/web_publications/lp_curves/outputs/0.html": "5923e31b374e11cc75d24abdf20ff8ba09c3ccb42990c02253b3cab17ea8b17b",
-        "assets/web_publications/lp_curves/outputs/1.html": "27420ce689c4cb5bf875e3f5165ab7df9c3c559c752ffe15c6a2746a305d4e5f",
-        "assets/web_publications/lp_curves/outputs/2.html": "6d888dd2a8627491477a969fe2ef0d6d908a316aaad7f9dcfbce88c533bad3ce"
+        "assets/web_publications/lp_curves/document/outputs.json": "c6047db8b2649d78814838455f7a6841a14e290c03502f29a448159b69d3925b",
+        "assets/web_publications/lp_curves/outputs/0.html": "ad77848bef8547ebd5b05b23e067c7962cba72f4ff97cbf289322820ab28777e",
+        "assets/web_publications/lp_curves/outputs/1.html": "679b9772220c13ccaf048220a1ad19a8db652b30b70d929ca4f939727bb06b7f",
+        "assets/web_publications/lp_curves/outputs/2.html": "10d38f45833b8152913b08d794136c981a107f9cba7adb3691b54c4a8012d905"
       },
       "kinds": [
         "svg",
@@ -3504,15 +3432,15 @@
       }
     },
     "assets/agent_transcripts/lp_curves_3d/metadata.edn": {
-      "captureDigest": "8ca26f3844345c6e7e29c7844d0aa5a8e67348467dae06f3a288c218afe53f85",
-      "capturedAt": "2026-11-17T22:20:21.873Z",
+      "captureDigest": "59a4e8714b57651704fdbf9db280ae2bcde6d5e4fef8d5099c63adea8edc89a1",
+      "capturedAt": "2026-11-18T15:24:20.794Z",
       "channels": 2,
       "file": "assets/web_publications/lp_curves_3d/document/metadata.edn",
       "files": {
         "assets/web_publications/lp_curves_3d/document/metadata.edn": "8d9253d28126513a3fe5ec32feca7db205200e204b7c2fb584f5139de2e71ced",
-        "assets/web_publications/lp_curves_3d/document/outputs.json": "9a06473c6765372ed31ed4c1f873abfeee5841604a1063c6e17e9958ea0864b8",
-        "assets/web_publications/lp_curves_3d/outputs/0.html": "18577f619244a42eaac6909943e4448abb2d4a159bcb331a9f499e6af8d04e3e",
-        "assets/web_publications/lp_curves_3d/outputs/1.html": "9c1b41d323d100b730e2650da908c2f8e2774eb1aae3cd6f11bedb5724d2babe"
+        "assets/web_publications/lp_curves_3d/document/outputs.json": "4d1f2d27ba4636f6b813e631288f31b8db16cbf024478b3926bba496fcd7a06b",
+        "assets/web_publications/lp_curves_3d/outputs/0.html": "d6d25e60de82d1b87daaaaa8a222f5b22a6aad3c6829f33f6dd1c1f0cb428702",
+        "assets/web_publications/lp_curves_3d/outputs/1.html": "524127392a028145c6b1bac34ecafc495fb9635f3d052874507505a9d674337a"
       },
       "kinds": [
         "three"
@@ -3527,13 +3455,13 @@
       }
     },
     "assets/agent_transcripts/madp_boids/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "capturedAt": "2026-11-17T22:20:28.262Z",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-18T15:24:28.376Z",
       "channels": 1,
       "file": "assets/web_publications/madp_boids/document/metadata.edn",
       "files": {
         "assets/web_publications/madp_boids/document/metadata.edn": "d8a121a75e6eee71baf4bb473a5a6a73da309f6c19918f4b7840c9a2c5a8e3d8",
-        "assets/web_publications/madp_boids/document/outputs.json": "1743508a88b463bdc692907622950e2a572d473d4a85e66680ffdf6e7a420613",
+        "assets/web_publications/madp_boids/document/outputs.json": "07381773040a9b76d8549a7f3caa3d475bd65cda80e061c56f715fa9f69548ca",
         "assets/web_publications/madp_boids/outputs/0.html": "ebf676f99323edcf314ea3093d87d8d566a3ecb68cf1bbad1bbaf7ca77d1fd7e"
       },
       "kinds": [
@@ -3574,17 +3502,17 @@
       ]
     },
     "assets/agent_transcripts/madp_ga/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "capturedAt": "2026-11-17T22:20:34.005Z",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-18T15:24:35.242Z",
       "channels": 4,
       "file": "assets/web_publications/madp_ga/document/metadata.edn",
       "files": {
         "assets/web_publications/madp_ga/document/metadata.edn": "07d67424c1171ec80aceddb143dea35f12803aa53673f58490e52e96d3bf36dd",
-        "assets/web_publications/madp_ga/document/outputs.json": "e1c9f8e968c48ea9b9ca1fb50fce7969ce94196b307cf38a8219336fbea95c51",
-        "assets/web_publications/madp_ga/outputs/0.html": "bb5f56d15015c18900c87cbe740bd9f0dc792b72accc4a7256d7657d8da6d7a0",
-        "assets/web_publications/madp_ga/outputs/1.html": "002b3e07affaedd82d7ce1e8b7ec53cb5689faf2a56cca7cd5fe97e4e199a5c1",
-        "assets/web_publications/madp_ga/outputs/2.html": "9162daa2adc45f7e016280fa669e7fc9d276c9b6912e89a4390325f7b2df838d",
-        "assets/web_publications/madp_ga/outputs/3.html": "dbe1b62f7a1bf0e6efd94edef32c32bd457e21364ba4a7963ad4519894b07771"
+        "assets/web_publications/madp_ga/document/outputs.json": "b13daa91c12a2c9d340d2c677c5fc989ea7f16a9acb829d68451975921e204fb",
+        "assets/web_publications/madp_ga/outputs/0.html": "d03fe5487758e3e471897859e1871e06ab3297c0ad11cc08bab785756a5dca56",
+        "assets/web_publications/madp_ga/outputs/1.html": "33679b658f3ffb4f3c2116171d00405e0903ddc5df2104abb98b091210cd23a3",
+        "assets/web_publications/madp_ga/outputs/2.html": "54529931b684c065c95d72eaed5a54a1869f2716715f94526652c9dbc253c153",
+        "assets/web_publications/madp_ga/outputs/3.html": "60040148827ec44d37bb2091644b21f5470f9fea9889a7a2e4ac18d2543b1ef5"
       },
       "kinds": [],
       "outputs": "assets/web_publications/madp_ga/document/outputs.json",
@@ -3602,24 +3530,24 @@
       }
     },
     "assets/agent_transcripts/madp_geometry/metadata.edn": {
-      "captureDigest": "8ca26f3844345c6e7e29c7844d0aa5a8e67348467dae06f3a288c218afe53f85",
-      "capturedAt": "2026-11-17T22:20:39.361Z",
+      "captureDigest": "59a4e8714b57651704fdbf9db280ae2bcde6d5e4fef8d5099c63adea8edc89a1",
+      "capturedAt": "2026-11-18T15:24:42.282Z",
       "channels": 11,
       "file": "assets/web_publications/madp_geometry/document/metadata.edn",
       "files": {
         "assets/web_publications/madp_geometry/document/metadata.edn": "434286298fc1428289bd3b2b5d8f736cbb1da97b1a6e68dfd83bcd738a580b66",
-        "assets/web_publications/madp_geometry/document/outputs.json": "31750ade82a20ad80af9b4a9b95d4a71d3ea4ba93bf46241c5d7faac68c0074c",
-        "assets/web_publications/madp_geometry/outputs/0.html": "90acd5f0c6ca86683258df77cc806de8a5effa1995f542d7325f3589a6978266",
-        "assets/web_publications/madp_geometry/outputs/1.html": "f12a9b72a3ca5dd6802d3c7196773a6305ca23f2ee21fb37d16df193dc576655",
-        "assets/web_publications/madp_geometry/outputs/10.html": "ea055eec8241a25d16b407059eca66c1ecc65d59defa8512e4e01b53ffebf96e",
-        "assets/web_publications/madp_geometry/outputs/2.html": "b0d4e824c5d6353e3d907e466933ef9aacd13575f4f5326ad0c0c4f839d19766",
-        "assets/web_publications/madp_geometry/outputs/3.html": "be5e8f14e149f3c94ad2626388ff2444c894f2ca1bcd61a388702064e120fc34",
-        "assets/web_publications/madp_geometry/outputs/4.html": "27c8ddc64916280d9daba8fc7a608e2182d30b07d859b3e90c28e41e7ded8f67",
-        "assets/web_publications/madp_geometry/outputs/5.html": "3daf0853846539a61335cd4e1e74ddebcd4d3493cf76ea2265fc5259acac9d43",
-        "assets/web_publications/madp_geometry/outputs/6.html": "f5f505ef8d57dd60f13ef2590f42e1487d0fb5fa63cd3b2f963a4f57924e66ec",
-        "assets/web_publications/madp_geometry/outputs/7.html": "a5ec6d05a26300d4c416d63ac6a997e9d31efce0ef87706d7f5b486f8ecdd3ab",
-        "assets/web_publications/madp_geometry/outputs/8.html": "a0a242de85c4aea097e42b1c6f193c2048966e82e246250e332a568a36c7a34f",
-        "assets/web_publications/madp_geometry/outputs/9.html": "b7a30e40fddb52b7308a8513ff1cc169a65bda82e3ec2030077cb16d38fe9103"
+        "assets/web_publications/madp_geometry/document/outputs.json": "e115db80b8d8d90ae43069ac9b970bd605dbc02012a9b08889cac479f52528e9",
+        "assets/web_publications/madp_geometry/outputs/0.html": "6664d40ad18eb295733aed8f1b9543c4db12835b45364c09a2eb19488a3ebfaf",
+        "assets/web_publications/madp_geometry/outputs/1.html": "0fde62ec2038377bbdfbea451ccd84b4a04429568fbbd67f5686fad1b1059231",
+        "assets/web_publications/madp_geometry/outputs/10.html": "c78a7d10e3bdd34cd5042337cb5611148c586e42dfbc5c885b699a048c1e0f48",
+        "assets/web_publications/madp_geometry/outputs/2.html": "3add0ef7741e9bc11b428660ce8bf29a0569bc413f2ef394829e6dffa1bab72b",
+        "assets/web_publications/madp_geometry/outputs/3.html": "2a9c4b01422f3f9789e0b6c5177800795581caed097fd4b4f39d540ca3809380",
+        "assets/web_publications/madp_geometry/outputs/4.html": "d106a2afa5bbe42abc93ff35035ea59022af85910566623fa854328bdd9c5a37",
+        "assets/web_publications/madp_geometry/outputs/5.html": "cafae8bde9cf1c4a881813b967b1d60ab80441bb16f362f756b338c77fb020c3",
+        "assets/web_publications/madp_geometry/outputs/6.html": "f5a74717da7a5e0dde31845f9b324e0b0c7eec64ad820358bed3fdcd15b62bc9",
+        "assets/web_publications/madp_geometry/outputs/7.html": "b315aec5ca4f79f9026cc2a243b39ca39163734f0683c2d4d5596030f8198745",
+        "assets/web_publications/madp_geometry/outputs/8.html": "b3454d4b99e6aaa2aaf4f11af3bedfad8a866e90d760d1609274c5070884d7aa",
+        "assets/web_publications/madp_geometry/outputs/9.html": "f0f54114ed97a82f751e541ca39184fc404a693469cff20fe22771b353c40fa2"
       },
       "kinds": [
         "three"
@@ -3653,16 +3581,16 @@
       }
     },
     "assets/agent_transcripts/manifold_solids/metadata.edn": {
-      "captureDigest": "8ca26f3844345c6e7e29c7844d0aa5a8e67348467dae06f3a288c218afe53f85",
-      "capturedAt": "2026-11-17T22:20:48.956Z",
+      "captureDigest": "59a4e8714b57651704fdbf9db280ae2bcde6d5e4fef8d5099c63adea8edc89a1",
+      "capturedAt": "2026-11-18T15:24:55.734Z",
       "channels": 3,
       "file": "assets/web_publications/manifold_solids/document/metadata.edn",
       "files": {
         "assets/web_publications/manifold_solids/document/metadata.edn": "e9fda3646887ff3bb5aed7894593298ef2e3d2138a448ef949fa693591050705",
-        "assets/web_publications/manifold_solids/document/outputs.json": "4416bd795c5ee866894195ea31149d76c4a3120ba4c6b251781b72f8cb386c82",
-        "assets/web_publications/manifold_solids/outputs/0.html": "90f29a96047a2e71ccef41d02aae12730fb151fb21f668d9f08e11655ea681f3",
-        "assets/web_publications/manifold_solids/outputs/1.html": "da45e790fa6206ae6c8a94314c64abfb4bf4cc5879a91d2dc44b9f89e860284b",
-        "assets/web_publications/manifold_solids/outputs/2.html": "e4dd4c35f70df7117a5f57495b00da01f3a9dde0d099afb8bb9e0d4089f9c977"
+        "assets/web_publications/manifold_solids/document/outputs.json": "32138a4d9ebd1cc4bbde3c42be0230f3089d6fa310596f8d4c718365a59168a6",
+        "assets/web_publications/manifold_solids/outputs/0.html": "21cf17af70ba95b5a5cc353c069c29906e08baa420282c568c0740e995b5f7f5",
+        "assets/web_publications/manifold_solids/outputs/1.html": "4ee7afc9ad2e3392d960e8630e64be5dcfd2984cd855782941ac9b7f26bc911f",
+        "assets/web_publications/manifold_solids/outputs/2.html": "9e6178ae0226a50b64e1aa2cc761fb715a0b543a908db006ef972970f51cb712"
       },
       "kinds": [
         "svg",
@@ -3678,16 +3606,16 @@
       }
     },
     "assets/agent_transcripts/mapper_explorer/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "capturedAt": "2026-11-17T22:20:52.394Z",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-18T15:24:59.752Z",
       "channels": 3,
       "file": "assets/web_publications/mapper_explorer/document/metadata.edn",
       "files": {
-        "assets/web_publications/mapper_explorer/document/metadata.edn": "d1072199ecb1f8faaa6aa7fc088c0ff9fd53cd01acb558e10ccfa059fc683b2d",
-        "assets/web_publications/mapper_explorer/document/outputs.json": "dcb92984537d9e205da1e9b07f83b20e5e276f8e37e86f6aba6896ce396e8bd5",
-        "assets/web_publications/mapper_explorer/outputs/0.html": "dbd88716c4063488e0cc7bc67192e2680dff0a957223d4f3be7e6cb628410ba5",
-        "assets/web_publications/mapper_explorer/outputs/1.html": "fab8b662d2c7598f54edf2fbb31a48f21b0dcb629d91a9b6d67ff017fd556e28",
-        "assets/web_publications/mapper_explorer/outputs/2.html": "3e5f6903614921a98921c12a3a20f04b419eb9c7ca0701bf5bdf2fb95ecc4dc1"
+        "assets/web_publications/mapper_explorer/document/metadata.edn": "aaf93a9d94cc55cd1d7954f7a66b47aa6938306a125a5559b2c8a8e7d6c0d8d5",
+        "assets/web_publications/mapper_explorer/document/outputs.json": "7797509b87be94aa420db94aae9bb5e9b0424618b0dbf1497db6caf234323af8",
+        "assets/web_publications/mapper_explorer/outputs/0.html": "221dcb4bf37ad460c083d881f1a6a1436e9b29548c098aec512c11b1580ac8e5",
+        "assets/web_publications/mapper_explorer/outputs/1.html": "132fd2726e822b5b72a690ae4c17568bdbfe052b933fc020c93654cfbdda09ba",
+        "assets/web_publications/mapper_explorer/outputs/2.html": "080e9ae5d328c4f550e376738625961d76b3526254051b5640ec2eaae135a67a"
       },
       "kinds": [
         "svg"
@@ -7295,7 +7223,7 @@
       }
     },
     "assets/agent_transcripts/linalg_thumbnails_demo/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
       "channels": 0,
       "reason": "No output-area channels; the code remains available.",
       "sources": {
@@ -7309,7 +7237,7 @@
       }
     },
     "assets/agent_transcripts/lua_demo/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
       "channels": 0,
       "reason": "No output-area channels; the code remains available.",
       "sources": {
@@ -7332,7 +7260,7 @@
       }
     },
     "assets/agent_transcripts/macro_recorder_stamp/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
       "channels": 0,
       "reason": "No output-area channels; the code remains available.",
       "sources": {
