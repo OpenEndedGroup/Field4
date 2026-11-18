@@ -37,25 +37,12 @@ are not required for the default launch.
 
 ## Quickstart
 
-On macOS and Linux:
-
 ```bash
 git lfs install
 git clone --depth 1 https://github.com/OpenEndedGroup/Field4.git
 cd Field4
-./field.sh
+./field.sh    # or .\field.bat on Windows
 ```
-
-On Windows:
-
-```powershell
-git lfs install
-git clone --depth 1 https://github.com/OpenEndedGroup/Field4.git
-cd Field4
-.\field.bat
-```
-
-This is the one command you need. 
 
 The first interactive launch runs a small Kotlin welcome tool: choose desktop/browser mode and
 optional Python prerequisites or Vulkan diagnostics or other optional native things. It prints a package installation plan and
