@@ -2171,6 +2171,33 @@ instead of failing.
 
 [Open →](offline.html?file=assets/agent_transcripts/solidcraft_intro/metadata.edn)
 
+### chamfer_everything
+
+**Chamfer one edge, then all of them.** The boxes from [Chamfer every edge](solidcraft.md#chamfer-every-edge)
+read every edge of a part off its SolidCraft mesh with `mesh().edges()` and chamfer them. On a drilled
+3 × 3 plate of bosses, one chamfer of all 138 edges fails where an outside and an inside edge meet,
+and outside-then-inside as two chamfers builds. A ladder of eleven parts, from a block to a 4 × 4
+plate with 204 edges, times one chamfer, two, and one fillet of every edge. This uses the optional
+SolidCraft Rust bridge (`./gradlew buildSolidCraftNative`). Without it, each box gives that command
+instead of failing.
+
+![The chamfer ladder: a table of eleven parts with their edge counts and the times for one chamfer, two chamfers and one fillet of every edge, above a grid of the chamfered parts](assets/solidcraft/chamfer-ladder.png)
+
+[Open →](offline.html?file=assets/agent_transcripts/chamfer_everything/metadata.edn)
+
+### fillet_everything
+
+**Fillet every edge, and check it.** The boxes from [Fillet every edge](solidcraft.md#fillet-every-edge)
+round all twelve edges of a block at three radii and compare each volume with the closed form for a
+rounded block, fillet the drilled plate of bosses that one chamfer cannot take, and then find how
+round each of eleven parts can go by asking for a radius too large and reading SolidCraft's refusal.
+At its largest radius the pyramid becomes a ball. This uses the optional SolidCraft Rust bridge
+(`./gradlew buildSolidCraftNative`). Without it, each box gives that command instead of failing.
+
+![The fillet ladder: a table of eleven parts with the time for a 1 mm fillet of every edge, the largest radius each takes and how long that took to find, above a grid of the parts at that radius, the pyramid rounded into a ball](assets/solidcraft/fillet-ladder.png)
+
+[Open →](offline.html?file=assets/agent_transcripts/fillet_everything/metadata.edn)
+
 ### ai4_paint_studio
 
 A studio where AI4 paints. The one box puts a canvas from the [paint simulator](paint_canvas.md) on

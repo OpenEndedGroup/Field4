@@ -591,6 +591,13 @@ object DemoTranscriptExecSmokeTest {
         // The optional Rust bridge opens a bundled design and renders both parameter values through
         // Field's CPU mesh preview. With no native artifact the box explains the build command.
         "solidcraft_intro",
+        // The same bridge, chamfering every edge of a drilled plate of bosses and then of eleven parts,
+        // through SolidCraft's own evaluator and the CPU mesh preview. Without the native artifact
+        // both boxes give the build command.
+        "chamfer_everything",
+        // Its companion: one fillet of every edge, a rounded block checked against its closed-form
+        // volume, and the largest radius each of eleven parts takes. Same bridge, same fallback.
+        "fillet_everything",
         // Three pure-CPU boxes that paint and draw FLines through afield.graphics.paint (FFM into the optional
         // Rust wrapper over claude-paint's `paint` crate) and display a PNG, so no Window and no
         // Renderer. All check PaintCanvas.isAvailable first; without `./gradlew buildPaintNative` — the branch CI
