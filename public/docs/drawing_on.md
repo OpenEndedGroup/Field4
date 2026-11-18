@@ -143,6 +143,101 @@ server restart, use the archive as its input; the live callback is not a persist
 The [wire format](https://github.com/OpenEndedGroup/Field4/blob/main/native/field-drawingon/docs/PROTOCOL.md)
 describes sample fields, audio encoding, viewport transforms and geometry assets.
 
+## Scrub and graph a recording
+
+Load an exported save file directly in Field. A capture handle keeps replay controls separate from
+the original recording. All geometry returned below is ordinary `FLine` data.
+
+```diffstatic {data-lang=kotlin}
+:::static
+:::fold imports
+import afield.io.drawingon.readDrawingOn
+:::endfold
+
+val recording = readDrawingOn("/path/to/capture.ndjson")
+var time = recording.duration
+
+fun redraw() {
+    val frame = recording.at(time)
+    lines(frame.drawing, w = 640.0, h = 520.0)
+}
+redraw()
+controlGroup {
+    slider("capture time", 0.0, maxOf(recording.duration, 0.001), step = 0.01, initialValue = time) {
+        time = it
+        redraw()
+    }
+    for (layer in recording.layers) {
+        checkbox(layer.name, initialValue = layer.visible) {
+            recording.layerVisible(layer.id, it)
+            redraw()
+        }
+    }
+}
+```
+
+`at(time)` reconstructs the human drawing, line/circle tool intent, undo and layer state at that
+capture time. Late estimated-property corrections take effect when they were received. Scrubbing
+backwards restores the earlier measured state. `frame.viewport` is another FLine: the recorded
+screen footprint in drawing coordinates. `frame.transform` maps drawing coordinates to display
+points, and `frame.light` records the canvas appearance. Returned Field reference meshes and
+transient predictions are separate from this human-ink API.
+
+Layer controls use stable layer IDs, available through `recording.layers` or `frame.layers`.
+`layerVisible(id, true)` and `layerVisible(id, false)` override visibility across scrub positions;
+`layerVisible(id, null)` follows the recording again. `solo(id)` solos a layer, `solo(null)` turns
+solo off, and `resetLayers()` restores all recorded visibility and solo choices. These controls
+change your Field replay; they do not send commands to the iPad or change its save file.
+
+For live or uploaded data already received by a named head, use `pad.capture(session)` in the
+box that owns `pad`. Choose a session from `pad.sessions`. Keep the capture handle and call
+`recording.refresh()` to include newly archived events, then query it again. Refresh reads past
+audio and reference buffers without retaining them in the replay model.
+
+To draw new input since a previous capture timestamp, ask for contact and hover separately:
+
+```diffstatic {data-lang=kotlin}
+:::static
+val since = 2.0
+val until = recording.duration
+val ink = recording.drawingSince(since, until)
+val pointing = recording.hoverSince(since, until)
+lines(ink + pointing, w = 640.0, h = 520.0)
+```
+
+Both queries use sample times in seconds and the interval `(since, until]`. On a completed
+recording, save `until` as the next cursor. For live input, refresh and requery an overlapping
+interval to include delayed coalesced samples; merge contact samples by `(stroke, id)` and hover
+samples by `sequence`. Contact paths remain separate per stroke; hover paths break on
+range changes, contact, navigation, layer changes or gaps over 0.25 seconds. Change `gap` in
+`hoverSince` for a different pause threshold. No segment reaches back across the lower bound.
+By default these queries include measured input that was later undone, hidden or cancelled.
+Pass `visibleOnly = true` to restrict them to the scene at `until`. Local layer overrides also
+filter these queries. Corrections to an older sample refine that sample; they do not become new
+contact at the correction's receipt time.
+
+The final lambda maps each sample to a point, so the same calls can graph pressure and hover
+height instead of drawing position:
+
+```diffstatic {data-lang=kotlin}
+:::static
+val pressure = recording.drawingSince(since, until) {
+    vec(it.t * 60, 200 - (it.pressure ?: 0.0) * 150, 0)
+}
+val height = recording.hoverSince(since, until) {
+    vec(it.t * 60, 200 - (it.z ?: 0.0) * 150, 0)
+}
+lines(pressure + height, w = 640.0, h = 240.0)
+```
+
+Samples expose `t`, `x`, `y`, `force`, `maximumForce`, normalized `pressure`, `altitude`, `azimuth`,
+`roll`, and hover `z`. Missing sensor values are null. `sample.data` retains the original fields,
+and `sample.value("radius")` reads any numeric field. Measured FLine nodes retain their sample
+as `node.drawingOnSample` (import `afield.io.drawingon.drawingOnSample`), plus `node.properties["t"]`.
+Each path carries `drawingOn.layer`, `drawingOn.stroke` for contact, and `drawingOn.kind` in its
+property map. Shape replay constructs the intended circle or straight line; the interval queries
+always use the measured Pencil path, so a pressure graph retains every measured point.
+
 ## Record elsewhere, upload later
 
 Leave **Stream live** off to draw and record voice without a server or network. Give the capture

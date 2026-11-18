@@ -100,6 +100,12 @@ class DrawingOnTarget internal constructor(val name: String, internal val owner:
         DrawingOnServices.archive?.read(session, consume)
     }
 
+    /** Read human ink and hover as FLines; refresh the handle to include newly archived live input. */
+    fun capture(session: String): DrawingOnCapture {
+        require(session in sessions) { "Capture is not bound to $name" }
+        return requireNotNull(DrawingOnServices.archive).capture(session)
+    }
+
     internal fun deliver(session: String, upload: Boolean, events: List<JsonObject>) {
         val current = callback ?: return
         val action = {
@@ -182,6 +188,11 @@ class DrawingOnArchive(val directory: File) {
         .listFiles().orEmpty().filter { file(it.name).isFile }.map { it.name }.sorted()
     @Synchronized fun read(session: String, consume: (JsonObject) -> Unit) {
         file(session).useLines { lines -> lines.forEach { consume(drawingOnJson.parseToJsonElement(it).jsonObject) } }
+    }
+
+    internal fun capture(session: String): DrawingOnCapture {
+        val reader = drawingOnFileReader(file(session))
+        return DrawingOnCapture { consume -> synchronized(this) { reader(consume) } }
     }
 
     data class Commit(val reply: JsonObject, val fresh: List<JsonObject>)
