@@ -127,9 +127,12 @@ object LineHeatSmokeTest {
             println("  totals by box line after two runs: ${t.toSortedMap()}")
             check("B loop body (line 6, second fragment) totals 14", t[6] == 14L, t.toString())
             check("B line after the loop (line 8) totals 2", t[8] == 2L, t.toString())
+            // Line 2 and 8 are `println`, which the macro pass compiles as `_printlnHere(n+1, ...`: placed
+            // between their proven neighbours, not by text.
             check("B first fragment's lines total 2", t[1] == 2L && t[2] == 2L, t.toString())
             check("B second fragment's first statement (line 4) totals 2", t[4] == 2L, t.toString())
             check("B the //%- line gets nothing", 3 !in t, t.toString())
+            check("B the loop header (line 5) is entered n+1 times a run", t[5] == 16L, t.toString())
             check("B no line outside the box", t.keys.all { it in 1..8 }, t.keys.toString())
             val hashes = synchronized(updates) { updates.map { it.codeHash }.toSet() }
             check("B updates name the hash of the box's text", hashes == setOf(LineHeat.codeHash(code)), "$hashes vs ${LineHeat.codeHash(code)}")
@@ -141,7 +144,7 @@ object LineHeatSmokeTest {
                 "var s = 0L",
                 "val t0 = System.nanoTime()",
                 "for (i in 0 until 200_000_000) {",
-                "    s += i xor (s ushr 7)",
+                "    s += i.toLong() xor (s ushr 7)",
                 "}",
                 "println(\"tight ms=\" + (System.nanoTime() - t0) / 1_000_000 + \" s=\" + s)",
             ).joinToString("\n")

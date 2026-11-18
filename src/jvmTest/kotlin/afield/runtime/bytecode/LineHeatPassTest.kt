@@ -204,6 +204,28 @@ class LineHeatPassTest {
     }
 
     @Test
+    fun aLineAMacroRewroteIsPlacedBetweenItsProvenNeighbours() {
+        // The compiled text has the loop body rewritten in place (as `println(` becomes
+        // `_printlnHere(n+1, `), so it is not proven by text; the lines around it agree on one offset.
+        val box = BoxBytecodeTestSupport.testSource(path)!!
+        val body = lineOf("loop-body")
+        val compiled = box.lines().mapIndexed { i, t -> if (i == body - 1) t.replace("s += i", "s = s + i") else t }.joinToString("\n")
+        val uid = freshBox()
+        val o = load(uid, origin(uid, compiled) { box })
+        val key = Any()
+        LineHeat.watch(key, uid)
+        try {
+            call(o, "loop", 4)
+            val site = LineHeat.sitesOf(uid).single { it.line == body }
+            assertEquals(-1, site.boxLine(), "not proven by text")
+            val lines = LineHeat.publish().single { it.first === key }.second.lines
+            assertEquals(4, lines.single { it.line == body }.delta, lines.toString())
+        } finally {
+            LineHeat.unwatch(key)
+        }
+    }
+
+    @Test
     fun aWatchStartedLaterDoesNotCountEarlierRuns() {
         val uid = freshBox()
         val o = load(uid)

@@ -61,9 +61,27 @@ object LineHeatPass : BoxBytecodePass {
 
     override fun wants(origin: SnippetOrigin): Boolean = LineHeat.isWatched(origin)
 
+    private val SNIPPET = Any()
+    private val ACCESSOR = Regex("^(get|set|is)[A-Z0-9_$].*")
+
+    /**
+     * Code kotlinc generates for a K2 REPL snippet class (the class with a `$$eval` method) rather
+     * than code the box wrote: its constructor, which carries only the snippet's line 1 (a comment,
+     * the `//%-` of a later fragment, or whatever statement is there, which `$$eval` counts anyway),
+     * and the leaf getters and setters of its top-level properties, which carry the declaration's
+     * line and run when *other* snippets read the property. A box's own top-level `fun getX()` with
+     * no calls in it is skipped too.
+     */
+    private fun isGenerated(cls: ClassScope, m: MethodScope): Boolean {
+        val snippet = cls.attachment(SNIPPET) { cls.facts.keys.any { it.startsWith("\$\$eval(") } }
+        if (!snippet) return false
+        return m.name == "<init>" || (m.facts.isLeaf && ACCESSOR.matches(m.name))
+    }
+
     override fun method(cls: ClassScope, m: MethodScope, next: MethodVisitor): MethodVisitor {
         val lines = cls.origin.sourceLineCount
         if (lines <= 0) return next
+        if (isGenerated(cls, m)) return next
         val perLine = cls.attachment(LineHeatPass) { HashMap<Int, Site>() }
         return object : BoxMethodVisitor(next) {
             private var previous = -1
@@ -309,7 +327,7 @@ object LineHeat {
             val site = SnippetSites[id] ?: continue
             if (site.origin.property != w.property) continue
             if (code == null) code = site.origin.currentCode() ?: continue
-            val line = site.boxLine()
+            val line = boxLineOf(site, text = code)
             if (line > 0) deltas.merge(line, d, Int::plus)
         }
         val text = code ?: return null
@@ -323,6 +341,64 @@ object LineHeat {
             LineHeatLine(line, d, w.totals.merge(line, d.toLong(), Long::plus)!!)
         }
         return LineHeatUpdate(w.uid, w.property, hash, lines)
+    }
+
+    private const val WINDOW = 12
+
+    /**
+     * The box line [site] counts for, in the box's current [text], or -1. Proven by text
+     * ([Site.boxLine]) or, for a line a macro rewrote in place (`println(` compiles as
+     * `_printlnHere(4+1, `), placed between the nearest proven lines above and below it (within 12
+     * lines), which must agree on one offset; at the edge of the compiled text one side is enough.
+     * Never a blank or comment-only box line: those do not execute.
+     */
+    internal fun boxLineOf(site: Site, text: String): Int {
+        var line = site.boxLine()
+        if (line < 1) line = bracketed(site.origin, site.line)
+        if (line < 1) return -1
+        val t = lineOf(text, line)?.trim() ?: return -1
+        return if (t.isEmpty() || t.startsWith("//")) -1 else line
+    }
+
+    private fun bracketed(origin: SnippetOrigin, line: Int): Int {
+        val n = origin.sourceLineCount
+        if (line < 1 || line > n) return -1
+        if (origin.sourceText?.let { lineOf(it, line) }?.isBlank() != false) return -1
+        // The offset of the nearest proven line in direction [step]: null at the edge of the text,
+        // MISSING when the window holds no proven line.
+        fun nearest(step: Int): Int? {
+            var c = line + step
+            var k = 0
+            while (c in 1..n) {
+                if (k++ >= WINDOW) return MISSING
+                val b = origin.boxLine(c)
+                if (b > 0) return b - c
+                c += step
+            }
+            return null
+        }
+        val above = nearest(-1)
+        val below = nearest(+1)
+        if (above == MISSING || below == MISSING) return -1
+        val d = when {
+            above != null && below != null -> if (above == below) above else return -1
+            else -> above ?: below ?: return -1
+        }
+        return line + d
+    }
+
+    private const val MISSING = Int.MIN_VALUE
+
+    /** Line [line] (1-based) of [text], without its newline, or null if it has fewer lines. */
+    private fun lineOf(text: String, line: Int): String? {
+        var start = 0
+        repeat(line - 1) {
+            val nl = text.indexOf('\n', start)
+            if (nl < 0) return null
+            start = nl + 1
+        }
+        val end = text.indexOf('\n', start).let { if (it < 0) text.length else it }
+        return text.substring(start, end).removeSuffix("\r")
     }
 
     /**
