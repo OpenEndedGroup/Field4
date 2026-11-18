@@ -51,7 +51,9 @@ fun solidCraft(name: String = "Untitled", units: String = "mm", build: SolidCraf
     SolidCraftBuilder(name, units).apply(build)
 
 /** A sketch feature already added to a [SolidCraftBuilder]; pass it to the features that use it. */
-class SolidCraftSketchRef internal constructor(val id: Long, val name: String, val curves: List<String>, val wires: List<String>)
+class SolidCraftSketchRef internal constructor(
+    val id: Long, val name: String, val curves: List<String>, val wires: List<String>, val points: List<String> = emptyList(),
+)
 
 /** A feature added to a [SolidCraftBuilder], by the id and name SolidCraft reports it under. */
 class SolidCraftFeatureRef internal constructor(val id: Long, val name: String)
@@ -90,7 +92,7 @@ class SolidCraftBuilder internal constructor(private val name: String, private v
             else -> throw IllegalArgumentException("plane must be \"XY\", \"XZ\", \"YZ\", offsetPlane(...) or planeSquareTo(...), not $plane")
         }
         val ref = add("Sketch", "sketch") { it.put("plane", planeJson).put("sketch", sketch.json()) }
-        return SolidCraftSketchRef(ref.id, ref.name, sketch.curveIds.toList(), sketch.wireIds.toList())
+        return SolidCraftSketchRef(ref.id, ref.name, sketch.curveIds.toList(), sketch.wireIds.toList(), sketch.pointIds.toList())
     }
 
     /** `base` (`"XY"`…) moved along its normal by `distance`, for stacking loft sections. */
@@ -151,9 +153,18 @@ class SolidCraftBuilder internal constructor(private val name: String, private v
         sweepPath(it, path, pathCurves, rails, railFit, twist, scale)
     }
 
-    /** A solid through the closed profiles of `sections`, in order (each sketch one section). */
-    fun loft(sections: List<SolidCraftSketchRef>, operation: SolidCraftOperation = SolidCraftOperation.NEW_BODY) = add("Loft", "loft") {
-        it.put("sections", JSONArray(sections.map { s -> JSONObject().put("sketch", s.id).put("profiles", allProfiles()) })).put("operation", operation.json)
+    /**
+     * A solid through the closed profiles of `sections`, in order (each sketch one section). With
+     * `apex`, a sketch holding one [SolidCraftSketch.point], the loft closes to that point after
+     * the last section: a square section and an apex make a pyramid.
+     */
+    fun loft(sections: List<SolidCraftSketchRef>, apex: SolidCraftSketchRef? = null, operation: SolidCraftOperation = SolidCraftOperation.NEW_BODY) = add("Loft", "loft") {
+        val all = JSONArray(sections.map { s -> JSONObject().put("sketch", s.id).put("profiles", allProfiles()) })
+        if (apex != null) {
+            require(apex.points.size == 1) { "an apex sketch holds exactly one point, not ${apex.points.size}" }
+            all.put(JSONObject().put("sketch", apex.id).put("profiles", allProfiles()).put("point", apex.points[0]))
+        }
+        it.put("sections", all).put("operation", operation.json)
     }
 
     /** A round tube of `diameter` along `path`; `wall` makes it hollow. */
@@ -166,6 +177,30 @@ class SolidCraftBuilder internal constructor(private val name: String, private v
     /** A fillet of `radius` on the edges nearest each of `edgesNear` (world points). */
     fun fillet(radius: String, vararg edgesNear: DoubleArray) = add("Fillet", "fillet") {
         it.put("edges", JSONArray(edgesNear.map { p -> JSONArray(p.toList()) })).put("radius", radius)
+    }
+
+    /**
+     * A flat bevel on the edges nearest each of `edgesNear` (world points): `distance` along both
+     * faces, or `distance` along the first face and `distance2` along the second, or `distance`
+     * along the first at `angle` to it. The first face is the one facing up most; `flip` swaps
+     * them.
+     */
+    fun chamfer(distance: String, vararg edgesNear: DoubleArray, distance2: String? = null, angle: String? = null, flip: Boolean = false) =
+        add("Chamfer", "chamfer") {
+            require(distance2 == null || angle == null) { "a chamfer takes a second distance or an angle, not both" }
+            it.put("edges", JSONArray(edgesNear.map { p -> JSONArray(p.toList()) })).put("distance", distance)
+            distance2?.let { d -> it.put("distance2", d) }
+            angle?.let { a -> it.put("angle", a) }
+            if (flip) it.put("flip", true)
+        }
+
+    /**
+     * Moves the faces at `facesAt` (world points on them) along their outward normals by
+     * `distance`, negative into the body; the faces around them extend or shrink to meet them, so
+     * a vertex where they stop meeting at one point, a pyramid's apex, opens into an edge.
+     */
+    fun offsetFaces(distance: String, vararg facesAt: DoubleArray) = add("OffsetFace", "offset_face") {
+        it.put("faces", JSONArray(facesAt.map { p -> JSONArray(p.toList()) })).put("distance", distance)
     }
 
     /** A surface (open sheet body) swept from the curves of `profile` along `path`; rails as in [sweep]. */
@@ -266,6 +301,7 @@ class SolidCraftSketch internal constructor() {
     private val wires = JSONArray()
     internal val curveIds = ArrayList<String>()
     internal val wireIds = ArrayList<String>()
+    internal val pointIds = ArrayList<String>()
     private var next = 1
 
     private fun point(id: String, x: Double, y: Double, fixed: Boolean = false) =
@@ -285,6 +321,12 @@ class SolidCraftSketch internal constructor() {
         curves.put(JSONObject().put("id", id).put("construction", false).apply(fill))
         curveIds += id
         return id
+    }
+
+    /** A lone point, such as a loft's apex; returns its id. */
+    fun point(x: Double, y: Double): String {
+        points.put(point("p${next++}", x, y, fixed = true))
+        return points.getJSONObject(points.length() - 1).getString("id").also { pointIds += it }
     }
 
     fun line(x0: Double, y0: Double, x1: Double, y1: Double): String = curve("l") { put("type", "line").put("a", at(x0, y0)).put("b", at(x1, y1)) }
