@@ -1378,6 +1378,19 @@ random-sampling control at the same budget. All five run on the CPU.
 
 [Open →](offline.html?file=assets/agent_transcripts/braitenberg_where_next/metadata.edn)
 
+### braitenberg_weight_cube
+
+The three weight-cube figures of section 4 of [Braitenberg vehicles with memory](braitenberg_vehicles.md#4-learning-the-wiring),
+one box each. Box 1 trains one `WeightCubeLearner` on the light reward and draws its path through
+(same, cross, drive) with `CubeView`. Box 2 starts twelve learners at random; the ones that start
+with the motors pinned by `drive` stay where they are. Box 3 trains three learners for each of
+`SEEK`, `FLEE`, `FREEZE` and `CHARGE`. Method after Aatish Bhatia and Arkarup Banerjee,
+[Watch a Brain Learn](https://aatishb.com/myriad/how-brains-learn/). All three run on the CPU.
+
+![One learner's path through a wireframe cube of wiring weights, blue at the start and orange at the end, settling near the lover corner](assets/braitenberg_vehicles/cube_path.png)
+
+[Open →](offline.html?file=assets/agent_transcripts/braitenberg_weight_cube/metadata.edn)
+
 ### braitenberg_brain_search
 
 Section 10 of [Braitenberg vehicles with memory](braitenberg_vehicles.md) as two boxes. Box 1 gives

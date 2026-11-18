@@ -383,6 +383,8 @@ object DemoTranscriptExecSmokeTest {
         "braitenberg_where_next",
         // Two pure-CPU section 10 boxes (equal-budget search comparison), about 11-13 s each.
         "braitenberg_brain_search",
+        // Three pure-CPU weight-cube boxes (braitenberg_vehicles.md section 4), the rewards box ~15 s.
+        "braitenberg_weight_cube",
         // Three pure-CPU alife_examples.md "Does search beat random?" boxes (compareSearch), under 20 s each.
         "alife_search_comparison",
         // Five independent pure-CPU statistics boxes; showPlaneGrid is drawToSVG -> display,
