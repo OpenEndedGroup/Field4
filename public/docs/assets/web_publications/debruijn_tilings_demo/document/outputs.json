@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-18T14:55:05.500Z",
+  "capturedAt": "2026-11-18T21:57:01.581Z",
   "documentName": "debruijn_tilings_demo",
   "outputs": [
     {
@@ -59,8 +59,8 @@
       "kinds": [
         "three"
       ],
-      "width": 768,
-      "height": 528,
+      "width": 760,
+      "height": 520,
       "path": "outputs/4.html"
     },
     {

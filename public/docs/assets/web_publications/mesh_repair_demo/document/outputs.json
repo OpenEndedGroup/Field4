@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-18T15:32:28.484Z",
+  "capturedAt": "2026-11-18T21:58:17.237Z",
   "documentName": "mesh_repair_demo",
   "outputs": [
     {
@@ -23,8 +23,8 @@
       "kinds": [
         "three"
       ],
-      "width": 908,
-      "height": 233,
+      "width": 900,
+      "height": 225,
       "path": "outputs/1.html"
     },
     {

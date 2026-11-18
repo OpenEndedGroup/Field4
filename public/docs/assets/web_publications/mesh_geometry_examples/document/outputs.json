@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-18T15:32:19.999Z",
+  "capturedAt": "2026-11-18T21:58:10.985Z",
   "documentName": "mesh_geometry_examples",
   "outputs": [
     {
@@ -11,8 +11,8 @@
       "kinds": [
         "three"
       ],
-      "width": 768,
-      "height": 578,
+      "width": 760,
+      "height": 570,
       "path": "outputs/0.html"
     },
     {
@@ -23,8 +23,8 @@
       "kinds": [
         "three"
       ],
-      "width": 908,
-      "height": 233,
+      "width": 900,
+      "height": 225,
       "path": "outputs/1.html"
     },
     {
@@ -47,8 +47,8 @@
       "kinds": [
         "three"
       ],
-      "width": 908,
-      "height": 458,
+      "width": 900,
+      "height": 450,
       "path": "outputs/3.html"
     },
     {
@@ -59,8 +59,8 @@
       "kinds": [
         "three"
       ],
-      "width": 878,
-      "height": 660,
+      "width": 870,
+      "height": 652,
       "path": "outputs/4.html"
     },
     {
@@ -71,8 +71,8 @@
       "kinds": [
         "three"
       ],
-      "width": 908,
-      "height": 233,
+      "width": 900,
+      "height": 225,
       "path": "outputs/5.html"
     },
     {
@@ -83,8 +83,8 @@
       "kinds": [
         "three"
       ],
-      "width": 908,
-      "height": 458,
+      "width": 900,
+      "height": 450,
       "path": "outputs/6.html"
     }
   ]

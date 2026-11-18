@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-18T15:06:28.340Z",
+  "capturedAt": "2026-11-18T21:57:10.071Z",
   "documentName": "geometry_from_disk",
   "outputs": [
     {
@@ -11,8 +11,8 @@
       "kinds": [
         "three"
       ],
-      "width": 713,
-      "height": 208,
+      "width": 705,
+      "height": 200,
       "path": "outputs/0.html"
     },
     {
@@ -23,8 +23,8 @@
       "kinds": [
         "three"
       ],
-      "width": 568,
-      "height": 428,
+      "width": 560,
+      "height": 420,
       "path": "outputs/1.html"
     },
     {
@@ -36,7 +36,7 @@
         "three"
       ],
       "width": 480,
-      "height": 323,
+      "height": 315,
       "path": "outputs/2.html"
     }
   ]

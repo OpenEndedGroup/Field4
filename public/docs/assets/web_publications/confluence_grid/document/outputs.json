@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-18T14:52:54.011Z",
+  "capturedAt": "2026-11-18T21:56:38.586Z",
   "documentName": "confluence_grid",
   "outputs": [
     {
@@ -11,8 +11,8 @@
       "kinds": [
         "three"
       ],
-      "width": 1468,
-      "height": 848,
+      "width": 1460,
+      "height": 840,
       "path": "outputs/0.html"
     }
   ]
