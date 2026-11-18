@@ -6,7 +6,7 @@ import {load, dump, CORE_SCHEMA} from './vendor/js-yaml/js-yaml.mjs';
 
 // Text belongs to the box. DOM, editing state and uncommitted conflict drafts are local to a view.
 const frames = new Map();
-const defaults = {fontFamily: '"Field Etoile", serif', fontSize: 11, fontWeight: 400, lineHeight: 1.5, padding: 16, sizing: 'grow', connectionBorderLength: 100, autocomplete: false, minHeight: 80, reflow: true};
+const defaults = {fontFamily: '"Field Etoile", serif', fontSize: 11, fontWeight: 400, fontStyle: 'normal', color: 'inherit', backgroundColor: 'transparent', textAlign: 'left', letterSpacing: 'normal', lineHeight: 1.5, padding: 16, sizing: 'grow', connectionBorderLength: 100, autocomplete: false, minHeight: 80, reflow: true};
 const node = (tag, cls, text) => {
     const result = document.createElement(tag);
     result.className = cls;
@@ -80,9 +80,17 @@ function settingsFor(box) {
     try { raw = readSettings(box.textFrame); } catch (_) { return frames.get(box)?.config || defaults; }
     const number = (key, low, high) => Number.isFinite(Number(raw[key])) && raw[key] !== null
         ? Math.max(low, Math.min(high, Number(raw[key]))) : defaults[key];
+    const css = (key, property) => {
+        const value = key === 'letterSpacing' && typeof raw[key] === 'number' && Number.isFinite(raw[key])
+            ? `${raw[key]}px` : typeof raw[key] === 'string' ? raw[key].trim() : '';
+        return value && CSS.supports(property, value) ? value : defaults[key];
+    };
     const config = {...raw,
         fontFamily: typeof raw.fontFamily === 'string' && raw.fontFamily.trim() ? raw.fontFamily : defaults.fontFamily,
         fontSize: number('fontSize', 8, 120), fontWeight: number('fontWeight', 100, 900), lineHeight: number('lineHeight', 1, 3), padding: number('padding', 0, 96),
+        color: css('color', 'color'), backgroundColor: css('backgroundColor', 'background-color'),
+        textAlign: css('textAlign', 'text-align'), fontStyle: css('fontStyle', 'font-style'),
+        letterSpacing: css('letterSpacing', 'letter-spacing'),
         connectionBorderLength: number('connectionBorderLength', 0, 200),
         minHeight: number('minHeight', 40, 2000), reflow: raw.reflow !== false,
         sizing: raw.sizing === 'fixed' ? 'fixed' : 'grow'};
@@ -137,6 +145,11 @@ function layout(state) {
         state.box.style.setProperty('--text-frame-font', config.fontFamily);
         state.box.style.setProperty('--text-frame-size', `${config.fontSize}px`);
         state.box.style.setProperty('--text-frame-weight', config.fontWeight);
+        state.box.style.setProperty('--text-frame-color', config.color);
+        state.box.style.setProperty('--text-frame-fill', config.backgroundColor);
+        state.box.style.setProperty('--text-frame-align', config.textAlign);
+        state.box.style.setProperty('--text-frame-style', config.fontStyle);
+        state.box.style.setProperty('--text-frame-tracking', config.letterSpacing);
         state.box.style.setProperty('--text-frame-leading', config.lineHeight);
         state.box.style.setProperty('--text-frame-padding', `${config.padding}px`);
         const editing = state.box.classList.contains('text-frame-editing');

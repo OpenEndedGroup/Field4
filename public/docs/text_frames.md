@@ -8,7 +8,7 @@ Press ++shift+n++ to make one. Double-click a passage to edit its Markdown at th
 press ++escape++, or press ++cmd+enter++ to read the formatted result. Selecting a frame and pressing
 ++enter++ also starts editing. Native spellcheck is enabled.
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1060x720" clip="0,0,560,700" screenshot="assets/text_frames/reading.png" transcript="../../dev_docs/agents/transcripts/docs_capture/text_frames.yaml" document="docs-text-frames-reading" fresh-document=true hide-toasts=true padding="0" wait="0" timeout="180" embed=true hidden=true name="text-frames-reading" alt="Two connected text frames on Field's dark canvas. Research notes contain a heading, bold text, a diagram loaded through FileManager, and a short list. The next frame asks what happens next."}
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1060x720" clip="0,0,560,700" screenshot="assets/text_frames/reading.png" transcript="../../dev_docs/agents/transcripts/docs_capture/text_frames.yaml" document="docs-text-frames-reading" fresh-document=true hide-toasts=true padding="0" wait="0" timeout="180" embed=true hidden=true name="text-frames-reading" alt="Two connected text frames on Field's dark canvas. Research notes contain a heading, bold text, a diagram loaded through FileManager, and a small Kotlin code block with a horizontal Copy button. The next frame asks what happens next."}
 ui.eval(
     "window.setAutoDisplayEditor(false);for(const b of [...window.selectedList])window.deselectBox(b);window.moveCanvasCamera(0,0,1);return true;",
 )
@@ -87,7 +87,10 @@ ui.eval(
     "window.setAutoDisplayEditor(false);window.moveCanvasCamera(0,0,1);const b=[...document.querySelectorAll('.text-frame-box')].find(b=>b.name==='Research notes');window.selectBox(b);window.openTextFrameSettings(b.uid);return true;",
 )
 ui.waitForSelector(".monaco-editor", 15000.0)
-ui.editorHeight(320)
+ui.editorHeight(420)
+ui.eval(
+    "const e=window.globalEditor,m=e.getModel(),n=m.getLineCount();e.setPosition({lineNumber:n,column:m.getLineMaxColumn(n)});return true;",
+)
 ui.pause(600)
 check(
     ui.eval(
@@ -103,6 +106,11 @@ check(
 fontFamily: '"Field Etoile", serif'
 fontSize: 11
 fontWeight: 400
+fontStyle: normal
+color: inherit
+backgroundColor: transparent
+textAlign: left
+letterSpacing: normal
 lineHeight: 1.5
 padding: 16
 sizing: grow
@@ -111,6 +119,11 @@ reflow: true
 connectionBorderLength: 100
 autocomplete: false
 ```
+
+`color` and `backgroundColor` take CSS colors; quote hex values such as `"#b6e3c5"` in YAML.
+Use `textAlign: center`, `fontStyle: italic`, or `letterSpacing: 0.02em` to change the reading style.
+A numeric `letterSpacing` means pixels. Invalid CSS values fall back to the defaults. These settings
+apply to formatted text; the Markdown editor keeps Field's normal text color and its black background.
 
 Use `fontWeight: 300` for light text, `sizing: fixed` for clipping, or `reflow: false` to resize without
 moving other frames. `connectionBorderLength` is the trace length on either side of an arrow attachment,
