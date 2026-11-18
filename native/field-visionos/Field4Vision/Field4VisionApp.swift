@@ -19,6 +19,9 @@ struct Field4VisionApp: App {
     @State private var liveMetalClient = LiveMetalClient()
 
     init() {
+        ThreeHandleComponent.registerComponent()
+        // Lines' eye-space offset material; long before the first scene arrives over the network.
+        Task { @MainActor in await ThreeMeshBuilder.loadLineMaterial() }
         // The media wire parser has no XCTest target to live in, so it proves itself at launch: a few
         // microseconds over hand-built v1/v2 datagrams, never fails the app. A wrong header offset
         // produces plausible numbers rather than a crash, so "it compiled" is not evidence.

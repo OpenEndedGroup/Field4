@@ -1,4 +1,5 @@
 import SwiftUI
+import RealityKit
 
 /// One `three { label(...) }`, drawn as the browser viewer's `.scene-label` CSS draws it: a boxed
 /// `chip`, a small dim `tag`, or a `diamond` marker.
@@ -53,4 +54,9 @@ func cssColor(_ css: String?) -> Color? {
         return Color(red: parts[0] / 255, green: parts[1] / 255, blue: parts[2] / 255, opacity: parts.count > 3 ? parts[3] : 1)
     }
     return nil
+}
+
+/// Marks a `handle(...)` marker, so the drag gesture targets only markers.
+struct ThreeHandleComponent: Component {
+    var id: String
 }

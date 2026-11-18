@@ -1,9 +1,8 @@
 # CUDA Beside the Renderer
 
-On Linux with an NVIDIA GPU, a Field box can run CUDA kernels on the same GPU the renderer draws
-with, reading and writing the renderer's own buffers in place. A kernel moves particles and a mesh
-draws them from the same memory, and nothing is copied through the CPU. Native libraries built on
-CUDA, such as Intel's Open Image Denoise, can work on Field's buffers the same way.
+A Field box can run CUDA kernels on the same GPU that draws your scene. Move particles in a kernel,
+then draw them from the renderer's buffer without copying them through the CPU. Native libraries
+such as Intel's Open Image Denoise can use those buffers too. This works on Linux with an NVIDIA GPU.
 
 You need the NVIDIA driver; the CUDA toolkit is optional. Kernels written in CUDA C are compiled
 when the box runs by NVRTC, which ships with the toolkit and with the `cuda-nvrtc` package that
@@ -35,7 +34,8 @@ val particles = cuda.sharedBuffer("particles", count * 16L)
 
 `particles.buffer` is an ordinary `VulkanBuffer` for shaders, and `particles.pointer` is the
 address a kernel writes to. Asking again for `"particles"` at the same size returns the same buffer,
-so rerunning the box keeps the particles where they are; a new size makes a new buffer.
+so requesting the buffer again preserves its contents; a new size makes a new buffer.
+The explicit `seed.launch` below resets those contents when this example is rerun.
 
 Next comes the CUDA C, as a string compiled for this GPU by
 [`compile`](reference/graphics.md#cudavulkan-kt--cudavulkan--compile). Two kernels: `seed` scatters the
@@ -46,6 +46,17 @@ Kernels are declared `extern "C"` so they can be found by name:
 val program =
     cuda.compile(
         """
+    extern "C" __global__ void seed(float4* p, int n) {
+        int i = blockIdx.x * blockDim.x + threadIdx.x;
+        if (i >= n) return;
+        unsigned h = i * 747796405u + 2891336453u;
+        h = ((h >> ((h >> 28) + 4u)) ^ h) * 277803737u;
+        h = (h >> 22) ^ h;
+        float a = (h & 0xffffu) / 65535.0f * 6.2831853f;
+        float r = 2.0f * sqrtf((h >> 16) / 65535.0f);
+        p[i] = make_float4(r * cosf(a), r * sinf(a), a, 0.4f + 0.3f * r);
+    }
+
     // Advect every particle through a flow that turns slowly with t.
     extern "C" __global__ void flow(float4* p, int n, float t, float dt) {
         int i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -59,11 +70,12 @@ val program =
     }
     """,
     )
+val seed = program.function("seed")
 val flow = program.function("flow")
 ```
 
-The same source is not compiled twice, so rerunning the box with unchanged kernels costs nothing.
-A compile error stops the box with NVRTC's message, line number included.
+Field caches compiled kernels, so a rerun with unchanged source skips compilation. A compile error
+stops the box with NVRTC's message, line number included.
 
 `launch` takes the number of blocks, the threads per block, the stream, and then the kernel's
 arguments in order. `Int`, `Float`, `Long` and `Double` map to `int`, `float`, a pointer or 64-bit

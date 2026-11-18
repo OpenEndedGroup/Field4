@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_panel" "ai4_continuation" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "ai4_garden" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["contents" "frame" "name" "code" "code_language" "box_kind" "textFrame" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_panel" "ai4_continuation" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "ai4_garden" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. renderer
@@ -43,7 +43,7 @@ curve the body left or right (so it swims in circles), S stiff, W weak (tears fi
 Edit them and re-run this box: the world is rebuilt and uploaded again.
 
 ```edn [field-box id="bonded_world" role="properties"]
-{"id" "bonded_world" "index" 1 "name" "organisms" "parents" ["root" "bonded_renderer"] "children" ["bonded_draw" "bonded_check"] "properties" {"children" #{#afield/box "bonded_draw" #afield/box "bonded_check"} "parents" #{#afield/box "root" #afield/box "bonded_renderer"} "name" "organisms" "_tombstone" false "frame" #afield/rect [360.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "bonded_world_code_.kt" "lines" 77 "characters" 2706 "sha256" "da8612522d6660f4455d45477820aeef23516f0abdb390c046f6cc05d0f1b75d"} {"name" "compute" "language" "glsl" "path" "bonded_world_compute_.glsl" "lines" 104 "characters" 3416 "sha256" "647fe01dfc9a6c89b70afedd8878cd2c1c4e4a0e25fd731170fddc1fc27ea1e3"}]}
+{"id" "bonded_world" "index" 1 "name" "organisms" "parents" ["root" "bonded_renderer"] "children" ["bonded_draw" "bonded_check"] "properties" {"children" #{#afield/box "bonded_draw" #afield/box "bonded_check"} "parents" #{#afield/box "root" #afield/box "bonded_renderer"} "name" "organisms" "_tombstone" false "frame" #afield/rect [360.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "bonded_world_code_.kt" "lines" 77 "characters" 2700 "sha256" "6760a967e389ffb9df70f81bdc4a2ff2c12087ff35ae54002224ea6c8958fd65"} {"name" "compute" "language" "glsl" "path" "bonded_world_compute_.glsl" "lines" 104 "characters" 3679 "sha256" "1a53e2c32438d2883a33cf53e1ef007b9ec7504f70b3f007007bca9e9403ceea"}]}
 ```
 
 ```kotlin [field-property box="bonded_world" name="code" path="bonded_world_code_.kt"]
@@ -60,12 +60,12 @@ val makeWorld = {
         params.wallY = 18f
         // where each one starts and the way it heads (radians): the straight worms cross the
         // world, the L and R worms turn
-        val starts = listOf(
+        val starts = [
             Triple(-22f, -12f, 0f),
             Triple(-16f, 8f, 0f),
             Triple(21f, 8f, PI.toFloat()),
             Triple(16f, -2f, PI.toFloat()),
-        )
+        ]
         genomes.forEachIndexed { k, g ->
             val (sx, sy, heading) = starts[k]
             grow(g, sx, sy, angle = heading)
@@ -134,8 +134,8 @@ layout(local_size_x = 64) in;
 // BondedWorld.step, one invocation per cell. Every bond is stored at both its ends,
 // so a cell only ever writes itself.
 struct Cell {
-    vec4 pv;
-    vec4 e;
+    vec4 pv; // world position xy, velocity zw
+    vec4 e; // energy, cell kind, organism id, padding
 }; // (x, y, vx, vy), (energy, kind, owner, 0)
 struct Bonds {
     vec4 partner;
@@ -153,12 +153,12 @@ layout(std430, buffer_reference) buffer BondBuf {
 };
 
 layout(push_constant) uniform P {
-    CellBuf cells;
-    BondBuf bonds;
+    CellBuf cells; // two capacity-sized halves; step parity selects the source
+    BondBuf bonds; // four neighbour slots per cell; -1 marks an empty slot
     float tick; // the step number; -1 freezes the world
     uint count;
-    uint capacity;
-    float dt;
+    uint capacity; // stride between the two cell halves
+    float dt; // simulated seconds per step
     float stiffness;
     float bondDamping;
     float dragNormal;
@@ -296,7 +296,7 @@ Cells as discs and bonds as thin quads, read straight from the GPU buffers.
 30 vertices per cell: 6 for its disc, 6 for each of its four bond slots.
 
 ```edn [field-box id="bonded_draw" role="properties"]
-{"id" "bonded_draw" "index" 3 "name" "draw" "parents" ["root" "bonded_world"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "bonded_world"} "name" "draw" "_tombstone" false "frame" #afield/rect [360.0 160.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "bonded_draw_code_.kt" "lines" 17 "characters" 557 "sha256" "c4318d0ab55b29765476d1dc0eab54767c55c70f9aa31ee5f08975137f8e3062"} {"name" "vertex" "language" "glsl" "path" "bonded_draw_vertex_.glsl" "lines" 76 "characters" 2209 "sha256" "d5f8527e0dc24d5f9b6ba9bc876931776ac81dbb13bf732fa08219e91c947e5e"} {"name" "fragment" "language" "glsl" "path" "bonded_draw_fragment_.glsl" "lines" 15 "characters" 390 "sha256" "3f5b70f68e47e38ca487241956d6a2a1b20ca8355f123521b22281282cebe9cb"}]}
+{"id" "bonded_draw" "index" 3 "name" "draw" "parents" ["root" "bonded_world"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "bonded_world"} "name" "draw" "_tombstone" false "frame" #afield/rect [360.0 160.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "bonded_draw_code_.kt" "lines" 17 "characters" 557 "sha256" "c4318d0ab55b29765476d1dc0eab54767c55c70f9aa31ee5f08975137f8e3062"} {"name" "vertex" "language" "glsl" "path" "bonded_draw_vertex_.glsl" "lines" 76 "characters" 2540 "sha256" "0689234ab664ebdb86b2f010f225800c8684b3b31896ce047bd6694252cc912b"} {"name" "fragment" "language" "glsl" "path" "bonded_draw_fragment_.glsl" "lines" 15 "characters" 390 "sha256" "3f5b70f68e47e38ca487241956d6a2a1b20ca8355f123521b22281282cebe9cb"}]}
 ```
 
 ```kotlin [field-property box="bonded_draw" name="code" path="bonded_draw_code_.kt"]
@@ -323,8 +323,8 @@ m
 #version 450
 #extension GL_EXT_buffer_reference : require
 struct Cell {
-    vec4 pv;
-    vec4 e;
+    vec4 pv; // world position xy, velocity zw
+    vec4 e; // energy, cell kind, organism id, padding
 };
 struct Bonds {
     vec4 partner;
@@ -341,13 +341,13 @@ layout(std430, buffer_reference) buffer BondBuf {
     Bonds b[];
 };
 layout(push_constant) uniform P {
-    CellBuf cells;
-    BondBuf bonds;
-    uint latest;
-    uint capacity;
+    CellBuf cells; // two capacity-sized halves; step parity selects the source
+    BondBuf bonds; // four neighbour slots per cell; -1 marks an empty slot
+    uint latest; // most recently written cell half, 0 or 1
+    uint capacity; // stride between the two cell halves
     float viewX;
     float viewY;
-    float viewHalfHeight;
+    float viewHalfHeight; // visible world units above and below the view centre
     float aspect;
 } pc;
 layout(location = 0) out vec2 tc;

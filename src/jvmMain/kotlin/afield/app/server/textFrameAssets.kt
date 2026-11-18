@@ -21,11 +21,20 @@ internal fun textFrameImageFile(info: SessionInformation, uid: String, spec: Str
     file.takeIf { it.isFile && it.extension.lowercase() in setOf("png", "jpg", "jpeg", "gif", "webp", "svg", "avif") && it.length() <= 20L * 1024 * 1024 }
 }.getOrNull()
 
+/** Resolve paths against this server's workspace; refuse ambiguous short document names. */
+internal fun textFrameAssetDocument(open: Collection<SessionInformation>, key: String?, workspace: File): SessionInformation? {
+    if (key.isNullOrBlank()) return null
+    val sessions = open.distinct()
+    val requested = runCatching { (if (File(key).isAbsolute) File(key) else File(workspace, key)).canonicalPath }.getOrNull()
+    sessions.firstOrNull { runCatching { File(it.filename).canonicalPath == requested }.getOrDefault(false) }?.let { return it }
+    return sessions.filter { it.filename == key || it.documentName == key }.singleOrNull()
+}
+
 /** Serve local Markdown images, including named directories and search-root paths. */
 fun Route.installTextFrameAssetRoutes() {
     get("/api/text-frame-asset") {
         val key = call.request.queryParameters["document"]
-        val info = documents.values.filter { it.filename == key || it.documentName == key }.distinct().singleOrNull()
+        val info = textFrameAssetDocument(documents.values, key, File(home))
         val file = info?.let { textFrameImageFile(it, call.request.queryParameters["box"].orEmpty(), call.request.queryParameters["path"].orEmpty()) }
         if (file == null) call.respond(HttpStatusCode.NotFound)
         else {

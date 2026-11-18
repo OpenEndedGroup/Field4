@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 5 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_panel" "ai4_continuation" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "ai4_garden" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 5 "persistentProperties" ["contents" "frame" "name" "code" "code_language" "box_kind" "textFrame" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_panel" "ai4_continuation" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "ai4_garden" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. lock
@@ -61,15 +61,15 @@ From `code`
 A locked loop corrected by hand: the third event becomes a triad on the octave, the last a rest.
 
 ```edn [field-box id="muse_edit" role="properties"]
-{"id" "muse_edit" "index" 2 "name" "edit" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "edit" "_tombstone" false "frame" #afield/rect [20.0 2100.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "muse_edit_code_.kt" "lines" 13 "characters" 439 "sha256" "b28004885bcab136b4f3f072fc4d0064041e9e16b6de699423a1411c3824ed67"}]}
+{"id" "muse_edit" "index" 2 "name" "edit" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "edit" "_tombstone" false "frame" #afield/rect [20.0 2100.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "muse_edit_code_.kt" "lines" 13 "characters" 424 "sha256" "6e9381d468f1bea2494ec759ff5a3056496b0fff402dcee1f00c87eb640a066a"}]}
 ```
 
 ```kotlin [field-property box="muse_edit" name="code" path="muse_edit_code_.kt"]
 // A locked loop corrected by hand: the third event becomes a triad on the octave, the last a rest.
 val loop = PatMuseChannel(seed = 3).lock(8, atCycle = 4)
 val before = loop.pattern()
-loop.set(2, degrees = listOf(7, 9, 11), velocity = 0.8)
-loop.set(7, degrees = emptyList())
+loop.set(2, degrees = [7, 9, 11], velocity = 0.8)
+loop.set(7, degrees = [])
 showPatRollOf(
     "as locked" to before,
     "edited" to loop.pattern(),
@@ -114,7 +114,7 @@ Two hands drawn from weights. Move a slider and the roll redraws; re-run the box
 current settings through the piano (every slider keeps its value across runs).
 
 ```edn [field-box id="muse_sliders" role="properties"]
-{"id" "muse_sliders" "index" 4 "name" "muse" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "muse" "_tombstone" false "frame" #afield/rect [20.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "muse_sliders_code_.kt" "lines" 88 "characters" 2544 "sha256" "1e9b429fcff9b4340b55ec76f94b20f02273ee20e70af74a46918fe05c1bb2d1"}]}
+{"id" "muse_sliders" "index" 4 "name" "muse" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "muse" "_tombstone" false "frame" #afield/rect [20.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "muse_sliders_code_.kt" "lines" 88 "characters" 2538 "sha256" "7bfca898fcba7352769cf99b80d397cc1619b037084ac25416d2eef5cf3be238"}]}
 ```
 
 ```kotlin [field-property box="muse_sliders" name="code" path="muse_sliders_code_.kt"]
@@ -135,7 +135,7 @@ fun hands(): PatMuse {
     muse.release()
     if (lockLength >= 1) {
         muse.lock(lockLength.toInt(), atCycle = lockAt)
-        for (loop in listOf(muse.leftLoop!!, muse.rightLoop!!)) {
+        for (loop in [muse.leftLoop!!, muse.rightLoop!!]) {
             loop.start = start.toInt()
             loop.end = end.toInt()
             loop.direction = PatLoopDirection.entries[direction.toInt()]

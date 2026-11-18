@@ -4,7 +4,7 @@ operations:
   - create:
       box: prepare_image
       name: prepare image
-      frame: { x: -900.0, y: -900.0, w: 100.0, h: 40.0 }
+      frame: { x: 1300.0, y: 55.0, w: 100.0, h: 40.0 }
       properties:
         code: |
           val drawing = java.io.File("public/docs/assets/text_frames/diagram.svg").readText()

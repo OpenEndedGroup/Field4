@@ -29,7 +29,7 @@ class CustomMarkingMenuTest {
         assertEquals(11, called)
     }
 
-    @Test fun rerunsReplaceTreeAndRefreshingMenuRetiresOldCallbacks() {
+    @Test fun rerunsReplaceTreeAndRetireOldCallbacks() {
         val box = Box(id = "marking-replace-test")
         box.markingMenu { item("N", "Old") { error("Stale callback ran") } }
         val old = prepareCustomMarkingEntries(box).single().callbackId
@@ -41,6 +41,41 @@ class CustomMarkingMenuTest {
         entries.forEach { assertTrue(fireCustomMarkingCallback(it.callbackId)) }
         box.markingMenu {}
         assertEquals("Legacy", prepareCustomMarkingEntries(box).single().label)
+    }
+
+    @Test fun multipleViewsCanUseTheirOwnMenuSnapshotAndRetentionIsBounded() {
+        val box = Box(id = "marking-multiple-views")
+        var chosen = 0
+        box.markingMenu { item("N", "Choose") { chosen++ } }
+        val first = prepareCustomMarkingEntries(box).single().callbackId
+        val second = prepareCustomMarkingEntries(box).single().callbackId
+        assertTrue(fireCustomMarkingCallback(first))
+        assertTrue(fireCustomMarkingCallback(second))
+        assertFalse(fireCustomMarkingCallback(first))
+        val oldest = prepareCustomMarkingEntries(box).single().callbackId
+        var newest = ""
+        repeat(32) { newest = prepareCustomMarkingEntries(box).single().callbackId }
+        assertFalse(fireCustomMarkingCallback(oldest))
+        assertTrue(fireCustomMarkingCallback(newest))
+        assertEquals(3, chosen)
+    }
+
+    @Test fun identicalBoxIdsInDifferentDocumentsKeepIndependentCallbacks() {
+        fun owner(document: String): Box {
+            val root = Box(id = "root")
+            val session = SessionInformation(document, document, java.util.concurrent.ConcurrentHashMap(), root)
+            root.inside = session
+            return Box(id = "same-id").also { it.inside = session }
+        }
+        val first = owner("document-a"); val second = owner("document-b")
+        var value = 0
+        first.markingMenu { item("N", "First") { assertSame(first, Box.context.get()); value += 1 } }
+        second.markingMenu { item("N", "Second") { assertSame(second, Box.context.get()); value += 10 } }
+        val firstId = prepareCustomMarkingEntries(first).single().callbackId
+        val secondId = prepareCustomMarkingEntries(second).single().callbackId
+        assertTrue(fireCustomMarkingCallback(firstId))
+        assertTrue(fireCustomMarkingCallback(secondId))
+        assertEquals(11, value)
     }
 
     @Test fun invalidMenusFailAtInstallation() {

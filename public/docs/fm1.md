@@ -1,14 +1,12 @@
 # FM-1 simulator
 
-The [M-VAVE FM-1](https://open.m-vave.com/fm1-workbench) is a pocket groovebox: eight tracks of 64 steps,
-with DX7-style FM, a 303 bass line, 808 drums, a plucked string, a chip-tune PSG and a sampler. Its
-firmware is open source, and the same source builds a simulator that runs in a web page. Field runs that
-simulator in its audio engine, so a box can play the FM-1's sixteen factory projects, play any of its
-tracks by pitch, hand a track a Field pattern, turn its controls with a signal, give it DX7 voices built
-in Field, and read its sequence back out as MIDI.
+The [M-VAVE FM-1](https://open.m-vave.com/fm1-workbench) is a pocket groovebox with eight 64-step
+tracks: DX7-style FM, a 303 bass, 808 drums, a plucked string, a chip-tune PSG and a sampler. Field
+runs its browser simulator in the audio engine. Load a factory project, play its tracks from a box,
+feed them Field patterns, turn controls with signals, or read the sequence back as MIDI.
 
-There is nothing to install and no hardware involved. The simulator comes with Field as a WebAssembly
-module, built from the [open firmware](https://github.com/m-vave/fm1_open).
+The simulator ships with Field as a WebAssembly module built from the [open firmware](https://github.com/m-vave/fm1_open).
+You can try it without installing anything or owning the device.
 
 ## A box that plays it
 
@@ -258,19 +256,19 @@ A track can send its notes out of the simulator as well as, or instead of, playi
 808's parts as a piano roll:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fm1/acid_alley_roll.png" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" wait-output-channel="lines" w="900" timeout="240" embed=true name="fm1-roll" alt="a piano roll of four bars of ACID ALLEY, the 303's bass line and the 808's drums together: a steady row of low notes, a busier row above it, and a few high notes climbing at the end of each bar"}
-val fm1 = FM1Sim.create()
-fm1.preset(1)
-fm1.midiOut(0, FM1Sim.MidiOut.ALSO)
-fm1.midiOut(1, FM1Sim.MidiOut.ALSO)
+FM1Sim.create().use { fm1 ->
+    fm1.preset(1)
+    fm1.midiOut(0, FM1Sim.MidiOut.ALSO)
+    fm1.midiOut(1, FM1Sim.MidiOut.ALSO)
 
-val l = FloatArray(4800)
-val r = FloatArray(4800)
-repeat(5) { fm1.render(l, r, 4800, 48000f) }
-fm1.start()
-repeat(75) { fm1.render(l, r, 4800, 48000f) } // 7.5 seconds: four bars at 130 bpm
+    val l = FloatArray(4800)
+    val r = FloatArray(4800)
+    repeat(5) { fm1.render(l, r, 4800, 48000f) }
+    fm1.start()
+    repeat(75) { fm1.render(l, r, 4800, 48000f) } // 7.5 seconds: four bars at 130 bpm
 
-showMidiRoll(fm1.drainMidi().toMidiClip(fm1.bpm.toDouble()))
-fm1.close()
+    showMidiRoll(fm1.drainMidi().toMidiClip(fm1.bpm.toDouble()))
+}
 ```
 
 With `MidiOut.ONLY` the FM-1's sequencer plays something else: drain its notes in a loop and hand them
@@ -352,17 +350,17 @@ val l = FloatArray(4800)
 val r = FloatArray(4800)
 
 for (slot in 0 until 4) {
-    val sim = FM1Sim.create()
-    sim.preset(slot)
-    repeat(5) { sim.render(l, r, 4800, 48000f) }
-    sim.start()
-    val levels = (0 until 30).map {
-        sim.render(l, r, 4800, 48000f)
-        kotlin.math.sqrt(l.indices.sumOf { i -> (l[i] * l[i] + r[i] * r[i]).toDouble() } / (2 * l.size))
+    FM1Sim.create().use { sim ->
+        sim.preset(slot)
+        repeat(5) { sim.render(l, r, 4800, 48000f) }
+        sim.start()
+        val levels = (0 until 30).map {
+            sim.render(l, r, 4800, 48000f)
+            kotlin.math.sqrt(l.indices.sumOf { i -> (l[i] * l[i] + r[i] * r[i]).toDouble() } / (2 * l.size))
+        }
+        val trace = levels.joinToString("") { bars[(it / 0.14 * 8).toInt().coerceIn(0, 8)].toString() }
+        println("project $slot  playing=${sim.isPlaying}  $trace")
     }
-    val trace = levels.joinToString("") { bars[(it / 0.14 * 8).toInt().coerceIn(0, 8)].toString() }
-    println("project $slot  playing=${sim.isPlaying}  $trace")
-    sim.close()
 }
 ```
 
@@ -545,8 +543,8 @@ modified version of the firmware, under the same licences.
 * [Faust](faust.md): the same WebAssembly hosting, for DSP you write yourself.
 * [Sound](sound.md): Field's patterns, which `fm1.play` plays.
 * [Drawing and notation](drawing_and_notation.md): the drawn scores `toPattern()` reads.
-* The starting-point document `fm1_simulator` in [Agent transcripts](agent_transcripts.md) opens these
-  boxes on a canvas.
+* Open the [FM-1 starting point](agent_transcripts.md#fm1_simulator) to try the simulator, a pattern
+  and the front panel in their own boxes.
 * The source: `src/jvmMain/kotlin/afield/audio/synth/FM1Sim.kt` (the simulator, MIDI, the screen and
   projects), `FM1Panel.kt` (the live panel), `FM1Patterns.kt` (patterns in, MIDI clips out) and
   `FM1Voice.kt` (DX7 voices), `FM1Samples.kt` (the sampler's bank), `FM1Firmware.kt` (building the
@@ -571,3 +569,9 @@ What to build next, most useful first:
   delay.
 * **Firmware edited in the box's own editor**: open a source file as a box property, so saving it
   rebuilds and swaps the firmware, with compile errors marked on their lines.
+
+## API reference
+
+- Simulator and offline rendering: [`FM1Sim`](reference/synthesis.md#fm1sim-kt-fm1sim), [`FM1Sim.create`](reference/synthesis.md#fm1sim-kt--fm1sim-companion--create), [`FM1Sim.render`](reference/synthesis.md#fm1sim-kt--fm1sim--render), [`FM1Sim.preset`](reference/synthesis.md#fm1sim-kt--fm1sim--preset).
+- Pattern and control inputs: [`FM1Sim.play`](reference/synthesis.md#fm1sim-kt--fm1sim--play), [`FM1Sim.modulate`](reference/synthesis.md#fm1sim-kt--fm1sim--modulate), [`FM1Sim.sample`](reference/synthesis.md#fm1sim-kt--fm1sim--sample), [`FM1Sim.voice`](reference/synthesis.md#fm1sim-kt--fm1sim--voice).
+- Firmware editing: [`FM1Firmware`](reference/synthesis.md#fm1firmware-kt-fm1firmware), [`FM1Firmware.checkout`](reference/synthesis.md#fm1firmware-kt--fm1firmware--checkout), [`FM1Firmware.patch`](reference/synthesis.md#fm1firmware-kt--fm1firmware--patch), [`FM1Firmware.build`](reference/synthesis.md#fm1firmware-kt--fm1firmware--build).

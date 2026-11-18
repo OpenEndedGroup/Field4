@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-17T10:21:38.614Z",
+  "capturedAt": "2026-11-17T22:20:34.005Z",
   "documentName": "madp_ga",
   "outputs": [
     {
@@ -20,7 +20,7 @@
       "warnings": [],
       "kinds": [],
       "width": 709,
-      "height": 1059,
+      "height": 1052,
       "path": "outputs/1.html"
     },
     {

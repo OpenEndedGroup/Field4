@@ -281,6 +281,99 @@ rather than Clipper's `EVEN_ODD`, because it is the rule under which winding *me
 overlapping same-wound outlines are one shape, where `EVEN_ODD` would punch their overlap out as a
 hole.
 
+## Previewing a ball-end mill
+
+A ball-end mill cannot cut a sharp inside corner. Wherever two faces meet in a concave edge, the
+ball leaves a fillet of its own radius; a pocket corner comes out rounded; a slot narrower than the
+ball is never cut at all. Convex edges are untouched. `ballMilled(radius)` gives you the part as the
+mill would leave it, as a `Solid`, so it can be measured, drawn, and compared with the design to see
+exactly what the tool adds:
+
+```diffstatic {data-lang=kotlin}
+val milled = part.ballMilled(1.5) // a 3 mm ball, from any direction
+val fillets = milled.beyond(part) // the material the mill leaves that the design does not have
+```
+
+With no directions, the ball may approach from anywhere, the way an idealised five-axis machine
+would. A real 3-axis job cuts from one side at a time. Name the tool axis of each setup with `from`,
+pointing from the part towards the spindle, and anything the part overhangs as seen from that side
+stays solid, as does the stock underneath it. Pass two opposite axes for a part that is milled, then
+turned over:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/manifold/ball_milled.png" alt="four wide cards stacked, each the same cross-section of a stepped plate drawn as a solid light-blue silhouette with the design's outline in white over it. From the left the plate has a two-step rebate, a narrow slot down from the top, a pocket in its underside and a wide pocket in its top. 'as designed, sectioned at z = 20' is all sharp corners. 'a 3 mm ball from any direction, adds 361.2 mm³' fills every inside corner with a small rounded fillet, fills the narrow slot except for a shallow round dip at its mouth, and rounds the corners of both pockets. 'from above only, adds 1325.4 mm³' is the same except that the underside pocket is filled solid. 'from above, then turned over, adds 361.2 mm³' matches the any-direction card" wait="6" capture="box" open-outputs="true" padding="20" requires="manifold" name="ball_milled" embed=true}
+:::static
+import afield.geometry.solid.manifold.*
+
+// A plate with a two-step rebate down its left edge, a slot narrower than the ball, a pocket in
+// its top and a pocket in its underside. All four cross the plane z = 20, where they are drawn.
+val part = Solid.scope {
+    val plate = Solid.cube(60.0, 10.0, 40.0)
+    val cuts = [
+        Solid.cube(12.0, 5.0, 40.0).translated(0.0, 5.0, 0.0),
+        Solid.cube(6.0, 2.5, 40.0).translated(0.0, 2.5, 0.0),
+        Solid.cube(2.0, 4.0, 30.0).translated(17.0, 6.0, 5.0),
+        Solid.cube(14.0, 3.0, 24.0).translated(22.0, 0.0, 8.0),
+        Solid.cube(18.0, 4.0, 24.0).translated(38.0, 6.0, 8.0),
+    ]
+    (plate - Solid.union(cuts)).copy()
+}
+
+val ball = 1.5
+val up = vec(0, 1, 0)
+val down = vec(0, -1, 0)
+val t0 = System.nanoTime()
+val anyDirection = part.ballMilled(ball)
+val fromAbove = part.ballMilled(ball, from = [up])
+val turnedOver = part.ballMilled(ball, from = [up, down])
+val seconds = (System.nanoTime() - t0) / 1e9
+:::fold measure what each one adds, then draw them
+println("three previews in ${seconds.f1} s")
+for ((name, milled) in ["any direction" to anyDirection, "from above" to fromAbove, "turned over" to turnedOver]) {
+    println("$name: the mill leaves ${(milled.volume - part.volume).f1} mm³ the design does not have")
+}
+
+// Each version cut through z = 20: the milled section filled, the design's outline in white over it.
+val designed = part.slice(20.0)
+
+fun outline() = designed.toFLines().onEach {
+    it.color = vec(1.0, 1.0, 1.0, 0.95)
+    it.thickness = 1.6
+}
+
+fun section(milled: Solid) = milled.slice(20.0).toFLines().onEach {
+    it.color = vec(0.45, 0.85, 1.0, 0.85)
+    it.filled = true
+    it.stroked = false
+} + outline()
+
+showPlaneGrid(
+    "as designed, sectioned at z = 20" to section(part),
+    "a 3 mm ball from any direction\nadds ${(anyDirection.volume - part.volume).f1} mm³" to section(anyDirection),
+    "from above only\nadds ${(fromAbove.volume - part.volume).f1} mm³" to section(fromAbove),
+    "from above, then turned over\nadds ${(turnedOver.volume - part.volume).f1} mm³" to section(turnedOver),
+    columns = 1,
+    cellWidth = 720,
+    cellHeight = 200,
+    yUp = true,
+)
+```
+
+From above only, the underside pocket never opens: the tool cannot reach it, and the stock under
+the part stays. Turned over, the pocket is cut, with its own inside corners filleted. In every
+version the 2 mm slot stays filled, apart from the shallow dip the ball makes in its mouth, because a
+3 mm ball does not fit into it, and the rebate's two inside corners come out rounded.
+
+`ballMilled` is the morphological closing of the part by the tool, and `closedBy(tool)` does the same
+for any tool shape you build as a `Solid`. The ball is Manifold's faceted `Solid.sphere`, so the
+fillets are faceted too, and very slightly tighter than the radius: by at most
+`radius * (1 - cos(π / segments))`, about 2% at the default of 16 segments. Raising `segments`
+costs time steeply, because Manifold's Minkowski operations on a non-convex part cost roughly one
+convex hull per boundary triangle.
+
+To see only the fillets, use `milled.beyond(part)` rather than `milled - part`. The Minkowski steps
+re-derive every face of the part, which leaves zero-thickness sheets lying on its flat faces. The
+plain difference keeps them, and they draw as stray patches; `beyond` removes them.
+
 ## Solids from a field
 
 `Solid.levelSet` takes a Kotlin lambda of `x, y, z` and marches it into a solid. Manifold calls the
@@ -348,6 +441,76 @@ far-outside sentinel, and `levelSet` rethrows once the native call is over: you 
 `Solid.warped { }` is the same mechanism for moving every vertex: a bend, a twist, a taper. It does
 **not** re-mesh, so put `refined()` in front of it or a 12-triangle cube's eight corners move and
 nothing looks different.
+
+## Backing off some faces: clearance between parts
+
+Parts designed to meet exactly have no room to go together. `insetFaces(distance, except = [...])`
+moves every face of a solid inward by `distance`, except the faces parallel to the planes whose
+normals you name, which stay exactly where they are. Keep the faces parallel to a panel and move the
+rest, and panels that met along their edges get a gap between them without getting any thinner:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/manifold/inset_faces.png" alt="two wide cards stacked, each a cross-section of two panels joined by a lap, the left panel in light blue and the right in orange, each the full thickness except for a tongue half as thick where they overlap: the blue tongue runs under the orange one. 'as designed, sectioned at z = 15' shows them meeting with no gap anywhere. 'the faces that are not parallel to the panels backed off 0.6 mm' shows the same two panels, the same thickness, still resting on each other along the horizontal step between the tongues, but with a narrow dark vertical gap at each of the two risers where they met side on" wait="4" capture="box" open-outputs="true" padding="20" requires="manifold" name="inset_faces" embed=true}
+:::static
+import afield.geometry.solid.manifold.*
+
+// Two 10 mm panels joined by a lap: each has a tongue half as thick, and a's runs under b's. They
+// touch on the step between the tongues and at both risers.
+val a = Solid.cube(60.0, 10.0, 30.0) - Solid.cube(15.0, 5.0, 30.0).translated(45.0, 5.0, 0.0)
+val b = Solid.cube(60.0, 10.0, 30.0).translated(45.0, 0.0, 0.0) - Solid.cube(15.0, 5.0, 30.0).translated(45.0, 0.0, 0.0)
+
+// Keep the faces parallel to the panels; back the others off by 0.6 mm.
+val up = vec(0, 1, 0)
+val clearA = a.insetFaces(0.6, except = [up])
+val clearB = b.insetFaces(0.6, except = [up])
+:::fold measure the gap, then draw a section through both panels
+println("as designed: closest ${a.minGap(b, 5.0).f3} mm, thickness ${a.bounds.size.y.f3} mm")
+println("backed off:  closest ${clearA.minGap(clearB, 5.0).f3} mm, thickness ${clearA.bounds.size.y.f3} mm")
+// Lift b clear of the step to see the gap the risers now have.
+println("at the risers: ${clearA.minGap(clearB.translated(0.0, 2.0, 0.0), 5.0).f3} mm once b is lifted 2 mm")
+
+fun section(part: Solid, colour: Vec4) = part.slice(15.0).toFLines().onEach {
+    it.color = colour
+    it.filled = true
+    it.stroked = false
+}
+
+val blue = vec(0.45, 0.85, 1.0, 0.9)
+val orange = vec(1.0, 0.62, 0.3, 0.9)
+showPlaneGrid(
+    "as designed, sectioned at z = 15" to (section(a, blue) + section(b, orange)),
+    "the faces that are not parallel to the panels backed off 0.6 mm" to
+        (section(clearA, blue) + section(clearB, orange)),
+    columns = 1,
+    cellWidth = 720,
+    cellHeight = 200,
+    yUp = true,
+)
+```
+
+The step the tongues bear on is parallel to the panels, so it stays put and they still rest on each
+other there. Every riser and end face moved back 0.6 mm, so the two panels are 1.2 mm apart wherever
+they met side on. A face counts as parallel when its normal is within `toleranceDegrees` (default 1°)
+of one of the planes, in either direction, so one normal keeps both a panel's top and its bottom.
+
+To keep only the faces that lie *in* a plane, rather than every face parallel to it, name each plane
+by a point on it and its normal. `a.insetFaces(0.6, exceptOn = [FacePlane(vec(0, 5, 0), up)])` keeps
+just the step at y = 5, whichever side of it the material is on, and moves a's top and bottom in with
+the rest. A face is on the plane when it is parallel within `toleranceDegrees` and within
+`toleranceDistance` of the point, a tenth of the inset by default. For any other rule, pass a
+function of each face's plane, its outward normal and offset as `[x, y, z, c]`:
+`part.insetFaces(0.6) { n -> abs(n[1]) < 0.99 }`.
+
+Corners stay sharp: every vertex goes to where its planes meet once the moved ones have shifted, the
+same construction as `Section.offset` with `JoinType.MITER`, and a kept face grows or shrinks to meet
+the faces beside it. `distance` has to be smaller than the part's narrowest feature across a moved
+face. Two pieces of one part that only meet along an edge come apart, since no inset can keep an edge
+contact.
+
+A part built as a union of cells that meet face to face can come back from `Solid.union` as several
+pieces: Manifold keeps pieces that only touch apart, with a zero-width crack between them.
+`insetFaces` calls `fused()` first, which fills each crack where its two walls overlap, so a crack
+stays closed instead of opening into a slot. `part.fused().decompose().size` tells you how many
+pieces the material really makes.
 
 ## Back down to 2D: slicing
 

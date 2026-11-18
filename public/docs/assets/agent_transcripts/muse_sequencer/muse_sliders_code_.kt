@@ -15,7 +15,7 @@ fun hands(): PatMuse {
     muse.release()
     if (lockLength >= 1) {
         muse.lock(lockLength.toInt(), atCycle = lockAt)
-        for (loop in listOf(muse.leftLoop!!, muse.rightLoop!!)) {
+        for (loop in [muse.leftLoop!!, muse.rightLoop!!]) {
             loop.start = start.toInt()
             loop.end = end.toInt()
             loop.direction = PatLoopDirection.entries[direction.toInt()]

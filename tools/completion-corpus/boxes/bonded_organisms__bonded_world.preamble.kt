@@ -25,8 +25,8 @@ class Cell(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    var pv by Structure.FromStructure<afield.math.linalg.Vector4f>()
-    var e by Structure.FromStructure<afield.math.linalg.Vector4f>()
+    var pv by Structure.FromStructure<afield.math.linalg.Vector4f>() // world position xy, velocity zw
+    var e by Structure.FromStructure<afield.math.linalg.Vector4f>() // energy, cell kind, organism id, padding
 }
 fun CellByteSize(): Long = 32L
 fun CellLayoutMembers(): List<Introspected.Member> =
@@ -118,24 +118,24 @@ fun HasBuffer.asBondBuf(): BondBuf =
 fun BufferParameters.asBondBuf(): BondBuf =
     buffer.asBondBuf()
 /*end*/
-/*compute-pc-structure:cells*/ var Structure.cells by Structure.FromStructure<Any>()
-/*compute-pc-binding:cells*/ var ComputeMesh.cells by ComputeMesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
-/*compute-pc-binding-group:cells*/ var ComputeMeshGroup.cells by ComputeMeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
-/*compute-pc-structure:bonds*/ var Structure.bonds by Structure.FromStructure<Any>()
-/*compute-pc-binding:bonds*/ var ComputeMesh.bonds by ComputeMesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
-/*compute-pc-binding-group:bonds*/ var ComputeMeshGroup.bonds by ComputeMeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*compute-pc-structure:cells*/ var Structure.cells by Structure.FromStructure<Any>() // two capacity-sized halves; step parity selects the source
+/*compute-pc-binding:cells*/ var ComputeMesh.cells by ComputeMesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>() // two capacity-sized halves; step parity selects the source
+/*compute-pc-binding-group:cells*/ var ComputeMeshGroup.cells by ComputeMeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>() // two capacity-sized halves; step parity selects the source
+/*compute-pc-structure:bonds*/ var Structure.bonds by Structure.FromStructure<Any>() // four neighbour slots per cell; -1 marks an empty slot
+/*compute-pc-binding:bonds*/ var ComputeMesh.bonds by ComputeMesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>() // four neighbour slots per cell; -1 marks an empty slot
+/*compute-pc-binding-group:bonds*/ var ComputeMeshGroup.bonds by ComputeMeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>() // four neighbour slots per cell; -1 marks an empty slot
 /*compute-pc-structure:tick*/ var Structure.tick by Structure.FromStructure<Any>() // the step number; -1 freezes the world
 /*compute-pc-binding:tick*/ var ComputeMesh.tick by ComputeMesh.BoundFromStructure<Number>() // the step number; -1 freezes the world
 /*compute-pc-binding-group:tick*/ var ComputeMeshGroup.tick by ComputeMeshGroup.BoundFromStructure<Number>() // the step number; -1 freezes the world
 /*compute-pc-structure:count*/ var Structure.count by Structure.FromStructure<Any>()
 /*compute-pc-binding:count*/ var ComputeMesh.count by ComputeMesh.BoundFromStructure<Any>()
 /*compute-pc-binding-group:count*/ var ComputeMeshGroup.count by ComputeMeshGroup.BoundFromStructure<Any>()
-/*compute-pc-structure:capacity*/ var Structure.capacity by Structure.FromStructure<Any>()
-/*compute-pc-binding:capacity*/ var ComputeMesh.capacity by ComputeMesh.BoundFromStructure<Any>()
-/*compute-pc-binding-group:capacity*/ var ComputeMeshGroup.capacity by ComputeMeshGroup.BoundFromStructure<Any>()
-/*compute-pc-structure:dt*/ var Structure.dt by Structure.FromStructure<Any>()
-/*compute-pc-binding:dt*/ var ComputeMesh.dt by ComputeMesh.BoundFromStructure<Number>()
-/*compute-pc-binding-group:dt*/ var ComputeMeshGroup.dt by ComputeMeshGroup.BoundFromStructure<Number>()
+/*compute-pc-structure:capacity*/ var Structure.capacity by Structure.FromStructure<Any>() // stride between the two cell halves
+/*compute-pc-binding:capacity*/ var ComputeMesh.capacity by ComputeMesh.BoundFromStructure<Any>() // stride between the two cell halves
+/*compute-pc-binding-group:capacity*/ var ComputeMeshGroup.capacity by ComputeMeshGroup.BoundFromStructure<Any>() // stride between the two cell halves
+/*compute-pc-structure:dt*/ var Structure.dt by Structure.FromStructure<Any>() // simulated seconds per step
+/*compute-pc-binding:dt*/ var ComputeMesh.dt by ComputeMesh.BoundFromStructure<Number>() // simulated seconds per step
+/*compute-pc-binding-group:dt*/ var ComputeMeshGroup.dt by ComputeMeshGroup.BoundFromStructure<Number>() // simulated seconds per step
 /*compute-pc-structure:stiffness*/ var Structure.stiffness by Structure.FromStructure<Any>()
 /*compute-pc-binding:stiffness*/ var ComputeMesh.stiffness by ComputeMesh.BoundFromStructure<Number>()
 /*compute-pc-binding-group:stiffness*/ var ComputeMeshGroup.stiffness by ComputeMeshGroup.BoundFromStructure<Number>()

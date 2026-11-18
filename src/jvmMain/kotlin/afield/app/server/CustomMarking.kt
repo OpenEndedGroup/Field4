@@ -20,6 +20,7 @@ import afield.graphics.vulkan.*
 import afield.media.stream.*
 import afield.media.video.*
 import afield.document.properties.Delegation
+import java.util.ArrayDeque
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
@@ -109,13 +110,17 @@ private var Box.customMarkingMenu by Delegation<List<MarkingMenuItem>>(defaultVa
  */
 fun Box.markingMenu(build: MarkingMenuBuilder.() -> Unit) {
     val entries = MarkingMenuBuilder().apply(build).entries.toList()
-    customMarkingCallbackIds.remove(id)?.forEach { customMarkingCallbacks.remove(it) }
+    customMarkingCallbackIds.remove(markingOwnerKey())?.flatten()?.forEach { customMarkingCallbacks.remove(it) }
     customMarkingMenu = entries
 }
 
 // Registry for custom marking callbacks (maps callbackId -> callback)
 private val customMarkingCallbacks = ConcurrentHashMap<String, () -> Unit>()
-private val customMarkingCallbackIds = ConcurrentHashMap<String, Set<String>>()
+private val customMarkingCallbackIds = ConcurrentHashMap<String, ArrayDeque<Set<String>>>()
+
+private fun Box.markingOwnerKey(): String =
+    if (isInsideInitialized()) "${inside.filename}\u0000$id" else "unbound:${System.identityHashCode(this)}"
+
 
 internal fun registerCustomMarkingCallback(callbackId: String, callback: () -> Unit) {
     customMarkingCallbacks[callbackId] = callback
@@ -135,7 +140,6 @@ internal fun fireCustomMarkingCallback(callbackId: String): Boolean {
  * serializable entries for the frontend.
  */
 internal fun prepareCustomMarkingEntries(box: Box): List<CustomMarkingEntry> {
-    customMarkingCallbackIds.remove(box.id)?.forEach { customMarkingCallbacks.remove(it) }
     val ids = mutableSetOf<String>()
     fun prepare(item: MarkingMenuItem): CustomMarkingEntry {
         val info = MarkingDirections.directions.getValue(item.direction)
@@ -155,6 +159,12 @@ internal fun prepareCustomMarkingEntries(box: Box): List<CustomMarkingEntry> {
         MarkingMenuItem(direction, label, callback)
     }
     val result = (legacy + box.customMarkingMenu).map(::prepare)
-    customMarkingCallbackIds[box.id] = ids
+    // Keep recent menus independently usable in several views, with bounded callback retention.
+    customMarkingCallbackIds.compute(box.markingOwnerKey()) { _, previous ->
+        val snapshots = previous ?: ArrayDeque()
+        snapshots.addLast(ids.toSet())
+        while (snapshots.size > 32) snapshots.removeFirst().forEach { customMarkingCallbacks.remove(it) }
+        snapshots
+    }
     return result
 }

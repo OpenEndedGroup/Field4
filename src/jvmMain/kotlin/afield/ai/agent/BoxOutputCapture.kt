@@ -377,6 +377,116 @@ object BoxOutputCapture {
             aiToolMapper.readValue(views, object : TypeReference<List<Map<String, Any?>>>() {}))
     }
 
+    /**
+     * Capture the world rectangle [world] of [info]'s canvas, drawing layer included, by moving this
+     * page's canvas camera to frame it and cropping to it. Blocking, like [capture]. [liveMarks] is the
+     * server scene's live mark count: the page waits until its drawing holds that many before it looks.
+     */
+    fun captureRegion(info: SessionInformation, world: afield.app.protocol.Rect, showBoxes: Boolean, liveMarks: Int): RegionShot {
+        check(!afield.runtime.lifecycle.Runloop.isMainThread) { "BoxOutputCapture.captureRegion blocks; call it off the Runloop" }
+        return runBlocking(playwrightDispatcher) {
+            runCatching { captureRegionOnce(info, world, showBoxes, liveMarks) }.getOrElse { failure ->
+                lprintln("warning,ai4", "notation capture failed (${failure.message}); retrying on a fresh page")
+                dropHeld(info.filename)
+                runCatching { captureRegionOnce(info, world, showBoxes, liveMarks) }.getOrElse {
+                    RegionShot.failed("Could not capture the drawing: ${it.message ?: it.javaClass.simpleName}")
+                }
+            }
+        }
+    }
+
+    private const val NOTATION_SHOT_STYLE = "field-notation-shot"
+
+    /**
+     * Frames a world rect in the main pane and answers the clip, in CSS pixels, that shows it. Undoes a
+     * box capture's isolation first: that hides every other box, which this picture must not inherit.
+     */
+    private val FRAME_REGION_JS = """
+        async (r) => {
+          const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
+          const frames = (n) => new Promise((done) => {
+            const step = (k) => k <= 0 ? done() : requestAnimationFrame(() => step(k - 1));
+            step(n);
+          });
+          document.getElementById('field-shot-isolation')?.remove();
+          document.querySelectorAll('.field-shot-keep, .field-shot-excluded')
+            .forEach((e) => e.classList.remove('field-shot-keep', 'field-shot-excluded'));
+          document.getElementById('$NOTATION_SHOT_STYLE')?.remove();
+          if (!r.showBoxes) {
+            const style = document.createElement('style');
+            style.id = '$NOTATION_SHOT_STYLE';
+            style.textContent = '.box, .box * { visibility: hidden !important; }';
+            document.head.appendChild(style);
+          }
+          let drawing = window.drawingLayerState ? window.drawingLayerState() : null;
+          if (r.liveMarks > 0) {
+            if (typeof window.drawingLayerEnsureLoaded === 'function') window.drawingLayerEnsureLoaded();
+            const deadline = Date.now() + 15000;
+            while (Date.now() < deadline) {
+              drawing = window.drawingLayerState();
+              if (drawing && drawing.ready && drawing.elementCount >= r.liveMarks) break;
+              await sleep(100);
+            }
+            if (!drawing || !drawing.ready) {
+              return { ok: false, message: 'The drawing layer did not load in the capture page: ' + JSON.stringify(drawing) };
+            }
+          }
+          const before = window.canvasPanesState();
+          const main = before.panes[before.panes.length - 1];
+          const [px, py, pw, ph] = main.rect;
+          const margin = 8;
+          const zoom = Math.max(0.1, Math.min(3, (pw - 2 * margin) / r.w, (ph - 2 * margin) / r.h));
+          window.moveCanvasCamera(px + (pw - r.w * zoom) / 2 - r.x * zoom, py + (ph - r.h * zoom) / 2 - r.y * zoom, zoom);
+          await frames(3);
+          await sleep(250);
+          await frames(2);
+          const after = window.canvasPanesState();
+          const pane = after.panes[after.panes.length - 1];
+          const z = after.zoom;
+          const sx = r.x * z + pane.tx, sy = r.y * z + pane.ty;
+          const x0 = Math.max(sx, px), y0 = Math.max(sy, py);
+          const x1 = Math.min(sx + r.w * z, px + pw), y1 = Math.min(sy + r.h * z, py + ph);
+          if (x1 - x0 < 2 || y1 - y0 < 2) return { ok: false, message: 'The region did not land in the canvas pane.' };
+          const shown = window.drawingLayerState ? window.drawingLayerState() : null;
+          return {
+            ok: true, zoom: z, x: x0, y: y0, w: x1 - x0, h: y1 - y0,
+            cropped: x0 > sx + 0.5 || y0 > sy + 0.5 || x1 < sx + r.w * z - 0.5 || y1 < sy + r.h * z - 0.5,
+            elementCount: shown && shown.ready ? shown.elementCount : 0,
+          };
+        }
+    """.trimIndent()
+
+    private fun captureRegionOnce(info: SessionInformation, world: afield.app.protocol.Rect, showBoxes: Boolean, liveMarks: Int): RegionShot {
+        val page = pageFor(info)
+        // Clears the selection, hides the editor and notifications, and waits for a connected page.
+        val prep = afield.tools.docs.requestWindowScreenshot(page, afield.app.protocol.WindowScreenshotRequest(
+            uid = null, panIntoView = false, includeNotifications = false))
+        check(!prep.message.startsWith(SCREENSHOT_PREP_STALLED)) { prep.message }
+        if (!prep.success) return RegionShot.failed(prep.message.ifBlank { "the capture page could not be prepared" })
+        try {
+            val framed = afield.tools.docs.evaluateWithin(page, FRAME_REGION_JS, mapOf(
+                "x" to world.x, "y" to world.y, "w" to world.w, "h" to world.h,
+                "showBoxes" to showBoxes, "liveMarks" to liveMarks,
+            ), 30_000, "frame a notation region") as? Map<*, *> ?: return RegionShot.failed("the page did not answer the framing")
+            if (framed["ok"] != true) return RegionShot.failed(framed["message"]?.toString() ?: "the page could not frame the region")
+            fun num(key: String) = (framed[key] as Number).toDouble()
+            val bytes = page.screenshot(Page.ScreenshotOptions().setClip(Clip(num("x"), num("y"), num("w"), num("h"))).setTimeout(15_000.0))
+            held[info.filename]?.lastUsed = System.currentTimeMillis()
+            val image = ImageIO.read(bytes.inputStream()) ?: return RegionShot.failed("the screenshot did not decode")
+            val path = runCatching { keep(bytes, info, "notation") }.getOrElse {
+                lprintln("warning,ai4", "could not keep notation capture: ${it.message}"); ""
+            }
+            val shown = (framed["elementCount"] as? Number)?.toInt() ?: 0
+            val caveats = buildList {
+                if (framed["cropped"] == true) add("the region was larger than the canvas at the smallest zoom, so its edges are cut off")
+                if (liveMarks > 0 && shown < liveMarks) add("the capture page showed $shown of the $liveMarks marks the document holds")
+            }
+            return RegionShot(true, "captured in an independent browser" + caveats.joinToString("") { "; $it" }, image, path, num("zoom"))
+        } finally {
+            runCatching { page.evaluate("() => document.getElementById('$NOTATION_SHOT_STYLE')?.remove()") }
+        }
+    }
+
     // These are the capture browser's states, not a guess about the human's camera or Parts choices.
     private fun captureViewerStates(page: Page, uid: String): String = page.evaluate("""
         uid => {

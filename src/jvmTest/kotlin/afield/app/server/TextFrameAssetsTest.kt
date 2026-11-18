@@ -7,6 +7,23 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.test.*
 
 class TextFrameAssetsTest {
+    @Test fun documentPathsResolveExactlyAndAmbiguousShortNamesAreRefused() {
+        val workspace = Files.createTempDirectory("frame-image-documents").toFile().canonicalFile
+        try {
+            fun session(path: String) = SessionInformation(workspace.resolve(path).path, "Shared",
+                ConcurrentHashMap(), Box(id = "root"))
+            val first = session("one/Shared"); val second = session("two/Shared")
+            val open = listOf(first, second)
+            assertSame(first, textFrameAssetDocument(open, first.filename, workspace))
+            assertSame(second, textFrameAssetDocument(open, "two/Shared", workspace))
+            val aliased = session("one/../one/Shared")
+            assertSame(aliased, textFrameAssetDocument(listOf(aliased), "one/Shared", workspace))
+            assertNull(textFrameAssetDocument(open, "Shared", workspace))
+            assertSame(first, textFrameAssetDocument(listOf(first), "Shared", workspace))
+            assertNull(textFrameAssetDocument(open, null, workspace))
+        } finally { workspace.deleteRecursively() }
+    }
+
     @Test fun resolvesOnlyAuthoredImagesThroughTheOwningSessionsFileManager() {
         val temp = Files.createTempDirectory("text-frame-assets").toFile()
         val document = temp.resolve("doc").apply { mkdirs() }

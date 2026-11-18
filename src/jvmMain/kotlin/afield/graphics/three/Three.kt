@@ -13,6 +13,8 @@ import afield.lang.remotejs.JsFun
 import afield.ui.visualization.inspect
 
 import afield.geometry.path.FLine
+import afield.graphics.render.hoverColor
+import afield.graphics.render.onClick
 import afield.geometry.path.length
 import afield.ui.visualization.lines
 
@@ -81,6 +83,7 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
     internal var shot: ThreeShotSpec? = null
     internal var studio: ThreeStudioSpec? = null
     internal val labels = ArrayList<ThreeLabel>()
+    internal val handles = LinkedHashMap<String, ThreeHandleBinding>()
     internal val overlays = ArrayList<ThreeOverlay>()
     internal var dimmed: Boolean = false
     internal var note: String? = null
@@ -112,7 +115,8 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
      * Add a solid.
      *
      * @param wireframe depth-tested wireframe over the shading. On by default for the same reason it
-     * is on in [MeshView]: it turns "a smooth blob" into "a mesh you can count the triangles in".
+     * is on in [MeshView]: it turns "a smooth blob" into "a mesh you can count the triangles in". An edge
+     * between two coplanar triangles is left out, so a flat face shows its outline, not its triangulation.
      * @param cullBackFaces on by default, so an inside-out face is a *missing* face — the diagnostic
      * the rasterizer has always given and the switch of renderer must not silently drop.
      * @param panel which viewport draws it; `-1` for all of them. Left out, the panel declared most recently.
@@ -312,6 +316,61 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         flines += lines
     }
 
+    /**
+     * Add FLines as one named part: an entry in the Parts list that hides, selects and takes a [style]
+     * as a [mesh] does, and folds under [layer].
+     *
+     * The strokes keep their colours, and fills and node points are drawn as in the unnamed [lines].
+     * Clicking and hovering are not carried: an FLine with an `onClick` or a `hoverColor` is refused
+     * here, so put it in an unnamed [lines] call instead. Several calls may share one [id]; they are
+     * then one part.
+     *
+     * @param id the part's name in the Parts list, in [style] and in viewer tools' `parts()`.
+     * @param label what the Parts list shows instead of [id].
+     * @param layer the part's place in the scene's layer tree, outermost first.
+     * @param panel which viewport draws it; `-1` for all of them. Left out, the panel declared most recently.
+     * @param metadata free data for the part, handed to viewer tools with it.
+     * @param hidden start hidden. Applied the first time the view sees this [id].
+     * @param style colour, opacity and emphasis for the part, as [style] sets them. A colour replaces
+     * the strokes' own.
+     */
+    fun lines(
+        lines: Collection<FLine>,
+        id: String,
+        label: String? = null,
+        layer: List<String> = emptyList(),
+        panel: Int? = null,
+        metadata: Map<String, Any?> = emptyMap(),
+        hidden: Boolean = false,
+        style: ThreePartStyle? = null,
+    ) {
+        require(id.isNotBlank()) { "a named group of lines needs a non-blank id" }
+        lines.firstOrNull { it.onClick != null || it.hoverColor != null }?.let {
+            throw IllegalArgumentException(
+                "lines(id = \"$id\") cannot carry onClick or hoverColor on an FLine; add that line with lines(...) without an id",
+            )
+        }
+        if (lines.isEmpty()) return
+        @Suppress("NAME_SHADOWING") val panel = panel ?: (panels.size - 1).coerceAtLeast(0)
+        val provenance = threeCallSite(sourceBox)
+        val sampled = buildThreeGeometryPayload("", lines, samplesPerCubic, autoFrame = false, editable = false)
+        fun add(geometry: ThreeGeometryData?, drawStyle: ThreeDrawStyle) {
+            if (geometry == null) return
+            drawables += ThreeDrawable(geometry, drawStyle, label = label, panel = panel, id = id)
+                .withIdentity(layer, metadata, hidden).copy(provenance = provenance)
+        }
+        add(sampled.fills, ThreeDrawStyle.flineFills)
+        add(sampled.lines, ThreeDrawStyle.lines)
+        add(sampled.points, ThreeDrawStyle.points)
+        namedLineSegments += sampled.meta?.lineSegments ?: 0
+        namedLinePoints += sampled.meta?.points ?: 0
+        if (style != null) style(id, style)
+    }
+
+    /** What the named [lines] groups add to the HUD's line and point counts; their triangles are counted with every drawable's. */
+    private var namedLineSegments = 0
+    private var namedLinePoints = 0
+
     /** Where the camera starts. Setting it turns auto-framing off — you picked an angle, keep it. */
     fun camera(
         yaw: Double = 28.0,
@@ -434,6 +493,48 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
     ) {
         require(style in LABEL_STYLES) { "label style must be one of $LABEL_STYLES, got \"$style\"" }
         labels += ThreeLabel(listOf(at.x.toDouble(), at.y.toDouble(), at.z.toDouble()), text, style, color, background, border, title)
+    }
+
+    /**
+     * A marker the person can drag, in this view and in the visionOS viewer of it. [onDrag] hears the
+     * press (`START`), each move (`MOVE`, newest winning, so a slow callback never falls behind) and the
+     * release (`END`), with the position the handle has been put at.
+     *
+     * The viewer moves the marker itself while it is held; the box usually answers by drawing the scene
+     * again with the handle, and whatever depends on it, where it was put:
+     *
+     * ```kotlin
+     * var tip = vec(0, 40, 0)
+     * fun draw() { three {
+     *     mesh(boxMesh(120, 20, 60), id = "base")
+     *     lines(listOf(FLine().moveTo(0, 10, 0).lineTo(tip.x, tip.y, tip.z)))
+     *     handle("tip", at = tip, label = "tip") { drag -> tip = drag.position; draw() }
+     * } }
+     * draw()
+     * ```
+     *
+     * @param id names the handle within the view; it must be unique.
+     * @param axis when set, the handle moves only along this direction through [at].
+     * @param normal when set (and [axis] is not), the handle moves only in the plane through [at] with this
+     *   normal. With neither, it moves freely: on the plane facing the camera in the browser, anywhere in 3D
+     *   in the visionOS viewer.
+     * @param color the marker's colour as a CSS colour.
+     */
+    fun handle(
+        id: String,
+        at: Vec3,
+        label: String? = null,
+        color: String? = null,
+        axis: Vec3? = null,
+        normal: Vec3? = null,
+        onDrag: (ThreeHandleDrag) -> Unit,
+    ) {
+        require(id.isNotBlank()) { "a handle needs an id" }
+        require(id !in handles) { "two handles in this scene are called '$id'" }
+        fun list(v: Vec3) = listOf(v.x.toDouble(), v.y.toDouble(), v.z.toDouble())
+        require(list(at).all { it.isFinite() }) { "handle '$id' is at a non-finite position" }
+        handles[id] = ThreeHandleBinding(
+            ThreeHandle(id, list(at), label, color, axis?.let(::list), normal?.let(::list)), onDrag)
     }
 
     /**
@@ -743,9 +844,9 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
             bounds = fitBox ?: tracker.toBounds(),
             fitBounds = fitBox != null,
             meta = ThreeMeta(
-                lineSegments = base?.meta?.lineSegments ?: 0,
+                lineSegments = (base?.meta?.lineSegments ?: 0) + namedLineSegments,
                 triangles = (base?.meta?.triangles ?: 0) + drawableTriangles,
-                points = base?.meta?.points ?: 0,
+                points = (base?.meta?.points ?: 0) + namedLinePoints,
             ),
             autoFrame = autoFrame,
             drawables = drawables.toList(),
@@ -764,6 +865,7 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
             shot = shot,
             studio = studio,
             labels = labels.toList(),
+            handles = handles.values.map { it.handle },
             overlays = overlays.toList(),
             dimmed = dimmed,
             note = note,
@@ -909,6 +1011,7 @@ fun Box.three(
     )
     val view = threeViewFor(uid)
     view.bindSource(this, "${this.id}_$name")
+    registerThreeHandles(uid, builder.handles.toMap())
     view.update(builder.payload(uid, frameWidth = width, frameHeight = height))
     return view
 }

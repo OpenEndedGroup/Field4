@@ -1,0 +1,20 @@
+{
+  "state": "verified; ready to enqueue",
+  "scope": "scope.json",
+  "review": "review.json",
+  "reviewedBodies": 114,
+  "formatting": "108 Kotlin/GLSL source spans processed through actual imports/ktfmt/GLSL; six PostScript bodies reviewed without Kotlin formatting. Initial pass changed 16 bodies; final formatter found no skips.",
+  "behavior": "4 before/after FM1 equivalence pairs passed, covering defaults and edited duration/project; all five touched GLSL sources compile to SPIR-V.",
+  "captures": "Four actual runner recaptures visually inspected and byte-identical to the committed originals.",
+  "references": "37 curated class/member links resolved against generated anchors.",
+  "preambles": "Verified unchanged.",
+  "hardwareLimit": "No NVIDIA device on this Mac; CUDA compiler-input string equals the canonical runnable source exactly; Linux/NVIDIA captures retained.",
+  "remaining": [
+    "landing"
+  ],
+  "publications": "Three changed publications refreshed through actual canonical sources: Muse (8 channels), FM1 (1) and CUDA (1); other 225 retained.",
+  "additionalLanguageReview": "Five public PostScript fences reviewed separately because the inherited Markdown scanner omits that new language; unchanged. 119 total reviewed bodies across 23 files.",
+  "site": "Full site built and link gate passed: 4577 local references and 58322 fragment pairs resolve, plus the single registered theme exception.",
+  "merge": "Brought in main through tools/merge_regen.py; retained 225 publications whole, refreshed 3; generated-artifact and citation guards passed.",
+  "precheck": "Passed after publication merge repair; 1810 Python tests passed, 59 skipped. Six transcripts compiled, actual formatting and documented API coverage green."
+}

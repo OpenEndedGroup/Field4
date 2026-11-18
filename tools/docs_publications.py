@@ -56,7 +56,7 @@ TRANSIENT_CAPTURE_ERRORS = ("Output capture exceeded", "ConnectionClosedError", 
                             "Output frame did not finish loading")
 # The backdoor's refusal when another checkout's Field answers the port this one started on.
 PORT_COLLISION = "is answered by a Field this session did not start"
-PORT_COLLISION_ATTEMPTS = 3
+PORT_COLLISION_ATTEMPTS = 5
 
 # Failures that come from the machine rather than the document: the transient ones above, a box the
 # runloop watchdog stopped, a step that ran out of time, a full disk, and a port another checkout
@@ -84,8 +84,20 @@ def machine_state_error(message: str) -> bool:
 
 
 def publication_port() -> int:
-    from verification_runtime import select_automation_port
-    return select_automation_port(PUBLICATION_PORT_START, explicit=False, attempts=PUBLICATION_PORT_SPAN)
+    """The first free port in the publication range, scanning from this checkout's own offset.
+
+    Every checkout used to scan up from 9620, so two refreshes at once (the lander's and a
+    worktree's precheck) chose the same port, and whichever Field bound it second lost a 2-4
+    minute start. On 2026-11-17 three-drag-handles lost three starts in a row to field4-avp's
+    refresh and went back into the queue. A different starting point per checkout makes that rare."""
+    from verification_runtime import automation_port_is_available
+    offset = int(hashlib.sha256(str(ROOT.resolve()).encode()).hexdigest(), 16) % PUBLICATION_PORT_SPAN
+    for step in range(PUBLICATION_PORT_SPAN):
+        port = PUBLICATION_PORT_START + (offset + step) % PUBLICATION_PORT_SPAN
+        if automation_port_is_available(port):
+            return port
+    raise RuntimeError(f'No free Field automation port found in {PUBLICATION_PORT_START}..'
+                       f'{PUBLICATION_PORT_START + PUBLICATION_PORT_SPAN - 1}')
 
 
 def publication_node() -> str | None:
@@ -112,12 +124,42 @@ def digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def capture_digest() -> str:
-    paths = [ROOT / 'src/commonMain/resources' / name for name in
-             ('publication-capture.js', 'publication-three.js', 'publishDocument.js',
-              'threejs_viewer.html', 'threejs_tools.js', 'threejs_shot.js', 'threejs_camera_link.js')]
-    paths.append(ROOT / 'src/jvmMain/kotlin/afield/document/workspace/WebPublication.kt')
-    return hashlib.sha256(b''.join(p.read_bytes() for p in paths if p.is_file())).hexdigest()
+# The code a capture runs. Every page depends on the core; only a page with Three.js output (kind
+# `three`, or `three-image` when the live view fell back to a still) depends on the viewer. Until
+# 2026-11-17 one digest covered all of it, so each edit to threejs_viewer.html made all 227 pages
+# stale, 21 of which show a Three.js view.
+CAPTURE_CORE = ('src/commonMain/resources/publication-capture.js', 'src/commonMain/resources/publishDocument.js',
+                'src/jvmMain/kotlin/afield/document/workspace/WebPublication.kt')
+CAPTURE_THREE = tuple(f'src/commonMain/resources/{name}' for name in (
+    'publication-three.js', 'threejs_viewer.html', 'threejs_tools.js', 'threejs_shot.js', 'threejs_camera_link.js'))
+LEGACY_CAPTURE_ORDER = (CAPTURE_CORE[0], CAPTURE_THREE[0], CAPTURE_CORE[1], *CAPTURE_THREE[1:], CAPTURE_CORE[2])
+
+
+def _hash_files(names) -> str:
+    return hashlib.sha256(b''.join((ROOT / n).read_bytes() for n in names if (ROOT / n).is_file())).hexdigest()
+
+
+def uses_three(kinds) -> bool:
+    return any(kind.startswith('three') for kind in kinds or ())
+
+
+def capture_digest(kinds=()) -> str:
+    """The digest of the capture code a page with output [kinds] depends on."""
+    return _hash_files(CAPTURE_CORE + (CAPTURE_THREE if uses_three(kinds) else ()))
+
+
+def legacy_capture_digest() -> str:
+    """The single digest every entry carried before the split. A stored value equal to it still
+    means no capture file has changed since that capture, so it is as fresh as the split digest."""
+    return _hash_files(LEGACY_CAPTURE_ORDER)
+
+
+def page_digest(entry: dict | None) -> str:
+    return capture_digest((entry or {}).get('kinds', ()))
+
+
+def digest_fresh(entry: dict) -> bool:
+    return entry.get('captureDigest') in (page_digest(entry), legacy_capture_digest())
 
 
 def ignored_files(folder: Path) -> set[Path]:
@@ -264,18 +306,27 @@ def publication_problem(entry: dict) -> str | None:
     return None
 
 
-# A change to the viewer or capture code (the capture digest) makes every publication pending, and a
-# full refresh of ~200 pages on a loaded lander nearly always loses one to a stall or an unrendered
+# A change to the viewer or capture code (the capture digest) makes publications pending, and a full
+# refresh of ~200 pages on a loaded lander nearly always loses one to a stall or an unrendered
 # channel. From 2026-11-16 to 11-17 every landing that touched the three viewer recaptured all 227
-# for 80 minutes, and avp-threejs-viewer bounced three times on pages it never touched
-# (fn_differentiable_fit_demo, uncrossed_leapers, stacksl_fit_demo, ...). So a page that is pending
-# only for the digest and fails keeps its previous publication, which still works (its runtime
-# files are content-addressed and kept), and is recorded under `deferred` with the digest it
-# missed. `check` accepts a deferral for that digest; the next sync retries just those pages. A page
-# whose own sources changed still fails the sync, and so does a refresh that defers more than
-# MAX_DEFERRED pages, which is the machine or the capture code, not one slow page.
+# for 60-90 minutes, and avp-threejs-viewer bounced three times on pages it never touched
+# (fn_differentiable_fit_demo, uncrossed_leapers, stacksl_fit_demo, ...). A page pending only for
+# the digest keeps its previous publication, which still works (its runtime files are
+# content-addressed and kept), and is recorded under `deferred` with the digest it has yet to meet.
+# `check` accepts a deferral for that digest.
+#
+# Three ways a page gets there. A landing (merge_regen's `sync --defer-digest-only`) defers every
+# digest-only page without trying it, so a viewer change lands in the time its own pages take. A
+# plain `sync` tries them, and one that fails is deferred; a page whose own sources changed still
+# fails the sync, and so does a refresh with more than MAX_DEFERRED such failures, which is the
+# machine or the capture code rather than one slow page. And `catch-up`, which the lander runs
+# while its queue is empty, recaptures up to `--limit` deferred pages at a time, least-tried first;
+# a page that has failed CATCH_UP_ATTEMPTS times at one digest waits for the next digest or a person.
 DEFERRED = 'deferred'
 MAX_DEFERRED = 10
+CATCH_UP_ATTEMPTS = 2
+CATCH_UP_REPORT = 'build/docs-publications-catch-up.json'
+LANDING_DEFERRAL = 'not tried: a landing defers digest-only pages to the publication catch-up'
 
 
 def previous_entry(index: dict, source: str) -> dict | None:
@@ -283,8 +334,8 @@ def previous_entry(index: dict, source: str) -> dict | None:
 
 
 def digest_only(previous: dict | None, recipe: dict) -> bool:
-    """Whether [recipe] is pending only because the capture digest moved past [previous]."""
-    return (bool(previous) and previous.get('captureDigest') != capture_digest()
+    """Whether [recipe] is pending only because the capture code it depends on moved past [previous]."""
+    return (bool(previous) and not digest_fresh(previous)
             and previous['sources'] == recipe_sources(recipe)
             and not (previous.get('file') and publication_problem(previous)))
 
@@ -295,7 +346,7 @@ def pending_recipes(available: list[dict], *, mode: str) -> list[dict]:
     for recipe in available:
         previous = previous_entry(index, recipe['source'])
         if (mode == 'always' or not previous or previous['sources'] != recipe_sources(recipe)
-                or previous.get('captureDigest') != capture_digest()
+                or not digest_fresh(previous)
                 or (previous.get('file') and publication_problem(previous))):
             pending.append(recipe)
     return pending
@@ -305,39 +356,70 @@ def accepted_deferrals(pending: list[dict]) -> list[dict]:
     """The [pending] recipes a recorded deferral covers: still pending only for the digest it missed."""
     index = catalog()
     deferred = index.get(DEFERRED, {})
-    return [r for r in pending if deferred.get(r['source'], {}).get('captureDigest') == capture_digest()
-            and digest_only(previous_entry(index, r['source']), r)]
+    accepted = []
+    for r in pending:
+        previous = previous_entry(index, r['source'])
+        if deferred.get(r['source'], {}).get('captureDigest') == page_digest(previous) and digest_only(previous, r):
+            accepted.append(r)
+    return accepted
 
 
-def record_deferrals(failed: list[dict], by_name: dict[str, dict]) -> None:
-    """Record [failed] digest-only captures as deferred, and drop deferrals a capture has since met."""
+def record_deferrals(failed: list[dict], by_name: dict[str, dict], *, attempted: bool = True) -> None:
+    """Record [failed] digest-only pages as deferred, and drop deferrals a capture has since met.
+    [attempted] is false for a landing's deferral, which tried nothing and so counts no attempt."""
     index = catalog()
     deferred = index.setdefault(DEFERRED, {})
     for row in failed:
         source = by_name[row['name']]['source']
-        deferred[source] = {'captureDigest': capture_digest(), 'error': row.get('error', '')[:500],
-                            'since': deferred.get(source, {}).get('since') or time.strftime('%Y-%m-%d')}
+        wanted = page_digest(previous_entry(index, source))
+        before = deferred.get(source, {})
+        same = before.get('captureDigest') == wanted
+        if not attempted and same:
+            continue
+        deferred[source] = {'captureDigest': wanted, 'error': row.get('error', '')[:500],
+                            'since': before.get('since') or time.strftime('%Y-%m-%d'),
+                            'attempts': (before.get('attempts', 0) if same else 0) + int(attempted)}
     for source in list(deferred):
         previous = previous_entry(index, source)
-        if not previous or previous.get('captureDigest') == capture_digest():
+        if not previous or digest_fresh(previous):
             del deferred[source]
     if not deferred:
         index.pop(DEFERRED)
     write_catalog(index)
 
 
+def catch_up_candidates(pending: list[dict], digest_only_names: set[str], limit: int) -> list[dict]:
+    """Up to [limit] digest-only pages to recapture, least-tried first, leaving out a page that has
+    already failed CATCH_UP_ATTEMPTS times at the digest it now needs."""
+    index = catalog()
+    deferred = index.get(DEFERRED, {})
+    eligible = []
+    for r in pending:
+        if r['name'] not in digest_only_names:
+            continue
+        record = deferred.get(r['source'], {})
+        tries = record.get('attempts', 0) if record.get('captureDigest') == page_digest(previous_entry(index, r['source'])) else 0
+        if tries < CATCH_UP_ATTEMPTS:
+            eligible.append((tries, record.get('since', ''), r['name'], r))
+    return [r for *_, r in sorted(eligible, key=lambda e: e[:3])][:limit]
+
+
 def record_empty(recipe: dict, sources: dict[str, str]) -> None:
     index = catalog()
     index['documents'].pop(recipe['source'], None)
     index.setdefault('emptyDocuments', {})[recipe['source']] = {
-        'sources': sources, 'captureDigest': capture_digest(), 'channels': 0,
+        'sources': sources, 'captureDigest': capture_digest(()), 'channels': 0,
         'reason': 'No output-area channels; the code remains available.',
     }
     write_catalog(index)
 
 
-def sync_publications(*, mode: str = 'incremental', port: int | None = None) -> dict:
-    """Refresh supported documents before building the site; an unchanged tree starts no Field."""
+def sync_publications(*, mode: str = 'incremental', port: int | None = None,
+                      defer_digest_only: bool = False, catch_up: int | None = None) -> dict:
+    """Refresh supported documents before building the site; an unchanged tree starts no Field.
+
+    [defer_digest_only] (a landing) records digest-only pages as deferred instead of capturing them;
+    [catch_up] captures only digest-only pages, at most that many, and never fails on them."""
     available = recipes('pilot') + recipes('gallery')
     if mode != 'never':
         index = catalog()
@@ -350,9 +432,8 @@ def sync_publications(*, mode: str = 'incremental', port: int | None = None) -> 
     index = catalog()
     orphaned = (set(index['documents']) | set(index.get('emptyDocuments', {}))) - supported
     if mode == 'never' and (accepted := accepted_deferrals(pending)):
-        print(f'Docs publications: {len(accepted)} kept their previous capture after a failed refresh '
-              '(deferred in catalog.json; the next sync retries them): '
-              + ', '.join(r['name'] for r in accepted), flush=True)
+        print(f'Docs publications: {len(accepted)} keep their previous capture until the catch-up recaptures them '
+              '(deferred in catalog.json): ' + ', '.join(r['name'] for r in accepted), flush=True)
         pending = [r for r in pending if r not in accepted]
     if pending and mode == 'never':
         raise ValueError(f"{len(pending)} publications need refresh: " + ', '.join(r['name'] for r in pending)
@@ -364,10 +445,19 @@ def sync_publications(*, mode: str = 'incremental', port: int | None = None) -> 
             raise ValueError('Publication file integrity metadata needs an upgrade; run tools/docs_publications.py sync')
         registry()
         summary = {'captured': len(index['documents']), 'codeOnly': len(index.get('emptyDocuments', {})),
-                   'refreshed': 0, 'retained': len(available)}
+                   'refreshed': 0, 'retained': len(available), 'deferred': len(index.get(DEFERRED, {}))}
         print('Docs publications: ' + json.dumps(summary), flush=True)
         return summary
-    catch_up = {r['name'] for r in pending if digest_only(previous_entry(index, r['source']), r)}
+    by_name = {r['name']: r for r in pending}
+    digest_only_names = {r['name'] for r in pending if digest_only(previous_entry(index, r['source']), r)}
+    if catch_up is not None:
+        pending = catch_up_candidates(pending, digest_only_names, catch_up)
+    elif defer_digest_only and digest_only_names:
+        later = [r for r in pending if r['name'] in digest_only_names]
+        record_deferrals([{'name': r['name'], 'error': LANDING_DEFERRAL} for r in later], by_name, attempted=False)
+        print(f'Docs publications: {len(later)} page(s) pending only for the capture code keep their previous '
+              'capture; the lander\'s catch-up recaptures them when its queue is empty', flush=True)
+        pending = [r for r in pending if r['name'] not in digest_only_names]
     report = asyncio.run(capture(pending, port=port, force=True)) if pending else []
     retry_names = {r['name'] for r in report
                    if not r['ok'] and any(mark in r.get('error', '') for mark in TRANSIENT_CAPTURE_ERRORS)}
@@ -375,19 +465,19 @@ def sync_publications(*, mode: str = 'incremental', port: int | None = None) -> 
         print('Retrying timed-out or disconnected captures in a fresh Field session: '
               + ', '.join(sorted(retry_names)), flush=True)
         retried = asyncio.run(capture([r for r in pending if r['name'] in retry_names], port=port, force=True))
-        by_name = {r['name']: {**r, 'attempts': 2} for r in retried}
-        report = [by_name.get(r['name'], r) for r in report]
+        retried_by_name = {r['name']: {**r, 'attempts': 2} for r in retried}
+        report = [retried_by_name.get(r['name'], r) for r in report]
     report_path = ROOT / REFRESH_REPORT
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(json.dumps(report, indent=2) + '\n')
     failed = [r for r in report if not r['ok']]
-    tolerated = [r for r in failed if r['name'] in catch_up]
-    if len(tolerated) < len(failed) or len(tolerated) > MAX_DEFERRED:
+    tolerated = [r for r in failed if r['name'] in digest_only_names]
+    if catch_up is None and (len(tolerated) < len(failed) or len(tolerated) > MAX_DEFERRED):
         raise ValueError('Publication capture failed: ' + '; '.join(f"{r['name']}: {r['error']}" for r in failed))
-    record_deferrals(tolerated, {r['name']: r for r in pending})
+    record_deferrals(tolerated, by_name)
     if tolerated:
-        print(f'Docs publications: {len(tolerated)} page(s) pending only for the capture digest failed and keep '
-              'their previous capture (deferred; the next sync retries them): '
+        print(f'Docs publications: {len(tolerated)} page(s) pending only for the capture code failed and keep '
+              'their previous capture (deferred; the catch-up retries them): '
               + ', '.join(r['name'] for r in tolerated), flush=True)
     # Removed or reclassified recipes must not leave a misleading publication behind.
     index = catalog()
@@ -406,7 +496,15 @@ def sync_publications(*, mode: str = 'incremental', port: int | None = None) -> 
     write_catalog(index)
     registry()
     summary = {'captured': len(index['documents']), 'codeOnly': len(index.get('emptyDocuments', {})),
-               'refreshed': len(report), 'retained': len(available) - len(report)}
+               'refreshed': len(report), 'retained': len(available) - len(report),
+               'deferred': len(index.get(DEFERRED, {}))}
+    if catch_up is not None:
+        left = [r for r in pending_recipes(available, mode='incremental')
+                if digest_only(previous_entry(index, r['source']), r)]
+        summary.update(recaptured=sorted(r['name'] for r in report if r['ok']),
+                       failed=sorted(r['name'] for r in failed),
+                       remaining=len(left), retryable=len(catch_up_candidates(left, {r['name'] for r in left}, len(left))))
+        (ROOT / CATCH_UP_REPORT).write_text(json.dumps(summary, indent=2) + '\n')
     print('Docs publications: ' + json.dumps(summary), flush=True)
     return summary
 
@@ -500,8 +598,8 @@ def install(archive: Path, *, name: str, source: str, sources: dict[str, str]) -
         "capturedAt": manifest["capturedAt"], "channels": len(manifest["outputs"]),
         "kinds": sorted({kind for o in manifest["outputs"] for kind in o["kinds"]}),
         "sources": sources,
-        "captureDigest": capture_digest(),
     }
+    entry["captureDigest"] = capture_digest(entry["kinds"])
     transcript = next((name for name in sources if name.startswith('dev_docs/agents/transcripts/')), None)
     supplemental = sorted(set(sources) - set(source_files(source, transcript)))
     if supplemental:
@@ -754,7 +852,7 @@ async def capture(selected: list[dict], *, port: int | None, force: bool) -> lis
                 name, source = recipe["name"], recipe["source"]
                 sources = recipe_sources(recipe)
                 previous = catalog()["documents"].get(source)
-                if not force and previous and previous["sources"] == sources and previous.get('captureDigest') == capture_digest():
+                if not force and previous and previous["sources"] == sources and digest_fresh(previous):
                     print(f"RETAIN {name}: {previous['channels']} channels", flush=True)
                     report.append({'name':name,'ok':True,'channels':previous['channels'],'retained':True})
                     continue
@@ -912,11 +1010,14 @@ def sync_exit(run) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("capture", "sync", "check", "list", "prune"))
+    parser.add_argument("action", choices=("capture", "sync", "catch-up", "check", "list", "prune"))
     parser.add_argument('--mode', choices=('never', 'incremental', 'strict', 'always'), default='incremental')
     parser.add_argument("--group", choices=("pilot", "gallery"), default="pilot")
     parser.add_argument("--name", action="append", help="Select named recipes within the group")
     parser.add_argument("--port", type=int)
+    parser.add_argument('--defer-digest-only', action='store_true',
+                        help='sync: defer pages pending only for the capture code instead of capturing them (a landing)')
+    parser.add_argument('--limit', type=int, default=12, help='catch-up: recapture at most this many deferred pages')
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--report", type=Path, default=ROOT / "build/docs-publications-report.json")
     args = parser.parse_args()
@@ -924,7 +1025,10 @@ def main() -> int:
         sync_publications(mode='never', port=args.port)
         return 0
     if args.action == 'sync':
-        return sync_exit(lambda: sync_publications(mode=args.mode, port=args.port))
+        return sync_exit(lambda: sync_publications(mode=args.mode, port=args.port,
+                                                   defer_digest_only=args.defer_digest_only))
+    if args.action == 'catch-up':
+        return sync_exit(lambda: sync_publications(mode='incremental', port=args.port, catch_up=args.limit))
     if args.action == 'prune':
         print(f'Removed {prune_runtimes()} unused runtime files')
         return 0

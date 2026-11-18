@@ -11,12 +11,12 @@ val makeWorld = {
         params.wallY = 18f
         // where each one starts and the way it heads (radians): the straight worms cross the
         // world, the L and R worms turn
-        val starts = listOf(
+        val starts = [
             Triple(-22f, -12f, 0f),
             Triple(-16f, 8f, 0f),
             Triple(21f, 8f, PI.toFloat()),
             Triple(16f, -2f, PI.toFloat()),
-        )
+        ]
         genomes.forEachIndexed { k, g ->
             val (sx, sy, heading) = starts[k]
             grow(g, sx, sy, angle = heading)

@@ -17,6 +17,13 @@ struct ThreeViewerView: View {
     @State private var light = Entity()
     /// `label(...)` attachments, under `pivot` so they follow the orbit; their scale undoes the pivot's.
     @State private var labelRoot = Entity()
+    /// `handle(...)` markers, under `pivot` in scene coordinates; each is a constant size in the room.
+    @State private var handleRoot = Entity()
+    /// Where this headset has put each handle during the current drag, by id.
+    @State private var handleHeld: [String: SIMD3<Double>] = [:]
+    @State private var handleGrab: (id: String, offset: SIMD3<Double>)?
+    @State private var handleSentAt: Date = .distantPast
+    @State private var builtHandles: [ThreeHandle] = []
     @State private var cache = ThreeMeshBuilder.Cache()
     /// The shot explode amount each drawable's model was last built at.
     @State private var shotApplied: [String: Float] = [:]
@@ -49,6 +56,7 @@ struct ThreeViewerView: View {
             content.add(cage)
             pivot.addChild(selection)
             pivot.addChild(labelRoot)
+            pivot.addChild(handleRoot)
             // A key light from above and in front, as the browser viewer's key light; the volume's
             // environment lighting does the fill.
             let key = DirectionalLightComponent(color: .white, intensity: 2600)
@@ -62,6 +70,7 @@ struct ThreeViewerView: View {
                 Attachment(id: item.id) { ThreeLabelView(label: item.label) }
             }
         }
+        .highPriorityGesture(handleGesture)
         .gesture(pickGesture)
         .simultaneousGesture(orbitGesture)
         .simultaneousGesture(scaleGesture)
@@ -70,6 +79,7 @@ struct ThreeViewerView: View {
         .onChange(of: client.revision) { _, _ in rebuild() }
         .onChange(of: client.shownUID) { _, _ in resetManipulation(); rebuild() }
         .onChange(of: client.viewStates[client.shownUID ?? ""]) { _, _ in applyViewState() }
+        .onChange(of: client.liveHandles[client.shownUID ?? ""]) { _, _ in placeHandles() }
         .ornament(attachmentAnchor: .scene(.bottom)) { toolbar }
     }
 
@@ -130,7 +140,12 @@ struct ThreeViewerView: View {
         }
         // The same geometry and styles again (a follow message, or another view's update): nothing to do.
         let key = (scene.generation ?? scene.revision).map { "\($0)|\(scene.appearance.hashValue)" }
-        if scene.uid == builtUID, key != nil, key == builtRevision { return }
+        if scene.uid == builtUID, key != nil, key == builtRevision {
+            // The same geometry, but a re-run may have moved its handles.
+            if scene.handles != builtHandles { builtHandles = scene.handles; buildHandles(scene) }
+            return
+        }
+        builtHandles = scene.handles
         builtUID = scene.uid
         builtRevision = key
 
@@ -139,6 +154,8 @@ struct ThreeViewerView: View {
         pivot.addChild(b.root)
         pivot.addChild(selection)
         pivot.addChild(labelRoot)
+        pivot.addChild(handleRoot)
+        buildHandles(scene)
         shotApplied = [:]
         built = b
 
@@ -246,11 +263,14 @@ struct ThreeViewerView: View {
     }
 
     private func applyTransform() {
-        let q = simd_quatf(angle: yaw, axis: [0, 1, 0]) * simd_quatf(angle: pitch, axis: [1, 0, 0])
+        // Pitch about the viewer's own x axis, applied after yaw: tipping the model always tips the face
+        // nearest the hand, even after it has been turned round (yaw-then-model-x pitched the back).
+        let q = simd_quatf(angle: pitch, axis: [1, 0, 0]) * simd_quatf(angle: yaw, axis: [0, 1, 0])
         let s = (targetRadius / modelRadius) * userScale
         pivot.orientation = q
         pivot.scale = SIMD3(repeating: s)
         labelRoot.children.forEach { $0.scale = SIMD3(repeating: Self.labelScale / s) }
+        handleRoot.children.forEach { $0.scale = SIMD3(repeating: 1 / s) }
         pivot.position = -(q.act(s * modelCenter))
         cage.orientation = q
         cage.scale = SIMD3(repeating: s)
@@ -274,7 +294,17 @@ struct ThreeViewerView: View {
 
     private var labelItems: [LabelItem] {
         guard let scene = client.shownScene else { return [] }
-        return scene.labels.enumerated().map { LabelItem(id: "\(scene.uid)#\(scene.revision ?? "")#\($0.offset)", label: $0.element) }
+        var items = scene.labels.enumerated().map { LabelItem(id: "\(scene.uid)#\(scene.revision ?? "")#\($0.offset)", label: $0.element) }
+        for h in scene.handles {
+            guard let text = h.label else { continue }
+            // Lifted about 2 cm above the marker in the room, so the name does not sit on it.
+            let lift = Double(0.02 / max(pivot.scale.x, 1e-6))
+            let p = handlePosition(h) + SIMD3(0, lift, 0)
+            items.append(LabelItem(id: "\(scene.uid)#handle#\(h.id)",
+                                   label: ThreeLabel(position: [p.x, p.y, p.z], text: text, style: "tag",
+                                                     color: nil, background: nil, border: nil)))
+        }
+        return items
     }
 
     /// Pin each label's attachment at its scene point, facing the viewer, at a size the orbit and fit do not change.
@@ -294,6 +324,73 @@ struct ThreeViewerView: View {
             entity.position = SIMD3(Float(p[0]), Float(p[1]), Float(p[2]))
             entity.scale = SIMD3(repeating: Self.labelScale / s)
         }
+    }
+
+    // MARK: - Handles
+
+    /// A handle's place: where this headset is holding it, where another viewer is, or where the box drew it.
+    private func handlePosition(_ h: ThreeHandle) -> SIMD3<Double> {
+        if let held = handleHeld[h.id] { return held }
+        if let live = client.liveHandles[client.shownUID ?? ""]?[h.id] { return live }
+        return h.position.count >= 3 ? SIMD3(h.position[0], h.position[1], h.position[2]) : .zero
+    }
+
+    private func buildHandles(_ scene: ThreeScene) {
+        handleRoot.children.removeAll()
+        let s = pivot.scale.x > 0 ? pivot.scale.x : 1
+        for h in scene.handles {
+            let colour = cssColor(h.color).map { UIColor($0) } ?? UIColor(red: 1, green: 0.82, blue: 0.25, alpha: 1)
+            // A 1 cm marker, with a 2 cm target so a pinch finds it.
+            let marker = ModelEntity(mesh: .generateSphere(radius: 0.01), materials: [UnlitMaterial(color: colour)])
+            marker.name = "handle:\(h.id)"
+            marker.components.set(ThreeHandleComponent(id: h.id))
+            marker.components.set(CollisionComponent(shapes: [.generateSphere(radius: 0.02)]))
+            marker.components.set(InputTargetComponent())
+            marker.components.set(HoverEffectComponent())
+            marker.scale = SIMD3(repeating: 1 / s)
+            handleRoot.addChild(marker)
+        }
+        placeHandles()
+    }
+
+    private func placeHandles() {
+        guard let scene = client.shownScene else { return }
+        for h in scene.handles {
+            guard let marker = handleRoot.findEntity(named: "handle:\(h.id)") else { continue }
+            let p = handlePosition(h)
+            marker.position = SIMD3(Float(p.x), Float(p.y), Float(p.z))
+        }
+    }
+
+    /// Pinch a marker and move it: in 3D, held to the handle's line or plane, told to Field as the
+    /// browser tells it (start, moves at most every 33 ms, end).
+    private var handleGesture: some Gesture {
+        DragGesture(minimumDistance: 0)
+            .targetedToEntity(where: .has(ThreeHandleComponent.self))
+            .onChanged { value in
+                guard let id = value.entity.components[ThreeHandleComponent.self]?.id,
+                      let h = client.shownScene?.handles.first(where: { $0.id == id }) else { return }
+                let f = value.convert(value.location3D, from: .local, to: pivot)
+                let at = SIMD3<Double>(Double(f.x), Double(f.y), Double(f.z))
+                if handleGrab?.id != id {
+                    handleGrab = (id, handlePosition(h) - at)
+                    client.dragHandle(id, to: handlePosition(h), phase: "start")
+                    handleSentAt = Date()
+                }
+                let p = h.constrain(at + (handleGrab?.offset ?? .zero))
+                handleHeld[id] = p
+                placeHandles()
+                if Date().timeIntervalSince(handleSentAt) >= 0.033 {
+                    client.dragHandle(id, to: p, phase: "move")
+                    handleSentAt = Date()
+                }
+            }
+            .onEnded { value in
+                guard let id = value.entity.components[ThreeHandleComponent.self]?.id else { return }
+                if let p = handleHeld[id] { client.dragHandle(id, to: p, phase: "end") }
+                handleGrab = nil
+                handleHeld[id] = nil
+            }
     }
 
     // MARK: - Gestures

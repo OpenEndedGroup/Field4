@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-17T10:04:33.365Z",
+  "capturedAt": "2026-11-17T21:20:52.535Z",
   "documentName": "certified_envelope",
   "outputs": [
     {
@@ -33,7 +33,7 @@
         "svg"
       ],
       "width": 1108,
-      "height": 295,
+      "height": 171,
       "path": "outputs/2.html"
     },
     {

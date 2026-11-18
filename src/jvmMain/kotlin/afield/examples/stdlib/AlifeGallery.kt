@@ -2136,45 +2136,21 @@ object AlifeGallery {
                 "${f(PI * rOut * rOut, 1)} (${f(outerErr * 100, 2)}%), inner ${f(innerMeasured, 1)} " +
                 "against ${f(PI * rIn * rIn, 1)} (${f(innerErr * 100, 2)}%)"
         )
-        // ---------------------------------------------------------------------------------------
-        // A finding, pinned as the behaviour it is rather than as the behaviour it "should" be.
-        //
-        // This figure was written expecting the two loops to be wound in OPPOSITE directions, because
-        // that is the convention that lets a consumer sum signed areas and get the area of a shape with
-        // a hole. `isoContourFLines` does not do that: both loops come back with the SAME sign, so the
-        // naive sum reads 19270 for an annulus whose area is 11545 — 67% high. Getting the right answer
-        // means subtracting the smaller magnitude, i.e. knowing which loop is the hole by some means
-        // other than its winding.
-        //
-        // This is NOT a violated contract: `contours.kt` documents no orientation guarantee (the one
-        // "counter-clockwise" comment in it refers to a marching cell's corner ordering, not to output
-        // winding). So it is undocumented behaviour that a caller who fills, booleans or exports these
-        // curves has to know, which is exactly why it is asserted here and written up in
-        // `dev_docs/ALIFE.md` rather than left to be rediscovered.
-        //
-        // It is also a deliberate tripwire on a live coupling: `contours.kt` is shared code and its
-        // marching-squares behaviour is under change on another branch. If winding becomes
-        // orientation-aware, THIS assertion fails and says so in one line, instead of the annulus area
-        // silently starting to come out right for a reason nobody recorded.
-        // ---------------------------------------------------------------------------------------
+        // The winding is a contract: `contours.kt` orients every segment with the inside on its left
+        // (ea0fbf2170), so the outer loop and the hole come back wound in OPPOSITE directions and the
+        // signed areas sum to the annulus. This figure used to pin the older behaviour, both loops the
+        // same way, as a tripwire for exactly this change.
         check(
-            signed.all { it > 0.0 } || signed.all { it < 0.0 },
-            "bridge: both annulus loops are wound the SAME way (signed areas " +
-                signed.joinToString(", ") { f(it, 1) } + "), so isoContourFLines does NOT encode a hole " +
-                "by orientation. Summing signed areas therefore OVERSTATES a holed shape's area — " +
-                "${f(signedSum, 1)} against the true ${f(ringExpected, 1)}, ${f(ringErr * 100, 0)}% high. " +
-                "contours.kt promises no winding convention, so this is undocumented behaviour a caller " +
-                "must know, not a broken contract. If a change to contours.kt makes winding " +
-                "orientation-aware, this line is the one that will say so"
+            signed.any { it > 0.0 } && signed.any { it < 0.0 },
+            "bridge: the annulus's outer loop and its hole are wound the SAME way (signed areas " +
+                signed.joinToString(", ") { f(it, 1) } + "), but contours.kt promises inside-on-the-left " +
+                "winding, so a hole must come back opposite to its outer boundary"
         )
-        val ringByDifference = outerMeasured - innerMeasured
-        val diffErr = abs(ringByDifference - ringExpected) / ringExpected
         check(
-            diffErr < 0.005,
-            "bridge: taking the DIFFERENCE of the two magnitudes instead gives ${f(ringByDifference, 1)} " +
-                "against the exact ${f(ringExpected, 1)} — ${f(diffErr * 100, 3)}% out. So the geometry " +
-                "the extractor produces is right to four figures; it is only the orientation that " +
-                "carries no information"
+            ringErr < 0.005,
+            "bridge: the signed areas of an annulus's two loops sum to ${f(signedSum, 1)} against the exact " +
+                "${f(ringExpected, 1)} — ${f(ringErr * 100, 3)}% out. Opposite winding is what makes the sum " +
+                "the area of a shape with a hole, with no need to know which loop is the hole"
         )
 
         // Control: no iso crossing, no contour.

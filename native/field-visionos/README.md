@@ -19,7 +19,7 @@ features below are additive server-side niceties.
 
 ## Default layout
 
-At launch the main window holds **one dock, Welcome**, selected, in a 196pt rail (was 220pt with a
+At launch the main window holds **one dock, Welcome**, selected, in a 150pt rail of slim rows with no header or tooltips (was a 220pt list with a
 second, empty glass-canvas dock on `file=default` selected on top of it, which looked like an empty
 workspace). Welcome lists the server's workspace; opening a document (or **Start here**) navigates
 the same dock in place and the rail relabels it. More docks only appear when asked for: **Canvas**
@@ -222,7 +222,12 @@ Four improvements on top of the PoC:
     blue sits at the cage's most negative corner. The fit sizes the bounds' sphere, not the longest
     axis, so orbiting never pushes a corner out of the volume. Entities are keyed per drawable, not
     per part id: `mesh(..., edges = true)` sends a surface and its edges under one id.
-  - **Not yet:** drag-design handles (the interactive FLine objects are not drawn), overlays, section cuts, multi-panel scenes (every panel is drawn superimposed). Surfaces are
+  - **Handles:** `three { handle(...) }` markers are 1 cm spheres, a constant size in the room. Pinch one
+    and move it: the drag is in 3D, held to the handle's `axis` or `normal`, and goes to Field as
+    `three-handle` (start, moves at most every 33 ms, end), the message the browser sends. Field runs
+    the box's callback and relays the drag to the view's other viewers as `three/handle`, so a drag in
+    the browser moves the marker here live, and the box's re-run then places it for good.
+  - **Not yet:** the interactive FLine objects of `threeLines(editable = true)`, overlays, section cuts, multi-panel scenes (every panel is drawn superimposed). Surfaces are
     de-indexed, so a vertex is stored once per triangle. Spatial input can only be checked on the device.
 
 ## Live Metal — programmable native graphics

@@ -4,7 +4,7 @@ A box can give itself a radial menu of live Kotlin callbacks. Run the installing
 ++shift+alt++-click the box and move towards a label. Release to choose it. Text frames also open
 this menu with ++alt++-click; regular boxes keep their existing ++alt++-click run menu.
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 markingMenu {
     item("N", "Rename") { name = "Revised draft" }
     submenu("E", "Status") {
@@ -24,8 +24,12 @@ session context, so property and FileManager lookups refer to the right document
 short; start longer work through your usual asynchronous path.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1060x720" screenshot="assets/text_frames/marking-menu.png" transcript="../../dev_docs/agents/transcripts/docs_capture/text_frames.yaml" document="docs-marking-menus" fresh-document=true hide-toasts=true padding="0" wait="0" timeout="180" embed=true hidden=true name="custom-marking-submenu" alt="A custom Status marking submenu on a regular Field box. Ready is above, Needs work below, More opens another level, and Back is in the centre."}
-ui.eval("window.setAutoDisplayEditor(false);for(const b of [...window.selectedList])window.deselectBox(b);window.moveCanvasCamera(0,0,1);return true;")
-ui.eval("const b=[...document.querySelectorAll('.box')].find(b=>b.name==='Draft');b.dataset.docsMenu='true';return true;")
+ui.eval(
+    "window.setAutoDisplayEditor(false);for(const b of [...window.selectedList])window.deselectBox(b);window.moveCanvasCamera(0,0,1);return true;",
+)
+ui.eval(
+    "const b=[...document.querySelectorAll('.box')].find(b=>b.name==='Draft');b.dataset.docsMenu='true';return true;",
+)
 ui.hoverSelector("[data-docs-menu='true']")
 ui.down("Shift")
 ui.down("Alt")
@@ -55,7 +59,7 @@ reopening the document. This can be part of the box's normal startup code.
 
 The older map API still works alongside the builder:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 customMarking["NW" to "Inspect"] = { name = "Inspected" }
 ```
 

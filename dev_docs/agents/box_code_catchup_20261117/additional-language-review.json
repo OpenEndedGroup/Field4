@@ -1,0 +1,40 @@
+{
+  "note": "The inherited Markdown span scanner covers Kotlin/GLSL and established languages, but not new PostScript fences. Reviewed these five separately so its exclusion does not hide new teaching code.",
+  "bodies": [
+    {
+      "path": "public/docs/postscript.md",
+      "line": 22,
+      "sha256": "bf62858e4fb196f0bf2d3fa11b4f8c035e7b3f12cf9afa28ec5d562d63db98ec",
+      "decision": "retain_native_language_example",
+      "reason": "Literal PostScript definitions/stack operations or geometry, with intent and deliberate-error labels. No opaque Kotlin wrapper or handwritten output. Leave language formatting intact."
+    },
+    {
+      "path": "public/docs/postscript.md",
+      "line": 43,
+      "sha256": "7bc639d6de972d1e64da1e016b4af89c0fcedfde173b14f804e9825f83e28e07",
+      "decision": "retain_native_language_example",
+      "reason": "Literal PostScript definitions/stack operations or geometry, with intent and deliberate-error labels. No opaque Kotlin wrapper or handwritten output. Leave language formatting intact."
+    },
+    {
+      "path": "public/docs/postscript.md",
+      "line": 94,
+      "sha256": "827cbe0e012c90be5fae9fbcae273d48ca5ba605884f3e1bbd439aa1cadf6bed",
+      "decision": "retain_native_language_example",
+      "reason": "Literal PostScript definitions/stack operations or geometry, with intent and deliberate-error labels. No opaque Kotlin wrapper or handwritten output. Leave language formatting intact."
+    },
+    {
+      "path": "public/docs/postscript.md",
+      "line": 119,
+      "sha256": "7b9038919b42f6019dfd467f3c48c6760ae37f5f7b1b63a2e55622fdeadb3466",
+      "decision": "retain_native_language_example",
+      "reason": "Literal PostScript definitions/stack operations or geometry, with intent and deliberate-error labels. No opaque Kotlin wrapper or handwritten output. Leave language formatting intact."
+    },
+    {
+      "path": "public/docs/postscript.md",
+      "line": 135,
+      "sha256": "b43a6306ea131cdafd976e952fd15438ff951d7732b264488bf08780094d12b6",
+      "decision": "retain_native_language_example",
+      "reason": "Literal PostScript definitions/stack operations or geometry, with intent and deliberate-error labels. No opaque Kotlin wrapper or handwritten output. Leave language formatting intact."
+    }
+  ]
+}

@@ -9,10 +9,17 @@ press ++escape++, or press ++cmd+enter++ to read the formatted result. Selecting
 ++enter++ also starts editing. Native spellcheck is enabled.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1060x720" clip="0,0,560,700" screenshot="assets/text_frames/reading.png" transcript="../../dev_docs/agents/transcripts/docs_capture/text_frames.yaml" document="docs-text-frames-reading" fresh-document=true hide-toasts=true padding="0" wait="0" timeout="180" embed=true hidden=true name="text-frames-reading" alt="Two connected text frames on Field's dark canvas. Research notes contain a heading, bold text, a diagram loaded through FileManager, and a short list. The next frame asks what happens next."}
-ui.eval("window.setAutoDisplayEditor(false);for(const b of [...window.selectedList])window.deselectBox(b);window.moveCanvasCamera(0,0,1);return true;")
+ui.eval(
+    "window.setAutoDisplayEditor(false);for(const b of [...window.selectedList])window.deselectBox(b);window.moveCanvasCamera(0,0,1);return true;",
+)
 ui.waitForSelector(".text-frame-preview img", 15000.0)
 var tries = 0
-while (ui.eval("return [...document.querySelectorAll('.text-frame-preview img')].every(i=>i.complete && i.naturalWidth>0);").toString() != "true" && tries++ < 60) ui.pause(250)
+while (
+    ui.eval(
+            "return [...document.querySelectorAll('.text-frame-preview img')].every(i=>i.complete && i.naturalWidth>0);",
+        )
+        .toString() != "true" && tries++ < 60
+) ui.pause(250)
 check(tries < 60) { "FileManager image did not load" }
 ui.pause(800)
 ```
@@ -24,7 +31,9 @@ with Field's reverse-slashed zero, including light, regular, bold and italic fac
 emphasis, links, lists, tables, fenced code, images, and inline or display math are supported.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1060x720" clip="0,0,560,700" screenshot="assets/text_frames/editing.png" transcript="../../dev_docs/agents/transcripts/docs_capture/text_frames.yaml" document="docs-text-frames-editing" fresh-document=true hide-toasts=true padding="0" wait="0" timeout="180" embed=true hidden=true name="text-frames-editing" alt="The first text frame is being edited as plain Markdown in Iosevka on a pure black background. The connected frame beneath it remains formatted."}
-ui.eval("window.setAutoDisplayEditor(false);window.moveCanvasCamera(0,0,1);const b=[...document.querySelectorAll('.text-frame-box')].find(b=>b.name==='Research notes');window.selectBox(b);window.editTextFrame(b);return true;")
+ui.eval(
+    "window.setAutoDisplayEditor(false);window.moveCanvasCamera(0,0,1);const b=[...document.querySelectorAll('.text-frame-box')].find(b=>b.name==='Research notes');window.selectBox(b);window.editTextFrame(b);return true;",
+)
 ui.waitForSelector(".text-frame-editing .text-frame-editor", 15000.0)
 ui.pause(300)
 ```
@@ -43,7 +52,7 @@ can be taller than the typeset result, so it scrolls inside the same frame while
 
 Ordinary Markdown image syntax works:
 
-```markdown
+```diffstatic {data-lang=markdown}
 ![A diagram](%document/diagram.png)
 ![A reference image](%pictures/reference.webp)
 ![An image found in the search directories](reference.webp)
@@ -66,12 +75,15 @@ Raw HTML, scripts and arbitrary iframes are displayed as text. For interactive o
 normal editor. Missing defaults are filled in; your comments and additional keys survive.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1060x720" screenshot="assets/text_frames/settings.png" transcript="../../dev_docs/agents/transcripts/docs_capture/text_frames.yaml" document="docs-text-frames-settings" fresh-document=true hide-toasts=true padding="0" wait="0" timeout="180" embed=true hidden=true name="text-frames-settings" alt="Field's normal property editor is open on the textFrame YAML page, showing font, padding, sizing, reflow and connection-border settings beside the formatted writing."}
-ui.eval("window.setAutoDisplayEditor(false);window.moveCanvasCamera(0,0,1);const b=[...document.querySelectorAll('.text-frame-box')].find(b=>b.name==='Research notes');window.selectBox(b);window.openTextFrameSettings(b.uid);return true;")
+ui.eval(
+    "window.setAutoDisplayEditor(false);window.moveCanvasCamera(0,0,1);const b=[...document.querySelectorAll('.text-frame-box')].find(b=>b.name==='Research notes');window.selectBox(b);window.openTextFrameSettings(b.uid);return true;",
+)
 ui.waitForSelector(".monaco-editor", 15000.0)
+ui.editorHeight(500)
 ui.pause(600)
 ```
 
-```yaml
+```diffstatic {data-lang=yaml}
 fontFamily: '"Field Etoile", serif'
 fontSize: 11
 fontWeight: 400

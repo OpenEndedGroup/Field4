@@ -63,7 +63,7 @@ class DocsAudioProvenanceGuardTest {
             Origin.STAND_IN_SYNTH to 28,
             Origin.DIRT_SAMPLES to 41,
             Origin.MIXED_SAMPLES_AND_STAND_IN to 1,
-            Origin.DOUGH_DSP to 28,
+            Origin.DOUGH_DSP to 33,
             Origin.FAUST to 6,
             Origin.FM1_SIM to 9,
             Origin.DOUGH_WASM to 2,
@@ -321,7 +321,11 @@ class DocsAudioProvenanceGuardTest {
          *
          * `spectral_examples.md` added four (2026-11-15), [Origin.DOUGH_DSP]: [TptFilterDocs] renders the
          * Korg35 sweep, the TptOnePole phaser, the TiltEQ sweep and the Resonator trio offline.
+         *
+         * `spectral_examples.md` added five more (2026-11-16), [Origin.DOUGH_DSP]: [LpcDocs] renders a
+         * synthesized formant voice, its LPC residual, and its envelope driving pulses (robot), noise
+         * (whisper) and a saw synth.
          */
-        const val EXPECTED_FENCE_COUNT = 149
+        const val EXPECTED_FENCE_COUNT = 154
     }
 }

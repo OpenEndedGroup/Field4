@@ -16,9 +16,8 @@ struct ContentView: View {
     /// transition, so the animated-effect update never happens. See the two crash reports at
     /// 2026-07-25 11:44:40 and 13:23:54.
     @State private var railVisible = true
-    /// The rail was 220pt for at most a couple of rows; 196pt still fits a middle-truncated
-    /// document name and gives the dock's web content back the difference.
-    private let railWidth: CGFloat = 196
+    /// Compact rail: 13pt rows fit a middle-truncated document name in 150pt.
+    private let railWidth: CGFloat = 150
     private var fieldFont = FieldFont.shared
     @State private var didAutoOpenEditor = false
     @State private var immersiveOpen = false
@@ -82,38 +81,52 @@ struct ContentView: View {
 
     /// The dock rail. Previously the `NavigationSplitView` sidebar; now a plain column.
     private var railList: some View {
-        List(selection: $manager.selection) {
-            Section {
+        // Plain rows, not a `List`: visionOS list rows are tall glass capsules with a section
+        // header, which made two or three docks fill the rail like toy buttons. No header ("Docks"
+        // said nothing) and no tooltip (it repeated the label). Names truncate in the MIDDLE so a
+        // numeric suffix ("some fline00001") stays visible.
+        ScrollView {
+            VStack(alignment: .leading, spacing: 2) {
                 ForEach(manager.docks) { dock in
-                    Label(dock.title, systemImage: icon(for: dock.kind))
-                        // Field's own face, fetched from the server (see FieldFont) — SF here sat
-                        // badly next to the Iosevka web content.
-                        .font(fieldFont.font(size: 16))
-                        // Document names run long and wrapped to two or three lines in a 220pt
-                        // rail, which looked terrible and made rows different heights. Truncate
-                        // in the MIDDLE, not the tail: Field documents are commonly distinguished
-                        // by a numeric suffix ("some fline00001"), so tail truncation would hide
-                        // the one part that tells them apart. Full name is in the tooltip.
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                        .help(dock.title)
-                        .tag(dock.id)
-                        .contextMenu {
-                            Button {
-                                openWindow(value: dock.url)
-                            } label: {
-                                Label("Undock into space", systemImage: "rectangle.badge.plus")
-                            }
-                            Button(role: .destructive) {
-                                manager.close(dock.id)
-                            } label: {
-                                Label("Close", systemImage: "xmark")
-                            }
+                    let selected = dock.id == manager.selection
+                    Button {
+                        manager.selection = dock.id
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: icon(for: dock.kind))
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                            Text(dock.title)
+                                .font(fieldFont.font(size: 13))
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                            Spacer(minLength: 0)
                         }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(selected ? Color.white.opacity(0.14) : .clear,
+                                    in: RoundedRectangle(cornerRadius: 6))
+                        .contentShape(.hoverEffect, RoundedRectangle(cornerRadius: 6))
+                        .hoverEffect()
+                    }
+                    .buttonStyle(.plain)
+                    .contextMenu {
+                        Button {
+                            openWindow(value: dock.url)
+                        } label: {
+                            Label("Undock into space", systemImage: "rectangle.badge.plus")
+                        }
+                        Button(role: .destructive) {
+                            manager.close(dock.id)
+                        } label: {
+                            Label("Close", systemImage: "xmark")
+                        }
+                    }
                 }
-            } header: {
-                Text("Docks").font(fieldFont.font(size: 13))
             }
+            .padding(.top, 4)
+            .padding(.trailing, 8)
         }
     }
 

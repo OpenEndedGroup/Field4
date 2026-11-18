@@ -26,6 +26,12 @@ class TextFrameToolContentsTest {
             assertEquals(frame.textFrame, first.single { it.property == "textFrame" }.content)
             frame.contents = "A live edit"
             assertEquals("A live edit", list().contents.single { it.property == "contents" }.content)
+            val proxy = Box(id = "source-file").also {
+                it.inside = session; it.box_kind = "file-proxy"; it.contents = "val count = 3"
+                it.properties["contents_language"] = "kotlin"
+            }
+            session.boxes[proxy.id] = proxy
+            assertEquals("kotlin", list().contents.single { it.boxUid == proxy.id && it.property == "contents" }.language)
             assertFalse(directory.resolve("metadata.edn").exists())
         } finally { directory.deleteRecursively() }
     }

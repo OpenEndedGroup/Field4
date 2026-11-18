@@ -179,7 +179,14 @@ internal object Ai4BackdoorTools {
                     (Box.ioSeparateProperties.keys + listOf("contents", "textFrame")).distinct().sorted().mapNotNull { property ->
                         (box.getPropertyRaw(property) as? String)?.let { contents ->
                             ListContentEntry(fileRefFor(docName, box.id, property), property,
-                                when (property) { "code" -> "Kotlin"; "contents", "notes" -> "Markdown"; "textFrame" -> "YAML"; else -> "text" }, contents,
+                                when (property) {
+                                    "code" -> "Kotlin"
+                                    "notes" -> "Markdown"
+                                    "contents" -> if (box.getPropertyRaw("box_kind") == "text-frame") "Markdown"
+                                        else (box.getPropertyRaw("contents_language") as? String ?: "text")
+                                    "textFrame" -> "YAML"
+                                    else -> "text"
+                                }, contents,
                                 box.id, box.name, "document")
                         }
                     }

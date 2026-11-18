@@ -1,0 +1,52 @@
+#usda 1.0
+(
+    defaultPrim = "Root"
+    metersPerUnit = 1
+    upAxis = "Y"
+)
+
+# Unlit lines nudged toward the eye in the vertex stage: an eye-space polygon offset, since
+# RealityKit has neither polygon offset nor a fragment depth output. `offset` is in the mesh's
+# model units; `ThreeMeshBuilder.lineMaterial` sets it, and the colour, per line bucket.
+def Xform "Root"
+{
+    def Material "LineOffset"
+    {
+        color3f inputs:color = (1, 1, 1)
+        float inputs:opacity = 1
+        float inputs:offset = 0.001
+        token outputs:mtlx:surface.connect = </Root/LineOffset/Unlit.outputs:out>
+        token outputs:realitykit:vertex.connect = </Root/LineOffset/Lift.outputs:out>
+
+        def Shader "Unlit"
+        {
+            uniform token info:id = "ND_realitykit_unlit_surfaceshader"
+            color3f inputs:color.connect = </Root/LineOffset.inputs:color>
+            float inputs:opacity.connect = </Root/LineOffset.inputs:opacity>
+            bool inputs:applyPostProcessToneMap = 0
+            token outputs:out
+        }
+
+        def Shader "ToEye"
+        {
+            uniform token info:id = "ND_realitykit_viewdirection_vector3"
+            uniform string inputs:space = "model"
+            float3 outputs:out
+        }
+
+        def Shader "Scaled"
+        {
+            uniform token info:id = "ND_multiply_vector3FA"
+            float3 inputs:in1.connect = </Root/LineOffset/ToEye.outputs:out>
+            float inputs:in2.connect = </Root/LineOffset.inputs:offset>
+            float3 outputs:out
+        }
+
+        def Shader "Lift"
+        {
+            uniform token info:id = "ND_realitykit_geometrymodifier_2_0_vertexshader"
+            float3 inputs:modelPositionOffset.connect = </Root/LineOffset/Scaled.outputs:out>
+            token outputs:out
+        }
+    }
+}
