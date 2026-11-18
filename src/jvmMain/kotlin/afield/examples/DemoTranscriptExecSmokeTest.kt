@@ -675,6 +675,8 @@ object DemoTranscriptExecSmokeTest {
         // evieve filters (2026-11-15): box 1 is an offline FFT plot, but boxes 2 and 3 end in audio(),
         // which opens the audio device.
         "evieve_filters",
+        // ZdfLadder/ZdfSvf/AdaaShaper with sliders; every box opens the audio device
+        "nonlinear_filters",
         // Requires a connected OpenXR runtime and real tracking; geometry math is covered by BodyGeometryTest.
         "body_one",
         "text_one_vr",

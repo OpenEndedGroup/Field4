@@ -5988,15 +5988,15 @@ A mono WAV emitter in OpenXR world metres, binauralized by Steam Audio once per 
 
 ### TptFilterDocs { #tptfilterdocs-kt-tptfilterdocs }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">TptFilterDocs</span></code>](source/jvmMain/afield/audio/synth/TptFilterDocs/#L11)
+[<code class="highlight"><span class="k">object</span> <span class="nc">TptFilterDocs</span></code>](source/jvmMain/afield/audio/synth/TptFilterDocs/#L12)
 
-The four listening clips for the evieve-family filters ([`TptOnePole`](synthesis.md#filters-kt-tptonepole), [`TiltEQ`](synthesis.md#filters-kt-tilteq), [`Korg35`](synthesis.md#filters-kt-korg35), [`Resonator`](synthesis.md#filters-kt-resonator)) on `spectral_examples.md`, each one signal graph rendered offline by [`renderSignalsOffline`](synthesis.md#csoundbox-kt--rendersignalsoffline) with a filter parameter driven by an oscillator through `Param.mod`. The docs runner calls [`renderWav`](audio.md#tptfilterdocs-kt--tptfilterdocs--renderwav) for each `audio=` fence.
+The listening clips for the evieve-family filters ([`TptOnePole`](synthesis.md#filters-kt-tptonepole), [`TiltEQ`](synthesis.md#filters-kt-tilteq), [`Korg35`](synthesis.md#filters-kt-korg35), [`Resonator`](synthesis.md#filters-kt-resonator), and the nonlinear [`AdaaShaper`](synthesis.md#filters-kt-adaashaper), [`ZdfLadder`](synthesis.md#filters-kt-zdfladder), [`ZdfSvf`](synthesis.md#filters-kt-zdfsvf) and [`Smoother`](synthesis.md#filters-kt-smoother)) on `spectral_examples.md`, each one signal graph rendered offline by [`renderSignalsOffline`](synthesis.md#csoundbox-kt--rendersignalsoffline) with a filter parameter driven by an oscillator through `Param.mod`. The docs runner calls [`renderWav`](audio.md#tptfilterdocs-kt--tptfilterdocs--renderwav) for each `audio=` fence.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="tptfilterdocs-kt--tptfilterdocs--sr"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SR</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/audio/synth/TptFilterDocs/#L12) |  |
-| <a id="tptfilterdocs-kt--tptfilterdocs--scene"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">scene</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Signal</span></code>](source/jvmMain/afield/audio/synth/TptFilterDocs/#L16) |  |
-| <a id="tptfilterdocs-kt--tptfilterdocs--renderwav"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">renderWav</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">outPath</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/TptFilterDocs/#L36) |  |
+| <a id="tptfilterdocs-kt--tptfilterdocs--sr"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SR</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/audio/synth/TptFilterDocs/#L13) |  |
+| <a id="tptfilterdocs-kt--tptfilterdocs--scene"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">scene</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Signal</span></code>](source/jvmMain/afield/audio/synth/TptFilterDocs/#L17) |  |
+| <a id="tptfilterdocs-kt--tptfilterdocs--renderwav"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">renderWav</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">outPath</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/TptFilterDocs/#L55) |  |
 
 ## TrackedBodyDocs.kt { #trackedbodydocs-kt }
 

@@ -46,9 +46,11 @@ operations:
       frame: { x: 60.0, y: 460.0, w: 520.0, h: 140.0 }
       properties:
         code: |
-          // A sine driven into tanh twice, once naive and once with ADAA; the crossfade slider picks
-          // between them. Raise the frequency past 3 kHz and listen for
-          // the inharmonic tones under the naive one.
+          /*
+          A sine driven into tanh twice, once naive and once with ADAA; the crossfade slider picks
+          between them. Raise the frequency past 3 kHz and listen for
+          the inharmonic tones under the naive one.
+          */
           val freq = Param(1000f)
           val mix = Param(0f)
           slider("frequency (Hz)", min = 100.0, max = 8000.0, initialValue = 1000.0) { freq.base = it.toFloat() }

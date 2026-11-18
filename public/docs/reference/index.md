@@ -679,7 +679,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**41646 public symbols across 1844 source files**, 24814 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**41680 public symbols across 1844 source files**, 24831 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -702,7 +702,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Function](function.md) | 16 | 632 | 424 (67%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Search](search.md) | 11 | 509 | 503 (98%) | Optimisation over a space you can only sample. |
 | [Visualization](visualization.md) | 69 | 1885 | 1343 (71%) | Turning a value into something you can look at, without leaving the box. |
-| [Synthesis](synthesis.md) | 54 | 1957 | 1095 (55%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
+| [Synthesis](synthesis.md) | 54 | 1991 | 1112 (55%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
 | [Patterns](patterns.md) | 40 | 1332 | 729 (54%) | Musical time, as a value. |
 | [Audio](audio.md) | 99 | 2658 | 1430 (53%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 22 | 592 | 592 (100%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
@@ -1252,7 +1252,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>knowledge/<wbr></small> [FilestoreDir.kt](ai4.md#filestoredir-kt) | AI4 | 9 | 6 | Where Field's derived completion indexes live, resolved in one place for every index that needs it. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>persistence/<wbr></small> [FileWatchManager.kt](workspace.md#filewatchmanager-kt) | Workspace · internal | 5 | 5 | Reloads an open document's properties when their sidecar files are edited outside Field. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>tools/<wbr>docs/<wbr></small> [filmTimeline.kt](workspace.md#filmtimeline-kt) | Workspace · internal | 30 | 11 | A film's timeline: keys at film time, read from a JSON file, that `film-page --timeline` plays frame by frame. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [Filters.kt](synthesis.md#filters-kt) | Synthesis | 68 | 15 | The filters, and the one saturator that keeps them company. | [Signal examples: time and frequency](../spectral_examples.md), [Subharmonic Synthesis: an Octave Below](../subharmonic_sound.md), [Agent transcript gallery](../agent_transcripts.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [Filters.kt](synthesis.md#filters-kt) | Synthesis | 102 | 32 | The filters, and the one saturator that keeps them company. | [Signal examples: time and frequency](../spectral_examples.md), [Subharmonic Synthesis: an Octave Below](../subharmonic_sound.md), [Agent transcript gallery](../agent_transcripts.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr></small> [FLine.kt](graphics.md#fline-kt) | Graphics | 108 | 78 | `FLine` is Field's drawn path: a list of move, line and cubic segments with per-node and per-line properties, built with `moveTo` / `lineTo` / `cubicTo` and drawn by `Box.lines(...)`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>graph/<wbr></small> [fline_graph_connectivity.kt](graphics.md#fline-graph-connectivity-kt) | Graphics | 13 | 5 | Bridge from drawn geometry to the graph algorithms: turns one or more `FLine`s into a welded point graph. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>visualization/<wbr></small> [FLineEditableSvg.kt](visualization.md#flineeditablesvg-kt) | Visualization | 0 | 0 |  |  |
