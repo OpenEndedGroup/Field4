@@ -85,7 +85,7 @@ class DrawingOnTest {
     /** Opt-in cross-language test: real Ktor endpoint, real FLine buffers, native URLSession client. */
     @Test fun nativeBidirectionalRoundTrip() {
         val native = System.getenv("DRAWINGON_NATIVE_PATH")
-        org.junit.Assume.assumeTrue("Set DRAWINGON_NATIVE_PATH for the Swift ⇄ Field test", native != null)
+        org.junit.Assume.assumeTrue("Set DRAWINGON_NATIVE_PATH to native/field-drawingon for the Swift ⇄ Field test", native != null)
         val root = Files.createTempDirectory("drawingon-native-").toFile()
         val target = DrawingOnTarget("integration", "integration-box")
         val received = CopyOnWriteArrayList<DrawingOnEvent>()

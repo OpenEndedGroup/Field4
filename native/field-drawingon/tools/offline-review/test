@@ -1,0 +1,7 @@
+#!/bin/zsh
+set -euo pipefail
+TASK_ROOT=${0:A:h:h:h}
+TASK_BUILD="$TASK_ROOT/.build/offline-review"
+mkdir -p "$TASK_BUILD"
+/usr/bin/xcrun swiftc -O -module-name DrawingOnReviewTests "$TASK_ROOT/DrawingOn/Model.swift" "$TASK_ROOT/DrawingOn/FieldReference.swift" "$TASK_ROOT/DrawingOn/Journal.swift" "$TASK_ROOT/tools/offline-review/ReviewCore.swift" "$TASK_ROOT/tools/offline-review/ReviewRender.swift" "$TASK_ROOT/tools/offline-review/TestReview.swift" -o "$TASK_BUILD/test-review"
+"$TASK_BUILD/test-review"

@@ -283,6 +283,7 @@ object DemoTranscriptExecSmokeTest {
         // is deliberately in CI: it is what makes "Field can look at what its back ends produce" a
         // checked claim rather than a page's assertion.
         "geometry_from_disk",
+        "drawing_on",
         "vision_metal_cube",
         // JVM Kotlin that compiles a Live Metal box's Kotlin/JS for real, runs it, and rasterises
         // the mesh it builds. No headset and no Metal toolchain, so it runs to completion here.

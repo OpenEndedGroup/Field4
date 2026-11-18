@@ -883,6 +883,16 @@ the length label follow every drag. Box 2 is a slab whose height is a handle hel
 
 [Open →](offline.html?file=assets/agent_transcripts/three_handles/metadata.edn)
 
+### drawing_on
+
+[Drawing on iPad](drawing_on.md): an editable plan and a native Pencil/voice capture head. Run the
+head box to preview and publish the plan; connect Drawing On to target `ipad`. Each completed
+Pencil stroke receives a Field crosshair at its last measured point. The guide box explains
+recording offline, uploading later, and reviewing a save file on a Mac. The desktop preview works
+without an iPad.
+
+[Open →](offline.html?file=assets/agent_transcripts/drawing_on/metadata.edn)
+
 ### fline_hit_records
 
 **What a click on a figure returns.** A wall of panels drawn through `Box.inspect`. Click a panel and

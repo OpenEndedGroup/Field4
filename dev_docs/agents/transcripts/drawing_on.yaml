@@ -1,0 +1,82 @@
+name: drawing_on
+description: >
+  Draw and talk on an iPad while Field publishes a plan and responds to each measured Pencil
+  endpoint. The preview works without an iPad. Run the drawing-head box, connect the native
+  Drawing On app to target ipad, then draw. Offline captures remain on the iPad for later upload.
+docs:
+  - page: drawing_on.md
+    why: "Native iPad capture, FLine return geometry and offline save-file review."
+operations:
+  - create:
+      box: drawing-on-guide
+      name: Drawing On · start here
+      frame: { x: 40.0, y: 40.0, w: 420.0, h: 100.0 }
+      properties:
+        code: |
+          markdown(
+              """
+              # Drawing On
+              Run **iPad drawing head** to publish the plan and watch its preview here.
+
+              On a Mac, **./field.sh --setup** offers Drawing On and prepares its offline reader.
+              Build the optional app in **native/field-drawingon/DrawingOn.xcodeproj**.
+              Connect it to **/drawingon/ws**, target **ipad**, and enable **Stream live**.
+              Finish a Pencil stroke: Field sends a crosshair at its last measured point.
+
+              Change **roomWidth** and rerun to change the plan. Re-running replaces this
+              box's callback. Give another independent head a different target name.
+
+              For offline work leave streaming off, record drawing and optional voice,
+              then **Finish capture**. Upload later from **Saved captures**, or share the
+              **.ndjson** save and run **native/field-drawingon/tools/offline-review/review**
+              on a Mac for contact sheets, speech clips and a manifest.
+
+              [Setup, coordinates and offline review](https://openendedgroup.com/field4/drawing_on/)""".trimIndent(),
+          )
+  - create:
+      box: drawing-on-head
+      name: iPad drawing head
+      frame: { x: 520.0, y: 40.0, w: 420.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.io.drawingon.drawingOn
+          import kotlinx.serialization.json.*
+
+          val pad = drawingOn("ipad")
+          val roomWidth = 400.0
+          val plan =
+              FLine().moveTo(120, 160).lineTo(120 + roomWidth, 160).lineTo(120 + roomWidth, 460).lineTo(120, 460).lineTo(120, 160)
+          plan.color = vec(1.0, 1.0, 1.0, 0.45)
+
+          fun showPlan(extra: List<FLine> = emptyList()) {
+              val drawing = listOf(plan) + extra
+              pad.publish(drawing, title = "Studio plan")
+              lines(drawing, w = 640.0, h = 520.0)
+          }
+          showPlan()
+
+          val endpoints = mutableMapOf<String, Pair<Double, Double>>()
+          pad.onEvent { event ->
+              if (!event.upload) {
+                  val stroke = event.data["stroke"]?.jsonPrimitive?.contentOrNull
+                  if (event.type == "stroke.samples" && stroke != null) {
+                      val last = event.data["samples"]?.jsonArray?.lastOrNull()?.jsonObject
+                      val x = last?.get("drawingX")?.jsonPrimitive?.doubleOrNull
+                      val y = last?.get("drawingY")?.jsonPrimitive?.doubleOrNull
+                      if (x != null && y != null) endpoints[stroke] = x to y
+                  }
+                  if (event.type == "stroke.end" && stroke != null) {
+                      val point = endpoints.remove(stroke)
+                      if (point != null && event.data["cancelled"]?.jsonPrimitive?.booleanOrNull != true) {
+                          val (x, y) = point
+                          val marker = FLine().moveTo(x - 12, y).lineTo(x + 12, y).moveTo(x, y - 12).lineTo(x, y + 12)
+                          marker.color = vec(1.0, 1.0, 1.0, 0.8)
+                          showPlan(listOf(marker))
+                          println("Pencil endpoint ($x, $y) at ${event.time}s")
+                      }
+                  }
+              }
+          }
+  - execute: { box: drawing-on-guide, property: code }
+  - execute: { box: drawing-on-head, property: code }
+  - await: { wait: pending }

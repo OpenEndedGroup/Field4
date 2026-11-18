@@ -97,3 +97,13 @@ Open WiVRn and complete macOS permissions and headset pairing afterward.
 builds WiVRn's runtime with Field's patch (`optional/wivrn-macos/README.md`) so Field can stay on
 KosmicKrisp in VR. It needs Xcode and the LunarG Vulkan SDK in `~/VulkanSDK`, installs the port's
 missing Homebrew build dependencies, and rebuilds the runtime when Field's pin or patch changes.
+
+### Drawing On for iPad
+
+On macOS, **Drawing On iPad app / offline reader** prepares the Mac save-file reader after the
+normal BUILD confirmation. It compiles from bundled Swift sources with Apple Command Line Tools;
+it downloads no packages or models. Setup reports the reader binary as an artifact, not proof
+that an iPad app is installed or connected. Full Xcode, the iPadOS SDK, device signing and Run
+remain in Xcode. Open the `drawing_on` starting place and follow
+[Drawing on iPad](../../public/docs/drawing_on.md) for the connection and offline workflow.
+The Field server adapter ships on every platform; only this native preparation is Mac-specific.

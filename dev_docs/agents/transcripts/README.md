@@ -85,6 +85,8 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
 
 ## Files
 
+- `drawing_on.yaml`: optional native iPad drawing/voice head, with an editable plan preview and FLine endpoint response. The app, offline save-file reader and tests live in `native/field-drawingon/`. See `public/docs/drawing_on.md`.
+
 - `stereo_rtt_composite.yaml`: desktop-first stereo cubes, resolution chart, editable per-eye-safe FXAA RTT, and optional OpenXR presentation. Launch 1, 2, 2b, 3, 4; the last box owns the render loop. See `public/docs/stereo_rtt_composite.md`.
 - `field_vr_ide.yaml`: Field's live frontend in an OpenXR panel, with either-hand rays, two-grip resizing, pinch fallback, and headset keyboard/mouse input. The Quest 3 workflow is headset-tested. Launch 1 then 2; desktop preview is the default. See `public/docs/field_vr_ide.md`.
 

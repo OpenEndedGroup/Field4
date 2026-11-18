@@ -64,6 +64,10 @@ internal val extrasCatalog = listOf(
         setOf("python3", "cmake", "git", "xcrun", "brew"), platforms = setOf("mac"),
         advice = "Everything WiVRn headset streaming prepares, plus WiVRn's runtime built with Field's patch so Field can stay on KosmicKrisp in VR (launch with --kosmickrisp). Needs Xcode and the LunarG Vulkan SDK in ~/VulkanSDK; installs the port's missing Homebrew build dependencies and clones it into ~/.field4/wivrn-macos. Rebuilds when Field's pin or patch changes.",
         preparation = listOf("python3", "tools/field_wivrn_macos.py", "--prepare", "--kosmickrisp")),
+    Extra("drawing-on", "Drawing On iPad app / offline reader", "Native clients", "public/docs/drawing_on.md",
+        setOf("xcrun"), platforms = setOf("mac"),
+        advice = "BUILD compiles the offline save-file reader using local Apple tools; no downloads. The iPad app needs full Xcode with the iPadOS SDK: open native/field-drawingon/DrawingOn.xcodeproj, choose your iPad and signing team, then Run. Open the drawing_on starting place in Field and connect the app to /drawingon/ws, target ipad. Field's server adapter is already included on every platform. Optional STT uses an existing local Whisper executable/model; setup does not install models or sign/install an iPad app.",
+        preparation = listOf("/bin/zsh", "native/field-drawingon/tools/prepare")),
 )
 
 internal fun platformId(os: String): String = when {
@@ -138,6 +142,7 @@ internal fun artifactCandidates(root: File, id: String, platform: String, enviro
         else -> "lib$name.so"
     }
     val recipe = when (id) {
+        "drawing-on" -> "" to listOf("native/field-drawingon/.build/offline-review/drawingon-review")
         "ceres" -> "AFIELD_CERES_LIBRARY" to listOf("build/ken-ceres-redistributable/${library("ken_ceres_jvm")}", "build/ken-ceres/${library("ken_ceres_jvm")}")
         "tetgen" -> "AFIELD_TETGEN_LIBRARY" to listOf("build/field-tetgen/build/${library("field_tetgen_jvm")}", "build/field-tetgen/build/Release/${library("field_tetgen_jvm")}")
         "paint" -> "AFIELD_PAINT_LIBRARY" to listOf("build/field-paint/release/${library("field_paint_jvm")}")
