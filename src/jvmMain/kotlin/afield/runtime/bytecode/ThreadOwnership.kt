@@ -39,14 +39,14 @@ enum class ThreadOwner {
 }
 
 /**
- * Marks a function that must be called on its [owner]'s thread. [ThreadOwnershipPass] guards every
+ * Marks a function that must be called on its `owner`'s thread. [ThreadOwnershipPass] guards every
  * call to it in box code; read from class files only (`BINARY`), through [CallTargets], so an
  * override inherits it from the declaration it overrides.
  *
  * With [checkLastArgument] the guard also sees the call's last argument: when that is a
  * [ThreadOwnedContext] with an owner, that owner is the thread the call must be on. The argument must
  * be a single-slot reference; a primitive (and a wide `long`/`double`) last argument, or a call through
- * a default-arguments stub, is refused at rewrite time and guarded by [owner] alone.
+ * a default-arguments stub, is refused at rewrite time and guarded by `owner` alone.
  *
  * Annotate what touches thread-confined state, never a builder: constructing a graph, setting a
  * `Param`, adding a module to a renderer must stay callable from any thread.
@@ -66,10 +66,13 @@ interface ThreadOwnedContext {
 }
 
 /**
- * What a thread-guard [Site] carries: the guarded target (`Signal.render`), its [owner], and whether
- * the inserted code passes the last argument ([lastArgument]). [refused] names why the annotation
- * asked for the argument and the pass did not pass it (`wide`, `primitive`, `no-arguments`,
- * `default-stub`), or is null.
+ * What a thread-guard [Site] carries.
+ *
+ * @property target the guarded call as `Owner.name`, named by the call's owner (`SineOsc.render`).
+ * @property owner whose thread the call must be on.
+ * @property lastArgument whether the inserted code passes the call's last argument to the check.
+ * @property refused why the annotation asked for the last argument and the pass did not pass it
+ *   (`wide`, `primitive`, `no-arguments`, `default-stub`), or null.
  */
 class ThreadGuard(val target: String, val owner: ThreadOwner, val lastArgument: Boolean, val refused: String?) {
     // Plain fields, read on every guarded call.
@@ -81,10 +84,20 @@ class ThreadGuard(val target: String, val owner: ThreadOwner, val lastArgument: 
 }
 
 /**
- * One thread-ownership violation, as reported: [target] was called on [thread] but belongs to
- * [ownerThread]. [box] is the innermost box-code frame with a proven line (null when no box code is
- * on the stack, as for the `GraphBindingRuntime` sampler); [caller] is then the first frame outside
- * the guarded API, so a library culprit is named too.
+ * One thread-ownership violation, as reported.
+ *
+ * @property owner whose thread [target] belongs to.
+ * @property target what was called: `SineOsc.render` from the pass, `SineOsc (Signal.render)` from
+ *   the library check.
+ * @property thread the thread it was called on, quoted.
+ * @property ownerThread the thread it belongs to, quoted.
+ * @property box the box and line: the guarded call's own line, or for the library check the innermost
+ *   box-code frame with a proven line; null when that is not proven or no box code is on the stack
+ *   (the `GraphBindingRuntime` sampler).
+ * @property site the pass's site, or null for the library check.
+ * @property caller for the library check, the first frame outside the guarded API, so a library
+ *   culprit is named too.
+ * @property message the line that was logged.
  */
 class ThreadOwnershipReport(
     val owner: ThreadOwner,
@@ -96,6 +109,7 @@ class ThreadOwnershipReport(
     val caller: StackTraceElement?,
     val message: String,
 ) {
+    /** The [message]. */
     override fun toString(): String = message
 }
 
@@ -378,6 +392,10 @@ object ThreadOwnershipPass : BoxBytecodePass {
         return ThreadGuard(target, owner, refused == null, refused)
     }
 
+    /**
+     * [next] itself for a method with no call to a [ThreadOwned] target (decided from the scan, before
+     * anything is emitted); otherwise a visitor that inserts a check before each such call.
+     */
     override fun method(cls: ClassScope, m: MethodScope, next: MethodVisitor): MethodVisitor {
         val loader = cls.origin.classLoader ?: return next
         val calls = m.facts.calls
