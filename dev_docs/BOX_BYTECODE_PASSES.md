@@ -147,7 +147,7 @@ Each pass is built on its own branch from this one and documents itself in its o
 |---|---|---|---|
 | call-site anchors | `CallSiteAnchorPass` | `asm/callsite-anchors` | `dev_docs/box_bytecode/CALLSITE_ANCHORS.md` |
 | line heat | `LineHeatPass` | `asm/line-heat` | `dev_docs/box_bytecode/LINE_HEAT.md` |
-| per-function cost | `BoxCostPass` | `asm/box-cost` | `dev_docs/box_bytecode/BOX_COST.md` |
+| per-function cost | `BoxCostPass` | `asm/box-cost` | [`dev_docs/box_bytecode/BOX_COST.md`](box_bytecode/BOX_COST.md) |
 | thread-ownership guards | `ThreadOwnershipPass` | `asm/thread-ownership` | `dev_docs/box_bytecode/THREAD_OWNERSHIP.md` |
 
 ### Call-site anchors: `@StackAware`
@@ -193,6 +193,14 @@ per-box run boundary, which resets the stack. Leaf methods (no calls, no loops, 
 not instrumented, so their cost is their caller's self time. Off by default, opted into per box;
 per-box totals need no ASM (the boundary measures them). Feeds the Profiling panel and the
 watchdog's stall report (`Watchdog.onStall`).
+
+Built (`BoxCost.kt`, note `dev_docs/box_bytecode/BOX_COST.md`): a third probe,
+`BoxCost.caught(site)` before the first instruction of each exception handler (after its frame), pops
+the frames a caught exception left, so a catch block's time is the catcher's. The boundaries are
+`evaluator.eval` in `KotlinInterface2`, each `CoroutineProfiles.resume`, and the end of each top-level
+Runloop tick. The panel is a "Box functions" tab over the `box-cost` RPC; the stall line, now built by
+`Watchdog.report`, names the hottest box function. Measured: ~28 ns per instrumented call, almost all
+of it two `System.nanoTime()` reads; a loop with no calls pays nothing.
 
 ### Thread-ownership guards
 
