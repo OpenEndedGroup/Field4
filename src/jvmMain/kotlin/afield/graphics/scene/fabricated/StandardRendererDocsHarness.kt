@@ -311,6 +311,58 @@ object StandardRendererDocsHarness {
         }
     }
 
+    /**
+     * The grounded torus seen close to where its shadow meets the floor, three ways: the fixed
+     * 1024² shadow map, the virtual shadow map, and the virtual shadow map's debug view (colour is
+     * the level each pixel's shadow came from, brightness its physical page). Also writes the page
+     * counters to `<outputPath>.txt`.
+     */
+    suspend fun renderVirtualShadowComparison(
+        outputPath: String,
+        renderer: Renderer = rendererFromContextOrDocument()
+    ): File {
+        fun closeUp(bundle: StandardRenderer.Bundle) {
+            configureGroundedTorusScene(bundle, renderer)
+            bundle.scene.aoStrength = 0f
+            bundle.scene.ambientColor.set(0.03f, 0.03f, 0.035f)
+            bundle.scene.lightIntensity = 1.5f
+            bundle.scene.shadowSoftness = 0.5f
+            bundle.scene.camera.at.set(0.75f, -0.55f, -0.75f)
+            bundle.scene.camera.target.set(0.75f, -0.85f, 0.25f)
+        }
+
+        val fixed = StandardRenderer.build(renderer)
+        closeUp(fixed)
+        fixed.present(renderer = renderer)
+        fixed.applyScenePlan()
+        fixed.attachTo(renderer)
+        val fixedPng = captureScene(tempPng("fabricate-vsm-fixed"), fixed, renderer) {}
+        fixed.detachEverywhere()
+
+        val virtual = StandardRenderer.build(renderer, StandardRenderer.Config(virtualShadows = true))
+        closeUp(virtual)
+        virtual.present(renderer = renderer)
+        virtual.applyScenePlan()
+        virtual.attachTo(renderer)
+        val vsm = virtual.virtualShadows ?: error("bundle built without a virtual shadow map")
+        val virtualPng = captureScene(tempPng("fabricate-vsm-virtual"), virtual, renderer) {}
+        val counters = vsm.describe()
+        val debugPng = captureScene(tempPng("fabricate-vsm-debug"), virtual, renderer) { vsm.debugView = 1 }
+        virtual.detachEverywhere()
+        File("$outputPath.txt").writeText(counters + "\n")
+        lprintln("info,doc", "virtual shadow map: $counters")
+
+        return try {
+            val pair = tempPng("fabricate-vsm-pair")
+            composeHorizontal(fixedPng, virtualPng, pair)
+            composeHorizontal(pair, debugPng, File(outputPath)).also { pair.delete() }
+        } finally {
+            fixedPng.delete()
+            virtualPng.delete()
+            debugPng.delete()
+        }
+    }
+
     suspend fun renderAoComparison(
         outputPath: String,
         renderer: Renderer = rendererFromContextOrDocument(),
