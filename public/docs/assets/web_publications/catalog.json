@@ -1,77 +1,5 @@
 {
   "deferred": {
-    "assets/agent_transcripts/polytope_holes_and_chains/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "59a4e8714b57651704fdbf9db280ae2bcde6d5e4fef8d5099c63adea8edc89a1",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/polytope_layer_stack_path_trace/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/polytope_manifold_path_trace/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/polytope_path_trace_lineage/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/popup_prior_inspect/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/profiling_timeline/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/read_only_session/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/rectsl_glsl_sdf/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/rectsl_heading_fit/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/rectsl_inverse_animation/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/rectsl_spacetime_path_trace/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
-    "assets/agent_transcripts/rewrite_strategies_demo/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-18"
-    },
     "assets/agent_transcripts/satellites/metadata.edn": {
       "attempts": 0,
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
@@ -4755,18 +4683,18 @@
       }
     },
     "assets/agent_transcripts/polytope_holes_and_chains/metadata.edn": {
-      "captureDigest": "8ca26f3844345c6e7e29c7844d0aa5a8e67348467dae06f3a288c218afe53f85",
-      "capturedAt": "2026-11-17T22:41:47.470Z",
+      "captureDigest": "59a4e8714b57651704fdbf9db280ae2bcde6d5e4fef8d5099c63adea8edc89a1",
+      "capturedAt": "2026-11-18T15:54:55.979Z",
       "channels": 5,
       "file": "assets/web_publications/polytope_holes_and_chains/document/metadata.edn",
       "files": {
         "assets/web_publications/polytope_holes_and_chains/document/metadata.edn": "bec4e1ea1af2de44f5765453bf1cc6d9f3d50e6fbc2f9c1513aab5ca81e266ba",
-        "assets/web_publications/polytope_holes_and_chains/document/outputs.json": "3db3f84baff9463ff7d028c609fbdf1ae4f0ee0ff2a7c423bb5429bfbcd1365e",
-        "assets/web_publications/polytope_holes_and_chains/outputs/0.html": "b06c26ab562b82a35c17908ecefa78b6312219557cb6a4c651222a155fbe81e5",
-        "assets/web_publications/polytope_holes_and_chains/outputs/1.html": "a594c35374d0506c6a7533b8e43e5c4727be083ecac69c546fd1bedc20b48905",
-        "assets/web_publications/polytope_holes_and_chains/outputs/2.html": "502823e4fd05ae98e6d9d8b5289527a07af8ea2dd9a9874daf60eb5712cd2fc2",
-        "assets/web_publications/polytope_holes_and_chains/outputs/3.html": "2ac202e49dad4c3ef5f21bfb6a07a7daa4f0c08ff0dea5acab248a1cd0a8202e",
-        "assets/web_publications/polytope_holes_and_chains/outputs/4.html": "1ae00e01e8cb5083b2fcaee8038dc1858a5710bb94c32d97931405399ac6919d"
+        "assets/web_publications/polytope_holes_and_chains/document/outputs.json": "748b3db004650c42b06cdd45d73a527e13a4e6359b3c6b92b09462252002b583",
+        "assets/web_publications/polytope_holes_and_chains/outputs/0.html": "7316caab8083492fd70203878625516cdd60d2e7ddd699b50edb96301cd41e5a",
+        "assets/web_publications/polytope_holes_and_chains/outputs/1.html": "0402394191ca70fe63c86dff37117cff20e64f96abeeb96da40f3dc424ab8bef",
+        "assets/web_publications/polytope_holes_and_chains/outputs/2.html": "b019e94f6701ad505beb42f4311f0e971fa0d49f5f1b8acd2ffe8ad230e5e35e",
+        "assets/web_publications/polytope_holes_and_chains/outputs/3.html": "4453518d052a5e19644df40c0eb0e580852cbbe47f2c8c71fe5a8c69d4f28354",
+        "assets/web_publications/polytope_holes_and_chains/outputs/4.html": "f8ba19d2f41f648c767bf32049d57d4611f593b22be356c423bb56cdcb99d62b"
       },
       "kinds": [
         "three"
@@ -4782,13 +4710,13 @@
       }
     },
     "assets/agent_transcripts/polytope_layer_stack_path_trace/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "capturedAt": "2026-11-17T22:41:51.710Z",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-18T15:55:00.859Z",
       "channels": 1,
       "file": "assets/web_publications/polytope_layer_stack_path_trace/document/metadata.edn",
       "files": {
         "assets/web_publications/polytope_layer_stack_path_trace/document/metadata.edn": "eebe1c966c3f617c315bc1d0a4b8feea9a2fe3284b35fad32f48389bf831caa6",
-        "assets/web_publications/polytope_layer_stack_path_trace/document/outputs.json": "57f1c47bc10d345ae8e039f8e4be644d48fc2115287831624fcf40fd01ae1164",
+        "assets/web_publications/polytope_layer_stack_path_trace/document/outputs.json": "54a83f2a2a3e5fc988fb84c6646943264cf55714e67cbe69d2f3272af16bb923",
         "assets/web_publications/polytope_layer_stack_path_trace/outputs/0.html": "5f5102de1a62bc5e07eefe255abac404319946f973b816112465e205ee67d635"
       },
       "kinds": [
@@ -4810,13 +4738,13 @@
       ]
     },
     "assets/agent_transcripts/polytope_manifold_path_trace/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "capturedAt": "2026-11-17T22:48:15.518Z",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-18T15:55:06.505Z",
       "channels": 1,
       "file": "assets/web_publications/polytope_manifold_path_trace/document/metadata.edn",
       "files": {
         "assets/web_publications/polytope_manifold_path_trace/document/metadata.edn": "82329ef36813335fffedece4943b07be24a51516bccaaf6c679a5777b7159b75",
-        "assets/web_publications/polytope_manifold_path_trace/document/outputs.json": "8ecba5a1587137c70e34fc3bda73d612090d38ac6be3edae3de988f20f6b366d",
+        "assets/web_publications/polytope_manifold_path_trace/document/outputs.json": "60fa0cb6bcff83aed37503b0cef2f751d6eea1a6b8c9e4c1e146afec9055a45d",
         "assets/web_publications/polytope_manifold_path_trace/outputs/0.html": "1f7ca43dac03ae2d702709237dc378241d506d3cc0d94a77281e9c08216bbeb6"
       },
       "kinds": [
@@ -4838,13 +4766,13 @@
       ]
     },
     "assets/agent_transcripts/polytope_path_trace_lineage/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "capturedAt": "2026-11-17T22:48:20.131Z",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-18T15:55:11.048Z",
       "channels": 1,
       "file": "assets/web_publications/polytope_path_trace_lineage/document/metadata.edn",
       "files": {
         "assets/web_publications/polytope_path_trace_lineage/document/metadata.edn": "3ef295af15877218cb425561f315eb164febe16d80f1502c53ec0dcf2b8309f9",
-        "assets/web_publications/polytope_path_trace_lineage/document/outputs.json": "ec0a4b600f3177e7b1faaa5ef9d038481db2f2706482416cf6af99936558e20e",
+        "assets/web_publications/polytope_path_trace_lineage/document/outputs.json": "c107aa4bced8d57a576cb9c7161e47e6de887473404f1b6696c399a5151f28f1",
         "assets/web_publications/polytope_path_trace_lineage/outputs/0.html": "8d48c10596bd12b96b3c84947beb179be57808a30e41555696a20557d499adfd"
       },
       "kinds": [
@@ -4866,14 +4794,14 @@
       ]
     },
     "assets/agent_transcripts/popup_prior_inspect/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "capturedAt": "2026-11-17T22:48:25.480Z",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-18T15:55:17.538Z",
       "channels": 1,
       "file": "assets/web_publications/popup_prior_inspect/document/metadata.edn",
       "files": {
         "assets/web_publications/popup_prior_inspect/document/metadata.edn": "276abc1ad65b59b8e76ecf653cbc53b3f51ff3d02092fac5e54b15906dd2caf1",
-        "assets/web_publications/popup_prior_inspect/document/outputs.json": "a385b432447dd95539389611d7086888a414a0a3bc75e0907ef719fac59b31a1",
-        "assets/web_publications/popup_prior_inspect/outputs/0.html": "04eec781a9156e451ded25fc9a1ed935ae9f92087d8337057f92e15f8ac10e28"
+        "assets/web_publications/popup_prior_inspect/document/outputs.json": "38f8d72ac1808e3dc6b6a2fde21bbec17e73aa5aa06894381863c7f02a433403",
+        "assets/web_publications/popup_prior_inspect/outputs/0.html": "d59b8bc0be26711f2d4bdd2bc8835fb1196652cf8227979ee0b1b614295e85bb"
       },
       "kinds": [],
       "outputs": "assets/web_publications/popup_prior_inspect/document/outputs.json",
@@ -4885,14 +4813,14 @@
       }
     },
     "assets/agent_transcripts/rectsl_heading_fit/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "capturedAt": "2026-11-17T22:48:46.922Z",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-18T15:55:41.228Z",
       "channels": 1,
       "file": "assets/web_publications/rectsl_heading_fit/document/metadata.edn",
       "files": {
         "assets/web_publications/rectsl_heading_fit/document/metadata.edn": "b0e77dcfc6a42ad6f5c14fb27485ee402ef0378e425fec9d1f90255881fe5314",
-        "assets/web_publications/rectsl_heading_fit/document/outputs.json": "ff52baec4fbbe7d216cb7f9562e540ffa42eadd7a956b024ed5f8c0ff44d0f2e",
-        "assets/web_publications/rectsl_heading_fit/outputs/0.html": "771fcda1ceecb3f2652c7b504fb028a1114ee6538e1c7a6250e68ae4a1042154"
+        "assets/web_publications/rectsl_heading_fit/document/outputs.json": "07b417ccb93eca9d639586f93d3aaa4fa424f9a49d9a386d3a2cf97639ca4e7b",
+        "assets/web_publications/rectsl_heading_fit/outputs/0.html": "d7fbb652329a99fffaba8216aa55994c2b3d0422528ec221d57543263bc96112"
       },
       "kinds": [],
       "outputs": "assets/web_publications/rectsl_heading_fit/document/outputs.json",
@@ -4905,16 +4833,16 @@
       }
     },
     "assets/agent_transcripts/rectsl_inverse_animation/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "capturedAt": "2026-11-17T22:48:51.182Z",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-18T15:55:46.551Z",
       "channels": 3,
       "file": "assets/web_publications/rectsl_inverse_animation/document/metadata.edn",
       "files": {
         "assets/web_publications/rectsl_inverse_animation/document/metadata.edn": "5f5534f5d90909da25d80ea777c09a445c98a7221e762f1234a82f3b05c4d5a9",
-        "assets/web_publications/rectsl_inverse_animation/document/outputs.json": "9dbb25784ee566cb5319c8672c49f6e5301725095a8b2e10944421f6fdd50004",
-        "assets/web_publications/rectsl_inverse_animation/outputs/0.html": "1bb2a0af4e9c8ef72b95c7ac42a5a982d960c4f5d293a8a5a5acdae513a7e34e",
-        "assets/web_publications/rectsl_inverse_animation/outputs/1.html": "6ba8de5a9e4424821626d144461016291d4c1e5e3031cd896e99cd8986eb461d",
-        "assets/web_publications/rectsl_inverse_animation/outputs/2.html": "abd33d6b7385e6d5136d5dba7d739db85e0a205a6b20682b19abc433d38443ba"
+        "assets/web_publications/rectsl_inverse_animation/document/outputs.json": "d6b6c9a9d7ac867b1829a0da07f3da8a689cc443fe395bae4c1cd61f35be7039",
+        "assets/web_publications/rectsl_inverse_animation/outputs/0.html": "a997245266374552e54f199f88e4df25719ff25bb4cc26bc3e47d1a9954cad07",
+        "assets/web_publications/rectsl_inverse_animation/outputs/1.html": "40ba4134fd3ffdf73d4eff739cc354bdfd2d1142fec04ab1c1909f927e44fb86",
+        "assets/web_publications/rectsl_inverse_animation/outputs/2.html": "f921197ebdf69db8f91e16921c17bbc208522d4132756b1b7a039200226302fb"
       },
       "kinds": [],
       "outputs": "assets/web_publications/rectsl_inverse_animation/document/outputs.json",
@@ -4927,13 +4855,13 @@
       }
     },
     "assets/agent_transcripts/rectsl_spacetime_path_trace/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
-      "capturedAt": "2026-11-17T22:48:53.285Z",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-18T15:55:49.819Z",
       "channels": 1,
       "file": "assets/web_publications/rectsl_spacetime_path_trace/document/metadata.edn",
       "files": {
         "assets/web_publications/rectsl_spacetime_path_trace/document/metadata.edn": "138e602cd62b8e1341b54edef90c7d4e96eb0874a8a3168a348f5841321a7666",
-        "assets/web_publications/rectsl_spacetime_path_trace/document/outputs.json": "7a09cba6c6f7719abf0dd6c3439f3fb0c7ef73b55bdb8e0001d591c4cd96d50e",
+        "assets/web_publications/rectsl_spacetime_path_trace/document/outputs.json": "94744a6e6491e963a75862d44177496370ae566a54b02b70478572fb6b77b9be",
         "assets/web_publications/rectsl_spacetime_path_trace/outputs/0.html": "3da88f07af930c294beea9084fc4d490a87a6e8aa271ee5f59240d0e44fbb1aa"
       },
       "kinds": [
@@ -7002,7 +6930,7 @@
       }
     },
     "assets/agent_transcripts/profiling_timeline/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
       "channels": 0,
       "reason": "No output-area channels; the code remains available.",
       "sources": {
@@ -7016,7 +6944,7 @@
       }
     },
     "assets/agent_transcripts/read_only_session/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
       "channels": 0,
       "reason": "No output-area channels; the code remains available.",
       "sources": {
@@ -7027,7 +6955,7 @@
       }
     },
     "assets/agent_transcripts/rectsl_glsl_sdf/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
       "channels": 0,
       "reason": "No output-area channels; the code remains available.",
       "sources": {
@@ -7039,7 +6967,7 @@
       }
     },
     "assets/agent_transcripts/rewrite_strategies_demo/metadata.edn": {
-      "captureDigest": "519afab2790052b36dba6ba6c75af7ae18189aabd523709a381ef0fdbe710902",
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
       "channels": 0,
       "reason": "No output-area channels; the code remains available.",
       "sources": {
