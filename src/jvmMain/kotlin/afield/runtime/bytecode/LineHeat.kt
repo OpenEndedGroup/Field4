@@ -44,6 +44,13 @@ import java.util.concurrent.CopyOnWriteArrayList
  * appears in several methods of one class (a loop header revisited, a lambda body on the line that
  * creates it) shares one counter. A snippet whose source text is unknown gets no probes, because no
  * line of it could be placed in the box.
+ *
+ * A count is the number of times execution *entered* the line. A second `LINENUMBER` for the line
+ * it is already on, reached only by falling through (no stack-map frame since the last one, so no
+ * jump can land there), is not a new entry and gets no probe: kotlinc emits those around inlined
+ * lambda bodies, and without this `repeat(4) { n++ }` counted 9. Coming back to a line from another
+ * one (a multi-line call whose argument is on the next line, the end of inlined library code that
+ * reports its own lines) is an entry and counts.
  */
 object LineHeatPass : BoxBytecodePass {
     override val id = "line-heat"
@@ -59,8 +66,21 @@ object LineHeatPass : BoxBytecodePass {
         if (lines <= 0) return next
         val perLine = cls.attachment(LineHeatPass) { HashMap<Int, Site>() }
         return object : BoxMethodVisitor(next) {
+            private var previous = -1
+            private var merged = true
+
+            // Every branch target and handler start carries a stack-map frame, so code with no
+            // frame since the last line start is reached only by falling through from it.
+            override fun visitFrame(type: Int, numLocal: Int, local: Array<out Any>?, numStack: Int, stack: Array<out Any>?) {
+                merged = true
+                super.visitFrame(type, numLocal, local, numStack, stack)
+            }
+
             override fun atLineStart(line: Int) {
-                if (line < 1 || line > lines) return
+                val repeat = line == previous && !merged
+                previous = line
+                merged = false
+                if (repeat || line < 1 || line > lines) return
                 val site = perLine.getOrPut(line) { cls.site(m, KIND, line = line).also(LineHeat::register) }
                 super.visitLdcInsn(site.id)
                 super.visitMethodInsn(Opcodes.INVOKESTATIC, LineHeat.OWNER, "hit", "(I)V", false)
