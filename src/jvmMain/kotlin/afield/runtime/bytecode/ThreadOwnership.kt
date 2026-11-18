@@ -226,7 +226,9 @@ object ThreadOwnership {
         val owners = audioThreads
         if (owners.isEmpty()) return
         for (o in owners) if (o === t) return
-        violation(site, guard, t, owners[0])
+        // Off the fast path now. A thread that died without giving its context up owns nothing.
+        val live = owners.firstOrNull { it.isAlive } ?: return
+        violation(site, guard, t, live)
     }
 
     private fun violation(site: Int, guard: ThreadGuard, t: Thread, owner: Thread) {
