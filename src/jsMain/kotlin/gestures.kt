@@ -226,10 +226,10 @@ private fun connect_center_with_terminal(
         // Preserve the deliberate switchback on text-frame connections.
         radius = min(radius, max(1.0 / mainZoom, room / 2.0)) * 1.15
     } else {
-        // Ease towards the available turning room: almost the usual radius at long distances,
-        // tending to half the gap nearby. No hard threshold, and no large loop to meet a radius
-        // that the gap cannot fit. Keep the existing centre-ray attachments for ordinary boxes.
-        radius = if (room > 1e-6) max(1.0 / mainZoom, room * -expm1(-2.0 * radius / room) / 2.0)
+        // Double the flowing bend allowance before the smooth proximity easing:
+        // twice the usual radius at long distances, tending to half the gap nearby. Keep the
+        // existing centre-ray attachments for ordinary boxes.
+        radius = if (room > 1e-6) max(1.0 / mainZoom, room * -expm1(-4.0 * radius / room) / 2.0)
             else min(radius, 1.0 / mainZoom)
     }
 
