@@ -1632,6 +1632,13 @@ pre code {
     color: var(--ai-chat-you-fg, var(--field-fg));
 }
 
+/* Your prose sits right and slanted; a fence you typed is still code, so it reads left-aligned
+   and upright, the way it would in the editor. */
+.ai-chat-turn.you .ai-chat-markdown pre {
+    text-align: left;
+    font-style: normal;
+}
+
 /* A request Field wrote itself (AiChatBlock.isFieldMessage): the outcome of builds a turn waited for. The model
    reads it as the next request; it sits on the agent's side, unslanted, so it does not read as yours. */
 .ai-chat-turn.you.field {
