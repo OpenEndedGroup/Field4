@@ -98,7 +98,9 @@ and a reader for the box's code *now*.
 - a box with `//%-` breaks (or an implicit break before `moduleHere`) is compiled one fragment at a
   time, so line 1 of the second fragment is a later line of the box
   (`standardExecutionPractice` and the launch path rebase compile diagnostics with
-  `rebaseFragmentDiagnostics`, but nothing rebases runtime line numbers);
+  `rebaseFragmentDiagnostics`, but nothing rebases runtime line numbers). Measured in scenario F
+  of the runaway smoke: a frame on box line 4, the second line after a `//%-` on line 3, reports
+  bytecode line 2, and `boxLine` maps it back to 4;
 - macro expansion may change lines (an `Insert.start`/`afterImports`, a multi-line `here`);
 - inlined library code reports lines past the end of the source (the SMAP range);
 - the user edits the box while it runs.

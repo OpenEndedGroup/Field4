@@ -144,13 +144,14 @@ object RunawayBoxInterruptSmokeTest {
                 "println(\"a=\" + a)",
                 "//%-",
                 "val frame = afield.runtime.bytecode.SnippetClasses.boxFrame()",
-                "println(\"placed line=\" + frame?.line)",
+                "println(\"placed line=\" + frame?.line + \" raw=\" + frame?.element?.lineNumber)",
                 "println(\"placed reads=\" + afield.runtime.bytecode.CallTargets.supertypes(frame?.origin?.classLoader, \"afield/audio/synth/SineOsc\").contains(\"afield/audio/synth/Signal\"))",
             ).joinToString("\n")
             placed.properties["code"] = fCode
             val f = run(info, placed, fCode)
             check("F fragment box runs", f.ok, f.error.ifBlank { "succeeded" })
-            check("F a fragment's frame names its box line", "placed line=4" in f.stdout, f.stdout.lineSequence().filter { "placed" in it }.joinToString(" | "))
+            // raw=2: the bytecode's own line is fragment-relative, which is why lines map by text.
+            check("F a fragment's frame names its box line", "placed line=4 raw=2" in f.stdout, f.stdout.lineSequence().filter { "placed" in it }.joinToString(" | "))
             check("F CallTargets reads Field classes through the engine loader", "placed reads=true" in f.stdout, f.stdout.lineSequence().filter { "placed" in it }.joinToString(" | "))
         } catch (t: Throwable) {
             failures += "harness threw ${t.javaClass.simpleName}: ${t.message}"
