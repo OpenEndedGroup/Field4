@@ -35,10 +35,11 @@ val model = geometryModel {
     }
 }
 
-val solved = model.openSession().use { session ->
-    session.solve(maxIterations = 50)
-    p.map { session.get(it).let { v -> vec(v.x, v.y, v.z) } }
-}
+val solved =
+    model.openSession().use { session ->
+        session.solve(maxIterations = 50)
+        p.map { session.get(it).let { v -> vec(v.x, v.y, v.z) } }
+    }
 
 fun outline(at: List<Vec3>, c: Vec4) = fline {
     moveTo(at[0].x, at[0].y, at[0].z)
@@ -56,8 +57,7 @@ three(name = "square", height = 420) {
         **A rough quad, solved into a square**
 
         - sides ${sides.joinToString { it.f4 }}
-        - diagonals ${solved[0].distance(solved[2]).f4} and ${solved[1].distance(solved[3]).f4}
-        """.trimIndent(),
+        - diagonals ${solved[0].distance(solved[2]).f4} and ${solved[1].distance(solved[3]).f4}""".trimIndent(),
         corner = "top-left",
     )
     camera(yaw = 20.0, pitch = 25.0)
@@ -94,22 +94,35 @@ import afield.runtime.lifecycle.RunScope
 import kotlin.math.abs
 import kotlin.math.sqrt
 
-// Eight corners and six faces that must stay flat, and nothing else: no lengths, no right
-// angles. The bottom face is pinned; drag a top corner and Ceres finds the nearest shape whose
-// faces are all still flat.
+/*
+Eight corners and six faces that must stay flat, and nothing else: no lengths, no right
+angles. The bottom face is pinned; drag a top corner and Ceres finds the nearest shape whose
+faces are all still flat.
+*/
 
 val flatWeight = 1e4
 
 // Corner i sits at the bits of i: x = bit 0, y = bit 1, z = bit 2. y is up in the viewer.
 // The top four start knocked about, so no face begins flat.
-val knock = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [-0.25, 0.3, 0.1], [0.2, -0.15, 0.3], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.3, 0.2, -0.2], [-0.1, 0.35, -0.15]]
-val corners = (0 until 8).map { i -> [(i and 1) + knock[i][0], ((i shr 1) and 1) + knock[i][1], ((i shr 2) and 1) + knock[i][2]] }
+val knock = [
+    [0.0, 0.0, 0.0],
+    [0.0, 0.0, 0.0],
+    [-0.25, 0.3, 0.1],
+    [0.2, -0.15, 0.3],
+    [0.0, 0.0, 0.0],
+    [0.0, 0.0, 0.0],
+    [0.3, 0.2, -0.2],
+    [-0.1, 0.35, -0.15],
+]
+val corners =
+    (0 until 8).map { i -> [(i and 1) + knock[i][0], ((i shr 1) and 1) + knock[i][1], ((i shr 2) and 1) + knock[i][2]] }
 val edges = (0 until 8).flatMap { a -> [1, 2, 4].filter { (a and it) == 0 }.map { bit -> a to (a or bit) } }
 // Each face's corners in perimeter order: one axis held at 0 or 1, walking round the other two.
-val faces = [1, 2, 4].flatMap { k ->
-    val (u, v) = [1, 2, 4].filter { it != k }
-    [0, k].map { s -> [s, s or u, s or u or v, s or v] }
-}
+val faces =
+    [1, 2, 4].flatMap { k ->
+        val (u, v) = [1, 2, 4].filter { it != k }
+        [0, k].map { s -> [s, s or u, s or u or v, s or v] }
+    }
 val pinned = [0, 1, 4, 5] // the y = 0 face
 
 // Edges coloured by the axis they started along.
@@ -127,7 +140,8 @@ val model = geometryModel {
 }
 
 // The session owns native memory; the next run of this box closes it.
-val session = model.openSession(policy = InteractionPolicy(preserveWeight = 1e-3, dragIterations = 12, settleIterations = 60))
+val session =
+    model.openSession(policy = InteractionPolicy(preserveWeight = 1e-3, dragIterations = 12, settleIterations = 60))
 RunScope.current()?.own(session, ReleasePolicy.ACCUMULATING)
 for (i in pinned) session.pin(p[i])
 session.solve(maxIterations = 60) // flatten the knocked-about start
@@ -139,9 +153,15 @@ fun corner(i: Int) = session.get(p[i]).let { vec(it.x, it.y, it.z) }
 /** How far a face's fourth corner sits off the plane through its first three. */
 fun bend(at: List<Vec3>, f: List<Int>): Double {
     val (a, b, c, d) = f.map { at[it] }
-    val ux = (b.x - a.x).toDouble(); val uy = (b.y - a.y).toDouble(); val uz = (b.z - a.z).toDouble()
-    val vx = (c.x - a.x).toDouble(); val vy = (c.y - a.y).toDouble(); val vz = (c.z - a.z).toDouble()
-    val nx = uy * vz - uz * vy; val ny = uz * vx - ux * vz; val nz = ux * vy - uy * vx
+    val ux = (b.x - a.x).toDouble()
+    val uy = (b.y - a.y).toDouble()
+    val uz = (b.z - a.z).toDouble()
+    val vx = (c.x - a.x).toDouble()
+    val vy = (c.y - a.y).toDouble()
+    val vz = (c.z - a.z).toDouble()
+    val nx = uy * vz - uz * vy
+    val ny = uz * vx - ux * vz
+    val nz = ux * vy - uy * vx
     return abs(nx * (d.x - a.x) + ny * (d.y - a.y) + nz * (d.z - a.z)) / sqrt(nx * nx + ny * ny + nz * nz)
 }
 
@@ -163,13 +183,16 @@ fun draw() {
 
         // One part per edge colour, so each family of edges can be hidden on its own.
         for ((bit, name) in axisName) {
-            val family = edges.filter { (a, b) -> (a xor b) == bit }.map { (a, b) ->
-                fline {
-                    moveTo(at[a].x, at[a].y, at[a].z)
-                    lineTo(at[b].x, at[b].y, at[b].z)
-                    color = axisColor[bit]!!
-                }
-            }
+            val family =
+                edges
+                    .filter { (a, b) -> (a xor b) == bit }
+                    .map { (a, b) ->
+                        fline {
+                            moveTo(at[a].x, at[a].y, at[a].z)
+                            lineTo(at[b].x, at[b].y, at[b].z)
+                            color = axisColor[bit]!!
+                        }
+                    }
             lines(family, id = "edges-$name", layer = ["Edges"])
         }
 
@@ -197,8 +220,7 @@ fun draw() {
             **Six flat faces, nothing else**
 
             - worst face bend ${"%.1e".format(worstBend)}
-            - edges from ${shortest.f2} to ${longest.f2}
-            """.trimIndent(),
+            - edges from ${shortest.f2} to ${longest.f2}""".trimIndent(),
             corner = "top-left",
         )
         controls(parts = true)
@@ -251,29 +273,35 @@ import afield.runtime.lifecycle.ReleasePolicy
 import afield.runtime.lifecycle.RunScope
 import kotlin.math.sqrt
 
-// The cube again, but its four uprights now run toward a vanishing point V. Each side face is a
-// quad cut from a triangle whose apex is V, and the top is any flat cut across the four rays, so
-// it can tilt. Drag V to change the taper, or slide a top corner along its ray while V holds still.
+/*
+The cube again, but its four uprights now run toward a vanishing point V. Each side face is a
+quad cut from a triangle whose apex is V, and the top is any flat cut across the four rays, so
+it can tilt. Drag V to change the taper, or slide a top corner along its ray while V holds still.
+*/
 
 val weight = 1e4
 
 // Corner i sits at the bits of i: x = bit 0, y = bit 1, z = bit 2. y is up in the viewer.
 val edges = (0 until 8).flatMap { a -> [1, 2, 4].filter { (a and it) == 0 }.map { bit -> a to (a or bit) } }
-val faces = [1, 2, 4].flatMap { k ->
-    val (u, v) = [1, 2, 4].filter { it != k }
-    [0, k].map { s -> [s, s or u, s or u or v, s or v] }
-}
+val faces =
+    [1, 2, 4].flatMap { k ->
+        val (u, v) = [1, 2, 4].filter { it != k }
+        [0, k].map { s -> [s, s or u, s or u or v, s or v] }
+    }
 val pinned = [0, 1, 4, 5] // the y = 0 face
 val uprights = edges.filter { (a, b) -> (a xor b) == 2 }
 val sideFaces = faces.filter { f -> f.any { it in pinned } && f.any { it !in pinned } }
 val vStart = [-0.15, 2.6, 1.5]
 
 // Start consistent: each top corner where its ray to V crosses the tilted plane y = 0.7 + 0.3x - 0.2z.
-val corners = (0 until 8).map { i ->
-    val base = [(i and 1).toDouble(), 0.0, ((i shr 2) and 1).toDouble()]
-    val t = (0.7 + 0.3 * base[0] - 0.2 * base[2]) / (vStart[1] - 0.3 * (vStart[0] - base[0]) + 0.2 * (vStart[2] - base[2]))
-    if (i in pinned) base else base.indices.map { k -> base[k] + (vStart[k] - base[k]) * t }
-}
+val corners =
+    (0 until 8).map { i ->
+        val base = [(i and 1).toDouble(), 0.0, ((i shr 2) and 1).toDouble()]
+        val t =
+            (0.7 + 0.3 * base[0] - 0.2 * base[2]) /
+                (vStart[1] - 0.3 * (vStart[0] - base[0]) + 0.2 * (vStart[2] - base[2]))
+        if (i in pinned) base else base.indices.map { k -> base[k] + (vStart[k] - base[k]) * t }
+    }
 
 val axisName = mapOf(1 to "x", 2 to "y", 4 to "z")
 val axisColor = mapOf(1 to vec(0.95, 0.35, 0.3, 1.0), 2 to vec(0.4, 0.85, 0.4, 1.0), 4 to vec(0.35, 0.6, 1.0, 1.0))
@@ -291,7 +319,8 @@ val model = geometryModel {
     }
 }
 
-val session = model.openSession(policy = InteractionPolicy(preserveWeight = 1e-3, dragIterations = 12, settleIterations = 60))
+val session =
+    model.openSession(policy = InteractionPolicy(preserveWeight = 1e-3, dragIterations = 12, settleIterations = 60))
 RunScope.current()?.own(session, ReleasePolicy.ACCUMULATING)
 for (i in pinned) session.pin(p[i])
 
@@ -302,9 +331,15 @@ fun pos(r: PointRef) = session.get(r).let { vec(it.x, it.y, it.z) }
 
 /** How far V sits from the line through [a] and [b]. */
 fun miss(v: Vec3, a: Vec3, b: Vec3): Double {
-    val dx = (b.x - a.x).toDouble(); val dy = (b.y - a.y).toDouble(); val dz = (b.z - a.z).toDouble()
-    val wx = (v.x - a.x).toDouble(); val wy = (v.y - a.y).toDouble(); val wz = (v.z - a.z).toDouble()
-    val cx = dy * wz - dz * wy; val cy = dz * wx - dx * wz; val cz = dx * wy - dy * wx
+    val dx = (b.x - a.x).toDouble()
+    val dy = (b.y - a.y).toDouble()
+    val dz = (b.z - a.z).toDouble()
+    val wx = (v.x - a.x).toDouble()
+    val wy = (v.y - a.y).toDouble()
+    val wz = (v.z - a.z).toDouble()
+    val cx = dy * wz - dz * wy
+    val cy = dz * wx - dx * wz
+    val cz = dx * wy - dy * wx
     return sqrt(cx * cx + cy * cy + cz * cz) / sqrt(dx * dx + dy * dy + dz * dz)
 }
 
@@ -333,15 +368,22 @@ fun draw() {
         for ((n, f) in sideFaces.withIndex()) {
             val (a, b) = f.filter { it in pinned }
             val tri = triMesh {
-                vertex(at[a]); vertex(at[b]); vertex(v)
+                vertex(at[a])
+                vertex(at[b])
+                vertex(v)
                 triangle(0, 1, 2)
             }
             mesh(tri, id = "toward-$n", layer = ["Toward V"], wireframe = false, cullBackFaces = false, opacity = 0.08)
         }
-        lines(uprights.map { (_, top) -> segment(at[top], v, vec(1.0, 0.85, 0.3, 0.6)) }, id = "rays", layer = ["Toward V"])
+        lines(
+            uprights.map { (_, top) -> segment(at[top], v, vec(1.0, 0.85, 0.3, 0.6)) },
+            id = "rays",
+            layer = ["Toward V"],
+        )
 
         for ((bit, name) in axisName) {
-            val family = edges.filter { (a, b) -> (a xor b) == bit }.map { (a, b) -> segment(at[a], at[b], axisColor[bit]!!) }
+            val family =
+                edges.filter { (a, b) -> (a xor b) == bit }.map { (a, b) -> segment(at[a], at[b], axisColor[bit]!!) }
             lines(family, id = "edges-$name", layer = ["Edges"])
         }
 
@@ -378,8 +420,7 @@ fun draw() {
 
             - V at (${v.x.f2}, ${v.y.f2}, ${v.z.f2})
             - worst upright miss of V ${"%.1e".format(worstMiss)}
-            - top from y = ${tops.min().f2} to ${tops.max().f2}
-            """.trimIndent(),
+            - top from y = ${tops.min().f2} to ${tops.max().f2}""".trimIndent(),
             corner = "top-left",
         )
         controls(parts = true)
@@ -419,20 +460,23 @@ import afield.runtime.lifecycle.ReleasePolicy
 import afield.runtime.lifecycle.RunScope
 import kotlin.math.sqrt
 
-// The cube with two vanishing points: its uprights run toward V, its depth edges toward Vz, and its
-// width edges stay parallel. Only the front bottom edge is pinned. Every face with two converging
-// edges is cut from a triangle whose apex is that edge family's vanishing point. Drag V or Vz to
-// change a taper; slide a corner along its ray to change the height or the depth. The vanishing
-// points hold still unless you are dragging one.
+/*
+The cube with two vanishing points: its uprights run toward V, its depth edges toward Vz, and its
+width edges stay parallel. Only the front bottom edge is pinned. Every face with two converging
+edges is cut from a triangle whose apex is that edge family's vanishing point. Drag V or Vz to
+change a taper; slide a corner along its ray to change the height or the depth. The vanishing
+points hold still unless you are dragging one.
+*/
 
 val weight = 1e4
 
 // Corner i sits at the bits of i: x = bit 0, y = bit 1, z = bit 2. y is up in the viewer.
 val edges = (0 until 8).flatMap { a -> [1, 2, 4].filter { (a and it) == 0 }.map { bit -> a to (a or bit) } }
-val faces = [1, 2, 4].flatMap { k ->
-    val (u, v) = [1, 2, 4].filter { it != k }
-    [0, k].map { s -> [s, s or u, s or u or v, s or v] }
-}
+val faces =
+    [1, 2, 4].flatMap { k ->
+        val (u, v) = [1, 2, 4].filter { it != k }
+        [0, k].map { s -> [s, s or u, s or u or v, s or v] }
+    }
 val pinned = [0, 1] // the front bottom edge
 val family = { bit: Int -> edges.filter { (a, b) -> (a xor b) == bit } }
 
@@ -444,20 +488,30 @@ fun toward3(a: List<Double>, b: List<Double>, t: Double) = plus3(a, times3(minus
 
 /** Where the line a→b meets the line c→d (the point on the first nearest the second). */
 fun meet(a: List<Double>, b: List<Double>, c: List<Double>, d: List<Double>): List<Double> {
-    val u = minus3(b, a); val v = minus3(d, c); val w = minus3(a, c)
-    val uu = dot3(u, u); val uv = dot3(u, v); val vv = dot3(v, v)
+    val u = minus3(b, a)
+    val v = minus3(d, c)
+    val w = minus3(a, c)
+    val uu = dot3(u, u)
+    val uv = dot3(u, v)
+    val vv = dot3(v, v)
     return toward3(a, b, (uv * dot3(v, w) - vv * dot3(u, w)) / (uu * vv - uv * uv))
 }
 
 // A consistent start: depth a fifth of the way to Vz, height a quarter of the way to V.
 val vStart = [0.45, 3.9, 0.6]
 val vzStart = [0.6, -0.1, 5.0]
-val start = MutableList(8) { [0.0, 0.0, 0.0] }.also { c ->
-    c[0] = [0.0, 0.0, 0.0]; c[1] = [1.0, 0.0, 0.0]
-    c[4] = toward3(c[0], vzStart, 0.2); c[5] = toward3(c[1], vzStart, 0.2)
-    c[2] = toward3(c[0], vStart, 0.25); c[3] = toward3(c[1], vStart, 0.25)
-    c[6] = meet(c[4], vStart, c[2], vzStart); c[7] = meet(c[5], vStart, c[3], vzStart)
-}
+val start =
+    MutableList(8) { [0.0, 0.0, 0.0] }
+        .also { c ->
+            c[0] = [0.0, 0.0, 0.0]
+            c[1] = [1.0, 0.0, 0.0]
+            c[4] = toward3(c[0], vzStart, 0.2)
+            c[5] = toward3(c[1], vzStart, 0.2)
+            c[2] = toward3(c[0], vStart, 0.25)
+            c[3] = toward3(c[1], vStart, 0.25)
+            c[6] = meet(c[4], vStart, c[2], vzStart)
+            c[7] = meet(c[5], vStart, c[3], vzStart)
+        }
 
 val axisName = mapOf(1 to "x", 2 to "y", 4 to "z")
 val axisColor = mapOf(1 to vec(0.95, 0.35, 0.3, 1.0), 2 to vec(0.4, 0.85, 0.4, 1.0), 4 to vec(0.35, 0.6, 1.0, 1.0))
@@ -477,7 +531,8 @@ val model = geometryModel {
     }
 }
 
-val session = model.openSession(policy = InteractionPolicy(preserveWeight = 1e-3, dragIterations = 12, settleIterations = 60))
+val session =
+    model.openSession(policy = InteractionPolicy(preserveWeight = 1e-3, dragIterations = 12, settleIterations = 60))
 RunScope.current()?.own(session, ReleasePolicy.ACCUMULATING)
 for (i in pinned) session.pin(p[i])
 for (vp in vps.values) session.pin(vp)
@@ -492,9 +547,15 @@ fun pos(r: PointRef) = session.get(r).let { vec(it.x, it.y, it.z) }
 
 /** How far [v] sits from the line through [a] and [b]. */
 fun miss(v: Vec3, a: Vec3, b: Vec3): Double {
-    val dx = (b.x - a.x).toDouble(); val dy = (b.y - a.y).toDouble(); val dz = (b.z - a.z).toDouble()
-    val wx = (v.x - a.x).toDouble(); val wy = (v.y - a.y).toDouble(); val wz = (v.z - a.z).toDouble()
-    val cx = dy * wz - dz * wy; val cy = dz * wx - dx * wz; val cz = dx * wy - dy * wx
+    val dx = (b.x - a.x).toDouble()
+    val dy = (b.y - a.y).toDouble()
+    val dz = (b.z - a.z).toDouble()
+    val wx = (v.x - a.x).toDouble()
+    val wy = (v.y - a.y).toDouble()
+    val wz = (v.z - a.z).toDouble()
+    val cx = dy * wz - dz * wy
+    val cy = dz * wx - dx * wz
+    val cz = dx * wy - dy * wx
     return sqrt(cx * cx + cy * cy + cz * cz) / sqrt(dx * dx + dy * dy + dz * dz)
 }
 
@@ -525,16 +586,33 @@ fun draw() {
                 val near = f.filter { (it and bit) == 0 && (it or bit) in f }
                 if (near.size != 2) continue
                 val tri = triMesh {
-                    vertex(at[near[0]]); vertex(at[near[1]]); vertex(v)
+                    vertex(at[near[0]])
+                    vertex(at[near[1]])
+                    vertex(v)
                     triangle(0, 1, 2)
                 }
-                mesh(tri, id = "toward-$name-$n", layer = ["Toward $name"], wireframe = false, cullBackFaces = false, opacity = 0.06)
+                mesh(
+                    tri,
+                    id = "toward-$name-$n",
+                    layer = ["Toward $name"],
+                    wireframe = false,
+                    cullBackFaces = false,
+                    opacity = 0.06,
+                )
             }
-            lines(family(bit).map { (_, far) -> segment(at[far], v, vec(1.0, 0.85, 0.3, 0.6)) }, id = "rays-$name", layer = ["Toward $name"])
+            lines(
+                family(bit).map { (_, far) -> segment(at[far], v, vec(1.0, 0.85, 0.3, 0.6)) },
+                id = "rays-$name",
+                layer = ["Toward $name"],
+            )
         }
 
         for ((bit, name) in axisName) {
-            lines(family(bit).map { (a, b) -> segment(at[a], at[b], axisColor[bit]!!) }, id = "edges-$name", layer = ["Edges"])
+            lines(
+                family(bit).map { (a, b) -> segment(at[a], at[b], axisColor[bit]!!) },
+                id = "edges-$name",
+                layer = ["Edges"],
+            )
         }
 
         for ((bit, ref) in vps) {
@@ -544,8 +622,17 @@ fun draw() {
                 val y = drag.position.y.toDouble()
                 val z = drag.position.z.toDouble()
                 when (drag.phase) {
-                    ThreeHandleDrag.Phase.START -> { session.unpin(ref); held = session.drag(ref) }
-                    ThreeHandleDrag.Phase.MOVE -> (held ?: session.drag(ref).also { session.unpin(ref); held = it }).to(x, y, z)
+                    ThreeHandleDrag.Phase.START -> {
+                        session.unpin(ref)
+                        held = session.drag(ref)
+                    }
+                    ThreeHandleDrag.Phase.MOVE ->
+                        (held
+                                ?: session.drag(ref).also {
+                                    session.unpin(ref)
+                                    held = it
+                                })
+                            .to(x, y, z)
                     ThreeHandleDrag.Phase.END -> {
                         held?.to(x, y, z)
                         held?.release()
@@ -590,8 +677,7 @@ fun draw() {
             **Cube with two vanishing points**
 
             - V at (${vAt[2]!!.x.f2}, ${vAt[2]!!.y.f2}, ${vAt[2]!!.z.f2}), worst upright miss ${"%.1e".format(worstMiss[2])}
-            - Vz at (${vAt[4]!!.x.f2}, ${vAt[4]!!.y.f2}, ${vAt[4]!!.z.f2}), worst depth-edge miss ${"%.1e".format(worstMiss[4])}
-            """.trimIndent(),
+            - Vz at (${vAt[4]!!.x.f2}, ${vAt[4]!!.y.f2}, ${vAt[4]!!.z.f2}), worst depth-edge miss ${"%.1e".format(worstMiss[4])}""".trimIndent(),
             corner = "top-left",
         )
         controls(parts = true)
