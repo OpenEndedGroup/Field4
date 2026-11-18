@@ -6051,6 +6051,15 @@ suspend fun main() {
         Handled.yes
     }
 
+    // Line heat (afield.runtime.bytecode.LineHeat): per-line counts of the watched box, painted by lineHeatmap.js.
+    handlers.put("line-heat") { message, _ ->
+        val w = window.asDynamic()
+        if (w.LineHeatmap != null && w.LineHeatmap != undefined) {
+            w.LineHeatmap.applyLiveHeat(JSON.parse<dynamic>(message.payload.toString()))
+        }
+        Handled.yes
+    }
+
     handlers.put("set-user-theme") { message, _ ->
         val theme = Json.decodeFromJsonElement<UserTheme>(message.payload!!)
         applyUserTheme(theme)
