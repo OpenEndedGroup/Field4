@@ -35,7 +35,15 @@ ui.eval(
     "window.setAutoDisplayEditor(false);window.moveCanvasCamera(0,0,1);const b=[...document.querySelectorAll('.text-frame-box')].find(b=>b.name==='Research notes');window.selectBox(b);window.editTextFrame(b);return true;",
 )
 ui.waitForSelector(".text-frame-editing .text-frame-editor", 15000.0)
-ui.pause(300)
+ui.pause(500)
+check(
+    ui.eval(
+            "const a=[...document.querySelectorAll('.text-frame-box')].find(b=>b.name==='Research notes'),b=[...document.querySelectorAll('.text-frame-box')].find(b=>b.name==='Next question');return b.data_y===490&&b.getBoundingClientRect().top>a.getBoundingClientRect().bottom;",
+        )
+        .toString() == "true",
+) {
+    "Editing overlaps the connected frame"
+}
 ```
 
 Selection draws Field's cyan border. While editing, the background is black and the border disappears.
@@ -53,11 +61,11 @@ can be taller than the typeset result, so it scrolls inside the same frame while
 Ordinary Markdown image syntax works:
 
 ```diffstatic {data-lang=markdown}
-![A diagram](%document/diagram.png)
-![A reference image](%pictures/reference.webp)
-![An image found in the search directories](reference.webp)
-![An online image](https://example.org/reference.png)
+![A diagram](https://example.org/diagram.png)
 ```
+
+Replace the URL with a FileManager path for a local image: `%document/diagram.png`,
+`%pictures/reference.webp`, or a plain filename such as `reference.webp`.
 
 Local image paths use [FileManager](files_and_paths.md): `%document/` means the document's `files/`
 folder, `%project/` uses project files, and a registered `%name/` selects a named directory.
@@ -74,13 +82,21 @@ Raw HTML, scripts and arbitrary iframes are displayed as text. For interactive o
 ++alt++-click a text frame and choose **Open settings** to open its `textFrame` property as YAML in the
 normal editor. Missing defaults are filled in; your comments and additional keys survive.
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1060x720" screenshot="assets/text_frames/settings.png" transcript="../../dev_docs/agents/transcripts/docs_capture/text_frames.yaml" document="docs-text-frames-settings" fresh-document=true hide-toasts=true padding="0" wait="0" timeout="180" embed=true hidden=true name="text-frames-settings" alt="Field's normal property editor is open on the textFrame YAML page, showing font, padding, sizing, reflow and connection-border settings beside the formatted writing."}
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1060x720" clip-selector=".monaco-editor-container" screenshot="assets/text_frames/settings.png" transcript="../../dev_docs/agents/transcripts/docs_capture/text_frames.yaml" document="docs-text-frames-settings" fresh-document=true hide-toasts=true padding="0" wait="0" timeout="180" embed=true hidden=true name="text-frames-settings" alt="Field's normal property editor is open on the textFrame YAML page, showing font, padding, sizing, reflow and connection-border settings."}
 ui.eval(
     "window.setAutoDisplayEditor(false);window.moveCanvasCamera(0,0,1);const b=[...document.querySelectorAll('.text-frame-box')].find(b=>b.name==='Research notes');window.selectBox(b);window.openTextFrameSettings(b.uid);return true;",
 )
 ui.waitForSelector(".monaco-editor", 15000.0)
-ui.editorHeight(500)
+ui.editorHeight(320)
 ui.pause(600)
+check(
+    ui.eval(
+            "return window.currentSelectedProperty==='textFrame'&&window.globalEditor.getValue().includes('fontFamily');",
+        )
+        .toString() == "true",
+) {
+    "The textFrame settings page did not open"
+}
 ```
 
 ```diffstatic {data-lang=yaml}

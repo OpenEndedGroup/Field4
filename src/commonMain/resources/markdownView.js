@@ -25,7 +25,7 @@ export const safeMarkdownUrl = (url, allowImageData = false) => {
         return ""
 }
 
-const sanitizeNotesMarkdown = (root) => {
+const sanitizeNotesMarkdown = (root, options = {}) => {
         root.querySelectorAll("a[href]").forEach((link) => {
                 const safe = safeMarkdownUrl(link.getAttribute("href"))
                 if (safe) {
@@ -39,7 +39,7 @@ const sanitizeNotesMarkdown = (root) => {
                 const safe = safeMarkdownUrl(img.getAttribute("src"), true)
                 if (safe) {
                         img.setAttribute("src", safe)
-                        img.setAttribute("loading", "lazy")
+                        img.setAttribute("loading", options.eagerImages ? "eager" : "lazy")
                 } else {
                         img.remove()
                 }
@@ -222,7 +222,7 @@ const highlightNotesMarkdown = (root) => {
 /** The shared reader for box notes, Markdown proxies and the document guide panel. */
 export function renderFieldMarkdown(root, markdown, options = {}) {
     root.innerHTML = options.sourcePositions ? textFrameMarkdownToHtml(markdown) : aiChatMarkdownToHtml(markdown);
-    sanitizeNotesMarkdown(root);
+    sanitizeNotesMarkdown(root, options);
     if (options.resolveImage) root.querySelectorAll('img[src]').forEach(img => {
         const resolved = options.resolveImage(img.getAttribute('src'));
         if (resolved) img.setAttribute('src', resolved);

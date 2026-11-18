@@ -9,6 +9,8 @@ if(!frame||!menu)throw Error('Docs fixture missing');
 menu.dataset.docsMenu='true';window.__frameContent={frame,menu};
 await wait(()=>frame.querySelector('img')?.complete&&frame.querySelector('img')?.naturalWidth>0,'FileManager image did not load: '+JSON.stringify({src:frame.querySelector('img')?.src,document:window.currentDocumentFilename,session:window.currentDocumentSessionKey}));
 await wait(()=>[...document.querySelectorAll('.text-frame-overflow')].every(e=>e.hidden),'Documentation frames unexpectedly clip their contents');
+const child=[...document.querySelectorAll('.text-frame-box')].find(b=>b.name==='Next question');
+if(child.data_y!==490)throw Error('Loading partial frame properties moved the connected child: '+child.data_y);
 const image=frame.querySelector('img'),url=new URL(image.src);
 if(url.pathname!=='/api/text-frame-asset'||url.searchParams.get('path')!=='%document/frame-diagram.svg')throw Error('Wrong FileManager URL');
 const good=await fetch(url);

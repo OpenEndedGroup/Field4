@@ -17,11 +17,12 @@ const handledMarkingMouseups = new WeakSet();
 const forceClearMarkingMenu = () => {
         clearTimeout(submenuHoverTimer);
         submenuHoverTimer = null;
+        activeMarkingMenu?.releaseWidget?.();
         activeMarkingMenu = null;
         liveDivs = [];
         missingMouseupHandler = () => {};
         try {
-                document.querySelectorAll(".markingButton, .markingButtonBackground").forEach(el => {
+                document.querySelectorAll(".markingButton, .markingButtonBackground, .markingWidgetPanel").forEach(el => {
                         if (el.parentElement) el.parentElement.removeChild(el);
                 });
         } catch (e) {
@@ -114,7 +115,7 @@ function initMenuSupport() {
                         if (event.key === "Escape") {
                                 event.preventDefault(); event.stopImmediatePropagation();
                                 activeMarkingMenu.back();
-                        } else if (event.key === "Enter" && !event.target.closest?.('input,textarea,select,[contenteditable="true"]')) {
+                        } else if (event.key === "Enter" && !event.target.closest?.('.markingWidgetPanel,input,textarea,select,[contenteditable="true"]')) {
                                 event.preventDefault(); event.stopImmediatePropagation();
                                 activeMarkingMenu.choose(event);
                         }
@@ -163,8 +164,14 @@ const goMarkingMenu = (originx, originy, menus, originatingEvent, cancelCallback
         const stack = [{menus, x: originx, y: originy}];
         let generation = 0, pointer = {x: originx, y: originy}, level, closed = false;
         const childrenOf = entry => Array.isArray(entry?.children) && entry.children.length ? entry.children : null;
+        const opensLevel = entry => childrenOf(entry) || typeof entry?.mount === 'function';
+        let widgetPanel = null, releaseWidget = null;
         const clearHover = () => { clearTimeout(submenuHoverTimer); submenuHoverTimer = null; };
         const session = {
+                releaseWidget() {
+                        const release = releaseWidget; releaseWidget = null;
+                        try { release?.(); } finally { widgetPanel?.remove(); widgetPanel = null; }
+                },
                 close(cancelled = false) {
                         if (closed) return;
                         closed = true;
@@ -180,6 +187,7 @@ const goMarkingMenu = (originx, originy, menus, originatingEvent, cancelCallback
                         if (Number.isFinite(event?.clientX)) pointer = {x: event.clientX, y: event.clientY};
                 },
                 move(event) {
+                        if (widgetPanel) return;
                         pointer = {x: event.clientX, y: event.clientY};
                         if (!level.ready && Math.hypot(pointer.x - level.openedAt.x, pointer.y - level.openedAt.y) >= 12) level.ready = true;
                         const best = level.ready ? closestOption(pointer.x, pointer.y) : level.center;
@@ -188,7 +196,7 @@ const goMarkingMenu = (originx, originy, menus, originatingEvent, cancelCallback
                                 div.classList.toggle('markingHover', div === best);
                         }
                         if (best !== level.hovered) { clearHover(); level.hovered = best; }
-                        if (!childrenOf(best?.markingEntry)) return;
+                        if (!opensLevel(best?.markingEntry)) return;
                         const rect = best.getBoundingClientRect();
                         if (pointer.x < rect.left - 10 || pointer.x > rect.right + 10 || pointer.y < rect.top - 10 || pointer.y > rect.bottom + 10) { clearHover(); return; }
                         if (submenuHoverTimer) return;
@@ -198,6 +206,7 @@ const goMarkingMenu = (originx, originy, menus, originatingEvent, cancelCallback
                         }, 180);
                 },
                 choose(event) {
+                        if (widgetPanel) return true;
                         if (event && handledMarkingMouseups.has(event)) return true;
                         if (!level.ready) { if (event) handledMarkingMouseups.add(event); return true; }
                         const x = Number.isFinite(event?.clientX) ? event.clientX : pointer.x;
@@ -208,23 +217,51 @@ const goMarkingMenu = (originx, originy, menus, originatingEvent, cancelCallback
                 }
         };
         function enter(div) {
-                if (!childrenOf(div.markingEntry)) return;
+                if (!opensLevel(div.markingEntry)) return;
                 const rect = div.getBoundingClientRect();
                 // Leave room for six labels near canvas edges. The new level is disarmed until
                 // the pointer moves, so releasing where its parent was cannot pick a leaf.
                 const mx = Math.min(320, window.innerWidth / 2), my = Math.min(200, window.innerHeight / 2);
-                stack.push({menus: childrenOf(div.markingEntry),
+                stack.push({menus: childrenOf(div.markingEntry), widget: div.markingEntry,
                         x: Math.max(mx, Math.min(window.innerWidth - mx, rect.x + rect.width / 2)),
                         y: Math.max(my, Math.min(window.innerHeight - my, rect.y + rect.height / 2))});
                 show(true);
         }
         function show(disarm = false) {
-                clearHover(); generation++;
+                clearHover(); generation++; session.releaseWidget();
                 for (const div of liveDivs) { div.remove(); div.subDiv?.remove(); }
                 liveDivs = [];
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 const frame = stack[stack.length - 1], current = generation;
                 level = {ready: !disarm, openedAt: {...pointer}, hovered: null};
+                if (typeof frame.widget?.mount === 'function') {
+                        const entry = frame.widget;
+                        const panel = document.createElement('section');
+                        panel.className = 'markingWidgetPanel outputArea';
+                        panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', entry.text);
+                        const width = Math.min(entry.outputWidth || 360, window.innerWidth - 24);
+                        const height = Math.min(entry.outputHeight || 240, window.innerHeight - 76);
+                        panel.style.width = width + 'px';
+                        panel.style.left = Math.max(12, Math.min(window.innerWidth - width - 12, frame.x - width / 2)) + 'px';
+                        panel.style.top = Math.max(12, Math.min(window.innerHeight - height - 64, frame.y - height / 2)) + 'px';
+                        const header = document.createElement('header');
+                        const back = document.createElement('button'); back.textContent = 'Back'; back.title = 'Back (Esc)';
+                        back.addEventListener('click', () => session.back());
+                        const title = document.createElement('span'); title.textContent = entry.text;
+                        const close = document.createElement('button'); close.textContent = 'Close';
+                        close.addEventListener('click', () => session.close(true));
+                        header.append(back, title, close);
+                        const host = document.createElement('div'); host.className = 'markingWidgetBody'; host.style.height = height + 'px';
+                        panel.append(header, host);
+                        for (const type of ['mousedown','click','dblclick','wheel','keydown','keyup','contextmenu']) {
+                                panel.addEventListener(type, event => event.stopPropagation());
+                        }
+                        document.body.append(panel); widgetPanel = panel;
+                        try { releaseWidget = entry.mount(host); }
+                        catch (error) { host.textContent = error.message || String(error); }
+                        back.focus({preventScroll: true});
+                        return;
+                }
                 const center = makeDivAt(stack.length > 1 ? 'Back' : '&nbsp;&nbsp;&nbsp;', frame.x, frame.y,
                         frame.x, frame.y, rr, event => {
                                 if (event) handledMarkingMouseups.add(event);
@@ -237,7 +274,7 @@ const goMarkingMenu = (originx, originy, menus, originatingEvent, cancelCallback
                 level.center = center; liveDivs.push(center);
                 drawCircle(ctx, frame.x, frame.y, rr, 'rgba(255,255,255,0.5)');
                 for (const entry of frame.menus) {
-                        const children = childrenOf(entry);
+                        const children = opensLevel(entry);
                         const [cx, cy] = polarToRect(frame.x, frame.y, (entry.radius ?? 1) * radius, entry.angle);
                         let div;
                         div = makeDivAt(entry.text + (children ? ' ›' : ''), cx, cy, frame.x, frame.y, rr, event => {

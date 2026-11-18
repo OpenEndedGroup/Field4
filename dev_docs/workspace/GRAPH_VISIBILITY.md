@@ -40,3 +40,14 @@ once even when both native mouseup and interact.js's drag-end fallback arrive.
 Verification: `GraphVisibilityTest` covers cycles, shared descendants, root/deletion barriers and
 visibility-only changes. `tools/run_ui_regressions.py --id graph-visibility` exercises the actual
 marking gestures, all six actions, Back/Escape and command-palette recovery in an independent browser.
+
+## Output panels in marking menus
+
+`output("NW", "Controls", "controls", width = 360, height = 240)` in `Box.markingMenu` or a
+`submenu` opens an existing named output as a menu level. `buttons.js` mounts the panel and owns its
+cleanup. `outputareas2.js` borrows the live disclosure content, suspends disclosure sizing while it
+is borrowed, and restores it on Back/Escape/close. It preserves the DOM and uses `moveBefore` for
+stateful iframe views; browsers without that primitive decline iframe panels. Output updates and
+ordinary control callbacks continue using the original elements. Removing a channel or box releases
+the borrow. Nested canvases and inline-value channels cannot be borrowed. The public guide is
+[marking menus](../../public/docs/marking_menus.md).

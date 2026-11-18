@@ -5927,6 +5927,8 @@ suspend fun main() {
                 null
             }
 
+        fun hasPending(): Boolean = scheduled || deferred.isNotEmpty()
+
         fun shouldDefer(message: Message): Boolean {
             if (message.name == "message-batch") return true
             if (message.name == "describe-action") return true
@@ -5962,6 +5964,8 @@ suspend fun main() {
             }
         }
     }
+
+    window.asDynamic().fieldPropertySyncPending = { batchedMessageDrain.hasPending() }
 
     handlers.put("message-batch") { message, reply ->
         val batch = Json.decodeFromJsonElement<MessageBatch>(message.payload!!)

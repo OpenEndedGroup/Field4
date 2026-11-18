@@ -2603,7 +2603,8 @@ data class CustomMarkingRequest(val uid: String)
 @Serializable
 data class CustomMarkingEntry(
     val direction: String, val label: String, val callbackId: String, val radius: Double, val angle: Double,
-    val children: List<CustomMarkingEntry> = emptyList()
+    val children: List<CustomMarkingEntry> = emptyList(),
+    val outputChannel: String = "", val outputWidth: Int = 360, val outputHeight: Int = 240
 )
 
 @Serializable

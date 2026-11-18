@@ -107,7 +107,7 @@ function flush(state) {
     write(state.box, 'contents', state.editor.value);
 }
 function markdownOptions(state, sourcePositions = false) {
-    return {sourcePositions, resolveImage: src => {
+    return {sourcePositions, eagerImages: true, resolveImage: src => {
         if (/^(https?:|data:)/i.test(src)) return src;
         if (/^[a-z][a-z0-9+.-]*:/i.test(src)) return '';
         const params = new URLSearchParams({document: window.currentDocumentSessionKey || window.currentDocumentFilename || '', box: state.box.uid, path: src});
@@ -126,6 +126,9 @@ function layout(state) {
     cancelAnimationFrame(state.layoutFrame);
     state.layoutFrame = requestAnimationFrame(() => {
         if (!state.box.isConnected || state.box.classList.contains('tombstoned') || !(state.box.data_w > 0 && state.box.data_h > 0)) return;
+        // A resync drains large property batches over several turns. Never persist layout from
+        // a partial box (empty contents or default reflow), or move its neighbours during load.
+        if (window.fieldPropertySyncPending?.()) { layout(state); return; }
         const config = settingsFor(state.box);
         if (state.box.getAttribute('data-connection-border-length') !== String(config.connectionBorderLength)) {
             state.box.setAttribute('data-connection-border-length', config.connectionBorderLength);
@@ -145,7 +148,10 @@ function layout(state) {
             renderFieldMarkdown(state.preview, state.measuredDraft, markdownOptions(state));
             state.preview.classList.remove('text-frame-empty');
         }
-        if (config.sizing === 'grow' && !window.currentDocumentReadOnly) {
+        const face = getComputedStyle(state.preview);
+        const fontReady = !document.fonts || document.fonts.check(`${face.fontStyle} ${face.fontWeight} ${face.fontSize} ${face.fontFamily}`);
+        if (config.sizing === 'grow' && !window.currentDocumentReadOnly && fontReady && document.fonts?.status !== 'loading' &&
+            [...state.preview.querySelectorAll('img')].every(img => img.complete)) {
             // The hidden preview still lays out at the real frame width, including in split panes.
             const height = state.preview.style.height, bottom = state.preview.style.bottom;
             state.preview.style.height = 'auto'; state.preview.style.bottom = 'auto';
@@ -278,6 +284,7 @@ function mount(box) {
     }
     // Loaded images, math typesetting and a width resize can all change the amount of text that fits.
     body.addEventListener('load', () => layout(state), true);
+    body.addEventListener('error', () => layout(state), true);
     state.observer = new ResizeObserver(() => layout(state));
     state.observer.observe(box); state.observer.observe(preview);
     frames.set(box, state);

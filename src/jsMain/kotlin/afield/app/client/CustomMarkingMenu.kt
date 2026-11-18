@@ -71,6 +71,11 @@ fun requestCustomMarkingMenu(uid: String, x: Double, y: Double, event: dynamic) 
                 "angle" to entry.angle
             )
             if (entry.children.isNotEmpty()) result["children"] = entry.children.map(::menuEntry).toTypedArray()
+            if (entry.outputChannel.isNotBlank()) {
+                result["mount"] = { host: dynamic -> window.asDynamic().mountMarkingOutput(uid, entry.outputChannel, host) }
+                result["outputWidth"] = entry.outputWidth
+                result["outputHeight"] = entry.outputHeight
+            }
             return result
         }
         val menus = (response.entries.map { menuEntry(it) } + builtins).toTypedArray()

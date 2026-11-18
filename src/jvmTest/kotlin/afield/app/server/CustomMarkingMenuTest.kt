@@ -78,6 +78,22 @@ class CustomMarkingMenuTest {
         assertEquals(11, value)
     }
 
+    @Test fun liveOutputPanelsSerializeWithoutCallbackTokens() {
+        val box = Box(id = "marking-output-test")
+        box.markingMenu { submenu("N", "Tools") { output("E", "Controls", "controls", 420, 180) } }
+        val response = CustomMarkingResponse(box.id, prepareCustomMarkingEntries(box))
+        val entry = Json.decodeFromString<CustomMarkingResponse>(Json.encodeToString(response)).entries.single().children.single()
+        assertEquals("controls", entry.outputChannel)
+        assertEquals(420, entry.outputWidth)
+        assertEquals(180, entry.outputHeight)
+        assertEquals("", entry.callbackId)
+        assertFalse(fireCustomMarkingCallback(entry.callbackId))
+        for (channel in listOf("", "nested", "*inline")) {
+            assertFailsWith<IllegalArgumentException> { box.markingMenu { output("N", "Bad", channel) } }
+        }
+        assertFailsWith<IllegalArgumentException> { box.markingMenu { output("N", "Bad", "controls", 0) } }
+    }
+
     @Test fun invalidMenusFailAtInstallation() {
         val box = Box(id = "marking-invalid-test")
         assertFailsWith<IllegalArgumentException> { box.markingMenu { item("up", "Bad") {} } }

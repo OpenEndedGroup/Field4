@@ -7200,3 +7200,41 @@ html.field-theme-transition::view-transition-new(root) {
     animation-duration: 520ms;
     animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+/* A marking level can host an existing output without rebuilding its controls or views. */
+.markingWidgetPanel {
+    position: fixed;
+    z-index: 10002;
+    margin: 0;
+    padding: 0;
+    background: var(--field-panel-strong);
+    color: var(--field-fg-strong);
+    border: 1px solid var(--field-border-medium);
+    border-radius: 5px;
+    font: 12px var(--field-font);
+    overflow: hidden;
+}
+.markingWidgetPanel > header { display: flex; align-items: center; gap: 12px; padding: 8px; }
+.markingWidgetPanel > header > span { flex: 1; }
+.markingWidgetPanel button { font: inherit; color: inherit; background: transparent; border: 1px solid var(--field-border-medium); border-radius: 3px; padding: 4px 8px; }
+.markingWidgetBody { overflow: auto; }
+.markingWidgetPanel .marking-output-content {
+    display: block !important;
+    box-sizing: border-box;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+    padding: 8px !important;
+    margin: 0 !important;
+    overflow: auto !important;
+    resize: none !important;
+}
+
+.markingWidgetPanel .control-group { width: 100%; max-width: 100%; --field-slider-label-width: 84px; }
+.markingWidgetPanel .field-text-input { min-width: 0; }
+.markingWidgetPanel .field-meter .field-label { flex: 0 0 84px; white-space: nowrap; }
+.markingWidgetPanel .field-meter-visual { flex: 1 1 0; min-width: 0; }
+/* Field buttons keep their normal border when focused. */
+:is(button, [role="button"]):focus,
+:is(button, [role="button"]):focus-visible { outline: none !important; box-shadow: none !important; }

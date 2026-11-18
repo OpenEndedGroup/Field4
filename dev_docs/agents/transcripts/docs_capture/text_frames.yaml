@@ -56,7 +56,18 @@ operations:
       frame: { x: 720.0, y: 270.0, w: 160.0, h: 65.0 }
       properties:
         code: |
+          var menuGain = 0.4
+          controlGroup("controls") {
+              slider("Gain", initialValue = menuGain) {
+                  menuGain = it
+                  name = "Gain $it"
+              }
+              stringInput("Label", "Draft") { name = it }
+              meter("Live gain", source = { menuGain })
+          }
+          displayClose("controls")
           markingMenu {
+              output("NW", "Controls", "controls", width = 360, height = 180)
               item("N", "Rename") { name = "Revised draft" }
               submenu("E", "Status") {
                   item("N", "Ready") { name = "Ready" }

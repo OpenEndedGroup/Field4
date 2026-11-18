@@ -4908,6 +4908,8 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 shell_join(["macro", "write", "text_frame_backend_menu", "--file", str(TOOLS_ROOT / "ui_regressions/text-frame-backend-menu.yaml")]),
                 "macro run text_frame_backend_menu",
                 shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/text-frame-content-assert.js"), "--timeout", pw_timeout]),
+                shell_join(["macro", "write", "marking_output", "--file", str(TOOLS_ROOT / "ui_regressions/marking-output.yaml")]),
+                "macro run marking_output",
             ],
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
         ),

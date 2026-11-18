@@ -72,7 +72,8 @@ var Box.customMarking by Delegation<MutableMap<Pair<String, String>, () -> Unit>
 class MarkingMenuItem internal constructor(
     val direction: String, val label: String,
     internal val callback: (() -> Unit)? = null,
-    val children: List<MarkingMenuItem> = emptyList()
+    val children: List<MarkingMenuItem> = emptyList(),
+    val outputChannel: String = "", val outputWidth: Int = 360, val outputHeight: Int = 240
 )
 
 /** Build a radial level with [item] callbacks and nested [submenu] levels. */
@@ -88,6 +89,20 @@ class MarkingMenuBuilder {
     fun item(direction: String, label: String, callback: () -> Unit) {
         validate(direction, label)
         entries.add(MarkingMenuItem(direction, label, callback))
+    }
+
+    /**
+     * Put an existing output channel inside the menu. Controls, SVG/canvas visualizers and iframe
+     * views keep their live state and callbacks. Back/Escape returns them to their output area.
+     * Create the channel with the normal `controlGroup`, `display` or visualization API first.
+     */
+    fun output(direction: String, label: String, channel: String, width: Int = 360, height: Int = 240) {
+        validate(direction, label)
+        require(channel.isNotBlank() && channel != "nested" && !channel.startsWith("*")) {
+            "Use a named output channel; nested canvases and inline-value channels stay on the canvas"
+        }
+        require(width in 80..1200 && height in 40..900) { "Menu output size must be 80..1200 by 40..900 pixels" }
+        entries.add(MarkingMenuItem(direction, label, outputChannel = channel, outputWidth = width, outputHeight = height))
     }
 
     /** Open another radial level by hovering or releasing on this label. */
@@ -151,7 +166,7 @@ internal fun prepareCustomMarkingEntries(box: Box): List<CustomMarkingEntry> {
             }
         }
         return CustomMarkingEntry(item.direction, item.label, callbackId, info.radius, info.angle,
-            item.children.map(::prepare))
+            item.children.map(::prepare), item.outputChannel, item.outputWidth, item.outputHeight)
     }
     val legacy = box.customMarking.mapNotNull { (key, callback) ->
         val (direction, label) = key

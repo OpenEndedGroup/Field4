@@ -618,7 +618,7 @@ function disclosureInterface(container) {
                         requestAnimationFrame(() => {
                                 const current = disclosures.get(id);
                                 const state = ensureState(id);
-                                if (!current || current.inline || !state.open || state.userSized || state.autoSizeToken !== token) return;
+                                if (!current || current.borrowed || current.inline || !state.open || state.userSized || state.autoSizeToken !== token) return;
 
                                 const natural = contentSizeForDisclosure(current);
                                 const currentWidth = Number(state.width) || DEFAULT_W;
@@ -822,6 +822,7 @@ function disclosureInterface(container) {
                 st.contentVersion = (st.contentVersion || 0) + 1;
                 states.set(id, st);
                 const d = disclosures.get(id);
+                if (d?.borrowed) return;
                 if (!st.userSized && usesContentAutoSize(d)) {
                         scheduleAutoSize(id, reason);
                 } else if (!st.userSized) {
@@ -990,7 +991,7 @@ function disclosureInterface(container) {
         }
 
         function usesContentAutoSize(d) {
-                return !d?.inline && autoSizeModeForDisclosure(d) !== "fixed";
+                return !d?.borrowed && !d?.inline && autoSizeModeForDisclosure(d) !== "fixed";
         }
 
         function inlineTitle(title) {
@@ -1018,7 +1019,7 @@ function disclosureInterface(container) {
         }
 
         function saveScroll(id, d) {
-                if (d.inline) return;
+                if (d.inline || d.borrowed) return;
                 const st = ensureState(id);
                 st.scrollTop = d.cw.scrollTop;
                 st.scrollLeft = d.cw.scrollLeft;
@@ -1026,7 +1027,7 @@ function disclosureInterface(container) {
         }
 
         function rememberSize(id, d) {
-                if (d.inline) return;
+                if (d.inline || d.borrowed) return;
                 if (d.cw.style.display === "none") return;
                 const st = ensureState(id);
                 // Persist layout pixels, not the canvas-zoomed screen rectangle.
@@ -1047,7 +1048,7 @@ function disclosureInterface(container) {
         }
 
         function applyClosed(d) {
-                if (d.inline) return;
+                if (d.inline || d.borrowed) return;
                 d.selfResizeUntil = Date.now() + 250;
                 d.wrap.classList.remove("open");
                 d.cw.style.display = "none";
@@ -1057,7 +1058,7 @@ function disclosureInterface(container) {
         }
 
         function applyOpen(id, d) {
-                if (d.inline) return;
+                if (d.inline || d.borrowed) return;
                 const st = ensureState(id);
                 applySizeBoundsForId(id, d);
                 const clamped = clampSizeForId(id, st.width || DEFAULT_W, st.height || DEFAULT_H, st.userSized);
@@ -1084,7 +1085,7 @@ function disclosureInterface(container) {
         }
 
         function primeAutoSizeForOpen(id, d) {
-                if (!d || d.inline || !usesContentAutoSize(d)) return;
+                if (!d || d.borrowed || d.inline || !usesContentAutoSize(d)) return;
                 const st = ensureState(id);
                 if (st.userSized || st.lastAutoSizedContentVersion === (st.contentVersion || 0)) return;
 
@@ -1291,6 +1292,7 @@ function disclosureInterface(container) {
         function remove(id) {
                 const d = disclosures.get(id);
                 if (!d) return;
+                d.borrowRelease?.();
                 if (d.resizeObserver && typeof d.resizeObserver.disconnect === "function") {
                         d.resizeObserver.disconnect();
                         d.resizeObserver = null;
@@ -1544,7 +1546,7 @@ function disclosureInterface(container) {
                 const d = disclosures.get(id);
                 if (!d || d.inline) return null;
                 const st = ensureState(id);
-                if (st.open && d.cw.style.display !== "none") {
+                if (!d.borrowed && st.open && d.cw.style.display !== "none") {
                         return { width: d.cw.offsetWidth, height: d.cw.offsetHeight };
                 }
                 return { width: st.width || DEFAULT_W, height: st.height || DEFAULT_H };
@@ -1565,7 +1567,44 @@ function disclosureInterface(container) {
                 rememberChatPanel(id);
         }
 
-        const api = { upsertDisclosure, setContent, toggle, open, close, remove, closeAll, solo, isOpen, ids, getSize, setSize };
+        // Move the live content, keeping the disclosure's references so streamed output still updates it.
+        function borrowContent(id, host) {
+                const d = disclosures.get(id);
+                if (!d || d.inline || id === "nested") throw new Error(`Output '${id}' is not available. Run its box first.`);
+                if ([...d.cw.querySelectorAll('.box')].some(box => box.uid)) throw new Error('Nested canvases stay on the canvas.');
+                if (d.cw.querySelector('iframe') && typeof host.moveBefore !== 'function') {
+                        throw new Error('This browser cannot move an iframe without reloading it. Use its output area.');
+                }
+                d.borrowRelease?.();
+                const parent = d.cw.parentNode, next = d.cw.nextSibling;
+                const st = ensureState(id);
+                st.autoSizeToken++; st.pendingAutoSize = false;
+                d.borrowed = true;
+                d.cw.classList.add('marking-output-content');
+                const move = (target, node, before) => typeof target.moveBefore === 'function'
+                        ? target.moveBefore(node, before) : target.insertBefore(node, before);
+                let released = false;
+                const release = () => {
+                        if (released) return;
+                        released = true;
+                        const focus = d.cw.contains(document.activeElement) ? document.activeElement : null;
+                        d.borrowRelease = null; d.borrowed = false;
+                        if (parent.isConnected && disclosures.get(id) === d) {
+                                move(parent, d.cw, next?.parentNode === parent ? next : null);
+                                d.cw.classList.remove('marking-output-content');
+                                if (ensureState(id).open) {
+                                        primeAutoSizeForOpen(id, d); applyOpen(id, d); scheduleAutoSize(id, 'marking-return');
+                                } else applyClosed(d);
+                        } else d.cw.remove();
+                        if (focus?.isConnected) focus.blur();
+                };
+                d.borrowRelease = release;
+                try { move(host, d.cw, null); }
+                catch (error) { release(); throw error; }
+                return {release, valid: () => parent.isConnected && disclosures.get(id) === d && d.cw.parentNode === host};
+        }
+
+        const api = { borrowContent, upsertDisclosure, setContent, toggle, open, close, remove, closeAll, solo, isOpen, ids, getSize, setSize };
         container.__disclosureAPI = api;
         return api;
 }
@@ -3273,3 +3312,17 @@ if (location.hash.startsWith("#garden/")) {
 }
 
 installControllerChatProjection();
+
+/** Mount one box output as a live marking-menu panel, and return its cleanup callback. */
+window.mountMarkingOutput = (uid, channel, host) => {
+        const box = findBoxByUid(uid), group = box?.querySelector('.outputArea .disclosure-group');
+        if (!group) throw new Error('The output is not available. Run its box first.');
+        const borrowed = disclosureInterface(group).borrowContent(channel, host);
+        const check = setInterval(() => {
+                if (!borrowed.valid()) {
+                        clearInterval(check); borrowed.release();
+                        host.textContent = 'The output was removed.';
+                }
+        }, 200);
+        return () => { clearInterval(check); borrowed.release(); };
+};

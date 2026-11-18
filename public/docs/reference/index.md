@@ -679,7 +679,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**41654 public symbols across 1846 source files**, 24820 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**41656 public symbols across 1846 source files**, 24821 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -707,7 +707,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Audio](audio.md) | 99 | 2658 | 1430 (53%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 22 | 592 | 592 (100%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 131 | 3348 | 1689 (50%) | Field's small languages, from the host side. |
-| [Workspace](workspace.md) | 245 | 3389 | 1376 (40%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
+| [Workspace](workspace.md) | 245 | 3391 | 1377 (40%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [AI4](ai4.md) | 102 | 2296 | 863 (37%) | AI4 is the agent that lives inside Field: the chat panel on every box, the document chat, editor completion, and headless agent tasks. |
 | [Machine learning](machine-learning.md) | 26 | 727 | 444 (61%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Animation](animation.md) | 10 | 186 | 43 (23%) |  |
@@ -1025,7 +1025,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>cuda/<wbr></small> [CudaDriver.kt](graphics.md#cudadriver-kt) | Graphics | 16 | 13 | A small binding of NVIDIA's CUDA driver API (`libcuda.so`) over `java.lang.foreign`, for running kernels on the GPU Field's Vulkan renderer draws with and sharing that renderer's memory without copies. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>cuda/<wbr></small> [CudaInteropProof.kt](internal.md#cudainteropproof-kt) | Internal · internal | 4 | 3 | The proof that `CudaDriver` and Field's Vulkan renderer share memory on the same GPU with no copies, and the measurements behind `dev_docs/graphics/CUDA_DRIVER_FFM.md`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>cuda/<wbr></small> [CudaVulkan.kt](graphics.md#cudavulkan-kt) | Graphics | 14 | 13 | CUDA beside a Field renderer, written for box code: one CUDA context per `Renderer` on the same GPU, buffers both APIs use in place, kernels compiled from CUDA C, and CUDA work ordered with the frames that read its results. |  |
-| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [CustomMarking.kt](workspace.md#custommarking-kt) | Workspace · internal | 11 | 6 | Custom marking menus: `Box.markingMenu` builds callbacks and nested submenus; the older `Box.customMarking` map adds flat entries. |  |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [CustomMarking.kt](workspace.md#custommarking-kt) | Workspace · internal | 13 | 7 | Custom marking menus: `Box.markingMenu` builds callbacks and nested submenus; the older `Box.customMarking` map adds flat entries. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>layout/<wbr></small> [D2Layout.kt](visualization.md#d2layout-kt) | Visualization | 16 | 9 | Field's client for the `native/field-d2-layout` helper — d2's layout engines, TALA in particular, over a one-shot subprocess. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>notation/<wbr></small> [DarkThemeColour.kt](visualization.md#darkthemecolour-kt) | Visualization | 4 | 3 | Colour correction for marks written from code, so that they show as asked under the drawing layer's dark theme rather than as their inverted, hue-rotated selves. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>visualization/<wbr></small> [DataFrameCharts.kt](visualization.md#dataframecharts-kt) | Visualization | 2 | 2 | A typed frame, charting its own columns. |  |
