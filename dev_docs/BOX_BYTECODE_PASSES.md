@@ -177,7 +177,7 @@ Every frame, and wrong after a `//%-` break or a line-shifting macro.
 Per-line counters for the box open in the editor, painted as a fading gutter heat. `wants` is true
 only for the watched box, so every other box carries nothing; enabling takes effect at the box's
 next run (the module is rewritten from its originals). A probe `LDC site; INVOKESTATIC
-LineHeat.hit(I)V` after each `LINENUMBER` in the snippet's own range, one site per class and line;
+LineHeat.hit(I)V` at `atLineStart` for each line in the snippet's own range, one site per class and line;
 counts live in an int array indexed by site id; a Runloop-side publisher diffs them a few times a
 second, maps sites to box lines, and sends them to the editor, reusing `lineHeatmap.js`'s gutter
 rendering.

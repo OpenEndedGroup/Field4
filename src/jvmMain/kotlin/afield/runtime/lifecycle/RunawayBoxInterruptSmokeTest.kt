@@ -43,6 +43,9 @@ expect:
  *  - **D.** The next, ordinary box runs and prints.
  *  - **E.** With the watchdog's auto-interrupt off, [BoxInterrupt.request] from another thread (what
  *    the "Interrupt Running Box" command does) ends a runaway loop.
+ *  - **F.** The box-bytecode pipeline the poll runs in (`afield.runtime.bytecode.BoxBytecode`) places
+ *    a frame of a `//%-` box's second fragment on its box line, and reads Field's classes as
+ *    resources through the engine's loader.
  */
 object RunawayBoxInterruptSmokeTest {
 
@@ -131,6 +134,24 @@ object RunawayBoxInterruptSmokeTest {
             check("E request() interrupts", !e.ok && "smoke test command" in e.error, e.error.take(200))
             check("E frames move again", framesMove(), "frame=${Runloop.runLoop.frame}")
             check("E no request left pending", !BoxInterrupt.isPending(), "pending=${BoxInterrupt.isPending()}")
+
+            // F. The rewrite pipeline under a real K2 snippet: the second fragment of a `//%-` box is
+            // compiled on its own (its line 1 is box line 3), and a frame of it still names box line 5;
+            // and the engine's loader serves Field's classes as resources, which CallTargets needs.
+            val placed = createAgentBox(info, "placed", Rect(0.0, 0.0, 100.0, 100.0), emptyMap())
+            val fCode = listOf(
+                "val a = 1",
+                "println(\"a=\" + a)",
+                "//%-",
+                "val frame = afield.runtime.bytecode.SnippetClasses.boxFrame()",
+                "println(\"placed line=\" + frame?.line)",
+                "println(\"placed reads=\" + afield.runtime.bytecode.CallTargets.supertypes(frame?.origin?.classLoader, \"afield/audio/synth/SineOsc\").contains(\"afield/audio/synth/Signal\"))",
+            ).joinToString("\n")
+            placed.properties["code"] = fCode
+            val f = run(info, placed, fCode)
+            check("F fragment box runs", f.ok, f.error.ifBlank { "succeeded" })
+            check("F a fragment's frame names its box line", "placed line=4" in f.stdout, f.stdout.lineSequence().filter { "placed" in it }.joinToString(" | "))
+            check("F CallTargets reads Field classes through the engine loader", "placed reads=true" in f.stdout, f.stdout.lineSequence().filter { "placed" in it }.joinToString(" | "))
         } catch (t: Throwable) {
             failures += "harness threw ${t.javaClass.simpleName}: ${t.message}"
             t.printStackTrace(System.err)
