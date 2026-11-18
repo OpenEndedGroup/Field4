@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 24869 of 41733 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 24919 of 41800 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2044 undocumented entry points** (types, top-level functions and values) and 14090 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2044 undocumented entry points** (types, top-level functions and values) and 14107 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -31,8 +31,8 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Oscillators.kt](../src/jvmMain/kotlin/afield/audio/synth/Oscillators.kt) | Synthesis | explainer_sound, spectral_examples, csound | 12 | 42 | 42% |
 | [ThreeJsViewer.kt](../src/jvmMain/kotlin/afield/graphics/three/ThreeJsViewer.kt) | Graphics | three_output, fline_examples | 11 | 76 | 40% |
 | [PuppetBrowser.kt](../src/jvmMain/kotlin/afield/media/browser/PuppetBrowser.kt) | Imaging | puppet_browser | 11 | 70 | 10% |
+| [Filters.kt](../src/jvmMain/kotlin/afield/audio/synth/Filters.kt) | Synthesis | spectral_examples, agent_transcripts, subharmonic_sound | 11 | 59 | 31% |
 | [StackSL.kt](../src/jvmMain/kotlin/afield/lang/stacksl/StackSL.kt) | Languages | stacksl_examples | 11 | 47 | 15% |
-| [Filters.kt](../src/jvmMain/kotlin/afield/audio/synth/Filters.kt) | Synthesis | spectral_examples, subharmonic_sound, agent_transcripts | 11 | 42 | 22% |
 | [Signal.kt](../src/jvmMain/kotlin/afield/audio/synth/Signal.kt) | Synthesis | sound_paths, faust, spectral_examples | 10 | 53 | 28% |
 | [RayTracingModule.kt](../src/jvmMain/kotlin/afield/graphics/render/RayTracingModule.kt) | Graphics | ray_tracing_examples | 10 | 47 | 4% |
 | [StackAutoStudyTools.kt](../src/jvmMain/kotlin/afield/lang/stacksl/study/StackAutoStudyTools.kt) | Languages | stackauto_conversation, stacksl_examples | 10 | 13 | 23% |
@@ -678,7 +678,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Checks.kt](../src/jvmMain/kotlin/afield/tools/testing/Checks.kt) | Workspace | — | 0 | 14 | 33% |
 | [WfcGallery.kt](../src/jvmMain/kotlin/afield/examples/stdlib/WfcGallery.kt) | Examples | — | 0 | 13 | 68% |
 | [pointing.kt](../src/jvmMain/kotlin/afield/graphics/interaction/pointing.kt) | Graphics | — | 0 | 13 | 67% |
-| [StandardRendererDocsHarness.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/StandardRendererDocsHarness.kt) | Renderers | — | 0 | 13 | 43% |
+| [StandardRendererDocsHarness.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/StandardRendererDocsHarness.kt) | Renderers | — | 0 | 13 | 45% |
 | [GpuShaderLearningView.kt](../src/jvmMain/kotlin/afield/graphics/shader/learning/GpuShaderLearningView.kt) | Graphics | — | 0 | 13 | 7% |
 | [LearnedShader.kt](../src/jvmMain/kotlin/afield/graphics/shader/learning/LearnedShader.kt) | Graphics | — | 0 | 13 | 18% |
 | [ShaderLearningView.kt](../src/jvmMain/kotlin/afield/graphics/shader/learning/ShaderLearningView.kt) | Graphics | — | 0 | 13 | 7% |
@@ -1353,17 +1353,17 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `DirtSampleFamily` | class | `src/jvmMain/kotlin/afield/audio/synth/DirtSamples.kt:194` |
 | `DirtSampleLibrary` | class | `src/jvmMain/kotlin/afield/audio/synth/DirtSamples.kt:216` |
 | `DirtSamplePlayer` | class | `src/jvmMain/kotlin/afield/audio/synth/DirtSamples.kt:354` |
-| `BiquadType` | class | `src/jvmMain/kotlin/afield/audio/synth/Filters.kt:67` |
-| `Biquad` | class | `src/jvmMain/kotlin/afield/audio/synth/Filters.kt:82` |
-| `SVFMode` | class | `src/jvmMain/kotlin/afield/audio/synth/Filters.kt:189` |
-| `SVF` | class | `src/jvmMain/kotlin/afield/audio/synth/Filters.kt:191` |
-| `MoogLadder` | class | `src/jvmMain/kotlin/afield/audio/synth/Filters.kt:240` |
-| `CombFilter` | class | `src/jvmMain/kotlin/afield/audio/synth/Filters.kt:285` |
-| `AllpassFilter` | class | `src/jvmMain/kotlin/afield/audio/synth/Filters.kt:344` |
-| `DCBlocker` | class | `src/jvmMain/kotlin/afield/audio/synth/Filters.kt:382` |
-| `FormantFilter` | class | `src/jvmMain/kotlin/afield/audio/synth/Filters.kt:405` |
-| `DiodeLadder` | class | `src/jvmMain/kotlin/afield/audio/synth/Filters.kt:469` |
-| `Saturator` | class | `src/jvmMain/kotlin/afield/audio/synth/Filters.kt:514` |
+| `BiquadType` | class | `src/jvmMain/kotlin/afield/audio/synth/Filters.kt:73` |
+| `Biquad` | class | `src/jvmMain/kotlin/afield/audio/synth/Filters.kt:88` |
+| `SVFMode` | class | `src/jvmMain/kotlin/afield/audio/synth/Filters.kt:195` |
+| `SVF` | class | `src/jvmMain/kotlin/afield/audio/synth/Filters.kt:197` |
+| `MoogLadder` | class | `src/jvmMain/kotlin/afield/audio/synth/Filters.kt:246` |
+| `CombFilter` | class | `src/jvmMain/kotlin/afield/audio/synth/Filters.kt:291` |
+| `AllpassFilter` | class | `src/jvmMain/kotlin/afield/audio/synth/Filters.kt:350` |
+| `DCBlocker` | class | `src/jvmMain/kotlin/afield/audio/synth/Filters.kt:388` |
+| `FormantFilter` | class | `src/jvmMain/kotlin/afield/audio/synth/Filters.kt:411` |
+| `DiodeLadder` | class | `src/jvmMain/kotlin/afield/audio/synth/Filters.kt:475` |
+| `Saturator` | class | `src/jvmMain/kotlin/afield/audio/synth/Filters.kt:520` |
 | `SineOsc` | class | `src/jvmMain/kotlin/afield/audio/synth/Oscillators.kt:62` |
 | `SawOsc` | class | `src/jvmMain/kotlin/afield/audio/synth/Oscillators.kt:113` |
 | `SquareOsc` | class | `src/jvmMain/kotlin/afield/audio/synth/Oscillators.kt:140` |
