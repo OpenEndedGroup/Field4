@@ -42,6 +42,7 @@ final class SpatialInk {
     private(set) var canUndo = false
     private(set) var status = "Open Spatial Ink to draw"
     let root = Entity()
+    var server: ServerConfig = .default
 
     @ObservationIgnored private var session: ARKitSession?
     @ObservationIgnored private var network: URLSession?
@@ -248,7 +249,7 @@ final class SpatialInk {
 
     private func connect() throws -> URLSessionWebSocketTask {
         if let socket { return socket }
-        var address = URLComponents(url: ServerConfig.default.webSocketURL, resolvingAgainstBaseURL: false)
+        var address = URLComponents(url: server.webSocketURL, resolvingAgainstBaseURL: false)
         address?.path = "/spatial-ink/ws"
         guard let url = address?.url else { throw URLError(.badURL) }
         let configuration = URLSessionConfiguration.ephemeral

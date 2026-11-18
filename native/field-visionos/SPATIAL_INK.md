@@ -2,7 +2,7 @@
 
 Spatial Ink is a native Field4Vision head for drawing curves in physical space. Build and run
 Field4Vision on a Vision Pro against a Field checkout with spatial ink support. It uses the
-same Field host as the other heads, configured through `FIELD4_SERVER`.
+same Field host as the other heads. Select it in the main window or set `FIELD4_SERVER` at launch.
 
 1. Choose **Spatial Ink** in the main window's bottom toolbar and allow hand tracking.
 2. Choose **Arm Draw**, release your right hand, then touch your thumb and index finger.
