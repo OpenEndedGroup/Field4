@@ -1234,6 +1234,22 @@ function loadStudioAo() {
         composer.setSize(w, h);
         const pass = new GTAOPass(scene, camera, w, h);
         pass.output = GTAOPass.OUTPUT.Default;
+        // GTAO's depth and normals leave out only points and lines, so a see-through sheet occluded what
+        // it crossed as if solid: a dark smear across glass. Leave out see-through surfaces too, so the
+        // occlusion is that of the solids behind them. Every surface here is `transparent`, solids
+        // included, so see-through means no depth write or opacity below 1. `_overrideVisibility` is
+        // private to three 0.187's GTAOPass; recheck when the vendored copy changes.
+        const hideLinesAndPoints = pass._overrideVisibility.bind(pass);
+        pass._overrideVisibility = () => {
+            hideLinesAndPoints();
+            scene.traverse(o => {
+                if (!o.isMesh || !o.visible || o === studioGround) return;
+                const m = o.material;
+                if (Array.isArray(m) || !m || (m.depthWrite && m.opacity >= 0.999)) return;
+                o.visible = false;
+                pass._visibilityCache.push(o);
+            });
+        };
         composer.addPass(new RenderPass(scene, camera));
         composer.addPass(pass);
         composer.addPass(new OutputPass());
@@ -1383,8 +1399,18 @@ function pathTraceKeys() {
         mix('geometry', o.id); mix('geometry', g.id); mix('geometry', p?.version ?? 0); mix('geometry', p?.count ?? 0);
         mix('geometry', g.index?.version ?? 0); mix('geometry', m.id);
         for (const e of o.matrixWorld.elements) mix('transform', e);
-        mix('material', m.version); mix('material', m.color.getHex()); mix('material', m.opacity);
-        mix('material', m.roughness); mix('material', m.metalness);
+        // The fields the tracer reads, not `m.version`: three draws a transparent DoubleSide material
+        // back faces then front, setting needsUpdate before each, so its version climbs every raster
+        // frame. Keyed on it, the tracer restarted every frame and never got past compiling, while the
+        // raster it showed meanwhile bumped the version again.
+        mix('material', m.color.getHex()); mix('material', m.opacity); mix('material', m.roughness);
+        mix('material', m.metalness); mix('material', m.side); mix('material', +m.transparent);
+        mix('material', +m.vertexColors); mix('material', +m.flatShading); mix('material', m.alphaTest);
+        mix('material', m.emissive?.getHex() ?? 0); mix('material', m.emissiveIntensity ?? 0);
+        mix('material', m.transmission ?? 0); mix('material', m.ior ?? 0);
+        for (const map of [m.map, m.normalMap, m.roughnessMap, m.metalnessMap, m.emissiveMap, m.alphaMap]) {
+            mix('material', map ? map.id : -1); mix('material', map?.version ?? 0);
+        }
     });
     for (const light of [studioKey, studioRim]) { mix('light', light.intensity); for (const e of light.matrixWorld.elements) mix('light', e); }
     return k;
