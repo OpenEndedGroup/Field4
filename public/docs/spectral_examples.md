@@ -593,7 +593,7 @@ naive `Waveshaper.tanh`, the right half `AdaaShaper`. The odd harmonics climbing
 wanted. The lines that bounce down off the top edge are aliases. ADAA does not remove them, but in
 the right half they are fainter, and the ones that fold furthest down fade out first:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/tpt_filters/adaa_spectrogram.png" wait="3.0" capture="box" open-outputs="true" padding="20"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/tpt_filters/adaa_spectrogram.png" wait="3.0" capture="box" open-outputs="true" padding="20" scale="1.5"}
 :::static
 fun sweep() = SineOsc(Param { 200f * 40f.pow((time / 2f).coerceAtMost(1f)) })
 
