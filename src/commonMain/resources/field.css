@@ -618,6 +618,14 @@ body.canvas-pan-latched .outputArea * {
     width: auto;
 }
 
+/* A drawing (`lines`, `three {}`) or an iframe fills its panel edge to edge, so padding over the
+   dark backing above would show only as a black frame around it. `!important` because
+   outputareas2.js writes the panel's padding inline when it opens one. */
+.disclosure-content:has(> .afield-lines-output-shell),
+.disclosure-content:has(iframe) {
+    padding: 0 !important;
+}
+
 .disclosure-content > .value-viz-h2 {
     width: 100%;
     height: 100%;
