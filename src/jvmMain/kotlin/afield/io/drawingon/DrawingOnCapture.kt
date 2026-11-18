@@ -106,6 +106,22 @@ class DrawingOnCapture internal constructor(private val read: ((JsonObject) -> U
         return DrawingOnFrame(time, ink, layers, state.viewport?.let(::footprint), state.transform, state.light)
     }
 
+    /** Fit a 2D network from completed, visible strokes at [time], respecting replay layer overrides. */
+    @Synchronized fun networkAt(
+        time: Double = duration,
+        config: DrawingOnNetworkConfig = DrawingOnNetworkConfig()
+    ): DrawingOnNetwork {
+        require(time.isFinite() && time >= 0) { "Network time must be finite and nonnegative" }
+        val state = replay(time)
+        val strokes = state.strokes.values.filter {
+            it.ended && it.visible && !it.cancelled && visible(it.layer, state)
+        }.map { stroke ->
+            DrawingOnNetworkStroke(stroke.id, stroke.layer, stroke.tool,
+                stroke.samples.values.filter { it.t <= time }.map { it.position() })
+        }
+        return fitDrawingOnNetwork(strokes, config)
+    }
+
     /** Visible human ink at [time], as ordinary editable FLines. */
     fun drawingAt(time: Double): List<FLine> = at(time).drawing
 
@@ -180,7 +196,7 @@ class DrawingOnCapture internal constructor(private val read: ((JsonObject) -> U
             ((if (overrideSolo) soloLayer else state.solo) == null || (if (overrideSolo) soloLayer else state.solo) == layer)
 
     private data class Stroke(val id: String, val layer: String, val tool: String, val transform: JsonObject?,
-        val samples: LinkedHashMap<Int, DrawingOnSample> = linkedMapOf(), var visible: Boolean = true, var cancelled: Boolean = false)
+        val samples: LinkedHashMap<Int, DrawingOnSample> = linkedMapOf(), var visible: Boolean = true, var cancelled: Boolean = false, var ended: Boolean = false)
     private class Replay {
         val layers = linkedMapOf<String, DrawingOnLayer>()
         val strokes = linkedMapOf<String, Stroke>()
@@ -234,7 +250,10 @@ class DrawingOnCapture internal constructor(private val read: ((JsonObject) -> U
                         if (sample.t <= time && (type != "stroke.correct" || id in stroke.samples)) stroke.samples[id] = sample
                     }
                 }
-                "stroke.end" -> state.strokes[p.string("stroke")]?.cancelled = p["cancelled"]?.jsonPrimitive?.booleanOrNull ?: false
+                "stroke.end" -> state.strokes[p.string("stroke")]?.let {
+                    it.cancelled = p["cancelled"]?.jsonPrimitive?.booleanOrNull ?: false
+                    it.ended = true
+                }
                 "stroke.visibility" -> state.strokes[p.string("stroke")]?.visible = p["visible"]?.jsonPrimitive?.booleanOrNull ?: true
                 "pencil.hover" -> {
                     val phase = p["phase"]?.jsonPrimitive?.intOrNull
