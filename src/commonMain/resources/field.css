@@ -387,6 +387,34 @@ body.canvas-pan-latched .outputArea * {
 .disclosure-header:hover {
     background: var(--field-hover);
 }
+/* An open panel's left rule and its header tab make an L; round its inside corner, at the top-left
+   of the content, with the box frame's 5px radius (`.box::before`). Coloured as the rule, which
+   follows the header's hover. */
+.disclosure.open:not(.disclosure-inline) > .disclosure-header {
+    position: relative;
+}
+.disclosure.open:not(.disclosure-inline) > .disclosure-header::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 100%;
+    width: 5px;
+    height: 5px;
+    background: radial-gradient(circle at 100% 100%, transparent 4.5px, var(--field-border) 5px);
+    pointer-events: none;
+    z-index: 1;
+}
+.disclosure.open.hover:not(.disclosure-inline) > .disclosure-header::after {
+    background: radial-gradient(circle at 100% 100%, transparent 4.5px, var(--field-hover) 5px);
+}
+/* ...and its outside corner at the bottom, where the rule ends: the same 5px on the rule, 3px (5px
+   less the 2px rule) on the content it encloses, which clips a drawing or iframe to the curve. */
+.disclosure.open:not(.disclosure-inline) {
+    border-bottom-left-radius: 5px;
+}
+.disclosure.open:not(.disclosure-inline) > .disclosure-content {
+    border-bottom-left-radius: 3px;
+}
 .disclosure-header.no-hover:hover {
     background: var(--field-surface);
     cursor: default;
