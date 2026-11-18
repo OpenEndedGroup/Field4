@@ -679,7 +679,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**41646 public symbols across 1844 source files**, 24814 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**41688 public symbols across 1845 source files**, 24845 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -696,7 +696,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Renderers](renderers.md) | 46 | 845 | 449 (53%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 596 | 440 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 787 | 530 (67%) | Nonlinear least squares, aimed at geometry. |
-| [Simulation](simulation.md) | 56 | 1827 | 1074 (58%) | Making a shape behave. |
+| [Simulation](simulation.md) | 57 | 1869 | 1105 (59%) | Making a shape behave. |
 | [Imaging](imaging.md) | 55 | 917 | 475 (51%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
 | [ALife](alife.md) | 24 | 1381 | 1252 (90%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 16 | 632 | 424 (67%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
@@ -807,6 +807,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>agents/<wbr></small> [alife_vehicle_brains.kt](alife.md#alife-vehicle-brains-kt) | ALife | 75 | 71 | A larger Braitenberg vehicle genome, and an equal-budget comparison of the searches that look for one. | [Braitenberg vehicles with memory](../braitenberg_vehicles.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>agents/<wbr></small> [alife_vehicles.kt](simulation.md#alife-vehicles-kt) | Simulation | 98 | 91 | Braitenberg vehicles whose neurons have internal state: two light sensors, two motor neurons, two wheels, and between them a small dynamical system rather than a wire. | [Braitenberg vehicles with memory](../braitenberg_vehicles.md), [Agent transcript gallery](../agent_transcripts.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>agents/<wbr></small> [alife_walls.kt](alife.md#alife-walls-kt) | ALife | 60 | 44 | Walls for `alife_script.kt`: obstacles, swept circle collision, and radius-aware routing around them. | [Spatial artificial life](../alife_examples.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>agents/<wbr></small> [alife_weight_cube.kt](simulation.md#alife-weight-cube-kt) | Simulation | 42 | 31 | Learning a symmetric Braitenberg wiring by trial and error, small enough to draw. | [Braitenberg vehicles with memory](../braitenberg_vehicles.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>stdlib/<wbr></small> [AlifeEvolveGallery.kt](examples.md#alifeevolvegallery-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>stdlib/<wbr></small> [AlifeGallery.kt](examples.md#alifegallery-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>stdlib/<wbr></small> [AlifeScriptGallery.kt](examples.md#alifescriptgallery-kt) | Examples | 2 | 1 |  |  |

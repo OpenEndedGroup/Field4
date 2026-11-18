@@ -265,15 +265,17 @@ val view = CubeView(size = 560.0)
 // shadow of it onto the floor of the cube so its depth reads.
 val path = learner.path
 val shadow = view.path(path.map { it.copy(drive = -3.0) }, vec(1.0, 1.0, 1.0, 0.18), 1.0)
-val segments = (0 until path.size - 1 step 10).map { i ->
-    val t = sqrt(i / 2000.0)
-    view.path(path.subList(i, min(i + 11, path.size)), vec(0.3 + 0.7 * t, 0.6, 1.0 - 0.7 * t, 0.9))
-}
-val marks = [0, 50, 250, 500, 2000].flatMap { n ->
-    val w = path[n]
-    println(n.toString() + " tries: " + w + ", light " + learner.measure(w, 99999).light.f2)
-    [view.dot(w, vec(1.0, 1.0, 1.0, 1.0))] + view.label(n.toString(), w, vec(1.0, 1.0, 1.0, 0.9), 18.0)
-}
+val segments =
+    (0 until path.size - 1 step 10).map { i ->
+        val t = sqrt(i / 2000.0)
+        view.path(path.subList(i, min(i + 11, path.size)), vec(0.3 + 0.7 * t, 0.6, 1.0 - 0.7 * t, 0.9))
+    }
+val marks =
+    [0, 50, 250, 500, 2000].flatMap { n ->
+        val w = path[n]
+        println(n.toString() + " tries: " + w + ", light " + learner.measure(w, 99999).light.f2)
+        [view.dot(w, vec(1.0, 1.0, 1.0, 1.0))] + view.label(n.toString(), w, vec(1.0, 1.0, 1.0, 0.9), 18.0)
+    }
 lines(view.frame() + shadow + segments + marks, w = 560.0, h = 560.0)
 ```
 
@@ -297,14 +299,15 @@ val starts = kotlin.random.Random(11)
 
 // Twelve learners, each starting at a random wiring and each with its own trials. They are
 // independent, so they train in parallel.
-val learners = (1..12).map { k ->
-    val start = CubeWiring(
-        starts.nextDouble(-2.5, 2.5),
-        starts.nextDouble(-2.5, 2.5),
-        starts.nextDouble(-2.5, 2.5),
-    )
-    WeightCubeLearner(lights, CubeReward.SEEK, start = start, seed = k.toLong())
-}
+val learners =
+    (1..12).map { k ->
+        val start = CubeWiring(
+            starts.nextDouble(-2.5, 2.5),
+            starts.nextDouble(-2.5, 2.5),
+            starts.nextDouble(-2.5, 2.5),
+        )
+        WeightCubeLearner(lights, CubeReward.SEEK, start = start, seed = k.toLong())
+    }
 learners.parallelStream().forEach { it.train(2000) }
 val drawn = learners.flatMap { l ->
     val end = l.measure(l.wiring, 99999)
@@ -344,16 +347,20 @@ val colours = [
 ]
 
 // Five learners per reward, all from the centre of the cube, trained in parallel.
-val learners = colours.associate { (reward, _) -> reward to (1..5).map { k -> WeightCubeLearner(lights, reward, seed = 100L + k) } }
+val learners = colours.associate { (reward, _) ->
+    reward to (1..5).map { k -> WeightCubeLearner(lights, reward, seed = 100L + k) }
+}
 learners.values.flatten().parallelStream().forEach { it.train(2000) }
 val drawn = colours.flatMap { (reward, colour) ->
     val group = learners[reward]!!
     val ends = group.map { it.wiring }
-    val mean = CubeWiring(ends.map { it.same }.average(), ends.map { it.cross }.average(), ends.map { it.drive }.average())
+    val mean =
+        CubeWiring(ends.map { it.same }.average(), ends.map { it.cross }.average(), ends.map { it.drive }.average())
     val trial = group[0].measure(mean, 99999)
     println(reward.toString() + ": mean end " + mean + ", light " + trial.light.f2 + ", speed " + trial.speed.f2)
-    group.flatMap { l -> [view.path(l.path, vec(colour.x, colour.y, colour.z, 0.45), 1.0), view.dot(l.wiring, colour, 4.0)] } +
-        view.label(reward.name.lowercase(), mean, colour, 18.0)
+    group.flatMap { l ->
+        [view.path(l.path, vec(colour.x, colour.y, colour.z, 0.45), 1.0), view.dot(l.wiring, colour, 4.0)]
+    } + view.label(reward.name.lowercase(), mean, colour, 18.0)
 }
 val start = view.dot(CubeWiring(0.0, 0.0, 0.0), vec(1.0, 1.0, 1.0, 1.0), 4.0)
 lines(view.frame() + drawn + start, w = 560.0, h = 560.0)
