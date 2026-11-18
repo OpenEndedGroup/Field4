@@ -682,7 +682,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**41979 public symbols across 1858 source files**, 25019 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**41979 public symbols across 1858 source files**, 25024 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -710,7 +710,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Audio](audio.md) | 99 | 2658 | 1430 (53%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 22 | 592 | 592 (100%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 131 | 3348 | 1689 (50%) | Field's small languages, from the host side. |
-| [Workspace](workspace.md) | 251 | 3509 | 1443 (41%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
+| [Workspace](workspace.md) | 251 | 3509 | 1448 (41%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [AI4](ai4.md) | 102 | 2296 | 863 (37%) | AI4 is the agent that lives inside Field: the chat panel on every box, the document chat, editor completion, and headless agent tasks. |
 | [Machine learning](machine-learning.md) | 26 | 727 | 444 (61%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Animation](animation.md) | 10 | 186 | 43 (23%) |  |
@@ -907,7 +907,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>lifecycle/<wbr></small> [cached.kt](workspace.md#cached-kt) | Workspace | 3 | 3 | `cached`, which hands a box back the value it made on its last run for the same keys, and closes the old value when the keys change. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>spatial/<wbr>steamaudio/<wbr></small> [Callbacks.kt](audio.md#callbacks-kt) | Audio | 17 | 15 | Callback interfaces for Steam Audio: `PathingVisualizationCallback` and `ProgressCallback` for watching pathing and baking, and `CustomSceneCallbacks` with `HitResult` for supplying your own ray tracer in place of Steam Audio's scene. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>output/<wbr></small> [callbacks.kt](visualization.md#callbacks-kt) | Visualization | 8 | 0 | Per-box callback tables that run when a box's frame, viewport, name or children change. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>bytecode/<wbr></small> [CallSiteAnchors.kt](workspace.md#callsiteanchors-kt) | Workspace | 17 | 12 | Call-site anchors: a box helper that draws next to the line that called it (`history`, `toggle`, `liveNumber`, ...) learns that line from a slot the box's own bytecode armed just before the call, instead of building a stack trace and searching the box's text on every call. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>bytecode/<wbr></small> [CallSiteAnchors.kt](workspace.md#callsiteanchors-kt) | Workspace | 17 | 17 | Call-site anchors: a box helper that draws next to the line that called it (`history`, `toggle`, `liveNumber`, ...) learns that line from a slot the box's own bytecode armed just before the call, instead of building a stack trace and searching the box's text on every call. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>bytecode/<wbr></small> [CallTargets.kt](workspace.md#calltargets-kt) | Workspace | 5 | 5 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>util/<wbr></small> [Camera.kt](graphics.md#camera-kt) | Graphics | 24 | 23 | The Vulkan renderer's look-at camera: a position, a target and an up vector, with a `SuperProjection` for its projection. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>optics/<wbr></small> [CameraOptics.kt](simulation.md#cameraoptics-kt) | Simulation | 72 | 52 | A small CPU ray tracer for camera figures: what a sensor records through a pinhole or a thin lens. | [Cameras and Lenses](../explainer_cameras.md) |

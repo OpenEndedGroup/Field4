@@ -198,6 +198,15 @@ class CallSiteAnchorPassTest {
         val stackNs = (t2 - t1).toDouble() / n
         println("callsite-anchor cost: anchored ${"%.0f".format(anchoredNs)} ns/call, stack search ${"%.0f".format(stackNs)} ns/call (stack depth ${Throwable().stackTrace.size}, ${source.lines().size}-line box)")
         assertTrue(anchoredNs < stackNs, "the slot is cheaper than a stack trace")
+
+        // Rewrite time and size: the class with the pass, against the class as compiled.
+        val bytes = BoxBytecodeTestSupport.bytesOf(AnchorBoxCode::class.java)
+        val reps = 200
+        val r0 = System.nanoTime()
+        var out = bytes
+        repeat(reps) { out = BoxBytecode.rewriteClass(bytes, origin(), listOf(CallSiteAnchorPass))!! }
+        val rewriteUs = (System.nanoTime() - r0) / 1000.0 / reps
+        println("callsite-anchor rewrite: ${"%.0f".format(rewriteUs)} us per class (warm CallTargets cache), ${bytes.size} -> ${out.size} bytes")
     }
 
     private fun readMethods(loader: ClassLoader, owner: String): List<Pair<String, String>> {
