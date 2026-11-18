@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-18T16:01:44.705Z",
+  "capturedAt": "2026-11-18T22:08:53.483Z",
   "documentName": "solidsl_gallery",
   "outputs": [
     {
@@ -11,8 +11,8 @@
       "kinds": [
         "three"
       ],
-      "width": 728,
-      "height": 478,
+      "width": 720,
+      "height": 470,
       "path": "outputs/0.html"
     },
     {
@@ -23,8 +23,8 @@
       "kinds": [
         "three"
       ],
-      "width": 708,
-      "height": 448,
+      "width": 700,
+      "height": 440,
       "path": "outputs/1.html"
     },
     {
@@ -35,8 +35,8 @@
       "kinds": [
         "three"
       ],
-      "width": 708,
-      "height": 448,
+      "width": 700,
+      "height": 440,
       "path": "outputs/2.html"
     }
   ]

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-18T15:52:24.190Z",
+  "capturedAt": "2026-11-18T22:08:05.550Z",
   "documentName": "polytope_conway_gallery",
   "outputs": [
     {
@@ -11,8 +11,8 @@
       "kinds": [
         "three"
       ],
-      "width": 908,
-      "height": 764,
+      "width": 900,
+      "height": 756,
       "path": "outputs/0.html"
     },
     {
@@ -23,8 +23,8 @@
       "kinds": [
         "three"
       ],
-      "width": 1268,
-      "height": 368,
+      "width": 1260,
+      "height": 360,
       "path": "outputs/1.html"
     },
     {
@@ -46,7 +46,7 @@
         "three"
       ],
       "width": 480,
-      "height": 528,
+      "height": 520,
       "path": "outputs/3.html"
     },
     {

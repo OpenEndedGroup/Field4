@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-18T16:11:40.819Z",
+  "capturedAt": "2026-11-18T22:09:49.761Z",
   "documentName": "three_output_gallery",
   "outputs": [
     {
@@ -11,8 +11,8 @@
       "kinds": [
         "three"
       ],
-      "width": 868,
-      "height": 768,
+      "width": 860,
+      "height": 760,
       "path": "outputs/0.html"
     },
     {
@@ -23,8 +23,8 @@
       "kinds": [
         "three"
       ],
-      "width": 768,
-      "height": 478,
+      "width": 760,
+      "height": 470,
       "path": "outputs/1.html"
     },
     {
@@ -35,8 +35,8 @@
       "kinds": [
         "three"
       ],
-      "width": 768,
-      "height": 448,
+      "width": 760,
+      "height": 440,
       "path": "outputs/2.html"
     },
     {
@@ -47,8 +47,8 @@
       "kinds": [
         "three"
       ],
-      "width": 528,
-      "height": 408,
+      "width": 520,
+      "height": 400,
       "path": "outputs/3.html"
     },
     {
@@ -70,7 +70,7 @@
         "three"
       ],
       "width": 480,
-      "height": 388,
+      "height": 380,
       "path": "outputs/5.html"
     },
     {
@@ -91,8 +91,8 @@
       "kinds": [
         "three"
       ],
-      "width": 1552,
-      "height": 298,
+      "width": 1544,
+      "height": 290,
       "path": "outputs/7.html"
     }
   ]

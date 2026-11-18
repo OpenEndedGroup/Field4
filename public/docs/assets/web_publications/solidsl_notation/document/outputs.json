@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-18T16:02:03.309Z",
+  "capturedAt": "2026-11-18T22:09:17.651Z",
   "documentName": "solidsl_notation",
   "outputs": [
     {
@@ -11,8 +11,8 @@
       "kinds": [
         "three"
       ],
-      "width": 728,
-      "height": 478,
+      "width": 720,
+      "height": 470,
       "path": "outputs/0.html"
     }
   ]
