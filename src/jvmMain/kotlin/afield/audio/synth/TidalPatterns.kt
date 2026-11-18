@@ -2119,7 +2119,7 @@ private data class PatDecorationRange(
 private fun currentPatParseContext(source: String): PatParseContext {
     // First: the call-site slot box bytecode armed for this `pat(` call (and clear it, even with no box).
     val box = Box.context.get()
-    val anchored = CallSites.take(box, "pat", text = null)
+    val anchored = CallSites.take(box, "pat", "pat(", end = false, offset = 0)
     if (box == null) return PatParseContext(source)
     if (anchored != null) return PatParseContext(source = source, lineHint = anchored.line)
     val stack = Exception().stackTrace.toList()

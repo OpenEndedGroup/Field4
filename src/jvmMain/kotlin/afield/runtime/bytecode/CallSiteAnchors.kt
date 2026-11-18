@@ -53,7 +53,11 @@ class CallSiteAnchor(val target: String, val ordinal: Int, val count: Int) {
     }
 
     private fun compute(site: Site, box: Box, code: String, text: String?, end: Boolean, offset: Int): Location? {
-        val line = site.boxLine()
+        var line = site.boxLine()
+        // Not proven by text. A line a macro rewrote (`println(` compiles as `_printlnHere(4+1, `) or
+        // one the user is editing (`liveNumber(7.5)` -> `liveNumber(8.5)`) is still placed when the
+        // proven lines around it agree on one offset, and the box's line has the call's text.
+        if (line < 1 && text != null) line = bracketed(site.origin, site.line)
         if (line < 1) { CallSites.unproven++; return null }
         val lineText = lineOf(code, line) ?: return null
         if (text == null) return Location(box, site.origin.property, line, 0)
@@ -71,6 +75,37 @@ class CallSiteAnchor(val target: String, val ordinal: Int, val count: Int) {
     override fun toString(): String = "$target #$ordinal/$count"
 
     companion object {
+        private const val WINDOW = 12
+
+        /**
+         * The box line for compiled line [line] of [origin] that [SnippetOrigin.boxLine] could not
+         * prove, inferred from the nearest proven lines above and below it (within [WINDOW]): both
+         * must give the same offset (one is enough when the other side has none). -1 otherwise,
+         * and for inlined code (a line past the compiled text). The caller must still find the call's
+         * text on the answer; this is only for callers that check it.
+         */
+        internal fun bracketed(origin: SnippetOrigin, line: Int): Int {
+            val n = origin.sourceLineCount
+            if (line < 1 || line > n) return -1
+            fun nearest(step: Int): Int? {
+                var c = line + step
+                var k = 0
+                while (c in 1..n && k++ < WINDOW) {
+                    val b = origin.boxLine(c)
+                    if (b > 0) return b - c
+                    c += step
+                }
+                return null
+            }
+            val above = nearest(-1)
+            val below = nearest(+1)
+            val d = when {
+                above != null && below != null -> if (above == below) above else return -1
+                else -> above ?: below ?: return -1
+            }
+            return line + d
+        }
+
         /** Line [line] (1-based) of [code], without its newline, or null if it has fewer lines. */
         internal fun lineOf(code: String, line: Int): String? {
             var start = 0

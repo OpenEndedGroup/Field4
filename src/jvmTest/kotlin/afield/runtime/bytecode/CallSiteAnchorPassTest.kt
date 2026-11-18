@@ -128,15 +128,25 @@ class CallSiteAnchorPassTest {
     }
 
     @Test
-    fun anEditedLineIsNotProvenAndFallsBack() {
+    fun anEditedLineIsPlacedBetweenItsNeighboursUntilItsCallIsGone() {
         val code = rewritten()
-        val (line, _) = tagged("single-call")
-        val edited = source.split("\n").toMutableList().also { it[line - 1] = it[line - 1].replace("history(3)", "history(33)") }.joinToString("\n")
-        box.properties["code"] = edited
+        val (line, text) = tagged("single-call")
+        fun edit(to: String) {
+            box.properties["code"] = source.split("\n").toMutableList().also { it[line - 1] = to }.joinToString("\n")
+        }
         try {
+            // The compiled line no longer matches the box's text (an edit in progress, or a macro
+            // that rewrote the line), but the lines around it still agree on where it is.
+            edit(text.replace("history(3)", "history(33)"))
             val l = call<Location?>(code, "single")
-            assertFalse(lastAnchored, "the compiled line no longer matches the box's text")
-            assertEquals(line, l?.line, "and the stack fallback answers as it always did")
+            assertTrue(lastAnchored, "an edited line between proven neighbours is still anchored")
+            assertEquals(line, l?.line)
+            assertEquals(text.indexOf("history") + "history".length + 1, l?.col)
+
+            // The call's text is gone from the line: not anchored; the stack fallback answers.
+            edit(text.replace("history(3)", "histogram(3)"))
+            call<Location?>(code, "single")
+            assertFalse(lastAnchored, "a line without the call's text is not anchored")
         } finally {
             box.properties["code"] = source
         }
