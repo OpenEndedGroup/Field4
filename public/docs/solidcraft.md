@@ -232,5 +232,5 @@ showMeshGrid(
 
 The thickened sheet is 2 deep, though its welded mesh still reports two open boundary loops. Drawing the second curve backwards pinches the patch to a point in the middle.
 
-Any SolidCraft feature the builder does not name — shell, draft, chamfer, pattern, and the rest —
+Any SolidCraft feature the builder does not name — shell, draft, pattern, and the rest —
 can be added by its JSON fields with `feature("shell", JSONObject()...)`.
