@@ -4,6 +4,9 @@ Optional native iPad drawing and voice capture for Field. This directory is the 
 
 Read [Drawing on iPad](../../public/docs/drawing_on.md), open the **drawing_on** starting place from Field's Welcome screen, and run its drawing-head box. [Example.kt](Example.kt) is the same editable example: publish a plan, draw over it on the iPad, and receive a crosshair at the last measured Pencil point. [Protocol](docs/PROTOCOL.md) documents every captured event; [Field integration](docs/FIELD_EXTENSION.md) covers target ownership, projection and archive access.
 
+The [2D curve network workout](docs/NETWORK.md) shows retrace clustering, line and arc fitting,
+and suggested junctions. It includes a live example that publishes the fitted FLines to the iPad.
+
 ## Build and connect
 
 On a Mac, `./field.sh --setup` from the Field root offers **Drawing On iPad app / offline reader**. Its BUILD step compiles only the local reader and prints the Xcode steps below. It does not install models, sign the app, or install it on a device.
