@@ -214,7 +214,7 @@ class CubeView(
     /** Tilt toward the viewer, in radians. */
     val pitch: Double = 0.45,
 ) {
-    private val scale = size / (limit * 3.6)
+    private val scale = size / (limit * 3.3)
 
     /** Where [w] lands in the drawing. */
     fun project(w: CubeWiring): Vec2 = project(w.same, w.cross, w.drive)
@@ -281,18 +281,18 @@ class CubeView(
                 color = muted
                 thickness = 1.0
             }
-            out += label(name, p.x + 5, p.y + 3, 9.0, muted)
+            out += label(name, p.x + 5, p.y + 4, 13.0, muted)
         }
         val axisColour = vec(1.0, 1.0, 1.0, 0.8)
-        project(l + 0.3, 0.0, 0.0).let { out += label("same", it.x, it.y + 4, 11.0, axisColour) }
-        project(0.0, l + 0.3, 0.0).let { out += label("cross", it.x - 12, it.y - 4, 11.0, axisColour) }
-        project(0.0, 0.0, l + 0.3).let { out += label("drive", it.x - 14, it.y - 4, 11.0, axisColour) }
+        project(l + 0.3, 0.0, 0.0).let { out += label("same", it.x, it.y + 6, 16.0, axisColour) }
+        project(0.0, l + 0.3, 0.0).let { out += label("cross", it.x - 18, it.y - 6, 16.0, axisColour) }
+        project(0.0, 0.0, l + 0.3).let { out += label("drive", it.x - 20, it.y - 6, 16.0, axisColour) }
         if (title.isNotBlank()) out += label(title, x + 8, y + 16, 13.0, vec(1.0, 1.0, 1.0, 0.9))
         return out
     }
 
     /** [text] in [color], placed to the right of [at]. */
-    fun label(text: String, at: CubeWiring, color: Vec4, size: Double = 10.0): List<FLine> {
+    fun label(text: String, at: CubeWiring, color: Vec4, size: Double = 14.0): List<FLine> {
         val p = project(at)
         return label(text, p.x + 10, p.y + 4, size, color)
     }

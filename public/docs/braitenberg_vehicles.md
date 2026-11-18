@@ -272,7 +272,7 @@ val segments = (0 until path.size - 1 step 10).map { i ->
 val marks = [0, 50, 250, 500, 2000].flatMap { n ->
     val w = path[n]
     println(n.toString() + " tries: " + w + ", light " + learner.measure(w, 99999).light.f2)
-    [view.dot(w, vec(1.0, 1.0, 1.0, 1.0))] + view.label(n.toString(), w, vec(1.0, 1.0, 1.0, 0.9), 12.0)
+    [view.dot(w, vec(1.0, 1.0, 1.0, 1.0))] + view.label(n.toString(), w, vec(1.0, 1.0, 1.0, 0.9), 18.0)
 }
 lines(view.frame() + shadow + segments + marks, w = 560.0, h = 560.0)
 ```
@@ -353,7 +353,7 @@ val drawn = colours.flatMap { (reward, colour) ->
     val trial = group[0].measure(mean, 99999)
     println(reward.toString() + ": mean end " + mean + ", light " + trial.light.f2 + ", speed " + trial.speed.f2)
     group.flatMap { l -> [view.path(l.path, vec(colour.x, colour.y, colour.z, 0.45), 1.0), view.dot(l.wiring, colour, 4.0)] } +
-        view.label(reward.name.lowercase(), mean, colour, 13.0)
+        view.label(reward.name.lowercase(), mean, colour, 18.0)
 }
 val start = view.dot(CubeWiring(0.0, 0.0, 0.0), vec(1.0, 1.0, 1.0, 1.0), 4.0)
 lines(view.frame() + drawn + start, w = 560.0, h = 560.0)
@@ -737,6 +737,8 @@ Implementation and parameter details for the helpers used above:
 - [`VehicleCanvas.record`](reference/simulation.md#alife-vehicles-kt--vehiclecanvas--record)
 - [`LightVisits.mean`](reference/simulation.md#alife-vehicles-kt--lightvisits--mean)
 - [`VehicleCanvas.image`](reference/simulation.md#alife-vehicles-kt--vehiclecanvas--image)
+- [`WeightCubeLearner`](reference/simulation.md#alife-weight-cube-kt-weightcubelearner)
+- [`CubeView`](reference/simulation.md#alife-weight-cube-kt-cubeview)
 
 - [`PopulationSearch.evolve`](reference/search.md#populationsearch-kt--populationsearch--evolve)
 - [`PopulationSearch`](reference/search.md#populationsearch-kt-populationsearch)
