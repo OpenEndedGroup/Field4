@@ -942,12 +942,19 @@ class ConstraintScope internal constructor(private val model: GeometryModelScope
      * Point this segment's line at another point ([LineTowardPoint]) — radial members, a set of lines converging.
      *
      * There is no ray: a target behind the segment satisfies it exactly as well as one in front.
+     *
+     * The target is a variable like the segment's ends, so the solve moves it too, and lines that cannot all reach it
+     * drag it toward where they point. When the target is given rather than found, `session.pin` it or [lock] it.
      */
     fun LineRef.toward(point: PointRef, weight: Double = 1.0) {
         add(LineTowardPoint(a.id, b.id, point.id, weight))
     }
 
-    /** [toward], named for the perspective case — a family of segments sharing one vanishing point. */
+    /**
+     * [toward], named for the perspective case — a family of segments sharing one vanishing point.
+     *
+     * Like [toward] it moves the vanishing point as well as the segment; pin a vanishing point that is an input.
+     */
     fun LineRef.vanishesAt(point: PointRef, weight: Double = 1.0) = toward(point, weight)
 
     /**

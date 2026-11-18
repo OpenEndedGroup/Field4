@@ -259,6 +259,12 @@ ends, extended as far as it needs to go. Give the cube's four uprights the same 
 and each side face becomes a slice of a triangle whose tip is at `V`. `V` is a point in the model
 like any other, so you can drag it too.
 
+!!! warning "The lines pull on `V` as well"
+    The solve moves `V` as readily as it moves the line's ends, so lines that cannot all reach `V`
+    drag it toward where they point. When a vanishing point is given rather than found, pin it
+    with `session.pin(v)` or hold it with `v.lock()` in the model. The box below pins `V` while
+    you drag a corner and lets it go when you release.
+
 The top is a flat cut across the four rays to `V`. The box starts it on a tilted plane, and draws
 the triangles each side face is cut from in a layer of their own:
 
