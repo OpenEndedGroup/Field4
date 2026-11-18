@@ -17,7 +17,7 @@ constraints between them inside `constraints { }`. Here four points start as a r
 quadrilateral. The constraints ask for four sides of length 1, two diagonals of the same length,
 and a flat panel, which together mean a square:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/ceres/square.png" alt="A three.js view of two outlines: a bent grey quadrilateral, and an orange square of side 1 that the solver found near it. A legend in the top-left corner lists the four sides at 1.0000 and both diagonals at 1.4142" wait="4" capture="box" open-outputs="true" padding="20" name="ceres-square" requires="ceres"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/ceres/square.png" alt="A three.js view of two outlines: a bent grey quadrilateral, and an orange square of side 1 that the solver found near it. A legend in the top-left corner lists the four sides at 1.0000 and both diagonals at 1.4142" wait="4" capture="box" open-outputs="true" padding="20" name="ceres-square" requires="ceres" embed=true}
 import afield.math.optimization.ceres.PointRef
 import afield.math.optimization.ceres.geometryModel
 
@@ -82,7 +82,7 @@ cube with one kind of constraint: each of its six faces must stay flat. There ar
 right angles. The top four corners start knocked out of place, so no face begins flat, and the first
 `solve` flattens them all:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/ceres/flat_cube.png" alt="A three.js view of an irregular six-sided solid with translucent grey faces and edges coloured red, green and blue by their starting axis. Its four top corners carry yellow handles labelled c2, c3, c6 and c7; the top is tilted and the side faces are uneven quadrilaterals. A legend reads: six flat faces, nothing else; worst face bend 5.8e-07; edges from 0.67 to 1.40" wait="4" capture="box" open-outputs="true" padding="20" name="ceres-flat-cube" requires="ceres"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/ceres/flat_cube.png" alt="A three.js view of an irregular six-sided solid with translucent grey faces and edges coloured red, green and blue by their starting axis. Its four top corners carry yellow handles labelled c2, c3, c6 and c7; the top is tilted and the side faces are uneven quadrilaterals. A legend reads: six flat faces, nothing else; worst face bend 5.8e-07; edges from 0.67 to 1.40" wait="4" capture="box" open-outputs="true" padding="20" name="ceres-flat-cube" requires="ceres" embed=true}
 import afield.graphics.three.ThreeHandleDrag
 import afield.math.optimization.ceres.DragHandle
 import afield.math.optimization.ceres.InteractionPolicy
@@ -262,7 +262,7 @@ like any other, so you can drag it too.
 The top is a flat cut across the four rays to `V`. The box starts it on a tilted plane, and draws
 the triangles each side face is cut from in a layer of their own:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/ceres/one_vanishing_point.png" alt="A three.js view of a tapered solid whose four uprights, extended as thin yellow rays, meet at an orange point labelled V up and to the left. Faint grey triangles run from each bottom edge to V. The top of the solid is tilted, with yellow handles on its corners c2, c3, c6 and c7. A legend reads: V at (-0.15, 2.60, 1.50); worst upright miss of V 1.2e-07; top from y = 0.47 to 0.80" wait="4" capture="box" open-outputs="true" padding="20" name="ceres-one-vanishing-point" requires="ceres"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/ceres/one_vanishing_point.png" alt="A three.js view of a tapered solid whose four uprights, extended as thin yellow rays, meet at an orange point labelled V up and to the left. Faint grey triangles run from each bottom edge to V. The top of the solid is tilted, with yellow handles on its corners c2, c3, c6 and c7. A legend reads: V at (-0.15, 2.60, 1.50); worst upright miss of V 1.2e-07; top from y = 0.47 to 0.80" wait="4" capture="box" open-outputs="true" padding="20" name="ceres-one-vanishing-point" requires="ceres" embed=true}
 import afield.graphics.three.ThreeHandleDrag
 import afield.math.optimization.ceres.DragHandle
 import afield.math.optimization.ceres.InteractionPolicy
@@ -449,7 +449,7 @@ depth edges toward a second point `Vz`, and the width edges stay parallel to the
 Only that front edge is pinned. Both vanishing points are pinned too, except while you drag one, and
 they stay where you let them go:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/ceres/two_vanishing_points.png" alt="A three.js view of a box in two-point perspective. Yellow rays from its four uprights meet at an orange point V above it; rays from its four depth edges meet at a second orange point Vz far to the lower left. Faint triangles fill both fans of rays. Yellow handles sit on corners c2 to c7. A legend reads: V at (0.45, 3.90, 0.60), worst upright miss 1.7e-07; Vz at (0.60, -0.10, 5.00), worst depth-edge miss 2.0e-07" wait="4" capture="box" open-outputs="true" padding="20" name="ceres-two-vanishing-points" requires="ceres"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/ceres/two_vanishing_points.png" alt="A three.js view of a box in two-point perspective. Yellow rays from its four uprights meet at an orange point V above it; rays from its four depth edges meet at a second orange point Vz far to the lower left. Faint triangles fill both fans of rays. Yellow handles sit on corners c2 to c7. A legend reads: V at (0.45, 3.90, 0.60), worst upright miss 1.7e-07; Vz at (0.60, -0.10, 5.00), worst depth-edge miss 2.0e-07" wait="4" capture="box" open-outputs="true" padding="20" name="ceres-two-vanishing-points" requires="ceres" embed=true}
 import afield.graphics.three.ThreeHandleDrag
 import afield.math.optimization.ceres.DragHandle
 import afield.math.optimization.ceres.InteractionPolicy
