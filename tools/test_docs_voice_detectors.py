@@ -368,6 +368,15 @@ class Narrowings(unittest.TestCase):
                             '[Real link](#destination) and `[another](#example)`\n')
             self.assertEqual(ca.links_of(page), [(2, '', 'destination')])
 
+    def test_an_escaped_bracket_closes_no_link(self):
+        cl = load("check_links")
+        with tempfile.TemporaryDirectory() as tmp:
+            page = Path(tmp) / "example.md"
+            # 2026-11-18: a tool description's `tools\["rectsl.run"\]({...})` was reported as a dead link `{...}`.
+            page.write_text('Call tools\\["rectsl.run"\\]({...}) by name.\n'
+                            'A [real link](other.md) still counts.\n')
+            self.assertEqual([t for _, t in cl.targets_of(page)], ["other.md"])
+
     def test_overview_comparison_keeps_link_labels_and_block_tags(self):
         checker = load("check_kdoc_mirror")
         self.assertEqual(checker.undecorate('There is an [apply][KeyframeBrowserProtocol] op.'),

@@ -712,13 +712,13 @@ Boxes: make, read, change, connect, run, launch, stop, and look at their output.
 | [`NewBoxRequest`](#tool-newboxrequest) | Create a new box in this Field document. | mutate document |
 | [`PatchBoxTextRequest`](#tool-patchboxtextrequest) | Edit part of a box's text property in place, without resending the whole text. | mutate document |
 | [`ReadBoxOutputRequest`](#tool-readboxoutputrequest) | Read what a box has printed, displayed, or reported since a marker (0 = everything retained). | read document |
-| [`ReadNotationRequest`](#tool-readnotationrequest) | Read the drawing layer: the marks (strokes, arrows, lines, rectangles, ellipses, text, frames) people and boxes draw over the canvas with Alt+D. | read document |
+| [`ReadNotationRequest`](#tool-readnotationrequest) | Read the drawing layer: the marks (strokes, arrows, lines, rectangles, ellipses, text, frames) people and boxes draw over the canvas with ++alt+d++. | read document |
 | [`RunBoxRequest`](#tool-runboxrequest) | Run a box's code once to completion (like the Run command) and wait for its verdict. | execute code |
 | [`SetBoxPropertyRequest`](#tool-setboxpropertyrequest) | Replace a whole text property on a box, most often `code`, e.g. property = `code`, value = `println(1)`. | mutate document |
 | [`StopBoxRequest`](#tool-stopboxrequest) | Stop a running box and everything it launched (e.g. box = `Ticker`). | control runtime |
 | [`SymbolAtRequest`](#tool-symbolatrequest) | Ask what a name means at a place in a box's code, the way the editor hover does, but with everything Field knows: the hover text, every candidate the compiler offers there (overloads with signatures and types), the live value from the box's last run (or its parents'), the lines where this box declares it, and indexed Field declarations of that name with KDoc and source. | read document |
 | [`ViewBoxOutputRequest`](#tool-viewboxoutputrequest) | Look at what a box SHOWS: capture its output area (the panels its display(...) calls fill) as a picture. | capture image |
-| [`ViewNotationRequest`](#tool-viewnotationrequest) | Look at part of the drawing layer (the Alt+D marks over the canvas) as a picture cropped to it. | capture image |
+| [`ViewNotationRequest`](#tool-viewnotationrequest) | Look at part of the drawing layer (the ++alt+d++ marks over the canvas) as a picture cropped to it. | capture image |
 
 ### `kotlin`
 
@@ -917,14 +917,14 @@ Field's own checkout: its files, and named commands run in the foreground or as 
 
 | Tool | What it does | Effects |
 | --- | --- | --- |
-| [`AwaitRepoCommandsRequest` †](#tool-awaitrepocommandsrequest) | End this turn and let Field wait for background jobs without the model, then resume this conversation with how each ended (state, exit code, time and the last lines of its log), e.g. jobIds [`job-213045-1`], maxMinutes 60. | agent state |
+| [`AwaitRepoCommandsRequest` †](#tool-awaitrepocommandsrequest) | End this turn and let Field wait for background jobs without the model, then resume this conversation with how each ended (state, exit code, time and the last lines of its log), e.g. jobIds \[`job-213045-1`\], maxMinutes 60. | agent state |
 | [`RepoCommandStatusRequest`](#tool-repocommandstatusrequest) | Read a background job's state and output, waiting for it if asked, e.g. jobId `job-213045-1`, waitSeconds 120, untilText `BUILD SUCCESSFUL`. | filesystem read |
 | [`RepoListFilesRequest`](#tool-repolistfilesrequest) | List repository files matching a glob, relative to the job's root, e.g. `public/docs/*.md` or `src/jvmMain/kotlin/afield/ai/**`. | filesystem read |
 | [`RepoPatchFileRequest`](#tool-repopatchfilerequest) | Replace an exact passage in a repository file the job may write, e.g. oldText `val x = 1` with newText `val x = 2`. | filesystem write |
 | [`RepoReadFileRequest`](#tool-reporeadfilerequest) | Read a text file of the repository this job works in, with line numbers. | filesystem read |
 | [`RepoRunCommandRequest`](#tool-reporuncommandrequest) | Run one of this job's allowed commands in its repository (not a shell: a named argv template). | execute code, filesystem write |
 | [`RepoSearchRequest`](#tool-reposearchrequest) | Search the repository files this job may read for literal text (or a Java regex with regex=true), one match per line. | filesystem read |
-| [`RepoStartCommandRequest`](#tool-repostartcommandrequest) | Start one of the allowed repository commands in the background and return at once with its jobId (e.g. command `docs-build`, args ["never"]; or `field-test`, args ["--id", "examples.demo-transcript.exec"]). | execute code, filesystem write |
+| [`RepoStartCommandRequest`](#tool-repostartcommandrequest) | Start one of the allowed repository commands in the background and return at once with its jobId (e.g. command `docs-build`, args \["never"\]; or `field-test`, args \["--id", "examples.demo-transcript.exec"\]). | execute code, filesystem write |
 | [`RepoStopCommandRequest`](#tool-repostopcommandrequest) | Stop a background job and everything it started (TERM, then KILL after a grace; Gradle daemons are left alone), e.g. jobId `job-213045-1`. | execute code |
 | [`RepoWriteFileRequest`](#tool-repowritefilerequest) | Create a repository file the job may write, with this content, e.g. path `dev_docs/notes/new_page.md`. | filesystem write |
 
@@ -1029,7 +1029,7 @@ Create a new box in this Field document. Returns the new box's uid. Use it when 
 
 *Effects: mutate document. Schema sent with every request.*
 
-Edit part of a box's text property in place, without resending the whole text. This is the cheap way to change code: prefer it to GetBoxProperty + string replace + SetBoxProperty (by hand or in a RunToolProgram), which re-reads and resends everything. Three forms: (1) `edits` = [{find, replace}, ...] applies several exact find/replace edits in order, all or nothing: each `find` must occur exactly once in the text as left by the earlier edits, and if any is missing or ambiguous nothing is written and the reply names each failing anchor; (2) a single `find`/`replace` (`occurrence` N = the Nth non-overlapping match, 0 = every match; fails if absent or, with occurrence 1, ambiguous unless allowMultiple); (3) a line range (`startLine`..`endLine`, 1-based, inclusive, replaced by `replacement`; endLine 0 means endLine = startLine; `insert` = true inserts before startLine). Returns success, the length before and after, and a short diff of what changed. `runAfter` = true then runs the box (like RunBoxRequest) in the same call and returns its verdict and output. Recorded like SetBoxPropertyRequest.
+Edit part of a box's text property in place, without resending the whole text. This is the cheap way to change code: prefer it to GetBoxProperty + string replace + SetBoxProperty (by hand or in a RunToolProgram), which re-reads and resends everything. Three forms: (1) `edits` = \[{find, replace}, ...\] applies several exact find/replace edits in order, all or nothing: each `find` must occur exactly once in the text as left by the earlier edits, and if any is missing or ambiguous nothing is written and the reply names each failing anchor; (2) a single `find`/`replace` (`occurrence` N = the Nth non-overlapping match, 0 = every match; fails if absent or, with occurrence 1, ambiguous unless allowMultiple); (3) a line range (`startLine`..`endLine`, 1-based, inclusive, replaced by `replacement`; endLine 0 means endLine = startLine; `insert` = true inserts before startLine). Returns success, the length before and after, and a short diff of what changed. `runAfter` = true then runs the box (like RunBoxRequest) in the same call and returns its verdict and output. Recorded like SetBoxPropertyRequest.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
@@ -1065,13 +1065,13 @@ Read what a box has printed, displayed, or reported since a marker (0 = everythi
 
 *Effects: read document. Schema sent with every request.*
 
-Read the drawing layer: the marks (strokes, arrows, lines, rectangles, ellipses, text, frames) people and boxes draw over the canvas with Alt+D. Returns one summary per mark: id, kind, label (its name or text), world bounds [x, y, w, h] in canvas units (the same units as box frames), the box it sits over, the boxes an arrow runs from and to, the box that owns a mark code drew, the box it is anchored to, its colour, and optionally its points. Use it whenever the user refers to something they drew, circled, wrote or pointed at on the canvas, before answering or editing; then look at it with ViewNotationRequest. Filters combine: name (a mark's label, e.g. `score`), over (a box uid or name, e.g. `Synth`), region [x, y, w, h], kinds (e.g. [`arrow`, `stroke`]). An empty drawing is not an error: it returns no marks and says so. An unknown box in `over` fails with the list of known boxes.
+Read the drawing layer: the marks (strokes, arrows, lines, rectangles, ellipses, text, frames) people and boxes draw over the canvas with ++alt+d++. Returns one summary per mark: id, kind, label (its name or text), world bounds \[x, y, w, h\] in canvas units (the same units as box frames), the box it sits over, the boxes an arrow runs from and to, the box that owns a mark code drew, the box it is anchored to, its colour, and optionally its points. Use it whenever the user refers to something they drew, circled, wrote or pointed at on the canvas, before answering or editing; then look at it with ViewNotationRequest. Filters combine: name (a mark's label, e.g. `score`), over (a box uid or name, e.g. `Synth`), region \[x, y, w, h\], kinds (e.g. \[`arrow`, `stroke`\]). An empty drawing is not an error: it returns no marks and says so. An unknown box in `over` fails with the list of known boxes.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
 | `name` | string | Only marks labelled this (a name code gave it, its own text, or the text bound to it); case-insensitive. |
 | `over` | string | Only marks whose centre lies over this box (uid or unique name). |
-| `region` | list of number | Only marks whose bounds intersect this world rectangle, [x, y, w, h]. |
+| `region` | list of number | Only marks whose bounds intersect this world rectangle, \[x, y, w, h\]. |
 | `kinds` | list of string | Only these kinds: rectangle, ellipse, diamond, line, arrow, stroke, text, frame, image. |
 | `includePoints` | boolean | Also return each line, arrow and stroke's world points, thinned to at most maxPoints per mark. |
 | `maxPoints` | integer | — |
@@ -1142,13 +1142,13 @@ Look at what a box SHOWS: capture its output area (the panels its display(...) c
 
 *Effects: capture image. Schema sent with every request.*
 
-Look at part of the drawing layer (the Alt+D marks over the canvas) as a picture cropped to it. Returns the picture, attached for you to inspect, plus the world region shown, the zoom it was drawn at, and the ids of the marks inside it. Frame it by mark (an id or label from ReadNotationRequest, e.g. `score`), by box (its frame and everything drawn over it), or by region [x, y, w, h] in world units; with none of them it frames the whole drawing. Use it after ReadNotationRequest whenever the shape of what was drawn matters: a sketch, a circled area, handwriting. Boxes under the marks are shown unless showBoxes = false. It uses an independent browser, so the user's camera is not moved. Fails if the drawing is empty, if the mark or box is unknown, or if the drawing layer did not load in the capture page.
+Look at part of the drawing layer (the ++alt+d++ marks over the canvas) as a picture cropped to it. Returns the picture, attached for you to inspect, plus the world region shown, the zoom it was drawn at, and the ids of the marks inside it. Frame it by mark (an id or label from ReadNotationRequest, e.g. `score`), by box (its frame and everything drawn over it), or by region \[x, y, w, h\] in world units; with none of them it frames the whole drawing. Use it after ReadNotationRequest whenever the shape of what was drawn matters: a sketch, a circled area, handwriting. Boxes under the marks are shown unless showBoxes = false. It uses an independent browser, so the user's camera is not moved. Fails if the drawing is empty, if the mark or box is unknown, or if the drawing layer did not load in the capture page.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
 | `mark` | string | A mark id, or a mark label (its name or text). Frames that mark. |
 | `box` | string | A box uid or unique name. Frames the box together with the marks over it. |
-| `region` | list of number | A world rectangle [x, y, w, h] to frame. |
+| `region` | list of number | A world rectangle \[x, y, w, h\] to frame. |
 | `padding` | number | World units added around the framed area on every side; clamped to 0..400. |
 | `showBoxes` | boolean | Show the boxes under the drawing (default), or hide them to see the ink alone. |
 | `note` | string | What you are looking for. Travels with the picture as its caption. |
@@ -1171,7 +1171,7 @@ Compile Kotlin for a Field box without running it. Returns success and diagnosti
 
 *Effects: execute code. Schema sent with every request.*
 
-Evaluate a Kotlin expression in a Field box's existing KotlinInterface/KotlinInterface2 context. Target may be blank for the current box, a box uid/name, or an afield://... ref. Prefer read-only expressions; this runs against live runtime objects. String results in both primitiveValue and stringValue, and optional HTML, are bounded by maxChars (64 to 100000 characters) and carry an explicit truncation marker when shortened. Request a substring or summary of large values to inspect more selectively. The current/target Field box is thisBox. Do not use _, _.foo, or bare box as current-box syntax. Use thisBox.getPropertyRaw("name") / thisBox.setPropertyRaw("name", value) for raw box properties, and use box("uid", root = thisBox.inside) when intentionally resolving or creating another box in the same document.
+Evaluate a Kotlin expression in a Field box's existing KotlinInterface/KotlinInterface2 context. Target may be blank for the current box, a box uid/name, or an afield://... ref. Prefer read-only expressions; this runs against live runtime objects. String results in both primitiveValue and stringValue, and optional HTML, are bounded by maxChars (64 to 100000 characters) and carry an explicit truncation marker when shortened. Request a substring or summary of large values to inspect more selectively. The current/target Field box is thisBox. Do not use \_, \_.foo, or bare box as current-box syntax. Use thisBox.getPropertyRaw("name") / thisBox.setPropertyRaw("name", value) for raw box properties, and use box("uid", root = thisBox.inside) when intentionally resolving or creating another box in the same document.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
@@ -1200,7 +1200,7 @@ No parameters.
 
 *Effects: read document. Schema sent with every request.*
 
-List Kotlin REPL context variables currently retained by a Field box's KotlinInterface/KotlinInterface2 without evaluating code. Target may be blank for the current box, a box uid/name, or an afield://... ref. This lists retained script variables, not Field box properties. String values in both valuePreview and primitiveValue are bounded by maxValueChars (64 to 100000 characters) and carry an explicit truncation marker when shortened. In later EvaluateKotlinExpression calls, refer to these variables by their names; refer to the current/target box as thisBox, never as _ or _.foo.
+List Kotlin REPL context variables currently retained by a Field box's KotlinInterface/KotlinInterface2 without evaluating code. Target may be blank for the current box, a box uid/name, or an afield://... ref. This lists retained script variables, not Field box properties. String values in both valuePreview and primitiveValue are bounded by maxValueChars (64 to 100000 characters) and carry an explicit truncation marker when shortened. In later EvaluateKotlinExpression calls, refer to these variables by their names; refer to the current/target box as thisBox, never as \_ or \_.foo.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
@@ -1492,7 +1492,7 @@ Search your memory notes, the ones that persist across sessions and documents. U
 
 *Effects: agent state, filesystem write. Schema sent with every request.*
 
-Create or replace a memory note: one fact a later session with this person will need, kept across sessions and documents. Use it when the person asks you to remember something, or when something is clearly worth remembering (a preference or correction, an idiom or API that proved out, a trap and what resolved it). Do not use it for progress on this document; that goes in its guides. To replace a note, pass the revision from MemoryReadRequest; creating needs an empty revision. Returns the saved note and its new revision. Fails, changing nothing, on a stale or missing revision (read again and reconcile), a name that is not lowercase-with-hyphens, a missing description, or a body over 8000 characters. e.g. name = `rtt-needs-renderer-parent`, kind = `trap`, status = `verified`, sources = [`sketches/particles@t-b4.b1`].
+Create or replace a memory note: one fact a later session with this person will need, kept across sessions and documents. Use it when the person asks you to remember something, or when something is clearly worth remembering (a preference or correction, an idiom or API that proved out, a trap and what resolved it). Do not use it for progress on this document; that goes in its guides. To replace a note, pass the revision from MemoryReadRequest; creating needs an empty revision. Returns the saved note and its new revision. Fails, changing nothing, on a stale or missing revision (read again and reconcile), a name that is not lowercase-with-hyphens, a missing description, or a body over 8000 characters. e.g. name = `rtt-needs-renderer-parent`, kind = `trap`, status = `verified`, sources = \[`sketches/particles@t-b4.b1`\].
 
 | Parameter | Type | Description |
 | --- | --- | --- |
@@ -1542,7 +1542,7 @@ Read back a complete tool result that was too large to keep in the conversation:
 
 *Effects: none declared. Schema sent with every request.*
 
-Run a short JavaScript program that calls this conversation's other tools as functions and returns one combined result. Use it when a step means four or more similar tool calls (every box, every value of a sweep); a single call is cheaper made directly. tools.NewBox({name, code}), tools.RunBox({box}), tools.ListBoxes({}) ... — the same tools and arguments as direct calls, with the Request suffix dropped (box-authored tools by their own name, tools["rectsl.run"]({...}), or their listed name, tools.rectsl_run). Calls are synchronous. A call that fails (could not run, or returned success:false / error:true) throws a ToolFailure whose .result is the failed result, so later steps do not run unless you catch it; tools.X.raw(args) returns the result without throwing, to inspect failures on purpose. A tool that ran but reports a verdict (qualified:false, held, warnings) has not failed: stop on it with check(condition, message). progress(...) shows a line to the person now; only what the program returns and what it passes to text(...) comes back to you, with a one-line record of each call. show(result) forwards that result's images; describe("RunBoxRequest") returns a tool's input schema. Not a transaction: edits made before a failure stay. No files, network, timers or Java.
+Run a short JavaScript program that calls this conversation's other tools as functions and returns one combined result. Use it when a step means four or more similar tool calls (every box, every value of a sweep); a single call is cheaper made directly. tools.NewBox({name, code}), tools.RunBox({box}), tools.ListBoxes({}) ... — the same tools and arguments as direct calls, with the Request suffix dropped (box-authored tools by their own name, tools\["rectsl.run"\]({...}), or their listed name, tools.rectsl\_run). Calls are synchronous. A call that fails (could not run, or returned success:false / error:true) throws a ToolFailure whose .result is the failed result, so later steps do not run unless you catch it; tools.X.raw(args) returns the result without throwing, to inspect failures on purpose. A tool that ran but reports a verdict (qualified:false, held, warnings) has not failed: stop on it with check(condition, message). progress(...) shows a line to the person now; only what the program returns and what it passes to text(...) comes back to you, with a one-line record of each call. show(result) forwards that result's images; describe("RunBoxRequest") returns a tool's input schema. Not a transaction: edits made before a failure stay. No files, network, timers or Java.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
@@ -1572,13 +1572,13 @@ Search saved UTF-8 files for literal text in exactly one scope. Returns the matc
 
 | Parameter | Type | Description |
 | --- | --- | --- |
-| `scope` (required) | `DOCUMENT_FILES` \| `DOCUMENT_HISTORY` \| `WORKSPACE_FILES` \| `FIELD_KOTLIN_SOURCE` \| `FIELD_DOCS` \| `FILE_PROXY` | Required: DOCUMENT_FILES, DOCUMENT_HISTORY, WORKSPACE_FILES, FIELD_KOTLIN_SOURCE, FIELD_DOCS (Field's Markdown documentation, public/docs), or FILE_PROXY (one explicitly named directory proxy box). Never combines roots. Workspace/document files exclude backups. |
+| `scope` (required) | `DOCUMENT_FILES` \| `DOCUMENT_HISTORY` \| `WORKSPACE_FILES` \| `FIELD_KOTLIN_SOURCE` \| `FIELD_DOCS` \| `FILE_PROXY` | Required: DOCUMENT\_FILES, DOCUMENT\_HISTORY, WORKSPACE\_FILES, FIELD\_KOTLIN\_SOURCE, FIELD\_DOCS (Field's Markdown documentation, public/docs), or FILE\_PROXY (one explicitly named directory proxy box). Never combines roots. Workspace/document files exclude backups. |
 | `query` (required) | string | Literal single-line text, 1..256 UTF-16 units. Whitespace is preserved. |
-| `pathPrefix` | string | Optional relative file/directory path under the scope root, using / separators. FIELD_KOTLIN_SOURCE's root is src/, so jvmMain/kotlin/afield/geometry; FIELD_DOCS's root is public/docs/. No absolute paths, .., or symlinks. |
-| `extensions` | list of string | Optional file extensions, e.g. [kt, glsl] (a leading dot is ignored). Empty searches all eligible text files. FIELD_KOTLIN_SOURCE searches only kt; FIELD_DOCS searches only md. |
+| `pathPrefix` | string | Optional relative file/directory path under the scope root, using / separators. FIELD\_KOTLIN\_SOURCE's root is src/, so jvmMain/kotlin/afield/geometry; FIELD\_DOCS's root is public/docs/. No absolute paths, .., or symlinks. |
+| `extensions` | list of string | Optional file extensions, e.g. \[kt, glsl\] (a leading dot is ignored). Empty searches all eligible text files. FIELD\_KOTLIN\_SOURCE searches only kt; FIELD\_DOCS searches only md. |
 | `ignoreCase` | boolean | — |
 | `maxMatches` | integer | Global matching-line limit, 1..500. Each line is returned once; reaching the cap reports partial results. |
-| `proxyBox` | string | Required only for FILE_PROXY: uid or unique name of an existing directory proxy box in this document. Not a filesystem path. Refused with any other scope. |
+| `proxyBox` | string | Required only for FILE\_PROXY: uid or unique name of an existing directory proxy box in this document. Not a filesystem path. Refused with any other scope. |
 
 ### `symbols` tools
 
@@ -1638,7 +1638,7 @@ No parameters.
 
 *Effects: filesystem read. Schema loaded on request.*
 
-Given a source path and line inside src/, show recent Field box code snippets that appear to call the enclosing source symbol, with timestamps, compile/eval status, return types, and launch lifecycles. Confidence values are literal: k2-resolved is semantic; source-index-* values are static source-index evidence; textual values are fallback evidence and must not be described as resolved.
+Given a source path and line inside src/, show recent Field box code snippets that appear to call the enclosing source symbol, with timestamps, compile/eval status, return types, and launch lifecycles. Confidence values are literal: k2-resolved is semantic; source-index-\* values are static source-index evidence; textual values are fallback evidence and must not be described as resolved.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
@@ -1662,7 +1662,7 @@ Find source symbols used early in a document's observed code-use timeline and th
 
 *Effects: filesystem read. Schema loaded on request.*
 
-List hot Field source symbols by observed Field box usage. window may be all, week, day, or month. Report each row's confidence literally: k2-resolved is semantic; source-index-* values are static source-index evidence; textual values are fallback evidence. Do not call source-index or textual rows resolved.
+List hot Field source symbols by observed Field box usage. window may be all, week, day, or month. Report each row's confidence literally: k2-resolved is semantic; source-index-\* values are static source-index evidence; textual values are fallback evidence. Do not call source-index or textual rows resolved.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
@@ -1805,7 +1805,7 @@ Reload shader modules for the current Field box or target box/file ref. Call thi
 
 *Effects: capture image, read document. Schema loaded on request.*
 
-Inspect current Three.js geometry in a separate capture browser. Returns a fresh picture, a compact part hierarchy and the complete restorable state. Use it when you need to see or measure current geometry; for a custom canvas use ViewBoxOutputRequest instead, and this tool fails saying so. A stale expectedRevision, or invalid camera, pick or section values, fails with success=false and the reason. e.g. camera = [2, 1.5, 3], target = [0, 0, 0]. Never moves the user's camera or publishes a manual selection. Get expectedRevision from ListGeometryViewsRequest. stateJson must be the COMPLETE state returned by a previous inspection, never a fabricated partial state. Use camera and target to change framing in viewer coordinates (Y up). Optionally adjust explode/visibility/x-ray/section or pick the nearest visible feature. includeMetadata adds full source provenance and redundant part-tree details; normally leave false. Historical notes remain readable with ReadGeometryNoteRequest.
+Inspect current Three.js geometry in a separate capture browser. Returns a fresh picture, a compact part hierarchy and the complete restorable state. Use it when you need to see or measure current geometry; for a custom canvas use ViewBoxOutputRequest instead, and this tool fails saying so. A stale expectedRevision, or invalid camera, pick or section values, fails with success=false and the reason. e.g. camera = \[2, 1.5, 3\], target = \[0, 0, 0\]. Never moves the user's camera or publishes a manual selection. Get expectedRevision from ListGeometryViewsRequest. stateJson must be the COMPLETE state returned by a previous inspection, never a fabricated partial state. Use camera and target to change framing in viewer coordinates (Y up). Optionally adjust explode/visibility/x-ray/section or pick the nearest visible feature. includeMetadata adds full source provenance and redundant part-tree details; normally leave false. Historical notes remain readable with ReadGeometryNoteRequest.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
@@ -1913,7 +1913,7 @@ Explicitly resolve a verified geometry note, or reopen it (status: `resolved` or
 
 *Effects: mutate document. Schema loaded on request.*
 
-Style named solid parts in an existing document-owned Three.js viewer. Returns success and the stored style map. Use it when a task asks to colour, highlight or ghost parts; it needs part IDs and the revision from InspectGeometryViewRequest. An unknown viewer, a stale revision or more than 10000 parts fails with success=false. e.g. parts = [{partId = `lid`, color = [1, 0, 0]}]. RGB colours are 0..1; unlit preserves colour without lighting; xrayOpacity=1 keeps a part legible when the surrounding surfaces fade. Stores presentation on the source box, surviving rebuilds with the same part IDs. Does not alter geometry, checks, camera, selection, notes or build currency. replace=true replaces this view's whole style map; an empty replacement restores defaults.
+Style named solid parts in an existing document-owned Three.js viewer. Returns success and the stored style map. Use it when a task asks to colour, highlight or ghost parts; it needs part IDs and the revision from InspectGeometryViewRequest. An unknown viewer, a stale revision or more than 10000 parts fails with success=false. e.g. parts = \[{partId = `lid`, color = \[1, 0, 0\]}\]. RGB colours are 0..1; unlit preserves colour without lighting; xrayOpacity=1 keeps a part legible when the surrounding surfaces fade. Stores presentation on the source box, surviving rebuilds with the same part IDs. Does not alter geometry, checks, camera, selection, notes or build currency. replace=true replaces this view's whole style map; an empty replacement restores defaults.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
@@ -1930,7 +1930,7 @@ Style named solid parts in an existing document-owned Three.js viewer. Returns s
 
 *Effects: agent state, filesystem read, read document. Schema loaded on request; box chats only.*
 
-End this turn and let Field wait for build jobs without the model, then resume this conversation with their outcomes. Use it after StartStudyBuildRequest (waitSeconds=0) when a build will take more than a few minutes, instead of repeated WaitStudyBuildRequest calls: every wait costs a model round, and this costs none. Returns at once with suspended=true and the jobs it waits for; call no other tool after it in this turn. When every job is terminal, or maxHours have passed, Field sends you a message with each job's status, currency, facts and result notes, and you carry on from there. If every job has already finished it returns their outcomes with suspended=false and the turn goes on. An unknown runner or job, more than 20 jobs, or maxHours outside 0..48 fails with success=false. e.g. boxId = `a1b2`, name = `mesh`, jobIds = [`3f2a1c9e-...`], maxHours = 4.
+End this turn and let Field wait for build jobs without the model, then resume this conversation with their outcomes. Use it after StartStudyBuildRequest (waitSeconds=0) when a build will take more than a few minutes, instead of repeated WaitStudyBuildRequest calls: every wait costs a model round, and this costs none. Returns at once with suspended=true and the jobs it waits for; call no other tool after it in this turn. When every job is terminal, or maxHours have passed, Field sends you a message with each job's status, currency, facts and result notes, and you carry on from there. If every job has already finished it returns their outcomes with suspended=false and the turn goes on. An unknown runner or job, more than 20 jobs, or maxHours outside 0..48 fails with success=false. e.g. boxId = `a1b2`, name = `mesh`, jobIds = \[`3f2a1c9e-...`\], maxHours = 4.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
@@ -1977,7 +1977,7 @@ No parameters.
 
 *Effects: filesystem read, filesystem write, mutate document, read document. Schema loaded on request.*
 
-Delete build attempts this document no longer needs, across all of its build runners, to free disk space. Returns, per runner, how many attempts were kept and deleted and the bytes freed, plus any pins that name no attempt. Kept: each stage's current result, latest attempt and latest success, running builds, pinned jobIds, and every attempt those depend on, were gated on or resumed from. Use it when attempt history has grown large after many rebuilds: call with apply=false to see what would go, then apply=true to delete it. A deleted attempt cannot be inspected or resumed from again. A read-only document refuses it. e.g. pins = [`<jobId to keep>`], apply = false.
+Delete build attempts this document no longer needs, across all of its build runners, to free disk space. Returns, per runner, how many attempts were kept and deleted and the bytes freed, plus any pins that name no attempt. Kept: each stage's current result, latest attempt and latest success, running builds, pinned jobIds, and every attempt those depend on, were gated on or resumed from. Use it when attempt history has grown large after many rebuilds: call with apply=false to see what would go, then apply=true to delete it. A deleted attempt cannot be inspected or resumed from again. A read-only document refuses it. e.g. pins = \[`<jobId to keep>`\], apply = false.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
@@ -2019,7 +2019,7 @@ Wait up to 900 seconds for an existing build job to finish, streaming real progr
 
 *Effects: filesystem read, read document. Schema loaded on request.*
 
-Say which kit this document runs and what differs from it. A kit is the box code, box-held sources and asset files every document of one kind receives. Returns the kit's name, the revision the document records, the revision the kit is at now, and each role property and asset that is not current: changed in the kit (a migration installs it), edited in this document (a migration refuses it), a frozen copy that differs from the kit (a migration replaces it), or no longer in the kit. Use it before relying on a provider's behaviour, or when asked whether the document is up to date. It changes nothing, and does not migrate: a person migrates with tools/field_kit.py. A document with no kit returns success=true with kit empty. e.g. kit = `` to compare with the kit the document records.
+Say which kit this document runs and what differs from it. A kit is the box code, box-held sources and asset files every document of one kind receives. Returns the kit's name, the revision the document records, the revision the kit is at now, and each role property and asset that is not current: changed in the kit (a migration installs it), edited in this document (a migration refuses it), a frozen copy that differs from the kit (a migration replaces it), or no longer in the kit. Use it before relying on a provider's behaviour, or when asked whether the document is up to date. It changes nothing, and does not migrate: a person migrates with tools/field\_kit.py. A document with no kit returns success=true with kit empty. e.g. kit = `` to compare with the kit the document records.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
@@ -2078,7 +2078,7 @@ Create or revise ONE Markdown slide using the revision from PresentationReadRequ
 
 *Effects: agent state. Schema sent with every request; box chats only.*
 
-End this turn and let Field wait for background jobs without the model, then resume this conversation with how each ended (state, exit code, time and the last lines of its log), e.g. jobIds [`job-213045-1`], maxMinutes 60. Use it after RepoStartCommandRequest when a job will take more than a couple of minutes — a docs build, a smoke run — instead of repeated RepoCommandStatusRequest waits: every wait costs a model round and this costs none. Returns at once with suspended=true; call no other tool after it in this turn. If every job has already ended it returns their outcomes with suspended=false and the turn goes on. Fails for an unknown jobId, more than 10 jobs, or maxMinutes outside 1..720.
+End this turn and let Field wait for background jobs without the model, then resume this conversation with how each ended (state, exit code, time and the last lines of its log), e.g. jobIds \[`job-213045-1`\], maxMinutes 60. Use it after RepoStartCommandRequest when a job will take more than a couple of minutes — a docs build, a smoke run — instead of repeated RepoCommandStatusRequest waits: every wait costs a model round and this costs none. Returns at once with suspended=true; call no other tool after it in this turn. If every job has already ended it returns their outcomes with suspended=false and the turn goes on. Fails for an unknown jobId, more than 10 jobs, or maxMinutes outside 1..720.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
@@ -2137,7 +2137,7 @@ Read a text file of the repository this job works in, with line numbers. Use it 
 
 *Effects: execute code, filesystem write. Schema sent with every request.*
 
-Run one of this job's allowed commands in its repository (not a shell: a named argv template). command is the name (e.g. `gradle`, `python-test`, `git-diff`; the job's prompt lists which it allows), args fill its slots: gradle: task names and `--tests <pattern>`, e.g. ["jvmTest", "--tests", "afield.ai.tools.RepoFileToolsTest"]; python-test: a `tools/test_*.py` path then optional unittest names; check: a `tools/check_*.py` path; git-status: none; git-diff: optional `--stat`/`--cached`, revisions, then `--` and paths; git-log: optional `-n N`, revisions, `--`, paths; git-show: one revision. Returns exitCode, timedOut and the merged output (head and tail kept when long). Use it to reproduce a failure and to confirm a fix after patching; to look at files, use RepoReadFileRequest or RepoSearchRequest instead. Refuses a command the job does not allow, an argument its slot rejects, and any run while another process holds the checkout's verification lock; a run past its timeout is stopped and comes back with timedOut=true.
+Run one of this job's allowed commands in its repository (not a shell: a named argv template). command is the name (e.g. `gradle`, `python-test`, `git-diff`; the job's prompt lists which it allows), args fill its slots: gradle: task names and `--tests <pattern>`, e.g. \["jvmTest", "--tests", "afield.ai.tools.RepoFileToolsTest"\]; python-test: a `tools/test_*.py` path then optional unittest names; check: a `tools/check_*.py` path; git-status: none; git-diff: optional `--stat`/`--cached`, revisions, then `--` and paths; git-log: optional `-n N`, revisions, `--`, paths; git-show: one revision. Returns exitCode, timedOut and the merged output (head and tail kept when long). Use it to reproduce a failure and to confirm a fix after patching; to look at files, use RepoReadFileRequest or RepoSearchRequest instead. Refuses a command the job does not allow, an argument its slot rejects, and any run while another process holds the checkout's verification lock; a run past its timeout is stopped and comes back with timedOut=true.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
@@ -2163,7 +2163,7 @@ Search the repository files this job may read for literal text (or a Java regex 
 
 *Effects: execute code, filesystem write. Schema sent with every request.*
 
-Start one of the allowed repository commands in the background and return at once with its jobId (e.g. command `docs-build`, args ["never"]; or `field-test`, args ["--id", "examples.demo-transcript.exec"]). Use it for anything that may run longer than a minute — a docs build, a smoke test, a Gradle check — and RepoRunCommandRequest for a quick one. Returns the jobId, its state after a moment (a command that fails at once comes back already exited, with its output) and the log path. Then call RepoCommandStatusRequest with the jobId, which can wait up to 120 s per call. The job keeps running after this turn, so a later turn can check it. Refuses a command this conversation may not run, an argument its slot rejects, a run while another process holds the checkout's verification lock, more than three running jobs, and a build in the checkout this Field runs from once its sources have changed.
+Start one of the allowed repository commands in the background and return at once with its jobId (e.g. command `docs-build`, args \["never"\]; or `field-test`, args \["--id", "examples.demo-transcript.exec"\]). Use it for anything that may run longer than a minute — a docs build, a smoke test, a Gradle check — and RepoRunCommandRequest for a quick one. Returns the jobId, its state after a moment (a command that fails at once comes back already exited, with its output) and the log path. Then call RepoCommandStatusRequest with the jobId, which can wait up to 120 s per call. The job keeps running after this turn, so a later turn can check it. Refuses a command this conversation may not run, an argument its slot rejects, a run while another process holds the checkout's verification lock, more than three running jobs, and a build in the checkout this Field runs from once its sources have changed.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
@@ -2199,7 +2199,7 @@ Create a repository file the job may write, with this content, e.g. path `dev_do
 
 *Effects: agent state. Schema sent with every request; box chats only.*
 
-Ask the person a question and end this turn until they answer. Use it only when you are blocked on a decision that is theirs to make (which of two designs, whether to overwrite their work, what a vague request means) and cannot settle it from the document, the code or a sensible default; do not use it to ask permission for ordinary steps, or to ask whether you are done. Say what you found so far before calling it. Returns at once with suspended=true; call no other tool after it in this turn. The chat shows the question with a button per choice, and the person may also type any answer: their next message is the answer, and you carry on from there. A blank question, or more than 6 choices, fails with success=false and the turn goes on. e.g. question = `Keep the old mesh as a layer, or replace it?`, choices = [`Keep it as a layer`, `Replace it`].
+Ask the person a question and end this turn until they answer. Use it only when you are blocked on a decision that is theirs to make (which of two designs, whether to overwrite their work, what a vague request means) and cannot settle it from the document, the code or a sensible default; do not use it to ask permission for ordinary steps, or to ask whether you are done. Say what you found so far before calling it. Returns at once with suspended=true; call no other tool after it in this turn. The chat shows the question with a button per choice, and the person may also type any answer: their next message is the answer, and you carry on from there. A blank question, or more than 6 choices, fails with success=false and the turn goes on. e.g. question = `Keep the old mesh as a layer, or replace it?`, choices = \[`Keep it as a layer`, `Replace it`\].
 
 | Parameter | Type | Description |
 | --- | --- | --- |
