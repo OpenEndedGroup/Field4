@@ -4,14 +4,15 @@ val starts = kotlin.random.Random(11)
 
 // Twelve learners, each starting at a random wiring and each with its own trials. They are
 // independent, so they train in parallel.
-val learners = (1..12).map { k ->
-    val start = CubeWiring(
-        starts.nextDouble(-2.5, 2.5),
-        starts.nextDouble(-2.5, 2.5),
-        starts.nextDouble(-2.5, 2.5),
-    )
-    WeightCubeLearner(lights, CubeReward.SEEK, start = start, seed = k.toLong())
-}
+val learners =
+    (1..12).map { k ->
+        val start = CubeWiring(
+            starts.nextDouble(-2.5, 2.5),
+            starts.nextDouble(-2.5, 2.5),
+            starts.nextDouble(-2.5, 2.5),
+        )
+        WeightCubeLearner(lights, CubeReward.SEEK, start = start, seed = k.toLong())
+    }
 learners.parallelStream().forEach { it.train(2000) }
 val drawn = learners.flatMap { l ->
     val end = l.measure(l.wiring, 99999)
