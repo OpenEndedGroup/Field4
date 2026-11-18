@@ -73,7 +73,9 @@ is a small place to try them.
 
 `solidCraft { }` builds a design instead of opening one, from sketches and features written in a
 box: lines, arcs, circles, splines and 3D curves, then extrude, revolve, sweep, loft and pipe, and
-the surface features that make open sheets — surface sweep, loft, revolve and boundary patch. The
+the surface features that make open sheets — surface sweep, loft, revolve and boundary patch —
+and the features that work on a body's faces and edges: fillet, [chamfer](#chamfer-every-edge) and
+`offsetFaces`. The
 result is a real SolidCraft design, so its parameters stay editable and it exports to STEP or STL
 like one opened from a file.
 
@@ -234,3 +236,78 @@ The thickened sheet is 2 deep, though its welded mesh still reports two open bou
 
 Any SolidCraft feature the builder does not name — shell, draft, pattern, and the rest —
 can be added by its JSON fields with `feature("shell", JSONObject()...)`.
+
+## Chamfer every edge
+
+A chamfer of one edge is easy. A chamfer of *every* edge is where a CAD kernel shows what it can
+do, because every corner where three or more chamfers meet has to be worked out. `mesh().edges()`
+lists a body's edges, read off the mesh where two of its faces meet. Each one has a `pick` point
+to hand to `chamfer` or `fillet`, and says whether it is `convex`: an outside corner, which a
+chamfer cuts away, or an inside one, which it fills.
+
+```kotlin
+val edges = part.mesh().edges()
+chamfer("0.5", *edges.filter { it.convex }.map { it.pick }.toTypedArray())
+chamfer("0.5", *edges.filter { !it.convex }.map { it.pick }.toTypedArray())
+```
+
+Open [chamfer_everything](agent_transcripts.md#chamfer_everything) from the welcome screen. Its
+first box drills a 3 × 3 plate of bosses, so it has outside corners along every rim, inside
+corners where each boss stands on the plate, and a round edge at each end of every hole.
+Chamfered all at once, it fails: SolidCraft cannot place the corner where an outside and an
+inside chamfer meet. The same edges as two chamfers, outside first and then inside, build.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/solidcraft/chamfer-one-part.png" capture="box" capture-box="chamfer_one_part" macro-file="../../dev_docs/agents/transcripts/chamfer_everything.yaml" requires="solidcraft" open-outputs="true" padding="16" wait="1" timeout="300" embed=true hidden=true name="chamfer-one-part" alt="A table and two grey meshes. The table: a 3 × 3 plate with 138 edges, 102 outside and 36 inside; every edge at once fails with Vertex Computation Failure; outside edges then inside ones builds. Below, the drilled plate of bosses as built, and beside it the same plate with every edge, rim and hole bevelled."}
+// The transcript builds the plate and chamfers it with the real SolidCraft evaluator.
+```
+
+The second box runs the same test on eleven parts and times it, with one fillet of the same edges
+beside it. A part whose corners are all outside, or one whose single inside edge meets no other,
+takes one chamfer. Everything that mixes the two needs two. A pyramid's apex, where four chamfers
+would meet at a point, is refused outright, while a fillet of every edge builds on every one of
+these parts.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/solidcraft/chamfer-ladder.png" capture="box" capture-box="chamfer_ladder" macro-file="../../dev_docs/agents/transcripts/chamfer_everything.yaml" requires="solidcraft" open-outputs="true" padding="16" wait="1" wait-output="true" wait-output-channel="output" wait-output-contains="parts in" timeout="600" embed=true hidden=true name="chamfer-ladder" alt="A table of eleven parts, from a block with 12 edges to a 4 × 4 plate of bosses with 204, giving each part's edge count, its build time, and whether one chamfer, two chamfers and one fillet of every edge build, with times. Below it, a grid of the chamfered parts, and the pyramid filleted instead."}
+// The transcript times every part with the real SolidCraft evaluator, off Field's main loop.
+```
+
+Failing is cheap, well under a second even at 204 edges. Succeeding grows faster than the edge
+count: two chamfers of the 3 × 3 plate of bosses take under 2 s, of the 4 × 4 plate about 5 s.
+The ladder runs its evaluations inside `go { }` with `runInterruptible(Dispatchers.Default)`, so
+the table fills in a part at a time and Field keeps drawing; a box that holds Field's main loop for
+30 s is [interrupted](running_code.md#code-that-never-returns).
+
+## Fillet every edge
+
+Where chamfering everything is hard, filleting everything is not: one fillet takes every edge of
+every part above, outside and inside corners alike, and the pyramid's apex too. The question is
+whether the result is right, and how round each part can go.
+
+Open [fillet_everything](agent_transcripts.md#fillet_everything) from the welcome screen. Its first
+box rounds every edge of a 40 × 30 × 10 block. Where three rounds meet, the rolling ball leaves an
+eighth of a sphere, so the rounded block has a closed-form volume: the shrunken box, a slab on each
+face, a quarter-cylinder along each edge and a sphere's worth of corners. SolidCraft's volume agrees
+with it to about 10⁻¹². At 5 mm, half the block's depth, the rounds on the top and bottom would
+take the whole of the side faces, and SolidCraft refuses, naming the largest radius that fits.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/solidcraft/fillet-block.png" capture="box" capture-box="fillet_block" macro-file="../../dev_docs/agents/transcripts/fillet_everything.yaml" requires="solidcraft" open-outputs="true" padding="16" wait="1" timeout="300" embed=true hidden=true name="fillet-block" alt="A table and three grey meshes. The table gives radius, SolidCraft's volume, the rounded block's closed-form volume, their difference, faces and time: at 1, 2 and 4 mm the volumes agree to about 1e-12, 26 faces each; at 5 mm the fillet is refused, and the line below says the largest radius that fits is 4.999 mm. Below, the block rounded at 1, 2 and 4 mm."}
+// The transcript rounds the block with the real SolidCraft evaluator.
+```
+
+The third box asks each part for a fillet of 10 mm, more than any of them can take. The refusal
+says how large a radius does fit, and the box fillets every edge at that. At its largest radius
+the pyramid becomes a ball: 6.18 mm is the radius of the sphere inscribed in a 20 × 20 × 20
+pyramid, 400 / (20 + √2000). A refusal is not always cheap. Most come back in well under a
+second, but finding the limit takes about 20 s on the L bracket and over 40 s on the hex nut,
+against half a second for the fillet itself.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/solidcraft/fillet-ladder.png" capture="box" capture-box="fillet_ladder" macro-file="../../dev_docs/agents/transcripts/fillet_everything.yaml" requires="solidcraft" open-outputs="true" padding="16" wait="1" wait-output="true" wait-output-channel="output" wait-output-contains="parts in" timeout="600" embed=true hidden=true name="fillet-ladder" alt="A table of eleven parts giving each one's edge count, the time for a 1 mm fillet of every edge, the largest radius that fits, how long SolidCraft took to say so, and the time for a fillet at that radius. Below it, a grid of the parts at their largest radius: rounded blocks, a hex nut, the pyramid turned into a ball, a stepped shaft, a pocketed block, an L bracket and plates of rounded bosses."}
+// The transcript fillets every part with the real SolidCraft evaluator, off Field's main loop.
+```
+
+## Where to go next
+
+- [Manifold](manifold.md) is Field's mesh-solid API: Booleans, hulls, `insetFaces` and offsets on
+  meshes rather than B-reps.
+- [Agent transcripts](agent_transcripts.md#solidcraft_intro) lists the SolidCraft starting points:
+  `solidcraft_intro`, `chamfer_everything` and `fillet_everything`.

@@ -64,6 +64,19 @@ enum class SolidCraftRailFit(internal val json: String) { SCALE("scale"), STRETC
 /** How a joining feature meets bodies already in the design. */
 enum class SolidCraftOperation(internal val json: String) { NEW_BODY("new_body"), JOIN("join"), CUT("cut"), INTERSECT("intersect") }
 
+/**
+ * What fills a fillet's corner where three rounded edges meet: a piece of the rolling ball's
+ * sphere (`ROLLING`), or a patch set back from the corner that meets the rounds to the second
+ * order (`G2`), so the curvature has no jump where they join.
+ */
+enum class SolidCraftFilletCorner(internal val json: String) { ROLLING("rolling"), G2("g2") }
+
+/**
+ * A fillet radius too large for the faces around an edge: refused (`EXACT`), reduced for every
+ * edge to the largest that fits (`REDUCE`), or tapered along each edge it does not fit (`TAPER`).
+ */
+enum class SolidCraftFilletFit(internal val json: String) { EXACT("exact"), REDUCE("reduce"), TAPER("taper") }
+
 /** How much of a neighbouring surface a patch or loft end repeats: position, tangent, curvature, its change. */
 enum class SolidCraftContinuity(internal val json: String) { G0("g0"), G1("g1"), G2("g2"), G3("g3") }
 
@@ -174,9 +187,18 @@ class SolidCraftBuilder internal constructor(private val name: String, private v
             wall?.let { w -> it.put("wall", w) }
         }
 
-    /** A fillet of `radius` on the edges nearest each of `edgesNear` (world points). */
-    fun fillet(radius: String, vararg edgesNear: DoubleArray) = add("Fillet", "fillet") {
+    /**
+     * A fillet of `radius` on the edges nearest each of `edgesNear` (world points). `corner` is
+     * what fills a corner where three rounded edges meet; `fit` is what happens when the radius
+     * is too large for the faces around an edge.
+     */
+    fun fillet(
+        radius: String, vararg edgesNear: DoubleArray,
+        corner: SolidCraftFilletCorner = SolidCraftFilletCorner.ROLLING, fit: SolidCraftFilletFit = SolidCraftFilletFit.EXACT,
+    ) = add("Fillet", "fillet") {
         it.put("edges", JSONArray(edgesNear.map { p -> JSONArray(p.toList()) })).put("radius", radius)
+        if (corner != SolidCraftFilletCorner.ROLLING) it.put("corner", corner.json)
+        if (fit != SolidCraftFilletFit.EXACT) it.put("fit", fit.json)
     }
 
     /**

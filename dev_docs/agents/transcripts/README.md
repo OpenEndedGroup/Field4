@@ -288,6 +288,16 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   `animation_time_model.md`. Runs until stopped, stops itself with `end()`, re-run replaces, and a
   fourth box the reader drives to see which of `.end { }` and `finally` each way of stopping reaches.
   Pure CPU. Moved up from `docs_capture/` on 2026-10-02 to become a starting point.
+- `chamfer_everything.yaml`: **chamfer every edge, and find out where it breaks** — a drilled plate
+  of bosses whose edges are read off its SolidCraft mesh (`SolidCraftMesh.edges()`), chamfered all
+  at once (refused where an outside and an inside edge meet) and then outside-then-inside as two
+  features (builds), beside a ladder of eleven parts timed three ways: one chamfer, two, and one
+  fillet. Optional SolidCraft bridge; without it the boxes give the build command.
+- `fillet_everything.yaml`: **fillet every edge, and check it** — a block rounded on all twelve edges
+  at three radii against the closed-form volume of a rounded block (to ~1e-12), the drilled plate of
+  bosses that one chamfer cannot take in one fillet, and eleven parts at 1 mm and at the largest
+  radius each takes, found from SolidCraft's own refusal. The ladder runs in `go { }` with the
+  evaluations off the main loop. Optional SolidCraft bridge; without it the boxes give the build command.
 - `kolakoski_euclid.yaml`: **Kolakoski counts, Euclid places** — the word says how many hits a group
   gets, `bjorklund` says where inside it they sit. A flat bar of twelve onsets rolled against
   `euclid(12,24)` at the same density, the same rule run recursively as a branching tree whose level
