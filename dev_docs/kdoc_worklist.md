@@ -2,7 +2,7 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 24953 of 41861 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 24954 of 41862 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
 **2044 undocumented entry points** (types, top-level functions and values) and 14134 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
@@ -39,7 +39,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Module.kt](../src/jvmMain/kotlin/afield/graphics/render/Module.kt) | Graphics | fabricate_renderer, fieldml_host_bridge, solid_notation | 9 | 135 | 8% |
 | [Sequencing.kt](../src/jvmMain/kotlin/afield/audio/synth/Sequencing.kt) | Patterns | boolean_network_music_examples, visualizers | 9 | 38 | 7% |
 | [Logging.kt](../src/jvmMain/kotlin/afield/ai/diagnostics/Logging.kt) | AI4 | logging, visualizers, agent_transcripts | 9 | 25 | 12% |
-| [RepoFileTools.kt](../src/jvmMain/kotlin/afield/ai/tools/RepoFileTools.kt) | AI4 | ai4_tools | 9 | 23 | 13% |
+| [RepoFileTools.kt](../src/jvmMain/kotlin/afield/ai/tools/RepoFileTools.kt) | AI4 | ai4_tools | 9 | 23 | 15% |
 | [FunctionStudyTools.kt](../src/jvmMain/kotlin/afield/math/functions/FunctionStudyTools.kt) | Function | function_conversation | 9 | 14 | 41% |
 | [NanoInterface.kt](../src/jvmMain/kotlin/afield/lang/nano/NanoInterface.kt) | Languages | document_on_disk | 9 | 7 | 15% |
 | [Geometry.kt](../src/jvmMain/kotlin/afield/math/linalg/Geometry.kt) | Math | linear_algebra | 9 | 0 | 52% |
@@ -1287,15 +1287,15 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `RepoJobResult` | class | `src/jvmMain/kotlin/afield/ai/tools/RepoCommandJobs.kt:240` |
 | `AwaitRepoCommandsRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/RepoCommandJobs.kt:265` |
 | `RepoAwaitResult` | class | `src/jvmMain/kotlin/afield/ai/tools/RepoCommandJobs.kt:267` |
-| `RepoReadFileRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/RepoFileTools.kt:29` |
-| `RepoListFilesRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/RepoFileTools.kt:38` |
-| `RepoSearchRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/RepoFileTools.kt:42` |
-| `RepoPatchFileRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/RepoFileTools.kt:53` |
-| `RepoWriteFileRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/RepoFileTools.kt:57` |
-| `RepoFileResult` | class | `src/jvmMain/kotlin/afield/ai/tools/RepoFileTools.kt:59` |
-| `RepoMatch` | class | `src/jvmMain/kotlin/afield/ai/tools/RepoFileTools.kt:68` |
-| `RepoListResult` | class | `src/jvmMain/kotlin/afield/ai/tools/RepoFileTools.kt:69` |
-| `RepoSearchResult` | class | `src/jvmMain/kotlin/afield/ai/tools/RepoFileTools.kt:70` |
+| `RepoReadFileRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/RepoFileTools.kt:39` |
+| `RepoListFilesRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/RepoFileTools.kt:48` |
+| `RepoSearchRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/RepoFileTools.kt:52` |
+| `RepoPatchFileRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/RepoFileTools.kt:63` |
+| `RepoWriteFileRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/RepoFileTools.kt:67` |
+| `RepoFileResult` | class | `src/jvmMain/kotlin/afield/ai/tools/RepoFileTools.kt:69` |
+| `RepoMatch` | class | `src/jvmMain/kotlin/afield/ai/tools/RepoFileTools.kt:78` |
+| `RepoListResult` | class | `src/jvmMain/kotlin/afield/ai/tools/RepoFileTools.kt:79` |
+| `RepoSearchResult` | class | `src/jvmMain/kotlin/afield/ai/tools/RepoFileTools.kt:80` |
 | `ListAttachmentsResult` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:108` |
 | `AttachmentInfo` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:109` |
 | `AttachmentResponse` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:127` |

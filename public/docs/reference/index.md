@@ -681,7 +681,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**41861 public symbols across 1854 source files**, 24953 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**41862 public symbols across 1854 source files**, 24954 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -710,7 +710,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Audio AI](audio-ai.md) | 22 | 592 | 592 (100%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 131 | 3348 | 1689 (50%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 247 | 3392 | 1378 (40%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
-| [AI4](ai4.md) | 102 | 2296 | 863 (37%) | AI4 is the agent that lives inside Field: the chat panel on every box, the document chat, editor completion, and headless agent tasks. |
+| [AI4](ai4.md) | 102 | 2297 | 864 (37%) | AI4 is the agent that lives inside Field: the chat panel on every box, the document chat, editor completion, and headless agent tasks. |
 | [Machine learning](machine-learning.md) | 26 | 727 | 444 (61%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Animation](animation.md) | 10 | 186 | 43 (23%) |  |
 | [Execution](execution.md) | 2 | 9 | 9 (100%) |  |
@@ -2098,7 +2098,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [ReplVariableRebindingSmokeTest.kt](workspace.md#replvariablerebindingsmoketest-kt) | Workspace · internal | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>tools/<wbr></small> [RepoCommandJobs.kt](ai4.md#repocommandjobs-kt) | AI4 | 45 | 2 |  | [AI4's built-in tools](../ai4_tools.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>tools/<wbr></small> [RepoCommandTools.kt](ai4.md#repocommandtools-kt) | AI4 | 39 | 11 | Bounded commands for a headless AI4 job |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>tools/<wbr></small> [RepoFileTools.kt](ai4.md#repofiletools-kt) | AI4 | 37 | 5 | The `repo` tools read, list, search, patch and create files in one checkout, for a job that hands AI4 work a coding agent would otherwise do (a docs-notes revision, a landing question). | [AI4's built-in tools](../ai4_tools.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>tools/<wbr></small> [RepoFileTools.kt](ai4.md#repofiletools-kt) | AI4 | 38 | 6 | The `repo` tools read, list, search, patch and create files in one checkout, for a job that hands AI4 work a coding agent would otherwise do (a docs-notes revision, a landing question). | [AI4's built-in tools](../ai4_tools.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [RerunCompileCache.kt](workspace.md#reruncompilecache-kt) | Workspace · internal | 0 | 0 | Compile once, re-evaluate on rerun: one K2 engine's record of the snippets it has compiled. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>io/<wbr>resolve/<wbr></small> [Resolve.kt](networking.md#resolve-kt) | Networking | 66 | 50 | Reads timelines and markers, and reads or moves the playhead of a running DaVinci Resolve, through Resolve's own Python scripting API. | [DaVinci Resolve: Timelines and Markers](../davinci_resolve.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>io/<wbr>resolve/<wbr></small> [ResolvePlayheadLink.kt](networking.md#resolveplayheadlink-kt) | Networking | 7 | 6 |  |  |
