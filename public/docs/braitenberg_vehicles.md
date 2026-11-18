@@ -234,6 +234,143 @@ down by between 0.6 and 1.5. A much larger `learningRate` overshoots: at 80 the 
 become inhibitory enough that the faint background light between the lamps stops the vehicles too, and
 the mean light falls to about 0.3.
 
+### The path through the weight cube
+
+The four weights above are hard to picture. A vehicle that is the same on both sides needs only
+three numbers: `same`, the weight from each sensor to the motor on its own side; `cross`, the weight
+to the motor on the far side; and `drive`, added to both motor neurons (it is `−bias`). Each motor
+neuron is then driven by `same · b_own + cross · b_other + drive` and its wheel runs at the
+sigmoid of that. The four wirings of §2 are points in this cube, on the `drive = 0` plane: the
+coward at `same = 2`, the lover at `same = −2`, the aggressor at `cross = 2` and the explorer at
+`cross = −2`. Learning is a path through the cube.
+
+Aatish Bhatia and Arkarup Banerjee's [Watch a Brain Learn](https://aatishb.com/myriad/how-brains-learn/)
+trains a vehicle like this by trial and error, and `WeightCubeLearner` follows their method. Each
+try adds a little Gaussian noise (`sigma = 0.3`) to the three numbers, runs ten vehicles wired that
+way from fresh random places for 300 steps, and scores the try on the mean light at their bodies.
+If the score beats a running average of recent scores, the wiring moves toward the perturbation,
+otherwise away from it. This is REINFORCE with a baseline again; the learner above perturbs the
+motor outputs, and this one perturbs the weights.
+
+The learner below starts at the centre of the cube, where both wheels run at half speed whatever
+the light. The dots mark where it is after 0, 50, 250, 500 and 2000 tries; the faint line on the
+floor of the cube is the path's shadow.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/braitenberg_vehicles/cube_path.png" embed=true wait="10.0" timeout="300" capture="box" open-outputs="true" padding="20" w="640" trim="true" alt="an oblique wireframe cube of the weights same, cross and drive with the four named wirings marked; one learner path runs from the centre toward negative same, past the lover, then climbs a little in cross and drive and settles against the left face, with dots at 0, 50, 250, 500 and 2000 tries"}
+val lights = [Light(60.0, 60.0), Light(180.0, 70.0), Light(120.0, 180.0), Light(200.0, 200.0)]
+val learner = WeightCubeLearner(lights, CubeReward.SEEK, seed = 2L).train(2000)
+val view = CubeView(size = 560.0)
+
+// Colour the path by time, blue for the first tries and orange for the last, and drop a faint
+// shadow of it onto the floor of the cube so its depth reads.
+val path = learner.path
+val shadow = view.path(path.map { it.copy(drive = -3.0) }, vec(1.0, 1.0, 1.0, 0.18), 1.0)
+val segments = (0 until path.size - 1 step 10).map { i ->
+    val t = sqrt(i / 2000.0)
+    view.path(path.subList(i, min(i + 11, path.size)), vec(0.3 + 0.7 * t, 0.6, 1.0 - 0.7 * t, 0.9))
+}
+val marks = [0, 50, 250, 500, 2000].flatMap { n ->
+    val w = path[n]
+    println(n.toString() + " tries: " + w + ", light " + learner.measure(w, 99999).light.f2)
+    [view.dot(w, vec(1.0, 1.0, 1.0, 1.0))] + view.label(n.toString(), w, vec(1.0, 1.0, 1.0, 0.9), 12.0)
+}
+lines(view.frame() + shadow + segments + marks, w = 560.0, h = 560.0)
+```
+
+In 250 tries the learner runs almost straight along the `same` axis, past the lover, and the mean
+light at the vehicles' bodies goes from 0.30 to 0.65. After that it drifts more slowly up in
+`cross` and `drive` and comes to rest against the cube's face at `same = −3, cross = 1.4,
+drive = 0.8`, where the light is 0.73. The answer is a lover with some aggressor in it: strongly
+inhibitory uncrossed wires, which stop it in front of a lamp, plus a crossed excitatory pair that
+turns it toward the lamp on the way in. It is the same answer the population in the video above
+drifts toward, and here you can see the order in which it was found.
+
+### Many learners, and the ones that get stuck
+
+Twelve learners, each starting from a random point in the cube (grey dots), with their final
+wirings in orange:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/braitenberg_vehicles/cube_many.png" embed=true wait="10.0" timeout="300" capture="box" open-outputs="true" padding="20" w="640" trim="true" alt="twelve learner paths in the weight cube from random starts; five converge on one cluster beyond the lover at negative same, the other seven stay tangled near where they started, high or low in drive"}
+val lights = [Light(60.0, 60.0), Light(180.0, 70.0), Light(120.0, 180.0), Light(200.0, 200.0)]
+val view = CubeView(size = 560.0)
+val starts = kotlin.random.Random(11)
+
+// Twelve learners, each starting at a random wiring and each with its own trials. They are
+// independent, so they train in parallel.
+val learners = (1..12).map { k ->
+    val start = CubeWiring(
+        starts.nextDouble(-2.5, 2.5),
+        starts.nextDouble(-2.5, 2.5),
+        starts.nextDouble(-2.5, 2.5),
+    )
+    WeightCubeLearner(lights, CubeReward.SEEK, start = start, seed = k.toLong())
+}
+learners.parallelStream().forEach { it.train(2000) }
+val drawn = learners.flatMap { l ->
+    val end = l.measure(l.wiring, 99999)
+    println("" + l.path[0] + " -> " + l.wiring + ", light " + end.light.f2)
+    [
+        view.path(l.path, vec(0.45, 0.75, 1.0, 0.55), 1.2),
+        view.dot(l.path[0], vec(1.0, 1.0, 1.0, 0.6), 3.0),
+        view.dot(l.wiring, vec(1.0, 0.6, 0.2, 1.0), 4.5),
+    ]
+}
+lines(view.frame() + drawn, w = 560.0, h = 560.0)
+```
+
+Five of the twelve end in one cluster beyond the lover, at mean light 0.66 to 0.76. The other
+seven wander near where they started and end at 0.23 to 0.31, no better than at the start. Six of
+those seven start with `drive` above 1 or below −1. There the motor neurons are pinned on or off
+whatever the sensors read, so a small change to `same` or `cross` hardly changes how the vehicle
+drives, a try scores about the same as the baseline, and there is little to learn from. The search
+has to happen where the sigmoid has a slope; two learners that started out there, at `drive = 2.0`
+and `−1.6`, happened to find one and escaped. This is the plateau that held back the
+hill climber and the small evolving population in §10.
+
+### Changing the reward
+
+Score the same trials differently and the learners end in different places. Five learners per
+reward, all starting from the centre: `SEEK` scores the light at the body as before, `FLEE` scores
+minus the light, `FREEZE` minus the speed, and `CHARGE` the light plus the speed.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/braitenberg_vehicles/cube_rewards.png" embed=true wait="10.0" timeout="300" capture="box" open-outputs="true" padding="20" w="640" trim="true" alt="twenty learner paths from the centre of the weight cube in four colours: seek runs to negative same, flee to positive same, freeze straight down in drive and charge straight up"}
+val lights = [Light(60.0, 60.0), Light(180.0, 70.0), Light(120.0, 180.0), Light(200.0, 200.0)]
+val view = CubeView(size = 560.0)
+val colours = [
+    CubeReward.SEEK to vec(1.0, 0.75, 0.25, 1.0),
+    CubeReward.FLEE to vec(0.4, 0.75, 1.0, 1.0),
+    CubeReward.FREEZE to vec(0.75, 0.75, 0.8, 1.0),
+    CubeReward.CHARGE to vec(1.0, 0.35, 0.35, 1.0),
+]
+
+// Five learners per reward, all from the centre of the cube, trained in parallel.
+val learners = colours.associate { (reward, _) -> reward to (1..5).map { k -> WeightCubeLearner(lights, reward, seed = 100L + k) } }
+learners.values.flatten().parallelStream().forEach { it.train(2000) }
+val drawn = colours.flatMap { (reward, colour) ->
+    val group = learners[reward]!!
+    val ends = group.map { it.wiring }
+    val mean = CubeWiring(ends.map { it.same }.average(), ends.map { it.cross }.average(), ends.map { it.drive }.average())
+    val trial = group[0].measure(mean, 99999)
+    println(reward.toString() + ": mean end " + mean + ", light " + trial.light.f2 + ", speed " + trial.speed.f2)
+    group.flatMap { l -> [view.path(l.path, vec(colour.x, colour.y, colour.z, 0.45), 1.0), view.dot(l.wiring, colour, 4.0)] } +
+        view.label(reward.name.lowercase(), mean, colour, 13.0)
+}
+val start = view.dot(CubeWiring(0.0, 0.0, 0.0), vec(1.0, 1.0, 1.0, 1.0), 4.0)
+lines(view.frame() + drawn + start, w = 560.0, h = 560.0)
+```
+
+Each reward has its own basin. The seekers end, on average, at `same = −2.9, cross = 1.2,
+drive = 0.6`, the lover-and-aggressor of the first figure, with light 0.69. The fleers end at
+`same = 2.4, cross = −0.7, drive = −0.7`, Braitenberg's coward with a little explorer in it: they
+speed up on the side facing a lamp, turn away and slow down in the dark, and the light at their
+bodies falls from 0.30 to 0.20. The freezers move only along `drive`, to −1.6: once the motor
+neurons are off the weights do nothing, so the learner never moves them, and the speed falls from
+0.75 to 0.17, just above the wheels' idle speed of 0.15. The chargers move only up `drive`, to
+1.75, and drive at 1.33 with light 0.26, slightly worse than where they started. Speed is worth
+more to that score than light, and the wheels are fastest with the motors flat out, so they never
+learn to approach a lamp. A reward that wants both has to weigh them so that neither swamps the
+other.
+
 ## 5. Circling at a set distance
 
 `BUMP` is quiet below its preferred input and quiet above it. Put it into the aggressor's crossed

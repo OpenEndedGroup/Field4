@@ -291,10 +291,10 @@ class CubeView(
         return out
     }
 
-    /** [text] in [color], placed just to the right of [at]. */
+    /** [text] in [color], placed to the right of [at]. */
     fun label(text: String, at: CubeWiring, color: Vec4, size: Double = 10.0): List<FLine> {
         val p = project(at)
-        return label(text, p.x + 6, p.y + 4, size, color)
+        return label(text, p.x + 10, p.y + 4, size, color)
     }
 
     private fun FLine.seg(a: Vec2, b: Vec2) {
