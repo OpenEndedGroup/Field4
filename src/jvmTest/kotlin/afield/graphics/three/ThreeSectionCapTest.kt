@@ -75,7 +75,7 @@ class ThreeSectionCapTest {
     private fun ViewerJavaScript.Session.cap(mesh: TriMesh, z: Double) = cap(mesh.positions, mesh.indices, z)
 
     /** The summed area of the cap's own triangles, and the worst distance of a vertex off the plane. */
-    private fun Cap.triangleArea(): Double {
+    private fun Cap.coveredTriangleArea(): Double {
         var total = 0.0
         for (t in positions.indices step 9) {
             val ux = positions[t + 3] - positions[t]
@@ -145,7 +145,7 @@ class ThreeSectionCapTest {
             assertEquals(1, cap.loops, "a slab's cut should chain into one loop")
             assertEquals(0, cap.open, "a closed slab left a chain open")
             assertEquals(960_000.0, cap.area, 1e-6, "the cap's area")
-            assertEquals(960_000.0, cap.triangleArea(), 1e-3, "the cap's triangles should cover the region exactly")
+            assertEquals(960_000.0, cap.coveredTriangleArea(), 1e-3, "the cap's triangles should cover the region exactly")
             assertTrue(cap.worstOffPlane(4.0) < 1e-9, "a cap vertex sat off the plane")
         }
     }
@@ -219,7 +219,7 @@ class ThreeSectionCapTest {
             val cap = js.cap(torus, 5.0)
             assertEquals(2, cap.loops, "a flat cut through a torus is two loops")
             assertEquals(0, cap.open)
-            assertEquals(cap.area, cap.triangleArea(), cap.area * 1e-6, "the triangles should cover the annulus only")
+            assertEquals(cap.area, cap.coveredTriangleArea(), cap.area * 1e-6, "the triangles should cover the annulus only")
             assertTrue(!cap.covers(0.0, 0.0), "the cap covers the torus's hole")
             assertTrue(cap.covers(100.0, 0.0), "the cap misses the torus's own material")
             // Faceted, so not the analytic annulus — but within a few percent of it.
@@ -248,7 +248,7 @@ class ThreeSectionCapTest {
 
     /** One owner's share of a cut: its area by the region's own triangles, and the positions. */
     private inner class Region(val owner: Int, val positions: DoubleArray) {
-        fun area() = Cap(positions, 0.0, 0, 0).triangleArea()
+        fun area() = Cap(positions, 0.0, 0, 0).coveredTriangleArea()
         fun covers(x: Double, y: Double) = Cap(positions, 0.0, 0, 0).covers(x, y)
     }
 
