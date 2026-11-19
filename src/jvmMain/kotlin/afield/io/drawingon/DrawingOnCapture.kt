@@ -110,16 +110,22 @@ class DrawingOnCapture internal constructor(private val read: ((JsonObject) -> U
     @Synchronized fun networkAt(
         time: Double = duration,
         config: DrawingOnNetworkConfig = DrawingOnNetworkConfig()
-    ): DrawingOnNetwork {
+    ): DrawingOnNetwork = fitDrawingOnNetwork(networkStrokesAt(time), config)
+
+    /** Completed, visible network inputs at [time], with an optional detail policy for freehand samples. */
+    @Synchronized fun networkStrokesAt(
+        time: Double = duration,
+        preserveDetail: (List<DrawingOnSample>) -> Boolean = { false }
+    ): List<DrawingOnNetworkStroke> {
         require(time.isFinite() && time >= 0) { "Network time must be finite and nonnegative" }
         val state = replay(time)
-        val strokes = state.strokes.values.filter {
+        return state.strokes.values.filter {
             it.ended && it.visible && !it.cancelled && visible(it.layer, state)
         }.map { stroke ->
-            DrawingOnNetworkStroke(stroke.id, stroke.layer, stroke.tool,
-                stroke.samples.values.filter { it.t <= time }.map { it.position() })
+            val samples = stroke.samples.values.filter { it.t <= time }
+            DrawingOnNetworkStroke(stroke.id, stroke.layer, stroke.tool, samples.map { it.position() },
+                preserveDetail = stroke.tool == "freehand" && preserveDetail(samples))
         }
-        return fitDrawingOnNetwork(strokes, config)
     }
 
     /** Visible human ink at [time], as ordinary editable FLines. */

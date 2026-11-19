@@ -8,7 +8,10 @@ import UIKit
     private(set) var audio: AudioCapture
     let library: CaptureLibrary
     let referenceAssets: FieldReferenceAssets
-    var referenceDrawings: [String: ReferenceDrawing] = [:]
+    private(set) var referenceRevision = 0
+    var referenceDrawings: [String: ReferenceDrawing] = [:] {
+        didSet { referenceRevision &+= 1 }
+    }
     private var recordedAssets: Set<String> = []
     @Published var captures: [SavedCapture] = []
     @Published var captureTitle = ""

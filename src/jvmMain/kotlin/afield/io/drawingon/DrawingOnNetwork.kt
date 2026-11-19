@@ -30,12 +30,16 @@ data class DrawingOnNetworkConfig(
     }
 }
 
-/** A source stroke in drawing order. The network uses only X and Y from [points]. */
+/**
+ * A source stroke in drawing order. The network uses only X and Y from [points].
+ * [preserveDetail] keeps measured spans and endpoints and skips retrace grouping.
+ */
 data class DrawingOnNetworkStroke(
     val id: String,
     val layer: String,
     val tool: String,
-    val points: List<Vec3>
+    val points: List<Vec3>,
+    val preserveDetail: Boolean = false
 )
 
 /** Vertex keyed by source strokes. Coincident vertices on different layers remain separate. */
@@ -94,7 +98,7 @@ data class DrawingOnNetwork(
 private class NetworkCurve(val cluster: DrawingOnStrokeCluster, val points: List<Vec3>) {
     val seed = cluster.strokes.first()
     val id get() = cluster.id
-    val explicit get() = seed.tool != "freehand"
+    val explicit get() = seed.tool != "freehand" || seed.preserveDetail
     val circle get() = seed.tool == "circle"
     val cuts = mutableListOf<Pair<Float, DrawingOnNetworkNode>>()
     fun endpoint(side: Int) = if (side == 0) points.first() else points.last()
@@ -119,8 +123,9 @@ fun fitDrawingOnNetwork(
         }.dedupe()
         if (points.size < 2) continue
         val stroke = source.copy(points = points)
-        val samples = if (stroke.tool == "freehand") resample(points, 32) else emptyList()
-        val index = if (samples.isEmpty() || config.retraceTolerance == 0f) -1 else groups.indices.firstOrNull {
+        val samples = if (stroke.tool == "freehand" && !stroke.preserveDetail && config.retraceTolerance > 0f)
+            resample(points, 32) else emptyList()
+        val index = if (samples.isEmpty()) -1 else groups.indices.firstOrNull {
             groups[it].first().layer == stroke.layer && groupSamples[it].isNotEmpty() &&
                 alignedRetrace(groupSamples[it], samples, config.retraceTolerance) != null
         } ?: -1
@@ -133,8 +138,9 @@ fun fitDrawingOnNetwork(
     val clusters = groups.map { DrawingOnStrokeCluster(it.first().id, it.toList()) }
     val curves = clusters.mapIndexedNotNull { index, cluster ->
         val seed = cluster.strokes.first()
-        val points = when (seed.tool) {
-            "line", "circle" -> listOf(seed.points.first(), seed.points.last()).dedupe()
+        val points = when {
+            seed.tool == "line" || seed.tool == "circle" -> listOf(seed.points.first(), seed.points.last()).dedupe()
+            seed.preserveDetail -> seed.points
             else -> {
                 val fitInput = if (cluster.strokes.size == 1) seed.points else {
                     val aligned = listOf(groupSamples[index]) + cluster.strokes.drop(1).map {
@@ -236,7 +242,10 @@ private fun buildNetwork(
             }.dedupe()
             if (points.size < 2) continue
             val id = if (a == start) curve.id else "${curve.id}/after/${a.id}"
-            addEdge(curve, a, b, fitCurve(points, config.fitTolerance), id)
+            val line = if (curve.seed.preserveDetail) FLine().moveTo(points.first()).apply {
+                points.drop(1).forEach { lineTo(it) }
+            } else fitCurve(points, config.fitTolerance)
+            addEdge(curve, a, b, line, id)
         }
     }
     return DrawingOnNetwork(nodes.values.toList(), edges, clusters)
