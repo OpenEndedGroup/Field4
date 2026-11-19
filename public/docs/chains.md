@@ -136,6 +136,12 @@ These chains end in something you could print, mount, hang or light.
     **[Drawn Strokes Become Paint](chain_drawn_paint.md).** Pen strokes on the drawing layer,
     with their pressure, drag a simulated oil brush across a canvas of wet paint.
 
+-   ![Nested offset contours, red and blue, around a rounded shape with a soft waist](assets/chain_squircle_offsets/offsets.png)
+
+    **[A Drawn Outline, Repaired and Offset](chain_squircle_offsets.md).** Two squircles joined
+    by a smooth min keep their outline and lose their distances. Repair the field, then see the
+    difference in the offset contours a cutter would follow and in the steps a sphere tracer takes.
+
 </div>
 
 ## Studio tools from MADP
