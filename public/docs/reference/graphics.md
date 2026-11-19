@@ -4,7 +4,7 @@
 
 Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side.
 
-425 source file(s), 10344 public symbol(s), 6543 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+426 source file(s), 10351 public symbol(s), 6550 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -6036,6 +6036,46 @@ Mutable updater that keeps a fixed tree topology and reusable buffers while refi
 | <a id="polynomialtreefitting-kt--polynomialtreeincrementalupdater--nearestleafidscopy"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">nearestLeafIdsCopy</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">IntArray</span></code>](source/jvmMain/afield/geometry/path/PolynomialTreeFitting/#L718) |  |
 | <a id="polynomialtreefitting-kt--polynomialtreeincrementalupdater--snapshot"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">snapshot</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PolynomialTreeFitResult</span></code>](source/jvmMain/afield/geometry/path/PolynomialTreeFitting/#L720) |  |
 | <a id="polynomialtreefitting-kt--polynomialtreeincrementalupdater--update"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">update</span><span class="p">(</span><span class="n">newPoints</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">PolynomialTreeIncrementalSummary</span></code>](source/jvmMain/afield/geometry/path/PolynomialTreeFitting/#L735) |  |
+
+## Squircles.kt { #squircles-kt }
+
+Squircles: rounded squares and rounded rectangles whose corners are smoother than a circular arc.
+
+Every construction here is set by one number, the **gauge**: on a squircle of unit radius,
+the point halfway round a quadrant sits at `(gauge, gauge)`. A circle has gauge `sqrt(0.5)`
+(0.707), a square has gauge 1. The superellipse `|x|^n + |y|^n = 1` has gauge `0.5^(1/n)`
+([`squircleGauge`](graphics.md#squircles-kt--squirclegauge), [`squircleExponent`](graphics.md#squircles-kt--squircleexponent)). Sharing the gauge lets the different constructions be
+compared shape for shape.
+
+The constructions ([`SquircleStyle`](graphics.md#squircles-kt-squirclestyle)) follow the Linebender wiki's survey of squircles
+(https://linebender.org/wiki/curves/squircle/): the superellipse sampled exactly, one cubic per
+quadrant, Chromium's two cubics per quadrant (CSS `corner-shape: superellipse()`), Figma's
+corner smoothing (an arc flanked by two cubics) and clothoid corners (an arc flanked by two Euler
+spirals). They differ in how smoothly curvature changes: [`squircleCurvatureProfile`](graphics.md#squircles-kt--squirclecurvatureprofile) gives it
+exactly, so the differences can be plotted.
+
+`src/jvmMain/kotlin/afield/geometry/path/Squircles.kt` — [read the source](source/jvmMain/afield/geometry/path/Squircles/)
+
+**Used in:** [FLine examples (Field graphics)](../fline_examples.md)
+
+### Top-level functions { #squircles-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="squircles-kt--squirclegauge"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">squircleGauge</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/geometry/path/Squircles/#L38) | The gauge (quadrant midpoint coordinate, unit radius) of the superellipse `\|x\|^n + \|y\|^n = 1`: `0.5^(1/n)`. |
+| <a id="squircles-kt--squircleexponent"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">squircleExponent</span><span class="p">(</span><span class="n">gauge</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/geometry/path/Squircles/#L41) | The superellipse exponent whose gauge is `gauge`: `ln 0.5 / ln gauge`. |
+| <a id="squircles-kt--squirclefrom"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">squircleFrom</span><span class="p">(</span><span class="n">center</span><span class="p">:</span> <span class="nc">Vec2</span><span class="p">,</span> <span class="n">rx</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">ry</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="n">rx</span><span class="p">,</span> <span class="n">gauge</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="nf">squircleGauge</span><span class="p">(</span><span class="mf">4.0</span><span class="p">)</span><span class="p">,</span> <span class="n">style</span><span class="p">:</span> <span class="nc">SquircleStyle</span> <span class="o">=</span> <span class="nc">SquircleStyle</span><span class="p">.</span><span class="nc">Superellipse</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLine</span></code>](source/jvmMain/afield/geometry/path/Squircles/#L69) | A closed squircle centred on `center`, radii `rx` by `ry`, with corners of `style` at `gauge`. |
+| <a id="squircles-kt--squirclerectfrom"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">squircleRectFrom</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">w</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">h</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">gauge</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="nf">squircleGauge</span><span class="p">(</span><span class="mf">4.0</span><span class="p">)</span><span class="p">,</span> <span class="n">style</span><span class="p">:</span> <span class="nc">SquircleStyle</span> <span class="o">=</span> <span class="nc">SquircleStyle</span><span class="p">.</span><span class="nc">Superellipse</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLine</span></code>](source/jvmMain/afield/geometry/path/Squircles/#L85) | A rectangle with straight sides and squircle corners: the rounded-rectangle helper for corners smoother than an arc. The corner fits any aspect ratio, because the sides stay flat and only the corners curve. |
+| <a id="squircles-kt--squirclecurvatureprofile"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">squircleCurvatureProfile</span><span class="p">(</span><span class="n">style</span><span class="p">:</span> <span class="nc">SquircleStyle</span><span class="p">,</span> <span class="n">gauge</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">samplesPerPiece</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">200</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span></code>](source/jvmMain/afield/geometry/path/Squircles/#L103) | Exact curvature along one unit quadrant of a squircle, from `(1, 0)` to `(0, 1)`: each point is (arc length, curvature). Where two pieces meet, both curvatures appear at the same arc length, so a jump plots as a vertical step. |
+| <a id="squircles-kt--superellipsedeviation"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">FLine</span><span class="p">.</span><span class="nf">superellipseDeviation</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">center</span><span class="p">:</span> <span class="nc">Vec2</span> <span class="o">=</span> <span class="nc">Vec2</span><span class="p">(</span><span class="mi">0f</span><span class="p">,</span> <span class="mi">0f</span><span class="p">)</span><span class="p">,</span> <span class="n">rx</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">ry</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="n">rx</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">2000</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/geometry/path/Squircles/#L123) | The largest radial deviation of [`line`](visualization.md#notation-kt--line) from the superellipse `\|x/rx\|^n + \|y/ry\|^n = 1` centred on `center`, as a fraction of the radius: `max \|(\|x/rx\|^n + \|y/ry\|^n)^(1/n) - 1\|` over points `samples` evenly along the line. |
+
+### SquircleStyle { #squircles-kt-squirclestyle }
+
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">SquircleStyle</span></code>](source/jvmMain/afield/geometry/path/Squircles/#L59)
+
+How a squircle's corner is built. All take the same gauge.
+
+Constants: `Superellipse`, `SuperellipseCubic`, `Chromium`, `Figma`, `Clothoid`.
 
 ## TilingSpectrum.kt { #tilingspectrum-kt }
 

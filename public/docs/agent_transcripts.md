@@ -883,6 +883,17 @@ the length label follow every drag. Box 2 is a slab whose height is a handle hel
 
 [Open →](offline.html?file=assets/agent_transcripts/three_handles/metadata.edn)
 
+### squircles
+
+**Five squircles under one slider.** [Squircles](fline_examples.md#squircles-squirclefrom-and-squirclerectfrom)
+as two boxes. Box 1 draws the superellipse, its one-cubic fit, Chromium's two cubics, Figma's corner
+smoothing and clothoid corners side by side, each over its curvature plotted against arc length.
+Drag the Gauge slider and all five change together: the superellipse's curvature stays smooth,
+Figma's jumps where its cubics meet the arc, the clothoid's rises in straight ramps. Box 2 is
+`squircleRectFrom` with Figma and clothoid corners drawn over circular ones.
+
+[Open →](offline.html?file=assets/agent_transcripts/squircles/metadata.edn)
+
 ### drawing_on
 
 [Drawing on iPad](drawing_on.md): an editable plan and a native Pencil/voice capture head. Run the
@@ -2751,6 +2762,25 @@ made addressable, gradient descent on those numbers, and the fitted program prin
 you can paste into a shader.
 
 [Open →](offline.html?file=assets/agent_transcripts/stacksl_fit_demo/metadata.edn)
+
+### stacksl_partial_eval
+
+**A StackSL program specialized to its residual.** [Specializing a program](stacksl_examples.md#specializing-a-program)
+as two boxes. Box 1 specializes `power(x, 5)` and prints the four multiplications that are left. Box 2
+specializes a StackSL program, renders the residual next to the interpreter, checks the two are
+bit-identical, and prints the residual GLSL. Edit `program` and rerun to see the residual change.
+
+[Open →](offline.html?file=assets/agent_transcripts/stacksl_partial_eval/metadata.edn)
+
+### sdf_global_consistency
+
+**A pseudo-SDF repaired by its own circles.** [Repairing a field that is only a bound](mesh_examples.md#repairing-a-field-that-is-only-a-bound)
+as two boxes. Box 1 samples a two-disc `min` union and draws every sample's circle before and after
+`repaired()`, with the circles that fall short of the outline reddened. Box 2 draws offset curves of a box
+with a disc cut from it, once from the pseudo-SDF and once from the repaired grid. Change `n` or the
+shapes and rerun to see how the `consistency()` numbers move.
+
+[Open →](offline.html?file=assets/agent_transcripts/sdf_global_consistency/metadata.edn)
 
 ### macro_recorder_stamp
 

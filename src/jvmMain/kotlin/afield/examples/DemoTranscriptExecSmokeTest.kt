@@ -109,6 +109,8 @@ object DemoTranscriptExecSmokeTest {
         "assimp_browsing",
         // stacksl_examples.md's fitting demo: fits a StackSL program's literals on the CPU.
         "stacksl_fit_demo",
+        // stacksl_examples.md's partial-evaluation demo: specializes on the CPU, no renderer.
+        "stacksl_partial_eval",
         // ai4_chat_archive.md's demo: reads the example chat under public/docs/assets by checkout path.
         "ai4_chat_archive",
         // IN_FIELD_AGENT_HARNESS.md's repo-tools demo: a toy checkout in a temporary directory, removed after.
@@ -480,6 +482,9 @@ object DemoTranscriptExecSmokeTest {
         // Drag handles (2026-11-17): two three { } scenes with free, axis and normal handles, each
         // redrawn from its drag callback. three() writes a three.js viewer into an output; no Window.
         "three_handles",
+        // Squircles (2026-11-19): five squircle styles and their curvature under a gauge slider, and
+        // squircleRectFrom corners over circular ones. Pure CPU, FLines into an output channel.
+        "squircles",
         // Controls renewal (2026-10-29): a five-control surface feeding a live figure and a slider
         // that re-renders itself mid-drag. Pure CPU, output-channel controls only.
         "controls_surface",
