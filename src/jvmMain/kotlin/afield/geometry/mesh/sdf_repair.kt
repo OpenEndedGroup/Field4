@@ -213,6 +213,33 @@ class SdfGrid2D(
         return SdfGrid2D(out, fnx, fny, x0, y0, fh)
     }
 
+    /**
+     * Sphere-traces this grid (read [bilinear]ly) from `(ox, oy)` along `(dx, dy)`: step by the field's
+     * value until it drops below [epsilon] or [maxDistance] is passed. A pseudo-SDF that underestimates
+     * takes more steps than it needs; one that overestimates steps through the surface.
+     */
+    fun sphereTrace(
+        ox: Double,
+        oy: Double,
+        dx: Double,
+        dy: Double,
+        maxSteps: Int = 256,
+        epsilon: Double = 1e-3,
+        maxDistance: Double = 10.0,
+    ): SphereTrace {
+        val len = hypot(dx, dy)
+        val ux = dx / len
+        val uy = dy / len
+        var t = 0.0
+        for (step in 1..maxSteps) {
+            val d = bilinear(ox + ux * t, oy + uy * t)
+            if (d < epsilon) return SphereTrace(step, ox + ux * t, oy + uy * t, hit = true)
+            t += d
+            if (t > maxDistance) return SphereTrace(step, ox + ux * t, oy + uy * t, hit = false)
+        }
+        return SphereTrace(maxSteps, ox + ux * t, oy + uy * t, hit = false)
+    }
+
     /** Max and mean `|value - truth(x, y)|` over every sample: the error against a known distance. */
     fun errorAgainst(truth: ScalarField2D): SdfError {
         var mx = 0.0
@@ -253,6 +280,16 @@ data class SdfConsistency(
         "overshoot max %.4f, undershoot max %.4f, mean %.5f, %d of %d samples violate"
             .format(maxOvershoot, maxUndershoot, meanViolation, violating, samples)
 }
+
+/**
+ * One ray from [SdfGrid2D.sphereTrace].
+ *
+ * @property steps field evaluations taken.
+ * @property x where the ray stopped.
+ * @property y where the ray stopped.
+ * @property hit whether it stopped on the surface rather than running out of steps or distance.
+ */
+data class SphereTrace(val steps: Int, val x: Double, val y: Double, val hit: Boolean)
 
 /** Max and mean absolute error of a grid against a true distance, from [SdfGrid2D.errorAgainst]. */
 data class SdfError(val max: Double, val mean: Double) {

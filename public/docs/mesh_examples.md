@@ -211,6 +211,12 @@ crossings, and the points where near-surface circles touch it, bound the distanc
 interpolation's **0.0038** (max 0.039). Repair a pseudo-SDF before upsampling it, since its circles are not
 trustworthy lower bounds.
 
+`sphereTrace(ox, oy, dx, dy)` marches the grid the way a ray-marching renderer would. On the box with
+the disc cut from it, 720 rays aimed at the centre take **4.30** steps on average through the
+pseudo-SDF and **4.05** through the repaired one, and every ray hits in both. The saving is small
+because the cut only underestimates near its notch. The repaired hits land within **0.009** of the
+true outline, against **0.006** for the pseudo-SDF, which is the sampled-outline error again.
+
 ## Looking at what you got
 
 A broken mesh can still look fine. A missing cap, unwelded vertices or a tear in a marched surface

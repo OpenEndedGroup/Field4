@@ -116,6 +116,41 @@ class SdfRepairTest {
     }
 
     @Test
+    fun `sphere tracing a repaired cut takes fewer steps and still lands on the surface`() {
+        val square = box(0.8, 0.6)
+        val hole = circle(0.8, 0.6, 0.5)
+        val cut: ScalarField2D = { x, y -> max(square(x, y), -hole(x, y)) }
+        val pseudo = sdfGrid2D(lo, lo, hi, hi, 97, cut)
+        val fixed = pseudo.repaired()
+        fun trace(grid: SdfGrid2D): Triple<Double, Double, Int> {
+            var steps = 0
+            var worst = 0.0
+            var hits = 0
+            val rays = 720
+            for (k in 0 until rays) {
+                val a = 2 * PI * k / rays
+                val ox = 1.45 * cos(a)
+                val oy = 1.45 * sin(a)
+                val r = grid.sphereTrace(ox, oy, -ox, -oy, epsilon = 1e-3)
+                steps += r.steps
+                if (r.hit) {
+                    hits++
+                    worst = max(worst, abs(cut(r.x, r.y)))
+                }
+            }
+            return Triple(steps.toDouble() / rays, worst, hits)
+        }
+        val (before, beforeMiss, beforeHits) = trace(pseudo)
+        val (after, afterMiss, afterHits) = trace(fixed)
+        println(
+            "sphere trace box - circle: pseudo mean steps %.2f (hits %d, worst |f| at hit %.4f) | repaired %.2f (hits %d, worst %.4f)"
+                .format(before, beforeHits, beforeMiss, after, afterHits, afterMiss),
+        )
+        assertTrue(after < before, "repaired field should need fewer steps: $before -> $after")
+        assertTrue(afterHits == 720 && afterMiss < 0.02, "every repaired ray should land on the surface: $afterHits, $afterMiss")
+    }
+
+    @Test
     fun `an exact SDF is already consistent and repair leaves it nearly alone`() {
         val disc = circle(0.1, -0.2, 0.7)
         val grid = sdfGrid2D(lo, lo, hi, hi, 97, disc)
