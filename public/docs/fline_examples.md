@@ -1923,6 +1923,157 @@ val defining = polylineFrom([vec(60, 200), vec(220, 40), vec(360, 200)]).apply {
 lines(f, defining, w = 420.0, h = 260.0, fitToSize = true)
 ```
 
+### Squircles: `squircleFrom(...)` and `squircleRectFrom(...)`
+
+A squircle is a rounded square whose corners are smoother than a quarter circle: the straight side eases into the corner instead of meeting an arc head on. There are several ways to build one, and `squircleFrom` draws the common ones so you can compare them. `squircleRectFrom` puts the same corners on a rectangle with straight sides, which is the rounded rectangle you usually want.
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun squircleFrom(
+    center: Vec2,
+    rx: Double,
+    ry: Double = rx,
+    gauge: Double = squircleGauge(4.0),
+    style: SquircleStyle = SquircleStyle.Superellipse,
+): FLine
+fun squircleRectFrom(
+    x: Double,
+    y: Double,
+    w: Double,
+    h: Double,
+    radius: Double,
+    gauge: Double = squircleGauge(4.0),
+    style: SquircleStyle = SquircleStyle.Superellipse,
+): FLine
+
+fun squircleGauge(n: Double): Double
+fun squircleExponent(gauge: Double): Double
+fun squircleCurvatureProfile(style: SquircleStyle, gauge: Double, samplesPerPiece: Int = 200): List<Vec2>
+fun FLine.superellipseDeviation(n: Double, center: Vec2 = vec(0, 0), rx: Double = 1.0, ry: Double = rx, samples: Int = 2000): Double
+```
+
+Every style takes the same number, the **gauge**: on a squircle of radius 1, the point halfway round each corner sits at `(gauge, gauge)`. A circle has gauge 0.707 and a square has gauge 1. The best-known squircle, the superellipse `|x|^n + |y|^n = 1`, has gauge `0.5^(1/n)`; `squircleGauge(n)` and `squircleExponent(gauge)` convert between the two. With one gauge, all the styles pass through the same midpoint and differ only in how they get there. The constructions and the comparison follow the Linebender wiki's [survey of squircles](https://linebender.org/wiki/curves/squircle/).
+
+- `Superellipse`: the curve itself, sampled finely enough to be exact on screen.
+- `SuperellipseCubic`: one cubic Bézier per quarter, through the exact midpoint.
+- `Chromium`: two cubics per quarter, the fit Chromium uses for CSS `corner-shape: superellipse()` ([Chromium's write-up](https://developer.chrome.com/blog/implementing-corner-shape)).
+- `Figma`: a circular arc with a cubic on each side, Figma's "corner smoothing" ([Figma's write-up](https://www.figma.com/blog/desperately-seeking-squircles/)).
+- `Clothoid`: a circular arc with an [Euler spiral](https://en.wikipedia.org/wiki/Euler_spiral) on each side, the curve `clothoidSplineFrom` is made of.
+
+The figure below draws all five at gauge 0.794 (a superellipse with `n = 3`), in that order, and under each its curvature along one corner, from the right side round to the top. `squircleCurvatureProfile` gives that curvature exactly, piece by piece, for a squircle of radius 1; where two pieces meet it lists both values, so a jump in curvature plots as a vertical step.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/squircle_styles_curvature.png" embed=true}
+:::static
+val gauge = squircleGauge(3.0)
+val styles = [
+    SquircleStyle.Superellipse,
+    SquircleStyle.SuperellipseCubic,
+    SquircleStyle.Chromium,
+    SquircleStyle.Figma,
+    SquircleStyle.Clothoid,
+]
+val colors = [
+    vec(1.0, 1.0, 1.0, 1.0),
+    vec(1.0, 0.55, 0.45, 1.0),
+    vec(1.0, 0.8, 0.3, 1.0),
+    vec(0.7, 0.6, 1.0, 1.0),
+    vec(0.5, 0.8, 1.0, 1.0),
+]
+
+val drawn = ArrayList<FLine>()
+for ((i, style) in styles.withIndex()) {
+    val left = 20.0 + i * 130
+
+    drawn += squircleFrom(vec(left + 55, 70), 50.0, gauge = gauge, style = style).apply {
+        thickness = 3.0
+        color = colors[i]
+    }
+
+    // curvature against distance round one corner: 110 wide, 25 per unit of curvature
+    val profile = squircleCurvatureProfile(style, gauge)
+    val length = profile.last().x
+    drawn += polylineFrom(profile.map { vec(left + it.x / length * 110, 230 - it.y * 25) }).apply {
+        thickness = 2.0
+        color = colors[i]
+    }
+    drawn += polylineFrom([vec(left, 230), vec(left + 110, 230)]).apply { color = vec(1.0, 1.0, 1.0, 0.3) }
+}
+
+lines(drawn, w = 660.0, h = 240.0, fitToSize = true)
+```
+
+The plots carry the differences the shapes hide:
+
+- The superellipse's curvature starts at zero on the straight-looking side, rises to a peak at the midpoint and falls back to zero, with no breaks. In general a superellipse with exponent `n` is G(`ceil(n) - 1`) where it crosses the axes: `n = 3` is curvature-continuous there, larger `n` smoother still. Below `n = 2` its curvature there is infinite.
+- The single cubic (red) starts with a curvature that is not zero, so where four of them meet, or where one meets a straight side, curvature jumps. It matches direction but not curvature: G1.
+- Chromium's fit (yellow) tracks the superellipse's curve closely, but it too starts above zero.
+- Figma's corner (purple) leaves the side with zero curvature, but its cubics end at a different curvature from the arc they meet, so the plot steps twice.
+- The clothoid corner (blue) rises in a straight line to the arc's curvature, stays flat along the arc and falls in a straight line. Curvature never jumps: G2 throughout.
+
+Without straight sides, Figma's corner reaches gauges from 0.707 to 0.854 and the clothoid corner from 0.707 to about 0.790. Above those, both grow a short straight run along each side, which is what has happened to the clothoid here.
+
+#### How close is Chromium's fit?
+
+Two cubics cannot follow a superellipse exactly. `superellipseDeviation(n)` reports how far a line strays from `|x|^n + |y|^n = 1`, as a fraction of the radius. The plot below traces that deviation for `n = 4` round the whole shape, magnified 10,000 times, for Chromium's fit (yellow) and the single cubic (red), with zero as the white line.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/squircle_chromium_error.png" embed=true}
+:::static
+val n = 4.0
+
+fun deviationPlot(style: SquircleStyle, y0: Double): FLine {
+    val shape = squircleFrom(vec(0, 0), 1.0, gauge = squircleGauge(n), style = style)
+    val cursor = shape.cursor()
+    val total = cursor.lengthD()
+    val points = (0..800).map { i ->
+        cursor.setD(total * i / 800)
+        val p = cursor.position()
+        val r = Math.pow(Math.pow(Math.abs(p.x.toDouble()), n) + Math.pow(Math.abs(p.y.toDouble()), n), 1 / n)
+        vec(20 + i * 0.75, y0 - (r - 1) * 10000)
+    }
+    return polylineFrom(points)
+}
+
+val chromium = deviationPlot(SquircleStyle.Chromium, 70.0).apply {
+    thickness = 2.0
+    color = vec(1.0, 0.8, 0.3, 1.0)
+}
+val oneCubic = deviationPlot(SquircleStyle.SuperellipseCubic, 70.0).apply {
+    thickness = 2.0
+    color = vec(1.0, 0.55, 0.45, 1.0)
+}
+val zero = polylineFrom([vec(20, 70), vec(620, 70)]).apply { color = vec(1.0, 1.0, 1.0, 0.4) }
+
+lines(zero, oneCubic, chromium, w = 640.0, h = 140.0, fitToSize = true)
+```
+
+Both fits meet the curve at the sides and at each midpoint, where the formulas pin them. Between, the single cubic strays by up to 0.6% of the radius at `n = 3`, `4` and `8`; Chromium's fit stays within about 0.1% for `n` from 2 to 8 (0.07% at `n = 3`, 0.11% at `n = 4`). On a 100-pixel corner that is a tenth of a pixel. At `n = 2`, the circle, the single cubic is the better of the two (0.03% against 0.1%).
+
+#### Rounded rectangles
+
+`squircleRectFrom(x, y, w, h, radius, gauge, style)` draws a rectangle whose corners reach `radius` along each side and whose sides stay straight between them. Because only the corners curve, the same corner fits any aspect ratio. The comparison below draws one rectangle twice: on the left with Figma's corners (purple), on the right with clothoid corners (blue), both at gauge 0.79, each over ordinary circular corners (gauge 0.707, the thin white line). The combs show their curvature: Figma's tips step where each cubic meets the arc, the clothoid's rise and fall without a break.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/squircle_rect_corners.png" embed=true}
+:::static
+val drawn = ArrayList<FLine>()
+for ((i, style) in [SquircleStyle.Figma, SquircleStyle.Clothoid].withIndex()) {
+    val x = 20.0 + i * 230
+    val tint = if (i == 0) vec(0.7, 0.6, 1.0, 1.0) else vec(0.5, 0.8, 1.0, 1.0)
+
+    val corners = squircleRectFrom(x, 20.0, 200.0, 120.0, radius = 50.0, gauge = 0.79, style = style).apply {
+        thickness = 3.0
+        color = tint
+    }
+    drawn += corners.curvatureComb(scale = 500.0, samples = 300).apply { color = vec(tint.x, tint.y, tint.z, 0.5) }
+    drawn += squircleRectFrom(x, 20.0, 200.0, 120.0, radius = 50.0, gauge = Math.sqrt(0.5)).apply {
+        thickness = 1.0
+        color = vec(1.0, 1.0, 1.0, 0.7)
+    }
+    drawn += corners
+}
+
+lines(drawn, w = 460.0, h = 160.0, fitToSize = true)
+```
+
 ## 2D transformations (geometry-aware)
 
 These transforms are for 2D shapes in the XY plane: rotate around a centre, reflect across a line, shear. They save writing a custom `transform { p -> ... }`.
