@@ -594,7 +594,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 - *browser* — [Imaging](imaging.md#bitmapbrowsersurface-kt) · [Internal](internal.md#pairedheadsetinput-kt)
 - [capture](imaging.md#nativecapturetarget-kt)
-- [image](imaging.md#imaging-kt)
+- [image](imaging.md#buffercanvas-kt)
     - [util](imaging.md#nodetool-kt)
 - *reconstruction* — [Imaging](imaging.md#dlssreconstruction-kt) · [Internal](internal.md#ngxnative-kt)
 - [stream](imaging.md#electronrttview-kt)
@@ -682,7 +682,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**42223 public symbols across 1874 source files**, 25223 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**42271 public symbols across 1875 source files**, 25269 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -700,7 +700,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Polytopes](polytopes.md) | 17 | 596 | 440 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 787 | 530 (67%) | Nonlinear least squares, aimed at geometry. |
 | [Simulation](simulation.md) | 57 | 1869 | 1105 (59%) | Making a shape behave. |
-| [Imaging](imaging.md) | 55 | 917 | 475 (51%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
+| [Imaging](imaging.md) | 56 | 965 | 521 (53%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
 | [ALife](alife.md) | 24 | 1381 | 1252 (90%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 16 | 632 | 424 (67%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Search](search.md) | 11 | 509 | 503 (98%) | Optimisation over a space you can only sample. |
@@ -905,6 +905,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [browsing.kt](workspace.md#browsing-kt) | Workspace · internal | 44 | 9 | The object inspector behind `/browse`: a live, clickable tree of any value, reached from a box with `Inspector.linkFor`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>spatial/<wbr></small> [bspot.kt](graphics.md#bspot-kt) | Graphics | 10 | 10 | One-to-one matching between two equally sized 2D point clouds, at a million points a side, using BSP-OT: every source point gets exactly one target and every target is used exactly once, with the total squared travel distance kept small. | [A Drawn Morph, Heard](../chain_drawn_morph.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [Buf.kt](synthesis.md#buf-kt) | Synthesis | 22 | 22 | Bulk float-array arithmetic for the synthesis graph, written against the Java Vector API. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>image/<wbr></small> [BufferCanvas.kt](imaging.md#buffercanvas-kt) | Imaging | 48 | 46 |  | [Visualizers, Displays, and Little Instruments](../visualizers.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [ButtonControlHandler.kt](workspace.md#buttoncontrolhandler-kt) | Workspace · internal | 0 | 0 | The server side of `button(...)`: the `button-update` websocket command, which carries one press or release from the browser and runs the box's callback with it. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>io/<wbr>mocap/<wbr></small> [Bvh.kt](data.md#bvh-kt) | Data | 25 | 18 | Motion capture in BVH format: a joint hierarchy and one line of channel values per frame. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>lifecycle/<wbr></small> [cached.kt](workspace.md#cached-kt) | Workspace | 3 | 3 | `cached`, which hands a box back the value it made on its last run for the same keys, and closes the old value when the keys change. |  |
