@@ -399,9 +399,9 @@ object SplatTiles {
             val x = (sin(i * 12.9898) * 43758.5453).let { (it - kotlin.math.floor(it)).toFloat() * 2f - 1f }
             val y = (sin(i * 78.233) * 12345.678).let { (it - kotlin.math.floor(it)).toFloat() * 2f - 1f }
             val z = (sin(i * 37.719) * 9876.54321).let { (it - kotlin.math.floor(it)).toFloat() * 2f - 1f }
-            val size = if (i < core) 0.012f else 0.035f
+            val size = if (i < core) 0.01f else 0.025f
             packed.put(o, x * radius); packed.put(o + 1, y * radius); packed.put(o + 2, z * radius)
-            packed.put(o + 3, if (i < core) 0.35f else 0.8f)
+            packed.put(o + 3, if (i < core) 0.5f else 0.3f)
             val t = (x + 1f) * 0.5f
             packed.put(o + 4, if (i < core) 0.95f else 0.2f + 0.6f * t)
             packed.put(o + 5, if (i < core) 0.75f else 0.45f)
