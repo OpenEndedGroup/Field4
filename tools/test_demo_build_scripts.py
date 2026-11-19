@@ -109,6 +109,9 @@ CORPUS = {
     "three_handles",
     # 2026-11-18, Braitenberg weight cube. No build.yaml, so the count below is unchanged.
     "braitenberg_weight_cube",
+    # 2026-11-19: squircles by one gauge (fline_examples.md#squircles). Ships a `build.yaml`, so the
+    # count below moved 13 -> 14; registered EXECUTE as squircles.
+    "squircles",
     # Landed 2026-09-22 in `b5b9ad9e0`, the twenty-second directory and the only one that is not a
     # saved document: no `metadata.edn`, no `build.yaml` (so the nine below is unchanged), and no
     # `_code_.kt` sidecars. It is the *source* of a transcript — `tools/demos/build_flow_grain.py`
@@ -242,7 +245,7 @@ class DemoBuildScriptTest(unittest.TestCase):
             "dev_docs/DEMO_CORPUS_AUDIT.md together",
         )
         self.assertEqual(
-            13,
+            14,
             len(self.scripts),
             "the number of demos shipping a build.yaml has changed; a new one is unchecked "
             "until it is measured",
