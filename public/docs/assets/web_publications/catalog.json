@@ -6720,6 +6720,23 @@
         "public/docs/assets/agent_transcripts/macro_recorder_stamp/mr_steps_code_.kt": "29e1d0702656c8c4012e125dac863f262b4297e1929e78422e36319c12f9ab5e"
       }
     },
+    "assets/agent_transcripts/norns_demo/metadata.edn": {
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "channels": 0,
+      "reason": "No output-area channels; the code remains available.",
+      "sources": {
+        "dev_docs/agents/transcripts/norns_demo.yaml": "62e796fe9074c9bae5adf32d4ccfb01a8785427afc7468089b83751eaed99920",
+        "public/docs/assets/agent_transcripts/norns_demo/guides/lua.md": "1be416cb33c0809ee9ca8dc8a9d8442aa651623034085273f4995df9b2c296d0",
+        "public/docs/assets/agent_transcripts/norns_demo/metadata.edn": "d22202a28d00931574418aeb5f3fb0ae8c88bf386acece93686f6defb3539b0b",
+        "public/docs/assets/agent_transcripts/norns_demo/norns_anima_render_code_.kt": "096384740c0be46482425746b3d33018fd9328c636211e5a576e6822af4c6a16",
+        "public/docs/assets/agent_transcripts/norns_demo/norns_fetch_code_.kt": "e914526afcc1f8e890b618dfa868862d086e7e66eb6bfea36d648cd99f47011e",
+        "public/docs/assets/agent_transcripts/norns_demo/norns_noiz_code_.kt": "8d203c72027251f5a92d79aee5f30393540585ac7fe5e6aa8dd0e013da2fdc83",
+        "public/docs/assets/agent_transcripts/norns_demo/norns_noiz_render_code_.kt": "4eecde164abe3693bb83e6a2f0390e4597e17640b048a2cc55d8c65182bb94bb",
+        "public/docs/assets/agent_transcripts/norns_demo/norns_orbits_code_.kt": "08d48062e7dc32d68d0cca3d4bbc58ac760dea29e0afdc6a2b8e77e174c326f5",
+        "public/docs/assets/agent_transcripts/norns_demo/norns_orbits_render_code_.kt": "5c95f1aa006122129d9ccba2a75dc87b921cbf95be6544e6ebdb5f097061d066",
+        "public/docs/assets/agent_transcripts/norns_demo/norns_root_code_.kt": "0c5c3b05d0033b63699db8214037fa6effb0f36d7367653fff0b359394b927ab"
+      }
+    },
     "assets/agent_transcripts/pattern_rewrite_worked_example/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
       "channels": 0,
