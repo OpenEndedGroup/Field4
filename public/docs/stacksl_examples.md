@@ -1355,7 +1355,7 @@ fit by the residual panel rather than the loss number. The
 The CPU backend renders a program by interpreting its GLSL once per pixel, and
 most of what it does each time is the same: it calls the same helpers, runs the
 same octave loop five times, and multiplies the same constants. Only `fragUV`
-changes. [`GlslPartialEvaluator`](reference/languages.md) runs the shader once
+changes. [`GlslPartialEvaluator`](reference/languages.md#glslpartialevaluator-kt-glslpartialevaluator) runs the shader once
 with everything but `fragUV` known and keeps only the arithmetic that depends on
 the pixel. What is left, the *residual*, is a straight-line program with no
 calls, loops or variables. This is partial evaluation, and an interpreter
