@@ -905,6 +905,10 @@ Beside the section slider, **X**, **Y** and **Z** cut across that axis of the mo
 keep the other half. **face** aligns the cut to a surface: click it, and the plane lies just inside
 that face, turned toward you. Drag the slider to move it deeper into the model.
 
+A section works under **Path trace** as well. The tracer is given the cut geometry itself, and the
+caps as lit surfaces in each part's colour and finish, so light falls into the cut and the cut faces
+shade and cast shadows like any other surface. Moving the plane starts a fresh trace.
+
 The explode scrubber moves
 meshes and their outlines by inspection group, along with grouped FLine geometry.
 Give related objects the same group to keep them together; `solidParts` sets this up
