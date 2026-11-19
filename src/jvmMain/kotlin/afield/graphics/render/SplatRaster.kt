@@ -497,153 +497,23 @@ object SplatRaster {
         var nonFinite = 0
         var fragments = 0L
 
-        val fx = abs(view.proj.m00) * width * 0.5f
-        val fy = abs(view.proj.m11) * height * 0.5f
-        val minLambda = config.minScreenRadius * config.minScreenRadius
-        val invGamma = config.colorGamma
+        val p = Projected()
 
         for (slot in 0 until count) {
             val splat = order?.get(slot) ?: slot
-            val at = splat * STRIDE
-
-            val px = packed.get(at)
-            val py = packed.get(at + 1)
-            val pz = packed.get(at + 2)
-            val opacity = packed.get(at + 3)
-
-            // Everything the shader reads about this splat, checked once. A NaN anywhere in the
-            // sixteen produces a NaN somewhere downstream that a comparison would swallow.
-            if (!px.isFinite() || !py.isFinite() || !pz.isFinite() || !opacity.isFinite() ||
-                !packed.get(at + 4).isFinite() || !packed.get(at + 5).isFinite() ||
-                !packed.get(at + 6).isFinite() ||
-                !packed.get(at + 8).isFinite() || !packed.get(at + 9).isFinite() ||
-                !packed.get(at + 10).isFinite() || !packed.get(at + 11).isFinite() ||
-                !packed.get(at + 12).isFinite() || !packed.get(at + 13).isFinite()
-            ) {
-                nonFinite++
-                continue
+            when (project(packed, splat * STRIDE, view, config, p)) {
+                CULL_NON_FINITE -> { nonFinite++; continue }
+                CULL_TRANSPARENT -> { transparent++; continue }
+                CULL_BEHIND -> { behind++; continue }
+                CULL_OFFSCREEN -> { offscreen++; continue }
             }
+            val centreX = p.centreX; val centreY = p.centreY
+            val axis1x = p.axis1x; val axis1y = p.axis1y; val axis2x = p.axis2x; val axis2y = p.axis2y
+            val colLow = p.colLow; val colHigh = p.colHigh; val rowLow = p.rowLow; val rowHigh = p.rowHigh
+            val red = p.red; val green = p.green; val blue = p.blue; val peakAlpha = p.peakAlpha
+            val invSigma1 = p.invSigma1
+            val invSigma2 = p.invSigma2
 
-            // hideVertex() on a zero-opacity splat, as the shader does before anything else.
-            if (opacity <= 0f) { transparent++; continue }
-
-            // view = modelView * vec4(position, 1)
-            val viewX = mv.m00 * px + mv.m10 * py + mv.m20 * pz + mv.m30
-            val viewY = mv.m01 * px + mv.m11 * py + mv.m21 * pz + mv.m31
-            val viewZ = vz0 * px + vz1 * py + vz2 * pz + vz3
-            val depth = -viewZ
-            if (depth <= 0.0001f) { behind++; continue }
-
-            // covView = mat3(modelView) * covObject * transpose(mat3(modelView)). Matrix4f is
-            // column-major with m<column><row>, so the linear part's row r, column c is m<c><r>.
-            val c00o = packed.get(at + 8); val c01o = packed.get(at + 9); val c02o = packed.get(at + 10)
-            val c11o = packed.get(at + 11); val c12o = packed.get(at + 12); val c22o = packed.get(at + 13)
-
-            // M · C, one row of M at a time.
-            val a00 = mv.m00 * c00o + mv.m10 * c01o + mv.m20 * c02o
-            val a01 = mv.m00 * c01o + mv.m10 * c11o + mv.m20 * c12o
-            val a02 = mv.m00 * c02o + mv.m10 * c12o + mv.m20 * c22o
-            val a10 = mv.m01 * c00o + mv.m11 * c01o + mv.m21 * c02o
-            val a11 = mv.m01 * c01o + mv.m11 * c11o + mv.m21 * c12o
-            val a12 = mv.m01 * c02o + mv.m11 * c12o + mv.m21 * c22o
-            val a20 = vz0 * c00o + vz1 * c01o + vz2 * c02o
-            val a21 = vz0 * c01o + vz1 * c11o + vz2 * c12o
-            val a22 = vz0 * c02o + vz1 * c12o + vz2 * c22o
-            // (M · C) · Mᵀ, keeping only the six the Jacobian below touches.
-            val v00 = a00 * mv.m00 + a01 * mv.m10 + a02 * mv.m20
-            val v01 = a00 * mv.m01 + a01 * mv.m11 + a02 * mv.m21
-            val v02 = a00 * vz0 + a01 * vz1 + a02 * vz2
-            val v11 = a10 * mv.m01 + a11 * mv.m11 + a12 * mv.m21
-            val v12 = a10 * vz0 + a11 * vz1 + a12 * vz2
-            val v22 = a20 * vz0 + a21 * vz1 + a22 * vz2
-
-            // The projective Jacobian, as jx and jy in the shader.
-            val invDepth = 1f / depth
-            val invDepth2 = invDepth * invDepth
-            val jx0 = fx * invDepth
-            val jx2 = fx * viewX * invDepth2
-            val jy1 = fy * invDepth
-            val jy2 = fy * viewY * invDepth2
-
-            // covView · jx and covView · jy, then dotted back.
-            val cx0 = v00 * jx0 + v02 * jx2
-            val cx1 = v01 * jx0 + v12 * jx2
-            val cx2 = v02 * jx0 + v22 * jx2
-            val cy0 = v01 * jy1 + v02 * jy2
-            val cy1 = v11 * jy1 + v12 * jy2
-            val cy2 = v12 * jy1 + v22 * jy2
-            val c00 = jx0 * cx0 + jx2 * cx2 + SCREEN_DILATION
-            val c01 = jx0 * cy0 + jx2 * cy2
-            val c11 = jy1 * cy1 + jy2 * cy2 + SCREEN_DILATION
-
-            val mid = 0.5f * (c00 + c11)
-            val radius = sqrt(
-                (0.5f * (c00 - c11)) * (0.5f * (c00 - c11)) + c01 * c01
-            )
-            val lambda1 = max(mid + radius, minLambda)
-            val lambda2 = max(mid - radius, minLambda)
-
-            var axis1x: Float
-            var axis1y: Float
-            if (abs(c01) > 1e-5f) {
-                val ax = lambda1 - c11
-                val ay = c01
-                val length = sqrt(ax * ax + ay * ay)
-                axis1x = ax / length; axis1y = ay / length
-            } else if (c00 >= c11) {
-                axis1x = 1f; axis1y = 0f
-            } else {
-                axis1x = 0f; axis1y = 1f
-            }
-            val axis2x = -axis1y
-            val axis2y = axis1x
-
-            var sigma1 = sqrt(lambda1) * config.sizeScale
-            var sigma2 = sqrt(lambda2) * config.sizeScale
-            val maxRadius = max(sigma1, sigma2) * QUAD_SIGMAS
-            if (maxRadius > config.maxScreenRadius) {
-                val shrink = config.maxScreenRadius / maxRadius
-                sigma1 *= shrink
-                sigma2 *= shrink
-            }
-            if (sigma1 <= 0f || sigma2 <= 0f || !sigma1.isFinite() || !sigma2.isFinite()) {
-                // Degenerate on screen: the GPU would draw a zero-area quad. Not "non-finite data" —
-                // the data was fine and the projection collapsed it — so it is an offscreen cull.
-                offscreen++
-                continue
-            }
-
-            // clip = proj * view, then NDC, then pixels. The screen space here is y-**up**, matching
-            // the shader's own pixelOffset space; the flip to row order happens once, below.
-            val clipW = view.proj.m03 * viewX + view.proj.m13 * viewY +
-                view.proj.m23 * viewZ + view.proj.m33
-            if (abs(clipW) < 1e-12f) { offscreen++; continue }
-            val clipX = view.proj.m00 * viewX + view.proj.m10 * viewY +
-                view.proj.m20 * viewZ + view.proj.m30
-            val clipY = view.proj.m01 * viewX + view.proj.m11 * viewY +
-                view.proj.m21 * viewZ + view.proj.m31
-            val centreX = (clipX / clipW * 0.5f + 0.5f) * width
-            val centreY = (clipY / clipW * 0.5f + 0.5f) * height
-
-            // The quad is an oriented rectangle 3σ on a side, so its axis-aligned bound is the sum
-            // of the two axes' absolute contributions.
-            val halfW = QUAD_SIGMAS * (abs(sigma1 * axis1x) + abs(sigma2 * axis2x))
-            val halfH = QUAD_SIGMAS * (abs(sigma1 * axis1y) + abs(sigma2 * axis2y))
-
-            val colLow = max(0, ceil(centreX - halfW - 0.5f).toInt())
-            val colHigh = min(width - 1, floor(centreX + halfW - 0.5f).toInt())
-            // Row r's centre sits at y-up height - r - 0.5; see the Y-convention note in the KDoc.
-            val rowLow = max(0, ceil(height - 0.5f - centreY - halfH).toInt())
-            val rowHigh = min(height - 1, floor(height - 0.5f - centreY + halfH).toInt())
-            if (colLow > colHigh || rowLow > rowHigh) { offscreen++; continue }
-
-            val red = packed.get(at + 4).coerceAtLeast(0f).pow(invGamma)
-            val green = packed.get(at + 5).coerceAtLeast(0f).pow(invGamma)
-            val blue = packed.get(at + 6).coerceAtLeast(0f).pow(invGamma)
-            val peakAlpha = opacity * config.alphaScale
-
-            val invSigma1 = 1f / sigma1
-            val invSigma2 = 1f / sigma2
             var touched = 0
 
             for (row in rowLow..rowHigh) {
@@ -688,6 +558,186 @@ object SplatRaster {
         )
         stats.check()
         return Rasterized(into, stats)
+    }
+
+    /** [project] drew nothing because a slot was not finite. */
+    internal const val CULL_NON_FINITE = 1
+    /** [project] drew nothing because opacity was zero or below. */
+    internal const val CULL_TRANSPARENT = 2
+    /** [project] drew nothing because the splat is behind the near plane. */
+    internal const val CULL_BEHIND = 3
+    /** [project] drew nothing because the splat degenerates or misses the viewport. */
+    internal const val CULL_OFFSCREEN = 4
+
+    /**
+     * One splat after the vertex stage: its screen-space ellipse, the pixel bounds it may touch and
+     * its decoded colour. [project] fills one in place so a caller binning hundreds of thousands of
+     * splats ([SplatTiles]) allocates nothing per splat.
+     */
+    internal class Projected {
+        var depth = 0f
+        var centreX = 0f; var centreY = 0f
+        var axis1x = 0f; var axis1y = 0f; var axis2x = 0f; var axis2y = 0f
+        var invSigma1 = 0f; var invSigma2 = 0f
+        var colLow = 0; var colHigh = 0; var rowLow = 0; var rowHigh = 0
+        var red = 0f; var green = 0f; var blue = 0f; var peakAlpha = 0f
+    }
+
+    /**
+     * The vertex stage for the splat at float offset [at]: everything [rasterize] does before its
+     * pixel loop. Returns 0 and fills [out] when the splat reaches the image, otherwise one of the
+     * `CULL_` codes, which [rasterize] counts into [RasterStats].
+     */
+    internal fun project(packed: FloatBuffer, at: Int, view: View, config: RasterConfig, out: Projected): Int {
+        val width = view.width
+        val height = view.height
+        val mv = view.modelView
+        val vz0 = mv.m02; val vz1 = mv.m12; val vz2 = mv.m22; val vz3 = mv.m32
+        val fx = abs(view.proj.m00) * width * 0.5f
+        val fy = abs(view.proj.m11) * height * 0.5f
+        val minLambda = config.minScreenRadius * config.minScreenRadius
+        val invGamma = config.colorGamma
+
+        val px = packed.get(at)
+        val py = packed.get(at + 1)
+        val pz = packed.get(at + 2)
+        val opacity = packed.get(at + 3)
+
+        // Everything the shader reads about this splat, checked once. A NaN anywhere in the
+        // sixteen produces a NaN somewhere downstream that a comparison would swallow.
+        if (!px.isFinite() || !py.isFinite() || !pz.isFinite() || !opacity.isFinite() ||
+            !packed.get(at + 4).isFinite() || !packed.get(at + 5).isFinite() ||
+            !packed.get(at + 6).isFinite() ||
+            !packed.get(at + 8).isFinite() || !packed.get(at + 9).isFinite() ||
+            !packed.get(at + 10).isFinite() || !packed.get(at + 11).isFinite() ||
+            !packed.get(at + 12).isFinite() || !packed.get(at + 13).isFinite()
+        ) {
+            return CULL_NON_FINITE
+        }
+
+        // hideVertex() on a zero-opacity splat, as the shader does before anything else.
+        if (opacity <= 0f) { return CULL_TRANSPARENT }
+
+        // view = modelView * vec4(position, 1)
+        val viewX = mv.m00 * px + mv.m10 * py + mv.m20 * pz + mv.m30
+        val viewY = mv.m01 * px + mv.m11 * py + mv.m21 * pz + mv.m31
+        val viewZ = vz0 * px + vz1 * py + vz2 * pz + vz3
+        val depth = -viewZ
+        if (depth <= 0.0001f) { return CULL_BEHIND }
+
+        // covView = mat3(modelView) * covObject * transpose(mat3(modelView)). Matrix4f is
+        // column-major with m<column><row>, so the linear part's row r, column c is m<c><r>.
+        val c00o = packed.get(at + 8); val c01o = packed.get(at + 9); val c02o = packed.get(at + 10)
+        val c11o = packed.get(at + 11); val c12o = packed.get(at + 12); val c22o = packed.get(at + 13)
+
+        // M · C, one row of M at a time.
+        val a00 = mv.m00 * c00o + mv.m10 * c01o + mv.m20 * c02o
+        val a01 = mv.m00 * c01o + mv.m10 * c11o + mv.m20 * c12o
+        val a02 = mv.m00 * c02o + mv.m10 * c12o + mv.m20 * c22o
+        val a10 = mv.m01 * c00o + mv.m11 * c01o + mv.m21 * c02o
+        val a11 = mv.m01 * c01o + mv.m11 * c11o + mv.m21 * c12o
+        val a12 = mv.m01 * c02o + mv.m11 * c12o + mv.m21 * c22o
+        val a20 = vz0 * c00o + vz1 * c01o + vz2 * c02o
+        val a21 = vz0 * c01o + vz1 * c11o + vz2 * c12o
+        val a22 = vz0 * c02o + vz1 * c12o + vz2 * c22o
+        // (M · C) · Mᵀ, keeping only the six the Jacobian below touches.
+        val v00 = a00 * mv.m00 + a01 * mv.m10 + a02 * mv.m20
+        val v01 = a00 * mv.m01 + a01 * mv.m11 + a02 * mv.m21
+        val v02 = a00 * vz0 + a01 * vz1 + a02 * vz2
+        val v11 = a10 * mv.m01 + a11 * mv.m11 + a12 * mv.m21
+        val v12 = a10 * vz0 + a11 * vz1 + a12 * vz2
+        val v22 = a20 * vz0 + a21 * vz1 + a22 * vz2
+
+        // The projective Jacobian, as jx and jy in the shader.
+        val invDepth = 1f / depth
+        val invDepth2 = invDepth * invDepth
+        val jx0 = fx * invDepth
+        val jx2 = fx * viewX * invDepth2
+        val jy1 = fy * invDepth
+        val jy2 = fy * viewY * invDepth2
+
+        // covView · jx and covView · jy, then dotted back.
+        val cx0 = v00 * jx0 + v02 * jx2
+        val cx1 = v01 * jx0 + v12 * jx2
+        val cx2 = v02 * jx0 + v22 * jx2
+        val cy0 = v01 * jy1 + v02 * jy2
+        val cy1 = v11 * jy1 + v12 * jy2
+        val cy2 = v12 * jy1 + v22 * jy2
+        val c00 = jx0 * cx0 + jx2 * cx2 + SCREEN_DILATION
+        val c01 = jx0 * cy0 + jx2 * cy2
+        val c11 = jy1 * cy1 + jy2 * cy2 + SCREEN_DILATION
+
+        val mid = 0.5f * (c00 + c11)
+        val radius = sqrt(
+            (0.5f * (c00 - c11)) * (0.5f * (c00 - c11)) + c01 * c01
+        )
+        val lambda1 = max(mid + radius, minLambda)
+        val lambda2 = max(mid - radius, minLambda)
+
+        var axis1x: Float
+        var axis1y: Float
+        if (abs(c01) > 1e-5f) {
+            val ax = lambda1 - c11
+            val ay = c01
+            val length = sqrt(ax * ax + ay * ay)
+            axis1x = ax / length; axis1y = ay / length
+        } else if (c00 >= c11) {
+            axis1x = 1f; axis1y = 0f
+        } else {
+            axis1x = 0f; axis1y = 1f
+        }
+        val axis2x = -axis1y
+        val axis2y = axis1x
+
+        var sigma1 = sqrt(lambda1) * config.sizeScale
+        var sigma2 = sqrt(lambda2) * config.sizeScale
+        val maxRadius = max(sigma1, sigma2) * QUAD_SIGMAS
+        if (maxRadius > config.maxScreenRadius) {
+            val shrink = config.maxScreenRadius / maxRadius
+            sigma1 *= shrink
+            sigma2 *= shrink
+        }
+        if (sigma1 <= 0f || sigma2 <= 0f || !sigma1.isFinite() || !sigma2.isFinite()) {
+            // Degenerate on screen: the GPU would draw a zero-area quad. Not "non-finite data" —
+            // the data was fine and the projection collapsed it — so it is an offscreen cull.
+            return CULL_OFFSCREEN
+        }
+
+        // clip = proj * view, then NDC, then pixels. The screen space here is y-**up**, matching
+        // the shader's own pixelOffset space; the flip to row order happens once, below.
+        val clipW = view.proj.m03 * viewX + view.proj.m13 * viewY +
+            view.proj.m23 * viewZ + view.proj.m33
+        if (abs(clipW) < 1e-12f) { return CULL_OFFSCREEN }
+        val clipX = view.proj.m00 * viewX + view.proj.m10 * viewY +
+            view.proj.m20 * viewZ + view.proj.m30
+        val clipY = view.proj.m01 * viewX + view.proj.m11 * viewY +
+            view.proj.m21 * viewZ + view.proj.m31
+        val centreX = (clipX / clipW * 0.5f + 0.5f) * width
+        val centreY = (clipY / clipW * 0.5f + 0.5f) * height
+
+        // The quad is an oriented rectangle 3σ on a side, so its axis-aligned bound is the sum
+        // of the two axes' absolute contributions.
+        val halfW = QUAD_SIGMAS * (abs(sigma1 * axis1x) + abs(sigma2 * axis2x))
+        val halfH = QUAD_SIGMAS * (abs(sigma1 * axis1y) + abs(sigma2 * axis2y))
+
+        val colLow = max(0, ceil(centreX - halfW - 0.5f).toInt())
+        val colHigh = min(width - 1, floor(centreX + halfW - 0.5f).toInt())
+        // Row r's centre sits at y-up height - r - 0.5; see the Y-convention note in the KDoc.
+        val rowLow = max(0, ceil(height - 0.5f - centreY - halfH).toInt())
+        val rowHigh = min(height - 1, floor(height - 0.5f - centreY + halfH).toInt())
+        if (colLow > colHigh || rowLow > rowHigh) { return CULL_OFFSCREEN }
+
+        val red = packed.get(at + 4).coerceAtLeast(0f).pow(invGamma)
+        val green = packed.get(at + 5).coerceAtLeast(0f).pow(invGamma)
+        val blue = packed.get(at + 6).coerceAtLeast(0f).pow(invGamma)
+        val peakAlpha = opacity * config.alphaScale
+        out.depth = depth
+        out.centreX = centreX; out.centreY = centreY
+        out.axis1x = axis1x; out.axis1y = axis1y; out.axis2x = axis2x; out.axis2y = axis2y
+        out.invSigma1 = 1f / sigma1; out.invSigma2 = 1f / sigma2
+        out.colLow = colLow; out.colHigh = colHigh; out.rowLow = rowLow; out.rowHigh = rowHigh
+        out.red = red; out.green = green; out.blue = blue; out.peakAlpha = peakAlpha
+        return 0
     }
 
     /**
