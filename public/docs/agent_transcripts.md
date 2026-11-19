@@ -883,6 +883,17 @@ the length label follow every drag. Box 2 is a slab whose height is a handle hel
 
 [Open →](offline.html?file=assets/agent_transcripts/three_handles/metadata.edn)
 
+### squircles
+
+**Five squircles under one slider.** [Squircles](fline_examples.md#squircles-squirclefrom-and-squirclerectfrom)
+as two boxes. Box 1 draws the superellipse, its one-cubic fit, Chromium's two cubics, Figma's corner
+smoothing and clothoid corners side by side, each over its curvature plotted against arc length.
+Drag the Gauge slider and all five change together: the superellipse's curvature stays smooth,
+Figma's jumps where its cubics meet the arc, the clothoid's rises in straight ramps. Box 2 is
+`squircleRectFrom` with Figma and clothoid corners drawn over circular ones.
+
+[Open →](offline.html?file=assets/agent_transcripts/squircles/metadata.edn)
+
 ### drawing_on
 
 [Drawing on iPad](drawing_on.md): an editable plan and a native Pencil/voice capture head. Run the
