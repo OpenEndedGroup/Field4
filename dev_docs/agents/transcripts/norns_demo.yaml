@@ -1,0 +1,219 @@
+name: norns_demo
+description: |
+  **A norns host in a Lua box.** `require "norns"` gives a Lua box the norns script API —
+  `screen`, `params`, `clock`, `metro`, `util`, `musicutil`, a PolyPerc engine, a softcut subset,
+  virtual `grid` and `arc` — so a norns script runs inside Field. Needs LuaJIT (`brew install luajit`).
+
+    - **status** (the root, Kotlin) — where LuaJIT was found.
+    - **orbits** (launch) — a small norns script written in the box: its screen in the `norns`
+      panel, K1–K3 and E1–E3 as buttons in `controls`, sound through Field's audio engine.
+    - **orbits, rendered** — the same script offline in virtual time, with scripted key and
+      encoder events: a player in the `sound` panel and a .wav.
+    - **fetch the scripts** — clones noiz virus and anima from their authors' GitHub repositories
+      (neither states a licence, so Field does not ship them) into `~/.afield/norns/code/`.
+    - **noiz virus** (launch) — SPIKE the Percussionist's noiz virus, live.
+    - **noiz virus, rendered** — twelve seconds of it offline, screens and .wav, and what of the
+      norns API it reached that Field stubs or lacks.
+    - **anima, rendered** — om-i-god's anima offline.
+docs:
+  - page: lua.md
+    why: "The norns host section explains require \"norns\" and its coverage."
+operations:
+  - create:
+      box: norns_root
+      name: "status — children of this box are Lua"
+      frame: { x: 40.0, y: 40.0, w: 460.0, h: 80.0 }
+      properties:
+        mainLanguage: lua
+        isLuaRoot: true
+        code: |
+          // This root stays Kotlin; its `mainLanguage` makes the boxes under it Lua.
+          println(afield.lang.lua.LuaLibrary.describe())
+  - create:
+      box: norns_orbits
+      name: "orbits"
+      frame: { x: 40.0, y: 180.0, w: 200.0, h: 80.0 }
+      properties:
+        code_language: Lua
+        code: |
+          -- orbits: a norns script, written in this box
+          -- E2 tempo, E3 brightness (filter cutoff)
+          -- K2 play / stop, K3 new orbits
+          local norns = require("norns").reset()
+          local musicutil = require "musicutil"
+          engine.name = "PolyPerc"
+
+          local scale = musicutil.generate_scale(48, "Dorian", 3)
+          local planets, playing, flash = {}, true, 0
+
+          local function reroll()
+            planets = {}
+            for i = 1, 5 do
+              planets[i] = { r = 6 + i * 5, a = math.random() * 2 * math.pi, steps = ({ 3, 4, 5, 6, 8 })[i], at = 0 }
+            end
+          end
+
+          function init()
+            math.randomseed(7)
+            params:add_control("cutoff", "cutoff", controlspec.new(200, 6000, "exp", 0, 1200, "hz"))
+            params:set_action("cutoff", function(v) engine.cutoff(v) end)
+            params:add_number("tempo", "tempo", 40, 240, 110)
+            params:set_action("tempo", function(v) params:set("clock_tempo", v) end)
+            params:bang()
+            engine.release(0.6); engine.amp(0.4)
+            reroll()
+            clock.run(function()
+              while true do
+                clock.sync(1 / 4)
+                if playing then
+                  for i, p in ipairs(planets) do
+                    p.at = (p.at + 1) % p.steps
+                    p.a = p.a + 2 * math.pi / (p.steps * 4)
+                    if p.at == 0 then
+                      engine.pan(math.cos(p.a) * 0.6)
+                      engine.hz(musicutil.note_num_to_freq(scale[i * 2 + math.floor(p.a * 2) % 4]))
+                      p.flash = 4
+                    end
+                  end
+                end
+              end
+            end)
+            local m = metro.init(function()
+              for _, p in ipairs(planets) do if (p.flash or 0) > 0 then p.flash = p.flash - 1 end end
+              redraw()
+            end, 1 / 15)
+            m:start()
+          end
+
+          function redraw()
+            screen.clear()
+            screen.aa(0)
+            screen.level(2)
+            for _, p in ipairs(planets) do screen.circle(40, 32, p.r); screen.stroke() end
+            screen.level(15); screen.circle(40, 32, 2); screen.fill()
+            for _, p in ipairs(planets) do
+              screen.level((p.flash or 0) > 0 and 15 or 6)
+              screen.circle(40 + p.r * math.cos(p.a), 32 + p.r * math.sin(p.a), (p.flash or 0) > 0 and 3 or 2)
+              screen.fill()
+            end
+            screen.level(10); screen.font_size(8)
+            screen.move(80, 12); screen.text("orbits")
+            screen.level(4)
+            screen.move(80, 28); screen.text("bpm " .. params:get("tempo"))
+            screen.move(80, 38); screen.text("cut " .. math.floor(params:get("cutoff")))
+            screen.move(80, 54); screen.text(playing and "playing" or "stopped")
+            screen.update()
+          end
+
+          function enc(n, d)
+            if n == 2 then params:delta("tempo", d) elseif n == 3 then params:delta("cutoff", d) end
+          end
+
+          function key(n, z)
+            if z == 0 then return end
+            if n == 2 then playing = not playing elseif n == 3 then reroll() end
+          end
+
+          norns.start()   -- launch this box
+  - create:
+      box: norns_orbits_render
+      name: "orbits, rendered"
+      frame: { x: 280.0, y: 180.0, w: 200.0, h: 80.0 }
+      properties:
+        code_language: Lua
+        code: |
+          -- Run (not launch): the "orbits" box's script, offline, in virtual time, for eight seconds.
+          -- E2 speeds it up at 2 s, K3 rerolls the orbits at 4 s, E3 closes the filter at 5 s.
+          local norns = require "norns"
+          local heard = norns.render {
+            code = field.named("orbits").code, name = "orbits", seconds = 8,
+            events = { { 2, "enc", 2, 30 }, { 4, "key", 3, 1 }, { 4.1, "key", 3, 0 }, { 5, "enc", 3, -60 } },
+            wav = os.getenv("HOME") .. "/.afield/norns/renders/orbits.wav",
+            png = os.getenv("HOME") .. "/.afield/norns/renders/orbits.png",
+          }
+          print(string.format("%.1f s, peak %.2f, rms %.3f, %d onsets", heard.seconds, heard.peak, heard.rms, heard.onsets))
+          print("tempo now", params:get("tempo"), "cutoff", math.floor(params:get("cutoff")))
+  - create:
+      box: norns_fetch
+      name: "fetch the scripts"
+      frame: { x: 40.0, y: 320.0, w: 200.0, h: 80.0 }
+      properties:
+        code_language: Lua
+        code: |
+          -- Fetch two norns scripts from their authors' GitHub repositories into ~/.afield/norns/code/.
+          -- Neither repository states a licence, so Field does not ship them; this box clones them for you.
+          field.budget = 120
+          local code = os.getenv("HOME") .. "/.afield/norns/code/"
+          os.execute('mkdir -p "' .. code .. '"')
+          for _, repo in ipairs { "SPIKE-the-Percussionist/noiz_virus", "om-i-god/anima" } do
+            local name = repo:match("/(.+)$")
+            local dir = code .. name
+            local f = io.open(dir .. "/" .. name .. ".lua")
+            if f then f:close(); print(name, "already in", dir)
+            else
+              local ok = os.execute('git clone -q --depth 1 https://github.com/' .. repo .. ' "' .. dir .. '"')
+              print(name, (ok == 0 or ok == true) and "cloned into" or "could not be cloned into", dir)
+            end
+          end
+  - create:
+      box: norns_noiz
+      name: "noiz virus"
+      frame: { x: 40.0, y: 460.0, w: 200.0, h: 80.0 }
+      properties:
+        code_language: Lua
+        code: |
+          -- Launch: SPIKE the Percussionist's noiz virus, live. Fetch it first (the box above).
+          -- K2 plays and stops, K3 back to the start, E1 virus, E2 window, E3 mutation (the buttons
+          -- in the controls panel). The NoiZ Temple splash goes at the first key.
+          field.budget = 30
+          require("norns").run(os.getenv("HOME") .. "/.afield/norns/code/noiz_virus/noiz_virus.lua")
+  - create:
+      box: norns_noiz_render
+      name: "noiz virus, rendered"
+      frame: { x: 280.0, y: 460.0, w: 200.0, h: 80.0 }
+      properties:
+        code_language: Lua
+        code: |
+          -- Run: noiz virus offline for 12 s: skip the splash, K2 at 3 s to play, E1 to another virus at 8 s.
+          field.budget = 60
+          local norns = require "norns"
+          local renders = os.getenv("HOME") .. "/.afield/norns/renders/"
+          local heard = norns.render {
+            script = os.getenv("HOME") .. "/.afield/norns/code/noiz_virus/noiz_virus.lua", seconds = 12,
+            events = { { 0.5, "key", 2, 1 }, { 0.6, "key", 2, 0 }, { 3, "key", 2, 1 }, { 3.1, "key", 2, 0 },
+                       { 8, "enc", 1, 3 } },
+            screens = { { 0.2, renders .. "noiz_virus_splash.png" }, { 6, renders .. "noiz_virus_6s.png" } },
+            wav = renders .. "noiz_virus.wav", png = renders .. "noiz_virus_end.png",
+          }
+          print(string.format("%.1f s, peak %.2f, rms %.3f, %d onsets", heard.seconds, heard.peak, heard.rms, heard.onsets))
+          local c = norns.coverage()
+          print("stubbed: " .. table.concat(c.stubbed, ", "))
+          print("missing: " .. table.concat(c.missing, ", "))
+  - create:
+      box: norns_anima_render
+      name: "anima, rendered"
+      frame: { x: 520.0, y: 460.0, w: 200.0, h: 80.0 }
+      properties:
+        code_language: Lua
+        code: |
+          -- Run: om-i-god's anima offline for 10 s, its petals growing on the golden angle.
+          field.budget = 60
+          local norns = require "norns"
+          local renders = os.getenv("HOME") .. "/.afield/norns/renders/"
+          local heard = norns.render {
+            script = os.getenv("HOME") .. "/.afield/norns/code/anima/anima.lua", seconds = 10,
+            events = { { 1, "enc", 1, 4 }, { 3, "key", 2, 1 }, { 3.1, "key", 2, 0 } },
+            wav = renders .. "anima.wav", png = renders .. "anima_end.png",
+          }
+          print(string.format("%.1f s, peak %.2f, rms %.3f, %d onsets", heard.seconds, heard.peak, heard.rms, heard.onsets))
+          local c = norns.coverage()
+          print("stubbed: " .. table.concat(c.stubbed, ", "))
+          print("missing: " .. table.concat(c.missing, ", "))
+  - connect: { parent: norns_root, child: norns_orbits }
+  - connect: { parent: norns_root, child: norns_orbits_render }
+  - connect: { parent: norns_root, child: norns_fetch }
+  - connect: { parent: norns_root, child: norns_noiz }
+  - connect: { parent: norns_root, child: norns_noiz_render }
+  - connect: { parent: norns_root, child: norns_anima_render }
+  - execute: { box: norns_root, property: code }
+  - await: {}

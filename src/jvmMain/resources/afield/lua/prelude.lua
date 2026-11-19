@@ -315,6 +315,19 @@ end
 
 function __field_halt() tasks = {} end
 
+-- ── modules Field ships: require "norns" ────────────────────────────────────────────────────────
+
+if raw.module then
+  local module = checked(raw.module)
+  -- The norns host's raw handlers go to it alone, checked, without their norns_ prefix.
+  local nraw = {}
+  for k, f in pairs(raw) do if k:sub(1, 6) == "norns_" then nraw[k:sub(7)] = checked(f) end end
+  package.preload["norns"] = function()
+    local chunk = assert(loadstring(module("norns"), "=norns"))
+    return chunk(nraw)
+  end
+end
+
 -- ── the guard and the recorder ──────────────────────────────────────────────────────────────────
 --
 -- A count hook checks a deadline every COUNT instructions, so `while true do end` stops with an error
