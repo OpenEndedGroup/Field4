@@ -91,7 +91,7 @@ On each connection the iPad sends a handshake (outside the capture journal):
 
 `through` is the final sequence for a saved upload, or null for a live stream. The receiver replies `{"ready":1234,"session":"UUID"}` with its durable head. The client skips already received events. Session UUID matching is case-insensitive. This handshake makes resume work after either process restarts; client-side cached receipts are UI status, not authority.
 
-A live stream normally sends one event at a time. Saved uploads send up to 64 events / roughly 512 KiB per batch (a single larger event is sent alone):
+Live streams and saved uploads send up to 64 available events / roughly 512 KiB per batch. A single larger event is sent alone. Live streaming sends available events immediately without waiting for a full batch:
 
 ```json
 {"type":"capture.batch","events":[{"v":1,"session":"UUID","seq":1235,"t":1.2,"type":"stroke.end","data":{"stroke":"UUID","cancelled":false}}]}
