@@ -1,4 +1,5 @@
 import { sendWithReply, clearReplyHandler } from "./afield.mjs";
+import { boxCostSnapshot } from "./profileTimelineModel.js";
 
 // The Profiling panel's "Box functions" tab: per-function self and total time of the boxes opted in
 // to per-function cost (afield.runtime.bytecode.BoxCost, over the `box-cost` RPC). Measuring a box
@@ -27,7 +28,7 @@ export function createProfileBoxCost(parent) {
         replyName = `profile-box-cost-${++serial}`;
         sendWithReply("box-cost", { action, uid }, replyName, (_m, response) => {
             pending = false;
-            data = response;
+            data = boxCostSnapshot(response);
             render();
             schedule();
             return "remove";
