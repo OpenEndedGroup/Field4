@@ -1,77 +1,5 @@
 {
   "deferred": {
-    "assets/agent_transcripts/ceres_free_variables/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "94bb93495dee45ffff6a6e2b0f8c47f7086ff997a34c686195c95a1187facadd",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-19"
-    },
-    "assets/agent_transcripts/confluence_grid/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "94bb93495dee45ffff6a6e2b0f8c47f7086ff997a34c686195c95a1187facadd",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-19"
-    },
-    "assets/agent_transcripts/debruijn_tilings_3d_demo/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "94bb93495dee45ffff6a6e2b0f8c47f7086ff997a34c686195c95a1187facadd",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-19"
-    },
-    "assets/agent_transcripts/debruijn_tilings_demo/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "94bb93495dee45ffff6a6e2b0f8c47f7086ff997a34c686195c95a1187facadd",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-19"
-    },
-    "assets/agent_transcripts/geometry_from_disk/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "94bb93495dee45ffff6a6e2b0f8c47f7086ff997a34c686195c95a1187facadd",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-19"
-    },
-    "assets/agent_transcripts/lp_curves/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "94bb93495dee45ffff6a6e2b0f8c47f7086ff997a34c686195c95a1187facadd",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-19"
-    },
-    "assets/agent_transcripts/lp_curves_3d/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "94bb93495dee45ffff6a6e2b0f8c47f7086ff997a34c686195c95a1187facadd",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-19"
-    },
-    "assets/agent_transcripts/madp_geometry/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "94bb93495dee45ffff6a6e2b0f8c47f7086ff997a34c686195c95a1187facadd",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-19"
-    },
-    "assets/agent_transcripts/manifold_solids/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "94bb93495dee45ffff6a6e2b0f8c47f7086ff997a34c686195c95a1187facadd",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-19"
-    },
-    "assets/agent_transcripts/mesh_geometry_examples/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "94bb93495dee45ffff6a6e2b0f8c47f7086ff997a34c686195c95a1187facadd",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-19"
-    },
-    "assets/agent_transcripts/mesh_repair_demo/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "94bb93495dee45ffff6a6e2b0f8c47f7086ff997a34c686195c95a1187facadd",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-19"
-    },
-    "assets/agent_transcripts/polytope_canonical_gallery/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "94bb93495dee45ffff6a6e2b0f8c47f7086ff997a34c686195c95a1187facadd",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-19"
-    },
     "assets/agent_transcripts/polytope_conway_demo/metadata.edn": {
       "attempts": 0,
       "captureDigest": "94bb93495dee45ffff6a6e2b0f8c47f7086ff997a34c686195c95a1187facadd",
@@ -1013,17 +941,17 @@
       ]
     },
     "assets/agent_transcripts/ceres_free_variables/metadata.edn": {
-      "captureDigest": "347d26bd16f6fc14afd40b75579b70acc28d27cf578abbbca016cdda71b69c95",
-      "capturedAt": "2026-11-18T21:56:28.183Z",
+      "captureDigest": "94bb93495dee45ffff6a6e2b0f8c47f7086ff997a34c686195c95a1187facadd",
+      "capturedAt": "2026-11-19T21:32:52.051Z",
       "channels": 4,
       "file": "assets/web_publications/ceres_free_variables/document/metadata.edn",
       "files": {
         "assets/web_publications/ceres_free_variables/document/metadata.edn": "3bfbe3f53050ae5fd8697c2bd0c89dde5799510957978d6892a04bae8666306b",
-        "assets/web_publications/ceres_free_variables/document/outputs.json": "730c5fa5a63841dc56aec4faec0308d288d980c0db5e14cedd5a738516ea0750",
-        "assets/web_publications/ceres_free_variables/outputs/0.html": "503c2c119c0a819c5ad655511e1c2a6b036cb7ef380c6226a691a4be03114786",
-        "assets/web_publications/ceres_free_variables/outputs/1.html": "792f889ceacf8ff1d455dbe0081d662d766326da0211ca7657400810f29b73ed",
-        "assets/web_publications/ceres_free_variables/outputs/2.html": "e2571f2d4a3dd8fba8f27402f58aa263c7f7b34c0de0d36fed9b608ddb1482ec",
-        "assets/web_publications/ceres_free_variables/outputs/3.html": "cf529f9739ee4a1b46a047150a3535794bd1e7babaa379dc7c99c1b50a22a3cb"
+        "assets/web_publications/ceres_free_variables/document/outputs.json": "67bc2c4c895b609eb4b49be8e746dd2d39c3afc8e72f9e3cf67ff590d327014f",
+        "assets/web_publications/ceres_free_variables/outputs/0.html": "c642d090d7deaf48e7be238084295120cbaa469e56e15981313d5d036e5781b1",
+        "assets/web_publications/ceres_free_variables/outputs/1.html": "afa4cb7d9ebf96d32fffbf6f840dba7e7dbac43909a59164f1cc64c7b0073690",
+        "assets/web_publications/ceres_free_variables/outputs/2.html": "e31bb24e885370bfd49f59f792af29258fbe50cc54ae66826a276eb3604e2120",
+        "assets/web_publications/ceres_free_variables/outputs/3.html": "8affd5d7eb9312c710ab533ebe775fa3fe4023e61154ab343084a68429c28e8d"
       },
       "kinds": [
         "three"
@@ -1272,14 +1200,14 @@
       }
     },
     "assets/agent_transcripts/confluence_grid/metadata.edn": {
-      "captureDigest": "347d26bd16f6fc14afd40b75579b70acc28d27cf578abbbca016cdda71b69c95",
-      "capturedAt": "2026-11-18T21:56:38.586Z",
+      "captureDigest": "94bb93495dee45ffff6a6e2b0f8c47f7086ff997a34c686195c95a1187facadd",
+      "capturedAt": "2026-11-19T21:33:00.857Z",
       "channels": 1,
       "file": "assets/web_publications/confluence_grid/document/metadata.edn",
       "files": {
         "assets/web_publications/confluence_grid/document/metadata.edn": "c67fe1ad1d400243cb3098e6d51f1fd6aca66cfb8c87fd43f9576b1fdce014ed",
-        "assets/web_publications/confluence_grid/document/outputs.json": "c5202fe67c598d8f64554653ccf3b283dc0307143a6d27aff65bcd5841708a1e",
-        "assets/web_publications/confluence_grid/outputs/0.html": "9c8858940fc4a424e94b4da176e3882635eb304a65cc3dfd08b2acdf6e111e27"
+        "assets/web_publications/confluence_grid/document/outputs.json": "c6fa1b77909b644ddcdafc64211088938dcc760b7ffedb7936c18d2104e0376f",
+        "assets/web_publications/confluence_grid/outputs/0.html": "0a465638b30f4736aa67cbae1e1f6767bfa146045613f18fa4088e5a5eb50e24"
       },
       "kinds": [
         "three"
@@ -1440,19 +1368,19 @@
       }
     },
     "assets/agent_transcripts/debruijn_tilings_3d_demo/metadata.edn": {
-      "captureDigest": "347d26bd16f6fc14afd40b75579b70acc28d27cf578abbbca016cdda71b69c95",
-      "capturedAt": "2026-11-18T21:56:52.431Z",
+      "captureDigest": "94bb93495dee45ffff6a6e2b0f8c47f7086ff997a34c686195c95a1187facadd",
+      "capturedAt": "2026-11-19T21:33:17.728Z",
       "channels": 6,
       "file": "assets/web_publications/debruijn_tilings_3d_demo/document/metadata.edn",
       "files": {
         "assets/web_publications/debruijn_tilings_3d_demo/document/metadata.edn": "80989d9ecc4ab9645894e6a77ab4770a145514e2252e899910506f52abc88e5f",
-        "assets/web_publications/debruijn_tilings_3d_demo/document/outputs.json": "e7ecfce2589c263e8835d78353c92430b7118a352244c25e4c52a20f229541e9",
-        "assets/web_publications/debruijn_tilings_3d_demo/outputs/0.html": "2102d7a6f57554d64ca24c4c9dde8d56b40ae549101b607ee98c8d2c9a9ee236",
-        "assets/web_publications/debruijn_tilings_3d_demo/outputs/1.html": "859e694d44572d9eceb8590a531bc290e5ef719c7bfe6d9d8c30b47b5c4af3c3",
-        "assets/web_publications/debruijn_tilings_3d_demo/outputs/2.html": "6fe3d36ea7d8e2beaaf0f491ede7ca7439883413bd1e963fa3488e4fa86c2120",
-        "assets/web_publications/debruijn_tilings_3d_demo/outputs/3.html": "b1b1e5317d158dd6fd025912a9a8fd0c9022916aaf5833786ef10072295d6cc9",
-        "assets/web_publications/debruijn_tilings_3d_demo/outputs/4.html": "bfae21356590050e0667c647330ec9ea2870a141a7e16ffec98fb0e933c39767",
-        "assets/web_publications/debruijn_tilings_3d_demo/outputs/5.html": "65eaabe470a3b07c9b90a99649cf2d6780c3b5ac44f3a8393d4a7133ee5cc4ba"
+        "assets/web_publications/debruijn_tilings_3d_demo/document/outputs.json": "585cead539983dafa71f87e47fd4c258f2448a22a0cb4d626fb5378965567022",
+        "assets/web_publications/debruijn_tilings_3d_demo/outputs/0.html": "1280f4ae78b99256535baaf779dd974a3a2d5c790cb049305e4a8f2ab7393955",
+        "assets/web_publications/debruijn_tilings_3d_demo/outputs/1.html": "81d7b351a3aaf86ddffefaae8955f15ca303a5b7d2b81a4167af3d4d1d218551",
+        "assets/web_publications/debruijn_tilings_3d_demo/outputs/2.html": "7ff07fd493fafd78a6d1409d4d02bde179a0cc0d306143f62deb6a0d3e701467",
+        "assets/web_publications/debruijn_tilings_3d_demo/outputs/3.html": "2b484f7f6883b22a4581e7761d18e88967f38d58bb2c0a60504cfdcdfe68fc90",
+        "assets/web_publications/debruijn_tilings_3d_demo/outputs/4.html": "205c90cf426284f547a0f21fce42050d0661072929774b1d8a31589bbe40c2b7",
+        "assets/web_publications/debruijn_tilings_3d_demo/outputs/5.html": "130e77b4e0bfabfb3c3ffced8c1b18c81073570e339e7df6b50234f168987d30"
       },
       "kinds": [
         "svg",
@@ -1472,21 +1400,21 @@
       }
     },
     "assets/agent_transcripts/debruijn_tilings_demo/metadata.edn": {
-      "captureDigest": "347d26bd16f6fc14afd40b75579b70acc28d27cf578abbbca016cdda71b69c95",
-      "capturedAt": "2026-11-18T21:57:01.581Z",
+      "captureDigest": "94bb93495dee45ffff6a6e2b0f8c47f7086ff997a34c686195c95a1187facadd",
+      "capturedAt": "2026-11-19T21:33:53.736Z",
       "channels": 8,
       "file": "assets/web_publications/debruijn_tilings_demo/document/metadata.edn",
       "files": {
         "assets/web_publications/debruijn_tilings_demo/document/metadata.edn": "9e2d76ceb86e53daf394a3fda1d946b12f50ed5971e4d7ad8993267b77fd05d6",
-        "assets/web_publications/debruijn_tilings_demo/document/outputs.json": "5f1e220f8c49da8cfe869abc0ef23dc977de099961837fa572689ea512a2b725",
-        "assets/web_publications/debruijn_tilings_demo/outputs/0.html": "8f6c12ab17d72d85a4447bf6d9c3a61225536320c77f3047088aa67945e36f90",
-        "assets/web_publications/debruijn_tilings_demo/outputs/1.html": "690c8f1c5f1af6e83fdc40c21b4627b9d6c73745d91578a53657aea1fc095edd",
-        "assets/web_publications/debruijn_tilings_demo/outputs/2.html": "ebd3f5ee4d232ca73ff5f018e4f74ba361ff524879a9af61a653b149189160be",
-        "assets/web_publications/debruijn_tilings_demo/outputs/3.html": "483765c66aabd3c80cafb37b35f75f42a0cfd3af14d9d152b90fccbbd15ce779",
-        "assets/web_publications/debruijn_tilings_demo/outputs/4.html": "94221a353936dc976ea72bed93873630285c7c208636856c6432d199a65e2a88",
-        "assets/web_publications/debruijn_tilings_demo/outputs/5.html": "8eb06bbd24804fd563382c4f6847f6987796763eb6eadda1ea0847aa425a662f",
-        "assets/web_publications/debruijn_tilings_demo/outputs/6.html": "6570f12bcf1fa98f4b1e5e2234a7de422f8c5f0a8f680ee2302a8eee76a88e0a",
-        "assets/web_publications/debruijn_tilings_demo/outputs/7.html": "650d214414ac4679799e7259646134ae75c62da829881d5b0c94ba903d43894e"
+        "assets/web_publications/debruijn_tilings_demo/document/outputs.json": "9ce1bf4f022f22d6b7a737f7102e1455477b0182efffea5b34433e830b61dd2e",
+        "assets/web_publications/debruijn_tilings_demo/outputs/0.html": "fdb1c4cbc28c7dd841b1f365b7e546d9130d9df1a471ddbb151177a1530a35ad",
+        "assets/web_publications/debruijn_tilings_demo/outputs/1.html": "752e6578cecb66a71a3b47d96acf08af08673b163ea0b56739b7e1b8ddb46439",
+        "assets/web_publications/debruijn_tilings_demo/outputs/2.html": "f0368967672848af4106c217bf96f57576dfebadb3265f7ad7736c9ee2f47567",
+        "assets/web_publications/debruijn_tilings_demo/outputs/3.html": "84cb64e31c5b6017f5fdeb8c8b8510a05ef7b14e90c504defb01faaa62b8311b",
+        "assets/web_publications/debruijn_tilings_demo/outputs/4.html": "afc2592f92b050cc58494fd504710e2a431c79bc35bd227f8c1e35d5a296e3ed",
+        "assets/web_publications/debruijn_tilings_demo/outputs/5.html": "6ed3835f2ae87fe2c674c6ce13a900b467db6628c3b0a01efe018cc68caf2aa6",
+        "assets/web_publications/debruijn_tilings_demo/outputs/6.html": "9cb3f6d673d93e4791bbd411f3f6a8167c24de8653fd267faddcc8e9d49d5e1d",
+        "assets/web_publications/debruijn_tilings_demo/outputs/7.html": "7913b6a641d27ef756956b530488448e9095ec0b17ad25e18f1f861ce64f03aa"
       },
       "kinds": [
         "svg",
@@ -2209,16 +2137,16 @@
       }
     },
     "assets/agent_transcripts/geometry_from_disk/metadata.edn": {
-      "captureDigest": "347d26bd16f6fc14afd40b75579b70acc28d27cf578abbbca016cdda71b69c95",
-      "capturedAt": "2026-11-18T21:57:10.071Z",
+      "captureDigest": "94bb93495dee45ffff6a6e2b0f8c47f7086ff997a34c686195c95a1187facadd",
+      "capturedAt": "2026-11-19T21:34:06.049Z",
       "channels": 3,
       "file": "assets/web_publications/geometry_from_disk/document/metadata.edn",
       "files": {
         "assets/web_publications/geometry_from_disk/document/metadata.edn": "be0eddb6c5caeadfde0649f64cb6df78a3d68e8fd392bb2e9397b6a5b7ce4c65",
-        "assets/web_publications/geometry_from_disk/document/outputs.json": "7297246d95138df0da0517540e64c3927ee905374f5ddbc827c94b166559097e",
-        "assets/web_publications/geometry_from_disk/outputs/0.html": "04b3bbb01862dd4a02552028cfa2c1e34e942a2dbeacd0f56086e73ea113b1f0",
-        "assets/web_publications/geometry_from_disk/outputs/1.html": "5073d86acb17e385913a9f45d1c142a9c17f12b213073a9dee14951ee4fb103b",
-        "assets/web_publications/geometry_from_disk/outputs/2.html": "86b9cbe1c6dc5a6f03695f524d56270303518d3f7c21a9b340a026cb40680436"
+        "assets/web_publications/geometry_from_disk/document/outputs.json": "a1bb92b246fac8e61f833cbf765b8b32a4d00590f6b4a6f45a339d862c3f0433",
+        "assets/web_publications/geometry_from_disk/outputs/0.html": "4a16f604bebcccd8fb3894281051e8cce883f94c8c6a03191c98d2ee218f047d",
+        "assets/web_publications/geometry_from_disk/outputs/1.html": "2d99cee138d1ddf1de45c506dada66935678b5b1e4604b3e2c1fc2ae40e4bd84",
+        "assets/web_publications/geometry_from_disk/outputs/2.html": "2d580c7556b20987382a1c1e5844e1785c6e52f968fa7b6c694f830de95f546e"
       },
       "kinds": [
         "three"
@@ -2950,16 +2878,16 @@
       }
     },
     "assets/agent_transcripts/lp_curves/metadata.edn": {
-      "captureDigest": "347d26bd16f6fc14afd40b75579b70acc28d27cf578abbbca016cdda71b69c95",
-      "capturedAt": "2026-11-18T21:57:18.586Z",
+      "captureDigest": "94bb93495dee45ffff6a6e2b0f8c47f7086ff997a34c686195c95a1187facadd",
+      "capturedAt": "2026-11-19T21:34:19.882Z",
       "channels": 3,
       "file": "assets/web_publications/lp_curves/document/metadata.edn",
       "files": {
         "assets/web_publications/lp_curves/document/metadata.edn": "6862d23aed448f0b896ba11991d18df86332a98b255aff7301eb7c475362da10",
-        "assets/web_publications/lp_curves/document/outputs.json": "0e5beb59f358a3e0dccf432e7896049385b90fb58ee46c8babcd8ac1a03057b5",
-        "assets/web_publications/lp_curves/outputs/0.html": "10c470b368b54a1fac87948dd2c3078b8aefcd6e934ea092817f350ec6f4de97",
-        "assets/web_publications/lp_curves/outputs/1.html": "f03e171174a01f2a8b363007b7ae8f319246ca4a768b9305eb019da27ef3aee6",
-        "assets/web_publications/lp_curves/outputs/2.html": "5c861ff6f66aae2a2029f312f274a6e77b8a47bb51610df5c400b234d2c5a367"
+        "assets/web_publications/lp_curves/document/outputs.json": "d033c6fd858a0d7ff7f5d0b841f199e6c25eaa24f2893d893a35762390f71807",
+        "assets/web_publications/lp_curves/outputs/0.html": "fd7474d04131a2e5cf0e2053215b330a7e78861b701ab03260e0a1c40a8ad9ce",
+        "assets/web_publications/lp_curves/outputs/1.html": "5281d5d07e69947ef62c02e645673193a6c5576c700039edf665902861fa2f41",
+        "assets/web_publications/lp_curves/outputs/2.html": "e751aef92c52b6076e3126a727be1a2ffad5154df9d0bbbace89d182c3b1ee57"
       },
       "kinds": [
         "svg",
@@ -2976,15 +2904,15 @@
       }
     },
     "assets/agent_transcripts/lp_curves_3d/metadata.edn": {
-      "captureDigest": "347d26bd16f6fc14afd40b75579b70acc28d27cf578abbbca016cdda71b69c95",
-      "capturedAt": "2026-11-18T21:57:23.361Z",
+      "captureDigest": "94bb93495dee45ffff6a6e2b0f8c47f7086ff997a34c686195c95a1187facadd",
+      "capturedAt": "2026-11-19T21:34:26.626Z",
       "channels": 2,
       "file": "assets/web_publications/lp_curves_3d/document/metadata.edn",
       "files": {
         "assets/web_publications/lp_curves_3d/document/metadata.edn": "8d9253d28126513a3fe5ec32feca7db205200e204b7c2fb584f5139de2e71ced",
-        "assets/web_publications/lp_curves_3d/document/outputs.json": "b7328f58ddc5d14a9dc9dc4793a80ce00d6294292d5b5073da85142bbbc6e2bc",
-        "assets/web_publications/lp_curves_3d/outputs/0.html": "6563c09bddc714efb40f7e4842ed7140533e73c31f6179c7f773939a72b59961",
-        "assets/web_publications/lp_curves_3d/outputs/1.html": "f7c5ddb6448e1d8c147cb57765795e1e3fdccf42bec42bbd571beebcd6979cdb"
+        "assets/web_publications/lp_curves_3d/document/outputs.json": "505ad24fcbe2bfe495644e24a6160b3f92345590946b9c79cdf60eb3f36fdaa9",
+        "assets/web_publications/lp_curves_3d/outputs/0.html": "9a61b96bbab34fb48f66b7be25f309e939bc8feb29fe216aca13af2d1921159b",
+        "assets/web_publications/lp_curves_3d/outputs/1.html": "2a3a894d5364706201432dc14a9393bb860fefa354df39dc6abda0fa75707b48"
       },
       "kinds": [
         "three"
@@ -3074,24 +3002,24 @@
       }
     },
     "assets/agent_transcripts/madp_geometry/metadata.edn": {
-      "captureDigest": "347d26bd16f6fc14afd40b75579b70acc28d27cf578abbbca016cdda71b69c95",
-      "capturedAt": "2026-11-18T21:57:36.638Z",
+      "captureDigest": "94bb93495dee45ffff6a6e2b0f8c47f7086ff997a34c686195c95a1187facadd",
+      "capturedAt": "2026-11-19T21:34:39.165Z",
       "channels": 11,
       "file": "assets/web_publications/madp_geometry/document/metadata.edn",
       "files": {
         "assets/web_publications/madp_geometry/document/metadata.edn": "434286298fc1428289bd3b2b5d8f736cbb1da97b1a6e68dfd83bcd738a580b66",
-        "assets/web_publications/madp_geometry/document/outputs.json": "1ec14aa73ca9615340ba45be4157d7ed51b78ed21208fa9c650e3e8032b62c90",
-        "assets/web_publications/madp_geometry/outputs/0.html": "d62bca267ad5b107d702aeeea84eebf09bc5a8698a85c01f1dabbb36079bb4c8",
-        "assets/web_publications/madp_geometry/outputs/1.html": "33e642aca42bd5f6da035771a53d2a06d4b14c9f1db2f3c1d3216b2cd4398fb5",
-        "assets/web_publications/madp_geometry/outputs/10.html": "066602fb6b920d1e29d315ab9d65c8f65c72b985ff05607dfba8781af33f99de",
-        "assets/web_publications/madp_geometry/outputs/2.html": "655e2557a97c6efb386828e29ac6349fd4e3e8d519d37b78035b233fca064261",
-        "assets/web_publications/madp_geometry/outputs/3.html": "bbe35e6c699429ad2c6dcb150bc17e2b02cb8efe277785594982d7f389a30758",
-        "assets/web_publications/madp_geometry/outputs/4.html": "fc5cfab4183fec6e8c23827e66507e0e006807f5c6700c04f2740faa5ec01187",
-        "assets/web_publications/madp_geometry/outputs/5.html": "b31106f2b7a17f34564026bf7a54d54d0a8e42806bc312f0a31aaa1cf8b26d2a",
-        "assets/web_publications/madp_geometry/outputs/6.html": "3b30e72aa8f3df8760a87b93170c10b1e91923f1bbb3b7c1102d4b1964ded848",
-        "assets/web_publications/madp_geometry/outputs/7.html": "e025ea29c6eabb4e73502e082e70d2a06b529a18676b5d73b3022fdc4c6d5435",
-        "assets/web_publications/madp_geometry/outputs/8.html": "7d2a44df360eb5710de21776ea7a3e793977dfc9953524fe2c9aaef744e5b56a",
-        "assets/web_publications/madp_geometry/outputs/9.html": "1730cd45a3060c3bd2146749e4b40ac51a0b58ec25ff6981feb584e1e3f25474"
+        "assets/web_publications/madp_geometry/document/outputs.json": "64ec1cf836c500539070ff21d580d8fddb50a1f8da56b1e09f63a43675b59189",
+        "assets/web_publications/madp_geometry/outputs/0.html": "6ae5989a0d411ab5e6315b531c5d6de8e43bbef93af56abec78e3c22c8b71a66",
+        "assets/web_publications/madp_geometry/outputs/1.html": "272f4927e29f4c5cdcaf22c90ebb7011f77492e460c449690df5212d8587081e",
+        "assets/web_publications/madp_geometry/outputs/10.html": "9fdc6eaa2356d867c976389a427253464549c8d1c6834ae04624f0d2ed98c0a3",
+        "assets/web_publications/madp_geometry/outputs/2.html": "164ffcb6cf3b27895753ad821150f8b9110850911d40baf74152816f83958d03",
+        "assets/web_publications/madp_geometry/outputs/3.html": "5b403abda169f9f068219376ce5516f1d5903df83015e8460b303d8a63b35b8e",
+        "assets/web_publications/madp_geometry/outputs/4.html": "37ce84cd8ec3965ab24b2f14d3341d02661d64b30c5d25e90e0f7ca5cb2dd83e",
+        "assets/web_publications/madp_geometry/outputs/5.html": "324689ad65efd0b9f33dbbe1055449c3d03a551a3a77c79fe3c964256734534e",
+        "assets/web_publications/madp_geometry/outputs/6.html": "68e3265c4be7a0b09a87c085f855d23c8baa66d75a463ce29be2a0b745218c6b",
+        "assets/web_publications/madp_geometry/outputs/7.html": "853fb62ac688046d5cb550186c77a6a6043af054c813c5345cf8b5a9e590c4b3",
+        "assets/web_publications/madp_geometry/outputs/8.html": "9eb6b86bba0bd15494d7f31ca82076a135fed96341e1c6b4b4a53790a0db432a",
+        "assets/web_publications/madp_geometry/outputs/9.html": "717aba8923226c58a70aee837d8f2e62175d32384c0d53310db504fd5816dc54"
       },
       "kinds": [
         "three"
@@ -3125,16 +3053,16 @@
       }
     },
     "assets/agent_transcripts/manifold_solids/metadata.edn": {
-      "captureDigest": "347d26bd16f6fc14afd40b75579b70acc28d27cf578abbbca016cdda71b69c95",
-      "capturedAt": "2026-11-18T21:57:55.659Z",
+      "captureDigest": "94bb93495dee45ffff6a6e2b0f8c47f7086ff997a34c686195c95a1187facadd",
+      "capturedAt": "2026-11-19T21:35:26.568Z",
       "channels": 3,
       "file": "assets/web_publications/manifold_solids/document/metadata.edn",
       "files": {
         "assets/web_publications/manifold_solids/document/metadata.edn": "e9fda3646887ff3bb5aed7894593298ef2e3d2138a448ef949fa693591050705",
-        "assets/web_publications/manifold_solids/document/outputs.json": "32b6586591012041df526e6cd8f8c47dfa157c381e56a420e1796416887a16e2",
-        "assets/web_publications/manifold_solids/outputs/0.html": "635add6453c20754fee3c437738f2450b2e1959ec9a9ecfa38c1edd0ff378e28",
-        "assets/web_publications/manifold_solids/outputs/1.html": "5ccb9d36a65dba4e9a36b073acefb07df72c55dcef3a9d5a64c6f0e647af9350",
-        "assets/web_publications/manifold_solids/outputs/2.html": "6a7e56850737053adbf279a806cc81c277c9abd82d483524f89a0d7e5039b90d"
+        "assets/web_publications/manifold_solids/document/outputs.json": "e62b1634e8cdc77c99496eaa04109848188a9c1b0c984574935264b8de9a25b6",
+        "assets/web_publications/manifold_solids/outputs/0.html": "77ee37e328d33c0df5c669ca6fb618ab4172e6069a64e6cbf08681ffad6f85fa",
+        "assets/web_publications/manifold_solids/outputs/1.html": "0099b1ec8f1032d01c4eebd2c0630b0ae9c0fa80427568e25ce4e9c4ff7e1fda",
+        "assets/web_publications/manifold_solids/outputs/2.html": "21f06647eba8fe6846f2bd8e09be2238cd53c4103428c80def0877d0d5449f3f"
       },
       "kinds": [
         "svg",
@@ -3226,20 +3154,20 @@
       }
     },
     "assets/agent_transcripts/mesh_geometry_examples/metadata.edn": {
-      "captureDigest": "347d26bd16f6fc14afd40b75579b70acc28d27cf578abbbca016cdda71b69c95",
-      "capturedAt": "2026-11-18T21:58:10.985Z",
+      "captureDigest": "94bb93495dee45ffff6a6e2b0f8c47f7086ff997a34c686195c95a1187facadd",
+      "capturedAt": "2026-11-19T21:35:57.833Z",
       "channels": 7,
       "file": "assets/web_publications/mesh_geometry_examples/document/metadata.edn",
       "files": {
         "assets/web_publications/mesh_geometry_examples/document/metadata.edn": "a29ad160aded45042eb1645faa93def1c2362f67cbaab16fd27a8c782a6502b4",
-        "assets/web_publications/mesh_geometry_examples/document/outputs.json": "6fef6ad4d3b27d9945e72eb417ebebe82af7761064340c644b74073aab051d07",
-        "assets/web_publications/mesh_geometry_examples/outputs/0.html": "9cdd3a667d8d10dcf108dd732a0a8af18a21e8736511235eb4210c36976564a6",
-        "assets/web_publications/mesh_geometry_examples/outputs/1.html": "7874b42be0c16894cb3e469ad7c25ac15b69c22337e9e11f0f79a9fb4b238d36",
-        "assets/web_publications/mesh_geometry_examples/outputs/2.html": "c63a8cac1269ceee4024d83c83563bead9adf8a8962f050e8a8955f00726745d",
-        "assets/web_publications/mesh_geometry_examples/outputs/3.html": "030779a714087f51ede2931f624629000efd98d4c4377818aa90ffda9282f5b3",
-        "assets/web_publications/mesh_geometry_examples/outputs/4.html": "5fceb5849b10828ace9609eb8628397391456c7b42843cc9b898ae72b87b76b2",
-        "assets/web_publications/mesh_geometry_examples/outputs/5.html": "a50baeb94652a320c442602ae2c8b88dfe4bd9f0c33de35d37a167b36bf526d2",
-        "assets/web_publications/mesh_geometry_examples/outputs/6.html": "61fa951aa95780a7aba7d48cc2547daebf6982b89d6c8f8ff614b597340f4849"
+        "assets/web_publications/mesh_geometry_examples/document/outputs.json": "a59945fb507ba60a815406f2da17f90ed4538813479e8b9eeaacadff8c2b4bb0",
+        "assets/web_publications/mesh_geometry_examples/outputs/0.html": "74b962550b4cbaba4db13ed593c65833f6957a3faf28f9a6a29e43cfb3c1334d",
+        "assets/web_publications/mesh_geometry_examples/outputs/1.html": "f9dc324930b2b9d2b1ce1ce789500a6c229959b3d33fe4994f061f032fc9bf6a",
+        "assets/web_publications/mesh_geometry_examples/outputs/2.html": "21236fb1d99eaad8334245dd322c5c1c59eac5ed26b391e96e71c0ebe98ed035",
+        "assets/web_publications/mesh_geometry_examples/outputs/3.html": "23fca646ad5ebae3204acd7fa3af3dde219395d17e977a09e23053afc82cd25c",
+        "assets/web_publications/mesh_geometry_examples/outputs/4.html": "1c4ebac3aab4eae1b957002f17d33787992d50c019dea6f6e80bf602355bfad9",
+        "assets/web_publications/mesh_geometry_examples/outputs/5.html": "e49cb1baaac2a98fe19afb44647e0f887a20ebc2365d9f30bdf4e170a2dd123b",
+        "assets/web_publications/mesh_geometry_examples/outputs/6.html": "88616ac412528f465e804f6a2b654d3d1dbfcf452920cb980a6f190f3d17af0e"
       },
       "kinds": [
         "svg",
@@ -3260,16 +3188,16 @@
       }
     },
     "assets/agent_transcripts/mesh_repair_demo/metadata.edn": {
-      "captureDigest": "347d26bd16f6fc14afd40b75579b70acc28d27cf578abbbca016cdda71b69c95",
-      "capturedAt": "2026-11-18T21:58:17.237Z",
+      "captureDigest": "94bb93495dee45ffff6a6e2b0f8c47f7086ff997a34c686195c95a1187facadd",
+      "capturedAt": "2026-11-19T21:36:10.893Z",
       "channels": 3,
       "file": "assets/web_publications/mesh_repair_demo/document/metadata.edn",
       "files": {
         "assets/web_publications/mesh_repair_demo/document/metadata.edn": "967221afca97c0ad49a5a44c8c211eac355e623e503356ed118591340a3d533d",
-        "assets/web_publications/mesh_repair_demo/document/outputs.json": "541ea8e0acee921de998b2cc616f9ccc44e82d898d7c2240daca724a494021bb",
-        "assets/web_publications/mesh_repair_demo/outputs/0.html": "ca5d7b44ea32a3b4f48c037f24525da77ad65e00f255d2695304fe6aa46d7bbb",
-        "assets/web_publications/mesh_repair_demo/outputs/1.html": "87afde3d0bb94f4764d2149a80c4795168dcf1861d7c4422705a2c62a2af8a21",
-        "assets/web_publications/mesh_repair_demo/outputs/2.html": "a21fb63662ad14fe1c08cfc15049a8e85c36de22afa0210f656081b520f254f8"
+        "assets/web_publications/mesh_repair_demo/document/outputs.json": "5a7c11e36c4990b7bafb26d0cd9cb3984d9ec4bc6d425033537c966d987b58bc",
+        "assets/web_publications/mesh_repair_demo/outputs/0.html": "db027dac293353a59afe66c737fe1e08bde0965770c3124b8f38b336db5eb0c7",
+        "assets/web_publications/mesh_repair_demo/outputs/1.html": "ca5fe4dbf8d05d1a722a4699cd95de4e8a3adb732df3b6a03990999b9651923f",
+        "assets/web_publications/mesh_repair_demo/outputs/2.html": "21f989d2a845df1fb442548178efebfb211591f1e1c7e9c44ae14e81d337aeb8"
       },
       "kinds": [
         "svg",
@@ -4514,15 +4442,15 @@
       }
     },
     "assets/agent_transcripts/polytope_canonical_gallery/metadata.edn": {
-      "captureDigest": "347d26bd16f6fc14afd40b75579b70acc28d27cf578abbbca016cdda71b69c95",
-      "capturedAt": "2026-11-18T21:58:22.907Z",
+      "captureDigest": "94bb93495dee45ffff6a6e2b0f8c47f7086ff997a34c686195c95a1187facadd",
+      "capturedAt": "2026-11-19T21:36:19.334Z",
       "channels": 2,
       "file": "assets/web_publications/polytope_canonical_gallery/document/metadata.edn",
       "files": {
         "assets/web_publications/polytope_canonical_gallery/document/metadata.edn": "ac9d7c6231e05b631c2fa3a15a5fbe4c3523cecd2ceda512a8ff07b41de2ff5d",
-        "assets/web_publications/polytope_canonical_gallery/document/outputs.json": "7e0528e9f2bc51f0036671d4bbcf3f705022d18c50c25ce846bd5663be3432a7",
-        "assets/web_publications/polytope_canonical_gallery/outputs/0.html": "96bf0df20b4ffb159b31c4eb3a51a2743eb15d034eb7797029c604f431c430d3",
-        "assets/web_publications/polytope_canonical_gallery/outputs/1.html": "62b50c480bddc58d3189f1c6729fd571efef93682e7e552a14bd71010271e012"
+        "assets/web_publications/polytope_canonical_gallery/document/outputs.json": "800c7a4a62ff782b1dcbb0e4e6f600f00bd023ad9d9e8243590b3729a2efbf90",
+        "assets/web_publications/polytope_canonical_gallery/outputs/0.html": "3de3055b19506e3bcaab2c1a79baf324cde9da17afc62174ef35d719b0a866b2",
+        "assets/web_publications/polytope_canonical_gallery/outputs/1.html": "59c6e08637ae9969b589766d0c907a7e16cdc32f9037d578a2fe235af7d62a9a"
       },
       "kinds": [
         "svg",
