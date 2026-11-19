@@ -31,16 +31,22 @@ operations:
                 val d = grid[i, j]
                 val miss = nearest[j * grid.nx + i] - abs(d) // > 0 falls short, < 0 swallows surface
                 val c = (abs(miss) / grid.h).coerceIn(0.0, 1.0)
-                add(fline { circle((grid.x(i) + dx) * scale, grid.y(j) * scale, abs(d) * scale) }.apply {
-                    color = if (d < 0) vec(0.15 + 0.85 * c, 0.3, 0.7 - 0.5 * c, 0.8) else vec(0.6, 0.6, 0.6, 0.15)
-                })
+                add(
+                    fline { circle((grid.x(i) + dx) * scale, grid.y(j) * scale, abs(d) * scale) }
+                        .apply {
+                            color = if (d < 0) vec(0.15 + 0.85 * c, 0.3, 0.7 - 0.5 * c, 0.8) else vec(0.6, 0.6, 0.6, 0.15)
+                        },
+                )
             }
             val s = grid.surfacePoints()
             for (k in 0 until s.size / 2) {
-                add(fline { circle((s[2 * k] + dx) * scale, s[2 * k + 1] * scale, 2.0) }.apply {
-                    filled = true
-                    color = vec(1.0, 0.67, 0.0, 1.0)
-                })
+                add(
+                    fline { circle((s[2 * k] + dx) * scale, s[2 * k + 1] * scale, 2.0) }
+                        .apply {
+                            filled = true
+                            color = vec(1.0, 0.67, 0.0, 1.0)
+                        },
+                )
             }
         }
         lines(circles(pseudo, 0.0) + circles(fixed, 2.6), channel = "circles", w = 640.0, h = 260.0, fitToSize = true)
@@ -77,13 +83,16 @@ operations:
             for (iso in [-0.4, -0.2, 0.0, 0.2, 0.4]) {
                 val contours = generateIsoContours(grid::bilinear, -1.5, 1.5, -1.5, 1.5, 240, 240, iso)
                 for (c in contours) {
-                    add(fline {
-                        moveTo((c[0].x + dx) * scale, c[0].y * scale)
-                        for (p in c) lineTo((p.x + dx) * scale, p.y * scale)
-                        lineTo((c[0].x + dx) * scale, c[0].y * scale)
-                    }.apply {
-                        color = if (iso == 0.0) vec(1.0, 0.67, 0.0, 1.0) else vec(0.0, 0.67, 1.0, 0.8)
-                    })
+                    add(
+                        fline {
+                            moveTo((c[0].x + dx) * scale, c[0].y * scale)
+                            for (p in c) lineTo((p.x + dx) * scale, p.y * scale)
+                            lineTo((c[0].x + dx) * scale, c[0].y * scale)
+                        }
+                            .apply {
+                                color = if (iso == 0.0) vec(1.0, 0.67, 0.0, 1.0) else vec(0.0, 0.67, 1.0, 0.8)
+                            },
+                    )
                 }
             }
         }
