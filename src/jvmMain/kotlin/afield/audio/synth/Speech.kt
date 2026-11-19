@@ -23,9 +23,15 @@ import kotlin.math.ln
  *   applies inside its source-filter vocoder. For a contour of your own, [Speech.sungOn] puts the
  *   speech's spectral envelope on any carrier with [LpcVocoder].
  *
+ * Speech is reproducible: the model draws its noise excitation from a `RandomNormalLike` node that
+ * carries no seed, so [TinyVoca] runs a copy of the graph with a fixed `seed` on it ([seededModel]), in a fresh session per sentence so the
+ * generator starts from that seed every time. The same text, voice and parameters give the same samples on every run, which is
+ * what lets the docs' speech clips be re-rendered and compared; a different sentence still gets
+ * different noise, because the noise tensor is shaped by its length.
+ *
  * Synthesis is offline: [speak] runs the whole utterance once (the model has no streaming) and is
- * called from box code, never from the audio thread. The ONNX session is cached by [OnnxRuntime], so
- * re-running a box costs only the inference. Weights (21 MB) and the phonemizer data (5 MB) are
+ * called from box code, never from the audio thread. The seeded graph is read once and
+ * a session built from it for each sentence. Weights (21 MB) and the phonemizer data (5 MB) are
  * fetched on first use into `~/.afield/onnx/models/tiny-voca/`.
  */
 object TinyVoca {
@@ -51,6 +57,29 @@ object TinyVoca {
         note = "tiny-voca TTS, 4.5M params, two voices, 24 kHz, Apache-2.0"
     )
 
+    /** The seed written into every `RandomNormalLike` node of the graph. */
+    const val NOISE_SEED = 7f
+
+    /**
+     * The fetched model with [NOISE_SEED] set on its `RandomNormalLike` nodes, written once beside it
+     * as `model.seeded.onnx`. Rewrites only those nodes' attribute lists; every weight is copied as is.
+     */
+    fun seededModel(): java.nio.file.Path {
+        val source = MODEL.ensureLocal()
+        val target = source.resolveSibling("model.seeded.onnx")
+        if (java.nio.file.Files.isRegularFile(target) &&
+            java.nio.file.Files.getLastModifiedTime(target) >= java.nio.file.Files.getLastModifiedTime(source)) return target
+        val (bytes, seeded) = OnnxSeed.seedModel(java.nio.file.Files.readAllBytes(source), "RandomNormalLike", NOISE_SEED)
+        check(seeded > 0) { "tiny-voca has no RandomNormalLike node to seed; the model changed" }
+        val part = target.resolveSibling("model.seeded.onnx.part")
+        java.nio.file.Files.write(part, bytes)
+        java.nio.file.Files.move(part, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE)
+        return target
+    }
+
+    /** [seededModel]'s bytes, read once. */
+    private val seededBytes: ByteArray by lazy { java.nio.file.Files.readAllBytes(seededModel()) }
+
     /** The two voices. */
     val VOICES = listOf("F2", "M2")
 
@@ -67,7 +96,9 @@ object TinyVoca {
         require(tokens.ids.size <= MAX_TOKENS) { "${tokens.ids.size} tokens; tiny-voca reads at most $MAX_TOKENS per call" }
         val voiceId = VOICES.indexOf(voice.uppercase()).also { require(it >= 0) { "voice must be one of $VOICES" } }
         val env = OnnxRuntime.env
-        val session = MODEL.session().session
+        // A fresh session per call: a seeded RandomNormalLike advances its generator on every run,
+        // so a shared session would make the noise depend on how many sentences came before.
+        val session = env.createSession(seededBytes, ai.onnxruntime.OrtSession.SessionOptions())
         val n = tokens.ids.size.toLong()
         val inputs = mapOf(
             "tokens" to OnnxTensor.createTensor(env, LongBuffer.wrap(tokens.ids), longArrayOf(1, n)),
@@ -87,7 +118,96 @@ object TinyVoca {
             }
         } finally {
             inputs.values.forEach { it.close() }
+            session.close()
         }
+    }
+}
+
+/**
+ * Adds a float `seed` attribute to every node of one op type in an ONNX `ModelProto`, by rewriting
+ * the protobuf wire format directly: ModelProto.graph (7) -> GraphProto.node (1) -> NodeProto
+ * op_type (4) and attribute (5), recursing into subgraph attributes (`g` 6, `graphs` 11). A node
+ * that already has a `seed` is left alone. Everything else is copied byte for byte.
+ */
+internal object OnnxSeed {
+    private class Reader(val b: ByteArray, var p: Int, val end: Int) {
+        fun more() = p < end
+        fun varint(): Long { var r = 0L; var s = 0; while (true) { val x = b[p++].toInt(); r = r or ((x and 0x7f).toLong() shl s); if (x and 0x80 == 0) return r; s += 7 } }
+    }
+
+    private fun varint(out: java.io.ByteArrayOutputStream, v: Long) {
+        var x = v
+        while (x and 0x7fL.inv() != 0L) { out.write(((x and 0x7f) or 0x80).toInt()); x = x ushr 7 }
+        out.write(x.toInt())
+    }
+
+    private fun lenField(out: java.io.ByteArrayOutputStream, field: Int, body: ByteArray) {
+        varint(out, (field.toLong() shl 3) or 2); varint(out, body.size.toLong()); out.write(body)
+    }
+
+    /** Walks one message, handing each length-delimited field to [onBytes]; other fields are copied. */
+    private fun rewrite(b: ByteArray, start: Int, end: Int, onBytes: (Int, ByteArray, Int, Int) -> ByteArray?): ByteArray {
+        val out = java.io.ByteArrayOutputStream(end - start)
+        val r = Reader(b, start, end)
+        while (r.more()) {
+            val tagAt = r.p
+            val tag = r.varint()
+            val field = (tag ushr 3).toInt()
+            when ((tag and 7).toInt()) {
+                0 -> r.varint()
+                1 -> r.p += 8
+                5 -> r.p += 4
+                2 -> {
+                    val len = r.varint().toInt(); val at = r.p; r.p += len
+                    val replaced = onBytes(field, b, at, at + len)
+                    if (replaced != null) { lenField(out, field, replaced); continue }
+                }
+                else -> error("unsupported protobuf wire type in ONNX model")
+            }
+            out.write(b, tagAt, r.p - tagAt)
+        }
+        return out.toByteArray()
+    }
+
+    private fun strings(b: ByteArray, start: Int, end: Int, field: Int): List<String> {
+        val found = ArrayList<String>()
+        rewrite(b, start, end) { f, bb, s, e -> if (f == field) found += String(bb, s, e - s); null }
+        return found
+    }
+
+    private class Seeder(val opType: String, val seed: Float) {
+        var count = 0
+        fun graph(b: ByteArray, s: Int, e: Int): ByteArray = rewrite(b, s, e) { f, bb, ns, ne -> if (f == 1) node(bb, ns, ne) else null }
+        fun attribute(b: ByteArray, s: Int, e: Int): ByteArray = rewrite(b, s, e) { f, bb, gs, ge ->
+            when (f) {
+                6 -> graph(bb, gs, ge)
+                11 -> graph(bb, gs, ge)
+                else -> null
+            }
+        }
+        fun node(b: ByteArray, s: Int, e: Int): ByteArray {
+            val body = rewrite(b, s, e) { f, bb, as_, ae -> if (f == 5) attribute(bb, as_, ae) else null }
+            if (strings(b, s, e, 4).firstOrNull() != opType) return body
+            val names = ArrayList<String>()
+            rewrite(b, s, e) { f, bb, as_, ae -> if (f == 5) names += strings(bb, as_, ae, 1); null }
+            if ("seed" in names) return body
+            val attr = java.io.ByteArrayOutputStream()
+            lenField(attr, 1, "seed".toByteArray())
+            attr.write(0x15) // f (2), fixed32
+            val bits = java.lang.Float.floatToIntBits(seed)
+            for (k in 0 until 4) attr.write((bits ushr (8 * k)) and 0xff)
+            attr.write(0xa0); attr.write(0x01); attr.write(0x01) // type (20) = FLOAT
+            val out = java.io.ByteArrayOutputStream()
+            out.write(body); lenField(out, 5, attr.toByteArray())
+            count++
+            return out.toByteArray()
+        }
+    }
+
+    fun seedModel(model: ByteArray, opType: String, seed: Float): Pair<ByteArray, Int> {
+        val seeder = Seeder(opType, seed)
+        val rewritten = rewrite(model, 0, model.size) { f, bb, s, e -> if (f == 7) seeder.graph(bb, s, e) else null }
+        return rewritten to seeder.count
     }
 }
 
