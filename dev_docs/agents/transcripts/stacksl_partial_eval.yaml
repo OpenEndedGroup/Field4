@@ -24,9 +24,7 @@ operations:
                   for (int i = 0; i < n; i++) r *= x;
                   return r;
               }
-              void main() { outColor = vec4(power(fragUV.x, $exponent), 0.0, 0.0, 1.0); }
-              """
-                  .trimIndent()
+              void main() { outColor = vec4(power(fragUV.x, $exponent), 0.0, 0.0, 1.0); }""".trimIndent()
 
           val residual = GlslPartialEvaluator.specialize(shader)
           markdown("residual", "```glsl\n" + residual.toGlsl() + "```")
@@ -53,7 +51,10 @@ operations:
           val identical = interpreted.rgba.indices.all { interpreted.rgba[it].toRawBits() == specialized.rgba[it].toRawBits() }
 
           display(specialized.toPngBytes())
-          println("${source.lines().size} lines of GLSL -> ${residual.operationCount} residual operations in %.1f ms".format(specializeMs))
+          println(
+              "${source.lines().size} lines of GLSL -> ${residual.operationCount} residual operations in %.1f ms"
+                  .format(specializeMs),
+          )
           println("bit-identical to the interpreter: $identical")
           println(residual.operationHistogram().take(6).joinToString(", ") { (op, n) -> "$op $n" })
           markdown("residual", "```glsl\n" + residual.toGlsl().lines().take(40).joinToString("\n") + "\n...\n```")

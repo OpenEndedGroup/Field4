@@ -1395,12 +1395,12 @@ which the box checks:
 import afield.lang.stacksl.cpu.*
 
 val programs =
-    listOf(
+    [
         "uv saturate",
         "uv 4.0 * fbm palette saturate",
         "p 6 kaleido fbm palette saturate",
         "uv 0.5 0.5 vec2 - length 20 * time - sin 0.5 * 0.5 +",
-    )
+    ]
 
 val rows =
     programs.map { program ->
