@@ -464,7 +464,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 - solid
     - *manifold* — [Graphics](graphics.md#faceinset-kt) · [Internal](internal.md#manifoldnative-kt)
     - [solidcraft](graphics.md#solidcraft-kt)
-- *spatial* — [Graphics](graphics.md#bspot-kt) · [Machine learning](machine-learning.md#stippletransport-kt) · [Math](math.md#linalg-spatial-kt)
+- *spatial* — [Graphics](graphics.md#bspot3d-kt) · [Machine learning](machine-learning.md#stippletransport-kt) · [Math](math.md#linalg-spatial-kt)
 - topology
     - [mapper](graphics.md#mapper-kt)
     - [morsesmale](graphics.md#morsesmale-kt)
@@ -681,7 +681,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**41862 public symbols across 1854 source files**, 24954 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**41870 public symbols across 1856 source files**, 24962 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -694,7 +694,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Video](video.md) | 14 | 195 | 194 (99%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 60 | 2524 | 1904 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 26 | 1123 | 528 (47%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 424 | 10311 | 6524 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 426 | 10319 | 6532 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 47 | 878 | 482 (54%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 596 | 440 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 787 | 530 (67%) | Nonlinear least squares, aimed at geometry. |
@@ -899,6 +899,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>brief/<wbr></small> [BriefSolveSmoke.kt](examples.md#briefsolvesmoke-kt) | Examples | 1 | 1 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [browsing.kt](workspace.md#browsing-kt) | Workspace · internal | 44 | 9 | The object inspector behind `/browse`: a live, clickable tree of any value, reached from a box with `Inspector.linkFor`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>spatial/<wbr></small> [bspot.kt](graphics.md#bspot-kt) | Graphics | 10 | 10 | One-to-one matching between two equally sized 2D point clouds, at a million points a side, using BSP-OT: every source point gets exactly one target and every target is used exactly once, with the total squared travel distance kept small. | [A Drawn Morph, Heard](../chain_drawn_morph.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>spatial/<wbr></small> [BspOt3D.kt](graphics.md#bspot3d-kt) | Graphics | 4 | 4 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [Buf.kt](synthesis.md#buf-kt) | Synthesis | 22 | 22 | Bulk float-array arithmetic for the synthesis graph, written against the Java Vector API. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [ButtonControlHandler.kt](workspace.md#buttoncontrolhandler-kt) | Workspace · internal | 0 | 0 | The server side of `button(...)`: the `button-update` websocket command, which carries one press or release from the browser and runs the box's callback with it. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>io/<wbr>mocap/<wbr></small> [Bvh.kt](data.md#bvh-kt) | Data | 25 | 18 | Motion capture in BVH format: a joint hierarchy and one line of channel values per frame. |  |
@@ -1812,6 +1813,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [OrcaHeadless.kt](patterns.md#orcaheadless-kt) | Patterns | 6 | 5 | Runs ORCA's own operators in the JVM without a browser page, one frame per step, so an ORCA program can be tested or rendered offline. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [OrcaSoundDocs.kt](patterns.md#orcasounddocs-kt) | Patterns | 9 | 2 | Offline renders of the ORCA page's two sound examples, with each note placed on the sample its ORCA frame falls on. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>keyframes/<wbr></small> [OrderedKeyframeGroup.kt](graphics.md#orderedkeyframegroup-kt) | Graphics | 13 | 11 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>spatial/<wbr></small> [OrthantNeighbors3D.kt](graphics.md#orthantneighbors3d-kt) | Graphics | 4 | 4 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>io/<wbr>osc/<wbr></small> [osc.kt](audio.md#osc-kt) | Audio | 34 | 17 | OSC in and out, wrapped around JavaOSC (`com.illposed.osc`) and driven from Field's main runloop. | [OSC and TUIO](../osc.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [OscEditorBackdoor.kt](workspace.md#osceditorbackdoor-kt) | Workspace · internal | 4 | 0 | Lets an OSC controller drive the editor by forwarding float, launch and stop messages to the front end as `osc-editor` commands. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>engine/<wbr></small> [OscillatorBankArrays.kt](audio.md#oscillatorbankarrays-kt) | Audio | 20 | 1 | Banks built as arrays of the scalar models: `ResonatorBankArray` holds one `Resonator` per frequency and `TrackingResonatorBankArray` one `TrackingResonator`, each updated sample by sample. |  |
