@@ -183,7 +183,7 @@ pressed and turned at the times given. It shows the last screen in the box's `no
 sound as a player in `sound`, and returns what the sound measured: `seconds`, `peak`, `rms`, and
 `onsets`, the notes it could hear start.
 
-```diffstatic_runner {data-lang=lua screenshot="assets/lua/norns.png" capture="box" open-outputs=true trim=true requires="luajit" wait="4" wait-output=true wait-output-kind="display" timeout="180" embed=true name="lua-norns" w="820" h="80" alt="A Lua box's output with two panels. The norns panel is a black 128 by 64 screen shown four times larger: five grey orbits round a white dot, a planet on each orbit, two of them bright, and beside them the words orbits, bpm 140, cut 1200. The sound panel below is a six-second player whose waveform is a run of short plucked notes."}
+```diffstatic_runner {data-lang=lua screenshot="assets/lua/norns.png" capture="box" open-outputs=true trim=true requires="luajit" wait="4" wait-output=true wait-output-kind="display" timeout="180" embed=true name="lua-norns" w="820" h="80" alt="A Lua box's output with two panels. The norns panel is a black 128 by 64 screen shown four times larger: five grey orbits round a white dot, a planet on each orbit, two of them bright, and beside them the words orbits and bpm 140. The sound panel below is a six-second player whose waveform is a run of short plucked notes."}
 local norns = require("norns").reset()
 local musicutil = require "musicutil"
 engine.name = "PolyPerc"
