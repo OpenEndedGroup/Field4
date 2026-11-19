@@ -1,6 +1,9 @@
 package afield.geometry.mesh
 
 import afield.geometry.path.ScalarField2D
+import afield.geometry.path.squircleFrom
+import afield.geometry.path.squircleRectFrom
+import afield.math.linalg.Vec2
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
@@ -175,5 +178,17 @@ class SdfRepairTest {
         val bilinear = coarse.bilinearUpsampled(4).errorAgainst(exact)
         println("upsample x4 from 17x17: circle constraints $lifted | bilinear $bilinear")
         assertTrue(lifted.mean < bilinear.mean, "constraint upsampling should beat bilinear on mean: $lifted vs $bilinear")
+    }
+
+    @Test
+    fun `signedDistance2D of a drawn circle and rectangle matches their closed forms`() {
+        // A superellipse at gauge sqrt(0.5) is the circle; a squircle rectangle with radius 0 is the box.
+        val circleLine = squircleFrom(Vec2(0f, 0f), 1.0, gauge = kotlin.math.sqrt(0.5))
+        val rectLine = squircleRectFrom(-0.8, -0.6, 1.6, 1.2, radius = 0.0)
+        val drawnCircle = sdfGrid2D(lo, lo, hi, hi, 61, circleLine.signedDistance2D()).errorAgainst(circle(0.0, 0.0, 1.0))
+        val drawnBox = sdfGrid2D(lo, lo, hi, hi, 61, rectLine.signedDistance2D()).errorAgainst(box(0.8, 0.6))
+        println("signedDistance2D: circle $drawnCircle | rectangle $drawnBox")
+        assertTrue(drawnCircle.max < 0.005, "drawn circle should match hypot - 1: $drawnCircle")
+        assertTrue(drawnBox.max < 0.005, "drawn rectangle should match the box SDF: $drawnBox")
     }
 }

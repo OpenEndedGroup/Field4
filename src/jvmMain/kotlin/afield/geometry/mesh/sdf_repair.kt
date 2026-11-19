@@ -1,5 +1,6 @@
 package afield.geometry.mesh
 
+import afield.geometry.path.FLine
 import afield.geometry.path.ScalarField2D
 import kotlin.math.abs
 import kotlin.math.ceil
@@ -318,6 +319,121 @@ fun sdfFromBoundary(boundary: DoubleArray, sign: ScalarField2D, xMin: Double, yM
     return { x, y ->
         val d = buckets.nearest(x, y)
         if (sign(x, y) < 0) -d else d
+    }
+}
+
+/**
+ * The signed distance to the outline of a closed 2-D `FLine`, negative inside: the exact field for
+ * a drawn shape, ready for [sdfGrid2D], CSG and [SdfGrid2D.repaired].
+ *
+ * The line is flattened into closed rings, [samplesPerCubic] points per `cubicTo`, every subpath
+ * closed back to its `moveTo`,, and each edge is resampled every [spacing] (default: a two-thousandth of
+ * the bounding box's longer side). The distance is to the nearest of those samples, so it is exact
+ * to within half a [spacing] plus the flattening's chord error. Inside is decided by the even-odd
+ * rule against the flattened edges, so a counter wound either way is a hole. Edges are bucketed by
+ * row for the inside test and samples by cell for the distance, so one query costs a few dozen
+ * operations rather than a pass over the outline.
+ *
+ * ```kotlin
+ * val shape = squircleRectFrom(-1.0, -0.5, 2.0, 1.0, radius = 0.4, gauge = 0.79)
+ * val field = shape.signedDistance2D()
+ * val grid = sdfGrid2D(xMin = -1.5, yMin = -1.0, xMax = 1.5, yMax = 1.0, n = 97, field = field)
+ * ```
+ */
+fun FLine.signedDistance2D(samplesPerCubic: Int = 24, spacing: Double? = null): ScalarField2D {
+    // Flatten into closed rings. Coincident points are kept: a zero-length edge never crosses a
+    // row, whereas dropping it (as pointEdgeGraph2D does) can open a gap exactly on a vertex's y.
+    val px = ArrayList<Double>()
+    val py = ArrayList<Double>()
+    val edgeList = ArrayList<Int>() // pairs of point indices
+    var ringStart = -1
+    fun closeRing() {
+        if (ringStart >= 0 && px.size - 1 > ringStart) edgeList.apply { add(px.size - 1); add(ringStart) }
+        ringStart = -1
+    }
+    fun addPoint(x: Double, y: Double) {
+        if (ringStart >= 0) edgeList.apply { add(px.size - 1); add(px.size) } else ringStart = px.size
+        px += x
+        py += y
+    }
+    for (node in nodes) {
+        when (node) {
+            is FLine.MoveTo -> {
+                closeRing()
+                addPoint(node.to.x.toDouble(), node.to.y.toDouble())
+            }
+            is FLine.LineTo -> addPoint(node.to.x.toDouble(), node.to.y.toDouble())
+            is FLine.CubicTo -> {
+                if (ringStart < 0) {
+                    addPoint(node.to.x.toDouble(), node.to.y.toDouble())
+                } else {
+                    val ax = px.last()
+                    val ay = py.last()
+                    for (k in 1..samplesPerCubic) {
+                        val t = k.toDouble() / samplesPerCubic
+                        val u = 1 - t
+                        val b0 = u * u * u
+                        val b1 = 3 * u * u * t
+                        val b2 = 3 * u * t * t
+                        val b3 = t * t * t
+                        addPoint(
+                            b0 * ax + b1 * node.c1.x + b2 * node.c2.x + b3 * node.to.x,
+                            b0 * ay + b1 * node.c1.y + b2 * node.c2.y + b3 * node.to.y,
+                        )
+                    }
+                }
+            }
+            else -> closeRing()
+        }
+    }
+    closeRing()
+    require(edgeList.isNotEmpty()) { "signedDistance2D needs a line with at least one edge" }
+    val xs = px.toDoubleArray()
+    val ys = py.toDoubleArray()
+    val edges = List(edgeList.size / 2) { edgeList[2 * it] to edgeList[2 * it + 1] }
+    val xMin = xs.min()
+    val xMax = xs.max()
+    val yMin = ys.min()
+    val yMax = ys.max()
+    val extent = max(max(xMax - xMin, yMax - yMin), 1e-12)
+    val step = spacing ?: (extent / 2000)
+    require(step > 0) { "spacing must be positive, got $step" }
+
+    val samples = ArrayList<Double>()
+    for ((a, b) in edges) {
+        val n = max(1, ceil(hypot(xs[b] - xs[a], ys[b] - ys[a]) / step).toInt())
+        for (k in 0 until n) {
+            val t = k.toDouble() / n
+            samples += xs[a] + t * (xs[b] - xs[a])
+            samples += ys[a] + t * (ys[b] - ys[a])
+        }
+    }
+    val cells = max(1, sqrt(samples.size / 2.0 / 4).toInt())
+    val cell = extent / cells
+    val buckets = PointBuckets2D(samples.toDoubleArray(), xMin, yMin, cell, cells + 1, cells + 1)
+
+    // Each edge is listed in every row its y-span touches, for the crossing count.
+    val rows = max(1, sqrt(edges.size.toDouble()).toInt())
+    val rowHeight = max(yMax - yMin, 1e-12) / rows
+    fun row(y: Double) = floor((y - yMin) / rowHeight).toInt().coerceIn(0, rows - 1)
+    val byRow = Array(rows) { ArrayList<Int>() }
+    for ((e, edge) in edges.withIndex()) {
+        val (a, b) = edge
+        for (r in row(min(ys[a], ys[b]))..row(max(ys[a], ys[b]))) byRow[r] += e
+    }
+
+    return { x, y ->
+        val d = buckets.nearest(x, y)
+        var inside = false
+        if (y in yMin..yMax) {
+            for (e in byRow[row(y)]) {
+                val (a, b) = edges[e]
+                val ya = ys[a]
+                val yb = ys[b]
+                if ((ya > y) != (yb > y) && x < xs[a] + (y - ya) * (xs[b] - xs[a]) / (yb - ya)) inside = !inside
+            }
+        }
+        if (inside) -d else d
     }
 }
 
