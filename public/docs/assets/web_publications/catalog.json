@@ -1537,6 +1537,37 @@
         "public/docs/assets/agent_transcripts/eigendrum/metadata.edn": "04ad226a22ea883ab70aee8989105726bb15deaf8722adeb7243dd59f52066f3"
       }
     },
+    "assets/agent_transcripts/exact_triangle_coverage/metadata.edn": {
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-19T12:47:06.723Z",
+      "channels": 1,
+      "file": "assets/web_publications/exact_triangle_coverage/document/metadata.edn",
+      "files": {
+        "assets/web_publications/exact_triangle_coverage/document/metadata.edn": "35bfa4987016be565a5e18e5c86875d3b6ec35f261eba9d06c7f5d9e52b949f0",
+        "assets/web_publications/exact_triangle_coverage/document/outputs.json": "6ddb068b687d67b3461f07eaa6819f6c93363734f635043d2cd630208f040deb",
+        "assets/web_publications/exact_triangle_coverage/outputs/0.html": "04b577b2ecd8b6a094d0384c238c171cef03d97d42a8c475bf6243c4d975ea0b"
+      },
+      "kinds": [
+        "native-image"
+      ],
+      "outputs": "assets/web_publications/exact_triangle_coverage/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/exact_triangle_coverage.yaml": "8f981e529846b6b10cace2f4f331da2aa68b0e69268e27f4ede5c50fc5be774a",
+        "public/docs/afield_four_graphics.md#capture-box=coverage_gpu": "6e899a84c5ef340d619d26648195e203ea44581cf8d365cb9be37bcbc575be68",
+        "public/docs/assets/afield_four_graphics/exact-coverage-gpu.png": "1e415ce4a833ab93a0303ca3d9b9480dbc07ffa0a0ab28d4803ab2509aabf7d7",
+        "public/docs/assets/agent_transcripts/exact_triangle_coverage/agent_graphics_context_code_.kt": "e90393b044932ad7e022f5505bec768466f0d819aaa553c877bfe061d981c6d2",
+        "public/docs/assets/agent_transcripts/exact_triangle_coverage/coverage_cpu_code_.kt": "65aa5748b962feb545725802bfbe7504ecc635ca8db2da3e135c8bf4c0c2ccdb",
+        "public/docs/assets/agent_transcripts/exact_triangle_coverage/coverage_gpu_code_.kt": "78bb89fd0612e2775244426493e3ade790eea8b4c59e38a4e3b6a22a05ec1e8d",
+        "public/docs/assets/agent_transcripts/exact_triangle_coverage/coverage_gpu_fragment_.glsl": "d6be772c7435b4b7d72cfea6e6764e241dc85a4cff1cc876567b58223188b80f",
+        "public/docs/assets/agent_transcripts/exact_triangle_coverage/coverage_gpu_vertex_.glsl": "8f3504d8801a4398f2518ca9de09a3f9f4b72e4eb43044567049caf473214b5a",
+        "public/docs/assets/agent_transcripts/exact_triangle_coverage/guides/afield_four_graphics.md": "a652ead3f6638773e66a1e5702dfeb1209e4df98a2b1f127aea1f835bb5f6342",
+        "public/docs/assets/agent_transcripts/exact_triangle_coverage/metadata.edn": "d8ee00f02d6f356eff9410dfa4050cc287bbd21a4dcc10f028a61601ecd33532"
+      },
+      "supplementalSources": [
+        "public/docs/afield_four_graphics.md#capture-box=coverage_gpu",
+        "public/docs/assets/afield_four_graphics/exact-coverage-gpu.png"
+      ]
+    },
     "assets/agent_transcripts/faust_polyphony/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
       "capturedAt": "2026-11-18T14:59:38.767Z",
