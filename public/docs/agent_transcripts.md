@@ -883,6 +883,19 @@ the length label follow every drag. Box 2 is a slab whose height is a handle hel
 
 [Open →](offline.html?file=assets/agent_transcripts/three_handles/metadata.edn)
 
+### buffer_paint
+
+**Paint into a running simulation's memory.** [Painting into a live buffer](visualizers.md#painting-into-a-live-buffer)
+as two boxes. Box 1 runs a Gray-Scott reaction-diffusion on two arrays in a `frames { }` loop and,
+while it runs, edits its own state through a `BufferCanvas`: a brush stroke, a cloned patch, a
+blurred square, a motion-blurred band and a filled column, each kept as a snapshot as the reaction
+grows it into pattern. Box 2 views a half-second delay line one sample to one pixel, pastes a pluck
+and motion-blurs another inside the ring, prints the RMS of both before and after, and puts
+*before* and *after* players under it. After citrons'
+["Paint in the memory of other programs"](https://citrons.xyz/journal/2026-04-13).
+
+[Open →](offline.html?file=assets/agent_transcripts/buffer_paint/metadata.edn)
+
 ### squircles
 
 **Five squircles under one slider.** [Squircles](fline_examples.md#squircles-squirclefrom-and-squirclerectfrom)
