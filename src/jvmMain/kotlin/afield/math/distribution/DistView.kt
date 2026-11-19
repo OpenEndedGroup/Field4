@@ -3,7 +3,8 @@ package afield.math.distribution
 import afield.document.graph.Marker
 import afield.runtime.lifecycle.RateLimiter
 import afield.ui.output._printHere
-import afield.ui.output.locationForTextStringOnStack
+import afield.ui.output.anchoredLocation
+import afield.runtime.bytecode.StackAware
 import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.floor
@@ -282,8 +283,9 @@ private class LiveDist(val description: String, val p: Progressive, val prior: P
  * }
  * ```
  */
+@StackAware
 fun Marker.distribution(d: Dist, batch: Int = 2_000, title: String? = null, exact: Double? = null): Estimate {
-    val location = locationForTextStringOnStack("distribution", this.box, end = true, offset = 1)
+    val location = anchoredLocation(this.box, "distribution", "distribution", end = true, offset = 1)
     val key = "__distribution__"
     val desc = d.describe()
     var live = this.properties[key] as? LiveDist
@@ -320,8 +322,9 @@ private class LiveHeard(val param: DistParam, val p: Progressive) {
  * }
  * ```
  */
+@StackAware
 fun Marker.distribution(param: DistParam, title: String? = null, exact: Double? = null): Estimate? {
-    val location = locationForTextStringOnStack("distribution", this.box, end = true, offset = 1)
+    val location = anchoredLocation(this.box, "distribution", "distribution", end = true, offset = 1)
     val key = "__distribution_heard__"
     var live = this.properties[key] as? LiveHeard
     if (live == null || live.param !== param) {

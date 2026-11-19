@@ -5,6 +5,8 @@ import afield.graphics.scene.*
 import afield.graphics.vulkan.device.vkLayout
 import afield.app.diagnostics.Named
 import afield.app.protocol.Rect
+import afield.runtime.bytecode.ThreadOwned
+import afield.runtime.bytecode.ThreadOwner
 import afield.runtime.lifecycle.Runloop
 import afield.runtime.lifecycle.Runloop.Companion.isMainThread
 import afield.graphics.vulkan.buffers.ParallelGeometryPool
@@ -655,6 +657,7 @@ class Renderer(
      * - call [endGeometryWrites], or
      * - let [render] auto-close it at frame start.
      */
+    @ThreadOwned(ThreadOwner.RUNLOOP)
     fun beginGeometryWrites(windowIndex: Int = 0): GeometryFrameToken {
         require(windowIndex == 0) {
             "beginGeometryWrites currently supports windowIndex=0 only"
@@ -697,6 +700,7 @@ class Renderer(
      *
      * If not called, [render] closes any still-open window for the current frame automatically.
      */
+    @ThreadOwned(ThreadOwner.RUNLOOP)
     fun endGeometryWrites(windowIndex: Int = 0) {
         val token = synchronized(geometryPhaseStateLock) {
             val phase = openGeometryPhase ?: return
@@ -1291,6 +1295,7 @@ class Renderer(
     private var previousRenderStartNs = 0L
     private var previousRenderEndNs = 0L
 
+    @ThreadOwned(ThreadOwner.RUNLOOP)
     fun render() {
         val start = System.nanoTime()
         if (previousRenderStartNs != 0L) CPUSpan.record("render_interval", start - previousRenderStartNs)
@@ -2105,6 +2110,7 @@ class Renderer(
         VK10.vkCmdSetScissor(cmd, 0, scissor)
     }
 
+    @ThreadOwned(ThreadOwner.RUNLOOP)
     fun runForever(update: () -> Unit) {
         val invocation = runInvocation.incrementAndGet()
         running = true
@@ -2132,6 +2138,7 @@ class Renderer(
         if (runInvocation.get() == invocation) cleanup()
     }
 
+    @ThreadOwned(ThreadOwner.RUNLOOP)
     suspend fun run() {
         val invocation = runInvocation.incrementAndGet()
         running = true

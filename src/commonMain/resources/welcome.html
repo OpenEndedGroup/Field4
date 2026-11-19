@@ -1142,6 +1142,23 @@
             font-size: 11px;
         }
 
+        .box-instrumentation {
+            display: grid;
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        .box-instrumentation-detail {
+            margin: 0;
+            color: var(--field-text-soft);
+            font-size: 11px;
+            line-height: 1.45;
+        }
+
+        .box-instrumentation-detail .box-instrumentation-note {
+            color: var(--field-cyan);
+        }
+
         .segmented-control {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -2175,7 +2192,15 @@
                     <div class="runtime-info-body">
                         <div id="runtime-info-grid" class="runtime-info-grid"></div>
                         <pre id="runtime-info-args" class="runtime-info-args" hidden></pre>
-                        <label class="preference-toggle" title="Box code checks for an interrupt at every loop and call, so a box that never returns can be stopped (Interrupt Running Box, or automatically after 5 s). Applies to code compiled after the change."><input id="pref-box-interrupt" type="checkbox" checked> interruptible box code</label>
+                        <div class="box-instrumentation" id="box-instrumentation">
+                            <span class="preference-select-label">box code instrumentation</span>
+                            <div class="segmented-control" role="group" aria-label="box code instrumentation">
+                                <button class="segmented-button box-instrumentation-segment" type="button" data-box-instrumentation="watchdog" aria-pressed="true">on + watchdog</button>
+                                <button class="segmented-button box-instrumentation-segment" type="button" data-box-instrumentation="instrument" aria-pressed="false">on, no watchdog</button>
+                                <button class="segmented-button box-instrumentation-segment" type="button" data-box-instrumentation="off" aria-pressed="false">off</button>
+                            </div>
+                            <p id="box-instrumentation-detail" class="box-instrumentation-detail" aria-live="polite"></p>
+                        </div>
                     </div>
                 </details>
                 <details id="vulkan-details">
@@ -3499,6 +3524,7 @@
         const summary = document.getElementById("runtime-info-summary");
         const grid = document.getElementById("runtime-info-grid");
         const argsNode = document.getElementById("runtime-info-args");
+        renderBoxInstrumentation();
         if (!grid) return;
 
         const info = state.runtimeInfo || {};
@@ -3730,13 +3756,19 @@
         showVulkanGuide(guessVulkanOs());
         // /welcome#vulkan opens the panel, so an error about a missing Vulkan can link straight to it.
         if (location.hash === "#vulkan" || location.hash === "#vulkan-details") openVulkanPanel(true);
+        // /welcome#runtime opens Runtime, where the box-code instrumentation mode is chosen.
+        if (location.hash === "#runtime" || location.hash === "#runtime-info-details") openWelcomePanel("runtime-info-details", true);
     }
 
     // The side panels are an accordion, and the Changelog starts open: its load-time `toggle` event
     // arrives after this runs and would shut the Vulkan panel again. Closing it first means that
     // event finds it closed and does nothing.
     function openVulkanPanel(scroll) {
-        const details = document.getElementById("vulkan-details");
+        openWelcomePanel("vulkan-details", scroll);
+    }
+
+    function openWelcomePanel(id, scroll) {
+        const details = document.getElementById(id);
         if (!details) return;
         details.closest("[data-accordion]")?.querySelectorAll("details[open]").forEach((other) => {
             if (other !== details) other.open = false;
@@ -3843,6 +3875,68 @@
         node.classList.toggle("error", !!isError);
     }
 
+    const BOX_INSTRUMENTATION_MODES = ["watchdog", "instrument", "off"];
+
+    // The persisted choice. Older preferences carry only boxInterrupt (absent means on).
+    function preferredBoxInstrumentation(prefs = state.preferences || {}) {
+        if (BOX_INSTRUMENTATION_MODES.includes(prefs.boxInstrumentation)) return prefs.boxInstrumentation;
+        return prefs.boxInterrupt === false ? "off" : "watchdog";
+    }
+
+
+    function formatWatchdogDelay(ms) {
+        if (!(ms > 0)) return "never";
+        return ms % 1000 === 0 ? `${ms / 1000} s` : `${ms} ms`;
+    }
+
+    function renderBoxInstrumentation() {
+        const chosen = preferredBoxInstrumentation();
+        const status = (state.runtimeInfo || {}).boxInstrumentation || {};
+        // Highlight the mode in effect, which code or the environment may have set over the preference.
+        const effective = BOX_INSTRUMENTATION_MODES.includes(status.mode) ? status.mode : chosen;
+        document.querySelectorAll("[data-box-instrumentation]").forEach((button) => {
+            const active = button.getAttribute("data-box-instrumentation") === effective;
+            button.classList.toggle("active", active);
+            button.setAttribute("aria-pressed", active ? "true" : "false");
+            button.disabled = !!state.savingPreferences;
+        });
+        const detail = document.getElementById("box-instrumentation-detail");
+        if (!detail) return;
+        const interruptAfter = formatWatchdogDelay(status.watchdogInterruptAfterMs ?? 30000);
+        const reportAfter = formatWatchdogDelay(status.watchdogReportAfterMs ?? 1500);
+        const describe = {
+            watchdog: `Box code is compiled so it can be stopped: Interrupt Running Box works, and a box that holds the RunLoop ${interruptAfter === "never" ? "too long" : "for " + interruptAfter} is interrupted automatically.`,
+            instrument: `Box code is compiled so it can be stopped, and features that read compiled code keep working, but nothing is interrupted automatically: a stall past ${reportAfter} is only reported. For long computations you mean to run.`,
+            off: "Box code is compiled unchanged. Nothing can interrupt a box that never returns, stall reports cannot name the box, and features that rely on instrumentation fall back to slower paths or stay off."
+        };
+        const labels = { watchdog: "on + watchdog", instrument: "on, no watchdog", off: "off" };
+        let note = "";
+        if (status.source === "environment") {
+            note = `${escapeHtml(status.overrideName || "An environment setting")} sets this session to “${labels[effective]}”, whatever is chosen here.`;
+        } else if (status.source === "session") {
+            note = `Code set this session to “${labels[effective]}”; choosing here replaces it.`;
+        }
+        if (effective === "watchdog" && state.runtimeInfo?.boxInstrumentation) {
+            const off = status.watchdogRunning === false
+                ? "The watchdog is not running (AFIELD_RUNLOOP_WATCHDOG=0)"
+                : (status.watchdogInterruptAfterMs === 0 ? "The watchdog's interrupt delay is 0 (afield.runloop.watchdog.interruptMs)" : "");
+            if (off) note = `${note ? note + " " : ""}${off}, so nothing is interrupted automatically.`;
+        }
+        detail.innerHTML = `${escapeHtml(describe[effective])} Applies to boxes run after the change.` +
+            (note ? ` <span class="box-instrumentation-note">${note}</span>` : "");
+    }
+
+    async function refreshBoxInstrumentationStatus() {
+        try {
+            const response = await fetch("/api/box-instrumentation", { cache: "no-store" });
+            if (!response.ok) return;
+            const status = await response.json();
+            state.runtimeInfo = { ...(state.runtimeInfo || {}), boxInstrumentation: status };
+            renderBoxInstrumentation();
+        } catch (_) {
+        }
+    }
+
     function renderPreferences() {
         const prefs = state.preferences || {};
         const summary = document.getElementById("preferences-summary");
@@ -3871,15 +3965,14 @@
             "pref-openxr-debug-input": "openXRDebugInput",
             "pref-validate": "validate",
             "pref-quiet-mode": "quietMode",
-            "pref-auto-open-last": "autoOpenLastDocumentInDesktop",
-            "pref-box-interrupt": "boxInterrupt"
+            "pref-auto-open-last": "autoOpenLastDocumentInDesktop"
         };
         Object.entries(fields).forEach(([id, key]) => {
             const input = document.getElementById(id);
             if (!input) return;
-            // boxInterrupt defaults on, and a server that encodes without defaults omits it.
-            input.checked = key === "boxInterrupt" ? prefs[key] !== false : !!prefs[key];
+            input.checked = !!prefs[key];
         });
+        renderBoxInstrumentation();
         document.querySelectorAll("[data-stickiness-value]").forEach((button) => {
             const active = button.getAttribute("data-stickiness-value") === stickiness;
             button.classList.toggle("active", active);
@@ -3961,7 +4054,8 @@
             validate: !!document.getElementById("pref-validate")?.checked,
             quietMode: !!document.getElementById("pref-quiet-mode")?.checked,
             autoOpenLastDocumentInDesktop: !!document.getElementById("pref-auto-open-last")?.checked,
-            boxInterrupt: document.getElementById("pref-box-interrupt")?.checked !== false,
+            boxInstrumentation: preferredBoxInstrumentation(),
+            boxInterrupt: preferredBoxInstrumentation() !== "off",
             editorPropertyStickiness: document.querySelector(".stickiness-segment.active")?.getAttribute("data-stickiness-value") || "none",
             oscEditorEnabled: !!document.getElementById("osc-editor-enabled")?.checked,
             oscEditorPort: Number.parseInt(document.getElementById("osc-editor-port")?.value || "9001", 10) || 9001,
@@ -6780,6 +6874,29 @@
             input.addEventListener("change", () => {
                 setPreferencesStatus("");
                 savePreferences();
+            });
+        });
+
+        document.querySelectorAll("[data-box-instrumentation]").forEach((button) => {
+            button.addEventListener("click", async () => {
+                const value = button.getAttribute("data-box-instrumentation") || "watchdog";
+                state.preferences = {
+                    ...(state.preferences || {}),
+                    boxInstrumentation: value,
+                    boxInterrupt: value !== "off"
+                };
+                renderPreferences();
+                setPreferencesStatus("");
+                await savePreferences();
+                // Choosing here is explicit, so it also replaces a mode code set for this session.
+                if (state.runtimeInfo?.boxInstrumentation?.source === "session") {
+                    await fetch("/api/box-instrumentation", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ mode: "", persist: false })
+                    }).catch(() => {});
+                }
+                refreshBoxInstrumentationStatus();
             });
         });
 

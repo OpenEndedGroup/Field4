@@ -66,3 +66,15 @@
 .profile-frame-card h4 { color:#999; font-weight:normal; }
 .profile-frame-worst { display:flex; flex-wrap:wrap; gap:6px; }
 .profile-budget-miss { color:#d7ad79; }
+
+.profile-box-cost { flex:1; min-height:0; overflow:auto; background:#232323; padding:12px; border-radius:6px; }
+.profile-box-cost-box { display:flex; align-items:center; gap:6px; margin-bottom:6px; }
+.profile-box-cost-box strong { color:#48c9ff; }
+.profile-box-cost-table { border-collapse:collapse; width:100%; margin-top:8px; }
+.profile-box-cost-table th { color:#999; font-weight:normal; text-align:left; padding:3px 8px; border-bottom:1px solid #3c3c3c; }
+.profile-box-cost-table td { padding:3px 8px; font-variant-numeric:tabular-nums; }
+.profile-box-cost-table td:nth-child(n+4) { text-align:right; }
+.profile-box-cost-table td:first-child { font-family:var(--field-font-code,"Iosevka Web"),monospace; }
+.profile-box-cost-table td button { min-height:22px; padding:1px 6px; }
+.profile-box-cost-running td:first-child { color:#d7ad79; }
+.profile-box-cost-table th:nth-child(n+4) { text-align:right; }

@@ -187,6 +187,8 @@ import afield.runtime.kotlin.PreparedSnippet
 import afield.ui.output.RawDecoration
 import afield.ui.output.decorationState
 import afield.ui.output.locationForTextStringOnStack
+import afield.runtime.bytecode.CallSites
+import afield.runtime.bytecode.StackAware
 import afield.app.diagnostics.logging.lprintln
 import afield.document.graph.Marker
 import java.math.BigInteger
@@ -1808,8 +1810,10 @@ fun PatPattern<String>.dropSampleIndex(): PatPattern<String> = PatPattern { arc 
     }
 }
 
+@StackAware
 fun pat(source: String): PatPattern<String> = MiniPat.parse(source, parseContext = currentPatParseContext(source))
 
+@StackAware
 fun <A> pat(source: String, atomMapper: (String) -> A): PatPattern<A> =
     MiniPat.parse(source, parseContext = currentPatParseContext(source)).map(atomMapper)
 
@@ -2113,7 +2117,11 @@ private data class PatDecorationRange(
 )
 
 private fun currentPatParseContext(source: String): PatParseContext {
-    val box = Box.context.get() ?: return PatParseContext(source)
+    // First: the call-site slot box bytecode armed for this `pat(` call (and clear it, even with no box).
+    val box = Box.context.get()
+    val anchored = CallSites.take(box, "pat", "pat(", end = false, offset = 0)
+    if (box == null) return PatParseContext(source)
+    if (anchored != null) return PatParseContext(source = source, lineHint = anchored.line)
     val stack = Exception().stackTrace.toList()
     val relevantFrames = stack.filter { frame ->
         frame.lineNumber > 0 && (frame.fileName?.contains(box.id) == true)

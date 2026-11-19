@@ -16,7 +16,7 @@ lprintln("info,mypage", "something happened")
 messages. There
 are **1132**<!--count:lprintlnChannelCallSites--> places in `src/jvmMain` that call
 `lprintln` with the channel written out as a literal, spelling
-**261**<!--count:logChannelStrings--> distinct channel strings between them.
+**263**<!--count:logChannelStrings--> distinct channel strings between them.
 
 By convention the first tag is a severity, drawn from six the console knows how to colour
 (`PinnedConsole.kt:1024#val LEVELS = listOf("error", "warning", "warn", "info", "debug", "trace")`),

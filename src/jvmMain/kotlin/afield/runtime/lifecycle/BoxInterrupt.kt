@@ -1,29 +1,26 @@
 package afield.runtime.lifecycle
 
 import afield.app.diagnostics.logging.lprintln
-import org.jetbrains.org.objectweb.asm.ClassReader
-import org.jetbrains.org.objectweb.asm.ClassVisitor
-import org.jetbrains.org.objectweb.asm.ClassWriter
+import afield.runtime.bytecode.BoxBytecode
+import afield.runtime.bytecode.BoxBytecodePass
+import afield.runtime.bytecode.ClassScope
+import afield.runtime.bytecode.MethodScope
+import afield.runtime.bytecode.SnippetOrigin
 import org.jetbrains.org.objectweb.asm.Label
 import org.jetbrains.org.objectweb.asm.MethodVisitor
 import org.jetbrains.org.objectweb.asm.Opcodes
-import java.util.Collections
-import java.util.WeakHashMap
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicReference
-import kotlin.script.experimental.api.CompiledScript
-import kotlin.script.experimental.jvm.impl.KJvmCompiledModuleInMemory
-import kotlin.script.experimental.jvm.impl.KJvmCompiledScript
 
 /**
  * Getting out of box code that will not return: a stall watchdog, and the bytecode rewriting that
  * gives the interrupt somewhere to land.
  *
- * The whole public surface is [BoxInterrupt]: request an interrupt, poll for one, instrument a
- * freshly compiled snippet, and the nested watchdog that notices a Runloop which has stopped making
- * frames. The rest of the file is the ASM class and method visitors that insert the poll call, and
- * nothing outside the file uses them. `dev_docs/RUNAWAY_BOX_INTERRUPT.md` has the design.
+ * The whole public surface is [BoxInterrupt]: request an interrupt, poll for one, the rewrite pass
+ * that inserts the poll ([BoxInterrupt.PollPass], run by `afield.runtime.bytecode.BoxBytecode` with
+ * the other box-bytecode passes), and the nested watchdog that notices a Runloop which has stopped
+ * making frames. `dev_docs/RUNAWAY_BOX_INTERRUPT.md` has the design.
  */
 
 /**
@@ -32,7 +29,7 @@ import kotlin.script.experimental.jvm.impl.KJvmCompiledScript
  * Box code runs on the [Runloop] thread, so a `while (true) {}` in a box stops every frame, every
  * other box, and every coroutine that would have run `stop`. Java no longer offers a way to stop a
  * thread from outside (`Thread.stop` throws since JDK 20), so the escape is cooperative, and the
- * cooperation is compiled in: before a Kotlin snippet is evaluated, [instrument] rewrites its
+ * cooperation is compiled in: before a Kotlin snippet is evaluated, [PollPass] rewrites its
  * classes so that every method entry and every backward jump (the back-edge of every loop) calls
  * [poll]. [poll] is one volatile read until an interrupt has been [request]ed for the thread it runs
  * on; then it throws [BoxInterruptedError] out of the box code, and the box's run ends with an error
@@ -64,26 +61,19 @@ object BoxInterrupt {
     /** Box labels by snippet class internal name (`Line_12_jsr223/...`), for naming a stall's culprit. */
     private val classOwners = ConcurrentHashMap<String, String>()
 
-    private val instrumented: MutableSet<Any> = Collections.synchronizedSet(Collections.newSetFromMap(WeakHashMap()))
-
     /** Listeners told about every interrupt that actually fired (the UI and tests). */
     val onInterrupted = CopyOnWriteArrayList<(BoxInterruptedError) -> Unit>()
 
-    /** `AFIELD_BOX_INTERRUPT` / `-Dafield.boxInterrupt`, when set; it overrides the welcome-page preference. */
-    private val override: Boolean? = setting("AFIELD_BOX_INTERRUPT", "afield.boxInterrupt")?.let { it != "0" && it != "off" && it != "false" }
-
     /**
-     * Whether newly compiled box code polls, and whether the [Watchdog] may interrupt. Off, the
-     * watchdog still reports stalls. Code compiled while it was on stays interruptible until it is
-     * recompiled.
+     * Whether newly compiled box code polls: [BoxInstrumentation.instrumenting], which also decides
+     * (with [BoxInstrumentation.watchdogInterrupts]) whether the [Watchdog] may interrupt. Off, the
+     * watchdog still reports stalls. Code already loaded while it was on stays interruptible; a
+     * re-evaluation of a cached snippet follows the mode as it is then.
      */
-    @Volatile
-    var enabled: Boolean = override ?: true
+    val enabled: Boolean get() = BoxInstrumentation.instrumenting
 
-    /** Apply the persisted preference (`FieldPreferences.boxInterrupt`), unless the env/property override is set. */
-    fun applyPreference(on: Boolean) {
-        enabled = override ?: on
-    }
+    /** Snippet classes rewritten so far this session. */
+    fun instrumentedClassCount(): Int = classOwners.size
 
     /**
      * Called by instrumented box code at every method entry and loop back-edge. Must stay cheap:
@@ -148,56 +138,33 @@ object BoxInterrupt {
     }
 
     /**
-     * Rewrite the newest snippet of [script] so its code polls. Idempotent per compiled module;
-     * a module of an unknown shape is left alone (and logged once).
-     */
-    fun instrument(script: CompiledScript, boxLabel: String) {
-        if (!enabled) return
-        val k = script as? KJvmCompiledScript ?: return
-        val module = k.getCompiledModule() as? KJvmCompiledModuleInMemory ?: return
-        if (!instrumented.add(module)) return
-        @Suppress("UNCHECKED_CAST")
-        val files = module.compilerOutputFiles as? MutableMap<String, ByteArray> ?: return
-        try {
-            for ((name, bytes) in files.entries.toList()) {
-                if (!name.endsWith(".class")) continue
-                files[name] = instrumentClass(bytes, boxLabel) ?: continue
-            }
-        } catch (t: UnsupportedOperationException) {
-            if (warnedImmutable.compareAndSet(false, true))
-                lprintln("warn,execution,interrupt", "snippet module is read-only; box code will not be interruptible")
-        }
-    }
-
-    private val warnedImmutable = java.util.concurrent.atomic.AtomicBoolean(false)
-
-    /**
      * [bytes] rewritten to poll, recording its class as [boxLabel]'s; null if it is not rewritable
-     * (then the class runs unchanged, just not interruptibly).
+     * (then the class runs unchanged, just not interruptibly). Box snippets are rewritten through
+     * [afield.runtime.bytecode.BoxBytecode], which runs [PollPass] with the other passes; this is the
+     * same rewrite on its own, for tests.
      */
-    fun instrumentClass(bytes: ByteArray, boxLabel: String): ByteArray? {
-        return try {
-            val reader = ClassReader(bytes)
-            // COMPUTE_MAXS only: the inserted call has no stack effect and is never placed at a
-            // label, so existing stack-map frames stay valid and no class loading is needed.
-            val writer = ClassWriter(reader, ClassWriter.COMPUTE_MAXS)
-            reader.accept(PollingClassVisitor(writer), 0)
-            writer.toByteArray().also { classOwners[reader.className] = boxLabel }
-        } catch (t: Throwable) {
-            lprintln("warn,execution,interrupt", "could not instrument a snippet class: $t")
-            null
-        }
-    }
+    fun instrumentClass(bytes: ByteArray, boxLabel: String): ByteArray? =
+        BoxBytecode.rewriteClass(bytes, SnippetOrigin.detached(boxLabel), listOf(PollPass))
 
     private const val OWNER = "afield/runtime/lifecycle/BoxInterrupt"
 
-    private class PollingClassVisitor(next: ClassVisitor) : ClassVisitor(Opcodes.API_VERSION, next) {
-        override fun visitMethod(access: Int, name: String?, descriptor: String?, signature: String?, exceptions: Array<out String>?): MethodVisitor? {
-            val mv = super.visitMethod(access, name, descriptor, signature, exceptions) ?: return null
-            if (access and (Opcodes.ACC_ABSTRACT or Opcodes.ACC_NATIVE) != 0) return mv
-            // Constructors poll at back-edges only: a call before super() is legal bytecode, but
-            // keeping <init> entry untouched keeps us clear of any verifier subtlety there.
-            return PollingMethodVisitor(mv, pollAtEntry = name != "<init>" && name != "<clinit>")
+    /**
+     * The interrupt as a [BoxBytecodePass]: `INVOKESTATIC BoxInterrupt.poll()` at every method entry
+     * (not `<init>`/`<clinit>`) and before every backward jump or switch. On while [enabled].
+     */
+    object PollPass : BoxBytecodePass {
+        override val id = "interrupt"
+        override val inserts = setOf(OWNER)
+
+        override fun wants(origin: SnippetOrigin): Boolean = enabled
+
+        // Constructors poll at back-edges only: a call before super() is legal bytecode, but
+        // keeping <init> entry untouched keeps us clear of any verifier subtlety there.
+        override fun method(cls: ClassScope, m: MethodScope, next: MethodVisitor): MethodVisitor =
+            PollingMethodVisitor(next, pollAtEntry = !m.isInitializer)
+
+        override fun classRewritten(cls: ClassScope) {
+            classOwners[cls.className] = cls.origin.label
         }
     }
 
@@ -254,6 +221,22 @@ object BoxInterrupt {
 
         @Volatile private var thread: Thread? = null
 
+        /** False until [start], and for good when `AFIELD_RUNLOOP_WATCHDOG=0` kept it from starting. */
+        fun isRunning(): Boolean = thread?.isAlive == true
+
+        /**
+         * The text of a stall report for [thread], stalled [stalledMs] with [stack]: the culprit box,
+         * the hottest box function when per-function cost is measuring that box
+         * (`afield.runtime.bytecode.BoxCost.stallReport`), and the top of the stack.
+         */
+        fun report(stalledMs: Long, thread: Thread, stack: Array<StackTraceElement>, who: String? = culprit(stack)): String {
+            val cost = runCatching { afield.runtime.bytecode.BoxCost.stallReport(thread) }.getOrNull()
+            return "Runloop has not made a frame for $stalledMs ms" +
+                (who?.let { "; box code from $it is running" } ?: "") +
+                (cost?.let { "\n    $it" } ?: "") +
+                "\n    at " + stack.take(12).joinToString("\n    at ")
+        }
+
         @Synchronized
         fun start() {
             if (thread != null) return
@@ -284,12 +267,10 @@ object BoxInterrupt {
                     reported = true
                     val stack = main.stackTrace
                     val who = culprit(stack)
-                    val top = stack.take(12).joinToString("\n    at ")
-                    lprintln("warn,runloop,watchdog", "Runloop has not made a frame for $stalledMs ms" +
-                            (who?.let { "; box code from $it is running" } ?: "") + "\n    at " + top)
+                    lprintln("warn,runloop,watchdog", report(stalledMs, main, stack, who))
                     onStall.forEach { runCatching { it(who, stalledMs, stack) } }
                 }
-                if (enabled && !interrupted && interruptAfterMs > 0 && stalledMs >= interruptAfterMs) {
+                if (BoxInstrumentation.watchdogInterrupts && !interrupted && interruptAfterMs > 0 && stalledMs >= interruptAfterMs) {
                     val who = culprit(main.stackTrace)
                     // Only box code polls, so only ask when box code is on the stack.
                     if (who != null) {

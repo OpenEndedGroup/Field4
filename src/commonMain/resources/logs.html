@@ -92,6 +92,7 @@
         .msg.boundary{ color:var(--muted); }
         .msg.error{ color:var(--error); }
         .msg.warn{ color:var(--warn); }
+        .msg a.box-link{ color:inherit; text-decoration:underline; text-underline-offset:2px; cursor:pointer; }
         .badge{
             display:inline-block; padding:2px 6px; border-radius:999px; border:1px solid var(--sep);
             background:rgba(255,255,255,0.04); font-size:10px; color:var(--muted);
@@ -174,6 +175,30 @@
         return el.innerHTML;
     }
 
+    // Field's reports name a box as 'Name' (id), sometimes followed by "line N". In a viewer embedded
+    // in a document, a reference to a box on its canvas becomes a link that selects the box (and opens
+    // the editor at the line); text that only looks like one stays as it is.
+    function canvasWindow(){
+        try { return window.parent !== window && window.parent.document ? window.parent : null; } catch (_) { return null; }
+    }
+    function onCanvas(uid){
+        const host = canvasWindow();
+        if (!host) return false;
+        try {
+            for (const box of host.document.getElementsByClassName("box")) if (box.uid === uid) return true;
+        } catch (_) {}
+        return false;
+    }
+    const BOX_REFERENCE = /'([^'\n<>]{1,160})' \(([A-Za-z0-9_.:-]{1,80})\)(?: line (\d+))?/g;
+    function linkBoxes(html){
+        return html.replace(BOX_REFERENCE, (whole, name, uid, line) => {
+            if (!onCanvas(uid)) return whole;
+            const href = "#box:" + encodeURIComponent(uid) + (line ? "?line=" + line : "");
+            const label = name + (line ? " line " + line : "");
+            return `<a class="box-link" href="${href}" data-box-uid="${uid}" data-line="${line || ""}" title="Select ${name}${line ? ", line " + line : ""}">${label}</a>`;
+        });
+    }
+
     function classifyChannel(ch){
         const lc = ch.toLowerCase();
         if (lc.includes("error")) return "error";
@@ -219,7 +244,7 @@
         row.innerHTML = `
             <div class="ts">${ts.toLocaleTimeString()}</div>
             <div class="ch">${escape(evt.channel)}</div>
-            <div class="msg ${evt.boundary ? "boundary" : ""} ${classifyChannel(evt.channel)}">${escape(boundaryText + messageText)}</div>
+            <div class="msg ${evt.boundary ? "boundary" : ""} ${classifyChannel(evt.channel)}">${linkBoxes(escape(boundaryText + messageText))}</div>
         `;
 
         if (evt.boundary === "BEGIN" && evt.blockId) {
@@ -269,6 +294,14 @@
         logEl.querySelectorAll(".block-group").forEach(g => g.classList.toggle("hidden", !g.querySelector(".row:not(.hidden)")));
     });
     findEl.addEventListener("keydown", (e) => { e.stopPropagation(); if (e.key === "Escape"){ findEl.value = ""; findEl.dispatchEvent(new Event("input")); findEl.blur(); } });
+    logEl.addEventListener("click", (event) => {
+        const link = event.target instanceof Element ? event.target.closest("a.box-link") : null;
+        if (!link) return;
+        event.preventDefault();
+        const host = canvasWindow();
+        const line = link.dataset.line ? Number(link.dataset.line) : null;
+        try { host?.navigateToBoxProperty?.(link.dataset.boxUid, "code", line, line); } catch (_) {}
+    });
     document.getElementById("clear").addEventListener("click", () => { logEl.innerHTML = ""; blockGroups.clear(); unseen = 0; showJump(); });
     function showEmpty(){
         if (logEl.children.length) return;

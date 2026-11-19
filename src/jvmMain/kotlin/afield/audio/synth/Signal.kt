@@ -56,9 +56,25 @@ class SynthContext(
     val sampleRate: Float,
     /** Maximum buffer size: the number of frames rendered per audio-engine block. */
     val bufferSize: Int
-) {
+) : afield.runtime.bytecode.ThreadOwnedContext {
     val inverseSampleRate: Float = 1f / sampleRate
     val nyquist: Float = sampleRate / 2f
+
+    /**
+     * The audio thread rendering with this context, while a [FieldAudioEngine] is: a graph rendered
+     * with it belongs to that thread, and [Signal.render] reports (once per box line) a render of it
+     * from any other. Null for a context nothing owns, such as an offline render's own.
+     */
+    override var ownerThread: Thread? = null
+        private set
+
+    /** [thread] renders with this context from now on (null: nothing does). */
+    internal fun claimOwnership(thread: Thread?) {
+        val old = ownerThread
+        ownerThread = thread
+        if (old != null) afield.runtime.bytecode.ThreadOwnership.ownerEnded(old)
+        if (thread != null) afield.runtime.bytecode.ThreadOwnership.ownerStarted(thread)
+    }
 
     /** Monotonically increasing id; bumped once per process cycle. */
     var cycleId: Long = 0L
@@ -174,9 +190,17 @@ abstract class Signal {
     /**
      * Evaluate (or replay cache) into [output].
      * Call this from consuming nodes – *never* call [generate] directly.
+     *
+     * Owned by the thread that owns [ctx] (a live [FieldAudioEngine]'s audio thread), or, with an
+     * offline context, by the thread that rendered this node under an owned context in the last couple
+     * of blocks. A render from another thread is reported once per box line: it advances the node's
+     * state a second time.
      */
+    @afield.runtime.bytecode.ThreadOwned(afield.runtime.bytecode.ThreadOwner.AUDIO, checkLastArgument = true)
     fun render(output: FloatArray, numFrames: Int, ctx: SynthContext) {
-        if (ctx !== _cacheContext || ctx.cycleId != _cacheId || _cacheFrames < numFrames) {
+        val prev = _cacheContext
+        if (ctx !== prev || ctx.cycleId != _cacheId || _cacheFrames < numFrames) {
+            checkRenderOwner(ctx, prev)
             if (_cache.size < numFrames) _cache = FloatArray(numFrames)
             generate(_cache, numFrames, ctx)
             _cacheContext = ctx
@@ -184,6 +208,18 @@ abstract class Signal {
             _cacheFrames = numFrames
         }
         System.arraycopy(_cache, 0, output, 0, numFrames)
+    }
+
+    // The library half of the thread-ownership guard, on the cache miss only (once per node per block):
+    // plain reads and a thread compare. The owner is [ctx]'s, or, rendering under a context nothing
+    // owns, the owner of the context this node was rendered under within the last two blocks (the
+    // audio thread, when the Runloop samples a node of a playing graph with a context of its own).
+    private fun checkRenderOwner(ctx: SynthContext, prev: SynthContext?) {
+        val owner = ctx.ownerThread
+            ?: (if (prev != null && prev !== ctx && prev.cycleId - _cacheId <= 2) prev.ownerThread else null)
+            ?: return
+        val t = Thread.currentThread()
+        if (owner !== t) afield.runtime.bytecode.ThreadOwnership.offThread(this, "Signal.render", t, owner)
     }
 
     /**
@@ -763,6 +799,8 @@ class Mix(vararg sources: Signal) : Signal(), LiveGraphInspectable {
  * [hold] wraps an arbitrary implementation to get the same protection.
  */
 interface StereoRenderable {
+    /** Fill [outL] and [outR] with [numFrames] frames; owned, like [Signal.render], by the thread that owns [ctx]. */
+    @afield.runtime.bytecode.ThreadOwned(afield.runtime.bytecode.ThreadOwner.AUDIO, checkLastArgument = true)
     fun render(outL: FloatArray, outR: FloatArray, numFrames: Int, ctx: SynthContext)
 }
 

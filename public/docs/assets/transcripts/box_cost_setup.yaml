@@ -1,0 +1,35 @@
+name: box_cost_setup
+description: >
+  Setup for the Box functions capture on profiling_timeline.md: one box whose code is the page's
+  noise-image example (keep the two identical), created but not run. The capture=ui drive selects
+  it, runs Measure Function Cost of Selected Box from the palette, runs the box, and opens
+  Profiling -> Box functions.
+operations:
+  - create:
+      box: box_cost_noise
+      name: Noise image
+      frame: { x: 60.0, y: 60.0, w: 220.0, h: 60.0 }
+      properties:
+        code: |
+          import kotlin.math.sin
+
+          // A small noise image: image() calls row() for each row, row() calls noise() for each pixel.
+          fun noise(x: Double): Double {
+              var sum = 0.0
+              for (octave in 1..64) sum += sin(x * octave) / octave
+              return sum
+          }
+
+          fun row(y: Int, width: Int): Double {
+              var sum = 0.0
+              for (x in 0 until width) sum += noise(x * 0.01 + y)
+              return sum
+          }
+
+          fun image(width: Int, height: Int): Double {
+              var sum = 0.0
+              for (y in 0 until height) sum += row(y, width)
+              return sum
+          }
+
+          println(image(400, 200))
