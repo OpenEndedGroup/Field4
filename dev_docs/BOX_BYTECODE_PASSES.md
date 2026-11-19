@@ -146,7 +146,7 @@ Each pass is built on its own branch from this one and documents itself in its o
 | pass | object | branch | note |
 |---|---|---|---|
 | call-site anchors | `CallSiteAnchorPass` | `asm/callsite-anchors` | [`dev_docs/box_bytecode/CALLSITE_ANCHORS.md`](box_bytecode/CALLSITE_ANCHORS.md) (built; on by default; `history()` 707 ns/call anchored vs 13,372 ns by stack search, smoke G) |
-| line heat | `LineHeatPass` | `asm/line-heat` | `dev_docs/box_bytecode/LINE_HEAT.md` |
+| line heat | `LineHeatPass` | `asm/line-heat` | [`dev_docs/box_bytecode/LINE_HEAT.md`](box_bytecode/LINE_HEAT.md) |
 | per-function cost | `BoxCostPass` | `asm/box-cost` | `dev_docs/box_bytecode/BOX_COST.md` |
 | thread-ownership guards | `ThreadOwnershipPass` | `asm/thread-ownership` | [`dev_docs/box_bytecode/THREAD_OWNERSHIP.md`](box_bytecode/THREAD_OWNERSHIP.md) (built; on by default; a guarded on-thread call in a loop 0.35 ns/call, same as unguarded; smoke `runtime.thread-ownership-guards.smoke`) |
 
@@ -194,6 +194,16 @@ LineHeat.hit(I)V` at `atLineStart` for each line in the snippet's own range, one
 counts live in an int array indexed by site id; a Runloop-side publisher diffs them a few times a
 second, maps sites to box lines, and sends them to the editor, reusing `lineHeatmap.js`'s gutter
 rendering.
+
+Built (`LineHeat.kt`, note [`box_bytecode/LINE_HEAT.md`](box_bytecode/LINE_HEAT.md)). Opt-in from
+the editor (**Toggle Live Line Heat**), which sends `line-heat-watch` for the box it has open; the
+publisher sends `line-heat` (`LineHeatUpdate`, with the hash of the box text the lines were mapped
+onto) to that session. Decided while building it: a count is *entries* into a line (a fall-through
+second `LINENUMBER` with no frame between is not one); a K2 snippet class's constructor and leaf
+accessors carry no probes (they report line 1 and declaration lines, not executed statements); the
+counter table is chunked so a grown table never strands a running loop's increments; and a line
+the macro pass rewrote (`println`) is placed between its proven neighbours, as the anchors do.
+Measured: x1.49 on a real K2 tight loop, about x5 on a trivially vectorisable one.
 
 ### Per-function cost
 

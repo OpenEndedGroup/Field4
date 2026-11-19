@@ -2621,3 +2621,28 @@ data class ExecutionReport(
     val stage: String = "setup-complete", val success: Boolean,
     val error: String = ""
 )
+
+/**
+ * Client to server, `line-heat-watch`: the box (and source property) the editor has open, for line
+ * heat (`afield.runtime.bytecode.LineHeat`). [on] false stops watching. One watch per connection;
+ * a new one replaces it. Takes effect at the box's next run.
+ */
+@Serializable
+data class LineHeatWatch(val uid: String, val property: String = "code", val on: Boolean = true)
+
+/** One box line in a [LineHeatUpdate]: executions since the last update, and since watching began. */
+@Serializable
+data class LineHeatLine(val line: Int, val delta: Int, val total: Long)
+
+/**
+ * Server to client, `line-heat`: per-line execution counts of the watched box, a few times a
+ * second while it runs. [codeHash] is the FNV-1a hash of the box text the lines were mapped onto
+ * (`\r\n` as `\n`); the client drops the update when its editor text hashes differently.
+ */
+@Serializable
+data class LineHeatUpdate(
+    val uid: String,
+    val property: String,
+    val codeHash: Int,
+    val lines: List<LineHeatLine>,
+)
