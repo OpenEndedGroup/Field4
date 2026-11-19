@@ -2772,6 +2772,16 @@ bit-identical, and prints the residual GLSL. Edit `program` and rerun to see the
 
 [Open →](offline.html?file=assets/agent_transcripts/stacksl_partial_eval/metadata.edn)
 
+### sdf_global_consistency
+
+**A pseudo-SDF repaired by its own circles.** [Repairing a field that is only a bound](mesh_examples.md#repairing-a-field-that-is-only-a-bound)
+as two boxes. Box 1 samples a two-disc `min` union and draws every sample's circle before and after
+`repaired()`, with the circles that fall short of the outline reddened. Box 2 draws offset curves of a box
+with a disc cut from it, once from the pseudo-SDF and once from the repaired grid. Change `n` or the
+shapes and rerun to see how the `consistency()` numbers move.
+
+[Open →](offline.html?file=assets/agent_transcripts/sdf_global_consistency/metadata.edn)
+
 ### macro_recorder_stamp
 
 **A macro used as a stamp.** The first box saves a macro the way the

@@ -4604,6 +4604,29 @@
         "public/docs/satellites.md#capture-box=satellite-catalogue"
       ]
     },
+    "assets/agent_transcripts/sdf_global_consistency/metadata.edn": {
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-19T10:22:05.561Z",
+      "channels": 2,
+      "file": "assets/web_publications/sdf_global_consistency/document/metadata.edn",
+      "files": {
+        "assets/web_publications/sdf_global_consistency/document/metadata.edn": "6cdbeb1ca9247e0488b696975771f01d9929479d9e371c28bc0c3be545943d28",
+        "assets/web_publications/sdf_global_consistency/document/outputs.json": "cd804eebea6d6ea439d2b87034a1b00f6738824b60d055e7ddb4000807e91486",
+        "assets/web_publications/sdf_global_consistency/outputs/0.html": "cb38f274934b00dd89c262295f78d1775bd0afa50469f90b4d366c73bb87d71a",
+        "assets/web_publications/sdf_global_consistency/outputs/1.html": "08c11a886eeba325e20b1c7af8a532cbf5f1fa456c9a2cb277594166f6b5d1de"
+      },
+      "kinds": [
+        "svg"
+      ],
+      "outputs": "assets/web_publications/sdf_global_consistency/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/sdf_global_consistency.yaml": "b51a3bdd050287912d6ab3fbf2f2124773de98a39688ba4fb8308d5c614d0125",
+        "public/docs/assets/agent_transcripts/sdf_global_consistency/guides/mesh_examples.md": "dd504fe38759e312fb64afe5cb6d9e9829dec8098a0a0909f1bd12e93b8d5e1c",
+        "public/docs/assets/agent_transcripts/sdf_global_consistency/metadata.edn": "97ff91b631ff7dbd4adb593b57f0ce548c8bc2fb216176840a5b251ee4b474dd",
+        "public/docs/assets/agent_transcripts/sdf_global_consistency/sdf_circles_code_.kt": "bd9134ba2cb616cd56983645aab4752cc58a94b29bd8d05eda4975d2564f4a5f",
+        "public/docs/assets/agent_transcripts/sdf_global_consistency/sdf_offsets_code_.kt": "3a82ecaa484a80ff26387b9afd565c8c4e80f94426b66e3d4e6b8c17b26ce101"
+      }
+    },
     "assets/agent_transcripts/sentence_diagrams/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
       "capturedAt": "2026-11-18T15:58:13.186Z",

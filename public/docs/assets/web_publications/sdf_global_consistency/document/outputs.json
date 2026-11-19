@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-19T10:22:05.561Z",
+  "documentName": "sdf_global_consistency",
+  "outputs": [
+    {
+      "uid": "sdf_circles",
+      "channel": "circles",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "sdf_offsets",
+      "channel": "offsets",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/1.html"
+    }
+  ]
+}
