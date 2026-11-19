@@ -1229,6 +1229,187 @@ to give several images the same scale, `flipY = false` to put row zero at the to
 it. See the [heatmap API](reference/visualization.md#heatmap-kt) and a
 [Gaussian-process example](gaussian_processes.md).
 
+### Painting into a live buffer
+
+A `BufferCanvas` is a view onto memory that some other code owns and keeps using: a simulation's
+`FloatArray`, a delay line, or a `FloatBuffer` or `ByteBuffer` you are about to upload to the GPU
+(or have just read back). It copies nothing. Its edits write into that memory, so the program's
+next step sees them: `paint` and `stroke` with a round brush, `fill`, `copy` and `paste` (the
+clipboard is an [`Img`](reference/imaging.md)), `clone`, `blur`, `motionBlur` and `smudge`.
+`bufferCanvas(array, width = 160)` lays the elements out in rows. `channels`, `offset` and
+`rowStride` describe an interleaved or padded layout, and `wrapX`/`wrapY` make edits that cross
+an edge continue on the far side, as a ring buffer or a wrapping simulation needs.
+
+Showing the canvas draws one element as one pixel (`zoom` gives whole-number magnification only)
+through an explicit `map`. The default, `ValueMap.Raw`, shows `0…1` as black to white and does
+not hide anything outside that range: values below zero are drawn blue, values above one red, and
+NaN or infinities magenta, and the caption counts each. To see numbers that live elsewhere, choose
+the range yourself with `ValueMap.Linear(lo, hi)` or `ValueMap.Signed(m)`. The caption always
+names the map in use.
+
+Here a Gray-Scott reaction-diffusion runs on two arrays, and the canvas over `v` edits the state
+between steps: a stroke into empty space, a cloned patch, a blurred square, a motion-blurred band
+and a filled column. The reaction grows each edit into pattern:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-buffer-paint.png" alt="six square greyscale frames of a Gray-Scott simulation, each captioned with the step and the edit just made. A thin painted V-shaped stroke and a small seed ring; the stroke grown into a band and a cloned ring at the lower left; the centre square blurred into a soft-edged block; the lower band smeared sideways by a motion blur; a black column filled through the labyrinth; and the final state, labyrinth everywhere except where the fill was" wait="1.0" capture="box" open-outputs="true" w="1100" h="200" embed=true name="buffer-paint"}
+:::static
+import afield.media.image.*
+
+val n = 160
+val u = FloatArray(n * n) { 1f }
+val v = FloatArray(n * n)
+val un = FloatArray(n * n)
+val vn = FloatArray(n * n)
+
+// A view onto v itself: edits below change the simulation's state, not a copy of it.
+val canvas = bufferCanvas(v, width = n, wrapX = true, wrapY = true)
+canvas.map = ValueMap.Linear(0.0, 0.5) // v stays within about 0..0.45
+canvas.paint(80.0, 80.0, radius = 6.0, value = 0.5f, hardness = 1.0)
+
+fun step(feed: Float = 0.037f, kill: Float = 0.06f) {
+    for (y in 0 until n) for (x in 0 until n) {
+        val i = y * n + x
+        val l = (x + n - 1) % n + y * n
+        val r = (x + 1) % n + y * n
+        val t = x + ((y + n - 1) % n) * n
+        val b = x + ((y + 1) % n) * n
+        val uvv = u[i] * v[i] * v[i]
+        un[i] = u[i] + 0.2f * (u[l] + u[r] + u[t] + u[b] - 4 * u[i]) - uvv + feed * (1 - u[i])
+        vn[i] = v[i] + 0.1f * (v[l] + v[r] + v[t] + v[b] - 4 * v[i]) + uvv - (feed + kill) * v[i]
+    }
+    un.copyInto(u)
+    vn.copyInto(v)
+}
+
+val edits = mapOf(
+    150 to ("stroke" to { canvas.stroke([15.0 to 20.0, 60.0 to 35.0, 140.0 to 18.0], radius = 3.0, value = floatArrayOf(0.5f)) }),
+    500 to ("clone" to { canvas.clone(CellRect(60, 60, 40, 40), 8, 112) }),
+    850 to ("blur" to { canvas.blur(CellRect(60, 60, 40, 40), sigma = 4.0) }),
+    1200 to ("motion blur" to { canvas.motionBlur(CellRect(0, 105, n, 50), length = 31) }),
+    1550 to ("fill" to { canvas.fill(CellRect(104, 30, 12, 120), 0f) }),
+
+)
+
+// After each edit, keep a snapshot, viewed through a canvas of its own.
+val shots = mutableListOf<String>()
+fun keep(label: String) {
+    val snapshot = bufferCanvas(v.copyOf(), width = n)
+    snapshot.map = canvas.map
+    shots += "<figure style='margin:0'><figcaption>$label</figcaption>" + snapshot.toHTML() + "</figure>"
+}
+
+for (s in 1..2400) {
+    step()
+    edits[s]?.let { (what, edit) ->
+        edit()
+        keep("step $s: $what")
+    }
+}
+keep("step 2400")
+
+display("edits", "<div style='display:grid;grid-template-columns:repeat(3,auto);gap:8px'>" + shots.joinToString("") + "</div>")
+```
+
+The same storage can be viewed two ways. A delay line is one long row: viewed as rows of 210
+samples it is a picture, and viewed as a single wrapping row it can be edited along time. Pasting
+the first pluck later in the ring adds a fourth, and a 61-sample motion blur over the second is a
+moving-average low-pass, which more than halves that pluck's RMS level:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-buffer-paint-ring.png" alt="a delay line drawn as rows of 210 samples on a grey zero, three decaying plucks as bands of light and dark stripes, the second visibly softer after a motion blur and a fourth, fainter pluck pasted after the third; the caption names the signed map; below it the RMS of the blurred and pasted regions before and after" wait="1.0" capture="box" open-outputs="true" w="900" h="200" embed=true name="buffer-paint-ring"}
+:::static
+import afield.media.image.*
+
+val rate = 44100
+val ring = FloatArray(rate / 2) // half a second of delay
+
+for (k in 0 until 3) {
+    val start = k * 5000
+    for (i in 0 until 4000) ring[start + i] = (0.8 * exp(-i / 1500.0) * sin(i * 2 * PI * 220.0 * (k + 1) / rate)).toFloat()
+}
+val before = ring.copyOf()
+
+val timeline = bufferCanvas(ring, width = ring.size, wrapX = true)
+timeline.paste(timeline.copy(CellRect(0, 0, 4000, 1)), 16000, 0, opacity = 0.7)
+timeline.motionBlur(CellRect(5000, 0, 4000, 1), length = 61)
+
+fun rms(a: FloatArray, from: Int) = sqrt((from until from + 4000).sumOf { a[it].toDouble() * a[it] } / 4000)
+
+val view = bufferCanvas(ring, width = 210)
+view.map = ValueMap.Signed(1.0)
+view.zoom = 2
+display("ring", view.toHTML())
+markdown(
+    "rms",
+    "second pluck RMS %.3f → %.3f, pasted region %.3f → %.3f"
+        .format(rms(before, 5000), rms(ring, 5000), rms(before, 16000), rms(ring, 16000)),
+)
+```
+
+The [`buffer_paint` transcript](agent_transcripts.md#buffer_paint) runs the same simulation live
+in a `frames { }` loop, with the edits landing while it runs, and puts *before* and *after*
+players under the delay line. The idea comes from citrons'
+["Paint in the memory of other programs"](https://citrons.xyz/journal/2026-04-13).
+
+### Painting into a GPU buffer
+
+A host-visible storage buffer can be edited the same way. Map it with `mapAndWrite` and put a canvas
+over the `FloatBuffer` you are handed: that buffer is the memory the shader reads, so the next
+dispatch starts from the edit. Ask for one buffer rather than one per swapchain image, which is what
+`defaultBuffer { size = … }` gives you, so there is exactly one copy to edit.
+
+A simulation that ping-pongs between two buffers needs two more steps. First, the GPU must not be
+writing while you edit. The shader takes a `run` push constant and returns early when it is zero;
+set it to zero, then wait until every frame already submitted has finished (`renderer.numImages`
+frames, plus a couple to be safe). Second, both halves have to hold the edit, because the next
+The example runs Gray-Scott reaction-diffusion on two such buffers. It starts from one seed and
+then, from box code, paints two more into the GPU state with `edit { paint(...) }`. The native
+window shows the buffer one cell to one pixel, shortly after the edits, with all three spots growing:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-buffer-paint-gpu.png" capture="native-window" native-wait-frames="3000" trim=true embed=true hidden=true force=true timeout="180" duration="0" name="buffer-paint-gpu" alt="a 256 by 256 greyscale Gray-Scott state in the native window, one cell per pixel: the initial seed and the two spots painted into the GPU buffer from box code, each a small bright ring on black, early in their growth" macro-file="../../dev_docs/agents/transcripts/buffer_paint_gpu.yaml" capture-box="bpg_renderer"}
+// Built and launched from dev_docs/agents/transcripts/buffer_paint_gpu.yaml
+// (renderer + compute + draw). The edit loop is below.
+```
+
+frame may read either. Apply the edits to buffer A, copy A into B, and set `run` back to one:
+
+```diffstatic {data-lang=kotlin}
+:::static
+if (hold && renderer.frameCounter >= heldAt + renderer.numImages + 2) {
+    stateA.mapAndWrite {
+        val canvas = bufferCanvas(this, width = W, channels = 2, height = H, wrapX = true, wrapY = true)
+        pending.forEach { canvas.it() }
+        get(0, shown, 0, shown.size)
+    }
+    stateB.mapAndWrite { put(0, shown, 0, shown.size) }
+    pending.clear()
+    hold = false
+}
+```
+
+To draw the buffer unscaled, a fullscreen triangle's fragment shader reads cell
+`ivec2(gl_FragCoord.xy)`, one cell to one framebuffer pixel, through the same explicit map as the
+box's readback view, with values out of range drawn red or blue. Field's swapchain is sRGB and
+encodes whatever the shader writes, so the shader writes `srgbToLinear(m)`; the byte in the window
+is then `m × 255`. Without that step a value of 0.39 shows as 172 rather than 98.
+
+The edits can come from the [drawing layer](drawing_and_notation.md). A frame on the canvas stands for the
+buffer, `notation.space` maps it to cell coordinates, and handlers turn gestures into edits:
+
+```diffstatic {data-lang=kotlin}
+:::static
+val cells = notation.space("gpu buffer", x = 0.0..W.toDouble(), y = 0.0..H.toDouble())
+
+notation.onStroke { s ->
+    val path = s.points.map { cells.toSpace(it).let { p -> p.x.toDouble() to p.y.toDouble() } }
+    edit { stroke(path, radius = 3.0, value = floatArrayOf(0.5f, 0.25f), opacity = 0.8) }
+}
+```
+
+In the [`buffer_paint_gpu` transcript](agent_transcripts.md#buffer_paint_gpu) a freehand stroke
+paints, a rectangle blurs what is under it, an ellipse erases, and an arrow that starts inside a
+rectangle copies that rectangle to where the arrow ends. Each gesture changes the running
+Gray-Scott simulation, which grows new pattern from it.
+
 ### Drawings and character grids
 
 Use `lines` for an FLine drawing in an output, with optional point editing. `threeLines` and

@@ -491,6 +491,9 @@ object DemoTranscriptExecSmokeTest {
         // Squircles (2026-11-19): five squircle styles and their curvature under a gauge slider, and
         // squircleRectFrom corners over circular ones. Pure CPU, FLines into an output channel.
         "squircles",
+        // Buffer paint (2026-11-19): a Gray-Scott frames { } loop edited through a BufferCanvas over its
+        // own FloatArray, and a delay line pasted and motion-blurred in place. Pure CPU, no Window.
+        "buffer_paint",
         // Controls renewal (2026-10-29): a five-control surface feeding a live figure and a slider
         // that re-renders itself mid-drag. Pure CPU, output-channel controls only.
         "controls_surface",
@@ -932,6 +935,9 @@ object DemoTranscriptExecSmokeTest {
         "keyframe_autosweep",
         "recstl_playground",
         "gpu_state",
+        // Buffer paint on the GPU (2026-11-19): a Window, a Gray-Scott compute ping-pong and a draw box,
+        // with drawing-layer gestures editing the mapped storage buffer. Needs a native Window.
+        "buffer_paint_gpu",
         "threebox",
         "rectsl_dataviz",
         "rectsl_plot_axes",
