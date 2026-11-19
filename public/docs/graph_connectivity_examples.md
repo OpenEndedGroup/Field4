@@ -283,6 +283,18 @@ in 3D. The ranking inside each quadrant uses
 `GraphConnectivityOptions.customDistanceMetric` if you pass one, and Euclidean
 distance otherwise.
 
+For particle buffers, `OrthantNeighbors3D.build(xyz)` in `afield.geometry.spatial`
+takes packed XYZ triples and returns eight directed slots per point. The graph's
+Euclidean search shares this grid. The packed API assigns zero components to the
+positive side and exposes a ring limit for approximate searches. Missing slots
+have index `-1`. Raise `maxRings` when `ringLimited` is high, or use
+`Int.MAX_VALUE` to search until the remaining cells cannot improve the result.
+
+To give two clouds a shared particle identity for layout transitions, use
+`BspOt2D.match` for XY or `BspOt3D.match` for packed XYZ. Their
+`targetOfSource` arrays assign each source to a unique target. The match
+approximately minimizes squared travel and `costHistory` reports its progress.
+
 ## 3D graph families with `threeLines(...)`
 
 A flat projection stops working once points coil, stack or sit behind one

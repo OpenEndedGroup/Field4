@@ -2969,7 +2969,7 @@ Particles demo; `dev_docs/madp/particles.md` has the mapping from its JS hooks.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="particlesketch-kt--showcontrols"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">showControls</span><span class="p">(</span><span class="n">sketch</span><span class="p">:</span> <span class="nc">ParticleSketch</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;controls&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/simulation/particles/ParticleSketch/#L640) | madp's toolbar for `sketch`, in this box's `controls` output: the trail, a pause, and a reset that empties the world. The panel opens, as the demo's toolbar is always in view. |
+| <a id="particlesketch-kt--showcontrols"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">showControls</span><span class="p">(</span><span class="n">sketch</span><span class="p">:</span> <span class="nc">ParticleSketch</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;controls&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/simulation/particles/ParticleSketch/#L642) | madp's toolbar for `sketch`, in this box's `controls` output: the trail, a pause, and a reset that empties the world. The panel opens, as the demo's toolbar is always in view. |
 
 ### ParticleSketchSettings { #particlesketch-kt-particlesketchsettings }
 
@@ -3035,14 +3035,14 @@ Turns the pointer, read once a frame, into paint, as madp's canvas does with mou
 
 ### ParticleShaders { #particlesketch-kt-particleshaders }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">ParticleShaders</span></code>](source/jvmMain/afield/simulation/particles/ParticleSketch/#L616)
+[<code class="highlight"><span class="k">object</span> <span class="nc">ParticleShaders</span></code>](source/jvmMain/afield/simulation/particles/ParticleSketch/#L617)
 
-The packaged GLSL behind [`ParticleSketch`](simulation.md#particlesketch-kt-particlesketch). `#include "particles/sketch"` in a compute shader reaches `sketch.glsl`, the harness with the particle struct, the hooks and the verbs.
+The packaged GLSL behind [`ParticleSketch`](simulation.md#particlesketch-kt-particlesketch). `#include "particles/sketch"` in a compute shader reaches `sketch.glsl`, the harness with the particle struct, the hooks and the verbs. `#include "particles/shape_force"` supplies planar shape boundary queries and forces for custom passes.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="particlesketch-kt--particleshaders--has"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">has</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/simulation/particles/ParticleSketch/#L622) | Whether `particles/<name>` names one of these sources, with or without `.glsl`. |
-| <a id="particlesketch-kt--particleshaders--source"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">source</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/simulation/particles/ParticleSketch/#L625) | The source of `name` (`sketch`, `sketch.glsl`, ...). |
+| <a id="particlesketch-kt--particleshaders--has"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">has</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/simulation/particles/ParticleSketch/#L624) | Whether `particles/<name>` names one of these sources, with or without `.glsl`. |
+| <a id="particlesketch-kt--particleshaders--source"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">source</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/simulation/particles/ParticleSketch/#L627) | The source of `name` (`sketch`, `sketch.glsl`, ...). |
 
 ## PetriEditorExtension.kt { #petrieditorextension-kt }
 
