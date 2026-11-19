@@ -63,6 +63,14 @@ class SdfRepairTest {
         return out
     }
 
+    /** Dense points on the outline of [square] with the corner disc [hole] cut from it. */
+    private fun boxMinusCircleBoundary(square: ScalarField2D, hole: ScalarField2D) =
+        segment(-0.8, -0.6, 0.8, -0.6) { x, y -> hole(x, y) >= 0 } +
+            segment(0.8, -0.6, 0.8, 0.6) { x, y -> hole(x, y) >= 0 } +
+            segment(0.8, 0.6, -0.8, 0.6) { x, y -> hole(x, y) >= 0 } +
+            segment(-0.8, 0.6, -0.8, -0.6) { x, y -> hole(x, y) >= 0 } +
+            arc(0.8, 0.6, 0.5) { x, y -> square(x, y) <= 0 }
+
     private fun truth(boundary: List<Double>, sign: ScalarField2D) =
         sdfFromBoundary(boundary.toDoubleArray(), sign, lo, lo, 0.02, 151, 151)
 
@@ -93,13 +101,7 @@ class SdfRepairTest {
         val square = box(0.8, 0.6)
         val hole = circle(0.8, 0.6, 0.5)
         val cut: ScalarField2D = { x, y -> max(square(x, y), -hole(x, y)) }
-        val boundary =
-            segment(-0.8, -0.6, 0.8, -0.6) { x, y -> hole(x, y) >= 0 } +
-                segment(0.8, -0.6, 0.8, 0.6) { x, y -> hole(x, y) >= 0 } +
-                segment(0.8, 0.6, -0.8, 0.6) { x, y -> hole(x, y) >= 0 } +
-                segment(-0.8, 0.6, -0.8, -0.6) { x, y -> hole(x, y) >= 0 } +
-                arc(0.8, 0.6, 0.5) { x, y -> square(x, y) <= 0 }
-        val (before, after) = report("box - circle", sdfGrid2D(lo, lo, hi, hi, 97, cut), truth(boundary, cut))
+        val (before, after) = report("box - circle", sdfGrid2D(lo, lo, hi, hi, 97, cut), truth(boxMinusCircleBoundary(square, hole), cut))
         assertTrue(after.max < 0.5 * before.max, "max error should at least halve: $before -> $after")
         assertTrue(after.mean < before.mean, "mean error should drop: $before -> $after")
     }
@@ -125,6 +127,9 @@ class SdfRepairTest {
         val cut: ScalarField2D = { x, y -> max(square(x, y), -hole(x, y)) }
         val pseudo = sdfGrid2D(lo, lo, hi, hi, 97, cut)
         val fixed = pseudo.repaired()
+        // How far a hit is from the true outline: the true distance, not the pseudo-SDF's own value,
+        // which is only a lower bound on it near the notch.
+        val exact = truth(boxMinusCircleBoundary(square, hole), cut)
         fun trace(grid: SdfGrid2D): Triple<Double, Double, Int> {
             var steps = 0
             var worst = 0.0
@@ -138,7 +143,7 @@ class SdfRepairTest {
                 steps += r.steps
                 if (r.hit) {
                     hits++
-                    worst = max(worst, abs(cut(r.x, r.y)))
+                    worst = max(worst, abs(exact(r.x, r.y)))
                 }
             }
             return Triple(steps.toDouble() / rays, worst, hits)
@@ -146,7 +151,7 @@ class SdfRepairTest {
         val (before, beforeMiss, beforeHits) = trace(pseudo)
         val (after, afterMiss, afterHits) = trace(fixed)
         println(
-            "sphere trace box - circle: pseudo mean steps %.2f (hits %d, worst |f| at hit %.4f) | repaired %.2f (hits %d, worst %.4f)"
+            "sphere trace box - circle: pseudo mean steps %.2f (hits %d, worst true distance at hit %.4f) | repaired %.2f (hits %d, worst %.4f)"
                 .format(before, beforeHits, beforeMiss, after, afterHits, afterMiss),
         )
         assertTrue(after < before, "repaired field should need fewer steps: $before -> $after")
