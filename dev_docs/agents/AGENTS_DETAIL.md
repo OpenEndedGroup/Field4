@@ -1,0 +1,383 @@
+# AGENTS.md, the long form
+
+[`AGENTS.md`](../../AGENTS.md) has to fit in the 32 KiB that Codex loads from a project
+instruction file (`project_doc_max_bytes`); past that, Codex silently drops the rest.
+`tools/test_agents_md.py` keeps it under. The sections below are the full text that `AGENTS.md`
+now summarises, under the same section numbers. When you change behaviour described here, update
+this file, and the summary in `AGENTS.md` if the rule itself changed.
+
+## 2. Run it
+
+- `./field.sh` builds JS and runs the JVM server (wraps `./gradlew runJvm`).
+  - It runs in the foreground when stdin is a tty, or when it senses an agent
+    (`CLAUDECODE`, `CLAUDE_CODE_ENTRYPOINT`, `CODEX_SANDBOX*`); otherwise it opens a detached GUI
+    terminal (a Finder/Explorer double-click). If the sensing misses your agent, set
+    `AFIELD_FIELD_SH_NO_TERMINAL=1`.
+  - `./field.sh --offline` (or `AFIELD_OFFLINE=1`) builds with Gradle `--offline` from the
+    dependency cache. The build refuses SNAPSHOT and dynamic repository versions
+    (`failOnDynamicVersions` / `failOnChangingVersions`), which is what keeps offline builds from
+    stalling on a daily re-check.
+- Open `https://localhost:9092/index.html?file=firstDocument`.
+- Workspace (the documents root):
+  - `--workspace <path>` (parsed by `option(...)`), e.g.
+    `./gradlew runJvm --args="--workspace /tmp/AFieldWorkspace"`, or `./field.sh /tmp/AFieldWorkspace`
+    (also `-w` / `--workspace`). The launcher resolves a relative path against your shell's cwd,
+    refuses a non-existent directory before building, and treats a path to a document (a folder
+    holding `metadata.edn`, or the file itself) as "the workspace above this, and open that".
+    `./field.sh --print-workspace` answers "which one would I get?" without launching.
+  - With no argument the workspace is whatever this checkout used last, recorded in its
+    gitignored `.afield-local/last-workspace.txt`; a checkout with no record yet falls back to the
+    machine-wide `~/.afield/last-workspace.txt` that every checkout used to share.
+    `field.sh` prints the workspace it resolved, and where from, before it builds.
+- Open a document directly: `--document <name>` (resolved against the workspace; a path is
+  reduced to its last segment). `/app-url` — what the launcher curls for the Electron window —
+  prefers it over the welcome page and the last-opened document. Through the launcher:
+  `./field.sh -d <name>` (or `--document`/`--document=`, or a document path as the bare argument,
+  which names the workspace too). The launcher rejects a document that does not exist, because
+  Field *creates* an unknown document.
+- `field.ps1` accepts the same flags on Windows; that parser has never been run (see
+  `dev_docs/launcher_workspace_verification.md`).
+- Ports and HTTPS:
+  - `PORT` overrides the default `9092`. The server uses HTTPS with a self-signed dev cert.
+  - A loopback-only HTTP mirror listens on `AFIELD_HTTP_PORT` if set, otherwise `PORT + 10000`
+    when that fits (`PORT=9477` gives `http://localhost:19477/...`). `AFIELD_HTTP_PORT=off`
+    disables it.
+  - Keystore: `AFIELD_KEYSTORE_PATH`, `AFIELD_KEYSTORE_PASS`, `AFIELD_KEYSTORE_ALIAS`;
+    `./gradlew generateLocalKeystore` writes `config/field4-local.p12`.
+- Stopping a Field you started: `kill -INT` the PID listening on its port
+  (`lsof -nP -iTCP:<port> -sTCP:LISTEN -t`) — that PID is the Field JVM. It exits in about 2 s,
+  first saving any edit the 5 s autosave had not reached; this works for a `./field.sh &` launch
+  too (`dev_docs/SIGINT_SHUTDOWN.md`).
+
+---
+
+For box-code authoring and review, use the compact, prompt-ready
+[Field box-code house style](BOX_CODE_HOUSE_STYLE.md).
+
+## 3. Verify changes
+
+Python tooling runs through the repo `uv` environment, so the docs runner and the backdoor share
+dependencies (`public/docs_hooks.py` runs `tools/field_backdoor.py` with the interpreter building
+the docs). Do not gate browser screenshots on ambient `python`/`pip` or a Python `playwright`
+import: screenshots use the JVM-owned Playwright, and `pyproject.toml` deliberately does not
+need the Python package. The entrypoints (`field_backdoor.py`, `field_session.py`,
+`run_field_tests.py`, `field_mcp.py`, `run_ui_regressions.py`, `build_zensical_docs.py`)
+re-exec under the repo `.venv` (or `uv run`) when their dependencies are missing; `uv run`
+avoids the hop. Importing them as libraries never restarts the importer.
+
+**One verification at a time per checkout.** The Python wrappers serialize on
+`.field-backdoor/verification.lock`, and raw `./gradlew` honours it too: while another live
+process holds it, a build prints `WAIT gradle: verification lock held by ...` and waits
+(`AFIELD_VERIFICATION_LOCK=fail` to stop instead, `=off` to opt out). Two builds in one checkout
+corrupt shared Kotlin class output and incremental-compiler backups.
+
+### Landing on `main`
+
+Never merge into `main` yourself. Commit on your topic branch, then
+`uv run python tools/land.py enqueue` and stop: the lander merges it, regenerates the generated
+artifacts, runs the full guard once and fast-forwards `main`, one branch at a time. A failure comes
+back as a bounce with its reason; fix the branch and enqueue again. When you need the outcome, run
+the `tools/land.py wait <id>` that `enqueue` prints as a background command (exit 0 landed, 1
+bounced) instead of polling; when you come back to a branch, `tools/land.py mine` lists what
+happened to every attempt to land it. `tools/land.py retract [branch|id]` takes a queued item back out
+before the lander starts it. To push, `enqueue --push` (pushes `main` once that item lands);
+to bring in work from `origin`, `tools/land.py sync [--push]` lands `origin/main` through the queue.
+`uv run python tools/land.py doc` adds a documentation build at that point in the queue: earlier
+landings finish first, then the lander refreshes `public/field4/` in the checkout holding `main`
+using existing captures, before later landings proceed. Use the printed `status`/`wait` id to see
+whether that build finished; a doc failure reports its own error and does not undo a landing.
+Never `git pull` or push `main` by hand.
+Before `enqueue`, run `uv run python tools/land.py precheck`: it names any conflict with `main`,
+merges `main` in uncommitted, runs only the guards your diff can trip (`CHECKS` in
+`tools/land_precheck.py` maps each to the bounce it catches), and undoes the merge; minutes, not the
+full guard, which only the lander runs. The hooks only report; do not use `--no-verify`. Bring
+`main` into your branch with `tools/merge_regen.py main`, which regenerates rather than
+hand-merging generated files.
+
+### The docs/test loop
+
+- Make code, API, docs, and test-runner fixes autonomously when the docs/test pipeline exposes a
+  real problem. Run the smallest relevant gate once, read its first concrete failure, make a
+  specific repair, re-run that gate, then finish with one full pass. An unchanged retry is a
+  diagnostic comparison, never evidence of green.
+- Runner modes: `incremental` reuses valid captures, `strict` also invalidates them when runner
+  logic changes (`public/docs_hooks.py` digests), `always` regenerates, `never` skips capture.
+- The docs runner reuses a server only when its identity proves the same checkout and no runtime
+  source changed since it started; otherwise it fails closed.
+- A docs screenshot showing the red Field error marker, or empty/incorrect output, is a real
+  failure: get the compiler/runtime error from the backdoor or runner and fix the snippet or the
+  runtime.
+- If a run times out and later probes stop reaching `is-running`, restart the managed Field JVM
+  before trusting subsequent failures.
+- Hardware captures marked `capture-profile="linux-nvidia"` are retained by default in every
+  mode. Regenerating them needs Linux, `FIELD_DOCS_CAPTURE_PROFILES=linux-nvidia`, and the GPU
+  features; macOS always retains them, and a missing retained asset fails the build. Neural-tool
+  pages use committed media and their own scripts (`dev_docs/lighting/NEURAL_TOOLS.md`).
+- `capture-profile="macos-electron"` works the same way for output that only exists in the Field
+  Electron app (the RTT view): with `FIELD_DOCS_CAPTURE_PROFILES=macos-electron` on macOS the
+  runner captures through this checkout's Electron over CDP (`playwright-open --electron`);
+  everywhere else the committed capture is retained.
+- **A capture exercises the real code, or it does not exist.** Never fake, synthesize, hardcode,
+  mock, or hand-edit a capture — no CPU stand-in for a GPU render, no hand-written string for a
+  computed value, no scripted placeholder for a live panel. If the real capture will not come
+  out: fix the code, fix the capture system (hook / `drive` script / framing / timing), or omit
+  the capture and say why. A one-off picture for yourself never enters the pipeline. See
+  `dev_docs/DOCS_RUNNER_GPU_CAPTURES.md` → "Principle".
+
+
+## 4. Backdoor essentials
+
+For work the user expects to see in Field's Electron app, begin with the MCP
+`field_status` and `field_electron_tabs` tools. Check `serverWorkspace`, the
+selected tab and its URL before using document or box operations. Inspect and
+capture the existing tab with `field_electron_inspect` and
+`field_electron_screenshot`; use `field_electron_act` for labelled controls and
+`field_electron_console` for its recent warnings and errors. Use an independent
+browser capture when the task calls for an isolated test, and label that capture
+as a separate browser view. The active output-iframe bridge addresses content
+inside a box's output area.
+
+Prefer `tools/field_backdoor.py` to driving a browser by hand. Full reference:
+[`dev_docs/agents/FIELD_BACKDOOR.md`](FIELD_BACKDOOR.md) (workflow, capture
+signatures and recipes, suite details); cheat sheet:
+[`AGENT_QUICK_REF.md`](AGENT_QUICK_REF.md); MCP bridge:
+[`FIELD_MCP.md`](FIELD_MCP.md).
+
+```bash
+uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 \
+  --command 'new-box --name Hello' \
+  --command 'run @last --value "println(\"hello world\")"'
+```
+
+- **Ports.** Pass a custom high port and reuse it within one verification session; pick a new
+  one for a guaranteed fresh JVM. With no `--port` the backdoor chooses the first free one from
+  9477. It starts Field itself (checkout-local workspace under `build/field-automation-workspace`)
+  or reuses a server only when it proves the same checkout with no newer source. The user's Field
+  on 9092 takes `--attach-existing`.
+- **Session lifetime.** A scratch session lasts one `field_backdoor.py` process, not the life of
+  the port: put dependent commands in one invocation; a later process cannot reuse earlier box
+  uids. Use `--document <name>` when state must span invocations.
+- **Workspaces.** When the session *starts* the server, pass `--workspace <parent>` with a
+  relative `--document <name>`. When it *attaches*, the workspace is the server's: pass exactly
+  `serverWorkspace` or no `--workspace` at all (a disagreeing one is an error).
+- **A real document in the user's Field.** Begin with
+  `--attach-existing --document <name> --command status` and check `serverWorkspace`,
+  `documentName`, `sessionKey` (= `serverWorkspace` + `/` + name) and a plausible `boxCount` —
+  never `requestedWorkspace`, which echoes your argument. `--attach-existing` bypasses only source
+  freshness. Never point a mutating session at a document the user is working in; copy it.
+- **Verdicts.** Use `--json`: results carry `ok`, `data`, `events`, `timedOut`. `ok` for `run`,
+  `launch`, `continue`, `launch-batch` is the box's own verdict (diagnostics in `data.errors`);
+  `--no-fail-on-error` waives it when the failure is the point. `open <name>` refuses a name the
+  server does not have; `--create` makes one.
+- **Captures.** Use `--with-playwright` (or `playwright-open`) *before* the run that creates
+  output DOM, and `editor-open <box> --property code` before a run whose inline visualizers
+  (`histogram`, `history`, `stats`, `pianoRoll`) you will capture; a capture that could not have
+  seen the run says so in `captureWarnings`. Screenshot results report `imagePixelWidth`,
+  `imagePixelHeight` and `devicePixelRatio`, since `clip` is in CSS pixels. Inspect the actual
+  PNG/MP4. The browser is headless unless `AFIELD_PLAYWRIGHT_VISIBLE=true`.
+- **JVM entrypoints.** Use `run-jvm-main <entrypoint>` (or `run_field_tests.py --id`) rather than
+  a hand-built `java`/`JavaExec` line; they apply `requiredAgentJvmArgs()`, and
+  `AgentJvmMainLauncher` refuses to start without them.
+- **External browsers** use the HTTP mirror: `http://localhost:19477/index.html?file=<doc>` for a
+  session on 9477.
+- **Runtime values**: the MCP tool `field_debug_probe` samples a symbol at a `src/` file and line
+  or in a running box ([`FIELD_MCP.md#runtime-debug-probe`](FIELD_MCP.md#runtime-debug-probe));
+  backdoor-launched Field enables JDWP, a bare `./gradlew runJvm` does not.
+- **Semantic automation** belongs in `OperationTranscript` macro YAML
+  ([`OPERATION_TRANSCRIPT.md`](OPERATION_TRANSCRIPT.md); examples in
+  `dev_docs/agents/transcripts/`): `macro write <name> --file <path>`, then `macro run <name>`.
+- **Logs.** Every run writes `.field-backdoor/logs/<session>.jsonl` (plus
+  `.managed-server.log` for a server it started); `status` reports both. They are
+  byte-budgeted diagnostics and safe to delete. `run-jvm-main` omits the launched command unless
+  given `--include-command`.
+
+
+## 5. Architecture
+
+### Runloop vs audio loop
+
+Field has more than one main loop, and conflating them makes bugs hard fast.
+
+- `afield.runtime.lifecycle.Runloop` (`src/jvmMain/kotlin/afield/Runloop.kt`), started from `Server.kt`, advances
+  the coarse frame counter (`Runloop.frame`), runs `preRun` / `main.frame()` / `postRun` once per
+  tick, and hosts main-thread coordination: UI, box/runtime bookkeeping, websocket-adjacent work,
+  graphics setup that must step with the app frame, and low-rate control updates (graph/query
+  bookkeeping, scheduling). The Vulkan renderer's `Runloop.preRun` hooks are Runloop work too.
+  It is not the audio callback, not sample-accurate, and must not advance oscillator phase,
+  filter state, delay lines, envelopes, or other DSP state because UI or helper code wants a
+  "current value".
+- `FieldAudioEngine` (`src/jvmMain/kotlin/afield/audio/synth/FieldAudioEngine.kt`) owns a separate
+  daemon audio thread: it calls `Signal.render(...)` / `generate(...)` on the real synth graph with
+  its `SynthContext`, owns DSP state progression, and mixes the fixed-size PCM buffers OpenAL
+  queues.
+- Treat a synth `Signal` graph as audio-thread-owned unless the code is explicitly multi-context.
+  Do not sample it from `Runloop`, `GraphBindingRuntime`, docs/preview helpers, or inspectors to
+  get a display value; publish a snapshot from the real render path instead. Signals cache per
+  `SynthContext` and per cycle, but many nodes carry mutable state beyond that cache, so rendering
+  one graph from two contexts corrupts it even with correct cache keys. The
+  `Param.modulate(SineOsc(...))` glitch was the Runloop-side graph-binding sampler advancing the
+  modulation oscillator the audio thread owned.
+- Debugging: if a value should be smooth, find which loop advances it. If audio dies or
+  clicks, check whether a Runloop hook, graph-binding helper, inspector, or warm-up path touches
+  the same synth objects — search `Runloop.runLoop`, `preRun`, `postRun`, `GraphBindingRuntime`,
+  `FieldAudioEngine` before assuming a DSP bug.
+
+### Outputs
+
+- Each box has an output area of resizable "disclosure" panels, one per channel.
+- `display("channel", "<b>hello</b>")` (`HasOutput`/`DefaultOutput` in `afield/outputs.kt`) goes
+  through the `displayProxy` installed by execution (`execution.kt` → `Set_output` in `rpc.kt`);
+  the frontend inserts the HTML and runs its `<script>` tags (`afield/outputareas.kt` +
+  `src/commonMain/resources/outputareas2.js`).
+- `print`/`println` and the `_print(...)`/`_println(...)` macros are separate: they emit
+  `Message("output")` / `Output` for inline, editor-adjacent output (`execution.kt`, macros in
+  `afield/macros/macros.kt`).
+- `displayOpen(...)`, `displayClose(...)`, `displayClear(...)`, `displayClearAll()` send
+  `output-control` (`outputs.kt`, handled in `outputareas.kt`).
+- Iframe embeds: `logs(...)` → `/logs`, `tree(...)` → `/tree`, `column(...)` → `/browse`
+  (`afield/server/browsing.kt`; `logs.html`, `tree.html`, `browser.html`).
+- Widgets: the controls DSL in `outputs.kt` (`slider`, `vec2Control`, `checkbox`, `stringInput`,
+  `colorPicker`, `controlGroup`, `syncToProperty`) → `sliders.js` → `*-update` handlers in
+  `Server.kt` (`slider-`, `vec2-`, `checkbox-`, `string-`, `color-update`) → your callbacks.
+
+### Slideshows and `withChat`
+
+- `Box.slideShow { step(...) { ... } }` (`afield/SlideShow.kt`; examples in
+  `afield/slideshow_example.kt`; notes in `dev_docs/SLIDESHOW_FEATURE.md`,
+  `SLIDESHOW_ANNOTATIONS.md`, `INTERACTIVE_GUIDES.md`).
+- A step can show an anchored note (`note(...)` / `markdownNote(...)` via `ShowSlideNote`,
+  rendered by the `show-slide-note` handler in `Main.kt`); select a box, switch property and
+  highlight a line (`selectBox(...)`, `SelectAndEditBox`); draw annotation lines to boxes or code
+  lines (`annotate(...)`, `annotateToLine(...)` → `SlideAnnotation`); and template note text with
+  `{{placeholder}}` against host box properties, scripting vars, and global
+  `templates`/`knownValues`.
+- Navigation: `#slideshow:next|previous|home|stop` links are forwarded as `slideshow-command`
+  and executed against the active `SlideShowInstance` in `Server.kt`; `#custom:name` triggers a
+  step's `linkCallback("name") { ... }`; `[[next]]`/`[[back]]` are expanded by `SlideMarkdown`.
+- Chat: `SlideStepBuilder.withChat(...)` adds a collapsible Discussion under a note;
+  `Box.withChat(...)` mounts the same UI into an output channel (`display("chat", ...)`) via
+  `mountSharedChat(...)` from `Main.kt`. Field proxies chat RPC through `afield/server/chat.kt` to
+  an external service (`CHAT_SERVER_URL`, default `http://localhost:5002`). The old Python
+  service was retired; the chat UI and proxy remain pending redesign.
+
+### Drawing layer (Excalidraw)
+
+- An Excalidraw scene laid over the whole canvas for notation: `src/jsMain/kotlin/afield/drawingLayer.kt`, toggled by `toggle-drawing-layer` (Alt+D). Off, it is visible but inert; on, it owns mouse and keyboard until toggled back.
+- Scene coordinates are Field world coordinates. The canvas camera is `screen = world * mainZoom + mainTranslation`, so Excalidraw's zoom is `mainZoom` and its scroll is `mainTranslation / mainZoom`. The camera state lives in `CanvasCamera` (`canvasCamera.kt`, held per pane for the planned split canvas, `dev_docs/workspace/SPLIT_PANES_PLAN.md`); `mainTranslation` and `mainZoom` are read-only views of it, and `applyViewportTranslation` in `Main.kt` is its only writer, which brings the drawing layer, grid, connections and `set-viewport` along. Outside `Main.kt`, move it with `moveCanvasCamera`.
+
+### Notation: box code ↔ the drawing
+
+- `notation` (the box is the implicit receiver) reads, writes and reacts to the drawing layer's scene: `notation.marks/strokes/arrows/named()/over(box)`, `notation { rect(); arrow(from = box, to = box); stroke(fline) }` (owned by the box, replaced on re-run), `notation.edit/delete/anchor`, `notation.onStroke/onArrow/onText/onChange { }`. Source in `src/jvmMain/kotlin/afield/ui/notation/`; AI4 reads it with `ReadNotationRequest` and pictures a region with `ViewNotationRequest` (`afield/ai/agent/NotationTools.kt`); design and the full API in `dev_docs/NOTATION.md`.
+- Reading by intersection: `notation.space("score", x = 0.0..8.0, y = 84.0..48.0)` maps a region to its own axes; `vertical(t)` / `horizontal(p)` return `Hit`s (value, span, along, slope, pen pressure); `events` / `between(t0, t1)` / `sounding(t)` for playheads.
+- Clients send their scene as `notation-scene`, merged server-side by element version (`NotationScene.merge`). Tests: `NotationTest`, `NotationIntersectionTest`.
+
+### Canvas zoom
+
+- Ctrl/pinch-wheel zooms the box canvas about the cursor (`setCanvasZoom`, 0.1×–4×); **Reset Canvas Zoom** in the palette returns to 100%. Translation stays in screen pixels, so pan deltas and centring are zoom-independent.
+- Anything that turns a screen measurement into a world one goes through a pane: `CanvasCamera.paneAt(x, y)` for a pointer, `CanvasCamera.paneOf(element)` for a box, then `worldX`/`worldY`/`worldRect` (box drag/resize deltas still divide by `mainZoom`). Rectangles that mean "the visible canvas" are `pane.rect`, not `window.innerWidth/innerHeight`. Window-sized SVG layers take `worldViewBox(w, h)`. The background dots are the visual unit for `frame` and scale with zoom; the live grid is `src/commonMain/resources/fieldWebglBackground.js`, drawn with a 2D canvas so it holds none of the 16 WebGL contexts Chromium allows a page (the inline WebGL copy in `Main.kt` is a fallback that does not run when that script has installed), and both take the zoom.
+- `Box.viewport` is the main pane's world rect `(-x, -y, w, h)` in world units at any zoom, and `Box.viewports` lists every pane's visible world rect (`sendViewportsToServer` in `Main.kt`). Slideshow notes and annotations are drawn from client rects and redrawn by `applyViewportTranslation`, so they follow pan and zoom (UI regression `slideshow-annotation-zoom`). Bookmarks record zoom; ones saved before that keep the current zoom.
+- **Split panes** (palette: **Split Canvas Here**, **... Columns Here**, **... Rows Here** add dividers, up to two per axis; **Unlink Pane** (and **... Horizontally/Vertically**), **Relink Pane**; **Remove Canvas Split**; `canvasCamera.kt`, thumbnails in `canvasSplitPreview.kt`): each pane shows its own world band and holds the DOM of the boxes whose frame origin is in it; panes in a row share Y scroll, panes in a column share X, zoom is shared. The split is the root `panes` property, written through the marked `send("set-string", payload)` so stale echoes are dropped. Dividers move by their handles (release at the edge or double-click to remove one); the top-left grip splits. Connection, hint and arc layers draw through the bottom-right pane's camera from each box's on-screen rect, so they reach every pane. The drawing layer has one Excalidraw per pane (`syncPaneMounts` in `drawingLayer.kt`); only the main pane's shows a toolbar. A box dragged across a divider rides an unclipped drag canvas and is re-expressed in the destination pane's camera on drop (`beginBoxDrag`/`endBoxDrag`). Status and gaps are in `dev_docs/workspace/SPLIT_PANES_PLAN.md`.
+- **Frame Selected** (`alt+f`, `frameSelected` in `Main.kt`) fits the selection and its open output panels into the largest window region not covered by the editor, docs or Field panels (`FRAME_OCCLUDERS`), zooming out only as needed.
+- One scene per document, as `.excalidraw` JSON in the root box's `drawing` property (inline in `metadata.edn`, since root never writes sidecars). Remote updates merge with Excalidraw's `reconcileElements`.
+- The React/Excalidraw bundle is vendored in `src/jsMain/resources/excalidraw/` and lazy-loaded; rebuild it with `cd tools/excalidraw-bundle && npm ci && npm run build`. Probe it with `window.drawingLayerState()`.
+
+### Canvas panels
+
+Floating panels over the canvas are built on `FieldPanel` (`src/jsMain/kotlin/afield/fieldPanel.kt`,
+`.field-panel` in `field.css`): title, status line, close, Escape, and keys/mouse-downs kept off the
+canvas. The bookmarks panel (`alt+b`, `bookmarks.kt`), the layers panel (`alt+l`, `layersPanel.kt`) and
+the Macro Recorder (`commands.kt`) use it; build the next one on it.
+
+## 6. Vulkan graphics (Field 4)
+
+The Vulkan stack under `src/jvmMain/kotlin/afield/four/` is built on LWJGL (Vulkan, VMA,
+shaderc, SPIRV-Cross via the `spvc` bindings) with optional OpenXR targets for VR.
+`Renderer.kt` owns instance/device/queues/swapchain and runs the frame loop;
+`util/Options.kt` holds global toggles (validation, VR, vsync, SDK hints). The file-by-file map
+is `src/VULKAN_GRAPHICS_SYSTEM.md`. On macOS, `Options.doVulkanSDK()` uses the loader from
+`VULKAN_SDK` or the newest `~/VulkanSDK/<version>` and pins `VK_DRIVER_FILES` to that SDK's
+KosmicKrisp manifest by default on Apple silicon with macOS 26+ (MoltenVK elsewhere, or with
+`AFIELD_VULKAN_DRIVER=moltenvk`, which the IOSurface features still need;
+`dev_docs/KOSMICKRISP.md`). `Window` and `Instance` call it themselves, so no entrypoint can skip
+it. With no SDK, LWJGL's bundled MoltenVK is used.
+`afield.graphics.vulkan.util.VulkanProbe` probes loader, driver, layers and SDK in a child JVM and shows them
+in the `/welcome` Vulkan panel (`/welcome#vulkan`, `GET /api/vulkan-status[?refresh=1]`), with
+per-OS install steps. Shader introspection uses LWJGL's SPIRV-Cross bindings; the old checked-in
+`bin/spirv-cross-*` binaries are no longer needed.
+
+**Read the worked lessons before writing box-level graphics code, and before the engine
+source.** The box-facing API (`moduleHere`, `Mesh`, `ComputeMesh`, `RenderToTexture`,
+`fromContext()`, `prop<>`) reads very differently from the Vulkan plumbing, and code inferred from
+`Renderer.kt` compiles against the engine but is not how a box is written.
+[`public/docs/assets/canonical_graphics/LESSONS.md`](../../public/docs/assets/canonical_graphics/LESSONS.md)
+indexes ~33 lessons that run against a live renderer — cameras, compute shaders and particles,
+texturing, glTF, render-to-texture, ping-pong buffers, blur kernels, shader `#include` and Lygia,
+printf and texture-probe debugging, a GPU radix sort, Slang, DLA. Every file there is named by
+box uid; the index maps each lesson to its Kotlin and shader files, records the parent chain it
+needs, and carries a reverse index from API symbol (`RenderToTexture`, `LoadedTexture`,
+`computeModuleHere`, `GpuRadixSort`, ...) to lessons. Prefer adapting a lesson to inventing a
+call sequence. The prose walkthrough with captured images is
+[`public/docs/afield_four_graphics.md`](../../public/docs/afield_four_graphics.md).
+
+Renderer access is graph topology. For automation: run
+`dev_docs/agents/transcripts/graphics_renderer_launch.yaml`, wait with
+`wait-native-renderer agent_graphics_context --frames 3`, create the example box, connect
+`agent_graphics_context -> example_box`, then run it. A box beneath the renderer already has
+`renderer` (the renderer box publishes `prop<Renderer>(renderer)`), so do not look it up; only code
+that starts coroutine work with `start(...)` captures it first (`val r = renderer`) and passes it in.
+`./gradlew checkBoxIdioms` (`tools/check_box_idioms.py`) flags the redundant lookup in published box
+code, and a landing runs it on what it changed.
+
+
+## 8. Docs authoring
+
+- Zensical site: sources in `public/docs/` (Markdown; notebooks supported), output in
+  `public/field4/`. Build commands are in the table in section 3. Serve standalone with
+  `cd public && python3 -m http.server 8000` (browse `http://localhost:8000/field4/`), or iterate
+  with `tools/build_zensical_docs.py --skip-build` then
+  `cd public && uv run --project .. --group docs zensical serve -f zensical.generated.yml`.
+- `FIELD_DOCS_RUNNER_SESSION=1` (experimental, default off) routes eligible non-graphics captures
+  through one warm `tools/field_session.py` daemon; its safety rules and measurements are in
+  `dev_docs/testing/TESTING_STRATEGY.md` (section 5).
+- **`!!! note` vs `??? aside`.** `!!! note` / `warning` / `info` / `tip` is for a reader using the
+  thing on the page: an API that does not behave as named, a statistic whose floor is not zero, a
+  security caveat, a solver's guarantee. It stays open in the text column. `??? aside "Title"` is
+  commentary about how the page or its figures came to be, written for us and the next agent —
+  what an earlier cut got wrong and what proved it, what the build cannot capture, which claim CI
+  now pins. It renders collapsed and, at ≥ 82em, floats into the right margin. The test: would
+  this be worth reading to someone who does not care how the page was made? If not, it is an
+  aside — keep writing them. Mechanics: `pymdownx.details` supplies `???` (`public/zensical.yml`);
+  `aside` is styled in `public/docs/stylesheets/extra.css` (search `??? aside`) as a float with a
+  negative right margin, no JS; bodies are indented four spaces.
+- Docs inside Field: `switch-to-docs-iframe` (`src/jsMain/kotlin/afield/commands.kt`) shows an
+  overlay wired in `bootstrapMonaco.js`, defaulting to `/field-docs/`. That route serves this
+  checkout's `public/field4/` when the page is built and proxies `https://openendedgroup.com/field4/`
+  otherwise (`AFIELD_DOCS_MIRROR_SOURCE=local|upstream`, `AFIELD_DOCS_MIRROR_DIR`;
+  `afield/server/docsAnnotations.kt`; `dev_docs/DOCS_IFRAME_MODE.md`); both inject the annotation
+  panel. Docs pages drive Field through `window.FieldAPI` (`docsIframeApi.js`).
+- Human notes on the docs are a revision queue: `tools/docs_notes.py` (stdlib; `queue`, `brief
+  <page>`, `sync`, `resolve`/`question`/`memory`, and `revise`, which runs one agent per page in
+  parallel). Each note is anchored to its Markdown or KDoc lines by `git blame` origin, so line
+  numbers stay right after other edits. See `public/docs/docs_notes.md`.
+- The public changelog, `public/docs/changelog.md` ("What's New", linked from the front page), is
+  written from `main`'s history: `tools/docs_changelog.py status` says how far behind it is,
+  `brief` prints the next ~10 landings to condense into an entry, `check` (also run by
+  `tools/test_docs_changelog.py`) holds every landing to exactly one entry and every link to a
+  real page and heading. How to write one: `dev_docs/agents/DOCS_CHANGELOG.md`.
+- **What goes on a page:** [`dev_docs/agents/DOCS_WRITING_RULES.md`](DOCS_WRITING_RULES.md),
+  distilled from the human's notes on the published site. In short: write for the user (how a
+  page was made and internal mechanism go in an aside or `dev_docs/`). No lab-notebook voice or
+  invented vocabulary. Lead with the common case. Introduce code before showing it, and write it
+  the way a box is written. Look at every capture at column width. Use one page per topic: work
+  that extends an existing page goes onto that page as new sections, never onto a sibling page.
+  Link whatever a reader can open. These are prose until checks enforce them; the file lists the
+  first five checks that would retire them.
+- `exportToDocumentation(...)` (`afield/docs/doc.kt`) turns boxes with metadata into docs-ready
+  Markdown plus captured assets.
+- Read-only offline viewer: `offline.html`, `offline-viewer.js`, `edn-parser.js` in
+  `src/commonMain/resources`; canonical vendored assets in `src/jsMain/resources/monaco/min`,
+  `woff2`, `iosevka.css`. `tools/build-offline-docs.sh` writes `dist/offline-viewer/`. Copies under
+  `public/` and `dev_docs/` are generated and ignored — refresh with
+  `uv run python tools/sync_offline_assets.py --target public --target dev_docs --no-docs`;
+  `embed-example.html` shows iframing `offline.html?file=...`.
+

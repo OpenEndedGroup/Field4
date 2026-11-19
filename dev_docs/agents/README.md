@@ -23,7 +23,8 @@ Two hard boundaries keep that split clean:
   not a new op vocabulary).
 
 The repo-wide entry point is [`../../AGENTS.md`](../../AGENTS.md); this folder is the
-detailed reference it points into.
+detailed reference it points into. [`AGENTS_DETAIL.md`](./AGENTS_DETAIL.md) is its long form,
+kept apart so `AGENTS.md` fits the 32 KiB Codex loads.
 
 For authoring and review, use the compact, prompt-ready
 [box-code house style](BOX_CODE_HOUSE_STYLE.md).
