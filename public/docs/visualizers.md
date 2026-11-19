@@ -931,6 +931,13 @@ loop {
 
 Run either as a launch, not a plain execute.
 
+Each chart is drawn under the line of the call that made it, and that holds while you edit the box
+around a running loop. Add lines above the call, or a comment that mentions `history`, and the chart
+keeps appearing under the call rather than under the first line that reads `history`. The same goes
+for calls below a [`//%-` fragment break](running_code.md#the-fragment-break), and for `histogram`,
+`stats`, `distribution` and `pianoRoll`. Finding the line costs next to nothing: a whole `history()`
+call takes under a microsecond, so it can sit in an inner loop that runs hundreds of times a frame.
+
 ### A random variable, settling
 
 `ᛟ.distribution(d)` is the same kind of passthrough for a random variable from

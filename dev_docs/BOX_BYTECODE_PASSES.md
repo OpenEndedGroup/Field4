@@ -145,7 +145,7 @@ Each pass is built on its own branch from this one and documents itself in its o
 
 | pass | object | branch | note |
 |---|---|---|---|
-| call-site anchors | `CallSiteAnchorPass` | `asm/callsite-anchors` | `dev_docs/box_bytecode/CALLSITE_ANCHORS.md` |
+| call-site anchors | `CallSiteAnchorPass` | `asm/callsite-anchors` | [`dev_docs/box_bytecode/CALLSITE_ANCHORS.md`](box_bytecode/CALLSITE_ANCHORS.md) (built; on by default; `history()` 707 ns/call anchored vs 13,372 ns by stack search, smoke G) |
 | line heat | `LineHeatPass` | `asm/line-heat` | `dev_docs/box_bytecode/LINE_HEAT.md` |
 | per-function cost | `BoxCostPass` | `asm/box-cost` | `dev_docs/box_bytecode/BOX_COST.md` |
 | thread-ownership guards | `ThreadOwnershipPass` | `asm/thread-ownership` | `dev_docs/box_bytecode/THREAD_OWNERSHIP.md` |
@@ -173,6 +173,17 @@ Every frame, and wrong after a `//%-` break or a line-shifting macro.
 - Inline functions cannot be targets (the call vanishes into the snippet); an inline wrapper's own
   call to a `@StackAware` function carries an SMAP line past the source, so it falls back.
   Extension functions are static on their `*Kt` facade and resolve like any static.
+
+Built as above, with three refinements found while building it (details and measurements in
+[`box_bytecode/CALLSITE_ANCHORS.md`](box_bytecode/CALLSITE_ANCHORS.md)):
+
+- The ordinal counts calls of the same *name* on the line, not the same `owner.name`, because the
+  column is found by text and `history(x)` / `history(x, 50)` call `history$default` / `history`.
+- `Site.boxLine()` refuses two common lines: any line with a `println(` (the macro pass compiles it
+  as `_printlnHere(4+1, `), and a line being edited (`liveNumber`'s whole purpose). The anchor
+  places such a line between its nearest proven neighbours when both agree on one offset and the
+  box's line still has the call's text; `SourceLineMap` itself is unchanged.
+- `take` answers only for snippets compiled from `code`, the property every helper reads.
 
 ### Line heat
 
