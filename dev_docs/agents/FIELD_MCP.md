@@ -84,7 +84,10 @@ registration may continue to show its original tool list.
 
 Start with `field_electron_tabs` to identify the selected window and tab, and
 check its URL and document before acting. `field_electron_inspect` reads a compact
-view of visible text, headings, links and labelled controls. `field_electron_act`
+summary with headings and control/link counts. Pass `query` to find labelled elements,
+optionally restricted by a CSS `scope` selector. Use `mode: "full"` and optional
+`sections` (headings, controls, links, visibleText) for detail. `limit` caps each
+list and bounds text; `truncated` reports omitted results. `field_electron_act`
 clicks or fills one uniquely matched visible control; `field_electron_screenshot`
 returns the live tab viewport; `field_electron_console` returns recent warnings
 and errors. A `tab` argument can name an existing tab by id, title or URL. These
