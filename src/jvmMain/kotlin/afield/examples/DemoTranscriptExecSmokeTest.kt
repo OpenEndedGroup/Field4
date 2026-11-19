@@ -96,6 +96,8 @@ object DemoTranscriptExecSmokeTest {
 
     /** Pure-compute demos that are safe to run to completion headless. */
     internal val EXECUTE = setOf(
+        // mesh_examples.md, Repairing a field that is only a bound: SdfGrid2D circles and offsets; pure CPU.
+        "sdf_global_consistency",
         "sentence_diagrams",
         // linear_algebra.md, Spinny algebras: two ε²/j² sliders and four SVG figure boxes; pure CPU.
         "spinny_algebras",
