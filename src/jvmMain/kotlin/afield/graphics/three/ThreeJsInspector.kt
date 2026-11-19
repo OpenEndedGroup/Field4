@@ -88,6 +88,15 @@ data class ThreeExplode(
  * [outline] is the part that makes this a section rather than a hidden half: the viewer computes where
  * the plane crosses each triangle of the fill and each line segment, and draws those crossings as a
  * bright cut line. Clipping alone shows you the inside of a shell; the outline shows you the *cut*.
+ *
+ * [cap] fills the cut: the viewer chains each part's crossings into closed loops, nests every loop
+ * of every part together, and draws each region as flat triangles lying in the plane — the poché of a
+ * section drawing — in the colour of the part that is material there, so a wall reads as solid
+ * material rather than two skins with its back faces showing between them. A part embedded in another
+ * caps over it; an inward-wound shell is a cavity and stays open. A loop that does not close (an open
+ * surface, a mesh with a gap) is left uncapped and counted in the readout. The viewer's toolbar also
+ * changes [normal] and [flip] live: X, Y and Z buttons, a flip, and "face" to align to a clicked
+ * surface.
  */
 @Serializable
 data class ThreeSection(
@@ -97,10 +106,17 @@ data class ThreeSection(
     val outline: Boolean = true,
     /** Which half survives. Flipping is not the same as negating [normal]: [fraction] keeps its sense. */
     val flip: Boolean = false,
+    /** Fill every closed loop of the cut with a flat cap. */
+    val cap: Boolean = true,
+    /**
+     * One CSS colour for every cap, such as `"#222222"` for a black poché. `null` uses each part's own
+     * colour, a little darkened, so parts stay told apart in section.
+     */
+    val capColor: String? = null,
 ) {
     override fun toString(): String =
         "ThreeSection(enabled=$enabled, normal=${normal.contentToString()}, fraction=$fraction, " +
-            "outline=$outline, flip=$flip)"
+            "outline=$outline, flip=$flip, cap=$cap, capColor=$capColor)"
 }
 
 /**
@@ -326,7 +342,12 @@ class ThreeInspectorView internal constructor(
             )
         )
 
-    /** Cut the figure at [fraction] of the way across its bounds, measured along the given normal. */
+    /**
+     * Cut the figure at [fraction] of the way across its bounds, measured along the given normal.
+     *
+     * [cap] fills each solid's cut with a flat face in the plane; [capColor] sets one colour for all of
+     * them (see [ThreeSection.capColor]).
+     */
     fun section(
         x: Double,
         y: Double,
@@ -334,6 +355,8 @@ class ThreeInspectorView internal constructor(
         fraction: Double,
         outline: Boolean = true,
         flip: Boolean = false,
+        cap: Boolean = true,
+        capColor: String? = null,
     ): ThreeInspectorView = set(
         inspector.copy(
             section = ThreeSection(
@@ -342,6 +365,8 @@ class ThreeInspectorView internal constructor(
                 fraction = fraction,
                 outline = outline,
                 flip = flip,
+                cap = cap,
+                capColor = capColor,
             )
         )
     )
