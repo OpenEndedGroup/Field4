@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-19T20:53:05.322Z",
+  "documentName": "buffer_paint_gpu",
+  "outputs": [
+    {
+      "uid": "bpg_renderer",
+      "channel": "Vulkan window · still image",
+      "open": true,
+      "path": "outputs/0.html",
+      "width": 272,
+      "height": 254,
+      "kinds": [
+        "native-image"
+      ],
+      "warnings": []
+    }
+  ]
+}

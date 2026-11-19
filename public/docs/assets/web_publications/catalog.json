@@ -825,6 +825,59 @@
         "public/docs/assets/agent_transcripts/browse_embeds/tree_box_code_.kt": "0537a44a726dedba1226ce4f0730a3e45e61e7dcfd138bff6ebd023f1f480d9c"
       }
     },
+    "assets/agent_transcripts/buffer_paint/metadata.edn": {
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-19T20:52:57.759Z",
+      "channels": 2,
+      "file": "assets/web_publications/buffer_paint/document/metadata.edn",
+      "files": {
+        "assets/web_publications/buffer_paint/document/metadata.edn": "b521e9aa3dec1cffef24b8152051dbc89d838bd51d73bf02056f3726d5dd63f0",
+        "assets/web_publications/buffer_paint/document/outputs.json": "5931c977c39315777e6f67b7fe788c6c01b02602eccd14345eb3eddbb26012d2",
+        "assets/web_publications/buffer_paint/outputs/0.html": "b9fc7f84532f917162d6b95c511fc787e06c8d54240f1152a7ae05c0c2a02335",
+        "assets/web_publications/buffer_paint/outputs/1.html": "751706a73264a912bcef7365e26b01cde9a25542d41d538a180a0582019154c3"
+      },
+      "kinds": [],
+      "outputs": "assets/web_publications/buffer_paint/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/buffer_paint.yaml": "73d3552d59e05e47c690de924bfe56e74847986864f030116b05760cafd86848",
+        "public/docs/assets/agent_transcripts/buffer_paint/buffer_paint_delay_line_code_.kt": "e4afac46eb00cfda709868f58b386cbbd37facd12f30c10667471345dc336954",
+        "public/docs/assets/agent_transcripts/buffer_paint/buffer_paint_gray_scott_code_.kt": "19fa4a6d342f5bb06a5ca7089ec0397707240080c7475a8fa71462589a6db698",
+        "public/docs/assets/agent_transcripts/buffer_paint/guides/visualizers.md": "901ee016cb59db68da4c7f6d8e84f3a8c0b4523f72087d55078a51d5d8a5a078",
+        "public/docs/assets/agent_transcripts/buffer_paint/metadata.edn": "6ba6e7d5d0a50b422e4347786f2da94fe31cdaaf51c1ea3d74a43920a32705ad"
+      }
+    },
+    "assets/agent_transcripts/buffer_paint_gpu/metadata.edn": {
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-19T20:53:05.322Z",
+      "channels": 1,
+      "file": "assets/web_publications/buffer_paint_gpu/document/metadata.edn",
+      "files": {
+        "assets/web_publications/buffer_paint_gpu/document/metadata.edn": "996cf5aa5771e7b05021cc86b2b649058383ab6ac04037d994d1ced45350dcc4",
+        "assets/web_publications/buffer_paint_gpu/document/outputs.json": "069b2fa4e7c715f30e7d88513b6b1938bad65b70df56cfb636b31fd1f49311f5",
+        "assets/web_publications/buffer_paint_gpu/outputs/0.html": "ee1883a4d9dda9237714bc12c65562ca225b0855dd681156f96d4a536181430a"
+      },
+      "kinds": [
+        "native-image"
+      ],
+      "outputs": "assets/web_publications/buffer_paint_gpu/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/buffer_paint_gpu.yaml": "0e836ff24e640013162f1a856093effbb30b32ae1d444e94236a90aa392176ec",
+        "public/docs/assets/agent_transcripts/buffer_paint_gpu/bpg_draw_code_.kt": "3a140b1cf701ac87dc071bce55d3d514d1194e95f6165de7b185e8228bd1a25a",
+        "public/docs/assets/agent_transcripts/buffer_paint_gpu/bpg_draw_fragment_.glsl": "a7cec652eee65401135a20f3364389443d5ea5ab222b15a689d79c8049d782af",
+        "public/docs/assets/agent_transcripts/buffer_paint_gpu/bpg_draw_vertex_.glsl": "fa8b34a0fd5d23cb8b092ff1b8d0f95ceb03612f45fa7b06e485ed11da365bcc",
+        "public/docs/assets/agent_transcripts/buffer_paint_gpu/bpg_renderer_code_.kt": "4c83f494b0aca0e17c76bf11d825d1ef8383df8b43bf86a7bce1eba1e0d6ea5a",
+        "public/docs/assets/agent_transcripts/buffer_paint_gpu/bpg_sim_code_.kt": "9081b463c259bd70eef6ce364ac5c1d163f67df4ae72d75837e0c8a29f2d15e6",
+        "public/docs/assets/agent_transcripts/buffer_paint_gpu/bpg_sim_compute_.glsl": "e324a6cb0095446f1193cd39fd233b95320b8eeb2ef6d91cf8ae7118fa4eeb2b",
+        "public/docs/assets/agent_transcripts/buffer_paint_gpu/guides/visualizers.md": "cfb3a7c3f8c7c9a84add7fd5ed8f9cd6f467497eca1e99cf736d35b688225201",
+        "public/docs/assets/agent_transcripts/buffer_paint_gpu/metadata.edn": "9241236e57da7a4082c7f23776dc8ec84cdfb229dbcd63446f125d34042beb25",
+        "public/docs/assets/visualizers-buffer-paint-gpu.png": "83a4a09a3e2f7979dc51d054eca54bed09831d651ea7b15a4b1420068b7b5cd6",
+        "public/docs/visualizers.md#capture-box=bpg_renderer": "caf3d9b7225095cc1863c5eb9314c9251ef8e2f1001e0a78578de22230fb903d"
+      },
+      "supplementalSources": [
+        "public/docs/assets/visualizers-buffer-paint-gpu.png",
+        "public/docs/visualizers.md#capture-box=bpg_renderer"
+      ]
+    },
     "assets/agent_transcripts/ceres_free_variables/metadata.edn": {
       "captureDigest": "347d26bd16f6fc14afd40b75579b70acc28d27cf578abbbca016cdda71b69c95",
       "capturedAt": "2026-11-18T21:56:28.183Z",

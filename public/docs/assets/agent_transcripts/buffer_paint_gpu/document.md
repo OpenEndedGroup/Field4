@@ -34,7 +34,7 @@ start(renderer::run)
 <!-- field-box id="bpg_sim" index="1" -->
 
 ```edn [field-box id="bpg_sim" role="properties"]
-{"id" "bpg_sim" "index" 1 "name" "Gray-Scott on the GPU, paintable" "parents" ["root" "bpg_renderer"] "children" ["bpg_draw"] "properties" {"children" #{#afield/box "bpg_draw"} "parents" #{#afield/box "root" #afield/box "bpg_renderer"} "name" "Gray-Scott on the GPU, paintable" "_tombstone" false "frame" #afield/rect [40.0 200.0 340.0 100.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "bpg_sim_compute_.glsl" "lines" 34 "characters" 1128 "sha256" "e324a6cb0095446f1193cd39fd233b95320b8eeb2ef6d91cf8ae7118fa4eeb2b"} {"name" "code" "language" "kotlin" "path" "bpg_sim_code_.kt" "lines" 158 "characters" 5992 "sha256" "7a4c28a01838d3c0df2631779880fc0fb194b49927d5f2c8d699a5445830e8b9"}]}
+{"id" "bpg_sim" "index" 1 "name" "Gray-Scott on the GPU, paintable" "parents" ["root" "bpg_renderer"] "children" ["bpg_draw"] "properties" {"children" #{#afield/box "bpg_draw"} "parents" #{#afield/box "root" #afield/box "bpg_renderer"} "name" "Gray-Scott on the GPU, paintable" "_tombstone" false "frame" #afield/rect [40.0 200.0 340.0 100.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "bpg_sim_compute_.glsl" "lines" 34 "characters" 1128 "sha256" "e324a6cb0095446f1193cd39fd233b95320b8eeb2ef6d91cf8ae7118fa4eeb2b"} {"name" "code" "language" "kotlin" "path" "bpg_sim_code_.kt" "lines" 158 "characters" 5980 "sha256" "9081b463c259bd70eef6ce364ac5c1d163f67df4ae72d75837e0c8a29f2d15e6"}]}
 ```
 
 ```glsl [field-property box="bpg_sim" name="compute" path="bpg_sim_compute_.glsl"]
@@ -228,7 +228,7 @@ frames {
             val view = bufferCanvas(shown, width = W, channels = 2)
             view.display = intArrayOf(1, 1, 1) // show v, the second float of each cell
             view.map = ValueMap.Linear(0.0, 0.5)
-            val row60 = (48..72 step 4).joinToString(" ") { x -> "%.3f".format(view[x, 60, 1]) }
+            val row60 = (48..72 step 4).joinToString(" ") { x -> view[x, 60, 1].f3 }
             display("state", view.toHTML() + "<pre>renderer frame $f\nv along row 60, x = 48..72 step 4: $row60</pre>")
         }
     }
