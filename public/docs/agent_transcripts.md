@@ -2782,6 +2782,16 @@ shapes and rerun to see how the `consistency()` numbers move.
 
 [Open →](offline.html?file=assets/agent_transcripts/sdf_global_consistency/metadata.edn)
 
+### splat_tiles
+
+**Gaussian splats blended tile by tile.** [Splats by tile, and what a tile costs](geometry_from_disk.md#splats-by-tile-and-what-a-tile-costs)
+as three boxes. Box 1 bins a clustered cloud into 16×16 tiles, blends each tile front to back with
+`SplatTiles`, and prints how far the result is from `SplatRaster`'s whole-image reference. Box 2 shows
+how many splats each tile holds as a heat map. Box 3 times tiles handed out in raster order against
+heaviest first with the heaviest tiles cut into chunks. Change the camera or the count and rerun.
+
+[Open →](offline.html?file=assets/agent_transcripts/splat_tiles/metadata.edn)
+
 ### macro_recorder_stamp
 
 **A macro used as a stamp.** The first box saves a macro the way the

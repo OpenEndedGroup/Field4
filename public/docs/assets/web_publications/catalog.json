@@ -5198,6 +5198,28 @@
         "public/docs/assets/agent_transcripts_gallery/splat_shader_passthrough.png"
       ]
     },
+    "assets/agent_transcripts/splat_tiles/metadata.edn": {
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-19T13:11:38.894Z",
+      "channels": 2,
+      "file": "assets/web_publications/splat_tiles/document/metadata.edn",
+      "files": {
+        "assets/web_publications/splat_tiles/document/metadata.edn": "349546ed842c0a1b7ef03a6cbced1f7305e32316e1cc08561e2e27da29d948a9",
+        "assets/web_publications/splat_tiles/document/outputs.json": "66c4126be67ea467a8fa8d9eacad4366c192e560011e495961fa4f8f9a764d2d",
+        "assets/web_publications/splat_tiles/outputs/0.html": "e9af33bc9a784d022c141e23fe4ae566513bacb71988cbae25e11af3f6bcc62d",
+        "assets/web_publications/splat_tiles/outputs/1.html": "e843d9817978472c55e5dad43e8eea387dc27359c5090b8856a0d5d842759e9c"
+      },
+      "kinds": [],
+      "outputs": "assets/web_publications/splat_tiles/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/splat_tiles.yaml": "9992bde1aef03f2ff8f501d8841a9f9ed155c600002eeb60db9b4f03c6e6b41a",
+        "public/docs/assets/agent_transcripts/splat_tiles/guides/geometry_from_disk.md": "bc8e8ca159d82612b55b204cb2d5c5ec9e424107c2177dd6fca4a31931f747b9",
+        "public/docs/assets/agent_transcripts/splat_tiles/metadata.edn": "2bcbbc2395c6cbcb61c5fda00188bb2d71d7577dfac7499234d84e58e4e67d54",
+        "public/docs/assets/agent_transcripts/splat_tiles/splat_tiles_heat_code_.kt": "05d798d8515e43e2c37714a9ad88530c76a2aa72a9008c9a199fa239ee942780",
+        "public/docs/assets/agent_transcripts/splat_tiles/splat_tiles_image_code_.kt": "28032d354ef67b679ae0003c8cdf245e6e1ca36806dd3f559172f5906a872d01",
+        "public/docs/assets/agent_transcripts/splat_tiles/splat_tiles_timing_code_.kt": "1c9f520a57a5576bd2fe666cd1d915e881653a4f0517cff08f35c35a3befb2a0"
+      }
+    },
     "assets/agent_transcripts/spreadsheet_constraints/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
       "capturedAt": "2026-11-18T16:04:55.734Z",
