@@ -26,9 +26,10 @@ import kotlin.test.assertTrue
  *
  *  * **chaining** — a slab's cut is one loop, and stays one loop when the mesh is unindexed (every
  *    crossing computed twice, from either side of its edge) or doubled as two coincident shells;
- *  * **nesting** — a torus cut flat is an annulus. Its cap must have a hole where the torus has one,
- *    and an even–odd rule that forgot the hole would *add* the inner disc's area rather than take it
- *    away. The counterfactual measures exactly that;
+ *  * **nesting** — a torus cut flat is an annulus, whose cap must have a hole where the torus has
+ *    one; a part embedded in another caps over it in its own colour; an inward-wound shell is a
+ *    cavity and stays open; parts that only touch sit side by side. The counterfactual fills a cavity
+ *    by ignoring winding;
  *  * **triangulation** — the triangles' own area equals the region's, so the fill neither overlaps
  *    itself nor leaves gaps;
  *  * **honesty** — an open surface is not capped, and is counted as open rather than filled with a
@@ -228,19 +229,132 @@ class ThreeSectionCapTest {
         }
     }
 
+    // ---------------------------------------------------------------- several parts at once
+
+    private fun TriMesh.moved(dx: Double, dy: Double, dz: Double): TriMesh {
+        val p = positions.copyOf()
+        for (v in 0 until vertexCount) {
+            p[v * 3] += dx.toFloat(); p[v * 3 + 1] += dy.toFloat(); p[v * 3 + 2] += dz.toFloat()
+        }
+        return TriMesh(positions = p, indices = indices)
+    }
+
+    /** The same surface wound the other way: what an inside-out export, or a cavity's wall, looks like. */
+    private fun TriMesh.inverted(): TriMesh {
+        val i = indices.copyOf()
+        for (t in 0 until i.size / 3) { val b = i[t * 3 + 1]; i[t * 3 + 1] = i[t * 3 + 2]; i[t * 3 + 2] = b }
+        return TriMesh(positions = positions, indices = i)
+    }
+
+    /** One owner's share of a cut: its area by the region's own triangles, and the positions. */
+    private inner class Region(val owner: Int, val positions: DoubleArray) {
+        fun area() = Cap(positions, 0.0, 0, 0).triangleArea()
+        fun covers(x: Double, y: Double) = Cap(positions, 0.0, 0, 0).covers(x, y)
+    }
+
+    /** What `inspectorDrawCut` does for a scene: every part cut, all of them capped together. */
+    private fun ViewerJavaScript.Session.capScene(parts: List<Pair<Int, TriMesh>>, z: Double): Pair<Double, Map<Int, Region>> {
+        val plane = fromJson("""{"n": [0,0,1], "d": ${-z}}""")
+        val segments = ArrayList<Double>()
+        val owners = ArrayList<Int>()
+        parts.forEach { (owner, mesh) ->
+            val cut = call("sectionCutTriangles", fromJson(mesh.positions.json()), fromJson(mesh.indices.json()), plane).doubles()
+            cut.forEach { segments += it }
+            repeat(cut.size / 6) { owners += owner }
+        }
+        val capped = call(
+            "sectionCapRegions",
+            fromJson(segments.joinToString(",", "[", "]")),
+            fromJson(owners.joinToString(",", "[", "]")),
+            plane,
+        )
+        val regions = capped.getMember("regions")
+        val byOwner = (0 until regions.arraySize).associate { k ->
+            val r = regions.getArrayElement(k)
+            val owner = r.getMember("owner").asInt()
+            owner to Region(owner, r.getMember("positions").doubles())
+        }
+        return capped.getMember("area").asDouble() to byOwner
+    }
+
+    private val outer = boxMesh(1000.0, 600.0, 200.0)
+    private val inner = boxMesh(400.0, 200.0, 100.0).moved(100.0, 0.0, 0.0)
+
     /**
-     * Counterfactual: treat every loop as an outline, and the torus's hole becomes material.
-     *
-     * The cap's area then *grows* by the inner disc — the failure a winding-free even–odd rule exists to
-     * prevent, and the one a reader would see as a filled doughnut hole.
+     * A box inside a box, as two parts: the inner one caps in its own colour, and the outer cap is holed
+     * round it rather than lying coplanar underneath. 600 000 − 80 000 and 80 000, exactly.
      */
     @Test
-    fun `counterfactual — ignoring nesting fills the torus's hole`() {
-        val torus = standingTorus()
-        val honest = session().use { it.cap(torus, 5.0) }
-        val broken = session { it.replace("if (item.depth % 2 === 0) {", "if (true) {") }.use { it.cap(torus, 5.0) }
-        assertTrue(broken.area > honest.area * 1.5, "ignoring nesting should add the hole: ${broken.area} vs ${honest.area}")
-        assertTrue(broken.covers(0.0, 0.0), "with nesting ignored the hole should be filled")
+    fun `a part embedded in another caps over it, not under it`() {
+        session().use { js ->
+            val (area, regions) = js.capScene(listOf(0 to outer, 1 to inner), 7.0)
+            assertEquals(600_000.0, area, 1e-6, "the two caps together cover the outer box's plan")
+            assertEquals(520_000.0, regions.getValue(0).area(), 1e-3, "the outer part's cap, holed round the inner")
+            assertEquals(80_000.0, regions.getValue(1).area(), 1e-3, "the inner part's cap")
+            assertTrue(regions.getValue(1).covers(100.0, 0.0), "the inner part does not cap its own centre")
+            assertTrue(!regions.getValue(0).covers(100.0, 0.0), "the outer cap lies under the inner one")
+        }
+    }
+
+    /** The same inner box wound inward and in the same part is a cavity: left open, not filled. */
+    @Test
+    fun `an inward-wound shell inside a part is a cavity`() {
+        session().use { js ->
+            val (area, regions) = js.capScene(listOf(0 to outer, 0 to inner.inverted()), 7.0)
+            assertEquals(520_000.0, area, 1e-6, "the cavity should be taken out of the cap")
+            assertTrue(!regions.getValue(0).covers(100.0, 0.0), "the cavity was filled")
+        }
+    }
+
+    /** Wound outward, the inner shell of the same part is more material, and the whole plan is filled. */
+    @Test
+    fun `an outward-wound shell inside the same part stays filled`() {
+        session().use { js ->
+            val (area, regions) = js.capScene(listOf(0 to outer, 0 to inner), 7.0)
+            assertEquals(600_000.0, area, 1e-6)
+            assertTrue(regions.getValue(0).covers(100.0, 0.0), "the inner shell's region was left empty")
+        }
+    }
+
+    /**
+     * Two layers laid against each other share a face, and neither is inside the other.
+     *
+     * The case a containment probe *on* the boundary would get wrong at random; the probes sit just
+     * inside each loop instead.
+     */
+    @Test
+    fun `abutting parts cap side by side`() {
+        val left = boxMesh(300.0, 400.0, 100.0).moved(-150.0, 0.0, 0.0)
+        val right = boxMesh(100.0, 400.0, 100.0).moved(50.0, 0.0, 0.0)
+        session().use { js ->
+            val (area, regions) = js.capScene(listOf(0 to left, 1 to right), 7.0)
+            assertEquals(160_000.0, area, 1e-6)
+            assertEquals(120_000.0, regions.getValue(0).area(), 1e-3)
+            assertEquals(40_000.0, regions.getValue(1).area(), 1e-3)
+        }
+    }
+
+    /** A part wound inside out still caps: its signs are flipped whole, not read as one big cavity. */
+    @Test
+    fun `an inside-out part still caps`() {
+        session().use { js ->
+            val (area, _) = js.capScene(listOf(0 to outer.inverted()), 7.0)
+            assertEquals(600_000.0, area, 1e-6)
+        }
+    }
+
+    /**
+     * Counterfactual: fill a region with the innermost owner whatever its winding, and the cavity of
+     * `an inward-wound shell inside a part is a cavity` comes back filled.
+     */
+    @Test
+    fun `counterfactual — ignoring winding fills a cavity`() {
+        val broken = session { it.replace("if (item.winding[key] > 0 && item.latest[key] > bestDepth)", "if (item.latest[key] > bestDepth)") }
+        broken.use { js ->
+            val (area, regions) = js.capScene(listOf(0 to outer, 0 to inner.inverted()), 7.0)
+            assertTrue(area > 520_000.0 + 1.0, "ignoring winding should fill the cavity, area $area")
+            assertTrue(regions.getValue(0).covers(100.0, 0.0), "ignoring winding should cover the cavity")
+        }
     }
 
     // ---------------------------------------------------------------- against Manifold

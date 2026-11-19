@@ -89,11 +89,14 @@ data class ThreeExplode(
  * the plane crosses each triangle of the fill and each line segment, and draws those crossings as a
  * bright cut line. Clipping alone shows you the inside of a shell; the outline shows you the *cut*.
  *
- * [cap] fills the cut: the viewer chains each solid's crossings into closed loops, sorts them into
- * outlines and holes by nesting, and draws the region as flat triangles lying in the plane — the
- * poché of a section drawing — so a wall reads as solid material rather than two skins with its back
- * faces showing between them. A loop that does not close (an open surface, a mesh with a gap) is left
- * uncapped and counted in the readout.
+ * [cap] fills the cut: the viewer chains each part's crossings into closed loops, nests every loop
+ * of every part together, and draws each region as flat triangles lying in the plane — the poché of a
+ * section drawing — in the colour of the part that is material there, so a wall reads as solid
+ * material rather than two skins with its back faces showing between them. A part embedded in another
+ * caps over it; an inward-wound shell is a cavity and stays open. A loop that does not close (an open
+ * surface, a mesh with a gap) is left uncapped and counted in the readout. The viewer's toolbar also
+ * changes [normal] and [flip] live: X, Y and Z buttons, a flip, and "face" to align to a clicked
+ * surface.
  */
 @Serializable
 data class ThreeSection(
@@ -106,8 +109,8 @@ data class ThreeSection(
     /** Fill every closed loop of the cut with a flat cap. */
     val cap: Boolean = true,
     /**
-     * One CSS colour for every cap, such as `"#222222"` for a black poché. `null` darkens each solid's
-     * own colour, so parts stay told apart in section.
+     * One CSS colour for every cap, such as `"#222222"` for a black poché. `null` uses each part's own
+     * colour, a little darkened, so parts stay told apart in section.
      */
     val capColor: String? = null,
 ) {

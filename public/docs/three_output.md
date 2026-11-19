@@ -892,12 +892,18 @@ a sliver has no clickable interior: every point of a triangle ten long and half 
 falls inside its own snap radius of an edge or a corner.
 
 The section plane cuts a mesh, wireframe overlay included, and fills the cut with a cap: a flat
-face in the plane, in a darker shade of the solid's own colour, so material reads as material instead
-of showing the inside of the shell. Holes stay open, as the bore does here, and the readout gives
-the section's area. Each solid is capped on its own. A cut through a surface that is not closed,
-such as a single wall panel or a mesh with a gap, gets an outline but no cap, and the readout counts
-those as open cuts. Pass `ThreeSection(capColor = "#222222")` for one poché colour across every
-part, or `cap = false` to show the outline alone.
+face in the plane, in the colour of the part it cuts, so material reads as material instead of
+showing the inside of the shell. A part embedded in another, such as a conduit cast into a wall,
+caps in its own colour on top of the wall's cap. A hole stays open, as the bore does here, and so
+does a cavity: an inner shell whose faces point inward. Parts laid against each other cap side by
+side. The readout gives the section's area. A cut through a surface that is not closed, such as a
+single wall panel or a mesh with a gap, gets an outline but no cap, and the readout counts those as
+open cuts. Pass `ThreeSection(capColor = "#222222")` for one poché colour across every part, or
+`cap = false` to show the outline alone.
+
+Beside the section slider, **X**, **Y** and **Z** cut across that axis of the model, and the arrows
+keep the other half. **face** aligns the cut to a surface: click it, and the plane lies just inside
+that face, turned toward you. Drag the slider to move it deeper into the model.
 
 The explode scrubber moves
 meshes and their outlines by inspection group, along with grouped FLine geometry.
