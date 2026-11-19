@@ -225,7 +225,7 @@ operations:
                       val view = bufferCanvas(shown, width = W, channels = 2)
                       view.display = intArrayOf(1, 1, 1) // show v, the second float of each cell
                       view.map = ValueMap.Linear(0.0, 0.5)
-                      val row60 = (48..72 step 4).joinToString(" ") { x -> "%.3f".format(view[x, 60, 1]) }
+                      val row60 = (48..72 step 4).joinToString(" ") { x -> view[x, 60, 1].f3 }
                       display("state", view.toHTML() + "<pre>renderer frame $f\nv along row 60, x = 48..72 step 4: $row60</pre>")
                   }
               }
