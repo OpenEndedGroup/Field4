@@ -227,9 +227,12 @@ object LineHeat {
 
     /**
      * [key] now watches box [uid]'s [property]: its next run is instrumented and its counts are
-     * published. Executions before this call are not counted. Replaces [key]'s previous watch.
+     * published. Executions before this call are not counted. Replaces [key]'s previous watch; a
+     * repeat of the watch [key] already has (the editor re-sends it as it runs the box) keeps its
+     * running totals.
      */
     fun watch(key: Any, uid: String, property: String = "code") {
+        watches[key]?.let { if (it.uid == uid && it.property == property) return }
         val w = Watch(key, uid, property)
         sitesByBox[uid]?.snapshot()?.forEach { w.see(it, count(it)) }
         val old = watches.put(key, w)

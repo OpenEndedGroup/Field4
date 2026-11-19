@@ -243,6 +243,33 @@ class LineHeatPassTest {
     }
 
     @Test
+    fun aRepeatedWatchKeepsItsTotalsAndAnotherBoxRestartsThem() {
+        // lineHeatmap.js re-sends its watch when the box runs again more than 5 s after the last
+        // send; that repeat must not restart the counts the editor's hover reports.
+        val uid = freshBox()
+        val o = load(uid)
+        val key = Any()
+        LineHeat.watch(key, uid)
+        try {
+            call(o, "loop", 3)
+            LineHeat.publish()
+            LineHeat.watch(key, uid)
+            call(o, "loop", 3)
+            val body = LineHeat.publish().single { it.first === key }.second.lines.single { it.line == lineOf("loop-body") }
+            assertEquals(3, body.delta); assertEquals(6L, body.total)
+
+            // Watching another box and coming back is a new watch: its totals start again.
+            LineHeat.watch(key, freshBox())
+            LineHeat.watch(key, uid)
+            call(o, "loop", 2)
+            val back = LineHeat.publish().single { it.first === key }.second.lines.single { it.line == lineOf("loop-body") }
+            assertEquals(2, back.delta); assertEquals(2L, back.total)
+        } finally {
+            LineHeat.unwatch(key)
+        }
+    }
+
+    @Test
     fun codeHashMatchesTheEditorsRule() {
         // lineHeatmap.js: FNV-1a over UTF-16 units, \r\n read as \n. Pinned values so the two stay equal.
         assertEquals(0x811c9dc5.toInt(), LineHeat.codeHash(""))

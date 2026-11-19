@@ -16,9 +16,11 @@ smoke `runtime.line-heat.smoke` (`LineHeatSmokeTest`).
 In the editor's command palette, **Toggle Live Line Heat**. It is off by default and remembered per
 browser (`localStorage` `afield.lineHeatmap.liveLineHeat.visible`), like the churn and execution-history
 heatmaps beside it. While it is on, the editor tells the server which box and property it has open
-(`line-heat-watch`, re-sent when the selection changes), and that box is instrumented **from its next
-run**: the code already loaded keeps running as it was compiled. Hovering a line number shows its
-count since watching began.
+(`line-heat-watch`, re-sent when the selection changes, and again on an edit or a run of the box
+once 5 s have passed since the last send), and that box is instrumented **from its next run**: the
+code already loaded keeps running as it was compiled. A repeat of the watch a session already has
+keeps its running totals (`LineHeat.watch` returns early); a different box, or coming back to this
+one, starts them again. Hovering a coloured line shows its count since watching began.
 
 The ramp is the heatmap file's own (blue, green, orange, red), log-scaled against the hottest line;
 a line's heat decays with a 0.8 s time constant against a reference that decays over 4 s, so a line
@@ -86,13 +88,15 @@ what is painted, for probes.
 
 ## Verified
 
-- `LineHeatPassTest` (11): loop body counts each iteration, the constructor's property initialiser
+- `LineHeatPassTest` (12): loop body counts each iteration, the constructor's property initialiser
   counts (probes before and after `super()` verify); a `catch` block's first line verifies under
   the poll pass and counts; one site per class and line, a lambda body counts per call; no site past
   the source (inlined `repeat`), a cut-short source gets probes only on its lines, no source gets
   none; `wants` only for the watched box and property; publisher deltas and totals across two runs,
   restart on a text change; a watch started late does not count earlier runs; a macro-rewritten line
-  is placed between its neighbours; the pinned FNV values the JS shares.
+  is placed between its neighbours; a repeated watch keeps its totals and a watch of another box
+  restarts them (before that rule, the client's 5 s re-send restarted the hover count whenever the
+  box was run again); the pinned FNV values the JS shares.
 - `runtime.line-heat.smoke`: an unwatched run carries no sites; watched and run twice, a box with a
   `//%-` break gets totals `{1=2, 2=2, 4=2, 5=16, 6=14, 8=2}` (line 6 is the loop body in the second
   fragment; 2 and 8 are `println` lines placed between neighbours; the `//%-` line gets nothing),
@@ -109,5 +113,6 @@ what is painted, for probes.
 - Lines inside a K2 snippet's own nested classes, objects and local functions count; lines in
   library code the box calls do not (only box bytecode is rewritten).
 - A box's top-level `fun getX()` with no calls in it is skipped as an accessor.
-- The client does not re-send its watch periodically; after a websocket reconnect, line heat starts
-  again at the next selection change or edit.
+- The client re-sends its watch only on a selection change, an edit or a run of the box (at most
+  every 5 s), not on a timer; after a websocket reconnect, line heat starts again at the next of
+  those.
