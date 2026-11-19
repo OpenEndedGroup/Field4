@@ -148,7 +148,7 @@ Each pass is built on its own branch from this one and documents itself in its o
 | call-site anchors | `CallSiteAnchorPass` | `asm/callsite-anchors` | [`dev_docs/box_bytecode/CALLSITE_ANCHORS.md`](box_bytecode/CALLSITE_ANCHORS.md) (built; on by default; `history()` 707 ns/call anchored vs 13,372 ns by stack search, smoke G) |
 | line heat | `LineHeatPass` | `asm/line-heat` | `dev_docs/box_bytecode/LINE_HEAT.md` |
 | per-function cost | `BoxCostPass` | `asm/box-cost` | `dev_docs/box_bytecode/BOX_COST.md` |
-| thread-ownership guards | `ThreadOwnershipPass` | `asm/thread-ownership` | `dev_docs/box_bytecode/THREAD_OWNERSHIP.md` |
+| thread-ownership guards | `ThreadOwnershipPass` | `asm/thread-ownership` | [`dev_docs/box_bytecode/THREAD_OWNERSHIP.md`](box_bytecode/THREAD_OWNERSHIP.md) (built; on by default; a guarded on-thread call in a loop 0.35 ns/call, same as unguarded; smoke `runtime.thread-ownership-guards.smoke`) |
 
 ### Call-site anchors: `@StackAware`
 
@@ -215,6 +215,21 @@ The bug that motivated it (`Param.modulate(SineOsc(...))`, sampled by `GraphBind
 *library* code, which no box-code rewrite sees, so the pass ships with a library-side check in
 `Signal.render`'s existing cache-miss branch, and both report through one place that names the box
 line (`SnippetClasses.boxFrame`).
+
+Built as above, with these decisions (details, the full allow/deny list and measurements in
+[`box_bytecode/THREAD_OWNERSHIP.md`](box_bytecode/THREAD_OWNERSHIP.md)):
+
+- Ownership is declared by the context: `SynthContext` is a `ThreadOwnedContext` whose owner
+  `FieldAudioEngine`'s thread claims at start. An offline context has no owner and is never checked.
+  The library check also holds a node to the owner of the context it was rendered under in the last
+  two blocks, which is what catches the Runloop sampler using a context of its own.
+- `DUP` is only emitted for a single-slot reference last argument. A wide or other primitive last
+  argument, or a call through a `$default` stub (whose top of stack is the marker), is refused at
+  rewrite time and guarded by owner alone.
+- A pass report names the guarded call's own line, and gives the compiled line when that is not
+  proven, rather than the next proven frame out, which would be a caller's line; only the library
+  check, which has no site, uses `boxFrame`. The two dedupe on the compiled line.
+- RUNLOOP means `Runloop.mainThread`; with no Runloop (jvm-main) nothing is checked.
 
 ## Open risks
 
