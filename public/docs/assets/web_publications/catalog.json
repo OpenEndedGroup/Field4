@@ -5167,6 +5167,35 @@
         "public/docs/assets/agent_transcripts/spectral_examples/spectral_streaming_code_.kt": "fb212687bd9242eccb4eada23e3f28fbb818520513326450bd29268aef593ae9"
       }
     },
+    "assets/agent_transcripts/speech/metadata.edn": {
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-19T21:06:42.135Z",
+      "channels": 4,
+      "file": "assets/web_publications/speech/document/metadata.edn",
+      "files": {
+        "assets/web_publications/speech/document/metadata.edn": "51419c4df8e16cb70f2b4443effc5fcad951207aa25c7d62f94241122736e828",
+        "assets/web_publications/speech/document/outputs.json": "222b0a53fa527cc49f077ffab5bf4674ff32405c9b04e12547dd21abbd59f6dc",
+        "assets/web_publications/speech/outputs/0.html": "1ed4f6955d5399aeadd7b8af8c6fa4f731e6d02fae8cf9400e9ca79896097160",
+        "assets/web_publications/speech/outputs/1.html": "9527aded4ef24c7d783d5735e2d32f7b95fa0a7975ce4433597a6048b198d3a9",
+        "assets/web_publications/speech/outputs/2.html": "da26910fc53baef488ab9993ef09d4816541f25e94b1068163d3827119bac627",
+        "assets/web_publications/speech/outputs/3.html": "6110621d61e04f2763912e9e22847fae4da0c22cac324e68d3b6ee44c203bde1"
+      },
+      "kinds": [
+        "plotly",
+        "svg"
+      ],
+      "outputs": "assets/web_publications/speech/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/speech.yaml": "1dc9479255c8f55a45f529b591146163cc0d5a46125fc8ffb6ce13ac99a77583",
+        "public/docs/assets/agent_transcripts/speech/analyse_code_.kt": "e099c7691ba85bf6eadd62bcbb82ff35f3b95650c3b66331e0cbb16a02cf3ede",
+        "public/docs/assets/agent_transcripts/speech/guides/spectral_examples-speech-a-box-that-talks.md": "57cdd35de046fcf1d080cc928f37fa2ab2e498e5f467a6e1ab63254ecebe7a7b",
+        "public/docs/assets/agent_transcripts/speech/metadata.edn": "9cd6cf6446d1a03d54b69038c19fb045c6702a922f9e6daac4c581702f74d4f6",
+        "public/docs/assets/agent_transcripts/speech/speak_code_.kt": "43465eb97cc48b3b28a22187541d628a3397cbe55e27d08f77a76868ad0d28eb",
+        "public/docs/assets/agent_transcripts/speech/sung_code_.kt": "6c1d02f47b108034efc89567d2234b7839f35e9d2faf64617c1b5f1e6dc46e79",
+        "public/docs/assets/agent_transcripts/speech/word_timing_code_.kt": "35f77e81adda170e868aa423ae69d1fa2b93aa98fb0349eb2ca08c8ba78211c5",
+        "public/docs/assets/agent_transcripts/speech/words_play_drums_code_.kt": "5276f83beef2d27b450e2a71b633ded84b860744c55919eb68176cca2c92d544"
+      }
+    },
     "assets/agent_transcripts/spinny_algebras/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
       "capturedAt": "2026-11-18T16:04:47.869Z",

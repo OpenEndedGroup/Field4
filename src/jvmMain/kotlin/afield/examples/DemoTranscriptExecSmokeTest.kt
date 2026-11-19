@@ -491,6 +491,9 @@ object DemoTranscriptExecSmokeTest {
         // Squircles (2026-11-19): five squircle styles and their curvature under a gauge slider, and
         // squircleRectFrom corners over circular ones. Pure CPU, FLines into an output channel.
         "squircles",
+        // Speech (2026-11-19): tiny-voca speak(), word timing, a word pattern, a live sung Signal and
+        // LPC analysis. CPU ONNX; fetches ~27 MB on first run.
+        "speech",
         // Buffer paint (2026-11-19): a Gray-Scott frames { } loop edited through a BufferCanvas over its
         // own FloatArray, and a delay line pasted and motion-blurred in place. Pure CPU, no Window.
         "buffer_paint",

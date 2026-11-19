@@ -132,6 +132,15 @@ object DocsAudioProvenance {
          */
         ADDITIVE_GRAINS("windowed three-harmonic sine grains summed directly — no samples, no synth voice"),
 
+        /**
+         * Speech from the tiny-voca ONNX model through [speak] ([SpeechSoundDocs]): a learned
+         * source-filter vocoder, fetched into the ONNX model cache rather than committed. The
+         * `drums` clip mixes that voice with its own word pattern on pinned Dirt-Samples one-shots,
+         * and `sung` puts its envelope on an [Impulse] through [LpcVocoder]; the voice is the source
+         * of both, so they are classified by it.
+         */
+        NEURAL_SPEECH("speech from the tiny-voca ONNX model, through speak(...)"),
+
         /** Present in the tree, no producing code found. Must be in [UNDERIVABLE]. */
         UNDERIVABLE("no producing code found in the repository"),
     }
@@ -162,6 +171,8 @@ object DocsAudioProvenance {
         // strokes read from the drawing, paired by matchPoints. See chain_drawn_morph.md.
         "afield.audio.synth.DrawnMorphDocs" to Origin.STAND_IN_SYNTH,
         "afield.audio.synth.DoughDspSoundDocs" to Origin.DOUGH_DSP,
+        // speak(...) on tiny-voca; see Origin.NEURAL_SPEECH. spectral_examples.md's speech section.
+        "afield.audio.synth.SpeechSoundDocs" to Origin.NEURAL_SPEECH,
         // A SineOsc whose amplitude or frequency is a Functions.Fn, through FnSignal: the same
         // Kotlin signal graph DoughDspSoundDocs renders. See chain_fn_sound_roundtrip.md.
         "afield.audio.synth.FnSoundDocs" to Origin.DOUGH_DSP,

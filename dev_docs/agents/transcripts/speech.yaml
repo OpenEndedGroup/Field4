@@ -1,0 +1,98 @@
+name: speech
+description: >
+  Text to speech as a Field signal, with the tiny-voca model (Apache-2.0, 4.5M parameters).
+  Box 1 speaks a sentence into an audio player. Box 2 plots the level with a mark at every word's
+  start, from the model's own durations. Box 3 turns the words into a pattern (stressed words a
+  kick, the rest a hat) and mixes it with the voice. Box 4 returns the speech sung on an impulse
+  train whose pitch a sine moves, so FieldAudioEngine plays it live. Box 5 fits an LPC envelope to
+  the stressed vowel of each word. See the "Speech" section of public/docs/spectral_examples.md.
+  First run fetches ~27 MB of model and phonemizer data into ~/.afield/onnx/models/tiny-voca/.
+docs:
+  - page: spectral_examples.md#speech-a-box-that-talks
+    why: "Introduces speak(), Speech.words, Speech.pattern() and Speech.sungOn() that these boxes use."
+operations:
+  - create:
+      box: speak
+      name: 1 - Speak
+      frame: { x: 60.0, y: 60.0, w: 340.0, h: 120.0 }
+      properties:
+        code: |
+          val said = speak("Hello! I am a box in Field, and this is my voice.")
+          displayAudioSamples(said.samples, said.sampleRate, label = "F2: ${said.words.size} words")
+          print(said.h)
+  - create:
+      box: word_timing
+      name: 2 - Word timing
+      frame: { x: 440.0, y: 60.0, w: 340.0, h: 120.0 }
+      properties:
+        code: |
+          val said = speak("Every word arrives with its own start and end.", voice = "M2")
+          val hop = 240 // 10 ms at 24 kHz
+          val loudness = (said.samples.size / hop) { i -> said.samples.slice(i * hop until (i + 1) * hop).maxOf { abs(it) } }
+          showSignals(
+              "level" to loudness,
+              x = loudness.indices.map { it * 0.01 },
+              marks = said.words.map { it.text to it.start },
+              channel = "main",
+              xTitle = "seconds",
+          )
+          said.words.forEach {
+              println("%-8s %.2f s  %s".format(it.text, it.start, it.phones.joinToString(" ") { p -> p.symbol }))
+          }
+  - create:
+      box: words_play_drums
+      name: 3 - Words play the drums
+      frame: { x: 820.0, y: 60.0, w: 340.0, h: 120.0 }
+      properties:
+        code: |
+          // Stressed words strike a kick, the rest a hat, exactly on the words.
+          val said = speak("Speech can play the drums, if you let it.")
+          val drums = said.pattern { if (it.stressed) "bd" else "hh" }
+          val dirt = DirtRender.requirePinnedLibrary() // real kick and hat samples, one shot each
+          val beat = patRenderStereoDirt(drums, 1, 1 / said.seconds, dirt, sampleRate = 48_000, strict = true).audio.mono
+          val voice = said.resampled(48_000)
+          val mix = (voice.size) { i -> 0.8f * voice[i] + 0.5f * beat.getOrElse(i) { 0f } }.toFloatArray()
+          displayAudioSamples(
+              mix,
+              48_000,
+              label = "words as a pattern: ${drums.events(PatArc(PatQ.ZERO, PatQ.ONE)).map { it.value }}",
+          )
+  - create:
+      box: sung
+      name: 4 - Sung on a pitch you choose (live)
+      frame: { x: 60.0, y: 230.0, w: 340.0, h: 120.0 }
+      properties:
+        code: |
+          // The speech's envelope on a pulse whose pitch you choose: a sung contour.
+          val said = speak("I can sing whatever pitch you give me.", voice = "M2")
+          val pitch = Param(110f).also { it.mod = SineOsc(0.5.p) * 30f }
+          said.sungOn(Impulse(pitch)) * 0.5f
+  - create:
+      box: analyse
+      name: 5 - Analyse what was said
+      frame: { x: 440.0, y: 230.0, w: 340.0, h: 120.0 }
+      properties:
+        code: |
+          // Analyse what was said: the LPC envelope of the stressed vowel in each word.
+          val said = speak("Speak, analyse, and plot.")
+          val audio = said.resampled(48_000)
+          val curves =
+              said.words.mapNotNull { w ->
+                  val v = w.phones.firstOrNull { it.stress == 1 } ?: return@mapNotNull null
+                  val mid = ((v.start + v.end) / 2 * 48_000).toInt()
+                  "${w.text} /${v.symbol}/" to
+                      Lpc.analyze(audio.copyOfRange(mid - 1024, mid + 1024), 52).envelopeDb(1025).take(214).toList()
+              }
+          showSignals(
+              *curves.toTypedArray(),
+              x = 214 { it * 48_000.0 / 2048 },
+              channel = "main",
+              xTitle = "frequency (Hz)",
+              yTitle = "dB",
+          )
+  - execute: { box: speak }
+  - execute: { box: word_timing }
+  - execute: { box: words_play_drums }
+  - launch: { box: sung, property: code }
+  - execute: { box: analyse }
+  - await: { wait: pending }

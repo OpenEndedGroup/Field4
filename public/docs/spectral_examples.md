@@ -1277,6 +1277,138 @@ its last few points carries on straight, as the zigzag did.
 - **Cross-synthesis between people.** One person's loops driven by another's residual, both drawn
   in the layer.
 
+## Speech: a box that talks
+
+`speak("...")` turns English text into speech with [tiny-voca](https://huggingface.co/n4ze3m/tiny-voca),
+a 4.5M-parameter model (Apache-2.0) whose waveform comes from a source-filter synthesizer: a pulse
+train at a predicted pitch and a noise signal, each shaped by a filter that changes every 10.7 ms.
+The `Speech` it returns is the audio (24 kHz), the start and end of every word and phone, and a few
+ways to put those into the rest of Field. On an Apple-silicon Mac it renders about 110 seconds of
+speech per second. The first call fetches the model and its pronunciation data, about 27 MB, into
+`~/.afield/onnx/models/tiny-voca/`.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/spectral_examples/speech_player.png" wait="3.0" capture="box" open-outputs="true" padding="12" timeout="180" name="speech-player" alt="an audio player headed with the voice and word count, over the waveform of a spoken sentence"}
+val said = speak("Hello! I am a box in Field, and this is my voice.")
+displayAudioSamples(said.samples, said.sampleRate, label = "F2: ${said.words.size} words")
+print(said.h)
+```
+
+The sentence in the F2 voice, and the same sentence with `voice = "M2"`:
+
+```diffstatic_runner {data-lang=kotlin audio="assets/spectral_examples/speech-hello.wav" audio-spec="hello" audio-renderer="afield.audio.synth.SpeechSoundDocs" requires="tiny-voca" embed=true hidden=true name="speech-hello-audio"}
+// Offline-rendered by SpeechSoundDocs.renderWav("hello").
+```
+
+```diffstatic_runner {data-lang=kotlin audio="assets/spectral_examples/speech-hello-m2.wav" audio-spec="hello-m2" audio-renderer="afield.audio.synth.SpeechSoundDocs" requires="tiny-voca" embed=true hidden=true name="speech-hello-m2-audio"}
+// Offline-rendered by SpeechSoundDocs.renderWav("hello-m2").
+```
+
+`voice` is `"F2"` or `"M2"`. `speed` scales the speaking rate, `pitch` adds semitones, and
+`pitchRange` scales how far the intonation moves (0 is a monotone).
+
+### Word timing
+
+The model decides how long each phone lasts, and `said.words` reports it: each `SpokenWord` has
+`start` and `end` in seconds, its `phones`, and whether it carries the main stress. Here the
+speech's level with a mark at the start of every word:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/spectral_examples/speech_word_timing.png" wait="3.0" capture="box" open-outputs="true" padding="12" timeout="180" name="speech-word-timing" alt="a cyan level curve of a spoken sentence with a dashed yellow mark at the start of each of its nine words"}
+val said = speak("Every word arrives with its own start and end.", voice = "M2")
+val hop = 240 // 10 ms at 24 kHz
+val loudness = (said.samples.size / hop) { i -> said.samples.slice(i * hop until (i + 1) * hop).maxOf { abs(it) } }
+showSignals(
+    "level" to loudness,
+    x = loudness.indices.map { it * 0.01 },
+    marks = said.words.map { it.text to it.start },
+    channel = "main",
+    xTitle = "seconds",
+)
+said.words.forEach {
+    println("%-8s %.2f s  %s".format(it.text, it.start, it.phones.joinToString(" ") { p -> p.symbol }))
+}
+```
+
+`said.wordAt(t)` and `said.phoneAt(t)` answer "what is being said at t seconds", for an animation or a
+notation box that follows the voice.
+
+### Words as a pattern
+
+`said.pattern()` is a one-cycle `PatPattern<String>` whose events are the words, timed as spoken.
+Played at `cps = 1 / said.seconds`, it lines up with the voice. Its lambda picks the value of each
+event, here a kick for a stressed word and a hat for the rest:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/spectral_examples/speech_drums.png" wait="3.0" capture="box" open-outputs="true" padding="12" timeout="180" name="speech-drums" alt="an audio player labelled with the word pattern bd, hh, bd, hh, bd, hh, hh, bd, hh over the waveform of the voice mixed with the drums"}
+// Stressed words strike a kick, the rest a hat, exactly on the words.
+val said = speak("Speech can play the drums, if you let it.")
+val drums = said.pattern { if (it.stressed) "bd" else "hh" }
+val dirt = DirtRender.requirePinnedLibrary() // real kick and hat samples, one shot each
+val beat = patRenderStereoDirt(drums, 1, 1 / said.seconds, dirt, sampleRate = 48_000, strict = true).audio.mono
+val voice = said.resampled(48_000)
+val mix = (voice.size) { i -> 0.8f * voice[i] + 0.5f * beat.getOrElse(i) { 0f } }.toFloatArray()
+displayAudioSamples(
+    mix,
+    48_000,
+    label = "words as a pattern: ${drums.events(PatArc(PatQ.ZERO, PatQ.ONE)).map { it.value }}",
+)
+```
+
+```diffstatic_runner {data-lang=kotlin audio="assets/spectral_examples/speech-drums.wav" audio-spec="drums" audio-renderer="afield.audio.synth.SpeechSoundDocs" requires="tiny-voca,dirt-samples" embed=true hidden=true name="speech-drums-audio"}
+// Offline-rendered by SpeechSoundDocs.renderWav("drums").
+```
+
+### Speech is a Signal
+
+`said.signal()` plays the speech once through the signal graph, so it can go through any filter or
+effect; returned from a box, it is played by the audio engine on its own thread. `said.sungOn(carrier)`
+puts the speech's spectral envelope on another signal with `LpcVocoder` from the section above. On an
+`Impulse` whose frequency is a `Param`, the sentence follows any pitch contour you give it:
+
+```diffstatic {data-lang=kotlin}
+// The speech's envelope on a pulse whose pitch you choose: a sung contour.
+val said = speak("I can sing whatever pitch you give me.", voice = "M2")
+val pitch = Param(110f).also { it.mod = SineOsc(0.5.p) * 30f }
+said.sungOn(Impulse(pitch)) * 0.5f
+```
+
+```diffstatic_runner {data-lang=kotlin audio="assets/spectral_examples/speech-sung.wav" audio-spec="sung" audio-renderer="afield.audio.synth.SpeechSoundDocs" requires="tiny-voca" embed=true hidden=true name="speech-sung-audio"}
+// Offline-rendered by SpeechSoundDocs.renderWav("sung").
+```
+
+### Analysing what was said
+
+Because the words come with their phones, a box can find what it said and measure it. This one fits
+an order-52 LPC envelope at the middle of the stressed vowel of each word:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/spectral_examples/speech_vowels.png" wait="3.0" capture="box" open-outputs="true" padding="12" timeout="180" name="speech-vowels" alt="three LPC envelopes to 5 kHz: speak /iː/ with a low first peak near 350 Hz and a high one above 3 kHz, analyse /æ/ and plot /ɑː/ with their first peaks near 1 kHz"}
+// Analyse what was said: the LPC envelope of the stressed vowel in each word.
+val said = speak("Speak, analyse, and plot.")
+val audio = said.resampled(48_000)
+val curves =
+    said.words.mapNotNull { w ->
+        val v = w.phones.firstOrNull { it.stress == 1 } ?: return@mapNotNull null
+        val mid = ((v.start + v.end) / 2 * 48_000).toInt()
+        "${w.text} /${v.symbol}/" to
+            Lpc.analyze(audio.copyOfRange(mid - 1024, mid + 1024), 52).envelopeDb(1025).take(214).toList()
+    }
+showSignals(
+    *curves.toTypedArray(),
+    x = 214 { it * 48_000.0 / 2048 },
+    channel = "main",
+    xTitle = "frequency (Hz)",
+    yTitle = "dB",
+)
+```
+
+The /iː/ of "speak" has its first peak low, near 350 Hz, and the open vowels of "analyse" and
+"plot" have theirs near 1 kHz, as the first formant of a voice does.
+
+!!! note
+    Text becomes phones through a JVM port of the core of the model's own phonemizer,
+    [dizione](https://github.com/n4ze3m/dizione): its dictionary, weak forms of function words, sentence
+    stress, and its small neural model for unknown words. Homographs ("read", "live") take the
+    dictionary's first reading, and only plain numbers, ordinals and clock times are read out;
+    money, dates and units are not.
+
 ## What else is in the family
 
 - **FFT** — `fft(...)` / `ifft(...)` over `DoubleArray`, `FloatArray`, or `List<Float>`; forward and

@@ -440,6 +440,21 @@ def steam_audio_library_path(repo_root: Path) -> Path:
     return repo_root / "build" / "steamaudio" / platform / name
 
 
+def tiny_voca_model_path(repo_root: Path) -> Path:
+    """The tiny-voca speech model and its phonemizer lexicon in the ONNX model cache.
+
+    Not native either: ``speak(...)`` fetches both on first use into
+    ``~/.afield/onnx/models/tiny-voca/`` (``AFIELD_ONNX_CACHE_ROOT`` overrides the root, as
+    ``OnnxRuntime`` reads it), and ``spectral_examples.md``'s speech clips need them. Present only
+    when both files are.
+    """
+    override = os.environ.get("AFIELD_ONNX_CACHE_ROOT", "").strip()
+    root = Path(override).expanduser() if override else Path.home() / ".afield" / "onnx" / "models"
+    model = root / "tiny-voca" / "model.onnx"
+    lexicon = root / "tiny-voca" / "phonemizer" / "lexicon.tsv"
+    return model if lexicon.is_file() else model.parent / "incomplete"
+
+
 def dirt_samples_root_path(repo_root: Path) -> Path:
     """The pinned Dirt-Samples subset, when it is complete and every file has its pinned digest.
 
@@ -494,6 +509,11 @@ NATIVE_PREREQUISITES: dict[str, tuple[Any, str]] = {
     "browser-bridge": (browser_bridge_library_path, "./gradlew buildFieldBrowserBridge"),
     "electron-runtime": (electron_runtime_path, "./gradlew electronInstall"),
     "dirt-samples": (dirt_samples_root_path, "./gradlew fetchDocsDirtSamples"),
+    "tiny-voca": (
+        tiny_voca_model_path,
+        "run any speak(...) once to fetch it, e.g. uv run --project . --group backdoor python "
+        "tools/run_field_tests.py --id speech.tiny-voca.smoke",
+    ),
     "steam-audio": (steam_audio_library_path, "./gradlew fetchSteamAudioNatives"),
     "jep": (
         jep_library_path,

@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-19T21:06:42.135Z",
+  "documentName": "speech",
+  "outputs": [
+    {
+      "uid": "analyse",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly"
+      ],
+      "width": 712,
+      "height": 458,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "speak",
+      "channel": "audio",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [
+        "plotly",
+        "svg"
+      ],
+      "width": 1008,
+      "height": 333,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "word_timing",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly"
+      ],
+      "width": 712,
+      "height": 458,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "words_play_drums",
+      "channel": "audio",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [
+        "plotly",
+        "svg"
+      ],
+      "width": 1008,
+      "height": 333,
+      "path": "outputs/3.html"
+    }
+  ]
+}

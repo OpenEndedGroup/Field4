@@ -922,6 +922,16 @@ Figma's jumps where its cubics meet the arc, the clothoid's rises in straight ra
 
 [Open →](offline.html?file=assets/agent_transcripts/squircles/metadata.edn)
 
+### speech
+
+**A box that talks.** [Speech](spectral_examples.md#speech-a-box-that-talks) as five boxes. Box 1
+speaks a sentence into an audio player. Box 2 plots its level with a mark at every word. Box 3 turns
+the words into a pattern, a kick on each stressed word and a hat on the rest, and mixes it with the
+voice. Box 4 sings the sentence on a pitch a sine moves, played live. Box 5 plots the LPC envelope
+of each word's stressed vowel.
+
+[Open →](offline.html?file=assets/agent_transcripts/speech/metadata.edn)
+
 ### drawing_on
 
 [Drawing on iPad](drawing_on.md): an editable plan and a native Pencil/voice capture head. Run the

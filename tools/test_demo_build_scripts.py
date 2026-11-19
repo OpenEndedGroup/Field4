@@ -112,6 +112,9 @@ CORPUS = {
     # 2026-11-19: squircles by one gauge (fline_examples.md#squircles). Ships a `build.yaml`, so the
     # count below moved 13 -> 14; registered EXECUTE as squircles.
     "squircles",
+    # 2026-11-19: speech with tiny-voca (spectral_examples.md#speech-a-box-that-talks). Ships a
+    # `build.yaml`, so the count below moved 14 -> 15; registered EXECUTE as speech.
+    "speech",
     # 2026-11-19: buffer paint (visualizers.md#painting-into-a-live-buffer). No build.yaml (the
     # transcript lives in dev_docs/agents/transcripts), so the count below is unchanged; EXECUTE.
     "buffer_paint",
@@ -248,7 +251,7 @@ class DemoBuildScriptTest(unittest.TestCase):
             "dev_docs/DEMO_CORPUS_AUDIT.md together",
         )
         self.assertEqual(
-            14,
+            15,
             len(self.scripts),
             "the number of demos shipping a build.yaml has changed; a new one is unchecked "
             "until it is measured",
