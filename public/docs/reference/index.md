@@ -681,7 +681,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**41908 public symbols across 1856 source files**, 24998 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**41915 public symbols across 1857 source files**, 25005 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -694,7 +694,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Video](video.md) | 14 | 195 | 194 (99%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 60 | 2524 | 1904 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 26 | 1123 | 528 (47%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 424 | 10312 | 6525 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 425 | 10319 | 6532 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 48 | 911 | 515 (56%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 596 | 440 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 787 | 530 (67%) | Nonlinear least squares, aimed at geometry. |
@@ -2301,6 +2301,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>table/<wbr></small> [spreadsheet.kt](data.md#spreadsheet-kt) | Data | 172 | 14 | A spreadsheet that lives in a box property, shown in the box's output area, whose formulas are Kotlin expressions. | [Spreadsheets](../spreadsheets.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>table/<wbr></small> [spreadsheetConstraints.kt](data.md#spreadsheetconstraints-kt) | Data | 11 | 11 | Constraint-solving spreadsheets: cells that hold Ceres variables, formulas that trace back to them, and assertion cells the sheet solves for. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [SpreadsheetFormulaSmoke.kt](examples.md#spreadsheetformulasmoke-kt) | Examples | 0 | 0 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr></small> [Squircles.kt](graphics.md#squircles-kt) | Graphics | 7 | 7 | Squircles: rounded squares and rounded rectangles whose corners are smoother than a circular arc. | [FLine examples (Field graphics)](../fline_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>stacksl/<wbr>study/<wbr></small> [StackAutoCard.kt](languages.md#stackautocard-kt) | Languages | 5 | 5 | Sliders under a box for the numbers in its `stack.auto` slots, redrawing the box's own shader without a recompile. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>stacksl/<wbr></small> [stackAutoNumbers.kt](graphics.md#stackautonumbers-kt) | Graphics | 24 | 24 | Live numbers for a `{{ stack.auto.foo }}` slot: every literal in the StackSL becomes a member of a uniform block, `foo_numbers`, that sliders, Kotlin or a keyframe can turn without a recompile. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>stacksl/<wbr>study/<wbr></small> [StackAutoStudy.kt](languages.md#stackautostudy-kt) | Languages | 25 | 23 | Studies of the `stack.auto` slots in a box's own shaders: checked edits to a slot's StackSL, and pictures of it in its host shader and alone. |  |
