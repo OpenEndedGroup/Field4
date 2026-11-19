@@ -612,10 +612,12 @@ class SpawnBrush(var spacing: Double = 8.0) {
 /**
  * The packaged GLSL behind [ParticleSketch]. `#include "particles/sketch"` in a compute shader
  * reaches `sketch.glsl`, the harness with the particle struct, the hooks and the verbs.
+ * `#include "particles/shape_force"` supplies planar shape boundary queries and forces for custom passes.
  */
 object ParticleShaders {
     private val names = setOf(
-        "sketch.glsl", "strokes_vertex.glsl", "dots_vertex.glsl", "shape_fragment.glsl", "display_fragment.glsl"
+        "sketch.glsl", "strokes_vertex.glsl", "dots_vertex.glsl", "shape_fragment.glsl", "display_fragment.glsl",
+        "shape_force.glsl"
     )
 
     /** Whether `particles/<name>` names one of these sources, with or without `.glsl`. */
