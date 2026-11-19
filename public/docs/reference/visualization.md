@@ -5051,6 +5051,8 @@ anything else spanning orders of magnitude.
 
 `src/jvmMain/kotlin/afield/ui/visualization/heatmap.kt` — [read the source](source/jvmMain/afield/ui/visualization/heatmap/)
 
+**Used in:** [Geometry from disk](../geometry_from_disk.md)
+
 ### Top-level functions { #heatmap-kt-functions }
 
 | Declaration | Summary |
