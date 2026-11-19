@@ -35,7 +35,7 @@ class LandmarkAStarTest {
                 val alt = lm.search(s, t)
                 assertEquals(exact, plain.path!!.totalWeight, 1e-9)
                 assertEquals(exact, alt.path!!.totalWeight, 1e-9)
-                assertEquals(exact, alt.path!!.edges.sumOf { it.weight }, 1e-9)
+                assertEquals(exact, alt.path.edges.sumOf { it.weight }, 1e-9)
             }
         }
     }
@@ -64,8 +64,8 @@ class LandmarkAStarTest {
         val one = graphFarthestPointLandmarks(grid.graph, 1, first = grid.index(0, 15)).search(s, t)
         val several = graphFarthestPointLandmarks(grid.graph, 6, first = s).search(s, t)
         assertNotNull(dijkstra.path)
-        assertEquals(dijkstra.path!!.totalWeight, one.path!!.totalWeight, 1e-9)
-        assertEquals(dijkstra.path!!.totalWeight, several.path!!.totalWeight, 1e-9)
+        assertEquals(dijkstra.path.totalWeight, one.path!!.totalWeight, 1e-9)
+        assertEquals(dijkstra.path.totalWeight, several.path!!.totalWeight, 1e-9)
         assertTrue(one.expandedCount < dijkstra.expandedCount, "${one.expandedCount} vs ${dijkstra.expandedCount}")
         assertTrue(several.expandedCount < dijkstra.expandedCount, "${several.expandedCount} vs ${dijkstra.expandedCount}")
         assertEquals(t, dijkstra.expanded.last())

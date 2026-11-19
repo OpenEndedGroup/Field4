@@ -127,8 +127,8 @@ class NotationToolsTest {
         val scribble = tools.readNotation(ReadNotationRequest(name = "", kinds = listOf("stroke"), includePoints = true, maxPoints = 10)).marks.single()
         assertEquals(100, scribble.pointCount)
         assertEquals(10, scribble.points!!.size)
-        assertEquals(listOf(0.0, 400.0), scribble.points!!.first())
-        assertEquals(listOf(99.0, 401.0), scribble.points!!.last())
+        assertEquals(listOf(0.0, 400.0), scribble.points.first())
+        assertEquals(listOf(99.0, 401.0), scribble.points.last())
     }
 
     @Test
