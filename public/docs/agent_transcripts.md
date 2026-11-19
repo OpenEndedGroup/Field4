@@ -4988,6 +4988,20 @@ macro run growing_nca
 
 [Open →](offline.html?file=assets/agent_transcripts/growing_nca/metadata.edn)
 
+### exact_triangle_coverage
+
+**Triangles covered exactly, point-sampled beside exact.** A CPU box renders eight triangles at 32 × 24
+pixels both ways and counts conservative culling over 20,000 sub-pixel triangles; beneath a renderer, a
+fullscreen box does the same on the GPU with `#include "coverage/triangle.glsl"`, fat-pixel size and window
+sharpness on sliders. See [Exact triangle coverage](afield_four_graphics.md#exact-triangle-coverage).
+
+```diffstatic {data-lang=text}
+macro write exact_triangle_coverage --file dev_docs/agents/transcripts/exact_triangle_coverage.yaml
+macro run exact_triangle_coverage
+```
+
+[Open →](offline.html?file=assets/agent_transcripts/exact_triangle_coverage/metadata.edn)
+
 ### atmospheric_sky
 
 **A sky made from sunlight and air, with the sun on a slider.** Beneath a renderer, one fullscreen box

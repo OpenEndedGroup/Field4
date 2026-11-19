@@ -2059,6 +2059,72 @@ and these papers:
 
 Open the [starting point](agent_transcripts.md#atmospheric_sky) to try the sky and its presets.
 
+## Exact triangle coverage { #exact-triangle-coverage }
+
+A rasterizer that takes one sample per pixel asks "is the pixel centre inside the triangle?" and
+nothing else. Edges come out as stairs, and a triangle smaller than a pixel that falls between
+centres disappears. The alternative is to compute how much of each pixel the triangle actually
+covers. For a triangle and a square pixel that has an exact closed form, and Field has it on the
+CPU (`afield.graphics.render.TriangleCoverage`) and as a shader include,
+`#include "coverage/triangle.glsl"`.
+
+The CPU box draws eight triangles at 32 × 24 pixels, once point-sampled and once with exact
+coverage, next to the same scene at 512 × 384:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/exact-coverage-cpu.png" capture="box" open-outputs="true" padding="20" wait="4" timeout="180" embed=true name="exact-coverage-cpu" macro-file="../../dev_docs/agents/transcripts/exact_triangle_coverage.yaml" capture-box="coverage_cpu" alt="Three panels. Point-sampled at 32 by 24: stair-stepped orange and green triangles, the thin blue sliver broken into two blocks, the four tiny triangles and the white needle missing. Exact coverage at 32 by 24: the same triangles with graded edge pixels, the sliver and needle as faint continuous bands and four grey dots for the tiny triangles. The 512 by 384 reference shows what they are."}
+// dev_docs/agents/transcripts/exact_triangle_coverage.yaml, box "coverage on the CPU"
+val point = TriangleSplat.render(scene, 32, 24, CoverageSampling.POINT)
+val exact = TriangleSplat.render(scene, 32, 24, CoverageSampling.EXACT)
+println("point-sampled: ${point.visible} of ${scene.size} triangles reach a pixel")
+println("exact:         ${exact.visible} of ${scene.size} triangles reach a pixel")
+```
+
+Point sampling reaches 3 of the 8 triangles; exact coverage reaches all 8. Each of the four tiny
+triangles covers 0.08 of a pixel and shows as a pixel at 8 % brightness, which is the right answer
+at that resolution.
+
+### A soft window, and culling
+
+`windowCoverage(..., sigma, ...)` integrates a window rather than a hard triangle: 1 at the
+triangle's incentre, falling to 0 at its edges as `(d / r)^sigma`, where `d` is the distance to the
+nearest edge and `r` the inradius. `sigma = 0` is the hard triangle. The angle bisectors split the
+triangle into three parts, each nearest one edge, so in each part the window depends on one
+distance only. Green's theorem then turns the pixel integral into one closed-form term per side of
+the part clipped to the pixel.
+
+The integral over the whole triangle is `2A / ((sigma + 1)(sigma + 2))`, and no pixel can receive
+more than that. `TriangleSplat.render` culls a triangle whose total, times its opacity, is under
+half an 8-bit step (`TriangleSplat.cullThreshold`), before it touches any pixel. In the demo,
+5,306 of 20,000 sub-pixel triangles at 128 × 128 and `sigma = 1` are culled this way.
+
+### The same thing in a shader
+
+Beneath a renderer, the GPU box is a fullscreen pass whose fragment shader cuts the window into
+fat pixels. The left half calls `tcWindow` at each fat pixel's centre and the right half calls
+`tcWindowCoverage` over the whole fat pixel. Fat pixel size and `sigma` are sliders:
+
+```diffstatic {data-lang=glsl}
+float cover = exact
+    ? tcWindowCoverage(a, b, d, sigma, cell, cell + 1.0)
+    : tcWindow(a, b, d, sigma, cell + 0.5);
+c = mix(c, C[i].rgb, clamp(cover * C[i].a, 0.0, 1.0));
+```
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/exact-coverage-gpu.png" capture="native-window" native-wait-frames="30" timeout="180" max-width="1600" embed=true name="exact-coverage-gpu" hidden=true macro-file="../../dev_docs/agents/transcripts/exact_triangle_coverage.yaml" capture-box="coverage_gpu" alt="The native window split down the middle over a faint grid of fat pixels. Left: the eight triangles point-sampled, with stepped edges, two blue blocks for the sliver and nothing for the tiny triangles or the needle. Right: the same triangles with exact coverage, graded edges, a continuous blue sliver, four grey dots and a grey needle."}
+// dev_docs/agents/transcripts/exact_triangle_coverage.yaml, box "coverage on the GPU"
+```
+
+`TriangleCoverageTest` checks the Kotlin against 256 × 256 supersampling of a unit pixel, over
+about 250 partly covered pixels per `sigma`: the worst error is 3.4e-4 at `sigma = 0` (which is
+the supersampler's own edge resolution) and under 1.5e-5 for `sigma` 1 to 4. Adding up every
+pixel's integral recovers the closed-form total to 4e-13. Open the
+[starting point](agent_transcripts.md#exact_triangle_coverage) to try it.
+
+The window and its bisector split follow *ATS: Anti-Aliased Triangle Splatting with Exact
+Per-Primitive Integrals* ([arXiv 2611.22512](https://arxiv.org/abs/2611.22512)). Field's code is
+written from the method; none of the paper's code or figures is used. Gradients with respect to
+the vertices, which the paper also derives, are not implemented here.
+
 ## Stopping the renderer
 
 Stopping the box that owns `renderer` also stops every running box connected beneath it, then

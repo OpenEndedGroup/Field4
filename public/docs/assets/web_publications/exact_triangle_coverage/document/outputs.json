@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-19T13:21:41.538Z",
+  "documentName": "exact_triangle_coverage",
+  "outputs": [
+    {
+      "uid": "coverage_gpu",
+      "channel": "Vulkan window · still image",
+      "open": true,
+      "path": "outputs/0.html",
+      "width": 1600,
+      "height": 982,
+      "kinds": [
+        "native-image"
+      ],
+      "warnings": []
+    }
+  ]
+}

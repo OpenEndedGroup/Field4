@@ -2325,6 +2325,9 @@ private fun builtInShaderInclude(inside: Box, includePath: String): String? {
             afield.math.distribution.gpIncludeSource(inside, includePath.removePrefix("gp/"))
         else if (includePath.startsWith("cloud/") && !shaderIncludeRoots.containsKey("cloud"))
             afield.graphics.volume.cloudIncludeSource(inside, includePath.removePrefix("cloud/"))
+        else if (includePath.removeSuffix(".glsl") == afield.graphics.render.TriangleCoverage.INCLUDE_PATH.removeSuffix(".glsl") &&
+            !shaderIncludeRoots.containsKey("coverage"))
+            afield.graphics.render.TriangleCoverage.GLSL
         else if (includePath.startsWith("splat/") && !shaderIncludeRoots.containsKey("splat") &&
             afield.graphics.scene.fabricated.SplatShader.hasInclude(includePath.removePrefix("splat/")))
             afield.graphics.scene.fabricated.SplatShader.include(includePath.removePrefix("splat/"))
