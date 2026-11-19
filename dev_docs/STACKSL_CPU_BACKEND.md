@@ -350,3 +350,28 @@ ping-pongs `diffusion-feedback` for 72 frames on the CPU. See that directory's `
 - **`uint` beyond 16 bits.** Integer components are stored as `Float`, exact below 2²⁴. Every
   `uvec4` the emitter produces goes through `toBits16`, which masks to 65535, so the bound holds —
   and an operand outside it is refused rather than silently losing its low bits.
+
+## Partial evaluation (2026-11-19)
+
+`GlslPartialEvaluator` (`cpu/GlslPartialEvaluator.kt`) is the first Futamura projection over this
+backend: it runs `GlslMachine` once over a staged `GlslScalars` (static `GlslValue`, folded by
+`GlslFloatScalars`; or a dynamic residual node) with only `fragUV` unknown. The machine does the
+unfolding (static loops unroll, calls inline). Dynamic branches reuse the interval algebra's fork;
+the machine now passes the condition to the join (`GlslScalars.select`, default `join`) and routes
+undecided `&&`/`||`/`!`/`==`/`!=` through `GlslScalars.logic` (default `boolOfTruth`). Float, AD and
+interval behaviour is unchanged (`StackSLCpuFloatPathManifestTest`, `StackSLIntervalTest` green).
+
+Findings:
+- All 31 gallery programs specialize, and the residual is **bit-identical** to the interpreter
+  through both back ends (JVM register program, and printed GLSL re-parsed and re-interpreted).
+  `GlslPartialEvaluatorTest`.
+- Relative to the hand-written backend (`StackSLCompiler` -> GLSL): the residual of the emitter's
+  75-line `uv 4.0 * fbm palette saturate` is 311 straight-line ops — octaves unrolled, helpers
+  inlined. It is the emitter's output *specialized further*, not a rival to it.
+- Speedup is modest, 1.1–2.4x on one core at 96² (`GlslPartialEvaluatorMeasurements`, in
+  `jvmMeasurements`). The interpreter's control flow is the smaller cost; per-op `GlslValue`
+  allocation and string-keyed operator dispatch dominate and survive specialization. The next lever
+  is residualizing to unboxed `FloatArray` slots with scalar-specialized ops (must keep the same
+  binary32 operations to stay bit-exact), or to JVM bytecode.
+- Refused, not approximated: dynamic loop bounds, dynamic array indices, `return`/`discard` under a
+  dynamic branch. The gallery hits none.
