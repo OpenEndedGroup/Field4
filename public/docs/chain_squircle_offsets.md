@@ -6,8 +6,7 @@ to say how far each point is from that outline, are not: inside the overlap and 
 they come out closer to zero than the true distance. This page follows one such shape through four steps, from drawn
 [squircles](fline_examples.md#squircles-squirclefrom-and-squirclerectfrom) to a signed distance
 field, through the [repair](mesh_examples.md#repairing-a-field-that-is-only-a-bound) that makes the
-distances honest again, and on to the two things that read them: offset contours and sphere
-tracing.
+distances honest again, and on to the offsets and toolpaths that read them.
 
 ## Two squircles as distance fields
 
@@ -166,15 +165,15 @@ a grid cell (the cell here is 0.03125) of where they should be. The sharp corner
 the outer blue offsets are correct: the true offset of an inward curve tighter than the offset
 distance comes to a point, and the blend's red contours round them off.
 
-## Sphere tracing
+## Stepping inwards: a pocketing toolpath
 
-A sphere tracer steps along a ray by the field's value at each point, which is safe as long as the
-value never overestimates the distance. A field that underestimates is safe but slow, so the repair
-should save steps. `sphereTrace` marches 720 rays from a ring around the shape towards a point
-inside the larger squircle, through each grid. The figure draws every step of 48 of them: the blend
-on the left, the repaired grid on the right.
+Clearing the inside of a shape with a cutter, or filling it with a pen plotter, means following a
+stack of insets one tool width apart. Here the step is 0.04, and the box draws fourteen insets from
+each grid side by side: the blend on the left, the repaired grid on the right. The table counts the
+rings, counts the depths at which the path broke into two separate loops, and measures the worst
+miss against the true distance, also as a number of steps.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_squircle_offsets/rays.png" wait="2.0" capture="box" open-outputs="true" padding="20" alt="Two copies of the orange blended outline, each ringed by dots where 48 rays start. Dots step inwards along each ray to the outline; near the waist they bunch up"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_squircle_offsets/insets.png" wait="2.0" capture="box" open-outputs="true" padding="20" alt="Two copies of the orange outline filled with nested insets. On the left the red insets split at the waist into two separate pockets, one in each squircle, with a wide empty band between them. On the right the blue insets stay one connected family, evenly spaced, and run through the waist into the smaller squircle, meeting in a point along the middle"}
 :::static
 :::fold the shapes, the blend, its grids and the traced outline, as above
 // Two squircle rectangles with clothoid corners, overlapping.
@@ -203,65 +202,58 @@ for (contour in generateIsoContours(blend, -1.5, 1.5, -1.0, 1.0, 600, 400, 0.0))
 }
 val truth = traced.signedDistance2D()
 :::endfold
-// 720 rays from a ring around the shape, each aimed at a point inside the larger squircle.
-val rays = 720
-fun march(grid: SdfGrid2D) = (0 until rays).map { r ->
-    val a = 2 * PI * r / rays
-    val ox = 1.45 * cos(a)
-    val oy = 0.95 * sin(a)
-    grid.sphereTrace(ox, oy, -0.3 - ox, -oy)
-}
+// Inset rings every 0.04, as a pocketing toolpath would step in, read off each grid.
+val step = 0.04
+val depths = (1..14).map { -step * it }
+fun rings(grid: SdfGrid2D, d: Double) = generateIsoContours({ x, y -> grid.bilinear(x, y) }, -1.5, 1.5, -1.0, 1.0, 300, 200, d)
 val table = buildString {
-    appendLine("| grid | mean steps | rays that hit | worst true distance at a hit |")
-    appendLine("|---|---|---|---|")
+    appendLine("| grid | depths | rings | depths split in two | worst miss | worst miss, in steps |")
+    appendLine("|---|---|---|---|---|---|")
     for ((name, grid) in ["blend" to pseudo, "repaired" to fixed]) {
-        val traces = march(grid)
-        val hits = traces.filter { it.hit }
-        val worst = hits.maxOf { abs(truth(it.x, it.y)) }
-        appendLine("| $name | %.2f | %d of %d | %.4f |".format(traces.map { it.steps }.average(), hits.size, rays, worst))
+        var worst = 0.0
+        var count = 0
+        var split = 0
+        for (d in depths) {
+            val cs = rings(grid, d)
+            count += cs.size
+            if (cs.size > 1) split++
+            for (p in cs.flatten()) worst = max(worst, abs(truth(p.x.toDouble(), p.y.toDouble()) - d))
+        }
+        appendLine("| $name | %d | %d | %d | %.4f | %.2f |".format(depths.size, count, split, worst, worst / step))
     }
 }
-:::fold draw every step of 48 of the rays, through each grid
+:::fold draw the rings from both grids, side by side
 val scale = 110.0
 val drawn = ArrayList<FLine>()
 for ((panel, grid) in [pseudo, fixed].withIndex()) {
     val dx = panel * 3.2
-    drawn += traced.transform { vec((it.x + dx) * scale, -it.y * scale, 0.0) }.apply {
-        thickness = 2.0
+    val tint = if (panel == 0) vec(1.0, 0.3, 0.25, 1.0) else vec(0.5, 0.8, 1.0, 1.0)
+    for (c in rings(grid, 0.0)) drawn += polylineFrom(c.map { vec((it.x + dx) * scale, -it.y * scale) }, closed = true).apply {
+        thickness = 2.5
         color = vec(1.0, 0.67, 0.0, 1.0)
     }
-    for (r in 0 until rays step 15) {
-        val a = 2 * PI * r / rays
-        var x = 1.45 * cos(a)
-        var y = 0.95 * sin(a)
-        val len = hypot(-0.3 - x, -y)
-        val ux = (-0.3 - x) / len
-        val uy = -y / len
-        for (step in 0 until 64) {
-            val d = grid.bilinear(x, y)
-            drawn += fline { circle((x + dx) * scale, -y * scale, 1.6) }.apply {
-                filled = true
-                color = if (panel == 0) vec(1.0, 0.35, 0.3, 0.9) else vec(0.5, 0.8, 1.0, 0.9)
-            }
-            if (d < 1e-3) break
-            x += ux * d
-            y += uy * d
-        }
+    for (d in depths) for (c in rings(grid, d)) drawn += polylineFrom(c.map { vec((it.x + dx) * scale, -it.y * scale) }, closed = true).apply {
+        thickness = 1.5
+        color = tint
     }
 }
-lines(drawn, channel = "rays", w = 660.0, h = 240.0, fitToSize = true)
+lines(drawn, channel = "insets", w = 660.0, h = 240.0, fitToSize = true)
 :::endfold
 markdown("readout", table)
 ```
 
-![Sphere tracing through each grid](assets/chain_squircle_offsets/rays.png)
+![Inset toolpaths from each grid](assets/chain_squircle_offsets/insets.png)
 
-Every ray hits through both grids, and the repaired grid takes fewer steps on average. The saving
-is small, as it is for the [cut box on the mesh page](mesh_examples.md#repairing-a-field-that-is-only-a-bound):
-a ray only passes through the blend's bad values when it comes in towards the waist, and most rays
-land on a plain side. The hits through the repaired grid sit slightly further from the true outline
-than the blend's, because the repair rebuilds each value from the grid's linear zero crossings, and
-those sit a little off the curve.
+The blend's toolpath is wrong where it matters. Inside the overlap its values say the points are
+close to the edge when they are far from it, so the deeper insets cut off at the waist and leave
+two pockets, one per squircle, with an uncut band between them. A cutter following it misses
+material by several steps. The repaired insets stay one tool width apart and run through the waist
+in one connected family, which is what the shape's distance says they should do.
+
+A sphere tracer, which steps along a ray by the field's value, barely notices the difference: a
+smooth min only ever underestimates, so tracing through the blend stays safe and costs a few more
+steps near the waist. The repair matters to whatever reads the value as a distance, and offsets
+read nothing else.
 
 ## What passes along the chain, and what is lost
 
@@ -272,8 +264,8 @@ those sit a little off the curve.
   figure shows where.
 - **Blend to grid.** Sampling keeps the sign of every sample and nothing finer than a cell. The
   repair trusts those signs, so a feature thinner than a cell is lost before it starts.
-- **Grid to offsets and rays.** Both read values only, through `bilinear`. Whatever the values say,
-  the contours and the steps believe.
+- **Grid to offsets and toolpaths.** Both read values only, through `bilinear`. Whatever the values
+  say, the contours follow.
 
 ## Where to go next
 

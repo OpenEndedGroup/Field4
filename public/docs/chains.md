@@ -140,7 +140,7 @@ These chains end in something you could print, mount, hang or light.
 
     **[A Drawn Outline, Repaired and Offset](chain_squircle_offsets.md).** Two squircles joined
     by a smooth min keep their outline and lose their distances. Repair the field, then see the
-    difference in the offset contours a cutter would follow and in the steps a sphere tracer takes.
+    difference in the insets a cutter would follow: the blend's split in two at the waist.
 
 </div>
 
