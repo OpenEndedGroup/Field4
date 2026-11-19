@@ -569,6 +569,110 @@ Two environment variables change the timings: `AFIELD_RUNLOOP_WATCHDOG_INTERRUPT
 delay before the automatic interrupt (`0` turns it off and leaves only the command), and
 `AFIELD_RUNLOOP_WATCHDOG_REPORT_MS` sets the delay before the report.
 
+### Keeping a long run going, or turning interruption off
+
+To make a box interruptible, Field compiles its code with a check at each loop iteration and
+function call. There are three settings for that check:
+
+<div class="field-data-table" markdown>
+
+| Setting | What happens | Pick it for |
+| --- | --- | --- |
+| **on + watchdog** (the default) | **Interrupt Running Box** works, and a box that holds the main loop for thirty seconds is interrupted, with an error that names the box. | Everyday work. |
+| **on, no watchdog** | **Interrupt Running Box** still works, but nothing is interrupted automatically: a long stall is only reported in the log. | A long computation you mean to run, such as a search or a simulation that takes minutes to settle. |
+| **off** | Box code is compiled unchanged. Nothing can interrupt a box that never returns, the stall report cannot name the box, and the features that read compiled box code fall back to slower paths or stay off. | Measuring a tight loop exactly as plain Kotlin runs it. |
+
+</div>
+
+The choice is in the Runtime panel of the welcome page; `/welcome#runtime` opens the page with that
+panel showing. Field saves the choice, and the line under the buttons says what the setting in
+effect does, with the interrupt delay this Field is using. A change applies to boxes run after it,
+so run a box again to pick it up.
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1300x1400" clip-selector="#docs-welcome-instrumentation-crop" screenshot="assets/running_code/box-instrumentation.png" padding="0" wait="0" timeout="120" embed=true hidden=true name="welcome-box-instrumentation" alt="The box code instrumentation control from the welcome page's Runtime panel: three buttons, on + watchdog (selected), on, no watchdog, and off, above a line saying that box code is compiled so it can be stopped, that Interrupt Running Box works, that a box that holds the RunLoop for 300 s is interrupted automatically, and that the setting applies to boxes run after the change."}
+/*
+/welcome is its own page: load it into a frame on the capture page at /welcome#runtime, which opens
+the Runtime panel, and mark the control's rectangle with an empty, transparent element so the
+capture can be clipped to it (the clip selector sees only the top document).
+*/
+ui.eval(
+    """
+    document.getElementById("docs-welcome-frame")?.remove()
+    document.getElementById("docs-welcome-instrumentation-crop")?.remove()
+    const f = document.createElement("iframe")
+    f.id = "docs-welcome-frame"
+    f.src = "/welcome#runtime"
+    f.setAttribute("style", "position:fixed;left:0;top:0;width:1300px;height:1400px;border:0;background:#111;z-index:2147483000")
+    document.body.appendChild(f)
+    return true""".trimIndent(),
+)
+var state = ""
+for (i in 0 until 80) {
+    ui.pause(250)
+    state =
+        ui.eval(
+                """
+                const d = document.getElementById("docs-welcome-frame")?.contentDocument
+                const panel = d && d.getElementById("runtime-info-details")
+                if (!panel) return "loading"
+                if (!panel.open) return "closed"
+                const summary = d.getElementById("runtime-info-summary").textContent
+                const detail = d.getElementById("box-instrumentation-detail").textContent
+                const splash = d.getElementById("splash-screen")
+                if (/checking/i.test(summary) || !/Applies to boxes/.test(detail)) return "pending"
+                if (splash && !splash.classList.contains("hidden")) return "splash"
+                return "ready"
+                """.trimIndent(),
+            )
+            .toString()
+    if (state.contains("ready")) break
+}
+check(state.contains("ready")) { "the welcome Runtime panel did not finish loading: " + state }
+ui.pause(1000)
+ui.eval(
+    """
+    const f = document.getElementById("docs-welcome-frame")
+    const control = f.contentDocument.getElementById("box-instrumentation")
+    control.scrollIntoView({ block: "center" })
+    // The control, across the width of its panel and down to the panel's divider, so the picture
+    // keeps the panel's edges and margins rather than being trimmed to the text.
+    const c = control.getBoundingClientRect()
+    const panel = control.closest("section").getBoundingClientRect()
+    const runtime = control.closest("details").getBoundingClientRect()
+    const r = { left: panel.left, top: c.top - 14, width: panel.width, height: runtime.bottom + 2 - (c.top - 14) }
+    const o = f.getBoundingClientRect()
+    const m = document.createElement("div")
+    m.id = "docs-welcome-instrumentation-crop"
+    m.setAttribute("style", "position:fixed;pointer-events:none;background:transparent;border:0;z-index:2147483001;" +
+        "left:" + (o.left + r.left) + "px;top:" + (o.top + r.top) + "px;width:" + r.width + "px;height:" + r.height + "px")
+    document.body.appendChild(m)
+    return [r.width, r.height]""".trimIndent(),
+)
+ui.pause(300)
+```
+
+??? aside "Why the picture says 300 s"
+    The docs build runs Field with `AFIELD_RUNLOOP_WATCHDOG_INTERRUPT_MS` set to five minutes, so
+    that slow captures elsewhere in the site are not interrupted. The control reports that delay;
+    a Field started normally shows 30 s.
+
+From a box, one line sets it for this session:
+
+```diffstatic {data-lang=kotlin}
+BoxInstrumentation.mode = BoxInstrumentation.Mode.INSTRUMENT
+```
+
+The other values are `Mode.WATCHDOG` and `Mode.OFF`. A value set from code is not saved: it lasts
+until Field restarts, `BoxInstrumentation.clearSession()` returns to the welcome page's choice, and
+choosing on the welcome page replaces it. A script outside Field can do the same over HTTP:
+`GET /api/box-instrumentation` reports the setting in effect and what set it, and
+`POST /api/box-instrumentation` with `{"mode": "instrument", "persist": false}` sets it for the
+session (`"persist": true`, the default, saves it as the welcome page does).
+
+Like the timings, the setting can come from the environment: `AFIELD_BOX_INSTRUMENTATION` set to
+`watchdog`, `instrument` or `off` (or `-Dafield.boxInstrumentation=...`) fixes it for that run of
+Field, over both the welcome page and code, and the welcome page says so.
+
 ## Putting it together
 
 - During interactive execution, Kotlin box code is **fragmented** on `//%-`, and each fragment is **macro-expanded, compiled, and evaluated in turn** — so a fragment sees the runtime effects of earlier fragments in that box.
