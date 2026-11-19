@@ -15,6 +15,7 @@ from build_zensical_docs import (  # noqa: E402
     ceres_library_path,
     check_native_prerequisites,
     tetgen_library_path,
+    opennurbs_library_path,
     paint_library_path,
     dirt_samples_root_path,
     libpd_library_path,
@@ -217,6 +218,29 @@ class TetgenLibraryPathTests(unittest.TestCase):
         self.assertIs(resolve, tetgen_library_path)
         self.assertEqual("./gradlew buildTetgenNative", how_to_build)
 
+
+
+class OpenNurbsLibraryPathTests(unittest.TestCase):
+    """The same properties for openNURBS, kept in step with
+    `afield.geometry.rhino.OpenNurbsLibrary.searchedPaths` by hand."""
+
+    def test_the_environment_override_wins(self):
+        with patch.dict(os.environ, {"AFIELD_OPENNURBS_LIBRARY": "/somewhere/libfield_opennurbs_jvm.dylib"}):
+            self.assertEqual(
+                opennurbs_library_path(Path("/repo")), Path("/somewhere/libfield_opennurbs_jvm.dylib")
+            )
+
+    def test_the_default_is_where_build_opennurbs_native_writes(self):
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("AFIELD_OPENNURBS_LIBRARY", None)
+            resolved = opennurbs_library_path(Path("/repo"))
+        self.assertEqual(resolved.parent, Path("/repo/build/field-opennurbs/build"))
+        self.assertIn("field_opennurbs_jvm", resolved.name)
+
+    def test_it_is_registered_so_a_fence_may_declare_it(self):
+        resolve, how_to_build = NATIVE_PREREQUISITES["opennurbs"]
+        self.assertIs(resolve, opennurbs_library_path)
+        self.assertEqual("./gradlew buildOpenNurbsNative", how_to_build)
 
 class SolidCraftLibraryPathTests(unittest.TestCase):
     def test_capture_uses_the_optional_build_artifact_or_override(self):
