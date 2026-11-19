@@ -180,6 +180,28 @@ def tetgen_library_path(repo_root: Path) -> Path:
     return next((c for c in candidates if c.exists()), candidates[0])
 
 
+def opennurbs_library_path(repo_root: Path) -> Path:
+    """Where `afield.geometry.rhino.OpenNurbsLibrary.resolvedPath` will look, from Python.
+
+    The same arrangement as [tetgen_library_path]: only this repo's `build/`, both CMake
+    layouts, and the environment override (the JVM property is not visible from here).
+    """
+    override = os.environ.get("AFIELD_OPENNURBS_LIBRARY", "").strip()
+    if override:
+        return Path(override)
+    if sys.platform.startswith("win"):
+        name = "field_opennurbs_jvm.dll"
+    elif sys.platform == "darwin":
+        name = "libfield_opennurbs_jvm.dylib"
+    else:
+        name = "libfield_opennurbs_jvm.so"
+    candidates = [
+        repo_root / "build" / "field-opennurbs" / "build" / name,
+        repo_root / "build" / "field-opennurbs" / "build" / "Release" / name,
+    ]
+    return next((c for c in candidates if c.exists()), candidates[0])
+
+
 def paint_library_path(repo_root: Path) -> Path:
     """Where `afield.graphics.paint.PaintLibrary.resolvedPath` will look, from Python.
 
@@ -490,6 +512,7 @@ NATIVE_PREREQUISITES: dict[str, tuple[Any, str]] = {
     "manifold": (manifold_library_path, "brew install manifold"),
     "solidcraft": (solidcraft_library_path, "./gradlew buildSolidCraftNative"),
     "tetgen": (tetgen_library_path, "./gradlew buildTetgenNative"),
+    "opennurbs": (opennurbs_library_path, "./gradlew buildOpenNurbsNative"),
     "morse-smale": (
         native_geometry_library_path("morse-smale", "field_morse_smale", "AFIELD_MORSE_SMALE_LIBRARY"),
         "./gradlew buildMorseSmaleNative",

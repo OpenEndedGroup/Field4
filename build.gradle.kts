@@ -3919,6 +3919,45 @@ val buildTetgenNative = tasks.register("buildTetgenNative") {
     }
 }
 
+// Build native/field-opennurbs: McNeel's openNURBS behind a flat C ABI, so box code can read Rhino
+// .3dm files (afield.geometry.rhino.Rhino3dm) — layers, meshes, curves, text, blocks.
+//
+// The same shape as buildTetgenNative: the Python script owns the pinned, checksummed source
+// tarball and the CMake invocation; openNURBS's own CMakeLists builds the static library that is
+// linked whole into the wrapper. Not wired into `check` — a fresh clone has no network guarantee,
+// and the .3dm tests skip without the library.
+//
+//     ./gradlew buildOpenNurbsNative
+//     ./gradlew jvmTest --tests 'afield.geometry.rhino.*'
+val buildOpenNurbsNative = tasks.register("buildOpenNurbsNative") {
+    group = "build"
+    description = "Builds native/field-opennurbs into build/field-opennurbs (needs cmake and, once, the network)."
+
+    val sourceDir = layout.projectDirectory.dir("native/field-opennurbs")
+    val script = layout.projectDirectory.file("tools/build_opennurbs_native.py")
+    val cacheHelper = layout.projectDirectory.file("tools/native_download_cache.py")
+    inputs.dir(sourceDir)
+    inputs.file(script)
+    inputs.file(cacheHelper)
+    outputs.dir(layout.buildDirectory.dir("field-opennurbs/build"))
+
+    doLast {
+        val command = listOf(nativeBuildPython, script.asFile.absolutePath)
+        val result = providers.exec {
+            commandLine(command)
+            isIgnoreExitValue = true
+        }
+        val code = result.result.get().exitValue
+        if (code != 0) {
+            throw GradleException(
+                "${command.joinToString(" ")} failed with exit code $code:\n" +
+                    result.standardOutput.asText.get() + result.standardError.asText.get(),
+            )
+        }
+        logger.lifecycle(result.standardOutput.asText.get().trim())
+    }
+}
+
 // Build one optional native geometry library (native/field-<module>): plain CMake, no downloads,
 // no third-party packages, and its native test runs as part of the build. Field compiles and runs
 // without any of them; afield.geometry.network.NativeGeometry reports which are present.
@@ -4276,7 +4315,7 @@ val buildCeresRedistributable = tasks.register("buildCeresRedistributable") {
 }
 
 // One callable preparation gate for every native dependency declared by a documentation fence.
-// Ceres, TetGen, SolidCraft, libpd, the native browser bridge and the Electron runtime are built here, and the
+// Ceres, TetGen, openNURBS, SolidCraft, libpd, the native browser bridge and the Electron runtime are built here, and the
 // pinned Dirt-Samples subset is fetched; Manifold and
 // JEP remain system/interpreter dependencies and the checker reports their exact resolved paths
 // and remedies. The source archives used by the downloaded builds live in the shared per-user
@@ -4293,7 +4332,7 @@ val buildCeresRedistributable = tasks.register("buildCeresRedistributable") {
 tasks.register<Exec>("buildDocsNativePrerequisites") {
     group = "documentation"
     description = "Builds and verifies all native dependencies required by documentation captures."
-    dependsOn(buildCeresRedistributable, buildTetgenNative, buildMorseSmaleNative, buildPrincipalCurvesNative, buildPolyvectorNative, buildPaintNative, buildLibpdNative, buildCsoundNative, buildFieldBrowserBridge, electronInstall, fetchDocsDirtSamples, fetchSteamAudioNatives, "buildLorisNative", buildD2LayoutHelper)
+    dependsOn(buildCeresRedistributable, buildTetgenNative, buildOpenNurbsNative, buildMorseSmaleNative, buildPrincipalCurvesNative, buildPolyvectorNative, buildPaintNative, buildLibpdNative, buildCsoundNative, buildFieldBrowserBridge, electronInstall, fetchDocsDirtSamples, fetchSteamAudioNatives, "buildLorisNative", buildD2LayoutHelper)
     dependsOn("buildSolidCraftNative")
     commandLine(rootPythonCommand + listOf("tools/check_docs_native_prerequisites.py"))
 }

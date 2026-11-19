@@ -68,6 +68,7 @@ internal val extrasCatalog = listOf(
         setOf("xcrun"), platforms = setOf("mac"),
         advice = "BUILD compiles the offline save-file reader using local Apple tools; no downloads. The iPad app needs full Xcode with the iPadOS SDK: open native/field-drawingon/DrawingOn.xcodeproj, choose your iPad and signing team, then Run. Open the drawing_on starting place in Field and connect the app to /drawingon/ws, target ipad. Field's server adapter is already included on every platform. Optional STT uses an existing local Whisper executable/model; setup does not install models or sign/install an iPad app.",
         preparation = listOf("/bin/zsh", "native/field-drawingon/tools/prepare")),
+    Extra("opennurbs", "Rhino .3dm files (openNURBS)", "Native libraries", "public/docs/rhino_files.md", setOf("python3", "cmake", "compiler"), "buildOpenNurbsNative", advice = "Downloads pinned openNURBS source and builds the native wrapper (a few minutes). Reads layers, meshes, curves, text and blocks; Breps come in through the render meshes Rhino saved. Check with Rhino3dm.describe() in a box."),
 )
 
 internal fun platformId(os: String): String = when {
@@ -145,6 +146,7 @@ internal fun artifactCandidates(root: File, id: String, platform: String, enviro
         "drawing-on" -> "" to listOf("native/field-drawingon/.build/offline-review/drawingon-review")
         "ceres" -> "AFIELD_CERES_LIBRARY" to listOf("build/ken-ceres-redistributable/${library("ken_ceres_jvm")}", "build/ken-ceres/${library("ken_ceres_jvm")}")
         "tetgen" -> "AFIELD_TETGEN_LIBRARY" to listOf("build/field-tetgen/build/${library("field_tetgen_jvm")}", "build/field-tetgen/build/Release/${library("field_tetgen_jvm")}")
+        "opennurbs" -> "AFIELD_OPENNURBS_LIBRARY" to listOf("build/field-opennurbs/build/${library("field_opennurbs_jvm")}", "build/field-opennurbs/build/Release/${library("field_opennurbs_jvm")}")
         "paint" -> "AFIELD_PAINT_LIBRARY" to listOf("build/field-paint/release/${library("field_paint_jvm")}")
         "solidcraft" -> "AFIELD_SOLIDCRAFT_LIBRARY" to listOf("build/native/solidcraft/${library("field_solidcraft_jvm")}")
         "libpd" -> "AFIELD_PD_LIBRARY" to listOf("build/field-libpd/build/libs/${library("pd-multi")}", "build/field-libpd/build/libs/Release/${library("pd-multi")}")

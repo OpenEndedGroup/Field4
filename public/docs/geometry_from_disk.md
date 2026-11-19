@@ -23,6 +23,7 @@ shoot a ray at it, write it back out as something else.
 | `.stl` (ASCII or binary) | `meshFromFile(path)` | `TriMesh`, triangle soup — see [below](#what-each-format-loses) | yes |
 | `.ply` (ASCII, binary, either endianness) | `meshFromAnyFile(path)` | `TriMesh` with the file's per-vertex colours | yes |
 | `.glb`, `.gltf`, `.fbx`, `.dae`, `.3ds`, … | `meshFromAnyFile(path)` | `TriMesh`, all parts baked through their node transforms | yes |
+| `.3dm` (Rhino 1 to 8) | `Rhino3dm.load(path)` | `RhinoModel`: the layer tree, and per object a `TriMesh`, an `FLine`, text or points — see [Rhino files](rhino_files.md) | yes |
 | any of the above, textured, with PBR materials | `gltfModelHere("…")` / the [Fabricate renderer](fabricate_renderer.md) | GPU buffers, materials, textures, a live scene | no — needs a renderer |
 | `.step`, `.iges`, `.brep` | **nothing** | — | — |
 
@@ -366,6 +367,8 @@ Three details in that output are easy to miss:
 **STEP, IGES, BREP and other CAD formats** are not read. A `.step` file is NURBS surfaces trimmed
 against each other rather than a mesh, and Field has no CAD kernel. Export STL from FreeCAD or your
 CAD tool and read that. `meshFromAnyFile` on a `.step` throws rather than returning an empty mesh.
+Rhino's `.3dm` is the exception, because Rhino saves a render mesh with every surface; see
+[Rhino files](rhino_files.md).
 
 **Textures and materials** do not come across into a `TriMesh`, which has positions, normals, uvs and
 per-vertex colours only; `assimpToTriMesh` drops the material. For a textured, rendered model use
