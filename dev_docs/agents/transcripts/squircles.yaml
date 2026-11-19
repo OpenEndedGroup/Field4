@@ -1,0 +1,86 @@
+name: squircles
+description: >
+  Five squircle constructions (superellipse, one cubic, Chromium's two cubics, Figma corner
+  smoothing, clothoid corners) sharing one gauge — the quadrant midpoint 0.5^(1/n). Box 1 has a
+  gauge slider: drag it and every shape and its curvature plot morph together. Box 2 is the
+  rounded-rectangle helper with the three corner styles overlaid. See the "Squircles" section of
+  public/docs/fline_examples.md. The saved document at `dev_docs/agents/demos/squircles/` is this
+  same scene.
+docs:
+  - page: fline_examples.md#squircles-squirclefrom-and-squirclerectfrom
+    why: "Introduces squircleFrom, squircleRectFrom, SquircleStyle and the gauge these boxes use."
+operations:
+  - create:
+      box: squircle_morph
+      name: 1 - Squircles by gauge (slider)
+      frame: { x: 60.0, y: 60.0, w: 360.0, h: 136.0 }
+      properties:
+        code: |
+          val styles = [
+              SquircleStyle.Superellipse,
+              SquircleStyle.SuperellipseCubic,
+              SquircleStyle.Chromium,
+              SquircleStyle.Figma,
+              SquircleStyle.Clothoid,
+          ]
+          val colors = [
+              vec(1.0, 1.0, 1.0, 1.0),
+              vec(1.0, 0.55, 0.45, 1.0),
+              vec(1.0, 0.8, 0.3, 1.0),
+              vec(0.7, 0.6, 1.0, 1.0),
+              vec(0.5, 0.8, 1.0, 1.0),
+          ]
+
+          // every shape, and its curvature round one corner, at one gauge
+          fun draw(gauge: Double) {
+              val drawn = ArrayList<FLine>()
+              for ((i, style) in styles.withIndex()) {
+                  val left = 20.0 + i * 130
+                  drawn +=
+                      squircleFrom(vec(left + 55, 70), 50.0, gauge = gauge, style = style).apply {
+                          thickness = 3.0
+                          color = colors[i]
+                      }
+                  val profile = squircleCurvatureProfile(style, gauge)
+                  val length = profile.last().x
+                  drawn +=
+                      polylineFrom(profile.map { vec(left + it.x / length * 110, 260 - it.y * 15) }).apply {
+                          thickness = 2.0
+                          color = colors[i]
+                      }
+                  drawn += polylineFrom([vec(left, 260), vec(left + 110, 260)]).apply { color = vec(1.0, 1.0, 1.0, 0.3) }
+              }
+              lines(drawn, w = 660.0, h = 280.0, fitToSize = true)
+              print("gauge ${gauge.f3} = superellipse n ${squircleExponent(gauge).f2}")
+          }
+
+          val start = squircleGauge(3.0)
+          slider("Gauge", min = 0.708, max = 0.95, initialValue = start) { draw(it) }
+          draw(start)
+
+  - create:
+      box: squircle_rect
+      name: 2 - Rounded rectangles with squircle corners
+      frame: { x: 60.0, y: 260.0, w: 360.0, h: 136.0 }
+      properties:
+        code: |
+          val circular = squircleRectFrom(20.0, 20.0, 380.0, 160.0, radius = 70.0, gauge = Math.sqrt(0.5)).apply {
+              thickness = 1.5
+              color = vec(1.0, 1.0, 1.0, 0.8)
+          }
+          val figma = squircleRectFrom(20.0, 20.0, 380.0, 160.0, radius = 70.0, gauge = 0.79, style = SquircleStyle.Figma).apply {
+              thickness = 3.0
+              color = vec(0.7, 0.6, 1.0, 1.0)
+          }
+          val clothoid = squircleRectFrom(20.0, 20.0, 380.0, 160.0, radius = 70.0, gauge = 0.79, style = SquircleStyle.Clothoid).apply {
+              thickness = 3.0
+              color = vec(0.5, 0.8, 1.0, 1.0)
+          }
+          val figmaComb = figma.curvatureComb(scale = 600.0, samples = 400).apply { color = vec(0.7, 0.6, 1.0, 0.45) }
+          val clothoidComb = clothoid.curvatureComb(scale = 600.0, samples = 400).apply { color = vec(0.5, 0.8, 1.0, 0.45) }
+
+          lines(figmaComb, clothoidComb, circular, figma, clothoid, w = 420.0, h = 200.0, fitToSize = true)
+
+  - launch: { box: squircle_morph, property: code }
+  - launch: { box: squircle_rect, property: code }
+  - await: { wait: pending }
