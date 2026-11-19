@@ -35,6 +35,28 @@ class SquircleTest {
     private fun profile(style: SquircleStyle, gauge: Double) =
         squircleCurvatureProfile(style, gauge).map { it.x.toDouble() to it.y.toDouble() }
 
+    /**
+     * Reference values from figma-squircle's `getPathParamsForCorner` (src/draw.ts, MIT), run on
+     * `cornerRadius = R, cornerSmoothing = 1, roundingAndSmoothingBudget = 1`: each corner's cubic
+     * meets the arc at `(1 - d, 1 - p + a + b + c)` and the corner starts `p` from the axis end.
+     */
+    @Test
+    fun figmaCornerMatchesFigmaSquircleSource() {
+        // R -> (a, b, c, d, p) printed by draw.ts
+        val ref = mapOf(
+            0.6 to doubleArrayOf(0.37384634363911573, 0.18692317181955787, 0.1392304845413264, 0.08038475772933683, 1.0),
+            0.3 to doubleArrayOf(0.28284271247461895, 0.14142135623730948, 0.08786796564403575, 0.08786796564403573, 0.6),
+        )
+        for ((r, v) in ref) {
+            val (a, b, c, d, p) = v.toList()
+            val gauge = 1 - r * (1 - 1 / sqrt(2.0))
+            val pts = along(squircleFrom(Vec2(0f, 0f), 1.0, gauge = gauge, style = SquircleStyle.Figma), 20000)
+            fun miss(x: Double, y: Double) = pts.minOf { hypot(it.x - x, it.y - y) }
+            assertTrue(miss(1 - d, 1 - p + a + b + c) < 3e-4, "R=$r: cubic/arc join off by ${miss(1 - d, 1 - p + a + b + c)}")
+            assertTrue(miss(1.0, 1 - p) < 3e-4, "R=$r: corner start off by ${miss(1.0, 1 - p)}")
+        }
+    }
+
     @Test
     fun gaugeAndExponentInvert() {
         assertEquals(sqrt(0.5), squircleGauge(2.0), 1e-12)
