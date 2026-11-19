@@ -8,8 +8,8 @@ Have a Rhino model you want to explore? Load it in a box and draw it in a viewer
 import afield.geometry.rhino.*
 
 val model = Rhino3dm.load("~/Downloads/model.3dm")
-println(model)            // layers, objects by kind, and anything skipped with the reason
-three { rhino(model) }    // every object as a part, folded under its layer path
+println(model) // layers, objects by kind, and anything skipped with the reason
+three { rhino(model) } // every object as a part, folded under its layer path
 ```
 
 A Rhino model is more than its surfaces. It has a layer tree, curves that are not the edges of
@@ -46,6 +46,8 @@ three(height = 460) { rhino(model) }
 dir.deleteRecursively()
 :::endfold
 ```
+
+![The sample model in an orbiting viewer, seen from above at an angle with Z up. A dark red shaded box with darker edges and, beside it, a flat red plate made of a quad and a triangle sit on the Hull layer; a green dot marks the point. Thin green curves lie flat around them: a long straight line, a wavy cubic, a circle, an open slot of two lines joined by a half-round end, and the words Hello Field set as outlines lying in the same plane. Two grey triangular fins, the two placements of one block, stand off to the right. The Brep on the switched-off Glass layer is not drawn.](assets/rhino_files/sample.png)
 
 ## What comes back
 
