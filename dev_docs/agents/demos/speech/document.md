@@ -17,19 +17,27 @@ From `code`
 Analyse what was said: the LPC envelope of the stressed vowel in each word.
 
 ```edn [field-box id="analyse" role="properties"]
-{"id" "analyse" "index" 0 "name" "5 - Analyse what was said" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 - Analyse what was said" "_tombstone" false "frame" #afield/rect [440.0 230.0 340.0 120.0] "preamble" ""} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_code_.kt" "lines" 9 "characters" 595 "sha256" "192d1eb05aaf78ded81e10ed1da9ee0bc4a67f3e2bbb8e38319d441c6892a766"}]}
+{"id" "analyse" "index" 0 "name" "5 - Analyse what was said" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 - Analyse what was said" "_tombstone" false "frame" #afield/rect [440.0 230.0 340.0 120.0] "preamble" ""} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_code_.kt" "lines" 17 "characters" 650 "sha256" "e099c7691ba85bf6eadd62bcbb82ff35f3b95650c3b66331e0cbb16a02cf3ede"}]}
 ```
 
 ```kotlin [field-property box="analyse" name="code" path="analyse_code_.kt"]
 // Analyse what was said: the LPC envelope of the stressed vowel in each word.
 val said = speak("Speak, analyse, and plot.")
 val audio = said.resampled(48_000)
-val curves = said.words.mapNotNull { w ->
-    val v = w.phones.firstOrNull { it.stress == 1 } ?: return@mapNotNull null
-    val mid = ((v.start + v.end) / 2 * 48_000).toInt()
-    "${w.text} /${v.symbol}/" to Lpc.analyze(audio.copyOfRange(mid - 1024, mid + 1024), 52).envelopeDb(1025).take(214).toList()
-}
-showSignals(*curves.toTypedArray(), x = 214 { it * 48_000.0 / 2048 }, channel = "main", xTitle = "frequency (Hz)", yTitle = "dB")
+val curves =
+    said.words.mapNotNull { w ->
+        val v = w.phones.firstOrNull { it.stress == 1 } ?: return@mapNotNull null
+        val mid = ((v.start + v.end) / 2 * 48_000).toInt()
+        "${w.text} /${v.symbol}/" to
+            Lpc.analyze(audio.copyOfRange(mid - 1024, mid + 1024), 52).envelopeDb(1025).take(214).toList()
+    }
+showSignals(
+    *curves.toTypedArray(),
+    x = 214 { it * 48_000.0 / 2048 },
+    channel = "main",
+    xTitle = "frequency (Hz)",
+    yTitle = "dB",
+)
 ```
 
 ## 2. 1 - Speak
@@ -51,7 +59,7 @@ print(said.h)
 <!-- field-box id="word_timing" index="2" -->
 
 ```edn [field-box id="word_timing" role="properties"]
-{"id" "word_timing" "index" 2 "name" "2 - Word timing" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Word timing" "_tombstone" false "frame" #afield/rect [440.0 60.0 340.0 120.0] "preamble" ""} "blockProperties" [{"name" "code" "language" "kotlin" "path" "word_timing_code_.kt" "lines" 11 "characters" 535 "sha256" "d881f2cd50f4e328483a84abeaa280e4da04af9daa88421c3c112981572cee43"}]}
+{"id" "word_timing" "index" 2 "name" "2 - Word timing" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Word timing" "_tombstone" false "preamble" "" "frame" #afield/rect [440.0 60.0 340.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "word_timing_code_.kt" "lines" 13 "characters" 539 "sha256" "35f77e81adda170e868aa423ae69d1fa2b93aa98fb0349eb2ca08c8ba78211c5"}]}
 ```
 
 ```kotlin [field-property box="word_timing" name="code" path="word_timing_code_.kt"]
@@ -65,7 +73,9 @@ showSignals(
     channel = "main",
     xTitle = "seconds",
 )
-said.words.forEach { println("%-8s %.2f s  %s".format(it.text, it.start, it.phones.joinToString(" ") { p -> p.symbol })) }
+said.words.forEach {
+    println("%-8s %.2f s  %s".format(it.text, it.start, it.phones.joinToString(" ") { p -> p.symbol }))
+}
 ```
 
 ## 4. 4 - Sung on a pitch you choose (live)
@@ -100,7 +110,7 @@ From `code`
 Stressed words strike a kick, the rest a hat, exactly on the words.
 
 ```edn [field-box id="words_play_drums" role="properties"]
-{"id" "words_play_drums" "index" 4 "name" "3 - Words play the drums" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - Words play the drums" "_tombstone" false "frame" #afield/rect [820.0 60.0 340.0 120.0] "preamble" ""} "blockProperties" [{"name" "code" "language" "kotlin" "path" "words_play_drums_code_.kt" "lines" 7 "characters" 548 "sha256" "d120d9b3bbac58beef6e2a72204f957f694347fafd9407e279e2d246181daafc"}]}
+{"id" "words_play_drums" "index" 4 "name" "3 - Words play the drums" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - Words play the drums" "_tombstone" false "frame" #afield/rect [820.0 60.0 340.0 120.0] "preamble" ""} "blockProperties" [{"name" "code" "language" "kotlin" "path" "words_play_drums_code_.kt" "lines" 11 "characters" 563 "sha256" "1aa7090e3119550b6b2d705fba03a26ab93dc421cdb2bc70c899195b724aea8f"}]}
 ```
 
 ```kotlin [field-property box="words_play_drums" name="code" path="words_play_drums_code_.kt"]
@@ -110,6 +120,10 @@ val drums = said.pattern { if (it.stressed) "bd" else "hh" }
 val beat = patRenderStereo(drums, cycles = 1, cps = 1 / said.seconds, sampleRate = 48_000).mono
 val voice = said.resampled(48_000)
 val mix = (voice.size) { i -> 0.8f * voice[i] + 0.5f * beat.getOrElse(i) { 0f } }.toFloatArray()
-displayAudioSamples(mix, 48_000, label = "words as a pattern: ${drums.events(PatArc(PatQ.ZERO, PatQ.ONE)).map { it.value }}")
+displayAudioSamples(
+    mix,
+    48_000,
+    label = "words as a pattern: ${drums.events(PatArc(PatQ.ZERO, PatQ.ONE)).map { it.value }}",
+)
 ```
 

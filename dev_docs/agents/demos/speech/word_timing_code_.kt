@@ -8,4 +8,6 @@ showSignals(
     channel = "main",
     xTitle = "seconds",
 )
-said.words.forEach { println("%-8s %.2f s  %s".format(it.text, it.start, it.phones.joinToString(" ") { p -> p.symbol })) }
+said.words.forEach {
+    println("%-8s %.2f s  %s".format(it.text, it.start, it.phones.joinToString(" ") { p -> p.symbol }))
+}

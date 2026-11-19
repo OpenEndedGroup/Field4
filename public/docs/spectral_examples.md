@@ -1313,7 +1313,9 @@ showSignals(
     channel = "main",
     xTitle = "seconds",
 )
-said.words.forEach { println("%-8s %.2f s  %s".format(it.text, it.start, it.phones.joinToString(" ") { p -> p.symbol })) }
+said.words.forEach {
+    println("%-8s %.2f s  %s".format(it.text, it.start, it.phones.joinToString(" ") { p -> p.symbol }))
+}
 ```
 
 `said.wordAt(t)` and `said.phoneAt(t)` answer "what is being said at t seconds", for an animation or a
@@ -1332,7 +1334,11 @@ val drums = said.pattern { if (it.stressed) "bd" else "hh" }
 val beat = patRenderStereo(drums, cycles = 1, cps = 1 / said.seconds, sampleRate = 48_000).mono
 val voice = said.resampled(48_000)
 val mix = (voice.size) { i -> 0.8f * voice[i] + 0.5f * beat.getOrElse(i) { 0f } }.toFloatArray()
-displayAudioSamples(mix, 48_000, label = "words as a pattern: ${drums.events(PatArc(PatQ.ZERO, PatQ.ONE)).map { it.value }}")
+displayAudioSamples(
+    mix,
+    48_000,
+    label = "words as a pattern: ${drums.events(PatArc(PatQ.ZERO, PatQ.ONE)).map { it.value }}",
+)
 ```
 
 ### Speech is a Signal
@@ -1358,12 +1364,20 @@ an order-52 LPC envelope at the middle of the stressed vowel of each word:
 // Analyse what was said: the LPC envelope of the stressed vowel in each word.
 val said = speak("Speak, analyse, and plot.")
 val audio = said.resampled(48_000)
-val curves = said.words.mapNotNull { w ->
-    val v = w.phones.firstOrNull { it.stress == 1 } ?: return@mapNotNull null
-    val mid = ((v.start + v.end) / 2 * 48_000).toInt()
-    "${w.text} /${v.symbol}/" to Lpc.analyze(audio.copyOfRange(mid - 1024, mid + 1024), 52).envelopeDb(1025).take(214).toList()
-}
-showSignals(*curves.toTypedArray(), x = 214 { it * 48_000.0 / 2048 }, channel = "main", xTitle = "frequency (Hz)", yTitle = "dB")
+val curves =
+    said.words.mapNotNull { w ->
+        val v = w.phones.firstOrNull { it.stress == 1 } ?: return@mapNotNull null
+        val mid = ((v.start + v.end) / 2 * 48_000).toInt()
+        "${w.text} /${v.symbol}/" to
+            Lpc.analyze(audio.copyOfRange(mid - 1024, mid + 1024), 52).envelopeDb(1025).take(214).toList()
+    }
+showSignals(
+    *curves.toTypedArray(),
+    x = 214 { it * 48_000.0 / 2048 },
+    channel = "main",
+    xTitle = "frequency (Hz)",
+    yTitle = "dB",
+)
 ```
 
 The /iː/ of "speak" has its first peak low, near 350 Hz, and the open vowels of "analyse" and
