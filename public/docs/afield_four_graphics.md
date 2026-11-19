@@ -2110,7 +2110,7 @@ float cover = exact
 c = mix(c, C[i].rgb, clamp(cover * C[i].a, 0.0, 1.0));
 ```
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/exact-coverage-gpu.png" capture="native-window" native-wait-frames="30" timeout="180" max-width="1600" embed=true name="exact-coverage-gpu" macro-file="../../dev_docs/agents/transcripts/exact_triangle_coverage.yaml" capture-box="coverage_gpu" alt="The native window split down the middle over a faint grid of fat pixels. Left: the eight triangles point-sampled, with stepped edges, two blue blocks for the sliver and nothing for the tiny triangles or the needle. Right: the same triangles with exact coverage, graded edges, a continuous blue sliver, four grey dots and a grey needle."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/exact-coverage-gpu.png" capture="native-window" native-wait-frames="30" timeout="180" max-width="1600" embed=true name="exact-coverage-gpu" hidden=true macro-file="../../dev_docs/agents/transcripts/exact_triangle_coverage.yaml" capture-box="coverage_gpu" alt="The native window split down the middle over a faint grid of fat pixels. Left: the eight triangles point-sampled, with stepped edges, two blue blocks for the sliver and nothing for the tiny triangles or the needle. Right: the same triangles with exact coverage, graded edges, a continuous blue sliver, four grey dots and a grey needle."}
 // dev_docs/agents/transcripts/exact_triangle_coverage.yaml, box "coverage on the GPU"
 ```
 
