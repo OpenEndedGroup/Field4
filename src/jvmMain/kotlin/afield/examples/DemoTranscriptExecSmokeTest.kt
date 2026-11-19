@@ -487,6 +487,9 @@ object DemoTranscriptExecSmokeTest {
         // Squircles (2026-11-19): five squircle styles and their curvature under a gauge slider, and
         // squircleRectFrom corners over circular ones. Pure CPU, FLines into an output channel.
         "squircles",
+        // Speech (2026-11-19): tiny-voca speak(), word timing, a word pattern, a live sung Signal and
+        // LPC analysis. CPU ONNX; fetches ~27 MB on first run.
+        "speech",
         // Controls renewal (2026-10-29): a five-control surface feeding a live figure and a slider
         // that re-renders itself mid-drag. Pure CPU, output-channel controls only.
         "controls_surface",

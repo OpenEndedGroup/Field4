@@ -119,6 +119,8 @@ class AgentDemoRegistrationTest {
             "braitenberg_weight_cube",
             // 2026-11-19: squircles by one gauge (fline_examples.md#squircles); registered EXECUTE.
             "squircles",
+            // 2026-11-19: speech with tiny-voca (spectral_examples.md#speech-a-box-that-talks); registered EXECUTE.
+            "speech",
             // Landed 2026-09-22 in `b5b9ad9e0`. Not a document — no `metadata.edn` — so it is named
             // here (this set is the directory listing) and is invisible to the two assertions that
             // range over `demoDocuments()`. It is verified: `flow_grain.yaml` under
