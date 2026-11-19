@@ -1006,6 +1006,70 @@ loop {
 
 Use it for sequencers, generative rhythm systems, or anything where you want to see future note structure without leaving the code.
 
+### Which lines ran
+
+Live line heat colours the editor's line numbers by how often each line of the box ran. It needs no
+marker and no change to your code. Press ++f1++ in the editor and choose **Toggle Live Line Heat**,
+then run the box. The same command turns it off, and Field remembers the setting the next time you
+open the editor.
+
+Line heat counts from the box's next run. Code that was already running when you turned it on is
+not counted, so stop a launched box and launch it again.
+
+This box launches a `loop { }` that calls a small function forty times a frame:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-line-heat.png" alt="the editor with a launched box, its line numbers coloured: red on the two lines of the fold function and on the for loop that calls it forty times a frame, amber on the lines that run once a frame, dark green on laps += 1, which runs once every hundred frames, and dark blue on the two var lines that ran once when the box started" capture="editor" outputs="inline" execution="launch" line-heat=true wait="1.5" padding="10" timeout="120" embed=true name="line-heat"}
+:::static
+fun fold(x: Double): Double {
+    if (x < 1.0) return x
+    return x - 1.0
+}
+
+var phase = 0.0
+var laps = 0
+
+loop {
+    var sum = 0.0
+    for (i in 0 until 40) {
+        val v = fold(phase + i * 0.02)
+        if (v > 0.5) sum += v
+    }
+    phase = fold(phase + 0.01)
+    if (phase < 0.01) {
+        laps += 1
+    }
+    frame()
+}
+```
+
+The colours run from blue through green and orange to red, and are scaled against the hottest line
+in the box: here the function and the `for` loop that calls it are red, and the lines that run once
+a frame are amber. `laps += 1`, which runs once every hundred frames, is green. A line that stops
+running cools through the same colours and disappears a few seconds later, which is happening to
+the two `var` lines in the figure: they ran once, when the box started. A line that never ran is
+not coloured at all, and neither is a line with nothing to run, such as a blank line or most closing
+braces.
+
+Hover over a coloured line to read its count: how many times execution reached that line since line
+heat started watching the box. The count carries on across runs. It starts again when you edit the box,
+which also clears the colours, or when you select another box and come back. Line heat follows the
+box open in the editor, so selecting another box moves it there, from that box's next run.
+
+The counts reach the editor between Runloop ticks. A box that animates, such as a `loop { }`,
+updates as it runs. A single long loop that never calls `frame()` shows its heat when it finishes.
+
+Line heat shares the line-number column with **Toggle History Edit Churn Heatmap**. With both on,
+churn's colour is drawn over the heat, so turn churn off while you watch which lines run.
+
+!!! note "Line heat slows the box it watches"
+    Counting every line has a cost. Only the box open in the editor is counted, and only while line
+    heat is on: a tight arithmetic loop ran about one and a half times slower in Field's own tests.
+    Turn line heat off, and run the box again, before you time it.
+
+Line heat tells you how often a line ran, not how long it took. For where the time goes, line by
+line, use the profiler's box gutter heatmap, described in
+[Classes, methods, and box lines](profiling_timeline.md#classes-methods-and-box-lines).
+
 ## Display channels: the big canvas under the box
 
 Inline visuals sit beside one line of code. `display(...)` has the whole area under the box.
