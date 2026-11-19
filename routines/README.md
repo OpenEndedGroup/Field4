@@ -9,6 +9,7 @@ shows how each one last went. The public page is `public/docs/routines.md`.
 | Routine | What it does | Kind |
 | --- | --- | --- |
 | [`self-improve`](self-improve/ROUTINE.md) | Three agents make ambitious changes in their own worktrees overnight; a judge writes the morning report | agent |
+| [`consolidate`](consolidate/ROUTINE.md) | self-improve's inward twin: three agents improve code quality, existing systems' features and the paths between them; no new dependencies | agent |
 | [`nightly-ci`](nightly-ci/ROUTINE.md) | Clean build of `main`, new Kotlin warnings fixed, the docs build and smoke catalog as the test suite | agent |
 | [`feel-bench`](feel-bench/ROUTINE.md) | `tools/feel_bench.py` against this computer's baseline, once the machine is quiet | command |
 | [`weekly-changelog`](weekly-changelog/ROUTINE.md) | The week's entries for the public What's New page, through the landing queue | agent |
@@ -45,7 +46,7 @@ playbook in a `PLAYBOOK.md` beside it.
 ## Journals
 
 An agent routine remembers across nights through its journal: an orphan branch (`nightly/journal`,
-`nightly/ci-journal`) checked out under `$WORKTREE_BASE`, holding `SCRATCHPAD.md` (standing
+`nightly/consolidate-journal`, `nightly/ci-journal`) checked out under `$WORKTREE_BASE`, holding `SCRATCHPAD.md` (standing
 guidance, backlog, what not to retry) and `reports/<date>.md`. The journal is that machine's state,
 so it is never on `main` and never pushed; the routine creates it on its first run. The definition,
 the playbook and the safety rules are here, on `main`, so they are reviewed and land like any other

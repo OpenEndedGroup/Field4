@@ -14,6 +14,7 @@ and want the same overnight help.
 | Routine | What it does | Needs an agent | Suggested time |
 | --- | --- | --- | --- |
 | `self-improve` | Reads the day's commits and your workspace, gives three agents an ambitious change each in its own worktree, and has a fourth judge them. In the morning there is a report and three branches to merge, continue or delete. | yes | 00:45 |
+| `consolidate` | The inward-facing twin of `self-improve`. Three agents work on what Field already has: a bridge between two systems, one shared form for several parallel ones, a system's missing feature, code quality with a number that moved, and docs that point at each other. It adds no new dependencies and takes no scout cards. | yes | 05:30 |
 | `nightly-ci` | Builds `main` from clean, fixes Kotlin warnings that are new since the last run, then runs the full docs build and the smoke catalog as the test suite. Fixes go on a branch of their own. | yes | 05:02 |
 | `feel-bench` | Times first runs, reruns, edits and shader compiles 100 times over and compares them with your computer's baseline. It waits for the machine to go quiet first. | no | 23:00 |
 | `weekly-changelog` | Writes the week's entries for the What's New page and sends them to the [landing queue](landing_queue.md). | yes | Sundays 21:30 |
@@ -120,7 +121,8 @@ its result is "check not comparable". Record a baseline from three runs, as desc
 ## Their memory
 
 An agent routine starts every night with no memory of the last, so it keeps a journal. This is a
-branch of its own (`nightly/journal` for `self-improve`, `nightly/ci-journal` for `nightly-ci`),
+branch of its own (`nightly/journal` for `self-improve`, `nightly/consolidate-journal` for `consolidate`,
+`nightly/ci-journal` for `nightly-ci`),
 checked out beside your checkout. It holds a `SCRATCHPAD.md` of standing guidance, a backlog and
 ideas not to try again, plus a report for every night. The routine creates the journal on its first
 run. It stays on your computer: it is never merged into `main` and never pushed.
