@@ -107,6 +107,8 @@ object DemoTranscriptExecSmokeTest {
         "assimp_browsing",
         // stacksl_examples.md's fitting demo: fits a StackSL program's literals on the CPU.
         "stacksl_fit_demo",
+        // stacksl_examples.md's partial-evaluation demo: specializes on the CPU, no renderer.
+        "stacksl_partial_eval",
         // ai4_chat_archive.md's demo: reads the example chat under public/docs/assets by checkout path.
         "ai4_chat_archive",
         // IN_FIELD_AGENT_HARNESS.md's repo-tools demo: a toy checkout in a temporary directory, removed after.

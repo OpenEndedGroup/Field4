@@ -80,6 +80,20 @@ internal interface GlslScalars<V> {
     /** The smallest value holding both — what an undecided branch leaves behind. Never called on a point algebra. */
     fun join(a: V, b: V): V = throw IllegalStateException("only an interval algebra joins two branches")
 
+    /**
+     * What an undecided branch on [cond] leaves behind: [a] where it holds, [b] where it does not.
+     * A set-valued algebra cannot use the condition and [join]s; the staged algebra of
+     * `GlslPartialEvaluator` residualizes it as a `select`. Point algebras never get here.
+     */
+    fun select(cond: V, a: V, b: V): V = join(a, b)
+
+    /**
+     * The value of a logical operator (`&&`, `||`, `^^`, `!`, `==`, `!=`) whose operands were
+     * [a] and [b] (both the operand, for `!`) and whose three-valued [verdict] the machine has
+     * already worked out. Every algebra but the staged one builds it from the verdict alone.
+     */
+    fun logic(op: String, a: V, b: V, verdict: GlslTruth): V = boolOfTruth(verdict)
+
     /** Read a value as an array/matrix index or a `textureGather` channel. Also derivative-free. */
     fun asInt(v: V): Int
 

@@ -2763,6 +2763,15 @@ you can paste into a shader.
 
 [Open →](offline.html?file=assets/agent_transcripts/stacksl_fit_demo/metadata.edn)
 
+### stacksl_partial_eval
+
+**A StackSL program specialized to its residual.** [Specializing a program](stacksl_examples.md#specializing-a-program)
+as two boxes. Box 1 specializes `power(x, 5)` and prints the four multiplications that are left. Box 2
+specializes a StackSL program, renders the residual next to the interpreter, checks the two are
+bit-identical, and prints the residual GLSL. Edit `program` and rerun to see the residual change.
+
+[Open →](offline.html?file=assets/agent_transcripts/stacksl_partial_eval/metadata.edn)
+
 ### macro_recorder_stamp
 
 **A macro used as a stamp.** The first box saves a macro the way the
