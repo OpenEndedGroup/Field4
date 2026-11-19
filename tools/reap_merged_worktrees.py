@@ -110,6 +110,7 @@ from pathlib import Path
 PROTECTED_BRANCHES = {
     "nightly/journal",
     "nightly/ci-journal",
+    "nightly/consolidate-journal",
     # The landing queue's own worktree (~/field4-worktrees/lander, tools/land.py LANDER_BRANCH): clean
     # and merged between landings, so any-merged would otherwise reap it.
     "land/lander",
