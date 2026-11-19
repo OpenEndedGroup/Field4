@@ -1361,6 +1361,15 @@ A simulation that ping-pongs between two buffers needs two more steps. First, th
 writing while you edit. The shader takes a `run` push constant and returns early when it is zero;
 set it to zero, then wait until every frame already submitted has finished (`renderer.numImages`
 frames, plus a couple to be safe). Second, both halves have to hold the edit, because the next
+The example runs Gray-Scott reaction-diffusion on two such buffers. It starts from one seed and
+then, from box code, paints two more into the GPU state with `edit { paint(...) }`. The native
+window shows the buffer one cell to one pixel, shortly after the edits, with all three spots growing:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-buffer-paint-gpu.png" capture="native-window" native-wait-frames="3000" trim=true embed=true hidden=true force=true timeout="180" duration="0" name="buffer-paint-gpu" alt="a 256 by 256 greyscale Gray-Scott state in the native window, one cell per pixel: the initial seed and the two spots painted into the GPU buffer from box code, each a small bright ring on black, early in their growth" macro-file="../../dev_docs/agents/transcripts/buffer_paint_gpu.yaml" capture-box="bpg_renderer"}
+// Built and launched from dev_docs/agents/transcripts/buffer_paint_gpu.yaml
+// (renderer + compute + draw). The edit loop is below.
+```
+
 frame may read either. Apply the edits to buffer A, copy A into B, and set `run` back to one:
 
 ```diffstatic {data-lang=kotlin}

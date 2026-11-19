@@ -240,7 +240,7 @@ frames {
 <!-- field-box id="bpg_draw" index="2" -->
 
 ```edn [field-box id="bpg_draw" role="properties"]
-{"id" "bpg_draw" "index" 2 "name" "draw the buffer, 1 cell = 1 pixel" "parents" ["root" "bpg_sim"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "bpg_sim"} "name" "draw the buffer, 1 cell = 1 pixel" "_tombstone" false "frame" #afield/rect [440.0 200.0 300.0 100.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "bpg_draw_vertex_.glsl" "lines" 12 "characters" 339 "sha256" "fa8b34a0fd5d23cb8b092ff1b8d0f95ceb03612f45fa7b06e485ed11da365bcc"} {"name" "fragment" "language" "glsl" "path" "bpg_draw_fragment_.glsl" "lines" 34 "characters" 1111 "sha256" "1889cbeb0c7a0c9f032bda246fa1a8b7163ae15b6f3078e301cbd35e18929708"} {"name" "code" "language" "kotlin" "path" "bpg_draw_code_.kt" "lines" 11 "characters" 423 "sha256" "3a140b1cf701ac87dc071bce55d3d514d1194e95f6165de7b185e8228bd1a25a"}]}
+{"id" "bpg_draw" "index" 2 "name" "draw the buffer, 1 cell = 1 pixel" "parents" ["root" "bpg_sim"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "bpg_sim"} "name" "draw the buffer, 1 cell = 1 pixel" "_tombstone" false "frame" #afield/rect [440.0 200.0 300.0 100.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "bpg_draw_vertex_.glsl" "lines" 12 "characters" 339 "sha256" "fa8b34a0fd5d23cb8b092ff1b8d0f95ceb03612f45fa7b06e485ed11da365bcc"} {"name" "fragment" "language" "glsl" "path" "bpg_draw_fragment_.glsl" "lines" 33 "characters" 1099 "sha256" "a7cec652eee65401135a20f3364389443d5ea5ab222b15a689d79c8049d782af"} {"name" "code" "language" "kotlin" "path" "bpg_draw_code_.kt" "lines" 11 "characters" 423 "sha256" "3a140b1cf701ac87dc071bce55d3d514d1194e95f6165de7b185e8228bd1a25a"}]}
 ```
 
 ```glsl [field-property box="bpg_draw" name="vertex" path="bpg_draw_vertex_.glsl"]
@@ -284,8 +284,7 @@ float srgbToLinear(float c) {
 void main() {
     ivec2 cell = ivec2(gl_FragCoord.xy) / max(pc.zoom, 1);
     if (cell.x >= pc.w || cell.y >= pc.h) {
-        outColor = vec4(0.06, 0.07, 0.09, 1.0); // outside the buffer
-        return;
+        discard; // outside the buffer: the renderer's clear colour shows
     }
     // v over 0..0.5, the same explicit map as the box's readback view; marked, not clamped
     float m = pc.state.a[cell.y * pc.w + cell.x].y / 0.5;
