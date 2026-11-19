@@ -560,6 +560,10 @@ running and where it is. After thirty seconds Field throws out of that box's cod
 the error `Box interrupted: ...`, and everything else carries on. To get out sooner, run
 **Interrupt Running Box** from the command palette.
 
+If you are [measuring the box's functions](profiling_timeline.md#time-spent-in-each-function-of-a-box),
+the report also names the box function that has taken the most time, with its box line, and the
+chain of calls still open, which is usually enough to find the loop that never ends.
+
 The interruption lands at the next loop iteration or function call in the box's own code, so it
 also stops runaway recursion, and a `catch (e: Exception)` inside the loop does not swallow it.
 It cannot reach into a library call that never returns on its own. A `Thread.sleep` or a wait
@@ -583,6 +587,15 @@ function call. There are three settings for that check:
 | **off** | Box code is compiled unchanged. Nothing can interrupt a box that never returns, the stall report cannot name the box, and the features that read compiled box code fall back to slower paths or stay off. | Measuring a tight loop exactly as plain Kotlin runs it. |
 
 </div>
+
+Off stops everything that reads compiled box code, not only interruption.
+[Live line heat](visualizers.md#which-lines-ran) and
+[per-function cost](profiling_timeline.md#time-spent-in-each-function-of-a-box) record nothing.
+Inline charts such as `history` find their line by searching the box's text, which is slower and
+can be misled by a comment that mentions the call
+([Histogram, history, and summary stats](visualizers.md#histogram-history-and-summary-stats)).
+[Rendering a synth graph from the wrong thread](sound_paths.md#rendering-from-the-wrong-thread) is
+still reported, but without the box line, and the renderer's frame calls are not checked.
 
 The choice is in the Runtime panel of the welcome page; `/welcome#runtime` opens the page with that
 panel showing. Field saves the choice, and the line under the buttons says what the setting in

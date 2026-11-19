@@ -204,13 +204,17 @@ audio(tone, gain = 0.1f) +
 The box runs and the number moves, so nothing in the box looks wrong. Field reports it the first
 time it happens, naming the box and the line:
 
-```
-thread ownership: 'LFO meter' (0904ee66-4cb1-4447-aa2e-4b1bd0ee8740) line 9: SineOsc (Signal.render) rendered on thread 'field-runloop-main' (the Runloop), but the graph belongs to the audio thread 'FieldAudioEngine'; rendering it from two threads advances its oscillators, filters and envelopes twice. Publish a snapshot from the render path instead
+```diffstatic {data-lang=text}
+thread ownership: LFO meter line 9: SineOsc (Signal.render) rendered on thread
+'field-runloop-main' (the Runloop), but the graph belongs to the audio thread 'FieldAudioEngine';
+rendering it from two threads advances its oscillators, filters and envelopes twice. Publish a
+snapshot from the render path instead
 ```
 
-The report goes to Field's log on the `warning,execution` channel, so it appears in the terminal
-Field runs in and in the log viewer, not in the box's output. To watch for it from inside Field,
-give a box a log viewer that keeps only these lines:
+The report goes to Field's log on the `warning,execution` channel, not to the box's output. In a
+log viewer, **LFO meter line 9** is a link: click it to select the box and open its editor at that
+line. The terminal Field runs in prints the same report as one line, with the box's id after its
+name. To watch for these reports from inside Field, give a box a log viewer that keeps only them:
 
 ```diffstatic {data-lang=kotlin}
 logs("threads") {
@@ -247,6 +251,10 @@ The renderer's frame calls have the same rule the other way round. `Renderer.ren
 `runForever`, `beginGeometryWrites` and `endGeometryWrites`, and `Window.pollEvents` belong to the
 Runloop, and calling one from a thread the box started is reported in the same way, with the box
 line and a suggestion to move the call into the box's frame.
+
+Both checks rely on box code instrumentation, which is on by default. With it
+[turned off](running_code.md#keeping-a-long-run-going-or-turning-interruption-off), a second render of a playing graph is still reported, but without the box line,
+and the renderer's frame calls are not checked.
 
 ---
 

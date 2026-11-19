@@ -937,6 +937,8 @@ keeps appearing under the call rather than under the first line that reads `hist
 for calls below a [`//%-` fragment break](running_code.md#the-fragment-break), and for `histogram`,
 `stats`, `distribution` and `pianoRoll`. Finding the line costs next to nothing: a whole `history()`
 call takes under a microsecond, so it can sit in an inner loop that runs hundreds of times a frame.
+With box code instrumentation [turned off](running_code.md#keeping-a-long-run-going-or-turning-interruption-off), charts find their line by searching the box's text
+instead, which is slower and can land on a comment that mentions the call.
 
 ### A random variable, settling
 
@@ -1075,7 +1077,10 @@ churn's colour is drawn over the heat, so turn churn off while you watch which l
 
 Line heat tells you how often a line ran, not how long it took. For where the time goes, line by
 line, use the profiler's box gutter heatmap, described in
-[Classes, methods, and box lines](profiling_timeline.md#classes-methods-and-box-lines).
+[Classes, methods, and box lines](profiling_timeline.md#classes-methods-and-box-lines); for the time
+each function of a box takes, [measure the box's functions](profiling_timeline.md#time-spent-in-each-function-of-a-box).
+Line heat needs box code instrumentation, which is on unless you have
+[turned it off](running_code.md#keeping-a-long-run-going-or-turning-interruption-off).
 
 ## Display channels: the big canvas under the box
 

@@ -361,6 +361,9 @@ What the tab does not show:
 - A `suspend` function counts each resume as a call. It returns every time it suspends and is
   entered again when it resumes, so **Calls** counts those stretches, and its time is only the
   time it was running, not the time it spent suspended.
+- How often each line ran is not shown here: [live line heat](visualizers.md#which-lines-ran) colours
+  the editor's line numbers with that.
+- Nothing is measured while box code instrumentation is [turned off](running_code.md#keeping-a-long-run-going-or-turning-interruption-off).
 
 ## What the numbers mean
 
