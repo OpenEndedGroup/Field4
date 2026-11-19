@@ -167,6 +167,10 @@ object DemoTranscriptExecSmokeTest {
         // found (or how to install it), so it needs nothing the build does not own. The Lua boxes are a
         // guest language; afield.lang.lua.LuaStateTest and LuaBoxTest run their code against a real lua_State.
         "lua_demo",
+        // The norns host, as lua_demo: only the Kotlin root executes. Its Lua boxes render a norns
+        // script offline, play one live, and fetch and render two from GitHub, so they need LuaJIT, an
+        // audio device or the network; NornsHostTest runs the host against a real lua_State.
+        "norns_demo",
         // Three bounded CPU boxes: refusal messages, field-clock curves, and a computed ledger.
         // No audio device or renderer; unlike marf_demo, every box is safe to execute headless.
         "marf_field_clocks",
