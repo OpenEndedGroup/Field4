@@ -31,11 +31,21 @@ fun step() {
     vn.copyInto(v)
 }
 
-// Edits scheduled against the running simulation, by step number. Each one lands in
-// empty space (u = 1, v = 0) or on pattern the seed has already grown, and the
-// reaction takes it from there.
+/*
+Edits scheduled against the running simulation, by step number. Each one lands in
+empty space (u = 1, v = 0) or on pattern the seed has already grown, and the
+reaction takes it from there.
+*/
 val edits = mapOf(
-    150 to ("stroke" to { canvas.stroke(listOf(15.0 to 20.0, 60.0 to 35.0, 140.0 to 18.0), radius = 3.0, value = floatArrayOf(0.5f)) }),
+    150 to
+        ("stroke" to
+            {
+                canvas.stroke(
+                    listOf(15.0 to 20.0, 60.0 to 35.0, 140.0 to 18.0),
+                    radius = 3.0,
+                    value = floatArrayOf(0.5f),
+                )
+            }),
     500 to ("clone" to { canvas.clone(CellRect(60, 60, 40, 40), 8, 112) }),
     850 to ("blur" to { canvas.blur(CellRect(60, 60, 40, 40), sigma = 4.0) }),
     1200 to ("motion blur" to { canvas.motionBlur(CellRect(0, 105, n, 50), length = 31, dx = 1.0, dy = 0.0) }),
@@ -57,9 +67,11 @@ frames {
                 edit()
                 val after = bufferCanvas(v.copyOf(), width = n)
                 after.map = canvas.map
-                strip += "<div style='display:inline-block;margin:0 6px 6px 0'><div>step $s: $what</div>" +
-                    "<img src='data:image/png;base64," + java.util.Base64.getEncoder().encodeToString(after.png()) +
-                    "' style='image-rendering:pixelated'/></div>"
+                strip +=
+                    "<div style='display:inline-block;margin:0 6px 6px 0'><div>step $s: $what</div>" +
+                        "<img src='data:image/png;base64," +
+                        java.util.Base64.getEncoder().encodeToString(after.png()) +
+                        "' style='image-rendering:pixelated'/></div>"
                 display("edits", strip.joinToString(""))
             }
         }
