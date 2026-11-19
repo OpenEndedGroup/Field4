@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-19T13:11:38.894Z",
+  "documentName": "splat_tiles",
+  "outputs": [
+    {
+      "uid": "splat_tiles_heat",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 372,
+      "height": 248,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "splat_tiles_image",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 492,
+      "height": 328,
+      "path": "outputs/1.html"
+    }
+  ]
+}
