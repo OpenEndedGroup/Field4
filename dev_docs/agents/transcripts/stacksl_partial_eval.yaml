@@ -1,0 +1,59 @@
+name: "stacksl_partial_eval"
+docs:
+  - page: stacksl_examples.md
+    why: "Specializing a program: the residual a StackSL program leaves once the pixel is the only unknown."
+operations:
+  - create:
+      box: "pe-power"
+      name: "Partial evaluation — power(x, 5) becomes four multiplies"
+      frame: { x: 40.0, y: 40.0, w: 320.0, h: 100.0 }
+      properties:
+        "autorun": false
+        "code": |
+          import afield.lang.stacksl.cpu.*
+
+          // n is known, x is not: the loop runs while specializing and only the multiplies remain.
+          val exponent = 5
+          val shader =
+              """
+              #version 450
+              layout(location = 0) in vec2 fragUV;
+              layout(location = 0) out vec4 outColor;
+              float power(float x, int n) {
+                  float r = 1.0;
+                  for (int i = 0; i < n; i++) r *= x;
+                  return r;
+              }
+              void main() { outColor = vec4(power(fragUV.x, $exponent), 0.0, 0.0, 1.0); }
+              """
+                  .trimIndent()
+
+          val residual = GlslPartialEvaluator.specialize(shader)
+          markdown("residual", "```glsl\n" + residual.toGlsl() + "```")
+  - create:
+      box: "pe-stacksl"
+      name: "Partial evaluation — edit the program, rerun, read the residual"
+      frame: { x: 40.0, y: 180.0, w: 320.0, h: 100.0 }
+      properties:
+        "autorun": false
+        "code": |
+          import afield.lang.stacksl.cpu.*
+
+          // Edit this and rerun: the residual is re-derived from the program each time.
+          val program = "uv 4.0 * fbm palette saturate"
+
+          val source = StackSLCpu.expandStackAuto(StackSLCpu.stillTemplate(), program)
+          val started = System.nanoTime()
+          val residual = GlslPartialEvaluator.specialize(source)
+          val specializeMs = (System.nanoTime() - started) / 1e6
+
+          // The same picture twice: interpreted, then the residual's register program.
+          val interpreted = StackSLCpu.renderFragment(source, 160, 160)
+          val specialized = residual.render(160, 160)
+          val identical = interpreted.rgba.indices.all { interpreted.rgba[it].toRawBits() == specialized.rgba[it].toRawBits() }
+
+          display(specialized.toPngBytes())
+          println("${source.lines().size} lines of GLSL -> ${residual.operationCount} residual operations in %.1f ms".format(specializeMs))
+          println("bit-identical to the interpreter: $identical")
+          println(residual.operationHistogram().take(6).joinToString(", ") { (op, n) -> "$op $n" })
+          markdown("residual", "```glsl\n" + residual.toGlsl().lines().take(40).joinToString("\n") + "\n...\n```")
