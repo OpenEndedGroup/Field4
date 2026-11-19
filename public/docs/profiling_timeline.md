@@ -237,6 +237,131 @@ ui.eval(
 ui.pause(300)
 ```
 
+## Time spent in each function of a box
+
+**Hot code** samples everything the JVM is doing. When you already know which box is slow and
+want to know which of its functions, measure that box instead: Field times every call of each
+function the box defines, from the box's next run.
+
+Select the box, run **Measure Function Cost of Selected Box** from the command palette, then run
+the box again. Measuring starts at that next run, because a box is prepared for measuring as it
+is compiled. Open **Show Profiling Timeline** and choose **Box functions** to read the results;
+the **Measure selected box** button there does the same as the palette command. There is nothing
+to record or latch: the tab updates twice a second while it is shown, and the figures add up
+across runs until you press **Clear totals**.
+
+This box sums a small noise image: `image()` calls `row()` for each row, and `row()` calls
+`noise()` for each pixel.
+
+```diffstatic {data-lang=kotlin}
+:::static
+import kotlin.math.sin
+
+// A small noise image: image() calls row() for each row, row() calls noise() for each pixel.
+fun noise(x: Double): Double {
+    var sum = 0.0
+    for (octave in 1..64) sum += sin(x * octave) / octave
+    return sum
+}
+
+fun row(y: Int, width: Int): Double {
+    var sum = 0.0
+    for (x in 0 until width) sum += noise(x * 0.01 + y)
+    return sum
+}
+
+fun image(width: Int, height: Int): Double {
+    var sum = 0.0
+    for (y in 0 until height) sum += row(y, width)
+    return sum
+}
+
+println(image(400, 200))
+```
+
+After one measured run the tab shows where its time went:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#profile-timeline" screenshot="assets/profiling_timeline/box-functions.png" transcript="assets/transcripts/box_cost_setup.yaml" padding="8" wait="0" timeout="180" embed=true hidden=true name="profiling-timeline-box-functions" alt="The Box functions tab of Field's Profiling panel after one measured run of the Noise image box. Above the table, the box's evaluations and resumes and their wall time, with a Stop measuring button. The table lists noise with 80,000 calls and nearly all of the self time, row with 200 calls, the box body and image with one call each; Line holds a button for each function's first box line, and a dash for the box body."}
+// Select the box, ask for its function cost from the palette, then run it.
+ui.click("box_cost_noise")
+ui.pause(500)
+ui.press("F1")
+ui.waitForSelector(".afield-palette-shell", 8000.0)
+ui.pause(400)
+ui.typeSlowly("measure function cost", 40)
+ui.pause(500)
+ui.press("Enter")
+ui.pause(700)
+ui.openEditor("box_cost_noise")
+ui.pause(700)
+ui.clickSelector(".monaco-editor")
+ui.pause(300)
+ui.press("Alt+0")
+// Open Profiling -> Box functions and wait for the measured run's functions.
+ui.eval("window.showProfilingTimeline(); document.getElementById('profile-tab-box-cost').click(); return 'opened'")
+var measured = false
+repeat(80) {
+    if (!measured) {
+        ui.pause(250)
+        measured =
+            ui.eval(
+                    "const rows=[...document.querySelectorAll('#profile-box-cost-table tr')].map(r=>r.textContent); return rows.some(r=>r.startsWith('noise')&&r.includes('80,000'))",
+                )
+                ?.toString() == "true"
+    }
+}
+check(measured) { "The measured run's functions did not reach the Box functions tab" }
+ui.eval(
+    "const p=document.getElementById('profile-timeline'); Object.assign(p.style,{left:'12px',top:'12px',bottom:'auto',width:'960px',right:'auto',height:'576px'}); return 'framed'",
+)
+ui.pause(1200)
+```
+
+Each row of the table is one function:
+
+- **Function** is its name. The top level of the box is **box body**, and the code inside a
+  lambda is listed as **lambda in** the function that contains it.
+- **Line** is the box line of the function's first statement; click it to open the editor there.
+  A dash means there is no line to point at, as for the box body above, whose only statement is
+  a `println`.
+- **Calls** counts how many times the function was entered.
+- **Self ms** is wall time spent in the function itself, leaving out the measured functions it
+  calls.
+- **Total ms** is wall time from entering the function to returning from it, calls included. A
+  recursive function's total counts its outermost call only, so the time is not counted twice.
+
+Here `noise` has nearly all the self time, so that is the function to make faster. `row` has a
+total a little above `noise`'s but little self time of its own: it is slow only because of what
+it calls. A function that has not returned yet, such as one running a `while` loop, is marked ● and
+its time so far is included.
+
+The line above the table gives each measured box's own total: the wall time of every evaluation
+Field made for it and every resume of its coroutines. That count is higher than the number of
+times you pressed run, because Field evaluates some setup for each run, and it includes time
+spent in Field and library code. **Stop measuring** (or **Measure** to start again) takes effect
+at the box's next run. Measuring is not saved with the document.
+
+!!! note "What measuring costs"
+    Each measured call costs about 27 ns, for two clock readings, on an Apple-silicon Mac. A
+    loop with no calls in it pays nothing extra per iteration, and a function that does more
+    than a few dozen nanoseconds of work per call is barely affected. A tiny function called
+    millions of times is slowed noticeably: 20 million calls of a one-line arithmetic function
+    took about 600 ms measured against about 35 ms unmeasured, and its self time includes the
+    extra. Measure a box while you look for its slow function, then stop measuring.
+
+What the tab does not show:
+
+- Functions with no calls and no loops in them are not measured, because the measuring would
+  cost more than they do. Their time is part of their caller's self time.
+- Only the box's own functions are listed. Time spent in Field's API or a library is self time of
+  the box function that called it.
+- It measures wall time only, so time a function spends blocked, in `Thread.sleep`, waiting for
+  a lock or reading a file, counts as its own. For CPU time and allocation, record with
+  **JVM stacks** and use **Hot code**.
+- A `suspend` function counts each resume as a call. It returns every time it suspends and is
+  entered again when it resumes, so **Calls** counts those stretches, and its time is only the
+  time it was running, not the time it spent suspended.
+
 ## What the numbers mean
 
 Allocated bytes measure heap allocation on the executing thread, including coroutine

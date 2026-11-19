@@ -3078,7 +3078,7 @@ fun registerBuiltinCommands() {
                 if (!uid) return;
                 import("./afield.mjs").then((afield) => {
                     afield.sendWithReply("box-cost", {action: "measure", uid: uid}, "box-cost-measure-" + Date.now(), (_m, r) => {
-                        if (typeof window.notify === 'function') window.notify(r && r.ok ? 'Measuring function cost from the next run' : ((r && r.error) || 'Could not measure'), 'command');
+                        if (typeof window.notify === 'function') window.notify(r && r.ok !== false ? 'Measuring function cost from the next run' : ((r && r.error) || 'Could not measure'), 'command');
                         return "remove";
                     });
                 });

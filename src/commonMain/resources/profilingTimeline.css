@@ -77,3 +77,4 @@
 .profile-box-cost-table td:first-child { font-family:var(--field-font-code,"Iosevka Web"),monospace; }
 .profile-box-cost-table td button { min-height:22px; padding:1px 6px; }
 .profile-box-cost-running td:first-child { color:#d7ad79; }
+.profile-box-cost-table th:nth-child(n+4) { text-align:right; }

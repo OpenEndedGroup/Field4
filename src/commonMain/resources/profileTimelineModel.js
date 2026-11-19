@@ -127,3 +127,12 @@ export function profileFrameBuckets(records, range, count, allocation=false) {
     }
     return buckets;
 }
+
+// A `box-cost` reply (BoxCostSnapshot). Message.payload encodes with the default Json, which omits fields
+// left at their default: a successful reply has no `ok`, an empty one no `boxes` or `functions`, and a
+// function that is not running no `running`. Fill them in before reading the reply.
+export function boxCostSnapshot(response){
+    const data={ok:true,error:"",elapsedMs:0,boxes:[],functions:[],...(response||{})};
+    data.functions=data.functions.map(f=>({running:false,...f}));
+    return data;
+}

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { selectedSpans, profileSummary, mergeProfileSpans, profileHotspots, mappedProfileLine, profileBoxHeatmap, profileHeatLines } from '../src/commonMain/resources/profileTimelineModel.js';
+import { selectedSpans, profileSummary, mergeProfileSpans, profileHotspots, mappedProfileLine, profileBoxHeatmap, profileHeatLines, boxCostSnapshot } from '../src/commonMain/resources/profileTimelineModel.js';
 
 const spans=[
     {sequence:0,lane:1,startMs:0,wallMs:10,cpuMs:2,allocatedBytes:100},
@@ -108,4 +108,14 @@ test('frame overview preserves a hitch without summing unrelated frames in the s
         {startMs:3,wallMs:2,allocatedBytes:10},{startMs:51,wallMs:5,allocatedBytes:-1}];
     assert.deepEqual([...profileFrameBuckets(frames,[0,100],2)],[40,5]);
     assert.deepEqual([...profileFrameBuckets(frames,[0,100],2,true)],[200,0]);
+});
+test('a box-cost reply with its defaults omitted reads as a successful snapshot',()=>{
+    // What the server sends for a measured box: Message.payload's Json leaves out ok, error and running.
+    const wire={elapsedMs:1200,boxes:[{boxId:'b',name:'noise',measuring:true,runs:2,totalMs:90}],
+        functions:[{boxId:'b',property:'code',function:'noise',line:4,calls:80000,selfMs:70,totalMs:70}]};
+    const s=boxCostSnapshot(wire);
+    assert.equal(s.ok,true);assert.equal(s.error,'');assert.equal(s.functions[0].running,false);assert.equal(s.functions[0].calls,80000);
+    assert.deepEqual(boxCostSnapshot({}),{ok:true,error:'',elapsedMs:0,boxes:[],functions:[]});
+    assert.equal(boxCostSnapshot({ok:false,error:'No box to measure'}).ok,false);
+    assert.equal(boxCostSnapshot({functions:[{function:'f',running:true}]}).functions[0].running,true);
 });
