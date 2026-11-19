@@ -5185,6 +5185,30 @@
         "public/docs/assets/agent_transcripts/spreadsheet_tour/spreadsheet_tour_sheet_code_.kt": "0176c5cef72dbe30da85866c7af2e598522d70e4635061261179e0d1a21a7509"
       }
     },
+    "assets/agent_transcripts/squircles/metadata.edn": {
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-19T07:27:10.166Z",
+      "channels": 3,
+      "file": "assets/web_publications/squircles/document/metadata.edn",
+      "files": {
+        "assets/web_publications/squircles/document/metadata.edn": "3da59ced08fa7015baf372cebc9fc44625b3a5765ceba9d9ef8b9251b0ea66fb",
+        "assets/web_publications/squircles/document/outputs.json": "74c20e46c15bda4917a4c3967b0335b8877bca506beadd8e669eb8ce612138ee",
+        "assets/web_publications/squircles/outputs/0.html": "76ae044530b58776e76dc97ac6a74a84626ccf99d28c27a1e0b15fdd52aec360",
+        "assets/web_publications/squircles/outputs/1.html": "353b6c75297bf852c59f3ec14ff1b7ce67f7f17b81d223eb697c8725971f9802",
+        "assets/web_publications/squircles/outputs/2.html": "bbab154e7442e56b851432b41145932939129e69b70d7d1f8f244b652d8ca2c6"
+      },
+      "kinds": [
+        "svg"
+      ],
+      "outputs": "assets/web_publications/squircles/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/squircles.yaml": "f54cbd3c84312673f81e0f4be3de2f450eb9c4bd3de0a54e214b10bad97fd1d7",
+        "public/docs/assets/agent_transcripts/squircles/guides/fline_examples-squircles-squirclefrom-and-squirclerectfrom.md": "53cabea2b47ab48da79cc7604646dcdff297086f556df3e7fe0450e55122d647",
+        "public/docs/assets/agent_transcripts/squircles/metadata.edn": "da3d89d72c1cb11498227f3846876fc4136da2759454dd47086d6e6c9095f8e4",
+        "public/docs/assets/agent_transcripts/squircles/squircle_morph_code_.kt": "0bf3dda069167fd5d794c11b289074026f8d45446a0a82e7fe508f754882c702",
+        "public/docs/assets/agent_transcripts/squircles/squircle_rect_code_.kt": "9373895d92ed49fe11c6a821ed783697c594f01b5197f9509ece16007125391f"
+      }
+    },
     "assets/agent_transcripts/stacksl_evolve_studio/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
       "capturedAt": "2026-11-18T16:06:43.605Z",
