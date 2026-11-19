@@ -375,3 +375,7 @@ Findings:
   binary32 operations to stay bit-exact), or to JVM bytecode.
 - Refused, not approximated: dynamic loop bounds, dynamic array indices, `return`/`discard` under a
   dynamic branch. The gallery hits none.
+- Follow-up the same night: in-place fast steps for float `+ - * /` and swizzles (one reused value per
+  node) took the residual from 0.521 to 0.488 s (fbm) and from 0.599 to 0.502 s (kaleido), and stayed
+  bit-identical. Interpreter timings varied 0.74–1.27 s between runs on the shared machine, so ratios
+  are 1.2–2.4x and noisy. The cost that remains is builtins dispatched by name, each allocating.

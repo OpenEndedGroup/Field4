@@ -1429,15 +1429,15 @@ measurement is `GlslPartialEvaluatorMeasurements`, run with `./gradlew jvmMeasur
 
 | program | interpreter | residual | speedup |
 |---|---|---|---|
-| `uv saturate` | 0.072 s | 0.067 s | 1.1x |
-| `uv 4.0 * fbm palette saturate` | 1.273 s | 0.521 s | 2.4x |
-| `p 6 kaleido fbm palette saturate` | 0.789 s | 0.599 s | 1.3x |
-| `uv 0.5 0.5 vec2 - length 20 * time - sin 0.5 * 0.5 +` | 0.071 s | 0.060 s | 1.2x |
+| `uv saturate` | 0.072 s | 0.062 s | 1.2x |
+| `uv 4.0 * fbm palette saturate` | 0.740 s | 0.488 s | 1.5x |
+| `p 6 kaleido fbm palette saturate` | 0.877 s | 0.502 s | 1.7x |
+| `uv 0.5 0.5 vec2 - length 20 * time - sin 0.5 * 0.5 +` | 0.068 s | 0.053 s | 1.3x |
 
 Specializing removes the interpreter's calls, loops and variable lookups, and
-those turn out to be the smaller part of its cost. Each residual operation still
-makes a new GLSL value and rounds it exactly as the GPU would, and that is most of
-the time per pixel.
+those turn out to be the smaller part of its cost. The residual writes `+ - * /` and swizzles into values it reuses from
+pixel to pixel, but the builtins (`fract`, `dot`, `mix`) still make a new value
+each time, and that is most of what remains.
 
 The specializer refuses, rather than approximates, what it cannot make
 straight-line: a loop whose bound depends on the pixel, an array index that

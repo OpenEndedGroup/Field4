@@ -430,6 +430,7 @@ class GlslResidual internal constructor(
         private fun step(n: RNode): (Array<GlslValue?>) -> GlslValue {
             val f = GlslFloatScalars
             val a = n.args.toIntArray()
+            fastStep(n, a)?.let { return it }
             return when (n.kind) {
                 RKind.INPUT, RKind.CONST -> { s -> s[0]!! } // never stepped
                 RKind.BINARY -> { val op = n.name; { s -> f.binary(op, s[a[0]]!!, s[a[1]]!!) } }
@@ -454,7 +455,48 @@ class GlslResidual internal constructor(
             }
         }
 
-        /** Run once with [inputs] bound by name; returns each output. */
+        /**
+         * The commonest residual operations, float `+ - * /` (non-matrix) and float swizzles,
+         * written into one value per node that is allocated once and overwritten every pixel.
+         * Each performs the same single binary32 operation per component as `pairwise` and
+         * `glslSwizzle`, so the bits are unchanged; the allocation and the operator-string
+         * dispatch are what go.
+         */
+        private fun fastStep(n: RNode, a: IntArray): ((Array<GlslValue?>) -> GlslValue)? {
+            if (n.type.base != GlslBase.FLOAT || n.type.isMatrix) return null
+            val out = GlslValue(n.type, FloatArray(n.type.components))
+            val o = out.c
+            return when (n.kind) {
+                RKind.BINARY -> {
+                    val ta = nodes[a[0]].type
+                    val tb = nodes[a[1]].type
+                    if (ta.base != GlslBase.FLOAT || tb.base != GlslBase.FLOAT || ta.isMatrix || tb.isMatrix) return null
+                    val sa = if (ta.components == 1) 0 else 1
+                    val sb = if (tb.components == 1) 0 else 1
+                    val ia = a[0]
+                    val ib = a[1]
+                    when (n.name) {
+                        "+" -> { s -> val x = s[ia]!!.c; val y = s[ib]!!.c; for (k in o.indices) o[k] = x[k * sa] + y[k * sb]; out }
+                        "-" -> { s -> val x = s[ia]!!.c; val y = s[ib]!!.c; for (k in o.indices) o[k] = x[k * sa] - y[k * sb]; out }
+                        "*" -> { s -> val x = s[ia]!!.c; val y = s[ib]!!.c; for (k in o.indices) o[k] = x[k * sa] * y[k * sb]; out }
+                        "/" -> { s -> val x = s[ia]!!.c; val y = s[ib]!!.c; for (k in o.indices) o[k] = x[k * sa] / y[k * sb]; out }
+                        else -> null
+                    }
+                }
+                RKind.SWIZZLE -> {
+                    if (nodes[a[0]].type.base != GlslBase.FLOAT) return null
+                    val idx = swizzleIndices(n.name, nodes[a[0]].type.components)
+                    val ia = a[0]
+                    ({ s: Array<GlslValue?> -> val x = s[ia]!!.c; for (k in o.indices) o[k] = x[idx[k]]; out })
+                }
+                else -> null
+            }
+        }
+
+        /**
+         * Run once with [inputs] bound by name; returns each output. The returned values are
+         * overwritten by the next run, so copy one to keep it.
+         */
         fun run(inputs: Map<String, GlslValue>): Map<String, GlslValue> {
             for ((name, slot) in inputSlots) slots[slot] = inputs[name] ?: throw GlslEvalError("no value for input '$name'")
             execute()
