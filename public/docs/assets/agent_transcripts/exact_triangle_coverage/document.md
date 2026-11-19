@@ -110,7 +110,7 @@ with #include "coverage/triangle.glsl". The triangles and the compositing are in
 fragment property.
 
 ```edn [field-box id="coverage_gpu" role="properties"]
-{"id" "coverage_gpu" "index" 2 "name" "coverage on the GPU" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "coverage on the GPU" "_tombstone" false "frame" #afield/rect [400.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "coverage_gpu_code_.kt" "lines" 25 "characters" 956 "sha256" "78bb89fd0612e2775244426493e3ade790eea8b4c59e38a4e3b6a22a05ec1e8d"} {"name" "vertex" "language" "glsl" "path" "coverage_gpu_vertex_.glsl" "lines" 6 "characters" 227 "sha256" "8f3504d8801a4398f2518ca9de09a3f9f4b72e4eb43044567049caf473214b5a"} {"name" "fragment" "language" "glsl" "path" "coverage_gpu_fragment_.glsl" "lines" 54 "characters" 1894 "sha256" "2fd4bede430441776b3801ac8c55bf93f47cedab890c9cc47c647eda49b8913f"}]}
+{"id" "coverage_gpu" "index" 2 "name" "coverage on the GPU" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "coverage on the GPU" "_tombstone" false "frame" #afield/rect [400.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "coverage_gpu_code_.kt" "lines" 25 "characters" 956 "sha256" "78bb89fd0612e2775244426493e3ade790eea8b4c59e38a4e3b6a22a05ec1e8d"} {"name" "vertex" "language" "glsl" "path" "coverage_gpu_vertex_.glsl" "lines" 6 "characters" 227 "sha256" "8f3504d8801a4398f2518ca9de09a3f9f4b72e4eb43044567049caf473214b5a"} {"name" "fragment" "language" "glsl" "path" "coverage_gpu_fragment_.glsl" "lines" 57 "characters" 2142 "sha256" "d6be772c7435b4b7d72cfea6e6764e241dc85a4cff1cc876567b58223188b80f"}]}
 ```
 
 ```kotlin [field-property box="coverage_gpu" name="code" path="coverage_gpu_code_.kt"]
@@ -181,12 +181,14 @@ void main() {
     float w = pc.viewport.x;
     float h = pc.viewport.y;
     float halfW = floor(w * 0.5);
-    float k = pc.viewport.z > 0.5 ? pc.viewport.z : floor(min(halfW / 34.0, h / 26.0));
+    float k = pc.viewport.z > 0.5 ? pc.viewport.z : floor(min(halfW / 33.0, h / 25.0));
     k = max(k, 1.0);
     float sigma = pc.viewport.w;
 
     bool exact = gl_FragCoord.x >= halfW;
-    vec2 local = gl_FragCoord.xy - vec2(exact ? halfW + k : k, k);
+    // Centre the 32 x 24 scene in each half.
+    vec2 origin = floor(vec2(halfW - 32.0 * k, h - 24.0 * k) * 0.5);
+    vec2 local = gl_FragCoord.xy - vec2(exact ? halfW + origin.x : origin.x, origin.y);
     vec2 cell = floor(local / k);
 
     vec3 c = vec3(0.0);
@@ -203,7 +205,8 @@ void main() {
     vec2 f = local - cell * k;
     if (k >= 6.0 && (f.x < 1.0 || f.y < 1.0)) c = mix(c, vec3(0.25), 0.35);
     if (abs(gl_FragCoord.x - halfW) < 1.5) c = vec3(1.0);
-    color = vec4(c, 1.0);
+    // The window target is sRGB: decode so the colours show as the CPU figure's stored values.
+    color = vec4(pow(c, vec3(2.2)), 1.0);
 }
 ```
 

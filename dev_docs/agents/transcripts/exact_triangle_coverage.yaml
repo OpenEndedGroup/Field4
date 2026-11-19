@@ -196,12 +196,14 @@ operations:
               float w = pc.viewport.x;
               float h = pc.viewport.y;
               float halfW = floor(w * 0.5);
-              float k = pc.viewport.z > 0.5 ? pc.viewport.z : floor(min(halfW / 34.0, h / 26.0));
+              float k = pc.viewport.z > 0.5 ? pc.viewport.z : floor(min(halfW / 33.0, h / 25.0));
               k = max(k, 1.0);
               float sigma = pc.viewport.w;
 
               bool exact = gl_FragCoord.x >= halfW;
-              vec2 local = gl_FragCoord.xy - vec2(exact ? halfW + k : k, k);
+              // Centre the 32 x 24 scene in each half.
+              vec2 origin = floor(vec2(halfW - 32.0 * k, h - 24.0 * k) * 0.5);
+              vec2 local = gl_FragCoord.xy - vec2(exact ? halfW + origin.x : origin.x, origin.y);
               vec2 cell = floor(local / k);
 
               vec3 c = vec3(0.0);
@@ -218,7 +220,8 @@ operations:
               vec2 f = local - cell * k;
               if (k >= 6.0 && (f.x < 1.0 || f.y < 1.0)) c = mix(c, vec3(0.25), 0.35);
               if (abs(gl_FragCoord.x - halfW) < 1.5) c = vec3(1.0);
-              color = vec4(c, 1.0);
+              // The window target is sRGB: decode so the colours show as the CPU figure's stored values.
+              color = vec4(pow(c, vec3(2.2)), 1.0);
           }
   - connect:
       parent: agent_graphics_context

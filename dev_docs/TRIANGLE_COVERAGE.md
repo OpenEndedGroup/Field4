@@ -6,8 +6,10 @@ Code: `src/jvmMain/kotlin/afield/graphics/render/TriangleCoverage.kt` (Kotlin + 
 `public/docs/afield_four_graphics.md#exact-triangle-coverage`. Demo: `dev_docs/agents/transcripts/exact_triangle_coverage.yaml`.
 Method after ATS (arXiv 2611.22512, CC BY-NC-ND): written from the description only.
 
-Window: `(d/r)^sigma`, d = distance to nearest edge, r = inradius. This normalisation is our
-reading of the method; the paper's exact parameterisation may differ.
+Window: `(d/r)^sigma`, d = distance to nearest edge, r = inradius. Checked 2026-11-19 against the
+paper: its Eq. 2 is `I(p) = ReLU(-phi(p)/r)^sigma` with `phi = max_k (n_k.p + O_k)` (negative inside),
+which is the same function; its whole-triangle integral `r L_k/((s+1)(s+2))` per sub-triangle and the
+cull test `o * 2A/((s+1)(s+2)) < lambda` match ours.
 
 ## Numbers (2026-11-19)
 
@@ -23,6 +25,5 @@ reading of the method; the paper's exact parameterisation may differ.
 ## Traps
 - `RectSLCoverage.clipConvexToBox` is the shared clipper; do not add a second.
 - Without gradients: vertex derivatives the paper derives are not implemented.
-- The GPU capture is brighter than the CPU figure: the window target is sRGB, the CPU Img is shown
-  as stored values. Same geometry, same coverage pattern.
-- Fat-pixel fit uses `min(halfW/34, h/26)`, so a tall window leaves empty space below the scene.
+- The window target is sRGB, so the demo shader writes `pow(c, 2.2)` to make its colours match the CPU
+  figure, which shows stored values (compositing happens in display space on both).
