@@ -4048,6 +4048,18 @@ still compile against Field's real K2 import set. The numbers are asserted separ
 
 [Open →](offline.html?file=assets/agent_transcripts/gpu_probe_bench/metadata.edn)
 
+### buffer_paint_gpu
+
+**Paint into a GPU simulation's storage buffer by hand.** [Painting into a GPU buffer](visualizers.md#painting-into-a-gpu-buffer)
+as three boxes: a renderer, a compute box running Gray-Scott on two host-visible ping-pong buffers,
+and a draw box showing the state in the native window at one cell to one framebuffer pixel. Turn on
+the drawing layer (Alt+D) and draw over the *gpu buffer* frame: a freehand stroke paints, a
+rectangle blurs what is under it, an ellipse erases, and an arrow from inside a rectangle copies it
+to where the arrow ends. Each gesture becomes a `BufferCanvas` edit on the mapped buffer, and the
+shader evolves the next frame from it.
+
+[Open →](offline.html?file=assets/agent_transcripts/buffer_paint_gpu/metadata.edn)
+
 ### gpu_state
 
 A stateful GPU simulation: 40,000 particles whose positions and velocities live in a

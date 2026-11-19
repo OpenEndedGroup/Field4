@@ -1350,6 +1350,57 @@ in a `frames { }` loop, with the edits landing while it runs, and puts *before* 
 players under the delay line. The idea comes from citrons'
 ["Paint in the memory of other programs"](https://citrons.xyz/journal/2026-04-13).
 
+### Painting into a GPU buffer
+
+A host-visible storage buffer can be edited the same way. Map it with `mapAndWrite` and put a canvas
+over the `FloatBuffer` you are handed: that buffer is the memory the shader reads, so the next
+dispatch starts from the edit. Ask for one buffer rather than one per swapchain image, which is what
+`defaultBuffer { size = … }` gives you, so there is exactly one copy to edit.
+
+A simulation that ping-pongs between two buffers needs two more steps. First, the GPU must not be
+writing while you edit. The shader takes a `run` push constant and returns early when it is zero;
+set it to zero, then wait until every frame already submitted has finished (`renderer.numImages`
+frames, plus a couple to be safe). Second, both halves have to hold the edit, because the next
+frame may read either. Apply the edits to buffer A, copy A into B, and set `run` back to one:
+
+```diffstatic {data-lang=kotlin}
+:::static
+if (hold && renderer.frameCounter >= heldAt + renderer.numImages + 2) {
+    stateA.mapAndWrite {
+        val canvas = bufferCanvas(this, width = W, channels = 2, height = H, wrapX = true, wrapY = true)
+        pending.forEach { canvas.it() }
+        get(0, shown, 0, shown.size)
+    }
+    stateB.mapAndWrite { put(0, shown, 0, shown.size) }
+    pending.clear()
+    hold = false
+}
+```
+
+To draw the buffer unscaled, a fullscreen triangle's fragment shader reads cell
+`ivec2(gl_FragCoord.xy)`, one cell to one framebuffer pixel, through the same explicit map as the
+box's readback view, with values out of range drawn red or blue. Field's swapchain is sRGB and
+encodes whatever the shader writes, so the shader writes `srgbToLinear(m)`; the byte in the window
+is then `m × 255`. Without that step a value of 0.39 shows as 172 rather than 98.
+
+The edits can come from the [drawing layer](drawing_and_notation.md). A frame on the canvas stands for the
+buffer, `notation.space` maps it to cell coordinates, and handlers turn gestures into edits:
+
+```diffstatic {data-lang=kotlin}
+:::static
+val cells = notation.space("gpu buffer", x = 0.0..W.toDouble(), y = 0.0..H.toDouble())
+
+notation.onStroke { s ->
+    val path = s.points.map { cells.toSpace(it).let { p -> p.x.toDouble() to p.y.toDouble() } }
+    edit { stroke(path, radius = 3.0, value = floatArrayOf(0.5f, 0.25f), opacity = 0.8) }
+}
+```
+
+In the [`buffer_paint_gpu` transcript](agent_transcripts.md#buffer_paint_gpu) a freehand stroke
+paints, a rectangle blurs what is under it, an ellipse erases, and an arrow that starts inside a
+rectangle copies that rectangle to where the arrow ends. Each gesture changes the running
+Gray-Scott simulation, which grows new pattern from it.
+
 ### Drawings and character grids
 
 Use `lines` for an FLine drawing in an output, with optional point editing. `threeLines` and

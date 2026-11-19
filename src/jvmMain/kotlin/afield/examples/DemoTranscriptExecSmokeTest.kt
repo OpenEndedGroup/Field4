@@ -931,6 +931,9 @@ object DemoTranscriptExecSmokeTest {
         "keyframe_autosweep",
         "recstl_playground",
         "gpu_state",
+        // Buffer paint on the GPU (2026-11-19): a Window, a Gray-Scott compute ping-pong and a draw box,
+        // with drawing-layer gestures editing the mapped storage buffer. Needs a native Window.
+        "buffer_paint_gpu",
         "threebox",
         "rectsl_dataviz",
         "rectsl_plot_axes",
