@@ -1136,6 +1136,8 @@
   {"doc": "spreadsheet_constraints", "box": "spreadsheet_constraints_temperature", "codeSha256": "dbe0e4a328cfaabc", "codeLines": 15, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "spreadsheet_tour", "box": "spreadsheet_tour_rates", "codeSha256": "f14a8c89826198b4", "codeLines": 4, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "spreadsheet_tour", "box": "spreadsheet_tour_sheet", "codeSha256": "f151be3f5e777237", "codeLines": 29, "receivers": ["afield.document.graph.Box"], "preamble": ""},
+  {"doc": "squircles", "box": "squircle_morph", "codeSha256": "a4f4ff9ac611befc", "codeLines": 41, "receivers": ["afield.document.graph.Box"], "preamble": ""},
+  {"doc": "squircles", "box": "squircle_rect", "codeSha256": "2a416de4171d8614", "codeLines": 16, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "stacksl_evolve_studio", "box": "stacksl_evolve_studio", "codeSha256": "d00b61ab7a73aba1", "codeLines": 14, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "stacksl_fit_demo", "box": "stacksl-fit", "codeSha256": "426c45eec880e50b", "codeLines": 123, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "stacksl_fit_demo", "box": "stacksl-roundtrip", "codeSha256": "400eac411f767bf6", "codeLines": 92, "receivers": ["afield.document.graph.Box"], "preamble": ""},
