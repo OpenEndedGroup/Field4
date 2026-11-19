@@ -125,9 +125,12 @@ and its self time includes that. Not gated anywhere: it is opt-in per box.
 ## Not done
 
 - Measuring is not persisted with the box, and there is no box property for it.
-- The Box functions tab is not verified in a browser: no capture, no UI regression. The palette
-  command and the tab were written against `profilingTimeline.js`'s structure and pass
-  `check_module_imports.py`; the JS bundle was not built.
+- The Box functions tab has no UI regression. It is exercised end to end (palette command, a run
+  through **Run Box**, the tab) by the `profiling-timeline-box-functions` capture on
+  `public/docs/profiling_timeline.md`, whose setup is
+  `public/docs/assets/transcripts/box_cost_setup.yaml`. Opening it for that capture found the tab
+  reading every reply as a failure (the default `Json` omits `ok: true`); `boxCostSnapshot` in
+  `profileTimelineModel.js` now fills the defaults in, tested in `tools/test_profile_timeline.mjs`.
 - The profile gutter (`LineHeatmap.setProfile`) does not paint function cost; the tab lists it.
 - CPU time and allocation per function are not measured (wall time only).
 - A box whose code runs on its own threads is reconciled only at that thread's next outer exit, since
