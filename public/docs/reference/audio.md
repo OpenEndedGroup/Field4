@@ -4,7 +4,7 @@
 
 Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. `SoundPathMap.kt` is the one to read first: the declared, re-derived-from-the-code map of every route Field has from a box to something audible, which [Making a sound in Field: every path there is](../sound_paths.md) renders as a page. [Sonic Pi](../sonic_pi.md) covers owned mode in full.
 
-99 source file(s), 2658 public symbol(s), 1430 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+100 source file(s), 2660 public symbol(s), 1431 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -5978,6 +5978,20 @@ A mono WAV emitter in OpenXR world metres, binauralized by Steam Audio once per 
 | <a id="spatialwavplayer-kt--spatialwavplayer--render"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">outL</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">outR</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">numFrames</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="nc">SynthContext</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/SpatialWavPlayer/#L131) |  |
 | <a id="spatialwavplayer-kt--spatialwavplayer--close"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/SpatialWavPlayer/#L182) |  |
 
+## SpeechSmokeTest.kt { #speechsmoketest-kt }
+
+`src/jvmMain/kotlin/afield/audio/synth/SpeechSmokeTest.kt` — [read the source](source/jvmMain/afield/audio/synth/SpeechSmokeTest/)
+
+### SpeechSmokeTest { #speechsmoketest-kt-speechsmoketest }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">SpeechSmokeTest</span></code>](source/jvmMain/afield/audio/synth/SpeechSmokeTest/#L29)
+
+[`speak`](synthesis.md#speech-kt--speak) end to end on the CPU: phonemizer, tiny-voca, timing, the [`Signal`](synthesis.md#signal-kt-signal) path and a real-time factor measured on this machine.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="speechsmoketest-kt--speechsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/SpeechSmokeTest/#L31) |  |
+
 ## SynthCookbookCompileDemo.kt { #synthcookbookcompiledemo-kt }
 
 `src/jvmMain/kotlin/afield/audio/synth/SynthCookbookCompileDemo.kt`
@@ -6203,7 +6217,7 @@ net.emits()                                  // PatPattern<String>
 
 `src/jvmMain/kotlin/afield/simulation/petri/PetriMusic.kt` — [read the source](source/jvmMain/afield/simulation/petri/PetriMusic/)
 
-**Used in:** [Petri nets](../petri_nets.md), [Petri notation cheatsheet](../petri_cheatsheet.md)
+**Used in:** [Petri nets](../petri_nets.md), [Petri notation cheatsheet](../petri_cheatsheet.md), [Signal examples: time and frequency](../spectral_examples.md)
 
 ### Top-level functions { #petrimusic-kt-functions }
 
