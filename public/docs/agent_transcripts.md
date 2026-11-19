@@ -537,6 +537,21 @@ against a real `lua_State`. See [Lua in a Box](lua.md).
 
 [Open →](offline.html?file=assets/agent_transcripts/lua_demo/metadata.edn)
 
+### norns_demo
+
+**A norns host in a Lua box.** A Kotlin root whose `mainLanguage` makes six boxes under it Lua, each
+using `require "norns"`. **orbits** (launch) is a norns script written in the box: five planets on a
+128×64 screen in the `norns` panel, a PolyPerc note each time one comes round, K1–K3 and E1–E3 as keys
+in `controls`; **orbits, rendered** runs the same script offline for eight seconds with an encoder
+turn and a key press, into a player and a .wav; **fetch the scripts** clones SPIKE the Percussionist's
+noiz virus and om-i-god's anima from GitHub into `~/.afield/norns/code/`; **noiz virus** (launch) runs
+it live; **noiz virus, rendered** and **anima, rendered** run them offline, write screens and a .wav,
+and print what of the norns API they reached that Field stubs. Needs `brew install luajit`. CI replays
+the graph and runs the Kotlin root only; `NornsHostTest` runs the host against a real `lua_State`. See
+[Lua in a Box](lua.md#a-norns-host).
+
+[Open →](offline.html?file=assets/agent_transcripts/norns_demo/metadata.edn)
+
 ### hello_display_capture
 
 The same single display box, paired with the backdoor capture commands
