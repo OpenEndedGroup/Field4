@@ -23,6 +23,7 @@ from build_zensical_docs import (  # noqa: E402
     resolve_jep_python,
     loris_executable_path,
     solidcraft_library_path,
+    tiny_voca_model_path,
 )
 
 FENCE = (
@@ -375,6 +376,25 @@ class DirtSamplesRootPathTests(unittest.TestCase):
         resolve, remedy = NATIVE_PREREQUISITES["dirt-samples"]
         self.assertIs(resolve, dirt_samples_root_path)
         self.assertIn("fetchDocsDirtSamples", remedy)
+
+
+class TinyVocaModelPathTests(unittest.TestCase):
+    def test_present_only_with_model_and_lexicon(self):
+        with TemporaryDirectory() as cache, patch.dict(os.environ, {"AFIELD_ONNX_CACHE_ROOT": cache}):
+            self.assertFalse(tiny_voca_model_path(Path(".")).exists())
+            model = Path(cache) / "tiny-voca" / "model.onnx"
+            model.parent.mkdir(parents=True)
+            model.write_bytes(b"onnx")
+            self.assertFalse(tiny_voca_model_path(Path(".")).exists())
+            lexicon = model.parent / "phonemizer" / "lexicon.tsv"
+            lexicon.parent.mkdir()
+            lexicon.write_text("a\tAH0\n")
+            self.assertEqual(tiny_voca_model_path(Path(".")), model)
+
+    def test_the_key_names_the_smoke_test_as_remedy(self):
+        resolve, remedy = NATIVE_PREREQUISITES["tiny-voca"]
+        self.assertIs(resolve, tiny_voca_model_path)
+        self.assertIn("speech.tiny-voca.smoke", remedy)
 
 
 if __name__ == "__main__":

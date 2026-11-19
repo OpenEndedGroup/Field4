@@ -1293,6 +1293,16 @@ displayAudioSamples(said.samples, said.sampleRate, label = "F2: ${said.words.siz
 print(said.h)
 ```
 
+The sentence in the F2 voice, and the same sentence with `voice = "M2"`:
+
+```diffstatic_runner {data-lang=kotlin audio="assets/spectral_examples/speech-hello.wav" audio-spec="hello" audio-renderer="afield.audio.synth.SpeechSoundDocs" requires="tiny-voca" embed=true hidden=true name="speech-hello-audio"}
+// Offline-rendered by SpeechSoundDocs.renderWav("hello").
+```
+
+```diffstatic_runner {data-lang=kotlin audio="assets/spectral_examples/speech-hello-m2.wav" audio-spec="hello-m2" audio-renderer="afield.audio.synth.SpeechSoundDocs" requires="tiny-voca" embed=true hidden=true name="speech-hello-m2-audio"}
+// Offline-rendered by SpeechSoundDocs.renderWav("hello-m2").
+```
+
 `voice` is `"F2"` or `"M2"`. `speed` scales the speaking rate, `pitch` adds semitones, and
 `pitchRange` scales how far the intonation moves (0 is a monotone).
 
@@ -1342,6 +1352,10 @@ displayAudioSamples(
 )
 ```
 
+```diffstatic_runner {data-lang=kotlin audio="assets/spectral_examples/speech-drums.wav" audio-spec="drums" audio-renderer="afield.audio.synth.SpeechSoundDocs" requires="tiny-voca,dirt-samples" embed=true hidden=true name="speech-drums-audio"}
+// Offline-rendered by SpeechSoundDocs.renderWav("drums").
+```
+
 ### Speech is a Signal
 
 `said.signal()` plays the speech once through the signal graph, so it can go through any filter or
@@ -1354,6 +1368,10 @@ puts the speech's spectral envelope on another signal with `LpcVocoder` from the
 val said = speak("I can sing whatever pitch you give me.", voice = "M2")
 val pitch = Param(110f).also { it.mod = SineOsc(0.5.p) * 30f }
 said.sungOn(Impulse(pitch)) * 0.5f
+```
+
+```diffstatic_runner {data-lang=kotlin audio="assets/spectral_examples/speech-sung.wav" audio-spec="sung" audio-renderer="afield.audio.synth.SpeechSoundDocs" requires="tiny-voca" embed=true hidden=true name="speech-sung-audio"}
+// Offline-rendered by SpeechSoundDocs.renderWav("sung").
 ```
 
 ### Analysing what was said
