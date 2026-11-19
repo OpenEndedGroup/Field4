@@ -603,7 +603,9 @@ class KotlinInterface2(
                 }
 
                 afield.runtime.bytecode.BoxBytecode.instrument(e.get(), snippetOrigin(e.get(), associatedBox as? Box))
-                r = evaluator.eval(e, evalConfig)
+                // A run boundary for per-function cost: reconciles frames an exception left open.
+                val cost = afield.runtime.bytecode.BoxCost.begin()
+                r = try { evaluator.eval(e, evalConfig) } finally { afield.runtime.bytecode.BoxCost.end(cost, (associatedBox as? Box)?.id) }
                 if (r is ResultWithDiagnostics.Success) {
                     val evalResult = r.value.get().result
                     val scriptInstance = evalResult.scriptInstance
@@ -664,11 +666,11 @@ class KotlinInterface2(
                     }
                 }
 
-                afield.runtime.bytecode.BoxBytecode.instrument(
-                    e.get(),
-                    snippetOrigin(e.get(), (implicits.firstOrNull { it is Box } as? Box) ?: associatedBox as? Box)
-                )
-                r = evaluator.eval(e, evalConfig)
+                val costBox = (implicits.firstOrNull { it is Box } as? Box) ?: associatedBox as? Box
+                afield.runtime.bytecode.BoxBytecode.instrument(e.get(), snippetOrigin(e.get(), costBox))
+                // A run boundary for per-function cost: reconciles frames an exception left open.
+                val cost = afield.runtime.bytecode.BoxCost.begin()
+                r = try { evaluator.eval(e, evalConfig) } finally { afield.runtime.bytecode.BoxCost.end(cost, costBox?.id) }
                 if (r is ResultWithDiagnostics.Success) {
                     val evalResult = r.value.get().result
                     val scriptInstance = evalResult.scriptInstance

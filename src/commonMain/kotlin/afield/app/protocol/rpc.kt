@@ -2646,3 +2646,46 @@ data class LineHeatUpdate(
     val codeHash: Int,
     val lines: List<LineHeatLine>,
 )
+
+/**
+ * Client to server, `box-cost`: per-function cost of opted-in boxes (`afield.runtime.bytecode.BoxCost`).
+ * [action] is `snapshot`, `measure` (opt box [uid] in; takes effect at its next run), `unmeasure`,
+ * or `clear` (start the totals again from now). Every action replies with a [BoxCostSnapshot].
+ */
+@Serializable
+data class BoxCostRequest(val action: String = "snapshot", val uid: String = "")
+
+/**
+ * One box function in a [BoxCostSnapshot]. [line] is the box line of the function's first statement,
+ * proven by text, or -1. [selfMs] excludes the instrumented box functions it called; [totalMs]
+ * includes them and counts a recursive function once. Both include frames still running.
+ */
+@Serializable
+data class BoxCostFunction(
+    val boxId: String,
+    val property: String,
+    val function: String,
+    val line: Int,
+    val calls: Long,
+    val selfMs: Double,
+    val totalMs: Double,
+    val running: Boolean = false,
+)
+
+/**
+ * One opted-in box in a [BoxCostSnapshot], measured at the run boundary: [runs] counts its snippet
+ * evaluations (the engine's prelude and warm-up evaluations for the box included) and its coroutine
+ * resumes, and [totalMs] their wall time.
+ */
+@Serializable
+data class BoxCostBox(val boxId: String, val name: String, val measuring: Boolean, val runs: Long, val totalMs: Double)
+
+/** Server to client, the reply to `box-cost`: the opted-in boxes and their functions, hottest self time first. */
+@Serializable
+data class BoxCostSnapshot(
+    val ok: Boolean = true,
+    val error: String = "",
+    val elapsedMs: Double = 0.0,
+    val boxes: List<BoxCostBox> = emptyList(),
+    val functions: List<BoxCostFunction> = emptyList(),
+)

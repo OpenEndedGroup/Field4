@@ -224,6 +224,19 @@ object BoxInterrupt {
         /** False until [start], and for good when `AFIELD_RUNLOOP_WATCHDOG=0` kept it from starting. */
         fun isRunning(): Boolean = thread?.isAlive == true
 
+        /**
+         * The text of a stall report for [thread], stalled [stalledMs] with [stack]: the culprit box,
+         * the hottest box function when per-function cost is measuring that box
+         * (`afield.runtime.bytecode.BoxCost.stallReport`), and the top of the stack.
+         */
+        fun report(stalledMs: Long, thread: Thread, stack: Array<StackTraceElement>, who: String? = culprit(stack)): String {
+            val cost = runCatching { afield.runtime.bytecode.BoxCost.stallReport(thread) }.getOrNull()
+            return "Runloop has not made a frame for $stalledMs ms" +
+                (who?.let { "; box code from $it is running" } ?: "") +
+                (cost?.let { "\n    $it" } ?: "") +
+                "\n    at " + stack.take(12).joinToString("\n    at ")
+        }
+
         @Synchronized
         fun start() {
             if (thread != null) return
@@ -254,9 +267,7 @@ object BoxInterrupt {
                     reported = true
                     val stack = main.stackTrace
                     val who = culprit(stack)
-                    val top = stack.take(12).joinToString("\n    at ")
-                    lprintln("warn,runloop,watchdog", "Runloop has not made a frame for $stalledMs ms" +
-                            (who?.let { "; box code from $it is running" } ?: "") + "\n    at " + top)
+                    lprintln("warn,runloop,watchdog", report(stalledMs, main, stack, who))
                     onStall.forEach { runCatching { it(who, stalledMs, stack) } }
                 }
                 if (BoxInstrumentation.watchdogInterrupts && !interrupted && interruptAfterMs > 0 && stalledMs >= interruptAfterMs) {

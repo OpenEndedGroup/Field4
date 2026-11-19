@@ -196,6 +196,9 @@ class Runloop {
             CPUSpan.time("runloop_pre") { preRun.update() }
             CPUSpan.time("runloop_main") { main.frame() }
             CPUSpan.time("runloop_post") { postRun.update() }
+            // Top level: no box code is running on this thread now, so any frame its shadow stack
+            // still holds was left by an exception (afield.runtime.bytecode.BoxCost).
+            if (afield.runtime.bytecode.BoxCost.active) afield.runtime.bytecode.BoxCost.resetThread()
             val workNs = System.nanoTime() - frameStartNs
             frame++
             // First completed frame = Field is up. Announce ready and collapse the startup row.
