@@ -376,6 +376,7 @@ $region
             "sectionRingProbes",
             "sectionCapRegions",
             "sectionCapTriangles",
+            "sectionClipTriangles",
         ),
         "camera-preset" to listOf("cameraPresetEye"),
         "pick-thresholds" to listOf(

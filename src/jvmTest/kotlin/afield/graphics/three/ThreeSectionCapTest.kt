@@ -357,6 +357,78 @@ class ThreeSectionCapTest {
         }
     }
 
+    // ---------------------------------------------------------------- clipping, for the path tracer
+
+    /** `sectionClipTriangles` of a mesh, with its z coordinate carried as a one-wide attribute. */
+    private fun ViewerJavaScript.Session.clip(mesh: TriMesh, plane: String): Pair<DoubleArray, DoubleArray> {
+        val zs = FloatArray(mesh.vertexCount) { mesh.positions[it * 3 + 2] }
+        val clipped = call(
+            "sectionClipTriangles",
+            fromJson(mesh.positions.json()),
+            fromJson(mesh.indices.json()),
+            fromJson(plane),
+            fromJson("""[{"array": ${zs.json()}, "itemSize": 1}]"""),
+        )
+        return clipped.getMember("positions").doubles() to clipped.getMember("attributes").getArrayElement(0).doubles()
+    }
+
+    private fun DoubleArray.surfaceArea(): Double {
+        var total = 0.0
+        for (t in indices step 9) {
+            val ux = this[t + 3] - this[t]; val uy = this[t + 4] - this[t + 1]; val uz = this[t + 5] - this[t + 2]
+            val vx = this[t + 6] - this[t]; val vy = this[t + 7] - this[t + 1]; val vz = this[t + 8] - this[t + 2]
+            val cx = uy * vz - uz * vy; val cy = uz * vx - ux * vz; val cz = ux * vy - uy * vx
+            total += kotlin.math.sqrt(cx * cx + cy * cy + cz * cz) / 2.0
+        }
+        return total
+    }
+
+    /**
+     * What the path tracer is handed for a slab cut at z = 4: the top face and the side bands above the
+     * cut, and nothing below it. `960 000 + 4 000 × 26` on the kept side, `960 000 + 4 000 × 34` flipped.
+     *
+     * Three more things are checked on the way: every vertex is on the kept side; an attribute is
+     * interpolated at the same crossing as the position (carried here as z itself, so it must equal z
+     * exactly); and every triangle keeps its outward winding, because the tracer shades by it.
+     */
+    @Test
+    fun `clipping a slab keeps the surviving half, its attributes and its winding`() {
+        val slab = boxMesh(1200.0, 800.0, 60.0)
+        session().use { js ->
+            listOf(
+                Triple("""{"n": [0,0,1], "d": -4}""", 1_064_000.0, { z: Double -> z >= 4.0 - 1e-9 }),
+                Triple("""{"n": [0,0,-1], "d": 4}""", 1_096_000.0, { z: Double -> z <= 4.0 + 1e-9 }),
+            ).forEach { (plane, area, kept) ->
+                val (positions, zs) = js.clip(slab, plane)
+                assertEquals(area, positions.surfaceArea(), 1e-3, "surface left by $plane")
+                for (v in 0 until positions.size / 3) {
+                    val z = positions[v * 3 + 2]
+                    assertTrue(kept(z), "a vertex at z = $z survived $plane")
+                    assertEquals(z, zs[v], 1e-9, "an attribute was not interpolated with its position")
+                }
+                for (t in positions.indices step 9) {
+                    val ux = positions[t + 3] - positions[t]; val uy = positions[t + 4] - positions[t + 1]; val uz = positions[t + 5] - positions[t + 2]
+                    val vx = positions[t + 6] - positions[t]; val vy = positions[t + 7] - positions[t + 1]; val vz = positions[t + 8] - positions[t + 2]
+                    val n = doubleArrayOf(uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx)
+                    val c = DoubleArray(3) { (positions[t + it] + positions[t + 3 + it] + positions[t + 6 + it]) / 3.0 }
+                    // The slab is centred on the origin, so an outward face points away from it.
+                    assertTrue(n[0] * c[0] + n[1] * c[1] + n[2] * c[2] > 0, "a clipped triangle turned inward")
+                }
+            }
+        }
+    }
+
+    /** Wholly kept, the mesh comes back whole; wholly cut away, nothing does. */
+    @Test
+    fun `clipping keeps everything or nothing when the plane misses`() {
+        val slab = boxMesh(1200.0, 800.0, 60.0)
+        session().use { js ->
+            val whole = 2.0 * (1200.0 * 800.0 + 1200.0 * 60.0 + 800.0 * 60.0)
+            assertEquals(whole, js.clip(slab, """{"n": [0,0,1], "d": 1000}""").first.surfaceArea(), 1e-3)
+            assertEquals(0, js.clip(slab, """{"n": [0,0,1], "d": -1000}""").first.size)
+        }
+    }
+
     // ---------------------------------------------------------------- against Manifold
 
     /**

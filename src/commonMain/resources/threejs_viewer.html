@@ -1309,7 +1309,12 @@ const PATH_TRACE_MODULES = {shim: '/vendor/three-gpu-pathtracer/0.0.28/cube_uv_r
     webgpu: '/vendor/three/0.187.0/three.webgpu.js', gpuTracer: '/vendor/three-gpu-pathtracer/0.0.28/webgpu/index.module.js',
     weights: '/vendor/oidn-webgpu/0.6.0/rt_hdr_alb_nrm.tza'};
 const pathTrace = {tracer: null, gpu: null, loading: null, failed: null, sceneKey: null, cameraKey: null, envKey: null,
-    rebuildAt: 0, pending: null, depthOnly: new THREE.MeshBasicMaterial({colorWrite: false, side: THREE.DoubleSide})};
+    rebuildAt: 0, pending: null, depthOnly: new THREE.MeshBasicMaterial({colorWrite: false, side: THREE.DoubleSide}),
+    // A cap's depth, unclipped: it lies in the plane, and the plane would clip it on the flip side.
+    depthOnlyCap: new THREE.MeshBasicMaterial({colorWrite: false, side: THREE.DoubleSide, polygonOffset: true,
+        polygonOffsetFactor: -1, polygonOffsetUnits: -1}),
+    // The clipped stand-in geometry each traced mesh is baked as while a section is on, by object uuid.
+    clipped: new Map()};
 function pathTraceActive() {
     return pathTraceState.on && !isPublication && panelState.cameras.length <= 1 && !xrayState.enabled && studioRoot.visible;
 }
@@ -1385,9 +1390,13 @@ async function loadGpuPathTracer() {
     renderer.domElement.before(canvas);
     return gpu;
 }
-/** What the tracer sees: lit, opaque-enough surfaces and the studio ground. Everything else is raster. */
+/**
+ * What the tracer sees: lit, opaque-enough surfaces, the studio ground and, while a section is on, its
+ * caps. Everything else is raster.
+ */
 function pathTraced(o) {
     if (!o.isMesh || !o.visible) return false;
+    if (o.userData.sectionCap) return !!inspectorState.cut && !!o.userData.tracedMaterial;
     if (o === studioGround) return studioGround.visible && studioRoot.visible;
     const m = o.material;
     return !Array.isArray(m) && !!m?.isMeshStandardMaterial && m.opacity > 0.05;
@@ -1395,6 +1404,67 @@ function pathTraced(o) {
 function eachPathTraced(fn) {
     baseGeometryRoot.traverseVisible(o => { if (pathTraced(o)) fn(o); });
     if (pathTraced(studioGround)) fn(studioGround);
+    if (inspectorState.cut) inspectorRoot.traverseVisible(o => { if (o.userData.sectionCap && pathTraced(o)) fn(o); });
+}
+
+// ---------------------------------------------------------------------------------------------
+// Path tracing a section.
+//
+// Clipping planes are a raster feature: the tracer bakes whole meshes into its BVH and would trace the
+// figure uncut, with the caps — unlit overlays — pasted over it. So while a section is on, the tracer is
+// handed the cut as geometry instead. Each traced mesh is baked as `sectionClipTriangles` of itself,
+// clipped in its own local space so its world matrix still places it, and each cap is baked as a lit
+// surface in its part's colour, roughness and metalness. Light then falls into the cut, the cut face
+// shades and casts shadows, and the overlay pass that draws annotations over the trace takes its depth
+// from the clipped meshes rather than from the half that is gone.
+// ---------------------------------------------------------------------------------------------
+
+/** The section plane in an object's local space, as `{ n, d }`. */
+function pathTraceLocalCut(o) {
+    const cut = inspectorState.cut;
+    o.updateWorldMatrix(true, false);
+    const plane = new THREE.Plane(new THREE.Vector3(cut.n[0], cut.n[1], cut.n[2]), cut.d)
+        .applyMatrix4(o.matrixWorld.clone().invert());
+    return { n: [plane.normal.x, plane.normal.y, plane.normal.z], d: plane.constant };
+}
+
+/** The geometry the tracer bakes for a mesh: its own, or, while a section is on, it clipped. */
+function pathTraceGeometryOf(o) {
+    const cut = inspectorState.cut;
+    if (!cut && pathTrace.clipped.size) {
+        pathTrace.clipped.forEach((entry) => entry.geometry.dispose());
+        pathTrace.clipped.clear();
+    }
+    if (!cut || o === studioGround || o.userData.sectionCap) return o.geometry;
+    const g = o.geometry, position = g.getAttribute('position');
+    if (!position || position.isInterleavedBufferAttribute) return g;
+    const local = pathTraceLocalCut(o);
+    const key = [g.id, position.version, g.index ? g.index.version : -1, ...local.n, local.d].join('|');
+    const cached = pathTrace.clipped.get(o.uuid);
+    if (cached && cached.key === key) return cached.geometry;
+    const names = Object.keys(g.attributes).filter((name) => name !== 'position' && !g.attributes[name].isInterleavedBufferAttribute);
+    const clipped = sectionClipTriangles(position.array, g.index ? g.index.array : null, local,
+        names.map((name) => ({ array: g.attributes[name].array, itemSize: g.attributes[name].itemSize })));
+    const out = new THREE.BufferGeometry();
+    out.setAttribute('position', new THREE.Float32BufferAttribute(clipped.positions, 3));
+    names.forEach((name, k) => {
+        const source = g.attributes[name];
+        out.setAttribute(name, new THREE.BufferAttribute(new source.array.constructor(clipped.attributes[k]), source.itemSize, source.normalized));
+    });
+    if (cached) cached.geometry.dispose();
+    pathTrace.clipped.set(o.uuid, { key, geometry: out });
+    return out;
+}
+
+/** The material the tracer bakes for a mesh: a cap's lit stand-in, or the mesh's own. */
+function pathTraceMaterialOf(o) {
+    return o.userData.tracedMaterial || o.material;
+}
+
+/** Whether a mesh has anything left to trace once the section has cut it. */
+function pathTraceHasTriangles(o) {
+    const position = pathTraceGeometryOf(o).getAttribute('position');
+    return !!position && position.count >= 3;
 }
 /**
  * Numbers that change when what the tracer baked does, apart: which geometry is traced, where it is, its
@@ -1404,11 +1474,15 @@ function eachPathTraced(fn) {
 function pathTraceKeys() {
     const k = {geometry: 17, transform: 17, material: 17, light: 17};
     const mix = (key, v) => { k[key] = (Math.imul(k[key], 31) + (Number.isFinite(v) ? Math.round(v * 1e4) : 0)) | 0; };
+    const cut = inspectorState.cut;
+    if (cut) { for (const v of cut.n) mix('geometry', v); mix('geometry', cut.d); }
     eachPathTraced(o => {
-        const g = o.geometry, m = o.material, p = g.getAttribute('position');
+        const g = o.geometry, m = pathTraceMaterialOf(o), p = g.getAttribute('position');
         mix('geometry', o.id); mix('geometry', g.id); mix('geometry', p?.version ?? 0); mix('geometry', p?.count ?? 0);
         mix('geometry', g.index?.version ?? 0); mix('geometry', m.id);
         for (const e of o.matrixWorld.elements) mix('transform', e);
+        // A section clips in each mesh's local space, so a mesh that moves under it has to be re-clipped.
+        if (cut) for (const e of o.matrixWorld.elements) mix('geometry', e);
         // The fields the tracer reads, not `m.version`: three draws a transparent DoubleSide material
         // back faces then front, setting needsUpdate before each, so its version climbs every raster
         // frame. Keyed on it, the tracer restarted every frame and never got past compiling, while the
@@ -1434,15 +1508,26 @@ function pathTraceCameraKey() {
 }
 /** Bake the traced surfaces into the tracer's BVH: hide everything else while its generator walks the scene. */
 function rebuildPathTraceScene() {
-    const hidden = [];
+    const hidden = [], swapped = [];
     scene.traverse(o => { if (o.visible && o.isMesh && !pathTraced(o)) { o.visible = false; hidden.push(o); } });
+    // While a section is on: the clipped geometry and the caps' lit materials, for the length of the bake.
+    eachPathTraced(o => {
+        const geometry = pathTraceGeometryOf(o), material = pathTraceMaterialOf(o);
+        if (geometry === o.geometry && material === o.material) return;
+        swapped.push([o, o.geometry, o.material]);
+        if (!pathTraceHasTriangles(o)) { o.visible = false; hidden.push(o); return; }
+        o.geometry = geometry; o.material = material;
+    });
     // A fresh scene generator for every bake. Its incremental cache keeps the previous BVH when a re-run
     // replaces the meshes' geometries, and the tracer then draws the new scene nearly black. `_generator`
     // is private to WebGLPathTracer 0.0.28; recheck when the vendored copy changes.
     if (pathTrace.baked) pathTrace.tracer._generator = new pathTrace.tracer._generator.constructor();
     pathTrace.baked = true;
     try { pathTrace.tracer.setScene(scene, camera); }
-    finally { for (const o of hidden) o.visible = true; }
+    finally {
+        for (const [o, geometry, material] of swapped) { o.geometry = geometry; o.material = material; }
+        for (const o of hidden) o.visible = true;
+    }
     pathTrace.cameraKey = pathTraceCameraKey();
     pathTrace.envKey = pathTraceEnvKey();
 }
@@ -1564,7 +1649,8 @@ function syncGpuPathTraceCanvas(gpu) {
 function buildGpuPathTraceScene(gpu) {
     const proxy = new THREE.Scene(), meshes = [];
     eachPathTraced(o => {
-        const stand = new THREE.Mesh(o.geometry, o.material);
+        if (!pathTraceHasTriangles(o)) return;
+        const stand = new THREE.Mesh(pathTraceGeometryOf(o), pathTraceMaterialOf(o));
         stand.matrixAutoUpdate = false;
         stand.matrix.copy(o.matrixWorld);
         proxy.add(stand);
@@ -1650,7 +1736,11 @@ function renderPathTraceOverlay() {
     });
     if (!overlay) return;
     const swapped = [], environment = scene.environment, background = scene.background, autoClear = renderer.autoClear;
-    eachPathTraced(o => { swapped.push([o, o.material]); o.material = pathTrace.depthOnly; });
+    // Depth from what was traced: clipped by the section like the raster is, and the caps unclipped.
+    const planes = inspectorState.cut ? [new THREE.Plane(new THREE.Vector3(...inspectorState.cut.n), inspectorState.cut.d)] : [];
+    if (pathTrace.depthOnly.clippingPlanes?.length !== planes.length) pathTrace.depthOnly.needsUpdate = true;
+    pathTrace.depthOnly.clippingPlanes = planes;
+    eachPathTraced(o => { swapped.push([o, o.material]); o.material = o.userData.sectionCap ? pathTrace.depthOnlyCap : pathTrace.depthOnly; });
     scene.environment = null; scene.background = null; renderer.autoClear = false;
     try { renderer.clearDepth(); renderer.render(scene, camera); }
     finally {
@@ -4667,6 +4757,75 @@ function sectionCapRegions(segments, owners, plane, weld) {
 }
 
 /**
+ * A mesh with the cut-away half removed: what a renderer that does not clip — the path tracer — is given
+ * in place of the mesh, so the cut is real geometry for it rather than a raster discard.
+ *
+ * Every triangle is kept whole on the surviving side (`sectionSignedDistance >= 0`), dropped on the
+ * other, and split along the plane where it straddles — into one triangle or two. `attributes` is a list
+ * of `{ array, itemSize }` (normals, colours, uvs, …) interpolated at the same crossings, so a split
+ * triangle keeps its shading and its colour. `positions` and `plane` are in the same space.
+ *
+ * Returns `{ positions, attributes }`, flat and unindexed, three vertices a triangle; an attribute comes
+ * back as an array in the same order it was given.
+ */
+function sectionClipTriangles(positions, index, plane, attributes) {
+    const extra = attributes || [];
+    const outPositions = [];
+    const outAttributes = extra.map(() => []);
+    const triangles = index ? Math.floor(index.length / 3) : Math.floor(positions.length / 9);
+    const emit = (vertex) => {
+        outPositions.push(vertex.p[0], vertex.p[1], vertex.p[2]);
+        for (let a = 0; a < extra.length; a += 1) {
+            for (let c = 0; c < extra[a].itemSize; c += 1) outAttributes[a].push(vertex.a[a][c]);
+        }
+    };
+    const read = (i) => {
+        const a = [];
+        for (let k = 0; k < extra.length; k += 1) {
+            const size = extra[k].itemSize;
+            const row = [];
+            for (let c = 0; c < size; c += 1) row.push(extra[k].array[i * size + c]);
+            a.push(row);
+        }
+        return { p: [positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]], a: a };
+    };
+    const between = (u, v, du, dv) => {
+        const t = du / (du - dv);
+        return {
+            p: [u.p[0] + (v.p[0] - u.p[0]) * t, u.p[1] + (v.p[1] - u.p[1]) * t, u.p[2] + (v.p[2] - u.p[2]) * t],
+            a: u.a.map((row, k) => row.map((value, c) => value + (v.a[k][c] - value) * t))
+        };
+    };
+    for (let t = 0; t < triangles; t += 1) {
+        const ids = index ? [index[t * 3], index[t * 3 + 1], index[t * 3 + 2]] : [t * 3, t * 3 + 1, t * 3 + 2];
+        const v = ids.map(read);
+        const d = v.map((vertex) => sectionSignedDistance(plane, vertex.p));
+        const inside = d.map((value) => value >= 0);
+        const kept = inside.filter(Boolean).length;
+        if (kept === 3) { v.forEach(emit); continue; }
+        if (kept === 0) continue;
+        // Rotate so the odd one out is first, keeping the winding.
+        let r = 0;
+        for (let k = 0; k < 3; k += 1) {
+            if (inside[k] !== inside[(k + 1) % 3] && inside[k] !== inside[(k + 2) % 3]) { r = k; break; }
+        }
+        const a = v[r], b = v[(r + 1) % 3], c = v[(r + 2) % 3];
+        const da = d[r], db = d[(r + 1) % 3], dc = d[(r + 2) % 3];
+        const ab = between(a, b, da, db);
+        const ac = between(a, c, da, dc);
+        if (inside[r]) {
+            // one corner survives: one triangle
+            emit(a); emit(ab); emit(ac);
+        } else {
+            // two corners survive: a quad, as two triangles
+            emit(ab); emit(b); emit(c);
+            emit(ab); emit(c); emit(ac);
+        }
+    }
+    return { positions: outPositions, attributes: outAttributes };
+}
+
+/**
  * The cap for a cut with a single owner: `sectionCapRegions` with every segment owned by `0`, its
  * triangles flattened. Returns `{ positions, area, loops, open }`.
  */
@@ -6746,7 +6905,7 @@ function inspectorDrawCut() {
             if (owner === undefined) {
                 owner = owners.length;
                 ownerKeys.set(key, owner);
-                owners.push({ color: scratch.clone(), panel: panel });
+                owners.push({ color: scratch.clone(), panel: panel, material: object.material });
             }
             ownerOf.push(owner);
         }
@@ -6783,6 +6942,14 @@ function inspectorDrawCut() {
             }));
             // No clipping planes: the cap lies *in* the plane, and would be clipped by it on the flip side.
             mesh.userData.sectionCap = true;
+            // What the path tracer bakes the cap as: lit, in the part's own surface, not the raster's flat poché.
+            const source = Array.isArray(owner.material) ? owner.material[0] : owner.material;
+            mesh.userData.tracedMaterial = new THREE.MeshStandardMaterial({
+                color: section.capColor ? new THREE.Color(section.capColor) : owner.color.clone(),
+                roughness: Number.isFinite(source?.roughness) ? source.roughness : 0.7,
+                metalness: Number.isFinite(source?.metalness) ? source.metalness : 0,
+                side: THREE.DoubleSide
+            });
             if (Number.isInteger(owner.panel) && owner.panel >= 0) mesh.userData.featurePanel = owner.panel;
             inspectorRoot.add(mesh);
         });
@@ -6842,10 +7009,16 @@ function inspectorSetStatus(text) {
     inspectorStatusEl.textContent = text || '';
 }
 
+/** Empty the inspector's overlay, with the caps' path-traced stand-in materials. */
+function inspectorClearOverlay() {
+    inspectorRoot.children.forEach((child) => { if (child.userData.tracedMaterial) child.userData.tracedMaterial.dispose(); });
+    clearGroup(inspectorRoot);
+}
+
 /** Rebuild every overlay: the authored dimensions, the picked one, the cut. */
 function inspectorRebuildOverlay() {
     requestRender();
-    clearGroup(inspectorRoot);
+    inspectorClearOverlay();
     const spec = inspectorState.spec;
     featureDraw(); featureHud();
     if (!spec || !spec.enabled) return;
@@ -7893,7 +8066,7 @@ function inspectorUpdateHud() {
     if (!on) {
         renderer.localClippingEnabled = false;
         inspectorSetStatus('');
-        clearGroup(inspectorRoot);
+        inspectorClearOverlay();
         return;
     }
     const explode = spec.explode || {};
