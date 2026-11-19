@@ -167,6 +167,10 @@ object DemoTranscriptExecSmokeTest {
         // found (or how to install it), so it needs nothing the build does not own. The Lua boxes are a
         // guest language; afield.lang.lua.LuaStateTest and LuaBoxTest run their code against a real lua_State.
         "lua_demo",
+        // The norns host, as lua_demo: only the Kotlin root executes. Its Lua boxes render a norns
+        // script offline, play one live, and fetch and render two from GitHub, so they need LuaJIT, an
+        // audio device or the network; NornsHostTest runs the host against a real lua_State.
+        "norns_demo",
         // Three bounded CPU boxes: refusal messages, field-clock curves, and a computed ledger.
         // No audio device or renderer; unlike marf_demo, every box is safe to execute headless.
         "marf_field_clocks",
@@ -490,6 +494,9 @@ object DemoTranscriptExecSmokeTest {
         // Speech (2026-11-19): tiny-voca speak(), word timing, a word pattern, a live sung Signal and
         // LPC analysis. CPU ONNX; fetches ~27 MB on first run.
         "speech",
+        // Buffer paint (2026-11-19): a Gray-Scott frames { } loop edited through a BufferCanvas over its
+        // own FloatArray, and a delay line pasted and motion-blurred in place. Pure CPU, no Window.
+        "buffer_paint",
         // Controls renewal (2026-10-29): a five-control surface feeding a live figure and a slider
         // that re-renders itself mid-drag. Pure CPU, output-channel controls only.
         "controls_surface",
@@ -931,6 +938,9 @@ object DemoTranscriptExecSmokeTest {
         "keyframe_autosweep",
         "recstl_playground",
         "gpu_state",
+        // Buffer paint on the GPU (2026-11-19): a Window, a Gray-Scott compute ping-pong and a draw box,
+        // with drawing-layer gestures editing the mapped storage buffer. Needs a native Window.
+        "buffer_paint_gpu",
         "threebox",
         "rectsl_dataviz",
         "rectsl_plot_axes",

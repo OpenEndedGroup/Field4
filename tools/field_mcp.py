@@ -390,7 +390,7 @@ class FieldMcpServer:
         return {"tabs": [public_tab(tab) for tab in await list_tabs(self.port)]}
 
     async def tool_electron_inspect(self, args: dict[str, Any]) -> dict[str, Any]:
-        return await inspect_tab(await select_tab(self.port, args.get("tab")))
+        return await inspect_tab(await select_tab(self.port, args.get("tab")), query=args.get("query"), scope=args.get("scope"), mode=args.get("mode", "summary"), sections=args.get("sections"), limit=args.get("limit", 10))
 
     async def tool_electron_act(self, args: dict[str, Any]) -> dict[str, Any]:
         return await act_on_tab(
@@ -816,7 +816,7 @@ class FieldMcpServer:
 
     TOOLS: list[dict[str, Any]] = [
         {"name": "field_electron_tabs", "description": "List the real Field Electron windows and tabs, including the selected tab, URL, document, and app identity. Does not open a browser copy or change tabs.", "inputSchema": {"type": "object", "properties": {}}},
-        {"name": "field_electron_inspect", "description": "Read the selected live Field Electron tab's visible text, headings, links and labelled controls. Pass tab id or distinctive title to inspect another existing tab.", "inputSchema": {"type": "object", "properties": {"tab": {"type": "string"}}}},
+        {"name": "field_electron_inspect", "description": "Summarize a live Electron tab. Use query to find labelled elements, scope as a CSS selector, or mode=full for selected detail sections.", "inputSchema": {"type": "object", "properties": {"tab": {"type": "string"}, "query": {"type": "string"}, "scope": {"type": "string", "description": "CSS selector limiting inspection to its first match"}, "mode": {"type": "string", "enum": ["summary", "full"]}, "sections": {"type": "array", "items": {"type": "string", "enum": ["headings", "controls", "links", "visibleText"]}}, "limit": {"type": "integer", "minimum": 1, "maximum": 100}}}},
         {"name": "field_electron_act", "description": "Click or fill one visible labelled control in the live Field Electron tab. Matches a unique accessible label, text or id; returns ambiguity instead of guessing. This changes the user's visible app.", "inputSchema": {"type": "object", "required": ["action", "target"], "properties": {"tab": {"type": "string"}, "action": {"type": "string", "enum": ["click", "fill"]}, "target": {"type": "string"}, "value": {"type": "string"}}}},
         {"name": "field_electron_screenshot", "description": "Capture the actual live Field Electron tab's viewport as an MCP image. Defaults to the selected tab; no independent browser is opened.", "inputSchema": {"type": "object", "properties": {"tab": {"type": "string"}}}},
         {"name": "field_electron_console", "description": "Read recent warning and error console messages recorded by the real Field Electron tab.", "inputSchema": {"type": "object", "properties": {"tab": {"type": "string"}, "limit": {"type": "integer", "minimum": 1, "maximum": 100}}}},

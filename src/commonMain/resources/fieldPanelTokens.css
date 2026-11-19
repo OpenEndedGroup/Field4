@@ -34,31 +34,6 @@
     --fp-close-glyph: 17px;
 }
 
-/* The light theme (theme.js sets data-field-theme on <html>; field.css holds the rest of it). An
-   iframe panel that does not load theme.js keeps the dark values above. */
-[data-field-theme="light"] {
-    --fp-bg: #ccc7be;
-    --fp-fg: #24211d;
-    --fp-muted: #5a554d;
-    --fp-dim: #7d776e;
-    --fp-card: #c0bbb2;
-    --fp-card-quiet: #c6c1b8;
-    --fp-card-2: #c3beb5;
-    --fp-card-3: #bdb8af;
-    --fp-hairline: #b0aba2;
-    --fp-selected: #dcd8d0;
-    --fp-soft: #3e3a34;
-    --fp-line: #8f8a81;
-    --fp-map-box: #a8a39a;
-    --fp-map-box-open: #7d776e;
-    --fp-map-panel: rgba(250, 248, 242, 0.35);
-    --fp-control-border: #aaa59c;
-    --fp-control-bg: #d4d0c8;
-    --fp-control-hover-border: #8f8a81;
-    --fp-control-hover-bg: #e6e3dc;
-    --fp-control-hover-fg: #1a1815;
-}
-
 /* The close button, usable outside a .field-panel shell: the doubled class outranks a host
    panel's own `.x button` rule. */
 .field-panel-icon.field-panel-icon {

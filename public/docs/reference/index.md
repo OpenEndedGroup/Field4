@@ -594,7 +594,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 - *browser* — [Imaging](imaging.md#bitmapbrowsersurface-kt) · [Internal](internal.md#pairedheadsetinput-kt)
 - [capture](imaging.md#nativecapturetarget-kt)
-- [image](imaging.md#imaging-kt)
+- [image](imaging.md#buffercanvas-kt)
     - [util](imaging.md#nodetool-kt)
 - *reconstruction* — [Imaging](imaging.md#dlssreconstruction-kt) · [Internal](internal.md#ngxnative-kt)
 - [stream](imaging.md#electronrttview-kt)
@@ -682,7 +682,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**42292 public symbols across 1878 source files**, 25275 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**42340 public symbols across 1880 source files**, 25321 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -700,7 +700,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Polytopes](polytopes.md) | 17 | 596 | 440 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 787 | 530 (67%) | Nonlinear least squares, aimed at geometry. |
 | [Simulation](simulation.md) | 57 | 1869 | 1105 (59%) | Making a shape behave. |
-| [Imaging](imaging.md) | 55 | 917 | 475 (51%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
+| [Imaging](imaging.md) | 56 | 965 | 521 (53%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
 | [ALife](alife.md) | 24 | 1381 | 1252 (90%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 16 | 632 | 424 (67%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Search](search.md) | 11 | 509 | 503 (98%) | Optimisation over a space you can only sample. |
@@ -709,7 +709,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Patterns](patterns.md) | 40 | 1332 | 729 (54%) | Musical time, as a value. |
 | [Audio](audio.md) | 101 | 2666 | 1436 (53%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 22 | 592 | 592 (100%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
-| [Languages](languages.md) | 132 | 3360 | 1699 (50%) | Field's small languages, from the host side. |
+| [Languages](languages.md) | 133 | 3360 | 1699 (50%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 258 | 3620 | 1539 (42%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [AI4](ai4.md) | 102 | 2297 | 864 (37%) | AI4 is the agent that lives inside Field: the chat panel on every box, the document chat, editor completion, and headless agent tasks. |
 | [Machine learning](machine-learning.md) | 26 | 727 | 444 (61%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
@@ -905,6 +905,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [browsing.kt](workspace.md#browsing-kt) | Workspace · internal | 44 | 9 | The object inspector behind `/browse`: a live, clickable tree of any value, reached from a box with `Inspector.linkFor`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>spatial/<wbr></small> [bspot.kt](graphics.md#bspot-kt) | Graphics | 10 | 10 | One-to-one matching between two equally sized 2D point clouds, at a million points a side, using BSP-OT: every source point gets exactly one target and every target is used exactly once, with the total squared travel distance kept small. | [A Drawn Morph, Heard](../chain_drawn_morph.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [Buf.kt](synthesis.md#buf-kt) | Synthesis | 22 | 22 | Bulk float-array arithmetic for the synthesis graph, written against the Java Vector API. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>image/<wbr></small> [BufferCanvas.kt](imaging.md#buffercanvas-kt) | Imaging | 48 | 46 |  | [Visualizers, Displays, and Little Instruments](../visualizers.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [ButtonControlHandler.kt](workspace.md#buttoncontrolhandler-kt) | Workspace · internal | 0 | 0 | The server side of `button(...)`: the `button-update` websocket command, which carries one press or release from the browser and runs the box's callback with it. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>io/<wbr>mocap/<wbr></small> [Bvh.kt](data.md#bvh-kt) | Data | 25 | 18 | Motion capture in BVH format: a joint hierarchy and one line of channel values per frame. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>lifecycle/<wbr></small> [cached.kt](workspace.md#cached-kt) | Workspace | 3 | 3 | `cached`, which hands a box back the value it made on its last run for the same keys, and closes the old value when the keys change. |  |
@@ -1768,6 +1769,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>image/<wbr>util/<wbr></small> [NodeTool.kt](imaging.md#nodetool-kt) | Imaging | 5 | 5 | Locates a `node` binary new enough to run the JavaScript this repository generates, for the tests and tools that shell out to Node. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [NoiseLangGpuIncludes.kt](examples.md#noiselanggpuincludes-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [NoiseLangGpuParity.kt](examples.md#noiselanggpuparity-kt) | Examples | 2 | 1 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>lua/<wbr></small> [NornsHost.kt](languages.md#nornshost-kt) | Languages | 0 | 0 | The Kotlin half of the norns host a Lua box gets from `require "norns"`: the 128×64 screen and the sound. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>notation/<wbr></small> [Notation.kt](visualization.md#notation-kt) | Visualization | 128 | 74 | The box-facing API for the drawing layer: `notation` reads the document's Excalidraw scene as `Mark`s, writes marks owned by the box through a `notation { }` block (`NotationBuilder`), changes existing ones with `Notation.edit`, and runs callbacks when a person draws. | [Drawn Strokes Become Paint](../chain_drawn_paint.md), [Drawing and Notation](../drawing_and_notation.md), [FLine examples (Field graphics)](../fline_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>notation/<wbr></small> [NotationGeometry.kt](visualization.md#notationgeometry-kt) | Visualization | 32 | 17 | Cutting the drawing with a line: the geometry behind reading notation by intersection — a vertical line is an instant, a horizontal one a pitch (or whatever a `NotationSpace` says the axes mean). |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [NotationPatterns.kt](patterns.md#notationpatterns-kt) | Patterns | 7 | 5 | Turns a region of the drawing layer into a pattern: rectangles, level strokes and moving strokes become notes, with x as time and y as MIDI pitch. | [A Drawn Score, Heard](../chain_drawn_score.md), [A Drawn Morph, Heard](../chain_drawn_morph.md), [A Tracked Body, Measured and Heard](../chain_tracked_body.md) |
@@ -2089,7 +2091,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr></small> [ReloadCarryOver.kt](graphics.md#reloadcarryover-kt) | Graphics | 1 | 1 | What survives when a module compiles a new shader and swaps it in: which uniform buffers keep their contents, which are reallocated, which are retired, and which of the values already written into them are re-applied. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr></small> [ReloadResolvers.kt](graphics.md#reloadresolvers-kt) | Graphics | 0 | 0 | Keeps a module's resource resolvers one layer deep across repeated shader reloads. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>remotejs/<wbr></small> [RemoteArKotlinJs.kt](languages.md#remotearkotlinjs-kt) | Languages | 4 | 3 | The Kotlin/JS declarations a box sees when it runs Kotlin in the browser RemoteAR head. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>remotejs/<wbr></small> [RemoteJS.kt](languages.md#remotejs-kt) | Languages | 28 | 2 | RemoteJS — JavaScript that runs in a *browser somewhere else*, written in a Field box here. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>remotejs/<wbr></small> [RemoteJS.kt](languages.md#remotejs-kt) | Languages | 28 | 2 | RemoteJS — JavaScript that runs in a *browser somewhere else*, written in a Field box here. | [Lua in a Box](../lua.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>remotejs/<wbr></small> [RemoteJsBoxSurface.kt](languages.md#remotejsboxsurface-kt) | Languages | 10 | 10 | Where a message from a browser head lands when it names a box rather than a run. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [RemoteJSDiagnosticSmokeTest.kt](examples.md#remotejsdiagnosticsmoketest-kt) | Examples · internal | 2 | 0 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [RemoteJSTemplateSmokeTest.kt](examples.md#remotejstemplatesmoketest-kt) | Examples · internal | 2 | 0 |  |  |

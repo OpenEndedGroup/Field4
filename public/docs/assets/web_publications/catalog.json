@@ -825,6 +825,59 @@
         "public/docs/assets/agent_transcripts/browse_embeds/tree_box_code_.kt": "0537a44a726dedba1226ce4f0730a3e45e61e7dcfd138bff6ebd023f1f480d9c"
       }
     },
+    "assets/agent_transcripts/buffer_paint/metadata.edn": {
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-19T20:52:57.759Z",
+      "channels": 2,
+      "file": "assets/web_publications/buffer_paint/document/metadata.edn",
+      "files": {
+        "assets/web_publications/buffer_paint/document/metadata.edn": "b521e9aa3dec1cffef24b8152051dbc89d838bd51d73bf02056f3726d5dd63f0",
+        "assets/web_publications/buffer_paint/document/outputs.json": "5931c977c39315777e6f67b7fe788c6c01b02602eccd14345eb3eddbb26012d2",
+        "assets/web_publications/buffer_paint/outputs/0.html": "b9fc7f84532f917162d6b95c511fc787e06c8d54240f1152a7ae05c0c2a02335",
+        "assets/web_publications/buffer_paint/outputs/1.html": "751706a73264a912bcef7365e26b01cde9a25542d41d538a180a0582019154c3"
+      },
+      "kinds": [],
+      "outputs": "assets/web_publications/buffer_paint/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/buffer_paint.yaml": "73d3552d59e05e47c690de924bfe56e74847986864f030116b05760cafd86848",
+        "public/docs/assets/agent_transcripts/buffer_paint/buffer_paint_delay_line_code_.kt": "e4afac46eb00cfda709868f58b386cbbd37facd12f30c10667471345dc336954",
+        "public/docs/assets/agent_transcripts/buffer_paint/buffer_paint_gray_scott_code_.kt": "19fa4a6d342f5bb06a5ca7089ec0397707240080c7475a8fa71462589a6db698",
+        "public/docs/assets/agent_transcripts/buffer_paint/guides/visualizers.md": "901ee016cb59db68da4c7f6d8e84f3a8c0b4523f72087d55078a51d5d8a5a078",
+        "public/docs/assets/agent_transcripts/buffer_paint/metadata.edn": "6ba6e7d5d0a50b422e4347786f2da94fe31cdaaf51c1ea3d74a43920a32705ad"
+      }
+    },
+    "assets/agent_transcripts/buffer_paint_gpu/metadata.edn": {
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-19T20:53:05.322Z",
+      "channels": 1,
+      "file": "assets/web_publications/buffer_paint_gpu/document/metadata.edn",
+      "files": {
+        "assets/web_publications/buffer_paint_gpu/document/metadata.edn": "996cf5aa5771e7b05021cc86b2b649058383ab6ac04037d994d1ced45350dcc4",
+        "assets/web_publications/buffer_paint_gpu/document/outputs.json": "069b2fa4e7c715f30e7d88513b6b1938bad65b70df56cfb636b31fd1f49311f5",
+        "assets/web_publications/buffer_paint_gpu/outputs/0.html": "ee1883a4d9dda9237714bc12c65562ca225b0855dd681156f96d4a536181430a"
+      },
+      "kinds": [
+        "native-image"
+      ],
+      "outputs": "assets/web_publications/buffer_paint_gpu/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/buffer_paint_gpu.yaml": "0e836ff24e640013162f1a856093effbb30b32ae1d444e94236a90aa392176ec",
+        "public/docs/assets/agent_transcripts/buffer_paint_gpu/bpg_draw_code_.kt": "3a140b1cf701ac87dc071bce55d3d514d1194e95f6165de7b185e8228bd1a25a",
+        "public/docs/assets/agent_transcripts/buffer_paint_gpu/bpg_draw_fragment_.glsl": "a7cec652eee65401135a20f3364389443d5ea5ab222b15a689d79c8049d782af",
+        "public/docs/assets/agent_transcripts/buffer_paint_gpu/bpg_draw_vertex_.glsl": "fa8b34a0fd5d23cb8b092ff1b8d0f95ceb03612f45fa7b06e485ed11da365bcc",
+        "public/docs/assets/agent_transcripts/buffer_paint_gpu/bpg_renderer_code_.kt": "4c83f494b0aca0e17c76bf11d825d1ef8383df8b43bf86a7bce1eba1e0d6ea5a",
+        "public/docs/assets/agent_transcripts/buffer_paint_gpu/bpg_sim_code_.kt": "9081b463c259bd70eef6ce364ac5c1d163f67df4ae72d75837e0c8a29f2d15e6",
+        "public/docs/assets/agent_transcripts/buffer_paint_gpu/bpg_sim_compute_.glsl": "e324a6cb0095446f1193cd39fd233b95320b8eeb2ef6d91cf8ae7118fa4eeb2b",
+        "public/docs/assets/agent_transcripts/buffer_paint_gpu/guides/visualizers.md": "cfb3a7c3f8c7c9a84add7fd5ed8f9cd6f467497eca1e99cf736d35b688225201",
+        "public/docs/assets/agent_transcripts/buffer_paint_gpu/metadata.edn": "9241236e57da7a4082c7f23776dc8ec84cdfb229dbcd63446f125d34042beb25",
+        "public/docs/assets/visualizers-buffer-paint-gpu.png": "83a4a09a3e2f7979dc51d054eca54bed09831d651ea7b15a4b1420068b7b5cd6",
+        "public/docs/visualizers.md#capture-box=bpg_renderer": "caf3d9b7225095cc1863c5eb9314c9251ef8e2f1001e0a78578de22230fb903d"
+      },
+      "supplementalSources": [
+        "public/docs/assets/visualizers-buffer-paint-gpu.png",
+        "public/docs/visualizers.md#capture-box=bpg_renderer"
+      ]
+    },
     "assets/agent_transcripts/ceres_free_variables/metadata.edn": {
       "captureDigest": "347d26bd16f6fc14afd40b75579b70acc28d27cf578abbbca016cdda71b69c95",
       "capturedAt": "2026-11-18T21:56:28.183Z",
@@ -5114,6 +5167,35 @@
         "public/docs/assets/agent_transcripts/spectral_examples/spectral_streaming_code_.kt": "fb212687bd9242eccb4eada23e3f28fbb818520513326450bd29268aef593ae9"
       }
     },
+    "assets/agent_transcripts/speech/metadata.edn": {
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-19T21:06:42.135Z",
+      "channels": 4,
+      "file": "assets/web_publications/speech/document/metadata.edn",
+      "files": {
+        "assets/web_publications/speech/document/metadata.edn": "51419c4df8e16cb70f2b4443effc5fcad951207aa25c7d62f94241122736e828",
+        "assets/web_publications/speech/document/outputs.json": "222b0a53fa527cc49f077ffab5bf4674ff32405c9b04e12547dd21abbd59f6dc",
+        "assets/web_publications/speech/outputs/0.html": "1ed4f6955d5399aeadd7b8af8c6fa4f731e6d02fae8cf9400e9ca79896097160",
+        "assets/web_publications/speech/outputs/1.html": "9527aded4ef24c7d783d5735e2d32f7b95fa0a7975ce4433597a6048b198d3a9",
+        "assets/web_publications/speech/outputs/2.html": "da26910fc53baef488ab9993ef09d4816541f25e94b1068163d3827119bac627",
+        "assets/web_publications/speech/outputs/3.html": "6110621d61e04f2763912e9e22847fae4da0c22cac324e68d3b6ee44c203bde1"
+      },
+      "kinds": [
+        "plotly",
+        "svg"
+      ],
+      "outputs": "assets/web_publications/speech/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/speech.yaml": "1dc9479255c8f55a45f529b591146163cc0d5a46125fc8ffb6ce13ac99a77583",
+        "public/docs/assets/agent_transcripts/speech/analyse_code_.kt": "e099c7691ba85bf6eadd62bcbb82ff35f3b95650c3b66331e0cbb16a02cf3ede",
+        "public/docs/assets/agent_transcripts/speech/guides/spectral_examples-speech-a-box-that-talks.md": "57cdd35de046fcf1d080cc928f37fa2ab2e498e5f467a6e1ab63254ecebe7a7b",
+        "public/docs/assets/agent_transcripts/speech/metadata.edn": "9cd6cf6446d1a03d54b69038c19fb045c6702a922f9e6daac4c581702f74d4f6",
+        "public/docs/assets/agent_transcripts/speech/speak_code_.kt": "43465eb97cc48b3b28a22187541d628a3397cbe55e27d08f77a76868ad0d28eb",
+        "public/docs/assets/agent_transcripts/speech/sung_code_.kt": "6c1d02f47b108034efc89567d2234b7839f35e9d2faf64617c1b5f1e6dc46e79",
+        "public/docs/assets/agent_transcripts/speech/word_timing_code_.kt": "35f77e81adda170e868aa423ae69d1fa2b93aa98fb0349eb2ca08c8ba78211c5",
+        "public/docs/assets/agent_transcripts/speech/words_play_drums_code_.kt": "5276f83beef2d27b450e2a71b633ded84b860744c55919eb68176cca2c92d544"
+      }
+    },
     "assets/agent_transcripts/spinny_algebras/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
       "capturedAt": "2026-11-18T16:04:47.869Z",
@@ -6718,6 +6800,23 @@
         "public/docs/assets/agent_transcripts/macro_recorder_stamp/mr_copies_code_.kt": "4333a7a4d0d7b0eb56069e741fc85332ab40b51a9500362eac134cf2ea47b8dc",
         "public/docs/assets/agent_transcripts/macro_recorder_stamp/mr_stamp_code_.kt": "883a0518068d157da791b8c05a84162a2081712b489dbde10887b863b9f80ece",
         "public/docs/assets/agent_transcripts/macro_recorder_stamp/mr_steps_code_.kt": "29e1d0702656c8c4012e125dac863f262b4297e1929e78422e36319c12f9ab5e"
+      }
+    },
+    "assets/agent_transcripts/norns_demo/metadata.edn": {
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "channels": 0,
+      "reason": "No output-area channels; the code remains available.",
+      "sources": {
+        "dev_docs/agents/transcripts/norns_demo.yaml": "62e796fe9074c9bae5adf32d4ccfb01a8785427afc7468089b83751eaed99920",
+        "public/docs/assets/agent_transcripts/norns_demo/guides/lua.md": "1be416cb33c0809ee9ca8dc8a9d8442aa651623034085273f4995df9b2c296d0",
+        "public/docs/assets/agent_transcripts/norns_demo/metadata.edn": "d22202a28d00931574418aeb5f3fb0ae8c88bf386acece93686f6defb3539b0b",
+        "public/docs/assets/agent_transcripts/norns_demo/norns_anima_render_code_.kt": "096384740c0be46482425746b3d33018fd9328c636211e5a576e6822af4c6a16",
+        "public/docs/assets/agent_transcripts/norns_demo/norns_fetch_code_.kt": "e914526afcc1f8e890b618dfa868862d086e7e66eb6bfea36d648cd99f47011e",
+        "public/docs/assets/agent_transcripts/norns_demo/norns_noiz_code_.kt": "8d203c72027251f5a92d79aee5f30393540585ac7fe5e6aa8dd0e013da2fdc83",
+        "public/docs/assets/agent_transcripts/norns_demo/norns_noiz_render_code_.kt": "4eecde164abe3693bb83e6a2f0390e4597e17640b048a2cc55d8c65182bb94bb",
+        "public/docs/assets/agent_transcripts/norns_demo/norns_orbits_code_.kt": "08d48062e7dc32d68d0cca3d4bbc58ac760dea29e0afdc6a2b8e77e174c326f5",
+        "public/docs/assets/agent_transcripts/norns_demo/norns_orbits_render_code_.kt": "5c95f1aa006122129d9ccba2a75dc87b921cbf95be6544e6ebdb5f097061d066",
+        "public/docs/assets/agent_transcripts/norns_demo/norns_root_code_.kt": "0c5c3b05d0033b63699db8214037fa6effb0f36d7367653fff0b359394b927ab"
       }
     },
     "assets/agent_transcripts/pattern_rewrite_worked_example/metadata.edn": {

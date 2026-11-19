@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 25275 of 42292 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 25321 of 42340 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2046 undocumented entry points** (types, top-level functions and values) and 14234 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2046 undocumented entry points** (types, top-level functions and values) and 14235 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -25,6 +25,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [FabricateScene.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/FabricateScene.kt) | Renderers | fabricate_renderer, geometry_from_disk | 19 | 114 | 5% |
 | [FieldGraphTools.kt](../src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt) | AI4 | ai4_tools, ai4_experiments | 18 | 100 | 18% |
 | [KotlinScriptEngine.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/KotlinScriptEngine.kt) | Workspace | changelog, running_code, agent_transcripts | 18 | 42 | 25% |
+| [RemoteJS.kt](../src/jvmMain/kotlin/afield/lang/remotejs/RemoteJS.kt) | Languages | lua | 18 | 8 | 7% |
 | [dynamic_graph_systems.kt](../src/jvmMain/kotlin/afield/data/graph/dynamic_graph_systems.kt) | Data | dynamic_graph_systems_examples | 16 | 109 | 20% |
 | [RectSLStudyTools.kt](../src/jvmMain/kotlin/afield/lang/rectsl/study/RectSLStudyTools.kt) | Languages | rectsl_conversation | 14 | 17 | 21% |
 | [StackSLStudyTools.kt](../src/jvmMain/kotlin/afield/lang/stacksl/study/StackSLStudyTools.kt) | Languages | stacksl_conversation | 13 | 16 | 21% |
@@ -313,6 +314,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [ForthStepsDocs.kt](../src/jvmMain/kotlin/afield/lang/forth/ForthStepsDocs.kt) | Languages | forth_examples | 0 | 1 | 85% |
 | [MorphoFLines.kt](../src/jvmMain/kotlin/afield/lang/morpho/MorphoFLines.kt) | Languages | morpho_examples, morpho_search | 0 | 1 | 91% |
 | [SolidGlsl.kt](../src/jvmMain/kotlin/afield/lang/solidsl/SolidGlsl.kt) | Graphics | solid_notation | 0 | 1 | 80% |
+| [BufferCanvas.kt](../src/jvmMain/kotlin/afield/media/image/BufferCanvas.kt) | Imaging | visualizers | 0 | 1 | 95% |
 | [FieldRTTStreamer.kt](../src/jvmMain/kotlin/afield/media/stream/FieldRTTStreamer.kt) | Imaging | vision | 0 | 1 | 91% |
 | [PetriMusic.kt](../src/jvmMain/kotlin/afield/simulation/petri/PetriMusic.kt) | Audio | petri_nets, petri_cheatsheet, spectral_examples | 0 | 1 | 94% |
 | [ShaderBoids.kt](../src/jvmMain/kotlin/afield/simulation/physics/ShaderBoids.kt) | Simulation | neural_particles | 0 | 1 | 97% |
@@ -327,7 +329,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [PatFunctions.kt](../src/jvmMain/kotlin/afield/audio/synth/PatFunctions.kt) | Patterns | — | 21 | 21 | 12% |
 | [doc.kt](../src/jvmMain/kotlin/afield/tools/docs/doc.kt) | Workspace | — | 19 | 5 | 11% |
 | [SemanticRetrievalService.kt](../src/jvmMain/kotlin/afield/ai/retrieval/SemanticRetrievalService.kt) | Machine learning | — | 18 | 164 | 1% |
-| [RemoteJS.kt](../src/jvmMain/kotlin/afield/lang/remotejs/RemoteJS.kt) | Languages | — | 18 | 8 | 7% |
 | [essentiaAnalysis.kt](../src/jvmMain/kotlin/afield/audio/analysis/essentiaAnalysis.kt) | Audio | — | 17 | 109 | 0% |
 | [CodeUseTelemetryService.kt](../src/jvmMain/kotlin/afield/app/diagnostics/CodeUseTelemetryService.kt) | Workspace | — | 15 | 214 | 1% |
 | [AI4_filestore.kt](../src/jvmMain/kotlin/afield/ai/knowledge/AI4_filestore.kt) | AI4 | — | 15 | 40 | 16% |

@@ -168,6 +168,107 @@ print(string.format("%s: %.0f s, peak %.2f, rms %.3f", field.mini(notes), heard.
 `crossings` is a quick check that the voice played the pitches you asked for: MIDI 60 rendered with
 `wave = "sine"` crosses zero about 260 times a second.
 
+## A norns host
+
+[norns](https://monome.org/docs/norns/) runs scripts that draw on a 128×64 screen, read three keys
+and three encoders, and play an engine. `require "norns"` gives a Lua box the same script API, so a
+norns script runs in Field: the box's `init`, `redraw`, `key`, `enc` and `cleanup`, and the norns
+libraries they call, `screen`, `params`, `clock`, `metro`, `util`, `musicutil`, `controlspec`,
+`tab`, `engine`, `softcut`, `grid` and `arc`.
+
+A script can be written in the box itself. `norns.reset()` at its top clears whatever the last run
+left (parameters, clocks, metros). `norns.render{…}` then runs it offline: `init`, `redraw`, and its
+clocks and metros in their own time, for `seconds` seconds, with the keys and encoders in `events`
+pressed and turned at the times given. It shows the last screen in the box's `norns` panel and the
+sound as a player in `sound`, and returns what the sound measured: `seconds`, `peak`, `rms`, and
+`onsets`, the notes it could hear start.
+
+```diffstatic_runner {data-lang=lua screenshot="assets/lua/norns.png" capture="box" open-outputs=true trim=true requires="luajit" wait="4" wait-output=true wait-output-kind="display" timeout="180" embed=true name="lua-norns" w="820" h="80" alt="A Lua box's output with two panels. The norns panel is a black 128 by 64 screen shown four times larger: five grey orbits round a white dot, a planet on each orbit, two of them bright, and beside them the words orbits and bpm 140. The sound panel below is a six-second player whose waveform is a run of short plucked notes."}
+local norns = require("norns").reset()
+local musicutil = require "musicutil"
+engine.name = "PolyPerc"
+local scale = musicutil.generate_scale(48, "Dorian", 3)
+local planets = {}
+
+function init()
+  params:add_number("tempo", "tempo", 40, 240, 110)
+  params:set_action("tempo", function(v) params:set("clock_tempo", v) end)
+  params:bang()
+  for i = 1, 5 do planets[i] = { r = 6 + i * 5, a = i, steps = i + 2, at = 0, lit = 0 } end
+  clock.run(function()
+    while true do
+      clock.sync(1 / 4)
+      for i, p in ipairs(planets) do
+        p.at, p.a = (p.at + 1) % p.steps, p.a + math.pi / (p.steps * 2)
+        if p.at == 0 then engine.hz(musicutil.note_num_to_freq(scale[i * 2])); p.lit = 3 end
+      end
+    end
+  end)
+  metro.init(function() redraw() end, 1 / 15):start()
+end
+
+function redraw()
+  screen.clear()
+  screen.level(2)
+  for _, p in ipairs(planets) do screen.circle(40, 32, p.r); screen.stroke() end
+  screen.level(15); screen.circle(40, 32, 2); screen.fill()
+  for _, p in ipairs(planets) do
+    screen.level(p.lit > 0 and 15 or 6)
+    screen.circle(40 + p.r * math.cos(p.a), 32 + p.r * math.sin(p.a), 2); screen.fill()
+    p.lit = math.max(0, p.lit - 1)
+  end
+  screen.level(10); screen.move(80, 12); screen.text("orbits")
+  screen.level(4); screen.move(80, 30); screen.text("bpm " .. params:get("tempo"))
+  screen.update()
+end
+
+function enc(n, d) if n == 2 then params:delta("tempo", d) end end
+
+local heard = norns.render { seconds = 6, events = { { 2, "enc", 2, 30 } } }
+print(string.format("%.0f s, peak %.2f, %d onsets", heard.seconds, heard.peak, heard.onsets))
+```
+
+Launch the box with `norns.start()` in place of `norns.render` and the script runs live: its clocks
+follow the wall clock, its sound goes to Field's audio engine, its screen redraws in the `norns`
+panel whenever it calls `screen.update()`, and K1 to K3 and the two directions of E1 to E3 are keys in
+its `controls` panel. Running a selection such as `norns.enc(2, 5)` or `norns.key(3, 1)` in the
+launched box turns or presses them from code; `norns.grid_key(x, y, z)` and `norns.arc_delta(ring, d)`
+do the same for the virtual grid and arc, which draw in their own panels.
+
+`norns.run(path)` loads a script from a file and starts it, and `norns.render{script = path, …}`
+renders it. The script's folder is its home, as it is on norns: `include("lib/foo")` finds
+`lib/foo.lua` beside it and `norns.state.path` names the folder. norns runs Lua 5.3 and Field's Lua
+is LuaJIT's 5.1, so the host rewrites 5.3's floor division, `a // b`, as it loads a file and adds
+5.3's `table.unpack`, `table.move`, `math.tointeger` and `math.type`. `screens = {{t, path}, …}`
+writes the screen as a PNG at each time given, `wav` writes the sound and `png` the last screen.
+
+[noiz virus](https://github.com/SPIKE-the-Percussionist/noiz_virus), which reads real viral genomes as
+note sequences, and [anima](https://github.com/om-i-god/anima), a phyllotaxis sequencer, both run
+this way. The norns_demo starting point, on the welcome screen, has a box that fetches them from their
+authors' repositories, since neither states a licence that would let Field ship them, and boxes that
+run and render them, beside the script above. What noiz virus reaches that Field only stubs is its reverb
+sends, softcut's filters and fades, and MIDI out; its synth, its screen, its genome reader, its
+parameters and its clock all run.
+
+What the host covers:
+
+| norns | in Field |
+| --- | --- |
+| `init`, `redraw`, `key`, `enc`, `cleanup` | called as norns calls them; `cleanup` by `norns.stop()` and at the end of a render |
+| `screen` | drawing, paths, text, `text_extents`, `peek`, `display_png`, `aa`, 16 levels; the font is Java's sans serif at the size asked, not norns' bitmap fonts; `translate`, `rotate`, `save`, `restore` and images are accepted and do nothing |
+| `params`, `controlspec` | numbers, options, controls, tapers, triggers, binaries, files, text, separators and groups, with `set`, `get`, `delta`, `string`, actions and `bang`; `clock_tempo` sets the tempo; no menu, and `read`/`write` do nothing |
+| `clock` | `run`, `sleep`, `sync`, `cancel`, `get_beats`, `get_tempo`, `get_beat_sec`, `transport` callbacks; internal clock only |
+| `metro` | `init`, `start`, `stop`, `free`, counted and free-running |
+| `util`, `musicutil`, `tab` | the common functions; musicutil's scale list, by name |
+| `engine` | PolyPerc: `hz`, `amp`, `pw`, `release`, `cutoff`, `gain`, `pan`; another engine's commands are silent and listed by `norns.coverage()` |
+| `softcut` | six voices on two 60-second buffers: `enable`, `buffer`, `level`, `pan`, `rate`, `loop`, `loop_start`, `loop_end`, `position`, `play`, `rec`, `rec_level`, `pre_level`, level and rate slew, `buffer_clear*`, `buffer_read_mono`/`stereo`; recording takes the engine through `audio.level_eng_cut`; filters, fades and phase polls are accepted and do nothing |
+| `audio` | `level_eng`, `level_cut`, `level_eng_cut`, `file_info`; the reverb, compressor, monitor and tape do nothing |
+| `grid`, `arc` | one virtual 16×8 grid and one four-ring arc, drawn in the box's output and pressed from code |
+| `midi`, `crow`, `osc`, `hid` | accepted and silent |
+
+`norns.coverage()` lists the stubbed calls a run made and any it could not handle, so a new script
+says what of it Field did not play.
+
 ## Errors
 
 An error is marked on the line it happened on, after whatever the run printed first:
@@ -266,5 +367,5 @@ LuaJIT's usual `package.path` (`./?.lua`, then Homebrew's and `/usr/local/share/
 pure-Lua module installed there loads. A Lua box reaches only
 what Field's
 [Lua prelude](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/resources/afield/lua/prelude.lua)
-defines, so its sound goes through the pattern voice
-rather than a DSP graph of its own.
+defines, so its sound goes through the pattern voice, or through the norns host's PolyPerc and
+softcut, rather than a DSP graph of its own.

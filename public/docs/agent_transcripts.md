@@ -537,6 +537,21 @@ against a real `lua_State`. See [Lua in a Box](lua.md).
 
 [Open →](offline.html?file=assets/agent_transcripts/lua_demo/metadata.edn)
 
+### norns_demo
+
+**A norns host in a Lua box.** A Kotlin root whose `mainLanguage` makes six boxes under it Lua, each
+using `require "norns"`. **orbits** (launch) is a norns script written in the box: five planets on a
+128×64 screen in the `norns` panel, a PolyPerc note each time one comes round, K1–K3 and E1–E3 as keys
+in `controls`; **orbits, rendered** runs the same script offline for eight seconds with an encoder
+turn and a key press, into a player and a .wav; **fetch the scripts** clones SPIKE the Percussionist's
+noiz virus and om-i-god's anima from GitHub into `~/.afield/norns/code/`; **noiz virus** (launch) runs
+it live; **noiz virus, rendered** and **anima, rendered** run them offline, write screens and a .wav,
+and print what of the norns API they reached that Field stubs. Needs `brew install luajit`. CI replays
+the graph and runs the Kotlin root only; `NornsHostTest` runs the host against a real `lua_State`. See
+[Lua in a Box](lua.md#a-norns-host).
+
+[Open →](offline.html?file=assets/agent_transcripts/norns_demo/metadata.edn)
+
 ### hello_display_capture
 
 The same single display box, paired with the backdoor capture commands
@@ -882,6 +897,19 @@ the length label follow every drag. Box 2 is a slab whose height is a handle hel
 `draw()` again. The same handles can be pinched in the visionOS viewer.
 
 [Open →](offline.html?file=assets/agent_transcripts/three_handles/metadata.edn)
+
+### buffer_paint
+
+**Paint into a running simulation's memory.** [Painting into a live buffer](visualizers.md#painting-into-a-live-buffer)
+as two boxes. Box 1 runs a Gray-Scott reaction-diffusion on two arrays in a `frames { }` loop and,
+while it runs, edits its own state through a `BufferCanvas`: a brush stroke, a cloned patch, a
+blurred square, a motion-blurred band and a filled column, each kept as a snapshot as the reaction
+grows it into pattern. Box 2 views a half-second delay line one sample to one pixel, pastes a pluck
+and motion-blurs another inside the ring, prints the RMS of both before and after, and puts
+*before* and *after* players under it. After citrons'
+["Paint in the memory of other programs"](https://citrons.xyz/journal/2026-04-13).
+
+[Open →](offline.html?file=assets/agent_transcripts/buffer_paint/metadata.edn)
 
 ### squircles
 
@@ -4044,6 +4072,18 @@ still compile against Field's real K2 import set. The numbers are asserted separ
 `four.gpu-probe.pressure-chain` and `four.gpu-probe.self-check` FIELD_TESTs.
 
 [Open →](offline.html?file=assets/agent_transcripts/gpu_probe_bench/metadata.edn)
+
+### buffer_paint_gpu
+
+**Paint into a GPU simulation's storage buffer by hand.** [Painting into a GPU buffer](visualizers.md#painting-into-a-gpu-buffer)
+as three boxes: a renderer, a compute box running Gray-Scott on two host-visible ping-pong buffers,
+and a draw box showing the state in the native window at one cell to one framebuffer pixel. Turn on
+the drawing layer (Alt+D) and draw over the *gpu buffer* frame: a freehand stroke paints, a
+rectangle blurs what is under it, an ellipse erases, and an arrow from inside a rectangle copies it
+to where the arrow ends. Each gesture becomes a `BufferCanvas` edit on the mapped buffer, and the
+shader evolves the next frame from it.
+
+[Open →](offline.html?file=assets/agent_transcripts/buffer_paint_gpu/metadata.edn)
 
 ### gpu_state
 

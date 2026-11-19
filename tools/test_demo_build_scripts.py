@@ -115,6 +115,9 @@ CORPUS = {
     # 2026-11-19: speech with tiny-voca (spectral_examples.md#speech-a-box-that-talks). Ships a
     # `build.yaml`, so the count below moved 14 -> 15; registered EXECUTE as speech.
     "speech",
+    # 2026-11-19: buffer paint (visualizers.md#painting-into-a-live-buffer). No build.yaml (the
+    # transcript lives in dev_docs/agents/transcripts), so the count below is unchanged; EXECUTE.
+    "buffer_paint",
     # Landed 2026-09-22 in `b5b9ad9e0`, the twenty-second directory and the only one that is not a
     # saved document: no `metadata.edn`, no `build.yaml` (so the nine below is unchanged), and no
     # `_code_.kt` sidecars. It is the *source* of a transcript — `tools/demos/build_flow_grain.py`
