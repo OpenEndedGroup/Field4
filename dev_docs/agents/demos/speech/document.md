@@ -37,12 +37,12 @@ showSignals(*curves.toTypedArray(), x = 214 { it * 48_000.0 / 2048 }, channel = 
 <!-- field-box id="speak" index="1" -->
 
 ```edn [field-box id="speak" role="properties"]
-{"id" "speak" "index" 1 "name" "1 - Speak" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - Speak" "_tombstone" false "frame" #afield/rect [60.0 60.0 340.0 120.0] "preamble" ""} "blockProperties" [{"name" "code" "language" "kotlin" "path" "speak_code_.kt" "lines" 3 "characters" 225 "sha256" "15798de7d225276f81b9fb14b18933e6825fff9037c83a5b06407bbedbb0375c"}]}
+{"id" "speak" "index" 1 "name" "1 - Speak" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - Speak" "_tombstone" false "frame" #afield/rect [60.0 60.0 340.0 120.0] "preamble" ""} "blockProperties" [{"name" "code" "language" "kotlin" "path" "speak_code_.kt" "lines" 3 "characters" 175 "sha256" "43465eb97cc48b3b28a22187541d628a3397cbe55e27d08f77a76868ad0d28eb"}]}
 ```
 
 ```kotlin [field-property box="speak" name="code" path="speak_code_.kt"]
 val said = speak("Hello! I am a box in Field, and this is my voice.")
-displayAudioSamples(said.samples, said.sampleRate, label = "F2: ${said.words.size} words, ${"%.0f".format(said.realTimeFactor)}x real time")
+displayAudioSamples(said.samples, said.sampleRate, label = "F2: ${said.words.size} words")
 print(said.h)
 ```
 
