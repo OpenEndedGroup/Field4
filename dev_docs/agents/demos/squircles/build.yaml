@@ -32,16 +32,18 @@ operations:
               val drawn = ArrayList<FLine>()
               for ((i, style) in styles.withIndex()) {
                   val left = 20.0 + i * 130
-                  drawn += squircleFrom(vec(left + 55, 70), 50.0, gauge = gauge, style = style).apply {
-                      thickness = 3.0
-                      color = colors[i]
-                  }
+                  drawn +=
+                      squircleFrom(vec(left + 55, 70), 50.0, gauge = gauge, style = style).apply {
+                          thickness = 3.0
+                          color = colors[i]
+                      }
                   val profile = squircleCurvatureProfile(style, gauge)
                   val length = profile.last().x
-                  drawn += polylineFrom(profile.map { vec(left + it.x / length * 110, 260 - it.y * 15) }).apply {
-                      thickness = 2.0
-                      color = colors[i]
-                  }
+                  drawn +=
+                      polylineFrom(profile.map { vec(left + it.x / length * 110, 260 - it.y * 15) }).apply {
+                          thickness = 2.0
+                          color = colors[i]
+                      }
                   drawn += polylineFrom([vec(left, 260), vec(left + 110, 260)]).apply { color = vec(1.0, 1.0, 1.0, 0.3) }
               }
               lines(drawn, w = 660.0, h = 280.0, fitToSize = true)
