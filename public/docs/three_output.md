@@ -1156,7 +1156,7 @@ three(name = "tools-example") {
 }
 ```
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="box" capture-box="three_tools" screenshot="assets/three_output/tools.png" transcript="assets/transcripts/three_output_tools_setup.yaml" padding="20" wait="0" timeout="240" embed=true hidden=true name="three-output-tools" alt="The Three.js viewer after pressing the tool's Reference axes button: the straight line, and at the origin the red, green and blue axes the tool adds, with the button shown pressed in the toolbar after the built-in X-ray and Export GLB buttons."}
+```diffstatic_runner {data-lang=kotlin capture="ui" region="box" capture-box="three_tools" screenshot="assets/three_output/tools.png" transcript="assets/transcripts/three_output_tools_setup.yaml" padding="20" wait="0" timeout="240" embed=true hidden=true name="three-output-tools" alt="The Three.js viewer after pressing the tool's Reference axes button: the straight line, and at the origin the red, green and blue axes the tool adds, with the button shown pressed in the toolbar."}
 // Press the tool's own button inside the viewer's frame, then let it render.
 var pressed = "waiting"
 for (i in 0 until 120) {
