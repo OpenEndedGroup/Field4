@@ -2388,6 +2388,8 @@ told about it, so a patch can reach Link without the call.
 
 `src/jvmMain/kotlin/afield/audio/synth/FieldAudioEngine.kt` — [read the source](source/jvmMain/afield/audio/synth/FieldAudioEngine/)
 
+**Used in:** [How to make sound in Field](../sound_paths.md)
+
 ### AudioPatchSpec { #fieldaudioengine-kt-audiopatchspec }
 
 [<code class="highlight"><span class="k">class</span> <span class="nc">AudioPatchSpec</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">internal</span> <span class="k">var</span> <span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">,</span> <span class="k">val</span> <span class="n">warmUpCycles</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">:</span> <span class="nc">LiveGraphInspectable</span></code>](source/jvmMain/afield/audio/synth/FieldAudioEngine/#L73)
@@ -4557,7 +4559,7 @@ first, and the job is registered with the box so it stops when the box does.
 
 `src/jvmMain/kotlin/afield/audio/synth/Visualizers.kt` — [read the source](source/jvmMain/afield/audio/synth/Visualizers/)
 
-**Used in:** [Visualizers, Displays, and Little Instruments](../visualizers.md), [Sound](../explainer_sound.md)
+**Used in:** [How to make sound in Field](../sound_paths.md), [Visualizers, Displays, and Little Instruments](../visualizers.md), [Sound](../explainer_sound.md)
 
 ### Top-level functions { #visualizers-kt-functions }
 
