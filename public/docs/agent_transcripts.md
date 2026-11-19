@@ -114,6 +114,17 @@ controls on an instrument you can play. See `Piano` in [Synthesis](reference/syn
 
 [Open →](offline.html?file=assets/agent_transcripts/physical_piano/metadata.edn)
 
+### muse_sequencer
+
+Weights, then lock what you liked: a two-hand sequencer that draws scale degrees, chords and note
+lengths from weights on sliders, over a piano roll that redraws as you move them. Raise
+`lock length` to freeze the last events into a loop, then move `start`, `end`, `direction` and
+`improvise`; re-run `muse` to hear it on the physical piano. `lock`, `ornaments` and `edit` show a
+loop locked, improvised with mordents, turns and trills, and changed by hand; `live` plays on the
+audio engine. See [Weights, then lock what you liked](pattern_language.md#weights-then-lock-what-you-liked).
+
+[Open →](offline.html?file=assets/agent_transcripts/muse_sequencer/metadata.edn)
+
 ### uncrossed_leapers
 
 **Knight paths that never cross.** The starting point for [uncrossed paths](knight_tour_workshop.md#uncrossed-paths):
@@ -862,6 +873,26 @@ complete example from [Drawing with FLines](fline_examples.md), the same code th
 
 [Open →](offline.html?file=assets/agent_transcripts/three_inspector_wall/metadata.edn)
 
+### three_handles
+
+**Points you drag in a three.js scene.** [Drag handles](three_output.md#drag-handles) as two boxes.
+Box 1 is a cubic curve whose four control points are free handles; the curve, its control polygon and
+the length label follow every drag. Box 2 is a slab whose height is a handle held to a vertical line
+(`axis`), and a post that slides only across the slab's top (`normal`). Each drag calls the box's
+`draw()` again. The same handles can be pinched in the visionOS viewer.
+
+[Open →](offline.html?file=assets/agent_transcripts/three_handles/metadata.edn)
+
+### drawing_on
+
+[Drawing on iPad](drawing_on.md): an editable plan and a native Pencil/voice capture head. Run the
+head box to preview and publish the plan; connect Drawing On to target `ipad`. Each completed
+Pencil stroke receives a Field crosshair at its last measured point. The guide box explains
+recording offline, uploading later, and reviewing a save file on a Mac. The desktop preview works
+without an iPad.
+
+[Open →](offline.html?file=assets/agent_transcripts/drawing_on/metadata.edn)
+
 ### fline_hit_records
 
 **What a click on a figure returns.** A wall of panels drawn through `Box.inspect`. Click a panel and
@@ -1357,6 +1388,19 @@ random-sampling control at the same budget. All five run on the CPU.
 
 [Open →](offline.html?file=assets/agent_transcripts/braitenberg_where_next/metadata.edn)
 
+### braitenberg_weight_cube
+
+The three weight-cube figures of section 4 of [Braitenberg vehicles with memory](braitenberg_vehicles.md#4-learning-the-wiring),
+one box each. Box 1 trains one `WeightCubeLearner` on the light reward and draws its path through
+(same, cross, drive) with `CubeView`. Box 2 starts twelve learners at random; the ones that start
+with the motors pinned by `drive` stay where they are. Box 3 trains three learners for each of
+`SEEK`, `FLEE`, `FREEZE` and `CHARGE`. Method after Aatish Bhatia and Arkarup Banerjee,
+[Watch a Brain Learn](https://aatishb.com/myriad/how-brains-learn/). All three run on the CPU.
+
+![One learner's path through a wireframe cube of wiring weights, blue at the start and orange at the end, settling near the lover corner](assets/braitenberg_vehicles/cube_path.png)
+
+[Open →](offline.html?file=assets/agent_transcripts/braitenberg_weight_cube/metadata.edn)
+
 ### braitenberg_brain_search
 
 Section 10 of [Braitenberg vehicles with memory](braitenberg_vehicles.md) as two boxes. Box 1 gives
@@ -1397,16 +1441,13 @@ or an n and re-run it.
 
 ### spectral_examples
 
-[Spectral examples](spectral_examples.md) as five independent boxes over the
-same chirp. *One spectrum* runs `fft` with a Hann window and plots the one-sided magnitude against
-real Hz, with the centroid and the 85 % rolloff drawn in as dashed marks rather than left as numbers.
-*Spectrogram* takes the same chirp through `stft`, converts to dB relative to peak with an explicit
-−80 dB floor, and overlays the centroid trace on the heatmap. *Mel* runs two chirps crossing in
-opposite directions through a 48-band filter bank, so the picture is an X and the bands are the only
-thing you have to trust. *Resonator bank* is the control arm and does no transform at all: 96
-log-spaced resonators from 120 Hz to 3900 Hz recover the same structure by filtering. *Streaming features* pushes samples one at a time through
-`EMAFilter then SpectralCentroidFilter`, plus flux and RMS, into two injected onsets planted a third
-and two thirds of the way through, so spectral flux has something it should spike at.
+Ten [spectral examples](spectral_examples.md) in their own boxes. Start with a chirp and two tones:
+*One spectrum* plots an FFT with its centroid and rolloff; *Spectrogram* follows those frequencies
+over time. *Mel* shows two crossing chirps on a mel scale, and *Resonator bank* finds frequencies
+with filters. *Streaming features* tracks centroid, flux and RMS as samples arrive. Two more boxes
+compare filter chains and distribution-based event detectors. The last three use linear prediction
+to plot a vowel's spectral envelope, continue a drawn stroke and make a talking synth. The synth
+renders a clip offline; set `live = true` in that box to play it through an audio device.
 
 ![A spectrogram of a chirp: a rising diagonal ridge with two horizontal tone lines, the spectral centroid traced over it](assets/spectral_examples/spectrogram.png)
 
@@ -2130,6 +2171,33 @@ instead of failing.
 
 [Open →](offline.html?file=assets/agent_transcripts/solidcraft_intro/metadata.edn)
 
+### chamfer_everything
+
+**Chamfer one edge, then all of them.** The boxes from [Chamfer every edge](solidcraft.md#chamfer-every-edge)
+read every edge of a part off its SolidCraft mesh with `mesh().edges()` and chamfer them. On a drilled
+3 × 3 plate of bosses, one chamfer of all 138 edges fails where an outside and an inside edge meet,
+and outside-then-inside as two chamfers builds. A ladder of eleven parts, from a block to a 4 × 4
+plate with 204 edges, times one chamfer, two, and one fillet of every edge. This uses the optional
+SolidCraft Rust bridge (`./gradlew buildSolidCraftNative`). Without it, each box gives that command
+instead of failing.
+
+![The chamfer ladder: a table of eleven parts with their edge counts and the times for one chamfer, two chamfers and one fillet of every edge, above a grid of the chamfered parts](assets/solidcraft/chamfer-ladder.png)
+
+[Open →](offline.html?file=assets/agent_transcripts/chamfer_everything/metadata.edn)
+
+### fillet_everything
+
+**Fillet every edge, and check it.** The boxes from [Fillet every edge](solidcraft.md#fillet-every-edge)
+round all twelve edges of a block at three radii and compare each volume with the closed form for a
+rounded block, fillet the drilled plate of bosses that one chamfer cannot take, and then find how
+round each of eleven parts can go by asking for a radius too large and reading SolidCraft's refusal.
+At its largest radius the pyramid becomes a ball. This uses the optional SolidCraft Rust bridge
+(`./gradlew buildSolidCraftNative`). Without it, each box gives that command instead of failing.
+
+![The fillet ladder: a table of eleven parts with the time for a 1 mm fillet of every edge, the largest radius each takes and how long that took to find, above a grid of the parts at that radius, the pyramid rounded into a ball](assets/solidcraft/fillet-ladder.png)
+
+[Open →](offline.html?file=assets/agent_transcripts/fillet_everything/metadata.edn)
+
 ### ai4_paint_studio
 
 A studio where AI4 paints. The one box puts a canvas from the [paint simulator](paint_canvas.md) on
@@ -2366,12 +2434,12 @@ here; the voice wants an audio device and the last one is meant to fail.
 
 ### fm1_simulator
 
-Two boxes around the [FM-1 simulator](fm1.md): the M-VAVE FM-1 pocket synth's own browser simulator,
-compiled from its open firmware to WebAssembly and played by Field's audio engine. *FM-1, playing* is the
-one to click: it loads a factory project, presses PLAY, and returns the simulator as the box's last
-expression, so the box stays lit while the sequencer runs. *Offline, four projects* renders each factory
-project for three seconds after PLAY and prints its level every 100 ms as a row of bars, which shows the
-four patterns without a sound card. Only the offline box is replayed here; the other wants an audio device.
+Four boxes around the [FM-1 simulator](fm1.md), compiled from the M-VAVE pocket synth's open
+firmware and played by Field's audio engine. Launch *FM-1, playing* to hear a factory project and
+use its front panel. *A pattern on track 2* plays a Field pattern over the project while a signal
+turns the 303's filter. The other two run offline: *Offline, four projects* prints each project's
+level as a row of bars, and *The screen* shows the FM-1's display. The two live boxes need an audio
+device.
 
 [Open →](offline.html?file=assets/agent_transcripts/fm1_simulator/metadata.edn)
 
@@ -2719,6 +2787,16 @@ renderer: the scene's root node and its transform, meshes, materials and animati
 
 [Open ↗](offline.html?file=assets/agent_transcripts/assimp_browsing/metadata.edn)
 
+### spinny_algebras
+
+**Spinny algebras.** Multiply the plane by w = 0.9 + 0.5ε and drag ε² from -1 to +1. At -1 the grid
+turns (complex numbers), at 0 it shears (dual numbers), at +1 it squeezes along the diagonals
+(split-complex numbers). A second slider does the same for j² in the quaternions. Four figure boxes
+draw the grid, exp(tε) as a 30-term series, and exp in the quaternions against the bicomplex numbers.
+[Linear Algebra](linear_algebra.md#spinny-algebras-complex-dual-and-quaternion-numbers) has the walkthrough.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/spinny_algebras/metadata.edn)
+
 ## Service-backed composition scenes
 
 <!-- transcript-index: verified-by = execute -->
@@ -2844,6 +2922,27 @@ graph. Plain Kotlin, no optional libraries.
 These boxes are all compiled through Field's real Kotlin/preamble path, but not evaluated by CI:
 their purpose is to cross a process, audio-device or capture-device boundary that the lightweight
 build does not own.
+
+### evieve_filters
+
+[Audio-rate filters from evieve](spectral_examples.md#audio-rate-filters-from-evieve): the Korg35
+(MS-20) and Resonator filters, measured and played. Box 1 runs a 1 kHz Korg35 impulse response
+through an FFT at three resonances and in highpass mode. Box 2 plays a 55 Hz saw through Korg35 with
+its cutoff swept per sample. Box 3 plots a Resonator at three decays and plays three drifting
+Resonators on white noise. Boxes 2 and 3 need the audio device.
+
+[Open →](offline.html?file=assets/agent_transcripts/evieve_filters/metadata.edn)
+
+### nonlinear_filters
+
+[Saturation without aliasing, and filters that sing](spectral_examples.md#saturation-without-aliasing-and-filters-that-sing):
+the nonlinear filters after evieve, played with sliders. Box 1 plays a 55 Hz saw through `ZdfLadder`
+with cutoff, resonance (past 1 it sings on its own) and drive, each smoothed so dragging never
+clicks. Box 2 plays a self-oscillating `ZdfSvf` band-pass as an oscillator, its pitch on a slider.
+Box 3 drives a sine into `tanh` with and without ADAA and crossfades between them. Each box needs
+the audio device; stop one before running the next.
+
+[Open →](offline.html?file=assets/agent_transcripts/nonlinear_filters/metadata.edn)
 
 ### datalog_rhythm_drawn
 
@@ -3213,6 +3312,18 @@ skips the Csound ones. [Csound](csound.md) has the walkthrough.
 
 [Open →](offline.html?file=assets/agent_transcripts/csound_demo/metadata.edn)
 
+### postscript_demo
+
+**PostScript in a box.** A Kotlin root whose `mainLanguage` makes five PostScript boxes under it.
+**double** defines `/double {2 mul} def` and answers `ok · <1> 6`. **arrays and control flow** prints
+the Fibonacci numbers twice (by `for` and by `repeat`) and `[33 22 11]`, and leaves `10` from a
+`loop` that `exit`s. **tree** draws a recursive tree with `gsave` / `rotate` / `grestore`, and
+**rosette** thirty-six curves turned ten degrees apart through the colour wheel, both in the box's
+`postscript` panel. **error** marks line 3, `10 10 lineto`, with `nocurrentpoint`. Run each child box
+on its own. [PostScript in a Box](postscript.md) has the walkthrough.
+
+[Open →](offline.html?file=assets/agent_transcripts/postscript_demo/metadata.edn)
+
 ### orca_hello
 
 [ORCA](orca.md) in a box output, playing a melody and a bass line through a `PatSynthBank`. Run the
@@ -3493,6 +3604,18 @@ largest blur it survives. Needs the optional Morse–Smale library: `./gradlew b
 
 [Open →](offline.html?file=assets/agent_transcripts/tracking_explorer/metadata.edn)
 
+### cerf_explorer
+
+[Cerf diagrams](topology_tracking.md#cerf-diagrams-when-the-topology-changes): the value of every
+critical point of a changing field plotted against time, with the moments a pair of critical points
+is born or cancels marked on it. The first box, launched, runs Gray–Scott worms and grows the
+diagram as it goes. The second records 4,800 steps of spots splitting from three seeds, over a
+hundred births and thousands of swaps, and scrubs a time cursor across it with a slider while the
+field beside it lights up the critical points. Needs the optional Morse–Smale library:
+`./gradlew buildMorseSmaleNative`.
+
+[Open →](offline.html?file=assets/agent_transcripts/cerf_explorer/metadata.edn)
+
 ### eagle_flow_explorer
 
 **An eagle's flight, read in two frames of reference.** A 1930s film of a golden eagle landing on a
@@ -3724,6 +3847,19 @@ here are captures of that window, taken by the docs capture pipeline from these 
 (`capture="native-window"`). Where an entry
 carries none, there is no such capture: run the scene yourself and grab its window with a follow-on
 `native-screenshot` backdoor command (with `--with-playwright`).
+
+### bonded_organisms
+
+[Bonded-particle organisms](alife_examples.md#13-bonded-particle-organisms) after
+[ALIEN](https://github.com/chrxh/alien) as four boxes: worms built from genome strings, their cells
+joined by springs and their muscle bonds beating a travelling wave through a viscous medium, stepped
+in a Vulkan compute shader. The renderer box opens the window. The world box grows the organisms on
+the CPU with `BondedWorld`, uploads them and steps them on the GPU. The draw box beneath it draws
+cells and bonds straight from the GPU buffers. The check box freezes the GPU world after 600 steps
+and compares every cell with the CPU reference stepped 600 times. Edit a genome in the world box and
+re-run it to change the creatures.
+
+[Open →](offline.html?file=assets/agent_transcripts/bonded_organisms/metadata.edn)
 
 ### satellites
 
@@ -4416,6 +4552,20 @@ The scene renders at 1280 × 720; surface-guided reconstruction is enabled, with
 ![Direct lighting with sixteen area emitters](assets/direct_lighting/rtxdi-reconstructed.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/direct_lighting/metadata.edn)
+
+### virtual_shadow_maps
+
+The [fabricated renderer](fabricate_renderer.md) with `StandardRenderer.Config(virtualShadows = true)`:
+an 8192² virtual shadow map in 128² pages over four clipmap levels, with only the pages the visible
+pixels need allocated from a 32 × 32 physical pool and rendered. It needs the `agent_graphics_context`
+renderer above it. One frame shows the fixed 1024² shadow map, the virtual one and `debugView`,
+which tints each pixel by the level and physical page its shadow came from, side by side. Move the
+camera close to the contact edge: the fixed map shows a staircase and the virtual map stays sharp.
+Method after the GPU Zen 3 chapter on [virtual shadow maps](https://graphics-programming.org/blog/virtual-shadow-maps).
+
+![The same contact shadow three ways: a fixed shadow map with a staircase edge, a virtual shadow map with a smooth edge, and the debug view tinting each page](assets/fabricate-virtual-shadows.png)
+
+[Open →](offline.html?file=assets/agent_transcripts/virtual_shadow_maps/metadata.edn)
 
 ### open_dlss_nr
 

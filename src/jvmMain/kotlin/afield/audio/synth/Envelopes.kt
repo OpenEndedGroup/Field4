@@ -386,6 +386,10 @@ class EnvelopeFollower(
 /**
  * Limits how fast a signal can change.
  * [riseTime] and [fallTime] are in seconds (time to traverse full range).
+ *
+ * Because the limit is a rate, a large jump takes proportionally longer than a small one. To take
+ * the steps out of a control (a slider on a cutoff) in a fixed time whatever their size, use
+ * [Smoother] or [Param.smoothed].
  */
 class Slew(
     val input: Signal,

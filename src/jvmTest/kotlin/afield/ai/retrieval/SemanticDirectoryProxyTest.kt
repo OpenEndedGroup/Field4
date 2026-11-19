@@ -19,7 +19,8 @@ import kotlin.test.assertTrue
 /** No ONNX model, checkout corpus scan, or live Field server needed. */
 class SemanticDirectoryProxyTest {
     private fun fixture(test: (Path, Path) -> Unit) {
-        val root = Files.createTempDirectory("semantic-directory-proxy")
+        // Real path: the proxy reports files by their resolved path, and macOS's temp dir is a /var symlink.
+        val root = Files.createTempDirectory("semantic-directory-proxy").toRealPath()
         val document = Files.createDirectories(root.resolve("document"))
         val external = Files.createDirectories(root.resolve("external"))
         Files.writeString(document.resolve("metadata.edn"), """
@@ -57,7 +58,8 @@ class SemanticDirectoryProxyTest {
         assertEquals(2, containers.size)
         assertEquals(setOf("proxy:owner/first.txt", "proxy:owner/nested/second.txt"), containers.map { it.path }.toSet())
         assertTrue(all.all { it.boxId == "owner" && it.boxName == "Library" && it.documentName == "document" })
-        assertTrue(all.all { "source_path: $external" in it.metadata })
+        val unsourced = all.filterNot { "source_path: $external" in it.metadata }
+        assertTrue(unsourced.isEmpty(), "capsules without source_path under $external:\n" + unsourced.joinToString("\n---\n") { "${it.kind} ${it.path}\n${it.metadata}" })
         assertTrue(all.any { "relative_path: nested/second.txt" in it.metadata })
         val convert = SemanticRetrievalService.javaClass.getDeclaredMethod("toLuceneDocument", SemanticCapsule::class.java, FloatArray::class.java, FloatArray::class.java)
             .apply { isAccessible = true }
@@ -77,6 +79,18 @@ class SemanticDirectoryProxyTest {
                 }
             }
         }
+    }
+
+    @Test fun textFrameMarkdownIsIndexedWithItsBoxAndHeadings() = fixture { root, _ ->
+        Files.writeString(root.resolve("document/metadata.edn"), """
+            {"version" 2 "boxes" [{"id" "writer" "properties" {
+              "name" "Research notes" "box_kind" "text-frame" "contents" "# Quartz observations\n\nquartzneedle is a writing sample."}}]}
+        """.trimIndent())
+        val all = capsules(root)
+        assertTrue(all.isNotEmpty())
+        assertTrue(all.all { it.boxId == "writer" && it.property == "contents" && it.language == "markdown" })
+        assertTrue(all.any { "quartzneedle" in it.source })
+        assertTrue(all.any { it.symbol.contains("Quartz") || it.title.contains("Quartz") })
     }
 
     @Test fun exclusionsBinaryInvalidUtf8AndOversizedChildrenAreNotIndexed() = fixture { root, external ->

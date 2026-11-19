@@ -1,0 +1,25 @@
+name: marking_submenus
+operations:
+  - drive:
+      warmCompletion: false
+      script: |
+        ui.eval("window.__openSubmenuProbe();return true;")
+        ui.moveMouse(665.0,450.0)
+        ui.pause(220)
+        check(ui.eval("return ![...document.querySelectorAll('.markingButton')].some(b=>b.textContent==='Deeper ›');").toString()=="true") { "A submenu opened before reaching its parent" }
+        ui.moveMouse(720.0,450.0)
+        ui.waitForSelector(".markingButton:has-text('Deeper')",10000.0)
+        ui.press("Escape")
+        ui.waitForSelector(".markingButton:has-text('More')",10000.0)
+        ui.press("Escape")
+        check(ui.eval("return window.__submenuCounts.cancel===1 && !document.querySelector('.markingButton');").toString()=="true") { "Nested cancellation did not return to the root exactly once" }
+        ui.eval("window.__openSubmenuProbe();return true;")
+        ui.hoverSelector(".markingButton:has-text('More')")
+        ui.waitForSelector(".markingButton:has-text('Deeper')",10000.0)
+        ui.hoverSelector(".markingButton:has-text('Deeper')")
+        ui.waitForSelector(".markingButton:has-text('Leaf')",10000.0)
+        ui.clickSelector(".markingButton:has-text('Leaf')")
+        ui.waitForSelector(".markingButton:has-text('Follow-up')",10000.0)
+        check(ui.eval("return window.__submenuCounts.leaf===1 && window.__submenuCounts.cancel===1;").toString()=="true") { "A leaf fired twice or cancelled its parent" }
+        ui.press("Escape")
+        check(ui.eval("return window.__submenuCounts.followupCancel===1 && !document.querySelector('.markingButton,.markingButtonBackground');").toString()=="true") { "The callback's new menu was cleared or left UI behind" }

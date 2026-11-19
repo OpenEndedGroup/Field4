@@ -5,13 +5,33 @@ import kotlinx.serialization.json.*
 import java.nio.file.Files
 import java.nio.file.Path
 
-private val registeredFieldBrowserHosts by lazy {
-    readFieldBrowserHosts(Path.of(System.getProperty("user.home"), ".afield", "browser-hosts.json"),
-        System.getenv("AFIELD_BROWSER_HOSTS"))
-}
+private val registeredFieldBrowserHosts = FieldBrowserHostsFile(
+    Path.of(System.getProperty("user.home"), ".afield", "browser-hosts.json"),
+    System.getenv("AFIELD_BROWSER_HOSTS"),
+)
 
-/** Exact additional browser authorities, configured by the local operator, never by a request. */
-internal fun fieldBrowserHosts(): Set<String> = registeredFieldBrowserHosts
+/**
+ * Exact additional browser authorities, configured by the local operator, never by a request.
+ * An edit to `~/.afield/browser-hosts.json` takes effect on the next request; no restart.
+ */
+internal fun fieldBrowserHosts(): Set<String> = registeredFieldBrowserHosts.current()
+
+/**
+ * The registered hosts, re-read whenever the file's modification time or size changes, so a host
+ * added while Field runs is honoured at once. Between changes a call costs one `stat`.
+ */
+internal class FieldBrowserHostsFile(private val path: Path, private val environment: String?) {
+    private data class Stamp(val modified: Long, val size: Long)
+    @Volatile private var cached: Pair<Stamp?, Set<String>>? = null
+
+    fun current(): Set<String> {
+        val stamp = runCatching {
+            if (Files.isRegularFile(path)) Stamp(Files.getLastModifiedTime(path).toMillis(), Files.size(path)) else null
+        }.getOrNull()
+        cached?.let { (seen, hosts) -> if (seen == stamp) return hosts }
+        return readFieldBrowserHosts(path, environment).also { cached = stamp to it }
+    }
+}
 
 /** Invalid or oversized files fail closed; an explicit environment list can still be used. */
 internal fun readFieldBrowserHosts(path: Path, environment: String? = null): Set<String> {

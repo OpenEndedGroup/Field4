@@ -1485,6 +1485,8 @@ Field Electron app; [this example](ai4_live_iframe.md) exposes a page to AI4.
 ## Controls: sliders, toggles, colors, text, and XY pads
 
 Field can build small control surfaces directly into output areas: sliders and pads you drag while the box runs.
+A box can also open an output, with its controls and visualizers still live, inside a
+[custom marking menu](marking_menus.md#controls-and-visualizers-inside-a-menu).
 
 To find a control in a large document, open **Open Anything** (++cmd+p++) and type `>` followed by part of its label, such as `> gain`. Its preview shows the
 current value and a live, read-only view

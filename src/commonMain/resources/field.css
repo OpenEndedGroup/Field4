@@ -387,6 +387,34 @@ body.canvas-pan-latched .outputArea * {
 .disclosure-header:hover {
     background: var(--field-hover);
 }
+/* An open panel's left rule and its header tab make an L; round its inside corner, at the top-left
+   of the content, with the box frame's 5px radius (`.box::before`). Coloured as the rule, which
+   follows the header's hover. */
+.disclosure.open:not(.disclosure-inline) > .disclosure-header {
+    position: relative;
+}
+.disclosure.open:not(.disclosure-inline) > .disclosure-header::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 100%;
+    width: 5px;
+    height: 5px;
+    background: radial-gradient(circle at 100% 100%, transparent 4.5px, var(--field-border) 5px);
+    pointer-events: none;
+    z-index: 1;
+}
+.disclosure.open.hover:not(.disclosure-inline) > .disclosure-header::after {
+    background: radial-gradient(circle at 100% 100%, transparent 4.5px, var(--field-hover) 5px);
+}
+/* ...and its outside corner at the bottom, where the rule ends: the same 5px on the rule, 3px (5px
+   less the 2px rule) on the content it encloses, which clips a drawing or iframe to the curve. */
+.disclosure.open:not(.disclosure-inline) {
+    border-bottom-left-radius: 5px;
+}
+.disclosure.open:not(.disclosure-inline) > .disclosure-content {
+    border-bottom-left-radius: 3px;
+}
 .disclosure-header.no-hover:hover {
     background: var(--field-surface);
     cursor: default;
@@ -616,6 +644,14 @@ body.canvas-pan-latched .outputArea * {
     resize: none;
     box-sizing: border-box;
     width: auto;
+}
+
+/* A drawing (`lines`, `three {}`) or an iframe fills its panel edge to edge, so padding over the
+   dark backing above would show only as a black frame around it. `!important` because
+   outputareas2.js writes the panel's padding inline when it opens one. */
+.disclosure-content:has(> .afield-lines-output-shell),
+.disclosure-content:has(iframe) {
+    padding: 0 !important;
 }
 
 .disclosure-content > .value-viz-h2 {
@@ -1245,6 +1281,20 @@ pre code {
     gap: 8px;
 }
 
+/* One unit of the thread (a turn, a round, a run of activity), rebuilt only when its own HTML changes
+   (outputareas2.js, renderChatUnits). A finished unit off screen skips layout and paint; `auto` remembers
+   its last rendered height so the scrollbar does not jump. The newest unit is always laid out. */
+.ai-chat-unit {
+    display: flex;
+    flex-direction: column;
+    gap: inherit;
+}
+
+.ai-chat-unit:not(:last-child) {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 120px;
+}
+
 .ai-chat-turn {
     width: 100%;
     box-sizing: border-box;
@@ -1618,6 +1668,13 @@ pre code {
     color: var(--ai-chat-you-fg, var(--field-fg));
 }
 
+/* Your prose sits right and slanted; a fence you typed is still code, so it reads left-aligned
+   and upright, the way it would in the editor. */
+.ai-chat-turn.you .ai-chat-markdown pre {
+    text-align: left;
+    font-style: normal;
+}
+
 /* A request Field wrote itself (AiChatBlock.isFieldMessage): the outcome of builds a turn waited for. The model
    reads it as the next request; it sits on the agent's side, unslanted, so it does not read as yours. */
 .ai-chat-turn.you.field {
@@ -1651,6 +1708,40 @@ pre code {
     font-style: normal;
     opacity: 0.8;
     margin-bottom: 2px;
+}
+
+/* A geometry pick quoted from a three.js viewer's Ask AI, in the composer and in a sent turn. */
+.ai-chat-geometry-refs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 4px;
+}
+
+.ai-chat-geometry-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 100%;
+    padding: 2px 8px;
+    border-radius: 10px;
+    border: 1px solid var(--field-accent, #62d7ff);
+    font-size: 11px;
+    overflow-wrap: anywhere;
+}
+
+.ai-chat-geometry-chip em {
+    opacity: 0.75;
+}
+
+.ai-chat-geometry-open, .ai-chat-geometry-remove {
+    font: inherit;
+    padding: 0 4px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--field-accent, #62d7ff);
+    cursor: pointer;
 }
 
 /* Rewind / edit-and-resend on a request: quiet until the turn is hovered. The server refuses them while a turn runs. */
@@ -4432,11 +4523,23 @@ accent so it marks the control without boxing it in.
     left: -6px;
     right: -6px;
     bottom: -6px;
-    border: var(--box-border, 5px solid var(--field-border-dark-strong));
+    /* The frame's colour is `color`, so the border (currentColor) and the corner fills below share
+       it: override `color`, not `border-color`. */
+    color: var(--field-border-dark-strong);
+    border: var(--box-border, 5px solid);
     width: 100%;
     height: 100%;
     padding: 1px;
     border-radius: 5px;
+    /* A 5px border with a 5px radius leaves the frame a square inside corner around the box's
+       rounded one. Its inside edge is the box's outside edge, so fill each corner up to the box's
+       5px curve. Clipped to the padding box, inside the semi-transparent border, and stopping at
+       the curve, so the selection colour on the box's own 1px border stays visible. */
+    background:
+        radial-gradient(circle at 100% 100%, transparent 4.5px, currentColor 5px) left top / 5px 5px no-repeat padding-box,
+        radial-gradient(circle at 0 100%, transparent 4.5px, currentColor 5px) right top / 5px 5px no-repeat padding-box,
+        radial-gradient(circle at 100% 0, transparent 4.5px, currentColor 5px) left bottom / 5px 5px no-repeat padding-box,
+        radial-gradient(circle at 0 0, transparent 4.5px, currentColor 5px) right bottom / 5px 5px no-repeat padding-box;
     pointer-events: none;
 }
 
@@ -4445,7 +4548,7 @@ accent so it marks the control without boxing it in.
    interact.js, whose 20 px edge margin, measured against the box's own rect, then picks the resize
    edge. z-index -1 keeps it under the box's content; the child selector outranks `.box *`. */
 [data-field-theme="light"] .box.selected::before {
-    border-color: var(--field-box-selected-frame);
+    color: var(--field-box-selected-frame);
 }
 
 .box > .box-resize-halo {
@@ -5345,6 +5448,15 @@ kbd {
     visibility: visible;
 }
 
+/* Boxes carry inline z-indexes; lift the box whose status tooltip is showing so the
+   tooltip draws over other boxes' output areas. */
+.box:has(> .statusArea:hover) {
+    z-index: 100000 !important;
+}
+.statusArea:hover .tooltiptext {
+    z-index: 1000;
+}
+
 .statusArea .tooltiptext {
     visibility: hidden;
     position: absolute;
@@ -6236,11 +6348,11 @@ body.mode-transparent .outputArea {
     -webkit-backdrop-filter: none !important;
 }
 body.mode-transparent .box::before {
-    border-color: #000 !important;
+    color: #000 !important;
     /* ::before sits 6px outside the box's 5px-radius corner, so it needs 5+6=11px to stay
        concentric — otherwise the black ring leaves tiny gaps at each corner. */
     border-radius: 11px !important;
-    transition: border-color 90ms ease-out, box-shadow 90ms ease-out;
+    transition: color 90ms ease-out, box-shadow 90ms ease-out;
 }
 
 /* Gaze hover on a box, the web-side equivalent of the native FLine handles' HoverEffectComponent.
@@ -6257,12 +6369,12 @@ body.mode-transparent .box::before {
    layout or the box's own content: only the ring lightens and gains a soft halo. `.selected`
    deliberately wins, so hovering never masks what is actually selected. */
 body.mode-transparent .box:hover::before {
-    border-color: #6a6a6a !important;
+    color: #6a6a6a !important;
     box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.22), 0 0 14px 2px rgba(255, 255, 255, 0.10);
 }
 
 body.mode-transparent .box.selected:hover::before {
-    border-color: #000 !important;
+    color: #000 !important;
     box-shadow: none;
 }
 
@@ -7143,3 +7255,41 @@ html.field-theme-transition::view-transition-new(root) {
     animation-duration: 520ms;
     animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+/* A marking level can host an existing output without rebuilding its controls or views. */
+.markingWidgetPanel {
+    position: fixed;
+    z-index: 10002;
+    margin: 0;
+    padding: 0;
+    background: var(--field-panel-strong);
+    color: var(--field-fg-strong);
+    border: 1px solid var(--field-border-medium);
+    border-radius: 5px;
+    font: 12px var(--field-font);
+    overflow: hidden;
+}
+.markingWidgetPanel > header { display: flex; align-items: center; gap: 12px; padding: 8px; }
+.markingWidgetPanel > header > span { flex: 1; }
+.markingWidgetPanel button { font: inherit; color: inherit; background: transparent; border: 1px solid var(--field-border-medium); border-radius: 3px; padding: 4px 8px; }
+.markingWidgetBody { overflow: auto; }
+.markingWidgetPanel .marking-output-content {
+    display: block !important;
+    box-sizing: border-box;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+    padding: 8px !important;
+    margin: 0 !important;
+    overflow: auto !important;
+    resize: none !important;
+}
+
+.markingWidgetPanel .control-group { width: 100%; max-width: 100%; --field-slider-label-width: 84px; }
+.markingWidgetPanel .field-text-input { min-width: 0; }
+.markingWidgetPanel .field-meter .field-label { flex: 0 0 84px; white-space: nowrap; }
+.markingWidgetPanel .field-meter-visual { flex: 1 1 0; min-width: 0; }
+/* Field buttons keep their normal border when focused. */
+:is(button, [role="button"]):focus,
+:is(button, [role="button"]):focus-visible { outline: none !important; box-shadow: none !important; }

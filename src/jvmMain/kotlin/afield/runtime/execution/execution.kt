@@ -1309,8 +1309,15 @@ internal fun dispatchExecutionOutput(
     // Playwright page). When the origin has left the document, every session now showing the document
     // gets the output as its own, and nobody gets it twice.
     val info = if (box.isInsideInitialized()) box.inside else null
-    if (originSession != null && info != null && originSession !in info.sessions) {
+    // A headless run (Field's own agent's RunBoxRequest/LaunchBoxRequest) has no origin socket at all:
+    // its `reply` is the agent's, which keeps only the verdict, so without this no browser heard the
+    // run's `ok` or error and the box's status marker kept whatever verdict it had before. That `reply`
+    // is not a socket, though: it carries the run's ExecutionTrace (the verdict that sees an error) and
+    // whatever a headless caller listens on, so it must still hear the output. Only a departed origin's
+    // reply is skipped, because that one writes to a dead socket.
+    if ((originSession == null || originSession !in info?.sessions.orEmpty()) && info != null) {
         val message = Message("output").payload(normalized)
+        if (originSession == null) reply?.invoke(message)
         info.sessions.forEach { _send(it, message) }
         return
     }

@@ -106,6 +106,7 @@ mutation; it is a different one.
 | `GET /api/docs-search` | `Server.kt` | none |
 | `GET /api/docs-source-file` | `docsSourceFile.kt` | loopback + same-site |
 | `GET /api/document-guide-asset` | `documentGuides.kt` | none |
+| `GET /api/text-frame-asset` | `textFrameAssets.kt` | none |
 | `GET /api/export-tagged-documents` | `Server.kt` | none |
 | `GET /api/instance-info` | `Server.kt` | none |
 | `GET /api/kits` | `KitRoutes.kt` | none |
@@ -136,6 +137,7 @@ mutation; it is a different one.
 | `GET /controllers` | `controllers.kt` | none |
 | `GET /controllers/controls` | `controllers.kt` | none |
 | `GET /controllers/outputs` | `controllers.kt` | none |
+| `GET /drawingon/buffers` | `drawingon.kt` | none |
 | `GET /docs-pass-site/{...}` | `docsPass.kt` | loopback + same-site |
 | `GET /extension-web/{...}` | `extensionWeb.kt` | none |
 | `GET /field-audio/{...}` | `fieldAudioProxy.kt` | none |
@@ -151,11 +153,11 @@ mutation; it is a different one.
 | `GET /three-review` | `Server.kt` | loopback + same-site |
 | `GET /three-review-image` | `Server.kt` | loopback + same-site |
 
-### The six that serve files off disk, which deserve reading twice
+### The seven that serve files off disk, which deserve reading twice
 
-`/project/{...}`, `/min/{...}`, `/extension-web/{...}`, `/local/{...}`, `/field-docs/{...}` and
-`/api/document-guide-asset` turn a URL into a path on your machine. Five enforce path
-boundaries and one does not:
+`/project/{...}`, `/min/{...}`, `/extension-web/{...}`, `/local/{...}`, `/field-docs/{...}`,
+`/api/document-guide-asset` and `/api/text-frame-asset` turn a URL into a path on your machine. Five enforce path
+boundaries, one requires an image reference authored in an open text frame, and one does not:
 
 - `Server.kt#project file not found or outside project directory` canonicalises the
   resolved file and requires `Path.startsWith` against the canonical workspace. The comment
@@ -173,6 +175,11 @@ boundaries and one does not:
   path containment, an image-extension allowlist, and a 20 MiB limit. Responses include a
   sandbox Content Security Policy and `nosniff`; these are content restrictions, not an
   origin guard;
+- `/api/text-frame-asset` requires an existing, non-deleted text frame in an already-open document
+  and an exact image reference in its current Markdown. It then uses that session's FileManager,
+  including explicitly registered directories, home and absolute paths. Only image extensions
+  up to 20 MiB are served, with sandbox CSP and `nosniff`. It cannot resolve an arbitrary spec
+  absent from the frame. This is an author-selected file capability, not document containment.
 - **`/local/{...}` has no containment check at all.** It takes the longest matching prefix
   from `dynamicRoutes`, joins the remainder onto the mapped directory with `File(parent,
   child)`, and calls `respondFile` if the result exists. No canonicalisation, and
@@ -289,7 +296,7 @@ Ktor's containment check applies to it as it does to the five above.
 
 ## The `/ws` command surface
 
-137 command names, in the `handlers` table. This is the real command API, it is roughly twice
+157 command names, in the `handlers` table. This is the real command API, it is roughly twice
 the size of the HTTP write surface, and until this page nothing enumerated it. It is not the
 only `/ws` dispatch table: ten more channels live in `rawHandlers` and are counted in
 [their own section](#the-other-ws-dispatch-table-rawhandlers) below.
@@ -309,7 +316,7 @@ the file, and the reach is described per file below in prose that a human checke
 | `agent_backdoor.kt` | 28 |
 | `history.kt` | 14 |
 | `executing.kt` | 10 |
-| `Ai4Installer.kt` | 12 |
+| `Ai4Installer.kt` | 13 |
 | `importing.kt` | 4 |
 | `NotationServer.kt` | 3 |
 | `templating.kt` | 3 |
@@ -338,7 +345,7 @@ What each of those reaches, checked against the code rather than inferred from t
 | `agent_backdoor.kt` | the agent path: read/write boxes, run transcripts, screenshot, macros. The published automation surface |
 | `history.kt` | the document history store — versions, screenshots, restore |
 | `executing.kt` | **box execution.** `launch-all`, `launch-batch`, `launch-fragment`, `stop-box`, `stop-all`, `interrupt-box`. This is arbitrary Kotlin in Field's own JVM |
-| `Ai4Installer.kt` | AI chat sessions and tool use; reads, initializes and queues anchored conversation-garden replies or dispatches them through the existing agent harness (`ai-garden`, attached document and box); reads or clears the attached document’s per-box saved chat, reports the last turn’s context metadata (`ai-chat-context`, no text), rewinds or switches a chat’s branches, and — when asked — undoes a rewound turn’s recorded edits and created boxes (`ai-chat-rewind-world`), reads the attached document’s saved state trees and bounded state details (`ai-state-tree`, including read/inspect callbacks registered by box code; no restore or fork), runs a document’s agent-extension chat commands (`ai-chat-command`, box code), suggests a completion of the chat draft from the fast model (`ai-chat-suggest`), and reads the saved document chat (`chat_history`, `<document>/ai4_document_chat.md`, which `chat_input` appends to), behind the existing `/ws` boundary |
+| `Ai4Installer.kt` | AI chat sessions and tool use; reads, initializes and queues anchored conversation-garden replies or dispatches them through the existing agent harness (`ai-garden`, attached document and box); reads or clears the attached document’s per-box saved chat, reports the last turn’s context metadata (`ai-chat-context`, no text), rewinds or switches a chat’s branches, and — when asked — undoes a rewound turn’s recorded edits and created boxes (`ai-chat-rewind-world`), reads the attached document’s saved state trees and bounded state details (`ai-state-tree`, including read/inspect callbacks registered by box code; no restore or fork), runs a document’s agent-extension chat commands (`ai-chat-command`, box code), suggests a completion of the chat draft (`ai-chat-suggest`) or a bounded Markdown text-frame continuation (`ai-text-frame-suggest`, text-frame boxes only) from the fast model, and reads the saved document chat (`chat_history`, `<document>/ai4_document_chat.md`, which `chat_input` appends to), behind the existing `/ws` boundary |
 | `importing.kt` | notebook and EDN import — parses foreign documents into boxes |
 | `NotationServer.kt` | the attached document's drawing (the root box's `drawing` property): merges a client's scene into it, records the drawing-layer selection (memory only), anchors marks to boxes. No reach beyond what `set-string` on `root.drawing` already had; it runs box code only as the `onNotation` reactions that box code itself registered |
 | `StrokeSketch.kt` | `stroke-layer-ack`: a window says it has drawn the last stroke-layer frame, which only lets the next frame be sent to it. Reads nothing, writes nothing, runs no code |
@@ -421,6 +428,7 @@ reach to a client that `agent-eval` and `launch-all` already let run arbitrary c
 | `ai-chat-screenshot` | `Ai4Installer.kt` |
 | `ai-chat-suggest` | `Ai4Installer.kt` |
 | `ai-state-tree` | `Ai4Installer.kt` |
+| `ai-text-frame-suggest` | `Ai4Installer.kt` |
 | `ai-transcribe` | `VoiceTranscriber.kt` |
 | `ai-transcribe-warm` | `VoiceTranscriber.kt` |
 | `arrange-boxes-result` | `Server.kt` |
@@ -586,7 +594,7 @@ publishes head and per-eye viewing geometry up it, so the Mac can render the fra
 about to display. Everything else on `/ws` is the browser or a native client asking this process for
 something.
 
-These sit behind the same `/ws` upgrade as the 131 commands, so the same sentence applies: the
+These sit behind the same `/ws` upgrade as the 157 commands, so the same sentence applies: the
 guard arrived 2026-08-19 in `3aa64af4d` and is off by default.
 
 ## What the guard does and does not prove
@@ -727,3 +735,18 @@ control values to the requesting WebSocket session after its DOM is ready. It
 uses the existing document WebSocket access boundary, accepts no file path or
 code, does not execute boxes, and does not broadcast replay to other viewers.
 It adds no stronger authentication than the other document read commands.
+
+### Native Drawing On head
+
+`/drawingon/ws?target=<name>` receives versioned Pencil/audio/layer/view capture events, appends them under `WORKSPACE/.drawingon/`, and invokes the named box target's callback after durable commit. It is a command WebSocket: the upgrade applies `refuseCrossSiteFieldWebSocket`, and a native client without browser-origin headers is accepted. Session IDs are canonical UUIDs, never paths; batches contain at most 64 events and frames at most 1 MiB. The target is an explicit box-owned name. Upload handshakes receive acknowledgements but never subscribe to reference geometry. This uses Field's existing trusted-client boundary and does not add authentication.
+
+`GET /drawingon/buffers?target=<name>&generation=<id>` reads only that target's current FLine reference buffers, at most 32 MiB. It accepts no file path, returns 404 for a superseded generation, and has no route-specific guard, like `/three-buffers`; the application-wide origin policy still protects browser reads. References use the AVP Three typed-buffer format and SHA-256 verification in the native client. The route shares one synchronized receiver archive across the HTTPS application and loopback mirror.
+
+
+### Spatial Ink
+
+`/spatial-ink/ws` accepts versioned snapshots of completed 3D strokes from Field4Vision.
+This command WebSocket uses `refuseCrossSiteFieldWebSocket`. The handler assigns a session UUID
+and writes raw and fitted snapshots under the workspace's `.spatial-ink` directory. A client cannot
+choose a path. Each request is limited to 1.5 MiB, 96 strokes and 384 samples per stroke. The fit
+runs on the compute dispatcher and the snapshot write runs on the I/O dispatcher.

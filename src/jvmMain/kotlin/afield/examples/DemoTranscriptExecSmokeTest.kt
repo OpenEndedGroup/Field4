@@ -97,6 +97,8 @@ object DemoTranscriptExecSmokeTest {
     /** Pure-compute demos that are safe to run to completion headless. */
     internal val EXECUTE = setOf(
         "sentence_diagrams",
+        // linear_algebra.md, Spinny algebras: two ε²/j² sliders and four SVG figure boxes; pure CPU.
+        "spinny_algebras",
         // sentence_diagrams.md, Dependency length: measures five retained parsed texts against random reorderings; no parser.
         "dependency_length",
         // visualizers.md's presets demo: a preset bar, record button and MIDI learn; the MIDI box feeds stand-in CCs.
@@ -148,6 +150,9 @@ object DemoTranscriptExecSmokeTest {
         // Five CPU boxes: the coopiano port rendered offline (A4, string shape, a pattern, pedal takes,
         // audio-rate stiffness) into audio players. The sixth, `live`, is created but not executed.
         "physical_piano",
+        // PatMuse: pitched rolls of weighted, locked and improvised hands, and one offline piano render;
+        // the fifth box, `live`, plays on the audio engine and is created but not executed.
+        "muse_sequencer",
         // Three CPU boxes: a SourceFramesStudy of a box property with registerStudyTools, then two
         // children that publish a SetNumbers revision and sweep/try variants. Frames come from a CPU
         // painter at 256 px at most; no Window, no Renderer.
@@ -278,6 +283,7 @@ object DemoTranscriptExecSmokeTest {
         // is deliberately in CI: it is what makes "Field can look at what its back ends produce" a
         // checked claim rather than a page's assertion.
         "geometry_from_disk",
+        "drawing_on",
         "vision_metal_cube",
         // JVM Kotlin that compiles a Live Metal box's Kotlin/JS for real, runs it, and rasterises
         // the mesh it builds. No headset and no Metal toolchain, so it runs to completion here.
@@ -378,6 +384,8 @@ object DemoTranscriptExecSmokeTest {
         "braitenberg_where_next",
         // Two pure-CPU section 10 boxes (equal-budget search comparison), about 11-13 s each.
         "braitenberg_brain_search",
+        // Three pure-CPU weight-cube boxes (braitenberg_vehicles.md section 4), the rewards box ~15 s.
+        "braitenberg_weight_cube",
         // Three pure-CPU alife_examples.md "Does search beat random?" boxes (compareSearch), under 20 s each.
         "alife_search_comparison",
         // Five independent pure-CPU statistics boxes; showPlaneGrid is drawToSVG -> display,
@@ -467,6 +475,9 @@ object DemoTranscriptExecSmokeTest {
         // Own-document tour (2026-10-29): numbers, squares, and a three-step slideShow that
         // selects them by name. Pure CPU.
         "slideshow_own_tour",
+        // Drag handles (2026-11-17): two three { } scenes with free, axis and normal handles, each
+        // redrawn from its drag callback. three() writes a three.js viewer into an output; no Window.
+        "three_handles",
         // Controls renewal (2026-10-29): a five-control surface feeding a live figure and a slider
         // that re-renders itself mid-drag. Pure CPU, output-channel controls only.
         "controls_surface",
@@ -580,6 +591,13 @@ object DemoTranscriptExecSmokeTest {
         // The optional Rust bridge opens a bundled design and renders both parameter values through
         // Field's CPU mesh preview. With no native artifact the box explains the build command.
         "solidcraft_intro",
+        // The same bridge, chamfering every edge of a drilled plate of bosses and then of eleven parts,
+        // through SolidCraft's own evaluator and the CPU mesh preview. Without the native artifact
+        // both boxes give the build command.
+        "chamfer_everything",
+        // Its companion: one fillet of every edge, a rounded block checked against its closed-form
+        // volume, and the largest radius each of eleven parts takes. Same bridge, same fallback.
+        "fillet_everything",
         // Three pure-CPU boxes that paint and draw FLines through afield.graphics.paint (FFM into the optional
         // Rust wrapper over claude-paint's `paint` crate) and display a PNG, so no Window and no
         // Renderer. All check PaintCanvas.isAvailable first; without `./gradlew buildPaintNative` — the branch CI
@@ -646,6 +664,8 @@ object DemoTranscriptExecSmokeTest {
         // satellites.md: a week of SGP4 passes over Chicago (CPU), then a renderer, an Earth box and
         // every catalogued satellite propagated in a vertex shader. Opens a Window, so compile-only.
         "satellites",
+        // alife_examples.md section 13: bonded-particle organisms on GPU compute. Opens a Window, so compile-only.
+        "bonded_organisms",
         // The pilot explainer deck (2026-11-09): its deck box opens Electron audience windows and
         // its figure box returns an audio patch for the audio device. PresentationFiguresTest
         // covers the figure engine without either.
@@ -662,6 +682,11 @@ object DemoTranscriptExecSmokeTest {
         // Box 2 returns a live patSynth launch (an audio-engine registration held while the box runs);
         // the drawing-to-facts path and the live re-solve are covered by DatalogRhythmLiveTest.
         "datalog_rhythm_drawn",
+        // evieve filters (2026-11-15): box 1 is an offline FFT plot, but boxes 2 and 3 end in audio(),
+        // which opens the audio device.
+        "evieve_filters",
+        // ZdfLadder/ZdfSvf/AdaaShaper with sliders; every box opens the audio device
+        "nonlinear_filters",
         // Requires a connected OpenXR runtime and real tracking; geometry math is covered by BodyGeometryTest.
         "body_one",
         "text_one_vr",
@@ -734,6 +759,8 @@ object DemoTranscriptExecSmokeTest {
         "morse_smale_explorer",
         // Optional native field_morse_smale; the live box loops forever.
         "tracking_explorer",
+        // Optional native field_morse_smale; the live box loops forever.
+        "cerf_explorer",
         // vector_field_topology.md's footage starting point: decodes its clip with FFmpeg, and the movie box renders 306 frames.
         "eagle_flow_explorer",
         // Optional native field_principal_curves (./gradlew buildPrincipalCurvesNative); the live box loops forever.
@@ -880,6 +907,10 @@ object DemoTranscriptExecSmokeTest {
         // boxes are a guest language and skipped, as Pd's are. afield.audio.csound.* tests run the calls
         // against a real Csound when one is built. Every box was run by hand on 2026-10-02.
         "csound_demo",
+        // PostScript: the root's Kotlin is compiled; the five PostScript boxes are a guest language and
+        // skipped. PostScriptInterpreterTest runs the programs; every box was run through the backdoor
+        // on 2026-11-16.
+        "postscript_demo",
         "four_summary_pyramid",
         "four_morton_quadtree",
         // Opens its own Window + Renderer and then renders a still and a clip per blend for a dozen
@@ -988,6 +1019,9 @@ object DemoTranscriptExecSmokeTest {
         // Opens a Vulkan window for the fullscreen sky shader; the scattering it includes is graded on
         // the CPU twin by AtmosphereTest (closed-form transmittance, blue noon, red sunset).
         "atmospheric_sky",
+        // Opens a Vulkan window and renders the fabricated renderer's fixed and virtual shadow maps;
+        // the same harness call is graded on the GPU by the docs smoke docs.fabricate.virtual-shadows.
+        "virtual_shadow_maps",
         // Opens a Vulkan window for a fullscreen shader that includes distributions (dist/…) and a
         // Gaussian process (gp/…) defined by the box above it; the GLSL is graded on the GPU by the
         // jvm-main smoke four.noiselang.gpu-includes and compiled by GlslIncludeTest.

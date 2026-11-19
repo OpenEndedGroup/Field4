@@ -36,7 +36,7 @@ async function embedUrl(raw, base, ctx) {
 async function freezeCss(css, base, ctx) {
     const matches = [...css.matchAll(/url\(\s*["']?([^"')]+)["']?\s*\)/g)];
     for (const match of matches) {
-        if (Date.now() > ctx.deadline) throw new Error('Output capture exceeded 60 seconds');
+        if (Date.now() > ctx.deadline) throw new Error(`Output capture exceeded ${Math.round(ctx.budgetMs / 1000)} seconds`);
         try { css = css.replace(match[0], `url("${await embedUrl(match[1], base, ctx)}")`); }
         catch (error) { failure(ctx, `Image omitted: ${error.message}`); css = css.replace(match[0], 'none'); }
     }
@@ -46,7 +46,7 @@ async function freezeCss(css, base, ctx) {
 /** Copies computed presentation and current values, including content inside same-origin iframes. */
 async function freezeNode(node, ctx, depth = 0) {
     if (++ctx.nodes > MAX_NODES) throw new Error('Output exceeds the 30,000 element capture limit');
-    if (Date.now() > ctx.deadline) throw new Error('Output capture exceeded 60 seconds');
+    if (Date.now() > ctx.deadline) throw new Error(`Output capture exceeded ${Math.round(ctx.budgetMs / 1000)} seconds`);
     if (node.nodeType === 3) return node.cloneNode();
     if (node.nodeType !== 1) return null;
     const doc = node.ownerDocument, win = doc.defaultView, tag = node.localName.toLowerCase();
@@ -68,6 +68,8 @@ async function freezeNode(node, ctx, depth = 0) {
                     ctx.kinds.add('three');
                 } catch (error) {
                     // A still fallback contains only the real canvas image, never inert viewer controls.
+                    // A view off screen may have given its WebGL context back (threejs_viewer.html, context budget).
+                    await viewer.ensureContext?.();
                     const image = doc.createElement('img'); image.src = viewer.snapshotImage();
                     image.alt = 'Three.js view at publication time'; image.style.cssText='display:block;width:100%;height:100%;object-fit:contain';
                     image.style.background = child.defaultView.getComputedStyle(child.querySelector('#canvas-wrap') || child.body).backgroundColor;
@@ -108,6 +110,7 @@ async function freezeNode(node, ctx, depth = 0) {
             const image = doc.createElement('img');
             const viewer = win.FieldViewer;
             if (!viewer?.snapshotImage && !node.getContext('2d')) throw new Error('This WebGL canvas needs a publication capture adapter');
+            if (viewer?.snapshotImage) await viewer.ensureContext?.();
             image.src = viewer?.snapshotImage && node === doc.querySelector('#canvas-wrap canvas')
                 ? viewer.snapshotImage() : node.toDataURL('image/png');
             image.style.cssText = `width:${node.clientWidth || node.width}px;height:${node.clientHeight || node.height}px;max-width:100%`;
@@ -224,7 +227,11 @@ async function waitForContent(root, deadline) {
 }
 
 /** Each channel gets an isolated HTML file and explicit fidelity/warning information. */
-export async function captureOutputs(sources, {fontCss = '', three = null, progress = () => {}} = {}) {
+// A channel's freeze budget. The browser's own default; a caller on a loaded machine (the lander's
+// publication refresh) passes a longer one, since a slow freeze there says nothing about the page.
+const DEFAULT_CAPTURE_BUDGET_MS = 60000;
+
+export async function captureOutputs(sources, {fontCss = '', three = null, progress = () => {}, captureBudgetMs = DEFAULT_CAPTURE_BUDGET_MS} = {}) {
     // Some panels are installed directly by frontend tools or outlive the server replay budget.
     sources = [...sources];
     for (const box of document.querySelectorAll('.box')) {
@@ -249,10 +256,11 @@ export async function captureOutputs(sources, {fontCss = '', three = null, progr
         }
         try {
             api?.open(source.channel);
-            await waitForContent(root, Date.now() + 12000);
+            // The wait for a channel to render scales with the freeze budget: 12 s at the default 60 s.
+            await waitForContent(root, Date.now() + captureBudgetMs / 5);
             entry.width = Math.max(160, Math.min(4096, root.offsetWidth || 640));
             entry.height = Math.max(40, Math.min(8192, root.offsetHeight || 420));
-            const ctx = {resources, warnings:new Set(), kinds:new Set(), nodes:0, deadline:Date.now() + 60000, fontCss, three};
+            const ctx = {resources, warnings:new Set(), kinds:new Set(), nodes:0, budgetMs:captureBudgetMs, deadline:Date.now() + captureBudgetMs, fontCss, three};
             const html = await freezeDocument(root, ctx);
             entry.path = `outputs/${i}.html`; entry.kinds = [...ctx.kinds]; entry.warnings = [...ctx.warnings];
             if (root.offsetWidth > 4096 || root.offsetHeight > 8192) entry.warnings.push('Output viewport limited to 4096 × 8192 pixels');
@@ -265,7 +273,7 @@ export async function captureOutputs(sources, {fontCss = '', three = null, progr
 }
 
 /** Build a relocatable static site; callers may save the Blob or inspect its files before download. */
-export async function buildPublication(source, {progress = () => {}, includeViewer = true, nativeImages = []} = {}) {
+export async function buildPublication(source, {progress = () => {}, includeViewer = true, nativeImages = [], captureBudgetMs} = {}) {
     const files = new Map();
     progress('Bundling the viewer and local fonts');
     // Fetch in small batches rather than issuing hundreds of simultaneous requests for Monaco.
@@ -289,7 +297,7 @@ export async function buildPublication(source, {progress = () => {}, includeView
         files.set('three-publication-runtime.js',three.runtime);
         for (const path of three.sourcePaths) files.delete(path);
     }
-    const captured = await captureOutputs(source.outputs, {fontCss, three, progress});
+    const captured = await captureOutputs(source.outputs, {fontCss, three, progress, ...(captureBudgetMs > 0 ? {captureBudgetMs} : {})});
     for (const image of [...(source.nativeImages || []), ...nativeImages]) {
         const path = `outputs/${captured.outputs.length}.html`;
         const node = document.createElement('img');

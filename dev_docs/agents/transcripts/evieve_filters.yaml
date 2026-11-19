@@ -1,0 +1,69 @@
+name: evieve_filters
+description: |
+  Audio-rate filters ported from evieve. Box 1 measures the Korg35 (MS-20) lowpass at 1 kHz: an impulse
+  response through an FFT at three resonances, plus its highpass mode. Box 2 plays a 55 Hz saw through
+  Korg35 with its cutoff swept per sample by a Signal-modulated Param. Box 3 plots a Resonator's response
+  at three decays and plays three drifting Resonators on white noise. Boxes 2 and 3 open the audio device.
+  The saved document at `dev_docs/agents/demos/evieve_filters/` is this same scene.
+docs:
+  - page: spectral_examples.md#audio-rate-filters-from-evieve
+    why: "Introduces the Korg35 and Resonator filters these boxes measure and play."
+operations:
+  - create:
+      box: evieve_korg_response
+      name: "1 - Korg35 measured response"
+      frame: { x: 60.0, y: 60.0, w: 520.0, h: 140.0 }
+      properties:
+        code: |
+          // The Korg35 (MS-20) lowpass at 1 kHz, measured: one second of impulse response, then an FFT, so
+          // bin k is k Hz. The tiny amplitude keeps its tanh linear, so this is the small-signal response.
+          fun responseDb(filter: SignalProcessor) =
+              fft(impulseResponse(filter, 48_000, amplitude = 1e-4f), 48_000.0).magnitudeDbOneSided().take(5000)
+
+          showSignals(
+              "resonance 0.1" to responseDb(Korg35(1000.p, 0.1.p)),
+              "resonance 0.5" to responseDb(Korg35(1000.p, 0.5.p)),
+              "resonance 0.95" to responseDb(Korg35(1000.p, 0.95.p)),
+              "highpass 0.8" to responseDb(Korg35(1000.p, 0.8.p, Korg35Mode.HP)),
+              channel = "main",
+              xTitle = "frequency (Hz)",
+          )
+  - create:
+      box: evieve_korg_sweep
+      name: "2 - Korg35 swept at audio rate"
+      frame: { x: 60.0, y: 260.0, w: 520.0, h: 140.0 }
+      properties:
+        code: |
+          // A 55 Hz saw through Korg35. The cutoff is a Param whose mod is a Signal, so it moves per sample:
+          // a slow 0.5 Hz sweep plus a 110 Hz wobble that puts sidebands on the resonance.
+          val cutoff = Param(1200f).also { it.mod = SineOsc(0.5.p) * 900f + SineOsc(110.p) * 250f }
+          val voice = SawOsc(55.p) / Korg35(cutoff, 0.9.p, drive = 2.p)
+          audio(voice, gain = 0.15f)
+  - create:
+      box: evieve_resonator
+      name: "3 - Resonators: response and sound"
+      frame: { x: 60.0, y: 460.0, w: 520.0, h: 140.0 }
+      properties:
+        code: |
+          // Three Resonators on white noise, each frequency drifting on its own slow sine,
+          // with the 1 kHz resonator's response at three decays plotted beside it.
+          fun responseDb(filter: SignalProcessor) =
+              fft(impulseResponse(filter, 48_000), 48_000.0).magnitudeDbOneSided().take(5000)
+
+          showSignals(
+              "decay 0.02 s" to responseDb(Resonator(1000.p, 0.02.p)),
+              "decay 0.1 s" to responseDb(Resonator(1000.p, 0.1.p)),
+              "decay 0.5 s" to responseDb(Resonator(1000.p, 0.5.p)),
+              channel = "main",
+              xTitle = "frequency (Hz)",
+          )
+          val noise = WhiteNoise() * 0.3f
+          fun band(f: Float, drift: Float, rate: Float, decay: Float) =
+              noise / Resonator(Param(f).also { it.mod = SineOsc(rate.p) * drift }, decay.p)
+          audio(band(300f, 80f, 0.2f, 0.6f) + band(750f, 150f, 0.45f, 0.4f) + band(2100f, 300f, 0.7f, 0.3f), gain = 0.5f)
+  - execute: { box: evieve_korg_response, property: code }
+  - await: {}
+  - execute: { box: evieve_korg_sweep, property: code }
+  - await: {}
+  - execute: { box: evieve_resonator, property: code }
+  - await: {}

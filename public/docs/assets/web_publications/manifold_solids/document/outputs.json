@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-14T23:28:03.927Z",
+  "capturedAt": "2026-11-18T21:57:55.659Z",
   "documentName": "manifold_solids",
   "outputs": [
     {
@@ -11,8 +11,8 @@
       "kinds": [
         "three"
       ],
-      "width": 768,
-      "height": 478,
+      "width": 760,
+      "height": 470,
       "path": "outputs/0.html"
     },
     {
@@ -23,8 +23,8 @@
       "kinds": [
         "three"
       ],
-      "width": 708,
-      "height": 438,
+      "width": 700,
+      "height": 430,
       "path": "outputs/1.html"
     },
     {

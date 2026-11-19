@@ -184,9 +184,7 @@ class ToolMetaPinTest {
                 "SemanticRetrievalRebuildRequest", "SemanticRetrievalStatusRequest",
                 // New on 2026-10-03, not chosen from usage: needed only after a program kept a result as evidence.
                 "ReadToolEvidenceRequest",
-                "InspectStudyBuildsRequest",
                 "WaitStudyBuildRequest",
-                "StartStudyBuildRequest",
                 "CancelStudyBuildRequest",
                 "PruneStudyBuildsRequest",
                 // New on 2026-10-09: ends a box chat's turn to wait for builds without the model.
@@ -197,15 +195,29 @@ class ToolMetaPinTest {
                 "ReplyGeometryNoteRequest",
                 "ReviewGeometryNoteRequest",
                 "ReportGeometryFindingRequest",
-                "InspectGeometryViewRequest",
                 // New on 2026-10-09: which kit a document runs; asked rarely, when a provider seems out of date.
                 "InspectKitRequest",
                 // New on 2026-10-26: drives a running talk; rehearsal or an explicit reset only, on request.
                 "PresentationControlRequest",
+                // Re-sorted on 2026-11-18 from 336 tool-using sessions since 2026-10-15 (tools/ai_tool_usage.py):
+                // each was called in under 1% of them. InspectStudyBuilds (48%), StartStudyBuild (15%) and
+                // InspectGeometryView (13%) went the other way, to DIRECT. A headless repo job preloads the repo tools.
+                "StateForkRequest", "StateListRequest", "StateReadRequest", "StateShowRequest",
+                "PresentationInspectRequest", "PresentationReadRequest", "PresentationWriteSlideRequest",
+                "RepoRunCommandRequest", "RepoStartCommandRequest", "RepoCommandStatusRequest", "RepoStopCommandRequest",
+                "AwaitRepoCommandsRequest", "RepoPatchFileRequest", "RepoWriteFileRequest",
+                "MemoryDeleteRequest", "DocumentSourceReadRequest", "ListContentsRequest", "ReloadShadersRequest",
+                "CodeUseQueryRequest",
             ),
             metas.filterValues { it.exposure == ToolExposure.DEFERRED }.keys
         )
         assertTrue(metas.values.none { it.exposure == ToolExposure.HIDDEN || it.exposure == ToolExposure.PROGRAM })
+    }
+
+    /** A headless repo job preloads [REPO_TOOL_NAMES]; a repo tool missing from it would cost every job a round. */
+    @Test
+    fun aRepoJobPreloadsEveryRepoTool() {
+        assertEquals(metas.filterValues { it.namespace == "repo" }.keys, REPO_TOOL_NAMES)
     }
 
     @Test

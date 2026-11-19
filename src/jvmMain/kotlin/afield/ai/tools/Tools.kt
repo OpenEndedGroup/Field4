@@ -11,6 +11,8 @@ import afield.ai.models.toolResultBlock
 
 import afield.ai.conversation.AiTurnInbox
 import afield.ai.conversation.aiToolFailureEndsTurn
+import afield.ai.conversation.FieldStaleClasses
+import afield.ai.conversation.fieldStaleToolResult
 import afield.ai.conversation.aiToolFailureMessage
 import afield.ai.models.LlmProgressUpdate
 import afield.runtime.languages.MalformedAI
@@ -165,8 +167,8 @@ data class ListDefinitionsResult(val definitions: List<DefinitionInfo>)
 data class DefinitionInfo(val name: String, val type: String, val fileRef: String, val language: String)
 
 /** Tool: get full contents of text properties for the current box/file context. */
-@JsonClassDescription("Return full contents for available text properties (code and shaders) in the current Field box and graph-relevant boxes, with file refs, languages, box names, relation labels, and preamble hints. Preamble hints distinguish inherited Box properties from shader-generated Mesh/Module binding helpers. Use it when you need the code of several related boxes at once, or the file refs EditFileRequest takes; for one property of a named box, GetBoxPropertyRequest is smaller. Unavailable (an error) outside a box's chat. e.g. a result entry's fileRef = `afield://doc/box-uid/code`.")
-@AgentToolMeta("kotlin", effects = [ToolEffect.READ_DOCUMENT])
+@JsonClassDescription("Return full contents for available text properties (Markdown contents, notes, textFrame YAML, code and shaders) in the current Field box and graph-relevant boxes, with file refs, languages, box names, relation labels, and preamble hints. Preamble hints distinguish inherited Box properties from shader-generated Mesh/Module binding helpers. Use it when you need the code of several related boxes at once, or the file refs EditFileRequest takes; for one property of a named box, GetBoxPropertyRequest is smaller. Unavailable (an error) outside a box's chat. e.g. a result entry's fileRef = `afield://doc/box-uid/code`.")
+@AgentToolMeta("kotlin", ToolExposure.DEFERRED, effects = [ToolEffect.READ_DOCUMENT])
 data class ListContentsRequest(val unused: Int = 0)
 
 data class ListContentsResult(
@@ -351,11 +353,13 @@ data class CompileKotlinResult(
     val file: String,
     val message: String,
     val diagnostics: List<CompileDiagnostic> = emptyList(),
-    val setupChanges: List<SetupPropertyChange> = emptyList()
+    val setupChanges: List<SetupPropertyChange> = emptyList(),
+    /** `"field-stale"` when the failure is Field's own classes rewritten under it ([afield.ai.conversation.FieldStaleClasses]). */
+    val stage: String = "",
 )
 
 @JsonClassDescription("Reload shader modules for the current Field box or target box/file ref. Call this after editing GLSL/Slang shader properties and before finishing the turn; fix errors and rerun until success.")
-@AgentToolMeta("render", effects = [ToolEffect.CONTROL_RUNTIME, ToolEffect.GPU, ToolEffect.CAPTURE_IMAGE])
+@AgentToolMeta("render", ToolExposure.DEFERRED, effects = [ToolEffect.CONTROL_RUNTIME, ToolEffect.GPU, ToolEffect.CAPTURE_IMAGE])
 data class ReloadShadersRequest(
     val target: String = "",
     val mode: String = "auto",
@@ -546,7 +550,7 @@ data class MacroRunResult(
 /** Code-use telemetry tools ------------------------------------------------- */
 
 @JsonClassDescription("Query Field's local code-use telemetry database. kind may be summary, failures, snippets, launches, symbols, unresolved, line-callers, references-for-code, related-source-for-code, semantic-analyze, hot-symbols, or early-document-symbols. Prefer kind=failures when looking for compiler errors/runtime exceptions that reveal API gaps, missing docs, or growth points. Optional document and box filters are case-insensitive substrings for row types that carry that metadata.")
-@AgentToolMeta("codeuse", effects = [ToolEffect.FILESYSTEM_READ])
+@AgentToolMeta("codeuse", ToolExposure.DEFERRED, effects = [ToolEffect.FILESYSTEM_READ])
 data class CodeUseQueryRequest(
     val kind: String = "failures",
     val limit: Int = 20,
@@ -632,7 +636,7 @@ data class CodeUseSemanticAnalyzeCodeRequest(
 
 /** Semantic retrieval tools ------------------------------------------------ */
 
-@JsonClassDescription("Search Field's native Lucene semantic retrieval index across Field internals, current workspace code, and documentation. This is natural-language to code/docs retrieval, not compiler resolution. Set corpus for one corpus, or corpora for combinations. Available corpora are field-internals, workspace, and documentation. Leave both blank to search all corpora. Use documentName with corpus/workspace to search a specific current workspace document. Results include BM25/symbol/vector ranks when available; vector search is active only when the local ONNX embedder is configured.")
+@JsonClassDescription("Search Field's native Lucene semantic retrieval index across Field internals, current workspace code and saved Markdown text frames, and documentation. This is natural-language to code/docs retrieval, not compiler resolution. Set corpus for one corpus, or corpora for combinations. Available corpora are field-internals, workspace, and documentation. Leave both blank to search all corpora. Use documentName with corpus/workspace to search a specific current workspace document. Results include BM25/symbol/vector ranks when available; vector search is active only when the local ONNX embedder is configured.")
 @AgentToolMeta("retrieval", effects = [ToolEffect.FILESYSTEM_READ])
 data class SemanticRetrievalSearchRequest(
     val query: String,
@@ -1355,9 +1359,12 @@ internal class ToolRegistry {
                 dynamicTool(dynamicToolsIn(ctx), name)!!.runBlockingFromToolLoop(ctx, rawArgs())
             }
         } catch (e: Throwable) {
+            // A class rewritten under this Field is not the call's fault and no retry fixes it: an answer, not a throw.
+            val stale = if (aiToolFailureEndsTurn(e)) null else FieldStaleClasses.messageFor(e)
             if (view != null && !aiToolFailureEndsTurn(e)) {
-                AgentExtensionRegistry.after(documentKey, view, ToolResultView(false, aiToolFailureMessage(e), (System.nanoTime() - started) / 1_000_000))
+                AgentExtensionRegistry.after(documentKey, view, ToolResultView(false, stale ?: aiToolFailureMessage(e), (System.nanoTime() - started) / 1_000_000))
             }
+            if (stale != null) return fieldStaleToolResult(name, stale)
             throw e
         }
         if (view != null) {

@@ -54,6 +54,29 @@ class DocumentGuideToolsTest {
         } finally { root.deleteRecursively() }
     }
 
+    @Test fun readsReportRevisionAndCanTailOrReturnOnlyGrowth() {
+        val root = createTempDirectory("field-guide-since").toFile()
+        try {
+            val tools = DocumentGuideTools(root) { false }
+            val created = tools.create(DocumentGuideCreateRequest("DECISIONS.md", (1..10).joinToString("\n") { "line $it" } + "\n"))
+            val first = tools.read(DocumentGuideReadRequest(created.path))
+            assertEquals(11, first.totalLines)
+            assertTrue(first.message.contains(first.revision), first.message)
+            val tail = tools.read(DocumentGuideReadRequest(created.path, tailLines = 3))
+            assertEquals("line 9\nline 10\n", tail.contents)
+            val same = tools.read(DocumentGuideReadRequest(created.path, sinceRevision = first.revision))
+            assertEquals("", same.contents)
+            assertTrue(same.message.contains("unchanged"), same.message)
+            val grown = tools.append(DocumentGuideAppendRequest(created.path, first.revision, "line 11\n"))
+            val delta = tools.read(DocumentGuideReadRequest(created.path, sinceRevision = first.revision))
+            assertEquals(grown.revision, delta.revision)
+            assertEquals("line 11\n", delta.contents, delta.message)
+            tools.patch(DocumentGuidePatchRequest(created.path, grown.revision, "line 1\n", "first\n"))
+            val changed = tools.read(DocumentGuideReadRequest(created.path, sinceRevision = grown.revision))
+            assertTrue(changed.contents.startsWith("first\n"), changed.contents)
+        } finally { root.deleteRecursively() }
+    }
+
     @Test fun concurrentWritersCannotLoseChangesAndAmbiguousPatchesFail() {
         val root = createTempDirectory("field-guide-conflict").toFile()
         try {

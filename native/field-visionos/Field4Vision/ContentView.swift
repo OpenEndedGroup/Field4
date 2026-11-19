@@ -1,208 +1,200 @@
 import SwiftUI
 
-/// The dock/tab manager: a rail of open docks on the left, the selected dock's WKWebView on
-/// the right. The rail is collapsible (it eats a lot of space in the room), and any dock can be
-/// undocked into its own window floating in space.
 struct ContentView: View {
-    @State private var manager = DockManager()
-    /// Rail shown/hidden. This was a `NavigationSplitViewVisibility` driving a `NavigationSplitView`,
-    /// which aborted the app on visionOS 26: any change to the window's bounds — including the
-    /// geometry restore that happens ~0.7s into every relaunch — runs
-    /// `_UISplitViewControllerAdaptiveImpl _prepareTransitionToLayout:` *inside* a UIView animation
-    /// block, which updates the ornament's glass buttons and reaches
-    /// `-[UIVisualEffectView setEffect:]` mid-animation. That throws
-    /// NSInternalInconsistencyException ("cannot animate the effects property alongside
-    /// backgroundEffects or contentEffects") and SIGABRTs. A plain HStack has no adaptive layout
-    /// transition, so the animated-effect update never happens. See the two crash reports at
-    /// 2026-07-25 11:44:40 and 13:23:54.
-    @State private var railVisible = true
-    @State private var didAutoOpenEditor = false
-    @State private var immersiveOpen = false
-    @Environment(\.openWindow) private var openWindow
+    @Environment(FieldConnection.self) private var connection
     @Environment(RTTStream.self) private var rtt
-    @Environment(FLineViewerClient.self) private var flineClient
+    @Environment(ThreeClient.self) private var threeClient
     @Environment(LiveMetalClient.self) private var liveMetalClient
+    @Environment(SpatialInk.self) private var spatialInk
+    @Environment(\.openWindow) private var openWindow
     @Environment(\.openImmersiveSpace) private var openImmersiveSpace
     @Environment(\.dismissImmersiveSpace) private var dismissImmersiveSpace
+    @State private var address = ""
+    @State private var addressError = false
+    @State private var immersiveOpen = false
+    @State private var switchingInk = false
+    private var fieldFont = FieldFont.shared
+    private var hostLocked: Bool { spatialInk.isOpen || switchingInk || liveMetalClient.immersiveRequested }
 
     var body: some View {
-        HStack(spacing: 0) {
-            if railVisible {
-                railList
-                    .frame(width: 220)
-                    .transition(.move(edge: .leading).combined(with: .opacity))
+        VStack(alignment: .leading, spacing: 18) {
+            HStack {
+                Text("Field host").font(fieldFont.font(size: 18))
+                Spacer()
+                Text("Port \(connection.server.port.formatted(.number.grouping(.never)))")
+                    .font(fieldFont.font(size: 15))
+                    .foregroundStyle(.secondary)
             }
-            detailContent
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            HStack(spacing: 10) {
+                TextField("Host or URL", text: $address)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.URL)
+                    .submitLabel(.go)
+                    .onSubmit { selectHost(address) }
+                    .accessibilityLabel("Field host URL")
+                Menu {
+                    ForEach(connection.recent, id: \.self) { address in
+                        Button(address) { selectHost(address) }
+                    }
+                    if !connection.recent.contains(ServerConfig.defaultAddress) {
+                        Button(ServerConfig.defaultAddress) { selectHost(ServerConfig.defaultAddress) }
+                    }
+                } label: {
+                    Label("Recent hosts", systemImage: "clock.arrow.circlepath").labelStyle(.iconOnly)
+                }
+                Button("Connect") { selectHost(address) }
+            }
+            .disabled(hostLocked)
+
+            VStack(alignment: .leading, spacing: 5) {
+                Label(statusTitle, systemImage: statusIcon)
+                    .font(fieldFont.font(size: 16))
+                if address != connection.server.baseURL.absoluteString {
+                    Text("Active: \(connection.server.baseURL.absoluteString)")
+                        .font(fieldFont.font(size: 13))
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                }
+                if addressError {
+                    Text("Enter a hostname or an HTTP(S) URL with an optional port.")
+                        .font(.caption)
+                } else if case .unavailable(let detail) = connection.status {
+                    Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                }
+                if hostLocked {
+                    Text("Exit the active immersive head to change hosts.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            Divider()
+            Text(verbatim: rtt.isRunning ? rtt.status : "RTT receiver · UDP \(RTTStream.resolvedPort)")
+                .font(fieldFont.font(size: 13))
+                .foregroundStyle(.secondary)
+            if threeClient.openVolumes > 0 {
+                Text("3D View · \(threeClient.status)").font(fieldFont.font(size: 13))
+            }
+            if liveMetalClient.immersiveRequested {
+                Text("Live Metal · \(liveMetalClient.status)").font(fieldFont.font(size: 13)).lineLimit(2)
+            }
+            if spatialInk.isOpen {
+                Text(spatialInk.status).font(fieldFont.font(size: 13)).lineLimit(2)
+            }
+            Spacer(minLength: 0)
         }
-        .shellWindowCornerSafe()
-        // Everything lives in one always-visible bottom ornament — it floats outside the window,
-        // so there's no top title bar eating canvas height (visionOS won't shrink that bar via
-        // title modifiers). The toggle stays reachable even when the rail is collapsed; the doc
-        // name shows in the rail. This is `.ornament` rather than a `ToolbarItemGroup` because the
-        // toolbar came with the `NavigationSplitView` that had to go — see `railVisible`.
-        .ornament(attachmentAnchor: .scene(.bottom)) { controlBar }
+        .padding(26)
+        .frame(minWidth: 500, minHeight: 290, alignment: .topLeading)
+        .ornament(attachmentAnchor: .scene(.bottom)) { heads }
+        .task(id: connection.probeRevision) {
+            await connection.monitor(revision: connection.probeRevision)
+        }
+        .onChange(of: connection.status) { _, status in
+            if status == .reachable { fieldFont.load(from: connection.server) }
+        }
         .task {
-            // The floating editor is OPT-IN now. It used to open itself ~1.2s into every launch so
-            // the shared-selection pair was up immediately, but in practice a second window that
-            // steals keyboard focus costs more than the pairing saves — you spend the session
-            // moving focus back and forth. The `</>` ornament button still opens it on demand, and
-            // shared selection works the moment it does. Set FIELD4_AUTO_EDITOR=1 to restore the
-            // old behaviour (useful for headless/paired-client testing, where nothing can tap).
-            if !didAutoOpenEditor,
-               ProcessInfo.processInfo.environment["FIELD4_AUTO_EDITOR"] == "1" {
-                didAutoOpenEditor = true
-                try? await Task.sleep(for: .seconds(1.2))
-                openWindow(value: manager.floatingEditorURL())
-            }
-            // Headless testing: `FIELD4_RTT_AUTOSTART=1` binds the RTT receiver (and opens the
-            // theatre) on launch, so the sim can receive a stream without a tap on the ornament
-            // (which simctl can't drive). Pass via `SIMCTL_CHILD_FIELD4_RTT_AUTOSTART=1`.
-            if ProcessInfo.processInfo.environment["FIELD4_RTT_AUTOSTART"] == "1", !immersiveOpen {
-                await toggleImmersive()
-            }
-            // Headless testing: `FIELD4_FLINE_AUTOSTART=1` starts the FLine discovery client and opens
-            // the native viewer window on launch (simctl can't tap the "FLine 3D" ornament button).
-            // Pass via `SIMCTL_CHILD_FIELD4_FLINE_AUTOSTART=1`.
-            if ProcessInfo.processInfo.environment["FIELD4_FLINE_AUTOSTART"] == "1" {
-                flineClient.start()
-                openWindow(id: Field4VisionApp.flineWindowID)
-            }
-            if ProcessInfo.processInfo.environment["FIELD4_LIVE_METAL_AUTOSTART"] == "1",
-               !liveMetalClient.immersiveRequested {
+            address = connection.server.baseURL.absoluteString
+            threeClient.setServer(connection.server)
+            let env = ProcessInfo.processInfo.environment
+            if env["FIELD4_THREE_AUTOSTART"] == "1" { openThree() }
+            if env["FIELD4_RTT_AUTOSTART"] == "1", !immersiveOpen { await toggleImmersive() }
+            if env["FIELD4_LIVE_METAL_AUTOSTART"] == "1", !liveMetalClient.immersiveRequested {
                 await toggleLiveMetal()
             }
         }
     }
 
-    /// The dock rail. Previously the `NavigationSplitView` sidebar; now a plain column.
-    private var railList: some View {
-        List(selection: $manager.selection) {
-            Section("Docks") {
-                ForEach(manager.docks) { dock in
-                    Label(dock.title, systemImage: icon(for: dock.kind))
-                        // Document names run long and wrapped to two or three lines in a 220pt
-                        // rail, which looked terrible and made rows different heights. Truncate
-                        // in the MIDDLE, not the tail: Field documents are commonly distinguished
-                        // by a numeric suffix ("some fline00001"), so tail truncation would hide
-                        // the one part that tells them apart. Full name is in the tooltip.
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                        .help(dock.title)
-                        .tag(dock.id)
-                        .contextMenu {
-                            Button {
-                                openWindow(value: dock.url)
-                            } label: {
-                                Label("Undock into space", systemImage: "rectangle.badge.plus")
-                            }
-                            Button(role: .destructive) {
-                                manager.close(dock.id)
-                            } label: {
-                                Label("Close", systemImage: "xmark")
-                            }
-                        }
-                }
-            }
+    private var statusTitle: String {
+        switch connection.status {
+        case .checking: "Checking Field…"
+        case .reachable: "Field reachable"
+        case .unavailable: "Field unavailable"
         }
     }
 
-    /// The single bottom ornament carrying every control.
-    private var controlBar: some View {
+    private var statusIcon: String {
+        switch connection.status {
+        case .checking: "ellipsis.circle"
+        case .reachable: "checkmark.circle"
+        case .unavailable: "exclamationmark.circle"
+        }
+    }
+
+    private func selectHost(_ input: String) {
+        guard !hostLocked else { return }
+        guard let server = ServerConfig(address: input) else { addressError = true; return }
+        addressError = false
+        address = server.baseURL.absoluteString
+        threeClient.setServer(server)
+        connection.select(server)
+    }
+
+    private func openThree() {
+        threeClient.setServer(connection.server)
+        threeClient.start()
+        if threeClient.openVolumes == 0 { openWindow(id: Field4VisionApp.threeWindowID) }
+    }
+
+    private var heads: some View {
         HStack(spacing: 12) {
-            Button {
-                withAnimation { railVisible.toggle() }
-            } label: {
-                Label("Toggle Docks", systemImage: "sidebar.left")
-            }
-            Button {
-                manager.openWelcome()
-            } label: {
-                Label("Welcome", systemImage: "house")
-            }
-            Button {
-                shellLog.notice("tap: canvas")
-                manager.openGlassCanvas()
-            } label: {
-                Label("Canvas", systemImage: "square.on.square")
-            }
-            Button {
-                let u = manager.floatingEditorURL()
-                shellLog.notice("tap: floating-editor -> \(u.absoluteString, privacy: .public)")
-                openWindow(value: u)
-            } label: {
-                Label("Floating Editor", systemImage: "chevron.left.forwardslash.chevron.right")
-            }
-            // The first native viewer: opens the RealityKit FLine viewer window and starts
-            // its discovery subscription (idempotent). Shows any live threeLines() view.
-            Button {
-                shellLog.notice("tap: fline-3d")
-                flineClient.start()
-                openWindow(id: Field4VisionApp.flineWindowID)
-            } label: {
-                Label("FLine 3D", systemImage: "scribble.variable")
-            }
-            Button {
-                shellLog.notice("tap: undock (selected=\(manager.selectedDock?.title ?? "nil", privacy: .public))")
-                if let dock = manager.selectedDock { openWindow(value: dock.url) }
-            } label: {
-                Label("Undock", systemImage: "rectangle.badge.plus")
-            }
-            // The GPU half, windowed: a movable/resizable volumetric window hosting the
-            // stream screen. Opening it acquires the receiver (shared with the theatre).
-            Button {
-                shellLog.notice("tap: stream-window")
-                openWindow(id: Field4VisionApp.rttWindowID)
-            } label: {
+            Button(action: openThree) { Label("3D View", systemImage: "cube.transparent") }
+            Button { openWindow(id: Field4VisionApp.rttWindowID) } label: {
                 Label("Stream Window", systemImage: "play.rectangle")
             }
-            // The GPU/immersive half: start the RTT receiver and open the dimmed
-            // theatre (or tear both down). The stream keeps running independent of the
-            // rail so the receiver's diagnostics stay live.
-            Button {
-                Task { await toggleImmersive() }
-            } label: {
-                Label(immersiveOpen ? "Exit Immersive" : "Immersive",
-                      systemImage: immersiveOpen ? "arrow.down.right.and.arrow.up.left" : "cube.transparent")
+            Button { Task { await toggleImmersive() } } label: {
+                Label(immersiveOpen ? "Exit Immersive Stream" : "Immersive Stream",
+                      systemImage: immersiveOpen ? "xmark.circle" : "vision.pro")
             }
-            Button {
-                Task { await toggleLiveMetal() }
-            } label: {
+            Button { Task { await toggleLiveMetal() } } label: {
                 Label(liveMetalClient.immersiveRequested ? "Exit Live Metal" : "Live Metal",
                       systemImage: liveMetalClient.immersiveRequested ? "xmark.circle" : "cube.transparent.fill")
             }
-            if rtt.isRunning {
-                Text(rtt.status)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+            Button { Task { await toggleSpatialInk() } } label: {
+                Label(spatialInk.isOpen ? "Exit Spatial Ink" : "Spatial Ink",
+                      systemImage: spatialInk.isOpen ? "xmark.circle" : "scribble.variable")
             }
-            if liveMetalClient.isConnected || liveMetalClient.immersiveRequested {
-                Text(liveMetalClient.status)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+            .disabled(switchingInk)
+            if spatialInk.isOpen {
+                Button { spatialInk.arm(!spatialInk.isArmed) } label: {
+                    Label(spatialInk.isArmed ? "Pause Drawing" : "Arm Draw",
+                          systemImage: spatialInk.isArmed ? "pause.circle.fill" : "pencil.tip")
+                }
+                .disabled(!spatialInk.canDraw)
+                Button { spatialInk.undo() } label: {
+                    Label("Undo Stroke", systemImage: "arrow.uturn.backward")
+                }
+                .disabled(!spatialInk.canUndo)
+                if spatialInk.syncFailed {
+                    Button { spatialInk.retry() } label: {
+                        Label("Retry Field Sync", systemImage: "arrow.clockwise")
+                    }
+                }
             }
         }
-        // `ToolbarItemGroup` rendered these Labels icon-only for free; a plain HStack renders icon
-        // AND title, which made the ornament wide and tall enough to cover the window's bottom
-        // resize affordances. Ask for icon-only explicitly. (visionOS still surfaces the titles as
-        // hover tooltips, so nothing is lost.)
         .labelStyle(.iconOnly)
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
-        .fixedSize()               // size to content so labels never wrap
+        .fixedSize()
         .glassBackgroundEffect()
     }
 
-    /// Receiver port — overridable via `FIELD4_RTT_PORT` (e.g. when Field itself holds the default
-    /// 9000 on the shared host stack during same-Mac simulator testing).
     private var rttPort: UInt16 { RTTStream.resolvedPort }
 
-    /// Open/close the RTT theatre. Acquiring the stream starts the receiver (if not already running
-    /// for the windowed viewer) before the space so packets are already being reassembled when the
-    /// screen appears; releasing stops it only when no other presentation is open.
+    private func toggleSpatialInk() async {
+        guard !switchingInk else { return }
+        switchingInk = true
+        defer { switchingInk = false }
+        if spatialInk.isOpen {
+            await dismissImmersiveSpace()
+            return
+        }
+        if immersiveOpen { await toggleImmersive() }
+        if liveMetalClient.immersiveRequested { await toggleLiveMetal() }
+        spatialInk.server = connection.server
+        _ = await openImmersiveSpace(id: Field4VisionApp.spatialInkSpaceID)
+    }
+
     private func toggleImmersive() async {
+        if spatialInk.isOpen { await dismissImmersiveSpace() }
         if immersiveOpen {
             await dismissImmersiveSpace()
             rtt.release()
@@ -225,6 +217,7 @@ struct ContentView: View {
     }
 
     private func toggleLiveMetal() async {
+        if spatialInk.isOpen { await dismissImmersiveSpace() }
         if liveMetalClient.immersiveRequested {
             await dismissImmersiveSpace()
             liveMetalClient.stop()
@@ -239,6 +232,7 @@ struct ContentView: View {
             immersiveOpen = false
         }
         guard liveMetalClient.claimImmersiveRequest() else { return }
+        liveMetalClient.setServer(connection.server)
         liveMetalClient.start()
         switch await openImmersiveSpace(id: Field4VisionApp.liveMetalSpaceID) {
         case .opened:
@@ -249,37 +243,4 @@ struct ContentView: View {
         }
     }
 
-    @ViewBuilder
-    private var detailContent: some View {
-        if let dock = manager.selectedDock {
-            WebDock(
-                url: dock.url,
-                onOpenURL: { openWindow(value: $0) },
-                onNavigate: { manager.updateDock(dock.id, to: $0) },
-                // Only tuck around the window corner when the rail is collapsed — with it open the
-                // sidebar covers the bottom-left corner, so the detail web view is already clear.
-                // The content is now inset and re-rounded by `shellWindowCornerSafe`, so what a
-                // toast has to clear is the content's own radius, not the system's much larger one.
-                cornerInset: railVisible ? 0 : shellContentCornerRadius
-            )
-        } else {
-            ContentUnavailableView("No dock selected",
-                                   systemImage: "square.dashed",
-                                   description: Text("Open a dock from the toolbar below."))
-        }
-    }
-
-    private func icon(for kind: DockKind) -> String {
-        switch kind {
-        case .welcome: "house"
-        case .document: "doc.text"
-        }
-    }
-}
-
-#Preview(windowStyle: .automatic) {
-    ContentView()
-        .environment(RTTStream())
-        .environment(FLineViewerClient())
-        .environment(LiveMetalClient())
 }

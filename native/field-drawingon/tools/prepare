@@ -1,0 +1,21 @@
+#!/bin/zsh
+set -euo pipefail
+TASK_NATIVE_ROOT=${0:A:h:h}
+if [[ $(uname -s) != Darwin ]]; then
+    print -u2 'Drawing On native preparation requires macOS. The Field server adapter needs no extra build.'
+    exit 1
+fi
+if ! /usr/bin/xcrun --find swiftc >/dev/null 2>&1; then
+    print -u2 'Install Apple Command Line Tools with xcode-select --install, complete Apple’s setup, then rerun Field setup.'
+    exit 1
+fi
+"$TASK_NATIVE_ROOT/tools/offline-review/review" --help >/dev/null
+print "Offline save-file reader compiled: $TASK_NATIVE_ROOT/.build/offline-review/drawingon-review"
+if /usr/bin/xcrun --sdk iphoneos --show-sdk-path >/dev/null 2>&1; then
+    print 'The iPadOS SDK is available.'
+else
+    print 'To build the iPad app, install full Xcode with the iPadOS SDK and finish its first-launch setup.'
+fi
+print "Open $TASK_NATIVE_ROOT/DrawingOn.xcodeproj in Xcode, choose your iPad and signing team, then Run."
+print 'In Field, open the drawing_on starting place. In the app, connect to /drawingon/ws, target ipad.'
+print 'The iPad app has not been signed or installed. No transcription backend or model was downloaded.'

@@ -380,6 +380,217 @@ class PublicationRefreshTest(unittest.TestCase):
 
 
 
+class DigestOnlyFailuresKeepTheirCapture(unittest.TestCase):
+    """2026-11-16..17: every viewer change recaptured all 227 publications and bounced on whichever
+    untouched page stalled. A page pending only for the capture digest that fails keeps its
+    previous capture, recorded as deferred."""
+
+    setUp = PublicationRefreshTest.setUp
+    record = PublicationRefreshTest.record
+
+    def failing(self):
+        return patch.object(publications, 'capture', new=AsyncMock(return_value=[
+            {'name': 'example', 'ok': False, 'error': "Uncaptured channels: ['fit: No rendered output']"}]))
+
+    def test_a_digest_only_failure_keeps_the_record_and_check_accepts_the_deferral(self):
+        self.record()
+        with patch.object(publications, 'capture_digest', return_value='publisher-v2'):
+            with self.failing():
+                publications.sync_publications()
+            index = publications.catalog()
+            self.assertEqual(index['emptyDocuments'][self.source]['captureDigest'], 'publisher-v1')
+            self.assertEqual(index['deferred'][self.source]['captureDigest'], 'publisher-v2')
+            self.assertIn('No rendered output', index['deferred'][self.source]['error'])
+            publications.sync_publications(mode='never')
+
+    def test_the_next_sync_retries_the_deferred_page_and_success_clears_it(self):
+        self.record()
+        with patch.object(publications, 'capture_digest', return_value='publisher-v2'):
+            with self.failing():
+                publications.sync_publications()
+            async def capture(recipes, **kwargs):
+                self.assertEqual(recipes, [self.recipe])
+                self.record()
+                return [{'name': 'example', 'ok': True, 'channels': 0}]
+            with patch.object(publications, 'capture', new=AsyncMock(side_effect=capture)):
+                publications.sync_publications()
+            self.assertNotIn('deferred', publications.catalog())
+
+    def test_a_deferral_for_an_older_digest_does_not_satisfy_check(self):
+        self.record()
+        with patch.object(publications, 'capture_digest', return_value='publisher-v2'), self.failing():
+            publications.sync_publications()
+        with patch.object(publications, 'capture_digest', return_value='publisher-v3'):
+            with self.assertRaisesRegex(ValueError, 'need refresh'):
+                publications.sync_publications(mode='never')
+
+    def test_a_page_whose_sources_changed_still_fails(self):
+        self.record()
+        self.file.write_text('changed')
+        with patch.object(publications, 'capture_digest', return_value='publisher-v2'), self.failing():
+            with self.assertRaisesRegex(ValueError, 'No rendered output'):
+                publications.sync_publications()
+        self.assertNotIn('deferred', publications.catalog())
+
+    def test_too_many_deferrals_is_the_machine_and_fails(self):
+        self.record()
+        with patch.object(publications, 'capture_digest', return_value='publisher-v2'), self.failing(), \
+                patch.object(publications, 'MAX_DEFERRED', 0):
+            with self.assertRaisesRegex(ValueError, 'No rendered output'):
+                publications.sync_publications()
+
+
+class LandingDefersAndTheCatchUpRecaptures(unittest.TestCase):
+    """A landing defers digest-only pages without capturing them; `catch-up` recaptures them in
+    bounded chunks while the lander's queue is empty."""
+
+    setUp = PublicationRefreshTest.setUp
+    record = PublicationRefreshTest.record
+
+    def test_a_landing_captures_nothing_for_a_digest_only_page_and_check_passes(self):
+        self.record()
+        with patch.object(publications, 'capture_digest', return_value='publisher-v2'), \
+                patch.object(publications, 'capture', new=AsyncMock()) as capture:
+            self.assertEqual(publications.sync_publications(defer_digest_only=True)['refreshed'], 0)
+            capture.assert_not_called()
+            deferral = publications.catalog()['deferred'][self.source]
+            self.assertEqual((deferral['captureDigest'], deferral['attempts']), ('publisher-v2', 0))
+            self.assertEqual(deferral['error'], publications.LANDING_DEFERRAL)
+            publications.sync_publications(mode='never')
+
+    def test_a_landing_still_captures_a_page_whose_sources_changed(self):
+        self.record()
+        self.file.write_text('changed')
+        async def capture(recipes, **kwargs):
+            self.record()
+            return [{'name': 'example', 'ok': True, 'channels': 0}]
+        with patch.object(publications, 'capture_digest', return_value='publisher-v2'), \
+                patch.object(publications, 'capture', new=AsyncMock(side_effect=capture)) as mock:
+            publications.sync_publications(defer_digest_only=True)
+            mock.assert_called_once()
+        self.assertNotIn('deferred', publications.catalog())
+
+    def test_catch_up_recaptures_a_deferred_page_and_clears_the_deferral(self):
+        self.record()
+        async def capture(recipes, **kwargs):
+            self.assertEqual(recipes, [self.recipe])
+            self.record()
+            return [{'name': 'example', 'ok': True, 'channels': 0}]
+        with patch.object(publications, 'capture_digest', return_value='publisher-v2'):
+            publications.sync_publications(defer_digest_only=True)
+            with patch.object(publications, 'capture', new=AsyncMock(side_effect=capture)):
+                summary = publications.sync_publications(catch_up=5)
+        self.assertNotIn('deferred', publications.catalog())
+        self.assertEqual((summary['recaptured'], summary['remaining'], summary['retryable']), (['example'], 0, 0))
+        self.assertEqual(json.loads((self.root/publications.CATCH_UP_REPORT).read_text())['recaptured'], ['example'])
+
+    def test_catch_up_failures_never_fail_and_stop_after_the_attempt_limit(self):
+        self.record()
+        failing = AsyncMock(return_value=[{'name': 'example', 'ok': False, 'error': 'No rendered output'}])
+        with patch.object(publications, 'capture_digest', return_value='publisher-v2'), \
+                patch.object(publications, 'capture', new=failing):
+            publications.sync_publications(defer_digest_only=True)
+            for _ in range(publications.CATCH_UP_ATTEMPTS):
+                publications.sync_publications(catch_up=5)
+            self.assertEqual(publications.catalog()['deferred'][self.source]['attempts'], publications.CATCH_UP_ATTEMPTS)
+            summary = publications.sync_publications(catch_up=5)
+            self.assertEqual(failing.await_count, publications.CATCH_UP_ATTEMPTS)
+            self.assertEqual((summary['remaining'], summary['retryable']), (1, 0))
+            publications.sync_publications(mode='never')
+        # A new digest is a new chance.
+        with patch.object(publications, 'capture_digest', return_value='publisher-v3'), \
+                patch.object(publications, 'capture', new=failing):
+            publications.sync_publications(defer_digest_only=True)
+            self.assertEqual(publications.catalog()['deferred'][self.source]['attempts'], 0)
+
+    def test_catch_up_respects_its_limit(self):
+        recipes = [{'name': f'page{n}', 'source': f'assets/page{n}/metadata.edn'} for n in range(3)]
+        for recipe in recipes:
+            (self.docs/recipe['source']).parent.mkdir(parents=True)
+            (self.docs/recipe['source']).write_text(recipe['name'])
+            publications.record_empty(recipe, publications.recipe_sources(recipe))
+        seen = []
+        async def capture(selected, **kwargs):
+            seen.extend(r['name'] for r in selected)
+            for r in selected:
+                publications.record_empty(r, publications.recipe_sources(r))
+            return [{'name': r['name'], 'ok': True, 'channels': 0} for r in selected]
+        with patch.object(publications, 'recipes', side_effect=lambda group: recipes if group == 'gallery' else []), \
+                patch.object(publications, 'capture_digest', return_value='publisher-v2'), \
+                patch.object(publications, 'capture', new=AsyncMock(side_effect=capture)):
+            publications.sync_publications(defer_digest_only=True)
+            self.assertEqual(publications.sync_publications(catch_up=2)['remaining'], 1)
+            self.assertEqual(len(seen), 2)
+            publications.sync_publications(catch_up=2)
+        self.assertEqual(sorted(seen), ['page0', 'page1', 'page2'])
+        self.assertNotIn('deferred', publications.catalog())
+
+
+class CaptureDigestFollowsWhatAPageShows(unittest.TestCase):
+    """Only a page with Three.js output depends on the viewer files."""
+
+    def setUp(self):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        self.root = Path(temp.name)
+        for name in publications.CAPTURE_CORE + publications.CAPTURE_THREE:
+            (self.root/name).parent.mkdir(parents=True, exist_ok=True)
+            (self.root/name).write_text(name)
+        self.enterContext(patch.object(publications, 'ROOT', self.root))
+
+    def test_a_viewer_change_leaves_pages_without_three_output_fresh(self):
+        svg = {'kinds': ['svg'], 'captureDigest': publications.capture_digest(['svg'])}
+        three = {'kinds': ['three', 'svg'], 'captureDigest': publications.capture_digest(['three'])}
+        still = {'kinds': ['three-image'], 'captureDigest': publications.capture_digest(['three-image'])}
+        (self.root/'src/commonMain/resources/threejs_viewer.html').write_text('changed')
+        self.assertTrue(publications.digest_fresh(svg))
+        self.assertFalse(publications.digest_fresh(three))
+        self.assertFalse(publications.digest_fresh(still))
+
+    def test_a_core_change_reaches_every_page(self):
+        svg = {'kinds': ['svg'], 'captureDigest': publications.capture_digest(['svg'])}
+        (self.root/publications.CAPTURE_CORE[0]).write_text('changed')
+        self.assertFalse(publications.digest_fresh(svg))
+
+    def test_an_entry_with_the_old_single_digest_is_fresh_until_a_capture_file_changes(self):
+        old = {'kinds': ['svg'], 'captureDigest': publications.legacy_capture_digest()}
+        self.assertTrue(publications.digest_fresh(old))
+        (self.root/'src/commonMain/resources/threejs_viewer.html').write_text('changed')
+        self.assertFalse(publications.digest_fresh(old))
+
+    def test_the_legacy_digest_is_the_one_entries_carry(self):
+        # Byte-for-byte the pre-split capture_digest(): its file order, concatenated.
+        names = ('publication-capture.js', 'publication-three.js', 'publishDocument.js', 'threejs_viewer.html',
+                 'threejs_tools.js', 'threejs_shot.js', 'threejs_camera_link.js')
+        paths = [self.root/'src/commonMain/resources'/n for n in names]
+        paths.append(self.root/'src/jvmMain/kotlin/afield/document/workspace/WebPublication.kt')
+        expected = hashlib.sha256(b''.join(p.read_bytes() for p in paths)).hexdigest()
+        self.assertEqual(publications.legacy_capture_digest(), expected)
+
+
+class PublicationPortsDifferPerCheckout(unittest.TestCase):
+    def test_two_checkouts_start_their_scan_at_different_ports(self):
+        starts = set()
+        with patch('verification_runtime.automation_port_is_available', return_value=True):
+            for root in ('/Users/a/field4', '/Users/a/field4-worktrees/lander', '/Users/a/field4-avp'):
+                with patch.object(publications, 'ROOT', Path(root)):
+                    port = publications.publication_port()
+                self.assertTrue(publications.PUBLICATION_PORT_START <= port
+                                < publications.PUBLICATION_PORT_START + publications.PUBLICATION_PORT_SPAN)
+                starts.add(port)
+        self.assertGreater(len(starts), 1)
+
+    def test_a_taken_port_moves_on_and_wraps_around(self):
+        with patch.object(publications, 'ROOT', Path('/Users/a/field4')):
+            with patch('verification_runtime.automation_port_is_available', return_value=True):
+                first = publications.publication_port()
+            with patch('verification_runtime.automation_port_is_available', side_effect=lambda p: p != first):
+                second = publications.publication_port()
+        span = publications.PUBLICATION_PORT_SPAN
+        self.assertEqual((second - publications.PUBLICATION_PORT_START) % span,
+                         (first - publications.PUBLICATION_PORT_START + 1) % span)
+
+
 class LongComputeNamesRealRecipes(unittest.TestCase):
     """Against the real tree: a LONG_COMPUTE entry that names no recipe protects nothing."""
 
@@ -424,6 +635,18 @@ class SyncExitClassifiesMachineState(unittest.TestCase):
         self.assertEqual(self.failing(error), publications.MACHINE_STATE_EXIT)
         written = json.loads((self.root / publications.REFRESH_REPORT).read_text())
         self.assertIn('9479', written[0]['machine'])
+
+    def test_a_jvm_that_missed_its_start_budget_is_machine_state(self):
+        # 2026-11-16: avp-threejs-viewer bounced on this at load ~100, in a refresh it never touched.
+        error = RuntimeError('Field server did not become healthy on https://localhost:9620/health: Gradle '
+                             'reached :runJvm 121s ago and the JVM did not answer within its 120s start budget')
+        self.assertEqual(self.failing(error), publications.MACHINE_STATE_EXIT)
+
+    def test_an_output_frame_that_never_loaded_is_machine_state(self):
+        report = [{'name': 'three_output_gallery', 'ok': False, 'error': "Uncaptured channels: "
+                   "['three-output-path-trace/main: Output frame did not finish loading before publication']"}]
+        self.assertEqual(self.failing(ValueError('Publication capture failed: ...'), report),
+                         publications.MACHINE_STATE_EXIT)
 
     def test_a_full_disk_is_machine_state(self):
         self.assertEqual(self.failing(OSError(28, 'No space left on device')), publications.MACHINE_STATE_EXIT)

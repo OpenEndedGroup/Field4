@@ -1,0 +1,103 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-18T16:04:47.869Z",
+  "documentName": "spinny_algebras",
+  "outputs": [
+    {
+      "uid": "kappa_three",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "quat_vs_bicomplex",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "grid_three",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "eps_slider",
+      "channel": "controls",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 473,
+      "height": 54,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "eps_slider",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "kappa_slider",
+      "channel": "controls",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 473,
+      "height": 54,
+      "path": "outputs/5.html"
+    },
+    {
+      "uid": "kappa_slider",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/6.html"
+    },
+    {
+      "uid": "exp_series",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/7.html"
+    }
+  ]
+}

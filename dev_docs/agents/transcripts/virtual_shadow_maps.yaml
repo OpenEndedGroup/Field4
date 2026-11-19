@@ -1,0 +1,93 @@
+name: virtual_shadow_maps
+description: >-
+  The fabricated renderer's virtual shadow map (StandardRenderer.Config(virtualShadows = true)) beside
+  its fixed 1024² shadow map, close to a contact edge, plus the page/level debug view. Method after
+  Timberdoodle's "Virtual Shadow Maps" (GPU Zen 3), https://graphics-programming.org/blog/virtual-shadow-maps.
+docs:
+  - page: fabricate_renderer.md
+    why: "Same comparison as the Virtual shadow maps section's figure."
+operations:
+  - create:
+      box: agent_graphics_context
+      name: renderer
+      frame:
+        x: 40.0
+        y: 40.0
+        w: 300.0
+        h: 100.0
+      properties:
+        code: |
+          import afield.graphics.vulkan.util.Options
+
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+
+          Options.enableHDR = false
+          Options.profiling = false
+
+          once.renderer {
+              window = Window("Field")
+              Renderer(window)
+          }
+
+          println("agent graphics renderer ready")
+          start(renderer::run)
+  - launch:
+      box: agent_graphics_context
+      property: code
+      type: code
+      strand: renderer
+      code: |
+        import afield.graphics.vulkan.util.Options
+
+        prop<Window>(window)
+        prop<Renderer>(renderer)
+
+        Options.enableHDR = false
+        Options.profiling = false
+
+        once.renderer {
+            window = Window("Field")
+            Renderer(window)
+        }
+
+        println("agent graphics renderer ready")
+        start(renderer::run)
+  - wait:
+      frames: 3
+  - create:
+      box: virtual_shadow_maps
+      name: virtual shadow maps
+      frame:
+        x: 400.0
+        y: 40.0
+        w: 320.0
+        h: 120.0
+      properties:
+        code: |
+          import afield.graphics.scene.fabricated.StandardRendererDocsHarness
+          import java.io.File
+
+          /*
+          Fixed 1024² shadow map | virtual shadow map | the virtual map's debug view, close to the
+          contact edge of a torus standing on a disk. Debug colours: green is the finest level, then
+          blue, orange, magenta; brightness steps from one physical page to the next.
+          */
+          val out = "/tmp/field-virtual-shadows.png"
+
+          val compare: suspend () -> Unit = {
+              val file = StandardRendererDocsHarness.renderVirtualShadowComparison(out, renderer = renderer)
+              display("main", StandardRendererDocsHarness.htmlForImage(file, "fixed | virtual | virtual debug view"))
+              println(File("$out.txt").readText())
+          }
+          start(compare)
+  - connect:
+      parent: agent_graphics_context
+      child: virtual_shadow_maps
+  - launch:
+      box: virtual_shadow_maps
+      property: code
+  - await:
+      wait: pending
+  - wait:
+      frames: 8

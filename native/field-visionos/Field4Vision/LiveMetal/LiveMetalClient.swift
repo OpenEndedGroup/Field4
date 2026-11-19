@@ -6,7 +6,7 @@ import Observation
 @Observable
 @MainActor
 final class LiveMetalClient {
-    let mailbox = LiveMetalMailbox()
+    private(set) var mailbox = LiveMetalMailbox()
 
     private(set) var isConnected = false
     private(set) var status = "Idle"
@@ -14,7 +14,8 @@ final class LiveMetalClient {
     private(set) var activeRevision = 0
     private(set) var immersiveRequested = false
 
-    private let server: ServerConfig
+    private(set) var server: ServerConfig
+    private var reconnect: Task<Void, Never>?
     private let trustDelegate = FieldServerTrustDelegate()
     private var session: URLSession?
     private var task: URLSessionWebSocketTask?
@@ -25,6 +26,14 @@ final class LiveMetalClient {
         self.server = server
     }
 
+    func setServer(_ server: ServerConfig) {
+        guard !running, self.server != server else { return }
+        self.server = server
+        mailbox = LiveMetalMailbox()
+        activeUID = ""
+        activeRevision = 0
+    }
+
     func start() {
         guard !running else { return }
         running = true
@@ -33,6 +42,9 @@ final class LiveMetalClient {
 
     func stop() {
         running = false
+        reconnect?.cancel()
+        reconnect = nil
+        reconnectAttempt = 0
         task?.cancel(with: .goingAway, reason: nil)
         task = nil
         session?.invalidateAndCancel()
@@ -42,6 +54,7 @@ final class LiveMetalClient {
     }
 
     private func connect() {
+        session?.invalidateAndCancel()
         let config = URLSessionConfiguration.default
         let session = URLSession(configuration: config, delegate: trustDelegate, delegateQueue: nil)
         let task = session.webSocketTask(with: server.webSocketURL)
@@ -54,9 +67,10 @@ final class LiveMetalClient {
     }
 
     private func receiveNext() {
-        task?.receive { [weak self] result in
+        guard let task else { return }
+        task.receive { [weak self, weak task] result in
             Task { @MainActor in
-                guard let self, self.running else { return }
+                guard let self, let task, self.task === task, self.running else { return }
                 switch result {
                 case .failure(let error):
                     self.status = error.localizedDescription
@@ -100,9 +114,9 @@ final class LiveMetalClient {
         isConnected = false
         reconnectAttempt += 1
         let delay = Swift.min(1.2 * Double(reconnectAttempt), 6.0)
-        Task { [weak self] in
+        reconnect = Task { [weak self] in
             try? await Task.sleep(for: .seconds(delay))
-            guard let self, self.running else { return }
+            guard !Task.isCancelled, let self, self.running else { return }
             self.connect()
         }
     }

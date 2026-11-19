@@ -3800,7 +3800,9 @@ class Server {
 
             handlers["custom-marking-fire"] = mutableSetOf({ message, reply ->
                 val fire = Json.decodeFromJsonElement<CustomMarkingFire>(message.payload!!)
-                GlobalScope.launch {
+                val ownerSession = thisSessionInfo.get()
+                val ownerSocket = thisSession.get()
+                GlobalScope.launch(Runloop.runLoop.main + thisSessionInfo.asContextElement(ownerSession) + thisSession.asContextElement(ownerSocket)) {
                     try {
                         fireCustomMarkingCallback(fire.callbackId)
                     } catch (e: Exception) {
@@ -4306,10 +4308,13 @@ class Server {
                         installSignalViewerRoutes()
                         installDocsAnnotationRoutes()
                         installDocumentGuideRoutes()
+                        installTextFrameAssetRoutes()
                         installKitRoutes(::restartForKits)
                         installChatlogRoutes()
 
                         installControllerRoutes(::currentFieldPreferences)
+                        installDrawingOnRoutes()
+                        installSpatialInkRoutes()
 
                         get("/app-url") {
                             val preferences = currentFieldPreferences().also(::applyFieldPreferences)
@@ -5674,7 +5679,7 @@ class Server {
                                 LiveOutputIframeBridge.gone(ts)
                                 detachDocumentSession(ts)
                                 leaveSelectionContexts(ts)
-                                afield.graphics.three.detachThreeGlobalListener(ts)
+                                afield.graphics.three.detachThreeSession(ts)
                                 afield.graphics.visionos.detachVisionMetalGlobalListener(ts)
                                 afield.graphics.visionos.VisionPoseStream.detach(ts)
                                 // Clean up back pressure state for this session.
@@ -5839,6 +5844,29 @@ class Server {
                                         status = if (result.exceptionOrNull() is IllegalStateException) HttpStatusCode.Conflict else HttpStatusCode.BadRequest)
                                     result.getOrNull() == null -> call.respond(HttpStatusCode.NotFound, "Unknown geometry view")
                                     else -> call.respondText(result.getOrThrow().toString(), ContentType.Application.Json)
+                                }
+                            }
+                        }
+                        route("/three-review-ask") {
+                            post {
+                                // The viewer's Ask AI: the same reference record as Copy reference, checked
+                                // against the view and handed to the AI4 composer as a quotable chip.
+                                if (call.refuseUnlessSameSiteDocsClient(DocsAccessPolicy())) return@post
+                                if (call.request.contentType().withoutParameters() != ContentType.Application.Json) {
+                                    call.respond(HttpStatusCode.UnsupportedMediaType); return@post
+                                }
+                                val uid = call.request.queryParameters["uid"] ?: ""
+                                val text = call.receiveText()
+                                if (text.length > 128_000) { call.respond(HttpStatusCode.PayloadTooLarge); return@post }
+                                val result = runCatching {
+                                    val record = Json.parseToJsonElement(text) as? kotlinx.serialization.json.JsonObject
+                                        ?: throw IllegalArgumentException("A reference must be an object")
+                                    withContext(Runloop.runLoop.main) { afield.graphics.three.askAboutThreeGeometry(uid, record) }
+                                }
+                                when {
+                                    result.isFailure -> call.respondText(result.exceptionOrNull()?.message ?: "Invalid reference", status = HttpStatusCode.BadRequest)
+                                    result.getOrNull() == null -> call.respond(HttpStatusCode.NotFound, "Unknown geometry view")
+                                    else -> call.respondText(Json.encodeToString(afield.app.protocol.GeometryReferenceAsk.serializer(), result.getOrThrow()!!), ContentType.Application.Json)
                                 }
                             }
                         }

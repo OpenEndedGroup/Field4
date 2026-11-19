@@ -1,24 +1,24 @@
 import SwiftUI
 
-/// Field4 visionOS shell — L0/L1 per dev_docs/vision_frontend.md in the field4 repo.
-///
-/// The whole app is a "dream web browser": a tab manager whose docks are WKWebViews pointed
-/// at the existing Field server endpoints (/welcome, /index.html). No Field4 changes needed —
-/// the shell just hosts the existing front end and lets docks float in space.
 @main
 struct Field4VisionApp: App {
     // The RTT stream (GPU/immersive half) is app-scoped: the main window drives it (start/stop,
     // status) and the ImmersiveSpace presents it, so both share one instance via the environment.
     @State private var rtt = RTTStream()
+    @State private var connection = FieldConnection()
+    @State private var spatialInk = SpatialInk()
 
-    // The native FLine viewer's discovery client is app-scoped too: the main window opens the viewer
-    // window and both share this one WebSocket subscription via the environment.
-    @State private var flineClient = FLineViewerClient()
+    // The native three.js viewer's client is app-scoped too: the main window opens the viewer
+    // window and both share this one selection-following subscription via the environment.
+    @State private var threeClient = ThreeClient()
 
     // Source, JavaScript and status bridge for the autonomous Compositor Services renderer.
     @State private var liveMetalClient = LiveMetalClient()
 
     init() {
+        ThreeHandleComponent.registerComponent()
+        // Lines' eye-space offset material; long before the first scene arrives over the network.
+        Task { @MainActor in await ThreeMeshBuilder.loadLineMaterial() }
         // The media wire parser has no XCTest target to live in, so it proves itself at launch: a few
         // microseconds over hand-built v1/v2 datagrams, never fails the app. A wrong header offset
         // produces plausible numbers rather than a crash, so "it compiled" is not evidence.
@@ -28,39 +28,15 @@ struct Field4VisionApp: App {
     }
 
     var body: some Scene {
-        // Main window: the dock/tab manager.
         WindowGroup {
             ContentView()
                 .environment(rtt)
-                .environment(flineClient)
+                .environment(threeClient)
                 .environment(liveMetalClient)
+                .environment(spatialInk)
+                .environment(connection)
         }
-        // NOT `.windowResizability(.contentSize)`. This is a shell window whose content is a
-        // NavigationSplitView hosting web views — it has no meaningful intrinsic size, and asking
-        // for one makes the scene re-resize itself as content settles. Each such resize runs the
-        // split view's adaptive layout transition inside a UIView animation block, which updates
-        // the ornament buttons' configuration and lands in `-[UIVisualEffectView setEffect:]`
-        // mid-animation — a hard exception on visionOS 26 ("cannot animate the effects property
-        // alongside backgroundEffects or contentEffects"). It aborted the app ~2s into any launch
-        // that restored a previous window geometry. Let the system size and resize it freely.
-
-        // Undocked docks: opening one gives it its own window floating in space. This is the
-        // L1 move — multiple documents/panels arranged spatially — using plain WindowGroups
-        // before we reach for RealityKit islands.
-        WindowGroup(for: URL.self) { $url in
-            if let url {
-                UndockedWebDockWindow(url: url)
-            }
-        }
-        // Floating editor panel. We previously forced `.utilityPanel`, which reliably opens but
-        // presents *tilted* like a control panel — wrong for a Monaco editor you read head-on.
-        // Dropping the explicit placement lets the system use its DEFAULT: an UPRIGHT window, forward,
-        // in front of the active window (the canvas the editor edits) — which is what we want. (We
-        // deliberately avoid the relative `.leading/.trailing(mainWindow)` placements too: against the
-        // large main window they resolve off-display and the window then fails to open. Precise
-        // "pinned beside the doc" placement isn't reliably expressible today; the user nudges it the
-        // last bit by its bar.)
-        .defaultSize(width: 520, height: 820)
+        .defaultSize(width: 570, height: 330)
 
         // The RTT stream, windowed: a movable/resizable volumetric window with system chrome (grabber
         // + resize handles), so the stream is no longer pinned in space like the theatre. Same screen
@@ -74,16 +50,17 @@ struct Field4VisionApp: App {
         .defaultSize(width: 1.0, height: 0.6, depth: 0.2, in: .meters)
         .windowResizability(.contentSize)
 
-        // The first native viewer: a fully-3D RealityKit FLine viewer (the native equivalent of the
-        // three.js iframe), in its own movable/resizable volume. Cube-ish default — FLine models are
-        // arbitrary 3D. Same `in: .meters` requirement as the stream volume.
-        WindowGroup(id: Field4VisionApp.flineWindowID) {
-            FLineViewerView()
-                .environment(flineClient)
+        // The native three.js viewer: the 3D views of the box selected in Field, in their own
+        // movable/resizable volume. Same `in: .meters` requirement as the stream volume.
+        WindowGroup(id: Field4VisionApp.threeWindowID) {
+            ThreeViewerView()
+                .environment(threeClient)
         }
         .windowStyle(.volumetric)
         .defaultSize(width: 0.8, height: 0.8, depth: 0.8, in: .meters)
         .windowResizability(.contentSize)
+        // One volume follows the selection; a relaunch should not bring back the last one beside a new one.
+        .restorationBehavior(.disabled)
 
         // The RTT receiver's present half: a dimmed immersive theatre showing the decoded UDP
         // stream (see WIRE_FORMAT.md → "Implementing the receiver"). Mixed style so the dimmed
@@ -95,32 +72,21 @@ struct Field4VisionApp: App {
         }
         .immersionStyle(selection: .constant(.mixed), in: .mixed)
 
-        // Field's programmable native graphics head. The WKWebView editor remains in the app's
-        // windows while this mixed immersive scene owns a dedicated Metal render loop.
+        ImmersiveSpace(id: Field4VisionApp.spatialInkSpaceID) {
+            SpatialInkSpace(ink: spatialInk)
+        }
+        .immersionStyle(selection: .constant(.mixed), in: .mixed)
+
+        // Field's programmable native graphics head.
         ImmersiveSpace(id: Field4VisionApp.liveMetalSpaceID) {
             LiveMetalImmersiveContent(client: liveMetalClient)
         }
         .immersionStyle(selection: .constant(.mixed), in: .mixed)
     }
 
+    static let spatialInkSpaceID = "SpatialInk"
     static let rttSpaceID = "RTTImmersive"
     static let rttWindowID = "RTTWindow"
-    static let flineWindowID = "FLineViewer"
+    static let threeWindowID = "ThreeViewer"
     static let liveMetalSpaceID = "FieldLiveMetal"
-}
-
-/// A free-floating WebDock window (an undocked dock, or a `window.open("_blank")` target). It
-/// keeps `window.open` working here too: further `_blank` opens spawn another floating window.
-private struct UndockedWebDockWindow: View {
-    let url: URL
-    @Environment(\.openWindow) private var openWindow
-
-    var body: some View {
-        // Standalone floating window: the web view reaches every window edge, so all four of the
-        // system's corner arcs cut into it — the top-left one was clipping the editor's first line
-        // number. Inset and re-round the content rather than letting it run under the glass curve.
-        WebDock(url: url, onOpenURL: { openWindow(value: $0) }, cornerInset: shellContentCornerRadius)
-            .shellWindowCornerSafe()
-            .onAppear { shellLog.notice("floating window appeared -> \(url.absoluteString, privacy: .public)") }
-    }
 }

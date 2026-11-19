@@ -22,7 +22,7 @@ private fun escapeHtml(text: String): String {
  * hug their content and the closing one is not followed by a digit (Pandoc's rule), so "$5 and $10" stays
  * prose. The first match wins, so a `$` inside a code span is code and a backtick inside math is TeX.
  */
-private val literalSpan = Regex(
+internal val literalSpan = Regex(
     "`([^`]+)`" +
         "|\\$\\$(.+?)\\$\\$" +
         "|\\\\\\[(.+?)\\\\\\]" +
@@ -37,7 +37,8 @@ private val literalSpan = Regex(
  * all, with the TeX in `data-tex`; the browser typesets it (aiChatMath.js), and anywhere that does not still
  * reads the source.
  */
-private fun inlineFormat(text: String): String {
+private fun inlineFormat(text: String, positions: List<Int>? = null): String {
+    if (positions != null) return mappedMarkdownInline(text, positions)
     val out = StringBuilder(text.length + 16)
     var index = 0
     for (span in literalSpan.findAll(text)) {
@@ -58,13 +59,24 @@ private fun inlineFormat(text: String): String {
     return out.toString()
 }
 
-private fun formatProse(text: String): String {
-    var out = text
-    out = out.replace(Regex("\\*\\*([^*]+)\\*\\*"), "<strong>$1</strong>")
-    out = out.replace(Regex("\\*([^*\\s][^*]*)\\*"), "<em>$1</em>")
-    out = replaceImages(out)
-    out = replaceLinks(out)
-    return out
+internal val markdownLinkSpan = Regex("""!?\[([^\]]*)\]\(([^)]+)\)""")
+
+private fun formatEmphasis(text: String): String = text
+    .replace(Regex("\\*\\*([^*]+)\\*\\*"), "<strong>$1</strong>")
+    .replace(Regex("\\*([^*\\s][^*]*)\\*"), "<em>$1</em>")
+
+private fun formatProse(text: String): String = buildString {
+    var cursor = 0
+    for (match in markdownLinkSpan.findAll(text)) {
+        append(formatEmphasis(text.substring(cursor, match.range.first)))
+        if (match.value.startsWith("!")) append(replaceImages(match.value))
+        else {
+            val label = formatEmphasis(match.groupValues[1])
+            append(replaceLinks("[$label](${match.groupValues[2]})"))
+        }
+        cursor = match.range.last + 1
+    }
+    append(formatEmphasis(text.substring(cursor)))
 }
 
 private fun replaceImages(text: String): String {
@@ -159,18 +171,24 @@ private val numberMarker = Regex("^\\d+[.)]\\s+")
  * items (`<ul>`) or `1.` / `1)` items (`<ol>`); an indented line after an item continues that item,
  * so a list item may wrap over several source lines as Markdown allows.
  */
-private fun renderTextBlock(text: String): String {
+private fun renderTextBlock(text: String, source: MarkdownSource? = null): String {
     val lines = text.split("\n")
+    val lineStarts = mutableListOf(0)
+    lines.dropLast(1).forEach { lineStarts.add(lineStarts.last() + it.length + 1) }
     val html = StringBuilder()
     // "ul", "ol", or null when not in a list
     var listTag: String? = null
-    val item = mutableListOf<String>()
-    val paragraph = mutableListOf<String>()
+    val item = mutableListOf<MarkdownSourcePart>()
+    val paragraph = mutableListOf<MarkdownSourcePart>()
+
+    fun format(parts: List<MarkdownSourcePart>): String = inlineFormat(
+        parts.joinToString(" ") { it.text }, source?.positions(parts)
+    )
 
     fun flushParagraph() {
         if (paragraph.isEmpty()) return
         html.append("<p>")
-        html.append(inlineFormat(paragraph.joinToString(" ")))
+        html.append(format(paragraph))
         html.append("</p>")
         paragraph.clear()
     }
@@ -178,7 +196,7 @@ private fun renderTextBlock(text: String): String {
     fun flushItem() {
         if (item.isEmpty()) return
         html.append("<li>")
-        html.append(inlineFormat(item.joinToString(" ")))
+        html.append(format(item))
         html.append("</li>")
         item.clear()
     }
@@ -195,6 +213,7 @@ private fun renderTextBlock(text: String): String {
     while (lineIndex < lines.size) {
         val raw = lines[lineIndex]
         val line = raw.trim()
+        val lineStart = lineStarts[lineIndex] + raw.indexOf(line)
         if (line.isEmpty()) {
             flushParagraph()
             closeList()
@@ -210,7 +229,7 @@ private fun renderTextBlock(text: String): String {
             html.append("<h")
             html.append(level)
             html.append(">")
-            html.append(inlineFormat(headingMatch.groupValues[2]))
+            html.append(inlineFormat(headingMatch.groupValues[2], source?.positions(listOf(MarkdownSourcePart(headingMatch.groupValues[2], lineStart + line.length - headingMatch.groupValues[2].length)))))
             html.append("</h")
             html.append(level)
             html.append(">")
@@ -221,15 +240,15 @@ private fun renderTextBlock(text: String): String {
         if (lineIndex + 1 < lines.size && looksLikeMarkdownTableHeader(line, lines[lineIndex + 1].trim())) {
             flushParagraph()
             closeList()
-            val tableLines = mutableListOf(line, lines[lineIndex + 1].trim())
+            val tableLines = mutableListOf(MarkdownSourcePart(line, lineStart), MarkdownSourcePart(lines[lineIndex + 1].trim(), lineStarts[lineIndex + 1] + lines[lineIndex + 1].indexOf(lines[lineIndex + 1].trim())))
             lineIndex += 2
             while (lineIndex < lines.size) {
                 val tableLine = lines[lineIndex].trim()
                 if (tableLine.isEmpty() || !looksLikeMarkdownTableRow(tableLine)) break
-                tableLines.add(tableLine)
+                tableLines.add(MarkdownSourcePart(tableLine, lineStarts[lineIndex] + lines[lineIndex].indexOf(tableLine)))
                 lineIndex++
             }
-            html.append(renderMarkdownTable(tableLines))
+            html.append(renderMarkdownTable(tableLines, source))
             continue
         }
 
@@ -243,20 +262,20 @@ private fun renderTextBlock(text: String): String {
                 listTag = tag
             }
             flushItem()
-            item.add(line.substring(marker.range.last + 1))
+            item.add(MarkdownSourcePart(line.substring(marker.range.last + 1), lineStart + marker.range.last + 1))
             lineIndex++
             continue
         }
 
         // an indented line straight after an item is more of that item
         if (listTag != null && item.isNotEmpty() && raw.firstOrNull()?.isWhitespace() == true) {
-            item.add(line)
+            item.add(MarkdownSourcePart(line, lineStart))
             lineIndex++
             continue
         }
 
         closeList()
-        paragraph.add(line)
+        paragraph.add(MarkdownSourcePart(line, lineStart))
         lineIndex++
     }
 
@@ -288,9 +307,17 @@ private fun isMarkdownTableDividerCell(cell: String): Boolean {
     return Regex("^:?-{3,}:?$").matches(cell.trim())
 }
 
-private fun renderMarkdownTable(lines: List<String>): String {
-    val headerCells = splitMarkdownTableRow(lines[0])
-    val alignments = splitMarkdownTableRow(lines[1]).map {
+private fun renderMarkdownTable(lines: List<MarkdownSourcePart>, source: MarkdownSource? = null): String {
+    fun cells(line: MarkdownSourcePart): List<MarkdownSourcePart> {
+        var cursor = if (line.text.startsWith("|")) 1 else 0
+        return splitMarkdownTableRow(line.text).map { cell ->
+            val start = line.text.indexOf(cell, cursor)
+            cursor = start + cell.length + 1
+            MarkdownSourcePart(cell, line.start + start)
+        }
+    }
+    val headerCells = cells(lines[0])
+    val alignments = splitMarkdownTableRow(lines[1].text).map {
         val cell = it.trim()
         when {
             cell.startsWith(":") && cell.endsWith(":") -> "center"
@@ -301,7 +328,7 @@ private fun renderMarkdownTable(lines: List<String>): String {
     val columnCount = headerCells.size
     val html = StringBuilder()
 
-    fun appendCell(tag: String, content: String, column: Int) {
+    fun appendCell(tag: String, content: MarkdownSourcePart, column: Int) {
         val align = alignments.getOrNull(column).orEmpty()
         html.append("<")
         html.append(tag)
@@ -311,7 +338,7 @@ private fun renderMarkdownTable(lines: List<String>): String {
             html.append("\"")
         }
         html.append(">")
-        html.append(inlineFormat(content))
+        html.append(inlineFormat(content.text, source?.positions(listOf(content))))
         html.append("</")
         html.append(tag)
         html.append(">")
@@ -322,10 +349,10 @@ private fun renderMarkdownTable(lines: List<String>): String {
     html.append("</tr></thead><tbody>")
 
     lines.drop(2).forEach { row ->
-        val cells = splitMarkdownTableRow(row)
+        val cells = cells(row)
         html.append("<tr>")
         for (column in 0 until columnCount) {
-            appendCell("td", cells.getOrNull(column).orEmpty(), column)
+            appendCell("td", cells.getOrNull(column) ?: MarkdownSourcePart("", row.start), column)
         }
         html.append("</tr>")
     }
@@ -334,11 +361,12 @@ private fun renderMarkdownTable(lines: List<String>): String {
     return html.toString()
 }
 
-private fun renderMarkdown(markdown: String?): String {
+private fun renderMarkdown(markdown: String?, sourcePositions: Boolean = false): String {
     if (markdown == null) return ""
     val normalized = markdown.replace("\r\n", "\n")
     val blocks = normalized.split("```")
     val html = StringBuilder()
+    var blockStart = 0
     blocks.forEachIndexed { index, block ->
         if (index % 2 == 1) {
             var trimmed = block
@@ -354,11 +382,16 @@ private fun renderMarkdown(markdown: String?): String {
                     code = rest
                 }
             }
-            html.append(aiChatCodeBlockHtml(code, language, closed = index < blocks.lastIndex))
+            val rendered = aiChatCodeBlockHtml(code, language, closed = index < blocks.lastIndex)
+            if (sourcePositions) {
+                val start = blockStart + block.length - code.length
+                html.append(rendered.replace("<code", "<code data-markdown-start=\"$start\""))
+            } else html.append(rendered)
         } else {
             val escaped = escapeHtml(block)
-            html.append(renderTextBlock(escaped))
+            html.append(renderTextBlock(escaped, if (sourcePositions) MarkdownSource(block, blockStart) else null))
         }
+        blockStart += block.length + 3
     }
     return html.toString()
 }
@@ -376,8 +409,11 @@ fun aiChatCodeBlockHtml(code: String, language: String = "", closed: Boolean = t
 
 // The transcript parser is shared with the chat archive: parseAiChatBlocks (commonMain, aiChatBlocks.kt).
 
-fun aiChatMarkdownHtml(markdown: String?): String {
-    return "<div class=\"ai-chat-markdown\">" + renderMarkdown(markdown) + "</div>"
+fun aiChatMarkdownHtml(markdown: String?): String = aiChatMarkdownSourceHtml(markdown, false)
+
+/** The editable reader can retain source character positions across formatting. */
+fun aiChatMarkdownSourceHtml(markdown: String?, sourcePositions: Boolean): String {
+    return "<div class=\"ai-chat-markdown\">" + renderMarkdown(markdown, sourcePositions) + "</div>"
 }
 
 /**
@@ -385,9 +421,58 @@ fun aiChatMarkdownHtml(markdown: String?): String {
  * count by family; without it a summary gives calls, time and failures only.
  */
 fun aiChatHistoryHtml(history: String?, toolFamilies: AiChatToolFamilies?): String {
-    val turns = parseAiChatBlocks(history)
-    if (turns.isEmpty()) return ""
-    val html = StringBuilder()
+    val units = aiChatHistoryUnits(history, toolFamilies)
+    if (units.isEmpty()) return ""
+    return "<div class=\"ai-chat-thread\">${units.joinToString("")}</div>"
+}
+
+/**
+ * The transcript as [aiChatHistoryHtml] renders it, one string per top-level unit (a turn, a round, a run of
+ * progress, a question, a build wait) and without the `ai-chat-thread` wrapper. A unit's position and HTML
+ * change only when its own content does, so the panel (outputareas2.js, renderChatMessages) rebuilds just the
+ * units that differ from the last render instead of the whole thread. [markdown] renders a block's Markdown;
+ * the panel passes a memoized one so unchanged turns are not re-parsed either.
+ */
+fun aiChatHistoryUnits(
+    history: String?,
+    toolFamilies: AiChatToolFamilies?,
+    markdown: (String?) -> String = ::aiChatMarkdownHtml,
+): List<String> = aiChatHistoryUnits(parseAiChatBlocks(history), toolFamilies, markdown)
+
+/**
+ * The units of the last render, by position, for [aiChatHistoryUnits] to reuse: a unit whose blocks (compared by
+ * reference first, so the blocks a resumed [parseAiChatHistory] carries over cost nothing) and numbering are
+ * unchanged keeps its HTML.
+ */
+class AiChatUnitCache {
+    internal var keys: List<Any> = emptyList()
+    internal var htmls: List<String> = emptyList()
+}
+
+private data class UnitKey(val blocks: List<AiChatBlock>, val ordinal: Int, val open: Boolean, val toolFamilies: AiChatToolFamilies?)
+
+/** [aiChatHistoryUnits] over blocks already parsed, e.g. by a resumed [parseAiChatHistory]. */
+fun aiChatHistoryUnits(
+    turns: List<AiChatBlock>,
+    toolFamilies: AiChatToolFamilies?,
+    markdown: (String?) -> String = ::aiChatMarkdownHtml,
+    cache: AiChatUnitCache? = null,
+): List<String> {
+    if (turns.isEmpty()) {
+        cache?.keys = emptyList(); cache?.htmls = emptyList()
+        return emptyList()
+    }
+    val units = mutableListOf<String>()
+    val keys = mutableListOf<Any>()
+    fun unit(blocks: List<AiChatBlock>, ordinal: Int = -1, open: Boolean = false, render: () -> String) {
+        val key = UnitKey(blocks.toList(), ordinal, open, toolFamilies)
+        val at = units.size
+        val html = if (cache != null && cache.keys.getOrNull(at) == key) cache.htmls[at] else render()
+        units += html
+        keys += key
+    }
+    // A question is open while nobody has written after it: everything before the last "you" turn is answered.
+    val lastYou = turns.indexOfLast { it.role == "you" }
     // The server's session tree numbers user turns the same way (AiSessionTree.userTurns); the text goes with
     // the ordinal so a rewind from a stale panel is refused rather than applied to the wrong turn.
     var userOrdinal = 0
@@ -400,19 +485,25 @@ fun aiChatHistoryHtml(history: String?, toolFamilies: AiChatToolFamilies?): Stri
         if (turn.isProgress) {
             // A build wait stands on its own: it is what the conversation is doing now, not one more tool call.
             if (turn.isBuildWait) {
-                html.append(renderProgressTurn(turn))
+                unit(listOf(turn)) { renderProgressTurn(turn, markdown) }
                 i++
                 continue
             }
             // So does a question; only the last one in the chat is still waiting for its answer.
             if (turn.isQuestion) {
-                html.append(renderQuestion(turn, open = turns.subList(i + 1, turns.size).none { it.role == "you" }))
+                val open = lastYou < i
+                unit(listOf(turn), open = open) { renderQuestion(turn, open, markdown) }
                 i++
                 continue
             }
             val end = (i until turns.size).firstOrNull { !turns[it].isProgress || turns[it].isBuildWait || turns[it].isQuestion } ?: turns.size
             val run = turns.subList(i, end)
-            html.append(if (AiChatRound.folds(run)) renderRound(run, roundOrdinal++, toolFamilies) else renderProgressRun(run))
+            if (AiChatRound.folds(run)) {
+                val ordinal = roundOrdinal++
+                unit(run, ordinal) { renderRound(run, ordinal, toolFamilies, markdown) }
+            } else {
+                unit(run) { renderProgressRun(run, markdown) }
+            }
             i = end
             continue
         }
@@ -420,51 +511,92 @@ fun aiChatHistoryHtml(history: String?, toolFamilies: AiChatToolFamilies?): Stri
         if (turn.role == "queued") {
             // Sent while the turn runs (AiTurnInbox on the server): not part of the conversation until the
             // agent reads it, so it has no ordinal and no rewind/edit.
-            html.append("<div class=\"ai-chat-turn you queued\">" +
-                "<div class=\"ai-chat-queued-label\">queued: the agent reads this after its current step</div>" +
-                aiChatMarkdownHtml(turn.content) + "</div>")
+            unit(listOf(turn)) {
+                "<div class=\"ai-chat-turn you queued\">" +
+                    "<div class=\"ai-chat-queued-label\">queued: the agent reads this after its current step</div>" +
+                    markdown(turn.content) + "</div>"
+            }
         } else {
-            val badge = if (turn.isFieldMessage) {
-                "<div class=\"ai-chat-model\" title=\"Written by Field, not by you: the outcome of the builds the last turn waited for.\">Field</div>"
-            } else if (turn.role == "ai" || turn.role == "summary") {
-                // A lens block (it cites the chat it summarizes) is labelled as one; its record names the model.
-                val lens = turn.model == null && turn.sources.isNotEmpty()
-                val label = turn.model?.label()?.let { if (turn.modelFromRun) "$it (from the run's record)" else it }
-                    ?: if (lens) "Lens" else "Model not recorded"
-                val title = turn.model?.let { m ->
-                    if (turn.modelFromRun) "This entry predates per-response model records; the run it belongs to is recorded as ${m.requestedModel} on ${m.provider}."
-                    else m.description()
-                }
-                    ?: if (lens) "Written as a lens over a longer chat; it stands for ${turn.sources.joinToString(", ")}."
-                    else "This older chat entry did not record its provider or model."
-                "<div class=\"ai-chat-model\" title=\"${escapeHtml(title)}\">${escapeHtml(label)}</div>"
-            } else ""
-            val turnAttrs = if (turn.role == "you") {
-                " data-ai-turn=\"${userOrdinal++}\" data-ai-text=\"${escapeHtml(turn.content)}\""
-            } else ""
-            val actions = if (turn.role == "you") {
-                "<span class=\"ai-chat-turn-actions\">" +
-                    "<button type=\"button\" class=\"ai-chat-turn-action\" data-ai-action=\"edit\" title=\"Edit this message and send it again (the rest is kept as a branch)\">edit</button>" +
-                    "<button type=\"button\" class=\"ai-chat-turn-action\" data-ai-action=\"rewind\" title=\"Rewind to before this message (the rest is kept as a branch)\">rewind</button>" +
-                    "</span>"
-            } else ""
-            // A lens block's citations, for the viewer that draws a line from it to the chat it summarizes.
-            val sourceAttr = if (turn.sources.isNotEmpty()) " data-ai-sources=\"${escapeHtml(turn.sources.joinToString(","))}\"" else ""
-            val roleClass = if (turn.isFieldMessage) "you field" else turn.role
-            // The badge says Field wrote it; the model reads the prefix, the panel need not show it twice.
-            val shown = if (turn.isFieldMessage) turn.content.removePrefix(AiChatBlock.FIELD_MESSAGE_PREFIX).replaceFirstChar { it.uppercase() }
-                else turn.content
-            html.append("<div class=\"ai-chat-turn $roleClass\"$turnAttrs$sourceAttr${addressAttr(turn)}>" + badge + aiChatMarkdownHtml(shown) + actions + "</div>")
+            val ordinal = if (turn.role == "you") userOrdinal++ else -1
+            unit(listOf(turn), ordinal) { renderTurn(turn, ordinal, markdown) }
         }
     }
-    return "<div class=\"ai-chat-thread\">$html</div>"
+    cache?.keys = keys
+    cache?.htmls = units
+    return units
+}
+
+/** An ordinary turn (yours, the model's, a summary, or one Field wrote); [userOrdinal] numbers yours, else -1. */
+private fun renderTurn(turn: AiChatBlock, userOrdinal: Int, markdown: (String?) -> String): String {
+    val badge = if (turn.isFieldMessage) {
+        "<div class=\"ai-chat-model\" title=\"Written by Field, not by you: the outcome of the builds the last turn waited for.\">Field</div>"
+    } else if (turn.role == "ai" || turn.role == "summary") {
+        // A lens block (it cites the chat it summarizes) is labelled as one; its record names the model.
+        val lens = turn.model == null && turn.sources.isNotEmpty()
+        val label = turn.model?.label()?.let { if (turn.modelFromRun) "$it (from the run's record)" else it }
+            ?: if (lens) "Lens" else "Model not recorded"
+        val title = turn.model?.let { m ->
+            if (turn.modelFromRun) "This entry predates per-response model records; the run it belongs to is recorded as ${m.requestedModel} on ${m.provider}."
+            else m.description()
+        }
+            ?: if (lens) "Written as a lens over a longer chat; it stands for ${turn.sources.joinToString(", ")}."
+            else "This older chat entry did not record its provider or model."
+        "<div class=\"ai-chat-model\" title=\"${escapeHtml(title)}\">${escapeHtml(label)}</div>"
+    } else ""
+    val turnAttrs = if (turn.role == "you") {
+        " data-ai-turn=\"$userOrdinal\" data-ai-text=\"${escapeHtml(turn.content)}\""
+    } else ""
+    val actions = if (turn.role == "you") {
+        "<span class=\"ai-chat-turn-actions\">" +
+            "<button type=\"button\" class=\"ai-chat-turn-action\" data-ai-action=\"edit\" title=\"Edit this message and send it again (the rest is kept as a branch)\">edit</button>" +
+            "<button type=\"button\" class=\"ai-chat-turn-action\" data-ai-action=\"rewind\" title=\"Rewind to before this message (the rest is kept as a branch)\">rewind</button>" +
+            "</span>"
+    } else ""
+    // A lens block's citations, for the viewer that draws a line from it to the chat it summarizes.
+    val sourceAttr = if (turn.sources.isNotEmpty()) " data-ai-sources=\"${escapeHtml(turn.sources.joinToString(","))}\"" else ""
+    val roleClass = if (turn.isFieldMessage) "you field" else turn.role
+    // The badge says Field wrote it; the model reads the prefix, the panel need not show it twice.
+    val shown = if (turn.isFieldMessage) turn.content.removePrefix(AiChatBlock.FIELD_MESSAGE_PREFIX).replaceFirstChar { it.uppercase() }
+        else turn.content
+    return "<div class=\"ai-chat-turn $roleClass\"$turnAttrs$sourceAttr${addressAttr(turn)}>" + badge + (if (turn.role == "you") geometryReferenceTurnHtml(shown, markdown) else markdown(shown)) + actions + "</div>"
+}
+
+/**
+ * A user turn whose top lines are GeometryReference headers (a three.js viewer's Ask AI): each header, and the
+ * hint line under it, shows as the same chip the composer showed, with an "open at line" button when the part
+ * carries its source line (outputareas2.js opens it). The rest of the turn is ordinary markdown.
+ */
+internal fun geometryReferenceTurnHtml(content: String, markdown: (String?) -> String = { aiChatMarkdownHtml(it.orEmpty()) }): String {
+    val lines = content.lines()
+    val chips = StringBuilder()
+    var i = 0
+    while (i < lines.size) {
+        val ref = afield.app.protocol.GeometryReferenceAsk.parseHeader(lines[i]) ?: break
+        chips.append(geometryReferenceChipHtml(ref))
+        i++
+        if (lines.getOrNull(i)?.trim() == afield.app.protocol.GeometryReferenceAsk.HEADER_HINT) i++
+    }
+    if (i == 0) return markdown(content)
+    val rest = lines.drop(i).joinToString("\n").trim()
+    return "<div class=\"ai-chat-geometry-refs\">$chips</div>" + (if (rest.isEmpty()) "" else markdown(rest))
+}
+
+/** One quoted pick, as outputareas2.js's `geometryReferenceChip` draws it. */
+internal fun geometryReferenceChipHtml(ref: afield.app.protocol.GeometryReferenceAsk): String {
+    val what = listOfNotNull(ref.label ?: ref.partId, ref.kind, ref.element).filter { it.isNotBlank() }.joinToString(" · ")
+    val note = if (ref.note.isBlank()) "" else "<em> “${escapeHtml(ref.note)}”</em>"
+    val open = ref.sourceLine?.takeIf { it.line > 0 }?.let { at ->
+        "<button type=\"button\" class=\"ai-chat-geometry-open\" data-uid=\"${escapeHtml(at.box)}\" data-property=\"${escapeHtml(at.property)}\" " +
+            "data-line=\"${at.line}\" title=\"Open the code at the line that drew this part\">line ${at.line}${at.variable?.let { " · " + escapeHtml(it) } ?: ""}</button>"
+    } ?: ""
+    return "<span class=\"ai-chat-geometry-chip\" title=\"${escapeHtml(ref.view + " · " + ref.revision)}\">${escapeHtml(what.ifEmpty { "geometry" })}$note$open</span>"
 }
 
 /**
  * Progress blocks as they render on their own: a run of title-only blocks shares one status row, anything with
  * a body is its own collapsible block.
  */
-private fun renderProgressRun(run: List<AiChatBlock>): String {
+private fun renderProgressRun(run: List<AiChatBlock>, markdown: (String?) -> String): String {
     val html = StringBuilder()
     var statusRowOpen = false
     for (turn in run) {
@@ -480,7 +612,7 @@ private fun renderProgressRun(run: List<AiChatBlock>): String {
             html.append("</div>")
             statusRowOpen = false
         }
-        html.append(renderProgressTurn(turn))
+        html.append(renderProgressTurn(turn, markdown))
     }
     if (statusRowOpen) html.append("</div>")
     return html.toString()
@@ -493,7 +625,7 @@ private fun renderProgressRun(run: List<AiChatBlock>): String {
  * the round can stay closed and still show what is happening. [AiChatRound] (commonMain) does the counting,
  * so the chat archive describes a round in the same words.
  */
-private fun renderRound(run: List<AiChatBlock>, ordinal: Int, toolFamilies: AiChatToolFamilies?): String {
+private fun renderRound(run: List<AiChatBlock>, ordinal: Int, toolFamilies: AiChatToolFamilies?, markdown: (String?) -> String): String {
     val round = AiChatRound(run, toolFamilies)
     val parts = mutableListOf(round.callsText())
     if (round.ms > 0) parts += formatAiChatDuration(round.ms)
@@ -507,17 +639,18 @@ private fun renderRound(run: List<AiChatBlock>, ordinal: Int, toolFamilies: AiCh
     val span = run.first().address?.let { " data-ai-from=\"${escapeHtml(it)}\" data-ai-to=\"${escapeHtml(run.last().address ?: it)}\"" }.orEmpty()
     return "<details class=\"ai-chat-round\" data-ai-round=\"$ordinal\"$failedAttr$span>" +
         "<summary><span class=\"ai-chat-round-line\">${parts.joinToString("<span class=\"ai-chat-round-sep\"> · </span>")}</span>$liveHtml</summary>" +
-        "<div class=\"ai-chat-round-body\">${renderProgressRun(run)}</div>" +
+        "<div class=\"ai-chat-round-body\">${renderProgressRun(run, markdown)}</div>" +
         "</details>"
 }
 
-private fun renderProgressTurn(turn: AiChatBlock): String {
+private val PROGRESS_FILE = Regex("""(?:"file"\s*:\s*"([^"]+)"|\bfile=([^\s,}]+))""")
+
+private fun renderProgressTurn(turn: AiChatBlock, markdown: (String?) -> String): String {
     val lines = turn.content.lines()
     val title = lines.firstOrNull()?.trim()?.ifBlank { null } ?: "AI activity"
     val body = lines.drop(1).joinToString("\n").trim().ifBlank { turn.content }
     val isEdit = title.contains("EditFile", ignoreCase = true) || title.contains("edit file", ignoreCase = true)
-    val file = Regex("""(?:"file"\s*:\s*"([^"]+)"|\bfile=([^\s,}]+))""")
-        .find(turn.content)
+    val file = PROGRESS_FILE.find(turn.content)
         ?.groupValues
         ?.drop(1)
         ?.firstOrNull { it.isNotBlank() }
@@ -528,7 +661,7 @@ private fun renderProgressTurn(turn: AiChatBlock): String {
     val fileHtml = if (file.isNotBlank()) "<span class=\"ai-chat-progress-file\">${escapeHtml(file)}</span>" else ""
     return "<details class=\"ai-chat-progress\"$kind$open${addressAttr(turn)}>" +
         "<summary><span>${shimmerIfLive(turn, escapeHtml(summaryTitle))}</span>$fileHtml</summary>" +
-        aiChatMarkdownHtml(body) +
+        markdown(body) +
         "</details>"
 }
 
@@ -537,14 +670,14 @@ private fun renderProgressTurn(turn: AiChatBlock): String {
  * from the person after it). A button sends its answer as the person's message (outputareas2.js); typing in
  * the chat box answers too.
  */
-private fun renderQuestion(turn: AiChatBlock, open: Boolean): String {
+private fun renderQuestion(turn: AiChatBlock, open: Boolean, markdown: (String?) -> String): String {
     val choices = turn.questionChoices
     val buttons = if (choices.isEmpty()) "" else "<div class=\"ai-chat-question-choices\">" + choices.joinToString("") {
         "<button type=\"button\" class=\"ai-chat-question-choice\" data-ai-answer=\"${escapeHtml(it)}\"${if (open) "" else " disabled"}>${escapeHtml(it)}</button>"
     } + "</div>"
     val hint = if (open) "<div class=\"ai-chat-question-hint\">${if (choices.isEmpty()) "Type your answer below." else "Pick one, or type your own answer below."}</div>" else ""
     return "<div class=\"ai-chat-question${if (open) " open" else ""}\"${addressAttr(turn)}>" +
-        "<div class=\"ai-chat-model\">Question</div>" + aiChatMarkdownHtml(turn.questionText) + buttons + hint + "</div>"
+        "<div class=\"ai-chat-model\">Question</div>" + markdown(turn.questionText) + buttons + hint + "</div>"
 }
 
 /** Where a block sits in the chat it came from (`<<at:…>>`), for the lens viewer's lines; nothing for an ordinary chat. */

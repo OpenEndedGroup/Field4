@@ -4,9 +4,230 @@
 
 OSC messages, discovery and query interfaces for connecting Field to other applications and devices.
 
-18 source file(s), 453 public symbol(s), 282 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+22 source file(s), 537 public symbol(s), 322 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
+
+## DrawingOn.kt { #drawingon-kt }
+
+`src/jvmMain/kotlin/afield/io/drawingon/DrawingOn.kt` — [read the source](source/jvmMain/afield/io/drawingon/DrawingOn/)
+
+**Used in:** [Drawing on iPad](../drawing_on.md)
+
+### Top-level functions { #drawingon-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="drawingon-kt--drawingon"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">drawingOn</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;ipad&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">DrawingOnTarget</span></code>](source/jvmMain/afield/io/drawingon/DrawingOn/#L124) | Publish/receive an optional native Drawing On head. Connect the iPad to `/drawingon/ws?target=name`. |
+
+### DrawingOnPlane { #drawingon-kt-drawingonplane }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DrawingOnPlane</span><span class="p">(</span><span class="k">val</span> <span class="n">origin</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">listOf</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">xAxis</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">listOf</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">yAxis</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">listOf</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">scale</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">offsetX</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">offsetY</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span></code>](source/jvmMain/afield/io/drawingon/DrawingOn/#L24)
+
+Orthographic drawing plane. The default uses Field X/Y directly as iPad drawing points, with Y down.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="drawingon-kt--drawingonplane--origin"></a><code class="highlight"><span class="k">val</span> <span class="n">origin</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code> |  |
+| <a id="drawingon-kt--drawingonplane--xaxis"></a><code class="highlight"><span class="k">val</span> <span class="n">xAxis</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code> |  |
+| <a id="drawingon-kt--drawingonplane--yaxis"></a><code class="highlight"><span class="k">val</span> <span class="n">yAxis</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code> |  |
+| <a id="drawingon-kt--drawingonplane--scale"></a><code class="highlight"><span class="k">val</span> <span class="n">scale</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="drawingon-kt--drawingonplane--offsetx"></a><code class="highlight"><span class="k">val</span> <span class="n">offsetX</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="drawingon-kt--drawingonplane--offsety"></a><code class="highlight"><span class="k">val</span> <span class="n">offsetY</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+
+### DrawingOnEvent { #drawingon-kt-drawingonevent }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DrawingOnEvent</span><span class="p">(</span><span class="k">val</span> <span class="n">session</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">upload</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">event</span><span class="p">:</span> <span class="nc">JsonObject</span><span class="p">)</span></code>](source/jvmMain/afield/io/drawingon/DrawingOn/#L45)
+
+A committed capture event; `upload` distinguishes historical imports from a live gesture.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="drawingon-kt--drawingonevent--type"></a>[<code class="highlight"><span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/io/drawingon/DrawingOn/#L46) |  |
+| <a id="drawingon-kt--drawingonevent--time"></a>[<code class="highlight"><span class="k">val</span> <span class="n">time</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/io/drawingon/DrawingOn/#L47) |  |
+| <a id="drawingon-kt--drawingonevent--data"></a>[<code class="highlight"><span class="k">val</span> <span class="k">data</span><span class="p">:</span> <span class="nc">JsonObject</span></code>](source/jvmMain/afield/io/drawingon/DrawingOn/#L48) |  |
+
+### DrawingOnTarget { #drawingon-kt-drawingontarget }
+
+[<code class="highlight"><span class="k">class</span> <span class="nc">DrawingOnTarget</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">owner</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">ownerBox</span><span class="p">:</span> <span class="nc">Box</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/io/drawingon/DrawingOn/#L60)
+
+One explicitly named drawing head. [`publish`](networking.md#drawingon-kt--drawingontarget--publish) uses the AVP FLine geometry/buffer wire; [`onEvent`](networking.md#drawingon-kt--drawingontarget--onevent) receives committed Pencil, layer, view and audio events on Field's main Runloop.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="drawingon-kt--drawingontarget--onevent"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">onEvent</span><span class="p">(</span><span class="n">callback</span><span class="p">:</span> <span class="p">(</span><span class="nc">DrawingOnEvent</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/io/drawingon/DrawingOn/#L65) |  |
+| <a id="drawingon-kt--drawingontarget--publish"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">publish</span><span class="p">(</span><span class="n">lines</span><span class="p">:</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;Field · $name&quot;</span><span class="p">,</span> <span class="n">plane</span><span class="p">:</span> <span class="nc">DrawingOnPlane</span> <span class="o">=</span> <span class="nc">DrawingOnPlane</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">samplesPerCubic</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">32</span><span class="p">)</span></code>](source/jvmMain/afield/io/drawingon/DrawingOn/#L74) | Replace this head's Field reference layer, in drawing-plane coordinates. An empty list clears it. |
+| <a id="drawingon-kt--drawingontarget--sessions"></a>[<code class="highlight"><span class="k">val</span> <span class="n">sessions</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/io/drawingon/DrawingOn/#L95) | Saved sessions bound to this target, including uploaded captures. |
+| <a id="drawingon-kt--drawingontarget--readcapture"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">readCapture</span><span class="p">(</span><span class="n">session</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">consume</span><span class="p">:</span> <span class="p">(</span><span class="nc">JsonObject</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/io/drawingon/DrawingOn/#L98) | Stream a recording without loading all of its audio into memory. |
+| <a id="drawingon-kt--drawingontarget--capture"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">capture</span><span class="p">(</span><span class="n">session</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">DrawingOnCapture</span></code>](source/jvmMain/afield/io/drawingon/DrawingOn/#L104) | Read human ink and hover as FLines; refresh the handle to include newly archived live input. |
+
+### DrawingOnServices { #drawingon-kt-drawingonservices }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">DrawingOnServices</span></code>](source/jvmMain/afield/io/drawingon/DrawingOn/#L126)
+
+### DrawingOnArchive { #drawingon-kt-drawingonarchive }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">DrawingOnArchive</span><span class="p">(</span><span class="k">val</span> <span class="n">directory</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span></code>](source/jvmMain/afield/io/drawingon/DrawingOn/#L155)
+
+Append-only receiver archive. Acknowledgements are issued only after the file descriptor syncs.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="drawingon-kt--drawingonarchive--head"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">head</span><span class="p">(</span><span class="n">session</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/io/drawingon/DrawingOn/#L161) |  |
+| <a id="drawingon-kt--drawingonarchive--bind"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">bind</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">session</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/io/drawingon/DrawingOn/#L181) |  |
+| <a id="drawingon-kt--drawingonarchive--sessions"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">sessions</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/io/drawingon/DrawingOn/#L187) |  |
+| <a id="drawingon-kt--drawingonarchive--read"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">read</span><span class="p">(</span><span class="n">session</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">consume</span><span class="p">:</span> <span class="p">(</span><span class="nc">JsonObject</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/io/drawingon/DrawingOn/#L189) |  |
+| <a id="drawingon-kt--drawingonarchive--commit"></a>[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Commit</span><span class="p">(</span><span class="k">val</span> <span class="n">reply</span><span class="p">:</span> <span class="nc">JsonObject</span><span class="p">,</span> <span class="k">val</span> <span class="n">fresh</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">JsonObject</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/io/drawingon/DrawingOn/#L198) |  |
+| <a id="drawingon-kt--drawingonarchive--commit-2"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">commit</span><span class="p">(</span><span class="n">session</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">events</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">JsonObject</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Commit</span></code>](source/jvmMain/afield/io/drawingon/DrawingOn/#L199) |  |
+
+## DrawingOnCapture.kt { #drawingoncapture-kt }
+
+`src/jvmMain/kotlin/afield/io/drawingon/DrawingOnCapture.kt` — [read the source](source/jvmMain/afield/io/drawingon/DrawingOnCapture/)
+
+**Used in:** [Drawing on iPad](../drawing_on.md)
+
+### Top-level functions { #drawingoncapture-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="drawingoncapture-kt--readdrawingon"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">readDrawingOn</span><span class="p">(</span><span class="n">file</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">DrawingOnCapture</span></code>](source/jvmMain/afield/io/drawingon/DrawingOnCapture/#L337) | Read an exported iPad save file locally, without a running server or a target binding. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">readDrawingOn</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">DrawingOnCapture</span></code>](source/jvmMain/afield/io/drawingon/DrawingOnCapture/#L361) | Read an exported save file by path. |
+
+### Top-level values { #drawingoncapture-kt-values }
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="drawingoncapture-kt--drawingonsample"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">FLine</span><span class="p">.</span><span class="nc">Node</span><span class="p">.</span><span class="n">drawingOnSample</span><span class="p">:</span> <span class="nc">DrawingOnSample</span><span class="o">?</span></code>](source/jvmMain/afield/io/drawingon/DrawingOnCapture/#L33) | Original capture sample attached to a measured FLine node, including timing and sensor values. |
+
+### DrawingOnSample { #drawingoncapture-kt-drawingonsample }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DrawingOnSample</span><span class="p">(</span><span class="k">val</span> <span class="n">t</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">sequence</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">layer</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">stroke</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="k">data</span><span class="p">:</span> <span class="nc">JsonObject</span><span class="p">)</span></code>](source/jvmMain/afield/io/drawingon/DrawingOnCapture/#L15)
+
+A measured point on the capture clock, in drawing coordinates. `data` retains every sensor field.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="drawingoncapture-kt--drawingonsample--t"></a><code class="highlight"><span class="k">val</span> <span class="n">t</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">sequence</span><span class="p">:</span> <span class="nc">Long</span></code> |  |
+| <a id="drawingoncapture-kt--drawingonsample--layer"></a><code class="highlight"><span class="k">val</span> <span class="n">layer</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">stroke</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="k">data</span><span class="p">:</span> <span class="nc">JsonObject</span></code> |  |
+| <a id="drawingoncapture-kt--drawingonsample--id"></a>[<code class="highlight"><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span></code>](source/jvmMain/afield/io/drawingon/DrawingOnCapture/#L19) |  |
+| <a id="drawingoncapture-kt--drawingonsample--force"></a>[<code class="highlight"><span class="k">val</span> <span class="n">force</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code>](source/jvmMain/afield/io/drawingon/DrawingOnCapture/#L20) |  |
+| <a id="drawingoncapture-kt--drawingonsample--maximumforce"></a>[<code class="highlight"><span class="k">val</span> <span class="n">maximumForce</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code>](source/jvmMain/afield/io/drawingon/DrawingOnCapture/#L21) |  |
+| <a id="drawingoncapture-kt--drawingonsample--pressure"></a>[<code class="highlight"><span class="k">val</span> <span class="n">pressure</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code>](source/jvmMain/afield/io/drawingon/DrawingOnCapture/#L22) |  |
+| <a id="drawingoncapture-kt--drawingonsample--altitude"></a>[<code class="highlight"><span class="k">val</span> <span class="n">altitude</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code>](source/jvmMain/afield/io/drawingon/DrawingOnCapture/#L23) |  |
+| <a id="drawingoncapture-kt--drawingonsample--azimuth"></a>[<code class="highlight"><span class="k">val</span> <span class="n">azimuth</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code>](source/jvmMain/afield/io/drawingon/DrawingOnCapture/#L24) |  |
+| <a id="drawingoncapture-kt--drawingonsample--roll"></a>[<code class="highlight"><span class="k">val</span> <span class="n">roll</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code>](source/jvmMain/afield/io/drawingon/DrawingOnCapture/#L25) |  |
+| <a id="drawingoncapture-kt--drawingonsample--z"></a>[<code class="highlight"><span class="k">val</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code>](source/jvmMain/afield/io/drawingon/DrawingOnCapture/#L27) | Normalized hover height; absent on contact samples. |
+| <a id="drawingoncapture-kt--drawingonsample--value"></a>[<code class="highlight"><span class="k">fun</span> <span class="k">value</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code>](source/jvmMain/afield/io/drawingon/DrawingOnCapture/#L28) |  |
+| <a id="drawingoncapture-kt--drawingonsample--position"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">position</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Vec3</span></code>](source/jvmMain/afield/io/drawingon/DrawingOnCapture/#L29) |  |
+
+### DrawingOnLayer { #drawingoncapture-kt-drawingonlayer }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DrawingOnLayer</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">visible</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/io/drawingon/DrawingOnCapture/#L36)
+
+A recorded layer at a scrub time. `visible` includes local visibility and solo overrides.
+
+### DrawingOnFrame { #drawingoncapture-kt-drawingonframe }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DrawingOnFrame</span><span class="p">(</span><span class="k">val</span> <span class="n">time</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">drawing</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">layers</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">DrawingOnLayer</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">viewport</span><span class="p">:</span> <span class="nc">FLine</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">transform</span><span class="p">:</span> <span class="nc">JsonObject</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">light</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>](source/jvmMain/afield/io/drawingon/DrawingOnCapture/#L43)
+
+One replayed frame. Geometry uses drawing coordinates; [`viewport`](networking.md#drawingoncapture-kt--drawingonframe--viewport) outlines the visible screen in those coordinates. `drawing` reconstructs human ink, including line/circle tools and recorded undo. Returned Field reference meshes and transient predicted ink are not human ink and are excluded.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="drawingoncapture-kt--drawingonframe--time"></a><code class="highlight"><span class="k">val</span> <span class="n">time</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">drawing</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">layers</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">DrawingOnLayer</span><span class="p">&gt;</span></code> |  |
+| <a id="drawingoncapture-kt--drawingonframe--viewport"></a><code class="highlight"><span class="k">val</span> <span class="n">viewport</span><span class="p">:</span> <span class="nc">FLine</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">transform</span><span class="p">:</span> <span class="nc">JsonObject</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">light</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+
+### DrawingOnCapture { #drawingoncapture-kt-drawingoncapture }
+
+[<code class="highlight"><span class="k">class</span> <span class="nc">DrawingOnCapture</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">read</span><span class="p">:</span> <span class="p">(</span><span class="p">(</span><span class="nc">JsonObject</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/io/drawingon/DrawingOnCapture/#L56)
+
+A refreshable capture with independent replay controls. Scrubbing never edits the recording or sends commands to the iPad. Times are seconds on its capture clock, not wall-clock timestamps.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="drawingoncapture-kt--drawingoncapture--duration"></a>[<code class="highlight"><span class="k">val</span> <span class="n">duration</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/io/drawingon/DrawingOnCapture/#L67) | Latest recorded event time, including speech and pauses. Call [`refresh`](networking.md#drawingoncapture-kt--drawingoncapture--refresh) for newly saved input. |
+| <a id="drawingoncapture-kt--drawingoncapture--layers"></a>[<code class="highlight"><span class="k">val</span> <span class="n">layers</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">DrawingOnLayer</span><span class="p">&gt;</span></code>](source/jvmMain/afield/io/drawingon/DrawingOnCapture/#L68) |  |
+| <a id="drawingoncapture-kt--drawingoncapture--refresh"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">refresh</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">DrawingOnCapture</span></code>](source/jvmMain/afield/io/drawingon/DrawingOnCapture/#L74) | Append newly archived events. Audio/geometry buffers are streamed past, not retained in RAM. |
+| <a id="drawingoncapture-kt--drawingoncapture--layervisible"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">layerVisible</span><span class="p">(</span><span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">visible</span><span class="p">:</span> <span class="nc">Boolean</span><span class="o">?</span><span class="p">)</span><span class="p">:</span> <span class="nc">DrawingOnCapture</span></code>](source/jvmMain/afield/io/drawingon/DrawingOnCapture/#L89) | Override one layer by its ID; `null` follows its recorded visibility again. |
+| <a id="drawingoncapture-kt--drawingoncapture--solo"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">solo</span><span class="p">(</span><span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">)</span><span class="p">:</span> <span class="nc">DrawingOnCapture</span></code>](source/jvmMain/afield/io/drawingon/DrawingOnCapture/#L94) | Solo a layer locally; `null` turns solo off. [`resetLayers`](networking.md#drawingoncapture-kt--drawingoncapture--resetlayers) restores recorded solo. |
+| <a id="drawingoncapture-kt--drawingoncapture--resetlayers"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">resetLayers</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">DrawingOnCapture</span></code>](source/jvmMain/afield/io/drawingon/DrawingOnCapture/#L97) | Clear all local overrides, restoring recorded visibility and solo. |
+| <a id="drawingoncapture-kt--drawingoncapture--at"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">at</span><span class="p">(</span><span class="n">time</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">DrawingOnFrame</span></code>](source/jvmMain/afield/io/drawingon/DrawingOnCapture/#L100) | Reconstruct visible human ink, shape intent, layers and viewport at `time`. |
+| <a id="drawingoncapture-kt--drawingoncapture--networkat"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">networkAt</span><span class="p">(</span><span class="n">time</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="n">duration</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="nc">DrawingOnNetworkConfig</span> <span class="o">=</span> <span class="nc">DrawingOnNetworkConfig</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">DrawingOnNetwork</span></code>](source/jvmMain/afield/io/drawingon/DrawingOnCapture/#L110) | Fit a 2D network from completed, visible strokes at `time`, respecting replay layer overrides. |
+| <a id="drawingoncapture-kt--drawingoncapture--drawingat"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">drawingAt</span><span class="p">(</span><span class="n">time</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span></code>](source/jvmMain/afield/io/drawingon/DrawingOnCapture/#L126) | Visible human ink at `time`, as ordinary editable FLines. |
+| <a id="drawingoncapture-kt--drawingoncapture--drawingsince"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">drawingSince</span><span class="p">(</span><span class="n">since</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">until</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="n">duration</span><span class="p">,</span> <span class="n">visibleOnly</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">map</span><span class="p">:</span> <span class="p">(</span><span class="nc">DrawingOnSample</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Vec3</span> <span class="o">=</span> <span class="p">{</span> <span class="kc">it</span><span class="p">.</span><span class="nf">position</span><span class="p">(</span><span class="p">)</span> <span class="p">}</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span></code>](source/jvmMain/afield/io/drawingon/DrawingOnCapture/#L133) | New contact paths, one FLine per stroke. By default includes undone/hidden/cancelled material for analysis; `visibleOnly` restricts to the scene at `until`. Local layer overrides always apply. `map` can turn sensor data into a graph, e.g. `{ vec(it.t, it.force ?: 0.0, 0) }`. |
+| <a id="drawingoncapture-kt--drawingoncapture--hoversince"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">hoverSince</span><span class="p">(</span><span class="n">since</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">until</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="n">duration</span><span class="p">,</span> <span class="n">gap</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.25</span><span class="p">,</span> <span class="n">visibleOnly</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">map</span><span class="p">:</span> <span class="p">(</span><span class="nc">DrawingOnSample</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Vec3</span> <span class="o">=</span> <span class="p">{</span> <span class="kc">it</span><span class="p">.</span><span class="nf">position</span><span class="p">(</span><span class="p">)</span> <span class="p">}</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span></code>](source/jvmMain/afield/io/drawingon/DrawingOnCapture/#L151) | New hover paths, independently of ink. Breaks at contact, navigation, phase boundaries, layer changes and gaps greater than `gap` seconds. Hover has no force; use [`DrawingOnSample.z`](networking.md#drawingoncapture-kt--drawingonsample--z) for height. |
+
+## DrawingOnNetwork.kt { #drawingonnetwork-kt }
+
+`src/jvmMain/kotlin/afield/io/drawingon/DrawingOnNetwork.kt` — [read the source](source/jvmMain/afield/io/drawingon/DrawingOnNetwork/)
+
+### Top-level functions { #drawingonnetwork-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="drawingonnetwork-kt--fitdrawingonnetwork"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">fitDrawingOnNetwork</span><span class="p">(</span><span class="n">strokes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">DrawingOnNetworkStroke</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="nc">DrawingOnNetworkConfig</span> <span class="o">=</span> <span class="nc">DrawingOnNetworkConfig</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">DrawingOnNetwork</span></code>](source/jvmMain/afield/io/drawingon/DrawingOnNetwork/#L108) | Fit a conservative 2D network from strokes in capture order. Close, coextensive retraces are grouped against the oldest stroke in a cluster. Endpoint joins and endpoint-to-interior joins are inferred within a layer. Interior crossings stay independent. Circles remain closed loops. |
+
+### DrawingOnNetworkConfig { #drawingonnetwork-kt-drawingonnetworkconfig }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DrawingOnNetworkConfig</span><span class="p">(</span><span class="k">val</span> <span class="n">fitTolerance</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mf">1.25f</span><span class="p">,</span> <span class="k">val</span> <span class="n">retraceTolerance</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">2f</span><span class="p">,</span> <span class="k">val</span> <span class="n">joinTolerance</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">5f</span><span class="p">)</span></code>](source/jvmMain/afield/io/drawingon/DrawingOnNetwork/#L21)
+
+Distances are in Drawing On canvas coordinates, independent of the viewport transform.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="drawingonnetwork-kt--drawingonnetworkconfig--fittolerance"></a><code class="highlight"><span class="k">val</span> <span class="n">fitTolerance</span><span class="p">:</span> <span class="nc">Float</span></code> |  |
+| <a id="drawingonnetwork-kt--drawingonnetworkconfig--retracetolerance"></a><code class="highlight"><span class="k">val</span> <span class="n">retraceTolerance</span><span class="p">:</span> <span class="nc">Float</span></code> |  |
+| <a id="drawingonnetwork-kt--drawingonnetworkconfig--jointolerance"></a><code class="highlight"><span class="k">val</span> <span class="n">joinTolerance</span><span class="p">:</span> <span class="nc">Float</span></code> |  |
+
+### DrawingOnNetworkStroke { #drawingonnetwork-kt-drawingonnetworkstroke }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DrawingOnNetworkStroke</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">layer</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">tool</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/io/drawingon/DrawingOnNetwork/#L34)
+
+A source stroke in drawing order. The network uses only X and Y from [`points`](networking.md#drawingonnetwork-kt--drawingonnetworkstroke--points).
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="drawingonnetwork-kt--drawingonnetworkstroke--id"></a><code class="highlight"><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="drawingonnetwork-kt--drawingonnetworkstroke--layer"></a><code class="highlight"><span class="k">val</span> <span class="n">layer</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="drawingonnetwork-kt--drawingonnetworkstroke--tool"></a><code class="highlight"><span class="k">val</span> <span class="n">tool</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="drawingonnetwork-kt--drawingonnetworkstroke--points"></a><code class="highlight"><span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span></code> |  |
+
+### DrawingOnNetworkNode { #drawingonnetwork-kt-drawingonnetworknode }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DrawingOnNetworkNode</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">layer</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span></code>](source/jvmMain/afield/io/drawingon/DrawingOnNetwork/#L42)
+
+Vertex keyed by source strokes. Coincident vertices on different layers remain separate.
+
+### DrawingOnNetworkEdge { #drawingonnetwork-kt-drawingonnetworkedge }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DrawingOnNetworkEdge</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">from</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">to</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">layer</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">strokeIds</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">FLine</span><span class="p">)</span></code>](source/jvmMain/afield/io/drawingon/DrawingOnNetwork/#L45)
+
+Each edge owns an FLine and points to its two graph vertices. A closed loop can share a vertex.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="drawingonnetwork-kt--drawingonnetworkedge--id"></a><code class="highlight"><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">from</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">to</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">layer</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="drawingonnetwork-kt--drawingonnetworkedge--strokeids"></a><code class="highlight"><span class="k">val</span> <span class="n">strokeIds</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">FLine</span></code> |  |
+
+### DrawingOnStrokeCluster { #drawingonnetwork-kt-drawingonstrokecluster }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DrawingOnStrokeCluster</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">strokes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">DrawingOnNetworkStroke</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/io/drawingon/DrawingOnNetwork/#L51)
+
+The grouped input to curve fitting, retained for inspection and comparison with StrokeStrip.
+
+### DrawingOnNetwork { #drawingonnetwork-kt-drawingonnetwork }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DrawingOnNetwork</span><span class="p">(</span><span class="k">val</span> <span class="n">nodes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">DrawingOnNetworkNode</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">DrawingOnNetworkEdge</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">clusters</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">DrawingOnStrokeCluster</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/io/drawingon/DrawingOnNetwork/#L54)
+
+A graph in the iPad drawing plane, plus the clustering evidence used to derive it.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="drawingonnetwork-kt--drawingonnetwork--nodes"></a><code class="highlight"><span class="k">val</span> <span class="n">nodes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">DrawingOnNetworkNode</span><span class="p">&gt;</span></code> |  |
+| <a id="drawingonnetwork-kt--drawingonnetwork--edges"></a><code class="highlight"><span class="k">val</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">DrawingOnNetworkEdge</span><span class="p">&gt;</span></code> |  |
+| <a id="drawingonnetwork-kt--drawingonnetwork--clusters"></a><code class="highlight"><span class="k">val</span> <span class="n">clusters</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">DrawingOnStrokeCluster</span><span class="p">&gt;</span></code> |  |
+| <a id="drawingonnetwork-kt--drawingonnetwork--toflines"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">toFLines</span><span class="p">(</span><span class="n">showNodes</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span></code>](source/jvmMain/afield/io/drawingon/DrawingOnNetwork/#L60) | Ordinary FLines, optionally including a point for each graph vertex. |
+| <a id="drawingonnetwork-kt--drawingonnetwork--strokestripscap"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">strokeStripScap</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/io/drawingon/DrawingOnNetwork/#L73) | Export freehand clusters for the upstream StrokeStrip CLI. Coordinates share one origin shift. |
 
 ## RtpMidiBox.kt { #rtpmidibox-kt }
 
@@ -806,6 +1027,33 @@ Latest-only playhead following. All Resolve calls run on one daemon, never on th
 | <a id="resolveplayheadlink-kt--resolveplayheadlink--offer"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">offer</span><span class="p">(</span><span class="n">seconds</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/io/resolve/ResolvePlayheadLink/#L68) | Offer source-video seconds (null while unloaded). Replaces the previous target without enqueueing work. |
 | <a id="resolveplayheadlink-kt--resolveplayheadlink--getplayhead"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">getPlayhead</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">ResolvePlayhead</span><span class="p">&gt;</span></code>](source/jvmMain/afield/io/resolve/ResolvePlayheadLink/#L74) | Disable following and asynchronously read Resolve. Apply the result to Field on its own loop. |
 | <a id="resolveplayheadlink-kt--resolveplayheadlink--close"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/io/resolve/ResolvePlayheadLink/#L137) | Close without interrupting an in-flight worker exchange or blocking Field's loop. |
+
+## SpatialInk.kt { #spatialink-kt }
+
+`src/jvmMain/kotlin/afield/io/spatialink/SpatialInk.kt` — [read the source](source/jvmMain/afield/io/spatialink/SpatialInk/)
+
+### Top-level functions { #spatialink-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="spatialink-kt--readspatialink"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">readSpatialInk</span><span class="p">(</span><span class="n">file</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span></code>](source/jvmMain/afield/io/spatialink/SpatialInk/#L51) | Read the last fitted snapshot from a Field spatial ink session's JSON file. |
+
+### SpatialInkPoint { #spatialink-kt-spatialinkpoint }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SpatialInkPoint</span><span class="p">(</span><span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span></code>](source/jvmMain/afield/io/spatialink/SpatialInk/#L17)
+
+Position in the headset's immersive tracking origin, in metres.
+
+### SpatialInkEdge { #spatialink-kt-spatialinkedge }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SpatialInkEdge</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">from</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">to</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">SpatialInkPoint</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/io/spatialink/SpatialInk/#L32)
+
+An edge in the spatial sketch, with shared endpoint IDs and a sampled curve in metres.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="spatialink-kt--spatialinkedge--id"></a><code class="highlight"><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">from</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">to</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">SpatialInkPoint</span><span class="p">&gt;</span></code> |  |
+| <a id="spatialink-kt--spatialinkedge--tofline"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">toFLine</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLine</span></code>](source/jvmMain/afield/io/spatialink/SpatialInk/#L36) | Convert to a Field path, retaining the source stroke and graph endpoints as properties. |
 
 ## Ltc.kt { #ltc-kt }
 

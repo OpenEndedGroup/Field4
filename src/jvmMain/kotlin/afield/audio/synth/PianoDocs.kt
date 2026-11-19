@@ -65,6 +65,14 @@ object PianoDocs {
                 ),
             )
         },
+        // pattern_language.md, "Weights, then lock what you liked": eight free cycles, then the
+        // same muse locked at cycle 4 and improvising.
+        "muse-free" to { pianoRender(17.0, Piano(sampleRate = 44_100)) { play(PatMuse(seed = 3).pattern(), cycles = 8, cps = 0.5, velocity = 1.0, startFrame = 0) } },
+        "muse-locked-improvised" to {
+            val muse = PatMuse(seed = 3).lock(8, atCycle = 4)
+            muse.rightLoop!!.improvise = 0.4
+            pianoRender(17.0, Piano(sampleRate = 44_100)) { play(muse.pattern(), cycles = 8, cps = 0.5, velocity = 1.0, startFrame = 0) }
+        },
         "piano-una-corda" to { phrase(Piano(sampleRate = 44_100, unaCorda = Param(1f))) },
         "piano-through-piano" to {
             val player = Piano(sampleRate = 44_100, room = Param(0f), dry = Param(1f), micPosition = Param(0.1f))

@@ -106,7 +106,7 @@ the last of them is not what the rest of this section is about:
 | | |
 |---|---|
 | `graphics/render/FLineUpload.kt:192#f.tessellate(samplesPerCubic)` | **geometry.** Inside `trianglesOut`, which de-indexes into a Field 4 vertex buffer. **No in-repo callers** — it is stdlib API for user boxes that own a `DynamicallyWriteable`. |
-| `ThreeJsViewer.kt:1255#f.tessellate(samplesPerCubic)` | **geometry.** Inside `appendFilledMesh` (`ThreeJsViewer.kt:1244#private fun appendFilledMesh`), reached from `Box.threeLines(...)` (`ThreeJsViewer.kt:690#fun Box.threeLines`) and served into `threejs_viewer.html`. Also the wire format the visionOS native viewer reads (`FLineWire.swift:69#let fills`). |
+| `ThreeJsViewer.kt:1255#f.tessellate(samplesPerCubic)` | **geometry.** Inside `appendFilledMesh` (`ThreeJsViewer.kt:1244#private fun appendFilledMesh`), reached from `Box.threeLines(...)` (`ThreeJsViewer.kt:690#fun Box.threeLines`) and served into `threejs_viewer.html`. Also the wire format the visionOS native viewer reads (`ThreeWire.swift:111#let fills`). |
 | `ThreeJsViewer.kt:1051#line.tessellate(samples)` | **a count, not geometry.** Inside `buildThreeGeometryPayload` (`ThreeJsViewer.kt:844#internal fun buildThreeGeometryPayload`), in the `editable` branch, where the client re-triangulates and this side only wants the number for `meta.triangles`: the callback is `_, indices` and keeps `indices.size / 3`. The vertices are discarded, so no triangle it makes reaches anything that could draw it the wrong way round. |
 
 The page used to say "exactly two production call sites" over a two-row table while `src/jvmMain`
@@ -133,7 +133,7 @@ three.js fill materials are `MeshStandardMaterial` with `side: THREE.DoubleSide`
 from the winding — `computeVertexNormals()` at three sites, `:955`, `:1007` and `:3410` — three.js
 flips the normal for back-facing fragments on a double-sided material, so a uniformly mis-wound flat
 face still shades correctly. The visionOS viewer sets `faceCulling = .none` explicitly
-(`FLineMeshBuilder.swift:401#faceCulling = .none`).
+(`ThreeMeshBuilder.swift:280#faceCulling = .none`).
 
 So the honest statement of severity: **the defect was real but latent in every first-party viewer.**
 What this fix protects is anything that turns culling on, reads a face normal off the mesh, exports

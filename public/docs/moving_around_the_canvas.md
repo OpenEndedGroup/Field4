@@ -552,9 +552,11 @@ ui.pause(900)
 
 ## Snapping
 
-Boxes can snap to each other while you drag or resize them. Snapping is on while Caps Lock is on, or
-after **Toggle Box Snapping** in the command palette, which stays on until you run it again. With
-neither, dragging and resizing are freeform, which is what you want while sketching.
+Boxes can snap to each other while you drag or resize them. Snapping is on while you hold Control,
+while Caps Lock is on, or after **Toggle Box Snapping** in the command palette, which stays on until
+you run it again. Control works mid-drag: start dragging, then press it to snap and release it to
+move freely again (press it after the click, since ++ctrl++-click opens the context menu on macOS).
+With none of these, dragging and resizing are freeform, which is what you want while sketching.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x330" clip="0,0,460,330" hide-toasts=true video="assets/snapping/snapping.mp4" fps="20" transcript="assets/transcripts/snapping_setup.yaml" padding="0" wait="0" timeout="180" embed=true hidden=true name="snapping-guide" alt="Four boxes: left and right in a row with a wide gap between them, mover below them, and narrow at the bottom. F1 opens the command palette and Toggle Box Snapping turns snapping on. Mover is dragged left until a cyan guide line joins its left edge to left's, and it snaps into line. Then it is dragged up into the gap: guides show its top level with the other two, with tick marks for the equal gaps either side, and it lands evenly spaced. Last, narrow's right edge is dragged out until a guide meets mover's right edge, and it snaps to that width."}
 /*

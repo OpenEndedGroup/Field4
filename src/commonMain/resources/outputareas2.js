@@ -1,6 +1,6 @@
 import { mountConversationGarden } from "./conversationGarden.js";
 import { mountStateTreeBrowser } from "./stateTreeBrowser.js";
-import { aiChatMarkdownToHtml, aiChatHistoryToHtml, aiChatSetToolFamilies, send, sendWithReply } from "./afield.mjs";
+import { aiChatMarkdownToHtml, aiChatHistoryToHtml, aiChatHistoryToUnits, aiChatSetToolFamilies, send, sendWithReply } from "./afield.mjs";
 import { renderAiChatFences } from "./aiChatFenceRenderers.js";
 import { typesetAiChatMath } from "./aiChatMath.js";
 import { installAiChatFenceCatalog } from "./aiChatFenceCatalog.js";
@@ -13,6 +13,8 @@ function rerenderOpenChats() {
                 const markdown = messages.__chatMarkdown;
                 if (markdown == null) return;
                 messages.__chatMarkdown = null;
+                // A catalog changes how unchanged turns render too: rebuild every unit, not just the changed ones.
+                messages.__chatUnits = null;
                 renderChatMessages(messages, markdown);
         });
 }
@@ -616,7 +618,7 @@ function disclosureInterface(container) {
                         requestAnimationFrame(() => {
                                 const current = disclosures.get(id);
                                 const state = ensureState(id);
-                                if (!current || current.inline || !state.open || state.userSized || state.autoSizeToken !== token) return;
+                                if (!current || current.borrowed || current.inline || !state.open || state.userSized || state.autoSizeToken !== token) return;
 
                                 const natural = contentSizeForDisclosure(current);
                                 const currentWidth = Number(state.width) || DEFAULT_W;
@@ -820,6 +822,7 @@ function disclosureInterface(container) {
                 st.contentVersion = (st.contentVersion || 0) + 1;
                 states.set(id, st);
                 const d = disclosures.get(id);
+                if (d?.borrowed) return;
                 if (!st.userSized && usesContentAutoSize(d)) {
                         scheduleAutoSize(id, reason);
                 } else if (!st.userSized) {
@@ -988,7 +991,7 @@ function disclosureInterface(container) {
         }
 
         function usesContentAutoSize(d) {
-                return !d?.inline && autoSizeModeForDisclosure(d) !== "fixed";
+                return !d?.borrowed && !d?.inline && autoSizeModeForDisclosure(d) !== "fixed";
         }
 
         function inlineTitle(title) {
@@ -1016,7 +1019,7 @@ function disclosureInterface(container) {
         }
 
         function saveScroll(id, d) {
-                if (d.inline) return;
+                if (d.inline || d.borrowed) return;
                 const st = ensureState(id);
                 st.scrollTop = d.cw.scrollTop;
                 st.scrollLeft = d.cw.scrollLeft;
@@ -1024,7 +1027,7 @@ function disclosureInterface(container) {
         }
 
         function rememberSize(id, d) {
-                if (d.inline) return;
+                if (d.inline || d.borrowed) return;
                 if (d.cw.style.display === "none") return;
                 const st = ensureState(id);
                 // Persist layout pixels, not the canvas-zoomed screen rectangle.
@@ -1045,7 +1048,7 @@ function disclosureInterface(container) {
         }
 
         function applyClosed(d) {
-                if (d.inline) return;
+                if (d.inline || d.borrowed) return;
                 d.selfResizeUntil = Date.now() + 250;
                 d.wrap.classList.remove("open");
                 d.cw.style.display = "none";
@@ -1055,7 +1058,7 @@ function disclosureInterface(container) {
         }
 
         function applyOpen(id, d) {
-                if (d.inline) return;
+                if (d.inline || d.borrowed) return;
                 const st = ensureState(id);
                 applySizeBoundsForId(id, d);
                 const clamped = clampSizeForId(id, st.width || DEFAULT_W, st.height || DEFAULT_H, st.userSized);
@@ -1082,7 +1085,7 @@ function disclosureInterface(container) {
         }
 
         function primeAutoSizeForOpen(id, d) {
-                if (!d || d.inline || !usesContentAutoSize(d)) return;
+                if (!d || d.borrowed || d.inline || !usesContentAutoSize(d)) return;
                 const st = ensureState(id);
                 if (st.userSized || st.lastAutoSizedContentVersion === (st.contentVersion || 0)) return;
 
@@ -1289,6 +1292,7 @@ function disclosureInterface(container) {
         function remove(id) {
                 const d = disclosures.get(id);
                 if (!d) return;
+                d.borrowRelease?.();
                 if (d.resizeObserver && typeof d.resizeObserver.disconnect === "function") {
                         d.resizeObserver.disconnect();
                         d.resizeObserver = null;
@@ -1542,7 +1546,7 @@ function disclosureInterface(container) {
                 const d = disclosures.get(id);
                 if (!d || d.inline) return null;
                 const st = ensureState(id);
-                if (st.open && d.cw.style.display !== "none") {
+                if (!d.borrowed && st.open && d.cw.style.display !== "none") {
                         return { width: d.cw.offsetWidth, height: d.cw.offsetHeight };
                 }
                 return { width: st.width || DEFAULT_W, height: st.height || DEFAULT_H };
@@ -1563,7 +1567,44 @@ function disclosureInterface(container) {
                 rememberChatPanel(id);
         }
 
-        const api = { upsertDisclosure, setContent, toggle, open, close, remove, closeAll, solo, isOpen, ids, getSize, setSize };
+        // Move the live content, keeping the disclosure's references so streamed output still updates it.
+        function borrowContent(id, host) {
+                const d = disclosures.get(id);
+                if (!d || d.inline || id === "nested") throw new Error(`Output '${id}' is not available. Run its box first.`);
+                if ([...d.cw.querySelectorAll('.box')].some(box => box.uid)) throw new Error('Nested canvases stay on the canvas.');
+                if (d.cw.querySelector('iframe') && typeof host.moveBefore !== 'function') {
+                        throw new Error('This browser cannot move an iframe without reloading it. Use its output area.');
+                }
+                d.borrowRelease?.();
+                const parent = d.cw.parentNode, next = d.cw.nextSibling;
+                const st = ensureState(id);
+                st.autoSizeToken++; st.pendingAutoSize = false;
+                d.borrowed = true;
+                d.cw.classList.add('marking-output-content');
+                const move = (target, node, before) => typeof target.moveBefore === 'function'
+                        ? target.moveBefore(node, before) : target.insertBefore(node, before);
+                let released = false;
+                const release = () => {
+                        if (released) return;
+                        released = true;
+                        const focus = d.cw.contains(document.activeElement) ? document.activeElement : null;
+                        d.borrowRelease = null; d.borrowed = false;
+                        if (parent.isConnected && disclosures.get(id) === d) {
+                                move(parent, d.cw, next?.parentNode === parent ? next : null);
+                                d.cw.classList.remove('marking-output-content');
+                                if (ensureState(id).open) {
+                                        primeAutoSizeForOpen(id, d); applyOpen(id, d); scheduleAutoSize(id, 'marking-return');
+                                } else applyClosed(d);
+                        } else d.cw.remove();
+                        if (focus?.isConnected) focus.blur();
+                };
+                d.borrowRelease = release;
+                try { move(host, d.cw, null); }
+                catch (error) { release(); throw error; }
+                return {release, valid: () => parent.isConnected && disclosures.get(id) === d && d.cw.parentNode === host};
+        }
+
+        const api = { borrowContent, upsertDisclosure, setContent, toggle, open, close, remove, closeAll, solo, isOpen, ids, getSize, setSize };
         container.__disclosureAPI = api;
         return api;
 }
@@ -1902,43 +1943,44 @@ function renderChatMessages(messages, markdown, options) {
                 messages.__chatScrollInputBound = true;
         }
 
-        // Keep known image aspect ratios through DOM replacement, avoiding collapsed screenshots.
-        const dimensions = new Map();
-        messages.querySelectorAll("img").forEach(img => {
-                const width = img.naturalWidth || Number(img.getAttribute("width"));
-                const height = img.naturalHeight || Number(img.getAttribute("height"));
-                if (width > 0 && height > 0) dimensions.set(img.getAttribute("src"), {width, height});
-        });
         // Round numbers belong to one transcript: another box's chat, or a cleared one, starts afresh.
         const previous = messages.__chatMarkdown;
-        if (previous != null && messages.__chatRoundStates && previous.slice(0, 256) !== text.slice(0, 256)) {
-                messages.__chatRoundStates.clear();
+        if (previous != null && previous.slice(0, 256) !== text.slice(0, 256)) {
+                messages.__chatRoundStates?.clear();
+                // Nor do its units: a matching round in another chat must not carry over this one's fold.
+                messages.__chatUnits = null;
         }
-        messages.innerHTML = aiChatHistoryToHtml(text);
+        const fresh = renderChatUnits(messages, aiChatHistoryToUnits(text));
         messages.__chatMarkdown = text;
-        restoreRoundStates(messages);
-        // Phase-lock the live-status shimmer to the document clock; a burst of tool updates would
-        // otherwise restart the sweep on every render and it would never get across the text.
-        messages.querySelectorAll(".ai-chat-shimmer").forEach(el => {
-                el.getAnimations().forEach(animation => { animation.startTime = 0; });
-        });
-        decorateAfieldLinks(messages);
-        applyCodeHighlight(messages);
+        // Only the units that changed are new DOM; everything older keeps its highlighting, fence previews,
+        // typeset math, loaded images and fold state, so a streamed chunk costs the size of the tail.
+        const images = [];
+        let pendingFenceRenders = 0;
         const onRenderLayout = (event) => {
                 if (event === "settled") pendingFenceRenders--;
                 finish();
         };
-        let pendingFenceRenders = renderAiChatFences(messages, onRenderLayout);
-        pendingFenceRenders += typesetAiChatMath(messages, onRenderLayout);
-        const images = Array.from(messages.querySelectorAll("img"));
-        images.forEach(img => {
-                const size = dimensions.get(img.getAttribute("src"));
-                if (size && !img.hasAttribute("width") && !img.hasAttribute("height")) {
-                        img.width = size.width;
-                        img.height = size.height;
-                }
-        });
-
+        for (const {node, dimensions} of fresh) {
+                restoreRoundStates(messages, node);
+                // Phase-lock the live-status shimmer to the document clock; a burst of tool updates would
+                // otherwise restart the sweep on every render and it would never get across the text.
+                node.querySelectorAll(".ai-chat-shimmer").forEach(el => {
+                        el.getAnimations().forEach(animation => { animation.startTime = 0; });
+                });
+                decorateAfieldLinks(node);
+                applyCodeHighlight(node);
+                pendingFenceRenders += renderAiChatFences(node, onRenderLayout);
+                pendingFenceRenders += typesetAiChatMath(node, onRenderLayout);
+                node.querySelectorAll("img").forEach(img => {
+                        // Keep known image aspect ratios through replacement, avoiding collapsed screenshots.
+                        const size = dimensions.get(img.getAttribute("src"));
+                        if (size && !img.hasAttribute("width") && !img.hasAttribute("height")) {
+                                img.width = size.width;
+                                img.height = size.height;
+                        }
+                        images.push(img);
+                });
+        }
         const settle = () => {
                 // Old image callbacks cannot override a newer render or the reader's own gesture.
                 if (messages.__chatScrollRestore !== restore) return;
@@ -1957,12 +1999,105 @@ function renderChatMessages(messages, markdown, options) {
                 img.addEventListener("error", finish, {once: true});
         });
         requestAnimationFrame(finish);
+        if (restore.stick) keepChatAtBottom(messages, forceBottom);
 }
 
-function restoreRoundStates(messages) {
+/**
+ * Units off screen have estimated heights (content-visibility), which become real as they render near the
+ * viewport, so one `scrollTop = scrollHeight` lands short of the bottom and a message you just sent stays
+ * out of sight. For a moment after a render that sticks, re-pin whenever the thread's height changes,
+ * until the reader scrolls themself.
+ */
+function keepChatAtBottom(messages, force) {
+        const thread = messages.__chatThread;
+        if (!thread || typeof ResizeObserver === "undefined") return;
+        clearTimeout(messages.__chatStickTimer);
+        messages.__chatStickForce = force || messages.__chatStickForce;
+        if (!messages.__chatStickObserver) {
+                const stop = () => {
+                        messages.__chatStickObserver?.disconnect();
+                        messages.__chatStickObserver = null;
+                        messages.__chatStickForce = false;
+                };
+                messages.__chatStickStop = stop;
+                messages.__chatStickObserver = new ResizeObserver(() => {
+                        messages.scrollTop = messages.scrollHeight;
+                        messages.__chatStickTop = messages.scrollTop;
+                });
+                messages.__chatStickObserver.observe(thread);
+                // Any scroll that is not our own pin (wheel, keys, scrollbar, script) hands control back.
+                const onScroll = () => {
+                        if (!messages.__chatStickObserver) return messages.removeEventListener("scroll", onScroll);
+                        if (Math.abs(messages.scrollTop - messages.__chatStickTop) > 4 && !chatPinnedToBottom(messages)) stop();
+                };
+                messages.addEventListener("scroll", onScroll, {passive: true});
+        }
+        messages.scrollTop = messages.scrollHeight;
+        messages.__chatStickTop = messages.scrollTop;
+        messages.__chatStickTimer = setTimeout(() => messages.__chatStickStop?.(), messages.__chatStickForce ? 1500 : 600);
+}
+
+/**
+ * Bring the thread's units in line with [units] (aiChatHistoryToUnits), reusing every unit whose HTML is
+ * unchanged and building only the rest. Returns the new units, each with the image sizes of the unit it
+ * replaced, for the caller to decorate. `messages.__chatUnits = null` forces a full rebuild.
+ */
+function renderChatUnits(messages, units) {
+        let thread = messages.__chatThread;
+        if (units.length === 0) {
+                messages.innerHTML = "";
+                messages.__chatThread = null;
+                messages.__chatUnits = [];
+                return [];
+        }
+        if (!thread || thread.parentNode !== messages || !messages.__chatUnits) {
+                messages.innerHTML = "";
+                thread = document.createElement("div");
+                thread.className = "ai-chat-thread";
+                messages.appendChild(thread);
+                messages.__chatThread = thread;
+                messages.__chatUnits = [];
+        }
+        // Old units by HTML, so a unit that only moved (a queued message dropped above it) is kept too.
+        const byHtml = new Map();
+        for (const unit of messages.__chatUnits) {
+                const list = byHtml.get(unit.html);
+                if (list) list.push(unit); else byHtml.set(unit.html, [unit]);
+        }
+        const next = units.map(html => {
+                const kept = byHtml.get(html)?.shift();
+                return kept || {html, node: null};
+        });
+        const leftover = [...byHtml.values()].flat();
+        const leftoverDimensions = new Map();
+        for (const unit of leftover) {
+                unit.node.querySelectorAll("img").forEach(img => {
+                        const width = img.naturalWidth || Number(img.getAttribute("width"));
+                        const height = img.naturalHeight || Number(img.getAttribute("height"));
+                        if (width > 0 && height > 0) leftoverDimensions.set(img.getAttribute("src"), {width, height});
+                });
+                unit.node.remove();
+        }
+        const fresh = [];
+        let cursor = thread.firstChild;
+        for (const unit of next) {
+                if (!unit.node) {
+                        unit.node = document.createElement("div");
+                        unit.node.className = "ai-chat-unit";
+                        unit.node.innerHTML = unit.html;
+                        fresh.push({node: unit.node, dimensions: leftoverDimensions});
+                }
+                if (unit.node === cursor) cursor = cursor.nextSibling;
+                else thread.insertBefore(unit.node, cursor);
+        }
+        messages.__chatUnits = next;
+        return fresh;
+}
+
+function restoreRoundStates(messages, root = messages) {
         const states = messages.__chatRoundStates;
         if (!states || states.size === 0) return;
-        messages.querySelectorAll(".ai-chat-round[data-ai-round]").forEach(round => {
+        root.querySelectorAll(".ai-chat-round[data-ai-round]").forEach(round => {
                 const open = states.get(round.dataset.aiRound);
                 if (open !== undefined) round.open = open;
         });
@@ -2163,6 +2298,9 @@ function ensureAiChat(container, uid, property) {
         chatAction("Open Garden", () => garden.open());
 
         const attachments = [];
+        // Geometry picks quoted from a three.js viewer's Ask AI (`geometry-reference-ask`); each goes out as a
+        // GeometryReference header at the top of the next user turn.
+        const geometryRefs = [];
 
         function currentSelectedUid() {
                 const selected = window.currentSelectedCode;
@@ -2198,11 +2336,26 @@ function ensureAiChat(container, uid, property) {
 
         function renderPreview() {
                 preview.innerHTML = "";
-                if (attachments.length === 0) {
+                if (attachments.length === 0 && geometryRefs.length === 0) {
                         preview.style.display = "none";
                         return;
                 }
                 preview.style.display = "flex";
+                geometryRefs.forEach((ref, idx) => {
+                        const chip = geometryReferenceChip(ref);
+                        const remove = document.createElement("button");
+                        remove.type = "button";
+                        remove.className = "ai-chat-geometry-remove";
+                        remove.textContent = "×";
+                        remove.title = "Do not quote this feature";
+                        remove.addEventListener("click", (e) => {
+                                e.preventDefault();
+                                geometryRefs.splice(idx, 1);
+                                renderPreview();
+                        });
+                        chip.appendChild(remove);
+                        preview.appendChild(chip);
+                });
                 attachments.forEach((attachment, idx) => {
                         const src = attachmentSrc(attachment);
                         if (!src) return;
@@ -2509,13 +2662,15 @@ function ensureAiChat(container, uid, property) {
         }
 
         function submitPrompt(options = {}) {
-                const text = textarea.value.trim();
-                if (!text && attachments.length === 0) return;
+                const typed = textarea.value.trim();
+                if (!typed && attachments.length === 0 && geometryRefs.length === 0) return;
                 autocomplete.clear();
-                if (text.startsWith("/")) {
-                        if (handleSlashCommand(text)) return;
+                if (typed.startsWith("/")) {
+                        if (handleSlashCommand(typed)) return;
                 }
                 textarea.value = "";
+                const text = [...geometryRefs.map((ref) => ref.header), typed].filter((part) => part).join("\n");
+                geometryRefs.length = 0;
                 const history = container.__aiChatHistory || "";
                 const nextHistory = history ? history + "\n" : "";
                 const imageMarkdown = attachments
@@ -2584,6 +2739,13 @@ function ensureAiChat(container, uid, property) {
                 }
                 if (handled) {
                         event.preventDefault();
+                        return;
+                }
+                // A pasted Copy reference record becomes the same chip Ask AI makes.
+                const ref = geometryReferenceFromRecord(event.clipboardData?.getData("text/plain"));
+                if (ref) {
+                        event.preventDefault();
+                        container.__aiChat?.addGeometryReference(ref);
                 }
         });
 
@@ -2630,7 +2792,14 @@ function ensureAiChat(container, uid, property) {
         container.innerHTML = "";
         container.appendChild(root);
 
-        container.__aiChat = {root, messages, textarea, preview, attachments, uid, property: property || "code", micButton, stateBrowser, garden, submit: submitPrompt};
+        container.__aiChat = {root, messages, textarea, preview, attachments, uid, property: property || "code", micButton, stateBrowser, garden, submit: submitPrompt,
+                addGeometryReference(ref) {
+                        if (!ref?.header || geometryRefs.some((r) => r.header === ref.header)) return;
+                        geometryRefs.push(ref);
+                        renderPreview();
+                        textarea.focus();
+                }};
+        for (const ref of takePendingGeometryReferences(uid)) container.__aiChat.addGeometryReference(ref);
         restoreAiChat(container, uid);
         return container.__aiChat;
 }
@@ -2977,6 +3146,96 @@ window.openAiStateBrowser = async (uid, source, node, offset) => {
 
 let stickyAiChat = null;
 
+// --- Geometry references (a three.js viewer's Ask AI) ---------------------------------------------------
+// The chip a quoted pick shows as in the composer, and in a sent turn (aiChatHtml.kt renders the same markup).
+function geometryReferenceChip(ref) {
+        const chip = document.createElement("span");
+        chip.className = "ai-chat-geometry-chip";
+        chip.title = `${ref.view} · ${ref.revision}`;
+        const what = [ref.label || ref.partId, ref.kind, ref.element].filter(Boolean).join(" · ");
+        chip.append(document.createTextNode(what || "geometry"));
+        if (ref.note) {
+                const note = document.createElement("em");
+                note.textContent = " “" + ref.note + "”";
+                chip.append(note);
+        }
+        const at = ref.sourceLine;
+        if (at && at.box && at.line > 0) {
+                const open = document.createElement("button");
+                open.type = "button";
+                open.className = "ai-chat-geometry-open";
+                open.dataset.uid = at.box;
+                open.dataset.property = at.property || "code";
+                open.dataset.line = String(at.line);
+                open.textContent = `line ${at.line}${at.variable ? " · " + at.variable : ""}`;
+                open.title = "Open the code at the line that drew this part";
+                chip.append(open);
+        }
+        return chip;
+}
+
+// Any "open at line" button in a chat, in the composer or in a sent turn.
+document.addEventListener("click", (event) => {
+        const open = event.target?.closest?.(".ai-chat-geometry-open");
+        if (!open) return;
+        event.preventDefault();
+        window.fieldOpenBoxLine?.(open.dataset.uid, open.dataset.property || "code", Number(open.dataset.line));
+});
+
+// The reference a Copy reference record (pasted text) stands for, or null. Mirrors threeGeometryReferenceAsk
+// in ThreeReview.kt, and writes the header in GeometryReferenceAsk's field order (rpc.kt).
+function geometryReferenceFromRecord(text) {
+        if (!text || !/^\s*\{/.test(text) || !text.includes("artifactDigest")) return null;
+        let record;
+        try { record = JSON.parse(text); } catch (_) { return null; }
+        const sel = record?.selection;
+        if (!sel?.kind || !record.artifactDigest || !record.viewId) return null;
+        const has = (v) => v !== undefined && v !== null;
+        let element = null;
+        if (sel.kind === "edge" && Array.isArray(sel.edge) && sel.edge.length === 2) element = `edge v${sel.edge[0]}–v${sel.edge[1]}`;
+        else if (sel.kind === "vertex" && has(sel.vertex)) element = `vertex ${sel.vertex}`;
+        else if (sel.kind === "face") element = [has(sel.face) ? `face ${sel.face}` : null, has(sel.triangle) ? `triangle ${sel.triangle}` : null].filter(Boolean).join(" · ") || null;
+        else if (sel.kind === "region") element = sel.region ? `${sel.region.surfaces?.length ?? 0} visible part(s)` : null;
+        else if (has(sel.triangle)) element = `triangle ${sel.triangle}`;
+        const at = record.sourceLine;
+        const sourceLine = at?.box && at.line > 0 ? {box: at.box, property: at.property || "code", line: at.line, ...(at.variable ? {variable: at.variable} : {})} : null;
+        const ref = {view: record.viewId, revision: record.artifactDigest, kind: sel.kind};
+        if (sel.partId) ref.partId = sel.partId;
+        if (record.partLabel) ref.label = record.partLabel;
+        if (element) ref.element = element;
+        const note = String(record.text || "").slice(0, 2000);
+        if (note) ref.note = note;
+        if (record.sourceBox) ref.sourceBox = record.sourceBox;
+        if (sourceLine) ref.sourceLine = sourceLine;
+        ref.header = "GeometryReference: " + JSON.stringify(ref) + "\n" +
+                "(Full record: the live `selection` of ReadGeometryReviewsRequest for this view, or look with InspectGeometryViewRequest at this revision.)";
+        return ref;
+}
+
+var pendingGeometryReferences = [];
+window.fieldPendingGeometryReferences = pendingGeometryReferences;
+function takePendingGeometryReferences(uid) {
+        const taken = pendingGeometryReferences.filter((ref) => !ref.sourceBox || ref.sourceBox === uid);
+        for (const ref of taken) pendingGeometryReferences.splice(pendingGeometryReferences.indexOf(ref), 1);
+        return taken;
+}
+
+/**
+ * Put a quoted pick into a chat composer: the owning box's chat when it is open, else the chat used last.
+ * Returns false when no chat is open; the reference then waits for the owning box's chat to mount.
+ */
+window.fieldDeliverGeometryReference = (ref) => {
+        const own = ref?.sourceBox ? aiChatContainerForBox({uid: ref.sourceBox}) : null;
+        const target = (liveAiChat(own) && own) || (liveAiChat(stickyAiChat) && stickyAiChat) ||
+                [...document.querySelectorAll(".ai-chat-window")].map((root) => root.parentElement).find(liveAiChat);
+        if (!target) {
+                pendingGeometryReferences.push(ref);
+                return false;
+        }
+        target.__aiChat.addGeometryReference(ref);
+        return true;
+};
+
 function noteAiChatUsed(container) {
         if (container && container.__aiChat) stickyAiChat = container;
 }
@@ -3053,3 +3312,17 @@ if (location.hash.startsWith("#garden/")) {
 }
 
 installControllerChatProjection();
+
+/** Mount one box output as a live marking-menu panel, and return its cleanup callback. */
+window.mountMarkingOutput = (uid, channel, host) => {
+        const box = findBoxByUid(uid), group = box?.querySelector('.outputArea .disclosure-group');
+        if (!group) throw new Error('The output is not available. Run its box first.');
+        const borrowed = disclosureInterface(group).borrowContent(channel, host);
+        const check = setInterval(() => {
+                if (!borrowed.valid()) {
+                        clearInterval(check); borrowed.release();
+                        host.textContent = 'The output was removed.';
+                }
+        }, 200);
+        return () => { clearInterval(check); borrowed.release(); };
+};

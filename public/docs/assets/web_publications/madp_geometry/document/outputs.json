@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-14T23:09:26.913Z",
+  "capturedAt": "2026-11-18T21:57:36.638Z",
   "documentName": "madp_geometry",
   "outputs": [
     {
@@ -11,8 +11,8 @@
       "kinds": [
         "three"
       ],
-      "width": 688,
-      "height": 468,
+      "width": 680,
+      "height": 460,
       "path": "outputs/0.html"
     },
     {
@@ -23,8 +23,8 @@
       "kinds": [
         "three"
       ],
-      "width": 688,
-      "height": 468,
+      "width": 680,
+      "height": 460,
       "path": "outputs/1.html"
     },
     {
@@ -35,8 +35,8 @@
       "kinds": [
         "three"
       ],
-      "width": 688,
-      "height": 468,
+      "width": 680,
+      "height": 460,
       "path": "outputs/2.html"
     },
     {
@@ -47,8 +47,8 @@
       "kinds": [
         "three"
       ],
-      "width": 688,
-      "height": 468,
+      "width": 680,
+      "height": 460,
       "path": "outputs/3.html"
     },
     {
@@ -59,8 +59,8 @@
       "kinds": [
         "three"
       ],
-      "width": 688,
-      "height": 468,
+      "width": 680,
+      "height": 460,
       "path": "outputs/4.html"
     },
     {
@@ -71,8 +71,8 @@
       "kinds": [
         "three"
       ],
-      "width": 688,
-      "height": 468,
+      "width": 680,
+      "height": 460,
       "path": "outputs/5.html"
     },
     {
@@ -83,8 +83,8 @@
       "kinds": [
         "three"
       ],
-      "width": 688,
-      "height": 468,
+      "width": 680,
+      "height": 460,
       "path": "outputs/6.html"
     },
     {
@@ -95,8 +95,8 @@
       "kinds": [
         "three"
       ],
-      "width": 688,
-      "height": 468,
+      "width": 680,
+      "height": 460,
       "path": "outputs/7.html"
     },
     {
@@ -107,8 +107,8 @@
       "kinds": [
         "three"
       ],
-      "width": 688,
-      "height": 468,
+      "width": 680,
+      "height": 460,
       "path": "outputs/8.html"
     },
     {
@@ -119,8 +119,8 @@
       "kinds": [
         "three"
       ],
-      "width": 688,
-      "height": 468,
+      "width": 680,
+      "height": 460,
       "path": "outputs/9.html"
     },
     {
@@ -131,8 +131,8 @@
       "kinds": [
         "three"
       ],
-      "width": 688,
-      "height": 468,
+      "width": 680,
+      "height": 460,
       "path": "outputs/10.html"
     }
   ]

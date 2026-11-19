@@ -191,6 +191,30 @@ cannot be presented as a successful new publication. Removed or reclassified rec
 from the registry. Refresh results are written to `build/docs-publications-refresh.json`.
 Capture timeouts get one retry in a fresh Field session; a second timeout still fails the build.
 
+Each entry's `captureDigest` covers the capture code that page depends on: the core
+(`publication-capture.js`, `publishDocument.js`, `WebPublication.kt`) for every page, plus the
+Three.js viewer files (`publication-three.js`, `threejs_*.{html,js}`) only for a page whose output
+kinds include `three` or `three-image`. An edit to the viewer makes the ~20 Three.js pages stale, not
+all of them. An entry still carrying the single digest used before this split stays fresh until one
+of those files changes.
+
+A page pending only because that capture code changed keeps its previous publication, which still
+works (its runtime files are content-addressed and kept), and is recorded under `deferred` in
+`catalog.json` with the digest it has yet to meet; `check` accepts the deferral for that digest
+only. A landing (merge_regen runs `sync --defer-digest-only`) defers such pages without trying
+them, so a viewer change lands in the time its own pages take. While its queue is empty the lander
+runs `tools/docs_publications.py catch-up --limit 12`, which recaptures up to twelve deferred pages,
+least-tried first, and commits the result to main on its own (`Publication catch-up: ...`); a
+landing that arrives meanwhile waits for that chunk only. A page that fails the catch-up twice at
+one digest is left until the digest changes again or someone looks at the `error` recorded with
+it. `tools/land.py status` shows how many pages are deferred and whether the catch-up is running.
+A plain `sync` (the docs build) still tries them; one that fails is deferred, and more than
+`MAX_DEFERRED` such failures in one refresh fail it. A page whose own sources changed is always
+captured, and its failure always fails the refresh.
+
+Publication captures pick their port from 9620-9639 starting at an offset hashed from the
+checkout's path, so the lander and a worktree refreshing at the same time do not race for one port.
+
 `tools/docs_publications.py capture --group pilot` opens copies of the existing FLine and
 Three.js companion documents in an isolated Field, runs their boxes, and captures the actual
 outputs. `--group gallery` uses the existing `DemoTranscriptExecSmokeTest.EXECUTE` classification

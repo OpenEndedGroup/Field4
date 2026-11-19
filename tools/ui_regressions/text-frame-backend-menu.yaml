@@ -1,0 +1,19 @@
+name: text_frame_backend_menu
+operations:
+  - drive:
+      warmCompletion: false
+      script: |
+        ui.hoverSelector("[data-docs-menu='true']")
+        ui.down("Shift")
+        ui.down("Alt")
+        ui.mouseDown()
+        ui.waitForSelector(".markingButton:has-text('Status')",15000.0)
+        ui.hoverSelector(".markingButton:has-text('Status')")
+        ui.waitForSelector(".markingButton:has-text('Ready')",15000.0)
+        ui.hoverSelector(".markingButton:has-text('More')")
+        ui.waitForSelector(".markingButton:has-text('Archive')",15000.0)
+        ui.hoverSelector(".markingButton:has-text('Archive')")
+        ui.mouseUp()
+        ui.up("Alt")
+        ui.up("Shift")
+        check(ui.eval("return !document.querySelector('.markingButton');").toString()=="true") { "Backend menu leaf did not close" }

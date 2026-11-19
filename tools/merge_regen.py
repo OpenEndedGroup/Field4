@@ -125,7 +125,11 @@ def regenerate(repo: Path, changed: set[str]) -> tuple[int, set[str]]:
 
     # Run after materialization and outside Gradle: capturing may need its own Field build.
     if any(g.task == 'checkDocsPublications' for g in guards_for_paths(changed)):
-        code = subprocess.run([sys.executable, str(repo / 'tools/docs_publications.py'), 'sync'], cwd=repo).returncode
+        # A page pending only because the capture code changed keeps its previous capture: the
+        # lander recaptures those while its queue is empty (`docs_publications.py catch-up`), so a
+        # viewer change no longer holds the landing for a refresh of every page.
+        code = subprocess.run([sys.executable, str(repo / 'tools/docs_publications.py'), 'sync',
+                               '--defer-digest-only'], cwd=repo).returncode
         if code != 0:
             print('merge_regen: publication refresh failed; merge remains uncommitted', file=sys.stderr)
             return publication_failure_code(repo, code, changed), set()

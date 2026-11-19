@@ -176,4 +176,24 @@ class WiVRnPreparationTest {
         kotlin.test.assertTrue(plan.commands.flatten().containsAll(listOf("cmake", "python@3.12")))
         kotlin.test.assertTrue(featureOptions("linux").none { it.extra.id == "wivrn-macos" })
     }
+    @Test fun drawingOnPreparesOnlyTheMacReaderAndDoesNotInstallAnIpadApp() {
+        val extra = extrasCatalog.single { it.id == "drawing-on" }
+        assertEquals("drawing-on", extra.id)
+        assertEquals("public/docs/drawing_on.md", extra.guide)
+        assertEquals(setOf("xcrun"), extraTools(setOf(extra.id), "mac"))
+        assertEquals(listOf(listOf("/bin/zsh", "native/field-drawingon/tools/prepare")),
+            preparationCommands(setOf(extra.id), "mac"))
+        for (platform in listOf("linux", "windows")) {
+            assertTrue(preparationCommands(setOf(extra.id), platform).isEmpty())
+            assertTrue(extraTools(setOf(extra.id), platform).isEmpty())
+            assertFalse(featureOptions(platform, { true }, nvidia = false, rustErrors = emptyList(), solidcraftErrors = emptyList()).any { it.extra.id == extra.id })
+        }
+        val unavailable = featureOptions("mac", { it != "xcrun" }, nvidia = false,
+            rustErrors = emptyList(), solidcraftErrors = emptyList()).single { it.extra.id == extra.id }
+        assertFalse(unavailable.enabled)
+        assertTrue("xcrun" in unavailable.missing)
+        assertEquals("native/field-drawingon/.build/offline-review/drawingon-review",
+            artifactCandidates(File("."), extra.id, "mac", emptyMap()).single().relativeTo(File(".")).path)
+    }
+
 }

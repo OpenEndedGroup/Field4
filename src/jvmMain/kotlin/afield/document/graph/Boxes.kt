@@ -155,6 +155,11 @@ var Box.preamble by Delegation<String>(defaultValue = { "" })
 var Box.introduction by Delegation<String>(defaultValue = { "" })
 var Box.attic by Delegation<String>(defaultValue = { "" })
 var Box.notes by Delegation<String>(defaultValue = { "" })
+/** Markdown source for a text frame; file proxies use the same property for their disk contents. */
+var Box.contents by Delegation<String>(defaultValue = { "" })
+/** Text frame typography and sizing as YAML (legacy JSON is also accepted); see dev_docs/workspace/TEXT_FRAMES.md. */
+var Box.textFrame by Delegation<String>(defaultValue = { "{}" })
+var Box.box_kind by Delegation<String>(defaultValue = { "" })
 /**
  * Whether opening the document runs this box (`SessionInformation.autorunBoxes`).
  *
@@ -698,6 +703,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "code",
             "code_language",
             "contents",
+            "box_kind",
+            "textFrame",
             "contents_language",
             "default_property",
             "file_proxy_mode",
@@ -775,10 +782,13 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
         ).map { it.toRegex() }
 
         var ioPersistentProperties = mutableSetOf(
+            "contents",
             "frame",
             "name",
             "code",
             "code_language",
+            "box_kind",
+            "textFrame",
             "contents_language",
             "default_property",
             "file_proxy_mode",
@@ -1031,6 +1041,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
         }
 
         init {
+            installGraphVisibilityActions()
 
             actionTable["-connect"] = { boxes ->
                 val a = boxes[0]

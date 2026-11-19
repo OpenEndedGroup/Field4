@@ -1,0 +1,9 @@
+{
+  "refreshed": [
+    "muse_sequencer",
+    "fm1_simulator",
+    "cuda_particles"
+  ],
+  "method": "tools/docs_publications.py sync, canonical sources; no manual output changes",
+  "hardware": "CUDA hardware-profile figure retained on macOS; the publication source refresh is separate from that NVIDIA figure."
+}

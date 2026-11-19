@@ -218,6 +218,9 @@ data class ThreeDrawable(
      */
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val hidden: Boolean = false,
+    /** The box line that added this part ([threeCallSite]); carried into review references, left out of the revision. */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val provenance: ThreeSourceLine? = null,
 ) {
     override fun toString(): String = prettySummary(
         "ThreeDrawable",
@@ -462,6 +465,8 @@ data class ThreeStudioSpec(
     val ambientOcclusion: Boolean = true,
     /** Start with the toolbar's **Path trace** pressed: the scene path traced, with bouncing light. Single views only. */
     val pathTrace: Boolean = false,
+    /** Let the path tracer set its own exposure from the traced image, on top of [exposure]. */
+    val autoExposure: Boolean = true,
 )
 
 /**
@@ -496,6 +501,8 @@ data class ThreeOverlay(
     val html: String,
     /** `"top-right"`, `"top-left"`, `"bottom-right"` or `"bottom-left"`. */
     val corner: String = "top-right",
+    /** Draw the block on the viewer's legend panel (set by [ThreeSceneBuilder.markdown]). */
+    val panel: Boolean = false,
 )
 
 /**

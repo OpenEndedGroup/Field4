@@ -85,6 +85,8 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
 
 ## Files
 
+- `drawing_on.yaml`: optional native iPad drawing/voice head, with an editable plan preview and FLine endpoint response. The app, offline save-file reader and tests live in `native/field-drawingon/`. See `public/docs/drawing_on.md`.
+
 - `stereo_rtt_composite.yaml`: desktop-first stereo cubes, resolution chart, editable per-eye-safe FXAA RTT, and optional OpenXR presentation. Launch 1, 2, 2b, 3, 4; the last box owns the render loop. See `public/docs/stereo_rtt_composite.md`.
 - `field_vr_ide.yaml`: Field's live frontend in an OpenXR panel, with either-hand rays, two-grip resizing, pinch fallback, and headset keyboard/mouse input. The Quest 3 workflow is headset-tested. Launch 1 then 2; desktop preview is the default. See `public/docs/field_vr_ide.md`.
 
@@ -288,6 +290,16 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   `animation_time_model.md`. Runs until stopped, stops itself with `end()`, re-run replaces, and a
   fourth box the reader drives to see which of `.end { }` and `finally` each way of stopping reaches.
   Pure CPU. Moved up from `docs_capture/` on 2026-10-02 to become a starting point.
+- `chamfer_everything.yaml`: **chamfer every edge, and find out where it breaks** — a drilled plate
+  of bosses whose edges are read off its SolidCraft mesh (`SolidCraftMesh.edges()`), chamfered all
+  at once (refused where an outside and an inside edge meet) and then outside-then-inside as two
+  features (builds), beside a ladder of eleven parts timed three ways: one chamfer, two, and one
+  fillet. Optional SolidCraft bridge; without it the boxes give the build command.
+- `fillet_everything.yaml`: **fillet every edge, and check it** — a block rounded on all twelve edges
+  at three radii against the closed-form volume of a rounded block (to ~1e-12), the drilled plate of
+  bosses that one chamfer cannot take in one fillet, and eleven parts at 1 mm and at the largest
+  radius each takes, found from SolidCraft's own refusal. The ladder runs in `go { }` with the
+  evaluations off the main loop. Optional SolidCraft bridge; without it the boxes give the build command.
 - `kolakoski_euclid.yaml`: **Kolakoski counts, Euclid places** — the word says how many hits a group
   gets, `bjorklund` says where inside it they sit. A flat bar of twelve onsets rolled against
   `euclid(12,24)` at the same density, the same rule run recursively as a branching tree whose level

@@ -3214,6 +3214,83 @@ the planned path then passes closer to the walls than the `avoidWalls(clearance 
 the agent go, the two terms push against each other at every corner, and about a fifth fewer agents
 arrive.
 
+## 13. Bonded-particle organisms
+
+Everything above lives on a grid or moves as a population of points. In Christian Heinemann's
+[ALIEN](https://github.com/chrxh/alien) (5.0-beta was the reference here) a creature is a set of
+particles, called cells, held together by bonds. Some cells have a job: a muscle changes the length
+of its bonds, a sensor reads its surroundings, a constructor builds new cells from a genome.
+`alife_bonded.kt` is a small version of that idea with bonds, muscles and energy, written to run on
+the GPU:
+
+- **Bonds** are damped springs with a rest length. A bond strained past its limit breaks at both
+  ends on the same step.
+- **Muscles** are bonds whose rest length oscillates, `rest * (1 + amp * sin(omega * t + phase))`.
+- **Energy** sits in each cell, flows along bonds toward the emptier end, and is spent by muscles.
+  A muscle's stroke shrinks with the energy of its two cells, so a creature that runs out stops.
+- **The medium** is a viscous fluid. Moving sideways to a body costs more than moving along it
+  (`dragNormal` against `dragTangent`), which is what lets a bending wave push a worm forward.
+
+A body is grown from a genome string, one character per segment of a ladder: two rails joined by
+rungs and braces. `M` is a muscle segment, whose left and right rails beat half a cycle apart so
+the segment bends one way and then the other. `L` and `R` are muscles that also curve the body, so
+it swims in a circle. `S` is stiff, and `W` is weak, the place the body tears first:
+
+```diffstatic {data-lang=kotlin}
+val world = BondedWorld(256)
+val worm = world.grow("SMMMMMMMMMMS", 0f, 0f, waveStep = 0.8f)
+world.run(3000)
+world.centroid(worm)
+```
+
+`waveStep` is the phase difference between neighbouring segments, so a non-zero value sends a
+wave down the body. The default medium makes moving sideways a hundred times dearer than moving
+lengthways (`dragNormal = 15`, `dragTangent = 0.15`) and each muscle stretches and shrinks by 40%
+(`amplitude = 0.4`). Once the wave is running, this 11-unit worm travels **0.26 body lengths per
+stroke**, about 2.9 units every two time units; over 60 time units its centre moves **83**. Its
+controls fail: with `waveStep = 0` (every segment bending in step) it moves **1.4**, with equal
+drags along and across the body it moves **6e-7**, and with the wave reversed it swims the other
+way, 65 units.
+
+### Four worms on the GPU
+
+`BondedWorld.step` is written one cell at a time and reads only the previous state, so it ports to
+a compute shader unchanged. Every bond is stored at both its ends, so no invocation writes another
+cell, and both ends of a bond reach the same break decision from the same numbers. The
+[`bonded_organisms`](agent_transcripts.md#bonded_organisms) document grows four worms and 500 loose cells on the CPU,
+uploads them, and steps them in its `organisms` box's `compute` tab; a `draw` box beneath it draws
+the cells and bonds straight from the GPU buffers. The genomes are the first line of the
+`organisms` box:
+
+```diffstatic {data-lang=kotlin}
+val genomes = ["SMMMMMMMMMMS", "SLLLLLLLLLS", "SMMMMMMMMMMMMMMS", "SRRRRRRRRS"]
+```
+
+Edit one and run the box again to grow different creatures. Each genome has a start and a
+heading: the two straight worms start at opposite sides heading inwards, the `L` and `R` worms
+between them. The world box takes two steps every renderer frame (`clock.stepsPerFrame = 2`), so
+the worms beat about once a second on screen; raise it to speed them up. In the 16-second video
+the orange `M` worm swims from the left edge to the right wall, about three of its body lengths,
+the cyan one crosses from the right side to the lower left, and the green `L` and magenta `R` worms swim
+in curves:
+
+```diffstatic_runner {data-lang=kotlin capture="native-window" capture-box="bonded_renderer" transcript="dev_docs/agents/transcripts/bonded_organisms.yaml" video="assets/alife_examples/bonded-organisms.mp4" duration="16" wait="0.2" timeout="300" embed=true hidden=true name="alife-bonded-organisms" alt="four ladder-bodied worms, orange, green, cyan and magenta, among scattered grey loose cells on a black field. They start straight, then bending waves travel down their bodies about once a second: the orange worm swims from the left edge across to the right, the cyan one swims from the right side to the lower left, and the green and magenta worms swim in curves among the loose cells"}
+// The transcript is the bonded_organisms document: a renderer, the organisms box and the draw box.
+```
+
+The document's `GPU against CPU` box restarts the GPU world, freezes it after 600 steps, reads the
+cells back and steps a CPU `BondedWorld` built by the same code 600 times. The largest distance
+between a GPU cell and its CPU twin was **5.8e-5**, while cells had moved up to 9.8.
+
+??? aside "What this cut leaves out, and a push-constant trap"
+    No sensors, no constructor cells that grow a body over time, no food, and no audio: the genome
+    is read once, when the body is built. Repulsion between cells is a brute-force loop over every
+    pair, which is fine for a few thousand cells and needs a neighbour grid
+    beyond that. The step counter is `BondedClock`, which advances once per dispatch, keyed on
+    the renderer frame and the step within it: a `ComputeMesh` push-constant lambda runs more than
+    once per dispatch, so a lambda that counted its own calls advanced two steps per dispatch, the
+    ping-pong buffers never swapped, and the world stood still. `BondedOrganismTest` pins the CPU claims above.
+
 ## Evaluating one of these in a box: the inline views
 
 `IntGrid`, `GrayScottState` and `LeniaRun` implement Field's `ToHTML`, so *evaluating* one of them in a
@@ -3390,3 +3467,5 @@ Implementation and parameter details for the helpers used above:
   [`seed`](reference/alife.md#alife-continuous-kt--leniacreature--seed).
 - The catalogue lifeform: [`LeniaPresets`](reference/alife.md#alife-continuous-kt-leniapresets) —
   [`orbium`](reference/alife.md#alife-continuous-kt--leniapresets--orbium).
+
+- Growing and advancing bonded bodies: [`BondedWorld`](reference/simulation.md#alife-bonded-kt-bondedworld), [`BondedWorld.grow`](reference/simulation.md#alife-bonded-kt--bondedworld--grow), [`BondedWorld.run`](reference/simulation.md#alife-bonded-kt--bondedworld--run), [`BondedWorld.centroid`](reference/simulation.md#alife-bonded-kt--bondedworld--centroid).

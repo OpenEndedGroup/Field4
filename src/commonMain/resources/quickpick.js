@@ -34,7 +34,9 @@ const initQuickPick = (is) => {
                         return
                 }
 
-                if (document.activeElement == document.body) {
+                const focused = document.activeElement
+                const canvasReaderFocused = focused?.matches?.('[data-field-canvas-keyboard="true"]') && !quickpickIsEditableTarget(e.target)
+                if (focused === document.body || canvasReaderFocused) {
                         qpLog(e.key)
 
                         let k = e.key
@@ -45,6 +47,9 @@ const initQuickPick = (is) => {
                                 return a
                         })
                         if (found) {
+                                // A command may focus a new text input; consume its triggering character first.
+                                e.preventDefault()
+                                e.stopPropagation()
                                 qpLog(" running ")
                                 found.run()
                         }
@@ -463,8 +468,7 @@ function bootstrapAnywhereProviders() {
                 boxes.forEach((box) => {
                         const title = boxTitle(box)
                         const uid = box.uid || title || "(unknown)"
-                        const hay = `${title} ${uid}`.toLowerCase()
-                        if (q && !hay.includes(q)) return
+                        if (q && !Number.isFinite(paletteFuzzyScore(q, [[title, 1], [uid, 0.8]]))) return
                         results.push({
                                 id: uid,
                                 label: title || uid,
@@ -490,13 +494,16 @@ function bootstrapAnywhereProviders() {
                         propertyNames.forEach((prop) => {
                                 const val = box[prop]
                                 if (typeof val !== "string" || !val) return
-                                if (q && !val.toLowerCase().includes(q) && !prop.toLowerCase().includes(q)) return
+                                const words = q.split(/\s+/).filter(Boolean)
+                                const valLower = val.toLowerCase()
+                                if (q && !words.every((w) => valLower.includes(w))
+                                        && !Number.isFinite(paletteFuzzyScore(q, `${title} ${prop}`))) return
                                 let preview = val.replace(/\s+/g, " ")
                                 if (q) {
-                                        const idx = preview.toLowerCase().indexOf(q)
+                                        const idx = preview.toLowerCase().indexOf(words[0] || q)
                                         if (idx >= 0) {
                                                 const start = Math.max(0, idx - 20)
-                                                const end = Math.min(preview.length, idx + q.length + 60)
+                                                const end = Math.min(preview.length, idx + (words[0] || q).length + 60)
                                                 preview = (start > 0 ? "…" : "") + preview.slice(start, end) + (end < preview.length ? "…" : "")
                                         } else {
                                                 preview = preview.slice(0, 80)
@@ -583,8 +590,7 @@ function bootstrapAnywhereProviders() {
                                 const name = String(macro.name || "")
                                 const scope = String(macro.scope || "document")
                                 const projectName = String(macro.projectName || "")
-                                const hay = `${name} ${scope} macro run`.toLowerCase()
-                                if (q && !hay.includes(q)) return null
+                                if (q && !Number.isFinite(paletteFuzzyScore(q, [[name, 1], [`${scope} macro run`, 0.6]]))) return null
                                 const exact = q && name.toLowerCase() === q
                                 const starts = q && name.toLowerCase().startsWith(q)
                                 return {
@@ -881,37 +887,23 @@ const paletteIconFor = (item) => {
         return "cmd"
 }
 
-const paletteFuzzyScore = (query, haystack) => {
-        const q = String(query || "").trim().toLowerCase()
-        if (!q) return 0
-        const h = String(haystack || "").toLowerCase()
-        if (!h) return -Infinity
-        const idx = h.indexOf(q)
-        if (idx >= 0) return 120 - idx
-        let qi = 0
-        let score = 0
-        let streak = 0
-        for (let hi = 0; hi < h.length && qi < q.length; hi++) {
-                if (h[hi] === q[qi]) {
-                        qi++
-                        streak++
-                        score += 6 + streak * 2
-                } else {
-                        streak = 0
-                        score -= 0.15
-                }
-        }
-        return qi === q.length ? score : -Infinity
-}
+// paletteFuzzyScore / paletteFuzzyMatch live in paletteFuzzy.js (loaded first).
 
 const paletteRenderLabel = (label, query) => {
         const text = String(label || "")
-        const q = String(query || "").trim()
-        if (!q) return paletteEscapeHtml(text)
-        const lower = text.toLowerCase()
-        const idx = lower.indexOf(q.toLowerCase())
-        if (idx < 0) return paletteEscapeHtml(text)
-        return `${paletteEscapeHtml(text.slice(0, idx))}<span class="afield-palette-match">${paletteEscapeHtml(text.slice(idx, idx + q.length))}</span>${paletteEscapeHtml(text.slice(idx + q.length))}`
+        const hit = String(query || "").trim() ? paletteFuzzyMatch(query, text) : null
+        if (!hit || !hit.positions.length) return paletteEscapeHtml(text)
+        const marked = new Set(hit.positions)
+        let html = ""
+        for (let i = 0; i < text.length;) {
+                const on = marked.has(i)
+                let k = i
+                while (k < text.length && marked.has(k) === on) k++
+                const chunk = paletteEscapeHtml(text.slice(i, k))
+                html += on ? `<span class="afield-palette-match">${chunk}</span>` : chunk
+                i = k
+        }
+        return html
 }
 
 const PALETTE_SHADER_KEYWORDS = new Set([
@@ -1356,6 +1348,7 @@ const PALETTE_PROPERTY_INFO = {
         attic: ["Kotlin (attic)", "A scratch holding area for code you may want later."],
         notes: ["Notes (Markdown)", "Markdown notes for the selected box."],
         metadata: ["Metadata", "YAML metadata about this box."],
+        textFrame: ["Text frame settings", "YAML typography and sizing for a text frame."],
         contents: ["File contents", "Plain file-like contents associated with this box."],
 }
 
@@ -1391,6 +1384,7 @@ const PALETTE_PROPERTY_LANGUAGE = {
         attic: "kotlin",
         notes: "markdown",
         metadata: "yaml",
+        textFrame: "yaml",
         contents: "plaintext",
 }
 
@@ -1870,12 +1864,13 @@ class FieldPaletteController {
                 return items
                         .map((item, index) => {
                                 const haystack = [item.label, item.description, item.detail, item.id, item.category].filter(Boolean).join(" ")
+                                const fields = [[item.label, 1], [[item.description, item.detail].filter(Boolean).join(" "), 0.6], [[item.id, item.category].filter(Boolean).join(" "), 0.4]]
                                 // Server-ranked results (docs, workspace search) already matched the query, often
                                 // in text the row does not show; keep their order rather than re-score them.
                                 const fuzzy = item.serverRanked ? 60
                                         : this.options.matchMode === "substring"
                                         ? substringMatch(haystack)
-                                        : paletteFuzzyScore(q, haystack)
+                                        : paletteFuzzyScore(q, fields)
                                 const score = (item.score || 0) + fuzzy - index * 0.001
                                 return { item, score, fuzzy, index }
                         })
@@ -2503,7 +2498,6 @@ function openFieldCommandPalette(options = {}) {
                 placeholder: includeEditor ? "Run an editor or Field command..." : "Run a document command...",
                 hint: includeEditor ? `Press ${shortcut} again for document-level commands.` : "",
                 items,
-                matchMode: "substring",
                 query: options.query || "",
         })
 }

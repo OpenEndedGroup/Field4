@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-18T14:17:04.853Z",
+  "documentName": "fillet_everything",
+  "outputs": [
+    {
+      "uid": "fillet_plate",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 474,
+      "height": 45,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "fillet_block",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 474,
+      "height": 45,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "fillet_ladder",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 474,
+      "height": 45,
+      "path": "outputs/2.html"
+    }
+  ]
+}

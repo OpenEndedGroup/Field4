@@ -437,9 +437,20 @@ class EnsureServerBudgetTests(unittest.TestCase):
         with mock.patch.dict(os.environ, {}):
             os.environ.pop(MANAGED_STARTUP_CEILING_ENV, None)
             os.environ.pop(MANAGED_JVM_START_TIMEOUT_ENV, None)
-            watch = self.launch(client)
+            # On an idle machine; a loaded one stretches the JVM budget (`load_factor`).
+            with mock.patch("os.getloadavg", return_value=(0.0, 0.0, 0.0)):
+                watch = self.launch(client)
         self.assertGreaterEqual(watch.ceiling, 1200.0)
         self.assertEqual(watch.jvm_timeout, 120.0)
+
+    def test_a_loaded_machine_stretches_the_jvm_start_budget(self) -> None:
+        client = FieldBackdoor(port=1, workspace=None, default_timeout=0.01, logger=_Logger())
+        with mock.patch.dict(os.environ, {}):
+            os.environ.pop(MANAGED_JVM_START_TIMEOUT_ENV, None)
+            with mock.patch("os.getloadavg", return_value=(100.0, 0.0, 0.0)), \
+                 mock.patch("os.cpu_count", return_value=10):
+                watch = self.launch(client)
+        self.assertEqual(watch.jvm_timeout, 480.0)
 
 
 if __name__ == "__main__":

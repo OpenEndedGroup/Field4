@@ -1352,6 +1352,22 @@ val checkGeneratedLinalg = tasks.register("checkGeneratedLinalg") {
 
 
 
+// The dev server serves the executable package before the source resource directories.
+// KGP's incremental executable sync can retain old resource copies after resource-only edits;
+// track the processed resources and refresh them as part of that same sync task.
+tasks.matching { it.name in setOf("jsDevelopmentExecutableCompileSync", "jsProductionExecutableCompileSync") }
+    .configureEach {
+        val browserResources = layout.buildDirectory.dir("processedResources/js/main")
+        dependsOn("jsProcessResources")
+        inputs.dir(browserResources).withPropertyName("fieldBrowserResources").withPathSensitivity(PathSensitivity.RELATIVE)
+        doLast {
+            project.copy {
+                from(browserResources)
+                into(layout.buildDirectory.dir("js/packages/afield/kotlin"))
+            }
+        }
+    }
+
 //// include JS artifacts in any JAR we generate
 tasks.named<Jar>("jvmJar").configure {
     val productionJs = providers.gradleProperty("isProduction")

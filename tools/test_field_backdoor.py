@@ -1371,17 +1371,21 @@ class NativeRendererWaitTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_timeout_cancels_pending_capture_and_reports_timeout(self) -> None:
         cancelled = asyncio.Event()
+        clock = [0.0]
 
         async def pending(**_kwargs):
             try:
+                # Advance the deadline only after the capture has actually started.
+                clock[0] = 1.0
                 await asyncio.sleep(30)
             finally:
                 cancelled.set()
 
         self.client.native_window_screenshot = pending
-        result = await asyncio.wait_for(
-            self.client.wait_native_renderer(uid="renderer", frames=3, timeout=0.02), timeout=1,
-        )
+        with mock.patch("tools.field_backdoor.time", mock.Mock(monotonic=lambda: clock[0])):
+            result = await asyncio.wait_for(
+                self.client.wait_native_renderer(uid="renderer", frames=3, timeout=0.02), timeout=5,
+            )
         self.assertFalse(result["ok"])
         self.assertNotIn("terminal", result)
         self.assertIn("Timed out", result["message"])

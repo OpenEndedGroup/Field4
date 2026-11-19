@@ -58,6 +58,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription
         "equally near box supplies a different value (an ambiguity), and which preamble line declared the name " +
         "and which box that line came from."
 )
+@afield.ai.tools.AgentToolMeta("core", afield.ai.tools.ToolExposure.DEFERRED, effects = [afield.ai.tools.ToolEffect.READ_DOCUMENT])
 data class WhyDoesThisResolve(
     @JsonPropertyDescription("The name the code reads, e.g. `_speed`, `renderer`. Give this or `type`.")
     val name: String? = null,

@@ -50,7 +50,7 @@ data class ListStudyBuildsRequest(val unused: Int = 0)
  * as its inputs change. [StartStudyBuildRequest] needs the stage fingerprint this reports.
  */
 @JsonClassDescription("Inspect a document build runner's stages and paged durable attempt history, or one jobId. Returns each stage with its fingerprint and currency, what a waiting stage waits for (inputHelp, such as a closed gate's measurement), the attempts with their requests, structured failure suggestions and retained artifact identities. A stage's resultNotes explain its current result; its failureNotes explain a latest attempt that failed against the current inputs, which is never current. Running, succeeded and current are different: an old success can be stale after edits. Use it before StartStudyBuildRequest, which needs the stage fingerprint from here. This does not start or retry work. An unknown boxId/name fails with success=false and says to list runners. e.g. boxId = `a1b2`, name = `mesh`, limit = 5.")
-@AgentToolMeta("builds", ToolExposure.DEFERRED, effects = [ToolEffect.READ_DOCUMENT, ToolEffect.FILESYSTEM_READ])
+@AgentToolMeta("builds", effects = [ToolEffect.READ_DOCUMENT, ToolEffect.FILESYSTEM_READ])
 data class InspectStudyBuildsRequest(val boxId: String, val name: String, val jobId: String = "", val offset: Int = 0, val limit: Int = 10)
 
 /**
@@ -73,7 +73,7 @@ data class WaitStudyBuildRequest(val boxId: String, val name: String, val jobId:
  * same call; zero returns the job handle for [WaitStudyBuildRequest] or [AwaitStudyBuildsRequest].
  */
 @JsonClassDescription("Start one derived stage from its current frozen inputs. Returns success, the job handle and, when it waited, the outcome. Use it when a stage is not current and the task needs its result. When called directly, waitSeconds=600 starts and observes completion in one call with streamed progress; zero returns immediately. Inside a tool program, start long work with waitSeconds=0 and return the job handle, then observe it separately: a nested wait cannot extend the program's deadline. Supply the stage fingerprint from the latest inspect. Missing/stale dependency results, closed gates and competing builds are refused. If observation times out, use WaitStudyBuildRequest on the same returned job; do not equate accepted/queued with successful or current. Continue editing while it runs: outdated results cannot become current. e.g. stageId = `bake`, expectedFingerprint from InspectStudyBuildsRequest, waitSeconds = 600.")
-@AgentToolMeta("builds", ToolExposure.DEFERRED, effects = [ToolEffect.MUTATE_DOCUMENT, ToolEffect.EXECUTE_CODE, ToolEffect.CONTROL_RUNTIME, ToolEffect.FILESYSTEM_WRITE])
+@AgentToolMeta("builds", effects = [ToolEffect.MUTATE_DOCUMENT, ToolEffect.EXECUTE_CODE, ToolEffect.CONTROL_RUNTIME, ToolEffect.FILESYSTEM_WRITE])
 data class StartStudyBuildRequest(val boxId: String, val name: String, val stageId: String, val expectedFingerprint: String, val waitSeconds: Double = 0.0,
     // A JSON string rather than a Map: openai-java's strict schema refuses an object with no named properties.
     /**

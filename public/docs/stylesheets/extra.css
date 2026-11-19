@@ -322,16 +322,14 @@ code {
 .CodeMirror * {
     font-weight: var(--md-code-font-weight) !important;
 }
-.md-typeset :is(p, li, td, blockquote) > code:first-child {
-    margin-left: -0.18em;
-}
 /* An inline code pill has a solid background but no side margin, so when it
-   directly follows text — e.g. an open paren, "at (`decay = 0.85`" — the pill
-   crowds the preceding glyph and looks like it eats it. Give code that follows
-   other content a hair of left breathing room (leaving the first-child pull above
-   untouched, and not affecting fenced `pre > code`). */
-.md-typeset :is(p, li, td, blockquote) > code:not(:first-child) {
-    margin-left: 0.15em;
+   directly follows text — e.g. an open paren, "Ghostscript (`gs`)" — the pill
+   crowds the preceding glyph and looks like it eats it. Give every inline pill a
+   hair of breathing room on both sides (not fenced `pre > code`). There used to be
+   a negative `code:first-child` pull here, but `:first-child` ignores text nodes,
+   so it also fired on the first pill after leading text and overlapped that text. */
+.md-typeset :is(p, li, td, blockquote) > code {
+    margin: 0 0.15em;
 }
 
 /* A source citation — `path:line#anchor` in the markdown, `path:line` on the page, with the
@@ -1262,6 +1260,11 @@ button.md-search__icon[aria-label="Clear"] {
 }
 
 .field-reading-rail.is-obscured {
+    visibility: hidden;
+}
+
+/* The burger drawer opens over the rail's column; hide the rail while it is open. */
+body:has(#__drawer:checked) .field-reading-rail {
     visibility: hidden;
 }
 

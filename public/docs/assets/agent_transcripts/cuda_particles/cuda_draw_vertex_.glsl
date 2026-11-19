@@ -11,8 +11,8 @@ layout(location = 0) out vec2 tc;
 layout(location = 1) out float phase;
 
 layout(push_constant) uniform push {
-    Particles particles;
-    float aspectRatio;
+    Particles particles; // shared CUDA/Vulkan float4 buffer
+    float aspectRatio; // window width / height
 } pc;
 
 // The six corners of a unit square, as two triangles

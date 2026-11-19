@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-14T23:27:54.110Z",
+  "capturedAt": "2026-11-18T21:56:28.183Z",
   "documentName": "ceres_free_variables",
   "outputs": [
     {
@@ -22,7 +22,7 @@
         "three"
       ],
       "width": 480,
-      "height": 528,
+      "height": 520,
       "path": "outputs/1.html"
     },
     {
@@ -44,7 +44,7 @@
         "three"
       ],
       "width": 480,
-      "height": 488,
+      "height": 480,
       "path": "outputs/3.html"
     }
   ]

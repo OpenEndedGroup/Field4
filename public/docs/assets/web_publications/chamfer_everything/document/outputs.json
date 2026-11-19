@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-18T14:16:53.012Z",
+  "documentName": "chamfer_everything",
+  "outputs": [
+    {
+      "uid": "chamfer_ladder",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 474,
+      "height": 45,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "chamfer_one_part",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 474,
+      "height": 45,
+      "path": "outputs/1.html"
+    }
+  ]
+}

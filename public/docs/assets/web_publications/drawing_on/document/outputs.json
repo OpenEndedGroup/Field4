@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-18T14:55:23.998Z",
+  "documentName": "drawing_on",
+  "outputs": [
+    {
+      "uid": "drawing-on-head",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "drawing-on-guide",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 479,
+      "height": 290,
+      "path": "outputs/1.html"
+    }
+  ]
+}

@@ -101,6 +101,38 @@ putting the instructions back into the stored message in the same build:
 (49 → 50). The sixteen DEFERRED tools are those under 1% of 433 tool-using turns in
 `~/.afield/logs/ai4_tool_io` (`tools/ai_tool_usage.py`); `ToolMetaPinTest` pins the list.
 
+### Re-sorted from usage (2026-11-18)
+
+Six weeks on, tools added since P3 had taken whichever exposure their author picked, so the same
+rule was applied again: `tools/ai_tool_usage.py --since 2026-10-15`, 336 sessions with tool calls.
+
+| | direct tools | direct schema tokens (o200k) |
+| --- | --- | --- |
+| before | 69 | 14,307 |
+| after | 52 | 11,366 |
+
+Measured from a box chat on an empty document (`agent-ai-tools-list` with a focus box and
+`suspendable`), counting each direct tool's name, description and input schema. That chat is still
+offered 101 tools.
+
+- **Deferred (20)**, each under 1% of sessions: the repo tools that change files or run commands,
+  the `states` and `presentation` tools, `MemoryDeleteRequest`, `DocumentSourceReadRequest`,
+  `ListContentsRequest`, `ReloadShadersRequest`, `CodeUseQueryRequest` and `WhyDoesThisResolve`.
+- **Promoted (3)**, deferred since 2026-10-09 by choice rather than from use:
+  `InspectStudyBuildsRequest` (48% of sessions), `StartStudyBuildRequest` (15%) and
+  `InspectGeometryViewRequest` (13%). Each such session had been paying a `DescribeToolsRequest` round.
+- **Kept direct despite low counts:** the notation tools, added the day before and so unmeasured,
+  and the basic graph tools (`ConnectBoxes`, `DeleteBox`, `DisconnectBoxes`, `StopBox`). Every logged
+  session was OpenAI, and automated guide-writing and sketch loops dominate the population, which
+  undercounts what a person's chat does with boxes.
+- A headless repo job (the lander fixer, `docs_notes.py revise`) exists to use the repo tools, so
+  `AgentTask` preloads `REPO_TOOL_NAMES` into `promoted` and the job spends no round on loading.
+- The `states`, `presentation` and repo adverts in the instructions now say their tools are deferred
+  and name the namespace to load.
+
+Not measured: whether rounds per task changed. Rerun the P3 eval arm against this list before
+deferring more on the strength of counts alone.
+
 ### The caching regression, and what fixed it
 
 P2 cut multi-turn input, but on single-turn tasks the cached share of input fell from 86% to 74% and

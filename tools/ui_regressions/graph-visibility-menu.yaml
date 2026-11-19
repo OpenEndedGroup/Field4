@@ -1,0 +1,49 @@
+name: graph_visibility_menu
+operations:
+  - drive:
+      warmCompletion: false
+      script: |
+        val label = ui.eval("return window.__graphVisibilityCase().label;").toString().trim('"')
+        val anchor = ui.eval("return window.__graphVisibilityCase().anchor;").toString().trim('"')
+        if (label == "Reveal All Boxes") {
+            ui.eval("for(const b of [...window.selectedList])window.deselectBox(b);window.openFieldCommandPalette({includeEditor:false,query:'Reveal All Boxes'});return true;")
+            ui.waitForSelector(".afield-palette-row:has-text('Reveal All Boxes')",10000.0)
+            ui.clickSelector(".afield-palette-row:has-text('Reveal All Boxes')")
+        } else {
+            ui.clickSelector("[data-visibility-fixture='$anchor'] .text-frame-preview")
+            ui.hoverSelector("[data-visibility-fixture='$anchor'] .text-frame-preview")
+            ui.down("Alt")
+            ui.mouseDown()
+            ui.waitForSelector(".markingButton[data-marking-submenu='true']",10000.0)
+            ui.hoverSelector(".markingButton[data-marking-submenu='true']")
+            ui.waitForSelector(".markingButton:has-text('Hide all children')",10000.0)
+            check(ui.eval("return document.querySelectorAll('.markingButton[data-marking-depth=\"1\"]').length===6;").toString()=="true") { "Hide / Reveal did not show six graph actions" }
+            check(ui.eval("return [...document.querySelectorAll('.markingButton')].every(b=>{const r=b.getBoundingClientRect();return r.left>=0 && r.right<=innerWidth && r.top>=0 && r.bottom<=innerHeight;});").toString()=="true") { "A submenu item is outside the window" }
+            if (ui.eval("return window.__graphVisibility.index===0;").toString()=="true") {
+                ui.press("Escape")
+                ui.waitForSelector(".markingButton[data-marking-submenu='true']",10000.0)
+                ui.press("Escape")
+                ui.mouseUp()
+                ui.up("Alt")
+                check(ui.eval("return !document.querySelector('.markingButton');").toString()=="true") { "Escape left menu UI behind" }
+                ui.hoverSelector("[data-visibility-fixture='$anchor'] .text-frame-preview")
+                ui.down("Alt")
+                ui.mouseDown()
+                ui.waitForSelector(".markingButton[data-marking-submenu='true']",10000.0)
+                ui.hoverSelector(".markingButton[data-marking-submenu='true']")
+                ui.waitForSelector(".markingButton:has-text('Hide all children')",10000.0)
+                ui.hoverSelector(".markingButton:has-text('Hide all children')")
+                ui.hoverSelector(".markingButton[data-marking-back='true']")
+                ui.mouseUp()
+                ui.up("Alt")
+                ui.waitForSelector(".markingButton[data-marking-submenu='true']",10000.0)
+                ui.clickSelector(".markingButton[data-marking-submenu='true']")
+                ui.waitForSelector(".markingButton:has-text('Hide all children')",10000.0)
+                ui.clickSelector(".markingButton:has-text('Hide all children')")
+            } else {
+                ui.hoverSelector(".markingButton:has-text('$label')")
+                ui.mouseUp()
+                ui.up("Alt")
+            }
+        }
+        check(ui.eval("return !document.querySelector('.markingButton');").toString()=="true") { "Choosing an action left the menu open" }

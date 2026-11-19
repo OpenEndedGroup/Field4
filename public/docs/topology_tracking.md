@@ -171,6 +171,109 @@ showImgGrid(
 
 The moved hills score about a tenth of the different field. The entropic solver lands within a few thousandths of the exact distance, which is also why it gives A against itself a small positive number rather than 0.
 
+## Cerf diagrams: when the topology changes
+
+A tracker says where each feature went. A **Cerf diagram** says when the field's topology changed.
+It plots the value of every critical point (every minimum, saddle and maximum) against time. A
+minimum or maximum can appear or disappear together with a neighbouring saddle, and two critical
+values can swap order. `CerfDiagram` follows the points with a `FeatureTracker` and marks both
+kinds of event.
+
+This example puts a small hill on the flank of a broad one and raises it from nothing and back down.
+At first the flank only has a shoulder. Once the small hill is tall enough, a maximum (red) and a saddle
+(green) appear together at an orange dot. When it shrinks again they meet and cancel at a violet one.
+The field beside the diagram shows frame 20, where the cursor is:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/topology_tracking/cerf_flank.png" alt="left, a Cerf diagram on dark grey: a flat red line at the top for the broad hill's peak, and below it a red arc and a green arc that start together at an orange dot, rise, and meet again at a violet dot, crossed by a white vertical cursor in the middle; flat blue and green lines along the bottom for the minima and saddles on the frame's edge. Right, the field at the cursor in viridis: a big yellow hill and a smaller one to its right, each with a red dot, and a green saddle dot between them" wait="4" timeout="240" capture="box" open-outputs="true" padding="16" trim="true" requires="morse-smale" name="tracking-cerf-flank" embed=true}
+import afield.geometry.topology.morsesmale.*
+import afield.geometry.topology.tracking.*
+
+// A broad hill with a smaller one on its flank whose height rises from nothing and falls back.
+fun field(t: Double) =
+    Img.generate(90, 70) { x, y ->
+        fun hill(cx: Double, s: Double) = exp(-((x - cx).pow(2) + (y - 35.0).pow(2)) / (2 * s * s))
+        (hill(35.0, 10.0) + 0.8 * sin(PI * t) * hill(55.0, 5.0)).toFloat()
+    }
+
+val cerf = CerfDiagram()
+for (frame in 0..40) cerf.add(frame.toDouble(), MorseSmale.compute(field(frame / 40.0)), minPersistence = 1e-3)
+
+val diagram =
+    Img.filled(300, 200, 1, 0.08f).drawFLines(cerf.toFLines(300.0, 200.0, cursor = 20.0, thickness = 2.0), scale = 2.0)
+val view = field(0.5).normalized().colormap("viridis").drawFLines(cerf.fieldMarkers(20.0, 7.0), scale = 4.0)
+showImgGrid("Cerf diagram, cursor at frame 20" to diagram, "frame 20" to view, columns = 2, cellSide = 420)
+```
+
+`cerf.add(time, result, minPersistence)` takes one Morse–Smale result per frame. A birth is a new
+saddle whose persistence partner in that frame is a new extremum, so the two dots of a pair are
+always one event. `cerf.events(CerfEventType.BIRTH)` lists the births, and `DEATH` and `SWAP` work
+the same way. Each event has its `time`, `value`, the `tracks` involved and its position `x`, `y` in
+the field. `pairIndex` is 0 for a minimum–saddle pair and 1 for a saddle–maximum pair. The flat
+lines along the bottom are critical points on the edge of the grid, where the field is cut off.
+
+### A simulation whose topology churns
+
+Try the diagram on a field whose changes are harder to predict. This box runs a
+[Gray–Scott reaction](alife_examples.md) from three seed patches in its spot regime. Each spot
+grows and splits, pushing its daughters apart until spots fill the field. It records
+120 frames, 40 steps apart, and draws the diagram with its cursor at frame 70 beside the field at that frame.
+`fieldMarkers(t)` marks the critical points alive at `t`, and puts a large orange or violet dot
+where a pair is born or cancels within `window` frames of it:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/topology_tracking/cerf_grayscott.png" alt="two panels. Left, a dense Cerf diagram: a band of thin red maximum curves near the top and a band of green saddle curves below it, both rising out of a few curves at the left and fanning into dozens that weave through each other, blue minimum curves along the bottom, orange birth dots and violet cancellation dots scattered between the bands, and a white cursor at frame 70. Right, the Gray–Scott field at frame 70 in magma: a front of magenta spots spreading from both sides of the frame across a black middle, a green saddle dot between neighbouring spots, and a few large orange and violet dots where spots are splitting" wait="8" timeout="300" capture="box" open-outputs="true" padding="20" trim="true" requires="morse-smale" name="tracking-cerf-grayscott" embed=true}
+import afield.geometry.topology.morsesmale.*
+import afield.geometry.topology.tracking.*
+
+// Three seed patches in Gray–Scott's spot regime, where each spot grows, splits in two and pushes its
+// daughters apart until the spots fill the field. 120 frames, 40 steps apart: 4,800 steps in all.
+var state = grayScottSeed(96, 96, patches = 3, patchSize = 10, seed = 7)
+val frames = ArrayList<Img>()
+val cerf = CerfDiagram()
+for (frame in 0 until 120) {
+    state = state.stepTimes(GRAY_SCOTT_SPOTS, 40)
+    val v = state.v.gaussianBlur(1.5)
+    frames.add(v)
+    cerf.add(frame.toDouble(), MorseSmale.compute(v, persistence = 0.05), minPersistence = 0.05)
+}
+
+val births = cerf.events(CerfEventType.BIRTH).size
+val deaths = cerf.events(CerfEventType.DEATH).size
+val swaps = cerf.events(CerfEventType.SWAP).size
+
+fun show(t: Double) {
+    val diagram =
+        Img.filled(480, 320, 1, 0.08f)
+            .drawFLines(cerf.toFLines(480.0, 320.0, cursor = t, showSwaps = false, thickness = 1.0), scale = 2.0)
+    val view =
+        frames[t.toInt()].colormap("magma", 0f, 0.4f).drawFLines(cerf.fieldMarkers(t, 4.0, window = 1.0), scale = 5.0)
+    showImgGrid(
+        "$births births, $deaths cancellations, $swaps swaps" to diagram,
+        "frame ${t.toInt()}" to view,
+        columns = 2,
+        cellSide = 480,
+    )
+}
+
+show(70.0)
+```
+
+The few curves at the left are the seed patches. Each time a spot divides, a new maximum is born with
+the saddle that separates it from its sister, so the red and green bands thicken together. Spots
+squeezed out by their neighbours cancel with a saddle at a violet dot. Inside each band the curves
+cross all the time: the run has thousands of swaps, which is why this box passes `showSwaps = false`
+to `toFLines`. Call `show` with another frame, or wrap it in a `slider` as the
+[`cerf_explorer`](agent_transcripts.md#cerf_explorer) demo does, to watch each event's dots light up on the field in the frame where it happens. Raise `minPersistence` until the diagram shows only the changes you care about.
+
+!!! note "Sampled in time"
+    `CerfDiagram` looks at the field at the frames you give it, so an event is placed at the first
+    frame that shows it, not at the instant it happens. With a persistence threshold, a pair counts
+    as born when its persistence rises above the threshold, not when it is zero. A pair born and
+    cancelled between two frames is missed. Dhar, Chakraborty and Natarajan,
+    [*Analyzing Time-Varying Scalar Fields using Piecewise-Linear Morse–Cerf Theory*](https://arxiv.org/abs/2507.00725)
+    (2025, free full text on arXiv), compute the diagram exactly by treating time as one more
+    dimension of the mesh. That paper is also the source of the Cerf diagram as a tool for this kind
+    of analysis.
+
 ## Real footage
 
 Tracking the extrema of brightness or colour in filmed footage is harder than in a field you
@@ -184,7 +287,15 @@ a dense motion estimate, and expect tracks that last for parts of a shot rather 
     tracker's identities and events, motion prediction bridging jumps longer than the gate, a
     drifting Gaussian followed for all 30 frames, two merging hills leaving the stronger one as the
     survivor, a large blob outlasting a small one in scale space, and the diagram distance on a hand
-    computed case, with the entropic solver within 1% of the exact distance at small epsilon. Three
+    computed case, with the entropic solver within 1% of the exact distance at small epsilon.
+    `CerfDiagramTest` raises and lowers a hill on another's flank and checks for exactly one
+    saddle–maximum birth and one cancellation, at the frames where a 1-D profile through the two
+    hills first and last has a second peak. The same field negated gives one minimum–saddle pair, and
+    two crossing values give one swap at the interpolated time and value. Three
     real clips were tried for the footage section: the 1896 serpentine dance from the particle-video
     page, a veil dance and a high-speed butterfly. None gave tracks worth showing without dense
     motion guidance, which is why that section is advice rather than a figure.
+
+## API reference
+
+- Tracking critical points over time: [`CerfDiagram`](reference/graphics.md#cerfdiagram-kt-cerfdiagram), [`CerfDiagram.add`](reference/graphics.md#cerfdiagram-kt--cerfdiagram--add), [`CerfDiagram.toFLines`](reference/graphics.md#cerfdiagram-kt--cerfdiagram--toflines), [`CerfDiagram.fieldMarkers`](reference/graphics.md#cerfdiagram-kt--cerfdiagram--fieldmarkers).

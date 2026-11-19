@@ -22,16 +22,9 @@ Field already separates a server-authoritative document/runtime from browser
 presentation over the shared message protocol. The visionOS shell is another
 client of that server:
 
-- WKWebViews host existing `/welcome` and `/index.html` projections for Monaco,
-  canvas, history, and HTML output.
-- Native RealityKit surfaces present streamed RTT pixels and FLine geometry.
-- `shaderSelectionContext` groups otherwise independent web clients for shared
-  selection and ephemeral `shared-ui-intent` messages.
-
-The design deliberately does not capture live DOM into textures or reimplement
-Monaco. Web docks remain two-dimensional, system-hosted web content. Native
-islands are separate spatial objects linked by document/box identity rather than
-being registered behind a transparent web view.
+The native launcher connects to a Field host and remembers recent addresses. It opens
+the RealityKit FLine viewer, RTT presentations, Live Metal, and Spatial Ink. Editing runs
+in the regular Field frontend through Mac Virtual Display or a browser.
 
 ## Existing web projection seams
 

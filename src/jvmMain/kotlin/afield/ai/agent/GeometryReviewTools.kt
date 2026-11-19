@@ -133,7 +133,7 @@ data class ReportGeometryFindingRequest(
  * the output box to use `ViewBoxOutputRequest` on instead.
  */
 @JsonClassDescription("Inspect current Three.js geometry in a separate capture browser. Returns a fresh picture, a compact part hierarchy and the complete restorable state. Use it when you need to see or measure current geometry; for a custom canvas use ViewBoxOutputRequest instead, and this tool fails saying so. A stale expectedRevision, or invalid camera, pick or section values, fails with success=false and the reason. e.g. camera = [2, 1.5, 3], target = [0, 0, 0]. Never moves the user's camera or publishes a manual selection. Get expectedRevision from ListGeometryViewsRequest. stateJson must be the COMPLETE state returned by a previous inspection, never a fabricated partial state. Use camera and target to change framing in viewer coordinates (Y up). Optionally adjust explode/visibility/x-ray/section or pick the nearest visible feature. includeMetadata adds full source provenance and redundant part-tree details; normally leave false. Historical notes remain readable with ReadGeometryNoteRequest.")
-@AgentToolMeta("geometry", ToolExposure.DEFERRED, effects = [ToolEffect.READ_DOCUMENT, ToolEffect.CAPTURE_IMAGE])
+@AgentToolMeta("geometry", effects = [ToolEffect.READ_DOCUMENT, ToolEffect.CAPTURE_IMAGE])
 data class InspectGeometryViewRequest(
     /** The view to capture, which has to be a solid viewer rather than a custom canvas. */
     val viewId: String,

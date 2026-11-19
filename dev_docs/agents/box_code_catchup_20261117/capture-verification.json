@@ -1,0 +1,37 @@
+{
+  "captures": [
+    {
+      "page": "linear_algebra.md",
+      "name": "spinny-grid",
+      "status": "passed",
+      "screenshot": "assets/spinny_algebras/grid.png",
+      "video": null,
+      "sourceFingerprint": "d79a5f61d909ecfdf9f1efa5dbdc58a287ff6ac797454c4a00069f00868c13f6"
+    },
+    {
+      "page": "linear_algebra.md",
+      "name": "spinny-taylor",
+      "status": "passed",
+      "screenshot": "assets/spinny_algebras/taylor.png",
+      "video": null,
+      "sourceFingerprint": "7c9893c5757daa1bf723c9908598a2ab9f6e5a26dee24f056a80bbd72b7538e1"
+    },
+    {
+      "page": "linear_algebra.md",
+      "name": "spinny-quat",
+      "status": "passed",
+      "screenshot": "assets/spinny_algebras/quat.png",
+      "video": null,
+      "sourceFingerprint": "925fbb190bcf877b9a19da26729a00dbeaf319b16111eec8bd35edd419c1f872"
+    },
+    {
+      "page": "fm1.md",
+      "name": "fm1-roll",
+      "status": "passed",
+      "screenshot": "assets/fm1/acid_alley_roll.png",
+      "video": null,
+      "sourceFingerprint": "ed8ac84b8bdf1d95601fed28b8e0fcc1a07b9c0d2e437975209112b97f3499e4"
+    }
+  ],
+  "method": "Normal RunnerState capture_with_environment and transactional publication; actual authored fence and transcript."
+}

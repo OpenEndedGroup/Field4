@@ -1,0 +1,14 @@
+name: graph_visibility_preview
+operations:
+  - drive:
+      warmCompletion: false
+      script: |
+        ui.hoverSelector("[data-visibility-fixture='A'] .text-frame-preview")
+        ui.down("Alt")
+        ui.mouseDown()
+        ui.waitForSelector(".markingButton[data-marking-submenu='true']",10000.0)
+        ui.hoverSelector(".markingButton[data-marking-submenu='true']")
+        ui.waitForSelector(".markingButton:has-text('Hide all children')",10000.0)
+        ui.mouseUp()
+        ui.up("Alt")
+        check(ui.eval("return document.querySelectorAll('.markingButton[data-marking-depth=\"1\"]').length===6;").toString()=="true") { "Releasing on a submenu's centre selected an unintended action" }

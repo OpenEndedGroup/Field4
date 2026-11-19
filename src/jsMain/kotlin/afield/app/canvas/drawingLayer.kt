@@ -357,6 +357,8 @@ fun initializeDrawingLayer() {
 
     window.asDynamic().toggleDrawingLayer = ::toggleDrawingLayer
     window.asDynamic().drawingLayerState = ::drawingLayerState
+    // For AI4's notation capture page: load the drawing without waiting for the root's scene to arrive.
+    window.asDynamic().drawingLayerEnsureLoaded = { ensureLoaded() }
     // For tests: choose a tool in the main pane, as its toolbar would.
     window.asDynamic().drawingLayerSetTool = { type: String -> handle?.api()?.setActiveTool(json("type" to type)) }
     // For tests and the backdoor: the live elements as plain objects.

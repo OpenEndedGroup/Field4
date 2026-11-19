@@ -48,7 +48,7 @@ data class RepoCommandScope(
     "Use it to reproduce a failure and to confirm a fix after patching; to look at files, use RepoReadFileRequest or RepoSearchRequest instead. " +
     "Refuses a command the job does not allow, an argument its slot rejects, and any run while another process holds the checkout's verification lock; " +
     "a run past its timeout is stopped and comes back with timedOut=true.")
-@AgentToolMeta("repo", effects = [ToolEffect.EXECUTE_CODE, ToolEffect.FILESYSTEM_WRITE])
+@AgentToolMeta("repo", ToolExposure.DEFERRED, effects = [ToolEffect.EXECUTE_CODE, ToolEffect.FILESYSTEM_WRITE])
 data class RepoRunCommandRequest(
     val command: String,
     val args: List<String> = emptyList(),
@@ -384,10 +384,9 @@ class RepoCommandTools(val files: RepoFileTools, val scope: RepoCommandScope) {
      */
     internal fun liveBuildHazard(
         classPath: String = System.getProperty("java.class.path").orEmpty(),
-        startedMs: Long? = ProcessHandle.current().info().startInstant().orElse(null)?.toEpochMilli(),
+        startedMs: Long? = afield.ai.conversation.FieldStaleClasses.jvmStartMs(),
     ): String? {
-        val classes = runCatching { File(root, "build/classes/kotlin/jvm/main").canonicalFile }.getOrNull() ?: return null
-        val runsFromHere = classPath.split(File.pathSeparator).any { entry -> runCatching { File(entry).canonicalFile == classes }.getOrDefault(false) }
+        val runsFromHere = afield.ai.conversation.FieldStaleClasses.runsFrom(File(root, "build/classes/kotlin/jvm/main"), classPath)
         if (!runsFromHere || startedMs == null) return null
         val newer = SOURCE_ROOTS.map { File(root, it) }.filter { it.exists() }.asSequence()
             .flatMap { it.walkTopDown().filter { f -> f.isFile && (f.extension == "kt" || f.extension == "kts" || f.extension == "java") && f.lastModified() > startedMs } }

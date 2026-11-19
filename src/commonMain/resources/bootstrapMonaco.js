@@ -77,7 +77,7 @@ const FIELD_LANGUAGE_MODULES = [
         "bithero/glsl", "bithero/slang", "bithero/msl", "bithero/forth", "bithero/fieldml",
         "bithero/languageExtensions", "bithero/stacksl", "bithero/rectsl", "bithero/datalog", "bithero/fnrewrite",
         "bithero/sonicpi", "bithero/faust",
-        "bithero/nano", "bithero/kotlinjs", "bithero/morpho", "bithero/petri", "bithero/brief", "bithero/pd", "bithero/csound",
+        "bithero/nano", "bithero/kotlinjs", "bithero/morpho", "bithero/petri", "bithero/brief", "bithero/pd", "bithero/csound", "bithero/postscript",
 ]
 const LANGUAGE_MODULE_DEADLINE_MS = 10000
 
@@ -1151,6 +1151,8 @@ const switchFromNotesPreviewToCode = () => {
 
 window.addEventListener("keydown", (e) => {
         if (quickInputIsVisible()) return
+        // Canvas text frames own Escape and editing shortcuts even while this preview is open.
+        if (e.target?.closest?.(".text-frame-box")) return
         const key = e.key || ""
         const isToggle = (e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && key.toLowerCase() === "m"
         const isEscape = key === "Escape" || key === "Esc"

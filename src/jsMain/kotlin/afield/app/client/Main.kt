@@ -76,6 +76,7 @@ import afield.app.protocol.PresentationShown
 import afield.app.protocol.ProvisionalSet
 import afield.app.protocol.Rect
 import afield.app.protocol.SelectAndEditBox
+import afield.app.protocol.GeometryReferenceAsk
 import afield.app.protocol.SetActiveLayer
 import afield.app.protocol.SetVisibleLayers
 import afield.app.protocol.Set_animated_rect
@@ -4877,6 +4878,12 @@ private fun installSpatialNavigationShortcut() {
     var lastMetaWasPure = false
     var lastCtrlWasPure = false
     var keydownSerial = 0
+    // Held Control snaps a drag in progress (BoxSnapping.kt), so tapping it twice mid-drag must
+    // not also open spatial navigation.
+    var pointerButtonsDown = 0
+    window.addEventListener("pointerdown", { pointerButtonsDown = ((it as MouseEvent).buttons as Number).toInt() }, js("({capture: true})"))
+    window.addEventListener("pointerup", { pointerButtonsDown = ((it as MouseEvent).buttons as Number).toInt() }, js("({capture: true})"))
+    window.addEventListener("blur", { pointerButtonsDown = 0 })
 
     fun trackTrigger(key: String, event: KeyboardEvent) {
         val now = window.performance.now()
@@ -4891,6 +4898,7 @@ private fun installSpatialNavigationShortcut() {
         }
         val noInterveningKey = lastSerial != 0 && lastSerial == keydownSerial - 1
         val shouldTrigger = !alreadyPressed &&
+                pointerButtonsDown == 0 &&
                 lastPure &&
                 isPure &&
                 noInterveningKey &&
@@ -4954,6 +4962,14 @@ private fun installSpatialNavigationShortcut() {
                     } else {
                         spatialNavAnchor?.let { renderSpatialNavOverlay(it) }
                     }
+                }
+
+                "Enter" -> {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    deactivateSpatialNavMode()
+                    val edit = window.asDynamic().editSelectedCanvasBox
+                    if (edit != null && edit != undefined) edit()
                 }
 
                 "Escape" -> {
@@ -5911,6 +5927,8 @@ suspend fun main() {
                 null
             }
 
+        fun hasPending(): Boolean = scheduled || deferred.isNotEmpty()
+
         fun shouldDefer(message: Message): Boolean {
             if (message.name == "message-batch") return true
             if (message.name == "describe-action") return true
@@ -5946,6 +5964,8 @@ suspend fun main() {
             }
         }
     }
+
+    window.asDynamic().fieldPropertySyncPending = { batchedMessageDrain.hasPending() }
 
     handlers.put("message-batch") { message, reply ->
         val batch = Json.decodeFromJsonElement<MessageBatch>(message.payload!!)
@@ -6186,6 +6206,7 @@ suspend fun main() {
                     )
                     box.asDynamic().server_visible = set.number
                     applyBoxVisibilityImmediate(box)
+                    if (!isBoxVisible(box) && selected.contains(box)) deselectBox(box)
                     requestConnectionGroupRebuild()
                 }
             }
@@ -6607,6 +6628,10 @@ suspend fun main() {
         val found = defaultCreate(u)
 
         found.unsafeCast<dynamic>()[set.property] = null
+        if (set.property in setOf("box_kind", "contents", "textFrame")) {
+            val sync = window.asDynamic().syncTextFrame
+            if (sync != null) sync(found, set.property)
+        }
         if (set.property == "name") {
             found.getElementsByClassName("doubleClickToEdit").asList().firstOrNull()?.innerHTML = ""
             applyAi4AutoNameStyle(found.unsafeCast<HTMLElement>(), found.asDynamic().ai4_auto_name == true)
@@ -6911,6 +6936,10 @@ suspend fun main() {
             }
         }
 
+        if (set.property in setOf("box_kind", "contents", "textFrame")) {
+            val sync = window.asDynamic().syncTextFrame
+            if (sync != null) sync(found, set.property)
+        }
         if (set.property in monacoRemoteTextProperties) {
             notifyPotentialEditedPropertyHasBeenRemoteUpdated(u, set.property, set.value)
         }
@@ -6953,6 +6982,24 @@ suspend fun main() {
             val state = JSON.parse<dynamic>(message.payload.toString())
             bridge.presentGuide(state)
             send(Message("presentation-shown").payload(PresentationShown(state.slideshowId as String)))
+        }
+        Handled.yes
+    }
+
+    // A three.js viewer's Ask AI: quote the pick in an AI4 chat composer (outputareas2.js), opening the owning
+    // box's chat when none is open.
+    window.asDynamic().fieldOpenBoxLine = { uid: String, property: String, line: Int ->
+        navigateToBoxProperty(uid, property.ifBlank { "code" }, scrollToLine = line, highlightLine = line, center = true)
+    }
+    handlers.put("geometry-reference-ask") { message, _ ->
+        val ask = Json.decodeFromJsonElement<GeometryReferenceAsk>(message.payload!!)
+        val ref = JSON.parse<dynamic>(Json.encodeToString(GeometryReferenceAsk.serializer(), ask))
+        ref.header = ask.header
+        val deliver = window.asDynamic().fieldDeliverGeometryReference
+        val delivered = deliver != null && deliver(ref) == true
+        val owner = ask.sourceBox
+        if (!delivered && owner != null) navigateDocumentBox(DocumentBoxNavigation(owner, surface = "output", channel = "ai-chat")) {
+            if (!it.success) window.asDynamic().notify?.invoke("Open an AI chat on this box to ask about the geometry; the reference is waiting for it.", "AI4")
         }
         Handled.yes
     }
@@ -7651,7 +7698,7 @@ suspend fun main() {
 
         var t = window.getComputedStyle(event.target).borderWidth.split("px")[0].toDouble() * 0.0
 
-        // Apply snapping if Caps Lock is enabled
+        // Apply snapping if Caps Lock, held Control or the palette toggle enables it
         val targetElement = target as HTMLElement
         val width =
             ((target.data_w as? Number)?.toDouble() ?: (event.rect?.width as? Number)?.toDouble() ?: 0.0) - t * 2
@@ -7725,6 +7772,7 @@ suspend fun main() {
 
         val originalTarget = event.target as? Element
         val outputArea = originalTarget?.closest(".outputArea")
+        if (originalTarget?.closest(".text-frame-editor, .text-frame-controls, .text-frame-settings, .text-frame-conflict, .text-frame-overflow, .text-frame-preview a") != null) return@on
         val insideOutputArea = outputArea != null
         val clickedBox = originalTarget?.closest(".box")
         // Output controls (including their SVG tracks) must not select their host or
@@ -7736,6 +7784,10 @@ suspend fun main() {
             val uid = target.uid as? String ?: return@on
             val stamp = (event.timeStamp as? Double) ?: js("Date.now()") as Double
             val continueRequested = (event.shiftKey as? Boolean) == true
+            if (target.box_kind == "text-frame") {
+                requestCustomMarkingMenu(uid, event.x as Double, event.y as Double, event)
+                return@on
+            }
 
             // Shift+Alt+Click: custom marking menu
             if (continueRequested) {
@@ -7845,7 +7897,7 @@ suspend fun main() {
         }
     }
 
-    interactable.draggable(json("ignoreFrom" to ".outputArea", "onmove" to { event: dynamic ->
+    interactable.draggable(json("ignoreFrom" to ".outputArea, .text-frame-editor, .text-frame-controls, .text-frame-settings, .text-frame-conflict, .text-frame-overflow, .text-frame-preview a", "onmove" to { event: dynamic ->
         if (event.altKey) {
         } else if (originatingMouseDown.altKey) {
         } else {
@@ -7899,7 +7951,7 @@ suspend fun main() {
 //        (target as HTMLElement).style.transform = "translate(${x}px, ${y}px)" // round-trip to server?
         // renable this for serverless
 
-        // Apply snapping if Caps Lock is enabled
+        // Apply snapping if Caps Lock, held Control or the palette toggle enables it
         val targetElement = target as HTMLElement
         val snappedRect = boxSnappingSystem.applySnappingForResize(
             targetElement,
@@ -8255,4 +8307,77 @@ fun applyBoxTint(box: HTMLElement, value: String?) {
         box.style.setProperty("--box-tint", value)
         box.classList.add("tinted")
     }
+}
+
+/** Fit a text frame to its formatted text and make room in the same column. */
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun growTextFrame(uid: String, height: Double, reflow: Boolean = true) {
+    val box = findBoxByUid(uid) ?: return
+    if (box.asDynamic().box_kind != "text-frame" || !height.isFinite() || height <= 0) return
+    fun frameOf(element: HTMLElement): Rect {
+        val d = element.asDynamic()
+        return Rect((d.data_x as Number).toDouble(), (d.data_y as Number).toDouble(),
+            (d.data_w as Number).toDouble(), (d.data_h as Number).toDouble())
+    }
+    val previous = frameOf(box)
+    if (kotlin.math.abs(height - previous.h) <= 1.0) return
+    val frame = Rect(previous.x, previous.y, previous.w, height)
+    val moves = mutableListOf(box to frame)
+    if (reflow) {
+        data class Placement(val before: Rect, val after: Rect)
+        val context = box.asDynamic().box_nestedIn as? String
+        val items = document.getElementsByClassName("text-frame-box").asList().mapNotNull { it as? HTMLElement }
+            .filter { isBoxVisible(it) && (it.asDynamic().box_nestedIn as? String) == context }
+            .map { it to frameOf(it) }.sortedWith(compareBy({ it.second.y }, { it.second.x }, { it.first.asDynamic().uid as String }))
+        val done = mutableListOf<Placement>()
+        fun overlapsX(a: Rect, b: Rect) = a.x < b.right && b.x < a.right
+        for ((other, old) in items) {
+            if (other == box) { done += Placement(previous, frame); continue }
+            var y = old.y
+            if (old.y > previous.y + 1.0) {
+                // Use original positions, so several paths through a column never pull a frame twice.
+                for (placed in done) {
+                    val delta = placed.after.bottom - placed.before.bottom
+                    if (delta < -1 && old.y >= placed.before.bottom - 1 && overlapsX(old, placed.after)) {
+                        y = min(y, old.y + delta)
+                    }
+                }
+                val affected = y < old.y || done.any { placed ->
+                    placed.after.bottom > placed.before.bottom + 1 && overlapsX(old, placed.after) &&
+                        y < placed.after.bottom && y + old.h > min(placed.before.y, placed.after.y)
+                }
+                if (affected) {
+                    // Bottom order makes every step clear all earlier obstacles, including adjacent columns.
+                    for (placed in done.sortedBy { it.after.bottom }) {
+                        val top = if (placed.after.bottom > placed.before.bottom + 1) min(placed.before.y, placed.after.y) else placed.after.y
+                        if (overlapsX(old, placed.after) && y < placed.after.bottom && y + old.h > top) {
+                            y = placed.after.bottom + 32.0
+                        }
+                    }
+                    if (height < previous.h) y = min(y, old.y)
+                }
+            }
+            val next = Rect(old.x, y, old.w, old.h)
+            done += Placement(old, next)
+            if (kotlin.math.abs(y - old.y) > 1) moves += other to next
+        }
+    }
+    moves.forEach { (element, next) -> applyFrameToBox(element, next) }
+    send(Message("set-rects").payload(Set_rects(moves.map { (element, next) ->
+        Set_rect(element.asDynamic().uid as String, "frame", next)
+    })))
+    canvasGestures.requestConnectionGroupRebuild()
+}
+
+/** Publish a canvas edit to editor peers immediately, before the next Monaco polling tick. */
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun setTextFrameContents(uid: String, value: String) {
+    val box = findBoxByUid(uid) ?: return
+    if (box.asDynamic().box_kind != "text-frame") return
+    box.asDynamic().contents = value
+    afield.app.editor.notifyCanvasTextFrameContents(uid, value)
+    notifyEmbeddedEditorOfRemoteUpdate(uid, "contents", value)
+    afield.app.protocol.send("set-string", json("uid" to uid, "property" to "contents", "value" to value))
 }

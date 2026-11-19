@@ -356,7 +356,7 @@ object AgentTaskRunner {
                     base.copy(repoFiles = files, repoCommands = request.repoCommands.takeIf { it.isNotEmpty() }?.let {
                         afield.ai.tools.RepoCommandTools(files, afield.ai.tools.RepoCommandScope(it.map(String::trim).toSet(),
                             maxTimeoutSec = request.repoCommandMaxSec.coerceIn(10, 3600)))
-                    })
+                    }, promoted = (base.promoted ?: mutableSetOf()).apply { addAll(afield.ai.tools.REPO_TOOL_NAMES) })
                 }
             }
 

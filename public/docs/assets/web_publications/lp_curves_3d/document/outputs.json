@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-14T23:09:14.838Z",
+  "capturedAt": "2026-11-18T21:57:23.361Z",
   "documentName": "lp_curves_3d",
   "outputs": [
     {
@@ -11,8 +11,8 @@
       "kinds": [
         "three"
       ],
-      "width": 708,
-      "height": 478,
+      "width": 700,
+      "height": 470,
       "path": "outputs/0.html"
     },
     {
@@ -23,8 +23,8 @@
       "kinds": [
         "three"
       ],
-      "width": 768,
-      "height": 478,
+      "width": 760,
+      "height": 470,
       "path": "outputs/1.html"
     }
   ]

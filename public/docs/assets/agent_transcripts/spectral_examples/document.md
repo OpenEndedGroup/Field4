@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 7 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_panel" "ai4_continuation" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "ai4_garden" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 10 "persistentProperties" ["contents" "frame" "name" "code" "code_language" "box_kind" "textFrame" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_panel" "ai4_continuation" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "ai4_garden" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. filter chains as layered curves
@@ -296,12 +296,68 @@ showHeatmap(
 )
 ```
 
-## 7. resonator bank (no transform)
+## 7. LPC on a scribble
 
-<!-- field-box id="spectral_resonator" index="6" -->
+<!-- field-box id="spectral_lpc_scribble" index="6" -->
+
+### Narrative
+
+From `code`
+
+A looping stroke whose loops swell and shrink, and a wobbling zigzag.
+
+```edn [field-box id="spectral_lpc_scribble" role="properties"]
+{"id" "spectral_lpc_scribble" "index" 6 "name" "LPC on a scribble" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "LPC on a scribble" "_tombstone" false "frame" #afield/rect [960.0 440.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_lpc_scribble_code_.kt" "lines" 39 "characters" 1217 "sha256" "36c319b4587d236e41eab476a23ea89a712176cca660e3cfeb3961a84d5cbe81"}]}
+```
+
+```kotlin [field-property box="spectral_lpc_scribble" name="code" path="spectral_lpc_scribble_code_.kt"]
+// A looping stroke whose loops swell and shrink, and a wobbling zigzag.
+val loops =
+    FLine().also { f ->
+        for (i in 0..420) {
+            val t = i / 420.0 * 2 * PI * 6
+            val r = 45.0 * (1 + 0.3 * sin(t * 0.4))
+            val (x, y) = 14.0 * t - r * sin(t) to r * cos(t)
+            if (i == 0) f.moveTo(x, y) else f.lineTo(x, y)
+        }
+    }
+val zigzag =
+    FLine().also { f ->
+        for (i in 0..300) {
+            val (x, y) = i * 2.0 to 25.0 * sin(i * 0.35) + 10.0 * sin(i * 0.09)
+            if (i == 0) f.moveTo(x, y) else f.lineTo(x, y)
+        }
+    }
+
+val fit = loops.lpc(order = 8, samples = 300)
+val other = zigzag.lpc(order = 8, samples = 300)
+
+lines(
+    fit.resampled().also {
+        it.color = vec(1.0, 1.0, 1.0, 0.9)
+        it.thickness = 1.5
+    },
+    fit.continued(150, includeStroke = false).also {
+        it.color = vec(1.0, 0.6, 0.1, 1.0)
+        it.thickness = 2.5
+    },
+    fit.drivenBy(other, startX = 0.0, startY = 220.0).also {
+        it.color = vec(0.3, 0.8, 1.0, 1.0)
+        it.thickness = 1.5
+    },
+    w = 900.0,
+    h = 420.0,
+    fitToSize = true,
+)
+println("residual / step energy: loops ${fit.residualRatio.f3}, zigzag ${other.residualRatio.f3}")
+```
+
+## 8. resonator bank (no transform)
+
+<!-- field-box id="spectral_resonator" index="7" -->
 
 ```edn [field-box id="spectral_resonator" role="properties"]
-{"id" "spectral_resonator" "index" 6 "name" "resonator bank (no transform)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "resonator bank (no transform)" "_tombstone" false "frame" #afield/rect [80.0 1180.0 310.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_resonator_code_.kt" "lines" 59 "characters" 1662 "sha256" "7d3d8070d602568af2a02e3c163174fd4f5c343ad1886db9b9913390fec7e46c"}]}
+{"id" "spectral_resonator" "index" 7 "name" "resonator bank (no transform)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "resonator bank (no transform)" "_tombstone" false "frame" #afield/rect [80.0 1180.0 310.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_resonator_code_.kt" "lines" 59 "characters" 1662 "sha256" "7d3d8070d602568af2a02e3c163174fd4f5c343ad1886db9b9913390fec7e46c"}]}
 ```
 
 ```kotlin [field-property box="spectral_resonator" name="code" path="spectral_resonator_code_.kt"]
@@ -364,5 +420,70 @@ showHeatmap(
     transpose = true,
     flipY = true,
 )
+```
+
+## 9. LPC envelope of a vowel
+
+<!-- field-box id="spectral_lpc_envelope" index="8" -->
+
+```edn [field-box id="spectral_lpc_envelope" role="properties"]
+{"id" "spectral_lpc_envelope" "index" 8 "name" "LPC envelope of a vowel" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "LPC envelope of a vowel" "_tombstone" false "frame" #afield/rect [960.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_lpc_envelope_code_.kt" "lines" 18 "characters" 771 "sha256" "fa825d2d05c991d8fda8feebf08c4f3f5255c4e2435830011dcb36a05ce2a681"}]}
+```
+
+```kotlin [field-property box="spectral_lpc_envelope" name="code" path="spectral_lpc_envelope_code_.kt"]
+val voice = Impulse(120.p) * 4f / FormantFilter(0.p) // the vowel "a"
+val frame = renderSignalsOffline(0.2, voice)[0].copyOfRange(4096, 4096 + 2048)
+
+val bins = 214 // 0 .. 5 kHz at 48 kHz / 2048
+val spectrum =
+    fft(DoubleArray(frame.size) { frame[it].toDouble() }, WindowType.HANN, 48_000.0).magnitudeDbOneSided().take(bins)
+fun envelope(order: Int) = Lpc.analyze(frame, order).envelopeDb(1025).take(bins)
+fun peakAtZero(db: List<Double>) = db.max().let { top -> db.map { it - top } }
+
+showSignals(
+    "spectrum of the frame" to peakAtZero(spectrum),
+    "LPC order 12" to peakAtZero(envelope(12)),
+    "LPC order 52" to peakAtZero(envelope(52)),
+    x = List(bins) { it * 48_000.0 / 2048 },
+    channel = "main",
+    xTitle = "frequency (Hz)",
+    yTitle = "dB",
+)
+```
+
+## 10. LPC talking synth
+
+<!-- field-box id="spectral_lpc_talking_synth" index="9" -->
+
+### Narrative
+
+From `code`
+
+The talking synth: a synthesized voice's LPC envelope on a chord of four saws.
+
+```edn [field-box id="spectral_lpc_talking_synth" role="properties"]
+{"id" "spectral_lpc_talking_synth" "index" 9 "name" "LPC talking synth" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "LPC talking synth" "_tombstone" false "frame" #afield/rect [960.0 820.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_lpc_talking_synth_code_.kt" "lines" 19 "characters" 957 "sha256" "12be19d05f045817f7cdd17b1398f8ea2349999a67074ca0e890697cf89d69c3"}]}
+```
+
+```kotlin [field-property box="spectral_lpc_talking_synth" name="code" path="spectral_lpc_talking_synth_code_.kt"]
+// The talking synth: a synthesized voice's LPC envelope on a chord of four saws.
+val pitch = Param(120f).also { it.mod = SineOsc(5.p) * 3f + SineOsc(0.2.p) * 15f }
+val vowel = Param(0f).also { it.mod = Phasor(0.4.p) * 4f }
+val voice = (Impulse(pitch) * 4f + WhiteNoise() * 0.02f) / FormantFilter(vowel)
+val chord = SawOsc(110.p) + SawOsc(138.6.p) + SawOsc(164.8.p) + SawOsc(220.5.p)
+val talking = chord / LpcVocoder(voice)
+
+// Five seconds rendered offline into a player in this box's output.
+val clip = renderSignalsOffline(5.0, talking)[0]
+display(
+    "talking synth",
+    afield.audio.engine.WavFloatArrayWriter.encodeStereo16(clip, clip, 48_000, normalizePeak = 0.7f),
+)
+displayOpen("talking synth")
+
+// Flip to true to hear it live instead. False by default because `audio { }` opens a real output
+// device, and this transcript is replayed end to end on machines that have none.
+val live = false
+if (live) audio { chord / LpcVocoder(voice) * 0.3f }
 ```
 

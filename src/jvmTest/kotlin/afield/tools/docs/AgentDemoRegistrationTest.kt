@@ -87,6 +87,8 @@ class AgentDemoRegistrationTest {
             "browse_embeds",
             // 2026-09-23: interval-arithmetic envelopes for Fn; registered EXECUTE.
             "certified_envelope",
+            // 2026-11-15: evieve-family TPT filters, fft responses and audio sweeps (spectral_examples.md).
+            "evieve_filters",
             "chart_clip",
             "chart_primitive",
             // 2026-10-29: controls renewal surface and a self-rebuilding slider; registered EXECUTE.
@@ -111,6 +113,10 @@ class AgentDemoRegistrationTest {
             "rr_plumbing",
             // 2026-10-29: a slideshow tour over two existing boxes; registered EXECUTE.
             "slideshow_own_tour",
+            // 2026-11-17: drag handles in three { } scenes (three_output.md); registered EXECUTE.
+            "three_handles",
+            // 2026-11-18: WeightCubeLearner paths in the weight cube (braitenberg_vehicles.md 4); registered EXECUTE.
+            "braitenberg_weight_cube",
             // Landed 2026-09-22 in `b5b9ad9e0`. Not a document — no `metadata.edn` — so it is named
             // here (this set is the directory listing) and is invisible to the two assertions that
             // range over `demoDocuments()`. It is verified: `flow_grain.yaml` under

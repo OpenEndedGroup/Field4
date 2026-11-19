@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-14T23:26:13.893Z",
+  "capturedAt": "2026-11-18T14:57:50.813Z",
   "documentName": "eigendrum",
   "outputs": [
     {
@@ -160,11 +160,11 @@
     {
       "uid": "ed_morph",
       "channel": "ratios",
-      "open": false,
+      "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 300,
-      "height": 253,
+      "width": 312,
+      "height": 258,
       "path": "outputs/13.html"
     }
   ]

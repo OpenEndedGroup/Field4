@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="128" viewBox="0 0 640 128">
+<rect width="640" height="128" fill="#080808"/>
+<g stroke="#75d4ed" fill="none" stroke-width="1.5"><rect x="16" y="32" width="160" height="64" rx="5"/><rect x="240" y="32" width="160" height="64" rx="5"/><rect x="464" y="32" width="160" height="64" rx="5"/><path d="M176 64h64m-10-6 10 6-10 6m170-6h64m-10-6 10 6-10 6"/></g>
+<g fill="#ddd" font-family="Iosevka,monospace" font-size="22" text-anchor="middle"><text x="96" y="72">Observe</text><text x="320" y="72">Write</text><text x="544" y="72">Connect</text></g>
+</svg>

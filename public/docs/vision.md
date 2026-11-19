@@ -17,26 +17,10 @@ path. Their status notes do not describe the CloudXR route.
     This is an early snapshot of Field's native **visionOS** front end. Some pieces are
     solid and verified; others are half-built and named as such. Expect it to move.
 
-Field's front end and Vulkan renderer talk through a server, so a browser is only one way to use
-Field. On visionOS, the editor and canvas can float in the room alongside native 3D views and
-streams from the renderer.
-
-- **Docks** — the existing Field web UI (editor, canvas, welcome) rendered in `WKWebView`s the
-  system composites and drives. HTML stays HTML; we never texture it.
-- **Islands** — native **RealityKit** geometry for the things that want to be genuinely 3D.
-- **Streams** — the GPU renderer's output carried to the headset as native video.
-- **Poses** — one channel running the *other* way: where the wearer is looking, back up to the Mac,
-  so the renderer can draw the frame the headset is about to show rather than a surface hanging in
-  the room.
-
-All four are scoped projections of the *same* server-authoritative document, so nothing here forks
-Field: the visionOS app is a third client alongside the browser, speaking the protocols Field
-already has.
-
-The web docks also behave as one workspace rather than isolated browser windows: selection follows
-between a canvas and its floating editor, and canvas-owned panels are routed to the right surface.
-For example, choosing **Show Document History** from the editor opens the full-width History panel
-over the paired canvas instead of covering Monaco.
+Edit Field in Safari or through Mac Virtual Display. The native app opens to a compact
+connection panel. Enter the Field host and port, or choose a recent host from the clock menu.
+The panel shows whether the server responds and displays the separate UDP port used for RTT
+video. Use the toolbar to open the FLine viewer, video receiver, Live Metal, or Spatial Ink.
 
 ---
 
@@ -45,9 +29,9 @@ over the paired canvas instead of covering Monaco.
 The visionOS app is a standalone Xcode project (visionOS 26 SDK) that points at a running Field
 server. In short:
 
-1. Start a Field server and build/run the visionOS app against it.
+1. Start a Field server and build and run Field4Vision. Select that server in the connection panel.
 2. In Field, run a box with `threeLines(myLines, editable = true)`.
-3. In the headset, open the **FLine 3D** viewer — it discovers the live view and renders it. Toggle
+3. In the headset, open **3D View** — it discovers the live view and renders it. Toggle
    **Edit** to grab the handles.
 4. With a head attached, `println(visionPoseLatencyReport())` from any box prints the whole chain.
    With no head attached it prints the same table empty, which is a useful thing to see first.
@@ -433,8 +417,7 @@ The third column says how each state is known: on a device, in the simulator, or
 | Native 3D FLine viewer — render, orbit/scale, auto-frame, bounding cage | **Working** | On device |
 | FLine interactivity (tap → server callback) | **Working** | On device |
 | FLine editing — node + Bézier control-point drag | **Working** | On device |
-| Web UI as spatial docks (editor / canvas / welcome) | **Working** | On device |
-| Shared dock selection + editor-to-canvas History panel routing | **Working** | Browser regression tests |
+| Native connection panel and recent hosts | **Built** | Simulator launch and Field health check |
 | Live Metal — live shader + uniforms on the compositor clock | **Working** | On device |
 | Live Metal — headset-built geometry, per-part reload, `msl` as a property | **Built and smoke-tested** | Simulator script asserts on the head's own status messages; device check pending |
 | RTT video streaming (mono), world-locked + windowed | **Working** | Verified end-to-end on device |

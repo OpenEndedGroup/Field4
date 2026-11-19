@@ -63,9 +63,9 @@ class DocsAudioProvenanceGuardTest {
             Origin.STAND_IN_SYNTH to 28,
             Origin.DIRT_SAMPLES to 41,
             Origin.MIXED_SAMPLES_AND_STAND_IN to 1,
-            Origin.DOUGH_DSP to 24,
+            Origin.DOUGH_DSP to 33,
             Origin.FAUST to 6,
-            Origin.FM1_SIM to 6,
+            Origin.FM1_SIM to 9,
             Origin.DOUGH_WASM to 2,
             Origin.STEAM_AUDIO_HRTF to 3,
             Origin.SONIC_PI to 1,
@@ -309,7 +309,27 @@ class DocsAudioProvenanceGuardTest {
          *
          * `fm1.md` added one more (2026-11-14), [Origin.FM1_SIM]: ACID ALLEY's drum track on the sampler,
          * its pads holding a kit rendered from Field signals.
+         *
+         * `fm1.md` added one more (2026-11-15), [Origin.FM1_SIM]: ACID ALLEY with firmware built from
+         * patched source swapped in four seconds in ([FM1Firmware], [FM1Sim.loadFirmware]).
+         *
+         * `fm1.md` added one more (2026-11-15), [Origin.FM1_SIM]: ACID ALLEY's 303 through two StackSL
+         * hooks in turn, run inside the firmware ([FM1Hooks], [FM1Sim.hook]).
+         *
+         * `fm1.md` added one more (2026-11-15), [Origin.FM1_SIM]: ACID ALLEY's 303 sequence through two
+         * StackSL note hooks in turn ([FM1Sim.noteHook]).
+         *
+         * `spectral_examples.md` added four (2026-11-15), [Origin.DOUGH_DSP]: [TptFilterDocs] renders the
+         * Korg35 sweep, the TptOnePole phaser, the TiltEQ sweep and the Resonator trio offline.
+         *
+         * `spectral_examples.md` added five more (2026-11-16), [Origin.DOUGH_DSP]: [LpcDocs] renders a
+         * synthesized formant voice, its LPC residual, and its envelope driving pulses (robot), noise
+         * (whisper) and a saw synth.
+         *
+         * `spectral_examples.md` added six more (2026-11-18), [Origin.DOUGH_DSP]: [TptFilterDocs] renders a
+         * swept sine through naive and ADAA tanh, the ZdfLadder rising into self-oscillation, a singing
+         * ZdfSvf with a smoothed stepped pitch, and a stepped-cutoff ladder raw and smoothed.
          */
-        const val EXPECTED_FENCE_COUNT = 142
+        const val EXPECTED_FENCE_COUNT = 160
     }
 }

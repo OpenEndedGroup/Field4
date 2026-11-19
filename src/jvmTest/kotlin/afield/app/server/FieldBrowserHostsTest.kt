@@ -17,6 +17,15 @@ class FieldBrowserHostsTest {
         assertFalse(isAgentRouteHost("a0.example.ts.net:8443"))
     }
 
+    @Test fun `a registered host without a port matches that host on any port and nothing else`() {
+        val portless = setOf("a0.example.ts.net")
+        assertTrue(isSameSiteRequest("same-origin", "https://a0.example.ts.net:9092", "a0.example.ts.net:9092", portless))
+        assertTrue(isSameSiteRequest("same-origin", "https://a0.example.ts.net", "a0.example.ts.net", portless))
+        assertFalse(isSameSiteRequest("same-origin", null, "b1.example.ts.net:9092", portless))
+        assertFalse(isSameSiteRequest("same-origin", null, "a0.example.ts.net.evil.example:9092", portless))
+        assertFalse(isSameSiteRequest("cross-site", "https://evil.example", "a0.example.ts.net:9092", portless))
+    }
+
     @Test fun `file and explicit environment register exact authorities and malformed files fail closed`() {
         val path = Files.createTempFile("field-browser-hosts", ".json")
         try {
@@ -33,5 +42,20 @@ class FieldBrowserHostsTest {
                 assertFalse(validFieldDnsAuthority(value), value)
             }
         } finally { Files.deleteIfExists(path) }
+    }
+
+    @Test fun `a host added to the file while Field runs is honoured without a restart`() {
+        val dir = Files.createTempDirectory("field-browser-hosts")
+        val path = dir.resolve("browser-hosts.json")
+        try {
+            val file = FieldBrowserHostsFile(path, null)
+            assertEquals(emptySet(), file.current())
+            Files.writeString(path, "[\"a0.example.ts.net:8443\"]")
+            assertEquals(hosts, file.current())
+            Files.writeString(path, "[\"a0.example.ts.net:8443\", \"b1.example.ts.net\"]")
+            assertEquals(hosts + "b1.example.ts.net", file.current())
+            Files.delete(path)
+            assertEquals(emptySet(), file.current())
+        } finally { Files.deleteIfExists(path); Files.deleteIfExists(dir) }
     }
 }

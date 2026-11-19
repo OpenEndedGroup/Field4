@@ -56,6 +56,21 @@ array, including notes for its other views. It is persisted by normal document s
 Scratch documents retain notes only while their Field session lives. The live selection
 is transient. `/three-review?uid=...` is the same read-only inbox used by agents.
 
+## Ask AI: a pick quoted in the chat
+
+**Ask AI**, beside Copy reference, posts the same record to `POST /three-review-ask` (`askAboutThreeGeometry`,
+`ThreeJsViewer.kt`). The server checks it against the current revision, publishes it as the live `selection`,
+and sends `geometry-reference-ask` (`GeometryReferenceAsk`, `rpc.kt`) to the owning document. The AI4 composer
+(`outputareas2.js`) shows it as a chip; on send the user turn starts with a one-line `GeometryReference: {…}`
+header (view, revision, kind, partId, label, element, note, sourceLine) and a hint naming
+`ReadGeometryReviewsRequest` / `InspectGeometryViewRequest` for the full record. `aiChatHtml.kt` renders the
+header as the same chip.
+
+`sourceLine` comes from the part's `provenance`: `mesh(…)` and `lines(…)` in a `three { }` block read the
+first stack frame compiled from the owning box (`threeCallSite`, `ThreeProvenance.kt`), with the variable the line
+assigns. The revision ignores `provenance`, so editing code above a call keeps the notes. The chip's
+"line N" button opens the editor at that line. Batched (non-interactive) FLines have no per-line provenance.
+
 ## Reproduce and inspect a reference
 
 Save a copied note as JSON, then restore it in a capture browser:

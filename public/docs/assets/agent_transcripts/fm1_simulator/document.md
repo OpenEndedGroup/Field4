@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_panel" "ai4_continuation" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "ai4_garden" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["contents" "frame" "name" "code" "code_language" "box_kind" "textFrame" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_panel" "ai4_continuation" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "ai4_garden" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. offline, four projects
@@ -22,7 +22,7 @@ Each project gets its own simulator, closed at the end, so nothing here touches 
 one the box to the left plays.
 
 ```edn [field-box id="fm1_offline" role="properties"]
-{"id" "fm1_offline" "index" 0 "name" "offline, four projects" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "offline, four projects" "_tombstone" false "frame" #afield/rect [480.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fm1_offline_code_.kt" "lines" 25 "characters" 939 "sha256" "0515777811cd708b2d05ab810d1e9fdd659dadfd5f848ea10771644f4172c2b3"}]}
+{"id" "fm1_offline" "index" 0 "name" "offline, four projects" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "offline, four projects" "_tombstone" false "frame" #afield/rect [480.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fm1_offline_code_.kt" "lines" 25 "characters" 968 "sha256" "0363ad4476bc0df7ed323deaff150361603b51061c30ed4e25f66c2d5bdcca9c"}]}
 ```
 
 ```kotlin [field-property box="fm1_offline" name="code" path="fm1_offline_code_.kt"]
@@ -39,17 +39,17 @@ val l = FloatArray(4800)
 val r = FloatArray(4800)
 
 for (slot in 0 until 4) {
-    val sim = FM1Sim.create()
-    sim.preset(slot)
-    repeat(5) { sim.render(l, r, 4800, 48000f) }
-    sim.start()
-    val levels = (0 until 30).map {
-        sim.render(l, r, 4800, 48000f)
-        kotlin.math.sqrt(l.indices.sumOf { i -> (l[i] * l[i] + r[i] * r[i]).toDouble() } / (2 * l.size))
+    FM1Sim.create().use { sim ->
+        sim.preset(slot)
+        repeat(5) { sim.render(l, r, 4800, 48000f) }
+        sim.start()
+        val levels = (0 until 30).map {
+            sim.render(l, r, 4800, 48000f)
+            kotlin.math.sqrt(l.indices.sumOf { i -> (l[i] * l[i] + r[i] * r[i]).toDouble() } / (2 * l.size))
+        }
+        val trace = levels.joinToString("") { bars[(it / 0.14 * 8).toInt().coerceIn(0, 8)].toString() }
+        println("project $slot  playing=${sim.isPlaying}  $trace")
     }
-    val trace = levels.joinToString("") { bars[(it / 0.14 * 8).toInt().coerceIn(0, 8)].toString() }
-    println("project $slot  playing=${sim.isPlaying}  $trace")
-    sim.close()
 }
 ```
 
@@ -100,7 +100,7 @@ The FM-1's LCD for factory project 4, from a private simulator rendered offline 
 second, shown at three times its size.
 
 ```edn [field-box id="fm1_screen" role="properties"]
-{"id" "fm1_screen" "index" 2 "name" "the screen" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the screen" "_tombstone" false "frame" #afield/rect [480.0 260.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fm1_screen_code_.kt" "lines" 12 "characters" 328 "sha256" "e749f886c576a34bfc08156f53cdd4b18eb67140545e2e07f73ed54c4dd00090"}]}
+{"id" "fm1_screen" "index" 2 "name" "the screen" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the screen" "_tombstone" false "frame" #afield/rect [480.0 260.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fm1_screen_code_.kt" "lines" 12 "characters" 341 "sha256" "74ea9558472c7a99be57c051b270476bac18c8eaadcae438ae124e6d28bbc26b"}]}
 ```
 
 ```kotlin [field-property box="fm1_screen" name="code" path="fm1_screen_code_.kt"]
@@ -108,14 +108,14 @@ second, shown at three times its size.
 The FM-1's LCD for factory project 4, from a private simulator rendered offline for half a
 second, shown at three times its size.
 */
-val fm1 = FM1Sim.create()
-fm1.preset(4)
-val l = FloatArray(4800)
-val r = FloatArray(4800)
-repeat(5) { fm1.render(l, r, 4800, 48000f) }
+FM1Sim.create().use { fm1 ->
+    fm1.preset(4)
+    val l = FloatArray(4800)
+    val r = FloatArray(4800)
+    repeat(5) { fm1.render(l, r, 4800, 48000f) }
 
-display("screen", fm1.screenPng(scale = 3))
-fm1.close()
+    display("screen", fm1.screenPng(scale = 3))
+}
 ```
 
 ## 4. a pattern on track 2

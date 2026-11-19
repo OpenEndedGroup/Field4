@@ -1,0 +1,6 @@
+{
+  "kernelStringSha256": "5ae7b79fd666e4ab9661c87de82d5522c07282128482ecc4c848dd033416333e",
+  "canonicalEqualsWalkthrough": true,
+  "seedAndFlowHandlesPresent": true,
+  "execution": "Retained linux-nvidia capture; this machine has no NVIDIA driver/device."
+}

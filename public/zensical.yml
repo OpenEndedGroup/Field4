@@ -132,6 +132,8 @@ nav:
     # Beside moving_around_the_canvas.md: which boxes are on the canvas at all, and where each one
     # sits, per layer.
     - Layers: layers.md
+    - Text Frames: text_frames.md
+    - Custom Marking Menus: marking_menus.md
     # Beside layers.md: putting boxes on the canvas, here copies of saved ones (cmd+t).
     - Templates: templates.md
     - File Management: files_and_paths.md
@@ -263,8 +265,10 @@ nav:
       - Imaging & Computer Vision: imaging_examples.md
       - Depth & CLIP (ONNX): onnx.md
     - Geometry & Solids:
+      - Drawing on iPad: drawing_on.md
       - Meshes & 3D Geometry: mesh_examples.md
       - Solids & Booleans (Manifold): manifold.md
+      - Shapes from Constraints (Ceres): ceres.md
       - Moving Parts and Clearance: swept_clearance.md
       - Parametric CAD (SolidCraft): solidcraft.md
       - Tetrahedral Meshing (TetGen): tetgen.md
@@ -385,6 +389,7 @@ nav:
     # with the host's objects reachable directly — and a reader who has read one wants the contrast.
     - Clojure in a Box: clojure.md
     - Lua in a Box: lua.md
+    - PostScript in a Box: postscript.md
     # The desktop, browser-tab side of RemoteJS, beside the other guest languages. Its WebXR and
     # headset reference (ar_reference.md) stays under Heads & Headsets.
     - Javascript in a Browser Tab: remotejs.md

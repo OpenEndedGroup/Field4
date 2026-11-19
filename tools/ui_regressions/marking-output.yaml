@@ -1,0 +1,55 @@
+name: marking_output
+operations:
+  - drive:
+      warmCompletion: false
+      script: |
+        fun waitForUi(script: String) {
+            repeat(120) {
+                if (ui.eval(script).toString() == "true") return
+                ui.pause(50)
+            }
+            error("Menu state did not settle: " + ui.eval("return JSON.stringify({name:window.__frameContent.menu.name,value:window.__menuWidget.input.value});"))
+        }
+        fun openControls() {
+            ui.hoverSelector("[data-docs-menu='true']")
+            ui.down("Shift")
+            ui.down("Alt")
+            ui.mouseDown()
+            ui.waitForSelector(".markingButton:has-text('Controls')",15000.0)
+            ui.hoverSelector(".markingButton:has-text('Controls')")
+            ui.waitForSelector(".markingWidgetPanel .field-text-input",15000.0)
+            ui.mouseUp()
+            ui.up("Alt")
+            ui.up("Shift")
+        }
+        openControls()
+        check(ui.eval("const w=window.__menuWidget;return w.cw===document.querySelector('.marking-output-content')&&w.cw.querySelector('.field-text-input')===w.input&&w.cw.offsetHeight>0;").toString()=="true") { "Menu did not borrow the live output" }
+        check(ui.eval("const p=document.querySelector('.markingWidgetPanel'),g=p.querySelector('.control-group');return g.getBoundingClientRect().width<=p.getBoundingClientRect().width&&window.__menuWidget.cw.scrollWidth<=window.__menuWidget.cw.clientWidth+1;").toString()=="true") { "Control group overflows the menu width" }
+        ui.clickSelector(".markingWidgetPanel .field-text-input")
+        ui.eval("document.activeElement.select();return true;")
+        ui.type("Menu live")
+        ui.press("g")
+        ui.press("Enter")
+        check(ui.eval("return window.__menuWidget.input.value==='Menu liveg'&&!!document.querySelector('.markingWidgetPanel');").toString()=="true") { "Typing or Enter escaped the menu input: " + ui.eval("return JSON.stringify({value:window.__menuWidget.input.value,focus:document.activeElement.outerHTML});") }
+        ui.clickSelector(".markingWidgetPanel > header > span")
+        waitForUi("return window.__frameContent.menu.name==='Menu liveg'&&!!document.querySelector('.markingWidgetPanel');")
+        ui.clickSelector(".markingWidgetPanel .field-slider-visual")
+        waitForUi("const w=window.__menuWidget;w.slider=Number(w.cw.querySelector('.field-slider').dataset.value);return window.__frameContent.menu.name.startsWith('Gain ')&&Math.abs(Number(w.cw.querySelector('.field-meter').dataset.value)-w.slider)<0.001;")
+        ui.clickSelector(".markingWidgetPanel button:has-text('Back')")
+        check(ui.eval("const w=window.__menuWidget;return !document.querySelector('.markingWidgetPanel')&&w.cw.parentNode===w.parent&&!w.api.isOpen('controls')&&w.api.getSize('controls').width===w.size.width&&w.api.getSize('controls').height===w.size.height;").toString()=="true") { "Back did not restore the closed disclosure and size" }
+        ui.eval("const w=window.__menuWidget;const f=document.createElement('iframe');f.srcdoc='<input value=initial>';w.cw.append(f);w.iframe=f;return true;")
+        ui.eval("const w=window.__menuWidget;for(let i=0;i<100&&!w.iframe.contentDocument?.querySelector('input');i++)await new Promise(r=>setTimeout(r,20));w.iframe.contentWindow.menuState=17;w.iframe.contentDocument.querySelector('input').value='preserved';return true;")
+        ui.clickSelector(".markingButton[data-marking-back='false']")
+        openControls()
+        check(ui.eval("const w=window.__menuWidget;return w.iframe.contentWindow.menuState===17&&w.iframe.contentDocument.querySelector('input').value==='preserved';").toString()=="true") { "Iframe state was lost on menu entry" }
+        ui.clickSelector(".markingWidgetPanel button:has-text('Close')")
+        check(ui.eval("const w=window.__menuWidget;return !document.querySelector('.markingWidgetPanel')&&!document.querySelector('.markingButton')&&w.cw.parentNode===w.parent&&w.iframe.contentWindow.menuState===17;").toString()=="true") { "Closing did not restore the live iframe" }
+        ui.eval("const w=window.__menuWidget;w.api.setSize('controls',420,180);w.api.open('controls');return true;")
+        openControls()
+        ui.press("Escape")
+        check(ui.eval("return !document.querySelector('.markingWidgetPanel')&&!!document.querySelector('.markingButton')&&window.__menuWidget.cw.parentNode===window.__menuWidget.parent&&window.__menuWidget.api.isOpen('controls')&&window.__menuWidget.api.getSize('controls').width===420;").toString()=="true") { "Escape did not return to the radial menu" }
+        ui.clickSelector(".markingButton[data-marking-back='false']")
+        openControls()
+        ui.eval("window.__menuWidget.api.remove('controls');return true;")
+        check(ui.eval("for(let i=0;i<100&&!document.querySelector('.markingWidgetBody')?.textContent.includes('removed');i++)await new Promise(r=>setTimeout(r,20));return !window.__menuWidget.cw.isConnected&&document.querySelector('.markingWidgetBody')?.textContent.includes('removed');").toString()=="true") { "Removing an output orphaned its menu content" }
+        ui.clickSelector(".markingWidgetPanel button:has-text('Close')")

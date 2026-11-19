@@ -286,6 +286,7 @@ $region
      */
     val KNOWN_REGIONS: Map<String, List<String>> = mapOf(
         "panel-pointer" to listOf("panelPointerAt"),
+        "handle-constraint" to listOf("handleConstrain"),
         "motion-pose" to listOf(
             "motionPoseAt", "motionValueAt", "motionMultiply", "motionInvertRigid", "motionDelta",
             "timelineAt", "timelinePhaseOf", "motionStepAt", "motionBandOf",
