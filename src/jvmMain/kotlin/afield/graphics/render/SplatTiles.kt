@@ -215,6 +215,41 @@ object SplatTiles {
     ): Result {
         require(threads > 0) { "threads must be positive, got $threads" }
         val tiles = binning.counts.size
+        val (itemTile, itemStart, itemEnd) = workItems(binning, schedule, threads)
+        val items = itemTile.size
+        val partial = arrayOfNulls<FloatArray>(items)
+        val next = AtomicInteger(0)
+        val busy = LongArray(threads)
+        val done = CountDownLatch(threads)
+        val pool = pool(threads)
+        val started = System.nanoTime()
+        for (w in 0 until threads) {
+            pool.execute {
+                val t0 = System.nanoTime()
+                try {
+                    while (true) {
+                        val i = next.getAndIncrement()
+                        if (i >= items) break
+                        partial[i] = blendItem(binning, itemTile[i], itemStart[i], itemEnd[i], transmittanceCutoff)
+                    }
+                } finally {
+                    busy[w] = System.nanoTime() - t0
+                    done.countDown()
+                }
+            }
+        }
+        done.await()
+
+        val image = assemble(binning, itemTile, itemStart, partial)
+        return Result(image, System.nanoTime() - started, busy, items)
+    }
+
+    /**
+     * The work items [schedule] makes of [binning] for [threads] workers, in hand-out order:
+     * tile index, first entry and end entry of each.
+     */
+    internal fun workItems(binning: Binning, schedule: Schedule, threads: Int): Triple<IntArray, IntArray, IntArray> {
+        val tiles = binning.counts.size
         // A work item is (tile, first entry, end entry).
         val itemTile: IntArray
         val itemStart: IntArray
@@ -241,30 +276,18 @@ object SplatTiles {
                 itemTile = t.toIntArray(); itemStart = s.toIntArray(); itemEnd = e.toIntArray()
             }
         }
-        val items = itemTile.size
-        val partial = arrayOfNulls<FloatArray>(items)
-        val next = AtomicInteger(0)
-        val busy = LongArray(threads)
-        val done = CountDownLatch(threads)
-        val pool = pool(threads)
-        val started = System.nanoTime()
-        for (w in 0 until threads) {
-            pool.execute {
-                val t0 = System.nanoTime()
-                try {
-                    while (true) {
-                        val i = next.getAndIncrement()
-                        if (i >= items) break
-                        partial[i] = blendItem(binning, itemTile[i], itemStart[i], itemEnd[i], transmittanceCutoff)
-                    }
-                } finally {
-                    busy[w] = System.nanoTime() - t0
-                    done.countDown()
-                }
-            }
-        }
-        done.await()
+        return Triple(itemTile, itemStart, itemEnd)
+    }
 
+    /**
+     * Merge each tile's pieces in list order and write the tiles into an image. [partial] holds one
+     * `TILE * TILE * 4` array per work item, premultiplied colour then transmittance.
+     */
+    internal fun assemble(
+        binning: Binning, itemTile: IntArray, itemStart: IntArray, partial: Array<FloatArray?>
+    ): SplatRaster.SplatImage {
+        val tiles = binning.counts.size
+        val items = itemTile.size
         // Merge each tile's pieces in list order, then write the tile out.
         val image = SplatRaster.SplatImage(binning.width, binning.height)
         val byTile = arrayOfNulls<MutableList<Int>>(tiles)
@@ -297,7 +320,7 @@ object SplatTiles {
                 }
             }
         }
-        return Result(image, System.nanoTime() - started, busy, items)
+        return image
     }
 
     /**

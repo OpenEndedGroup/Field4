@@ -46,8 +46,29 @@ schedules; 1.30–1.56 naive vs 1.08 balanced on the 36-tile case.
 - `SplatRaster.rasterize` counts a splat whose every sample misses as offscreen; `bin` cannot know
   that before blending and bins it, so `Binning.drawable` ≥ `RasterStats.drawn`.
 
+## GPU blend (`SplatTilesGpuProbe`, `four.splat-tiles.gpu`, 2026-11-19, M1 Max GPU)
+
+CPU bins; GPU blends one 16×16 workgroup per item, front to back, cutoff 1e-4. Naive: one group per
+tile (gl_WorkGroupID). Balanced: persistent kernel, 256 groups, atomic queue over
+`workItems(Balanced(), threads = 32)`. The queue reset is a `resetOnly` dispatch of the SAME stage:
+GpuProbe runs stages in creation order, so a separate reset stage ran all its resets before all the
+blends and every repeat after the first exited immediately (first run measured negative ms). The
+probe now checks the counter ends at items + 256.
+
+Pixels: worst delta 1/255 vs CPU tiles in all 6 runs (e.g. 16 of 921,600 pixels differ, close-up).
+Timing: (frame ms at 17 blends - frame ms at 1) / 16, 40 frames each, vsync off, single run.
+
+| Population | items naive / balanced | naive ms | balanced ms |
+| --- | --- | --- | --- |
+| 1280×720 eye z 2.6 | 3600 / 3600 | 1.600 | 3.058 |
+| 1280×720 eye z 0.6 | 3600 / 3600 | 4.125 | 4.055 |
+| 96×96 | 36 / 88 | 2.318 | 2.930 |
+
+Balanced does not win on Apple silicon. Next: chunk for GPU occupancy (hundreds of resident
+groups, not 32), keep early termination across chunks (a per-tile saturation mask), and GPU
+timestamps rather than frame differencing. Binning on the GPU (per-splat bounds → (tile, depth)
+keys through `GpuRadixSort`) is not built.
+
 ## Not done
 
-The GPU compute path (per-splat bounds → (tile, depth) keys through `GpuRadixSort` → per-tile
-compute blend → persistent heaviest-first kernel, timed with GPU probes) is not built. The CPU
-version is its reference image and test oracle.
+GPU binning and sorting; GPU timestamp timing; a GPU-sized chunk policy.

@@ -404,7 +404,10 @@ the same code, so the two pictures agree to within one 8-bit level on every pixe
 ```diffstatic {data-lang=kotlin}
 val cloud = SplatTiles.clusteredCloud(40_000) // a dense core inside a sparse halo
 val view = SplatRaster.View.lookAt(
-    eye = Vector3f(0f, 0.3f, 3.6f), target = Vector3f(0f, 0f, 0f), width = 480, height = 320,
+    eye = Vector3f(0f, 0f, 4.2f),
+    target = Vector3f(0f, 0f, 0f),
+    width = 480,
+    height = 320,
 )
 val binning = SplatTiles.bin(cloud, 40_000, view)
 showImage(SplatTiles.render(binning).image.toArgb(), view.width, view.height)
@@ -421,18 +424,24 @@ import afield.math.linalg.Vector3f
 val count = 40_000
 val cloud = SplatTiles.clusteredCloud(count)
 val view = SplatRaster.View.lookAt(
-    eye = Vector3f(0f, 0.3f, 3.6f), target = Vector3f(0f, 0f, 0f), width = 480, height = 320,
+    eye = Vector3f(0f, 0f, 4.2f),
+    target = Vector3f(0f, 0f, 0f),
+    width = 480,
+    height = 320,
 )
 val binning = SplatTiles.bin(cloud, count, view)
 
 // One cell per 16x16 tile, row 0 at the top like the image.
-showHeatmap(binning.countRows(), colormap = "inferno", width = 480, logScale = true, smooth = false, flipY = false)
-println("heaviest tile ${binning.maxCount} splats, 99th percentile ${binning.quantile(0.99)}, median ${binning.quantile(0.5)}")
+showHeatmap(binning.countRows(), colormap = "inferno", width = 360, logScale = true, smooth = false, flipY = false)
+println(
+    "heaviest tile ${binning.maxCount} splats, 99th percentile ${binning.quantile(0.99)}, median ${binning.quantile(0.5)}",
+)
 ```
 
 ![A heat map of 30 by 20 tiles on a log scale: black around the edge where no splat reaches, a square of orange tiles where the halo is, and a bright yellow block at the centre where the dense core is](assets/geometry_from_disk/splat_tiles_heat.png)
 
-The tiles over the core hold about 11,000 splats each while the median tile holds 7. With one
+The tiles over the core hold about 11,600 splats each. The 99th-percentile tile holds 663, and
+half the tiles hold none. With one
 worker per tile, the worker that gets a core tile is still blending when everyone else has finished.
 [Mitigating SM-Level Load Imbalance in 3D Gaussian Splatting on GPUs](https://arxiv.org/abs/2611.12319)
 fixes this on the GPU in two steps: hand out the heaviest tiles first, and cut a tile whose list is
@@ -466,14 +475,37 @@ the chunk in front of it has already made the pixel opaque. With 256-splat chunk
 is many times slower. `Balanced()` therefore cuts only a tile larger than half of one worker's share
 of the frame, and you can pass `Balanced(chunk = …)` to choose the size yourself.
 
+### The same blend on the GPU
+
+`SplatTilesGpuProbe` runs the per-tile blend as a Vulkan compute shader: one 16×16 workgroup per
+work item and one invocation per pixel. Binning stays on the CPU. The raster-order version
+launches one workgroup per tile. The balanced version is the paper's persistent kernel: 256
+workgroups loop, each taking the next item from an atomic counter over the heaviest-first list.
+On every view below, both GPU images match the CPU tiles to within one 8-bit level. On the M1 Max
+GPU, each blend took:
+
+| View | Work items, raster / balanced | Raster order | Persistent, heaviest first |
+| --- | --- | --- | --- |
+| whole cloud, 1280×720 | 3,600 / 3,600 | 1.60 ms | 3.06 ms |
+| close on the core, 1280×720 | 3,600 / 3,600 | 4.13 ms | 4.06 ms |
+| whole cloud, 96×96 | 36 / 88 | 2.32 ms | 2.93 ms |
+
+Here the persistent kernel does not pay for itself. Apple's GPU already hands out workgroups as
+cores free up, so a queue in software adds an atomic and two barriers per item and wins nothing
+back. The 96×96 view is chunked for 32 workers, which leaves at most 88 items for a GPU that can
+hold far more workgroups at once.
+
 ??? aside "What this measures and what it does not"
 
-    These are CPU threads, not GPU streaming multiprocessors, and the GPU renderer still draws
-    sorted quads. The paper's persistent-kernel compute rasterizer is not built here. What the CPU
-    version settles is the image (`SplatTilesTest`, the `four.splat-tiles.smoke` smoke test, holds
-    both schedules to one 8-bit level against `SplatRaster`) and what the tile counts look like.
-    `SplatTilesBench` (`run-jvm-main afield.graphics.render.SplatTilesBenchKt`) prints the table
-    above; `dev_docs/SPLAT_TILES.md` records the run.
+    The CPU tables are CPU threads, not GPU streaming multiprocessors. The GPU times are
+    wall-clock frame time with 17 blends per frame minus frame time with one, divided by 16,
+    measured once per view on one machine, so treat differences under about half a millisecond
+    as noise. The GPU renderer still draws sorted quads; nothing here replaces it.
+    `SplatTilesTest` (`four.splat-tiles.smoke`) holds the CPU tiles to one 8-bit level against
+    `SplatRaster`, and `four.splat-tiles.gpu` holds the GPU to two levels against the CPU tiles
+    and checks that every blend drained the queue. `SplatTilesBench`
+    (`run-jvm-main afield.graphics.render.SplatTilesBenchKt`) prints the CPU table;
+    `dev_docs/SPLAT_TILES.md` records both runs.
 
 The [`splat_tiles`](agent_transcripts.md#splat_tiles) starting point holds three boxes: the binned
 image checked against `SplatRaster`, the heat map, and the timing on the 96×96 view.

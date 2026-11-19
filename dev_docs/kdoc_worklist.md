@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 25038 of 41965 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 25040 of 41969 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2046 undocumented entry points** (types, top-level functions and values) and 14148 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2046 undocumented entry points** (types, top-level functions and values) and 14150 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -972,6 +972,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [SmileStdlibSmokeTest.kt](../src/jvmMain/kotlin/afield/examples/stdlib/SmileStdlibSmokeTest.kt) | Examples | — | 0 | 2 | 33% |
 | [GeometryNetwork.kt](../src/jvmMain/kotlin/afield/geometry/network/GeometryNetwork.kt) | Graphics | — | 0 | 2 | 95% |
 | [SplatCloudEdit.kt](../src/jvmMain/kotlin/afield/graphics/render/SplatCloudEdit.kt) | Graphics | — | 0 | 2 | 91% |
+| [SplatTilesGpuProbe.kt](../src/jvmMain/kotlin/afield/graphics/render/SplatTilesGpuProbe.kt) | Graphics | — | 0 | 2 | 50% |
 | [RtxdiProgram.kt](../src/jvmMain/kotlin/afield/graphics/render/lighting/RtxdiProgram.kt) | Graphics | — | 0 | 2 | 33% |
 | [OpenDlssNrSupport.kt](../src/jvmMain/kotlin/afield/graphics/render/neural/OpenDlssNrSupport.kt) | Graphics | — | 0 | 2 | 33% |
 | [GpuSkinningEvidence.kt](../src/jvmMain/kotlin/afield/graphics/scene/GpuSkinningEvidence.kt) | Graphics | — | 0 | 2 | 33% |
