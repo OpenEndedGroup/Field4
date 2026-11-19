@@ -426,6 +426,7 @@ int f4nr_apply(void *handle, uint64_t address) {
     features->features.shaderInt16 = features->features.shaderInt64 = VK_TRUE;
     auto *tail = (VkBaseOutStructure *)features;
     bool f11 = false, f12 = false, f13 = false;
+    bool hasCooperativeMatrix = false;
     bool memory = false, float16 = false, host = false, storage8 = false;
     for (auto *s = tail; s; s = s->pNext) {
       tail = s;
@@ -475,6 +476,12 @@ int f4nr_apply(void *handle, uint64_t address) {
                 ->uniformAndStorageBuffer8BitAccess = VK_TRUE;
         storage8 = true;
         break;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_FEATURES_KHR: {
+        auto *f = (VkPhysicalDeviceCooperativeMatrixFeaturesKHR *)s;
+        f->cooperativeMatrix = VK_TRUE;
+        hasCooperativeMatrix = true;
+        break;
+      }
       default:
         break;
       }
@@ -505,7 +512,10 @@ int f4nr_apply(void *handle, uint64_t address) {
         append(&plan->memory);
       }
     }
+    // Field may already enable KHR cooperative matrices for other compute passes.
+    // Vulkan requires a single feature struct of each type in the device chain.
     r.coop.pNext = nullptr;
+    r.coop2.pNext = hasCooperativeMatrix ? nullptr : &r.coop;
     tail->pNext = (VkBaseOutStructure *)&r.sm;
   });
 }

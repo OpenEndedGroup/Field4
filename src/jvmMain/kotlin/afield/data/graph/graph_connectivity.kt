@@ -42,6 +42,7 @@ import afield.document.graph.plusAssign
 import afield.document.properties.compareTo
 import afield.document.workspace.file
 import afield.geometry.mesh.contains
+import afield.geometry.spatial.OrthantNeighbors3D
 import afield.geometry.spatial.closest
 import afield.graphics.render.circle
 import afield.graphics.render.rangeTo
@@ -991,6 +992,24 @@ fun vec3OrthantGraph(
     validatePoints3D(points, "vec3OrthantGraph")
 
     val edges = mutableSetOf<GraphEdge>()
+
+    if (options.customDistanceMetric == null) {
+        val xyz = FloatArray(points.size * 3)
+        points.forEachIndexed { index, point ->
+            xyz[index * 3] = point.x
+            xyz[index * 3 + 1] = point.y
+            xyz[index * 3 + 2] = point.z
+        }
+        val network = OrthantNeighbors3D.build(xyz, 0, Int.MAX_VALUE, parallel = true, excludeAxisAligned = true)
+        // Preserve the graph's original order, with Z as the fastest changing sign.
+        val octants = intArrayOf(0, 4, 2, 6, 1, 5, 3, 7)
+        for (i in points.indices) for (octant in octants) {
+            val slot = i * 8 + octant
+            val neighbor = network.neighbors[slot]
+            if (neighbor >= 0) edges.add(GraphEdge(i, neighbor, network.distances[slot]))
+        }
+        return PointGraph(edges.toList(), points.size)
+    }
 
     for (i in points.indices) {
         val pi = points[i]

@@ -43,6 +43,21 @@ class ParticleSketchShaderTest {
     private val harnessPush = setOf("src", "dst", "strokes", "spawns", "world", "gridValues", "cellStart", "cellEnd", "phase")
 
     @Test
+    fun shapeForceCompilesAsAStandaloneInclude() {
+        val source = """
+            #version 450
+            #include "particles/shape_force"
+            layout(local_size_x = 1) in;
+            layout(std430, binding = 0) buffer Result { vec2 force; };
+            void main() {
+                vec3 boundary = particleShapeBoundary2D(vec2(0.5, 1), PARTICLE_SHAPE_RECTANGLE, vec2(1), 0);
+                force = particleShapeForce2D(boundary, 1, 2, false);
+            }
+        """.trimIndent()
+        introspect("shape_force", source, ShaderKind.COMPUTE_SHADER)
+    }
+
+    @Test
     fun theDrawingPassesDeclareWhatTheKotlinBinds() {
         val strokes = introspect("strokes", ParticleShaders.source("strokes_vertex"), ShaderKind.VERTEX_SHADER)
         assertEquals(setOf("strokes", "size", "targetSize", "capacity", "layer"), pushNames(strokes))
