@@ -163,3 +163,57 @@ Added to the page: `display(html)`, `field.box`, `field.describe`, `field.clock`
 box-property write caught with `pcall` read `field:120: ...` (the prelude's `__newindex`); `box_get`
 and `box_set` now raise at level 3 (`LuaBoxTest.aReadOnlyPropertyIsALuaErrorOnTheLineThatWroteIt`).
 Not documented, deliberately: the `base` voice option (an internal base frequency).
+
+## The norns host, 2026-11-19
+
+`require "norns"` (`src/jvmMain/resources/afield/lua/norns.lua`, Kotlin half
+`afield/lang/lua/NornsHost.kt`, tests `NornsHostTest`, public section `lua.md#a-norns-host`, demo
+`dev_docs/agents/transcripts/norns_demo.yaml`). Asked for because the idea scout keeps finding norns
+scripts; first targets were scout cards e9b02c6aa308 (noiz virus) and 4bb033218ffe (anima).
+
+**Shape.** Everything API-shaped is Lua: params, controlspec, clock, metro, util, musicutil, tab,
+grid/arc (SVG in the box's `grid`/`arc` panels), the lifecycle. Kotlin owns only what Lua cannot:
+the screen (Java2D onto an 8-bit grey `BufferedImage`, quantised to 16 levels as norns quantises its
+cairo surface for the OLED) and the sound (`NornsSound`, a `StereoNode` with PolyPerc voices and six
+softcut voices). The prelude hands the `norns_*` raw handlers to `norns.lua` alone and puts it in
+`package.preload`; `LUA_MODULES` in `LuaLanguage.kt` is the whitelist of shipped modules.
+
+**One scheduler, two clocks.** norns.lua keeps its own clock/metro scheduler instead of using the
+prelude's `spawn`, so the same script runs live (one Field-spawned task steps it to wall-clock time
+each frame) and offline: `norns.render` steps virtual time from one due event to the next and calls
+`norns_advance(t)` before each, so Kotlin renders the audio up to exactly that event and an
+`engine.hz` lands on the sample its `clock.sync` asked for. Wake times are computed from the task's
+scheduled time, not the time it ran, so sync stays on the beat grid.
+
+**Sources and licences (checked 2026-11-19).** noiz virus: github.com/SPIKE-the-Percussionist/noiz_virus;
+anima: github.com/om-i-god/anima. `gh api repos/<r>/license` is 404 for both and neither README states
+a licence, so nothing of theirs is committed: the demo's "fetch the scripts" box clones them into
+`~/.afield/norns/code/`, and their screens are not used as docs figures.
+
+**Traps.**
+- norns is Lua 5.3, LuaJIT is 5.1. noiz virus fails to load on `//` (floor division, 7 uses). The host
+  rewrites `a // b` to `math.floor((a) / (b))` with a token-level pass (left operand = the run of
+  `* / %`-joined terms before it, right = one term), on files, includes and `require`d modules.
+  Bitwise operators are not translated; none of the two scripts uses them. `luajit -bl` on each file
+  is the quick check for other 5.3-only syntax.
+- A selection run into a launched Lua box used to bump the run generation and silently end the frame
+  loop (the screen froze after `norns.enc(2, 5)`). Fixed in `runLua`: a non-launch fragment keeps the
+  generation.
+- noiz virus ignores keys while its splash derezzes; a K2 at 1.0 s after skipping the splash at 0.5 s
+  did nothing. The demo presses K2 at 3 s.
+
+**Measured (offline renders, 48 kHz, from the demo boxes).** orbits, 8 s: peak 0.39, 104 onsets, the
+tempo 110 → 140 after E2 +30 and the cutoff at its floor after E3 −60, as the script's params report.
+noiz virus, 12 s: silent until the K2 at 3 s, then rms 0.01–0.04 per half second, strongest partials
+111, 293 and 176 Hz at 4, 7 and 10 s, peak 0.13; screens at 0.2 s (the NoiZ Temple splash, from
+`screen.display_png`), 6 s (SARS-CoV-2 reading AGG) and 12 s (Ebola, after E1 +3, reading in reverse).
+anima, 10 s: peak 0.29, notes every quarter beat from 3 s. Live (backdoor, port 9951): orbits
+launched, `norns.enc(2, 60)` and `norns.key(2, 1)` as a fragment changed the screen to bpm 170 /
+stopped, and a pointer press on the `K2` key in the `controls` panel set it playing again. noiz virus
+launched live: after two K2 presses it was reading SARS-CoV-2 at position 121, with its grid and arc
+drawn in their panels. Live audio went to `FieldAudioEngine` but was not listened to.
+
+**Not done.** Other engines (only PolyPerc); softcut filters, fades, phase polls and voice-to-voice
+routing; reverb/compressor; MIDI out (Field has MIDI, `midi.connect` is a stub); clicking the virtual
+grid/arc (driven from code only); norns' bitmap fonts (Java's sans serif stands in, a little wider);
+the params menu; Lua 5.3 bitwise operators.
