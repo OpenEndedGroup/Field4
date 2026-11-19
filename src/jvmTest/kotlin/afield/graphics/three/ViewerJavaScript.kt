@@ -368,6 +368,12 @@ $region
             "sectionCutTriangles",
             "sectionCutSegments",
             "sectionCutLength",
+            "sectionPlaneFrame",
+            "sectionCutLoops",
+            "sectionRingArea",
+            "sectionRingContains",
+            "sectionCapPolygons",
+            "sectionCapTriangles",
         ),
         "camera-preset" to listOf("cameraPresetEye"),
         "pick-thresholds" to listOf(

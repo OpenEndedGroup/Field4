@@ -869,8 +869,9 @@ three(name = "section", channel = "section", width = 760, height = 460) {
     lines(datum)
     camera(yaw = 30.0, pitch = 24.0)
     inspect(
-        // Cut halfway through along z, so the plane runs straight down the bore.
-        section = ThreeSection(enabled = true, normal = floatArrayOf(0f, 0f, 1f), fraction = 0.5),
+        // Cut halfway through along z, so the plane runs straight down the bore, and keep the far
+        // half so the cut faces the camera.
+        section = ThreeSection(enabled = true, normal = floatArrayOf(0f, 0f, 1f), fraction = 0.5, flip = true),
         // From the block's +x face, on the cut plane, to the datum beside it: 1.4 - 1.0 = 0.4.
         measurements = [
             ThreeMeasurement(
@@ -883,14 +884,22 @@ three(name = "section", channel = "section", width = 760, height = 460) {
 }
 ```
 
-![A marched block with a vertical bore, cut in half along z by the inspector's section plane, with the cut outline drawn round the block and the bore; an orange datum line stands beside the block, and an authored dimension labelled "clear" runs from the block's face to the line.](assets/three_output/section.png)
+![A marched block with a vertical bore, cut in half along z by the inspector's section plane with the far half kept; the cut faces are filled with flat grey caps and outlined in blue, and the bore runs open between them; an orange datum line stands beside the block, and an authored dimension labelled "clear" runs from the block's face to the line.](assets/three_output/section.png)
 
 What you aim at is decided by true perpendicular distance in the hit triangle's plane, within a snap
 radius of 0.14 of that triangle's own longest edge, and a corner is tested before an edge. So
 a sliver has no clickable interior: every point of a triangle ten long and half a unit tall
 falls inside its own snap radius of an edge or a corner.
 
-The section plane cuts a mesh, wireframe overlay included. The explode scrubber moves
+The section plane cuts a mesh, wireframe overlay included, and fills the cut with a cap: a flat
+face in the plane, in a darker shade of the solid's own colour, so material reads as material instead
+of showing the inside of the shell. Holes stay open, as the bore does here, and the readout gives
+the section's area. Each solid is capped on its own. A cut through a surface that is not closed,
+such as a single wall panel or a mesh with a gap, gets an outline but no cap, and the readout counts
+those as open cuts. Pass `ThreeSection(capColor = "#222222")` for one poché colour across every
+part, or `cap = false` to show the outline alone.
+
+The explode scrubber moves
 meshes and their outlines by inspection group, along with grouped FLine geometry.
 Give related objects the same group to keep them together; `solidParts` sets this up
 for native solids. X-ray can be combined with either control.
