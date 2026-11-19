@@ -110,14 +110,15 @@ From `code`
 Stressed words strike a kick, the rest a hat, exactly on the words.
 
 ```edn [field-box id="words_play_drums" role="properties"]
-{"id" "words_play_drums" "index" 4 "name" "3 - Words play the drums" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - Words play the drums" "_tombstone" false "frame" #afield/rect [820.0 60.0 340.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "words_play_drums_code_.kt" "lines" 11 "characters" 563 "sha256" "1aa7090e3119550b6b2d705fba03a26ab93dc421cdb2bc70c899195b724aea8f"}]}
+{"id" "words_play_drums" "index" 4 "name" "3 - Words play the drums" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - Words play the drums" "_tombstone" false "frame" #afield/rect [820.0 60.0 340.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "words_play_drums_code_.kt" "lines" 12 "characters" 668 "sha256" "5276f83beef2d27b450e2a71b633ded84b860744c55919eb68176cca2c92d544"}]}
 ```
 
 ```kotlin [field-property box="words_play_drums" name="code" path="words_play_drums_code_.kt"]
 // Stressed words strike a kick, the rest a hat, exactly on the words.
 val said = speak("Speech can play the drums, if you let it.")
 val drums = said.pattern { if (it.stressed) "bd" else "hh" }
-val beat = patRenderStereo(drums, cycles = 1, cps = 1 / said.seconds, sampleRate = 48_000).mono
+val dirt = DirtRender.requirePinnedLibrary() // real kick and hat samples, one shot each
+val beat = patRenderStereoDirt(drums, 1, 1 / said.seconds, dirt, sampleRate = 48_000, strict = true).audio.mono
 val voice = said.resampled(48_000)
 val mix = (voice.size) { i -> 0.8f * voice[i] + 0.5f * beat.getOrElse(i) { 0f } }.toFloatArray()
 displayAudioSamples(
