@@ -58,13 +58,25 @@ operations:
                       val dx = w * cos(twist(a, t)) * cos(a + t)
                       val dy = w * cos(twist(a, t)) * sin(a + t)
                       val dz = w * sin(twist(a, t))
-                      floatArrayOf(c.x + dx.toFloat(), c.y + dy.toFloat(), c.z + dz.toFloat(), c.x - dx.toFloat(), c.y - dy.toFloat(), c.z - dz.toFloat())
-                          .copyInto(positions, s * 6)
+                      floatArrayOf(
+                          c.x + dx.toFloat(),
+                          c.y + dy.toFloat(),
+                          c.z + dz.toFloat(),
+                          c.x - dx.toFloat(),
+                          c.y - dy.toFloat(),
+                          c.z - dz.toFloat(),
+                      ).copyInto(positions, s * 6)
                   }
                   val triangles = IntArray(steps * 6)
-                  for (s in 0 until steps) intArrayOf(2 * s, 2 * s + 1, 2 * s + 2, 2 * s + 1, 2 * s + 3, 2 * s + 2).copyInto(triangles, s * 6)
+                  for (s in 0 until steps) intArrayOf(2 * s, 2 * s + 1, 2 * s + 2, 2 * s + 1, 2 * s + 3, 2 * s + 2)
+                      .copyInto(triangles, s * 6)
                   val hue = i.toDouble() / ribbons
-                  mesh(TriMesh(positions, triangles), layer = "Ribbons", name = "ribbon $i", color = vec(0.9, 0.3 + 0.5 * hue, 0.2, 1.0))
+                  mesh(
+                      TriMesh(positions, triangles),
+                      layer = "Ribbons",
+                      name = "ribbon $i",
+                      color = vec(0.9, 0.3 + 0.5 * hue, 0.2, 1.0),
+                  )
               }
               text("$ribbons ribbons", vec(-30.0, -70.0, 0.0), height = 6.0, layer = "Notes")
           }
@@ -87,7 +99,12 @@ operations:
           val dir = java.nio.file.Files.createTempDirectory("rhino-roundtrip").toFile()
           val original = Rhino3dm.load(Rhino3dm.writeSample(java.io.File(dir, "sample.3dm")))
 
-          val frame = FLine().moveTo(vec(-10.0, -20.0, 0.0)).lineTo(vec(140.0, -20.0, 0.0)).lineTo(vec(140.0, 75.0, 0.0)).lineTo(vec(-10.0, 75.0, 0.0))
+          val frame =
+              FLine()
+                  .moveTo(vec(-10.0, -20.0, 0.0))
+                  .lineTo(vec(140.0, -20.0, 0.0))
+                  .lineTo(vec(140.0, 75.0, 0.0))
+                  .lineTo(vec(-10.0, 75.0, 0.0))
           frame.close()
 
           val edited = Rhino3dm.save(original, java.io.File(dir, "edited.3dm")) {
@@ -99,7 +116,9 @@ operations:
 
           println(original)
           println(back)
-          println("objects ${original.objects.size} -> ${back.objects.size}, layers ${original.layers.size} -> ${back.layers.size}")
+          println(
+              "objects ${original.objects.size} -> ${back.objects.size}, layers ${original.layers.size} -> ${back.layers.size}",
+          )
           println("openNURBS log on the way back: \"${back.log.trim()}\"")
 
           three(height = 420) { rhino(back) }
