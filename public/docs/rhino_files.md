@@ -1,6 +1,6 @@
 # Rhino files (.3dm)
 
-<!-- capture-sources: src/jvmMain/kotlin/afield/geometry/rhino/Rhino3dm.kt src/jvmMain/kotlin/afield/geometry/rhino/RhinoThree.kt native/field-opennurbs/src/field_opennurbs.cpp src/jvmMain/kotlin/afield/geometry/rhino/RhinoWriter.kt native/field-opennurbs/src/field_opennurbs_write.cpp -->
+<!-- capture-sources: src/jvmMain/kotlin/afield/geometry/rhino/Rhino3dm.kt src/jvmMain/kotlin/afield/geometry/rhino/RhinoThree.kt src/jvmMain/kotlin/afield/geometry/rhino/BrepTessellator.kt src/jvmMain/kotlin/afield/geometry/rhino/RhinoWriter.kt native/field-opennurbs/src/field_opennurbs.cpp native/field-opennurbs/src/field_opennurbs_brep.cpp native/field-opennurbs/src/field_opennurbs_write.cpp -->
 
 Have a Rhino model you want to explore? Load it in a box and draw it in a viewer you can orbit:
 
@@ -58,7 +58,8 @@ Object by object:
 | in Rhino | in the `RhinoModel` | exact? |
 | --- | --- | --- |
 | mesh | `RhinoMesh`, its quads split into triangles | yes |
-| Brep, extrusion | `RhinoMesh` from the render mesh Rhino saved, plus its edges as an `FLine` | the mesh is Rhino's own |
+| Brep, extrusion | `RhinoMesh` from the render mesh Rhino saved, or tessellated from its NURBS surfaces where there is none, plus its edges as an `FLine` | Rhino's mesh, or vertices on the exact surface |
+| SubD | `RhinoMesh` on its limit surface, subdivided `subdLevel` times | vertices on the limit surface |
 | line, polyline, polycurve, NURBS curve | `RhinoCurve` with an `FLine` | lines and polynomial spans up to cubic, yes; arcs and other rational spans within 10⁻⁵ of the curve's size, flagged `approximated` |
 | hatch | `RhinoCurve` with `isHatch`, its boundary loops filled | as curves |
 | text | `RhinoText`: string, plane, capital height, alignment; `toFLines()` sets it | the font is Field's, not the file's |
@@ -180,17 +181,68 @@ Rhino.
 
 A model you read writes back with `model.save(file)`, in its own units. Add to it on the way out
 with `Rhino3dm.save(model, file) { curve(...) }`, so read, change, write is three lines. Breps and
-extrusions go back as the meshes they were read as, hatches as their boundary curves, block
+extrusions go back as the meshes they were read as (a Save Small Brep, read with the default
+`meshing`, goes back as its tessellation, below), hatches as their boundary curves, block
 instances as their placed members, and `RhinoSkipped` objects not at all.
 
 ## Breps without meshes
 
-The reader never evaluates a NURBS surface itself. openNURBS has no Brep mesher (that lives inside
-Rhino), so a Brep is exactly as good as the render mesh saved with it. A file saved with *Save
-Small* has none, and some faces Rhino never managed to shade are saved with an empty one. Those
-Breps come back as `RhinoSkipped` with that reason and their edges, and `rhino(model)` draws them
-as wireframes. If you need them shaded, re-save the file from Rhino with meshes. SubD objects are
-skipped too: public openNURBS declares a SubD mesher but does not include one.
+Rhino saves a render mesh with each Brep face unless you choose *Save Small*. Where a face has
+none, `Rhino3dm.load` makes one from the face's exact NURBS surface and its trim curves, so a file
+saved small still comes back shaded. SubD objects come back the same way, as their limit surface.
+
+The example below writes such a file — a sphere, a capped cylinder, a plate with a hole, a box
+saved with its mesh and one without, and a smooth and a creased SubD box, none of them carrying a
+render mesh but the first box — and draws it twice. First, read with
+`meshing = RhinoBrepMeshing.SAVED`, the way Rhino's saved meshes alone would give it: only the
+box that has one is shaded, the rest are their edges. Then read with the default.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/rhino_files/save_small.png" wait="12.0" capture="box" open-outputs="true" padding="20" requires="opennurbs" name="save_small"}
+:::static
+import afield.geometry.rhino.*
+
+val dir = java.nio.file.Files.createTempDirectory("rhino-nurbs").toFile()
+val file = Rhino3dm.writeNurbsSample(java.io.File(dir, "save_small.3dm"))
+
+val saved = Rhino3dm.load(file, meshing = RhinoBrepMeshing.SAVED)
+val evaluated = Rhino3dm.load(file)
+println(evaluated)
+:::fold draw both, then clean up
+three(channel = "saved", name = "saved", width = 380, height = 360) { rhino(saved) }
+three(channel = "evaluated", name = "evaluated", width = 380, height = 360) { rhino(evaluated) }
+dir.deleteRecursively()
+:::endfold
+```
+
+![Two orbiting viewers of the same file. In the first only one small orange box is shaded; the sphere, cylinder, plate, second box and both SubD boxes are thin outlines or missing. In the second everything is shaded: a blue sphere, a blue capped cylinder, a flat blue plate with a round hole, two orange boxes, a green rounded cube made from the smooth SubD and a green sharp-edged cube from the creased one.](assets/rhino_files/save_small.png)
+
+`meshing` chooses where the triangles come from:
+
+<div data-code-lang="kotlin" markdown>
+
+| `meshing` | a face with a saved mesh | a face without one |
+| --- | --- | --- |
+| `SAVED_ELSE_EVALUATE` (the default) | Rhino's mesh | tessellated from its surface |
+| `SAVED` | Rhino's mesh | none: the Brep is a `RhinoSkipped`, drawn as its edges |
+| `EVALUATE` | tessellated from its surface | tessellated from its surface |
+
+</div>
+
+A tessellated face is a grid over the face's parameters, a line at every knot, with each span
+halved until the surface strays from the triangles by less than `tolerance` (a thousandth of the
+Brep's size unless you pass one, in model units). Cells the trim curves cross are cut along them,
+so holes and trimmed edges follow the trim. Every vertex lies on the exact surface. Faces are
+joined where they meet smoothly and kept apart at creases, so the shading stays sharp at a box's
+edges and smooth across a sphere's seam. `RhinoMesh.evaluatedFaces` says how many of an object's
+faces were tessellated.
+
+A SubD is subdivided `subdLevel` times (3 unless you say otherwise; each level makes four times
+the triangles) by openNURBS's own Catmull-Clark rules, and each vertex is moved onto the limit
+surface. Creased edges stay creased. `RhinoMesh.subdLevel` is set on those.
+
+Rhino's own meshes and these are not the same triangles: Rhino's render mesh settings decide its
+density, and a tessellation here follows `tolerance`. For measuring, `EVALUATE` gives every Brep the
+same treatment.
 
 ## Building the reader
 

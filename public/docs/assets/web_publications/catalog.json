@@ -4652,6 +4652,28 @@
         "public/docs/chain_rectsl_spacetime.md#capture-box=rectsl_spacetime_trace"
       ]
     },
+    "assets/agent_transcripts/rhino_save_small/metadata.edn": {
+      "captureDigest": "b3a9114a0f674d1772fca02fe9f6e2fc87d3ea0693662b95eb9aa5e0a9601bc8",
+      "capturedAt": "2026-11-20T10:56:52.248Z",
+      "channels": 2,
+      "file": "assets/web_publications/rhino_save_small/document/metadata.edn",
+      "files": {
+        "assets/web_publications/rhino_save_small/document/metadata.edn": "0e88492629870526494460cddfcbb04b5d95274ad186eca4fe0221b575da69a6",
+        "assets/web_publications/rhino_save_small/document/outputs.json": "308ce0d47cb3d82e9a5d076833b74d6e353f6766c77154b040ace2e6033b5674",
+        "assets/web_publications/rhino_save_small/outputs/0.html": "4401f44763dd26c0327ade0ff72ac9dcacc70bd4b6a2e925897b023ef583bf9f",
+        "assets/web_publications/rhino_save_small/outputs/1.html": "ac5843397f167985b931b7925a0315179dfe1bc880d60c9b895eadf4b79f8772"
+      },
+      "kinds": [
+        "three"
+      ],
+      "outputs": "assets/web_publications/rhino_save_small/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/rhino_save_small.yaml": "f0f580df3c8eafe3e1769f787998a6749c1d90656a3d1c9aadcd02c8c7f4cf28",
+        "public/docs/assets/agent_transcripts/rhino_save_small/metadata.edn": "068ddf7c02faf2bf0e082758ef7afcdcc5a203cbac0928230a9c66dd208d62d5",
+        "public/docs/assets/agent_transcripts/rhino_save_small/rhino_save_small_draw_code_.kt": "61b3de6d3808297a5f2b0f1b078d4d19372623cecfbb219a5c8bd96d884919f3",
+        "public/docs/assets/agent_transcripts/rhino_save_small/rhino_save_small_measure_code_.kt": "794063d793cd69195edc5d445510a69644e499d69fddeefca2e15628639bba75"
+      }
+    },
     "assets/agent_transcripts/satellites/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
       "capturedAt": "2026-11-18T15:58:00.371Z",

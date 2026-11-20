@@ -2866,6 +2866,16 @@ renderer: the scene's root node and its transform, meshes, materials and animati
 
 [Open ↗](offline.html?file=assets/agent_transcripts/assimp_browsing/metadata.edn)
 
+### rhino_save_small
+
+**A Rhino file saved without render meshes, shaded anyway**: one box draws the file as Rhino's
+saved meshes alone give it beside the default read, where every Brep face is tessellated from its
+NURBS surface and each SubD subdivided onto its limit surface; the other measures each mesh's area
+against the exact shape. Needs the optional openNURBS wrapper. See
+[Breps without meshes](rhino_files.md#breps-without-meshes).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/rhino_save_small/metadata.edn)
+
 ### spinny_algebras
 
 **Spinny algebras.** Multiply the plane by w = 0.9 + 0.5ε and drag ε² from -1 to +1. At -1 the grid
