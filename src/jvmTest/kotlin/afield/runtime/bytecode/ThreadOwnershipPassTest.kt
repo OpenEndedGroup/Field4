@@ -120,6 +120,7 @@ class ThreadOwnershipPassTest {
     private val origin = SnippetOrigin(null, "code", "'guards' (test)", source, GuardBoxCode::class.java.classLoader) { source }
 
     private var savedRunloop: Thread? = null
+    private var savedAudioThreads: Array<Thread> = emptyArray()
     private val parked = CountDownLatch(1)
     private val others = ArrayList<Thread>()
 
@@ -135,12 +136,18 @@ class ThreadOwnershipPassTest {
     @BeforeTest
     fun setUp() {
         savedRunloop = Runloop.mainThread
+        // An audio engine an earlier test left running in this JVM still owns a context, and an
+        // AUDIO guard with no context argument is then a real violation off that thread. These
+        // tests start from no owners; the engine's own registration is put back afterwards.
+        savedAudioThreads = ThreadOwnership.audioThreads
+        ThreadOwnership.audioThreads = emptyArray()
         ThreadOwnership.resetForTests()
     }
 
     @AfterTest
     fun tearDown() {
         Runloop.mainThread = savedRunloop
+        ThreadOwnership.audioThreads = savedAudioThreads
         guardEvents = null
         parked.countDown()
         others.forEach { it.join(1000) }
