@@ -4354,6 +4354,29 @@
         "public/docs/assets/agent_transcripts/pitch_transcription_roundtrip/pitch_roundtrip_register_code_.kt": "089d65b439daa1a707d582a174fcec7df934071fa703c215e8f98dd02399b99a"
       }
     },
+    "assets/agent_transcripts/planar_queries/metadata.edn": {
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-20T12:13:21.477Z",
+      "channels": 2,
+      "file": "assets/web_publications/planar_queries/document/metadata.edn",
+      "files": {
+        "assets/web_publications/planar_queries/document/metadata.edn": "8cb1bfe610780ecdca38aa0b62bf766a5415bd766dd32f1de88eb171731a35a5",
+        "assets/web_publications/planar_queries/document/outputs.json": "642e3c947a3b97d325bc675725dbd13b41426ffc25509114bc35e5a49e960456",
+        "assets/web_publications/planar_queries/outputs/0.html": "23b8b72a3a3e91dc51065c82a27493214b6773163a5fbe48f8f7ddd4f35dc425",
+        "assets/web_publications/planar_queries/outputs/1.html": "8c3629ddde58ab14c4b06aa37a10c5b6b54894e36f5e8de0699da8495d94b848"
+      },
+      "kinds": [
+        "svg"
+      ],
+      "outputs": "assets/web_publications/planar_queries/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/planar_queries.yaml": "169fbc8509e36349f3b1eb90835b923afff89f1afae8bf5f8c85f1978037fc1f",
+        "public/docs/assets/agent_transcripts/planar_queries/guides/fline_examples-crossings-bounds-and-orientation.md": "eb8e46557dc82795ec0465d366b076d9e65aee3378c49711ae365b4cf84dda86",
+        "public/docs/assets/agent_transcripts/planar_queries/metadata.edn": "42b13a848f2a26c17c2a273e2136d45071e6e757671c5b8ea92a086df73748de",
+        "public/docs/assets/agent_transcripts/planar_queries/planar-distance_code_.kt": "c87995023d6ff9971a37756ca88a799b38ee5a076b94e2803b3dca6b7990ebdd",
+        "public/docs/assets/agent_transcripts/planar_queries/planar-orientation_code_.kt": "bc9ed9da2a41c447d7d62c16c12137325ec58ac7fb5cced51b639f440a3e1921"
+      }
+    },
     "assets/agent_transcripts/point_matching/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
       "capturedAt": "2026-11-18T15:52:03.790Z",

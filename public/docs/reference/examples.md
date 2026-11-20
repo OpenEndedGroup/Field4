@@ -323,7 +323,7 @@ Verification-integrity harness: executes / compiles the box bodies of *every* sh
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L1161) |  |
+| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L1164) |  |
 
 ## DocsPanelCodeLinksSmokeTest.kt { #docspanelcodelinkssmoketest-kt }
 
@@ -2586,14 +2586,14 @@ Headless **capture gallery** for the `afield.media.image` imaging / computer-vis
 
 ### PolytopeLayerContours { #polytopelayercontours-kt-polytopelayercontours }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">PolytopeLayerContours</span></code>](source/jvmMain/afield/examples/manifold/PolytopeLayerContours/#L70)
+[<code class="highlight"><span class="k">object</span> <span class="nc">PolytopeLayerContours</span></code>](source/jvmMain/afield/examples/manifold/PolytopeLayerContours/#L71)
 
 Does canonicalising a Conway polytope change its printable layer contours, and by how much?
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="polytopelayercontours-kt--polytopelayercontours--layer"></a>[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Layer</span><span class="p">(</span><span class="k">val</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">contours</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">holes</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">islands</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">area</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/examples/manifold/PolytopeLayerContours/#L76) | One horizontal cut, reduced to the four numbers a slicer cares about. |
-| <a id="polytopelayercontours-kt--polytopelayercontours--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/manifold/PolytopeLayerContours/#L594) |  |
+| <a id="polytopelayercontours-kt--polytopelayercontours--layer"></a>[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Layer</span><span class="p">(</span><span class="k">val</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">contours</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">holes</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">islands</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">area</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/examples/manifold/PolytopeLayerContours/#L77) | One horizontal cut, reduced to the four numbers a slicer cares about. |
+| <a id="polytopelayercontours-kt--polytopelayercontours--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/manifold/PolytopeLayerContours/#L587) |  |
 
 ## MeshGallery.kt { #meshgallery-kt }
 
@@ -3192,13 +3192,13 @@ Focused smoke tests for Smile-backed stdlib helpers.
 
 ### TypographyGallery { #typographygallery-kt-typographygallery }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">TypographyGallery</span></code>](source/jvmMain/afield/examples/stdlib/TypographyGallery/#L106)
+[<code class="highlight"><span class="k">object</span> <span class="nc">TypographyGallery</span></code>](source/jvmMain/afield/examples/stdlib/TypographyGallery/#L107)
 
 The typography family, one PNG per claim, all of it CPU.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="typographygallery-kt--typographygallery--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/stdlib/TypographyGallery/#L640) |  |
+| <a id="typographygallery-kt--typographygallery--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/stdlib/TypographyGallery/#L633) |  |
 
 ## WfcGallery.kt { #wfcgallery-kt }
 
