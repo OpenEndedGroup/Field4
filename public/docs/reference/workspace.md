@@ -1476,7 +1476,7 @@ Owns `~/.afield/theme.css` and its delivery to connected clients.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="agent-backdoor-kt--installagentbackdoorhandlers"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">installAgentBackdoorHandlers</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/agent_backdoor/#L1494) |  |
+| <a id="agent-backdoor-kt--installagentbackdoorhandlers"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">installAgentBackdoorHandlers</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/agent_backdoor/#L1514) |  |
 
 ## ai4Memory.kt { #ai4memory-kt }
 

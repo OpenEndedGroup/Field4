@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 25367 of 42433 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 25382 of 42449 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2046 undocumented entry points** (types, top-level functions and values) and 14279 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2046 undocumented entry points** (types, top-level functions and values) and 14280 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -1177,6 +1177,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [ParticleTrackerSmoke.kt](../src/jvmMain/kotlin/afield/examples/video/ParticleTrackerSmoke.kt) | Examples | — | 0 | 1 | 50% |
 | [ChartGallery.kt](../src/jvmMain/kotlin/afield/examples/visualization/ChartGallery.kt) | Examples | — | 0 | 1 | 50% |
 | [Attributes.kt](../src/jvmMain/kotlin/afield/geometry/polytope/Attributes.kt) | Polytopes | — | 0 | 1 | 88% |
+| [RhinoWriter.kt](../src/jvmMain/kotlin/afield/geometry/rhino/RhinoWriter.kt) | Graphics | — | 0 | 1 | 93% |
 | [ManifoldSmokeTest.kt](../src/jvmMain/kotlin/afield/geometry/solid/manifold/ManifoldSmokeTest.kt) | Graphics | — | 0 | 1 | 50% |
 | [SolidCraftBuilderSmokeTest.kt](../src/jvmMain/kotlin/afield/geometry/solid/solidcraft/SolidCraftBuilderSmokeTest.kt) | Graphics | — | 0 | 1 | 50% |
 | [SolidCraftSmokeTest.kt](../src/jvmMain/kotlin/afield/geometry/solid/solidcraft/SolidCraftSmokeTest.kt) | Graphics | — | 0 | 1 | 50% |
