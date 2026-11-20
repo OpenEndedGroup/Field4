@@ -308,4 +308,19 @@ class FLineMeasureTest {
         assertEquals(4.0, pointSegmentDistanceSquared3D(Vec3(1f, 0f, 2f), Vec3(0f, 0f, 0f), Vec3(2f, 0f, 0f)), 1e-12)
         assertEquals(3.0, pointSegmentDistanceSquared3D(Vec3(1f, 1f, 1f), Vec3(0f, 0f, 0f), Vec3(0f, 0f, 0f), 0.0), 1e-12)
     }
+
+    /** Orientation, proper vs closed crossing, and polygon signed area from the shared kernel. */
+    @Test
+    fun planarPredicatesKernel() {
+        assertTrue(orient2D(0.0, 0.0, 1.0, 0.0, 0.0, 1.0) > 0)
+        assertTrue(segmentsCrossProperly2D(0.0, 0.0, 2.0, 2.0, 0.0, 2.0, 2.0, 0.0))
+        assertFalse(segmentsCrossProperly2D(0.0, 0.0, 2.0, 0.0, 2.0, 0.0, 3.0, 5.0))
+        assertTrue(segmentsTouch2D(0.0, 0.0, 2.0, 0.0, 2.0, 0.0, 3.0, 5.0))
+        assertFalse(segmentsCrossProperly2D(0.0, 0.0, 2.0, 0.0, 1.0, 0.0, 3.0, 0.0))
+        assertTrue(segmentsTouch2D(0.0, 0.0, 2.0, 0.0, 1.0, 0.0, 3.0, 0.0))
+        val ccw = listOf(Vec2(0f, 0f), Vec2(2f, 0f), Vec2(2f, 3f), Vec2(0f, 3f))
+        assertEquals(6.0, signedArea2D(ccw), 1e-12)
+        assertEquals(-6.0, signedArea2D(ccw.reversed()), 1e-12)
+        assertEquals(0.0, signedArea2D(emptyList()), 0.0)
+    }
 }

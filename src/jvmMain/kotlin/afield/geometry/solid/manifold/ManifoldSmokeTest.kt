@@ -1,5 +1,6 @@
 package afield.geometry.solid.manifold
 
+import afield.geometry.path.signedArea2D
 import afield.math.linalg.Vec2
 import afield.geometry.mesh.boundsAround
 import afield.geometry.mesh.boundsOf
@@ -662,13 +663,5 @@ object ManifoldSmokeTest {
     }
 
     /** Twice the signed area of a closed contour — positive for counter-clockwise. */
-    private fun signedArea(contour: List<Vec2>): Double {
-        var total = 0.0
-        for (i in contour.indices) {
-            val a = contour[i]
-            val b = contour[(i + 1) % contour.size]
-            total += a.x.toDouble() * b.y.toDouble() - b.x.toDouble() * a.y.toDouble()
-        }
-        return total / 2.0
-    }
+    private fun signedArea(contour: List<Vec2>): Double = signedArea2D(contour)
 }

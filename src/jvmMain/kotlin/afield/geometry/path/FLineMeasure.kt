@@ -633,3 +633,65 @@ fun pointSegmentDistanceSquared3D(p: Vec3, a: Vec3, b: Vec3, degenerateLengthSqu
     val dx = wx - t * vx; val dy = wy - t * vy; val dz = wz - t * vz
     return dx * dx + dy * dy + dz * dz
 }
+
+/**
+ * Twice the signed area of the triangle `a`, `b`, `c`: positive when `c` lies to the left of the
+ * directed line `a`→`b` (counter-clockwise), negative to the right, zero when the three are collinear.
+ */
+fun orient2D(ax: Double, ay: Double, bx: Double, by: Double, cx: Double, cy: Double): Double =
+    (bx - ax) * (cy - ay) - (by - ay) * (cx - ax)
+
+/**
+ * Whether segments `p`–`q` and `r`–`s` cross *properly*: each strictly separates the other's
+ * endpoints. Touching at an endpoint or a collinear overlap does not count; see [segmentsTouch2D]
+ * for the closed test.
+ */
+fun segmentsCrossProperly2D(
+    px: Double, py: Double, qx: Double, qy: Double,
+    rx: Double, ry: Double, sx: Double, sy: Double
+): Boolean {
+    val d1 = orient2D(rx, ry, sx, sy, px, py)
+    val d2 = orient2D(rx, ry, sx, sy, qx, qy)
+    val d3 = orient2D(px, py, qx, qy, rx, ry)
+    val d4 = orient2D(px, py, qx, qy, sx, sy)
+    return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))
+}
+
+/**
+ * Whether the closed segments `p`–`q` and `r`–`s` meet at all, including touching at a point and
+ * collinear overlap. Orientations within [epsilon] of zero count as collinear.
+ */
+fun segmentsTouch2D(
+    px: Double, py: Double, qx: Double, qy: Double,
+    rx: Double, ry: Double, sx: Double, sy: Double,
+    epsilon: Double = 1e-12
+): Boolean {
+    fun onSpan(ax: Double, ay: Double, bx: Double, by: Double, cx: Double, cy: Double): Boolean =
+        cx >= min(ax, bx) - epsilon && cx <= max(ax, bx) + epsilon &&
+            cy >= min(ay, by) - epsilon && cy <= max(ay, by) + epsilon
+    val d1 = orient2D(px, py, qx, qy, rx, ry)
+    val d2 = orient2D(px, py, qx, qy, sx, sy)
+    val d3 = orient2D(rx, ry, sx, sy, px, py)
+    val d4 = orient2D(rx, ry, sx, sy, qx, qy)
+    if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) return true
+    if (abs(d1) < epsilon && onSpan(px, py, qx, qy, rx, ry)) return true
+    if (abs(d2) < epsilon && onSpan(px, py, qx, qy, sx, sy)) return true
+    if (abs(d3) < epsilon && onSpan(rx, ry, sx, sy, px, py)) return true
+    if (abs(d4) < epsilon && onSpan(rx, ry, sx, sy, qx, qy)) return true
+    return false
+}
+
+/**
+ * The signed area of the closed polygon through [points] in the xy plane (shoelace, in doubles):
+ * positive counter-clockwise, negative clockwise. The closing edge back to the first point is implied.
+ * For an [FLine] with curves use [area2D].
+ */
+fun signedArea2D(points: List<Vec2>): Double {
+    var twice = 0.0
+    for (i in points.indices) {
+        val a = points[i]
+        val b = points[(i + 1) % points.size]
+        twice += a.x.toDouble() * b.y.toDouble() - b.x.toDouble() * a.y.toDouble()
+    }
+    return twice / 2.0
+}

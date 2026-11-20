@@ -1,5 +1,6 @@
 package afield.examples.manifold
 
+import afield.geometry.path.signedArea2D
 import afield.geometry.solid.manifold.FillRule
 import afield.geometry.solid.manifold.ManifoldLibrary
 import afield.geometry.solid.manifold.Section
@@ -127,15 +128,7 @@ object PolytopeLayerContours {
     }
 
     /** The signed area of a closed contour — positive counter-clockwise, negative for a hole. */
-    private fun signedArea(contour: List<Vec2>): Double {
-        var total = 0.0
-        for (i in contour.indices) {
-            val a = contour[i]
-            val b = contour[(i + 1) % contour.size]
-            total += a.x.toDouble() * b.y.toDouble() - b.x.toDouble() * a.y.toDouble()
-        }
-        return total / 2.0
-    }
+    private fun signedArea(contour: List<Vec2>): Double = signedArea2D(contour)
 
     private fun measure(section: Section, z: Double): Layer {
         val polygons = section.toPolygons()

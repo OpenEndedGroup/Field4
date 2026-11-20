@@ -1,5 +1,6 @@
 package afield.simulation.petri
 
+import afield.geometry.path.segmentsCrossProperly2D
 import afield.geometry.path.pointSegmentDistance2D
 import afield.simulation.physics.OctreeBarnesHut
 import kotlin.math.PI
@@ -475,16 +476,10 @@ internal object PetriLayoutSolver {
     private fun segmentsCross(
         ax: Float, ay: Float, bx: Float, by: Float,
         cx: Float, cy: Float, dx: Float, dy: Float,
-    ): Boolean {
-        val d1 = cross(cx, cy, dx, dy, ax, ay)
-        val d2 = cross(cx, cy, dx, dy, bx, by)
-        val d3 = cross(ax, ay, bx, by, cx, cy)
-        val d4 = cross(ax, ay, bx, by, dx, dy)
-        return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))
-    }
-
-    private fun cross(ax: Float, ay: Float, bx: Float, by: Float, px: Float, py: Float): Double =
-        (bx - ax).toDouble() * (py - ay).toDouble() - (by - ay).toDouble() * (px - ax).toDouble()
+    ): Boolean = segmentsCrossProperly2D(
+        ax.toDouble(), ay.toDouble(), bx.toDouble(), by.toDouble(),
+        cx.toDouble(), cy.toDouble(), dx.toDouble(), dy.toDouble()
+    )
 
     private fun pointSegmentDistance(px: Float, py: Float, ax: Float, ay: Float, bx: Float, by: Float): Double =
         pointSegmentDistance2D(

@@ -2,6 +2,7 @@
 
 package afield.simulation.agents
 
+import afield.geometry.path.segmentsTouch2D
 import afield.geometry.path.segmentParameter2D
 import afield.data.collections.get
 import afield.data.collections.invoke
@@ -534,25 +535,7 @@ fun segmentDistance(
 fun segmentsCross(
     px: Double, py: Double, qx: Double, qy: Double,
     rx: Double, ry: Double, sx: Double, sy: Double
-): Boolean {
-    fun orient(ax: Double, ay: Double, bx: Double, by: Double, cx: Double, cy: Double): Double =
-        (bx - ax) * (cy - ay) - (by - ay) * (cx - ax)
-
-    fun onSpan(ax: Double, ay: Double, bx: Double, by: Double, cx: Double, cy: Double): Boolean =
-        cx >= min(ax, bx) - 1e-12 && cx <= max(ax, bx) + 1e-12 &&
-            cy >= min(ay, by) - 1e-12 && cy <= max(ay, by) + 1e-12
-
-    val d1 = orient(px, py, qx, qy, rx, ry)
-    val d2 = orient(px, py, qx, qy, sx, sy)
-    val d3 = orient(rx, ry, sx, sy, px, py)
-    val d4 = orient(rx, ry, sx, sy, qx, qy)
-    if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) return true
-    if (abs(d1) < 1e-12 && onSpan(px, py, qx, qy, rx, ry)) return true
-    if (abs(d2) < 1e-12 && onSpan(px, py, qx, qy, sx, sy)) return true
-    if (abs(d3) < 1e-12 && onSpan(rx, ry, sx, sy, px, py)) return true
-    if (abs(d4) < 1e-12 && onSpan(rx, ry, sx, sy, qx, qy)) return true
-    return false
-}
+): Boolean = segmentsTouch2D(px, py, qx, qy, rx, ry, sx, sy)
 
 /**
  * The earliest touch of a circle of [r] centred at ([px], [py]) moving by ([dx], [dy]) against the
