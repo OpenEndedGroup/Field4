@@ -1,0 +1,3 @@
+doc: |
+  A Csound root and one instrument under it: a plucked string with a reverb, played by
+  its score and by any MIDI keyboard. Launch it, then run a score line on its own.
