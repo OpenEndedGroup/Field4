@@ -19,7 +19,9 @@ if (!Rhino3dm.isAvailable) {
         for ((name, area) in exact) {
             val mesh = model.meshes.single { it.name == name }.mesh
             val error = (mesh.surfaceArea() - area) / area * 100
-            println("  ${name.padEnd(16)} ${mesh.triangleCount.toString().padStart(6)} triangles, area off by ${"%.3f".format(error)}%")
+            println(
+                "  ${name.padEnd(16)} ${mesh.triangleCount.toString().padStart(6)} triangles, area off by ${error.f3}%",
+            )
         }
     }
     dir.deleteRecursively()

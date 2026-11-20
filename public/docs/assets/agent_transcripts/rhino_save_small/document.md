@@ -38,7 +38,7 @@ if (!Rhino3dm.isAvailable) {
 <!-- field-box id="rhino_save_small_measure" index="1" -->
 
 ```edn [field-box id="rhino_save_small_measure" role="properties"]
-{"id" "rhino_save_small_measure" "index" 1 "name" "area against the exact shapes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "area against the exact shapes" "_tombstone" false "frame" #afield/rect [40.0 200.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rhino_save_small_measure_code_.kt" "lines" 26 "characters" 1129 "sha256" "566fa6dedf908b5df547ada14efef36f8bfe95d19bf77e4e5b1008ef3c11ccc3"}]}
+{"id" "rhino_save_small_measure" "index" 1 "name" "area against the exact shapes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "area against the exact shapes" "_tombstone" false "frame" #afield/rect [40.0 200.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rhino_save_small_measure_code_.kt" "lines" 28 "characters" 1148 "sha256" "794063d793cd69195edc5d445510a69644e499d69fddeefca2e15628639bba75"}]}
 ```
 
 ```kotlin [field-property box="rhino_save_small_measure" name="code" path="rhino_save_small_measure_code_.kt"]
@@ -63,7 +63,9 @@ if (!Rhino3dm.isAvailable) {
         for ((name, area) in exact) {
             val mesh = model.meshes.single { it.name == name }.mesh
             val error = (mesh.surfaceArea() - area) / area * 100
-            println("  ${name.padEnd(16)} ${mesh.triangleCount.toString().padStart(6)} triangles, area off by ${"%.3f".format(error)}%")
+            println(
+                "  ${name.padEnd(16)} ${mesh.triangleCount.toString().padStart(6)} triangles, area off by ${error.f3}%",
+            )
         }
     }
     dir.deleteRecursively()

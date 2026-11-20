@@ -108,13 +108,13 @@ object Rhino3dm {
             when (o) {
                 is RhinoSkipped -> {
                     val chosen = faces.count { it.surface != null }
-                    val mesh = tessellator.tessellate(faces) ?: return@map o
+                    val mesh = tessellator.meshFaces(faces) ?: return@map o
                     RhinoMesh(o.name, o.id, o.type, o.layer, o.color, o.ownVisibility, o.block, mesh, o.edges, null, chosen)
                 }
                 is RhinoMesh -> {
                     val missing = faces.filter { it.surface != null && (evaluate || !it.hasSavedMesh) }
                     if (missing.isEmpty()) return@map o
-                    val mesh = tessellator.tessellate(missing) ?: return@map o
+                    val mesh = tessellator.meshFaces(missing) ?: return@map o
                     val combined = if (evaluate) mesh else RhinoModel.merge(listOf(o.mesh, mesh))
                     RhinoMesh(o.name, o.id, o.type, o.layer, o.color, o.ownVisibility, o.block, combined, o.edges, null, missing.size)
                 }

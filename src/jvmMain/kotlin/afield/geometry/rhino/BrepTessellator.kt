@@ -227,7 +227,7 @@ class BrepFace(
 class BrepTessellator(val tolerance: Double? = null) {
 
     /** Every face in [faces] for which [include] holds, as one mesh with normals; `null` if none produced triangles. */
-    fun tessellate(faces: List<BrepFace>, include: (BrepFace) -> Boolean = { true }): TriMesh? {
+    fun meshFaces(faces: List<BrepFace>, include: (BrepFace) -> Boolean = { true }): TriMesh? {
         val chosen = faces.filter { it.surface != null && include(it) }
         if (chosen.isEmpty()) return null
         val diagonal = diagonal(chosen.mapNotNull { it.surface })
