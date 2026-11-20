@@ -86,8 +86,8 @@ operations:
               pc.state.a[i] = vec2(u, v);
           }
         code: |
-          import afield.media.image.*
           import afield.geometry.mesh.signedDistance2D
+          import afield.media.image.*
 
           var simModule = computeModuleHere {}
           var sim = ComputeMesh()
@@ -194,7 +194,11 @@ operations:
                       }
                       val view = bufferCanvas(shownWall, width = W)
                       view.map = ValueMap.Signed(40.0)
-                      display("field", view.toHTML() + "<pre>outlines: ${2 + drawn.size}, renderer frame $f\nmax |wall buffer - CPU field| = ${worst.f3} cells</pre>")
+                      display(
+                          "field",
+                          view.toHTML() +
+                              "<pre>outlines: ${2 + drawn.size}, renderer frame $f\nmax |wall buffer - CPU field| = ${worst.f3} cells</pre>",
+                      )
                   }
               }
           }
