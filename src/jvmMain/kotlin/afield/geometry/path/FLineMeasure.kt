@@ -578,3 +578,58 @@ fun FLine.contains2D(point: Vec2, rule: FLineFillRule = FLineFillRule.NonZero): 
         FLineFillRule.EvenOdd -> crossings % 2 == 1
     }
 }
+
+/**
+ * The parameter `t` in `0..1` of the point on segment `a`–`b` closest to (`px`, `py`).
+ *
+ * A segment whose squared length is at most [degenerateLengthSquared] answers `0.0` (its start),
+ * which is the right answer for a zero-length segment rather than an error. Callers that have
+ * always treated "nearly zero" as zero pass their own threshold so their results do not move.
+ */
+fun segmentParameter2D(
+    px: Double, py: Double,
+    ax: Double, ay: Double, bx: Double, by: Double,
+    degenerateLengthSquared: Double = 1e-18
+): Double {
+    val vx = bx - ax
+    val vy = by - ay
+    val vv = vx * vx + vy * vy
+    if (vv <= degenerateLengthSquared) return 0.0
+    return (((px - ax) * vx + (py - ay) * vy) / vv).coerceIn(0.0, 1.0)
+}
+
+/**
+ * The squared distance from (`px`, `py`) to the closed segment `a`–`b`; see [segmentParameter2D]
+ * for [degenerateLengthSquared]. Use the squared form when you only compare or sort distances.
+ */
+fun pointSegmentDistanceSquared2D(
+    px: Double, py: Double,
+    ax: Double, ay: Double, bx: Double, by: Double,
+    degenerateLengthSquared: Double = 1e-18
+): Double {
+    val t = segmentParameter2D(px, py, ax, ay, bx, by, degenerateLengthSquared)
+    val dx = px - (ax + t * (bx - ax))
+    val dy = py - (ay + t * (by - ay))
+    return dx * dx + dy * dy
+}
+
+/** The distance from (`px`, `py`) to the closed segment `a`–`b`; see [pointSegmentDistanceSquared2D]. */
+fun pointSegmentDistance2D(
+    px: Double, py: Double,
+    ax: Double, ay: Double, bx: Double, by: Double,
+    degenerateLengthSquared: Double = 1e-18
+): Double = sqrt(pointSegmentDistanceSquared2D(px, py, ax, ay, bx, by, degenerateLengthSquared))
+
+/**
+ * The squared distance from [p] to the closed segment [a]–[b] in 3D, in doubles. A segment whose
+ * squared length is at most [degenerateLengthSquared] answers the squared distance to [a].
+ */
+fun pointSegmentDistanceSquared3D(p: Vec3, a: Vec3, b: Vec3, degenerateLengthSquared: Double = 1e-18): Double {
+    val ax = a.x.toDouble(); val ay = a.y.toDouble(); val az = a.z.toDouble()
+    val vx = b.x.toDouble() - ax; val vy = b.y.toDouble() - ay; val vz = b.z.toDouble() - az
+    val wx = p.x.toDouble() - ax; val wy = p.y.toDouble() - ay; val wz = p.z.toDouble() - az
+    val vv = vx * vx + vy * vy + vz * vz
+    val t = if (vv <= degenerateLengthSquared) 0.0 else ((wx * vx + wy * vy + wz * vz) / vv).coerceIn(0.0, 1.0)
+    val dx = wx - t * vx; val dy = wy - t * vy; val dz = wz - t * vz
+    return dx * dx + dy * dy + dz * dz
+}

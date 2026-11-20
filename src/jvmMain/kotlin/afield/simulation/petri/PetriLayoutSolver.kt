@@ -1,5 +1,6 @@
 package afield.simulation.petri
 
+import afield.geometry.path.pointSegmentDistance2D
 import afield.simulation.physics.OctreeBarnesHut
 import kotlin.math.PI
 import kotlin.math.cos
@@ -485,16 +486,11 @@ internal object PetriLayoutSolver {
     private fun cross(ax: Float, ay: Float, bx: Float, by: Float, px: Float, py: Float): Double =
         (bx - ax).toDouble() * (py - ay).toDouble() - (by - ay).toDouble() * (px - ax).toDouble()
 
-    private fun pointSegmentDistance(px: Float, py: Float, ax: Float, ay: Float, bx: Float, by: Float): Double {
-        val vx = (bx - ax).toDouble()
-        val vy = (by - ay).toDouble()
-        val wx = (px - ax).toDouble()
-        val wy = (py - ay).toDouble()
-        val len2 = vx * vx + vy * vy
-        if (len2 < 1e-9) return hypot(wx, wy)
-        val t = ((wx * vx + wy * vy) / len2).coerceIn(0.0, 1.0)
-        return hypot(wx - t * vx, wy - t * vy)
-    }
+    private fun pointSegmentDistance(px: Float, py: Float, ax: Float, ay: Float, bx: Float, by: Float): Double =
+        pointSegmentDistance2D(
+            px.toDouble(), py.toDouble(), ax.toDouble(), ay.toDouble(), bx.toDouble(), by.toDouble(),
+            degenerateLengthSquared = 1e-9
+        )
 
     /**
      * A seed that depends only on the graph.

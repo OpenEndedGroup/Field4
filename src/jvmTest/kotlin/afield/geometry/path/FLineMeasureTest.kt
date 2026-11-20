@@ -292,4 +292,20 @@ class FLineMeasureTest {
             assertEquals(1f, n.point.length(), 3e-4f)
         }
     }
+
+    /** The shared point–segment kernel: interior projection, both clamped ends, and degenerate segments. */
+    @Test
+    fun pointSegmentKernel() {
+        assertEquals(0.5, segmentParameter2D(1.0, 3.0, 0.0, 0.0, 2.0, 0.0), 1e-12)
+        assertEquals(0.0, segmentParameter2D(-5.0, 1.0, 0.0, 0.0, 2.0, 0.0), 0.0)
+        assertEquals(1.0, segmentParameter2D(9.0, 1.0, 0.0, 0.0, 2.0, 0.0), 0.0)
+        assertEquals(9.0, pointSegmentDistanceSquared2D(1.0, 3.0, 0.0, 0.0, 2.0, 0.0), 1e-12)
+        assertEquals(5.0, pointSegmentDistance2D(5.0, 4.0, 0.0, 0.0, 2.0, 0.0), 1e-12)
+        // A zero-length segment is a point.
+        assertEquals(5.0, pointSegmentDistance2D(3.0, 4.0, 0.0, 0.0, 0.0, 0.0), 1e-12)
+        // A caller's own "nearly zero" threshold measures to the start instead of projecting.
+        assertEquals(1.0, pointSegmentDistance2D(0.0, 1.0, 0.0, 0.0, 1e-5, 0.0, degenerateLengthSquared = 1e-9), 0.0)
+        assertEquals(4.0, pointSegmentDistanceSquared3D(Vec3(1f, 0f, 2f), Vec3(0f, 0f, 0f), Vec3(2f, 0f, 0f)), 1e-12)
+        assertEquals(3.0, pointSegmentDistanceSquared3D(Vec3(1f, 1f, 1f), Vec3(0f, 0f, 0f), Vec3(0f, 0f, 0f), 0.0), 1e-12)
+    }
 }

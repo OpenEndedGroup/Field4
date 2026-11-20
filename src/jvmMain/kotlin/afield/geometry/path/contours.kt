@@ -844,26 +844,8 @@ private fun distanceToPoint(x: Double, y: Double, point: Vec2): Double {
     return sqrt(dx * dx + dy * dy)
 }
 
-private fun distanceToSegment(x: Double, y: Double, a: Vec2, b: Vec2): Double {
-    val ax = a.x.toDouble()
-    val ay = a.y.toDouble()
-    val bx = b.x.toDouble()
-    val by = b.y.toDouble()
-
-    val abx = bx - ax
-    val aby = by - ay
-    val ab2 = abx * abx + aby * aby
-    if (ab2 <= 1e-12) return distanceToPoint(x, y, a)
-
-    val apx = x - ax
-    val apy = y - ay
-    val t = ((apx * abx + apy * aby) / ab2).coerceIn(0.0, 1.0)
-    val px = ax + t * abx
-    val py = ay + t * aby
-    val dx = x - px
-    val dy = y - py
-    return sqrt(dx * dx + dy * dy)
-}
+private fun distanceToSegment(x: Double, y: Double, a: Vec2, b: Vec2): Double =
+    pointSegmentDistance2D(x, y, a.x.toDouble(), a.y.toDouble(), b.x.toDouble(), b.y.toDouble(), degenerateLengthSquared = 1e-12)
 
 /**
  * Flatten a 2D [FLine] into the points and edges that [pointEdgeScalarField2D] turns into a field:

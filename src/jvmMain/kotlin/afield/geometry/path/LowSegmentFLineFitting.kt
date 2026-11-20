@@ -498,25 +498,8 @@ private fun PrimitiveFit.toPublicPrimitive(): LowSegmentFLineFitPrimitive {
     }
 }
 
-private fun pointToSegmentDistance(point: Vec3, start: Vec3, end: Vec3): Double {
-    val dx = (end.x - start.x).toDouble()
-    val dy = (end.y - start.y).toDouble()
-    val dz = (end.z - start.z).toDouble()
-    val lenSq = dx * dx + dy * dy + dz * dz
-    if (lenSq <= 1e-18) return distance(point, start)
-    val ax = (point.x - start.x).toDouble()
-    val ay = (point.y - start.y).toDouble()
-    val az = (point.z - start.z).toDouble()
-    val t = ((ax * dx + ay * dy + az * dz) / lenSq)
-        .coerceIn(0.0, 1.0)
-    val px = start.x.toDouble() + t * dx
-    val py = start.y.toDouble() + t * dy
-    val pz = start.z.toDouble() + t * dz
-    val ex = point.x.toDouble() - px
-    val ey = point.y.toDouble() - py
-    val ez = point.z.toDouble() - pz
-    return sqrt(ex * ex + ey * ey + ez * ez)
-}
+private fun pointToSegmentDistance(point: Vec3, start: Vec3, end: Vec3): Double =
+    sqrt(pointSegmentDistanceSquared3D(point, start, end))
 
 private fun distance(a: Vec3, b: Vec3): Double {
     val dx = (a.x - b.x).toDouble()

@@ -2,6 +2,7 @@
 
 package afield.graphics.text
 
+import afield.geometry.path.pointSegmentDistanceSquared2D
 import afield.data.collections.invoke
 import afield.data.collections.times
 import afield.data.graph.main
@@ -1479,16 +1480,5 @@ fun GlyphContour.distanceTo(p: Vec2): Double {
 }
 
 /** Squared distance from (px, py) to segment ab. Squared, because the callers sort before rooting. */
-internal fun pointSegmentDistance(px: Double, py: Double, a: Vec2, b: Vec2): Double {
-    val ax = a.x.toDouble()
-    val ay = a.y.toDouble()
-    val vx = b.x.toDouble() - ax
-    val vy = b.y.toDouble() - ay
-    val wx = px - ax
-    val wy = py - ay
-    val vv = vx * vx + vy * vy
-    val t = if (vv <= 1e-18) 0.0 else ((wx * vx + wy * vy) / vv).coerceIn(0.0, 1.0)
-    val dx = wx - t * vx
-    val dy = wy - t * vy
-    return dx * dx + dy * dy
-}
+internal fun pointSegmentDistance(px: Double, py: Double, a: Vec2, b: Vec2): Double =
+    pointSegmentDistanceSquared2D(px, py, a.x.toDouble(), a.y.toDouble(), b.x.toDouble(), b.y.toDouble())

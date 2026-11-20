@@ -2,6 +2,7 @@
 
 package afield.simulation.agents
 
+import afield.geometry.path.segmentParameter2D
 import afield.data.collections.get
 import afield.data.collections.invoke
 import afield.data.collections.times
@@ -503,15 +504,9 @@ fun closestPointOnSegment(
     ax: Double, ay: Double, bx: Double, by: Double,
     out: DoubleArray
 ) {
-    val ex = bx - ax
-    val ey = by - ay
-    val l2 = ex * ex + ey * ey
-    if (l2 < 1e-18) { out[0] = ax; out[1] = ay; return }
-    var t = ((px - ax) * ex + (py - ay) * ey) / l2
-    if (t < 0.0) t = 0.0
-    if (t > 1.0) t = 1.0
-    out[0] = ax + ex * t
-    out[1] = ay + ey * t
+    val t = segmentParameter2D(px, py, ax, ay, bx, by)
+    out[0] = ax + (bx - ax) * t
+    out[1] = ay + (by - ay) * t
 }
 
 /**
