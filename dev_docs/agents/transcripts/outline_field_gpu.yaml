@@ -1,0 +1,295 @@
+name: outline_field_gpu
+description: >
+  A drawn outline becomes a live field inside a GPU simulation. Closed FLines (one from code, and
+  any closed freehand stroke drawn on the drawing layer over the "walls" frame) become a signed
+  distance field with List<FLine>.signedDistance2D(); BufferCanvas.sample writes it, one float per
+  cell, into a host-visible storage buffer that the Gray-Scott compute shader reads every
+  dispatch. Cells outside the shape are held at the empty state, and the reaction is also slowed in
+  a band just inside the wall, so the pattern grows only inside the drawing and follows its edge.
+  Drawing a new closed stroke rewrites the wall buffer while the simulation runs; an ellipse
+  clears the hand-drawn strokes back to the coded shape. The box's "field" output reads the wall
+  buffer back and reports the largest difference from the CPU field.
+docs:
+  - page: visualizers.md
+    why: "The 'A drawn outline as a field' section explains FLines -> signed distance -> BufferCanvas.sample -> storage buffer."
+operations:
+  - create:
+      box: ofg_renderer
+      name: renderer
+      frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.graphics.vulkan.util.Options
+
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+          Options.enableHDR = false
+          Options.profiling = false
+          once.renderer {
+              window = Window("drawn outline field")
+              Renderer(window)
+          }
+          println("renderer ready")
+          start(renderer::run)
+  - create:
+      box: ofg_sim
+      name: Gray-Scott inside a drawn outline
+      frame: { x: 40.0, y: 200.0, w: 340.0, h: 100.0 }
+      properties:
+        compute: |
+          #version 450
+          #extension GL_EXT_buffer_reference : require
+          layout(local_size_x = 8, local_size_y = 8) in;
+
+          // One vec2 per cell, row-major: .x is u (the feed chemical), .y is v (the one that patterns).
+          layout(std430, buffer_reference) buffer State {
+              vec2 a[];
+          };
+          // One float per cell: the signed distance to the drawn outline, in cells, negative inside.
+          layout(std430, buffer_reference) buffer Wall {
+              float d[];
+          };
+
+          layout(push_constant) uniform dat {
+              State state; // written this frame
+              State prevState; // read this frame
+              Wall wall;
+              int w;
+              int h;
+              int run; // 0 while the CPU is editing the state
+              float feed;
+              float kill;
+          } pc;
+
+          vec2 at(ivec2 p) {
+              p = clamp(p, ivec2(0), ivec2(pc.w - 1, pc.h - 1));
+              return pc.prevState.a[p.y * pc.w + p.x];
+          }
+
+          void main() {
+              ivec2 p = ivec2(gl_GlobalInvocationID.xy);
+              if (p.x >= pc.w || p.y >= pc.h || pc.run == 0) return;
+              int i = p.y * pc.w + p.x;
+              float d = pc.wall.d[i];
+              if (d > 0.0) {
+                  pc.state.a[i] = vec2(1.0, 0.0); // outside the drawing: held empty
+                  return;
+              }
+              // within a few cells of the wall the kill rate rises, so stripes run along the edge
+              float edge = smoothstep(-6.0, 0.0, d);
+              vec2 c = at(p);
+              vec2 lap = at(p + ivec2(1, 0)) + at(p - ivec2(1, 0)) + at(p + ivec2(0, 1)) + at(p - ivec2(0, 1)) - 4.0 * c;
+              float uvv = c.x * c.y * c.y;
+              float kill = mix(pc.kill, pc.kill + 0.004, edge);
+              float u = c.x + 0.2 * lap.x - uvv + pc.feed * (1.0 - c.x);
+              float v = c.y + 0.1 * lap.y + uvv - (pc.feed + kill) * c.y;
+              pc.state.a[i] = vec2(u, v);
+          }
+        code: |
+          import afield.media.image.*
+          import afield.geometry.mesh.signedDistance2D
+
+          var simModule = computeModuleHere {}
+          var sim = ComputeMesh()
+          simModule += "step" to sim
+          renderer += "outline-field-gs" to simModule
+
+          val W = 256
+          val H = 256
+
+          var stateA = defaultBuffer { size = (W * H).vec2s }.buffer
+          var stateB = defaultBuffer { size = (W * H).vec2s }.buffer
+          // The field the shader reads: one float per cell, written by the CPU, never by the GPU.
+          var wall = defaultBuffer { size = (W * H).floats }.buffer
+
+          // The coded outline, in cell coordinates: a ring and a bar, one closed FLine each.
+          val ring = FLine().circle(96.0, 120.0, 70.0)
+          val bar = FLine().rect(150.0, 150.0, 90.0, 60.0)
+          val drawn = mutableListOf<FLine>()
+          var pendingWalls = false
+
+          // FLines -> exact signed distance -> one float per cell in the mapped wall buffer.
+          var field = listOf(ring, bar).signedDistance2D()
+          fun uploadWalls() {
+              field = (listOf(ring, bar) + drawn).signedDistance2D()
+              wall.mapAndWrite { bufferCanvas(this, width = W, height = H).sample(field, x0 = 0.0, y0 = 0.0, cell = 1.0) }
+          }
+          uploadWalls()
+
+          for (target in [stateA, stateB]) {
+              target.mapAndWrite {
+                  val c = bufferCanvas(this, width = W, channels = 2, height = H)
+                  c.fill(c.bounds, floatArrayOf(1f, 0f))
+                  for ((x, y) in [96.0 to 120.0, 60.0 to 90.0, 200.0 to 180.0]) {
+                      c.paint(x, y, radius = 6.0, value = floatArrayOf(0.5f, 0.25f), hardness = 1.0)
+                  }
+              }
+          }
+
+          sim.state = { if (renderer.frameCounter % 2L == 0L) stateA else stateB }
+          sim.prevState = { if (renderer.frameCounter % 2L == 0L) stateB else stateA }
+          sim.wall = { wall }
+          sim.w = { W }
+          sim.h = { H }
+          sim.run = { 1 }
+          sim.feed = { 0.037f }
+          sim.kill = { 0.06f }
+          sim.x = W / 8
+          sim.y = H / 8
+          sim.z = 1
+
+          prop<FrameBufferGroup>(ofStateA) = stateA
+          prop<FrameBufferGroup>(ofStateB) = stateB
+          prop<FrameBufferGroup>(ofWall) = wall
+          prop<Int>(ofWidth) = W
+          prop<Int>(ofHeight) = H
+          // Other boxes add outlines from code through this, the same path a drawn stroke takes.
+          prop<(FLine) -> Unit>(addOutline) = { line: FLine ->
+              drawn += line
+              pendingWalls = true
+          }
+
+          // The drawing layer: a frame stands for the grid, two world units per cell.
+          notation {
+              frame("walls", frame.x + frame.w + 460, frame.y, 2.0 * W, 2.0 * H)
+          }
+          val cells = notation.space("walls", x = 0.0..W.toDouble(), y = 0.0..H.toDouble())
+
+          // A freehand stroke becomes one more closed outline (signedDistance2D closes it).
+          notation.onStroke { s ->
+              val pts = s.points.map { cells.toSpace(it) }
+              if (pts.size < 3) return@onStroke
+              val line = FLine()
+              line.moveTo(pts[0].x, pts[0].y)
+              for (p in pts.drop(1)) line.lineTo(p.x, p.y)
+              drawn += line
+              pendingWalls = true
+          }
+          // An ellipse clears the hand-drawn outlines.
+          val handled = mutableSetOf<String>()
+          notation.onChange { e ->
+              for (m in e.added + e.updated) {
+                  if (m.id in handled || m.kind != MarkType.ELLIPSE) continue
+                  handled += m.id
+                  drawn.clear()
+                  pendingWalls = true
+              }
+          }
+
+          val shownWall = FloatArray(W * H)
+          var nextShow = 0L
+          frames {
+              while (frame()) {
+                  val f = renderer.frameCounter
+                  if (pendingWalls) {
+                      pendingWalls = false
+                      uploadWalls()
+                  }
+                  if (f >= nextShow) {
+                      nextShow = f + 240
+                      wall.read { get(0, shownWall, 0, shownWall.size) }
+                      var worst = 0.0
+                      for (y in 0 until H) for (x in 0 until W) {
+                          worst = maxOf(worst, Math.abs(shownWall[y * W + x] - field(x + 0.5, y + 0.5)))
+                      }
+                      val view = bufferCanvas(shownWall, width = W)
+                      view.map = ValueMap.Signed(40.0)
+                      display("field", view.toHTML() + "<pre>outlines: ${2 + drawn.size}, renderer frame $f\nmax |wall buffer - CPU field| = ${worst.f3} cells</pre>")
+                  }
+              }
+          }
+  - create:
+      box: ofg_draw
+      name: draw state and walls, 1 cell = 2 pixels
+      frame: { x: 440.0, y: 200.0, w: 300.0, h: 100.0 }
+      properties:
+        vertex: |
+          #version 450
+
+          // one triangle that covers the window; positions come from the vertex index
+          vec2 fullscreenVertex(uint index) {
+              if (index == 0u) return vec2(-1.0, -1.0);
+              if (index == 1u) return vec2(3.0, -1.0);
+              return vec2(-1.0, 3.0);
+          }
+
+          void main() {
+              gl_Position = vec4(fullscreenVertex(uint(gl_VertexIndex)), 0.0, 1.0);
+          }
+        fragment: |
+          #version 450
+          #extension GL_EXT_buffer_reference : require
+
+          layout(std430, buffer_reference) buffer State {
+              vec2 a[];
+          };
+          layout(std430, buffer_reference) buffer Wall {
+              float d[];
+          };
+
+          layout(push_constant) uniform Push {
+              State state;
+              Wall wall;
+              int w;
+              int h;
+              int zoom;
+          } pc;
+
+          layout(location = 0) out vec4 outColor;
+
+          float srgbToLinear(float c) {
+              return c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4);
+          }
+
+          void main() {
+              ivec2 cell = ivec2(gl_FragCoord.xy) / max(pc.zoom, 1);
+              if (cell.x >= pc.w || cell.y >= pc.h) discard;
+              int i = cell.y * pc.w + cell.x;
+              float v = clamp(pc.state.a[i].y / 0.5, 0.0, 1.0);
+              float d = pc.wall.d[i];
+              vec3 c = vec3(v);
+              if (d > 0.0) c = mix(vec3(0.10, 0.12, 0.18), vec3(0.03), clamp(d / 30.0, 0.0, 1.0)); // outside: dark blue fading
+              if (abs(d) < 0.75) c = vec3(1.0, 0.55, 0.1); // the outline itself, orange
+              outColor = vec4(srgbToLinear(c.r), srgbToLinear(c.g), srgbToLinear(c.b), 1.0);
+          }
+        code: |
+          var drawModule = moduleHere { primitiveType = triangles }
+          renderer += "outline-field-draw" to drawModule
+          val quad = fullscreenTriangle(drawModule)
+          drawModule += "quad" to quad
+
+          quad.state = { if (renderer.frameCounter % 2L == 0L) ofStateA else ofStateB }
+          quad.wall = { ofWall }
+          quad.w = { ofWidth }
+          quad.h = { ofHeight }
+          quad.zoom = { 2 }
+          println("drawing state and walls")
+  - create:
+      box: ofg_star
+      name: add a star outline from code
+      frame: { x: 440.0, y: 340.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          // A five-pointed star in cell coordinates, closed back to its first point. Running this
+          // box rewrites the wall buffer while the simulation runs; the pattern grows into it.
+          val star = FLine()
+          for (k in 0..10) {
+              val a = Math.PI / 2 + k * Math.PI / 5
+              val r = if (k % 2 == 0) 50.0 else 22.0
+              val x = 70.0 + r * Math.cos(a)
+              val y = 205.0 - r * Math.sin(a)
+              if (k == 0) star.moveTo(x, y) else star.lineTo(x, y)
+          }
+          addOutline(star)
+          println("added a star")
+  - connect: { parent: ofg_renderer, child: ofg_sim }
+  - connect: { parent: ofg_sim, child: ofg_draw }
+  - connect: { parent: ofg_sim, child: ofg_star }
+  - launch: { box: ofg_renderer, property: code, strand: renderer }
+  - await: {}
+  - launch: { box: ofg_sim, property: code }
+  - await: {}
+  - launch: { box: ofg_draw, property: code }
+  - await: {}
+  - execute: { box: ofg_star, property: code }
+  - await: {}

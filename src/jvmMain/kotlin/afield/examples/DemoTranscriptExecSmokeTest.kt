@@ -941,6 +941,9 @@ object DemoTranscriptExecSmokeTest {
         // Buffer paint on the GPU (2026-11-19): a Window, a Gray-Scott compute ping-pong and a draw box,
         // with drawing-layer gestures editing the mapped storage buffer. Needs a native Window.
         "buffer_paint_gpu",
+        // Outline field on the GPU (2026-11-20): FLines -> signedDistance2D -> BufferCanvas.sample into a
+        // wall buffer read by a Gray-Scott compute box, plus a box adding a star outline. Needs a native Window.
+        "outline_field_gpu",
         "threebox",
         "rectsl_dataviz",
         "rectsl_plot_axes",
