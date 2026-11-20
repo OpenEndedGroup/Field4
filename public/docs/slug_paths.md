@@ -89,3 +89,6 @@ on Linux and macOS only, and Slug does not shape fonts. Strokes, glyph loading,
 multiview VR and incremental atlas packing are not supported. A plane that crosses
 the near plane or is seen nearly edge-on may not draw correctly, so keep the filled
 plane comfortably in front of the camera.
+
+For the other ways Field computes pixel coverage (exact triangle area, the CPU mesh rasterizer,
+Gaussian splats), see [which one to use](afield_four_graphics.md#which-coverage-to-use).

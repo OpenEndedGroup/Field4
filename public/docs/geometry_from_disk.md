@@ -402,7 +402,7 @@ pixel tile its footprint touches, each tile's list is sorted front to back, and 
 blended on its own, so the tiles can run in parallel and a pixel can stop once it is opaque.
 `SplatTiles` ([`SplatTiles.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/graphics/render/SplatTiles.kt))
 does this on the CPU. It reads the same packed buffer as `SplatRaster` and projects each splat with
-the same code, so the two pictures agree to within one 8-bit level on every pixel:
+the same function, `SplatRaster.project`, so the two pictures agree to within one 8-bit level on every pixel:
 
 ```diffstatic {data-lang=kotlin}
 val cloud = SplatTiles.clusteredCloud(40_000) // a dense core inside a sparse halo
@@ -497,6 +497,10 @@ Here the persistent kernel does not pay for itself. Apple's GPU already hands ou
 cores free up, so a queue in software adds an atomic and two barriers per item and wins nothing
 back. The 96×96 view is chunked for 32 workers, which leaves at most 88 items for a GPU that can
 hold far more workgroups at once.
+
+Splats are one of several ways Field turns geometry into pixel coverage; for exact per-pixel triangle
+area, the CPU mesh rasterizer and Slug paths, see
+[which one to use](afield_four_graphics.md#which-coverage-to-use).
 
 ??? aside "What this measures and what it does not"
 

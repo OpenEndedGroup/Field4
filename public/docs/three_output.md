@@ -722,6 +722,12 @@ so a list of meshes does not run into the browser's limit on WebGL contexts.
 **It renders into a pixel buffer.** `TriMesh.renderPixels` hands you ARGB ints and a size, for
 compositing several meshes into one figure yourself.
 
+It is a z-buffered scanline rasterizer, and it smooths edges by supersampling (2 × 2 samples per
+pixel by default). When you need the exact fraction of a pixel a triangle covers instead, use
+[exact triangle coverage](afield_four_graphics.md#exact-triangle-coverage); the
+[comparison of Field's coverage code](afield_four_graphics.md#which-coverage-to-use) lists the
+others.
+
 ??? aside "Why it writes its own PNGs"
     `VisionGeometryPreview` avoids `java.awt`: touching AWT inside Field's server JVM on macOS
     initialises AppKit in a process whose main thread belongs to GLFW, and the process dies
@@ -1291,4 +1297,6 @@ saved output across a server restart. Older panels are evicted when that budget 
 - [Solids & Booleans (Manifold)](manifold.md) builds the closed solids these viewers often show.
 - [Meshes and 3D geometry](mesh_examples.md) covers `triMesh`, `boxMesh` and the other mesh
   builders used above.
+- [Exact triangle coverage](afield_four_graphics.md#exact-triangle-coverage) computes the exact
+  pixel area a triangle covers, beside a list of Field's other coverage code.
 
