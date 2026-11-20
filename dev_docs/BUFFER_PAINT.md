@@ -54,3 +54,28 @@ Idea credit: citrons, "Paint in the memory of other programs" (2026-04-13).
   every 120 renderer frames for that reason. Switch to `streamReads()` for a read-heavy variant.
 - Not done: no docs runner capture of the GPU path (the docs section has no figure); not run on
   Linux/NVIDIA.
+
+## Outline fields on the GPU (2026-11-20)
+
+A drawn or coded closed outline becomes a field a GPU simulation reads, on the same buffer path:
+`List<FLine>.signedDistance2D()` (union = pointwise min of each line's exact field, in
+`afield/geometry/mesh/sdf_repair.kt`) and `BufferCanvas.sample(field, x0, y0, cell, channel)`
+(cell-centred sampling into whatever storage the canvas views). Transcript:
+`dev_docs/agents/transcripts/outline_field_gpu.yaml`; docs: visualizers.md "A drawn outline as a field".
+
+- CPU test `OutlineFieldUploadTest` (direct FloatBuffer, as `mapAndWrite` hands it): 64x48 grid,
+  circle (720-gon) + square, max |uploaded - CPU field| = 9.4e-7 (float rounding), max |uploaded -
+  closed form| = 3.5e-4 cells.
+- GPU run (port 9960, macOS, unified memory): the sim box reads the wall buffer back every 240
+  renderer frames and compares with the CPU field: `max |wall buffer - CPU field| = 0.000 cells`
+  at every report (frames 247..4082), before and after adding a star outline live.
+- Live rewrite: the wall buffer is CPU-written and shader-read only, so a redraw is one
+  `mapAndWrite` between frames with no hold. Adding the star from a fourth box changed the native
+  window within a frame and the pattern grew across the circle/star overlap into the star
+  (screenshots before/after looked at).
+- Not measured: upload time per redraw (65,536 bucketed lookups at 256x256). Discrete-GPU
+  (write-combined) readback cost as noted above applies to the 240-frame readback.
+- Sign: subpaths are closed to their start, so an open scribble becomes the polygon it nearly
+  encloses; self-intersections are even-odd (doubly wound regions are outside). Holes need the
+  counter in the same FLine; separate lines union.
+- alife_walls.kt keeps its private wall distance; not migrated.

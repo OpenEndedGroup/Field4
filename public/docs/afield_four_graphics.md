@@ -582,6 +582,33 @@ and what the draw box puts in the window: 100,000 particles drawn straight from 
 
 To see it running, open the corpus document in the viewer above, or open [threebox](offline.html?file=assets/agent_transcripts/threebox/metadata.edn), the same renderer/compute/draw shape built as a runnable three-box scene.
 
+### Pushing particles around a shape
+
+A compute pass like the one above can keep its particles off, onto or around a shape with
+`#include "particles/shape_force"`, which any Field shader can include. Two functions work in the shape's local XY, measured from its centre:
+
+- `particleShapeBoundary2D(local, shape, halfSize, radius)` returns the outward unit normal in
+  `.xy` and the signed distance to the boundary in `.z`, negative inside. `shape` is
+  `PARTICLE_SHAPE_CIRCLE` (uses `radius`), `PARTICLE_SHAPE_RECTANGLE` (uses `halfSize`) or
+  `PARTICLE_SHAPE_SEGMENT` (uses `halfSize.x` along local X, with an unsigned distance).
+- `particleShapeForce2D(boundary, band, gain, outward)` turns that into a force that fades to zero
+  `band` units either side of the boundary. A positive `gain` pulls particles onto the outline and a
+  negative one pushes them off it; with `outward = true` a positive gain pushes along the normal on
+  both sides, which clears a shape of particles.
+
+Inside the compute shader's `main`, after reading the particle:
+
+```diffstatic {data-lang=glsl}
+#include "particles/shape_force"
+
+// p is this particle's position, v its velocity; the circle sits at the origin
+vec3 b = particleShapeBoundary2D(p.xy, PARTICLE_SHAPE_CIRCLE, vec2(0.0), 0.5);
+v.xy += particleShapeForce2D(b, 0.1, 0.02, false);
+```
+
+For a rotated or moved shape, transform the particle into the shape's frame first and rotate the
+returned force back.
+
 ## Texturing
 
 Textures add another reflected resource. The shader declares a sampler named `bbc`; Kotlin creates a `LoadedTexture` property with the same name and transfers it before drawing.
@@ -2066,7 +2093,9 @@ nothing else. Edges come out as stairs, and a triangle smaller than a pixel that
 centres disappears. The alternative is to compute how much of each pixel the triangle actually
 covers. For a triangle and a square pixel that has an exact closed form, and Field has it on the
 CPU (`afield.graphics.render.TriangleCoverage`) and as a shader include,
-`#include "coverage/triangle.glsl"`.
+`#include "coverage/triangle.glsl"`. The CPU version clips the triangle to the pixel with
+`clipConvexToBox`, the same clipper RectSL uses for its exact rect coverage
+(`afield.lang.rectsl.RectSLCoverage`), and sums the clipped polygon's area.
 
 The CPU box draws eight triangles at 32 × 24 pixels, once point-sampled and once with exact
 coverage, next to the same scene at 512 × 384:
@@ -2116,7 +2145,7 @@ c = mix(c, C[i].rgb, clamp(cover * C[i].a, 0.0, 1.0));
 
 `TriangleCoverageTest` checks the Kotlin against 256 × 256 supersampling of a unit pixel, over
 about 250 partly covered pixels per `sigma`: the worst error is 3.4e-4 at `sigma = 0` (which is
-the supersampler's own edge resolution) and under 1.5e-5 for `sigma` 1 to 4. Adding up every
+the supersampler's own edge resolution) and at most 1.5e-5 for `sigma` 1, 2 and 4. Adding up every
 pixel's integral recovers the closed-form total to 4e-13. Open the
 [starting point](agent_transcripts.md#exact_triangle_coverage) to try it.
 
@@ -2124,6 +2153,23 @@ The window and its bisector split follow *ATS: Anti-Aliased Triangle Splatting w
 Per-Primitive Integrals* ([arXiv 2611.22512](https://arxiv.org/abs/2611.22512)). Field's code is
 written from the method; none of the paper's code or figures is used. Gradients with respect to
 the vertices, which the paper also derives, are not implemented here.
+
+### Which one to use { #which-coverage-to-use }
+
+Field computes pixel coverage in several places, and they answer different questions:
+
+- **A triangle mesh, drawn deterministically on the CPU:** the [CPU rasterizer](three_output.md#what-the-cpu-rasterizer-is-for)
+  behind `MeshRenderer.CPU` and the inline `TriMesh` card. It is a z-buffered scanline rasterizer
+  that smooths edges by supersampling (2 × 2 samples per pixel by default), not by exact area.
+- **The exact area of each pixel a triangle covers, or a soft triangle window:** this section,
+  `TriangleCoverage` on the CPU and `coverage/triangle.glsl` in a shader.
+- **The exact area of RectSL rects:** `RectSLCoverage`, the reference RectSL's soft raster is
+  measured against. It shares `clipConvexToBox` with `TriangleCoverage`.
+- **Gaussian splats:** `SplatRaster` (depth sort, then back to front over the whole image) or
+  [`SplatTiles`](geometry_from_disk.md#splats-by-tile-and-what-a-tile-costs) (16 × 16 tiles,
+  front to back, on the CPU or as a compute shader). Both project splats with `SplatRaster.project`.
+- **A filled curved `FLine` on the GPU:** [Slug filled paths](slug_paths.md), analytic curve
+  coverage evaluated in the fragment shader.
 
 ## Stopping the renderer
 

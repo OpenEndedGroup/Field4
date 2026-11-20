@@ -32,7 +32,7 @@ class Rhino3dmTest {
     private fun sample(): RhinoModel {
         val dir = Files.createTempDirectory("rhino3dm-test").toFile()
         try {
-            return Rhino3dm.load(Rhino3dm.writeSample(File(dir, "sample.3dm")))
+            return Rhino3dm.load(Rhino3dm.writeSample(File(dir, "sample.3dm")), RhinoBrepMeshing.SAVED)
         } finally {
             dir.deleteRecursively()
         }
@@ -171,7 +171,7 @@ class Rhino3dmTest {
         for (i in 1 until line.nodes.size) {
             val node = line.nodes[i] as? FLine.CubicTo ?: continue
             cubics++
-            val p0 = line.nodes[i - 1].to
+            val p0 = line.endPointOf(i - 1)
             for (k in 1..9) {
                 val u = k / 10.0
                 val s = 1 - u

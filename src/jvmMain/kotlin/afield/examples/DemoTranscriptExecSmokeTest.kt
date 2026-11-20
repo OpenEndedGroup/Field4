@@ -109,6 +109,9 @@ object DemoTranscriptExecSmokeTest {
         "controls_presets_morph_midi",
         // Loads a committed glTF fixture through Assimp and opens column()/tree() on it; no renderer.
         "assimp_browsing",
+        // rhino_files.md, Breps without meshes: a Save Small .3dm tessellated from its NURBS surfaces
+        // and SubDs; pure CPU, and each box prints how to build the openNURBS wrapper when it is absent.
+        "rhino_save_small",
         // stacksl_examples.md's fitting demo: fits a StackSL program's literals on the CPU.
         "stacksl_fit_demo",
         // stacksl_examples.md's partial-evaluation demo: specializes on the CPU, no renderer.
@@ -582,6 +585,9 @@ object DemoTranscriptExecSmokeTest {
         "fline_hit_records",
         // fline_examples.md's measuring sections: locationAt, trim/splitAt, crossings, fill rules. CPU only.
         "fline_measure",
+        // The planar query kernel (FLineMeasure.kt) on point lists: distance field, crossings,
+        // signed area and bounds, drawn through lines(). CPU only.
+        "planar_queries",
         // fline_examples.md's curvature-continuous splines: clothoidSplineFrom vs cubicSplineFrom with
         // curvature combs, a circle, a closed shape. CPU only.
         "clothoid_spline",
@@ -680,6 +686,10 @@ object DemoTranscriptExecSmokeTest {
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */
     internal val COMPILE_ONLY = setOf(
+        // rhino_files.md: Rhino3dm.save, ribbons and a read-change-write round trip. Both boxes call
+        // the optional openNURBS wrapper (./gradlew buildOpenNurbsNative), which CI and the lander
+        // do not build, so the boxes are compiled here and run by Rhino3dmWriterTest where it exists.
+        "rhino_save",
         // satellites.md: a week of SGP4 passes over Chicago (CPU), then a renderer, an Earth box and
         // every catalogued satellite propagated in a vertex shader. Opens a Window, so compile-only.
         "satellites",
@@ -941,6 +951,9 @@ object DemoTranscriptExecSmokeTest {
         // Buffer paint on the GPU (2026-11-19): a Window, a Gray-Scott compute ping-pong and a draw box,
         // with drawing-layer gestures editing the mapped storage buffer. Needs a native Window.
         "buffer_paint_gpu",
+        // Outline field on the GPU (2026-11-20): FLines -> signedDistance2D -> BufferCanvas.sample into a
+        // wall buffer read by a Gray-Scott compute box, plus a box adding a star outline. Needs a native Window.
+        "outline_field_gpu",
         "threebox",
         "rectsl_dataviz",
         "rectsl_plot_axes",

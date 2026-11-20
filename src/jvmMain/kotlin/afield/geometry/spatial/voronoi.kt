@@ -579,18 +579,6 @@ object Voronoi3d {
 
         return if (signedAreaAlong(sorted, n) >= 0f) sorted else sorted.reversed()
     }
-
-    private fun signedAreaAlong(polygon: List<Vec3>, normal: Vec3): Float {
-        if (polygon.size < 3) return 0f
-
-        var accum = Vec3(0f, 0f, 0f)
-        for (i in polygon.indices) {
-            val a = polygon[i]
-            val b = polygon[(i + 1) % polygon.size]
-            accum = add(accum, cross(a, b))
-        }
-        return 0.5f * dot(accum, normal)
-    }
 }
 
 // -----------------------------------------------------------------------------

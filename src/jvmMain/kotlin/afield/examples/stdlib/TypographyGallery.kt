@@ -1,5 +1,6 @@
 package afield.examples.stdlib
 
+import afield.geometry.path.pointBounds2D
 import afield.app.protocol.Rect
 import afield.geometry.path.FLine
 import afield.media.image.Img
@@ -577,15 +578,7 @@ object TypographyGallery {
         return vec(d.x, d.y)
     }
 
-    private fun boundsOfAll(points: List<Vec2>): Rect {
-        var minX = Double.MAX_VALUE; var minY = Double.MAX_VALUE
-        var maxX = -Double.MAX_VALUE; var maxY = -Double.MAX_VALUE
-        points.forEach {
-            minX = min(minX, it.x.toDouble()); maxX = max(maxX, it.x.toDouble())
-            minY = min(minY, it.y.toDouble()); maxY = max(maxY, it.y.toDouble())
-        }
-        return Rect(minX, minY, maxX - minX, maxY - minY)
-    }
+    private fun boundsOfAll(points: List<Vec2>): Rect = pointBounds2D(points)
 
     private fun pathPoints(path: FLine): List<Vec2> =
         path.nodes.map { vec(it.to.x, it.to.y) }

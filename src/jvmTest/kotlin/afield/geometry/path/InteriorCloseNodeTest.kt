@@ -613,6 +613,9 @@ class InteriorCloseNodeTest {
                     "point lists; it never reads .to across a Close.",
             "BoxCodeHelpersTest.kt" to
                 "checks that grid() appends MoveTo/LineTo pairs; grid emits no Close.",
+            "Rhino3dmTest.kt" to
+                "assertWithinRadius reads each cubic's start through FLine.endPointOf, which resolves a Close " +
+                    "to the start of its subpath, so a closed Rhino curve is measured correctly.",
             "ArcLengthCostTest.kt" to
                 "a cost benchmark over locally-built cubic corpora; it constructs every line it measures " +
                     "and none of them calls close().",

@@ -35,7 +35,7 @@ endif()
 # examples; only `opennurbsStatic`, which the wrapper links, gets built.
 add_subdirectory("${FIELD_OPENNURBS_SOURCE_DIR}" opennurbs EXCLUDE_FROM_ALL)
 
-add_library(field_opennurbs_jvm SHARED src/field_opennurbs.cpp)
+add_library(field_opennurbs_jvm SHARED src/field_opennurbs.cpp src/field_opennurbs_brep.cpp)
 target_include_directories(field_opennurbs_jvm PRIVATE src "${FIELD_OPENNURBS_SOURCE_DIR}")
 target_compile_definitions(field_opennurbs_jvm PRIVATE FIELD_OPENNURBS_BUILDING_SHARED)
 set(FIELD_OPENNURBS_VERSION "" CACHE STRING "The openNURBS release tag being built, for field_opennurbs_version()")
@@ -55,5 +55,8 @@ target_link_libraries(field_opennurbs_jvm PRIVATE opennurbsStatic)
 set_target_properties(field_opennurbs_jvm PROPERTIES
   CXX_VISIBILITY_PRESET hidden
   VISIBILITY_INLINES_HIDDEN ON)
+
+# The writer, field_opennurbs_write.h, lives in its own file.
+target_sources(field_opennurbs_jvm PRIVATE src/field_opennurbs_write.cpp)
 
 install(TARGETS field_opennurbs_jvm LIBRARY DESTINATION lib RUNTIME DESTINATION bin)

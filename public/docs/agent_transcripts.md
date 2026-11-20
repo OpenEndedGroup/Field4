@@ -938,7 +938,8 @@ of each word's stressed vowel.
 head box to preview and publish the plan; connect Drawing On to target `ipad`. Each completed
 Pencil stroke receives a Field crosshair at its last measured point. The guide box explains
 recording offline, uploading later, and reviewing a save file on a Mac. The desktop preview works
-without an iPad.
+without an iPad. For fitted lines, arcs and junctions, follow the
+[live cleanup walkthrough](drawing_on.md#clean-up-a-live-sketch).
 
 [Open →](offline.html?file=assets/agent_transcripts/drawing_on/metadata.edn)
 
@@ -968,6 +969,16 @@ rules side by side on a ring. From the measuring sections of [Drawing with FLine
 ```
 
 [Open →](offline.html?file=assets/agent_transcripts/fline_measure/metadata.edn)
+
+### planar_queries
+
+**Distances, crossings and orientation for plain points.** Two boxes: a grid of dots shaded by
+`pointSegmentDistance2D` to eight segments, with each pair marked as a proper crossing
+(`segmentsCrossProperly2D`) or a touch (`segmentsTouch2D`); and four polygons coloured by the sign of
+`signedArea2D`, each inside its `pointBounds2D` rectangle. The point-list counterparts of
+[Crossings, bounds and orientation](fline_examples.md#crossings-bounds-and-orientation).
+
+[Open →](offline.html?file=assets/agent_transcripts/planar_queries/metadata.edn)
 
 ### clothoid_spline
 
@@ -2865,6 +2876,16 @@ renderer: the scene's root node and its transform, meshes, materials and animati
 
 [Open ↗](offline.html?file=assets/agent_transcripts/assimp_browsing/metadata.edn)
 
+### rhino_save_small
+
+**A Rhino file saved without render meshes, shaded anyway**: one box draws the file as Rhino's
+saved meshes alone give it beside the default read, where every Brep face is tessellated from its
+NURBS surface and each SubD subdivided onto its limit surface; the other measures each mesh's area
+against the exact shape. Needs the optional openNURBS wrapper. See
+[Breps without meshes](rhino_files.md#breps-without-meshes).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/rhino_save_small/metadata.edn)
+
 ### spinny_algebras
 
 **Spinny algebras.** Multiply the plane by w = 0.9 + 0.5ε and drag ε² from -1 to +1. At -1 the grid
@@ -4084,6 +4105,18 @@ to where the arrow ends. Each gesture becomes a `BufferCanvas` edit on the mappe
 shader evolves the next frame from it.
 
 [Open →](offline.html?file=assets/agent_transcripts/buffer_paint_gpu/metadata.edn)
+
+### outline_field_gpu
+
+**A drawn outline becomes a live field in a GPU simulation.** [A drawn outline as a field](visualizers.md#a-drawn-outline-as-a-field)
+as four boxes: a renderer, a compute box running Gray-Scott that reads a wall buffer of signed
+distances, a draw box showing state and outline in the native window, and a box that adds a star
+outline from code. The outlines are closed `FLine`s; `signedDistance2D()` and `BufferCanvas.sample`
+write their field into the storage buffer, and the pattern grows only inside them. A closed
+freehand stroke over the *walls* frame (Alt+D) adds another outline while it runs; an ellipse clears
+the drawn ones.
+
+[Open →](offline.html?file=assets/agent_transcripts/outline_field_gpu/metadata.edn)
 
 ### gpu_state
 
@@ -5503,6 +5536,17 @@ Launch 1 then 2; the default is a front-on desktop companion plus a closeable he
 The preview can show one eye or both eyes side by side. Requires Vulkan and Electron.
 
 [Open →](offline.html?file=assets/agent_transcripts/field_vr_ide/metadata.edn)
+
+### rhino_save
+
+**Geometry made in Field, saved for Rhino.** *Ribbons saved to a .3dm* grows a ring of twisted
+ribbons, each an `FLine` spine and a `TriMesh` strip, puts them on two layers with
+`Rhino3dm.save`, and reads the file straight back to draw what Rhino will open. *Read, change,
+write* loads the reader's sample model, adds a frame and a label on a new layer, writes it back
+with `Rhino3dm.save(model, file)` and prints the object and layer counts before and after. Both
+need the openNURBS wrapper. See [Rhino files](rhino_files.md#writing-a-3dm-for-rhino).
+
+[Open →](offline.html?file=assets/agent_transcripts/rhino_save/metadata.edn)
 
 ## Saved documents
 

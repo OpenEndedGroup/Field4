@@ -5062,6 +5062,13 @@ class Server {
                         // "persist": true} saves it as the /welcome preference; "persist": false sets it for this
                         // session only (a blank mode then clears the session value). Answers with the new status.
                         post("/api/box-instrumentation") {
+                            // Same-site only: a page on another origin must not be able to turn the
+                            // runaway-box watchdog off. curl and the backdoor send no Origin and pass.
+                            if (!isSameSiteRequest(call.request.header("Sec-Fetch-Site"),
+                                    call.request.header("Origin"), call.request.header("Host"))) {
+                                call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Change box code instrumentation from Field's welcome page."))
+                                return@post
+                            }
                             try {
                                 val request = call.receive<BoxInstrumentationRequest>()
                                 val mode = BoxInstrumentation.Mode.parse(request.mode)

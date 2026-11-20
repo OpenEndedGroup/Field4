@@ -292,4 +292,45 @@ class FLineMeasureTest {
             assertEquals(1f, n.point.length(), 3e-4f)
         }
     }
+
+    /** The shared point–segment kernel: interior projection, both clamped ends, and degenerate segments. */
+    @Test
+    fun pointSegmentKernel() {
+        assertEquals(0.5, segmentParameter2D(1.0, 3.0, 0.0, 0.0, 2.0, 0.0), 1e-12)
+        assertEquals(0.0, segmentParameter2D(-5.0, 1.0, 0.0, 0.0, 2.0, 0.0), 0.0)
+        assertEquals(1.0, segmentParameter2D(9.0, 1.0, 0.0, 0.0, 2.0, 0.0), 0.0)
+        assertEquals(9.0, pointSegmentDistanceSquared2D(1.0, 3.0, 0.0, 0.0, 2.0, 0.0), 1e-12)
+        assertEquals(5.0, pointSegmentDistance2D(5.0, 4.0, 0.0, 0.0, 2.0, 0.0), 1e-12)
+        // A zero-length segment is a point.
+        assertEquals(5.0, pointSegmentDistance2D(3.0, 4.0, 0.0, 0.0, 0.0, 0.0), 1e-12)
+        // A caller's own "nearly zero" threshold measures to the start instead of projecting.
+        assertEquals(1.0, pointSegmentDistance2D(0.0, 1.0, 0.0, 0.0, 1e-5, 0.0, degenerateLengthSquared = 1e-9), 0.0)
+        assertEquals(4.0, pointSegmentDistanceSquared3D(Vec3(1f, 0f, 2f), Vec3(0f, 0f, 0f), Vec3(2f, 0f, 0f)), 1e-12)
+        assertEquals(3.0, pointSegmentDistanceSquared3D(Vec3(1f, 1f, 1f), Vec3(0f, 0f, 0f), Vec3(0f, 0f, 0f), 0.0), 1e-12)
+    }
+
+    /** Orientation, proper vs closed crossing, and polygon signed area from the shared kernel. */
+    @Test
+    fun planarPredicatesKernel() {
+        assertTrue(orient2D(0.0, 0.0, 1.0, 0.0, 0.0, 1.0) > 0)
+        assertTrue(segmentsCrossProperly2D(0.0, 0.0, 2.0, 2.0, 0.0, 2.0, 2.0, 0.0))
+        assertFalse(segmentsCrossProperly2D(0.0, 0.0, 2.0, 0.0, 2.0, 0.0, 3.0, 5.0))
+        assertTrue(segmentsTouch2D(0.0, 0.0, 2.0, 0.0, 2.0, 0.0, 3.0, 5.0))
+        assertFalse(segmentsCrossProperly2D(0.0, 0.0, 2.0, 0.0, 1.0, 0.0, 3.0, 0.0))
+        assertTrue(segmentsTouch2D(0.0, 0.0, 2.0, 0.0, 1.0, 0.0, 3.0, 0.0))
+        val ccw = listOf(Vec2(0f, 0f), Vec2(2f, 0f), Vec2(2f, 3f), Vec2(0f, 3f))
+        assertEquals(6.0, signedArea2D(ccw), 1e-12)
+        assertEquals(-6.0, signedArea2D(ccw.reversed()), 1e-12)
+        assertEquals(0.0, signedArea2D(emptyList()), 0.0)
+    }
+
+    /** Point-list bounds: extremes in each axis, and the zero rect for no points. */
+    @Test
+    fun pointBounds2DKernel() {
+        val r = pointBounds2D(listOf(Vec2(1f, -2f), Vec2(4f, 3f), Vec2(-1f, 0f)))
+        assertEquals(-1.0, r.x, 0.0); assertEquals(-2.0, r.y, 0.0)
+        assertEquals(5.0, r.w, 0.0); assertEquals(5.0, r.h, 0.0)
+        val e = pointBounds2D(emptyList())
+        assertEquals(0.0, e.w, 0.0); assertEquals(0.0, e.x, 0.0)
+    }
 }

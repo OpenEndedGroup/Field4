@@ -1,0 +1,121 @@
+name: rhino_save_small
+description: >
+  A Rhino .3dm saved without render meshes ("Save Small") comes back shaded: Rhino3dm.load
+  tessellates each Brep face from its exact trimmed NURBS surface and subdivides each SubD onto its
+  limit surface. One box draws the file read with saved meshes only beside the default read; the
+  other measures each tessellation's area against the analytic shape. Needs the optional openNURBS
+  wrapper (./gradlew buildOpenNurbsNative); without it each box says how to build it. Docs page:
+  public/docs/rhino_files.md.
+operations:
+  - create:
+      box: rhino_save_small_draw
+      name: saved meshes vs evaluated
+      frame: {x: 40.0, y: 40.0, w: 420.0, h: 120.0}
+      properties:
+        code: |
+          import afield.geometry.rhino.*
+
+          // A "Save Small" .3dm: NURBS Breps and SubDs with no render meshes, drawn as Rhino's saved
+          // meshes alone would give them, then tessellated from their exact surfaces
+          if (!Rhino3dm.isAvailable) {
+              println(Rhino3dm.describe())
+          } else {
+              val dir = java.nio.file.Files.createTempDirectory("rhino-nurbs").toFile()
+              val file = Rhino3dm.writeNurbsSample(java.io.File(dir, "save_small.3dm"))
+              val saved = Rhino3dm.load(file, meshing = RhinoBrepMeshing.SAVED)
+              val evaluated = Rhino3dm.load(file)
+              println(evaluated)
+              three(channel = "saved", name = "saved", height = 360) { rhino(saved) }
+              three(channel = "evaluated", name = "evaluated", height = 360) { rhino(evaluated) }
+              dir.deleteRecursively()
+          }
+  - create:
+      box: rhino_save_small_measure
+      name: area against the exact shapes
+      frame: {x: 40.0, y: 200.0, w: 420.0, h: 120.0}
+      properties:
+        code: |
+          import afield.geometry.rhino.*
+
+          // How close the tessellations are to the shapes the file describes: area against the analytic
+          // value, at the default tolerance and at a ten times finer one
+          if (!Rhino3dm.isAvailable) {
+              println(Rhino3dm.describe())
+          } else {
+              val dir = java.nio.file.Files.createTempDirectory("rhino-nurbs").toFile()
+              val file = Rhino3dm.writeNurbsSample(java.io.File(dir, "save_small.3dm"))
+              val exact = mapOf(
+                  "sphere" to 4 * PI * 100,
+                  "capped cylinder" to 2 * PI * 5 * 20 + 2 * PI * 25,
+                  "plate with hole" to 400 - PI * 25,
+                  "creased SubD" to 600.0,
+              )
+              for (tolerance in [null, 0.003]) {
+                  val model = Rhino3dm.load(file, tolerance = tolerance)
+                  println("tolerance ${tolerance ?: "default"}")
+                  for ((name, area) in exact) {
+                      val mesh = model.meshes.single { it.name == name }.mesh
+                      val error = (mesh.surfaceArea() - area) / area * 100
+                      println(
+                          "  ${name.padEnd(16)} ${mesh.triangleCount.toString().padStart(6)} triangles, area off by ${error.f3}%",
+                      )
+                  }
+              }
+              dir.deleteRecursively()
+          }
+  - execute:
+      box: rhino_save_small_draw
+      property: code
+      type: code
+      code: |
+        import afield.geometry.rhino.*
+
+        // A "Save Small" .3dm: NURBS Breps and SubDs with no render meshes, drawn as Rhino's saved
+        // meshes alone would give them, then tessellated from their exact surfaces
+        if (!Rhino3dm.isAvailable) {
+            println(Rhino3dm.describe())
+        } else {
+            val dir = java.nio.file.Files.createTempDirectory("rhino-nurbs").toFile()
+            val file = Rhino3dm.writeNurbsSample(java.io.File(dir, "save_small.3dm"))
+            val saved = Rhino3dm.load(file, meshing = RhinoBrepMeshing.SAVED)
+            val evaluated = Rhino3dm.load(file)
+            println(evaluated)
+            three(channel = "saved", name = "saved", height = 360) { rhino(saved) }
+            three(channel = "evaluated", name = "evaluated", height = 360) { rhino(evaluated) }
+            dir.deleteRecursively()
+        }
+  - execute:
+      box: rhino_save_small_measure
+      property: code
+      type: code
+      code: |
+        import afield.geometry.rhino.*
+
+        // How close the tessellations are to the shapes the file describes: area against the analytic
+        // value, at the default tolerance and at a ten times finer one
+        if (!Rhino3dm.isAvailable) {
+            println(Rhino3dm.describe())
+        } else {
+            val dir = java.nio.file.Files.createTempDirectory("rhino-nurbs").toFile()
+            val file = Rhino3dm.writeNurbsSample(java.io.File(dir, "save_small.3dm"))
+            val exact = mapOf(
+                "sphere" to 4 * PI * 100,
+                "capped cylinder" to 2 * PI * 5 * 20 + 2 * PI * 25,
+                "plate with hole" to 400 - PI * 25,
+                "creased SubD" to 600.0,
+            )
+            for (tolerance in [null, 0.003]) {
+                val model = Rhino3dm.load(file, tolerance = tolerance)
+                println("tolerance ${tolerance ?: "default"}")
+                for ((name, area) in exact) {
+                    val mesh = model.meshes.single { it.name == name }.mesh
+                    val error = (mesh.surfaceArea() - area) / area * 100
+                    println(
+                        "  ${name.padEnd(16)} ${mesh.triangleCount.toString().padStart(6)} triangles, area off by ${error.f3}%",
+                    )
+                }
+            }
+            dir.deleteRecursively()
+        }
+  - wait:
+      millis: 3000

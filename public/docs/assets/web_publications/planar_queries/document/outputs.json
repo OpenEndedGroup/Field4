@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-20T12:13:21.477Z",
+  "documentName": "planar_queries",
+  "outputs": [
+    {
+      "uid": "planar-orientation",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "planar-distance",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/1.html"
+    }
+  ]
+}
