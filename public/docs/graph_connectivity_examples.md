@@ -283,17 +283,71 @@ in 3D. The ranking inside each quadrant uses
 `GraphConnectivityOptions.customDistanceMetric` if you pass one, and Euclidean
 distance otherwise.
 
-For particle buffers, `OrthantNeighbors3D.build(xyz)` in `afield.geometry.spatial`
-takes packed XYZ triples and returns eight directed slots per point. The graph's
-Euclidean search shares this grid. The packed API assigns zero components to the
-positive side and exposes a ring limit for approximate searches. Missing slots
-have index `-1`. Raise `maxRings` when `ringLimited` is high, or use
-`Int.MAX_VALUE` to search until the remaining cells cannot improve the result.
+### Orthant slots for a particle buffer
 
-To give two clouds a shared particle identity for layout transitions, use
-`BspOt2D.match` for XY or `BspOt3D.match` for packed XYZ. Their
-`targetOfSource` arrays assign each source to a unique target. The match
-approximately minimizes squared travel and `costHistory` reports its progress.
+A particle pass keeps its positions as one packed `FloatArray` of XYZ triples and wants its
+neighbours in a fixed layout it can index without allocating. `OrthantNeighbors3D.build(xyz)` in
+`afield.geometry.spatial` returns exactly that: eight directed slots per particle, one per octant,
+with `neighbors[i * 8 + octant]` the index of the closest particle in that octant and
+`distances[i * 8 + octant]` how far it is. A slot with no particle holds `-1`.
+`OrthantNeighbors3D.octant(dx, dy, dz)` gives the slot for an offset; its bits mark negative X, Y
+and Z, and a zero component counts as positive, so unlike the graph functions particles on a grid
+keep their edges.
+
+Here 300 particles in a shell are joined to their slot neighbours, each edge coloured by its
+octant:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_connectivity_examples/orthant_slots_3d.png" wait="2.0" capture="box" open-outputs="true" w="1200" alt="a hollow shell of white dots joined by short edges in eight colours, each colour one octant direction; every dot sends edges of several colours to its neighbours on the shell"}
+:::static
+val rnd = java.util.Random(4)
+val xyz = FloatArray(300 * 3)
+for (i in 0 until 300) {
+    val d = vec(rnd.nextGaussian(), rnd.nextGaussian(), rnd.nextGaussian()).normalize()
+    val r = 150.0 + rnd.nextDouble() * 30.0
+    xyz[i * 3] = (d.x * r).toFloat()
+    xyz[i * 3 + 1] = (d.y * r).toFloat()
+    xyz[i * 3 + 2] = (d.z * r).toFloat()
+}
+
+val slots = OrthantNeighbors3D.build(xyz)
+println("cell ${slots.cellSize.f1}, empty slots ${slots.neighbors.count { it < 0 }}, ring-limited ${slots.ringLimited}")
+
+fun at(i: Int) = vec(xyz[i * 3], xyz[i * 3 + 1], xyz[i * 3 + 2])
+
+val edges = (0 until 8).map { octant ->
+    fline {
+        for (i in 0 until slots.count) {
+            val j = slots.neighbors[i * 8 + octant]
+            if (j >= 0) {
+                moveTo(at(i))
+                lineTo(at(j))
+            }
+        }
+        color = okhsl(octant * 45.0, 0.8, 0.65, 0.7)
+        thickness = 1.2
+    }
+}
+val cloud = fline {
+    for (i in 0 until slots.count) moveTo(at(i))
+    pointed = true
+    pointSize = 0.25
+    stroked = false
+    color = vec(1.0, 1.0, 1.0, 0.85)
+}
+
+threeLines(edges + cloud, channel = "orthant-slots", height = 500, editable = false)
+```
+
+The search walks rings of grid cells outward from each particle, and `maxRings` (6 by default)
+caps how far. The cap is what makes it cheap enough to rebuild every frame, at the price that a
+far-away neighbour can be missed; `ringLimited` counts the particles where that might have
+happened. Raise `maxRings` when it is high, or pass `Int.MAX_VALUE` to search until no remaining
+cell could hold a closer particle. `vec3OrthantGraph(...)` uses the same grid search for its
+Euclidean case, and turns the slots into a `PointGraph` for you.
+
+To give two clouds a shared identity, so that a layout can morph into another one particle at a
+time, match them with `matchPoints`, which takes `Vec2` or `Vec3` lists; see
+[Matching in 3D](optimal_transport.md#matching-in-3d).
 
 ## 3D graph families with `threeLines(...)`
 

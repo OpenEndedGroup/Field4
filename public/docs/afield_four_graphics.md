@@ -582,6 +582,33 @@ and what the draw box puts in the window: 100,000 particles drawn straight from 
 
 To see it running, open the corpus document in the viewer above, or open [threebox](offline.html?file=assets/agent_transcripts/threebox/metadata.edn), the same renderer/compute/draw shape built as a runnable three-box scene.
 
+### Pushing particles around a shape
+
+A compute pass like the one above can keep its particles off, onto or around a shape with
+`#include "particles/shape_force"`, which any Field shader can include. Two functions work in the shape's local XY, measured from its centre:
+
+- `particleShapeBoundary2D(local, shape, halfSize, radius)` returns the outward unit normal in
+  `.xy` and the signed distance to the boundary in `.z`, negative inside. `shape` is
+  `PARTICLE_SHAPE_CIRCLE` (uses `radius`), `PARTICLE_SHAPE_RECTANGLE` (uses `halfSize`) or
+  `PARTICLE_SHAPE_SEGMENT` (uses `halfSize.x` along local X, with an unsigned distance).
+- `particleShapeForce2D(boundary, band, gain, outward)` turns that into a force that fades to zero
+  `band` units either side of the boundary. A positive `gain` pulls particles onto the outline and a
+  negative one pushes them off it; with `outward = true` a positive gain pushes along the normal on
+  both sides, which clears a shape of particles.
+
+Inside the compute shader's `main`, after reading the particle:
+
+```diffstatic {data-lang=glsl}
+#include "particles/shape_force"
+
+// p is this particle's position, v its velocity; the circle sits at the origin
+vec3 b = particleShapeBoundary2D(p.xy, PARTICLE_SHAPE_CIRCLE, vec2(0.0), 0.5);
+v.xy += particleShapeForce2D(b, 0.1, 0.02, false);
+```
+
+For a rotated or moved shape, transform the particle into the shape's frame first and rotate the
+returned force back.
+
 ## Texturing
 
 Textures add another reflected resource. The shader declares a sampler named `bbc`; Kotlin creates a `LoadedTexture` property with the same name and transfers it before drawing.
