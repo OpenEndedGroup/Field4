@@ -680,6 +680,10 @@ object DemoTranscriptExecSmokeTest {
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */
     internal val COMPILE_ONLY = setOf(
+        // rhino_files.md: Rhino3dm.save, ribbons and a read-change-write round trip. Both boxes call
+        // the optional openNURBS wrapper (./gradlew buildOpenNurbsNative), which CI and the lander
+        // do not build, so the boxes are compiled here and run by Rhino3dmWriterTest where it exists.
+        "rhino_save",
         // satellites.md: a week of SGP4 passes over Chicago (CPU), then a renderer, an Earth box and
         // every catalogued satellite propagated in a vertex shader. Opens a Window, so compile-only.
         "satellites",
