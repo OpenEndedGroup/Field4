@@ -441,6 +441,23 @@ class BrepTessellator(val tolerance: Double? = null) {
         return inside
     }
 
+    /**
+     * Triangle corners `x y z nx ny nz`, three per triangle (the SubD form the wrapper hands over),
+     * welded into an indexed mesh.
+     */
+    fun weldCorners(corners: DoubleArray): TriMesh? {
+        val n = corners.size / 6
+        if (n < 3) return null
+        val positions = ArrayList<Double>(n * 3); val normals = ArrayList<Double>(n * 3)
+        var lo = Double.MAX_VALUE; var hi = -Double.MAX_VALUE
+        for (i in 0 until n) {
+            for (c in 0..2) { positions.add(corners[6 * i + c]); lo = min(lo, corners[6 * i + c]); hi = max(hi, corners[6 * i + c]) }
+            val l = sqrt((3..5).sumOf { corners[6 * i + it] * corners[6 * i + it] }).takeIf { it > 0 } ?: 1.0
+            for (c in 3..5) normals.add(corners[6 * i + c] / l)
+        }
+        return weld(positions, normals, ArrayList((0 until n - n % 3).toList()), max(hi - lo, 1e-12) * 1e-6)
+    }
+
     /** Merge vertices closer than [eps] whose normals agree; average the merged normals. */
     private fun weld(positions: ArrayList<Double>, normals: ArrayList<Double>, indices: ArrayList<Int>, eps: Double): TriMesh {
         val n = positions.size / 3
@@ -509,7 +526,11 @@ internal object OpenNurbsBrepNative {
     val isAvailable: Boolean
         get() = OpenNurbsLibrary.isAvailable && runCatching { lookup.find("field_opennurbs_breps_open").isPresent }.getOrDefault(false)
 
-    private val open by lazy { handle("field_opennurbs_breps_open", FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, ADDRESS, JAVA_INT)) }
+    private val open by lazy { handle("field_opennurbs_breps_open", FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT, ADDRESS, ADDRESS, JAVA_INT)) }
+    private val subdCount by lazy { handle("field_opennurbs_subds_count", FunctionDescriptor.of(JAVA_INT, ADDRESS)) }
+    private val subdId by lazy { handle("field_opennurbs_subds_id", FunctionDescriptor.of(ADDRESS, ADDRESS, JAVA_INT)) }
+    private val subdLength by lazy { handle("field_opennurbs_subds_length", FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT)) }
+    private val subdData by lazy { handle("field_opennurbs_subds_data", FunctionDescriptor.of(ADDRESS, ADDRESS, JAVA_INT)) }
     private val close by lazy { handle("field_opennurbs_breps_close", FunctionDescriptor.ofVoid(ADDRESS)) }
     private val count by lazy { handle("field_opennurbs_breps_count", FunctionDescriptor.of(JAVA_INT, ADDRESS)) }
     private val id by lazy { handle("field_opennurbs_breps_id", FunctionDescriptor.of(ADDRESS, ADDRESS, JAVA_INT)) }
@@ -523,21 +544,31 @@ internal object OpenNurbsBrepNative {
         if (status != 0) throw RhinoException("openNURBS could not write ${file.absolutePath}: ${message.getString(0)}")
     }
 
-    /** Every top-level Brep (and extrusion) in [file], by object id, as its faces. */
-    fun read(file: File): Map<String, List<BrepFace>> = Arena.ofConfined().use { arena ->
+    /** What [read] returns: Brep faces and SubD triangle corners, each by object id. */
+    class Contents(val breps: Map<String, List<BrepFace>>, val subds: Map<String, DoubleArray>)
+
+    /**
+     * Every top-level Brep (and extrusion) in [file], by object id, as its faces; and every SubD,
+     * subdivided [subdLevel] times (negative: none), as limit-surface triangle corners.
+     */
+    fun read(file: File, subdLevel: Int): Contents = Arena.ofConfined().use { arena ->
         val message = arena.allocate(JAVA_BYTE, MESSAGE_CAPACITY.toLong())
         val out = arena.allocate(ADDRESS)
-        val status = open.invokeExact(arena.allocateFrom(file.absolutePath), out, message, MESSAGE_CAPACITY) as Int
+        val status = open.invokeExact(arena.allocateFrom(file.absolutePath), subdLevel, out, message, MESSAGE_CAPACITY) as Int
         if (status != 0) throw RhinoException("Could not read Breps from ${file.absolutePath} (status $status): ${message.getString(0)}")
         val h = out.get(ADDRESS, 0)
         try {
-            val n = count.invokeExact(h) as Int
-            (0 until n).associate { i ->
+            fun packed(at: MemorySegment, len: Int): DoubleArray =
+                if (len == 0 || at == MemorySegment.NULL) DoubleArray(0) else at.reinterpret(len * 8L).toArray(JAVA_DOUBLE)
+            val breps = (0 until count.invokeExact(h) as Int).associate { i ->
                 val key = (id.invokeExact(h, i) as MemorySegment).reinterpret(Long.MAX_VALUE).getString(0)
-                val len = length.invokeExact(h, i) as Int
-                val at = data.invokeExact(h, i) as MemorySegment
-                key to unpack(at.reinterpret(len * 8L).toArray(JAVA_DOUBLE))
+                key to unpack(packed(data.invokeExact(h, i) as MemorySegment, length.invokeExact(h, i) as Int))
             }
+            val subds = (0 until subdCount.invokeExact(h) as Int).associate { i ->
+                val key = (subdId.invokeExact(h, i) as MemorySegment).reinterpret(Long.MAX_VALUE).getString(0)
+                key to packed(subdData.invokeExact(h, i) as MemorySegment, subdLength.invokeExact(h, i) as Int)
+            }
+            Contents(breps, subds)
         } finally {
             close.invokeExact(h)
         }

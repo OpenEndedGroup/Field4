@@ -17,6 +17,8 @@ namespace {
 struct Breps {
     std::vector<std::string> ids;
     std::vector<std::vector<double>> data;
+    std::vector<std::string> subdIds;
+    std::vector<std::vector<double>> subdData;
 };
 
 void brepMessage(char* message, int capacity, const std::string& text) {
@@ -108,6 +110,42 @@ void appendFace(const ON_Brep& brep, const ON_BrepFace& face, std::vector<double
     for (int l = 0; l < face.m_li.Count(); ++l) appendLoop(brep, brep.m_L[face.m_li[l]], *surface, out);
 }
 
+// A SubD as triangles: openNURBS's own Catmull-Clark subdivision, `level` times, then every vertex
+// of the subdivided net moved to its limit surface point, with the limit normal for that face's
+// sector (so a crease keeps one normal per side). Per triangle corner: x y z nx ny nz.
+std::vector<double> packSubD(const ON_SubD& source, int level) {
+    std::vector<double> out;
+    ON_SubD subd(source);
+    if (level > 0) subd.GlobalSubdivide(static_cast<unsigned int>(level));
+    ON_SubDFaceIterator faces = subd.FaceIterator();
+    std::vector<ON_3dPoint> p;
+    std::vector<ON_3dVector> n;
+    for (const ON_SubDFace* face = faces.FirstFace(); face != nullptr; face = faces.NextFace()) {
+        const unsigned int count = face->EdgeCount();
+        if (count < 3) continue;
+        p.clear();
+        n.clear();
+        bool ok = true;
+        for (unsigned int i = 0; i < count; ++i) {
+            const ON_SubDVertex* v = face->Vertex(i);
+            if (v == nullptr) { ok = false; break; }
+            const ON_3dPoint point = v->SurfacePoint();
+            if (!point.IsValid()) { ok = false; break; }
+            p.push_back(point);
+            n.push_back(v->SurfaceNormal(face, true));
+        }
+        if (!ok) continue;
+        for (unsigned int i = 1; i + 1 < count; ++i) {
+            const unsigned int corner[3] = {0, i, i + 1};
+            for (unsigned int c : corner) {
+                out.push_back(p[c].x); out.push_back(p[c].y); out.push_back(p[c].z);
+                out.push_back(n[c].x); out.push_back(n[c].y); out.push_back(n[c].z);
+            }
+        }
+    }
+    return out;
+}
+
 std::vector<double> pack(const ON_Brep& brep) {
     std::vector<double> out;
     out.push_back(brep.m_F.Count());
@@ -181,6 +219,22 @@ bool writeBrepFixture(const char* path, std::string& error) {
         model.AddManagedModelGeometryComponent(box, brepAttributes(boxes, saved ? L"box, saved mesh" : L"box, no mesh"));
     }
 
+    // SubDs: a smooth one (its limit surface is a rounded blob inside the cage) and a creased one
+    // (its limit surface is the box itself), each a 2 x 2 x 2 cage 10 across.
+    const int subds = model.AddLayer(L"SubD", ON_Color(90, 170, 90));
+    for (int creased = 0; creased < 2; ++creased) {
+        const double x = creased ? 15.0 : -5.0;
+        const ON_3dPoint corners[8] = {
+            ON_3dPoint(x, -45, -5), ON_3dPoint(x + 10, -45, -5), ON_3dPoint(x + 10, -35, -5), ON_3dPoint(x, -35, -5),
+            ON_3dPoint(x, -45, 5), ON_3dPoint(x + 10, -45, 5), ON_3dPoint(x + 10, -35, 5), ON_3dPoint(x, -35, 5)};
+        ON_SubD* subd = ON_SubD::CreateSubDBox(corners, creased ? ON_SubDEdgeTag::Crease : ON_SubDEdgeTag::Smooth, 2, 2, 2, nullptr);
+        if (subd == nullptr) {
+            error = "openNURBS could not build the fixture SubD";
+            return false;
+        }
+        model.AddManagedModelGeometryComponent(subd, brepAttributes(subds, creased ? L"creased SubD" : L"smooth SubD"));
+    }
+
     FILE* fp = ON::OpenFile(path, "wb");
     if (fp == nullptr) {
         error = std::string("cannot open ") + path + " for writing";
@@ -199,7 +253,7 @@ bool writeBrepFixture(const char* path, std::string& error) {
 
 extern "C" {
 
-int field_opennurbs_breps_open(const char* utf8Path, void** handleOut, char* message, int messageCapacity) {
+int field_opennurbs_breps_open(const char* utf8Path, int subdLevel, void** handleOut, char* message, int messageCapacity) {
     if (handleOut != nullptr) *handleOut = nullptr;
     if (utf8Path == nullptr || handleOut == nullptr) {
         brepMessage(message, messageCapacity, "null path or handle");
@@ -237,6 +291,11 @@ int field_opennurbs_breps_open(const char* utf8Path, void** handleOut, char* mes
                     breps->data.push_back(pack(*form));
                     delete form;
                 }
+            } else if (const ON_SubD* subd = ON_SubD::Cast(geometry)) {
+                if (subdLevel >= 0) {
+                    breps->subdIds.push_back(brepId(attributes->m_uuid));
+                    breps->subdData.push_back(packSubD(*subd, subdLevel > 6 ? 6 : subdLevel));
+                }
             }
         }
         *handleOut = breps;
@@ -272,6 +331,25 @@ int field_opennurbs_breps_length(void* handle, int index) {
 const double* field_opennurbs_breps_data(void* handle, int index) {
     if (handle == nullptr || index < 0 || index >= field_opennurbs_breps_count(handle)) return nullptr;
     return static_cast<Breps*>(handle)->data[index].data();
+}
+
+int field_opennurbs_subds_count(void* handle) {
+    return handle == nullptr ? 0 : static_cast<int>(static_cast<Breps*>(handle)->subdIds.size());
+}
+
+const char* field_opennurbs_subds_id(void* handle, int index) {
+    if (handle == nullptr || index < 0 || index >= field_opennurbs_subds_count(handle)) return "";
+    return static_cast<Breps*>(handle)->subdIds[index].c_str();
+}
+
+int field_opennurbs_subds_length(void* handle, int index) {
+    if (handle == nullptr || index < 0 || index >= field_opennurbs_subds_count(handle)) return 0;
+    return static_cast<int>(static_cast<Breps*>(handle)->subdData[index].size());
+}
+
+const double* field_opennurbs_subds_data(void* handle, int index) {
+    if (handle == nullptr || index < 0 || index >= field_opennurbs_subds_count(handle)) return nullptr;
+    return static_cast<Breps*>(handle)->subdData[index].data();
 }
 
 int field_opennurbs_write_brep_fixture(const char* utf8Path, char* message, int messageCapacity) {

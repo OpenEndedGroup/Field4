@@ -43,8 +43,8 @@ import kotlin.io.path.exists
  * A Brep comes out as the render mesh Rhino saved with it. A face saved without one (*Save Small*,
  * or a face Rhino never managed to shade) is tessellated from its exact trimmed NURBS surface by
  * [BrepTessellator] — the `meshing` argument of [load] chooses ([RhinoBrepMeshing]), and
- * [RhinoMesh.evaluatedFaces] says how many faces were. SubD objects are still skipped: public
- * openNURBS has no SubD mesher and does not expose the control net in a form worth subdividing. Curves are the exception that costs nothing:
+ * [RhinoMesh.evaluatedFaces] says how many faces were. A SubD is subdivided by openNURBS's own
+ * Catmull-Clark and its vertices moved onto the limit surface ([RhinoMesh.subdLevel]). Curves are the exception that costs nothing:
  * lines, polylines and polynomial spans up to cubic come over exactly, and arcs and other rational
  * spans become cubics within a hundred-thousandth of the curve's size.
  *
@@ -58,7 +58,8 @@ object Rhino3dm {
         path: String,
         meshing: RhinoBrepMeshing = RhinoBrepMeshing.SAVED_ELSE_EVALUATE,
         tolerance: Double? = null,
-    ): RhinoModel = load(File(path.replaceFirst(Regex("^~(?=/|$)"), System.getProperty("user.home"))), meshing, tolerance)
+        subdLevel: Int = 3,
+    ): RhinoModel = load(File(path.replaceFirst(Regex("^~(?=/|$)"), System.getProperty("user.home"))), meshing, tolerance, subdLevel)
 
     /**
      * Read [file]. Throws [RhinoException] for a file openNURBS cannot read.
@@ -68,26 +69,40 @@ object Rhino3dm {
      *   where there is not.
      * @param tolerance for tessellated faces, the largest chord deviation from the true surface in
      *   model units; `null` for a thousandth of each Brep's size.
+     * @param subdLevel unless [meshing] is [RhinoBrepMeshing.SAVED], SubD objects come back as
+     *   meshes too: their control net subdivided this many times (Catmull-Clark, by openNURBS) and
+     *   every vertex moved onto the limit surface. Each level is four times the triangles; `3`
+     *   makes 128 triangles of each control face, at most `6`. Negative leaves SubDs skipped.
      */
     fun load(
         file: File,
         meshing: RhinoBrepMeshing = RhinoBrepMeshing.SAVED_ELSE_EVALUATE,
         tolerance: Double? = null,
+        subdLevel: Int = 3,
     ): RhinoModel {
         require(file.isFile) { "No .3dm file at ${file.absolutePath}" }
         val model = OpenNurbsNative.read(file)
         if (meshing == RhinoBrepMeshing.SAVED || !OpenNurbsBrepNative.isAvailable) return model
-        return evaluateBreps(model, OpenNurbsBrepNative.read(file), meshing, BrepTessellator(tolerance))
+        return evaluateBreps(model, OpenNurbsBrepNative.read(file, subdLevel), meshing, BrepTessellator(tolerance), subdLevel)
     }
 
     private fun evaluateBreps(
         model: RhinoModel,
-        breps: Map<String, List<BrepFace>>,
+        contents: OpenNurbsBrepNative.Contents,
         meshing: RhinoBrepMeshing,
         tessellator: BrepTessellator,
+        subdLevel: Int,
     ): RhinoModel {
         val evaluate = meshing == RhinoBrepMeshing.EVALUATE
+        val breps = contents.breps
         val objects = model.objects.map { o ->
+            if (o is RhinoSkipped && o.type == "ON_SubD" && o.block == null) {
+                val mesh = contents.subds[o.id]?.let(tessellator::weldCorners) ?: return@map o
+                return@map RhinoMesh(
+                    o.name, o.id, o.type, o.layer, o.color, o.ownVisibility, o.block, mesh, o.edges, null,
+                    subdLevel = subdLevel,
+                )
+            }
             val faces = if (o.block == null) breps[o.id] else null
             if (faces == null || (o.type != "ON_Brep" && o.type != "ON_Extrusion")) return@map o
             when (o) {
@@ -223,6 +238,8 @@ sealed class RhinoObject(
  * @property note when some Brep faces had no render mesh, which ones are missing; `null` otherwise.
  * @property evaluatedFaces how many Brep faces were tessellated from their NURBS surfaces rather
  *   than taken from a saved render mesh; `0` for a mesh read as saved.
+ * @property subdLevel for a SubD, how many times its control net was subdivided before its
+ *   vertices were moved onto the limit surface; `null` for anything else.
  */
 class RhinoMesh internal constructor(
     name: String, id: String, type: String, layer: RhinoLayer?, color: Vec4, visible: Boolean, block: String?,
@@ -230,6 +247,7 @@ class RhinoMesh internal constructor(
     val edges: FLine?,
     val note: String?,
     val evaluatedFaces: Int = 0,
+    val subdLevel: Int? = null,
 ) : RhinoObject(name, id, type, layer, color, visible, block)
 
 /**
@@ -370,6 +388,7 @@ class RhinoModel internal constructor(
         meshes.filter { it.evaluatedFaces > 0 }.takeIf { it.isNotEmpty() }?.let { e ->
             append("\n  evaluated ${e.sumOf { it.evaluatedFaces }} Brep faces of ${e.size} objects from their NURBS surfaces")
         }
+        meshes.count { it.subdLevel != null }.takeIf { it > 0 }?.let { append("\n  subdivided $it SubDs onto their limit surfaces") }
         if (log.isNotBlank()) append("\n  openNURBS: ${log.trim().lines().first()}")
     }
 

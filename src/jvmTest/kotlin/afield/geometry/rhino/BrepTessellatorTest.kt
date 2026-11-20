@@ -27,10 +27,10 @@ class BrepTessellatorTest {
         return true
     }
 
-    private fun sample(meshing: RhinoBrepMeshing = RhinoBrepMeshing.SAVED_ELSE_EVALUATE): RhinoModel {
+    private fun sample(meshing: RhinoBrepMeshing = RhinoBrepMeshing.SAVED_ELSE_EVALUATE, subdLevel: Int = 3): RhinoModel {
         val dir = Files.createTempDirectory("rhino3dm-nurbs-test").toFile()
         try {
-            return Rhino3dm.load(Rhino3dm.writeNurbsSample(File(dir, "nurbs.3dm")), meshing)
+            return Rhino3dm.load(Rhino3dm.writeNurbsSample(File(dir, "nurbs.3dm")), meshing, subdLevel = subdLevel)
         } finally {
             dir.deleteRecursively()
         }
@@ -67,13 +67,13 @@ class BrepTessellatorTest {
         if (!available()) return
         val model = sample()
         assertTrue(model.skipped.isEmpty(), model.toString())
-        assertEquals(5, model.meshes.size, model.toString())
+        assertEquals(7, model.meshes.size, model.toString())
         assertEquals(0, model.mesh("box, saved mesh").evaluatedFaces)
         assertEquals(6, model.mesh("box, no mesh").evaluatedFaces)
         assertTrue("evaluated" in model.toString(), model.toString())
         for (o in model.meshes) println("${o.name}: ${o.mesh.triangleCount} triangles, area ${area(o.mesh)}, volume ${volume(o.mesh)}")
         // SAVED keeps the old behaviour.
-        assertEquals(4, sample(RhinoBrepMeshing.SAVED).skipped.size)
+        assertEquals(6, sample(RhinoBrepMeshing.SAVED).skipped.size)
     }
 
     @Test fun sphereIsOnTheSurfaceWithTheRightAreaAndFacingOut() {
@@ -134,6 +134,36 @@ class BrepTessellatorTest {
         assertEquals(area(saved), area(evaluated.mesh), 1e-3)
         assertEquals(600.0, area(model.mesh("box, no mesh").mesh), 1e-3)
         assertEquals(1000.0, volume(model.mesh("box, no mesh").mesh), 1e-2)
+    }
+
+    @Test fun creasedSubDBoxLimitsToTheBoxItself() {
+        if (!available()) return
+        val o = sample().mesh("creased SubD")
+        assertEquals(3, o.subdLevel)
+        val m = o.mesh
+        assertEquals(600.0, area(m), 1e-2)
+        assertEquals(1000.0, volume(m), 1e-1)
+        for (v in 0 until m.vertexCount) {
+            val x = m.positions[3 * v] - 20.0; val y = m.positions[3 * v + 1] + 40.0; val z = m.positions[3 * v + 2].toDouble()
+            val face = max(abs(x), max(abs(y), abs(z)))
+            assertEquals(5.0, face, 1e-4, "vertex $v is off the box")
+        }
+    }
+
+    @Test fun smoothSubDConvergesInsideItsCage() {
+        if (!available()) return
+        val levels = (1..4).map { sample(subdLevel = it).mesh("smooth SubD").mesh }
+        val areas = levels.map(::area)
+        println("smooth SubD areas by level: $areas, volumes ${levels.map(::volume)}, triangles ${levels.map { it.triangleCount }}")
+        for (k in 1 until areas.size - 1) {
+            assertTrue(abs(areas[k + 1] - areas[k]) < abs(areas[k] - areas[k - 1]), "areas do not converge: $areas")
+        }
+        val m = levels.last()
+        assertTrue(volume(m) in 100.0..1000.0, "volume ${volume(m)}: inside out, open, or outside its cage")
+        for (v in 0 until m.vertexCount) {
+            val x = m.positions[3 * v] - 0.0; val y = m.positions[3 * v + 1] + 40.0; val z = m.positions[3 * v + 2].toDouble()
+            assertTrue(abs(x) <= 5.0 + 1e-4 && abs(y) <= 5.0 + 1e-4 && abs(z) <= 5.0 + 1e-4, "vertex $v outside the cage")
+        }
     }
 
     @Test fun bilinearPatchEvaluatesExactly() {
