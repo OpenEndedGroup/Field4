@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-18T15:54:55.979Z",
+  "capturedAt": "2026-11-19T22:39:19.881Z",
   "documentName": "polytope_holes_and_chains",
   "outputs": [
     {
@@ -11,8 +11,8 @@
       "kinds": [
         "three"
       ],
-      "width": 1048,
-      "height": 448,
+      "width": 1040,
+      "height": 440,
       "path": "outputs/0.html"
     },
     {
@@ -33,8 +33,8 @@
       "kinds": [
         "three"
       ],
-      "width": 608,
-      "height": 268,
+      "width": 600,
+      "height": 260,
       "path": "outputs/2.html"
     },
     {
@@ -46,7 +46,7 @@
         "three"
       ],
       "width": 480,
-      "height": 528,
+      "height": 520,
       "path": "outputs/3.html"
     },
     {

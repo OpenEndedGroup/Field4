@@ -23,6 +23,7 @@ shoot a ray at it, write it back out as something else.
 | `.stl` (ASCII or binary) | `meshFromFile(path)` | `TriMesh`, triangle soup — see [below](#what-each-format-loses) | yes |
 | `.ply` (ASCII, binary, either endianness) | `meshFromAnyFile(path)` | `TriMesh` with the file's per-vertex colours | yes |
 | `.glb`, `.gltf`, `.fbx`, `.dae`, `.3ds`, … | `meshFromAnyFile(path)` | `TriMesh`, all parts baked through their node transforms | yes |
+| `.3dm` (Rhino 1 to 8) | `Rhino3dm.load(path)` | `RhinoModel`: the layer tree, and per object a `TriMesh`, an `FLine`, text or points — see [Rhino files](rhino_files.md) | yes |
 | any of the above, textured, with PBR materials | `gltfModelHere("…")` / the [Fabricate renderer](fabricate_renderer.md) | GPU buffers, materials, textures, a live scene | no — needs a renderer |
 | `.step`, `.iges`, `.brep` | **nothing** | — | — |
 
@@ -366,6 +367,8 @@ Three details in that output are easy to miss:
 **STEP, IGES, BREP and other CAD formats** are not read. A `.step` file is NURBS surfaces trimmed
 against each other rather than a mesh, and Field has no CAD kernel. Export STL from FreeCAD or your
 CAD tool and read that. `meshFromAnyFile` on a `.step` throws rather than returning an empty mesh.
+Rhino's `.3dm` is the exception, because Rhino saves a render mesh with every surface; see
+[Rhino files](rhino_files.md).
 
 **Textures and materials** do not come across into a `TriMesh`, which has positions, normals, uvs and
 per-vertex colours only; `assimpToTriMesh` drops the material. For a textured, rendered model use
@@ -389,6 +392,126 @@ by side) and `showMeshTurntable` (one mesh from four angles) show the stages sta
 
 **Export** is OBJ and STL only: `toObj`, `saveObj`, `toStlAscii`, `toStlBinary` and `saveStl`.
 Neither keeps per-vertex colours. The `.compressed.ply` writer above is for splats, not triangles.
+
+## Splats by tile, and what a tile costs
+
+`SplatRaster` draws a splat cloud the way the GPU renderer does: sort every splat by depth, then
+paint them back to front over the whole image. The other common way to draw splats, the one the
+original 3D Gaussian Splatting rasterizer uses, is by tile. Each splat is listed in every 16×16
+pixel tile its footprint touches, each tile's list is sorted front to back, and each tile is
+blended on its own, so the tiles can run in parallel and a pixel can stop once it is opaque.
+`SplatTiles` ([`SplatTiles.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/graphics/render/SplatTiles.kt))
+does this on the CPU. It reads the same packed buffer as `SplatRaster` and projects each splat with
+the same code, so the two pictures agree to within one 8-bit level on every pixel:
+
+```diffstatic {data-lang=kotlin}
+val cloud = SplatTiles.clusteredCloud(40_000) // a dense core inside a sparse halo
+val view = SplatRaster.View.lookAt(
+    eye = Vector3f(0f, 0f, 4.2f),
+    target = Vector3f(0f, 0f, 0f),
+    width = 480,
+    height = 320,
+)
+val binning = SplatTiles.bin(cloud, 40_000, view)
+showImage(SplatTiles.render(binning).image.toArgb(), view.width, view.height)
+```
+
+Tiles are not equally expensive. The box below counts the splats in each tile of that view and
+draws the counts as a heat map, one cell per tile, on a log scale:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/geometry_from_disk/splat_tiles_heat.png" wait="9.0" capture="box" open-outputs="true" padding="20"}
+import afield.graphics.render.SplatRaster
+import afield.graphics.render.SplatTiles
+import afield.math.linalg.Vector3f
+
+val count = 40_000
+val cloud = SplatTiles.clusteredCloud(count)
+val view = SplatRaster.View.lookAt(
+    eye = Vector3f(0f, 0f, 4.2f),
+    target = Vector3f(0f, 0f, 0f),
+    width = 480,
+    height = 320,
+)
+val binning = SplatTiles.bin(cloud, count, view)
+
+// One cell per 16x16 tile, row 0 at the top like the image.
+showHeatmap(binning.countRows(), colormap = "inferno", width = 360, logScale = true, smooth = false, flipY = false)
+println(
+    "heaviest tile ${binning.maxCount} splats, 99th percentile ${binning.quantile(0.99)}, median ${binning.quantile(0.5)}",
+)
+```
+
+![A heat map of 30 by 20 tiles on a log scale: black around the edge where no splat reaches, a square of orange tiles where the halo is, and a bright yellow block at the centre where the dense core is](assets/geometry_from_disk/splat_tiles_heat.png)
+
+The tiles over the core hold about 11,600 splats each. The 99th-percentile tile holds 663, and
+half the tiles hold none. With one
+worker per tile, the worker that gets a core tile is still blending when everyone else has finished.
+[Mitigating SM-Level Load Imbalance in 3D Gaussian Splatting on GPUs](https://arxiv.org/abs/2611.12319)
+fixes this on the GPU in two steps: hand out the heaviest tiles first, and cut a tile whose list is
+much longer than the rest into chunks that run on different workers. Front-to-back blending makes
+the chunks easy to put back together, because each chunk is just a colour and a remaining
+transparency, and two of them combine exactly.
+
+`SplatTiles.render(binning, SplatTiles.Schedule.Naive)` hands tiles out in raster order;
+`Schedule.Balanced()` does both of the paper's steps. `SplatTiles.compare` times them on the same
+binning. On a 10-core M1 Max, with 200,000 splats and both schedules on 10 threads:
+
+| View | Tiles | Heaviest tile | Stop at opaque | Raster order | Heaviest first, auto chunk | 256-splat chunks |
+| --- | --- | --- | --- | --- | --- | --- |
+| whole cloud, 1280×720 | 3,600 | 37,018 | yes | 342–396 ms | 380 ms | 854 ms |
+| whole cloud, 1280×720 | 3,600 | 37,018 | no | 877–1,060 ms | 911 ms | 1,087 ms |
+| close on the core, 1280×720 | 3,600 | 17,998 | yes | 738–764 ms | 718 ms | 4,556 ms |
+| close on the core, 1280×720 | 3,600 | 17,998 | no | 3,602–4,260 ms | 4,138 ms | 3,870 ms |
+| whole cloud, 96×96 | 36 | 64,534 | yes | 9.7–11.7 ms | 15.2 ms | 34.0 ms |
+| whole cloud, 96×96 | 36 | 64,534 | no | 42.2–49.2 ms | 31.9 ms | 37.5 ms |
+
+Each time is the median of five runs. Raster order is a range because it was measured twice, once
+beside each balanced schedule, and the two medians show how much the machine itself moves.
+
+Balancing helps only when there are too few tiles for the workers to even out. On the 96×96 view,
+with 36 tiles for 10 threads and every pixel blended, the busiest thread worked 1.3 to 1.5 times as
+long as the average under raster order and 1.08 times under the balanced schedule, and the frame
+took about a quarter less time. At 1280×720 there
+are 3,600 tiles for 10 threads, and taking them one at a time is already balanced. Chunking also has
+a cost the tile counts do not show. A chunk starts fully transparent, so it cannot stop early where
+the chunk in front of it has already made the pixel opaque. With 256-splat chunks the close-up view
+is many times slower. `Balanced()` therefore cuts only a tile larger than half of one worker's share
+of the frame, and you can pass `Balanced(chunk = …)` to choose the size yourself.
+
+### The same blend on the GPU
+
+`SplatTilesGpuProbe` runs the per-tile blend as a Vulkan compute shader: one 16×16 workgroup per
+work item and one invocation per pixel. Binning stays on the CPU. The raster-order version
+launches one workgroup per tile. The balanced version is the paper's persistent kernel: 256
+workgroups loop, each taking the next item from an atomic counter over the heaviest-first list.
+On every view below, both GPU images match the CPU tiles to within one 8-bit level. On the M1 Max
+GPU, each blend took:
+
+| View | Work items, raster / balanced | Raster order | Persistent, heaviest first |
+| --- | --- | --- | --- |
+| whole cloud, 1280×720 | 3,600 / 3,600 | 1.60 ms | 3.06 ms |
+| close on the core, 1280×720 | 3,600 / 3,600 | 4.13 ms | 4.06 ms |
+| whole cloud, 96×96 | 36 / 88 | 2.32 ms | 2.93 ms |
+
+Here the persistent kernel does not pay for itself. Apple's GPU already hands out workgroups as
+cores free up, so a queue in software adds an atomic and two barriers per item and wins nothing
+back. The 96×96 view is chunked for 32 workers, which leaves at most 88 items for a GPU that can
+hold far more workgroups at once.
+
+??? aside "What this measures and what it does not"
+
+    The CPU tables are CPU threads, not GPU streaming multiprocessors. The GPU times are
+    wall-clock frame time with 17 blends per frame minus frame time with one, divided by 16,
+    measured once per view on one machine, so treat differences under about half a millisecond
+    as noise. The GPU renderer still draws sorted quads; nothing here replaces it.
+    `SplatTilesTest` (`four.splat-tiles.smoke`) holds the CPU tiles to one 8-bit level against
+    `SplatRaster`, and `four.splat-tiles.gpu` holds the GPU to two levels against the CPU tiles
+    and checks that every blend drained the queue. `SplatTilesBench`
+    (`run-jvm-main afield.graphics.render.SplatTilesBenchKt`) prints the CPU table;
+    `dev_docs/SPLAT_TILES.md` records both runs.
+
+The [`splat_tiles`](agent_transcripts.md#splat_tiles) starting point holds three boxes: the binned
+image checked against `SplatRaster`, the heat map, and the timing on the 96×96 view.
 
 ## Fixing a mesh that looks wrong
 

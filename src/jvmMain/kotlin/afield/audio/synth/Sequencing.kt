@@ -6,7 +6,8 @@ import afield.runtime.lifecycle.RateLimiter
 import afield.ui.visualization.ToHTML
 import afield.ui.output._printHere
 import afield.runtime.lifecycle.generator
-import afield.ui.output.locationForTextStringOnStack
+import afield.ui.output.anchoredLocation
+import afield.runtime.bytecode.StackAware
 import afield.document.graph.Marker
 import java.util.Locale
 import kotlin.math.abs
@@ -736,6 +737,7 @@ private class InlinePianoRollState {
 private fun Marker.inlinePianoRollState(): InlinePianoRollState =
     properties.computeIfAbsent("__piano_roll__") { InlinePianoRollState() } as InlinePianoRollState
 
+@StackAware
 fun Marker.pianoRoll(
     value: NoteProcess,
     pastSeconds: Number = value.defaultPastSeconds,
@@ -743,7 +745,7 @@ fun Marker.pianoRoll(
     widthPx: Int = 480,
     heightPx: Int = 96
 ): NoteProcess {
-    val location = locationForTextStringOnStack(".pianoRoll(", this.box, end = true, offset = 1)
+    val location = anchoredLocation(this.box, "pianoRoll", ".pianoRoll(", end = true, offset = 1)
     val state = inlinePianoRollState()
     state.outputRateLimiter {
         location?.let {

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-18T16:01:56.376Z",
+  "capturedAt": "2026-11-19T22:39:29.360Z",
   "documentName": "solidsl_inverse",
   "outputs": [
     {
@@ -23,8 +23,8 @@
       "kinds": [
         "three"
       ],
-      "width": 668,
-      "height": 438,
+      "width": 660,
+      "height": 430,
       "path": "outputs/1.html"
     },
     {
@@ -35,8 +35,8 @@
       "kinds": [
         "three"
       ],
-      "width": 668,
-      "height": 438,
+      "width": 660,
+      "height": 430,
       "path": "outputs/2.html"
     },
     {
@@ -47,8 +47,8 @@
       "kinds": [
         "three"
       ],
-      "width": 668,
-      "height": 438,
+      "width": 660,
+      "height": 430,
       "path": "outputs/3.html"
     }
   ]

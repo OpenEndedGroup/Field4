@@ -197,7 +197,8 @@ data class RuntimeInfo(
     val aotCacheStatus: RuntimeAotCacheStatus = RuntimeAotCacheStatus(),
     val gcPauseStats: GcPauseStats = GcPauseStats(),
     val runloopTimingStats: RunloopTimingStats = RunloopTimingStats(),
-    val runloopSchedulingStatus: RunloopSchedulingStatus = RunloopSchedulingStatus()
+    val runloopSchedulingStatus: RunloopSchedulingStatus = RunloopSchedulingStatus(),
+    val boxInstrumentation: afield.runtime.lifecycle.BoxInstrumentationStatus = afield.runtime.lifecycle.BoxInstrumentationStatus()
 )
 
 /**
@@ -419,8 +420,17 @@ data class FieldPreferences(
     val validate: Boolean = true,
     val quietMode: Boolean = false,
     val autoOpenLastDocumentInDesktop: Boolean = false,
-    /** Compile box code so a box that never returns can be interrupted (`afield.runtime.lifecycle.BoxInterrupt`). */
+    /**
+     * Older form of [boxInstrumentation]: false meant `off`, true `watchdog`. Still written (true
+     * unless the mode is `off`) so an older Field reading these preferences behaves sensibly, and
+     * read when [boxInstrumentation] is blank.
+     */
     val boxInterrupt: Boolean = true,
+    /**
+     * `watchdog`, `instrument` or `off`: what Field does to compiled Kotlin box code
+     * (`afield.runtime.lifecycle.BoxInstrumentation`). Blank in preferences saved before it existed.
+     */
+    val boxInstrumentation: String = "",
     val editorPropertyStickiness: String = "none",
     val oscEditorEnabled: Boolean = false,
     val oscEditorPort: Int = 9001,

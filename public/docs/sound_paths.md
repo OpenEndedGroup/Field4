@@ -33,7 +33,7 @@ then follow the links for the details.
 
 ---
 
-## The thirteen that make samples
+## The fourteen that make samples
 
 | path | what it is | needs | offline? | shares `render`? | page |
 | --- | --- | --- | --- | --- | --- |
@@ -50,8 +50,9 @@ then follow the links for the details.
 | `sonic-pi` | a Ruby program handed to Sonic Pi's own scsynth over OSC. `class SonicPi` in `src/jvmMain/kotlin/afield/audio/synth/SonicPi.kt` | a local Sonic Pi v5 | realtime only | no | [Sonic Pi](sonic_pi.md) |
 | `modal-drum` | a drawn shape heard as a drum: its vibration modes solved by finite elements, struck, and summed as one damped sinusoid per mode. `class DrumModes` in `src/jvmMain/kotlin/afield/audio/modal/Eigendrum.kt` | nothing | offline only | no | [Eigendrum](eigendrum.md) |
 | `grains` | a list of grains — onset, length, pitch, gain, pan — each a windowed burst of a three-harmonic sine, or of a recording when you give it one, summed into a buffer. `fun renderGrains` in `src/jvmMain/kotlin/afield/simulation/agents/alife_grains.kt` | nothing | offline only | no | [ALife examples](alife_examples.md) |
+| `speech` | English text spoken by the tiny-voca model, a learned source-filter vocoder, into a 24 kHz buffer with the start and end of every word and phone. `fun speak` in `src/jvmMain/kotlin/afield/audio/synth/Speech.kt` | the tiny-voca model, fetched on first use | offline only | no | [Spectral examples](spectral_examples.md#speech-a-box-that-talks) |
 
-Four of those thirteen are pattern voices: `pat-stand-in`, `dirt-samples`, `faust-poly` and
+Four of those fourteen are pattern voices: `pat-stand-in`, `dirt-samples`, `faust-poly` and
 `pat-spatial`. The first two are what [Sound](sound.md) covers, with the fallback behaviour and the
 provenance audit; `faust-poly` is on [Faust](faust.md), because what it needs explaining is the voice
 allocator rather than the pattern; and `pat-spatial` has [a page of its
@@ -59,7 +60,7 @@ own](pat_spatial.md), because what it needs explaining is why a tag in a pattern
 why the synthesis is a thread away from the audio. Read whichever you have picked; this page only
 helps you pick.
 
-One of the thirteen is **realtime only**: `sonic-pi`, the only path where **no sample ever
+One of the fourteen is **realtime only**: `sonic-pi`, the only path where **no sample ever
 enters this process**. Field sends text and receives log lines; the audio exists entirely inside
 another program's synthesiser. You cannot filter, plot or record Sonic Pi's output the way you can
 the others'. The way back in is `link-audio-in`, below.
@@ -150,10 +151,11 @@ and N WebAssembly instances in one GraalVM context, none of which the engine has
 Because both share `render`, both get the speakers, the engine's visualisers, the Link output and
 the box lifecycle with no adapter.
 
-Of the thirteen paths that make samples, three do not share `render`. No wrapper can bring `sonic-pi`
+Of the fourteen paths that make samples, four do not share `render`. No wrapper can bring `sonic-pi`
 onto it: it is a different process, and no sample ever enters this one. `modal-drum` renders a
-whole strike into a buffer at once, and `grains` a whole grain set; you hear either as a WAV file
-or as a player in the box's output.
+whole strike into a buffer at once, `grains` a whole grain set, and `speech` a whole utterance; you
+hear any of them as a WAV file or as a player in the box's output. A `Speech` reaches `render` only
+by way of `said.signal()`, which plays its finished buffer through `signal-graph`.
 
 `dough-engine` reaches `render` through a wrapper: `class DoughAudioSink` is a `StereoNode` in the
 same file as `DoughEngine`, and `parkDough` registers `audio(sink)` with the engine.
@@ -173,6 +175,88 @@ offline as well. Like `faust-poly`, it opens no device and encodes no WAV.
 column (`box-audio`, `dough-engine`, `spatial-openal`, `device-input`, `wav-file-in`) have no
 page of their own; this page and [`afield.audio.synth` in the generated reference](reference/synthesis.md)
 are their documentation.
+
+## Rendering from the wrong thread
+
+Once a box returns `audio(...)`, its graph belongs to the audio engine's thread, which calls
+`render` once a block. Oscillators, filters and envelopes each keep state (a phase, a filter's
+memory, an envelope's stage) that moves forward every time they are rendered. Call `render` on a
+node of that graph yourself, from a `loop { }` on [the Runloop](animation_time_model.md#the-runloop),
+and the node moves forward twice, once for your box and once for the speakers, which you hear as
+skips and clicks.
+
+This box, *LFO meter*, makes that mistake. It wants to show the LFO that shapes the tone, and gets
+the value by rendering the LFO again:
+
+```diffstatic {data-lang=kotlin}
+val lfo = SineOsc(0.5.p)
+val tone = SineOsc(220.p) * (lfo * 0.5 + 0.5)
+
+val buf = FloatArray(64)
+val ctx = SynthContext(48_000f, 64)
+
+audio(tone, gain = 0.1f) +
+    loop {
+        lfo.render(buf, 64, ctx) // reads the lfo by rendering it again
+        markdown("lfo", "## %.2f".format(buf[0]))
+        delay(50)
+    }
+```
+
+The box runs and the number moves, so nothing in the box looks wrong. Field reports it the first
+time it happens, naming the box and the line:
+
+```diffstatic {data-lang=text}
+thread ownership: LFO meter line 9: SineOsc (Signal.render) rendered on thread
+'field-runloop-main' (the Runloop), but the graph belongs to the audio thread 'FieldAudioEngine';
+rendering it from two threads advances its oscillators, filters and envelopes twice. Publish a
+snapshot from the render path instead
+```
+
+The report goes to Field's log on the `warning,execution` channel, not to the box's output. In a
+log viewer, **LFO meter line 9** is a link: click it to select the box and open its editor at that
+line. The terminal Field runs in prints the same report as one line, with the box's id after its
+name. To watch for these reports from inside Field, give a box a log viewer that keeps only them:
+
+```diffstatic {data-lang=kotlin}
+logs("threads") {
+    channel("warning")
+    matching = "thread ownership"
+}
+```
+
+The fix is to read what the audio thread has already rendered instead of rendering it again. Tap
+the LFO with `.scope()`. A `Scope` passes its input through unchanged and keeps the samples that
+went by, so the loop reads the value the speakers got and the graph moves forward only once:
+
+```diffstatic {data-lang=kotlin}
+val lfo = SineOsc(0.5.p).scope()
+val tone = SineOsc(220.p) * (lfo * 0.5 + 0.5)
+
+audio(tone, gain = 0.1f) +
+    loop {
+        val now = lfo.snapshot().left.lastOrNull() ?: 0f // what the audio thread last played
+        markdown("lfo", "## %.2f".format(now))
+        delay(50)
+    }
+```
+
+`snapshot()` copies the most recent samples, 4096 by default, and the last of them is the newest.
+The same tap draws a waveform or a spectrum; see
+[Signal and synth visualizers](visualizers.md#signal-and-synth-visualizers).
+
+The check knows the audio engine's thread, the one `audio(...)` plays on. The `dough-engine` and
+`pat-spatial` paths run block loops of their own, and a second render of a graph inside one of
+those is not reported.
+
+The renderer's frame calls have the same rule the other way round. `Renderer.render`, `run` and
+`runForever`, `beginGeometryWrites` and `endGeometryWrites`, and `Window.pollEvents` belong to the
+Runloop, and calling one from a thread the box started is reported in the same way, with the box
+line and a suggestion to move the call into the box's frame.
+
+Both checks rely on box code instrumentation, which is on by default. With it
+[turned off](running_code.md#keeping-a-long-run-going-or-turning-interruption-off), a second render of a playing graph is still reported, but without the box line,
+and the renderer's frame calls are not checked.
 
 ---
 

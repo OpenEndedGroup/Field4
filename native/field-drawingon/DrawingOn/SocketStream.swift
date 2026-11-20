@@ -157,7 +157,7 @@ final class SocketStream {
                     bufferedLine = line; break
                 }
                 batch.append(String(decoding: line, as: UTF8.self)); batchBytes += line.count; lastSequence = seq
-                if through == nil || batch.count == 64 || seq == through { break }
+                if batch.count == 64 || seq == through { break }
             }
             if !batch.isEmpty {
                 let seq = lastSequence

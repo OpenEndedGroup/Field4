@@ -1350,6 +1350,113 @@ The loss is a per-pixel sum of squares with no term for structure, so judge a
 fit by the residual panel rather than the loss number. The
 [`stacksl_fit_demo`](agent_transcripts.md#stacksl_fit_demo) starting point runs this fit.
 
+## Specializing a program
+
+The CPU backend renders a program by interpreting its GLSL once per pixel, and
+most of what it does each time is the same: it calls the same helpers, runs the
+same octave loop five times, and multiplies the same constants. Only `fragUV`
+changes. [`GlslPartialEvaluator`](reference/languages.md#glslpartialevaluator-kt-glslpartialevaluator) runs the shader once
+with everything but `fragUV` known and keeps only the arithmetic that depends on
+the pixel. What is left, the *residual*, is a straight-line program with no
+calls, loops or variables. This is partial evaluation, and an interpreter
+specialized to one program in this way is what Futamura called compiling it.
+
+The classic first example is a power function with a known exponent. The loop
+runs while specializing, so the residual is four multiplications:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/stacksl/partial-eval-power.png" embed=true alt="Residual GLSL for power(x, 5): four lines each multiplying the previous temp by fragUV.x, then outColor = vec4(t4, 0.0, 0.0, 1.0)"}
+:::static
+import afield.lang.stacksl.cpu.*
+
+val shader =
+    """
+    #version 450
+    layout(location = 0) in vec2 fragUV;
+    layout(location = 0) out vec4 outColor;
+    float power(float x, int n) {
+        float r = 1.0;
+        for (int i = 0; i < n; i++) r *= x;
+        return r;
+    }
+    void main() { outColor = vec4(power(fragUV.x, 5), 0.0, 0.0, 1.0); }
+    """
+        .trimIndent()
+
+val residual = GlslPartialEvaluator.specialize(shader)
+markdown("residual", "```glsl\n" + residual.toGlsl() + "```")
+```
+
+A StackSL program is specialized the same way, through the template it renders
+in. Each residual below renders to exactly the interpreter's floats, bit for bit,
+which the box checks:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/stacksl/partial-eval-programs.png" embed=true alt="A table of four StackSL programs with the lines of GLSL each compiles to, the operations left in its residual, the most common residual operations, and yes in the identical column for every row"}
+:::static
+import afield.lang.stacksl.cpu.*
+
+val programs =
+    [
+        "uv saturate",
+        "uv 4.0 * fbm palette saturate",
+        "p 6 kaleido fbm palette saturate",
+        "uv 0.5 0.5 vec2 - length 20 * time - sin 0.5 * 0.5 +",
+    ]
+
+val rows =
+    programs.map { program ->
+        val source = StackSLCpu.expandStackAuto(StackSLCpu.stillTemplate(), program)
+        val residual = GlslPartialEvaluator.specialize(source)
+        val interpreted = StackSLCpu.renderFragment(source, 48, 48)
+        val specialized = residual.render(48, 48)
+        val identical = interpreted.rgba.indices.all { interpreted.rgba[it].toRawBits() == specialized.rgba[it].toRawBits() }
+        val top = residual.operationHistogram().take(3).joinToString(", ") { (op, n) -> "`$op` $n" }
+        "| `$program` | ${source.lines().size} | ${residual.operationCount} | $top | ${if (identical) "yes" else "**no**"} |"
+    }
+
+markdown(
+    "programs",
+    "| program | GLSL lines | residual ops | most common | identical |\n|---|---|---|---|---|\n" + rows.joinToString("\n"),
+)
+```
+
+The residual of `uv 4.0 * fbm palette saturate` is about 300 operations: the
+five `fbm` octaves are unrolled and every constant is folded in. Printed with
+`residual.toGlsl()` it is an ordinary fragment shader; the tests read it back and
+render it again to check that nothing was lost in printing.
+
+Run on one core at 96 by 96, the residual is faster, but not by much (the
+measurement is `GlslPartialEvaluatorMeasurements`, run with `./gradlew jvmMeasurements`):
+
+| program | interpreter | residual | speedup |
+|---|---|---|---|
+| `uv saturate` | 0.072 s | 0.062 s | 1.2x |
+| `uv 4.0 * fbm palette saturate` | 0.740 s | 0.488 s | 1.5x |
+| `p 6 kaleido fbm palette saturate` | 0.877 s | 0.502 s | 1.7x |
+| `uv 0.5 0.5 vec2 - length 20 * time - sin 0.5 * 0.5 +` | 0.068 s | 0.053 s | 1.3x |
+
+Specializing removes the interpreter's calls, loops and variable lookups, and
+those turn out to be the smaller part of its cost. The residual writes `+ - * /` and swizzles into values it reuses from
+pixel to pixel, but the builtins (`fract`, `dot`, `mix`) still make a new value
+each time, and that is most of what remains.
+
+The specializer refuses, rather than approximates, what it cannot make
+straight-line: a loop whose bound depends on the pixel, an array index that
+depends on the pixel, and a `discard` or `return` inside a branch on the pixel.
+None of the gallery programs uses any of these. A branch on the pixel becomes a
+select (`c ? a : b`).
+
+??? aside "How the specializer is built"
+    It is not a second evaluator. `GlslPartialEvaluator` runs the CPU backend's own
+    `GlslMachine` over one more scalar algebra, beside the `Float`, autodiff and
+    interval ones: a value is either known (and folded by the `Float` algebra, so with
+    the same bits) or a node of the residual. Unrolling and inlining are what the
+    machine does anyway. A branch on an unknown condition already ran both arms for the
+    interval algebra; the only change was to hand the join its condition. Nodes are
+    hash-consed (shared subexpressions are one node) and unused ones dropped.
+    `GlslPartialEvaluatorTest` checks every gallery program through both the printed GLSL
+    and the JVM register program. The `stacksl_partial_eval` starting point edits a
+    program and reprints its residual.
+
 ## Built-in vocabulary
 
 Stack and input:

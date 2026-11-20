@@ -96,6 +96,10 @@ object DemoTranscriptExecSmokeTest {
 
     /** Pure-compute demos that are safe to run to completion headless. */
     internal val EXECUTE = setOf(
+        // geometry_from_disk.md, Splats by tile: SplatTiles binning, heat map and schedule timing; pure CPU.
+        "splat_tiles",
+        // mesh_examples.md, Repairing a field that is only a bound: SdfGrid2D circles and offsets; pure CPU.
+        "sdf_global_consistency",
         "sentence_diagrams",
         // linear_algebra.md, Spinny algebras: two ε²/j² sliders and four SVG figure boxes; pure CPU.
         "spinny_algebras",
@@ -107,6 +111,8 @@ object DemoTranscriptExecSmokeTest {
         "assimp_browsing",
         // stacksl_examples.md's fitting demo: fits a StackSL program's literals on the CPU.
         "stacksl_fit_demo",
+        // stacksl_examples.md's partial-evaluation demo: specializes on the CPU, no renderer.
+        "stacksl_partial_eval",
         // ai4_chat_archive.md's demo: reads the example chat under public/docs/assets by checkout path.
         "ai4_chat_archive",
         // IN_FIELD_AGENT_HARNESS.md's repo-tools demo: a toy checkout in a temporary directory, removed after.
@@ -161,6 +167,10 @@ object DemoTranscriptExecSmokeTest {
         // found (or how to install it), so it needs nothing the build does not own. The Lua boxes are a
         // guest language; afield.lang.lua.LuaStateTest and LuaBoxTest run their code against a real lua_State.
         "lua_demo",
+        // The norns host, as lua_demo: only the Kotlin root executes. Its Lua boxes render a norns
+        // script offline, play one live, and fetch and render two from GitHub, so they need LuaJIT, an
+        // audio device or the network; NornsHostTest runs the host against a real lua_State.
+        "norns_demo",
         // Three bounded CPU boxes: refusal messages, field-clock curves, and a computed ledger.
         // No audio device or renderer; unlike marf_demo, every box is safe to execute headless.
         "marf_field_clocks",
@@ -478,6 +488,15 @@ object DemoTranscriptExecSmokeTest {
         // Drag handles (2026-11-17): two three { } scenes with free, axis and normal handles, each
         // redrawn from its drag callback. three() writes a three.js viewer into an output; no Window.
         "three_handles",
+        // Squircles (2026-11-19): five squircle styles and their curvature under a gauge slider, and
+        // squircleRectFrom corners over circular ones. Pure CPU, FLines into an output channel.
+        "squircles",
+        // Speech (2026-11-19): tiny-voca speak(), word timing, a word pattern, a live sung Signal and
+        // LPC analysis. CPU ONNX; fetches ~27 MB on first run.
+        "speech",
+        // Buffer paint (2026-11-19): a Gray-Scott frames { } loop edited through a BufferCanvas over its
+        // own FloatArray, and a delay line pasted and motion-blurred in place. Pure CPU, no Window.
+        "buffer_paint",
         // Controls renewal (2026-10-29): a five-control surface feeding a live figure and a slider
         // that re-renders itself mid-drag. Pure CPU, output-channel controls only.
         "controls_surface",
@@ -919,6 +938,9 @@ object DemoTranscriptExecSmokeTest {
         "keyframe_autosweep",
         "recstl_playground",
         "gpu_state",
+        // Buffer paint on the GPU (2026-11-19): a Window, a Gray-Scott compute ping-pong and a draw box,
+        // with drawing-layer gestures editing the mapped storage buffer. Needs a native Window.
+        "buffer_paint_gpu",
         "threebox",
         "rectsl_dataviz",
         "rectsl_plot_axes",
@@ -1019,6 +1041,9 @@ object DemoTranscriptExecSmokeTest {
         // Opens a Vulkan window for the fullscreen sky shader; the scattering it includes is graded on
         // the CPU twin by AtmosphereTest (closed-form transmittance, blue noon, red sunset).
         "atmospheric_sky",
+        // Opens a Vulkan window for the fullscreen coverage pass; the CPU box and the coverage it
+        // includes are graded by TriangleCoverageTest against 256 x 256 supersampling.
+        "exact_triangle_coverage",
         // Opens a Vulkan window and renders the fabricated renderer's fixed and virtual shadow maps;
         // the same harness call is graded on the GPU by the docs smoke docs.fabricate.virtual-shadows.
         "virtual_shadow_maps",

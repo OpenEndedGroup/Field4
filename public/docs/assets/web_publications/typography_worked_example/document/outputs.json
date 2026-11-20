@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-18T16:11:58.872Z",
+  "capturedAt": "2026-11-19T22:40:02.228Z",
   "documentName": "typography_worked_example",
   "outputs": [
     {
@@ -43,8 +43,8 @@
       "kinds": [
         "three"
       ],
-      "width": 808,
-      "height": 608,
+      "width": 800,
+      "height": 600,
       "path": "outputs/3.html"
     },
     {
@@ -89,8 +89,8 @@
       "kinds": [
         "three"
       ],
-      "width": 808,
-      "height": 308,
+      "width": 800,
+      "height": 300,
       "path": "outputs/7.html"
     },
     {
@@ -101,8 +101,8 @@
       "kinds": [
         "three"
       ],
-      "width": 828,
-      "height": 348,
+      "width": 820,
+      "height": 340,
       "path": "outputs/8.html"
     },
     {

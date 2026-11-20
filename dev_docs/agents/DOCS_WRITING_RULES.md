@@ -6,7 +6,8 @@ edits that answered them. Every rule below was broken somewhere on the site and 
 Read them before writing or revising anything under `public/docs/`. They apply to page agents
 (`docs_notes.py revise`), handoff sessions, the documentation voice pass, and anyone else.
 
-`AGENTS.md` section 8 has the house mechanics (`!!! note` vs `??? aside`, the build, the runner).
+`AGENTS.md` section 8 has the house mechanics (`!!! note` vs `??? aside`, the build, the runner),
+with the long form in `dev_docs/agents/AGENTS_DETAIL.md` section 8.
 This file is about what goes on a page and how it reads.
 
 ## Who the page is for

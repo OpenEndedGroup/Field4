@@ -876,6 +876,10 @@ class RunnerOptions:
     # once shown, and in a small `viewport=` window they stack over the canvas being recorded.
     hide_toasts: bool = False
     clip_at_end: bool = False
+    # `line-heat=true` (capture="editor" only): turn on the editor's live line heat once the box's
+    # editor is open and before the box runs, so the capture shows which lines ran; the capture
+    # fails if no heat was painted. The setting is not left stored in the capture browser.
+    line_heat: bool = False
     # `max-width="1600"`: downscale a finished still (after clip/trim) to at most this many device
     # pixels wide, aspect kept, Lanczos. For captures whose size is set by something other than the
     # capture page, a native-window graphics capture above all (the renderer's window is as large
@@ -3559,6 +3563,10 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
     if wait_output_kind not in {"inline", "display", "all"}:
         raise RuntimeError(f"{page_path}:{line_number} unsupported wait-output-kind={wait_output_kind!r}")
 
+    line_heat = parse_bool(first_attr(attrs, "line-heat", "line_heat"), default=False)
+    if line_heat and capture != "editor":
+        raise RuntimeError(f"{page_path}:{line_number} line-heat=true needs capture=\"editor\", not capture={capture!r}")
+
     if capture == "window-editor":
         default_box_w = 1200.0
         default_box_h = 720.0
@@ -3619,6 +3627,7 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
         fresh_document=parse_bool(first_attr(attrs, "fresh-document", "fresh_document"), default=False),
         hide_toasts=parse_bool(first_attr(attrs, "hide-toasts", "hide_toasts"), default=False),
         clip_at_end=parse_bool(first_attr(attrs, "clip-at-end", "clip_at_end"), default=False),
+        line_heat=line_heat,
         max_width=max_width,
         box_name=first_attr(attrs, "name") or f"{page_path.stem}-{block_index}",
         box_x=parse_float(first_attr(attrs, "x"), default=24.0),
@@ -4293,6 +4302,8 @@ def options_digest_payload(options: RunnerOptions) -> dict[str, Any]:
         payload["hideToasts"] = True
     if options.clip_at_end:
         payload["clipAtEnd"] = True
+    if options.line_heat:
+        payload["lineHeat"] = True
     if options.max_width is not None:
         payload["maxWidth"] = options.max_width
     if box_still_scale(options) is not None:
@@ -5614,6 +5625,51 @@ def invocation_document(options: RunnerOptions) -> str | None:
     return f"{options.document or 'docs-fresh'}-{uuid.uuid4().hex[:8]}"
 
 
+LINE_HEAT_STORAGE_KEY = "afield.lineHeatmap.liveLineHeat.visible"
+
+
+def line_heat_on_commands(options: RunnerOptions) -> list[str]:
+    """`line-heat=true`: after `editor-open`, before the run. Shows live line heat in the open editor
+    (which watches that box, so its next run is counted) without leaving the setting stored."""
+    if not options.line_heat:
+        return []
+    body = (
+        "if (!window.LineHeatmap || !window.globalEditor) throw new Error('line heat: no editor open'); "
+        "LineHeatmap.setVisible(window.globalEditor, 'live', true); "
+        f"window.localStorage.removeItem('{LINE_HEAT_STORAGE_KEY}'); "
+        "const s = LineHeatmap.liveState(); "
+        "if (!s || !s.watching) throw new Error('line heat: the editor is not watching a box'); "
+        "return s.watching;"
+    )
+    return [shlex.join(["page-eval", "--body", body, "--wait-ms", "300", "--timeout", str(options.timeout)])]
+
+
+def line_heat_painted_commands(options: RunnerOptions) -> list[str]:
+    """`line-heat=true`: before the capture, wait (up to 10 s) until the gutter shows heat."""
+    if not options.line_heat:
+        return []
+    body = (
+        "for (let i = 0; i < 100; i += 1) { "
+        "const s = LineHeatmap.liveState(); "
+        "if (s && s.lines.length > 0) return s.lines.length; "
+        "await new Promise((r) => setTimeout(r, 100)); } "
+        "throw new Error('line heat: nothing was painted');"
+    )
+    return [shlex.join(["page-eval", "--body", body, "--timeout", str(options.timeout)])]
+
+
+def line_heat_off_commands(options: RunnerOptions) -> list[str]:
+    """`line-heat=true`: after the capture, hide line heat again (which also ends the watch)."""
+    if not options.line_heat:
+        return []
+    body = (
+        "if (window.LineHeatmap && window.globalEditor) LineHeatmap.setVisible(window.globalEditor, 'live', false); "
+        f"window.localStorage.removeItem('{LINE_HEAT_STORAGE_KEY}'); "
+        "return true;"
+    )
+    return [shlex.join(["page-eval", "--body", body, "--timeout", str(options.timeout)])]
+
+
 def build_backdoor_command(
     *,
     repo_root: Path,
@@ -5871,6 +5927,7 @@ def build_backdoor_command(
                     "--padding", str(options.padding),
                     "--timeout", str(options.timeout),
                 ]))
+                backdoor_commands.extend(line_heat_on_commands(options))
             backdoor_commands.append(shlex.join([
                 "launch" if options.execution == "launch" else "run",
                 options.run_box,
@@ -5896,6 +5953,7 @@ def build_backdoor_command(
             "--padding", str(options.padding),
             "--timeout", str(options.timeout),
         ]))
+        backdoor_commands.extend(line_heat_on_commands(options))
         backdoor_commands.append(shlex.join([
             "launch" if options.execution == "launch" else "run",
             editor_target,
@@ -5946,6 +6004,7 @@ def build_backdoor_command(
         if source_image_min_mtime is not None:
             wait_file_parts.extend(["--newer-than", str(source_image_min_mtime)])
         backdoor_commands.append(shlex.join(wait_file_parts))
+    backdoor_commands.extend(line_heat_painted_commands(options))
 
     if is_video:
         # Use record-* commands instead of screenshot-*
@@ -6087,6 +6146,7 @@ def build_backdoor_command(
             if options.viewport is not None:
                 backdoor_commands.append(shlex.join(["viewport", "default", "--timeout", str(options.timeout)]))
 
+    backdoor_commands.extend(line_heat_off_commands(options))
     if options.execution == "launch" and not options.macro_file:
         backdoor_commands.append(shlex.join([
             "stop",

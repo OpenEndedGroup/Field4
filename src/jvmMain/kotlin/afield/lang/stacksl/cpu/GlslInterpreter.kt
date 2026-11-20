@@ -184,11 +184,11 @@ internal class GlslMachine<V> internal constructor(
 
         is GExprStmt -> { eval(stmt.expr); Flow.NORMAL }
 
-        is GIf -> when (s.truth(eval(stmt.cond))) {
+        is GIf -> { val cond = eval(stmt.cond); when (s.truth(cond)) {
             GlslTruth.TRUE -> exec(stmt.then)
             GlslTruth.FALSE -> stmt.otherwise?.let { exec(it) } ?: Flow.NORMAL
-            GlslTruth.UNKNOWN -> fork({ exec(stmt.then) }, { stmt.otherwise?.let { exec(it) } ?: Flow.NORMAL })
-        }
+            GlslTruth.UNKNOWN -> fork(cond, { exec(stmt.then) }, { stmt.otherwise?.let { exec(it) } ?: Flow.NORMAL })
+        } }
 
         is GFor -> {
             val mark = frame.size
@@ -282,16 +282,19 @@ internal class GlslMachine<V> internal constructor(
         is GUnary -> when (e.op) {
             "-" -> s.negate(eval(e.operand))
             "+" -> eval(e.operand)
-            "!" -> s.boolOfTruth(not(s.truth(eval(e.operand))))
+            "!" -> eval(e.operand).let { v -> s.logic("!", v, v, not(s.truth(v))) }
             else -> throw GlslUnsupported("unary '${e.op}' is not in the StackSL subset")
         }
 
         is GBinary -> binary(e.op, e)
 
-        is GTernary -> when (s.truth(eval(e.cond))) {
-            GlslTruth.TRUE -> eval(e.yes)
-            GlslTruth.FALSE -> eval(e.no)
-            GlslTruth.UNKNOWN -> forkValue({ eval(e.yes) }, { eval(e.no) })
+        is GTernary -> {
+            val cond = eval(e.cond)
+            when (s.truth(cond)) {
+                GlslTruth.TRUE -> eval(e.yes)
+                GlslTruth.FALSE -> eval(e.no)
+                GlslTruth.UNKNOWN -> forkValue(cond, { eval(e.yes) }, { eval(e.no) })
+            }
         }
 
         is GAssign -> {
@@ -320,22 +323,26 @@ internal class GlslMachine<V> internal constructor(
         // `&&` and `||` short-circuit in GLSL, so the right operand must not be evaluated.
         // Kleene's three-valued logic, which is GLSL's two-valued logic whenever nothing is UNKNOWN.
         if (op == "&&") {
-            val l = s.truth(eval(e.left))
+            val lv = eval(e.left)
+            val l = s.truth(lv)
             if (l == GlslTruth.FALSE) return s.boolOfTruth(GlslTruth.FALSE)
-            val r = s.truth(eval(e.right))
-            return s.boolOfTruth(if (r == GlslTruth.FALSE) GlslTruth.FALSE else if (l == GlslTruth.TRUE && r == GlslTruth.TRUE) GlslTruth.TRUE else GlslTruth.UNKNOWN)
+            val rv = eval(e.right)
+            val r = s.truth(rv)
+            return s.logic("&&", lv, rv, if (r == GlslTruth.FALSE) GlslTruth.FALSE else if (l == GlslTruth.TRUE && r == GlslTruth.TRUE) GlslTruth.TRUE else GlslTruth.UNKNOWN)
         }
         if (op == "||") {
-            val l = s.truth(eval(e.left))
+            val lv = eval(e.left)
+            val l = s.truth(lv)
             if (l == GlslTruth.TRUE) return s.boolOfTruth(GlslTruth.TRUE)
-            val r = s.truth(eval(e.right))
-            return s.boolOfTruth(if (r == GlslTruth.TRUE) GlslTruth.TRUE else if (l == GlslTruth.FALSE && r == GlslTruth.FALSE) GlslTruth.FALSE else GlslTruth.UNKNOWN)
+            val rv = eval(e.right)
+            val r = s.truth(rv)
+            return s.logic("||", lv, rv, if (r == GlslTruth.TRUE) GlslTruth.TRUE else if (l == GlslTruth.FALSE && r == GlslTruth.FALSE) GlslTruth.FALSE else GlslTruth.UNKNOWN)
         }
         val a = eval(e.left)
         val b = eval(e.right)
         return when (op) {
-            "==" -> s.boolOfTruth(s.equalTruth(a, b))
-            "!=" -> s.boolOfTruth(not(s.equalTruth(a, b)))
+            "==" -> s.logic("==", a, b, s.equalTruth(a, b))
+            "!=" -> s.logic("!=", a, b, not(s.equalTruth(a, b)))
             else -> s.binary(op, a, b)
         }
     }
@@ -365,22 +372,22 @@ internal class GlslMachine<V> internal constructor(
     }
 
     /** Join the state [other] left with the current one, slot by slot. */
-    private fun mergeWith(other: Saved) {
+    private fun mergeWith(cond: V, other: Saved) {
         val mine = frame.snapshot()
         if (mine.size != other.frameValues.size) throw GlslUnsupported("an undecided branch changed the frame's shape")
         @Suppress("UNCHECKED_CAST")
         for (i in mine.indices) {
             val a = other.frameValues[i] as V
             val b = mine[i] as V
-            if (a !== b) frame.setAt(i, s.join(a, b))
+            if (a !== b) frame.setAt(i, s.select(cond, a, b))
         }
         for ((key, a) in other.globals) {
             val b = globals[key] ?: continue
-            if (a !== b) globals[key] = s.join(a, b)
+            if (a !== b) globals[key] = s.select(cond, a, b)
         }
         val ra = other.returnValue
         val rb = returnValue
-        returnValue = if (ra == null || rb == null) ra ?: rb else if (ra === rb) ra else s.join(ra, rb)
+        returnValue = if (ra == null || rb == null) ra ?: rb else if (ra === rb) ra else s.select(cond, ra, rb)
     }
 
     /**
@@ -390,7 +397,7 @@ internal class GlslMachine<V> internal constructor(
      * and sets [maybeDiscarded]. Arms that leave by different routes cannot be joined into one
      * continuation, so that is refused rather than approximated.
      */
-    private fun fork(thenArm: () -> Flow, elseArm: () -> Flow): Flow {
+    private fun fork(cond: V, thenArm: () -> Flow, elseArm: () -> Flow): Flow {
         val start = save()
         val fa = thenArm()
         val afterThen = save()
@@ -403,19 +410,19 @@ internal class GlslMachine<V> internal constructor(
             fa != fb -> throw GlslUnsupported(
                 "an undecided branch leaves by two routes ($fa and $fb), which an interval run cannot join"
             )
-            else -> { mergeWith(afterThen); fa }
+            else -> { mergeWith(cond, afterThen); fa }
         }
     }
 
     /** [fork] for a `?:`: both values, from the same state, joined. */
-    private fun forkValue(yes: () -> V, no: () -> V): V {
+    private fun forkValue(cond: V, yes: () -> V, no: () -> V): V {
         val start = save()
         val a = yes()
         val afterYes = save()
         load(start)
         val b = no()
-        mergeWith(afterYes)
-        return s.join(a, b)
+        mergeWith(cond, afterYes)
+        return s.select(cond, a, b)
     }
 
     /** Write [value] through an lvalue: a variable, a swizzle of one, or a component of one. */

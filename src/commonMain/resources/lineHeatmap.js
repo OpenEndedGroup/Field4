@@ -1,4 +1,4 @@
-import { sendWithReply } from "./afield.mjs";
+import { send, sendWithReply } from "./afield.mjs";
 import { profileHeatLines } from "./profileTimelineModel.js";
 
 const LineHeatmap = (() => {
@@ -9,8 +9,17 @@ const LineHeatmap = (() => {
     const HEATMAP_INSET_PX = 3;
     const STORAGE_KEYS = {
         churn: "afield.lineHeatmap.historyChurn.visible",
-        exec: "afield.lineHeatmap.executionHistory.visible"
+        exec: "afield.lineHeatmap.executionHistory.visible",
+        live: "afield.lineHeatmap.liveLineHeat.visible"
     };
+    // Live line heat (afield.runtime.bytecode.LineHeat): a line's heat is its execution count,
+    // decaying with LIVE_TAU_MS; levels are log-scaled against a reference that decays more slowly,
+    // so a line that stops running cools through the ramp and then disappears.
+    const LIVE_TAU_MS = 800;
+    const LIVE_REF_TAU_MS = 4000;
+    const LIVE_FLOOR = 0.05;
+    const LIVE_TICK_MS = 100;
+    const LIVE_WATCH_REFRESH_MS = 5000;
 
     function clamp01(v) {
         return Math.max(0, Math.min(1, Number(v) || 0));
@@ -119,6 +128,9 @@ const LineHeatmap = (() => {
     background: var(--afield-exec-bar-color, transparent);
     pointer-events: none;
 }
+.monaco-editor .line-numbers.afield-line-heat.afield-line-heat-live {
+    background: linear-gradient(to right, transparent 0 var(--afield-line-heatmap-inset), var(--afield-live-heat-color, transparent) var(--afield-line-heatmap-inset));
+}
 .monaco-editor .afield-profile-heat {
     width: 6px !important;
     margin-left: 3px;
@@ -136,6 +148,9 @@ const LineHeatmap = (() => {
 .monaco-editor .line-numbers.afield-line-heat-exec-${i} {
     --afield-exec-bar-width: ${execWidth}%;
     --afield-exec-bar-color: ${execColor};
+}
+.monaco-editor .line-numbers.afield-line-heat-live-${i} {
+    --afield-live-heat-color: ${rybHeatColor(i, 0.30 + 0.55 * i / LEVELS)};
 }
 .monaco-editor .afield-profile-heat-cpu-${i} {
     background: rgba(72, 201, 255, ${0.14 + 0.86 * i / LEVELS});
@@ -155,14 +170,19 @@ const LineHeatmap = (() => {
                 churnDecorations: editor.createDecorationsCollection([]),
                 execDecorations: editor.createDecorationsCollection([]),
                 profileDecorations: editor.createDecorationsCollection([]),
+                liveDecorations: editor.createDecorationsCollection([]),
                 profile: null,
+                live: { key: null, lines: new Map(), ref: 0, last: 0, timer: null },
+                liveWatchKey: null,
+                liveWatchSentAt: 0,
                 churnLines: [],
                 requestId: 0,
                 execRequestId: 0,
                 refreshTimer: null,
                 visible: {
                     churn: storedVisible("churn"),
-                    exec: storedVisible("exec")
+                    exec: storedVisible("exec"),
+                    live: storedVisible("live")
                 }
             };
             STATE.set(editor, state);
@@ -297,6 +317,7 @@ const LineHeatmap = (() => {
 
     function refresh(editor) {
         if (!editor) return;
+        syncLiveWatch(editor);
         refreshProfile(editor);
         refreshExecution(editor);
         refreshChurn(editor);
@@ -304,6 +325,7 @@ const LineHeatmap = (() => {
 
     function scheduleRefresh(editor, includeChurn = false) {
         if (!editor) return;
+        syncLiveWatch(editor);
         refreshProfile(editor);
         const state = stateFor(editor);
         if (state.refreshTimer != null) clearTimeout(state.refreshTimer);
@@ -323,6 +345,7 @@ const LineHeatmap = (() => {
         // The editor can change models or rewrite the current one when navigating between boxes.
         editor.onDidChangeModelContent(() => {
             stateFor(editor).profileDecorations.clear();
+            clearLive(editor);
             scheduleRefresh(editor, true);
         });
         editor.onDidChangeModel(() => scheduleRefresh(editor, true));
@@ -348,6 +371,109 @@ const LineHeatmap = (() => {
         })));
     }
 
+    // FNV-1a over UTF-16 units with \r\n read as \n: LineHeat.codeHash on the server.
+    function codeHash(text) {
+        const s = String(text || "");
+        let h = 0x811c9dc5 | 0;
+        for (let i = 0; i < s.length; i += 1) {
+            const c = s.charCodeAt(i);
+            if (c === 13 && s.charCodeAt(i + 1) === 10) continue;
+            h = Math.imul(h ^ c, 16777619);
+        }
+        return h | 0;
+    }
+
+    // Tell the server which box this editor has open while live heat is shown (it instruments that
+    // box from its next run); re-sent now and then so a reconnected socket is watching again.
+    function syncLiveWatch(editor, force = false) {
+        if (!editor) return;
+        const state = stateFor(editor);
+        const context = state.visible.live ? selectedContext(editor) : null;
+        const key = context ? `${context.uid}\u001f${context.property}` : null;
+        const now = Date.now();
+        if (key !== state.live.key) clearLive(editor);
+        state.live.key = key;
+        if (key === state.liveWatchKey && !force && (key === null || now - state.liveWatchSentAt < LIVE_WATCH_REFRESH_MS)) return;
+        state.liveWatchKey = key;
+        state.liveWatchSentAt = now;
+        if (context) send("line-heat-watch", { uid: context.uid, property: context.property, on: true });
+        else send("line-heat-watch", { uid: "", property: "code", on: false });
+    }
+
+    function clearLive(editor) {
+        const state = stateFor(editor);
+        state.live.lines.clear();
+        state.live.ref = 0;
+        if (state.live.timer != null) { clearInterval(state.live.timer); state.live.timer = null; }
+        state.liveDecorations.clear();
+    }
+
+    function liveLevel(heat, ref) {
+        if (heat <= 0 || ref <= 0) return 0;
+        const t = Math.log1p(heat) / Math.max(0.000001, Math.log1p(ref));
+        return Math.max(1, Math.min(LEVELS, Math.round(t * (LEVELS - 1)) + 1));
+    }
+
+    function paintLive(editor) {
+        const state = stateFor(editor), live = state.live;
+        const now = Date.now();
+        const dt = live.last ? now - live.last : 0;
+        live.last = now;
+        const decay = Math.exp(-dt / LIVE_TAU_MS);
+        let peak = 0;
+        for (const [line, entry] of live.lines) {
+            entry.heat *= decay;
+            if (entry.heat < LIVE_FLOOR) live.lines.delete(line);
+            else peak = Math.max(peak, entry.heat);
+        }
+        live.ref = Math.max(peak, live.ref * Math.exp(-dt / LIVE_REF_TAU_MS));
+        const decorations = [];
+        for (const [line, entry] of live.lines) {
+            const l = liveLevel(entry.heat, live.ref);
+            if (l <= 0) continue;
+            decorations.push({
+                range: new monaco.Range(line, 1, line, 1),
+                options: {
+                    isWholeLine: true,
+                    stickiness: 1,
+                    lineNumberClassName: `afield-line-heat afield-line-heat-live afield-line-heat-live-${l}`,
+                    hoverMessage: heatmapHoverLabel(`line heat: ${entry.total} executions since watching (+${entry.delta} last update)`)
+                }
+            });
+        }
+        state.liveDecorations.set(decorations);
+        if (live.lines.size === 0 && live.timer != null) { clearInterval(live.timer); live.timer = null; }
+    }
+
+    // One `line-heat` update (LineHeatUpdate). Dropped unless it is for the box and property this
+    // editor shows and was mapped onto exactly the text the editor holds now.
+    function applyLiveHeat(payload) {
+        const editor = window.globalEditor;
+        if (!editor || !payload) return false;
+        install(editor);
+        const state = stateFor(editor);
+        if (!state.visible.live) return false;
+        const context = selectedContext(editor);
+        if (!context || context.uid !== String(payload.uid || "") || context.property !== String(payload.property || "code")) return false;
+        if (codeHash(context.text) !== (Number(payload.codeHash) | 0)) { clearLive(editor); return false; }
+        const live = state.live;
+        if (live.lines.size === 0) live.last = Date.now();
+        for (const item of Array.isArray(payload.lines) ? payload.lines : []) {
+            const line = Number(item.line) || 0;
+            const delta = Number(item.delta) || 0;
+            if (line < 1 || delta <= 0) continue;
+            const entry = live.lines.get(line) || { heat: 0, total: 0, delta: 0 };
+            entry.heat += delta;
+            entry.delta = delta;
+            entry.total = Number(item.total) || entry.total + delta;
+            live.lines.set(line, entry);
+        }
+        ensureStyles();
+        paintLive(editor);
+        if (live.timer == null && live.lines.size > 0) live.timer = setInterval(() => paintLive(editor), LIVE_TICK_MS);
+        return true;
+    }
+
     // Ephemeral capture data, independent of the persisted churn / execution-density toggles.
     function setProfile(editor, profile) {
         if (!editor) return;
@@ -357,10 +483,15 @@ const LineHeatmap = (() => {
     }
 
     function setVisible(editor, kind, value) {
-        if (!editor || (kind !== "churn" && kind !== "exec")) return;
+        if (!editor || (kind !== "churn" && kind !== "exec" && kind !== "live")) return;
         const state = stateFor(editor);
         state.visible[kind] = !!value;
         storeVisible(kind, state.visible[kind]);
+        if (kind === "live") {
+            if (!state.visible.live) clearLive(editor);
+            syncLiveWatch(editor, true);
+            return;
+        }
         if (!state.visible[kind]) {
             if (kind === "churn") state.churnDecorations.set([]);
             else state.execDecorations.set([]);
@@ -382,6 +513,11 @@ const LineHeatmap = (() => {
             id: "afield.toggleHistoryEditChurnHeatmap",
             label: "Toggle History Edit Churn Heatmap",
             run: () => toggleVisible(editor, "churn")
+        });
+        editor.addAction({
+            id: "afield.toggleLiveLineHeat",
+            label: "Toggle Live Line Heat (counts executions from the box's next run)",
+            run: () => toggleVisible(editor, "live")
         });
         editor.addAction({
             id: "afield.toggleExecutionHistoryHeatmap",
@@ -409,7 +545,18 @@ const LineHeatmap = (() => {
         scheduleExecutionRefreshFor(uid, property);
     }
 
-    return { install, refresh, scheduleRefresh, refreshExecution, refreshChurn, setVisible, toggleVisible, recordExecution, recordExecutionRange, setProfile };
+    function liveState(editor = window.globalEditor) {
+        if (!editor) return null;
+        const state = stateFor(editor);
+        return {
+            visible: state.visible.live,
+            watching: state.liveWatchKey,
+            ref: state.live.ref,
+            lines: [...state.live.lines].map(([line, e]) => ({ line, heat: e.heat, total: e.total, level: liveLevel(e.heat, state.live.ref) }))
+        };
+    }
+
+    return { install, refresh, scheduleRefresh, refreshExecution, refreshChurn, setVisible, toggleVisible, recordExecution, recordExecutionRange, setProfile, applyLiveHeat, liveState, codeHash };
 })();
 
 window.LineHeatmap = LineHeatmap;

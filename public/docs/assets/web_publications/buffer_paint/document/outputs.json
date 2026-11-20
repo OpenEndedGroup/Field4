@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-19T20:52:57.759Z",
+  "documentName": "buffer_paint",
+  "outputs": [
+    {
+      "uid": "buffer_paint_delay_line",
+      "channel": "ring",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 457,
+      "height": 244,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "buffer_paint_delay_line",
+      "channel": "listen",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 308,
+      "height": 188,
+      "path": "outputs/1.html"
+    }
+  ]
+}

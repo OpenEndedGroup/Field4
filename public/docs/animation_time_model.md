@@ -656,6 +656,11 @@ It runs on one thread, named `field-runloop-main`. `idle()` is 64 `Thread.onSpin
 a 50 µs `LockSupport.parkNanos` by default, tunable with `AFIELD_RUNLOOP_IDLE` and friends. Nothing
 here waits for a display, which is why a frame is a unit of work rather than of time.
 
+Audio runs on a thread of its own. A synth graph a box is playing belongs to that thread, and if a
+box renders it again from the Runloop, Field reports the box line;
+[Rendering from the wrong thread](sound_paths.md#rendering-from-the-wrong-thread) shows the report
+and the fix.
+
 The main loop keeps a queue of work, and one frame runs everything in the queue. (`main` is a
 `Framer`, Field's coroutine dispatcher.) Scheduling work appends it to the queue; `frame()` swaps in
 a fresh queue and runs everything that was in the old one, to completion:

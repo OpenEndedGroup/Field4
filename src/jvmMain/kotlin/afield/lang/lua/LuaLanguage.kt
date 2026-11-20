@@ -153,9 +153,11 @@ class LuaExecution(val inside: Box) : BoxExecution {
                 trace.finish(false, "no Lua state")
                 return@inMain
             }
-            // A new generation ends the previous launch's frame loop, as Pd's does.
-            val generation = inside.runGeneration.getOrPut(strand) { -1 } + 1
-            inside.runGeneration[strand] = generation
+            // A new generation ends the previous launch's frame loop, as Pd's does. A selection run
+            // into a launched box is not a new run: it leaves the loop going (norns.enc(2, 1) while a
+            // norns script plays).
+            val generation = if (fragment && !launch) inside.runGeneration[strand] ?: -1
+                else (inside.runGeneration.getOrPut(strand) { -1 } + 1).also { inside.runGeneration[strand] = it }
             if (!fragment) lua.call("__field_halt")
             clearErrorStatus(inside, trace.reply, originSession)
 
@@ -506,7 +508,13 @@ internal fun luaRender(mini: String, cycles: Int, cps: Double, voice: PatVoiceSp
 internal const val LUA_GAIN = 0.3
 
 /** The raw Kotlin functions the prelude wraps into a box's `print`, `display`, `box`, `lines`, …. */
-internal fun luaHandlersFor(box: Box): Map<String, LuaState.Handler> = soundHandlersFor(box) + mapOf(
+internal fun luaHandlersFor(box: Box): Map<String, LuaState.Handler> = soundHandlersFor(box) + nornsHandlersFor(box) + mapOf(
+    // The Lua modules Field ships beside the prelude, loaded by `require`: only names in LUA_MODULES.
+    "module" to LuaState.Handler { _, args ->
+        val name = args.getOrNull(0)?.toString() ?: ""
+        require(name in LUA_MODULES) { "Field has no Lua module '$name'" }
+        listOf(LuaState::class.java.getResource("/afield/lua/$name.lua")?.readText() ?: error("afield/lua/$name.lua is missing"))
+    },
     "print" to LuaState.Handler { _, args -> box.println(args.firstOrNull()?.toString() ?: ""); emptyList() },
     "display" to LuaState.Handler { _, args ->
         when (args.size) {
@@ -631,6 +639,9 @@ private fun soundHandlersFor(box: Box): Map<String, LuaState.Handler> {
         },
     )
 }
+
+/** The modules under `afield/lua/` a box can `require`. */
+private val LUA_MODULES = setOf("norns")
 
 private val READ_ONLY = setOf("children", "parents", "id", "code_language", "_tombstone")
 

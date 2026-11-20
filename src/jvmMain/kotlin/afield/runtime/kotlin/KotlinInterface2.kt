@@ -545,6 +545,7 @@ class KotlinInterface2(
         publishFieldWarnings(warnings)
         if (result is ResultWithDiagnostics.Success) {
             codeUseSnippetIds[result.value] = snippetId
+            afield.runtime.bytecode.BoxBytecode.noteSource(result.value.get(), s)
             // Every successful compile is registered, cached or not: its declarations may shadow a cached entry's.
             try {
                 rerunCache.recordCompile(cacheKey, s, result.value)
@@ -566,9 +567,23 @@ class KotlinInterface2(
     }
 
 
-    /** How a stall report names this engine's box (see [afield.runtime.lifecycle.BoxInterrupt]). */
-    private fun interruptLabel(): String =
-        (associatedBox as? Box)?.let { "'${it.name}' (${it.id})" } ?: "box code"
+    /**
+     * What the box-bytecode passes are told about the snippet about to run (see
+     * [afield.runtime.bytecode.BoxBytecode]): its box (held weakly), source property, the text it was
+     * compiled from, and how a stall report names it.
+     */
+    private fun snippetOrigin(script: CompiledScript, box: Box?): afield.runtime.bytecode.SnippetOrigin {
+        val property = sourceProperty
+        val weak = box?.let { java.lang.ref.WeakReference(it) }
+        return afield.runtime.bytecode.SnippetOrigin(
+            boxId = box?.id,
+            property = property,
+            // The engine's own box names a stall, as it always has, even when [box] is an implicit.
+            label = (associatedBox as? Box)?.let { "'${it.name}' (${it.id})" } ?: "box code",
+            sourceText = afield.runtime.bytecode.BoxBytecode.sourceOf(script),
+            classLoader = classLoader,
+        ) { weak?.get()?.properties?.get(property) as? String }
+    }
 
     suspend fun evaluate(
         e: LinkedSnippet<out CompiledScript>, updateContext: Boolean = false
@@ -587,8 +602,10 @@ class KotlinInterface2(
                     }
                 }
 
-                afield.runtime.lifecycle.BoxInterrupt.instrument(e.get(), interruptLabel())
-                r = evaluator.eval(e, evalConfig)
+                afield.runtime.bytecode.BoxBytecode.instrument(e.get(), snippetOrigin(e.get(), associatedBox as? Box))
+                // A run boundary for per-function cost: reconciles frames an exception left open.
+                val cost = afield.runtime.bytecode.BoxCost.begin()
+                r = try { evaluator.eval(e, evalConfig) } finally { afield.runtime.bytecode.BoxCost.end(cost, (associatedBox as? Box)?.id) }
                 if (r is ResultWithDiagnostics.Success) {
                     val evalResult = r.value.get().result
                     val scriptInstance = evalResult.scriptInstance
@@ -649,8 +666,11 @@ class KotlinInterface2(
                     }
                 }
 
-                afield.runtime.lifecycle.BoxInterrupt.instrument(e.get(), interruptLabel())
-                r = evaluator.eval(e, evalConfig)
+                val costBox = (implicits.firstOrNull { it is Box } as? Box) ?: associatedBox as? Box
+                afield.runtime.bytecode.BoxBytecode.instrument(e.get(), snippetOrigin(e.get(), costBox))
+                // A run boundary for per-function cost: reconciles frames an exception left open.
+                val cost = afield.runtime.bytecode.BoxCost.begin()
+                r = try { evaluator.eval(e, evalConfig) } finally { afield.runtime.bytecode.BoxCost.end(cost, costBox?.id) }
                 if (r is ResultWithDiagnostics.Success) {
                     val evalResult = r.value.get().result
                     val scriptInstance = evalResult.scriptInstance

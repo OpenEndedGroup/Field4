@@ -69,7 +69,7 @@ default**. That inversion is the single most useful sentence on either page.
 
 ## HTTP read routes
 
-54 routes, 41 of them with no route-specific guard. `guard` is computed from the handler
+55 routes, 42 of them with no route-specific guard. `guard` is computed from the handler
 body by the docs-route vocabulary the mutating census also uses
 (`docsAnnotations.kt:739#fun ApplicationCall.refuseUnlessSameSiteDocsClient`,
 `docsAnnotations.kt:723#fun ApplicationCall.refuseUnlessLocalDocsClient`); there is no `install(Authentication)`
@@ -91,6 +91,7 @@ mutation; it is a different one.
 | `GET /api/ai-local-feedback` | `Server.kt` | none |
 | `GET /api/ai-tool-use-improvement` | `Server.kt` | none |
 | `GET /api/ai-tool-use-improvement/view` | `Server.kt` | none |
+| `GET /api/box-instrumentation` | `Server.kt` | none |
 | `GET /api/chatlog/blob` | `ChatlogRoutes.kt` | loopback + same-site |
 | `GET /api/chatlog/lens` | `ChatlogRoutes.kt` | loopback + same-site |
 | `GET /api/code-use/failures` | `Server.kt` | none |
@@ -296,7 +297,7 @@ Ktor's containment check applies to it as it does to the five above.
 
 ## The `/ws` command surface
 
-157 command names, in the `handlers` table. This is the real command API, it is roughly twice
+159 command names, in the `handlers` table. This is the real command API, it is roughly twice
 the size of the HTTP write surface, and until this page nothing enumerated it. It is not the
 only `/ws` dispatch table: ten more channels live in `rawHandlers` and are counted in
 [their own section](#the-other-ws-dispatch-table-rawhandlers) below.
@@ -336,6 +337,8 @@ the file, and the reach is described per file below in prose that a human checke
 | `visualizers.kt` | 1 |
 | `StrokeSketch.kt` | 1 |
 | `FileChooser.kt` | 1 |
+| `BoxCost.kt` | 1 |
+| `LineHeat.kt` | 1 |
 
 What each of those reaches, checked against the code rather than inferred from the name:
 
@@ -358,6 +361,8 @@ What each of those reaches, checked against the code rather than inferred from t
 | `VoiceTranscriber.kt` | AI4 push-to-talk: starts (once) and feeds a local Python Whisper worker, `python/fieldvoice/whisper_worker.py`, under the interpreter Field's Python boxes resolved or `FIELD_VOICE_PYTHON`. Each clip is written to a temp file, transcribed and deleted; the reply is text. No document or box state. No guard beyond the `/ws` boundary, decided 2026-10-04: the client supplies only audio bytes and prompt text, never a path, executable or code, so the worst a hostile frame can do is spend GPU time or start the worker |
 | `OutputRequests.kt` | a live box-registered JSON callback addressed by a run-specific random binding ID. Bounded messages and a 64-request queue; execution is serialized with the owner box/document context. Re-run, stop or deletion revokes the binding; read-only documents refuse requests. The callback may run arbitrary trusted box code. The binding ID is a capability, not separate user authentication; transport uses the existing `/ws` boundary |
 | `ButtonControlHandler.kt` | one control-widget callback |
+| `BoxCost.kt` | `box-cost`: turns per-function timing on or off for one box of the attached session, clears it, or reads the in-memory snapshot (names and timings, no source). Reads and writes nothing on disk, runs no code beyond the box's own runs |
+| `LineHeat.kt` | `line-heat-watch`: points one box property's line-hit counts at the caller's session, or stops. In memory only; reads and writes nothing on disk, runs no code |
 | `CoroutineProfiling.kt` | starts, latches, and reads bounded in-memory coroutine captures for the attached document; at most one recording process-wide, with a 30-second maximum |
 | `DocsSearchInstaller.kt` | documentation search |
 | `dependencies.kt` | the attached document's box-to-box dependency record (`PropertyDependencies`), for the dependency layer: `get` reads it, `clear` forgets it in memory, and the autosave then writes the empty record to `<document>/dependencies.edn` unless the document is read-only. The client sends no path, code or box id. No guard beyond the `/ws` boundary, decided 2026-10-09: the worst a hostile frame can do is erase that record, which box runs rebuild |
@@ -435,6 +440,7 @@ reach to a client that `agent-eval` and `launch-all` already let run arbitrary c
 | `arrange-by-presentation` | `Server.kt` |
 | `array-update` | `visualizers.kt` |
 | `blame-history-line` | `history.kt` |
+| `box-cost` | `BoxCost.kt` |
 | `button-update` | `ButtonControlHandler.kt` |
 | `chat_history` | `Ai4Installer.kt` |
 | `chat_input` | `Ai4Installer.kt` |
@@ -500,6 +506,7 @@ reach to a client that `agent-eval` and `launch-all` already let run arbitrary c
 | `launch-all` | `executing.kt` |
 | `launch-batch` | `executing.kt` |
 | `launch-fragment` | `executing.kt` |
+| `line-heat-watch` | `LineHeat.kt` |
 | `line-note` | `Server.kt` |
 | `live-output-iframe-ready` | `Server.kt` |
 | `live-output-iframe-reply` | `Server.kt` |

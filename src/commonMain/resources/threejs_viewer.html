@@ -325,6 +325,9 @@
         #hud select:focus-visible { color: var(--accent); }
         #hud #xray-toggle.is-active, #hud #realism-toggle.is-active, #hud #path-trace-toggle.is-active, #hud #camera-link.is-active { background: var(--accent); color: #000; }
         #hud #path-trace-readout { margin-left: .5em; font-weight: 400; opacity: .75; }
+        #hud .section-control { min-width: 22px; padding: 0 6px; }
+        #hud .section-control.is-icon { width: 24px; padding: 0; }
+        #hud .section-control.is-active { background: var(--accent); color: #000; }
         #hud #path-trace-readout:empty { display: none; }
         #xray-tools { flex-wrap: wrap; }
         #viewer-tools { display: contents; }
@@ -412,6 +415,13 @@
             </button>
             <span class="hud-slider hidden" id="section-slider-wrap">
                 <input type="range" id="section-slider" min="0" max="1000" value="500" aria-label="Section position">
+                <button type="button" class="hud-button section-control" data-section-axis="x" title="Cut across the X axis">X</button>
+                <button type="button" class="hud-button section-control" data-section-axis="y" title="Cut across the Y axis">Y</button>
+                <button type="button" class="hud-button section-control" data-section-axis="z" title="Cut across the Z axis">Z</button>
+                <button type="button" class="hud-button is-icon section-control" data-section-flip aria-label="Flip the section" title="Flip: keep the other half">
+                    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 2v12M2.4 4.6 5 2l2.6 2.6M11 14V2M8.4 11.4 11 14l2.6-2.6"></path></svg>
+                </button>
+                <button type="button" class="hud-button section-control" data-section-face title="Align to a face: click a surface and the cut lies on it, facing you">face</button>
             </span>
             <span class="hud-slider" id="explode-slider-wrap">
                 <span>explode</span>
@@ -629,7 +639,7 @@ const viewerTools = createViewerTools({
     context: element => {
         const overlays = new THREE.Group(); scene.add(overlays);
         return {THREE, camera, controls, overlays, inspector: window.FieldInspector, surface: renderer.domElement,
-            interactionBusy: () => featureModeEl.value !== 'off' || inspectorState.measuring,
+            interactionBusy: () => featureModeEl.value !== 'off' || inspectorState.measuring || inspectorState.sectionPicking,
             sources: () => featureSources().map(s => ({id:s.id, label:s.label, object:s.slot.object})),
             // Parts by their stable id, with the layer path and metadata the box gave them.
             parts: () => viewerParts(), part: id => viewerParts().find(p => p.id === id) || null,
@@ -1299,7 +1309,12 @@ const PATH_TRACE_MODULES = {shim: '/vendor/three-gpu-pathtracer/0.0.28/cube_uv_r
     webgpu: '/vendor/three/0.187.0/three.webgpu.js', gpuTracer: '/vendor/three-gpu-pathtracer/0.0.28/webgpu/index.module.js',
     weights: '/vendor/oidn-webgpu/0.6.0/rt_hdr_alb_nrm.tza'};
 const pathTrace = {tracer: null, gpu: null, loading: null, failed: null, sceneKey: null, cameraKey: null, envKey: null,
-    rebuildAt: 0, pending: null, depthOnly: new THREE.MeshBasicMaterial({colorWrite: false, side: THREE.DoubleSide})};
+    rebuildAt: 0, pending: null, depthOnly: new THREE.MeshBasicMaterial({colorWrite: false, side: THREE.DoubleSide}),
+    // A cap's depth, unclipped: it lies in the plane, and the plane would clip it on the flip side.
+    depthOnlyCap: new THREE.MeshBasicMaterial({colorWrite: false, side: THREE.DoubleSide, polygonOffset: true,
+        polygonOffsetFactor: -1, polygonOffsetUnits: -1}),
+    // The clipped stand-in geometry each traced mesh is baked as while a section is on, by object uuid.
+    clipped: new Map()};
 function pathTraceActive() {
     return pathTraceState.on && !isPublication && panelState.cameras.length <= 1 && !xrayState.enabled && studioRoot.visible;
 }
@@ -1375,9 +1390,13 @@ async function loadGpuPathTracer() {
     renderer.domElement.before(canvas);
     return gpu;
 }
-/** What the tracer sees: lit, opaque-enough surfaces and the studio ground. Everything else is raster. */
+/**
+ * What the tracer sees: lit, opaque-enough surfaces, the studio ground and, while a section is on, its
+ * caps. Everything else is raster.
+ */
 function pathTraced(o) {
     if (!o.isMesh || !o.visible) return false;
+    if (o.userData.sectionCap) return !!inspectorState.cut && !!o.userData.tracedMaterial;
     if (o === studioGround) return studioGround.visible && studioRoot.visible;
     const m = o.material;
     return !Array.isArray(m) && !!m?.isMeshStandardMaterial && m.opacity > 0.05;
@@ -1385,6 +1404,67 @@ function pathTraced(o) {
 function eachPathTraced(fn) {
     baseGeometryRoot.traverseVisible(o => { if (pathTraced(o)) fn(o); });
     if (pathTraced(studioGround)) fn(studioGround);
+    if (inspectorState.cut) inspectorRoot.traverseVisible(o => { if (o.userData.sectionCap && pathTraced(o)) fn(o); });
+}
+
+// ---------------------------------------------------------------------------------------------
+// Path tracing a section.
+//
+// Clipping planes are a raster feature: the tracer bakes whole meshes into its BVH and would trace the
+// figure uncut, with the caps — unlit overlays — pasted over it. So while a section is on, the tracer is
+// handed the cut as geometry instead. Each traced mesh is baked as `sectionClipTriangles` of itself,
+// clipped in its own local space so its world matrix still places it, and each cap is baked as a lit
+// surface in its part's colour, roughness and metalness. Light then falls into the cut, the cut face
+// shades and casts shadows, and the overlay pass that draws annotations over the trace takes its depth
+// from the clipped meshes rather than from the half that is gone.
+// ---------------------------------------------------------------------------------------------
+
+/** The section plane in an object's local space, as `{ n, d }`. */
+function pathTraceLocalCut(o) {
+    const cut = inspectorState.cut;
+    o.updateWorldMatrix(true, false);
+    const plane = new THREE.Plane(new THREE.Vector3(cut.n[0], cut.n[1], cut.n[2]), cut.d)
+        .applyMatrix4(o.matrixWorld.clone().invert());
+    return { n: [plane.normal.x, plane.normal.y, plane.normal.z], d: plane.constant };
+}
+
+/** The geometry the tracer bakes for a mesh: its own, or, while a section is on, it clipped. */
+function pathTraceGeometryOf(o) {
+    const cut = inspectorState.cut;
+    if (!cut && pathTrace.clipped.size) {
+        pathTrace.clipped.forEach((entry) => entry.geometry.dispose());
+        pathTrace.clipped.clear();
+    }
+    if (!cut || o === studioGround || o.userData.sectionCap) return o.geometry;
+    const g = o.geometry, position = g.getAttribute('position');
+    if (!position || position.isInterleavedBufferAttribute) return g;
+    const local = pathTraceLocalCut(o);
+    const key = [g.id, position.version, g.index ? g.index.version : -1, ...local.n, local.d].join('|');
+    const cached = pathTrace.clipped.get(o.uuid);
+    if (cached && cached.key === key) return cached.geometry;
+    const names = Object.keys(g.attributes).filter((name) => name !== 'position' && !g.attributes[name].isInterleavedBufferAttribute);
+    const clipped = sectionClipTriangles(position.array, g.index ? g.index.array : null, local,
+        names.map((name) => ({ array: g.attributes[name].array, itemSize: g.attributes[name].itemSize })));
+    const out = new THREE.BufferGeometry();
+    out.setAttribute('position', new THREE.Float32BufferAttribute(clipped.positions, 3));
+    names.forEach((name, k) => {
+        const source = g.attributes[name];
+        out.setAttribute(name, new THREE.BufferAttribute(new source.array.constructor(clipped.attributes[k]), source.itemSize, source.normalized));
+    });
+    if (cached) cached.geometry.dispose();
+    pathTrace.clipped.set(o.uuid, { key, geometry: out });
+    return out;
+}
+
+/** The material the tracer bakes for a mesh: a cap's lit stand-in, or the mesh's own. */
+function pathTraceMaterialOf(o) {
+    return o.userData.tracedMaterial || o.material;
+}
+
+/** Whether a mesh has anything left to trace once the section has cut it. */
+function pathTraceHasTriangles(o) {
+    const position = pathTraceGeometryOf(o).getAttribute('position');
+    return !!position && position.count >= 3;
 }
 /**
  * Numbers that change when what the tracer baked does, apart: which geometry is traced, where it is, its
@@ -1394,11 +1474,15 @@ function eachPathTraced(fn) {
 function pathTraceKeys() {
     const k = {geometry: 17, transform: 17, material: 17, light: 17};
     const mix = (key, v) => { k[key] = (Math.imul(k[key], 31) + (Number.isFinite(v) ? Math.round(v * 1e4) : 0)) | 0; };
+    const cut = inspectorState.cut;
+    if (cut) { for (const v of cut.n) mix('geometry', v); mix('geometry', cut.d); }
     eachPathTraced(o => {
-        const g = o.geometry, m = o.material, p = g.getAttribute('position');
+        const g = o.geometry, m = pathTraceMaterialOf(o), p = g.getAttribute('position');
         mix('geometry', o.id); mix('geometry', g.id); mix('geometry', p?.version ?? 0); mix('geometry', p?.count ?? 0);
         mix('geometry', g.index?.version ?? 0); mix('geometry', m.id);
         for (const e of o.matrixWorld.elements) mix('transform', e);
+        // A section clips in each mesh's local space, so a mesh that moves under it has to be re-clipped.
+        if (cut) for (const e of o.matrixWorld.elements) mix('geometry', e);
         // The fields the tracer reads, not `m.version`: three draws a transparent DoubleSide material
         // back faces then front, setting needsUpdate before each, so its version climbs every raster
         // frame. Keyed on it, the tracer restarted every frame and never got past compiling, while the
@@ -1424,15 +1508,26 @@ function pathTraceCameraKey() {
 }
 /** Bake the traced surfaces into the tracer's BVH: hide everything else while its generator walks the scene. */
 function rebuildPathTraceScene() {
-    const hidden = [];
+    const hidden = [], swapped = [];
     scene.traverse(o => { if (o.visible && o.isMesh && !pathTraced(o)) { o.visible = false; hidden.push(o); } });
+    // While a section is on: the clipped geometry and the caps' lit materials, for the length of the bake.
+    eachPathTraced(o => {
+        const geometry = pathTraceGeometryOf(o), material = pathTraceMaterialOf(o);
+        if (geometry === o.geometry && material === o.material) return;
+        swapped.push([o, o.geometry, o.material]);
+        if (!pathTraceHasTriangles(o)) { o.visible = false; hidden.push(o); return; }
+        o.geometry = geometry; o.material = material;
+    });
     // A fresh scene generator for every bake. Its incremental cache keeps the previous BVH when a re-run
     // replaces the meshes' geometries, and the tracer then draws the new scene nearly black. `_generator`
     // is private to WebGLPathTracer 0.0.28; recheck when the vendored copy changes.
     if (pathTrace.baked) pathTrace.tracer._generator = new pathTrace.tracer._generator.constructor();
     pathTrace.baked = true;
     try { pathTrace.tracer.setScene(scene, camera); }
-    finally { for (const o of hidden) o.visible = true; }
+    finally {
+        for (const [o, geometry, material] of swapped) { o.geometry = geometry; o.material = material; }
+        for (const o of hidden) o.visible = true;
+    }
     pathTrace.cameraKey = pathTraceCameraKey();
     pathTrace.envKey = pathTraceEnvKey();
 }
@@ -1554,7 +1649,8 @@ function syncGpuPathTraceCanvas(gpu) {
 function buildGpuPathTraceScene(gpu) {
     const proxy = new THREE.Scene(), meshes = [];
     eachPathTraced(o => {
-        const stand = new THREE.Mesh(o.geometry, o.material);
+        if (!pathTraceHasTriangles(o)) return;
+        const stand = new THREE.Mesh(pathTraceGeometryOf(o), pathTraceMaterialOf(o));
         stand.matrixAutoUpdate = false;
         stand.matrix.copy(o.matrixWorld);
         proxy.add(stand);
@@ -1640,7 +1736,11 @@ function renderPathTraceOverlay() {
     });
     if (!overlay) return;
     const swapped = [], environment = scene.environment, background = scene.background, autoClear = renderer.autoClear;
-    eachPathTraced(o => { swapped.push([o, o.material]); o.material = pathTrace.depthOnly; });
+    // Depth from what was traced: clipped by the section like the raster is, and the caps unclipped.
+    const planes = inspectorState.cut ? [new THREE.Plane(new THREE.Vector3(...inspectorState.cut.n), inspectorState.cut.d)] : [];
+    if (pathTrace.depthOnly.clippingPlanes?.length !== planes.length) pathTrace.depthOnly.needsUpdate = true;
+    pathTrace.depthOnly.clippingPlanes = planes;
+    eachPathTraced(o => { swapped.push([o, o.material]); o.material = o.userData.sectionCap ? pathTrace.depthOnlyCap : pathTrace.depthOnly; });
     scene.environment = null; scene.background = null; renderer.autoClear = false;
     try { renderer.clearDepth(); renderer.render(scene, camera); }
     finally {
@@ -4210,8 +4310,14 @@ function sectionSignedDistance(plane, p) {
  * `index` may be null, in which case the positions are read three vertices at a time. A triangle with
  * fewer than two crossings contributes nothing: a triangle wholly on one side, and also the degenerate
  * case of a triangle lying *in* the plane, which would otherwise emit an arbitrary one of its edges.
+ *
+ * Each segment runs along `n × N`, where `N` is its triangle's face normal by winding. On a closed,
+ * outward-wound solid that sends every loop counter-clockwise round material, seen down the plane's
+ * normal, and clockwise round a cavity — which is what lets the caps tell an embedded solid from a
+ * hole. If `sources` is given, the triangle each segment came from is pushed onto it, one per
+ * segment, so a caller can colour a cut by the triangles it crossed.
  */
-function sectionCutTriangles(positions, index, plane) {
+function sectionCutTriangles(positions, index, plane, sources) {
     const out = [];
     const triangles = index ? Math.floor(index.length / 3) : Math.floor(positions.length / 9);
     const crossing = [];
@@ -4246,10 +4352,17 @@ function sectionCutTriangles(positions, index, plane) {
             ]);
         }
         if (crossing.length < 2) continue;
-        out.push(
-            crossing[0][0], crossing[0][1], crossing[0][2],
-            crossing[1][0], crossing[1][1], crossing[1][2]
-        );
+        const ux = corners[1][0] - corners[0][0], uy = corners[1][1] - corners[0][1], uz = corners[1][2] - corners[0][2];
+        const vx = corners[2][0] - corners[0][0], vy = corners[2][1] - corners[0][1], vz = corners[2][2] - corners[0][2];
+        const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+        const n = plane.n;
+        const tx = n[1] * nz - n[2] * ny, ty = n[2] * nx - n[0] * nz, tz = n[0] * ny - n[1] * nx;
+        const along = (crossing[1][0] - crossing[0][0]) * tx + (crossing[1][1] - crossing[0][1]) * ty +
+            (crossing[1][2] - crossing[0][2]) * tz;
+        const first = along < 0 ? crossing[1] : crossing[0];
+        const second = along < 0 ? crossing[0] : crossing[1];
+        out.push(first[0], first[1], first[2], second[0], second[1], second[2]);
+        if (sources) sources.push(t);
     }
     return out;
 }
@@ -4288,6 +4401,439 @@ function sectionCutLength(cut) {
         total += Math.sqrt(dx * dx + dy * dy + dz * dz);
     }
     return total;
+}
+
+// ### Caps: the cut as a region rather than a line
+//
+// The cut line says where the knife went. It does not say which side of it is *material*, and on a
+// clipped solid that is the question a reader is actually stuck on: past the plane they see the
+// inside of the shell — back faces, or the far side of two-sided geometry — and a wall reads as two
+// thin skins with air between them. The drafting answer is poché: fill what was cut. So the cap is
+// geometry, a triangulated polygon lying in the plane, built from the very segments the cut line
+// draws, not a stencil trick in the renderer. That makes it an object you can test, measure (its area
+// is the section's area) and export, and it is exact wherever the cut line is.
+//
+// The segments arrive tagged with an **owner** — a part, or one colour of a part — and the work is:
+//
+//  1. `sectionCutLoops` chains each owner's segments end to end into closed loops, in a 2D frame in
+//     the plane. Endpoints are *welded* within a tolerance rather than compared exactly: the two
+//     triangles either side of an edge interpolate the crossing from opposite ends and need not agree
+//     to the last bit. A chain that never closes — an open surface, a mesh with a gap — is counted and
+//     left uncapped, because filling a guess is worse than showing the gap.
+//  2. `sectionCapRegions` puts every loop of every owner into **one** containment tree. Each loop
+//     carries a sign: +1 round material, −1 round a cavity, read from the direction its segments run
+//     (see `sectionCutTriangles`). Where an owner's triangles are not consistently wound, its signs
+//     fall back to even–odd nesting among its own loops, and an owner wound inside out is flipped
+//     whole.
+//  3. Each loop's region — inside it, outside its children — is filled by the **innermost** owner that
+//     is material there. So a box inside a box caps as the inner box's colour over the outer's, with
+//     the outer cap holed round it rather than lying coplanar underneath; a cavity is left open; and
+//     parts that only touch sit side by side. No two caps overlap, so nothing z-fights.
+//
+// What it does not do: loops of different owners that *cross* (two parts interpenetrating) are not
+// split into their arrangement. Both fill the overlap.
+
+/**
+ * A right-handed frame in the cut plane — `u × v = n` — with its origin at the plane's closest point
+ * to the world origin. `u` is built against the world axis least aligned with `n`, so the cross
+ * product is well conditioned for any normal.
+ */
+function sectionPlaneFrame(plane) {
+    const n = plane.n;
+    const ax = Math.abs(n[0]);
+    const ay = Math.abs(n[1]);
+    const az = Math.abs(n[2]);
+    const h = (ax <= ay && ax <= az) ? [1, 0, 0] : (ay <= az ? [0, 1, 0] : [0, 0, 1]);
+    let u = [h[1] * n[2] - h[2] * n[1], h[2] * n[0] - h[0] * n[2], h[0] * n[1] - h[1] * n[0]];
+    const ul = Math.sqrt(u[0] * u[0] + u[1] * u[1] + u[2] * u[2]);
+    u = [u[0] / ul, u[1] / ul, u[2] / ul];
+    const v = [n[1] * u[2] - n[2] * u[1], n[2] * u[0] - n[0] * u[2], n[0] * u[1] - n[1] * u[0]];
+    return { origin: [-plane.d * n[0], -plane.d * n[1], -plane.d * n[2]], u: u, v: v, n: n };
+}
+
+/**
+ * The default weld: a millionth of the cut's extent or of its distance from the origin, whichever is
+ * larger — float32 positions far from the origin carry their noise in absolute terms.
+ */
+function sectionWeldTolerance(segments) {
+    let lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity], far = 0;
+    for (let i = 0; i + 2 < segments.length; i += 3) {
+        for (let k = 0; k < 3; k += 1) {
+            const c = segments[i + k];
+            if (c < lo[k]) lo[k] = c;
+            if (c > hi[k]) hi[k] = c;
+            far = Math.max(far, Math.abs(c));
+        }
+    }
+    if (!(segments.length >= 6)) return 1e-12;
+    return Math.max(1e-12, 1e-6 * Math.max(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2], far));
+}
+
+/**
+ * Chain a cut's segments into closed loops, in the plane's own 2D frame.
+ *
+ * Returns `{ frame, loops, turns, open }`: `loops` is a list of flat `[x0, y0, x1, y1, …]` rings that
+ * do **not** repeat their first point (three.js's `removeDupEndPts` would otherwise pop it); `turns`
+ * is, per loop, `{ agree, votes }` — how many of its segments were walked in the direction
+ * `sectionCutTriangles` gave them — and `open` counts the chains that ran out of segments before
+ * getting back to where they started.
+ *
+ * Segments that weld to a single point are dropped, and so are repeats of a segment already seen,
+ * which is what a two-sided model built as two coincident shells produces: each crossing twice, and
+ * it should cap once.
+ */
+function sectionCutLoops(segments, plane, weld) {
+    const frame = sectionPlaneFrame(plane);
+    const count = Math.floor(segments.length / 6);
+    if (!count) return { frame: frame, loops: [], turns: [], open: 0 };
+    const tolerance = Number.isFinite(weld) && weld > 0 ? weld : sectionWeldTolerance(segments);
+    const xy = new Float64Array(count * 4);
+    for (let i = 0; i < count * 2; i += 1) {
+        const px = segments[i * 3] - frame.origin[0];
+        const py = segments[i * 3 + 1] - frame.origin[1];
+        const pz = segments[i * 3 + 2] - frame.origin[2];
+        xy[i * 2] = px * frame.u[0] + py * frame.u[1] + pz * frame.u[2];
+        xy[i * 2 + 1] = px * frame.v[0] + py * frame.v[1] + pz * frame.v[2];
+    }
+
+    // Weld on a grid of `tolerance` cells. A point near a cell border is also looked for in the
+    // neighbouring cells, so two points a hair apart either side of a grid line still meet.
+    const cells = new Map();
+    const nodeX = [];
+    const nodeY = [];
+    const find = (x, y) => {
+        const cx = Math.floor(x / tolerance);
+        const cy = Math.floor(y / tolerance);
+        const look = (gx, gy) => {
+            const bucket = cells.get(gx + ',' + gy);
+            if (!bucket) return -1;
+            for (let k = 0; k < bucket.length; k += 1) {
+                const id = bucket[k];
+                if (Math.abs(nodeX[id] - x) <= tolerance && Math.abs(nodeY[id] - y) <= tolerance) return id;
+            }
+            return -1;
+        };
+        let id = look(cx, cy);
+        for (let gx = cx - 1; id < 0 && gx <= cx + 1; gx += 1) {
+            for (let gy = cy - 1; id < 0 && gy <= cy + 1; gy += 1) {
+                if (gx !== cx || gy !== cy) id = look(gx, gy);
+            }
+        }
+        if (id >= 0) return id;
+        id = nodeX.length;
+        nodeX.push(x);
+        nodeY.push(y);
+        const key = cx + ',' + cy;
+        const bucket = cells.get(key);
+        if (bucket) bucket.push(id); else cells.set(key, [id]);
+        return id;
+    };
+
+    const ends = [];
+    const seen = new Set();
+    const incident = [];
+    for (let s = 0; s < count; s += 1) {
+        const a = find(xy[s * 4], xy[s * 4 + 1]);
+        const b = find(xy[s * 4 + 2], xy[s * 4 + 3]);
+        if (a === b) continue;
+        const key = a < b ? a + ':' + b : b + ':' + a;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const e = ends.length / 2;
+        ends.push(a, b);
+        (incident[a] || (incident[a] = [])).push(e);
+        (incident[b] || (incident[b] = [])).push(e);
+    }
+
+    const used = new Uint8Array(ends.length / 2);
+    const nextEdge = (node) => {
+        const list = incident[node];
+        for (let k = 0; k < list.length; k += 1) if (!used[list[k]]) return list[k];
+        return -1;
+    };
+    const loops = [];
+    const turns = [];
+    let open = 0;
+    for (let e0 = 0; e0 < used.length; e0 += 1) {
+        if (used[e0]) continue;
+        used[e0] = 1;
+        const start = ends[e0 * 2];
+        const ring = [start];
+        let at = ends[e0 * 2 + 1];
+        let agree = 1;
+        let votes = 1;
+        while (at !== start) {
+            ring.push(at);
+            const e = nextEdge(at);
+            if (e < 0) break;
+            used[e] = 1;
+            votes += 1;
+            if (ends[e * 2] === at) { agree += 1; at = ends[e * 2 + 1]; } else at = ends[e * 2];
+        }
+        if (at !== start || ring.length < 3) { open += 1; continue; }
+        const flat = new Array(ring.length * 2);
+        for (let k = 0; k < ring.length; k += 1) {
+            flat[k * 2] = nodeX[ring[k]];
+            flat[k * 2 + 1] = nodeY[ring[k]];
+        }
+        loops.push(flat);
+        turns.push({ agree: agree, votes: votes });
+    }
+    return { frame: frame, loops: loops, turns: turns, open: open };
+}
+
+/** Signed area of a flat 2D ring, positive counter-clockwise. */
+function sectionRingArea(ring) {
+    let twice = 0;
+    const n = ring.length / 2;
+    for (let i = 0, j = n - 1; i < n; j = i, i += 1) {
+        twice += (ring[j * 2] - ring[i * 2]) * (ring[j * 2 + 1] + ring[i * 2 + 1]);
+    }
+    return twice / 2;
+}
+
+/** Whether a point is inside a flat 2D ring, by crossings. */
+function sectionRingContains(ring, x, y) {
+    let inside = false;
+    const n = ring.length / 2;
+    for (let i = 0, j = n - 1; i < n; j = i, i += 1) {
+        const xi = ring[i * 2], yi = ring[i * 2 + 1], xj = ring[j * 2], yj = ring[j * 2 + 1];
+        if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+}
+
+/**
+ * Up to three points just *inside* a ring, off the midpoints of its longest edges.
+ *
+ * Inside rather than on the boundary because the boundary is exactly where two parts that only touch
+ * agree: a wall layer laid against the next shares an edge with it, and a containment probe on that
+ * edge would answer at random. Stepped in by a sliver of the edge, and never less than a few welds.
+ */
+function sectionRingProbes(ring, signedArea, tolerance) {
+    const n = ring.length / 2;
+    const edges = [];
+    for (let i = 0; i < n; i += 1) {
+        const j = (i + 1) % n;
+        const dx = ring[j * 2] - ring[i * 2];
+        const dy = ring[j * 2 + 1] - ring[i * 2 + 1];
+        edges.push({ i: i, j: j, dx: dx, dy: dy, length: Math.sqrt(dx * dx + dy * dy) });
+    }
+    edges.sort((a, b) => b.length - a.length);
+    const side = signedArea > 0 ? 1 : -1;
+    return edges.slice(0, 3).filter((e) => e.length > 0).map((e) => {
+        const step = Math.min(e.length * 0.01, Math.max(tolerance * 4, e.length * 1e-4));
+        const mx = (ring[e.i * 2] + ring[e.j * 2]) / 2;
+        const my = (ring[e.i * 2 + 1] + ring[e.j * 2 + 1]) / 2;
+        // the left normal of a counter-clockwise ring points inside
+        return [mx - e.dy / e.length * step * side, my + e.dx / e.length * step * side];
+    });
+}
+
+/**
+ * The caps for a whole cut: every owner's loops, nested together, each region filled by the innermost
+ * owner that is material there.
+ *
+ * `owners[k]` is the owner of segment `k` (a small integer). Returns `{ regions, area, loops, open }`:
+ * `regions` is a list of `{ owner, positions }`, `positions` flat `[x, y, z, …]`, three vertices a
+ * triangle; `area` is the filled area; `loops` and `open` count the closed and unclosed chains, so a
+ * caller can say "3 loops capped, 1 left open" rather than leave a gap unexplained.
+ */
+function sectionCapRegions(segments, owners, plane, weld) {
+    const tolerance = Number.isFinite(weld) && weld > 0 ? weld : sectionWeldTolerance(segments);
+    const byOwner = new Map();
+    for (let k = 0; k * 6 < segments.length; k += 1) {
+        const owner = owners ? owners[k] : 0;
+        let list = byOwner.get(owner);
+        if (!list) { list = []; byOwner.set(owner, list); }
+        for (let c = 0; c < 6; c += 1) list.push(segments[k * 6 + c]);
+    }
+    const frame = sectionPlaneFrame(plane);
+    const items = [];
+    let open = 0;
+    const ownerFacts = new Map();
+    byOwner.forEach((list, owner) => {
+        const chained = sectionCutLoops(list, plane, tolerance);
+        open += chained.open;
+        const facts = { reliable: true, oriented: 0 };
+        ownerFacts.set(owner, facts);
+        chained.loops.forEach((ring, k) => {
+            const signed = sectionRingArea(ring);
+            if (!(Math.abs(signed) > 0)) return;
+            const turn = chained.turns[k];
+            const forwards = turn.agree * 2 >= turn.votes;
+            const confidence = Math.max(turn.agree, turn.votes - turn.agree) / turn.votes;
+            if (confidence < 0.9) facts.reliable = false;
+            const oriented = forwards ? signed : -signed;
+            facts.oriented += oriented;
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            for (let i = 0; i < ring.length; i += 2) {
+                minX = Math.min(minX, ring[i]); maxX = Math.max(maxX, ring[i]);
+                minY = Math.min(minY, ring[i + 1]); maxY = Math.max(maxY, ring[i + 1]);
+            }
+            items.push({
+                owner: owner, ring: ring, area: Math.abs(signed), oriented: oriented,
+                box: [minX, minY, maxX, maxY], probes: sectionRingProbes(ring, signed, tolerance),
+                parent: null, children: [], depth: 0, sign: 1, fill: -1
+            });
+        });
+    });
+
+    // One containment tree over every owner's loops. Largest first, so a loop's parent — the smallest
+    // loop containing it — is the last container found, and every parent is settled before its children.
+    items.sort((a, b) => b.area - a.area);
+    for (let i = 0; i < items.length; i += 1) {
+        const inner = items[i];
+        for (let j = 0; j < i; j += 1) {
+            const outer = items[j];
+            if (inner.box[0] < outer.box[0] || inner.box[1] < outer.box[1] ||
+                inner.box[2] > outer.box[2] || inner.box[3] > outer.box[3]) continue;
+            let inside = 0;
+            inner.probes.forEach((p) => { if (sectionRingContains(outer.ring, p[0], p[1])) inside += 1; });
+            if (inside * 2 <= inner.probes.length) continue;
+            if (!inner.parent || outer.area < inner.parent.area) inner.parent = outer;
+        }
+        if (inner.parent) inner.parent.children.push(inner);
+    }
+
+    // Signs, then which owner fills each region. `winding[owner]` is the sum of that owner's signs over
+    // a loop and its ancestors; `latest[owner]` how deep that owner's nearest loop is, so the innermost
+    // material wins.
+    let area = 0;
+    const regions = new Map();
+    items.forEach((item) => {
+        const facts = ownerFacts.get(item.owner);
+        const parent = item.parent;
+        item.depth = parent ? parent.depth + 1 : 0;
+        if (facts.reliable) {
+            item.sign = (item.oriented > 0 ? 1 : -1) * (facts.oriented < 0 ? -1 : 1);
+        } else {
+            let same = 0;
+            for (let up = parent; up; up = up.parent) if (up.owner === item.owner) same += 1;
+            item.sign = same % 2 === 0 ? 1 : -1;
+        }
+        item.winding = Object.assign({}, parent ? parent.winding : {});
+        item.latest = Object.assign({}, parent ? parent.latest : {});
+        item.winding[item.owner] = (item.winding[item.owner] || 0) + item.sign;
+        item.latest[item.owner] = item.depth;
+        let best = -1;
+        let bestDepth = -1;
+        Object.keys(item.winding).forEach((key) => {
+            if (item.winding[key] > 0 && item.latest[key] > bestDepth) { best = Number(key); bestDepth = item.latest[key]; }
+        });
+        item.fill = best;
+    });
+
+    const toVectors = (ring) => {
+        const out = [];
+        for (let i = 0; i < ring.length; i += 2) out.push(new THREE.Vector2(ring[i], ring[i + 1]));
+        return out;
+    };
+    const f = frame;
+    items.forEach((item) => {
+        if (item.fill < 0) return;
+        const holes = item.children.map((child) => child.ring);
+        area += item.area - item.children.reduce((sum, child) => sum + child.area, 0);
+        const flat = item.ring.slice();
+        holes.forEach((hole) => { for (let i = 0; i < hole.length; i += 1) flat.push(hole[i]); });
+        const faces = THREE.ShapeUtils.triangulateShape(toVectors(item.ring), holes.map(toVectors));
+        let positions = regions.get(item.fill);
+        if (!positions) { positions = []; regions.set(item.fill, positions); }
+        faces.forEach((face) => {
+            for (let k = 0; k < 3; k += 1) {
+                const x = flat[face[k] * 2];
+                const y = flat[face[k] * 2 + 1];
+                positions.push(
+                    f.origin[0] + f.u[0] * x + f.v[0] * y,
+                    f.origin[1] + f.u[1] * x + f.v[1] * y,
+                    f.origin[2] + f.u[2] * x + f.v[2] * y
+                );
+            }
+        });
+    });
+    const out = [];
+    regions.forEach((positions, owner) => out.push({ owner: owner, positions: positions }));
+    return { regions: out, area: area, loops: items.length, open: open };
+}
+
+/**
+ * A mesh with the cut-away half removed: what a renderer that does not clip — the path tracer — is given
+ * in place of the mesh, so the cut is real geometry for it rather than a raster discard.
+ *
+ * Every triangle is kept whole on the surviving side (`sectionSignedDistance >= 0`), dropped on the
+ * other, and split along the plane where it straddles — into one triangle or two. `attributes` is a list
+ * of `{ array, itemSize }` (normals, colours, uvs, …) interpolated at the same crossings, so a split
+ * triangle keeps its shading and its colour. `positions` and `plane` are in the same space.
+ *
+ * Returns `{ positions, attributes }`, flat and unindexed, three vertices a triangle; an attribute comes
+ * back as an array in the same order it was given.
+ */
+function sectionClipTriangles(positions, index, plane, attributes) {
+    const extra = attributes || [];
+    const outPositions = [];
+    const outAttributes = extra.map(() => []);
+    const triangles = index ? Math.floor(index.length / 3) : Math.floor(positions.length / 9);
+    const emit = (vertex) => {
+        outPositions.push(vertex.p[0], vertex.p[1], vertex.p[2]);
+        for (let a = 0; a < extra.length; a += 1) {
+            for (let c = 0; c < extra[a].itemSize; c += 1) outAttributes[a].push(vertex.a[a][c]);
+        }
+    };
+    const read = (i) => {
+        const a = [];
+        for (let k = 0; k < extra.length; k += 1) {
+            const size = extra[k].itemSize;
+            const row = [];
+            for (let c = 0; c < size; c += 1) row.push(extra[k].array[i * size + c]);
+            a.push(row);
+        }
+        return { p: [positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]], a: a };
+    };
+    const between = (u, v, du, dv) => {
+        const t = du / (du - dv);
+        return {
+            p: [u.p[0] + (v.p[0] - u.p[0]) * t, u.p[1] + (v.p[1] - u.p[1]) * t, u.p[2] + (v.p[2] - u.p[2]) * t],
+            a: u.a.map((row, k) => row.map((value, c) => value + (v.a[k][c] - value) * t))
+        };
+    };
+    for (let t = 0; t < triangles; t += 1) {
+        const ids = index ? [index[t * 3], index[t * 3 + 1], index[t * 3 + 2]] : [t * 3, t * 3 + 1, t * 3 + 2];
+        const v = ids.map(read);
+        const d = v.map((vertex) => sectionSignedDistance(plane, vertex.p));
+        const inside = d.map((value) => value >= 0);
+        const kept = inside.filter(Boolean).length;
+        if (kept === 3) { v.forEach(emit); continue; }
+        if (kept === 0) continue;
+        // Rotate so the odd one out is first, keeping the winding.
+        let r = 0;
+        for (let k = 0; k < 3; k += 1) {
+            if (inside[k] !== inside[(k + 1) % 3] && inside[k] !== inside[(k + 2) % 3]) { r = k; break; }
+        }
+        const a = v[r], b = v[(r + 1) % 3], c = v[(r + 2) % 3];
+        const da = d[r], db = d[(r + 1) % 3], dc = d[(r + 2) % 3];
+        const ab = between(a, b, da, db);
+        const ac = between(a, c, da, dc);
+        if (inside[r]) {
+            // one corner survives: one triangle
+            emit(a); emit(ab); emit(ac);
+        } else {
+            // two corners survive: a quad, as two triangles
+            emit(ab); emit(b); emit(c);
+            emit(ab); emit(c); emit(ac);
+        }
+    }
+    return { positions: outPositions, attributes: outAttributes };
+}
+
+/**
+ * The cap for a cut with a single owner: `sectionCapRegions` with every segment owned by `0`, its
+ * triangles flattened. Returns `{ positions, area, loops, open }`.
+ */
+function sectionCapTriangles(segments, plane, weld) {
+    const capped = sectionCapRegions(segments, null, plane, weld);
+    const positions = [];
+    capped.regions.forEach((region) => { for (let i = 0; i < region.positions.length; i += 1) positions.push(region.positions[i]); });
+    return { positions: positions, area: capped.area, loops: capped.loops, open: capped.open };
 }
 // [viewer-region inspector-section] END
 
@@ -5925,6 +6471,7 @@ const inspectorState = {
     explodeMax: 1,
     sectionEnabled: false,
     sectionFraction: 0.5,
+    sectionPicking: false,
     cut: null,
     measuring: false,
     pending: null,
@@ -6267,58 +6814,152 @@ function inspectorDiagonalTick() {
     return inspectorState.diagonal * 0.012;
 }
 
-/** Where the plane crosses the figure, drawn over the clipped geometry. */
+/**
+ * A mesh's positions in world space — where the clipping plane lives.
+ *
+ * Through `matrixWorld` rather than `object.position`, so a drawable placed by a matrix
+ * (`matrixAutoUpdate = false`, or a motion pose) is cut where it is drawn and not where its buffer
+ * says it was authored. The explode moves objects too, which this covers for free.
+ */
+function inspectorWorldPositions(object) {
+    const position = object.geometry.getAttribute('position');
+    if (!position) return null;
+    object.updateWorldMatrix(true, false);
+    const e = object.matrixWorld.elements;
+    const src = position.array;
+    const out = new Float64Array(position.count * 3);
+    for (let i = 0; i < position.count; i += 1) {
+        const x = src[i * 3], y = src[i * 3 + 1], z = src[i * 3 + 2];
+        out[i * 3] = e[0] * x + e[4] * y + e[8] * z + e[12];
+        out[i * 3 + 1] = e[1] * x + e[5] * y + e[9] * z + e[13];
+        out[i * 3 + 2] = e[2] * x + e[6] * y + e[10] * z + e[14];
+    }
+    return out;
+}
+
+/**
+ * The colour of one triangle of an object, as three.js draws it: the material's colour times the
+ * triangle's vertex colour when the material uses vertex colours. A part's colour arrives either way —
+ * `ThreeSurfaceMaterial.color` sets the first, a coloured mesh the second — so the product is the one
+ * answer that is right for both.
+ */
+function inspectorTriangleColor(object, triangle, out) {
+    const material = Array.isArray(object.material) ? object.material[0] : object.material;
+    if (material && material.color) out.copy(material.color); else out.setHex(0x9aa3ad);
+    const colors = object.geometry.getAttribute('color');
+    if (material && material.vertexColors && colors) {
+        const index = object.geometry.getIndex();
+        const v = index ? index.getX(triangle * 3) : triangle * 3;
+        out.r *= colors.getX(v);
+        out.g *= colors.getY(v);
+        out.b *= colors.getZ(v);
+    }
+    return out;
+}
+
+/**
+ * The colour a cap is filled with: the part's own colour, a little darker and unlit, so a cut face
+ * reads as the part it cuts and also as *cut* rather than as one more lit surface.
+ * `section.capColor` overrides it for every cap — one poché for the whole drawing.
+ */
+function inspectorCapColor(color, section) {
+    if (section && section.capColor) return new THREE.Color(section.capColor);
+    return color.clone().multiplyScalar(0.8);
+}
+
+/**
+ * Where the plane crosses the figure: the cut line over the clipped geometry, and caps filling it.
+ *
+ * Every solid's crossings go into one call to `sectionCapRegions`, each segment owned by its object
+ * *and* the colour of the triangle it crossed — so one mesh carrying several coloured parts caps each
+ * in its own colour, and a part embedded in another shows through it (see the region's "Caps" note).
+ * The cut line is still drawn round every crossing, capped or not: an open surface has an edge where
+ * the knife went even though it has no inside to fill.
+ */
 function inspectorDrawCut() {
     const spec = inspectorState.spec;
     const cut = inspectorState.cut;
-    if (!cut || !spec || !(spec.section && spec.section.outline !== false)) return 0;
+    inspectorState.capStats = null;
+    if (!cut || !spec) return 0;
+    const section = spec.section || {};
+    const drawOutline = section.outline !== false;
+    const drawCaps = section.cap !== false;
     const outline = [];
+    const ownerOf = [];
+    const owners = [];
+    const ownerKeys = new Map();
+    const scratch = new THREE.Color();
+    const cutObject = (object, panel) => {
+        const positions = inspectorWorldPositions(object);
+        if (!positions) return;
+        const index = object.geometry.getIndex();
+        const sources = [];
+        const segments = sectionCutTriangles(positions, index ? index.array : null, cut, sources);
+        if (!segments.length) return;
+        for (let i = 0; i < segments.length; i += 1) outline.push(segments[i]);
+        if (!drawCaps) return;
+        for (let k = 0; k < sources.length; k += 1) {
+            inspectorTriangleColor(object, sources[k], scratch);
+            const key = object.uuid + ':' + scratch.getHexString();
+            let owner = ownerKeys.get(key);
+            if (owner === undefined) {
+                owner = owners.length;
+                ownerKeys.set(key, owner);
+                owners.push({ color: scratch.clone(), panel: panel, material: object.material });
+            }
+            ownerOf.push(owner);
+        }
+    };
     const fills = payloadGeometrySlots.fills;
-    if (fills && fills.object) {
-        const geometry = fills.object.geometry;
-        const position = geometry.getAttribute('position');
-        const index = geometry.getIndex();
-        outline.push(...sectionCutTriangles(position.array, index ? index.array : null, cut));
-    }
+    if (fills && fills.object) cutObject(fills.object);
     payloadGeometrySlots.interactive.forEach((slot) => {
-        if (!slot || !slot.fills || !slot.fills.object) return;
-        const geometry = slot.fills.object.geometry;
-        const offset = slot.fills.object.position;
-        const position = geometry.getAttribute('position');
-        const index = geometry.getIndex();
-        // the object may have been translated by the explode; the cut is in world space
-        const moved = new Float32Array(position.array.length);
-        for (let i = 0; i + 2 < moved.length; i += 3) {
-            moved[i] = position.array[i] + offset.x;
-            moved[i + 1] = position.array[i + 1] + offset.y;
-            moved[i + 2] = position.array[i + 2] + offset.z;
-        }
-        outline.push(...sectionCutTriangles(moved, index ? index.array : null, cut));
+        if (slot && slot.fills && slot.fills.object) cutObject(slot.fills.object);
     });
-    // The solids. Same treatment as an interactive object's fills, and for the same reason: the cut is
-    // in world space and the explode may have moved the object out from under it. Without this a
-    // section through a scene with a mesh in it drew a cut line round the annotations and none round
-    // the thing being annotated, which is the half that a fabricator cares about.
-    payloadGeometrySlots.drawables.forEach((slot) => {
-        if (!slot || !slot.object || slot.kindOfDraw !== 'surface' || inspectorState.hidden.has(slot.partId)) return;
-        const geometry = slot.object.geometry;
-        const position = geometry.getAttribute('position');
-        if (!position) return;
-        const index = geometry.getIndex();
-        const offset = slot.object.position;
-        const moved = new Float32Array(position.array.length);
-        for (let i = 0; i + 2 < moved.length; i += 3) {
-            moved[i] = position.array[i] + offset.x;
-            moved[i + 1] = position.array[i + 1] + offset.y;
-            moved[i + 2] = position.array[i + 2] + offset.z;
-        }
-        outline.push(...sectionCutTriangles(moved, index ? index.array : null, cut));
+    // The solids. Without them a section through a scene with a mesh in it drew a cut line round the
+    // annotations and none round the thing being annotated, which is the half a fabricator cares about.
+    payloadGeometrySlots.drawables.forEach((slot, ordinal) => {
+        if (!slot || !slot.object || slot.kindOfDraw !== 'surface' || !inspectorDrawableVisible(slot, ordinal)) return;
+        cutObject(slot.object, slot.panel);
     });
-    inspectorAddSegments(outline, CUT_COLOR, 2);
+    const stats = { capped: 0, open: 0, area: 0 };
+    if (drawCaps && outline.length) {
+        const capped = sectionCapRegions(outline, ownerOf, cut);
+        stats.capped = capped.loops;
+        stats.open = capped.open;
+        stats.area = capped.area;
+        capped.regions.forEach((region) => {
+            if (!region.positions.length) return;
+            const owner = owners[region.owner];
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.BufferAttribute(Float32Array.from(region.positions), 3));
+            const mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({
+                color: inspectorCapColor(owner.color, section),
+                side: THREE.DoubleSide,
+                // A face of the model lying exactly in the plane is coplanar with the cap; the cap wins.
+                polygonOffset: true,
+                polygonOffsetFactor: -1,
+                polygonOffsetUnits: -1
+            }));
+            // No clipping planes: the cap lies *in* the plane, and would be clipped by it on the flip side.
+            mesh.userData.sectionCap = true;
+            // What the path tracer bakes the cap as: lit, in the part's own surface, not the raster's flat poché.
+            const source = Array.isArray(owner.material) ? owner.material[0] : owner.material;
+            mesh.userData.tracedMaterial = new THREE.MeshStandardMaterial({
+                color: section.capColor ? new THREE.Color(section.capColor) : owner.color.clone(),
+                roughness: Number.isFinite(source?.roughness) ? source.roughness : 0.7,
+                metalness: Number.isFinite(source?.metalness) ? source.metalness : 0,
+                side: THREE.DoubleSide
+            });
+            if (Number.isInteger(owner.panel) && owner.panel >= 0) mesh.userData.featurePanel = owner.panel;
+            inspectorRoot.add(mesh);
+        });
+    }
+    if (drawCaps) inspectorState.capStats = stats;
+    if (drawOutline) inspectorAddSegments(outline, CUT_COLOR, 2);
 
     const marks = [];
     const lines = payloadGeometrySlots.lines;
-    if (lines && lines.object) {
+    if (drawOutline && lines && lines.object) {
         marks.push(...sectionCutSegments(lines.object.geometry.getAttribute('position').array, cut));
     }
     if (marks.length) {
@@ -6368,10 +7009,16 @@ function inspectorSetStatus(text) {
     inspectorStatusEl.textContent = text || '';
 }
 
+/** Empty the inspector's overlay, with the caps' path-traced stand-in materials. */
+function inspectorClearOverlay() {
+    inspectorRoot.children.forEach((child) => { if (child.userData.tracedMaterial) child.userData.tracedMaterial.dispose(); });
+    clearGroup(inspectorRoot);
+}
+
 /** Rebuild every overlay: the authored dimensions, the picked one, the cut. */
 function inspectorRebuildOverlay() {
     requestRender();
-    clearGroup(inspectorRoot);
+    inspectorClearOverlay();
     const spec = inspectorState.spec;
     featureDraw(); featureHud();
     if (!spec || !spec.enabled) return;
@@ -6392,10 +7039,18 @@ function inspectorRebuildOverlay() {
     if (inspectorState.cut) {
         lines.push('cut ' + measureFormat(cutLength, spec.units || '', 0) + ' @ ' +
             measureFormat(inspectorState.cut.at, spec.units || '', 1));
+        const caps = inspectorState.capStats;
+        if (caps && caps.capped) {
+            lines.push('section area ' + measureFormat(caps.area, spec.units ? spec.units + '²' : '', spec.decimals));
+        }
+        // Said rather than hidden: an open loop is a gap in the model, and it is why that part shows
+        // its inside instead of a cap.
+        if (caps && caps.open) lines.push(caps.open + (caps.open === 1 ? ' open cut' : ' open cuts') + ' not capped');
     }
     if (inspectorState.measuring && inspectorState.picked.length < 2) {
         lines.push(inspectorState.picked.length ? 'pick the second element' : 'pick an element');
     }
+    if (inspectorState.sectionPicking) lines.push('click a face to cut along it');
     inspectorSetStatus(lines.join('   ·   '));
 }
 
@@ -7319,6 +7974,7 @@ function inspectorRefresh() {
     inspectorApplyExplode();
     viewerTools.refresh();
     inspectorApplySection();
+    sectionControlsSync();
     // Restore visibility for ordinary scenes too, including after unhide.
     for(const source of featureSources())source.slot.object.visible=!inspectorState.hidden.has(source.id);
     applyPartStyles(0);
@@ -7410,7 +8066,7 @@ function inspectorUpdateHud() {
     if (!on) {
         renderer.localClippingEnabled = false;
         inspectorSetStatus('');
-        clearGroup(inspectorRoot);
+        inspectorClearOverlay();
         return;
     }
     const explode = spec.explode || {};
@@ -7442,14 +8098,101 @@ sectionSliderEl.addEventListener('input', () => {
     inspectorRefresh();
 });
 
+// The section's own controls: which axis it cuts across, which half it keeps, and "align to a face".
+// Axes are the *model's*, so Z is up in a Z-up scene even though three.js draws it as Y.
+const SECTION_AXES = { x: [1, 0, 0], y: [0, 1, 0], z: [0, 0, 1] };
+function sectionModelToDisplay(v) {
+    return (inspectorState.spec || {}).renderUpAxis === 'Z' ? [v[0], v[2], -v[1]] : v;
+}
+
+/** Bring the section's slider, buttons and highlights into line with the inspector state. */
+function sectionControlsSync() {
+    const section = (inspectorState.spec || {}).section || {};
+    const normal = section.normal || [1, 0, 0];
+    const length = Math.hypot(normal[0], normal[1], normal[2]) || 1;
+    sectionSliderWrapEl.classList.toggle('hidden', !inspectorState.sectionEnabled);
+    sectionSliderEl.value = String(Math.round(inspectorState.sectionFraction * 1000));
+    inspectorGroupEl.querySelector('[data-inspector="section"]')?.classList.toggle('is-active', !!inspectorState.sectionEnabled);
+    sectionSliderWrapEl.querySelectorAll('[data-section-axis]').forEach((button) => {
+        const axis = sectionModelToDisplay(SECTION_AXES[button.getAttribute('data-section-axis')]);
+        const along = Math.abs(axis[0] * normal[0] + axis[1] * normal[1] + axis[2] * normal[2]) / length;
+        button.classList.toggle('is-active', along > 0.9999);
+    });
+    sectionSliderWrapEl.querySelector('[data-section-flip]')?.classList.toggle('is-active', !!section.flip);
+    sectionSliderWrapEl.querySelector('[data-section-face]')?.classList.toggle('is-active', !!inspectorState.sectionPicking);
+}
+
+/** Point the section along `normal` (display coordinates), optionally at a new fraction. */
+function sectionSetNormal(normal, fraction, flip) {
+    const spec = inspectorState.spec;
+    if (!spec) return;
+    spec.section = { ...(spec.section || {}), normal: normal };
+    if (flip !== undefined) spec.section.flip = flip;
+    if (Number.isFinite(fraction)) inspectorState.sectionFraction = Math.min(1, Math.max(0, fraction));
+    inspectorState.sectionEnabled = true;
+    inspectorRefresh();
+}
+
+/**
+ * "Align to a face": the clicked surface's plane becomes the section, facing the viewer, a sliver
+ * inside the face so the cut shows at once. The slider then pushes it on into the model.
+ *
+ * Any visible surface answers, pickable or not — a solid is not pickable by default, and this is
+ * about where to cut, not about selecting. A hit on the half already cut away is skipped, so you can
+ * click the cap face you are looking at and get the geometry behind it.
+ */
+function sectionPickFace(ray) {
+    const targets = [];
+    const fills = payloadGeometrySlots.fills;
+    if (fills && fills.object && fills.object.visible) targets.push(fills.object);
+    payloadGeometrySlots.interactive.forEach((slot) => {
+        if (slot && slot.fills && slot.fills.object && slot.fills.object.visible) targets.push(slot.fills.object);
+    });
+    payloadGeometrySlots.drawables.forEach((slot) => {
+        if (slot && slot.object && slot.kindOfDraw === 'surface' && slot.object.visible) targets.push(slot.object);
+    });
+    const cut = inspectorState.cut;
+    const hit = ray.intersectObjects(targets, false).find((h) =>
+        h.face && (!cut || sectionSignedDistance(cut, h.point.toArray()) >= -1e-9 * inspectorState.diagonal));
+    inspectorState.sectionPicking = false;
+    if (!hit) { inspectorRefresh(); return; }
+    const facing = hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
+    if (facing.dot((pointerCamera || camera).position.clone().sub(hit.point)) < 0) facing.negate();
+    const n = [-facing.x, -facing.y, -facing.z];
+    const extent = sectionPlane(inspectorState.bounds, n, 0, false);
+    const at = n[0] * hit.point.x + n[1] * hit.point.y + n[2] * hit.point.z;
+    const span = extent.hi - extent.lo;
+    const fraction = span > SECTION_EPS ? (at - extent.lo) / span + 0.005 : 0.5;
+    sectionSetNormal(n, fraction, false);
+}
+
+sectionSliderWrapEl.querySelectorAll('[data-section-axis]').forEach((button) => {
+    button.addEventListener('click', () => {
+        inspectorState.sectionPicking = false;
+        sectionSetNormal(sectionModelToDisplay(SECTION_AXES[button.getAttribute('data-section-axis')]));
+    });
+});
+sectionSliderWrapEl.querySelector('[data-section-flip]').addEventListener('click', () => {
+    const spec = inspectorState.spec;
+    if (!spec) return;
+    sectionSetNormal((spec.section || {}).normal || [1, 0, 0], undefined, !(spec.section || {}).flip);
+});
+sectionSliderWrapEl.querySelector('[data-section-face]').addEventListener('click', () => {
+    inspectorState.sectionPicking = !inspectorState.sectionPicking;
+    if (inspectorState.sectionPicking) inspectorState.measuring = false;
+    inspectorRefresh();
+});
+
 inspectorGroupEl.querySelectorAll('[data-inspector]').forEach((button) => {
     button.addEventListener('click', () => {
         const tool = button.getAttribute('data-inspector');
         if (tool === 'section') {
             inspectorState.sectionEnabled = !inspectorState.sectionEnabled;
+            if (!inspectorState.sectionEnabled) inspectorState.sectionPicking = false;
             sectionSliderWrapEl.classList.toggle('hidden', !inspectorState.sectionEnabled);
         } else if (tool === 'measure') {
             inspectorState.measuring = !inspectorState.measuring;
+            if (inspectorState.measuring) inspectorState.sectionPicking = false;
             inspectorState.picked = [];
         }
         button.classList.toggle('is-active', tool === 'section' ? inspectorState.sectionEnabled : inspectorState.measuring);
@@ -8669,12 +9412,13 @@ renderer.domElement.addEventListener('pointerleave', () => {
 renderer.domElement.addEventListener('click', (event) => {
     if (editorState.mode !== 'camera' || cameraIsDragging) return;
     if(featureModeEl.value==='region')return;
-    if(featureModeEl.value!=='off' && !inspectorState.measuring) {
+    if(featureModeEl.value!=='off' && !inspectorState.measuring && !inspectorState.sectionPicking) {
         const r=renderer.domElement.getBoundingClientRect();
         featurePick((event.clientX-r.left)/r.width,(event.clientY-r.top)/r.height,featureModeEl.value,true);return;
     }
     setPointerFromEvent(event);
     raycaster.setFromCamera(pointer, pointerCamera || camera);
+    if (inspectorState.sectionPicking) { sectionPickFace(raycaster); return; }
     const meshes = interactiveObjects.filter(entryInPointerPanel).flatMap((entry) => entry.meshes).filter(mesh => mesh.visible);
 
     const hits = raycaster.intersectObjects(meshes, false);

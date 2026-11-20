@@ -124,6 +124,8 @@ class FirstRunTest {
         val override = File(System.getProperty("java.io.tmpdir"), "external/custom-ceres.so").absoluteFile
         assertEquals(listOf(override), artifactCandidates(root, "ceres", "linux", mapOf("AFIELD_CERES_LIBRARY" to override.path)))
         assertTrue(artifactCandidates(root, "tetgen", "windows", emptyMap()).any { it.path.replace('\\', '/').endsWith("Release/field_tetgen_jvm.dll") })
+        assertTrue(artifactCandidates(root, "opennurbs", "mac", emptyMap()).first().path.replace('\\', '/').endsWith("build/field-opennurbs/build/libfield_opennurbs_jvm.dylib"))
+        assertEquals("buildOpenNurbsNative", preparationCommands(setOf("opennurbs"), "mac").single().last())
         assertTrue(artifactCandidates(root, "libpd", "windows", emptyMap()).all { it.name == "libpd-multi.dll" })
         assertTrue(artifactCandidates(root, "python", "linux", emptyMap()).isEmpty())
         assertTrue(artifactCandidates(root, "solidcraft", "mac", emptyMap()).single().path.replace('\\', '/').endsWith("build/native/solidcraft/libfield_solidcraft_jvm.dylib"))

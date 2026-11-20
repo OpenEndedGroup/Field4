@@ -37,11 +37,25 @@ Source: `src/jvmMain/kotlin/afield/runtime/lifecycle/BoxInterrupt.kt`.
   the watchdog; instead each instrumented class name is recorded against its box label, and the
   innermost matching frame of `Runloop.mainThread.stackTrace` names the box.
 
-Switches: the **interruptible box code** checkbox in the Runtime section of `/welcome` (persisted as
-`FieldPreferences.boxInterrupt`, default on; off stops instrumenting newly compiled code and stops
-the watchdog interrupting, while stall reports continue). `AFIELD_BOX_INTERRUPT=0|1` or
-`-Dafield.boxInterrupt` override the checkbox. `AFIELD_RUNLOOP_WATCHDOG=0` (no watchdog); system
-properties `afield.runloop.watchdog[.reportMs|.interruptMs]`.
+Switches: one three-way mode, `afield.runtime.lifecycle.BoxInstrumentation`
+(`src/jvmMain/kotlin/afield/runtime/lifecycle/BoxInstrumentation.kt`):
+
+| mode | new box code | watchdog |
+|---|---|---|
+| `watchdog` (default) | instrumented | reports stalls, interrupts after `interruptMs` |
+| `instrument` | instrumented: Interrupt Running Box, RunBox's timeout and anything else that reads instrumented code still work | reports stalls only |
+| `off` | compiled unchanged | reports stalls, cannot name the box |
+
+Set it from the **box code instrumentation** control in the Runtime section of `/welcome` (persisted as
+`FieldPreferences.boxInstrumentation`; the older `boxInterrupt` boolean is still written and is read
+when the mode is blank); from code with `BoxInstrumentation.mode = BoxInstrumentation.Mode.INSTRUMENT`
+(this session only; `BoxInstrumentation.clearSession()` returns to the preference); or over HTTP with
+`POST /api/box-instrumentation {"mode": "off", "persist": false}` (`persist` defaults to true, saving
+the preference; `GET` returns the status, which `/welcome` also shows). `AFIELD_BOX_INSTRUMENTATION` /
+`-Dafield.boxInstrumentation` override all of these, as do the older `AFIELD_BOX_INTERRUPT=0|1` /
+`-Dafield.boxInterrupt` (as `off` / `watchdog`). A change applies to code compiled after it.
+`AFIELD_RUNLOOP_WATCHDOG=0` (no watchdog thread at all); system properties
+`afield.runloop.watchdog[.reportMs|.interruptMs]`.
 
 ## Overhead
 

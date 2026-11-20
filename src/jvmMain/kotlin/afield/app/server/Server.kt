@@ -169,6 +169,8 @@ import afield.document.workspace.DocumentTagsUpdateRequest
 import afield.document.workspace.DuplicateDocumentRequest
 import afield.document.workspace.FieldPreferences
 import afield.document.workspace.FieldPreferencesUpdateRequest
+import afield.runtime.lifecycle.BoxInstrumentation
+import afield.runtime.lifecycle.BoxInstrumentationRequest
 import afield.document.workspace.FieldPreferencesUpdateResponse
 import afield.document.workspace.GcPauseStats
 import afield.document.workspace.MavenDependencyRequest
@@ -582,7 +584,8 @@ private fun currentRuntimeInfo(): RuntimeInfo {
         aotCacheStatus = currentAotCacheStatus(inputArguments),
         gcPauseStats = gcPauseMonitor.stats(),
         runloopTimingStats = Runloop.runLoop.timingStats(),
-        runloopSchedulingStatus = Runloop.runLoop.schedulingStatus()
+        runloopSchedulingStatus = Runloop.runLoop.schedulingStatus(),
+        boxInstrumentation = BoxInstrumentation.status()
     )
 }
 
@@ -1272,7 +1275,12 @@ private fun normalizeFieldPreferences(preferences: FieldPreferences): FieldPrefe
         .take(200)
         .ifEmpty { defaultImportClassBlacklist }
 
+    val instrumentation = BoxInstrumentation.Mode.parse(preferences.boxInstrumentation)
+        ?: if (preferences.boxInterrupt) BoxInstrumentation.Mode.WATCHDOG else BoxInstrumentation.Mode.OFF
+
     return preferences.copy(
+        boxInstrumentation = instrumentation.key,
+        boxInterrupt = instrumentation != BoxInstrumentation.Mode.OFF,
         editorPropertyStickiness = sticky,
         oscEditorPort = preferences.oscEditorPort.coerceIn(1, 65535),
         oscEditorFloatAddress = normalizeOscAddress(preferences.oscEditorFloatAddress),
@@ -1287,7 +1295,10 @@ private fun normalizeFieldPreferences(preferences: FieldPreferences): FieldPrefe
 private fun applyFieldPreferences(preferences: FieldPreferences) {
     val framePresentationLogWasEnabled = Options.framePresentationLog
     CodeUseTelemetryService.configureQuietMode(preferences.quietMode)
-    afield.runtime.lifecycle.BoxInterrupt.applyPreference(preferences.boxInterrupt)
+    BoxInstrumentation.applyPreference(
+        BoxInstrumentation.Mode.parse(preferences.boxInstrumentation)
+            ?: if (preferences.boxInterrupt) BoxInstrumentation.Mode.WATCHDOG else BoxInstrumentation.Mode.OFF
+    )
     Options.profiling = if (Options.captureCompatibility) false else preferences.profiling
     Options.framePresentationLog = preferences.framePresentationLog
     Options.logShadercSource = preferences.logShadercSource
@@ -5040,6 +5051,35 @@ class Server {
                                     HttpStatusCode.InternalServerError,
                                     mapOf("error" to "could not save preferences")
                                 )
+                            }
+                        }
+
+                        get("/api/box-instrumentation") {
+                            call.respond(BoxInstrumentation.status())
+                        }
+
+                        // Set what Field does to compiled Kotlin box code: {"mode": "watchdog"|"instrument"|"off",
+                        // "persist": true} saves it as the /welcome preference; "persist": false sets it for this
+                        // session only (a blank mode then clears the session value). Answers with the new status.
+                        post("/api/box-instrumentation") {
+                            try {
+                                val request = call.receive<BoxInstrumentationRequest>()
+                                val mode = BoxInstrumentation.Mode.parse(request.mode)
+                                if (mode == null && (request.persist || !request.mode.isNullOrBlank())) {
+                                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to "mode must be watchdog, instrument or off"))
+                                    return@post
+                                }
+                                if (request.persist) {
+                                    BoxInstrumentation.clearSession()
+                                    persistFieldPreferences(currentFieldPreferences().copy(boxInstrumentation = mode!!.key))
+                                } else if (mode == null) {
+                                    BoxInstrumentation.clearSession()
+                                } else {
+                                    BoxInstrumentation.mode = mode
+                                }
+                                call.respond(BoxInstrumentation.status())
+                            } catch (e: SerializationException) {
+                                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "invalid box-instrumentation payload"))
                             }
                         }
 

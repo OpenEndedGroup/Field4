@@ -168,7 +168,7 @@ object SoundPathMap {
     }
 
     /**
-     * The map. Thirteen sample sources, five ways out, four ways in.
+     * The map. Fourteen sample sources, five ways out, four ways in.
      *
      * Ordered the way a person reads it: the things that make sound, then the things that carry it
      * away, then the things that feed it. Every `page = null` is a real gap and is named as one on
@@ -360,6 +360,18 @@ object SoundPathMap {
             page = "public/docs/alife_examples.md",
         ),
 
+        SoundPath(
+            id = "speech",
+            role = Role.MAKES, timing = Timing.OFFLINE, onSeam = false,
+            needs = "the tiny-voca model, fetched on first use",
+            channels = "mono",
+            what = "English text spoken by the tiny-voca ONNX model, a learned source-filter vocoder, " +
+                "into a 24 kHz buffer with the timing of every word and phone",
+            file = "src/jvmMain/kotlin/afield/audio/synth/Speech.kt",
+            entryPoint = "fun speak",
+            page = "public/docs/spectral_examples.md",
+        ),
+
         // ── things that take samples out ───────────────────────────────────────────────────
 
         SoundPath(
@@ -504,8 +516,10 @@ object SoundPathMap {
      * Twelve with `grains` (2026-11-13): alife_examples.md's grain sets, summed into a buffer by
      * renderGrains. The docs-audio-producer marker caught GrainSetSoundDocs landing undeclared.
      * Thirteen with `fm1-sim`, the FM-1 synth's open-firmware simulator as a wasm module on the seam.
+     * Fourteen with `speech` (2026-11-19): `speak(...)` on the tiny-voca model, declared when
+     * SpeechSoundDocs put its clips on spectral_examples.md.
      */
-    const val SOURCE_COUNT = 13
+    const val SOURCE_COUNT = 14
 
     /** How many ways samples leave this process. Five, of which three are separate OpenAL contexts. */
     const val SINK_COUNT = 5
@@ -637,6 +651,7 @@ object SoundPathMap {
                 // Five pattern scenes on patVoice; held-pitch is a SineOsc graph (DocsAudioProvenance.originOf).
                 "src/jvmMain/kotlin/afield/math/distribution/DistributionSoundDocs.kt" to "pat-stand-in",
                 "src/jvmMain/kotlin/afield/simulation/agents/alife_grains.kt" to "grains",
+                "src/jvmMain/kotlin/afield/audio/synth/SpeechSoundDocs.kt" to "speech",
             ),
         ),
         Marker(

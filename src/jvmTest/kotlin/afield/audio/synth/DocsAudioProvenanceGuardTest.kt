@@ -63,14 +63,15 @@ class DocsAudioProvenanceGuardTest {
             Origin.STAND_IN_SYNTH to 28,
             Origin.DIRT_SAMPLES to 41,
             Origin.MIXED_SAMPLES_AND_STAND_IN to 1,
-            Origin.DOUGH_DSP to 33,
+            Origin.DOUGH_DSP to 39,
             Origin.FAUST to 6,
             Origin.FM1_SIM to 9,
             Origin.DOUGH_WASM to 2,
             Origin.STEAM_AUDIO_HRTF to 3,
             Origin.SONIC_PI to 1,
-            Origin.MODAL_SYNTHESIS to 27,
+            Origin.MODAL_SYNTHESIS to 29,
             Origin.ADDITIVE_GRAINS to 3,
+            Origin.NEURAL_SPEECH to 4,
         )
         assertEquals(
             expected,
@@ -329,7 +330,14 @@ class DocsAudioProvenanceGuardTest {
          * `spectral_examples.md` added six more (2026-11-18), [Origin.DOUGH_DSP]: [TptFilterDocs] renders a
          * swept sine through naive and ADAA tanh, the ZdfLadder rising into self-oscillation, a singing
          * ZdfSvf with a smoothed stepped pitch, and a stepped-cutoff ladder raw and smoothed.
+         *
+         * On 2026-11-19 the family map had lagged the total: DOUGH_DSP read 33 (the six 11-18 clips above
+         * were counted in the total only) and MODAL_SYNTHESIS 27 against 29 published; both now match the scan.
+         *
+         * `spectral_examples.md` added four (2026-11-19), [Origin.NEURAL_SPEECH]: [SpeechSoundDocs] renders
+         * the hello sentence in both voices, the voice mixed with its word pattern on Dirt one-shots, and
+         * the sung contour, all through `speak(...)` on the tiny-voca model.
          */
-        const val EXPECTED_FENCE_COUNT = 160
+        const val EXPECTED_FENCE_COUNT = 166
     }
 }

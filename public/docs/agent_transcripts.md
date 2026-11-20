@@ -537,6 +537,21 @@ against a real `lua_State`. See [Lua in a Box](lua.md).
 
 [Open →](offline.html?file=assets/agent_transcripts/lua_demo/metadata.edn)
 
+### norns_demo
+
+**A norns host in a Lua box.** A Kotlin root whose `mainLanguage` makes six boxes under it Lua, each
+using `require "norns"`. **orbits** (launch) is a norns script written in the box: five planets on a
+128×64 screen in the `norns` panel, a PolyPerc note each time one comes round, K1–K3 and E1–E3 as keys
+in `controls`; **orbits, rendered** runs the same script offline for eight seconds with an encoder
+turn and a key press, into a player and a .wav; **fetch the scripts** clones SPIKE the Percussionist's
+noiz virus and om-i-god's anima from GitHub into `~/.afield/norns/code/`; **noiz virus** (launch) runs
+it live; **noiz virus, rendered** and **anima, rendered** run them offline, write screens and a .wav,
+and print what of the norns API they reached that Field stubs. Needs `brew install luajit`. CI replays
+the graph and runs the Kotlin root only; `NornsHostTest` runs the host against a real `lua_State`. See
+[Lua in a Box](lua.md#a-norns-host).
+
+[Open →](offline.html?file=assets/agent_transcripts/norns_demo/metadata.edn)
+
 ### hello_display_capture
 
 The same single display box, paired with the backdoor capture commands
@@ -882,6 +897,40 @@ the length label follow every drag. Box 2 is a slab whose height is a handle hel
 `draw()` again. The same handles can be pinched in the visionOS viewer.
 
 [Open →](offline.html?file=assets/agent_transcripts/three_handles/metadata.edn)
+
+### buffer_paint
+
+**Paint into a running simulation's memory.** [Painting into a live buffer](visualizers.md#painting-into-a-live-buffer)
+as two boxes. Box 1 runs a Gray-Scott reaction-diffusion on two arrays in a `frames { }` loop and,
+while it runs, edits its own state through a `BufferCanvas`: a brush stroke, a cloned patch, a
+blurred square, a motion-blurred band and a filled column, each kept as a snapshot as the reaction
+grows it into pattern. Box 2 views a half-second delay line one sample to one pixel, pastes a pluck
+and motion-blurs another inside the ring, prints the RMS of both before and after, and puts
+*before* and *after* players under it. After citrons'
+["Paint in the memory of other programs"](https://citrons.xyz/journal/2026-04-13).
+
+[Open →](offline.html?file=assets/agent_transcripts/buffer_paint/metadata.edn)
+
+### squircles
+
+**Five squircles under one slider.** [Squircles](fline_examples.md#squircles-squirclefrom-and-squirclerectfrom)
+as two boxes. Box 1 draws the superellipse, its one-cubic fit, Chromium's two cubics, Figma's corner
+smoothing and clothoid corners side by side, each over its curvature plotted against arc length.
+Drag the Gauge slider and all five change together: the superellipse's curvature stays smooth,
+Figma's jumps where its cubics meet the arc, the clothoid's rises in straight ramps. Box 2 is
+`squircleRectFrom` with Figma and clothoid corners drawn over circular ones.
+
+[Open →](offline.html?file=assets/agent_transcripts/squircles/metadata.edn)
+
+### speech
+
+**A box that talks.** [Speech](spectral_examples.md#speech-a-box-that-talks) as five boxes. Box 1
+speaks a sentence into an audio player. Box 2 plots its level with a mark at every word. Box 3 turns
+the words into a pattern, a kick on each stressed word and a hat on the rest, and mixes it with the
+voice. Box 4 sings the sentence on a pitch a sine moves, played live. Box 5 plots the LPC envelope
+of each word's stressed vowel.
+
+[Open →](offline.html?file=assets/agent_transcripts/speech/metadata.edn)
 
 ### drawing_on
 
@@ -2752,6 +2801,35 @@ you can paste into a shader.
 
 [Open →](offline.html?file=assets/agent_transcripts/stacksl_fit_demo/metadata.edn)
 
+### stacksl_partial_eval
+
+**A StackSL program specialized to its residual.** [Specializing a program](stacksl_examples.md#specializing-a-program)
+as two boxes. Box 1 specializes `power(x, 5)` and prints the four multiplications that are left. Box 2
+specializes a StackSL program, renders the residual next to the interpreter, checks the two are
+bit-identical, and prints the residual GLSL. Edit `program` and rerun to see the residual change.
+
+[Open →](offline.html?file=assets/agent_transcripts/stacksl_partial_eval/metadata.edn)
+
+### sdf_global_consistency
+
+**A pseudo-SDF repaired by its own circles.** [Repairing a field that is only a bound](mesh_examples.md#repairing-a-field-that-is-only-a-bound)
+as two boxes. Box 1 samples a two-disc `min` union and draws every sample's circle before and after
+`repaired()`, with the circles that fall short of the outline reddened. Box 2 draws offset curves of a box
+with a disc cut from it, once from the pseudo-SDF and once from the repaired grid. Change `n` or the
+shapes and rerun to see how the `consistency()` numbers move.
+
+[Open →](offline.html?file=assets/agent_transcripts/sdf_global_consistency/metadata.edn)
+
+### splat_tiles
+
+**Gaussian splats blended tile by tile.** [Splats by tile, and what a tile costs](geometry_from_disk.md#splats-by-tile-and-what-a-tile-costs)
+as three boxes. Box 1 bins a clustered cloud into 16×16 tiles, blends each tile front to back with
+`SplatTiles`, and prints how far the result is from `SplatRaster`'s whole-image reference. Box 2 shows
+how many splats each tile holds as a heat map. Box 3 times tiles handed out in raster order against
+heaviest first with the heaviest tiles cut into chunks. Change the camera or the count and rerun.
+
+[Open →](offline.html?file=assets/agent_transcripts/splat_tiles/metadata.edn)
+
 ### macro_recorder_stamp
 
 **A macro used as a stamp.** The first box saves a macro the way the
@@ -3995,6 +4073,18 @@ still compile against Field's real K2 import set. The numbers are asserted separ
 
 [Open →](offline.html?file=assets/agent_transcripts/gpu_probe_bench/metadata.edn)
 
+### buffer_paint_gpu
+
+**Paint into a GPU simulation's storage buffer by hand.** [Painting into a GPU buffer](visualizers.md#painting-into-a-gpu-buffer)
+as three boxes: a renderer, a compute box running Gray-Scott on two host-visible ping-pong buffers,
+and a draw box showing the state in the native window at one cell to one framebuffer pixel. Turn on
+the drawing layer (Alt+D) and draw over the *gpu buffer* frame: a freehand stroke paints, a
+rectangle blurs what is under it, an ellipse erases, and an arrow from inside a rectangle copies it
+to where the arrow ends. Each gesture becomes a `BufferCanvas` edit on the mapped buffer, and the
+shader evolves the next frame from it.
+
+[Open →](offline.html?file=assets/agent_transcripts/buffer_paint_gpu/metadata.edn)
+
 ### gpu_state
 
 A stateful GPU simulation: 40,000 particles whose positions and velocities live in a
@@ -4957,6 +5047,20 @@ macro run growing_nca
   [`targetFromFLines`](reference/alife.md#growing-nca-kt--growingnca-companion--targetfromflines).
 
 [Open →](offline.html?file=assets/agent_transcripts/growing_nca/metadata.edn)
+
+### exact_triangle_coverage
+
+**Triangles covered exactly, point-sampled beside exact.** A CPU box renders eight triangles at 32 × 24
+pixels both ways and counts conservative culling over 20,000 sub-pixel triangles; beneath a renderer, a
+fullscreen box does the same on the GPU with `#include "coverage/triangle.glsl"`, fat-pixel size and window
+sharpness on sliders. See [Exact triangle coverage](afield_four_graphics.md#exact-triangle-coverage).
+
+```diffstatic {data-lang=text}
+macro write exact_triangle_coverage --file dev_docs/agents/transcripts/exact_triangle_coverage.yaml
+macro run exact_triangle_coverage
+```
+
+[Open →](offline.html?file=assets/agent_transcripts/exact_triangle_coverage/metadata.edn)
 
 ### atmospheric_sky
 

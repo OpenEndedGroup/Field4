@@ -15,6 +15,7 @@ from build_zensical_docs import (  # noqa: E402
     ceres_library_path,
     check_native_prerequisites,
     tetgen_library_path,
+    opennurbs_library_path,
     paint_library_path,
     dirt_samples_root_path,
     libpd_library_path,
@@ -23,6 +24,7 @@ from build_zensical_docs import (  # noqa: E402
     resolve_jep_python,
     loris_executable_path,
     solidcraft_library_path,
+    tiny_voca_model_path,
 )
 
 FENCE = (
@@ -218,6 +220,29 @@ class TetgenLibraryPathTests(unittest.TestCase):
         self.assertEqual("./gradlew buildTetgenNative", how_to_build)
 
 
+
+class OpenNurbsLibraryPathTests(unittest.TestCase):
+    """The same properties for openNURBS, kept in step with
+    `afield.geometry.rhino.OpenNurbsLibrary.searchedPaths` by hand."""
+
+    def test_the_environment_override_wins(self):
+        with patch.dict(os.environ, {"AFIELD_OPENNURBS_LIBRARY": "/somewhere/libfield_opennurbs_jvm.dylib"}):
+            self.assertEqual(
+                opennurbs_library_path(Path("/repo")), Path("/somewhere/libfield_opennurbs_jvm.dylib")
+            )
+
+    def test_the_default_is_where_build_opennurbs_native_writes(self):
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("AFIELD_OPENNURBS_LIBRARY", None)
+            resolved = opennurbs_library_path(Path("/repo"))
+        self.assertEqual(resolved.parent, Path("/repo/build/field-opennurbs/build"))
+        self.assertIn("field_opennurbs_jvm", resolved.name)
+
+    def test_it_is_registered_so_a_fence_may_declare_it(self):
+        resolve, how_to_build = NATIVE_PREREQUISITES["opennurbs"]
+        self.assertIs(resolve, opennurbs_library_path)
+        self.assertEqual("./gradlew buildOpenNurbsNative", how_to_build)
+
 class SolidCraftLibraryPathTests(unittest.TestCase):
     def test_capture_uses_the_optional_build_artifact_or_override(self):
         os.environ.pop("AFIELD_SOLIDCRAFT_LIBRARY", None)
@@ -375,6 +400,25 @@ class DirtSamplesRootPathTests(unittest.TestCase):
         resolve, remedy = NATIVE_PREREQUISITES["dirt-samples"]
         self.assertIs(resolve, dirt_samples_root_path)
         self.assertIn("fetchDocsDirtSamples", remedy)
+
+
+class TinyVocaModelPathTests(unittest.TestCase):
+    def test_present_only_with_model_and_lexicon(self):
+        with TemporaryDirectory() as cache, patch.dict(os.environ, {"AFIELD_ONNX_CACHE_ROOT": cache}):
+            self.assertFalse(tiny_voca_model_path(Path(".")).exists())
+            model = Path(cache) / "tiny-voca" / "model.onnx"
+            model.parent.mkdir(parents=True)
+            model.write_bytes(b"onnx")
+            self.assertFalse(tiny_voca_model_path(Path(".")).exists())
+            lexicon = model.parent / "phonemizer" / "lexicon.tsv"
+            lexicon.parent.mkdir()
+            lexicon.write_text("a\tAH0\n")
+            self.assertEqual(tiny_voca_model_path(Path(".")), model)
+
+    def test_the_key_names_the_smoke_test_as_remedy(self):
+        resolve, remedy = NATIVE_PREREQUISITES["tiny-voca"]
+        self.assertIs(resolve, tiny_voca_model_path)
+        self.assertIn("speech.tiny-voca.smoke", remedy)
 
 
 if __name__ == "__main__":

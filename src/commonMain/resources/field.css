@@ -47,9 +47,6 @@
     --field-box-backdrop: blur(3px) saturate(2.5) contrast(1.1) brightness(0.9) hue-rotate(-38deg);
     --field-box-selected-border: rgba(var(--field-cyan-rgb), 0.78);
 
-    /* Highlights drawn in "chalk": white in the dark theme, where they already were. */
-    --field-chalk-rgb: 255, 255, 255;
-
     /* The ambient help beside the cursor darkens what is behind it before its panel is laid on. */
     --field-hoverlay-backdrop: blur(10px) brightness(0.0);
 
@@ -209,132 +206,14 @@
     --field-text-soft: var(--field-accent-text);
 }
 
-/* Light theme: chalk and pencil on a warm mid-grey ground. `theme.js` sets data-field-theme on <html>
-   from the "Use Light Theme" command and keeps it in localStorage. The palette keeps its dark-theme
-   meaning: "black" is the deepest surface (here a pale warm grey, a little lighter than the ground)
-   and "white" is ink (warm graphite). The tokens after the palette are the ones where that swap alone
-   reads wrong: borders that were drawn in the surface colour, accent and status text mixed towards
-   white for contrast on black, and chalk (--field-chalk-rgb) for highlights and selection. */
+/* Light theme. Its colours are not written here: themeTwins.js derives them from the dark theme
+   through one fixed colour filter, as light "twins" of every rule that sets a colour. What is
+   left for this block is what a colour filter cannot say: the colour scheme, and backdrop filters
+   whose dark-theme forms (a hue rotation, a blackout) only read right over a dark canvas. */
 [data-field-theme="light"] {
     color-scheme: light;
-
-    --field-black-rgb: 204, 199, 190;
-    --field-white-rgb: 36, 33, 29;
-    --field-base-rgb: 172, 167, 158;
-    --field-editor-rgb: 196, 191, 182;
-    --field-accent-rgb: 28, 92, 138;
-    --field-danger-rgb: 168, 36, 30;
-    --field-warning-rgb: 150, 82, 14;
-    --field-search-rgb: 168, 120, 0;
-    --field-info-rgb: 34, 74, 150;
-    --field-success-rgb: 30, 110, 50;
-    --field-shadow-rgb: 46, 40, 32;
-    --field-chalk-rgb: 250, 248, 242;
-
-    --field-canvas-center-rgb: 172, 167, 158;
-    --field-canvas-edge-rgb: 156, 151, 142;
-    --field-canvas-ink-rgb: 36, 33, 29;
-    --field-canvas-band-rgb: 146, 141, 133;
-
-    /* Boxes: a shade darker than the ground, graphite titles and edges, a gutter-coloured ring when selected. */
-    --field-box-bg: rgba(140, 135, 126, 0.62);
-    --field-box-fg: rgba(var(--field-white-rgb), 0.9);
     --field-box-backdrop: blur(3px);
-    --field-box-selected-border: rgb(var(--field-black-rgb));
-    /* The light theme also draws the box's 5px frame (.box::before) when it is selected, in the
-       editor gutter's colour (BootstrapMonacoInit.kt: editorGutter.background). */
-    --field-box-selected-frame: rgb(var(--field-black-rgb));
-
-    --field-surface-quiet: rgb(var(--field-editor-rgb));
-    --field-surface-raised: color-mix(in srgb, rgb(var(--field-black-rgb)) 50%, rgb(var(--field-chalk-rgb)));
-    --field-surface-muted: color-mix(in srgb, rgb(var(--field-black-rgb)) 70%, rgb(var(--field-base-rgb)));
-    --field-panel: rgba(var(--field-black-rgb), 0.88);
-    --field-panel-soft: rgba(var(--field-black-rgb), 0.7);
-    --field-panel-strong: rgba(var(--field-black-rgb), 0.94);
-    --field-panel-solid: rgba(var(--field-black-rgb), 0.97);
-    --field-overlay: rgba(var(--field-black-rgb), 0.96);
-    --field-tray-bg: rgba(var(--field-black-rgb), 0.96);
-
-    --field-fg-strong: rgb(var(--field-white-rgb));
-    --field-fg-inverse: rgb(var(--field-white-rgb));
-    --field-fg-soft: rgba(var(--field-white-rgb), 0.78);
-    --field-fg-muted: rgba(var(--field-white-rgb), 0.68);
-    --field-fg-dim: rgba(var(--field-white-rgb), 0.56);
-
-    --field-border: rgba(var(--field-white-rgb), 0.2);
-    --field-border-dark-strong: rgba(var(--field-white-rgb), 0.3);
-    --field-border-dark-solid: rgba(var(--field-white-rgb), 0.4);
-    --field-border-muted: rgba(var(--field-white-rgb), 0.08);
-    --field-border-subtle: rgba(var(--field-white-rgb), 0.11);
-    --field-border-soft: rgba(var(--field-white-rgb), 0.14);
-    --field-border-medium: rgba(var(--field-white-rgb), 0.2);
-    --field-border-strong: rgba(var(--field-white-rgb), 0.28);
-    --field-border-selected: rgba(var(--field-chalk-rgb), 0.95);
-    --field-hover: rgba(var(--field-chalk-rgb), 0.22);
-    --field-hover-soft: rgba(var(--field-chalk-rgb), 0.14);
-    --field-hover-medium: rgba(var(--field-chalk-rgb), 0.3);
-    --field-hover-strong: rgba(var(--field-chalk-rgb), 0.45);
-    --field-scrollbar-thumb-dark: rgba(var(--field-white-rgb), 0.22);
-    --field-scrollbar-thumb: rgba(var(--field-white-rgb), 0.28);
-    --field-scrollbar-thumb-hover: rgba(var(--field-white-rgb), 0.42);
-
-    --field-accent-text: color-mix(in srgb, rgb(var(--field-accent-rgb)) 88%, rgb(var(--field-white-rgb)));
-    --field-accent-text-soft: color-mix(in srgb, rgb(var(--field-accent-rgb)) 80%, rgb(var(--field-white-rgb)));
-    --field-accent-link: rgb(var(--field-accent-rgb));
-    --field-accent-link-hover: color-mix(in srgb, rgb(var(--field-accent-rgb)) 70%, rgb(var(--field-white-rgb)));
-    --field-accent-pale: color-mix(in srgb, rgb(var(--field-accent-rgb)) 18%, rgb(var(--field-black-rgb)));
-    --field-accent-subtle: rgba(var(--field-accent-rgb), 0.14);
-    --field-danger-deep: color-mix(in srgb, rgb(var(--field-danger-rgb)) 22%, rgb(var(--field-black-rgb)));
-    --field-danger-bg: rgba(var(--field-danger-rgb), 0.16);
-    --field-code-accent: color-mix(in srgb, rgb(var(--field-warning-rgb)) 88%, rgb(var(--field-white-rgb)));
-    --field-fg-on-warning: rgb(var(--field-chalk-rgb));
-    --field-selection: rgb(var(--field-chalk-rgb));
-    --field-search-active-soft: rgba(var(--field-chalk-rgb), 0.35);
-    --field-type-params: color-mix(in srgb, rgb(var(--field-info-rgb)) 75%, rgb(var(--field-white-rgb)));
-    --field-type-name: color-mix(in srgb, rgb(var(--field-info-rgb)) 45%, rgb(var(--field-white-rgb)));
-    --field-syntax-int: color-mix(in srgb, rgb(var(--field-danger-rgb)) 85%, rgb(var(--field-white-rgb)));
-    --field-syntax-float: color-mix(in srgb, rgb(var(--field-warning-rgb)) 85%, rgb(var(--field-white-rgb)));
-    --field-line-number: rgba(var(--field-white-rgb), 0.5);
-    --field-line-number-active: rgb(var(--field-white-rgb));
-    --field-debug-title: color-mix(in srgb, rgb(var(--field-info-rgb)) 80%, rgb(var(--field-white-rgb)));
-    --field-debug-pill-bg: rgba(var(--field-info-rgb), 0.16);
-    --field-debug-pill-fg: color-mix(in srgb, rgb(var(--field-info-rgb)) 75%, rgb(var(--field-white-rgb)));
-    --field-debug-body: color-mix(in srgb, rgb(var(--field-info-rgb)) 55%, rgb(var(--field-white-rgb)));
-    --field-keycast-fg: color-mix(in srgb, rgb(var(--field-accent-rgb)) 45%, rgb(var(--field-white-rgb)));
-    --field-marking-bg: rgba(var(--field-chalk-rgb), 0.18);
-    --field-marking-hover-fg: rgb(var(--field-white-rgb));
-    --field-marking-active-bg: rgba(var(--field-chalk-rgb), 0.85);
-    --field-marking-active-fg: rgb(var(--field-white-rgb));
-
-    --field-line-note-caption: rgba(var(--field-white-rgb), 0.62);
-    --field-line-note-value: rgba(var(--field-white-rgb), 0.78);
-    --field-line-note-strong: rgb(var(--field-white-rgb));
-    --field-line-note-meta: rgba(var(--field-white-rgb), 0.55);
-
-    --field-toast-bg: rgba(var(--field-black-rgb), 0.97);
-    --field-toast-border: rgba(var(--field-white-rgb), 0.16);
-    --field-toast-shadow: 0 2px 10px rgba(var(--field-shadow-rgb), 0.2);
-    --field-toast-stale-opacity: 0.88;
     --field-hoverlay-backdrop: blur(10px);
-
-    --field-shadow-sm: 0 1px 2px rgba(var(--field-shadow-rgb), 0.18);
-    --field-shadow-md: 0 4px 12px rgba(var(--field-shadow-rgb), 0.2);
-    --field-shadow-lg: 0 8px 30px rgba(var(--field-shadow-rgb), 0.22);
-    --field-shadow-tray: 0 0 30px rgba(var(--field-shadow-rgb), 0.28);
-    --field-shadow-inset: rgba(var(--field-shadow-rgb), 0.16);
-    --field-text-shadow-strong: 0 1px 4px rgba(var(--field-chalk-rgb), 0.6);
-}
-
-/* No Courier. Form controls do not inherit a font, and code/kbd/samp/tt take the browser's generic
-   `monospace`, which is Courier on macOS; either shows up the moment a rule forgets a family (the box
-   chat's textarea did). `:where` keeps this at zero specificity, so every rule that names a family wins.
-   The Electron shell also repoints the generic itself (FIELD_DEFAULT_FONT_FAMILY in electron/main.js). */
-:where(textarea, input, select, button) {
-    font-family: var(--field-font);
-}
-
-:where(code, kbd, samp, tt) {
-    font-family: var(--field-font-code), var(--field-font-code-fallback);
 }
 
 /* Output areas. */
@@ -4547,10 +4426,6 @@ accent so it marks the control without boxing it in.
    is set by CanvasCamera.applyTransforms). It is a descendant of the .box, so a press on it reaches
    interact.js, whose 20 px edge margin, measured against the box's own rect, then picks the resize
    edge. z-index -1 keeps it under the box's content; the child selector outranks `.box *`. */
-[data-field-theme="light"] .box.selected::before {
-    color: var(--field-box-selected-frame);
-}
-
 .box > .box-resize-halo {
     position: absolute;
     inset: calc(-8px / var(--canvas-zoom, 1));
@@ -7202,50 +7077,6 @@ body.mode-editor-only .field-toast {
 .conversation-garden .garden-prose h1 { font-size: 1.35em; }
 .conversation-garden .garden-prose h2 { font-size: 1.2em; }
 .conversation-garden .garden-prose h3 { font-size: 1.1em; }
-
-/* Light theme: highlight.js. index.html loads github-dark.min.css for every theme; these are the
-   matching GitHub light colours, scoped so the dark stylesheet stays untouched. */
-[data-field-theme="light"] .hljs { color: #24292f; background: rgba(var(--field-chalk-rgb), 0.35); }
-[data-field-theme="light"] .hljs-doctag,
-[data-field-theme="light"] .hljs-keyword,
-[data-field-theme="light"] .hljs-meta .hljs-keyword,
-[data-field-theme="light"] .hljs-template-tag,
-[data-field-theme="light"] .hljs-template-variable,
-[data-field-theme="light"] .hljs-type,
-[data-field-theme="light"] .hljs-variable.language_ { color: #cf222e; }
-[data-field-theme="light"] .hljs-title,
-[data-field-theme="light"] .hljs-title.class_,
-[data-field-theme="light"] .hljs-title.class_.inherited__,
-[data-field-theme="light"] .hljs-title.function_ { color: #8250df; }
-[data-field-theme="light"] .hljs-attr,
-[data-field-theme="light"] .hljs-attribute,
-[data-field-theme="light"] .hljs-literal,
-[data-field-theme="light"] .hljs-meta,
-[data-field-theme="light"] .hljs-number,
-[data-field-theme="light"] .hljs-operator,
-[data-field-theme="light"] .hljs-selector-attr,
-[data-field-theme="light"] .hljs-selector-class,
-[data-field-theme="light"] .hljs-selector-id,
-[data-field-theme="light"] .hljs-variable { color: #0550ae; }
-[data-field-theme="light"] .hljs-meta .hljs-string,
-[data-field-theme="light"] .hljs-regexp,
-[data-field-theme="light"] .hljs-string { color: #0a3069; }
-[data-field-theme="light"] .hljs-built_in,
-[data-field-theme="light"] .hljs-symbol { color: #953800; }
-[data-field-theme="light"] .hljs-code,
-[data-field-theme="light"] .hljs-comment,
-[data-field-theme="light"] .hljs-formula { color: #6e7781; }
-[data-field-theme="light"] .hljs-name,
-[data-field-theme="light"] .hljs-quote,
-[data-field-theme="light"] .hljs-selector-pseudo,
-[data-field-theme="light"] .hljs-selector-tag { color: #116329; }
-[data-field-theme="light"] .hljs-subst,
-[data-field-theme="light"] .hljs-emphasis,
-[data-field-theme="light"] .hljs-strong { color: #24292f; }
-[data-field-theme="light"] .hljs-section { color: #0550ae; }
-[data-field-theme="light"] .hljs-bullet { color: #953800; }
-[data-field-theme="light"] .hljs-addition { color: #116329; background-color: #dafbe1; }
-[data-field-theme="light"] .hljs-deletion { color: #82071e; background-color: #ffebe9; }
 
 /* Theme crossfade: theme.js switches inside document.startViewTransition, so the old and new
    pictures of the whole window fade into each other. Scoped by the class theme.js holds for the

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-18T16:11:30.006Z",
+  "capturedAt": "2026-11-19T22:39:38.709Z",
   "documentName": "three_inspector_wall",
   "outputs": [
     {
@@ -12,7 +12,7 @@
         "three"
       ],
       "width": 480,
-      "height": 568,
+      "height": 560,
       "path": "outputs/0.html"
     }
   ]

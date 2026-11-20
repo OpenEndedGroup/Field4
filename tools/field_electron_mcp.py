@@ -124,26 +124,60 @@ def public_tab(tab: dict[str, Any]) -> dict[str, Any]:
             if not key.startswith("_") and key != "diagnosticLogPath"}
 
 
-_INSPECT_SCRIPT = r"""(() => {
-  const clean = (value) => String(value || '').replace(/\s+/g, ' ').trim().slice(0, 180);
-  const visible = (node) => !!(node.getClientRects().length && getComputedStyle(node).visibility !== 'hidden');
-  const label = (node) => clean(node.getAttribute('aria-label') || node.labels?.[0]?.innerText ||
+_INSPECT_SCRIPT = r"""(args => {
+  const clean = value => String(value || '').replace(/\s+/g, ' ').trim().slice(0, 180);
+  const visible = node => !!(node.getClientRects().length && getComputedStyle(node).visibility !== 'hidden');
+  const label = node => clean(node.getAttribute('aria-label') || node.labels?.[0]?.innerText ||
     node.getAttribute('title') || node.innerText || node.getAttribute('placeholder') || node.value);
-  const controls = [...document.querySelectorAll('button,input,textarea,select,[role="button"],[role="tab"],[contenteditable="true"]')]
-    .filter(visible).slice(0, 120).map((node) => ({tag: node.tagName.toLowerCase(), role: node.getAttribute('role'),
-      label: label(node), type: node.getAttribute('type'), id: node.id || null,
-      disabled: !!node.disabled, value: node.matches('input,textarea,select') ? clean(node.value) : null}));
-  const headings = [...document.querySelectorAll('h1,h2,h3,[role="heading"]')]
-    .filter(visible).slice(0, 60).map((node) => ({level: node.getAttribute('aria-level') || node.tagName.toLowerCase(), text: clean(node.innerText)}));
-  const links = [...document.querySelectorAll('a[href]')].filter(visible).slice(0, 60)
-    .map((node) => ({text: label(node), href: node.href}));
-  return {title: document.title, url: location.href, headings, controls, links,
-    visibleText: String(document.body?.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 12000)};
-})()"""
+  let root = document;
+  if (args.scope) {
+    try { root = document.querySelector(args.scope); }
+    catch (_) { return {error: 'Invalid scope selector'}; }
+    if (!root) return {error: 'Scope selector matched no element'};
+  }
+  const nodes = selector => [...root.querySelectorAll(selector)].filter(visible);
+  const controls = nodes('button,input,textarea,select,[role="button"],[role="tab"],[contenteditable="true"]');
+  const headings = nodes('h1,h2,h3,[role="heading"]');
+  const links = nodes('a[href]');
+  const describe = node => ({tag: node.tagName.toLowerCase(), role: node.getAttribute('role'),
+    label: label(node), type: node.getAttribute('type'), id: node.id || null,
+    disabled: !!node.disabled, value: node.matches('input,textarea,select') ? clean(node.value) : null,
+    ...(node.matches('a[href]') ? {href: node.href} : {})});
+  const page = {title: document.title, url: location.href,
+    document: new URL(location.href).searchParams.get('file'),
+    counts: {controls: controls.length, links: links.length}, truncated: false};
+  const limit = args.limit;
+  const take = (items, map) => { if (items.length > limit) page.truncated = true; return items.slice(0, limit).map(map); };
+  if (args.query) {
+    const needle = args.query.toLowerCase();
+    const candidates = nodes('button,input,textarea,select,a[href],[role],h1,h2,h3');
+    page.matches = take(candidates.filter(n => label(n).toLowerCase().includes(needle)), describe);
+  } else if (args.mode === 'full') {
+    const sections = args.sections || ['headings', 'controls', 'links', 'visibleText'];
+    if (sections.includes('headings')) page.headings = take(headings, n => ({level: n.getAttribute('aria-level') || n.tagName.toLowerCase(), text: clean(n.innerText)}));
+    if (sections.includes('controls')) page.controls = take(controls, describe);
+    if (sections.includes('links')) page.links = take(links, describe);
+    if (sections.includes('visibleText')) {
+      const text = String((root === document ? document.body?.innerText : root.innerText) || '').replace(/\s+/g, ' ').trim();
+      page.visibleText = text.slice(0, limit * 180);
+      if (text.length > limit * 180) page.truncated = true;
+    }
+  } else page.headings = take(headings, n => ({level: n.getAttribute('aria-level') || n.tagName.toLowerCase(), text: clean(n.innerText)}));
+  return page;
+})"""
 
 
-async def inspect_tab(tab: dict[str, Any]) -> dict[str, Any]:
-    return {"tab": public_tab(tab), "page": await _evaluate(tab["_websocket"], _INSPECT_SCRIPT)}
+async def inspect_tab(tab: dict[str, Any], *, query: str | None = None, scope: str | None = None,
+                      mode: str = "summary", sections: list[str] | None = None, limit: int = 10) -> dict[str, Any]:
+    if mode not in ("summary", "full") or not 1 <= limit <= 100:
+        raise ElectronUnavailable("mode must be summary or full, and limit must be between 1 and 100.")
+    if sections is not None and any(s not in ("headings", "controls", "links", "visibleText") for s in sections):
+        raise ElectronUnavailable("Unknown inspection section.")
+    args = json.dumps({"query": query, "scope": scope, "mode": mode, "sections": sections, "limit": limit})
+    page = await _evaluate(tab["_websocket"], _INSPECT_SCRIPT + "(" + args + ")")
+    if page.get("error"):
+        raise ElectronUnavailable(page["error"])
+    return {"tab": public_tab(tab), "page": page}
 
 
 async def act_on_tab(tab: dict[str, Any], action: str, target: str, value: str | None = None) -> dict[str, Any]:

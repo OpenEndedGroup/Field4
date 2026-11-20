@@ -140,6 +140,83 @@ The primitives are `sdfSphere`, `sdfBox`, `sdfRoundBox`, `sdfTorus`, `sdfPlane`,
 `shell`, `rounded`, `translated`, `scaled`, `rotated`, `repeated`, `twisted` and `displaced`.
 `gradient(p)` and `normalAt(p)` finite-difference the field where you need a direction.
 
+## Repairing a field that is only a bound
+
+The `sdfUnion` and `sdfSmoothUnion` of two exact fields is not itself a distance field. Inside a
+`min` union, each point only knows the distance to the nearer disc's own edge. A `max` cut
+underestimates outside. A smooth `min` gets the fillet's surface right and the values near it wrong.
+The zero set is still where you want it; the numbers either side of it are bounds. Offsetting,
+`shell`, sphere tracing and anything else that reads a value as a distance inherits that error.
+
+An exact sample is a circle, centred on the sample with radius `|d|`, and two things must hold: the
+circle **touches** the surface, and it **contains none of it**. `SdfGrid2D` turns those into checks
+against the surface the samples themselves imply, their zero crossings along the grid edges
+(after [Refining and Repairing Signed Distance Data With Global
+Consistency](https://arxiv.org/abs/2605.01919)). `consistency()` reports how far each circle overshoots or
+falls short. `repaired()` keeps every sign and makes every circle the largest one that holds no
+surface point. Below, the pseudo-SDF of a two-disc union is on the left: the circles inside, reddened by how far they miss,
+fall short of the outline, and `consistency()` measures by how much. The repaired grid is on the
+right.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/mesh_examples/sdf_repair.png" wait="2.0" capture="box" open-outputs="true" padding="20"}
+:::static
+// Two discs joined with min: exact outside, only a bound inside.
+fun disc(cx: Double, cy: Double, r: Double) = { x: Double, y: Double -> hypot(x - cx, y - cy) - r }
+val left = disc(-0.4, 0.0, 0.6)
+val right = disc(0.4, 0.0, 0.6)
+val union = { x: Double, y: Double -> min(left(x, y), right(x, y)) }
+
+val pseudo = sdfGrid2D(xMin = -1.2, yMin = -1.0, xMax = 1.2, yMax = 1.0, n = 13, field = union)
+val fixed = pseudo.repaired()
+println("pseudo   ${pseudo.consistency()}")
+println("repaired ${fixed.consistency()}")
+:::fold draw every sample's circle, before and after
+val scale = 120.0
+fun circles(grid: SdfGrid2D, dx: Double) = buildList {
+    val nearest = grid.nearestSurfaceDistances()
+    for (j in 0 until grid.ny) for (i in 0 until grid.nx) {
+        val d = grid[i, j]
+        val miss = nearest[j * grid.nx + i] - abs(d) // > 0 falls short, < 0 swallows surface
+        val c = (abs(miss) / grid.h).coerceIn(0.0, 1.0)
+        add(fline { circle((grid.x(i) + dx) * scale, grid.y(j) * scale, abs(d) * scale) }.apply {
+            color = if (d < 0) vec(0.15 + 0.85 * c, 0.3, 0.7 - 0.5 * c, 0.8) else vec(0.6, 0.6, 0.6, 0.15)
+        })
+    }
+    val s = grid.surfacePoints()
+    for (k in 0 until s.size / 2) {
+        add(fline { circle((s[2 * k] + dx) * scale, s[2 * k + 1] * scale, 2.0) }.apply {
+            filled = true
+            color = vec(1.0, 0.67, 0.0, 1.0)
+        })
+    }
+}
+lines(circles(pseudo, 0.0) + circles(fixed, 2.6), channel = "circles", w = 640.0, h = 260.0, fitToSize = true)
+:::endfold
+```
+
+![Two copies of a two-disc union drawn as one circle per grid sample with orange dots on the outline: on the left the circles inside are reddened and stop short of the outline, on the right every circle reaches it](assets/mesh_examples/sdf_repair.png)
+
+Measured against the brute-force distance to the true outline on a 97 × 97 grid (the numbers come
+from `SdfRepairTest`), the repair takes the union's error from a maximum of **0.247** (mean 0.0019) to **0.0081** (mean 0.00027).
+A box with a disc cut from its corner by `max` goes from a maximum error of **0.44** to **0.010**, and a smooth-min union, judged
+against the distance to its own zero set, from **0.168** to **0.0094**. An exact field passes through
+almost unchanged. What is left over is the crossings' own error: they are linear interpolations
+along grid edges, so near a sharp corner the repaired value is right for the sampled outline, which
+sits within about half a cell of the true one.
+
+`upsampled(factor)` uses the same circles to refine a coarse exact grid without the function behind
+it. A fine point inside a coarse circle is at least `|d_j| − |p − x_j|` from the surface. The coarse
+crossings, and the points where near-surface circles touch it, bound the distance from above. On a
+17 × 17 sampling of the same union refined four times, that gives a mean error of **0.0016** (max 0.036), against bilinear
+interpolation's **0.0038** (max 0.039). Repair a pseudo-SDF before upsampling it, since its circles are not
+trustworthy lower bounds.
+
+`sphereTrace(ox, oy, dx, dy)` marches the grid the way a ray-marching renderer would. On the box with
+the disc cut from it, 720 rays aimed at the centre take **4.30** steps on average through the
+pseudo-SDF and **4.05** through the repaired one, and every ray hits in both. The saving is small
+because the cut only underestimates near its notch. The repaired hits land within **0.009** of the
+true outline, against **0.006** for the pseudo-SDF, which is the sampled-outline error again.
+
 ## Looking at what you got
 
 A broken mesh can still look fine. A missing cap, unwelded vertices or a tear in a marched surface

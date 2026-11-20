@@ -180,6 +180,28 @@ def tetgen_library_path(repo_root: Path) -> Path:
     return next((c for c in candidates if c.exists()), candidates[0])
 
 
+def opennurbs_library_path(repo_root: Path) -> Path:
+    """Where `afield.geometry.rhino.OpenNurbsLibrary.resolvedPath` will look, from Python.
+
+    The same arrangement as [tetgen_library_path]: only this repo's `build/`, both CMake
+    layouts, and the environment override (the JVM property is not visible from here).
+    """
+    override = os.environ.get("AFIELD_OPENNURBS_LIBRARY", "").strip()
+    if override:
+        return Path(override)
+    if sys.platform.startswith("win"):
+        name = "field_opennurbs_jvm.dll"
+    elif sys.platform == "darwin":
+        name = "libfield_opennurbs_jvm.dylib"
+    else:
+        name = "libfield_opennurbs_jvm.so"
+    candidates = [
+        repo_root / "build" / "field-opennurbs" / "build" / name,
+        repo_root / "build" / "field-opennurbs" / "build" / "Release" / name,
+    ]
+    return next((c for c in candidates if c.exists()), candidates[0])
+
+
 def paint_library_path(repo_root: Path) -> Path:
     """Where `afield.graphics.paint.PaintLibrary.resolvedPath` will look, from Python.
 
@@ -440,6 +462,21 @@ def steam_audio_library_path(repo_root: Path) -> Path:
     return repo_root / "build" / "steamaudio" / platform / name
 
 
+def tiny_voca_model_path(repo_root: Path) -> Path:
+    """The tiny-voca speech model and its phonemizer lexicon in the ONNX model cache.
+
+    Not native either: ``speak(...)`` fetches both on first use into
+    ``~/.afield/onnx/models/tiny-voca/`` (``AFIELD_ONNX_CACHE_ROOT`` overrides the root, as
+    ``OnnxRuntime`` reads it), and ``spectral_examples.md``'s speech clips need them. Present only
+    when both files are.
+    """
+    override = os.environ.get("AFIELD_ONNX_CACHE_ROOT", "").strip()
+    root = Path(override).expanduser() if override else Path.home() / ".afield" / "onnx" / "models"
+    model = root / "tiny-voca" / "model.onnx"
+    lexicon = root / "tiny-voca" / "phonemizer" / "lexicon.tsv"
+    return model if lexicon.is_file() else model.parent / "incomplete"
+
+
 def dirt_samples_root_path(repo_root: Path) -> Path:
     """The pinned Dirt-Samples subset, when it is complete and every file has its pinned digest.
 
@@ -475,6 +512,7 @@ NATIVE_PREREQUISITES: dict[str, tuple[Any, str]] = {
     "manifold": (manifold_library_path, "brew install manifold"),
     "solidcraft": (solidcraft_library_path, "./gradlew buildSolidCraftNative"),
     "tetgen": (tetgen_library_path, "./gradlew buildTetgenNative"),
+    "opennurbs": (opennurbs_library_path, "./gradlew buildOpenNurbsNative"),
     "morse-smale": (
         native_geometry_library_path("morse-smale", "field_morse_smale", "AFIELD_MORSE_SMALE_LIBRARY"),
         "./gradlew buildMorseSmaleNative",
@@ -494,6 +532,11 @@ NATIVE_PREREQUISITES: dict[str, tuple[Any, str]] = {
     "browser-bridge": (browser_bridge_library_path, "./gradlew buildFieldBrowserBridge"),
     "electron-runtime": (electron_runtime_path, "./gradlew electronInstall"),
     "dirt-samples": (dirt_samples_root_path, "./gradlew fetchDocsDirtSamples"),
+    "tiny-voca": (
+        tiny_voca_model_path,
+        "run any speak(...) once to fetch it, e.g. uv run --project . --group backdoor python "
+        "tools/run_field_tests.py --id speech.tiny-voca.smoke",
+    ),
     "steam-audio": (steam_audio_library_path, "./gradlew fetchSteamAudioNatives"),
     "jep": (
         jep_library_path,

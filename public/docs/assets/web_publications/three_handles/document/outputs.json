@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-18T16:10:12.703Z",
+  "capturedAt": "2026-11-19T22:39:36.195Z",
   "documentName": "three_handles",
   "outputs": [
     {
@@ -12,7 +12,7 @@
         "three"
       ],
       "width": 480,
-      "height": 488,
+      "height": 480,
       "path": "outputs/0.html"
     },
     {
@@ -24,7 +24,7 @@
         "three"
       ],
       "width": 480,
-      "height": 488,
+      "height": 480,
       "path": "outputs/1.html"
     }
   ]

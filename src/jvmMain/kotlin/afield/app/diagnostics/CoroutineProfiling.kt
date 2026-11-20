@@ -105,6 +105,14 @@ object CoroutineProfiles {
         active?.takeIf { it.document == origin.document && System.nanoTime() < it.deadlineNs }
 
     fun resume(context: CoroutineContext, task: Runnable) {
+        // Each resume is a run boundary for per-function box cost (afield.runtime.bytecode.BoxCost).
+        if (afield.runtime.bytecode.BoxCost.active) {
+            val cost = afield.runtime.bytecode.BoxCost.begin()
+            try { profiledResume(context, task) } finally { afield.runtime.bytecode.BoxCost.end(cost, context[ProfileOrigin]?.box?.id) }
+        } else profiledResume(context, task)
+    }
+
+    private fun profiledResume(context: CoroutineContext, task: Runnable) {
         val capture = active
         val origin = context[ProfileOrigin]
         if (capture == null || origin == null || origin.document != capture.document) { task.run(); return }
