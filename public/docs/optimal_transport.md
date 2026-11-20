@@ -67,7 +67,7 @@ the swaps that shorten the real 3D travel. `projections` sets how many views it 
 default. Here 400 points on a coiled ribbon are matched onto 400 on a sphere. Each source is drawn
 three times, at its start, halfway to its partner, and at the partner itself:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/optimal_transport/matching_3d.png" capture="box" open-outputs="true" wait="2.0" embed="true" padding="12" name="optimal-transport-matching-3d" alt="a coiled ribbon of white dots inside a sphere of white dots, with short coloured chords joining each ribbon point to the sphere point it was matched with, and a cloud of coloured dots halfway along each chord"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/optimal_transport/matching_3d.png" capture="box" open-outputs="true" wait="2.0" embed="true" padding="12" name="optimal-transport-matching-3d" alt="seen down the Z axis, a ring of coloured chords running outward from a coiled ribbon to the sphere around it, each colour confined to its own sector of the ring, with small white dots at both ends and halfway along each chord"}
 // 400 points on a coiled ribbon matched onto 400 on a sphere, then a halfway frame of the morph
 val rnd = java.util.Random(3)
 val ribbon = List(400) {
@@ -102,17 +102,20 @@ fun dots(points: List<Vec3>, size: Double) = fline {
     color = vec(1.0, 1.0, 1.0, 0.8)
 }
 val halfway = ribbon.indices.map { ribbon[it] + (partner[it] - ribbon[it]) * 0.5 }
+val clouds: List<FLine> = [dots(ribbon, 0.25), dots(sphere, 0.25), dots(halfway, 0.4)]
 
 threeLines(
-    chords + [dots(ribbon, 0.25), dots(sphere, 0.25), dots(halfway, 0.4)],
+    chords + clouds,
     channel = "matching-3d",
     height = 500,
     editable = false,
 )
 ```
 
-The chords are short and run outward from the ribbon without looping back across the sphere,
-which is what a low total travel looks like. `match.costHistory` holds the total squared travel
+Pairing each ribbon point with the sphere point of the same index gives a mean squared travel of
+57546; the match brings it to 5563. The chords run outward from the ribbon, and each colour, the
+angle of the sphere point around Z, stays in its own sector rather than reaching across the
+sphere. `match.costHistory` holds the total squared travel
 before the first view and after each one, so you can see how much each extra view still buys.
 
 To morph, interpolate each source toward `partner[i]`, as the halfway frame does; because the

@@ -297,7 +297,7 @@ keep their edges.
 Here 300 particles in a shell are joined to their slot neighbours, each edge coloured by its
 octant:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_connectivity_examples/orthant_slots_3d.png" wait="2.0" capture="box" open-outputs="true" w="1200" alt="a hollow shell of white dots joined by short edges in eight colours, each colour one octant direction; every dot sends edges of several colours to its neighbours on the shell"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_connectivity_examples/orthant_slots_3d.png" wait="2.0" capture="box" open-outputs="true" w="1200" alt="a hollow shell of points joined by a web of thin edges in eight colours, one per octant; most edges join neighbours on the shell and some cut across its hollow middle"}
 :::static
 val rnd = java.util.Random(4)
 val xyz = FloatArray(300 * 3)
@@ -337,6 +337,10 @@ val cloud = fline {
 
 threeLines(edges + cloud, channel = "orthant-slots", height = 500, editable = false)
 ```
+
+Most particles fill six or seven of their eight slots here; an octant that points straight out
+of the shell has nothing in it. The edges that cut across the hollow middle come from the octants
+that point inward, where the nearest particle can be on the far side.
 
 The search walks rings of grid cells outward from each particle, and `maxRings` (6 by default)
 caps how far. The cap is what makes it cheap enough to rebuild every frame, at the price that a
