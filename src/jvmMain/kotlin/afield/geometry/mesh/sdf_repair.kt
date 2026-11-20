@@ -437,6 +437,28 @@ fun FLine.signedDistance2D(samplesPerCubic: Int = 24, spacing: Double? = null): 
     }
 }
 
+/**
+ * The signed distance to the union of several closed 2-D outlines, negative inside any of them:
+ * the pointwise minimum of each line's [FLine.signedDistance2D].
+ *
+ * Use it for a drawing made of separate strokes, each closed back to its start. Strokes that
+ * overlap merge into one solid; to cut a hole, put the counter in the *same* `FLine` as its outer
+ * edge, where the even-odd rule makes it a hole. An empty list gives a field that is
+ * [Double.POSITIVE_INFINITY] everywhere, "far from everything".
+ *
+ * ```kotlin
+ * val field = listOf(circle, star).signedDistance2D()
+ * ```
+ */
+fun List<FLine>.signedDistance2D(samplesPerCubic: Int = 24, spacing: Double? = null): ScalarField2D {
+    val fields = filter { line -> line.nodes.size >= 2 }.map { it.signedDistance2D(samplesPerCubic, spacing) }
+    return { x, y ->
+        var d = Double.POSITIVE_INFINITY
+        for (f in fields) d = min(d, f(x, y))
+        d
+    }
+}
+
 /** Nearest-point queries over a flat `[x, y, ...]` array, bucketed on a uniform grid of cells. */
 internal class PointBuckets2D(
     private val points: DoubleArray,
