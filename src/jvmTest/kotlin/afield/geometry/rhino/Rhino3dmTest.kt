@@ -32,7 +32,7 @@ class Rhino3dmTest {
     private fun sample(): RhinoModel {
         val dir = Files.createTempDirectory("rhino3dm-test").toFile()
         try {
-            return Rhino3dm.load(Rhino3dm.writeSample(File(dir, "sample.3dm")))
+            return Rhino3dm.load(Rhino3dm.writeSample(File(dir, "sample.3dm")), RhinoBrepMeshing.SAVED)
         } finally {
             dir.deleteRecursively()
         }

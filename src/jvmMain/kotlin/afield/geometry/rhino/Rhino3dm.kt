@@ -40,10 +40,11 @@ import kotlin.io.path.exists
  *
  * # What it will not do
  *
- * It never evaluates a NURBS surface. A Brep comes out as the render mesh Rhino saved with it, and
- * one saved without (*Save Small*, or a face Rhino never managed to shade) is a [RhinoSkipped]
- * that says so — still carrying its edges, so it can be drawn as a wireframe. SubD objects are
- * skipped too: public openNURBS has no SubD mesher. Curves are the exception that costs nothing:
+ * A Brep comes out as the render mesh Rhino saved with it. A face saved without one (*Save Small*,
+ * or a face Rhino never managed to shade) is tessellated from its exact trimmed NURBS surface by
+ * [BrepTessellator] — the `meshing` argument of [load] chooses ([RhinoBrepMeshing]), and
+ * [RhinoMesh.evaluatedFaces] says how many faces were. SubD objects are still skipped: public
+ * openNURBS has no SubD mesher and does not expose the control net in a form worth subdividing. Curves are the exception that costs nothing:
  * lines, polylines and polynomial spans up to cubic come over exactly, and arcs and other rational
  * spans become cubics within a hundred-thousandth of the curve's size.
  *
@@ -53,12 +54,59 @@ import kotlin.io.path.exists
 object Rhino3dm {
 
     /** Read [path]; a leading `~` is your home directory. Throws [RhinoException] for a file openNURBS cannot read. */
-    fun load(path: String): RhinoModel = load(File(path.replaceFirst(Regex("^~(?=/|$)"), System.getProperty("user.home"))))
+    fun load(
+        path: String,
+        meshing: RhinoBrepMeshing = RhinoBrepMeshing.SAVED_ELSE_EVALUATE,
+        tolerance: Double? = null,
+    ): RhinoModel = load(File(path.replaceFirst(Regex("^~(?=/|$)"), System.getProperty("user.home"))), meshing, tolerance)
 
-    /** Read [file]. Throws [RhinoException] for a file openNURBS cannot read. */
-    fun load(file: File): RhinoModel {
+    /**
+     * Read [file]. Throws [RhinoException] for a file openNURBS cannot read.
+     *
+     * @param meshing where Brep triangles come from: Rhino's saved render meshes, a tessellation of
+     *   the NURBS surfaces, or (the default) the saved mesh where there is one and a tessellation
+     *   where there is not.
+     * @param tolerance for tessellated faces, the largest chord deviation from the true surface in
+     *   model units; `null` for a thousandth of each Brep's size.
+     */
+    fun load(
+        file: File,
+        meshing: RhinoBrepMeshing = RhinoBrepMeshing.SAVED_ELSE_EVALUATE,
+        tolerance: Double? = null,
+    ): RhinoModel {
         require(file.isFile) { "No .3dm file at ${file.absolutePath}" }
-        return OpenNurbsNative.read(file)
+        val model = OpenNurbsNative.read(file)
+        if (meshing == RhinoBrepMeshing.SAVED || !OpenNurbsBrepNative.isAvailable) return model
+        return evaluateBreps(model, OpenNurbsBrepNative.read(file), meshing, BrepTessellator(tolerance))
+    }
+
+    private fun evaluateBreps(
+        model: RhinoModel,
+        breps: Map<String, List<BrepFace>>,
+        meshing: RhinoBrepMeshing,
+        tessellator: BrepTessellator,
+    ): RhinoModel {
+        val evaluate = meshing == RhinoBrepMeshing.EVALUATE
+        val objects = model.objects.map { o ->
+            val faces = if (o.block == null) breps[o.id] else null
+            if (faces == null || (o.type != "ON_Brep" && o.type != "ON_Extrusion")) return@map o
+            when (o) {
+                is RhinoSkipped -> {
+                    val chosen = faces.count { it.surface != null }
+                    val mesh = tessellator.tessellate(faces) ?: return@map o
+                    RhinoMesh(o.name, o.id, o.type, o.layer, o.color, o.ownVisibility, o.block, mesh, o.edges, null, chosen)
+                }
+                is RhinoMesh -> {
+                    val missing = faces.filter { it.surface != null && (evaluate || !it.hasSavedMesh) }
+                    if (missing.isEmpty()) return@map o
+                    val mesh = tessellator.tessellate(missing) ?: return@map o
+                    val combined = if (evaluate) mesh else RhinoModel.merge(listOf(o.mesh, mesh))
+                    RhinoMesh(o.name, o.id, o.type, o.layer, o.color, o.ownVisibility, o.block, combined, o.edges, null, missing.size)
+                }
+                else -> o
+            }
+        }
+        return RhinoModel(model.file, model.archiveVersion, model.unitName, model.metersPerUnit, model.layers, objects, model.log)
     }
 
     /** Whether the native wrapper has been built where Field can find it. */
@@ -75,6 +123,17 @@ object Rhino3dm {
      */
     fun writeSample(file: File): File {
         OpenNurbsNative.writeFixture(file)
+        return file
+    }
+
+    /**
+     * Write a *Save Small*-style `.3dm` to [file]: Breps with exact surfaces and trims and no render
+     * meshes — a sphere of radius 10 at the origin, a capped cylinder of radius 5 and height 20 at
+     * `(30, 20, -10)`, a 20 x 20 plate with a hole of radius 5 centred at `(30, -10, 0)` — and two
+     * 10 mm boxes, one with saved meshes (at x = -30) and one without (at x = -15).
+     */
+    fun writeNurbsSample(file: File): File {
+        OpenNurbsBrepNative.writeFixture(file)
         return file
     }
 }
@@ -162,12 +221,15 @@ sealed class RhinoObject(
  * @property edges for a Brep or extrusion, its edge curves — Rhino's wireframe of it, which the
  *   mesh's facets are not; `null` for a plain mesh.
  * @property note when some Brep faces had no render mesh, which ones are missing; `null` otherwise.
+ * @property evaluatedFaces how many Brep faces were tessellated from their NURBS surfaces rather
+ *   than taken from a saved render mesh; `0` for a mesh read as saved.
  */
 class RhinoMesh internal constructor(
     name: String, id: String, type: String, layer: RhinoLayer?, color: Vec4, visible: Boolean, block: String?,
     val mesh: TriMesh,
     val edges: FLine?,
     val note: String?,
+    val evaluatedFaces: Int = 0,
 ) : RhinoObject(name, id, type, layer, color, visible, block)
 
 /**
@@ -305,25 +367,30 @@ class RhinoModel internal constructor(
         append("${curves.size} curves, ${texts.size} texts, ${points.size} point sets, ${skipped.size} skipped")
         skipped.groupingBy { "${it.type}: ${it.reason}" }.eachCount().forEach { (why, n) -> append("\n  skipped $n × $why") }
         meshes.mapNotNull { it.note }.groupingBy { it }.eachCount().forEach { (why, n) -> append("\n  partial $n × $why") }
+        meshes.filter { it.evaluatedFaces > 0 }.takeIf { it.isNotEmpty() }?.let { e ->
+            append("\n  evaluated ${e.sumOf { it.evaluatedFaces }} Brep faces of ${e.size} objects from their NURBS surfaces")
+        }
         if (log.isNotBlank()) append("\n  openNURBS: ${log.trim().lines().first()}")
     }
 
-    private fun merge(parts: List<TriMesh>): TriMesh {
-        val positions = FloatArray(parts.sumOf { it.positions.size })
-        val indices = IntArray(parts.sumOf { it.indices.size })
-        val withNormals = parts.isNotEmpty() && parts.all { it.normals != null }
-        val normals = if (withNormals) FloatArray(positions.size) else null
-        var p = 0
-        var i = 0
-        for (part in parts) {
-            val base = p / 3
-            part.positions.copyInto(positions, p)
-            normals?.let { part.normals!!.copyInto(it, p) }
-            for (k in part.indices.indices) indices[i + k] = part.indices[k] + base
-            p += part.positions.size
-            i += part.indices.size
+    internal companion object {
+        fun merge(parts: List<TriMesh>): TriMesh {
+            val positions = FloatArray(parts.sumOf { it.positions.size })
+            val indices = IntArray(parts.sumOf { it.indices.size })
+            val withNormals = parts.isNotEmpty() && parts.all { it.normals != null }
+            val normals = if (withNormals) FloatArray(positions.size) else null
+            var p = 0
+            var i = 0
+            for (part in parts) {
+                val base = p / 3
+                part.positions.copyInto(positions, p)
+                normals?.let { part.normals!!.copyInto(it, p) }
+                for (k in part.indices.indices) indices[i + k] = part.indices[k] + base
+                p += part.positions.size
+                i += part.indices.size
+            }
+            return TriMesh(positions, indices, normals)
         }
-        return TriMesh(positions, indices, normals)
     }
 }
 

@@ -35,7 +35,7 @@ endif()
 # examples; only `opennurbsStatic`, which the wrapper links, gets built.
 add_subdirectory("${FIELD_OPENNURBS_SOURCE_DIR}" opennurbs EXCLUDE_FROM_ALL)
 
-add_library(field_opennurbs_jvm SHARED src/field_opennurbs.cpp)
+add_library(field_opennurbs_jvm SHARED src/field_opennurbs.cpp src/field_opennurbs_brep.cpp)
 target_include_directories(field_opennurbs_jvm PRIVATE src "${FIELD_OPENNURBS_SOURCE_DIR}")
 target_compile_definitions(field_opennurbs_jvm PRIVATE FIELD_OPENNURBS_BUILDING_SHARED)
 set(FIELD_OPENNURBS_VERSION "" CACHE STRING "The openNURBS release tag being built, for field_opennurbs_version()")
