@@ -17,6 +17,8 @@ Start Field with `AFIELD_BIND_HOST=0.0.0.0` for LAN access. In the app set the a
 
 Pencil draws; freehand, line and circle tools sit at the bottom left. Two fingers pan, rotate and scale. Two-finger tap undoes, three-finger tap redoes. The menu manages layers, hide/solo, microphone recording and transfer. Undo is an appended visibility operation; it preserves original samples. Field output occupies a separate reference layer. Portrait and landscape are supported; light mode inverts the canvas.
 
+On hover-capable iPads, Pencil points with a tiny crosshair and a faint motion trail that fades over 0.65 seconds. Hover position and pose are recorded and streamed as `pencil.hover`, so pointing can accompany speech without leaving ink. The indicator stays the same size while zooming and inverts in light mode.
+
 Leave streaming off to record offline. **Finish capture** saves an immutable recording and opens a new canvas. **Saved captures** uploads later, resumes interrupted transfers, and retains originals on the iPad. **Share capture** exports one self-contained `.ndjson` file, including audio, undone strokes and received Field geometry. Captures are also accessible through Finder/Files file sharing. Microphone recording is explicit and stops in the background.
 
 ## Read a save file offline

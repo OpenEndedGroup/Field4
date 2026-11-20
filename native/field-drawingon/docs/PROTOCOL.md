@@ -58,6 +58,8 @@ Predictions use negative IDs, are stored separately, and **must never be appende
 
 `pencil.hover` captures position, normalized hover `z`, altitude, azimuth angle/vector, roll, and gesture phase. Hover’s public recognizer exposes no sensor timestamp, so it uses receipt time and marks `timestampSource=callback`. `pencil.tap` and `pencil.squeeze` retain interaction timestamps and nullable hover poses; squeeze also includes interaction phase. Fields reflect what public UIKit APIs report on the particular Pencil/iPad, not private raw sensor packets. Default palm rejection means finger contacts are not archived as drawing strokes unless finger drawing is enabled.
 
+The live hover indicator is a ten-point crosshair with a 0.65-second fading trail, drawn in screen coordinates above the scene. It creates no strokes and is independent of layer visibility and undo. Contact, view changes, capture changes, and app deactivation clear it; leaving hover range removes the crosshair while the trail fades. The offline contact sheet currently omits this transient overlay; the original `pencil.hover` events remain in the capture for annotation analysis.
+
 Two-finger movement pans, rotates, and scales in one gesture. Stationary two-finger tap remains undo; three-finger tap remains redo. Navigation has a six-point movement threshold and scale limits of 0.05× to 32×. Gesture contact samples remain in `canvas.transform`; tentative finger strokes that become navigation are ended as cancelled. The view transform survives relaunch, and **Reset view** records an identity transform.
 
 The affine transform maps drawing coordinates to screen coordinates:
