@@ -8,7 +8,7 @@ Press ++shift+n++ to make one. Double-click a passage to write directly in the f
 select a frame and press ++enter++. Click away, press ++escape++, or press ++cmd+enter++ to finish.
 Native spellcheck is enabled.
 
-Use the toolbar for headings, bold, and italic. ++cmd+b++ and ++cmd+i++ also work. Paste a PNG,
+The toolbar follows your caret along the left edge of the frame. Use it for headings, bold, and italic. ++cmd+b++ and ++cmd+i++ also work. Paste a PNG,
 JPEG, GIF, or WebP up to 1 MiB to embed it in the frame's Markdown. For tables, code, and other
 advanced formatting, choose **Markdown** in the toolbar or **Edit Markdown** in the marking menu.
 Hold ++shift++ while double-clicking to edit Markdown inline at the point you clicked.
@@ -143,8 +143,10 @@ css: |
   }
 ```
 
-The rules apply while reading and while editing formatted text on the canvas. They leave the
-Markdown source and other frames alone. Use ordinary selectors for elements such as `h1`, `p`,
+The rules apply while reading and while editing formatted text on the canvas. Connected descendants
+inherit them through the box graph. CSS specificity still applies; when it ties, the frame's own
+rules win, followed by its nearest parents in connection order. The Markdown source keeps its
+normal styling. Use ordinary selectors for elements such as `h1`, `p`,
 `blockquote`, and `code`, with CSS for type, color, spacing, backgrounds, and borders. Imports,
 external assets, and rules such as `@media` are ignored.
 

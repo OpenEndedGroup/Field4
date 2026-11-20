@@ -93,7 +93,15 @@ try {
     const notePath=noteButton.dataset.path;
     check(notePath.startsWith('box/'),`notes keep their own path namespace: ${notePath}`);
     check(![...get('guide-files').querySelectorAll('button')].some(b=>b.dataset.path===notePath),'a note must not appear among the files');
+    const noteBoxUid=notePath.slice('box/'.length);
+    const noteBox=[...document.querySelectorAll('.box')].find(b=>b.uid===noteBoxUid);
+    window.moveCanvasCamera(-4000, -4000, 1);
     noteButton.click();
+    await wait(()=>window.selectedList.length===1 && window.selectedList[0]===noteBox,'selecting a note selects its box');
+    await wait(()=>{
+        const r=noteBox.getBoundingClientRect();
+        return r.width>0 && r.right>0 && r.bottom>0 && r.left<innerWidth && r.top<innerHeight;
+    },'selecting a note frames its offscreen box');
     await wait(()=>panel.dataset.path===notePath,'note opens in the reader');
     await wait(()=>get('guide-reader').textContent.includes('Links in box notes'),'note Markdown rendered');
     check(get('guide-pin').disabled,'a note cannot be placed on the canvas as a file');
@@ -106,7 +114,6 @@ try {
     const refused=await request({action:'save',path:notePath,revision:'',contents:'# Not from here'});
     check(!refused.ok&&/on the box/.test(refused.error||''),`note save should be refused: ${JSON.stringify(refused)}`);
     get('guide-open-box').click();
-    const noteBoxUid=notePath.slice('box/'.length);
     await wait(()=>window.currentSelectedCode?.[0]?.uid===noteBoxUid&&window.currentSelectedProperty==='notes','Open box hands editing to the box');
 
     // Add note publishes a real Markdown file and opens it for editing.
