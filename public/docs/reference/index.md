@@ -461,7 +461,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
     - [java2d](graphics.md#flinesandjavashapes-kt)
     - [planning](math.md#cubicbezier3d-kt)
 - [polytope](polytopes.md#attributes-kt)
-- [rhino](graphics.md#rhino3dm-kt)
+- [rhino](graphics.md#breptessellator-kt)
 - solid
     - *manifold* — [Graphics](graphics.md#faceinset-kt) · [Internal](internal.md#manifoldnative-kt)
     - [solidcraft](graphics.md#solidcraft-kt)
@@ -683,7 +683,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**42432 public symbols across 1884 source files**, 25366 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**42458 public symbols across 1885 source files**, 25378 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -696,7 +696,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Video](video.md) | 14 | 195 | 194 (99%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 60 | 2524 | 1904 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 26 | 1123 | 528 (47%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 435 | 10487 | 6630 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 436 | 10513 | 6642 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 48 | 911 | 515 (56%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 596 | 440 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 787 | 530 (67%) | Nonlinear least squares, aimed at geometry. |
@@ -898,6 +898,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>tools/<wbr>docs/<wbr></small> [BoxOutputChannelGuard.kt](workspace.md#boxoutputchannelguard-kt) | Workspace · internal | 6 | 3 | Catches the figure that is written and then immediately erased. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>diagnostics/<wbr></small> [BoxOutputLog.kt](workspace.md#boxoutputlog-kt) | Workspace | 14 | 7 | A bounded server-side record of each box's printed text, errors, `display(...)` channels and execution verdicts, readable without a websocket. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>study/<wbr>build/<wbr></small> [BoxStudyBuilds.kt](workspace.md#boxstudybuilds-kt) | Workspace | 2 | 2 | The box surface for study builds: `Box.studyBuilds` attaches a named `StudyBuilds` runner to a box, and `Box.showStudyBuilds` shows its stage buttons, progress and diagnostics in an output channel. | [Let AI4 Wait for Long Builds](../ai4_long_builds.md), [Studies](../studies.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>rhino/<wbr></small> [BrepTessellator.kt](graphics.md#breptessellator-kt) | Graphics | 23 | 11 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>brief/<wbr></small> [Brief.kt](solvers.md#brief-kt) | Solvers | 63 | 63 | Brief is a text notation for weighted geometric constraints: points, lines, planes and panels, and the relations they should satisfy, each with a strength. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>brief/<wbr></small> [BriefEditorExtension.kt](solvers.md#briefeditorextension-kt) | Solvers | 5 | 5 | The Brief editor extension's JavaScript, read from the same resource the browser loads. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>brief/<wbr></small> [BriefEditorExtensionWorkout.kt](examples.md#briefeditorextensionworkout-kt) | Examples | 3 | 1 |  |  |
@@ -2121,7 +2122,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>retrieval/<wbr></small> [RetrievalEval.kt](machine-learning.md#retrievaleval-kt) | Machine learning | 12 | 7 | How well documentation search answers the questions the repository already asks of it. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>execution/<wbr></small> [ReturnValueRegistry.kt](workspace.md#returnvalueregistry-kt) | Workspace | 11 | 1 | What happens to the value a box's code returns: `ReturnValueRegistry` offers it to each registered `ReturnValueHandler` in turn, and the first one that accepts it keeps it running. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>macros/<wbr></small> [RewriteDsl.kt](workspace.md#rewritedsl-kt) | Workspace | 31 | 31 | The rule-authoring surface for the pattern-rewrite layer (see `PatternRewrite`). | [Rewriting your own syntax](../pattern_rewrite.md), [Agent transcript gallery](../agent_transcripts.md), [Spatial artificial life](../alife_examples.md) |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>rhino/<wbr></small> [Rhino3dm.kt](graphics.md#rhino3dm-kt) | Graphics | 80 | 33 |  | [Rhino files (.3dm)](../rhino_files.md), [Geometry from disk](../geometry_from_disk.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>rhino/<wbr></small> [Rhino3dm.kt](graphics.md#rhino3dm-kt) | Graphics | 83 | 34 |  | [Rhino files (.3dm)](../rhino_files.md), [Geometry from disk](../geometry_from_disk.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>rhino/<wbr></small> [RhinoThree.kt](graphics.md#rhinothree-kt) | Graphics | 2 | 2 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr></small> [RiggedFixture.kt](graphics.md#riggedfixture-kt) | Graphics | 21 | 21 | The rigged glTF files the skinning tests pose, generated by this source rather than downloaded. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>kinematics/<wbr></small> [RigidMotion.kt](graphics.md#rigidmotion-kt) | Graphics | 56 | 36 | Declared rigid motions: how a part moves, as data. |  |
