@@ -2,6 +2,7 @@
 
 package afield.media.image
 
+import afield.geometry.path.ScalarField2D
 import afield.media.image.util.PngEncoder
 import afield.ui.visualization.ToHTML
 import java.nio.ByteBuffer
@@ -213,6 +214,31 @@ class BufferCanvas(
 
     /** [fill] with a single value. */
     fun fill(r: CellRect, value: Float, channel: Int = -1) = fill(r, floatArrayOf(value), channel)
+
+    /**
+     * Write a scalar field into [channel], one sample per element: element `(x, y)` gets
+     * `field(x0 + (x + 0.5) * cell, y0 + (y + 0.5) * cell)`, the field at the element's centre.
+     *
+     * This is how a drawn outline becomes something a shader can read. Give it the signed
+     * distance of an `FLine` (`line.signedDistance2D()`, or `lines.signedDistance2D()` for several)
+     * and a canvas over a mapped GPU buffer, and every cell holds its distance to the shape in the
+     * field's own units, negative inside. Divide by [cell] in the shader for distances in cells.
+     *
+     * Only elements inside [r] are written; nothing else in the buffer changes.
+     *
+     * ```
+     * val wall = bufferCanvas(memory, width = 256, height = 256)
+     * wall.sample(outline.signedDistance2D(), x0 = 0.0, y0 = 0.0, cell = 1.0)
+     * ```
+     */
+    fun sample(field: ScalarField2D, x0: Double, y0: Double, cell: Double, channel: Int = 0, r: CellRect = bounds) {
+        require(cell > 0) { "cell must be > 0, got $cell" }
+        require(channel in 0 until channels) { "channel $channel is not in 0 until $channels" }
+        for (y in r.y until r.y + r.h) for (x in r.x until r.x + r.w) {
+            val i = index(x, y, channel)
+            if (i >= 0) write(i, field(x0 + (x + 0.5) * cell, y0 + (y + 0.5) * cell).toFloat())
+        }
+    }
 
     /**
      * Write [image] with its top-left at `(x, y)`, mixing `opacity` of it over what is there.

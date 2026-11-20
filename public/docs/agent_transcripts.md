@@ -4106,6 +4106,18 @@ shader evolves the next frame from it.
 
 [Open →](offline.html?file=assets/agent_transcripts/buffer_paint_gpu/metadata.edn)
 
+### outline_field_gpu
+
+**A drawn outline becomes a live field in a GPU simulation.** [A drawn outline as a field](visualizers.md#a-drawn-outline-as-a-field)
+as four boxes: a renderer, a compute box running Gray-Scott that reads a wall buffer of signed
+distances, a draw box showing state and outline in the native window, and a box that adds a star
+outline from code. The outlines are closed `FLine`s; `signedDistance2D()` and `BufferCanvas.sample`
+write their field into the storage buffer, and the pattern grows only inside them. A closed
+freehand stroke over the *walls* frame (Alt+D) adds another outline while it runs; an ellipse clears
+the drawn ones.
+
+[Open →](offline.html?file=assets/agent_transcripts/outline_field_gpu/metadata.edn)
+
 ### gpu_state
 
 A stateful GPU simulation: 40,000 particles whose positions and velocities live in a

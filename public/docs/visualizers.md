@@ -1410,6 +1410,49 @@ paints, a rectangle blurs what is under it, an ellipse erases, and an arrow that
 rectangle copies that rectangle to where the arrow ends. Each gesture changes the running
 Gray-Scott simulation, which grows new pattern from it.
 
+### A drawn outline as a field
+
+A simulation can also read a *shape*. Turn closed outlines into a signed distance field and write
+it into a storage buffer, one float per cell, and the shader knows for every cell how far it is
+from the drawing and which side it is on. `signedDistance2D()` gives the exact field of a closed
+`FLine`, and of a list of them (their union, so overlapping outlines merge). `BufferCanvas.sample`
+writes any field into a canvas, sampling each element at its centre, so the mapped buffer ends up
+holding distances in the field's units, negative inside:
+
+```diffstatic {data-lang=kotlin}
+:::static
+val ring = FLine().circle(96.0, 120.0, 70.0)
+val bar = FLine().rect(150.0, 150.0, 90.0, 60.0)
+var wall = defaultBuffer { size = (W * H).floats }.buffer
+
+val field = listOf(ring, bar).signedDistance2D()
+wall.mapAndWrite { bufferCanvas(this, width = W, height = H).sample(field, x0 = 0.0, y0 = 0.0, cell = 1.0) }
+```
+
+The compute shader takes the wall buffer as one more buffer reference and reads `wall.d[i]` for its
+cell. In this example a cell with a positive distance is held empty, and within six cells of the
+edge the kill rate rises, so Gray-Scott grows only inside the drawing and its stripes run along the
+outline. A fourth box adds a star from code; the star overlaps the circle, and the pattern grows
+across into it. The native window shows the state with the outline in orange:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-outline-field-gpu.png" capture="native-window" native-wait-frames="150000" trim=true embed=true hidden=true force=true timeout="180" duration="0" name="outline-field-gpu" alt="a Gray-Scott pattern in the native window that fills only a circle, a rectangle and a five-pointed star drawn in orange; outside the outlines is dark, and the stripes inside follow each edge" macro-file="../../dev_docs/agents/transcripts/outline_field_gpu.yaml" capture-box="ofg_renderer"}
+// Built and launched from dev_docs/agents/transcripts/outline_field_gpu.yaml
+// (renderer + compute + draw + a box that adds a star outline).
+```
+
+Redrawing is the same write again. Only the CPU writes the wall buffer and the shader only reads
+it, so there is no ping-pong to hold: build the new field and `mapAndWrite` it between frames. For
+a 256 × 256 grid that is 65,536 field lookups, each a bucketed nearest-sample search, cheap enough
+to run on every edit but not every frame. In the
+[`outline_field_gpu` transcript](agent_transcripts.md#outline_field_gpu) a closed freehand stroke
+drawn over the *walls* frame on the [drawing layer](drawing_and_notation.md) becomes another
+outline, and an ellipse clears the hand-drawn ones. The box's *field* output reads the wall buffer
+back and prints the largest difference from the CPU field: 0.000 cells.
+
+A stroke counts as closed because `signedDistance2D` joins every subpath's end to its start, so an
+open scribble becomes the polygon it nearly encloses. A stroke that crosses itself is decided by the
+even-odd rule: the parts it winds around twice count as outside.
+
 ### Drawings and character grids
 
 Use `lines` for an FLine drawing in an output, with optional point editing. `threeLines` and
