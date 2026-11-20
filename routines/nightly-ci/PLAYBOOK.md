@@ -379,8 +379,11 @@ warning fixes are committed:
 ```
 FIXBRANCH=nightly/ci/$RUN-warnings
 FIXTREE=$WORKTREE_BASE/$RUN-ci-warnings
-git -C $REPO worktree add -b $FIXBRANCH $FIXTREE $BASE
+python3 $REPO/tools/worktree_seed.py add -C $REPO -b $FIXBRANCH $FIXTREE $BASE
 ```
+
+(`git worktree add` with the same arguments, whose tracked files are APFS clones of the primary
+checkout's unedited ones instead of a fresh 5 GiB copy.)
 
 Confirm with `git -C $REPO worktree list`. Run **all** build commands below with
 `cd $FIXTREE` (or `git -C $FIXTREE …` / `./gradlew` invoked from `$FIXTREE`). Never build in

@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import argparse
-import errno
 import filecmp
 import fnmatch
 import json
@@ -32,6 +31,8 @@ if __name__ == "__main__":
 import yaml  # noqa: E402
 
 from verification_runtime import verification_lock  # noqa: E402
+
+from cow_clone import clone_file  # noqa: E402
 
 # Where `generate_source_pages` tells `public/docs_hooks.py` to find the basename -> page/anchor map
 # that turns a citation into a link. Named here and read there; an absent variable is the signal that
@@ -886,52 +887,8 @@ def normalize_over_climbing_refs(*, markdown: str, page_path: Path, docs_dir: Pa
 # bytes, and writing either file never changes the other. Every copy below is a clone where the
 # filesystem can make one and `shutil.copy2` -- the copy it always was -- where it cannot.
 # zensical writes the site's assets as plain copies, so `share_site_assets` swaps each one that is
-# byte-identical to its source for a clone once the build is done.
-
-_FICLONE = 0x40049409  # linux/fs.h
-_clonefile_fn: Any = None
-
-
-def _darwin_clonefile() -> Any:
-    global _clonefile_fn
-    if _clonefile_fn is None:
-        import ctypes  # noqa: PLC0415
-
-        function = ctypes.CDLL(None, use_errno=True).clonefile
-        function.argtypes = (ctypes.c_char_p, ctypes.c_char_p, ctypes.c_uint32)
-        function.restype = ctypes.c_int
-        _clonefile_fn = (function, ctypes.get_errno)
-    return _clonefile_fn
-
-
-def clone_file(source: str | os.PathLike[str], destination: str | os.PathLike[str]) -> bool:
-    """Copy [source] to [destination] as `shutil.copy2` does, as a clone where possible.
-
-    True when the copy is a clone. Like `copy2` it follows a symlinked source, replaces an existing
-    destination, and keeps the source's mode and times. Fits `shutil.copytree(copy_function=...)`.
-    """
-    if sys.platform == "darwin":
-        clonefile, get_errno = _darwin_clonefile()
-        source_bytes, destination_bytes = os.fsencode(source), os.fsencode(destination)
-        if clonefile(source_bytes, destination_bytes, 0) == 0:
-            return True
-        if get_errno() == errno.EEXIST and os.path.isfile(destination):
-            os.unlink(destination)  # clonefile will not replace a file; copy2 does
-            if clonefile(source_bytes, destination_bytes, 0) == 0:
-                return True
-    elif sys.platform.startswith("linux"):
-        import fcntl  # noqa: PLC0415
-
-        try:
-            with open(source, "rb") as reader, open(destination, "wb") as writer:
-                fcntl.ioctl(writer.fileno(), _FICLONE, reader.fileno())
-            shutil.copystat(source, destination)
-            return True
-        except OSError:
-            pass
-    shutil.copy2(source, destination)
-    return False
-
+# byte-identical to its source for a clone once the build is done. The clone itself lives in
+# `tools/cow_clone.py`, which `tools/worktree_seed.py` shares.
 
 def share_site_assets(*, source_docs: Path, site_dir: Path) -> tuple[int, int]:
     """Replace each site file zensical copied unchanged from [source_docs] with a clone of it.

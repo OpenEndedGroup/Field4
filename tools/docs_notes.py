@@ -2482,8 +2482,12 @@ def default_pass_path(root: Path, stamp: str) -> Path:
 def add_prepared_worktree(git: Git, worktree: Path, branch: str, base_commit: str) -> None:
     """`git worktree add`, plus the two things a fresh worktree of this repo lacks and a docs build or
     commit guard needs: the LFS jars (checked out as pointers) and kotlin-js-store/yarn.lock (ignored,
-    so never checked out). Both failures are reported rather than fatal."""
-    git.run("worktree", "add", "-b", branch, str(worktree), base_commit)
+    so never checked out). Both failures are reported rather than fatal. The checkout clones the
+    primary's clean files (`tools/worktree_seed.py`), so the pass does not hold a fifth copy of
+    `public/docs/`."""
+    import worktree_seed  # noqa: PLC0415
+
+    print(worktree_seed.add_worktree(git.root, worktree, base_commit, new_branch=branch).summary(), flush=True)
     lfs = subprocess.run(["git", "lfs", "checkout"], cwd=worktree, capture_output=True, text=True, check=False)
     print("git lfs checkout: " + ("ok" if lfs.returncode == 0 else (lfs.stderr.strip() or "unavailable")), flush=True)
     lock = git.root / "kotlin-js-store" / "yarn.lock"
