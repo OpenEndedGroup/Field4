@@ -323,4 +323,14 @@ class FLineMeasureTest {
         assertEquals(-6.0, signedArea2D(ccw.reversed()), 1e-12)
         assertEquals(0.0, signedArea2D(emptyList()), 0.0)
     }
+
+    /** Point-list bounds: extremes in each axis, and the zero rect for no points. */
+    @Test
+    fun pointBounds2DKernel() {
+        val r = pointBounds2D(listOf(Vec2(1f, -2f), Vec2(4f, 3f), Vec2(-1f, 0f)))
+        assertEquals(-1.0, r.x, 0.0); assertEquals(-2.0, r.y, 0.0)
+        assertEquals(5.0, r.w, 0.0); assertEquals(5.0, r.h, 0.0)
+        val e = pointBounds2D(emptyList())
+        assertEquals(0.0, e.w, 0.0); assertEquals(0.0, e.x, 0.0)
+    }
 }

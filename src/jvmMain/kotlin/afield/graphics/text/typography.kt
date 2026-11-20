@@ -2,6 +2,7 @@
 
 package afield.graphics.text
 
+import afield.geometry.path.pointBounds2D
 import afield.geometry.path.pointSegmentDistanceSquared2D
 import afield.data.collections.invoke
 import afield.data.collections.times
@@ -869,18 +870,7 @@ internal fun pointInRing(points: List<Vec2>, px: Double, py: Double): Boolean {
     return inside
 }
 
-internal fun boundsOfPoints(points: List<Vec2>): Rect {
-    if (points.isEmpty()) return Rect(0.0, 0.0, 0.0, 0.0)
-    var minX = Double.MAX_VALUE
-    var minY = Double.MAX_VALUE
-    var maxX = -Double.MAX_VALUE
-    var maxY = -Double.MAX_VALUE
-    points.forEach {
-        minX = min(minX, it.x.toDouble()); maxX = max(maxX, it.x.toDouble())
-        minY = min(minY, it.y.toDouble()); maxY = max(maxY, it.y.toDouble())
-    }
-    return Rect(minX, minY, maxX - minX, maxY - minY)
-}
+internal fun boundsOfPoints(points: List<Vec2>): Rect = pointBounds2D(points)
 
 /** Emit a ring as one `moveTo`-led, explicitly-closed subpath into [into]. */
 private fun emitRing(into: FLine, r: RawRing) {

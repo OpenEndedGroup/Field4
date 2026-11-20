@@ -695,3 +695,20 @@ fun signedArea2D(points: List<Vec2>): Double {
     }
     return twice / 2.0
 }
+
+/**
+ * The axis-aligned bounds of [points] in the xy plane, as a [Rect] (`x, y, w, h`). An empty list
+ * answers the zero rect at the origin. For an [FLine] use its own bounds, which include curves.
+ */
+fun pointBounds2D(points: List<Vec2>): Rect {
+    if (points.isEmpty()) return Rect(0.0, 0.0, 0.0, 0.0)
+    var minX = Double.MAX_VALUE
+    var minY = Double.MAX_VALUE
+    var maxX = -Double.MAX_VALUE
+    var maxY = -Double.MAX_VALUE
+    for (p in points) {
+        minX = min(minX, p.x.toDouble()); maxX = max(maxX, p.x.toDouble())
+        minY = min(minY, p.y.toDouble()); maxY = max(maxY, p.y.toDouble())
+    }
+    return Rect(minX, minY, maxX - minX, maxY - minY)
+}

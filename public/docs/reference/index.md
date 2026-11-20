@@ -683,7 +683,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**42436 public symbols across 1884 source files**, 25370 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**42441 public symbols across 1884 source files**, 25375 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -696,7 +696,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Video](video.md) | 14 | 195 | 194 (99%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 60 | 2524 | 1904 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 26 | 1123 | 528 (47%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 435 | 10491 | 6634 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 435 | 10496 | 6639 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 48 | 911 | 515 (56%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 596 | 440 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 787 | 530 (67%) | Nonlinear least squares, aimed at geometry. |
@@ -1287,7 +1287,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>graphics/<wbr></small> [FLineInstructionTrajectoryTrackerSmokeTest.kt](examples.md#flineinstructiontrajectorytrackersmoketest-kt) | Examples · internal | 3 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr></small> [FLineInterpolation.kt](graphics.md#flineinterpolation-kt) | Graphics | 62 | 18 | Morphing one `FLine` into another: align, match and blend two drawings so any in-between shape can be drawn. | [FLine examples (Field graphics)](../fline_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr></small> [FLineLpc.kt](graphics.md#flinelpc-kt) | Graphics | 17 | 17 |  | [Signal examples: time and frequency](../spectral_examples.md) |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr></small> [FLineMeasure.kt](graphics.md#flinemeasure-kt) | Graphics | 33 | 33 | Measuring, locating, trimming and crossing an `FLine`. | [FLine examples (Field graphics)](../fline_examples.md), [Body and hand tracking](../body_tracking.md), [Shapes from constraints: Ceres in Field](../ceres.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr></small> [FLineMeasure.kt](graphics.md#flinemeasure-kt) | Graphics | 38 | 38 | Measuring, locating, trimming and crossing an `FLine`. | [FLine examples (Field graphics)](../fline_examples.md), [Body and hand tracking](../body_tracking.md), [Shapes from constraints: Ceres in Field](../ceres.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>text/<wbr>sentences/<wbr></small> [Flines.kt](graphics.md#flines-kt) | Graphics | 45 | 21 | Converts a laid-out `Diagram` into `FLine`s ready to draw. | [Sentence diagrams](../sentence_diagrams.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr></small> [FLineSampling.kt](graphics.md#flinesampling-kt) | Graphics | 21 | 15 | Choosing points along an `FLine`: pluggable samplers that return parameter and position pairs. | [FLine examples (Field graphics)](../fline_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr>java2d/<wbr></small> [FLinesAndJavaShapes.kt](graphics.md#flinesandjavashapes-kt) | Graphics | 32 | 13 | Converts `FLine`s to and from `java.awt.geom` shapes, and walks them by distance with `FLinesAndJavaShapes.Cursor`. |  |
