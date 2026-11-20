@@ -903,7 +903,11 @@ open cuts. Pass `ThreeSection(capColor = "#222222")` for one poché colour acros
 
 Beside the section slider, **X**, **Y** and **Z** cut across that axis of the model, and the arrows
 keep the other half. **face** aligns the cut to a surface: click it, and the plane lies just inside
-that face, turned toward you. Drag the slider to move it deeper into the model.
+that face, turned toward you. Drag the slider to move it deeper into the model. **⊥** squares the
+cut to the last dimension, whether you picked it with the measure tool or the box supplied it: the
+plane runs perpendicular to the dimension through its middle, facing you. Click **⊥** again to see
+the other side of the same plane, and drag the slider to move the cut along the measured line toward
+either end. Measure across a wall and **⊥** shows you what is inside it.
 
 A section works under **Path trace** as well. The tracer is given the cut geometry itself, and the
 caps as lit surfaces in each part's colour and finish, so light falls into the cut and the cut faces

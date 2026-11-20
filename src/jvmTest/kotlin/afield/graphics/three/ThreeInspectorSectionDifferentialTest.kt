@@ -313,6 +313,100 @@ class ThreeInspectorSectionDifferentialTest {
         }
     }
 
+    // ------------------------------------------------- square to a measurement
+
+    /** `sectionAcrossSegment` turned into the plane the viewer would cut with. */
+    private fun ViewerJavaScript.Session.across(
+        bounds: ThreeBounds, from: String, to: String, viewer: String, otherSide: Boolean = false,
+    ): Value {
+        val across = call("sectionAcrossSegment", boundsJson(bounds), fromJson(from), fromJson(to), fromJson(viewer), otherSide)
+        return call("sectionPlane", boundsJson(bounds), across.getMember("normal"), across.getMember("fraction"), false)
+    }
+
+    /**
+     * Squared to a dimension, the cut is perpendicular to it through its middle, and keeps the half
+     * away from the viewer so the cut faces them.
+     *
+     * A 120 dimension running up the first skin, from y = 40 to y = 160 at z = 150: its middle is
+     * y = 100, so the plane is `y = 100` and crosses all four skins over their full 300 of height,
+     * 4 × 300 = 1200 of cut. Seen from below (y = -1000), the kept half is y ≥ 100: the viewer is
+     * cut away and the dimension's far end survives.
+     */
+    @Test
+    fun `squared to a measurement, the cut crosses it at its middle and faces the viewer`() {
+        val p = payload()
+        val fills = p.fills!!
+        session().use { js ->
+            val plane = js.across(p.bounds!!, "[0,40,150]", "[0,160,150]", "[0,-1000,150]")
+            assertEquals(100.0, plane.getMember("at").asDouble(), 1e-9)
+            assertEquals(1.0, plane.getMember("n").getArrayElement(1).asDouble(), 1e-12)
+            assertTrue(js.call("sectionSignedDistance", plane, js.fromJson("[0,-1000,150]")).asDouble() < 0.0, "the viewer survives the cut")
+            assertTrue(js.call("sectionSignedDistance", plane, js.fromJson("[0,160,150]")).asDouble() > 0.0, "the far end is cut away")
+            val cut = js.call(
+                "sectionCutTriangles",
+                js.fromJson(fills.attributes.getValue("position").array.json()), js.fromJson(fills.index!!.array.json()), plane,
+            )
+            val length = js.call("sectionCutLength", cut).asDouble()
+            assertTrue(abs(length - 1200.0) < 1e-6, "the cut across four 300-tall skins measured $length")
+        }
+    }
+
+    /**
+     * From the other side the same plane keeps the other half, and `otherSide` turns it round again —
+     * one plane, two sides, and the plane never moves.
+     */
+    @Test
+    fun `the viewer and otherSide choose the half, never the plane`() {
+        val bounds = payload().bounds!!
+        session().use { js ->
+            val above = js.across(bounds, "[0,40,150]", "[0,160,150]", "[0,1200,150]")
+            val turned = js.across(bounds, "[0,40,150]", "[0,160,150]", "[0,1200,150]", otherSide = true)
+            for (plane in listOf(above, turned)) {
+                assertEquals(0.0, js.call("sectionSignedDistance", plane, js.fromJson("[5,100,7]")).asDouble(), 1e-9)
+            }
+            assertTrue(js.call("sectionSignedDistance", above, js.fromJson("[0,1200,150]")).asDouble() < 0.0, "seen from above, the viewer's half is cut away")
+            assertTrue(js.call("sectionSignedDistance", turned, js.fromJson("[0,1200,150]")).asDouble() > 0.0, "the other side keeps the viewer's half")
+        }
+    }
+
+    /** An oblique dimension: the normal is along it exactly, and the plane still passes its middle. */
+    @Test
+    fun `an oblique measurement gets a plane square to it through its middle`() {
+        val bounds = payload().bounds!!
+        session().use { js ->
+            val plane = js.across(bounds, "[0,0,0]", "[36,200,0]", "[-500,-500,0]")
+            val n = plane.getMember("n")
+            val along = (36.0 * n.getArrayElement(0).asDouble() + 200.0 * n.getArrayElement(1).asDouble()) / sqrt(36.0 * 36.0 + 200.0 * 200.0)
+            assertEquals(1.0, along, 1e-12)
+            assertEquals(0.0, n.getArrayElement(2).asDouble(), 1e-12)
+            assertEquals(0.0, js.call("sectionSignedDistance", plane, js.fromJson("[18,100,0]")).asDouble(), 1e-9)
+        }
+    }
+
+    /** A dimension of no length has no direction, so it offers no plane rather than an arbitrary one. */
+    @Test
+    fun `a zero-length measurement offers no plane`() {
+        val bounds = payload().bounds!!
+        session().use { js ->
+            val across = js.call("sectionAcrossSegment", js.boundsJson(bounds), js.fromJson("[3,4,5]"), js.fromJson("[3,4,5]"), js.fromJson("[0,0,0]"), false)
+            assertTrue(across.isNull, "a zero-length measurement produced $across")
+        }
+    }
+
+    /**
+     * Counterfactual: drop the viewer test and the cut keeps whichever half the dimension points at.
+     * Seen from above, that is the viewer's own half, so the cut faces away and the user sees the
+     * outside of the model instead of the section.
+     */
+    @Test
+    fun `counterfactual — ignoring the viewer keeps the half the viewer is in`() {
+        val bounds = payload().bounds!!
+        session { it.replace("if (toViewer > 0) n = [-n[0], -n[1], -n[2]];", "") }.use { js ->
+            val plane = js.across(bounds, "[0,40,150]", "[0,160,150]", "[0,1200,150]")
+            assertTrue(js.call("sectionSignedDistance", plane, js.fromJson("[0,1200,150]")).asDouble() > 0.0, "the perturbation should keep the viewer's half")
+        }
+    }
+
     /** A perturbation that matched nothing is refused, so the counterfactuals cannot rot silently. */
     @Test
     fun `a perturbation that rewrites nothing is refused`() {
