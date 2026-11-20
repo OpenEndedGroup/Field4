@@ -7,7 +7,7 @@ solvers for it, all in `afield.geometry.spatial`, and they answer slightly diffe
 | | answers | sizes | cost |
 | --- | --- | --- | --- |
 | `assignment` | which target each source goes to, exactly | two sets of the same size | `O(n³)`: hundreds to a few thousand points |
-| `matchPoints` | the same, approximately | the same size, 2D | `O(n log n)`: a million points a side |
+| `matchPoints` | the same, approximately | the same size, 2D or 3D | `O(n log n)`: a million points a side |
 | `sinkhorn` | how much of each source goes to each target | any sizes, any weights | `O(n·m)` per iteration |
 
 All three use squared distance as the cost when they are given points, which is the cost that makes
@@ -58,6 +58,70 @@ The exact matching's mean squared travel is the smallest possible, 15948 here, a
 
 `assignment(cost)` takes a cost matrix instead of points, for any cost you can compute: `cost[i][j]` is the price of sending
 source `i` to target `j`, and the matrix must be square.
+
+## Matching in 3D
+
+Give `matchPoints` two lists of `Vec3` and it matches in space. It takes the 2D matcher's answer
+on the XY, XZ and YZ views of the clouds, then on six oblique views, and from each view keeps only
+the swaps that shorten the real 3D travel. `projections` sets how many views it tries; nine is the
+default. Here 400 points on a coiled ribbon are matched onto 400 on a sphere. Each source is drawn
+three times, at its start, halfway to its partner, and at the partner itself:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/optimal_transport/matching_3d.png" capture="box" open-outputs="true" wait="2.0" embed="true" padding="12" name="optimal-transport-matching-3d" alt="seen down the Z axis, a ring of coloured chords running outward from a coiled ribbon to the sphere around it, each colour confined to its own sector of the ring, with small white dots at both ends and halfway along each chord"}
+// 400 points on a coiled ribbon matched onto 400 on a sphere, then a halfway frame of the morph
+val rnd = java.util.Random(3)
+val ribbon = List(400) {
+    val t = it / 400.0 * PI * 6
+    vec(cos(t) * 90.0, sin(t) * 90.0, (it / 400.0 - 0.5) * 260.0 + rnd.nextDouble() * 20)
+}
+val sphere = List(400) {
+    // even spacing on the sphere by the golden angle
+    val z = 1 - 2 * (it + 0.5) / 400
+    val a = it * 2.399963
+    val r = sqrt(1 - z * z)
+    vec(cos(a) * r * 170.0, sin(a) * r * 170.0, z * 170.0)
+}
+
+val match = matchPoints(ribbon, sphere)
+val partner = match.reorder(sphere)
+println("mean squared travel before: ${(match.costHistory.first() / 400).f0}, after: ${(match.squaredCost / 400).f0}")
+
+fun hue(p: Vec3) = okhsl(atan2(p.y.toDouble(), p.x.toDouble()) * 180 / PI + 360, 0.85, 0.65, 0.9)
+
+val chords = ribbon.indices.map {
+    FLine().moveTo(ribbon[it]).lineTo(partner[it]).also { line ->
+        line.color = hue(partner[it])
+        line.thickness = 1.0
+    }
+}
+fun dots(points: List<Vec3>, size: Double) = fline {
+    points.forEach { moveTo(it) }
+    pointed = true
+    pointSize = size
+    stroked = false
+    color = vec(1.0, 1.0, 1.0, 0.8)
+}
+val halfway = ribbon.indices.map { ribbon[it] + (partner[it] - ribbon[it]) * 0.5 }
+val clouds: List<FLine> = [dots(ribbon, 0.25), dots(sphere, 0.25), dots(halfway, 0.4)]
+
+threeLines(
+    chords + clouds,
+    channel = "matching-3d",
+    height = 500,
+    editable = false,
+)
+```
+
+Pairing each ribbon point with the sphere point of the same index gives a mean squared travel of
+57546; the match brings it to 5563. The chords run outward from the ribbon, and each colour, the
+angle of the sphere point around Z, stays in its own sector rather than reaching across the
+sphere. `match.costHistory` holds the total squared travel
+before the first view and after each one, so you can see how much each extra view still buys.
+
+To morph, interpolate each source toward `partner[i]`, as the halfway frame does; because the
+pairing is one to one, every particle arrives at a different point of the new shape.
+`BspOt3D.match(fromXyz, toXyz)` takes the same clouds as packed `FloatArray` triples, the layout
+of a particle buffer, and returns the same `targetOfSource` permutation.
 
 ## Moving mass: Sinkhorn
 

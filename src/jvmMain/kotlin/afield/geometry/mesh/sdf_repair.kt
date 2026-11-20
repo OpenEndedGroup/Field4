@@ -383,6 +383,7 @@ fun FLine.signedDistance2D(samplesPerCubic: Int = 24, spacing: Double? = null): 
                     }
                 }
             }
+            is FLine.Close -> closeRing()
             else -> closeRing()
         }
     }

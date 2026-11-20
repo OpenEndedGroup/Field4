@@ -162,6 +162,8 @@ A refreshable capture with independent replay controls. Scrubbing never edits th
 
 `src/jvmMain/kotlin/afield/io/drawingon/DrawingOnNetwork.kt` — [read the source](source/jvmMain/afield/io/drawingon/DrawingOnNetwork/)
 
+**Used in:** [Drawing on iPad](../drawing_on.md)
+
 ### Top-level functions { #drawingonnetwork-kt-functions }
 
 | Declaration | Summary |

@@ -125,9 +125,10 @@ plane with `yAxis = [0.0, -1.0, 0.0]` and a suitable offset to `publish`. For a 
 choose explicit independent `xAxis` and `yAxis` vectors and an origin. Projection is
 `dot(position - origin, axis) * scale + offset`, recorded with each reference revision.
 
-Returned lines, fills and points use Field's existing AVP Three geometry/buffer format, with a
-simple two-dimensional renderer on the iPad. The native client verifies and saves the actual
-geometry it displayed. Exported captures include these buffers; replay needs no running Field.
+Returned lines, fills and points use Field's existing AVP Three geometry/buffer format. On the
+iPad, Metal draws the reference layer and pan, zoom and rotation reuse the uploaded geometry.
+The native client verifies and saves the displayed geometry. Exported captures include these
+buffers, so replay works without a running Field server.
 
 `pad.onEvent` receives `event.session`, `event.time`, `event.type`, `event.data`, and
 `event.upload`. The last flag distinguishes a saved-capture upload from a live connection.
@@ -237,6 +238,107 @@ as `node.drawingOnSample` (import `afield.io.drawingon.drawingOnSample`), plus `
 Each path carries `drawingOn.layer`, `drawingOn.stroke` for contact, and `drawingOn.kind` in its
 property map. Shape replay constructs the intended circle or straight line; the interval queries
 always use the measured Pencil path, so a pressure graph retains every measured point.
+
+## Clean up a live sketch
+
+Open the [live cleanup example](https://github.com/OpenEndedGroup/Field4/blob/main/native/field-drawingon/LiveNetwork.kt),
+paste it into its own Field box, and run it. Set the app's **Field target** to `network` and turn
+on **Stream live**. Give the cleanup box roughly sketched walls, an overstroke along part of a
+wall, a doorway gap and an arch.
+
+After a pen lift, the **lines** output shows the fitted FLines in cyan, with points at graph
+vertices. Nearby tips can share a vertex or join the side of a stroke at a T. Crossing strokes
+can pass through one another without making a junction. Short hooks or sideways ticks at either
+end can mark the endpoints of a line, arc or circle. Field can leave those marks out of the fit
+when the rest of the stroke supports the shape. Draw an arc with a consistent bend. Freehand lines
+need to stay close to a straight axis, so shallow arcs have room to register.
+
+Slow, curved passages keep their detail as smooth FLines. The fit measures Pencil speed in screen
+coordinates, so zooming the drawing does not change the timing judgment. The line and circle tools
+retain their explicit geometry. Undo, corrections and layer visibility update the fit from the
+recorded strokes. The original Pencil samples remain in the capture.
+
+Pause briefly to see **Plan geometry**. In a layer with enough evidence for perpendicular axes,
+Field uses its Ceres solver to align straight edges, with curves anchoring their shared vertices.
+It can merge straight continuations and keeps safeguards around gaps such as door openings. Label
+a layer **Annotation**, **Markup** or **Hatch** to dim those strokes in Field and omit them from
+the returned plan. Repeated short hatch strokes can also be recognized by their spacing.
+The iPad's reference layer shows the quick fit first and then the plan. Both outputs remain
+available in Field.
+
+## Fit a network from a recording
+
+Use `recording.networkAt(time)` with a saved or received capture to fit a network at any scrub
+time. It works on completed, visible strokes and respects the same layer overrides as ink replay.
+This API gives you the basic graph fit. The live example adds the timing rules and the plan pass.
+
+```diffstatic {data-lang=kotlin}
+:::static
+val graph = recording.networkAt(time)
+lines(graph.toFLines(showNodes = true), w = 640.0, h = 400.0)
+```
+
+Each edge has an FLine, two vertex IDs, a layer and the source stroke IDs. Vertices carry XY
+coordinates in the drawing plane. Clusters retain the strokes that contributed to each fit.
+To draw the result back onto the iPad, call `pad.publish(graph.toFLines(), title = "Clean drawing")`
+in the owning box.
+
+Try the basic fit on these sample strokes. The left side shows the input and the right side shows
+the network. Two passes along the wall become one fitted wall, the partition joins at a vertex,
+and the gap before the wall resumes stays open. The lightly wavering arch becomes a smooth curve.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/drawing_on/network.png" capture="box" open-outputs="true" wait="3" padding="12" name="drawing-on-network" embed=true alt="Raw pen strokes on the left and fitted graph on the right, showing a shared T-junction, a wall gap and an arch"}
+:::static
+:::fold imports
+import afield.geometry.path.FLine
+import afield.graphics.render.color
+import afield.graphics.render.thickness
+import afield.io.drawingon.DrawingOnNetworkStroke
+import afield.io.drawingon.fitDrawingOnNetwork
+import afield.math.linalg.vec
+import afield.ui.visualization.LinesFraming
+import afield.ui.visualization.lines
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
+:::endfold
+
+fun stroke(id: String, vararg xy: Pair<Int, Int>) =
+    DrawingOnNetworkStroke(id, "plan", "freehand", xy.map { (x, y) -> vec(x, y, 0) })
+
+val strokes = listOf(
+    stroke("wall", 10 to 50, 40 to 51, 80 to 50, 120 to 50),
+    stroke("overstroke", 120 to 51, 80 to 50, 40 to 50, 10 to 51),
+    stroke("partition", 53 to 12, 53 to 47),
+    stroke("after door", 147 to 51, 175 to 50, 215 to 51),
+    DrawingOnNetworkStroke("arch", "plan", "freehand", (0..40).map { i ->
+        val a = i * PI / 40
+        val r = 32 + 0.6 * sin(a * 13)
+        vec(115 + r * cos(a), 112 - r * sin(a), 0)
+    })
+)
+val graph = fitDrawingOnNetwork(strokes)
+val raw = strokes.map { stroke ->
+    FLine().moveTo(stroke.points.first()).apply {
+        stroke.points.drop(1).forEach { lineTo(it) }
+        color = vec(0.75, 0.75, 0.75, 0.67)
+        thickness = 1.5
+    }
+}
+val fitted = graph.toFLines(showNodes = true).map { path ->
+    path.transform { it.add(vec(245, 0, 0)) }.apply {
+        color = vec(0.3, 0.85, 1.0, 0.95)
+        thickness = 2.0
+    }
+}
+lines(raw + fitted, w = 600.0, h = 180.0, fitToSize = true, framing = LinesFraming.Fit)
+```
+
+The [network workout](https://github.com/OpenEndedGroup/Field4/blob/main/native/field-drawingon/NetworkWorkout.kt)
+adds sliders for fit, retrace and join tolerances. To compare the retrace groups with StrokeStrip,
+export them with `graph.strokeStripScap()`. Field's fit runs on its own. The
+[curve-network guide](https://github.com/OpenEndedGroup/Field4/blob/main/native/field-drawingon/docs/NETWORK.md)
+describes the export and the external fitter's requirements.
 
 ## Record elsewhere, upload later
 

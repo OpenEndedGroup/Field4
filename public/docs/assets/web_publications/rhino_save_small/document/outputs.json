@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-20T10:56:52.248Z",
+  "documentName": "rhino_save_small",
+  "outputs": [
+    {
+      "uid": "rhino_save_small_draw",
+      "channel": "saved",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 480,
+      "height": 360,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "rhino_save_small_draw",
+      "channel": "evaluated",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 480,
+      "height": 360,
+      "path": "outputs/1.html"
+    }
+  ]
+}

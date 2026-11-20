@@ -1167,7 +1167,14 @@ def _lander_worktree(primary: Path, requested: str | None) -> Path:
     path = Path(requested) if requested else primary.parent / f"{primary.name}-worktrees" / "lander"
     if not (path / ".git").exists():
         path.parent.mkdir(parents=True, exist_ok=True)
-        _git(primary, "worktree", "add", "-B", LANDER_BRANCH, str(path), "main")
+        # The checkout clones the primary's unedited tracked files (tools/worktree_seed.py). Sharing
+        # blocks with a checkout other sessions edit is safe: a write to either file, in place or by
+        # rename, gives that file new blocks and never changes the other, so an edit in the primary
+        # cannot reach a landing and a landing's merge cannot reach the primary. The sharing decays
+        # as `_reset` checks out newer mains, which costs disk, not correctness.
+        import worktree_seed  # noqa: PLC0415
+
+        print(worktree_seed.add_worktree(primary, path, "main", reset_branch=LANDER_BRANCH).summary(), flush=True)
         subprocess.run(["git", "lfs", "checkout"], cwd=path)
         # yarn.lock is untracked but the JS build needs it.
         lock = primary / "kotlin-js-store/yarn.lock"

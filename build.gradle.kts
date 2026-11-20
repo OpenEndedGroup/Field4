@@ -1487,6 +1487,13 @@ tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
     systemProperty("afield.ai4.toolIoLog.path", "build/test-ai-logs/ai4_tool_io")
     systemProperty("afield.ai4.toolEvidence.path", "build/test-ai-logs/ai4_tool_io/evidence")
     systemProperty("afield.ai.usageLog.path", "build/test-ai-logs/ai_usage")
+    // The code-use database (`CodeUseTelemetryService`) records every snippet a session compiles,
+    // and test workers were the largest writer to the user's ~/.afield copy: on 2026-11-20, 709,834
+    // of its 1,042,011 snippets came from `DemoTranscriptExecSmokeTest.freshSession` documents in
+    // `afield-demo-exec-*` temp folders, opened by jvmTest classes such as
+    // DocumentedApiEvaluationTest, and the file had reached 4.1 GB. Automated servers already move
+    // it (`automation_log_environment` in tools/verification_runtime.py); this covers the tests.
+    systemProperty("afield.codeUse.path", "build/test-ai-logs/code-use/field-code-use.sqlite")
 
     // A test worker is a fresh JVM and does not inherit the build's system properties, so the
     // `-Dafield.…=write` switches our characterization tests document for regenerating their
@@ -1584,6 +1591,17 @@ tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
 tasks.withType<JavaExec>().configureEach {
     dependsOn(prepareSmileNative)
     useSmileNative()
+    // Every JavaExec here but `runJvm` (the user's own Field) is a check, generator or study whose
+    // boxes are throwaway. Each compile they do used to land in the user's code-use database
+    // (~/.afield/code-use, `CodeUseTelemetryService`): on 2026-11-20, 709,834 of its 1,042,011
+    // snippets came from `DemoTranscriptExecSmokeTest.freshSession` documents in
+    // `afield-demo-exec-*` temp folders, from transcript guards such as checkAgentTranscripts and
+    // checkAgentDemos, and the file had reached 4.1 GB. Automated servers already move it
+    // (`automation_log_environment` in tools/verification_runtime.py); test workers do the same
+    // above.
+    if (name != "runJvm") {
+        systemProperty("afield.codeUse.path", "build/field-automation-logs/code-use/field-code-use.sqlite")
+    }
 }
 
 // Measurement fixtures deliberately print publishable timing/search data and make no assertions.

@@ -33,7 +33,7 @@ then follow the links for the details.
 
 ---
 
-## The fourteen that make samples
+## The fifteen that make samples
 
 | path | what it is | needs | offline? | shares `render`? | page |
 | --- | --- | --- | --- | --- | --- |
@@ -51,8 +51,9 @@ then follow the links for the details.
 | `modal-drum` | a drawn shape heard as a drum: its vibration modes solved by finite elements, struck, and summed as one damped sinusoid per mode. `class DrumModes` in `src/jvmMain/kotlin/afield/audio/modal/Eigendrum.kt` | nothing | offline only | no | [Eigendrum](eigendrum.md) |
 | `grains` | a list of grains — onset, length, pitch, gain, pan — each a windowed burst of a three-harmonic sine, or of a recording when you give it one, summed into a buffer. `fun renderGrains` in `src/jvmMain/kotlin/afield/simulation/agents/alife_grains.kt` | nothing | offline only | no | [ALife examples](alife_examples.md) |
 | `speech` | English text spoken by the tiny-voca model, a learned source-filter vocoder, into a 24 kHz buffer with the start and end of every word and phone. `fun speak` in `src/jvmMain/kotlin/afield/audio/synth/Speech.kt` | the tiny-voca model, fetched on first use | offline only | no | [Spectral examples](spectral_examples.md#speech-a-box-that-talks) |
+| `norns` | a norns script's sound from a [Lua box](lua.md#a-norns-host): a small polyphonic engine voice plus softcut buffers, driven by the script's engine, softcut and audio commands. `class NornsSound` in `src/jvmMain/kotlin/afield/lang/lua/NornsHost.kt` | nothing | both | **yes** | [Lua](lua.md#a-norns-host) |
 
-Four of those fourteen are pattern voices: `pat-stand-in`, `dirt-samples`, `faust-poly` and
+Four of those fifteen are pattern voices: `pat-stand-in`, `dirt-samples`, `faust-poly` and
 `pat-spatial`. The first two are what [Sound](sound.md) covers, with the fallback behaviour and the
 provenance audit; `faust-poly` is on [Faust](faust.md), because what it needs explaining is the voice
 allocator rather than the pattern; and `pat-spatial` has [a page of its
@@ -60,7 +61,7 @@ own](pat_spatial.md), because what it needs explaining is why a tag in a pattern
 why the synthesis is a thread away from the audio. Read whichever you have picked; this page only
 helps you pick.
 
-One of the fourteen is **realtime only**: `sonic-pi`, the only path where **no sample ever
+One of the fifteen is **realtime only**: `sonic-pi`, the only path where **no sample ever
 enters this process**. Field sends text and receives log lines; the audio exists entirely inside
 another program's synthesiser. You cannot filter, plot or record Sonic Pi's output the way you can
 the others'. The way back in is `link-audio-in`, below.
@@ -151,7 +152,7 @@ and N WebAssembly instances in one GraalVM context, none of which the engine has
 Because both share `render`, both get the speakers, the engine's visualisers, the Link output and
 the box lifecycle with no adapter.
 
-Of the fourteen paths that make samples, four do not share `render`. No wrapper can bring `sonic-pi`
+Of the fifteen paths that make samples, four do not share `render`. No wrapper can bring `sonic-pi`
 onto it: it is a different process, and no sample ever enters this one. `modal-drum` renders a
 whole strike into a buffer at once, `grains` a whole grain set, and `speech` a whole utterance; you
 hear any of them as a WAV file or as a player in the box's output. A `Speech` reaches `render` only

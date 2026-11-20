@@ -938,7 +938,8 @@ of each word's stressed vowel.
 head box to preview and publish the plan; connect Drawing On to target `ipad`. Each completed
 Pencil stroke receives a Field crosshair at its last measured point. The guide box explains
 recording offline, uploading later, and reviewing a save file on a Mac. The desktop preview works
-without an iPad.
+without an iPad. For fitted lines, arcs and junctions, follow the
+[live cleanup walkthrough](drawing_on.md#clean-up-a-live-sketch).
 
 [Open →](offline.html?file=assets/agent_transcripts/drawing_on/metadata.edn)
 
@@ -5513,6 +5514,17 @@ Launch 1 then 2; the default is a front-on desktop companion plus a closeable he
 The preview can show one eye or both eyes side by side. Requires Vulkan and Electron.
 
 [Open →](offline.html?file=assets/agent_transcripts/field_vr_ide/metadata.edn)
+
+### rhino_save
+
+**Geometry made in Field, saved for Rhino.** *Ribbons saved to a .3dm* grows a ring of twisted
+ribbons, each an `FLine` spine and a `TriMesh` strip, puts them on two layers with
+`Rhino3dm.save`, and reads the file straight back to draw what Rhino will open. *Read, change,
+write* loads the reader's sample model, adds a frame and a label on a new layer, writes it back
+with `Rhino3dm.save(model, file)` and prints the object and layer counts before and after. Both
+need the openNURBS wrapper. See [Rhino files](rhino_files.md#writing-a-3dm-for-rhino).
+
+[Open →](offline.html?file=assets/agent_transcripts/rhino_save/metadata.edn)
 
 ## Saved documents
 

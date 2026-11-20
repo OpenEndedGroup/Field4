@@ -365,6 +365,7 @@ $region
             "SECTION_EPS",
             "sectionPlane",
             "sectionSignedDistance",
+            "sectionAcrossSegment",
             "sectionCutTriangles",
             "sectionCutSegments",
             "sectionCutLength",

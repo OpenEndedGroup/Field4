@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import filecmp
 import fnmatch
 import json
 import logging
@@ -30,6 +31,8 @@ if __name__ == "__main__":
 import yaml  # noqa: E402
 
 from verification_runtime import verification_lock  # noqa: E402
+
+from cow_clone import clone_file  # noqa: E402
 
 # Where `generate_source_pages` tells `public/docs_hooks.py` to find the basename -> page/anchor map
 # that turns a citation into a link. Named here and read there; an absent variable is the signal that
@@ -874,6 +877,46 @@ def normalize_over_climbing_refs(*, markdown: str, page_path: Path, docs_dir: Pa
     return "".join(out), repairs
 
 
+# --- Copy-on-write copies ------------------------------------------------------------------------
+#
+# `public/docs/` holds ~4.8 GiB of assets, and a build used to leave two more full copies of them:
+# this script's copy into `public/.zensical-generated/docs/`, which zensical renders from, and
+# zensical's copy into the site. On 2026-11-20 that made a nightly worktree that had rebuilt one
+# page 17 GB, with the disk at 6.9 GiB free. A clone (APFS `clonefile`, the `FICLONE` ioctl on
+# btrfs/XFS) shares its source's blocks until one of them is written, so it costs metadata, not
+# bytes, and writing either file never changes the other. Every copy below is a clone where the
+# filesystem can make one and `shutil.copy2` -- the copy it always was -- where it cannot.
+# zensical writes the site's assets as plain copies, so `share_site_assets` swaps each one that is
+# byte-identical to its source for a clone once the build is done. The clone itself lives in
+# `tools/cow_clone.py`, which `tools/worktree_seed.py` shares.
+
+def share_site_assets(*, source_docs: Path, site_dir: Path) -> tuple[int, int]:
+    """Replace each site file zensical copied unchanged from [source_docs] with a clone of it.
+
+    A file is replaced only when its bytes equal its source's, through a clone written beside it
+    and renamed over it, so a reader sees one whole file or the other. Returns how many files and
+    bytes now share their source's blocks; (0, 0) where the filesystem cannot clone.
+    """
+    shared = shared_bytes = 0
+    for source in source_docs.rglob("*"):
+        if source.suffix == ".md" or source.is_symlink() or not source.is_file():
+            continue
+        target = site_dir / source.relative_to(source_docs)
+        if target.is_symlink() or not target.is_file():
+            continue
+        size = source.stat().st_size
+        if target.stat().st_size != size or not filecmp.cmp(source, target, shallow=False):
+            continue
+        replacement = target.with_name(f".{target.name}.clone")
+        if not clone_file(source, replacement):
+            replacement.unlink()
+            break  # no clones on this filesystem: leave zensical's copies as they are
+        os.replace(replacement, target)
+        shared += 1
+        shared_bytes += size
+    return shared, shared_bytes
+
+
 def copy_non_markdown_files(source: Path, target: Path) -> None:
     for path in source.rglob("*"):
         if not path.is_file() or path.suffix == ".md":
@@ -881,7 +924,7 @@ def copy_non_markdown_files(source: Path, target: Path) -> None:
         relative = path.relative_to(source)
         destination = target / relative
         destination.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(path, destination)
+        clone_file(path, destination)
 
 
 def matches_page_filter(relative: Path, filters: tuple[str, ...]) -> bool:
@@ -935,7 +978,8 @@ def generate_source_pages(*, repo_root: Path, generated_docs: Path, enabled: boo
             file=sys.stderr,
         )
         return None
-    shutil.copytree(repo_root / "build" / "source-pages", generated_docs, dirs_exist_ok=True)
+    shutil.copytree(repo_root / "build" / "source-pages", generated_docs, dirs_exist_ok=True,
+                    copy_function=clone_file)
     anchors = generated_docs / "reference" / "source" / "anchors.json"
     pages = len(list((generated_docs / "reference" / "source").rglob("*.md")))
     print(f"Generated {pages} source page(s) in {time.monotonic() - started:.1f}s")
@@ -1109,7 +1153,7 @@ def copy_workspace_markdown(*, source_docs: Path, site_dir: Path) -> int:
             continue
         destination = site_dir / relative
         destination.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(path, destination)
+        clone_file(path, destination)
         copied += 1
         prune_stale_page(source_docs=source_docs, site_dir=site_dir, relative=relative)
     return copied
@@ -1749,6 +1793,9 @@ def run(args: argparse.Namespace) -> int:
     print(f"Copied {copied} workspace markdown file(s) verbatim (not built as pages).")
     stamped, stamped_pages = fingerprint_assets(staging)
     print(f"Fingerprinted {stamped} stylesheet/script reference(s) on {stamped_pages} page(s).")
+    # Last before the install: every step that rewrites a site file has run, so it compares final bytes.
+    shared, shared_bytes = share_site_assets(source_docs=public_dir / "docs", site_dir=staging)
+    print(f"Made {shared} site asset(s) ({shared_bytes / 2**30:.2f} GiB) copy-on-write clones of public/docs.")
     install_site(staging=staging, site_dir=site_dir, previous=generated_root / PREVIOUS_SITE_DIR_NAME)
     print(f"Installed the built site at {site_dir} ({expected - len(missing)} page(s)).")
 

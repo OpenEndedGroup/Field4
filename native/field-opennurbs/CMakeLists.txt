@@ -56,4 +56,7 @@ set_target_properties(field_opennurbs_jvm PROPERTIES
   CXX_VISIBILITY_PRESET hidden
   VISIBILITY_INLINES_HIDDEN ON)
 
+# The writer, field_opennurbs_write.h, lives in its own file.
+target_sources(field_opennurbs_jvm PRIVATE src/field_opennurbs_write.cpp)
+
 install(TARGETS field_opennurbs_jvm LIBRARY DESTINATION lib RUNTIME DESTINATION bin)
