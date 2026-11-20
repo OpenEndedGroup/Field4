@@ -938,7 +938,8 @@ of each word's stressed vowel.
 head box to preview and publish the plan; connect Drawing On to target `ipad`. Each completed
 Pencil stroke receives a Field crosshair at its last measured point. The guide box explains
 recording offline, uploading later, and reviewing a save file on a Mac. The desktop preview works
-without an iPad.
+without an iPad. For fitted lines, arcs and junctions, follow the
+[live cleanup walkthrough](drawing_on.md#clean-up-a-live-sketch).
 
 [Open →](offline.html?file=assets/agent_transcripts/drawing_on/metadata.edn)
 
