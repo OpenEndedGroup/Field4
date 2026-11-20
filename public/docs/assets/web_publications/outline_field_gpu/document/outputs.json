@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-20T12:25:04.017Z",
+  "documentName": "outline_field_gpu",
+  "outputs": [
+    {
+      "uid": "ofg_renderer",
+      "channel": "Vulkan window · still image",
+      "open": true,
+      "path": "outputs/0.html",
+      "width": 574,
+      "height": 574,
+      "kinds": [
+        "native-image"
+      ],
+      "warnings": []
+    }
+  ]
+}

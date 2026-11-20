@@ -3532,6 +3532,39 @@
         "public/docs/assets/agent_transcripts/ordered_group_keyframes/ordered_group_other_code_.kt": "5e762134a1e45eb36fa6df47e673be5d6734aeb4997387c597a8b309d918201c"
       }
     },
+    "assets/agent_transcripts/outline_field_gpu/metadata.edn": {
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-20T12:25:04.017Z",
+      "channels": 1,
+      "file": "assets/web_publications/outline_field_gpu/document/metadata.edn",
+      "files": {
+        "assets/web_publications/outline_field_gpu/document/metadata.edn": "506e833005520a11c5a2e7b8584033f80d64257ba24fb76a39692954e24ec3fc",
+        "assets/web_publications/outline_field_gpu/document/outputs.json": "11738e27ce074c7b3fe44ea410bf9b65170c18470b61c4df277e8377dc1f5ac8",
+        "assets/web_publications/outline_field_gpu/outputs/0.html": "51388aaaf1716d3ee7332db62e6f02d199d04a3aa21705fe0d7cccda5c067725"
+      },
+      "kinds": [
+        "native-image"
+      ],
+      "outputs": "assets/web_publications/outline_field_gpu/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/outline_field_gpu.yaml": "b393ce8ae02552b8a06bc88d7b51905440856d753827e8f4a85c496d7e3a7fe9",
+        "public/docs/assets/agent_transcripts/outline_field_gpu/guides/visualizers.md": "05189bc72b892710c27cadc62016ded0214790d2b5828277084614583a1d34f1",
+        "public/docs/assets/agent_transcripts/outline_field_gpu/metadata.edn": "05b8bab5c3b809e7185b11a4fe57c4698065faaa5c646fd5b5aa7667370bb98f",
+        "public/docs/assets/agent_transcripts/outline_field_gpu/ofg_draw_code_.kt": "6a5f0c16e40dfd97c2232424a5a7ae2573a8290bab6b65dbadfad2cf01da3c99",
+        "public/docs/assets/agent_transcripts/outline_field_gpu/ofg_draw_fragment_.glsl": "2186d8f3eda7d2c076e3988487a370ec054774ecf6ca6da02a24fd0b884327a8",
+        "public/docs/assets/agent_transcripts/outline_field_gpu/ofg_draw_vertex_.glsl": "fa8b34a0fd5d23cb8b092ff1b8d0f95ceb03612f45fa7b06e485ed11da365bcc",
+        "public/docs/assets/agent_transcripts/outline_field_gpu/ofg_renderer_code_.kt": "4a712802a51931a985e5dba51855d833b354a088b51743d76f5afff53653f516",
+        "public/docs/assets/agent_transcripts/outline_field_gpu/ofg_sim_code_.kt": "4ce2131eb3c8c841f8557e49cd3f22e74b12eb5168a67670fbae6f40e79c11dd",
+        "public/docs/assets/agent_transcripts/outline_field_gpu/ofg_sim_compute_.glsl": "aa1dc3b2f3bfaee1665918b055cc1c59dcb3fc4d893849a5a7ed26375c36feb5",
+        "public/docs/assets/agent_transcripts/outline_field_gpu/ofg_star_code_.kt": "75e05381287b4ff0469209287547c79d526762f4133863ccca4bc7e7c450e709",
+        "public/docs/assets/visualizers-outline-field-gpu.png": "fa0a3681db683c81d18260f9ef570c4c21769416dc96727b8042f3399e7289bf",
+        "public/docs/visualizers.md#capture-box=ofg_renderer": "1e028fde3407ef25b993bc353353e73dabd60e8f1acf3075b6bcd3ada2795ca6"
+      },
+      "supplementalSources": [
+        "public/docs/assets/visualizers-outline-field-gpu.png",
+        "public/docs/visualizers.md#capture-box=ofg_renderer"
+      ]
+    },
     "assets/agent_transcripts/paint_blow_fingers/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
       "capturedAt": "2026-11-18T15:42:30.116Z",
