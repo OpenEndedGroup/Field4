@@ -535,6 +535,9 @@ class FieldApiCorsExposureTest {
             "POST /api/ai-settings" to "none",
             "POST /api/ai-tool-use-improvement" to "none",
             "POST /api/ai-tool-use-improvement/clear-reviewed" to "none",
+            // Box code instrumentation (2026-11-18): turning the watchdog off from a foreign page
+            // would let a runaway box hold the RunLoop, so the welcome page's control is same-site.
+            "POST /api/box-instrumentation" to "same-site",
             "POST /api/code-use/analyze" to "none",
             "POST /api/docs-annotations" to "loopback + same-site",
             // /docs-pass.html (docsPass.kt): coding agents with write access to the checkout, plus

@@ -168,7 +168,7 @@ object SoundPathMap {
     }
 
     /**
-     * The map. Fourteen sample sources, five ways out, four ways in.
+     * The map. Fifteen sample sources, five ways out, four ways in.
      *
      * Ordered the way a person reads it: the things that make sound, then the things that carry it
      * away, then the things that feed it. Every `page = null` is a real gap and is named as one on
@@ -372,6 +372,19 @@ object SoundPathMap {
             page = "public/docs/spectral_examples.md",
         ),
 
+        SoundPath(
+            id = "norns",
+            role = Role.MAKES, timing = Timing.BOTH, onSeam = true,
+            needs = "nothing",
+            channels = "stereo",
+            what = "a norns script's sound from a Lua box: a small polyphonic engine voice plus " +
+                "softcut buffers, driven by the script's engine, softcut and audio commands, played " +
+                "live or rendered offline to a .wav",
+            file = "src/jvmMain/kotlin/afield/lang/lua/NornsHost.kt",
+            entryPoint = "class NornsSound",
+            page = "public/docs/lua.md",
+        ),
+
         // ── things that take samples out ───────────────────────────────────────────────────
 
         SoundPath(
@@ -518,8 +531,10 @@ object SoundPathMap {
      * Thirteen with `fm1-sim`, the FM-1 synth's open-firmware simulator as a wasm module on the seam.
      * Fourteen with `speech` (2026-11-19): `speak(...)` on the tiny-voca model, declared when
      * SpeechSoundDocs put its clips on spectral_examples.md.
+     * Fifteen with `norns` (2026-11-19): a Lua box's norns host, whose NornsSound the
+     * box-audio-stereo-node marker caught landing undeclared.
      */
-    const val SOURCE_COUNT = 14
+    const val SOURCE_COUNT = 15
 
     /** How many ways samples leave this process. Five, of which three are separate OpenAL contexts. */
     const val SINK_COUNT = 5
@@ -548,8 +563,9 @@ object SoundPathMap {
      * Twelve since 2026-09-28, for the most ordinary reason of all: `pure-data` arrived on it.
      * Thirteen with Csound's StereoNode, which pulls libcsound's performance from the audio thread.
      * Fourteen with `fm1-sim`, whose FM1SimNode pulls the simulator a block at a time.
+     * Fifteen with `norns`, whose NornsSound is registered with the engine through audio(...).
      */
-    const val SEAM_COUNT = 14
+    const val SEAM_COUNT = 15
 
     // ── derivation from the code ───────────────────────────────────────────────────────────
 
@@ -699,6 +715,7 @@ object SoundPathMap {
                 "src/jvmMain/kotlin/afield/audio/synth/Dough.kt" to "dough-engine",
                 "src/jvmMain/kotlin/afield/audio/synth/FaustDsp.kt" to "faust",
                 "src/jvmMain/kotlin/afield/audio/synth/FM1Sim.kt" to "fm1-sim",
+                "src/jvmMain/kotlin/afield/lang/lua/NornsHost.kt" to "norns",
                 "src/jvmMain/kotlin/afield/audio/synth/FaustPoly.kt" to "faust-poly",
                 "src/jvmMain/kotlin/afield/audio/synth/PatSynth.kt" to "pat-stand-in",
                 // PdNode, the audio thread's end of a libpd instance.
