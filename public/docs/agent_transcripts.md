@@ -970,6 +970,16 @@ rules side by side on a ring. From the measuring sections of [Drawing with FLine
 
 [Open →](offline.html?file=assets/agent_transcripts/fline_measure/metadata.edn)
 
+### planar_queries
+
+**Distances, crossings and orientation for plain points.** Two boxes: a grid of dots shaded by
+`pointSegmentDistance2D` to eight segments, with each pair marked as a proper crossing
+(`segmentsCrossProperly2D`) or a touch (`segmentsTouch2D`); and four polygons coloured by the sign of
+`signedArea2D`, each inside its `pointBounds2D` rectangle. The point-list counterparts of
+[Crossings, bounds and orientation](fline_examples.md#crossings-bounds-and-orientation).
+
+[Open →](offline.html?file=assets/agent_transcripts/planar_queries/metadata.edn)
+
 ### clothoid_spline
 
 **Curvature-continuous splines.** Three boxes: `clothoidSplineFrom` and `cubicSplineFrom` through the

@@ -2,6 +2,7 @@
 
 package afield.data.graph
 
+import afield.geometry.path.pointSegmentDistanceSquared3D
 import afield.data.collections.get
 import afield.data.collections.invoke
 import afield.data.collections.s
@@ -439,25 +440,8 @@ private fun midpoint(a: Vec3, b: Vec3): Vec3 =
 private fun cubicFlatness(a: Vec3, c1: Vec3, c2: Vec3, b: Vec3): Float =
     sqrt(max(pointSegmentDistanceSquared(c1, a, b), pointSegmentDistanceSquared(c2, a, b))).toFloat()
 
-private fun pointSegmentDistanceSquared(p: Vec3, a: Vec3, b: Vec3): Double {
-    val abx = b.x.toDouble() - a.x.toDouble()
-    val aby = b.y.toDouble() - a.y.toDouble()
-    val abz = b.z.toDouble() - a.z.toDouble()
-    val apx = p.x.toDouble() - a.x.toDouble()
-    val apy = p.y.toDouble() - a.y.toDouble()
-    val apz = p.z.toDouble() - a.z.toDouble()
-    val ab2 = abx * abx + aby * aby + abz * abz
-    if (ab2 <= 0.0) return apx * apx + apy * apy + apz * apz
-
-    val t = ((apx * abx + apy * aby + apz * abz) / ab2).coerceIn(0.0, 1.0)
-    val qx = a.x.toDouble() + t * abx
-    val qy = a.y.toDouble() + t * aby
-    val qz = a.z.toDouble() + t * abz
-    val dx = p.x.toDouble() - qx
-    val dy = p.y.toDouble() - qy
-    val dz = p.z.toDouble() - qz
-    return dx * dx + dy * dy + dz * dz
-}
+private fun pointSegmentDistanceSquared(p: Vec3, a: Vec3, b: Vec3): Double =
+    pointSegmentDistanceSquared3D(p, a, b, degenerateLengthSquared = 0.0)
 
 private fun distance3(a: Vec3, b: Vec3): Double {
     val dx = a.x.toDouble() - b.x.toDouble()

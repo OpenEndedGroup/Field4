@@ -585,6 +585,9 @@ object DemoTranscriptExecSmokeTest {
         "fline_hit_records",
         // fline_examples.md's measuring sections: locationAt, trim/splitAt, crossings, fill rules. CPU only.
         "fline_measure",
+        // The planar query kernel (FLineMeasure.kt) on point lists: distance field, crossings,
+        // signed area and bounds, drawn through lines(). CPU only.
+        "planar_queries",
         // fline_examples.md's curvature-continuous splines: clothoidSplineFrom vs cubicSplineFrom with
         // curvature combs, a circle, a closed shape. CPU only.
         "clothoid_spline",

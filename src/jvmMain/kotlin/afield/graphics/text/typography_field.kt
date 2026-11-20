@@ -2,6 +2,7 @@
 
 package afield.graphics.text
 
+import afield.geometry.path.signedArea2D
 import afield.data.collections.get
 import afield.data.collections.invoke
 import afield.data.collections.times
@@ -295,15 +296,7 @@ fun TextLayout.toContours(honourHoles: Boolean = true): List<GlyphContour> {
     return out
 }
 
-private fun signedAreaOf(points: List<Vec2>): Double {
-    var s = 0.0
-    for (i in points.indices) {
-        val a = points[i]
-        val b = points[(i + 1) % points.size]
-        s += a.x.toDouble() * b.y.toDouble() - b.x.toDouble() * a.y.toDouble()
-    }
-    return 0.5 * s
-}
+private fun signedAreaOf(contour: List<Vec2>): Double = signedArea2D(contour)
 
 // ==============================================================================================
 // TextLayout -> points

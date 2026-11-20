@@ -43,6 +43,11 @@ generated assets migrated): `FLine.closestPoint`, `FLinesAndJavaShapes.closestT`
 `binormalForward/Backward`, `normalForward/Backward`, `normal2`, `currentSegment`. Still present
 and arguably duplicate: `CubicSegment3.closestToPoint` (a per-segment helper, not a line measurer).
 
+The name `signedArea2D` is back, with a different meaning: the top-level `signedArea2D(points:
+List<Vec2>)` in `FLineMeasure.kt` is the shoelace area of a point list, beside the planar kernel
+(`pointSegmentDistance2D`, `segmentsCrossProperly2D`, `segmentsTouch2D`, `pointBounds2D`). It is
+not the removed `FLine` member; for an `FLine` with curves use `area2D()`.
+
 ## Cursor defects found by characterization (pinned in `CursorCharacterizationTest`)
 
 - `tangent()` was `B'(u)`, not a unit vector (magnitude ~150 on a 100-unit arc); `normal2()` the same,

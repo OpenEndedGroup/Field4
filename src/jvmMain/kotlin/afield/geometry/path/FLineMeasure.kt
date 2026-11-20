@@ -578,3 +578,137 @@ fun FLine.contains2D(point: Vec2, rule: FLineFillRule = FLineFillRule.NonZero): 
         FLineFillRule.EvenOdd -> crossings % 2 == 1
     }
 }
+
+/**
+ * The parameter `t` in `0..1` of the point on segment `a`–`b` closest to (`px`, `py`).
+ *
+ * A segment whose squared length is at most [degenerateLengthSquared] answers `0.0` (its start),
+ * which is the right answer for a zero-length segment rather than an error. Callers that have
+ * always treated "nearly zero" as zero pass their own threshold so their results do not move.
+ */
+fun segmentParameter2D(
+    px: Double, py: Double,
+    ax: Double, ay: Double, bx: Double, by: Double,
+    degenerateLengthSquared: Double = 1e-18
+): Double {
+    val vx = bx - ax
+    val vy = by - ay
+    val vv = vx * vx + vy * vy
+    if (vv <= degenerateLengthSquared) return 0.0
+    return (((px - ax) * vx + (py - ay) * vy) / vv).coerceIn(0.0, 1.0)
+}
+
+/**
+ * The squared distance from (`px`, `py`) to the closed segment `a`–`b`; see [segmentParameter2D]
+ * for [degenerateLengthSquared]. Use the squared form when you only compare or sort distances.
+ */
+fun pointSegmentDistanceSquared2D(
+    px: Double, py: Double,
+    ax: Double, ay: Double, bx: Double, by: Double,
+    degenerateLengthSquared: Double = 1e-18
+): Double {
+    val t = segmentParameter2D(px, py, ax, ay, bx, by, degenerateLengthSquared)
+    val dx = px - (ax + t * (bx - ax))
+    val dy = py - (ay + t * (by - ay))
+    return dx * dx + dy * dy
+}
+
+/** The distance from (`px`, `py`) to the closed segment `a`–`b`; see [pointSegmentDistanceSquared2D]. */
+fun pointSegmentDistance2D(
+    px: Double, py: Double,
+    ax: Double, ay: Double, bx: Double, by: Double,
+    degenerateLengthSquared: Double = 1e-18
+): Double = sqrt(pointSegmentDistanceSquared2D(px, py, ax, ay, bx, by, degenerateLengthSquared))
+
+/**
+ * The squared distance from [p] to the closed segment [a]–[b] in 3D, in doubles. A segment whose
+ * squared length is at most [degenerateLengthSquared] answers the squared distance to [a].
+ */
+fun pointSegmentDistanceSquared3D(p: Vec3, a: Vec3, b: Vec3, degenerateLengthSquared: Double = 1e-18): Double {
+    val ax = a.x.toDouble(); val ay = a.y.toDouble(); val az = a.z.toDouble()
+    val vx = b.x.toDouble() - ax; val vy = b.y.toDouble() - ay; val vz = b.z.toDouble() - az
+    val wx = p.x.toDouble() - ax; val wy = p.y.toDouble() - ay; val wz = p.z.toDouble() - az
+    val vv = vx * vx + vy * vy + vz * vz
+    val t = if (vv <= degenerateLengthSquared) 0.0 else ((wx * vx + wy * vy + wz * vz) / vv).coerceIn(0.0, 1.0)
+    val dx = wx - t * vx; val dy = wy - t * vy; val dz = wz - t * vz
+    return dx * dx + dy * dy + dz * dz
+}
+
+/**
+ * Twice the signed area of the triangle `a`, `b`, `c`: positive when `c` lies to the left of the
+ * directed line `a`→`b` (counter-clockwise), negative to the right, zero when the three are collinear.
+ */
+fun orient2D(ax: Double, ay: Double, bx: Double, by: Double, cx: Double, cy: Double): Double =
+    (bx - ax) * (cy - ay) - (by - ay) * (cx - ax)
+
+/**
+ * Whether segments `p`–`q` and `r`–`s` cross *properly*: each strictly separates the other's
+ * endpoints. Touching at an endpoint or a collinear overlap does not count; see [segmentsTouch2D]
+ * for the closed test.
+ */
+fun segmentsCrossProperly2D(
+    px: Double, py: Double, qx: Double, qy: Double,
+    rx: Double, ry: Double, sx: Double, sy: Double
+): Boolean {
+    val d1 = orient2D(rx, ry, sx, sy, px, py)
+    val d2 = orient2D(rx, ry, sx, sy, qx, qy)
+    val d3 = orient2D(px, py, qx, qy, rx, ry)
+    val d4 = orient2D(px, py, qx, qy, sx, sy)
+    return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))
+}
+
+/**
+ * Whether the closed segments `p`–`q` and `r`–`s` meet at all, including touching at a point and
+ * collinear overlap. Orientations within [epsilon] of zero count as collinear.
+ */
+fun segmentsTouch2D(
+    px: Double, py: Double, qx: Double, qy: Double,
+    rx: Double, ry: Double, sx: Double, sy: Double,
+    epsilon: Double = 1e-12
+): Boolean {
+    fun onSpan(ax: Double, ay: Double, bx: Double, by: Double, cx: Double, cy: Double): Boolean =
+        cx >= min(ax, bx) - epsilon && cx <= max(ax, bx) + epsilon &&
+            cy >= min(ay, by) - epsilon && cy <= max(ay, by) + epsilon
+    val d1 = orient2D(px, py, qx, qy, rx, ry)
+    val d2 = orient2D(px, py, qx, qy, sx, sy)
+    val d3 = orient2D(rx, ry, sx, sy, px, py)
+    val d4 = orient2D(rx, ry, sx, sy, qx, qy)
+    if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) return true
+    if (abs(d1) < epsilon && onSpan(px, py, qx, qy, rx, ry)) return true
+    if (abs(d2) < epsilon && onSpan(px, py, qx, qy, sx, sy)) return true
+    if (abs(d3) < epsilon && onSpan(rx, ry, sx, sy, px, py)) return true
+    if (abs(d4) < epsilon && onSpan(rx, ry, sx, sy, qx, qy)) return true
+    return false
+}
+
+/**
+ * The signed area of the closed polygon through [points] in the xy plane (shoelace, in doubles):
+ * positive counter-clockwise, negative clockwise. The closing edge back to the first point is implied.
+ * For an [FLine] with curves use [area2D].
+ */
+fun signedArea2D(points: List<Vec2>): Double {
+    var twice = 0.0
+    for (i in points.indices) {
+        val a = points[i]
+        val b = points[(i + 1) % points.size]
+        twice += a.x.toDouble() * b.y.toDouble() - b.x.toDouble() * a.y.toDouble()
+    }
+    return twice / 2.0
+}
+
+/**
+ * The axis-aligned bounds of [points] in the xy plane, as a [Rect] (`x, y, w, h`). An empty list
+ * answers the zero rect at the origin. For an [FLine] use its own bounds, which include curves.
+ */
+fun pointBounds2D(points: List<Vec2>): Rect {
+    if (points.isEmpty()) return Rect(0.0, 0.0, 0.0, 0.0)
+    var minX = Double.MAX_VALUE
+    var minY = Double.MAX_VALUE
+    var maxX = -Double.MAX_VALUE
+    var maxY = -Double.MAX_VALUE
+    for (p in points) {
+        minX = min(minX, p.x.toDouble()); maxX = max(maxX, p.x.toDouble())
+        minY = min(minY, p.y.toDouble()); maxY = max(maxY, p.y.toDouble())
+    }
+    return Rect(minX, minY, maxX - minX, maxY - minY)
+}
