@@ -1,0 +1,251 @@
+const proseSelector = 'p,h1,h2,h3,h4,h5,h6';
+const imageSource = /^!\[([^\]]*)\]\(([^)]+)\)/;
+const inlineTags = 'span,b,strong,i,em,br,img';
+const children = (node, render) => [...node.childNodes].map(render).join('');
+
+function inlineMarkdown(node, marks = '') {
+    if (node.nodeType === Node.TEXT_NODE) {
+        if (!marks) return node.data;
+        // Keep the delimiters adjacent to the marked text, even when the selection includes spaces.
+        return node.data.replace(/\S(?:.*\S)?/g, value => marks + value + marks);
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) return '';
+    if (node.matches('img')) return node.dataset.richMarkdown || '';
+    if (node.matches('br')) return ' ';
+    const bold = marks.length >= 2 || node.matches('b,strong') || /^(bold|[6-9]00)$/.test(node.style.fontWeight);
+    const italic = marks.length % 2 === 1 || node.matches('i,em') || node.style.fontStyle === 'italic';
+    return children(node, child => inlineMarkdown(child, '*'.repeat((bold ? 2 : 0) + (italic ? 1 : 0))));
+}
+
+function blockMarkdown(host) {
+    const blocks = [];
+    let pending = '';
+    const flush = () => { if (pending.trim()) blocks.push(pending.trim()); pending = ''; };
+    const visit = node => {
+        if (node.nodeType === Node.ELEMENT_NODE && node.matches(proseSelector + ',div')) {
+            flush();
+            const heading = /^H[1-6]$/.test(node.tagName) ? Number(node.tagName[1]) : 0;
+            if ([...node.children].some(child => child.matches(proseSelector + ',div'))) {
+                [...node.childNodes].forEach(visit);
+                flush();
+            } else {
+                const value = children(node, child => inlineMarkdown(child)).trim();
+                if (value) blocks.push((heading ? '#'.repeat(heading) + ' ' : '') + value);
+            }
+        } else pending += inlineMarkdown(node);
+    };
+    [...host.childNodes].forEach(visit);
+    flush();
+    return blocks.join('\n\n');
+}
+
+// The reader already maps visible text back to source. Use that mapping to make independent
+// editing hosts for simple blocks. Everything between those ranges stays byte-for-byte intact.
+function editableRange(block, source) {
+    if (!block.matches(proseSelector) || [...block.querySelectorAll('*')].some(el => !el.matches(inlineTags))) return null;
+    let first = Infinity, last = -1;
+    for (const el of block.querySelectorAll('[data-markdown-offsets],img[data-markdown-start]')) {
+        if (el.matches('img')) {
+            const start = Number(el.dataset.markdownStart);
+            const match = imageSource.exec(source.slice(start));
+            if (!match) return null;
+            el.dataset.richMarkdown = match[0];
+            first = Math.min(first, start);
+            last = Math.max(last, start + match[0].length - 1);
+        } else {
+            const offsets = el.dataset.markdownOffsets.split(',').map(Number);
+            first = Math.min(first, offsets[0]);
+            last = Math.max(last, offsets.at(-1));
+        }
+    }
+    if (!Number.isFinite(first) || last < first) return null;
+    const start = source.lastIndexOf('\n', first - 1) + 1;
+    const nextLine = source.indexOf('\n', last + 1);
+    const end = nextLine < 0 ? source.length : nextLine;
+    // A reader block can share a source line with a fence or unrendered syntax. Leave it alone
+    // unless serializing the visible DOM accounts for the entire original range.
+    const canonical = children(block, child => inlineMarkdown(child));
+    const heading = block.matches('p') ? '' : '#'.repeat(Number(block.tagName[1])) + ' ';
+    const original = source.slice(start, end);
+    if (original.trim().replace(/\n[ \t]*/g, ' ') !== heading + canonical) return null;
+    return {start, end};
+}
+
+export function mountRichText(root, markdown) {
+    const source = markdown.replace(/\r\n/g, '\n');
+    if (!source.trim()) root.innerHTML = '<div class="ai-chat-markdown"><p><br></p></div>';
+    const reader = root.querySelector('.ai-chat-markdown');
+    const blocks = [];
+    for (const block of [...reader.children]) {
+        const range = source.trim() ? editableRange(block, source) : {start: 0, end: source.length};
+        if (!range) continue;
+        const host = document.createElement('div');
+        host.className = 'text-frame-rich-block';
+        host.contentEditable = 'true';
+        host.spellcheck = true;
+        host.setAttribute('aria-label', 'Frame text');
+        host.setAttribute('role', 'textbox');
+        host.setAttribute('aria-multiline', 'true');
+        block.replaceWith(host);
+        host.append(block);
+        for (const span of host.querySelectorAll('span[data-markdown-offsets]')) span.replaceWith(...span.childNodes);
+        blocks.push({...range, host, baseline: blockMarkdown(host)});
+    }
+    if (!blocks.length) {
+        const host = document.createElement('div');
+        host.className = 'text-frame-rich-block';
+        host.contentEditable = 'true';
+        host.spellcheck = true;
+        host.setAttribute('aria-label', 'Add frame text');
+        host.innerHTML = '<p><br></p>';
+        reader.append(host);
+        blocks.push({start: source.length, end: source.length, host, baseline: '', prefix: '\n\n'});
+    }
+    return {
+        first: blocks[0].host,
+        markdown() {
+            let result = '', cursor = 0, changed = false;
+            for (const {start, end, host, baseline, prefix = ''} of blocks) {
+                const value = blockMarkdown(host);
+                result += source.slice(cursor, start);
+                if (value === baseline) result += source.slice(start, end);
+                else {
+                    result += prefix + value;
+                    changed = true;
+                }
+                cursor = end;
+            }
+            return changed ? result + source.slice(cursor) : markdown;
+        }
+    };
+}
+
+export function placeRichCaret(root, point, fallback) {
+    const caret = point && document.caretRangeFromPoint?.(point.clientX, point.clientY);
+    const target = caret?.startContainer;
+    const element = target?.nodeType === Node.ELEMENT_NODE ? target : target?.parentElement;
+    const host = root.contains(element) && element.closest('.text-frame-rich-block') || fallback;
+    host.focus({preventScroll: true});
+    const selection = window.getSelection();
+    const range = caret && host.contains(caret.startContainer) ? caret : document.createRange();
+    if (range !== caret) { range.selectNodeContents(host); range.collapse(false); }
+    selection.removeAllRanges();
+    selection.addRange(range);
+}
+
+function lineRects(host) {
+    const walker = document.createTreeWalker(host, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
+    const range = document.createRange();
+    const rects = [];
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        if (node.nodeType === Node.TEXT_NODE) {
+            range.selectNodeContents(node);
+            rects.push(...range.getClientRects());
+        } else if (node.matches('br,img')) rects.push(...node.getClientRects());
+    }
+    return rects.filter(rect => rect.height > 0);
+}
+
+// Chromium's caret stops at each contenteditable boundary. Bridge those boundaries while
+// leaving movement within a paragraph (including wrapped lines) to the browser.
+export function moveBetweenRichBlocks(event, root) {
+    const {key} = event;
+    if (event.shiftKey || event.altKey || event.metaKey || event.ctrlKey ||
+        !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(key)) return;
+    const host = event.target.closest('.text-frame-rich-block');
+    const selection = window.getSelection();
+    if (!host || !selection?.isCollapsed || !selection.rangeCount || !host.contains(selection.anchorNode)) return;
+    const backwards = key === 'ArrowLeft' || key === 'ArrowUp';
+    const vertical = key === 'ArrowUp' || key === 'ArrowDown';
+    const hosts = [...root.querySelectorAll('.text-frame-rich-block')];
+    const next = hosts[hosts.indexOf(host) + (backwards ? -1 : 1)];
+    if (!next) return;
+
+    const caret = selection.getRangeAt(0);
+    const edge = document.createRange();
+    edge.selectNodeContents(host);
+    if (backwards) edge.setEnd(caret.startContainer, caret.startOffset);
+    else edge.setStart(caret.startContainer, caret.startOffset);
+    const atEdge = !edge.toString() && !edge.cloneContents().querySelector('img');
+    let destination;
+    if (vertical) {
+        const caretRect = caret.getClientRects()[0];
+        if (!caretRect && !atEdge) return;
+        if (caretRect) {
+            const middle = (caretRect.top + caretRect.bottom) / 2;
+            if (lineRects(host).some(rect => backwards ? rect.bottom < middle : rect.top > middle)) return;
+            const target = lineRects(next).reduce((best, rect) =>
+                !best || (backwards ? rect.bottom > best.bottom : rect.top < best.top) ? rect : best, null);
+            if (target) {
+                const x = Math.max(next.getBoundingClientRect().left, Math.min(caretRect.left, next.getBoundingClientRect().right - 1));
+                destination = document.caretRangeFromPoint?.(x, (target.top + target.bottom) / 2);
+            }
+        }
+    } else if (!atEdge) return;
+
+    event.preventDefault();
+    next.focus({preventScroll: true});
+    if (!destination || !next.contains(destination.startContainer)) {
+        const walker = document.createTreeWalker(next, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, {
+            acceptNode: node => node.nodeType === Node.TEXT_NODE ? (node.length ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP) :
+                (node.matches('img,br') ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP)
+        });
+        const nodes = [];
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) nodes.push(node);
+        const leaf = backwards ? nodes.at(-1) : nodes[0];
+        destination = document.createRange();
+        if (leaf?.nodeType === Node.TEXT_NODE) destination.setStart(leaf, backwards ? leaf.length : 0);
+        else if (leaf && backwards && leaf.matches('img')) destination.setStartAfter(leaf);
+        else if (leaf) destination.setStartBefore(leaf);
+        else destination.selectNodeContents(next);
+        destination.collapse(true);
+    }
+    selection.removeAllRanges();
+    selection.addRange(destination);
+    const pane = root.getBoundingClientRect(), block = next.getBoundingClientRect();
+    const target = destination.getClientRects()[0] || block;
+    if (target.top < pane.top || target.bottom > pane.bottom) {
+        const scale = pane.height / root.offsetHeight || 1;
+        root.scrollTop += (target.top < pane.top ? target.top - pane.top : target.bottom - pane.bottom) / scale;
+    }
+}
+
+export async function pasteRichText(event, root, isCurrent, changed) {
+    event.preventDefault();
+    const selection = window.getSelection();
+    const host = event.target.closest('.text-frame-rich-block');
+    if (!host || !selection.rangeCount || !host.contains(selection.anchorNode) || !host.contains(selection.focusNode)) return;
+    const clipboard = event.clipboardData;
+    const image = [...(clipboard?.files || [])].find(file => /^image\/(png|jpeg|gif|webp)$/.test(file.type));
+    if (!image) {
+        const text = clipboard?.getData('text/plain');
+        if (text) document.execCommand('insertText', false, text);
+        return;
+    }
+    const range = selection.getRangeAt(0).cloneRange();
+    if (image.size > 1024 * 1024) {
+        window.notify?.('Paste supports images up to 1 MiB. Use a Markdown file link for larger images.');
+        return;
+    }
+    const reader = new FileReader();
+    try {
+        await new Promise((resolve, reject) => {
+            reader.onload = resolve;
+            reader.onerror = reject;
+            reader.readAsDataURL(image);
+        });
+        if (!isCurrent() || !root.contains(host) || document.activeElement !== host ||
+            !selection.rangeCount) return;
+        const current = selection.getRangeAt(0);
+        if (current.compareBoundaryPoints(Range.START_TO_START, range) !== 0 ||
+            current.compareBoundaryPoints(Range.END_TO_END, range) !== 0) return;
+        const img = document.createElement('img');
+        img.src = reader.result;
+        img.alt = 'Pasted image';
+        img.dataset.richMarkdown = `![Pasted image](${reader.result})`;
+        document.execCommand('insertHTML', false, img.outerHTML);
+        changed();
+    } catch (_) {
+        window.notify?.('Could not paste the image.');
+    }
+}

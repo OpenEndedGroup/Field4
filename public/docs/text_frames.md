@@ -4,9 +4,14 @@ A text frame is a box whose face is a Markdown document. Use frames for notes, o
 research and connected thoughts, alongside the boxes that do the work. Their text is saved with the
 Field document and available to AI4.
 
-Press ++shift+n++ to make one. Double-click a passage to edit its Markdown at that point; click away,
-press ++escape++, or press ++cmd+enter++ to read the formatted result. Selecting a frame and pressing
-++enter++ also starts editing. Native spellcheck is enabled.
+Press ++shift+n++ to make one. Double-click a passage to write directly in the formatted text, or
+select a frame and press ++enter++. Click away, press ++escape++, or press ++cmd+enter++ to finish.
+Native spellcheck is enabled.
+
+Use the toolbar for headings, bold, and italic. ++cmd+b++ and ++cmd+i++ also work. Paste a PNG,
+JPEG, GIF, or WebP up to 1 MiB to embed it in the frame's Markdown. For tables, code, and other
+advanced formatting, choose **Markdown** in the toolbar or **Edit Markdown** in the marking menu.
+Hold ++shift++ while double-clicking to edit Markdown inline at the point you clicked.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1060x720" clip="0,0,560,700" screenshot="assets/text_frames/reading.png" transcript="../../dev_docs/agents/transcripts/docs_capture/text_frames.yaml" document="docs-text-frames-reading" fresh-document=true hide-toasts=true padding="0" wait="0" timeout="180" embed=true hidden=true name="text-frames-reading" alt="Two connected text frames on Field's dark canvas. Research notes contain a heading, bold text, a diagram loaded through FileManager, and a small Kotlin code block with a horizontal Copy button. The next frame asks what happens next."}
 ui.eval(
@@ -53,7 +58,7 @@ as `contents`.
 
 A growing frame fits its formatted content and keeps its width. Expansion pushes colliding text
 frames down; contraction pulls frames wholly below it up. Other columns and ordinary boxes stay put.
-A fixed frame clips excess text and shows a **+**; click it to edit all the source. Markdown source
+A fixed frame clips excess text and shows a **+**; click it to open the scrollable visual editor. Markdown source
 can be taller than the typeset result, so it scrolls inside the same frame while you write.
 
 ## Images and other content
@@ -124,6 +129,24 @@ autocomplete: false
 Use `textAlign: center`, `fontStyle: italic`, or `letterSpacing: 0.02em` to change the reading style.
 A numeric `letterSpacing` means pixels. Invalid CSS values fall back to the defaults. These settings
 apply to formatted text; the Markdown editor keeps Field's normal text color and its black background.
+
+To style individual elements in this frame, add a `css` block under **Open settings**. This example
+changes the main heading and adds a little space below it:
+
+```diffstatic {data-lang=yaml}
+css: |
+  h1 {
+    color: #b6e3c5;
+    font-size: 2em;
+    letter-spacing: 0.02em;
+    margin-bottom: 0.5em;
+  }
+```
+
+The rules apply while reading and while editing formatted text on the canvas. They leave the
+Markdown source and other frames alone. Use ordinary selectors for elements such as `h1`, `p`,
+`blockquote`, and `code`, with CSS for type, color, spacing, backgrounds, and borders. Imports,
+external assets, and rules such as `@media` are ignored.
 
 Use `fontWeight: 300` for light text, `sizing: fixed` for clipping, or `reflow: false` to resize without
 moving other frames. `connectionBorderLength` is the trace length on either side of an arrow attachment,

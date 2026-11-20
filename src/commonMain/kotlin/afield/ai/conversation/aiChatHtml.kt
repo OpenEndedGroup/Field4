@@ -62,6 +62,7 @@ private fun inlineFormat(text: String, positions: List<Int>? = null): String {
 internal val markdownLinkSpan = Regex("""!?\[([^\]]*)\]\(([^)]+)\)""")
 
 private fun formatEmphasis(text: String): String = text
+    .replace(Regex("\\*\\*\\*([^*]+)\\*\\*\\*"), "<strong><em>$1</em></strong>")
     .replace(Regex("\\*\\*([^*]+)\\*\\*"), "<strong>$1</strong>")
     .replace(Regex("\\*([^*\\s][^*]*)\\*"), "<em>$1</em>")
 
