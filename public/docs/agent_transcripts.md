@@ -1749,6 +1749,17 @@ centroid, bounds, dash) and prints `ok` or `THREW` for each. Both boxes draw wit
 
 [Open →](offline.html?file=assets/agent_transcripts/close_node_demo/metadata.edn)
 
+### rhino_save
+
+**Geometry made in Field, saved for Rhino.** *Ribbons saved to a .3dm* grows a ring of twisted
+ribbons, each an `FLine` spine and a `TriMesh` strip, puts them on two layers with
+`Rhino3dm.save`, and reads the file straight back to draw what Rhino will open. *Read, change,
+write* loads the reader's sample model, adds a frame and a label on a new layer, writes it back
+with `Rhino3dm.save(model, file)` and prints the object and layer counts before and after. Both
+need the openNURBS wrapper. See [Rhino files](rhino_files.md#writing-a-3dm-for-rhino).
+
+[Open →](offline.html?file=assets/agent_transcripts/rhino_save/metadata.edn)
+
 ### dynamic_graph_systems_examples
 
 [Graphs that change while you
