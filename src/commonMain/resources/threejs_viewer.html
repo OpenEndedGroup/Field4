@@ -328,6 +328,7 @@
         #hud .section-control { min-width: 22px; padding: 0 6px; }
         #hud .section-control.is-icon { width: 24px; padding: 0; }
         #hud .section-control.is-active { background: var(--accent); color: #000; }
+        #hud .section-control:disabled { opacity: 0.35; cursor: default; }
         #hud #path-trace-readout:empty { display: none; }
         #xray-tools { flex-wrap: wrap; }
         #viewer-tools { display: contents; }
@@ -422,6 +423,7 @@
                     <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 2v12M2.4 4.6 5 2l2.6 2.6M11 14V2M8.4 11.4 11 14l2.6-2.6"></path></svg>
                 </button>
                 <button type="button" class="hud-button section-control" data-section-face title="Align to a face: click a surface and the cut lies on it, facing you">face</button>
+                <button type="button" class="hud-button section-control" data-section-measure aria-label="Square to the measurement" title="Square to the measurement: cut across the last dimension, through its middle and facing you; click again for the other side" disabled>&perp;</button>
             </span>
             <span class="hud-slider" id="explode-slider-wrap">
                 <span>explode</span>
@@ -4302,6 +4304,37 @@ function sectionSignedDistance(plane, p) {
 }
 
 /**
+ * The section square to a measurement: the plane perpendicular to `from → to` through the dimension's
+ * middle, as the `{ normal, fraction }` that `sectionPlane` and the slider take. Null for a zero-length
+ * measurement, which has no direction.
+ *
+ * Through the middle rather than at an end, because a dimension usually ends *on* a face and is
+ * square to it: a plane through either end lies in that face and cuts nothing worth seeing. The
+ * slider then runs the cut along the measured line toward either end.
+ *
+ * The normal's sign is the side kept. With `viewer` (the camera's position) it points away from the
+ * viewer, so the far half survives and the cut faces you, and `otherSide` turns it round: the same
+ * plane, the other half. `fraction` is where the middle falls along that normal; it is reported for
+ * the normal as returned, so the pair goes to `sectionPlane` unflipped.
+ */
+function sectionAcrossSegment(bounds, from, to, viewer, otherSide) {
+    const d = [to[0] - from[0], to[1] - from[1], to[2] - from[2]];
+    const length = Math.sqrt(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
+    if (!(length > SECTION_EPS)) return null;
+    let n = [d[0] / length, d[1] / length, d[2] / length];
+    const mid = [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2, (from[2] + to[2]) / 2];
+    if (viewer) {
+        const toViewer = n[0] * (viewer[0] - mid[0]) + n[1] * (viewer[1] - mid[1]) + n[2] * (viewer[2] - mid[2]);
+        if (toViewer > 0) n = [-n[0], -n[1], -n[2]];
+    }
+    if (otherSide) n = [-n[0], -n[1], -n[2]];
+    const extent = sectionPlane(bounds, n, 0, false);
+    const span = extent.hi - extent.lo;
+    const at = n[0] * mid[0] + n[1] * mid[1] + n[2] * mid[2];
+    return { normal: n, fraction: span > SECTION_EPS ? (at - extent.lo) / span : 0.5, middle: mid };
+}
+
+/**
  * Where the plane crosses a triangle mesh, as a flat array of segment endpoints.
  *
  * `[ax, ay, az, bx, by, bz, …]`, ready to become a `THREE.LineSegments` with no reshaping — this runs
@@ -8120,6 +8153,38 @@ function sectionControlsSync() {
     });
     sectionSliderWrapEl.querySelector('[data-section-flip]')?.classList.toggle('is-active', !!section.flip);
     sectionSliderWrapEl.querySelector('[data-section-face]')?.classList.toggle('is-active', !!inspectorState.sectionPicking);
+    const across = sectionSliderWrapEl.querySelector('[data-section-measure]');
+    if (across) {
+        const measurement = inspectorCurrentMeasurement();
+        across.disabled = !measurement;
+        across.classList.toggle('is-active', !!measurement && sectionSquareTo(normal, measurement));
+    }
+}
+
+/**
+ * The dimension the section can be squared to: the one just picked with the measure tool, else the
+ * last one the box authored. `{ from, to, distance }`, or null when there is none (or it has no length).
+ */
+function inspectorCurrentMeasurement() {
+    const spec = inspectorState.spec;
+    if (!spec || !spec.enabled) return null;
+    let pair = null;
+    if (inspectorState.picked.length === 2) pair = inspectorState.picked;
+    else {
+        const authored = spec.measurements || [];
+        const last = authored[authored.length - 1];
+        if (last) pair = [measureElement(last.a.kind, last.a.points), measureElement(last.b.kind, last.b.points)];
+    }
+    if (!pair) return null;
+    const answer = measureClosestApproach(pair[0], pair[1]);
+    return answer && answer.from && answer.to && answer.distance > 0 ? answer : null;
+}
+
+/** Whether the section normal runs along the measured line, either way round. */
+function sectionSquareTo(normal, measurement) {
+    const d = measureNormalize(measureSub(measurement.to, measurement.from));
+    const n = measureNormalize(normal);
+    return !!d && !!n && Math.abs(measureDot(d, n)) > 0.9999;
 }
 
 /** Point the section along `normal` (display coordinates), optionally at a new fraction. */
@@ -8181,6 +8246,22 @@ sectionSliderWrapEl.querySelector('[data-section-face]').addEventListener('click
     inspectorState.sectionPicking = !inspectorState.sectionPicking;
     if (inspectorState.sectionPicking) inspectorState.measuring = false;
     inspectorRefresh();
+});
+// Square to the measurement: the first click cuts across the dimension through its middle, facing
+// you; once the cut runs along it, a click keeps the plane where it is and shows the other half.
+sectionSliderWrapEl.querySelector('[data-section-measure]').addEventListener('click', () => {
+    const spec = inspectorState.spec;
+    const measurement = inspectorCurrentMeasurement();
+    if (!spec || !measurement) return;
+    inspectorState.sectionPicking = false;
+    const section = spec.section || {};
+    if (sectionSquareTo(section.normal || [1, 0, 0], measurement)) {
+        sectionSetNormal(section.normal, undefined, !section.flip);
+        return;
+    }
+    const eye = (pointerCamera || camera).getWorldPosition(new THREE.Vector3());
+    const across = sectionAcrossSegment(inspectorState.bounds, measurement.from, measurement.to, [eye.x, eye.y, eye.z], false);
+    if (across) sectionSetNormal(across.normal, across.fraction, false);
 });
 
 inspectorGroupEl.querySelectorAll('[data-inspector]').forEach((button) => {
@@ -9440,6 +9521,7 @@ renderer.domElement.addEventListener('click', (event) => {
         if (inspectorState.picked.length >= 2) inspectorState.picked = [];
         inspectorState.picked.push(element);
         inspectorRebuildOverlay();
+        sectionControlsSync();
         return;
     }
 
