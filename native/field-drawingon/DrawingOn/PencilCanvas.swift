@@ -19,6 +19,7 @@ final class CanvasView: UIView, UIPencilInteractionDelegate {
     private var previousSize = CGSize.zero
     private let referenceView = ReferenceMetalView.make()
     private var navigationBase = DrawingTransform.identity
+    private let hoverIndicator = PencilHoverIndicator()
 
     init(store: CaptureStore) {
         self.store = store
@@ -29,6 +30,9 @@ final class CanvasView: UIView, UIPencilInteractionDelegate {
             referenceView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
             addSubview(referenceView)
         }
+        hoverIndicator.frame = bounds
+        hoverIndicator.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        addSubview(hoverIndicator)
         accessibilityLabel = "Drawing canvas"
         accessibilityHint = "Draw with Apple Pencil. Move two fingers to pan, rotate and scale. Two-finger tap undoes; three-finger tap redoes."
         addInteraction(UIPencilInteraction(delegate: self))
@@ -57,6 +61,7 @@ final class CanvasView: UIView, UIPencilInteractionDelegate {
             guard let self else { return }
             self.active.removeAll(); self.paths.removeAll(); self.predictions.removeAll()
             self.estimates.removeAll(); self.estimateTransforms.removeAll(); self.previousSize = .zero
+            self.hoverIndicator.clear()
             self.setNeedsLayout(); self.setNeedsDisplay()
         }
         store.resetCanvas = { [weak self] in
@@ -70,10 +75,14 @@ final class CanvasView: UIView, UIPencilInteractionDelegate {
         [UIKeyCommand(title: "Undo stroke", action: #selector(undoTap), input: "z", modifierFlags: .command),
          UIKeyCommand(title: "Redo stroke", action: #selector(redoTap), input: "z", modifierFlags: [.command, .shift])]
     }
-    override func didMoveToWindow() { super.didMoveToWindow(); becomeFirstResponder() }
+    override func didMoveToWindow() {
+        super.didMoveToWindow(); becomeFirstResponder()
+        if window == nil { hoverIndicator.clear() }
+    }
     override func layoutSubviews() {
         super.layoutSubviews()
         if bounds.size != previousSize && bounds.width > 0 {
+            hoverIndicator.clear()
             if previousSize != .zero { finishAll() }
             previousSize = bounds.size
             var viewport = visibleArea()
@@ -94,6 +103,11 @@ final class CanvasView: UIView, UIPencilInteractionDelegate {
             "altitude": gesture.altitudeAngle, "azimuth": gesture.azimuthAngle(in: self),
             "azimuthX": v.dx, "azimuthY": v.dy, "roll": gesture.rollAngle, "phase": gesture.state.rawValue,
             "timestampSource": "callback"])
+        // Keep annotation feedback in display points, independent of canvas zoom.
+        guard !store.menuOpen, active.isEmpty else { hoverIndicator.clear(); return }
+        if gesture.state == .began || gesture.state == .changed {
+            hoverIndicator.show(at: p, starting: gesture.state == .began)
+        } else { hoverIndicator.end() }
     }
     private func pose(_ pose: UIPencilHoverPose?) -> Any {
         guard let pose else { return NSNull() }
@@ -134,6 +148,7 @@ final class CanvasView: UIView, UIPencilInteractionDelegate {
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard !store.finalizing, !store.menuOpen, store.scene.visibleLayers.contains(store.scene.activeLayer) else { return }
         for touch in touches where touch.type == .pencil || (store.fingerDrawing && touch.type == .direct) {
+            hoverIndicator.clear()
             let id = UUID().uuidString
             active[ObjectIdentifier(touch)] = id
             store.emit("stroke.begin", ["stroke": id, "layer": store.scene.activeLayer,
@@ -203,6 +218,7 @@ final class CanvasView: UIView, UIPencilInteractionDelegate {
         setNeedsDisplay()
     }
     private func finishAll() {
+        hoverIndicator.clear()
         for id in active.values { store.emit("stroke.end", ["stroke": id, "cancelled": false, "reason": "interface action"]) }
         active.removeAll(); predictions.removeAll(); setNeedsDisplay()
     }
@@ -216,6 +232,7 @@ final class CanvasView: UIView, UIPencilInteractionDelegate {
         return jsonObject(viewport) as? [String: Any] ?? [:]
     }
     private func setTransform(_ transform: DrawingTransform, phase: String, contacts: [PenSample] = []) {
+        hoverIndicator.clear()
         store.scene.transform = transform
         store.emit("canvas.transform", ["transform": jsonObject(transform), "phase": phase,
             "viewport": visibleArea(), "contacts": jsonObject(contacts)])
@@ -244,6 +261,8 @@ final class CanvasView: UIView, UIPencilInteractionDelegate {
     }
     override func draw(_ rect: CGRect) {
         guard let context = UIGraphicsGetCurrentContext() else { return }
+        hoverIndicator.ink = store.light ? .black : .white
+        if store.menuOpen || store.finalizing { hoverIndicator.clear() }
         (store.light ? UIColor.white : UIColor.black).setFill(); context.fill(bounds)
         let transform = store.scene.transform
         context.concatenate(CGAffineTransform(a: transform.a, b: transform.b, c: transform.c, d: transform.d, tx: transform.tx, ty: transform.ty))
@@ -458,6 +477,80 @@ private final class ReferenceMetalView: MTKView, MTKViewDelegate {
         encoder.endEncoding()
         command.present(drawable)
         command.commit()
+    }
+}
+
+/// A transient screen-space annotation; redraws independently of the ink scene.
+private final class PencilHoverIndicator: UIView {
+    private struct Sample { let point: CGPoint; let time: CFTimeInterval }
+    private var samples: [Sample] = []
+    private var cursor: CGPoint?
+    private var timer: Timer?
+    private let lifetime: CFTimeInterval = 0.65
+    var ink = UIColor.white { didSet { if ink != oldValue { setNeedsDisplay() } } }
+
+    init() {
+        super.init(frame: .zero)
+        isOpaque = false; backgroundColor = .clear
+        isUserInteractionEnabled = false; isAccessibilityElement = false
+        clipsToBounds = true; contentMode = .redraw
+        NotificationCenter.default.addObserver(self, selector: #selector(clear),
+            name: UIApplication.willResignActiveNotification, object: nil)
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    deinit { timer?.invalidate(); NotificationCenter.default.removeObserver(self) }
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if window == nil { clear() }
+    }
+    func show(at point: CGPoint, starting: Bool) {
+        let now = CACurrentMediaTime()
+        if starting { samples.removeAll() }
+        // Avoid extending an old trail across a pause or a new hover encounter.
+        if let last = samples.last, now - last.time >= lifetime { samples.removeAll() }
+        samples.append(Sample(point: point, time: now))
+        if samples.count > 256 { samples.removeFirst(samples.count - 256) }
+        cursor = point
+        setNeedsDisplay(); animateFade()
+    }
+    func end() { cursor = nil; setNeedsDisplay(); animateFade() }
+    @objc func clear() {
+        guard cursor != nil || !samples.isEmpty || timer != nil else { return }
+        cursor = nil; samples.removeAll()
+        timer?.invalidate(); timer = nil; setNeedsDisplay()
+    }
+    private func animateFade() {
+        guard timer == nil, !samples.isEmpty else { return }
+        let timer = Timer(timeInterval: 1.0 / 60, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            let now = CACurrentMediaTime()
+            self.samples.removeAll { now - $0.time >= self.lifetime }
+            self.setNeedsDisplay()
+            if self.samples.isEmpty { self.timer?.invalidate(); self.timer = nil }
+        }
+        self.timer = timer
+        RunLoop.main.add(timer, forMode: .common)
+    }
+    override func draw(_ rect: CGRect) {
+        guard let context = UIGraphicsGetCurrentContext() else { return }
+        let now = CACurrentMediaTime()
+        context.setLineCap(.round); context.setLineJoin(.round)
+        context.setLineWidth(0.9)
+        for (a, b) in zip(samples, samples.dropFirst()) {
+            let remaining = max(0, 1 - (now - a.time) / lifetime)
+            context.setStrokeColor(ink.withAlphaComponent(0.16 * remaining * remaining).cgColor)
+            context.move(to: a.point); context.addLine(to: b.point); context.strokePath()
+        }
+        if let p = cursor {
+            context.setStrokeColor(ink.withAlphaComponent(0.55).cgColor)
+            context.setLineWidth(0.75)
+            // A two-point opening keeps the actual tip location unobscured.
+            for (dx, dy) in [(1.0, 0.0), (-1.0, 0.0), (0.0, 1.0), (0.0, -1.0)] {
+                context.move(to: CGPoint(x: p.x + dx * 2, y: p.y + dy * 2))
+                context.addLine(to: CGPoint(x: p.x + dx * 5, y: p.y + dy * 5))
+            }
+            context.strokePath()
+        }
     }
 }
 
