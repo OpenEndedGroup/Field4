@@ -1,5 +1,6 @@
 package afield.geometry.spatial
 
+import afield.math.linalg.Vec3
 import java.util.concurrent.CancellationException
 import kotlin.math.abs
 import kotlin.math.cos
@@ -19,6 +20,12 @@ object BspOt3D {
     class Result internal constructor(val targetOfSource: IntArray, val costHistory: DoubleArray) {
         /** Total squared XYZ travel of the returned permutation. */
         val squaredCost: Double get() = costHistory.last()
+
+        /** [to] rearranged so that element `i` is the target of source `i`. */
+        fun <T> reorder(to: List<T>): List<T> {
+            require(to.size == targetOfSource.size) { "reorder needs ${targetOfSource.size} targets, got ${to.size}" }
+            return List(to.size) { to[targetOfSource[it]] }
+        }
     }
 
     /**
@@ -138,4 +145,29 @@ object BspOt3D {
         }
         return Result(best, history)
     }
+}
+
+/**
+ * Pair each point of [from] with a different point of [to], approximately minimizing total squared
+ * 3D travel: the [Vec3] form of [BspOt3D.match], as `matchPoints` is for [afield.math.linalg.Vec2].
+ * `matchPoints(from, to).reorder(to)` lines the targets up with the sources for a morph.
+ */
+@JvmName("matchPoints3")
+fun matchPoints(
+    from: List<Vec3>,
+    to: List<Vec3>,
+    projections: Int = 9,
+    seed: Long = 1L,
+    initial: IntArray? = null,
+): BspOt3D.Result {
+    require(from.size == to.size) { "matchPoints needs two clouds of the same size, got ${from.size} and ${to.size}" }
+    fun pack(points: List<Vec3>) = FloatArray(points.size * 3) {
+        val p = points[it / 3]
+        when (it % 3) {
+            0 -> p.x
+            1 -> p.y
+            else -> p.z
+        }
+    }
+    return BspOt3D.match(pack(from), pack(to), BspOt3D.Options(projections = projections, seed = seed), initial)
 }
