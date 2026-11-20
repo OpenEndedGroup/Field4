@@ -1340,7 +1340,27 @@ private fun requiredAgentJvmArgs(): List<String> {
         }
         add("--add-modules")
         add("jdk.incubator.vector")
+        codeUseDatabaseArg()?.let(::add)
     }
+}
+
+/**
+ * Where a `jvm-main` child records the snippets it compiles (`CodeUseTelemetryService`).
+ *
+ * A smoke entrypoint builds throwaway documents, often `DemoTranscriptExecSmokeTest.freshSession`
+ * folders under the temp directory, and a child launched from the user's own Field used to record
+ * them in the user's `~/.afield/code-use` database: on 2026-11-20, 709,834 of its 1,042,011 snippets
+ * came from `afield-demo-exec-*` folders, and the file had reached 4.1 GB. An explicit
+ * `-Dafield.codeUse.path` on this server is passed down; an `AFIELD_CODE_USE_PATH` the server was
+ * started with (as `automation_log_environment` in tools/verification_runtime.py sets) reaches the
+ * child through its inherited environment, so needs nothing here. Otherwise the child writes under
+ * this checkout's `build/field-automation-logs`, where automated servers already keep theirs.
+ */
+private fun codeUseDatabaseArg(): String? {
+    System.getProperty("afield.codeUse.path")?.takeIf { it.isNotBlank() }?.let { return "-Dafield.codeUse.path=$it" }
+    if (!System.getenv("AFIELD_CODE_USE_PATH").isNullOrBlank()) return null
+    val database = File(app, "build/field-automation-logs/code-use/field-code-use.sqlite")
+    return "-Dafield.codeUse.path=${database.absolutePath}"
 }
 
 private suspend fun gobbleProcessStream(reader: BufferedReader, sink: StringBuilder) {
