@@ -109,6 +109,9 @@ object DemoTranscriptExecSmokeTest {
         "controls_presets_morph_midi",
         // Loads a committed glTF fixture through Assimp and opens column()/tree() on it; no renderer.
         "assimp_browsing",
+        // rhino_files.md, Breps without meshes: a Save Small .3dm tessellated from its NURBS surfaces
+        // and SubDs; pure CPU, and each box prints how to build the openNURBS wrapper when it is absent.
+        "rhino_save_small",
         // stacksl_examples.md's fitting demo: fits a StackSL program's literals on the CPU.
         "stacksl_fit_demo",
         // stacksl_examples.md's partial-evaluation demo: specializes on the CPU, no renderer.
