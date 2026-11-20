@@ -45,7 +45,10 @@ finish() { echo "NIGHTLY: $1"; exit ${2:-0}; }
 
 echo "feel-bench nightly $(date)"
 if [ ! -d $wt ]; then
-  git -C $repo worktree add --detach $wt main || finish "could not create $wt" 2
+  # Clones the primary checkout's clean tracked files instead of writing a 5 GiB copy of them
+  # (tools/worktree_seed.py); a plain checkout if python3 cannot run it.
+  python3 $script_dir:h:h/tools/worktree_seed.py add -C $repo --detach $wt main \
+    || { [ ! -e $wt ] && git -C $repo worktree add --detach $wt main; } || finish "could not create $wt" 2
 fi
 cd $wt || finish "no worktree" 2
 git checkout -q --detach main && git reset -q --hard main || finish "could not reset worktree to main" 2

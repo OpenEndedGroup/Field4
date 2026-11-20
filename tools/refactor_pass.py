@@ -23,6 +23,7 @@ from tools.refactoring.containers import ContainerError, extract
 from tools.refactoring.diffs import unified_text, compact_changes
 from tools.field_agent import configured_agent, find_executable
 from tools.git_isolation import scrubbed_env
+from tools.worktree_seed import add_worktree
 from tools.refactoring import session
 
 BATCHES = {
@@ -158,8 +159,8 @@ def create(repo, plan_dir, home=None):
     branch = 'codex/refactor-pass-' + stamp
     worktree = directory / 'repository'
     base = git(source, 'rev-parse', 'HEAD')
-    subprocess.run(['git', '-C', str(repo), 'worktree', 'add', '-b', branch, str(worktree), base], check=True,
-                   stdout=sys.stderr, env=scrubbed_env())
+    seeded = add_worktree(repo, worktree, base, new_branch=branch, env=scrubbed_env())
+    print(seeded.summary(), file=sys.stderr, flush=True)
     roots = []
     for root in plan['roots']:
         target = worktree

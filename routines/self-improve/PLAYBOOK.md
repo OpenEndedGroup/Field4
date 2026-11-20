@@ -259,9 +259,11 @@ For **each** candidate, before writing its brief:
 
 For N in 1..3, with the chosen slug:
 ```
-git -C $REPO worktree add -b nightly/$DATE/$N-$slug $WORKTREE_BASE/$DATE-$N-$slug $BASE
+python3 $REPO/tools/worktree_seed.py add -C $REPO -b nightly/$DATE/$N-$slug $WORKTREE_BASE/$DATE-$N-$slug $BASE
 ```
-Each is a full, independent checkout at `$BASE`. Confirm with `git -C $REPO worktree list`.
+Each is a full, independent checkout at `$BASE`. `worktree_seed.py add` is `git worktree add` with
+the same arguments, except that each tracked file the primary checkout holds unedited is an APFS
+clone of it rather than a fresh copy, so three worktrees do not cost three more 5 GiB of disk. Confirm with `git -C $REPO worktree list`.
 
 ## Step 5 — Launch three agents in parallel
 

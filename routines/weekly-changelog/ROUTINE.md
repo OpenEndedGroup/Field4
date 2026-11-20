@@ -27,8 +27,8 @@ format, the rules `check` enforces, what goes in and what is left out; follow it
 1. `cd $REPO && python3 tools/docs_changelog.py status`. If fewer than 8 landings are uncovered,
    report that and stop: nothing to write this week.
 2. Create a fresh worktree off local `main`:
-   `git -C $REPO worktree add -b docs/changelog-<YYYY-MM-DD> $WORKTREE_BASE/changelog-<YYYY-MM-DD> main`
-   (today's date). Do everything below inside it. Never edit, commit or switch branches in `$REPO`.
+   `python3 $REPO/tools/worktree_seed.py add -C $REPO -b docs/changelog-<YYYY-MM-DD> $WORKTREE_BASE/changelog-<YYYY-MM-DD> main`
+   (today's date; `git worktree add` whose files are clones of the primary checkout's). Do everything below inside it. Never edit, commit or switch branches in `$REPO`.
 3. Run `python3 tools/docs_changelog.py brief --windows 20` (raise the number if `status` says more
    are uncovered). Each window brief begins with the marker line for that window.
 4. Write the new entries at the top of the page, newest first, each under the `## Month YYYY`

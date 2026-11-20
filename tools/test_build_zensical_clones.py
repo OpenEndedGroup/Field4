@@ -13,9 +13,6 @@ file would free), because `du` counts a clone as a full copy and cannot tell the
 
 from __future__ import annotations
 
-import ctypes
-import os
-import struct
 import sys
 import tempfile
 import unittest
@@ -24,27 +21,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from build_zensical_docs import clone_file, copy_non_markdown_files, share_site_assets  # noqa: E402
+from cow_clone import private_bytes  # noqa: E402
 
 # Big enough to span many APFS blocks, so a private size of 0 cannot be rounding.
 ASSET = bytes(range(256)) * 4096
-
-
-class _AttrList(ctypes.Structure):
-    _fields_ = [("bitmapcount", ctypes.c_ushort), ("reserved", ctypes.c_uint16),
-                ("commonattr", ctypes.c_uint32), ("volattr", ctypes.c_uint32),
-                ("dirattr", ctypes.c_uint32), ("fileattr", ctypes.c_uint32),
-                ("forkattr", ctypes.c_uint32)]
-
-
-def private_bytes(path: Path) -> int:
-    """APFS's count of [path]'s bytes that no clone shares (sys/attr.h, macOS 10.15+)."""
-    libc = ctypes.CDLL(None, use_errno=True)
-    attrs = _AttrList(5, 0, 0, 0, 0, 0, 0x00000008)  # ATTR_CMNEXT_PRIVATESIZE
-    buffer = ctypes.create_string_buffer(32)
-    # FSOPT_ATTR_CMN_EXTENDED | FSOPT_NOFOLLOW
-    if libc.getattrlist(os.fsencode(path), ctypes.byref(attrs), buffer, len(buffer), 0x20 | 0x1) != 0:
-        raise OSError(ctypes.get_errno(), os.strerror(ctypes.get_errno()), str(path))
-    return struct.unpack_from("<Iq", buffer.raw)[1]
 
 
 def on_apfs(path: Path) -> bool:
