@@ -35,7 +35,7 @@ import kotlin.system.exitProcess
  * Tiling: an image treated as a torus should denoise the same whether or not it is rolled first. Each image is
  * denoised as is and rolled by half its size (the rolled result rolled back is the wrap-aware answer at the
  * original edges), both plain and with a [PAD]-pixel wrap-around pad cropped off afterwards.
- * Arguments: `<out dir> <image>...`.
+ * Arguments: `<out dir> <image>... [--save-images]`. Results: dev_docs/lighting/OIDN_ON_PARTICLE_IMAGES.md.
  */
 object OidnImageSpike {
     private const val PAD = 64
@@ -94,7 +94,9 @@ object OidnImageSpike {
     }
 
     @JvmStatic fun main(args: Array<String>) {
-        val folder = File(args[0]).also { it.mkdirs() }; val files = args.drop(1).map { File(it) }
+        val saveImages = "--save-images" in args
+        val rest = args.filter { it != "--save-images" }
+        val folder = File(rest[0]).also { it.mkdirs() }; val files = rest.drop(1).map { File(it) }
         val first = ImageIO.read(files[0]); val w = first.width; val h = first.height
         Options.enableVR = false; Options.enableHDR = false; Options.enableRayTracing = false; Options.validate = false; Options.doVulkanSDK()
         val window = Window("Field OIDN image spike"); val renderer = Renderer(window)
@@ -158,8 +160,9 @@ object OidnImageSpike {
                         .put("paddedVsPaddedRolled", summarize(edgeProfile(P, PR)))
                         .put("paddedVsWrapAware", summarize(edgeProfile(P, R)))
                         .put("interiorPaddedVsPlain", meanDiff(P, D, 256)))
-                    save("$id-$mode.png", d)
-                    if (mode == "flat") { save("$id-flat-padded.png", crop(dp)); saveDisplayDiff("$id-flat-wrapdiff-x8.png", D, R, 8f); saveDisplayDiff("$id-flat-padded-wrapdiff-x8.png", P, R, 8f) }
+                    // Full-size denoised PNGs are ~10 MB each at 4K; pass --save-images to keep them.
+                    if (saveImages) { save("$id-$mode.png", d); if (mode == "flat") save("$id-flat-padded.png", crop(dp)) }
+                    if (mode == "flat") { saveDisplayDiff("$id-flat-wrapdiff-x8.png", D, R, 8f); saveDisplayDiff("$id-flat-padded-wrapdiff-x8.png", P, R, 8f) }
                     else saveDisplayDiff("$id-self-wrapdiff-x8.png", D, R, 8f)
                     println("$id $mode: detail ${"%.3f".format(lapRms(D) / lapRms(sd))}, edge d0 plain ${"%.4f".format(edgeProfile(D, R)[0])} padded ${"%.4f".format(edgeProfile(P, R)[0])}, ms ${t0.toInt()}")
                 }
