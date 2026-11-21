@@ -127,7 +127,6 @@ object PolytopeLayerContours {
         )
     }
 
-    /** The signed area of a closed contour — positive counter-clockwise, negative for a hole. */
     private fun measure(section: Section, z: Double): Layer {
         val polygons = section.toPolygons()
         val islands = section.decompose().onEach(Section::close).size

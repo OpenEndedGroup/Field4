@@ -661,5 +661,4 @@ object ManifoldSmokeTest {
             println("    . $what")
         }
     }
-
-    /** Twice the signed area of a closed contour — positive for counter-clockwise. */}
+}
