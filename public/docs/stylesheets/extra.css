@@ -183,6 +183,26 @@ h3 {
     content: " \2192";
 }
 
+/* The map itself (docs_map.md). It fills the text column on narrow screens; once the reading rail
+   shows, it reaches left to just past the rail and right to near the window edge, since a graph
+   gains far more from width than a paragraph does. */
+.md-typeset .docs-map-frame {
+    width: 100%;
+    height: 80vh;
+    min-height: 520px;
+    border: 1px solid #8884;
+    border-radius: 8px;
+}
+@media screen and (min-width: 76.234375em) {
+    .md-typeset .docs-map-frame {
+        --docs-map-column: calc((100vw - var(--field-reading-width)) / 2);
+        --docs-map-left: min(var(--docs-map-column), calc(var(--field-rail-left) + var(--field-rail-width) + 1rem));
+        max-width: none;
+        width: max(100%, calc(100vw - 2rem - var(--docs-map-left)));
+        margin-left: calc(var(--docs-map-left) - var(--docs-map-column));
+    }
+}
+
 /* ── images: no upscale ──────────────────────────────────────── */
 .md-typeset img {
     max-width: 100%;

@@ -15,7 +15,7 @@ this site has an **On the map of the docs** link under its title that opens the 
 <iframe
   src="assets/docs_map/graph.html"
   title="Map of the docs"
-  style="width:100%; height:80vh; min-height:520px; border:1px solid #8884; border-radius:8px;"
+  class="docs-map-frame"
   loading="lazy">
 </iframe>
 
