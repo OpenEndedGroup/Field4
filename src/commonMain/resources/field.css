@@ -4931,7 +4931,7 @@ body::-webkit-scrollbar {
 }
 
 .markingButton {
-    font-size: 90%;
+    font-size: 110%;
     font-family: var(--field-font) !important;
     filter: var(--field-drop-shadow-soft);
     border: 1px solid var(--field-border-medium);
@@ -4948,33 +4948,49 @@ body::-webkit-scrollbar {
 }
 
 .fadeToBlack {
-    background: var(--field-panel-strong);
+    background: rgba(var(--field-black-rgb), 0.70);
 }
 
-.markingButton.markingHover {
+.markingButton:not(.markingCenter).markingHover {
     isolation: isolate;
     color: var(--field-marking-hover-fg);
     border-color: transparent;
     background: transparent;
 }
-.markingButton.markingHover::before,
-.markingButton.markingHover::after {
+.markingButton:not(.markingCenter).markingHover::before,
+.markingButton:not(.markingCenter).markingHover::after {
     content: "";
     position: absolute;
     pointer-events: none;
 }
-.markingButton.markingHover::before {
+.markingButton:not(.markingCenter).markingHover::before {
     inset: -1px;
     border-radius: inherit;
     background: var(--field-green-stripes) 0 0 / 17px 17px;
     z-index: -2;
 }
-.markingButton.markingHover::after {
+.markingButton:not(.markingCenter).markingHover::after {
     inset: 2px;
     border-radius: 5px;
     background: rgb(var(--field-black-rgb));
     z-index: -1;
 }
+
+/* The canvas draws the center dot; this circle is its hit target. */
+.markingButton.markingCenter {
+    box-sizing: border-box;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border-color: transparent;
+    border-radius: 50%;
+    background: transparent;
+    cursor: pointer;
+}
+.markingButton.markingCenter.markingHover {
+    border-color: var(--field-border-medium);
+}
+.markingCenter + .markingButtonBackground { background: transparent; }
 
 .markingButton + .markingActive {
     background-color: var(--field-marking-active-bg);

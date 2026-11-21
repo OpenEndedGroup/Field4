@@ -438,7 +438,11 @@ function mount(box) {
         control.setAttribute('aria-label', command === 'bold' ? 'Bold' : 'Italic');
         toolbar.append(control);
     }
-    toolbar.append(button('Markdown', () => openSource(state), 'text-frame-format-source'));
+    const source = button('', () => openSource(state), 'text-frame-format-source');
+    source.title = 'Edit Markdown source';
+    source.setAttribute('aria-label', source.title);
+    source.innerHTML = `<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 8h10m-4-4 4 4-4 4"/></svg>`;
+    toolbar.append(source);
     toolbar.addEventListener('mousedown', e => e.preventDefault());
     state.captureRichSelection = () => {
         const selection = window.getSelection(), host = document.activeElement;
