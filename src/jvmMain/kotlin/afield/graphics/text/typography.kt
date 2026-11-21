@@ -2,6 +2,8 @@
 
 package afield.graphics.text
 
+import afield.geometry.path.pointInRing2D
+import afield.geometry.path.signedArea2D
 import afield.geometry.path.pointBounds2D
 import afield.geometry.path.pointSegmentDistanceSquared2D
 import afield.data.collections.invoke
@@ -600,7 +602,7 @@ class GlyphContour internal constructor(
     val isOuter: Boolean get() = !isHole
 
     /** Tight bounds in text space. */
-    val bounds: Rect = boundsOfPoints(points)
+    val bounds: Rect = pointBounds2D(points)
 
     /** Closed-ring perimeter, in text-space units. */
     val perimeter: Double = run {
@@ -620,7 +622,7 @@ class GlyphContour internal constructor(
     }
 
     /** Winding-number test against this ring alone, ignoring nesting. */
-    fun contains(p: Vec2): Boolean = pointInRing(points, p.x.toDouble(), p.y.toDouble())
+    fun contains(p: Vec2): Boolean = pointInRing2D(points, p.x.toDouble(), p.y.toDouble())
 
     override fun toString(): String =
         "GlyphContour(${points.size} pts, depth=$depth, ${if (isHole) "hole" else "outer"}, area=${"%.1f".format(signedArea)})"
@@ -844,34 +846,6 @@ private fun cubicAt(p0: Vec2, c1: Vec2, c2: Vec2, p1: Vec2, t: Double): Vec2 {
     )
 }
 
-private fun ringArea(points: List<Vec2>): Double {
-    var sum = 0.0
-    for (i in points.indices) {
-        val a = points[i]
-        val b = points[(i + 1) % points.size]
-        sum += a.x.toDouble() * b.y.toDouble() - b.x.toDouble() * a.y.toDouble()
-    }
-    return 0.5 * sum
-}
-
-internal fun pointInRing(points: List<Vec2>, px: Double, py: Double): Boolean {
-    var inside = false
-    var j = points.size - 1
-    for (i in points.indices) {
-        val yi = points[i].y.toDouble()
-        val yj = points[j].y.toDouble()
-        if ((yi > py) != (yj > py)) {
-            val xi = points[i].x.toDouble()
-            val xj = points[j].x.toDouble()
-            if (px < (xj - xi) * (py - yi) / (yj - yi) + xi) inside = !inside
-        }
-        j = i
-    }
-    return inside
-}
-
-internal fun boundsOfPoints(points: List<Vec2>): Rect = pointBounds2D(points)
-
 /** Emit a ring as one `moveTo`-led, explicitly-closed subpath into [into]. */
 private fun emitRing(into: FLine, r: RawRing) {
     into.moveTo(r.start.x, r.start.y)
@@ -909,7 +883,7 @@ private fun extractGlyph(shape: Shape, glyphCode: Int, chars: String, advance: D
         var d = 0
         for (j in rings.indices) {
             if (i == j || flat[j].size < 3) continue
-            if (pointInRing(flat[j], probe.x.toDouble(), probe.y.toDouble())) d++
+            if (pointInRing2D(flat[j], probe.x.toDouble(), probe.y.toDouble())) d++
         }
         depth[i] = d
     }
@@ -921,7 +895,7 @@ private fun extractGlyph(shape: Shape, glyphCode: Int, chars: String, advance: D
         var pts = flat[i]
         if (pts.size < 3) continue
         val wantPositive = depth[i] % 2 == 0
-        if ((ringArea(pts) > 0.0) != wantPositive) {
+        if ((signedArea2D(pts) > 0.0) != wantPositive) {
             ring = reverseRing(ring)
             pts = flattenRing(ring, flatness)
         }
@@ -930,7 +904,7 @@ private fun extractGlyph(shape: Shape, glyphCode: Int, chars: String, advance: D
     }
 
     val allPoints = contours.flatMap { it.points }
-    return Glyph(glyphCode, chars, advance, contours, outline, boundsOfPoints(allPoints))
+    return Glyph(glyphCode, chars, advance, contours, outline, pointBounds2D(allPoints))
 }
 
 // ==============================================================================================

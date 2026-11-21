@@ -23,6 +23,7 @@ import afield.ui.output.templates.filter
 import afield.ui.visualization.h
 
 import afield.geometry.path.FLine
+import afield.geometry.path.pointBounds2D
 import afield.math.linalg.Vec2
 import afield.math.linalg.vec
 import kotlinx.serialization.json.Json
@@ -284,9 +285,7 @@ internal fun JsonObject.worldBounds(): Rect {
     if (kind.isLinear) {
         val pts = worldPoints()
         if (pts.isEmpty()) return Rect(double("x") ?: 0.0, double("y") ?: 0.0, 0.0, 0.0)
-        val minX = pts.minOf { it.x.toDouble() }
-        val minY = pts.minOf { it.y.toDouble() }
-        return Rect(minX, minY, pts.maxOf { it.x.toDouble() } - minX, pts.maxOf { it.y.toDouble() } - minY)
+        return pointBounds2D(pts)
     }
     var x = double("x") ?: 0.0
     var y = double("y") ?: 0.0

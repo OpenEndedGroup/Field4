@@ -2,6 +2,7 @@
 
 package afield.geometry.mesh
 
+import afield.geometry.path.signedArea2D
 import afield.data.collections.get
 import afield.data.collections.invoke
 import afield.data.collections.times
@@ -640,7 +641,7 @@ enum class RevolveAxis {
  */
 fun triangulatePolygon(polygon: List<Vec2>): List<Int> {
     require(polygon.size >= 3) { "a polygon needs >= 3 points, got ${polygon.size}" }
-    val ccw = polygonSignedArea(polygon) >= 0.0
+    val ccw = signedArea2D(polygon) >= 0.0
     val order = if (ccw) polygon.indices.toMutableList() else polygon.indices.reversed().toMutableList()
     fun p(i: Int) = polygon[order[i]]
     fun cross(o: Vec2, a: Vec2, b: Vec2): Double =
@@ -677,17 +678,6 @@ fun triangulatePolygon(polygon: List<Vec2>): List<Int> {
     return out
 }
 
-/** Twice the signed area of a 2D polygon: positive for counter-clockwise. */
-internal fun polygonSignedArea(polygon: List<Vec2>): Double {
-    var sum = 0.0
-    for (i in polygon.indices) {
-        val a = polygon[i]
-        val b = polygon[(i + 1) % polygon.size]
-        sum += a.x.toDouble() * b.y - b.x.toDouble() * a.y
-    }
-    return sum / 2.0
-}
-
 /**
  * A flat, triangulated polygon in the `xy` plane at `z = 0`, facing `+z`. Concave polygons are
  * handled ([triangulatePolygon]). A disc: `χ = 1`, one boundary loop.
@@ -718,7 +708,7 @@ fun extrudeMesh(polygon: List<Vec2>, height: Number = 1.0, caps: Boolean = true)
     require(polygon.size >= 3) { "extrudeMesh needs >= 3 polygon points, got ${polygon.size}" }
     val h = height.toFloat()
     // Normalise to counter-clockwise so the side windings below are outward without a case analysis.
-    val ring = if (polygonSignedArea(polygon) >= 0.0) polygon else polygon.reversed()
+    val ring = if (signedArea2D(polygon) >= 0.0) polygon else polygon.reversed()
     val n = ring.size
     val mesh = triMesh {
         val bottom = IntArray(n) { vertex(ring[it].x, ring[it].y, 0f) }

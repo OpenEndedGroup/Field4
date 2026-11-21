@@ -13,6 +13,7 @@
  */
 package afield.audio.modal
 
+import afield.geometry.path.pointInRing2D
 import afield.audio.engine.WavFloatArrayWriter
 import afield.geometry.path.FLine
 import afield.graphics.render.color
@@ -427,15 +428,8 @@ object KacPair {
     val drumB = doubleArrayOf(1.0, 0.0, 0.0, 1.0, 0.0, 2.0, 2.0, 2.0, 2.0, 3.0, 3.0, 2.0, 2.0, 1.0, 1.0, 1.0)
 }
 
-internal fun insidePolygon(px: DoubleArray, py: DoubleArray, x: Double, y: Double): Boolean {
-    var inside = false
-    var j = px.size - 1
-    for (i in px.indices) {
-        if ((py[i] > y) != (py[j] > y) && x < (px[j] - px[i]) * (y - py[i]) / (py[j] - py[i]) + px[i]) inside = !inside
-        j = i
-    }
-    return inside
-}
+internal fun insidePolygon(px: DoubleArray, py: DoubleArray, x: Double, y: Double): Boolean =
+    pointInRing2D(px.size, { px[it] }, { py[it] }, x, y)
 
 internal fun distanceToPolygon(px: DoubleArray, py: DoubleArray, x: Double, y: Double): Double {
     var best = Double.MAX_VALUE

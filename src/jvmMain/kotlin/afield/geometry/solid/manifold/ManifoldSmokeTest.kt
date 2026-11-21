@@ -371,7 +371,7 @@ object ManifoldSmokeTest {
                     equal("two contours: an outline and a hole", annulus.contourCount, 2L)
                     val contours = annulus.toPolygons()
                     equal("read back as two", contours.size, 2)
-                    val signed = contours.map { signedArea(it) }
+                    val signed = contours.map { signedArea2D(it) }
                     truth("exactly one is wound positively (the outline)", signed.count { it > 0 } == 1)
                     truth("and exactly one negatively (the hole)", signed.count { it < 0 } == 1)
                 }
@@ -662,6 +662,4 @@ object ManifoldSmokeTest {
         }
     }
 
-    /** Twice the signed area of a closed contour — positive for counter-clockwise. */
-    private fun signedArea(contour: List<Vec2>): Double = signedArea2D(contour)
-}
+    /** Twice the signed area of a closed contour — positive for counter-clockwise. */}
