@@ -124,7 +124,7 @@ function checkboxes(host, entries, state) {
   for (const [key, label] of entries) {
     const l = document.createElement("label"); l.className = "check";
     const c = document.createElement("input"); c.type = "checkbox"; c.checked = state[key];
-    c.onchange = () => { state[key] = c.checked; legend(); simulate(0.6); rebuild(); };
+    c.onchange = () => { state[key] = c.checked; legend(); simulate(0.4); rebuild(); };
     l.append(c, " " + label); host.append(l);
   }
 }
@@ -213,19 +213,53 @@ scene.fog = new THREE.Fog(colours.surface, 10, 60);
 const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 2000);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true; controls.dampingFactor = 0.12; controls.autoRotateSpeed = 0.6;
-scene.add(new THREE.HemisphereLight(0xffffff, 0x777777, 2.2));
-const sun = new THREE.DirectionalLight(0xffffff, 1.2); sun.position.set(1, 2, 1.5); scene.add(sun);
-
-const SHAPES = { page: new THREE.SphereGeometry(1, 18, 12), transcript: new THREE.OctahedronGeometry(1.25), code: new THREE.BoxGeometry(1.5, 1.5, 1.5) };
-const shapeOf = n => n.kind === "page" ? "page" : n.kind === "transcript" ? "transcript" : "code";
-const meshes = {}, slotOf = new Array(nodes.length);
-for (const shape in SHAPES) {
-  const members = nodes.map((n, i) => i).filter(i => shapeOf(nodes[i]) === shape);
-  const mesh = new THREE.InstancedMesh(SHAPES[shape], new THREE.MeshLambertMaterial(), Math.max(1, members.length));
-  mesh.count = members.length; mesh.userData.members = members;
-  members.forEach((i, k) => slotOf[i] = [shape, k]);
-  mesh.frustumCulled = false; scene.add(mesh); meshes[shape] = mesh;
-}
+// ---- nodes: one camera-facing billboard each, its shape cut out in the fragment shader
+// (pages round, transcripts diamonds, source files squares), with a darker rim so neighbours
+// that overlap stay apart. One instanced quad for every node: no geometry to light or sort.
+const shapeOf = n => n.kind === "transcript" ? 1 : n.kind === "code" ? 2 : 0;
+const sprites = new THREE.InstancedBufferGeometry();
+sprites.setIndex([0, 1, 2, 0, 2, 3]);
+sprites.setAttribute("position", new THREE.Float32BufferAttribute([-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0], 3));
+const instanced = (size, values) => {
+  const a = new THREE.InstancedBufferAttribute(values || new Float32Array(nodes.length * size), size);
+  a.setUsage(THREE.DynamicDrawUsage); return a;
+};
+const centres = instanced(3), sizes = instanced(1), tints = instanced(3);
+sprites.setAttribute("centre", centres); sprites.setAttribute("size", sizes); sprites.setAttribute("tint", tints);
+sprites.setAttribute("shape", instanced(1, new Float32Array(nodes.map(shapeOf))));
+sprites.instanceCount = nodes.length;
+const spriteMaterial = new THREE.ShaderMaterial({
+  uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog]),
+  fog: true, alphaToCoverage: true,
+  vertexShader: `
+    attribute vec3 centre; attribute float size; attribute vec3 tint; attribute float shape;
+    varying vec2 vCorner; varying vec3 vTint; varying float vShape;
+    #include <fog_pars_vertex>
+    void main() {
+      vCorner = position.xy * 1.25; vTint = tint; vShape = shape;
+      vec4 mvPosition = modelViewMatrix * vec4(centre, 1.0);
+      mvPosition.xy += position.xy * size * 1.25;   // a margin round the radius, for the diamond's corners
+      gl_Position = projectionMatrix * mvPosition;
+      #include <fog_vertex>
+    }`,
+  fragmentShader: `
+    varying vec2 vCorner; varying vec3 vTint; varying float vShape;
+    #include <fog_pars_fragment>
+    void main() {
+      vec2 p = vCorner;                               // the node's radius is at d = 1
+      float d = vShape < 0.5 ? length(p) : vShape < 1.5 ? (abs(p.x) + abs(p.y)) / 1.2 : max(abs(p.x), abs(p.y)) / 0.85;
+      float w = max(fwidth(d), 1e-4);
+      float alpha = 1.0 - smoothstep(1.0 - w, 1.0 + w, d);
+      if (alpha <= 0.0) discard;
+      vec3 c = vTint * mix(1.08, 0.9, smoothstep(0.0, 1.0, d));
+      c = mix(c, vTint * 0.5, smoothstep(0.82 - w, 0.86 + w, d));
+      gl_FragColor = vec4(c, alpha);
+      #include <fog_fragment>
+      #include <colorspace_fragment>
+    }`,
+});
+const nodeSprites = new THREE.Mesh(sprites, spriteMaterial);
+nodeSprites.frustumCulled = false; scene.add(nodeSprites);
 const edgeMaterial = new THREE.LineBasicMaterial({ transparent: true, depthWrite: false });
 const hiMaterial = new THREE.LineBasicMaterial({ transparent: true, depthWrite: false, opacity: 0.9 });
 const codeMaterial = new THREE.LineBasicMaterial({ transparent: true, depthWrite: false });
@@ -240,24 +274,19 @@ let selected = -1, hovered = -1, near = new Set();
 const dim = i => (selected >= 0 && i !== selected && !near.has(i)) ||
                  (focusSection !== null && !(nodes[i].kind === "page" && nodes[i].system === focusSection));
 
-const matrix = new THREE.Matrix4(), colour = new THREE.Color(), surface = new THREE.Color();
+const colour = new THREE.Color(), surface = new THREE.Color();
 function restyle() {
   if (!layoutMoving()) readColours();
   surface.set(colours.surface);
   scene.background = surface.clone(); scene.fog.color.copy(surface);
-  for (const shape in meshes) {
-    const mesh = meshes[shape];
-    mesh.userData.members.forEach((i, k) => {
-      const r = visible(nodes[i]) ? R[i] : 0;
-      matrix.makeScale(r, r, r).setPosition(P[i]);
-      mesh.setMatrixAt(k, matrix);
-      colour.set(colourOf(nodes[i]));
-      if (dim(i)) colour.lerp(surface, 0.86);
-      mesh.setColorAt(k, colour);
-    });
-    mesh.instanceMatrix.needsUpdate = true;
-    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+  for (let i = 0; i < nodes.length; i++) {
+    centres.setXYZ(i, P[i].x, P[i].y, P[i].z);
+    sizes.setX(i, visible(nodes[i]) ? R[i] : 0);
+    colour.set(colourOf(nodes[i]));
+    if (dim(i)) colour.lerp(surface, 0.86);
+    tints.setXYZ(i, colour.r, colour.g, colour.b);
   }
+  centres.needsUpdate = sizes.needsUpdate = tints.needsUpdate = true;
   edgeMaterial.color.set(colours.edge); codeMaterial.color.set(colours.edge); hiMaterial.color.set(colours.text);
   edgeMaterial.opacity = colours.edgeAlpha * (selected >= 0 || focusSection !== null ? 0.35 : 1);
   codeMaterial.opacity = edgeMaterial.opacity * 0.4;
@@ -316,7 +345,9 @@ const packageOfNode = n => { const path = n.id.slice("code:".length); return pac
 const parentPackage = id => { const up = id.slice(0, id.lastIndexOf("/")); return packageIndex.has(up) ? packageIndex.get(up) : null; };
 const bodies = nodes.map((n, i) => ({ node: i, x: P[i].x * SCALE, y: P[i].y * SCALE, z: P[i].z * SCALE }));
 const packageBodies = packages.map((p, k) => ({ pkg: k, x: p.p[0] * SCALE, y: p.p[1] * SCALE, z: p.p[2] * SCALE }));
-const GRAVITY = 0.02, FOCUS_LENGTH = 9, FOCUS_STRENGTH = 0.8, FOCUS_SLACK = 0.05;
+const GRAVITY = 0.02, FOCUS_LENGTH = 9, FOCUS_STRENGTH = 0.5, FOCUS_SLACK = 0.05;
+// Slow cooling (about 700 ticks from hot to still) and a quarter-second ease on what is drawn.
+const ALPHA_DECAY = 1 - Math.pow(0.001, 1 / 700), EASE_SECONDS = 0.25;
 const CHARGE = { page: -60, transcript: -25, reference: -60, code: -10 };
 const LINK_LENGTH = { links: 30, opens: 24, documents: 24, cites: 14, calls: 14, mentions: 18, reference: 40, usedIn: 18 };
 let sim = null, settled = false, backend = "";
@@ -354,7 +385,7 @@ function simulate(alpha = 1) {
   for (const l of links) for (const end of [l.source, l.target]) degree.set(end, (degree.get(end) || 0) + 1);
   settled = false;
   sim = d3.forceSimulationGPU([...live, ...pkgs], 3)
-    .alpha(alpha)
+    .alpha(alpha).alphaDecay(ALPHA_DECAY)
     // d3's own default strength (1 / the smaller degree), except a focus spring, which wins.
     .force("link", d3.forceLink(links).distance(l => l.length)
       .strength(l => l.focus ? FOCUS_STRENGTH : slack(l) / Math.min(degree.get(l.source), degree.get(l.target))))
@@ -372,19 +403,37 @@ function followFocus(last) {
   if (following < 0 || following !== selected) return;
   if (!last && ++ticksSinceFollow < 25) return;
   ticksSinceFollow = 0;
-  frame([following, ...near].filter(j => visible(nodes[j])).map(j => P[j]), true);
+  frame([following, ...near].filter(j => visible(nodes[j])).map(j => goal[j]), true);  // where they are going
   if (last) following = -1;
 }
+// The simulation sets where things are going; the drawing eases toward that (EASE_SECONDS),
+// so a tick's jump never shows as one.
+const goal = P.map(p => p.clone()), packageGoal = packages.map(p => new THREE.Vector3(...p.p));
+const packageAt = packages.map(p => new THREE.Vector3(...p.p));
 function moved() {
   followFocus(false);
-  for (const b of bodies) if (visible(nodes[b.node])) P[b.node].set(b.x / SCALE, b.y / SCALE, b.z / SCALE);
-  for (const b of packageBodies) packages[b.pkg].p = [b.x / SCALE, b.y / SCALE, b.z / SCALE];
+  for (const b of bodies) if (visible(nodes[b.node])) goal[b.node].set(b.x / SCALE, b.y / SCALE, b.z / SCALE);
+  for (const b of packageBodies) packageGoal[b.pkg].set(b.x / SCALE, b.y / SCALE, b.z / SCALE);
+  easing = true;
+}
+let easing = false, lastFrame = 0;
+function ease(t) {
+  const dt = Math.min(0.1, lastFrame ? (t - lastFrame) / 1000 : 0); lastFrame = t;
+  if (!easing) return;
+  const k = 1 - Math.exp(-dt / EASE_SECONDS);
+  let still = true;
+  for (let i = 0; i < P.length; i++) {
+    if (P[i].distanceToSquared(goal[i]) < 1e-8) { P[i].copy(goal[i]); continue; }
+    P[i].lerp(goal[i], k); still = false;
+  }
+  packageAt.forEach((at, k2) => { at.lerp(packageGoal[k2], k); packages[k2].p = [at.x, at.y, at.z]; });
+  if (still && settled) easing = false;
   restyle();
 }
 function layoutMoving() { return sim && !settled; }
 let userMoved = false;
 controls.addEventListener("start", () => { userMoved = true; following = -1; });
-const fitVisible = animate => frame(nodes.map((n, i) => i).filter(i => visible(nodes[i])).map(i => P[i]), animate);
+const fitVisible = animate => frame(nodes.map((n, i) => i).filter(i => visible(nodes[i])).map(i => goal[i]), animate);
 
 // ---- labels: an HTML overlay, placed most important first, skipping any that would overlap. Each
 // label keeps its own span, which fades in and out (CSS, 300 ms) as it wins or loses its place, so
@@ -476,6 +525,7 @@ function tick(t) {
     dirty = true;
   }
   if (controls.update()) dirty = true;
+  ease(t);
   if (!dirty || !framed) return;
   const dist = camera.position.distanceTo(controls.target);
   scene.fog.near = dist * 0.7; scene.fog.far = dist * 2.4;
@@ -534,7 +584,7 @@ function select(i, centre) {
     if (centre) centreOn(i);
   }
   details(); restyle();
-  if (changed) { following = i; ticksSinceFollow = 0; userMoved = userMoved || i >= 0; simulate(i >= 0 ? 0.5 : 0.35); }
+  if (changed) { following = i; ticksSinceFollow = 0; userMoved = userMoved || i >= 0; simulate(i >= 0 ? 0.3 : 0.2); }
 }
 function syncLayerBoxes() {
   const boxes = document.querySelectorAll("#layers input");
@@ -623,7 +673,7 @@ function summary() {
 summary(); legend(); restyle(); resize();
 simulate(1);
 requestAnimationFrame(tick);
-window.GRAPH_VIEW = { select, frame, camera, controls, nodes, P, hit, restyle, simulate, moved, fitVisible, get sim() { return sim; }, get settled() { return settled; }, get selected() { return selected; } };
+window.GRAPH_VIEW = { select, frame, camera, controls, nodes, P, get goal() { return goal; }, hit, restyle, simulate, moved, fitVisible, get sim() { return sim; }, get settled() { return settled; }, get selected() { return selected; } };
 </script>
 </body>
 </html>
