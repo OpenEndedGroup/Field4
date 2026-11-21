@@ -41,9 +41,12 @@ import afield.ui.slides.*
 import afield.ui.visualization.*
 import afield.app.diagnostics.logging.lprintln
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
@@ -420,7 +423,8 @@ internal fun templateListingOrEmpty(list: () -> Directory = ::listTemplatesWithM
         .onFailure { lprintln("warning,template", "Failed to list templates: ${it.javaClass.simpleName}: ${it.message}") }
         .getOrElse { Directory(command = "list") }
 
-@OptIn(ExperimentalUuidApi::class)
+// `outgoing.isClosedForSend` is only read, to stop waiting for a socket that has gone.
+@OptIn(DelicateCoroutinesApi::class)
 @RunsAt(installHandlers)
 fun templating() {
     // Initialize remote template servers in the background
@@ -440,107 +444,40 @@ fun templating() {
 
         val exec = Json.decodeFromJsonElement<Directory>(message.payload!!)
 
-        val localTemplates = localTemplateEntries(templateRoots(home, app)).associateBy { it.name }
-
         val session = thisSession.get()
-        val si = thisSessionInfo.get()
+        val si: SessionInformation? = thisSessionInfo.get()
 
-        // Inserts the whole request as one unit (the mouse translation is over all of its boxes).
-        // `downloaded` holds each remote template's (server, metadata.edn), or null when no server served it.
-        fun insert(downloaded: Map<String, Pair<String, String>?>) {
-            val loadedBoxes = exec.value.flatMap { templateName ->
-                val local = localTemplates[templateName]
-                val boxes = if (local != null) {
-                    insertTemplateInto(si, templateName, local.path)
-                } else {
-                    val remote = downloaded[templateName]
-                    if (remote == null) {
-                        if (templateName in downloaded) notify("Could not download template '$templateName'", "error")
-                        else notify("No template named '$templateName'", "error")
-                        emptySet()
-                    } else {
-                        val (serverUrl, ednContent) = remote
-                        // Use same ID transformation as cloneInto to generate new UUIDs
-                        val seen = mutableMapOf<String, String>("root" to "root")
-                        SavingContext().loadFromEdnText(
-                            ednContent,
-                            si.filename,
-                            filterId = { id ->
-                                seen.computeIfAbsent(id) { Uuid.random().toString() }
-                            }
-                        ).also { lprintln("info,template", "Imported template '$templateName' from remote server $serverUrl") }
-                    }
-                }
-
-                // Set templateId on all loaded boxes
-                boxes.forEach { box ->
-                    box.templateId = templateName
-                }
-
-                boxes
-            }
-
-            // Calculate center of mass and translate boxes to mouse position if provided
-            if (loadedBoxes.isNotEmpty() && exec.mouseX != null && exec.mouseY != null) {
-                // Only translate top-level boxes, not nested children. Nested boxes have frames that are
-                // relative to their parent's position (offset by -parent.x, -(parent.y + parent.h)).
-                // Translating them would incorrectly add the offset twice since they move with their parent.
-                val nestedBoxes = loadedBoxes.flatMap { it.nested }.toSet()
-                val topLevelBoxes = loadedBoxes.filter { it !in nestedBoxes }
-
-                if (topLevelBoxes.isNotEmpty()) {
-                    // Calculate center of mass (average of all top-level box centers)
-                    val centers = topLevelBoxes.map { box ->
-                        val frame = box.frame
-                        Pair(frame.cx, frame.cy)
-                    }
-
-                    val centerX = centers.map { it.first }.average()
-                    val centerY = centers.map { it.second }.average()
-
-                    // Calculate translation needed to move center of mass to mouse position
-                    val deltaX = exec.mouseX - centerX
-                    val deltaY = exec.mouseY - centerY
-
-                    // Apply translation only to top-level boxes
-                    topLevelBoxes.forEach { box ->
-                        val frame = box.frame
-                        box.frame = frame.copy(x = frame.x + deltaX, y = frame.y + deltaY)
-                    }
-
-                    lprintln("info,templating", "Translated ${topLevelBoxes.size} boxes by ($deltaX, $deltaY) to center at mouse position (${exec.mouseX}, ${exec.mouseY})")
-                }
-            }
-
-            loadedBoxes.forEach { box ->
-                box.resyncAll()
-            }
-            si.topologyGeneration++
-            si.autorunBoxes(loadedBoxes)
-        }
-
-        val remoteNames = exec.value.filter { name ->
-            name !in localTemplates && remoteTemplatesCache.values.any { name in it }
-        }
-        if (remoteNames.isEmpty()) {
-            insert(emptyMap())
+        if (si != null && !si.loading) {
+            insertTemplates(exec, session, si)
         } else {
-            // The download leaves this socket's event loop; the insertion comes back to the session, so it
-            // stays serialised with the session's other handlers. Messages that arrive during the download
-            // are handled first, which is the point: the socket keeps answering, keepalive pongs included.
+            // The page's `hello` attaches its document on a coroutine (`launchDocumentSessionAttach`), so an
+            // insert sent straight after it can arrive before this socket has a document; and a box inserted
+            // while its document loads is never marked for saving. Wait for the document, then insert on the
+            // session as the remote path does, or say why not.
+            val names = exec.value.joinToString(", ") { "'${escapeNotifyText(it)}'" }
+            if (si != null) notify("Inserting template $names once the document has loaded", "info")
             templateIoScope.launch {
-                val downloaded = remoteNames.associateWith { name ->
-                    remoteTemplatesCache.entries.filter { name in it.value }.firstNotNullOfOrNull { (serverUrl, _) ->
-                        downloadTemplateFromServer(serverUrl, name)?.let { serverUrl to it }
+                val attached = awaitAttachedDocument(
+                    lookup = { sessions[session] },
+                    isLoading = { it.loading },
+                    isOpen = { !session.outgoing.isClosedForSend },
+                )
+                if (attached == null) {
+                    lprintln("warning,template", "insert-template $names dropped: this socket's document never finished opening")
+                    if (!session.outgoing.isClosedForSend) {
+                        _send(session, Message("notify").payload(
+                            Notify("Could not insert template $names: this page's document did not finish opening", "error")))
                     }
+                    return@launch
                 }
                 session.launch {
                     thisSession.set(session)
-                    thisSessionInfo.set(si)
+                    thisSessionInfo.set(attached)
                     try {
-                        insert(downloaded)
+                        insertTemplates(exec, session, attached)
                     } catch (t: Throwable) {
-                        t.printStackTrace()
+                        lprintln("error,template", "insert-template $names failed: ${t.stackTraceToString()}")
+                        notify("Could not insert template $names: ${escapeNotifyText(t.message ?: t.javaClass.simpleName)}", "error")
                     }
                 }
             }
@@ -552,8 +489,12 @@ fun templating() {
     handlers["save-as-template"] = mutableSetOf({ message, reply ->
         val request = Json.decodeFromJsonElement<SaveAsTemplate>(message.payload!!)
 
-        val selectedBoxes = request.uids.mapNotNull { uid -> box(uid) }.toSet()
-        if (selectedBoxes.isEmpty()) {
+        // Selected boxes belong to an open document; a request from a socket without one has nothing to save.
+        val si: SessionInformation? = thisSessionInfo.get()
+        val selectedBoxes = si?.let { info -> request.uids.mapNotNull { uid -> info.boxes[uid] }.toSet() }.orEmpty()
+        if (si == null) {
+            notify("Could not save template '${escapeNotifyText(request.templateName)}': this page has no open document yet", "error")
+        } else if (selectedBoxes.isEmpty()) {
             notify("No valid boxes found for template", "error")
         } else {
             try {
@@ -570,6 +511,132 @@ fun templating() {
         }
         Handled.yes
     })
+}
+
+/**
+ * Waits for a websocket's document: [lookup] answers it once the socket is attached, and [isLoading] says whether
+ * it is still loading. Null when [isOpen] says the socket went away, or after [timeoutMs] (past the attach's own
+ * two-minute wait for box runtimes).
+ */
+internal suspend fun <T : Any> awaitAttachedDocument(
+    lookup: () -> T?,
+    isLoading: (T) -> Boolean,
+    isOpen: () -> Boolean,
+    timeoutMs: Long = 150_000,
+    pollMs: Long = 25,
+): T? = withTimeoutOrNull(timeoutMs) {
+    while (isOpen()) {
+        lookup()?.takeUnless(isLoading)?.let { return@withTimeoutOrNull it }
+        delay(pollMs)
+    }
+    null
+}
+
+/** Inserts the templates [exec] names into [si], the document of websocket [session], downloading any remote ones first. */
+@OptIn(ExperimentalUuidApi::class)
+private fun insertTemplates(exec: Directory, session: io.ktor.websocket.WebSocketSession, si: SessionInformation) {
+    val localTemplates = localTemplateEntries(templateRoots(home, app)).associateBy { it.name }
+
+    // Inserts the whole request as one unit (the mouse translation is over all of its boxes).
+    // `downloaded` holds each remote template's (server, metadata.edn), or null when no server served it.
+    fun insert(downloaded: Map<String, Pair<String, String>?>) {
+        val loadedBoxes = exec.value.flatMap { templateName ->
+            val local = localTemplates[templateName]
+            val boxes = if (local != null) {
+                insertTemplateInto(si, templateName, local.path)
+            } else {
+                val remote = downloaded[templateName]
+                if (remote == null) {
+                    if (templateName in downloaded) notify("Could not download template '$templateName'", "error")
+                    else notify("No template named '$templateName'", "error")
+                    emptySet()
+                } else {
+                    val (serverUrl, ednContent) = remote
+                    // Use same ID transformation as cloneInto to generate new UUIDs
+                    val seen = mutableMapOf<String, String>("root" to "root")
+                    SavingContext().loadFromEdnText(
+                        ednContent,
+                        si.filename,
+                        filterId = { id ->
+                            seen.computeIfAbsent(id) { Uuid.random().toString() }
+                        }
+                    ).also { lprintln("info,template", "Imported template '$templateName' from remote server $serverUrl") }
+                }
+            }
+
+            // Set templateId on all loaded boxes
+            boxes.forEach { box ->
+                box.templateId = templateName
+            }
+
+            boxes
+        }
+
+        // Calculate center of mass and translate boxes to mouse position if provided
+        if (loadedBoxes.isNotEmpty() && exec.mouseX != null && exec.mouseY != null) {
+            // Only translate top-level boxes, not nested children. Nested boxes have frames that are
+            // relative to their parent's position (offset by -parent.x, -(parent.y + parent.h)).
+            // Translating them would incorrectly add the offset twice since they move with their parent.
+            val nestedBoxes = loadedBoxes.flatMap { it.nested }.toSet()
+            val topLevelBoxes = loadedBoxes.filter { it !in nestedBoxes }
+
+            if (topLevelBoxes.isNotEmpty()) {
+                // Calculate center of mass (average of all top-level box centers)
+                val centers = topLevelBoxes.map { box ->
+                    val frame = box.frame
+                    Pair(frame.cx, frame.cy)
+                }
+
+                val centerX = centers.map { it.first }.average()
+                val centerY = centers.map { it.second }.average()
+
+                // Calculate translation needed to move center of mass to mouse position
+                val deltaX = exec.mouseX - centerX
+                val deltaY = exec.mouseY - centerY
+
+                // Apply translation only to top-level boxes
+                topLevelBoxes.forEach { box ->
+                    val frame = box.frame
+                    box.frame = frame.copy(x = frame.x + deltaX, y = frame.y + deltaY)
+                }
+
+                lprintln("info,templating", "Translated ${topLevelBoxes.size} boxes by ($deltaX, $deltaY) to center at mouse position (${exec.mouseX}, ${exec.mouseY})")
+            }
+        }
+
+        loadedBoxes.forEach { box ->
+            box.resyncAll()
+        }
+        si.topologyGeneration++
+        si.autorunBoxes(loadedBoxes)
+    }
+
+    val remoteNames = exec.value.filter { name ->
+        name !in localTemplates && remoteTemplatesCache.values.any { name in it }
+    }
+    if (remoteNames.isEmpty()) {
+        insert(emptyMap())
+    } else {
+        // The download leaves this socket's event loop; the insertion comes back to the session, so it
+        // stays serialised with the session's other handlers. Messages that arrive during the download
+        // are handled first, which is the point: the socket keeps answering, keepalive pongs included.
+        templateIoScope.launch {
+            val downloaded = remoteNames.associateWith { name ->
+                remoteTemplatesCache.entries.filter { name in it.value }.firstNotNullOfOrNull { (serverUrl, _) ->
+                    downloadTemplateFromServer(serverUrl, name)?.let { serverUrl to it }
+                }
+            }
+            session.launch {
+                thisSession.set(session)
+                thisSessionInfo.set(si)
+                try {
+                    insert(downloaded)
+                } catch (t: Throwable) {
+                    t.printStackTrace()
+                }
+            }
+        }
+    }
 }
 
 /**
