@@ -263,4 +263,8 @@ first set Field up. `Rhino3dm.describe()` says whether Field found it.
 - [Meshes and 3D geometry](mesh_examples.md): what to do with a `TriMesh` once you have one.
 - [A Rhino file, path traced](chain_rhino_render.md): the same objects rendered by the GPU path
   tracer, each in its display colour.
+- [Three.js output](three_output.md): the viewer `rhino(model)` draws into, and what else a
+  `three { }` scene can hold.
+- [Solids & Booleans (Manifold)](manifold.md): a `RhinoMesh.mesh` is a `TriMesh`, so `toSolid()`
+  checks it and, if it is closed and manifold, turns it into a solid you can boolean.
 - [Graphics reference](reference/graphics.md): `Rhino3dm`, `RhinoModel` and the object classes.

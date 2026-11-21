@@ -99,6 +99,8 @@ Unit
 
 * [Rhino files](rhino_files.md) for reading layers, curves and text, writing a `.3dm` back, and how
   Breps without meshes are tessellated.
+* [Three.js output](three_output.md) for the interactive viewer the same model draws into with
+  `rhino(model)`.
 * [Progressive Path Tracing](path_tracing.md) for the tracer: materials, camera, environment maps
   and convergence.
 * [A Polytope, Cut Open and Traced](chain_polytope_render.md) ends at the same tracer, with a

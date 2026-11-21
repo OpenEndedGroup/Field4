@@ -180,7 +180,9 @@ pinch vertices and disjoint components pass, and the volumes of disjoint pieces 
 `repairToSolid()` refuses that one outright rather than repairing around it — dropping the affected
 triangles and capping the gap would produce a plausible solid missing an unknown amount of the model.
 
-`TriMesh.isValidSolid()` is the cheap pre-flight, and `toSolid()` checks by default.
+`TriMesh.isValidSolid()` is the cheap pre-flight, and `toSolid()` checks by default. A mesh read
+from a file goes the same way: [Geometry from disk](geometry_from_disk.md) for STL, OBJ and glTF,
+[Rhino files](rhino_files.md) for the `TriMesh` inside each `RhinoMesh` of a `.3dm`.
 
 ## 2D sections and offsets
 
