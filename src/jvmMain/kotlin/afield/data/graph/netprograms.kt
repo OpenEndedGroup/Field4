@@ -271,8 +271,26 @@ object NetPrograms {
     const val LEFT = "left"
     const val DEF = "def"
 
-    /** The value a `NUM` node holds. */
-    fun valueOf(node: Node): Long = (node.state.scalars[VALUE] ?: 0.0).toLong()
+    /** The high and low 32-bit halves of a value, kept beside [VALUE] so a `Long` survives the `Double` scalars exactly. */
+    private const val VALUE_HI = "value.hi"
+    private const val VALUE_LO = "value.lo"
+    private const val LEFT_HI = "left.hi"
+    private const val LEFT_LO = "left.lo"
+
+    /** Scalars that hold [v] exactly: [VALUE] (or [LEFT]) for display, plus its two 32-bit halves. */
+    private fun exact(key: String, hi: String, lo: String, v: Long): Map<String, Double> =
+        mapOf(key to v.toDouble(), hi to (v shr 32).toDouble(), lo to (v and 0xffffffffL).toDouble())
+
+    private fun exactOf(s: Map<String, Double>, key: String, hi: String, lo: String): Long {
+        val h = s[hi]
+        val l = s[lo]
+        return if (h != null && l != null) (h.toLong() shl 32) or l.toLong() else (s[key] ?: 0.0).toLong()
+    }
+
+    private fun numScalars(v: Long) = exact(VALUE, VALUE_HI, VALUE_LO, v)
+
+    /** The value a `NUM` node holds, exactly, across the whole `Long` range. */
+    fun valueOf(node: Node): Long = exactOf(node.state.scalars, VALUE, VALUE_HI, VALUE_LO)
 
     /** A port in a template: node index and raw port index (0 is principal). */
     internal data class TPort(val node: Int, val port: Int)
@@ -419,7 +437,7 @@ object NetPrograms {
                     require(sink != outside) { "${def.name}: a definition cannot be a bare variable" }
                     scope.second += sink
                 }
-                is NetExpr.Num -> sinkTo(p(add(NUM, mapOf(VALUE to e.value.toDouble()))), sink)
+                is NetExpr.Num -> sinkTo(p(add(NUM, numScalars(e.value))), sink)
                 is NetExpr.Op -> {
                     val op = add(OP2, mapOf(OP to e.op.ordinal.toDouble()))
                     sinkTo(a(op, 1), sink)
@@ -514,16 +532,16 @@ object NetPrograms {
         }
         rule("op-left", OP2, NUM) { ctx ->
             val s = ctx.stateCopy(0)
-            s.scalars[LEFT] = ctx.second.state.scalars[VALUE] ?: 0.0
+            s.scalars.putAll(exact(LEFT, LEFT_HI, LEFT_LO, valueOf(ctx.second)))
             val half = node("op", OP1, vec(0.0, 0.0), s)
             reconnect(principal(half), 0, 0)
             reconnect(aux(half, 0), 0, 1)
         }
         rule("op-right", OP1, NUM) { ctx ->
             val op = NetOp.entries[(ctx.first.state.scalars[OP] ?: 0.0).toInt()]
-            val l = (ctx.first.state.scalars[LEFT] ?: 0.0).toLong()
+            val l = exactOf(ctx.first.state.scalars, LEFT, LEFT_HI, LEFT_LO)
             val r = valueOf(ctx.second)
-            val n = node("n", NUM, vec(0.0, 0.0), state(mapOf(VALUE to op.apply(l, r).toDouble())))
+            val n = node("n", NUM, vec(0.0, 0.0), state(numScalars(op.apply(l, r))))
             reconnect(principal(n), 0, 0)
         }
         rule("switch", SWI, NUM) { ctx ->
@@ -539,7 +557,7 @@ object NetPrograms {
                 aux(sel, 0) to principal(era)
                 val app = node("app", CON, spread(2), state())
                 aux(sel, 1) to principal(app)
-                val pred = node("pred", NUM, spread(3), state(mapOf(VALUE to (k - 1).toDouble())))
+                val pred = node("pred", NUM, spread(3), state(numScalars(k - 1)))
                 aux(app, 0) to principal(pred)
                 reconnect(aux(app, 1), 0, 1)
             }
@@ -597,7 +615,7 @@ object NetPrograms {
     fun label(node: Node): String? = when (node.type) {
         NUM -> valueOf(node).toString()
         OP2 -> NetOp.entries[(node.state.scalars[OP] ?: 0.0).toInt()].symbol
-        OP1 -> "${(node.state.scalars[LEFT] ?: 0.0).toLong()}${NetOp.entries[(node.state.scalars[OP] ?: 0.0).toInt()].symbol}"
+        OP1 -> "${exactOf(node.state.scalars, LEFT, LEFT_HI, LEFT_LO)}${NetOp.entries[(node.state.scalars[OP] ?: 0.0).toInt()].symbol}"
         else -> null
     }
 

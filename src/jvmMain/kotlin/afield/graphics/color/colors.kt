@@ -64,9 +64,8 @@ import kotlin.math.sqrt
  * clamped to `[0,1]` with alpha last, so the results drop straight into FLine colours and uniforms.
  *
  * [rgb] / [rgba] accept either 0..1 or 0..255 components — the scale is inferred per call from
- * whether any component exceeds 1 — and [rgb255] forces the 0..255 reading. [hsl] is HSL with the
- * usual cube geometry, but the result is encoded through the sRGB transfer function on the way out,
- * so it is *not* interchangeable with CSS `hsl()` — see [hsl] for what that costs. [okhsl] and
+ * whether any component exceeds 1 — and [rgb255] forces the 0..255 reading. [hsl] is HSL as CSS
+ * draws it, on sRGB-encoded values ([cssHsla] is the same with CSS's argument conventions). [okhsl] and
  * [okhsv] are the Oklab-based equivalents; of the two only [okhsl] holds perceived lightness steady
  * across hue, because [okhsv] scales `v` against the per-hue gamut cusp exactly as HSV always has.
  * Hue may be given as a fraction of a turn or in degrees (magnitude above 1 is divided
@@ -399,7 +398,8 @@ private fun okhsvToSrgb(h: Float, s: Float, v: Float): LinearRgb {
     return oklabToLinearSrgb(Oklab(l, c * a, c * b))
 }
 
-private fun hslToSrgb(h: Float, s: Float, l: Float): LinearRgb {
+/** The HSL double-cone, giving sRGB-*encoded* components: HSL is defined on encoded values, as CSS uses it. */
+private fun hslToEncodedSrgb(h: Float, s: Float, l: Float, alpha: Float): Vec4 {
     val hh = wrap01(h)
     val ss = clamp01(s)
     val ll = clamp01(l)
@@ -418,7 +418,7 @@ private fun hslToSrgb(h: Float, s: Float, l: Float): LinearRgb {
     }
 
     val m = ll - c * 0.5f
-    return LinearRgb(r1 + m, g1 + m, b1 + m)
+    return Vec4(clamp01(r1 + m), clamp01(g1 + m), clamp01(b1 + m), clamp01(alpha))
 }
 
 private fun linearToVec4(rgb: LinearRgb, alpha: Float): Vec4 = Vec4(
@@ -435,7 +435,7 @@ private fun linearToVec4(rgb: LinearRgb, alpha: Float): Vec4 = Vec4(
  * otherwise as 0..1. Alpha is inferred separately on the same rule, so `rgb(255, 128, 0)` and
  * `rgb(1, 0.5, 0)` both work and `rgb(255, 128, 0, 0.5)` means half-transparent. Everything is
  * clamped into `[0,1]` on the way out, and the components are taken as *already* sRGB-encoded —
- * no transfer function is applied, unlike [hsl] and [okhsl].
+ * no transfer function is applied, as with [hsl] and unlike [okhsl].
  *
  * Reach for [rgb255] instead when a component genuinely might be 0 or 1 on the 0..255 scale and
  * the guess would go the wrong way.
@@ -482,17 +482,14 @@ fun rgb255(r: Number, g: Number, b: Number, a: Number = 255f): Vec4 = Vec4(
  * degrees at 1 or above. Saturation
  * and lightness are 0..1 and clamped; `l = 0.5` is the fully saturated band, 0 is black and 1 white.
  *
- * The HSL cube is treated as linear light and then encoded to sRGB, the same final step [okhsl]
- * takes. That makes this *not* CSS's `hsl()`: any component that lands strictly between 0 and 1 is
- * gamma-shifted upwards, so `hsl(30, 1, 0.5)` is `(1, 0.735, 0)` where CSS gives `(1, 0.502, 0)`,
- * and `hsl(0, 0, 0.5)` is `0.735` grey rather than `0.5`. Only colours whose every component is
- * exactly 0 or 1 survive unchanged — the six 60°-multiple corners at `l = 0.5`, plus black and
- * white — because those are the fixed points of the transfer. If you want perceptually even
- * lightness across hues — a ramp where the yellow does not jump out of the row — use [okhsl].
+ * The result is the sRGB colour CSS's `hsl()` gives for the same numbers: HSL is a reshaping of
+ * sRGB-encoded values, so no transfer function is applied, and `hsl(30, 1, 0.5)` is `(1, 0.502, 0)`
+ * and `hsl(0, 0, 0.5)` is `0.5` grey. [cssHsla] is the same colour with CSS's argument conventions
+ * (degrees always, no turns). HSL lightness is not perceived lightness: at one `l` a yellow is far
+ * brighter than a blue. If you want a ramp where the yellow does not jump out of the row, use [okhsl].
  */
 fun hsl(h: Number, s: Number, l: Number, a: Number = 1f): Vec4 {
-    val linear = hslToSrgb(hue01(h), clamp01(n(s)), clamp01(n(l)))
-    return linearToVec4(linear, n(a))
+    return hslToEncodedSrgb(hue01(h), clamp01(n(s)), clamp01(n(l)), n(a))
 }
 
 /** [hsl] under the name that reads better when you are passing alpha explicitly. Identical. */
@@ -503,8 +500,9 @@ fun hsla(h: Number, s: Number, l: Number, a: Number = 1f): Vec4 = hsl(h, s, l, a
  *
  * [h] is always degrees (wrapped, so 370 is 10), and [s], [l] and [a] are 0..1 (clamped), so
  * `cssHsla(205, 0.96, 0.68, 0.88)` is `hsla(205, 96%, 68%, 0.88)`. Unlike [hsl] there is no
- * linear-light step and no turns-or-degrees guess: the result is the sRGB value CSS defines, which is
- * what a colour copied from a web sketch needs in order to look the same here.
+ * turns-or-degrees guess: the result is the sRGB value CSS defines, which is
+ * what a colour copied from a web sketch needs in order to look the same here. [hsl] gives the same
+ * colour; it differs only in reading hue as turns or degrees.
  */
 fun cssHsla(h: Number, s: Number, l: Number, a: Number = 1f): Vec4 {
     val hue = ((h.toDouble() % 360.0) + 360.0) % 360.0

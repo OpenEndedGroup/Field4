@@ -1,6 +1,9 @@
 package afield.runtime.completion
 
 import afield.document.graph.Box
+import afield.document.workspace.NamedDirectoryNames
+import afield.graphics.paint.PaintToolNames
+import afield.graphics.paint.PaintToolbox
 import afield.document.graph.needsResync
 import afield.geometry.rhino.RhinoLayerPaths
 import afield.geometry.rhino.RhinoModel
@@ -30,6 +33,32 @@ object StringLiteralCompletionFixtures {
 
     class Model(val layerNames: List<String>) {
         fun layer(@CompletesWith(ReceiverLayers::class) name: String) = name
+    }
+
+    /** Index access through an annotated property, declared in the body and in the constructor. */
+    class Shelf {
+        @CompletesWith(Fruit::class)
+        val stock = mutableMapOf<String, Int>()
+    }
+
+    class Crate(@CompletesWith(Fruit::class) val stock: Map<String, Int>)
+
+    /** Index access through annotated `get` / `set` operators; remembers the receiver it was handed. */
+    object ToolNames : StringCompletions {
+        var lastReceiver: Any? = "never asked"
+        override fun candidates(context: StringCompletionContext): List<String> {
+            lastReceiver = context.receiver
+            return (context.receiver as? Toolbox)?.names.orEmpty()
+        }
+    }
+
+    class Toolbox(val names: List<String>) {
+        operator fun get(@CompletesWith(ToolNames::class) name: String) = names.indexOf(name)
+        operator fun set(@CompletesWith(ToolNames::class) name: String, value: Int) = Unit
+    }
+
+    class Studio(val tools: Toolbox) {
+        val computed: Toolbox get() = Toolbox(listOf("made-by-a-getter"))
     }
 }
 
@@ -142,8 +171,8 @@ class StringLiteralCompletionTest {
         }
     }
 
-    /** A box whose Kotlin context holds [name] = [value], as it would after a run, with no session or compiler. */
-    private fun boxWithVariable(name: String, value: Any?): Box {
+    /** A box whose Kotlin context holds [variables], as it would after a run, with no session or compiler. */
+    private fun boxWithVariables(vararg variables: Pair<String, Any?>): Box {
         val context = KotlinContext()
         val engine = Proxy.newProxyInstance(KotlinScriptEngine::class.java.classLoader, arrayOf(KotlinScriptEngine::class.java)) { proxy, method, _ ->
             when (method.name) {
@@ -157,14 +186,19 @@ class StringLiteralCompletionTest {
         } as KotlinScriptEngine
         return Box("string-literal-receiver").also {
             it.ki = engine
-            context.vars[name] = KotlinVariableInfo(value, ::fixtureDescriptor, it)
+            for ((name, value) in variables) context.vars[name] = KotlinVariableInfo(value, ::fixtureDescriptor, it)
         }
+    }
+
+    private fun Box.rows(codeWithCaret: String): List<String>? {
+        val (code, pos) = at(codeWithCaret)
+        return StringLiteralCompletion.complete(this, code, pos)?.metadata?.map { it.displayText }
     }
 
     @Test
     fun `a provider is handed the live object a member call is on`() {
         val model = StringLiteralCompletionFixtures.Model(listOf("Site", "Building::Walls", "Building::Roof"))
-        val box = boxWithVariable("model", model)
+        val box = boxWithVariables("model" to model)
         try {
             val (code, pos) = at("model.layer(\"Wal|\")")
             val completion = StringLiteralCompletion.complete(box, code, pos)!!
@@ -185,5 +219,63 @@ class StringLiteralCompletionTest {
         for (source in listOf("model.layer(\"Bu|", "model.on(layer = \"Bu|")) {
             assertEquals(RhinoLayerPaths::class, assertIs<CompletesWith>(StringLiteralCompletion.annotationIn(functions.asSequence(), callAt(source)!!)).provider)
         }
+    }
+
+    @Test
+    fun `inside brackets the dotted name before them is the receiver of index access`() {
+        val call = callAt("foo.bar[\"pea|")!!
+        assertEquals(Triple("foo.bar", StringLiteralCompletion.INDEX, 0), Triple(call.receiver, call.callee, call.index))
+        assertEquals("a.b.c", callAt("a!!.b?.c[\"|")!!.receiver)
+        assertNull(callAt("f()[\"|"), "a call result would have to run")
+        assertNull(callAt("a[\"x\"][\"|"), "so would an index result")
+        assertNull(callAt("val xs = [\"|"), "a collection literal is not index access")
+        assertNull(callAt("@Suppress([\"|"))
+    }
+
+    @Test
+    fun `an annotated property completes the strings that index it`() {
+        val box = boxWithVariables("foo" to StringLiteralCompletionFixtures.Shelf(), "crate" to StringLiteralCompletionFixtures.Crate(mapOf()))
+        try {
+            assertEquals(listOf("banana/peach", "banana/pear"), box.rows("foo.stock[\"pea|\"]"))
+            assertEquals(listOf("banana/peach", "banana/pear"), box.rows("foo.stock[\"pea|\"] = 3"))
+            assertEquals(listOf("banana/peach", "banana/pear"), box.rows("crate.stock[\"pea|"), "declared in the constructor")
+        } finally {
+            needsResync.removeAll { (b, _) -> b === box }
+        }
+    }
+
+    @Test
+    fun `get and set operators complete their key and are handed the indexed object`() {
+        val tools = StringLiteralCompletionFixtures.Toolbox(listOf("sky", "earth", "skin"))
+        val box = boxWithVariables("tools" to tools, "studio" to StringLiteralCompletionFixtures.Studio(tools))
+        try {
+            assertEquals(listOf("sky", "skin"), box.rows("tools[\"sk|"))
+            assertEquals(listOf("sky", "skin"), box.rows("studio.tools[\"sk|\"] = 2"), "through a property's backing field")
+            assertEquals(tools, StringLiteralCompletionFixtures.ToolNames.lastReceiver)
+
+            // A property with a getter is not run: its type still finds the annotation, but there is no receiver.
+            assertEquals(emptyList<String>(), box.rows("studio.computed[\"|"))
+            assertNull(StringLiteralCompletionFixtures.ToolNames.lastReceiver)
+        } finally {
+            needsResync.removeAll { (b, _) -> b === box }
+        }
+    }
+
+    @Test
+    fun `FileManager and PaintToolbox complete their names`() {
+        val code = "import afield.document.workspace.FileManager\nFileManager[\"te"
+        val call = StringLiteralCompletion.callSiteOf(code, StringLiteralCompletion.literalAt(code, code.length)!!.quote)!!
+        assertEquals(NamedDirectoryNames::class, assertIs<CompletesWith>(StringLiteralCompletion.parameterAnnotation(null, code, call)).provider)
+        // Box code names FileManager without an import, and two shaded IntelliJ classes share the name.
+        val bare = "FileManager[\"te"
+        val bareCall = StringLiteralCompletion.callSiteOf(bare, StringLiteralCompletion.literalAt(bare, bare.length)!!.quote)!!
+        assertEquals(NamedDirectoryNames::class, assertIs<CompletesWith>(StringLiteralCompletion.parameterAnnotation(null, bare, bareCall)).provider)
+
+        val functions = PaintToolbox::class.memberFunctions.asSequence()
+        for (source in listOf("tools.brush(\"|", "tools.waterBrush(name = \"|")) {
+            assertEquals(PaintToolNames::class, assertIs<CompletesWith>(StringLiteralCompletion.annotationIn(functions, callAt(source)!!)).provider)
+        }
+        val index = callAt("tools[\"|")!!
+        assertEquals(PaintToolNames::class, assertIs<CompletesWith>(StringLiteralCompletion.annotationIn(functions.filter { it.isOperator }, index)).provider)
     }
 }

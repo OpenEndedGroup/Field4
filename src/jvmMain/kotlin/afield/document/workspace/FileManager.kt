@@ -43,6 +43,9 @@ import afield.app.server.ReadOnlyDocuments
 import afield.document.workspace.listWorkspaceProjects
 import afield.document.workspace.projectsDir
 import afield.app.server.thisSessionInfo
+import afield.runtime.completion.CompletesWith
+import afield.runtime.completion.StringCompletionContext
+import afield.runtime.completion.StringCompletions
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
@@ -380,6 +383,11 @@ class FieldFileManager internal constructor(private val session: SessionInformat
     private data class FileResolution(val path: Path, val source: String)
 }
 
+/** Completion for `FileManager["…"]`: the names of the directories registered so far. */
+internal object NamedDirectoryNames : StringCompletions {
+    override fun candidates(context: StringCompletionContext): List<String> = FileManager.namedDirectoryMap().keys.toList()
+}
+
 /**
  * File-related utilities for the active AField session.
  *
@@ -479,17 +487,17 @@ object FileManager {
      * Sugar for [add] with `create = false`, so the directory must already exist. Registration is **process-global**
      * and outlives the document, and re-registering a name silently replaces it.
      */
-    operator fun set(name: String, directory: String) {
+    operator fun set(@CompletesWith(NamedDirectoryNames::class) name: String, directory: String) {
         add(name, directory)
     }
 
     /** `FileManager["name"] = someFile` — as the `String` overload, taking a `File`. */
-    operator fun set(name: String, directory: File) {
+    operator fun set(@CompletesWith(NamedDirectoryNames::class) name: String, directory: File) {
         add(name, directory)
     }
 
     /** `FileManager["name"] = somePath` — as the `String` overload, taking a `Path`. */
-    operator fun set(name: String, directory: Path) {
+    operator fun set(@CompletesWith(NamedDirectoryNames::class) name: String, directory: Path) {
         add(name, directory)
     }
 
@@ -501,7 +509,7 @@ object FileManager {
      * one and for the two reserved names the resolver owns: `FileManager["document"]` and
      * `FileManager["project"]` are `IllegalArgumentException`, not null.
      */
-    operator fun get(name: String): Path? = namedDirectory(name)
+    operator fun get(@CompletesWith(NamedDirectoryNames::class) name: String): Path? = namedDirectory(name)
 
     /** [add] from a string path, with `~` expanded first. */
     fun add(name: String, directory: String, create: Boolean = false, search: Boolean = false): Path =

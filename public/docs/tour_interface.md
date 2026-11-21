@@ -373,7 +373,8 @@ Markdown, and box notes. For Markdown, open the source in the editor first.
 ## The document guide
 
 The document guide is a reader for a document's own Markdown files and notes, beside the
-canvas. Open it with **Show Document Guide** in the command palette. A box's `notes` property
+canvas. Click **Guides** in the bottom left, or **Notes** if the document only has box notes. You can
+also use **Show Document Guide** in the command palette. A box's `notes` property
 is listed under **Box notes**. Select a note to bring its box into view, or choose **Open box**
 to edit the note on the box. Here the guide is reading the notes on `sketch`.
 

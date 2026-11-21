@@ -25,6 +25,10 @@ docs = [
     # (same pins, same reason as in `cv` below).
     "opencv-contrib-python>=4.10",
     "mediapipe>=0.10.14,<1.0",
+    # `tools/docs_link_graph.py` lays out the site's link map (`docs_map.md`) with ForceAtlas2;
+    # networkx's PageRank and HITS run on scipy.
+    "networkx>=3.4",
+    "scipy>=1.11",
     "pillow>=10.0.0",
     "plotly>=5.20.0",
     "pymdown-extensions>=11.0.0",

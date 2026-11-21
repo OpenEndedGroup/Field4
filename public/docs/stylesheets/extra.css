@@ -74,7 +74,10 @@ html {
     /* The theme sets this on <body> only; on <html> it also darkens the canvas and the page's
        own scrollbar (overrides/main.html says it again before any stylesheet loads). */
     color-scheme: dark;
-    background: var(--mono-bg);
+    /* A faint vignette: the page colour through the middle, falling halfway to black at the
+       edges and corners. Fixed, so it stays put while the page scrolls. */
+    background: radial-gradient(circle at center, var(--mono-bg) 40%,
+        color-mix(in srgb, var(--mono-bg) 50%, #000) 100%);
     background-attachment: fixed;
 }
 
@@ -164,8 +167,20 @@ h3 {
 .md-typeset h1 + h2,
 .md-typeset h1 + h3,
 .md-typeset h2 + h2,
-.md-typeset h2 + h3 {
+.md-typeset h2 + h3,
+.md-typeset .docs-map-link + h2,
+.md-typeset .docs-map-link + h3 {
     margin-top: 0;
+}
+
+/* The line under each page's title that opens the map of the docs at that page's node
+   (tools/docs_link_graph.py link_pages_to_map adds it to the built pages). */
+.md-typeset .docs-map-link {
+    margin: -0.6em 0 1.6em;
+    font-size: 0.8rem;
+}
+.md-typeset .docs-map-link a::after {
+    content: " \2192";
 }
 
 /* ── images: no upscale ──────────────────────────────────────── */

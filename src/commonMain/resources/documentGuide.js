@@ -341,7 +341,12 @@ async function show(path = '') {
             try { saved = {path:'',positions:{},...JSON.parse(localStorage.getItem(storageKey()) || '{}')}; } catch (_) { saved = {path:'',positions:{}}; }
             if (saved.rect) setRect(saved.rect);
         }
-        readOnly = response.readOnly; entries = response.entries || []; renderEntries();
+        readOnly = response.readOnly; entries = response.entries || [];
+        if (isNote() && !entries.some(e => e.path === current.path)) {
+            current = null;
+            delete panel.dataset.path;
+        }
+        renderEntries();
         // A docs redirect asked for by path (Open Anything, ?guide=) opens its page; the panel shows the rest.
         const redirect = entries.find(e => e.kind === 'docs' && e.path === path);
         if (redirect) { openDocs(redirect.docs); path = ''; }
@@ -408,7 +413,16 @@ window.copyDocumentGuideBoxLink = async () => {
 };
 // Small document-level entry point. Check occasionally so externally added guides become discoverable.
 let discovered = '', discoveryAt = 0, discoveryPending = false, deepLinkOpened = false;
-setInterval(async () => {
+let discoveryTimer;
+window.refreshDocumentGuideLauncher = () => {
+    discoveryAt = 0;
+    if (discoveryTimer != null) return;
+    discoveryTimer = setTimeout(() => {
+        discoveryTimer = null;
+        discoverGuides();
+    }, 100);
+};
+async function discoverGuides() {
     const name = window.currentDocumentFilename;
     if (!name || discoveryPending || (name === discovered && Date.now()-discoveryAt < 15000)) return;
     discovered = name; discoveryAt = Date.now(); discoveryPending = true;
@@ -419,10 +433,15 @@ setInterval(async () => {
             window.documentGuideSessionKey = response.document; window.syncNotesMarkdownPreview?.();
         }
         build();
-        if (!launcher) { launcher=button('Guides', 'document-guide-launcher',()=>show()); launcher.title='Open this document’s guides and notes'; document.body.append(launcher); }
+        if (!launcher) {
+            launcher = button('Guides', 'document-guide-launcher', () => show());
+            launcher.hidden = true;
+            document.body.append(launcher);
+        }
         const found = response.entries || [];
         const noteCount = found.filter(e => e.kind === 'note').length;
         const docsCount = found.filter(e => e.kind === 'docs').length;
+        const visibilityChanged = launcher.hidden !== !found.length;
         launcher.hidden = !found.length;
         // Name what is actually there: a document can carry notes and no Markdown files, or the reverse.
         const guideCount = found.length - noteCount;
@@ -431,8 +450,10 @@ setInterval(async () => {
             : `Guides · ${guideCount}`;
         launcher.title = docsCount ? `Open this document’s guides and notes · ${docsCount} documentation page${docsCount === 1 ? '' : 's'}`
             : 'Open this document’s guides and notes';
+        if (visibilityChanged) window.restackNotifyBubbles?.();
         const initial = new URL(location.href).searchParams.get('guide');
         if (initial && !deepLinkOpened) { deepLinkOpened = true; await show(initial); }
     } catch (_) { discovered=''; }
     finally { discoveryPending = false; }
-}, 2000);
+}
+setInterval(discoverGuides, 2000);

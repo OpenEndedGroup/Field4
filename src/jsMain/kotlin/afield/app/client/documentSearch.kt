@@ -59,6 +59,19 @@ private val searchableProperties = listOf(
 
 private var searchMatches: List<SearchMatch> = emptyList()
 private var activeMatchIndex = -1
+private var currentQuery = ""
+
+/**
+ * In Field's Electron app the search lives in the tab strip's find bar, where the documentation's
+ * find-in-page sits: `fieldElectron.canvasFind` (field-preload.js) opens it and relays its query,
+ * steps and close here, and this side reports the counts back. A plain browser has no tab strip and
+ * gets the in-page widget below.
+ */
+private val tabStripFind: dynamic by lazy {
+    val bridge = window.asDynamic().fieldElectron?.canvasFind
+    if (bridge == null || bridge == undefined) null else bridge
+}
+private var tabStripFindOpen = false
 
 private var searchContainer: HTMLDivElement? = null
 private var searchInput: HTMLInputElement? = null
@@ -78,6 +91,29 @@ private const val searchHighlightMaxAttempts = 8
 fun initializeDocumentSearch() {
     ensureSearchWidget()
     registerSearchKeybindings()
+    registerTabStripFind()
+}
+
+private fun registerTabStripFind() {
+    val bridge = tabStripFind ?: return
+    bridge.onCommand { command: dynamic ->
+        when (command?.action as? String) {
+            "query" -> {
+                tabStripFindOpen = true
+                performSearch(command.query as? String ?: "")
+            }
+            "step" -> {
+                tabStripFindOpen = true
+                if (command.forward == false) goToPreviousMatch() else goToNextMatch()
+                // Stepping with no matches changes nothing, but the bar still wants its counter.
+                if (searchMatches.isEmpty()) updateCounter()
+            }
+            "close" -> {
+                tabStripFindOpen = false
+                clearSearchResults()
+            }
+        }
+    }
 }
 
 private fun ensureSearchWidget() {
@@ -181,10 +217,11 @@ private fun registerSearchKeybindings() {
         }
 
         if (key == "f" && hasModifier && !ke.altKey && !ke.shiftKey) {
-            if (!editorHasFocus || isSearchVisible()) {
+            if (!editorHasFocus || isSearchVisible() || tabStripFindOpen) {
                 ke.preventDefault()
                 ke.stopPropagation()
-                openSearch()
+                val bridge = tabStripFind
+                if (bridge != null) bridge.open() else openSearch()
             }
         } else if (ke.key == "Escape" && isSearchVisible()) {
             ke.preventDefault()
@@ -254,6 +291,7 @@ private fun restoreSearchFocusIfNeeded(shouldRestore: Boolean) {
 
 private fun performSearch(query: String) {
     val trimmed = query.trim()
+    currentQuery = trimmed
     if (trimmed.isEmpty()) {
         clearSearchResults()
         return
@@ -367,7 +405,8 @@ private fun focusMatch(index: Int) {
 
     applyHighlights()
     updateCounter(match)
-    openMatch(match, allowEditorFocus = !shouldRestoreFocus)
+    // Typing stays in the tab strip's find bar while it is open; Escape there hands the page back.
+    openMatch(match, allowEditorFocus = !shouldRestoreFocus && !tabStripFindOpen)
     restoreSearchFocusIfNeeded(shouldRestoreFocus)
 }
 
@@ -385,7 +424,15 @@ private fun goToPreviousMatch() {
 
 private fun updateCounter(match: SearchMatch? = null) {
     val total = searchMatches.size
-    val query = searchInput?.value?.trim().orEmpty()
+    val query = currentQuery
+    val property = match?.property ?: searchMatches.getOrNull(activeMatchIndex)?.property
+    if (tabStripFindOpen) {
+        val result = js("{}")
+        result.matches = total
+        result.active = if (activeMatchIndex >= 0) activeMatchIndex + 1 else 0
+        result.detail = if (activeMatchIndex >= 0) property ?: "" else ""
+        tabStripFind?.report(result)
+    }
     val noMatch = query.isNotEmpty() && total == 0
     searchContainer?.classList?.toggle("is-no-match", noMatch)
     searchPrev?.disabled = total == 0
@@ -398,7 +445,6 @@ private fun updateCounter(match: SearchMatch? = null) {
         searchCount?.textContent = "No matches"
         return
     }
-    val property = match?.property ?: searchMatches.getOrNull(activeMatchIndex)?.property
     val propertyLabel = property?.let { " · $it" } ?: ""
     searchCount?.textContent = if (activeMatchIndex >= 0) "${activeMatchIndex + 1} of $total$propertyLabel"
         else if (total == 1) "1 match" else "$total matches"

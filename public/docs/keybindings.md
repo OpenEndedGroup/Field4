@@ -325,7 +325,7 @@ exactly what a fresh `keybindings.yaml` says.
 
 <!-- BEGIN generated: default bindings -->
 
-**151 rebindable commands**, 59 of them with a shortcut out of the box.
+**152 rebindable commands**, 59 of them with a shortcut out of the box.
 
 ??? aside "Agents: regenerating this table"
 
@@ -402,6 +402,7 @@ exactly what a fresh `keybindings.yaml` says.
 | `record-window-mp4` | *(none)* | both | Record Window MP4 |
 | `relink-pane` | *(none)* | both | Relink Pane |
 | `reload-user-keybindings` | *(none)* | both | Reload Keybindings |
+| `reloadPersonal` | *(none)* | both | Reload personal/ classes |
 | `remove-canvas-split` | *(none)* | both | Remove Canvas Split |
 | `reset` | *(none)* | both | Reset Kotlin Environment for Box |
 | `reset-canvas-zoom` | *(none)* | both | Reset Canvas Zoom |

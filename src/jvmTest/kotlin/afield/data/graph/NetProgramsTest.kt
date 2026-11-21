@@ -94,4 +94,18 @@ class NetProgramsTest {
         assertEquals(205, five.rounds)
         assertEquals(76, five.widest)
     }
+
+    @Test
+    fun `numbers past two to the fifty-third stay exact`() {
+        // A Double holds 2^53 + 1 as 2^53; the net must not.
+        val big = (1L shl 53) + 1
+        assertEquals(big + 2, NetPrograms.run(netProgram { main { n(big) + n(2) } }).value)
+        assertEquals(Long.MIN_VALUE + 7, NetPrograms.run(netProgram { main { n(Long.MIN_VALUE) + n(7) } }).value)
+        val p = netProgram {
+            val pick by fn()
+            pick.def { k -> switch(k, zero = 0) { j -> j } }
+            main { pick(big) }
+        }
+        assertEquals(big - 1, NetPrograms.run(p).value)
+    }
 }

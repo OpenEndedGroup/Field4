@@ -1,0 +1,216 @@
+name: nile_gezira_kernels
+description: >-
+  Rasterisation as a stream language. Nile-style kernels (afield.graphics.nile) run the Gezira rasteriser,
+  DecomposeBeziers -> EdgeSamples -> SortBy x -> SortBy y -> CombineEdgeSamples, over a curved FLine, and
+  each intermediate stream is drawn over the pixel grid: the pieces DecomposeBeziers cut the curve into,
+  the edge samples, and the coverage spans. A second box puts the result beside Skia with the measured
+  difference, a third writes a new kernel (a rotation) and puts it in front of the pipeline, and three more
+  show StrokeBezierPath, the Texture and Composite kernels on a Canvas, and a line of quadratic glyph text.
+  After Dan Amelang's Nile and Gezira, as described in "Pixels on a screen" (whitebeard.blog).
+docs:
+  - page: afield_four_graphics.md
+    why: "The page's stream-kernel captures replay this transcript."
+operations:
+  - create:
+      box: gezira_streams
+      name: gezira streams
+      frame:
+        x: 40.0
+        y: 40.0
+        w: 300.0
+        h: 100.0
+      properties:
+        code: |
+          import afield.graphics.nile.*
+
+          // A curved shape as an FLine, in pixel units on a 16 x 12 grid.
+          val shape =
+              FLine()
+                  .moveTo(2.2, 10.6)
+                  .cubicTo(1.0, 3.0, 0.0, 7.0, -0.5, 0.0, 9.5, 1.4, 0.0)
+                  .cubicTo(12.0, 2.0, 0.0, 15.5, 6.0, 0.0, 13.8, 10.9, 0.0)
+                  .lineTo(2.2, 10.6)
+
+          val t = Gezira.rasterizer.trace(Gezira.beziers(shape))
+          println(t)
+
+          val s = 32.0
+          val pieces = t.get<Bezier>("DecomposeBeziers")
+          val samples = t.get<EdgeSample>("EdgeSamples")
+          val spans = t.get<Span>("CombineEdgeSamples")
+          lines(listOf(Gezira.grid(16, 12, s)) + Gezira.pieces(pieces, s) + Gezira.cuts(pieces, s), channel = "1 pieces")
+          lines(
+              listOf(Gezira.grid(16, 12, s)) + Gezira.outline(shape, s) + Gezira.samples(samples, s),
+              channel = "2 edge samples",
+          )
+          lines(
+              listOf(Gezira.grid(16, 12, s)) + Gezira.pixels(Gezira.coverage(spans, 16, 12), 16, s) + Gezira.spans(spans, s),
+              channel = "3 spans",
+          )
+  - execute:
+      box: gezira_streams
+      property: code
+  - create:
+      box: gezira_vs_skia
+      name: beside skia
+      frame:
+        x: 760.0
+        y: 40.0
+        w: 300.0
+        h: 100.0
+      properties:
+        code: |
+          import afield.graphics.nile.*
+
+          // A five-pointed star and a circle of four cubics, on a 48 x 40 grid.
+          val star = FLine().moveTo(24.0 + 17.0, 20.0)
+          for (k in 1 until 10) {
+              val a = PI * k / 5
+              val r = if (k % 2 == 0) 17.0 else 7.0
+              star.lineTo(24.0 + r * cos(a), 20.0 + r * sin(a))
+          }
+          val beziers = Gezira.beziers(star) + Gezira.circle(30.3, 26.1, 9.4)
+
+          val ours = Gezira.rasterize(beziers, 48, 40)
+          val skia = Gezira.skiaCoverage(beziers, 48, 40)
+          val diff = DoubleArray(ours.size) { minOf(1.0, 10 * abs(ours[it] - skia[it])) }
+          val (worst, mean) = Gezira.error(ours, skia)
+          println("kernels vs Skia: max |diff| %.4f, mean %.4f".format(worst, mean))
+
+          val s = 8.0
+          lines(Gezira.pixels(ours, 48, s), channel = "kernels")
+          lines(Gezira.pixels(skia, 48, s), channel = "skia")
+          lines(Gezira.pixels(diff, 48, s, 1.0, 0.4, 0.3), channel = "difference x10")
+  - execute:
+      box: gezira_vs_skia
+      property: code
+  - create:
+      box: gezira_new_kernel
+      name: a new kernel
+      frame:
+        x: 1480.0
+        y: 40.0
+        w: 300.0
+        h: 100.0
+      properties:
+        code: |
+          import afield.graphics.nile.*
+
+          // Gezira's TransformBeziers: one kernel, in front of the rasteriser.
+          fun rotate(degrees: Double, cx: Double, cy: Double): Stage<Bezier, Bezier> {
+              val c = cos(degrees * PI / 180)
+              val s = sin(degrees * PI / 180)
+              return mapKernel("TransformBeziers") { b ->
+                  Bezier(
+                      DoubleArray(b.p.size) { i ->
+                          val x = b.p[i - i % 2] - cx
+                          val y = b.p[i - i % 2 + 1] - cy
+                          if (i % 2 == 0) cx + c * x - s * y else cy + s * x + c * y
+                      },
+                  )
+              }
+          }
+
+          val square = FLine().moveTo(4.0, 4.0).lineTo(12.0, 4.0).lineTo(12.0, 12.0).lineTo(4.0, 12.0).lineTo(4.0, 4.0)
+          val t = (rotate(20.0, 8.0, 8.0) then Gezira.rasterizer).trace(Gezira.beziers(square))
+          println(t)
+          val px = 24.0
+          val spans = t.get<Span>("CombineEdgeSamples")
+          lines(
+              listOf(Gezira.grid(16, 16, px)) +
+                  Gezira.pixels(Gezira.coverage(spans, 16, 16), 16, px) +
+                  Gezira.pieces(t.get("DecomposeBeziers"), px),
+              channel = "rotated",
+          )
+  - execute:
+      box: gezira_new_kernel
+      property: code
+  - create:
+      box: gezira_stroke
+      name: stroke kernel
+      frame:
+        x: 40.0
+        y: 1200.0
+        w: 300.0
+        h: 100.0
+      properties:
+        code: |
+          import afield.graphics.nile.*
+
+          // An open wave of two cubics, stroked 2 pixels wide, on a 48 x 24 grid.
+          val wave = listOf(
+              Bezier(doubleArrayOf(3.0, 12.0, 10.0, 0.0, 17.0, 24.0, 24.0, 12.0)),
+              Bezier(doubleArrayOf(24.0, 12.0, 31.0, 0.0, 38.0, 24.0, 45.0, 12.0)),
+          )
+          val t = (GeziraStroke.strokeBezierPath(2.0) then Gezira.rasterizer).trace(wave)
+          println(t)
+
+          val s = 16.0
+          val outline = t.get<Bezier>("StrokeBezierPath")
+          val spans = t.get<Span>("CombineEdgeSamples")
+          lines(
+              listOf(Gezira.grid(48, 24, s)) +
+                  Gezira.pixels(Gezira.coverage(spans, 48, 24), 48, s) +
+                  Gezira.pieces(outline, s) +
+                  Gezira.cuts(outline, s),
+              channel = "stroked wave",
+          )
+  - execute:
+      box: gezira_stroke
+      property: code
+  - create:
+      box: gezira_composite
+      name: texture and composite
+      frame:
+        x: 760.0
+        y: 1200.0
+        w: 300.0
+        h: 100.0
+      properties:
+        code: |
+          import afield.graphics.nile.*
+
+          // A star filled with a gradient, then a translucent circle composited over it, then a
+          // stroked ring multiplied on top: three paints, two blends, one canvas.
+          val canvas = Canvas(64, 48)
+          val star = FLine().moveTo(28.0 + 20.0, 24.0)
+          for (k in 1 until 10) {
+              val a = PI * k / 5
+              val r = if (k % 2 == 0) 20.0 else 8.5
+              star.lineTo(28.0 + r * cos(a), 24.0 + r * sin(a))
+          }
+          val gradient = GeziraComposite.linearGradient(8.0, 4.0, 48.0, 44.0, Rgba.of(1.0, 0.75, 0.1), Rgba.of(0.9, 0.1, 0.4))
+          canvas.draw(Gezira.beziers(star), GeziraComposite.texture(gradient))
+          canvas.draw(Gezira.circle(40.0, 28.0, 13.0), GeziraComposite.color(Rgba.of(0.1, 0.5, 1.0, 0.55)))
+          val ring = GeziraStroke.strokeBezierPath(3.0)(Gezira.circle(22.0, 30.0, 11.0))
+          val t = canvas.draw(ring, GeziraComposite.color(Rgba.of(0.3, 0.9, 0.5, 0.9)), GeziraComposite.MULTIPLY)
+          println(t)
+          lines(canvas.pixels(8.0), channel = "canvas")
+  - execute:
+      box: gezira_composite
+      property: code
+  - create:
+      box: gezira_text
+      name: text beside skia
+      frame:
+        x: 1480.0
+        y: 1200.0
+        w: 300.0
+        h: 100.0
+      properties:
+        code: |
+          import afield.graphics.nile.*
+
+          // A line of serif text: quadratic glyph outlines, the same kind of input as Gezira's tiger.
+          val text = Gezira.glyphs("Pixels on a screen", 6.0, 46.0, size = 40.0)
+          val t = Gezira.rasterizer.trace(text)
+          println("${text.size} segments, ${t.get<Bezier>("DecomposeBeziers").size} pieces, ${t.output.size} spans")
+          val ours = Gezira.coverage(t.get("CombineEdgeSamples"), 360, 64)
+          val skia = Gezira.skiaCoverage(text, 360, 64)
+          val (worst, mean) = Gezira.error(ours, skia)
+          println("kernels vs Skia: max |diff| %.3f, mean %.4f".format(worst, mean))
+          lines(Gezira.pixels(ours, 360, 2.0), channel = "kernels")
+          lines(Gezira.pixels(skia, 360, 2.0), channel = "skia")
+  - execute:
+      box: gezira_text
+      property: code

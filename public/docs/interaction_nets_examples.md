@@ -2,17 +2,60 @@
 
 An interaction net is a graph you compute with by rewriting it. Each node is an agent with one *principal* port and some auxiliaries; wherever two principal ports are wired to each other you have an active pair, and a rule says what that pair becomes. [`Lambda`](reference/visualization.md#interactionnets-kt-lambda) is a ready-made vocabulary of agents — `APP`, `LAM`, `DUP`, `DELIM`, `ERASE`, `VAR`, `ROOT`, `CONST` — and [`Lambda.rules()`](reference/visualization.md#interactionnets-kt--lambda--rules) is a rule book covering it.
 
-Build a net with `net { }`, wiring ports with `to`; call `relax` to let the force-directed layout settle; and hand it to `Reducer(Lambda.rules())`, whose `stepDetailed` fires one reaction and returns what changed. Draw it with `toFLines`, or summarise it as a card with `summaryHtml`. The single-step examples below each show three cards over a before-and-after drawing; [Reference](#reference) lists the whole API.
+Build a net with `net { }`, wiring ports with `to`; call `relax` to let the force-directed layout settle; and hand it to `Reducer(Lambda.rules())`, whose `stepDetailed` fires one reaction and returns what changed. Draw it with `toFLines`, or summarise it as a card with `summaryHtml`. In the drawing each agent type has its own colour on one scale, from a yellow `ROOT` through the greens of `DUP`, `LAM` and `VAR` to the teals of `APP` and `DELIM`; the white dot on each disc is its principal port, and a red wire with red rings marks two principal ports facing each other. The single-step examples below each show three cards over a before-and-after drawing; [Reference](#reference) lists the whole API.
 
 Every node also carries an energy, and every rule splits or reduces the energy of the nodes it creates, so a reduction visibly fades as it runs. The energy is there for drawing and does not change what a net computes; it is where the energy figures quoted below come from.
 
 ## Reducing a λ-term end to end
 
-`LambdaTerms.normalise("(\\x. x x) (\\y. y)")` parses a term, compiles it to a net, reduces it and reads the answer back as a term. `parse` accepts `\x. x x` or `λx. x x`, with `\x y. e` as shorthand, and `format` prints a term that parses back to the same thing. When two `DUP` fans meet, the `fan-fan` rule compares their levels: two fans at the same level cancel, and two at different levels pass through each other. `erase-erase` does the same for two erasers. Pass `Reducer(relaxIterations = 0)` when nothing will be drawn, so the reduction skips the layout work; the figure below passes 8.
+`LambdaTerms.normalise("(\\x. x x) (\\y. y)")` parses a term, compiles it to a net, reduces it and reads the answer back as a term. `parse` accepts `\x. x x` or `λx. x x`, with `\x y. e` as shorthand, and `format` prints a term that parses back to the same thing. When two `DUP` fans meet, the `fan-fan` rule compares their levels: two fans at the same level cancel, and two at different levels pass through each other. `erase-erase` does the same for two erasers. Pass `Reducer(relaxIterations = 0)` when nothing will be drawn, so the reduction skips the layout work. The box below also passes 0, but for the opposite reason: it calls `relax` itself on every frame, so the layout keeps moving between reactions and you can watch each rewrite settle.
 
-![Five panels, left to right, following one reduction: the compiled net of six agents, then the four reactions beta-linear, dup-lam, beta-linear and fan-fan, ending in two agents — a ROOT holding a single abstraction](assets/interaction_nets_lambda/lambda_reduction.svg)
+```diffstatic_runner {data-lang=kotlin video="assets/interaction_nets_lambda/lambda_reduction.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="22" fps="30" timeout="240" w="540" embed=true name="interaction-lambda-reduction-video" alt="the net for (λx. x x) (λy. y) reducing one reaction at a time: six agents strung out from a yellow ROOT, a red wire marking the pair about to react; each reaction rewires the net and it drifts into a new shape, a pair of teal delimiters appearing and being walked away after each beta, two yellow-green fans meeting and cancelling, until two agents are left, the ROOT holding one green abstraction, and the caption reads back λa. a"}
+:::static
+val term = "(λx. x x) (λy. y)"
+val compiled = LambdaTerms.compile(LambdaTerms.parse(term))
+val net = compiled.net
+val reducer = Reducer(Lambda.rules(), relaxIterations = 0)
+net.relax(60)
 
-Those are the five stages of `(λx. x x) (λy. y)`, a small term that exercises several kinds of agent. Left to right: the compiled net, 6 agents (ROOT, two APP, two LAM, one DUP — the fan for `x`, which is used twice); after `beta-linear`, 4; after `dup-lam`, 6, with two fans facing each other; after a second `beta-linear`, 4; and after `fan-fan` cancels the matched pair, 2 agents holding `λa. a`. Each panel is scaled to fit its own box, so compare the agent counts rather than the sizes of the drawings.
+// One reaction every 45 frames, after a pause on the compiled net; between them the layout keeps relaxing.
+var frames = 0
+var steps = 0
+var lastRule = "compiled"
+var finished = false
+var view = net.layoutBounds()!!
+
+loop {
+    frames++
+    if (!finished && frames >= 45 * (steps + 1)) {
+        val detail = reducer.stepDetailed(net)
+        if (detail == null) finished = true else {
+            steps++
+            lastRule = detail.ruleName
+        }
+    }
+    net.relax(3)
+
+    // Ease the framing toward a square around the net, never narrower than 300 units, so two agents do not fill it.
+    val b = net.layoutBounds(padding = 70.0)!!
+    val cx = (b[0] + b[2]) / 2
+    val cy = (b[1] + b[3]) / 2
+    val half = max(150.0, max(b[2] - b[0], b[3] - b[1]) / 2)
+    val target = [cx - half, cy - half, cx + half, cy + half]
+    view = DoubleArray(4) { view[it] + (target[it] - view[it]) * 0.12 }
+    display("net", net.toPngBytes(540, 540, view))
+
+    val answer = if (finished) " · reads back as ${LambdaTerms.format(LambdaTerms.readback(compiled))}" else ""
+    display(
+        "stats",
+        "<div style='font-family:monospace;font-size:14px'>$term · step $steps · $lastRule · " +
+            "${net.nodes.size} agents$answer</div>",
+    )
+    frame()
+}
+```
+
+That is `(λx. x x) (λy. y)`, a small term that exercises several kinds of agent. The compiled net has 6 agents: ROOT, two APP, two LAM and one DUP, the fan for `x`, which is used twice. Each `beta-linear` leaves two `DELIM` scope delimiters behind, and the three reactions after it (`delim-root`, `delim-lam`, `delim-delim`) walk them out of the way. In between, `dup-lam` copies the abstraction, so the count rises to 6 with two fans facing each other, and `fan-fan` cancels the matched pair. Ten reactions later, 2 agents are left holding `λa. a`. The framing follows the net as it grows and shrinks, so compare the agent counts in the caption rather than the sizes of the drawings.
 
 A term with no normal form never finishes reducing, so `normalise` takes a `maxSteps` and leaves `Run.finished` false when it runs out. `Run.steps` counts every reaction, fan meetings and erasures included, so it is larger than the number of β-steps.
 
@@ -381,6 +424,130 @@ loop {
 
 `NetPrograms.run(program)` does the same reduction without drawing and returns a `Run`: the answer, the number of reactions, the number of rounds, the widest round and any pair left with no rule. `NetPrograms.queens(size)` builds this program for any board up to 16, and `NetPrograms.queensReference(size)` counts by ordinary backtracking to check it. Four queens takes 1,393 reactions in 133 rounds, and six takes 13,183 in 253. The number of rounds grows much more slowly than the number of reactions, because most of the extra work happens in parallel.
 
+## From a program to a net
+
+`NetPrograms.compile` turns each definition into a template: a small net with one loose port, which is where the caller plugs in. A definition with parameters starts with one `CON` per parameter, chained so that the call's arguments, also a chain of `CON`s, meet them head on and annihilate pair by pair. A number is a `NUM`. An operator is an `OP2` whose principal port faces its left operand, so it waits for that operand to become a number, turns into an `OP1` holding it, then waits for the right one. A call is a `REF` with the arguments applied to it.
+
+Two things in a program are not wires. A name used more than once, a parameter or a `let`, gets a `DUP` fan with one branch per use, and its value flows into the fan's principal port. That port is wired to the place the value comes out, never to the expression itself, so the fan sits idle until the value is a number and then copies only the number: `let` shares the work rather than the code. A name used nowhere gets an `ERA`.
+
+A `switch` is lifted. Each branch becomes a definition of its own, named after the definition it came from (`sum$z0` for the zero branch of the first switch in `sum`, `sum$s0` for the other), taking the branch's free variables as parameters, with the predecessor first. In its place the compiler leaves an `SWI` holding a pair of the two `REF`s. When a number meets the `SWI`, the `switch` rule picks one `REF` and hands the other to a fresh `ERA`, so the branch not taken costs one reaction and none of its body is ever stamped into the net.
+
+The box below compiles `sum`, which adds up the numbers from `k` down to 1, and runs `sum(3)`. Its first card lists the templates the compiler made; the drawings show `main` as compiled, the net halfway through, and the answer. `k` is used twice, once by the `switch` and once in the addition, so the template for `sum` carries a `DUP`.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/interaction_nets_examples/program_to_net.png" alt="three stages of sum(3) with a summary card over each: main as compiled, 4 nodes and 1 active pair, a REF meeting a CON; after 14 rounds, 11 nodes and 2 active pairs, a DUP meeting a NUM and an OP2 meeting a NUM; after 28 rounds, 2 nodes, a NUM wired to the ROOT. A card at the right lists the templates: sum 7 agents, main 3, sum$z0 3, sum$s0 5. Below, the three drawings: a small star of four agents, a tangle of about a dozen, and two agents joined by one wire" wait="2.0" capture="box" open-outputs="true" embed=true name="interaction-program-to-net" w="1240" padding="12" scale="2"}
+:::static
+val program = netProgram {
+    def("sum", "k") {
+        switch(v("k"), zero = n(0), pred = "p") { v("k") + call("sum", v("p")) }
+    }
+    main { call("sum", n(3)) }
+}
+
+val compiled = NetPrograms.compile(program)
+val net = NetPrograms.instantiate(compiled)
+val reducer = Reducer(NetPrograms.rules(compiled), relaxIterations = 0)
+val rounds = NetPrograms.run(program).rounds
+
+net.relax(60)
+val before = stage("main, as compiled", net.toFLines(), net.summaryHtml("main, as compiled", maxNodes = 0))
+repeat(rounds / 2) { reducer.stepFrontier(net) }
+net.relax(60)
+val middle = stage("after ${rounds / 2} rounds", net.toFLines(), net.summaryHtml("after ${rounds / 2} rounds", maxNodes = 0))
+while (reducer.stepFrontier(net).isNotEmpty()) { }
+net.relax(20)
+val after = stage("after $rounds rounds", net.toFLines(), net.summaryHtml("after $rounds rounds", maxNodes = 0))
+
+val templates = compiled.templates.joinToString("<br>") { "${it.name}: ${it.size} agents" }
+showInteractionStages(
+    before,
+    middle,
+    after,
+    cards = ["<div><b>Templates</b><br>$templates</div>"],
+    channel = "overview",
+    graphicTitle = "sum(3): compiled, halfway, answer",
+)
+
+println("sum(3) = ${NetPrograms.resultOf(net)} in $rounds rounds; templates: " +
+    compiled.templates.joinToString { "${it.name} ${it.size}" })
+```
+
+## A small gallery of programs
+
+`NetPrograms.run` reduces a program without drawing it and returns a `Run`. Its `perRound` lists how many reactions each round fired, which is a picture of the parallelism: a round of 1 is a moment where everything waits on one reaction, and a wide round is many independent pieces of work happening at once.
+
+The box below runs four programs and plots the first three; the fourth would flatten the others, so it appears only in the table. `sum` from the section above, on 40. `fib`, the doubly recursive Fibonacci, on 15, written with two nested `switch`es so that each call tests for 0 and then for 1. And two ways of computing 2¹² by doubling: `pow` names the recursive result with `let` and adds it to itself, while `pow2` writes the call out twice. Next to each it counts the calls the same function makes when run by ordinary recursion in Kotlin.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/interaction_nets_examples/program_gallery.png" alt="a line plot of reactions fired per round for sum 40, fib 15 and pow 12 with let: fib rises to a hump of about 600 reactions around round 100 and falls away by round 190, while sum and pow stay flat near the axis. Below it a table: sum 40 answers 820 in 449 reactions, 287 rounds, widest round 2, peak 53 agents, 41 Kotlin calls; fib 15 answers 610 in 25734 reactions, 193 rounds, widest 622, peak 3713 agents, 1973 calls; pow 12 with let answers 4096 in 127 reactions, 102 rounds, widest 2, peak 32 agents, 13 calls; pow2 12 written twice answers 4096 in 65526 reactions, 90 rounds, widest 6144, peak 32768 agents, 8191 calls" wait="3.0" capture="box" open-outputs="true" embed=true name="interaction-program-gallery" w="760" padding="12"}
+:::static
+val sum = netProgram {
+    def("sum", "k") { switch(v("k"), zero = n(0), pred = "p") { v("k") + call("sum", v("p")) } }
+    main { call("sum", n(40)) }
+}
+val fib = netProgram {
+    def("fib", "k") {
+        switch(v("k"), zero = n(0), pred = "j") {
+            switch(v("j"), zero = n(1), pred = "i") { call("fib", v("i") + n(1)) + call("fib", v("i")) }
+        }
+    }
+    main { call("fib", n(15)) }
+}
+val shared = netProgram {
+    def("pow", "k") { switch(v("k"), zero = n(1), pred = "p") { let("h", call("pow", v("p"))) { v("h") + v("h") } } }
+    main { call("pow", n(12)) }
+}
+val unshared = netProgram {
+    def("pow2", "k") { switch(v("k"), zero = n(1), pred = "p") { call("pow2", v("p")) + call("pow2", v("p")) } }
+    main { call("pow2", n(12)) }
+}
+
+// The same functions by ordinary recursion, counting calls.
+var calls = 0
+fun sumK(k: Int): Long { calls++; return if (k == 0) 0 else k + sumK(k - 1) }
+fun fibK(k: Int): Long { calls++; return if (k < 2) k.toLong() else fibK(k - 1) + fibK(k - 2) }
+fun powK(k: Int): Long { calls++; return if (k == 0) 1 else powK(k - 1).let { it + it } }
+fun pow2K(k: Int): Long { calls++; return if (k == 0) 1 else pow2K(k - 1) + pow2K(k - 1) }
+fun counted(f: () -> Long): Pair<Long, Int> { calls = 0; val v = f(); return v to calls }
+
+val rows = [
+    Triple("sum 40", sum, counted { sumK(40) }),
+    Triple("fib 15", fib, counted { fibK(15) }),
+    Triple("pow 12, let", shared, counted { powK(12) }),
+    Triple("pow2 12, twice", unshared, counted { pow2K(12) }),
+]
+val runs = rows.map { it.first to NetPrograms.run(it.second) }
+
+showSignals(
+    // pow2 peaks above 6,000 reactions a round and would flatten the others; the table carries it.
+    *runs.take(3).map { (name, run) -> name to run.perRound }.toTypedArray(),
+    channel = "rounds",
+    title = "reactions fired in each round",
+    xTitle = "round",
+    yTitle = "reactions",
+    width = 720,
+    height = 340,
+    floatingLegend = true,
+)
+
+val table = StringBuilder("| program | answer | reactions | rounds | widest round | peak agents | Kotlin calls |\n")
+table.append("| --- | --- | --- | --- | --- | --- | --- |\n")
+rows.zip(runs).forEach { (row, named) ->
+    val run = named.second
+    table.append("| ${row.first} | ${run.value} | ${run.interactions} | ${run.rounds} | ${run.widest} | ${run.peakAgents} | ${row.third.second} |\n")
+    println("${row.first}: value=${run.value} reference=${row.third.first} interactions=${run.interactions} " +
+        "rounds=${run.rounds} widest=${run.widest} peak=${run.peakAgents} calls=${row.third.second} " +
+        "stuck=${run.stuck} rules=${run.ruleCounts}")
+}
+markdown("table", table.toString())
+```
+
+The table holds the numbers. `sum` on 40 is 820 after 449 reactions in 287 rounds, and no round fires more than 2: each call has to know its `k` before it can start the next, so there is nothing to do side by side. `fib` on 15 is 610 after 25,734 reactions, but they take only 193 rounds, because the two recursive calls never wait for each other; the hump in the plot is the point where the tree of calls is widest, with 622 reactions in one round.
+
+The two doublings give the same 4,096 and show what `let` buys. With `let`, the result of each call is copied once it is a number, so `pow` makes 13 calls and takes 127 reactions. Written twice, every call is made twice: `pow2` takes 65,526 reactions and reaches 32,768 agents. It finishes in fewer rounds, 90 against 102, because its 2¹³ − 1 calls all run side by side, as many as 6,144 reactions in one round. In both cases the net does what ordinary recursion would: the Kotlin call counts in the last column, 13 and 8,191, grow the same way the reactions do. The reduction does not notice that the two calls in `pow2` are the same; sharing is something you write with `let`.
+
+A reaction is much smaller than a function call (a call to `fib` is about thirteen of them: expanding the `REF`, meeting the arguments, the two `switch`es, the arithmetic), so compare the columns by how they grow, not by their size.
+
+
+
 ## Reference
 
 Building and wiring, inside `net { }`:
@@ -450,6 +617,7 @@ Looking at it:
 | `Lambda.fan(level)` / `Lambda.levelOf(node)` | A `NodeState` for a duplication (or `DELIM`) agent at a level, or the level of one. Without a level it is zero. Two agents of one kind and level annihilate; otherwise they copy each other. |
 | `Reducer(rules, order, layout, relaxIterations)` | Configures reduction and optional force-directed layout together. Set `relaxIterations = 0` to avoid quadratic layout work in a headless run. |
 | `reducer.stepFrontier(net, relaxIterations)` | Fires every pair that is ready, then relaxes once. One call is one round; the number of rounds is the reduction's longest chain of reactions that wait on each other. |
+| `run.perRound` / `run.ruleCounts` | The reactions each round fired, and how often each rule fired, from `NetPrograms.run`. Plot `perRound` to see a program's parallelism. |
 | `netProgram { val f by fn(); f.def { x -> … }; main { f(1) } }` | Builds a `NetProgram` of functions over whole numbers. `NetPrograms.compile`, `instantiate` and `rules` turn it into a net and the rules that run it; `NetPrograms.run` reduces it headless. |
 | `net.toPngBytes(width, height, view)` / `net.layoutBounds()` | Draws the net into a PNG for `display`, fitting the world rectangle `view`. Use it when a redrawn net has more than a few hundred agents. |
 
@@ -457,7 +625,12 @@ Looking at it:
 
 [`Lambda.duplicatedConstantDemo()`](reference/visualization.md#interactionnets-kt--lambda--duplicatedconstantdemo) and [`Lambda.eraseApplicationDemo()`](reference/visualization.md#interactionnets-kt--lambda--eraseapplicationdemo) build the nets used in the duplication and erasure examples above.
 
-See also: [A λ-term you can hear](chain_lambda_sound.md), [Petri nets](petri_nets.md).
+## Where to go next
+
+- [A λ-term you can hear](chain_lambda_sound.md) turns the λ reductions on this page into sound and measures how scheduling changes them.
+- [Petri nets](petri_nets.md) is the other kind of rewriting net in Field.
+- The source is [`netprograms.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/data/graph/netprograms.kt) and [`interactionnets.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/data/graph/interactionnets.kt).
+- Open questions: `pow2` shows that the net never shares work you did not name with `let`; a pass that finds repeated calls and introduces the `let` itself would make it as cheap as `pow`. `sum` never fires more than 2 reactions a round, and an accumulator version (`sum(k, acc)`) would show whether that is the program or the reducer. Drawing the gallery's nets per round, as the five-queens video does, would show where `fib`'s hump of 622 reactions sits in the net.
 
 *The public declarations used on this page are listed, with their KDoc, in the codebase reference: [`interactionnets.kt`](reference/visualization.md#interactionnets-kt). To normalise terms, draw a reduction and check the reducer against an ordinary evaluator in
 Field, open the [interaction_nets_lambda](agent_transcripts.md#interaction_nets_lambda) starting point.*

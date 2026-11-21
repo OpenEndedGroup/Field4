@@ -35,6 +35,14 @@ Usage:
     python3 tools/worktree_seed.py add [-C REPO] [--source DIR] [-b NEW | -B NEW | --detach] PATH [COMMIT-ISH]
     python3 tools/worktree_seed.py seed WORKTREE [--source DIR]   # re-share an existing worktree
     python3 tools/worktree_seed.py measure PATH...                 # files, logical and private bytes
+    python3 tools/worktree_seed.py claude-worktree-create < HOOK_JSON  # Claude Code's WorktreeCreate hook
+
+`claude-worktree-create` is what `.claude/settings.json` runs in place of Claude Code's own
+`git worktree add`, for `claude --worktree`, `EnterWorktree` and agents with `isolation: "worktree"`.
+It reads the hook's JSON (`name`, `cwd`) on stdin, creates `<primary>/.claude/worktrees/<name>` on
+branch `claude/<name>` from `main`, and prints that path as its only line of stdout, which is the
+hook's whole contract. With no `WorktreeRemove` hook Claude removes the worktree itself, as
+`git worktree remove --force` would, and leaves the branch for the reaper.
 
 Stdlib only and Python 3.9 compatible, for the routines' shell scripts.
 """
@@ -43,7 +51,10 @@ from __future__ import annotations
 
 import argparse
 import dataclasses
+import json
 import os
+import re
+import shutil
 import stat
 import subprocess
 import sys
@@ -285,6 +296,61 @@ def add_worktree(repo: Path, path: Path, commitish: Optional[str] = None, *, new
     return result
 
 
+CLAUDE_BRANCH_PREFIX = "claude/"
+_HOOK_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
+
+
+def claude_worktree_create(payload: Dict[str, object], *, project: Optional[Path] = None,
+                           env: Optional[Dict[str, str]] = None) -> Path:
+    """Claude Code's `WorktreeCreate` hook: the seeded worktree for [payload]'s `name`.
+
+    The worktree goes where Claude's own would, `<primary>/.claude/worktrees/<name>`, so the reaper
+    and the desktop app find it, on branch `claude/<name>`. A new branch starts at `main` (`HEAD` if
+    the repository has none); a `claude/<name>` that already exists and is checked out nowhere is
+    checked out as it stands, so a resumed name keeps its commits. Raises `ValueError` for a name
+    that is not a plain slug and `CalledProcessError` when git refuses, which fails the hook.
+    """
+    name = str(payload.get("name") or "")
+    if not _HOOK_NAME.fullmatch(name) or ".." in name:
+        raise ValueError(f"not a worktree name: {name!r}")
+    start = Path(project or str(payload.get("cwd") or os.getcwd()))
+    repo = primary_checkout(start, env) or Path(_git(start, "rev-parse", "--show-toplevel", env=env).decode().strip())
+    path = repo / ".claude" / "worktrees" / name
+    if path.exists():
+        raise ValueError(f"{path} already exists")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    branch = CLAUDE_BRANCH_PREFIX + name
+
+    def has(ref: str) -> bool:
+        return subprocess.run(["git", "-C", str(repo), "rev-parse", "--verify", "--quiet", ref],
+                              env=scrubbed_env(env), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+
+    if has(f"refs/heads/{branch}"):
+        result = add_worktree(repo, path, branch, env=env)
+    else:
+        result = add_worktree(repo, path, "main" if has("refs/heads/main") else "HEAD", new_branch=branch, env=env)
+    print(result.summary(), file=sys.stderr)
+    # Ignored, so never checked out, and the JS build needs it (as tools/docs_notes.py does).
+    lock = repo / "kotlin-js-store" / "yarn.lock"
+    if lock.is_file() and not (path / "kotlin-js-store" / "yarn.lock").exists():
+        (path / "kotlin-js-store").mkdir(exist_ok=True)
+        if not try_clone(lock, path / "kotlin-js-store" / "yarn.lock"):
+            shutil.copy2(lock, path / "kotlin-js-store" / "yarn.lock")
+    return path
+
+
+def _claude_hook_main(stdin: str) -> int:
+    try:
+        payload = json.loads(stdin or "{}")
+        project = os.environ.get("CLAUDE_PROJECT_DIR")
+        path = claude_worktree_create(payload, project=Path(project) if project else None)
+    except (ValueError, subprocess.CalledProcessError) as failure:
+        print(f"worktree_seed: WorktreeCreate failed: {failure}", file=sys.stderr)
+        return 1
+    print(path)  # the hook's contract: the worktree path, alone, as the last line of stdout
+    return 0
+
+
 def human(size: int) -> str:
     for unit, scale in (("GiB", 2**30), ("MiB", 2**20), ("KiB", 2**10)):
         if size >= scale:
@@ -317,7 +383,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     seed.add_argument("--source")
     measure = sub.add_parser("measure", help="files, logical and APFS-private bytes under each path")
     measure.add_argument("paths", nargs="+")
+    sub.add_parser("claude-worktree-create", help="Claude Code's WorktreeCreate hook (JSON on stdin)")
     args = parser.parse_args(argv)
+    if args.command == "claude-worktree-create":
+        return _claude_hook_main(sys.stdin.read())
     if args.command == "measure":
         return _measure(args.paths)
     if args.command == "seed":
