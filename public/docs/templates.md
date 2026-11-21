@@ -65,7 +65,7 @@ parentHint = "Connect under a renderer: select the renderer box, then this one, 
 ```
 
 The hint is saved with the box, so set it once, save the template, and every copy shows it. The
-bundled `sky` and `gpu-particles` templates carry one.
+bundled `sky`, `gpu-particles`, `rectsl-playground` and `shadertoy-pass` templates carry one.
 
 ## Insert a template
 
@@ -157,6 +157,8 @@ one to three boxes; none runs when inserted.
 | `renderer` | 1 | A window and a Vulkan renderer for graphics boxes to hang beneath. [Field 4 graphics](afield_four_graphics.md) |
 | `sky` | 1 | A physically based sky with sliders for the sun, altitude and exposure, drawn behind everything else under its renderer. [An atmospheric sky](afield_four_graphics.md#atmospheric-sky) |
 | `gpu-particles` | compute, draw | 100 000 particles moved by a compute shader, and a box beneath it that draws them. |
+| `rectsl-playground` | 1 | A live RectSL program with play, loop, speed and time controls, drawn under its renderer. [RectSL examples](rectsl_examples.md) |
+| `shadertoy-pass` | 1 | A ShaderToy-style Image pass: paste a `mainImage` and it draws in the renderer's window. |
 | `first-steps` | 1 | A moving drawing to edit while it runs. |
 | `first-graphics` | renderer, triangle | A Vulkan window and a triangle beneath it. |
 | `timeSlider` | 1 | A vertical line that launches and stops the boxes it passes over. |
