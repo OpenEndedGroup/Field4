@@ -162,6 +162,41 @@ Use an explicit path for a file that lives outside the document, such as a datas
 copy in. Someone opening the document on another machine will need to provide that file and adjust
 the path. If you refer to the same external directory more than once, give it a name as a root.
 
+## Completing a path as you type
+
+Press ++ctrl+space++ inside a string that already looks like a path and the completion panel lists
+files instead of Kotlin. "Looks like a path" means one of the spellings above: absolute,
+`"~/…"`, `"%name/…"` (or just `"%"`, which lists the names), or a relative path such as
+`"scans/…"` whose folder exists in the document's `files/`. Picking a folder goes straight on to
+what is inside it, so you can walk down a path one segment at a time. A string that
+looks like nothing in particular, such as `"<div>"` or `"https://…"`, gets ordinary completion.
+
+Some parameters say more about what they want. `Rhino3dm.load("…")` lists folders and `.3dm`
+files, and starts from the document's `files/` even before you have typed a `/`, because its
+`path` parameter is declared like this:
+
+```diffstatic {data-lang=kotlin}
+fun load(@CompletesPath("*.3dm") path: String, ...): RhinoModel
+```
+
+`@CompletesPath` takes the same `mask` a [file chooser](visualizers.md#choosing-a-file) does, a `root` for relative
+paths (a FileManager spec; blank is the document's `files/`), and `chooseDirectory`. When the
+argument is not a file at all, `@CompletesWith` names an object that computes the strings to offer,
+asked again each time the panel opens:
+
+```diffstatic {data-lang=kotlin}
+object ModelLayers : StringCompletions {
+    override fun candidates(context: StringCompletionContext) =
+        Rhino3dm.load("model.3dm").layers.map { it.name }
+}
+
+fun showLayer(@CompletesWith(ModelLayers::class) name: String) { ... }
+```
+
+`context` carries the box being edited and what has been typed so far. Field finds these
+annotations by reflection on compiled code, so they work on functions in Field itself and in your
+`src/personal` layer, not on a function declared in a box.
+
 ## When resolution fails
 
 <div class="field-reference" data-code-lang="kotlin" markdown>

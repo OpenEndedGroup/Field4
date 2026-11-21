@@ -2,6 +2,7 @@
 
 package afield.geometry.rhino
 
+import afield.document.workspace.FileManager
 import afield.geometry.mesh.TriMesh
 import afield.geometry.path.FLine
 import afield.graphics.render.color
@@ -9,6 +10,7 @@ import afield.graphics.render.filled
 import afield.math.linalg.Vec3
 import afield.math.linalg.Vec4
 import afield.math.linalg.vec
+import afield.runtime.completion.CompletesPath
 import java.io.File
 import java.lang.foreign.Arena
 import java.lang.foreign.FunctionDescriptor
@@ -53,13 +55,20 @@ import kotlin.io.path.exists
  */
 object Rhino3dm {
 
-    /** Read [path]; a leading `~` is your home directory. Throws [RhinoException] for a file openNURBS cannot read. */
+    /**
+     * Read [path], resolved as `path.file` resolves it: absolute, `~/…`, `%name/…`, or a name in the
+     * document's `files/`. Throws [RhinoException] for a file openNURBS cannot read.
+     */
     fun load(
-        path: String,
+        @CompletesPath("*.3dm") path: String,
         meshing: RhinoBrepMeshing = RhinoBrepMeshing.SAVED_ELSE_EVALUATE,
         tolerance: Double? = null,
         subdLevel: Int = 3,
-    ): RhinoModel = load(File(path.replaceFirst(Regex("^~(?=/|$)"), System.getProperty("user.home"))), meshing, tolerance, subdLevel)
+    ): RhinoModel {
+        val home = File(path.replaceFirst(Regex("^~(?=/|$)"), System.getProperty("user.home")))
+        val file = if (home.isAbsolute) home else runCatching { FileManager.current().file(path) }.getOrElse { home }
+        return load(file, meshing, tolerance, subdLevel)
+    }
 
     /**
      * Read [file]. Throws [RhinoException] for a file openNURBS cannot read.
