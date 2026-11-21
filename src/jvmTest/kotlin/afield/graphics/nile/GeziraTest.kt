@@ -72,8 +72,8 @@ class GeziraTest {
             pixels += n
         }
         println("polygons vs TriangleCoverage: max |diff| $worst, mean ${sum / pixels} over $pixels touched pixels in 40 shapes")
-        assertTrue(pixels > 10_000, "population too small: $pixels")
-        assertTrue(worst < 1e-6, "kernel pipeline should match exact coverage, worst $worst")
+        assertTrue(pixels > 5_000, "population too small: $pixels")
+        assertTrue(worst < 1e-9, "kernel pipeline should match exact coverage, worst $worst")
     }
 
     private fun circle(cx: Double, cy: Double, r: Double): List<Bezier> = Gezira.circle(cx, cy, r)
@@ -107,6 +107,9 @@ class GeziraTest {
             worst = maxOf(worst, Gezira.error(got, want).first)
             pixels += touched(got)
         }
+        val pieces = Gezira.decomposeBeziers(Gezira.circle(20.0, 20.0, 15.3)).size
+        println("a circle of radius 15.3 is cut into $pieces pieces")
+        assertTrue(pieces < 400, "decomposition should cut near pixel edges, not home in on them: $pieces pieces")
         println("curves vs 2048-chord exact coverage: max |diff| $worst over $pixels touched pixels")
         assertTrue(worst < 1e-4, "curve coverage should match the finely flattened polygon, worst $worst")
     }

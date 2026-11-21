@@ -32,8 +32,8 @@ class Bezier(val p: DoubleArray) {
     /** 1 for a line, 2 for a quadratic, 3 for a cubic. */
     val degree get() = p.size / 2 - 1
 
-    /** The two halves at `t = 0.5`, by de Casteljau. */
-    fun split(): Pair<Bezier, Bezier> {
+    /** The two parts either side of [t], by de Casteljau. */
+    fun split(t: Double = 0.5): Pair<Bezier, Bezier> {
         val n = p.size / 2
         val left = DoubleArray(p.size)
         val right = DoubleArray(p.size)
@@ -44,8 +44,8 @@ class Bezier(val p: DoubleArray) {
             right[2 * (n - 1 - level)] = w[2 * (n - 1 - level)]
             right[2 * (n - 1 - level) + 1] = w[2 * (n - 1 - level) + 1]
             for (i in 0 until n - 1 - level) {
-                w[2 * i] = 0.5 * (w[2 * i] + w[2 * i + 2])
-                w[2 * i + 1] = 0.5 * (w[2 * i + 1] + w[2 * i + 3])
+                w[2 * i] += t * (w[2 * i + 2] - w[2 * i])
+                w[2 * i + 1] += t * (w[2 * i + 3] - w[2 * i + 1])
             }
         }
         return Bezier(left) to Bezier(right)
@@ -110,14 +110,43 @@ object Gezira {
         return b.maxX() <= cx + 1 && b.maxY() <= cy + 1
     }
 
-    /** Split each curve in half, pushing both halves back, until each piece fits one pixel. */
+    /**
+     * Where to cut [b]: at a pixel edge its endpoints lie on opposite sides of, found by bisecting
+     * on `t`, with the cut point set exactly onto the edge; otherwise in half. Cutting at pixel edges
+     * keeps the number of pieces near the number of pixels the curve crosses; halving alone would
+     * home in on each crossing for ~30 levels.
+     */
+    fun cut(b: Bezier): Pair<Bezier, Bezier> {
+        val n = b.p.size
+        for (c in 0..1) {
+            val a0 = b.p[c]
+            val a1 = b.p[n - 2 + c]
+            var g = ceil(min(a0, a1))
+            if (g == min(a0, a1)) g += 1.0
+            if (g >= max(a0, a1)) continue
+            var lo = 0.0
+            var hi = 1.0
+            val rising = a1 > a0
+            repeat(60) {
+                val mid = 0.5 * (lo + hi)
+                if ((b.at(mid, c) < g) == rising) lo = mid else hi = mid
+            }
+            val (l, r) = b.split(0.5 * (lo + hi))
+            l.p[n - 2 + c] = g
+            r.p[c] = g
+            return l to r
+        }
+        return b.split()
+    }
+
+    /** Cut each curve, pushing both parts back, until each piece fits one pixel. */
     val decomposeBeziers: Stage<Bezier, Bezier> = kernel("DecomposeBeziers") {
         each { b ->
             val tiny = max(b.maxX() - b.minX(), b.maxY() - b.minY()) < TINY
             if (fitsOnePixel(b) || tiny) {
                 emit(b)
             } else {
-                val (l, r) = b.split()
+                val (l, r) = cut(b)
                 push(r)
                 push(l)
             }
