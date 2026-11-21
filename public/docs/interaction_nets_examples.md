@@ -632,7 +632,6 @@ Looking at it:
 
 - [A λ-term you can hear](chain_lambda_sound.md) turns the λ reductions on this page into sound and measures how scheduling changes them.
 - [Petri nets](petri_nets.md) is the other kind of rewriting net in Field.
-- [Staging](staging.md) is the before-and-after layout `showInteractionStages` uses for the stage figures on this page.
 - The source is [`netprograms.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/data/graph/netprograms.kt) and [`interactionnets.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/data/graph/interactionnets.kt).
 - Open questions: `pow2` shows that the net never shares work you did not name with `let`; a pass that finds repeated calls and introduces the `let` itself would make it as cheap as `pow`. `sum` never fires more than 2 reactions a round, and an accumulator version (`sum(k, acc)`) would show whether that is the program or the reducer. Drawing the gallery's nets per round, as the five-queens video does, would show where `fib`'s hump of 622 reactions sits in the net.
 
