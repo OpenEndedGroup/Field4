@@ -1,0 +1,3 @@
+doc: |
+  A Lua root (LuaJIT) and one Lua box under it. Connect more boxes under the root
+  for more Lua.

@@ -38,6 +38,19 @@ The template is a snapshot of the boxes when you save them. You can keep editing
 the template stays as it was. Save over it and future insertions use the new version, while copies
 you've already made stay as they are.
 
+### Make a template safe to insert twice
+
+A template is dropped into documents that already have boxes of their own, often more than once.
+Each copy gets new uids but keeps its box names, so a template keeps working when:
+
+- its boxes find each other through connections (a parent's `prop`, read by the child beneath
+  it), not by name. `box("Rates")` finds whichever `Rates` it reaches first, and with two copies
+  that may be the other copy's.
+- it writes nothing document-wide. `rootProp`, `@rootExported` and `sharedTypes` are shared by
+  every box, so a second copy overwrites the first.
+- it opens no fixed port or service name that a second copy would collide with.
+- it leaves **autorun** off, so inserting it changes nothing until you run it.
+
 ## Insert a template
 
 Move the mouse to where you want the copy, press ++cmd+t++ and start typing the name. The
@@ -100,6 +113,29 @@ doc: |
 ```
 
 A template with no `doc` anywhere shows "No documentation available".
+
+## Templates that come with Field
+
+The checkout's `templates/` folder holds these, listed in the palette as Bundled templates. Each is
+one to three boxes; none runs when inserted.
+
+| Template | Boxes | What it adds |
+| --- | --- | --- |
+| `python-cell` | root, cell | A Python root and one Python cell under it. More boxes connected under the root are more cells in the same namespace. [Python](python.md) |
+| `lua-cell` | root, box | A Lua root and one Lua box under it. [Lua](lua.md) |
+| `pd-patch` | root, patch | A Pure Data root and a filtered saw drone; launch it, then run a `freq 330` line on its own. [Pure Data](pure_data.md) |
+| `clojure-cell` | root, box | A Clojure root and one Clojure box with a slider. [Clojure](clojure.md) |
+| `csound-instrument` | root, instrument | A Csound root and a plucked string with a reverb, played by its score and by any MIDI keyboard. [Csound](csound.md) |
+| `parameter-parent` | parent, child | A parent that publishes `level` with a slider, and a child that draws it. Any box connected under the parent reads the same `level`. [Property inheritance](running_code.md#property-inheritance-how-children-see-a-parents-values) |
+| `keyframe-lane` | 1 | A hand-edited curve played on a four-second loop into a meter, and published as `lane` to the boxes under it. [Keyframe editor](keyframe_editor.md) |
+| `midi-learn` | 1 | A control group with a MIDI learn button, listening to the first hardware MIDI input while it runs. [MIDI learn](visualizers.md#midi-learn) |
+| `watch` | 1 | A live `tree()` of values you choose, kept current while the box runs. [Trees and columns](visualizers.md#trees-and-columns) |
+| `drawing-listener` | 1 | A handler for each stroke drawn by hand on the drawing layer. [Listening to the drawing](drawing_and_notation.md#listening-to-the-drawing) |
+| `record-and-explore` | 1 | Records three seconds of everything running in the document and opens the profiling timeline. [Profiling timeline](profiling_timeline.md) |
+| `orca` | 1 | An ORCA grid in a box output, playing through a synth. [ORCA](orca.md) |
+| `first-steps` | 1 | A moving drawing to edit while it runs. |
+| `first-graphics` | renderer, triangle | A Vulkan window and a triangle beneath it. |
+| `timeSlider` | 1 | A vertical line that launches and stops the boxes it passes over. |
 
 ## A copy remembers where it came from
 

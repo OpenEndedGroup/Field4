@@ -1,0 +1,3 @@
+doc: |
+  A parent that publishes `level` with a slider, and a child that reads it. Connect
+  any box under the parent and it reads the same `level`; one under the child does too.

@@ -1,0 +1,3 @@
+doc: |
+  A handler for strokes drawn by hand on the drawing layer: each finished stroke arrives
+  with its points, its length and the box it was drawn over.
