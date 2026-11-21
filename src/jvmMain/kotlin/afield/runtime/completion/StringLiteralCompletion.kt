@@ -44,13 +44,16 @@ annotation class CompletesPath(val mask: String = "", val root: String = "", val
  * completion offers what [provider] returns, asked afresh each time the popup opens.
  *
  * ```kotlin
- * object LayerNames : StringCompletions {
- *     override fun candidates(context: StringCompletionContext) = currentModel?.layers?.map { it.name }.orEmpty()
+ * object LayerPaths : StringCompletions {
+ *     override fun candidates(context: StringCompletionContext) =
+ *         (context.receiver as? RhinoModel)?.layers?.map { it.path }.orEmpty()
  * }
- * fun layer(@CompletesWith(LayerNames::class) name: String): Layer
+ * fun layer(@CompletesWith(LayerPaths::class) name: String): RhinoLayer
  * ```
  *
- * [provider] is an `object`, or a class with a no-argument constructor.
+ * [provider] is an `object`, or a class with a no-argument constructor. For a member function it is
+ * handed the object the call is on, when that is a box variable that has already run; see
+ * [StringCompletionContext.receiver].
  */
 @Retention(AnnotationRetention.RUNTIME)
 @Target(AnnotationTarget.VALUE_PARAMETER)
@@ -65,8 +68,19 @@ fun interface StringCompletions {
 /**
  * Where a [StringCompletions] is being asked: [typed] is the literal's text up to the caret, [box] the box
  * being edited, and [callable] / [parameter] the call and parameter name the literal is an argument for.
+ *
+ * @property receiver the live object the call is on: in `model.layer("`, the value `model` holds now, if
+ * `model` is a variable of the box that has already run. Completion evaluates nothing, so it is null
+ * for an expression receiver (`load("x.3dm").layer("`), a variable not yet run, a local inside a
+ * function or lambda, and a call with no receiver.
  */
-class StringCompletionContext(val box: Box, val typed: String, val callable: String, val parameter: String)
+class StringCompletionContext(
+    val box: Box,
+    val typed: String,
+    val callable: String,
+    val parameter: String,
+    val receiver: Any? = null,
+)
 
 /**
  * Completion inside a Kotlin string literal, ahead of Kotlin completion (which has nothing to say there).
@@ -147,7 +161,9 @@ object StringLiteralCompletion {
     private fun choices(box: Box, annotation: CompletesWith, call: CallSite, literal: Literal, position: Int): Completion {
         val provider = runCatching { annotation.provider.objectInstance ?: annotation.provider.createInstance() }.getOrNull()
         val candidates = provider?.let {
-            runCatching { it.candidates(StringCompletionContext(box, literal.typed, call.callee, call.parameterName ?: "")) }.getOrNull()
+            runCatching {
+                it.candidates(StringCompletionContext(box, literal.typed, call.callee, call.parameterName ?: "", liveReceiver(box, call)))
+            }.getOrNull()
         }.orEmpty()
         val typed = literal.typed
         val lower = typed.lowercase()
@@ -266,6 +282,13 @@ object StringLiteralCompletion {
         return CallSite(receiver, callee, end, named, frame.commas)
     }
 
+    /** The value a plain-variable receiver holds in [box] right now, or null; nothing is evaluated. */
+    private fun liveReceiver(box: Box?, call: CallSite): Any? {
+        val receiver = call.receiver ?: return null
+        if (box == null || '.' in receiver) return null
+        return box.ki.context.vars[receiver]?.value
+    }
+
     private val functionCache = ConcurrentHashMap<String, List<KFunction<*>>>()
 
     /** The [CompletesPath] or [CompletesWith] on the parameter [call]'s literal binds to, in any overload; null for none. */
@@ -288,7 +311,7 @@ object StringLiteralCompletion {
     private fun candidateFunctions(box: Box?, code: String, call: CallSite): Sequence<KFunction<*>> {
         val receiver = call.receiver
         if (receiver != null) {
-            val live = if (box != null && '.' !in receiver) box.ki.context.vars[receiver]?.value else null
+            val live = liveReceiver(box, call)
             val receiverClass: KClass<*>? = live?.let { it::class }
                 ?: resolveClass(code, receiver)
                 ?: KotlinCompletionSupport.receiverQualifiedNameAtCompletion(box, code, call.calleeEnd)?.let(::classForName)

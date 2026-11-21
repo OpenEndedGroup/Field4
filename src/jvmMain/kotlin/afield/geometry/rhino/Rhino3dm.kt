@@ -11,6 +11,9 @@ import afield.math.linalg.Vec3
 import afield.math.linalg.Vec4
 import afield.math.linalg.vec
 import afield.runtime.completion.CompletesPath
+import afield.runtime.completion.CompletesWith
+import afield.runtime.completion.StringCompletionContext
+import afield.runtime.completion.StringCompletions
 import java.io.File
 import java.lang.foreign.Arena
 import java.lang.foreign.FunctionDescriptor
@@ -329,6 +332,15 @@ class RhinoSkipped internal constructor(
 ) : RhinoObject(name, id, type, layer, color, visible, block)
 
 /**
+ * Completion for a layer argument of a [RhinoModel] already loaded into a box variable: in
+ * `model.layer("` or `model.on("`, the popup offers the full path of every layer in `model`.
+ */
+internal object RhinoLayerPaths : StringCompletions {
+    override fun candidates(context: StringCompletionContext): List<String> =
+        (context.receiver as? RhinoModel)?.layers?.map { it.path }.orEmpty()
+}
+
+/**
  * A read `.3dm` file.
  *
  * @property file where it was read from.
@@ -356,14 +368,14 @@ class RhinoModel internal constructor(
     val skipped: List<RhinoSkipped> get() = objects.filterIsInstance<RhinoSkipped>()
 
     /** The layer whose full path ([RhinoLayer.path]) or, failing that, own name is [name]. */
-    fun layer(name: String): RhinoLayer = layers.firstOrNull { it.path == name }
+    fun layer(@CompletesWith(RhinoLayerPaths::class) name: String): RhinoLayer = layers.firstOrNull { it.path == name }
         ?: layers.singleOrNull { it.name == name }
         ?: throw NoSuchElementException(
             "No layer \"$name\" in ${file.name}; its layers are " + layers.joinToString(", ") { "\"${it.path}\"" },
         )
 
     /** The objects on [layer] and, with [sublayers], on the layers inside it. */
-    fun on(layer: String, sublayers: Boolean = true): List<RhinoObject> {
+    fun on(@CompletesWith(RhinoLayerPaths::class) layer: String, sublayers: Boolean = true): List<RhinoObject> {
         val target = layer(layer)
         return objects.filter { if (sublayers) target.contains(it.layer) else it.layer === target }
     }

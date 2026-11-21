@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 25444 of 42559 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 25444 of 42564 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2046 undocumented entry points** (types, top-level functions and values) and 14327 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2046 undocumented entry points** (types, top-level functions and values) and 14332 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -225,6 +225,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Patch.kt](../src/jvmMain/kotlin/afield/io/dmx/Patch.kt) | Lighting | dmx_lighting, chain_scene_to_light | 0 | 8 | 84% |
 | [RectSLSdfLook.kt](../src/jvmMain/kotlin/afield/lang/rectsl/RectSLSdfLook.kt) | Languages | rectsl_cheatsheet, rectsl_examples | 0 | 8 | 75% |
 | [OpticalFlowOperation.kt](../src/jvmMain/kotlin/afield/media/vision/OpticalFlowOperation.kt) | Imaging | optical_flow | 0 | 8 | 55% |
+| [StringLiteralCompletion.kt](../src/jvmMain/kotlin/afield/runtime/completion/StringLiteralCompletion.kt) | Workspace | files_and_paths | 0 | 8 | 42% |
 | [alife_weight_cube.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_weight_cube.kt) | Simulation | braitenberg_vehicles, agent_transcripts | 0 | 8 | 73% |
 | [AudioCurves.kt](../src/jvmMain/kotlin/afield/audio/analysis/AudioCurves.kt) | Audio | audio_curves | 0 | 7 | 73% |
 | [FLineThickening.kt](../src/jvmMain/kotlin/afield/geometry/path/FLineThickening.kt) | Graphics | fline_examples | 0 | 7 | 70% |
@@ -287,7 +288,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [StackSLEvolution.kt](../src/jvmMain/kotlin/afield/lang/stacksl/evolution/StackSLEvolution.kt) | Search | stacksl_evolve | 0 | 3 | 97% |
 | [FunctionRewritePattern.kt](../src/jvmMain/kotlin/afield/math/functions/FunctionRewritePattern.kt) | Function | functions_examples | 0 | 3 | 78% |
 | [GaussianProcess.kt](../src/jvmMain/kotlin/afield/math/gp/GaussianProcess.kt) | Math | gaussian_processes | 0 | 3 | 94% |
-| [StringLiteralCompletion.kt](../src/jvmMain/kotlin/afield/runtime/completion/StringLiteralCompletion.kt) | Workspace | files_and_paths | 0 | 3 | 66% |
 | [RunScope.kt](../src/jvmMain/kotlin/afield/runtime/lifecycle/RunScope.kt) | Workspace | audio_ai_analysis, audio_ai_corpus_microscope, audio_ai_spectral_embeddings | 0 | 3 | 88% |
 | [alife_flow_lenia.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_flow_lenia.kt) | ALife | alife_examples, agent_transcripts | 0 | 3 | 90% |
 | [alife_particle_lenia_motion.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_particle_lenia_motion.kt) | ALife | particle_lenia | 0 | 3 | 90% |
