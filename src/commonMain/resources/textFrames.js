@@ -2,11 +2,12 @@ import {send, growTextFrame, setTextFrameContents, flushTextFramePropertyEditor,
 import {mountChatAutocomplete} from './aiChatAutocomplete.js';
 import {renderFieldMarkdown} from './markdownView.js';
 import {markdownOffsetAtPoint, revealTextareaCaret} from './markdownCaret.js';
+import {mountRichText, placeRichCaret, pasteRichText, moveBetweenRichBlocks} from './textFrameRichEditor.js';
 import {load, dump, CORE_SCHEMA} from './vendor/js-yaml/js-yaml.mjs';
 
 // Text belongs to the box. DOM, editing state and uncommitted conflict drafts are local to a view.
 const frames = new Map();
-const defaults = {fontFamily: '"Field Etoile", serif', fontSize: 11, fontWeight: 400, fontStyle: 'normal', color: 'inherit', backgroundColor: 'transparent', textAlign: 'left', letterSpacing: 'normal', lineHeight: 1.5, padding: 16, sizing: 'grow', connectionBorderLength: 100, autocomplete: false, minHeight: 80, reflow: true};
+const defaults = {fontFamily: '"Field Etoile", serif', fontSize: 11, fontWeight: 400, fontStyle: 'normal', color: 'inherit', backgroundColor: 'transparent', textAlign: 'left', letterSpacing: 'normal', lineHeight: 1.5, padding: 16, sizing: 'grow', connectionBorderLength: 100, autocomplete: false, minHeight: 80, reflow: true, css: ''};
 const node = (tag, cls, text) => {
     const result = document.createElement(tag);
     result.className = cls;
@@ -19,11 +20,91 @@ const button = (label, action, cls = '') => {
     b.addEventListener('click', action);
     return b;
 };
+let nextStyleId = 0;
+const localStyleProperty = /^(?:color|background-color|opacity|font(?:-[a-z-]+)?|line-height|letter-spacing|word-spacing|text-(?:align|indent|transform|decoration(?:-[a-z-]+)?)|(?:margin|padding)(?:-[a-z-]+)?|border(?:-(?:top|right|bottom|left|block|inline|start|end|width|style|color|radius))*|white-space|overflow-wrap|list-style-type)$/;
+function applyLocalStyle(state, sources) {
+    const signature = JSON.stringify(sources);
+    if (signature === state.localStyleSource) return;
+    state.localStyleSource = signature;
+    state.localStyle?.remove();
+    state.localStyle = null;
+    if (!sources.length) return;
+
+    // Parse off-document. Rebuild individual style rules so document settings cannot introduce
+    // global rules, fetch resources, or select anything outside the two formatted surfaces.
+    const parsed = new CSSStyleSheet();
+    const style = state.localStyle = document.createElement('style');
+    document.head.append(style);
+    const selector = `.text-frame-preview[data-text-frame-style="${state.styleId}"]`;
+    const declarations = document.createElement('span').style;
+    for (const source of sources) {
+        parsed.replaceSync(source);
+        for (const rule of parsed.cssRules) {
+            if (!(rule instanceof CSSStyleRule)) continue;
+            declarations.cssText = '';
+            for (const property of rule.style) if (localStyleProperty.test(property)) {
+                declarations.setProperty(property, rule.style.getPropertyValue(property), rule.style.getPropertyPriority(property));
+            }
+            if (!declarations.length) continue;
+            try {
+                style.sheet.insertRule(`${selector} :is(${rule.selectorText}) { ${declarations.cssText} }`, style.sheet.cssRules.length);
+            } catch (_) { /* Skip selectors that cannot be expressed inside the frame. */ }
+        }
+    }
+}
 function readSettings(source) {
     const raw = load(source || '{}', {schema: CORE_SCHEMA}) ?? {};
     if (typeof raw !== 'object' || Array.isArray(raw)) throw new Error('Text frame settings must be a YAML mapping.');
+    if (raw.css != null && typeof raw.css !== 'string') throw new Error('Text frame css must be a string. Use css: | for multiple lines.');
     return raw;
 }
+const styleSettings = new WeakMap();
+function frameCss(box) {
+    const yaml = box.textFrame;
+    const last = styleSettings.get(box);
+    if (last?.yaml === yaml) return last?.css || '';
+    let css = last?.css || '';
+    try { css = readSettings(yaml).css || ''; } catch (_) { /* Keep the last valid style while typing. */ }
+    styleSettings.set(box, {yaml, css});
+    return css;
+}
+let inheritanceFrame;
+function refreshStyleInheritance() {
+    if (inheritanceFrame != null) return;
+    inheritanceFrame = requestAnimationFrame(() => {
+        inheritanceFrame = null;
+        if (window.fieldPropertySyncPending?.()) { refreshStyleInheritance(); return; }
+        const boxes = new Map([...document.querySelectorAll('.box:not(.tombstoned)')].map(box => [box.uid, box]));
+        for (const state of frames.values()) {
+            if (!boxes.has(state.box.uid)) continue;
+            // Walk breadth first in Field's parent order. CSS sources are applied in reverse so
+            // local rules, then nearer and earlier parents, win when selectors are equally specific.
+            const ordered = [state.box];
+            const seen = new Set([state.box.uid]);
+            for (let i = 0; i < ordered.length; i++) {
+                for (const uid of ordered[i].box_parents || []) {
+                    if (seen.has(uid) || !boxes.has(uid)) continue;
+                    seen.add(uid);
+                    ordered.push(boxes.get(uid));
+                }
+            }
+            const sources = ordered.reverse().map(frameCss).filter(Boolean);
+            if (state.localStyleSource !== JSON.stringify(sources)) {
+                applyLocalStyle(state, sources);
+                layout(state);
+            }
+        }
+    });
+}
+window.refreshTextFrameStyleInheritance = refreshStyleInheritance;
+window.textFrameSettingsForChild = source => {
+    try {
+        const config = readSettings(source);
+        if (!Object.hasOwn(config, 'css')) return source;
+        delete config.css;
+        return dump(config, {schema: CORE_SCHEMA, noRefs: true});
+    } catch (_) { return '{}'; }
+};
 let diagnosticsEditor, diagnosticsSubscription;
 function installSettingsDiagnostics() {
     const editor = window.globalEditor, monaco = window.globalMonaco;
@@ -104,7 +185,7 @@ function write(box, property, value) {
         setTextFrameContents(box.uid, value);
     } else {
         box[property] = value;
-        if (property === 'textFrame') syncTextFrameSettingsEditor(box.uid, value);
+        if (property === 'textFrame') { syncTextFrameSettingsEditor(box.uid, value); refreshStyleInheritance(); }
         send('set-string', {uid: box.uid, property, value});
     }
 }
@@ -115,7 +196,7 @@ function flush(state) {
     write(state.box, 'contents', state.editor.value);
 }
 function markdownOptions(state, sourcePositions = false) {
-    return {sourcePositions, eagerImages: true, resolveImage: src => {
+    return {sourcePositions, copyIcon: true, eagerImages: true, resolveImage: src => {
         if (/^(https?:|data:)/i.test(src)) return src;
         if (/^[a-z][a-z0-9+.-]*:/i.test(src)) return '';
         const params = new URLSearchParams({document: window.currentDocumentSessionKey || window.currentDocumentFilename || '', box: state.box.uid, path: src});
@@ -127,7 +208,7 @@ function render(state) {
     state.previewSource = text;
     renderFieldMarkdown(state.preview, text, markdownOptions(state, true));
     state.preview.classList.toggle('text-frame-empty', !text.trim());
-    if (!text.trim()) state.preview.textContent = 'Double-click to write Markdown';
+    if (!text.trim()) state.preview.textContent = 'Double-click to write';
     layout(state);
 }
 function layout(state) {
@@ -155,21 +236,22 @@ function layout(state) {
         const editing = state.box.classList.contains('text-frame-editing');
         // Formatted content owns the persistent geometry. A taller Markdown source scrolls
         // inside the same frame; measuring it would make every edit/release change the graph.
-        if (editing && state.measuredDraft !== state.editor.value) {
+        if (editing && !state.richEdit && state.measuredDraft !== state.editor.value) {
             state.measuredDraft = state.editor.value;
             state.previewSource = state.measuredDraft;
             renderFieldMarkdown(state.preview, state.measuredDraft, markdownOptions(state));
             state.preview.classList.remove('text-frame-empty');
         }
-        const face = getComputedStyle(state.preview);
+        const surface = state.richEdit ? state.rich : state.preview;
+        const face = getComputedStyle(surface);
         const fontReady = !document.fonts || document.fonts.check(`${face.fontStyle} ${face.fontWeight} ${face.fontSize} ${face.fontFamily}`);
         if (config.sizing === 'grow' && !window.currentDocumentReadOnly && fontReady && document.fonts?.status !== 'loading' &&
-            [...state.preview.querySelectorAll('img')].every(img => img.complete)) {
+            [...surface.querySelectorAll('img')].every(img => img.complete)) {
             // The hidden preview still lays out at the real frame width, including in split panes.
-            const height = state.preview.style.height, bottom = state.preview.style.bottom;
-            state.preview.style.height = 'auto'; state.preview.style.bottom = 'auto';
-            const measured = Math.max(config.minHeight, Math.ceil(state.preview.scrollHeight + 2));
-            state.preview.style.height = height; state.preview.style.bottom = bottom;
+            const height = surface.style.height, bottom = surface.style.bottom;
+            surface.style.height = 'auto'; surface.style.bottom = 'auto';
+            const measured = Math.max(config.minHeight, Math.ceil(surface.scrollHeight + 2));
+            surface.style.height = height; surface.style.bottom = bottom;
             growTextFrame(state.box.uid, measured, config.reflow);
         }
         const overflow = state.preview.scrollHeight > state.preview.clientHeight + 1 ||
@@ -180,7 +262,10 @@ function layout(state) {
 }
 function begin(state, clickedOffset, clickedSource) {
     if (window.currentDocumentReadOnly) return;
-    if (state.box.classList.contains('text-frame-editing')) { state.editor.focus(); return; }
+    if (state.box.classList.contains('text-frame-editing')) {
+        (state.richEdit?.first || state.editor).focus();
+        return;
+    }
     // The main property editor polls its model. Drain a final keystroke before switching surfaces.
     flushTextFramePropertyEditor(state.box.uid);
     state.measuredDraft = null;
@@ -203,14 +288,78 @@ function begin(state, clickedOffset, clickedSource) {
         if (!state.editor.hidden && document.activeElement === state.editor) revealTextareaCaret(state.editor);
     });
 }
+function renderRich(state) {
+    renderFieldMarkdown(state.rich, state.editor.value, markdownOptions(state, true));
+    state.richEdit = mountRichText(state.rich, state.editor.value);
+}
+function positionRichToolbar(state) {
+    const {box, toolbar} = state;
+    if (toolbar.hidden || !box.isConnected) return;
+    const rect = box.getBoundingClientRect();
+    const pane = box.closest('.field-pane, .field-main-viewport')?.getBoundingClientRect();
+    const paneLeft = Math.max(0, pane?.left ?? 0), paneRight = Math.min(innerWidth, pane?.right ?? innerWidth);
+    const paneTop = Math.max(0, pane?.top ?? 0), paneBottom = Math.min(innerHeight, pane?.bottom ?? innerHeight);
+    const height = toolbar.offsetHeight, width = toolbar.offsetWidth;
+    const caret = state.richSelection?.caret.getBoundingClientRect();
+    const scroll = state.rich.getBoundingClientRect();
+    const anchor = caret?.height ? Math.max(scroll.top, Math.min(caret.top + caret.height / 2, scroll.bottom))
+        : Math.max(rect.top, paneTop) + height / 2;
+    const left = Math.max(paneLeft, Math.min(rect.left - width - 4, paneRight - width));
+    const top = Math.max(paneTop, Math.min(anchor - height / 2, paneBottom - height));
+    toolbar.style.transform = `translate(${left}px, ${top}px)`;
+    toolbar.style.visibility = rect.width && rect.right > paneLeft && rect.left < paneRight &&
+        rect.bottom > paneTop && rect.top < paneBottom ? 'visible' : 'hidden';
+    state.toolbarFrame = requestAnimationFrame(() => positionRichToolbar(state));
+}
+function beginRich(state, point) {
+    if (window.currentDocumentReadOnly) return;
+    if (state.richEdit) { state.richEdit.first.focus(); return; }
+    if (state.box.classList.contains('text-frame-editing')) { state.editor.focus(); return; }
+    flushTextFramePropertyEditor(state.box.uid);
+    state.editor.value = state.box.contents || '';
+    renderRich(state);
+    state.box.classList.add('text-frame-editing');
+    state.preview.hidden = true;
+    state.rich.hidden = state.toolbar.hidden = false;
+    placeRichCaret(state.rich, point, state.richEdit.first);
+    state.captureRichSelection();
+    positionRichToolbar(state);
+    layout(state);
+}
+function draftChanged(state) {
+    state.dirty = true;
+    if (!state.composing) {
+        clearTimeout(state.saveTimer);
+        state.saveTimer = setTimeout(() => flush(state), 150);
+    }
+    layout(state);
+}
+function richChanged(state) {
+    if (!state.richEdit) return;
+    const markdown = state.richEdit.markdown();
+    if (markdown === state.editor.value) return;
+    state.editor.value = markdown;
+    draftChanged(state);
+}
+function openSource(state) {
+    if (state.composing || state.incoming !== null || window.currentDocumentReadOnly) return;
+    if (state.box.classList.contains('text-frame-editing')) finish(state);
+    window.switchToProperty(state.box.uid, 'contents');
+    window.toggleNotesMarkdownPreview(window.globalEditor, 'source');
+}
 function finish(state) {
     if (state.composing || !state.box.classList.contains('text-frame-editing')) return;
     flush(state);
     // A concurrent edit never silently discards this view's draft. Resolve it before closing.
     if (state.incoming !== null) return;
-    state.sourceSelection = {value: state.editor.value, start: state.editor.selectionStart,
+    if (!state.richEdit) state.sourceSelection = {value: state.editor.value, start: state.editor.selectionStart,
         end: state.editor.selectionEnd, direction: state.editor.selectionDirection, scrollTop: state.editor.scrollTop};
     state.autocomplete?.clear();
+    state.richEdit = null;
+    state.richSelection = null;
+    cancelAnimationFrame(state.toolbarFrame);
+    state.rich.hidden = state.toolbar.hidden = true;
+    state.rich.replaceChildren();
     state.box.classList.remove('text-frame-editing');
     state.editor.hidden = true;
     state.preview.hidden = false;
@@ -223,42 +372,107 @@ function showConflict(state, incoming) {
     state.conflict.hidden = false;
 }
 function resolveConflict(state, useMine) {
-    if (!useMine) state.editor.value = state.incoming;
+    if (!useMine) {
+        state.editor.value = state.incoming;
+        if (state.richEdit) renderRich(state);
+    }
     state.incoming = null;
     state.conflict.hidden = true;
     state.dirty = useMine;
     flush(state);
-    state.editor.focus({preventScroll: true});
+    (state.richEdit?.first || state.editor).focus({preventScroll: true});
     layout(state);
 }
 function mount(box) {
     const body = node('div', 'text-frame-body');
     const preview = node('div', 'text-frame-preview');
-    preview.title = 'Double-click to edit Markdown';
+    preview.title = 'Double-click to write';
     preview.tabIndex = -1;
     preview.dataset.fieldCanvasKeyboard = 'true';
-    preview.setAttribute('aria-label', 'Text frame; press Enter to edit Markdown');
+    preview.setAttribute('aria-label', 'Text frame; press Enter to write');
     const editor = node('textarea', 'text-frame-editor');
     editor.setAttribute('aria-label', 'Markdown contents');
     editor.placeholder = 'Write Markdown…'; editor.spellcheck = true; editor.hidden = true;
     const conflict = node('div', 'text-frame-conflict'); conflict.hidden = true; conflict.setAttribute('role', 'alert');
     const state = {box, body, preview, editor, conflict, seenContents: box.contents || '', incoming: null, dirty: false, composing: false};
-    state.overflow = button('+', () => begin(state), 'text-frame-overflow');
+    state.overflow = button('+', () => beginRich(state), 'text-frame-overflow');
     state.overflow.title = 'Text overflows this frame. Click to edit all text.';
     state.overflow.setAttribute('aria-label', 'Overflowed text; edit all text'); state.overflow.hidden = true;
     conflict.append(node('span', '', 'Contents changed elsewhere. Your draft is kept here.'),
         button('Keep my version', () => resolveConflict(state, true)), button('Use incoming', () => resolveConflict(state, false)));
-    body.append(preview, editor); box.append(body, state.overflow, conflict);
+    const rich = state.rich = node('div', 'text-frame-preview text-frame-rich');
+    state.styleId = ++nextStyleId;
+    preview.dataset.textFrameStyle = rich.dataset.textFrameStyle = state.styleId;
+    const toolbar = state.toolbar = node('div', 'text-frame-rich-toolbar');
+    toolbar.dataset.textFrameUid = box.uid;
+    toolbar.setAttribute('role', 'group');
+    toolbar.setAttribute('aria-label', 'Text formatting');
+    rich.hidden = toolbar.hidden = true;
+    const format = (command, value) => {
+        state.captureRichSelection();
+        const selection = window.getSelection();
+        const saved = state.richSelection;
+        if (!saved || !rich.contains(saved.host)) return;
+        if (document.activeElement !== saved.host) {
+            saved.host.focus({preventScroll: true});
+            selection.removeAllRanges();
+            selection.addRange(saved.range);
+        }
+        document.execCommand('styleWithCSS', false, 'false');
+        document.execCommand(command, false, value);
+        richChanged(state);
+        state.captureRichSelection();
+    };
+    const headings = [['Text', 'p'], ['H1', 'h1'], ['H2', 'h2'], ['H3', 'h3']];
+    const headingControls = new Map();
+    for (const [label, tag] of headings) {
+        const control = button(label, () => format('formatBlock', tag));
+        control.title = tag === 'p' ? 'Paragraph' : 'Heading ' + tag[1];
+        control.setAttribute('aria-label', control.title);
+        control.setAttribute('aria-pressed', 'false');
+        headingControls.set(tag, control);
+        toolbar.append(control);
+    }
+    for (const [label, command] of [['B', 'bold'], ['I', 'italic']]) {
+        const control = button(label, () => format(command), 'text-frame-format-' + command);
+        control.setAttribute('aria-label', command === 'bold' ? 'Bold' : 'Italic');
+        toolbar.append(control);
+    }
+    toolbar.append(button('Markdown', () => openSource(state), 'text-frame-format-source'));
+    toolbar.addEventListener('mousedown', e => e.preventDefault());
+    state.captureRichSelection = () => {
+        const selection = window.getSelection(), host = document.activeElement;
+        if (host?.matches('.text-frame-rich-block') && rich.contains(host) && selection?.rangeCount &&
+            host.contains(selection.anchorNode) && host.contains(selection.focusNode)) {
+            const caret = document.createRange();
+            caret.setStart(selection.focusNode, selection.focusOffset);
+            caret.collapse(true);
+            state.richSelection = {host, range: selection.getRangeAt(0).cloneRange(), caret};
+            const anchor = selection.focusNode;
+            const element = anchor.nodeType === Node.ELEMENT_NODE ? anchor : anchor.parentElement;
+            const target = anchor === host
+                ? host.childNodes[selection.focusOffset] || host.lastChild : element;
+            const line = target?.closest?.('p,h1,h2,h3,h4,h5,h6');
+            const tag = line?.tagName.toLowerCase() ?? 'p';
+            for (const [style, control] of headingControls) control.setAttribute('aria-pressed', String(style === tag));
+        }
+    };
+    rich.addEventListener('pointerup', state.captureRichSelection);
+    rich.addEventListener('keyup', state.captureRichSelection);
+    rich.addEventListener('focusout', state.captureRichSelection);
+    body.append(preview, editor, rich); box.append(body, state.overflow, conflict);
+    // The foreground connections sit outside the canvas's stacking context.
+    document.body.append(toolbar);
     box.classList.add('text-frame-box');
     // Let a double-click edit a link label without following its first click. Modified clicks
     // keep normal browser navigation; an ordinary single click follows after the double-click window.
     preview.addEventListener('click', e => {
         const anchor = e.target.closest('a[href]');
-        if (!anchor || state.followingLink || window.currentDocumentReadOnly || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+        if (!anchor || state.followingLink || window.currentDocumentReadOnly || e.ctrlKey || e.metaKey || e.altKey) return;
         e.preventDefault(); e.stopImmediatePropagation();
         clearTimeout(state.linkTimer);
         if (e.detail < 2) state.linkTimer = setTimeout(() => {
-            if (!anchor.isConnected || !state.editor.hidden) return;
+            if (e.shiftKey || !anchor.isConnected || box.classList.contains('text-frame-editing')) return;
             state.followingLink = true;
             try { anchor.click(); } finally { state.followingLink = false; }
         }, 500);
@@ -267,14 +481,35 @@ function mount(box) {
         if (window.currentDocumentReadOnly || e.target.closest('button')) return;
         clearTimeout(state.linkTimer);
         e.preventDefault(); e.stopPropagation();
-        const offset = markdownOffsetAtPoint(preview, e.clientX, e.clientY, e.target);
-        begin(state, offset, state.previewSource);
+        if (e.shiftKey) {
+            const offset = markdownOffsetAtPoint(preview, e.clientX, e.clientY, e.target);
+            begin(state, offset, state.previewSource);
+        } else beginRich(state, e);
     });
-    editor.addEventListener('input', () => {
-        state.dirty = true;
-        if (!state.composing) { clearTimeout(state.saveTimer); state.saveTimer = setTimeout(() => flush(state), 150); }
-        layout(state);
+    rich.addEventListener('input', () => richChanged(state));
+    rich.addEventListener('compositionstart', () => { state.composing = true; clearTimeout(state.saveTimer); });
+    rich.addEventListener('compositionend', () => { state.composing = false; richChanged(state); flush(state); });
+    rich.addEventListener('paste', e => {
+        const session = state.richEdit;
+        pasteRichText(e, rich, () => state.richEdit === session, () => richChanged(state));
     });
+    rich.addEventListener('drop', e => e.preventDefault());
+    rich.addEventListener('click', e => {
+        if (e.target.closest('a')) { e.preventDefault(); e.stopImmediatePropagation(); }
+    }, true);
+    rich.addEventListener('keydown', e => {
+        e.stopPropagation();
+        if (e.isComposing) return;
+        const shortcut = e.metaKey || e.ctrlKey;
+        const command = {b: 'bold', i: 'italic'}[e.key.toLowerCase()];
+        if (shortcut && command) { e.preventDefault(); format(command); }
+        else if (e.key === 'Escape' || (shortcut && e.key === 'Enter')) {
+            e.preventDefault();
+            finish(state);
+            if (state.incoming === null) preview.focus({preventScroll: true});
+        } else moveBetweenRichBlocks(e, rich);
+    });
+    editor.addEventListener('input', () => draftChanged(state));
     editor.addEventListener('compositionstart', () => { state.composing = true; clearTimeout(state.saveTimer); });
     editor.addEventListener('compositionend', () => { state.composing = false; state.dirty = true; flush(state); layout(state); });
     state.autocomplete = mountChatAutocomplete(body, editor, {
@@ -292,7 +527,7 @@ function mount(box) {
         // Monaco can briefly focus its own input while syncing a peer value, then restore us.
         if (document.activeElement !== editor) finish(state);
     }));
-    for (const element of [editor, conflict, state.overflow]) {
+    for (const element of [editor, rich, toolbar, conflict, state.overflow]) {
         for (const name of ['pointerdown', 'mousedown', 'dblclick', 'wheel', 'keyup', 'contextmenu']) element.addEventListener(name, e => e.stopPropagation());
     }
     // Loaded images, math typesetting and a width resize can all change the amount of text that fits.
@@ -301,20 +536,24 @@ function mount(box) {
     state.observer = new ResizeObserver(() => layout(state));
     state.observer.observe(box); state.observer.observe(preview);
     frames.set(box, state);
+    refreshStyleInheritance();
     render(state);
     return state;
 }
 export function syncTextFrame(box, property) {
+    if (property === 'textFrame') refreshStyleInheritance();
     let state = frames.get(box);
     if (box.box_kind !== 'text-frame') {
         if (state) {
             flush(state); state.observer.disconnect(); state.autocomplete.dispose(); cancelAnimationFrame(state.layoutFrame);
-            for (const part of [state.body, state.overflow, state.conflict]) part.remove();
+            cancelAnimationFrame(state.toolbarFrame); state.localStyle?.remove();
+            for (const part of [state.body, state.overflow, state.conflict, state.toolbar]) part.remove();
             box.classList.remove('text-frame-box', 'text-frame-editing', 'text-frame-has-overflow'); frames.delete(box);
         }
         return;
     }
     if (!state) { mount(box); return; }
+    if (property === 'textFrame') { layout(state); return; }
     if (box.classList.contains('text-frame-editing')) {
         const incoming = box.contents || '';
         if (property === 'contents' && incoming !== state.seenContents) {
@@ -326,12 +565,24 @@ export function syncTextFrame(box, property) {
     } else render(state);
 }
 window.syncTextFrame = syncTextFrame;
-window.editTextFrame = box => { syncTextFrame(box); const state = frames.get(box); if (state) begin(state); };
+window.editTextFrame = box => {
+    syncTextFrame(box);
+    const state = frames.get(box);
+    if (!state) return;
+    if (state.richEdit) finish(state);
+    begin(state);
+};
+window.writeTextFrame = box => { syncTextFrame(box); const state = frames.get(box); if (state) beginRich(state); };
+window.openTextFrameMarkdown = uid => {
+    const state = [...frames.values()].find(state => state.box.uid === uid);
+    if (state) openSource(state);
+};
 // Module loading and the server's initial resync can arrive in either order.
 document.querySelectorAll('.box').forEach(syncTextFrame);
 new MutationObserver(() => {
     for (const [box, state] of frames) if (!box.isConnected) {
         clearTimeout(state.saveTimer); cancelAnimationFrame(state.layoutFrame); state.observer.disconnect(); state.autocomplete.dispose(); frames.delete(box);
+        cancelAnimationFrame(state.toolbarFrame); state.toolbar.remove(); state.localStyle?.remove();
     }
 }).observe(document.body, {childList: true, subtree: true});
 window.addEventListener('pagehide', () => frames.forEach(flush));
@@ -342,9 +593,14 @@ document.fonts?.addEventListener('loadingdone', () => frames.forEach(layout));
 // Canvas gestures can prevent the browser's default focus change. Release the editor explicitly.
 document.addEventListener('pointerdown', event => {
     for (const state of frames.values()) {
-        if (state.box.classList.contains('text-frame-editing') && !state.box.contains(event.target)) finish(state);
+        if (state.box.classList.contains('text-frame-editing') &&
+            !state.box.contains(event.target) && !state.toolbar.contains(event.target)) finish(state);
     }
 }, true);
+document.addEventListener('selectionchange', () => {
+    const host = document.activeElement?.closest('.text-frame-rich-block');
+    if (host) frames.get(host.closest('.text-frame-box'))?.captureRichSelection();
+});
 
 // DOM focus can outlive a canvas selection (notably after spatial navigation). The selected
 // box owns Return; a previously focused reader must never reopen itself instead.
@@ -356,7 +612,7 @@ window.addEventListener('field-selection-changed', () => {
     for (const state of frames.values()) if (!selection.includes(state.box)) {
         if (state.box.classList.contains('text-frame-editing')) finish(state);
         const focused = document.activeElement;
-        if (focused === state.editor || state.preview.contains(focused)) focused.blur();
+        if (focused === state.editor || state.preview.contains(focused) || state.rich.contains(focused) || state.toolbar.contains(focused)) focused.blur();
     }
     const focused = document.activeElement;
     const mainEditor = focused?.closest?.('.monaco-editor-container');
@@ -369,7 +625,7 @@ function editSelectedCanvasBox() {
     const selection = canvasSelection();
     if (selection.length !== 1) return;
     const box = selection[0];
-    if (box.box_kind === 'text-frame') window.editTextFrame(box);
+    if (box.box_kind === 'text-frame') window.writeTextFrame(box);
     else {
         // The normal editor polls selection. Synchronize before focusing it so an immediate
         // keystroke cannot reach the preceding box's model.

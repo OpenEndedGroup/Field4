@@ -824,6 +824,29 @@ private fun completionCandidateName(variant: SourceCodeCompletionVariant): Strin
         .trim()
 }
 
+/** Words that are never a symbol to describe: Kotlin's hard keywords, plus `import`, which opens a line. */
+private val symbolContextKeywords = setOf(
+    "as", "break", "class", "continue", "do", "else", "false", "for", "fun", "if", "import", "in",
+    "interface", "is", "null", "object", "package", "return", "super", "this", "throw", "true", "try",
+    "typealias", "typeof", "val", "var", "when", "while",
+)
+
+/**
+ * Which completion candidate the editor's ambient help should describe for the word under the
+ * cursor: an index into [candidateNames], or -1 for none.
+ *
+ * A candidate named exactly [symbol] wins. One that only starts with it stands in while the word is
+ * still being typed — the cursor at its end ([cursorAtEnd]) — and never for a keyword. On a finished
+ * word, or on `import`, a prefix match describes some other symbol: a cursor at the start of an
+ * import line showed `importMetadataAsNest(...)` (2026-11-20).
+ */
+internal fun symbolContextCandidateIndex(candidateNames: List<String>, symbol: String, cursorAtEnd: Boolean): Int {
+    val exact = candidateNames.indexOf(symbol)
+    if (exact >= 0) return exact
+    if (!cursorAtEnd || symbol in symbolContextKeywords) return -1
+    return candidateNames.indexOfFirst { it.startsWith(symbol) }
+}
+
 /**
  * Type-aware completion after infix functions.
  *
@@ -3283,9 +3306,13 @@ class KotlinExecution : BoxExecution {
         val response = runCatching {
             when (val completion = runBlocking { isolatedSymbolContextComplete(inside, request.allCode, bounds.end) }) {
                 is CompletionResult.Success -> {
-                    val bestVariant = completion.metadata
-                        .firstOrNull { completionCandidateName(it) == symbol }
-                        ?: completion.metadata.firstOrNull { completionCandidateName(it).startsWith(symbol) }
+                    val bestVariant = completion.metadata.getOrNull(
+                        symbolContextCandidateIndex(
+                            completion.metadata.map { completionCandidateName(it) },
+                            symbol,
+                            cursorAtEnd = request.position == bounds.end,
+                        )
+                    )
 
                     if (bestVariant != null) {
                         symbolContextResponse(
@@ -3376,6 +3403,12 @@ class KotlinExecution : BoxExecution {
         // completes as StackSL, from the compiler's vocabulary, rather than as a Kotlin string.
         if (property == "code") {
             (afield.lang.stacksl.study.EmbeddedStackSL.complete(inside, allCode, position) ?: afield.lang.rectsl.study.EmbeddedRectSL.complete(allCode, position))?.let {
+                reply(Message("complete").payload(it))
+                return
+            }
+            // Any other string literal: what its parameter's @CompletesPath / @CompletesWith says, else a path
+            // if it already looks like one (afield.runtime.completion.StringLiteralCompletion).
+            afield.runtime.completion.StringLiteralCompletion.complete(inside, allCode, position)?.let {
                 reply(Message("complete").payload(it))
                 return
             }

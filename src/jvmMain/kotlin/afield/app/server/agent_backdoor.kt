@@ -211,7 +211,7 @@ private fun nativeCaptureWindow(info: SessionInformation, uid: String?): Window 
     return resolveNativeCaptureTarget(bindings, uid)
 }
 
-private fun escapeNotifyText(text: String): String =
+internal fun escapeNotifyText(text: String): String =
     text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 private fun String.isHttpUrl(): Boolean =

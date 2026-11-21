@@ -388,14 +388,14 @@ internal fun registerFileChooserHandler() {
  * The `%name` directories this box's document can resolve, asked of FileManager each time; empty
  * outside a session.
  */
-private fun Box.fileChooserPrefixes(): () -> Map<String, Path> {
+internal fun Box.fileChooserPrefixes(): () -> Map<String, Path> {
     val manager = runCatching { if (isInsideInitialized()) FileManager.forSession(inside) else FileManager.current() }.getOrNull()
         ?: return { emptyMap() }
     return { runCatching { manager.mappedRoots() }.getOrDefault(emptyMap()) }
 }
 
 /** The chooser's root: [directory] as a FileManager spec, read in [box]'s document. */
-private fun Box.fileChooserRoot(directory: String): Path {
+internal fun Box.fileChooserRoot(directory: String): Path {
     val spec = directory.trim()
     val home = Paths.get(System.getProperty("user.home"))
     if (spec == "~") return home

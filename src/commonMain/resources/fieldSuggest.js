@@ -24,11 +24,16 @@ const DEFAULT_LANGUAGES = new Set([
   "brief", "pd", "lua", "csound", "postscript",
 ]);
 const MAX_VISIBLE_ITEMS = 80;
+const STRING_LITERAL_CATEGORIES = new Set(["paths", "choices"]);
 const REFRESH_DELAY_MS = 110;
 const COMPLETION_RPC_TIMEOUT_MS = 15000;
 const RECENCY_STORAGE_KEY = "field.suggest.recency.v1";
 const RECENCY_LIMIT = 200;
 const CATEGORY_WEIGHT = new Map([
+  // Inside a string literal (`StringLiteralCompletion`): files, or a parameter's computed choices.
+  // They only ever arrive alone (see `replaceQuickItems`).
+  ["paths", 28],
+  ["choices", 28],
   ["local", 28],
   ["graphics", 26],
   ["functions", 22],
@@ -476,6 +481,37 @@ const normalizeLocalSuggestion = (
     languageId,
     raw: item,
     index,
+  };
+};
+
+// The edit that writes a completion's `prefix` (an `import …` line) into the model, or null when the
+// box already has that line. It goes after the last existing import, else after a `package` line,
+// else at the top: the place Kotlin requires, and where a reader looks for it.
+const prefixLineEdit = (monaco, model, prefix) => {
+  const line = String(prefix || "").trim();
+  if (!line) return null;
+  const lineCount = model.getLineCount();
+  let lastImport = 0;
+  let packageLine = 0;
+  for (let n = 1; n <= lineCount; n++) {
+    const text = model.getLineContent(n).trim();
+    if (text === line || text === `${line};`) return null;
+    if (text.startsWith("import ")) lastImport = n;
+    else if (text.startsWith("package ")) packageLine = n;
+  }
+  const after = lastImport || packageLine;
+  if (after >= lineCount && after > 0) {
+    const column = model.getLineMaxColumn(after);
+    return {
+      range: new monaco.Range(after, column, after, column),
+      text: `\n${line}`,
+      forceMoveMarkers: true,
+    };
+  }
+  return {
+    range: new monaco.Range(after + 1, 1, after + 1, 1),
+    text: `${line}\n`,
+    forceMoveMarkers: true,
   };
 };
 
@@ -1469,6 +1505,9 @@ class FieldSuggestController {
   }
 
   replaceQuickItems(items) {
+    // Inside a string literal the server's answer is the whole answer: no quick, local or AI rows.
+    const literal = (item) => STRING_LITERAL_CATEGORIES.has(normalizeCategory(item.category));
+    if (items.some(literal)) return items.filter(literal);
     const hasCompilerItems = items.some(
       (item) => item.source === "rpc" || item.source === "local",
     );
@@ -1969,15 +2008,6 @@ class FieldSuggestController {
     if (!item) return false;
     const model = this.editor.getModel();
     if (!model) return false;
-    if (item.prefix) {
-      model.applyEdits([
-        {
-          range: new this.monaco.Range(1, 1, 1, 1),
-          text: `${String(item.prefix).trim()}\n`,
-          forceMoveMarkers: true,
-        },
-      ]);
-    }
     const range =
       item.range ||
       (() => {
@@ -1990,22 +2020,38 @@ class FieldSuggestController {
           word.endColumn,
         );
       })();
-    this.editor.executeEdits("afield-suggest", [
+    // One batch, so every range is in the coordinates `item.range` was computed in. Inserting the
+    // import first, on its own, pushed the typed prefix down a line and left `range` pointing at
+    // whatever now sat where it used to be: `Rhi` under a blank line came out as
+    // `import …Rhino3dm` / `Rhino3dm` / `Rhi`. One batch is also one undo step.
+    const edits = [
       {
         range,
         text: item.insertText || item.displayText || "",
         forceMoveMarkers: true,
       },
-    ]);
+    ];
+    const importEdit = item.prefix
+      ? prefixLineEdit(this.monaco, model, item.prefix)
+      : null;
+    if (importEdit) edits.push(importEdit);
+    this.editor.executeEdits("afield-suggest", edits);
     touchRecency(item);
     this.finishInteraction("accepted", "selected", item, this.activeIndex);
     const shouldShowSignature =
       itemLooksCallable(item) &&
       String(item.insertText || item.displayText || "").includes("(");
-    this.suppressOpenUntil = Date.now() + 2500;
+    // Accepting a directory in a path string goes straight on to its contents.
+    const continuesPath =
+      normalizeCategory(item.category) === "paths" &&
+      String(item.insertText || "").endsWith("/");
+    this.suppressOpenUntil = continuesPath ? 0 : Date.now() + 2500;
     this.hide({ reason: "accepted" });
     if (shouldShowSignature) {
       requestAnimationFrame(() => this.showSignatureBadge(item));
+    }
+    if (continuesPath) {
+      requestAnimationFrame(() => this.open({ manual: true }));
     }
     this.editor.focus();
     return true;

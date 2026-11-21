@@ -1,5 +1,16 @@
 {% extends "base.html" %}
 
+{#- Declare the page dark before any stylesheet arrives. The theme's `color-scheme: dark` sits on
+    <body> (data-md-color-scheme="slate"), not on <html>, so until extra.css has loaded the
+    browser treated the document as light and painted its canvas white: a white frame in the
+    page-to-page crossfade whenever the next page had not been prerendered (a quick click, or a
+    browser without speculation rules). site_meta comes before the theme's stylesheets. -#}
+{% block site_meta %}
+    {{ super() }}
+    <meta name="color-scheme" content="dark">
+    <style>html { color-scheme: dark; background: #141414; }</style>
+{% endblock site_meta %}
+
 {% block extrahead %}
     {{ super() }}
     <link rel="stylesheet" href="{{ base_url }}/stylesheets/extra.css">

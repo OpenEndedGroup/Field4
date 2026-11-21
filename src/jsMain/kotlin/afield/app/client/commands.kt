@@ -1856,7 +1856,7 @@ fun newBox(options: Any? = null) {
         findBoxByUid(createdUid)?.let { box ->
             selected.toList().forEach { deselectBox(it) }
             selectBox(box)
-            val edit = window.asDynamic().editTextFrame
+            val edit = window.asDynamic().writeTextFrame
             if (edit != null) edit(box)
         }
     }
@@ -3210,9 +3210,11 @@ fun registerBuiltinCommands() {
 fun newTextFrameBelow(uid: String) {
     val source = findBoxByUid(uid) ?: return
     val d = source.asDynamic()
+    val settings = (d.textFrame as? String) ?: "{}"
+    val forChild = window.asDynamic().textFrameSettingsForChild
     newBox(json(
         "kind" to "text-frame", "name" to "Text", "parentUid" to uid,
-        "textFrame" to ((d.textFrame as? String) ?: "{}"),
+        "textFrame" to (if (forChild == null) settings else forChild(settings) as String),
         "frame" to json("x" to d.data_x, "y" to ((d.data_y as Number).toDouble() +
             (d.data_h as Number).toDouble() + 32.0), "w" to d.data_w, "h" to 180.0)
     ))

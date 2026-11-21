@@ -176,6 +176,9 @@ object HistoryManager {
         "preamble",
         "customization",
         "metadata",
+        "notes",
+        "contents",
+        "textFrame",
         "name",
         "filename",
         FILE_MANAGER_ACCESS_HISTORY_PROPERTY

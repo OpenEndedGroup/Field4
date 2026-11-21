@@ -4908,6 +4908,15 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="text-frame-rich",
+            description="Visual text-frame formatting and image paste preserve the underlying Markdown.",
+            commands=[
+                "viewport 1060x760",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/text-frame-rich.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="regular-connections",
             description="Ordinary box connections retain curved routing while their minimum radius eases down near neighbouring boxes, without oversized loops.",
             commands=[

@@ -1078,6 +1078,14 @@ class RunnerState:
             len(self.source_symbol_index),
             len({source for files in self.source_symbol_index.values() for source in files}),
         )
+        if not self.source_symbol_index and self.source_refs_mode != "off" and any((self.repo_root / REFERENCE_DIR_RELATIVE).glob("*.md")):
+            # The reference is there but yielded nothing: its format drifted from the parser. This
+            # read 0 symbols at INFO for 86 days (2026-08-26 → 2026-11-20) and nobody saw it.
+            LOG.warning(
+                "Field docs runner per-fence source coverage is OFF: %s has pages but no symbols parsed "
+                "from them, so editing a stdlib file will not recapture the fences that call it",
+                REFERENCE_DIR_RELATIVE,
+            )
         LOG.info("Field docs runner continue on error: %s", self.continue_on_error)
         if self.session_enabled:
             LOG.info("Field docs runner warm-session path ENABLED (experimental; fast path with per-process fallback)")
@@ -4102,7 +4110,11 @@ SOURCE_REFS_MODES = ("direct", "stdlib", "off")
 IDENTIFIER_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 HTML_TAG_RE = re.compile(r"<[^>]+>")
 HIGHLIGHT_CODE_RE = re.compile(r'<code class="highlight">(.*?)</code>', re.S)
-REFERENCE_SOURCE_PATH_RE = re.compile(r"^`(src/[^`]+\.kt)`\s*$", re.M)
+# A section names its file on a line of its own: "`src/….kt` — [read the source](…)". The trailing
+# link arrived with 42d3c5e954 (2026-08-26); the pattern then still demanded the path alone, so the
+# index came back empty and per-fence source coverage was silently off until 2026-11-20.
+# test_docs_hooks_source_refs.py::AgainstTheRealReference now fails if the index is ever empty again.
+REFERENCE_SOURCE_PATH_RE = re.compile(r"^`(src/[^`]+\.kt)`(?:[ \t]+—.*)?[ \t]*$", re.M)
 REFERENCE_TYPE_HEADING_RE = re.compile(r"^###+ (?!Top-level)(?P<name>[^{\n]+?)\s*\{", re.M)
 DECLARED_FUNCTION_RE = re.compile(r"\bfun\s+(?:<[^>]*>\s+)?(?:[\w.<>,?\s]+\.)?(?P<name>\w+)\s*\(")
 DECLARED_VALUE_RE = re.compile(r"\b(?:const\s+)?va[lr]\s+(?:<[^>]*>\s+)?(?:[\w.<>,?\s]+\.)?(?P<name>\w+)\s*:")

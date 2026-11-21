@@ -45,7 +45,9 @@ private fun markup(text: String) = MappedHtml(text, List(text.length) { -1 })
 
 internal fun mappedMarkdownInline(text: String, positions: List<Int>): String {
     val source = MappedHtml(text, positions)
-    fun emphasis(value: MappedHtml): MappedHtml = value.replace(Regex("\\*\\*([^*]+)\\*\\*")) { input, match ->
+    fun emphasis(value: MappedHtml): MappedHtml = value.replace(Regex("\\*\\*\\*([^*]+)\\*\\*\\*")) { input, match ->
+        markup("<strong><em>") + input.group(match, 1) + markup("</em></strong>")
+    }.replace(Regex("\\*\\*([^*]+)\\*\\*")) { input, match ->
         markup("<strong>") + input.group(match, 1) + markup("</strong>")
     }.replace(Regex("\\*([^*\\s][^*]*)\\*")) { input, match ->
         markup("<em>") + input.group(match, 1) + markup("</em>")

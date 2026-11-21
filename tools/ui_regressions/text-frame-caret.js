@@ -12,6 +12,7 @@ newBox({kind:'text-frame', name:'Caret mapping', textFrame:'sizing: fixed\nreflo
 await wait(() => [...document.querySelectorAll('.text-frame-box')].some(b => b.name==='Caret mapping'), 'Caret fixture missing');
 const box = [...document.querySelectorAll('.text-frame-box')].find(b => b.name==='Caret mapping');
 const editor = box.querySelector('.text-frame-editor'), preview = box.querySelector('.text-frame-preview');
+window.editTextFrame(box);
 await wait(() => document.activeElement===editor, 'Caret editor not ready');
 await wait(() => box.textFrame?.includes('fixed'), 'Caret settings missing');
 const source = '# Repeated\n\n[repeated](https://example.org/' + 'repeated-hidden-'.repeat(110) + ') **repeated** after.\n\n' +
@@ -43,7 +44,7 @@ const point = (selector, occurrence, character) => {
 const clickAt = async (selector, occurrence, character, expected) => {
     const p=point(selector,occurrence,character);
     check(markdownOffsetAtPoint(preview,p.x,p.y,p.target)===expected, 'Wrong DOM/source mapping: '+selector+' expected '+expected);
-    p.target.dispatchEvent(new MouseEvent('dblclick',{bubbles:true,cancelable:true,clientX:p.x,clientY:p.y}));
+    p.target.dispatchEvent(new MouseEvent('dblclick',{bubbles:true,cancelable:true,shiftKey:true,clientX:p.x,clientY:p.y}));
     await delay(80);
     check(document.activeElement===editor && editor.selectionStart===expected && editor.selectionEnd===expected,
         'Wrong edit cursor: '+selector+' '+editor.selectionStart+' expected '+expected);
@@ -62,7 +63,7 @@ for (const zoom of [.75, 1.5, 1]) {
 }
 // A short visible paragraph follows a very long, hidden URL: its source caret must scroll into view.
 const p=point('strong',0,4), expected=source.indexOf('**repeated**')+6;
-p.target.dispatchEvent(new MouseEvent('dblclick',{bubbles:true,cancelable:true,clientX:p.x,clientY:p.y}));
+p.target.dispatchEvent(new MouseEvent('dblclick',{bubbles:true,cancelable:true,shiftKey:true,clientX:p.x,clientY:p.y}));
 await delay(100);
 check(editor.scrollTop > 200, 'Source cursor was left above the visible editor');
 // Measure the actual caret against the textarea viewport without assuming the scroll algorithm.
@@ -76,13 +77,13 @@ check(marker.offsetTop >= editor.scrollTop && marker.offsetTop+marker.offsetHeig
 mirror.remove();
 editor.setSelectionRange(expected-2,expected+3,'backward');const savedScroll=editor.scrollTop;
 close();await delay(50);
-preview.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',code:'Enter',keyCode:13,which:13,bubbles:true,cancelable:true}));
+window.editTextFrame(box);
 await delay(80);
 check(editor.selectionStart===expected-2 && editor.selectionEnd===expected+3 && editor.selectionDirection==='backward' && Math.abs(editor.scrollTop-savedScroll)<2,
     'Keyboard re-entry lost the source selection or scroll: '+JSON.stringify({start:editor.selectionStart,end:editor.selectionEnd,direction:editor.selectionDirection,scroll:editor.scrollTop,expected,savedScroll}));
 editor.setSelectionRange(0,expected,'backward'); editor.scrollTop=0;
 close(); await delay(50);
-preview.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',code:'Enter',keyCode:13,which:13,bubbles:true,cancelable:true}));
+window.editTextFrame(box);
 await delay(80);
 check(editor.selectionStart===0 && editor.selectionEnd===expected && editor.selectionDirection==='backward' && editor.scrollTop===0,
     'Backward selection did not retain its active caret and scroll');

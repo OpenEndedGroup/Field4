@@ -180,11 +180,16 @@ function setMode(toSource) {
     else { renderReader(); reader.focus(); }
     updateControls();
 }
+function frameNote(path) {
+    const uid = noteUid(path);
+    if (uid && !window.frameBoxFromGuide?.(uid)) message(`Box “${uid}” is no longer in this document`);
+}
 async function navigate(path, hash = '', push = true) {
     if (!path) return;
+    const token = ++epoch;
     remember();
-    if (current?.path === path) { setMode(false); jump(hash); return; }
-    const token = ++epoch; message('Opening guide…');
+    if (current?.path === path) { setMode(false); jump(hash); frameNote(path); return; }
+    message('Opening guide…');
     try {
         const response = await rpc({action:'read', path});
         if (token !== epoch) return;
@@ -203,6 +208,7 @@ async function navigate(path, hash = '', push = true) {
         renderEntries(); renderReader(hash); updateControls();
         message(isNote() ? 'Box notes · Open box to edit them' :
             readOnly ? 'Read-only document' : dirty() ? 'Unsaved draft restored' : 'Markdown file · Changes on disk refresh here');
+        frameNote(path);
         remember();
     } catch (error) { if (token === epoch) report(error); }
 }
@@ -341,7 +347,7 @@ async function show(path = '') {
         if (redirect) { openDocs(redirect.docs); path = ''; }
         const readable = entries.filter(e => e.kind !== 'docs');
         const target = path || current?.path || (readable.some(e=>e.path===saved.path) ? saved.path : readable[0]?.path);
-        if (target) { if (target !== current?.path) await navigate(target); else { renderReader(); updateControls(); } }
+        if (target) { if (path || target !== current?.path) await navigate(target); else { renderReader(); updateControls(); } }
         else if (entries.length) {
             reader.textContent = 'Choose a documentation page on the left; it opens in the docs pane.';
             message(`${entries.length} documentation page${entries.length === 1 ? '' : 's'}`);
