@@ -1,0 +1,3 @@
+doc: |
+  A window and a Vulkan renderer. Launch it, then connect graphics boxes beneath it:
+  each reads `window` and `renderer` by name.
