@@ -7431,7 +7431,7 @@ company with its own `Fn.eval` is refused, not averaged in.
 
 `src/jvmMain/kotlin/afield/lang/rectsl/RectSLSoftRaster.kt` — [read the source](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/)
 
-**Used in:** [A RectSL animation, as a solid object](../chain_rectsl_spacetime.md)
+**Used in:** [A RectSL animation, as a solid object](../chain_rectsl_spacetime.md), [RectSL Inverse Animation](../rectsl_inverse_animation.md)
 
 ### Top-level functions { #rectslsoftraster-kt-functions }
 

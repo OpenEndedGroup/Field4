@@ -2219,7 +2219,7 @@ Beside Skia's anti-aliased raster the two agree to within Skia's own approximati
 // dev_docs/agents/transcripts/nile_gezira_kernels.yaml, box "beside skia"
 ```
 
-On a five-pointed star the kernels and Skia differ by at most 0.10 and on average 0.008, and
+On a five-pointed star the kernels and Skia differ by at most 0.10 and on average 0.009, and
 Skia differs from the exact `TriangleCoverage` answer by the same 0.10: the difference is Skia's.
 On a circle the largest difference is 0.19 at one edge pixel, the mean 0.008.
 
@@ -2368,7 +2368,7 @@ image say why under the code: the lesson needs two boxes wired together, needs a
 repository does not ship, or produces something other than a picture. For the two-box shape, the
 [threebox](offline.html?file=assets/agent_transcripts/threebox/metadata.edn) and [spin_glass](offline.html?file=assets/agent_transcripts/spin_glass/metadata.edn) [agent transcripts](agent_transcripts.md) are runnable versions.
 
-## Fabricate Renderer
+## Where to go next
 
 For experimental area lights, Vulkan ray-query shadows and optional RTXDI resampling, see [Direct lighting](direct_lighting.md). Other pages that build on the pieces here:
 
@@ -2386,6 +2386,12 @@ scene harness, material parameters, shadows, and ambient occlusion captures, or
 [Path tracing](path_tracing.md) for the progressive tracer written over the same device. The
 [Renderers](reference/renderers.md) reference page lists all three and the scene, pass and material
 machinery they share, each declaration with the KDoc beside it in the source.
+
+For pixel coverage computed on the CPU rather than by the GPU's rasterizer, start from
+[Which one to use](#which-coverage-to-use). The [CPU rasterizer](three_output.md#what-the-cpu-rasterizer-is-for)
+draws meshes with no GPU at all, [Splats by tile](geometry_from_disk.md#splats-by-tile-and-what-a-tile-costs)
+does the same for Gaussian splats, and [how wrong soft coverage is](rectsl_inverse_animation.md#fitting-against-an-image)
+measures RectSL's differentiable raster against exact area.
 
 ## API reference
 
