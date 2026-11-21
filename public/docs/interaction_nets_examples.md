@@ -437,10 +437,9 @@ The box below compiles `sum`, which adds up the numbers from `k` down to 1, and 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/interaction_nets_examples/program_to_net.png" alt="three stages of sum(3) with a summary card over each: main as compiled, 4 nodes and 1 active pair, a REF meeting a CON; after 14 rounds, 11 nodes and 2 active pairs, a DUP meeting a NUM and an OP2 meeting a NUM; after 28 rounds, 2 nodes, a NUM wired to the ROOT. A card at the right lists the templates: sum 7 agents, main 3, sum$z0 3, sum$s0 5. Below, the three drawings: a small star of four agents, a tangle of about a dozen, and two agents joined by one wire" wait="2.0" capture="box" open-outputs="true" embed=true name="interaction-program-to-net" w="1240" padding="12" scale="2"}
 :::static
 val program = netProgram {
-    def("sum", "k") {
-        switch(v("k"), zero = n(0), pred = "p") { v("k") + call("sum", v("p")) }
-    }
-    main { call("sum", n(3)) }
+    val sum by fn()
+    sum.def { k -> switch(k, zero = 0) { p -> k + sum(p) } }
+    main { sum(3) }
 }
 
 val compiled = NetPrograms.compile(program)
@@ -480,24 +479,28 @@ The box below runs four programs and plots the first three; the fourth would fla
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/interaction_nets_examples/program_gallery.png" alt="a line plot of reactions fired per round for sum 40, fib 15 and pow 12 with let: fib rises to a hump of about 600 reactions around round 100 and falls away by round 190, while sum and pow stay flat near the axis. Below it a table: sum 40 answers 820 in 449 reactions, 287 rounds, widest round 2, peak 53 agents, 41 Kotlin calls; fib 15 answers 610 in 25734 reactions, 193 rounds, widest 622, peak 3713 agents, 1973 calls; pow 12 with let answers 4096 in 127 reactions, 102 rounds, widest 2, peak 32 agents, 13 calls; pow2 12 written twice answers 4096 in 65526 reactions, 90 rounds, widest 6144, peak 32768 agents, 8191 calls" wait="3.0" capture="box" open-outputs="true" embed=true name="interaction-program-gallery" w="760" padding="12"}
 :::static
 val sum = netProgram {
-    def("sum", "k") { switch(v("k"), zero = n(0), pred = "p") { v("k") + call("sum", v("p")) } }
-    main { call("sum", n(40)) }
+    val sum by fn()
+    sum.def { k -> switch(k, zero = 0) { p -> k + sum(p) } }
+    main { sum(40) }
 }
 val fib = netProgram {
-    def("fib", "k") {
-        switch(v("k"), zero = n(0), pred = "j") {
-            switch(v("j"), zero = n(1), pred = "i") { call("fib", v("i") + n(1)) + call("fib", v("i")) }
+    val fib by fn()
+    fib.def { k ->
+        switch(k, zero = 0) { j ->
+            switch(j, zero = 1) { i -> fib(i + 1) + fib(i) }
         }
     }
-    main { call("fib", n(15)) }
+    main { fib(15) }
 }
 val shared = netProgram {
-    def("pow", "k") { switch(v("k"), zero = n(1), pred = "p") { let("h", call("pow", v("p"))) { v("h") + v("h") } } }
-    main { call("pow", n(12)) }
+    val pow by fn()
+    pow.def { k -> switch(k, zero = 1) { p -> let(pow(p)) { h -> h + h } } }
+    main { pow(12) }
 }
 val unshared = netProgram {
-    def("pow2", "k") { switch(v("k"), zero = n(1), pred = "p") { call("pow2", v("p")) + call("pow2", v("p")) } }
-    main { call("pow2", n(12)) }
+    val pow2 by fn()
+    pow2.def { k -> switch(k, zero = 1) { p -> pow2(p) + pow2(p) } }
+    main { pow2(12) }
 }
 
 // The same functions by ordinary recursion, counting calls.
@@ -629,6 +632,7 @@ Looking at it:
 
 - [A λ-term you can hear](chain_lambda_sound.md) turns the λ reductions on this page into sound and measures how scheduling changes them.
 - [Petri nets](petri_nets.md) is the other kind of rewriting net in Field.
+- [Staging](staging.md) is the before-and-after layout `showInteractionStages` uses for the stage figures on this page.
 - The source is [`netprograms.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/data/graph/netprograms.kt) and [`interactionnets.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/data/graph/interactionnets.kt).
 - Open questions: `pow2` shows that the net never shares work you did not name with `let`; a pass that finds repeated calls and introduces the `let` itself would make it as cheap as `pow`. `sum` never fires more than 2 reactions a round, and an accumulator version (`sum(k, acc)`) would show whether that is the program or the reducer. Drawing the gallery's nets per round, as the five-queens video does, would show where `fib`'s hump of 622 reactions sits in the net.
 
