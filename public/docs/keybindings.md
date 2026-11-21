@@ -325,7 +325,7 @@ exactly what a fresh `keybindings.yaml` says.
 
 <!-- BEGIN generated: default bindings -->
 
-**133 rebindable commands**, 56 of them with a shortcut out of the box.
+**151 rebindable commands**, 59 of them with a shortcut out of the box.
 
 ??? aside "Agents: regenerating this table"
 
@@ -353,21 +353,29 @@ exactly what a fresh `keybindings.yaml` says.
 | `add-editor-to-output` | *(none)* | both | Add Editor to Output Area |
 | `align` | *(none)* | both | Align boxes |
 | `anchor-drawing-to-boxes` | *(none)* | both | Anchor Drawing to Boxes |
+| `arrange-by-presentation` | *(none)* | both | Arrange Boxes by Presentation |
 | `auto-display-editor` | *(none)* | both | Auto-display Editor |
+| `clean-up-layout` | *(none)* | both | Clean Up Layout |
+| `clear-dependency-record` | *(none)* | both | Clear Dependency Record |
 | `connect` | `g` | canvas | Connect boxes |
+| `consolidate-ai4-memory` | *(none)* | both | Consolidate AI4 Memory |
 | `copy-box-guide-link` | *(none)* | both | Copy Markdown Link to Box or Line |
 | `copy-selection` | `cmd+c` | canvas | Copy Selection |
-| `delete-box` | `cmd+backspace` or `cmd+delete` | both | Delete Box(es) |
+| `delete-box` | `cmd+backspace` or `cmd+delete` | canvas | Delete Box(es) |
 | `disable-auto-displaying-editor` | *(none)* | both | Disable Auto-displaying Editor |
 | `disconnect` | `u` | canvas | Disconnect boxes |
 | `edit-hashtag` | `cmd+h` | both | Edit hashtag |
+| `edit-selected-box` | `enter` | canvas | Edit Selected Box |
 | `export-document-edn` | *(none)* | both | Export document (.edn) |
 | `export-ipynb` | *(none)* | both | Export notebook (.ipynb) |
 | `export-selection-edn` | *(none)* | both | Export selection (.edn) |
+| `fit-selected` | `alt+shift+f` | both | Fit Selected |
+| `fly-through-bookmarks` | *(none)* | both | Fly Through Bookmarks |
 | `fmt-kotlin` | *(none)* | both | Format Kotlin |
 | `fmt-property` | *(none)* | both | Format |
 | `frame-selected` | `alt+f` | both | Frame Selected |
 | `insert-from-workspace` | `cmd+t` | both | Insert template |
+| `interrupt-box` | *(none)* | both | Interrupt Running Box |
 | `macro-transcript-panel` | *(none)* | both | Macro: Recorder Panel |
 | `macro-transcript-run` | *(none)* | both | Macro: Run on Selection |
 | `macro-transcript-save` | *(none)* | both | Macro: Mark End & Save |
@@ -376,25 +384,29 @@ exactly what a fresh `keybindings.yaml` says.
 | `make-function-study` | *(none)* | both | Make a Function Study |
 | `make-rectsl-scene` | *(none)* | both | Make a RectSL Scene |
 | `make-stacksl-program` | *(none)* | both | Make a StackSL Program |
+| `measure-box-function-cost` | *(none)* | both | Measure Function Cost of Selected Box |
 | `move-forward` | *(none)* | both | Move selected boxes forward |
 | `nest-into` | *(none)* | both | Nest selection into a box |
 | `new-box` | `n` | canvas | New Box |
+| `new-text-frame` | `shift+n` | canvas | New Text Frame |
 | `normalize-nested-pan` | *(none)* | both | Normalize Nested contents |
 | `open-user-keybindings` | *(none)* | both | Open Keybindings |
 | `open-user-theme` | *(none)* | both | Open User Theme |
+| `pack-boxes` | *(none)* | both | Pack Boxes |
 | `paste-selection` | `cmd+v` | canvas | Paste Selection |
 | `provisional-accept-all` | *(none)* | both | Accept All Provisional (Everywhere) |
 | `provisional-reject-all` | *(none)* | both | Reject All Provisional (Everywhere) |
+| `publish-document-web` | *(none)* | both | Publish document for the web (.zip) |
 | `record-selected-box-mp4` | *(none)* | both | Record Selected Box MP4 |
 | `record-selected-editor-mp4` | *(none)* | both | Record Selected Editor MP4 |
 | `record-window-mp4` | *(none)* | both | Record Window MP4 |
 | `relink-pane` | *(none)* | both | Relink Pane |
-| `reloadPersonal` | *(none)* | both | Reload personal/ classes |
 | `reload-user-keybindings` | *(none)* | both | Reload Keybindings |
 | `remove-canvas-split` | *(none)* | both | Remove Canvas Split |
 | `reset` | *(none)* | both | Reset Kotlin Environment for Box |
 | `reset-canvas-zoom` | *(none)* | both | Reset Canvas Zoom |
 | `reset-view` | `alt+h` | both | Reset View |
+| `reveal-all-boxes` | *(none)* | both | Reveal All Boxes |
 | `route` | *(none)* | both | Route (position-guided) |
 | `save-as-template` | *(none)* | both | Save selection as template |
 | `search-docs-and-code` | `cmd+shift+d` | both | Search Documentation & Code |
@@ -411,6 +423,7 @@ exactly what a fresh `keybindings.yaml` says.
 | `set-main-language-morpho` | *(none)* | both | Set Main Language: MorphoHDL |
 | `set-main-language-nano` | *(none)* | both | Set Main Language: Nano |
 | `set-main-language-pd` | *(none)* | both | Set Main Language: Pure Data |
+| `set-main-language-postscript` | *(none)* | both | Set Main Language: PostScript |
 | `set-main-language-python` | *(none)* | both | Set Main Language: Python |
 | `set-main-language-rectsl` | *(none)* | both | Set Main Language: RectSL |
 | `set-main-language-remotejs` | *(none)* | both | Set Main Language: Javascript |
@@ -426,15 +439,20 @@ exactly what a fresh `keybindings.yaml` says.
 | `split-canvas-columns-here` | *(none)* | both | Split Canvas Columns Here |
 | `split-canvas-here` | *(none)* | both | Split Canvas Here |
 | `split-canvas-rows-here` | *(none)* | both | Split Canvas Rows Here |
+| `stop-canvas-flight` | *(none)* | both | Stop Canvas Flight |
 | `switch-to-docs-iframe` | *(none)* | both | Read the Field Documentation |
 | `switch-to-monaco-editor` | *(none)* | both | Switch to Monaco Editor |
 | `toggle-box-snapping` | *(none)* | both | Toggle Box Snapping |
+| `toggle-dependency-layer` | *(none)* | both | Toggle Dependency Layer |
 | `toggle-keypress-display` | *(none)* | both | Toggle Keypress Display |
+| `toggle-make-room-for-outputs` | *(none)* | both | Toggle Make Room for Outputs |
 | `toggle-notes-markdown-preview` | `cmd+shift+m` | both | Toggle Markdown Preview |
 | `un-nest` | *(none)* | both | Un-nest selection |
 | `unlink-pane` | *(none)* | both | Unlink Pane |
 | `unlink-pane-horizontally` | *(none)* | both | Unlink Pane Horizontally |
 | `unlink-pane-vertically` | *(none)* | both | Unlink Pane Vertically |
+| `use-dark-theme` | *(none)* | both | Use Dark Theme |
+| `use-light-theme` | *(none)* | both | Use Light Theme |
 
 ### Editor
 
