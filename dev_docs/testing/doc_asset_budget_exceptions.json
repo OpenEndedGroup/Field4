@@ -398,30 +398,10 @@
       "width": 4112,
       "height": 2524
     },
-    "public/docs/assets/interaction_nets_examples/beta_bridge.png": {
-      "bytes": 581773,
-      "width": 3249,
-      "height": 2721
-    },
-    "public/docs/assets/interaction_nets_examples/duplication.png": {
-      "bytes": 523706,
-      "width": 3249,
-      "height": 2583
-    },
-    "public/docs/assets/interaction_nets_examples/energy_scheduler.png": {
-      "bytes": 613759,
-      "width": 3249,
-      "height": 2820
-    },
-    "public/docs/assets/interaction_nets_examples/erase.png": {
-      "bytes": 519765,
-      "width": 3249,
-      "height": 2583
-    },
     "public/docs/assets/interaction_nets_examples/multi_step.png": {
-      "bytes": 860947,
-      "width": 3393,
-      "height": 3057
+      "bytes": 708551,
+      "width": 3105,
+      "height": 3669
     },
     "public/docs/assets/keyframer_examples/strip_t00.png": {
       "bytes": 163149,
