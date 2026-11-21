@@ -1,72 +1,4 @@
 {
-  "deferred": {
-    "assets/agent_transcripts/polytope_conway_demo/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "dae71325c6de8386066240231aac1762db1b9a954d32608e4f55a847371d2fb6",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-21"
-    },
-    "assets/agent_transcripts/polytope_conway_gallery/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "dae71325c6de8386066240231aac1762db1b9a954d32608e4f55a847371d2fb6",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-21"
-    },
-    "assets/agent_transcripts/polytope_holes_and_chains/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "dae71325c6de8386066240231aac1762db1b9a954d32608e4f55a847371d2fb6",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-21"
-    },
-    "assets/agent_transcripts/rhino_save_small/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "dae71325c6de8386066240231aac1762db1b9a954d32608e4f55a847371d2fb6",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-21"
-    },
-    "assets/agent_transcripts/solidsl_gallery/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "dae71325c6de8386066240231aac1762db1b9a954d32608e4f55a847371d2fb6",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-21"
-    },
-    "assets/agent_transcripts/solidsl_inverse/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "dae71325c6de8386066240231aac1762db1b9a954d32608e4f55a847371d2fb6",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-21"
-    },
-    "assets/agent_transcripts/solidsl_notation/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "dae71325c6de8386066240231aac1762db1b9a954d32608e4f55a847371d2fb6",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-21"
-    },
-    "assets/agent_transcripts/three_handles/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "dae71325c6de8386066240231aac1762db1b9a954d32608e4f55a847371d2fb6",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-21"
-    },
-    "assets/agent_transcripts/three_inspector_wall/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "dae71325c6de8386066240231aac1762db1b9a954d32608e4f55a847371d2fb6",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-21"
-    },
-    "assets/agent_transcripts/typography_worked_example/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "dae71325c6de8386066240231aac1762db1b9a954d32608e4f55a847371d2fb6",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-21"
-    },
-    "assets/three_output_gallery/metadata.edn": {
-      "attempts": 0,
-      "captureDigest": "dae71325c6de8386066240231aac1762db1b9a954d32608e4f55a847371d2fb6",
-      "error": "not tried: a landing defers digest-only pages to the publication catch-up",
-      "since": "2026-11-21"
-    }
-  },
   "documents": {
     "assets/agent_transcripts/a_pen_that_sees/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
@@ -4527,15 +4459,15 @@
       }
     },
     "assets/agent_transcripts/polytope_conway_demo/metadata.edn": {
-      "captureDigest": "b3a9114a0f674d1772fca02fe9f6e2fc87d3ea0693662b95eb9aa5e0a9601bc8",
-      "capturedAt": "2026-11-20T10:08:20.379Z",
+      "captureDigest": "dae71325c6de8386066240231aac1762db1b9a954d32608e4f55a847371d2fb6",
+      "capturedAt": "2026-11-21T01:22:41.193Z",
       "channels": 2,
       "file": "assets/web_publications/polytope_conway_demo/document/metadata.edn",
       "files": {
         "assets/web_publications/polytope_conway_demo/document/metadata.edn": "f9c998f0659d713660092519281515b0215928d7473edcb583eaa2fdee5ed075",
-        "assets/web_publications/polytope_conway_demo/document/outputs.json": "fabbfa022cbd46776d0a6e2bf734895f73f13f667bc889c3feb881c6bcf98e51",
-        "assets/web_publications/polytope_conway_demo/outputs/0.html": "a575cb84c308d82a533b548a4697aaa0b93c2dc4d6c35475120288cf594a3a13",
-        "assets/web_publications/polytope_conway_demo/outputs/1.html": "36aea8969ec9d7408690254bccfe29205a60b80959e610174b252faa58ea3a85"
+        "assets/web_publications/polytope_conway_demo/document/outputs.json": "274cee82c950a932f1a481022886c5ba29555defa799b73ac60c13227a050977",
+        "assets/web_publications/polytope_conway_demo/outputs/0.html": "a4ba0191fd3e7d3dc5a1334dd0e141fc72e5f1282462a69f70dd7ff8dc722db2",
+        "assets/web_publications/polytope_conway_demo/outputs/1.html": "e3bde4f47806eb0cf53539b080bb1119522ffb71ac4e4712d3ff0db8ff5fd629"
       },
       "kinds": [
         "three"
@@ -4549,18 +4481,18 @@
       }
     },
     "assets/agent_transcripts/polytope_conway_gallery/metadata.edn": {
-      "captureDigest": "b3a9114a0f674d1772fca02fe9f6e2fc87d3ea0693662b95eb9aa5e0a9601bc8",
-      "capturedAt": "2026-11-20T10:08:32.813Z",
+      "captureDigest": "dae71325c6de8386066240231aac1762db1b9a954d32608e4f55a847371d2fb6",
+      "capturedAt": "2026-11-21T01:22:48.127Z",
       "channels": 5,
       "file": "assets/web_publications/polytope_conway_gallery/document/metadata.edn",
       "files": {
         "assets/web_publications/polytope_conway_gallery/document/metadata.edn": "bdda938f9f3cdbbb8ff806693bd9187888de17537a2a8c4fd27a512c91f8e6d2",
-        "assets/web_publications/polytope_conway_gallery/document/outputs.json": "3e69562a69599ebf855b326bdbce421552e179a899d94a851e582ec2d2816c8e",
-        "assets/web_publications/polytope_conway_gallery/outputs/0.html": "a16a2fac0a37254a4bc3c8d36f1ee6f62b3832ed67a8f4a8ac02a81f61384fe2",
-        "assets/web_publications/polytope_conway_gallery/outputs/1.html": "0ad033f55598586f9d425f6f44197b1c9c00182e732039c05c6912eb6f63b264",
-        "assets/web_publications/polytope_conway_gallery/outputs/2.html": "092570a420991ab9650c904cb679ad91fefddd55ac372055becfd87cb46238a7",
-        "assets/web_publications/polytope_conway_gallery/outputs/3.html": "397990d347b967dba69fd282368deeca164e509741585bc6747fae31464ec84f",
-        "assets/web_publications/polytope_conway_gallery/outputs/4.html": "71394a66a1b4a4484459c222210a2124bfc1afd3d2430159ba88a6ff87b2492d"
+        "assets/web_publications/polytope_conway_gallery/document/outputs.json": "5394a2bdcaf31345357d0fc14919405437964ffa1e1ff8f410098b57b46b4178",
+        "assets/web_publications/polytope_conway_gallery/outputs/0.html": "0e680b780e08e9940176952273d247600e53d0d7426801eb847c061cc36eacd8",
+        "assets/web_publications/polytope_conway_gallery/outputs/1.html": "8b0570805e4374ba8ae81b8cf3c43457077132e87f98d1569aa2ae3e1bf81512",
+        "assets/web_publications/polytope_conway_gallery/outputs/2.html": "88f9653a10a6acf92cff3837cb83ca5b30683914723fcb07a477a8eaabec68a0",
+        "assets/web_publications/polytope_conway_gallery/outputs/3.html": "55e9d5f124c8c490eefed9361691e459331a219f8c829127061dfbe7d5bfa168",
+        "assets/web_publications/polytope_conway_gallery/outputs/4.html": "f8d1a64ccfc19cf428ac34d97991bf16ff794a6ebc7eae5ecb9342affd5b2883"
       },
       "kinds": [
         "three"
@@ -4577,18 +4509,18 @@
       }
     },
     "assets/agent_transcripts/polytope_holes_and_chains/metadata.edn": {
-      "captureDigest": "b3a9114a0f674d1772fca02fe9f6e2fc87d3ea0693662b95eb9aa5e0a9601bc8",
-      "capturedAt": "2026-11-20T10:08:44.899Z",
+      "captureDigest": "dae71325c6de8386066240231aac1762db1b9a954d32608e4f55a847371d2fb6",
+      "capturedAt": "2026-11-21T01:22:56.886Z",
       "channels": 5,
       "file": "assets/web_publications/polytope_holes_and_chains/document/metadata.edn",
       "files": {
         "assets/web_publications/polytope_holes_and_chains/document/metadata.edn": "bec4e1ea1af2de44f5765453bf1cc6d9f3d50e6fbc2f9c1513aab5ca81e266ba",
-        "assets/web_publications/polytope_holes_and_chains/document/outputs.json": "d2fb73527b62ced3d5bbf0f0a043240277c2064ad6ef440466d1608171fcd4a4",
-        "assets/web_publications/polytope_holes_and_chains/outputs/0.html": "dc864953ece5fd9f84880fcbcab178d6b2055c67f076bb88be2ac67445abf2c2",
-        "assets/web_publications/polytope_holes_and_chains/outputs/1.html": "239eb36ca44d5d3e66bc2a228605ee5423b89ece92c7c9b42c335d5f24ba221b",
-        "assets/web_publications/polytope_holes_and_chains/outputs/2.html": "bcd2861555754bd7b4e651fcc5176e9b1d1bff7b02e6ae6a067ab123ff187610",
-        "assets/web_publications/polytope_holes_and_chains/outputs/3.html": "7711723a1912942b797d6d6c72763c8918e4259aa2b7ae6641974bb780955369",
-        "assets/web_publications/polytope_holes_and_chains/outputs/4.html": "2c4e3bea7d74289fa870f081e2c68ae1dd60e4894e620b45979d2b06feba358e"
+        "assets/web_publications/polytope_holes_and_chains/document/outputs.json": "5d0a161d42dbbd84fb672fdefa8f49c0831af7cf8b096c447f5ce8eb1c1426f2",
+        "assets/web_publications/polytope_holes_and_chains/outputs/0.html": "3960f8ff76395b0de233e2300ef2b500f8982622d2cd1645330c804706728642",
+        "assets/web_publications/polytope_holes_and_chains/outputs/1.html": "61017e88a1d28a8c4f382a6b9a86f09910bd5f8ebc0322c7a006aa9700dc1f64",
+        "assets/web_publications/polytope_holes_and_chains/outputs/2.html": "52f8ec1e40d763c6081c50305655c2c2ac7f9006ad6bbdb12582b2464ae6c6c5",
+        "assets/web_publications/polytope_holes_and_chains/outputs/3.html": "36446430982919e87de8af7caff3c47db0ae88d9de43edae7d0931c54851d7fb",
+        "assets/web_publications/polytope_holes_and_chains/outputs/4.html": "6a59941372ff210480275bded6fcc15f869423a8fdce87f1f53cbe4b88127778"
       },
       "kinds": [
         "three"
@@ -4775,28 +4707,6 @@
         "public/docs/assets/chain_rectsl_spacetime/solid.png",
         "public/docs/chain_rectsl_spacetime.md#capture-box=rectsl_spacetime_trace"
       ]
-    },
-    "assets/agent_transcripts/rhino_save_small/metadata.edn": {
-      "captureDigest": "b3a9114a0f674d1772fca02fe9f6e2fc87d3ea0693662b95eb9aa5e0a9601bc8",
-      "capturedAt": "2026-11-20T10:56:52.248Z",
-      "channels": 2,
-      "file": "assets/web_publications/rhino_save_small/document/metadata.edn",
-      "files": {
-        "assets/web_publications/rhino_save_small/document/metadata.edn": "0e88492629870526494460cddfcbb04b5d95274ad186eca4fe0221b575da69a6",
-        "assets/web_publications/rhino_save_small/document/outputs.json": "308ce0d47cb3d82e9a5d076833b74d6e353f6766c77154b040ace2e6033b5674",
-        "assets/web_publications/rhino_save_small/outputs/0.html": "4401f44763dd26c0327ade0ff72ac9dcacc70bd4b6a2e925897b023ef583bf9f",
-        "assets/web_publications/rhino_save_small/outputs/1.html": "ac5843397f167985b931b7925a0315179dfe1bc880d60c9b895eadf4b79f8772"
-      },
-      "kinds": [
-        "three"
-      ],
-      "outputs": "assets/web_publications/rhino_save_small/document/outputs.json",
-      "sources": {
-        "dev_docs/agents/transcripts/rhino_save_small.yaml": "f0f580df3c8eafe3e1769f787998a6749c1d90656a3d1c9aadcd02c8c7f4cf28",
-        "public/docs/assets/agent_transcripts/rhino_save_small/metadata.edn": "068ddf7c02faf2bf0e082758ef7afcdcc5a203cbac0928230a9c66dd208d62d5",
-        "public/docs/assets/agent_transcripts/rhino_save_small/rhino_save_small_draw_code_.kt": "61b3de6d3808297a5f2b0f1b078d4d19372623cecfbb219a5c8bd96d884919f3",
-        "public/docs/assets/agent_transcripts/rhino_save_small/rhino_save_small_measure_code_.kt": "794063d793cd69195edc5d445510a69644e499d69fddeefca2e15628639bba75"
-      }
     },
     "assets/agent_transcripts/satellites/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
@@ -5089,16 +4999,16 @@
       }
     },
     "assets/agent_transcripts/solidsl_gallery/metadata.edn": {
-      "captureDigest": "b3a9114a0f674d1772fca02fe9f6e2fc87d3ea0693662b95eb9aa5e0a9601bc8",
-      "capturedAt": "2026-11-20T10:08:56.230Z",
+      "captureDigest": "dae71325c6de8386066240231aac1762db1b9a954d32608e4f55a847371d2fb6",
+      "capturedAt": "2026-11-21T01:23:08.083Z",
       "channels": 3,
       "file": "assets/web_publications/solidsl_gallery/document/metadata.edn",
       "files": {
         "assets/web_publications/solidsl_gallery/document/metadata.edn": "cf7f4c30d8572eee2f4334dda9076d0b4a087327de83fefc28f98e7b808b60d6",
-        "assets/web_publications/solidsl_gallery/document/outputs.json": "94daa14c7927841bbd4c8486e2f717b929ba4030bf456f132bfc2069724af5a6",
-        "assets/web_publications/solidsl_gallery/outputs/0.html": "2247fbddde84e89f7d6518a93850a1ac3067e8edaea3a0bb63b8e2bfce21f64d",
-        "assets/web_publications/solidsl_gallery/outputs/1.html": "d4ec62c27b13b7ee83159da4b1026f50c70edcc0db40527c3c988095e84d6c58",
-        "assets/web_publications/solidsl_gallery/outputs/2.html": "c8fc0e54f18a576eeaf95eab9bb47b1c1d01757d8d19ad3696c5aa8c56417b43"
+        "assets/web_publications/solidsl_gallery/document/outputs.json": "e4b0ede8bbc789f1b426b02764b829756f5ed9364e0fe8fad3bfc9ca97ca3669",
+        "assets/web_publications/solidsl_gallery/outputs/0.html": "e0b64c0387c2db43181c32e100be71dd24c9b4bf6f4ba9d79c046d93ce36b7e4",
+        "assets/web_publications/solidsl_gallery/outputs/1.html": "ae054d333a146035516aa9d84ebbd8e9317390759ec7bf851e8d7f8d8a76d4ef",
+        "assets/web_publications/solidsl_gallery/outputs/2.html": "41075356330a6efca386c65446837a49a1081c5aa3b22089356527387e9782c2"
       },
       "kinds": [
         "three"
@@ -5114,17 +5024,17 @@
       }
     },
     "assets/agent_transcripts/solidsl_inverse/metadata.edn": {
-      "captureDigest": "b3a9114a0f674d1772fca02fe9f6e2fc87d3ea0693662b95eb9aa5e0a9601bc8",
-      "capturedAt": "2026-11-20T10:09:04.962Z",
+      "captureDigest": "dae71325c6de8386066240231aac1762db1b9a954d32608e4f55a847371d2fb6",
+      "capturedAt": "2026-11-21T01:23:12.870Z",
       "channels": 4,
       "file": "assets/web_publications/solidsl_inverse/document/metadata.edn",
       "files": {
         "assets/web_publications/solidsl_inverse/document/metadata.edn": "0a443dc9c221d3548b3638912a1fc385ed0532306429dc77de17f4595c53feee",
-        "assets/web_publications/solidsl_inverse/document/outputs.json": "ffd56c184e3f63b3a2311b425f0e643137d065938e2b416b6f27d18f00723901",
-        "assets/web_publications/solidsl_inverse/outputs/0.html": "1b87661b53ef3caff50165e34712b2f2b208f58a931e6c11a2e48530937473d7",
-        "assets/web_publications/solidsl_inverse/outputs/1.html": "f74def4169b9292534163ba188c690136a621fc730fba1a3a75beb1345f07c86",
-        "assets/web_publications/solidsl_inverse/outputs/2.html": "7e3f69a76a2217ee1a13467bfb3efe9e0c4c9286fa6780b77b60d4e6a24baec7",
-        "assets/web_publications/solidsl_inverse/outputs/3.html": "9e2f8ad9667fb56f03fa00f4dfeb7dd65a0a0ee84b2f558131dbe37a77d46ae2"
+        "assets/web_publications/solidsl_inverse/document/outputs.json": "6322436af00860bd1fde0cec86b46912d58c197f43165d3834724cecd16c6d2d",
+        "assets/web_publications/solidsl_inverse/outputs/0.html": "8a0fea1bd7a4a356fdc0a5485b0ea93d67e987955b025530f570970dd7dea951",
+        "assets/web_publications/solidsl_inverse/outputs/1.html": "07f19c8e26306e01c57af2396de894bda9aee8f84ca00fa73dc3bcc4e601e266",
+        "assets/web_publications/solidsl_inverse/outputs/2.html": "b8a3e7e43c2174da5f247bcf4e616053ce62e09e01b5be02c1d30ab6bd3487b3",
+        "assets/web_publications/solidsl_inverse/outputs/3.html": "b1389d252fb4d5f40a37d9fc2a8c3b82a277e9506e802eedb3a72c3eebe833f2"
       },
       "kinds": [
         "plotly",
@@ -5141,14 +5051,14 @@
       }
     },
     "assets/agent_transcripts/solidsl_notation/metadata.edn": {
-      "captureDigest": "b3a9114a0f674d1772fca02fe9f6e2fc87d3ea0693662b95eb9aa5e0a9601bc8",
-      "capturedAt": "2026-11-20T10:09:13.224Z",
+      "captureDigest": "dae71325c6de8386066240231aac1762db1b9a954d32608e4f55a847371d2fb6",
+      "capturedAt": "2026-11-21T01:23:17.044Z",
       "channels": 1,
       "file": "assets/web_publications/solidsl_notation/document/metadata.edn",
       "files": {
         "assets/web_publications/solidsl_notation/document/metadata.edn": "144d5d67cc63d9d96607e02e3674bcc187cac9f3fcaf98a7c685c41f82408b73",
-        "assets/web_publications/solidsl_notation/document/outputs.json": "cf9340acd0ee800074180ddf533c62311cf59c068db5c889bab7145f548572d6",
-        "assets/web_publications/solidsl_notation/outputs/0.html": "fd86f73dc6325e9fbc6bba675494f6ea606b6da49838ac6f4cd23c802ba4a4e3"
+        "assets/web_publications/solidsl_notation/document/outputs.json": "ce194ed17eb25847674314870a86cca69642b00c59a21144675628acc8b225e8",
+        "assets/web_publications/solidsl_notation/outputs/0.html": "35f090df520efb8194a42a48c06bac149adeb287fd855481ff5dcecc9c87df38"
       },
       "kinds": [
         "three"
@@ -5863,15 +5773,15 @@
       }
     },
     "assets/agent_transcripts/three_handles/metadata.edn": {
-      "captureDigest": "b3a9114a0f674d1772fca02fe9f6e2fc87d3ea0693662b95eb9aa5e0a9601bc8",
-      "capturedAt": "2026-11-20T10:09:21.434Z",
+      "captureDigest": "dae71325c6de8386066240231aac1762db1b9a954d32608e4f55a847371d2fb6",
+      "capturedAt": "2026-11-21T01:23:20.309Z",
       "channels": 2,
       "file": "assets/web_publications/three_handles/document/metadata.edn",
       "files": {
-        "assets/web_publications/three_handles/document/metadata.edn": "81928ca45b34f2bbe973b1132e99a60b69f64e5ad93ba632051e8adc08fca8e4",
-        "assets/web_publications/three_handles/document/outputs.json": "fce8fd1e3e48ee0ba146d7d7727aefd3e2130d8cd8299b4475b1eb0417a4b3b1",
-        "assets/web_publications/three_handles/outputs/0.html": "5d4784205e978ab90614c34bc7ee98160246219dda07fb70a5cdedd93b6fa00d",
-        "assets/web_publications/three_handles/outputs/1.html": "f2394c525a17940cef5ca14a5fb60fb7c868cec68dbffb70a4ead5c3d514cbba"
+        "assets/web_publications/three_handles/document/metadata.edn": "8e66a2cf7e94edf07c83f8137e3cfd50920a12641629197cfe62e13fce532b1a",
+        "assets/web_publications/three_handles/document/outputs.json": "cc82c215c4b99d3b6d2d51bbbb71dea647341f7f3ebb1470a68d31d92369dfe5",
+        "assets/web_publications/three_handles/outputs/0.html": "8c77ec6f3216f803fc5091caf1c00449f6f6b3db6df06715a8c5ba3c07b7bc8b",
+        "assets/web_publications/three_handles/outputs/1.html": "a6e1904ae53e06fb3732822f0ee945c5a296ef281cf0b13b0f784f91545d3de3"
       },
       "kinds": [
         "three"
@@ -5886,14 +5796,14 @@
       }
     },
     "assets/agent_transcripts/three_inspector_wall/metadata.edn": {
-      "captureDigest": "b3a9114a0f674d1772fca02fe9f6e2fc87d3ea0693662b95eb9aa5e0a9601bc8",
-      "capturedAt": "2026-11-20T10:09:28.135Z",
+      "captureDigest": "dae71325c6de8386066240231aac1762db1b9a954d32608e4f55a847371d2fb6",
+      "capturedAt": "2026-11-21T01:23:22.945Z",
       "channels": 1,
       "file": "assets/web_publications/three_inspector_wall/document/metadata.edn",
       "files": {
         "assets/web_publications/three_inspector_wall/document/metadata.edn": "6357935a2ff627f40eaa89ebde9983e74af9d9e253e0e3f63eae9ddeabaaa74c",
-        "assets/web_publications/three_inspector_wall/document/outputs.json": "6b8a04f441edcda6aeac62e31e809326641c6fb7f25d60b75ceb1a763174931d",
-        "assets/web_publications/three_inspector_wall/outputs/0.html": "09a5fb243aa70d5962810a6b8b4f615745041cf0769f96730a01c842cda8cf86"
+        "assets/web_publications/three_inspector_wall/document/outputs.json": "d8670a0f63c1c7f0a8818514bba808249f0318523522016c88756dfa011a21be",
+        "assets/web_publications/three_inspector_wall/outputs/0.html": "8e823f3c6f9eb9c502e27cafd6c1f9d302692e1a8984269ad474bd04b1031268"
       },
       "kinds": [
         "three"
@@ -5941,25 +5851,25 @@
       ]
     },
     "assets/agent_transcripts/typography_worked_example/metadata.edn": {
-      "captureDigest": "b3a9114a0f674d1772fca02fe9f6e2fc87d3ea0693662b95eb9aa5e0a9601bc8",
-      "capturedAt": "2026-11-20T10:10:14.641Z",
+      "captureDigest": "dae71325c6de8386066240231aac1762db1b9a954d32608e4f55a847371d2fb6",
+      "capturedAt": "2026-11-21T01:23:47.917Z",
       "channels": 12,
       "file": "assets/web_publications/typography_worked_example/document/metadata.edn",
       "files": {
         "assets/web_publications/typography_worked_example/document/metadata.edn": "17fe4e7a8cd29d43a9798b0ccb09816652fecce38a8f778aacd827a6389b00e6",
-        "assets/web_publications/typography_worked_example/document/outputs.json": "fc6a17661e0a6f3b29f0bacd66a36b5bc3c96655d226e0851bd68e7d83cfa46b",
-        "assets/web_publications/typography_worked_example/outputs/0.html": "d27c7283a6b40d7583582b672dd93a115647828f512202ee341cf044b0bb924d",
-        "assets/web_publications/typography_worked_example/outputs/1.html": "1629d834e1bd0b19e7cc3992fde638ff6677de41e8eb15384e57a0bdff9e8ae8",
-        "assets/web_publications/typography_worked_example/outputs/10.html": "f88760898ca8078d9a60dcfbd865dc85cc6b80424c1c03a5e7a38e068a449193",
-        "assets/web_publications/typography_worked_example/outputs/11.html": "917087e43afc3c2c9947279ac11dac606f8c47cecc5df6b6fd6ba03aea984414",
-        "assets/web_publications/typography_worked_example/outputs/2.html": "727ec84731bb6c5dab3f6230f4c0a942ab286ae6c80e441f4be68b26fa60d7ae",
-        "assets/web_publications/typography_worked_example/outputs/3.html": "3766db72819efa04ba2aea6c9ed12547fe98f5a61a499e28787330e6563367cf",
-        "assets/web_publications/typography_worked_example/outputs/4.html": "a78714e9d446771c365f029679a3534fa488d5729bc14375f8e7eab2608e9d4b",
-        "assets/web_publications/typography_worked_example/outputs/5.html": "dc4fb2da903398e739bc0dc359fd2777e3d86f4e85cb1e68739aa70647d33ddb",
-        "assets/web_publications/typography_worked_example/outputs/6.html": "f41cd243acfe790430f9ee58a0885371b88d1f7ab104df5f7909aa4af99836d0",
-        "assets/web_publications/typography_worked_example/outputs/7.html": "262fd214b9a71c741e96c0a0da119eed7a113c87a10c17b1984926509144d72b",
-        "assets/web_publications/typography_worked_example/outputs/8.html": "ef7a99308b367333ac29fa9ad043d02615603745dad1cc77e586d4ad4154cf90",
-        "assets/web_publications/typography_worked_example/outputs/9.html": "42da56ecd23e84282253de35c47130ca1a2fb9a11a27adcb36aaeccc015fbc1d"
+        "assets/web_publications/typography_worked_example/document/outputs.json": "943478672c5c8452a15d19075881287683e0f0d5b2a9c5462ffc1513f366a008",
+        "assets/web_publications/typography_worked_example/outputs/0.html": "90ab701ef53fbb662639d1f6d383812bbbc115c2fe53bf045cf0ec35b0afad1d",
+        "assets/web_publications/typography_worked_example/outputs/1.html": "3060a833b62de9c5d53e404c6088f595c79860881e2b10aa69dd0d350312423b",
+        "assets/web_publications/typography_worked_example/outputs/10.html": "185d1eaa8fd1aba5ae8c8047a8a26bbde4175f9572c20a3a21e4555d4cc07ddb",
+        "assets/web_publications/typography_worked_example/outputs/11.html": "4990876be75c237a92f7b8e4f4604249caa93f0edd436641dd643153e130ebef",
+        "assets/web_publications/typography_worked_example/outputs/2.html": "9fdb5008faa4fb4599adcbe38d7ae99d9525e11a657ce487ab716892df0cd105",
+        "assets/web_publications/typography_worked_example/outputs/3.html": "eba157324196bea4b2d16113f0d635c897ed6e619574e9254ba6d4ca56dc4d36",
+        "assets/web_publications/typography_worked_example/outputs/4.html": "121d1eb6e405041cb2c82d08e772aa1586c5255771edd28efc346cea0c8e5413",
+        "assets/web_publications/typography_worked_example/outputs/5.html": "f84242a8c3a4788e2c52fff5c5a4bac9f56465af4604409c14219b5bcc34ac02",
+        "assets/web_publications/typography_worked_example/outputs/6.html": "a427de5c95a4f3f0762f756120092883737d2f40c0d85dfb89091d0b675fbc2c",
+        "assets/web_publications/typography_worked_example/outputs/7.html": "04b38dedf3f2931729b222399c1bfd7d978114e36c2ebdba1f2d40c17033a64d",
+        "assets/web_publications/typography_worked_example/outputs/8.html": "07d36e8b5ff5455af7e5ec08107aa327e66a3e66c83fa313c744f23a8ed9cee1",
+        "assets/web_publications/typography_worked_example/outputs/9.html": "d4930e061949731bef8a6d2f0afd5a3619c41d4b919dd55ba27af110d0995f60"
       },
       "kinds": [
         "svg",
@@ -6773,21 +6683,21 @@
       }
     },
     "assets/three_output_gallery/metadata.edn": {
-      "captureDigest": "b3a9114a0f674d1772fca02fe9f6e2fc87d3ea0693662b95eb9aa5e0a9601bc8",
-      "capturedAt": "2026-11-20T10:09:50.437Z",
+      "captureDigest": "dae71325c6de8386066240231aac1762db1b9a954d32608e4f55a847371d2fb6",
+      "capturedAt": "2026-11-21T01:23:33.159Z",
       "channels": 8,
       "file": "assets/web_publications/three_output_gallery/document/metadata.edn",
       "files": {
         "assets/web_publications/three_output_gallery/document/metadata.edn": "8b022bc19a29a6adc9da30764ebfa5dc447e866c75e1c894651b3d7cb9d6f023",
-        "assets/web_publications/three_output_gallery/document/outputs.json": "2f264eda2c4fc1c7876cc44b2b74afcb2d6b3fb321fee587913b84e7828fe9ee",
-        "assets/web_publications/three_output_gallery/outputs/0.html": "08e16756abd6095c8495d1d520b375c572e2eb693372d1532a0f7b64f862cdef",
-        "assets/web_publications/three_output_gallery/outputs/1.html": "179168bdbda9b67dd4fff68fe29d93dc0630017b15e70e6ba91b479360e46e0e",
-        "assets/web_publications/three_output_gallery/outputs/2.html": "c18a14bff02d506ad2cad11ee7adffb0368bd6e84e4ced62e8f6ba901bae4b2f",
-        "assets/web_publications/three_output_gallery/outputs/3.html": "4265d8e384b279d052921ca347c74381ec2cd53af81e11e979769d50d7a7c93a",
-        "assets/web_publications/three_output_gallery/outputs/4.html": "656d8b8f24fa93be482105a22aa6c75308c62ea5fdb23253a39d65184b00e14e",
-        "assets/web_publications/three_output_gallery/outputs/5.html": "6ee147f1276a209b66b38601dc5984db51ee95887916eecf52d06e499b9db2f4",
-        "assets/web_publications/three_output_gallery/outputs/6.html": "2446d4923ed5412e67c775244f522d33787f1234e4057bb35332ad63fd6bd1c2",
-        "assets/web_publications/three_output_gallery/outputs/7.html": "01124e723c5b0401da00ff2693bc7c2cddfae379d1f987bd61ba63726bfc0899"
+        "assets/web_publications/three_output_gallery/document/outputs.json": "4ff3cddf229db132ca56ef31e900121717f3ee53b6b1cc3e8a898318103faaf9",
+        "assets/web_publications/three_output_gallery/outputs/0.html": "cb7cf6f63e8f29be6551104920c2ef4a8354828091da57967fa1f8d39210a5ec",
+        "assets/web_publications/three_output_gallery/outputs/1.html": "8080e43193ac0c6a11df01e31625a1ae5d7812f9fdc6713ca636452574be4d0b",
+        "assets/web_publications/three_output_gallery/outputs/2.html": "15c60c47c285a9138f92fe5301c25d4538294e799c338a26ff9cf88a1bd33c93",
+        "assets/web_publications/three_output_gallery/outputs/3.html": "d0e64becb8f1fac8a0c2fda5c660bbed9ad26a5c9c0650db0f64379babbba6b0",
+        "assets/web_publications/three_output_gallery/outputs/4.html": "06c94a5ed58517bb0abc4daebb8bcd3a83b1ec3b0db8a4952784ba34d271e9d4",
+        "assets/web_publications/three_output_gallery/outputs/5.html": "7f746fdbfae2a55c0d680a1372551581cbaac6f86be985d39c22f0045b0f7603",
+        "assets/web_publications/three_output_gallery/outputs/6.html": "4c5d48b9c0df444441617df22f7423ce2d89d7c2a97672a37b81628b1d086bef",
+        "assets/web_publications/three_output_gallery/outputs/7.html": "7304a52f197cce1449eddbb8664b68aeab8d7a8e5e2ac445371a166656564770"
       },
       "kinds": [
         "three"
@@ -7036,6 +6946,17 @@
         "public/docs/assets/agent_transcripts/rewrite_strategies_demo/rw_seq_code_.kt": "47abba3dfe9776e8f31f95612c6f03590d1406dc031d1d04858012d5b3b08150",
         "public/docs/assets/agent_transcripts/rewrite_strategies_demo/rw_subset_code_.kt": "427591224cb4238198120ffb563f50735285b6c1b0b9b0bd1f741603f36c172f",
         "public/docs/assets/agent_transcripts/rewrite_strategies_demo/rw_topdown_code_.kt": "3b00f3141af24312ac6803195fb560e966f280d232d3ea38224a49a9113f9c7c"
+      }
+    },
+    "assets/agent_transcripts/rhino_save_small/metadata.edn": {
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "channels": 0,
+      "reason": "No output-area channels; the code remains available.",
+      "sources": {
+        "dev_docs/agents/transcripts/rhino_save_small.yaml": "f0f580df3c8eafe3e1769f787998a6749c1d90656a3d1c9aadcd02c8c7f4cf28",
+        "public/docs/assets/agent_transcripts/rhino_save_small/metadata.edn": "068ddf7c02faf2bf0e082758ef7afcdcc5a203cbac0928230a9c66dd208d62d5",
+        "public/docs/assets/agent_transcripts/rhino_save_small/rhino_save_small_draw_code_.kt": "61b3de6d3808297a5f2b0f1b078d4d19372623cecfbb219a5c8bd96d884919f3",
+        "public/docs/assets/agent_transcripts/rhino_save_small/rhino_save_small_measure_code_.kt": "794063d793cd69195edc5d445510a69644e499d69fddeefca2e15628639bba75"
       }
     },
     "assets/agent_transcripts/shared_types_demo/metadata.edn": {
