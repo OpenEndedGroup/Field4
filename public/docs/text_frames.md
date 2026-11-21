@@ -218,3 +218,21 @@ saved document; for the latest unsaved state AI4 should read the live box proper
 Updates from another person or an agent use Field's property synchronization. If an incoming change
 collides with your active draft, Field keeps the draft and offers **Use incoming** or **Keep my version**.
 This is whole-property conflict handling; simultaneous character-by-character merging is not provided.
+
+
+### Work with notes and passages in AI4
+
+In a document's AI4 chat, ask for a Markdown note or for notes matching a phrase. AI4 can work
+with unsaved box text. It can also create a child note tied to an exact quote, return a stable
+clickable passage link, or insert a live transclusion into an existing frame. If a quote occurs
+more than once, give surrounding text or specify which occurrence to use.
+
+- `FindTextNotesRequest` finds text-frame notes and the `notes` property of ordinary boxes.
+- `CreateTextNoteRequest` creates a frame, with an optional parent and exact passage.
+- `GetBoxPropertyRequest` reads the note; `PatchBoxTextRequest` edits `contents` for a text frame
+  or `notes` for box notes. Editing a note doesn't run it.
+- `TrackTextPassageRequest` returns a durable passage ID and link.
+- `TranscludeTextPassageRequest` inserts a live reference from a quote or an existing passage ID.
+- `FindTextLinksRequest` finds sources and backlinks, including links to lost passages.
+
+The results include clickable Field links so you can check what the agent found or wrote.

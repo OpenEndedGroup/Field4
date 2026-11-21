@@ -74,7 +74,11 @@ function findRunSource(id) {
 
 window.openTextFramePassage = id => {
     const found = findRunSource(id);
-    if (!found || !window.frameBoxFromGuide?.(found.state.box.uid)) return false;
+    if (!found) {
+        const child = [...frames.values()].find(state => !state.box.classList.contains('tombstoned') && state.passageAnchor?.id === id);
+        return !!child && showPassage(child);
+    }
+    if (!window.frameBoxFromGuide?.(found.state.box.uid)) return false;
     finish(found.state);
     shownPassage = {source: found.state, id};
     updatePassageHighlight();
