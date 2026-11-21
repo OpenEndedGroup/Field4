@@ -672,14 +672,6 @@ internal object OpenNurbsBrepNative {
     private val id by lazy { handle("field_opennurbs_breps_id", FunctionDescriptor.of(ADDRESS, ADDRESS, JAVA_INT)) }
     private val length by lazy { handle("field_opennurbs_breps_length", FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT)) }
     private val data by lazy { handle("field_opennurbs_breps_data", FunctionDescriptor.of(ADDRESS, ADDRESS, JAVA_INT)) }
-    private val writeFixture by lazy { handle("field_opennurbs_write_brep_fixture", FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_INT)) }
-
-    fun writeFixture(file: File) = Arena.ofConfined().use { arena ->
-        val message = arena.allocate(JAVA_BYTE, MESSAGE_CAPACITY.toLong())
-        val status = writeFixture.invokeExact(arena.allocateFrom(file.absolutePath), message, MESSAGE_CAPACITY) as Int
-        if (status != 0) throw RhinoException("openNURBS could not write ${file.absolutePath}: ${message.getString(0)}")
-    }
-
     /** What [read] returns: Brep faces and SubD triangle corners, each by object id. */
     class Contents(val breps: Map<String, List<BrepFace>>, val subds: Map<String, DoubleArray>)
 

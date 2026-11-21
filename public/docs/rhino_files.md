@@ -171,6 +171,11 @@ What goes in, and what Rhino gets:
 | `nurbs(degree, points, knots, weights)` | a NURBS curve, rational when you give weights, knots as openNURBS counts them | yes |
 | `points(list)`, `point(p)` | a point cloud, or a point | yes |
 | `text(string, origin, height)` | text on a plane, `xAxis` and `yAxis` giving its orientation | the font is Rhino's |
+| `brep(faces)` | a Brep: each `RhinoBrepFace` is a NURBS surface with trim loops and, optionally, a cached render mesh; shared edges, seams and poles are worked out for you. `RhinoBreps.sphere`, `cylinder`, `box` and `plate` make the faces of those solids | yes |
+| `surface(nurbsSurface)` | an untrimmed NURBS surface, which Rhino keeps as a one-face Brep | yes |
+| `subd(points, faces, creases)` | a SubD from its control net, with the edges you name kept sharp; `RhinoBreps.subdBox` makes a box's net | yes |
+| `hatch(fline)` | a solid hatch: the first subpath is the outline, the rest holes | yes |
+| `block(name) { ... }`, `instance(name, translation)` | a block definition holding what the block adds, and a placement of it | yes |
 
 </div>
 

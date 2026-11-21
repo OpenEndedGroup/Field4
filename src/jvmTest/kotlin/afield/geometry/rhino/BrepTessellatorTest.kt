@@ -15,7 +15,8 @@ import kotlin.test.assertTrue
 
 /**
  * Trimmed NURBS Breps saved without render meshes, tessellated by [BrepTessellator], measured
- * against the analytic shapes the C++ fixture builds (`field_opennurbs_write_brep_fixture`).
+ * against the analytic shapes [Rhino3dm.writeNurbsSample] writes through [RhinoWriter] from
+ * [RhinoBreps]; and the builder's Breps and surfaces read back exactly.
  */
 class BrepTessellatorTest {
 
@@ -195,6 +196,70 @@ class BrepTessellatorTest {
                 val m = t.meshFaces(faces) ?: continue
                 println("WATERTIGHT reader $id (${faces.size} faces): ${t.lastStitch}, ${m.triangleCount} triangles")
             }
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
+
+    @Test fun builderWrittenSurfacesAndBrepsReadBackExactly() {
+        if (!available()) return
+        val dir = Files.createTempDirectory("rhino3dm-brep-roundtrip").toFile()
+        try {
+            // A bicubic patch with an interior knot and one rational point: nothing a constructor makes.
+            val cvs = DoubleArray(5 * 4 * 4)
+            for (i in 0 until 5) for (j in 0 until 4) {
+                val w = if (i == 2 && j == 1) 2.0 else 1.0
+                val at = (i * 4 + j) * 4
+                cvs[at] = i * 3.0 * w; cvs[at + 1] = j * 2.0 * w; cvs[at + 2] = ((i * 7 + j * 3) % 5) * w; cvs[at + 3] = w
+            }
+            val patch = NurbsSurface(
+                3, 3, 5, 4, doubleArrayOf(0.0, 0.0, 0.0, 0.0, 0.4, 1.0, 1.0, 1.0, 1.0), doubleArrayOf(0.0, 0.0, 0.0, 0.0, 2.0, 2.0, 2.0, 2.0), cvs,
+            )
+            val file = Rhino3dm.save(File(dir, "roundtrip.3dm")) {
+                surface(patch, name = "patch")
+                brep(RhinoBreps.sphere(afield.math.linalg.vec(1.0, 2.0, 3.0), 4.0), name = "ball")
+                brep(RhinoBreps.cylinder(afield.math.linalg.vec(0.0, 0.0, 0.0), 2.0, 5.0), name = "can")
+            }
+            val model = Rhino3dm.load(file, RhinoBrepMeshing.EVALUATE)
+            assertEquals(listOf("patch", "ball", "can"), model.meshes.map { it.name })
+            val contents = OpenNurbsBrepNative.read(file, -1)
+            assertEquals(listOf(1, 1, 3), contents.breps.values.map { it.size }.sorted())
+            val faces = contents.breps.values.flatten()
+            // The patch comes back with the same control net, so it evaluates to the same points.
+            val back = faces.mapNotNull { it.surface }.single { it.countU == 5 && it.countV == 4 }
+            val a = DoubleArray(6); val b = DoubleArray(6)
+            for (iu in 0..10) for (iv in 0..10) {
+                val u = iu / 10.0; val v = iv / 10.0 * 2.0
+                patch.evaluate(u, v, a); back.evaluate(u, v, b)
+                for (k in 0..2) assertEquals(a[k], b[k], 1e-9, "patch at ($u, $v)")
+            }
+            // The sphere face evaluates onto the sphere, and its loop is the whole domain.
+            val ball = faces.single { f -> f.surface!!.countU == 9 && f.surface.countV == 5 }
+            for (iu in 0..8) for (iv in 0..8) {
+                val s = ball.surface!!
+                ball.surface.evaluate(s.domainU[0] + (s.domainU[1] - s.domainU[0]) * iu / 8, s.domainV[0] + (s.domainV[1] - s.domainV[0]) * iv / 8, a)
+                assertEquals(4.0, sqrt((a[0] - 1) * (a[0] - 1) + (a[1] - 2) * (a[1] - 2) + (a[2] - 3) * (a[2] - 3)), 1e-9)
+            }
+            assertEquals(1, ball.outer.size)
+            assertTrue(ball.inner.isEmpty())
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
+
+    @Test fun aBrepWithBrokenKnotsIsRefusedWithAReason() {
+        if (!available()) return
+        val dir = Files.createTempDirectory("rhino3dm-brep-bad").toFile()
+        try {
+            val flat = NurbsSurface(
+                1, 1, 2, 2, doubleArrayOf(0.0, 0.0, 1.0, 1.0), doubleArrayOf(0.0, 0.0, 1.0, 1.0),
+                doubleArrayOf(0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 1.0),
+            )
+            val bent = RhinoTrim(1, doubleArrayOf(0.0, 0.0, 1.0, 0.0), doubleArrayOf(1.0, 0.0))
+            val e = kotlin.test.assertFailsWith<RhinoException> {
+                Rhino3dm.save(File(dir, "bad.3dm")) { brep(listOf(RhinoBrepFace(flat, listOf(RhinoTrimLoop(listOf(bent)))))) }
+            }
+            assertTrue("Brep" in e.message!!, e.message)
         } finally {
             dir.deleteRecursively()
         }

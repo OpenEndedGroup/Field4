@@ -75,6 +75,73 @@ FIELD_OPENNURBS_API int field_opennurbs_writer_add_points(void* writer, const do
 FIELD_OPENNURBS_API int field_opennurbs_writer_add_text(void* writer, const char* utf8Text, const double* origin,
     const double* xAxis, const double* yAxis, double height);
 
+/**
+ * A Brep from [length] packed doubles (see below). openNURBS builds the topology: each trim's 3D edge
+ * (an exact iso-curve or image under a planar parallelogram surface where it can, otherwise a dense
+ * polyline within the trim's surface image), shared vertices, one shared edge wherever two trims
+ * trace the same 3D curve (seams included), and a singular trim wherever a trim's image collapses to
+ * a point (a sphere's poles). Knots are in openNURBS's convention (no superfluous end knots):
+ *
+ *     faceCount
+ *     per face:
+ *       reversed                      1 when the face's normal is opposite the surface's
+ *       degreeU degreeV cvCountU cvCountV
+ *       knotsU[cvCountU + degreeU - 1] knotsV[cvCountV + degreeV - 1]
+ *       cvs[cvCountU * cvCountV * 4]  homogeneous (x*w, y*w, z*w, w), u-major
+ *       loopCount
+ *       per loop:
+ *         loopType                    1 outer, 2 inner
+ *         trimCount
+ *         per trim (a 2D NURBS curve in the surface's parameters, in loop order):
+ *           degree cvCount
+ *           knots[cvCount + degree - 1]
+ *           cvs[cvCount * 3]          homogeneous (u*w, v*w, w)
+ *       meshVertexCount               0 for none; otherwise a render mesh cached on the face:
+ *       xyz[meshVertexCount * 3] triangleCount indices[triangleCount * 3]
+ *
+ * Returns 0, or -1 with the reason (openNURBS's validity log) in [message].
+ */
+FIELD_OPENNURBS_API int field_opennurbs_writer_add_brep(void* writer, const double* packed, int length,
+    char* message, int messageCapacity);
+
+/**
+ * An untrimmed NURBS surface, written as Rhino writes one: a one-face Brep. Same surface layout as a
+ * face of `_add_brep` without `reversed`, loops or mesh. Returns 0 or -1.
+ */
+FIELD_OPENNURBS_API int field_opennurbs_writer_add_surface(void* writer, int degreeU, int degreeV, int cvCountU,
+    int cvCountV, const double* knotsU, const double* knotsV, const double* cvs);
+
+/**
+ * A SubD from its control net: [vertexCount] xyz points, [faceCount] faces whose sizes are in
+ * [faceSizes] and vertex indices, in order, in [faceVertices]; [creaseCount] edges (vertex index
+ * pairs in [creases]) tagged as creases. Tags are completed by openNURBS (a vertex where three
+ * creases meet becomes a corner). Returns 0 or -1.
+ */
+FIELD_OPENNURBS_API int field_opennurbs_writer_add_subd(void* writer, const double* xyz, int vertexCount,
+    const int* faceSizes, int faceCount, const int* faceVertices, const int* creases, int creaseCount);
+
+/**
+ * A solid hatch whose boundary is a path in the `_add_path` form: its first subpath is the outer
+ * loop, the rest are holes, all on the plane z = (the first point's z). Returns 0 or -1.
+ */
+FIELD_OPENNURBS_API int field_opennurbs_writer_add_hatch(void* writer, const double* xyz, int pointCount,
+    const int* ops, int opCount);
+
+/**
+ * Start a block definition named [utf8Name]: objects added until `_end_block` become its members
+ * rather than top-level objects. Returns 0, or -1 when a block is already open.
+ */
+FIELD_OPENNURBS_API int field_opennurbs_writer_begin_block(void* writer, const char* utf8Name);
+
+/** Close the open block definition. Returns its index for `_add_instance`, or -1. */
+FIELD_OPENNURBS_API int field_opennurbs_writer_end_block(void* writer);
+
+/**
+ * Place block [block] with the row-major 4 x 4 transform [xform16] (with the current attributes).
+ * Returns 0 or -1.
+ */
+FIELD_OPENNURBS_API int field_opennurbs_writer_add_instance(void* writer, int block, const double* xform16);
+
 /** How many objects the writer holds. */
 FIELD_OPENNURBS_API int field_opennurbs_writer_object_count(void* writer);
 

@@ -153,102 +153,6 @@ std::vector<double> pack(const ON_Brep& brep) {
     return out;
 }
 
-// ---------------------------------------------------------------------------------------------
-// The fixture
-
-ON_3dmObjectAttributes* brepAttributes(int layer, const wchar_t* name) {
-    ON_3dmObjectAttributes* attributes = new ON_3dmObjectAttributes();
-    attributes->m_layer_index = layer;
-    attributes->SetName(name, true);
-    return attributes;
-}
-
-ON_Brep* squareWithHole() {
-    const ON_Plane plane(ON_3dPoint(30, -10, 0), ON_3dVector::ZAxis);
-    ON_SimpleArray<ON_Curve*> outer;
-    const ON_3dPoint c[4] = {ON_3dPoint(20, -20, 0), ON_3dPoint(40, -20, 0), ON_3dPoint(40, 0, 0), ON_3dPoint(20, 0, 0)};
-    for (int i = 0; i < 4; ++i) outer.Append(new ON_LineCurve(c[i], c[(i + 1) % 4]));
-    ON_Brep* brep = ON_BrepTrimmedPlane(plane, outer, false);
-    if (brep == nullptr) return nullptr;
-    ON_SimpleArray<ON_Curve*> hole;
-    // Inner loops run clockwise seen from the face's normal.
-    ON_Circle circle(ON_Plane(ON_3dPoint(30, -10, 0), -ON_3dVector::ZAxis), 5.0);
-    hole.Append(new ON_ArcCurve(circle));
-    brep->NewPlanarFaceLoop(0, ON_BrepLoop::inner, hole, false);
-    return brep;
-}
-
-bool writeBrepFixture(const char* path, std::string& error) {
-    ONX_Model model;
-    model.m_properties.m_RevisionHistory.NewRevision();
-    model.m_settings.m_ModelUnitsAndTolerances.m_unit_system = ON_UnitSystem::Millimeters;
-    model.AddDefaultLayer(nullptr, ON_Color::UnsetColor);
-    const int nurbs = model.AddLayer(L"NURBS", ON_Color(70, 130, 200));
-    const int boxes = model.AddLayer(L"Boxes", ON_Color(200, 120, 40));
-
-    ON_Brep* sphere = ON_BrepSphere(ON_Sphere(ON_3dPoint(0, 0, 0), 10.0));
-    ON_Brep* cylinder = ON_BrepCylinder(ON_Cylinder(ON_Circle(ON_Plane(ON_3dPoint(30, 20, -10), ON_3dVector::ZAxis), 5.0), 20.0), true, true);
-    ON_Brep* plate = squareWithHole();
-    if (sphere == nullptr || cylinder == nullptr || plate == nullptr) {
-        error = "openNURBS could not build the fixture Breps";
-        return false;
-    }
-    model.AddManagedModelGeometryComponent(sphere, brepAttributes(nurbs, L"sphere"));
-    model.AddManagedModelGeometryComponent(cylinder, brepAttributes(nurbs, L"capped cylinder"));
-    model.AddManagedModelGeometryComponent(plate, brepAttributes(nurbs, L"plate with hole"));
-
-    // A box with a saved render mesh per face (one quad), and the same box without, side by side.
-    for (int saved = 0; saved < 2; ++saved) {
-        const double x = saved ? -30.0 : -15.0;
-        ON_3dPoint corners[8] = {
-            ON_3dPoint(x, 20, -5), ON_3dPoint(x + 10, 20, -5), ON_3dPoint(x + 10, 30, -5), ON_3dPoint(x, 30, -5),
-            ON_3dPoint(x, 20, 5), ON_3dPoint(x + 10, 20, 5), ON_3dPoint(x + 10, 30, 5), ON_3dPoint(x, 30, 5)};
-        ON_Brep* box = ON_BrepBox(corners);
-        if (saved) {
-            for (int f = 0; f < box->m_F.Count(); ++f) {
-                ON_BrepFace& face = box->m_F[f];
-                const ON_BrepLoop* loop = face.OuterLoop();
-                if (loop == nullptr || loop->m_ti.Count() != 4) continue;
-                ON_Mesh* quad = new ON_Mesh(1, 4, false, false);
-                for (int i = 0; i < 4; ++i) quad->SetVertex(i, box->m_V[box->m_T[loop->m_ti[i]].m_vi[0]].point);
-                if (face.m_bRev) quad->SetQuad(0, 0, 3, 2, 1); else quad->SetQuad(0, 0, 1, 2, 3);
-                quad->ComputeVertexNormals();
-                face.SetMesh(ON::render_mesh, quad);
-            }
-        }
-        model.AddManagedModelGeometryComponent(box, brepAttributes(boxes, saved ? L"box, saved mesh" : L"box, no mesh"));
-    }
-
-    // SubDs: a smooth one (its limit surface is a rounded blob inside the cage) and a creased one
-    // (its limit surface is the box itself), each a 2 x 2 x 2 cage 10 across.
-    const int subds = model.AddLayer(L"SubD", ON_Color(90, 170, 90));
-    for (int creased = 0; creased < 2; ++creased) {
-        const double x = creased ? 15.0 : -5.0;
-        const ON_3dPoint corners[8] = {
-            ON_3dPoint(x, -45, -5), ON_3dPoint(x + 10, -45, -5), ON_3dPoint(x + 10, -35, -5), ON_3dPoint(x, -35, -5),
-            ON_3dPoint(x, -45, 5), ON_3dPoint(x + 10, -45, 5), ON_3dPoint(x + 10, -35, 5), ON_3dPoint(x, -35, 5)};
-        ON_SubD* subd = ON_SubD::CreateSubDBox(corners, creased ? ON_SubDEdgeTag::Crease : ON_SubDEdgeTag::Smooth, 2, 2, 2, nullptr);
-        if (subd == nullptr) {
-            error = "openNURBS could not build the fixture SubD";
-            return false;
-        }
-        model.AddManagedModelGeometryComponent(subd, brepAttributes(subds, creased ? L"creased SubD" : L"smooth SubD"));
-    }
-
-    FILE* fp = ON::OpenFile(path, "wb");
-    if (fp == nullptr) {
-        error = std::string("cannot open ") + path + " for writing";
-        return false;
-    }
-    ON_BinaryFile archive(ON::archive_mode::write3dm, fp);
-    ON_wString log;
-    ON_TextLog textLog(log);
-    const bool ok = model.Write(archive, 7, &textLog);
-    ON::CloseFile(fp);
-    if (!ok) error = "openNURBS failed to write the Brep fixture";
-    return ok;
-}
-
 }  // namespace
 
 extern "C" {
@@ -352,25 +256,5 @@ const double* field_opennurbs_subds_data(void* handle, int index) {
     return static_cast<Breps*>(handle)->subdData[index].data();
 }
 
-int field_opennurbs_write_brep_fixture(const char* utf8Path, char* message, int messageCapacity) {
-    if (utf8Path == nullptr) {
-        brepMessage(message, messageCapacity, "null path");
-        return FIELD_OPENNURBS_BAD_INPUT;
-    }
-    try {
-        std::string error;
-        if (!writeBrepFixture(utf8Path, error)) {
-            brepMessage(message, messageCapacity, error);
-            return FIELD_OPENNURBS_FAILED;
-        }
-        return FIELD_OPENNURBS_OK;
-    } catch (const std::exception& e) {
-        brepMessage(message, messageCapacity, e.what());
-        return FIELD_OPENNURBS_FAILED;
-    } catch (...) {
-        brepMessage(message, messageCapacity, "unknown failure writing the Brep fixture");
-        return FIELD_OPENNURBS_FAILED;
-    }
-}
 
 }  // extern "C"
