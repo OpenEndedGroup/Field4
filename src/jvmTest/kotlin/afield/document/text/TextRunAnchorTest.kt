@@ -114,7 +114,7 @@ class TextRunAnchorTest {
         val cut = TextRunClipboardEdit("cut", token, parent.id, start, start + cutText.length)
         val remaining = before.removeRange(cut.start, cut.end)
         val boxes = mapOf(parent.id to parent)
-        assertTrue(applyTextRunClipboardEdit(parent, remaining, cut, boxes::get))
+        assertTrue(applyTextRunClipboardEdit(parent, remaining, cut, boxByUid = boxes::get))
         assertTrue(red.range().lost && blue.range().lost)
         assertEquals(token, red.range().cut?.token)
         assertEquals(8, blue.range().cut?.start)
@@ -130,14 +130,47 @@ class TextRunAnchorTest {
         } finally { directory.deleteRecursively() }
 
         val paste = cut.copy(action = "paste", start = 0, end = 0)
-        assertFalse(applyTextRunClipboardEdit(parent, "some other text$remaining", paste, boxes::get))
+        assertFalse(applyTextRunClipboardEdit(parent, "some other text$remaining", paste, boxByUid = boxes::get))
         assertTrue(blue.range().lost)
-        assertTrue(applyTextRunClipboardEdit(parent, cutText + remaining, paste, boxes::get))
+        assertTrue(applyTextRunClipboardEdit(parent, cutText + remaining, paste, boxByUid = boxes::get))
         assertEquals(0, red.range().start)
         assertEquals(8, blue.range().start)
         assertEquals("blue", blue.range().id)
         assertFalse(blue.range().lost)
         assertEquals(null, blue.range().cut)
-        assertFalse(applyTextRunClipboardEdit(parent, cutText + cutText + remaining, paste, boxes::get))
+        assertFalse(applyTextRunClipboardEdit(parent, cutText + cutText + remaining, paste, boxByUid = boxes::get))
+    }
+
+    @Test
+    fun aTransclusionTracksTheSourceWithoutAddingAnEdge() {
+        val source = Box(id = "source")
+        val reader = Box(id = "reader")
+        val destination = Box(id = "destination")
+        for (box in listOf(source, reader, destination)) box.setPropertyRaw("box_kind", "text-frame")
+        source.setPropertyRaw("contents", "Before. Tracked passage. After.")
+        val boxes = listOf(source, reader, destination).associateBy { it.id }
+        val id = "8d4c262a-5343-488a-afdb-82344f022b90"
+        val quote = "Tracked passage"
+        val link = "[Source passage](field://passage/$id)"
+        val insert = TextRunClipboardEdit("transclude", id, source.id, 0, 0, 8, 8 + quote.length, quote)
+        assertTrue(applyTextRunClipboardEdit(reader, link, insert, boxByUid = boxes::get))
+        assertEquals(id, source.textRunSources().single().id)
+        assertTrue(source.children.isEmpty())
+        assertEquals(link, reader.getPropertyRaw("contents"))
+
+        source.setPropertyRaw("contents", "More before. Tracked changed passage. After.")
+        val range = source.textRunSources().single()
+        assertEquals("Tracked changed passage", range.excerpt)
+        val before = source.getPropertyRaw("contents") as String
+        val cut = TextRunClipboardEdit("cut", "a4be9942-f04e-47a1-9bd0-92ba90b40419", source.id, range.start, range.end)
+        assertTrue(applyTextRunClipboardEdit(source, before.removeRange(range.start, range.end), cut, boxByUid = boxes::get))
+        assertTrue(source.textRunSources().single().lost)
+        assertTrue(applyTextRunClipboardEdit(destination, range.excerpt, cut.copy(action = "paste", start = 0, end = 0),
+            boxByUid = boxes::get))
+        assertTrue(source.textRunSources().isEmpty())
+        assertEquals(id, destination.textRunSources().single().id)
+        assertEquals(destination.id, destination.textRunSources().single().sourceUid)
+        assertEquals(link, reader.getPropertyRaw("contents"))
+        assertTrue(Box.isPersistentName(TEXT_RUN_SOURCES))
     }
 }

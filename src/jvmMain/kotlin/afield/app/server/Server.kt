@@ -4,6 +4,7 @@ package afield.app.server
 
 import afield.document.text.TEXT_RUN_ANCHOR
 import afield.document.text.applyTextRunClipboardEdit
+import afield.document.text.textRunSources
 import afield.document.text.validateTextRunAnchor
 import afield.animation.keyframes.Handle
 import afield.app.diagnostics.named
@@ -3067,8 +3068,12 @@ class Server {
                         validateTextRunAnchor(set.value) { boxes[it] }
                     } else textPropertyValue(targetBox, set.property, set.value)
                     val clipboardEdit = set.textRunClipboard
-                    val movedPassage = set.property == "contents" && clipboardEdit != null &&
-                        applyTextRunClipboardEdit(targetBox, set.value, clipboardEdit) { thisSessionInfo.get().boxes[it] }
+                    val movedPassage = set.property == "contents" && clipboardEdit != null && run {
+                        val boxes = thisSessionInfo.get().boxes
+                        applyTextRunClipboardEdit(targetBox, set.value, clipboardEdit,
+                            knownPassage = { id -> boxes.values.any { box -> box.textRunSources().any { it.id == id } } },
+                            boxByUid = { boxes[it] })
+                    }
                     if (!movedPassage) targetBox.setPropertyRaw(set.property, value, doResync = !isEditorStateProperty)
                     OperationTranscript.recordEdit(
                         targetBox,

@@ -10,16 +10,20 @@ import {load, dump, CORE_SCHEMA} from './vendor/js-yaml/js-yaml.mjs';
 const frames = new Map();
 const normalizeMarkdown = value => value.replace(/\r\n?/g, '\n');
 const textRunCutType = 'application/x-field-text-run-cut';
+const passageCopyType = 'application/x-field-passage';
+const webPassageCopyType = 'web ' + passageCopyType;
+const passageLinkPrefix = 'field://passage/';
+let lastPassagePlain;
 let shownPassage = null;
 
 function updatePassageHighlight() {
     const highlights = window.CSS?.highlights;
     if (!highlights) return;
     highlights.delete('field-source-passage');
-    const {source, child} = shownPassage || {};
-    const anchor = child?.passageAnchor;
-    if (!source?.box.isConnected || !child?.box.isConnected || !anchor || anchor.lost || anchor.sourceUid !== source.box.uid || source.preview.hidden ||
-        source.box.classList.contains('tombstoned') || child.box.classList.contains('tombstoned')) return;
+    const {source, child, id} = shownPassage || {};
+    const anchor = child ? child.passageAnchor : source?.runSources.find(entry => entry.id === id);
+    if (!source?.box.isConnected || (child && !child.box.isConnected) || !anchor || anchor.lost || anchor.sourceUid !== source.box.uid || source.preview.hidden ||
+        source.box.classList.contains('tombstoned') || child?.box.classList.contains('tombstoned')) return;
     const text = normalizeMarkdown(source.previewSource || '');
     if (anchor.end > text.length || text.slice(anchor.start, anchor.start + anchor.excerpt.length) !== anchor.excerpt) return;
     const range = domRangeForMarkdown(source.preview, anchor.start, anchor.end);
@@ -49,6 +53,83 @@ function showPassage(child) {
     finish(source);
     shownPassage = {source, child};
     updatePassageHighlight();
+}
+
+function findRunSource(id) {
+    for (const state of frames.values()) {
+        if (state.box.classList.contains('tombstoned')) continue;
+        const anchor = state.runSources.find(entry => entry.id === id);
+        if (anchor) return {state, anchor};
+    }
+    return null;
+}
+
+window.openTextFramePassage = id => {
+    const found = findRunSource(id);
+    if (!found || !window.frameBoxFromGuide?.(found.state.box.uid)) return false;
+    finish(found.state);
+    shownPassage = {source: found.state, id};
+    updatePassageHighlight();
+    return true;
+};
+
+let transclusionFrame;
+function refreshTransclusions() {
+    if (transclusionFrame != null) return;
+    transclusionFrame = requestAnimationFrame(() => {
+        transclusionFrame = null;
+        const byId = new Map();
+        for (const state of frames.values()) {
+            if (!state.box.classList.contains('tombstoned')) {
+                for (const anchor of state.runSources) byId.set(anchor.id, {state, anchor});
+            }
+        }
+        for (const state of frames.values()) {
+            let changed = false;
+            for (const surface of [state.preview, state.rich]) {
+                for (const link of surface.querySelectorAll(`a[href^="${passageLinkPrefix}"]`)) {
+                    const id = link.getAttribute('href').slice(passageLinkPrefix.length);
+                    const found = byId.get(id);
+                    const anchor = found?.anchor;
+                    const source = found?.state;
+                    const text = normalizeMarkdown(source?.box.contents || '');
+                    const live = anchor && !anchor.lost && anchor.end <= text.length &&
+                        text.slice(anchor.start, anchor.start + anchor.excerpt.length) === anchor.excerpt;
+                    const excerpt = live ? text.slice(anchor.start, anchor.end) : 'Passage lost';
+                    const signature = JSON.stringify([live, source?.box.uid, excerpt]);
+                    if (link.fieldPassageSignature === signature) continue;
+                    link.fieldPassageSignature = signature;
+                    link.classList.add('text-frame-transclusion');
+                    link.classList.toggle('text-frame-transclusion-lost', !live);
+                    link.title = live ? 'Live passage · click to show its source' : 'The source passage is no longer available';
+                    link.replaceChildren();
+                    if (live) {
+                        const rendered = document.createElement('span');
+                        renderFieldMarkdown(rendered, excerpt, markdownOptions(source));
+                        for (const nested of rendered.querySelectorAll('a')) nested.replaceWith(...nested.childNodes);
+                        rendered.querySelectorAll('button').forEach(button => button.remove());
+                        const blocks = rendered.querySelector('.ai-chat-markdown')?.children || [];
+                        for (const block of [...blocks]) {
+                            if (link.childNodes.length) link.append(document.createElement('br'));
+                            if (block.matches('p,h1,h2,h3,h4,h5,h6,blockquote')) link.append(...block.childNodes);
+                            else link.append(document.createTextNode(block.textContent));
+                        }
+                        if (!link.childNodes.length) link.textContent = excerpt;
+                    } else link.textContent = excerpt;
+                    changed = true;
+                }
+            }
+            if (changed) layout(state);
+        }
+    });
+}
+
+function syncRunSources(state) {
+    let sources;
+    try { sources = JSON.parse(state.box.textRunSources); } catch (_) { /* No transclusions yet. */ }
+    state.runSources = Array.isArray(sources) ? sources : [];
+    refreshTransclusions();
+    if (shownPassage?.source === state) updatePassageHighlight();
 }
 
 window.captureTextFrameRun = uid => {
@@ -250,6 +331,7 @@ function write(box, property, value) {
     if (property === 'contents') {
         if (frames.has(box)) frames.get(box).seenContents = value;
         setTextFrameContents(box.uid, value);
+        refreshTransclusions();
     } else {
         box[property] = value;
         if (property === 'textFrame') { syncTextFrameSettingsEditor(box.uid, value); refreshStyleInheritance(); }
@@ -289,7 +371,7 @@ function clipboardRange(state, cut = false) {
     return {start: state.editor.selectionStart, end: state.editor.selectionEnd};
 }
 
-function applyClipboardRange(state, start, end, inserted, proof) {
+function applyClipboardRange(state, start, end, inserted, proof = null) {
     const before = normalizeMarkdown(state.editor.value);
     flush(state);
     const after = before.slice(0, start) + inserted + before.slice(end);
@@ -304,12 +386,111 @@ function applyClipboardRange(state, start, end, inserted, proof) {
         revealTextareaCaret(state.editor);
     }
     state.seenContents = after;
-    setTextFrameContents(state.box.uid, after, {...proof, start, end});
+    setTextFrameContents(state.box.uid, after, proof ? {...proof, start, end} : null);
+    refreshTransclusions();
     layout(state);
 }
 
 function clipboardDocument() {
     return window.currentDocumentSessionKey || window.currentDocumentFilename || '';
+}
+
+function copyPassage(event) {
+    if (event.defaultPrevented || !event.clipboardData || !clipboardDocument()) return;
+    const selection = window.getSelection();
+    const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
+    const target = event.target.closest?.('.text-frame-box');
+    const anchor = range?.startContainer;
+    const anchorBox = (anchor?.nodeType === Node.ELEMENT_NODE ? anchor : anchor?.parentElement)?.closest('.text-frame-box');
+    const state = frames.get(target || anchorBox);
+    if (!state || state.composing || state.incoming !== null) return;
+    const editing = !state.editor.hidden || state.richEdit;
+    const source = normalizeMarkdown(editing ? state.editor.value : state.previewSource || '');
+    const offsets = editing ? clipboardRange(state, true) : markdownRangeFromDOM(state.preview, range);
+    if (!offsets || offsets.start >= offsets.end) return;
+    const quote = source.slice(offsets.start, offsets.end);
+    if (!quote.trim() || quote.length > 65536) return;
+    const sameRange = a => a && !a.lost && a.sourceUid === state.box.uid && a.start === offsets.start && a.end === offsets.end;
+    const known = state.runSources.find(sameRange) ||
+        [...frames.values()].map(frame => frame.passageAnchor).find(sameRange);
+    const clip = {version:1, token:known?.id || crypto.randomUUID(), sourceUid:state.box.uid,
+        sourceStart:offsets.start, sourceEnd:offsets.end, quote, document:clipboardDocument()};
+    const data = JSON.stringify(clip);
+    const raw = !state.editor.hidden;
+    const plain = raw ? quote : range?.toString();
+    if (!plain) return;
+    const html = document.createElement('div');
+    if (!raw) html.append(range.cloneContents());
+    try {
+        event.clipboardData.setData('text/plain', plain);
+        if (!raw) event.clipboardData.setData('text/html', html.innerHTML);
+        event.clipboardData.setData(passageCopyType, data);
+        event.preventDefault();
+        lastPassagePlain = normalizeMarkdown(plain);
+        flush(state);
+        // Native "paste as plain text" may strip event formats. Also store a web custom
+        // format where the platform's async Clipboard API supports it.
+        if (event.isTrusted && window.ClipboardItem && navigator.clipboard?.write) {
+            const formats = {
+                'text/plain': new Blob([plain], {type:'text/plain'}),
+                [webPassageCopyType]: new Blob([data], {type:passageCopyType}),
+            };
+            if (!raw) formats['text/html'] = new Blob([html.innerHTML], {type:'text/html'});
+            navigator.clipboard.write([new ClipboardItem(formats)]).catch(() => {});
+        }
+    } catch (_) { /* The native copy still works when a clipboard format is unavailable. */ }
+}
+document.addEventListener('copy', copyPassage);
+
+function noteTransclusionShortcut(event, state) {
+    if ((event.metaKey || event.ctrlKey) && event.shiftKey && !event.altKey && event.code === 'KeyV') {
+        state.transclusionUntil = performance.now() + 1500;
+    }
+}
+
+function insertTransclusion(state, offsets, serialized) {
+    let clip;
+    try { clip = JSON.parse(serialized); } catch (_) { return false; }
+    if (clip?.version !== 1 || clip.document !== clipboardDocument() || !/^[a-f0-9-]{36}$/.test(clip.token) ||
+        typeof clip.quote !== 'string' || !clip.quote.trim() || clip.quote.length > 65536 ||
+        !Number.isInteger(clip.sourceStart) || !Number.isInteger(clip.sourceEnd) ||
+        ![...frames.values()].some(source => source.box.uid === clip.sourceUid && !source.box.classList.contains('tombstoned'))) return false;
+    applyClipboardRange(state, offsets.start, offsets.end, `[Source passage](${passageLinkPrefix}${clip.token})`,
+        {action:'transclude', token:clip.token, sourceUid:clip.sourceUid, sourceStart:clip.sourceStart, sourceEnd:clip.sourceEnd, quote:clip.quote});
+    return true;
+}
+
+function pasteTransclusion(event, state) {
+    if (!(state.transclusionUntil > performance.now())) return false;
+    state.transclusionUntil = 0;
+    if (event.defaultPrevented || !event.clipboardData || state.composing || state.incoming !== null ||
+        window.currentDocumentReadOnly) return false;
+    const offsets = clipboardRange(state);
+    if (!offsets) return false;
+    const direct = event.clipboardData.getData(passageCopyType);
+    if (direct && insertTransclusion(state, offsets, direct)) {
+        event.preventDefault();
+        return true;
+    }
+    const fallback = normalizeMarkdown(event.clipboardData.getData('text/plain'));
+    if (!event.isTrusted || !navigator.clipboard?.read || !fallback || fallback !== lastPassagePlain) return false;
+    event.preventDefault();
+    const value = state.editor.value, rich = state.richEdit;
+    (async () => {
+        let data;
+        try {
+            const items = await navigator.clipboard.read();
+            const item = items.find(entry => entry.types.includes(webPassageCopyType));
+            if (item && item.types.includes('text/plain')) {
+                const plain = await (await item.getType('text/plain')).text();
+                if (normalizeMarkdown(plain) === fallback) data = await (await item.getType(webPassageCopyType)).text();
+            }
+        } catch (_) { /* Permission denied: use the ordinary text from the paste event. */ }
+        if (state.editor.value !== value || state.richEdit !== rich || state.incoming !== null ||
+            (state.editor.hidden && !state.richEdit)) return;
+        if (!insertTransclusion(state, offsets, data)) applyClipboardRange(state, offsets.start, offsets.end, fallback);
+    })();
+    return true;
 }
 
 function cutTextRuns(event, state) {
@@ -318,9 +499,9 @@ function cutTextRuns(event, state) {
     const offsets = clipboardRange(state, true);
     if (!offsets || offsets.start >= offsets.end) return;
     // Leave ordinary cuts to the editor. A dirty draft may have shifted a live range before its next sync.
-    const hasRun = [...frames.values()].some(({passageAnchor: a}) =>
-        a && !a.lost && a.sourceUid === state.box.uid &&
-        (state.dirty || (a.start >= offsets.start && a.end <= offsets.end)));
+    const encloses = a => a && !a.lost && a.sourceUid === state.box.uid &&
+        (state.dirty || (a.start >= offsets.start && a.end <= offsets.end));
+    const hasRun = state.runSources.some(encloses) || [...frames.values()].some(({passageAnchor}) => encloses(passageAnchor));
     if (!hasRun) return;
     const fragment = normalizeMarkdown(state.editor.value).slice(offsets.start, offsets.end);
     const proof = {version: 1, token: crypto.randomUUID(), sourceUid: state.box.uid, document: clipboardDocument()};
@@ -365,6 +546,7 @@ function render(state) {
     state.preview.classList.toggle('text-frame-empty', !text.trim());
     if (!text.trim()) state.preview.textContent = 'Double-click to write';
     if (shownPassage?.source === state) updatePassageHighlight();
+    refreshTransclusions();
     layout(state);
 }
 function layout(state) {
@@ -447,6 +629,7 @@ function begin(state, clickedOffset, clickedSource) {
 function renderRich(state) {
     renderFieldMarkdown(state.rich, state.editor.value, markdownOptions(state, true));
     state.richEdit = mountRichText(state.rich, state.editor.value);
+    refreshTransclusions();
 }
 function positionRichToolbar(state) {
     const {box, toolbar} = state;
@@ -630,7 +813,7 @@ function mount(box) {
     // keep normal browser navigation; an ordinary single click follows after the double-click window.
     preview.addEventListener('click', e => {
         const anchor = e.target.closest('a[href]');
-        if (!anchor || state.followingLink || window.currentDocumentReadOnly || e.ctrlKey || e.metaKey || e.altKey) return;
+        if (!anchor || anchor.classList.contains('text-frame-transclusion') || state.followingLink || window.currentDocumentReadOnly || e.ctrlKey || e.metaKey || e.altKey) return;
         e.preventDefault(); e.stopImmediatePropagation();
         clearTimeout(state.linkTimer);
         if (e.detail < 2) state.linkTimer = setTimeout(() => {
@@ -657,15 +840,16 @@ function mount(box) {
     rich.addEventListener('compositionend', () => { state.composing = false; richChanged(state); flush(state); });
     rich.addEventListener('cut', e => cutTextRuns(e, state));
     rich.addEventListener('paste', e => {
-        if (pasteTextRuns(e, state)) return;
+        if (pasteTransclusion(e, state) || pasteTextRuns(e, state)) return;
         const session = state.richEdit;
         pasteRichText(e, rich, () => state.richEdit === session, () => richChanged(state));
     });
     rich.addEventListener('drop', e => e.preventDefault());
     rich.addEventListener('click', e => {
-        if (e.target.closest('a')) { e.preventDefault(); e.stopImmediatePropagation(); }
+        if (e.target.closest('a:not(.text-frame-transclusion)')) { e.preventDefault(); e.stopImmediatePropagation(); }
     }, true);
     rich.addEventListener('keydown', e => {
+        noteTransclusionShortcut(e, state);
         e.stopPropagation();
         if (e.isComposing) return;
         const shortcut = e.metaKey || e.ctrlKey;
@@ -678,7 +862,7 @@ function mount(box) {
         } else moveBetweenRichBlocks(e, rich);
     });
     editor.addEventListener('cut', e => cutTextRuns(e, state));
-    editor.addEventListener('paste', e => pasteTextRuns(e, state));
+    editor.addEventListener('paste', e => pasteTransclusion(e, state) || pasteTextRuns(e, state));
     editor.addEventListener('input', () => draftChanged(state));
     editor.addEventListener('compositionstart', () => { state.composing = true; clearTimeout(state.saveTimer); });
     editor.addEventListener('compositionend', () => { state.composing = false; state.dirty = true; flush(state); layout(state); });
@@ -687,6 +871,7 @@ function mount(box) {
         isEnabled: () => settingsFor(box).autocomplete === true && state.incoming === null && !state.composing
     });
     editor.addEventListener('keydown', e => {
+        noteTransclusionShortcut(e, state);
         e.stopPropagation();
         if (e.defaultPrevented) return;
         if (!e.isComposing && (e.key === 'Escape' || ((e.metaKey || e.ctrlKey) && e.key === 'Enter'))) {
@@ -715,6 +900,7 @@ function mount(box) {
     state.observer.observe(box); state.observer.observe(preview);
     frames.set(box, state);
     updatePassageBadge(state);
+    syncRunSources(state);
     refreshStyleInheritance();
     render(state);
     return state;
@@ -733,6 +919,8 @@ export function syncTextFrame(box, property) {
     }
     if (!state) { mount(box); return; }
     if (property === 'textRunAnchor') { updatePassageBadge(state); return; }
+    if (property === 'textRunSources') { syncRunSources(state); return; }
+    if (property === 'contents') refreshTransclusions();
     if (property === 'textFrame') { layout(state); return; }
     if (box.classList.contains('text-frame-editing')) {
         const incoming = box.contents || '';
@@ -763,6 +951,7 @@ new MutationObserver(() => {
     for (const [box, state] of frames) if (!box.isConnected) {
         clearTimeout(state.saveTimer); cancelAnimationFrame(state.layoutFrame); state.observer.disconnect(); state.autocomplete.dispose(); frames.delete(box);
         cancelAnimationFrame(state.toolbarFrame); state.toolbar.remove(); state.localStyle?.remove();
+        refreshTransclusions();
     }
 }).observe(document.body, {childList: true, subtree: true});
 window.addEventListener('pagehide', () => frames.forEach(flush));

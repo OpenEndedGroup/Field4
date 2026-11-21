@@ -6719,7 +6719,7 @@ suspend fun main() {
         val found = defaultCreate(u)
 
         found.unsafeCast<dynamic>()[set.property] = null
-        if (set.property in setOf("box_kind", "contents", "textFrame", "textRunAnchor")) {
+        if (set.property in setOf("box_kind", "contents", "textFrame", "textRunAnchor", "textRunSources")) {
             val sync = window.asDynamic().syncTextFrame
             if (sync != null) sync(found, set.property)
         }
@@ -7031,7 +7031,7 @@ suspend fun main() {
             }
         }
 
-        if (set.property in setOf("box_kind", "contents", "textFrame", "textRunAnchor")) {
+        if (set.property in setOf("box_kind", "contents", "textFrame", "textRunAnchor", "textRunSources")) {
             val sync = window.asDynamic().syncTextFrame
             if (sync != null) sync(found, set.property)
         }

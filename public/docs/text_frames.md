@@ -174,6 +174,19 @@ another frame in the same document moves the note's parent connection to that fr
 its other connections. Only the first paste of a cut moves the passage; copies and later
 pastes insert ordinary text.
 
+## Paste as transclusion
+
+Copy a selection from a text frame, then press ++cmd+shift+v++ on macOS or ++ctrl+shift+v++
+elsewhere in the canvas visual or inline Markdown editor. The destination must be in the same
+document. Field inserts a live excerpt. Edit the
+source and the excerpt updates; click the excerpt to highlight its source. Ordinary paste
+still inserts a copy.
+
+The Markdown stores a `field://passage/` link to the passage ID. The excerpt is read-only,
+including in the visual editor, but you can edit the text around it. Cutting and pasting the
+source passage within the document moves that ID with it. If the source passage is deleted,
+the excerpt shows **Passage lost**.
+
 ## Connected writing
 
 Shift-select two boxes and press ++g++ to connect them. ++alt++-click a frame and move **down** to choose

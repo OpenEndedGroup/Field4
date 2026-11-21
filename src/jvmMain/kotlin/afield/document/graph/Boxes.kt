@@ -40,6 +40,7 @@ import afield.app.settings.NEEDS_RERUN_PROPERTY
 import afield.data.table.get
 import afield.document.properties.PropertyBag
 import afield.document.text.TEXT_RUN_ANCHOR
+import afield.document.text.TEXT_RUN_SOURCES
 import afield.document.text.TextDiff
 import afield.document.text.rebaseChildTextRuns
 import afield.document.workspace.copyBoxes
@@ -723,6 +724,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "box_kind",
             "textFrame",
             TEXT_RUN_ANCHOR,
+            TEXT_RUN_SOURCES,
             "contents_language",
             "default_property",
             "file_proxy_mode",
@@ -810,6 +812,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "box_kind",
             "textFrame",
             TEXT_RUN_ANCHOR,
+            TEXT_RUN_SOURCES,
             "contents_language",
             "default_property",
             "file_proxy_mode",

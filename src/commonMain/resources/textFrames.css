@@ -129,3 +129,14 @@
 }
 .text-frame-box .text-frame-passage-lost { color: var(--field-warning, #e6ad75); }
 ::highlight(field-source-passage) { background-color: #14566b; color: #fff; }
+
+.text-frame-preview a.text-frame-transclusion {
+    border-left: 2px solid var(--field-accent);
+    padding-left: .45em;
+    text-decoration: none;
+    cursor: pointer;
+}
+.text-frame-preview a.text-frame-transclusion-lost {
+    border-color: currentColor;
+    color: var(--field-warning);
+}

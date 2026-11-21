@@ -31,7 +31,8 @@ private fun attachedRuns(source: Box): List<Pair<Box, TextRunAnchor>> {
  * authoritative ranges: only the source document's still-pending cuts can claim that token.
  */
 internal fun applyTextRunClipboardEdit(
-    target: Box, value: String, edit: TextRunClipboardEdit, boxByUid: (String) -> Box?,
+    target: Box, value: String, edit: TextRunClipboardEdit, knownPassage: (String) -> Boolean = { false },
+    boxByUid: (String) -> Box?,
 ): Boolean {
     if (target.getPropertyRaw("box_kind") != "text-frame" || edit.token.length != 36) return false
     val before = (target.getPropertyRaw("contents") as? String).orEmpty().normalizedRunSource()
@@ -47,14 +48,45 @@ internal fun applyTextRunClipboardEdit(
     )
 
     return when (edit.action) {
+        "transclude" -> {
+            val source = boxByUid(edit.sourceUid) ?: return false
+            if (source.getPropertyRaw("box_kind") != "text-frame" || source.getPropertyRaw("_tombstone") == true) return false
+            val capturedStart = edit.sourceStart ?: return false
+            val capturedEnd = edit.sourceEnd ?: return false
+            val quote = edit.quote?.normalizedRunSource()?.takeIf { it.isNotBlank() && it.length <= 65_536 } ?: return false
+            if (capturedStart < 0 || capturedEnd < capturedStart || capturedEnd - capturedStart != quote.length ||
+                after.substring(start, start + insertedLength) != "[Source passage](field://passage/${edit.token})") return false
+            val sourceText = (source.getPropertyRaw("contents") as? String).orEmpty().normalizedRunSource()
+            // Prefer the captured offset; only use a new position if the full quote is unique.
+            val at = if (sourceText.regionMatches(capturedStart, quote, 0, quote.length)) capturedStart
+                else sourceText.indexOf(quote).takeIf { it == sourceText.lastIndexOf(quote) } ?: -1
+            val located = at >= 0
+            val location = if (located) at else capturedStart
+            val anchor = TextRunAnchor(1, edit.token, source.id, "contents", location, location + quote.length,
+                runExcerpt(quote, 0, quote.length), lost = !located)
+            if (!knownPassage(anchor.id) && source.textRunSources().none { it.id == anchor.id }) {
+                source.writeTextRunSources(source.textRunSources() + anchor)
+            }
+            target.setTextRunEditedContents(value, exactDiff)
+            true
+        }
         "cut" -> {
             if (edit.sourceUid != target.id || start == end || insertedLength != 0) return false
             val cuts = attachedRuns(target).filter { (_, anchor) ->
                 !anchor.lost && anchor.start >= start && anchor.end <= end && anchor.matches(before)
             }
+            val sources = target.textRunSources().filter {
+                !it.lost && it.start >= start && it.end <= end && it.matches(before)
+            }
             target.setTextRunEditedContents(value, exactDiff)
-            if (cuts.isNotEmpty()) {
+            if (cuts.isNotEmpty() || sources.isNotEmpty()) {
                 val fingerprint = digest(before.substring(start, end))
+                if (sources.isNotEmpty()) {
+                    val pending = sources.associate { anchor ->
+                        anchor.id to anchor.copy(lost = true, cut = TextRunCut(edit.token, fingerprint, anchor.start - start, anchor.end - start))
+                    }
+                    target.writeTextRunSources(target.textRunSources().map { pending[it.id] ?: it })
+                }
                 for ((child, anchor) in cuts) {
                     val cut = TextRunCut(edit.token, fingerprint, anchor.start - start, anchor.end - start)
                     child.setPropertyRaw(TEXT_RUN_ANCHOR, TextRunAnchor.encode(anchor.copy(lost = true, cut = cut)))
@@ -68,15 +100,28 @@ internal fun applyTextRunClipboardEdit(
             if (source.getPropertyRaw("_tombstone") == true) return false
             val fragment = after.substring(start, start + insertedLength)
             val fingerprint = digest(fragment)
-            val moves = attachedRuns(source).filter { (_, anchor) ->
+            fun eligible(anchor: TextRunAnchor): Boolean {
                 val cut = anchor.cut
-                anchor.lost && cut?.token == edit.token && cut.digest == fingerprint &&
+                return anchor.lost && cut?.token == edit.token && cut.digest == fingerprint &&
                     cut.start >= 0 && cut.start < cut.end && cut.end <= insertedLength
             }
-            if (moves.isEmpty()) return false
-            target.setTextRunEditedContents(value, exactDiff)
-            for ((child, anchor) in moves) {
+            fun moved(anchor: TextRunAnchor): TextRunAnchor {
                 val cut = anchor.cut!!
+                val nextStart = start + cut.start
+                val nextEnd = start + cut.end
+                return anchor.copy(sourceUid = target.id, start = nextStart, end = nextEnd,
+                    excerpt = runExcerpt(after, nextStart, nextEnd), lost = false, cut = null)
+            }
+            val moves = attachedRuns(source).filter { (_, anchor) -> eligible(anchor) }
+            val runs = source.textRunSources().filter(::eligible)
+            if (moves.isEmpty() && runs.isEmpty()) return false
+            target.setTextRunEditedContents(value, exactDiff)
+            if (runs.isNotEmpty()) {
+                val ids = runs.map { it.id }.toSet()
+                if (source != target) source.writeTextRunSources(source.textRunSources().filterNot { it.id in ids })
+                target.writeTextRunSources(target.textRunSources().filterNot { it.id in ids } + runs.map(::moved))
+            }
+            for ((child, anchor) in moves) {
                 // A note can contain the pasted prose, but it cannot become its own parent.
                 if (child == target) {
                     child.setPropertyRaw(TEXT_RUN_ANCHOR, TextRunAnchor.encode(anchor.copy(cut = null)))
@@ -90,11 +135,7 @@ internal fun applyTextRunClipboardEdit(
                     source.disconnect(child)
                     OperationTranscript.recordConnect(source, child, connected = false)
                 }
-                val movedStart = start + cut.start
-                val movedEnd = start + cut.end
-                val moved = anchor.copy(sourceUid = target.id, start = movedStart, end = movedEnd,
-                    excerpt = runExcerpt(after, movedStart, movedEnd), lost = false, cut = null)
-                child.setPropertyRaw(TEXT_RUN_ANCHOR, TextRunAnchor.encode(moved))
+                child.setPropertyRaw(TEXT_RUN_ANCHOR, TextRunAnchor.encode(moved(anchor)))
             }
             true
         }

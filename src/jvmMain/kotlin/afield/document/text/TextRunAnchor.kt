@@ -5,6 +5,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
 internal const val TEXT_RUN_ANCHOR = "textRunAnchor"
+internal const val TEXT_RUN_SOURCES = "textRunSources"
 private const val EXCERPT_LENGTH = 120
 
 internal fun runExcerpt(text: String, start: Int, end: Int) = text.substring(start, minOf(end, start + EXCERPT_LENGTH))
@@ -60,10 +61,18 @@ internal data class TextRunAnchor(
             runCatching { wire.decodeFromString<TextRunAnchor>(raw) }.getOrNull()?.takeIf { it.version == 1 }
         }
         fun encode(anchor: TextRunAnchor): String = wire.encodeToString(anchor)
+        fun decodeSources(value: Any?): List<TextRunAnchor> = (value as? String)?.let { raw ->
+            runCatching { wire.decodeFromString<List<TextRunAnchor>>(raw) }.getOrNull()
+        }.orEmpty().filter { it.version == 1 }
+        fun encodeSources(anchors: List<TextRunAnchor>): String = wire.encodeToString(anchors)
     }
 }
 
 internal fun String.normalizedRunSource() = replace("\r\n", "\n").replace('\r', '\n')
+
+internal fun Box.textRunSources() = TextRunAnchor.decodeSources(getPropertyRaw(TEXT_RUN_SOURCES))
+internal fun Box.writeTextRunSources(sources: List<TextRunAnchor>) =
+    setPropertyRaw(TEXT_RUN_SOURCES, TextRunAnchor.encodeSources(sources))
 
 internal fun validateTextRunAnchor(value: String, sourceBox: (String) -> Box?): String {
     val anchor = TextRunAnchor.decode(value) ?: return ""
@@ -74,16 +83,19 @@ internal fun validateTextRunAnchor(value: String, sourceBox: (String) -> Box?): 
 
 internal fun rebaseChildTextRuns(source: Box, property: String, oldValue: Any?, newValue: Any?, exactDiff: TextDiff? = null) {
     if (property != "contents" || oldValue !is String || oldValue == newValue && exactDiff == null) return
-    val children = source.getPropertyRaw("children") as? Collection<*> ?: return
+    val children = (source.getPropertyRaw("children") as? Collection<*>).orEmpty()
+    val sources = source.textRunSources()
     val links = children.filterIsInstance<Box>().mapNotNull { child ->
         val range = TextRunAnchor.decode(child.getPropertyRaw(TEXT_RUN_ANCHOR))
         if (range != null && !range.lost && range.sourceUid == source.id && range.property == property) child to range else null
     }
-    if (links.isEmpty()) return
+    if (links.isEmpty() && sources.none { !it.lost }) return
     val before = oldValue.normalizedRunSource()
     val after = (newValue as? String).orEmpty().normalizedRunSource()
     if (before == after && exactDiff == null) return
     val matches = exactDiff ?: textMatches(before, after)
+    val updated = sources.map { anchor -> anchor.rebase(before, after, matches) }
+    if (updated != sources) source.writeTextRunSources(updated)
     for ((child, range) in links) {
         val next = range.rebase(before, after, matches)
         if (next != range) child.setPropertyRaw(TEXT_RUN_ANCHOR, TextRunAnchor.encode(next))

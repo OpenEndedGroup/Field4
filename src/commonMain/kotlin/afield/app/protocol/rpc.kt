@@ -1122,6 +1122,9 @@ data class TextRunClipboardEdit(
     val sourceUid: String,
     val start: Int,
     val end: Int,
+    val sourceStart: Int? = null,
+    val sourceEnd: Int? = null,
+    val quote: String? = null,
 )
 
 @Serializable
