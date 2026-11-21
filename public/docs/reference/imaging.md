@@ -1049,7 +1049,7 @@ and anything needing a model file.
 
 `src/jvmMain/kotlin/afield/media/image/imaging.kt` — [read the source](source/jvmMain/afield/media/image/imaging/)
 
-**Used in:** [Imaging and computer vision](../imaging_examples.md), [Visualizers, Displays, and Little Instruments](../visualizers.md), [Wave Function Collapse examples](../wfc_examples.md)
+**Used in:** [Imaging and computer vision](../imaging_examples.md), [Visualizers, Displays, and Little Instruments](../visualizers.md), [Spatial artificial life](../alife_examples.md)
 
 ### Top-level functions { #imaging-kt-functions }
 

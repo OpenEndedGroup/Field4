@@ -1035,6 +1035,13 @@ class Net internal constructor(
         "ROOT" -> 160.0
         "VAR" -> 190.0
         "CONST" -> 48.0
+        // NetPrograms' vocabulary.
+        "CON" -> 214.0
+        "ERA" -> 0.0
+        "NUM" -> 128.0
+        "OP2", "OP1" -> 300.0
+        "SWI" -> 340.0
+        "REF" -> 52.0
         else -> 200.0
     }
 
@@ -2073,6 +2080,35 @@ class Reducer(
         return steps
     }
 
+    /**
+     * Fires **every** pair that is active when the call begins, then relaxes the layout once — one round of
+     * a reduction in which all ready reactions happen at the same time.
+     *
+     * Pairs created during the round wait for the next one, so the number of rounds a reduction takes is the
+     * length of its longest chain of reactions that depend on each other (its critical path), and the size of
+     * each returned list is how many reactions were ready together. The selector plays no part. Pairs are
+     * disjoint, because a node has one principal port, so the order they fire in within a round does not
+     * change the result; each pair's context is taken afresh just before it fires, since a reaction earlier
+     * in the round may have rewired its neighbours.
+     *
+     * Ages advance by one per round rather than per reaction, so an agent's age is how many rounds it has
+     * waited. [relaxIterations] defaults to the reducer's own. Returns an empty list when the net is normal.
+     */
+    fun stepFrontier(net: Net, relaxIterations: Int = this.relaxIterations): List<ReductionStep> {
+        val ready = net.activePairs().filter { rules.findMatch(it.left, it.right) != null }
+        if (ready.isEmpty()) return emptyList()
+        val fired = ArrayList<ReductionStep>(ready.size)
+        for (pair in ready) {
+            if (net.connected(pair.left.principal)?.node != pair.right) continue
+            val match = rules.findMatch(pair.left, pair.right) ?: continue
+            val context = contextFor(net, match.binding.first, match.binding.second)
+            fired += apply(net, PairCandidate(pair, match, context), relax = false)
+        }
+        net.incrementAges(1.0)
+        if (relaxIterations > 0) net.relax(iterations = relaxIterations, config = layout)
+        return fired
+    }
+
     private fun selectCandidate(net: Net): PairCandidate? =
         selector.select(net, activeCandidates(net))
 
@@ -2109,7 +2145,7 @@ class Reducer(
         )
     }
 
-    private fun apply(net: Net, candidate: PairCandidate): ReductionStep {
+    private fun apply(net: Net, candidate: PairCandidate, relax: Boolean = true, age: Boolean = true): ReductionStep {
         val pair = candidate.pair
         val out = candidate.rule.rewrite(candidate.context)
 
@@ -2121,7 +2157,7 @@ class Reducer(
             for (port in node.ports) net.connected(port)?.let { insidePair[port.id] = it }
         }
 
-        net.incrementAges(1.0)
+        if (age) net.incrementAges(1.0)
         net.remove(pair.left)
         net.remove(pair.right)
 
@@ -2173,7 +2209,7 @@ class Reducer(
             if (target != null) join(net, anchor, target)
         }
 
-        if (relaxIterations > 0) net.relax(iterations = relaxIterations, config = layout)
+        if (relax && relaxIterations > 0) net.relax(iterations = relaxIterations, config = layout)
         return ReductionStep(
             ruleName = candidate.rule.name,
             context = candidate.context,
@@ -2246,6 +2282,61 @@ object Types {
  */
 fun Net.writeSvg(path: String, width: Int = 900, height: Int = 700) {
     java.io.File(path).writeText(toSvg(width, height))
+}
+
+/**
+ * The box around every node's position, as `[minX, minY, maxX, maxY]`, grown by [padding] on each side —
+ * or null for an empty net. Hand a smoothed copy of it to [toPngBytes] to keep an animation's framing
+ * steady while the net grows and shrinks.
+ */
+fun Net.layoutBounds(padding: Double = 40.0): DoubleArray? {
+    if (nodes.isEmpty()) return null
+    var x0 = Double.MAX_VALUE; var y0 = Double.MAX_VALUE
+    var x1 = -Double.MAX_VALUE; var y1 = -Double.MAX_VALUE
+    for (n in nodes) {
+        val p = positionOf(n)
+        x0 = min(x0, p.x.toDouble()); y0 = min(y0, p.y.toDouble())
+        x1 = max(x1, p.x.toDouble()); y1 = max(y1, p.y.toDouble())
+    }
+    return doubleArrayOf(x0 - padding, y0 - padding, x1 + padding, y1 + padding)
+}
+
+/**
+ * [toFLines] drawn into a PNG with Skia — what to `display` in a box that redraws a net of hundreds of agents
+ * every frame, where the SVG that `lines(...)` sends would be megabytes a frame.
+ *
+ * [view] is the world rectangle `[minX, minY, maxX, maxY]` to fit, centred, into the image; it defaults to
+ * [layoutBounds]. [background] is ARGB.
+ */
+fun Net.toPngBytes(
+    width: Int = 900,
+    height: Int = 900,
+    view: DoubleArray? = null,
+    background: Int = 0xff101014.toInt(),
+    velocityScale: Double = 0.0,
+): ByteArray {
+    val surface = org.jetbrains.skia.Surface.makeRasterN32Premul(width, height)
+    try {
+        val canvas = surface.canvas
+        canvas.clear(background)
+        val b = view ?: layoutBounds()
+        if (b != null) {
+            val s = min(width / max(1e-9, b[2] - b[0]), height / max(1e-9, b[3] - b[1]))
+            val ox = (width - (b[2] - b[0]) * s) / 2
+            val oy = (height - (b[3] - b[1]) * s) / 2
+            for (l in toFLines(velocityScale)) {
+                val placed = l.transform { p -> vec((p.x - b[0]) * s + ox, (p.y - b[1]) * s + oy, p.z) }
+                l.thickness?.let { placed.thickness = it * s }
+                // Port dots are sized in world units like everything else, or a zoomed-out net is all dots.
+                placed.pointSize = l.pointSize * s
+                afield.ui.visualization.outputTo(placed, canvas, antiAlias = true)
+            }
+        }
+        return surface.makeImageSnapshot().encodeToData(org.jetbrains.skia.EncodedImageFormat.PNG)?.bytes
+            ?: error("Skia declined to encode the PNG")
+    } finally {
+        runCatching { surface.close() }
+    }
 }
 
 /**
