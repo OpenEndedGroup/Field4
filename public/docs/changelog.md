@@ -6,6 +6,104 @@ fixes and wording changes, open **Changelog** on the Welcome screen.
 
 ## November 2026
 
+<!-- changelog: 239d043d33..46ec270e89 -->
+### A map of the docs, and fill rules for stream kernels
+
+*21 November 2026*
+
+- **Map of the docs**: every page as a node in a live 3D (or 2D) graph of the links between
+  them; select a page to gather its neighbours. [Map of the docs](docs_map.md).
+- **Fill rules** for the stream-kernel rasteriser, and FLines filled and stroked into a GPU
+  buffer. [Overlaps and fill rules](afield_four_graphics.md#overlaps-and-fill-rules),
+  [An outline filled into a buffer](visualizers.md#an-outline-filled-into-a-buffer).
+- **Interaction nets** reduce a λ-term as a video, one reaction at a time, and numeric programs
+  are written with a small Kotlin DSL. [Reducing a λ-term](interaction_nets_examples.md#reducing-a-term-end-to-end).
+
+<!-- changelog: 32f5b0dac8..914154a48b -->
+### Rasterising with stream kernels, and programs as interaction nets
+
+*21 November 2026*
+
+- **Stream kernels**: a Nile-style rasteriser with strokes, compositing and glyph text.
+  [Rasterising with stream kernels](afield_four_graphics.md#stream-kernels).
+- **From a program to a net**, with a small gallery of programs run as interaction nets.
+  [From a program to a net](interaction_nets_examples.md#from-a-program-to-a-net).
+- **Closed Rhino Breps mesh closed**: shared edges are stitched. [Rhino files](rhino_files.md).
+- Find on the canvas opens in the tab strip's find bar, and completion works inside index
+  strings like `foo.bar["pea`. [Completing a path as you type](files_and_paths.md#completing-a-path-as-you-type).
+
+<!-- changelog: 1db701bbf1..af2212515a -->
+### Templates that come with Field, and formatted text frames
+
+*21 November 2026*
+
+- **Bundled templates**: a renderer, sky, GPU particles, a RectSL playground, a Shadertoy pass,
+  control surfaces, OSCQuery and MQTT, ready to drop in. A box shows the parent it needs until
+  you connect it. [Templates that come with Field](templates.md#templates-that-come-with-field).
+- **Text frames** are edited formatted, on the canvas, with a simpler toolbar.
+  [Writing on the canvas](text_frames.md).
+- **Completion inside string literals**: paths, computed strings and Rhino layer names.
+  [Completing a path as you type](files_and_paths.md#completing-a-path-as-you-type).
+- **Five queens** run as an interaction net. [Five queens](interaction_nets_examples.md#a-program-with-numbers-five-queens).
+- **Fit Selected** (Alt+Shift+F) zooms the selection to fill the space beside the editor; the
+  three.js path tracer denoises at 4, 8, 16 and 32 samples.
+
+<!-- changelog: 352b11d59b..f04901728c -->
+### Writing Rhino files, and a drawn outline as a GPU field
+
+*20–21 November 2026*
+
+- **Writing a .3dm for Rhino**, and meshing trimmed NURBS and SubD objects saved without render
+  meshes. [Writing a .3dm for Rhino](rhino_files.md#writing-a-3dm-for-rhino).
+- **A drawn outline as a field** that walls in a GPU Gray-Scott simulation.
+  [A drawn outline as a field](visualizers.md#a-drawn-outline-as-a-field).
+- **Plain points and segments**: one set of planar predicates for distance, crossing and area.
+  [Plain points and segments](fline_examples.md#plain-points-and-segments).
+- The Electron Documentation tab gains back, forward and find in page; an import completion
+  inserts its import line in the same edit.
+
+<!-- changelog: cf3425b1a1..110132c38b -->
+### Speech, Rhino files and lit section caps
+
+*19–20 November 2026*
+
+- **Speech**: `speak()` turns text into a Signal, with word timing.
+  [Speech: a box that talks](spectral_examples.md#speech-a-box-that-talks).
+- **Reading Rhino .3dm files** through openNURBS. [Rhino files](rhino_files.md).
+- **Section caps** are path traced with lit caps, and a section can be squared to a measurement.
+  [Measuring and sectioning a solid](three_output.md#measuring-and-sectioning-a-solid).
+- **Matching in 3D**, orthant slots and shape forces for particles.
+  [Matching in 3D](optimal_transport.md#matching-in-3d).
+- **Drawing On** cleans up a live sketch. [Clean up a live sketch](drawing_on.md#clean-up-a-live-sketch).
+
+<!-- changelog: 9eaf086560..68c4e8491c -->
+### Exact triangle coverage, tiled splats and a norns host
+
+*19 November 2026*
+
+- **Exact triangle coverage** per pixel. [Exact triangle coverage](afield_four_graphics.md#exact-triangle-coverage).
+- **Splats by tile**, on the CPU and GPU. [Splats by tile](geometry_from_disk.md#splats-by-tile-and-what-a-tile-costs).
+- **A norns host** for Lua boxes. [A norns host](lua.md#a-norns-host).
+- **Painting into a live buffer**: paint, copy, blur and motion-blur, on the CPU or a GPU
+  simulation. [Painting into a live buffer](visualizers.md#painting-into-a-live-buffer).
+- **A drawn outline, repaired and offset**, a new chain page.
+  [A drawn outline, repaired and offset](chain_squircle_offsets.md).
+- Coloured, nested section caps in the three.js viewer, and a light theme.
+
+<!-- changelog: fefd94fa84..cdd249af4e -->
+### Time per box function, line heat and squircles
+
+*18–19 November 2026*
+
+- **Time spent in each function of a box**, in the Profiling panel.
+  [Time spent in each function of a box](profiling_timeline.md#time-spent-in-each-function-of-a-box).
+- **Which lines ran**: live line heat in the editor gutter. [Which lines ran](visualizers.md#which-lines-ran).
+- **Squircles**: superellipse, Figma, Chromium and clothoid corners on one gauge.
+  [Squircles](fline_examples.md#squircles-squirclefrom-and-squirclerectfrom).
+- **Specializing a program** with a partial evaluator. [Specializing a program](stacksl_examples.md#specializing-a-program).
+- **Repairing a field that is only a bound**. [Repairing a field](mesh_examples.md#repairing-a-field-that-is-only-a-bound).
+- Box code instrumentation has three modes. [Code that never returns](running_code.md#code-that-never-returns).
+
 <!-- changelog: aa2da87105..bf3dd896b5 -->
 ### Drawing On from an iPad, alias-free saturation and virtual shadow maps
 
