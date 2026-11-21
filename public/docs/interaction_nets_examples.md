@@ -313,9 +313,9 @@ The agents are a constructor `CON` (a λ, an application or a pair, depending on
 
 The program below counts the ways to place five queens on a 5×5 board. `solve` places a queen on each row in turn, keeping the columns and the two diagonals already attacked as bit masks. `try` takes the free columns, splits off the lowest one with `a & ~p` (where `p` is one less than `a`), and adds the count for a queen there to the count for every other free column. Neither operand of that `+` waits for the other, so every choice on the board is explored at once.
 
-`Reducer.stepFrontier` fires every pair that is ready when it is called, so one call is one round in which all the possible reactions happen together. The box runs a round every other frame and lets the layout settle in between. It draws the net with `toPngBytes`, because at several hundred agents the SVG that `lines(...)` would send each frame gets too large. The net grows from 31 agents to a peak of 842, with up to 76 reactions in a single round, then the additions collapse it into a chain and finally into one number. It takes 4,444 reactions in 205 rounds and ends on 10, which is the number of solutions.
+`Reducer.stepFrontier` fires every pair that is ready when it is called, so one call is one round in which all the possible reactions happen together. The box runs one round per frame and relaxes the layout after each. It draws the net with `toPngBytes`, because at several hundred agents the SVG that `lines(...)` would send each frame gets too large. The net grows from 31 agents to a peak of 842, with up to 76 reactions in a single round, then the additions collapse it into a chain and finally into one number. It takes 4,444 reactions in 205 rounds and ends on 10, which is the number of solutions.
 
-```diffstatic_runner {data-lang=kotlin video="assets/interaction_nets_examples/five_queens.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="25" fps="20" timeout="600" w="900" embed=true name="interaction-five-queens-video" alt="an interaction net solving five queens: a small cluster of coloured agents spreads into hundreds of agents in many separate branches, then folds back into a chain of additions and ends as two agents, the root and the number 10"}
+```diffstatic_runner {data-lang=kotlin video="assets/interaction_nets_examples/five_queens.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="14" fps="20" timeout="600" w="540" embed=true name="interaction-five-queens-video" alt="an interaction net solving five queens: a small cluster of coloured agents spreads into hundreds of agents in many separate branches, then folds back into a chain of additions and ends as two agents, the root and the number 10"}
 :::static
 val program = netProgram {
     def("solve", "row", "cols", "d1", "d2") {
@@ -348,20 +348,16 @@ var round = 0
 var interactions = 0
 var widest = 0
 var lastFired = 0
-var frameCount = 0
 var view = net.layoutBounds()!!
 
 loop {
-    // A round every other frame, with the layout relaxing on every frame.
-    if (frameCount % 2 == 0) {
-        val fired = reducer.stepFrontier(net, relaxIterations = 0)
-        if (fired.isNotEmpty()) round++
-        interactions += fired.size
-        lastFired = fired.size
-        widest = max(widest, fired.size)
-    }
+    // One round per frame: every pair that is ready fires together.
+    val fired = reducer.stepFrontier(net, relaxIterations = 0)
+    if (fired.isNotEmpty()) round++
+    interactions += fired.size
+    lastFired = fired.size
+    widest = max(widest, fired.size)
     net.relax(4, layout)
-    frameCount++
 
     // Ease the framing toward the net's square bounds, so growth reads as growth rather than as a zoom.
     val b = net.layoutBounds()!!
@@ -370,7 +366,7 @@ loop {
     val half = max(b[2] - b[0], b[3] - b[1]) / 2
     val target = [cx - half, cy - half, cx + half, cy + half]
     view = DoubleArray(4) { view[it] + (target[it] - view[it]) * 0.3 }
-    display("net", net.toPngBytes(900, 900, view))
+    display("net", net.toPngBytes(540, 540, view))
 
     val answer = NetPrograms.resultOf(net)?.let { " · solutions = $it" } ?: ""
     display(
