@@ -1465,7 +1465,7 @@ square the outline covers, so a buffer of zeros filled with `1f` ends up holding
 
 ```diffstatic {data-lang=kotlin}
 :::static
-val circles = listOf(FLine().circle(78.0, 40.0, 18.0), FLine().circle(94.0, 52.0, 18.0))
+val circles = [FLine().circle(78.0, 40.0, 18.0), FLine().circle(94.0, 52.0, 18.0)]
 mask.mapAndWrite {
     val canvas = bufferCanvas(this, width = W, channels = 2, height = H)
     canvas.fill(circles, 1f, FillRule.NON_ZERO, channel = 0)

@@ -57,7 +57,7 @@ operations:
               val y = 52.0 + 26.0 * Math.sin(a)
               if (k == 0) pentagram.moveTo(x, y) else pentagram.lineTo(x, y)
           }
-          val circles = listOf(FLine().circle(78.0, 40.0, 18.0), FLine().circle(94.0, 52.0, 18.0))
+          val circles = [FLine().circle(78.0, 40.0, 18.0), FLine().circle(94.0, 52.0, 18.0)]
           // Outer and inner squares wound the same way: a hole under even-odd only.
           val framed = FLine().rect(118.0, 22.0, 36.0, 36.0).rect(128.0, 32.0, 16.0, 16.0)
           val wave = FLine().moveTo(64.0, 86.0)
