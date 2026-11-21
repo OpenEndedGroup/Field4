@@ -375,6 +375,62 @@ fun Img.savePng(path: String): File {
 }
 
 /**
+ * Write this image to [file] as a PNG through `ImageIO`, creating parent directories. The shared
+ * evidence writer for smoke tests and harnesses; pixels go out exactly as they are in the image
+ * (no flip, no colour conversion, alpha only if the image type has it). Returns the file.
+ */
+fun BufferedImage.savePng(file: File): File {
+    file.absoluteFile.parentFile?.mkdirs()
+    check(ImageIO.write(this, "png", file)) { "no PNG writer for image type $type" }
+    return file
+}
+
+/**
+ * Write an opaque RGB PNG whose pixel at (x, y) — top row first, no Y flip — is the packed
+ * `0xRRGGBB` that [rgb] returns. Quantization and tone mapping are the caller's.
+ */
+fun saveRgbPng(file: File, width: Int, height: Int, rgb: (x: Int, y: Int) -> Int): File {
+    val image = BufferedImage(width, height, BufferedImage.TYPE_INT_RGB)
+    for (y in 0 until height) for (x in 0 until width) image.setRGB(x, y, rgb(x, y))
+    return image.savePng(file)
+}
+
+/** The display encoding [saveHdrPng] applies after its Reinhard `v / (1 + v)` curve. */
+enum class HdrPngEncoding {
+    /** The exact sRGB transfer curve, `floor(255 * c + 0.5)`. */
+    SRGB,
+    /** A plain `c^(1/2.2)` gamma, rounded to nearest. */
+    GAMMA_22,
+}
+
+/**
+ * Tone-map a row-major RGBA float buffer (as read back from a GPU image, top row first) to an
+ * opaque RGB PNG: optionally divide by alpha (an accumulation buffer whose alpha is its weight),
+ * scale by [exposure], clamp negatives to zero, apply Reinhard `v / (1 + v)`, then [encoding].
+ */
+fun saveHdrPng(file: File, pixels: FloatArray, width: Int, height: Int, exposure: Float = 1f,
+               divideByAlpha: Boolean = false, encoding: HdrPngEncoding = HdrPngEncoding.SRGB): File =
+    saveRgbPng(file, width, height) { x, y ->
+        val i = (y * width + x) * 4
+        val alpha = if (divideByAlpha) maxOf(pixels[i + 3], 1e-20f) else 1f
+        var rgb = 0
+        for (c in 0..2) {
+            val v = if (divideByAlpha) (pixels[i + c] / alpha * exposure).coerceAtLeast(0f).toDouble()
+                    else (pixels[i + c] * exposure).toDouble().coerceAtLeast(0.0)
+            val t = v / (1.0 + v)
+            val code = when (encoding) {
+                HdrPngEncoding.SRGB -> {
+                    val s = (if (t <= 0.0031308) 12.92 * t else 1.055 * t.pow(1 / 2.4) - 0.055).coerceIn(0.0, 1.0)
+                    (s * 255.0 + 0.5).toInt()
+                }
+                HdrPngEncoding.GAMMA_22 -> (255 * t.pow(1 / 2.2)).roundToInt()
+            }.coerceIn(0, 255)
+            rgb = (rgb shl 8) or code
+        }
+        rgb
+    }
+
+/**
  * Loads an image from a file path, straight through `ImageIO` — the path is used verbatim and does **not**
  * go through `FileManager`, so a workspace-relative spec will not resolve here.
  *

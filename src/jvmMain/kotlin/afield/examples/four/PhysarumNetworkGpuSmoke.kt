@@ -1,5 +1,6 @@
 package afield.examples.four
 
+import afield.media.image.saveRgbPng
 import afield.document.graph.Box
 import afield.graphics.vulkan.Renderer
 import afield.graphics.vulkan.util.Options
@@ -13,10 +14,8 @@ import afield.simulation.agents.ShaderPhysarumSettings
 import afield.simulation.agents.ShaderPhysarumSystem
 import afield.simulation.agents.TransportNetwork
 import afield.simulation.agents.costTolerancePlot
-import java.awt.image.BufferedImage
 import java.io.File
 import java.util.concurrent.TimeUnit
-import javax.imageio.ImageIO
 import kotlin.math.PI
 import kotlin.math.exp
 import kotlin.math.pow
@@ -217,13 +216,11 @@ object PhysarumNetworkGpuSmoke {
     }
 
     private fun writePng(img: Img, file: File) {
-        val out = BufferedImage(img.width, img.height, BufferedImage.TYPE_INT_RGB)
-        for (y in 0 until img.height) for (x in 0 until img.width) {
+        saveRgbPng(file, img.width, img.height) { x, y ->
             val o = (y * img.width + x) * img.channels
             fun q(c: Int) = (img.data[o + minOf(c, img.channels - 1)].coerceIn(0f, 1f) * 255).toInt()
-            out.setRGB(x, y, (q(0) shl 16) or (q(1) shl 8) or q(2))
+            (q(0) shl 16) or (q(1) shl 8) or q(2)
         }
-        ImageIO.write(out, "png", file)
     }
 
     private fun pump(renderer: Renderer, window: Window, frames: Int) {

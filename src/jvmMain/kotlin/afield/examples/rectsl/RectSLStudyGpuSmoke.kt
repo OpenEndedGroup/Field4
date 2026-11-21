@@ -1,5 +1,6 @@
 package afield.examples.rectsl
 
+import afield.media.image.savePng
 import afield.study.evidence.StudyEvidence
 import afield.lang.rectsl.study.CpuRectSLRasterizer
 import afield.lang.rectsl.study.RectSLRasterizer
@@ -9,7 +10,6 @@ import afield.lang.stacksl.cpu.CpuRaster
 import afield.lang.stacksl.study.StackSLStudyShader
 import java.awt.image.BufferedImage
 import java.io.File
-import javax.imageio.ImageIO
 import kotlin.math.abs
 
 /*
@@ -125,7 +125,6 @@ object RectSLStudyGpuSmoke {
             image.setRGB(i * (W + 4), 0, W, H, gpu, 0, W)
             image.setRGB(i * (W + 4), H + 4, W, H, cpu, 0, W)
         }
-        sheet.absoluteFile.parentFile.mkdirs()
-        ImageIO.write(image, "png", sheet)
+        image.savePng(sheet)
     }
 }

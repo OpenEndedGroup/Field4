@@ -62,7 +62,6 @@ import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
 import java.nio.file.Files
 import java.nio.file.Path
-import javax.imageio.ImageIO
 
 /**
  * Explicit optional CUDA check, never run by ordinary Field startup or portable test suites.
@@ -90,9 +89,9 @@ object ParticleTrackerSmoke {
         val metadata = JSONObject(Files.readString(first.tracksFile.resolveSibling("tracks.pvt.run.json")))
         check(metadata.getString("backend") == "torchvision-raft-large" && metadata.getString("device") == "cuda")
         video.renderMovie(out.resolve("particles.mp4"), pointRadius = .7, drawPoints = true, trailLength = 0)
-        ImageIO.write(video.image(minOf(180, video.frameCount - 1), pointRadius = .7, drawPoints = true, trailLength = 0), "png", out.resolve("particles.png").toFile())
-        ImageIO.write(video.image(minOf(180, video.frameCount - 1), pointRadius = .3,
-            color = ParticleColor.IDENTITY, trailLength = 12), "png", out.resolve("identities.png").toFile())
+        video.image(minOf(180, video.frameCount - 1), pointRadius = .7, drawPoints = true, trailLength = 0).savePng(out.resolve("particles.png").toFile())
+        video.image(minOf(180, video.frameCount - 1), pointRadius = .3,
+            color = ParticleColor.IDENTITY, trailLength = 12).savePng(out.resolve("identities.png").toFile())
         Files.writeString(out.resolve("run.json"), JSONObject(mapOf(
             "key" to first.key, "tracksFile" to first.tracksFile.toString(), "cacheHitOnRepeat" to second.cacheHit,
             "width" to video.width, "height" to video.height, "frames" to video.frameCount,
