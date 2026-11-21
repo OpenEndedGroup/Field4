@@ -939,6 +939,11 @@ fun serviceEvents() {
     }
 }
 
+private fun refreshTextFrameStyleInheritance() {
+    val refresh = window.asDynamic().refreshTextFrameStyleInheritance
+    if (refresh != null) refresh()
+}
+
 private fun findBoxElementByUid(uid: String): HTMLElement? {
     val boxes = document.body?.getElementsByClassName("box")?.asList() ?: return null
     return boxes.firstOrNull {
@@ -5840,6 +5845,16 @@ suspend fun main() {
         { uid: String, property: String, scrollToLine: Int?, highlightLine: Int? ->
             navigateToBoxProperty(uid, property, scrollToLine, highlightLine, center = true)
         }
+    window.asDynamic().frameBoxFromGuide = { uid: String ->
+        val box = findBoxElementByUid(uid)?.takeUnless { it.classList.contains("tombstoned") }
+        if (box == null) false else {
+            openNestedDisclosuresForNavigation(box)
+            selected.toList().filter { it != box }.forEach(::deselectBox)
+            selectBox(box)
+            setTimeout({ if (selected.size == 1 && box in selected) frameSelected() }, 50)
+            true
+        }
+    }
     window.asDynamic().revealBoxOutputs = { uid: String, output: HTMLElement? -> revealBoxOutputs(uid, output) }
     window.unsafeCast<dynamic>().selectBox = ::selectBox
     window.unsafeCast<dynamic>().deselectBox = ::deselectBox
@@ -6273,6 +6288,7 @@ suspend fun main() {
                     }
                     updateEmptyDocumentWelcome()
                     requestConnectionGroupRebuild()
+                    refreshTextFrameStyleInheritance()
                 }
             }
         }
@@ -6459,6 +6475,11 @@ suspend fun main() {
         when (set.kind) {
             "box_children" -> {
                 found.unsafeCast<dynamic>().box_children = set.value.toTypedArray()
+            }
+
+            "box_parents" -> {
+                found.asDynamic().box_parents = set.value.toTypedArray()
+                refreshTextFrameStyleInheritance()
             }
 
             "box_nested" -> {

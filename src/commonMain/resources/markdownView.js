@@ -265,14 +265,30 @@ export function renderFieldMarkdown(root, markdown, options = {}) {
         else img.remove();
     });
     root.querySelectorAll('.ai-chat-copy').forEach(button => {
-        button.textContent = 'Copy';
+        if (options.copyIcon) {
+            button.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                <rect x="9" y="9" width="13" height="13" rx="2"/>
+                <path d="M5 15V5a2 2 0 0 1 2-2h10"/>
+                <path class="copy-check" d="m5 12 4 4L19 6"/>
+            </svg>`;
+        }
+        let resetCopyLabel;
+        const showCopyState = (label, state) => {
+            if (options.copyIcon) {
+                button.dataset.copyState = state;
+                button.title = label;
+                button.setAttribute('aria-label', label);
+            } else button.textContent = label;
+        };
+        showCopyState('Copy', 'ready');
         button.addEventListener('click', async e => {
             e.preventDefault(); e.stopPropagation();
+            clearTimeout(resetCopyLabel);
             try {
                 await navigator.clipboard.writeText(button.closest('.ai-chat-code-block').querySelector('code').textContent);
-                button.textContent = 'Copied';
-                setTimeout(() => button.textContent = 'Copy', 1200);
-            } catch (_) { button.textContent = 'Copy unavailable'; }
+                showCopyState('Copied', 'copied');
+                resetCopyLabel = setTimeout(() => showCopyState('Copy', 'ready'), 1200);
+            } catch (_) { showCopyState('Copy unavailable', 'unavailable'); }
         });
     });
     return headings;

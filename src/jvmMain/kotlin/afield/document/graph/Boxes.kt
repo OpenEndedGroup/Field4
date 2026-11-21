@@ -1395,7 +1395,10 @@ fun doResync() {
         var message: Message? = null
         when (name) {
             "parents" -> {
-
+                val parents = (value as? Collection<*>)?.filterIsInstance<Box>().orEmpty()
+                message = Message("set-topology").payload(
+                    Set_topology(box.id, "box_parents", parents.filterNot { it.properties.get("_tombstone").isTrue() }.map { it.id })
+                )
             }
 
             "children" -> {

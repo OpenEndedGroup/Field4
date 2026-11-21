@@ -22,31 +22,34 @@ const button = (label, action, cls = '') => {
 };
 let nextStyleId = 0;
 const localStyleProperty = /^(?:color|background-color|opacity|font(?:-[a-z-]+)?|line-height|letter-spacing|word-spacing|text-(?:align|indent|transform|decoration(?:-[a-z-]+)?)|(?:margin|padding)(?:-[a-z-]+)?|border(?:-(?:top|right|bottom|left|block|inline|start|end|width|style|color|radius))*|white-space|overflow-wrap|list-style-type)$/;
-function applyLocalStyle(state, source) {
-    if (source === state.localStyleSource) return;
-    state.localStyleSource = source;
+function applyLocalStyle(state, sources) {
+    const signature = JSON.stringify(sources);
+    if (signature === state.localStyleSource) return;
+    state.localStyleSource = signature;
     state.localStyle?.remove();
     state.localStyle = null;
-    if (!source) return;
+    if (!sources.length) return;
 
     // Parse off-document. Rebuild individual style rules so document settings cannot introduce
     // global rules, fetch resources, or select anything outside the two formatted surfaces.
     const parsed = new CSSStyleSheet();
-    parsed.replaceSync(source);
     const style = state.localStyle = document.createElement('style');
     document.head.append(style);
     const selector = `.text-frame-preview[data-text-frame-style="${state.styleId}"]`;
     const declarations = document.createElement('span').style;
-    for (const rule of parsed.cssRules) {
-        if (!(rule instanceof CSSStyleRule)) continue;
-        declarations.cssText = '';
-        for (const property of rule.style) if (localStyleProperty.test(property)) {
-            declarations.setProperty(property, rule.style.getPropertyValue(property), rule.style.getPropertyPriority(property));
+    for (const source of sources) {
+        parsed.replaceSync(source);
+        for (const rule of parsed.cssRules) {
+            if (!(rule instanceof CSSStyleRule)) continue;
+            declarations.cssText = '';
+            for (const property of rule.style) if (localStyleProperty.test(property)) {
+                declarations.setProperty(property, rule.style.getPropertyValue(property), rule.style.getPropertyPriority(property));
+            }
+            if (!declarations.length) continue;
+            try {
+                style.sheet.insertRule(`${selector} :is(${rule.selectorText}) { ${declarations.cssText} }`, style.sheet.cssRules.length);
+            } catch (_) { /* Skip selectors that cannot be expressed inside the frame. */ }
         }
-        if (!declarations.length) continue;
-        try {
-            style.sheet.insertRule(`${selector} :is(${rule.selectorText}) { ${declarations.cssText} }`, style.sheet.cssRules.length);
-        } catch (_) { /* Skip selectors that cannot be expressed inside the frame. */ }
     }
 }
 function readSettings(source) {
@@ -55,6 +58,53 @@ function readSettings(source) {
     if (raw.css != null && typeof raw.css !== 'string') throw new Error('Text frame css must be a string. Use css: | for multiple lines.');
     return raw;
 }
+const styleSettings = new WeakMap();
+function frameCss(box) {
+    const yaml = box.textFrame;
+    const last = styleSettings.get(box);
+    if (last?.yaml === yaml) return last?.css || '';
+    let css = last?.css || '';
+    try { css = readSettings(yaml).css || ''; } catch (_) { /* Keep the last valid style while typing. */ }
+    styleSettings.set(box, {yaml, css});
+    return css;
+}
+let inheritanceFrame;
+function refreshStyleInheritance() {
+    if (inheritanceFrame != null) return;
+    inheritanceFrame = requestAnimationFrame(() => {
+        inheritanceFrame = null;
+        if (window.fieldPropertySyncPending?.()) { refreshStyleInheritance(); return; }
+        const boxes = new Map([...document.querySelectorAll('.box:not(.tombstoned)')].map(box => [box.uid, box]));
+        for (const state of frames.values()) {
+            if (!boxes.has(state.box.uid)) continue;
+            // Walk breadth first in Field's parent order. CSS sources are applied in reverse so
+            // local rules, then nearer and earlier parents, win when selectors are equally specific.
+            const ordered = [state.box];
+            const seen = new Set([state.box.uid]);
+            for (let i = 0; i < ordered.length; i++) {
+                for (const uid of ordered[i].box_parents || []) {
+                    if (seen.has(uid) || !boxes.has(uid)) continue;
+                    seen.add(uid);
+                    ordered.push(boxes.get(uid));
+                }
+            }
+            const sources = ordered.reverse().map(frameCss).filter(Boolean);
+            if (state.localStyleSource !== JSON.stringify(sources)) {
+                applyLocalStyle(state, sources);
+                layout(state);
+            }
+        }
+    });
+}
+window.refreshTextFrameStyleInheritance = refreshStyleInheritance;
+window.textFrameSettingsForChild = source => {
+    try {
+        const config = readSettings(source);
+        if (!Object.hasOwn(config, 'css')) return source;
+        delete config.css;
+        return dump(config, {schema: CORE_SCHEMA, noRefs: true});
+    } catch (_) { return '{}'; }
+};
 let diagnosticsEditor, diagnosticsSubscription;
 function installSettingsDiagnostics() {
     const editor = window.globalEditor, monaco = window.globalMonaco;
@@ -135,7 +185,7 @@ function write(box, property, value) {
         setTextFrameContents(box.uid, value);
     } else {
         box[property] = value;
-        if (property === 'textFrame') syncTextFrameSettingsEditor(box.uid, value);
+        if (property === 'textFrame') { syncTextFrameSettingsEditor(box.uid, value); refreshStyleInheritance(); }
         send('set-string', {uid: box.uid, property, value});
     }
 }
@@ -146,7 +196,7 @@ function flush(state) {
     write(state.box, 'contents', state.editor.value);
 }
 function markdownOptions(state, sourcePositions = false) {
-    return {sourcePositions, eagerImages: true, resolveImage: src => {
+    return {sourcePositions, copyIcon: true, eagerImages: true, resolveImage: src => {
         if (/^(https?:|data:)/i.test(src)) return src;
         if (/^[a-z][a-z0-9+.-]*:/i.test(src)) return '';
         const params = new URLSearchParams({document: window.currentDocumentSessionKey || window.currentDocumentFilename || '', box: state.box.uid, path: src});
@@ -169,7 +219,6 @@ function layout(state) {
         // a partial box (empty contents or default reflow), or move its neighbours during load.
         if (window.fieldPropertySyncPending?.()) { layout(state); return; }
         const config = settingsFor(state.box);
-        applyLocalStyle(state, config.css || '');
         if (state.box.getAttribute('data-connection-border-length') !== String(config.connectionBorderLength)) {
             state.box.setAttribute('data-connection-border-length', config.connectionBorderLength);
             window.requestConnectionGroupRebuild?.();
@@ -247,16 +296,19 @@ function positionRichToolbar(state) {
     const {box, toolbar} = state;
     if (toolbar.hidden || !box.isConnected) return;
     const rect = box.getBoundingClientRect();
-    const scale = box.offsetWidth ? rect.width / box.offsetWidth : 1;
     const pane = box.closest('.field-pane, .field-main-viewport')?.getBoundingClientRect();
-    const height = toolbar.offsetHeight * scale;
-    const width = toolbar.offsetWidth * scale;
-    const left = Math.max(pane?.left ?? 0, Math.min(rect.left, (pane?.right ?? innerWidth) - width));
-    const top = Math.max(pane?.top ?? 0, Math.min(rect.bottom, (pane?.bottom ?? innerHeight) - height));
-    toolbar.style.transform = `translate(${left}px, ${top}px) scale(${scale})`;
-    toolbar.style.visibility = rect.width && (!pane ||
-        rect.right > pane.left && rect.left < pane.right && rect.bottom > pane.top && rect.top < pane.bottom)
-        ? 'visible' : 'hidden';
+    const paneLeft = Math.max(0, pane?.left ?? 0), paneRight = Math.min(innerWidth, pane?.right ?? innerWidth);
+    const paneTop = Math.max(0, pane?.top ?? 0), paneBottom = Math.min(innerHeight, pane?.bottom ?? innerHeight);
+    const height = toolbar.offsetHeight, width = toolbar.offsetWidth;
+    const caret = state.richSelection?.caret.getBoundingClientRect();
+    const scroll = state.rich.getBoundingClientRect();
+    const anchor = caret?.height ? Math.max(scroll.top, Math.min(caret.top + caret.height / 2, scroll.bottom))
+        : Math.max(rect.top, paneTop) + height / 2;
+    const left = Math.max(paneLeft, Math.min(rect.left - width - 4, paneRight - width));
+    const top = Math.max(paneTop, Math.min(anchor - height / 2, paneBottom - height));
+    toolbar.style.transform = `translate(${left}px, ${top}px)`;
+    toolbar.style.visibility = rect.width && rect.right > paneLeft && rect.left < paneRight &&
+        rect.bottom > paneTop && rect.top < paneBottom ? 'visible' : 'hidden';
     state.toolbarFrame = requestAnimationFrame(() => positionRichToolbar(state));
 }
 function beginRich(state, point) {
@@ -392,7 +444,10 @@ function mount(box) {
         const selection = window.getSelection(), host = document.activeElement;
         if (host?.matches('.text-frame-rich-block') && rich.contains(host) && selection?.rangeCount &&
             host.contains(selection.anchorNode) && host.contains(selection.focusNode)) {
-            state.richSelection = {host, range: selection.getRangeAt(0).cloneRange()};
+            const caret = document.createRange();
+            caret.setStart(selection.focusNode, selection.focusOffset);
+            caret.collapse(true);
+            state.richSelection = {host, range: selection.getRangeAt(0).cloneRange(), caret};
             const anchor = selection.focusNode;
             const element = anchor.nodeType === Node.ELEMENT_NODE ? anchor : anchor.parentElement;
             const target = anchor === host
@@ -481,10 +536,12 @@ function mount(box) {
     state.observer = new ResizeObserver(() => layout(state));
     state.observer.observe(box); state.observer.observe(preview);
     frames.set(box, state);
+    refreshStyleInheritance();
     render(state);
     return state;
 }
 export function syncTextFrame(box, property) {
+    if (property === 'textFrame') refreshStyleInheritance();
     let state = frames.get(box);
     if (box.box_kind !== 'text-frame') {
         if (state) {
@@ -496,6 +553,7 @@ export function syncTextFrame(box, property) {
         return;
     }
     if (!state) { mount(box); return; }
+    if (property === 'textFrame') { layout(state); return; }
     if (box.classList.contains('text-frame-editing')) {
         const incoming = box.contents || '';
         if (property === 'contents' && incoming !== state.seenContents) {

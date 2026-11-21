@@ -22,13 +22,21 @@ const fence = '```kotlin\nval x = 10\n```';
 const source = 'Research notes\n\nA visible sentence.\n\n' + table + '\n\n' + fence;
 send('set-string', {uid: box.uid, property: 'contents', value: source});
 const preview = box.querySelector('.text-frame-preview');
+const checkCopyIcon = root => {
+    const button = root.querySelector('.ai-chat-copy');
+    const icon = button?.querySelector('svg');
+    check(button?.textContent.trim() === '' && button.getAttribute('aria-label') === 'Copy' && button.title === 'Copy' &&
+        icon && getComputedStyle(icon).width === '14px' && getComputedStyle(icon).display !== 'none',
+        `Code copy control should show an icon and keep its accessible name: ${button?.outerHTML}`);
+};
 await wait(() => preview.querySelector('table') && box.contents === source, 'Markdown fixture did not sync');
+checkCopyIcon(preview);
 newBox({kind: 'text-frame', name: 'Unstyled notes', frame: {x: 650, y: 140, w: 300, h: 190}});
 const otherFrame = () => [...document.querySelectorAll('.text-frame-box')].find(box => box.name === 'Unstyled notes');
 await wait(() => otherFrame()?.querySelector('.text-frame-rich-block:focus'), 'Second frame did not mount');
 close();
 send('set-string', {uid: otherFrame().uid, property: 'contents', value: '# Unstyled heading'});
-await wait(() => otherFrame().querySelector('h1'), 'Second heading did not sync');
+await wait(() => otherFrame()?.querySelector('h1'), 'Second heading did not sync');
 const otherHeading = otherFrame().querySelector('h1');
 const initialColors = [otherHeading, document.body].map(node => getComputedStyle(node).color);
 const headingColor = 'rgb(182, 227, 197)';
@@ -38,12 +46,15 @@ send('set-string', {uid: box.uid, property: 'textFrame', value: `css: |
   h2 { position: fixed; }
 `});
 await wait(() => box.textFrame.includes('letter-spacing'), 'Frame CSS did not sync');
+for (const selected of [...window.selectedList]) window.deselectBox(selected);
+window.selectBox(box);
 const position = preview.querySelector('p').firstElementChild.getBoundingClientRect();
 preview.querySelector('p').dispatchEvent(new MouseEvent('dblclick', {
     clientX: position.left + 3, clientY: position.top + position.height / 2, bubbles: true, cancelable: true
 }));
 const rich = box.querySelector('.text-frame-rich');
 const toolbar = document.querySelector(`.text-frame-rich-toolbar[data-text-frame-uid="${box.uid}"]`);
+checkCopyIcon(rich);
 const [heading, paragraph] = rich.querySelectorAll('.text-frame-rich-block');
 check(document.activeElement === heading && !toolbar.hidden, 'Double-click did not focus the clicked prose');
 const activeStyle = label => toolbar.querySelector(`[aria-label="${label}"]`).getAttribute('aria-pressed') === 'true';
@@ -53,8 +64,9 @@ toolbar.querySelector('[aria-label="Heading 2"]').click();
 check(heading.querySelector('h2')?.textContent === 'Research notes', 'Heading toolbar did not format the block');
 check(activeStyle('Heading 2') && !activeStyle('Paragraph'), 'Heading highlight did not follow the formatting command');
 const styledHeading = getComputedStyle(heading.querySelector('h2'));
-check(styledHeading.color === headingColor && styledHeading.letterSpacing === '2px' && styledHeading.position !== 'fixed',
-    'Frame CSS did not style the visual heading or accepted a layout override');
+await wait(() => styledHeading.color === headingColor && styledHeading.letterSpacing === '2px',
+    'Frame CSS did not style the visual heading');
+check(styledHeading.position !== 'fixed', 'Frame CSS accepted a layout override');
 check([otherHeading, document.body].every((node, index) => getComputedStyle(node).color === initialColors[index]),
     'Frame CSS leaked to another frame or the document');
 const select = (node, start, end) => {
@@ -86,15 +98,30 @@ select(proseText, 5, 5);
 check(arrow('ArrowLeft'), 'The cross-paragraph handler swallowed a normal within-paragraph arrow');
 const toolbarStyle = getComputedStyle(toolbar);
 check(toolbarStyle.borderTopWidth === '0px' && toolbarStyle.borderRadius === '0px' &&
-    toolbarStyle.backgroundColor === 'rgb(0, 0, 0)' && toolbar.offsetHeight <= 22, 'Toolbar is not a thin square black strip');
+    toolbarStyle.backgroundColor === 'rgb(0, 0, 0)' && toolbarStyle.flexDirection === 'column' &&
+    toolbar.offsetWidth <= 75, 'Toolbar is not a thin vertical black strip');
 const front = document.querySelector('.front-connection-layer');
 check(toolbar.parentElement === document.body && front?.parentElement === document.body &&
     Number(toolbarStyle.zIndex) > Number(getComputedStyle(front).zIndex), 'Toolbar is behind the connection chrome');
-await wait(() => {
+const caretCenter = () => {
+    const range = getSelection().getRangeAt(0).cloneRange();
+    range.collapse(false);
+    const caret = range.getBoundingClientRect();
+    return caret.top + caret.height / 2;
+};
+const aligned = () => {
     const frame = box.getBoundingClientRect(), strip = toolbar.getBoundingClientRect();
-    return Math.abs(frame.left - strip.left) < 1 && Math.abs(frame.bottom - strip.top) < 1;
-}, 'Toolbar did not follow the frame’s lower-left edge');
-const gap = (before, after) => after.getBoundingClientRect().left - before.getBoundingClientRect().right;
+    return Math.abs(frame.left - strip.right - 4) < 1 && Math.abs(strip.top + strip.height / 2 - caretCenter()) < 1;
+};
+// Put the frame well inside the viewport so the toolbar need not clamp to a pane edge.
+window.moveCanvasCamera(0, 80, 1);
+await wait(aligned, 'Toolbar did not follow the caret along the left edge');
+const paragraphToolbarTop = toolbar.getBoundingClientRect().top;
+heading.focus();
+select(headingText, 2, 2);
+await wait(() => aligned() && toolbar.getBoundingClientRect().top < paragraphToolbarTop - 5, 'Toolbar did not follow a caret move');
+paragraph.focus();
+const gap = (before, after) => after.getBoundingClientRect().top - before.getBoundingClientRect().bottom;
 const [, , , h3, b, i, markdown] = toolbar.querySelectorAll('button');
 check(gap(h3, b) >= 6 && gap(i, markdown) >= 6, 'Toolbar groups need visible gaps');
 select(paragraph.querySelector('p').firstChild, 2, 9);
@@ -126,5 +153,17 @@ check(preview.querySelector('strong em')?.textContent === 'visible' && preview.q
 check(getComputedStyle(preview.querySelector('h2')).color === headingColor, 'Reader did not use the same frame CSS');
 send('set-string', {uid: box.uid, property: 'textFrame', value: 'css: ""'});
 await wait(() => getComputedStyle(preview.querySelector('h2')).color !== headingColor, 'Clearing CSS did not restore the default styling');
+const edge = action => send('perform-action', {uid_currentSelection: [box.uid, otherFrame().uid], uid_action: action});
+const color = () => getComputedStyle(otherHeading).color;
+edge('-connect');
+send('set-string', {uid: box.uid, property: 'textFrame', value: 'css: |\n  h1 { color: #b6e3c5; }'});
+await wait(() => color() === headingColor, 'Connected frame did not inherit its parent CSS');
+send('set-string', {uid: otherFrame().uid, property: 'textFrame', value: 'css: |\n  h1 { color: #aaccff; }'});
+await wait(() => color() === 'rgb(170, 204, 255)', 'Local CSS lost an equally specific tie');
+send('set-string', {uid: otherFrame().uid, property: 'textFrame', value: 'css: ""'});
+await wait(() => color() === headingColor, 'Clearing the local override did not restore the inherited value');
+edge('-disconnect');
+await wait(() => color() === initialColors[0], 'Disconnected frame retained its parent CSS');
 window.writeTextFrame(box);
+await wait(() => !toolbar.hidden && toolbar.getBoundingClientRect().width > 0, 'Visual toolbar did not reopen');
 return {ok: true};
