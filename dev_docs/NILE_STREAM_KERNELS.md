@@ -1,7 +1,7 @@
 # Nile-style stream kernels and the Gezira rasteriser
 
 Code: `src/jvmMain/kotlin/afield/graphics/nile/` (`Nile.kt` the DSL, `Gezira.kt` the rasteriser and
-drawing helpers). Test: `src/jvmTest/kotlin/afield/graphics/nile/GeziraTest.kt`. Demo:
+drawing helpers, `GeziraPaint.kt` StrokeBezierPath, Texture, Composite, `Canvas`). Tests: `src/jvmTest/kotlin/afield/graphics/nile/GeziraTest.kt`, `GeziraPaintTest.kt`. Demo:
 `dev_docs/agents/transcripts/nile_gezira_kernels.yaml`. User docs:
 `public/docs/afield_four_graphics.md#stream-kernels`. Source: Dan Amelang's Nile/Gezira as described
 in https://whitebeard.blog/posts/pixels-on-a-screen/ (scout card ca17ee14e65c).
@@ -38,9 +38,11 @@ in https://whitebeard.blog/posts/pixels-on-a-screen/ (scout card ca17ee14e65c).
   1.3e-9 to 2e-13 and the same shape to 47 pieces.
 - Fit test must be `max <= floor(min) + 1`, not `floor(max) == floor(min)`, or a piece ending exactly
   on a grid line splits forever.
-- Clamped |winding area| is not the same as non-zero thresholding where two outlines overlap inside
-  one pixel (not measured separately).
+- Summed |winding area| != non-zero union where two outlines cross inside one pixel (bounded above).
+  The x10 difference figure saturates at 0.1, so it cannot localise this: probe per pixel instead.
+- Skia's `Bitmap.getColor` un-premultiplies; `skiaRaster` premultiplies again before comparing.
+- Do not judge the stroke against Skia: Skia's AA stroke is the less accurate one; use a true-stroke sample.
 
 ## Not done
 
-Stroke offset, compositing/blend, texture kernels, a compute-shader backend, the tiger.
+Round joins/caps, miter, other blend modes, image textures, a compute-shader backend, the tiger (no tiger SVG in the repo; text is the stand-in large input).
