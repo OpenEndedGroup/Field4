@@ -246,14 +246,21 @@ const spriteMaterial = new THREE.ShaderMaterial({
     varying vec2 vCorner; varying vec3 vTint; varying float vShape;
     #include <fog_pars_fragment>
     void main() {
-      vec2 p = vCorner;                               // the node's radius is at d = 1
-      float d = vShape < 0.5 ? length(p) : vShape < 1.5 ? (abs(p.x) + abs(p.y)) / 1.2 : max(abs(p.x), abs(p.y)) / 0.85;
-      float w = max(fwidth(d), 1e-4);
-      float alpha = 1.0 - smoothstep(1.0 - w, 1.0 + w, d);
+      // Signed distance to the shape's edge, in units of the node's radius (negative inside):
+      // a circle of radius 1, a diamond reaching 1.2 along the axes, a square of half-side 0.85.
+      vec2 p = vCorner, a = abs(p);
+      float sd;
+      if (vShape < 0.5) sd = length(p) - 1.0;
+      else if (vShape < 1.5) sd = (a.x + a.y - 1.2) * 0.70710678;
+      else { vec2 q = a - 0.85; sd = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0); }
+      // One screen pixel in those units, so the edge is antialiased over exactly a pixel at any zoom.
+      float px = max(length(vec2(dFdx(p.x), dFdy(p.x))), 1e-5);
+      float alpha = clamp(0.5 - sd / px, 0.0, 1.0);
       if (alpha <= 0.0) discard;
-      vec3 c = vTint * mix(1.08, 0.9, smoothstep(0.0, 1.0, d));
-      c = mix(c, vTint * 0.5, smoothstep(0.82 - w, 0.86 + w, d));
-      gl_FragColor = vec4(c, alpha);
+      // A darker rim, an eighth of the radius but never thinner than about a pixel.
+      float rimWidth = max(0.13, 1.1 * px);
+      float rim = clamp(0.5 + (sd + rimWidth) / px, 0.0, 1.0);
+      gl_FragColor = vec4(mix(vTint, vTint * 0.45, rim), alpha);
       #include <fog_fragment>
       #include <colorspace_fragment>
     }`,
