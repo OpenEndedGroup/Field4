@@ -87,6 +87,7 @@
 .text-frame-rich-toolbar button:is(:hover, :focus-visible) { background: #222; }
 .text-frame-rich-toolbar button[aria-pressed="true"] { background: #292929; color: #fff; }
 .text-frame-rich-toolbar :is(.text-frame-format-bold, .text-frame-format-source) { margin-top: 7px; }
+.text-frame-rich-toolbar .text-frame-format-source { display: grid; place-items: center; }
 .text-frame-rich-toolbar .text-frame-format-bold { font-weight: 700; }
 .text-frame-rich-toolbar .text-frame-format-italic { font-style: italic; }
 .text-frame-body .ai-chat-ghost { position: absolute; box-sizing: border-box; pointer-events: none; overflow: hidden; white-space: pre-wrap; z-index: 1; }
