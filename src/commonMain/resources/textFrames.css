@@ -140,3 +140,4 @@
     border-color: currentColor;
     color: var(--field-warning);
 }
+.text-frame-link-target { outline: 1px solid var(--field-accent); outline-offset: 3px; }

@@ -8,7 +8,23 @@ internal const val TEXT_RUN_ANCHOR = "textRunAnchor"
 internal const val TEXT_RUN_SOURCES = "textRunSources"
 private const val EXCERPT_LENGTH = 120
 
-internal fun runExcerpt(text: String, start: Int, end: Int) = text.substring(start, minOf(end, start + EXCERPT_LENGTH))
+private fun String.runBoundary(offset: Int) = offset == 0 || offset == length ||
+    !(this[offset - 1].isHighSurrogate() && this[offset].isLowSurrogate())
+
+internal fun runExcerpt(text: String, start: Int, end: Int): String {
+    val stop = minOf(end, start + EXCERPT_LENGTH)
+    return text.substring(start, if (text.runBoundary(stop)) stop else stop - 1)
+}
+
+// A shared UTF-16 half is not a surviving character: for example, 🍎 and 🍏 share their high surrogate.
+private fun sameUnit(before: String, oldAt: Int, after: String, newAt: Int): Boolean {
+    val unit = before[oldAt]
+    return unit == after[newAt] && when {
+        unit.isHighSurrogate() -> before.getOrNull(oldAt + 1) == after.getOrNull(newAt + 1)
+        unit.isLowSurrogate() -> before.getOrNull(oldAt - 1) == after.getOrNull(newAt - 1)
+        else -> true
+    }
+}
 
 /** A versioned range in a box string property, in UTF-16 offsets after newline normalization. */
 @Serializable
@@ -24,7 +40,8 @@ internal data class TextRunAnchor(
     val cut: TextRunCut? = null,
 ) {
     fun matches(text: String): Boolean = start >= 0 && end > start && end <= text.length &&
-        runExcerpt(text, start, end) == excerpt
+        text.runBoundary(start) && text.runBoundary(end) &&
+        (runExcerpt(text, start, end) == excerpt || text.substring(start, minOf(end, start + EXCERPT_LENGTH)) == excerpt)
 
     fun rebase(before: String, after: String, diff: TextDiff): TextRunAnchor {
         if (lost) return this
@@ -111,10 +128,10 @@ internal data class TextMatch(val oldStart: Int, val newStart: Int, val length: 
  */
 internal fun textMatches(before: String, after: String): TextDiff {
     var prefix = 0
-    while (prefix < minOf(before.length, after.length) && before[prefix] == after[prefix]) ++prefix
+    while (prefix < minOf(before.length, after.length) && sameUnit(before, prefix, after, prefix)) ++prefix
     var suffix = 0
     val limit = minOf(before.length, after.length) - prefix
-    while (suffix < limit && before[before.lastIndex - suffix] == after[after.lastIndex - suffix]) ++suffix
+    while (suffix < limit && sameUnit(before, before.lastIndex - suffix, after, after.lastIndex - suffix)) ++suffix
     val n = before.length - prefix - suffix
     val m = after.length - prefix - suffix
     val middle = if (n > 0 && m > 0) middleMatches(before, after, prefix, n, m) else emptyList()
@@ -141,7 +158,7 @@ private fun middleMatches(before: String, after: String, offset: Int, n: Int, m:
             var x = if (diag == -depth || (diag != depth && furthest[i - 1] < furthest[i + 1]))
                 furthest[i + 1] else furthest[i - 1] + 1
             var y = x - diag
-            while (x < n && y < m && before[offset + x] == after[offset + y]) { ++x; ++y }
+            while (x < n && y < m && sameUnit(before, offset + x, after, offset + y)) { ++x; ++y }
             furthest[i] = x
             if (x < n || y < m) continue
 

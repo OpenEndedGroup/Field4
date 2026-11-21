@@ -66,6 +66,58 @@ liveLink().click();
 await wait(() => [...(CSS.highlights.get('field-source-passage') || [])][0]?.toString() === 'tracked phrase',
     'Clicking the excerpt did not highlight the source');
 const write = (box, value) => send('set-string', {uid:box.uid, property:'contents', value});
+const query = options => window.queryTextFrameLinks(options);
+const passageUrl = 'field://passage/' + meta.token;
+const mentionUrl = 'field://box/' + source.uid + '?property=contents&line=1';
+const references = await frame('Extra references', 750, 400, [
+    '[One](' + passageUrl + ')',
+    '[Two](' + passageUrl + ')',
+    '`[Code example](' + passageUrl + ')`',
+    '[Ordinary source link](' + mentionUrl + ')',
+].join('\n\n'));
+const persisted = JSON.parse(source.textRunSources).find(anchor => anchor.id === meta.token);
+newBox({kind:'text-frame', name:'Passage commentary', contents:'A linked note.',
+    parentUid:source.uid, textRunAnchor:JSON.stringify(persisted), frame:{x:540,y:420,w:180,h:150}});
+const note = () => [...document.querySelectorAll('.text-frame-box')].find(b => b.name === 'Passage commentary');
+await wait(() => note()?.textRunAnchor && source.box_children?.includes(note().uid), 'Linked note did not connect');
+await wait(() => query({boxUid:source.uid, direction:'backlink'}).length === 5, 'Expected the note, three excerpts and one ordinary link');
+const duplicates = query({boxUid:references.uid, direction:'source', kind:'transclusion'});
+check(duplicates.map(link => link.occurrence).join(',') === '0,1', 'Backlinks collapsed repeated occurrences or indexed the code example');
+check(query({boxUid:references.uid, direction:'source', kind:'box link'})[0]?.line === 1, 'The ordinary box link lost its property or line');
+check(query({passageId:meta.token, query:'commentary tracked'}).map(link => link.kind).join(',') === 'note',
+    'Link query should find a note by title and attached source text');
+
+const openLinkResult = async (search, label, description) => {
+    window.openAnywherePalette();
+    const input = document.querySelector('.afield-palette-input');
+    await wait(() => document.activeElement === input, 'Open Anything did not focus');
+    input.value = search;
+    input.dispatchEvent(new Event('input', {bubbles:true}));
+    const row = () => [...document.querySelectorAll('.afield-palette-row')].find(r =>
+        r.querySelector('.afield-palette-label')?.textContent === label && (!description || r.textContent.includes(description)));
+    await wait(row, 'Missing link search result: ' + label);
+    row().click();
+};
+await openLinkResult('backlinks: tracked phrase reader', 'Backlink: Reader');
+await wait(() => [...window.selectedList].includes(target) && liveLink()?.classList.contains('text-frame-link-target'),
+    'Backlink search did not frame and highlight the referencing box');
+await openLinkResult('sources: tracked phrase reader', 'Source: Source passage', 'transclusion');
+await wait(() => [...window.selectedList].includes(source) &&
+    [...(CSS.highlights.get('field-source-passage') || [])][0]?.toString() === 'tracked phrase',
+    'Source search did not frame and highlight the tracked passage');
+const noteLink = query({boxUid:note().uid, direction:'source', kind:'note'})[0];
+check(window.followTextFrameLink(noteLink, 'backlink'), 'Could not navigate to the linked note');
+await wait(() => [...window.selectedList].includes(note()) &&
+    note().querySelector('.text-frame-passage.text-frame-link-target'), 'Note backlink did not identify the child');
+check(window.followTextFrameLink(noteLink, 'source'), 'Could not navigate from the linked note');
+await wait(() => [...window.selectedList].includes(source) &&
+    [...(CSS.highlights.get('field-source-passage') || [])][0]?.toString() === 'tracked phrase',
+    'The linked note did not navigate back to its passage');
+
+check(window.followTextFrameLink(duplicates[1], 'backlink'), 'Could not follow the second occurrence');
+await wait(() => references.querySelectorAll('a.text-frame-transclusion')[1]?.classList.contains('text-frame-link-target'),
+    'Backlink navigation did not highlight the second occurrence');
+
 write(source, 'New text before: tracked living phrase. Retain the rest.');
 await wait(() => liveLink()?.textContent === 'tracked living phrase', 'The excerpt did not update after source edits');
 
@@ -88,8 +140,20 @@ await wait(() => liveLink()?.textContent === 'tracked changed phrase', 'Edits at
 liveLink().click();
 await wait(() => [...(CSS.highlights.get('field-source-passage') || [])][0]?.toString() === 'tracked changed phrase',
     'Clicking the moved excerpt did not highlight its new source');
+await wait(() => query({boxUid:move.uid, direction:'backlink', passageId:meta.token}).length === 4 &&
+    !query({boxUid:source.uid, direction:'backlink', passageId:meta.token}).length &&
+    move.box_children?.includes(note().uid), 'Moving the passage did not update both note and excerpt backlinks');
 write(move, 'New home: ');
 await wait(() => liveLink()?.textContent === 'Passage lost' &&
     JSON.parse(move.textRunSources || '[]').some(anchor => anchor.id === meta.token && anchor.lost),
     'Permanently deleting the source did not mark the excerpt lost');
+check(query({passageId:meta.token, query:'lost changed'}).length === 4, 'Lost links should remain searchable by their last excerpt');
+const mention = query({boxUid:references.uid, direction:'source', kind:'box link', query:'ordinary'})[0];
+check(window.followTextFrameLink(mention, 'source'), 'Could not follow the ordinary box link');
+await wait(() => window.currentSelectedCode?.[0]?.uid === source.uid && window.currentSelectedProperty === 'contents' &&
+    window.globalEditor?.getPosition()?.lineNumber === 1, 'The ordinary source link did not open the linked property and line');
+check(window.followTextFrameLink(mention, 'backlink'), 'Could not navigate to the box containing the ordinary link');
+await wait(() => [...window.selectedList].includes(references) &&
+    references.querySelector('a.text-frame-link-target')?.textContent === 'Ordinary source link',
+    'The ordinary backlink did not highlight its Markdown occurrence');
 return {ok:true};

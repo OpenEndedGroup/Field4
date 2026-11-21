@@ -187,6 +187,14 @@ including in the visual editor, but you can edit the text around it. Cutting and
 source passage within the document moves that ID with it. If the source passage is deleted,
 the excerpt shows **Passage lost**.
 
+## Find sources and backlinks
+
+In **Open Anything**, search for the wording of a passage, either box's name, or a passage ID.
+Use **Source:** results to jump from the referencing box to its source. Use **Backlink:**
+results to jump to the linked note, transclusion, or Markdown box link. Prefix the search
+with `sources:`, `backlinks:`, or `links:` to show just those results. Lost passages
+remain searchable by their last saved excerpt.
+
 ## Connected writing
 
 Shift-select two boxes and press ++g++ to connect them. ++alt++-click a frame and move **down** to choose
