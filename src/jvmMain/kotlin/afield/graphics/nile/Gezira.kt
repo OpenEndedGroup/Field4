@@ -83,11 +83,37 @@ class Bezier(val p: DoubleArray) {
  */
 data class EdgeSample(val x: Int, val y: Int, val area: Double, val height: Double)
 
+/**
+ * A line piece inside pixel row [row], top end `(x0, y0)` and bottom end `(x1, y1)` with `y0 < y1`.
+ * [dir] is `+1` where the outline runs down (y increasing) and `-1` where it runs up.
+ */
+data class RowEdge(val row: Int, val x0: Double, val y0: Double, val x1: Double, val y1: Double, val dir: Int) {
+    /** The x of the piece at height [y], between [y0] and [y1]. */
+    fun xAt(y: Double): Double = if (y <= y0) x0 else if (y >= y1) x1 else x0 + (y - y0) / (y1 - y0) * (x1 - x0)
+}
+
+/** Which winding numbers count as inside an outline. */
+enum class FillRule {
+    /** Inside where the outline winds round the point at all, either way: overlaps stay filled. */
+    NON_ZERO,
+
+    /** Inside where the outline winds round an odd number of times: overlaps and inner loops are holes. */
+    EVEN_ODD;
+
+    /** True when winding number [w] is inside. */
+    fun inside(w: Int): Boolean = if (this == NON_ZERO) w != 0 else (w and 1) != 0
+}
+
 /** A run of [length] pixels starting at `(x, y)`, all covered by [coverage] in `[0, 1]`. */
 data class Span(val x: Int, val y: Int, val length: Int, val coverage: Double)
 
 /**
- * The Gezira rasteriser written as Nile-style kernels:
+ * Rasterisers written as Nile-style kernels.
+ *
+ * [rasterizer] is the one to use: [flattenBeziers] → [rowEdges] → [sortRows] → [windingSpans], exact
+ * area coverage under a [FillRule] however outlines overlap or cross themselves.
+ *
+ * [edgeSampleRasterizer] is Gezira's own:
  * [decomposeBeziers] → [edgeSamples] → [sortX] → [sortY] → [combineEdgeSamples].
  *
  * Gezira fuses decomposition and the edge sample into one kernel; here they are two, so the pieces
@@ -215,9 +241,201 @@ object Gezira {
         end { if (row != Int.MIN_VALUE) flushPixel(this) }
     }
 
-    /** The whole rasteriser. */
-    val rasterizer: Stage<Bezier, Span> =
+    /**
+     * Gezira's own five stages, curves integrated exactly inside each pixel. Exact wherever only one
+     * outline crosses a pixel; in a pixel that two outlines (or two parts of one self-intersecting
+     * outline) both cross, it adds their partial coverages, so it counts their overlap twice, and it
+     * has no even-odd rule. [rasterizer] has neither problem.
+     */
+    val edgeSampleRasterizer: Stage<Bezier, Span> =
         decomposeBeziers then edgeSamples then sortX then sortY then combineEdgeSamples
+
+    // ---- the winding rasteriser --------------------------------------------------------------
+
+    /**
+     * Cut curves in half, pushing both halves back, until each lies within [tolerance] pixels of its
+     * chord, and emit the chords; lines pass through.
+     */
+    fun flattenBeziers(tolerance: Double = FLATNESS): Stage<Bezier, Bezier> = kernel("FlattenBeziers") {
+        each { b ->
+            if (b.degree == 1 || chordDistance(b) <= tolerance) {
+                val n = b.p.size
+                emit(Bezier(doubleArrayOf(b.p[0], b.p[1], b.p[n - 2], b.p[n - 1])))
+            } else {
+                val (l, r) = b.split()
+                push(r)
+                push(l)
+            }
+        }
+    }
+
+    /** Default [flattenBeziers] tolerance in pixels: curve coverage is off by at most about this. */
+    const val FLATNESS = 1e-4
+
+    /** Largest distance of an inner control point of [b] from its chord, which bounds the curve's. */
+    fun chordDistance(b: Bezier): Double {
+        val n = b.p.size
+        val ax = b.p[0]
+        val ay = b.p[1]
+        val dx = b.p[n - 2] - ax
+        val dy = b.p[n - 1] - ay
+        val len = sqrt(dx * dx + dy * dy)
+        var worst = 0.0
+        for (i in 1 until n / 2 - 1) {
+            val px = b.p[2 * i] - ax
+            val py = b.p[2 * i + 1] - ay
+            val d = if (len < 1e-300) sqrt(px * px + py * py) else abs(px * dy - py * dx) / len
+            worst = max(worst, d)
+        }
+        return worst
+    }
+
+    /** Cut each line where it crosses a pixel row boundary; horizontal lines are dropped. */
+    val rowEdges: Stage<Bezier, RowEdge> = kernel("RowEdges") {
+        each { b ->
+            val (x0, y0, x1, y1) = b.p.toList()
+            if (y0 == y1) return@each
+            val dir = if (y1 > y0) 1 else -1
+            val top = min(y0, y1)
+            val bottom = max(y0, y1)
+            val xt = if (y0 < y1) x0 else x1
+            val xb = if (y0 < y1) x1 else x0
+            fun xAt(y: Double) = if (y == top) xt else if (y == bottom) xb else xt + (y - top) / (bottom - top) * (xb - xt)
+            var row = floor(top)
+            while (row < bottom) {
+                val a = max(top, row)
+                val c = min(bottom, row + 1)
+                if (c > a) emit(RowEdge(row.toInt(), xAt(a), a, xAt(c), c, dir))
+                row += 1.0
+            }
+        }
+    }
+
+    /** Row edges by row; the order inside a row does not matter. */
+    val sortRows: Stage<RowEdge, RowEdge> = sortBy("SortBy row") { it.row }
+
+    /**
+     * Gather each row's edges and resolve them exactly: cut the row into bands at every edge end and
+     * every crossing, so no two edges cross inside a band; in each band walk the edges left to right
+     * counting winding, and wherever [rule] says the region between two neighbours is inside, add that
+     * trapezoid's area to each pixel column it covers. Emits a [Span] per run of equal coverage.
+     */
+    fun windingSpans(rule: FillRule): Stage<RowEdge, Span> = kernel("WindingSpans") {
+        val edges = ArrayList<RowEdge>()
+        var row = Int.MIN_VALUE
+        fun flush(scope: KernelScope<RowEdge, Span>) {
+            if (edges.isNotEmpty()) resolveRow(row, edges, rule).forEach { scope.emit(it) }
+            edges.clear()
+        }
+        each { e ->
+            if (e.row != row) {
+                flush(this)
+                row = e.row
+            }
+            edges.add(e)
+        }
+        end { flush(this) }
+    }
+
+    /** The exact coverage spans of one pixel row from its [edges], under [rule]. */
+    fun resolveRow(row: Int, edges: List<RowEdge>, rule: FillRule): List<Span> {
+        var lo = Double.POSITIVE_INFINITY
+        var hi = Double.NEGATIVE_INFINITY
+        for (e in edges) {
+            lo = min(lo, min(e.x0, e.x1))
+            hi = max(hi, max(e.x0, e.x1))
+        }
+        val left = floor(lo).toInt()
+        val acc = DoubleArray(ceil(hi).toInt() - left + 1)
+        val ys = ArrayList<Double>(2 * edges.size + 2)
+        for (e in edges) {
+            ys.add(e.y0)
+            ys.add(e.y1)
+        }
+        for (i in edges.indices) for (j in i + 1 until edges.size) {
+            val a = edges[i]
+            val b = edges[j]
+            val y0 = max(a.y0, b.y0)
+            val y1 = min(a.y1, b.y1)
+            if (y1 <= y0) continue
+            val da0 = a.xAt(y0) - b.xAt(y0)
+            val da1 = a.xAt(y1) - b.xAt(y1)
+            if ((da0 < 0 && da1 > 0) || (da0 > 0 && da1 < 0)) ys.add(y0 + da0 / (da0 - da1) * (y1 - y0))
+        }
+        ys.sort()
+        val active = ArrayList<RowEdge>()
+        val xa = DoubleArray(edges.size)
+        val xb = DoubleArray(edges.size)
+        for (k in 0 until ys.size - 1) {
+            val ya = ys[k]
+            val yb = ys[k + 1]
+            val h = yb - ya
+            if (h <= 0.0) continue
+            val ym = 0.5 * (ya + yb)
+            active.clear()
+            for (e in edges) if (e.y0 < ym && ym < e.y1) active.add(e)
+            if (active.size < 2) continue
+            active.sortBy { it.xAt(ym) }
+            for (i in active.indices) {
+                xa[i] = active[i].xAt(ya)
+                xb[i] = active[i].xAt(yb)
+            }
+            var wind = 0
+            for (i in 0 until active.size - 1) {
+                wind += active[i].dir
+                if (rule.inside(wind)) addTrapezoid(acc, left, xa[i], xb[i], xa[i + 1], xb[i + 1], h)
+            }
+        }
+        val spans = ArrayList<Span>()
+        var i = 0
+        while (i < acc.size) {
+            val c = acc[i].coerceIn(0.0, 1.0)
+            if (c <= 1e-12) {
+                i++
+                continue
+            }
+            var j = i + 1
+            while (j < acc.size && abs(acc[j].coerceIn(0.0, 1.0) - c) <= 1e-12) j++
+            spans.add(Span(left + i, row, j - i, c))
+            i = j
+        }
+        return spans
+    }
+
+    /**
+     * Add the area between a left line (`la` at the band's top to `lb` at its bottom) and a right line
+     * (`ra` to `rb`), over a band [h] high, to each pixel column of [acc] (column `left + index`).
+     */
+    private fun addTrapezoid(acc: DoubleArray, left: Int, la: Double, lb: Double, ra: Double, rb: Double, h: Double) {
+        val c0 = floor(min(la, lb)).toInt()
+        val c1 = ceil(max(ra, rb)).toInt()
+        for (c in c0 until c1) {
+            acc[c - left] += h * (meanClamp(ra - c, rb - c) - meanClamp(la - c, lb - c))
+        }
+    }
+
+    /** The mean of `clamp(u, 0, 1)` as `u` runs linearly from [u0] to [u1]: a column's share left of a line. */
+    private fun meanClamp(u0: Double, u1: Double): Double {
+        val lo = min(u0, u1)
+        val hi = max(u0, u1)
+        if (hi <= 0.0) return 0.0
+        if (lo >= 1.0) return 1.0
+        val len = hi - lo
+        if (len < 1e-300) return lo.coerceIn(0.0, 1.0)
+        val a = max(lo, 0.0)
+        val b = min(hi, 1.0)
+        return ((b - a) * (a + b) * 0.5 + max(0.0, hi - max(lo, 1.0))) / len
+    }
+
+    /**
+     * The winding rasteriser under [rule]: [flattenBeziers] → [rowEdges] → [sortRows] → [windingSpans].
+     * Exact for polygons, however they overlap or cross themselves; curves are within [tolerance].
+     */
+    fun rasterizer(rule: FillRule = FillRule.NON_ZERO, tolerance: Double = FLATNESS): Stage<Bezier, Span> =
+        flattenBeziers(tolerance) then rowEdges then sortRows then windingSpans(rule)
+
+    /** [rasterizer] with the non-zero rule, the default for outlines. */
+    val rasterizer: Stage<Bezier, Span> = rasterizer(FillRule.NON_ZERO)
 
     /** Spans painted into a `w × h` coverage grid, row-major, y down; spans outside are clipped. */
     fun coverage(spans: List<Span>, w: Int, h: Int): DoubleArray {
@@ -229,8 +447,9 @@ object Gezira {
         return c
     }
 
-    /** Run [rasterizer] over [beziers] into a `w × h` coverage grid. */
-    fun rasterize(beziers: List<Bezier>, w: Int, h: Int): DoubleArray = coverage(rasterizer(beziers), w, h)
+    /** Run [rasterizer] under [rule] over [beziers] into a `w × h` coverage grid. */
+    fun rasterize(beziers: List<Bezier>, w: Int, h: Int, rule: FillRule = FillRule.NON_ZERO): DoubleArray =
+        coverage(rasterizer(rule)(beziers), w, h)
 
     /** The segments of [line] as [Bezier]s, each subpath closed. Only x and y are used. */
     fun beziers(line: FLine): List<Bezier> {
@@ -285,6 +504,71 @@ object Gezira {
             }
         }
         close()
+        return out
+    }
+
+    /**
+     * The subpaths of [line] as [Bezier] lists, left open: a subpath that ends in a close gets the
+     * closing segment, so it ends where it started; one that does not is left as drawn. What a
+     * stroke wants, where [beziers] (which closes everything) is what a fill wants.
+     */
+    fun subpaths(line: FLine): List<List<Bezier>> {
+        val out = ArrayList<List<Bezier>>()
+        var cur = ArrayList<Bezier>()
+        var sx = 0.0
+        var sy = 0.0
+        var cx = 0.0
+        var cy = 0.0
+        fun finish() {
+            if (cur.isNotEmpty()) out.add(cur)
+            cur = ArrayList()
+        }
+        for (node in line.nodes) {
+            when (node) {
+                is FLine.MoveTo -> {
+                    finish()
+                    sx = node.storage[0].x.toDouble()
+                    sy = node.storage[0].y.toDouble()
+                    cx = sx
+                    cy = sy
+                }
+
+                is FLine.LineTo -> {
+                    val x = node.storage[0].x.toDouble()
+                    val y = node.storage[0].y.toDouble()
+                    cur.add(Bezier(doubleArrayOf(cx, cy, x, y)))
+                    cx = x
+                    cy = y
+                }
+
+                is FLine.CubicTo -> {
+                    val x = node.storage[0].x.toDouble()
+                    val y = node.storage[0].y.toDouble()
+                    cur.add(
+                        Bezier(
+                            doubleArrayOf(
+                                cx, cy,
+                                node.c1.x.toDouble(), node.c1.y.toDouble(),
+                                node.c2.x.toDouble(), node.c2.y.toDouble(),
+                                x, y,
+                            ),
+                        ),
+                    )
+                    cx = x
+                    cy = y
+                }
+
+                is FLine.Close -> {
+                    if (cx != sx || cy != sy) cur.add(Bezier(doubleArrayOf(cx, cy, sx, sy)))
+                    cx = sx
+                    cy = sy
+                    finish()
+                }
+
+                else -> {}
+            }
+        }
+        finish()
         return out
     }
 
@@ -391,8 +675,8 @@ object Gezira {
     }
 
     /** [beziers] as a Skia path, a new contour wherever a segment does not start where the last ended. */
-    fun skiaPath(beziers: List<Bezier>): Path {
-        val path = Path().apply { fillMode = PathFillMode.WINDING }
+    fun skiaPath(beziers: List<Bezier>, rule: FillRule = FillRule.NON_ZERO): Path {
+        val path = Path().apply { fillMode = if (rule == FillRule.NON_ZERO) PathFillMode.WINDING else PathFillMode.EVEN_ODD }
         var lastX = Double.NaN
         var lastY = Double.NaN
         for (b in beziers) {
@@ -441,9 +725,9 @@ object Gezira {
         }
     }
 
-    /** Skia's anti-aliased coverage of [beziers] (non-zero fill), read back from an 8-bit alpha. */
-    fun skiaCoverage(beziers: List<Bezier>, w: Int, h: Int): DoubleArray {
-        val path = skiaPath(beziers)
+    /** Skia's anti-aliased coverage of [beziers] under [rule], read back from an 8-bit alpha. */
+    fun skiaCoverage(beziers: List<Bezier>, w: Int, h: Int, rule: FillRule = FillRule.NON_ZERO): DoubleArray {
+        val path = skiaPath(beziers, rule)
         try {
             val rgba = skiaRaster(w, h) { it.drawPath(path, Paint().apply { isAntiAlias = true; color = Color.BLACK }) }
             return DoubleArray(w * h) { rgba[4 * it + 3].toDouble() }
@@ -453,12 +737,14 @@ object Gezira {
     }
 
     /**
-     * Non-zero coverage by point sampling an `n × n` grid in every pixel: each sample row finds where
-     * the outline (each curve flattened to [chords] chords) crosses it and fills where the winding
-     * number is not zero. Slow, but it measures the *union* of overlapping outlines, which a sum of
-     * signed edge areas does not.
+     * Coverage under [rule] by point sampling an `n × n` grid in every pixel: each sample row finds
+     * where the outline (each curve flattened to [chords] chords) crosses it and fills where [rule]
+     * says the winding number is inside. Slow, and independent of the kernels, so it is what they are
+     * measured against where outlines overlap or cross themselves.
      */
-    fun supersampledCoverage(beziers: List<Bezier>, w: Int, h: Int, n: Int = 64, chords: Int = 256): DoubleArray {
+    fun supersampledCoverage(
+        beziers: List<Bezier>, w: Int, h: Int, n: Int = 64, chords: Int = 256, rule: FillRule = FillRule.NON_ZERO,
+    ): DoubleArray {
         val seg = ArrayList<DoubleArray>()
         for (b in beziers) {
             val k = if (b.degree == 1) 1 else chords
@@ -487,7 +773,7 @@ object Gezira {
             var wind = 0
             for (i in 0 until xs.size - 1) {
                 wind += xs[i].second
-                if (wind == 0) continue
+                if (!rule.inside(wind)) continue
                 // Fill sample columns whose centres lie in [xs[i], xs[i+1]).
                 val a = ceil(xs[i].first * n - 0.5).toInt()
                 val b = ceil(xs[i + 1].first * n - 0.5).toInt()
