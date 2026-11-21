@@ -68,7 +68,9 @@ import argparse
 import collections
 import json
 import math
+import os
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -670,6 +672,8 @@ VIEW_TEMPLATE = Path(__file__).with_name("docs_link_graph.html")
 # Field's vendored three.js, inlined into graph.html so the page opens from disk with no server.
 THREE_VENDOR_GLOB = "src/commonMain/resources/vendor/three/*/three.module.js"
 # The live layout (d3-force-3d on WebGPU, CPU fallback): its d3 dependencies first, then the package.
+FONT_DIR = "src/jsMain/resources/woff2"
+FONTS = {"FONT_LIGHT": "iosevka-semicondensedlight.woff2", "FONT_SEMIBOLD": "iosevka-semicondensedsemibold.woff2"}
 FORCE_VENDOR = "src/commonMain/resources/vendor/d3-force-3d-webgpu/3.2.0"
 FORCE_SCRIPTS = ("deps/d3-dispatch.js", "deps/d3-timer.js", "deps/d3-quadtree.js", "deps/d3-binarytree.js",
                  "deps/d3-octree.js", "d3-force-3d-webgpu.js")
@@ -928,10 +932,21 @@ def write_view(graph: Graph, out_dir: Path, *, site_root: str | None = None, nam
     html = VIEW_TEMPLATE.read_text(encoding="utf-8")
     for marker, path in (("THREE_CORE", "three.core.js"), ("THREE_MODULE", "three.module.js"), ("THREE_ORBIT", "addons/controls/OrbitControls.js")):
         html = html.replace(f"/*{marker}*/", (three / path).read_text(encoding="utf-8").replace("</script", "<\\/script"), 1)
-    force = "\n".join((REPO_ROOT / FORCE_VENDOR / name).read_text(encoding="utf-8") for name in FORCE_SCRIPTS)
+    force = "\n".join((REPO_ROOT / FORCE_VENDOR / script).read_text(encoding="utf-8") for script in FORCE_SCRIPTS)
     html = html.replace("/*FORCE*/", force.replace("</script", "<\\/script"), 1)
-    html = html.replace("/*GRAPH*/null", payload.replace("</", "<\\/"), 1)
     out_dir.mkdir(parents=True, exist_ok=True)
+    # Field's own UI face (semi-condensed Iosevka, light and semibold): copied beside a published
+    # map, which must not reach into the checkout; pointed at in the checkout otherwise.
+    for marker, font in FONTS.items():
+        source = REPO_ROOT / FONT_DIR / font
+        if site_root is not None:
+            (out_dir / "fonts").mkdir(exist_ok=True)
+            shutil.copyfile(source, out_dir / "fonts" / font)
+            url = f"fonts/{font}"
+        else:
+            url = Path(os.path.relpath(source, out_dir)).as_posix()
+        html = html.replace(f"/*{marker}*/", url, 1)
+    html = html.replace("/*GRAPH*/null", payload.replace("</", "<\\/"), 1)
     target = out_dir / name
     target.write_text(html, encoding="utf-8")
     return target
