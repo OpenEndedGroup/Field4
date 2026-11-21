@@ -538,6 +538,20 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
      * ```
      */
     var tint by Delegation<String>(defaultValue = { "" })
+
+    /**
+     * A note the canvas shows just above this box's top edge while nothing but the document root is
+     * its parent, or `""` for none. It goes the moment the box is connected beneath another box and
+     * comes back if that connection goes, so it suits a box that only works under something: a
+     * graphics template that needs a renderer above it says so where it is dropped.
+     *
+     * ```
+     * parentHint = "Connect under a renderer: select the renderer, then this box, and press G"
+     * ```
+     *
+     * Unlike [tint] it is saved with the box, so a template carries it into every copy.
+     */
+    var parentHint by Delegation<String>(defaultValue = { "" })
     private val viewportDelegation = Delegation<Rect>(defaultValue = { Rect(0.0, 0.0, 0.0, 0.0) }, hook = ::onViewportChange)
 
     /**
@@ -752,6 +766,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "customization",
             // Box.tint: a transient canvas colour; resynced like frame, deliberately not persisted.
             "tint",
+            // Box.parentHint: drawn above the box while it has no parent but the root; persisted below.
+            "parentHint",
             "_tombstone",
             // Set by reloadPersonal when a box's Kotlin environment is dropped out from under it.
             // Has to reach the client or the mark is invisible and the box looks fine while holding
@@ -835,6 +851,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "customization",
             "source_id",
             "templateId",
+            "parentHint",
             "_tombstone",
             "isRemoteJSRoot",
             "isPythonRoot",
