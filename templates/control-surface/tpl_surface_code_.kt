@@ -1,6 +1,8 @@
-// A performer's surface: a logarithmic slider, a bipolar one, a momentary gate and a meter.
-// Run it, then read `cutoff`, `pan` and `gate` from the code below it, or point the meter's
-// `source` at a number of your own.
+/*
+A performer's surface: a logarithmic slider, a bipolar one, a momentary gate and a meter.
+Run it, then read `cutoff`, `pan` and `gate` from the code below it, or point the meter's
+`source` at a number of your own.
+*/
 var cutoff = 1000.0
 var pan = 0.0
 var gate = false
