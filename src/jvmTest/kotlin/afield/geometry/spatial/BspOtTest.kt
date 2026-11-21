@@ -282,6 +282,46 @@ class BspOtTest {
     }
 
     @Test
+    fun loopRefinementMatchesAcrossTheWrapAndPreservesBijections() {
+        // The unlabelled two-point shape loops after a half-turn, but greedy IDs trade places.
+        val frames = List(12) { frame ->
+            val angle = Math.PI * frame / 12
+            val x = (10 * kotlin.math.cos(angle)).toFloat()
+            val y = (10 * kotlin.math.sin(angle)).toFloat()
+            listOf(Vec2(x, y), Vec2(-x, -y))
+        }
+        val options = BspOt2D.Options(trees = 3, parallelism = 1)
+        val sequential = matchPointLoop(frames, sweeps = 0, options = options)
+        val looped = matchPointLoop(frames, seamWeight = 12.0, options = options)
+        val again = matchPointLoop(frames, seamWeight = 12.0, options = options)
+
+        fun seamCost(order: List<IntArray>): Double =
+            (0..1).sumOf { id ->
+                val start = frames.first()[order.first()[id]]
+                val end = frames.last()[order.last()[id]]
+                val x = start.x.toDouble() - end.x
+                val y = start.y.toDouble() - end.y
+                x * x + y * y
+            }
+
+        assertTrue(seamCost(looped) < seamCost(sequential) * 0.1)
+        assertTrue(looped.first().contentEquals(intArrayOf(0, 1)))
+        looped.zip(again).forEach { (frame, repeat) ->
+            BspOt2D.validatePermutation(frame, 2)
+            assertTrue(frame.contentEquals(repeat))
+        }
+    }
+
+    @Test
+    fun loopMatchingChecksTheFrameContract() {
+        val origin = listOf(Vec2(0f, 0f))
+        assertFailsWith<IllegalArgumentException> { matchPointLoop(listOf(origin)) }
+        assertFailsWith<IllegalArgumentException> { matchPointLoop(listOf(origin, emptyList())) }
+        assertFailsWith<IllegalArgumentException> { matchPointLoop(listOf(origin, origin), seamWeight = Double.NaN) }
+        assertTrue(matchPointLoop(listOf(emptyList(), emptyList())).all { it.isEmpty() })
+    }
+
+    @Test
     fun matchPointsReordersTargetsIntoSourceOrder() {
         val from = listOf(Vec2(0f, 0f), Vec2(10f, 0f), Vec2(0f, 10f))
         val to = listOf(Vec2(0.5f, 10f), Vec2(0.5f, 0f), Vec2(10.5f, 0f))

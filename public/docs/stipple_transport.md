@@ -120,6 +120,31 @@ procedural density movie, which makes an interpolation check possible for this e
 The [measurement record](assets/stipple_transport/measurements.json) includes per-frame results,
 integration convergence, path diagnostics and the training/device options.
 
+## Give a stippled loop stable slots
+
+For playback with a fixed point budget, stipple each decoded frame with the same count and use
+`matchPointLoop` to assign each frame's points to stable slots. This uses Field's existing
+one-to-one BSP-OT matcher. It starts with consecutive matches, then refines the loop using both
+neighbouring frames. Omit a duplicate closing frame. Frame zero defines the slot order.
+
+```kotlin
+val clouds = decodedFrames.map { it.stipple(count = 10_000, iterations = 5) }
+val pointOfSlot = matchPointLoop(clouds, sweeps = 12, seamWeight = 12.0)
+val tracked = clouds.mapIndexed { frame, points ->
+    pointOfSlot[frame].map { point -> points[point] }
+}
+```
+
+Sample color, depth or labels at the original point coordinates and use the same permutation to
+carry them with the slot. One slot can drive one sparse simulation particle. Following it with a
+spring lets the sparse particle keep its velocity and respond to simulation forces. Dense particles
+can then follow nearby sparse particles and inherit their attributes.
+
+The slots describe geometric correspondence. Occlusion and newly visible material can still
+cause large steps. Measure typical and upper-percentile displacement both inside the loop and at
+the wrap. A higher seam weight can shift a large step away from the wrap into an interior frame.
+Process hard cuts as separate loops or sequences.
+
 ## Use the trained warp in Field
 
 The portable loader is CPU-only and requires no Python or Torch at runtime. The supplied model has
