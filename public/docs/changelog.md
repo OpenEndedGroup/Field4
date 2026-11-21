@@ -45,7 +45,7 @@ fixes and wording changes, open **Changelog** on the Welcome screen.
 - **Completion inside string literals**: paths, computed strings and Rhino layer names.
   [Completing a path as you type](files_and_paths.md#completing-a-path-as-you-type).
 - **Five queens** run as an interaction net. [Five queens](interaction_nets_examples.md#a-program-with-numbers-five-queens).
-- **Fit Selected** (Alt+Shift+F) zooms the selection to fill the space beside the editor; the
+- **Fit Selected** (++alt+shift+f++) zooms the selection to fill the space beside the editor; the
   three.js path tracer denoises at 4, 8, 16 and 32 samples.
 
 <!-- changelog: 352b11d59b..f04901728c -->
