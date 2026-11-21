@@ -17,6 +17,8 @@
    fades in is the finished page. Off for readers who ask for reduced motion. */
 @media (prefers-reduced-motion: no-preference) {
     @view-transition { navigation: auto; }
+    /* Behind the two snapshots while they fade: black, not the browser's white. */
+    ::view-transition { background: var(--mono-bg); }
     ::view-transition-old(root),
     ::view-transition-new(root) {
         animation-duration: 500ms;
@@ -69,6 +71,9 @@ html.field-transcript-open body { overflow-x:visible !important; }
 }
 
 html {
+    /* The theme sets this on <body> only; on <html> it also darkens the canvas and the page's
+       own scrollbar (overrides/main.html says it again before any stylesheet loads). */
+    color-scheme: dark;
     background: var(--mono-bg);
     background-attachment: fixed;
 }
