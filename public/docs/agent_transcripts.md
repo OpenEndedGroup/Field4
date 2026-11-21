@@ -4133,6 +4133,16 @@ the drawn ones.
 
 [Open →](offline.html?file=assets/agent_transcripts/outline_field_gpu/metadata.edn)
 
+### fline_coverage_gpu
+
+**FLines filled into a GPU buffer with exact coverage.** [An outline filled into a buffer](visualizers.md#an-outline-filled-into-a-buffer)
+as three boxes: a renderer, a box that fills and strokes `FLine`s into a storage buffer with
+`BufferCanvas.fill` and `stroke` (non-zero in one channel, even-odd in the other), and a draw box
+whose fragment shader shows both side by side in the native window. A closed freehand stroke over
+the *mask* frame (Alt+D) is filled into the buffer while it runs; an ellipse clears the drawn ones.
+
+[Open →](offline.html?file=assets/agent_transcripts/fline_coverage_gpu/metadata.edn)
+
 ### gpu_state
 
 A stateful GPU simulation: 40,000 particles whose positions and velocities live in a

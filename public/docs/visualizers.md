@@ -1361,6 +1361,8 @@ A simulation that ping-pongs between two buffers needs two more steps. First, th
 writing while you edit. The shader takes a `run` push constant and returns early when it is zero;
 set it to zero, then wait until every frame already submitted has finished (`renderer.numImages`
 frames, plus a couple to be safe). Second, both halves have to hold the edit, because the next
+frame may read either.
+
 The example runs Gray-Scott reaction-diffusion on two such buffers. It starts from one seed and
 then, from box code, paints two more into the GPU state with `edit { paint(...) }`. The native
 window shows the buffer one cell to one pixel, shortly after the edits, with all three spots growing:
@@ -1370,7 +1372,7 @@ window shows the buffer one cell to one pixel, shortly after the edits, with all
 // (renderer + compute + draw). The edit loop is below.
 ```
 
-frame may read either. Apply the edits to buffer A, copy A into B, and set `run` back to one:
+To make the edit, apply it to buffer A, copy A into B, and set `run` back to one:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -1452,6 +1454,50 @@ back and prints the largest difference from the CPU field: 0.000 cells.
 A stroke counts as closed because `signedDistance2D` joins every subpath's end to its start, so an
 open scribble becomes the polygon it nearly encloses. A stroke that crosses itself is decided by the
 even-odd rule: the parts it winds around twice count as outside.
+
+### An outline filled into a buffer
+
+A shader often wants the shape itself rather than its distance: a mask that is 1 inside, 0 outside,
+and the fraction of the cell the shape covers along the edge. `BufferCanvas.fill` takes an `FLine`,
+or a list of them, and writes exactly that. Each element moves toward the value by the part of its
+square the outline covers, so a buffer of zeros filled with `1f` ends up holding the coverage.
+`stroke(line, width, value)` does the same for a hard-edged line of that width:
+
+```diffstatic {data-lang=kotlin}
+:::static
+val circles = listOf(FLine().circle(78.0, 40.0, 18.0), FLine().circle(94.0, 52.0, 18.0))
+mask.mapAndWrite {
+    val canvas = bufferCanvas(this, width = W, channels = 2, height = H)
+    canvas.fill(circles, 1f, FillRule.NON_ZERO, channel = 0)
+    canvas.fill(circles, 1f, FillRule.EVEN_ODD, channel = 1)
+    canvas.stroke(wave, width = 3.0, value = 1f, channel = 0)
+}
+```
+
+The outlines are in the coordinates `sample` uses (`x0`, `y0` and `cell` default to one unit per
+element), every subpath is closed, and curves stay curves. Several outlines filled together are one
+shape, so `FillRule` decides what their overlaps are. Under `NON_ZERO`, overlapping outlines are
+their union and an outline inside another is a hole only if it runs the other way round. Under
+`EVEN_ODD`, every overlap and every inner loop is a hole. The coverage is the exact area of each cell
+inside the outline under that rule, from the winding rasteriser in
+[Rasterising with stream kernels](afield_four_graphics.md#stream-kernels).
+
+In this example a buffer holds two floats per cell, the shapes filled under `NON_ZERO` in the first
+and under `EVEN_ODD` in the second: a pentagram drawn as one outline that crosses itself, two
+overlapping circles, a square inside a square wound the same way, and a wave stroked three cells
+wide that loops over itself. A fragment shader reads the buffer and shows `NON_ZERO` on the left in
+orange and `EVEN_ODD` on the right in blue, each cell a block of window pixels:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-fline-coverage-gpu.png" capture="native-window" native-wait-frames="60" trim=true embed=true hidden=true force=true timeout="180" duration="0" name="fline-coverage-gpu" alt="two copies of the same shapes in the native window, orange on the left under non-zero and blue on the right under even-odd: a pentagram, solid on the left and with an empty pentagon centre on the right; two overlapping circles, one blob on the left and with the lens where they overlap empty on the right; a square with a square hole on the right only; and a stroked wave whose loop is solid in both" macro-file="../../dev_docs/agents/transcripts/fline_coverage_gpu.yaml" capture-box="fcg_renderer"}
+// Built and launched from dev_docs/agents/transcripts/fline_coverage_gpu.yaml
+// (renderer + a box filling FLines into the mask buffer + draw).
+```
+
+Only the CPU writes the mask, so as with the outline field there is nothing to hold: fill again and
+`mapAndWrite` between frames. In the [`fline_coverage_gpu` transcript](agent_transcripts.md#fline_coverage_gpu)
+a closed freehand stroke over the *mask* frame on the [drawing layer](drawing_and_notation.md) is
+filled into both channels while it runs, and an ellipse clears the drawn ones. The box's *mask*
+output reads the buffer back and prints the largest difference from the same fill into a CPU array.
 
 ### Drawings and character grids
 
