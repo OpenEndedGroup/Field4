@@ -1111,7 +1111,17 @@ data class Set_string(
     val value: String,
     val syncSequence: Long? = null,
     val clientId: String? = null,
-    val clientSequence: Long? = null
+    val clientSequence: Long? = null,
+    val textRunClipboard: TextRunClipboardEdit? = null
+)
+
+@Serializable
+data class TextRunClipboardEdit(
+    val action: String,
+    val token: String,
+    val sourceUid: String,
+    val start: Int,
+    val end: Int,
 )
 
 @Serializable

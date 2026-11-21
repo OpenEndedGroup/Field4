@@ -40,6 +40,7 @@ import afield.app.settings.NEEDS_RERUN_PROPERTY
 import afield.data.table.get
 import afield.document.properties.PropertyBag
 import afield.document.text.TEXT_RUN_ANCHOR
+import afield.document.text.TextDiff
 import afield.document.text.rebaseChildTextRuns
 import afield.document.workspace.copyBoxes
 import afield.media.stream.*
@@ -1228,7 +1229,13 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
 
     }
 
-    override fun setPropertyRaw(name: String, value: Any, doResync: Boolean) {
+    override fun setPropertyRaw(name: String, value: Any, doResync: Boolean) =
+        setPropertyRaw(name, value, doResync, null)
+
+    internal fun setTextRunEditedContents(value: String, diff: TextDiff) =
+        setPropertyRaw("contents", value, true, diff)
+
+    private fun setPropertyRaw(name: String, value: Any, doResync: Boolean, diff: TextDiff?) {
         // The one choke point every whole-set assignment to a topology property passes through --
         // Delegation.setValue for `box.children = ...`, and the document loader, which calls
         // setPropertyRaw directly with a plain LinkedHashSet (saving.kt). Normalising here is what
@@ -1242,7 +1249,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             properties[name] = incoming
         }
 
-        rebaseChildTextRuns(this, name, oldValue, incoming)
+        rebaseChildTextRuns(this, name, oldValue, incoming, diff)
 
         // A Delegation default materialising an empty collection on first read is not an edit.
         if (oldValue != incoming && !(oldValue == null && isEmptyContainer(incoming))) notePersistentChange(name)

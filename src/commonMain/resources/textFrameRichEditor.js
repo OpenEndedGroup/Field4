@@ -118,32 +118,69 @@ export function mountRichText(root, markdown) {
         }
         return {text: changed ? result + source.slice(cursor) : source, regions};
     }
+    const prose = value => value.replace(/\s/g, '');
+    const prosePositions = raw => {
+        const detached = document.createElement('div');
+        detached.innerHTML = textFrameMarkdownToHtml(raw);
+        return markdownCharacters(detached).filter(item => !/\s/.test(item.char));
+    };
     return {
         first: blocks[0].host,
         markdown: () => serialize().text,
-        sourceRange(range) {
-            if (range.collapsed) return null;
+        sourceRange(range, allowCaret = false) {
+            if (range.collapsed && !allowCaret) return null;
             const {regions} = serialize();
             const map = (node, offset, end) => {
                 const region = regions.find(({host}) => host.contains(node));
                 if (!region) return null;
                 // Compare prose characters rather than DOM structure: the browser may split
                 // text nodes, and the Markdown renderer can collapse line breaks and spaces.
-                const prose = value => value.replace(/\s/g, '');
                 const before = document.createRange();
                 before.selectNodeContents(region.host);
                 before.setEnd(node, offset);
-                const index = prose(before.toString()).length;
-                const detached = document.createElement('div');
-                detached.innerHTML = textFrameMarkdownToHtml(region.raw);
-                const chars = markdownCharacters(detached).filter(item => !/\s/.test(item.char));
+                const prefix = before.toString();
+                const index = prose(prefix).length;
+                const chars = prosePositions(region.raw);
                 if (chars.map(item => item.char).join('') !== prose(region.host.textContent)) return null;
+                if (range.collapsed) {
+                    if (!chars.length) return !region.raw.trim() && !source.trim() ? region.start + region.raw.length : null;
+                    const left = chars[index - 1]?.source;
+                    const right = chars[index]?.source;
+                    if (left == null) return region.start + right;
+                    if (right == null) return region.start + left + 1;
+                    const between = region.raw.slice(left + 1, right);
+                    const typedSpace = prefix.match(/\s*$/)[0].length;
+                    return region.start + (/^\s*$/.test(between) ? Math.min(left + 1 + typedSpace, right)
+                        : typedSpace ? right : left + 1);
+                }
                 const item = chars[index - (end ? 1 : 0)];
                 return item ? region.start + item.source + (end ? 1 : 0) : null;
             };
             const start = map(range.startContainer, range.startOffset, false);
-            const end = map(range.endContainer, range.endOffset, true);
-            return start != null && end != null && start < end ? {start, end} : null;
+            const end = range.collapsed ? start : map(range.endContainer, range.endOffset, true);
+            return start != null && end != null && (allowCaret ? start <= end : start < end) ? {start, end} : null;
+        },
+        placeAtSourceOffset(offset) {
+            const {regions} = serialize();
+            const region = regions.find(({start, raw}) => start <= offset && offset <= start + raw.length) ||
+                regions.find(({start}) => start > offset) || regions.at(-1);
+            const {host, start, raw} = region;
+            let remaining = prosePositions(raw).filter(item => item.source < offset - start).length;
+            const walker = document.createTreeWalker(host, NodeFilter.SHOW_TEXT);
+            const caret = document.createRange();
+            caret.selectNodeContents(host);
+            caret.collapse(offset <= start);
+            search: for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+                for (let j = 0; j < node.length; j++) {
+                    if (/\s/.test(node.data[j])) continue;
+                    if (remaining === 0) { caret.setStart(node, j); caret.collapse(true); break search; }
+                    remaining--;
+                }
+            }
+            host.focus({preventScroll: true});
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(caret);
         }
     };
 }

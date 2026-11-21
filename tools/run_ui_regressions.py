@@ -4931,6 +4931,18 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="text-frame-cut-passages",
+            description="Cut and paste a passage with normal clipboard events, preserving its identity and moving its child edge across frames only once.",
+            commands=[
+                "viewport 1060x760",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/text-frame-linked-notes.js"), "--timeout", pw_timeout]),
+                shell_join(["macro", "write", "text_frame_linked_notes", "--file", str(TOOLS_ROOT / "ui_regressions/text-frame-linked-notes.yaml")]),
+                "macro run text_frame_linked_notes --timeout 90",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/text-frame-cut-passages.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="regular-connections",
             description="Ordinary box connections retain curved routing while their minimum radius eases down near neighbouring boxes, without oversized loops.",
             commands=[

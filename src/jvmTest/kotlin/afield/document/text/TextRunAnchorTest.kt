@@ -1,5 +1,6 @@
 package afield.document.text
 
+import afield.app.protocol.TextRunClipboardEdit
 import afield.document.graph.Box
 import afield.document.persistence.SavingContext
 import java.nio.file.Files
@@ -91,5 +92,52 @@ class TextRunAnchorTest {
             assertEquals("My note", restored["contents"])
             assertTrue(child in parent.children)
         } finally { directory.deleteRecursively() }
+    }
+
+    @Test
+    fun aCutCarriesAllEnclosedRunsAndCanOnlyBeClaimedOnce() {
+        val parent = Box(id = "parent")
+        parent.setPropertyRaw("box_kind", "text-frame")
+        val before = "before red and blue after"
+        parent.setPropertyRaw("contents", before)
+        val red = Box(id = "red")
+        val blue = Box(id = "blue")
+        val partial = Box(id = "partial")
+        for ((child, quote) in listOf(red to "red", blue to "blue", partial to "blue after")) {
+            parent.children.add(child)
+            child.setPropertyRaw(TEXT_RUN_ANCHOR, TextRunAnchor.encode(anchor(before, quote).copy(id = child.id)))
+        }
+        fun Box.range() = TextRunAnchor.decode(getPropertyRaw(TEXT_RUN_ANCHOR))!!
+        val token = "4525c9e5-897a-4525-9b3e-a578f7ab4e94"
+        val start = before.indexOf("red")
+        val cutText = "red and blue"
+        val cut = TextRunClipboardEdit("cut", token, parent.id, start, start + cutText.length)
+        val remaining = before.removeRange(cut.start, cut.end)
+        val boxes = mapOf(parent.id to parent)
+        assertTrue(applyTextRunClipboardEdit(parent, remaining, cut, boxes::get))
+        assertTrue(red.range().lost && blue.range().lost)
+        assertEquals(token, red.range().cut?.token)
+        assertEquals(8, blue.range().cut?.start)
+        assertEquals(" after", partial.range().excerpt)
+        assertEquals(null, partial.range().cut)
+
+        val directory = Files.createTempDirectory("field-cut-ranges").toFile()
+        try {
+            val context = SavingContext()
+            context.save(directory.path, setOf(parent, red, blue, partial), inline = true)
+            val saved = context.readEdnTransfers(directory.path).first { it.id == blue.id }
+            assertEquals(blue.range(), TextRunAnchor.decode(saved.properties[TEXT_RUN_ANCHOR]))
+        } finally { directory.deleteRecursively() }
+
+        val paste = cut.copy(action = "paste", start = 0, end = 0)
+        assertFalse(applyTextRunClipboardEdit(parent, "some other text$remaining", paste, boxes::get))
+        assertTrue(blue.range().lost)
+        assertTrue(applyTextRunClipboardEdit(parent, cutText + remaining, paste, boxes::get))
+        assertEquals(0, red.range().start)
+        assertEquals(8, blue.range().start)
+        assertEquals("blue", blue.range().id)
+        assertFalse(blue.range().lost)
+        assertEquals(null, blue.range().cut)
+        assertFalse(applyTextRunClipboardEdit(parent, cutText + cutText + remaining, paste, boxes::get))
     }
 }

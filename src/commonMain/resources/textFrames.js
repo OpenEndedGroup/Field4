@@ -9,6 +9,7 @@ import {load, dump, CORE_SCHEMA} from './vendor/js-yaml/js-yaml.mjs';
 // Text belongs to the box. DOM, editing state and uncommitted conflict drafts are local to a view.
 const frames = new Map();
 const normalizeMarkdown = value => value.replace(/\r\n?/g, '\n');
+const textRunCutType = 'application/x-field-text-run-cut';
 let shownPassage = null;
 
 function updatePassageHighlight() {
@@ -17,7 +18,7 @@ function updatePassageHighlight() {
     highlights.delete('field-source-passage');
     const {source, child} = shownPassage || {};
     const anchor = child?.passageAnchor;
-    if (!source?.box.isConnected || !child?.box.isConnected || !anchor || anchor.lost || source.preview.hidden ||
+    if (!source?.box.isConnected || !child?.box.isConnected || !anchor || anchor.lost || anchor.sourceUid !== source.box.uid || source.preview.hidden ||
         source.box.classList.contains('tombstoned') || child.box.classList.contains('tombstoned')) return;
     const text = normalizeMarkdown(source.previewSource || '');
     if (anchor.end > text.length || text.slice(anchor.start, anchor.start + anchor.excerpt.length) !== anchor.excerpt) return;
@@ -33,7 +34,8 @@ function updatePassageBadge(state) {
     if (state.passageAnchor) {
         state.passageBadge.textContent = anchor.lost ? 'Passage lost' : '↖ Source passage';
         state.passageBadge.classList.toggle('text-frame-passage-lost', anchor.lost === true);
-        state.passageBadge.title = (anchor.lost ? 'Original passage deleted; go to parent box' : 'Show the passage on its parent box') +
+        state.passageBadge.title = (anchor.cut ? 'Passage cut; paste it to move this note' :
+            anchor.lost ? 'Original passage deleted; go to parent box' : 'Show the passage on its parent box') +
             (anchor.excerpt ? ': ' + anchor.excerpt : '');
     }
     if (shownPassage?.child === state) updatePassageHighlight();
@@ -260,6 +262,94 @@ function flush(state) {
     state.dirty = false;
     write(state.box, 'contents', state.editor.value);
 }
+function clipboardRange(state, cut = false) {
+    if (state.richEdit) {
+        const selection = window.getSelection();
+        if (!selection?.rangeCount) return null;
+        const range = selection.getRangeAt(0);
+        const offsets = state.richEdit.sourceRange(range, true);
+        if (!cut || !offsets || range.collapsed) return offsets;
+        // Carry the Markdown delimiters when cutting an entire formatted span. A cut through
+        // only part of that span leaves the existing delimiters around the remaining text.
+        const element = range.startContainer.nodeType === Node.TEXT_NODE
+            ? range.startContainer.parentElement : range.startContainer;
+        const mark = element.closest?.('b,strong,em,i');
+        if (mark?.contains(range.endContainer) && range.toString() === mark.textContent) {
+            const raw = state.editor.value;
+            const bold = mark.matches('b,strong') || mark.querySelector('b,strong');
+            const italic = mark.matches('em,i') || mark.querySelector('em,i');
+            const delimiter = '*'.repeat((bold ? 2 : 0) + (italic ? 1 : 0));
+            if (raw.slice(offsets.start - delimiter.length, offsets.start) === delimiter &&
+                raw.slice(offsets.end, offsets.end + delimiter.length) === delimiter) {
+                return {start: offsets.start - delimiter.length, end: offsets.end + delimiter.length};
+            }
+        }
+        return offsets;
+    }
+    return {start: state.editor.selectionStart, end: state.editor.selectionEnd};
+}
+
+function applyClipboardRange(state, start, end, inserted, proof) {
+    const before = normalizeMarkdown(state.editor.value);
+    flush(state);
+    const after = before.slice(0, start) + inserted + before.slice(end);
+    const caret = start + inserted.length;
+    if (state.richEdit) {
+        state.editor.value = after;
+        renderRich(state);
+        state.richEdit.placeAtSourceOffset(caret);
+        state.captureRichSelection();
+    } else {
+        state.editor.setRangeText(inserted, start, end, 'end');
+        revealTextareaCaret(state.editor);
+    }
+    state.seenContents = after;
+    setTextFrameContents(state.box.uid, after, {...proof, start, end});
+    layout(state);
+}
+
+function clipboardDocument() {
+    return window.currentDocumentSessionKey || window.currentDocumentFilename || '';
+}
+
+function cutTextRuns(event, state) {
+    if (event.defaultPrevented || !event.clipboardData || state.composing || state.incoming !== null ||
+        window.currentDocumentReadOnly || !clipboardDocument()) return;
+    const offsets = clipboardRange(state, true);
+    if (!offsets || offsets.start >= offsets.end) return;
+    // Leave ordinary cuts to the editor. A dirty draft may have shifted a live range before its next sync.
+    const hasRun = [...frames.values()].some(({passageAnchor: a}) =>
+        a && !a.lost && a.sourceUid === state.box.uid &&
+        (state.dirty || (a.start >= offsets.start && a.end <= offsets.end)));
+    if (!hasRun) return;
+    const fragment = normalizeMarkdown(state.editor.value).slice(offsets.start, offsets.end);
+    const proof = {version: 1, token: crypto.randomUUID(), sourceUid: state.box.uid, document: clipboardDocument()};
+    try {
+        event.clipboardData.setData('text/plain', fragment);
+        event.clipboardData.setData(textRunCutType, JSON.stringify(proof));
+    } catch (_) { return; }
+    event.preventDefault();
+    event.stopPropagation();
+    applyClipboardRange(state, offsets.start, offsets.end, '', {action: 'cut', token: proof.token, sourceUid: proof.sourceUid});
+}
+
+function pasteTextRuns(event, state) {
+    if (event.defaultPrevented || !event.clipboardData || state.composing || state.incoming !== null ||
+        window.currentDocumentReadOnly) return false;
+    let proof;
+    try { proof = JSON.parse(event.clipboardData.getData(textRunCutType)); } catch (_) { return false; }
+    if (proof?.version !== 1 || proof.document !== clipboardDocument() ||
+        typeof proof.sourceUid !== 'string' || typeof proof.token !== 'string') return false;
+    const offsets = clipboardRange(state);
+    const fragment = normalizeMarkdown(event.clipboardData.getData('text/plain'));
+    if (!offsets || !fragment) return false;
+    event.preventDefault();
+    event.stopPropagation();
+    applyClipboardRange(state, offsets.start, offsets.end, fragment,
+        {action: 'paste', token: proof.token, sourceUid: proof.sourceUid});
+    return true;
+}
+
 function markdownOptions(state, sourcePositions = false) {
     return {sourcePositions, copyIcon: true, eagerImages: true, resolveImage: src => {
         if (/^(https?:|data:)/i.test(src)) return src;
@@ -565,7 +655,9 @@ function mount(box) {
     rich.addEventListener('input', () => richChanged(state));
     rich.addEventListener('compositionstart', () => { state.composing = true; clearTimeout(state.saveTimer); });
     rich.addEventListener('compositionend', () => { state.composing = false; richChanged(state); flush(state); });
+    rich.addEventListener('cut', e => cutTextRuns(e, state));
     rich.addEventListener('paste', e => {
+        if (pasteTextRuns(e, state)) return;
         const session = state.richEdit;
         pasteRichText(e, rich, () => state.richEdit === session, () => richChanged(state));
     });
@@ -585,6 +677,8 @@ function mount(box) {
             if (state.incoming === null) preview.focus({preventScroll: true});
         } else moveBetweenRichBlocks(e, rich);
     });
+    editor.addEventListener('cut', e => cutTextRuns(e, state));
+    editor.addEventListener('paste', e => pasteTextRuns(e, state));
     editor.addEventListener('input', () => draftChanged(state));
     editor.addEventListener('compositionstart', () => { state.composing = true; clearTimeout(state.saveTimer); });
     editor.addEventListener('compositionend', () => { state.composing = false; state.dirty = true; flush(state); layout(state); });

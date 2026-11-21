@@ -8510,11 +8510,13 @@ fun growTextFrame(uid: String, height: Double, reflow: Boolean = true) {
 /** Publish a canvas edit to editor peers immediately, before the next Monaco polling tick. */
 @OptIn(ExperimentalJsExport::class)
 @JsExport
-fun setTextFrameContents(uid: String, value: String) {
+fun setTextFrameContents(uid: String, value: String, textRunClipboard: dynamic = null) {
     val box = findBoxByUid(uid) ?: return
     if (box.asDynamic().box_kind != "text-frame") return
     box.asDynamic().contents = value
     afield.app.editor.notifyCanvasTextFrameContents(uid, value)
     notifyEmbeddedEditorOfRemoteUpdate(uid, "contents", value)
-    afield.app.protocol.send("set-string", json("uid" to uid, "property" to "contents", "value" to value))
+    val edit = json("uid" to uid, "property" to "contents", "value" to value)
+    if (textRunClipboard != null) edit["textRunClipboard"] = textRunClipboard
+    afield.app.protocol.send("set-string", edit)
 }

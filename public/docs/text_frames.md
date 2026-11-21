@@ -168,6 +168,12 @@ The link follows the passage as you write before, within, or after it. Insertion
 its ends stay outside the link. If you delete the passage completely, the note and graph
 connection stay in place and the button reads **Passage lost**.
 
+Cut a selection that contains the whole passage and paste it elsewhere on the canvas to move
+the link with the text. This works in the visual and inline Markdown editors. Pasting into
+another frame in the same document moves the note's parent connection to that frame and keeps
+its other connections. Only the first paste of a cut moves the passage; copies and later
+pastes insert ordinary text.
+
 ## Connected writing
 
 Shift-select two boxes and press ++g++ to connect them. ++alt++-click a frame and move **down** to choose
