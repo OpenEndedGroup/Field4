@@ -171,6 +171,11 @@ What goes in, and what Rhino gets:
 | `nurbs(degree, points, knots, weights)` | a NURBS curve, rational when you give weights, knots as openNURBS counts them | yes |
 | `points(list)`, `point(p)` | a point cloud, or a point | yes |
 | `text(string, origin, height)` | text on a plane, `xAxis` and `yAxis` giving its orientation | the font is Rhino's |
+| `brep(faces)` | a Brep: each `RhinoBrepFace` is a NURBS surface with trim loops and, optionally, a cached render mesh; shared edges, seams and poles are worked out for you. `RhinoBreps.sphere`, `cylinder`, `box` and `plate` make the faces of those solids | yes |
+| `surface(nurbsSurface)` | an untrimmed NURBS surface, which Rhino keeps as a one-face Brep | yes |
+| `subd(points, faces, creases)` | a SubD from its control net, with the edges you name kept sharp; `RhinoBreps.subdBox` makes a box's net | yes |
+| `hatch(fline)` | a solid hatch: the first subpath is the outline, the rest holes | yes |
+| `block(name) { ... }`, `instance(name, translation)` | a block definition holding what the block adds, and a placement of it | yes |
 
 </div>
 
@@ -234,10 +239,11 @@ thousandth of the Brep's size unless you pass one, in model units). A flat face 
 triangles; a cylinder is divided around and not along. Cells the trim curves cross are cut along
 them, so holes and trimmed edges follow the trim. Every vertex lies on the exact surface.
 
-Neighbouring faces are then stitched together. Each face's trim curve samples the edge it shares
-with its neighbour at its own points, so the two sides would not meet triangle for triangle; where
-one face has a vertex on the other's open edge, that edge is split at the very same vertex. A
-closed Brep therefore comes back as a closed mesh, with no cracks along its edges. Faces
+Neighbouring faces are then stitched together by the Brep's own topology. Each Brep edge is
+sampled once, along its 3D curve, and every face that uses the edge gets those same points as its
+boundary, however its trim curve is parameterised, so the two sides meet vertex for vertex. Where
+a cell cuts a face's edge between two of those points, the face across the edge is split at the
+same place. A closed Brep therefore comes back as a closed mesh, with no cracks along its edges. Faces
 are joined where they meet smoothly and kept apart at creases, so the shading stays sharp at a
 box's edges and smooth across a sphere's seam. `RhinoMesh.evaluatedFaces` says how many of an
 object's faces were tessellated.

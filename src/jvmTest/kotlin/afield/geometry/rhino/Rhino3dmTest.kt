@@ -15,8 +15,8 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * The .3dm reader against a file the wrapper writes itself ([Rhino3dm.writeSample]), so no Rhino
- * file is committed and each kind is checked against values set in one place, the C++ fixture.
+ * The .3dm reader against a file Field writes itself ([Rhino3dm.writeSample], through
+ * [RhinoWriter]), so no Rhino file is committed and each kind is checked against values set in one place.
  */
 class Rhino3dmTest {
 

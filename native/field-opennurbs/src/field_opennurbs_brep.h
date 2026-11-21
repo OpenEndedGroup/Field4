@@ -18,8 +18,16 @@
 //       per loop:
 //         loopType                1 outer, 2 inner (ON_BrepLoop::TYPE)
 //         pointCount
-//         points[pointCount * 2]  the loop's trims, sampled, in the NURBS surface's own parameters;
-//                                 the loop closes from the last point back to the first
+//         points[pointCount * 5]  the loop's trims, sampled: `u v` in the NURBS surface's own
+//                                 parameters, then `x y z` the boundary point in model space; the
+//                                 loop closes from the last point back to the first
+//     untopologicalTrims         trims sampled without a Brep edge (singular trims not counted)
+//
+// Brep edge topology: each edge is sampled once on its 3D curve (span-paced, ends at its two Brep
+// vertices) and every trim of that edge carries those very `x y z` points, in its own direction,
+// with `u v` the trim's nearest point to each. Faces sharing an edge thereby share boundary points
+// bit-for-bit, whatever the pacing of their trim curves. A singular trim's points all sit at its
+// vertex. A trim with no edge carries its own samples and their surface images.
 //
 // Block members are not included. SubDs: see `field_opennurbs_subds_count`.
 
@@ -60,14 +68,6 @@ FIELD_OPENNURBS_API int field_opennurbs_subds_count(void* handle);
 FIELD_OPENNURBS_API const char* field_opennurbs_subds_id(void* handle, int index);
 FIELD_OPENNURBS_API int field_opennurbs_subds_length(void* handle, int index);
 FIELD_OPENNURBS_API const double* field_opennurbs_subds_data(void* handle, int index);
-
-/**
- * Write a "Save Small" fixture: Breps with exact surfaces and trims and no render meshes — a sphere
- * of radius 10, a capped cylinder (radius 5, height 20), and a 20 x 20 planar square with a
- * circular hole of radius 5 — plus a box with and one without cached meshes, for comparison, and
- * a smooth and a creased SubD box (2 x 2 x 2 faces, 10 across).
- */
-FIELD_OPENNURBS_API int field_opennurbs_write_brep_fixture(const char* utf8Path, char* message, int messageCapacity);
 
 #ifdef __cplusplus
 }

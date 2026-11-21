@@ -28,6 +28,7 @@ import java.lang.foreign.ValueLayout.JAVA_INT
 import java.lang.invoke.MethodHandle
 import java.nio.file.Path
 import kotlin.io.path.exists
+import kotlin.math.sqrt
 
 /**
  * Rhino `.3dm` files, read with McNeel's own openNURBS.
@@ -146,23 +147,78 @@ object Rhino3dm {
      * Write a small `.3dm` with one of everything this reader converts — nested layers, a mesh, a
      * shaded and an unshaded Brep, a line, a polyline, a cubic, a circle, a polycurve, text, a point,
      * a hatch and a block placed twice — to [file]. For tests and for trying the reader without a
-     * Rhino file to hand.
+     * Rhino file to hand. It is written by [RhinoWriter], like any other file.
      */
-    fun writeSample(file: File): File {
-        OpenNurbsNative.writeFixture(file)
-        return file
+    fun writeSample(file: File): File = save(file, "millimeters") {
+        layer("Hull", rgb(200, 40, 40))
+        layer("Hull::Glass", rgb(40, 80, 220), visible = false)
+        layer("Notes", rgb(20, 140, 60))
+        layer("Blocks", rgb(120, 120, 120))
+
+        // A triangle and a quad, as three triangles.
+        mesh(
+            TriMesh(floatArrayOf(0f, 0f, 0f, 10f, 0f, 0f, 10f, 10f, 0f, 0f, 10f, 0f, 5f, 15f, 0f), intArrayOf(0, 1, 2, 0, 2, 3, 3, 2, 4)),
+            layer = "Hull", name = "plate",
+        )
+        brep(RhinoBreps.box(vec(20.0, 0.0, 0.0), vec(30.0, 10.0, 10.0), savedMeshes = true), layer = "Hull", name = "shaded box")
+        brep(RhinoBreps.box(vec(40.0, 0.0, 0.0), vec(50.0, 10.0, 10.0)), layer = "Hull::Glass", name = "bare box")
+
+        curve(FLine().moveTo(0.0, -10.0, 0.0).lineTo(50.0, -10.0, 0.0), layer = "Notes", name = "line")
+        val square = FLine().moveTo(0.0, 20.0, 0.0).lineTo(10.0, 20.0, 0.0).lineTo(10.0, 30.0, 0.0).lineTo(0.0, 30.0, 0.0).lineTo(0.0, 20.0, 0.0)
+        curve(square, layer = "Notes", name = "square", color = rgb(255, 128, 0))
+        nurbs(
+            3, listOf(vec(0.0, 40.0, 0.0), vec(5.0, 50.0, 0.0), vec(10.0, 40.0, 0.0), vec(15.0, 50.0, 0.0), vec(20.0, 40.0, 0.0), vec(25.0, 50.0, 0.0)),
+            listOf(0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 3.0, 3.0), layer = "Notes", name = "wiggle",
+        )
+        val circle = RhinoTrim.circle(40.0, 40.0, 5.0)
+        nurbs(
+            2, List(circle.count) { vec(circle.points[2 * it], circle.points[2 * it + 1], 0.0) }, circle.knots.toList(),
+            circle.weights!!.toList(), layer = "Notes", name = "circle",
+        )
+        // A line, a half circle of radius 5 as two cubics, and a line back: one polycurve.
+        val k = 4.0 / 3.0 * (sqrt(2.0) - 1.0) * 5.0
+        val slot = FLine().moveTo(60.0, 0.0, 0.0).lineTo(70.0, 0.0, 0.0)
+            .cubicTo(70.0 + k, 0.0, 0.0, 75.0, 5.0 - k, 0.0, 75.0, 5.0, 0.0)
+            .cubicTo(75.0, 5.0 + k, 0.0, 70.0 + k, 10.0, 0.0, 70.0, 10.0, 0.0)
+            .lineTo(60.0, 10.0, 0.0)
+        curve(slot, layer = "Notes", name = "slot")
+        text("Hello Field", vec(0.0, 60.0, 0.0), height = 2.5, layer = "Notes", name = "greeting")
+        point(vec(1.0, 2.0, 3.0), layer = "Notes", name = "marker")
+        hatch(square, layer = "Notes", name = "fill")
+
+        // A block, "Fin", with a triangle mesh and a line, placed twice.
+        block("Fin") {
+            mesh(TriMesh(floatArrayOf(0f, 0f, 0f, 4f, 0f, 0f, 0f, 0f, 6f), intArrayOf(0, 1, 2)), layer = "Blocks", name = "fin skin")
+            curve(FLine().moveTo(0.0, 0.0, 0.0).lineTo(0.0, 0.0, 6.0), layer = "Blocks", name = "fin spine")
+        }
+        instance("Fin", vec(100.0, 0.0, 0.0), layer = "Blocks", name = "fin A")
+        instance("Fin", vec(120.0, 0.0, 0.0), layer = "Blocks", name = "fin B")
     }
 
     /**
      * Write a *Save Small*-style `.3dm` to [file]: Breps with exact surfaces and trims and no render
      * meshes — a sphere of radius 10 at the origin, a capped cylinder of radius 5 and height 20 at
-     * `(30, 20, -10)`, a 20 x 20 plate with a hole of radius 5 centred at `(30, -10, 0)` — and two
-     * 10 mm boxes, one with saved meshes (at x = -30) and one without (at x = -15).
+     * `(30, 20, -10)`, a 20 x 20 plate with a hole of radius 5 centred at `(30, -10, 0)` — two 10 mm
+     * boxes, one with saved meshes (at x = -30) and one without (at x = -15), and a smooth and a
+     * creased SubD box. It is written by [RhinoWriter] from [RhinoBreps], like any other file.
      */
-    fun writeNurbsSample(file: File): File {
-        OpenNurbsBrepNative.writeFixture(file)
-        return file
+    fun writeNurbsSample(file: File): File = save(file, "millimeters", version = 7) {
+        layer("NURBS", rgb(70, 130, 200))
+        layer("Boxes", rgb(200, 120, 40))
+        layer("SubD", rgb(90, 170, 90))
+        brep(RhinoBreps.sphere(vec(0.0, 0.0, 0.0), 10.0), layer = "NURBS", name = "sphere")
+        brep(RhinoBreps.cylinder(vec(30.0, 20.0, -10.0), 5.0, 20.0), layer = "NURBS", name = "capped cylinder")
+        brep(RhinoBreps.plate(vec(30.0, -10.0, 0.0), 20.0, listOf(Triple(30.0, -10.0, 5.0))), layer = "NURBS", name = "plate with hole")
+        brep(RhinoBreps.box(vec(-15.0, 20.0, -5.0), vec(-5.0, 30.0, 5.0)), layer = "Boxes", name = "box, no mesh")
+        brep(RhinoBreps.box(vec(-30.0, 20.0, -5.0), vec(-20.0, 30.0, 5.0), savedMeshes = true), layer = "Boxes", name = "box, saved mesh")
+        for (creased in listOf(false, true)) {
+            val x = if (creased) 15.0 else -5.0
+            val (points, faces, creases) = RhinoBreps.subdBox(vec(x, -45.0, -5.0), vec(x + 10, -35.0, 5.0), 2, creased)
+            subd(points, faces, creases, layer = "SubD", name = if (creased) "creased SubD" else "smooth SubD")
+        }
     }
+
+    private fun rgb(r: Int, g: Int, b: Int) = vec(r / 255.0, g / 255.0, b / 255.0, 1.0)
 }
 
 /** openNURBS could not read a file, or reported a failure converting it. */
@@ -529,19 +585,9 @@ internal object OpenNurbsNative {
     private val edgePointsHandle by lazy { pointer("field_opennurbs_object_edge_points") }
     private val edgeIndicesHandle by lazy { pointer("field_opennurbs_object_edge_indices") }
     private val frameHandle by lazy { pointer("field_opennurbs_object_frame") }
-    private val writeFixtureHandle by lazy {
-        handle("field_opennurbs_write_fixture", FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_INT))
-    }
-
     private fun pointer(name: String) = handle(name, FunctionDescriptor.of(ADDRESS, ADDRESS, JAVA_INT))
 
     fun version(): String = (versionHandle.invokeExact() as MemorySegment).reinterpret(Long.MAX_VALUE).getString(0)
-
-    fun writeFixture(file: File) = Arena.ofConfined().use { arena ->
-        val message = arena.allocate(JAVA_BYTE, MESSAGE_CAPACITY.toLong())
-        val status = writeFixtureHandle.invokeExact(arena.allocateFrom(file.absolutePath), message, MESSAGE_CAPACITY) as Int
-        if (status != 0) throw RhinoException("openNURBS could not write ${file.absolutePath}: ${message.getString(0)}")
-    }
 
     fun read(file: File): RhinoModel = Arena.ofConfined().use { arena ->
         val message = arena.allocate(JAVA_BYTE, MESSAGE_CAPACITY.toLong())
