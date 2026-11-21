@@ -4,7 +4,7 @@
 
 Implementation details explicitly marked Internal by their source. They remain available to browse here, but are not intended as entry points for code written in a Field box.
 
-25 source file(s), 195 public symbol(s), 77 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+26 source file(s), 197 public symbol(s), 78 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -507,6 +507,20 @@ Measurement harness for [`OidnComputeDenoiser`](internal.md#oidncompute-kt-oidnc
 | --- | --- |
 | <a id="oidncomputespike-kt--oidncomputespike--capture"></a>[<code class="highlight"><span class="k">class</span> <span class="nf">Capture</span><span class="p">(</span><span class="k">val</span> <span class="n">color</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span><span class="k">val</span> <span class="n">albedo</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span><span class="k">val</span> <span class="n">normal</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span><span class="k">val</span> <span class="n">vulkan</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span><span class="k">val</span> <span class="n">texture</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span><span class="k">val</span> <span class="n">scale</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/OidnComputeSpike/#L33) |  |
 | <a id="oidncomputespike-kt--oidncomputespike--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/OidnComputeSpike/#L140) |  |
+
+## OidnImageSpike.kt { #oidnimagespike-kt }
+
+`src/jvmMain/kotlin/afield/media/reconstruction/OidnImageSpike.kt` — [read the source](source/jvmMain/afield/media/reconstruction/OidnImageSpike/)
+
+### OidnImageSpike { #oidnimagespike-kt-oidnimagespike }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">OidnImageSpike</span></code>](source/jvmMain/afield/media/reconstruction/OidnImageSpike/#L40)
+
+Experiment: [`OidnComputeDenoiser`](internal.md#oidncompute-kt-oidncomputedenoiser) on images that are not path traced (sRGB screenshots), and whether it keeps a wrapping (tileable) image wrapping. The tracer is only a host for the denoiser's buffers; it never traces. Each image goes into the accumulation buffer directly, with one of two guide sets: - `flat`: albedo 1, normal +z — the network has nothing that marks detail as real; - `self`: the image itself as albedo, normal +z. Tiling: an image treated as a torus should denoise the same whether or not it is rolled first. Each image is denoised as is and rolled by half its size (the rolled result rolled back is the wrap-aware answer at the original edges), both plain and with a `PAD`-pixel wrap-around pad cropped off afterwards. Arguments: `<out dir> <image>... [--save-images]`. Results: dev_docs/lighting/OIDN_ON_PARTICLE_IMAGES.md.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="oidnimagespike-kt--oidnimagespike--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/OidnImageSpike/#L96) |  |
 
 ## OidnSpike.kt { #oidnspike-kt }
 

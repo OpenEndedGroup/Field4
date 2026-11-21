@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 25405 of 42486 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 25406 of 42488 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2046 undocumented entry points** (types, top-level functions and values) and 14294 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2046 undocumented entry points** (types, top-level functions and values) and 14295 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -1225,6 +1225,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [DistLive.kt](../src/jvmMain/kotlin/afield/math/distribution/DistLive.kt) | Math | — | 0 | 1 | 85% |
 | [GpVectorProcess.kt](../src/jvmMain/kotlin/afield/math/gp/GpVectorProcess.kt) | Math | — | 0 | 1 | 94% |
 | [NeuralToolsFallbackSmoke.kt](../src/jvmMain/kotlin/afield/media/reconstruction/NeuralToolsFallbackSmoke.kt) | Imaging | — | 0 | 1 | 50% |
+| [OidnImageSpike.kt](../src/jvmMain/kotlin/afield/media/reconstruction/OidnImageSpike.kt) | Internal | — | 0 | 1 | 50% |
 | [OidnSpike.kt](../src/jvmMain/kotlin/afield/media/reconstruction/OidnSpike.kt) | Internal | — | 0 | 1 | 50% |
 | [PathTracedReconstructionSmoke.kt](../src/jvmMain/kotlin/afield/media/reconstruction/PathTracedReconstructionSmoke.kt) | Imaging | — | 0 | 1 | 50% |
 | [ReconstructionMotionGpuSmoke.kt](../src/jvmMain/kotlin/afield/media/reconstruction/ReconstructionMotionGpuSmoke.kt) | Imaging | — | 0 | 1 | 50% |
