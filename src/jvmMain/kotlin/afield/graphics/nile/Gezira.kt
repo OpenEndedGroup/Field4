@@ -330,8 +330,8 @@ object Gezira {
         return c
     }
 
-    /** Skia's anti-aliased coverage of [beziers] (non-zero fill), read back from an 8-bit alpha. */
-    fun skiaCoverage(beziers: List<Bezier>, w: Int, h: Int): DoubleArray {
+    /** [beziers] as a Skia path, a new contour wherever a segment does not start where the last ended. */
+    fun skiaPath(beziers: List<Bezier>): Path {
         val path = Path().apply { fillMode = PathFillMode.WINDING }
         var lastX = Double.NaN
         var lastY = Double.NaN
@@ -352,19 +352,89 @@ object Gezira {
             lastY = p[p.size - 1]
         }
         path.closePath()
+        return path
+    }
+
+    /** Draw into a `w × h` Skia raster with [draw] and read back premultiplied RGBA in `[0, 1]`. */
+    fun skiaRaster(w: Int, h: Int, draw: (org.jetbrains.skia.Canvas) -> Unit): FloatArray {
         val surface = Surface.makeRasterN32Premul(w, h)
         val bitmap = Bitmap()
         try {
             surface.canvas.clear(Color.TRANSPARENT)
-            surface.canvas.drawPath(path, Paint().apply { isAntiAlias = true; color = Color.BLACK })
+            draw(surface.canvas)
             bitmap.allocPixels(ImageInfo.makeN32Premul(w, h))
             check(surface.readPixels(bitmap, 0, 0)) { "Skia declined to read the raster back" }
-            return DoubleArray(w * h) { Color.getA(bitmap.getColor(it % w, it / w)) / 255.0 }
+            val out = FloatArray(4 * w * h)
+            for (i in 0 until w * h) {
+                // getColor un-premultiplies; premultiply again so the result compares with Canvas.
+                val c = bitmap.getColor(i % w, i / w)
+                val a = Color.getA(c) / 255f
+                out[4 * i] = Color.getR(c) / 255f * a
+                out[4 * i + 1] = Color.getG(c) / 255f * a
+                out[4 * i + 2] = Color.getB(c) / 255f * a
+                out[4 * i + 3] = a
+            }
+            return out
         } finally {
             runCatching { bitmap.close() }
             runCatching { surface.close() }
+        }
+    }
+
+    /** Skia's anti-aliased coverage of [beziers] (non-zero fill), read back from an 8-bit alpha. */
+    fun skiaCoverage(beziers: List<Bezier>, w: Int, h: Int): DoubleArray {
+        val path = skiaPath(beziers)
+        try {
+            val rgba = skiaRaster(w, h) { it.drawPath(path, Paint().apply { isAntiAlias = true; color = Color.BLACK }) }
+            return DoubleArray(w * h) { rgba[4 * it + 3].toDouble() }
+        } finally {
             runCatching { path.close() }
         }
+    }
+
+    /**
+     * Non-zero coverage by point sampling an `n × n` grid in every pixel: each sample row finds where
+     * the outline (each curve flattened to [chords] chords) crosses it and fills where the winding
+     * number is not zero. Slow, but it measures the *union* of overlapping outlines, which a sum of
+     * signed edge areas does not.
+     */
+    fun supersampledCoverage(beziers: List<Bezier>, w: Int, h: Int, n: Int = 64, chords: Int = 256): DoubleArray {
+        val seg = ArrayList<DoubleArray>()
+        for (b in beziers) {
+            val k = if (b.degree == 1) 1 else chords
+            var px = b.p[0]
+            var py = b.p[1]
+            for (i in 1..k) {
+                val t = i.toDouble() / k
+                val x = b.at(t, 0)
+                val y = b.at(t, 1)
+                seg.add(doubleArrayOf(px, py, x, y))
+                px = x
+                py = y
+            }
+        }
+        val c = DoubleArray(w * h)
+        val xs = ArrayList<Pair<Double, Int>>()
+        for (row in 0 until h * n) {
+            val y = (row + 0.5) / n
+            xs.clear()
+            for (s in seg) {
+                val (x0, y0, x1, y1) = s.toList()
+                if ((y0 <= y) == (y1 <= y)) continue
+                xs.add((x0 + (y - y0) / (y1 - y0) * (x1 - x0)) to (if (y1 > y0) 1 else -1))
+            }
+            xs.sortBy { it.first }
+            var wind = 0
+            for (i in 0 until xs.size - 1) {
+                wind += xs[i].second
+                if (wind == 0) continue
+                // Fill sample columns whose centres lie in [xs[i], xs[i+1]).
+                val a = ceil(xs[i].first * n - 0.5).toInt()
+                val b = ceil(xs[i + 1].first * n - 0.5).toInt()
+                for (col in max(0, a) until min(w * n, b)) c[(row / n) * w + col / n] += 1.0 / (n * n)
+            }
+        }
+        return c
     }
 
     /** Largest and mean absolute difference between two coverage grids, over pixels either touches. */
