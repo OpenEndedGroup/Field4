@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-21T11:16:43.191Z",
+  "capturedAt": "2026-11-21T15:44:37.569Z",
   "documentName": "nile_gezira_kernels",
   "outputs": [
     {
@@ -134,6 +134,42 @@
       "width": 480,
       "height": 150,
       "path": "outputs/10.html"
+    },
+    {
+      "uid": "gezira_fill_rules",
+      "channel": "non-zero",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/11.html"
+    },
+    {
+      "uid": "gezira_fill_rules",
+      "channel": "even-odd",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/12.html"
+    },
+    {
+      "uid": "gezira_fill_rules",
+      "channel": "edge samples, error x10",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/13.html"
     }
   ]
 }

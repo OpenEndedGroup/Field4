@@ -1801,6 +1801,38 @@
         "public/docs/assets/agent_transcripts/fillet_everything/metadata.edn": "532dfcaebec8c55072f370034c2a497a286f2db52a9fd0bf367026e442a3d63f"
       }
     },
+    "assets/agent_transcripts/fline_coverage_gpu/metadata.edn": {
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-21T15:44:40.736Z",
+      "channels": 1,
+      "file": "assets/web_publications/fline_coverage_gpu/document/metadata.edn",
+      "files": {
+        "assets/web_publications/fline_coverage_gpu/document/metadata.edn": "d4d9c222c523ee49a63a4703fdb2698cce79b4e8dabcbbf53f70c4a9bd792347",
+        "assets/web_publications/fline_coverage_gpu/document/outputs.json": "eb952ca426de7ddb9be309a0bba0050e064e4dba34c9984e886a680ce2375f6a",
+        "assets/web_publications/fline_coverage_gpu/outputs/0.html": "178bd40bf48549c3269f91974e08d8c41ac88c343be044d7e05d8f5ee24c251f"
+      },
+      "kinds": [
+        "native-image"
+      ],
+      "outputs": "assets/web_publications/fline_coverage_gpu/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/fline_coverage_gpu.yaml": "7181b233a69c9b65259c97f99d6dad88e16a0d80d5c5390958722c0d1e1150e2",
+        "public/docs/assets/agent_transcripts/fline_coverage_gpu/fcg_draw_code_.kt": "9eb686573dd002db7a6e54087bbb570d01a95e082a5887fb4a32008aa4aa616f",
+        "public/docs/assets/agent_transcripts/fline_coverage_gpu/fcg_draw_fragment_.glsl": "2a34ef530a8ee46b910970d6d6fcc7223a03a3b5efea28b3c08811b3b3460562",
+        "public/docs/assets/agent_transcripts/fline_coverage_gpu/fcg_draw_vertex_.glsl": "fa8b34a0fd5d23cb8b092ff1b8d0f95ceb03612f45fa7b06e485ed11da365bcc",
+        "public/docs/assets/agent_transcripts/fline_coverage_gpu/fcg_fill_code_.kt": "c09bf9fd1fe7cbc781ccc2fb711282d7cd6373d68e8dd1b366ac5f9075591f3e",
+        "public/docs/assets/agent_transcripts/fline_coverage_gpu/fcg_renderer_code_.kt": "cfa7203341f4bb122f4e84d60d37840c2a7fbd98aaa372bf585fe03970361346",
+        "public/docs/assets/agent_transcripts/fline_coverage_gpu/guides/afield_four_graphics.md": "4723d0c3bc306cd5f288f641fdf641d33efcdb6dad282f877a7395d8603b9742",
+        "public/docs/assets/agent_transcripts/fline_coverage_gpu/guides/visualizers.md": "8dfe93aa11371670e7bc9ca47fadf07f2e925c8e32bbaab0926fd20d0e920f2d",
+        "public/docs/assets/agent_transcripts/fline_coverage_gpu/metadata.edn": "480439fd44fcf8a1e17087699bb00c80ee631f8a795b0322af525cbcc09456a6",
+        "public/docs/assets/visualizers-fline-coverage-gpu.png": "0c5fb56755ccd8cd07791867eee46096a847c953f669efa94f0f6275424017b7",
+        "public/docs/visualizers.md#capture-box=fcg_renderer": "59f8119fe5606f2380a40e5a298ba7845038bf2ed0cab64eb9b2b26f61d7b0e5"
+      },
+      "supplementalSources": [
+        "public/docs/assets/visualizers-fline-coverage-gpu.png",
+        "public/docs/visualizers.md#capture-box=fcg_renderer"
+      ]
+    },
     "assets/agent_transcripts/fline_exact_booleans/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
       "capturedAt": "2026-11-18T15:00:42.498Z",
@@ -3302,38 +3334,42 @@
     },
     "assets/agent_transcripts/nile_gezira_kernels/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "capturedAt": "2026-11-21T11:16:43.191Z",
-      "channels": 11,
+      "capturedAt": "2026-11-21T15:44:37.569Z",
+      "channels": 14,
       "file": "assets/web_publications/nile_gezira_kernels/document/metadata.edn",
       "files": {
-        "assets/web_publications/nile_gezira_kernels/document/metadata.edn": "d88dcd31a1599ef398049c5bc43fae6f366c085f7971a69bfc7ada305e413d2b",
-        "assets/web_publications/nile_gezira_kernels/document/outputs.json": "b3e49b2416242b1e6ec5fbe8d18dfe226dfb6ffb49a077217bd19e8286aee53c",
-        "assets/web_publications/nile_gezira_kernels/outputs/0.html": "0a24b838773872871c08d86e59c084052e36c0313e50430a02e711e4146d5d4d",
-        "assets/web_publications/nile_gezira_kernels/outputs/1.html": "c9be48b79e11946b534e386b0eef540da2f1e271804a89bd7de79d5a8f4b33e5",
-        "assets/web_publications/nile_gezira_kernels/outputs/10.html": "a46944ad3d2055311e7014575f0aa61df03a5867a32c07c07bca2ec64451be40",
-        "assets/web_publications/nile_gezira_kernels/outputs/2.html": "7f24fe31e0ade4c00e4927789881208c93e1f25d2f5315fe9d93a2d7f671719f",
-        "assets/web_publications/nile_gezira_kernels/outputs/3.html": "200e3b2c95be0bb4945576e8fd08da0178324165cfde3cbcac01d4ef57a3e156",
-        "assets/web_publications/nile_gezira_kernels/outputs/4.html": "f842192fec660b4b14a705c169aa02a5e221b63d37e51e75c7efc4e62ae3cf6c",
-        "assets/web_publications/nile_gezira_kernels/outputs/5.html": "8e5f86ddbcb2f0e22a37c2094dc728fb3c5d9e95eaba2328ab4fea254bfb634c",
-        "assets/web_publications/nile_gezira_kernels/outputs/6.html": "9d3b293c8c911bc7d426f0e3e5f40a3a0dc594fb160867a21acc11287a92df1b",
-        "assets/web_publications/nile_gezira_kernels/outputs/7.html": "818d55632821b88ffca7b9d0b16e8b289d6556aa83e1ab1b3af20b9199e76a6b",
-        "assets/web_publications/nile_gezira_kernels/outputs/8.html": "1602063e2cc915db24894d4fc721652ca020e49aff8c7a716975952b27f8b6eb",
-        "assets/web_publications/nile_gezira_kernels/outputs/9.html": "3e37c7a4341e5b6c158a8f0cb89a78627fdfdd5031bea07adc5f619adf52b08e"
+        "assets/web_publications/nile_gezira_kernels/document/metadata.edn": "0f587a1461216a56bdbb40924459682f2e379ca2edb9736f47f0e5d86833fbd8",
+        "assets/web_publications/nile_gezira_kernels/document/outputs.json": "76d35e027c7e0a524457ea88fad4a667ea77c486cf099165fdc5ea8ba556a72c",
+        "assets/web_publications/nile_gezira_kernels/outputs/0.html": "82251f148e1bb4fecb9fc8ae3703731f62d2e89d48f63d557d801dbbbd2b5d76",
+        "assets/web_publications/nile_gezira_kernels/outputs/1.html": "97ffa7bcf65e8f6c1eae742b544975baec9fd3458a845af50f10ca50dc9a36ee",
+        "assets/web_publications/nile_gezira_kernels/outputs/10.html": "1d74438125aae944f11cfb701be27fde52894bca43bd46f69c693e7f60dd2d6a",
+        "assets/web_publications/nile_gezira_kernels/outputs/11.html": "8ca1e5b63895b901ce11d3f5a709e80444cf043357851d7a302c3a156aab57e4",
+        "assets/web_publications/nile_gezira_kernels/outputs/12.html": "4724de8e5e86ba3c25edc507c7c5d9b09c304a5c982218937f06985569e6e786",
+        "assets/web_publications/nile_gezira_kernels/outputs/13.html": "8c2005253accb617a31d761c374950e2c6589765a9ad143e5b5ad5c37ad843b9",
+        "assets/web_publications/nile_gezira_kernels/outputs/2.html": "cfb643b4c4315eb48f35e359bebf4dcbffed7ec141ac352411d3aaaf55aed677",
+        "assets/web_publications/nile_gezira_kernels/outputs/3.html": "87f02fbe27fd89ed2e33ef7d82ba627eda5a6c316c7722b9a3a0be39e6dffc91",
+        "assets/web_publications/nile_gezira_kernels/outputs/4.html": "057b3e335b3e1c0a74e3c25ccb5c30c92bb877a0856a42884676be8aa1955b52",
+        "assets/web_publications/nile_gezira_kernels/outputs/5.html": "091436e758741a4497d03a7bcab3138e255fd148a457f7a17f27b4cab311fb0c",
+        "assets/web_publications/nile_gezira_kernels/outputs/6.html": "cc386abbf36c98d52455ffac5997353f0a1715140b5067af1a461310809c35d2",
+        "assets/web_publications/nile_gezira_kernels/outputs/7.html": "56bfadffff566a85c0ef3f06f7e06399e069c1a8b0926676313da7a6f9dda15e",
+        "assets/web_publications/nile_gezira_kernels/outputs/8.html": "e0e91ee9b8aa9250dc91084aa5af357566ff612f9623d18c2972c82037046eef",
+        "assets/web_publications/nile_gezira_kernels/outputs/9.html": "734efd79b4a82b65abba6d13eb86e771e3531cb8d1340927e5e7d3ca0ce961a4"
       },
       "kinds": [
         "svg"
       ],
       "outputs": "assets/web_publications/nile_gezira_kernels/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/nile_gezira_kernels.yaml": "e80c18006886c88f4ca7d475d376da9edf12c0e248611b10ba2237f37c7941cb",
+        "dev_docs/agents/transcripts/nile_gezira_kernels.yaml": "974e36c6e221787c1056ea8db7154c212467e13c5fb5cc3b2e9b9000c8129278",
         "public/docs/assets/agent_transcripts/nile_gezira_kernels/gezira_composite_code_.kt": "70fcf9ab683a2e09909567d4e9ec1a991e9bd73f9cf9877388772dfff33a588f",
-        "public/docs/assets/agent_transcripts/nile_gezira_kernels/gezira_new_kernel_code_.kt": "1166b310d1c57602ca2b595a299a7ae9ed80a6bdc31bd55ccf9b0779a4ac7537",
-        "public/docs/assets/agent_transcripts/nile_gezira_kernels/gezira_streams_code_.kt": "2adb1f9369ba48b4ed3395f8aed682ffdd9d6c6affa6372c6ea3bf5413a2bb0c",
-        "public/docs/assets/agent_transcripts/nile_gezira_kernels/gezira_stroke_code_.kt": "c1eef508e6e936004551a80be6aa59d2a1de17f6043bfcdc1bb7debf8bd170f3",
-        "public/docs/assets/agent_transcripts/nile_gezira_kernels/gezira_text_code_.kt": "ba3f6400afdd7d7ca8d651242bbe1b2fa17668009ed25cd9e69aa0878b1ac643",
+        "public/docs/assets/agent_transcripts/nile_gezira_kernels/gezira_fill_rules_code_.kt": "73afdf37c4e5e0d59d6ac1903899aba2cdabc5a35ab1c218061461e2014a65ae",
+        "public/docs/assets/agent_transcripts/nile_gezira_kernels/gezira_new_kernel_code_.kt": "e7db74051659f363febb15b8c5db88dbdfcf09606aaf93437d067a837cc3c91c",
+        "public/docs/assets/agent_transcripts/nile_gezira_kernels/gezira_streams_code_.kt": "6c1fb68b10a2b2170397b7561884690acc4beb4dc4e0f3ff7f2fdca9cb83ad9a",
+        "public/docs/assets/agent_transcripts/nile_gezira_kernels/gezira_stroke_code_.kt": "3f11422b933f787491d7c2c4a9426eb0be1bb6a6f53ac829c5cf8b62625665a8",
+        "public/docs/assets/agent_transcripts/nile_gezira_kernels/gezira_text_code_.kt": "fd5afb1e82db2f7f5c273abbbd000641e2bba928dbabd127e5c6cc85aa259a97",
         "public/docs/assets/agent_transcripts/nile_gezira_kernels/gezira_vs_skia_code_.kt": "933143c87311f82c3f97ef330db1ace4676158dd8ab7b842295a0d5fa998aae1",
         "public/docs/assets/agent_transcripts/nile_gezira_kernels/guides/afield_four_graphics.md": "c28459c8e53de6c13fcf80bae66ab20d1dce7920250f5d0db154899090047b3f",
-        "public/docs/assets/agent_transcripts/nile_gezira_kernels/metadata.edn": "ab2c568ce9d6159545d164267390abecadab741fb81497e9cfa4a9a5c0e47342"
+        "public/docs/assets/agent_transcripts/nile_gezira_kernels/metadata.edn": "3ba1d8a32f8bd703ed8e9e569af8fa789096d51b8247083bb5aa14b9f9b5e1da"
       }
     },
     "assets/agent_transcripts/noiselang_distributions/metadata.edn": {
