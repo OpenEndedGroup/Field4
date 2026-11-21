@@ -38,13 +38,15 @@ What it writes (``build/docs_link_graph/`` by default)
   with public API that no page or transcript reaches, short and long pages, and age: pages the
   code they cite has moved on from, and pages nothing newer links to.
 * ``graph.html`` — the graph drawn in 3D, self-contained (it inlines Field's vendored three.js and
-  opens from disk): the documentation as a core laid out by its links, the code as a shell around
-  it (see ``layout``); coloured by section, last edit or code drift; click a node for what it
-  links and what links it, double-click to frame it with its neighbours, toggle transcripts,
-  code, the reference and edge kinds. Switching on an edge kind that ties pages to code (cites,
-  calls, mentions, ...) runs a force layout of those edges in the page, which brings the code in
-  beside the pages that use it. The page is ``tools/docs_link_graph.html`` with the data and
-  positions filled in.
+  d3-force-3d-webgpu, and opens from disk). The page lays itself out live: a force simulation
+  (link springs, octree Barnes–Hut repulsion, gravity) over every visible node, on the GPU
+  through WebGPU where the browser has it and on the CPU otherwise. Pages are held by the links
+  switched on, each source file hangs from its directory and each directory from its parent,
+  and the code edge kinds (cites, calls, mentions, ...) tie files to the pages that use them;
+  toggling a layer or an edge kind reheats it. ``layout`` gives only the starting positions.
+  Coloured by section, last edit or code drift; click a node for what it links and what links
+  it, double-click to frame it with its neighbours. The page is ``tools/docs_link_graph.html``
+  with the data and positions filled in.
 * The published site carries the same view as ``assets/docs_map/graph.html``, embedded by
   ``docs_map.md``: ``tools/build_zensical_docs.py`` calls ``write_site_map``, which links each
   node to its built page (a source file to its reference section) and skips the git history.
@@ -667,6 +669,10 @@ VIEW_NODE_FIELDS = (
 VIEW_TEMPLATE = Path(__file__).with_name("docs_link_graph.html")
 # Field's vendored three.js, inlined into graph.html so the page opens from disk with no server.
 THREE_VENDOR_GLOB = "src/commonMain/resources/vendor/three/*/three.module.js"
+# The live layout (d3-force-3d on WebGPU, CPU fallback): its d3 dependencies first, then the package.
+FORCE_VENDOR = "src/commonMain/resources/vendor/d3-force-3d-webgpu/3.2.0"
+FORCE_SCRIPTS = ("deps/d3-dispatch.js", "deps/d3-timer.js", "deps/d3-quadtree.js", "deps/d3-binarytree.js",
+                 "deps/d3-octree.js", "d3-force-3d-webgpu.js")
 
 
 def stable_unit(key: str, salt: str) -> float:
@@ -713,7 +719,8 @@ def fibonacci_directions(count: int) -> Any:
 
 
 def layout(graph: Graph) -> tuple[dict[str, tuple[float, float, float]], dict[str, dict[str, Any]]]:
-    """3D positions for ``graph.html``, and the directory nodes the code shell is built from.
+    """Starting 3D positions for ``graph.html`` (which then runs its own force simulation from
+    them), and the directory nodes the code shell is built from.
 
     **The core** is the documentation: pages and transcripts, placed by ForceAtlas2 in LinLog
     mode with hub dissuasion (Noack's energy model, which pulls clusters apart instead of
@@ -921,6 +928,8 @@ def write_view(graph: Graph, out_dir: Path, *, site_root: str | None = None, nam
     html = VIEW_TEMPLATE.read_text(encoding="utf-8")
     for marker, path in (("THREE_CORE", "three.core.js"), ("THREE_MODULE", "three.module.js"), ("THREE_ORBIT", "addons/controls/OrbitControls.js")):
         html = html.replace(f"/*{marker}*/", (three / path).read_text(encoding="utf-8").replace("</script", "<\\/script"), 1)
+    force = "\n".join((REPO_ROOT / FORCE_VENDOR / name).read_text(encoding="utf-8") for name in FORCE_SCRIPTS)
+    html = html.replace("/*FORCE*/", force.replace("</script", "<\\/script"), 1)
     html = html.replace("/*GRAPH*/null", payload.replace("</", "<\\/"), 1)
     out_dir.mkdir(parents=True, exist_ok=True)
     target = out_dir / name

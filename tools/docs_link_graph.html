@@ -87,6 +87,7 @@ a { color: var(--s1); }
 <script type="text/plain" id="three-core">/*THREE_CORE*/</script>
 <script type="text/plain" id="three-module">/*THREE_MODULE*/</script>
 <script type="text/plain" id="three-orbit">/*THREE_ORBIT*/</script>
+<script>/*FORCE*/</script>
 <script>const GRAPH = /*GRAPH*/null;</script>
 <script type="module">
 // three.js arrives as text so the page needs no server; each module imports the previous one by blob URL.
@@ -123,7 +124,7 @@ function checkboxes(host, entries, state) {
   for (const [key, label] of entries) {
     const l = document.createElement("label"); l.className = "check";
     const c = document.createElement("input"); c.type = "checkbox"; c.checked = state[key];
-    c.onchange = () => { state[key] = c.checked; legend(); relayout(); rebuild(); };
+    c.onchange = () => { state[key] = c.checked; legend(); simulate(0.6); rebuild(); };
     l.append(c, " " + label); host.append(l);
   }
 }
@@ -278,10 +279,12 @@ const rebuild = restyle;
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { readColours(); legend(); restyle(); });
 
 // ---- camera framing
+// Frames the points' middle 95 % (all of them when there are few), so one stray node does not shrink the rest.
 function frame(points, animate) {
   const pts = points.length ? points : [new THREE.Vector3()];
-  const centre = new THREE.Box3().setFromPoints(pts).getCenter(new THREE.Vector3());
-  const sphere = new THREE.Sphere(centre, Math.max(...pts.map(p => p.distanceTo(centre))));
+  const centre = pts.reduce((c, p) => c.add(p), new THREE.Vector3()).divideScalar(pts.length);
+  const reach = pts.map(p => p.distanceTo(centre)).sort((a, b) => a - b);
+  const sphere = new THREE.Sphere(centre, reach[pts.length < 20 ? pts.length - 1 : Math.floor(0.95 * (pts.length - 1))]);
   const dist = Math.max(0.8, sphere.radius) / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * 0.9;
   const dir = camera.position.clone().sub(controls.target).normalize();
   if (dir.lengthSq() === 0 || !isFinite(dir.x)) dir.set(0.35, 0.25, 1).normalize();
@@ -298,97 +301,64 @@ function centreOn(i) {
   flyTo(P[i], P[i].clone().addScaledVector(offset.normalize(), want), true);
 }
 
-// ---- live layout: what code edges say about where code belongs
-// The built layout places pages by the links a reader follows, and code on a shell outside. When
-// an edge kind that ties pages to code is switched on, those edges get their own force layout:
-// the code they reach comes in beside the pages that use it, pulled along its edges and pushed
-// off its neighbours, while pages keep a tether to their places so the map stays recognisable.
-// Switched off again, everything glides home.
-const LIVE = ["cites", "calls", "mentions", "usedIn", "reference"];
-const liveAll = LIVE.reduce((m, k) => m | (bit[k] || 0), 0);
-const HOME = P.map(p => p.clone());
-let sim = null, tween = null;
-const liveMask = () => LIVE.reduce((m, k) => edgeOn[k] && bit[k] ? m | bit[k] : m, 0);
-function relayout() {
-  const live = liveMask();
-  if (!live) {
-    sim = null;
-    if (P.some((p, i) => p.distanceToSquared(HOME[i]) > 1e-8)) tween = { t0: performance.now(), from: P.map(p => p.clone()) };
-    return;
-  }
-  tween = null;
-  const docs = edgeMask() & ~liveAll, edges = [], rest = [], pull = [], attached = new Uint8Array(nodes.length);
-  const liveDegree = new Uint16Array(nodes.length);
-  for (const [s, t, m] of GRAPH.links) if ((m & live) && visible(nodes[s]) && visible(nodes[t])) { liveDegree[s]++; liveDegree[t]++; }
+// ---- layout: a live force simulation
+// d3-force-3d (vendored as d3-force-3d-webgpu): link springs, an octree Barnes–Hut many-body
+// force and centring, run as WebGPU compute shaders when the browser has WebGPU and on the CPU
+// otherwise. Every visible node takes part. Pages are held by the links a reader follows; a
+// source file hangs from its directory, and each directory from its parent, by invisible tree
+// links, so code nothing reaches still sits with its siblings; the code edge kinds that are
+// switched on (cites, calls, mentions, ...) tie files to the pages that use them. Turning a layer
+// or an edge kind on or off rebuilds the forces and reheats the simulation from where things are.
+// The positions the page was built with are only where it starts.
+const SCALE = 30;  // d3's forces are tuned for links about 30 apart; the scene puts them about 1 apart
+const packageIndex = new Map(packages.map((p, k) => [p.id, k]));
+const packageOfNode = n => { const path = n.id.slice("code:".length); return packageIndex.get("package:" + path.slice(0, path.lastIndexOf("/"))); };
+const parentPackage = id => { const up = id.slice(0, id.lastIndexOf("/")); return packageIndex.has(up) ? packageIndex.get(up) : null; };
+const bodies = nodes.map((n, i) => ({ node: i, x: P[i].x * SCALE, y: P[i].y * SCALE, z: P[i].z * SCALE }));
+const packageBodies = packages.map((p, k) => ({ pkg: k, x: p.p[0] * SCALE, y: p.p[1] * SCALE, z: p.p[2] * SCALE }));
+const GRAVITY = 0.02;
+const CHARGE = { page: -60, transcript: -25, reference: -60, code: -10 };
+const LINK_LENGTH = { links: 30, opens: 24, documents: 24, cites: 14, calls: 14, mentions: 18, reference: 40, usedIn: 18 };
+let sim = null, settled = false, backend = "";
+function simulate(alpha = 1) {
+  if (sim) sim.destroy();
+  const live = bodies.filter(b => visible(nodes[b.node]));
+  const withCode = shown.code;
+  const pkgs = withCode ? packageBodies : [];
+  const mask = edgeMask(), links = [];
   for (const [s, t, m] of GRAPH.links) {
-    if (!visible(nodes[s]) || !visible(nodes[t])) continue;
-    // A page feels only a share of its code edges' pull, split between them, so the code comes
-    // to the pages rather than dragging them into a heap; pages that use the same code still lean
-    // together.
-    const share = i => nodes[i].kind === "code" ? 1 : 0.6 / liveDegree[i];
-    if (m & live) { edges.push(s, t); rest.push(0.35); pull.push(share(s), share(t)); attached[s] = attached[t] = 1; }
-    else if (m & docs) { edges.push(s, t); rest.push(HOME[s].distanceTo(HOME[t])); pull.push(1, 1); }  // holds the pages' own shape
+    if (!(m & mask) || !visible(nodes[s]) || !visible(nodes[t])) continue;
+    const length = Math.min(...kinds.filter(k => m & mask & bit[k]).map(k => LINK_LENGTH[k] ?? 30));
+    links.push({ source: bodies[s], target: bodies[t], length });
   }
-  // Moving: every visible page and transcript (tethered), and the code these edges reach (free).
-  const moving = [];
-  for (let i = 0; i < nodes.length; i++)
-    if (visible(nodes[i]) && (nodes[i].kind === "page" || nodes[i].kind === "transcript" || attached[i])) moving.push(i);
-  sim = { alpha: 1, edges, rest, pull, moving, v: new Float32Array(nodes.length * 3), f: new Float32Array(nodes.length * 3) };
-}
-const CELL = 0.5;
-function step() {
-  const { edges, rest, pull, moving, v, f } = sim;
-  f.fill(0);
-  for (let e = 0; e < rest.length; e++) {           // springs along the edges
-    const a = edges[2 * e], b = edges[2 * e + 1], pa = P[a], pb = P[b];
-    const dx = pb.x - pa.x, dy = pb.y - pa.y, dz = pb.z - pa.z, d = Math.hypot(dx, dy, dz) || 1e-6;
-    const k = 0.06 * (d - rest[e]) / d, ka = k * pull[2 * e], kb = k * pull[2 * e + 1];
-    f[3 * a] += ka * dx; f[3 * a + 1] += ka * dy; f[3 * a + 2] += ka * dz;
-    f[3 * b] -= kb * dx; f[3 * b + 1] -= kb * dy; f[3 * b + 2] -= kb * dz;
-  }
-  const grid = new Map(), key = (x, y, z) => x + "," + y + "," + z;   // short-range push, by grid cell
-  for (const i of moving) {
-    const k = key(Math.floor(P[i].x / CELL), Math.floor(P[i].y / CELL), Math.floor(P[i].z / CELL));
-    (grid.get(k) || grid.set(k, []).get(k)).push(i);
-  }
-  for (const i of moving) {
-    const cx = Math.floor(P[i].x / CELL), cy = Math.floor(P[i].y / CELL), cz = Math.floor(P[i].z / CELL);
-    for (let ox = -1; ox <= 1; ox++) for (let oy = -1; oy <= 1; oy++) for (let oz = -1; oz <= 1; oz++) {
-      const cell = grid.get(key(cx + ox, cy + oy, cz + oz)); if (!cell) continue;
-      for (const j of cell) {
-        if (j <= i) continue;
-        const dx = P[j].x - P[i].x, dy = P[j].y - P[i].y, dz = P[j].z - P[i].z;
-        const d = Math.hypot(dx, dy, dz) || 1e-4, reach = R[i] + R[j] + 0.1;
-        if (d >= Math.max(reach, CELL)) continue;
-        const k = (d < reach ? 0.4 * (reach - d) : 0) / d + 0.0015 / (d * d * d);
-        f[3 * i] -= k * dx; f[3 * i + 1] -= k * dy; f[3 * i + 2] -= k * dz;
-        f[3 * j] += k * dx; f[3 * j + 1] += k * dy; f[3 * j + 2] += k * dz;
-      }
+  if (withCode) {
+    for (const b of live) if (nodes[b.node].kind === "code") {
+      const k = packageOfNode(nodes[b.node]);
+      if (k != null) links.push({ source: b, target: packageBodies[k], length: 5, tree: true });
     }
+    packages.forEach((p, k) => { const up = parentPackage(p.id); if (up != null) links.push({ source: packageBodies[k], target: packageBodies[up], length: 10, tree: true }); });
   }
-  for (const i of moving) {
-    const tether = nodes[i].kind === "code" ? 0 : 0.08;
-    const fx = f[3 * i] + tether * (HOME[i].x - P[i].x), fy = f[3 * i + 1] + tether * (HOME[i].y - P[i].y), fz = f[3 * i + 2] + tether * (HOME[i].z - P[i].z);
-    let vx = (v[3 * i] + fx * sim.alpha) * 0.6, vy = (v[3 * i + 1] + fy * sim.alpha) * 0.6, vz = (v[3 * i + 2] + fz * sim.alpha) * 0.6;
-    const speed = Math.hypot(vx, vy, vz);
-    if (speed > 0.3) { vx *= 0.3 / speed; vy *= 0.3 / speed; vz *= 0.3 / speed; }
-    v[3 * i] = vx; v[3 * i + 1] = vy; v[3 * i + 2] = vz;
-    P[i].x += vx; P[i].y += vy; P[i].z += vz;
-  }
-  sim.alpha *= 0.985;
-  if (sim.alpha < 0.02) { sim.done = true; }
+  settled = false;
+  sim = d3.forceSimulationGPU([...live, ...pkgs], 3)
+    .alpha(alpha)
+    .force("link", d3.forceLink(links).distance(l => l.length))
+    .force("charge", d3.forceManyBody().strength(b => b.pkg != null ? -3 : CHARGE[nodes[b.node].kind] ?? -20).theta(0.9))
+    .force("centre", d3.forceCenter(0, 0, 0))
+    // Gravity, as in ForceAtlas2: without it a page that links nothing drifts off for ever.
+    .force("x", d3.forceX(0).strength(GRAVITY)).force("y", d3.forceY(0).strength(GRAVITY)).force("z", d3.forceZ(0).strength(GRAVITY))
+    .on("tick", moved)
+    .on("end", () => { settled = true; moved(); readColours(); restyle(); if (!userMoved) fitVisible(true); });
+  sim.gpuReady().then(onGPU => { backend = onGPU ? "laid out on the GPU" : "laid out on the CPU"; summary(); });
 }
-function animateLayout(t) {
-  if (sim && !sim.done) { for (let k = 0; k < 3 && !sim.done; k++) step(); restyle(); }
-  else if (tween) {
-    const f = Math.min(1, (t - tween.t0) / 700), e = f < 0.5 ? 2 * f * f : 1 - (-2 * f + 2) ** 2 / 2;
-    P.forEach((p, i) => p.lerpVectors(tween.from[i], HOME[i], e));
-    if (f >= 1) tween = null;
-    restyle();
-  }
+function moved() {
+  for (const b of bodies) if (visible(nodes[b.node])) P[b.node].set(b.x / SCALE, b.y / SCALE, b.z / SCALE);
+  for (const b of packageBodies) packages[b.pkg].p = [b.x / SCALE, b.y / SCALE, b.z / SCALE];
+  restyle();
 }
-const homeLayout = () => !sim && !tween;
-function layoutMoving() { return (sim && !sim.done) || tween; }
+function layoutMoving() { return sim && !settled; }
+let userMoved = false;
+controls.addEventListener("start", () => { userMoved = true; });
+const fitVisible = animate => frame(nodes.map((n, i) => i).filter(i => visible(nodes[i])).map(i => P[i]), animate);
 
 // ---- labels: an HTML overlay, placed most important first, skipping any that would overlap. Each
 // label keeps its own span, which fades in and out (CSS, 300 ms) as it wins or loses its place, so
@@ -414,7 +384,7 @@ function labels() {
     else rank = nodes[i].kind === "page" && !dim(i) ? pixelRadius(i, w, h) : -1;
     if (rank > 2.5) wanted.push([rank, i, false]);
   }
-  if (shown.code && selected < 0 && homeLayout()) packages.forEach((p, k) => { if (p.label.split("/").length <= 2) wanted.push([2.6 + Math.sqrt(p.files) * 0.3, k, true]); });
+  if (shown.code && selected < 0) packages.forEach((p, k) => { if (p.label.split("/").length <= 2) wanted.push([2.6 + Math.sqrt(p.files) * 0.3, k, true]); });
   wanted.sort((a, b) => b[0] - a[0]);
   const where = (isPackage, i) => {
     let s, r = 0;
@@ -480,7 +450,6 @@ function tick(t) {
     dirty = true;
   }
   if (controls.update()) dirty = true;
-  animateLayout(t);
   if (!dirty || !framed) return;
   const dist = camera.position.distanceTo(controls.target);
   scene.fog.near = dist * 0.7; scene.fog.far = dist * 2.4;
@@ -620,10 +589,13 @@ search.addEventListener("keydown", e => { if (e.key === "Enter" && matches.first
 if (GRAPH.site) { document.title = "Map of the docs"; document.querySelector("aside h1").textContent = "Map of the docs"; }
 const pageCount = nodes.filter(n => n.kind === "page" && !n.index).length;
 const handLinks = GRAPH.links.filter(([s, t, m]) => (m & bit.links) && nodes[s].kind === "page" && !nodes[s].index && nodes[t].kind === "page" && !nodes[t].index).length;
-document.getElementById("summary").textContent = `${pageCount} pages, ${handLinks} hand-written links · ${GRAPH.generated}`;
-legend(); restyle(); resize();
+function summary() {
+  document.getElementById("summary").textContent = [`${pageCount} pages, ${handLinks} hand-written links`, GRAPH.generated, backend].filter(Boolean).join(" · ");
+}
+summary(); legend(); restyle(); resize();
+simulate(1);
 requestAnimationFrame(tick);
-window.GRAPH_VIEW = { select, frame, camera, controls, nodes, P, HOME, hit, step, restyle, relayout, get sim() { return sim; }, get selected() { return selected; } };
+window.GRAPH_VIEW = { select, frame, camera, controls, nodes, P, hit, restyle, simulate, moved, fitVisible, get sim() { return sim; }, get settled() { return settled; }, get selected() { return selected; } };
 </script>
 </body>
 </html>
