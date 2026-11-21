@@ -684,7 +684,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**42657 public symbols across 1892 source files**, 25527 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**42658 public symbols across 1892 source files**, 25528 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -697,7 +697,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Video](video.md) | 14 | 195 | 194 (99%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 60 | 2524 | 1904 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 27 | 1181 | 556 (47%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 440 | 10632 | 6750 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 440 | 10633 | 6751 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 48 | 911 | 515 (56%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 596 | 440 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 787 | 530 (67%) | Nonlinear least squares, aimed at geometry. |
@@ -1360,7 +1360,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>spatial/<wbr>steamaudio/<wbr></small> [Geometry2D.kt](audio.md#geometry2d-kt) | Audio | 41 | 31 | Puts a 2D game's walls, sources and listener into Steam Audio's 3D simulation: `World2D` fixes the axis mapping and wall height, and `WallSegment`, `WallSet`, `MovableWall` and `SharedWalls` turn line segments into scene geometry. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr></small> [GeometryAgentTools.kt](graphics.md#geometryagenttools-kt) | Graphics | 48 | 13 | A worked, public example of giving Field's AI its own tools — two of them, over the geometry the loaders in MeshFromDisk.kt read off disk. | [Geometry from disk](../geometry_from_disk.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>steamaudio/<wbr></small> [GeometryBenchmark.kt](examples.md#geometrybenchmark-kt) | Examples | 1 | 0 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>mesh/<wbr></small> [GeometryBuilder.kt](graphics.md#geometrybuilder-kt) | Graphics | 80 | 76 | A recipe language for triangle meshes: emit triangles through a transform stack with a current colour and a current material, and get back a scene of named, shaded parts. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>mesh/<wbr></small> [GeometryBuilder.kt](graphics.md#geometrybuilder-kt) | Graphics | 81 | 77 | A recipe language for triangle meshes: emit triangles through a transform stack with a current colour and a current material, and get back a scene of named, shaded parts. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>visualization/<wbr></small> [GeometryFinding.kt](visualization.md#geometryfinding-kt) | Visualization | 9 | 1 | `GeometryFinding`, the record a geometry checker or agent writes about a piece of geometry for review; it never changes whether a build is accepted. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>mesh/<wbr></small> [GeometryGlb.kt](graphics.md#geometryglb-kt) | Graphics | 4 | 4 | The exit from `GeometryBuilder` to a file every other tool can open. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>network/<wbr></small> [GeometryNetwork.kt](graphics.md#geometrynetwork-kt) | Graphics | 40 | 38 | The answer Field's geometry-extraction modules share: named points, the curves that join them, and typed channels holding whatever each module measured along the way. |  |
