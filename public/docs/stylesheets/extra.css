@@ -74,7 +74,10 @@ html {
     /* The theme sets this on <body> only; on <html> it also darkens the canvas and the page's
        own scrollbar (overrides/main.html says it again before any stylesheet loads). */
     color-scheme: dark;
-    background: var(--mono-bg);
+    /* A faint vignette: the page colour through the middle, falling halfway to black at the
+       edges and corners. Fixed, so it stays put while the page scrolls. */
+    background: radial-gradient(circle at center, var(--mono-bg) 40%,
+        color-mix(in srgb, var(--mono-bg) 50%, #000) 100%);
     background-attachment: fixed;
 }
 
