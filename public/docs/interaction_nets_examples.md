@@ -307,35 +307,36 @@ println("interaction multi-step ready: 1 + $rest reactions, ${subject.nodes.size
 
 ## A program with numbers: five queens
 
-The examples above use the λ-calculus vocabulary. [`NetPrograms`](reference/data.md#netprograms-kt-netprograms) is a second one, for small programs with whole numbers and recursion. You write definitions with `netProgram { }`: `v("x")` is a parameter, `n(5)` a number, `call("f", ...)` calls a definition, `switch(k, zero = ...) { ... }` tests for zero, and `let` names a value that is used more than once. `NetPrograms.compile` turns the program into nets, `instantiate` stamps `main` into a fresh net, and `rules` is the rule book that runs it.
+The examples above use the λ-calculus vocabulary. [`NetPrograms`](reference/data.md#netprograms-kt-netprograms) is a second one, for small programs with whole numbers and recursion. Inside `netProgram { }` you declare each function with `val solve by fn()`, give it a body with `solve.def { row, cols -> … }`, and call it as `solve(…)`. Parameters are the lambda's own, and so are the value `switch(k, zero = …) { j -> … }` passes its nonzero branch (`j` is `k - 1`) and the value `let(x) { y -> … }` names for more than one use. Operators such as `+`, `and`, `shl` and `eq` take expressions or plain numbers on either side. Every function is declared before any is given a body, because a definition can only call a function that is already declared, itself included. `NetPrograms.compile` turns the program into nets, `instantiate` stamps `main` into a fresh net, and `rules` is the rule book that runs it.
 
 The agents are a constructor `CON` (a λ, an application or a pair, depending on which way it faces), a fan `DUP` that copies a value, an eraser `ERA`, numbers `NUM`, operators `OP2` and `OP1`, a zero test `SWI`, and a reference `REF`. A `REF` stands for a definition, and when something meets it, it expands into a fresh copy of that definition's net. That is how a definition calls itself, and it means the net only ever holds the part of the program being run. Each branch of a `switch` is compiled to a definition of its own, so the branch not taken is a lone `REF` meeting an eraser, and the work inside it never starts.
 
-The program below counts the ways to place five queens on a 5×5 board. `solve` places a queen on each row in turn, keeping the columns and the two diagonals already attacked as bit masks. `try` takes the free columns, splits off the lowest one with `a & ~p` (where `p` is one less than `a`), and adds the count for a queen there to the count for every other free column. Neither operand of that `+` waits for the other, so every choice on the board is explored at once.
+The program below counts the ways to place five queens on a 5×5 board. `solve` places a queen on each row in turn, keeping the columns and the two diagonals already attacked as bit masks. `place` takes the free columns, splits off the lowest one with `a & ~p` (where `p` is one less than `a`), and adds the count for a queen there to the count for every other free column. Neither operand of that `+` waits for the other, so every choice on the board is explored at once.
 
 `Reducer.stepFrontier` fires every pair that is ready when it is called, so one call is one round in which all the possible reactions happen together. The box runs one round per frame and relaxes the layout after each. It draws the net with `toPngBytes`, because at several hundred agents the SVG that `lines(...)` would send each frame gets too large. The net grows from 31 agents to a peak of 842, with up to 76 reactions in a single round, then the additions collapse it into a chain and finally into one number. It takes 4,444 reactions in 205 rounds and ends on 10, which is the number of solutions.
 
 ```diffstatic_runner {data-lang=kotlin video="assets/interaction_nets_examples/five_queens.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="14" fps="20" timeout="600" w="540" embed=true name="interaction-five-queens-video" alt="an interaction net solving five queens: a small cluster of coloured agents spreads into hundreds of agents in many separate branches, then folds back into a chain of additions and ends as two agents, the root and the number 10"}
 :::static
 val program = netProgram {
-    def("solve", "row", "cols", "d1", "d2") {
+    val solve by fn()
+    val place by fn()
+
+    solve.def { row, cols, d1, d2 ->
         // On the last row, one solution; otherwise try every column still free.
-        switch(v("row") eq n(5), zero = call("try", v("row"), v("cols"), v("d1"), v("d2"),
-            n(31) andNot (v("cols") or v("d1") or v("d2")))) { n(1) }
+        switch(row eq 5, zero = place(row, cols, d1, d2, 31 andNot (cols or d1 or d2))) { _ -> 1 }
     }
-    def("try", "row", "cols", "d1", "d2", "avail") {
-        switch(v("avail"), zero = n(0), pred = "p") {
-            let("a", v("p") + n(1)) {
-                let("bit", v("a") andNot v("p")) {
+    place.def { row, cols, d1, d2, avail ->
+        switch(avail, zero = 0) { p ->
+            let(p + 1) { a ->
+                let(a andNot p) { bit ->
                     // A queen in this column, plus every other free column, side by side.
-                    call("solve", v("row") + n(1), v("cols") or v("bit"),
-                        (v("d1") or v("bit")) shl n(1), (v("d2") or v("bit")) shr n(1)) +
-                        call("try", v("row"), v("cols"), v("d1"), v("d2"), v("a") and v("p"))
+                    solve(row + 1, cols or bit, (d1 or bit) shl 1, (d2 or bit) shr 1) +
+                        place(row, cols, d1, d2, a and p)
                 }
             }
         }
     }
-    main { call("solve", n(0), n(0), n(0), n(0)) }
+    main { solve(0, 0, 0, 0) }
 }
 
 val compiled = NetPrograms.compile(program)
@@ -366,7 +367,7 @@ loop {
     val half = max(b[2] - b[0], b[3] - b[1]) / 2
     val target = [cx - half, cy - half, cx + half, cy + half]
     view = DoubleArray(4) { view[it] + (target[it] - view[it]) * 0.3 }
-    display("net", net.toPngBytes(540, 540, view))
+    display("net", net.toPngBytes(540, 540, view, label = NetPrograms::label))
 
     val answer = NetPrograms.resultOf(net)?.let { " · solutions = $it" } ?: ""
     display(
@@ -449,7 +450,7 @@ Looking at it:
 | `Lambda.fan(level)` / `Lambda.levelOf(node)` | A `NodeState` for a duplication (or `DELIM`) agent at a level, or the level of one. Without a level it is zero. Two agents of one kind and level annihilate; otherwise they copy each other. |
 | `Reducer(rules, order, layout, relaxIterations)` | Configures reduction and optional force-directed layout together. Set `relaxIterations = 0` to avoid quadratic layout work in a headless run. |
 | `reducer.stepFrontier(net, relaxIterations)` | Fires every pair that is ready, then relaxes once. One call is one round; the number of rounds is the reduction's longest chain of reactions that wait on each other. |
-| `netProgram { def(…) { … }; main { … } }` | Builds a `NetProgram` of definitions over whole numbers. `NetPrograms.compile`, `instantiate` and `rules` turn it into a net and the rules that run it; `NetPrograms.run` reduces it headless. |
+| `netProgram { val f by fn(); f.def { x -> … }; main { f(1) } }` | Builds a `NetProgram` of functions over whole numbers. `NetPrograms.compile`, `instantiate` and `rules` turn it into a net and the rules that run it; `NetPrograms.run` reduces it headless. |
 | `net.toPngBytes(width, height, view)` / `net.layoutBounds()` | Draws the net into a PNG for `display`, fitting the world rectangle `view`. Use it when a redrawn net has more than a few hundred agents. |
 
 </div>

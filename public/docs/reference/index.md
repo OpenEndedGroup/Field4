@@ -683,7 +683,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**42566 public symbols across 1889 source files**, 25446 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**42615 public symbols across 1889 source files**, 25458 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -695,7 +695,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Networking](networking.md) | 22 | 539 | 323 (59%) | OSC messages, discovery and query interfaces for connecting Field to other applications and devices. |
 | [Video](video.md) | 14 | 195 | 194 (99%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 60 | 2524 | 1904 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
-| [Data](data.md) | 27 | 1181 | 556 (47%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
+| [Data](data.md) | 27 | 1230 | 568 (46%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
 | [Graphics](graphics.md) | 437 | 10542 | 6670 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 48 | 911 | 515 (56%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 596 | 440 (73%) | Polyhedra as topology first and coordinates second. |
@@ -1754,7 +1754,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>capture/<wbr></small> [NativeCaptureTarget.kt](imaging.md#nativecapturetarget-kt) | Imaging | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>network/<wbr></small> [NativeGeometry.kt](graphics.md#nativegeometry-kt) | Graphics | 23 | 11 | Which of Field's optional native geometry libraries are installed, and what the welcome page says about the rest. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>graph/<wbr></small> [nesting.kt](workspace.md#nesting-kt) | Workspace | 10 | 5 | Nesting: drawing one box inside another, through the `nested` and `nestedIn` properties. | [Visualizers, Displays, and Little Instruments](../visualizers.md) |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>graph/<wbr></small> [netprograms.kt](data.md#netprograms-kt) | Data | 58 | 28 |  | [Interaction Nets examples](../interaction_nets_examples.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>graph/<wbr></small> [netprograms.kt](data.md#netprograms-kt) | Data | 107 | 40 |  | [Interaction Nets examples](../interaction_nets_examples.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [NetStats.kt](workspace.md#netstats-kt) | Workspace · internal | 4 | 4 | Per-second counters of WebSocket traffic between the backend and the browser, shown on the pinned "net" console row. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [NeuralCloudParitySmoke.kt](examples.md#neuralcloudparitysmoke-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>volume/<wbr></small> [NeuralClouds.kt](graphics.md#neuralclouds-kt) | Graphics | 60 | 40 |  | [Progressive path tracing](../path_tracing.md) |
