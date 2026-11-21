@@ -6288,6 +6288,7 @@ suspend fun main() {
                     }
                     updateEmptyDocumentWelcome()
                     requestConnectionGroupRebuild()
+                    refreshParentHints()
                     refreshTextFrameStyleInheritance()
                 }
             }
@@ -6492,6 +6493,7 @@ suspend fun main() {
         }
 
         requestConnectionGroupRebuild()
+        refreshParentHints()
         Handled.yes
     }
 
@@ -6920,6 +6922,10 @@ suspend fun main() {
 
                 "tint" -> {
                     applyBoxTint(found, set.value)
+                }
+
+                "parentHint" -> {
+                    applyParentHint(found, set.value)
                 }
 
                 "layers" -> {
@@ -8336,6 +8342,48 @@ fun applyBoxTint(box: HTMLElement, value: String?) {
     } else {
         box.style.setProperty("--box-tint", value)
         box.classList.add("tinted")
+    }
+}
+
+/**
+ * Record a box's `parentHint` (Box.parentHint on the JVM) and redraw every hint. The look is
+ * `.box-parent-hint` in field.css.
+ */
+fun applyParentHint(box: HTMLElement, value: String?) {
+    box.asDynamic().box_parentHint = value ?: ""
+    refreshParentHints()
+}
+
+/**
+ * Show each box's `parentHint` above it while no box but the document root lists it as a child,
+ * and remove it otherwise. A deleted box is no parent. Called when a hint arrives and after every
+ * topology change; it reads only what the canvas already holds, so it is cheap when no box has one.
+ */
+fun refreshParentHints() {
+    val all = document.getElementsByClassName("box").asList().mapNotNull { it as? HTMLElement }
+    val hinted = all.filter { !(it.asDynamic().box_parentHint as? String).isNullOrBlank() }
+    if (hinted.isEmpty()) {
+        document.querySelectorAll(".box > .box-parent-hint").asList().forEach { (it as? HTMLElement)?.remove() }
+        return
+    }
+    val parented = HashSet<String>()
+    for (b in all) {
+        val uid = b.asDynamic().uid as? String ?: continue
+        if (uid == "root" || uid in retired || b.classList.contains("tombstoned")) continue
+        (b.asDynamic().box_children as? Array<String>)?.forEach { parented += it }
+    }
+    for (b in all) {
+        val hint = b.asDynamic().box_parentHint as? String
+        val existing = b.querySelector(":scope > .box-parent-hint") as? HTMLElement
+        if (hint.isNullOrBlank() || (b.asDynamic().uid as? String) in parented) {
+            existing?.remove()
+            continue
+        }
+        val note = existing ?: (document.createElement("div") as HTMLElement).also {
+            it.classList.add("box-parent-hint")
+            b.appendChild(it)
+        }
+        if (note.textContent != hint) note.textContent = hint
     }
 }
 

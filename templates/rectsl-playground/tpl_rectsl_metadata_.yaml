@@ -1,0 +1,3 @@
+doc: |
+  A live RectSL program with play, loop, speed and time controls, drawn into the window
+  of the renderer above it.

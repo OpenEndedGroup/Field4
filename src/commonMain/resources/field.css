@@ -4661,6 +4661,24 @@ body::-webkit-scrollbar {
     position: absolute !important;
 }
 
+/* Box.parentHint: what a box needs above it, shown over its top edge until it has a parent. */
+.box > .box-parent-hint {
+    position: absolute !important;
+    left: 0;
+    bottom: calc(100% + 5px);
+    max-width: max(100%, 260px);
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: 1px solid rgba(var(--field-warning-rgb), 0.55);
+    background: rgba(var(--field-warning-rgb), 0.14);
+    color: var(--field-fg-strong);
+    font-family: var(--field-font);
+    font-size: 11px;
+    line-height: 1.35;
+    white-space: normal;
+    pointer-events: none;
+}
+
 .spatial-nav-overlay {
     position: fixed;
     top: 0;

@@ -1,0 +1,3 @@
+doc: |
+  A physically based sky, live-codable, with sliders for the sun, altitude, pitch and
+  exposure. Connect it under a renderer.
