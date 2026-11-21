@@ -1,0 +1,2 @@
+doc: |
+  The latest messages on an MQTT topic, from Field's embedded broker or another one.

@@ -1,6 +1,8 @@
-// A sky behind whatever the renderer above draws: single scattering through Earth's atmosphere.
-// The physics is `#include "sky/atmosphere.glsl"`; the camera and tone mapping are in this box's
-// fragment property. Launch it under a renderer and drag the sliders.
+/*
+A sky behind whatever the renderer above draws: single scattering through Earth's atmosphere.
+The physics is `#include "sky/atmosphere.glsl"`; the camera and tone mapping are in this box's
+fragment property. Launch it under a renderer and drag the sliders.
+*/
 import afield.graphics.sky.SkyView
 
 val view = SkyView(sunElevation = 30.0, altitude = 3.5, pitch = 10.0, exposure = 2.0)

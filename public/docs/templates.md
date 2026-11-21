@@ -49,7 +49,23 @@ Each copy gets new uids but keeps its box names, so a template keeps working whe
 - it writes nothing document-wide. `rootProp`, `@rootExported` and `sharedTypes` are shared by
   every box, so a second copy overwrites the first.
 - it opens no fixed port or service name that a second copy would collide with.
+- whatever it registers under a name — a module on a renderer, an AI tool, an OSCQuery path —
+  carries the box's id, as in `renderer += "sky_" + id.take(8) to sky`. Two copies have the same
+  box name, so a name built from it collides.
 - it leaves **autorun** off, so inserting it changes nothing until you run it.
+
+### Say what a template needs above it
+
+Some boxes only work beneath another: a graphics box needs a renderer above it. Give such a box a
+`parentHint` and the canvas shows it just above the box's top edge for as long as the box has no
+parent, then takes it away once you connect it:
+
+```diffstatic {data-lang=kotlin}
+parentHint = "Connect under a renderer: select the renderer box, then this one, and press G."
+```
+
+The hint is saved with the box, so set it once, save the template, and every copy shows it. The
+bundled `sky` and `gpu-particles` templates carry one.
 
 ## Insert a template
 
@@ -133,6 +149,14 @@ one to three boxes; none runs when inserted.
 | `drawing-listener` | 1 | A handler for each stroke drawn by hand on the drawing layer. [Listening to the drawing](drawing_and_notation.md#listening-to-the-drawing) |
 | `record-and-explore` | 1 | Records three seconds of everything running in the document and opens the profiling timeline. [Profiling timeline](profiling_timeline.md) |
 | `orca` | 1 | An ORCA grid in a box output, playing through a synth. [ORCA](orca.md) |
+| `control-surface` | 1 | A logarithmic slider, a bipolar slider, a momentary gate and a meter, to read from your own code. [Visualizers](visualizers.md) |
+| `tour` | 1 | A slideshow over the boxes connected beneath it, top to bottom, showing each box's notes. [Interactive guides](interactive_guides.md) |
+| `rates-and-sheet` | parent, sheet | A parent that publishes `taxRate` and `discountRate`, and a spreadsheet beneath it that prices a bill with them. [Spreadsheets](spreadsheets.md) |
+| `oscquery-controls` | 1 | A slider and a checkbox that are also OSCQuery parameters, under a path of their own. [OSCQuery](oscquery.md) |
+| `mqtt-listener` | 1 | The latest messages on an MQTT topic, from Field's embedded broker or another one. [MQTT](mqtt.md) |
+| `renderer` | 1 | A window and a Vulkan renderer for graphics boxes to hang beneath. [Field 4 graphics](afield_four_graphics.md) |
+| `sky` | 1 | A physically based sky with sliders for the sun, altitude and exposure, drawn behind everything else under its renderer. [An atmospheric sky](afield_four_graphics.md#atmospheric-sky) |
+| `gpu-particles` | compute, draw | 100 000 particles moved by a compute shader, and a box beneath it that draws them. |
 | `first-steps` | 1 | A moving drawing to edit while it runs. |
 | `first-graphics` | renderer, triangle | A Vulkan window and a triangle beneath it. |
 | `timeSlider` | 1 | A vertical line that launches and stops the boxes it passes over. |
