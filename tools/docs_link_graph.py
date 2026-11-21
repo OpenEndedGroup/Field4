@@ -1009,7 +1009,12 @@ def write_site_map(site_dir: Path, repo_root: Path = REPO_ROOT) -> Path:
 
 MAP_PAGE = "docs_map.md"
 MAP_LINK_CLASS = "docs-map-link"
-FIRST_H1_END_RE = re.compile(r"</h1>")
+MAP_LINK_LABEL = "On the map of the docs"
+FIRST_H1_RE = re.compile(r"<h1\b[^>]*>")
+# A folded map, drawn in the text colour; the stylesheet floats it to the right of the title.
+MAP_ICON = ('<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" '
+            'stroke-width="1.4" stroke-linejoin="round"><path d="M3 6.5 9 4l6 2.5L21 4v13.5L15 20l-6-2.5L3 20z"/>'
+            '<path d="M9 4v13.5M15 6.5V20"/></svg>')
 
 
 def built_page_source(relative_html: str, docs_dir: Path) -> str | None:
@@ -1022,7 +1027,7 @@ def built_page_source(relative_html: str, docs_dir: Path) -> str | None:
 
 
 def link_pages_to_map(site_dir: Path, repo_root: Path = REPO_ROOT) -> int:
-    """Under each built page's title, a link to that page's node on the map of the docs
+    """In each built page's title, a map icon linking to that page's node on the map of the docs
     (``docs_map/?node=page:<path>``; the map opens with it selected). Run on the built site by
     ``tools/build_zensical_docs.py``; Zensical ignores template overrides, so this is the hook.
     Returns how many pages got one."""
@@ -1038,11 +1043,11 @@ def link_pages_to_map(site_dir: Path, repo_root: Path = REPO_ROOT) -> int:
         article = text.find("<article")
         if article < 0 or MAP_LINK_CLASS in text:
             continue
-        h1 = FIRST_H1_END_RE.search(text, article)
+        h1 = FIRST_H1_RE.search(text, article)
         if h1 is None:
             continue
         href = Path(os.path.relpath(map_dir, page.parent)).as_posix() + "/?node=" + quote(page_key(source), safe="")
-        link = f'<p class="{MAP_LINK_CLASS}"><a href="{href}">On the map of the docs</a></p>'
+        link = f'<a class="{MAP_LINK_CLASS}" href="{href}" title="{MAP_LINK_LABEL}" aria-label="{MAP_LINK_LABEL}">{MAP_ICON}</a>'
         page.write_text(text[:h1.end()] + link + text[h1.end():], encoding="utf-8")
         linked += 1
     return linked

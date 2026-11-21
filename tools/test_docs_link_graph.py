@@ -76,11 +76,12 @@ class LinkPagesToMapTest(unittest.TestCase):
             site = root / "site"
             for built in ("index.html", "docs_map/index.html", "reference/graphics/index.html", "orphan/index.html"):
                 (site / built).parent.mkdir(parents=True, exist_ok=True)
-                (site / built).write_text("<article><h1>Title</h1><h2>Next</h2></article>")
+                (site / built).write_text('<article><h1 id="title">Title</h1><h2>Next</h2></article>')
             self.assertEqual(link_pages_to_map(site, root), 2)
             self.assertEqual(link_pages_to_map(site, root), 0, "a second pass adds nothing")
             graphics = (site / "reference/graphics/index.html").read_text()
-            self.assertIn('</h1><p class="docs-map-link"><a href="../../docs_map/?node=page%3Areference%2Fgraphics.md">', graphics)
+            self.assertIn('<h1 id="title"><a class="docs-map-link" href="../../docs_map/?node=page%3Areference%2Fgraphics.md"', graphics)
+            self.assertIn("</svg></a>Title</h1>", graphics, "the icon sits inside the title, before its text")
             self.assertIn('href="docs_map/?node=page%3Aindex.md"', (site / "index.html").read_text())
             self.assertNotIn("docs-map-link", (site / "docs_map/index.html").read_text(), "the map does not link to itself")
             self.assertNotIn("docs-map-link", (site / "orphan/index.html").read_text(), "no source page, no node")

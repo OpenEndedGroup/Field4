@@ -9,8 +9,8 @@ Drag to turn the map, right-drag to pan and scroll to zoom. Click a node to list
 and what links to it, then follow its title to open it: a page opens itself, and a source file
 opens its section of the [reference](reference/index.md). Clicking a node also gathers what it
 connects to around it, and double-clicking frames it. Switch on **cites file**, **calls (fences)**
-or **mentions (prose)** and the source files move in beside the pages that use them. Every page on
-this site has an **On the map of the docs** link under its title that opens the map at that page.
+or **mentions (prose)** and the source files move in beside the pages that use them. The map icon at
+the right of every page's title opens the map at that page.
 
 <iframe
   src="assets/docs_map/graph.html"
@@ -22,7 +22,7 @@ this site has an **On the map of the docs** link under its title that opens the 
 <a id="docs-map-window" href="assets/docs_map/graph.html" target="_blank">Open the map in its own window</a>
 
 <script>
-// A page's "On the map of the docs" link opens this one with ?node=<that page>; the map above
+// A page's map icon opens this one with ?node=<that page>; the map above
 // reads it from here, and the full-window map gets it too.
 (() => { const a = document.getElementById("docs-map-window"); if (a && location.search) a.href = a.getAttribute("href") + location.search; })();
 </script>
