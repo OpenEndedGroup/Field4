@@ -1,5 +1,5 @@
 // Press MIDI learn, touch a control, then turn a knob: the two are bound, and the binding is
-// saved with the box. Launch to listen to the first MIDI input; stop to close it.
+// saved with the box. Launch to listen to the first hardware MIDI input; stop to close it.
 var cutoff = 1000.0
 var bright = false
 
@@ -11,7 +11,7 @@ controlGroup("synth") {
 val midi = midiLearn("synth")
 
 frames {
-    val device = MidiDevices.inputs().firstOrNull()
+    val device = MidiDevices.inputs().firstOrNull { !it.isSoftware }
     val input = device?.let(MidiDevices::openInput)
     input?.let(midi::attach)
     println(device?.let { "listening to ${it.name}" } ?: "no MIDI input on this machine")

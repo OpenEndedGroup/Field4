@@ -20,6 +20,7 @@ o.onNote {
     markdown("heard", "`${it.note}${it.octave}` on channel ${it.channel}, MIDI ${it.midi}")
 }
 displayOpen("heard")
-o.exposeTools()
+// Tool names are document-wide, so each copy names its own after its box.
+o.exposeTools(name = "orca_" + id.take(8))
 
 synth

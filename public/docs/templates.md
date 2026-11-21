@@ -128,7 +128,7 @@ one to three boxes; none runs when inserted.
 | `csound-instrument` | root, instrument | A Csound root and a plucked string with a reverb, played by its score and by any MIDI keyboard. [Csound](csound.md) |
 | `parameter-parent` | parent, child | A parent that publishes `level` with a slider, and a child that draws it. Any box connected under the parent reads the same `level`. [Property inheritance](running_code.md#property-inheritance-how-children-see-a-parents-values) |
 | `keyframe-lane` | 1 | A hand-edited curve played on a four-second loop into a meter, and published as `lane` to the boxes under it. [Keyframe editor](keyframe_editor.md) |
-| `midi-learn` | 1 | A control group with a MIDI learn button, listening to the first MIDI input while it runs. [MIDI learn](visualizers.md#midi-learn) |
+| `midi-learn` | 1 | A control group with a MIDI learn button, listening to the first hardware MIDI input while it runs. [MIDI learn](visualizers.md#midi-learn) |
 | `watch` | 1 | A live `tree()` of values you choose, kept current while the box runs. [Trees and columns](visualizers.md#trees-and-columns) |
 | `drawing-listener` | 1 | A handler for each stroke drawn by hand on the drawing layer. [Listening to the drawing](drawing_and_notation.md#listening-to-the-drawing) |
 | `record-and-explore` | 1 | Records three seconds of everything running in the document and opens the profiling timeline. [Profiling timeline](profiling_timeline.md) |
