@@ -40,10 +40,14 @@ Hidden objects and objects on switched-off layers are left out unless you pass
 `hiddenLayers = true`. `include` filters further, and `material` chooses per object:
 
 ```diffstatic {data-lang=kotlin}
-scene.rhino(model, scale = 0.05f, material = { o ->
-    if (o.layer?.name == "Glass") PathTraceMaterial.thinGlass(1.5f)
-    else PathTraceMaterial.plastic(o.color.x, o.color.y, o.color.z)
-})
+scene.rhino(
+    model,
+    scale = 0.05f,
+    material = { o ->
+        if (o.layer?.name == "Glass") PathTraceMaterial.thinGlass(1.5f)
+        else PathTraceMaterial.plastic(o.color.x, o.color.y, o.color.z)
+    },
+)
 ```
 
 ## What crosses each hop

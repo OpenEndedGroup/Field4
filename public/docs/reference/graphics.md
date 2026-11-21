@@ -4,7 +4,7 @@
 
 Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side.
 
-440 source file(s), 10652 public symbol(s), 6770 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+441 source file(s), 10662 public symbol(s), 6774 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -6416,7 +6416,7 @@ Tessellates trimmed NURBS Brep faces into a [`TriMesh`](graphics.md#mesh-kt-trim
 
 `src/jvmMain/kotlin/afield/geometry/rhino/Rhino3dm.kt` — [read the source](source/jvmMain/afield/geometry/rhino/Rhino3dm/)
 
-**Used in:** [Rhino files (.3dm)](../rhino_files.md), [File management](../files_and_paths.md), [Geometry from disk](../geometry_from_disk.md)
+**Used in:** [Rhino files (.3dm)](../rhino_files.md), [File management](../files_and_paths.md), [A Rhino file, path traced](../chain_rhino_render.md)
 
 ### Rhino3dm { #rhino3dm-kt-rhino3dm }
 
@@ -6585,6 +6585,33 @@ Where the wrapper library is looked for, in order; the same arrangement as TetGe
 | <a id="rhino3dm-kt--opennurbslibrary--isavailable"></a>[<code class="highlight"><span class="k">val</span> <span class="n">isAvailable</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/geometry/rhino/Rhino3dm/#L466) | Whether the library is there to load. |
 | <a id="rhino3dm-kt--opennurbslibrary--how-to-build"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">HOW&#95;TO&#95;BUILD</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/geometry/rhino/Rhino3dm/#L469) | How to get the library, for an error message. |
 | <a id="rhino3dm-kt--opennurbslibrary--describe"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">describe</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/geometry/rhino/Rhino3dm/#L474) | One line for a box or a test to print. |
+
+## RhinoPathTrace.kt { #rhinopathtrace-kt }
+
+`src/jvmMain/kotlin/afield/geometry/rhino/RhinoPathTrace.kt` — [read the source](source/jvmMain/afield/geometry/rhino/RhinoPathTrace/)
+
+### Top-level functions { #rhinopathtrace-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="rhinopathtrace-kt--rhino"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">PathTraceScene</span><span class="p">.</span><span class="nf">rhino</span><span class="p">(</span><span class="n">model</span><span class="p">:</span> <span class="nc">RhinoModel</span><span class="p">,</span> <span class="n">hiddenLayers</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">zUp</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">scale</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">1f</span><span class="p">,</span> <span class="n">include</span><span class="p">:</span> <span class="p">(</span><span class="nc">RhinoObject</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="p">{</span> <span class="kc">true</span> <span class="p">}</span><span class="p">,</span> <span class="n">material</span><span class="p">:</span> <span class="p">(</span><span class="nc">RhinoObject</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">PathTraceMaterial</span> <span class="o">=</span> <span class="p">{</span> <span class="n">o</span> <span class="o">-&gt;</span> <span class="nc">PathTraceMaterial</span><span class="p">.</span><span class="nf">plastic</span><span class="p">(</span><span class="n">o</span><span class="p">.</span><span class="n">color</span><span class="p">.</span><span class="n">x</span><span class="p">,</span> <span class="n">o</span><span class="p">.</span><span class="n">color</span><span class="p">.</span><span class="n">y</span><span class="p">,</span> <span class="n">o</span><span class="p">.</span><span class="n">color</span><span class="p">.</span><span class="n">z</span><span class="p">,</span> <span class="mf">0.35f</span><span class="p">)</span> <span class="p">}</span><span class="p">)</span><span class="p">:</span> <span class="nc">RhinoPathTraceImport</span></code>](source/jvmMain/afield/geometry/rhino/RhinoPathTrace/#L69) | Add a [`RhinoModel`](graphics.md#rhino3dm-kt-rhinomodel)'s surfaces to this scene, one object at a time, so each keeps its own material. |
+
+### RhinoPathTraceImport { #rhinopathtrace-kt-rhinopathtraceimport }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">RhinoPathTraceImport</span><span class="p">(</span><span class="k">val</span> <span class="n">objects</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">triangleCount</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">degenerateCount</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">materials</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">RhinoObject</span><span class="p">,</span> <span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">boundsMin</span><span class="p">:</span> <span class="nc">Vector3f</span><span class="p">,</span> <span class="k">val</span> <span class="n">boundsMax</span><span class="p">:</span> <span class="nc">Vector3f</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/rhino/RhinoPathTrace/#L23)
+
+What [`PathTraceScene.rhino`](graphics.md#rhinopathtrace-kt--rhino) put into the scene.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="rhinopathtrace-kt--rhinopathtraceimport--objects"></a><code class="highlight"><span class="k">val</span> <span class="n">objects</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <a id="rhinopathtrace-kt--rhinopathtraceimport--trianglecount"></a><code class="highlight"><span class="k">val</span> <span class="n">triangleCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <a id="rhinopathtrace-kt--rhinopathtraceimport--degeneratecount"></a><code class="highlight"><span class="k">val</span> <span class="n">degenerateCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <a id="rhinopathtrace-kt--rhinopathtraceimport--materials"></a><code class="highlight"><span class="k">val</span> <span class="n">materials</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">RhinoObject</span><span class="p">,</span> <span class="nc">Int</span><span class="p">&gt;</span></code> |  |
+| <a id="rhinopathtrace-kt--rhinopathtraceimport--boundsmin"></a><code class="highlight"><span class="k">val</span> <span class="n">boundsMin</span><span class="p">:</span> <span class="nc">Vector3f</span></code> |  |
+| <a id="rhinopathtrace-kt--rhinopathtraceimport--boundsmax"></a><code class="highlight"><span class="k">val</span> <span class="n">boundsMax</span><span class="p">:</span> <span class="nc">Vector3f</span></code> |  |
+| <a id="rhinopathtrace-kt--rhinopathtraceimport--size"></a>[<code class="highlight"><span class="k">val</span> <span class="n">size</span><span class="p">:</span> <span class="nc">Vector3f</span></code>](source/jvmMain/afield/geometry/rhino/RhinoPathTrace/#L32) | Extent of the appended geometry, which a camera distance is usually derived from. |
+| <a id="rhinopathtrace-kt--rhinopathtraceimport--center"></a>[<code class="highlight"><span class="k">val</span> <span class="n">center</span><span class="p">:</span> <span class="nc">Vector3f</span></code>](source/jvmMain/afield/geometry/rhino/RhinoPathTrace/#L35) | The middle of the appended geometry, which a camera usually looks at. |
 
 ## RhinoThree.kt { #rhinothree-kt }
 
