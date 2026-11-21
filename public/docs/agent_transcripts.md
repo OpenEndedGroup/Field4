@@ -85,6 +85,20 @@ Kotlin is compiled on every build.
 These build and run headless: no window, no GPU. Open one to get the code in front of you, then run
 its box to see the output (a plot, an inline value thumbnail, a printed line).
 
+### nile_gezira_kernels
+
+**Rasterisation as editable stream kernels.** Nile-style kernels run the Gezira rasteriser over a
+curved shape and draw each stream over the pixel grid: the pieces a curve is cut into, the edge
+samples, the coverage spans. A second box puts the result beside Skia, and a third adds a rotation
+kernel in front of the pipeline. See [Rasterising with stream kernels](afield_four_graphics.md#stream-kernels).
+
+```diffstatic {data-lang=text}
+macro write nile_gezira_kernels --file dev_docs/agents/transcripts/nile_gezira_kernels.yaml
+macro run nile_gezira_kernels
+```
+
+[Open →](offline.html?file=assets/agent_transcripts/nile_gezira_kernels/metadata.edn)
+
 ### knight_tour_workshop
 
 **Knight tours, many ways of drawing a move.** Five connected CPU-only FLine boxes:
@@ -5094,20 +5108,6 @@ macro run exact_triangle_coverage
 ```
 
 [Open →](offline.html?file=assets/agent_transcripts/exact_triangle_coverage/metadata.edn)
-
-### nile_gezira_kernels
-
-**Rasterisation as editable stream kernels.** Nile-style kernels run the Gezira rasteriser over a
-curved shape and draw each stream over the pixel grid: the pieces a curve is cut into, the edge
-samples, the coverage spans. A second box puts the result beside Skia, and a third adds a rotation
-kernel in front of the pipeline. See [Rasterising with stream kernels](afield_four_graphics.md#stream-kernels).
-
-```diffstatic {data-lang=text}
-macro write nile_gezira_kernels --file dev_docs/agents/transcripts/nile_gezira_kernels.yaml
-macro run nile_gezira_kernels
-```
-
-[Open →](offline.html?file=assets/agent_transcripts/nile_gezira_kernels/metadata.edn)
 
 ### atmospheric_sky
 
