@@ -2170,8 +2170,11 @@ Field computes pixel coverage in several places, and they answer different quest
   front to back, on the CPU or as a compute shader). Both project splats with `SplatRaster.project`.
 - **A filled curved `FLine` on the GPU:** [Slug filled paths](slug_paths.md), analytic curve
   coverage evaluated in the fragment shader.
-- **The same coverage written as editable stream kernels, curves included:**
-  [Rasterising with stream kernels](#stream-kernels), `afield.graphics.nile`.
+- **A filled or stroked `FLine` as exact coverage on the CPU, under non-zero or even-odd, however
+  it overlaps itself:** `Gezira.rasterizer` in
+  [Rasterising with stream kernels](#stream-kernels), `afield.graphics.nile`, written as editable
+  stream kernels. `BufferCanvas.fill` and `stroke` put the same coverage into a buffer a shader
+  reads ([An outline filled into a buffer](visualizers.md#an-outline-filled-into-a-buffer)).
 
 ## Rasterising with stream kernels { #stream-kernels }
 
@@ -2187,11 +2190,11 @@ carrying the descent to the right, so the result is a stream of coverage spans.
 
 `afield.graphics.nile` is a small Kotlin version of this. A `kernel` has an `each { }` block that
 can `emit` downstream or `push` back onto its own queue, stages join with `then`, and `trace` runs a
-pipeline and keeps every stream by stage name. `Gezira.rasterizer` is the five stages, so a box can
-draw any of the streams over the pixel grid:
+pipeline and keeps every stream by stage name. `Gezira.edgeSampleRasterizer` is the five stages, so
+a box can draw any of the streams over the pixel grid:
 
 ```diffstatic {data-lang=kotlin}
-val t = Gezira.rasterizer.trace(Gezira.beziers(shape))
+val t = Gezira.edgeSampleRasterizer.trace(Gezira.beziers(shape))
 val pieces = t.get<Bezier>("DecomposeBeziers")
 val samples = t.get<EdgeSample>("EdgeSamples")
 val spans = t.get<Span>("CombineEdgeSamples")
@@ -2220,12 +2223,44 @@ On a five-pointed star the kernels and Skia differ by at most 0.10 and on averag
 Skia differs from the exact `TriangleCoverage` answer by the same 0.10: the difference is Skia's.
 On a circle the largest difference is 0.19 at one edge pixel, the mean 0.008.
 
-Where the star and the circle overlap the largest difference is 0.43, and that one is the kernels'.
-CombineEdgeSamples adds up signed edge areas, so in a pixel that both outlines cross it adds the
-two partial coverages, and where those overlap inside the pixel it counts the overlap twice (Gezira
-does the same). Against a 64 × 64 non-zero supersample, the 543 pixels that one outline crosses
-agree to 0.0025; in the 17 pixels both cross, the kernels are up to 0.31 too high, never by more
-than the smaller of the two coverages. Skia is up to 0.18 off the same supersample.
+### Overlaps and fill rules
+
+Gezira's five stages are exact only while one outline crosses each pixel. CombineEdgeSamples adds
+up signed edge areas, so in a pixel that two outlines cross (two shapes, or two parts of one outline
+that crosses itself) it adds both partial coverages and counts their overlap twice. Against a
+64 × 64 non-zero supersample of a star overlapping a circle, the pixels one outline crosses agree to
+0.0025; in the 17 pixels both cross, the edge samples are up to 0.31 too high. A sum of areas also
+has no way to say which overlaps are holes, so there is no even-odd rule.
+
+`Gezira.rasterizer` is a different set of four kernels that does both. FlattenBeziers cuts each curve
+in half, pushing both halves back, until it lies within 1/10,000 of a pixel of its chord.
+RowEdges cuts the lines at every pixel row, the pieces are sorted by row, and WindingSpans resolves
+one row at a time: it cuts the row into bands at every line end and every place two lines cross, so
+no two lines cross inside a band, then walks each band left to right counting the winding number.
+Wherever the fill rule says the region between two neighbouring lines is inside, it adds that
+trapezoid's exact area to each pixel column it covers:
+
+```diffstatic {data-lang=kotlin}
+val nonZero = Gezira.rasterize(shape, 56, 40, FillRule.NON_ZERO)
+val evenOdd = Gezira.rasterize(shape, 56, 40, FillRule.EVEN_ODD)
+```
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/gezira-fill-rules.png" capture="box" open-outputs="true" padding="20" wait="4" timeout="180" embed=true name="gezira-fill-rules" macro-file="../../dev_docs/agents/transcripts/nile_gezira_kernels.yaml" capture-box="gezira_fill_rules" alt="Three panels at 56 by 40 pixels. Non-zero: a pentagram filled solid and two overlapping circles filled as one shape. Even-odd: the same with the pentagram's centre pentagon and the lens where the circles overlap left empty. Edge samples, error times ten: red dots only at the pixels where two edges cross, at the star's inner corners and where the circles meet."}
+// dev_docs/agents/transcripts/nile_gezira_kernels.yaml, box "fill rules"
+```
+
+For polygons this is exact whatever the overlap. `GeziraWindingTest` builds exact answers from
+`TriangleCoverage` for twelve pairs of overlapping convex polygons (the union is `A + B − A∩B`, the
+even-odd answer `A + B − 2·A∩B`, with the intersection clipped exactly) and for a square with a
+square hole wound each way. Under both rules the largest difference over 5,727 pixels is
+2e-13; the edge samples are up to 0.36 off the same unions. Curves are off by at most the flattening:
+against the edge samples on ten circles, where those are exact, the largest difference is 6e-5 over 4,349 pixels. On a
+self-crossing pentagram and on overlapping curves, against a 64 × 64 supersample under each rule,
+the largest difference is 0.0025, which is the supersample's own resolution, and the mean 1e-4.
+Skia is up to 0.16 off the same supersample on the pentagram.
+
+The edge samples keep their place as Gezira's design, and the streams above are theirs.
+`BufferCanvas.fill` and `stroke`, and `Canvas.draw` below, use the winding rasteriser.
 
 A new stage is one more kernel. Gezira's TransformBeziers, a rotation here, goes in front of the
 rasteriser with `then`:
@@ -2239,7 +2274,7 @@ val t = (rotate(20.0, 8.0, 8.0) then Gezira.rasterizer).trace(Gezira.beziers(squ
 `GeziraStroke.strokeBezierPath(width)` is Gezira's StrokeBezierPath: it offsets each segment to
 both sides, and a segment whose offset strays more than 0.01 pixels from the true offset curve is
 cut in half and both halves pushed back, the same recursion DecomposeBeziers uses. Its output is an
-outline, which goes into the rasteriser like any other:
+outline that overlaps itself on the inside of every bend, which the non-zero rule covers once:
 
 ```diffstatic {data-lang=kotlin}
 val t = (GeziraStroke.strokeBezierPath(2.0) then Gezira.rasterizer).trace(wave)

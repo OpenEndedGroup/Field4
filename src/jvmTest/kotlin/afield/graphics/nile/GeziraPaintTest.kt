@@ -36,7 +36,8 @@ class GeziraPaintTest {
     }
 
     /**
-     * Two overlapping outlines (the demo's star and circle). The rasteriser sums signed edge areas, so
+     * Two overlapping outlines (the demo's star and circle). The edge-sample rasteriser
+     * ([Gezira.edgeSampleRasterizer]) sums signed edge areas, so
      * in a pixel where both outlines pass it counts the overlap of their two partial coverages twice
      * (clamped at 1); the union is smaller. Away from such pixels it agrees with a 64 x 64 non-zero
      * supersample; in them its error is bounded by the smaller of the two single-outline coverages.
@@ -47,11 +48,12 @@ class GeziraPaintTest {
         val h = 40
         val s = star(24.0, 20.0, 7.0, 17.0, 5, 0.0)
         val c = Gezira.circle(30.3, 26.1, 9.4)
-        val ours = Gezira.rasterize(s + c, w, h)
+        val ours = Gezira.coverage(Gezira.edgeSampleRasterizer(s + c), w, h)
         val ss = Gezira.supersampledCoverage(s + c, w, h, n = 64)
+        val winding = Gezira.rasterize(s + c, w, h)
         val skia = Gezira.skiaCoverage(s + c, w, h)
-        val os = Gezira.rasterize(s, w, h)
-        val oc = Gezira.rasterize(c, w, h)
+        val os = Gezira.coverage(Gezira.edgeSampleRasterizer(s), w, h)
+        val oc = Gezira.coverage(Gezira.edgeSampleRasterizer(c), w, h)
         fun partial(v: Double) = v > 1e-9 && v < 1 - 1e-9
         var singleWorst = 0.0
         var single = 0
@@ -73,6 +75,9 @@ class GeziraPaintTest {
         }
         println("overlap: pixels one outline crosses: max |kernels - supersample| $singleWorst over $single")
         println("overlap: pixels both outlines cross: max |kernels - supersample| $bothWorst over $both; worst excess over min(single coverages) $bothExcess")
+        val (ww, wm) = Gezira.error(winding, ss)
+        println("overlap: winding rasteriser vs the same supersample, all pixels: max |diff| $ww, mean $wm; Skia max $skiaWorst")
+        assertTrue(ww < 0.02, "the winding rasteriser should match the union, worst $ww")
         println("overlap: max |Skia - supersample| $skiaWorst; max |kernels - Skia| ${Gezira.error(ours, skia).first}")
         assertTrue(single > 500 && both > 0, "population too small: $single / $both")
         assertTrue(singleWorst < 0.02, "away from crossings the kernels should match the supersample, worst $singleWorst")
@@ -236,7 +241,7 @@ class GeziraPaintTest {
         val text = Gezira.glyphs("Pixels on a screen", 6.0, 46.0, size = 40.0)
         val quads = text.count { it.degree == 2 }
         val start = System.nanoTime()
-        val t = Gezira.rasterizer.trace(text)
+        val t = Gezira.edgeSampleRasterizer.trace(text)
         val ms = (System.nanoTime() - start) / 1e6
         val ours = Gezira.coverage(t.output.filterIsInstance<Span>(), w, h)
         val skia = Gezira.skiaCoverage(text, w, h)

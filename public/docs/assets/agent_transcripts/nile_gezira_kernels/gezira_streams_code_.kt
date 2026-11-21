@@ -8,7 +8,7 @@ val shape =
         .cubicTo(12.0, 2.0, 0.0, 15.5, 6.0, 0.0, 13.8, 10.9, 0.0)
         .lineTo(2.2, 10.6)
 
-val t = Gezira.rasterizer.trace(Gezira.beziers(shape))
+val t = Gezira.edgeSampleRasterizer.trace(Gezira.beziers(shape))
 println(t)
 
 val s = 32.0

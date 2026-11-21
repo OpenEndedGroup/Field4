@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 6 "persistentProperties" ["contents" "frame" "name" "code" "code_language" "box_kind" "textFrame" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "parentHint" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_panel" "ai4_continuation" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "ai4_garden" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 7 "persistentProperties" ["contents" "frame" "name" "code" "code_language" "box_kind" "textFrame" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "parentHint" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_panel" "ai4_continuation" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "ai4_garden" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. stroke kernel
@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="gezira_stroke" index="0" -->
 
 ```edn [field-box id="gezira_stroke" role="properties"]
-{"id" "gezira_stroke" "index" 0 "name" "stroke kernel" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "stroke kernel" "_tombstone" false "frame" #afield/rect [40.0 1200.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gezira_stroke_code_.kt" "lines" 20 "characters" 679 "sha256" "c1eef508e6e936004551a80be6aa59d2a1de17f6043bfcdc1bb7debf8bd170f3"}]}
+{"id" "gezira_stroke" "index" 0 "name" "stroke kernel" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "stroke kernel" "_tombstone" false "frame" #afield/rect [40.0 1200.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gezira_stroke_code_.kt" "lines" 20 "characters" 673 "sha256" "3f11422b933f787491d7c2c4a9426eb0be1bb6a6f53ac829c5cf8b62625665a8"}]}
 ```
 
 ```kotlin [field-property box="gezira_stroke" name="code" path="gezira_stroke_code_.kt"]
@@ -27,7 +27,7 @@ println(t)
 
 val s = 16.0
 val outline = t.get<Bezier>("StrokeBezierPath")
-val spans = t.get<Span>("CombineEdgeSamples")
+val spans = t.get<Span>("WindingSpans")
 lines(
     listOf(Gezira.grid(48, 24, s)) +
         Gezira.pixels(Gezira.coverage(spans, 48, 24), 48, s) +
@@ -71,7 +71,7 @@ lines(canvas.pixels(8.0), channel = "canvas")
 <!-- field-box id="gezira_text" index="2" -->
 
 ```edn [field-box id="gezira_text" role="properties"]
-{"id" "gezira_text" "index" 2 "name" "text beside skia" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "text beside skia" "_tombstone" false "frame" #afield/rect [1480.0 1200.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gezira_text_code_.kt" "lines" 12 "characters" 684 "sha256" "ba3f6400afdd7d7ca8d651242bbe1b2fa17668009ed25cd9e69aa0878b1ac643"}]}
+{"id" "gezira_text" "index" 2 "name" "text beside skia" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "text beside skia" "_tombstone" false "frame" #afield/rect [1480.0 1200.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gezira_text_code_.kt" "lines" 12 "characters" 694 "sha256" "fd5afb1e82db2f7f5c273abbbd000641e2bba928dbabd127e5c6cc85aa259a97"}]}
 ```
 
 ```kotlin [field-property box="gezira_text" name="code" path="gezira_text_code_.kt"]
@@ -79,7 +79,7 @@ import afield.graphics.nile.*
 
 // A line of serif text: quadratic glyph outlines, the same kind of input as Gezira's tiger.
 val text = Gezira.glyphs("Pixels on a screen", 6.0, 46.0, size = 40.0)
-val t = Gezira.rasterizer.trace(text)
+val t = Gezira.edgeSampleRasterizer.trace(text)
 println("${text.size} segments, ${t.get<Bezier>("DecomposeBeziers").size} pieces, ${t.output.size} spans")
 val ours = Gezira.coverage(t.get("CombineEdgeSamples"), 360, 64)
 val skia = Gezira.skiaCoverage(text, 360, 64)
@@ -94,7 +94,7 @@ lines(Gezira.pixels(skia, 360, 2.0), channel = "skia")
 <!-- field-box id="gezira_new_kernel" index="3" -->
 
 ```edn [field-box id="gezira_new_kernel" role="properties"]
-{"id" "gezira_new_kernel" "index" 3 "name" "a new kernel" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a new kernel" "_tombstone" false "frame" #afield/rect [1480.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gezira_new_kernel_code_.kt" "lines" 28 "characters" 1013 "sha256" "1166b310d1c57602ca2b595a299a7ae9ed80a6bdc31bd55ccf9b0779a4ac7537"}]}
+{"id" "gezira_new_kernel" "index" 3 "name" "a new kernel" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a new kernel" "_tombstone" false "frame" #afield/rect [1480.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gezira_new_kernel_code_.kt" "lines" 28 "characters" 1023 "sha256" "e7db74051659f363febb15b8c5db88dbdfcf09606aaf93437d067a837cc3c91c"}]}
 ```
 
 ```kotlin [field-property box="gezira_new_kernel" name="code" path="gezira_new_kernel_code_.kt"]
@@ -116,7 +116,7 @@ fun rotate(degrees: Double, cx: Double, cy: Double): Stage<Bezier, Bezier> {
 }
 
 val square = FLine().moveTo(4.0, 4.0).lineTo(12.0, 4.0).lineTo(12.0, 12.0).lineTo(4.0, 12.0).lineTo(4.0, 4.0)
-val t = (rotate(20.0, 8.0, 8.0) then Gezira.rasterizer).trace(Gezira.beziers(square))
+val t = (rotate(20.0, 8.0, 8.0) then Gezira.edgeSampleRasterizer).trace(Gezira.beziers(square))
 println(t)
 val px = 24.0
 val spans = t.get<Span>("CombineEdgeSamples")
@@ -133,7 +133,7 @@ lines(
 <!-- field-box id="gezira_streams" index="4" -->
 
 ```edn [field-box id="gezira_streams" role="properties"]
-{"id" "gezira_streams" "index" 4 "name" "gezira streams" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "gezira streams" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gezira_streams_code_.kt" "lines" 26 "characters" 919 "sha256" "2adb1f9369ba48b4ed3395f8aed682ffdd9d6c6affa6372c6ea3bf5413a2bb0c"}]}
+{"id" "gezira_streams" "index" 4 "name" "gezira streams" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "gezira streams" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gezira_streams_code_.kt" "lines" 26 "characters" 929 "sha256" "6c1fb68b10a2b2170397b7561884690acc4beb4dc4e0f3ff7f2fdca9cb83ad9a"}]}
 ```
 
 ```kotlin [field-property box="gezira_streams" name="code" path="gezira_streams_code_.kt"]
@@ -147,7 +147,7 @@ val shape =
         .cubicTo(12.0, 2.0, 0.0, 15.5, 6.0, 0.0, 13.8, 10.9, 0.0)
         .lineTo(2.2, 10.6)
 
-val t = Gezira.rasterizer.trace(Gezira.beziers(shape))
+val t = Gezira.edgeSampleRasterizer.trace(Gezira.beziers(shape))
 println(t)
 
 val s = 32.0
@@ -195,5 +195,40 @@ val s = 8.0
 lines(Gezira.pixels(ours, 48, s), channel = "kernels")
 lines(Gezira.pixels(skia, 48, s), channel = "skia")
 lines(Gezira.pixels(diff, 48, s, 1.0, 0.4, 0.3), channel = "difference x10")
+```
+
+## 7. fill rules
+
+<!-- field-box id="gezira_fill_rules" index="6" -->
+
+```edn [field-box id="gezira_fill_rules" role="properties"]
+{"id" "gezira_fill_rules" "index" 6 "name" "fill rules" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "fill rules" "_tombstone" false "frame" #afield/rect [2200.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gezira_fill_rules_code_.kt" "lines" 24 "characters" 1244 "sha256" "73afdf37c4e5e0d59d6ac1903899aba2cdabc5a35ab1c218061461e2014a65ae"}]}
+```
+
+```kotlin [field-property box="gezira_fill_rules" name="code" path="gezira_fill_rules_code_.kt"]
+import afield.graphics.nile.*
+
+// A pentagram drawn as one outline that crosses itself, and two overlapping circles, on 56 x 40.
+val star = FLine()
+for (k in 0..5) {
+    val a = -PI / 2 + k * 4 * PI / 5
+    val x = 16.0 + 14.0 * cos(a)
+    val y = 21.0 + 14.0 * sin(a)
+    if (k == 0) star.moveTo(x, y) else star.lineTo(x, y)
+}
+val shape = Gezira.beziers(star) + Gezira.circle(36.0, 17.0, 10.3) + Gezira.circle(43.0, 25.0, 10.3)
+
+val nonZero = Gezira.rasterize(shape, 56, 40, FillRule.NON_ZERO)
+val evenOdd = Gezira.rasterize(shape, 56, 40, FillRule.EVEN_ODD)
+val edgeSamples = Gezira.coverage(Gezira.edgeSampleRasterizer(shape), 56, 40)
+val reference = Gezira.supersampledCoverage(shape, 56, 40, n = 64)
+val error = DoubleArray(edgeSamples.size) { minOf(1.0, 10 * abs(edgeSamples[it] - reference[it])) }
+println("winding, non-zero, vs 64 x 64 supersample: max |diff| %.4f".format(Gezira.error(nonZero, reference).first))
+println("edge samples vs the same: max |diff| %.4f".format(Gezira.error(edgeSamples, reference).first))
+
+val s = 6.0
+lines(Gezira.pixels(nonZero, 56, s), channel = "non-zero")
+lines(Gezira.pixels(evenOdd, 56, s), channel = "even-odd")
+lines(Gezira.pixels(error, 56, s, 1.0, 0.4, 0.3), channel = "edge samples, error x10")
 ```
 

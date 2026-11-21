@@ -16,7 +16,7 @@ fun rotate(degrees: Double, cx: Double, cy: Double): Stage<Bezier, Bezier> {
 }
 
 val square = FLine().moveTo(4.0, 4.0).lineTo(12.0, 4.0).lineTo(12.0, 12.0).lineTo(4.0, 12.0).lineTo(4.0, 4.0)
-val t = (rotate(20.0, 8.0, 8.0) then Gezira.rasterizer).trace(Gezira.beziers(square))
+val t = (rotate(20.0, 8.0, 8.0) then Gezira.edgeSampleRasterizer).trace(Gezira.beziers(square))
 println(t)
 val px = 24.0
 val spans = t.get<Span>("CombineEdgeSamples")

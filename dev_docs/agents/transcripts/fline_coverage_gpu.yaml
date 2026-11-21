@@ -1,0 +1,215 @@
+name: fline_coverage_gpu
+description: >
+  FLines filled into a GPU storage buffer with exact area coverage and read by a fragment shader.
+  BufferCanvas.fill and BufferCanvas.stroke rasterise closed outlines through Gezira's winding
+  rasteriser into a host-visible buffer of two floats per cell: the first channel under the non-zero
+  rule, the second under even-odd. The shapes are chosen where the two rules differ: a pentagram drawn
+  as one self-crossing outline, two overlapping circles, a square with a square hole wound the same
+  way as its outside, and a stroked wave that crosses itself. A draw box shows the buffer in the
+  native window, non-zero on the left and even-odd on the right, each cell a block of window pixels
+  so the partial coverage at each edge is visible. A closed freehand stroke on the drawing layer over the
+  "mask" frame is filled into the buffer while it runs, and an ellipse clears the drawn ones. The
+  box's "mask" output reads the buffer back and prints the largest difference from the CPU coverage.
+docs:
+  - page: visualizers.md
+    why: "The 'An outline filled into a buffer' section explains BufferCanvas.fill/stroke of FLines into a storage buffer a shader reads."
+  - page: afield_four_graphics.md
+    why: "The 'Rasterising with stream kernels' section describes the winding rasteriser the fill uses."
+operations:
+  - create:
+      box: fcg_renderer
+      name: renderer
+      frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.graphics.vulkan.util.Options
+
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+          Options.enableHDR = false
+          Options.profiling = false
+          once.renderer {
+              window = Window("outlines filled into a buffer", initialDimensions = Rect(80.0, 80.0, 1000.0, 360.0))
+              Renderer(window)
+          }
+          println("renderer ready")
+          start(renderer::run)
+  - create:
+      box: fcg_fill
+      name: fill FLines into the mask buffer
+      frame: { x: 40.0, y: 200.0, w: 340.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.graphics.nile.FillRule
+          import afield.media.image.*
+
+          val W = 160
+          val H = 100
+
+          // Two floats per cell: .x is coverage under non-zero, .y under even-odd. Only the CPU writes it.
+          var mask = defaultBuffer { size = (W * H).vec2s }.buffer
+
+          // The shapes, in cell coordinates.
+          val pentagram = FLine()
+          for (k in 0..5) {
+              val a = -Math.PI / 2 + k * 4 * Math.PI / 5
+              val x = 30.0 + 26.0 * Math.cos(a)
+              val y = 52.0 + 26.0 * Math.sin(a)
+              if (k == 0) pentagram.moveTo(x, y) else pentagram.lineTo(x, y)
+          }
+          val circles = [FLine().circle(78.0, 40.0, 18.0), FLine().circle(94.0, 52.0, 18.0)]
+          // Outer and inner squares wound the same way: a hole under even-odd only.
+          val framed = FLine().rect(118.0, 22.0, 36.0, 36.0).rect(128.0, 32.0, 16.0, 16.0)
+          val wave = FLine().moveTo(64.0, 86.0)
+          wave.cubicTo(84.0, 56.0, 104.0, 116.0, 124.0, 86.0)
+          wave.cubicTo(134.0, 70.0, 108.0, 70.0, 116.0, 92.0)
+          val drawn = mutableListOf<FLine>()
+          var pending = false
+
+          // Draw everything into channel 0 under non-zero and channel 1 under even-odd.
+          fun paintMask(canvas: BufferCanvas) {
+              canvas.fill(canvas.bounds, 0f)
+              for ((channel, rule) in [0 to FillRule.NON_ZERO, 1 to FillRule.EVEN_ODD]) {
+                  canvas.fill(pentagram, 1f, rule, channel = channel)
+                  canvas.fill(circles, 1f, rule, channel = channel)
+                  canvas.fill(framed, 1f, rule, channel = channel)
+                  for (line in drawn) canvas.fill(line, 1f, rule, channel = channel)
+                  canvas.stroke(wave, width = 3.0, value = 1f, channel = channel)
+              }
+          }
+          val expected = FloatArray(2 * W * H)
+          fun upload() {
+              paintMask(bufferCanvas(expected, width = W, channels = 2, height = H))
+              mask.mapAndWrite { paintMask(bufferCanvas(this, width = W, channels = 2, height = H)) }
+          }
+          upload()
+
+          prop<FrameBufferGroup>(fcMask) = mask
+          prop<Int>(fcWidth) = W
+          prop<Int>(fcHeight) = H
+
+          // The drawing layer: a frame stands for the grid, two world units per cell.
+          notation {
+              frame("mask", frame.x + frame.w + 460, frame.y, 2.0 * W, 2.0 * H)
+          }
+          val cells = notation.space("mask", x = 0.0..W.toDouble(), y = 0.0..H.toDouble())
+
+          // A freehand stroke becomes one more closed outline; fill closes it.
+          notation.onStroke { s ->
+              val pts = s.points.map { cells.toSpace(it) }
+              if (pts.size < 3) return@onStroke
+              val line = FLine()
+              line.moveTo(pts[0].x, pts[0].y)
+              for (p in pts.drop(1)) line.lineTo(p.x, p.y)
+              drawn += line
+              pending = true
+          }
+          // An ellipse clears the hand-drawn outlines.
+          val handled = mutableSetOf<String>()
+          notation.onChange { e ->
+              for (m in e.added + e.updated) {
+                  if (m.id in handled || m.kind != MarkType.ELLIPSE) continue
+                  handled += m.id
+                  drawn.clear()
+                  pending = true
+              }
+          }
+
+          val shown = FloatArray(2 * W * H)
+          var nextShow = 0L
+          frames {
+              while (frame()) {
+                  val f = renderer.frameCounter
+                  if (pending) {
+                      pending = false
+                      upload()
+                  }
+                  if (f >= nextShow) {
+                      nextShow = f + 240
+                      mask.read { get(0, shown, 0, shown.size) }
+                      var worst = 0f
+                      for (i in shown.indices) worst = maxOf(worst, Math.abs(shown[i] - expected[i]))
+                      val view = bufferCanvas(shown, width = W, channels = 2, height = H)
+                      view.display = intArrayOf(0, 1, 1)
+                      view.zoom = 2
+                      display(
+                          "mask",
+                          view.toHTML() +
+                              "<pre>white: inside under both rules, red: under non-zero only, renderer frame $f\nmax |mask buffer - CPU coverage| = $worst</pre>",
+                      )
+                  }
+              }
+          }
+  - create:
+      box: fcg_draw
+      name: draw the mask, non-zero left, even-odd right
+      frame: { x: 440.0, y: 200.0, w: 300.0, h: 100.0 }
+      properties:
+        vertex: |
+          #version 450
+
+          // one triangle that covers the window; positions come from the vertex index
+          vec2 fullscreenVertex(uint index) {
+              if (index == 0u) return vec2(-1.0, -1.0);
+              if (index == 1u) return vec2(3.0, -1.0);
+              return vec2(-1.0, 3.0);
+          }
+
+          void main() {
+              gl_Position = vec4(fullscreenVertex(uint(gl_VertexIndex)), 0.0, 1.0);
+          }
+        fragment: |
+          #version 450
+          #extension GL_EXT_buffer_reference : require
+
+          // Two floats per cell: coverage under non-zero, then under even-odd.
+          layout(std430, buffer_reference) buffer Mask {
+              vec2 a[];
+          };
+
+          layout(push_constant) uniform Push {
+              Mask mask;
+              int w;
+              int h;
+              int zoom;
+          } pc;
+
+          layout(location = 0) out vec4 outColor;
+
+          float srgbToLinear(float c) {
+              return c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4);
+          }
+
+          void main() {
+              ivec2 p = ivec2(gl_FragCoord.xy) / max(pc.zoom, 1);
+              // the left copy reads channel 0, the right copy channel 1, with a one-cell gap
+              int rule = p.x >= pc.w + 1 ? 1 : 0;
+              ivec2 cell = ivec2(p.x - rule * (pc.w + 1), p.y);
+              if (cell.x < 0 || cell.x >= pc.w || cell.y >= pc.h) discard;
+              vec2 m = pc.mask.a[cell.y * pc.w + cell.x];
+              float c = clamp(rule == 0 ? m.x : m.y, 0.0, 1.0);
+              vec3 back = vec3(0.06, 0.07, 0.11);
+              vec3 ink = rule == 0 ? vec3(1.0, 0.62, 0.25) : vec3(0.35, 0.85, 1.0);
+              vec3 col = mix(back, ink, c);
+              outColor = vec4(srgbToLinear(col.r), srgbToLinear(col.g), srgbToLinear(col.b), 1.0);
+          }
+        code: |
+          var drawModule = moduleHere { primitiveType = triangles }
+          renderer += "fline-coverage-draw" to drawModule
+          val quad = fullscreenTriangle(drawModule)
+          drawModule += "quad" to quad
+
+          quad.mask = { fcMask }
+          quad.w = { fcWidth }
+          quad.h = { fcHeight }
+          // as many window pixels per cell as fit both copies side by side
+          quad.zoom = { maxOf(1, minOf(window.width / (2 * fcWidth + 1), window.height / fcHeight)) }
+          println("drawing the mask")
+  - connect: { parent: fcg_renderer, child: fcg_fill }
+  - connect: { parent: fcg_fill, child: fcg_draw }
+  - launch: { box: fcg_renderer, property: code, strand: renderer }
+  - await: {}
+  - launch: { box: fcg_fill, property: code }
+  - await: {}
+  - launch: { box: fcg_draw, property: code }
+  - await: {}

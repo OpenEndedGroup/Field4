@@ -10,7 +10,7 @@ println(t)
 
 val s = 16.0
 val outline = t.get<Bezier>("StrokeBezierPath")
-val spans = t.get<Span>("CombineEdgeSamples")
+val spans = t.get<Span>("WindingSpans")
 lines(
     listOf(Gezira.grid(48, 24, s)) +
         Gezira.pixels(Gezira.coverage(spans, 48, 24), 48, s) +
