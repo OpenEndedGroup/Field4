@@ -32,6 +32,7 @@ Windows and Linux; ++alt++ is Option or Alt.
 | Search boxes | `document-search` | ++cmd+f++ (canvas focused) |
 | Bookmarks panel | `show-bookmarks` | ++alt+b++ |
 | Frame the selection | `frame-selected` | ++alt+f++ |
+| Zoom to fit the selection | `fit-selected` | ++alt+shift+f++ |
 | Reset the view | `reset-view` | ++alt+h++ |
 | Layers panel | `show-layers-panel` | ++alt+l++ |
 | Drawing layer | `toggle-drawing-layer` | ++alt+d++ |
