@@ -480,7 +480,7 @@ object TypographyGallery {
 
         // The trace figure: every pivot of every frame as a dot, over the path itself.
         val dots = tracks.flatten()
-        val img = dotRaster(dots, boundsOfAll(dots + pathPoints(path)), 900, 420, 0)
+        val img = dotRaster(dots, pointBounds2D(dots + pathPoints(path)), 900, 420, 0)
         val pathImg = rasterizeFLinesFramed(
             listOf(path), listOf(path) + listOf(fline { moveTo(0.0, 0.0); lineTo(0.0, 0.0) }), 900, 420, margin = 6
         )
@@ -555,7 +555,7 @@ object TypographyGallery {
         }
         check(worstTurn < 0.35) { "a glyph turned ${"%.3f".format(worstTurn)} rad in one frame — the tangent flipped" }
 
-        val window = boundsOfAll(tracks.flatten())
+        val window = pointBounds2D(tracks.flatten())
         val shown = listOf(0, frames / 6, frames / 3, frames / 2).map { f ->
             val path = pathAt(2 * Math.PI * f / frames)
             "frame $f — path length ${"%.0f".format(lengths[f])}" to
@@ -577,8 +577,6 @@ object TypographyGallery {
         val d = g.transform().transform(java.awt.geom.Point2D.Double(p.x.toDouble(), p.y.toDouble()), null)
         return vec(d.x, d.y)
     }
-
-    private fun boundsOfAll(points: List<Vec2>): Rect = pointBounds2D(points)
 
     private fun pathPoints(path: FLine): List<Vec2> =
         path.nodes.map { vec(it.to.x, it.to.y) }

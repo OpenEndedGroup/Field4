@@ -2,6 +2,7 @@
 
 package afield.simulation.agents
 
+import afield.geometry.path.signedArea2D
 import afield.data.collections.get
 import afield.data.collections.invoke
 import afield.data.collections.times
@@ -594,13 +595,7 @@ fun flineSignedArea(lines: List<FLine>): Double {
     // the last point back to the first — an explicit close contributes no new vertex.
     for (l in lines) for (n in l.nodes) if (n !is FLine.Close) pts.add(n.to.x.toDouble() to n.to.y.toDouble())
     if (pts.size < 3) return 0.0
-    var a = 0.0
-    for (i in pts.indices) {
-        val (x1, y1) = pts[i]
-        val (x2, y2) = pts[(i + 1) % pts.size]
-        a += x1 * y2 - x2 * y1
-    }
-    return a / 2.0
+    return signedArea2D(pts.size, { pts[it].first }, { pts[it].second })
 }
 
 /**

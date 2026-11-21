@@ -4559,6 +4559,8 @@ When what you have is a handful of segments or a list of points rather than an `
 | `fun orient2D(ax: Double, ay: Double, bx: Double, by: Double, cx: Double, cy: Double): Double` | Which side of `a`→`b` the point `c` is on: positive on one side, negative on the other, zero on the line. |
 | `fun signedArea2D(points: List<Vec2>): Double` | Signed area of the closed polygon through the points, with the same sign as `area2D` gives the equivalent line. |
 | `fun pointBounds2D(points: List<Vec2>): Rect` | The rectangle around the points. |
+| `fun signedArea2D(xy: DoubleArray): Double` | The same for a flat `x0, y0, x1, y1, ...` array. `signedArea2D(count, { x(it) }, { y(it) })` reads the coordinates by index, for points that are not `Vec2`. |
+| `fun pointInRing2D(points: List<Vec2>, px: Double, py: Double): Boolean` | Whether the point is inside the closed polygon, by the even-odd rule; the direction the polygon runs does not matter. Also takes a flat `DoubleArray` or the by-index form. For a line with curves or holes use `contains2D`. |
 
 </div>
 
