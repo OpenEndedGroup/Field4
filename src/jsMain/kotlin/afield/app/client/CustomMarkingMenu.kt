@@ -41,6 +41,13 @@ fun requestCustomMarkingMenu(uid: String, x: Double, y: Double, event: dynamic) 
                 "callback" to { window.setTimeout({ window.asDynamic().openTextFrameSettings(uid) }, 100) },
                 "radius" to 1.0, "angle" to 90.0
             )
+            if (window.asDynamic().currentDocumentReadOnly != true) {
+                builtins += json(
+                    "text" to "Edit Markdown",
+                    "callback" to { window.setTimeout({ window.asDynamic().openTextFrameMarkdown(uid) }, 100) },
+                    "radius" to 1.0, "angle" to 180.0
+                )
+            }
         }
         if (window.asDynamic().currentDocumentReadOnly != true) {
             fun visibilityEntry(label: String, actionId: String, angle: Double) = json(

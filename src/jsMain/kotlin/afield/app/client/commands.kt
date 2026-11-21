@@ -1856,7 +1856,7 @@ fun newBox(options: Any? = null) {
         findBoxByUid(createdUid)?.let { box ->
             selected.toList().forEach { deselectBox(it) }
             selectBox(box)
-            val edit = window.asDynamic().editTextFrame
+            val edit = window.asDynamic().writeTextFrame
             if (edit != null) edit(box)
         }
     }

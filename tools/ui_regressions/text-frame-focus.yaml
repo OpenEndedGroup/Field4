@@ -10,7 +10,7 @@ operations:
         check(ui.eval("return getComputedStyle(document.activeElement).outlineStyle==='none';").toString()=="true") { "Arrow key exposed a second reader focus outline" }
         ui.eval("document.querySelector('[data-focus-fixture=B] .text-frame-preview').focus();return true;")
         ui.press("Enter")
-        ui.waitForSelector("[data-focus-fixture='A'] .text-frame-editor:focus",10000.0)
+        ui.waitForSelector("[data-focus-fixture='A'] .text-frame-rich-block:focus",10000.0)
         check(ui.eval("return document.querySelector('[data-focus-fixture=B] .text-frame-editor').hidden;").toString()=="true") { "Return edited the stale focused frame" }
         ui.type("A draft kept during navigation. ")
         ui.down("Meta")
@@ -18,11 +18,11 @@ operations:
         ui.pause(60)
         ui.down("Meta")
         ui.press("ArrowRight")
-        check(ui.eval("const {a,b}=window.__textFrameFocus;return window.selectedList.length===1 && window.selectedList[0]===b && !a.contains(document.activeElement) && a.querySelector('.text-frame-editor').hidden && a.contents.startsWith('A draft kept during navigation. ');").toString()=="true") { "Command navigation retained focus or lost the previous frame's draft" }
+        check(ui.eval("const {a,b}=window.__textFrameFocus;return window.selectedList.length===1 && window.selectedList[0]===b && !a.contains(document.activeElement) && a.querySelector('.text-frame-rich').hidden && a.contents.includes('A draft kept during navigation.');").toString()=="true") { "Command navigation retained focus or lost the previous frame's draft" }
         ui.press("Enter")
         ui.up("Meta")
-        ui.waitForSelector("[data-focus-fixture='B'] .text-frame-editor:focus",10000.0)
-        check(ui.eval("return document.activeElement.value==='Bravo';").toString()=="true") { "Return did not edit the navigated-to frame" }
+        ui.waitForSelector("[data-focus-fixture='B'] .text-frame-rich-block:focus",10000.0)
+        check(ui.eval("return document.activeElement.textContent==='Bravo';").toString()=="true") { "Return did not edit the navigated-to frame" }
         ui.press("Escape")
         ui.down("Meta")
         ui.up("Meta")
