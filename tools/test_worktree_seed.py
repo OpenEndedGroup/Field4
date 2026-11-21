@@ -10,6 +10,7 @@ never cloned, so `git status` in the new worktree is as clean as after a plain c
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -170,6 +171,53 @@ class SeedTests(_Repo):
 
     def test_the_primary_is_not_seeded_from_itself(self) -> None:
         self.assertIn("no other checkout", worktree_seed.seed_worktree(self.primary).note)
+
+
+class ClaudeHookTests(_Repo):
+    """`.claude/settings.json` runs `claude-worktree-create` as Claude Code's `WorktreeCreate` hook."""
+
+    def run_hook(self, payload: dict, cwd: Path) -> subprocess.CompletedProcess:
+        environment = {k: v for k, v in os.environ.items() if k != "CLAUDE_PROJECT_DIR"}
+        return subprocess.run([sys.executable, str(Path(worktree_seed.__file__)), "claude-worktree-create"],
+                              input=json.dumps(payload), capture_output=True, text=True, cwd=cwd,
+                              env=environment, check=False)
+
+    def test_the_hook_prints_only_the_new_worktree_path_and_branches_from_main(self) -> None:
+        done = self.run_hook({"hook_event_name": "WorktreeCreate", "name": "bold-oak-a3f2",
+                              "cwd": str(self.primary)}, self.primary)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        worktree = self.primary / ".claude/worktrees/bold-oak-a3f2"
+        self.assertEqual(done.stdout, f"{worktree}\n")
+        self.assertEqual(git(worktree, "branch", "--show-current").strip(), "claude/bold-oak-a3f2")
+        self.assertEqual(git(worktree, "rev-parse", "HEAD"), git(self.primary, "rev-parse", "main"))
+        self.assertClean(worktree)
+
+    def test_a_hook_run_from_inside_a_worktree_still_nests_under_the_primary(self) -> None:
+        other = self.root / "other"
+        git(self.primary, "worktree", "add", "-q", "--detach", str(other), "main")
+        done = self.run_hook({"name": "second", "cwd": str(other)}, other)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual(done.stdout.strip(), str(self.primary / ".claude/worktrees/second"))
+
+    def test_an_existing_branch_is_checked_out_as_it_stands(self) -> None:
+        git(self.primary, "branch", "claude/resumed", "main")
+        (self.primary / "later.txt").write_text("after the branch\n")
+        git(self.primary, "add", "later.txt")
+        git(self.primary, "commit", "-qm", "later")
+        done = self.run_hook({"name": "resumed", "cwd": str(self.primary)}, self.primary)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertFalse((self.primary / ".claude/worktrees/resumed/later.txt").exists())
+
+    def test_a_name_that_is_not_a_slug_fails_the_hook_and_prints_no_path(self) -> None:
+        for name in ("", "../escape", "a/b", "-flag"):
+            done = self.run_hook({"name": name, "cwd": str(self.primary)}, self.primary)
+            self.assertNotEqual(done.returncode, 0, name)
+            self.assertEqual(done.stdout, "", name)
+
+    def test_the_project_settings_run_this_hook(self) -> None:
+        settings = json.loads((Path(__file__).resolve().parent.parent / ".claude/settings.json").read_text())
+        commands = [hook["command"] for entry in settings["hooks"]["WorktreeCreate"] for hook in entry["hooks"]]
+        self.assertEqual(commands, ['python3 "$CLAUDE_PROJECT_DIR/tools/worktree_seed.py" claude-worktree-create'])
 
 
 if __name__ == "__main__":

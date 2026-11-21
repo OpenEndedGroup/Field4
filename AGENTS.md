@@ -115,6 +115,14 @@ describe a red as expected only in prose, and never use wildcards in either regi
 
 ### Landing on `main`
 
+Make a worktree with `python3 tools/worktree_seed.py add -b <branch> <path> main`, never a plain
+`git worktree add`. That writes every tracked file again, about 5.6 GiB a tree; the seeded one
+clones them from the primary checkout and costs kilobytes until a file is edited (`du` counts
+clones as copies; `worktree_seed.py measure <path>` gives the real bytes, and `seed <path>`
+re-shares an existing tree). Claude Code's own worktrees already go through it, via the
+`WorktreeCreate` hook in `.claude/settings.json`; this line retires when a wrapper catches a plain
+`git worktree add` typed through Bash, which that hook never sees.
+
 Never merge into `main`, `git pull`, or push `main` yourself. Commit on your topic branch, run
 `uv run python tools/land.py precheck` (names conflicts with `main` and runs only the guards your
 diff can trip), then `uv run python tools/land.py enqueue` and stop: the lander merges,
