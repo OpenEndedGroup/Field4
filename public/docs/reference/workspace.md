@@ -4,7 +4,7 @@
 
 The box's own surroundings: properties, persistence, and the handful of names every box already has in scope.
 
-259 source file(s), 3635 public symbol(s), 1546 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+259 source file(s), 3636 public symbol(s), 1547 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -6467,29 +6467,29 @@ One scanned source file: its path, content hash and size.
 
 ### CompletesPath { #stringliteralcompletion-kt-completespath }
 
-[<code class="highlight"><span class="k">annotation</span> <span class="k">class</span> <span class="nf">CompletesPath</span><span class="p">(</span><span class="k">val</span> <span class="n">mask</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">root</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">chooseDirectory</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/completion/StringLiteralCompletion/#L40)
+[<code class="highlight"><span class="k">annotation</span> <span class="k">class</span> <span class="nf">CompletesPath</span><span class="p">(</span><span class="k">val</span> <span class="n">mask</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">root</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">chooseDirectory</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/completion/StringLiteralCompletion/#L44)
 
 A `String` parameter whose argument is a path: inside its string literal, completion lists files the way a [`afield.ui.output.fileChooser`](visualization.md#filechooser-kt--filechooser) does, `%name/` FileManager directories included.
 
 ### CompletesWith { #stringliteralcompletion-kt-completeswith }
 
-[<code class="highlight"><span class="k">annotation</span> <span class="k">class</span> <span class="nf">CompletesWith</span><span class="p">(</span><span class="k">val</span> <span class="n">provider</span><span class="p">:</span> <span class="nc">KClass</span><span class="p">&lt;</span><span class="k">out</span> <span class="nc">StringCompletions</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/completion/StringLiteralCompletion/#L60)
+[<code class="highlight"><span class="k">annotation</span> <span class="k">class</span> <span class="nf">CompletesWith</span><span class="p">(</span><span class="k">val</span> <span class="n">provider</span><span class="p">:</span> <span class="nc">KClass</span><span class="p">&lt;</span><span class="k">out</span> <span class="nc">StringCompletions</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/completion/StringLiteralCompletion/#L76)
 
 A `String` parameter whose argument is one of a computed set of strings: inside its string literal, completion offers what `provider` returns, asked afresh each time the popup opens.
 
 ### StringCompletions { #stringliteralcompletion-kt-stringcompletions }
 
-[<code class="highlight"><span class="k">fun</span> <span class="k">interface</span> <span class="nc">StringCompletions</span></code>](source/jvmMain/afield/runtime/completion/StringLiteralCompletion/#L63)
+[<code class="highlight"><span class="k">fun</span> <span class="k">interface</span> <span class="nc">StringCompletions</span></code>](source/jvmMain/afield/runtime/completion/StringLiteralCompletion/#L79)
 
 The strings a [`CompletesWith`](workspace.md#stringliteralcompletion-kt-completeswith) parameter completes to.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="stringliteralcompletion-kt--stringcompletions--candidates"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">candidates</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="nc">StringCompletionContext</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/runtime/completion/StringLiteralCompletion/#L65) | Every string worth offering; the popup narrows them to what has been typed. |
+| <a id="stringliteralcompletion-kt--stringcompletions--candidates"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">candidates</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="nc">StringCompletionContext</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/runtime/completion/StringLiteralCompletion/#L81) | Every string worth offering; the popup narrows them to what has been typed. |
 
 ### StringCompletionContext { #stringliteralcompletion-kt-stringcompletioncontext }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">StringCompletionContext</span><span class="p">(</span><span class="k">val</span> <span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="k">val</span> <span class="n">typed</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">callable</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">parameter</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">receiver</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/completion/StringLiteralCompletion/#L77)
+[<code class="highlight"><span class="k">class</span> <span class="nf">StringCompletionContext</span><span class="p">(</span><span class="k">val</span> <span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="k">val</span> <span class="n">typed</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">callable</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">parameter</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">receiver</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/completion/StringLiteralCompletion/#L96)
 
 Where a [`StringCompletions`](workspace.md#stringliteralcompletion-kt-stringcompletions) is being asked: [`typed`](workspace.md#stringliteralcompletion-kt--stringcompletioncontext--typed) is the literal's text up to the caret, [`box`](workspace.md#stringliteralcompletion-kt--stringcompletioncontext--box) the box being edited, and [`callable`](workspace.md#stringliteralcompletion-kt--stringcompletioncontext--callable) / [`parameter`](workspace.md#stringliteralcompletion-kt--stringcompletioncontext--parameter) the call and parameter name the literal is an argument for.
 
@@ -6503,15 +6503,16 @@ Where a [`StringCompletions`](workspace.md#stringliteralcompletion-kt-stringcomp
 
 ### StringLiteralCompletion { #stringliteralcompletion-kt-stringliteralcompletion }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">StringLiteralCompletion</span></code>](source/jvmMain/afield/runtime/completion/StringLiteralCompletion/#L101)
+[<code class="highlight"><span class="k">object</span> <span class="nc">StringLiteralCompletion</span></code>](source/jvmMain/afield/runtime/completion/StringLiteralCompletion/#L123)
 
 Completion inside a Kotlin string literal, ahead of Kotlin completion (which has nothing to say there).
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="stringliteralcompletion-kt--stringliteralcompletion--paths"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">PATHS</span></code>](source/jvmMain/afield/runtime/completion/StringLiteralCompletion/#L102) |  |
-| <a id="stringliteralcompletion-kt--stringliteralcompletion--choices"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CHOICES</span></code>](source/jvmMain/afield/runtime/completion/StringLiteralCompletion/#L103) |  |
-| <a id="stringliteralcompletion-kt--stringliteralcompletion--complete"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">complete</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="o">?</span><span class="p">,</span> <span class="n">code</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">position</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Completion</span><span class="o">?</span></code>](source/jvmMain/afield/runtime/completion/StringLiteralCompletion/#L112) |  |
+| <a id="stringliteralcompletion-kt--stringliteralcompletion--paths"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">PATHS</span></code>](source/jvmMain/afield/runtime/completion/StringLiteralCompletion/#L124) |  |
+| <a id="stringliteralcompletion-kt--stringliteralcompletion--choices"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CHOICES</span></code>](source/jvmMain/afield/runtime/completion/StringLiteralCompletion/#L125) |  |
+| <a id="stringliteralcompletion-kt--stringliteralcompletion--index"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">INDEX</span></code>](source/jvmMain/afield/runtime/completion/StringLiteralCompletion/#L128) | The `CallSite.callee` of index access, `foo.bar["…"]`. |
+| <a id="stringliteralcompletion-kt--stringliteralcompletion--complete"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">complete</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="o">?</span><span class="p">,</span> <span class="n">code</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">position</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Completion</span><span class="o">?</span></code>](source/jvmMain/afield/runtime/completion/StringLiteralCompletion/#L137) |  |
 
 ## descriptions.kt { #descriptions-kt }
 

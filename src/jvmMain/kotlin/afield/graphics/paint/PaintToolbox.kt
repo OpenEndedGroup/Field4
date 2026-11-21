@@ -6,9 +6,17 @@ package afield.graphics.paint
  * loaded back: [PaintToolbox].
  */
 
+import afield.runtime.completion.CompletesWith
+import afield.runtime.completion.StringCompletionContext
+import afield.runtime.completion.StringCompletions
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.File
+
+/** Completion for a tool name on a [PaintToolbox] held in a box variable: `tools["`, `tools.brush("`. */
+internal object PaintToolNames : StringCompletions {
+    override fun candidates(context: StringCompletionContext): List<String> = (context.receiver as? PaintToolbox)?.names.orEmpty()
+}
 
 /**
  * Tools kept by name between strokes: a brush stays dirty with what it last picked up, a knife
@@ -33,39 +41,39 @@ class PaintToolbox : AutoCloseable {
     val names: List<String> get() = tools.keys.toList()
 
     /** The tool called [name], or `null`. */
-    operator fun get(name: String): PaintTool? = tools[name]
+    operator fun get(@CompletesWith(PaintToolNames::class) name: String): PaintTool? = tools[name]
 
     /** Keep [tool] as [name], putting away (closing) whatever had that name. */
-    operator fun set(name: String, tool: PaintTool) {
+    operator fun set(@CompletesWith(PaintToolNames::class) name: String, tool: PaintTool) {
         require(name.isNotBlank()) { "a tool needs a name" }
         val old = tools.put(name, tool)
         if (old !== tool) (old as? AutoCloseable)?.close()
     }
 
-    operator fun contains(name: String): Boolean = name in tools
+    operator fun contains(@CompletesWith(PaintToolNames::class) name: String): Boolean = name in tools
 
     /** Put away the tool called [name]. */
-    fun remove(name: String) {
+    fun remove(@CompletesWith(PaintToolNames::class) name: String) {
         (tools.remove(name) as? AutoCloseable)?.close()
     }
 
     /** The brush called [name]. */
-    fun brush(name: String): PaintBrush = typed(name)
+    fun brush(@CompletesWith(PaintToolNames::class) name: String): PaintBrush = typed(name)
 
     /** The knife called [name]. */
-    fun knife(name: String): PaintKnife = typed(name)
+    fun knife(@CompletesWith(PaintToolNames::class) name: String): PaintKnife = typed(name)
 
     /** The rag called [name]. */
-    fun rag(name: String): PaintRag = typed(name)
+    fun rag(@CompletesWith(PaintToolNames::class) name: String): PaintRag = typed(name)
 
     /** The pencil (or chalk) called [name]. */
-    fun pencil(name: String): Pencil = typed(name)
+    fun pencil(@CompletesWith(PaintToolNames::class) name: String): Pencil = typed(name)
 
     /** The watercolour brush called [name]. */
-    fun waterBrush(name: String): WaterBrush = typed(name)
+    fun waterBrush(@CompletesWith(PaintToolNames::class) name: String): WaterBrush = typed(name)
 
     /** The brush of moving hairs called [name]. */
-    fun dynamicBrush(name: String): DynamicBrush = typed(name)
+    fun dynamicBrush(@CompletesWith(PaintToolNames::class) name: String): DynamicBrush = typed(name)
 
     private inline fun <reified T : PaintTool> typed(name: String): T = when (val t = tools[name]) {
         null -> throw NoSuchElementException("no tool named \"$name\"" + if (tools.isEmpty()) "" else "; there are: ${tools.keys.joinToString()}")
