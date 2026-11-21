@@ -3080,13 +3080,13 @@ Smoke tests for the graph connectivity library.
 
 ### LambdaNetFigure { #lambdanetfigure-kt-lambdanetfigure }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">LambdaNetFigure</span></code>](source/jvmMain/afield/examples/stdlib/LambdaNetFigure/#L83)
+[<code class="highlight"><span class="k">object</span> <span class="nc">LambdaNetFigure</span></code>](source/jvmMain/afield/examples/stdlib/LambdaNetFigure/#L84)
 
-Writes the figure for `dev_docs/INTERACTION_NETS_LAMBDA.md`: one reduction, one panel per step, left to right.
+Writes the figure for `dev_docs/INTERACTION_NETS_LAMBDA.md`: one reduction, one panel per step, read left to right and then down, `COLUMNS` panels to a row.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="lambdanetfigure-kt--lambdanetfigure--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/stdlib/LambdaNetFigure/#L93) |  |
+| <a id="lambdanetfigure-kt--lambdanetfigure--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/stdlib/LambdaNetFigure/#L95) |  |
 
 ## LambdaPropertyOracleTest.kt { #lambdapropertyoracletest-kt }
 
