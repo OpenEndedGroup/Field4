@@ -1297,13 +1297,15 @@ function renderStudioAo() {
 // Where the browser has WebGPU, the tracer's WebGPU build traces with compute kernels into its own
 // canvas beneath this one, from the very scene objects the viewer built (three.webgpu.js and this
 // file's three share three.core.js); this canvas then clears to transparent and draws only the
-// overlays. It stops at PATH_TRACE_DENOISE_SAMPLES and runs Open Image Denoise over the result.
+// overlays. It runs Open Image Denoise at each of PATH_TRACE_DENOISE_STEPS samples per pixel and stops at
+// the last, keeping each denoised image on screen while it traces on to the next.
 // Camera moves show its own low-resolution preview; moved parts and changed materials are updated in
 // place, and only new geometry re-bakes. Until its kernels are compiled the Realism raster draws.
 // Elsewhere (or with `?pathtraceBackend=webgl`) the WebGL tracer accumulates to PATH_TRACE_MAX_SAMPLES,
 // showing the Realism raster before its first samples and whenever anything moves.
 const PATH_TRACE_MAX_SAMPLES = 512;
-const PATH_TRACE_DENOISE_SAMPLES = 32;
+const PATH_TRACE_DENOISE_STEPS = [4, 8, 16, 32];
+const PATH_TRACE_DENOISE_SAMPLES = PATH_TRACE_DENOISE_STEPS[PATH_TRACE_DENOISE_STEPS.length - 1];
 // Named through constants, not quoted in `import(…)`: a publication bundles only three and rewrites
 // every literal import in this file (publication-three.js), and its views never path trace.
 // The WebGPU files come from tools/three-pathtracer-webgpu-bundle.
@@ -1370,27 +1372,67 @@ async function loadGpuPathTracer() {
     gpuRenderer.setClearColor(0x000000, 0);
     const tracer = new gpuTracer.WebGPUPathTracer(gpuRenderer);
     tracer.maxBounces = 6;
-    tracer.maxSamples = PATH_TRACE_DENOISE_SAMPLES;
+    tracer.maxSamples = PATH_TRACE_DENOISE_STEPS[0];
     // Compile in the background (seconds, the first time) while the raster draws, instead of stalling the page.
     tracer.asyncCompile = true;
     const gpu = {renderer: gpuRenderer, tracer, canvas, stage: 'building', samples: 0, keys: null, cameraKey: null, envKey: null,
-        equirect: {source: null, texture: null}, size: ''};
-    const denoiser = new gpuTracer.OIDNDenoiser({initUNetFromURL: gpuTracer.initUNetFromURL, auxWeightsUrl: PATH_TRACE_MODULES.weights});
+        equirect: {source: null, texture: null}, size: '', denoiser: null, denoised: 0};
+    const denoiser = new (heldImageDenoiser(gpuTracer.OIDNDenoiser))(
+        {initUNetFromURL: gpuTracer.initUNetFromURL, auxWeightsUrl: PATH_TRACE_MODULES.weights});
     denoiser.addEventListener('error', event => {
         console.warn('three viewer: the path trace denoiser failed; accumulating samples instead', event.error);
-        tracer.setDenoiser(null); tracer.maxSamples = PATH_TRACE_MAX_SAMPLES; requestRender();
+        gpu.denoiser = null; tracer.setDenoiser(null); tracer.maxSamples = PATH_TRACE_MAX_SAMPLES; requestRender();
     });
+    gpu.denoiser = denoiser;
     tracer.setDenoiser(denoiser);
     tracer.addEventListener('progress', event => {
         gpu.stage = event.stage;
         if (event.samples) gpu.samples = event.samples.avg;
         requestRender();
     });
-    tracer.addEventListener('complete', () => { gpu.stage = 'complete'; requestRender(); });
+    tracer.addEventListener('complete', () => {
+        gpu.stage = 'complete';
+        if (gpu.denoiser) { gpu.denoised = tracer.maxSamples; gpu.denoiser.dropHeld(); }
+        // Trace on to the next step. Raising maxSamples keeps the samples; the denoiser keeps this image up meanwhile.
+        const next = gpu.denoiser && PATH_TRACE_DENOISE_STEPS.find(n => n > tracer.maxSamples);
+        if (next) { gpu.denoiser.holdImage(() => { tracer.maxSamples = next; }); gpu.stage = 'rendering'; }
+        requestRender();
+    });
     // Beneath this canvas: a positioned element paints above a static one, so this one is positioned too.
     renderer.domElement.style.position = 'relative';
     renderer.domElement.before(canvas);
     return gpu;
+}
+/**
+ * The tracer's OIDN denoiser, made to keep its finished image on screen while the tracer goes on to the next
+ * denoise step. Raising the tracer's maxSamples resets the denoiser, which throws its image away, and the
+ * view would drop back to raw noise until the next step's denoise finished. Inside `holdImage(step)` the
+ * reset sets the finished image aside instead, and `texture` shows it until the next denoise is complete.
+ * Any other reset (the view changed) drops it. Reads the private `_texture`, `_rawTexture` and `_complete`
+ * of three-gpu-pathtracer 0.0.28's OIDNDenoiser; recheck when the vendored copy changes.
+ */
+function heldImageDenoiser(OIDNDenoiser) {
+    return class extends OIDNDenoiser {
+        get texture() { return this._complete || !this._held ? this._texture : this._held.texture; }
+        holdImage(step) {
+            this.dropHeld();
+            if (this._complete && this._texture) {
+                this._held = {texture: this._texture, raw: this._rawTexture};
+                this._texture = null; this._rawTexture = null;
+            }
+            this._holding = true;
+            try { step(); } finally { this._holding = false; }
+        }
+        dropHeld() {
+            if (!this._held) return;
+            this._held.texture.dispose(); this._held.raw?.destroy();
+            this._held = null;
+        }
+        reset() {
+            if (!this._holding) this.dropHeld();
+            super.reset();
+        }
+    };
 }
 /**
  * What the tracer sees: lit, opaque-enough surfaces, the studio ground and, while a section is on, its
@@ -1584,6 +1626,7 @@ function renderGpuPathTrace(gpu) {
         try { buildGpuPathTraceScene(gpu); tracer.setScene(gpu.scene, camera); }
         catch (error) { abandonGpuPathTrace(gpu, error); return; }
         Object.assign(gpu, {keys, cameraKey: pathTraceCameraKey(), envKey: pathTraceEnvKey(), stage: 'building', samples: 0});
+        restartGpuDenoiseSteps(gpu);
         pathTrace.pending = null;
         resetPathTraceExposure();
     } else {
@@ -1595,17 +1638,48 @@ function renderGpuPathTrace(gpu) {
         if (cameraKey !== gpu.cameraKey) { tracer.updateCamera(); reset = true; }
         if (envKey !== gpu.envKey) { syncGpuPathTraceEnvironment(gpu); tracer.updateEnvironment(); reset = true; resetPathTraceExposure(); }
         Object.assign(gpu, {keys, cameraKey, envKey});
-        if (reset) Object.assign(gpu, {stage: 'rendering', samples: 0});
+        if (reset) { Object.assign(gpu, {stage: 'rendering', samples: 0}); restartGpuDenoiseSteps(gpu); }
     }
     tracer.renderSample();
+    // The tracer re-reads its sample count only every 250 ms, and once every pixel reaches maxSamples it
+    // idles until it does; read it every frame, so each denoise step starts as soon as its samples are in.
+    if (gpu.stage === 'rendering' && gpu.denoiser) tracer.getSampleCountsAsync();
     const ready = !tracer.compiling && gpu.stage !== 'building' && gpu.stage !== 'compiling';
     showGpuPathTrace(gpu, ready);
-    const samples = Math.min(gpu.samples, PATH_TRACE_DENOISE_SAMPLES) | 0;
-    setPathTraceReadout(!ready ? '…' : gpu.stage === 'complete' && tracer.maxSamples === PATH_TRACE_DENOISE_SAMPLES ? `${samples} spp · denoised`
-        : gpu.stage === 'denoising' ? `${samples} spp · denoising` : `${Math.floor(gpu.samples)} spp`);
-    // Meter the finished (denoised) image; each step re-blits it at the new exposure.
-    const meter = ready && gpu.stage === 'complete' && meterPathTraceExposure(gpu.canvas);
+    const samples = Math.min(gpu.samples, tracer.maxSamples) | 0;
+    setPathTraceReadout(!ready ? '…' : gpu.stage === 'complete' && gpu.denoiser ? `${samples} spp · denoised`
+        : gpu.stage === 'denoising' ? `${samples} spp · denoising`
+        : gpu.denoised ? `denoised at ${gpu.denoised} · ${Math.floor(gpu.samples)} spp` : `${Math.floor(gpu.samples)} spp`);
+    // Meter a denoised image once one is up (or, with no denoiser, the finished trace); each step re-blits it
+    // at the new exposure.
+    const meter = ready && (gpu.denoised > 0 || gpu.stage === 'complete') && meterPathTraceExposure(gpu.canvas);
     if (!ready || gpu.stage !== 'complete' || meter) requestRender();
+}
+// OrbitControls' damping never quite stops: each frame moves the camera by a fixed fraction of what is
+// left of the glide, and render() updates the controls every frame while a trace converges. Every one of
+// those sub-pixel moves restarted the trace, holding its low-resolution preview on screen for a second or
+// two after the view had visibly stopped. Once a frame moves the view by less than PATH_TRACE_SETTLE_PX,
+// the rest of the glide (about 11× that, at the viewer's damping) is applied at once and the camera rests.
+const PATH_TRACE_SETTLE_PX = 0.1;
+const orbitSettle = {position: new THREE.Vector3(), quaternion: new THREE.Quaternion(), primed: false};
+function settleOrbitDamping() {
+    const s = orbitSettle, moved = s.primed ? viewMotionPx(s.position, s.quaternion) : Infinity;
+    if (controls.enableDamping && moved > 0 && moved < PATH_TRACE_SETTLE_PX) {
+        controls.enableDamping = false; controls.update(); controls.enableDamping = true;
+    }
+    s.position.copy(camera.position); s.quaternion.copy(camera.quaternion); s.primed = true;
+}
+/** How far, in screen pixels, the view moved since the camera stood at `position` facing `quaternion`. */
+function viewMotionPx(position, quaternion) {
+    const distance = Math.max(camera.position.distanceTo(controls.target), 1e-9), h = Math.max(1, container.clientHeight);
+    const worldPerPx = camera.isPerspectiveCamera ? 2 * distance * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) / camera.zoom / h
+        : (camera.top - camera.bottom) / camera.zoom / h;
+    return (quaternion.angleTo(camera.quaternion) * distance + position.distanceTo(camera.position)) / worldPerPx;
+}
+/** A new picture starts again from the first denoise step (setting maxSamples keeps the reset's empty accumulation). */
+function restartGpuDenoiseSteps(gpu) {
+    gpu.denoised = 0;
+    if (gpu.denoiser && gpu.tracer.maxSamples !== PATH_TRACE_DENOISE_STEPS[0]) gpu.tracer.maxSamples = PATH_TRACE_DENOISE_STEPS[0];
 }
 /** A scene the WebGPU tracer cannot take: trace on WebGL from here on, rather than fail every frame. */
 function abandonGpuPathTrace(gpu, error) {
@@ -9861,6 +9935,7 @@ function render() {
         if (look) { applyShotLook(look); if (!shot.held()) requestRender(); }
     }
     controls.update();
+    if (pathTraceActive()) settleOrbitDamping();
     const interactivePointer = editorState.mode === 'camera' ? updateInteractiveHover() : false;
     if (editorState.mode === 'camera') renderer.domElement.style.cursor = interactivePointer ? 'pointer' : '';
 
