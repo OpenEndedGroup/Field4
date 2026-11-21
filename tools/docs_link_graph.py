@@ -40,8 +40,14 @@ What it writes (``build/docs_link_graph/`` by default)
 * ``graph.html`` — the graph drawn in 3D, self-contained (it inlines Field's vendored three.js and
   opens from disk): the documentation as a core laid out by its links, the code as a shell around
   it (see ``layout``); coloured by section, last edit or code drift; click a node for what it
-  links and what links it, toggle transcripts, code, the reference and edge kinds. The page is
-  ``tools/docs_link_graph.html`` with the data and positions filled in.
+  links and what links it, double-click to frame it with its neighbours, toggle transcripts,
+  code, the reference and edge kinds. Switching on an edge kind that ties pages to code (cites,
+  calls, mentions, ...) runs a force layout of those edges in the page, which brings the code in
+  beside the pages that use it. The page is ``tools/docs_link_graph.html`` with the data and
+  positions filled in.
+* The published site carries the same view as ``assets/docs_map/graph.html``, embedded by
+  ``docs_map.md``: ``tools/build_zensical_docs.py`` calls ``write_site_map``, which links each
+  node to its built page (a source file to its reference section) and skips the git history.
 * ``graph.json`` (node-link) and ``graph.graphml`` (opens in Gephi, yEd, Cytoscape).
 
 What it cannot see
@@ -98,6 +104,7 @@ REFERENCE_PREFIX = "reference/"
 # Catalogues: they link (nearly) every page by construction, so they are left out of the editorial
 # degree counts. changelog.md is written from main's history; agent_transcripts.md lists every
 # transcript's page.
+REFERENCE_ANCHOR_RE = re.compile(r"^[^\n]*\{\s*#(?P<anchor>[\w-]+)\s*\}")
 INDEX_PAGES = ("changelog.md", "agent_transcripts.md")
 
 
@@ -818,8 +825,52 @@ def layout(graph: Graph) -> tuple[dict[str, tuple[float, float, float]], dict[st
     return {k: tuple(float(c) for c in pos.get(k, np.zeros(3))) for k in [*nodes, *packages]}, packages
 
 
+def reference_anchors(repo_root: Path) -> dict[str, str]:
+    """Source file → its section on the reference pages, as ``reference/<page>.md#<anchor>``."""
+    hooks = import_docs_hooks()
+    found: dict[str, str] = {}
+    for page in sorted((repo_root / DOCS_RELATIVE / "reference").glob("*.md")):
+        for section in page.read_text(encoding="utf-8").split("\n## ")[1:]:
+            path = hooks.REFERENCE_SOURCE_PATH_RE.search(section)
+            anchor = REFERENCE_ANCHOR_RE.match(section)
+            if path and anchor:
+                found.setdefault(path.group(1), f"{REFERENCE_PREFIX}{page.name}#{anchor.group('anchor')}")
+    return found
+
+
+def site_url(page: str, site_root: str) -> str:
+    """A docs page's built URL (directory URLs: ``a/b.md`` → ``a/b/``, ``a/index.md`` → ``a/``)."""
+    page, _, anchor = page.partition("#")
+    stem = page.removesuffix(".md")
+    url = stem.removesuffix("index") if stem == "index" or stem.endswith("/index") else stem + "/"
+    return site_root + url + (f"#{anchor}" if anchor else "")
+
+
+def site_hrefs(graph: Graph, repo_root: Path, site_root: str) -> dict[str, str]:
+    """Where each node opens on the published site, from a page ``site_root`` below its root.
+
+    Pages open themselves; a source file opens its section of the reference (GitHub when the
+    reference has none); a transcript opens in the offline viewer when its document ships."""
+    anchors = reference_anchors(repo_root)
+    hooks = import_docs_hooks()
+    github = f"{hooks.REPO_SOURCE_GITHUB}/blob/{hooks.REPO_SOURCE_BRANCH}/"
+    hrefs: dict[str, str] = {}
+    for key, attrs in graph.nodes.items():
+        path = attrs.get("path") or ""
+        if attrs["kind"] in ("page", "reference"):
+            hrefs[key] = site_url(path.removeprefix(DOCS_RELATIVE + "/"), site_root)
+        elif attrs["kind"] == "code":
+            hrefs[key] = site_url(anchors[path], site_root) if path in anchors else github + path
+        elif attrs["kind"] == "transcript":
+            document = f"assets/agent_transcripts/{attrs['label']}/metadata.edn"
+            if (repo_root / DOCS_RELATIVE / document).is_file():
+                hrefs[key] = f"{site_root}offline.html?file={document}"
+    return hrefs
+
+
 def view_payload(
-    graph: Graph, positions: dict[str, tuple[float, float, float]], packages: dict[str, dict[str, Any]], out_dir: Path
+    graph: Graph, positions: dict[str, tuple[float, float, float]], packages: dict[str, dict[str, Any]], out_dir: Path,
+    hrefs: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     import os
 
@@ -833,7 +884,10 @@ def view_payload(
         entry: dict[str, Any] = {"id": key, "label": attrs.get("label", key), "kind": attrs["kind"], "p": [round(x, 3), round(y, 3), round(z, 3)]}
         if key in index_keys:
             entry["index"] = True
-        if attrs.get("path"):
+        if hrefs is not None:
+            if key in hrefs:
+                entry["href"] = hrefs[key]
+        elif attrs.get("path"):
             entry["href"] = Path(os.path.relpath(REPO_ROOT / attrs["path"], out_dir)).as_posix()
         for name in VIEW_NODE_FIELDS:
             value = attrs.get(name)
@@ -852,9 +906,14 @@ def view_payload(
     return {"edgeKinds": list(VIEW_EDGE_KINDS), "nodes": view_nodes, "links": links, "packages": view_packages, "generated": day(time.time())}
 
 
-def write_view(graph: Graph, out_dir: Path) -> Path:
+def write_view(graph: Graph, out_dir: Path, *, site_root: str | None = None, name: str = "graph.html") -> Path:
+    """Write the 3D viewer. With ``site_root`` (the path from ``out_dir`` up to the built site's
+    root, e.g. ``"../../"``) nodes link to the published pages instead of the checkout's files."""
     positions, packages = layout(graph)
-    payload = json.dumps(view_payload(graph, positions, packages, out_dir), separators=(",", ":"), default=str)
+    hrefs = site_hrefs(graph, REPO_ROOT, site_root) if site_root is not None else None
+    view = view_payload(graph, positions, packages, out_dir, hrefs)
+    view["site"] = site_root is not None
+    payload = json.dumps(view, separators=(",", ":"), default=str)
     vendor = sorted(REPO_ROOT.glob(THREE_VENDOR_GLOB))
     if not vendor:
         raise SystemExit(f"graph.html needs Field's vendored three.js ({THREE_VENDOR_GLOB}) and found none")
@@ -863,9 +922,24 @@ def write_view(graph: Graph, out_dir: Path) -> Path:
     for marker, path in (("THREE_CORE", "three.core.js"), ("THREE_MODULE", "three.module.js"), ("THREE_ORBIT", "addons/controls/OrbitControls.js")):
         html = html.replace(f"/*{marker}*/", (three / path).read_text(encoding="utf-8").replace("</script", "<\\/script"), 1)
     html = html.replace("/*GRAPH*/null", payload.replace("</", "<\\/"), 1)
-    target = out_dir / "graph.html"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    target = out_dir / name
     target.write_text(html, encoding="utf-8")
     return target
+
+
+SITE_MAP_DIR = "assets/docs_map"
+
+
+def write_site_map(site_dir: Path, repo_root: Path = REPO_ROOT) -> Path:
+    """The published site's map (``docs_map.md`` embeds it): every page, transcript, reference
+    page and reached source file, linking to the built pages. Written into a built site by
+    ``tools/build_zensical_docs.py``. No git history: a clean checkout's full ``--numstat`` log
+    takes minutes, and the age colourings are for us, not for a reader."""
+    out_dir = site_dir / SITE_MAP_DIR
+    graph = build_graph(repo_root, transcripts=True, code=True, reference=True, history=None)
+    analyse(graph, out_dir, top=1, now=time.time(), options={"transcripts": True, "code": True, "reference": True})
+    return write_view(graph, out_dir, site_root="../../")
 
 
 def day(ts: float | None) -> str:

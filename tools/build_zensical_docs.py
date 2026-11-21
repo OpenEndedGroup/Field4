@@ -1258,6 +1258,20 @@ def emit_build_info(*, site_dir: Path, repo_root: Path) -> None:
     (site_dir / "field-docs-build.json").write_text(json.dumps(info, indent=2) + "\n", encoding="utf-8")
 
 
+def emit_docs_map(*, site_dir: Path, repo_root: Path) -> str | None:
+    """Write the link map `docs_map.md` embeds (`tools/docs_link_graph.py`). Returns why it could not."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    try:
+        import docs_link_graph
+        started = time.monotonic()
+        target = docs_link_graph.write_site_map(site_dir, repo_root)
+    except (ImportError, OSError, SystemExit, ValueError) as error:
+        print(f"WARNING: the docs map was not written: {error}")
+        return f"the docs map was not written ({error})"
+    print(f"Wrote the docs map {target.relative_to(site_dir)} in {time.monotonic() - started:.0f} s.")
+    return None
+
+
 def emit_offline_viewer(*, site_dir: Path) -> None:
     """Copy the offline document viewer into the built site.
 
@@ -1787,6 +1801,11 @@ def run(args: argparse.Namespace) -> int:
         for page_rel, paths in report.stale_paths.items():
             for stale_path in paths:
                 print(f"  {page_rel}: {stale_path}")
+    # After postprocess_built_site, which rewrites HTML and would read the map's inlined data as prose.
+    map_failure = emit_docs_map(site_dir=staging, repo_root=repo_root)
+    if map_failure and args.strict:
+        print(f"{FAILURE_PREFIX}{map_failure}; failing because --strict.", file=sys.stderr)
+        return 1
     emit_offline_viewer(site_dir=staging)
     emit_build_info(site_dir=staging, repo_root=repo_root)
     copied = copy_workspace_markdown(source_docs=public_dir / "docs", site_dir=staging)
