@@ -8,11 +8,54 @@ Every node also carries an energy, and every rule splits or reduces the energy o
 
 ## Reducing a λ-term end to end
 
-`LambdaTerms.normalise("(\\x. x x) (\\y. y)")` parses a term, compiles it to a net, reduces it and reads the answer back as a term. `parse` accepts `\x. x x` or `λx. x x`, with `\x y. e` as shorthand, and `format` prints a term that parses back to the same thing. When two `DUP` fans meet, the `fan-fan` rule compares their levels: two fans at the same level cancel, and two at different levels pass through each other. `erase-erase` does the same for two erasers. Pass `Reducer(relaxIterations = 0)` when nothing will be drawn, so the reduction skips the layout work; the figure below passes 8.
+`LambdaTerms.normalise("(\\x. x x) (\\y. y)")` parses a term, compiles it to a net, reduces it and reads the answer back as a term. `parse` accepts `\x. x x` or `λx. x x`, with `\x y. e` as shorthand, and `format` prints a term that parses back to the same thing. When two `DUP` fans meet, the `fan-fan` rule compares their levels: two fans at the same level cancel, and two at different levels pass through each other. `erase-erase` does the same for two erasers. Pass `Reducer(relaxIterations = 0)` when nothing will be drawn, so the reduction skips the layout work. The box below also passes 0, but for the opposite reason: it calls `relax` itself on every frame, so the layout keeps moving between reactions and you can watch each rewrite settle.
 
-![Eleven panels in rows of four, following one reduction: the compiled net of six agents, then ten reactions — beta-linear, delim-root, delim-lam, delim-delim, dup-lam, fan-fan, beta-linear, delim-root, delim-lam, delim-delim — ending in two agents, a yellow ROOT holding a single green abstraction. A red wire marks each pair of principal ports facing each other; in the last panel that is the ROOT and its answer, which no rule reduces](assets/interaction_nets_lambda/lambda_reduction.svg)
+```diffstatic_runner {data-lang=kotlin video="assets/interaction_nets_lambda/lambda_reduction.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="22" fps="30" timeout="240" w="540" embed=true name="interaction-lambda-reduction-video" alt="the net for (λx. x x) (λy. y) reducing one reaction at a time: six agents strung out from a yellow ROOT, a red wire marking the pair about to react; each reaction rewires the net and it drifts into a new shape, a pair of teal delimiters appearing and being walked away after each beta, two yellow-green fans meeting and cancelling, until two agents are left, the ROOT holding one green abstraction, and the caption reads back λa. a"}
+:::static
+val term = "(λx. x x) (λy. y)"
+val compiled = LambdaTerms.compile(LambdaTerms.parse(term))
+val net = compiled.net
+val reducer = Reducer(Lambda.rules(), relaxIterations = 0)
+net.relax(60)
 
-Those are the eleven stages of `(λx. x x) (λy. y)`, a small term that exercises several kinds of agent, read left to right and then down. The compiled net has 6 agents: ROOT, two APP, two LAM and one DUP, the fan for `x`, which is used twice. Each `beta-linear` leaves two `DELIM` scope delimiters behind, and the three reactions after it (`delim-root`, `delim-lam`, `delim-delim`) walk them out of the way. In between, `dup-lam` copies the abstraction, so the count rises to 6 with two fans facing each other, and `fan-fan` cancels the matched pair. The last panel is 2 agents holding `λa. a`. Each panel is scaled to fit its own box, so compare the agent counts rather than the sizes of the drawings.
+// One reaction every 45 frames, after a pause on the compiled net; between them the layout keeps relaxing.
+var frames = 0
+var steps = 0
+var lastRule = "compiled"
+var finished = false
+var view = net.layoutBounds()!!
+
+loop {
+    frames++
+    if (!finished && frames >= 45 * (steps + 1)) {
+        val detail = reducer.stepDetailed(net)
+        if (detail == null) finished = true else {
+            steps++
+            lastRule = detail.ruleName
+        }
+    }
+    net.relax(3)
+
+    // Ease the framing toward a square around the net, never narrower than 300 units, so two agents do not fill it.
+    val b = net.layoutBounds(padding = 70.0)!!
+    val cx = (b[0] + b[2]) / 2
+    val cy = (b[1] + b[3]) / 2
+    val half = max(150.0, max(b[2] - b[0], b[3] - b[1]) / 2)
+    val target = [cx - half, cy - half, cx + half, cy + half]
+    view = DoubleArray(4) { view[it] + (target[it] - view[it]) * 0.12 }
+    display("net", net.toPngBytes(540, 540, view))
+
+    val answer = if (finished) " · reads back as ${LambdaTerms.format(LambdaTerms.readback(compiled))}" else ""
+    display(
+        "stats",
+        "<div style='font-family:monospace;font-size:14px'>$term · step $steps · $lastRule · " +
+            "${net.nodes.size} agents$answer</div>",
+    )
+    frame()
+}
+```
+
+That is `(λx. x x) (λy. y)`, a small term that exercises several kinds of agent. The compiled net has 6 agents: ROOT, two APP, two LAM and one DUP, the fan for `x`, which is used twice. Each `beta-linear` leaves two `DELIM` scope delimiters behind, and the three reactions after it (`delim-root`, `delim-lam`, `delim-delim`) walk them out of the way. In between, `dup-lam` copies the abstraction, so the count rises to 6 with two fans facing each other, and `fan-fan` cancels the matched pair. Ten reactions later, 2 agents are left holding `λa. a`. The framing follows the net as it grows and shrinks, so compare the agent counts in the caption rather than the sizes of the drawings.
 
 A term with no normal form never finishes reducing, so `normalise` takes a `maxSteps` and leaves `Run.finished` false when it runs out. `Run.steps` counts every reaction, fan meetings and erasures included, so it is larger than the number of β-steps.
 
