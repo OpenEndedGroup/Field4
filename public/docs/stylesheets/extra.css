@@ -167,20 +167,33 @@ h3 {
 .md-typeset h1 + h2,
 .md-typeset h1 + h3,
 .md-typeset h2 + h2,
-.md-typeset h2 + h3,
-.md-typeset .docs-map-link + h2,
-.md-typeset .docs-map-link + h3 {
+.md-typeset h2 + h3 {
     margin-top: 0;
 }
 
-/* The line under each page's title that opens the map of the docs at that page's node
-   (tools/docs_link_graph.py link_pages_to_map adds it to the built pages). */
-.md-typeset .docs-map-link {
-    margin: -0.6em 0 1.6em;
-    font-size: 0.8rem;
+/* The map icon at the right of each page's title, which opens the map of the docs at that page's
+   node (tools/docs_link_graph.py link_pages_to_map puts it in the built pages). */
+.md-typeset h1 > .docs-map-link {
+    float: right;
+    display: block;
+    /* Sized and centred on the title's line (line-height 1.3); links elsewhere set their own size. */
+    font-size: inherit;
+    width: 0.4em;
+    height: 0.4em;
+    margin: 0.45em 0 0 0.5em;
+    color: var(--mono-text);
+    opacity: 0.4;
+    transition: opacity 0.2s;
 }
-.md-typeset .docs-map-link a::after {
-    content: " \2192";
+.md-typeset h1 > .docs-map-link:hover,
+.md-typeset h1 > .docs-map-link:focus-visible {
+    color: white;
+    opacity: 1;
+}
+.md-typeset h1 > .docs-map-link svg {
+    display: block;
+    width: 100%;
+    height: 100%;
 }
 
 /* The map itself (docs_map.md). It fills the text column on narrow screens; once the reading rail
