@@ -3379,6 +3379,12 @@ class KotlinExecution : BoxExecution {
                 reply(Message("complete").payload(it))
                 return
             }
+            // Any other string literal: what its parameter's @CompletesPath / @CompletesWith says, else a path
+            // if it already looks like one (afield.runtime.completion.StringLiteralCompletion).
+            afield.runtime.completion.StringLiteralCompletion.complete(inside, allCode, position)?.let {
+                reply(Message("complete").payload(it))
+                return
+            }
         }
 
         // A small language's program kept in a property of a Kotlin box (the StackSL gallery's boxes)

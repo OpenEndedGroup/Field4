@@ -24,11 +24,16 @@ const DEFAULT_LANGUAGES = new Set([
   "brief", "pd", "lua", "csound", "postscript",
 ]);
 const MAX_VISIBLE_ITEMS = 80;
+const STRING_LITERAL_CATEGORIES = new Set(["paths", "choices"]);
 const REFRESH_DELAY_MS = 110;
 const COMPLETION_RPC_TIMEOUT_MS = 15000;
 const RECENCY_STORAGE_KEY = "field.suggest.recency.v1";
 const RECENCY_LIMIT = 200;
 const CATEGORY_WEIGHT = new Map([
+  // Inside a string literal (`StringLiteralCompletion`): files, or a parameter's computed choices.
+  // They only ever arrive alone (see `replaceQuickItems`).
+  ["paths", 28],
+  ["choices", 28],
   ["local", 28],
   ["graphics", 26],
   ["functions", 22],
@@ -1469,6 +1474,9 @@ class FieldSuggestController {
   }
 
   replaceQuickItems(items) {
+    // Inside a string literal the server's answer is the whole answer: no quick, local or AI rows.
+    const literal = (item) => STRING_LITERAL_CATEGORIES.has(normalizeCategory(item.category));
+    if (items.some(literal)) return items.filter(literal);
     const hasCompilerItems = items.some(
       (item) => item.source === "rpc" || item.source === "local",
     );
@@ -2002,10 +2010,17 @@ class FieldSuggestController {
     const shouldShowSignature =
       itemLooksCallable(item) &&
       String(item.insertText || item.displayText || "").includes("(");
-    this.suppressOpenUntil = Date.now() + 2500;
+    // Accepting a directory in a path string goes straight on to its contents.
+    const continuesPath =
+      normalizeCategory(item.category) === "paths" &&
+      String(item.insertText || "").endsWith("/");
+    this.suppressOpenUntil = continuesPath ? 0 : Date.now() + 2500;
     this.hide({ reason: "accepted" });
     if (shouldShowSignature) {
       requestAnimationFrame(() => this.showSignatureBadge(item));
+    }
+    if (continuesPath) {
+      requestAnimationFrame(() => this.open({ manual: true }));
     }
     this.editor.focus();
     return true;

@@ -140,6 +140,9 @@ ui.pause(1000)
 
 Once you have turned on [Field's AI features](aiFeatures.md), this will include up to 3 AI-generated suggestions of what you might type next. These are more likely to be incorrect (in the sense that type-based completions are generally very, very good); but also more likely to be ambitious and lengthy. Our GLSL completions are, in particular, often exactly what you want.
 
+Inside a string that looks like a path, the same shortcut lists files instead; see
+[completing a path as you type](files_and_paths.md#completing-a-path-as-you-type).
+
 Autocomplete answers "what can I write *here*". For the other question — what could I do here? — see [what's already in the box](reference/index.md), a browsable index of every public declaration in Field's standard library, generated from the same source and the same KDoc the completion panel reads.
 
 ## Next
