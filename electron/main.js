@@ -36,7 +36,9 @@ const NAV_FORWARD_TITLE =
   process.platform === "darwin" ? "Forward (⌘])" : "Forward (Alt+Right)";
 const SHELL_BACKGROUND = "#000000";
 const TAB_STRIP_BACKGROUND = "#2a2b2f";
-const WELCOME_BACKGROUND = "rgb(20, 20, 20)";
+// Welcome and the documentation paint their own #141414 page; their view matches it so the shell's
+// black never shows behind them while they load.
+const OWN_PAGE_BACKGROUND = "rgb(20, 20, 20)";
 const ZOOM_LEVEL_STEP = 0.5;
 const MIN_ZOOM_LEVEL = -8;
 const MAX_ZOOM_LEVEL = 8;
@@ -273,7 +275,7 @@ function filenameFromUrl(rawUrl) {
 
     const pathname = parsed.pathname.replace(/\/+$/, "");
     if (pathname.endsWith("/welcome")) return "Welcome";
-    if (/\/(field-docs|field4)(\/|$)/.test(pathname)) return "Documentation";
+    if (isDocsUrl(rawUrl)) return "Documentation";
     if (pathname.endsWith("/dir")) return "Directory";
     if (pathname.endsWith("/code-use")) return "Code Use";
     if (pathname.endsWith("/index.html")) return "document";
@@ -313,6 +315,19 @@ function isWelcomeUrl(rawUrl) {
   }
 }
 
+// `/field-docs/` is Field's mirror of the docs site; `/field4/` is the site itself.
+function isDocsUrl(rawUrl) {
+  try {
+    return /\/(field-docs|field4)(\/|$)/.test(new URL(rawUrl).pathname.replace(/\/+$/, ""));
+  } catch (_) {
+    return false;
+  }
+}
+
+function paintsOwnBackground(rawUrl) {
+  return isWelcomeUrl(rawUrl) || isDocsUrl(rawUrl);
+}
+
 function titleForUrl(rawUrl) {
   return `${APP_NAME} — ${filenameFromUrl(rawUrl)}`;
 }
@@ -323,7 +338,7 @@ function setViewBackground(view, color = SHELL_BACKGROUND) {
 }
 
 function colorForUrl(rawUrl) {
-  return isWelcomeUrl(rawUrl) ? WELCOME_BACKGROUND : SHELL_BACKGROUND;
+  return paintsOwnBackground(rawUrl) ? OWN_PAGE_BACKGROUND : SHELL_BACKGROUND;
 }
 
 function displayScaleFactor(win) {
@@ -339,7 +354,7 @@ function installPageBackgroundGuard(tab) {
   if (!webContents) return;
   const insert = () => {
     if (webContents.isDestroyed()) return;
-    if (isWelcomeUrl(webContents.getURL() || tab.url)) return;
+    if (paintsOwnBackground(webContents.getURL() || tab.url)) return;
     webContents
       .insertCSS(
         `
