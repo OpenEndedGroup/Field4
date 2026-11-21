@@ -427,10 +427,11 @@ surfaces, so the underside of a roof picks up light reflected off the floor belo
 points and handles are drawn over the traced image and hidden where a surface is in front of them.
 
 Where the browser offers WebGPU, the tracer runs as compute
-shaders. It stops at 32 samples per pixel and runs
-[Open Image Denoise](https://www.openimagedenoise.org/) over the result, which turns that still-grainy
-image into a clean one, usually within a few seconds. The button shows the count and then
-**denoised**. While you orbit, the view drops to a coarse traced preview and sharpens when you
+shaders. It runs [Open Image Denoise](https://www.openimagedenoise.org/) over the image at 4
+samples per pixel, again at 8 and 16, and a last time at 32, where it stops. Each denoise turns a
+grainy image into a clean one, and each stays on screen while the tracer gathers samples for the next,
+so a clean picture is up within moments and sharpens from there. The button shows the count and then
+**denoised**. While you orbit, the view drops to a coarse traced preview and sharpens as soon as you
 stop; a part that moves is updated in place. The first trace after opening a view takes a few
 seconds longer while the tracer compiles, and the Realism view draws meanwhile.
 
