@@ -59,7 +59,7 @@ import afield.document.workspace.path
 import afield.geometry.mesh.toFLines
 import afield.geometry.spatial.center
 import afield.geometry.spatial.toFLines
-import afield.graphics.color.hsl
+import afield.graphics.color.rgb255
 import afield.graphics.render.color
 import afield.graphics.render.filled
 import afield.graphics.render.fitInto
@@ -301,11 +301,12 @@ data class NodeState(
     /** Carried and split, but **nothing in this file interprets it** — yours to use, though the renderer does
      * fall back to it for a node's port angle when the node has no connected neighbours. */
     var phase: Double = 0.0,
-    /** Drives colour, as a fraction of a turn. Wrapped at render time rather than here, so it may drift far
-     * outside `0..1` and that is fine. */
+    /** Nudges the node's colour along the renderer's palette from where its type puts it: 0.2 is about one
+     * step of the ten-step scale. Clamped at render time rather than here, so it may drift outside any range and
+     * that is fine. */
     var hue: Double = 0.0,
     /** Advanced only by [Net.incrementAges], in whatever unit you pass it — so age runs on the clock you choose.
-     * Nudges drawn lightness. */
+     * Drifts the drawn colour toward the dark end of the palette. */
     var age: Double = 0.0,
     /** Room for your own named quantities. Deep-copied by [copyDeep] and blended key-wise by [blend], where a
      * key missing from one side counts as 0. */
@@ -789,13 +790,16 @@ class Net internal constructor(
     fun averageAge(): Double = if (nodes.isEmpty()) 0.0 else nodes.sumOf { it.state.age } / nodes.size.toDouble()
 
     /**
-     * Draws the net: one [FLine] per edge, and several per node — a filled disc and a stroked ring sized and
+     * Draws the net: one [FLine] per edge, and several per node — a translucent disc and a stroked ring sized and
      * coloured from its [NodeState], a spoke per port, a point per port, a halo when the node is half of an
      * active pair, and a streak when it is moving.
      *
-     * The picture the whole file is for — hand it to `lines(...)` or [Box.showInteractionNet]. Active pairs are
-     * drawn emphatically (thicker, brighter) so a redex is visible before it fires; node radius follows `energy`,
-     * fill hue follows `hue`, and lightness drifts with `age`.
+     * The picture the whole file is for — hand it to `lines(...)` or [Box.showInteractionNet]. Colours come from
+     * one sequential scale, deep navy through teal and green to yellow, with each agent type at its own step;
+     * `hue` slides a node along the scale and `age` drifts it toward the dark end. Node radius follows `energy`,
+     * and so does the disc's opacity, so a net that is losing energy fades as well as shrinks. Active pairs, the
+     * fringe where the next reaction will happen, are the one thing drawn in red: a red wire and a red halo, so a
+     * redex is visible before it fires.
      *
      * Positions come from the layout, so call [relax] first or everything overlaps near the origin. An empty net
      * gives an empty list. [velocityScale] is the length of the streak per unit of layout velocity; 0 removes them.
@@ -840,27 +844,20 @@ class Net internal constructor(
         nodeList.forEach { node ->
             val center = positionOf(node)
             val radius = nodeRadius.getValue(node.id)
-            val hue = nodeHue01(node)
-            val fill = hsl(
-                hue,
-                0.74,
-                (0.68 - node.state.energy * 0.06 + node.state.age * 0.01).coerceIn(0.26, 0.82),
-                0.92
-            )
-            val stroke = hsl(
-                hue,
-                0.78,
-                (0.34 + node.state.energy * 0.04).coerceIn(0.18, 0.52),
-                0.98
-            )
+            val t = nodeScalePosition(node)
+            val energy = node.state.energy
+            // Translucent fill, so overlapping agents show through one another; a more energetic node is more
+            // opaque. The ring sits a little further up the scale than the fill, so it reads as the edge of it.
+            val fill = netScaleColor(t, (0.30 + energy * 0.16).coerceIn(0.22, 0.60))
+            val stroke = netScaleColor(t + 0.05, 0.92)
 
             if (node.id in activeNodeIds) {
                 out += fline {
-                    circle(center.x.toDouble(), center.y.toDouble(), radius + 10.0, segments = 32)
+                    circle(center.x.toDouble(), center.y.toDouble(), radius + 6.0, segments = 32)
                     filled = false
                     stroked = true
-                    thickness = 1.4
-                    color = hsl(hue, 0.86, 0.60, (0.10 + node.state.energy * 0.08).coerceIn(0.10, 0.34))
+                    thickness = 1.3
+                    color = fringeRed((0.45 + energy * 0.15).coerceIn(0.45, 0.80))
                 }
             }
 
@@ -876,8 +873,8 @@ class Net internal constructor(
                     )
                     stroked = true
                     filled = false
-                    thickness = 1.2
-                    color = hsl(hue, 0.62, 0.72, 0.35)
+                    thickness = 1.0
+                    color = netScaleColor(t, 0.35)
                 }
             }
 
@@ -891,15 +888,15 @@ class Net internal constructor(
                 circle(center.x.toDouble(), center.y.toDouble(), radius, segments = 40)
                 filled = false
                 stroked = true
-                thickness = (1.5 + node.state.energy * 1.25).coerceIn(1.5, 4.2)
+                thickness = (1.0 + energy * 0.6).coerceIn(1.0, 2.4)
                 color = stroke
             }
 
             out += fline {
                 stroked = true
                 filled = false
-                thickness = 0.9
-                color = hsl(hue, 0.38, 0.72, 0.28)
+                thickness = 0.7
+                color = netScaleColor(t + 0.05, 0.40)
                 node.ports.forEach { port ->
                     moveTo(center)
                     lineTo(portPosition(port))
@@ -908,16 +905,16 @@ class Net internal constructor(
 
             out += fline {
                 pointed = true
-                pointSize = (radius * 0.18).coerceIn(2.6, 5.0)
-                color = vec(1.0, 0.96, 0.90, 0.96)
+                pointSize = (radius * 0.12).coerceIn(1.8, 3.2)
+                color = rgb255(246, 248, 240, 235)
                 moveTo(portPosition(node.principal))
             }
 
             if (node.type.auxPorts > 0) {
                 out += fline {
                     pointed = true
-                    pointSize = (radius * 0.12).coerceIn(1.8, 3.6)
-                    color = hsl(hue, 0.42, 0.86, 0.76)
+                    pointSize = (radius * 0.08).coerceIn(1.2, 2.4)
+                    color = netScaleColor(t + 0.10, 0.90)
                     repeat(node.type.auxPorts) { index ->
                         moveTo(portPosition(node.aux(index)))
                     }
@@ -1022,27 +1019,35 @@ class Net internal constructor(
     }
 
     private fun renderRadius(node: Node): Double =
-        (18.0 + node.state.energy * 5.5).coerceIn(16.0, 34.0)
+        (14.0 + node.state.energy * 4.5).coerceIn(12.0, 28.0)
 
-    private fun nodeHue01(node: Node): Double =
-        wrapUnit(baseHueDegrees(node.type.name) / 360.0 + node.state.hue * 0.22)
+    /**
+     * Where a node sits on [NET_SCALE], 0 (deep navy) to 1 (yellow): its type's step, slid by `hue` and drifted
+     * darker by `age`. Floored at the third step, because the two darkest stops vanish against a dark page; they
+     * are left to the wires.
+     */
+    private fun nodeScalePosition(node: Node): Double =
+        (baseScaleStep(node.type.name) / 9.0 + node.state.hue * 0.5 - node.state.age.coerceIn(0.0, 20.0) * 0.005)
+            .coerceIn(2.0 / 9.0, 1.0)
 
-    private fun baseHueDegrees(typeName: String): Double = when (typeName) {
-        "APP" -> 208.0
-        "LAM" -> 280.0
-        "DUP" -> 28.0
-        "ERASE" -> 8.0
-        "ROOT" -> 160.0
-        "VAR" -> 190.0
-        "CONST" -> 48.0
+    /** The step of [NET_SCALE], 0..9, each agent type starts on; the lone ROOT gets the brightest. */
+    private fun baseScaleStep(typeName: String): Double = when (typeName) {
+        "ROOT" -> 9.0
+        "DUP" -> 8.0
+        "LAM" -> 7.0
+        "VAR" -> 6.0
+        "CONST" -> 5.0
+        "APP" -> 4.0
+        "DELIM" -> 3.0
+        "ERASE" -> 2.0
         // NetPrograms' vocabulary.
-        "CON" -> 214.0
-        "ERA" -> 0.0
-        "NUM" -> 128.0
-        "OP2", "OP1" -> 300.0
-        "SWI" -> 340.0
-        "REF" -> 52.0
-        else -> 200.0
+        "REF" -> 9.0
+        "SWI" -> 8.0
+        "OP2", "OP1" -> 7.0
+        "NUM" -> 5.0
+        "CON" -> 4.0
+        "ERA" -> 2.0
+        else -> 3.0
     }
 
     private fun principalAngleFor(node: Node): Double {
@@ -1081,19 +1086,18 @@ class Net internal constructor(
     private fun edgeThickness(edge: Edge, active: Boolean): Double {
         val energy = (edge.a.node.state.energy + edge.b.node.state.energy) * 0.5
         return when {
-            active -> (2.6 + energy * 0.9).coerceIn(2.2, 5.2)
-            edge.a.kind != edge.b.kind -> (1.6 + energy * 0.35).coerceIn(1.4, 3.2)
-            else -> (1.1 + energy * 0.25).coerceIn(1.0, 2.4)
+            active -> (2.0 + energy * 0.6).coerceIn(1.8, 3.6)
+            edge.a.kind != edge.b.kind -> (1.2 + energy * 0.3).coerceIn(1.0, 2.4)
+            else -> (0.9 + energy * 0.2).coerceIn(0.8, 1.8)
         }
     }
 
+    /** Wires take the dark end of the scale, below the two nodes they join; a wire joining an active pair is red. */
     private fun edgeColor(edge: Edge, active: Boolean): Vec4 {
-        val hue = wrapUnit((nodeHue01(edge.a.node) + nodeHue01(edge.b.node)) * 0.5)
-        val energy = (edge.a.node.state.energy + edge.b.node.state.energy) * 0.5
-        val saturation = if (active) 0.84 else if (edge.a.kind != edge.b.kind) 0.54 else 0.32
-        val lightness = if (active) 0.60 else (0.72 - energy * 0.05).coerceIn(0.44, 0.76)
-        val alpha = if (active) 0.90 else if (edge.a.kind != edge.b.kind) 0.58 else 0.36
-        return hsl(hue, saturation, lightness, alpha)
+        if (active) return fringeRed(0.95)
+        val t = (nodeScalePosition(edge.a.node) + nodeScalePosition(edge.b.node)) * 0.5 - 0.30
+        val alpha = if (edge.a.kind != edge.b.kind) 0.70 else 0.50
+        return netScaleColor(t.coerceAtLeast(0.12), alpha)
     }
 
     private fun fitLinesToBox(lines: List<FLine>, width: Double, height: Double, padding: Double): List<FLine> {
@@ -2557,7 +2561,30 @@ private fun FLine.circle(cx: Double, cy: Double, r: Double, segments: Int = 24) 
 
 private fun fmt(v: Number): String = String.format(Locale.US, "%.2f", v.toDouble())
 
-private fun wrapUnit(v: Double): Double = ((v % 1.0) + 1.0) % 1.0
+/**
+ * The ten-step sequential scale every net is drawn from, deep navy through teal and green to yellow, as sRGB
+ * hex. Agent types sit on different steps of it ([Net.toFLines]).
+ */
+private val NET_SCALE = intArrayOf(
+    0x002f61, 0x004c75, 0x006783, 0x008189, 0x009a88,
+    0x00b37d, 0x3bc768, 0x86d44d, 0xc4db2d, 0xffdd00
+)
+
+/** The colour at [t] (0..1, clamped) along [NET_SCALE], interpolated between neighbouring stops in sRGB. */
+private fun netScaleColor(t: Double, alpha: Double): Vec4 {
+    val x = t.coerceIn(0.0, 1.0) * (NET_SCALE.size - 1)
+    val i = x.toInt().coerceAtMost(NET_SCALE.size - 2)
+    val f = x - i
+    fun channel(shift: Int): Double {
+        val a = (NET_SCALE[i] shr shift) and 0xff
+        val b = (NET_SCALE[i + 1] shr shift) and 0xff
+        return a + (b - a) * f
+    }
+    return rgb255(channel(16), channel(8), channel(0), alpha * 255.0)
+}
+
+/** The one colour off the scale: active pairs, where the next reaction fires. */
+private fun fringeRed(alpha: Double): Vec4 = rgb255(255, 59, 48, alpha * 255.0)
 
 private fun escapeInteractionHtml(s: String): String = s
     .replace("&", "&amp;")
