@@ -1,7 +1,8 @@
-"""Tests for the docs link graph's published-site addresses (`tools/docs_link_graph.py`).
+"""Tests for the docs link graph (`tools/docs_link_graph.py`): its published-site addresses, and the
+report's link dating and shared-code measure.
 
 The site map (`docs_map.md`) sends a reader from a node to a built page, so a wrong address is a
-dead link on the public site. These read the real reference pages rather than fixtures.
+dead link on the public site. The address tests read the real reference pages rather than fixtures.
 
 Run with:  uv run --project . --group backdoor python -m unittest tools.test_docs_link_graph
 """
@@ -11,7 +12,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.docs_link_graph import DOCS_RELATIVE, REPO_ROOT, code_files_for, link_pages_to_map, reference_anchors, site_url, used_symbols
+from tools.docs_link_graph import (CAPTURE_CODE_PREFIX, DOCS_RELATIVE, REPO_ROOT, Graph, code_files_for, code_neighbours, link_pages_to_map,
+                                  parse_link_log, reference_anchors, site_url, used_symbols)
 
 
 class SiteUrlTest(unittest.TestCase):
@@ -85,6 +87,67 @@ class LinkPagesToMapTest(unittest.TestCase):
             self.assertIn('href="docs_map/?node=page%3Aindex.md"', (site / "index.html").read_text())
             self.assertNotIn("docs-map-link", (site / "docs_map/index.html").read_text(), "the map does not link to itself")
             self.assertNotIn("docs-map-link", (site / "orphan/index.html").read_text(), "no source page, no node")
+
+
+def diff(when: int, path: str, *lines: str, renamed_from: str | None = None) -> str:
+    """One commit of `git log -p --format=%x00%ct --unified=0` touching one page."""
+    head = [f"\x00{when}", "", f"diff --git a/{renamed_from or path} b/{path}"]
+    if renamed_from:
+        head += ["similarity index 90%", f"rename from {renamed_from}", f"rename to {path}"]
+    return "\n".join(head + [f"--- a/{renamed_from or path}", f"+++ b/{path}", "@@ -1 +1 @@", *lines]) + "\n"
+
+
+class ParseLinkLogTest(unittest.TestCase):
+    PAGES = {"a.md", "b.md", "c.md", "d.md"}
+
+    def test_a_link_dates_from_the_commit_that_first_named_its_target(self) -> None:
+        log = diff(100, "public/docs/a.md", "+See [B](b.md).") + diff(200, "public/docs/a.md", "+And [C](c.md#x).")
+        self.assertEqual(parse_link_log(log, self.PAGES), {("a.md", "b.md"): 100.0, ("a.md", "c.md"): 200.0})
+
+    def test_a_rewritten_paragraph_keeps_its_links_date(self) -> None:
+        log = diff(100, "public/docs/a.md", "+See [B](b.md).") + diff(300, "public/docs/a.md", "-See [B](b.md).", "+Now see [B](b.md) here.")
+        self.assertEqual(parse_link_log(log, self.PAGES), {("a.md", "b.md"): 100.0})
+
+    def test_a_removed_link_is_gone_and_a_restored_one_dates_from_its_return(self) -> None:
+        log = diff(100, "public/docs/a.md", "+[B](b.md) [C](c.md)") + diff(200, "public/docs/a.md", "-[B](b.md) [C](c.md)", "+[C](c.md)")
+        log += diff(300, "public/docs/a.md", "+[B](b.md) again")
+        self.assertEqual(parse_link_log(log, self.PAGES), {("a.md", "c.md"): 100.0, ("a.md", "b.md"): 300.0})
+
+    def test_a_rename_carries_the_links_to_the_new_path(self) -> None:
+        log = diff(100, "public/docs/old.md", "+[B](b.md)") + diff(200, "public/docs/d.md", renamed_from="public/docs/old.md")
+        self.assertEqual(parse_link_log(log, self.PAGES), {("d.md", "b.md"): 100.0})
+
+    def test_links_to_nothing_and_to_itself_are_not_links(self) -> None:
+        log = diff(100, "public/docs/a.md", "+[me](a.md) [gone](zz.md) [web](https://x.org/b.md)")
+        self.assertEqual(parse_link_log(log, self.PAGES), {})
+
+
+class CodeNeighboursTest(unittest.TestCase):
+    def graph(self) -> Graph:
+        g = Graph()
+        files = {"paint": "src/a/Paint.kt", "brush": "src/a/Brush.kt", "fline": "src/a/FLine.kt",
+                 "shot": CAPTURE_CODE_PREFIX + "docs/screenshot.kt", "mesh": "src/a/Mesh.kt"}
+        for name, path in files.items():
+            g.node("code:" + path, kind="code", path=path)
+        reaches = {"strokes": ["paint", "brush", "shot"], "brushes": ["paint", "brush", "shot"],
+                   "shots1": ["shot", "mesh"], "shots2": ["shot", "fline"], "solo": ["paint"]}
+        reaches.update({f"filler{i}": ["mesh" if i % 2 else "fline"] for i in range(8)})
+        for page, names in reaches.items():
+            g.node("page:" + page, kind="page")
+            for name in names:
+                g.edge("page:" + page, "code:" + files[name], "calls")
+        return g
+
+    def test_pages_sharing_specific_files_are_neighbours_and_capture_helpers_do_not_count(self) -> None:
+        g = self.graph()
+        found = code_neighbours(g, [k for k in g.nodes if k.startswith("page:")])
+        self.assertEqual([(a, b) for _, a, b, _ in found], [("page:brushes", "page:strokes")])
+        self.assertEqual(sorted(found[0][3]), ["code:src/a/Brush.kt", "code:src/a/Paint.kt"])
+
+    def test_one_shared_file_is_not_enough(self) -> None:
+        g = self.graph()
+        pages = ["page:strokes", "page:solo", "page:brushes"]
+        self.assertNotIn("page:solo", {p for _, a, b, _ in code_neighbours(g, pages) for p in (a, b)})
 
 
 if __name__ == "__main__":
