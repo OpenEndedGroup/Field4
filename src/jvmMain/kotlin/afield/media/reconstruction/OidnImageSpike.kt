@@ -2,21 +2,11 @@
 package afield.media.reconstruction
 
 import afield.document.graph.Box
-import afield.graphics.render.*
-import afield.graphics.scene.fabricated.*
 import afield.graphics.vulkan.Renderer
-import afield.graphics.vulkan.buffers.VulkanBuffer
-import afield.graphics.vulkan.device.CommandBuffer
-import afield.graphics.vulkan.device.Fence
-import afield.graphics.vulkan.util.Camera
 import afield.graphics.vulkan.util.Options
 import afield.graphics.vulkan.util.Window
-import afield.math.linalg.Rectanglef
-import afield.math.linalg.Vector3f
 import org.json.JSONArray
 import org.json.JSONObject
-import org.lwjgl.system.MemoryStack
-import org.lwjgl.vulkan.VK13.*
 import java.awt.image.BufferedImage
 import java.io.File
 import javax.imageio.ImageIO
@@ -27,9 +17,8 @@ import kotlin.math.sqrt
 import kotlin.system.exitProcess
 
 /**
- * Experiment: [OidnComputeDenoiser] on images that are not path traced (sRGB screenshots), and whether it keeps a
- * wrapping (tileable) image wrapping. The tracer is only a host for the denoiser's buffers; it never traces. Each
- * image goes into the accumulation buffer directly, with one of two guide sets:
+ * Study: [OidnComputeDenoiser] on images that are not path traced (sRGB screenshots), through [OidnImageSource],
+ * and whether it keeps a wrapping (tileable) image wrapping. Each image is denoised with one of two guide sets:
  *  - `flat`: albedo 1, normal +z — the network has nothing that marks detail as real;
  *  - `self`: the image itself as albedo, normal +z.
  * Tiling: an image treated as a torus should denoise the same whether or not it is rolled first. Each image is
@@ -40,49 +29,17 @@ import kotlin.system.exitProcess
 object OidnImageSpike {
     private const val PAD = 64
     private fun ms(t0: Long) = (System.nanoTime() - t0) / 1e6
-    private val toLinear = FloatArray(256) { v -> val c = v / 255f; if (c <= .04045f) c / 12.92f else ((c + .055f) / 1.055f).toDouble().pow(2.4).toFloat() }
     private fun srgb(x: Float): Float { val c = x.coerceIn(0f, 1f); return if (c <= .0031308f) c * 12.92f else 1.055f * c.toDouble().pow(1 / 2.4).toFloat() - .055f }
 
-    /** One denoiser at a fixed size, with an upload path into its colour and guide buffers. */
-    private class Host(val renderer: Renderer, val width: Int, val height: Int) : AutoCloseable {
-        val tracer = PathTracingRenderer(renderer, PathTraceScene().apply {
-            quad(Vector3f(-1f, 0f, -1f), Vector3f(-1f, 0f, 1f), Vector3f(1f, 0f, 1f), Vector3f(1f, 0f, -1f), material(PathTraceMaterial.diffuse(.5f, .5f, .5f)))
-        }, PathTraceEnvironment.constant(0f, 0f, 0f), width, height, Camera(renderer), PathTracingRenderer.Backend.COMPUTE_BVH, name = "oidn-image-$width")
-        val den = OidnComputeDenoiser(tracer).also { it.denoiseAt = 0; it.show = false; it.accumulateGuides = false }
-        val staging = VulkanBuffer(renderer, width.toLong() * height * 16, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT or VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, needsDeviceAddress = true)
-        val copy: ComputeModulePointer
-        val mesh: ComputeMesh
-        init {
-            val errors = ArrayList<String>()
-            copy = ComputeModule(Parameters(renderer, name = "oidn-image-copy", compute = """#version 460
-                #extension GL_EXT_buffer_reference : require
-                layout(local_size_x=256) in;
-                layout(buffer_reference,std430,buffer_reference_align=16) buffer V { vec4 v[]; };
-                layout(push_constant) uniform P { V src; V dst; int n; } pc;
-                void main(){ uint i=gl_GlobalInvocationID.x; if(i<uint(pc.n)) pc.dst.v[i]=pc.src.v[i]; }""", errorHandler = { e, _ -> errors += e })).pointer()
-            check(copy.current.valid) { errors.joinToString("\n") }
-            mesh = ComputeMesh(renderer, copy).also { it.x = (width * height + 255) / 256 }
-            copy += "d" to mesh; mesh.push.setMembers(copy.current.ci.pushConstants.flatMap { it.members })
-            mesh.push["src"] = staging; mesh.push["n"] = width * height
+    /** An image source and its denoiser at one size. */
+    private class Host(renderer: Renderer, width: Int, height: Int) : AutoCloseable {
+        val image = OidnImageSource(renderer, width, height, "oidn-image-$width")
+        val den = OidnComputeDenoiser(image)
+        fun denoise(color: FloatArray, albedo: FloatArray?): Pair<FloatArray, Double> {
+            image.upload(color); den.setGuides(albedo, null)
+            return den.denoiseImage() to den.lastDenoiseMs
         }
-        fun upload(pixels: FloatArray, dst: VulkanBuffer) {
-            staging.mapAndWrite { put(pixels) }
-            mesh.push["dst"] = dst
-            val cmd = CommandBuffer(renderer.commandPool, true, true); val fence = Fence(renderer.device, false)
-            try {
-                cmd.beginRecording(); copy.current.render(cmd, Rectanglef()); cmd.endRecording()
-                MemoryStack.stackPush().use { renderer.graphQueue.submit(it.pointers(cmd.vkCommandBuffer), null, null, null, fence) }; fence.fenceWait()
-            } finally { fence.cleanup(); cmd.cleanup() }
-        }
-        /** Denoise [color] with [albedo] and a +z normal; one pass per submit so no command buffer nears the Metal watchdog. */
-        fun denoise(color: FloatArray, albedo: FloatArray): Pair<FloatArray, Double> {
-            upload(color, tracer.accumulationBuffer); upload(albedo, den.albedo); upload(normal, den.normal)
-            val ms = den.denoiseNow(perPass = true).sumOf { it.second }
-            return den.read(den.denoised) to ms
-        }
-        val normal = FloatArray(width * height * 4) { if (it % 4 == 2) 1f else 0f }
-        override fun close() { den.close(); tracer.close(); staging.cleanup(); copy.current.cleanup() }
+        override fun close() { den.close(); image.close() }
     }
 
     /** [src] (w x h, vec4) sampled on a torus into a (w+2p) x (h+2p) image whose (p,p) pixel is src(rx,ry). */
@@ -139,18 +96,16 @@ object OidnImageSpike {
             for (f in files) {
                 val im = ImageIO.read(f); check(im.width == w && im.height == h) { "${f.name} is ${im.width}x${im.height}, expected ${w}x$h" }
                 val id = f.name.substringBefore('_')
-                val src = FloatArray(n).also { a -> for (y in 0 until h) for (x in 0 until w) { val rgb = im.getRGB(x, y); val i = (y * w + x) * 4
-                    a[i] = toLinear[(rgb shr 16) and 255]; a[i + 1] = toLinear[(rgb shr 8) and 255]; a[i + 2] = toLinear[rgb and 255]; a[i + 3] = 1f } }
+                val src = OidnImageSource.linearPixels(im)
                 val sd = display(src)
-                val ones = FloatArray(n) { 1f }; val onesPad = FloatArray((w + 2 * PAD) * (h + 2 * PAD) * 4) { 1f }
                 val entry = JSONObject().put("image", f.name).put("meanDisplaySrc", mean(sd)).put("laplacianRmsSrc", lapRms(sd))
                 for (mode in listOf("flat", "self")) {
                     val rolled = wrap(src, w, h, 0, w / 2, h / 2)
-                    val (d, t0) = plain.denoise(src, if (mode == "flat") ones else src)
-                    val (dr, t1) = plain.denoise(rolled, if (mode == "flat") ones else rolled)
+                    val (d, t0) = plain.denoise(src, if (mode == "flat") null else src)
+                    val (dr, t1) = plain.denoise(rolled, if (mode == "flat") null else rolled)
                     val sp = wrap(src, w, h, PAD, 0, 0); val spr = wrap(src, w, h, PAD, w / 2, h / 2)
-                    val (dp, t2) = padded.denoise(sp, if (mode == "flat") onesPad else sp)
-                    val (dpr, t3) = padded.denoise(spr, if (mode == "flat") onesPad else spr)
+                    val (dp, t2) = padded.denoise(sp, if (mode == "flat") null else sp)
+                    val (dpr, t3) = padded.denoise(spr, if (mode == "flat") null else spr)
                     val D = display(d); val R = display(unroll(dr)); val P = display(crop(dp)); val PR = display(unroll(crop(dpr)))
                     entry.put(mode, JSONObject()
                         .put("denoiseMs", JSONArray(listOf(t0, t1, t2, t3)))
