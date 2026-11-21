@@ -51,6 +51,55 @@ ipcRenderer.on("field4-presentation-project", (_, paths) => {
   window.dispatchEvent(new CustomEvent("field-presentation-project", { detail: paths }));
 });
 
+// Browser keys for a page tab (Documentation, Welcome, history, ...): Cmd/Ctrl+F opens the tab strip's
+// find bar, Cmd/Ctrl+G steps through matches, Cmd+[ / Cmd+] (Alt+Left / Alt+Right elsewhere) go back
+// and forward, as do the mouse side buttons. A Field document tab (`?file=`) is left alone: its
+// canvas, Monaco and drawing layer own those keys. The listener is on window in the bubble phase and
+// skips an event a page already handled, so an editor embedded in a page keeps its own Cmd+F. Main
+// checks the tab again before acting.
+const isFieldDocumentPage = () => {
+  try {
+    return !!new URLSearchParams(window.location.search).get("file")?.trim();
+  } catch (_) {
+    return true;
+  }
+};
+
+const pageKeyCommand = (event) => {
+  const mac = process.platform === "darwin";
+  const mod = mac ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey;
+  const key = String(event.key || "").toLowerCase();
+  if (mod && !event.altKey && !event.shiftKey && (key === "f" || event.code === "KeyF")) return ["field4-tab-find-open"];
+  if (mod && !event.altKey && (key === "g" || event.code === "KeyG")) return ["field4-tab-find-step", !event.shiftKey];
+  if (mac && mod && !event.altKey && !event.shiftKey) {
+    if (event.key === "[" || event.code === "BracketLeft") return ["field4-tab-navigate", -1];
+    if (event.key === "]" || event.code === "BracketRight") return ["field4-tab-navigate", 1];
+  }
+  if (!mac && event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+    if (event.key === "ArrowLeft") return ["field4-tab-navigate", -1];
+    if (event.key === "ArrowRight") return ["field4-tab-navigate", 1];
+  }
+  return null;
+};
+
+window.addEventListener("keydown", (event) => {
+  if (event.defaultPrevented || event.isComposing || isFieldDocumentPage()) return;
+  const command = pageKeyCommand(event);
+  if (!command) return;
+  event.preventDefault();
+  ipcRenderer.send(...command);
+});
+
+window.addEventListener(
+  "mouseup",
+  (event) => {
+    if ((event.button !== 3 && event.button !== 4) || isFieldDocumentPage()) return;
+    event.preventDefault();
+    ipcRenderer.send("field4-tab-navigate", event.button === 3 ? -1 : 1);
+  },
+  true,
+);
+
 contextBridge.exposeInMainWorld("fieldElectron", {
   chooseKitFolder() { return ipcRenderer.invoke("field4-kit-folder"); },
   filePath(file) { return webUtils.getPathForFile(file); },
