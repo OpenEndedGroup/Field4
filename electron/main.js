@@ -533,8 +533,8 @@ function createTabStripMarkup() {
       min-width: 12px;
     }
 
-    /* Back/forward and find-in-page for the active page tab (Documentation and other utility pages);
-       a document tab's canvas and editors keep their own keys, so these stay hidden there. */
+    /* Back/forward and find-in-page for the active page tab (Documentation and other utility pages).
+       A document tab shows only the find bar, as its box search, while that is open. */
     #page-tools {
       flex: 0 0 auto;
       display: flex;
@@ -665,10 +665,17 @@ function createTabStripMarkup() {
         findInput.value = find.query || '';
         findTabId = page.tabId;
       }
+      findInput.placeholder = find.placeholder || 'Find in page';
       const hasQuery = !!find.query;
       const matches = Number.isFinite(find.matches) ? find.matches : null;
+      // Box search counts matches before you step to one ("12 matches"), then names the property
+      // the active match is in ("3/12 · code"); find-in-page always has an active match.
+      const detail = find.detail ? ' \u00b7 ' + find.detail : '';
       findCount.textContent =
-        !hasQuery || matches === null ? '' : matches === 0 ? 'No matches' : find.active + '/' + matches;
+        !hasQuery || matches === null ? ''
+          : matches === 0 ? 'No matches'
+          : find.active > 0 ? find.active + '/' + matches + detail
+          : matches === 1 ? '1 match' : matches + ' matches';
       findNode.classList.toggle('no-match', hasQuery && matches === 0);
       if (find.open && find.focus) {
         findInput.focus();
@@ -1135,9 +1142,13 @@ function createMainWindow() {
   };
 
   // A page tab (Documentation, Welcome, history, logs, ...) gets find-in-page in the tab strip, and
-  // all but Welcome (whose links open new tabs) get back/forward. A document tab gets neither: its
-  // canvas, Monaco and drawing layer own Cmd+F, Cmd+[ and Escape, and "back" would leave the document.
+  // all but Welcome (whose links open new tabs) get back/forward. A document tab gets no back/forward
+  // ("back" would leave the document), and its find bar searches boxes, not the page: the page decides
+  // when Cmd+F means that (Monaco keeps its own Find) and runs the search itself (documentSearch.kt),
+  // relayed over "field4-canvas-find" and answered on "field4-canvas-find-result".
   const isPageTab = (tab) => !!liveContents(tab) && isUtilityUrl(contentsUrl(tab));
+  const isDocumentTab = (tab) => !!liveContents(tab) && !isUtilityUrl(contentsUrl(tab));
+  const isFindTab = (tab) => isPageTab(tab) || isDocumentTab(tab);
   const isNavigableTab = (tab) => isPageTab(tab) && !isWelcomeUrl(contentsUrl(tab));
 
   const historyFlags = (tab) => {
@@ -1151,12 +1162,15 @@ function createMainWindow() {
   };
 
   const findState = (tab) => {
-    if (!tab.find) tab.find = { open: false, query: "", matches: null, active: 0, fresh: true, requestId: null };
+    if (!tab.find) {
+      tab.find = { open: false, query: "", matches: null, active: 0, detail: "", fresh: true, requestId: null };
+    }
     return tab.find;
   };
 
   const pageToolsState = (tab, focusFind) => {
-    if (!isPageTab(tab)) return null;
+    const canvas = isDocumentTab(tab);
+    if (!isPageTab(tab) && !(canvas && tab.find?.open)) return null;
     const find = findState(tab);
     return {
       tabId: tab.id,
@@ -1167,6 +1181,9 @@ function createMainWindow() {
         query: find.query,
         matches: find.matches,
         active: find.active,
+        // Which property the active box match is in ("code", "fragment", ...), shown after the count.
+        detail: canvas ? find.detail : "",
+        placeholder: canvas ? "Search boxes" : "Find in page",
         focus: !!focusFind,
       },
     };
@@ -1486,10 +1503,14 @@ function createMainWindow() {
     tab.view.webContents.on("did-navigate", (_event, url) => {
       diagnosticLog("tab-did-navigate", tabDetails({ targetUrl: url }));
       // A new page: the find bar stays open with its query, but the old counts no longer apply.
+      // A reloaded document has lost its box highlights, so its box search closes.
       if (tab.find) {
         tab.find.matches = null;
         tab.find.active = 0;
+        tab.find.detail = "";
         tab.find.fresh = true;
+        if (isDocumentTab(tab)) tab.find.open = false;
+        if (tab.id === activeTabId) sendTabState();
       }
       updateTitle(url);
     });
@@ -1680,10 +1701,27 @@ function createMainWindow() {
   // Find in page: Electron's findInPage, driven from the find bar in the tab strip. `fresh` starts a
   // new find session (after the query or the page changed); a follow-up request steps to the next
   // or previous match. Counts come back through the tab's "found-in-page" event.
+  //
+  // In a document tab the same bar searches boxes instead: a fresh request sends the query to the
+  // page and a follow-up steps through its matches; the page answers on "field4-canvas-find-result".
   const runFind = (tab, forward = true) => {
     const contents = liveContents(tab);
-    if (!contents || !isPageTab(tab)) return;
+    if (!contents || !isFindTab(tab)) return;
     const find = findState(tab);
+    if (isDocumentTab(tab)) {
+      if (!find.query) {
+        find.matches = null;
+        find.active = 0;
+        find.detail = "";
+        sendTabState();
+      }
+      contents.send(
+        "field4-canvas-find",
+        find.fresh || !find.query ? { action: "query", query: find.query } : { action: "step", forward },
+      );
+      find.fresh = !find.query;
+      return;
+    }
     if (!find.query) {
       contents.stopFindInPage("clearSelection");
       find.matches = null;
@@ -1697,7 +1735,7 @@ function createMainWindow() {
   };
 
   const openFind = (tab) => {
-    if (!isPageTab(tab) || tab.id !== activeTabId) return;
+    if (!isFindTab(tab) || tab.id !== activeTabId) return;
     const find = findState(tab);
     find.open = true;
     revealTabs();
@@ -1710,7 +1748,7 @@ function createMainWindow() {
   };
 
   const stepFind = (tab, forward) => {
-    if (!isPageTab(tab)) return;
+    if (!isFindTab(tab)) return;
     const find = findState(tab);
     if (!find.query) {
       openFind(tab);
@@ -1724,7 +1762,7 @@ function createMainWindow() {
   };
 
   const setFindQuery = (tab, text) => {
-    if (!isPageTab(tab)) return;
+    if (!isFindTab(tab)) return;
     const find = findState(tab);
     find.query = String(text || "").slice(0, 1000);
     find.fresh = true;
@@ -1738,11 +1776,27 @@ function createMainWindow() {
     find.open = false;
     find.matches = null;
     find.active = 0;
+    find.detail = "";
     find.fresh = true;
-    // Keep the active match selected, as a browser does, so Escape leaves you where you found it.
-    contents.stopFindInPage("keepSelection");
+    if (isDocumentTab(tab)) {
+      contents.send("field4-canvas-find", { action: "close" });
+    } else {
+      // Keep the active match selected, as a browser does, so Escape leaves you where you found it.
+      contents.stopFindInPage("keepSelection");
+    }
     sendTabState();
     if (tab.id === activeTabId) contents.focus();
+  };
+
+  const setCanvasFindResult = (tab, result) => {
+    const find = tab.find;
+    if (!find?.open || !result || typeof result !== "object") return;
+    const matches = Number(result.matches);
+    const active = Number(result.active);
+    find.matches = Number.isFinite(matches) && matches >= 0 ? Math.floor(matches) : null;
+    find.active = Number.isFinite(active) && active > 0 ? Math.floor(active) : 0;
+    find.detail = typeof result.detail === "string" ? result.detail.slice(0, 80) : "";
+    if (tab.id === activeTabId) sendTabState();
   };
 
   const onTabsReady = onlyFromStrip(() => sendTabState());
@@ -1781,6 +1835,16 @@ function createMainWindow() {
   const onPageNavigate = fromPageTab((tab, direction) => navigateTab(tab, Math.sign(Number(direction) || 0)));
   const onPageFindOpen = fromPageTab((tab) => openFind(tab));
   const onPageFindStep = fromPageTab((tab, forward) => stepFind(tab, !!forward));
+  // A document tab opens its box search, and reports its matches, from documentSearch.kt.
+  const fromDocumentTab =
+    (handler) =>
+    (event, ...args) => {
+      const tab = tabs.find((candidate) => liveContents(candidate) === event.sender);
+      if (!tab || !isDocumentTab(tab)) return;
+      handler(tab, ...args);
+    };
+  const onCanvasFindOpen = fromDocumentTab((tab) => openFind(tab));
+  const onCanvasFindResult = fromDocumentTab((tab, result) => setCanvasFindResult(tab, result));
   // capturePage() hands back *device* pixels, so on a 2x display a 1644x988 window arrives as a
   // 3288x1976 image. Every step after it -- resize, encode, base64 -- is synchronous on the
   // browser/main thread, which is also the only thread that routes input to the renderers: a
@@ -1948,6 +2012,8 @@ function createMainWindow() {
   ipcMain.on("field4-tab-navigate", onPageNavigate);
   ipcMain.on("field4-tab-find-open", onPageFindOpen);
   ipcMain.on("field4-tab-find-step", onPageFindStep);
+  ipcMain.on("field4-canvas-find-open", onCanvasFindOpen);
+  ipcMain.on("field4-canvas-find-result", onCanvasFindResult);
   ipcMain.removeHandler("field4-history-capture-window");
   ipcMain.handle("field4-history-capture-window", onHistoryCaptureWindow);
   ipcMain.removeHandler("field4-live-output-iframe");
@@ -1985,6 +2051,8 @@ function createMainWindow() {
     ipcMain.removeListener("field4-tab-navigate", onPageNavigate);
     ipcMain.removeListener("field4-tab-find-open", onPageFindOpen);
     ipcMain.removeListener("field4-tab-find-step", onPageFindStep);
+    ipcMain.removeListener("field4-canvas-find-open", onCanvasFindOpen);
+    ipcMain.removeListener("field4-canvas-find-result", onCanvasFindResult);
     ipcMain.removeHandler("field4-history-capture-window");
     ipcMain.removeHandler("field4-tab-identity");
     ipcMain.removeHandler("field4-kit-folder");
