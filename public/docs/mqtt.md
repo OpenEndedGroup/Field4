@@ -44,6 +44,8 @@ display output directly. Re-running the box replaces the callback rather than ad
 Stopping the box leaves the subscription in place, so a feed keeps arriving while you work on the
 box that uses it; `mqtt.unsubscribe()` ends it.
 
+The `mqtt-listener` [template](templates.md#templates-that-come-with-field) (++cmd+t++) shows the latest messages under `field/#`, from the embedded broker or the one `AFIELD_MQTT_URL` names.
+
 ## Publishing
 
 `publish` sends text, numbers, bytes, or JSON for a `Map` or `List`:

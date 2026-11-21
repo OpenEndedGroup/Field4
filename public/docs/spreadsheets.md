@@ -142,6 +142,8 @@ The same happens when another box's variable changes, whether you ran it or code
 `self.prop("name")` and `box("name").prop("x")` read only the box property, and `.variable(...)`
 only the variable; `box("name").keys()` lists what a box has.
 
+The `rates-and-sheet` [template](templates.md#templates-that-come-with-field) (++cmd+t++) is a parent that publishes `taxRate` and `discountRate` and a sheet beneath it that prices a bill with them.
+
 ## Reading the sheet from code
 
 The box that holds a sheet can read its values. `sheetCell("D5")` is the cell's value, with the

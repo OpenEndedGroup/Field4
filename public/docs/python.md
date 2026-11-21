@@ -42,6 +42,8 @@ print(a)
 Multi-line output keeps its columns, so a `DataFrame` or a 2-D array stays legible. See
 [Output](#output).
 
+To start from a working pair, press ++cmd+t++ and insert the `python-cell` [template](templates.md#templates-that-come-with-field): a Python root and one cell under it, with a slider.
+
 ## One interpreter, one namespace
 
 Field runs one Python interpreter, shared by every Python box in every open document. A name bound

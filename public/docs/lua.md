@@ -36,6 +36,8 @@ Each Lua box has a Lua of its own, made the first time it runs and kept until th
 stops being a Lua box. Globals survive from one run to the next, so a box can define a function in
 one run and call it from a selected line in the next. Two Lua boxes never share globals.
 
+To start from a working pair, press ++cmd+t++ and insert the `lua-cell` [template](templates.md#templates-that-come-with-field): a Lua root and one Lua box under it.
+
 ## What a Lua box can reach
 
 `box` (also `field.box`) is the box the code is in. Its properties are read and written by name, a missing one is read

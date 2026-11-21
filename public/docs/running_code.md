@@ -371,6 +371,8 @@ Tempo holds `bpm` and `key`, and Accent, two levels down, reads both straight fr
 
 [Reactive properties](reactive_properties.md#seeing-who-reads-what) has the layer in more detail.
 
+The `parameter-parent` [template](templates.md#templates-that-come-with-field) (++cmd+t++) is this arrangement ready to run: a parent that publishes `level` with a slider, and a child that draws it.
+
 ### Which box is whose parent decides what is visible
 
 Both the preamble gather and the value walk follow `parents`. Connecting a child under a parent (`parent.connect(child)`, or selecting the parent and pressing `g` in the UI) is what puts the parent into the child's ancestor chain.
