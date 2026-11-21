@@ -621,6 +621,9 @@ class Net internal constructor(
     /** The port on the other end of this port's wire, or null if it is free. The one-step graph walk. */
     fun connected(port: Port): Port? = adjacency[port.id]?.other(port)
 
+    /** The radius [toFLines] draws [node] at, for [toPngBytes] to size a label to. */
+    internal fun drawnRadius(node: Node): Double = renderRadius(node)
+
     /**
      * Wires two ports together.
      *
@@ -2289,6 +2292,15 @@ fun Net.writeSvg(path: String, width: Int = 900, height: Int = 700) {
     java.io.File(path).writeText(toSvg(width, height))
 }
 
+/** The face [toPngBytes] labels nodes in: the Iosevka subset Field's UI uses, or null if it cannot load. */
+private val netLabelTypeface: org.jetbrains.skia.Typeface? by lazy {
+    runCatching {
+        val bytes = Net::class.java.getResourceAsStream("/IosevkaField-Light.ttf")?.use { it.readBytes() }
+            ?: return@runCatching null
+        org.jetbrains.skia.FontMgr.default.makeFromData(org.jetbrains.skia.Data.makeFromBytes(bytes))
+    }.getOrNull()
+}
+
 /**
  * The box around every node's position, as `[minX, minY, maxX, maxY]`, grown by [padding] on each side —
  * or null for an empty net. Hand a smoothed copy of it to [toPngBytes] to keep an animation's framing
@@ -2311,7 +2323,9 @@ fun Net.layoutBounds(padding: Double = 40.0): DoubleArray? {
  * every frame, where the SVG that `lines(...)` sends would be megabytes a frame.
  *
  * [view] is the world rectangle `[minX, minY, maxX, maxY]` to fit, centred, into the image; it defaults to
- * [layoutBounds]. [background] is ARGB.
+ * [layoutBounds]. [background] is ARGB. [label], when given, names the text to draw across each node (null
+ * for none); it is drawn in Field's UI face, sized to the node and left out where it would be too small to
+ * read. `NetPrograms::label` gives numbers their values and operators their symbols.
  */
 fun Net.toPngBytes(
     width: Int = 900,
@@ -2319,6 +2333,7 @@ fun Net.toPngBytes(
     view: DoubleArray? = null,
     background: Int = 0xff101014.toInt(),
     velocityScale: Double = 0.0,
+    label: ((Node) -> String?)? = null,
 ): ByteArray {
     val surface = org.jetbrains.skia.Surface.makeRasterN32Premul(width, height)
     try {
@@ -2332,9 +2347,36 @@ fun Net.toPngBytes(
             for (l in toFLines(velocityScale)) {
                 val placed = l.transform { p -> vec((p.x - b[0]) * s + ox, (p.y - b[1]) * s + oy, p.z) }
                 l.thickness?.let { placed.thickness = it * s }
-                // Port dots are sized in world units like everything else, or a zoomed-out net is all dots.
-                placed.pointSize = l.pointSize * s
+                // Port dots shrink with the view, or a zoomed-out net is all dots, but grow at most twofold, or a
+                // zoomed-in one is dots covering the nodes.
+                placed.pointSize = l.pointSize * min(s, 2.0)
                 afield.ui.visualization.outputTo(placed, canvas, antiAlias = true)
+            }
+            val face = netLabelTypeface
+            if (label != null && face != null) {
+                // Light text on a dark outline, so a label reads whatever colour the disc under it is.
+                org.jetbrains.skia.Paint().use { paint ->
+                    paint.isAntiAlias = true
+                    for (node in nodes) {
+                        val text = label(node) ?: continue
+                        val r = drawnRadius(node) * s
+                        // Fit the text inside the disc: the cap height is about the radius, narrowed for long text.
+                        val size = min(r * 1.25, r * 3.2 / max(1, text.length)).toFloat()
+                        if (size < 7f) continue
+                        org.jetbrains.skia.Font(face, size).use { font ->
+                            val p = positionOf(node)
+                            val x = (p.x - b[0]) * s + ox - font.measureTextWidth(text) / 2
+                            val y = (p.y - b[1]) * s + oy + font.metrics.capHeight / 2
+                            paint.mode = org.jetbrains.skia.PaintMode.STROKE
+                            paint.strokeWidth = size * 0.16f
+                            paint.color = 0xe0101014.toInt()
+                            canvas.drawString(text, x.toFloat(), y.toFloat(), font, paint)
+                            paint.mode = org.jetbrains.skia.PaintMode.FILL
+                            paint.color = 0xfff6f4ee.toInt()
+                            canvas.drawString(text, x.toFloat(), y.toFloat(), font, paint)
+                        }
+                    }
+                }
             }
         }
         return surface.makeImageSnapshot().encodeToData(org.jetbrains.skia.EncodedImageFormat.PNG)?.bytes

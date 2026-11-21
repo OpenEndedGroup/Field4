@@ -1,6 +1,8 @@
 package afield.data.graph
 
 import afield.math.linalg.vec
+import kotlin.properties.PropertyDelegateProvider
+import kotlin.properties.ReadOnlyProperty
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
@@ -62,66 +64,188 @@ enum class NetOp(val symbol: String, val apply: (Long, Long) -> Long) {
 data class NetDef(val name: String, val params: List<String>, val body: NetExpr)
 
 /**
- * Builds a [NetProgram]. Inside [NetProgramBuilder.def], `v("x")` is a variable, `n(5)` a number, and the
- * infix operators build [NetExpr.Op]s:
+ * Builds a [NetProgram]. Declare each function with `val name by fn()`, give it a body with `name.def { … }`,
+ * and call it as `name(…)`. Parameters, the predecessor a `switch` hands its nonzero branch, and the
+ * value a `let` binds are all lambda parameters, so the program spells no name as a string. Operators
+ * take [NetExpr]s and plain `Int`s or `Long`s in either position, and a body may return a bare number.
  *
  * ```kotlin
  * val p = netProgram {
- *     def("fib", "k") {
- *         switch(v("k"), zero = n(0), pred = "j") {
- *             switch(v("j"), zero = n(1), pred = "i") {
- *                 call("fib", v("i") + n(1)) + call("fib", v("i"))
- *             }
+ *     val fib by fn()
+ *     fib.def { k ->
+ *         switch(k, zero = 0) { j ->
+ *             switch(j, zero = 1) { i -> fib(i + 1) + fib(i) }
  *         }
  *     }
- *     main { call("fib", n(10)) }
+ *     main { fib(10) }
  * }
  * NetPrograms.run(p).value // 55
  * ```
+ *
+ * Declaring every function before giving any a body is what lets one call another, or itself: Kotlin will
+ * not let a local `val` be used inside its own initializer.
  */
 fun netProgram(block: NetProgramBuilder.() -> Unit): NetProgram = NetProgramBuilder().apply(block).build()
 
-/** The receiver of [netProgram]. */
+/** The receiver of [netProgram]: declares functions and builds the expressions inside them. */
 class NetProgramBuilder {
-    private val defs = mutableListOf<NetDef>()
+    private val fns = mutableListOf<NetFn>()
     private var main: NetExpr? = null
+    private var fresh = 0
 
-    /** Adds a definition called [name] with [params]. */
-    fun def(name: String, vararg params: String, body: NetExprScope.() -> NetExpr) {
-        defs += NetDef(name, params.toList(), NetExprScope.body())
+    /** A variable no Kotlin name can collide with. */
+    private fun fresh(): NetExpr.Var = NetExpr.Var("%${fresh++}")
+
+    /** `val name by fn()` declares a function called `name`; see [NetFn]. */
+    fun fn(): PropertyDelegateProvider<Any?, ReadOnlyProperty<Any?, NetFn>> =
+        PropertyDelegateProvider { _, property ->
+            require(fns.none { it.name == property.name }) { "netProgram: two functions called ${property.name}" }
+            val f = NetFn(property.name, this)
+            fns += f
+            ReadOnlyProperty { _, _ -> f }
+        }
+
+    /** A number literal, for where a bare `Int` cannot go. */
+    fun n(value: Long): NetExpr = NetExpr.Num(value)
+
+    /** A number literal, for where a bare `Int` cannot go. */
+    fun n(value: Int): NetExpr = NetExpr.Num(value.toLong())
+
+    /** [zero] when [scrutinee] is 0, otherwise [nonzero] of `scrutinee - 1`. Both may be numbers. */
+    fun switch(scrutinee: Any, zero: Any, nonzero: (NetExpr) -> Any): NetExpr {
+        val pred = fresh()
+        return NetExpr.Switch(toExpr(scrutinee), toExpr(zero), pred.name, toExpr(nonzero(pred)))
+    }
+
+    /** [body] of [value]; the value is reduced once and copied by fans to every use. */
+    fun let(value: Any, body: (NetExpr) -> Any): NetExpr {
+        val x = fresh()
+        return NetExpr.Let(x.name, toExpr(value), toExpr(body(x)))
     }
 
     /** The closed expression the program evaluates. */
-    fun main(body: NetExprScope.() -> NetExpr) {
-        main = NetExprScope.body()
+    fun main(body: () -> Any) {
+        main = toExpr(body())
     }
 
-    internal fun build(): NetProgram = NetProgram(defs.toList(), main ?: error("netProgram needs a main { }"))
+    internal fun params(count: Int): List<NetExpr.Var> = List(count) { fresh() }
+
+    internal fun build(): NetProgram {
+        val missing = fns.filter { it.def == null }.map { it.name }
+        require(missing.isEmpty()) { "netProgram: ${missing.joinToString()} declared with fn() but never given a def { }" }
+        return NetProgram(fns.map { it.def!! }, main ?: error("netProgram needs a main { }"))
+    }
 }
 
-/** Expression-building vocabulary for [netProgram]. */
-object NetExprScope {
-    fun v(name: String): NetExpr = NetExpr.Var(name)
-    fun n(value: Long): NetExpr = NetExpr.Num(value)
-    fun n(value: Int): NetExpr = NetExpr.Num(value.toLong())
-    fun call(name: String, vararg args: NetExpr): NetExpr = NetExpr.Call(name, args.toList())
-    fun op(op: NetOp, a: NetExpr, b: NetExpr): NetExpr = NetExpr.Op(op, a, b)
-    fun let(name: String, value: NetExpr, body: () -> NetExpr): NetExpr = NetExpr.Let(name, value, body())
-    fun switch(scrutinee: NetExpr, zero: NetExpr, pred: String = "_", succ: () -> NetExpr): NetExpr =
-        NetExpr.Switch(scrutinee, zero, pred, succ())
+/**
+ * A function of a [netProgram], declared by `val name by fn()`. Give it a body once with [def] and call it
+ * with `name(…)`; the call's argument count is checked against the body's when the program compiles.
+ */
+class NetFn internal constructor(val name: String, private val builder: NetProgramBuilder) {
+    internal var def: NetDef? = null
 
-    operator fun NetExpr.plus(o: NetExpr): NetExpr = op(NetOp.ADD, this, o)
-    operator fun NetExpr.minus(o: NetExpr): NetExpr = op(NetOp.SUB, this, o)
-    operator fun NetExpr.times(o: NetExpr): NetExpr = op(NetOp.MUL, this, o)
-    infix fun NetExpr.and(o: NetExpr): NetExpr = op(NetOp.AND, this, o)
-    infix fun NetExpr.or(o: NetExpr): NetExpr = op(NetOp.OR, this, o)
-    infix fun NetExpr.xor(o: NetExpr): NetExpr = op(NetOp.XOR, this, o)
-    infix fun NetExpr.andNot(o: NetExpr): NetExpr = op(NetOp.ANDN, this, o)
-    infix fun NetExpr.shl(o: NetExpr): NetExpr = op(NetOp.SHL, this, o)
-    infix fun NetExpr.shr(o: NetExpr): NetExpr = op(NetOp.SHR, this, o)
-    infix fun NetExpr.eq(o: NetExpr): NetExpr = op(NetOp.EQ, this, o)
-    infix fun NetExpr.lt(o: NetExpr): NetExpr = op(NetOp.LT, this, o)
+    internal fun define(arity: Int, body: (List<NetExpr.Var>) -> Any) {
+        require(def == null) { "netProgram: $name has two def { } bodies" }
+        val params = builder.params(arity)
+        def = NetDef(name, params.map { it.name }, toExpr(body(params)))
+    }
+
+    /** Gives this function its body, a lambda of 0 parameters. */
+    @JvmName("def0")
+    fun def(body: () -> Any) = define(0) { v -> body() }
+
+    /** Gives this function its body, a lambda of 1 parameter. */
+    @JvmName("def1")
+    fun def(body: (NetExpr) -> Any) = define(1) { v -> body(v[0]) }
+
+    /** Gives this function its body, a lambda of 2 parameters. */
+    @JvmName("def2")
+    fun def(body: (NetExpr, NetExpr) -> Any) = define(2) { v -> body(v[0], v[1]) }
+
+    /** Gives this function its body, a lambda of 3 parameters. */
+    @JvmName("def3")
+    fun def(body: (NetExpr, NetExpr, NetExpr) -> Any) = define(3) { v -> body(v[0], v[1], v[2]) }
+
+    /** Gives this function its body, a lambda of 4 parameters. */
+    @JvmName("def4")
+    fun def(body: (NetExpr, NetExpr, NetExpr, NetExpr) -> Any) = define(4) { v -> body(v[0], v[1], v[2], v[3]) }
+
+    /** Gives this function its body, a lambda of 5 parameters. */
+    @JvmName("def5")
+    fun def(body: (NetExpr, NetExpr, NetExpr, NetExpr, NetExpr) -> Any) = define(5) { v -> body(v[0], v[1], v[2], v[3], v[4]) }
+
+    /** Gives this function its body, a lambda of 6 parameters. */
+    @JvmName("def6")
+    fun def(body: (NetExpr, NetExpr, NetExpr, NetExpr, NetExpr, NetExpr) -> Any) = define(6) { v -> body(v[0], v[1], v[2], v[3], v[4], v[5]) }
+
+    /** A call of this function. Each argument is a [NetExpr], an `Int` or a `Long`. */
+    operator fun invoke(vararg args: Any): NetExpr = NetExpr.Call(name, args.map { toExpr(it) })
 }
+
+/** An `Int` or `Long` as a [NetExpr.Num], or the [NetExpr] itself. */
+internal fun toExpr(value: Any): NetExpr = when (value) {
+    is NetExpr -> value
+    is Int -> NetExpr.Num(value.toLong())
+    is Long -> NetExpr.Num(value)
+    else -> error("netProgram: expected an expression or a whole number, got $value (${value::class.simpleName})")
+}
+
+// Operators. Each takes an expression, an Int or a Long on either side.
+operator fun NetExpr.plus(o: NetExpr): NetExpr = NetExpr.Op(NetOp.ADD, this, o)
+operator fun NetExpr.plus(o: Int): NetExpr = NetExpr.Op(NetOp.ADD, this, NetExpr.Num(o.toLong()))
+operator fun NetExpr.plus(o: Long): NetExpr = NetExpr.Op(NetOp.ADD, this, NetExpr.Num(o))
+operator fun Int.plus(o: NetExpr): NetExpr = NetExpr.Op(NetOp.ADD, NetExpr.Num(toLong()), o)
+operator fun Long.plus(o: NetExpr): NetExpr = NetExpr.Op(NetOp.ADD, NetExpr.Num(this), o)
+operator fun NetExpr.minus(o: NetExpr): NetExpr = NetExpr.Op(NetOp.SUB, this, o)
+operator fun NetExpr.minus(o: Int): NetExpr = NetExpr.Op(NetOp.SUB, this, NetExpr.Num(o.toLong()))
+operator fun NetExpr.minus(o: Long): NetExpr = NetExpr.Op(NetOp.SUB, this, NetExpr.Num(o))
+operator fun Int.minus(o: NetExpr): NetExpr = NetExpr.Op(NetOp.SUB, NetExpr.Num(toLong()), o)
+operator fun Long.minus(o: NetExpr): NetExpr = NetExpr.Op(NetOp.SUB, NetExpr.Num(this), o)
+operator fun NetExpr.times(o: NetExpr): NetExpr = NetExpr.Op(NetOp.MUL, this, o)
+operator fun NetExpr.times(o: Int): NetExpr = NetExpr.Op(NetOp.MUL, this, NetExpr.Num(o.toLong()))
+operator fun NetExpr.times(o: Long): NetExpr = NetExpr.Op(NetOp.MUL, this, NetExpr.Num(o))
+operator fun Int.times(o: NetExpr): NetExpr = NetExpr.Op(NetOp.MUL, NetExpr.Num(toLong()), o)
+operator fun Long.times(o: NetExpr): NetExpr = NetExpr.Op(NetOp.MUL, NetExpr.Num(this), o)
+infix fun NetExpr.and(o: NetExpr): NetExpr = NetExpr.Op(NetOp.AND, this, o)
+infix fun NetExpr.and(o: Int): NetExpr = NetExpr.Op(NetOp.AND, this, NetExpr.Num(o.toLong()))
+infix fun NetExpr.and(o: Long): NetExpr = NetExpr.Op(NetOp.AND, this, NetExpr.Num(o))
+infix fun Int.and(o: NetExpr): NetExpr = NetExpr.Op(NetOp.AND, NetExpr.Num(toLong()), o)
+infix fun Long.and(o: NetExpr): NetExpr = NetExpr.Op(NetOp.AND, NetExpr.Num(this), o)
+infix fun NetExpr.or(o: NetExpr): NetExpr = NetExpr.Op(NetOp.OR, this, o)
+infix fun NetExpr.or(o: Int): NetExpr = NetExpr.Op(NetOp.OR, this, NetExpr.Num(o.toLong()))
+infix fun NetExpr.or(o: Long): NetExpr = NetExpr.Op(NetOp.OR, this, NetExpr.Num(o))
+infix fun Int.or(o: NetExpr): NetExpr = NetExpr.Op(NetOp.OR, NetExpr.Num(toLong()), o)
+infix fun Long.or(o: NetExpr): NetExpr = NetExpr.Op(NetOp.OR, NetExpr.Num(this), o)
+infix fun NetExpr.xor(o: NetExpr): NetExpr = NetExpr.Op(NetOp.XOR, this, o)
+infix fun NetExpr.xor(o: Int): NetExpr = NetExpr.Op(NetOp.XOR, this, NetExpr.Num(o.toLong()))
+infix fun NetExpr.xor(o: Long): NetExpr = NetExpr.Op(NetOp.XOR, this, NetExpr.Num(o))
+infix fun Int.xor(o: NetExpr): NetExpr = NetExpr.Op(NetOp.XOR, NetExpr.Num(toLong()), o)
+infix fun Long.xor(o: NetExpr): NetExpr = NetExpr.Op(NetOp.XOR, NetExpr.Num(this), o)
+infix fun NetExpr.andNot(o: NetExpr): NetExpr = NetExpr.Op(NetOp.ANDN, this, o)
+infix fun NetExpr.andNot(o: Int): NetExpr = NetExpr.Op(NetOp.ANDN, this, NetExpr.Num(o.toLong()))
+infix fun NetExpr.andNot(o: Long): NetExpr = NetExpr.Op(NetOp.ANDN, this, NetExpr.Num(o))
+infix fun Int.andNot(o: NetExpr): NetExpr = NetExpr.Op(NetOp.ANDN, NetExpr.Num(toLong()), o)
+infix fun Long.andNot(o: NetExpr): NetExpr = NetExpr.Op(NetOp.ANDN, NetExpr.Num(this), o)
+infix fun NetExpr.shl(o: NetExpr): NetExpr = NetExpr.Op(NetOp.SHL, this, o)
+infix fun NetExpr.shl(o: Int): NetExpr = NetExpr.Op(NetOp.SHL, this, NetExpr.Num(o.toLong()))
+infix fun NetExpr.shl(o: Long): NetExpr = NetExpr.Op(NetOp.SHL, this, NetExpr.Num(o))
+infix fun Int.shl(o: NetExpr): NetExpr = NetExpr.Op(NetOp.SHL, NetExpr.Num(toLong()), o)
+infix fun Long.shl(o: NetExpr): NetExpr = NetExpr.Op(NetOp.SHL, NetExpr.Num(this), o)
+infix fun NetExpr.shr(o: NetExpr): NetExpr = NetExpr.Op(NetOp.SHR, this, o)
+infix fun NetExpr.shr(o: Int): NetExpr = NetExpr.Op(NetOp.SHR, this, NetExpr.Num(o.toLong()))
+infix fun NetExpr.shr(o: Long): NetExpr = NetExpr.Op(NetOp.SHR, this, NetExpr.Num(o))
+infix fun Int.shr(o: NetExpr): NetExpr = NetExpr.Op(NetOp.SHR, NetExpr.Num(toLong()), o)
+infix fun Long.shr(o: NetExpr): NetExpr = NetExpr.Op(NetOp.SHR, NetExpr.Num(this), o)
+infix fun NetExpr.eq(o: NetExpr): NetExpr = NetExpr.Op(NetOp.EQ, this, o)
+infix fun NetExpr.eq(o: Int): NetExpr = NetExpr.Op(NetOp.EQ, this, NetExpr.Num(o.toLong()))
+infix fun NetExpr.eq(o: Long): NetExpr = NetExpr.Op(NetOp.EQ, this, NetExpr.Num(o))
+infix fun Int.eq(o: NetExpr): NetExpr = NetExpr.Op(NetOp.EQ, NetExpr.Num(toLong()), o)
+infix fun Long.eq(o: NetExpr): NetExpr = NetExpr.Op(NetOp.EQ, NetExpr.Num(this), o)
+infix fun NetExpr.lt(o: NetExpr): NetExpr = NetExpr.Op(NetOp.LT, this, o)
+infix fun NetExpr.lt(o: Int): NetExpr = NetExpr.Op(NetOp.LT, this, NetExpr.Num(o.toLong()))
+infix fun NetExpr.lt(o: Long): NetExpr = NetExpr.Op(NetOp.LT, this, NetExpr.Num(o))
+infix fun Int.lt(o: NetExpr): NetExpr = NetExpr.Op(NetOp.LT, NetExpr.Num(toLong()), o)
+infix fun Long.lt(o: NetExpr): NetExpr = NetExpr.Op(NetOp.LT, NetExpr.Num(this), o)
 
 /** A set of definitions and the expression to evaluate. Compile and run it with [NetPrograms]. */
 class NetProgram(val defs: List<NetDef>, val main: NetExpr)
@@ -138,7 +262,8 @@ object NetPrograms {
     val OP1 = Types.agent("OP1", 1)
     val SWI = Types.agent("SWI", 2)
     val REF = Types.agent("REF", 0)
-    val ROOT = Types.agent("ROOT", 0)
+    /** Holds the answer on its auxiliary port, so a finished net has no pair left facing it. */
+    val ROOT = Types.agent("ROOT", 1)
 
     /** Scalar keys in [NodeState.scalars]. */
     const val VALUE = "value"
@@ -437,7 +562,7 @@ object NetPrograms {
                 reconnect(aux(app, 1), 0, 1)
             }
         }
-        for (other in listOf(CON, OP2, OP1, SWI, NUM, ROOT)) {
+        for (other in listOf(CON, OP2, OP1, SWI, NUM)) {
             rule("expand", REF, other) { ctx ->
                 val t = compiled.templates[(ctx.first.state.scalars[DEF] ?: 0.0).toInt()]
                 val refs = t.types.indices.map { i -> node("t$i", t.types[i], spread(i), state(t.scalars[i])) }
@@ -476,14 +601,28 @@ object NetPrograms {
         for ((x, y) in t.wires) net.connect(port(x), port(y))
         val root = net.create(ROOT, id = "root", state = state())
         net.setPosition(root, vec(0.0, -60.0))
-        net.connect(port(t.root), root.principal)
+        require(!(t.root.port == 0 && t.types[t.root.node] == REF)) {
+            "main cannot be a call of a function with no parameters: nothing would meet its REF"
+        }
+        net.connect(port(t.root), root.aux(0))
         return net
+    }
+
+    /**
+     * What to write across [node] when drawing: a number's value, an operator's symbol (with its left operand
+     * once it has one), and nothing for the other agents. Pass it to [Net.toPngBytes] as `label`.
+     */
+    fun label(node: Node): String? = when (node.type) {
+        NUM -> valueOf(node).toString()
+        OP2 -> NetOp.entries[(node.state.scalars[OP] ?: 0.0).toInt()].symbol
+        OP1 -> "${exactOf(node.state.scalars, LEFT, LEFT_HI, LEFT_LO)}${NetOp.entries[(node.state.scalars[OP] ?: 0.0).toInt()].symbol}"
+        else -> null
     }
 
     /** The number `ROOT` is holding, or null while it holds anything else. */
     fun resultOf(net: Net): Long? {
         val root = net.nodes.firstOrNull { it.type == ROOT } ?: return null
-        val peer = net.connected(root.principal)?.node ?: return null
+        val peer = net.connected(root.aux(0))?.node ?: return null
         return if (peer.type == NUM) valueOf(peer) else null
     }
 
@@ -518,7 +657,7 @@ object NetPrograms {
             fired.forEach { counts.merge(it.ruleName, 1, Int::plus) }
             peak = maxOf(peak, net.nodes.size)
         }
-        val stuck = net.activePairs().filter { it.left.type != ROOT && it.right.type != ROOT }.map { "${it.left.type.name}-${it.right.type.name}" }
+        val stuck = net.activePairs().map { "${it.left.type.name}-${it.right.type.name}" }
         return Run(resultOf(net), perRound.sum(), perRound.size, perRound.maxOrNull() ?: 0, peak, stuck, perRound, counts)
     }
 
@@ -531,23 +670,23 @@ object NetPrograms {
         require(size in 1..16) { "n must be in 1..16" }
         val full = (1L shl size) - 1
         return netProgram {
-            def("solve", "row", "cols", "d1", "d2") {
-                switch(v("row") eq n(size), zero = call("try", v("row"), v("cols"), v("d1"), v("d2"),
-                    n(full) andNot (v("cols") or v("d1") or v("d2")))) { n(1) }
+            val solve by fn()
+            val place by fn()
+            solve.def { row, cols, d1, d2 ->
+                switch(row eq size, zero = place(row, cols, d1, d2, full andNot (cols or d1 or d2))) { _ -> 1 }
             }
             // avail is the set of free columns; p = avail - 1, so avail & ~p is its lowest bit.
-            def("try", "row", "cols", "d1", "d2", "avail") {
-                switch(v("avail"), zero = n(0), pred = "p") {
-                    let("a", v("p") + n(1)) {
-                        let("bit", v("a") andNot v("p")) {
-                            call("solve", v("row") + n(1), v("cols") or v("bit"),
-                                (v("d1") or v("bit")) shl n(1), (v("d2") or v("bit")) shr n(1)) +
-                                call("try", v("row"), v("cols"), v("d1"), v("d2"), v("a") and v("p"))
+            place.def { row, cols, d1, d2, avail ->
+                switch(avail, zero = 0) { p ->
+                    let(p + 1) { a ->
+                        let(a andNot p) { bit ->
+                            solve(row + 1, cols or bit, (d1 or bit) shl 1, (d2 or bit) shr 1) +
+                                place(row, cols, d1, d2, a and p)
                         }
                     }
                 }
             }
-            main { call("solve", n(0), n(0), n(0), n(0)) }
+            main { solve(0, 0, 0, 0) }
         }
     }
 
