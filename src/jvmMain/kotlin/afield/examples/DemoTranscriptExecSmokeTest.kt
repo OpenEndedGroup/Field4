@@ -852,6 +852,9 @@ object DemoTranscriptExecSmokeTest {
         "polytope_layer_stack_path_trace",
         "photo_mount_path_trace",
         "physics_manifold_path_trace",
+        // chain_rhino_render.md: the Save Small .3dm through PathTraceScene.rhino. Its CPU half is
+        // RhinoPathTraceTest, which needs the optional openNURBS wrapper as well.
+        "rhino_path_trace",
         // Also a window, and additionally a compute dispatch whose push constants are bound to
         // lambdas; the pattern scheduler and the band analysis in front of it are covered by
         // synth.pat.seam, which needs no device at all.

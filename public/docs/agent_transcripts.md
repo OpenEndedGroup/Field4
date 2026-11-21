@@ -4878,6 +4878,14 @@ dodecahedron's own faces, edges and vertices. See
 
 [Open →](offline.html?file=assets/agent_transcripts/polytope_path_trace_lineage/metadata.edn)
 
+### rhino_path_trace
+
+**A Rhino `.3dm` file, path traced.** The Save Small sample's Breps and SubDs are tessellated on
+load, then `PathTraceScene.rhino` appends them object by object, so each keeps its display colour as
+a material. Needs the optional openNURBS wrapper. See [the walkthrough](chain_rhino_render.md).
+
+[Open →](offline.html?file=assets/agent_transcripts/rhino_path_trace/metadata.edn)
+
 ### polytope_manifold_path_trace
 
 The same polytope through the Boolean layer: welded into a

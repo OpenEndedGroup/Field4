@@ -110,6 +110,7 @@ nav:
     - A Word Cut as a Stencil: chain_stencil_bridges.md
     - A Tracked Body, Measured and Heard: chain_tracked_body.md
     - A Drawn Outline, Repaired and Offset: chain_squircle_offsets.md
+    - A Rhino File, Path Traced: chain_rhino_render.md
     # Last in Long Way Round, after the chain pages and grouped: the explainer talks, which chains.md
     # introduces as their own section after the MADP tools. More are expected to join them.
     - Explainers:
