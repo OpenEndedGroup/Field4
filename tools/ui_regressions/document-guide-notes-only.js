@@ -12,9 +12,17 @@ const box = [...document.querySelectorAll('.box')].find(b => b.name === 'GuideTa
 const write = value => send('set-string', {uid: box.uid, property: 'notes', value});
 
 await wait(() => get('document-guide-launcher')?.hidden, 'Empty document should hide the guide launcher');
+await wait(() => !document.querySelector('.field-startup-progress:not(.field-startup-progress-done)'),
+    'Startup progress did not clear');
+window.notify('Toast shown before the Notes launcher', 'guide-launcher-test');
+const toast = document.querySelector('.bubble');
+const toastBottom = parseFloat(toast.style.bottom);
 write('# Just a box note');
 await wait(() => get('document-guide-launcher')?.matches(':not([hidden])') &&
     get('document-guide-launcher').textContent === 'Notes · 1', 'Adding a first box note did not reveal the launcher');
+await wait(() => toast.isConnected && parseFloat(toast.style.bottom) > toastBottom &&
+    toast.getBoundingClientRect().bottom <= get('document-guide-launcher').getBoundingClientRect().top,
+    'A toast already on screen overlapped the Notes launcher');
 get('document-guide-launcher').click();
 await wait(() => !get('document-guide')?.hidden && get('guide-reader')?.querySelector('h1')?.textContent === 'Just a box note',
     'The notes-only launcher did not open the box note');
@@ -22,4 +30,6 @@ if (get('guide-files').querySelector('button')) throw new Error('The fixture sho
 get('guide-close').click();
 write('');
 await wait(() => get('document-guide-launcher')?.hidden, 'Clearing the last box note did not hide the launcher');
+await wait(() => toast.isConnected && parseFloat(toast.style.bottom) === toastBottom,
+    'The toast did not return to its original position when the launcher hid');
 return {ok: true};
