@@ -341,7 +341,12 @@ async function show(path = '') {
             try { saved = {path:'',positions:{},...JSON.parse(localStorage.getItem(storageKey()) || '{}')}; } catch (_) { saved = {path:'',positions:{}}; }
             if (saved.rect) setRect(saved.rect);
         }
-        readOnly = response.readOnly; entries = response.entries || []; renderEntries();
+        readOnly = response.readOnly; entries = response.entries || [];
+        if (isNote() && !entries.some(e => e.path === current.path)) {
+            current = null;
+            delete panel.dataset.path;
+        }
+        renderEntries();
         // A docs redirect asked for by path (Open Anything, ?guide=) opens its page; the panel shows the rest.
         const redirect = entries.find(e => e.kind === 'docs' && e.path === path);
         if (redirect) { openDocs(redirect.docs); path = ''; }
@@ -408,7 +413,16 @@ window.copyDocumentGuideBoxLink = async () => {
 };
 // Small document-level entry point. Check occasionally so externally added guides become discoverable.
 let discovered = '', discoveryAt = 0, discoveryPending = false, deepLinkOpened = false;
-setInterval(async () => {
+let discoveryTimer;
+window.refreshDocumentGuideLauncher = () => {
+    discoveryAt = 0;
+    if (discoveryTimer != null) return;
+    discoveryTimer = setTimeout(() => {
+        discoveryTimer = null;
+        discoverGuides();
+    }, 100);
+};
+async function discoverGuides() {
     const name = window.currentDocumentFilename;
     if (!name || discoveryPending || (name === discovered && Date.now()-discoveryAt < 15000)) return;
     discovered = name; discoveryAt = Date.now(); discoveryPending = true;
@@ -435,4 +449,5 @@ setInterval(async () => {
         if (initial && !deepLinkOpened) { deepLinkOpened = true; await show(initial); }
     } catch (_) { discovered=''; }
     finally { discoveryPending = false; }
-}, 2000);
+}
+setInterval(discoverGuides, 2000);
