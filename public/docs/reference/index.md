@@ -686,7 +686,7 @@ To see it all at once, open the [map of the docs](../docs_map.md): every page, a
 
 ## Reference pages
 
-**42756 public symbols across 1892 source files**, 25586 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**42758 public symbols across 1892 source files**, 25586 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -699,7 +699,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Video](video.md) | 14 | 195 | 194 (99%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 60 | 2524 | 1904 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 27 | 1231 | 570 (46%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 440 | 10675 | 6789 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 440 | 10677 | 6789 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 48 | 911 | 515 (56%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 596 | 440 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 787 | 530 (67%) | Nonlinear least squares, aimed at geometry. |
@@ -901,7 +901,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>tools/<wbr>docs/<wbr></small> [BoxOutputChannelGuard.kt](workspace.md#boxoutputchannelguard-kt) | Workspace · internal | 6 | 3 | Catches the figure that is written and then immediately erased. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>diagnostics/<wbr></small> [BoxOutputLog.kt](workspace.md#boxoutputlog-kt) | Workspace | 14 | 7 | A bounded server-side record of each box's printed text, errors, `display(...)` channels and execution verdicts, readable without a websocket. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>study/<wbr>build/<wbr></small> [BoxStudyBuilds.kt](workspace.md#boxstudybuilds-kt) | Workspace | 2 | 2 | The box surface for study builds: `Box.studyBuilds` attaches a named `StudyBuilds` runner to a box, and `Box.showStudyBuilds` shows its stage buttons, progress and diagnostics in an output channel. | [Let AI4 Wait for Long Builds](../ai4_long_builds.md), [Studies](../studies.md) |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>rhino/<wbr></small> [BrepTessellator.kt](graphics.md#breptessellator-kt) | Graphics | 25 | 13 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>rhino/<wbr></small> [BrepTessellator.kt](graphics.md#breptessellator-kt) | Graphics | 27 | 13 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>brief/<wbr></small> [Brief.kt](solvers.md#brief-kt) | Solvers | 63 | 63 | Brief is a text notation for weighted geometric constraints: points, lines, planes and panels, and the relations they should satisfy, each with a strength. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>brief/<wbr></small> [BriefEditorExtension.kt](solvers.md#briefeditorextension-kt) | Solvers | 5 | 5 | The Brief editor extension's JavaScript, read from the same resource the browser loads. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>brief/<wbr></small> [BriefEditorExtensionWorkout.kt](examples.md#briefeditorextensionworkout-kt) | Examples | 3 | 1 |  |  |
