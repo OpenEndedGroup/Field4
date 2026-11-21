@@ -686,14 +686,14 @@ To see it all at once, open the [map of the docs](../docs_map.md): every page, a
 
 ## Reference pages
 
-**42763 public symbols across 1892 source files**, 25585 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**42765 public symbols across 1893 source files**, 25586 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
 | Category | Files | Symbols | Documented | Covers |
 | --- | --- | --- | --- | --- |
 | [Examples](examples.md) | 238 | 750 | 328 (43%) | Runnable examples, galleries and verification programs. |
-| [Internal](internal.md) | 26 | 227 | 96 (42%) | Implementation details explicitly marked Internal by their source. |
+| [Internal](internal.md) | 27 | 229 | 97 (42%) | Implementation details explicitly marked Internal by their source. |
 | [Lighting](lighting.md) | 8 | 216 | 208 (96%) | Light sources, fixtures and control protocols for working with physical and rendered lighting. |
 | [Networking](networking.md) | 22 | 539 | 323 (59%) | OSC messages, discovery and query interfaces for connecting Field to other applications and devices. |
 | [Video](video.md) | 14 | 195 | 194 (99%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
@@ -1798,6 +1798,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [offlineImport.kt](workspace.md#offlineimport-kt) | Workspace · internal | 1 | 1 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>reconstruction/<wbr></small> [OidnCompute.kt](internal.md#oidncompute-kt) | Internal · internal | 57 | 33 |  | [Progressive path tracing](../path_tracing.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>reconstruction/<wbr></small> [OidnComputeSpike.kt](internal.md#oidncomputespike-kt) | Internal · internal | 3 | 1 |  |  |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>reconstruction/<wbr></small> [OidnImageSourceSmoke.kt](internal.md#oidnimagesourcesmoke-kt) | Internal · internal | 2 | 1 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>reconstruction/<wbr></small> [OidnImageSpike.kt](internal.md#oidnimagespike-kt) | Internal · internal | 2 | 1 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>reconstruction/<wbr></small> [OidnSpike.kt](internal.md#oidnspike-kt) | Internal · internal | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>inference/<wbr>onnx/<wbr></small> [OnnxRuntime.kt](machine-learning.md#onnxruntime-kt) | Machine learning | 21 | 16 | ONNX models, running inside Field. | [Depth and CLIP: neural vision in a box](../onnx.md) |

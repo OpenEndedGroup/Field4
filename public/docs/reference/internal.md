@@ -4,7 +4,7 @@
 
 Implementation details explicitly marked Internal by their source. They remain available to browse here, but are not intended as entry points for code written in a Field box.
 
-26 source file(s), 227 public symbol(s), 96 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+27 source file(s), 229 public symbol(s), 97 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -563,6 +563,20 @@ Measurement harness for [`OidnComputeDenoiser`](internal.md#oidncompute-kt-oidnc
 | --- | --- |
 | <a id="oidncomputespike-kt--oidncomputespike--capture"></a>[<code class="highlight"><span class="k">class</span> <span class="nf">Capture</span><span class="p">(</span><span class="k">val</span> <span class="n">color</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span><span class="k">val</span> <span class="n">albedo</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span><span class="k">val</span> <span class="n">normal</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span><span class="k">val</span> <span class="n">vulkan</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span><span class="k">val</span> <span class="n">texture</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span><span class="k">val</span> <span class="n">scale</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/OidnComputeSpike/#L33) |  |
 | <a id="oidncomputespike-kt--oidncomputespike--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/OidnComputeSpike/#L140) |  |
+
+## OidnImageSourceSmoke.kt { #oidnimagesourcesmoke-kt }
+
+`src/jvmMain/kotlin/afield/media/reconstruction/OidnImageSourceSmoke.kt` — [read the source](source/jvmMain/afield/media/reconstruction/OidnImageSourceSmoke/)
+
+### OidnImageSourceSmoke { #oidnimagesourcesmoke-kt-oidnimagesourcesmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">OidnImageSourceSmoke</span></code>](source/jvmMain/afield/media/reconstruction/OidnImageSourceSmoke/#L31)
+
+[`OidnComputeDenoiser`](internal.md#oidncompute-kt-oidncomputedenoiser) on an [`OidnImageSource`](internal.md#oidncompute-kt-oidnimagesource), with no path tracer: a soft disc kept per pixel with probability equal to its opacity (stochastic transparency, one sample a pixel) must come back closer to the smooth disc than the noisy input was, both through [`OidnComputeDenoiser.denoiseImage`](internal.md#oidncompute-kt--oidncomputedenoiser--denoiseimage) and, installed, once per upload.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="oidnimagesourcesmoke-kt--oidnimagesourcesmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/OidnImageSourceSmoke/#L32) |  |
 
 ## OidnImageSpike.kt { #oidnimagespike-kt }
 
