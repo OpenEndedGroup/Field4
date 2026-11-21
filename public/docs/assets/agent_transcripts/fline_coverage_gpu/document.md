@@ -34,7 +34,7 @@ start(renderer::run)
 <!-- field-box id="fcg_fill" index="1" -->
 
 ```edn [field-box id="fcg_fill" role="properties"]
-{"id" "fcg_fill" "index" 1 "name" "fill FLines into the mask buffer" "parents" ["root" "fcg_renderer"] "children" ["fcg_draw"] "properties" {"children" #{#afield/box "fcg_draw"} "parents" #{#afield/box "root" #afield/box "fcg_renderer"} "name" "fill FLines into the mask buffer" "_tombstone" false "frame" #afield/rect [40.0 200.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fcg_fill_code_.kt" "lines" 100 "characters" 3520 "sha256" "d2b61c6212f6a64c35f60f5c43c26693423303cfd9c5bf3ec8006a8d3d27ce1f"}]}
+{"id" "fcg_fill" "index" 1 "name" "fill FLines into the mask buffer" "parents" ["root" "fcg_renderer"] "children" ["fcg_draw"] "properties" {"children" #{#afield/box "fcg_draw"} "parents" #{#afield/box "root" #afield/box "fcg_renderer"} "name" "fill FLines into the mask buffer" "_tombstone" false "frame" #afield/rect [40.0 200.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fcg_fill_code_.kt" "lines" 100 "characters" 3547 "sha256" "c09bf9fd1fe7cbc781ccc2fb711282d7cd6373d68e8dd1b366ac5f9075591f3e"}]}
 ```
 
 ```kotlin [field-property box="fcg_fill" name="code" path="fcg_fill_code_.kt"]
@@ -133,7 +133,7 @@ frames {
             display(
                 "mask",
                 view.toHTML() +
-                    "<pre>red: non-zero, cyan: even-odd, renderer frame $f\nmax |mask buffer - CPU coverage| = $worst</pre>",
+                    "<pre>white: inside under both rules, red: under non-zero only, renderer frame $f\nmax |mask buffer - CPU coverage| = $worst</pre>",
             )
         }
     }

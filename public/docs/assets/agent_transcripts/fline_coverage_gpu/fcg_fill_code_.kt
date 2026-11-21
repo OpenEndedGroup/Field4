@@ -93,7 +93,7 @@ frames {
             display(
                 "mask",
                 view.toHTML() +
-                    "<pre>red: non-zero, cyan: even-odd, renderer frame $f\nmax |mask buffer - CPU coverage| = $worst</pre>",
+                    "<pre>white: inside under both rules, red: under non-zero only, renderer frame $f\nmax |mask buffer - CPU coverage| = $worst</pre>",
             )
         }
     }
