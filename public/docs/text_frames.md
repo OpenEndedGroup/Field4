@@ -157,6 +157,17 @@ in screen pixels; the trace follows corners and sits 5px outside the selection b
 `autocomplete: true` enables prose suggestions through the configured AI4 text model. Accept a
 suggestion with ++tab++ and dismiss it with ++escape++; availability follows your AI4 configuration.
 
+## Notes on a passage
+
+Select text in a frame, then ++alt++-click and choose **New note from selection**. Field creates
+a child text frame below it. The note has a **Source passage** button: click it to frame the
+parent and highlight the passage. This works with a selection in the reader, in the visual
+editor, or in the inline Markdown editor.
+
+The link follows the passage as you write before, within, or after it. Insertions just outside
+its ends stay outside the link. If you delete the passage completely, the note and graph
+connection stay in place and the button reads **Passage lost**.
+
 ## Connected writing
 
 Shift-select two boxes and press ++g++ to connect them. ++alt++-click a frame and move **down** to choose

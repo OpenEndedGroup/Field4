@@ -1,0 +1,14 @@
+name: text_frame_linked_notes
+operations:
+  - drive:
+      warmCompletion: false
+      script: |
+        ui.hoverSelector(".text-frame-rich strong")
+        ui.down("Alt")
+        ui.mouseDown()
+        ui.waitForSelector(".markingButton:has-text('New note from selection')", 10000.0)
+        ui.hoverSelector(".markingButton:has-text('New note from selection')")
+        ui.mouseUp()
+        ui.up("Alt")
+        ui.waitForSelector(".text-frame-box:has(.text-frame-passage:not([hidden])) .text-frame-rich-block:focus", 10000.0)
+        ui.press("Escape")

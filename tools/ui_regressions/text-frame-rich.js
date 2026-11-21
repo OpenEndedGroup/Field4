@@ -31,13 +31,12 @@ const checkCopyIcon = root => {
 };
 await wait(() => preview.querySelector('table') && box.contents === source, 'Markdown fixture did not sync');
 checkCopyIcon(preview);
-newBox({kind: 'text-frame', name: 'Unstyled notes', frame: {x: 650, y: 140, w: 300, h: 190}});
+newBox({kind: 'text-frame', name: 'Unstyled notes', contents: '# Unstyled heading', frame: {x: 650, y: 140, w: 300, h: 190}});
 const otherFrame = () => [...document.querySelectorAll('.text-frame-box')].find(box => box.name === 'Unstyled notes');
 await wait(() => otherFrame()?.querySelector('.text-frame-rich-block:focus'), 'Second frame did not mount');
 close();
-send('set-string', {uid: otherFrame().uid, property: 'contents', value: '# Unstyled heading'});
-await wait(() => otherFrame()?.querySelector('h1'), 'Second heading did not sync');
-const otherHeading = otherFrame().querySelector('h1');
+await wait(() => otherFrame()?.querySelector('.text-frame-preview:not(.text-frame-rich) h1'), 'Second heading did not render');
+const otherHeading = otherFrame().querySelector('.text-frame-preview:not(.text-frame-rich) h1');
 const initialColors = [otherHeading, document.body].map(node => getComputedStyle(node).color);
 const headingColor = 'rgb(182, 227, 197)';
 send('set-string', {uid: box.uid, property: 'textFrame', value: `css: |

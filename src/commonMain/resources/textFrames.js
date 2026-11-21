@@ -2,11 +2,76 @@ import {send, growTextFrame, setTextFrameContents, flushTextFramePropertyEditor,
 import {mountChatAutocomplete} from './aiChatAutocomplete.js';
 import {renderFieldMarkdown} from './markdownView.js';
 import {markdownOffsetAtPoint, revealTextareaCaret} from './markdownCaret.js';
+import {markdownRangeFromDOM, domRangeForMarkdown} from './markdownTextRuns.js';
 import {mountRichText, placeRichCaret, pasteRichText, moveBetweenRichBlocks} from './textFrameRichEditor.js';
 import {load, dump, CORE_SCHEMA} from './vendor/js-yaml/js-yaml.mjs';
 
 // Text belongs to the box. DOM, editing state and uncommitted conflict drafts are local to a view.
 const frames = new Map();
+const normalizeMarkdown = value => value.replace(/\r\n?/g, '\n');
+let shownPassage = null;
+
+function updatePassageHighlight() {
+    const highlights = window.CSS?.highlights;
+    if (!highlights) return;
+    highlights.delete('field-source-passage');
+    const {source, child} = shownPassage || {};
+    const anchor = child?.passageAnchor;
+    if (!source?.box.isConnected || !child?.box.isConnected || !anchor || anchor.lost || source.preview.hidden ||
+        source.box.classList.contains('tombstoned') || child.box.classList.contains('tombstoned')) return;
+    const text = normalizeMarkdown(source.previewSource || '');
+    if (anchor.end > text.length || text.slice(anchor.start, anchor.start + anchor.excerpt.length) !== anchor.excerpt) return;
+    const range = domRangeForMarkdown(source.preview, anchor.start, anchor.end);
+    if (range) highlights.set('field-source-passage', new Highlight(range));
+}
+
+function updatePassageBadge(state) {
+    let anchor;
+    try { anchor = JSON.parse(state.box.textRunAnchor); } catch (_) { /* No passage on this box. */ }
+    state.passageAnchor = anchor?.version === 1 ? anchor : null;
+    state.passageBadge.hidden = !state.passageAnchor;
+    if (state.passageAnchor) {
+        state.passageBadge.textContent = anchor.lost ? 'Passage lost' : '↖ Source passage';
+        state.passageBadge.classList.toggle('text-frame-passage-lost', anchor.lost === true);
+        state.passageBadge.title = (anchor.lost ? 'Original passage deleted; go to parent box' : 'Show the passage on its parent box') +
+            (anchor.excerpt ? ': ' + anchor.excerpt : '');
+    }
+    if (shownPassage?.child === state) updatePassageHighlight();
+}
+
+function showPassage(child) {
+    const anchor = child.passageAnchor;
+    if (!anchor) return;
+    const source = [...frames.values()].find(state => state.box.uid === anchor.sourceUid);
+    if (!source || !window.frameBoxFromGuide?.(anchor.sourceUid)) return;
+    finish(source);
+    shownPassage = {source, child};
+    updatePassageHighlight();
+}
+
+window.captureTextFrameRun = uid => {
+    if (window.currentDocumentReadOnly) return null;
+    const state = [...frames.values()].find(item => item.box.uid === uid);
+    if (!state || state.composing || state.incoming !== null) return null;
+    const selection = window.getSelection();
+    const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
+    let text, offsets;
+    if (state.richEdit && range) {
+        text = normalizeMarkdown(state.editor.value);
+        offsets = state.richEdit.sourceRange(range);
+    } else if (!state.editor.hidden && document.activeElement === state.editor) {
+        text = normalizeMarkdown(state.editor.value);
+        offsets = {start: state.editor.selectionStart, end: state.editor.selectionEnd};
+    } else if (!state.preview.hidden) {
+        text = normalizeMarkdown(state.previewSource || '');
+        offsets = markdownRangeFromDOM(state.preview, range);
+    }
+    if (!offsets || offsets.start >= offsets.end || offsets.end > text.length ||
+        !text.slice(offsets.start, offsets.end).trim()) return null;
+    flush(state);
+    return JSON.stringify({version: 1, id: crypto.randomUUID(), sourceUid: uid, property: 'contents',
+        ...offsets, excerpt: text.slice(offsets.start, Math.min(offsets.end, offsets.start + 120))});
+};
 const defaults = {fontFamily: '"Field Etoile", serif', fontSize: 11, fontWeight: 400, fontStyle: 'normal', color: 'inherit', backgroundColor: 'transparent', textAlign: 'left', letterSpacing: 'normal', lineHeight: 1.5, padding: 16, sizing: 'grow', connectionBorderLength: 100, autocomplete: false, minHeight: 80, reflow: true, css: ''};
 const node = (tag, cls, text) => {
     const result = document.createElement(tag);
@@ -209,6 +274,7 @@ function render(state) {
     renderFieldMarkdown(state.preview, text, markdownOptions(state, true));
     state.preview.classList.toggle('text-frame-empty', !text.trim());
     if (!text.trim()) state.preview.textContent = 'Double-click to write';
+    if (shownPassage?.source === state) updatePassageHighlight();
     layout(state);
 }
 function layout(state) {
@@ -395,6 +461,8 @@ function mount(box) {
     editor.placeholder = 'Write Markdown…'; editor.spellcheck = true; editor.hidden = true;
     const conflict = node('div', 'text-frame-conflict'); conflict.hidden = true; conflict.setAttribute('role', 'alert');
     const state = {box, body, preview, editor, conflict, seenContents: box.contents || '', incoming: null, dirty: false, composing: false};
+    state.passageBadge = button('', () => showPassage(state), 'text-frame-passage');
+    state.passageBadge.hidden = true;
     state.overflow = button('+', () => beginRich(state), 'text-frame-overflow');
     state.overflow.title = 'Text overflows this frame. Click to edit all text.';
     state.overflow.setAttribute('aria-label', 'Overflowed text; edit all text'); state.overflow.hidden = true;
@@ -464,7 +532,7 @@ function mount(box) {
     rich.addEventListener('pointerup', state.captureRichSelection);
     rich.addEventListener('keyup', state.captureRichSelection);
     rich.addEventListener('focusout', state.captureRichSelection);
-    body.append(preview, editor, rich); box.append(body, state.overflow, conflict);
+    body.append(preview, editor, rich); box.append(body, state.overflow, conflict, state.passageBadge);
     // The foreground connections sit outside the canvas's stacking context.
     document.body.append(toolbar);
     box.classList.add('text-frame-box');
@@ -483,7 +551,7 @@ function mount(box) {
     }, true);
     preview.addEventListener('mousedown', e => {
         // Shift-click belongs to box selection here; prevent the browser from extending a text range.
-        if (e.button === 0 && e.shiftKey) e.preventDefault();
+        if (e.button === 0 && (e.shiftKey || e.altKey)) e.preventDefault();
     });
     preview.addEventListener('dblclick', e => {
         if (window.currentDocumentReadOnly || e.target.closest('button')) return;
@@ -533,9 +601,9 @@ function mount(box) {
     });
     editor.addEventListener('blur', () => queueMicrotask(() => {
         // Monaco can briefly focus its own input while syncing a peer value, then restore us.
-        if (document.activeElement !== editor) finish(state);
+        if (!editor.hidden && document.activeElement !== editor) finish(state);
     }));
-    for (const element of [editor, rich, toolbar, conflict, state.overflow]) {
+    for (const element of [editor, rich, toolbar, conflict, state.overflow, state.passageBadge]) {
         for (const name of ['pointerdown', 'mousedown', 'dblclick', 'wheel', 'keyup', 'contextmenu']) {
             element.addEventListener(name, e => {
                 e.stopPropagation();
@@ -552,6 +620,7 @@ function mount(box) {
     state.observer = new ResizeObserver(() => layout(state));
     state.observer.observe(box); state.observer.observe(preview);
     frames.set(box, state);
+    updatePassageBadge(state);
     refreshStyleInheritance();
     render(state);
     return state;
@@ -563,12 +632,13 @@ export function syncTextFrame(box, property) {
         if (state) {
             flush(state); state.observer.disconnect(); state.autocomplete.dispose(); cancelAnimationFrame(state.layoutFrame);
             cancelAnimationFrame(state.toolbarFrame); state.localStyle?.remove();
-            for (const part of [state.body, state.overflow, state.conflict, state.toolbar]) part.remove();
+            for (const part of [state.body, state.overflow, state.conflict, state.toolbar, state.passageBadge]) part.remove();
             box.classList.remove('text-frame-box', 'text-frame-editing', 'text-frame-has-overflow'); frames.delete(box);
         }
         return;
     }
     if (!state) { mount(box); return; }
+    if (property === 'textRunAnchor') { updatePassageBadge(state); return; }
     if (property === 'textFrame') { layout(state); return; }
     if (box.classList.contains('text-frame-editing')) {
         const incoming = box.contents || '';
@@ -578,7 +648,7 @@ export function syncTextFrame(box, property) {
         }
         if (property === 'contents') state.seenContents = incoming;
         layout(state);
-    } else render(state);
+    } else if (state.previewSource !== (box.contents || '')) render(state);
 }
 window.syncTextFrame = syncTextFrame;
 window.editTextFrame = box => {
@@ -625,6 +695,7 @@ const canvasSelection = () => Array.from(window.selectedList || []).filter(box =
     getComputedStyle(box).display !== 'none' && getComputedStyle(box).visibility !== 'hidden');
 window.addEventListener('field-selection-changed', () => {
     const selection = canvasSelection();
+    if (shownPassage && !selection.includes(shownPassage.source.box)) { shownPassage = null; updatePassageHighlight(); }
     for (const state of frames.values()) if (!selection.includes(state.box)) {
         if (state.box.classList.contains('text-frame-editing')) finish(state);
         const focused = document.activeElement;

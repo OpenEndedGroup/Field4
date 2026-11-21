@@ -1,3 +1,6 @@
+import {textFrameMarkdownToHtml} from './afield.mjs';
+import {markdownCharacters} from './markdownTextRuns.js';
+
 const proseSelector = 'p,h1,h2,h3,h4,h5,h6';
 const imageSource = /^!\[([^\]]*)\]\(([^)]+)\)/;
 const inlineTags = 'span,b,strong,i,em,br,img';
@@ -72,7 +75,7 @@ function editableRange(block, source) {
 }
 
 export function mountRichText(root, markdown) {
-    const source = markdown.replace(/\r\n/g, '\n');
+    const source = markdown.replace(/\r\n?/g, '\n');
     if (!source.trim()) root.innerHTML = '<div class="ai-chat-markdown"><p><br></p></div>';
     const reader = root.querySelector('.ai-chat-markdown');
     const blocks = [];
@@ -101,21 +104,46 @@ export function mountRichText(root, markdown) {
         reader.append(host);
         blocks.push({start: source.length, end: source.length, host, baseline: '', prefix: '\n\n'});
     }
+    function serialize() {
+        let result = '', cursor = 0, changed = false;
+        const regions = [];
+        for (const {start, end, host, baseline, prefix = ''} of blocks) {
+            const value = blockMarkdown(host);
+            result += source.slice(cursor, start);
+            const next = value === baseline ? source.slice(start, end) : value;
+            if (value !== baseline) { result += prefix; changed = true; }
+            regions.push({host, start: result.length, raw: next});
+            result += next;
+            cursor = end;
+        }
+        return {text: changed ? result + source.slice(cursor) : source, regions};
+    }
     return {
         first: blocks[0].host,
-        markdown() {
-            let result = '', cursor = 0, changed = false;
-            for (const {start, end, host, baseline, prefix = ''} of blocks) {
-                const value = blockMarkdown(host);
-                result += source.slice(cursor, start);
-                if (value === baseline) result += source.slice(start, end);
-                else {
-                    result += prefix + value;
-                    changed = true;
-                }
-                cursor = end;
-            }
-            return changed ? result + source.slice(cursor) : markdown;
+        markdown: () => serialize().text,
+        sourceRange(range) {
+            if (range.collapsed) return null;
+            const {regions} = serialize();
+            const map = (node, offset, end) => {
+                const region = regions.find(({host}) => host.contains(node));
+                if (!region) return null;
+                // Compare prose characters rather than DOM structure: the browser may split
+                // text nodes, and the Markdown renderer can collapse line breaks and spaces.
+                const prose = value => value.replace(/\s/g, '');
+                const before = document.createRange();
+                before.selectNodeContents(region.host);
+                before.setEnd(node, offset);
+                const index = prose(before.toString()).length;
+                const detached = document.createElement('div');
+                detached.innerHTML = textFrameMarkdownToHtml(region.raw);
+                const chars = markdownCharacters(detached).filter(item => !/\s/.test(item.char));
+                if (chars.map(item => item.char).join('') !== prose(region.host.textContent)) return null;
+                const item = chars[index - (end ? 1 : 0)];
+                return item ? region.start + item.source + (end ? 1 : 0) : null;
+            };
+            const start = map(range.startContainer, range.startOffset, false);
+            const end = map(range.endContainer, range.endOffset, true);
+            return start != null && end != null && start < end ? {start, end} : null;
         }
     };
 }

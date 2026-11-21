@@ -39,6 +39,8 @@ import afield.app.server.updateCheckMessages
 import afield.app.settings.NEEDS_RERUN_PROPERTY
 import afield.data.table.get
 import afield.document.properties.PropertyBag
+import afield.document.text.TEXT_RUN_ANCHOR
+import afield.document.text.rebaseChildTextRuns
 import afield.document.workspace.copyBoxes
 import afield.media.stream.*
 import afield.runtime.execution.BoxExecution
@@ -719,6 +721,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "contents",
             "box_kind",
             "textFrame",
+            TEXT_RUN_ANCHOR,
             "contents_language",
             "default_property",
             "file_proxy_mode",
@@ -805,6 +808,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "code_language",
             "box_kind",
             "textFrame",
+            TEXT_RUN_ANCHOR,
             "contents_language",
             "default_property",
             "file_proxy_mode",
@@ -1238,6 +1242,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             properties[name] = incoming
         }
 
+        rebaseChildTextRuns(this, name, oldValue, incoming)
+
         // A Delegation default materialising an empty collection on first read is not an edit.
         if (oldValue != incoming && !(oldValue == null && isEmptyContainer(incoming))) notePersistentChange(name)
         FlightRecorder.recordTrackedPropertyChange(this, name, oldValue, incoming)
@@ -1252,6 +1258,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
     override fun removePropertyRaw(name: String, doResync: Boolean) {
         if (!properties.containsKey(name)) return
         val oldValue = properties.remove(name)
+        rebaseChildTextRuns(this, name, oldValue, null)
         // Same resync bookkeeping as setPropertyRaw: the UI has to hear that the property went away,
         // not just that it changed value, or the inspector keeps showing the stale one.
         if (doResync && uiResyncProperties.any { it.matches(name) }) {
