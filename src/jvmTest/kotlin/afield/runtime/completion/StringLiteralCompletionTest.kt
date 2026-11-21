@@ -1,5 +1,13 @@
 package afield.runtime.completion
 
+import afield.document.graph.Box
+import afield.document.graph.needsResync
+import afield.geometry.rhino.RhinoLayerPaths
+import afield.geometry.rhino.RhinoModel
+import afield.runtime.kotlin.KotlinContext
+import afield.runtime.kotlin.KotlinScriptEngine
+import afield.runtime.kotlin.KotlinVariableInfo
+import java.lang.reflect.Proxy
 import java.nio.file.Files
 import kotlin.reflect.full.memberFunctions
 import kotlin.test.Test
@@ -14,7 +22,18 @@ object StringLiteralCompletionFixtures {
     }
 
     fun pick(count: Int, @CompletesWith(Fruit::class) argme: String, @CompletesPath("*.csv") table: String = "") = Unit
+
+    /** Offers the layer names of the [Model] the call is on, as RhinoLayerPaths does for a RhinoModel. */
+    object ReceiverLayers : StringCompletions {
+        override fun candidates(context: StringCompletionContext) = (context.receiver as? Model)?.layerNames.orEmpty()
+    }
+
+    class Model(val layerNames: List<String>) {
+        fun layer(@CompletesWith(ReceiverLayers::class) name: String) = name
+    }
 }
+
+private val fixtureDescriptor: Any? = null
 
 class StringLiteralCompletionTest {
     private fun at(codeWithCaret: String): Pair<String, Int> =
@@ -120,6 +139,51 @@ class StringLiteralCompletionTest {
         ).forEach { source ->
             val (code, pos) = at(source)
             assertNull(StringLiteralCompletion.complete(null, code, pos), source)
+        }
+    }
+
+    /** A box whose Kotlin context holds [name] = [value], as it would after a run, with no session or compiler. */
+    private fun boxWithVariable(name: String, value: Any?): Box {
+        val context = KotlinContext()
+        val engine = Proxy.newProxyInstance(KotlinScriptEngine::class.java.classLoader, arrayOf(KotlinScriptEngine::class.java)) { proxy, method, _ ->
+            when (method.name) {
+                "getContext" -> context
+                "hashCode" -> System.identityHashCode(proxy)
+                "equals" -> false
+                "toString" -> "FakeEngine"
+                "dispose" -> null
+                else -> throw UnsupportedOperationException("FakeEngine.${method.name}")
+            }
+        } as KotlinScriptEngine
+        return Box("string-literal-receiver").also {
+            it.ki = engine
+            context.vars[name] = KotlinVariableInfo(value, ::fixtureDescriptor, it)
+        }
+    }
+
+    @Test
+    fun `a provider is handed the live object a member call is on`() {
+        val model = StringLiteralCompletionFixtures.Model(listOf("Site", "Building::Walls", "Building::Roof"))
+        val box = boxWithVariable("model", model)
+        try {
+            val (code, pos) = at("model.layer(\"Wal|\")")
+            val completion = StringLiteralCompletion.complete(box, code, pos)!!
+            assertEquals(listOf("Building::Walls"), completion.metadata.map { it.displayText })
+            assertTrue(completion.metadata.all { it.category == StringLiteralCompletion.CHOICES })
+
+            // Completion evaluates nothing: an expression receiver is not run to find its value.
+            val (expression, expressionPos) = at("StringLiteralCompletionFixtures.Model(listOf(\"Site\")).layer(\"|\")")
+            assertNull(StringLiteralCompletion.complete(box, expression, expressionPos))
+        } finally {
+            needsResync.removeAll { (b, _) -> b === box }
+        }
+    }
+
+    @Test
+    fun `RhinoModel layer and on complete layer paths`() {
+        val functions = RhinoModel::class.memberFunctions.filter { it.name == "layer" || it.name == "on" }
+        for (source in listOf("model.layer(\"Bu|", "model.on(layer = \"Bu|")) {
+            assertEquals(RhinoLayerPaths::class, assertIs<CompletesWith>(StringLiteralCompletion.annotationIn(functions.asSequence(), callAt(source)!!)).provider)
         }
     }
 }

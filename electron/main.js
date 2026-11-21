@@ -540,7 +540,10 @@ function createTabStripMarkup() {
       display: flex;
       align-items: center;
       gap: 6px;
-      height: 100%;
+      /* #tabstrip's 7px top padding seats the tabs on the page; step over it so these centre on the
+         whole strip, not on the part below the padding. */
+      height: calc(100% + 7px);
+      margin-top: -7px;
       -webkit-app-region: no-drag;
     }
 

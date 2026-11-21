@@ -12,7 +12,12 @@ What it reads
   ``offline.html?file=assets/agent_transcripts/<name>/…`` link gives page→transcript edges.
 * **Code** (``--code``) — source files under ``src/``. A page reaches a file by naming it (a
   GitHub blob link, a ``path#anchor`` citation, a ``src/…`` code span) or by calling a symbol the
-  file declares in its code fences; a transcript reaches one through the code of its boxes.
+  file declares in its Kotlin fences (the language is the fence's ``data-lang``); a transcript
+  reaches one through the code of its boxes. A *use* is not a word: comments and string text are
+  dropped (``${…}`` templates kept), a lowercase name counts only as ``x.name``, ``name(`` or
+  ``name {``, and a name the code declares itself is not a use — the index holds data-class
+  properties as bare names, and ``// absolute record timecode`` is not a call of
+  ``PolynomialLeafGapStyle.absolute``.
   Symbol→file attribution is ``docs_hooks.load_source_symbol_index``, the same drift-guarded
   read of the codebase reference that keys the capture digests — not a second Kotlin parser, and
   it keeps only names declared in exactly one file, so ``size`` or ``name`` attach to nothing.
@@ -32,6 +37,11 @@ What it writes (``build/docs_link_graph/`` by default)
   and dead ends, the system×system link matrix and the systems that keep to themselves, code
   with public API that no page or transcript reaches, short and long pages, and age: pages the
   code they cite has moved on from, and pages nothing newer links to.
+* ``graph.html`` — the graph drawn in 3D, self-contained (it inlines Field's vendored three.js and
+  opens from disk): the documentation as a core laid out by its links, the code as a shell around
+  it (see ``layout``); coloured by section, last edit or code drift; click a node for what it
+  links and what links it, toggle transcripts, code, the reference and edge kinds. The page is
+  ``tools/docs_link_graph.html`` with the data and positions filled in.
 * ``graph.json`` (node-link) and ``graph.graphml`` (opens in Gephi, yEd, Cytoscape).
 
 What it cannot see
@@ -68,7 +78,9 @@ SWEEP_FILES = 30
 NON_SUBSTANTIVE_SUBJECT_RE = re.compile(r"^(Regenerate|Land |Merge )")
 DAY = 86400.0
 
-FENCE_OPEN_RE = re.compile(r"^(?P<indent>[ \t]*)(?P<fence>`{3,}|~{3,})\s*(?P<lang>[^\s{`]*)")
+FENCE_OPEN_RE = re.compile(r"^(?P<indent>[ \t]*)(?P<fence>`{3,}|~{3,})\s*(?P<lang>[^\s{`]*)\s*(?P<attrs>\{[^}\n]*\}?)?")
+# Nearly every docs fence opens as ``diffstatic {data-lang=kotlin}``: the language is the attribute.
+FENCE_LANG_ATTR_RE = re.compile(r"\bdata-lang\s*=\s*[\"']?(?P<lang>[\w+#-]+)")
 LINK_RE = re.compile(r"\]\(\s*<?(?P<target>[^)\s>]+)")
 REF_DEF_RE = re.compile(r"^\s{0,3}\[[^\]]+\]:\s*<?(?P<target>\S+?)>?(?:\s|$)", re.M)
 HTML_ATTR_RE = re.compile(r"\bhref\s*=\s*[\"'](?P<target>[^\"']+)[\"']")
@@ -79,7 +91,9 @@ REPO_PATH_SPAN_RE = re.compile(r"^(?P<path>src/[A-Za-z0-9_./@+-]+?)(?::\d+(?:-\d
 IMPORT_RE = re.compile(r"^\s*import\s+(?P<pkg>afield(?:\.[a-z][A-Za-z0-9_]*)+)", re.M)
 H1_RE = re.compile(r"^#\s+(?P<title>.+?)\s*(?:\{[^}]*\})?\s*$", re.M)
 WORD_RE = re.compile(r"[A-Za-z][A-Za-z'’-]*")
-NON_SYMBOL_FENCES = frozenset({"bash", "sh", "shell", "console", "zsh", "text", "txt", "json", "yaml", "yml", "edn", "toml", "mermaid", "d2"})
+# Only Kotlin calls Field's Kotlin API; a bash, Python or GLSL fence that says `import` or `under`
+# names nothing in it.
+SYMBOL_FENCES = frozenset({"kotlin", "kt", "kts"})
 REFERENCE_PREFIX = "reference/"
 # Catalogues: they link (nearly) every page by construction, so they are left out of the editorial
 # degree counts. changelog.md is written from main's history; agent_transcripts.md lists every
@@ -110,7 +124,8 @@ def split_fences(markdown: str) -> PageText:
             index += 1
             continue
         fence = match.group("fence")
-        language = match.group("lang").strip().lower()
+        attr_lang = FENCE_LANG_ATTR_RE.search(match.group("attrs") or "")
+        language = (attr_lang.group("lang") if attr_lang else match.group("lang")).strip().lower()
         body: list[str] = []
         index += 1
         while index < len(lines):
@@ -242,10 +257,68 @@ def used_in_by_file(repo_root: Path, pages: set[str]) -> dict[str, list[str]]:
     return found
 
 
-def code_files_for(code: str, symbol_index: dict[str, tuple[str, ...]]) -> collections.Counter:
-    """Source file → number of distinct indexed symbols ``code`` names from it."""
+# Strings and comments, matched together so a "//" inside a string is not a comment. A string keeps
+# its templates (`"${Resolve.markers().size}"` calls `markers`); its words do not ("Edit 2" is a
+# timeline name, not `Edit`).
+KOTLIN_NOISE_RE = re.compile(r'"""(?P<raw>.*?)"""|"(?P<str>(?:\\.|[^"\\\n])*)"|//[^\n]*|/\*.*?\*/|\'(?:\\.|[^\'\\\n])\'', re.S)
+TEMPLATE_RE = re.compile(r"\$\{(?P<expr>[^{}]*)\}|\$(?P<name>[A-Za-z_]\w*)")
+DECLARED_HERE_RE = re.compile(r"\b(?:val|var|fun|class|object|interface)\s+(?:<[^>]*>\s*)?(?:\w+\.)?(?P<name>[A-Za-z_]\w*)")
+IDENTIFIER_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+GENERIC_CALL_RE = re.compile(r"<[\w\s,.<>?*]*>\s*\(")
+
+
+def kotlin_code_only(code: str) -> str:
+    def keep(match: re.Match[str]) -> str:
+        body = match.group("raw") if match.group("raw") is not None else match.group("str")
+        if body is None:
+            return " "
+        return " " + " ; ".join(m.group("expr") or m.group("name") for m in TEMPLATE_RE.finditer(body)) + " "
+
+    return KOTLIN_NOISE_RE.sub(keep, code)
+
+
+def used_symbols(code: str) -> set[str]:
+    """The names Kotlin ``code`` uses, as opposed to the words it happens to contain.
+
+    Comments and string text go; templates stay. A capitalised name (a type, an object) counts
+    wherever it stands. A lowercase one counts only in a call or member position — ``x.name``,
+    ``name(``, ``name {`` — because the index holds data-class properties and parameters as bare
+    names, and a fence's own ``val under = …`` is not a use of ``ThreeTintBand.under``. Names the
+    code declares itself are not uses either.
+    """
+    text = kotlin_code_only(code)
+    declared = {m.group("name") for m in DECLARED_HERE_RE.finditer(text)}
+    used: set[str] = set()
+    for match in IDENTIFIER_RE.finditer(text):
+        name = match.group()
+        if name in declared:
+            continue
+        if name[0].isupper():
+            used.add(name)
+            continue
+        i = match.start() - 1
+        while i >= 0 and text[i] in " \t\n":
+            i -= 1
+        j = match.end()
+        while j < len(text) and text[j] in " \t":
+            j += 1
+        nxt = text[j:j + 1]
+        if (i >= 0 and text[i] == ".") or nxt in ("(", "{") or (nxt == "<" and GENERIC_CALL_RE.match(text, j)):
+            used.add(name)
+    return used
+
+
+def code_files_for(code: str, symbol_index: dict[str, tuple[str, ...]], *, mention: bool = False) -> collections.Counter:
+    """Source file → number of distinct indexed symbols ``code`` uses from it.
+
+    ``mention``: ``code`` is an inline span in prose, where a lone name (`` `markersAt` ``) is a
+    deliberate mention and counts in any case.
+    """
+    names = used_symbols(code)
+    if mention and IDENTIFIER_RE.fullmatch(code.strip()):
+        names.add(code.strip())
     reached: collections.Counter = collections.Counter()
-    for token in set(re.findall(r"[A-Za-z_][A-Za-z0-9_]*", code)):
+    for token in names:
         for source in symbol_index.get(token, ()):
             reached[source] += 1
     return reached
@@ -466,10 +539,10 @@ def build_graph(
                 if repo_path and repo_path.group("path") in tracked_src:
                     graph.edge(page_key(page), add_code_node(repo_path.group("path")), "cites")
                     continue
-                for source, count in code_files_for(span.group("code"), symbol_index).items():
+                for source, count in code_files_for(span.group("code"), symbol_index, mention=True).items():
                     graph.edge(page_key(page), add_code_node(source), "mentions", count)
             for language, fence_code in split.fences:
-                if language in NON_SYMBOL_FENCES:
+                if language not in SYMBOL_FENCES:
                     continue
                 for source, count in code_files_for(fence_code, symbol_index).items():
                     graph.edge(page_key(page), add_code_node(source), "calls", count)
@@ -573,6 +646,226 @@ def to_networkx(graph: Graph) -> Any:
     for (source, target), attrs in graph.edges.items():
         g.add_edge(source, target, weight=attrs["weight"], kinds=" ".join(sorted(attrs["kinds"])))
     return g
+
+
+# --------------------------------------------------------------------------------------------
+# Drawing
+
+
+VIEW_EDGE_KINDS = ("links", "opens", "documents", "cites", "calls", "mentions", "reference", "usedIn")
+VIEW_NODE_FIELDS = (
+    "system", "navPath", "inNav", "words", "fences", "created", "lastEdit", "substantiveCommits", "inLinks",
+    "outLinks", "pagerank", "codeDriftDays", "apiSize", "lines", "inReference",
+)
+VIEW_TEMPLATE = Path(__file__).with_name("docs_link_graph.html")
+# Field's vendored three.js, inlined into graph.html so the page opens from disk with no server.
+THREE_VENDOR_GLOB = "src/commonMain/resources/vendor/three/*/three.module.js"
+
+
+def stable_unit(key: str, salt: str) -> float:
+    """A deterministic number in [-1, 1) for ``key``, so layouts do not move between runs."""
+    import hashlib
+
+    return int.from_bytes(hashlib.blake2b((salt + key).encode(), digest_size=4).digest(), "big") / 2**31 - 1.0
+
+
+# What places a page: the links a reader can follow, and the transcripts a page opens. Code does
+# not pull pages around; it is placed afterwards, outside, in the direction of whatever calls it.
+CORE_WEIGHTS = {"links": 1.0, "opens": 1.0, "documents": 1.0}
+# How strongly each edge kind says "this page uses this file", for aiming the code shell.
+SHELL_WEIGHTS = {"cites": 1.0, "calls": 1.0, "mentions": 0.3}
+CORE_ITERATIONS = 800
+SHELL_GAP = 1.6  # shell radius, as a multiple of the core's 95th-percentile radius
+FILE_SPACING = 0.13  # distance between neighbouring files in a directory's sunflower
+
+
+def package_of(path: str) -> str:
+    return "package:" + path.rsplit("/", 1)[0]
+
+
+def parent_package(package: str) -> str | None:
+    head = package.removeprefix("package:")
+    return "package:" + head.rsplit("/", 1)[0] if head.count("/") >= 4 else None
+
+
+def normalised(v: Any) -> Any:
+    import numpy as np
+
+    n = np.linalg.norm(v, axis=-1, keepdims=True)
+    return v / np.where(n == 0, 1, n)
+
+
+def fibonacci_directions(count: int) -> Any:
+    import numpy as np
+
+    i = np.arange(count) + 0.5
+    y = 1 - 2 * i / max(count, 1)
+    r = np.sqrt(np.clip(1 - y * y, 0, None))
+    a = np.pi * (3 - np.sqrt(5)) * np.arange(count)
+    return np.stack([r * np.cos(a), y, r * np.sin(a)], axis=1)
+
+
+def layout(graph: Graph) -> tuple[dict[str, tuple[float, float, float]], dict[str, dict[str, Any]]]:
+    """3D positions for ``graph.html``, and the directory nodes the code shell is built from.
+
+    **The core** is the documentation: pages and transcripts, placed by ForceAtlas2 in LinLog
+    mode with hub dissuasion (Noack's energy model, which pulls clusters apart instead of
+    averaging them into a ball) on what a reader can follow — page links, and the transcripts a
+    page opens. Never the nav: a section that comes out as one cluster does so because its pages
+    link each other. Distances are scaled so linked pages sit about 1 apart.
+
+    **The shell** is the code, on a sphere around the core. Each source directory is aimed at the
+    pages and transcripts that cite or call its files, so a page's lines to its code run outward
+    in its own direction; a directory nothing reaches takes its parent's direction, so unreached
+    code sits beside its relatives rather than in a heap. Directories then push apart on the
+    sphere, and each one's files spread as a small sunflower disc lying on it.
+
+    Catalogue and reference pages, which list everything, sit at the centre of what they list.
+    """
+    import networkx as nx
+    import numpy as np
+
+    nodes = graph.nodes
+    index_keys = {page_key(p) for p in INDEX_PAGES}
+    late = index_keys | {k for k, a in nodes.items() if a["kind"] == "reference"}
+    core_keys = sorted(k for k, a in nodes.items() if a["kind"] in ("page", "transcript") and k not in late)
+    code_files = {k: a["path"] for k, a in nodes.items() if a["kind"] == "code"}
+
+    core = nx.Graph()
+    core.add_nodes_from(core_keys)
+    for (s, t), attrs in graph.edges.items():
+        if s in core and t in core:
+            w = sum(CORE_WEIGHTS.get(kind, 0.0) for kind in attrs["kinds"])
+            if w:
+                core.add_edge(s, t, weight=core.get_edge_data(s, t, {"weight": 0.0})["weight"] + w)
+    with np.errstate(invalid="ignore", divide="ignore"):  # networkx divides each node's 0 distance to itself
+        raw = nx.forceatlas2_layout(core, max_iter=CORE_ITERATIONS, linlog=True, distributed_action=True, dim=3, weight="weight", seed=1)
+    pos: dict[str, Any] = {k: np.asarray(v, dtype=float) for k, v in raw.items()}
+    centre = np.mean([pos[k] for k in core_keys], axis=0) if core_keys else np.zeros(3)
+    pages_linked = [float(np.linalg.norm(pos[s] - pos[t])) for s, t in core.edges]
+    unit = float(np.median(pages_linked)) if pages_linked else 1.0
+    pos = {k: (v - centre) / unit for k, v in pos.items()}
+
+    # ---- the shell
+    packages: dict[str, dict[str, Any]] = {}
+    files_in: dict[str, list[str]] = collections.defaultdict(list)
+    for key, path in sorted(code_files.items()):
+        package = package_of(path)
+        files_in[package].append(key)
+        p: str | None = package
+        while p is not None and p not in packages:
+            packages[p] = {"kind": "package", "label": p.split("/", 4)[-1], "path": p.removeprefix("package:"), "files": 0}
+            p = parent_package(p)
+        packages[package]["files"] += 1
+    aim: dict[str, Any] = {p: np.zeros(3) for p in packages}
+    for (s, t), attrs in graph.edges.items():
+        w = sum(SHELL_WEIGHTS.get(kind, 0.0) for kind in attrs["kinds"])
+        if not w:
+            continue
+        for user, used in ((s, t), (t, s)):
+            if used in code_files and user in pos:
+                aim[package_of(code_files[used])] += w * normalised(pos[user])
+    # Bottom-up, a directory also leans the way its subdirectories do; top-down, one with no
+    # lean of its own borrows its parent's.
+    for p in sorted(packages, key=lambda p: -p.count("/")):
+        parent = parent_package(p)
+        if parent in aim:
+            aim[parent] += 0.5 * aim[p]
+    roots = sorted(p for p in packages if parent_package(p) not in packages)
+    spare = iter(fibonacci_directions(max(len(roots), 1)))
+    for p in roots:
+        if not np.any(aim[p]):
+            aim[p] = next(spare)
+    for p in sorted(packages, key=lambda p: p.count("/")):
+        parent = parent_package(p)
+        if not np.any(aim[p]) and parent in aim:
+            aim[p] = aim[parent] + 0.15 * np.array([stable_unit(p, "x"), stable_unit(p, "y"), stable_unit(p, "z")])
+    leaves = sorted(files_in)
+    # A whisker of per-directory jitter: two directories aimed at exactly the same pages would
+    # otherwise coincide, and coincident points have no direction to push apart in.
+    jitter = np.array([[stable_unit(p, axis) for axis in "xyz"] for p in leaves]) * 1e-3
+    target = normalised(normalised(np.array([aim[p] for p in leaves])) + jitter)
+    # Relax on the sphere: each directory is pulled to its aim and pushed off its neighbours in
+    # proportion to the disc its files need.
+    core_radius = float(np.percentile([np.linalg.norm(pos[k]) for k in core_keys], 95)) if core_keys else 1.0
+    shell = SHELL_GAP * core_radius
+    disc = np.array([FILE_SPACING * math.sqrt(len(files_in[p])) + FILE_SPACING for p in leaves]) / shell
+    d = target.copy()
+    for step in range(300):
+        diff = d[:, None, :] - d[None, :, :]
+        dist = np.linalg.norm(diff, axis=2) + np.eye(len(d)) + 1e-9
+        reach = disc[:, None] + disc[None, :]
+        push = np.clip(reach - dist, 0, None) / dist
+        np.fill_diagonal(push, 0)
+        d = normalised(d + 0.5 * (push[:, :, None] * diff).sum(1) + 0.05 * (target - d))
+    for p, direction in zip(leaves, d):
+        pos[p] = direction * shell
+        # The disc lies in the sphere's tangent plane at the directory.
+        u = normalised(np.cross(direction, [0.0, 1.0, 0.0] if abs(direction[1]) < 0.9 else [1.0, 0.0, 0.0]))
+        v = np.cross(direction, u)
+        for i, key in enumerate(files_in[p]):
+            r = FILE_SPACING * math.sqrt(i + 0.5)
+            a = i * math.pi * (3 - math.sqrt(5))
+            pos[key] = pos[p] + r * (math.cos(a) * u + math.sin(a) * v)
+    for p in packages:  # an inner directory with no files of its own: the middle of what it holds
+        if p not in pos:
+            inside = [pos[q] for q in leaves if q.startswith(p + "/")]
+            pos[p] = normalised(np.mean(inside, axis=0)) * shell if inside else normalised(aim[p]) * shell
+
+    for key in sorted(late):
+        around = [pos[t if s == key else s] for s, t in graph.edges if key in (s, t) and (t if s == key else s) in pos]
+        pos[key] = np.mean(around, axis=0) if around else np.zeros(3)
+    return {k: tuple(float(c) for c in pos.get(k, np.zeros(3))) for k in [*nodes, *packages]}, packages
+
+
+def view_payload(
+    graph: Graph, positions: dict[str, tuple[float, float, float]], packages: dict[str, dict[str, Any]], out_dir: Path
+) -> dict[str, Any]:
+    import os
+
+    keys = list(graph.nodes)
+    index = {k: i for i, k in enumerate(keys)}
+    index_keys = {page_key(p) for p in INDEX_PAGES}
+    view_nodes = []
+    for key in keys:
+        attrs = graph.nodes[key]
+        x, y, z = positions[key]
+        entry: dict[str, Any] = {"id": key, "label": attrs.get("label", key), "kind": attrs["kind"], "p": [round(x, 3), round(y, 3), round(z, 3)]}
+        if key in index_keys:
+            entry["index"] = True
+        if attrs.get("path"):
+            entry["href"] = Path(os.path.relpath(REPO_ROOT / attrs["path"], out_dir)).as_posix()
+        for name in VIEW_NODE_FIELDS:
+            value = attrs.get(name)
+            if value is not None and not (isinstance(value, float) and math.isnan(value)):
+                entry[name] = value
+        view_nodes.append(entry)
+    bit = {kind: 1 << i for i, kind in enumerate(VIEW_EDGE_KINDS)}
+    links = [
+        [index[s], index[t], sum(bit.get(kind, 0) for kind in attrs["kinds"])]
+        for (s, t), attrs in graph.edges.items()
+    ]
+    view_packages = [
+        {"id": key, "label": attrs["label"], "files": attrs["files"], "p": [round(c, 3) for c in positions[key]]}
+        for key, attrs in sorted(packages.items()) if key in positions
+    ]
+    return {"edgeKinds": list(VIEW_EDGE_KINDS), "nodes": view_nodes, "links": links, "packages": view_packages, "generated": day(time.time())}
+
+
+def write_view(graph: Graph, out_dir: Path) -> Path:
+    positions, packages = layout(graph)
+    payload = json.dumps(view_payload(graph, positions, packages, out_dir), separators=(",", ":"), default=str)
+    vendor = sorted(REPO_ROOT.glob(THREE_VENDOR_GLOB))
+    if not vendor:
+        raise SystemExit(f"graph.html needs Field's vendored three.js ({THREE_VENDOR_GLOB}) and found none")
+    three = vendor[-1].parent
+    html = VIEW_TEMPLATE.read_text(encoding="utf-8")
+    for marker, path in (("THREE_CORE", "three.core.js"), ("THREE_MODULE", "three.module.js"), ("THREE_ORBIT", "addons/controls/OrbitControls.js")):
+        html = html.replace(f"/*{marker}*/", (three / path).read_text(encoding="utf-8").replace("</script", "<\\/script"), 1)
+    html = html.replace("/*GRAPH*/null", payload.replace("</", "<\\/"), 1)
+    target = out_dir / "graph.html"
+    target.write_text(html, encoding="utf-8")
+    return target
 
 
 def day(ts: float | None) -> str:
@@ -830,6 +1123,7 @@ def write_outputs(graph: Graph, out_dir: Path, report: str) -> None:
             elif isinstance(value, bool):
                 attrs[key] = int(value)
     nx.write_graphml(g, out_dir / "graph.graphml")
+    write_view(graph, out_dir)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -853,7 +1147,7 @@ def main(argv: list[str] | None = None) -> int:
     options = {"transcripts": args.transcripts, "code": args.code, "reference": args.reference}
     report = analyse(graph, out_dir, top=args.top, now=time.time(), options=options)
     write_outputs(graph, out_dir, report)
-    print(f"wrote {out_dir / 'report.md'}, graph.json, graph.graphml ({len(graph.nodes)} nodes, {len(graph.edges)} edges)")
+    print(f"wrote {out_dir / 'report.md'}, graph.html, graph.json, graph.graphml ({len(graph.nodes)} nodes, {len(graph.edges)} edges)")
     return 0
 
 

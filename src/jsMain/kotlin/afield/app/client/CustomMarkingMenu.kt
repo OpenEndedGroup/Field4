@@ -22,6 +22,8 @@ import kotlinx.browser.window
  * Sends a request to the server for the box's custom marking entries,
  * then shows them as a radial marking menu with Voronoi-domain targets.
  */
+@OptIn(ExperimentalJsExport::class)
+@JsExport
 fun requestCustomMarkingMenu(uid: String, x: Double, y: Double, event: dynamic) {
     val callbackName = "custom-marking-response-$uid-${kotlin.random.Random.nextInt()}"
     sendWithReply(

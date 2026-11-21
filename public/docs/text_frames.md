@@ -10,7 +10,7 @@ Native spellcheck is enabled.
 
 The toolbar follows your caret along the left edge of the frame. Use it for headings, bold, and italic. ++cmd+b++ and ++cmd+i++ also work. Paste a PNG,
 JPEG, GIF, or WebP up to 1 MiB to embed it in the frame's Markdown. For tables, code, and other
-advanced formatting, choose **Markdown** in the toolbar or **Edit Markdown** in the marking menu.
+advanced formatting, use the **→** button in the toolbar or choose **Edit Markdown** in the marking menu.
 Hold ++shift++ while double-clicking to edit Markdown inline at the point you clicked.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1060x720" clip="0,0,560,700" screenshot="assets/text_frames/reading.png" transcript="../../dev_docs/agents/transcripts/docs_capture/text_frames.yaml" document="docs-text-frames-reading" fresh-document=true hide-toasts=true padding="0" wait="0" timeout="180" embed=true hidden=true name="text-frames-reading" alt="Two connected text frames on Field's dark canvas. Research notes contain a heading, bold text, a diagram loaded through FileManager, and a small Kotlin code block with a horizontal Copy button. The next frame asks what happens next."}

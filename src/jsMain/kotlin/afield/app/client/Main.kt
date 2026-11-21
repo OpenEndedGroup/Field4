@@ -2596,6 +2596,13 @@ private fun registerCanvasZoomActions() {
     frame.keys = "alt+f"
     frame.run = { frameSelected() }
     builtin.push(frame)
+    val fit: dynamic = js("({})")
+    fit.id = "fit-selected"
+    fit.label = "Fit Selected"
+    fit.detail = "Zoom in or out until the selected boxes and their open output panels fill the space beside the editor, open or not"
+    fit.keys = "alt+shift+f"
+    fit.run = { fitSelected() }
+    builtin.push(fit)
     val snapping: dynamic = js("({})")
     snapping.id = "toggle-box-snapping"
     snapping.label = "Toggle Box Snapping"
@@ -2726,28 +2733,52 @@ private fun frameRectsFor(box: HTMLElement): List<Rect> {
 }
 
 /**
- * The parts of the window not covered by [FRAME_OCCLUDERS]: each overlay splits every free
- * rectangle it touches into the strips left, right, above and below it.
+ * Where the code editor is, or would be if it were open. A hidden editor keeps its last position
+ * and size (it is only made invisible); before it has ever been laid out this is field.css's
+ * default placement.
  */
-private fun frameFreeSpaces(pane: CanvasPane, padding: Double = 16.0, gap: Double = 14.0): List<Rect> {
+private fun editorReservedRect(): Rect {
+    val container = document.querySelector(".monaco-editor-container") as? HTMLElement
+    val r = container?.getBoundingClientRect()
+    if (r != null && r.width > 1.0 && r.height > 1.0) return Rect(r.left, r.top, r.width, r.height)
+    val vw = window.innerWidth.toDouble()
+    val vh = window.innerHeight.toDouble()
+    val w = max(min(420.0, vw - 20.0), max(420.0, 0.4 * vw - 60.0)).coerceAtMost(vw - 20.0)
+    return Rect(vw - 10.0 - w, 10.0, w, vh - 20.0)
+}
+
+/**
+ * The parts of the window not covered by [FRAME_OCCLUDERS]: each overlay splits every free
+ * rectangle it touches into the strips left, right, above and below it. With [reserveEditor] the
+ * editor's space counts as covered even while the editor is closed.
+ */
+private fun frameFreeSpaces(
+    pane: CanvasPane,
+    padding: Double = 16.0,
+    gap: Double = 14.0,
+    reserveEditor: Boolean = false
+): List<Rect> {
     val p = pane.rect
     var spaces = listOf(Rect(p.x + padding, p.y + padding, p.w - 2 * padding, p.h - 2 * padding))
-    for (selector in FRAME_OCCLUDERS) {
-        document.querySelectorAll(selector).asList().forEach { node ->
-            val overlay = node as? HTMLElement ?: return@forEach
-            if (!isOverlayVisible(overlay)) return@forEach
+    val overlays = FRAME_OCCLUDERS.flatMap { selector ->
+        document.querySelectorAll(selector).asList().mapNotNull { node ->
+            val overlay = node as? HTMLElement ?: return@mapNotNull null
+            if (reserveEditor && overlay.classList.contains("monaco-editor-container")) return@mapNotNull null
+            if (!isOverlayVisible(overlay)) return@mapNotNull null
             val r = overlay.getBoundingClientRect()
-            if (r.width <= 0.0 || r.height <= 0.0) return@forEach
-            val o = Rect(r.left - gap, r.top - gap, r.width + 2 * gap, r.height + 2 * gap)
-            spaces = spaces.flatMap { a ->
-                if (o.x >= a.x + a.w || o.x + o.w <= a.x || o.y >= a.y + a.h || o.y + o.h <= a.y) listOf(a)
-                else listOf(
-                    Rect(a.x, a.y, o.x - a.x, a.h),
-                    Rect(o.x + o.w, a.y, a.x + a.w - (o.x + o.w), a.h),
-                    Rect(a.x, a.y, a.w, o.y - a.y),
-                    Rect(a.x, o.y + o.h, a.w, a.y + a.h - (o.y + o.h))
-                ).filter { it.w >= 120 && it.h >= 120 }
-            }
+            if (r.width <= 0.0 || r.height <= 0.0) null else Rect(r.left, r.top, r.width, r.height)
+        }
+    } + listOfNotNull(if (reserveEditor) editorReservedRect() else null)
+    for (r in overlays) {
+        val o = Rect(r.x - gap, r.y - gap, r.w + 2 * gap, r.h + 2 * gap)
+        spaces = spaces.flatMap { a ->
+            if (o.x >= a.x + a.w || o.x + o.w <= a.x || o.y >= a.y + a.h || o.y + o.h <= a.y) listOf(a)
+            else listOf(
+                Rect(a.x, a.y, o.x - a.x, a.h),
+                Rect(o.x + o.w, a.y, a.x + a.w - (o.x + o.w), a.h),
+                Rect(a.x, a.y, a.w, o.y - a.y),
+                Rect(a.x, o.y + o.h, a.w, a.y + a.h - (o.y + o.h))
+            ).filter { it.w >= 120 && it.h >= 120 }
         }
     }
     return spaces
@@ -2777,8 +2808,31 @@ fun frameSelected() {
     frameRectsInPane(rects, pane)
 }
 
-/** Centre a target in the same uncovered pane space used by Frame Selected. */
-private fun frameRectsInPane(rects: List<Rect>, pane: CanvasPane) {
+/**
+ * Fits the selection: like [frameSelected], but the zoom goes in as well as out, until the
+ * selected boxes and their open output panels just fill the part of the window beside the editor.
+ * That space is kept for the editor whether it is open or not, so opening it afterwards covers
+ * nothing; the docs overlay and Field's panels are avoided only while they are showing.
+ */
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun fitSelected() {
+    val boxes = selected.toList()
+    if (boxes.isEmpty()) {
+        notify("Select a box to fit", "command")
+        return
+    }
+    val rects = boxes.flatMap { frameRectsFor(it) }
+    if (rects.isEmpty()) return
+    frameRectsInPane(rects, CanvasCamera.paneOf(boxes.first()), fit = true)
+}
+
+/**
+ * Centre a target in the same uncovered pane space used by Frame Selected. With [fit] the zoom is
+ * whatever makes the target fill that space (within the canvas zoom limits), the editor's space is
+ * reserved even while it is closed, and the whole window is used only when nothing else is left.
+ */
+private fun frameRectsInPane(rects: List<Rect>, pane: CanvasPane, fit: Boolean = false) {
     val z0 = pane.zoom
     val t0x = pane.tx
     val t0y = pane.ty
@@ -2788,12 +2842,17 @@ private fun frameRectsInPane(rects: List<Rect>, pane: CanvasPane) {
     val ww = (rects.maxOf { it.x + it.w } - t0x) / z0 - wx
     val wh = (rects.maxOf { it.y + it.h } - t0y) / z0 - wy
 
-    val ceiling = max(z0, 1.0)
-    fun zoomFor(space: Rect) = min(ceiling, 0.94 * min(space.w / ww, space.h / wh)).coerceIn(MIN_CANVAS_ZOOM, MAX_CANVAS_ZOOM)
+    val ceiling = if (fit) MAX_CANVAS_ZOOM else max(z0, 1.0)
+    val margin = if (fit) 0.9 else 0.94
+    fun zoomFor(space: Rect) = min(ceiling, margin * min(space.w / ww, space.h / wh)).coerceIn(MIN_CANVAS_ZOOM, MAX_CANVAS_ZOOM)
     val p = pane.rect
     val whole = Rect(p.x + 16.0, p.y + 16.0, p.w - 32.0, p.h - 32.0)
-    val free = frameFreeSpaces(pane).maxWithOrNull(compareBy<Rect>({ zoomFor(it) }, { it.w * it.h }))
-    val space = if (free != null && zoomFor(free) >= 0.5 * zoomFor(whole)) free else whole
+    val free = frameFreeSpaces(pane, reserveEditor = fit).maxWithOrNull(compareBy<Rect>({ zoomFor(it) }, { it.w * it.h }))
+    val space = when {
+        free == null -> whole
+        fit || zoomFor(free) >= 0.5 * zoomFor(whole) -> free
+        else -> whole
+    }
     val z1 = zoomFor(space)
     val t1x = space.x + space.w / 2 - (wx + ww / 2) * z1
     val t1y = space.y + space.h / 2 - (wy + wh / 2) * z1

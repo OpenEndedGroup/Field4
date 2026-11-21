@@ -180,22 +180,30 @@ fun load(@CompletesPath("*.3dm") path: String, ...): RhinoModel
 ```
 
 `@CompletesPath` takes the same `mask` a [file chooser](visualizers.md#choosing-a-file) does, a `root` for relative
-paths (a FileManager spec; blank is the document's `files/`), and `chooseDirectory`. When the
-argument is not a file at all, `@CompletesWith` names an object that computes the strings to offer,
-asked again each time the panel opens:
+paths (a FileManager spec; blank is the document's `files/`), and `chooseDirectory`.
+
+The same panel completes strings that are not files. Once a box has run
+`val model = Rhino3dm.load("house.3dm")`, typing `model.layer("` or `model.on("` offers the full
+path of every layer in that model, narrowed as you type, so `"wal"` finds `"Building::Walls"`.
+`layer`'s parameter names an object that computes the strings, asked again each time the panel
+opens:
 
 ```diffstatic {data-lang=kotlin}
-object ModelLayers : StringCompletions {
+object RhinoLayerPaths : StringCompletions {
     override fun candidates(context: StringCompletionContext) =
-        Rhino3dm.load("model.3dm").layers.map { it.name }
+        (context.receiver as? RhinoModel)?.layers?.map { it.path }.orEmpty()
 }
 
-fun showLayer(@CompletesWith(ModelLayers::class) name: String) { ... }
+fun layer(@CompletesWith(RhinoLayerPaths::class) name: String): RhinoLayer
 ```
 
-`context` carries the box being edited and what has been typed so far. Field finds these
-annotations by reflection on compiled code, so they work on functions in Field itself and in your
-`src/personal` layer, not on a function declared in a box.
+`context.receiver` is the model itself: the value `model` holds right now, because Field is live
+and the box's variables outlive the run that made them. Completion never runs anything to get it,
+so there is no receiver for `Rhino3dm.load("house.3dm").layer("`, for a `val` you have typed but
+not yet run, or for a local inside a function. `context` also carries the box being edited and
+what has been typed so far. Field finds these annotations by reflection on compiled code, so they
+work on functions in Field itself and in your `src/personal` layer, not on a function declared in
+a box.
 
 ## When resolution fails
 

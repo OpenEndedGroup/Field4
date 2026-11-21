@@ -1,0 +1,507 @@
+<!doctype html>
+<!-- The drawing written by tools/docs_link_graph.py as build/docs_link_graph/graph.html.
+     The GRAPH constant below is filled with the graph and its 3D layout, and the three `text/plain`
+     scripts by Field's vendored three.js (src/commonMain/resources/vendor/three/): nothing is fetched,
+     so the page opens from disk. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Docs link graph</title>
+<style>
+:root {
+  color-scheme: light;
+  --surface: #fcfcfb; --panel: #f3f2ef; --rule: #dedcd6;
+  --text: #0b0b0b; --text-2: #52514e; --muted: #8a8984;
+  --edge: #3a3a36; --edge-alpha: 0.16; --other: #b9b8b2; --halo: rgba(252, 252, 251, 0.85);
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #008300; --s7: #6250d6; --s8: #e34948;
+  --q0: #cde2fb; --q1: #86b6ef; --q2: #3987e5; --q3: #1c5cab; --q4: #0d366b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --surface: #1a1a19; --panel: #232322; --rule: #3a3a38;
+    --text: #f0efec; --text-2: #c3c2b7; --muted: #8d8c86;
+    --edge: #d8d7d0; --edge-alpha: 0.14; --other: #5d5c58; --halo: rgba(26, 26, 25, 0.85);
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #0ca30c; --s7: #9085e9; --s8: #e66767;
+    --q0: #184f95; --q1: #256abf; --q2: #3987e5; --q3: #86b6ef; --q4: #cde2fb;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; height: 100vh; display: flex; overflow: hidden; background: var(--surface); color: var(--text);
+       font: 13px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+#view { flex: 1; position: relative; min-width: 0; overflow: hidden; }
+#view canvas { display: block; width: 100%; height: 100%; }
+#labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+#labels span { position: absolute; white-space: nowrap; font-size: 12px; color: var(--text); transform: translateY(-50%);
+               text-shadow: 0 0 3px var(--halo), 0 0 3px var(--halo), 0 0 2px var(--halo); }
+#labels span.sel { font-weight: 600; }
+#labels span.pkg { color: var(--text-2); font-style: italic; font-size: 11px; }
+#tip { position: absolute; pointer-events: none; padding: 4px 8px; border-radius: 4px; background: var(--panel);
+       border: 1px solid var(--rule); color: var(--text); white-space: nowrap; display: none; z-index: 2; }
+#tip small { color: var(--text-2); }
+aside { width: 360px; flex: none; background: var(--panel); border-left: 1px solid var(--rule); overflow: auto; padding: 12px 14px 24px; }
+h1 { font-size: 15px; margin: 0 0 2px; }
+h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-2); margin: 16px 0 6px; font-weight: 600; }
+.sub { color: var(--text-2); }
+input[type=search], select { width: 100%; font: inherit; padding: 5px 7px; border: 1px solid var(--rule); border-radius: 4px;
+                             background: var(--surface); color: var(--text); }
+label.check { display: inline-flex; align-items: center; gap: 4px; margin: 0 10px 4px 0; white-space: nowrap; }
+.legend { list-style: none; margin: 0; padding: 0; }
+.legend li { display: flex; align-items: center; gap: 8px; padding: 2px 4px; border-radius: 3px; cursor: pointer; }
+.legend li:hover, .legend li.on { background: var(--surface); }
+.legend li.off { opacity: 0.35; }
+.legend .n { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
+.swatch { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+#matches div, .nbrs div { padding: 2px 4px; border-radius: 3px; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#matches div:hover, .nbrs div:hover { background: var(--surface); }
+.nbrs div .k { color: var(--muted); font-size: 11px; margin-left: 4px; }
+dl { display: grid; grid-template-columns: auto 1fr; gap: 1px 10px; margin: 6px 0; }
+dt { color: var(--text-2); } dd { margin: 0; font-variant-numeric: tabular-nums; }
+a { color: var(--s1); }
+.hint { color: var(--muted); font-size: 12px; margin-top: 4px; }
+</style>
+</head>
+<body>
+<div id="view"><div id="labels"></div><div id="tip"></div></div>
+<aside>
+  <h1>Docs link graph</h1>
+  <div class="sub" id="summary"></div>
+  <h2>Find</h2>
+  <input type="search" id="search" placeholder="page, transcript, file or package…" autocomplete="off">
+  <div id="matches"></div>
+  <h2>Show</h2>
+  <div id="layers"></div>
+  <div id="edges"></div>
+  <label class="check"><input type="checkbox" id="spin"> turn slowly</label>
+  <h2>Colour</h2>
+  <select id="colour">
+    <option value="system">Pages by section</option>
+    <option value="age">Days since last substantive edit</option>
+    <option value="drift">Days the code it cites has moved on</option>
+  </select>
+  <div id="legend"></div>
+  <div id="details"></div>
+  <p class="hint">Drag to turn, right-drag or shift-drag to pan, scroll to zoom. Click a node for what it links and
+    what links it; Esc clears. Page size is PageRank over hand-written links.</p>
+  <p class="hint">Placed by ForceAtlas2 (LinLog, 3D) on what pages link, open and call, never on the nav: pages
+    that sit together link each other or call the same code. Each source file sits on a small shell around its
+    directory (the italic labels), so code nothing reaches still sits with its siblings.</p>
+</aside>
+<script type="text/plain" id="three-core">/*THREE_CORE*/</script>
+<script type="text/plain" id="three-module">/*THREE_MODULE*/</script>
+<script type="text/plain" id="three-orbit">/*THREE_ORBIT*/</script>
+<script>const GRAPH = /*GRAPH*/null;</script>
+<script type="module">
+// three.js arrives as text so the page needs no server; each module imports the previous one by blob URL.
+const source = id => document.getElementById(id).textContent;
+const blob = text => URL.createObjectURL(new Blob([text], { type: "text/javascript" }));
+const coreUrl = blob(source("three-core"));
+const threeUrl = blob(source("three-module").replaceAll("'./three.core.js'", `'${coreUrl}'`));
+const orbitUrl = blob(source("three-orbit").replaceAll("from 'three'", `from '${threeUrl}'`));
+const THREE = await import(threeUrl);
+const { OrbitControls } = await import(orbitUrl);
+
+const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const view = document.getElementById("view"), labelLayer = document.getElementById("labels"), tip = document.getElementById("tip");
+const nodes = GRAPH.nodes, kinds = GRAPH.edgeKinds, packages = GRAPH.packages || [];
+const bit = Object.fromEntries(kinds.map((k, i) => [k, 1 << i]));
+const DAY = 86400, now = Date.now() / 1000;
+
+// ---- adjacency
+const out = nodes.map(() => []), inc = nodes.map(() => []);
+for (const [s, t, m] of GRAPH.links) { out[s].push([t, m]); inc[t].push([s, m]); }
+
+// ---- layers and edge kinds
+const layerOf = n => n.index ? "index" : n.kind;
+const LAYERS = [["page", "pages"], ["transcript", "transcripts"], ["code", "code"], ["reference", "reference"], ["index", "catalogues"]];
+const shown = { page: true, transcript: true, code: true, reference: false, index: false };
+const EDGE_LABELS = { links: "links", opens: "opens transcript", documents: "transcript → page", cites: "cites file",
+                      calls: "calls (fences)", mentions: "mentions (prose)", reference: "reference → file", usedIn: "used in" };
+// Code edges start off: a selected node shows all its own edges anyway, and 7,000 lines from the
+// core to the shell are a haze. Switched on, they draw at a fraction of the docs edges' strength.
+const edgeOn = { links: true, opens: true, documents: true, cites: false, calls: false, mentions: false, reference: false, usedIn: false };
+const present = new Set(nodes.map(layerOf)), presentKinds = new Set();
+for (const [, , m] of GRAPH.links) kinds.forEach(k => { if (m & bit[k]) presentKinds.add(k); });
+function checkboxes(host, entries, state) {
+  for (const [key, label] of entries) {
+    const l = document.createElement("label"); l.className = "check";
+    const c = document.createElement("input"); c.type = "checkbox"; c.checked = state[key];
+    c.onchange = () => { state[key] = c.checked; legend(); rebuild(); };
+    l.append(c, " " + label); host.append(l);
+  }
+}
+checkboxes(document.getElementById("layers"), LAYERS.filter(([k]) => present.has(k)), shown);
+checkboxes(document.getElementById("edges"), kinds.filter(k => presentKinds.has(k)).map(k => [k, EDGE_LABELS[k] || k]), edgeOn);
+const edgeMask = () => kinds.reduce((m, k) => edgeOn[k] ? m | bit[k] : m, 0);
+const visible = n => shown[layerOf(n)];
+
+// ---- colour
+// Sections in fixed order by page count; the first eight get the categorical slots, the rest are "other".
+const sectionCount = {};
+for (const n of nodes) if (n.kind === "page" && !n.index) sectionCount[n.system] = (sectionCount[n.system] || 0) + 1;
+const sections = Object.keys(sectionCount).sort((a, b) => sectionCount[b] - sectionCount[a] || a.localeCompare(b));
+const slot = {}; sections.slice(0, 8).forEach((s, i) => slot[s] = i + 1);
+let colours = {};
+function readColours() {
+  colours = { other: css("--other"), edge: css("--edge"), edgeAlpha: parseFloat(css("--edge-alpha")), text: css("--text"),
+              surface: css("--surface"), ramp: ["--q0", "--q1", "--q2", "--q3", "--q4"].map(css) };
+  for (let i = 1; i <= 8; i++) colours["s" + i] = css("--s" + i);
+}
+readColours();
+let mode = "system", focusSection = null;
+const ageDays = n => { const t = n.lastEdit || n.created; return t ? (now - t) / DAY : null; };
+const metric = { age: ageDays, drift: n => n.codeDriftDays ?? null };
+// Fixed bands, not a stretch to the maximum: one ancient file would otherwise put every page in the first step.
+const bands = { age: [7, 14, 30, 60], drift: [3, 7, 14, 30] };
+const bandOf = (v, edges) => { let i = 0; while (i < edges.length && v >= edges[i]) i++; return i; };
+function colourOf(n) {
+  if (mode === "system") return n.kind === "page" && slot[n.system] ? colours["s" + slot[n.system]] : colours.other;
+  const v = metric[mode](n);
+  return v == null ? colours.other : colours.ramp[bandOf(v, bands[mode])];
+}
+function legend() {
+  const host = document.getElementById("legend"); host.innerHTML = "";
+  const ul = document.createElement("ul"); ul.className = "legend"; host.append(ul);
+  if (mode === "system") {
+    const rows = sections.slice(0, 8).map(s => [s, colours["s" + slot[s]], sectionCount[s]]);
+    const rest = sections.slice(8);
+    if (rest.length) rows.push([null, colours.other, rest.reduce((a, s) => a + sectionCount[s], 0), "other: " + rest.join(", ")]);
+    for (const [s, c, count, title] of rows) {
+      const li = document.createElement("li");
+      li.title = title || "click to pick out this section";
+      li.className = focusSection === null ? "" : focusSection === s ? "on" : "off";
+      li.innerHTML = `<span class="swatch" style="background:${c}"></span><span></span><span class="n">${count}</span>`;
+      li.children[1].textContent = s ?? "Other sections";
+      li.onclick = () => { focusSection = focusSection === s ? null : s; legend(); restyle(); };
+      ul.append(li);
+    }
+    return;
+  }
+  const edges = bands[mode], counts = colours.ramp.map(() => 0);
+  for (const n of nodes) if (visible(n)) { const v = metric[mode](n); if (v != null) counts[bandOf(v, edges)]++; }
+  const names = edges.map((e, i) => `${i ? edges[i - 1] : 0}–${e} days`).concat(`${edges[edges.length - 1]}+ days`);
+  names.forEach((name, i) => {
+    const li = document.createElement("li"); li.style.cursor = "default";
+    li.innerHTML = `<span class="swatch" style="background:${colours.ramp[i]};border-radius:2px"></span><span>${name}</span><span class="n">${counts[i]}</span>`;
+    ul.append(li);
+  });
+  const hint = document.createElement("div"); hint.className = "hint";
+  hint.textContent = mode === "drift" ? "Pages only: how long after the page's last edit the code it cites or calls was changed. Grey: none of it was."
+                                      : "Since the last edit that was not a sweep (a commit touching 30+ files). Grey: no history.";
+  host.append(hint);
+}
+document.getElementById("colour").onchange = e => { mode = e.target.value; focusSection = null; legend(); restyle(); };
+
+// ---- size (world units: the layout puts linked pages about 1 apart)
+const maxRank = Math.max(...nodes.map(n => n.pagerank || 0), 1e-9);
+function radius(n) {
+  if (n.kind === "page") return n.index ? 0.09 : 0.05 + 0.26 * Math.sqrt((n.pagerank || 0) / maxRank);
+  if (n.kind === "transcript") return 0.05;
+  if (n.kind === "reference") return 0.09;
+  return 0.025 + Math.min(0.06, Math.sqrt(n.apiSize || 0) * 0.006);
+}
+const R = nodes.map(radius);
+const P = nodes.map(n => new THREE.Vector3(n.p[0], n.p[1], n.p[2]));
+
+// ---- scene
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(window.devicePixelRatio || 1);
+view.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(colours.surface, 10, 60);
+const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 2000);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.12; controls.autoRotateSpeed = 0.6;
+scene.add(new THREE.HemisphereLight(0xffffff, 0x777777, 2.2));
+const sun = new THREE.DirectionalLight(0xffffff, 1.2); sun.position.set(1, 2, 1.5); scene.add(sun);
+
+const SHAPES = { page: new THREE.SphereGeometry(1, 18, 12), transcript: new THREE.OctahedronGeometry(1.25), code: new THREE.BoxGeometry(1.5, 1.5, 1.5) };
+const shapeOf = n => n.kind === "page" ? "page" : n.kind === "transcript" ? "transcript" : "code";
+const meshes = {}, slotOf = new Array(nodes.length);
+for (const shape in SHAPES) {
+  const members = nodes.map((n, i) => i).filter(i => shapeOf(nodes[i]) === shape);
+  const mesh = new THREE.InstancedMesh(SHAPES[shape], new THREE.MeshLambertMaterial(), Math.max(1, members.length));
+  mesh.count = members.length; mesh.userData.members = members;
+  members.forEach((i, k) => slotOf[i] = [shape, k]);
+  mesh.frustumCulled = false; scene.add(mesh); meshes[shape] = mesh;
+}
+const edgeMaterial = new THREE.LineBasicMaterial({ transparent: true, depthWrite: false });
+const hiMaterial = new THREE.LineBasicMaterial({ transparent: true, depthWrite: false, opacity: 0.9 });
+const codeMaterial = new THREE.LineBasicMaterial({ transparent: true, depthWrite: false });
+const edgeLines = new THREE.LineSegments(new THREE.BufferGeometry(), edgeMaterial);
+const codeLines = new THREE.LineSegments(new THREE.BufferGeometry(), codeMaterial);
+const hiLines = new THREE.LineSegments(new THREE.BufferGeometry(), hiMaterial);
+edgeLines.frustumCulled = codeLines.frustumCulled = hiLines.frustumCulled = false;
+scene.add(edgeLines, codeLines, hiLines);
+
+// ---- selection state
+let selected = -1, hovered = -1, near = new Set();
+const dim = i => (selected >= 0 && i !== selected && !near.has(i)) ||
+                 (focusSection !== null && !(nodes[i].kind === "page" && nodes[i].system === focusSection));
+
+const matrix = new THREE.Matrix4(), colour = new THREE.Color(), surface = new THREE.Color();
+function restyle() {
+  readColours();
+  surface.set(colours.surface);
+  scene.background = surface.clone(); scene.fog.color.copy(surface);
+  for (const shape in meshes) {
+    const mesh = meshes[shape];
+    mesh.userData.members.forEach((i, k) => {
+      const r = visible(nodes[i]) ? R[i] : 0;
+      matrix.makeScale(r, r, r).setPosition(P[i]);
+      mesh.setMatrixAt(k, matrix);
+      colour.set(colourOf(nodes[i]));
+      if (dim(i)) colour.lerp(surface, 0.86);
+      mesh.setColorAt(k, colour);
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+  }
+  edgeMaterial.color.set(colours.edge); codeMaterial.color.set(colours.edge); hiMaterial.color.set(colours.text);
+  edgeMaterial.opacity = colours.edgeAlpha * (selected >= 0 || focusSection !== null ? 0.35 : 1);
+  codeMaterial.opacity = edgeMaterial.opacity * 0.4;
+  const isDoc = i => nodes[i].kind === "page" || nodes[i].kind === "transcript";
+  const mask = edgeMask(), quiet = [], quietCode = [], hi = [];
+  for (const [s, t, m] of GRAPH.links) {
+    if (!visible(nodes[s]) || !visible(nodes[t])) continue;
+    if (s === selected || t === selected) { hi.push(P[s].x, P[s].y, P[s].z, P[t].x, P[t].y, P[t].z); continue; }
+    if (!(m & mask)) continue;
+    if (focusSection !== null && (dim(s) || dim(t))) continue;
+    (isDoc(s) && isDoc(t) ? quiet : quietCode).push(P[s].x, P[s].y, P[s].z, P[t].x, P[t].y, P[t].z);
+  }
+  edgeLines.geometry.setAttribute("position", new THREE.Float32BufferAttribute(quiet, 3));
+  codeLines.geometry.setAttribute("position", new THREE.Float32BufferAttribute(quietCode, 3));
+  hiLines.geometry.setAttribute("position", new THREE.Float32BufferAttribute(hi, 3));
+  dirty = true;
+}
+const rebuild = restyle;
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { readColours(); legend(); restyle(); });
+
+// ---- camera framing
+function frame(points, animate) {
+  const pts = points.length ? points : [new THREE.Vector3()];
+  const centre = new THREE.Box3().setFromPoints(pts).getCenter(new THREE.Vector3());
+  const sphere = new THREE.Sphere(centre, Math.max(...pts.map(p => p.distanceTo(centre))));
+  const dist = Math.max(0.8, sphere.radius) / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * 0.9;
+  const dir = camera.position.clone().sub(controls.target).normalize();
+  if (dir.lengthSq() === 0 || !isFinite(dir.x)) dir.set(0.35, 0.25, 1).normalize();
+  flyTo(sphere.center, sphere.center.clone().addScaledVector(dir, dist), animate);
+}
+let flight = null;
+function flyTo(target, position, animate) {
+  if (!animate) { controls.target.copy(target); camera.position.copy(position); controls.update(); dirty = true; return; }
+  flight = { t0: performance.now(), fromT: controls.target.clone(), fromP: camera.position.clone(), toT: target.clone(), toP: position.clone() };
+}
+function centreOn(i) {
+  const offset = camera.position.clone().sub(controls.target);
+  const want = Math.min(offset.length(), 6 + 20 * R[i]);
+  flyTo(P[i], P[i].clone().addScaledVector(offset.normalize(), want), true);
+}
+
+// ---- labels: an HTML overlay, placed most important first, skipping any that would overlap
+const pool = [];
+const projected = new THREE.Vector3();
+function screenOf(i, w, h) {
+  projected.copy(P[i]).project(camera);
+  if (projected.z > 1 || projected.z < -1) return null;
+  return [(projected.x + 1) / 2 * w, (1 - projected.y) / 2 * h, projected.z];
+}
+function pixelRadius(i, w, h) {
+  const d = camera.position.distanceTo(P[i]);
+  return R[i] * (h / 2) / (d * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)));
+}
+function labels() {
+  const w = view.clientWidth, h = view.clientHeight, placed = [], wanted = [];
+  for (let i = 0; i < nodes.length; i++) {
+    if (!visible(nodes[i])) continue;
+    let rank;
+    if (i === selected || i === hovered) rank = 1e9;
+    else if (selected >= 0) rank = near.has(i) ? 1e6 + R[i] : -1;
+    else rank = nodes[i].kind === "page" && !dim(i) ? pixelRadius(i, w, h) : -1;
+    if (rank > 2.5) wanted.push([rank, i, false]);
+  }
+  if (shown.code && selected < 0) packages.forEach((p, k) => { if (p.label.split("/").length <= 2) wanted.push([2.6 + Math.sqrt(p.files) * 0.3, k, true]); });
+  wanted.sort((a, b) => b[0] - a[0]);
+  let used = 0;
+  ctx2d.font = "12px system-ui, sans-serif";
+  for (const [rank, i, isPackage] of wanted) {
+    if (used >= 90) break;
+    let s, r = 0, text;
+    if (isPackage) { projected.set(...packages[i].p).project(camera); if (projected.z > 1) continue; s = [(projected.x + 1) / 2 * w, (1 - projected.y) / 2 * h]; text = packages[i].label; }
+    else { s = screenOf(i, w, h); if (!s) continue; r = pixelRadius(i, w, h); text = nodes[i].label; }
+    const x = s[0] + r + 3, y = s[1];
+    if (x < -200 || y < 0 || x > w || y > h) continue;
+    const box = [x - 1, y - 8, x + ctx2d.measureText(text).width + 1, y + 8];
+    const forced = !isPackage && (i === selected || i === hovered);
+    if (!forced && placed.some(b => box[0] < b[2] && b[0] < box[2] && box[1] < b[3] && b[1] < box[3])) continue;
+    placed.push(box);
+    let span = pool[used];
+    if (!span) { span = document.createElement("span"); labelLayer.append(span); pool.push(span); }
+    span.textContent = text; span.style.left = x + "px"; span.style.top = y + "px"; span.style.display = "";
+    span.className = isPackage ? "pkg" : i === selected ? "sel" : "";
+    used++;
+  }
+  for (let k = used; k < pool.length; k++) pool[k].style.display = "none";
+}
+const ctx2d = document.createElement("canvas").getContext("2d");
+
+// ---- loop
+let dirty = true;
+controls.addEventListener("change", () => { dirty = true; });
+function resize() {
+  const w = view.clientWidth, h = view.clientHeight;
+  if (!w || !h) return false;
+  renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); dirty = true;
+  return true;
+}
+let framed = false;
+new ResizeObserver(() => { if (resize() && !framed) { frame(nodes.map((n, i) => i).filter(i => visible(nodes[i])).map(i => P[i]), false); framed = true; } }).observe(view);
+function tick(t) {
+  requestAnimationFrame(tick);
+  if (flight) {
+    const f = Math.min(1, (t - flight.t0) / 450), e = f < 0.5 ? 2 * f * f : 1 - (-2 * f + 2) ** 2 / 2;
+    controls.target.lerpVectors(flight.fromT, flight.toT, e); camera.position.lerpVectors(flight.fromP, flight.toP, e);
+    if (f >= 1) flight = null;
+    dirty = true;
+  }
+  if (controls.update()) dirty = true;
+  if (!dirty || !framed) return;
+  const dist = camera.position.distanceTo(controls.target);
+  scene.fog.near = dist * 0.7; scene.fog.far = dist * 2.4;
+  renderer.render(scene, camera);
+  labels();
+  dirty = false;
+}
+
+// ---- picking: nearest node on screen within its drawn radius
+function hit(px, py) {
+  const w = view.clientWidth, h = view.clientHeight;
+  let best = -1, bestZ = Infinity;
+  for (let i = 0; i < nodes.length; i++) {
+    if (!visible(nodes[i])) continue;
+    const s = screenOf(i, w, h); if (!s) continue;
+    const r = Math.max(4, pixelRadius(i, w, h) + 2);
+    if (Math.hypot(s[0] - px, s[1] - py) <= r && s[2] < bestZ) { best = i; bestZ = s[2]; }
+  }
+  return best;
+}
+let down = null;
+renderer.domElement.addEventListener("pointerdown", e => { down = [e.offsetX, e.offsetY]; });
+renderer.domElement.addEventListener("pointerup", e => {
+  if (down && Math.hypot(e.offsetX - down[0], e.offsetY - down[1]) < 4) select(hit(e.offsetX, e.offsetY), false);
+  down = null;
+});
+renderer.domElement.addEventListener("pointermove", e => {
+  if (e.buttons) { tip.style.display = "none"; return; }
+  const i = hit(e.offsetX, e.offsetY);
+  if (i !== hovered) { hovered = i; dirty = true; }
+  if (i < 0) { tip.style.display = "none"; return; }
+  tip.innerHTML = "<b></b><br><small></small>";
+  tip.children[0].textContent = nodes[i].label; tip.children[2].textContent = describe(nodes[i]);
+  tip.style.display = "block";
+  tip.style.left = Math.min(e.offsetX + 14, view.clientWidth - tip.offsetWidth - 4) + "px";
+  tip.style.top = (e.offsetY + 14) + "px";
+});
+renderer.domElement.addEventListener("pointerleave", () => { tip.style.display = "none"; hovered = -1; dirty = true; });
+window.addEventListener("keydown", e => {
+  if (e.key === "Escape" && document.activeElement !== search) { select(-1); focusSection = null; legend(); restyle(); }
+});
+document.getElementById("spin").onchange = e => { controls.autoRotate = e.target.checked; };
+
+function select(i, centre) {
+  selected = i; near = new Set();
+  if (i >= 0) {
+    for (const [j] of out[i]) near.add(j);
+    for (const [j] of inc[i]) near.add(j);
+    if (!visible(nodes[i])) { shown[layerOf(nodes[i])] = true; syncLayerBoxes(); legend(); }
+    if (centre) centreOn(i);
+  }
+  details(); restyle();
+}
+function syncLayerBoxes() {
+  const boxes = document.querySelectorAll("#layers input");
+  LAYERS.filter(([k]) => present.has(k)).forEach(([k], i) => boxes[i].checked = shown[k]);
+}
+
+// ---- text
+const date = t => t ? new Date(t * 1000).toISOString().slice(0, 10) : "—";
+function describe(n) {
+  if (n.kind === "page") return `${n.index ? "catalogue" : n.system} · ${n.words ?? 0} words · ${n.inLinks ?? 0} in / ${n.outLinks ?? 0} out`;
+  if (n.kind === "code") return `${n.system} · ${n.apiSize ?? 0} public symbols`;
+  return n.kind;
+}
+function nodeRow(j, kindsMask) {
+  const div = document.createElement("div"), n = nodes[j];
+  div.textContent = n.label;
+  const k = document.createElement("span"); k.className = "k";
+  k.textContent = kinds.filter(x => kindsMask & bit[x]).join(", "); div.append(k);
+  div.title = n.id; div.onclick = () => select(j, true);
+  return div;
+}
+function details() {
+  const host = document.getElementById("details"); host.innerHTML = "";
+  if (selected < 0) return;
+  const n = nodes[selected];
+  const h = document.createElement("h2"); h.textContent = n.kind === "page" && n.index ? "catalogue page" : n.kind; host.append(h);
+  const title = document.createElement("div"); title.style.fontWeight = "600";
+  if (n.href) { const a = document.createElement("a"); a.href = n.href; a.textContent = n.label; title.append(a); } else title.textContent = n.label;
+  host.append(title);
+  const dl = document.createElement("dl");
+  const row = (k, v) => { if (v == null || v === "") return; const dt = document.createElement("dt"), dd = document.createElement("dd"); dt.textContent = k; dd.textContent = v; dl.append(dt, dd); };
+  row("section", n.navPath || n.system); row("words", n.words); row("fences", n.fences);
+  row("links in / out", n.kind === "page" && !n.index ? `${n.inLinks ?? 0} / ${n.outLinks ?? 0}` : null);
+  row("PageRank", n.pagerank != null ? n.pagerank.toFixed(4) : null);
+  row("created", n.created ? date(n.created) : null); row("last edit", n.lastEdit ? date(n.lastEdit) : (n.created ? "never since" : null));
+  row("code moved on", n.codeDriftDays != null ? `${Math.round(n.codeDriftDays)} days` : null);
+  row("public symbols", n.apiSize); row("lines", n.lines);
+  host.append(dl);
+  const group = (title, list) => {
+    if (!list.length) return;
+    const g = document.createElement("h2"); g.textContent = `${title} (${list.length})`; host.append(g);
+    const box = document.createElement("div"); box.className = "nbrs";
+    list.sort((a, b) => nodes[a[0]].label.localeCompare(nodes[b[0]].label)).slice(0, 300).forEach(([j, m]) => box.append(nodeRow(j, m)));
+    host.append(box);
+  };
+  const split = (list, pred) => list.filter(([j]) => pred(nodes[j]));
+  const handWritten = m => m.kind === "page" && !m.index, generated = m => m.kind === "reference" || m.index;
+  group("Links to pages", split(out[selected], handWritten));
+  group("Linked from", split(inc[selected], handWritten));
+  group("Reference and catalogues", split(out[selected].concat(inc[selected]), generated));
+  group("Transcripts", split(out[selected].concat(inc[selected]), m => m.kind === "transcript"));
+  group("Code", split(out[selected].concat(inc[selected]), m => m.kind === "code"));
+}
+
+// ---- search: nodes, and packages (which fly the camera there)
+const search = document.getElementById("search"), matches = document.getElementById("matches");
+search.addEventListener("input", () => {
+  matches.innerHTML = "";
+  const q = search.value.trim().toLowerCase(); if (!q) return;
+  const found = [];
+  for (let i = 0; i < nodes.length && found.length < 30; i++)
+    if (nodes[i].label.toLowerCase().includes(q) || nodes[i].id.toLowerCase().includes(q)) found.push(i);
+  found.sort((a, b) => (nodes[a].kind !== "page") - (nodes[b].kind !== "page") || R[b] - R[a]);
+  for (const i of found) matches.append(nodeRow(i, 0));
+  for (const p of packages.filter(p => p.label.toLowerCase().includes(q)).slice(0, 8)) {
+    const div = document.createElement("div"); div.textContent = p.label + "/";
+    const k = document.createElement("span"); k.className = "k"; k.textContent = `package, ${p.files} files`; div.append(k);
+    div.onclick = () => {
+      select(-1);
+      const prefix = p.id.slice("package:".length) + "/";
+      frame(nodes.map((n, i) => i).filter(i => nodes[i].kind === "code" && (nodes[i].href || "").includes(prefix)).map(i => P[i]), true);
+      shown.code = true; syncLayerBoxes(); restyle();
+    };
+    matches.append(div);
+  }
+});
+search.addEventListener("keydown", e => { if (e.key === "Enter" && matches.firstChild) matches.firstChild.click(); });
+
+// ---- start
+const pageCount = nodes.filter(n => n.kind === "page" && !n.index).length;
+const handLinks = GRAPH.links.filter(([s, t, m]) => (m & bit.links) && nodes[s].kind === "page" && !nodes[s].index && nodes[t].kind === "page" && !nodes[t].index).length;
+document.getElementById("summary").textContent = `${pageCount} pages, ${handLinks} hand-written links · ${GRAPH.generated}`;
+legend(); restyle(); resize();
+requestAnimationFrame(tick);
+window.GRAPH_VIEW = { select, frame, camera, controls, nodes, P, hit, get selected() { return selected; } };
+</script>
+</body>
+</html>
