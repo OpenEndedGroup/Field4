@@ -4821,6 +4821,16 @@ pass to put it on screen.
 
 [Open →](offline.html?file=assets/agent_transcripts/path_tracing_materials/metadata.edn)
 
+### oidn_raster_particles
+
+**Open Image Denoise on a raster render.** A spiral of 3,000 particles drawn with stochastic
+transparency into a float render target, then denoised through `OidnImageSource`: see
+[Denoising any image](path_tracing.md#denoising-any-image).
+
+![A spiral of particles drawn with stochastic transparency: grainy on the left, and smooth after Open Image Denoise on the right](assets/path_tracing/denoise/raster_particles.png)
+
+[Open →](offline.html?file=assets/agent_transcripts/oidn_raster_particles/metadata.edn)
+
 ### path_tracing_glass
 
 Clear, absorbing and frosted glass spheres, plus a thin blue pane, over

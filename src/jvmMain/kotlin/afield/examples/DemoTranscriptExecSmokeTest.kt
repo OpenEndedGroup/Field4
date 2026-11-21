@@ -840,6 +840,8 @@ object DemoTranscriptExecSmokeTest {
         "path_tracing_glass",
         "path_tracing_gltf",
         "path_tracing_hidden_environment",
+        // path_tracing.md#denoising-any-image: a raster render into a float target, denoised on the GPU.
+        "oidn_raster_particles",
         // cuda.md: a CUDA kernel moving particles in a Vulkan buffer that a mesh draws. Needs a
         // window and Linux with an NVIDIA GPU; the CUDA side is checked by cuda.interop.smoke.
         "cuda_particles",

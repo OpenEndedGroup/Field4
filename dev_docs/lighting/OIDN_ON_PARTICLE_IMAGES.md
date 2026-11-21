@@ -56,9 +56,10 @@ Display units: sRGB in [0, 1], averaged over RGB.
 ## How it was run
 
 `afield.media.reconstruction.OidnImageSpike <out dir> <image>... [--save-images]` through
-`field_backdoor.py run-jvm-main`. It hosts a denoiser on an idle `PathTracingRenderer` of the
-image's size, writes each image into the accumulation buffer, sets the guides, and runs
-`denoiseNow(perPass = true)`.
+`field_backdoor.py run-jvm-main`. (The 2026-11-21 numbers were taken when the spike hosted the
+denoiser on an idle `PathTracingRenderer`; it now uses the library's `OidnImageSource`, which feeds
+the same buffers.) It uploads each image, sets the guides with `setGuides`, and calls
+`denoiseImage()`, which runs one pass per submit.
 
 - **Guides:** `flat` is albedo 1 and normal +z; `self` is the image itself as albedo, normal +z.
 - **Per image and guide set:** four denoises, plain and rolled, each with and without the

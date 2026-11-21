@@ -1473,6 +1473,58 @@ each frame that averages the albedo and normal.
     is left are in
     [OIDN_COMPUTE_PORT.md](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/lighting/OIDN_COMPUTE_PORT.md).
 
+### Denoising any image
+
+The denoiser is not tied to the path tracer. It reads one linear-colour image, plus albedo and normal
+guides if it has them, so a raster render can go through it too. Rasterizers make the same kind of
+grain when they sample: stochastic transparency, dithered fades, one jittered sample a pixel.
+`OidnImageSource` holds such an image. Fill it from a render target, an 8-bit `BufferedImage` or
+your own linear pixels with `upload`, and hand it to `OidnComputeDenoiser`.
+
+The [oidn_raster_particles](agent_transcripts.md#oidn_raster_particles) starting point draws 3,000
+soft particles into a 640 × 360 float render target, `particleImage`, with stochastic
+transparency: each fragment is kept with probability equal to the particle's opacity there and
+drawn opaque. The box below it copies that target into an image source and denoises it once:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/path_tracing/denoise/raster_particles.png" capture="box" open-outputs="true" embed=true timeout="300" padding="12" name="oidn-raster-particles" alt="A spiral of particles drawn with stochastic transparency: grainy on the left, and smooth after Open Image Denoise on the right" macro-file="../../dev_docs/agents/transcripts/oidn_raster_particles.yaml" capture-box="oidn_raster_denoise"}
+:::static
+import afield.media.reconstruction.OidnComputeDenoiser
+import afield.media.reconstruction.OidnImageSource
+import afield.media.image.util.PngEncoder
+
+// Copy the particle render into an image source and denoise it once, with flat guides.
+val image = OidnImageSource(renderer, 640, 360).upload(particleImage)
+val denoiser = OidnComputeDenoiser(image)
+val denoised = denoiser.denoiseImage()
+val noisy = denoiser.read(image.radiance)
+
+// The middle 400 columns of each, noisy on the left and denoised on the right, as sRGB.
+fun srgb(x: Float) = (255 * (if (x <= 0.0031308f) 12.92f * x else 1.055f * x.pow(1 / 2.4f) - 0.055f)).toInt().coerceIn(0, 255)
+val pixels = IntArray(800 * 360) { k ->
+    val x = k % 800
+    val y = k / 800
+    val src = if (x < 400) noisy else denoised
+    val i = (y * 640 + 120 + x % 400) * 4
+    (255 shl 24) or (srgb(src[i]) shl 16) or (srgb(src[i + 1]) shl 8) or srgb(src[i + 2])
+}
+display("main", PngEncoder.encode(pixels, 800, 360))
+println("denoised ${image.width} x ${image.height} in ${"%.0f".format(denoiser.lastDenoiseMs)} ms")
+denoiser.close()
+image.close()
+```
+
+`denoiseImage()` runs the network now, blocking, and returns the denoised pixels; it is meant for a
+box or a script, not for code inside a frame. Each pass is its own submit, so a 4K image does not
+trip the macOS GPU watchdog. To keep up with a live render instead, `install()` the denoiser and
+upload each new frame: it then runs once after every upload and leaves the result in
+`denoiser.output`, a render target you can sample or draw.
+
+An image source has no guides of its own. They start flat, albedo 1 and normal facing the camera,
+which tells the network nothing about what is texture, so it smooths everything that looks like
+noise. `denoiser.setGuides(albedo, normal)` takes real ones if your renderer can write them; pass
+the image itself as albedo, though, and fine strokes are smoothed more, not less. On a clean raster
+image without grain the denoiser changes almost nothing apart from the finest pixel-wide lines.
+
 ## Current limits
 
 This is a basic static-scene renderer. It does not yet include heterogeneous scattering volumes,
