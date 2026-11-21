@@ -2170,6 +2170,71 @@ Field computes pixel coverage in several places, and they answer different quest
   front to back, on the CPU or as a compute shader). Both project splats with `SplatRaster.project`.
 - **A filled curved `FLine` on the GPU:** [Slug filled paths](slug_paths.md), analytic curve
   coverage evaluated in the fragment shader.
+- **The same coverage written as editable stream kernels, curves included:**
+  [Rasterising with stream kernels](#stream-kernels), `afield.graphics.nile`.
+
+## Rasterising with stream kernels { #stream-kernels }
+
+Dan Amelang's Nile language writes graphics as small kernels that each read one stream of typed
+tokens and write another, and his Gezira library builds a whole 2D renderer out of them. The
+rasteriser is five stages. DecomposeBeziers cuts each curve in two, and pushes both parts back
+onto its own input, until every piece fits inside one pixel. Field's version cuts where the curve
+crosses a pixel edge when it can, and in half otherwise, so a circle of radius 15 pixels becomes
+124 pieces. Each piece becomes an edge sample: the
+pixel it is in, how far it descends, and how much of that pixel lies to its right. The samples are
+sorted by x and then by y, and CombineEdgeSamples walks each row, adding up each pixel's samples and
+carrying the descent to the right, so the result is a stream of coverage spans.
+
+`afield.graphics.nile` is a small Kotlin version of this. A `kernel` has an `each { }` block that
+can `emit` downstream or `push` back onto its own queue, stages join with `then`, and `trace` runs a
+pipeline and keeps every stream by stage name. `Gezira.rasterizer` is the five stages, so a box can
+draw any of the streams over the pixel grid:
+
+```diffstatic {data-lang=kotlin}
+val t = Gezira.rasterizer.trace(Gezira.beziers(shape))
+val pieces = t.get<Bezier>("DecomposeBeziers")
+val samples = t.get<EdgeSample>("EdgeSamples")
+val spans = t.get<Span>("CombineEdgeSamples")
+```
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/gezira-streams.png" capture="box" open-outputs="true" padding="20" wait="4" timeout="180" embed=true name="gezira-streams" macro-file="../../dev_docs/agents/transcripts/nile_gezira_kernels.yaml" capture-box="gezira_streams" alt="Three panels over a 16 by 12 pixel grid. Pieces: a curved shape cut into short orange and blue pieces, each inside one pixel, with a cross at every cut. Edge samples: the outline with one short vertical bar per piece, orange where the edge descends and blue where it rises. Spans: the shape filled in white with graded edge pixels, yellow bars on the edge pixels and green bars across the interior runs."}
+// dev_docs/agents/transcripts/nile_gezira_kernels.yaml, box "gezira streams"
+```
+
+Inside a pixel the piece is not replaced by its chord: the area to its right is integrated along
+the curve itself, with three-point Gauss–Legendre, which is exact for a cubic. So the pipeline
+gives exact coverage for curves as well as polygons. `GeziraTest` measures it against
+`TriangleCoverage`, fanning each polygon into signed triangles: over 9,720 edge and interior pixels of 40 stars and triangles, the worst difference is
+2e-13 and the mean 8e-15. Against the
+same curves flattened to 2,048 chords each, the worst difference is 3.6e-6, which is what
+the chords leave out.
+
+Beside Skia's anti-aliased raster the two agree to within Skia's own approximation and its
+8-bit storage:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/gezira-vs-skia.png" capture="box" open-outputs="true" padding="20" wait="4" timeout="180" embed=true name="gezira-vs-skia" macro-file="../../dev_docs/agents/transcripts/nile_gezira_kernels.yaml" capture-box="gezira_vs_skia" alt="Three panels at 48 by 40 pixels: a five-pointed star overlapping a circle, rasterised by the kernels, the same by Skia, and their difference magnified ten times, which is a red outline along the edges, brightest on the edges facing down and to the right."}
+// dev_docs/agents/transcripts/nile_gezira_kernels.yaml, box "beside skia"
+```
+
+On a five-pointed star the kernels and Skia differ by at most 0.10 and on average 0.008, and
+Skia differs from the exact `TriangleCoverage` answer by the same 0.10: the difference is Skia's.
+On a circle the largest difference is 0.19 at one edge pixel, the mean 0.008. In the figure, where
+the star and the circle overlap, the largest difference is 0.43 and the mean 0.012. The difference
+lies along the edges, brightest on the edges that face down and to the right, and not where the two
+outlines cross; it is the same pattern as Skia's own difference from the exact star.
+
+A new stage is one more kernel. Gezira's TransformBeziers, a rotation here, goes in front of the
+rasteriser with `then`:
+
+```diffstatic {data-lang=kotlin}
+val t = (rotate(20.0, 8.0, 8.0) then Gezira.rasterizer).trace(Gezira.beziers(square))
+```
+
+Open the [starting point](agent_transcripts.md#nile_gezira_kernels) to edit the kernels. The
+method is from *[Pixels on a screen](https://whitebeard.blog/posts/pixels-on-a-screen/)*, a post
+on umgeni, a compiler for Nile that renders the SVG tiger from Gezira kernels; Field's kernels are
+written from that description. Gezira's stroking, compositing and texture kernels, a compute-shader
+backend and the tiger are not implemented here.
 
 ## Stopping the renderer
 
