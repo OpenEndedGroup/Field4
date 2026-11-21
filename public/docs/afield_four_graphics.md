@@ -2170,8 +2170,13 @@ Field computes pixel coverage in several places, and they answer different quest
   front to back, on the CPU or as a compute shader). Both project splats with `SplatRaster.project`.
 - **A filled curved `FLine` on the GPU:** [Slug filled paths](slug_paths.md), analytic curve
   coverage evaluated in the fragment shader.
-- **The same coverage written as editable stream kernels, curves included:**
-  [Rasterising with stream kernels](#stream-kernels), `afield.graphics.nile`.
+- **Exact coverage of a filled or stroked outline, curves included, on the CPU, as stages you can
+  edit or extend:** [Rasterising with stream kernels](#stream-kernels), `afield.graphics.nile`.
+  A pixel's coverage is its absolute winding area clamped to 1 (non-zero fill), which matches
+  `TriangleCoverage` on polygons to rounding. Where two outlines in one list cross the same pixel
+  their partial coverages are added, so that pixel comes out too high by up to the smaller of the
+  two. Shapes drawn into a `Canvas` with separate `draw` calls are composited instead, so they do
+  not add up this way.
 
 ## Rasterising with stream kernels { #stream-kernels }
 
@@ -2216,7 +2221,7 @@ Beside Skia's anti-aliased raster the two agree to within Skia's own approximati
 // dev_docs/agents/transcripts/nile_gezira_kernels.yaml, box "beside skia"
 ```
 
-On a five-pointed star the kernels and Skia differ by at most 0.10 and on average 0.008, and
+On a five-pointed star the kernels and Skia differ by at most 0.10 and on average 0.009, and
 Skia differs from the exact `TriangleCoverage` answer by the same 0.10: the difference is Skia's.
 On a circle the largest difference is 0.19 at one edge pixel, the mean 0.008.
 
@@ -2224,8 +2229,8 @@ Where the star and the circle overlap the largest difference is 0.43, and that o
 CombineEdgeSamples adds up signed edge areas, so in a pixel that both outlines cross it adds the
 two partial coverages, and where those overlap inside the pixel it counts the overlap twice (Gezira
 does the same). Against a 64 × 64 non-zero supersample, the 543 pixels that one outline crosses
-agree to 0.0025; in the 17 pixels both cross, the kernels are up to 0.31 too high, never by more
-than the smaller of the two coverages. Skia is up to 0.18 off the same supersample.
+agree to 0.0025; in the 17 pixels both cross, the kernels are up to 0.31 too high, and never more than 3e-4
+above the smaller of the two coverages. Skia is up to 0.18 off the same supersample.
 
 A new stage is one more kernel. Gezira's TransformBeziers, a rotation here, goes in front of the
 rasteriser with `then`:
@@ -2333,7 +2338,7 @@ image say why under the code: the lesson needs two boxes wired together, needs a
 repository does not ship, or produces something other than a picture. For the two-box shape, the
 [threebox](offline.html?file=assets/agent_transcripts/threebox/metadata.edn) and [spin_glass](offline.html?file=assets/agent_transcripts/spin_glass/metadata.edn) [agent transcripts](agent_transcripts.md) are runnable versions.
 
-## Fabricate Renderer
+## Where to go next
 
 For experimental area lights, Vulkan ray-query shadows and optional RTXDI resampling, see [Direct lighting](direct_lighting.md). Other pages that build on the pieces here:
 
@@ -2351,6 +2356,12 @@ scene harness, material parameters, shadows, and ambient occlusion captures, or
 [Path tracing](path_tracing.md) for the progressive tracer written over the same device. The
 [Renderers](reference/renderers.md) reference page lists all three and the scene, pass and material
 machinery they share, each declaration with the KDoc beside it in the source.
+
+For pixel coverage computed on the CPU rather than by the GPU's rasterizer, start from
+[Which one to use](#which-coverage-to-use). The [CPU rasterizer](three_output.md#what-the-cpu-rasterizer-is-for)
+draws meshes with no GPU at all, [Splats by tile](geometry_from_disk.md#splats-by-tile-and-what-a-tile-costs)
+does the same for Gaussian splats, and [how wrong soft coverage is](rectsl_inverse_animation.md#fitting-against-an-image)
+measures RectSL's differentiable raster against exact area.
 
 ## API reference
 

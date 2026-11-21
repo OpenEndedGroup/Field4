@@ -422,6 +422,41 @@ or the last bit, and a signed zero can turn a `->face-travel` rect half a turn.
 A key's value is itself a track, so it can be a free parameter too. TCB tracks recompute their
 tangents from the fitted key values, so a moved key bends the spline the way the sampler would.
 
+## Fitting against an image { #fitting-against-an-image }
+
+The fits above match track values at chosen instants. A scene can also be fitted to a target
+*picture*. `SceneProgram.toAdField()` lowers every rect to a signed distance on the same exact
+gradient, and `softRaster(field, spec, time)` turns that distance into pixel coverage through a
+smooth kernel, so `softRasterLossAndGradient` returns the image loss and its gradient with respect
+to every `free-param` in the scene. `SoftRasterSpec` sets the pixel grid over the wall, the band
+width `beta` in wall units, the kernel (`LINEAR`, `SMOOTHSTEP` or `SIGMOID`) and how overlapping
+rects combine (`UNION_SDF`, the distance the GLSL backend draws, or `OVER`, alpha compositing).
+
+Soft coverage is a gradient source, not a correct picture. `RectSLCoverage` computes the exact
+answer it is measured against: the area of each pixel a rect covers, by clipping the rect to the
+pixel (`clipConvexToBox`, the clipper [exact triangle coverage](afield_four_graphics.md#exact-triangle-coverage)
+also uses) and taking the area of what is left. A union of rects goes through JTS instead, and
+the test checks the two against each other where both apply. `measureCoverageBias` reports how far
+the soft raster is from it, with edges, corners and partial pixels counted separately, and refuses
+a scene with translucent rects, because area coverage only means something for opaque ones.
+
+What `RectSLSoftRasterTest` measures, with the `LINEAR` kernel:
+
+- **`beta` should be one pixel.** An axis-aligned edge is then exact to rounding (about 1e-13), and
+  a 45° edge is off by at most `½(1 − √2/2)² ≈ 0.043`. Half a pixel or two pixels of band are
+  several times worse.
+- **Corners are worse than edges**, about 0.16 at a right angle, because no function of one
+  distance can be right where two edges meet inside a pixel.
+- **A rect thinner than three quarters of a pixel** never reaches full coverage: a quarter-pixel
+  bar is off by about 0.25.
+- **Touching rects** leave a seam with `UNION_SDF`, where the distance reads about zero inside a
+  region that is fully covered. `OVER` does better at a seam and worse where rects overlap.
+
+So a fit whose loss uses the soft raster on both sides, target and model, converges cleanly, but a
+coverage value read off a soft raster of small or touching rects should not be trusted as a
+picture. The full tables, the other kernels and the corpus survey are in
+[`dev_docs/RECTSL_SOFT_RASTER.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/RECTSL_SOFT_RASTER.md).
+
 ## API reference
 
 Implementation and parameter details for the helpers used above:
