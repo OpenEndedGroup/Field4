@@ -166,6 +166,40 @@ class BrepTessellatorTest {
         }
     }
 
+    /** Edges used by one triangle once vertices at the same float position are joined. */
+    private fun openEdges(m: TriMesh): Int {
+        val id = HashMap<Triple<Float, Float, Float>, Int>()
+        val ids = IntArray(m.vertexCount) { id.getOrPut(Triple(m.positions[3 * it], m.positions[3 * it + 1], m.positions[3 * it + 2])) { id.size } }
+        val count = HashMap<Pair<Int, Int>, Int>()
+        for (t in 0 until m.triangleCount) for (e in 0..2) {
+            val a = ids[m.indices[3 * t + e]]; val b = ids[m.indices[3 * t + (e + 1) % 3]]
+            count.merge(minOf(a, b) to maxOf(a, b), 1, Int::plus)
+        }
+        return count.values.count { it == 1 }
+    }
+
+    @Test fun closedBrepsFromTheFileMeshClosed() {
+        if (!available()) return
+        val model = sample(RhinoBrepMeshing.EVALUATE)
+        for (name in listOf("sphere", "capped cylinder", "box, no mesh", "box, saved mesh")) {
+            val m = model.mesh(name).mesh
+            println("WATERTIGHT file $name: ${m.triangleCount} triangles, ${openEdges(m)} open edges")
+            assertEquals(0, openEdges(m), "$name has open edges")
+        }
+        // The same faces straight from the reader, for the stitch's before/after counts.
+        val dir = Files.createTempDirectory("rhino3dm-nurbs-test").toFile()
+        try {
+            val contents = OpenNurbsBrepNative.read(Rhino3dm.writeNurbsSample(File(dir, "nurbs.3dm")), -1)
+            for ((id, faces) in contents.breps) {
+                val t = BrepTessellator()
+                val m = t.meshFaces(faces) ?: continue
+                println("WATERTIGHT reader $id (${faces.size} faces): ${t.lastStitch}, ${m.triangleCount} triangles")
+            }
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
+
     @Test fun bilinearPatchEvaluatesExactly() {
         val s = NurbsSurface(
             1, 1, 2, 2, doubleArrayOf(0.0, 0.0, 1.0, 1.0), doubleArrayOf(0.0, 0.0, 1.0, 1.0),

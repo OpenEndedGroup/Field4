@@ -228,13 +228,19 @@ dir.deleteRecursively()
 
 </div>
 
-A tessellated face is a grid over the face's parameters, a line at every knot, with each span
-halved until the surface strays from the triangles by less than `tolerance` (a thousandth of the
-Brep's size unless you pass one, in model units). Cells the trim curves cross are cut along them,
-so holes and trimmed edges follow the trim. Every vertex lies on the exact surface. Faces are
-joined where they meet smoothly and kept apart at creases, so the shading stays sharp at a box's
-edges and smooth across a sphere's seam. `RhinoMesh.evaluatedFaces` says how many of an object's
-faces were tessellated.
+A tessellated face starts as one cell per knot span of its surface, and each cell is split, in
+one direction or both, until the surface strays from the triangles by less than `tolerance` (a
+thousandth of the Brep's size unless you pass one, in model units). A flat face stays a few large
+triangles; a cylinder is divided around and not along. Cells the trim curves cross are cut along
+them, so holes and trimmed edges follow the trim. Every vertex lies on the exact surface.
+
+Neighbouring faces are then stitched together. Each face's trim curve samples the edge it shares
+with its neighbour at its own points, so the two sides would not meet triangle for triangle; where
+one face has a vertex on the other's open edge, that edge is split at the very same vertex. A
+closed Brep therefore comes back as a closed mesh, with no cracks along its edges. Faces
+are joined where they meet smoothly and kept apart at creases, so the shading stays sharp at a
+box's edges and smooth across a sphere's seam. `RhinoMesh.evaluatedFaces` says how many of an
+object's faces were tessellated.
 
 A SubD is subdivided `subdLevel` times (3 unless you say otherwise; each level makes four times
 the triangles) by openNURBS's own Catmull-Clark rules, and each vertex is moved onto the limit
