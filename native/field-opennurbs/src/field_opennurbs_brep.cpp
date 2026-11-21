@@ -6,6 +6,8 @@
 
 #include "opennurbs.h"
 
+#include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <exception>
 #include <new>
@@ -47,34 +49,125 @@ int samplesPerSpan(const ON_Curve& curve) {
     return 64;
 }
 
-void appendLoop(const ON_Brep& brep, const ON_BrepLoop& loop, const ON_Surface& surface, std::vector<double>& out) {
-    std::vector<double> points;
-    for (int t = 0; t < loop.m_ti.Count(); ++t) {
-        const ON_BrepTrim& trim = brep.m_T[loop.m_ti[t]];
-        const int spans = trim.SpanCount();
-        if (spans <= 0) continue;
-        std::vector<double> knots(spans + 1);
-        if (!trim.GetSpanVector(knots.data())) continue;
-        const int per = samplesPerSpan(trim);
-        // Every point but the trim's last, which is the next trim's first.
-        for (int s = 0; s < spans; ++s) {
-            for (int k = 0; k < per; ++k) {
-                const double param = knots[s] + (knots[s + 1] - knots[s]) * k / per;
-                const ON_3dPoint p = trim.PointAt(param);
-                double u = p.x, v = p.y;
-                surface.GetNurbFormParameterFromSurfaceParameter(p.x, p.y, &u, &v);
-                points.push_back(u);
-                points.push_back(v);
+// Each Brep edge sampled once, on its 3D curve, span by span, its ends pinned to its two Brep
+// vertices: every trim of the edge hands out these same points, so faces that share the edge share
+// their boundary samples exactly.
+struct EdgeSamples {
+    std::vector<ON_3dPoint> points;  // in the edge's own direction, both ends included
+};
+
+const EdgeSamples& edgeSamples(const ON_Brep& brep, int ei, std::vector<EdgeSamples>& cache) {
+    EdgeSamples& out = cache[ei];
+    if (!out.points.empty()) return out;
+    const ON_BrepEdge& edge = brep.m_E[ei];
+    const int spans = edge.SpanCount();
+    std::vector<double> knots(spans > 0 ? spans + 1 : 2);
+    if (spans <= 0 || !edge.GetSpanVector(knots.data())) {
+        const ON_Interval d = edge.Domain();
+        knots = {d[0], d[1]};
+    }
+    const int per = samplesPerSpan(edge);
+    const int n = static_cast<int>(knots.size()) - 1;
+    for (int s = 0; s < n; ++s)
+        for (int k = 0; k < per; ++k) out.points.push_back(edge.PointAt(knots[s] + (knots[s + 1] - knots[s]) * k / per));
+    out.points.push_back(edge.PointAt(knots[n]));
+    out.points.front() = brep.m_V[edge.m_vi[0]].point;
+    out.points.back() = brep.m_V[edge.m_vi[1]].point;
+    return out;
+}
+
+// The trim parameter whose image on the surface is nearest `target`, searched in [lo, hi].
+double nearestOnTrim(const ON_BrepTrim& trim, const ON_Surface& surface, const ON_3dPoint& target, double lo, double hi) {
+    auto distance = [&](double t) {
+        const ON_3dPoint uv = trim.PointAt(t);
+        return surface.PointAt(uv.x, uv.y).DistanceTo(target);
+    };
+    const double g = 0.5 * (std::sqrt(5.0) - 1.0);
+    double a = lo, b = hi;
+    double c = b - g * (b - a), d = a + g * (b - a);
+    double fc = distance(c), fd = distance(d);
+    for (int i = 0; i < 48; ++i) {
+        if (fc < fd) { b = d; d = c; fd = fc; c = b - g * (b - a); fc = distance(c); }
+        else { a = c; c = d; fc = fd; d = a + g * (b - a); fd = distance(d); }
+    }
+    return 0.5 * (a + b);
+}
+
+void pushPoint(const ON_Surface& surface, double u, double v, const ON_3dPoint& p, std::vector<double>& points) {
+    double nu = u, nv = v;
+    surface.GetNurbFormParameterFromSurfaceParameter(u, v, &nu, &nv);
+    points.push_back(nu);
+    points.push_back(nv);
+    points.push_back(p.x);
+    points.push_back(p.y);
+    points.push_back(p.z);
+}
+
+// One trim's points, all but its last (the next trim's first). With an edge: the edge's samples, in
+// the trim's direction, each at the trim parameter whose image is nearest it. Singular: the trim's own
+// samples, all at its vertex. Neither: the trim's own samples and their images (no topology).
+void appendTrim(const ON_Brep& brep, const ON_BrepTrim& trim, const ON_Surface& surface,
+                std::vector<EdgeSamples>& cache, std::vector<double>& points, int& untopological) {
+    const ON_Interval domain = trim.Domain();
+    const bool hasEdge = trim.m_ei >= 0 && trim.m_ei < brep.m_E.Count() && trim.m_type != ON_BrepTrim::singular;
+    if (hasEdge) {
+        const EdgeSamples& e = edgeSamples(brep, trim.m_ei, cache);
+        const int n = static_cast<int>(e.points.size()) - 1;
+        // Dense images of the trim, to bracket each sample before refining it.
+        const int dense = std::max(64, 8 * n);
+        std::vector<ON_3dPoint> image(dense + 1);
+        for (int j = 0; j <= dense; ++j) {
+            const ON_3dPoint uv = trim.PointAt(domain.ParameterAt(static_cast<double>(j) / dense));
+            image[j] = surface.PointAt(uv.x, uv.y);
+        }
+        int from = 0;
+        for (int k = 0; k < n; ++k) {
+            const ON_3dPoint& p = e.points[trim.m_bRev3d ? n - k : k];
+            double t = domain[0];
+            if (k > 0) {
+                int best = from;
+                double bestD = image[from].DistanceTo(p);
+                for (int j = from + 1; j <= dense; ++j) {
+                    const double dj = image[j].DistanceTo(p);
+                    if (dj < bestD) { bestD = dj; best = j; }
+                }
+                from = best;
+                const double lo = domain.ParameterAt(static_cast<double>(std::max(best - 1, 0)) / dense);
+                const double hi = domain.ParameterAt(static_cast<double>(std::min(best + 1, dense)) / dense);
+                t = nearestOnTrim(trim, surface, p, lo, hi);
             }
+            const ON_3dPoint uv = trim.PointAt(t);
+            pushPoint(surface, uv.x, uv.y, p, points);
+        }
+        return;
+    }
+    const int spans = trim.SpanCount();
+    if (spans <= 0) return;
+    std::vector<double> knots(spans + 1);
+    if (!trim.GetSpanVector(knots.data())) return;
+    const int per = samplesPerSpan(trim);
+    const bool singular = trim.m_type == ON_BrepTrim::singular && trim.m_vi[0] >= 0;
+    if (!singular) ++untopological;
+    for (int s = 0; s < spans; ++s) {
+        for (int k = 0; k < per; ++k) {
+            const ON_3dPoint uv = trim.PointAt(knots[s] + (knots[s + 1] - knots[s]) * k / per);
+            const ON_3dPoint p = singular ? brep.m_V[trim.m_vi[0]].point : surface.PointAt(uv.x, uv.y);
+            pushPoint(surface, uv.x, uv.y, p, points);
         }
     }
+}
+
+void appendLoop(const ON_Brep& brep, const ON_BrepLoop& loop, const ON_Surface& surface,
+                std::vector<EdgeSamples>& cache, std::vector<double>& out, int& untopological) {
+    std::vector<double> points;
+    for (int t = 0; t < loop.m_ti.Count(); ++t) appendTrim(brep, brep.m_T[loop.m_ti[t]], surface, cache, points, untopological);
     out.push_back(loop.m_type == ON_BrepLoop::inner ? 2.0 : 1.0);
-    out.push_back(static_cast<double>(points.size() / 2));
+    out.push_back(static_cast<double>(points.size() / 5));
     out.insert(out.end(), points.begin(), points.end());
 }
 
 // False when a face's surface has no NURBS form; the face is then packed with zero CVs.
-void appendFace(const ON_Brep& brep, const ON_BrepFace& face, std::vector<double>& out) {
+void appendFace(const ON_Brep& brep, const ON_BrepFace& face, std::vector<EdgeSamples>& cache, std::vector<double>& out, int& untopological) {
     out.push_back(faceHasMesh(face) ? 1.0 : 0.0);
     out.push_back(face.m_bRev ? 1.0 : 0.0);
     const ON_Surface* surface = face.m_si >= 0 && face.m_si < brep.m_S.Count() ? brep.m_S[face.m_si] : nullptr;
@@ -107,7 +200,7 @@ void appendFace(const ON_Brep& brep, const ON_BrepFace& face, std::vector<double
         }
     }
     out.push_back(face.m_li.Count());
-    for (int l = 0; l < face.m_li.Count(); ++l) appendLoop(brep, brep.m_L[face.m_li[l]], *surface, out);
+    for (int l = 0; l < face.m_li.Count(); ++l) appendLoop(brep, brep.m_L[face.m_li[l]], *surface, cache, out, untopological);
 }
 
 // A SubD as triangles: openNURBS's own Catmull-Clark subdivision, `level` times, then every vertex
@@ -148,8 +241,11 @@ std::vector<double> packSubD(const ON_SubD& source, int level) {
 
 std::vector<double> pack(const ON_Brep& brep) {
     std::vector<double> out;
+    std::vector<EdgeSamples> cache(brep.m_E.Count());
+    int untopological = 0;
     out.push_back(brep.m_F.Count());
-    for (int f = 0; f < brep.m_F.Count(); ++f) appendFace(brep, brep.m_F[f], out);
+    for (int f = 0; f < brep.m_F.Count(); ++f) appendFace(brep, brep.m_F[f], cache, out, untopological);
+    out.push_back(untopological);
     return out;
 }
 

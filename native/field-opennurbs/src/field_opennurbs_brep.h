@@ -18,8 +18,16 @@
 //       per loop:
 //         loopType                1 outer, 2 inner (ON_BrepLoop::TYPE)
 //         pointCount
-//         points[pointCount * 2]  the loop's trims, sampled, in the NURBS surface's own parameters;
-//                                 the loop closes from the last point back to the first
+//         points[pointCount * 5]  the loop's trims, sampled: `u v` in the NURBS surface's own
+//                                 parameters, then `x y z` the boundary point in model space; the
+//                                 loop closes from the last point back to the first
+//     untopologicalTrims         trims sampled without a Brep edge (singular trims not counted)
+//
+// Brep edge topology: each edge is sampled once on its 3D curve (span-paced, ends at its two Brep
+// vertices) and every trim of that edge carries those very `x y z` points, in its own direction,
+// with `u v` the trim's nearest point to each. Faces sharing an edge thereby share boundary points
+// bit-for-bit, whatever the pacing of their trim curves. A singular trim's points all sit at its
+// vertex. A trim with no edge carries its own samples and their surface images.
 //
 // Block members are not included. SubDs: see `field_opennurbs_subds_count`.
 

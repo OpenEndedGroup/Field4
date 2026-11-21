@@ -291,11 +291,29 @@ struct BrepBuilder {
         return brep.NewVertex(p, 0.0).m_vertex_index;
     }
 
-    // An edge already traced from a to b (or b to a) through the trim's images [quarter] and [mid]
-    // (at a quarter and half way); -1 if none. Sets reversed. The quarter point tells the direction
-    // of a closed edge, whose ends and midpoint are the same either way round.
-    int sharedEdge(const ON_3dPoint& a, const ON_3dPoint& b, const ON_3dPoint& quarter, const ON_3dPoint& mid,
-                   const ON_3dPoint& threeQuarter, bool& reversed) {
+    // An unshared edge this trim traces too: the same two end vertices, and the edge's points at a
+    // quarter, half and three quarters of its domain all lying on the trim's image. Matching points to
+    // the image rather than to the trim's own fractions joins trims of one edge whatever their pacing.
+    // `reversed` when the trim runs against the edge (found from where those points fall along it).
+    int sharedEdge(const ON_NurbsSurface& surface, const ON_NurbsCurve& c2, const ON_3dPoint& a, const ON_3dPoint& b,
+                   bool& reversed) {
+        const ON_Interval d = c2.Domain();
+        const int dense = 256;
+        std::vector<ON_3dPoint> trace(dense + 1);
+        for (int j = 0; j <= dense; ++j) trace[j] = image(surface, c2, d.ParameterAt(static_cast<double>(j) / dense));
+        // Distance from p to the trace's polyline, and the fraction along the trim where it is nearest.
+        auto nearest = [&](const ON_3dPoint& p, double& at) {
+            double best = 1e300;
+            for (int j = 0; j < dense; ++j) {
+                const ON_3dVector e = trace[j + 1] - trace[j];
+                const double len2 = e * e;
+                double f = len2 > 0 ? ((p - trace[j]) * e) / len2 : 0.0;
+                f = f < 0 ? 0 : (f > 1 ? 1 : f);
+                const double dist = p.DistanceTo(trace[j] + f * e);
+                if (dist < best) { best = dist; at = (j + f) / dense; }
+            }
+            return best;
+        };
         for (int e = 0; e < brep.m_E.Count(); ++e) {
             const ON_BrepEdge& edge = brep.m_E[e];
             if (edge.m_ti.Count() >= 2) continue;
@@ -303,12 +321,17 @@ struct BrepBuilder {
             const bool forward = s.DistanceTo(a) <= tol && t.DistanceTo(b) <= tol;
             const bool backward = s.DistanceTo(b) <= tol && t.DistanceTo(a) <= tol;
             if (!forward && !backward) continue;
-            const double slack = tol * 10 + edge.m_tolerance;
-            const ON_Interval d = edge.Domain();
-            if (edge.PointAt(d.ParameterAt(0.5)).DistanceTo(mid) > slack) continue;
-            const ON_3dPoint q = edge.PointAt(d.ParameterAt(0.25));
-            if (forward && q.DistanceTo(quarter) <= slack) { reversed = false; return e; }
-            if (backward && q.DistanceTo(threeQuarter) <= slack) { reversed = true; return e; }
+            // The trace is a polyline of the image; allow its chord sag on top of the tolerances.
+            const double slack = tol * 10 + edge.m_tolerance + 1e-3 * a.DistanceTo(b) + 1e-3 * trace[0].DistanceTo(trace[dense / 2]);
+            const ON_Interval ed = edge.Domain();
+            double f1 = 0, f2 = 0, f3 = 0;
+            if (nearest(edge.PointAt(ed.ParameterAt(0.25)), f1) > slack) continue;
+            if (nearest(edge.PointAt(ed.ParameterAt(0.5)), f2) > slack) continue;
+            if (nearest(edge.PointAt(ed.ParameterAt(0.75)), f3) > slack) continue;
+            const bool along = f1 < f2 && f2 < f3;
+            const bool against = f1 > f2 && f2 > f3;
+            if (forward && along) { reversed = false; return e; }
+            if (backward && against) { reversed = true; return e; }
         }
         return -1;
     }
@@ -353,7 +376,6 @@ struct BrepBuilder {
         const int c2i = brep.AddTrimCurve(c2);
         const ON_Interval d = c2->Domain();
         const ON_3dPoint a = image(surface, *c2, d[0]), b = image(surface, *c2, d[1]);
-        const ON_3dPoint mid = image(surface, *c2, d.ParameterAt(0.5));
         double extent = 0;
         for (int k = 1; k <= 8; ++k) extent = std::max(extent, image(surface, *c2, d.ParameterAt(k / 8.0)).DistanceTo(a));
         if (extent <= tol) {
@@ -364,9 +386,7 @@ struct BrepBuilder {
             return;
         }
         bool reversed = false;
-        const ON_3dPoint quarter = image(surface, *c2, d.ParameterAt(0.25));
-        const ON_3dPoint threeQuarter = image(surface, *c2, d.ParameterAt(0.75));
-        int ei = sharedEdge(a, b, quarter, mid, threeQuarter, reversed);
+        int ei = sharedEdge(surface, *c2, a, b, reversed);
         if (ei < 0) {
             double edgeTolerance = 0;
             ON_Curve* c3 = edgeCurve(surface, *c2, edgeTolerance);

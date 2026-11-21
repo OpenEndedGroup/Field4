@@ -191,11 +191,64 @@ class BrepTessellatorTest {
         val dir = Files.createTempDirectory("rhino3dm-nurbs-test").toFile()
         try {
             val contents = OpenNurbsBrepNative.read(Rhino3dm.writeNurbsSample(File(dir, "nurbs.3dm")), -1)
+            assertEquals(0, contents.untopologicalTrims, "every trim has a Brep edge")
             for ((id, faces) in contents.breps) {
                 val t = BrepTessellator()
                 val m = t.meshFaces(faces) ?: continue
                 println("WATERTIGHT reader $id (${faces.size} faces): ${t.lastStitch}, ${m.triangleCount} triangles")
+                assertEquals(0, t.lastStitch!!.fallbackSplits, "$id joined by position, not by topology")
             }
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
+
+    /**
+     * A capped cylinder whose top cap trims its circle with a different pacing from the side's: the
+     * same rational circle with weights `w_k * c^k` and uneven spans, so equal parameter steps land
+     * at different 3D points on the two faces that share the edge.
+     */
+    private fun pacedCylinder(c: Double): List<RhinoBrepFace> {
+        val (side, bottom, top) = RhinoBreps.cylinder(afield.math.linalg.vec(0.0, 0.0, 0.0), 3.0, 4.0)
+        val round = top.loops.single().trims.single()
+        // Uneven spans as well: the quarter points of the two trims' domains then land at different places.
+        val knots = doubleArrayOf(0.0, 0.0, 0.4, 0.4, 2.6, 2.6, 3.2, 3.2, 4.0, 4.0)
+        val paced = RhinoTrim(2, round.points, knots, DoubleArray(round.count) { round.weights!![it] * Math.pow(c, it.toDouble()) })
+        return listOf(side, bottom, RhinoBrepFace(top.surface, listOf(RhinoTrimLoop(listOf(paced))), top.reversed))
+    }
+
+    @Test fun differentlyPacedTrimsOfOneEdgeStitchClosed() {
+        if (!available()) return
+        val dir = Files.createTempDirectory("rhino3dm-paced").toFile()
+        try {
+            val file = Rhino3dm.save(File(dir, "paced.3dm")) {
+                brep(pacedCylinder(1.7), name = "paced can")
+                brep(RhinoBreps.plate(afield.math.linalg.vec(20.0, 0.0, 0.0), 10.0, listOf(Triple(18.0, 1.0, 1.5), Triple(22.0, -2.0, 1.0))), name = "plate")
+            }
+            val model = Rhino3dm.load(file, RhinoBrepMeshing.EVALUATE)
+            val contents = OpenNurbsBrepNative.read(file, -1)
+            assertEquals(0, contents.untopologicalTrims, "every trim has a Brep edge")
+            // The writer joined the two trims into one edge, and the reader gave both faces its points.
+            val can = contents.breps.values.single { it.size == 3 }
+            fun points(f: BrepFace) = f.outerPoints!!.single().let { xyz -> (0 until xyz.size / 3).map { Triple(xyz[3 * it], xyz[3 * it + 1], xyz[3 * it + 2]) } }
+            val sidePoints = points(can[0]).toSet()
+            val topPoints = points(can[2])
+            for ((id, faces) in contents.breps) {
+                val t = BrepTessellator()
+                t.meshFaces(faces)
+                println("PACED reader $id (${faces.size} faces): ${t.lastStitch}")
+            }
+            for ((id, faces) in contents.breps) {
+                val t = BrepTessellator()
+                t.meshFaces(faces)
+                assertEquals(0, t.lastStitch!!.fallbackSplits, "$id joined by position, not by topology")
+            }
+            for (name in listOf("paced can")) {
+                val m = model.mesh(name).mesh
+                println("PACED $name: ${m.triangleCount} triangles, ${openEdges(m)} open edges")
+                assertEquals(0, openEdges(m), "$name has open edges")
+            }
+            assertTrue(topPoints.size > 8 && topPoints.all { it in sidePoints }, "the top cap's edge points are not the side's")
         } finally {
             dir.deleteRecursively()
         }
@@ -263,6 +316,51 @@ class BrepTessellatorTest {
         } finally {
             dir.deleteRecursively()
         }
+    }
+
+    /** Two unit squares side by side, each two triangles; the right one's shared side has a midpoint. */
+    private fun stitchPair(rightMidpoint: Boolean): Triple<ArrayList<Double>, ArrayList<Int>, Int> {
+        val p = arrayListOf(0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0) // left: 0..3
+        p.addAll(listOf(1.0, 0.0, 0.0, 2.0, 0.0, 0.0, 2.0, 1.0, 0.0, 1.0, 1.0, 0.0))     // right: 4..7
+        val idx = arrayListOf(0, 1, 2, 0, 2, 3)
+        if (!rightMidpoint) { idx.addAll(listOf(4, 5, 6, 4, 6, 7)); return Triple(p, idx, -1) }
+        p.addAll(listOf(1.0, 0.5, 0.0)) // 8, on the shared side x = 1
+        idx.addAll(listOf(4, 5, 8, 5, 6, 8, 6, 7, 8))
+        return Triple(p, idx, 8)
+    }
+
+    private fun normalsUp(n: Int) = ArrayList<Double>().apply { repeat(n) { add(0.0); add(0.0); add(1.0) } }
+
+    @Test fun stitchJoinsCoincidentBoundaryVerticesWithoutSplitting() {
+        val (p, idx, _) = stitchPair(false)
+        val (m, r) = BrepTessellator().stitch(p, normalsUp(p.size / 3), idx, 1e-9, 1e-3)
+        assertEquals(6, r.openEdgesBefore, "the pair's outline is six edges")
+        assertEquals(0, r.splits); assertEquals(0, r.topologicalSplits)
+        assertEquals(6, m.vertexCount)
+    }
+
+    @Test fun stitchSplitsAcrossALoopSegmentByTopology() {
+        val (p, idx, mid) = stitchPair(true)
+        // Both faces' trim loops; the midpoint is the right face's cell cutting its segment 3,
+        // (1,1)-(1,0), the shared Brep edge.
+        val left = doubleArrayOf(0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0)
+        val right = doubleArrayOf(1.0, 0.0, 0.0, 2.0, 0.0, 0.0, 2.0, 1.0, 0.0, 1.0, 1.0, 0.0)
+        val crossing = BrepTessellator.Crossing(mid, 1, 3, 0.5)
+        val (m, r) = BrepTessellator().stitch(
+            p, normalsUp(p.size / 3), idx, 1e-9, 1e-3, boundary = setOf(1, 2, 4, 7, mid), crossings = listOf(crossing), chains = listOf(left, right),
+        )
+        assertEquals(1, r.topologicalSplits, "$r")
+        assertEquals(0, r.splits, "nothing left for the geometric pass: $r")
+        assertEquals(6, r.openEdgesAfter, "only the outline stays open: $r")
+        assertEquals(7, m.vertexCount)
+    }
+
+    @Test fun stitchFallsBackToPositionsAndCountsIt() {
+        val (p, idx, mid) = stitchPair(true)
+        val (_, r) = BrepTessellator().stitch(p, normalsUp(p.size / 3), idx, 1e-9, 1e-3, boundary = setOf(1, 2, 4, 7, mid))
+        assertEquals(0, r.topologicalSplits)
+        assertEquals(1, r.splits); assertEquals(1, r.fallbackSplits, "$r")
+        assertEquals(6, r.openEdgesAfter)
     }
 
     @Test fun bilinearPatchEvaluatesExactly() {
