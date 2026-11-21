@@ -201,9 +201,32 @@ fun layer(@CompletesWith(RhinoLayerPaths::class) name: String): RhinoLayer
 and the box's variables outlive the run that made them. Completion never runs anything to get it,
 so there is no receiver for `Rhino3dm.load("house.3dm").layer("`, for a `val` you have typed but
 not yet run, or for a local inside a function. `context` also carries the box being edited and
-what has been typed so far. Field finds these annotations by reflection on compiled code, so they
-work on functions in Field itself and in your `src/personal` layer, not on a function declared in
-a box.
+what has been typed so far.
+
+Index access completes the same way. `FileManager["` offers the names registered so far, and with
+`val tools = PaintToolbox()`, both `tools["` and `tools.brush("` offer the tools it holds. For
+`foo.bar["pea`, an annotation on the property `bar` decides, and failing that, one on the key
+parameter of `bar`'s `operator fun get` or `set`. A class declared in a box can use this too:
+
+```diffstatic {data-lang=kotlin}
+object Fruit : StringCompletions {
+    override fun candidates(context: StringCompletionContext): List<String> = ["peach", "pear", "plum"]
+}
+
+class Shelf {
+    @CompletesWith(Fruit::class)
+    val stock = mutableMapOf<String, Int>()
+}
+
+val foo = Shelf()
+```
+
+Once that box has run, `foo.stock["pe` offers `peach` and `pear`. Field follows `foo.stock` by
+reading the property's stored value, never by calling a getter, so a property computed by a getter
+still finds its annotation but hands the provider no receiver. Field finds these annotations by
+reflection on compiled code: on functions in Field itself, in your `src/personal` layer, and on the
+members of a box's class once a variable holds one. It does not see a top-level function declared
+in a box.
 
 ## When resolution fails
 
