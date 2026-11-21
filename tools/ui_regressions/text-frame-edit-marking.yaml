@@ -1,0 +1,37 @@
+name: text_frame_edit_marking
+operations:
+  - drive:
+      warmCompletion: false
+      script: |
+        ui.eval("window.hideMonaco(); window.writeTextFrame([...document.querySelectorAll('.text-frame-box')].find(b => b.name === 'Visual notes')); return true;")
+        for (surface in listOf(".text-frame-rich-block:focus", "textarea.text-frame-editor:focus")) {
+            if (surface.startsWith("textarea")) {
+                ui.eval("window.editTextFrame(document.activeElement.closest('.text-frame-box'));return true;")
+            }
+            ui.waitForSelector(surface, 10000.0)
+            val point = ui.eval("const r = document.querySelector('$surface').getBoundingClientRect(); return [r.left + 10, r.top + 10].join(',');").toString().trim('"').split(',')
+            ui.moveMouse(point[0].toDouble(), point[1].toDouble())
+            check(ui.eval("return document.elementFromPoint(${point[0]}, ${point[1]}).closest('$surface') !== null;").toString() == "true") {
+                "The $surface target was covered"
+            }
+            ui.down("Alt")
+            ui.mouseDown()
+            ui.waitForSelector(".markingButton:has-text('Open settings')", 10000.0)
+            ui.press("Escape")
+            ui.mouseUp()
+            ui.up("Alt")
+            check(ui.eval("return !document.querySelector('.markingButton') && document.activeElement.matches('$surface');").toString()=="true") {
+                "Cancelling the menu did not leave focus in the text frame"
+            }
+        }
+        ui.press("Escape")
+        val first = ".text-frame-preview:not(.text-frame-rich) h2"
+        val second = ".text-frame-preview:not(.text-frame-rich) h1"
+        ui.clickSelector(first)
+        ui.eval("getSelection().collapse(document.querySelector('$first').firstChild, 0); return true;")
+        ui.down("Shift")
+        ui.clickSelector(second)
+        ui.up("Shift")
+        check(ui.eval("return Array.from(window.selectedList).length === 2 && getSelection().isCollapsed;").toString()=="true") {
+            "Shift-click did not select two boxes without extending the text selection"
+        }

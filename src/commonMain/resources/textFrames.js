@@ -1,4 +1,4 @@
-import {send, growTextFrame, setTextFrameContents, flushTextFramePropertyEditor, syncTextFrameSettingsEditor, syncSelectedPropertyEditor} from './afield.mjs';
+import {send, growTextFrame, setTextFrameContents, flushTextFramePropertyEditor, syncTextFrameSettingsEditor, syncSelectedPropertyEditor, requestCustomMarkingMenu} from './afield.mjs';
 import {mountChatAutocomplete} from './aiChatAutocomplete.js';
 import {renderFieldMarkdown} from './markdownView.js';
 import {markdownOffsetAtPoint, revealTextareaCaret} from './markdownCaret.js';
@@ -481,6 +481,10 @@ function mount(box) {
             try { anchor.click(); } finally { state.followingLink = false; }
         }, 500);
     }, true);
+    preview.addEventListener('mousedown', e => {
+        // Shift-click belongs to box selection here; prevent the browser from extending a text range.
+        if (e.button === 0 && e.shiftKey) e.preventDefault();
+    });
     preview.addEventListener('dblclick', e => {
         if (window.currentDocumentReadOnly || e.target.closest('button')) return;
         clearTimeout(state.linkTimer);
@@ -532,7 +536,15 @@ function mount(box) {
         if (document.activeElement !== editor) finish(state);
     }));
     for (const element of [editor, rich, toolbar, conflict, state.overflow]) {
-        for (const name of ['pointerdown', 'mousedown', 'dblclick', 'wheel', 'keyup', 'contextmenu']) element.addEventListener(name, e => e.stopPropagation());
+        for (const name of ['pointerdown', 'mousedown', 'dblclick', 'wheel', 'keyup', 'contextmenu']) {
+            element.addEventListener(name, e => {
+                e.stopPropagation();
+                if (name === 'mousedown' && e.altKey && e.button === 0 && (element === editor || element === rich)) {
+                    e.preventDefault();
+                    requestCustomMarkingMenu(box.uid, e.clientX, e.clientY, e);
+                }
+            });
+        }
     }
     // Loaded images, math typesetting and a width resize can all change the amount of text that fits.
     body.addEventListener('load', () => layout(state), true);

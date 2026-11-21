@@ -4913,6 +4913,8 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             commands=[
                 "viewport 1060x760",
                 shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/text-frame-rich.js"), "--timeout", pw_timeout]),
+                shell_join(["macro", "write", "text_frame_edit_marking", "--file", str(TOOLS_ROOT / "ui_regressions/text-frame-edit-marking.yaml")]),
+                "macro run text_frame_edit_marking --timeout 90",
             ],
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
         ),
