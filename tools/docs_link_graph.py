@@ -38,10 +38,19 @@ What it writes (``build/docs_link_graph/`` by default)
   with public API that no page or transcript reaches, short and long pages, and age: pages the
   code they cite has moved on from, and pages nothing newer links to.
 * ``graph.html`` — the graph drawn in 3D, self-contained (it inlines Field's vendored three.js and
-  opens from disk): the documentation as a core laid out by its links, the code as a shell around
-  it (see ``layout``); coloured by section, last edit or code drift; click a node for what it
-  links and what links it, toggle transcripts, code, the reference and edge kinds. The page is
-  ``tools/docs_link_graph.html`` with the data and positions filled in.
+  d3-force-3d-webgpu, and opens from disk). The page lays itself out live: a force simulation
+  (link springs, octree Barnes–Hut repulsion, gravity) over every visible node, in a Web Worker
+  on the CPU, posting every tick. (Not the package's WebGPU path: its asynchronous readback lands
+  only a few times a second, which showed as motion in pulses.) Pages are held by the links
+  switched on, each source file hangs from its directory and each directory from its parent,
+  and the code edge kinds (cites, calls, mentions, ...) tie files to the pages that use them;
+  toggling a layer or an edge kind reheats it. ``layout`` gives only the starting positions.
+  Coloured by section, last edit or code drift; click a node for what it links and what links
+  it, double-click to frame it with its neighbours. The page is ``tools/docs_link_graph.html``
+  with the data and positions filled in.
+* The published site carries the same view as ``assets/docs_map/graph.html``, embedded by
+  ``docs_map.md``: ``tools/build_zensical_docs.py`` calls ``write_site_map``, which links each
+  node to its built page (a source file to its reference section) and skips the git history.
 * ``graph.json`` (node-link) and ``graph.graphml`` (opens in Gephi, yEd, Cytoscape).
 
 What it cannot see
@@ -60,13 +69,16 @@ import argparse
 import collections
 import json
 import math
+import os
 import re
+import shutil
 import subprocess
 import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable
+from urllib.parse import quote
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DOCS_RELATIVE = "public/docs"
@@ -98,6 +110,7 @@ REFERENCE_PREFIX = "reference/"
 # Catalogues: they link (nearly) every page by construction, so they are left out of the editorial
 # degree counts. changelog.md is written from main's history; agent_transcripts.md lists every
 # transcript's page.
+REFERENCE_ANCHOR_RE = re.compile(r"^[^\n]*\{\s*#(?P<anchor>[\w-]+)\s*\}")
 INDEX_PAGES = ("changelog.md", "agent_transcripts.md")
 
 
@@ -264,6 +277,35 @@ KOTLIN_NOISE_RE = re.compile(r'"""(?P<raw>.*?)"""|"(?P<str>(?:\\.|[^"\\\n])*)"|/
 TEMPLATE_RE = re.compile(r"\$\{(?P<expr>[^{}]*)\}|\$(?P<name>[A-Za-z_]\w*)")
 DECLARED_HERE_RE = re.compile(r"\b(?:val|var|fun|class|object|interface)\s+(?:<[^>]*>\s*)?(?:\w+\.)?(?P<name>[A-Za-z_]\w*)")
 IDENTIFIER_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+# Kotlin and Java standard-library names that Field also declares somewhere, once, as its own
+# overload or extension. Without types a fence's `x.toInt()` cannot be told from a call into
+# Field's, and it is almost always the standard one, so these are ambiguous and dropped, as a name
+# declared in two files is. Found by ranking the names that tie the most pages to one file.
+STDLIB_NAMES = frozenset({
+    "println", "print", "toInt", "toLong", "toFloat", "toDouble", "toShort", "toByte", "toChar", "toString",
+    "toList", "toMutableList", "toSet", "toMutableSet", "toMap", "toMutableMap", "toTypedArray",
+    "toDoubleArray", "toFloatArray", "toIntArray", "toLongArray", "toSortedMap",
+    "maxOf", "minOf", "maxBy", "minBy", "maxByOrNull", "minByOrNull", "maxOrNull", "minOrNull",
+    "coerceIn", "coerceAtLeast", "coerceAtMost", "average", "sum", "sumOf", "count", "sorted", "sortedBy",
+    "sortedByDescending", "sortedDescending", "sortedWith", "reversed", "shuffled", "distinct", "distinctBy",
+    "forEach", "forEachIndexed", "map", "mapIndexed", "mapNotNull", "flatMap", "filter", "filterNot",
+    "filterIndexed", "filterIsInstance", "first", "firstOrNull", "last", "lastOrNull", "single", "singleOrNull",
+    "find", "any", "all", "none", "zip", "chunked", "windowed", "take", "drop", "takeLast", "dropLast",
+    "groupBy", "associate", "associateBy", "associateWith", "partition", "fold", "reduce", "joinToString",
+    "indexOf", "contains", "getOrNull", "getOrElse", "getOrPut", "plus", "minus", "times", "div", "rem",
+    "until", "downTo", "step", "repeat", "apply", "also", "let", "run", "with", "takeIf", "takeUnless",
+    "require", "check", "error", "listOf", "mutableListOf", "setOf", "mapOf", "mutableMapOf", "arrayOf",
+    "nextGaussian", "nextDouble", "nextInt", "nextFloat", "nextBoolean", "random", "lazy", "use",
+    "split", "trim", "lines", "format", "substring", "startsWith", "endsWith", "replace", "lowercase", "uppercase",
+    "roundToInt", "roundToLong", "absoluteValue", "sqrt", "pow", "sin", "cos", "abs", "floor", "ceil", "round",
+    "copy", "equals", "hashCode", "compareTo", "invoke", "get", "set", "add", "remove", "clear", "isEmpty",
+    "isNotEmpty", "size", "length", "keys", "values", "entries", "indices", "lastIndex",
+})
+FILE_NAME_RE = re.compile(r"[\w./@+-]*\w\.(?:ya?ml|json|edn|kts?|md|js|mjs|html?|css|glsl|wgsl|slang|py|sh|txt|csv|png|jpe?g|svg|mp4|wav|obj|gltf|glb|toml|xml)\b")
+IMPORT_LINE_RE = re.compile(r"^[ \t]*(?:import|package)[ \t]+[^\n]*", re.M)
+# A dotted run of lowercase segments from a package root, stopping before the first capitalised
+# segment (the type) or at the end: the package part of a qualified name.
+PACKAGE_PREFIX_RE = re.compile(r"\b(?:afield|java|javax|kotlin|kotlinx|org|com|net)(?:\.[a-z_][a-z0-9_]*)+\b(?=\.[A-Z]|[^.\w]|$)")
 GENERIC_CALL_RE = re.compile(r"<[\w\s,.<>?*]*>\s*\(")
 
 
@@ -274,7 +316,12 @@ def kotlin_code_only(code: str) -> str:
             return " "
         return " " + " ; ".join(m.group("expr") or m.group("name") for m in TEMPLATE_RE.finditer(body)) + " "
 
-    return KOTLIN_NOISE_RE.sub(keep, code)
+    # A package path is not a use: `import afield.graphics.vulkan.Renderer` and a qualified
+    # `afield.four.vulkan.Renderer` use `Renderer`, not a member named `vulkan` (which one file
+    # declares, so every Vulkan page used to reach it).
+    code = KOTLIN_NOISE_RE.sub(keep, code)
+    code = IMPORT_LINE_RE.sub(" ", code)
+    return PACKAGE_PREFIX_RE.sub(" ", code)
 
 
 def used_symbols(code: str) -> set[str]:
@@ -284,14 +331,16 @@ def used_symbols(code: str) -> set[str]:
     wherever it stands. A lowercase one counts only in a call or member position — ``x.name``,
     ``name(``, ``name {`` — because the index holds data-class properties and parameters as bare
     names, and a fence's own ``val under = …`` is not a use of ``ThreeTintBand.under``. Names the
-    code declares itself are not uses either.
+    code declares itself are not uses either, and nor are Kotlin and Java standard-library names
+    (``STDLIB_NAMES``): Field declaring its own ``toInt`` once does not make every ``x.toInt()`` a
+    call into it.
     """
     text = kotlin_code_only(code)
     declared = {m.group("name") for m in DECLARED_HERE_RE.finditer(text)}
     used: set[str] = set()
     for match in IDENTIFIER_RE.finditer(text):
         name = match.group()
-        if name in declared:
+        if name in declared or name in STDLIB_NAMES:
             continue
         if name[0].isupper():
             used.add(name)
@@ -314,6 +363,9 @@ def code_files_for(code: str, symbol_index: dict[str, tuple[str, ...]], *, menti
     ``mention``: ``code`` is an inline span in prose, where a lone name (`` `markersAt` ``) is a
     deliberate mention and counts in any case.
     """
+    if mention:
+        # A file name in backticks is not code: `metadata.yaml` does not use a member `yaml`.
+        code = FILE_NAME_RE.sub(" ", code)
     names = used_symbols(code)
     if mention and IDENTIFIER_RE.fullmatch(code.strip()):
         names.add(code.strip())
@@ -660,6 +712,12 @@ VIEW_NODE_FIELDS = (
 VIEW_TEMPLATE = Path(__file__).with_name("docs_link_graph.html")
 # Field's vendored three.js, inlined into graph.html so the page opens from disk with no server.
 THREE_VENDOR_GLOB = "src/commonMain/resources/vendor/three/*/three.module.js"
+# The live layout (d3-force-3d on WebGPU, CPU fallback): its d3 dependencies first, then the package.
+FONT_DIR = "src/jsMain/resources/woff2"
+FONTS = {"FONT_LIGHT": "iosevka-semicondensedlight.woff2", "FONT_SEMIBOLD": "iosevka-semicondensedsemibold.woff2"}
+FORCE_VENDOR = "src/commonMain/resources/vendor/d3-force-3d-webgpu/3.2.0"
+FORCE_SCRIPTS = ("deps/d3-dispatch.js", "deps/d3-timer.js", "deps/d3-quadtree.js", "deps/d3-binarytree.js",
+                 "deps/d3-octree.js", "d3-force-3d-webgpu.js")
 
 
 def stable_unit(key: str, salt: str) -> float:
@@ -706,7 +764,8 @@ def fibonacci_directions(count: int) -> Any:
 
 
 def layout(graph: Graph) -> tuple[dict[str, tuple[float, float, float]], dict[str, dict[str, Any]]]:
-    """3D positions for ``graph.html``, and the directory nodes the code shell is built from.
+    """Starting 3D positions for ``graph.html`` (which then runs its own force simulation from
+    them), and the directory nodes the code shell is built from.
 
     **The core** is the documentation: pages and transcripts, placed by ForceAtlas2 in LinLog
     mode with hub dissuasion (Noack's energy model, which pulls clusters apart instead of
@@ -818,8 +877,52 @@ def layout(graph: Graph) -> tuple[dict[str, tuple[float, float, float]], dict[st
     return {k: tuple(float(c) for c in pos.get(k, np.zeros(3))) for k in [*nodes, *packages]}, packages
 
 
+def reference_anchors(repo_root: Path) -> dict[str, str]:
+    """Source file → its section on the reference pages, as ``reference/<page>.md#<anchor>``."""
+    hooks = import_docs_hooks()
+    found: dict[str, str] = {}
+    for page in sorted((repo_root / DOCS_RELATIVE / "reference").glob("*.md")):
+        for section in page.read_text(encoding="utf-8").split("\n## ")[1:]:
+            path = hooks.REFERENCE_SOURCE_PATH_RE.search(section)
+            anchor = REFERENCE_ANCHOR_RE.match(section)
+            if path and anchor:
+                found.setdefault(path.group(1), f"{REFERENCE_PREFIX}{page.name}#{anchor.group('anchor')}")
+    return found
+
+
+def site_url(page: str, site_root: str) -> str:
+    """A docs page's built URL (directory URLs: ``a/b.md`` → ``a/b/``, ``a/index.md`` → ``a/``)."""
+    page, _, anchor = page.partition("#")
+    stem = page.removesuffix(".md")
+    url = stem.removesuffix("index") if stem == "index" or stem.endswith("/index") else stem + "/"
+    return site_root + url + (f"#{anchor}" if anchor else "")
+
+
+def site_hrefs(graph: Graph, repo_root: Path, site_root: str) -> dict[str, str]:
+    """Where each node opens on the published site, from a page ``site_root`` below its root.
+
+    Pages open themselves; a source file opens its section of the reference (GitHub when the
+    reference has none); a transcript opens in the offline viewer when its document ships."""
+    anchors = reference_anchors(repo_root)
+    hooks = import_docs_hooks()
+    github = f"{hooks.REPO_SOURCE_GITHUB}/blob/{hooks.REPO_SOURCE_BRANCH}/"
+    hrefs: dict[str, str] = {}
+    for key, attrs in graph.nodes.items():
+        path = attrs.get("path") or ""
+        if attrs["kind"] in ("page", "reference"):
+            hrefs[key] = site_url(path.removeprefix(DOCS_RELATIVE + "/"), site_root)
+        elif attrs["kind"] == "code":
+            hrefs[key] = site_url(anchors[path], site_root) if path in anchors else github + path
+        elif attrs["kind"] == "transcript":
+            document = f"assets/agent_transcripts/{attrs['label']}/metadata.edn"
+            if (repo_root / DOCS_RELATIVE / document).is_file():
+                hrefs[key] = f"{site_root}offline.html?file={document}"
+    return hrefs
+
+
 def view_payload(
-    graph: Graph, positions: dict[str, tuple[float, float, float]], packages: dict[str, dict[str, Any]], out_dir: Path
+    graph: Graph, positions: dict[str, tuple[float, float, float]], packages: dict[str, dict[str, Any]], out_dir: Path,
+    hrefs: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     import os
 
@@ -833,7 +936,10 @@ def view_payload(
         entry: dict[str, Any] = {"id": key, "label": attrs.get("label", key), "kind": attrs["kind"], "p": [round(x, 3), round(y, 3), round(z, 3)]}
         if key in index_keys:
             entry["index"] = True
-        if attrs.get("path"):
+        if hrefs is not None:
+            if key in hrefs:
+                entry["href"] = hrefs[key]
+        elif attrs.get("path"):
             entry["href"] = Path(os.path.relpath(REPO_ROOT / attrs["path"], out_dir)).as_posix()
         for name in VIEW_NODE_FIELDS:
             value = attrs.get(name)
@@ -852,9 +958,14 @@ def view_payload(
     return {"edgeKinds": list(VIEW_EDGE_KINDS), "nodes": view_nodes, "links": links, "packages": view_packages, "generated": day(time.time())}
 
 
-def write_view(graph: Graph, out_dir: Path) -> Path:
+def write_view(graph: Graph, out_dir: Path, *, site_root: str | None = None, name: str = "graph.html") -> Path:
+    """Write the 3D viewer. With ``site_root`` (the path from ``out_dir`` up to the built site's
+    root, e.g. ``"../../"``) nodes link to the published pages instead of the checkout's files."""
     positions, packages = layout(graph)
-    payload = json.dumps(view_payload(graph, positions, packages, out_dir), separators=(",", ":"), default=str)
+    hrefs = site_hrefs(graph, REPO_ROOT, site_root) if site_root is not None else None
+    view = view_payload(graph, positions, packages, out_dir, hrefs)
+    view["site"] = site_root is not None
+    payload = json.dumps(view, separators=(",", ":"), default=str)
     vendor = sorted(REPO_ROOT.glob(THREE_VENDOR_GLOB))
     if not vendor:
         raise SystemExit(f"graph.html needs Field's vendored three.js ({THREE_VENDOR_GLOB}) and found none")
@@ -862,10 +973,79 @@ def write_view(graph: Graph, out_dir: Path) -> Path:
     html = VIEW_TEMPLATE.read_text(encoding="utf-8")
     for marker, path in (("THREE_CORE", "three.core.js"), ("THREE_MODULE", "three.module.js"), ("THREE_ORBIT", "addons/controls/OrbitControls.js")):
         html = html.replace(f"/*{marker}*/", (three / path).read_text(encoding="utf-8").replace("</script", "<\\/script"), 1)
+    force = "\n".join((REPO_ROOT / FORCE_VENDOR / script).read_text(encoding="utf-8") for script in FORCE_SCRIPTS)
+    html = html.replace("/*FORCE*/", force.replace("</script", "<\\/script"), 1)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    # Field's own UI face (semi-condensed Iosevka, light and semibold): copied beside a published
+    # map, which must not reach into the checkout; pointed at in the checkout otherwise.
+    for marker, font in FONTS.items():
+        source = REPO_ROOT / FONT_DIR / font
+        if site_root is not None:
+            (out_dir / "fonts").mkdir(exist_ok=True)
+            shutil.copyfile(source, out_dir / "fonts" / font)
+            url = f"fonts/{font}"
+        else:
+            url = Path(os.path.relpath(source, out_dir)).as_posix()
+        html = html.replace(f"/*{marker}*/", url, 1)
     html = html.replace("/*GRAPH*/null", payload.replace("</", "<\\/"), 1)
-    target = out_dir / "graph.html"
+    target = out_dir / name
     target.write_text(html, encoding="utf-8")
     return target
+
+
+SITE_MAP_DIR = "assets/docs_map"
+
+
+def write_site_map(site_dir: Path, repo_root: Path = REPO_ROOT) -> Path:
+    """The published site's map (``docs_map.md`` embeds it): every page, transcript, reference
+    page and reached source file, linking to the built pages. Written into a built site by
+    ``tools/build_zensical_docs.py``. No git history: a clean checkout's full ``--numstat`` log
+    takes minutes, and the age colourings are for us, not for a reader."""
+    out_dir = site_dir / SITE_MAP_DIR
+    graph = build_graph(repo_root, transcripts=True, code=True, reference=True, history=None)
+    analyse(graph, out_dir, top=1, now=time.time(), options={"transcripts": True, "code": True, "reference": True})
+    return write_view(graph, out_dir, site_root="../../")
+
+
+MAP_PAGE = "docs_map.md"
+MAP_LINK_CLASS = "docs-map-link"
+FIRST_H1_END_RE = re.compile(r"</h1>")
+
+
+def built_page_source(relative_html: str, docs_dir: Path) -> str | None:
+    """The Markdown page a built ``…/index.html`` came from (directory URLs), or None."""
+    stem = relative_html.removesuffix("index.html").rstrip("/")
+    for candidate in ((f"{stem}.md", f"{stem}/index.md") if stem else ("index.md",)):
+        if (docs_dir / candidate).is_file():
+            return candidate
+    return None
+
+
+def link_pages_to_map(site_dir: Path, repo_root: Path = REPO_ROOT) -> int:
+    """Under each built page's title, a link to that page's node on the map of the docs
+    (``docs_map/?node=page:<path>``; the map opens with it selected). Run on the built site by
+    ``tools/build_zensical_docs.py``; Zensical ignores template overrides, so this is the hook.
+    Returns how many pages got one."""
+    docs_dir = repo_root / DOCS_RELATIVE
+    map_dir = site_dir / site_url(MAP_PAGE, "")
+    linked = 0
+    for page in sorted(site_dir.rglob("index.html")):
+        relative = page.relative_to(site_dir).as_posix()
+        source = built_page_source(relative, docs_dir)
+        if source is None or source == MAP_PAGE or source.startswith("assets/"):
+            continue
+        text = page.read_text(encoding="utf-8")
+        article = text.find("<article")
+        if article < 0 or MAP_LINK_CLASS in text:
+            continue
+        h1 = FIRST_H1_END_RE.search(text, article)
+        if h1 is None:
+            continue
+        href = Path(os.path.relpath(map_dir, page.parent)).as_posix() + "/?node=" + quote(page_key(source), safe="")
+        link = f'<p class="{MAP_LINK_CLASS}"><a href="{href}">On the map of the docs</a></p>'
+        page.write_text(text[:h1.end()] + link + text[h1.end():], encoding="utf-8")
+        linked += 1
+    return linked
 
 
 def day(ts: float | None) -> str:

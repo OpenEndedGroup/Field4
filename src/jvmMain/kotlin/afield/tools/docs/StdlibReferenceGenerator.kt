@@ -2230,6 +2230,11 @@ object StdlibReferenceGenerator {
                 "several reference pages, each page is linked separately."
         )
         appendLine()
+        appendLine(
+            "To see it all at once, open the [map of the docs](../docs_map.md): every page, agent " +
+                "transcript and source file as one graph, each file linked back to its section here."
+        )
+        appendLine()
         append(renderPackageMap(documents))
         appendLine("## Reference pages")
         appendLine()

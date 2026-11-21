@@ -9,56 +9,65 @@
 <title>Docs link graph</title>
 <style>
 :root {
-  color-scheme: light;
-  --surface: #fcfcfb; --panel: #f3f2ef; --rule: #dedcd6;
-  --text: #0b0b0b; --text-2: #52514e; --muted: #8a8984;
-  --edge: #3a3a36; --edge-alpha: 0.16; --other: #b9b8b2; --halo: rgba(252, 252, 251, 0.85);
-  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #008300; --s7: #6250d6; --s8: #e34948;
-  --q0: #cde2fb; --q1: #86b6ef; --q2: #3987e5; --q3: #1c5cab; --q4: #0d366b;
+  color-scheme: dark;
+  /* Field's panel tokens (src/commonMain/resources/fieldPanelTokens.css): a black canvas, a near-black panel. */
+  --surface: #000000; --panel: #0b0b0b; --rule: #2a2a2a; --control: #050505; --hover: #181818;
+  --text: #d8d8d8; --text-2: #aaaaaa; --muted: #8a8a8a;
+  --edge: #d8d8d8; --edge-alpha: 0.13; --other: #5c5c5c; --halo: rgba(0, 0, 0, 0.9);
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #0ca30c; --s7: #9085e9; --s8: #e66767;
+  --q0: #184f95; --q1: #256abf; --q2: #3987e5; --q3: #86b6ef; --q4: #cde2fb;
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-    --surface: #1a1a19; --panel: #232322; --rule: #3a3a38;
-    --text: #f0efec; --text-2: #c3c2b7; --muted: #8d8c86;
-    --edge: #d8d7d0; --edge-alpha: 0.14; --other: #5d5c58; --halo: rgba(26, 26, 25, 0.85);
-    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #0ca30c; --s7: #9085e9; --s8: #e66767;
-    --q0: #184f95; --q1: #256abf; --q2: #3987e5; --q3: #86b6ef; --q4: #cde2fb;
-  }
-}
+@font-face { font-family: "Iosevka Map"; font-weight: 300; font-stretch: semi-condensed; font-style: normal; font-display: swap;
+             src: url("/*FONT_LIGHT*/") format("woff2"); }
+@font-face { font-family: "Iosevka Map"; font-weight: 600; font-stretch: semi-condensed; font-style: normal; font-display: swap;
+             src: url("/*FONT_SEMIBOLD*/") format("woff2"); }
 * { box-sizing: border-box; }
+/* No focus rings and no text selection anywhere but the search box: dragging the view must not paint the page. */
+*:focus, *:focus-visible { outline: none; }
 body { margin: 0; height: 100vh; display: flex; overflow: hidden; background: var(--surface); color: var(--text);
-       font: 13px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
-#view { flex: 1; position: relative; min-width: 0; overflow: hidden; }
+       font: 300 12.5px/1.45 "Iosevka Map", "Iosevka Web", "Iosevka", ui-monospace, monospace; font-stretch: semi-condensed;
+       -webkit-user-select: none; user-select: none; }
+input[type=search] { -webkit-user-select: text; user-select: text; }
+#view { flex: 1; position: relative; min-width: 0; overflow: hidden; background: #000; }
 #view canvas { display: block; width: 100%; height: 100%; }
 #labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
-#labels span { position: absolute; white-space: nowrap; font-size: 12px; color: var(--text); transform: translateY(-50%);
-               text-shadow: 0 0 3px var(--halo), 0 0 3px var(--halo), 0 0 2px var(--halo); }
-#labels span.sel { font-weight: 600; }
-#labels span.pkg { color: var(--text-2); font-style: italic; font-size: 11px; }
-#tip { position: absolute; pointer-events: none; padding: 4px 8px; border-radius: 4px; background: var(--panel);
+#labels span { position: absolute; left: 0; top: 0; white-space: nowrap; font-size: 12px; color: var(--text); will-change: transform, opacity;
+               text-shadow: 0 0 3px var(--halo), 0 0 3px var(--halo), 0 0 2px var(--halo);
+               opacity: 0; transition: opacity 300ms ease; }
+#labels span.on { opacity: 1; }
+#labels span.sel { font-weight: 600; color: #f0f0f0; }
+#labels span.pkg { color: var(--muted); font-style: italic; font-size: 11px; }
+#tip { position: absolute; pointer-events: none; padding: 4px 8px; border-radius: 5px; background: var(--panel);
        border: 1px solid var(--rule); color: var(--text); white-space: nowrap; display: none; z-index: 2; }
 #tip small { color: var(--text-2); }
-aside { width: 360px; flex: none; background: var(--panel); border-left: 1px solid var(--rule); overflow: auto; padding: 12px 14px 24px; }
-h1 { font-size: 15px; margin: 0 0 2px; }
-h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-2); margin: 16px 0 6px; font-weight: 600; }
+aside { width: 340px; flex: none; background: var(--panel); border-left: 1px solid var(--rule); overflow: auto; padding: 12px 14px 24px; }
+h1 { font-size: 14px; font-weight: 600; margin: 0 0 2px; }
+h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 16px 0 6px; font-weight: 300; }
+hr { border: 0; border-top: 1px solid var(--rule); margin: 8px 0; }
 .sub { color: var(--text-2); }
-input[type=search], select { width: 100%; font: inherit; padding: 5px 7px; border: 1px solid var(--rule); border-radius: 4px;
-                             background: var(--surface); color: var(--text); }
-label.check { display: inline-flex; align-items: center; gap: 4px; margin: 0 10px 4px 0; white-space: nowrap; }
+input[type=search], select { width: 100%; font: inherit; padding: 5px 7px; border: 1px solid var(--rule); border-radius: 6px;
+                             background: var(--control); color: var(--text); }
+input[type=search]:hover, select:hover, input[type=search]:focus { border-color: #464646; }
+input[type=checkbox] { accent-color: #8a8a8a; }
+label.check { display: inline-flex; align-items: center; gap: 4px; margin: 0 10px 4px 0; white-space: nowrap; cursor: pointer; }
 .legend { list-style: none; margin: 0; padding: 0; }
 .legend li { display: flex; align-items: center; gap: 8px; padding: 2px 4px; border-radius: 3px; cursor: pointer; }
-.legend li:hover, .legend li.on { background: var(--surface); }
+.legend li:hover, .legend li.on { background: var(--hover); }
 .legend li.off { opacity: 0.35; }
 .legend .n { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
 .swatch { width: 10px; height: 10px; border-radius: 50%; flex: none; }
 #matches div, .nbrs div { padding: 2px 4px; border-radius: 3px; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-#matches div:hover, .nbrs div:hover { background: var(--surface); }
+#matches div:hover, .nbrs div:hover { background: var(--hover); }
 .nbrs div .k { color: var(--muted); font-size: 11px; margin-left: 4px; }
 dl { display: grid; grid-template-columns: auto 1fr; gap: 1px 10px; margin: 6px 0; }
-dt { color: var(--text-2); } dd { margin: 0; font-variant-numeric: tabular-nums; }
-a { color: var(--s1); }
+dt { color: var(--muted); } dd { margin: 0; font-variant-numeric: tabular-nums; }
+a { color: #f0f0f0; text-decoration-color: #666; text-underline-offset: 2px; }
+a:hover { text-decoration-color: #d8d8d8; }
 .hint { color: var(--muted); font-size: 12px; margin-top: 4px; }
+#details .title { font-size: 16px; font-weight: 600; color: #f0f0f0; line-height: 1.3; margin: 2px 0 8px; }
+#details a.open { display: block; padding: 7px 10px; margin: 0 0 8px; border-radius: 6px; text-decoration: none;
+                  font-weight: 600; color: #000; background: var(--accent, #d8d8d8); border: 1px solid var(--accent, #d8d8d8); }
+#details a.open:hover { background: #f0f0f0; border-color: #f0f0f0; }
 </style>
 </head>
 <body>
@@ -69,9 +78,12 @@ a { color: var(--s1); }
   <h2>Find</h2>
   <input type="search" id="search" placeholder="page, transcript, file or package…" autocomplete="off">
   <div id="matches"></div>
+  <div id="details"></div>
   <h2>Show</h2>
   <div id="layers"></div>
   <div id="edges"></div>
+  <hr>
+  <label class="check"><input type="checkbox" id="flat"> flat (2D)</label>
   <label class="check"><input type="checkbox" id="spin"> turn slowly</label>
   <h2>Colour</h2>
   <select id="colour">
@@ -80,16 +92,47 @@ a { color: var(--s1); }
     <option value="drift">Days the code it cites has moved on</option>
   </select>
   <div id="legend"></div>
-  <div id="details"></div>
-  <p class="hint">Drag to turn, right-drag or shift-drag to pan, scroll to zoom. Click a node for what it links and
-    what links it; Esc clears. Page size is PageRank over hand-written links.</p>
-  <p class="hint">Placed by ForceAtlas2 (LinLog, 3D) on what pages link, open and call, never on the nav: pages
-    that sit together link each other or call the same code. Each source file sits on a small shell around its
-    directory (the italic labels), so code nothing reaches still sits with its siblings.</p>
 </aside>
 <script type="text/plain" id="three-core">/*THREE_CORE*/</script>
 <script type="text/plain" id="three-module">/*THREE_MODULE*/</script>
 <script type="text/plain" id="three-orbit">/*THREE_ORBIT*/</script>
+<script type="text/plain" id="force">/*FORCE*/</script>
+<script type="text/plain" id="force-worker">
+// The layout's own thread: d3-force-3d (the CPU path of the vendored d3-force-3d-webgpu) ticking
+// about sixty times a second at most, posting every tick's positions back. Built afresh by each
+// "build" message; "advance" runs n ticks at once (for tests).
+let sim = null, timer = null;
+const post = () => {
+  const nodes = sim.nodes(), out = new Float32Array(nodes.length * 3);
+  nodes.forEach((n, i) => { out[3 * i] = n.x; out[3 * i + 1] = n.y; out[3 * i + 2] = n.z || 0; });
+  postMessage({ type: "tick", build: sim.build, positions: out, alpha: sim.alpha() }, [out.buffer]);
+};
+const done = () => sim.alpha() < sim.alphaMin();
+function run() {
+  const t0 = performance.now();
+  sim.tick(); post();
+  if (done()) { postMessage({ type: "end", build: sim.build }); return; }
+  timer = setTimeout(run, Math.max(0, 16 - (performance.now() - t0)));
+}
+onmessage = ({ data: m }) => {
+  if (m.type === "advance") { if (sim) { sim.tick(m.ticks); post(); } postMessage({ type: "advanced" }); return; }
+  if (sim) sim.stop(); clearTimeout(timer);
+  const nodes = [];
+  for (let i = 0; i < m.charge.length; i++) nodes.push({ x: m.positions[3 * i], y: m.positions[3 * i + 1], z: m.positions[3 * i + 2], charge: m.charge[i] });
+  for (const [i, x, y, z] of m.pinned) Object.assign(nodes[i], { fx: x, fy: y, fz: z });
+  const links = [];
+  for (let k = 0; k < m.lengths.length; k++) links.push({ source: m.ends[2 * k], target: m.ends[2 * k + 1], length: m.lengths[k], strength: m.strengths[k] });
+  sim = d3.forceSimulation(nodes, m.dims).stop()
+    .alpha(m.alpha).alphaDecay(m.alphaDecay).velocityDecay(m.velocityDecay)
+    .force("link", d3.forceLink(links).distance(l => l.length).strength(l => l.strength))
+    .force("charge", d3.forceManyBody().strength(n => n.charge).theta(0.9))
+    .force("centre", d3.forceCenter(0, 0, 0))
+    .force("x", d3.forceX(0).strength(m.gravity)).force("y", d3.forceY(0).strength(m.gravity));
+  if (m.dims === 3) sim.force("z", d3.forceZ(0).strength(m.gravity));
+  sim.build = m.build;
+  run();
+};
+</script>
 <script>const GRAPH = /*GRAPH*/null;</script>
 <script type="module">
 // three.js arrives as text so the page needs no server; each module imports the previous one by blob URL.
@@ -126,7 +169,7 @@ function checkboxes(host, entries, state) {
   for (const [key, label] of entries) {
     const l = document.createElement("label"); l.className = "check";
     const c = document.createElement("input"); c.type = "checkbox"; c.checked = state[key];
-    c.onchange = () => { state[key] = c.checked; legend(); rebuild(); };
+    c.onchange = () => { state[key] = c.checked; legend(); simulate(0.35); rebuild(); };
     l.append(c, " " + label); host.append(l);
   }
 }
@@ -191,6 +234,9 @@ function legend() {
   host.append(hint);
 }
 document.getElementById("colour").onchange = e => { mode = e.target.value; focusSection = null; legend(); restyle(); };
+for (const option of [...document.getElementById("colour").options])
+  if (metric[option.value] && !nodes.some(n => metric[option.value](n) != null)) option.remove();
+if (document.getElementById("colour").options.length < 2) document.getElementById("colour").style.display = "none";
 
 // ---- size (world units: the layout puts linked pages about 1 apart)
 const maxRank = Math.max(...nodes.map(n => n.pagerank || 0), 1e-9);
@@ -212,25 +258,76 @@ scene.fog = new THREE.Fog(colours.surface, 10, 60);
 const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 2000);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true; controls.dampingFactor = 0.12; controls.autoRotateSpeed = 0.6;
-scene.add(new THREE.HemisphereLight(0xffffff, 0x777777, 2.2));
-const sun = new THREE.DirectionalLight(0xffffff, 1.2); sun.position.set(1, 2, 1.5); scene.add(sun);
-
-const SHAPES = { page: new THREE.SphereGeometry(1, 18, 12), transcript: new THREE.OctahedronGeometry(1.25), code: new THREE.BoxGeometry(1.5, 1.5, 1.5) };
-const shapeOf = n => n.kind === "page" ? "page" : n.kind === "transcript" ? "transcript" : "code";
-const meshes = {}, slotOf = new Array(nodes.length);
-for (const shape in SHAPES) {
-  const members = nodes.map((n, i) => i).filter(i => shapeOf(nodes[i]) === shape);
-  const mesh = new THREE.InstancedMesh(SHAPES[shape], new THREE.MeshLambertMaterial(), Math.max(1, members.length));
-  mesh.count = members.length; mesh.userData.members = members;
-  members.forEach((i, k) => slotOf[i] = [shape, k]);
-  mesh.frustumCulled = false; scene.add(mesh); meshes[shape] = mesh;
-}
+// ---- nodes: one camera-facing billboard each, its shape cut out in the fragment shader
+// (pages round, transcripts diamonds, source files squares), with a darker rim so neighbours
+// that overlap stay apart. One instanced quad for every node: no geometry to light or sort.
+const shapeOf = n => n.kind === "transcript" ? 1 : n.kind === "code" ? 2 : 0;
+const sprites = new THREE.InstancedBufferGeometry();
+sprites.setIndex([0, 1, 2, 0, 2, 3]);
+sprites.setAttribute("position", new THREE.Float32BufferAttribute([-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0], 3));
+const instanced = (size, values) => {
+  const a = new THREE.InstancedBufferAttribute(values || new Float32Array(nodes.length * size), size);
+  a.setUsage(THREE.DynamicDrawUsage); return a;
+};
+const centres = instanced(3), sizes = instanced(1), tints = instanced(3);
+sprites.setAttribute("centre", centres); sprites.setAttribute("size", sizes); sprites.setAttribute("tint", tints);
+sprites.setAttribute("shape", instanced(1, new Float32Array(nodes.map(shapeOf))));
+sprites.instanceCount = nodes.length;
+const spriteMaterial = new THREE.ShaderMaterial({
+  // pixelSize: the world size of one screen pixel at distance 1 (2 tan(fov/2) / height), for the minimum.
+  uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { pixelSize: { value: 0.001 } }]),
+  fog: true, alphaToCoverage: true, transparent: true, depthWrite: true,
+  vertexShader: `
+    attribute vec3 centre; attribute float size; attribute vec3 tint; attribute float shape;
+    uniform float pixelSize;
+    varying vec2 vCorner; varying vec3 vTint; varying float vShape;
+    #include <fog_pars_vertex>
+    void main() {
+      vCorner = position.xy * 1.25; vTint = tint; vShape = shape;
+      vec4 mvPosition = modelViewMatrix * vec4(centre, 1.0);
+      // Never smaller than a few pixels across (MIN_PIXELS), so a far node is still a dot.
+      float minimum = (shape > 1.5 ? 1.5 : 2.5) * pixelSize * -mvPosition.z;
+      float radius = size > 0.0 ? max(size, minimum) : 0.0;
+      mvPosition.xy += position.xy * radius * 1.25;   // a margin round the radius, for the diamond's corners
+      gl_Position = projectionMatrix * mvPosition;
+      #include <fog_vertex>
+    }`,
+  fragmentShader: `
+    varying vec2 vCorner; varying vec3 vTint; varying float vShape;
+    #include <fog_pars_fragment>
+    void main() {
+      // Signed distance to the shape's edge, in units of the node's radius (negative inside):
+      // a circle of radius 1, a diamond reaching 1.2 along the axes, a square of half-side 0.85.
+      vec2 p = vCorner, a = abs(p);
+      float sd;
+      if (vShape < 0.5) sd = length(p) - 1.0;
+      else if (vShape < 1.5) sd = (a.x + a.y - 1.2) * 0.70710678;
+      else { vec2 q = a - 0.85; sd = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0); }
+      // One screen pixel in those units, so the edge is antialiased over exactly a pixel at any zoom.
+      float px = max(length(vec2(dFdx(p.x), dFdy(p.x))), 1e-5);
+      float alpha = clamp(0.5 - sd / px, 0.0, 1.0);
+      if (alpha <= 0.0) discard;
+      // A darker rim, an eighth of the radius but never thinner than about a pixel.
+      float rimWidth = max(0.13, 1.1 * px);
+      float rim = clamp(0.5 + (sd + rimWidth) / px, 0.0, 1.0);
+      gl_FragColor = vec4(mix(vTint, vTint * 0.45, rim), alpha);
+      #include <fog_fragment>
+      #include <colorspace_fragment>
+    }`,
+});
+const nodeSprites = new THREE.Mesh(sprites, spriteMaterial);
+// Drawn after the lines (renderOrder), so a node sits on top of its own edges, in 2D above all.
+nodeSprites.frustumCulled = false; nodeSprites.renderOrder = 2; scene.add(nodeSprites);
 const edgeMaterial = new THREE.LineBasicMaterial({ transparent: true, depthWrite: false });
 const hiMaterial = new THREE.LineBasicMaterial({ transparent: true, depthWrite: false, opacity: 0.9 });
 const codeMaterial = new THREE.LineBasicMaterial({ transparent: true, depthWrite: false });
-const edgeLines = new THREE.LineSegments(new THREE.BufferGeometry(), edgeMaterial);
-const codeLines = new THREE.LineSegments(new THREE.BufferGeometry(), codeMaterial);
-const hiLines = new THREE.LineSegments(new THREE.BufferGeometry(), hiMaterial);
+// Each set of lines owns a buffer big enough for every edge, written in place and drawn up to its count.
+const lineSet = material => {
+  const geometry = new THREE.BufferGeometry(), position = new THREE.BufferAttribute(new Float32Array(GRAPH.links.length * 6), 3);
+  position.setUsage(THREE.DynamicDrawUsage); geometry.setAttribute("position", position); geometry.setDrawRange(0, 0);
+  const lines = new THREE.LineSegments(geometry, material); lines.userData.edges = []; return lines;
+};
+const edgeLines = lineSet(edgeMaterial), codeLines = lineSet(codeMaterial), hiLines = lineSet(hiMaterial);
 edgeLines.frustumCulled = codeLines.frustumCulled = hiLines.frustumCulled = false;
 scene.add(edgeLines, codeLines, hiLines);
 
@@ -239,58 +336,90 @@ let selected = -1, hovered = -1, near = new Set();
 const dim = i => (selected >= 0 && i !== selected && !near.has(i)) ||
                  (focusSection !== null && !(nodes[i].kind === "page" && nodes[i].system === focusSection));
 
-const matrix = new THREE.Matrix4(), colour = new THREE.Color(), surface = new THREE.Color();
+const colour = new THREE.Color(), surface = new THREE.Color();
 function restyle() {
-  readColours();
+  if (!layoutMoving()) readColours();
   surface.set(colours.surface);
-  scene.background = surface.clone(); scene.fog.color.copy(surface);
-  for (const shape in meshes) {
-    const mesh = meshes[shape];
-    mesh.userData.members.forEach((i, k) => {
-      const r = visible(nodes[i]) ? R[i] : 0;
-      matrix.makeScale(r, r, r).setPosition(P[i]);
-      mesh.setMatrixAt(k, matrix);
-      colour.set(colourOf(nodes[i]));
-      if (dim(i)) colour.lerp(surface, 0.86);
-      mesh.setColorAt(k, colour);
-    });
-    mesh.instanceMatrix.needsUpdate = true;
-    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+  if (!scene.background) scene.background = new THREE.Color(); scene.background.copy(surface); scene.fog.color.copy(surface);
+  for (let i = 0; i < nodes.length; i++) {
+    sizes.setX(i, visible(nodes[i]) ? R[i] : 0);
+    colour.set(colourOf(nodes[i]));
+    if (dim(i)) colour.lerp(surface, 0.86);
+    tints.setXYZ(i, colour.r, colour.g, colour.b);
   }
+  sizes.needsUpdate = tints.needsUpdate = true;
   edgeMaterial.color.set(colours.edge); codeMaterial.color.set(colours.edge); hiMaterial.color.set(colours.text);
   edgeMaterial.opacity = colours.edgeAlpha * (selected >= 0 || focusSection !== null ? 0.35 : 1);
   codeMaterial.opacity = edgeMaterial.opacity * 0.4;
   const isDoc = i => nodes[i].kind === "page" || nodes[i].kind === "transcript";
   const mask = edgeMask(), quiet = [], quietCode = [], hi = [];
-  for (const [s, t, m] of GRAPH.links) {
-    if (!visible(nodes[s]) || !visible(nodes[t])) continue;
-    if (s === selected || t === selected) { hi.push(P[s].x, P[s].y, P[s].z, P[t].x, P[t].y, P[t].z); continue; }
-    if (!(m & mask)) continue;
-    if (focusSection !== null && (dim(s) || dim(t))) continue;
-    (isDoc(s) && isDoc(t) ? quiet : quietCode).push(P[s].x, P[s].y, P[s].z, P[t].x, P[t].y, P[t].z);
+  GRAPH.links.forEach(([s, t, m], e) => {
+    if (!visible(nodes[s]) || !visible(nodes[t])) return;
+    if (s === selected || t === selected) { hi.push(e); return; }
+    if (!(m & mask)) return;
+    if (focusSection !== null && (dim(s) || dim(t))) return;
+    (isDoc(s) && isDoc(t) ? quiet : quietCode).push(e);
+  });
+  edgeLines.userData.edges = quiet; codeLines.userData.edges = quietCode; hiLines.userData.edges = hi;
+  place();
+}
+// Positions only (every frame while things move): sprite centres and the line ends, in place.
+function place() {
+  for (let i = 0; i < nodes.length; i++) centres.setXYZ(i, P[i].x, P[i].y, P[i].z);
+  centres.needsUpdate = true;
+  for (const lines of [edgeLines, codeLines, hiLines]) {
+    const position = lines.geometry.attributes.position, a = position.array, edges = lines.userData.edges;
+    for (let k = 0; k < edges.length; k++) {
+      const [s, t] = GRAPH.links[edges[k]], o = k * 6;
+      a[o] = P[s].x; a[o + 1] = P[s].y; a[o + 2] = P[s].z; a[o + 3] = P[t].x; a[o + 4] = P[t].y; a[o + 5] = P[t].z;
+    }
+    position.clearUpdateRanges(); position.addUpdateRange(0, edges.length * 6); position.needsUpdate = true;
+    lines.geometry.setDrawRange(0, edges.length * 2);
   }
-  edgeLines.geometry.setAttribute("position", new THREE.Float32BufferAttribute(quiet, 3));
-  codeLines.geometry.setAttribute("position", new THREE.Float32BufferAttribute(quietCode, 3));
-  hiLines.geometry.setAttribute("position", new THREE.Float32BufferAttribute(hi, 3));
   dirty = true;
 }
 const rebuild = restyle;
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { readColours(); legend(); restyle(); });
 
 // ---- camera framing
+// Frames the points' middle 95 % (all of them when there are few), so one stray node does not shrink the rest.
 function frame(points, animate) {
   const pts = points.length ? points : [new THREE.Vector3()];
-  const centre = new THREE.Box3().setFromPoints(pts).getCenter(new THREE.Vector3());
-  const sphere = new THREE.Sphere(centre, Math.max(...pts.map(p => p.distanceTo(centre))));
-  const dist = Math.max(0.8, sphere.radius) / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * 0.9;
+  const centre = pts.reduce((c, p) => c.add(p), new THREE.Vector3()).divideScalar(pts.length);
+  const reach = pts.map(p => p.distanceTo(centre)).sort((a, b) => a - b);
+  const sphere = new THREE.Sphere(centre, reach[pts.length < 20 ? pts.length - 1 : Math.floor(0.95 * (pts.length - 1))]);
+  const dist = Math.max(0.8, sphere.radius) / Math.tan(THREE.MathUtils.degToRad(Math.min(camera.fov, camera.fov * camera.aspect) / 2)) * 1.15;
   const dir = camera.position.clone().sub(controls.target).normalize();
   if (dir.lengthSq() === 0 || !isFinite(dir.x)) dir.set(0.35, 0.25, 1).normalize();
   flyTo(sphere.center, sphere.center.clone().addScaledVector(dir, dist), animate);
 }
-let flight = null;
+// Camera moves have a goal (target and position) that the camera follows on a critically damped
+// spring, keeping its velocity when the goal moves. A goal re-aimed every tick, as when following
+// a gathering neighbourhood, is then one smooth move rather than a run of restarted flights.
+let cameraGoal = null, lastCameraFrame = 0;
+const cameraVelocity = { target: new THREE.Vector3(), position: new THREE.Vector3() };
 function flyTo(target, position, animate) {
-  if (!animate) { controls.target.copy(target); camera.position.copy(position); controls.update(); dirty = true; return; }
-  flight = { t0: performance.now(), fromT: controls.target.clone(), fromP: camera.position.clone(), toT: target.clone(), toP: position.clone() };
+  if (!animate) {
+    cameraGoal = null; cameraVelocity.target.set(0, 0, 0); cameraVelocity.position.set(0, 0, 0);
+    controls.target.copy(target); camera.position.copy(position); controls.update(); dirty = true; return;
+  }
+  if (cameraGoal) { cameraGoal.target.copy(target); cameraGoal.position.copy(position); }
+  else cameraGoal = { target: target.clone(), position: position.clone() };
+}
+const pull = new THREE.Vector3();
+function followCamera(t) {
+  const dt = Math.min(0.05, lastCameraFrame ? (t - lastCameraFrame) / 1000 : 0); lastCameraFrame = t;
+  if (!cameraGoal || dt <= 0) return;
+  const w = CAMERA_SPRING;
+  for (const [at, key] of [[controls.target, "target"], [camera.position, "position"]]) {
+    const v = cameraVelocity[key];
+    pull.copy(cameraGoal[key]).sub(at).multiplyScalar(w * w).addScaledVector(v, -2 * w);
+    v.addScaledVector(pull, dt); at.addScaledVector(v, dt);
+  }
+  if (controls.target.distanceTo(cameraGoal.target) + camera.position.distanceTo(cameraGoal.position) < 1e-4 && cameraVelocity.position.length() < 1e-3) {
+    cameraGoal = null; cameraVelocity.target.set(0, 0, 0); cameraVelocity.position.set(0, 0, 0);
+  }
+  dirty = true;
 }
 function centreOn(i) {
   const offset = camera.position.clone().sub(controls.target);
@@ -298,8 +427,160 @@ function centreOn(i) {
   flyTo(P[i], P[i].clone().addScaledVector(offset.normalize(), want), true);
 }
 
-// ---- labels: an HTML overlay, placed most important first, skipping any that would overlap
-const pool = [];
+// ---- layout: a live force simulation
+// d3-force-3d (vendored as d3-force-3d-webgpu): link springs, an octree Barnes–Hut many-body
+// force, centring and gravity, run in a Web Worker on the CPU, which posts every tick (~45 a
+// second here) so the drawing has a steady stream to follow. Not the package's WebGPU path: its
+// positions come back by asynchronous readback, which the browser resolves only a few times a
+// second however fast the GPU steps, and that showed as motion in pulses. Every visible node takes part. Pages are held by the links a reader follows; a
+// source file hangs from its directory, and each directory from its parent, by invisible tree
+// links, so code nothing reaches still sits with its siblings; the code edge kinds that are
+// switched on (cites, calls, mentions, ...) tie files to the pages that use them. Turning a layer
+// or an edge kind on or off rebuilds the forces and reheats the simulation from where things are.
+// The positions the page was built with are only where it starts.
+const SCALE = 30;  // d3's forces are tuned for links about 30 apart; the scene puts them about 1 apart
+const packageIndex = new Map(packages.map((p, k) => [p.id, k]));
+const packageOfNode = n => { const path = n.id.slice("code:".length); return packageIndex.get("package:" + path.slice(0, path.lastIndexOf("/"))); };
+const parentPackage = id => { const up = id.slice(0, id.lastIndexOf("/")); return packageIndex.has(up) ? packageIndex.get(up) : null; };
+const bodies = nodes.map((n, i) => ({ node: i, x: P[i].x * SCALE, y: P[i].y * SCALE, z: P[i].z * SCALE }));
+const packageBodies = packages.map((p, k) => ({ pkg: k, x: p.p[0] * SCALE, y: p.p[1] * SCALE, z: p.p[2] * SCALE }));
+const GRAVITY = 0.02, FOCUS_LENGTH = 9, FOCUS_STRENGTH = 0.4, FOCUS_SLACK = 0.05;
+// Slow cooling (about 1,350 ticks from hot to still), more friction than d3's 0.4, and soft springs on what is drawn and on the camera.
+const ALPHA_DECAY = 1 - Math.pow(0.001, 1 / 1350), VELOCITY_DECAY = 0.5, SPRING = 4.7, CAMERA_SPRING = 2.7;
+const FLAT_CHARGE = 2.5;
+const CHARGE = { page: -60, transcript: -25, reference: -60, code: -10 };
+const LINK_LENGTH = { links: 30, opens: 24, documents: 24, cites: 14, calls: 14, mentions: 18, reference: 40, usedIn: 18 };
+let settled = false, flat = false, build = 0, inSim = [];
+const worker = new Worker(URL.createObjectURL(new Blob(
+  [document.getElementById("force").textContent, "\n", document.getElementById("force-worker").textContent], { type: "text/javascript" })));
+worker.onmessage = ({ data: m }) => {
+  if (m.build !== build && m.type !== "advanced") return;   // from a simulation since replaced
+  if (m.type === "tick") {
+    inSim.forEach((b, k) => { b.x = m.positions[3 * k]; b.y = m.positions[3 * k + 1]; b.z = m.positions[3 * k + 2]; });
+    moved();
+  } else if (m.type === "end") {
+    settled = true; readColours(); restyle(); followFocus(true); if (!userMoved) fitVisible(true);
+  } else if (m.type === "advanced") advanced?.();
+};
+let advanced = null;
+// For tests: run n ticks at once and resolve when their positions are in.
+const advance = ticks => new Promise(resolve => { advanced = resolve; worker.postMessage({ type: "advance", ticks }); });
+function simulate(alpha = 1) {
+  const live = bodies.filter(b => visible(nodes[b.node]));
+  const withCode = shown.code;
+  const pkgs = withCode ? packageBodies : [];
+  const mask = edgeMask(), links = [];
+  for (const [s, t, m] of GRAPH.links) {
+    if (!(m & mask) || !visible(nodes[s]) || !visible(nodes[t])) continue;
+    const length = Math.min(...kinds.filter(k => m & mask & bit[k]).map(k => LINK_LENGTH[k] ?? 30));
+    links.push({ source: bodies[s], target: bodies[t], length });
+  }
+  if (withCode) {
+    for (const b of live) if (nodes[b.node].kind === "code") {
+      const k = packageOfNode(nodes[b.node]);
+      if (k != null) links.push({ source: b, target: packageBodies[k], length: 5, tree: true });
+    }
+    packages.forEach((p, k) => { const up = parentPackage(p.id); if (up != null) links.push({ source: packageBodies[k], target: packageBodies[up], length: 10, tree: true }); });
+  }
+  // A selected node gathers its neighbourhood: a short, stiff spring to every visible neighbour,
+  // with the node itself held where it is, so what it links to comes to it instead of spanning
+  // the map. Deselecting drops the springs and lets the map relax.
+  for (const b of bodies) b.fx = b.fy = b.fz = undefined;
+  const gathered = new Set();
+  if (selected >= 0 && visible(nodes[selected])) {
+    const centre = bodies[selected];
+    centre.fx = centre.x; centre.fy = centre.y; centre.fz = centre.z;
+    for (const j of near) if (visible(nodes[j])) { gathered.add(bodies[j]); links.push({ source: centre, target: bodies[j], length: FOCUS_LENGTH, focus: true }); }
+  }
+  // A gathered node's other links go slack, or they hold it out where it was.
+  const slack = l => gathered.has(l.source) || gathered.has(l.target) ? FOCUS_SLACK : 1;
+  const degree = new Map();
+  for (const l of links) for (const end of [l.source, l.target]) degree.set(end, (degree.get(end) || 0) + 1);
+  settled = false;
+  inSim = [...live, ...pkgs];
+  const slot = new Map(inSim.map((b, k) => [b, k]));
+  const positions = new Float32Array(inSim.length * 3), charge = new Float32Array(inSim.length);
+  inSim.forEach((b, k) => {
+    positions.set([b.x, b.y, flat ? 0 : b.z], 3 * k);
+    // In the plane there is less room to get out of each other's way, so pages push harder.
+    charge[k] = b.pkg != null ? -3 : (flat && nodes[b.node].kind !== "code" ? FLAT_CHARGE : 1) * (CHARGE[nodes[b.node].kind] ?? -20);
+  });
+  const ends = new Int32Array(links.length * 2), lengths = new Float32Array(links.length), strengths = new Float32Array(links.length);
+  links.forEach((l, k) => {
+    ends[2 * k] = slot.get(l.source); ends[2 * k + 1] = slot.get(l.target); lengths[k] = l.length;
+    // d3's own default strength (1 / the smaller degree), except a focus spring, which wins.
+    strengths[k] = l.focus ? FOCUS_STRENGTH : slack(l) / Math.min(degree.get(l.source), degree.get(l.target));
+  });
+  const pinned = inSim.flatMap((b, k) => b.fx != null ? [[k, b.fx, b.fy, flat ? 0 : b.fz]] : []);
+  worker.postMessage({ type: "build", build: ++build, dims: flat ? 2 : 3, alpha, alphaDecay: ALPHA_DECAY, velocityDecay: VELOCITY_DECAY,
+                       gravity: GRAVITY, positions, charge, ends, lengths, strengths, pinned },
+                     [positions.buffer, charge.buffer, ends.buffer, lengths.buffer, strengths.buffer]);
+}
+// While a neighbourhood gathers, the camera follows it, unless the reader takes the camera.
+// Re-aimed on every tick: the camera's spring turns that into one continuous move.
+let following = -1;
+function followFocus(last) {
+  if (following < 0 || following !== selected) return;
+  frame([following, ...near].filter(j => visible(nodes[j])).map(j => goal[j]), true);  // where they are going
+  if (last) following = -1;
+}
+// Motion. The worker's ticks arrive at their own pace (about 45 a second here, unevenly against
+// the display's frames), so drawing them as they land would step. Instead each landing starts a
+// straight segment from wherever the drawing is now to the new positions, paced over the usual
+// gap between landings, and the drawn position follows that segment on a critically damped
+// spring (SPRING, per second), which rounds the corners between segments. Nodes, then directories.
+const goal = P.map(p => p.clone());
+const packageAt = packages.map(p => new THREE.Vector3(...p.p));
+const count = nodes.length + packages.length;
+const segFrom = new Float32Array(count * 3), segTo = new Float32Array(count * 3), track = new Float32Array(count * 3),
+      velocity = new Float32Array(count * 3);
+const drawn = i => i < nodes.length ? P[i] : packageAt[i - nodes.length];
+for (let i = 0; i < count; i++) { const p = drawn(i); track.set([p.x, p.y, p.z], 3 * i); segFrom.set([p.x, p.y, p.z], 3 * i); segTo.set([p.x, p.y, p.z], 3 * i); }
+let segStart = 0, segLength = 50, lastLanding = 0, moving = false, lastFrame = 0;
+function moved() {
+  followFocus(false);
+  const now = performance.now();
+  if (lastLanding) segLength = 0.8 * segLength + 0.2 * Math.min(400, Math.max(8, now - lastLanding));
+  lastLanding = now;
+  const u = segmentProgress(now);
+  for (let k = 0; k < count * 3; k++) segFrom[k] += (segTo[k] - segFrom[k]) * u;
+  for (const b of bodies) if (visible(nodes[b.node])) {
+    goal[b.node].set(b.x / SCALE, b.y / SCALE, b.z / SCALE);
+    segTo.set([goal[b.node].x, goal[b.node].y, goal[b.node].z], 3 * b.node);
+  }
+  for (const b of packageBodies) segTo.set([b.x / SCALE, b.y / SCALE, b.z / SCALE], 3 * (nodes.length + b.pkg));
+  segStart = now; moving = true;
+}
+const segmentProgress = t => Math.min(1, Math.max(0, (t - segStart) / segLength));
+function ease(t) {
+  const dt = Math.min(0.05, lastFrame ? (t - lastFrame) / 1000 : 0); lastFrame = t;
+  if (!moving || dt <= 0) return;
+  const u = segmentProgress(t), w = SPRING;
+  let energy = 0;
+  for (let k = 0; k < count * 3; k++) {
+    track[k] = segFrom[k] + (segTo[k] - segFrom[k]) * u;
+    const p = k / 3 | 0, c = k % 3, at = drawn(p), x = c === 0 ? at.x : c === 1 ? at.y : at.z;
+    // Critically damped: x'' = w²(target − x) − 2w x', integrated exactly enough at frame rate.
+    const a = w * w * (track[k] - x) - 2 * w * velocity[k];
+    velocity[k] += a * dt;
+    const nx = x + velocity[k] * dt;
+    if (c === 0) at.x = nx; else if (c === 1) at.y = nx; else at.z = nx;
+    energy += Math.abs(track[k] - nx) + Math.abs(velocity[k]) * 0.05;
+  }
+  packageAt.forEach((at, k) => { packages[k].p = [at.x, at.y, at.z]; });
+  if (settled && u >= 1 && energy < 1e-3 * count) moving = false;
+  place();
+}
+function layoutMoving() { return !settled; }
+let userMoved = false;
+// The reader taking the camera cancels any move in progress.
+controls.addEventListener("start", () => { userMoved = true; following = -1; cameraGoal = null; cameraVelocity.target.set(0, 0, 0); cameraVelocity.position.set(0, 0, 0); });
+const fitVisible = animate => frame(nodes.map((n, i) => i).filter(i => visible(nodes[i])).map(i => goal[i]), animate);
+
+// ---- labels: an HTML overlay, placed most important first, skipping any that would overlap. Each
+// label keeps its own span, which fades in and out (CSS, 300 ms) as it wins or loses its place, so
+// turning the view does not flicker labels on and off frame by frame.
+const shownLabels = new Map();  // key → { span, isPackage, i, off: time it lost its place, or 0 }
 const projected = new THREE.Vector3();
 function screenOf(i, w, h) {
   projected.copy(P[i]).project(camera);
@@ -308,7 +589,7 @@ function screenOf(i, w, h) {
 }
 function pixelRadius(i, w, h) {
   const d = camera.position.distanceTo(P[i]);
-  return R[i] * (h / 2) / (d * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)));
+  return Math.max(nodes[i].kind === "code" ? 1.5 : 2.5, R[i] * (h / 2) / (d * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))));
 }
 function labels() {
   const w = view.clientWidth, h = view.clientHeight, placed = [], wanted = [];
@@ -322,28 +603,54 @@ function labels() {
   }
   if (shown.code && selected < 0) packages.forEach((p, k) => { if (p.label.split("/").length <= 2) wanted.push([2.6 + Math.sqrt(p.files) * 0.3, k, true]); });
   wanted.sort((a, b) => b[0] - a[0]);
-  let used = 0;
-  ctx2d.font = "12px system-ui, sans-serif";
-  for (const [rank, i, isPackage] of wanted) {
-    if (used >= 90) break;
-    let s, r = 0, text;
-    if (isPackage) { projected.set(...packages[i].p).project(camera); if (projected.z > 1) continue; s = [(projected.x + 1) / 2 * w, (1 - projected.y) / 2 * h]; text = packages[i].label; }
-    else { s = screenOf(i, w, h); if (!s) continue; r = pixelRadius(i, w, h); text = nodes[i].label; }
-    const x = s[0] + r + 3, y = s[1];
+  const where = (isPackage, i) => {
+    let s, r = 0;
+    if (isPackage) { projected.set(...packages[i].p).project(camera); if (projected.z > 1) return null; s = [(projected.x + 1) / 2 * w, (1 - projected.y) / 2 * h]; }
+    else { s = screenOf(i, w, h); if (!s) return null; r = pixelRadius(i, w, h); }
+    return [s[0] + r + 3, s[1]];
+  };
+  const won = new Set(), t = performance.now();
+  ctx2d.font = LABEL_FONT;
+  for (const [, i, isPackage] of wanted) {
+    if (won.size >= 90) break;
+    const at = where(isPackage, i); if (!at) continue;
+    const [x, y] = at, text = isPackage ? packages[i].label : nodes[i].label;
     if (x < -200 || y < 0 || x > w || y > h) continue;
-    const box = [x - 1, y - 8, x + ctx2d.measureText(text).width + 1, y + 8];
+    const box = [x - 1, y - 8, x + textWidth(text) + 1, y + 8];
     const forced = !isPackage && (i === selected || i === hovered);
     if (!forced && placed.some(b => box[0] < b[2] && b[0] < box[2] && box[1] < b[3] && b[1] < box[3])) continue;
     placed.push(box);
-    let span = pool[used];
-    if (!span) { span = document.createElement("span"); labelLayer.append(span); pool.push(span); }
-    span.textContent = text; span.style.left = x + "px"; span.style.top = y + "px"; span.style.display = "";
-    span.className = isPackage ? "pkg" : i === selected ? "sel" : "";
-    used++;
+    const key = (isPackage ? "p" : "n") + i;
+    won.add(key);
+    let entry = shownLabels.get(key);
+    if (!entry) {
+      const span = document.createElement("span"); span.textContent = text; labelLayer.append(span);
+      entry = { span, isPackage, i, off: 0, placed: false }; shownLabels.set(key, entry);
+    }
   }
-  for (let k = used; k < pool.length; k++) pool[k].style.display = "none";
+  for (const [key, entry] of shownLabels) {
+    const at = where(entry.isPackage, entry.i);
+    if (at) entry.span.style.transform = `translate(${at[0].toFixed(1)}px, ${at[1].toFixed(1)}px) translateY(-50%)`;
+    const base = entry.isPackage ? "pkg" : entry.i === selected ? "sel" : "";
+    const setClass = c => { if (entry.span.className !== c) entry.span.className = c; };
+    if (won.has(key) && at) {
+      entry.off = 0;
+      // A new span is placed first and turned on the next frame, so it fades in from 0.
+      if (!entry.placed) { entry.placed = true; requestAnimationFrame(() => { dirty = true; }); setClass(base); }
+      else setClass(base + " on");
+    } else {
+      if (!entry.off) entry.off = t;
+      setClass(base);
+      if (t - entry.off > 320 || !at) { entry.span.remove(); shownLabels.delete(key); }
+      else requestAnimationFrame(() => { dirty = true; });
+    }
+  }
 }
 const ctx2d = document.createElement("canvas").getContext("2d");
+const LABEL_FONT = '300 semi-condensed 12px "Iosevka Map", "Iosevka Web", ui-monospace, monospace';
+const widths = new Map();
+const textWidth = text => { let w = widths.get(text); if (w == null) { ctx2d.font = LABEL_FONT; widths.set(text, w = ctx2d.measureText(text).width); } return w; };
+document.fonts.addEventListener("loadingdone", () => { widths.clear(); dirty = true; });
 
 // ---- loop
 let dirty = true;
@@ -352,19 +659,16 @@ function resize() {
   const w = view.clientWidth, h = view.clientHeight;
   if (!w || !h) return false;
   renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); dirty = true;
+  spriteMaterial.uniforms.pixelSize.value = 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) / h;
   return true;
 }
 let framed = false;
 new ResizeObserver(() => { if (resize() && !framed) { frame(nodes.map((n, i) => i).filter(i => visible(nodes[i])).map(i => P[i]), false); framed = true; } }).observe(view);
 function tick(t) {
   requestAnimationFrame(tick);
-  if (flight) {
-    const f = Math.min(1, (t - flight.t0) / 450), e = f < 0.5 ? 2 * f * f : 1 - (-2 * f + 2) ** 2 / 2;
-    controls.target.lerpVectors(flight.fromT, flight.toT, e); camera.position.lerpVectors(flight.fromP, flight.toP, e);
-    if (f >= 1) flight = null;
-    dirty = true;
-  }
+  followCamera(t);
   if (controls.update()) dirty = true;
+  ease(t);
   if (!dirty || !framed) return;
   const dist = camera.position.distanceTo(controls.target);
   scene.fog.near = dist * 0.7; scene.fog.far = dist * 2.4;
@@ -391,6 +695,11 @@ renderer.domElement.addEventListener("pointerup", e => {
   if (down && Math.hypot(e.offsetX - down[0], e.offsetY - down[1]) < 4) select(hit(e.offsetX, e.offsetY), false);
   down = null;
 });
+renderer.domElement.addEventListener("dblclick", e => {
+  const i = hit(e.offsetX, e.offsetY); if (i < 0) return;
+  select(i, false);
+  frame([i, ...near].filter(j => visible(nodes[j])).map(j => P[j]), true);
+});
 renderer.domElement.addEventListener("pointermove", e => {
   if (e.buttons) { tip.style.display = "none"; return; }
   const i = hit(e.offsetX, e.offsetY);
@@ -406,9 +715,27 @@ renderer.domElement.addEventListener("pointerleave", () => { tip.style.display =
 window.addEventListener("keydown", e => {
   if (e.key === "Escape" && document.activeElement !== search) { select(-1); focusSection = null; legend(); restyle(); }
 });
-document.getElementById("spin").onchange = e => { controls.autoRotate = e.target.checked; };
+document.getElementById("spin").onchange = e => { controls.autoRotate = e.target.checked && !flat; };
+// Flat: the simulation runs in the plane (depth eases to nothing on the way), the camera looks
+// straight down it, and a left drag pans instead of turning. Back to 3D, every node gets a little
+// depth to grow from.
+document.getElementById("flat").onchange = e => {
+  flat = e.target.checked;
+  for (const b of [...bodies, ...packageBodies]) b.z = flat ? 0 : (Math.random() - 0.5) * SCALE;
+  controls.enableRotate = !flat;
+  controls.mouseButtons.LEFT = flat ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
+  controls.autoRotate = !flat && document.getElementById("spin").checked;
+  document.getElementById("spin").disabled = flat;
+  const target = controls.target.clone().setZ(flat ? 0 : controls.target.z);
+  const distance = camera.position.distanceTo(controls.target);
+  const direction = flat ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(0.35, 0.25, 1).normalize();
+  camera.up.set(0, 1, 0);
+  flyTo(target, target.clone().addScaledVector(direction, distance), true);
+  simulate(0.5);
+};
 
 function select(i, centre) {
+  const changed = i !== selected;
   selected = i; near = new Set();
   if (i >= 0) {
     for (const [j] of out[i]) near.add(j);
@@ -417,6 +744,7 @@ function select(i, centre) {
     if (centre) centreOn(i);
   }
   details(); restyle();
+  if (changed) { following = i; userMoved = userMoved || i >= 0; simulate(i >= 0 ? 0.25 : 0.18); }
 }
 function syncLayerBoxes() {
   const boxes = document.querySelectorAll("#layers input");
@@ -443,9 +771,17 @@ function details() {
   if (selected < 0) return;
   const n = nodes[selected];
   const h = document.createElement("h2"); h.textContent = n.kind === "page" && n.index ? "catalogue page" : n.kind; host.append(h);
-  const title = document.createElement("div"); title.style.fontWeight = "600";
-  if (n.href) { const a = document.createElement("a"); a.href = n.href; a.textContent = n.label; title.append(a); } else title.textContent = n.label;
+  // The way out of the map: the title, and a button in the node's own colour that opens it.
+  const title = document.createElement("div"); title.className = "title"; title.textContent = n.label;
   host.append(title);
+  if (n.href) {
+    const a = document.createElement("a"); a.className = "open"; a.href = n.href;
+    if (GRAPH.site) a.target = "_top";
+    a.textContent = n.kind === "code" ? (n.href.includes("github.com") ? "Read the source on GitHub →" : "Open its reference →")
+                  : n.kind === "transcript" ? "Open the document →" : "Open the page →";
+    const accent = colourOf(n); if (accent !== colours.other) a.style.setProperty("--accent", accent);  // grey "other" stays light
+    host.append(a);
+  }
   const dl = document.createElement("dl");
   const row = (k, v) => { if (v == null || v === "") return; const dt = document.createElement("dt"), dd = document.createElement("dd"); dt.textContent = k; dd.textContent = v; dl.append(dt, dd); };
   row("section", n.navPath || n.system); row("words", n.words); row("fences", n.fences);
@@ -487,7 +823,7 @@ search.addEventListener("input", () => {
     div.onclick = () => {
       select(-1);
       const prefix = p.id.slice("package:".length) + "/";
-      frame(nodes.map((n, i) => i).filter(i => nodes[i].kind === "code" && (nodes[i].href || "").includes(prefix)).map(i => P[i]), true);
+      frame(nodes.map((n, i) => i).filter(i => nodes[i].kind === "code" && nodes[i].id.startsWith("code:" + prefix)).map(i => P[i]), true);
       shown.code = true; syncLayerBoxes(); restyle();
     };
     matches.append(div);
@@ -496,12 +832,26 @@ search.addEventListener("input", () => {
 search.addEventListener("keydown", e => { if (e.key === "Enter" && matches.firstChild) matches.firstChild.click(); });
 
 // ---- start
+if (GRAPH.site) { document.title = "Map of the docs"; document.querySelector("aside h1").textContent = "Map of the docs"; }
 const pageCount = nodes.filter(n => n.kind === "page" && !n.index).length;
-const handLinks = GRAPH.links.filter(([s, t, m]) => (m & bit.links) && nodes[s].kind === "page" && !nodes[s].index && nodes[t].kind === "page" && !nodes[t].index).length;
-document.getElementById("summary").textContent = `${pageCount} pages, ${handLinks} hand-written links · ${GRAPH.generated}`;
-legend(); restyle(); resize();
+const pageLinks = GRAPH.links.filter(([s, t, m]) => (m & bit.links) && nodes[s].kind === "page" && !nodes[s].index && nodes[t].kind === "page" && !nodes[t].index).length;
+function summary() {
+  document.getElementById("summary").textContent = `${pageCount} pages · ${pageLinks} links between them`;
+}
+summary(); legend(); restyle(); resize();
+// ?node=<id>, on the map's own address or on the docs page that embeds it (each page's "on the map"
+// link carries its own): open with that node selected, its neighbourhood gathering and the camera
+// following it. Selected first, then the full-strength layout that replaces select's gentle reheat.
+const startNode = (() => {
+  const from = search => new URLSearchParams(search).get("node");
+  let id = from(location.search);
+  try { if (!id && window.parent !== window) id = from(window.parent.location.search); } catch { /* another origin */ }
+  return id ? nodes.findIndex(n => n.id === id) : -1;
+})();
+if (startNode >= 0) select(startNode, false);
+simulate(1);
 requestAnimationFrame(tick);
-window.GRAPH_VIEW = { select, frame, camera, controls, nodes, P, hit, get selected() { return selected; } };
+window.GRAPH_VIEW = { select, frame, camera, controls, nodes, P, get goal() { return goal; }, hit, restyle, simulate, moved, fitVisible, advance, get settled() { return settled; }, get selected() { return selected; } };
 </script>
 </body>
 </html>
