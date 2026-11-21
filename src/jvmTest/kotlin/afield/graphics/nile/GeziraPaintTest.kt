@@ -228,4 +228,28 @@ class GeziraPaintTest {
         val o = GeziraComposite.OVER.blend(Rgba.of(0.1, 0.2, 0.3), dst)
         assertEquals(0.1f, o.r, 1e-6f)
     }
+
+    @Test
+    fun aLineOfTextMatchesSkia() {
+        val w = 360
+        val h = 64
+        val text = Gezira.glyphs("Pixels on a screen", 6.0, 46.0, size = 40.0)
+        val quads = text.count { it.degree == 2 }
+        val start = System.nanoTime()
+        val t = Gezira.rasterizer.trace(text)
+        val ms = (System.nanoTime() - start) / 1e6
+        val ours = Gezira.coverage(t.output.filterIsInstance<Span>(), w, h)
+        val skia = Gezira.skiaCoverage(text, w, h)
+        val (worst, mean) = Gezira.error(ours, skia)
+        println("text: ${text.size} segments ($quads quadratics) -> ${t.get<Bezier>("DecomposeBeziers").size} pieces, ${t.output.size} spans in %.1f ms".format(ms))
+        val ss = Gezira.supersampledCoverage(text, w, h, n = 32, chords = 64)
+        val (tw, tm) = Gezira.error(ours, ss)
+        val (sw, sm) = Gezira.error(skia, ss)
+        println("text vs Skia: max |diff| $worst, mean $mean over ${ours.count { it > 0 }} pixels")
+        val touched = ss.indices.filter { ss[it] > 0 || skia[it] > 0 }
+        println("text: Skia minus supersample, signed mean ${touched.sumOf { skia[it] - ss[it] } / touched.size}, total ink Skia ${skia.sum()} vs ${ss.sum()}")
+        println("text vs 32 x 32 supersample: kernels max $tw mean $tm; Skia max $sw mean $sm")
+        assertTrue(quads > 50 && ours.count { it > 0 } > 2000, "population too small")
+        assertTrue(tm < 0.01, "text should match the supersample on average, mean $tm")
+    }
 }

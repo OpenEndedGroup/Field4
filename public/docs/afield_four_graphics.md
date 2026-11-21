@@ -2218,10 +2218,14 @@ Beside Skia's anti-aliased raster the two agree to within Skia's own approximati
 
 On a five-pointed star the kernels and Skia differ by at most 0.10 and on average 0.008, and
 Skia differs from the exact `TriangleCoverage` answer by the same 0.10: the difference is Skia's.
-On a circle the largest difference is 0.19 at one edge pixel, the mean 0.008. In the figure, where
-the star and the circle overlap, the largest difference is 0.43 and the mean 0.012. The difference
-lies along the edges, brightest on the edges that face down and to the right, and not where the two
-outlines cross; it is the same pattern as Skia's own difference from the exact star.
+On a circle the largest difference is 0.19 at one edge pixel, the mean 0.008.
+
+Where the star and the circle overlap the largest difference is 0.43, and that one is the kernels'.
+CombineEdgeSamples adds up signed edge areas, so in a pixel that both outlines cross it adds the
+two partial coverages, and where those overlap inside the pixel it counts the overlap twice (Gezira
+does the same). Against a 64 × 64 non-zero supersample, the 543 pixels that one outline crosses
+agree to 0.0025; in the 17 pixels both cross, the kernels are up to 0.31 too high, never by more
+than the smaller of the two coverages. Skia is up to 0.18 off the same supersample.
 
 A new stage is one more kernel. Gezira's TransformBeziers, a rotation here, goes in front of the
 rasteriser with `then`:
@@ -2230,11 +2234,65 @@ rasteriser with `then`:
 val t = (rotate(20.0, 8.0, 8.0) then Gezira.rasterizer).trace(Gezira.beziers(square))
 ```
 
+### Stroking
+
+`GeziraStroke.strokeBezierPath(width)` is Gezira's StrokeBezierPath: it offsets each segment to
+both sides, and a segment whose offset strays more than 0.01 pixels from the true offset curve is
+cut in half and both halves pushed back, the same recursion DecomposeBeziers uses. Its output is an
+outline, which goes into the rasteriser like any other:
+
+```diffstatic {data-lang=kotlin}
+val t = (GeziraStroke.strokeBezierPath(2.0) then Gezira.rasterizer).trace(wave)
+```
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/gezira-stroke.png" capture="box" open-outputs="true" padding="20" wait="4" timeout="180" embed=true name="gezira-stroke" macro-file="../../dev_docs/agents/transcripts/nile_gezira_kernels.yaml" capture-box="gezira_stroke" alt="A wave two pixels wide over a 48 by 24 pixel grid, its pixels white in the middle and grey at the edges. The stroke outline is drawn over it in alternating orange and blue pieces, short where the wave bends and long where it is straight, with a straight cap across each end."}
+// dev_docs/agents/transcripts/nile_gezira_kernels.yaml, box "stroke kernel"
+```
+
+Joins are bevels and caps are butt. A stroked straight line is an exact rectangle (to 5e-14). A
+circle stroked 2.5 pixels wide matches the exact ring to 0.0043, and the open wave matches a
+32 × 32 supersample of the true stroke to 0.0031, mean 0.0005. Skia's stroke of the same circle is
+up to 0.20 off the ring, and of the wave 0.039 on average.
+
+### Texture and compositing
+
+The paint end of the pipeline is two more kernels. `GeziraComposite.texture { x, y -> colour }`
+turns each span into fragments, the colour at the pixel centre scaled by the span's coverage, and
+`compositeOver(canvas, blend)` blends each fragment into a `Canvas` and emits the result, so the
+composited pixels are a stream too. `Canvas.draw` runs all of it:
+
+```diffstatic {data-lang=kotlin}
+canvas.draw(Gezira.beziers(star), GeziraComposite.texture(gradient))
+canvas.draw(Gezira.circle(40.0, 28.0, 13.0), GeziraComposite.color(Rgba.of(0.1, 0.5, 1.0, 0.55)))
+canvas.draw(ring, GeziraComposite.color(Rgba.of(0.3, 0.9, 0.5, 0.9)), GeziraComposite.MULTIPLY)
+```
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/gezira-composite.png" capture="box" open-outputs="true" padding="20" wait="4" timeout="180" embed=true name="gezira-composite" macro-file="../../dev_docs/agents/transcripts/nile_gezira_kernels.yaml" capture-box="gezira_composite" alt="A 64 by 48 pixel canvas: a star shading from orange at the top left to pink at the bottom, a translucent blue disc over its right side turning the star purple where they overlap, and a green ring over its left side that darkens the star to olive and teal where they meet."}
+// dev_docs/agents/transcripts/nile_gezira_kernels.yaml, box "texture and composite"
+```
+
+Two translucent shapes composited with `OVER` agree with Skia's source-over to 0.0053 per channel
+on average (largest 0.076, at edge pixels, where the coverage differs as above).
+
+### A line of text
+
+Glyph outlines are quadratic Béziers, the same input the Gezira tiger is made of. `Gezira.glyphs`
+sets a string with Java's fonts and keeps the quadratics:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/gezira-text.png" capture="box" open-outputs="true" padding="20" wait="4" timeout="180" embed=true name="gezira-text" macro-file="../../dev_docs/agents/transcripts/nile_gezira_kernels.yaml" capture-box="gezira_text" alt="Two panels each showing the words Pixels on a screen in a serif face, white on black, the first rasterised by the kernels and the second by Skia; at this size they look the same."}
+// dev_docs/agents/transcripts/nile_gezira_kernels.yaml, box "text beside skia"
+```
+
+"Pixels on a screen" at 40 pixels is 426 segments, 309 of them quadratic. DecomposeBeziers cuts it
+into 2,220 pieces and the whole pipeline takes about 7 ms on the CPU. Against a 32 × 32 supersample
+the kernels' coverage is off by 0.0016 on average (largest 0.017); Skia's is off by 0.032 on average
+and it draws 0.7 % less ink in total.
+
 Open the [starting point](agent_transcripts.md#nile_gezira_kernels) to edit the kernels. The
 method is from *[Pixels on a screen](https://whitebeard.blog/posts/pixels-on-a-screen/)*, a post
 on umgeni, a compiler for Nile that renders the SVG tiger from Gezira kernels; Field's kernels are
-written from that description. Gezira's stroking, compositing and texture kernels, a compute-shader
-backend and the tiger are not implemented here.
+written from that description. Round joins and caps, Gezira's other blend modes and image
+textures, a compute-shader backend and the tiger itself are not implemented here.
 
 ## Stopping the renderer
 

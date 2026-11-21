@@ -288,6 +288,66 @@ object Gezira {
         return out
     }
 
+    /**
+     * The segments of a `java.awt.Shape` as [Bezier]s, quadratics kept as quadratics (glyph outlines
+     * are made of them, as the tiger's Gezira input is), each subpath closed.
+     */
+    fun beziers(shape: java.awt.Shape): List<Bezier> {
+        val out = ArrayList<Bezier>()
+        val it = shape.getPathIterator(null)
+        val c = DoubleArray(6)
+        var sx = 0.0
+        var sy = 0.0
+        var cx = 0.0
+        var cy = 0.0
+        fun close() {
+            if (cx != sx || cy != sy) out.add(Bezier(doubleArrayOf(cx, cy, sx, sy)))
+            cx = sx
+            cy = sy
+        }
+        while (!it.isDone) {
+            when (it.currentSegment(c)) {
+                java.awt.geom.PathIterator.SEG_MOVETO -> {
+                    close()
+                    sx = c[0]
+                    sy = c[1]
+                    cx = sx
+                    cy = sy
+                }
+
+                java.awt.geom.PathIterator.SEG_LINETO -> {
+                    out.add(Bezier(doubleArrayOf(cx, cy, c[0], c[1])))
+                    cx = c[0]
+                    cy = c[1]
+                }
+
+                java.awt.geom.PathIterator.SEG_QUADTO -> {
+                    out.add(Bezier(doubleArrayOf(cx, cy, c[0], c[1], c[2], c[3])))
+                    cx = c[2]
+                    cy = c[3]
+                }
+
+                java.awt.geom.PathIterator.SEG_CUBICTO -> {
+                    out.add(Bezier(doubleArrayOf(cx, cy, c[0], c[1], c[2], c[3], c[4], c[5])))
+                    cx = c[4]
+                    cy = c[5]
+                }
+
+                java.awt.geom.PathIterator.SEG_CLOSE -> close()
+            }
+            it.next()
+        }
+        close()
+        return out
+    }
+
+    /** [text] set in [font] (size in pixels) as quadratic glyph outlines, baseline at `(x, y)`. */
+    fun glyphs(text: String, x: Double, y: Double, size: Double = 32.0, font: String = java.awt.Font.SERIF): List<Bezier> {
+        val f = java.awt.Font(font, java.awt.Font.PLAIN, 1).deriveFont(size.toFloat())
+        val frc = java.awt.font.FontRenderContext(null, true, true)
+        return beziers(f.createGlyphVector(frc, text).getOutline(x.toFloat(), y.toFloat()))
+    }
+
     /** A circle as four cubics (the usual kappa approximation, within 0.03 % of the radius). */
     fun circle(cx: Double, cy: Double, r: Double): List<Bezier> {
         val k = 0.5522847498 * r
