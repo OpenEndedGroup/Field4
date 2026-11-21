@@ -300,6 +300,8 @@ wire('docs', [["2025-11-03",0,0],["2025-11-04",0,0],["2025-11-05",0,0],["2025-11
 
 Explore Field's JVM codebase by package. Follow a branch to its declarations and the documentation that sits next to them in the source. Where a package spans several reference pages, each page is linked separately.
 
+To see it all at once, open the [map of the docs](../docs_map.md): every page, agent transcript and source file as one graph, each file linked back to its section here.
+
 <div class="reference-map" markdown="1">
 
 <div class="reference-map-root">afield</div>

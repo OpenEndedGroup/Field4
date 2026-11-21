@@ -1,15 +1,16 @@
 # Map of the docs
 
 Every page on this site, the [agent transcripts](agent_transcripts.md) they open, and the source
-files their code calls, drawn as one graph you can turn around. Pages sit near the pages they link
-to. Source files sit on a shell outside, each one toward the pages that use it, grouped by the
-directory it lives in.
+files their code calls, drawn as one graph you can turn around. The map lays itself out as you
+watch: pages settle near the pages they link to, and source files cluster with the others in their
+directory. **flat (2D)** lays it out in the plane instead.
 
 Drag to turn the map, right-drag to pan and scroll to zoom. Click a node to list what it links to
 and what links to it, then follow its title to open it: a page opens itself, and a source file
-opens its section of the [reference](reference/index.md). Double-click a node to frame it with
-everything it connects to. Switch on **cites file**, **calls (fences)** or **mentions (prose)**
-and the source files move in beside the pages that use them.
+opens its section of the [reference](reference/index.md). Clicking a node also gathers what it
+connects to around it, and double-clicking frames it. Switch on **cites file**, **calls (fences)**
+or **mentions (prose)** and the source files move in beside the pages that use them. Every page on
+this site has an **On the map of the docs** link under its title that opens the map at that page.
 
 <iframe
   src="assets/docs_map/graph.html"
@@ -18,7 +19,13 @@ and the source files move in beside the pages that use them.
   loading="lazy">
 </iframe>
 
-<a href="assets/docs_map/graph.html" target="_blank">Open the map in its own window</a>
+<a id="docs-map-window" href="assets/docs_map/graph.html" target="_blank">Open the map in its own window</a>
+
+<script>
+// A page's "On the map of the docs" link opens this one with ?node=<that page>; the map above
+// reads it from here, and the full-window map gets it too.
+(() => { const a = document.getElementById("docs-map-window"); if (a && location.search) a.href = a.getAttribute("href") + location.search; })();
+</script>
 
 The map is rebuilt with the site, so it always matches the pages you are reading.
 

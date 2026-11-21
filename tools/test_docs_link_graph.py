@@ -7,9 +7,11 @@ Run with:  uv run --project . --group backdoor python -m unittest tools.test_doc
 """
 
 import re
+import tempfile
 import unittest
+from pathlib import Path
 
-from tools.docs_link_graph import DOCS_RELATIVE, REPO_ROOT, reference_anchors, site_url, used_symbols
+from tools.docs_link_graph import DOCS_RELATIVE, REPO_ROOT, code_files_for, link_pages_to_map, reference_anchors, site_url, used_symbols
 
 
 class SiteUrlTest(unittest.TestCase):
@@ -47,6 +49,41 @@ class UsedSymbolsTest(unittest.TestCase):
         self.assertIn("markers", names)
         self.assertNotIn("Edit", names)
         self.assertNotIn("Creatures", names)
+
+
+    def test_package_paths_are_not_uses(self) -> None:
+        code = "import afield.graphics.vulkan.Renderer\nval r = afield.four.vulkan.Renderer()\nr.vulkan.size"
+        names = used_symbols(code)
+        self.assertIn("Renderer", names)
+        self.assertEqual(sum(1 for n in names if n == "vulkan"), 1, "only the member access r.vulkan")
+        self.assertNotIn("vulkan", used_symbols("import afield.graphics.vulkan.*\nval x = afield.four.vulkan.Renderer"))
+
+
+    def test_file_names_in_prose_are_not_calls(self) -> None:
+        index = {"yaml": ("src/jvmMain/kotlin/afield/examples/DocumentToTranscript.kt",)}
+        self.assertEqual(code_files_for("metadata.yaml", index, mention=True), {})
+        self.assertEqual(code_files_for("dev_docs/agents/transcripts/x.yaml", index, mention=True), {})
+
+
+class LinkPagesToMapTest(unittest.TestCase):
+    def test_each_page_links_to_its_own_node_once(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            docs = root / DOCS_RELATIVE
+            (docs / "reference").mkdir(parents=True)
+            for page in ("index.md", "docs_map.md", "reference/graphics.md"):
+                (docs / page).write_text("# x\n")
+            site = root / "site"
+            for built in ("index.html", "docs_map/index.html", "reference/graphics/index.html", "orphan/index.html"):
+                (site / built).parent.mkdir(parents=True, exist_ok=True)
+                (site / built).write_text("<article><h1>Title</h1><h2>Next</h2></article>")
+            self.assertEqual(link_pages_to_map(site, root), 2)
+            self.assertEqual(link_pages_to_map(site, root), 0, "a second pass adds nothing")
+            graphics = (site / "reference/graphics/index.html").read_text()
+            self.assertIn('</h1><p class="docs-map-link"><a href="../../docs_map/?node=page%3Areference%2Fgraphics.md">', graphics)
+            self.assertIn('href="docs_map/?node=page%3Aindex.md"', (site / "index.html").read_text())
+            self.assertNotIn("docs-map-link", (site / "docs_map/index.html").read_text(), "the map does not link to itself")
+            self.assertNotIn("docs-map-link", (site / "orphan/index.html").read_text(), "no source page, no node")
 
 
 if __name__ == "__main__":

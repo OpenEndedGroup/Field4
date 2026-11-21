@@ -445,8 +445,8 @@ const parentPackage = id => { const up = id.slice(0, id.lastIndexOf("/")); retur
 const bodies = nodes.map((n, i) => ({ node: i, x: P[i].x * SCALE, y: P[i].y * SCALE, z: P[i].z * SCALE }));
 const packageBodies = packages.map((p, k) => ({ pkg: k, x: p.p[0] * SCALE, y: p.p[1] * SCALE, z: p.p[2] * SCALE }));
 const GRAVITY = 0.02, FOCUS_LENGTH = 9, FOCUS_STRENGTH = 0.4, FOCUS_SLACK = 0.05;
-// Slow cooling (about 900 ticks from hot to still), more friction than d3's 0.4, and a soft spring on what is drawn.
-const ALPHA_DECAY = 1 - Math.pow(0.001, 1 / 900), VELOCITY_DECAY = 0.5, SPRING = 7, CAMERA_SPRING = 4;
+// Slow cooling (about 1,350 ticks from hot to still), more friction than d3's 0.4, and soft springs on what is drawn and on the camera.
+const ALPHA_DECAY = 1 - Math.pow(0.001, 1 / 1350), VELOCITY_DECAY = 0.5, SPRING = 4.7, CAMERA_SPRING = 2.7;
 const FLAT_CHARGE = 2.5;
 const CHARGE = { page: -60, transcript: -25, reference: -60, code: -10 };
 const LINK_LENGTH = { links: 30, opens: 24, documents: 24, cites: 14, calls: 14, mentions: 18, reference: 40, usedIn: 18 };
@@ -839,6 +839,16 @@ function summary() {
   document.getElementById("summary").textContent = `${pageCount} pages · ${pageLinks} links between them`;
 }
 summary(); legend(); restyle(); resize();
+// ?node=<id>, on the map's own address or on the docs page that embeds it (each page's "on the map"
+// link carries its own): open with that node selected, its neighbourhood gathering and the camera
+// following it. Selected first, then the full-strength layout that replaces select's gentle reheat.
+const startNode = (() => {
+  const from = search => new URLSearchParams(search).get("node");
+  let id = from(location.search);
+  try { if (!id && window.parent !== window) id = from(window.parent.location.search); } catch { /* another origin */ }
+  return id ? nodes.findIndex(n => n.id === id) : -1;
+})();
+if (startNode >= 0) select(startNode, false);
 simulate(1);
 requestAnimationFrame(tick);
 window.GRAPH_VIEW = { select, frame, camera, controls, nodes, P, get goal() { return goal; }, hit, restyle, simulate, moved, fitVisible, advance, get settled() { return settled; }, get selected() { return selected; } };

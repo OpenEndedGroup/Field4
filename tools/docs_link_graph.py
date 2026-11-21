@@ -78,6 +78,7 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable
+from urllib.parse import quote
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DOCS_RELATIVE = "public/docs"
@@ -276,6 +277,35 @@ KOTLIN_NOISE_RE = re.compile(r'"""(?P<raw>.*?)"""|"(?P<str>(?:\\.|[^"\\\n])*)"|/
 TEMPLATE_RE = re.compile(r"\$\{(?P<expr>[^{}]*)\}|\$(?P<name>[A-Za-z_]\w*)")
 DECLARED_HERE_RE = re.compile(r"\b(?:val|var|fun|class|object|interface)\s+(?:<[^>]*>\s*)?(?:\w+\.)?(?P<name>[A-Za-z_]\w*)")
 IDENTIFIER_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+# Kotlin and Java standard-library names that Field also declares somewhere, once, as its own
+# overload or extension. Without types a fence's `x.toInt()` cannot be told from a call into
+# Field's, and it is almost always the standard one, so these are ambiguous and dropped, as a name
+# declared in two files is. Found by ranking the names that tie the most pages to one file.
+STDLIB_NAMES = frozenset({
+    "println", "print", "toInt", "toLong", "toFloat", "toDouble", "toShort", "toByte", "toChar", "toString",
+    "toList", "toMutableList", "toSet", "toMutableSet", "toMap", "toMutableMap", "toTypedArray",
+    "toDoubleArray", "toFloatArray", "toIntArray", "toLongArray", "toSortedMap",
+    "maxOf", "minOf", "maxBy", "minBy", "maxByOrNull", "minByOrNull", "maxOrNull", "minOrNull",
+    "coerceIn", "coerceAtLeast", "coerceAtMost", "average", "sum", "sumOf", "count", "sorted", "sortedBy",
+    "sortedByDescending", "sortedDescending", "sortedWith", "reversed", "shuffled", "distinct", "distinctBy",
+    "forEach", "forEachIndexed", "map", "mapIndexed", "mapNotNull", "flatMap", "filter", "filterNot",
+    "filterIndexed", "filterIsInstance", "first", "firstOrNull", "last", "lastOrNull", "single", "singleOrNull",
+    "find", "any", "all", "none", "zip", "chunked", "windowed", "take", "drop", "takeLast", "dropLast",
+    "groupBy", "associate", "associateBy", "associateWith", "partition", "fold", "reduce", "joinToString",
+    "indexOf", "contains", "getOrNull", "getOrElse", "getOrPut", "plus", "minus", "times", "div", "rem",
+    "until", "downTo", "step", "repeat", "apply", "also", "let", "run", "with", "takeIf", "takeUnless",
+    "require", "check", "error", "listOf", "mutableListOf", "setOf", "mapOf", "mutableMapOf", "arrayOf",
+    "nextGaussian", "nextDouble", "nextInt", "nextFloat", "nextBoolean", "random", "lazy", "use",
+    "split", "trim", "lines", "format", "substring", "startsWith", "endsWith", "replace", "lowercase", "uppercase",
+    "roundToInt", "roundToLong", "absoluteValue", "sqrt", "pow", "sin", "cos", "abs", "floor", "ceil", "round",
+    "copy", "equals", "hashCode", "compareTo", "invoke", "get", "set", "add", "remove", "clear", "isEmpty",
+    "isNotEmpty", "size", "length", "keys", "values", "entries", "indices", "lastIndex",
+})
+FILE_NAME_RE = re.compile(r"[\w./@+-]*\w\.(?:ya?ml|json|edn|kts?|md|js|mjs|html?|css|glsl|wgsl|slang|py|sh|txt|csv|png|jpe?g|svg|mp4|wav|obj|gltf|glb|toml|xml)\b")
+IMPORT_LINE_RE = re.compile(r"^[ \t]*(?:import|package)[ \t]+[^\n]*", re.M)
+# A dotted run of lowercase segments from a package root, stopping before the first capitalised
+# segment (the type) or at the end: the package part of a qualified name.
+PACKAGE_PREFIX_RE = re.compile(r"\b(?:afield|java|javax|kotlin|kotlinx|org|com|net)(?:\.[a-z_][a-z0-9_]*)+\b(?=\.[A-Z]|[^.\w]|$)")
 GENERIC_CALL_RE = re.compile(r"<[\w\s,.<>?*]*>\s*\(")
 
 
@@ -286,7 +316,12 @@ def kotlin_code_only(code: str) -> str:
             return " "
         return " " + " ; ".join(m.group("expr") or m.group("name") for m in TEMPLATE_RE.finditer(body)) + " "
 
-    return KOTLIN_NOISE_RE.sub(keep, code)
+    # A package path is not a use: `import afield.graphics.vulkan.Renderer` and a qualified
+    # `afield.four.vulkan.Renderer` use `Renderer`, not a member named `vulkan` (which one file
+    # declares, so every Vulkan page used to reach it).
+    code = KOTLIN_NOISE_RE.sub(keep, code)
+    code = IMPORT_LINE_RE.sub(" ", code)
+    return PACKAGE_PREFIX_RE.sub(" ", code)
 
 
 def used_symbols(code: str) -> set[str]:
@@ -296,14 +331,16 @@ def used_symbols(code: str) -> set[str]:
     wherever it stands. A lowercase one counts only in a call or member position — ``x.name``,
     ``name(``, ``name {`` — because the index holds data-class properties and parameters as bare
     names, and a fence's own ``val under = …`` is not a use of ``ThreeTintBand.under``. Names the
-    code declares itself are not uses either.
+    code declares itself are not uses either, and nor are Kotlin and Java standard-library names
+    (``STDLIB_NAMES``): Field declaring its own ``toInt`` once does not make every ``x.toInt()`` a
+    call into it.
     """
     text = kotlin_code_only(code)
     declared = {m.group("name") for m in DECLARED_HERE_RE.finditer(text)}
     used: set[str] = set()
     for match in IDENTIFIER_RE.finditer(text):
         name = match.group()
-        if name in declared:
+        if name in declared or name in STDLIB_NAMES:
             continue
         if name[0].isupper():
             used.add(name)
@@ -326,6 +363,9 @@ def code_files_for(code: str, symbol_index: dict[str, tuple[str, ...]], *, menti
     ``mention``: ``code`` is an inline span in prose, where a lone name (`` `markersAt` ``) is a
     deliberate mention and counts in any case.
     """
+    if mention:
+        # A file name in backticks is not code: `metadata.yaml` does not use a member `yaml`.
+        code = FILE_NAME_RE.sub(" ", code)
     names = used_symbols(code)
     if mention and IDENTIFIER_RE.fullmatch(code.strip()):
         names.add(code.strip())
@@ -965,6 +1005,47 @@ def write_site_map(site_dir: Path, repo_root: Path = REPO_ROOT) -> Path:
     graph = build_graph(repo_root, transcripts=True, code=True, reference=True, history=None)
     analyse(graph, out_dir, top=1, now=time.time(), options={"transcripts": True, "code": True, "reference": True})
     return write_view(graph, out_dir, site_root="../../")
+
+
+MAP_PAGE = "docs_map.md"
+MAP_LINK_CLASS = "docs-map-link"
+FIRST_H1_END_RE = re.compile(r"</h1>")
+
+
+def built_page_source(relative_html: str, docs_dir: Path) -> str | None:
+    """The Markdown page a built ``…/index.html`` came from (directory URLs), or None."""
+    stem = relative_html.removesuffix("index.html").rstrip("/")
+    for candidate in ((f"{stem}.md", f"{stem}/index.md") if stem else ("index.md",)):
+        if (docs_dir / candidate).is_file():
+            return candidate
+    return None
+
+
+def link_pages_to_map(site_dir: Path, repo_root: Path = REPO_ROOT) -> int:
+    """Under each built page's title, a link to that page's node on the map of the docs
+    (``docs_map/?node=page:<path>``; the map opens with it selected). Run on the built site by
+    ``tools/build_zensical_docs.py``; Zensical ignores template overrides, so this is the hook.
+    Returns how many pages got one."""
+    docs_dir = repo_root / DOCS_RELATIVE
+    map_dir = site_dir / site_url(MAP_PAGE, "")
+    linked = 0
+    for page in sorted(site_dir.rglob("index.html")):
+        relative = page.relative_to(site_dir).as_posix()
+        source = built_page_source(relative, docs_dir)
+        if source is None or source == MAP_PAGE or source.startswith("assets/"):
+            continue
+        text = page.read_text(encoding="utf-8")
+        article = text.find("<article")
+        if article < 0 or MAP_LINK_CLASS in text:
+            continue
+        h1 = FIRST_H1_END_RE.search(text, article)
+        if h1 is None:
+            continue
+        href = Path(os.path.relpath(map_dir, page.parent)).as_posix() + "/?node=" + quote(page_key(source), safe="")
+        link = f'<p class="{MAP_LINK_CLASS}"><a href="{href}">On the map of the docs</a></p>'
+        page.write_text(text[:h1.end()] + link + text[h1.end():], encoding="utf-8")
+        linked += 1
+    return linked
 
 
 def day(ts: float | None) -> str:

@@ -1265,10 +1265,12 @@ def emit_docs_map(*, site_dir: Path, repo_root: Path) -> str | None:
         import docs_link_graph
         started = time.monotonic()
         target = docs_link_graph.write_site_map(site_dir, repo_root)
+        linked = docs_link_graph.link_pages_to_map(site_dir, repo_root)
     except (ImportError, OSError, SystemExit, ValueError) as error:
         print(f"WARNING: the docs map was not written: {error}")
         return f"the docs map was not written ({error})"
-    print(f"Wrote the docs map {target.relative_to(site_dir)} in {time.monotonic() - started:.0f} s.")
+    print(f"Wrote the docs map {target.relative_to(site_dir)} in {time.monotonic() - started:.0f} s; "
+          f"linked {linked} page(s) to their place on it.")
     return None
 
 
