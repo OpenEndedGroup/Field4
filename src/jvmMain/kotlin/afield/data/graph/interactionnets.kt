@@ -620,6 +620,9 @@ class Net internal constructor(
     /** The port on the other end of this port's wire, or null if it is free. The one-step graph walk. */
     fun connected(port: Port): Port? = adjacency[port.id]?.other(port)
 
+    /** The radius [toFLines] draws [node] at, for [toPngBytes] to size a label to. */
+    internal fun drawnRadius(node: Node): Double = renderRadius(node)
+
     /**
      * Wires two ports together.
      *
@@ -1021,7 +1024,7 @@ class Net internal constructor(
         return drawToSVG(listOf(background) + fitted, width.toDouble(), height.toDouble())
     }
 
-    internal fun renderRadius(node: Node): Double =
+    private fun renderRadius(node: Node): Double =
         (18.0 + node.state.energy * 5.5).coerceIn(16.0, 34.0)
 
     private fun nodeHue01(node: Node): Double =
@@ -2346,12 +2349,12 @@ fun Net.toPngBytes(
             }
             val face = netLabelTypeface
             if (label != null && face != null) {
+                // Light text on a dark outline, so a label reads whatever colour the disc under it is.
                 org.jetbrains.skia.Paint().use { paint ->
-                    paint.color = 0xff15151a.toInt()
                     paint.isAntiAlias = true
                     for (node in nodes) {
                         val text = label(node) ?: continue
-                        val r = renderRadius(node) * s
+                        val r = drawnRadius(node) * s
                         // Fit the text inside the disc: the cap height is about the radius, narrowed for long text.
                         val size = min(r * 1.25, r * 3.2 / max(1, text.length)).toFloat()
                         if (size < 7f) continue
@@ -2359,6 +2362,12 @@ fun Net.toPngBytes(
                             val p = positionOf(node)
                             val x = (p.x - b[0]) * s + ox - font.measureTextWidth(text) / 2
                             val y = (p.y - b[1]) * s + oy + font.metrics.capHeight / 2
+                            paint.mode = org.jetbrains.skia.PaintMode.STROKE
+                            paint.strokeWidth = size * 0.16f
+                            paint.color = 0xe0101014.toInt()
+                            canvas.drawString(text, x.toFloat(), y.toFloat(), font, paint)
+                            paint.mode = org.jetbrains.skia.PaintMode.FILL
+                            paint.color = 0xfff6f4ee.toInt()
                             canvas.drawString(text, x.toFloat(), y.toFloat(), font, paint)
                         }
                     }
