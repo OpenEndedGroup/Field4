@@ -64,6 +64,10 @@ dt { color: var(--muted); } dd { margin: 0; font-variant-numeric: tabular-nums; 
 a { color: #f0f0f0; text-decoration-color: #666; text-underline-offset: 2px; }
 a:hover { text-decoration-color: #d8d8d8; }
 .hint { color: var(--muted); font-size: 12px; margin-top: 4px; }
+#details .title { font-size: 16px; font-weight: 600; color: #f0f0f0; line-height: 1.3; margin: 2px 0 8px; }
+#details a.open { display: block; padding: 7px 10px; margin: 0 0 8px; border-radius: 6px; text-decoration: none;
+                  font-weight: 600; color: #000; background: var(--accent, #d8d8d8); border: 1px solid var(--accent, #d8d8d8); }
+#details a.open:hover { background: #f0f0f0; border-color: #f0f0f0; }
 </style>
 </head>
 <body>
@@ -74,6 +78,7 @@ a:hover { text-decoration-color: #d8d8d8; }
   <h2>Find</h2>
   <input type="search" id="search" placeholder="page, transcript, file or package…" autocomplete="off">
   <div id="matches"></div>
+  <div id="details"></div>
   <h2>Show</h2>
   <div id="layers"></div>
   <div id="edges"></div>
@@ -87,12 +92,47 @@ a:hover { text-decoration-color: #d8d8d8; }
     <option value="drift">Days the code it cites has moved on</option>
   </select>
   <div id="legend"></div>
-  <div id="details"></div>
 </aside>
 <script type="text/plain" id="three-core">/*THREE_CORE*/</script>
 <script type="text/plain" id="three-module">/*THREE_MODULE*/</script>
 <script type="text/plain" id="three-orbit">/*THREE_ORBIT*/</script>
-<script>/*FORCE*/</script>
+<script type="text/plain" id="force">/*FORCE*/</script>
+<script type="text/plain" id="force-worker">
+// The layout's own thread: d3-force-3d (the CPU path of the vendored d3-force-3d-webgpu) ticking
+// about sixty times a second at most, posting every tick's positions back. Built afresh by each
+// "build" message; "advance" runs n ticks at once (for tests).
+let sim = null, timer = null;
+const post = () => {
+  const nodes = sim.nodes(), out = new Float32Array(nodes.length * 3);
+  nodes.forEach((n, i) => { out[3 * i] = n.x; out[3 * i + 1] = n.y; out[3 * i + 2] = n.z || 0; });
+  postMessage({ type: "tick", build: sim.build, positions: out, alpha: sim.alpha() }, [out.buffer]);
+};
+const done = () => sim.alpha() < sim.alphaMin();
+function run() {
+  const t0 = performance.now();
+  sim.tick(); post();
+  if (done()) { postMessage({ type: "end", build: sim.build }); return; }
+  timer = setTimeout(run, Math.max(0, 16 - (performance.now() - t0)));
+}
+onmessage = ({ data: m }) => {
+  if (m.type === "advance") { if (sim) { sim.tick(m.ticks); post(); } postMessage({ type: "advanced" }); return; }
+  if (sim) sim.stop(); clearTimeout(timer);
+  const nodes = [];
+  for (let i = 0; i < m.charge.length; i++) nodes.push({ x: m.positions[3 * i], y: m.positions[3 * i + 1], z: m.positions[3 * i + 2], charge: m.charge[i] });
+  for (const [i, x, y, z] of m.pinned) Object.assign(nodes[i], { fx: x, fy: y, fz: z });
+  const links = [];
+  for (let k = 0; k < m.lengths.length; k++) links.push({ source: m.ends[2 * k], target: m.ends[2 * k + 1], length: m.lengths[k], strength: m.strengths[k] });
+  sim = d3.forceSimulation(nodes, m.dims).stop()
+    .alpha(m.alpha).alphaDecay(m.alphaDecay).velocityDecay(m.velocityDecay)
+    .force("link", d3.forceLink(links).distance(l => l.length).strength(l => l.strength))
+    .force("charge", d3.forceManyBody().strength(n => n.charge).theta(0.9))
+    .force("centre", d3.forceCenter(0, 0, 0))
+    .force("x", d3.forceX(0).strength(m.gravity)).force("y", d3.forceY(0).strength(m.gravity));
+  if (m.dims === 3) sim.force("z", d3.forceZ(0).strength(m.gravity));
+  sim.build = m.build;
+  run();
+};
+</script>
 <script>const GRAPH = /*GRAPH*/null;</script>
 <script type="module">
 // three.js arrives as text so the page needs no server; each module imports the previous one by blob URL.
@@ -353,10 +393,33 @@ function frame(points, animate) {
   if (dir.lengthSq() === 0 || !isFinite(dir.x)) dir.set(0.35, 0.25, 1).normalize();
   flyTo(sphere.center, sphere.center.clone().addScaledVector(dir, dist), animate);
 }
-let flight = null;
+// Camera moves have a goal (target and position) that the camera follows on a critically damped
+// spring, keeping its velocity when the goal moves. A goal re-aimed every tick, as when following
+// a gathering neighbourhood, is then one smooth move rather than a run of restarted flights.
+let cameraGoal = null, lastCameraFrame = 0;
+const cameraVelocity = { target: new THREE.Vector3(), position: new THREE.Vector3() };
 function flyTo(target, position, animate) {
-  if (!animate) { controls.target.copy(target); camera.position.copy(position); controls.update(); dirty = true; return; }
-  flight = { t0: performance.now(), fromT: controls.target.clone(), fromP: camera.position.clone(), toT: target.clone(), toP: position.clone() };
+  if (!animate) {
+    cameraGoal = null; cameraVelocity.target.set(0, 0, 0); cameraVelocity.position.set(0, 0, 0);
+    controls.target.copy(target); camera.position.copy(position); controls.update(); dirty = true; return;
+  }
+  if (cameraGoal) { cameraGoal.target.copy(target); cameraGoal.position.copy(position); }
+  else cameraGoal = { target: target.clone(), position: position.clone() };
+}
+const pull = new THREE.Vector3();
+function followCamera(t) {
+  const dt = Math.min(0.05, lastCameraFrame ? (t - lastCameraFrame) / 1000 : 0); lastCameraFrame = t;
+  if (!cameraGoal || dt <= 0) return;
+  const w = CAMERA_SPRING;
+  for (const [at, key] of [[controls.target, "target"], [camera.position, "position"]]) {
+    const v = cameraVelocity[key];
+    pull.copy(cameraGoal[key]).sub(at).multiplyScalar(w * w).addScaledVector(v, -2 * w);
+    v.addScaledVector(pull, dt); at.addScaledVector(v, dt);
+  }
+  if (controls.target.distanceTo(cameraGoal.target) + camera.position.distanceTo(cameraGoal.position) < 1e-4 && cameraVelocity.position.length() < 1e-3) {
+    cameraGoal = null; cameraVelocity.target.set(0, 0, 0); cameraVelocity.position.set(0, 0, 0);
+  }
+  dirty = true;
 }
 function centreOn(i) {
   const offset = camera.position.clone().sub(controls.target);
@@ -366,8 +429,10 @@ function centreOn(i) {
 
 // ---- layout: a live force simulation
 // d3-force-3d (vendored as d3-force-3d-webgpu): link springs, an octree Barnes–Hut many-body
-// force and centring, run as WebGPU compute shaders when the browser has WebGPU and on the CPU
-// otherwise. Every visible node takes part. Pages are held by the links a reader follows; a
+// force, centring and gravity, run in a Web Worker on the CPU, which posts every tick (~45 a
+// second here) so the drawing has a steady stream to follow. Not the package's WebGPU path: its
+// positions come back by asynchronous readback, which the browser resolves only a few times a
+// second however fast the GPU steps, and that showed as motion in pulses. Every visible node takes part. Pages are held by the links a reader follows; a
 // source file hangs from its directory, and each directory from its parent, by invisible tree
 // links, so code nothing reaches still sits with its siblings; the code edge kinds that are
 // switched on (cites, calls, mentions, ...) tie files to the pages that use them. Turning a layer
@@ -381,13 +446,26 @@ const bodies = nodes.map((n, i) => ({ node: i, x: P[i].x * SCALE, y: P[i].y * SC
 const packageBodies = packages.map((p, k) => ({ pkg: k, x: p.p[0] * SCALE, y: p.p[1] * SCALE, z: p.p[2] * SCALE }));
 const GRAVITY = 0.02, FOCUS_LENGTH = 9, FOCUS_STRENGTH = 0.4, FOCUS_SLACK = 0.05;
 // Slow cooling (about 900 ticks from hot to still), more friction than d3's 0.4, and a soft spring on what is drawn.
-const ALPHA_DECAY = 1 - Math.pow(0.001, 1 / 900), VELOCITY_DECAY = 0.5, SPRING = 7;
+const ALPHA_DECAY = 1 - Math.pow(0.001, 1 / 900), VELOCITY_DECAY = 0.5, SPRING = 7, CAMERA_SPRING = 4;
 const FLAT_CHARGE = 2.5;
 const CHARGE = { page: -60, transcript: -25, reference: -60, code: -10 };
 const LINK_LENGTH = { links: 30, opens: 24, documents: 24, cites: 14, calls: 14, mentions: 18, reference: 40, usedIn: 18 };
-let sim = null, settled = false, flat = false;
+let settled = false, flat = false, build = 0, inSim = [];
+const worker = new Worker(URL.createObjectURL(new Blob(
+  [document.getElementById("force").textContent, "\n", document.getElementById("force-worker").textContent], { type: "text/javascript" })));
+worker.onmessage = ({ data: m }) => {
+  if (m.build !== build && m.type !== "advanced") return;   // from a simulation since replaced
+  if (m.type === "tick") {
+    inSim.forEach((b, k) => { b.x = m.positions[3 * k]; b.y = m.positions[3 * k + 1]; b.z = m.positions[3 * k + 2]; });
+    moved();
+  } else if (m.type === "end") {
+    settled = true; readColours(); restyle(); followFocus(true); if (!userMoved) fitVisible(true);
+  } else if (m.type === "advanced") advanced?.();
+};
+let advanced = null;
+// For tests: run n ticks at once and resolve when their positions are in.
+const advance = ticks => new Promise(resolve => { advanced = resolve; worker.postMessage({ type: "advance", ticks }); });
 function simulate(alpha = 1) {
-  if (sim) sim.destroy();
   const live = bodies.filter(b => visible(nodes[b.node]));
   const withCode = shown.code;
   const pkgs = withCode ? packageBodies : [];
@@ -419,32 +497,35 @@ function simulate(alpha = 1) {
   const degree = new Map();
   for (const l of links) for (const end of [l.source, l.target]) degree.set(end, (degree.get(end) || 0) + 1);
   settled = false;
-  sim = d3.forceSimulationGPU([...live, ...pkgs], flat ? 2 : 3)
-    .alpha(alpha).alphaDecay(ALPHA_DECAY).velocityDecay(VELOCITY_DECAY)
-    // d3's own default strength (1 / the smaller degree), except a focus spring, which wins.
-    .force("link", d3.forceLink(links).distance(l => l.length)
-      .strength(l => l.focus ? FOCUS_STRENGTH : slack(l) / Math.min(degree.get(l.source), degree.get(l.target))))
+  inSim = [...live, ...pkgs];
+  const slot = new Map(inSim.map((b, k) => [b, k]));
+  const positions = new Float32Array(inSim.length * 3), charge = new Float32Array(inSim.length);
+  inSim.forEach((b, k) => {
+    positions.set([b.x, b.y, flat ? 0 : b.z], 3 * k);
     // In the plane there is less room to get out of each other's way, so pages push harder.
-    .force("charge", d3.forceManyBody().strength(b => b.pkg != null ? -3 : (flat && nodes[b.node].kind !== "code" ? FLAT_CHARGE : 1) * (CHARGE[nodes[b.node].kind] ?? -20)).theta(0.9))
-    .force("centre", d3.forceCenter(0, 0, 0))
-    // Gravity, as in ForceAtlas2: without it a page that links nothing drifts off for ever.
-    .force("x", d3.forceX(0).strength(GRAVITY)).force("y", d3.forceY(0).strength(GRAVITY))
-    .force("z", flat ? null : d3.forceZ(0).strength(GRAVITY))
-    .on("tick", moved)
-    .on("end", () => { settled = true; readColours(); restyle(); followFocus(true); if (!userMoved) fitVisible(true); });
+    charge[k] = b.pkg != null ? -3 : (flat && nodes[b.node].kind !== "code" ? FLAT_CHARGE : 1) * (CHARGE[nodes[b.node].kind] ?? -20);
+  });
+  const ends = new Int32Array(links.length * 2), lengths = new Float32Array(links.length), strengths = new Float32Array(links.length);
+  links.forEach((l, k) => {
+    ends[2 * k] = slot.get(l.source); ends[2 * k + 1] = slot.get(l.target); lengths[k] = l.length;
+    // d3's own default strength (1 / the smaller degree), except a focus spring, which wins.
+    strengths[k] = l.focus ? FOCUS_STRENGTH : slack(l) / Math.min(degree.get(l.source), degree.get(l.target));
+  });
+  const pinned = inSim.flatMap((b, k) => b.fx != null ? [[k, b.fx, b.fy, flat ? 0 : b.fz]] : []);
+  worker.postMessage({ type: "build", build: ++build, dims: flat ? 2 : 3, alpha, alphaDecay: ALPHA_DECAY, velocityDecay: VELOCITY_DECAY,
+                       gravity: GRAVITY, positions, charge, ends, lengths, strengths, pinned },
+                     [positions.buffer, charge.buffer, ends.buffer, lengths.buffer, strengths.buffer]);
 }
 // While a neighbourhood gathers, the camera follows it, unless the reader takes the camera.
-let following = -1, ticksSinceFollow = 0;
+// Re-aimed on every tick: the camera's spring turns that into one continuous move.
+let following = -1;
 function followFocus(last) {
   if (following < 0 || following !== selected) return;
-  if (!last && ++ticksSinceFollow < 25) return;
-  ticksSinceFollow = 0;
   frame([following, ...near].filter(j => visible(nodes[j])).map(j => goal[j]), true);  // where they are going
   if (last) following = -1;
 }
-// Motion. The simulation's positions come back from the GPU in bursts (one asynchronous readback
-// at a time, landing one to three frames apart and carrying however many ticks were done), so
-// drawing them as they land, or easing toward them, moves in pulses. Instead each landing starts a
+// Motion. The worker's ticks arrive at their own pace (about 45 a second here, unevenly against
+// the display's frames), so drawing them as they land would step. Instead each landing starts a
 // straight segment from wherever the drawing is now to the new positions, paced over the usual
 // gap between landings, and the drawn position follows that segment on a critically damped
 // spring (SPRING, per second), which rounds the corners between segments. Nodes, then directories.
@@ -459,7 +540,7 @@ let segStart = 0, segLength = 50, lastLanding = 0, moving = false, lastFrame = 0
 function moved() {
   followFocus(false);
   const now = performance.now();
-  if (lastLanding) segLength = 0.8 * segLength + 0.2 * Math.min(250, Math.max(16, now - lastLanding));
+  if (lastLanding) segLength = 0.8 * segLength + 0.2 * Math.min(400, Math.max(8, now - lastLanding));
   lastLanding = now;
   const u = segmentProgress(now);
   for (let k = 0; k < count * 3; k++) segFrom[k] += (segTo[k] - segFrom[k]) * u;
@@ -490,9 +571,10 @@ function ease(t) {
   if (settled && u >= 1 && energy < 1e-3 * count) moving = false;
   place();
 }
-function layoutMoving() { return sim && !settled; }
+function layoutMoving() { return !settled; }
 let userMoved = false;
-controls.addEventListener("start", () => { userMoved = true; following = -1; });
+// The reader taking the camera cancels any move in progress.
+controls.addEventListener("start", () => { userMoved = true; following = -1; cameraGoal = null; cameraVelocity.target.set(0, 0, 0); cameraVelocity.position.set(0, 0, 0); });
 const fitVisible = animate => frame(nodes.map((n, i) => i).filter(i => visible(nodes[i])).map(i => goal[i]), animate);
 
 // ---- labels: an HTML overlay, placed most important first, skipping any that would overlap. Each
@@ -584,12 +666,7 @@ let framed = false;
 new ResizeObserver(() => { if (resize() && !framed) { frame(nodes.map((n, i) => i).filter(i => visible(nodes[i])).map(i => P[i]), false); framed = true; } }).observe(view);
 function tick(t) {
   requestAnimationFrame(tick);
-  if (flight) {
-    const f = Math.min(1, (t - flight.t0) / 450), e = f < 0.5 ? 2 * f * f : 1 - (-2 * f + 2) ** 2 / 2;
-    controls.target.lerpVectors(flight.fromT, flight.toT, e); camera.position.lerpVectors(flight.fromP, flight.toP, e);
-    if (f >= 1) flight = null;
-    dirty = true;
-  }
+  followCamera(t);
   if (controls.update()) dirty = true;
   ease(t);
   if (!dirty || !framed) return;
@@ -667,7 +744,7 @@ function select(i, centre) {
     if (centre) centreOn(i);
   }
   details(); restyle();
-  if (changed) { following = i; ticksSinceFollow = 0; userMoved = userMoved || i >= 0; simulate(i >= 0 ? 0.25 : 0.18); }
+  if (changed) { following = i; userMoved = userMoved || i >= 0; simulate(i >= 0 ? 0.25 : 0.18); }
 }
 function syncLayerBoxes() {
   const boxes = document.querySelectorAll("#layers input");
@@ -694,9 +771,17 @@ function details() {
   if (selected < 0) return;
   const n = nodes[selected];
   const h = document.createElement("h2"); h.textContent = n.kind === "page" && n.index ? "catalogue page" : n.kind; host.append(h);
-  const title = document.createElement("div"); title.style.fontWeight = "600";
-  if (n.href) { const a = document.createElement("a"); a.href = n.href; a.textContent = n.label; if (GRAPH.site) a.target = "_top"; title.append(a); } else title.textContent = n.label;
+  // The way out of the map: the title, and a button in the node's own colour that opens it.
+  const title = document.createElement("div"); title.className = "title"; title.textContent = n.label;
   host.append(title);
+  if (n.href) {
+    const a = document.createElement("a"); a.className = "open"; a.href = n.href;
+    if (GRAPH.site) a.target = "_top";
+    a.textContent = n.kind === "code" ? (n.href.includes("github.com") ? "Read the source on GitHub →" : "Open its reference →")
+                  : n.kind === "transcript" ? "Open the document →" : "Open the page →";
+    const accent = colourOf(n); if (accent !== colours.other) a.style.setProperty("--accent", accent);  // grey "other" stays light
+    host.append(a);
+  }
   const dl = document.createElement("dl");
   const row = (k, v) => { if (v == null || v === "") return; const dt = document.createElement("dt"), dd = document.createElement("dd"); dt.textContent = k; dd.textContent = v; dl.append(dt, dd); };
   row("section", n.navPath || n.system); row("words", n.words); row("fences", n.fences);
@@ -756,7 +841,7 @@ function summary() {
 summary(); legend(); restyle(); resize();
 simulate(1);
 requestAnimationFrame(tick);
-window.GRAPH_VIEW = { select, frame, camera, controls, nodes, P, get goal() { return goal; }, hit, restyle, simulate, moved, fitVisible, get sim() { return sim; }, get settled() { return settled; }, get selected() { return selected; } };
+window.GRAPH_VIEW = { select, frame, camera, controls, nodes, P, get goal() { return goal; }, hit, restyle, simulate, moved, fitVisible, advance, get settled() { return settled; }, get selected() { return selected; } };
 </script>
 </body>
 </html>

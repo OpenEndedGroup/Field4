@@ -39,8 +39,9 @@ What it writes (``build/docs_link_graph/`` by default)
   code they cite has moved on from, and pages nothing newer links to.
 * ``graph.html`` — the graph drawn in 3D, self-contained (it inlines Field's vendored three.js and
   d3-force-3d-webgpu, and opens from disk). The page lays itself out live: a force simulation
-  (link springs, octree Barnes–Hut repulsion, gravity) over every visible node, on the GPU
-  through WebGPU where the browser has it and on the CPU otherwise. Pages are held by the links
+  (link springs, octree Barnes–Hut repulsion, gravity) over every visible node, in a Web Worker
+  on the CPU, posting every tick. (Not the package's WebGPU path: its asynchronous readback lands
+  only a few times a second, which showed as motion in pulses.) Pages are held by the links
   switched on, each source file hangs from its directory and each directory from its parent,
   and the code edge kinds (cites, calls, mentions, ...) tie files to the pages that use them;
   toggling a layer or an edge kind reheats it. ``layout`` gives only the starting positions.

@@ -9,4 +9,7 @@ the UMD builds of the five d3 modules it reads from the `d3` global, each with i
 d3-dispatch 3.0.2, d3-quadtree 3.0.2, d3-timer 3.0.2 (ISC), d3-binarytree 1.0.2 and d3-octree 1.1.0
 (MIT). Load the deps first.
 
-Used by `tools/docs_link_graph.html` (the docs site's Map of the Docs), which inlines these files.
+Used by `tools/docs_link_graph.html` (the docs site's Map of the Docs), which inlines these files
+and runs the package's CPU `forceSimulation` in a Web Worker. Its WebGPU `forceSimulationGPU` steps
+in well under a millisecond here, but positions come back by `mapAsync` readback, which the browser
+resolved only a few times a second, so a layout drawn from them moved in visible pulses.
