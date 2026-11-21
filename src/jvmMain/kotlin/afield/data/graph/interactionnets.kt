@@ -933,7 +933,8 @@ class Net internal constructor(
      * pairs waiting to fire — for putting in a box output next to the drawing.
      *
      * The numbers, where [toFLines] is the picture. Nodes are listed highest-energy first and capped at
-     * [maxNodes], active pairs at six, so this stays a card rather than a dump on a large net. Ids and type names
+     * [maxNodes], active pairs at six, so this stays a card rather than a dump on a large net; `maxNodes = 0`
+     * leaves the node table out entirely. Ids and type names
      * are HTML-escaped. [Box.showInteractionSummary] is the one-liner that displays it.
      */
     fun summaryHtml(title: String = "Interaction net", maxNodes: Int = 8): String {
@@ -969,7 +970,7 @@ class Net internal constructor(
                 """.trimIndent()
             }
         }
-        val more = if (nodes.size > maxNodes) {
+        val more = if (maxNodes > 0 && nodes.size > maxNodes) {
             """<div style="margin-top:10px;color:#91a4ba;">+${nodes.size - maxNodes} more nodes not shown.</div>"""
         } else ""
 
@@ -983,7 +984,7 @@ class Net internal constructor(
                     ${interactionMetric("total energy", fmt(totalEnergy()))}
                     ${interactionMetric("mean age", fmt(averageAge()))}
                 </div>
-                ${nodeTable.toHTML()}
+                ${if (maxNodes > 0) nodeTable.toHTML() else ""}
                 $more
                 $activeHtml
             """.trimIndent()
