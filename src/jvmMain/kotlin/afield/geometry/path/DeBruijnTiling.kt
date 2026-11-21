@@ -65,15 +65,7 @@ class DeBruijnTile(
     }
 
     /** The signed area of the rhombus (positive or negative depending on its winding). */
-    fun signedArea(): Double {
-        var a = 0.0
-        for (i in 0 until 4) {
-            val p = corners[i]
-            val q = corners[(i + 1) % 4]
-            a += p.x * q.y - q.x * p.y
-        }
-        return a / 2
-    }
+    fun signedArea(): Double = signedArea2D(4, { corners[it].x }, { corners[it].y })
 }
 
 /**

@@ -536,6 +536,9 @@ nav:
   # the source it is read out of, which is why it never needed a maturity tier of its own.
   - Reference:
     - What's Already in the Box: reference/index.md
+    # Generated with the site (tools/docs_link_graph.py via build_zensical_docs.py): every page,
+    # transcript and reached source file as one 3D graph.
+    - Map of the Docs: docs_map.md
     - Codebase Reference:
       - Math: reference/math.md
       - Data: reference/data.md

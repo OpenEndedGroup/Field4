@@ -62,35 +62,35 @@ function stopNotifySpinnersForCategory(cat, exceptNode) {
         }
 }
 
+function restackNotifyBubbles() {
+        const bubbles = Array.from(document.getElementsByClassName("bubble"));
+        if (bubbles.length === 0) return;
+        let base = 10;
+        const startup = document.querySelector(".field-startup-progress:not(.field-startup-progress-done)");
+        if (startup) {
+                base += startup.getBoundingClientRect().height + 4;
+        }
+        // The document-guide launcher (documentGuide.js) is a fixed button in this same
+        // bottom-left corner; stack above it rather than hiding it.
+        const launcher = document.getElementById("document-guide-launcher");
+        if (launcher && launcher.getClientRects().length > 0) {
+                base = Math.max(base, window.innerHeight - launcher.getBoundingClientRect().top + 4);
+        }
+        // Measure every bubble before moving any of them: the toasts are position:fixed, so
+        // their heights do not depend on `bottom`, and interleaving the read with the write
+        // forces one layout per bubble.
+        const live = bubbles.filter((node) => document.body.contains(node));
+        const heights = live.map((node) => node.getBoundingClientRect().height);
+        live.forEach((node, i) => {
+                node.style.bottom = `${base}px`;
+                base += heights[i] + 4;
+        });
+}
+
 var notify = (text, cat = "") => {
         const htmlText = text
                 .replace(/<<spinner>>/g, '<span class="notify-spinner"></span>')
                 .replace(/<<timeago:(\d+)>>/g, '<span class="notify-timeago" data-time="$1"></span>');
-
-        function restackBubbles() {
-                const bubbles = Array.from(document.getElementsByClassName("bubble"));
-                if (bubbles.length === 0) return;
-                let base = 10;
-                const startup = document.querySelector(".field-startup-progress:not(.field-startup-progress-done)");
-                if (startup) {
-                        base += startup.getBoundingClientRect().height + 4;
-                }
-                // The document-guide launcher (documentGuide.js) is a fixed button in this same
-                // bottom-left corner; stack above it rather than hiding it.
-                const launcher = document.getElementById("document-guide-launcher");
-                if (launcher && launcher.getClientRects().length > 0) {
-                        base = Math.max(base, window.innerHeight - launcher.getBoundingClientRect().top + 4);
-                }
-                // Measure every bubble before moving any of them: the toasts are position:fixed, so
-                // their heights do not depend on `bottom`, and interleaving the read with the write
-                // forces one layout per bubble.
-                const live = bubbles.filter((node) => document.body.contains(node));
-                const heights = live.map((node) => node.getBoundingClientRect().height);
-                live.forEach((node, i) => {
-                        node.style.bottom = `${base}px`;
-                        base += heights[i] + 4;
-                });
-        }
 
         const bubblesForCategory = cat
                 ? Array.from(document.getElementsByClassName("bubble")).filter((bubble) => sameNotifyCategory(bubble.cat, cat))
@@ -156,14 +156,14 @@ var notify = (text, cat = "") => {
                                 clearTimeout(a.notifyStaleTimer);
                                 a.notifyExitTimer = setTimeout(function () {
                                         a.remove();
-                                        restackBubbles();
+                                        restackNotifyBubbles();
                                 }, 220);
                                 excess--;
                         }
                 }
         }
 
-        restackBubbles();
+        restackNotifyBubbles();
         if (updatingExisting) {
                 newDiv.classList.add("field-toast-visible");
         } else {

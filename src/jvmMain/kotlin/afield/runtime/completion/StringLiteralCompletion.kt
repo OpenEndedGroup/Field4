@@ -17,10 +17,14 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.reflect.KClass
 import kotlin.reflect.KFunction
 import kotlin.reflect.KParameter
+import kotlin.reflect.KProperty1
 import kotlin.reflect.full.companionObject
 import kotlin.reflect.full.createInstance
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.memberFunctions
+import kotlin.reflect.full.memberProperties
+import kotlin.reflect.full.primaryConstructor
+import kotlin.reflect.jvm.javaField
 import kotlin.reflect.jvm.kotlinFunction
 
 /**
@@ -36,7 +40,7 @@ import kotlin.reflect.jvm.kotlinFunction
  * @param chooseDirectory the argument names a directory, so files are not listed
  */
 @Retention(AnnotationRetention.RUNTIME)
-@Target(AnnotationTarget.VALUE_PARAMETER)
+@Target(AnnotationTarget.VALUE_PARAMETER, AnnotationTarget.PROPERTY)
 annotation class CompletesPath(val mask: String = "", val root: String = "", val chooseDirectory: Boolean = false)
 
 /**
@@ -54,9 +58,21 @@ annotation class CompletesPath(val mask: String = "", val root: String = "", val
  * [provider] is an `object`, or a class with a no-argument constructor. For a member function it is
  * handed the object the call is on, when that is a box variable that has already run; see
  * [StringCompletionContext.receiver].
+ *
+ * Index access completes too. In `foo.bar["pea`, an annotation on the property `bar` decides; failing
+ * that, one on the key parameter of `bar`'s `operator fun get` or `set`:
+ *
+ * ```kotlin
+ * class Shelf {
+ *     @CompletesWith(Fruit::class) val stock = mutableMapOf<String, Int>()
+ * }
+ * class PaintToolbox {
+ *     operator fun get(@CompletesWith(PaintToolNames::class) name: String): PaintTool?
+ * }
+ * ```
  */
 @Retention(AnnotationRetention.RUNTIME)
-@Target(AnnotationTarget.VALUE_PARAMETER)
+@Target(AnnotationTarget.VALUE_PARAMETER, AnnotationTarget.PROPERTY)
 annotation class CompletesWith(val provider: KClass<out StringCompletions>)
 
 /** The strings a [CompletesWith] parameter completes to. */
@@ -69,10 +85,13 @@ fun interface StringCompletions {
  * Where a [StringCompletions] is being asked: [typed] is the literal's text up to the caret, [box] the box
  * being edited, and [callable] / [parameter] the call and parameter name the literal is an argument for.
  *
- * @property receiver the live object the call is on: in `model.layer("`, the value `model` holds now, if
- * `model` is a variable of the box that has already run. Completion evaluates nothing, so it is null
- * for an expression receiver (`load("x.3dm").layer("`), a variable not yet run, a local inside a
- * function or lambda, and a call with no receiver.
+ * For index access, [callable] is `"[]"`.
+ *
+ * @property receiver the live object the call or index is on: in `model.layer("`, the value `model`
+ * holds now, if `model` is a variable of the box that has already run; in `foo.bar["`, the value of
+ * `foo`'s `bar`, read from its backing field. Completion runs no code, so it is null for an
+ * expression receiver (`load("x.3dm").layer("`), a variable not yet run, a local inside a function or
+ * lambda, a property with a custom getter or a delegate, and a call with no receiver.
  */
 class StringCompletionContext(
     val box: Box,
@@ -93,14 +112,20 @@ class StringCompletionContext(
  * `"https://…"`, `"%.2f"`) returns null and is left to Kotlin completion.
  *
  * The call is read from the text, not from a compiler: the callee is the identifier before the
- * enclosing `(`, its receiver a dotted name before that resolved as a live variable of the box, an
- * imported or indexed class, or a typed local; a callee with no receiver is looked up as a top-level
- * function through [KotlinSourceIndex] (which is how `Box.` extensions are found) or as a constructor.
- * A parameter of a function declared in box code is not seen — it is not on the classpath.
+ * enclosing `(`, its receiver a dotted name before that resolved as a live variable of the box (then
+ * property by property through backing fields), an imported or indexed class, or a typed local; a
+ * callee with no receiver is looked up as a top-level function through [KotlinSourceIndex] (which is
+ * how `Box.` extensions are found) or as a constructor. Inside `[`, the dotted name before it is the
+ * receiver and its last property's annotation, or its type's `get` / `set` operators, decide. A
+ * top-level function declared in box code is not seen (it is not on the classpath), but a member of a
+ * box-declared class is, once a box variable holds one.
  */
 object StringLiteralCompletion {
     const val PATHS = "paths"
     const val CHOICES = "choices"
+
+    /** The [CallSite.callee] of index access, `foo.bar["…"]`. */
+    const val INDEX = "[]"
     private const val LIMIT = 300
 
     /** The literal around the caret: [quote] is the opening quote, [open] where its text starts, [typed] that text up to the caret. */
@@ -114,9 +139,10 @@ object StringLiteralCompletion {
         val typed = literal.typed
         if ('$' in typed || '\\' in typed || '\n' in typed) return null
         val call = callSiteOf(code, literal.quote)
-        val annotation = call?.let { runCatching { parameterAnnotation(box, code, it) }.getOrNull() }
+        val receiver = call?.let { runCatching { receiverOf(box, code, it) }.getOrNull() }
+        val annotation = call?.let { runCatching { parameterAnnotation(box, code, it, receiver) }.getOrNull() }
         return when {
-            annotation is CompletesWith && box != null -> choices(box, annotation, call!!, literal, position)
+            annotation is CompletesWith && box != null -> choices(box, annotation, call!!, receiver?.value, literal, position)
             annotation is CompletesPath -> paths(pathSpec(box, annotation), literal, position, strict = true)
             else -> if (looksLikePath(typed)) paths(pathSpec(box, null), literal, position, strict = false) else null
         }
@@ -158,11 +184,11 @@ object StringLiteralCompletion {
         return Completion(boundsStart = literal.open, boundsEnd = position, metadata = metadata)
     }
 
-    private fun choices(box: Box, annotation: CompletesWith, call: CallSite, literal: Literal, position: Int): Completion {
+    private fun choices(box: Box, annotation: CompletesWith, call: CallSite, receiver: Any?, literal: Literal, position: Int): Completion {
         val provider = runCatching { annotation.provider.objectInstance ?: annotation.provider.createInstance() }.getOrNull()
         val candidates = provider?.let {
             runCatching {
-                it.candidates(StringCompletionContext(box, literal.typed, call.callee, call.parameterName ?: "", liveReceiver(box, call)))
+                it.candidates(StringCompletionContext(box, literal.typed, call.callee, call.parameterName ?: "", receiver))
             }.getOrNull()
         }.orEmpty()
         val typed = literal.typed
@@ -259,8 +285,13 @@ object StringLiteralCompletion {
             }
             i++
         }
-        val frame = stack.lastOrNull()?.takeIf { it.bracket == '(' } ?: return null
+        val frame = stack.lastOrNull()?.takeIf { it.bracket == '(' || it.bracket == '[' } ?: return null
         val before = code.substring(frame.argStart, quote)
+        if (frame.bracket == '[') {
+            if (before.isNotBlank()) return null
+            val chain = receiverChainBefore(code, frame.at) ?: return null
+            return CallSite(chain, INDEX, frame.at, null, frame.commas)
+        }
         val named = Regex("""^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*$""").find(before)?.groupValues?.get(1)
         if (named == null && before.isNotBlank()) return null
         var end = frame.at
@@ -282,18 +313,89 @@ object StringLiteralCompletion {
         return CallSite(receiver, callee, end, named, frame.commas)
     }
 
-    /** The value a plain-variable receiver holds in [box] right now, or null; nothing is evaluated. */
-    private fun liveReceiver(box: Box?, call: CallSite): Any? {
-        val receiver = call.receiver ?: return null
-        if (box == null || '.' in receiver) return null
-        return box.ki.context.vars[receiver]?.value
+    /**
+     * The dotted name ending right at [end] (`foo.bar` in `foo.bar[`), with `!!` and `?` dropped, or
+     * null when there is none or it ends a call or index (`f()[`, `a["x"][`), which would have to run.
+     */
+    internal fun receiverChainBefore(code: String, end: Int): String? {
+        var start = end
+        while (start > 0 && (code[start - 1].isLetterOrDigit() || code[start - 1] in "_.?!")) start--
+        if (start > 0 && (code[start - 1] == ')' || code[start - 1] == ']')) return null
+        val chain = code.substring(start, end).replace("!!", "").replace("?", "").trim('.')
+        val segments = chain.split('.')
+        if (chain.isEmpty() || segments.any { it.isEmpty() || !(it[0].isLetter() || it[0] == '_') }) return null
+        return chain
+    }
+
+    /**
+     * What a receiver resolves to: its class ([type]), its value if that could be had without running
+     * code, and, when it was reached through a property, that property and the class that declares it.
+     */
+    internal class Receiver(val type: KClass<*>?, val value: Any?, val property: KProperty1<*, *>? = null, val owner: KClass<*>? = null)
+
+    /**
+     * [call]'s receiver: a live variable of [box] followed property by property, else the longest
+     * leading part that names a class followed by property types, else (for a call) the compiler's
+     * type at the callee. Null for no receiver, or none of those.
+     */
+    internal fun receiverOf(box: Box?, code: String, call: CallSite): Receiver? {
+        val text = call.receiver ?: return null
+        val segments = text.split('.')
+        val live = box?.let { runCatching { it.ki.context.vars[segments[0]] }.getOrNull() }
+        if (live != null) {
+            val value = live.value
+            val type = value?.let { it::class } ?: (runCatching { live.descriptor.returnType.classifier }.getOrNull() as? KClass<*>)
+            return follow(Receiver(type, value), segments.drop(1))
+        }
+        for (k in segments.size downTo 1) {
+            val type = resolveClass(code, segments.take(k).joinToString(".")) ?: continue
+            return follow(Receiver(type, null), segments.drop(k))
+        }
+        if (call.callee == INDEX) return null
+        return KotlinCompletionSupport.receiverQualifiedNameAtCompletion(box, code, call.calleeEnd)?.let(::classForName)?.let { Receiver(it, null) }
+    }
+
+    /** [start] followed through the properties [names], each value read from its backing field so that no getter runs. */
+    private fun follow(start: Receiver, names: List<String>): Receiver? {
+        var at = start
+        for (name in names) {
+            val owner = at.type ?: return null
+            val property = runCatching { owner.memberProperties.firstOrNull { it.name == name } }.getOrNull() ?: return null
+            val type = property.returnType.classifier as? KClass<*>
+            val value = at.value?.let { backingFieldValue(property, it, type) }
+            at = Receiver(value?.let { it::class } ?: type, value, property, owner)
+        }
+        return at
+    }
+
+    /** [property]'s backing field on [target], or null for a computed property, a delegate, or a field that will not open. */
+    private fun backingFieldValue(property: KProperty1<*, *>, target: Any, type: KClass<*>?): Any? {
+        val field = runCatching { property.javaField }.getOrNull() ?: return null
+        if (Modifier.isStatic(field.modifiers)) return null
+        val value = runCatching { if (field.trySetAccessible()) field.get(target) else null }.getOrNull() ?: return null
+        return value.takeIf { type == null || type.isInstance(it) }
     }
 
     private val functionCache = ConcurrentHashMap<String, List<KFunction<*>>>()
 
-    /** The [CompletesPath] or [CompletesWith] on the parameter [call]'s literal binds to, in any overload; null for none. */
-    internal fun parameterAnnotation(box: Box?, code: String, call: CallSite): Annotation? =
-        annotationIn(candidateFunctions(box, code, call), call)
+    /**
+     * The [CompletesPath] or [CompletesWith] on the parameter [call]'s literal binds to, in any overload;
+     * for index access the indexed property's own annotation comes first. Null for none.
+     */
+    internal fun parameterAnnotation(box: Box?, code: String, call: CallSite, receiver: Receiver? = receiverOf(box, code, call)): Annotation? {
+        if (call.callee == INDEX) propertyAnnotation(receiver)?.let { return it }
+        return annotationIn(candidateFunctions(box, code, call, receiver), call)
+    }
+
+    /** An annotation on the property [receiver] was read through, or on the constructor parameter that declares it. */
+    private fun propertyAnnotation(receiver: Receiver?): Annotation? {
+        val property = receiver?.property ?: return null
+        property.findAnnotation<CompletesWith>()?.let { return it }
+        property.findAnnotation<CompletesPath>()?.let { return it }
+        val parameter = runCatching { receiver.owner?.primaryConstructor?.parameters?.firstOrNull { it.name == property.name } }.getOrNull()
+            ?: return null
+        return parameter.findAnnotation<CompletesWith>() ?: parameter.findAnnotation<CompletesPath>()
+    }
 
     internal fun annotationIn(functions: Sequence<KFunction<*>>, call: CallSite): Annotation? {
         for (function in functions) {
@@ -307,16 +409,21 @@ object StringLiteralCompletion {
         return null
     }
 
-    /** Members of the receiver's class (or constructors) first; top-level functions, which cost an index read, only if those say nothing. */
-    private fun candidateFunctions(box: Box?, code: String, call: CallSite): Sequence<KFunction<*>> {
-        val receiver = call.receiver
-        if (receiver != null) {
-            val live = liveReceiver(box, call)
-            val receiverClass: KClass<*>? = live?.let { it::class }
-                ?: resolveClass(code, receiver)
-                ?: KotlinCompletionSupport.receiverQualifiedNameAtCompletion(box, code, call.calleeEnd)?.let(::classForName)
+    /**
+     * Members of the receiver's class (or constructors) first; top-level functions, which cost an index
+     * read, only if those say nothing. Index access looks only at the receiver's `get` / `set` operators.
+     */
+    private fun candidateFunctions(box: Box?, code: String, call: CallSite, receiver: Receiver?): Sequence<KFunction<*>> {
+        if (call.callee == INDEX) {
+            val k = receiver?.type ?: return emptySequence()
+            return functionCache.getOrPut("index:${k.java.name}") {
+                runCatching { k.memberFunctions.filter { it.isOperator && (it.name == "get" || it.name == "set") } }.getOrDefault(emptyList())
+            }.asSequence()
+        }
+        if (call.receiver != null) {
+            val receiverClass: KClass<*>? = receiver?.type
             val members = receiverClass?.let { k ->
-                functionCache.getOrPut("member:${k.qualifiedName}#${call.callee}") {
+                functionCache.getOrPut("member:${k.java.name}#${call.callee}") {
                     runCatching {
                         (k.memberFunctions + (k.companionObject?.memberFunctions ?: emptyList())).filter { it.name == call.callee }
                     }.getOrDefault(emptyList())
@@ -364,11 +471,20 @@ object StringLiteralCompletion {
         if ('.' in name) {
             classForName(name)?.let { return it }
             val head = name.substringBefore('.')
-            val imported = importedName(code, head) ?: findClassesNamed(head)?.singleOrNull() ?: return null
+            val imported = importedName(code, head) ?: uniqueClassNamed(head) ?: return null
             return classForName(imported + "." + name.substringAfter('.'))
         }
-        val qualified = importedName(code, name) ?: findClassesNamed(name)?.singleOrNull() ?: return null
+        val qualified = importedName(code, name) ?: uniqueClassNamed(name) ?: return null
         return classForName(qualified)
+    }
+
+    /**
+     * The one class called [simple]; between homonyms, the one in Field. `FileManager` is also two shaded
+     * IntelliJ classes inside the bundled compiler, which box code never means.
+     */
+    private fun uniqueClassNamed(simple: String): String? {
+        val candidates = findClassesNamed(simple) ?: return null
+        return candidates.singleOrNull() ?: candidates.filter { it.startsWith("afield.") }.singleOrNull()
     }
 
     private fun importedName(code: String, simple: String): String? =

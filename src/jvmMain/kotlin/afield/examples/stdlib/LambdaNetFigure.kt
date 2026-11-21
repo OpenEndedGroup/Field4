@@ -63,7 +63,8 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * Writes the figure for `dev_docs/INTERACTION_NETS_LAMBDA.md`: one reduction, one panel per step, left to right.
+ * Writes the figure for `dev_docs/INTERACTION_NETS_LAMBDA.md`: one reduction, one panel per step, read left to right
+ * and then down, [COLUMNS] panels to a row.
  *
  * `(λx. x x) (λy. y)` is the term, because it is the smallest one that shows the whole story — a β against the
  * abstraction, a fan built by [LambdaTerms.compile] for the variable used twice, `dup-lam` duplicating an abstraction
@@ -88,6 +89,7 @@ object LambdaNetFigure {
     private const val PANEL_HEIGHT = 300.0
     private const val GUTTER = 14.0
     private const val PADDING = 26.0
+    private const val COLUMNS = 4
 
     @JvmStatic
     fun main(args: Array<String>) {
@@ -121,21 +123,25 @@ object LambdaNetFigure {
         val panelLines = ArrayList<FLine>()
         for ((index, stage) in stages.withIndex()) {
             val net = replay(index)
-            val x0 = index * (PANEL_WIDTH + GUTTER)
-            panelLines += frame(x0)
-            panelLines += fit(net, x0)
+            val x0 = (index % COLUMNS) * (PANEL_WIDTH + GUTTER)
+            val y0 = (index / COLUMNS) * (PANEL_HEIGHT + GUTTER)
+            panelLines += frame(x0, y0)
+            panelLines += fit(net, x0, y0)
             check(stage.second.isNotEmpty()) { "empty stage description" }
         }
 
-        val width = stages.size * PANEL_WIDTH + (stages.size - 1) * GUTTER
+        val columns = min(stages.size, COLUMNS)
+        val rows = (stages.size + COLUMNS - 1) / COLUMNS
+        val width = columns * PANEL_WIDTH + (columns - 1) * GUTTER
+        val height = rows * PANEL_HEIGHT + (rows - 1) * GUTTER
 
         // NO BACKGROUND PLATE. This used to prepend an opaque white rectangle over the whole figure,
         // and it was the only one of the 30 committed SVGs under public/docs to paint a background at
         // all -- so on the dark documentation site it showed up as a white slab with the page dark
         // around it. Every sibling figure is transparent and inherits the page, and now so is this.
-        // The strokes and discs are pale (#BDEBEE, #C7C5E4, #FFF5E6 and friends), which is why they
-        // read fine either way; the plate was never doing any work.
-        val svg = drawToSVG(panelLines, width, PANEL_HEIGHT)
+        // The net's colours are a navy-to-yellow scale with translucent discs (Net.toFLines), drawn
+        // for the dark page; the plate was never doing any work.
+        val svg = drawToSVG(panelLines, width, height)
         File(target).writeText(svg)
 
         println("term        : $TERM")
@@ -144,7 +150,7 @@ object LambdaNetFigure {
         println("readback    : ${LambdaTerms.format(readback)}")
         println("oracle      : ${LambdaTerms.format(oracle)}")
         println("agree       : ${LambdaTerms.alphaEquivalent(readback, oracle)}")
-        println("wrote       : $target (${File(target).length()} bytes, ${width.toInt()}x${PANEL_HEIGHT.toInt()})")
+        println("wrote       : $target (${File(target).length()} bytes, ${width.toInt()}x${height.toInt()})")
         check(LambdaTerms.alphaEquivalent(readback, oracle)) { "Figure term did not reduce correctly" }
     }
 
@@ -166,28 +172,28 @@ object LambdaNetFigure {
     }
 
     /** A hairline box around a panel, so the reader can see where one net stops and the next begins. */
-    private fun frame(x0: Double): List<FLine> = listOf(
+    private fun frame(x0: Double, y0: Double): List<FLine> = listOf(
         fline {
-            moveTo(x0 + 2.0, 2.0)
-            lineTo(x0 + PANEL_WIDTH - 2.0, 2.0)
-            lineTo(x0 + PANEL_WIDTH - 2.0, PANEL_HEIGHT - 2.0)
-            lineTo(x0 + 2.0, PANEL_HEIGHT - 2.0)
+            moveTo(x0 + 2.0, y0 + 2.0)
+            lineTo(x0 + PANEL_WIDTH - 2.0, y0 + 2.0)
+            lineTo(x0 + PANEL_WIDTH - 2.0, y0 + PANEL_HEIGHT - 2.0)
+            lineTo(x0 + 2.0, y0 + PANEL_HEIGHT - 2.0)
             close()
             filled = false
             stroked = true
             thickness = 1.0
-            color = vec(0.78, 0.80, 0.84, 1.0)
+            color = vec(0.78, 0.80, 0.84, 0.35)
         }
     )
 
     /**
-     * The net's lines, scaled and centred into the panel at [x0].
+     * The net's lines, scaled and centred into the panel whose top-left corner is at [x0], [y0].
      *
      * Fitted per panel rather than once for the whole figure: the nets differ in extent by several times over a
      * reduction, and a single scale makes the last panels a dot. The cost is that panel scales are not comparable,
      * which the KDoc above says out loud.
      */
-    private fun fit(net: Net, x0: Double): List<FLine> {
+    private fun fit(net: Net, x0: Double, y0: Double): List<FLine> {
         val lines = net.toFLines()
         if (lines.isEmpty() || net.nodes.isEmpty()) return emptyList()
         val points = net.nodes.map { net.positionOf(it) }
@@ -201,7 +207,7 @@ object LambdaNetFigure {
             (PANEL_HEIGHT - 2 * PADDING) / max(1.0, maxY - minY)
         )
         val offsetX = x0 + PANEL_WIDTH / 2.0 - (minX + maxX) / 2.0 * scale
-        val offsetY = PANEL_HEIGHT / 2.0 - (minY + maxY) / 2.0 * scale
+        val offsetY = y0 + PANEL_HEIGHT / 2.0 - (minY + maxY) / 2.0 * scale
         return lines.map { line ->
             line.transform { p -> vec(p.x * scale + offsetX, p.y * scale + offsetY, p.z.toDouble()) }
         }

@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "WorktreeCreate": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/tools/worktree_seed.py\" claude-worktree-create",
+            "timeout": 600
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -333,4 +333,75 @@ class FLineMeasureTest {
         val e = pointBounds2D(emptyList())
         assertEquals(0.0, e.w, 0.0); assertEquals(0.0, e.x, 0.0)
     }
+
+    /**
+     * The flat-array and accessor forms of [signedArea2D] agree bit for bit with the [Vec2] form, and
+     * with the hand-written shoelace loops they replaced (SolidSL, Fusing, RectSL, B-rep, de Bruijn).
+     */
+    @Test
+    fun signedArea2DOverloadsAgree() {
+        val rnd = Random(7)
+        repeat(50) {
+            val pts = List(3 + rnd.nextInt(9)) { Vec2(rnd.nextFloat() * 10 - 5, rnd.nextFloat() * 10 - 5) }
+            val xy = DoubleArray(pts.size * 2) { if (it % 2 == 0) pts[it / 2].x.toDouble() else pts[it / 2].y.toDouble() }
+            var legacy = 0.0
+            for (i in pts.indices) {
+                val a = pts[i]; val b = pts[(i + 1) % pts.size]
+                legacy += a.x.toDouble() * b.y - b.x.toDouble() * a.y
+            }
+            legacy /= 2.0
+            assertEquals(legacy, signedArea2D(pts), 0.0)
+            assertEquals(legacy, signedArea2D(xy), 0.0)
+            assertEquals(legacy, signedArea2D(xy + 99.0), 0.0, "a trailing odd value is ignored")
+            assertEquals(legacy, signedArea2D(pts.size, { xy[2 * it] }, { xy[2 * it + 1] }), 0.0)
+        }
+        assertEquals(0.0, signedArea2D(DoubleArray(0)), 0.0)
+        assertEquals(0.0, signedArea2D(doubleArrayOf(1.0, 2.0)), 0.0)
+    }
+
+    /** Even-odd ring containment: orientation-blind, holes by nesting, and the half-open edge rule. */
+    @Test
+    fun pointInRing2DKernel() {
+        val square = listOf(Vec2(0f, 0f), Vec2(4f, 0f), Vec2(4f, 4f), Vec2(0f, 4f))
+        assertTrue(pointInRing2D(square, 2.0, 2.0))
+        assertTrue(pointInRing2D(square.reversed(), 2.0, 2.0))
+        assertFalse(pointInRing2D(square, 5.0, 2.0))
+        assertFalse(pointInRing2D(square, 2.0, -0.5))
+        // half-open: the bottom edge (y = 0) is inside, the top edge (y = 4) is not
+        assertTrue(pointInRing2D(square, 2.0, 0.0))
+        assertFalse(pointInRing2D(square, 2.0, 4.0))
+        val xy = doubleArrayOf(0.0, 0.0, 4.0, 0.0, 4.0, 4.0, 0.0, 4.0)
+        val xs = doubleArrayOf(0.0, 4.0, 4.0, 0.0); val ys = doubleArrayOf(0.0, 0.0, 4.0, 4.0)
+        val rnd = Random(3)
+        repeat(200) {
+            val px = rnd.nextDouble() * 6 - 1; val py = rnd.nextDouble() * 6 - 1
+            val expected = pointInRing2D(square, px, py)
+            assertEquals(expected, pointInRing2D(xy, px, py))
+            assertEquals(expected, pointInRing2D(4, { xs[it] }, { ys[it] }, px, py))
+        }
+        assertFalse(pointInRing2D(emptyList(), 0.0, 0.0))
+        // a concave L: the notch is outside
+        val l = listOf(Vec2(0f, 0f), Vec2(3f, 0f), Vec2(3f, 1f), Vec2(1f, 1f), Vec2(1f, 3f), Vec2(0f, 3f))
+        assertTrue(pointInRing2D(l, 0.5, 2.5))
+        assertFalse(pointInRing2D(l, 2.0, 2.0))
+    }
+
+    /**
+     * The callers that now delegate to the kernel keep their own conventions: RectSL's area is
+     * unsigned and 0 below three points, SolidSL's `counterClockwise` reverses clockwise input,
+     * Eigendrum's split-array containment, and the de Bruijn rhombus area keeps its sign.
+     */
+    @Test
+    fun delegatingCallersKeepTheirConventions() {
+        val cw = doubleArrayOf(0.0, 0.0, 0.0, 3.0, 2.0, 3.0, 2.0, 0.0)
+        assertEquals(6.0, afield.lang.rectsl.polygonArea(cw), 0.0)
+        assertEquals(0.0, afield.lang.rectsl.polygonArea(doubleArrayOf(0.0, 0.0, 5.0, 5.0)), 0.0)
+        val p2 = listOf(afield.lang.solidsl.P2(0.0, 0.0), afield.lang.solidsl.P2(0.0, 3.0), afield.lang.solidsl.P2(2.0, 3.0))
+        assertEquals(-3.0, afield.lang.solidsl.signedArea(p2), 0.0)
+        assertEquals(p2.reversed(), afield.lang.solidsl.counterClockwise(p2))
+        assertTrue(afield.audio.modal.insidePolygon(doubleArrayOf(0.0, 2.0, 2.0, 0.0), doubleArrayOf(0.0, 0.0, 2.0, 2.0), 1.0, 1.0))
+        assertFalse(afield.audio.modal.insidePolygon(doubleArrayOf(0.0, 2.0, 2.0, 0.0), doubleArrayOf(0.0, 0.0, 2.0, 2.0), 3.0, 1.0))
+        val tri = FLine().moveTo(0.0, 0.0).lineTo(4.0, 0.0).lineTo(0.0, 2.0).close()
+        assertEquals(4.0, afield.simulation.agents.flineSignedArea(listOf(tri)), 1e-6)
+    }
 }

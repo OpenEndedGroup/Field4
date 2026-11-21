@@ -686,14 +686,63 @@ fun segmentsTouch2D(
  * positive counter-clockwise, negative clockwise. The closing edge back to the first point is implied.
  * For an [FLine] with curves use [area2D].
  */
-fun signedArea2D(points: List<Vec2>): Double {
+fun signedArea2D(points: List<Vec2>): Double =
+    signedArea2D(points.size, { points[it].x.toDouble() }, { points[it].y.toDouble() })
+
+/**
+ * [signedArea2D] of a flat ring `x0, y0, x1, y1, ...`, the layout earcut, RectSL and the B-rep
+ * tessellator keep their loops in. A trailing odd value is ignored.
+ */
+fun signedArea2D(xy: DoubleArray): Double = signedArea2D(xy.size / 2, { xy[2 * it] }, { xy[2 * it + 1] })
+
+/**
+ * [signedArea2D] of the [count] vertices whose coordinates [x] and [y] read by index, for point
+ * types other than [Vec2] (a `Vector2d`, a `Pair`, a solver's own record) without copying them.
+ * Positive counter-clockwise; the closing edge from the last vertex to the first is implied.
+ *
+ * ```kotlin
+ * val area = signedArea2D(corners.size, { corners[it].x }, { corners[it].y })
+ * ```
+ */
+inline fun signedArea2D(count: Int, x: (Int) -> Double, y: (Int) -> Double): Double {
     var twice = 0.0
-    for (i in points.indices) {
-        val a = points[i]
-        val b = points[(i + 1) % points.size]
-        twice += a.x.toDouble() * b.y.toDouble() - b.x.toDouble() * a.y.toDouble()
+    for (i in 0 until count) {
+        val j = if (i + 1 == count) 0 else i + 1
+        twice += x(i) * y(j) - x(j) * y(i)
     }
     return twice / 2.0
+}
+
+/**
+ * Whether (`px`, `py`) lies inside the closed polygon through [points] by the even-odd rule, with
+ * a rightward ray and half-open edges (an edge counts when exactly one end is strictly above `py`),
+ * so a point on a horizontal edge or exactly on the boundary may land either side. Orientation
+ * does not matter. For an [FLine] with curves or several contours use [contains2D].
+ */
+fun pointInRing2D(points: List<Vec2>, px: Double, py: Double): Boolean =
+    pointInRing2D(points.size, { points[it].x.toDouble() }, { points[it].y.toDouble() }, px, py)
+
+/** [pointInRing2D] for a flat ring `x0, y0, x1, y1, ...`; a trailing odd value is ignored. */
+fun pointInRing2D(xy: DoubleArray, px: Double, py: Double): Boolean =
+    pointInRing2D(xy.size / 2, { xy[2 * it] }, { xy[2 * it + 1] }, px, py)
+
+/**
+ * [pointInRing2D] over the [count] vertices whose coordinates [x] and [y] read by index, for
+ * point types other than [Vec2] or coordinates kept in separate arrays.
+ *
+ * ```kotlin
+ * val inside = pointInRing2D(xs.size, { xs[it] }, { ys[it] }, 0.5, 0.5)
+ * ```
+ */
+inline fun pointInRing2D(count: Int, x: (Int) -> Double, y: (Int) -> Double, px: Double, py: Double): Boolean {
+    var inside = false
+    var j = count - 1
+    for (i in 0 until count) {
+        val xi = x(i); val yi = y(i); val xj = x(j); val yj = y(j)
+        if ((yi > py) != (yj > py) && px < (xj - xi) * (py - yi) / (yj - yi) + xi) inside = !inside
+        j = i
+    }
+    return inside
 }
 
 /**

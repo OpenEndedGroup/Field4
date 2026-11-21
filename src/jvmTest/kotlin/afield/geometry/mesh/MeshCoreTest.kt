@@ -1,5 +1,6 @@
 package afield.geometry.mesh
 
+import afield.geometry.path.signedArea2D
 import afield.animation.keyframes.h
 import afield.data.collections.get
 import afield.data.collections.invoke
@@ -212,7 +213,7 @@ class MeshCoreTest {
         )
         val poly = polygonMesh(ring)
         assertEquals(1, poly.topology().eulerCharacteristic)
-        assertEquals(abs(polygonSignedArea(ring)), poly.surfaceArea(), 1e-5, "an L should tile to its own area")
+        assertEquals(abs(signedArea2D(ring)), poly.surfaceArea(), 1e-5, "an L should tile to its own area")
     }
 
     @Test
@@ -582,7 +583,7 @@ class MeshCoreTest {
             val r = if (i % 2 == 0) 1.0 else 0.45
             Vec2((r * kotlin.math.cos(a)).toFloat(), (r * kotlin.math.sin(a)).toFloat())
         }
-        val expectedArea = abs(polygonSignedArea(star))
+        val expectedArea = abs(signedArea2D(star))
         for (input in listOf(star, star.reversed())) {
             val tri = triangulatePolygon(input)
             assertEquals((input.size - 2) * 3, tri.size, "n-gon must give n-2 triangles")

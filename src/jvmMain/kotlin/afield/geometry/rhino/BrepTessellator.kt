@@ -1,5 +1,7 @@
 package afield.geometry.rhino
 
+import afield.geometry.path.pointInRing2D
+import afield.geometry.path.signedArea2D
 import afield.geometry.mesh.TriMesh
 import afield.geometry.path.FloatEarcut
 import java.awt.geom.Area
@@ -565,33 +567,14 @@ class BrepTessellator(val tolerance: Double? = null) {
         if (current.size >= 6) all.add(current.toDoubleArray())
         if (all.isEmpty()) return emptyList()
         // Area winds outer rings one way and holes the other; the largest ring is an outer one.
-        val signed = all.map { signedArea(it) }
+        val signed = all.map { signedArea2D(it) }
         val outerSign = Math.signum(signed[signed.indices.maxBy { abs(signed[it]) }])
         val outers = all.indices.filter { Math.signum(signed[it]) == outerSign }
         val holes = all.indices.filter { Math.signum(signed[it]) != outerSign && signed[it] != 0.0 }
         return outers.map { o ->
             val ring = all[o]
-            ring to holes.filter { h -> contains(ring, all[h][0], all[h][1]) }.map { all[it] }
+            ring to holes.filter { h -> pointInRing2D(ring, all[h][0], all[h][1]) }.map { all[it] }
         }
-    }
-
-    private fun signedArea(r: DoubleArray): Double {
-        var a = 0.0
-        val n = r.size / 2
-        for (k in 0 until n) { val l = (k + 1) % n; a += r[2 * k] * r[2 * l + 1] - r[2 * l] * r[2 * k + 1] }
-        return a / 2
-    }
-
-    private fun contains(r: DoubleArray, x: Double, y: Double): Boolean {
-        var inside = false
-        val n = r.size / 2
-        var j = n - 1
-        for (i in 0 until n) {
-            val xi = r[2 * i]; val yi = r[2 * i + 1]; val xj = r[2 * j]; val yj = r[2 * j + 1]
-            if ((yi > y) != (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside
-            j = i
-        }
-        return inside
     }
 
     /**

@@ -939,6 +939,12 @@ fun serviceEvents() {
     }
 }
 
+private fun refreshDocumentGuideLauncherFor(property: String) {
+    if (property != "notes") return
+    val refresh = window.asDynamic().refreshDocumentGuideLauncher
+    if (refresh != null) refresh()
+}
+
 private fun refreshTextFrameStyleInheritance() {
     val refresh = window.asDynamic().refreshTextFrameStyleInheritance
     if (refresh != null) refresh()
@@ -6732,6 +6738,7 @@ suspend fun main() {
             element.classList.remove("needs-rerun")
             element.title = ""
         }
+        refreshDocumentGuideLauncherFor(set.property)
         if (set.property in monacoRemoteTextProperties) {
             notifyEmbeddedEditorOfRemoteUpdate(u, set.property, "")
             notifyPotentialEditedPropertyHasBeenRemoteUpdated(u, set.property, "")
@@ -7035,6 +7042,7 @@ suspend fun main() {
             val sync = window.asDynamic().syncTextFrame
             if (sync != null) sync(found, set.property)
         }
+        refreshDocumentGuideLauncherFor(set.property)
         if (set.property in monacoRemoteTextProperties) {
             notifyPotentialEditedPropertyHasBeenRemoteUpdated(u, set.property, set.value)
         }

@@ -30,6 +30,9 @@ class GeziraTest {
 
     private fun touched(c: DoubleArray) = c.count { it > 0.0 }
 
+    /** Gezira's own five stages, which this file measures; `GeziraWindingTest` measures [Gezira.rasterizer]. */
+    private fun edgeSamples(b: List<Bezier>, w: Int, h: Int) = Gezira.coverage(Gezira.edgeSampleRasterizer(b), w, h)
+
     @Test
     fun aKernelCanPushBackOntoItsOwnQueue() {
         // Halve every number above 1 by pushing both halves back: 8 becomes eight 1s.
@@ -63,7 +66,7 @@ class GeziraTest {
             } else {
                 DoubleArray(6) { k -> if (k % 2 == 0) rng.nextDouble(-4.0, w + 4.0) else rng.nextDouble(-4.0, h + 4.0) }
             }
-            val got = Gezira.rasterize(polygonBeziers(poly), w, h)
+            val got = edgeSamples(polygonBeziers(poly), w, h)
             val want = Gezira.exactPolygonCoverage(poly, w, h)
             val (wst, mean) = Gezira.error(got, want)
             val n = maxOf(touched(got), touched(want))
@@ -102,7 +105,7 @@ class GeziraTest {
         var worst = 0.0
         var pixels = 0
         for (s in shapes) {
-            val got = Gezira.rasterize(s, w, h)
+            val got = edgeSamples(s, w, h)
             val want = Gezira.exactPolygonCoverage(flatten(s, 2048), w, h)
             worst = maxOf(worst, Gezira.error(got, want).first)
             pixels += touched(got)
