@@ -3,6 +3,9 @@ package afield.examples.stdlib
 import afield.app.protocol.Rect
 import afield.audio.engine.WavFloatArrayWriter
 import afield.audio.synth.FaustPatternRender
+import afield.data.graph.INTERACTION_STAGE_MARGIN
+import afield.data.graph.Lambda
+import afield.data.graph.net
 import afield.data.graph.stage
 import afield.data.graph.showInteractionStages
 import afield.document.graph.Box
@@ -86,5 +89,41 @@ class BoxCodeHelpersTest {
         assertTrue("before summary" in html && "after summary" in html)
         assertFalse("linear-gradient" in html)
         assertFailsWith<IllegalArgumentException> { box.showInteractionStages() }
+    }
+
+    /** Every node table a summary card emits has at least one row; a "+N more" note never stands alone. */
+    @Test fun interactionSummaryCardsNeverEmitAZeroRowTable() {
+        val populated = net {
+            node(Lambda.ROOT, id = "r1"); node(Lambda.ROOT, id = "r2"); node(Lambda.DUP, id = "d")
+            node(Lambda.ROOT, id = "r3"); node(Lambda.ROOT, id = "r4")
+        }
+        for (subject in listOf(populated, net { })) {
+            for (maxNodes in listOf(-1, 0, 1, 3, 100)) {
+                val html = subject.summaryHtml("card", maxNodes = maxNodes)
+                val tables = Regex("<table[\\s\\S]*?</table>").findAll(html).map { it.value }.toList()
+                tables.forEach { assertTrue("<td" in it, "zero-row table at maxNodes=$maxNodes: $it") }
+                if ("more nodes not shown" in html) assertTrue(tables.isNotEmpty())
+                if (subject.nodes.isEmpty() || maxNodes <= 0) assertTrue(tables.isEmpty())
+            }
+        }
+    }
+
+    /** The stage SVG is exactly the frames plus a thin margin, so no stage is zero-height and no empty band shows. */
+    @Test fun interactionStagesSvgHasNoEmptyBand() {
+        val box = Box("helper-stages-band")
+        box.output.displayProxy = { _, _ -> }
+        val drawing = listOf(FLine().rect(0, 0, 10, 10))
+        for (count in 1..3) {
+            val html = box.showInteractionStages(
+                *Array(count) { stage("s$it", drawing, "<p>card $it</p>") },
+                stageWidth = 200.0, stageHeight = 120.0, gap = 40.0, padding = 10.0,
+            )
+            val svg = Regex("<svg[^>]*>").find(html)!!.value
+            fun attr(name: String) = Regex("\\b$name=\"([0-9.]+)").find(svg)!!.groupValues[1].toDouble()
+            val m = INTERACTION_STAGE_MARGIN
+            assertEquals(120.0 + 2 * m, attr("height"), 0.5)
+            assertEquals(2 * m + count * 200.0 + (count - 1) * 40.0, attr("width"), 0.5)
+            assertTrue(attr("height") > 0)
+        }
     }
 }

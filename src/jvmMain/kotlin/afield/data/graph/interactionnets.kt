@@ -945,7 +945,7 @@ class Net internal constructor(
             .rows(
                 nodes
                     .sortedWith(compareByDescending<Node> { it.state.energy }.thenBy { it.id })
-                    .take(maxNodes)
+                    .take(maxNodes.coerceAtLeast(0))
                     .map { node -> listOf(node.id, node.type.name, node.state.energy, node.state.age) }
             )
             .role("type", CellRole.MUTED)
@@ -984,7 +984,7 @@ class Net internal constructor(
                     ${interactionMetric("total energy", fmt(totalEnergy()))}
                     ${interactionMetric("mean age", fmt(averageAge()))}
                 </div>
-                ${if (maxNodes > 0) nodeTable.toHTML() else ""}
+                ${if (maxNodes > 0 && nodes.isNotEmpty()) nodeTable.toHTML() else ""}
                 $more
                 $activeHtml
             """.trimIndent()
@@ -2509,7 +2509,10 @@ fun Box.showInteractionStages(
     }
     require(gap.isFinite() && gap >= 0 && padding.isFinite() && padding >= 0 &&
         padding * 2 < minOf(stageWidth, stageHeight)) { "invalid stage gap or padding" }
-    val frames = stages.indices.map { i -> Rect(52.0 + i * (stageWidth + gap), 54.0, stageWidth, stageHeight) }
+    // The SVG is exactly the frames plus a thin margin: a larger fixed inset showed as an empty band
+    // above and below the drawings once the figure was scaled to the column width.
+    val margin = INTERACTION_STAGE_MARGIN
+    val frames = stages.indices.map { i -> Rect(margin + i * (stageWidth + gap), margin, stageWidth, stageHeight) }
     val lines = mutableListOf<FLine>()
     stages.forEachIndexed { i, stage ->
         val frame = frames[i]
@@ -2527,10 +2530,13 @@ fun Box.showInteractionStages(
         cards = stages.map { it.summary } + cards,
         channel = channel,
         graphicTitle = graphicTitle,
-        graphicWidth = 104.0 + stages.size * stageWidth + (stages.size - 1) * gap,
-        graphicHeight = stageHeight + 108.0,
+        graphicWidth = 2 * margin + stages.size * stageWidth + (stages.size - 1) * gap,
+        graphicHeight = 2 * margin + stageHeight,
     )
 }
+
+/** Space around the stage frames in [Box.showInteractionStages]; enough for the frames' anti-aliased edges. */
+internal const val INTERACTION_STAGE_MARGIN = 4.0
 
 private fun interactionOverviewHtml(
     cards: List<String>,
