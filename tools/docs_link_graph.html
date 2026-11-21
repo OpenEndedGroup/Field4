@@ -285,7 +285,7 @@ function frame(points, animate) {
   const centre = pts.reduce((c, p) => c.add(p), new THREE.Vector3()).divideScalar(pts.length);
   const reach = pts.map(p => p.distanceTo(centre)).sort((a, b) => a - b);
   const sphere = new THREE.Sphere(centre, reach[pts.length < 20 ? pts.length - 1 : Math.floor(0.95 * (pts.length - 1))]);
-  const dist = Math.max(0.8, sphere.radius) / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * 0.9;
+  const dist = Math.max(0.8, sphere.radius) / Math.tan(THREE.MathUtils.degToRad(Math.min(camera.fov, camera.fov * camera.aspect) / 2)) * 1.15;
   const dir = camera.position.clone().sub(controls.target).normalize();
   if (dir.lengthSq() === 0 || !isFinite(dir.x)) dir.set(0.35, 0.25, 1).normalize();
   flyTo(sphere.center, sphere.center.clone().addScaledVector(dir, dist), animate);
@@ -316,7 +316,7 @@ const packageOfNode = n => { const path = n.id.slice("code:".length); return pac
 const parentPackage = id => { const up = id.slice(0, id.lastIndexOf("/")); return packageIndex.has(up) ? packageIndex.get(up) : null; };
 const bodies = nodes.map((n, i) => ({ node: i, x: P[i].x * SCALE, y: P[i].y * SCALE, z: P[i].z * SCALE }));
 const packageBodies = packages.map((p, k) => ({ pkg: k, x: p.p[0] * SCALE, y: p.p[1] * SCALE, z: p.p[2] * SCALE }));
-const GRAVITY = 0.02;
+const GRAVITY = 0.02, FOCUS_LENGTH = 9, FOCUS_STRENGTH = 0.8, FOCUS_SLACK = 0.05;
 const CHARGE = { page: -60, transcript: -25, reference: -60, code: -10 };
 const LINK_LENGTH = { links: 30, opens: 24, documents: 24, cites: 14, calls: 14, mentions: 18, reference: 40, usedIn: 18 };
 let sim = null, settled = false, backend = "";
@@ -338,26 +338,52 @@ function simulate(alpha = 1) {
     }
     packages.forEach((p, k) => { const up = parentPackage(p.id); if (up != null) links.push({ source: packageBodies[k], target: packageBodies[up], length: 10, tree: true }); });
   }
+  // A selected node gathers its neighbourhood: a short, stiff spring to every visible neighbour,
+  // with the node itself held where it is, so what it links to comes to it instead of spanning
+  // the map. Deselecting drops the springs and lets the map relax.
+  for (const b of bodies) b.fx = b.fy = b.fz = undefined;
+  const gathered = new Set();
+  if (selected >= 0 && visible(nodes[selected])) {
+    const centre = bodies[selected];
+    centre.fx = centre.x; centre.fy = centre.y; centre.fz = centre.z;
+    for (const j of near) if (visible(nodes[j])) { gathered.add(bodies[j]); links.push({ source: centre, target: bodies[j], length: FOCUS_LENGTH, focus: true }); }
+  }
+  // A gathered node's other links go slack, or they hold it out where it was.
+  const slack = l => gathered.has(l.source) || gathered.has(l.target) ? FOCUS_SLACK : 1;
+  const degree = new Map();
+  for (const l of links) for (const end of [l.source, l.target]) degree.set(end, (degree.get(end) || 0) + 1);
   settled = false;
   sim = d3.forceSimulationGPU([...live, ...pkgs], 3)
     .alpha(alpha)
-    .force("link", d3.forceLink(links).distance(l => l.length))
+    // d3's own default strength (1 / the smaller degree), except a focus spring, which wins.
+    .force("link", d3.forceLink(links).distance(l => l.length)
+      .strength(l => l.focus ? FOCUS_STRENGTH : slack(l) / Math.min(degree.get(l.source), degree.get(l.target))))
     .force("charge", d3.forceManyBody().strength(b => b.pkg != null ? -3 : CHARGE[nodes[b.node].kind] ?? -20).theta(0.9))
     .force("centre", d3.forceCenter(0, 0, 0))
     // Gravity, as in ForceAtlas2: without it a page that links nothing drifts off for ever.
     .force("x", d3.forceX(0).strength(GRAVITY)).force("y", d3.forceY(0).strength(GRAVITY)).force("z", d3.forceZ(0).strength(GRAVITY))
     .on("tick", moved)
-    .on("end", () => { settled = true; moved(); readColours(); restyle(); if (!userMoved) fitVisible(true); });
+    .on("end", () => { settled = true; moved(); readColours(); restyle(); followFocus(true); if (!userMoved) fitVisible(true); });
   sim.gpuReady().then(onGPU => { backend = onGPU ? "laid out on the GPU" : "laid out on the CPU"; summary(); });
 }
+// While a neighbourhood gathers, the camera follows it, unless the reader takes the camera.
+let following = -1, ticksSinceFollow = 0;
+function followFocus(last) {
+  if (following < 0 || following !== selected) return;
+  if (!last && ++ticksSinceFollow < 25) return;
+  ticksSinceFollow = 0;
+  frame([following, ...near].filter(j => visible(nodes[j])).map(j => P[j]), true);
+  if (last) following = -1;
+}
 function moved() {
+  followFocus(false);
   for (const b of bodies) if (visible(nodes[b.node])) P[b.node].set(b.x / SCALE, b.y / SCALE, b.z / SCALE);
   for (const b of packageBodies) packages[b.pkg].p = [b.x / SCALE, b.y / SCALE, b.z / SCALE];
   restyle();
 }
 function layoutMoving() { return sim && !settled; }
 let userMoved = false;
-controls.addEventListener("start", () => { userMoved = true; });
+controls.addEventListener("start", () => { userMoved = true; following = -1; });
 const fitVisible = animate => frame(nodes.map((n, i) => i).filter(i => visible(nodes[i])).map(i => P[i]), animate);
 
 // ---- labels: an HTML overlay, placed most important first, skipping any that would overlap. Each
@@ -499,6 +525,7 @@ window.addEventListener("keydown", e => {
 document.getElementById("spin").onchange = e => { controls.autoRotate = e.target.checked; };
 
 function select(i, centre) {
+  const changed = i !== selected;
   selected = i; near = new Set();
   if (i >= 0) {
     for (const [j] of out[i]) near.add(j);
@@ -507,6 +534,7 @@ function select(i, centre) {
     if (centre) centreOn(i);
   }
   details(); restyle();
+  if (changed) { following = i; ticksSinceFollow = 0; userMoved = userMoved || i >= 0; simulate(i >= 0 ? 0.5 : 0.35); }
 }
 function syncLayerBoxes() {
   const boxes = document.querySelectorAll("#layers input");
