@@ -199,10 +199,9 @@ ui.pause(1500)
 ### What box code sees
 
 A box reads what the canvas shows from two properties. Both are in world units, the units a box's
-`frame` is in, so they do not change with zoom. `viewport` is the main (bottom-right) pane, as the
-rect `(-x, -y, w, h)`: its first two numbers are the negated world position of the pane's top-left
-corner. `onViewportChange` callbacks fire when it moves. Note the different sign from
-`viewports`, which lists every pane's visible world rect as `(x, y, w, h)`, main pane last.
+`frame` is in, so they do not change with zoom. `viewportWorld` is the main (bottom-right) pane's
+visible world rect `(x, y, w, h)`, and `onViewportChange` callbacks fire when it moves. `viewports`
+lists every pane's rect the same way, main pane last.
 
 ```diffstatic {data-lang=kotlin}
 viewports.forEach { println("${it.x}, ${it.y}: ${it.w} × ${it.h}") }
