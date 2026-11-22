@@ -584,7 +584,8 @@ internal object OpenNurbsNative {
     private val pointsHandle by lazy { pointer("field_opennurbs_object_points") }
     private val indicesHandle by lazy { pointer("field_opennurbs_object_indices") }
     private val normalsHandle by lazy { pointer("field_opennurbs_object_normals") }
-    private val colorsHandle by lazy { pointer("field_opennurbs_object_colors") }
+    // Null with a wrapper built before vertex colours were read: such a build reads meshes uncoloured.
+    private val colorsHandle by lazy { runCatching { pointer("field_opennurbs_object_colors") }.getOrNull() }
     private val edgePointsHandle by lazy { pointer("field_opennurbs_object_edge_points") }
     private val edgeIndicesHandle by lazy { pointer("field_opennurbs_object_edge_indices") }
     private val frameHandle by lazy { pointer("field_opennurbs_object_frame") }
@@ -624,7 +625,8 @@ internal object OpenNurbsNative {
 
     /** A mesh's sRGB ARGB vertex colours as the linear rgb a [TriMesh] holds, or null when it has none. */
     private fun vertexColors(model: MemorySegment, index: Int, count: Int): FloatArray? {
-        val argb = (colorsHandle.invokeExact(model, index) as MemorySegment).takeIf { it != MemorySegment.NULL } ?: return null
+        val h = colorsHandle ?: return null
+        val argb = (h.invokeExact(model, index) as MemorySegment).takeIf { it != MemorySegment.NULL } ?: return null
         val c = argb.reinterpret(count * 4L).toArray(JAVA_INT)
         return FloatArray(count * 3) { RhinoWriter.decodeSrgb((c[it / 3] ushr (8 * (2 - it % 3))) and 0xFF) }
     }

@@ -256,6 +256,129 @@ Rhino's own meshes and these are not the same triangles: Rhino's render mesh set
 density, and a tessellation here follows `tolerance`. For measuring, `EVALUATE` gives every Brep the
 same treatment.
 
+## Writing a file and reading it back
+
+How much of a scene survives `Rhino3dm.save` and `Rhino3dm.load`? This box writes one of each kind of
+object the writer makes: three closed Breps, a trimmed plate, a SubD, a mesh with vertex colours, a
+curve, a hatch and a block placed twice. It reads the file back with `meshing =
+RhinoBrepMeshing.EVALUATE`, so every Brep is tessellated the same way, and measures each object
+against the exact figure:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/rhino_files/round_trip.png" wait="12.0" capture="box" open-outputs="true" padding="20" timeout="120" requires="opennurbs" name="round_trip"}
+:::static
+import afield.geometry.mesh.TriMesh
+import afield.geometry.rhino.*
+import kotlin.math.*
+
+fun square(x: Double, y: Double, size: Double) =
+    FLine().moveTo(x, y, 0.0).lineTo(x + size, y, 0.0).lineTo(x + size, y + size, 0.0).lineTo(x, y + size, 0.0).close()
+
+// Four corners, linear red, grey and white.
+val quad = TriMesh(
+    floatArrayOf(60f, 0f, 0f, 64f, 0f, 0f, 64f, 3f, 0f, 60f, 3f, 0f),
+    intArrayOf(0, 1, 2, 0, 2, 3),
+    colors = floatArrayOf(1f, 0f, 0f, 0.2f, 0.1f, 0.05f, 0.5f, 0.5f, 0.5f, 1f, 1f, 1f),
+)
+
+val dir = java.nio.file.Files.createTempDirectory("rhino-roundtrip").toFile()
+val file = Rhino3dm.save(java.io.File(dir, "roundtrip.3dm"), units = "millimeters", version = 7) {
+    layer("Solids", vec(0.27, 0.51, 0.78, 1.0))
+    layer("Solids::Trimmed", vec(0.78, 0.47, 0.16, 1.0))
+    layer("SubD", vec(0.35, 0.67, 0.35, 1.0))
+    layer("Flat", vec(0.6, 0.6, 0.6, 1.0))
+    brep(RhinoBreps.sphere(vec(0.0, 0.0, 0.0), 10.0), layer = "Solids", name = "sphere")
+    brep(RhinoBreps.cylinder(vec(30.0, 0.0, -10.0), 5.0, 20.0), layer = "Solids", name = "cylinder")
+    brep(RhinoBreps.box(vec(-30.0, -5.0, -5.0), vec(-20.0, 5.0, 5.0)), layer = "Solids", name = "box")
+    brep(RhinoBreps.plate(vec(0.0, -30.0, 0.0), 20.0, listOf(Triple(0.0, -30.0, 5.0))), layer = "Solids::Trimmed", name = "plate with hole")
+    val (points, faces, creases) = RhinoBreps.subdBox(vec(25.0, -35.0, -5.0), vec(35.0, -25.0, 5.0), 2, false)
+    subd(points, faces, creases, layer = "SubD", name = "subd box")
+    mesh(quad, layer = "Flat", name = "coloured quad")
+    curve(square(-35.0, -40.0, 10.0), layer = "Flat", name = "outline")
+    val withHole = square(-35.0, 20.0, 10.0)
+    withHole.nodes.addAll(square(-32.0, 23.0, 4.0).nodes)
+    hatch(withHole, layer = "Flat", name = "hatch")
+    block("fin") { mesh(TriMesh(floatArrayOf(0f, 0f, 0f, 4f, 0f, 0f, 0f, 0f, 6f), intArrayOf(0, 1, 2)), layer = "Flat", name = "fin skin") }
+    instance("fin", vec(50.0, 20.0, 0.0), layer = "Flat", name = "fin A")
+    instance("fin", vec(56.0, 20.0, 0.0), layer = "Flat", name = "fin B")
+}
+val model = Rhino3dm.load(file, meshing = RhinoBrepMeshing.EVALUATE)
+
+:::fold measure it, draw it, clean up
+fun area(m: TriMesh) = (0 until m.triangleCount).sumOf { t ->
+    val (a, b, c) = (0..2).map { k -> m.indices[3 * t + k].let { vec(m.positions[3 * it], m.positions[3 * it + 1], m.positions[3 * it + 2]) } }
+    Vec3(b).sub(a).cross(Vec3(c).sub(a)).length() / 2.0
+}
+fun volume(m: TriMesh) = (0 until m.triangleCount).sumOf { t ->
+    val (a, b, c) = (0..2).map { k -> m.indices[3 * t + k].let { vec(m.positions[3 * it], m.positions[3 * it + 1], m.positions[3 * it + 2]) } }
+    Vec3(a).dot(Vec3(b).cross(c)) / 6.0
+}
+fun openEdges(m: TriMesh): Int {
+    val id = HashMap<Triple<Float, Float, Float>, Int>()
+    val ids = IntArray(m.vertexCount) { id.getOrPut(Triple(m.positions[3 * it], m.positions[3 * it + 1], m.positions[3 * it + 2])) { id.size } }
+    val count = HashMap<Pair<Int, Int>, Int>()
+    for (t in 0 until m.triangleCount) for (e in 0..2) {
+        val a = ids[m.indices[3 * t + e]]; val b = ids[m.indices[3 * t + (e + 1) % 3]]
+        count.merge(minOf(a, b) to maxOf(a, b), 1, Int::plus)
+    }
+    return count.values.count { it == 1 }
+}
+val exact = mapOf(
+    "sphere" to (400 * PI to 4000 * PI / 3), "cylinder" to (250 * PI to 500 * PI),
+    "box" to (600.0 to 1000.0), "plate with hole" to (400 - 25 * PI to null),
+)
+fun f(x: Double) = "%.1f".format(x)
+val rows = model.objects.joinToString("\n") { o ->
+    when (o) {
+        is RhinoMesh -> {
+            val m = o.mesh
+            val (a, v) = exact[o.name] ?: (null to null)
+            val vol = if (openEdges(m) == 0) f(volume(m)) + (v?.let { " of " + f(it) } ?: "") else "open"
+            "| ${o.name} | ${o.layer?.path} | ${m.triangleCount} | ${f(area(m))}${a?.let { " of " + f(it) } ?: ""} | $vol | ${openEdges(m)} |"
+        }
+        is RhinoCurve -> "| ${o.name} | ${o.layer?.path} | ${if (o.isHatch) "hatch" else "curve"}, ${o.line.nodes.size} nodes | | | |"
+        else -> "| ${o.name} | ${o.layer?.path} | ${o.type} | | | |"
+    }
+}
+val back = model.meshes.single { it.name == "coloured quad" }.mesh.colors
+val sent = quad.colors!!
+markdown(
+    "readout",
+    """
+| object read back | layer | triangles | area mm² (exact) | volume mm³ (exact) | open edges |
+|---|---|---|---|---|---|
+$rows
+
+${model.objects.size} objects on ${model.layers.size} layers from 10 written; the two block placements
+came back as their member, `block` = ${model.meshes.filter { it.block != null }.map { it.block }.toSet()}.
+Vertex colours: largest error ${back?.let { "%.4f".format(sent.indices.maxOf { abs(sent[it] - back[it]) }) } ?: "none came back"}.
+""",
+    width = 820,
+)
+three(height = 380) { rhino(model) }
+dir.deleteRecursively()
+:::endfold
+```
+
+![A table of the ten objects read back, then the file in an orbiting viewer. The table gives each object's layer and triangle count; the sphere's area is 1254.1 of an exact 1256.6 square millimetres and its volume 4171.8 of 4188.8, the cylinder's 784.9 of 785.4 and 1565.3 of 1570.8, the box exactly 600 and 1000, the trimmed plate 321.5 of 321.5 with 260 open edges round its outline and hole; every solid has 0 open edges. Below it, a blue box, sphere and cylinder, an orange plate with a round hole, a green rounded SubD cube, a grey square outline, a grey hatched square with a square hole, two grey triangular fins and a small quad shaded from red to white.](assets/rhino_files/round_trip.png)
+
+What the readout shows:
+
+* **Solids come back closed and within half a percent.** Every vertex of a tessellated face is on the
+  exact surface, so the sphere and cylinder lose a little area and volume to their chords (0.2% and
+  0.4% of volume at the default tolerance); the box is exact. None has an open edge: the faces are
+  stitched along the Brep's edges. The trimmed plate is a sheet, so its outline and hole are its open
+  edges, and its area matches the trimmed square to the first decimal.
+* **The SubD comes back as its limit surface**, rounder and smaller than its 10 mm control cage:
+  784 mm³ against the cage's 1000.
+* **Layers, the layer tree and colours survive**, an object's own colour over its layer's.
+* **Vertex colours survive to within a byte.** A `TriMesh` holds linear colour; the file holds the
+  sRGB bytes Rhino draws, so linear 0.5 is written as 188, and read back as 0.5.
+* **Curves and hatches keep their points exactly**; the hatch comes back as its outline and its hole.
+* **Block placements lose their own names.** Each instance comes back as its member, moved into
+  place, named as the member is in the block (`fin skin`) with `block` naming the definition; `fin A`
+  and `fin B` are not in what `load` returns.
+
+
 ## Building the reader
 
 The reader and the writer are one optional native library. Build it once with `./gradlew buildOpenNurbsNative`
