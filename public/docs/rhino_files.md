@@ -289,7 +289,7 @@ val file = Rhino3dm.save(java.io.File(dir, "roundtrip.3dm"), units = "millimeter
     brep(RhinoBreps.sphere(vec(0.0, 0.0, 0.0), 10.0), layer = "Solids", name = "sphere")
     brep(RhinoBreps.cylinder(vec(30.0, 0.0, -10.0), 5.0, 20.0), layer = "Solids", name = "cylinder")
     brep(RhinoBreps.box(vec(-30.0, -5.0, -5.0), vec(-20.0, 5.0, 5.0)), layer = "Solids", name = "box")
-    brep(RhinoBreps.plate(vec(0.0, -30.0, 0.0), 20.0, listOf(Triple(0.0, -30.0, 5.0))), layer = "Solids::Trimmed", name = "plate with hole")
+    brep(RhinoBreps.plate(vec(0.0, -30.0, 0.0), 20.0, [Triple(0.0, -30.0, 5.0)]), layer = "Solids::Trimmed", name = "plate with hole")
     val (points, faces, creases) = RhinoBreps.subdBox(vec(25.0, -35.0, -5.0), vec(35.0, -25.0, 5.0), 2, false)
     subd(points, faces, creases, layer = "SubD", name = "subd box")
     mesh(quad, layer = "Flat", name = "coloured quad")
@@ -326,7 +326,7 @@ val exact = mapOf(
     "sphere" to (400 * PI to 4000 * PI / 3), "cylinder" to (250 * PI to 500 * PI),
     "box" to (600.0 to 1000.0), "plate with hole" to (400 - 25 * PI to null),
 )
-fun f(x: Double) = "%.1f".format(x)
+fun f(x: Double) = x.f1
 val rows = model.objects.joinToString("\n") { o ->
     when (o) {
         is RhinoMesh -> {
@@ -350,7 +350,7 @@ $rows
 
 ${model.objects.size} objects on ${model.layers.size} layers from 10 written; the two block placements
 came back as their member, `block` = ${model.meshes.filter { it.block != null }.map { it.block }.toSet()}.
-Vertex colours: largest error ${back?.let { "%.4f".format(sent.indices.maxOf { abs(sent[it] - back[it]) }) } ?: "none came back"}.
+Vertex colours: largest error ${back?.let { (sent.indices.maxOf { abs(sent[it] - back[it]) }).f4 } ?: "none came back"}.
 """,
     width = 820,
 )
