@@ -32,7 +32,7 @@ layout(local_size_x = 64) in;
 layout(push_constant) uniform Push {
     Vec4s curves;   // 3 vec4 per curve: p0 p1, p2 p3 (document units, cubic), (shape bits, 0, 0, 0)
     Vec4s shapes;   // 2 vec4 per shape: premultiplied rgba, (even-odd, 0, 0, 0)
-    Uints offsets;  // [curves + 1]: counts, then exclusive offsets; [curves] the total
+    Uints offsets;  // [0, curves]: exclusive offsets, [curves] the total; [curves + 1 + i]: curve i's count
     Vec4s segs;     // one vec4 per segment: x0 y0 x1 y1 in pixels
     Uints segShape; // shape of each segment
     Uints bins;     // per band: entries (bandCap) then run starts (bandCap)
@@ -74,7 +74,7 @@ void main() {
         float m = max(length(a - 2.0 * b + c), length(b - 2.0 * c + d));
         n = uint(clamp(ceil(sqrt(0.75 * m / pc.tol)), 1.0, float(MAX_PIECES)));
     }
-    pc.offsets.v[i] = n;
+    pc.offsets.v[pc.curveCount + 1u + i] = n;
 }
 #endif
 
@@ -86,7 +86,7 @@ void main() {
     uint s0 = t * per;
     uint s1 = min(s0 + per, pc.curveCount);
     uint sum = 0u;
-    for (uint i = s0; i < s1; i++) sum += pc.offsets.v[i];
+    for (uint i = s0; i < s1; i++) sum += pc.offsets.v[pc.curveCount + 1u + i];
     partial[t] = sum;
     barrier();
     for (uint d = 1u; d < 1024u; d <<= 1) {
@@ -97,7 +97,7 @@ void main() {
     }
     uint run = partial[t] - sum;
     for (uint i = s0; i < s1; i++) {
-        uint c = pc.offsets.v[i];
+        uint c = pc.offsets.v[pc.curveCount + 1u + i];
         pc.offsets.v[i] = run;
         run += c;
     }

@@ -57,6 +57,8 @@ class GeziraGpuScene(
      * and each is idempotent, so the picture is the same).
      */
     repeats: Int = 1,
+    /** With [repeats], repeat only this stage (0 count .. 4 resolve); -1 repeats all five. */
+    repeatStage: Int = -1,
 ) {
     init {
         require(width in 1..2048) { "GeziraGpuScene draws images 1 to 2048 pixels wide, not $width" }
@@ -75,7 +77,7 @@ class GeziraGpuScene(
 
     private val curves = probe.fixture("curves", max(1, curveCount) * 12)
     private val shapes = probe.fixture("shapes", max(1, paths.size) * 8)
-    private val offsets = local("offsets", curveCount + 1)
+    private val offsets = local("offsets", 2 * curveCount + 1)
     private val segs = local("segs", segCap * 4)
     private val segShape = local("segShape", segCap)
     private val bins = local("bins", bands * 2 * bandCap)
@@ -114,7 +116,7 @@ class GeziraGpuScene(
                 else -> height
             }
             val stage = probe.stage("gezira-scene-$name", src)
-            repeat(repeats) { r -> stage.dispatch(groups = max(1, groups), label = "$name$r") { bindAll(this@GeziraGpuScene) } }
+            repeat(if (repeatStage < 0 || repeatStage == n) repeats else 1) { r -> stage.dispatch(groups = max(1, groups), label = "$name$r") { bindAll(this@GeziraGpuScene) } }
         }
     }
 

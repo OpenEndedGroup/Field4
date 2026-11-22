@@ -113,17 +113,24 @@ object GeziraGpuTigerProbe {
                     cpuTimes[size] = cpuMs
                     probe.verdict("gezira gpu tiger $size")
                 }
-                // The pipeline's own GPU cost: frames with it dispatched REPEATS times, against once.
-                failures += gpuProbe(renderer, "gezira-tiger-$size-x$REPEATS", pump = pump) { probe ->
-                    val scene = GeziraGpuScene(probe, paths, size, size, transform = fit, repeats = REPEATS)
-                    probe.settle(scene.image, seconds = 60.0)
-                    while (probe.stageList.any { !it.valid }) pump()
-                    val heavy = timeFrames(probe)
-                    val wallMs = gpuPerFrame.getValue(size)
-                    table += "%5d x %-5d  wall %7.2f ms/frame (empty frame %.2f)  pipeline on the GPU %7.2f ms  CPU GeziraSvg.render %6.0f ms".format(
-                        size, size, wallMs, idleMs, (heavy - wallMs) / (REPEATS - 1), cpuTimes.getValue(size))
-                    probe.verdict("gezira gpu tiger timing $size")
+                // The pipeline's own GPU cost: frames with it dispatched REPEATS times, against once;
+                // then each stage alone, the same way.
+                val perStage = ArrayList<String>()
+                for (stage in -1..4) {
+                    failures += gpuProbe(renderer, "gezira-tiger-$size-x$REPEATS-$stage", pump = pump) { probe ->
+                        val scene = GeziraGpuScene(probe, paths, size, size, transform = fit, repeats = REPEATS, repeatStage = stage)
+                        probe.settle(scene.image, seconds = 60.0)
+                        var waited = 0
+                        while (probe.stageList.any { !it.valid } && waited++ < 600) pump()
+                        val heavy = timeFrames(probe)
+                        val ms = (heavy - gpuPerFrame.getValue(size)) / (REPEATS - 1)
+                        if (stage < 0) table += "%5d x %-5d  wall %7.2f ms/frame (empty frame %.2f)  pipeline on the GPU %7.2f ms  CPU GeziraSvg.render %6.0f ms".format(
+                            size, size, gpuPerFrame.getValue(size), idleMs, ms, cpuTimes.getValue(size))
+                        else perStage += "%s %.2f".format(listOf("count", "scan", "emit", "bin", "resolve")[stage], ms)
+                        probe.verdict("gezira gpu tiger timing $size stage $stage")
+                    }
                 }
+                table += "        stages (ms): " + perStage.joinToString(", ")
             }
         } catch (t: Throwable) {
             t.printStackTrace()
