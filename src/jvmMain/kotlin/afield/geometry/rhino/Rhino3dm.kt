@@ -475,17 +475,19 @@ class RhinoModel internal constructor(
             val indices = IntArray(parts.sumOf { it.indices.size })
             val withNormals = parts.isNotEmpty() && parts.all { it.normals != null }
             val normals = if (withNormals) FloatArray(positions.size) else null
+            val colors = if (parts.isNotEmpty() && parts.all { it.colors != null }) FloatArray(positions.size) else null
             var p = 0
             var i = 0
             for (part in parts) {
                 val base = p / 3
                 part.positions.copyInto(positions, p)
                 normals?.let { part.normals!!.copyInto(it, p) }
+                colors?.let { part.colors!!.copyInto(it, p) }
                 for (k in part.indices.indices) indices[i + k] = part.indices[k] + base
                 p += part.positions.size
                 i += part.indices.size
             }
-            return TriMesh(positions, indices, normals)
+            return TriMesh(positions, indices, normals, colors = colors)
         }
     }
 }
@@ -582,6 +584,7 @@ internal object OpenNurbsNative {
     private val pointsHandle by lazy { pointer("field_opennurbs_object_points") }
     private val indicesHandle by lazy { pointer("field_opennurbs_object_indices") }
     private val normalsHandle by lazy { pointer("field_opennurbs_object_normals") }
+    private val colorsHandle by lazy { pointer("field_opennurbs_object_colors") }
     private val edgePointsHandle by lazy { pointer("field_opennurbs_object_edge_points") }
     private val edgeIndicesHandle by lazy { pointer("field_opennurbs_object_edge_indices") }
     private val frameHandle by lazy { pointer("field_opennurbs_object_frame") }
@@ -617,6 +620,13 @@ internal object OpenNurbsNative {
         if (count == 0) return IntArray(0)
         val at = h.invokeExact(model, index) as MemorySegment
         return if (at == MemorySegment.NULL) IntArray(0) else at.reinterpret(count * 4L).toArray(JAVA_INT)
+    }
+
+    /** A mesh's sRGB ARGB vertex colours as the linear rgb a [TriMesh] holds, or null when it has none. */
+    private fun vertexColors(model: MemorySegment, index: Int, count: Int): FloatArray? {
+        val argb = (colorsHandle.invokeExact(model, index) as MemorySegment).takeIf { it != MemorySegment.NULL } ?: return null
+        val c = argb.reinterpret(count * 4L).toArray(JAVA_INT)
+        return FloatArray(count * 3) { RhinoWriter.decodeSrgb((c[it / 3] ushr (8 * (2 - it % 3))) and 0xFF) }
     }
 
     private fun floats(h: MethodHandle, model: MemorySegment, index: Int, count: Int): FloatArray? {
@@ -691,6 +701,7 @@ internal object OpenNurbsNative {
                     FloatArray(points.size) { points[it].toFloat() },
                     indices,
                     floats(normalsHandle, model, i, pointCount * 3),
+                    colors = vertexColors(model, i, pointCount),
                 ),
                 edges = edges,
                 note = note.ifEmpty { null },
