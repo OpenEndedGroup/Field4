@@ -2333,11 +2333,62 @@ into 2,220 pieces and the whole pipeline takes about 7 ms on the CPU. Against a 
 the kernels' coverage is off by 0.0016 on average (largest 0.017); Skia's is off by 0.032 on average
 and it draws 0.7 % less ink in total.
 
+### The SVG tiger
+
+`GeziraFLine.render` draws Field's own FLines with the kernels above, painted by the attributes
+every Field renderer reads: `color` (its alpha is the opacity), `filled`, `stroked` and
+`thickness`. FLine has no fill rule, so `GeziraFLine` adds one, `fillRule`, non-zero unless set.
+Each line is filled with the winding rasteriser under its rule, then stroked with
+`StrokeBezierPath`, then composited. Only `GeziraFLine` reads `fillRule`, so Field's own line
+renderer, under it here, fills the frame's hole:
+
+```diffstatic {data-lang=kotlin}
+frame.filled = true
+frame.fillRule = FillRule.EVEN_ODD
+ring.thickness = 6.0
+val r = GeziraFLine.render([disc, ring, frame, wave], 220, 130)
+```
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/gezira-fline-paint.png" capture="box" open-outputs="true" padding="20" trim="true" wait="4" timeout="180" embed=true name="gezira-fline-paint" macro-file="../../dev_docs/agents/transcripts/nile_gezira_svg.yaml" capture-box="gezira_fline_paint" alt="Four FLines drawn twice. Above, by the Gezira kernels on white: an orange disc with a dark brown ring, a translucent blue square frame with a square hole, and a crimson wave across the bottom. Below, larger, by Field's line renderer on black: the same, except the blue square is solid, since that renderer does not read fillRule."}
+// dev_docs/agents/transcripts/nile_gezira_svg.yaml, box "flines through gezira"
+```
+
+`GeziraSvg.parse` reads an SVG document into such FLines, in the document's units. It reads path
+data with every command (arcs become one cubic per quarter turn), rectangles, circles, ellipses,
+lines and polygons, and nested groups, whose `transform`s compose and whose `fill`, `stroke`,
+`stroke-width`, `fill-rule` and opacities are inherited, from attributes or `style`. An element
+with a fill and a stroke becomes two FLines, the fill first. `GeziraSvg.render` fits the document
+to a canvas and hands its FLines to `GeziraFLine.render`; `GeziraSvg.skia` hands the same text to
+Skia's own SVG renderer, for comparison:
+
+```diffstatic {data-lang=kotlin}
+val doc = GeziraSvg.parse(GeziraSvg.tiger())
+val r = GeziraSvg.render(doc, 300, 300)
+val skia = GeziraSvg.skia(GeziraSvg.tiger(), 300, 300)
+val diff = GeziraSvg.difference(r.canvas.rgba, skia, 10.0)
+```
+
+The Ghostscript tiger by the kernels, by Skia, and the difference between them times ten, white
+where they agree. The readout over it counts the elements and segments read, the Béziers into the
+rasteriser, the lines they flatten to and the spans out, and times each stage:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/gezira-svg-tiger.png" capture="box" open-outputs="true" padding="20" trim="true" wait="6" timeout="240" embed=true name="gezira-svg-tiger" macro-file="../../dev_docs/agents/transcripts/nile_gezira_svg.yaml" capture-box="gezira_svg_tiger" alt="Three 300 pixel tiger heads side by side, orange and black stripes, green eyes and an open pink mouth: the first rasterised by the Gezira kernels, the second by Skia, which look the same; the third is almost all white, with faint coloured outlines along edges and darker lines along the whiskers, where the two renderers differ most."}
+// dev_docs/agents/transcripts/nile_gezira_svg.yaml, box "tiger beside skia"
+```
+
+The two agree away from edges and differ most on the whiskers, strokes thinner than a pixel.
+`StrokeBezierPath` joins corners with a bevel, where SVG's default is a mitre.
+Gradients, `use`, clipping, masks and text are not read (`SvgDocument.skipped` counts what was
+passed over), and a group's `opacity` multiplies into each shape rather than compositing the group
+as one layer. The tiger is Ghostscript's `tiger.eps`, AGPL, as converted on
+[Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Ghostscript_Tiger.svg); the
+[SVG starting point](agent_transcripts.md#nile_gezira_svg) replays these boxes.
+
 Open the [starting point](agent_transcripts.md#nile_gezira_kernels) to edit the kernels. The
 method is from *[Pixels on a screen](https://whitebeard.blog/posts/pixels-on-a-screen/)*, a post
 on umgeni, a compiler for Nile that renders the SVG tiger from Gezira kernels; Field's kernels are
 written from that description. Round joins and caps, Gezira's other blend modes and image
-textures, a compute-shader backend and the tiger itself are not implemented here.
+textures and a compute-shader backend are not implemented here.
 
 ## Stopping the renderer
 

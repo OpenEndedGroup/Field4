@@ -3372,6 +3372,34 @@
         "public/docs/assets/agent_transcripts/nile_gezira_kernels/metadata.edn": "a6dc658b21be90cd759dbe775a1be28646b5fcfa75db3697aacb42b5be2efbf5"
       }
     },
+    "assets/agent_transcripts/nile_gezira_svg/metadata.edn": {
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-22T11:19:51.286Z",
+      "channels": 6,
+      "file": "assets/web_publications/nile_gezira_svg/document/metadata.edn",
+      "files": {
+        "assets/web_publications/nile_gezira_svg/document/metadata.edn": "04fae2f16ddd9f141154c87b7feadf5f563d46fc0fd6a3c41de353caedd130c0",
+        "assets/web_publications/nile_gezira_svg/document/outputs.json": "b0bb13b6bc71287d70a0083434cf547e14814ad1570229e0c64824228be80770",
+        "assets/web_publications/nile_gezira_svg/outputs/0.html": "fcbb2ea089caf9000ccfd543eeca88dc415c0a3207f2df526d5fcfeac441687b",
+        "assets/web_publications/nile_gezira_svg/outputs/1.html": "a7a40fc0cbfe104ac0c0673b364f7dd61fbc3126081ab70d03e37c14abde5c40",
+        "assets/web_publications/nile_gezira_svg/outputs/2.html": "c42e245e14e29a2fa6e27bb0d298690e385944e75d25be9c845e7c389ca2f50a",
+        "assets/web_publications/nile_gezira_svg/outputs/3.html": "3e9e4e3af71a5f755eaeec9b30b53d1fb6dbc99558ebd36b28353c298a2e9d34",
+        "assets/web_publications/nile_gezira_svg/outputs/4.html": "969275edb319eb16e34ad925efc2fb5b9f5e0039aa0b9a6b3f9c7032dbba6ccc",
+        "assets/web_publications/nile_gezira_svg/outputs/5.html": "c97ac412d25de453a89afb9944d8c55d18d25c324635ebb5e32610d35a6c7e79"
+      },
+      "kinds": [
+        "svg"
+      ],
+      "outputs": "assets/web_publications/nile_gezira_svg/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/nile_gezira_svg.yaml": "1c0a678b97c4d848c866ef41ea64859c312d62d9cd21a825fe6f1091e5466c61",
+        "public/docs/assets/agent_transcripts/nile_gezira_svg/gezira_svg_flines_code_.kt": "b56bc044e0b0e85c80b169507e9d6b26b6ede9ca74e5fc8ff627ecff3cb3ccff",
+        "public/docs/assets/agent_transcripts/nile_gezira_svg/gezira_svg_reader_code_.kt": "08cdc109b75ed5527c68f5196430e9a22b8b7138e1ccf136caf0a0f3ef3ea701",
+        "public/docs/assets/agent_transcripts/nile_gezira_svg/gezira_svg_tiger_code_.kt": "0934663db88218f071332b753ad69fa579cf0f07bdc041c9ec576903154d6341",
+        "public/docs/assets/agent_transcripts/nile_gezira_svg/guides/afield_four_graphics.md": "1afa3e640352bf61832b58ae95830df6eb117a9ed72d5312192b848649df0b00",
+        "public/docs/assets/agent_transcripts/nile_gezira_svg/metadata.edn": "e4342a198c3898508a65d9630059ceb1101e98bde23d5dc9ed805470812e89d9"
+      }
+    },
     "assets/agent_transcripts/noiselang_distributions/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
       "capturedAt": "2026-11-18T15:39:12.641Z",
