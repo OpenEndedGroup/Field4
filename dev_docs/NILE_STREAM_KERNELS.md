@@ -46,3 +46,33 @@ in https://whitebeard.blog/posts/pixels-on-a-screen/ (scout card ca17ee14e65c).
 ## Not done
 
 Round joins/caps, miter, other blend modes, image textures, a compute-shader backend, the tiger (no tiger SVG in the repo; text is the stand-in large input).
+
+## WindingSpans on the GPU (GeziraGpu, 2026-11-22)
+
+`afield/graphics/nile/GeziraGpu.kt` + `src/jvmMain/resources/afield/graphics/nile/gezira_winding.comp`.
+CPU: FlattenBeziers → RowEdges → sort (`GeziraGpu.pack`, also counts crossings per row to size
+scratch). GPU: one 32-invocation workgroup per row; boundaries (atomic slot counter, overflow
+counted in a per-row status buffer), rank sort, bands split into contiguous runs per invocation,
+heap sort at the start of each run then insertion per band, coverage summed in shared memory as
+2^24 fixed point. Buffers/stage/readback through `GpuProbe`. Width ≤ 4096.
+
+Measured by `four.gezira-gpu.probe` (KosmicKrisp, Apple silicon, other GPU jobs on the machine):
+
+| case | result |
+| --- | --- |
+| corpus, 18 images / 47,232 px, both rules | max 1.5e-6, mean 1.4e-8, 0 dropped boundaries |
+| field 128² / 256² / 512² / 1024² | max diff 5.1e-6 / 9.2e-6 / 1.9e-5 / 3.9e-5 |
+| GPU WindingSpans (frame-diff, 9 vs 1 dispatch) | 55 / 29 / 55 / 30 ms |
+| CPU `Gezira.rasterize` (whole pipeline) | 43 / 31 / 65 / 55 ms |
+| CPU `GeziraGpu.pack` | 20 / 14 / 30 / 22 ms |
+
+History: v1 (one invocation/row, neighbours by counting, O(n²)/band) took seconds a frame;
+v3 (workgroup/row, insertion from identity) ~5× slower than v4 (heap-sorted runs).
+
+Not done: GPU flattening/RowEdges, paints/compositing on the GPU, comparison with Slug. Lowering a
+Nile `kernel` to GLSL generally would need: fixed-size token structs (a kernel's input/output
+types as std430 structs), `emit` as an atomic append into an output stream buffer with a
+prefix-sum allocation pass, `push` (recursion, as in FlattenBeziers) as a bounded per-invocation
+work stack or iterated dispatches until a queue drains, `sortBy` as a GPU radix sort
+(`GpuRadixSort` exists), and stateful kernels like WindingSpans (`each` + `end`, gathering a
+group) as a segmented pass keyed on the group — i.e. what this file does by hand for one kernel.

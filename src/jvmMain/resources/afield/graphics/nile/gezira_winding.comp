@@ -1,0 +1,213 @@
+#version 450
+// Gezira's WindingSpans stage on the GPU (afield.graphics.nile.GeziraGpu): one workgroup per pixel
+// row, exact trapezoid coverage under the non-zero or even-odd rule. The CPU version is
+// Gezira.resolveRow; this follows it step for step, with the row's bands shared out between the
+// workgroup's invocations.
+#extension GL_EXT_buffer_reference : require
+layout(std430, buffer_reference) buffer Vec4s { vec4 v[]; };
+layout(std430, buffer_reference) buffer Uints { uint v[]; };
+layout(std430, buffer_reference) buffer Floats { float v[]; };
+
+#define T 32u
+#define MAX_WIDTH 4096
+// Coverage is summed in shared memory as fixed point, 2^24 to one pixel: integer atomics are
+// everywhere, float ones are not. The regions a pixel's contributions come from are disjoint, so
+// the sum stays within one pixel's area and each addition rounds by at most 3e-8.
+#define FIXED 16777216.0
+layout(local_size_x = 32) in;
+
+layout(push_constant) uniform Push {
+    Vec4s edges;     // 2 vec4 per edge: x0 y0 x1 y1 (row-relative, y0 < y1), then dir
+    Uints rows;      // 4 uints per row: first edge, count, scratch start, left column (int bits)
+    Floats scratch;  // per row: boundaries, sorted boundaries, then a permutation and keys per invocation
+    Floats coverage; // width * height, row-major
+    Uints status;    // [row] boundaries dropped because the scratch was full; 0 when all is well
+    uint width;
+    uint height;
+    uint evenOdd;
+} pc;
+
+shared int acc[MAX_WIDTH];
+shared uint count;
+
+float xAt(vec4 e, float y) {
+    if (y <= e.y) return e.x;
+    if (y >= e.w) return e.z;
+    return e.x + (y - e.y) / (e.w - e.y) * (e.z - e.x);
+}
+
+// The mean of clamp(u, 0, 1) as u runs linearly from u0 to u1.
+float meanClamp(float u0, float u1) {
+    float lo = min(u0, u1);
+    float hi = max(u0, u1);
+    if (hi <= 0.0) return 0.0;
+    if (lo >= 1.0) return 1.0;
+    float len = hi - lo;
+    if (len < 1e-30) return clamp(lo, 0.0, 1.0);
+    float a = max(lo, 0.0);
+    float b = min(hi, 1.0);
+    return ((b - a) * (a + b) * 0.5 + max(0.0, hi - max(lo, 1.0))) / len;
+}
+
+bool inside(int w) { return pc.evenOdd != 0u ? (w & 1) != 0 : w != 0; }
+
+// (x, index) ordering: the CPU's stable sort by x.
+bool before(float xj, uint j, float xi, uint i) { return xj < xi || (xj == xi && j < i); }
+
+// Heap sort of n (key, edge) pairs at p (edges, as float bits) and x (keys), by (key, edge).
+bool lessAt(uint x, uint p, uint a, uint b) {
+    return before(pc.scratch.v[x + a], floatBitsToUint(pc.scratch.v[p + a]),
+                  pc.scratch.v[x + b], floatBitsToUint(pc.scratch.v[p + b]));
+}
+void swapAt(uint x, uint p, uint a, uint b) {
+    float k = pc.scratch.v[x + a]; pc.scratch.v[x + a] = pc.scratch.v[x + b]; pc.scratch.v[x + b] = k;
+    float e = pc.scratch.v[p + a]; pc.scratch.v[p + a] = pc.scratch.v[p + b]; pc.scratch.v[p + b] = e;
+}
+void siftDown(uint x, uint p, uint root, uint end) {
+    while (2u * root + 1u < end) {
+        uint child = 2u * root + 1u;
+        if (child + 1u < end && lessAt(x, p, child, child + 1u)) child++;
+        if (!lessAt(x, p, root, child)) return;
+        swapAt(x, p, root, child);
+        root = child;
+    }
+}
+void heapSort(uint x, uint p, uint n) {
+    for (uint i = n / 2u; i > 0u; i--) siftDown(x, p, i - 1u, n);
+    for (uint end = n - 1u; end > 0u; end--) {
+        swapAt(x, p, 0u, end);
+        siftDown(x, p, 0u, end);
+    }
+}
+
+void main() {
+    uint row = gl_WorkGroupID.x;
+    uint t = gl_LocalInvocationID.x;
+    if (row >= pc.height) return;
+    uint base = row * pc.width;
+    for (uint c = t; c < pc.width; c += T) acc[c] = 0;
+
+    uint e0 = pc.rows.v[row * 4u];
+    uint n = pc.rows.v[row * 4u + 1u];
+    uint s0 = pc.rows.v[row * 4u + 2u];
+    int left = int(pc.rows.v[row * 4u + 3u]);
+    // capacity of each boundary list; scratch holds two of them, then T permutations of n
+    uint cap = n < 2u ? 0u : pc.rows.v[(row + 1u) * 4u + 2u] - s0 - 2u * T * n;
+    cap /= 2u;
+    uint sorted = s0 + cap;
+    if (t == 0u) count = 2u * n;
+    barrier();
+
+    if (n >= 2u) {
+        // Band boundaries: every edge end, then every crossing of two edges.
+        for (uint i = t; i < n; i += T) {
+            vec4 e = pc.edges.v[(e0 + i) * 2u];
+            pc.scratch.v[s0 + 2u * i] = e.y;
+            pc.scratch.v[s0 + 2u * i + 1u] = e.w;
+        }
+        uint dropped = 0u;
+        for (uint i = t; i < n; i += T) {
+            vec4 a = pc.edges.v[(e0 + i) * 2u];
+            for (uint j = i + 1u; j < n; j++) {
+                vec4 b = pc.edges.v[(e0 + j) * 2u];
+                float y0 = max(a.y, b.y);
+                float y1 = min(a.w, b.w);
+                if (y1 <= y0) continue;
+                float d0 = xAt(a, y0) - xAt(b, y0);
+                float d1 = xAt(a, y1) - xAt(b, y1);
+                if ((d0 < 0.0 && d1 > 0.0) || (d0 > 0.0 && d1 < 0.0)) {
+                    uint slot = atomicAdd(count, 1u);
+                    if (slot < cap) pc.scratch.v[s0 + slot] = y0 + d0 / (d0 - d1) * (y1 - y0);
+                    else dropped++;
+                }
+            }
+        }
+        if (dropped > 0u) atomicAdd(pc.status.v[row], dropped);
+    }
+    barrier();
+    uint m = min(count, cap);
+
+    if (n >= 2u) {
+        // Rank sort: each boundary's place is the number before it.
+        for (uint q = t; q < m; q += T) {
+            float y = pc.scratch.v[s0 + q];
+            uint rank = 0u;
+            for (uint r = 0u; r < m; r++) {
+                float yr = pc.scratch.v[s0 + r];
+                if (yr < y || (yr == y && r < q)) rank++;
+            }
+            pc.scratch.v[sorted + rank] = y;
+        }
+    }
+    barrier();
+
+    if (n >= 2u && m >= 2u) {
+        // Each invocation takes a run of consecutive bands, and keeps every edge in order of x at
+        // the band's middle across its run: the order changes only at crossings, which are band
+        // boundaries, so each band's insertion sort starts almost sorted.
+        uint bands = m - 1u;
+        uint k0 = (bands * t) / T;
+        uint k1 = (bands * (t + 1u)) / T;
+        uint p0 = s0 + 2u * cap + 2u * n * t;
+        uint x0 = p0 + n;
+        // Start the run sorted: a heap sort by x at its first band's middle, O(n log n). Insertion
+        // from an arbitrary order would cost O(n^2), per invocation, and dominated a first version.
+        if (k0 < k1) {
+            float yf = 0.5 * (pc.scratch.v[sorted + k0] + pc.scratch.v[sorted + k0 + 1u]);
+            for (uint i = 0u; i < n; i++) {
+                pc.scratch.v[p0 + i] = uintBitsToFloat(i);
+                pc.scratch.v[x0 + i] = xAt(pc.edges.v[(e0 + i) * 2u], yf);
+            }
+            heapSort(x0, p0, n);
+        }
+        for (uint k = k0; k < k1; k++) {
+            float ya = pc.scratch.v[sorted + k];
+            float yb = pc.scratch.v[sorted + k + 1u];
+            float h = yb - ya;
+            if (h <= 0.0) continue;
+            float ym = 0.5 * (ya + yb);
+            for (uint i = 0u; i < n; i++) {
+                uint e = floatBitsToUint(pc.scratch.v[p0 + i]);
+                float x = xAt(pc.edges.v[(e0 + e) * 2u], ym);
+                uint j = i;
+                while (j > 0u) {
+                    float xj = pc.scratch.v[x0 + j - 1u];
+                    uint ej = floatBitsToUint(pc.scratch.v[p0 + j - 1u]);
+                    if (!before(x, e, xj, ej)) break;
+                    pc.scratch.v[x0 + j] = xj;
+                    pc.scratch.v[p0 + j] = pc.scratch.v[p0 + j - 1u];
+                    j--;
+                }
+                pc.scratch.v[x0 + j] = x;
+                pc.scratch.v[p0 + j] = uintBitsToFloat(e);
+            }
+            // Walk the active edges left to right, counting winding; fill between neighbours.
+            int wind = 0;
+            bool have = false;
+            vec4 el = vec4(0.0);
+            for (uint i = 0u; i < n; i++) {
+                uint e = floatBitsToUint(pc.scratch.v[p0 + i]);
+                vec4 er = pc.edges.v[(e0 + e) * 2u];
+                if (!(er.y < ym && ym < er.w)) continue;
+                if (have && inside(wind)) {
+                    float la = xAt(el, ya), lb = xAt(el, yb);
+                    float ra = xAt(er, ya), rb = xAt(er, yb);
+                    int c0 = int(floor(min(la, lb)));
+                    int c1 = int(ceil(max(ra, rb)));
+                    for (int c = c0; c < c1; c++) {
+                        int col = left + c;
+                        if (col < 0 || col >= int(pc.width)) continue;
+                        float fc = float(c);
+                        float a = h * (meanClamp(ra - fc, rb - fc) - meanClamp(la - fc, lb - fc));
+                        atomicAdd(acc[col], int(round(a * FIXED)));
+                    }
+                }
+                wind += int(pc.edges.v[(e0 + e) * 2u + 1u].x);
+                el = er;
+                have = true;
+            }
+        }
+    }
+    barrier();
+    for (uint c = t; c < pc.width; c += T) pc.coverage.v[base + c] = clamp(float(acc[c]) / FIXED, 0.0, 1.0);
+}

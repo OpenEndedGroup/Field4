@@ -4168,6 +4168,16 @@ the *mask* frame (Alt+D) is filled into the buffer while it runs; an ellipse cle
 
 [Open →](offline.html?file=assets/agent_transcripts/fline_coverage_gpu/metadata.edn)
 
+### gezira_gpu_winding
+
+**Gezira's winding rasteriser on the GPU.** [WindingSpans on the GPU](afield_four_graphics.md#gezira-gpu)
+as two boxes: a renderer, and a box that rasterises a pentagram, two overlapping circles and a
+square with a same-way hole under both fill rules with `GeziraGpu`, one compute invocation per pixel
+row, then draws the GPU coverage, the CPU's `Gezira.rasterize` beside it and their difference
+magnified 100,000 times, and prints the largest difference.
+
+[Open →](offline.html?file=assets/agent_transcripts/gezira_gpu_winding/metadata.edn)
+
 ### gpu_state
 
 A stateful GPU simulation: 40,000 particles whose positions and velocities live in a
