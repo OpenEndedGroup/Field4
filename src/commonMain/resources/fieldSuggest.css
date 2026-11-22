@@ -427,6 +427,16 @@
     font-size: var(--fp-font-size);
 }
 
+.afield-palette-hint.is-error {
+    color: var(--field-danger);
+}
+
+/* A text prompt (fieldTextPrompt): the header and hint line only. */
+.afield-palette.is-prompt .afield-palette-shell {
+    width: min(560px, calc(100vw - 28px));
+    grid-template-rows: auto auto;
+}
+
 .afield-palette-body {
     min-height: 0;
     display: grid;

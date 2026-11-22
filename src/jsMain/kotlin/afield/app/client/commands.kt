@@ -2418,7 +2418,7 @@ fun saveAsTemplate() {
     val helper = js("window._saveAsTemplateHelper")
     val hasHelper = js("typeof window._saveAsTemplateHelper === 'function'") as Boolean
     if (!hasHelper) {
-        notify("Template helper is not available yet. Try again after Monaco loads.", "error")
+        notify("Template helper is not available yet. Try again once Field has loaded.", "error")
         return
     }
     helper(selectedIds.toTypedArray())
