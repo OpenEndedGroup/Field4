@@ -41,7 +41,12 @@ keep interactive previews clean.
 
 ## Hello triangle, first attempt
 
-Start with the rite of passage for any new graphics system: getting a triangle on the screen. That needs one of everything: one shader module, one mesh to draw, one renderer and one window. `moduleHere { ... }` creates a shader module from the current box's shader properties. `Mesh()` creates draw data. `module += m named "my mesh"` attaches the mesh to the module, and `renderer += module` makes the module part of the window.
+Start with the rite of passage for any new graphics system: getting a triangle on the screen. That needs one of everything: one shader module, one mesh to draw, one renderer and one window. The code below makes each of these in turn:
+
+- `moduleHere { ... }` creates a shader module, one draw pipeline, from the `vertex` and `fragment` shader properties of the box it runs in. If the box has no shader of its own yet, `moduleHere` first fills both properties with a small working default (a vertex shader with a single `pos` input and a flat orange fragment shader), so the code compiles and draws something from the first run. You then edit those shaders in place.
+- `Mesh()` creates the draw data: vertex buffers whose names come from the vertex shader's inputs, plus an index buffer.
+- `module += m named "my mesh"` attaches the mesh to the module, so the module draws it.
+- `renderer += module` adds the module to the renderer, which draws it into the window every frame. `renderer` is already there because this box is connected beneath a renderer box.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/00-traditional-triangle.png" alt="a single right triangle filling most of a native render window against black, its right angle at the bottom right. The fill is interpolated from vertex colours: deep blue at the bottom left corner, teal along the bottom edge, and green at the apex top right" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-traditional-triangle" macro-file="../../dev_docs/agents/transcripts/afield_four_traditional_triangle.yaml" capture-box="agent_four_traditional_triangle"}
 // A module is one draw pipeline: this box's `vertex` and `fragment` shaders plus
@@ -1275,7 +1280,7 @@ In the corpus this box also carries a `//%-` line, which is Field's execution br
 
 ## Generated push-constant blocks
 
-Templating gets more interesting when the substituted source is itself generated from a Kotlin type. `PushConstants<T>` reflects a Kotlin class into a GLSL push-constant declaration:
+Everything above runs in one direction: you write the GLSL, and Field generates the Kotlin interface to it from what the shader declares. Push-constant blocks can run the other way. You write a Kotlin class, and Field generates the GLSL. `PushConstants<T>` reflects a Kotlin class into a GLSL push-constant declaration:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/05c-push-constants.png" alt="one right triangle filling a black window in flat dark crimson, the same geometry as the templating figure with a different colour. The value arrives through a push-constant block GLSL never declared by hand, reflected out of a Kotlin class" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-push-constants" source-box="assets/canonical_graphics/42056e8d-ec8b-4bf8-b84a-1cd1d8524510" source-box-properties="vertex,fragment" source-box-wait="0.1"}
 class MyPC(

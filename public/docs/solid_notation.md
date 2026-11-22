@@ -1,11 +1,25 @@
 # A solid, written down: `afield.lang.solidsl`
 
-In `afield.lang.solidsl` a shape is a **value**. Subtracting a cylinder from a cuboid builds an expression
-tree, and from that one tree you can march a mesh, build an exact CSG solid, emit GLSL, or simplify
-it. A document you can open and run is [at the bottom of the page](#open-this); the KDoc for
-`SolidExpr`, `Profile`, `SolidLowering` and `SolidTemplate` covers every declaration used here.
+SolidSL is a way to write down a 3D part (a bracket, a knob, a bored block) once, and then turn
+that description into whatever you need next: a triangle mesh to look at or print, an exact
+solid that is safe to cut holes from, or a shader that draws it live on the GPU.
 
-The signed-distance vocabulary in `mesh_sdf.kt` works the other way round. It declares
+You write the part as ordinary Kotlin: `cuboid(4, 2.6, 0.7) - cylinder(3.0, 0.42)` is a block
+with a hole through it. That expression does not compute any geometry yet. It builds a small tree
+that records "a cuboid, minus a cylinder", and the tree is the shape. Each output is a
+separate reading of the same tree. A document you can open and run is
+[at the bottom of the page](#open-this); the reference for
+[`SolidExpr`](reference/graphics.md#solidexpr-kt-solidexpr),
+[`Profile`](reference/graphics.md#solidexpr-kt-profile),
+[`SolidLowering`](reference/graphics.md#solidexact-kt) and
+[`SolidTemplate`](reference/graphics.md#solidgradient-kt-solidtemplate) covers every
+declaration used here.
+
+Field already has a way to build shapes from signed distance functions (SDFs): functions that
+take a point and return how far it is from the surface, negative inside. `mesh_sdf.kt` holds them,
+and marching cubes turns one into a mesh. SolidSL keeps that as one of its outputs, but turns the
+order around: in `mesh_sdf.kt` the function is the shape, while in SolidSL the tree is the shape
+and the distance function is computed from it. `mesh_sdf.kt` declares
 
 ```diffstatic {data-lang=kotlin}
 typealias ScalarField3D = (Vec3) -> Float
@@ -109,8 +123,9 @@ cross-section at every resolution, and is wrong in a different way instead.
 
 ## Two lowerings of one source
 
-A `SolidExpr` lowers two ways, and [`afield.geometry.solid.manifold`](manifold.md) supplies the second of them.
-Neither is a superset of the other, so which one you want depends on what you are going to do next:
+There are two ways to turn a `SolidExpr` into geometry. `toScalarField()` makes a distance field
+and marches it; `exactSolid()` hands the tree to [Manifold](manifold.md), which does exact CSG.
+Each can do things the other cannot, so pick by what you are going to do next:
 
 <div class="field-data-table" markdown>
 

@@ -31,7 +31,7 @@ ui.pause(800)
 
 ## Markdown, then typeset text
 
-The inline editor uses Field's normal Iosevka at 12px. Reading uses **Iosevka Etoile**, a text face
+The Markdown source editor uses Field's normal Iosevka at 12px. Reading uses **Iosevka Etoile**, a text face
 with Field's reverse-slashed zero, including light, regular, bold and italic faces. Headings,
 emphasis, links, lists, tables, fenced code, images, and inline or display math are supported.
 
@@ -63,7 +63,9 @@ can be taller than the typeset result, so it scrolls inside the same frame while
 
 ## Images and other content
 
-Ordinary Markdown image syntax works:
+The quickest way to add a picture is to paste it from the clipboard while editing the formatted
+text: a PNG, JPEG, GIF, or WebP up to 1 MiB is embedded in the frame's Markdown. Ordinary Markdown
+image syntax also works:
 
 ```diffstatic {data-lang=markdown}
 ![A diagram](https://example.org/diagram.png)
@@ -210,7 +212,7 @@ Boxes can install their own [marking menus with callbacks and submenus](marking_
 ## Text as part of the document
 
 The source lives in `thisBox.contents`; typography lives in `thisBox.textFrame`. Both are ordinary
-synchronized box properties. Code can update them without executing the Markdown. AI4 can read and
+synchronized box properties. Code in another box can read or set them like any other property. AI4 can read and
 patch `contents`, and related-box content listings include it. Semantic workspace search indexes
 saved text frames as Markdown, with their box names and headings. Literal workspace search sees the
 saved document; for the latest unsaved state AI4 should read the live box property.
