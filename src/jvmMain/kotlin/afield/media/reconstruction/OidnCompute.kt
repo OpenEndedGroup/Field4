@@ -18,6 +18,7 @@ import org.lwjgl.vulkan.VK13.*
 import org.lwjgl.vulkan.VkBufferCopy
 import org.lwjgl.vulkan.VkDependencyInfo
 import org.lwjgl.vulkan.VkMemoryBarrier2
+import java.awt.image.BufferedImage
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.file.Files
@@ -55,25 +56,140 @@ internal class Tza(bytes: ByteArray) {
 }
 
 /**
- * Denoises a [PathTracingRenderer]'s accumulated image on the GPU with Open Image Denoise's network.
+ * What [OidnComputeDenoiser] reads: a linear-radiance image, one vec4 per pixel, and how to tell when it changes.
+ * [PathTraceOidnSource] wraps a path tracer; [OidnImageSource] holds any other image (a raster render, a texture,
+ * a file).
+ */
+interface OidnSource {
+    val renderer: Renderer
+    val width: Int
+    val height: Int
+    /** Names the denoiser's render-list slot (`"<name>-denoise"`). */
+    val name: String
+    /** Linear radiance, row-major vec4 per pixel, a storage buffer with a device address. */
+    val radiance: VulkanBuffer
+    /** Samples averaged into [radiance]; zero while it holds nothing. An image reports 1 once it has one. */
+    val samples: Int
+    /** Samples added per frame, for averaging guides at the same rate. */
+    val samplesPerFrame: Int get() = 1
+    /** Changes whenever [radiance] starts over; a denoised snapshot is current while this is unchanged. */
+    val generation: Long
+    val isClosed: Boolean
+    /**
+     * Per-pixel frame records in the [PathTraceFrameOutput] layout, from which the denoiser averages albedo and
+     * normal as samples arrive; null when the guides are set with [OidnComputeDenoiser.setGuides] instead.
+     */
+    val guideFrames: VulkanBuffer? get() = null
+    /** Show [denoised] wherever the source's own image is shown, or the source's image again when null. */
+    fun showDenoised(denoised: VulkanBuffer?) {}
+}
+
+/** A [PathTracingRenderer] as an [OidnSource]. Turns on the tracer's frame output, which resets accumulation once. */
+class PathTraceOidnSource(val tracer: PathTracingRenderer) : OidnSource {
+    val frame: PathTraceFrameOutput = tracer.enableFrameOutput()
+    override val renderer: Renderer get() = tracer.renderer
+    override val width get() = tracer.width
+    override val height get() = tracer.height
+    override val name get() = tracer.name
+    override val radiance get() = tracer.accumulationBuffer
+    override val samples get() = tracer.samples
+    override val samplesPerFrame get() = tracer.samplesPerFrame
+    override val generation get() = tracer.resetGeneration
+    override val isClosed get() = tracer.isClosed
+    override val guideFrames get() = frame.buffer
+    override fun showDenoised(denoised: VulkanBuffer?) = tracer.resolveFrom(denoised)
+}
+
+/**
+ * Any image as an [OidnSource]: a device buffer you fill with [upload] from linear pixels, an sRGB
+ * [BufferedImage], or a [RenderToTexture] (a raster render, a particle target). Each upload starts a new
+ * generation, so an installed denoiser runs once per upload; [OidnComputeDenoiser.denoiseImage] runs it now and
+ * returns the pixels.
+ */
+class OidnImageSource(override val renderer: Renderer, override val width: Int, override val height: Int,
+                      override val name: String = "oidn-image") : OidnSource, AutoCloseable {
+    override val radiance = VulkanBuffer(renderer, width.toLong() * height * 16,
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT or VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT or VK_BUFFER_USAGE_TRANSFER_SRC_BIT or VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, needsDeviceAddress = true)
+    override var samples = 0; private set
+    @Volatile override var generation = 0L; private set
+    override var isClosed = false; private set
+
+    /** Linear RGBA, row-major, [width] x [height] x 4. */
+    fun upload(linear: FloatArray): OidnImageSource {
+        check(!isClosed) { "$name is closed" }
+        require(linear.size == width * height * 4) { "expected ${width * height * 4} floats, got ${linear.size}" }
+        uploadFloats(renderer, radiance, linear); samples = 1; generation++
+        return this
+    }
+    /** An 8-bit sRGB image of this size, decoded to linear. */
+    fun upload(image: BufferedImage): OidnImageSource = upload(linearPixels(image).also {
+        require(image.width == width && image.height == height) { "image is ${image.width}x${image.height}, source is ${width}x$height" } })
+    /** The current contents of [texture] (a float or half RGBA target of this size), read back and uploaded. */
+    fun upload(texture: RenderToTexture): OidnImageSource {
+        val px = ReconstructionCapture.read(renderer, texture)
+        require(px.size == width * height * 4) { "texture is not ${width}x$height RGBA" }
+        return upload(px)
+    }
+    override fun close() { if (!isClosed) { isClosed = true; renderer.cleanup += Runnable { radiance.cleanup() } } }
+
+    companion object {
+        private val toLinear = FloatArray(256) { v -> val c = v / 255f; if (c <= .04045f) c / 12.92f else ((c + .055f) / 1.055f).toDouble().pow(2.4).toFloat() }
+        /** Decode an 8-bit sRGB image to linear RGBA floats, alpha 1. */
+        fun linearPixels(image: BufferedImage): FloatArray = FloatArray(image.width * image.height * 4).also { a ->
+            for (y in 0 until image.height) for (x in 0 until image.width) { val rgb = image.getRGB(x, y); val i = (y * image.width + x) * 4
+                a[i] = toLinear[(rgb shr 16) and 255]; a[i + 1] = toLinear[(rgb shr 8) and 255]; a[i + 2] = toLinear[rgb and 255]; a[i + 3] = 1f } }
+        /** A blocking host-to-device copy through a staging buffer. */
+        internal fun uploadFloats(renderer: Renderer, dst: VulkanBuffer, pixels: FloatArray) {
+            val staging = VulkanBuffer(renderer, pixels.size * 4L, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
+            val command = CommandBuffer(renderer.commandPool, true, true); val fence = Fence(renderer.device, false)
+            try {
+                staging.mapAndWrite { put(pixels) }
+                command.beginRecording()
+                MemoryStack.stackPush().use { s ->
+                    vkCmdCopyBuffer(command.vkCommandBuffer, staging.buffer, dst.buffer, VkBufferCopy.calloc(1, s).size(pixels.size * 4L))
+                    val m = VkMemoryBarrier2.calloc(1, s).`sType$Default`().srcStageMask(VK_PIPELINE_STAGE_2_TRANSFER_BIT).srcAccessMask(VK_ACCESS_2_TRANSFER_WRITE_BIT)
+                        .dstStageMask(VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT).dstAccessMask(VK_ACCESS_2_MEMORY_READ_BIT)
+                    vkCmdPipelineBarrier2(command.vkCommandBuffer, VkDependencyInfo.calloc(s).`sType$Default`().pMemoryBarriers(m))
+                }
+                command.endRecording()
+                MemoryStack.stackPush().use { renderer.graphQueue.submit(it.pointers(command.vkCommandBuffer), null, null, null, fence) }
+                fence.fenceWait()
+            } finally { fence.cleanup(); command.cleanup(); staging.cleanup() }
+        }
+    }
+}
+
+/**
+ * Denoises an [OidnSource] on the GPU with Open Image Denoise's network: a [PathTracingRenderer]'s accumulated
+ * image, or any other image through [OidnImageSource].
  *
- * Construction turns on the tracer's frame output (which resets accumulation once) and, from then on, averages
- * the albedo and normal of every traced sample alongside the colour. When the tracer reaches [denoiseAt] samples,
- * or on [request], the network runs once on the accumulated colour and those guides. While that snapshot is
- * current — until the next reset of accumulation — the tracer's own `output` shows it, so `blitToScreen` and any
- * box sampling `output` show the denoised image. Tracing continues underneath.
+ * For a tracer, construction turns on its frame output (which resets accumulation once) and, from then on,
+ * averages the albedo and normal of every traced sample alongside the colour. When the tracer reaches [denoiseAt]
+ * samples, or on [request], the network runs once on the accumulated colour and those guides. While that snapshot
+ * is current — until the next reset of accumulation — the tracer's own `output` shows it, so `blitToScreen` and
+ * any box sampling `output` show the denoised image. Tracing continues underneath.
+ *
+ * For an image the guides start flat (albedo 1, normal +z) and [setGuides] replaces them; [denoiseImage] runs
+ * the network at once and returns the pixels, and an installed denoiser runs once after each upload and shows
+ * the result in [output].
  *
  * Everything stays on the device: guide accumulation, autoexposure, the PU transfer, 16 convolutions with the
  * upsample, concat and max-pool folded into them, and the inverse transfer. [weights] defaults to the
  * `rt_hdr_alb_nrm` weights in Field's resources. Opaque scenes only, as for the frame output it reads.
  */
-class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null, val name: String = "${tracer.name}-denoise",
+class OidnComputeDenoiser(val source: OidnSource, weights: Path? = null, val name: String = "${source.name}-denoise",
                           /** Allocate [albedo] and [normal] exportable as opaque fds, for a CUDA consumer such as native OIDN (Linux). */
                           val exportGuides: Boolean = false) : Target, AutoCloseable {
-    val renderer: Renderer = tracer.renderer
-    val frame: PathTraceFrameOutput = tracer.enableFrameOutput()
-    val width = tracer.width
-    val height = tracer.height
+    /** Denoise [tracer]'s accumulation, through a [PathTraceOidnSource]. */
+    constructor(tracer: PathTracingRenderer, weights: Path? = null, name: String = "${tracer.name}-denoise", exportGuides: Boolean = false) :
+        this(PathTraceOidnSource(tracer), weights, name, exportGuides)
+    /** The tracer behind [source], or null for an image. */
+    val tracer: PathTracingRenderer? get() = (source as? PathTraceOidnSource)?.tracer
+    val renderer: Renderer = source.renderer
+    val width = source.width
+    val height = source.height
     private val pw = (width + 15) / 16 * 16
     private val ph = (height + 15) / 16 * 16
     private val owned = ArrayList<() -> Unit>()
@@ -98,7 +214,7 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
 
     private class Pass(val module: ComputeModulePointer, val mesh: ComputeMesh, val label: String)
     private val passes = ArrayList<Pass>()
-    private val auxPass: Pass
+    private val auxPass: Pass?
     internal val timers = LinkedHashMap<String, LightingGpuTimer>()
     private val total = LightingGpuTimer(renderer).also { owned += { it.close() } }
     val totalMilliseconds get() = total.samples.toList()
@@ -136,19 +252,31 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
     init {
         val tza = Tza(weights?.let { Files.readAllBytes(it) } ?: requireNotNull(OidnComputeDenoiser::class.java.getResourceAsStream(DEFAULT_WEIGHTS)) {
             "Open Image Denoise weights are missing from Field's resources ($DEFAULT_WEIGHTS)" }.use { it.readBytes() })
-        auxPass = pass("aux", AUX, (width + 15) / 16, (height + 15) / 16, 1,
-            mapOf("frame" to frame.buffer, "albedo" to albedo, "normal" to normal, "width" to width, "height" to height))
+        auxPass = source.guideFrames?.let { frames -> pass("aux", AUX, (width + 15) / 16, (height + 15) / 16, 1,
+            mapOf("frame" to frames, "albedo" to albedo, "normal" to normal, "width" to width, "height" to height)) }
         val nbx = (width + 15) / 16; val nby = (height + 15) / 16
         passes += pass("autoexposure-bins", AE_BINS, (nbx + 15) / 16, (nby + 15) / 16, 1,
-            mapOf("color" to tracer.accumulationBuffer, "bins" to bins, "width" to width, "height" to height, "nbx" to nbx, "nby" to nby))
+            mapOf("color" to source.radiance, "bins" to bins, "width" to width, "height" to height, "nbx" to nbx, "nby" to nby))
         passes += pass("autoexposure-reduce", AE_REDUCE, 1, 1, 1, mapOf("bins" to bins, "scale" to scale, "count" to nbx * nby))
         if (cooperativeMatrix) buildMatrixNetwork(tza) else buildPortableNetwork(tza)
         if (zeroed.isNotEmpty()) submit { c -> zeroed.forEach { vkCmdFillBuffer(c.vkCommandBuffer, it.buffer, 0L, VK_WHOLE_SIZE, 0) } }
+        if (auxPass == null) setGuides(null, null)
+    }
+
+    /**
+     * Guides for a source without [OidnSource.guideFrames]: linear albedo in [0, 1] and unit normals, RGBA per
+     * pixel like the colour. Null is flat: albedo 1 (nothing marks detail as texture) or normal +z.
+     */
+    fun setGuides(albedo: FloatArray?, normal: FloatArray?) {
+        val n = width * height * 4
+        require((albedo?.size ?: n) == n && (normal?.size ?: n) == n) { "guides must be $width x $height RGBA" }
+        OidnImageSource.uploadFloats(renderer, this.albedo, albedo ?: FloatArray(n) { 1f })
+        OidnImageSource.uploadFloats(renderer, this.normal, normal ?: FloatArray(n) { if (it % 4 == 2) 1f else 0f })
     }
 
     private fun buildPortableNetwork(tza: Tza) {
         val input = Act(0, 9)
-        passes += pass("input", INPUT, pw / 16, ph / 16, 1, mapOf("color" to tracer.accumulationBuffer, "albedo" to albedo,
+        passes += pass("input", INPUT, pw / 16, ph / 16, 1, mapOf("color" to source.radiance, "albedo" to albedo,
             "normal" to normal, "scale" to scale, "dst" to input.buf, "width" to width, "height" to height, "pw" to pw, "ph" to ph))
 
         // A conv reads A (optionally at half resolution: the fused nearest upsample) then B (the concat skip),
@@ -201,7 +329,7 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
 
     private fun buildMatrixNetwork(tza: Tza) {
         val input = Nhwc(0, 9)
-        passes += pass("input", INPUT_NHWC, pw / 16, ph / 16, 1, mapOf("color" to tracer.accumulationBuffer, "albedo" to albedo,
+        passes += pass("input", INPUT_NHWC, pw / 16, ph / 16, 1, mapOf("color" to source.radiance, "albedo" to albedo,
             "normal" to normal, "scale" to scale, "dst" to input.buf, "width" to width, "height" to height, "pw" to pw, "ph" to ph))
         // A conv reads [src]; with [skip] it reads the nearest 2x upsample of [src] next to [skip] (the concat, fused into
         // the kernel's input staging), so the first input's padded width is its real width.
@@ -269,9 +397,12 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
     /** Average albedo and normal as samples arrive. Turning it off leaves the guides of the last run in place. */
     var accumulateGuides = true
     private var lastSamples = -1
-    /** Denoise once per accumulation run when the tracer reaches this many samples; zero waits for [request]. */
-    var denoiseAt = 64
-    /** Show the current denoised snapshot in the tracer's `output`. */
+    /**
+     * Denoise once per accumulation run when the source reaches this many samples (64 for a tracer, 1 for an
+     * image: once per upload); zero waits for [request].
+     */
+    var denoiseAt = if (source.guideFrames != null) 64 else 1
+    /** Show the current denoised snapshot in the tracer's `output` (an image source shows it only in [output]). */
     var show = true
         set(value) { field = value; if (!value) showing(false) }
     /** Denoise on each of the next [n] frames. One is a still; more are for timing. */
@@ -280,13 +411,13 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
     internal var profileLayers = false
     /** How many times the network has run. */
     var denoiseCount = 0; private set
-    /** The tracer's sample count at the last denoise, or -1. */
+    /** The source's sample count at the last denoise, or -1. */
     var denoisedSamples = -1; private set
     private var denoisedGeneration = -1L
     private var shown = false
-    /** True while the snapshot belongs to the tracer's current accumulation run. */
-    val current get() = denoisedGeneration == tracer.resetGeneration
-    private fun showing(on: Boolean) { if (on != shown) { tracer.resolveFrom(if (on) denoised else null); shown = on } }
+    /** True while the snapshot belongs to the source's current accumulation run (or upload). */
+    val current get() = denoisedGeneration == source.generation
+    private fun showing(on: Boolean) { if (on != shown) { source.showDenoised(if (on) denoised else null); shown = on } }
     private var closed = false
 
     /** Schedule on the render list after the tracer. Reusing [name] retires the previous denoiser. */
@@ -307,6 +438,22 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
         if (!perPass) listOf("total" to submit { c -> passes.forEach { it.module.current.render(c, Rectanglef()); barrier(c, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT) } })
         else passes.map { p -> p.label to submit { c -> p.module.current.render(c, Rectanglef()) } }
     fun emptySubmitMs() = submit { }
+
+    /**
+     * Denoise the source's current image now and return it (linear RGBA, [width] x [height]). Each pass is its own
+     * fenced submit, so no command buffer nears the Metal watchdog at 4K. Blocking: call it from a box or a main,
+     * not from inside a frame.
+     */
+    fun denoiseImage(): FloatArray {
+        check(!closed && !source.isClosed) { "$name is closed" }
+        check(source.samples > 0) { "${source.name} holds no image yet" }
+        lastDenoiseMs = denoiseNow(perPass = true).sumOf { it.second }
+        denoiseCount++; denoisedSamples = source.samples; denoisedGeneration = source.generation
+        submit { c -> graphicsMemoryBarrier(c, denoised); output.render(c, 0) }
+        return read(denoised)
+    }
+    /** Wall time of the last [denoiseImage], summed over its passes, in milliseconds. */
+    var lastDenoiseMs = 0.0; private set
     private fun submit(body: (CommandBuffer) -> Unit): Double {
         val command = CommandBuffer(renderer.commandPool, true, true); val fence = Fence(renderer.device, false)
         try {
@@ -319,11 +466,12 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
     }
 
     override fun render(command: CommandBuffer, index: Int) {
-        if (closed || tracer.isClosed) return
-        val n = tracer.samples
-        if (accumulateGuides && n != lastSamples && n > 0) {
+        if (closed || source.isClosed) return
+        val n = source.samples
+        val auxPass = auxPass
+        if (auxPass != null && accumulateGuides && n != lastSamples && n > 0) {
             barrier(command, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT)
-            auxPass.mesh.push["samples"] = n; auxPass.mesh.push["step"] = tracer.samplesPerFrame
+            auxPass.mesh.push["samples"] = n; auxPass.mesh.push["step"] = source.samplesPerFrame
             auxPass.module.current.render(command, Rectanglef())
             lastSamples = n
         }
@@ -341,7 +489,7 @@ class OidnComputeDenoiser(val tracer: PathTracingRenderer, weights: Path? = null
         total.end(command, index)
         graphicsMemoryBarrier(command, denoised)
         output.render(command, index)
-        pending--; denoiseCount++; denoisedSamples = n; denoisedGeneration = tracer.resetGeneration
+        pending--; denoiseCount++; denoisedSamples = n; denoisedGeneration = source.generation
         if (show) showing(true)
     }
 
