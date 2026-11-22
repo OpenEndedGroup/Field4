@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 25586 of 42758 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 25605 of 42790 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2079 undocumented entry points** (types, top-level functions and values) and 14327 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2079 undocumented entry points** (types, top-level functions and values) and 14340 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -148,6 +148,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [SonicPiPatterns.kt](../src/jvmMain/kotlin/afield/audio/synth/SonicPiPatterns.kt) | Audio | sonic_pi | 0 | 25 | 68% |
 | [MorphoSpec.kt](../src/jvmMain/kotlin/afield/lang/morpho/MorphoSpec.kt) | Languages | morpho_search | 0 | 25 | 51% |
 | [PatPitchDetection.kt](../src/jvmMain/kotlin/afield/audio/synth/PatPitchDetection.kt) | Patterns | chain_fn_sound_roundtrip | 0 | 24 | 50% |
+| [OidnCompute.kt](../src/jvmMain/kotlin/afield/media/reconstruction/OidnCompute.kt) | Internal | path_tracing | 0 | 24 | 57% |
 | [alife_evolve.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_evolve.kt) | ALife | alife_examples, agent_transcripts, braitenberg_vehicles | 0 | 24 | 58% |
 | [Euclid.kt](../src/jvmMain/kotlin/afield/geometry/euclid/Euclid.kt) | Graphics | euclid_elements | 0 | 23 | 67% |
 | [keyframeSweep.kt](../src/jvmMain/kotlin/afield/animation/keyframes/keyframeSweep.kt) | Graphics | keyframe_autosweep | 0 | 22 | 80% |
@@ -718,7 +719,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [StackSLCpuGallery.kt](../src/jvmMain/kotlin/afield/lang/stacksl/cpu/StackSLCpuGallery.kt) | Languages | — | 0 | 12 | 58% |
 | [PuppetBrowserVrPanel.kt](../src/jvmMain/kotlin/afield/media/browser/PuppetBrowserVrPanel.kt) | Imaging | — | 0 | 12 | 20% |
 | [PuppetBrowserWindowPanel.kt](../src/jvmMain/kotlin/afield/media/browser/PuppetBrowserWindowPanel.kt) | Imaging | — | 0 | 12 | 20% |
-| [OidnCompute.kt](../src/jvmMain/kotlin/afield/media/reconstruction/OidnCompute.kt) | Internal | — | 0 | 12 | 55% |
 | [LifecycleLedger.kt](../src/jvmMain/kotlin/afield/runtime/lifecycle/LifecycleLedger.kt) | Workspace | — | 0 | 12 | 48% |
 | [alife_script.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_script.kt) | ALife | — | 0 | 12 | 90% |
 | [SimdVerletDyn4jBridge.kt](../src/jvmMain/kotlin/afield/simulation/physics/SimdVerletDyn4jBridge.kt) | Simulation | — | 0 | 12 | 45% |
@@ -1230,6 +1230,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [DistLive.kt](../src/jvmMain/kotlin/afield/math/distribution/DistLive.kt) | Math | — | 0 | 1 | 85% |
 | [GpVectorProcess.kt](../src/jvmMain/kotlin/afield/math/gp/GpVectorProcess.kt) | Math | — | 0 | 1 | 94% |
 | [NeuralToolsFallbackSmoke.kt](../src/jvmMain/kotlin/afield/media/reconstruction/NeuralToolsFallbackSmoke.kt) | Imaging | — | 0 | 1 | 50% |
+| [OidnImageSourceSmoke.kt](../src/jvmMain/kotlin/afield/media/reconstruction/OidnImageSourceSmoke.kt) | Internal | — | 0 | 1 | 50% |
 | [OidnImageSpike.kt](../src/jvmMain/kotlin/afield/media/reconstruction/OidnImageSpike.kt) | Internal | — | 0 | 1 | 50% |
 | [OidnSpike.kt](../src/jvmMain/kotlin/afield/media/reconstruction/OidnSpike.kt) | Internal | — | 0 | 1 | 50% |
 | [PathTracedReconstructionSmoke.kt](../src/jvmMain/kotlin/afield/media/reconstruction/PathTracedReconstructionSmoke.kt) | Imaging | — | 0 | 1 | 50% |
