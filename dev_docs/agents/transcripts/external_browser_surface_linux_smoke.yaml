@@ -10,6 +10,9 @@ description: |
   This is intentionally a source RTT rather than a fake CPU image: every dma-buf export, DRM
   modifier negotiation, Vulkan import, foreign-queue acquire/release, copy, and fence step is live.
   Requires a Linux Vulkan window on a device with VK_EXT_image_drm_format_modifier.
+docs:
+  - page: "puppet_browser.md#pixels-without-readback"
+    why: "The Linux receiver smoke exercises dma-buf import and the explicit bitmap fallback."
 operations:
   - create:
       box: external_browser_surface_renderer

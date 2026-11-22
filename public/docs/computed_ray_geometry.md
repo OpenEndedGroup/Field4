@@ -161,3 +161,7 @@ Cluster geometry works with ray-tracing pipelines only. The path tracer's ray-qu
 ??? aside "Tests and the reproduction record"
 
     Tests cover native record strides, moving vertices, changed indices, all three invalid-input cases and resource retirement under Vulkan validation. [`dev_docs/lighting/ADVANCED_VULKAN.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/lighting/ADVANCED_VULKAN.md) records the exact environment and limitations.
+
+## See also
+
+[Progressive path tracing](path_tracing.md) covers scene setup and accumulation.

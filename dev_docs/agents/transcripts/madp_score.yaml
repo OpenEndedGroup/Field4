@@ -4,6 +4,9 @@ description: >-
   crosses runs its score { } block every frame, drawing into one dark output canvas and playing
   dough sounds; one box jumps about the score and another drifts. After McLaren, Fischinger and
   Glass, ported from the madp score demo.
+docs:
+  - page: chains.md#studio-tools-from-madp
+    why: "The studio sketchbook in its editable Field document."
 operations:
   - create:
       box: madp_score_playhead

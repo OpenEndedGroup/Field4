@@ -4,6 +4,9 @@ description: >
   and the separatrices between them, drawn over streamlines. A flow built from swirls, sources and
   sinks with a slider that turns up the swirl; and the gradient of a photograph's brightness, its
   ridges and valleys, with a blur slider. Plain Kotlin, no optional libraries.
+docs:
+  - page: "vector_field_topology.md#the-gradient-of-an-image"
+    why: "Compare analytic vector fields with the gradient of a scanned leaf."
 operations:
   - create:
       box: vector_field_swirls

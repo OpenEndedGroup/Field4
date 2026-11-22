@@ -148,6 +148,14 @@ move, a drag, a slider and captions, see [Filming a Timeline](filming_a_timeline
 [What a Capture Can and Cannot Show](capture_limits.md) lists what a capture cannot see, and
 the reply fields that tell you when you have hit one of those limits.
 
+## Read-only documents
+
+Open [Read-only session](agent_transcripts.md#read_only_session) in an ordinary workspace and
+run its counter box. Open the same saved document with `./field.sh --read-only` and run it
+again. The box still runs in memory, and its persistent counter remains at the value on disk.
+Put a disposable copy in a scratch workspace if you want to repeat the saving half of this
+example.
+
 ## Where to go next
 
 - [Where to Go Next](staging.md) completes the Tour with a map of the rest of the documentation.

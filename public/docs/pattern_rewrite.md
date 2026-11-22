@@ -487,3 +487,7 @@ Two starting points exercise everything on this page. Open either from the welco
 - [rewrite_strategies_demo](agent_transcripts.md#rewrite_strategies_demo):
   named rules driven by `once`, `topdown`, `bottomup`, `then`, `choice` and
   `repeat`, plus the nested pattern, each box checking its result.
+
+## See also
+
+[Language extensions](language_extensions.md) covers editor support for a language with its own syntax.

@@ -180,6 +180,10 @@ trusting a visually smooth result.
     material branches, sealed gas, translation invariance, mesh validation, cancellation,
     and convergence toward the spherical Laplace pressure law under mesh refinement.
 
+## See also
+
+[Particles, cloth and constraints](physics.md) covers other particle-based ways to model a surface.
+
 ## API reference
 
 Implementation and parameter details for the helpers used above:

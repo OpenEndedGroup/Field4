@@ -85,6 +85,38 @@ Kotlin is compiled on every build.
 These build and run headless: no window, no GPU. Open one to get the code in front of you, then run
 its box to see the output (a plot, an inline value thumbnail, a printed line).
 
+### adaptive_distribution_feedback
+
+Compare quantile errors with fixed controls and with feedback after an input shift.
+Change the disturbance with a slider and inspect the controls that produced each
+observation. See [Field Probes](field_probes.md#close-the-loop-on-a-distribution).
+
+[Open →](offline.html?file=assets/agent_transcripts/adaptive_distribution_feedback/metadata.edn)
+
+### shader_study_region_checks
+
+Compare RectSL or StackSL revisions from Kotlin and check that pixels outside an
+allowed rectangle stay fixed. Each study includes a candidate that passes and one
+that changes protected pixels. See the [RectSL](rectsl_conversation.md#check-a-local-edit-from-kotlin)
+and [StackSL](stacksl_conversation.md#check-a-local-edit-from-kotlin) guides.
+
+[Open →](offline.html?file=assets/agent_transcripts/shader_study_region_checks/metadata.edn)
+
+### fieldml_reactive_bridge
+
+Drive a FieldML rule with a Kotlin slider, then draw the rule's output in a Kotlin
+box that updates when the result changes. See [Reactive properties](reactive_properties.md#run-a-rule-in-fieldml).
+
+[Open →](offline.html?file=assets/agent_transcripts/fieldml_reactive_bridge/metadata.edn)
+
+### polytope_pick_lineage
+
+Aim at a beveled dodecahedron and highlight a whole face. The pick names the original polygon
+and traces it to a vertex, edge or pentagon of the seed. See
+[Point at a face and find its source](chain_polytope_render.md#point-at-a-face-and-find-its-source).
+
+[Open →](offline.html?file=assets/agent_transcripts/polytope_pick_lineage/metadata.edn)
+
 ### nile_gezira_kernels
 
 **Rasterisation as editable stream kernels.** Nile-style kernels run the Gezira rasteriser over a
@@ -3059,8 +3091,8 @@ graph. Plain Kotlin, no optional libraries.
 <!-- transcript-index: verified-by = compile -->
 
 These boxes are all compiled through Field's real Kotlin/preamble path, but not evaluated by CI:
-their purpose is to cross a process, audio-device or capture-device boundary that the lightweight
-build does not own.
+they use external services, optional native libraries, or audio and capture devices that the
+lightweight build does not provision.
 
 ### evieve_filters
 
@@ -3433,6 +3465,14 @@ boxes and skips the three Pd ones, as it skips Python cells. [Pure Data](pure_da
 
 [Open →](offline.html?file=assets/agent_transcripts/pure_data_demo/metadata.edn)
 
+### steamaudio_screen_study
+
+Compare the same hi-hat with a clear path and behind a wooden screen. Move the screen through
+the ray and see the simulated visibility and transmission change. The box renders stereo WAV
+previews offline. See [Steam Audio scenes](steam_audio_scene.md).
+
+[Open →](offline.html?file=assets/agent_transcripts/steamaudio_screen_study/metadata.edn)
+
 ### csound_demo
 
 **Csound inside Field.** A Kotlin root whose `mainLanguage` makes three Csound boxes under it, and
@@ -3614,6 +3654,14 @@ listens to every temperature, one plots them, and one shows a retained message. 
 first.
 
 [Open →](offline.html?file=assets/agent_transcripts/mqtt_demo/metadata.edn)
+
+### mqtt_datalog_routing
+
+Switch three links on and off in a small installation network. One box publishes MQTT
+snapshots and another uses Datalog to draw the current routes and explain how the console reaches
+the screen. See [Watch a route change](mqtt.md#watch-a-route-change).
+
+[Open →](offline.html?file=assets/agent_transcripts/mqtt_datalog_routing/metadata.edn)
 
 ### dmx_lighting_demo
 

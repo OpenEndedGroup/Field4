@@ -52,6 +52,7 @@ object DatalogSmokeTest {
         testEveryAggregateOpProves()
         testWhyNot()
         testKotlinFacts()
+        testFactSnapshots()
         testIdempotentAdd()
         testParserSurface()
         testSemiNaiveAgreesWithBfs()
@@ -708,6 +709,28 @@ object DatalogSmokeTest {
     /** Every node of a proof, root first. */
     private fun proofNodes(d: DlDerivation): List<DlDerivation> =
         listOf(d) + d.premises.flatMap { proofNodes(it) }
+
+    private fun testFactSnapshots() {
+        val d = Datalog()
+        d.add("path(A, B) :- edge(A, B). path(A, C) :- path(A, B), edge(B, C).")
+        check(d.replaceFacts("edge", listOf(listOf(1, 2), listOf(2, 3))))
+        check(d.rowsOf("path").contains(listOf(1L, 3L)))
+        val connected = d.solve()
+
+        check(!d.replaceFacts("edge", listOf(listOf(2L, 3L), listOf(1L, 2L), listOf(1, 2))))
+        check(d.solve() === connected)
+        expectFailure("invalid snapshot", "arity 2") {
+            d.replaceFacts("edge", listOf(listOf(4, 5), listOf(6)))
+        }
+        check(d.solve() === connected)
+        check(d.rowsOf("path").contains(listOf(1L, 3L)))
+
+        check(d.replaceFacts("edge", listOf(listOf(1, 2))))
+        check(d.rowsOf("path") == listOf(listOf(1L, 2L)))
+        check(d.replaceFacts("edge", emptyList()))
+        check(d.rowsOf("path").isEmpty())
+        check(!d.replaceFacts("edge", emptyList()))
+    }
 
     private fun testKotlinFacts() {
         data class Staff(val name: String, val dept: String, val pay: Int)

@@ -10,6 +10,8 @@ description: >
   The four `wait: pending` barriers are reported as `skipped` in the applied/skipped
   tally; that is normal, not an error.
 docs:
+  - page: "running_code.md#shared-kotlin-types"
+    why: "Compile a data class for several boxes, then pass a typed value through a root export."
   - page: reference/workspace.md
     why: "Reference entry for sharedTypes(), used by box 1."
 operations:

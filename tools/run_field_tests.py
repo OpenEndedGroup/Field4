@@ -2373,17 +2373,20 @@ def requires_sidecar(test: dict[str, Any]) -> bool:
 
 
 def smoke_native_tasks(tests: list[dict[str, Any]]) -> list[str]:
-    """Build only the native helpers needed by the runnable selection."""
+    """Prepare the native helpers and sample data needed by the runnable selection."""
     tags = {str(tag) for test in tests for tag in test.get("tags") or []}
     slug = "slug" in tags
     steam_audio = "steamaudio" in tags
+    tasks: list[str] = []
     if slug and steam_audio:
-        return ["buildSmokeNativePrerequisites"]
-    if slug:
-        return ["buildSlugNative"]
-    if steam_audio:
-        return ["fetchSteamAudioNatives"]
-    return []
+        tasks.append("buildSmokeNativePrerequisites")
+    elif slug:
+        tasks.append("buildSlugNative")
+    elif steam_audio:
+        tasks.append("fetchSteamAudioNatives")
+    if "dirt-samples" in tags:
+        tasks.append("fetchDocsDirtSamples")
+    return tasks
 
 
 def prepare_smoke_natives(

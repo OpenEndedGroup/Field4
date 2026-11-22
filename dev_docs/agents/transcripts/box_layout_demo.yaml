@@ -18,6 +18,9 @@ description: >
 
   Replay into a fresh Field with the agent backdoor, then run "Lay out whole document" from the
   palette. See native/field-d2-layout/README.md.
+docs:
+  - page: "tour_interface.md#the-command-palette-and-open-anything"
+    why: "Use the deliberately scattered graph to compare Lay out selection and Lay out whole document."
 operations:
   - create:
       box: bl_ingest

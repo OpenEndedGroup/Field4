@@ -1046,3 +1046,7 @@ front of it. On the left is a box in the desktop app, its code open in the edito
 [Field from your phone](mobile_controllers.md) has the URL, what each of the six tabs does, and the
 warning that goes with any of this: the page can run boxes, edit code and call AI4 tools, so it
 belongs on a network you trust and never on the open internet.
+
+## See also
+
+To choose a topic after the Tour, open [Where to Go Next](staging.md).

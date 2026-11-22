@@ -11,6 +11,9 @@ description: |
   The sink is an ElectronRTTView, so it needs the Field Electron app; the source is a hidden
   Electron page whose paints are the texture. Chromium does all of the WebRTC. See
   dev_docs/WEBRTC_SOURCES_SINKS.md and public/docs/webrtc.md.
+docs:
+  - page: "webrtc.md#in-a-class-with-aaaframe"
+    why: "Publish a shader and select another participant's stream inside an aaaframe class."
 operations:
   - create:
       box: webrtc_renderer

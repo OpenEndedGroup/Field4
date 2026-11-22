@@ -261,3 +261,8 @@ a complete one.
 
 Full signatures and the rest of the API are in
 [FileManager.kt in the Data reference](reference/data.md#filemanager-kt).
+
+## See also
+
+For the stored metadata, sidecars and history, see
+[What a document is on disk](document_on_disk.md).

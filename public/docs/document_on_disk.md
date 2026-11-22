@@ -327,3 +327,7 @@ the live `metadata.edn` appended as the newest version
 [Document History](document_history.md) covers using it. On disk, history costs one unpruned copy
 of `metadata.edn` per changed save, and that is the only artifact in the directory with no bound on
 how much it can accumulate.
+
+## See also
+
+[Field’s server surface](server_surface.md) lists the interfaces that read and edit the live document.

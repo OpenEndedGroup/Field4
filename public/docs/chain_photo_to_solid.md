@@ -163,3 +163,8 @@ can then turn its depth map into a relief.
   [`PhotoToSolidChain.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/examples/chain/PhotoToSolidChain.kt).
 * The [photo_to_solid_chain](agent_transcripts.md#photo_to_solid_chain) starting point is the same
   route as a document.
+
+## See also
+
+Use [Three.js scenes](three_output.md) to show geometry in a box and
+[Meshes and 3D geometry](mesh_examples.md) to work with its vertices and faces.

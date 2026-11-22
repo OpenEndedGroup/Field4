@@ -2160,3 +2160,8 @@ frames {
 ```
 
 Use `includeFinalFrame = false` when you want a looping sequence without duplicating the first frame at the end.
+
+## See also
+
+[RectSL Inverse Animation](rectsl_inverse_animation.md) shows how to fit a scene's
+parameters to a target animation.

@@ -875,3 +875,7 @@ Source: `src/jvmMain/kotlin/afield/geometry/spatial/lp_trajectories.kt`, `src/jv
   [`pdhg`](reference/graphics.md#lp-polytope-kt--pdhg),
   [`primalDual`](reference/graphics.md#lp-polytope-kt--primaldual),
   [`simplexWalk`](reference/graphics.md#lp-polytope-kt--simplexwalk).
+
+## See also
+
+For fitting geometry to nonlinear constraints, see [Shapes from constraints](ceres.md).

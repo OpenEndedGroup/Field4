@@ -495,6 +495,53 @@ frames {
 They work together. A common pattern is to keep `fieldStats` on permanently for the
 control loop and switch on `fieldProbe` only while you are looking.
 
+## Close the loop on a distribution
+
+A threshold keyed to the middle of a value range can stop working when the input
+gets brighter or its spread shrinks. To keep several parts of the range steady
+at once, measure quantiles, then let the controller learn how each adjustable
+parameter moves those quantiles.
+
+[Open the feedback starting point](agent_transcripts.md#adaptive_distribution_feedback).
+Run **Calibrate a distribution with feedback**. The box uses a deterministic
+stream of 128 samples so you can see what the controller does without a renderer.
+At observation 180, the input shifts and its span narrows. **Fixed**
+and **Loop** receive the same input. The error plot shows the RMS distance of
+the measured 10th, 30th, 50th, 70th and 90th percentiles from a uniform
+distribution on `[0, 1]`. Lower values mean a closer match. With the default
+input shift, the feedback trace overshoots before recovering. Over the final
+60 observations, its mean error is 0.0193, compared with 0.1845 for fixed controls.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/field_probes/adaptive-feedback.png" capture="box" open-outputs=true wait-output=true wait-output-kind=display wait-output-channel=error embed=true hidden=true timeout="90" name="adaptive-feedback" clip="4,98,647,310" scale="2" alt="The measured quantile error with fixed controls and with feedback, before and after a shift in the input at observation 180" macro-file="../../dev_docs/agents/transcripts/adaptive_distribution_feedback.yaml" capture-box="feedback"}
+// The feedback starting point runs the controller against both copies of the same input.
+```
+
+Move **Input offset after change** to rerun both traces. Open **correction** to
+see the offset and span that actually produced each observation. The loop adds
+a small dither to each control to learn which features respond. **Fixed** holds
+offset and span correction at zero, giving you a baseline for judging the
+feedback loop.
+
+The box queues each command for three observations before it affects the stream.
+The controller needs the same count in `observationDelayFrames`. It pairs the
+measurement with the command that actually produced it.
+
+```diffstatic {data-lang=kotlin}
+val applied = inFlight.removeFirst()
+val raw = stream(applied[0], applied[1])
+val clipped = raw.count { it < 0.0 || it > 1.0 }.toDouble() / raw.size
+val observed = raw.map { it.coerceIn(0.0, 1.0) }.toDoubleArray()
+val next = controller.pushSamples(observed, clipRate = clipped)
+inFlight.addLast(next.appliedParams)
+```
+
+For the same pattern on a shader, record the scalar with `fieldProbe(...)` and
+use [`fieldProbeAutoControl`](reference/graphics.md#shaders-kt--fieldprobeautocontrol) to feed
+the read-back samples to the controller. In its `apply` callback, write the
+next controls into the values your shader reads. Set the delay for the command
+and observation cadence in your pipeline. For a feedback rule that can be
+written directly in GLSL, [read a quantile on the GPU](#glsl-side-reading-on-the-gpu).
+
 ## Performance notes
 
 - **Read-back memory.** Both probes' read-back buffers are allocated as

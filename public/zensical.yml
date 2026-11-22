@@ -191,7 +191,8 @@ nav:
   - Presenting & Teaching:
     - Presenting with Field: presentation_studio.md
   - Drawing From Data:
-    # First in the section, ahead of the groups: it is the small vocabulary underneath movement,
+    - Overview: drawing_from_data.md
+    # After the overview, ahead of the groups: it is the small vocabulary underneath movement,
     # cameras, lighting, meshes, simulation and spatial data, so every group below uses it. Moved
     # out of Reference, which is generated, and this page is written; the generated API it
     # describes (linear_algebra_api.md) stays there.
@@ -309,6 +310,7 @@ nav:
       - A Pattern as a Function Generator: marf.md
       - Making a Sound, Every Path There Is: sound_paths.md
       - A Pattern in Space (HRTF): pat_spatial.md
+      - Steam Audio Scenes: steam_audio_scene.md
       - DoughDSP Sound Examples: dough_dsp_sound.md
       - Subharmonic Synthesis: subharmonic_sound.md
       # Modal synthesis from geometry: the modes of a drawn drum head.

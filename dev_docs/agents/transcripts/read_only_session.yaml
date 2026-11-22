@@ -14,6 +14,9 @@ description: |
   history metrics and an operation transcript back into the folder it came from — which is why every
   demo in `dev_docs/agents/demos/` tells you to pass the flag. The saved document at
   `dev_docs/agents/demos/read_only_session/` is this same scene.
+docs:
+  - page: "automating_field.md#read-only-documents"
+    why: "Open the same document twice to compare a saved counter in ordinary and read-only sessions."
 operations:
   - create:
       box: a_saved_counter

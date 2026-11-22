@@ -4,6 +4,9 @@ description: >
   shader measures its own screen footprint and requests the resolution it needs; the CPU reads those
   requests and serves them. Needs a graphics parent, so run graphics_renderer_launch.yaml first.
   Point the folder(...) line at your own images — allBlade is 1640 frames of Blade Runner.
+docs:
+  - page: "afield_four_graphics.md#multi-pass-starting-points"
+    why: "Connect the wall to a renderer and supply an image directory to explore feedback-driven texture residency."
 operations:
   - create:
       box: agent_mega_texture_wall

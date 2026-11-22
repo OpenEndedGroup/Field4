@@ -747,3 +747,8 @@ val canvas = PaintCanvas(900, aspect = view.w / view.h, view = view)
   glazes and pencils, and for building the native library the paint figures need.
 * [A Drawn Morph, Heard](chain_drawn_morph.md) reads strokes from the same drawing as shapes to morph
   between.
+
+## See also
+
+[Brushes with moving hairs](paint_gestures.md) explains the brush simulation.
+[Paint settings, swept](paint_sweeps.md) shows what changes as you vary its controls.

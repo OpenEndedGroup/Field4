@@ -4,6 +4,9 @@ description: >
   their peaks tracked frame by frame with stable identities and coloured trails; and the dark places
   in a photograph tracked across increasing blur, each drawn as a circle the size of the largest blur
   it survives. Needs the optional Morse–Smale library: ./gradlew buildMorseSmaleNative.
+docs:
+  - page: "topology_tracking.md#how-features-are-matched"
+    why: "Follow critical points through a moving field and compare features across scale."
 operations:
   - create:
       box: tracking_live

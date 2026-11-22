@@ -658,3 +658,7 @@ does not infer motion.
     differences and frame counts. Raw network-head parity against the pinned standalone port,
     allocation measurements, fixed-seed checks and the separate motion/history smoke are recorded
     in the checkout's `dev_docs/lighting/OPEN_DLSS_NR_VERIFICATION.md`.
+
+## See also
+
+See [Neural reconstruction](neural_reconstruction.md) for a related rendering workflow that uses frame history.

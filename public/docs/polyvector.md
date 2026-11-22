@@ -262,3 +262,7 @@ pixels wide. On those it reproduces the authors' published results exactly. Outs
     checks the crossing, T-junction, parallel-stroke and separate-component cases. The samples
     themselves are not in Field's repository, because they are someone else's copyrighted drawings;
     the build fetches them with the source.
+
+## See also
+
+[Chaining the geometry extensions](geometry_chains.md) uses the resulting paths in a larger drawing workflow.

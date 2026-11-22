@@ -3279,6 +3279,10 @@ All of these tools compose. One box can have a little inline history, a piano ro
 
 *The public declarations used on this page are listed, with their KDoc, in the codebase reference: [`ValueVisualizer.kt`](reference/visualization.md#valuevisualizer-kt), [`ImagingVisualizer.kt`](reference/visualization.md#imagingvisualizer-kt), [`plotly.kt`](reference/visualization.md#plotly-kt). Start from [what's already in the box](reference/index.md).*
 
+## See also
+
+[Patchy](patchy.md) opens a layered painting editor inside a box output.
+
 ## API reference
 
 Implementation and parameter details for the helpers used above:

@@ -622,6 +622,8 @@ shorthands that build a throwaway BVH, fine for one query and wrong for a loop.
 `convexHullMesh(points)` is an incremental hull with no dependencies, and
 `deviationFrom` / `maxDeviation` / `isContainedIn` / `samplePoints` are the comparison tools.
 
+To pick a named polygon from its triangles, try [Point at a face and find its source](chain_polytope_render.md#point-at-a-face-and-find-its-source).
+
 ## A Voronoi diagram as solids
 
 `voronoi3d(...)` clips half-spaces and hands back `VoronoiCell3`s with polygonal faces.
@@ -966,3 +968,9 @@ Reading a mesh *in* from PLY, glTF or GLB: [Geometry from disk](geometry_from_di
 `afield/graphics/scene/MeshFromDisk.kt`.
 
 Build a scene with meshes, lines and points using [`three { … }`](three_output.md#your-first-three-scene). Use [geometry review](geometry_review.md) to select a visible feature and return its coordinates, note and images to Field.
+
+## See also
+
+For volume meshes, use [TetGen](tetgen.md) to fill a closed surface with tetrahedra.
+[A photograph, closed and mounted](chain_photo_to_solid.md) starts with a depth estimate and
+builds the closed mesh from it.

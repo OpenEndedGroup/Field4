@@ -10,6 +10,7 @@ import afield.document.graph.isTrue
 import afield.runtime.macros.checkAtticAndExecute
 import afield.runtime.macros.checkIntroductionAndExecute
 import afield.runtime.macros.checkPreambleAndExecute
+import afield.lang.fieldml.installFieldML
 import afield.lang.remotejs.KotlinJsExecution
 import afield.lang.remotejs.kotlinJsTopologyNeedsUpdating
 import afield.app.server.thisSessionInfo
@@ -96,6 +97,10 @@ object DemoTranscriptExecSmokeTest {
 
     /** Pure-compute demos that are safe to run to completion headless. */
     internal val EXECUTE = setOf(
+        "adaptive_distribution_feedback",
+        "fieldml_reactive_bridge",
+        "shader_study_region_checks",
+        "polytope_pick_lineage",
         // afield_four_graphics.md, Rasterising with stream kernels: Gezira kernels, Skia beside them; pure CPU.
         "nile_gezira_kernels",
         // afield_four_graphics.md, The SVG tiger: SVG reader, tiger by Gezira beside Skia SVGDOM; pure CPU.
@@ -1113,6 +1118,10 @@ object DemoTranscriptExecSmokeTest {
         // OSCQuery service on fixed ports, meant to be launched and stopped by hand. MqttDemoBundleTest
         // checks the bundle opens.
         "mqtt_demo",
+        // The routing page runs the broker and publisher during its real capture.
+        "mqtt_datalog_routing",
+        // Native Steam Audio and pinned Dirt-Samples are required to render this transcript.
+        "steamaudio_screen_study",
         "oscquery_demo",
         // dmx_lighting.md's demo: `loop { }` boxes on Art-Net's and sACN's fixed UDP ports (6454,
         // 5568). DmxLightingDemoBundleTest checks the bundle; the page's fences run each box's
@@ -1575,6 +1584,8 @@ object DemoTranscriptExecSmokeTest {
     }
 
     internal fun startRunloopDaemon() {
+        // The headless harness skips server startup, where FieldML normally registers its runtime.
+        installFieldML()
         val t = Thread({ afield.runtime.lifecycle.Runloop.runLoop.start() }, "demo-transcript-harness-runloop")
         t.isDaemon = true
         t.start()

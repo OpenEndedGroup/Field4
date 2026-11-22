@@ -1,6 +1,8 @@
 name: motion_closd_recording
 description: >
   Replay a genuine GPU tether/release clip, with reference/executed skeletons. No model install.
+docs:
+  - page: motion_recordings.md#open-a-recording
 operations:
   - create:
       box: motion_closd_recording

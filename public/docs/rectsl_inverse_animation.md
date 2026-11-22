@@ -457,6 +457,10 @@ coverage value read off a soft raster of small or touching rects should not be t
 picture. The full tables, the other kernels and the corpus survey are in
 [`dev_docs/RECTSL_SOFT_RASTER.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/RECTSL_SOFT_RASTER.md).
 
+## See also
+
+Build a forward model first with the [RectSL examples](rectsl_examples.md).
+
 ## API reference
 
 Implementation and parameter details for the helpers used above:

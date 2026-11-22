@@ -3449,6 +3449,10 @@ Open questions for the rest of the page:
 - **Trees that compete for sound.** The light-competition trees could be read with the grain
   decoder, each branch a voice, so a forest's growth becomes a score.
 
+## See also
+
+[Growing neural cellular automata](growing_nca.md) trains a local update rule to grow a target.
+
 ## API reference
 
 Implementation and parameter details for the helpers used above:

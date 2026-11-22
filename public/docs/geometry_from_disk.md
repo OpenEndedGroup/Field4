@@ -517,6 +517,14 @@ area, the CPU mesh rasterizer and Slug paths, see
 The [`splat_tiles`](agent_transcripts.md#splat_tiles) starting point holds three boxes: the binned
 image checked against `SplatRaster`, the heat map, and the timing on the 96×96 view.
 
+## Play a sequence of splat clouds
+
+Open [Splat sequence streaming](agent_transcripts.md#splat_sequence_streaming) beneath a
+renderer. Point `sequenceDir` at a directory of PlayCanvas `.compressed.ply` frames. The box
+shows several offsets into the sequence around the viewer and packs them into one GPU buffer
+for each frame. The readout separates packing time from the playback frame rate. Lower the
+number of slots when packing cannot keep up with the requested rate.
+
 ## Fixing a mesh that looks wrong
 
 Most of these show up in `summary()`, so print it before you draw anything.

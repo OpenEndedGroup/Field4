@@ -2,6 +2,9 @@ name: assimp_browsing
 description: >
   Browse a glTF file as Assimp loads it: column() and tree() over the AIScene open its node
   hierarchy, meshes, materials and animations through the Assimp browsing adapters. No renderer needed.
+docs:
+  - page: "geometry_from_disk.md#a-real-glb-in-a-real-output-area"
+    why: "Open a real glTF scene as a tree of nodes, meshes, materials and transforms."
 operations:
   - create:
       box: assimp_scene
