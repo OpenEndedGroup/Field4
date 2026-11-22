@@ -687,7 +687,7 @@ To see it all at once, open the [map of the docs](../docs_map.md): every page, a
 
 ## Reference pages
 
-**42908 public symbols across 1905 source files**, 25678 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**42909 public symbols across 1905 source files**, 25679 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -714,7 +714,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Patterns](patterns.md) | 40 | 1332 | 729 (54%) | Musical time, as a value. |
 | [Audio](audio.md) | 101 | 2666 | 1436 (53%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 22 | 592 | 592 (100%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
-| [Languages](languages.md) | 134 | 3373 | 1704 (50%) | Field's small languages, from the host side. |
+| [Languages](languages.md) | 134 | 3374 | 1705 (50%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 261 | 3637 | 1548 (42%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [AI4](ai4.md) | 103 | 2305 | 866 (37%) | AI4 is the agent that lives inside Field: the chat panel on every box, the document chat, editor completion, and headless agent tasks. |
 | [Machine learning](machine-learning.md) | 26 | 727 | 444 (61%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
@@ -1453,7 +1453,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [HistoryFileInlineSmokeTest.kt](examples.md#historyfileinlinesmoketest-kt) | Examples · internal | 2 | 0 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>history/<wbr></small> [HistoryMetrics.kt](workspace.md#historymetrics-kt) | Workspace · internal | 9 | 1 | Per-version activity and screenshot records for a document, stored in its `history_metrics.edn` beside `metadata.edn`. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>history/<wbr></small> [HistoryScreenshotCapture.kt](workspace.md#historyscreenshotcapture-kt) | Workspace · internal | 2 | 0 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>fieldml/<wbr>core/<wbr></small> [HostBridge.kt](languages.md#hostbridge-kt) | Languages | 31 | 31 | How a FieldML box calls Kotlin: `hostCall`, `hostNew` and `hostGet` all arrive here, and so does a `.field` read on a host value. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>fieldml/<wbr>core/<wbr></small> [HostBridge.kt](languages.md#hostbridge-kt) | Languages | 32 | 32 | How a FieldML box calls Kotlin: `hostCall`, `hostNew` and `hostGet` all arrive here, and so does a `.field` read on a host value. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>fieldml/<wbr>type/<wbr></small> [HostTypes.kt](languages.md#hosttypes-kt) | Languages | 31 | 19 | The reflection behind FieldML's host types: what a `THost` names, and what can therefore be said at type-check time about a member's type, a resolved overload's result, the parameter slots a call's arguments land in, and the members a receiver actually has. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>spatial/<wbr>steamaudio/<wbr></small> [Hrtf.kt](audio.md#hrtf-kt) | Audio | 7 | 5 | The head-related transfer function that binaural rendering filters through: one `Hrtf` per context, shared by every `BinauralEffect` and kept open longer than all of them. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>steamaudio/<wbr></small> [HrtfProbe.kt](examples.md#hrtfprobe-kt) | Examples | 1 | 1 |  |  |
