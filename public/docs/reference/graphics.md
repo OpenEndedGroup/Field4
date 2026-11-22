@@ -4,7 +4,7 @@
 
 Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side.
 
-443 source file(s), 10726 public symbol(s), 6819 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+444 source file(s), 10738 public symbol(s), 6826 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -6093,6 +6093,53 @@ exactly, so the differences can be plotted.
 How a squircle's corner is built. All take the same gauge.
 
 Constants: `Superellipse`, `SuperellipseCubic`, `Chromium`, `Figma`, `Clothoid`.
+
+## StringArt.kt { #stringart-kt }
+
+String art: one thread wound around a ring of pins until its straight chords trace a shape.
+
+[`stringArt`](graphics.md#stringart-kt--stringart) takes any [`FLine`](graphics.md#fline-kt-fline) as the target, its outline (or, with `filled = true`, its inside),
+and greedily picks the next pin from the current one, choosing the chord that covers the most
+target not yet covered. Each chord drawn is subtracted from the target, so later chords go where
+earlier ones have not. This is Petros Vrellis's "A new way to knit" algorithm, which Erik and
+Martin Demaine used for their 1,500-string font: 200 pins on a circle, 1,500 wraps of a single
+string, an outlined letter as the target. The pins sit on a circle around the shape by default,
+or along any other line you pass as `frame`, such as a square, a blob, or the shape itself.
+
+```diffstatic {data-lang=kotlin}
+val m = layoutText("m", typeface("Helvetica", 400.0)).toFLine()
+val art = m.stringArt(strings = 1500, pins = 200)
+lines(art.chordLines() + art.pinDots(), w = 500.0, h = 500.0, fitToSize = true)
+```
+
+Tests: `StringArtTest`.
+
+`src/jvmMain/kotlin/afield/geometry/path/StringArt.kt` — [read the source](source/jvmMain/afield/geometry/path/StringArt/)
+
+### Top-level functions { #stringart-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="stringart-kt--stringart"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">FLine</span><span class="p">.</span><span class="nf">stringArt</span><span class="p">(</span><span class="n">strings</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1500</span><span class="p">,</span> <span class="n">pins</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">200</span><span class="p">,</span> <span class="n">frame</span><span class="p">:</span> <span class="nc">FLine</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">resolution</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">400</span><span class="p">,</span> <span class="n">lineWidth</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">filled</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">stringWeight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.2</span><span class="p">,</span> <span class="n">background</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span> <span class="n">minSkip</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">stopWhenNoGain</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">lengthBias</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">StringArt</span></code>](source/jvmMain/afield/geometry/path/StringArt/#L163) | Wind one string around a ring of pins so that its chords trace this line. |
+
+### StringArt { #stringart-kt-stringart }
+
+[<code class="highlight"><span class="k">class</span> <span class="nc">StringArt</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">pins</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">FLine</span><span class="p">,</span> <span class="k">val</span> <span class="n">remaining</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/path/StringArt/#L51)
+
+The result of [`stringArt`](graphics.md#stringart-kt--stringart): where the pins are and the order the string visits them.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="stringart-kt--stringart--pins"></a><code class="highlight"><span class="k">val</span> <span class="n">pins</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span></code> |  |
+| <a id="stringart-kt--stringart--path"></a><code class="highlight"><span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">IntArray</span></code> |  |
+| <a id="stringart-kt--stringart--target"></a><code class="highlight"><span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">FLine</span></code> |  |
+| <a id="stringart-kt--stringart--remaining"></a><code class="highlight"><span class="k">val</span> <span class="n">remaining</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="stringart-kt--stringart--strings"></a>[<code class="highlight"><span class="k">val</span> <span class="n">strings</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/geometry/path/StringArt/#L58) | How many chords the string has: one fewer than the pins it visits. |
+| <a id="stringart-kt--stringart--string"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">string</span><span class="p">(</span><span class="n">upTo</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="n">strings</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span> <span class="o">=</span> <span class="nf">vec</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.35</span><span class="p">)</span><span class="p">,</span> <span class="n">thickness</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.6</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLine</span></code>](source/jvmMain/afield/geometry/path/StringArt/#L67) | The string as one [`FLine`](graphics.md#fline-kt-fline), a single unbroken path from pin to pin. |
+| <a id="stringart-kt--stringart--chordlines"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">chordLines</span><span class="p">(</span><span class="n">upTo</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="n">strings</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span> <span class="o">=</span> <span class="nf">vec</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.12</span><span class="p">)</span><span class="p">,</span> <span class="n">thickness</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.6</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span></code>](source/jvmMain/afield/geometry/path/StringArt/#L95) | The string as one [`FLine`](graphics.md#fline-kt-fline) per chord, so that where chords cross they build up brightness. |
+| <a id="stringart-kt--stringart--pindots"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">pinDots</span><span class="p">(</span><span class="n">size</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.6</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span> <span class="o">=</span> <span class="nf">vec</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.55</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLine</span></code>](source/jvmMain/afield/geometry/path/StringArt/#L112) | The pins as dots. |
+| <a id="stringart-kt--stringart--chords"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">chords</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">,</span> <span class="nc">Int</span><span class="p">&gt;</span><span class="p">&gt;</span></code>](source/jvmMain/afield/geometry/path/StringArt/#L123) | The chords as pairs of pin indices, in winding order. |
+| <a id="stringart-kt--stringart--tostring"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/geometry/path/StringArt/#L125) |  |
 
 ## TilingSpectrum.kt { #tilingspectrum-kt }
 

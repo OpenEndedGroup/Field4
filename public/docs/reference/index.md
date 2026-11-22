@@ -687,7 +687,7 @@ To see it all at once, open the [map of the docs](../docs_map.md): every page, a
 
 ## Reference pages
 
-**42864 public symbols across 1899 source files**, 25644 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**42876 public symbols across 1900 source files**, 25651 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -700,7 +700,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Video](video.md) | 14 | 195 | 194 (99%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 60 | 2524 | 1904 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 27 | 1231 | 570 (46%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 443 | 10726 | 6819 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 444 | 10738 | 6826 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 48 | 911 | 515 (56%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 596 | 440 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 787 | 530 (67%) | Nonlinear least squares, aimed at geometry. |
@@ -2426,6 +2426,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>video/<wbr>diffusion/<wbr></small> [StreamDiffusionSupport.kt](video.md#streamdiffusionsupport-kt) | Video | 4 | 3 | The preflight check for local streaming diffusion: whether this machine can run it, and a sentence saying what is missing when it cannot. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>video/<wbr>diffusion/<wbr></small> [StreamDiffusionTemporalOutput.kt](video.md#streamdiffusiontemporaloutput-kt) | Video | 0 | 0 | The temporal half of a diffusion view: it holds the last two results the worker returned and renders the texture the view publishes. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>video/<wbr>diffusion/<wbr></small> [StreamDiffusionView.kt](video.md#streamdiffusionview-kt) | Video | 24 | 24 | A render target that sends a source `RenderToTexture` through the streaming-diffusion worker and returns the result as an ordinary sampled texture, `StreamDiffusionView.output`. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr></small> [StringArt.kt](graphics.md#stringart-kt) | Graphics | 12 | 7 | String art: one thread wound around a ring of pins until its straight chords trace a shape. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>completion/<wbr></small> [StringLiteralCompletion.kt](workspace.md#stringliteralcompletion-kt) | Workspace · internal | 15 | 7 |  | [File management](../files_and_paths.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>notation/<wbr></small> [StrokeLayerFrames.kt](visualization.md#strokelayerframes-kt) | Visualization | 4 | 4 | What a window is sent to draw the stroke layer: every living stroke's lines as compact JSON, and the point index the strokes use to find each other. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>notation/<wbr></small> [StrokeSketch.kt](visualization.md#strokesketch-kt) | Visualization | 43 | 33 | Living strokes: each stroke drawn by hand on the drawing layer becomes an animated, sounding object running code of its own, after the madp line demo. |  |

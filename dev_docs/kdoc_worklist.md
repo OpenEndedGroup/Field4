@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 25644 of 42864 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 25651 of 42876 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2082 undocumented entry points** (types, top-level functions and values) and 14371 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2082 undocumented entry points** (types, top-level functions and values) and 14375 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -873,6 +873,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [DatalogRhythmSoundDocs.kt](../src/jvmMain/kotlin/afield/data/query/datalog/DatalogRhythmSoundDocs.kt) | Languages | — | 0 | 4 | 33% |
 | [ContextWhyTools.kt](../src/jvmMain/kotlin/afield/document/context/ContextWhyTools.kt) | Workspace | — | 0 | 4 | 50% |
 | [Kits.kt](../src/jvmMain/kotlin/afield/document/workspace/Kits.kt) | Workspace | — | 0 | 4 | 84% |
+| [StringArt.kt](../src/jvmMain/kotlin/afield/geometry/path/StringArt.kt) | Graphics | — | 0 | 4 | 58% |
 | [PolyvectorRequiredGraph.kt](../src/jvmMain/kotlin/afield/geometry/vectorize/polyvector/PolyvectorRequiredGraph.kt) | Graphics | — | 0 | 4 | 44% |
 | [RayTracingDocsHarness.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/RayTracingDocsHarness.kt) | Renderers | — | 0 | 4 | 82% |
 | [DiagramTypography.kt](../src/jvmMain/kotlin/afield/graphics/scene/reading/DiagramTypography.kt) | Graphics | — | 0 | 4 | 20% |
