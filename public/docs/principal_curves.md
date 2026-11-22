@@ -11,7 +11,7 @@ depth map, or a box that generated them. They need not form visible lines. This 
 `widthFLines()` draws a band two standard deviations of the scatter to each side, so the bands
 show which strand was drawn with the broader pen:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/principal_curves/strands.png" alt="blue points scattered around three strands on a dark ground: a thin wave across the top, a broad, gently sloping band through the middle, and a narrow arc at the lower right. An orange curve runs down the middle of each, inside a translucent brown band that is narrow along the wave and the arc and several times wider along the broad middle strand. The curves stop a little short of the last points at each end" wait="3" capture="box" open-outputs="true" padding="20" trim="true" requires="principal-curves" name="principal-curves-strands" embed=true}
+```diffstatic_runner {data-lang=kotlin requires="principal-curves" screenshot="assets/principal_curves/strands.png" alt="blue points scattered around three strands on a dark ground: a thin wave across the top, a broad, gently sloping band through the middle, and a narrow arc at the lower right. An orange curve runs down the middle of each, inside a translucent brown band that is narrow along the wave and the arc and several times wider along the broad middle strand. The curves stop a little short of the last points at each end" wait="3" capture="box" open-outputs="true" padding="20" trim="true" requires="principal-curves" name="principal-curves-strands" embed=true}
 import afield.geometry.curves.principal.*
 
 // Three noisy strands of different thickness, 1000 points each.
@@ -73,7 +73,7 @@ numbers for a node in the middle of each curve. Each curve gets the same ten nod
 has fewer than two points per node. The thin strand comes out six times narrower and its nodes about
 twice as uncertain:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/principal_curves/uncertainty.png" alt="a dark panel with two horizontal curves. The upper is a dense, broad band of 4000 blue points with a wide translucent band around its orange curve; the lower is a thin line of 16 points with a narrow band. Below the panel a table lists the middle node of each: the broad band has support 395, nEff 602, width 8.23 and standard error 0.335; the thin line has support 3, nEff 6, width 1.44 and standard error 0.609" wait="3" capture="box" open-outputs="true" padding="20" trim="true" requires="principal-curves" name="principal-curves-uncertainty" embed=true}
+```diffstatic_runner {data-lang=kotlin requires="principal-curves" screenshot="assets/principal_curves/uncertainty.png" alt="a dark panel with two horizontal curves. The upper is a dense, broad band of 4000 blue points with a wide translucent band around its orange curve; the lower is a thin line of 16 points with a narrow band. Below the panel a table lists the middle node of each: the broad band has support 395, nEff 602, width 8.23 and standard error 0.335; the thin line has support 3, nEff 6, width 1.44 and standard error 0.609" wait="3" capture="box" open-outputs="true" padding="20" trim="true" requires="principal-curves" name="principal-curves-uncertainty" embed=true}
 import afield.geometry.curves.principal.*
 
 val random = java.util.Random(9)
@@ -123,7 +123,7 @@ With `allowBranching = true` a forest can grow branches, and each component beco
 can carry weights. This example takes every pixel of the leaf print that is greener than it is red
 or blue, weights it by how much greener, and fits a tree of 40 nodes:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/principal_curves/leaf.png" alt="two panels of the framed leaf print. The first is the photograph. The second darkens it and draws a branching orange tree inside the green leaf, with a translucent band showing the spread of the green pixels around each branch and white dots at the branch points and tips: a central stem with short side branches reaching into the leaf's lobes" wait="4" capture="box" open-outputs="true" padding="20" trim="true" requires="principal-curves" name="principal-curves-leaf" embed=true}
+```diffstatic_runner {data-lang=kotlin requires="principal-curves" screenshot="assets/principal_curves/leaf.png" alt="two panels of the framed leaf print. The first is the photograph. The second darkens it and draws a branching orange tree inside the green leaf, with a translucent band showing the spread of the green pixels around each branch and white dots at the branch points and tips: a central stem with short side branches reaching into the leaf's lobes" wait="4" capture="box" open-outputs="true" padding="20" trim="true" requires="principal-curves" name="principal-curves-leaf" embed=true}
 import afield.geometry.curves.principal.*
 
 // The leaf in the print, as points: every pixel greener than it is red or blue, weighted by how much.
@@ -169,7 +169,7 @@ for one connected graph to cover both strokes. To keep a crossing a crossing, st
 the strokes you mean and grow it as curves only. Separate curves never share a node, so they pass
 over each other:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/principal_curves/crossing.png" alt="two panels of the same X of blue points. On the left, captioned 'grown as a tree: 5 curves', the orange fit runs in from all four tips to two white junction dots near the centre, joined by a short bridge, so the X has become an H. On the right, captioned 'started from two strokes: 2 curves', two straight orange curves run tip to tip and cross in the middle with no node there" wait="3" capture="box" open-outputs="true" padding="20" trim="true" requires="principal-curves" name="principal-curves-crossing" embed=true}
+```diffstatic_runner {data-lang=kotlin requires="principal-curves" screenshot="assets/principal_curves/crossing.png" alt="two panels of the same X of blue points. On the left, captioned 'grown as a tree: 5 curves', the orange fit runs in from all four tips to two white junction dots near the centre, joined by a short bridge, so the X has become an H. On the right, captioned 'started from two strokes: 2 curves', two straight orange curves run tip to tip and cross in the middle with no node there" wait="3" capture="box" open-outputs="true" padding="20" trim="true" requires="principal-curves" name="principal-curves-crossing" embed=true}
 import afield.geometry.curves.principal.*
 
 // Two straight strokes that cross, as 6000 points.
@@ -215,7 +215,7 @@ shorter, tauter graph. `mu` penalises bending at every node with two or more nei
 larger value gives smoother curves. Both are passed as `ElasticParameters`. Fitting a few thousand
 points takes a fraction of a second, so a slider can refit as you drag:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/principal_curves/stiffness.png" alt="a box output with a 'bending (mu)' slider set to 0.1 above a panel showing the three strands of points with their fitted orange curves and width bands" wait="4" capture="box" open-outputs="true" padding="20" trim="true" requires="principal-curves" name="principal-curves-stiffness" embed=true}
+```diffstatic_runner {data-lang=kotlin requires="principal-curves" screenshot="assets/principal_curves/stiffness.png" alt="a box output with a 'bending (mu)' slider set to 0.1 above a panel showing the three strands of points with their fitted orange curves and width bands" wait="4" capture="box" open-outputs="true" padding="20" trim="true" requires="principal-curves" name="principal-curves-stiffness" embed=true}
 import afield.geometry.curves.principal.*
 
 val random = java.util.Random(2)

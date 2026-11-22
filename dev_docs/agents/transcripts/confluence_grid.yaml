@@ -1,6 +1,6 @@
 name: confluence_grid
 description: |
-  **Twenty λ-term reductions running at once in 3D — five terms across, four schedulers down — and
+  **Twenty λ-term reductions running at once in 3D — five term rows, four scheduler columns — and
   every row lands on the same answer.** One box, pure CPU, no window and no setup: the 3D lives in a
   Three.js viewer in the box's own output panel.
 
@@ -57,6 +57,9 @@ description: |
   `dev_docs/INTERACTION_NETS_LAMBDA.md` is the write-up and
   `tools/run_field_tests.py --id stdlib.lambda-terms.smoke` asserts the confluence claim headlessly
   over the whole 25-term corpus.
+docs:
+  - page: "chain_lambda_sound.md#what-the-scheduler-does-change"
+    why: "The same lambda reductions used for sound here run side by side under different schedules."
 operations:
   - create:
       box: confluence_grid

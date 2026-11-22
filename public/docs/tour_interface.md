@@ -96,6 +96,8 @@ ui.pause(1200)
 Press ++question++ on the canvas to see every shortcut on one card. It reads your current bindings, so a
 change to `keybindings.yaml` shows up there; see [Keyboard shortcuts](keybindings.md).
 
+Try the two layout commands on [Box layout demo](agent_transcripts.md#box_layout_demo). The nine boxes start scattered. Select part of the graph and use **Lay out selection** first, then **Lay out whole document** to arrange the entire graph.
+
 ## Search boxes
 
 With the canvas focused, ++cmd+f++ opens a search bar at the bottom left of the canvas. It finds

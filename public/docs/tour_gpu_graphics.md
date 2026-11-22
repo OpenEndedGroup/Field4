@@ -12,6 +12,9 @@ shorter way to open a window and draw a triangle.
 
 ## A renderer, and a box beneath it
 
+For scripted setup, the [renderer transcript](agent_transcripts.md#graphics_renderer_launch)
+creates and launches the parent box. Connect your first draw box beneath that parent.
+
 One box opens the window and runs the frame loop. Its code publishes the window and the renderer
 as properties, builds them once, and starts the renderer:
 

@@ -7,6 +7,9 @@ description: |
   Sketch finds them with fromContext / fromContextWithNameOrNull. Every box runs once, parents
   first. Try disconnecting Bloom from Right (select Right, shift-select Bloom, `u`) and re-running
   Bloom: it reads 7.
+docs:
+  - page: "running_code.md#property-inheritance-how-children-see-a-parents-values"
+    why: "Follow the shared petals value through two parents, shadowing and definition order."
 operations:
   - create:
       box: bgdemo_garden

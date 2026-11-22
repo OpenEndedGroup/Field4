@@ -474,6 +474,14 @@ assign; use `@exported` to share a declaration you have already written.
 
 ---
 
+## Shared Kotlin types
+
+Use `sharedTypes(...)` when independently compiled boxes need the same class. A data class
+declared in one box's script is otherwise local to that script's compilation. In [Shared
+types](agent_transcripts.md#shared_types_demo), run the declaration box first, then the boxes
+that construct and destructure `shared.Particle`. The last pair passes a typed instance
+through `@rootExported`, so the receiving box can read it with the same type.
+
 ## Generated GLSL accessors: `moduleHere { }`
 
 A shader box's GLSL also decides what Kotlin you can write against it. `moduleHere { }` is a macro: at expansion it reads the box's vertex and fragment (or compute) shaders, writes typed Kotlin accessors into the preamble, then replaces itself with the real runtime builder. (The [Field 4 Graphics](afield_four_graphics.md) page covers using these from a user's point of view; here we show what is actually generated.)

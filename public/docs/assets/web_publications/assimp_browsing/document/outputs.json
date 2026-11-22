@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-18T14:35:39.553Z",
+  "capturedAt": "2026-11-22T15:52:13.699Z",
   "documentName": "assimp_browsing",
   "outputs": [
     {
@@ -11,8 +11,8 @@
         "Lazy inspector: only the materialized rows and current view are captured"
       ],
       "kinds": [],
-      "width": 1308,
-      "height": 228,
+      "width": 1300,
+      "height": 220,
       "path": "outputs/0.html"
     },
     {
@@ -23,8 +23,8 @@
         "Lazy inspector: only the materialized rows and current view are captured"
       ],
       "kinds": [],
-      "width": 708,
-      "height": 228,
+      "width": 700,
+      "height": 220,
       "path": "outputs/1.html"
     }
   ]

@@ -67,6 +67,8 @@ description: |
   [four_morton_quadtree](#four_morton_quadtree) is the same three planes produced from a point set
   instead of a raster, by a completely different pipeline.
 docs:
+  - page: "afield_four_graphics.md#multi-pass-starting-points"
+    why: "Reduce a raster to tiles and inspect their mass, centroids and covariance ellipses."
   - page: reference/renderers.md
     why: "Reference for the pass-chain API used to build this pyramid."
 operations:

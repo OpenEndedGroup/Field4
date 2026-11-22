@@ -7,6 +7,9 @@ description: >
   values newest first; click a row to select its version, Restore to put that value back into sketch
   alone. Replay with
   `field_backdoor.py --document history_box_story --command 'macro write history_box_story --file dev_docs/agents/transcripts/history_box_story.yaml' --command 'macro run history_box_story'`.
+docs:
+  - page: "document_history.md#one-box-edit-by-edit"
+    why: "Replay three edits into a saving document to see them in the selected box's history."
 operations:
   - create:
       box: history_sketch

@@ -12,6 +12,9 @@ description: |
   which cannot back a VkImage with an IOSurface, both go through IOSurfaceHostBuffer
   (VK_EXT_external_memory_host) with one GPU copy each. Needs `native/field-encode` built
   (`swift build -c release`) and a Vulkan window.
+docs:
+  - page: "puppet_browser.md#pixels-without-readback"
+    why: "The macOS smoke follows a known colour from the field-encode ring to the browser receiver."
 operations:
   - create:
       box: iosurface_ring_renderer
