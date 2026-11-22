@@ -72,12 +72,12 @@ data class NewBoxRequest(
 
 @JsonClassDescription("Delete a box (and anything nested in it) from this Field document. Returns success and the deleted box's uid and name. Use it only when the task asks for a box to go; to change a box, edit it instead. box is a uid or unique name, e.g. `Scratch`. An unknown or ambiguous box fails with the list of known boxes.")
 @afield.ai.tools.AgentToolMeta("graph", effects = [afield.ai.tools.ToolEffect.MUTATE_DOCUMENT])
-data class DeleteBoxRequest(val box: String)
+data class DeleteBoxRequest(@param:JsonPropertyDescription("Box uid or unique name, e.g. `Plot`.") val box: String)
 
 @JsonClassDescription("Replace a whole text property on a box, most often `code`, e.g. property = `code`, value = `println(1)`. Returns success and the length set. Use it for a rewrite; for a small change prefer PatchBoxTextRequest, which resends nothing else. Does not run it: call RunBox or LaunchBox afterwards. An unknown or ambiguous box fails with the list of known boxes.")
 @afield.ai.tools.AgentToolMeta("graph", effects = [afield.ai.tools.ToolEffect.MUTATE_DOCUMENT])
 data class SetBoxPropertyRequest(
-    val box: String,
+    @param:JsonPropertyDescription("Box uid or unique name, e.g. `Plot`.") val box: String,
     @JsonPropertyDescription("Property name; `code` for Kotlin source, `name` to rename.")
     val property: String = "code",
     val value: String,
@@ -86,7 +86,7 @@ data class SetBoxPropertyRequest(
 @JsonClassDescription("Edit part of a box's text property in place, without resending the whole text. This is the cheap way to change code: prefer it to GetBoxProperty + string replace + SetBoxProperty (by hand or in a RunToolProgram), which re-reads and resends everything. Three forms: (1) `edits` = [{find, replace}, ...] applies several exact find/replace edits in order, all or nothing: each `find` must occur exactly once in the text as left by the earlier edits, and if any is missing or ambiguous nothing is written and the reply names each failing anchor; (2) a single `find`/`replace` (`occurrence` N = the Nth non-overlapping match, 0 = every match; fails if absent or, with occurrence 1, ambiguous unless allowMultiple); (3) a line range (`startLine`..`endLine`, 1-based, inclusive, replaced by `replacement`; endLine 0 means endLine = startLine; `insert` = true inserts before startLine). Returns success, the length before and after, and a short diff of what changed. `runAfter` = true then runs the box (like RunBoxRequest) in the same call and returns its verdict and output. Recorded like SetBoxPropertyRequest.")
 @afield.ai.tools.AgentToolMeta("graph", effects = [afield.ai.tools.ToolEffect.MUTATE_DOCUMENT])
 data class PatchBoxTextRequest(
-    val box: String,
+    @param:JsonPropertyDescription("Box uid or unique name, e.g. `Plot`.") val box: String,
     val property: String = "code",
     val find: String = "",
     val replace: String = "",
@@ -108,20 +108,20 @@ data class PatchEdit(val find: String = "", val replace: String = "")
 
 @JsonClassDescription("Read a text property of a box, most often `code` (e.g. box = `Primes`, property = `code`). Returns its text as `value`; a property the box does not have, or one that is not text, fails with success=false. Use it when you need a box's current text; a failed RunBox already reports its errors and lines. An unknown or ambiguous box fails with the list of known boxes.")
 @afield.ai.tools.AgentToolMeta("graph", effects = [afield.ai.tools.ToolEffect.READ_DOCUMENT])
-data class GetBoxPropertyRequest(val box: String, val property: String = "code")
+data class GetBoxPropertyRequest(@param:JsonPropertyDescription("Box uid or unique name, e.g. `Plot`.") val box: String, val property: String = "code")
 
 @JsonClassDescription("Connect two boxes: `child` becomes a child of `parent` (e.g. parent = `Settings`, child = `Plot`). Children inherit properties and can see their parents' variables. Returns success and the child's uid and name. Use it when one box must read another's values; the child sees them on its next run. Fails if either box is unknown or ambiguous.")
 @afield.ai.tools.AgentToolMeta("graph", effects = [afield.ai.tools.ToolEffect.MUTATE_DOCUMENT])
-data class ConnectBoxesRequest(val parent: String, val child: String)
+data class ConnectBoxesRequest(@param:JsonPropertyDescription("Parent box: uid or unique name.") val parent: String, @param:JsonPropertyDescription("Child box: uid or unique name.") val child: String)
 
 @JsonClassDescription("Remove the parent→child connection between two boxes (e.g. parent = `Settings`, child = `Plot`). Returns success and the child's uid and name. Use it when a box should stop inheriting from another. Fails if either box is unknown or ambiguous.")
 @afield.ai.tools.AgentToolMeta("graph", effects = [afield.ai.tools.ToolEffect.MUTATE_DOCUMENT])
-data class DisconnectBoxesRequest(val parent: String, val child: String)
+data class DisconnectBoxesRequest(@param:JsonPropertyDescription("Parent box: uid or unique name.") val parent: String, @param:JsonPropertyDescription("Child box: uid or unique name.") val child: String)
 
 @JsonClassDescription("Run a box's code once to completion (like the Run command) and wait for its verdict. It compiles the code itself, so there is no need to compile first. Returns success, what it printed and displayed, and on failure success=false with the compile/runtime errors and their lines. Use it for code that finishes; for loops or animations that keep running use LaunchBoxRequest. If `code` is given it replaces the box's code first (e.g. code = `println((1..5).toList())`). An unknown or ambiguous box fails with the list of known boxes.")
 @afield.ai.tools.AgentToolMeta("graph", effects = [afield.ai.tools.ToolEffect.EXECUTE_CODE])
 data class RunBoxRequest(
-    val box: String,
+    @param:JsonPropertyDescription("Box uid or unique name, e.g. `Plot`.") val box: String,
     @JsonPropertyDescription("Optional replacement source; omitted or blank = run the box's current code.")
     val code: String? = null,
     val timeoutSeconds: Double = 30.0,
@@ -130,7 +130,7 @@ data class RunBoxRequest(
 @JsonClassDescription("Launch a box (like the Launch command): run its setup, which may start loops or animations that keep running. Waits for setup to complete or fail, then returns whether it is still running and what it said so far; compile or setup errors come back as success=false. Use it for code with `start {}`/frame loops; use RunBoxRequest for code that finishes, and StopBoxRequest to end it. e.g. box = `Ticker`, settleSeconds = 1. An unknown or ambiguous box fails with the list of known boxes.")
 @afield.ai.tools.AgentToolMeta("graph", effects = [afield.ai.tools.ToolEffect.EXECUTE_CODE, afield.ai.tools.ToolEffect.CONTROL_RUNTIME])
 data class LaunchBoxRequest(
-    val box: String,
+    @param:JsonPropertyDescription("Box uid or unique name, e.g. `Plot`.") val box: String,
     val code: String? = null,
     val timeoutSeconds: Double = 30.0,
     @JsonPropertyDescription("Seconds to keep collecting output after setup completes.")
@@ -139,12 +139,12 @@ data class LaunchBoxRequest(
 
 @JsonClassDescription("Stop a running box and everything it launched (e.g. box = `Ticker`). Returns success=true once it has stopped, success=false if it is still running. Use it when a task asks for a loop or animation to end, or before relaunching. Stopping a box that is not running is not an error. An unknown or ambiguous box fails with the list of known boxes.")
 @afield.ai.tools.AgentToolMeta("graph", effects = [afield.ai.tools.ToolEffect.CONTROL_RUNTIME])
-data class StopBoxRequest(val box: String)
+data class StopBoxRequest(@param:JsonPropertyDescription("Box uid or unique name, e.g. `Plot`.") val box: String)
 
 @JsonClassDescription("Read what a box has printed, displayed, or reported since a marker (0 = everything retained). Returns the entries as text plus a new marker to pass next time. Use it to follow a launched box's output, optionally waiting until it contains some text (e.g. contains = `done`, waitSeconds = 5); a wait that times out returns what there was, not an error. To see what a box draws, use ViewBoxOutputRequest. An unknown or ambiguous box fails with the list of known boxes.")
 @afield.ai.tools.AgentToolMeta("graph", effects = [afield.ai.tools.ToolEffect.READ_DOCUMENT])
 data class ReadBoxOutputRequest(
-    val box: String,
+    @param:JsonPropertyDescription("Box uid or unique name, e.g. `Plot`.") val box: String,
     @JsonPropertyDescription("Return entries after this marker; use the marker from a previous RunBox/LaunchBox/ReadBoxOutput result.")
     val since: Long = 0,
     @JsonPropertyDescription("If non-empty, wait (up to waitSeconds) until some output contains this text.")
@@ -156,7 +156,7 @@ data class ReadBoxOutputRequest(
 @JsonClassDescription("Look at what a box SHOWS: capture its output area (the panels its display(...) calls fill) as a picture. Returns the picture, attached for you to inspect, plus measured facts (size, dominant colours, how much of it is not background) and viewerStates, the geometry state actually captured. It uses an independent browser, so its camera, visibility and interactive state may differ from the user's. Use it after RunBox/LaunchBox whenever a box displays HTML, SVG, a table, a chart or any drawing, to check that it looks the way it was asked to; fix it if it does not. This, not CaptureRenderWindowRequest, is the tool for display(...) output. Printed text is not in the picture: read that with ReadBoxOutputRequest. A box with no panel fails with that said, and a mostly empty capture says BLANK. e.g. box = `Swatch`, note = `is the square red?`")
 @afield.ai.tools.AgentToolMeta("graph", effects = [afield.ai.tools.ToolEffect.CAPTURE_IMAGE])
 data class ViewBoxOutputRequest(
-    val box: String,
+    @param:JsonPropertyDescription("Box uid or unique name, e.g. `Plot`.") val box: String,
     @JsonPropertyDescription("Milliseconds to wait before capturing, for a late script or an animation; clamped to 0..5000. 0 = a short default.")
     val settleMs: Int = 0,
     @JsonPropertyDescription("What you are looking for. Travels with the picture as its caption.")

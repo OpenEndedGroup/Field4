@@ -51,7 +51,7 @@ data class ListStudyBuildsRequest(val unused: Int = 0)
  */
 @JsonClassDescription("Inspect a document build runner's stages and paged durable attempt history, or one jobId. Returns each stage with its fingerprint and currency, what a waiting stage waits for (inputHelp, such as a closed gate's measurement), the attempts with their requests, structured failure suggestions and retained artifact identities. A stage's resultNotes explain its current result; its failureNotes explain a latest attempt that failed against the current inputs, which is never current. Running, succeeded and current are different: an old success can be stale after edits. Use it before StartStudyBuildRequest, which needs the stage fingerprint from here. This does not start or retry work. An unknown boxId/name fails with success=false and says to list runners. e.g. boxId = `a1b2`, name = `mesh`, limit = 5.")
 @AgentToolMeta("builds", effects = [ToolEffect.READ_DOCUMENT, ToolEffect.FILESYSTEM_READ])
-data class InspectStudyBuildsRequest(val boxId: String, val name: String, val jobId: String = "", val offset: Int = 0, val limit: Int = 10)
+data class InspectStudyBuildsRequest(@param:JsonPropertyDescription("Uid (not name) of the runner's source box, as ListStudyBuilds returns it.") val boxId: String, val name: String, val jobId: String = "", val offset: Int = 0, val limit: Int = 10)
 
 /**
  * Watch a job that is already running, reporting its progress into the chat without spending a model turn
@@ -60,7 +60,7 @@ data class InspectStudyBuildsRequest(val boxId: String, val name: String, val jo
  */
 @JsonClassDescription("Wait up to 900 seconds for an existing build job to finish, streaming real progress into chat without additional model turns. Use it when a StartStudyBuildRequest observation timed out, or to follow a job started elsewhere. For a long build call this directly with waitSeconds=600 and leave afterUpdated empty; inside a tool program the wait is clamped to the program's remaining deadline. Return long-job handles from programs and observe them separately. Do not spend model turns repeatedly polling unchanged work. Returns immediately on completion. An optional afterUpdated timestamp returns early when progress changes, for interactive observation. timedOut means observation ended, not build failure. The result includes live stage currency, qualification facts and artifact references; check these before consuming its result. Cancellation of this wait does not cancel the build. An unknown job, or waitSeconds outside 0..900, fails with success=false. e.g. jobId = `job-3`, waitSeconds = 600.")
 @AgentToolMeta("builds", ToolExposure.DEFERRED, effects = [ToolEffect.READ_DOCUMENT, ToolEffect.FILESYSTEM_READ])
-data class WaitStudyBuildRequest(val boxId: String, val name: String, val jobId: String,
+data class WaitStudyBuildRequest(@param:JsonPropertyDescription("Uid (not name) of the runner's source box, as ListStudyBuilds returns it.") val boxId: String, val name: String, val jobId: String,
     /** How long to watch, 0 to 900 seconds. Reaching it ends the observation and not the build. */
     val waitSeconds: Double = 600.0,
     /** A progress timestamp to return early on: the wait ends as soon as the job's own differs from it. */
@@ -74,7 +74,7 @@ data class WaitStudyBuildRequest(val boxId: String, val name: String, val jobId:
  */
 @JsonClassDescription("Start one derived stage from its current frozen inputs. Returns success, the job handle and, when it waited, the outcome. Use it when a stage is not current and the task needs its result. When called directly, waitSeconds=600 starts and observes completion in one call with streamed progress; zero returns immediately. Inside a tool program, start long work with waitSeconds=0 and return the job handle, then observe it separately: a nested wait cannot extend the program's deadline. Supply the stage fingerprint from the latest inspect. Missing/stale dependency results, closed gates and competing builds are refused. If observation times out, use WaitStudyBuildRequest on the same returned job; do not equate accepted/queued with successful or current. Continue editing while it runs: outdated results cannot become current. e.g. stageId = `bake`, expectedFingerprint from InspectStudyBuildsRequest, waitSeconds = 600.")
 @AgentToolMeta("builds", effects = [ToolEffect.MUTATE_DOCUMENT, ToolEffect.EXECUTE_CODE, ToolEffect.CONTROL_RUNTIME, ToolEffect.FILESYSTEM_WRITE])
-data class StartStudyBuildRequest(val boxId: String, val name: String, val stageId: String, val expectedFingerprint: String, val waitSeconds: Double = 0.0,
+data class StartStudyBuildRequest(@param:JsonPropertyDescription("Uid (not name) of the runner's source box, as ListStudyBuilds returns it.") val boxId: String, val name: String, val stageId: String, val expectedFingerprint: String, val waitSeconds: Double = 0.0,
     // A JSON string rather than a Map: openai-java's strict schema refuses an object with no named properties.
     /**
      * Parameters for this one attempt, as a JSON object in a string: a job to resume, a budget. Anything
@@ -91,7 +91,7 @@ data class StartStudyBuildRequest(val boxId: String, val name: String, val stage
  */
 @JsonClassDescription("Request cancellation of a specific build. Returns success=true once the request is recorded; an unknown runner or job fails with success=false. Use it when a running build is no longer wanted, e.g. jobId = `job-3` after its inputs changed. Publication is revoked; a running native operation may need time to finish. Poll the same job until terminal instead of treating a cancellation request as proof it stopped. Previous successful results and attempt history are retained.")
 @AgentToolMeta("builds", ToolExposure.DEFERRED, effects = [ToolEffect.MUTATE_DOCUMENT, ToolEffect.CONTROL_RUNTIME, ToolEffect.FILESYSTEM_WRITE])
-data class CancelStudyBuildRequest(val boxId: String, val name: String, val jobId: String)
+data class CancelStudyBuildRequest(@param:JsonPropertyDescription("Uid (not name) of the runner's source box, as ListStudyBuilds returns it.") val boxId: String, val name: String, val jobId: String)
 
 /**
  * End the turn and have Field wait for up to twenty jobs without the model, then start the conversation
@@ -101,7 +101,7 @@ data class CancelStudyBuildRequest(val boxId: String, val name: String, val jobI
  */
 @JsonClassDescription("End this turn and let Field wait for build jobs without the model, then resume this conversation with their outcomes. Use it after StartStudyBuildRequest (waitSeconds=0) when a build will take more than a few minutes, instead of repeated WaitStudyBuildRequest calls: every wait costs a model round, and this costs none. Returns at once with suspended=true and the jobs it waits for; call no other tool after it in this turn. When every job is terminal, or maxHours have passed, Field sends you a message with each job's status, currency, facts and result notes, and you carry on from there. If every job has already finished it returns their outcomes with suspended=false and the turn goes on. An unknown runner or job, more than 20 jobs, or maxHours outside 0..48 fails with success=false. e.g. boxId = `a1b2`, name = `mesh`, jobIds = [`3f2a1c9e-...`], maxHours = 4.")
 @AgentToolMeta("builds", ToolExposure.DEFERRED, effects = [ToolEffect.READ_DOCUMENT, ToolEffect.FILESYSTEM_READ, ToolEffect.AGENT_STATE])
-data class AwaitStudyBuildsRequest(val boxId: String, val name: String, val jobIds: List<String>, val maxHours: Double = 4.0)
+data class AwaitStudyBuildsRequest(@param:JsonPropertyDescription("Uid (not name) of the runner's source box, as ListStudyBuilds returns it.") val boxId: String, val name: String, val jobIds: List<String>, val maxHours: Double = 4.0)
 
 /**
  * Delete attempt history nothing in this document still needs, across all of its runners. What is kept is each

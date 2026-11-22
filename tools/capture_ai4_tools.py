@@ -69,6 +69,7 @@ NAMESPACES = {
     "kotlin": "Compile and evaluate Kotlin in a box's own context without running the box.",
     "source": "A box's live, saved and last-run source, and edits to it.",
     "states": "The document's saved histories and the states in them.",
+    "text-notes": "Markdown notes as text frames, and links and transclusions between their passages (see [Text frames](text_frames.md)).",
     "guides": "Markdown guides that live in the document and outlast the chat.",
     "context": "Files and references attached to the chat, read in bounded excerpts.",
     "memory": "The chat's own scratchpad and checklist, which last the session; notes kept across sessions and documents, and the saved chats they cite.",

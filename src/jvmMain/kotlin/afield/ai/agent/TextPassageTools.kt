@@ -1,5 +1,6 @@
 package afield.ai.agent
 
+import com.fasterxml.jackson.annotation.JsonPropertyDescription
 import afield.ai.conversation.aiChatMarkdownSourceHtml
 import afield.ai.tools.AgentToolMeta
 import afield.ai.tools.SummarisesForToolLog
@@ -31,19 +32,19 @@ data class FindTextNotesRequest(val query: String = "", val limit: Int = 20)
 @JsonClassDescription("Create a Markdown note as a text frame. Optionally give parent (box uid or unique name) for a normal child connection. To attach it to a specific passage, also give quote as exact Markdown from the parent frame's contents. For repeated quotes supply the positive occurrence, counted left to right; ambiguity otherwise refuses the write. Returns clickable note and passage links. Does not run code.")
 @AgentToolMeta("text-notes", effects = [ToolEffect.MUTATE_DOCUMENT])
 data class CreateTextNoteRequest(
-    val name: String, val markdown: String, val parent: String = "", val quote: String = "", val occurrence: Int = 0,
+    val name: String, val markdown: String, @param:JsonPropertyDescription("Box to connect the note under: uid or unique name; blank for none.") val parent: String = "", val quote: String = "", val occurrence: Int = 0,
 )
 
 /** Register a passage independently of any links that use it. */
 @JsonClassDescription("Get or create a stable link to an exact passage in a text frame's Markdown contents. source is a box uid or unique name. Quote the exact Markdown from GetBoxPropertyRequest. If it appears more than once, supply the positive occurrence. Returns a passage ID and clickable field://passage/ link. Use this for a citation that follows edits and moves.")
 @AgentToolMeta("text-notes", effects = [ToolEffect.MUTATE_DOCUMENT])
-data class TrackTextPassageRequest(val source: String, val quote: String, val occurrence: Int = 0)
+data class TrackTextPassageRequest(@param:JsonPropertyDescription("Text frame holding the quote: uid or unique name.") val source: String, val quote: String, val occurrence: Int = 0)
 
 /** Insert a live, read-only excerpt in a text frame. */
 @JsonClassDescription("Transclude a passage in another text frame in the current document. Give destination (uid or unique name) and either a passageId, or source plus exact Markdown quote (specify occurrence for repeats). Appends a separate paragraph by default; insertAfter gives a unique exact destination string after which to insert inline. Source stays unchanged. This inserts a live Markdown reference, not copied words, and does not run code.")
 @AgentToolMeta("text-notes", effects = [ToolEffect.MUTATE_DOCUMENT])
 data class TranscludeTextPassageRequest(
-    val destination: String, val passageId: String = "", val source: String = "", val quote: String = "",
+    @param:JsonPropertyDescription("Text frame to insert into: uid or unique name.") val destination: String, val passageId: String = "", @param:JsonPropertyDescription("Text frame holding the quote: uid or unique name.") val source: String = "", val quote: String = "",
     val occurrence: Int = 0, val insertAfter: String = "",
 )
 
@@ -51,7 +52,7 @@ data class TranscludeTextPassageRequest(
 @JsonClassDescription("Find linked notes, live transclusions and ordinary Markdown box links in the current document. Optional box scopes the search: direction=sources lists links going out of that box, backlinks lists uses of that box, both lists either. Filter by passageId or search words in titles and excerpts, including lost passages. Results have clickable source and referencing-box links. Pass the destination UID/property/line to DocumentSourceNavigateRequest to navigate explicitly.")
 @AgentToolMeta("text-notes", effects = [ToolEffect.READ_DOCUMENT])
 data class FindTextLinksRequest(
-    val query: String = "", val box: String = "", val direction: String = "both", val passageId: String = "", val limit: Int = 25,
+    val query: String = "", @param:JsonPropertyDescription("Limit to this box: uid or unique name; blank for the whole document.") val box: String = "", val direction: String = "both", val passageId: String = "", val limit: Int = 25,
 )
 
 data class TextNoteHit(val uid: String, val name: String, val property: String, val excerpt: String, val link: String)
