@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 25609 of 42794 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 25614 of 42815 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2079 undocumented entry points** (types, top-level functions and values) and 14340 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2082 undocumented entry points** (types, top-level functions and values) and 14353 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -24,7 +24,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Boxes.kt](../src/jvmMain/kotlin/afield/document/graph/Boxes.kt) | Workspace | ai4_tools, keybindings, keyframer_examples | 24 | 40 | 32% |
 | [wfc.kt](../src/jvmMain/kotlin/afield/simulation/automata/wfc.kt) | Data | wfc_examples | 20 | 67 | 29% |
 | [FabricateScene.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/FabricateScene.kt) | Renderers | fabricate_renderer, geometry_from_disk | 19 | 114 | 5% |
-| [FieldGraphTools.kt](../src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt) | AI4 | ai4_tools, ai4_experiments | 18 | 100 | 18% |
+| [FieldGraphTools.kt](../src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt) | AI4 | ai4_tools, ai4_experiments, text_frames | 18 | 102 | 18% |
 | [KotlinScriptEngine.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/KotlinScriptEngine.kt) | Workspace | changelog, running_code, agent_transcripts | 18 | 42 | 25% |
 | [RemoteJS.kt](../src/jvmMain/kotlin/afield/lang/remotejs/RemoteJS.kt) | Languages | lua | 18 | 8 | 7% |
 | [dynamic_graph_systems.kt](../src/jvmMain/kotlin/afield/data/graph/dynamic_graph_systems.kt) | Data | dynamic_graph_systems_examples | 16 | 109 | 20% |
@@ -79,6 +79,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [SlideShow.kt](../src/jvmMain/kotlin/afield/ui/slides/SlideShow.kt) | Visualization | interactive_guides, presentation_studio | 3 | 35 | 50% |
 | [saving.kt](../src/jvmMain/kotlin/afield/document/persistence/saving.kt) | Workspace | document_on_disk | 3 | 26 | 29% |
 | [FLineGaussianProcess.kt](../src/jvmMain/kotlin/afield/geometry/path/FLineGaussianProcess.kt) | Graphics | gaussian_processes | 3 | 16 | 45% |
+| [TextPassageTools.kt](../src/jvmMain/kotlin/afield/ai/agent/TextPassageTools.kt) | AI4 | text_frames | 3 | 11 | 26% |
 | [Mechanics.kt](../src/jvmMain/kotlin/afield/simulation/physics/pressure/Mechanics.kt) | Simulation | pressure_membranes | 3 | 7 | 23% |
 | [PlanarContact.kt](../src/jvmMain/kotlin/afield/geometry/solid/manifold/PlanarContact.kt) | Graphics | manifold | 3 | 5 | 38% |
 | [NgxSupport.kt](../src/jvmMain/kotlin/afield/media/reconstruction/NgxSupport.kt) | Imaging | neural_reconstruction, reconstruction_plumbing | 3 | 4 | 22% |
@@ -1295,10 +1296,13 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `ViewBoxOutputRequest` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:158` |
 | `FieldBoxSummary` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:168` |
 | `FieldOutputEntry` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:179` |
-| `FieldGraphTools` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:328` |
+| `FieldGraphTools` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:333` |
 | `ReadNotationRequest` | class | `src/jvmMain/kotlin/afield/ai/agent/NotationTools.kt:25` |
 | `ViewNotationRequest` | class | `src/jvmMain/kotlin/afield/ai/agent/NotationTools.kt:43` |
 | `NotationReadResult` | class | `src/jvmMain/kotlin/afield/ai/agent/NotationTools.kt:79` |
+| `TextNoteHit` | class | `src/jvmMain/kotlin/afield/ai/agent/TextPassageTools.kt:57` |
+| `TextLinkHit` | class | `src/jvmMain/kotlin/afield/ai/agent/TextPassageTools.kt:59` |
+| `TextPassageToolResult` | class | `src/jvmMain/kotlin/afield/ai/agent/TextPassageTools.kt:65` |
 | `BlockBoundary` | class | `src/jvmMain/kotlin/afield/ai/diagnostics/Logging.kt:51` |
 | `LogSink` | interface | `src/jvmMain/kotlin/afield/ai/diagnostics/Logging.kt:53` |
 | `NotifyLog` | class | `src/jvmMain/kotlin/afield/ai/diagnostics/Logging.kt:204` |
@@ -1396,8 +1400,5 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `CombFilter` | class | `src/jvmMain/kotlin/afield/audio/synth/Filters.kt:291` |
 | `AllpassFilter` | class | `src/jvmMain/kotlin/afield/audio/synth/Filters.kt:350` |
 | `DCBlocker` | class | `src/jvmMain/kotlin/afield/audio/synth/Filters.kt:388` |
-| `FormantFilter` | class | `src/jvmMain/kotlin/afield/audio/synth/Filters.kt:411` |
-| `DiodeLadder` | class | `src/jvmMain/kotlin/afield/audio/synth/Filters.kt:475` |
-| `Saturator` | class | `src/jvmMain/kotlin/afield/audio/synth/Filters.kt:520` |
 
-…and **1959 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
+…and **1962 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.

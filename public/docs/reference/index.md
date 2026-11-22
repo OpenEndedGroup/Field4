@@ -410,6 +410,7 @@ To see it all at once, open the [map of the docs](../docs_map.md): every page, a
 - <span class="reference-internal">[history](workspace.md#historymetrics-kt)</span>
 - <span class="reference-internal">[persistence](workspace.md#documentshutdownflush-kt)</span>
 - *properties* — [Data](data.md#saved-kt) · [Internal](internal.md#binding-kt) · [Workspace](workspace.md#propertybag-kt)
+- [text](workspace.md#textrunanchor-kt)
 - *workspace* — [Data](data.md#filemanager-kt) · [Workspace](workspace.md#kitdedicatedhost-kt)
 
 </div>
@@ -686,7 +687,7 @@ To see it all at once, open the [map of the docs](../docs_map.md): every page, a
 
 ## Reference pages
 
-**42794 public symbols across 1893 source files**, 25609 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**42815 public symbols across 1896 source files**, 25614 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -714,8 +715,8 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Audio](audio.md) | 101 | 2666 | 1436 (53%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 22 | 592 | 592 (100%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 133 | 3360 | 1699 (50%) | Field's small languages, from the host side. |
-| [Workspace](workspace.md) | 259 | 3636 | 1547 (42%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
-| [AI4](ai4.md) | 102 | 2297 | 864 (37%) | AI4 is the agent that lives inside Field: the chat panel on every box, the document chat, editor completion, and headless agent tasks. |
+| [Workspace](workspace.md) | 261 | 3636 | 1547 (42%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
+| [AI4](ai4.md) | 103 | 2318 | 869 (37%) | AI4 is the agent that lives inside Field: the chat panel on every box, the document chat, editor completion, and headless agent tasks. |
 | [Machine learning](machine-learning.md) | 26 | 727 | 444 (61%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Animation](animation.md) | 10 | 186 | 43 (23%) |  |
 | [Execution](execution.md) | 2 | 9 | 9 (100%) |  |
@@ -1248,7 +1249,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [FieldBrowserHosts.kt](internal.md#fieldbrowserhosts-kt) | Internal · internal | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>tools/<wbr></small> [FieldCheckoutRepo.kt](ai4.md#fieldcheckoutrepo-kt) | AI4 | 5 | 2 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>stream/<wbr></small> [FieldEncodeProcess.kt](imaging.md#fieldencodeprocess-kt) | Imaging | 15 | 9 | The JVM side of the `field-encode` helper, which encodes Field render targets (VideoToolbox on macOS, the `field-encode-linux` build on Linux) and streams them to the visionOS app. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>agent/<wbr></small> [FieldGraphTools.kt](ai4.md#fieldgraphtools-kt) | AI4 | 145 | 27 | The box graph and execution tools of Field's own agent: list, create, delete, edit, connect, run, launch, stop and read the output of boxes in the current document. | [AI4's built-in tools](../ai4_tools.md), [Experimenting with AI4](../ai4_experiments.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>agent/<wbr></small> [FieldGraphTools.kt](ai4.md#fieldgraphtools-kt) | AI4 | 147 | 27 | The box graph and execution tools of Field's own agent: list, create, delete, edit, connect, run, launch, stop and read the output of boxes in the current document. | [AI4's built-in tools](../ai4_tools.md), [Experimenting with AI4](../ai4_experiments.md), [Writing on the canvas](../text_frames.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [FieldKtParser.kt](workspace.md#fieldktparser-kt) | Workspace · internal | 3 | 2 | Kotlin source to a parse tree, without compiling it. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>fieldml/<wbr></small> [FieldMLCompiler.kt](languages.md#fieldmlcompiler-kt) | Languages | 10 | 10 | FieldML's front end behind one call: source text in, and whatever its four stages managed to produce out. | [FieldML stage by stage](../fieldml_stages.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>fieldml/<wbr></small> [FieldMLCompletionEngine.kt](languages.md#fieldmlcompletionengine-kt) | Languages | 3 | 3 | Completion and hover for a FieldML box: what the editor offers under the caret, and what the card over a symbol says. |  |
@@ -2468,6 +2469,9 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>mesh/<wbr>tetgen/<wbr></small> [TetgenSolid.kt](graphics.md#tetgensolid-kt) | Graphics | 1 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>mesh/<wbr>tetgen/<wbr></small> [TetMeshViews.kt](simulation.md#tetmeshviews-kt) | Simulation | 6 | 6 | Ways of looking at a `TetMesh`: its element quality, a slice of it, and the triangles that draw it. | [Filling a solid: tetrahedral meshing with TetGen](../tetgen.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [textFrameAssets.kt](workspace.md#textframeassets-kt) | Workspace · internal | 1 | 1 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>agent/<wbr></small> [TextPassageTools.kt](ai4.md#textpassagetools-kt) | AI4 | 19 | 5 |  | [Writing on the canvas](../text_frames.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>text/<wbr></small> [TextRunAnchor.kt](workspace.md#textrunanchor-kt) | Workspace | 0 | 0 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>text/<wbr></small> [TextRunClipboard.kt](workspace.md#textrunclipboard-kt) | Workspace | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>texture/<wbr></small> [textures.kt](graphics.md#textures-kt) | Graphics | 45 | 20 | Sampled textures for Field 4 shaders: images decoded from disk or memory, CPU-streamed frames, and GPU-writable storage images. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>texture/<wbr></small> [TextureSampler.kt](graphics.md#texturesampler-kt) | Graphics | 4 | 1 | `TextureSampler` wraps a `VkSampler`: filtering, mipmap mode, anisotropy and per-axis address modes for sampling a texture in a shader. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>bytecode/<wbr></small> [ThreadOwnership.kt](workspace.md#threadownership-kt) | Workspace | 33 | 25 | Thread-ownership guards: a report, naming the box line, when box code calls API that belongs to one thread (a synth graph's `render`, which the audio thread owns; the renderer's frame calls, which the Runloop owns) from another. |  |
