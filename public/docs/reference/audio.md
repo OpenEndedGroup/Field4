@@ -2150,6 +2150,8 @@ crosses the FFM boundary. The bit-flag sets are value classes over an Int, not e
 
 `src/jvmMain/kotlin/afield/audio/spatial/steamaudio/Enums.kt` — [read the source](source/jvmMain/afield/audio/spatial/steamaudio/Enums/)
 
+**Used in:** [Hear a screen between you and a sound](../steam_audio_scene.md)
+
 ### LogLevel { #enums-kt-loglevel }
 
 [<code class="highlight"><span class="k">public</span> <span class="k">enum</span> <span class="k">class</span> <span class="nf">LogLevel</span><span class="p">(</span><span class="k">override</span> <span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span> <span class="p">:</span> <span class="nc">NativeEnum</span></code>](source/jvmMain/afield/audio/spatial/steamaudio/Enums/#L23)

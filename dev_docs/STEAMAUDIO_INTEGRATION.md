@@ -1,8 +1,9 @@
 # Using `afield.audio.spatial.steamaudio` from Field
 
 What you need to wire the bindings into a 2D game or into Field itself. The reasoning behind the
-numbers is in [STEAMAUDIO.md](STEAMAUDIO.md), and every claim here was measured rather than
-assumed.
+numbers is in [STEAMAUDIO.md](STEAMAUDIO.md). The
+[screen study](../public/docs/steam_audio_scene.md) is the walk-through with a saved Field
+starting point and listening examples.
 
 Written as a handoff document for a consumer taking the bindings as a published dependency, and
 kept in that shape because that is still the clearest way to read sections 2 onwards. Section 1
@@ -16,7 +17,7 @@ Linux x64.
 ## 1. Getting at it from Field
 
 Nothing to depend on: the bindings are in Field's own tree and its build graph, at
-`src/jvmMain/kotlin/afield/four/audio/steamaudio`. Import and use them.
+`src/jvmMain/kotlin/afield/audio/spatial/steamaudio`. Import and use them.
 
 One setup step, once per checkout, because the binaries are not committed:
 

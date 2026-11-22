@@ -287,6 +287,8 @@ to schedule the render thread; if it is near the elapsed time, the work does not
 
 ## See also
 
+- To measure what geometry blocks and what passes through, try the
+  [Steam Audio screen study](steam_audio_scene.md).
 - [Making a sound in Field](sound_paths.md) compares this with every other sound path.
 - [Pattern language](pattern_language.md) covers `pat`, `with` and mini-notation.
 - The full API is in [`PatSpatial.kt` in the generated reference](reference/patterns.md#patspatial-kt).

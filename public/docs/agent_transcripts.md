@@ -3042,8 +3042,8 @@ graph. Plain Kotlin, no optional libraries.
 <!-- transcript-index: verified-by = compile -->
 
 These boxes are all compiled through Field's real Kotlin/preamble path, but not evaluated by CI:
-their purpose is to cross a process, audio-device or capture-device boundary that the lightweight
-build does not own.
+they use external services, optional native libraries, or audio and capture devices that the
+lightweight build does not provision.
 
 ### evieve_filters
 
@@ -3415,6 +3415,14 @@ boxes and skips the three Pd ones, as it skips Python cells. [Pure Data](pure_da
 ![A Pure Data drone patch: frequency and cutoff receivers drive a filtered phasor into stereo output](assets/pure_data/drone-patch.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/pure_data_demo/metadata.edn)
+
+### steamaudio_screen_study
+
+Compare the same hi-hat with a clear path and behind a wooden screen. Move the screen through
+the ray and see the simulated visibility and transmission change. The box renders stereo WAV
+previews offline. See [Steam Audio scenes](steam_audio_scene.md).
+
+[Open →](offline.html?file=assets/agent_transcripts/steamaudio_screen_study/metadata.edn)
 
 ### csound_demo
 

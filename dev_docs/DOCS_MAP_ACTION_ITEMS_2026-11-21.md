@@ -227,6 +227,21 @@ reported 32 at its earlier revision.
 - Use the source drift table to choose examples to re-run. The source timestamp can reflect
   an edit unrelated to the example, so look at the changed calls before recapturing.
 - Connect remaining transcripts to the sections that teach them as the examples are reviewed.
-- Choose a runnable application for the remaining large API gaps, especially Steam Audio
-  spatial simulation, adaptive modelling and the RectSL/StackSL study code. Decide which
-  layers belong in the public documentation as part of designing those examples.
+### What the API gaps meant
+
+- [Steam Audio scenes](../public/docs/steam_audio_scene.md) now has a runnable direct sound
+  comparison with editable screen geometry, listening clips and links to the reflection and
+  pathing experiments. The optional acceleration device wrappers are an implementation-level
+  topic.
+- [Adaptive modelling](../src/jvmMain/kotlin/afield/math/control/modelling.kt) is the controller
+  that fits distributions of measured values. Its demonstrated use is
+  [fieldProbeAutoControl](../src/jvmMain/kotlin/afield/graphics/shader/shaders.kt), which feeds GPU
+  samples into the controller and writes the resulting shader parameters. The
+  [Field Probes page](../public/docs/field_probes.md) teaches measurement. A worked example that
+  closes the loop and shows the response to a disturbance is still missing.
+- [RectSL](../public/docs/rectsl_conversation.md), [StackSL](../public/docs/stacksl_conversation.md)
+  and [Stack Auto](../public/docs/stackauto_conversation.md) already have worked studies,
+  editable starters and descriptions of the study tools. The report attributed coverage to
+  source files directly named or called by pages and transcripts. Most calls into the
+  revision, trace and variant machinery go through the box language and its tools. Treat the
+  low score as a question about direct Kotlin API coverage.
