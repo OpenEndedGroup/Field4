@@ -98,6 +98,8 @@ object DemoTranscriptExecSmokeTest {
     internal val EXECUTE = setOf(
         // afield_four_graphics.md, Rasterising with stream kernels: Gezira kernels, Skia beside them; pure CPU.
         "nile_gezira_kernels",
+        // afield_four_graphics.md, The SVG tiger: SVG reader, tiger by Gezira beside Skia SVGDOM; pure CPU.
+        "nile_gezira_svg",
         // geometry_from_disk.md, Splats by tile: SplatTiles binning, heat map and schedule timing; pure CPU.
         "splat_tiles",
         // mesh_examples.md, Repairing a field that is only a bound: SdfGrid2D circles and offsets; pure CPU.
