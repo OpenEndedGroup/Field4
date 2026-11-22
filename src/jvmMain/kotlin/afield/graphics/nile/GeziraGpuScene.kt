@@ -51,6 +51,12 @@ class GeziraGpuScene(
     segmentCapacity: Int = 1 shl 20,
     /** Entries (and runs) each band of 16 rows can hold. */
     bandCapacity: Int = 1 shl 15,
+    /**
+     * Dispatches of each stage per frame. 1 to draw; more only to time the pipeline, as the
+     * difference between frames with several and with one (each stage's repeats run back to back,
+     * and each is idempotent, so the picture is the same).
+     */
+    repeats: Int = 1,
 ) {
     init {
         require(width in 1..2048) { "GeziraGpuScene draws images 1 to 2048 pixels wide, not $width" }
@@ -107,7 +113,8 @@ class GeziraGpuScene(
                 3 -> bands
                 else -> height
             }
-            probe.stage("gezira-scene-$name", src).dispatch(groups = max(1, groups), label = name) { bindAll(this@GeziraGpuScene) }
+            val stage = probe.stage("gezira-scene-$name", src)
+            repeat(repeats) { r -> stage.dispatch(groups = max(1, groups), label = "$name$r") { bindAll(this@GeziraGpuScene) } }
         }
     }
 

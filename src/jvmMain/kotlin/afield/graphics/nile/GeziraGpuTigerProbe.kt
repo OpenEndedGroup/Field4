@@ -31,8 +31,9 @@ expect:
  * The GPU flattens uniformly to [GeziraGpuScene.tolerance] pixels where the CPU halves curves to
  * 1/10,000, so the bound here, [MAX_MEAN] on the mean, is about that flattening; the largest
  * difference is reported, not bounded, since one pixel's colour can swing where a thin stroke's
- * flattening moves it. Timing is over [TIMED_FRAMES] frames: GPU time from the renderer's
- * timestamps around the compute pass, and wall time per frame with presentation in it.
+ * flattening moves it. Timing is over [TIMED_FRAMES] frames: wall time per frame with presentation
+ * in it, and the pipeline's own GPU cost as (frames with it dispatched [REPEATS] times − frames with
+ * it once) / ([REPEATS] − 1).
  * Difference images go to `build/gezira-gpu-tiger/`.
  */
 object GeziraGpuTigerProbe {
@@ -41,17 +42,28 @@ object GeziraGpuTigerProbe {
     const val MAX_MEAN = 2e-3
 
     private const val TIMED_FRAMES = 60
+    private const val REPEATS = 5
+
+    private fun timeFrames(probe: GpuProbe): Double {
+        probe.pumpFrames(5)
+        probe.idle()
+        val t0 = System.nanoTime()
+        probe.pumpFrames(TIMED_FRAMES)
+        probe.idle()
+        return (System.nanoTime() - t0) / 1e6 / TIMED_FRAMES
+    }
 
     @JvmStatic
     fun main(args: Array<String>) {
         Options.enableVR = false
         Options.vsync = false
-        Options.profiling = true
         val window = Window("Gezira GPU Tiger Probe")
         val renderer = Renderer(window)
         val pump = { window.pollEvents(); renderer.render() }
         var failures = 0
         val table = ArrayList<String>()
+        val gpuPerFrame = HashMap<Int, Double>()
+        val cpuTimes = HashMap<Int, Double>()
         val out = File("build/gezira-gpu-tiger").apply { mkdirs() }
         try {
             val svg = GeziraSvg.tiger()
@@ -60,11 +72,23 @@ object GeziraGpuTigerProbe {
             val paths = GeziraGpuScene.paths(doc)
             val loadMs = (System.nanoTime() - t0) / 1e6
             println("tiger: ${paths.size} paths, ${paths.sumOf { it.beziers.size }} curves; strokes outlined at load in %.0f ms".format(loadMs))
+            // Frames with no compute at all: what the window and presentation cost by themselves.
+            repeat(10) { pump() }
+            val idleStart = System.nanoTime()
+            repeat(TIMED_FRAMES) { pump() }
+            val idleMs = (System.nanoTime() - idleStart) / 1e6 / TIMED_FRAMES
+            println("empty frame: %.2f ms".format(idleMs))
             for (size in listOf(450, 900, 1800)) {
                 val fit = doc.fit(size, size)
                 failures += gpuProbe(renderer, "gezira-tiger-$size", pump = pump) { probe ->
                     val scene = GeziraGpuScene(probe, paths, size, size, transform = fit)
                     probe.settle(scene.image, seconds = 60.0)
+                    // A written image is not a finished chain: wait until all five stages have
+                    // compiled, then let the chain run whole a few times.
+                    var waited = 0
+                    while (probe.stageList.any { !it.valid } && waited++ < 600) pump()
+                    repeat(4) { pump() }
+                    probe.idle()
                     val gpu = scene.read()
                     val over = scene.overflow()
                     probe.exactly("segments dropped ($size)", over[0], 0, buffer = "counts")
@@ -85,23 +109,20 @@ object GeziraGpuTigerProbe {
                         out.resolve("difference-x10.png").writeBytes(GeziraSvg.png(GeziraSvg.difference(gpu, cpu, 10.0), size, size, 0x000000))
                     }
                     probe.atMost("mean |gpu - cpu| ($size)", meanCpu, MAX_MEAN, buffer = "image")
-                    // timing: the pipeline runs every frame anyway
-                    probe.pumpFrames(10)
-                    val gpuMs = ArrayList<Double>()
-                    val start = System.nanoTime()
-                    repeat(TIMED_FRAMES) {
-                        pump()
-                        val g = renderer.lastGpuComputeMs
-                        if (!g.isNaN()) gpuMs += g
-                    }
-                    probe.idle()
-                    val wallMs = (System.nanoTime() - start) / 1e6 / TIMED_FRAMES
-                    gpuMs.sort()
-                    val med = gpuMs.getOrElse(gpuMs.size / 2) { Double.NaN }
-                    val p90 = gpuMs.getOrElse((gpuMs.size * 9) / 10) { Double.NaN }
-                    table += "%5d x %-5d gpu compute median %7.2f ms (p90 %7.2f)  wall %7.2f ms/frame  cpu GeziraSvg.render %8.0f ms".format(
-                        size, size, med, p90, wallMs, cpuMs)
+                    gpuPerFrame[size] = timeFrames(probe)
+                    cpuTimes[size] = cpuMs
                     probe.verdict("gezira gpu tiger $size")
+                }
+                // The pipeline's own GPU cost: frames with it dispatched REPEATS times, against once.
+                failures += gpuProbe(renderer, "gezira-tiger-$size-x$REPEATS", pump = pump) { probe ->
+                    val scene = GeziraGpuScene(probe, paths, size, size, transform = fit, repeats = REPEATS)
+                    probe.settle(scene.image, seconds = 60.0)
+                    while (probe.stageList.any { !it.valid }) pump()
+                    val heavy = timeFrames(probe)
+                    val wallMs = gpuPerFrame.getValue(size)
+                    table += "%5d x %-5d  wall %7.2f ms/frame (empty frame %.2f)  pipeline on the GPU %7.2f ms  CPU GeziraSvg.render %6.0f ms".format(
+                        size, size, wallMs, idleMs, (heavy - wallMs) / (REPEATS - 1), cpuTimes.getValue(size))
+                    probe.verdict("gezira gpu tiger timing $size")
                 }
             }
         } catch (t: Throwable) {

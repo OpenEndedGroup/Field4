@@ -1,0 +1,190 @@
+name: gezira_gpu_tiger
+description: >-
+  The Ghostscript tiger through Gezira on the GPU, live. GeziraGpuScene uploads the tiger's 304 painted
+  paths once (strokes outlined at load by GeziraStroke) and every frame runs five compute stages: flatten
+  each curve under the frame's transform with Wang's bound, a prefix sum, emit the segments in paint
+  order, bin them into 16-row bands, and per pixel row resolve each path's exact coverage with Gezira's
+  WindingSpans and composite it source-over. A tiger box turns and zooms the transform every frame; a
+  draw box shows the image in the native window; a third box draws one frame read back beside the CPU's
+  GeziraSvg.render and their difference.
+docs:
+  - page: afield_four_graphics.md
+    why: "The 'The tiger on the GPU' subsection of 'Rasterising with stream kernels' replays this transcript."
+operations:
+  - create:
+      box: ggt_renderer
+      name: renderer
+      frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.graphics.vulkan.util.Options
+
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+          Options.enableHDR = false
+          Options.profiling = false
+          Options.vsync = false
+          once.renderer {
+              window = Window("the tiger, through Gezira on the GPU", initialDimensions = Rect(80.0, 80.0, 900.0, 900.0))
+              Renderer(window)
+          }
+          println("renderer ready")
+          start(renderer::run)
+  - create:
+      box: ggt_tiger
+      name: tiger on the gpu
+      frame: { x: 40.0, y: 200.0, w: 340.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.graphics.nile.*
+          import afield.graphics.vulkan.util.GpuProbe
+
+          val N = 900
+          val doc = GeziraSvg.parse(GeziraSvg.tiger())
+          // Every fill and every stroke outline, in paint order, uploaded once.
+          val paths = GeziraGpuScene.paths(doc)
+          val fit = doc.fit(N, N)
+          val probe = GpuProbe(renderer, "gezira-gpu-tiger")
+          val scene = GeziraGpuScene(probe, paths, N, N, transform = fit)
+
+          prop<FrameBufferGroup>(tigerImage) = scene.image
+          prop<Int>(tigerSize) = N
+          println("${paths.size} paths, ${scene.curveCount} curves")
+
+          // Turn and breathe about the middle: only the six numbers of the transform change per frame.
+          var frames = 0
+          var last = System.nanoTime()
+          loop {
+              val t = frames / 60.0
+              val zoom = 1.0 + 0.35 * Math.sin(t * 0.7)
+              val about = SvgTransform.translate(N / 2.0, N / 2.0) *
+                  SvgTransform.rotate(12.0 * Math.sin(t * 0.5)) *
+                  SvgTransform.scale(zoom) *
+                  SvgTransform.translate(-N / 2.0, -N / 2.0)
+              scene.transform = about * fit
+              frames++
+              if (frames % 120 == 0) {
+                  val now = System.nanoTime()
+                  display("rate", "%.1f ms a frame".format((now - last) / 1e6 / 120))
+                  last = now
+              }
+              frame()
+          }.end { probe.close() }
+  - create:
+      box: ggt_draw
+      name: draw the tiger
+      frame: { x: 40.0, y: 360.0, w: 340.0, h: 100.0 }
+      properties:
+        vertex: |
+          #version 450
+
+          // one triangle that covers the window; positions come from the vertex index
+          vec2 fullscreenVertex(uint index) {
+              if (index == 0u) return vec2(-1.0, -1.0);
+              if (index == 1u) return vec2(3.0, -1.0);
+              return vec2(-1.0, 3.0);
+          }
+
+          void main() {
+              gl_Position = vec4(fullscreenVertex(uint(gl_VertexIndex)), 0.0, 1.0);
+          }
+        fragment: |
+          #version 450
+          #extension GL_EXT_buffer_reference : require
+
+          // The scene's image: premultiplied rgba per pixel, row-major, y down.
+          layout(std430, buffer_reference) buffer Image {
+              vec4 p[];
+          };
+
+          layout(push_constant) uniform Push {
+              Image image;
+              int n;
+              int win;
+          } pc;
+
+          layout(location = 0) out vec4 outColor;
+
+          float srgbToLinear(float c) {
+              return c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4);
+          }
+
+          void main() {
+              // the image fills the window's width, whatever its pixel density
+              ivec2 q = ivec2(gl_FragCoord.xy * float(pc.n) / float(max(pc.win, 1)));
+              vec4 c = q.x < pc.n && q.y < pc.n ? pc.image.p[q.y * pc.n + q.x] : vec4(0.0);
+              // over white
+              vec3 col = c.rgb + (1.0 - c.a) * vec3(1.0);
+              outColor = vec4(srgbToLinear(col.r), srgbToLinear(col.g), srgbToLinear(col.b), 1.0);
+          }
+        code: |
+          var drawModule = moduleHere { primitiveType = triangles }
+          renderer += "gezira-tiger-draw" to drawModule
+          val quad = fullscreenTriangle(drawModule)
+          drawModule += "quad" to quad
+
+          quad.image = { tigerImage }
+          quad.n = { tigerSize }
+          quad.win = { window.width }
+          println("drawing the tiger")
+  - create:
+      box: ggt_compare
+      name: gpu beside cpu
+      frame: { x: 460.0, y: 200.0, w: 340.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.graphics.nile.*
+          import afield.graphics.vulkan.util.GpuProbe
+
+          val n = 300
+          val svg = GeziraSvg.tiger()
+          val doc = GeziraSvg.parse(svg)
+          val probe = GpuProbe(renderer, "gezira-gpu-tiger-compare")
+          val scene = GeziraGpuScene(probe, GeziraGpuScene.paths(doc), n, n, transform = doc.fit(n, n))
+
+          frames {
+              try {
+                  probe.arm(scene.image)
+                  while (probe.stillWaiting()) frame()
+                  // a written image is not a finished chain: let all five stages run whole
+                  while (probe.stageList.any { !it.valid }) frame()
+                  repeat(4) { frame() }
+                  val gpu = scene.read()
+                  val cpu = GeziraSvg.render(doc, n, n).canvas.rgba
+                  var worst = 0.0
+                  var sum = 0.0
+                  for (i in gpu.indices) {
+                      val d = Math.abs(gpu[i] - cpu[i]).toDouble()
+                      worst = maxOf(worst, d)
+                      sum += d
+                  }
+                  println("gpu vs cpu: largest %.4f, mean %.2e per channel".format(worst, sum / gpu.size))
+                  val diff = GeziraSvg.difference(gpu, cpu, 10.0)
+
+                  // Three panels side by side: the GPU, the CPU, and the difference times ten.
+                  val gap = 12
+                  val w = 3 * n + 2 * gap
+                  val sheet = FloatArray(4 * w * n)
+                  for ((k, img) in listOf(gpu, cpu, diff).withIndex()) {
+                      for (y in 0 until n) for (x in 0 until n) {
+                          val s = 4 * (y * n + x)
+                          val d = 4 * (y * w + k * (n + gap) + x)
+                          for (c in 0..3) sheet[d + c] = img[s + c]
+                      }
+                  }
+                  display("gpu | cpu | difference x10", GeziraSvg.png(sheet, w, n))
+              } finally {
+                  probe.close()
+              }
+          }
+  - connect: { parent: ggt_renderer, child: ggt_tiger }
+  - connect: { parent: ggt_tiger, child: ggt_draw }
+  - connect: { parent: ggt_renderer, child: ggt_compare }
+  - launch: { box: ggt_renderer, property: code, strand: renderer }
+  - await: {}
+  - launch: { box: ggt_tiger, property: code }
+  - await: {}
+  - launch: { box: ggt_draw, property: code }
+  - await: {}
+  - launch: { box: ggt_compare, property: code }
+  - await: {}
