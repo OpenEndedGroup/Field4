@@ -8,6 +8,7 @@ import afield.geometry.spatial.AxisAlignedBoundingBox3D
 import afield.math.linalg.Vec3
 import afield.geometry.mesh.diagnose
 import afield.geometry.mesh.weld
+import afield.app.diagnostics.logging.lprintln
 import java.lang.foreign.Arena
 import java.lang.foreign.MemorySegment
 import java.lang.foreign.ValueLayout
@@ -283,9 +284,10 @@ class Solid internal constructor(handle: MemorySegment) : AutoCloseable, ToHTML 
      *
      * Two things to know, because they are the difference between this working and disappointing:
      *
-     *  - **The mesh is not subdivided first**, so a warp only shows up where there are vertices to
-     *    move. Almost every interesting warp wants [refined] or [refinedToLength] in front of it —
-     *    twisting a 12-triangle cube moves 8 corners and looks like nothing.
+     *  - **A warp only shows up where there are vertices to move.** Pass [maxEdge] and the solid is
+     *    first subdivided until no edge is longer than that ([refinedToLength]); or put [refined] in
+     *    front yourself. Without either, a solid of fewer than [COARSE_WARP_TRIANGLES] triangles logs a
+     *    warning, because twisting a 12-triangle cube moves 8 corners and looks like nothing.
      *  - **[map] runs on Manifold's own worker threads**, concurrently, and must be thread-safe. It
      *    must also not throw: an exception cannot unwind through the C++ frames between here and
      *    there, so one is caught, the vertex is left where it was, and the exception is rethrown from
@@ -293,8 +295,23 @@ class Solid internal constructor(handle: MemorySegment) : AutoCloseable, ToHTML 
      *
      * A warp that is not injective (folds the surface onto itself) produces a solid whose [status]
      * reports the damage rather than a crash.
+     *
+     * @param maxEdge subdivide first until no edge is longer than this; `null` warps the mesh as it is.
+     * @param map where each vertex `(x, y, z)` goes.
      */
-    fun warped(map: (Double, Double, Double) -> Triple<Double, Double, Double>): Solid {
+    fun warped(maxEdge: Double? = null, map: (Double, Double, Double) -> Triple<Double, Double, Double>): Solid {
+        if (maxEdge != null) {
+            require(maxEdge > 0.0) { "warped(maxEdge = $maxEdge): maxEdge must be positive" }
+            return refinedToLength(maxEdge).use { it.warped(null, map) }
+        }
+        val triangles = triangleCount
+        if (triangles in 1 until COARSE_WARP_TRIANGLES) {
+            lprintln(
+                "warning,graphics",
+                "Solid.warped: this solid has only $triangles triangles, so the warp moves only its corners. " +
+                    "Pass warped(maxEdge = ...) or call refined(n) first to give it vertices to move.",
+            )
+        }
         val bridge = ManifoldNative.WarpBridge(map)
         Arena.ofConfined().use { arena ->
             val stub = ManifoldNative.upcallWarp(bridge, arena)
@@ -914,6 +931,9 @@ class Solid internal constructor(handle: MemorySegment) : AutoCloseable, ToHTML 
 
     companion object {
 
+        /** Below this many triangles, an unrefined [warped] logs that it has too few vertices to show. */
+        const val COARSE_WARP_TRIANGLES: Long = 200L
+
         /** One [Cleaner] for the whole package: its thread is shared by every [Solid] and [Section]. */
         internal val CLEANER: Cleaner = Cleaner.create { runnable ->
             Thread(runnable, "afield-manifold-cleaner").apply { isDaemon = true }
@@ -1354,11 +1374,17 @@ internal class NativeRelease(val handle: MemorySegment, private val kind: Kind) 
  *
  * @param check throw on an invalid or inside-out mesh instead of returning a [Solid] that quietly has
  *   no volume, or a negative one.
- * @param weldTolerance weld coincident vertices first. `null` (the default) does not weld, because
- *   welding a mesh that did not need it is not free; pass `1e-6` for anything that came off disk.
+ * A mesh that carries normals, uvs or colours, such as `toTriMesh(normals = true)`, splits its
+ * vertices at every crease, which Manifold would refuse; it is welded by exact position first, the same
+ * rule [afield.geometry.mesh.surfaceTopology] uses, so a shaded mesh round-trips.
+ *
+ * @param weldTolerance weld vertices closer than this first. `null` (the default) welds only exactly
+ *   coincident positions, and only on a mesh with per-vertex attributes; pass `1e-6` for anything that
+ *   came off disk.
  */
 fun TriMesh.toSolid(check: Boolean = true, weldTolerance: Double? = null): Solid {
-    val source = weldTolerance?.let { weld(it) } ?: this
+    val source = weldTolerance?.let { weld(it) }
+        ?: if (normals != null || uvs != null || colors != null) weld(0.0) else this
     require(source.vertexCount > 0 && source.triangleCount > 0) { "cannot make a Solid from an empty TriMesh" }
     Arena.ofConfined().use { arena ->
         val vertexProperties = arena.allocateFrom(ValueLayout.JAVA_FLOAT, *source.positions)
