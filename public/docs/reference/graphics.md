@@ -13173,14 +13173,14 @@ CPU-side companion, drawn with the software rasteriser.
 
 ### GpuSkinningEvidence { #gpuskinningevidence-kt-gpuskinningevidence }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">GpuSkinningEvidence</span></code>](source/jvmMain/afield/graphics/scene/GpuSkinningEvidence/#L84)
+[<code class="highlight"><span class="k">object</span> <span class="nc">GpuSkinningEvidence</span></code>](source/jvmMain/afield/graphics/scene/GpuSkinningEvidence/#L85)
 
 Render GPU-skinned characters and write frames a person can look at.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="gpuskinningevidence-kt--gpuskinningevidence--evidence-dir"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">EVIDENCE&#95;DIR</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/graphics/scene/GpuSkinningEvidence/#L86) |  |
-| <a id="gpuskinningevidence-kt--gpuskinningevidence--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/graphics/scene/GpuSkinningEvidence/#L95) |  |
+| <a id="gpuskinningevidence-kt--gpuskinningevidence--evidence-dir"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">EVIDENCE&#95;DIR</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/graphics/scene/GpuSkinningEvidence/#L87) |  |
+| <a id="gpuskinningevidence-kt--gpuskinningevidence--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/graphics/scene/GpuSkinningEvidence/#L96) |  |
 
 ## LoadPly.kt { #loadply-kt }
 

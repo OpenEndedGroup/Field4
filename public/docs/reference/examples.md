@@ -2009,13 +2009,13 @@ That a [`ParticleSketch`](simulation.md#particlesketch-kt-particlesketch) step o
 
 ### PhysarumGpuSmoke { #physarumgpusmoke-kt-physarumgpusmoke }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">PhysarumGpuSmoke</span></code>](source/jvmMain/afield/examples/four/PhysarumGpuSmoke/#L45)
+[<code class="highlight"><span class="k">object</span> <span class="nc">PhysarumGpuSmoke</span></code>](source/jvmMain/afield/examples/four/PhysarumGpuSmoke/#L44)
 
 Runs [`ShaderPhysarumSystem`](alife.md#alife-physarum-gpu-kt-shaderphysarumsystem) (a million agents on a 1024x1024 [`TrailField`](alife.md#alife-trail-kt-trailfield)) on a real renderer and reads its trail back as floats, so the GPU network is measured the way `alife_examples.md` §7 measures the CPU one: `topShare(0.05)` of the sensing population against the same population turning at random. Also checks [`TrailField`](alife.md#alife-trail-kt-trailfield) on its own: a held channel keeps a deposit, a decaying one halves in its half-life, and `clear()` empties it.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="physarumgpusmoke-kt--physarumgpusmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/PhysarumGpuSmoke/#L50) |  |
+| <a id="physarumgpusmoke-kt--physarumgpusmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/PhysarumGpuSmoke/#L49) |  |
 
 ## PhysarumNetworkGpuSmoke.kt { #physarumnetworkgpusmoke-kt }
 
@@ -2023,17 +2023,17 @@ Runs [`ShaderPhysarumSystem`](alife.md#alife-physarum-gpu-kt-shaderphysarumsyste
 
 ### PhysarumNetworkGpuSmoke { #physarumnetworkgpusmoke-kt-physarumnetworkgpusmoke }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">PhysarumNetworkGpuSmoke</span></code>](source/jvmMain/afield/examples/four/PhysarumNetworkGpuSmoke/#L54)
+[<code class="highlight"><span class="k">object</span> <span class="nc">PhysarumNetworkGpuSmoke</span></code>](source/jvmMain/afield/examples/four/PhysarumNetworkGpuSmoke/#L53)
 
 Runs [`ShaderPhysarumSystem`](alife.md#alife-physarum-gpu-kt-shaderphysarumsystem) with food sources ([`ShaderPhysarumSettings.food`](alife.md#alife-physarum-gpu-kt--shaderphysarumsettings--food)) on a real renderer, reads each trail back and measures the network it grew with `TransportNetwork.extract` and [`TransportNetwork.score`](alife.md#alife-networks-kt--transportnetwork--score): Tero's cost, stretch and fault tolerance, for the numbers in `alife_examples.md` §7 "Designing a network".
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="physarumnetworkgpusmoke-kt--physarumnetworkgpusmoke--side"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SIDE</span></code>](source/jvmMain/afield/examples/four/PhysarumNetworkGpuSmoke/#L61) |  |
-| <a id="physarumnetworkgpusmoke-kt--physarumnetworkgpusmoke--base-agents"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">BASE&#95;AGENTS</span></code>](source/jvmMain/afield/examples/four/PhysarumNetworkGpuSmoke/#L62) |  |
-| <a id="physarumnetworkgpusmoke-kt--physarumnetworkgpusmoke--average-reads"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">AVERAGE&#95;READS</span></code>](source/jvmMain/afield/examples/four/PhysarumNetworkGpuSmoke/#L63) |  |
-| <a id="physarumnetworkgpusmoke-kt--physarumnetworkgpusmoke--average-spacing"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">AVERAGE&#95;SPACING</span></code>](source/jvmMain/afield/examples/four/PhysarumNetworkGpuSmoke/#L64) |  |
-| <a id="physarumnetworkgpusmoke-kt--physarumnetworkgpusmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/PhysarumNetworkGpuSmoke/#L67) |  |
+| <a id="physarumnetworkgpusmoke-kt--physarumnetworkgpusmoke--side"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SIDE</span></code>](source/jvmMain/afield/examples/four/PhysarumNetworkGpuSmoke/#L60) |  |
+| <a id="physarumnetworkgpusmoke-kt--physarumnetworkgpusmoke--base-agents"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">BASE&#95;AGENTS</span></code>](source/jvmMain/afield/examples/four/PhysarumNetworkGpuSmoke/#L61) |  |
+| <a id="physarumnetworkgpusmoke-kt--physarumnetworkgpusmoke--average-reads"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">AVERAGE&#95;READS</span></code>](source/jvmMain/afield/examples/four/PhysarumNetworkGpuSmoke/#L62) |  |
+| <a id="physarumnetworkgpusmoke-kt--physarumnetworkgpusmoke--average-spacing"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">AVERAGE&#95;SPACING</span></code>](source/jvmMain/afield/examples/four/PhysarumNetworkGpuSmoke/#L63) |  |
+| <a id="physarumnetworkgpusmoke-kt--physarumnetworkgpusmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/PhysarumNetworkGpuSmoke/#L66) |  |
 
 ## PingPongRestoreSmoke.kt { #pingpongrestoresmoke-kt }
 
@@ -2309,13 +2309,13 @@ A real lossless ten-bit video through P010 uploads, the movie shader and the sha
 
 ### StigmergySweep { #stigmergysweep-kt-stigmergysweep }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">StigmergySweep</span></code>](source/jvmMain/afield/examples/four/StigmergySweep/#L26)
+[<code class="highlight"><span class="k">object</span> <span class="nc">StigmergySweep</span></code>](source/jvmMain/afield/examples/four/StigmergySweep/#L25)
 
 A parameter sweep for multi-species [`ShaderPhysarumSystem`](alife.md#alife-physarum-gpu-kt-shaderphysarumsystem) tuning: each named variant runs on a real renderer, its trail is read back and tone-mapped to `<out>/<variant>.png`, and its segregation (share of marked pixels whose top channel holds 80 % of the trail) is printed. Not a test; run with `run-jvm-main afield.examples.four.StigmergySweep --arg <outDir> --arg <variant,...>`.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="stigmergysweep-kt--stigmergysweep--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/StigmergySweep/#L112) |  |
+| <a id="stigmergysweep-kt--stigmergysweep--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/StigmergySweep/#L111) |  |
 
 ## VideoAutoExposureSmoke.kt { #videoautoexposuresmoke-kt }
 
@@ -3402,13 +3402,13 @@ AudioVideoExample demonstrates synchronized audio/video playback with clock inte
 
 ### ParticlePolylineExport { #particlepolylineexport-kt-particlepolylineexport }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">ParticlePolylineExport</span></code>](source/jvmMain/afield/examples/video/ParticlePolylineExport/#L65)
+[<code class="highlight"><span class="k">object</span> <span class="nc">ParticlePolylineExport</span></code>](source/jvmMain/afield/examples/video/ParticlePolylineExport/#L64)
 
 Export actual cached trajectories as line-only diagnostic movies, without rerunning inference.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="particlepolylineexport-kt--particlepolylineexport--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/video/ParticlePolylineExport/#L66) |  |
+| <a id="particlepolylineexport-kt--particlepolylineexport--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/video/ParticlePolylineExport/#L65) |  |
 
 ## ParticleTrackerSmoke.kt { #particletrackersmoke-kt }
 
@@ -3416,13 +3416,13 @@ Export actual cached trajectories as line-only diagnostic movies, without rerunn
 
 ### ParticleTrackerSmoke { #particletrackersmoke-kt-particletrackersmoke }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">ParticleTrackerSmoke</span></code>](source/jvmMain/afield/examples/video/ParticleTrackerSmoke/#L72)
+[<code class="highlight"><span class="k">object</span> <span class="nc">ParticleTrackerSmoke</span></code>](source/jvmMain/afield/examples/video/ParticleTrackerSmoke/#L71)
 
 Explicit optional CUDA check, never run by ordinary Field startup or portable test suites. Pass a local video and an output directory. It exercises Kotlin -> Python -> RAFT -> C++ -> strict Kotlin reader -> Kotlin raster/movie, cache reuse and coroutine cancellation.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="particletrackersmoke-kt--particletrackersmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/video/ParticleTrackerSmoke/#L73) |  |
+| <a id="particletrackersmoke-kt--particletrackersmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/video/ParticleTrackerSmoke/#L72) |  |
 
 ## VideoTextureExample.kt { #videotextureexample-kt }
 
