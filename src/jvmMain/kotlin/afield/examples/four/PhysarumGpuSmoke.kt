@@ -1,5 +1,6 @@
 package afield.examples.four
 
+import afield.media.image.saveRgbPng
 import afield.document.graph.Box
 import afield.graphics.render.Module
 import afield.graphics.render.fullscreenTriangle
@@ -13,10 +14,8 @@ import afield.simulation.agents.ShaderPhysarumSystem
 import afield.simulation.agents.TrailField
 import afield.simulation.agents.topShare
 import afield.simulation.agents.stepTimes
-import java.awt.image.BufferedImage
 import java.io.File
 import java.util.concurrent.TimeUnit
-import javax.imageio.ImageIO
 import kotlin.math.exp
 import kotlin.system.exitProcess
 
@@ -346,18 +345,16 @@ object PhysarumGpuSmoke {
     private fun channel(img: Img, c: Int) = Img(img.width, img.height, 1, FloatArray(img.width * img.height) { img.data[it * 4 + c] })
 
     private fun writeToneMapped(img: Img, file: File, exposure: Float, species: Int) {
-        val out = BufferedImage(img.width, img.height, BufferedImage.TYPE_INT_RGB)
         val palette = TrailField.DEFAULT_PALETTE
-        for (y in 0 until img.height) for (x in 0 until img.width) {
+        saveRgbPng(file, img.width, img.height) { x, y ->
             var r = 0.0; var g = 0.0; var b = 0.0
             for (c in 0 until species) {
                 val k = 1 - exp(-exposure * maxOf(0f, img.data[(y * img.width + x) * 4 + c]).toDouble())
                 r += k * palette[c].x; g += k * palette[c].y; b += k * palette[c].z
             }
             fun q(v: Double) = (v.coerceIn(0.0, 1.0) * 255).toInt()
-            out.setRGB(x, y, (q(r) shl 16) or (q(g) shl 8) or q(b))
+            (q(r) shl 16) or (q(g) shl 8) or q(b)
         }
-        ImageIO.write(out, "png", file)
     }
 
     private fun pump(renderer: Renderer, window: Window, frames: Int) {

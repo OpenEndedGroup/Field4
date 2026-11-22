@@ -1,5 +1,6 @@
 package afield.examples.stacksl
 
+import afield.media.image.savePng
 import afield.lang.stacksl.NoiseVec3
 import afield.lang.stacksl.VolumetricNoiseConstants
 import afield.lang.stacksl.VolumetricNoiseReference
@@ -9,7 +10,6 @@ import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.min
 import kotlin.math.sqrt
-import javax.imageio.ImageIO
 
 /**
  * Draws the figure that settles the argument this branch is about, on the CPU, with no device.
@@ -193,7 +193,7 @@ object VolumetricNoisePreview {
             )
         )
         val file = File(outDir, "stacksl-volumetric-noise-slices.png")
-        ImageIO.write(figure, "png", file)
+        figure.savePng(file)
 
         // The filmstrip's claim, stated numerically so the caption cannot drift from the picture.
         val legacyDrift = SLICES.indices.drop(1).map { meanAbsDiff(legacy[0], legacy[it]) }

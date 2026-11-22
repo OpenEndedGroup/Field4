@@ -59,7 +59,6 @@ import afield.ui.visualization.*
 import kotlinx.coroutines.runBlocking
 import java.nio.file.Files
 import java.nio.file.Path
-import javax.imageio.ImageIO
 
 /** Export actual cached trajectories as line-only diagnostic movies, without rerunning inference. */
 object ParticlePolylineExport {
@@ -72,8 +71,8 @@ object ParticlePolylineExport {
         video.renderMovie(out.resolve("polylines-full.mp4"), color = ParticleColor.SAMPLED,
             trailLength = 12, lineWidth = .35)
         listOf(60, 180, 240).forEach { frame ->
-            ImageIO.write(video.image(frame, color = ParticleColor.IDENTITY, trailLength = 25,
-                stride = 16, lineWidth = .6), "png", out.resolve("polylines-$frame.png").toFile())
+            video.image(frame, color = ParticleColor.IDENTITY, trailLength = 25,
+                stride = 16, lineWidth = .6).savePng(out.resolve("polylines-$frame.png").toFile())
         }
         val hash = java.security.MessageDigest.getInstance("SHA-256")
         Files.newInputStream(Path.of(args[0])).use { stream ->

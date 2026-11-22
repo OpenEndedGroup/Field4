@@ -1,5 +1,6 @@
 package afield.examples.four
 
+import afield.media.image.savePng
 import afield.document.graph.Box
 import afield.graphics.render.Mesh
 import afield.graphics.render.Module
@@ -26,7 +27,6 @@ import org.lwjgl.vulkan.VK10.VK_FORMAT_R8G8B8A8_UNORM
 import org.yaml.snakeyaml.Yaml
 import java.io.File
 import java.util.concurrent.TimeUnit
-import javax.imageio.ImageIO
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -419,7 +419,7 @@ object ShapeAsciiGpuSmoke {
     private fun pct(v: Double) = "%.2f%%".format(100 * v)
 
     private fun write(img: Img, file: File) {
-        ImageIO.write(img.toBufferedImage(), "png", file)
+        img.toBufferedImage().savePng(file)
     }
 
     private fun pump(renderer: Renderer, window: Window, frames: Int) {

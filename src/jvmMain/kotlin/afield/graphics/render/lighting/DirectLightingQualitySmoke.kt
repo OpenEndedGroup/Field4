@@ -6,9 +6,9 @@ import afield.graphics.vulkan.util.Options
 import afield.graphics.vulkan.util.Window
 import afield.math.linalg.Vector3f
 import org.json.JSONObject
-import java.awt.image.BufferedImage
 import java.io.File
-import javax.imageio.ImageIO
+import afield.media.image.HdrPngEncoding
+import afield.media.image.saveHdrPng
 import kotlin.math.*
 import kotlin.system.exitProcess
 
@@ -137,14 +137,6 @@ object DirectLightingQualitySmoke {
     }
 
     private fun save(directory: File,name: String,pixels: FloatArray,width: Int,height: Int) {
-        val image=BufferedImage(width,height,BufferedImage.TYPE_INT_RGB)
-        for(y in 0 until height)for(x in 0 until width) {
-            fun channel(c: Int): Int {
-                val value=pixels[(y*width+x)*4+c].toDouble().coerceAtLeast(0.0)
-                return (255*(value/(1+value)).pow(1/2.2)).roundToInt().coerceIn(0,255)
-            }
-            image.setRGB(x,y,(channel(0) shl 16) or (channel(1) shl 8) or channel(2))
-        }
-        ImageIO.write(image,"png",File(directory,"$name.png"))
+        saveHdrPng(File(directory,"$name.png"),pixels,width,height,encoding=HdrPngEncoding.GAMMA_22)
     }
 }

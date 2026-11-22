@@ -1,5 +1,6 @@
 package afield.examples.rectsl
 
+import afield.media.image.savePng
 import afield.graphics.color.Color4
 import afield.graphics.color.Colormaps
 import afield.lang.rectsl.PaintSpec
@@ -14,7 +15,6 @@ import java.awt.geom.AffineTransform
 import java.awt.geom.Rectangle2D
 import java.awt.image.BufferedImage
 import java.io.File
-import javax.imageio.ImageIO
 import kotlin.math.roundToInt
 
 /*
@@ -160,7 +160,7 @@ object RectSLDataVizProof {
         // 1. Colormap strips — straight from the tables.
         val strip = renderColormaps()
         val stripFile = File(outDir, "colormaps.png")
-        ImageIO.write(strip, "png", stripFile)
+        strip.savePng(stripFile)
         println("wrote ${stripFile.absolutePath} (${strip.width}x${strip.height})")
         assertColormapSanity()
 
@@ -173,7 +173,7 @@ object RectSLDataVizProof {
             }
             val img = renderProgram(program, t)
             val file = File(outDir, "$name.png")
-            ImageIO.write(img, "png", file)
+            img.savePng(file)
             val painted = paintedFraction(img, program.background)
             check(painted > 0.01) { "$name rasterized to a near-empty image (painted=$painted)" }
             println("wrote ${file.absolutePath} (${img.width}x${img.height}, painted=${"%.3f".format(painted)})")
