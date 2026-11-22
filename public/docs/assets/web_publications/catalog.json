@@ -7048,6 +7048,16 @@
         "public/docs/assets/agent_transcripts/rewrite_strategies_demo/rw_topdown_code_.kt": "3b00f3141af24312ac6803195fb560e966f280d232d3ea38224a49a9113f9c7c"
       }
     },
+    "assets/agent_transcripts/rhino_round_trip/metadata.edn": {
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "channels": 0,
+      "reason": "No output-area channels; the code remains available.",
+      "sources": {
+        "dev_docs/agents/transcripts/rhino_round_trip.yaml": "c8fcc045bb301df435e509ee81b36d8aab35f4cda24ad260f4e3c2c0cc0332d1",
+        "public/docs/assets/agent_transcripts/rhino_round_trip/metadata.edn": "1c89cb9747410f7980a2a157a19789dc4a66111e96ed146e603981b8f0017d0c",
+        "public/docs/assets/agent_transcripts/rhino_round_trip/rhino_round_trip_code_.kt": "7073ea93a8bdb1a86b6d2aedea12e3a3b85e99c9f4a44eae93b4e22cb89d57c3"
+      }
+    },
     "assets/agent_transcripts/rhino_save_small/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
       "channels": 0,
