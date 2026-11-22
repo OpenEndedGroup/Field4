@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-22T12:28:54.663Z",
+  "documentName": "shader_study_region_checks",
+  "outputs": [
+    {
+      "uid": "rectsl_region",
+      "channel": "Moon only",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 732,
+      "height": 643,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "rectsl_region",
+      "channel": "Moon and sun",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 732,
+      "height": 643,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "stacksl_region",
+      "channel": "Right half",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 732,
+      "height": 411,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "stacksl_region",
+      "channel": "Mask crosses the midpoint",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 732,
+      "height": 411,
+      "path": "outputs/3.html"
+    }
+  ]
+}

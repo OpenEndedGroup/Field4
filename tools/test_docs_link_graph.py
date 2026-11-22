@@ -13,7 +13,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.docs_link_graph import (CAPTURE_CODE_PREFIX, DOCS_RELATIVE, REPO_ROOT, Graph, code_files_for, code_neighbours, link_pages_to_map,
+from tools.docs_link_graph import (CAPTURE_CODE_PREFIX, DOCS_RELATIVE, REPO_ROOT, Graph, build_graph, code_files_for, code_neighbours, link_pages_to_map,
                                   layout, parse_link_log, reference_anchors, site_url, used_symbols)
 
 
@@ -42,6 +42,31 @@ class LayoutTest(unittest.TestCase):
         self.assertEqual({"page:a.md", "page:b.md"}, set(positions))
         self.assertEqual({}, packages)
         self.assertNotEqual(positions["page:a.md"], positions["page:b.md"])
+
+
+class TranscriptLinksTest(unittest.TestCase):
+    def test_anchored_guides_and_gallery_links_attach_to_the_owning_page(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            repo = Path(root)
+            docs = repo / DOCS_RELATIVE
+            docs.mkdir(parents=True)
+            (repo / "public/zensical.yml").write_text("nav:\n  - Guides:\n      - rule.md\n")
+            (docs / "rule.md").write_text("# Rule\n\n## First\n[Open](agent_transcripts.md#experiment)\n\n## Second\n")
+            (docs / "agent_transcripts.md").write_text("# Starting points\n")
+            transcripts = repo / "dev_docs/agents/transcripts"
+            transcripts.mkdir(parents=True)
+            (transcripts / "experiment.yaml").write_text(
+                'name: experiment\ndocs:\n  - page: "rule.md#first"\n'
+                '  - page: "rule.md#second"\n  - page: "missing.md#section"\n'
+            )
+
+            graph = build_graph(repo, transcripts=True, code=False, reference=False, history=None)
+            key = "transcript:experiment"
+            self.assertEqual("Guides", graph.nodes[key]["system"])
+            self.assertEqual({"documents": 1}, graph.edges[(key, "page:rule.md")]["kinds"])
+            self.assertEqual({"opens": 1}, graph.edges[("page:rule.md", key)]["kinds"])
+            self.assertEqual({"links": 1}, graph.edges[("page:rule.md", "page:agent_transcripts.md")]["kinds"])
+            self.assertNotIn((key, "page:missing.md"), graph.edges)
 
 
 class ReferenceAnchorsTest(unittest.TestCase):
