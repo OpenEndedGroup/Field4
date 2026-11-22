@@ -100,7 +100,7 @@ class RhinoWriter internal constructor(unitSystem: Int) : AutoCloseable {
         return path
     }
 
-    /** A mesh: its triangles, its vertex normals when it has them, and its vertex colours when it has those. */
+    /** A mesh: its triangles, its vertex normals when it has them, and its vertex colours (linear, written sRGB-encoded as Rhino expects) when it has those. */
     fun mesh(mesh: TriMesh, layer: String = "Default", name: String = "", color: Vec4? = null) {
         attributes(layer, name, color)
         RhinoWriterNative.addMesh(live(), mesh)
@@ -321,6 +321,23 @@ class RhinoWriter internal constructor(unitSystem: Int) : AutoCloseable {
             fun byte(v: Float) = (v.coerceIn(0f, 1f) * 255f + 0.5f).toInt()
             return (byte(c.w) shl 24) or (byte(c.x) shl 16) or (byte(c.y) shl 8) or byte(c.z)
         }
+
+        /**
+         * A [TriMesh] vertex colour, linear rgb, as the opaque sRGB-encoded ARGB a .3dm stores: Rhino
+         * draws a mesh's `m_C` bytes as display colours, so linear 0.5 is written as byte 188, not 128.
+         */
+        internal fun vertexArgb(r: Float, g: Float, b: Float): Int {
+            fun byte(v: Float) = (encodeSrgb(v.coerceIn(0f, 1f).toDouble()) * 255.0 + 0.5).toInt()
+            return (0xFF shl 24) or (byte(r) shl 16) or (byte(g) shl 8) or byte(b)
+        }
+
+        /** The inverse of [vertexArgb]: one sRGB byte back to the linear value it encodes. */
+        internal fun decodeSrgb(byte: Int): Float {
+            val c = byte / 255.0
+            return (if (c <= 0.04045) c / 12.92 else Math.pow((c + 0.055) / 1.055, 2.4)).toFloat()
+        }
+
+        private fun encodeSrgb(c: Double): Double = if (c <= 0.0031308) c * 12.92 else 1.055 * Math.pow(c, 1 / 2.4) - 0.055
     }
 }
 
@@ -444,7 +461,7 @@ internal object RhinoWriterNative {
         val xyz = a.allocateFrom(JAVA_DOUBLE, *DoubleArray(mesh.positions.size) { mesh.positions[it].toDouble() })
         val normals = mesh.normals?.let { a.allocateFrom(JAVA_FLOAT, *it) } ?: MemorySegment.NULL
         val colors = mesh.colors?.let { c ->
-            a.allocateFrom(JAVA_INT, *IntArray(c.size / 3) { RhinoWriter.argb(vec(c[3 * it].toDouble(), c[3 * it + 1].toDouble(), c[3 * it + 2].toDouble(), 1.0)) })
+            a.allocateFrom(JAVA_INT, *IntArray(c.size / 3) { RhinoWriter.vertexArgb(c[3 * it], c[3 * it + 1], c[3 * it + 2]) })
         } ?: MemorySegment.NULL
         val status = meshHandle.invokeExact(
             w, xyz, mesh.positions.size / 3, a.allocateFrom(JAVA_INT, *mesh.indices), mesh.triangleCount, normals, colors,

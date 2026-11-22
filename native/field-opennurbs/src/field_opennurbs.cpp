@@ -35,6 +35,8 @@ struct Object {
     std::vector<double> points;
     std::vector<int> indices;
     std::vector<float> normals;
+    // A mesh's vertex colours as ARGB, one a vertex; empty unless every piece of the object has them.
+    std::vector<int> colors;
     std::vector<double> frame;
     // A Brep's or extrusion's edges, as a path in the same form as a curve's: what Rhino draws as
     // the object's wireframe, which a render mesh's facets are not.
@@ -105,9 +107,12 @@ int argb(const ON_Color& c) {
 // ---------------------------------------------------------------------------------------------
 // Meshes
 
-void appendMesh(const ON_Mesh& mesh, const ON_Xform* xform, Object& out, bool& normalsOk) {
+void appendMesh(const ON_Mesh& mesh, const ON_Xform* xform, Object& out, bool& normalsOk, bool& colorsOk) {
     const int base = static_cast<int>(out.points.size() / 3);
     const int vertexCount = mesh.VertexCount();
+    const bool hasColors = mesh.HasVertexColors() && mesh.m_C.Count() == vertexCount;
+    if (!hasColors) colorsOk = false;
+    for (int i = 0; i < vertexCount; ++i) out.colors.push_back(hasColors ? argb(mesh.m_C[i]) : 0);
     const bool hasNormals = mesh.HasVertexNormals() && mesh.m_N.Count() == vertexCount;
     // Normals must be all-or-nothing across the pieces of one object.
     if (!hasNormals) normalsOk = false;
@@ -148,14 +153,16 @@ void appendMesh(const ON_Mesh& mesh, const ON_Xform* xform, Object& out, bool& n
     }
 }
 
-void finishMesh(Object& out, bool normalsOk) {
+void finishMesh(Object& out, bool normalsOk, bool colorsOk) {
     out.kind = FIELD_OPENNURBS_MESH;
     if (!normalsOk) out.normals.clear();
+    if (!colorsOk) out.colors.clear();
     if (out.indices.empty()) {
         out.kind = FIELD_OPENNURBS_SKIPPED;
         if (out.note.empty()) out.note = "mesh has no faces";
         out.points.clear();
         out.normals.clear();
+        out.colors.clear();
     }
 }
 
@@ -416,6 +423,7 @@ private:
         out.points.clear();
         out.indices.clear();
         out.normals.clear();
+        out.colors.clear();
         out.edgePoints.clear();
         out.edgeIndices.clear();
     }
@@ -446,11 +454,11 @@ private:
         const ON_Xform* xform = context.xform;
 
         if (const ON_Mesh* mesh = ON_Mesh::Cast(geometry)) {
-            bool normalsOk = true;
-            appendMesh(*mesh, xform, out, normalsOk);
-            finishMesh(out, normalsOk);
+            bool normalsOk = true, colorsOk = true;
+            appendMesh(*mesh, xform, out, normalsOk, colorsOk);
+            finishMesh(out, normalsOk, colorsOk);
         } else if (const ON_Brep* brep = ON_Brep::Cast(geometry)) {
-            bool normalsOk = true;
+            bool normalsOk = true, colorsOk = true;
             int missing = 0;
             for (int f = 0; f < brep->m_F.Count(); ++f) {
                 const ON_Mesh* faceMesh = brep->m_F[f].Mesh(ON::render_mesh);
@@ -458,7 +466,7 @@ private:
                 // Rhino sometimes saves an empty mesh for a face it never managed to shade
                 // (slivers, faces left over from a failed fillet); that is no mesh either.
                 if (faceMesh == nullptr || faceMesh->FaceCount() == 0) { ++missing; continue; }
-                appendMesh(*faceMesh, xform, out, normalsOk);
+                appendMesh(*faceMesh, xform, out, normalsOk, colorsOk);
             }
             appendEdges(*brep, xform, out);
             if (missing == brep->m_F.Count()) {
@@ -475,7 +483,7 @@ private:
                     out.note = std::to_string(missing) + " of " + std::to_string(brep->m_F.Count()) +
                                " faces have no usable cached render mesh";
                 }
-                finishMesh(out, normalsOk);
+                finishMesh(out, normalsOk, colorsOk);
             }
         } else if (const ON_Extrusion* extrusion = ON_Extrusion::Cast(geometry)) {
             const ON_Mesh* mesh = extrusion->Mesh(ON::render_mesh);
@@ -483,9 +491,9 @@ private:
             if (mesh == nullptr) {
                 skip(out, "extrusion has no cached render mesh; re-save it from Rhino with meshes");
             } else {
-                bool normalsOk = true;
-                appendMesh(*mesh, xform, out, normalsOk);
-                finishMesh(out, normalsOk);
+                bool normalsOk = true, colorsOk = true;
+                appendMesh(*mesh, xform, out, normalsOk, colorsOk);
+                finishMesh(out, normalsOk, colorsOk);
                 if (ON_Brep* brep = extrusion->BrepForm()) {
                     appendEdges(*brep, xform, out);
                     delete brep;
@@ -771,6 +779,13 @@ const float* field_opennurbs_object_normals(void* handle, int index) {
     if (model == nullptr || index < 0 || index >= static_cast<int>(model->objects.size())) return nullptr;
     const Object& object = model->objects[index];
     return object.normals.empty() ? nullptr : object.normals.data();
+}
+
+const int* field_opennurbs_object_colors(void* handle, int index) {
+    const Model* model = static_cast<const Model*>(handle);
+    if (model == nullptr || index < 0 || index >= static_cast<int>(model->objects.size())) return nullptr;
+    const Object& object = model->objects[index];
+    return object.colors.empty() ? nullptr : object.colors.data();
 }
 
 const double* field_opennurbs_object_edge_points(void* handle, int index) {
