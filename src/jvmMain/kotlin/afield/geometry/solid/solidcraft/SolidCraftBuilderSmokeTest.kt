@@ -2,6 +2,7 @@ package afield.geometry.solid.solidcraft
 
 import afield.geometry.path.FLine
 import afield.geometry.mesh.weld
+import afield.geometry.mesh.diagnose
 import afield.geometry.mesh.genus
 import afield.geometry.mesh.isWatertight
 import afield.geometry.solid.manifold.Solid
@@ -250,8 +251,8 @@ object SolidCraftBuilderSmokeTest {
             check(m.isWatertight() && m.genus() == 1) { "ring is not a closed genus-1 solid: genus ${m.genus()}" }
         }
 
-        // Two half sweeps joined make the same ring: the join removes the touching caps. (At v0.41 the
-        // same join on the trefoil's freeform halves is refused by SMLib's check of the result.)
+        // Two half sweeps joined make the same ring: the join removes the touching caps. (Refused on the
+        // trefoil's freeform halves at v0.41 and v0.44; built since v0.46, checked below.)
         case("ring from two joined half sweeps", solidCraft {
             sweep(sketch("XZ") { circle(20.0, 0.0, 2.5) }, sketch("XY") { arc(0.0, 0.0, 20.0, 0.0, -20.0, 0.0) })
             sweep(sketch("XZ") { circle(-20.0, 0.0, 2.5) }, sketch("XY") { arc(0.0, 0.0, -20.0, 0.0, 20.0, 0.0) }, operation = SolidCraftOperation.JOIN)
@@ -318,6 +319,37 @@ object SolidCraftBuilderSmokeTest {
             }
             surfaceBoundary(s)
         }) { d -> check(body(d).getDouble("area") > 150.0) { "three-curve patch ${d.summary()}" } }
+
+        // The same patch thickened by 2 is a closed solid, body 1 (body 0 is the sheet). Before v0.46
+        // its welded mesh had two open boundary loops.
+        fun patch(thickness: String? = null, sheet: String = "") = solidCraft("Sheet") {
+            val s = sketch("XY") {
+                spline(0.0, 0.0, 10.0, -3.0, 20.0, 0.0)
+                spline(0.0, 20.0, 10.0, 23.0, 20.0, 20.0)
+            }
+            surfaceBoundary(s, crown = 0.5)
+            if (thickness != null) thicken(listOf(sheet), thickness)
+        }
+        val sheetName = patch().open().use { body(it).getString("name") }
+        case("thickened boundary patch", patch("2", sheetName)) { d ->
+            val m = d.mesh(1, 0.05).toTriMesh().weld()
+            check(m.isWatertight()) { "thickened sheet is open: ${m.diagnose().report()}" }
+        }
+
+        // Two freeform halves of the trefoil, the second joined: one closed genus-1 tube.
+        val halfA = FLine().also { l -> for (i in 0..120) { val t = i / 240.0 * 2 * PI
+            if (i == 0) l.moveTo(8 * (sin(t) + 2 * sin(2 * t)), 8 * (cos(t) - 2 * cos(2 * t)), -8 * sin(3 * t))
+            else l.lineTo(8 * (sin(t) + 2 * sin(2 * t)), 8 * (cos(t) - 2 * cos(2 * t)), -8 * sin(3 * t)) } }
+        val halfB = FLine().also { l -> for (i in 120..240) { val t = i / 240.0 * 2 * PI
+            if (i == 120) l.moveTo(8 * (sin(t) + 2 * sin(2 * t)), 8 * (cos(t) - 2 * cos(2 * t)), -8 * sin(3 * t))
+            else l.lineTo(8 * (sin(t) + 2 * sin(2 * t)), 8 * (cos(t) - 2 * cos(2 * t)), -8 * sin(3 * t)) } }
+        case("trefoil from two joined freeform half sweeps", solidCraft {
+            sweep(sketch(planeSquareTo(halfA)) { circle(0.0, 0.0, 2.5) }, sketch("XY") { wire(halfA) })
+            sweep(sketch(planeSquareTo(halfB)) { circle(0.0, 0.0, 2.5) }, sketch("XY") { wire(halfB) }, operation = SolidCraftOperation.JOIN)
+        }) { d ->
+            val m = d.mesh(0, 0.05).toTriMesh().weld()
+            check(m.isWatertight() && m.genus() == 1) { "joined trefoil is not a closed genus-1 tube: ${m.diagnose().report()}" }
+        }
 
         chamfersAndOffsets()
 

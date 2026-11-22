@@ -1793,72 +1793,36 @@ wireDocsIframe()
 
 
 // fails to inline with js()
-window._saveAsTemplateHelper = function (selectedIds) {
-        let ed = window.ensureEditor && window.ensureEditor();
-        if (!ed) {
-                console.error("No editor available for quick input");
-                return;
-        }
-        let cmd = ed.addCommand(0, (accessor, func) => {
-                let quickInputService = accessor.get(window.globalIS.IQuickInputService);
-                func(quickInputService);
-        });
-        ed.trigger("", cmd, (quickInput) => {
-                let inputBox = quickInput.createInputBox();
-                inputBox.placeholder = "Enter template name";
-                inputBox.prompt = "Save selection as template";
-                inputBox.onDidAccept(() => {
-                        let templateName = inputBox.value.trim();
+const templateNameProblem = (name) => {
+        if (!name) return "Type a name for the template."
+        const invalidPatterns = [
+                /[\/\\]/,  // Path separators
+                /\.\./,    // Parent directory
+                /^\.$/,    // Current directory
+                /[\x00]/,  // Null bytes
+                /^\s/,     // Leading space
+                /\s$/      // Trailing space
+        ]
+        if (invalidPatterns.some((pattern) => pattern.test(name)))
+                return "Invalid template name. Avoid path separators and special characters."
+        const reservedNames = ['metadata', 'con', 'prn', 'aux', 'nul',
+                'com1', 'com2', 'com3', 'com4', 'com5', 'com6', 'com7', 'com8', 'com9',
+                'lpt1', 'lpt2', 'lpt3', 'lpt4', 'lpt5', 'lpt6', 'lpt7', 'lpt8', 'lpt9']
+        if (reservedNames.includes(name.toLowerCase())) return "Invalid template name. This is a reserved name."
+        return null
+}
 
-                        // Comprehensive validation
-                        if (!templateName) {
-                                return;
-                        }
-
-                        // Check for invalid characters and patterns
-                        let invalidPatterns = [
-                                /[\/\\]/,  // Path separators
-                                /\.\./,    // Parent directory
-                                /^\.$/,    // Current directory
-                                /[\x00]/,  // Null bytes
-                                /^\s/,     // Leading space
-                                /\s$/      // Trailing space
-                        ];
-
-                        let reservedNames = ['metadata', 'con', 'prn', 'aux', 'nul',
-                                'com1', 'com2', 'com3', 'com4', 'com5',
-                                'com6', 'com7', 'com8', 'com9',
-                                'lpt1', 'lpt2', 'lpt3', 'lpt4', 'lpt5',
-                                'lpt6', 'lpt7', 'lpt8', 'lpt9'];
-
-                        for (let pattern of invalidPatterns) {
-                                if (pattern.test(templateName)) {
-                                        import("./afield.mjs").then((afield) => {
-                                                afield.notify("Invalid template name. Avoid path separators and special characters.", "error");
-                                        });
-                                        return;
-                                }
-                        }
-
-                        if (reservedNames.includes(templateName.toLowerCase())) {
-                                import("./afield.mjs").then((afield) => {
-                                        afield.notify("Invalid template name. This is a reserved name.", "error");
-                                });
-                                return;
-                        }
-
-                        inputBox.hide();
-                        import("./afield.mjs").then((afield) => {
-                                afield.send("save-as-template", {
-                                        uids: selectedIds,
-                                        templateName: templateName
-                                });
-                        });
-                });
-                inputBox.onDidHide(() => {
-                        inputBox.dispose();
-                        delete window._saveAsTemplateHelper;
-                });
-                inputBox.show();
-        });
+// The name prompt is the command palette's own (quickpick.js), so it needs no Monaco editor.
+window._saveAsTemplateHelper = async function (selectedIds) {
+        const templateName = await window.fieldTextPrompt({
+                title: "Save as template",
+                placeholder: "Enter template name",
+                hint: selectedIds.length === 1
+                        ? "Saves the selected box."
+                        : `Saves the ${selectedIds.length} selected boxes and the connections between them.`,
+                validate: (value) => templateNameProblem(value.trim()),
+        })
+        if (templateName == null) return
+        const afield = await import("./afield.mjs")
+        afield.send("save-as-template", { uids: selectedIds, templateName: templateName.trim() })
 }

@@ -1797,6 +1797,7 @@ class FieldPaletteController {
         searchQuery() { return this.options.searchQuery ? this.options.searchQuery(this.input().value || "") : this.input().value || "" }
 
         open(options = {}) {
+                this.endPrompt()
                 this.options = options
                 this.generation++
                 this.root.querySelector(".afield-palette-title").textContent = options.title || "Palette"
@@ -1815,8 +1816,67 @@ class FieldPaletteController {
                 })
         }
 
+        /**
+         * Ask for one line of text in the palette's own frame: the title, the input and a hint line
+         * that shows `validate`'s message. Resolves with the accepted text, or null on Escape.
+         */
+        prompt(options = {}) {
+                this.hide()
+                return new Promise((resolve) => {
+                        this.options = {}
+                        this.items = []
+                        this.activeIndex = -1
+                        this.promptState = { options, resolve }
+                        this.root.classList.add("is-prompt")
+                        this.root.querySelector(".afield-palette-body").style.display = "none"
+                        this.root.querySelector(".afield-palette-title").textContent = options.title || "Enter a value"
+                        this.setPromptHint(options.hint || "", false)
+                        const input = this.input()
+                        input.value = options.value || ""
+                        input.placeholder = options.placeholder || ""
+                        this.root.style.display = "grid"
+                        requestAnimationFrame(() => {
+                                input.focus()
+                                input.select()
+                        })
+                })
+        }
+
+        setPromptHint(text, isError) {
+                const hint = this.root.querySelector(".afield-palette-hint")
+                hint.textContent = text
+                hint.style.display = text ? "block" : "none"
+                hint.classList.toggle("is-error", !!isError)
+        }
+
+        acceptPrompt() {
+                const state = this.promptState
+                if (!state) return
+                const value = this.input().value
+                const problem = typeof state.options.validate === "function" ? state.options.validate(value) : null
+                if (problem) {
+                        this.setPromptHint(problem, true)
+                        return
+                }
+                state.accepted = true
+                this.hide()
+                state.resolve(value)
+        }
+
+        // Leave prompt mode; an unaccepted prompt resolves null.
+        endPrompt() {
+                const state = this.promptState
+                if (!state) return
+                this.promptState = null
+                this.root.classList.remove("is-prompt")
+                this.root.querySelector(".afield-palette-body").style.display = ""
+                this.root.querySelector(".afield-palette-hint").classList.remove("is-error")
+                if (!state.accepted) state.resolve(null)
+        }
+
         hide(options = {}) {
                 if (this.root.style.display === "none") return
+                this.endPrompt()
                 this.previewDispose?.()
                 this.previewDispose = null
                 const input = this.input()
@@ -1850,6 +1910,11 @@ class FieldPaletteController {
         }
 
         async refresh() {
+                if (this.promptState) {
+                        const hint = this.promptState.options.hint || ""
+                        this.setPromptHint(hint, false)
+                        return
+                }
                 const generation = ++this.generation
                 const value = this.input().value || ""
                 const query = this.searchQuery()
@@ -2045,6 +2110,16 @@ class FieldPaletteController {
         }
 
         onKeyDown(event) {
+                if (this.promptState) {
+                        if (event.key === "Enter") {
+                                event.preventDefault()
+                                event.stopPropagation()
+                                this.acceptPrompt()
+                        } else if (event.key === "Escape") {
+                                this.closeFromKeyboard(event)
+                        }
+                        return
+                }
                 const key = String(event.key || "").toLowerCase()
                 const repeatCommandPalette = (event.ctrlKey || event.metaKey) && event.shiftKey && !event.altKey && key === "p"
                 if (repeatCommandPalette && this.options.includeEditor && typeof window.openFieldCommandPalette === "function") {
@@ -2076,6 +2151,9 @@ class FieldPaletteController {
 }
 
 let fieldPaletteController = null
+
+/** A one-line text prompt in the command palette's style; resolves the text, or null if cancelled. */
+window.fieldTextPrompt = (options = {}) => fieldPalette().prompt(options)
 function fieldPalette() {
         if (!fieldPaletteController) fieldPaletteController = new FieldPaletteController()
         return fieldPaletteController

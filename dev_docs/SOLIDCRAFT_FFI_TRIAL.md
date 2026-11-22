@@ -1,7 +1,7 @@
 # Optional SolidCraft FFM trial
 
 Field keeps its existing Manifold binding. This trial adds a separate, optional path to SolidCraft's
-document and B-rep engine at pinned upstream release v0.44.1 (commit `e151d5ea6866fb055e011379153fb1cae0566f22`;
+document and B-rep engine at pinned upstream release v0.46.2 (commit `f4990915b4a91c3c82bab0745dd521f95078a2ac`;
 the pin lives in `tools/build_solidcraft_native.py`).
 Ordinary `compileKotlinJvm`, `check`, and Field startup do not download or load SolidCraft.
 

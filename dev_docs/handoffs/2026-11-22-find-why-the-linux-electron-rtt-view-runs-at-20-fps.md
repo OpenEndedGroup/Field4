@@ -56,3 +56,8 @@ Electron dma-buf canvas outside Field, to separate Field's cost from Chromium's.
 
 Replace the 20 fps figure in "On Linux" with the new measurement. If a limit remains, give its
 cause in one sentence.
+
+## Answers (2026-11-22)
+
+- The target is 60 fps.
+- Moved to the Elsewhere batch: start it from the Linux/NVIDIA machine.

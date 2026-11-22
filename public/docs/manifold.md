@@ -444,9 +444,9 @@ caller; unwinding through them is undefined, and FFM's response to an escaping e
 far-outside sentinel, and `levelSet` rethrows once the native call is over: you get an
 `IllegalStateException` with your own exception as its cause.
 
-`Solid.warped { }` is the same mechanism for moving every vertex: a bend, a twist, a taper. It does
-**not** re-mesh, so put `refined()` in front of it or a 12-triangle cube's eight corners move and
-nothing looks different.
+`Solid.warped { }` is the same mechanism for moving every vertex: a bend, a twist, a taper. A warp
+moves only the vertices there are, so give it a length, `warped(maxEdge = 0.1) { }`, and it
+subdivides until no edge is longer than that before it moves anything.
 
 An image can be the field too: [A photograph, closed and mounted](chain_photo_to_solid.md) marches
 a depth map as a level set and compares the result with a relief mesh built directly from the same
@@ -636,9 +636,8 @@ different normal per face and therefore cannot be shared:
 | `cube.toTriMesh(normals = true)` | **24** | **`false`** | `true` | `8.0` |
 
 `isWatertight()`, `genus()` and `showMesh`'s footer weld a mesh that carries normals by position
-before measuring, so both forms report the same surface. `topology()` reads the indices as they are,
-and `toSolid` needs the plain form: Manifold refuses a crease-split mesh. Ask for the plain form when
-the mesh goes back into Manifold, and `weld()` a shaded one if you need to.
+before measuring, so both forms report the same surface, and `toSolid` welds the same way, so either
+form goes back into Manifold. `topology()` reads the indices as they are.
 
 ## Lifetime
 

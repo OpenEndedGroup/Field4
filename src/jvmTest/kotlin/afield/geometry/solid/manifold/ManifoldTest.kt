@@ -341,6 +341,8 @@ class ManifoldTest {
             // ...and welding puts the topology back, at the cost of the normals that caused the split.
             assertTrue(shaded.weld(1e-6).isWatertight())
             assertEquals(0, shaded.weld(1e-6).genus())
+            // toSolid welds the shaded form itself, so it round-trips without a weld() first.
+            shaded.toSolid().use { back -> assertEquals(cube.volume, back.volume, 1e-6) }
         }
         // And a genus-1 part reports 1 either way.
         Solid.scope {
@@ -497,6 +499,11 @@ class ManifoldTest {
             coarse.warped { x, y, z -> Triple(x, y, z) }.use { same ->
                 assertEquals(coarse.volume, same.volume, 1e-12)
                 assertEquals(coarse.triangleCount, same.triangleCount, "warp does not re-mesh")
+            }
+            // ...unless it is given a maximum edge length, when it subdivides first.
+            coarse.warped(maxEdge = 0.25) { x, y, z -> Triple(x, y, z) }.use { fine ->
+                assertTrue(fine.triangleCount > coarse.triangleCount * 10, "maxEdge refines before warping")
+                assertEquals(coarse.volume, fine.volume, 1e-9)
             }
         }
     }
