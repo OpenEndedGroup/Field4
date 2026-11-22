@@ -6116,6 +6116,8 @@ Tests: `StringArtTest`.
 
 `src/jvmMain/kotlin/afield/geometry/path/StringArt.kt` — [read the source](source/jvmMain/afield/geometry/path/StringArt/)
 
+**Used in:** [FLine examples (Field graphics)](../fline_examples.md)
+
 ### Top-level functions { #stringart-kt-functions }
 
 | Declaration | Summary |

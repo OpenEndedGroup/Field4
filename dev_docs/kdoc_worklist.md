@@ -276,6 +276,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [PianoPreparation.kt](../src/jvmMain/kotlin/afield/audio/synth/PianoPreparation.kt) | Synthesis | sound | 0 | 4 | 80% |
 | [SubharmonicSoundDocs.kt](../src/jvmMain/kotlin/afield/audio/synth/SubharmonicSoundDocs.kt) | Synthesis | subharmonic_sound | 0 | 4 | 86% |
 | [FLineSampling.kt](../src/jvmMain/kotlin/afield/geometry/path/FLineSampling.kt) | Graphics | fline_examples | 0 | 4 | 71% |
+| [StringArt.kt](../src/jvmMain/kotlin/afield/geometry/path/StringArt.kt) | Graphics | fline_examples | 0 | 4 | 58% |
 | [Gezira.kt](../src/jvmMain/kotlin/afield/graphics/nile/Gezira.kt) | Graphics | afield_four_graphics | 0 | 4 | 90% |
 | [PathTraceGpuSmoke.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/PathTraceGpuSmoke.kt) | Renderers | path_tracing | 0 | 4 | 55% |
 | [Timecode.kt](../src/jvmMain/kotlin/afield/io/timecode/Timecode.kt) | Networking | smpte_timecode | 0 | 4 | 73% |
@@ -873,7 +874,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [DatalogRhythmSoundDocs.kt](../src/jvmMain/kotlin/afield/data/query/datalog/DatalogRhythmSoundDocs.kt) | Languages | — | 0 | 4 | 33% |
 | [ContextWhyTools.kt](../src/jvmMain/kotlin/afield/document/context/ContextWhyTools.kt) | Workspace | — | 0 | 4 | 50% |
 | [Kits.kt](../src/jvmMain/kotlin/afield/document/workspace/Kits.kt) | Workspace | — | 0 | 4 | 84% |
-| [StringArt.kt](../src/jvmMain/kotlin/afield/geometry/path/StringArt.kt) | Graphics | — | 0 | 4 | 58% |
 | [PolyvectorRequiredGraph.kt](../src/jvmMain/kotlin/afield/geometry/vectorize/polyvector/PolyvectorRequiredGraph.kt) | Graphics | — | 0 | 4 | 44% |
 | [RayTracingDocsHarness.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/RayTracingDocsHarness.kt) | Renderers | — | 0 | 4 | 82% |
 | [DiagramTypography.kt](../src/jvmMain/kotlin/afield/graphics/scene/reading/DiagramTypography.kt) | Graphics | — | 0 | 4 | 20% |
