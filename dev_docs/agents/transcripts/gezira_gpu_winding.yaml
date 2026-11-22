@@ -1,0 +1,78 @@
+name: gezira_gpu_winding
+description: >-
+  Gezira's winding rasteriser with its last stage, WindingSpans, on the GPU. GeziraGpu.pack runs
+  FlattenBeziers -> RowEdges -> sort on the CPU and lays the row edges out in storage buffers; a compute
+  shader with one invocation per pixel row cuts each row into bands at edge ends and crossings, walks
+  the winding number and adds each inside trapezoid's exact area into a float32 coverage image. The
+  box rasterises a pentagram, two overlapping circles and a square with a same-way hole under both
+  fill rules on the GPU and on the CPU, and shows GPU, CPU and their difference magnified.
+docs:
+  - page: afield_four_graphics.md
+    why: "The 'WindingSpans on the GPU' subsection of 'Rasterising with stream kernels' replays this transcript."
+operations:
+  - create:
+      box: ggw_renderer
+      name: renderer
+      frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.graphics.vulkan.util.Options
+
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+          Options.enableHDR = false
+          Options.profiling = false
+          once.renderer {
+              window = Window("gezira on the gpu", initialDimensions = Rect(80.0, 80.0, 400.0, 300.0))
+              Renderer(window)
+          }
+          println("renderer ready")
+          start(renderer::run)
+  - create:
+      box: ggw_raster
+      name: gezira on the gpu
+      frame: { x: 40.0, y: 200.0, w: 340.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.graphics.nile.*
+          import afield.graphics.vulkan.util.GpuProbe
+
+          val W = 120
+          val H = 48
+          // Three shapes where the two fill rules differ, in pixel units.
+          val shape =
+              GeziraGpu.pentagram(22.3, 25.4, 21.0) +
+                  Gezira.circle(54.2, 21.7, 13.0) +
+                  Gezira.circle(66.6, 27.3, 13.0) +
+                  GeziraGpu.holedSquare(84.3, 7.6, 32.0, 14.0, sameWay = true)
+
+          // The probe owns the buffers and the shader; one dispatch per fill rule.
+          val probe = GpuProbe(renderer, "gezira-gpu-demo")
+          val stage = GeziraGpu.stage(probe)
+          val jobs = FillRule.entries.map { GeziraGpu.dispatch(probe, stage, shape, W, H, it, it.name) }
+
+          val s = 4.0
+          frames {
+              try {
+                  probe.arm(*jobs.map { it.coverage }.toTypedArray())
+                  while (probe.stillWaiting()) frame()
+                  for ((n, job) in jobs.withIndex()) {
+                      val rule = job.packed.rule
+                      val gpu = job.read()
+                      val cpu = Gezira.rasterize(shape, W, H, rule)
+                      val (worst, mean) = Gezira.error(gpu, cpu)
+                      println("$rule: largest |gpu - cpu| %.2e, mean %.2e over the covered pixels".format(worst, mean))
+                      val diff = DoubleArray(gpu.size) { Math.abs(gpu[it] - cpu[it]) * 1e5 }
+                      lines(Gezira.pixels(gpu, W, s), channel = "${n + 1}a GPU ${rule.name.lowercase()}")
+                      lines(Gezira.pixels(cpu, W, s), channel = "${n + 1}b CPU ${rule.name.lowercase()}")
+                      lines(Gezira.pixels(diff, W, s, 1.0, 0.25, 0.2), channel = "${n + 1}c difference x 100000")
+                  }
+              } finally {
+                  probe.close()
+              }
+          }
+  - connect: { parent: ggw_renderer, child: ggw_raster }
+  - launch: { box: ggw_renderer, property: code, strand: renderer }
+  - await: {}
+  - launch: { box: ggw_raster, property: code }
+  - await: {}
