@@ -12,6 +12,9 @@ description: >
   code, with sliders for fps, steps, fade and exposure. Launching a system box replaces the one
   showing. Requires a GPU/Vulkan window; capture it with `native-screenshot <path> --uid
   fern_renderer`.
+docs:
+  - page: "chains.md#studio-tools-from-madp"
+    why: "The Fern sketches trace repeated transformations as a growing GPU image."
 operations:
   - create:
       box: fern_renderer

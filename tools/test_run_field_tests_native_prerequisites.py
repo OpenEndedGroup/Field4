@@ -17,6 +17,11 @@ class NativePrerequisiteTests(unittest.TestCase):
         self.assertEqual(smoke.smoke_native_tasks([slug]), ["buildSlugNative"])
         self.assertEqual(smoke.smoke_native_tasks([steam]), ["fetchSteamAudioNatives"])
         self.assertEqual(smoke.smoke_native_tasks([slug, steam]), ["buildSmokeNativePrerequisites"])
+        steam_and_samples = {"id": "screen", "tags": ["steamaudio", "dirt-samples"]}
+        self.assertEqual(
+            smoke.smoke_native_tasks([steam_and_samples]),
+            ["fetchSteamAudioNatives", "fetchDocsDirtSamples"],
+        )
         self.assertEqual(smoke.smoke_native_tasks([{"id": "unrelated"}]), [])
 
     def test_preflight_runs_gradle_and_rejects_a_failed_build(self):

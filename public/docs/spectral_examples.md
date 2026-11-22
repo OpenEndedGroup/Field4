@@ -91,7 +91,7 @@ The stream gets a `+0.95` spike at every 83rd sample and a `-0.8` dip at every 1
 
 The gamma detector, fed `abs(x)`, marks single samples. The beta detector holds `+1` and `-1` across whole stretches instead, and its window is why: 64 samples is shorter than the 109 the 1.1 Hz sine takes to come round at 120 samples a second, so every fit is a fit over a trend and the trend's own continuation keeps landing in a tail. Give a distribution fit at least one full cycle of any periodic component, or detrend before the detector sees it.
 
-For inline diagnostics of similar live values, continue with [Visualizers](visualizers.md). When you need to estimate a state you can only measure indirectly, see [State estimation](state_estimation_examples.md).
+For inline diagnostics of similar live values, continue with [Visualizers](visualizers.md). When you need to estimate a state you can only measure indirectly, see [State estimation](state_estimation_examples.md). To find a whole stretch of signal that is unlike any other, rather than one sample in a tail, look for [discords in the matrix profile](matrix_profile.md#discords).
 
 ## From time to frequency
 
@@ -1287,7 +1287,7 @@ ways to put those into the rest of Field. On an Apple-silicon Mac it renders abo
 speech per second. The first call fetches the model and its pronunciation data, about 27 MB, into
 `~/.afield/onnx/models/tiny-voca/`.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/spectral_examples/speech_player.png" wait="3.0" capture="box" open-outputs="true" padding="12" timeout="180" name="speech-player" alt="an audio player headed with the voice and word count, over the waveform of a spoken sentence"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/spectral_examples/speech_player.png" embed=true wait="3.0" capture="box" open-outputs="true" padding="12" timeout="180" name="speech-player" alt="an audio player headed with the voice and word count, over the waveform of a spoken sentence"}
 val said = speak("Hello! I am a box in Field, and this is my voice.")
 displayAudioSamples(said.samples, said.sampleRate, label = "F2: ${said.words.size} words")
 print(said.h)
@@ -1312,7 +1312,7 @@ The model decides how long each phone lasts, and `said.words` reports it: each `
 `start` and `end` in seconds, its `phones`, and whether it carries the main stress. Here the
 speech's level with a mark at the start of every word:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/spectral_examples/speech_word_timing.png" wait="3.0" capture="box" open-outputs="true" padding="12" timeout="180" name="speech-word-timing" alt="a cyan level curve of a spoken sentence with a dashed yellow mark at the start of each of its nine words"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/spectral_examples/speech_word_timing.png" embed=true wait="3.0" capture="box" open-outputs="true" padding="12" timeout="180" name="speech-word-timing" alt="a cyan level curve of a spoken sentence with a dashed yellow mark at the start of each of its nine words"}
 val said = speak("Every word arrives with its own start and end.", voice = "M2")
 val hop = 240 // 10 ms at 24 kHz
 val loudness = (said.samples.size / hop) { i -> said.samples.slice(i * hop until (i + 1) * hop).maxOf { abs(it) } }
@@ -1337,7 +1337,7 @@ notation box that follows the voice.
 Played at `cps = 1 / said.seconds`, it lines up with the voice. Its lambda picks the value of each
 event, here a kick for a stressed word and a hat for the rest:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/spectral_examples/speech_drums.png" wait="3.0" capture="box" open-outputs="true" padding="12" timeout="180" name="speech-drums" alt="an audio player labelled with the word pattern bd, hh, bd, hh, bd, hh, hh, bd, hh over the waveform of the voice mixed with the drums"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/spectral_examples/speech_drums.png" embed=true wait="3.0" capture="box" open-outputs="true" padding="12" timeout="180" name="speech-drums" alt="an audio player labelled with the word pattern bd, hh, bd, hh, bd, hh, hh, bd, hh over the waveform of the voice mixed with the drums"}
 // Stressed words strike a kick, the rest a hat, exactly on the words.
 val said = speak("Speech can play the drums, if you let it.")
 val drums = said.pattern { if (it.stressed) "bd" else "hh" }
@@ -1379,7 +1379,7 @@ said.sungOn(Impulse(pitch)) * 0.5f
 Because the words come with their phones, a box can find what it said and measure it. This one fits
 an order-52 LPC envelope at the middle of the stressed vowel of each word:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/spectral_examples/speech_vowels.png" wait="3.0" capture="box" open-outputs="true" padding="12" timeout="180" name="speech-vowels" alt="three LPC envelopes to 5 kHz: speak /iː/ with a low first peak near 350 Hz and a high one above 3 kHz, analyse /æ/ and plot /ɑː/ with their first peaks near 1 kHz"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/spectral_examples/speech_vowels.png" embed=true wait="3.0" capture="box" open-outputs="true" padding="12" timeout="180" name="speech-vowels" alt="three LPC envelopes to 5 kHz: speak /iː/ with a low first peak near 350 Hz and a high one above 3 kHz, analyse /æ/ and plot /ɑː/ with their first peaks near 1 kHz"}
 // Analyse what was said: the LPC envelope of the stressed vowel in each word.
 val said = speak("Speak, analyse, and plot.")
 val audio = said.resampled(48_000)
@@ -1438,6 +1438,11 @@ Then edit the signal, or swap `WindowType.HANN` for `HAMMING` / `BLACKMAN`, and 
 watch its figure change.
 
 *The public declarations used on this page are listed, with their KDoc, in the codebase reference: [`timeseries.kt`](reference/math.md#timeseries-kt) for the time-domain filters and detectors, [`spectral.kt`](reference/math.md#spectral-kt) for the frequency-domain half. Start from [what's already in the box](reference/index.md).*
+
+## See also
+
+To work with repeated or continuing gestures, see the [matrix profile](matrix_profile.md)
+and [Continuing a gesture](temporal_memory.md).
 
 ## API reference
 

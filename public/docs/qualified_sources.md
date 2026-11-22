@@ -393,5 +393,6 @@ kept in the document's `studies` directory, and re-running the box picks them up
     Approve button and clicks it, which sends the same button press a person's click does. The box
     then makes the agent's three calls itself. The approval records the account Field runs under.
 
-See also: [Studies](studies.md), whose build runners the replay is made with, and
-[Let AI4 Wait for Long Builds](ai4_long_builds.md).
+See also: [Studies](studies.md), whose build runners the replay is made with,
+[Let AI4 Wait for Long Builds](ai4_long_builds.md), and
+[Start a staged project](staged_projects.md), where this loot rule places loot in a level built in stages.

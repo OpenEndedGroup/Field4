@@ -2,7 +2,8 @@
 
 What makes one completion appear above another? If you're writing a class and want its useful
 members to show up early, or you're changing Field's completion code, this page explains how the
-ordering works and how a class can influence it.
+ordering works and how a class can influence it. The documentation card beside the list, and the
+links you can follow from it, are covered in [Browsing code from the completion panel](completion_doc_browser.md).
 
 The server gathers candidates, and the browser ranks them. The server sends up to 1200 candidates;
 its ordering is a last-resort tie-break (see [the authority order](#the-authority-order)). The
@@ -127,6 +128,12 @@ Put five of `FLine`'s eight common members into someone else's category and thei
 works: it lifts each of them to the top of a section nobody is looking at, seventy-odd rows down.
 With the same payload and the same ranker, one classification change moves `moveTo` from off-screen
 to first.
+
+### Completing inside a string
+
+Inside a Kotlin string, completion uses paths or choices supplied for that parameter. For
+example, complete the argument to `Rhino3dm.load("…")` to see `.3dm` files. Selecting a
+folder opens its contents. See [Completing a path as you type](files_and_paths.md#completing-a-path-as-you-type).
 
 ## Seeing it
 
@@ -408,3 +415,6 @@ In rough order of how often each turns out to be the answer:
 
 </div>
 
+## See also
+
+See [Browsing code from the completion panel](completion_doc_browser.md) to inspect a suggestion in the editor.

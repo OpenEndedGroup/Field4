@@ -150,6 +150,12 @@ These chains end in something you could print, mount, hang or light.
 
 </div>
 
+## From a rule, outline or tracked movement
+
+- [A Generator, Graded by Datalog](chain_flow_islands.md) measures the regions a generator makes.
+- [A Word Cut as a Stencil](chain_stencil_bridges.md) adds bridges that hold the islands inside letters in place.
+- [A Tracked Body, Measured and Heard](chain_tracked_body.md) turns body poses into measurements and sound.
+
 ## Studio tools from MADP
 
 MADP is Media Arts and Design Practice at the University of Chicago. Its tools are single-page
@@ -231,6 +237,8 @@ every box in the document does.
     **[charGrid](agent_transcripts.md#madp_chargrid).** A picture as a 40 × 25 grid of glyph
     numbers, rewritten once a tick. Reading the last tick is all Conway's Life needs, and a glyph
     can also be a note, so an arpeggio draws and plays at once.
+    [Shape-aware ASCII](ascii_shape.md#live-in-a-char-grid) fills one each tick from anything
+    drawn into an `Img`.
 
 -   ![A three-by-three grid of colour tiles: two rainbow parents, stripes and spokes, above seven mutated children, each with its program written under it](assets/agent_transcripts_gallery/madp_ga_lead.png)
 

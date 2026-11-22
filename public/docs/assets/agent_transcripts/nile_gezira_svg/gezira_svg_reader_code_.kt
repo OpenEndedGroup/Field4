@@ -12,10 +12,9 @@ val svg =
     </svg>""".trimIndent()
 val doc = GeziraSvg.parse(svg)
 println(doc)
-for (s in doc.shapes) {
-    println(
-        "${s.element}: ${s.subpaths.size} subpath(s), ${s.subpaths.sumOf { it.beziers.size }} segments, fill ${s.fill}, ${s.fillRule}, stroke ${s.stroke} ${s.strokeWidth}",
-    )
+for (l in doc.lines) {
+    val what = if (l.filled) "fill ${l.fillRule}" else "stroke ${l.thickness}"
+    println("${l.svgId ?: "-"}: ${Gezira.subpaths(l).size} subpath(s), $what, colour ${l.color}")
 }
 val r = GeziraSvg.render(doc, 360, 180)
 display("gezira", GeziraSvg.png(r.canvas.rgba, 360, 180))

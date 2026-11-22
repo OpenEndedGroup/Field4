@@ -92,3 +92,7 @@ plane comfortably in front of the camera.
 
 For the other ways Field computes pixel coverage (exact triangle area, the CPU mesh rasterizer,
 Gaussian splats), see [which one to use](afield_four_graphics.md#which-coverage-to-use).
+
+## See also
+
+[Shape-aware ASCII](ascii_shape.md) renders an image as characters by matching their shapes.

@@ -30,8 +30,9 @@ EOF
 - Backdoor `run` executes once and waits; backdoor `launch` starts a job and waits for its
   initial running signal, which may be transient. Use
   `wait-running <uid> --state running --settle 0.5` when the box must keep owning an
-  animation/render loop. Transcript Kotlin-only launch groups additionally use the awaited batch
-  path; mixed/non-Kotlin transcript groups do not promise the same first-frame barrier.
+  animation/render loop. A transcript launch group starts each box only after the one before it
+  has finished its setup, whatever its language (Kotlin through the awaited batch path, other
+  engines through their execution verdict).
 - `launch-batch <parent> <child> <draw>` sends one ordered chord through the same
   `launch-batch` path as a multi-box canvas gesture. The server queues evaluation and gives each
   preceding box runloop turns before evaluating the next; another batch extends the queue.

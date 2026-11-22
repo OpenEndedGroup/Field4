@@ -153,7 +153,8 @@ does exactly that and nothing else.
 
 Field watches the document directory while it is open, and the three artifacts get three different
 treatments. `src/jvmMain/kotlin/afield/document/persistence/FileWatchManager.kt:291#if (file.name == SavingContext.METADATA_EDN) {`
-is the branch.
+is the branch. For the same thing as a task, editing a box's code in your own editor, see
+[Editing a document from outside Field](editing_from_outside.md).
 
 **A sidecar edit is picked up.** An external write to `<box>_<property>_.<ext>` reloads that property
 onto that box and resynchronizes it; if the box id in the filename is not in the session, the watcher
@@ -326,3 +327,7 @@ the live `metadata.edn` appended as the newest version
 [Document History](document_history.md) covers using it. On disk, history costs one unpruned copy
 of `metadata.edn` per changed save, and that is the only artifact in the directory with no bound on
 how much it can accumulate.
+
+## See also
+
+[Field’s server surface](server_surface.md) lists the interfaces that read and edit the live document.

@@ -1192,7 +1192,7 @@ Where it could go next:
 - **Richer inline views.** Quantile bands, an empirical CDF beside the bars, and two distributions
   overlaid with the distance between them, all updating as samples arrive.
 - **Gradients.** Normals and uniforms can be reparameterized, so `E(f(x; θ))` has a gradient in θ.
-  Joined to the autodiff work, you could optimize a distribution: tune a scatter of FLines or a
+  Joined to [automatic differentiation](autodiff_examples.md), you could optimize a distribution: tune a scatter of FLines or a
   random rhythm by gradient descent instead of by hand.
 - **More exact cases.** Symmetry would make the birthday question exact, where enumerating 365²³
   joint values cannot. Characteristic functions would give exact densities for more continuous

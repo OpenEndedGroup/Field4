@@ -12,6 +12,9 @@ description: >
     2. tetra2 — three photographs and a sentence, with each point's edges ranked.
     3. swap one picture — tetra with the car replaced by a wolf.
     4. five points do not fit — one more photograph, and the picture stops being exact.
+docs:
+  - page: chains.md#studio-tools-from-madp
+    why: "The studio sketchbook in its editable Field document."
 operations:
   - create:
       box: tetra

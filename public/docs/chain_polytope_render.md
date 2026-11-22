@@ -70,6 +70,36 @@ Roughness 0.32 on the gold is a choice about the environment rather than about t
 is flat and large, and a flat mirror that size returns one direction of a hazy sky, which reads as
 pale. Spreading the specular lobe averages the map and the gold tint comes back.
 
+## Point at a face and find its source
+
+Open the [polytope picking starting point](agent_transcripts.md#polytope_pick_lineage) and run
+**Point at a face**. Move the horizontal and vertical controls to aim the crosshair. The entire
+face lights up, and the readout tells you what it came from on the starting dodecahedron. A square
+comes from an edge, a hexagon from a vertex and a decagon from a pentagon.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_polytope_render/pick_lineage.png" capture="box" open-outputs="true" wait-output="true" wait-output-kind="all" wait-output-contains="came from a seed" timeout="120" padding="10" trim=true embed=true hidden=true name="polytope-pick-lineage" alt="A beveled dodecahedron with one polygon highlighted under a crosshair and a readout tracing that face to the starting dodecahedron" macro-file="../../dev_docs/agents/transcripts/polytope_pick_lineage.yaml" capture-box="polytope_pick"}
+// Build the polytope and render a pick from the starting point.
+```
+
+For a pick, give the triangle mesh and its face assignments to the scene together.
+`PickParts.fromTriangulated` reads the face identity already recorded by the triangulator.
+`showPointer` uses the same camera for the rendered preview and the ray through the pixel.
+
+```diffstatic {data-lang=kotlin}
+val geometry = chain.polyhedron.triangulate(normals = NormalPolicy.Flat)
+val scene = pickScene {
+    add("Beveled dodecahedron", geometry.mesh, parts = PickParts.fromTriangulated(geometry))
+}
+val camera = view.rayCamera(scene.mergedMesh())
+val hit = showPointer(scene, camera, vec(x, y), view)
+val source = hit?.externalId?.let { chain.sourceElements(ElementId(it)).single() }
+```
+
+Switch **Smooth normals** while pointing inside a face. Its shading changes, but the selected
+polygon and its source stay the same. A ray can hit any triangle making up that polygon.
+`externalId` brings back the polygon's identity in the original Conway result. Build the
+part assignment again whenever you rebuild the triangles.
+
 ## The numbers each hop owes the next
 
 Run this to read the counts off your own build. It needs no renderer: everything up to the trace is
@@ -213,3 +243,5 @@ scene skips them, and `degenerateCount` says how many.
   convergence and the two traversal backends.
 * [Particles, welded, and traced](chain_physics_render.md) is the same last two hops with a cloth
   simulation at the front instead of a polytope.
+* [A polytope, canonicalised, and sliced into layers](chain_ceres_manifold_contours.md) starts from
+  the same polytopes and cuts the solid into layers instead of tracing it.

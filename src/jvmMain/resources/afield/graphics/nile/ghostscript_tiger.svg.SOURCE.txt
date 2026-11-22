@@ -5,5 +5,5 @@ Source: https://upload.wikimedia.org/wikipedia/commons/f/fd/Ghostscript_Tiger.sv
 Derived from examples/tiger.eps in GPL Ghostscript
         (https://git.ghostscript.com/?p=ghostpdl.git;a=blob;f=examples/tiger.eps).
 Author:  the Ghostscript authors.
-Licence: GNU Affero General Public License (as recorded on the Commons file page), compatible
-         with Field's AGPL-3.0-or-later.
+Licence: GNU Affero General Public License — Ghostscript's own licence, which tiger.eps ships
+         under, and the licence the Commons file page records for this SVG ("AGPL").

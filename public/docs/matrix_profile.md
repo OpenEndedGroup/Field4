@@ -446,6 +446,10 @@ subsequence that spans two examples is no subsequence at all.
 - A starting point with these scenes as boxes is in the
   [agent transcript gallery](agent_transcripts.md#matrix_profile).
 
+## See also
+
+For examples of filters, event detectors and spectrograms, see [Signal examples](spectral_examples.md).
+
 ## API reference
 
 - Finding motifs and discords: [`MatrixProfile`](reference/math.md#matrixprofile-kt-matrixprofile) —

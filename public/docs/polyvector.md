@@ -178,6 +178,8 @@ showImgGrid(
 the line through their neighbours. Every line also carries
 `curveId`, `startNode` and `endNode` in its properties, and the `GeometryNetwork` it came from,
 so a manipulated copy can still be traced back to the stroke it came from.
+To smooth the hand's wobble out of the curves while keeping their junctions, refit them to the ink
+as [principal curves](principal_curves.md), the way [Geometry chains](geometry_chains.md) does.
 
 ## Photographs: evidence first
 
@@ -260,3 +262,7 @@ pixels wide. On those it reproduces the authors' published results exactly. Outs
     checks the crossing, T-junction, parallel-stroke and separate-component cases. The samples
     themselves are not in Field's repository, because they are someone else's copyrighted drawings;
     the build fetches them with the source.
+
+## See also
+
+[Chaining the geometry extensions](geometry_chains.md) uses the resulting paths in a larger drawing workflow.

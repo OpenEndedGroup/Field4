@@ -35,3 +35,7 @@ The map is rebuilt with the site, so it always matches the pages you are reading
   documentation that sits beside each source file.
 - [The agent transcript gallery](agent_transcripts.md) opens the documents the transcripts build.
 - [What's new](changelog.md) lists the pages added most recently.
+
+## See also
+
+For a guide to what you can do in each part of Field, start with [Where to Go Next](staging.md).

@@ -21,6 +21,8 @@ then follow the links for the details.
 * **"I want the rhythm to come from *somewhere* — a direction, a distance."** → `pat-spatial`,
   through headphones. [A pattern in space](pat_spatial.md).
 * **"I want a whole groovebox, sequencer and all."** → `fm1-sim`. [FM-1 simulator](fm1.md).
+* **"I want to livecode it in ORCA's grid."** → `orca()` in a box, whose notes arrive in your
+  Kotlin for whichever synth you choose. [ORCA](orca.md).
 * **"I want to patch it in Pure Data."** → `pure-data`. A patch inline in the box or a `.pd` file,
   once libpd is built. [Pure Data](pure_data.md).
 * **"I want to write an orchestra and score."** → `csound`. Use Csound as a box language or call it
@@ -46,7 +48,7 @@ then follow the links for the details.
 | `pure-data` | a Pure Data patch — inline text in the box, or a `.pd` file — in a libpd instance of its own, pulled a block at a time. `class PdNode` in `src/jvmMain/kotlin/afield/audio/pd/PdInstance.kt` | libpd, built once by `./gradlew buildLibpdNative` | both | **yes** | [Pure Data](pure_data.md) |
 | `csound` | a Csound orchestra and score, as a box language or from Kotlin. `class CsoundNode` in `src/jvmMain/kotlin/afield/audio/csound/CsoundInstance.kt` pulls blocks live; `CsoundInstance.renderOffline` renders to a buffer | libcsound, built with `./gradlew buildCsoundNative` or installed separately | both | **yes** | [Csound](csound.md) |
 | `dough-engine` | the whole dough/Strudel engine as a wasm module, with its own 128-frame block loop. `class DoughEngine` in `src/jvmMain/kotlin/afield/audio/synth/Dough.kt`, wrapped onto the shared `render` call by `DoughAudioSink` | the dough wasm build | both | **yes**, through `parkDough` | — |
-| `pat-spatial` | a pattern **placed in space**: one dough engine per `spat` tag, its output taken as mono and aimed by Steam Audio's HRTF. `fun patSpatial` in `src/jvmMain/kotlin/afield/audio/synth/PatSpatial.kt` | dough, plus an uncommitted `libphonon` — `./gradlew fetchSteamAudioNatives` | both | **yes** | [A pattern in space](pat_spatial.md) |
+| `pat-spatial` | a pattern **placed in space**: one dough engine per `spat` tag, its output taken as mono and aimed by Steam Audio's HRTF. `fun patSpatial` in `src/jvmMain/kotlin/afield/audio/synth/PatSpatial.kt` | dough, plus an uncommitted `libphonon` — `./gradlew fetchSteamAudioNatives` | both | **yes** | [A pattern in space](pat_spatial.md), [Steam Audio scenes](steam_audio_scene.md) |
 | `sonic-pi` | a Ruby program handed to Sonic Pi's own scsynth over OSC. `class SonicPi` in `src/jvmMain/kotlin/afield/audio/synth/SonicPi.kt` | a local Sonic Pi v5 | realtime only | no | [Sonic Pi](sonic_pi.md) |
 | `modal-drum` | a drawn shape heard as a drum: its vibration modes solved by finite elements, struck, and summed as one damped sinusoid per mode. `class DrumModes` in `src/jvmMain/kotlin/afield/audio/modal/Eigendrum.kt` | nothing | offline only | no | [Eigendrum](eigendrum.md) |
 | `grains` | a list of grains — onset, length, pitch, gain, pan — each a windowed burst of a three-harmonic sine, or of a recording when you give it one, summed into a buffer. `fun renderGrains` in `src/jvmMain/kotlin/afield/simulation/agents/alife_grains.kt` | nothing | offline only | no | [ALife examples](alife_examples.md) |
@@ -341,3 +343,7 @@ renders above back to back and plots their short-time brightness, so you can see
 as hear them. The second box needs the Dirt-Samples folders once, from `./gradlew fetchDocsDirtSamples`;
 without them it stops and names that command. Or [browse it in the offline
 viewer](offline.html?file=assets/agent_transcripts/sound_path_map/metadata.edn).
+
+## See also
+
+Start with [Sound](sound.md) for the short route from a pattern to a part you can hear.

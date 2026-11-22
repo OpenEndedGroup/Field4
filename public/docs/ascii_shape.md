@@ -660,3 +660,7 @@ The method, the staggered circles and both contrast steps are Alex Harri's; read
 [his essay](https://alexharri.com/blog/ascii-rendering) for interactive versions of every step and
 for the GPU implementation he uses for real-time 3-D scenes. Field's, as boxes you can edit, is
 [above](#on-the-gpu-over-a-live-scene).
+
+## See also
+
+[Visualizers & Controls](visualizers.md) shows other ways to display values in a box.

@@ -5,6 +5,10 @@
 
 package afield.graphics.nile
 
+import afield.geometry.path.FLine
+import afield.graphics.render.filled
+import afield.graphics.render.stroked
+import afield.graphics.render.thickness
 import afield.graphics.vulkan.buffers.FrameBufferGroup
 import afield.graphics.vulkan.buffers.defaultBuffer
 import afield.graphics.vulkan.util.GpuProbe
@@ -38,6 +42,13 @@ class GeziraPath(val beziers: List<Bezier>, val paint: Rgba, val rule: FillRule 
  * Buffers and stages live on a [GpuProbe]; [image] is `width × height` premultiplied RGBA floats.
  * The dispatches run every frame until the probe closes, reading [transform] each time, so a box
  * that changes it animates the scene.
+ *
+ * @param segmentCapacity segments the buffer holds; pieces past it are dropped and counted in [overflow].
+ * @param bandCapacity entries (and runs) each band of 16 rows can hold.
+ * @param repeats dispatches of each stage per frame: 1 to draw, more only to time the pipeline as the
+ *   difference between frames with several and with one (repeats run back to back and each stage is
+ *   idempotent, so the picture is the same).
+ * @param repeatStage with [repeats], repeat only this stage (0 count .. 4 resolve); -1 repeats all five.
  */
 class GeziraGpuScene(
     val probe: GpuProbe,
@@ -47,17 +58,9 @@ class GeziraGpuScene(
     /** Document to pixels: `x' = a x + c y + e`, `y' = b x + d y + f`. Read every frame. */
     @Volatile var transform: SvgTransform = SvgTransform.IDENTITY,
     @Volatile var tolerance: Double = 0.02,
-    /** Segment capacity; pieces past it are dropped and counted in [overflow]. */
     segmentCapacity: Int = 1 shl 20,
-    /** Entries (and runs) each band of 16 rows can hold. */
     bandCapacity: Int = 1 shl 15,
-    /**
-     * Dispatches of each stage per frame. 1 to draw; more only to time the pipeline, as the
-     * difference between frames with several and with one (each stage's repeats run back to back,
-     * and each is idempotent, so the picture is the same).
-     */
     repeats: Int = 1,
-    /** With [repeats], repeat only this stage (0 count .. 4 resolve); -1 repeats all five. */
     repeatStage: Int = -1,
 ) {
     init {
@@ -166,23 +169,27 @@ class GeziraGpuScene(
         }
 
         /**
-         * The painted paths of [doc] in paint order, in document units: each fill under its rule, then
-         * each stroke as [GeziraStroke]'s outline of it, made here once on the CPU and filled non-zero.
-         * The same input `GeziraSvg.render` rasterises shape by shape.
+         * [lines] as filled paths in paint order, the input [GeziraFLine.render] takes, painted from the
+         * same attributes: a `filled` line is its outline under [fillRule] in [GeziraFLine.paint]'s
+         * colour; a `stroked` one is [GeziraStroke]'s outline of it at `thickness` (1 when unset),
+         * made here once on the CPU, in the lines' own units, and filled non-zero.
          */
-        fun paths(doc: SvgDocument): List<GeziraPath> {
+        fun paths(lines: List<FLine>): List<GeziraPath> {
             val out = ArrayList<GeziraPath>()
-            for (shape in doc.shapes) {
-                shape.fill?.let { if (it.a > 0f) out += GeziraPath(shape.fillBeziers(), it, shape.fillRule) }
-                val stroke = shape.stroke
-                if (stroke != null && stroke.a > 0f && shape.strokeWidth > 0) {
-                    val outline = shape.subpaths.flatMap { sp ->
-                        GeziraStroke.strokeBezierPath(shape.strokeWidth)(if (sp.closed) sp.closedBeziers() else sp.beziers)
-                    }
-                    out += GeziraPath(outline, stroke, FillRule.NON_ZERO)
+            for (line in lines) {
+                val c = GeziraFLine.paint(line)
+                if (c.a <= 0f) continue
+                if (line.filled) out += GeziraPath(Gezira.beziers(line), c, line.fillRule)
+                val width = line.thickness ?: 1.0
+                if (line.stroked && width > 0) {
+                    out += GeziraPath(Gezira.subpaths(line).flatMap { GeziraStroke.strokeBezierPath(width)(it) }, c, FillRule.NON_ZERO)
                 }
             }
             return out.filter { it.beziers.isNotEmpty() }
         }
+
+        /** A scene of [lines] (see [paths]) on [probe], drawn through [transform] into `width × height`. */
+        fun of(probe: GpuProbe, lines: List<FLine>, width: Int, height: Int, transform: SvgTransform = SvgTransform.IDENTITY) =
+            GeziraGpuScene(probe, paths(lines), width, height, transform)
     }
 }

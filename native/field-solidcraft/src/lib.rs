@@ -258,7 +258,7 @@ pub unsafe extern "C" fn field_solidcraft_export(ptr: *mut Design, format: u32) 
                 .map_err(|e| e.to_string())?,
             2 => solidcraft_io::export(&d.model.state(), &[], Format::StlBinary, &d.doc.name)
                 .map_err(|e| e.to_string())?,
-            3 => solidcraft_io::write_design(&d.doc),
+            3 => solidcraft_io::write_design(&d.doc).map_err(|e| e.to_string())?,
             _ => return Err(format!("unsupported export format {format}")),
         };
         Ok(Box::into_raw(Box::new(Bytes(bytes))))

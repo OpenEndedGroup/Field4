@@ -259,7 +259,7 @@ retain their explicit geometry. Undo, corrections and layer visibility update th
 recorded strokes. The original Pencil samples remain in the capture.
 
 Pause briefly to see **Plan geometry**. In a layer with enough evidence for perpendicular axes,
-Field uses its Ceres solver to align straight edges, with curves anchoring their shared vertices.
+Field uses its [Ceres solver](ceres.md) to align straight edges, with curves anchoring their shared vertices.
 It can merge straight continuations and keeps safeguards around gaps such as door openings. Label
 a layer **Annotation**, **Markup** or **Hatch** to dim those strokes in Field and omit them from
 the returned plan. Repeated short hatch strokes can also be recognized by their spacing.

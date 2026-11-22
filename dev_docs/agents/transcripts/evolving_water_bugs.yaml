@@ -20,6 +20,9 @@ description: >
   Pure CPU, no Window and no Renderer. Both boxes launch a `go { }` search and a `loop { }` drawing.
   Stopping the box cancels both, so they must be launched. Replayed end to end in CI: launch both, run 90
   runloop frames, stop.
+docs:
+  - page: "evolving_creatures.md"
+    why: "The water bug uses the same evolved body and gait system with a water surface as its environment."
 operations:
   - create:
       box: water_bug

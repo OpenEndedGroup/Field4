@@ -69,7 +69,7 @@ object GeziraGpuTigerProbe {
             val svg = GeziraSvg.tiger()
             val doc = GeziraSvg.parse(svg)
             val t0 = System.nanoTime()
-            val paths = GeziraGpuScene.paths(doc)
+            val paths = GeziraGpuScene.paths(doc.lines)
             val loadMs = (System.nanoTime() - t0) / 1e6
             println("tiger: ${paths.size} paths, ${paths.sumOf { it.beziers.size }} curves; strokes outlined at load in %.0f ms".format(loadMs))
             // Frames with no compute at all: what the window and presentation cost by themselves.
@@ -110,6 +110,14 @@ object GeziraGpuTigerProbe {
                     }
                     probe.atMost("mean |gpu - cpu| ($size)", meanCpu, MAX_MEAN, buffer = "image")
                     gpuPerFrame[size] = timeFrames(probe)
+                    // The renderer's per-module GPU timestamps, one module per stage: logged as
+                    // "MOD '<probe>.gezira-scene-<stage>.<n>': x ms" while profiling is on.
+                    println("profiling $size")
+                    Options.profiling = true
+                    repeat(12) { pump() }
+                    probe.idle()
+                    Options.profiling = false
+                    repeat(3) { pump() }
                     cpuTimes[size] = cpuMs
                     probe.verdict("gezira gpu tiger $size")
                 }

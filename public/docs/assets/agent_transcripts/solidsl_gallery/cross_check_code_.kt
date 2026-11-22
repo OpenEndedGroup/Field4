@@ -109,8 +109,8 @@ run {
         channel = "exact",
         title = "B — Manifold's exact CSG",
         caption =
-            "${exact.triangleCount} triangles &middot; volume ${"%.5f".format(exact.volume)} &middot; " +
-                "genus ${exact.genus} &middot; every boolean guaranteed to close",
+            "${exact.triangleCount} triangles · volume ${"%.5f".format(exact.volume)} · " +
+                "genus ${exact.genus} · every boolean guaranteed to close",
         view = MeshView(yawDegrees = 34.0, pitchDegrees = 24.0, width = 700, height = 440),
     )
     showMesh(
@@ -118,8 +118,8 @@ run {
         channel = "marched",
         title = "A — the same expression, marched from its distance field",
         caption =
-            "${marched.triangleCount} triangles &middot; volume " +
-                "${"%.5f".format(marched.signedVolume())} &middot; the two disagree by " +
+            "${marched.triangleCount} triangles · volume " +
+                "${"%.5f".format(marched.signedVolume())} · the two disagree by " +
                 "${"%.3e".format(agreement.relativeVolumeError)} relative, and their surfaces are never " +
                 "more than ${"%.4f".format(agreement.deviation)} apart",
         view = MeshView(yawDegrees = 34.0, pitchDegrees = 24.0, width = 700, height = 440),

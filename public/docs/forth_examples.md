@@ -393,7 +393,8 @@ Put a short Forth program in each cell of a step sequencer, and it can decide wh
 time the sequence comes round. ForthField borrows that idea and a handful of words from
 [Cagire](https://cagire.raphaelforment.fr), Raphaël Forment's Forth sequencer. Cagire's source is
 at [git.raphaelforment.fr/BuboBubo/cagire](https://git.raphaelforment.fr/BuboBubo/cagire); like
-Field, it is AGPL-3.0-or-later.
+Field, it is AGPL-3.0-or-later. For a sequencer grid where each cell is a one-letter operator
+instead of a program, see [ORCA](orca.md).
 
 `seq: name … ;seq` defines a grid. Each `|` ends a step and an empty step is a rest. Note names are
 literals, so `c4` pushes 60 and `eb3` pushes 51, and `note` sounds one on the current step. Between
@@ -511,3 +512,7 @@ Redefine `line` while it runs and the next step plays the new program. Stopping 
 Use `see name` to check that the word running is the definition you think it is, and read the error before adding prints: it already names the failing token, the stack and the chain of word calls.
 
 Builtins and your own words share one dictionary, so `: dup ... ;` replaces the real `dup` for the rest of the run, with a warning in the output; `forget dup` brings the builtin back.
+
+## See also
+
+[Nano examples](nano_examples.md) explores a smaller instruction set, with views of its registers and RAM.

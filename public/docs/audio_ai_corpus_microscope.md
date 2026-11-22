@@ -104,7 +104,9 @@ runAsync<AudioAsset>(
 
 `segmentCorpus` records deterministic windows and their previous/next source neighbours.
 `embedCorpus` pools the five descriptor groups over those exact windows. Re-running either unchanged
-request returns its saved result immediately.
+request returns its saved result immediately. The states a job passes through on the monitor, and
+the error codes a failed one reports, are listed in the
+[Field Audio service reference](field_audio_service_reference.md#job-states).
 
 ## Query, await and visualize
 

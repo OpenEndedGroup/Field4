@@ -150,6 +150,8 @@ FIELD_OPENNURBS_API const int* field_opennurbs_object_indices(void* model, int o
 
 /** 3 * POINT_COUNT floats of vertex normals for a MESH that has them; null otherwise. */
 FIELD_OPENNURBS_API const float* field_opennurbs_object_normals(void* model, int object);
+/** POINT_COUNT ints of vertex colours (ARGB, alpha = opacity, sRGB) for a MESH that has them; null otherwise. */
+FIELD_OPENNURBS_API const int* field_opennurbs_object_colors(void* model, int object);
 
 /**
  * A MESH that came from a Brep or an extrusion also carries that object's edges — what Rhino draws

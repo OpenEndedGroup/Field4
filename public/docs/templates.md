@@ -15,7 +15,7 @@ Select the boxes you want to keep: one box, or a group with the connections betw
 the command palette (`f1`) with the canvas focused, choose **Save selection as template**, type a
 name and press ++enter++.
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".quick-input-widget" screenshot="assets/templates/save-name.png" padding="6" wait="0" timeout="120" embed=true hidden=true transcript="../../dev_docs/agents/transcripts/docs_capture/templates_setup.yaml" document="docs-templates" fresh-document=true name="templates-save-name" alt="the Save selection as template name field, with greeter typed into it"}
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".afield-palette.is-prompt .afield-palette-shell" screenshot="assets/templates/save-name.png" padding="6" wait="0" timeout="120" embed=true hidden=true transcript="../../dev_docs/agents/transcripts/docs_capture/templates_setup.yaml" document="docs-templates" fresh-document=true name="templates-save-name" alt="the Save as template prompt in the command palette's dark frame: the title on the left, greeter typed in the name field, and a line below saying it saves the selected box"}
 ui.pause(800)
 ui.click("tpl_greeter")
 ui.pause(400)
@@ -234,3 +234,7 @@ A [kit](kits.md) packages starting points with the code, dependencies and assets
 keeps track of which version each document received. Reach for a kit when the thing you want to
 reuse is more than a few boxes, or when copies should be able to take updates; a template copy
 never changes after it is inserted.
+
+## See also
+
+For a guided look at a complete example, open [The Demo Document](demo_document.md).

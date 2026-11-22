@@ -442,6 +442,8 @@ unit time over steps 6000 to 10000, the same speed as in the window before to wi
 heading that turns by 0.2 rad or less in 4000 steps. Random sampling's gliders are slower on three
 of its four seeds, between 0.023 and 0.057. For comparison, the zoo's 39-particle Tarbosaurolop,
 started from the demo's own positions, glides at 0.125.
+[Braitenberg vehicles with memory](braitenberg_vehicles.md#10-a-larger-genome-does-evolution-beat-random-sampling)
+runs the same comparison on vehicle brains, with a hill climber as a third arm.
 
 The creature a seed assembles is sensitive to the rule itself. Rounding the evolved rule to the
 three places shown in the table changes which creature some of the seeds settle into, so the
@@ -510,6 +512,10 @@ animateEvolution(
 - **The article's 3-D variant**, whose 256 particles settle into a mushroom-shaped glider
   (`muK` 4.3, `sigmaK` 1.1, `muG` 0.23, `sigmaG` 0.06), and its sonification, in which every particle
   sings at a pitch set by its energy, as loud as it is fast.
+
+## See also
+
+For other GPU particle rules, see [Neural particle systems](neural_particles.md).
 
 ## API reference
 

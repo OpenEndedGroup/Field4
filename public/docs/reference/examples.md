@@ -4,7 +4,7 @@
 
 Runnable examples, galleries and verification programs. Read these for usage patterns; their entry points are not a promise of a reusable box API.
 
-238 source file(s), 750 public symbol(s), 328 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+240 source file(s), 761 public symbol(s), 333 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -317,13 +317,13 @@ Regression test for cross-box context inheritance via `fromContextWithNameOrNull
 
 ### DemoTranscriptExecSmokeTest { #demotranscriptexecsmoketest-kt-demotranscriptexecsmoketest }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">DemoTranscriptExecSmokeTest</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L95)
+[<code class="highlight"><span class="k">object</span> <span class="nc">DemoTranscriptExecSmokeTest</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L96)
 
 Verification-integrity harness: executes / compiles the box bodies of *every* shipped demo transcript under `dev_docs/agents/transcripts/` and asserts they carry no diagnostics.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L1182) |  |
+| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L1198) |  |
 
 ## DocsPanelCodeLinksSmokeTest.kt { #docspanelcodelinkssmoketest-kt }
 
@@ -3363,6 +3363,41 @@ A finished render: interleaved stereo at `sampleRate`, plus a readout line per m
 | Declaration | Summary |
 | --- | --- |
 | <a id="reflectionhandednessprobe-kt--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/examples/steamaudio/ReflectionHandednessProbe/#L57) |  |
+
+## SteamAudioScreenStudy.kt { #steamaudioscreenstudy-kt }
+
+`src/jvmMain/kotlin/afield/examples/steamaudio/SteamAudioScreenStudy.kt` — [read the source](source/jvmMain/afield/examples/steamaudio/SteamAudioScreenStudy/)
+
+### SteamAudioScreenStudy { #steamaudioscreenstudy-kt-steamaudioscreenstudy }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">SteamAudioScreenStudy</span></code>](source/jvmMain/afield/examples/steamaudio/SteamAudioScreenStudy/#L35)
+
+A controlled comparison of the same direct sound with a screen in or out of its path.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="steamaudioscreenstudy-kt--steamaudioscreenstudy--listenerposition"></a>[<code class="highlight"><span class="k">val</span> <span class="n">listenerPosition</span></code>](source/jvmMain/afield/examples/steamaudio/SteamAudioScreenStudy/#L36) |  |
+| <a id="steamaudioscreenstudy-kt--steamaudioscreenstudy--sourceposition"></a>[<code class="highlight"><span class="k">val</span> <span class="n">sourcePosition</span></code>](source/jvmMain/afield/examples/steamaudio/SteamAudioScreenStudy/#L37) |  |
+| <a id="steamaudioscreenstudy-kt--steamaudioscreenstudy--screen-depth"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SCREEN&#95;DEPTH</span></code>](source/jvmMain/afield/examples/steamaudio/SteamAudioScreenStudy/#L38) |  |
+| <a id="steamaudioscreenstudy-kt--steamaudioscreenstudy--screen-half-width"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SCREEN&#95;HALF&#95;WIDTH</span></code>](source/jvmMain/afield/examples/steamaudio/SteamAudioScreenStudy/#L39) |  |
+| <a id="steamaudioscreenstudy-kt--steamaudioscreenstudy--clear-offset"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CLEAR&#95;OFFSET</span></code>](source/jvmMain/afield/examples/steamaudio/SteamAudioScreenStudy/#L40) |  |
+| <a id="steamaudioscreenstudy-kt--steamaudioscreenstudy--take"></a>[<code class="highlight"><span class="k">class</span> <span class="nc">Take</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">left</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">right</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">occlusion</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">transmission</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">)</span></code>](source/jvmMain/afield/examples/steamaudio/SteamAudioScreenStudy/#L48) | The stereo result and the unfiltered direct-path measurements for one screen position. |
+| <a id="steamaudioscreenstudy-kt--steamaudioscreenstudy--render"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">offsetMeters</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">material</span><span class="p">:</span> <span class="nc">Material</span> <span class="o">=</span> <span class="nc">Material</span><span class="p">.</span><span class="nc">WOOD</span><span class="p">)</span><span class="p">:</span> <span class="nc">Take</span></code>](source/jvmMain/afield/examples/steamaudio/SteamAudioScreenStudy/#L59) | Render the pinned hi-hat through the screen at `offsetMeters` from the centre of the direct ray. |
+| <a id="steamaudioscreenstudy-kt--steamaudioscreenstudy--renderwav"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">renderWav</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">outPath</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/examples/steamaudio/SteamAudioScreenStudy/#L173) | Documentation capture entry point. Both takes use the same input and render level. |
+
+## SteamAudioScreenStudySmoke.kt { #steamaudioscreenstudysmoke-kt }
+
+`src/jvmMain/kotlin/afield/examples/steamaudio/SteamAudioScreenStudySmoke.kt` — [read the source](source/jvmMain/afield/examples/steamaudio/SteamAudioScreenStudySmoke/)
+
+### SteamAudioScreenStudySmoke { #steamaudioscreenstudysmoke-kt-steamaudioscreenstudysmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">SteamAudioScreenStudySmoke</span></code>](source/jvmMain/afield/examples/steamaudio/SteamAudioScreenStudySmoke/#L20)
+
+Check the two real renders retain both the right-side placement and the change in level.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="steamaudioscreenstudysmoke-kt--steamaudioscreenstudysmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/steamaudio/SteamAudioScreenStudySmoke/#L22) |  |
 
 ## WavWriter.kt { #wavwriter-kt }
 

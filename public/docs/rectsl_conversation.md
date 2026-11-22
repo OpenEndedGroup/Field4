@@ -1,4 +1,4 @@
-# Talking a scene into existence
+# Talking a RectSL scene into existence
 
 Describe an animation in AI4 chat. The model writes it as [RectSL](rectsl_cheatsheet.md), Field's
 language of animated rectangles, in a Field box, and a window plays the scene, looping, while you
@@ -200,6 +200,40 @@ AgentToolExtensions.register(RectanglesOfRectSLStudy::class.java,
 
 The model reads what the handler returns, as JSON: here the rectangles the scene makes, by the line
 that makes each.
+
+### Check a local edit from Kotlin
+
+When a scene edit is supposed to change only one part of the wall, write that
+boundary into the comparison. The same check works for a manually edited scene
+or a candidate from a conversation.
+
+[Open the region-check starting point](agent_transcripts.md#shader_study_region_checks)
+and run **RectSL: protect the rest of the wall**. The green moon passes. A
+second candidate recolours both the moon and the sun, so the difference sheet
+shows a change beyond the allowed rectangle. Both candidates run against the
+same checked original at 0, 2 and 3.5 seconds.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/shader_study_region_checks/rectsl.png" capture="box" open-outputs=true wait-output=true wait-output-kind=display wait-output-channel="Moon and sun" embed=true hidden=true timeout="90" name="rectsl-region-guard" clip="0,2120,2200,2000" scale="2" alt="RectSL comparison at three times, with a recoloured sun outside the allowed region" macro-file="../../dev_docs/agents/transcripts/shader_study_region_checks.yaml" capture-box="rectsl_region"}
+// The two candidates compared with the same original, drawn by the CPU reference.
+```
+
+```diffstatic {data-lang=kotlin}
+val report = study.compare(
+    baseline, revision,
+    seconds = [0.0, 2.0, 3.5],
+    region = [2.5, -2.5, 6.5, 0.5], // x0, y0, x1, y1 in wall units
+    size = 192,
+)
+val held = report.facts["preservedOutsideRegion"] == true
+```
+
+The box runs the RectSL CPU reference in scratch storage and displays the
+before, after and difference frames. It uses a centred wall, with +y up.
+Change the region or widen the moon's path and rerun to see where it crosses
+the boundary. Choose times near the extremes of the movement. Each verdict
+covers the sampled frames and pixel centres. For normalized UV coordinates, use
+the [StackSL box](stacksl_conversation.md#check-a-local-edit-from-kotlin).
+
 
 ## Three recorded sessions
 

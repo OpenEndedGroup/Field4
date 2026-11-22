@@ -54,7 +54,7 @@ If you want to try Field without any external model, leave AI unconfigured; noth
 
 Saved provider keys are stored under `~/.afield/`, outside your documents. Conversation and tool
 logs may also remain locally. Do not attach keys, private documents or unreviewed logs to a public bug report.
-Optional speech transcription downloads a model and runs its transcription worker locally; sending
+Optional [speech transcription](voice_input.md) downloads a model and runs its transcription worker locally; sending
 the resulting prompt to an AI assistant follows the same rules above.
 
 ## Downloads and network access

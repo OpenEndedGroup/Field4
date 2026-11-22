@@ -298,7 +298,8 @@ grid.install(renderer.renderList, myParticles, count, strideFloats = 8, offsetFl
 ```
 
 `ShaderBoids` calls `install` for you; you need it only when putting the grid under something of
-your own.
+your own. [Particle Lenia](particle_lenia.md) puts its own compute shader on this grid, to sum each
+particle's kernel over its neighbours.
 
 Four steps, each avoiding something a compute shader cannot cheaply do:
 
@@ -562,6 +563,8 @@ built on. The API is in [Machine learning](reference/machine-learning.md) and
     The measurements quoted on this page are in [`dev_docs/NEURAL_PARTICLES_MEASUREMENTS.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/NEURAL_PARTICLES_MEASUREMENTS.md). The
     figures are screenshots of the live system, because the native window capture takes stills
     only.
+
+Compare the learned rules here with the hand-written interactions in [Particle Lenia](particle_lenia.md).
 
 ## API reference
 

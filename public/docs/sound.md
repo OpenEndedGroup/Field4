@@ -193,12 +193,17 @@ synth voice (no Dirt-Samples found; set FIELD_DIRT_SAMPLES to use real samples)
 * [Patterns & Rhythm](pattern_language.md) — writing patterns, with Dirt-Samples drums on its cards.
 * [DoughDSP Sound Examples](dough_dsp_sound.md) — effects on real signals.
 * [Faust](faust.md#what-it-sounds-like-at-eight-voices-and-at-one) — a pattern playing a Faust instrument.
+* [FM-1 simulator](fm1.md) — a pattern playing one track of a groovebox, beside its own DX7, 303 and 808 tracks.
 * [Subharmonic Synthesis](subharmonic_sound.md) — a new tone under a bassline, drums and film dialogue.
 * [A pattern in space](pat_spatial.md) — a pattern rendered binaurally through Steam Audio.
 * [How to make sound in Field](sound_paths.md#one-buffer-three-paths) and
   [Boolean network music examples](boolean_network_music_examples.md) — more patterns on real Tidal samples.
 
 ---
+
+- Use [Network MIDI](rtp_midi.md) to play and control boxes over the network,
+  [SMPTE timecode](smpte_timecode.md) to follow a clock, or
+  [DaVinci Resolve](davinci_resolve.md) to place markers and follow an edit's playhead.
 
 ## Getting real drums in your own box
 

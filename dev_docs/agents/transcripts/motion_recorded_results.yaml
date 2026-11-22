@@ -1,6 +1,8 @@
 name: motion_recorded_results
 description: >
   Compare recorded ARDY, CLoSD and route motion in an editable Field renderer. No model installation.
+docs:
+  - page: motion_recordings.md#recorded-results
 operations:
   - create:
       box: motion_recorded_results

@@ -140,6 +140,37 @@ class Datalog {
         if (edb.remove(pred) != null) cached = null
     }
 
+    /**
+     * Replace the base rows of [pred] with a complete snapshot. An empty snapshot clears the
+     * relation. All rows are validated before the current facts change, and repeating the same
+     * normalized set keeps the cached solution. Returns whether the facts changed.
+     */
+    fun replaceFacts(pred: String, rows: Iterable<Iterable<Any?>>): Boolean {
+        val iterator = rows.iterator()
+        val previous = edb[pred]
+        if (!iterator.hasNext()) {
+            clearFacts(pred)
+            return previous != null
+        }
+
+        val first = iterator.next().map(::dlNormalize)
+        val replacement = DlRelation(pred, previous?.arity ?: first.size)
+        fun insert(row: DlRow) {
+            if (row.size != replacement.arity) {
+                throw DlException("'$pred' has arity ${replacement.arity}, but this fact has ${row.size} columns")
+            }
+            replacement.add(row)
+        }
+        insert(first)
+        while (iterator.hasNext()) insert(iterator.next().map(::dlNormalize))
+        if (previous != null && previous.size == replacement.size && replacement.rows().all(previous::contains)) {
+            return false
+        }
+        edb[pred] = replacement
+        cached = null
+        return true
+    }
+
     // ── solving ─────────────────────────────────────────────────────────────────────────────────
 
     /** The saturated model. Cached until the program changes. */

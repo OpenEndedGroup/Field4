@@ -425,6 +425,9 @@ showPlaneGrid(
 - [MorphoHDL in Field](morpho_examples.md) for writing and drawing MorphoHDL circuits.
 - [morpho_circuit_search](agent_transcripts.md#morpho_circuit_search), a starting point with these
   searches as boxes you can run.
+- [Braitenberg vehicles with memory](braitenberg_vehicles.md#10-a-larger-genome-does-evolution-beat-random-sampling)
+  sets random sampling, a hill climber and evolution against each other on vehicle brains of 8 to
+  344 genes.
 
 ## API reference
 

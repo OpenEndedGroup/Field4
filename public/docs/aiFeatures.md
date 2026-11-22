@@ -404,7 +404,7 @@ provisional-edit path, so it remains reviewable before acceptance.
 
 ## AI-assisted completion
 
-++ctrl+space++ opens Field's completion panel. Kotlin completions come from
+++ctrl+space++ opens Field's [completion panel](completion_doc_browser.md). Kotlin completions come from
 Field's compiler-backed completion path; [Python](python.md) completion uses Jedi. Field can
 also request AI candidates in the background and add at most three of them to
 the same list when they arrive.
@@ -429,7 +429,8 @@ ui.pause(600)
 
 AI completion is asynchronous. The ordinary completion list can be used before
 the AI request finishes, and a missing key or remote failure should not prevent
-compiler-backed candidates from appearing.
+compiler-backed candidates from appearing. Where AI suggestions sit among the others is described
+in [How completions are ranked](completion_ranking.md).
 
 ## The `ai()` function macro
 

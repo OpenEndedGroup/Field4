@@ -1,5 +1,8 @@
 package afield.lang.stacksl
 
+import afield.lang.stacksl.StackSLSemanticType.ComplexSpin
+import afield.lang.stacksl.StackSLSemanticType.RawVec4
+import afield.lang.stacksl.StackSLSemanticType.RealInvariant
 import java.util.Locale
 
 /**
@@ -13,11 +16,8 @@ import java.util.Locale
  *
  * ### The three values to know
  *
- *  - [StackSLCompileOptions] decides the shape of the emitted GLSL rather than the meaning of the
- *    program: the symbol prefix, the entry point name, whether a header and samplers are declared,
- *    which textures `sample` may read, and — the one that changes semantics —
- *    `defaultValues`, the wrap/default convention used when a word wants an operand the stack does
- *    not have. `tolerant` decides whether that is a warning or an error.
+ *  - [StackSLCompileOptions] controls GLSL emission, legacy default operands and opt-in semantic
+ *    typing. Typed words resolve at compile time and use the same vec4 calling convention.
  *  - [StackSLCompileResult] is GLSL, diagnostics and an analysis. `ok` is *diagnostics with no
  *    ERROR*, not "the GLSL is non-empty", because a tolerant compile emits usable GLSL and
  *    complains at the same time.
@@ -83,7 +83,9 @@ data class StackSLCompileOptions(
         "vec4(1.0)",
         "vec4(0.5, 0.5, 0.5, 1.0)"
     ),
-    val useEntrypointAsRoot: Boolean = false
+    val useEntrypointAsRoot: Boolean = false,
+    /** Also enabled by a leading `@types` root word. */
+    val semanticTypes: Boolean = false
 )
 
 data class StackSLFunctionAnalysis(
@@ -120,7 +122,8 @@ data class StackSLAnalysis(
     val functions: List<StackSLFunctionAnalysis>,
     val requiredHelpers: Set<String>,
     val requiredSamplers: Set<String>,
-    val danglingWires: List<StackSLDanglingWire> = emptyList()
+    val danglingWires: List<StackSLDanglingWire> = emptyList(),
+    val semantics: StackSLSemanticAnalysis? = null
 ) {
     val prunedValues: Int get() = functions.sumOf { it.prunedValues }
 }
@@ -151,9 +154,11 @@ private data class ParsedModifierChain(
 object StackSLCompiler {
     fun compile(source: String, options: StackSLCompileOptions = StackSLCompileOptions()): StackSLCompileResult {
         val diagnostics = mutableListOf<StackSLDiagnostic>()
-        val normalized = NormalizedOptions.from(options, diagnostics)
         val tokens = tokenize(source)
         val parsed = parse(tokens, diagnostics)
+        val directive = parsed.root.firstOrNull()?.text == "@types"
+        val program = if (directive) parsed.root.drop(1) else parsed.root
+        val normalized = NormalizedOptions.from(options, directive, diagnostics)
         val definitions = linkedMapOf<String, Definition>()
 
         parsed.definitions.forEach { definition ->
@@ -166,7 +171,7 @@ object StackSLCompiler {
                     definition.name
                 )
 
-                key in builtinWords -> diagnostics += StackSLDiagnostic(
+                normalized.isBuiltin(key) -> diagnostics += StackSLDiagnostic(
                     StackSLSeverity.ERROR,
                     "Definition '${definition.name}' shadows a built-in StackSL word.",
                     definition.location,
@@ -185,7 +190,7 @@ object StackSLCompiler {
         }
 
         val functionResults = mutableListOf<CompiledFunction>()
-        if (!normalized.useEntrypointAsRoot) {
+        if (!normalized.useEntrypointAsRoot && !normalized.semanticTypes) {
             for (definition in definitions.values) {
                 functionResults += FunctionCompiler(
                     options = normalized,
@@ -208,10 +213,10 @@ object StackSLCompiler {
                 )
             }
             listOf(Token(normalized.entrypoint, StackSLSourceLocation(1, 1, 0)))
-        } else if (parsed.root.isEmpty() && entrypointKey in definitions) {
+        } else if (program.isEmpty() && entrypointKey in definitions) {
             listOf(Token(normalized.entrypoint, StackSLSourceLocation(1, 1, 0)))
         } else {
-            parsed.root
+            program
         }
         val rootResult = FunctionCompiler(
             options = normalized,
@@ -219,7 +224,7 @@ object StackSLCompiler {
             diagnostics = diagnostics,
             functionWord = null,
             emittedName = normalized.prefix,
-            entrypointCall = rootTokens.singleOrNull()?.takeIf { rootTokens !== parsed.root },
+            entrypointCall = rootTokens.singleOrNull()?.takeIf { rootTokens !== program },
         ).compile("<root>", rootTokens)
 
         if (functionResults.isNotEmpty()) {
@@ -295,7 +300,8 @@ object StackSLCompiler {
                 functions = allFunctions.map { it.analysis },
                 requiredHelpers = helpers,
                 requiredSamplers = requiredSamplers,
-                danglingWires = normalized.wires.wires.map { it.copy(consumedAs = normalized.wires.consumerOf(it.index)) }
+                danglingWires = normalized.wires.wires.map { it.copy(consumedAs = normalized.wires.consumerOf(it.index)) },
+                semantics = rootResult.semantics
             )
         )
     }
@@ -415,6 +421,7 @@ private data class NormalizedOptions(
     val prefix: String,
     val entrypoint: String,
     val useEntrypointAsRoot: Boolean,
+    val semanticTypes: Boolean,
     val tolerant: Boolean,
     val includeHeader: Boolean,
     val declareSamplers: Boolean,
@@ -425,8 +432,15 @@ private data class NormalizedOptions(
     val wireParamPlaceholder: String,
     val wireArgPlaceholder: String
 ) {
+    fun isBuiltin(word: String): Boolean =
+        word in builtinWords || (semanticTypes && (word in stackSLTypedWords || assumeSpinWord.matches(word)))
+
     companion object {
-        fun from(options: StackSLCompileOptions, diagnostics: MutableList<StackSLDiagnostic>): NormalizedOptions {
+        fun from(
+            options: StackSLCompileOptions,
+            directive: Boolean,
+            diagnostics: MutableList<StackSLDiagnostic>
+        ): NormalizedOptions {
             val prefix = sanitizeGlslIdentifier(options.prefix.ifBlank { "stacksl" })
             if (prefix != options.prefix) {
                 diagnostics += StackSLDiagnostic(
@@ -443,11 +457,13 @@ private data class NormalizedOptions(
                 SamplerName(sourceName = name, emittedName = base)
             }
 
+            val semanticTypes = options.semanticTypes || directive
             return NormalizedOptions(
                 prefix = prefix,
                 entrypoint = entrypoint,
                 useEntrypointAsRoot = options.useEntrypointAsRoot,
-                tolerant = options.tolerant,
+                semanticTypes = semanticTypes,
+                tolerant = options.tolerant && !semanticTypes,
                 includeHeader = options.includeHeader,
                 declareSamplers = options.declareSamplers,
                 sampleTextures = samplers,
@@ -546,7 +562,27 @@ private data class StackValue(
     val deps: List<Int>,
     val token: Token?,
     val leaf: Boolean,
-    val note: String
+    val note: String,
+    val type: StackSLSemanticType = RawVec4,
+    val literalZero: Boolean = false,
+    val inputSource: InputSource? = null,
+    val assumption: StackSLInputAssumption? = null
+)
+
+private enum class InputSourceKind { XY, CENTERED_XY, TIME, EXTERNAL }
+
+private data class InputSource(val kind: InputSourceKind, val name: String)
+
+private val rootXY = InputSource(InputSourceKind.XY, "input")
+private val centeredXY = InputSource(InputSourceKind.CENTERED_XY, "p")
+private val rootTime = InputSource(InputSourceKind.TIME, "time")
+
+private data class ExpressionKey(
+    val expression: String,
+    val type: StackSLSemanticType,
+    val dependencies: List<Int>,
+    val inputSource: InputSource?,
+    val assumption: StackSLInputAssumption?
 )
 
 private data class StackSelectorComponent(
@@ -567,7 +603,8 @@ private data class CompiledFunction(
     val analysis: StackSLFunctionAnalysis,
     val requiredHelpers: Set<String>,
     val requiredSamplerIndices: Set<Int>,
-    val extraHelperSources: Map<String, String>
+    val extraHelperSources: Map<String, String>,
+    val semantics: StackSLSemanticAnalysis?
 )
 
 private class FunctionCompiler(
@@ -583,6 +620,7 @@ private class FunctionCompiler(
     private val wordReferences = mutableListOf<StackSLWordReference>()
     private val stack = mutableListOf<Int>()
     private val expressionCache = linkedMapOf<String, Int>()
+    private val semanticExpressionCache = linkedMapOf<ExpressionKey, Int>()
     private val requiredHelpers = linkedSetOf<String>()
     private val requiredSamplerIndices = linkedSetOf<Int>()
     private val extraHelperSources = linkedMapOf<String, String>()
@@ -595,7 +633,7 @@ private class FunctionCompiler(
     private var maxStackDepth = 0
 
     fun compile(sourceName: String, tokens: List<Token>): CompiledFunction {
-        val inputValue = leaf(options.inputName, null, "function input")
+        val inputValue = leaf(options.inputName, null, "function input", inputSource = rootXY.takeIf { options.semanticTypes })
         inputStack += inputValue
         push(inputValue)
         try {
@@ -658,7 +696,8 @@ private class FunctionCompiler(
             ),
             requiredHelpers = requiredHelpers.toSet(),
             requiredSamplerIndices = requiredSamplerIndices.toSet(),
-            extraHelperSources = extraHelperSources.toMap()
+            extraHelperSources = extraHelperSources.toMap(),
+            semantics = if (options.semanticTypes) analyzeSemantics(result) else null
         )
     }
 
@@ -670,11 +709,14 @@ private class FunctionCompiler(
         val requestedArity = arityVariant?.arity
         val requestedAll = arityVariant?.all == true
 
+        if (options.semanticTypes && processSemanticWord(rawWord, token)) return
+
         parseExternalRead(raw)?.let {
             // Whatever the host member's GLSL type, the stack holds vec4s: an overloaded helper
             // widens a float, vec2, vec3 or int the way a swizzle would, and passes a vec4 through.
             requiredHelpers += "asVec4"
-            push(leaf("${options.prefix}_asVec4($it)", token, "external GLSL read"))
+            val source = if (options.semanticTypes && '[' !in it) InputSource(InputSourceKind.EXTERNAL, "?$it") else null
+            push(leaf("${options.prefix}_asVec4($it)", token, "external GLSL read", inputSource = source))
             return
         }
 
@@ -684,7 +726,9 @@ private class FunctionCompiler(
         }
 
         parseExternalWrite(raw)?.let {
-            externalWrites += it to pop(token, "external GLSL write $it", "vec4(0.0)")
+            val value = pop(token, "external GLSL write $it", "vec4(0.0)")
+            requireRaw(token, listOf(value))
+            externalWrites += it to value
             return
         }
 
@@ -751,13 +795,13 @@ private class FunctionCompiler(
             "0->", "1->", "2->", "3->" -> readStoreChannel(word.first().digitToInt(), token)
             "->0", "->1", "->2", "->3" -> writeStoreChannel(word.last().digitToInt(), token)
             "input", "in" -> push(inputExpr(token, "input") { it })
-            "uv" -> push(inputExpr(token, "input uv") { "vec4($it.xy, 0.0, 1.0)" })
-            "p", "pos", "center", "centered" -> push(inputExpr(token, "centered input uv") { "vec4($it.xy - vec2(0.5), 0.0, 1.0)" })
-            "time", "t" -> push(inputExpr(token, "input time") { "vec4($it.w)" })
+            "uv" -> push(inputExpr(token, "input uv", rootXY) { "vec4($it.xy, 0.0, 1.0)" })
+            "p", "pos", "center", "centered" -> push(inputExpr(token, "centered input uv", centeredXY) { "vec4($it.xy - vec2(0.5), 0.0, 1.0)" })
+            "time", "t" -> push(inputExpr(token, "input time", rootTime) { "vec4($it.w)" })
             "hash", "h" -> push(inputExpr(token, "input hash") { "vec4($it.z)" })
-            "pi" -> push(leaf("vec4(3.141592653589793)", token, "pi"))
-            "tau" -> push(leaf("vec4(6.283185307179586)", token, "tau"))
-            "e" -> push(leaf("vec4(2.718281828459045)", token, "e"))
+            "pi" -> push(realConstant("3.141592653589793", token, "pi"))
+            "tau" -> push(realConstant("6.283185307179586", token, "tau"))
+            "e" -> push(realConstant("2.718281828459045", token, "e"))
 
             "dup" -> push(peekItemOrDefault(token, "dup"))
             "drop" -> dropItem(token)
@@ -776,7 +820,7 @@ private class FunctionCompiler(
             "1-" -> unary(token, "one minus") { "(vec4(1.0) - ${ref(it)})" }
             "abs", "floor", "ceil", "fract", "sqrt", "inversesqrt", "exp", "log",
             "sin", "cos", "tan", "asin", "acos", "atan", "normalize" -> {
-                unary(token, word) { "$word(${ref(it)})" }
+                unary(token, word, preserveReal = word == "sin" || word == "cos" || word == "exp") { "$word(${ref(it)})" }
             }
 
             "len", "length", "len2", "length2" -> unary(token, "length2") { "vec4(length(${ref(it)}.xy))" }
@@ -946,9 +990,9 @@ private class FunctionCompiler(
                 unary(token, "rgb to oklab") { "${options.prefix}_rgb2oklab(${ref(it)})" }
             }
 
-            "+", "add" -> binary(token, "add") { a, b -> "(${ref(a)} + ${ref(b)})" }
-            "-", "sub" -> binary(token, "subtract") { a, b -> "(${ref(a)} - ${ref(b)})" }
-            "*", "mul" -> binary(token, "multiply") { a, b -> "(${ref(a)} * ${ref(b)})" }
+            "+", "add" -> arithmetic(token, "add", '+')
+            "-", "sub" -> arithmetic(token, "subtract", '-')
+            "*", "mul" -> arithmetic(token, "multiply", '*')
             "/", "div" -> {
                 requiredHelpers += "safeDiv"
                 binary(token, "safe divide") { a, b -> "${options.prefix}_safeDiv(${ref(a)}, ${ref(b)})" }
@@ -1097,7 +1141,12 @@ private class FunctionCompiler(
                     }
                     else -> ref(t)
                 }
-                push(expr("mix(${ref(a)}, ${ref(b)}, $amount)", listOf(a, b, t), token, word))
+                val type = values[a].type.takeIf {
+                    (word == "mix" || word == "lerp") && it != RawVec4 && it == values[b].type && values[t].type == RealInvariant
+                }
+                val mixed = if (type is ComplexSpin) "vec4(mix(${ref(a)}.xy, ${ref(b)}.xy, $amount.x), 0.0, 0.0)"
+                    else "mix(${ref(a)}, ${ref(b)}, $amount)"
+                push(expr(mixed, listOf(a, b, t), token, word, type = type))
             }
             "select", "if" -> {
                 val condition = pop(token, "select condition", "vec4(0.0)")
@@ -1451,11 +1500,131 @@ private class FunctionCompiler(
 
     private fun currentInputId(): Int = inputStack.lastOrNull() ?: leaf(options.inputName, null, "function input")
 
-    private fun inputExpr(token: Token, note: String, build: (String) -> String): Int {
+    private fun inputExpr(token: Token, note: String, source: InputSource? = null, build: (String) -> String): Int {
         val input = currentInputId()
         val expression = build(ref(input))
-        val value = values[input]
-        return if (value.leaf && expression == value.expression) input else expr(expression, listOf(input), token, note)
+        if (expression == ref(input) && (options.semanticTypes || values[input].leaf)) return input
+        return expr(expression, listOf(input), token, note, inputSource = source.takeIf { input == inputStack.first() })
+    }
+
+    private fun processSemanticWord(word: String, token: Token): Boolean {
+        when {
+            word == "assume-r0" -> assumeInput(token, RealInvariant)
+            assumeSpinWord.matches(word) -> {
+                val weight = word.removePrefix("assume-c").toIntOrNull()
+                if (weight == null) errorOrWarning(token, "Complex spin weight is outside the signed 32-bit range.")
+                else assumeInput(token, ComplexSpin(weight))
+            }
+            word == "as-raw" -> {
+                val value = pop(token, word)
+                push(expr(ref(value), listOf(value), token, word, type = RawVec4))
+            }
+            word == "i" -> push(leaf("vec4(0.0, 1.0, 0.0, 0.0)", token, word, type = ComplexSpin(0)))
+            word in complexUnaryWords -> complexUnary(token, word)
+            word == "tanh" -> unary(token, word, preserveReal = true) { "tanh(${ref(it)})" }
+            word == "cis" || word == "to-complex" -> constructComplex(token, word)
+            else -> return false
+        }
+        return true
+    }
+
+    private fun complexUnary(token: Token, word: String) {
+        val value = pop(token, word)
+        val type = values[value].type
+        if (type !is ComplexSpin) {
+            errorOrWarning(token, "Word '$word' expects a complex value, found $type.")
+            return
+        }
+        val v = ref(value)
+        val (resultType, expression) = when (word) {
+            "conj" -> (checkedSpin(-type.weight.toLong(), token) ?: return) to "vec4($v.x, -$v.y, 0.0, 0.0)"
+            "norm2" -> RealInvariant to "vec4(dot($v.xy, $v.xy))"
+            else -> {
+                if (type.weight != 0) {
+                    errorOrWarning(token, "Cannot read '$word' from $type as an invariant. " +
+                        "Its coordinates depend on the reference frame. Use norm2 for an invariant or as-raw for lane access.")
+                    return
+                }
+                val lane = if (word == "real" || word == ".re") 'x' else 'y'
+                RealInvariant to "vec4($v.$lane)"
+            }
+        }
+        push(expr(expression, listOf(value), token, word, type = resultType))
+    }
+
+    private fun constructComplex(token: Token, word: String) {
+        val value = pop(token, word)
+        val type = values[value].type
+        if (type != RealInvariant) {
+            errorOrWarning(token, "Word '$word' expects RealInvariant, found $type.")
+            return
+        }
+        val x = "${ref(value)}.x"
+        val expression = if (word == "cis") "vec4(cos($x), sin($x), 0.0, 0.0)" else "vec4($x, 0.0, 0.0, 0.0)"
+        push(expr(expression, listOf(value), token, word, type = ComplexSpin(0)))
+    }
+
+    private fun assumeInput(token: Token, type: StackSLSemanticType) {
+        val value = pop(token, "input assumption")
+        val source = values[value].inputSource
+        if (source == null) {
+            errorOrWarning(token, "Cannot assume $type for ${values[value].type} from '${values[value].note}'. " +
+                "Apply '${token.text}' to a direct input, p, uv, time or an unindexed ?host read.")
+            return
+        }
+        val externalName = source.name.removePrefix("?").substringBefore('.')
+        if (source.kind == InputSourceKind.EXTERNAL &&
+            (externalName == options.inputName || externalName == options.wires.arrayName ||
+                externalName.startsWith("_${options.prefix}_"))) {
+            errorOrWarning(token, "Input '${source.name}' overlaps a StackSL-generated name. Choose a different host name or prefix.")
+            return
+        }
+        if (source.kind == InputSourceKind.TIME && type is ComplexSpin) {
+            errorOrWarning(token, "The time input has one real coordinate. Use assume-r0 to declare it invariant.")
+            return
+        }
+        val complex = type is ComplexSpin
+        val name = when (source.kind) {
+            InputSourceKind.XY, InputSourceKind.CENTERED_XY -> source.name + if (complex) ".xy" else ".x"
+            else -> source.name
+        }
+        val v = ref(value)
+        val expression = if (complex) "vec4($v.xy, 0.0, 0.0)" else "vec4($v.x)"
+        push(expr(expression, listOf(value), token, "input assumption", type = type,
+            assumption = StackSLInputAssumption(name, type)))
+    }
+
+    private fun analyzeSemantics(result: Int): StackSLSemanticAnalysis {
+        val visited = mutableSetOf<Int>()
+        val assumptions = linkedSetOf<StackSLInputAssumption>()
+        val reasons = linkedSetOf<String>()
+        fun visit(id: Int) {
+            if (!visited.add(id)) return
+            val value = values[id]
+            if (value.type == RawVec4) reasons += "Unverified value from '${value.token?.text ?: value.note}'."
+            if (value.assumption != null) assumptions += value.assumption
+            else value.deps.forEach(::visit)
+        }
+        visit(result)
+        if (channelWrites.isNotEmpty()) {
+            reasons += "Store channel writes change the returned lanes."
+            channelWrites.values.forEach(::visit)
+        }
+        if (externalWrites.isNotEmpty()) {
+            reasons += "External writes have no rotation contract."
+            externalWrites.forEach { visit(it.second) }
+        }
+        if (diagnostics.any { it.severity == StackSLSeverity.ERROR }) reasons += "Compilation has errors."
+
+        // input.xy and p.xy use the same host lanes, with different centers of rotation.
+        val conflicting = assumptions.groupBy {
+            if (it.source.startsWith("input.") || it.source.startsWith("p.")) "input.xy" else it.source
+        }.values.any { contracts ->
+            contracts.size > 1 && contracts.any { (it.type as? ComplexSpin)?.weight?.let { weight -> weight != 0 } == true }
+        }
+        if (conflicting) reasons += "Overlapping inputs have different rotation contracts."
+        val outputType = if (channelWrites.isEmpty()) values[result].type else RawVec4
+        return StackSLSemanticAnalysis(outputType, assumptions.toList(), reasons.toList())
     }
 
     private fun storeValue(token: Token): Int {
@@ -1483,7 +1652,9 @@ private class FunctionCompiler(
     }
 
     private fun writeStoreChannel(channel: Int, token: Token) {
-        channelWrites[channel] = pop(token, "store write ${"xyzw"[channel]}", "vec4(0.0)")
+        val value = pop(token, "store write ${"xyzw"[channel]}", "vec4(0.0)")
+        requireRaw(token, listOf(value))
+        channelWrites[channel] = value
     }
 
     private fun callDefinition(word: String, token: Token) {
@@ -1543,7 +1714,7 @@ private class FunctionCompiler(
 
     private fun pushWordReference(name: String, token: Token) {
         val word = name.lowercase(Locale.US)
-        if (definitions[word] == null && word !in builtinWords) {
+        if (definitions[word] == null && !options.isBuiltin(word)) {
             errorOrWarning(token, "Unknown StackSL word reference '$name'.")
             return
         }
@@ -1592,6 +1763,9 @@ private class FunctionCompiler(
             inlineCallStack += word
             return try {
                 definition.body.forEach { process(it) }
+                if (options.semanticTypes && (stack.size != 1 || isWordReference(stack.single()))) {
+                    errorOrWarning(token, "Definition '${definition.name}' must leave one value when used with apply.")
+                }
                 lastValueOnStack() ?: input
             } finally {
                 inlineCallStack.removeAt(inlineCallStack.lastIndex)
@@ -1603,7 +1777,7 @@ private class FunctionCompiler(
             }
         }
 
-        if (word !in builtinWords) {
+        if (!options.isBuiltin(word)) {
             errorOrWarning(reference.token ?: token, "Unknown StackSL word reference '${reference.word}'.")
             return input
         }
@@ -1630,7 +1804,21 @@ private class FunctionCompiler(
     }
 
     private fun constantVec(number: String, token: Token?, note: String): Int {
-        return leaf("vec4(${constantFloat(number, token, note)})", token, note)
+        if (options.semanticTypes && number.toFloatOrNull()?.isFinite() != true && token != null) {
+            errorOrWarning(token, "Number must be a finite GLSL float in a typed program.")
+        }
+        val zero = options.semanticTypes && !options.wires.enabled && number.toBigDecimalOrNull()?.signum() == 0
+        val emitted = constantFloat(number, token, note)
+        val assumption = if (options.semanticTypes && options.wires.enabled) StackSLInputAssumption(emitted, RealInvariant) else null
+        return realConstant(emitted, token, note, zero, assumption)
+    }
+
+    private fun realConstant(
+        number: String, token: Token?, note: String, literalZero: Boolean = false,
+        assumption: StackSLInputAssumption? = null
+    ): Int {
+        return leaf("vec4($number)", token, note, type = if (options.semanticTypes) RealInvariant else RawVec4,
+            literalZero = literalZero, assumption = assumption)
     }
 
     private fun pushNumberModifier(parsed: ParsedModifierChain, token: Token) {
@@ -2015,6 +2203,10 @@ private class FunctionCompiler(
     private fun phacelleHelperSource(helperName: String, reference: StackSLWordReference?, token: Token): String {
         val patternExpression = when {
             reference == null -> "normalize(vec4(cellPoint, pValue.zw))"
+            options.semanticTypes && definitions[reference.word] != null -> {
+                errorOrWarning(reference.token ?: token, "A phacelle pattern definition requires legacy mode. Typed definitions are expanded at direct calls or apply.")
+                "normalize(vec4(cellPoint, pValue.zw))"
+            }
             definitions[reference.word] != null -> {
                 calls += reference.word
                 val emitted = "${options.prefix}_${sanitizeGlslIdentifier(definitions.getValue(reference.word).name)}"
@@ -2114,6 +2306,10 @@ private class FunctionCompiler(
         val helper = "${options.prefix}_qnoise_$suffix"
         val shift = when {
             response == null -> "0.0"
+            options.semanticTypes && definitions[response.word] != null -> {
+                errorOrWarning(response.token ?: token, "A qnoise phase-response definition requires legacy mode. Typed definitions are expanded at direct calls or apply.")
+                "0.0"
+            }
             definitions[response.word] != null -> {
                 calls += response.word
                 "${options.prefix}_${sanitizeGlslIdentifier(definitions.getValue(response.word).name)}(kernel${options.wireArgPlaceholder}).x"
@@ -2265,9 +2461,10 @@ private class FunctionCompiler(
         }
     }
 
-    private fun unary(token: Token, note: String, op: (Int) -> String) {
+    private fun unary(token: Token, note: String, preserveReal: Boolean = false, op: (Int) -> String) {
         val value = pop(token, note)
-        push(expr(op(value), listOf(value), token, note))
+        val type = RealInvariant.takeIf { preserveReal && values[value].type == RealInvariant }
+        push(expr(op(value), listOf(value), token, note, type = type))
     }
 
     private fun binary(token: Token, note: String, op: (Int, Int) -> String) {
@@ -2275,6 +2472,50 @@ private class FunctionCompiler(
         val b = operands[0]
         val a = operands[1]
         push(expr(op(a, b), listOf(a, b), token, note))
+    }
+
+    private fun arithmetic(token: Token, note: String, op: Char) {
+        val (b, a) = popOperands(token, listOf("$note b", "$note a"))
+        val left = values[a]
+        val right = values[b]
+        val av = ref(a)
+        val bv = ref(b)
+        val dependencies = listOf(a, b)
+        val typeA = left.type
+        val typeB = right.type
+        val laneWise = "($av $op $bv)"
+        when {
+            typeA == typeB && (typeA !is ComplexSpin || op != '*') ->
+                push(expr(laneWise, dependencies, token, note, type = typeA))
+            op == '*' && typeA is ComplexSpin && typeB is ComplexSpin -> {
+                checkedSpin(typeA.weight.toLong() + typeB.weight, token)?.let { type ->
+                    val product = "vec4($av.x * $bv.x - $av.y * $bv.y, $av.x * $bv.y + $av.y * $bv.x, 0.0, 0.0)"
+                    push(expr(product, dependencies, token, note, type = type))
+                }
+            }
+            typeA is ComplexSpin && typeB == RealInvariant && (op == '*' || right.literalZero) ->
+                push(expr(complexAndReal(op, av, bv, complexFirst = true), dependencies, token, note, type = typeA))
+            typeA == RealInvariant && typeB is ComplexSpin && (op == '*' || left.literalZero) ->
+                push(expr(complexAndReal(op, bv, av, complexFirst = false), dependencies, token, note, type = typeB))
+            else -> {
+                val remedy = if (op != '*' && typeA is ComplexSpin && typeB is ComplexSpin)
+                    "Complex weights must match. " else ""
+                errorOrWarning(token, "Cannot $note $typeA and $typeB. ${remedy}Use as-raw for lane-wise arithmetic.")
+            }
+        }
+    }
+
+    private fun complexAndReal(op: Char, complex: String, real: String, complexFirst: Boolean): String {
+        if (op == '*') return "vec4($complex.xy * $real.x, 0.0, 0.0)"
+        val zero = "vec2($real.x, 0.0)"
+        val xy = if (complexFirst) "$complex.xy $op $zero" else "$zero $op $complex.xy"
+        return "vec4($xy, 0.0, 0.0)"
+    }
+
+    private fun checkedSpin(weight: Long, token: Token): ComplexSpin? {
+        if (weight in Int.MIN_VALUE.toLong()..Int.MAX_VALUE.toLong()) return ComplexSpin(weight.toInt())
+        errorOrWarning(token, "Resulting complex spin weight $weight is outside the signed 32-bit range.")
+        return null
     }
 
     private data class StackSLArg(val role: String, val defaultExpression: String)
@@ -2428,7 +2669,7 @@ private class FunctionCompiler(
                     warn(token, "Word '${token.text}' expected a value for $role but found word reference '${wordReference(top).word}'; discarding it.")
                 }
                 val valueBefore = before.filterNot(::isWordReference)
-                val wrapped = if (wrap && valueBefore.isNotEmpty()) {
+                val wrapped = if (wrap && !options.semanticTypes && valueBefore.isNotEmpty()) {
                     valueBefore[(valueBefore.size - 1 - index).floorMod(valueBefore.size)]
                 } else {
                     null
@@ -2485,7 +2726,7 @@ private class FunctionCompiler(
         if (stack.size >= size) return
         warn(token, "Word '$word' needed stack depth $size but found ${stack.size}; filling by wrap/default convention.")
         while (stack.size < size) {
-            val wrapped = if (before.isNotEmpty()) before[(before.size - 1 - stack.size).floorMod(before.size)] else null
+            val wrapped = if (!options.semanticTypes && before.isNotEmpty()) before[(before.size - 1 - stack.size).floorMod(before.size)] else null
             stack += wrapped ?: defaultValue(token, word, stack.size, null)
         }
         observeDepth()
@@ -2533,6 +2774,7 @@ private class FunctionCompiler(
     }
 
     private fun optionalDefault(token: Token?, role: String, defaultExpression: String): Int {
+        if (options.semanticTypes) warn(token, "Supply an explicit operand for $role in a typed program.")
         return leaf(defaultExpression.glslDefault(token, "optional default $role"), token, "optional default $role")
     }
 
@@ -2543,7 +2785,8 @@ private class FunctionCompiler(
         overrideExpression: String?,
         wrapWarning: Boolean = true
     ): Int {
-        if (wrapWarning) warn(token, "Stack underflow while reading $role; using a default value.")
+        if (options.semanticTypes) warn(token, "Stack underflow while reading $role. Supply an explicit operand.")
+        else if (wrapWarning) warn(token, "Stack underflow while reading $role; using a default value.")
         val expression = (overrideExpression ?: options.defaultValues[index.floorMod(options.defaultValues.size)])
             .glslDefault(token, "default $role")
         return leaf(expression, token, "default $role")
@@ -2562,9 +2805,18 @@ private class FunctionCompiler(
         if (stack.size > maxStackDepth) maxStackDepth = stack.size
     }
 
-    private fun leaf(expression: String, token: Token?, note: String): Int {
+    private fun leaf(
+        expression: String,
+        token: Token?,
+        note: String,
+        type: StackSLSemanticType = RawVec4,
+        literalZero: Boolean = false,
+        inputSource: InputSource? = null,
+        assumption: StackSLInputAssumption? = null
+    ): Int {
         val id = values.size
-        values += StackValue(id, expression, emptyList(), token, leaf = true, note = note)
+        values += StackValue(id, expression, emptyList(), token, leaf = true, note = note,
+            type = type, literalZero = literalZero, inputSource = inputSource, assumption = assumption)
         return id
     }
 
@@ -2577,12 +2829,35 @@ private class FunctionCompiler(
 
     private fun wordReference(id: Int): StackSLWordReference = wordReferences[-id - 1]
 
-    private fun expr(expression: String, deps: List<Int>, token: Token, note: String): Int {
-        expressionCache[expression]?.let { return it }
+    private fun expr(
+        expression: String,
+        deps: List<Int>,
+        token: Token,
+        note: String,
+        type: StackSLSemanticType? = null,
+        inputSource: InputSource? = null,
+        assumption: StackSLInputAssumption? = null
+    ): Int {
+        if (type == null) requireRaw(token, deps)
+        val resultType = type ?: RawVec4
+        // Text alone suffices in legacy mode. In typed mode even identical GLSL can encode
+        // different weights or depend on different input contracts.
+        val key = if (options.semanticTypes) ExpressionKey(expression, resultType, deps, inputSource, assumption) else null
+        val cached = if (key != null) semanticExpressionCache[key] else expressionCache[expression]
+        if (cached != null) return cached
         val id = values.size
-        values += StackValue(id, expression, deps, token, leaf = false, note = note)
-        expressionCache[expression] = id
+        values += StackValue(id, expression, deps, token, leaf = false, note = note,
+            type = resultType, inputSource = inputSource, assumption = assumption)
+        if (key != null) semanticExpressionCache[key] = id else expressionCache[expression] = id
         return id
+    }
+
+    private fun requireRaw(token: Token, deps: List<Int>) {
+        if (!options.semanticTypes) return
+        val typed = deps.map { values[it].type }.filterNot { it == RawVec4 }.distinct()
+        if (typed.isNotEmpty()) {
+            errorOrWarning(token, "Word '${token.text}' has no typed overload for ${typed.joinToString()}. Use as-raw for lane access or raw arithmetic.")
+        }
     }
 
     private fun ref(id: Int): String {
@@ -2604,7 +2879,8 @@ private class FunctionCompiler(
     private fun lastValueOnStack(): Int? = stack.lastOrNull { !isWordReference(it) }
 
     private fun warn(token: Token?, message: String) {
-        diagnostics += StackSLDiagnostic(StackSLSeverity.WARNING, message, token?.location, token?.text)
+        val severity = if (options.semanticTypes) StackSLSeverity.ERROR else StackSLSeverity.WARNING
+        diagnostics += StackSLDiagnostic(severity, message, token?.location, token?.text)
     }
 
     private fun errorOrWarning(token: Token, message: String) {
@@ -3245,6 +3521,12 @@ private val builtinWordsCore = setOf(
  * Exposed so [afield.lang.stacksl] documentation coverage can be checked against the compiler itself
  * rather than against a hand-maintained second list, which is the usual way these rot.
  */
+private val assumeSpinWord = Regex("""assume-c-?\d+""")
+private val complexUnaryWords = setOf("conj", "norm2", "real", "imag", ".re", ".im")
+
+internal val stackSLTypedWords: Set<String> =
+    complexUnaryWords + setOf("assume-c1", "assume-r0", "as-raw", "i", "cis", "to-complex", "tanh")
+
 val stackSLDocumentableWords: Set<String> = builtinWordsCore + namedColors.keys
 
 private val builtinWords = builtinWordsCore + stackSLArityVariantWords + namedColors.keys +
@@ -3255,7 +3537,7 @@ private val builtinWords = builtinWordsCore + stackSLArityVariantWords + namedCo
  * variants and swizzles. Used by the coverage guard's reverse direction, where a cheatsheet row
  * naming `rgba` or `.xy` is legitimate and must not be reported as a typo.
  */
-val stackSLAllWords: Set<String> get() = builtinWords
+val stackSLAllWords: Set<String> get() = builtinWords + stackSLTypedWords
 
 private val bareSwizzleReservedWords = setOf("ryb")
 

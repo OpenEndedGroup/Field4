@@ -2,7 +2,10 @@
 
 Many pages on this site contain examples run in Field, with screenshots or videos of their output.
 You can rebuild the site with existing captures, or ask Field to run examples again. The test suites
-also drive Field through this machinery. This page covers both workflows.
+also drive Field through this machinery. This page covers both workflows. Each captured example is
+a `diffstatic_runner` fence, and [Code Diff Player](diff-player.md) lists the attributes it can carry.
+[How Field Is Built](how_field_is_built.md#every-figure-in-these-docs-ran) explains why every figure
+on the site comes from running the real code.
 
 For every flag and the internals, see `AGENTS.md` and
 `dev_docs/testing/TESTING_STRATEGY.md` in the
@@ -158,7 +161,9 @@ AFIELD_PLAYWRIGHT_VISIBLE=true FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_P
 That launches a visible, GPU-accelerated Chrome (instead of the headless capture
 browser) that you can attach DevTools to for profiling. It's an isolated
 Playwright profile, separate from your own Chrome. Server logs for a stuck
-capture are under `.field-backdoor/logs/`.
+capture are under `.field-backdoor/logs/`. [What a capture can and cannot show](capture_limits.md)
+goes through the usual reasons a capture times out or shows the wrong frame, and how to tell them
+apart.
 
 To profile a piece you are writing rather than the capture browser (the
 renderer's span timer, the per-resume counters, and the JFR sampler), see

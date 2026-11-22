@@ -726,6 +726,10 @@ climb it. At 1000 the hill climber, whose restarts eventually land somewhere use
 11 seeds of 12, while the §9 evolver is still split between seeds near 0.96 and seeds stuck at 0.10.
 Random sampling gains only 0.15 from ten times the budget.
 
+The vehicles here keep a fixed body and evolve only what drives it.
+[Evolving Creatures](evolving_creatures.md) breeds the body too: the shape of a spring-and-point
+creature, the timing of its feet and the curves its joints bend to, all in one genome.
+
 ??? aside "How these numbers were measured"
     The twelve-seed tables are `VehicleBrainSearchTest.fullSweep`, run with
     `-Dafield.vehicleBrainSweep=true`, `=immigrants`, `=immigrants-mid` and `=budgets`; the 2- and 8-hidden rows, measured only
@@ -733,6 +737,10 @@ Random sampling gains only 0.15 from ten times the budget.
     random and hill-climb arms are identical in both runs (same seeds, same genome). The box's six
     seeds reproduce the first six rows of the twelve-seed per-seed table exactly; the seeds run in
     parallel and `theComparisonIsDeterministic` pins that this changes nothing.
+
+## See also
+
+[Evolving creatures](evolving_creatures.md) evolves bodies as well as controllers.
 
 ## API reference
 

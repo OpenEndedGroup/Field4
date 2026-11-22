@@ -16,8 +16,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 UPSTREAM = "https://github.com/tangency-labs/solidcraft.git"
-# v0.44.1, pinned by commit because a tag can move.
-REVISION = "e151d5ea6866fb055e011379153fb1cae0566f22"
+# v0.46.2, pinned by commit because a tag can move.
+REVISION = "f4990915b4a91c3c82bab0745dd521f95078a2ac"
 SOURCE = ROOT / "build" / "solidcraft-src"
 ADAPTER = ROOT / "native" / "field-solidcraft"
 STAGED = SOURCE / "crates" / "field4-bridge"

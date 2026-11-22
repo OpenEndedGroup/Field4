@@ -936,6 +936,8 @@ states, and the 31.5% strike share.
   triacontahedron above is the zonohedron of the six 5-fold axes.
 - The [eigendrum](eigendrum.md) is the modal synthesis the strikes reuse, on drums drawn as
   shapes instead of tilings.
+- [Wave Function Collapse](wfc_examples.md) tiles a grid a different way: from local rules about
+  which tile may sit next to which, learned from a sample or written as edge sockets.
 - Open the starting points to try these boxes in your own document: the
   [flat tiling](agent_transcripts.md#debruijn_tilings_demo), the
   [3D tiling](agent_transcripts.md#debruijn_tilings_3d_demo) and the

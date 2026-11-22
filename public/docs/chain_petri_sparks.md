@@ -153,9 +153,15 @@ sparks add up and the centre of a fresh burst burns white.
 
 ## Where each piece is documented
 
-* [Petri nets](petri_nets.md) for the notation, `emits()`, runs and markings.
+* [Petri nets](petri_nets.md) for the notation, `emits()`, runs and markings, and the
+  [Petri notation cheatsheet](petri_cheatsheet.md) for the directives and arc syntax the net above
+  is written in.
 * [A pattern that moves particles](chain_pattern_particles.md) for the other way of tying sound to
   particles, by measuring the audio rather than reading the score.
 * [Field 4 Graphics](afield_four_graphics.md) for modules, meshes, buffers and push constants.
 * [Making a sound, every path there is](sound_paths.md) for the Dirt-Samples and the other ways to
   play a pattern.
+
+## See also
+
+Use the [Petri notation cheatsheet](petri_cheatsheet.md) when changing the net's rules.

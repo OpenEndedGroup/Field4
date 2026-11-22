@@ -147,6 +147,10 @@ space, nodes carrying their `type` and `value`, so it chains into the other geom
     tree's minima and the split tree's maxima. Peeling leaves in the wrong direction reports dozens
     of spurious maxima on a two-peak field, and that check fails on it.
 
+## See also
+
+For critical points and separatrices of a vector field, see [Vector field topology](vector_field_topology.md).
+
 ## API reference
 
 - Constructing the contour tree: [`ContourTrees`](reference/graphics.md#contourtrees-kt-contourtrees).

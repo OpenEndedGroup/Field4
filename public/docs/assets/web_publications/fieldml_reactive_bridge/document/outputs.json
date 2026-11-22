@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-22T18:51:11.961Z",
+  "documentName": "fieldml_reactive_bridge",
+  "outputs": [
+    {
+      "uid": "exposure_meters",
+      "channel": "values",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 328,
+      "height": 98,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "exposure_slider",
+      "channel": "controls",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 473,
+      "height": 54,
+      "path": "outputs/1.html"
+    }
+  ]
+}

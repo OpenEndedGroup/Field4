@@ -1454,6 +1454,8 @@ back and prints the largest difference from the CPU field: 0.000 cells.
 A stroke counts as closed because `signedDistance2D` joins every subpath's end to its start, so an
 open scribble becomes the polygon it nearly encloses. A stroke that crosses itself is decided by the
 even-odd rule: the parts it winds around twice count as outside.
+[A drawn outline, repaired and offset](chain_squircle_offsets.md) blends two such fields with a
+smooth min, which keeps the outline but not the distances, and repairs them before offsetting.
 
 ### An outline filled into a buffer
 
@@ -1498,6 +1500,9 @@ Only the CPU writes the mask, so as with the outline field there is nothing to h
 a closed freehand stroke over the *mask* frame on the [drawing layer](drawing_and_notation.md) is
 filled into both channels while it runs, and an ellipse clears the drawn ones. The box's *mask*
 output reads the buffer back and prints the largest difference from the same fill into a CPU array.
+
+To draw a filled `FLine` straight into the window at screen resolution, with its curves evaluated
+in the fragment shader rather than filled into a buffer, see [Slug filled paths](slug_paths.md).
 
 ### Drawings and character grids
 
@@ -3273,6 +3278,10 @@ Here is the practical rule of thumb:
 All of these tools compose. One box can have a little inline history, a piano roll, a browser in one output channel, and a control surface in another. Field is very happy when code is also an interface.
 
 *The public declarations used on this page are listed, with their KDoc, in the codebase reference: [`ValueVisualizer.kt`](reference/visualization.md#valuevisualizer-kt), [`ImagingVisualizer.kt`](reference/visualization.md#imagingvisualizer-kt), [`plotly.kt`](reference/visualization.md#plotly-kt). Start from [what's already in the box](reference/index.md).*
+
+## See also
+
+[Patchy](patchy.md) opens a layered painting editor inside a box output.
 
 ## API reference
 

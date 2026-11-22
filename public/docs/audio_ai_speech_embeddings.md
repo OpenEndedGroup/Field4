@@ -203,3 +203,7 @@ but rotations of a newly fitted corpus still have no semantic name.
 
 See also the [general audio visualizers](visualizers.md#speech-embedding-phase-portraits) and
 [beat and pitch analysis](audio_ai_analysis.md).
+
+## See also
+
+For short regions of other sounds, compare [short-time spectral spaces](audio_ai_spectral_embeddings.md).

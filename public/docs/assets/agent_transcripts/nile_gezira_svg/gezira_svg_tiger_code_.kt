@@ -9,7 +9,7 @@ val skia = GeziraSvg.skia(text, n, n)
 val diff = GeziraSvg.difference(r.canvas.rgba, skia, 10.0)
 val (worst, mean) = r.canvas.error(skia)
 val readout = listOf(
-    doc.toString(),
+    "%d SVG elements, %d segments, read into %d FLines".format(doc.elements, doc.segments, doc.lines.size),
     r.toString(),
     "Gezira vs Skia per channel: max |diff| %.3f, mean %.4f".format(worst, mean),
 ).joinToString("\n")

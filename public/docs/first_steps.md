@@ -178,7 +178,13 @@ edit while the window draws.
 From here, the [Survival Guide](survivalGuide.md) gives you the moves you'll use every day. To
 make more drawings like the first one, go to [Drawing with FLines](fline_examples.md). To learn
 where `println` and `display` put their results, see [Box Output](box_output.md); for where your
-work and AI history are kept, see [Your code, AI and local history](privacy.md).
+work and AI history are kept, see [Your code, AI and local history](privacy.md). Once you know what
+you want to make, [Where to Go Next](staging.md) maps the documentation and suggests a page to
+start from in each section.
 
 To get either example again in another document, press ++cmd+t++ and insert the `first-steps` or
 `first-graphics` [template](templates.md#templates-that-come-with-field).
+
+## See also
+
+The [Field documentation home](index.md) links the Tour and examples you can explore after these first steps.

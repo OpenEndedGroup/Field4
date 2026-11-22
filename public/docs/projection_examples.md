@@ -694,6 +694,10 @@ transport cost, a hop count or a diff size, `smileMdsDistances` and `smileTsneDi
 entry points, and the two worked examples above are both of that kind. Above a few thousand things,
 sample first: everything here is quadratic in memory before it is anything else.
 
+[Audio curves](audio_curves.md) runs classical MDS on mel frames and a Wasserstein distance about
+ninety times a second, over the last second or so of a sound, and keeps each new map aligned with the
+one before so that its coordinates can be used as control signals.
+
 For the audio-specific wrappers over these same four functions, see
 [speech-reactive learned spaces](audio_ai_speech_embeddings.md) and
 [short-time spectral spaces](audio_ai_spectral_embeddings.md); for the graph constructions the second
@@ -702,3 +706,8 @@ coefficients the fences use to check themselves, [Statistics & dependence](stati
 
 *The public declarations used on this page are listed, with their KDoc, in the codebase reference:
 [Data](reference/data.md#smile-mds-kt) and [Math](reference/math.md).*
+
+## See also
+
+If the points already have positions, see [Points into structure](spatial_geometry_examples.md)
+for ways to draw their neighbourhoods and clusters.

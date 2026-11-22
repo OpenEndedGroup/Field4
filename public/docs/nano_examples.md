@@ -125,3 +125,7 @@ Starting from `6`, one call to `dbl` gives `12`, and the second gives `24`.
 ## When a sketch misbehaves
 
 The panels under each run answer different questions. The register cards and RAM grid say what the machine ended up holding. The disassembly says what the assembler thought you wrote, which is where a mis-counted `ldrr` offset or a branch that landed one byte off shows up. And the `state` chip reads either `halted` or `running`, where `running` means the step budget ran out before any `hlt` did. A VM error such as `Call stack overflow` gets its own orange banner above the registers instead.
+
+## See also
+
+[ForthField examples](forth_examples.md) works with a different small language and its stack.

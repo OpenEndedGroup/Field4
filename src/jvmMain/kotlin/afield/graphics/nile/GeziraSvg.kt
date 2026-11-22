@@ -1,10 +1,12 @@
 package afield.graphics.nile
 
+import afield.document.properties.Delegation
 import afield.geometry.path.FLine
 import afield.graphics.render.color
 import afield.graphics.render.filled
 import afield.graphics.render.stroked
 import afield.graphics.render.thickness
+import afield.math.linalg.Vector4f
 import afield.math.linalg.vec
 import afield.media.image.util.PngEncoder
 import org.jetbrains.skia.Data
@@ -100,32 +102,28 @@ class SvgSubpath(val beziers: List<Bezier>, val closed: Boolean) {
 }
 
 /**
- * One painted SVG element after its own and every ancestor's `transform` and inherited style:
- * geometry in the document's user (viewBox) units, colours straight from the cascade with
- * `opacity` and `fill-opacity` / `stroke-opacity` folded into their alpha.
+ * The `id` of the SVG element an FLine was read from by [GeziraSvg.parse], or null. A filled and
+ * stroked element gives two FLines with the same id.
  */
-class SvgShape(
-    val element: String,
-    val id: String?,
-    val subpaths: List<SvgSubpath>,
-    val fill: Rgba?,
-    val fillRule: FillRule,
-    val stroke: Rgba?,
-    /** In user units, already scaled by the element's transform. */
-    val strokeWidth: Double,
+var FLine.svgId by Delegation<String?>()
+
+/**
+ * An SVG document read by [GeziraSvg.parse]: its view box, and its painted elements as [lines] in
+ * paint order and in the document's user (view box) units, y down. Each line carries its paint as
+ * FLine attributes: `color` (with `opacity` and `fill-opacity` / `stroke-opacity` in its alpha),
+ * `filled` and [fillRule], or `stroked` and `thickness`; an element with both a fill and a stroke
+ * is two lines, the fill first. [skipped] counts the elements passed over.
+ */
+class SvgDocument(
+    val viewBox: DoubleArray,
+    val width: Double,
+    val height: Double,
+    val lines: List<FLine>,
+    /** Painted elements read, and their path segments. */
+    val elements: Int,
+    val segments: Int,
+    val skipped: Map<String, Int>,
 ) {
-    /** Every subpath closed, as one list: what the fill rasterises. */
-    fun fillBeziers(): List<Bezier> = subpaths.flatMap { it.closedBeziers() }
-
-    /** [t] applied to the geometry and the stroke width. */
-    fun transformed(t: SvgTransform) = SvgShape(
-        element, id, subpaths.map { s -> SvgSubpath(s.beziers.map(t::apply), s.closed) },
-        fill, fillRule, stroke, strokeWidth * t.scale,
-    )
-}
-
-/** An SVG document read by [GeziraSvg.parse]: its view box, its painted shapes in paint order, and what was skipped. */
-class SvgDocument(val viewBox: DoubleArray, val width: Double, val height: Double, val shapes: List<SvgShape>, val skipped: Map<String, Int>) {
 
     /** The `preserveAspectRatio="xMidYMid meet"` map from the view box into a `w × h` pixel viewport. */
     fun fit(w: Int, h: Int): SvgTransform {
@@ -134,23 +132,15 @@ class SvgDocument(val viewBox: DoubleArray, val width: Double, val height: Doubl
             SvgTransform.translate(-viewBox[0], -viewBox[1])
     }
 
-    /** The shapes in pixels of a `w × h` viewport. */
-    fun shapesIn(w: Int, h: Int): List<SvgShape> = fit(w, h).let { t -> shapes.map { it.transformed(t) } }
-
-    /** Number of path segments over all shapes. */
-    val segments get() = shapes.sumOf { s -> s.subpaths.sumOf { it.beziers.size } }
-
     override fun toString() =
-        "SvgDocument ${viewBox.joinToString(" ") { "%.6g".format(it) }}: ${shapes.size} shapes, $segments segments" +
-            if (skipped.isEmpty()) "" else ", skipped $skipped"
+        "$elements elements, $segments segments, ${lines.size} FLines" + if (skipped.isEmpty()) "" else ", skipped $skipped"
 }
 
 /**
  * SVG into Gezira: a reader for SVG documents (path data with every command including arcs, the
  * basic shapes, nested groups with `transform`s, inherited `fill`, `stroke`, `stroke-width`,
- * `fill-rule` and opacities, from attributes or `style`), a renderer that draws them through the
- * existing kernels — [Gezira.rasterizer] under each shape's fill rule, [GeziraStroke.strokeBezierPath],
- * [GeziraComposite] — and Skia's own SVG renderer as the reference.
+ * `fill-rule` and opacities, from attributes or `style`) into Field FLines with their paint as
+ * FLine attributes, drawn by [GeziraFLine.render]; and Skia's own SVG renderer as the reference.
  *
  * ```
  * val doc = GeziraSvg.parse(GeziraSvg.tiger())
@@ -455,7 +445,9 @@ object GeziraSvg {
         val h = length(root.getAttribute("height"))
         val vb = SvgTransform.numbers(root.getAttribute("viewBox")).takeIf { it.size == 4 }?.toDoubleArray()
             ?: doubleArrayOf(0.0, 0.0, w ?: 300.0, h ?: 150.0)
-        val shapes = ArrayList<SvgShape>()
+        val lines = ArrayList<FLine>()
+        var elements = 0
+        var segments = 0
         val skipped = LinkedHashMap<String, Int>()
         fun visit(e: Element, parent: Context) {
             val own = ownStyle(e)
@@ -473,7 +465,11 @@ object GeziraSvg {
 
                 "path", "rect", "circle", "ellipse", "line", "polyline", "polygon" -> {
                     val geometry = geometry(tag, e)
-                    if (geometry.isNotEmpty()) shapes.add(shape(tag, e.getAttribute("id").ifEmpty { null }, geometry, ctx))
+                    if (geometry.isNotEmpty()) {
+                        elements++
+                        segments += geometry.sumOf { it.beziers.size }
+                        lines.addAll(lines(e.getAttribute("id").ifEmpty { null }, geometry, ctx))
+                    }
                 }
 
                 "title", "desc", "metadata", "defs" -> {}
@@ -481,25 +477,62 @@ object GeziraSvg {
             }
         }
         visit(root, Context(SvgTransform.IDENTITY, emptyMap(), 1.0))
-        return SvgDocument(vb, w ?: vb[2], h ?: vb[3], shapes, skipped)
+        return SvgDocument(vb, w ?: vb[2], h ?: vb[3], lines, elements, segments, skipped)
     }
 
-    private fun shape(tag: String, id: String?, geometry: List<SvgSubpath>, ctx: Context): SvgShape {
+    /** [geometry] under [ctx]'s transform as up to two FLines, the fill and then the stroke. */
+    private fun lines(id: String?, geometry: List<SvgSubpath>, ctx: Context): List<FLine> {
         val s = ctx.style
-        fun alpha(key: String) = (s[key]?.toDoubleOrNull() ?: 1.0) * ctx.opacity
-        fun paint(key: String, default: String?): Rgba? {
+        fun paint(key: String, default: String?): Vector4f? {
             val c = color(s[key] ?: default) ?: return null
-            return Rgba.of((c shr 16 and 255) / 255.0, (c shr 8 and 255) / 255.0, (c and 255) / 255.0, alpha("$key-opacity"))
+            val a = (s["$key-opacity"]?.toDoubleOrNull() ?: 1.0) * ctx.opacity
+            return vec((c shr 16 and 255) / 255.0, (c shr 8 and 255) / 255.0, (c and 255) / 255.0, a)
         }
         val t = ctx.transform
-        return SvgShape(
-            tag, id,
-            geometry.map { g -> SvgSubpath(g.beziers.map(t::apply), g.closed) },
-            paint("fill", "black"),
-            if (s["fill-rule"] == "evenodd") FillRule.EVEN_ODD else FillRule.NON_ZERO,
-            paint("stroke", null),
-            (s["stroke-width"]?.let { SvgTransform.numbers(it).firstOrNull() } ?: 1.0) * t.scale,
-        )
+        fun outline(close: Boolean) = FLine().also { f ->
+            for (sp in geometry) {
+                val bs = if (close) sp.closedBeziers() else sp.beziers
+                if (bs.isEmpty()) continue
+                val first = t.apply(bs[0]).p
+                f.moveTo(first[0], first[1])
+                for (b in bs) {
+                    val p = t.apply(b).p
+                    when (b.degree) {
+                        1 -> f.lineTo(p[2], p[3])
+                        // A quadratic raised to the cubic through the same curve.
+                        2 -> f.cubicTo(
+                            p[0] + 2.0 / 3 * (p[2] - p[0]), p[1] + 2.0 / 3 * (p[3] - p[1]), 0.0,
+                            p[4] + 2.0 / 3 * (p[2] - p[4]), p[5] + 2.0 / 3 * (p[3] - p[5]), 0.0, p[4], p[5], 0.0,
+                        )
+                        else -> f.cubicTo(p[2], p[3], 0.0, p[4], p[5], 0.0, p[6], p[7], 0.0)
+                    }
+                }
+                if (close || sp.closed) f.close()
+            }
+            f.svgId = id
+        }
+        val out = ArrayList<FLine>(2)
+        paint("fill", "black")?.let { c ->
+            out.add(
+                outline(true).also {
+                    it.filled = true
+                    it.stroked = false
+                    it.color = c
+                    it.fillRule = if (s["fill-rule"] == "evenodd") FillRule.EVEN_ODD else FillRule.NON_ZERO
+                },
+            )
+        }
+        paint("stroke", null)?.let { c ->
+            out.add(
+                outline(false).also {
+                    it.filled = false
+                    it.stroked = true
+                    it.color = c
+                    it.thickness = (s["stroke-width"]?.let { w -> SvgTransform.numbers(w).firstOrNull() } ?: 1.0) * t.scale
+                },
+            )
+        }
+        return out
     }
 
     private fun geometry(tag: String, e: Element): List<SvgSubpath> {
@@ -552,72 +585,12 @@ object GeziraSvg {
 
     // ---------------------------------------------------------------- rendering
 
-    /** A [render]: the canvas, and what went through the kernels to make it. */
-    class Render(
-        val canvas: Canvas,
-        /** Shapes filled and shapes stroked. */
-        val fills: Int,
-        val strokes: Int,
-        /** Béziers into the rasteriser (fill outlines plus stroke outlines), the flattened lines, and the spans out. */
-        val beziers: Int,
-        val lines: Int,
-        val spans: Int,
-        /** Milliseconds spent stroking, rasterising and compositing. */
-        val strokeMs: Double,
-        val rasterMs: Double,
-        val compositeMs: Double,
-    ) {
-        override fun toString() =
-            "$fills fills, $strokes strokes; $beziers béziers -> $lines lines -> $spans spans; " +
-                "stroke %.0f ms, rasterise %.0f ms, composite %.0f ms".format(strokeMs, rasterMs, compositeMs)
-    }
+    /** The painted elements of [svg] as FLines in its user units: [parse]`(svg).lines`. */
+    fun flines(svg: String): List<FLine> = parse(svg).lines
 
-    /**
-     * Draw [doc] into a `w × h` canvas with Gezira's kernels: each shape's fill under its fill rule,
-     * then its stroke (the stroke kernel per subpath, rasterised non-zero), source-over, in paint order.
-     */
-    fun render(doc: SvgDocument, w: Int, h: Int, tolerance: Double = Gezira.FLATNESS): Render {
-        val canvas = Canvas(w, h)
-        val composite = GeziraComposite.compositeOver(canvas)
-        var fills = 0
-        var strokes = 0
-        var beziers = 0
-        var lines = 0
-        var spans = 0
-        var tStroke = 0L
-        var tRaster = 0L
-        var tComposite = 0L
-        fun paint(input: List<Bezier>, rule: FillRule, c: Rgba) {
-            if (input.isEmpty() || c.a <= 0f) return
-            beziers += input.size
-            val t0 = System.nanoTime()
-            val trace = Gezira.rasterizer(rule, tolerance).trace(input)
-            val s = trace.output.filterIsInstance<Span>()
-            lines += trace.streams["FlattenBeziers"]?.size ?: 0
-            spans += s.size
-            val t1 = System.nanoTime()
-            composite(GeziraComposite.color(c)(s))
-            tRaster += t1 - t0
-            tComposite += System.nanoTime() - t1
-        }
-        for (shape in doc.shapesIn(w, h)) {
-            shape.fill?.let {
-                fills++
-                paint(shape.fillBeziers(), shape.fillRule, it)
-            }
-            val stroke = shape.stroke
-            if (stroke != null && shape.strokeWidth > 0) {
-                strokes++
-                val t0 = System.nanoTime()
-                val outline = shape.subpaths.flatMap { sp ->
-                    GeziraStroke.strokeBezierPath(shape.strokeWidth)(if (sp.closed) sp.closedBeziers() else sp.beziers)
-                }
-                tStroke += System.nanoTime() - t0
-                paint(outline, FillRule.NON_ZERO, stroke)
-            }
-        }
-        return Render(canvas, fills, strokes, beziers, lines, spans, tStroke / 1e6, tRaster / 1e6, tComposite / 1e6)
-    }
+    /** [doc] fitted into a `w × h` canvas and drawn by [GeziraFLine.render]. */
+    fun render(doc: SvgDocument, w: Int, h: Int, tolerance: Double = Gezira.FLATNESS): GeziraFLine.Render =
+        GeziraFLine.render(doc.lines, w, h, doc.fit(w, h), tolerance)
 
     /** Skia's own SVG renderer (`SVGDOM`) over the same text into a `w × h` premultiplied RGBA raster. */
     fun skia(svg: String, w: Int, h: Int): FloatArray {
@@ -653,43 +626,5 @@ object GeziraSvg {
             (0xff shl 24) or (ch(rgba[4 * i], br) shl 16) or (ch(rgba[4 * i + 1], bg) shl 8) or ch(rgba[4 * i + 2], bb)
         }
         return PngEncoder.encode(px, w, h)
-    }
-
-    /**
-     * [doc] as FLines for the rest of Field, in its user units (y down, as SVG has it): one filled
-     * FLine per filled shape in its fill colour and one stroked FLine per stroked shape with its
-     * width as `thickness`.
-     */
-    fun flines(doc: SvgDocument, t: SvgTransform = SvgTransform.IDENTITY): List<FLine> {
-        fun outline(subpaths: List<SvgSubpath>, close: Boolean) = FLine().also { f ->
-            for (sp in subpaths) {
-                val bs = if (close) sp.closedBeziers() else sp.beziers
-                if (bs.isEmpty()) continue
-                val first = t.apply(bs[0]).p
-                f.moveTo(first[0], first[1])
-                for (b in bs) {
-                    val p = t.apply(b).p
-                    when (b.degree) {
-                        1 -> f.lineTo(p[2], p[3])
-                        2 -> f.cubicTo(
-                            p[0] + 2.0 / 3 * (p[2] - p[0]), p[1] + 2.0 / 3 * (p[3] - p[1]), 0.0,
-                            p[4] + 2.0 / 3 * (p[2] - p[4]), p[5] + 2.0 / 3 * (p[3] - p[5]), 0.0, p[4], p[5], 0.0,
-                        )
-                        else -> f.cubicTo(p[2], p[3], 0.0, p[4], p[5], 0.0, p[6], p[7], 0.0)
-                    }
-                }
-            }
-        }
-        fun vec4(c: Rgba) = if (c.a > 0f) vec(c.r / c.a, c.g / c.a, c.b / c.a, c.a) else vec(0.0, 0.0, 0.0, 0.0)
-        val out = ArrayList<FLine>()
-        for (s in doc.shapes) {
-            s.fill?.let { c ->
-                out.add(outline(s.subpaths, true).also { it.filled = true; it.stroked = false; it.color = vec4(c) })
-            }
-            s.stroke?.let { c ->
-                out.add(outline(s.subpaths, false).also { it.stroked = true; it.thickness = s.strokeWidth * t.scale; it.color = vec4(c) })
-            }
-        }
-        return out
     }
 }

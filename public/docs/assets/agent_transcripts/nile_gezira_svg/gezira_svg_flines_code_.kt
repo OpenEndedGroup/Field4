@@ -1,7 +1,6 @@
 import afield.graphics.nile.*
 
-// The same document as FLines, for anything in Field that draws them.
-val doc = GeziraSvg.parse(GeziraSvg.tiger())
-val outlines = GeziraSvg.flines(doc, SvgTransform.scale(0.5))
-println("${outlines.size} FLines from ${doc.shapes.size} shapes")
+// The tiger as Field FLines, drawn by Field's own line renderer.
+val outlines = GeziraSvg.flines(GeziraSvg.tiger())
+println("${outlines.size} FLines")
 lines(outlines, channel = "flines")

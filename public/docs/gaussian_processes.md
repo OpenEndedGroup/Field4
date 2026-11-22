@@ -95,6 +95,8 @@ draw. A seed reproduces the result for the same model and query order.
 An interval is **pointwise**: it describes one position at a time. A 95% pointwise band does not
 contain 95% of whole functions. Draws can leave that band somewhere without anything being wrong.
 For a 1D plot, `posterior.intervalFLines(grid)` returns its lower and upper boundary curves.
+To ask about whole draws, such as where the highest point is or how likely the curve is to cross a
+line anywhere, turn the fitted curve into [distributions](distributions.md#gaussian-processes-as-distributions).
 
 ## Choose the kind of function
 
@@ -984,3 +986,10 @@ See also [drawing with FLines](fline_examples.md#filters-and-gp),
     Every figure on this page is the docs runner's capture of the fence above it, run in Field,
     so each snippet is also checked to compile and run against the current `afield.math.gp`.
     Verification notes are in [the implementation note](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/GAUSSIAN_PROCESSES.md).
+
+## See also
+
+Use [Distributions](distributions.md) to draw and sample distributions carried by expressions.
+
+For tuning a parameter by score or by choosing between two results, see
+[Gaussian-process optimisation and A/B preference](gaussian_process_optimization.md).

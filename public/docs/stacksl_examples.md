@@ -1134,7 +1134,8 @@ scope.stackAutoNumbers(module, "program") // its numbers, as lanes program.k0, p
 `stackAutoNumbers` registers one lane per typed number, numbered as the card
 numbers them, so applying or blending keys moves the numbers on the GPU with no
 recompile. `scope.target("zoom@program_wire_2", module.program_numbers)` keys a
-single member directly, the way any uniform is keyed.
+single member directly, the way any uniform is keyed. Keys saved over these lanes
+can be [swept overnight](keyframe_autosweep.md), rendering one blend of them after another.
 
 The block's layout never changes, whatever the program: `program_live` and 128
 numbers. That is what lets an edit to the StackSL still update the running
@@ -1546,6 +1547,11 @@ uv fbm palette  # returned
 Use `tolerant = true` for mutation runs. Unknown words become no-ops with warnings; strict mode reports them as errors for authoring.
 
 When a program becomes too short, it still returns a valid `vec4`, so mutation makes strange images rather than broken shaders.
+
+## See also
+
+Use [interval analysis](stacksl_intervals.md) to bound the output of a shader, or
+[evolve a shader](stacksl_evolve.md) by searching over StackSL programs.
 
 ## API reference
 

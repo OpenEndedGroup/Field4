@@ -669,3 +669,8 @@ When changing speed, background playback re-anchors its clock to the image curre
 A decoder that fell behind at 8× therefore slows immediately when you select 1×, without racing
 to repay the old clock gap. Already-decoded future pictures wait for their presentation times;
 material caps discard only intermediate pictures that are already due.
+
+## See also
+
+See [Body and hand tracking](body_tracking.md) for live OpenXR poses and
+[the gaze marker](openxr_eye_intersection.md) for placing a point in world space.

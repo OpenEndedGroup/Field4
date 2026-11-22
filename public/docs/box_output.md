@@ -196,5 +196,12 @@ their own exported media.
 - [Connecting an output iframe to its box](output_requests.md): an iframe in a panel that sends
   requests back to its box's Kotlin.
 - [Graphics in an Output Area](four_in_output_areas.md): Vulkan rendering inside a panel.
+- [A Terminal in a Box](terminal.md): your shell, or any program, running in a panel you can type
+  into.
 - [Where Field's Output Goes](logging.md): output that is not a box's own, from the server and its
   logs.
+
+For the rules governing height, width and scrolling, see
+[How an output panel decides its size](output_panel_sizing.md).
+
+To run and interact with a command-line program from a box, see [A Terminal in a Box](terminal.md).

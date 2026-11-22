@@ -42,7 +42,7 @@ operations:
           val N = 900
           val doc = GeziraSvg.parse(GeziraSvg.tiger())
           // Every fill and every stroke outline, in paint order, uploaded once.
-          val paths = GeziraGpuScene.paths(doc)
+          val paths = GeziraGpuScene.paths(doc.lines)
           val fit = doc.fit(N, N)
           val probe = GpuProbe(renderer, "gezira-gpu-tiger")
           val scene = GeziraGpuScene(probe, paths, N, N, transform = fit)
@@ -57,10 +57,11 @@ operations:
           loop {
               val t = frames / 60.0
               val zoom = 1.0 + 0.35 * Math.sin(t * 0.7)
-              val about = SvgTransform.translate(N / 2.0, N / 2.0) *
-                  SvgTransform.rotate(12.0 * Math.sin(t * 0.5)) *
-                  SvgTransform.scale(zoom) *
-                  SvgTransform.translate(-N / 2.0, -N / 2.0)
+              val about =
+                  SvgTransform.translate(N / 2.0, N / 2.0) *
+                      SvgTransform.rotate(12.0 * Math.sin(t * 0.5)) *
+                      SvgTransform.scale(zoom) *
+                      SvgTransform.translate(-N / 2.0, -N / 2.0)
               scene.transform = about * fit
               frames++
               if (frames % 120 == 0) {
@@ -69,7 +70,8 @@ operations:
                   last = now
               }
               frame()
-          }.end { probe.close() }
+          }
+              .end { probe.close() }
   - create:
       box: ggt_draw
       name: draw the tiger
@@ -140,7 +142,7 @@ operations:
           val svg = GeziraSvg.tiger()
           val doc = GeziraSvg.parse(svg)
           val probe = GpuProbe(renderer, "gezira-gpu-tiger-compare")
-          val scene = GeziraGpuScene(probe, GeziraGpuScene.paths(doc), n, n, transform = doc.fit(n, n))
+          val scene = GeziraGpuScene(probe, GeziraGpuScene.paths(doc.lines), n, n, transform = doc.fit(n, n))
 
           frames {
               try {

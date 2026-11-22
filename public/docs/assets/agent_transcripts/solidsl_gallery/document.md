@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="refusals" index="0" -->
 
 ```edn [field-box id="refusals" role="properties"]
-{"id" "refusals" "index" 0 "name" "Solid notation — refusals, and the hybrid build" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Solid notation — refusals, and the hybrid build" "_tombstone" false "frame" #afield/rect [80.0 280.0 380.0 50.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "refusals_code_.kt" "lines" 103 "characters" 4556 "sha256" "80dc2ea314da78ef80ed1c649ecf0c3fe21be02e27fdaa6b57cde9af8286dbfb"}]}
+{"id" "refusals" "index" 0 "name" "Solid notation — refusals, and the hybrid build" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Solid notation — refusals, and the hybrid build" "_tombstone" false "frame" #afield/rect [1960.0 80.0 380.0 50.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "refusals_code_.kt" "lines" 103 "characters" 4542 "sha256" "285c4ee14731f6a751581e6303a5ed885d8e5d5761e2c8bea9ffaae009ae9f35"}]}
 ```
 
 ```kotlin [field-property box="refusals" name="code" path="refusals_code_.kt"]
@@ -111,8 +111,8 @@ run {
         channel = "hybrid",
         title = "exact where it can be, marched where it cannot",
         caption =
-            "${build.solid.triangleCount} triangles &middot; the plate and its four bores are exact CSG; " +
-                "only the blended post was marched &middot; the whole thing is still one guaranteed-closed solid",
+            "${build.solid.triangleCount} triangles · the plate and its four bores are exact CSG; " +
+                "only the blended post was marched · the whole thing is still one guaranteed-closed solid",
         view = MeshView(yawDegrees = 36.0, pitchDegrees = 22.0, width = 720, height = 470),
     )
     naive.close()
@@ -125,7 +125,7 @@ run {
 <!-- field-box id="cross_check" index="1" -->
 
 ```edn [field-box id="cross_check" role="properties"]
-{"id" "cross_check" "index" 1 "name" "Solid notation — one shape, two evaluations" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Solid notation — one shape, two evaluations" "_tombstone" false "frame" #afield/rect [80.0 80.0 380.0 50.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cross_check_code_.kt" "lines" 128 "characters" 6532 "sha256" "fdc228528ed9adb06237312d6e7b2b26d8f8596e268202f558518c1d8b58150d"}]}
+{"id" "cross_check" "index" 1 "name" "Solid notation — one shape, two evaluations" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Solid notation — one shape, two evaluations" "_tombstone" false "frame" #afield/rect [80.0 80.0 380.0 50.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cross_check_code_.kt" "lines" 128 "characters" 6497 "sha256" "8132550ecc3726f62e8e150ed3223cb003acf43a57d9a6649f9346ef5425acce"}]}
 ```
 
 ```kotlin [field-property box="cross_check" name="code" path="cross_check_code_.kt"]
@@ -240,8 +240,8 @@ run {
         channel = "exact",
         title = "B — Manifold's exact CSG",
         caption =
-            "${exact.triangleCount} triangles &middot; volume ${"%.5f".format(exact.volume)} &middot; " +
-                "genus ${exact.genus} &middot; every boolean guaranteed to close",
+            "${exact.triangleCount} triangles · volume ${"%.5f".format(exact.volume)} · " +
+                "genus ${exact.genus} · every boolean guaranteed to close",
         view = MeshView(yawDegrees = 34.0, pitchDegrees = 24.0, width = 700, height = 440),
     )
     showMesh(
@@ -249,8 +249,8 @@ run {
         channel = "marched",
         title = "A — the same expression, marched from its distance field",
         caption =
-            "${marched.triangleCount} triangles &middot; volume " +
-                "${"%.5f".format(marched.signedVolume())} &middot; the two disagree by " +
+            "${marched.triangleCount} triangles · volume " +
+                "${"%.5f".format(marched.signedVolume())} · the two disagree by " +
                 "${"%.3e".format(agreement.relativeVolumeError)} relative, and their surfaces are never " +
                 "more than ${"%.4f".format(agreement.deviation)} apart",
         view = MeshView(yawDegrees = 34.0, pitchDegrees = 24.0, width = 700, height = 440),
@@ -264,7 +264,7 @@ run {
 <!-- field-box id="glsl_backend" index="2" -->
 
 ```edn [field-box id="glsl_backend" role="properties"]
-{"id" "glsl_backend" "index" 2 "name" "Solid notation — the same source as a GLSL raymarcher" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Solid notation — the same source as a GLSL raymarcher" "_tombstone" false "frame" #afield/rect [80.0 180.0 380.0 50.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "glsl_backend_code_.kt" "lines" 62 "characters" 2701 "sha256" "55fbd4d0850acfd4710ce4bdae0501b31cb2648f74cbb37c3f8390a0cecd3e4a"}]}
+{"id" "glsl_backend" "index" 2 "name" "Solid notation — the same source as a GLSL raymarcher" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Solid notation — the same source as a GLSL raymarcher" "_tombstone" false "frame" #afield/rect [1020.0 80.0 380.0 50.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "glsl_backend_code_.kt" "lines" 62 "characters" 2701 "sha256" "55fbd4d0850acfd4710ce4bdae0501b31cb2648f74cbb37c3f8390a0cecd3e4a"}]}
 ```
 
 ```kotlin [field-property box="glsl_backend" name="code" path="glsl_backend_code_.kt"]

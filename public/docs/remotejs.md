@@ -169,5 +169,7 @@ stays on the JVM side, see [Field's 3D Output](three_output.md).
 - [RemoteJS and WebXR](ar_reference.md): the head on Android, headsets and the Endrun iOS app, hit
   testing, pointer callbacks, assets and the head's self-test.
 - [Kotlin in the Head](kotlin_in_the_head.md): Kotlin compiled to Javascript for the same head.
+- [Chromium as a native Field surface](puppet_browser.md): a browser tab driven from Kotlin, read
+  as data, or drawn as a texture in a native scene.
 - The [remotejs_box_parity](agent_transcripts.md#remotejs_box_parity) document: one box for each
   thing on this page, ready to run.

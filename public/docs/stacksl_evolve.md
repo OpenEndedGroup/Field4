@@ -252,7 +252,7 @@ What the two scores reward is different. Average pixel error is satisfied first 
 
 ## What beating the control means
 
-Every result from `evolveStackSLTowards` is reported against the random control at the same budget, because a vocabulary this expressive produces plausible pictures by chance. A search that only matched what random drawing finds would look identical from outside.
+Every result from `evolveStackSLTowards` is reported against the random control at the same budget, because a vocabulary this expressive produces plausible pictures by chance. A search that only matched what random drawing finds would look identical from outside. [Searching for MorphoHDL Circuits](morpho_search.md) reports its circuit programs against a random control in the same way, and [Braitenberg vehicles with memory](braitenberg_vehicles.md#10-a-larger-genome-does-evolution-beat-random-sampling) does the same for vehicle brains.
 
 !!! note "Beating the control is not resembling the target"
     "Evolution beat the control" means the evolved program **scores** higher under the metric the search optimised. It does not mean the picture looks like the target. Under average pixel error, evolution beat the control on four of five targets while drawing dark diagonal streaks for a yellow disc and a vertical gradient for four quadrants. Look at the contact sheet before believing a score.
@@ -278,6 +278,11 @@ Without the watchmaker, these are the five built-in targets' best programs at 1,
 
 ??? aside "Why the targets are made in Kotlin, not taken from the StackSL gallery"
     A gallery still is a picture some StackSL program already makes, so searching for it would be a program-recovery task, and a good score could mean either "the search works" or "it rediscovered a short program from its own vocabulary". The built-in targets are drawn with arithmetic StackSL has no single word for. Each one can still be drawn by a hand-written program of 7 to 19 words, which the smoke test checks, so a target the search fails on is one it could have reached.
+
+## See also
+
+See [Proving What a Shader Draws](stacksl_intervals.md) for bounding the output of
+a candidate program over a region.
 
 ## API reference
 

@@ -523,7 +523,9 @@ showPatAudio(pat("bd(5,8,2), hh*8?0.2"), cycles = 4, cps = 2.0) // and hear it
 `sine()`, `saw()`, `tri()`, `square()`, `perlin()` and `rand()` are patterns too. They
 just answer *every* query with exactly one event, sampled at the query's exact midpoint.
 They have no rhythm of their own, so you either give them one with `segment(n)` or hand
-them to something that already has one.
+them to something that already has one. A [distribution](distributions.md#patterns-from-a-distribution)
+becomes a signal of the same kind with `d.pat()`, so `rand()` can be replaced by a weighted scale or
+any other distribution you build.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/pattern_language/signals.png" wait="2" capture="box" open-outputs="true" name="pat-doc-signals"}
 :::static
@@ -1123,6 +1125,11 @@ crosses bar lines plays correctly without the consumer knowing anything about cy
 - [Sound](sound.md) plays patterns through samples and synths.
 - [Audio render and analysis](audio_render_analysis.md) renders a pattern to a file and
   transcribes audio back into one.
+
+## See also
+
+Use [a pattern as a function generator](marf.md) to feed a sequence of functions
+to a drawing, or [turn audio into a few controls](audio_curves.md) to drive a drawing from a recording.
 
 ## API reference
 

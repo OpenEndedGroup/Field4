@@ -573,6 +573,9 @@ configs.forEachIndexed { i, config ->
 display("main", canvas.png())
 ```
 
+[Paint settings, swept](paint_sweeps.md) takes most of these settings, and the paint's own, well
+past their usual range, painting the same gesture with a moving-hairs brush and an ordinary one.
+
 ## Brushes that stay dirty
 
 A brush keeps what it picks up. Stroked through wet paint, it carries some of that colour into its
@@ -749,5 +752,7 @@ Implementation and parameter details for the helpers used above:
 Try [watercolour and ink](watercolor.md), where water on paper moves by itself, or
 [brushes with moving hairs](paint_gestures.md) that bend, splay and flick under timed gestures.
 [Drawn Strokes Become Paint](chain_drawn_paint.md) paints the strokes you draw with a pen, using
-its pressure; in [AI4 paints](ai4_painting.md), the AI chat paints on this canvas. For more on the
+its pressure; in [AI4 paints](ai4_painting.md), the AI chat paints on this canvas.
+[A pen that sees](a_pen_that_sees.md) makes strokes of another kind: trembling FLines that hatch
+beside a line you draw, ready to be laid down here in pencil. For more on the
 building blocks, see [Drawing with FLines](fline_examples.md) and [Colors](colors_examples.md).

@@ -538,6 +538,11 @@ class FieldMLSourceMacroTest {
         )
         assertEquals(8, box.getPropertyRaw("macroTestDepth"), "and the raw property should equal the Int a Kotlin box wrote")
 
+        // A FieldML integer too large for the slot's Int is refused, naming the slot, instead of wrapping.
+        val overflow = runCatching { evaluate("setProp \"macroTestDepth\" 1099511627776", box) }.exceptionOrNull()
+        assertTrue(overflow?.message?.contains("does not fit 'macroTestDepth'") == true, "got ${overflow?.message}")
+        assertEquals(8, box.macroTestDepth, "a refused write leaves the slot as it was")
+
         // The counterfactual: the same value stored the way it would be without the narrowing.
         box.setPropertyRaw("macroTestDepth", 8L, false)
         assertEquals(

@@ -13,7 +13,7 @@ field from three hills and two pits, then draws its complex over it. Ascending s
 maxima) are red, descending ones (to minima) blue. Maxima are red dots, minima blue and saddles
 green:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/morse_smale/first.png" alt="two copies of the same viridis-shaded field side by side: three yellow hills, upper left, upper right and lower centre, and two dark purple pits at the lower left and lower right. On the right copy the complex is drawn over it: a red dot on each hilltop, red ridge lines running from hill to hill through green saddle dots and out to the edges of the grid, and blue valley lines that run from the saddles down into the two pits and along the grid's edges" wait="2" capture="box" open-outputs="true" padding="20" requires="morse-smale" name="morse-smale-first" embed=true}
+```diffstatic_runner {data-lang=kotlin requires="morse-smale" screenshot="assets/morse_smale/first.png" alt="two copies of the same viridis-shaded field side by side: three yellow hills, upper left, upper right and lower centre, and two dark purple pits at the lower left and lower right. On the right copy the complex is drawn over it: a red dot on each hilltop, red ridge lines running from hill to hill through green saddle dots and out to the edges of the grid, and blue valley lines that run from the saddles down into the two pits and along the grid's edges" wait="2" capture="box" open-outputs="true" padding="20" requires="morse-smale" name="morse-smale-first" embed=true}
 import afield.geometry.topology.morsesmale.*
 
 // Three hills and two pits on a 240 × 180 grid.
@@ -62,13 +62,15 @@ adds critical points and separatrices. The **persistence** of a hill is how far 
 lower it before it merged into a neighbour: its height above the pass that joins it to higher
 ground. Simplifying at persistence *p* cancels every pair of critical points whose persistence is
 below *p*, and reroutes the separatrices around them, so what remains is the structure that
-stands out by more than *p*.
+stands out by more than *p*. A [contour tree](contour_trees.md) draws those same merges as a tree,
+from each peak or pit to the saddle where it joins its neighbour, and simplifies by the same
+persistence.
 
 The example below puts noise over the same five bumps. [`MorseSmale.build`](reference/graphics.md#morsesmale-kt--morsesmale--build) computes the complex
 once, along with the order in which every pair would cancel. `simplify(p)` then reads off the
 complex at any threshold without recomputing it:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/morse_smale/persistence.png" alt="three copies of the noisy five-bump field side by side, captioned with their persistence and critical point count. At persistence 0.0, 3237 critical points, the field is buried under a dense mesh of red and blue lines and coloured dots. At 0.02, 289 critical points, the noise floor is mostly clear, and red ridges fan out from the three hills with blue valleys between them. At 0.3, 31 critical points, only the main structure is left: a red ridge through each hill and between them, and blue valleys that drain into the two pits" wait="3" capture="box" open-outputs="true" padding="20" requires="morse-smale" name="morse-smale-persistence" embed=true}
+```diffstatic_runner {data-lang=kotlin requires="morse-smale" screenshot="assets/morse_smale/persistence.png" alt="three copies of the noisy five-bump field side by side, captioned with their persistence and critical point count. At persistence 0.0, 3237 critical points, the field is buried under a dense mesh of red and blue lines and coloured dots. At 0.02, 289 critical points, the noise floor is mostly clear, and red ridges fan out from the three hills with blue valleys between them. At 0.3, 31 critical points, only the main structure is left: a red ridge through each hill and between them, and blue valleys that drain into the two pits" wait="3" capture="box" open-outputs="true" padding="20" requires="morse-smale" name="morse-smale-persistence" embed=true}
 import afield.geometry.topology.morsesmale.*
 
 // The same five bumps, now under fine noise: hundreds of extra hills and pits a pixel or two across.
@@ -117,7 +119,7 @@ at 0.02. The middle panel colours each basin, the region draining to one dark mi
 valleys that separate them. The right panel draws only the ridges, which follow the bright paper
 around the leaf and its lobes:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/morse_smale/photograph.png" alt="three tall panels of a framed print showing a green monstera leaf over an ochre blob dotted with pale spots, on a yellow ground. The first is the photograph. The second tints it with one pastel colour per basin and draws blue valley lines between them: one cluster of small cells over the pale spots near the top, separate basins for the leaf's lobes, and a long valley down the middle. The third draws red ridge lines over the photograph: they outline the leaf and its lobes, ring the pale spots, and run down both sides of the frame, with blue minima and green saddles marked on them" wait="3" capture="box" open-outputs="true" padding="20" requires="morse-smale" name="morse-smale-photograph" embed=true}
+```diffstatic_runner {data-lang=kotlin requires="morse-smale" screenshot="assets/morse_smale/photograph.png" alt="three tall panels of a framed print showing a green monstera leaf over an ochre blob dotted with pale spots, on a yellow ground. The first is the photograph. The second tints it with one pastel colour per basin and draws blue valley lines between them: one cluster of small cells over the pale spots near the top, separate basins for the leaf's lobes, and a long valley down the middle. The third draws red ridge lines over the photograph: they outline the leaf and its lobes, ring the pale spots, and run down both sides of the frame, with blue minima and green saddles marked on them" wait="3" capture="box" open-outputs="true" padding="20" requires="morse-smale" name="morse-smale-photograph" embed=true}
 import afield.geometry.topology.morsesmale.*
 
 // The framed leaf print on the left wall of the photograph.
@@ -146,7 +148,7 @@ Building the complex is the expensive step, and simplifying is cheap, so a slide
 threshold while the box is running. This box builds the complex once and redraws on every slider
 change:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/morse_smale/slider.png" alt="a persistence slider set to 0.05 above the leaf print with red ridge lines drawn over it, outlining the paper around the leaf and running down both sides of the frame, with critical points marked as dots and a caption reading 17 points, 31 curves" wait="4" capture="box" open-outputs="true" padding="20" trim="true" requires="morse-smale" name="morse-smale-slider" embed=true}
+```diffstatic_runner {data-lang=kotlin requires="morse-smale" screenshot="assets/morse_smale/slider.png" alt="a persistence slider set to 0.05 above the leaf print with red ridge lines drawn over it, outlining the paper around the leaf and running down both sides of the frame, with critical points marked as dots and a caption reading 17 points, 31 curves" wait="4" capture="box" open-outputs="true" padding="20" trim="true" requires="morse-smale" name="morse-smale-slider" embed=true}
 import afield.geometry.topology.morsesmale.*
 
 val print = imgFromFile("public/docs/assets/vision/fline-viewer.jpg", 3).crop(78, 262, 128, 236).scaleBy(2.0)
@@ -185,7 +187,7 @@ share a node.
 
 This example walks the network around one saddle and prints the strongest persistence pairs:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/morse_smale/network.png" alt="a markdown output: the network summary line giving its node and curve counts, then a table of the four separatrices of one saddle, two running down to minima and two up to maxima, with each one's curve id, the id of the node it ends at, its persistence and its number of points, then a table of the four most persistent pairs of the persistence diagram" wait="2" capture="box" open-outputs="true" padding="20" requires="morse-smale" name="morse-smale-network" embed=true}
+```diffstatic_runner {data-lang=kotlin requires="morse-smale" screenshot="assets/morse_smale/network.png" alt="a markdown output: the network summary line giving its node and curve counts, then a table of the four separatrices of one saddle, two running down to minima and two up to maxima, with each one's curve id, the id of the node it ends at, its persistence and its number of points, then a table of the four most persistent pairs of the persistence diagram" wait="2" capture="box" open-outputs="true" padding="20" requires="morse-smale" name="morse-smale-network" embed=true}
 import afield.geometry.topology.morsesmale.*
 
 val bumps = [
@@ -253,7 +255,8 @@ The parts of a result:
 
 Ids are grid cells, so a critical point keeps its id across thresholds, and across recomputation
 of a changing field for as long as it stays on the same cell. A separatrix keeps its id for as long
-as both its ends survive. Animations and other objects can be keyed to them.
+as both its ends survive. Animations and other objects can be keyed to them. To follow a feature
+that moves to other cells from frame to frame, use [`FeatureTracker`](topology_tracking.md).
 
 ## Running it off the main thread
 

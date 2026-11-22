@@ -3,6 +3,9 @@ description: >
   Compare Kotlin right-hand sides compiled in an idle parent host with the deliberately wrong
   self-box call. The two-box example succeeds. The transcript checks that source hydration in
   the running owner is refused before replay; running the wrong box manually shows that refusal.
+docs:
+  - page: "functions_examples.md#rewrite-versus-rewritekotlin"
+    why: "The paired boxes demonstrate how to choose the Kotlin engine for a rewrite's right-hand side."
 operations:
   - create:
       box: fnrw_host

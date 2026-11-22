@@ -15,7 +15,8 @@ Scalar responses colour-map through the same [`Colormaps`](rectsl_examples.md) t
 And `Img` implements `ToHTML`, so evaluating one in a box shows the picture, not `Img@3f1a2b`.
 
 For learned estimates of depth and image content, see [depth and CLIP](onnx.md), which runs
-neural models over the same RGBA bytes an `Img` can produce.
+neural models over the same RGBA bytes an `Img` can produce. For body pose, hands and faces in a
+webcam or a film, [Computer vision in Python](python_cv.md) runs OpenCV and mediapipe in a Python box.
 
 ## The value type
 
@@ -217,6 +218,9 @@ pixels, barely the car at all. `cannyAuto()` finds 1952, and traces the whole si
 panel is those edges as 57 `FLine`s drawn back over the source.
 
 ![](assets/imaging_gallery/00-real-image.png)
+
+For a scanned drawing, where you want one curve down the middle of each stroke rather than the
+edges on either side of it, see [polyvector vectorization](polyvector.md).
 
 ## Corners
 

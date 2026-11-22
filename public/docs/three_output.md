@@ -1066,6 +1066,7 @@ value 0 puts it.
 geometry is drawn at, which **At rest** shows. The motion goes to the viewer as its own JSON, so the viewer
 plays the motion a clearance check walked; the track is plain numbers. From a page, `FieldViewer.motion` has
 `play()`, `at(t)`, `rest()`, `tracks()` and `status()`. A redraw keeps the timeline where it was.
+[Filming a Timeline](filming_a_timeline.md) films a box lid's declared swing to an MP4, one frame at a time.
 
 ## Redrawing a scene as it changes
 
@@ -1303,3 +1304,8 @@ saved output across a server restart. Older panels are evicted when that budget 
 - [Exact triangle coverage](afield_four_graphics.md#exact-triangle-coverage) computes the exact
   pixel area a triangle covers, beside a list of Field's other coverage code.
 
+## See also
+
+For complete examples that build the geometry before displaying it, see
+[A photograph, closed and mounted](chain_photo_to_solid.md) and
+[A RectSL animation as a solid](chain_rectsl_spacetime.md).

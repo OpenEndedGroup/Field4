@@ -819,15 +819,27 @@ that a sheet has begun to vibrate before it becomes visible as motion.
   colliders project particles out of shapes rather than resolving two-body contacts, so you can
   move a collider between frames but nothing the cloth touches is pushed back by it.
 - **`SimdVerletDyn4jBridge`** — the two of them talking.
+- **`afield.simulation.physics.pressure`** — a closed triangle mesh relaxed as a pressurized
+  membrane, with tethers and supports. [Pressure membranes](pressure_membranes.md) covers it.
+
+## Solve a material or flow field
+
+Use the optional Kratos worker when you want a field such as stress, temperature or velocity
+inside or around a shape.
+
+- [Structural playground](agent_transcripts.md#kratos_structural_playground) compares two element
+  orders under the same load on an L-bracket. [Into Kratos](tetgen.md#into-kratos) shows how to
+  prepare the volume mesh.
+- [Thermal playground](agent_transcripts.md#kratos_thermal_playground) lets you vary the shape and
+  conductivity and look at the resulting temperature field.
+- [Flow playground](agent_transcripts.md#kratos_flow_playground) integrates streamlines through
+  the solved flow around an obstacle and colours them by speed.
+- [Parameter study](agent_transcripts.md#kratos_parameter_study) runs repeated thermal solves and
+  compares the results on a heat map, with the chosen shape beside it.
 
 ## Where to look next
 
-- [Simulation, in the codebase reference](reference/simulation.md) — every public declaration in
-  this package, with the KDoc that sits beside it, on one browsable page. It is also where the two
-  neighbours this page does not cover live: Kratos, which solves structural and other physical problems with a different set of
-  numerical methods, and
-  [tetrahedral meshing](reference/simulation.md#tetgen-kt), which is what stands between a solid and
-  a solver that wants elements.
+- [Simulation reference](reference/simulation.md) lists the available solvers and their inputs.
 - [Frames and the Animation Loop](animation_time_model.md#a-physics-system-in-the-loop) — the same
   cloth as a moving picture, and the argument for a fixed `dt`. It also has the generator layer that
   `addPidPositionController` is written in.
@@ -835,6 +847,8 @@ that a sheet has begun to vibrate before it becomes visible as motion.
   starting point.
 - [FLine Examples](fline_examples.md) — `debugLines()` and `cloth.lines()` both return `FLine`s,
   so everything you can do to a line applies to them.
+- [Evolving Creatures](evolving_creatures.md) — bodies of points and springs simulated with
+  `SimdVerlet`, which a genetic algorithm breeds to swim on water or crawl along a floor.
 - [Visualizers & Controls](visualizers.md) and [Field's 3D Output](three_output.md) — where
   to send those lines other than `showPlane`.
 

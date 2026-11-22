@@ -1408,7 +1408,7 @@ controlGroup {
 
 The talk follows Bartosz Ciechanowski's [Cameras and Lenses](https://ciechanow.ski/cameras-and-lenses/), read for its order of ideas; every word and figure here was made in Field.
 
-See also: [Sound](explainer_sound.md), [Lights and Shadows](explainer_lights.md), the other two talks in this series, and [Presenting with Field](presentation_studio.md).
+See also: [Sound](explainer_sound.md), [Lights and Shadows](explainer_lights.md), the other two talks in this series, [Presenting with Field](presentation_studio.md), and [Aperture playground](aperture_playground.md), where defocus blur is a chain of GPU render passes you can edit.
 
 ## API reference
 

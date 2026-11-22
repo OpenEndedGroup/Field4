@@ -186,3 +186,99 @@ These pairs reach the same specific source files but don't link each other.
     | Drawing From Data pages within two links of its main page | 24 of 93 |
     | Links with a link back | 38% |
     | Pages last linked under 30 days / 30–60 days / over 60 days ago | 104 / 83 / 27 |
+
+## Follow-up on 2026-11-22
+
+The [Drawing From Data overview](../public/docs/drawing_from_data.md) leads with what a reader
+already has. It gives each of the existing navigation groups a place to start. The Tour links
+to [Where to Go Next](../public/docs/staging.md), and all 42 graphics pages are within two
+hand-written links of [Field 4 Graphics](../public/docs/afield_four_graphics.md).
+
+Two examples now carry work across systems.
+
+- [Watch a route change](../public/docs/mqtt.md#watch-a-route-change) publishes an editable
+  wiring state over MQTT. Datalog derives connectivity and its proof from the received
+  snapshot. `Datalog.replaceFacts` makes removals visible to recursive rules and keeps the
+  solved model when the same snapshot arrives again.
+- [Point at a face and find its source](../public/docs/chain_polytope_render.md#point-at-a-face-and-find-its-source)
+  uses a ray pick to highlight a complete Conway polygon and recover the seed element that
+  produced it. The example keeps that identity across different normal policies.
+
+[Run a rule in FieldML](../public/docs/reactive_properties.md#run-a-rule-in-fieldml)
+makes the connection with Kotlin reactive properties explicit. A Kotlin slider reruns a FieldML
+rule, whose published value reruns a Kotlin reader.
+
+MADP, ARDY/CLoSD and Kratos starting points now link to the sections that explain them. The
+landing precheck flags new pages without a link from an existing hand-written page. The
+default graph command also works with its code layer switched off.
+
+| Measure | Upstream `6d6af3a42` | Follow-up |
+| --- | ---: | ---: |
+| Orphans | 34 | 0 |
+| Dead ends | 24 | 0 |
+| Spokes | 52 | 52 |
+| Links with a link back | 458 of 1,140 (40%) | 580 of 1,305 (44%) |
+| Drawing From Data pages within two links of Patterns | 24 of 93 | 50 of 94 |
+| Drawing From Data pages within two links of the new overview | — | 76 of 94 |
+| Graphics pages within two links of Field 4 Graphics | 34 of 42 | 42 of 42 |
+
+The 34 upstream orphans are the updated baseline for this pass. The original audit above
+reported 32 at its earlier revision.
+
+The graph now resolves transcript `docs:` links that name a heading and follows links
+to individual starting points in the gallery. On the same November 22 tree, 42
+transcripts lack a guide link. The previous scan counted 129 because it compared
+the whole `page.md#heading` string with a filename.
+
+### Remaining work
+
+- Add second routes to remaining spokes when a reader has a reason to follow them.
+- Use the source drift table to choose examples to re-run. The source timestamp can reflect
+  an edit unrelated to the example, so look at the changed calls before recapturing.
+### What the API gaps meant
+
+- [Steam Audio scenes](../public/docs/steam_audio_scene.md) now has a runnable direct sound
+  comparison with editable screen geometry, listening clips and links to the reflection and
+  pathing experiments. The optional acceleration device wrappers are an implementation-level
+  topic.
+- [Adaptive modelling](../public/docs/field_probes.md#close-the-loop-on-a-distribution) now has
+  a CPU starting point with a measurable disturbance, delayed controls, and a matched baseline.
+  Its control loop is visible in the box, and the guide connects it to GPU probe read-back.
+- [RectSL](../public/docs/rectsl_conversation.md), [StackSL](../public/docs/stacksl_conversation.md)
+  and [Stack Auto](../public/docs/stackauto_conversation.md) already have worked studies,
+  editable starters and descriptions of the study tools. The report attributed coverage to
+  source files directly named or called by pages and transcripts. Most calls into the
+  revision, trace and variant machinery go through the box language and its tools. A
+  [shared Kotlin starting point](../public/docs/rectsl_conversation.md#check-a-local-edit-from-kotlin)
+  now exercises checked comparisons directly, including a candidate that changes protected pixels
+  in each language.
+
+
+### Transcript guides and example replay
+
+The 42 remaining transcripts now point to a walkthrough or the relevant section of an
+existing guide. The graph sees a guide link for all 384 transcripts. It also finds a page
+link back to each transcript, including the renderer-dependent replays and native
+integration checks that are listed in the gallery without a standalone document.
+
+The seven pages named in item 15 were rerun on the November 22 checkout.
+
+| Page | Verification |
+| --- | --- |
+| [Rewriting your own syntax](../public/docs/pattern_rewrite.md) | Ran `kotlin.pattern-rewrite.smoke`, `pattern_rewrite_worked_example` and `rewrite_strategies_demo`. |
+| [DoughDSP](../public/docs/dough_dsp_sound.md) | Ran all six plots and rendered their six offline takes. |
+| [Boolean network music](../public/docs/boolean_network_music_examples.md) | Ran the four piano-roll examples and rendered their four offline takes. |
+| [Learn from a shader on the GPU](../public/docs/gpu_shader_learning.md) | Built the pinned shaders and ran `GpuShaderTrainingSmoke` on the RTX 4090. Held-out linear RGB MSE fell from 0.350056 to 0.001852. The saved checkpoint reproduced the live output exactly in this run. The editable starter passed shader reload, resize, stop and relaunch checks. |
+| [Typography as geometry](../public/docs/typography_examples.md) | Ran all eight still captures and the eight-second kinetic typography clip. |
+| [How completions are ranked](../public/docs/completion_ranking.md) | Opened a live completion popup at `FLine().`, checked the ordering against the page, and reran the prior-score table. |
+| [A Drawn Score, Heard](../public/docs/chain_drawn_score.md) | Replayed the drawn score and both readings, then rendered the two audio takes and reran the pitch comparison. |
+
+Six more pages ran through the capture pipeline: [Mapper](../public/docs/mapper.md),
+[Contour trees](../public/docs/contour_trees.md), [Morse–Smale](../public/docs/morse_smale.md),
+[Principal curves](../public/docs/principal_curves.md), [Gaussian-process optimisation](../public/docs/gaussian_process_optimization.md),
+and [A Drawn Morph, Heard](../public/docs/chain_drawn_morph.md). Morse–Smale and Principal
+Curves now declare the native libraries their capture fences need. Both suites passed once
+those libraries were built.
+
+The source-drift table includes more pages after this pass. Review their actual calls
+before recapturing. A newer source file can contain unrelated edits.

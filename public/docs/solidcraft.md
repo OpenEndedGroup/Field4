@@ -107,7 +107,7 @@ for (i in 1..239) {
 }
 val tube = solidCraft("Trefoil") {
     val section = sketch(planeSquareTo(knot)) { circle(0.0, 0.0, 2.5) }
-    sweep(section, sketch("XY") { wire(knot, spacing = 0.5f) })
+    sweep(section, sketch("XY") { wire(knot) })
 }
 
 val sheet = solidCraft("Sheet") {
@@ -145,9 +145,8 @@ section about `cos 27°` of the drawn one all the way along.
 
 A sweep caps both ends, even when its path closes: where the knot returns to its start, the tube
 meets itself at a seam rather than fusing into a ring, and the facts read genus 0, not a torus's
-genus 1. For a plain ring, sweep two halves and `JOIN` the second; the join removes the caps where
-they touch. In the SolidCraft version Field pins, that join works on arc paths but fails on a
-knot's freeform halves.
+genus 1. For a ring, sweep two halves and `JOIN` the second; the join removes the caps where
+they touch, on arc paths and on a knot's freeform halves alike.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/solidcraft/sweep-profile.png" alt="three meshes with fact lines. Left, an 8 mm square swept square to a 60 mm path: extent 8 × 8 × 60, volume 3840. Middle, the same square with the path 27° off: a sheared prism, volume 3421, which is 3840 × cos 27°. Right, a ring of two joined half sweeps: watertight, genus 1." wait="4" capture="box" open-outputs="true" padding="20" requires="solidcraft" name="solidcraft-sweep-profile" embed=true}
 import afield.geometry.solid.solidcraft.SolidCraftOperation
@@ -232,7 +231,7 @@ showMeshGrid(
 )
 ```
 
-The thickened sheet is 2 deep, though its welded mesh still reports two open boundary loops. Drawing the second curve backwards pinches the patch to a point in the middle.
+The thickened sheet is a closed solid 2 deep. Drawing the second curve backwards pinches the patch to a point in the middle.
 
 Any SolidCraft feature the builder does not name — shell, draft, pattern, and the rest —
 can be added by its JSON fields with `feature("shell", JSONObject()...)`.
@@ -311,3 +310,7 @@ against half a second for the fillet itself.
   meshes rather than B-reps.
 - [Agent transcripts](agent_transcripts.md#solidcraft_intro) lists the SolidCraft starting points:
   `solidcraft_intro`, `chamfer_everything` and `fillet_everything`.
+
+## See also
+
+For explicitly unit-aware dimensions, see [Lengths in Millimetres and Inches](lengths.md).

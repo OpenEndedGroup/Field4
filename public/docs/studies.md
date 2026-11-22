@@ -324,6 +324,7 @@ StackSL, RectSL and stack.auto studies, so a result reads the same whichever pro
 Some results take longer than an edit: a checked mesh, an export, or an analysis that consumes
 another stage's output. [`StudyBuilds`](reference/workspace.md#studybuilds-kt-studybuilds) gives these operations a persistent attempt history and an
 explicit **Build** button. The editable source stays in its existing study.
+[Start a staged project](staged_projects.md) builds a whole game level from stages like these.
 
 For an existing `SourceStudy` named `design`, this small stage writes a report from the exact
 source it captured when the build started:

@@ -75,7 +75,8 @@ palette.
 
 ## Calling suspend functions with `go { }`
 
-Some Field APIs, including calls into embedded editors, are `suspend` functions: they wait for a
+Some Field APIs, including calls into embedded editors and the waits on a
+[terminal in a box](terminal.md#waiting-for-a-program), are `suspend` functions: they wait for a
 reply while the rest of Field keeps running. From ordinary box code, put these calls in `go { }`:
 
 ```diffstatic {data-lang=kotlin}
@@ -474,6 +475,14 @@ assign; use `@exported` to share a declaration you have already written.
 
 ---
 
+## Shared Kotlin types
+
+Use `sharedTypes(...)` when independently compiled boxes need the same class. A data class
+declared in one box's script is otherwise local to that script's compilation. In [Shared
+types](agent_transcripts.md#shared_types_demo), run the declaration box first, then the boxes
+that construct and destructure `shared.Particle`. The last pair passes a typed instance
+through `@rootExported`, so the receiving box can read it with the same type.
+
 ## Generated GLSL accessors: `moduleHere { }`
 
 A shader box's GLSL also decides what Kotlin you can write against it. `moduleHere { }` is a macro: at expansion it reads the box's vertex and fragment (or compute) shaders, writes typed Kotlin accessors into the preamble, then replaces itself with the real runtime builder. (The [Field 4 Graphics](afield_four_graphics.md) page covers using these from a user's point of view; here we show what is actually generated.)
@@ -506,6 +515,8 @@ fun ParamsByteSize(): Long = 464L
 fun HasBuffer.asParams(): Params = asStructure(Params(), ParamsLayoutMembers())
 ```
 
+To go the other way, from a Kotlin data class to the GLSL struct, use a [GPU schema](gpu_schema.md).
+
 `{{ stack.auto.name }}` slots in GLSL generate assignable StackSL properties on the module pointer (`var ModulePointer.name: String`); see [`stack.auto` in the StackSL examples](stacksl_examples.md).
 
 **Where the module's shaders come from.** `moduleHere { }` builds its module from the box's **shader-source properties** (`vertex`, `fragment`, prepared into `_vertex`/`_fragment`), **not** from assignments inside the lambda. If the box has no shaders yet, it seeds the defaults (a plain `in vec3 pos` vertex shader and a solid-colour fragment). To hand `moduleHere` a *non-default* shader from code, you must set the box's shader-source property **before** `moduleHere` expands, either by editing the box's shader tab or from code with `once.vertex { … }` / `once.fragment { … }`:
@@ -535,11 +546,6 @@ That ordering matters because macro expansion is not pure (see **Macros** above)
 fragment's macro can read state an earlier fragment set at runtime. Seeding a shader before
 `moduleHere` is the common case, and Field inserts that break for you; the DataFrame case below
 needs it written.
-
-??? aside "Agents: fragment ordering in launch groups"
-    A single Kotlin box launched through the transcript/multi-box path is also awaited fragment by
-    fragment; mixed-language launch groups do not promise the same first-frame ordering across
-    boxes.
 
 The preamble and setup blocks also re-run between fragments, so a fragment that *writes* to the box's preamble at runtime has published a real source declaration by the time the next fragment is compiled. That is how `DataFrame.typed("People")` makes typed columns survive into the second half of the same execution; see [DataFrames in a Box](dataframe.md#fragment-marker).
 
@@ -700,3 +706,8 @@ Field, over both the welcome page and code, and the welcome page says so.
 
 See also: [Feature Overview](funFeatures.md) (user-level `prop`/`connect`/`once`), [Field 4 Graphics](afield_four_graphics.md) (graphics API), [StackSL Examples](stacksl_examples.md) (`stack.auto`), [RectSL Examples](rectsl_examples.md), [Why Does This Value Resolve Here?](why.md) (which box a
 value came from), and the [Kotlin Overview](kotlin_overview.md).
+
+## See also
+
+A box can also run [FieldML expressions](fieldml_cheatsheet.md), including calls
+to Kotlin and Java through [FieldML's JVM bridge](fieldml_host_bridge.md).

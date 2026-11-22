@@ -1,6 +1,8 @@
 name: motion_tether_score
 description: >
   Walk, tether the left ankle for two seconds, release and continue. Requires optional CLoSD setup.
+docs:
+  - page: motion_recordings.md#write-a-movement-score
 operations:
   - create:
       box: motion_tether_score

@@ -7,7 +7,7 @@ operations:
   - create:
       box: "refusals"
       name: "Solid notation — refusals, and the hybrid build"
-      frame: { x: 80.0, y: 280.0, w: 380.0, h: 50.0 }
+      frame: { x: 1960.0, y: 80.0, w: 380.0, h: 50.0 }
       properties:
         "autorun": false
         "code": |
@@ -107,8 +107,8 @@ operations:
                   channel = "hybrid",
                   title = "exact where it can be, marched where it cannot",
                   caption =
-                      "${build.solid.triangleCount} triangles &middot; the plate and its four bores are exact CSG; " +
-                          "only the blended post was marched &middot; the whole thing is still one guaranteed-closed solid",
+                      "${build.solid.triangleCount} triangles · the plate and its four bores are exact CSG; " +
+                          "only the blended post was marched · the whole thing is still one guaranteed-closed solid",
                   view = MeshView(yawDegrees = 36.0, pitchDegrees = 22.0, width = 720, height = 470),
               )
               naive.close()
@@ -232,8 +232,8 @@ operations:
                   channel = "exact",
                   title = "B — Manifold's exact CSG",
                   caption =
-                      "${exact.triangleCount} triangles &middot; volume ${"%.5f".format(exact.volume)} &middot; " +
-                          "genus ${exact.genus} &middot; every boolean guaranteed to close",
+                      "${exact.triangleCount} triangles · volume ${"%.5f".format(exact.volume)} · " +
+                          "genus ${exact.genus} · every boolean guaranteed to close",
                   view = MeshView(yawDegrees = 34.0, pitchDegrees = 24.0, width = 700, height = 440),
               )
               showMesh(
@@ -241,8 +241,8 @@ operations:
                   channel = "marched",
                   title = "A — the same expression, marched from its distance field",
                   caption =
-                      "${marched.triangleCount} triangles &middot; volume " +
-                          "${"%.5f".format(marched.signedVolume())} &middot; the two disagree by " +
+                      "${marched.triangleCount} triangles · volume " +
+                          "${"%.5f".format(marched.signedVolume())} · the two disagree by " +
                           "${"%.3e".format(agreement.relativeVolumeError)} relative, and their surfaces are never " +
                           "more than ${"%.4f".format(agreement.deviation)} apart",
                   view = MeshView(yawDegrees = 34.0, pitchDegrees = 24.0, width = 700, height = 440),
@@ -252,7 +252,7 @@ operations:
   - create:
       box: "glsl_backend"
       name: "Solid notation — the same source as a GLSL raymarcher"
-      frame: { x: 80.0, y: 180.0, w: 380.0, h: 50.0 }
+      frame: { x: 1020.0, y: 80.0, w: 380.0, h: 50.0 }
       properties:
         "autorun": false
         "code": |

@@ -1631,6 +1631,8 @@ cells must be exact unit cubes, so a plane through them must cut 1 × 1 squares.
 that as a measured boolean, every slice's bounding box within 10⁻³ of 1 × 1. Only the cells the
 plane actually passes through are drawn, and `z = 1.2` rather than `1.5`, because `1.5` is exactly
 the boundary between two layers of cells and would slice them degenerately.
+The [3D Penrose tiling](debruijn_tilings.md#slices) can be sliced the same way, and every flat cut
+through it is a quasiperiodic tiling of the plane.
 
 **How face membership is decided** is the same problem as the 2D marcher's exact-iso corner.
 The obvious rule (a corner is on a face if it is within some tolerance of that face's plane) is wrong
@@ -1916,3 +1918,11 @@ Open questions and next builds:
 - **Saddles automatically.** [Sweep the level through the saddle](#sweep-the-level-through-the-saddle)
   finds the merge level by eye. The contour tree finds it exactly, and could place the iso values
   for `generateIsoContours`.
+
+## See also
+
+When the points move and their neighbours change, see [Graphs that change while you watch](dynamic_graph_systems_examples.md).
+
+For a path constrained to a grid, try [Knight tours and uncrossed paths](knight_tour_workshop.md).
+
+[Mapper graphs](mapper.md) summarize a point cloud as a network of overlapping clusters.
