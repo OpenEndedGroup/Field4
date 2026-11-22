@@ -42,8 +42,8 @@ the idea; they are not tuned density fits.
 
 Random pairing is enough to learn density. Recursive spatial matching (BSP) splits each minibatch
 into equal-mass halves along the widest combined axis, then pairs matching leaves. It preserves
-both empirical marginals and avoids an assignment cost matrix, though it only approximates optimal
-transport.
+both empirical marginals and avoids an assignment cost matrix, though it only approximates [optimal
+transport](optimal_transport.md).
 
 ![Letter C learned with random source-target pairing; trajectories turn extensively](assets/stipple_transport/image-random.png)
 

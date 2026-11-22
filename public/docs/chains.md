@@ -231,6 +231,8 @@ every box in the document does.
     **[charGrid](agent_transcripts.md#madp_chargrid).** A picture as a 40 × 25 grid of glyph
     numbers, rewritten once a tick. Reading the last tick is all Conway's Life needs, and a glyph
     can also be a note, so an arpeggio draws and plays at once.
+    [Shape-aware ASCII](ascii_shape.md#live-in-a-char-grid) fills one each tick from anything
+    drawn into an `Img`.
 
 -   ![A three-by-three grid of colour tiles: two rainbow parents, stripes and spokes, above seven mutated children, each with its program written under it](assets/agent_transcripts_gallery/madp_ga_lead.png)
 

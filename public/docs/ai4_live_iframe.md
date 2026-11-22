@@ -36,5 +36,8 @@ it does not change Chromium's normal web security. A page must be visible in the
 app for these AI4 tools to reach it. A screenshot pans the canvas to an output area that is
 offscreen.
 
+[ORCA](orca.md#gpt-jams-orca) is a larger example: AI4 plays a livecoding sequencer in a box's
+output, with these tools available beside ORCA's own.
+
 The tools come from [`exposeOutputIframeTools`](reference/ai4.md#outputiframeaitools-kt), in the
 [AI4 reference](reference/ai4.md).

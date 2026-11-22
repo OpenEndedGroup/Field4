@@ -442,6 +442,8 @@ unit time over steps 6000 to 10000, the same speed as in the window before to wi
 heading that turns by 0.2 rad or less in 4000 steps. Random sampling's gliders are slower on three
 of its four seeds, between 0.023 and 0.057. For comparison, the zoo's 39-particle Tarbosaurolop,
 started from the demo's own positions, glides at 0.125.
+[Braitenberg vehicles with memory](braitenberg_vehicles.md#10-a-larger-genome-does-evolution-beat-random-sampling)
+runs the same comparison on vehicle brains, with a hill climber as a third arm.
 
 The creature a seed assembles is sensitive to the rule itself. Rounding the evolved rule to the
 three places shown in the table changes which creature some of the seeds settle into, so the

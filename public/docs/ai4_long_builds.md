@@ -136,7 +136,7 @@ the document chat, a headless agent task. There the agent watches a build with
 either, since only a call the model makes itself can end its turn.
 
 See also: [Studies](studies.md), [AI features](aiFeatures.md),
-[Experimenting with AI4](ai4_experiments.md). The build tools and the wait are
+[Experimenting with AI4](ai4_experiments.md), [Start a staged project](staged_projects.md). The build tools and the wait are
 [`StudyBuildTools.kt`](reference/ai4.md#studybuildtools-kt) and
 [`StudyBuildAwaits.kt`](reference/ai4.md#studybuildawaits-kt) in the [AI4 reference](reference/ai4.md).
 

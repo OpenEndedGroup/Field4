@@ -213,3 +213,5 @@ scene skips them, and `degenerateCount` says how many.
   convergence and the two traversal backends.
 * [Particles, welded, and traced](chain_physics_render.md) is the same last two hops with a cloth
   simulation at the front instead of a polytope.
+* [A polytope, canonicalised, and sliced into layers](chain_ceres_manifold_contours.md) starts from
+  the same polytopes and cuts the solid into layers instead of tracing it.

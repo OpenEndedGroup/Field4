@@ -138,6 +138,8 @@ materials, so they also light the tubes and beads around them.
 
 * [Petri Nets](petri_nets.md), "Checking every possible order", for `stateSpace()`,
   `deadlockTrace()` and stubborn-set reduction.
+* [Petri notation cheatsheet](petri_cheatsheet.md) for the `petri { }` DSL and every state-space
+  query on one page, from `witness` and `invariant` to `bound` and `isLive`.
 * [Meshes & 3D Geometry](mesh_examples.md) for `tubeMesh` and `TriMesh`.
 * [Progressive Path Tracing](path_tracing.md) for the tracer and its materials.
 * [Three-Dimensional Life, Counted and Traced](chain_life3d_render.md) takes a cellular automaton

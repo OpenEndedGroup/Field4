@@ -206,7 +206,8 @@ showImgGrid(
 ```
 
 `from` takes any FLines, so a few rough strokes drawn on the canvas can be fitted onto a point cloud.
-Each subpath becomes one curve, and a closed subpath becomes a loop.
+Each subpath becomes one curve, and a closed subpath becomes a loop. To get those strokes from a
+scanned drawing, crossings included, trace it with [polyvector vectorization](polyvector.md).
 
 ## Stiffness, live
 

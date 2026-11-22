@@ -100,6 +100,22 @@ macro run nile_gezira_kernels
 
 [Open →](offline.html?file=assets/agent_transcripts/nile_gezira_kernels/metadata.edn)
 
+### nile_gezira_svg
+
+**SVG into Gezira, and the tiger.** `GeziraSvg` reads SVG path data, shapes, nested transforms and
+inherited paint into FLines, and `GeziraFLine` draws FLines with the Gezira kernels. One box reads a small hand-written SVG and draws it; the next
+draws the Ghostscript tiger through the Gezira kernels beside Skia's own SVG renderer and their
+difference times ten, with counts and stage timings; the third draws the tiger's FLines with Field's
+own renderer, and the last draws a few plain FLines through `GeziraFLine`.
+See [The SVG tiger](afield_four_graphics.md#the-svg-tiger).
+
+```diffstatic {data-lang=text}
+macro write nile_gezira_svg --file dev_docs/agents/transcripts/nile_gezira_svg.yaml
+macro run nile_gezira_svg
+```
+
+[Open →](offline.html?file=assets/agent_transcripts/nile_gezira_svg/metadata.edn)
+
 ### knight_tour_workshop
 
 **Knight tours, many ways of drawing a move.** Five connected CPU-only FLine boxes:
@@ -2900,6 +2916,15 @@ against the exact shape. Needs the optional openNURBS wrapper. See
 [Breps without meshes](rhino_files.md#breps-without-meshes).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/rhino_save_small/metadata.edn)
+
+### rhino_round_trip
+
+**A Rhino file written and read back, measured**: one box saves Breps, a trimmed plate, a SubD, a
+coloured mesh, a curve, a hatch and a block placed twice, reads them back and tabulates each
+object's triangles, area, volume and open edges against the exact shapes. Needs the optional
+openNURBS wrapper. See [Writing a file and reading it back](rhino_files.md#writing-a-file-and-reading-it-back).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/rhino_round_trip/metadata.edn)
 
 ### spinny_algebras
 

@@ -123,7 +123,7 @@ The three traces separate cleanly: one jagged, one softened, one quantized into 
 
 ## 1D stack: fit a graph to a target (differentiable)
 
-So far we have *built* stacks by hand. You can also let Field *fit* one for you. A `Functions.Fn` is an inspectable graph whose numeric leaves (frequencies, amplitudes, offsets) are tunable "genes". `fitBest(target, seed, ...)` — the differentiable cousin of the genetic `evolve(...)` — tunes those numbers by gradient descent (Adam) so the seed's curve slides onto a target signal.
+So far we have *built* stacks by hand. You can also let Field *fit* one for you. A `Functions.Fn` is an inspectable graph whose numeric leaves (frequencies, amplitudes, offsets) are tunable "genes". `fitBest(target, seed, ...)` — the differentiable cousin of the genetic `evolve(...)` — tunes those numbers by gradient descent (Adam) so the seed's curve slides onto a target signal. [Differentiating Functions](autodiff_examples.md#differentiating-an-fn-graph) shows where the exact gradient of an `Fn` comes from.
 
 Amplitude and offset are easy to fit. **Oscillator frequency is not.** The error surface in frequency is bumpy, full of local minima, so a single descent from a wrong frequency gets stuck. `fitBest` handles that by running several jittered restarts and keeping the best, which gives the search more chances to find the right basin. Here the target is a *product* of two oscillators and the seed starts with badly wrong frequencies:
 
@@ -975,7 +975,8 @@ You rarely need to memorise which builders exist. Type an infix operator and a s
 operands that fit. Because `through` (like `pipe` and `/`) declares its operand as
 `FnTransform`, every `FnTransform`-returning builder (`gain`, `delay`, `lowPass`, `mirror`, …)
 floats to the top of the completion list instead of being buried in the alphabetical tail of
-everything in scope.
+everything in scope. The rest of the order is described in
+[How completions are ranked](completion_ranking.md).
 
 The same help appears after `then `, which also wants a `FnTransform`, and it covers any
 transform builder you write yourself.

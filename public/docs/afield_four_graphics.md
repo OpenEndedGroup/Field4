@@ -41,7 +41,12 @@ keep interactive previews clean.
 
 ## Hello triangle, first attempt
 
-Start with the rite of passage for any new graphics system: getting a triangle on the screen. That needs one of everything: one shader module, one mesh to draw, one renderer and one window. `moduleHere { ... }` creates a shader module from the current box's shader properties. `Mesh()` creates draw data. `module += m named "my mesh"` attaches the mesh to the module, and `renderer += module` makes the module part of the window.
+Start with the rite of passage for any new graphics system: getting a triangle on the screen. That needs one of everything: one shader module, one mesh to draw, one renderer and one window. The code below makes each of these in turn:
+
+- `moduleHere { ... }` creates a shader module, one draw pipeline, from the `vertex` and `fragment` shader properties of the box it runs in. If the box has no shader of its own yet, `moduleHere` first fills both properties with a small working default (a vertex shader with a single `pos` input and a flat orange fragment shader), so the code compiles and draws something from the first run. You then edit those shaders in place.
+- `Mesh()` creates the draw data: vertex buffers whose names come from the vertex shader's inputs, plus an index buffer.
+- `module += m named "my mesh"` attaches the mesh to the module, so the module draws it.
+- `renderer += module` adds the module to the renderer, which draws it into the window every frame. `renderer` is already there because this box is connected beneath a renderer box.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/00-traditional-triangle.png" alt="a single right triangle filling most of a native render window against black, its right angle at the bottom right. The fill is interpolated from vertex colours: deep blue at the bottom left corner, teal along the bottom edge, and green at the apex top right" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-traditional-triangle" macro-file="../../dev_docs/agents/transcripts/afield_four_traditional_triangle.yaml" capture-box="agent_four_traditional_triangle"}
 // A module is one draw pipeline: this box's `vertex` and `fragment` shaders plus
@@ -582,6 +587,8 @@ and what the draw box puts in the window: 100,000 particles drawn straight from 
 
 To see it running, open the corpus document in the viewer above, or open [threebox](offline.html?file=assets/agent_transcripts/threebox/metadata.edn), the same renderer/compute/draw shape built as a runnable three-box scene.
 
+This compute shader reads the same input every frame. For particles whose velocity carries over from one frame to the next, see [GPU State](gpu_state.md), which keeps that state on the card.
+
 ### Pushing particles around a shape
 
 A compute pass like the one above can keep its particles off, onto or around a shape with
@@ -950,6 +957,8 @@ void main()
 Compare that with the texturing fragment shader: it is the same shader. From the consumer's side there is no difference between sampling a file loaded from disk and sampling the output of another box. Two boxes and one renamed property are the smallest complete statement of how `Field 4` composes.
 
 [threebox](offline.html?file=assets/agent_transcripts/threebox/metadata.edn) and [spin_glass](offline.html?file=assets/agent_transcripts/spin_glass/metadata.edn), from the [agent transcripts](agent_transcripts.md), are runnable versions of the same producer/consumer shape.
+[Shape-aware ASCII](ascii_shape.md#on-the-gpu-over-a-live-scene) chains two targets this way: a
+scene drawn offscreen, then a pass with one pixel per character cell that picks a glyph for each.
 
 ## Ping-pong render to texture
 
@@ -1178,6 +1187,9 @@ and what the last box draws:
 // The transcript builds window, 5. Bluring, 5. kernel and 5. draw blur from their sidecars and launches each.
 ```
 
+[Aperture playground](aperture_playground.md) builds on this chain: its render passes spread light
+into defocus through aperture-shaped filters, with every shader stage in a box of its own.
+
 ## Shader includes
 
 Shader properties are templated before they reach the compiler, and `{% property "name" %}` pulls in another property by name. `5. included` shares its attribute and push-constant declarations with a sibling box:
@@ -1275,7 +1287,7 @@ In the corpus this box also carries a `//%-` line, which is Field's execution br
 
 ## Generated push-constant blocks
 
-Templating gets more interesting when the substituted source is itself generated from a Kotlin type. `PushConstants<T>` reflects a Kotlin class into a GLSL push-constant declaration:
+Everything above runs in one direction: you write the GLSL, and Field generates the Kotlin interface to it from what the shader declares. Push-constant blocks can run the other way. You write a Kotlin class, and Field generates the GLSL. `PushConstants<T>` reflects a Kotlin class into a GLSL push-constant declaration:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/05c-push-constants.png" alt="one right triangle filling a black window in flat dark crimson, the same geometry as the templating figure with a different colour. The value arrives through a push-constant block GLSL never declared by hand, reflected out of a Kotlin class" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-push-constants" source-box="assets/canonical_graphics/42056e8d-ec8b-4bf8-b84a-1cd1d8524510" source-box-properties="vertex,fragment" source-box-wait="0.1"}
 class MyPC(
@@ -1326,6 +1338,8 @@ void main()
 ```
 
 `pc.glsl()` emits the block declaration; `{{ pc.dec }}` splices it in; `m.push.bindAll { pc }` binds the whole Kotlin object to it in one call rather than member by member; and `loadRegs()` plus the accessor `a()` are part of the generated preamble, which is why the shader reads `a()` rather than `pc.a`. `nextFreeOffset(16)` computes where a hand-written extra member can sit without colliding with the generated layout, the escape hatch for the case the generator does not cover.
+
+[GPU schemas](gpu_schema.md) take the same direction further: one annotated data class becomes a layout that can sit in push constants, a storage buffer, or any buffer a shader reaches through a pointer.
 
 ## Debugging: printf from a shader
 
@@ -1553,6 +1567,8 @@ The corpus box for this lesson (`7. slang — hello triangle`) is also the best-
 A second Slang lesson (`7b. slang — Texture`) is the same step again with a texture bound, and it makes the language-independence claim concrete: the Kotlin is the texturing code from earlier, unchanged, `prop<LoadedTexture>` and all, because the resource is matched by reflected name and the name survives the change of shader language.
 
 Slang requires `slangc` to be available. Field checks an explicit `AFIELD_SLANGC` or `-Dafield.slangc` override, then `PATH`, then the optional compiler prepared by `./gradlew buildLearnedShaders`. That task uses a pinned shared cache; live compilation itself does not download anything. See the [optional toolchain](learned_shader.md#optional-toolchain).
+
+Slang can also differentiate a shader. [Learn from a shader on the GPU](gpu_shader_learning.md) uses that to train a small network on what a `moduleHere()` shader renders, while you edit it.
 
 ## Diffusion-limited aggregation
 
@@ -2366,11 +2382,62 @@ into 2,220 pieces and the whole pipeline takes about 7 ms on the CPU. Against a 
 the kernels' coverage is off by 0.0016 on average (largest 0.017); Skia's is off by 0.032 on average
 and it draws 0.7 % less ink in total.
 
+### The SVG tiger
+
+`GeziraFLine.render` draws Field's own FLines with the kernels above, painted by the attributes
+every Field renderer reads: `color` (its alpha is the opacity), `filled`, `stroked` and
+`thickness`. FLine has no fill rule, so `GeziraFLine` adds one, `fillRule`, non-zero unless set.
+Each line is filled with the winding rasteriser under its rule, then stroked with
+`StrokeBezierPath`, then composited. Only `GeziraFLine` reads `fillRule`, so Field's own line
+renderer, under it here, fills the frame's hole:
+
+```diffstatic {data-lang=kotlin}
+frame.filled = true
+frame.fillRule = FillRule.EVEN_ODD
+ring.thickness = 6.0
+val r = GeziraFLine.render([disc, ring, frame, wave], 220, 130)
+```
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/gezira-fline-paint.png" capture="box" open-outputs="true" padding="20" trim="true" wait="4" timeout="180" embed=true name="gezira-fline-paint" macro-file="../../dev_docs/agents/transcripts/nile_gezira_svg.yaml" capture-box="gezira_fline_paint" alt="Four FLines drawn twice. Above, by the Gezira kernels on white: an orange disc with a dark brown ring, a translucent blue square frame with a square hole, and a crimson wave across the bottom. Below, larger, by Field's line renderer on black: the same, except the blue square is solid, since that renderer does not read fillRule."}
+// dev_docs/agents/transcripts/nile_gezira_svg.yaml, box "flines through gezira"
+```
+
+`GeziraSvg.parse` reads an SVG document into such FLines, in the document's units. It reads path
+data with every command (arcs become one cubic per quarter turn), rectangles, circles, ellipses,
+lines and polygons, and nested groups, whose `transform`s compose and whose `fill`, `stroke`,
+`stroke-width`, `fill-rule` and opacities are inherited, from attributes or `style`. An element
+with a fill and a stroke becomes two FLines, the fill first. `GeziraSvg.render` fits the document
+to a canvas and hands its FLines to `GeziraFLine.render`; `GeziraSvg.skia` hands the same text to
+Skia's own SVG renderer, for comparison:
+
+```diffstatic {data-lang=kotlin}
+val doc = GeziraSvg.parse(GeziraSvg.tiger())
+val r = GeziraSvg.render(doc, 300, 300)
+val skia = GeziraSvg.skia(GeziraSvg.tiger(), 300, 300)
+val diff = GeziraSvg.difference(r.canvas.rgba, skia, 10.0)
+```
+
+The Ghostscript tiger by the kernels, by Skia, and the difference between them times ten, white
+where they agree. The readout over it counts the elements and segments read, the Béziers into the
+rasteriser, the lines they flatten to and the spans out, and times each stage:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/gezira-svg-tiger.png" capture="box" open-outputs="true" padding="20" trim="true" wait="6" timeout="240" embed=true name="gezira-svg-tiger" macro-file="../../dev_docs/agents/transcripts/nile_gezira_svg.yaml" capture-box="gezira_svg_tiger" alt="Three 300 pixel tiger heads side by side, orange and black stripes, green eyes and an open pink mouth: the first rasterised by the Gezira kernels, the second by Skia, which look the same; the third is almost all white, with faint coloured outlines along edges and darker lines along the whiskers, where the two renderers differ most."}
+// dev_docs/agents/transcripts/nile_gezira_svg.yaml, box "tiger beside skia"
+```
+
+The two agree away from edges and differ most on the whiskers, strokes thinner than a pixel.
+`StrokeBezierPath` joins corners with a bevel, where SVG's default is a mitre.
+Gradients, `use`, clipping, masks and text are not read (`SvgDocument.skipped` counts what was
+passed over), and a group's `opacity` multiplies into each shape rather than compositing the group
+as one layer. The tiger is Ghostscript's `tiger.eps`, AGPL, as converted on
+[Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Ghostscript_Tiger.svg); the
+[SVG starting point](agent_transcripts.md#nile_gezira_svg) replays these boxes.
+
 Open the [starting point](agent_transcripts.md#nile_gezira_kernels) to edit the kernels. The
 method is from *[Pixels on a screen](https://whitebeard.blog/posts/pixels-on-a-screen/)*, a post
 on umgeni, a compiler for Nile that renders the SVG tiger from Gezira kernels; Field's kernels are
 written from that description. Round joins and caps, Gezira's other blend modes and image
-textures and the tiger itself are not implemented here, and only WindingSpans runs on the GPU.
+textures are not implemented here, and only WindingSpans runs on the GPU.
 
 ## Stopping the renderer
 
@@ -2419,6 +2486,7 @@ For experimental area lights, Vulkan ray-query shadows and optional RTXDI resamp
 - [Compute your ray-traced geometry](computed_ray_geometry.md): a compute shader writes the triangles the ray tracer sees.
 - [Ray Reconstruction](ray_reconstruction.md): denoising RTXDI samples into a stable image.
 - [Field Probes](field_probes.md): instrumenting shaders that have no `println`.
+- [CUDA Beside the Renderer](cuda.md): particles moved by a CUDA kernel in the renderer's own buffer, on Linux with an NVIDIA GPU.
 - [WebRTC Streams](webrtc.md): publishing a render as a live video stream, and sampling other streams as textures.
 - [Stereo RTT composite](stereo_rtt_composite.md): a small scene you can change while wearing a headset.
 

@@ -2074,6 +2074,10 @@ for ((i, style) in [SquircleStyle.Figma, SquircleStyle.Clothoid].withIndex()) {
 lines(drawn, w = 460.0, h = 160.0, fitToSize = true)
 ```
 
+[A drawn outline, repaired and offset](chain_squircle_offsets.md) turns two clothoid-cornered
+rectangles into distance fields, blends them into one shape, and steps inwards from its outline to
+make a pocketing toolpath.
+
 ## 2D transformations (geometry-aware)
 
 These transforms are for 2D shapes in the XY plane: rotate around a centre, reflect across a line, shear. They save writing a custom `transform { p -> ... }`.
@@ -3091,7 +3095,7 @@ This box only does something when you draw, so there is no picture of it here. R
 
 #### In a Vulkan scene
 
-`shell` is an ordinary filled `FLine`. To draw it in a Vulkan scene, turn it into triangles with `FLine.tessellate` (or `trianglesOut`, which writes them straight into vertex buffers) and give those to a `Mesh` with `primitiveType = triangles`, as in [Hello triangle, first attempt](afield_four_graphics.md#hello-triangle-first-attempt). The tessellation keeps holes, so the inside of an "o" stays empty. `SweptCircleEnvelopeTest` checks this on a ring-shaped stroke, whose triangles cover the ring's area and not its centre.
+`shell` is an ordinary filled `FLine`. To draw it in a Vulkan scene, turn it into triangles with `FLine.tessellate` (or `trianglesOut`, which writes them straight into vertex buffers) and give those to a `Mesh` with `primitiveType = triangles`, as in [Hello triangle, first attempt](afield_four_graphics.md#hello-triangle-first-attempt). The tessellation keeps holes, so the inside of an "o" stays empty. `SweptCircleEnvelopeTest` checks this on a ring-shaped stroke, whose triangles cover the ring's area and not its centre. For a filled shape whose curved edge stays smooth at any size, [Slug filled paths](slug_paths.md) draws the outline itself in the fragment shader instead of its triangles.
 
 This box sits beneath a renderer box and draws the "o" from the top of this section beside a "z" with its corners kept. Its `vertex` and `fragment` shaders are the pass-through pair from that first triangle, with the fragment shader returning `fcol` unchanged:
 
@@ -4763,6 +4767,10 @@ val hitPts = polylineFrom(hits.map { it.v2 }).apply {
 
 lines(circle, diag, hitPts, w = 420.0, h = 320.0, fitToSize = true)
 ```
+
+To intersect circles, lines and arcs as shapes rather than as drawn FLines, use
+`afield.geometry.euclid`. [Euclid's Elements](euclid_elements.md) builds Byrne's constructions from
+those intersections.
 
 ## Reference
 

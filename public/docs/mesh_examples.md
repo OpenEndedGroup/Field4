@@ -50,7 +50,8 @@ lathe), `tubeMesh` (a rotation-minimising sweep along a 3D path) and `heightfiel
 lambda form and an `Img.toHeightfieldMesh()` form, and that second one is the bridge from the
 [imaging family](imaging_examples.md) into this one. The two heightfields are the only panels here
 that are open surfaces rather than closed solids, so they report χ=1 instead of 2. A heightfield has
-a rim.
+a rim. [A photograph, closed and mounted](chain_photo_to_solid.md) drops that rim to a flat base
+with `Img.toReliefMesh`, which turns a depth map into a solid you can print.
 
 ![Five derived generators: an extruded concave L, a lathed goblet, a helical tube, a heightfield from a lambda, and a heightfield read out of an image — each headed with its call, triangle count, Euler characteristic and genus](assets/mesh_gallery/07-derived-generators.png)
 
@@ -203,6 +204,8 @@ against the distance to its own zero set, from **0.168** to **0.0094**. An exact
 almost unchanged. What is left over is the crossings' own error: they are linear interpolations
 along grid edges, so near a sharp corner the repaired value is right for the sampled outline, which
 sits within about half a cell of the true one.
+[A drawn outline, repaired and offset](chain_squircle_offsets.md) shows what the repair changes
+downstream, in the offset contours and pocketing toolpath of a smooth-min union.
 
 `upsampled(factor)` uses the same circles to refine a coarse exact grid without the function behind
 it. A fine point inside a coarse circle is at least `|d_j| − |p − x_j|` from the surface. The coarse

@@ -190,6 +190,9 @@ appears when you resume. Scaling a scene calls for scaling its aperture and expl
 focus distance too. This models a circular aperture; it does not simulate shutter
 motion blur, diffraction or a multi-element photographic lens.
 
+For defocus without tracing, [Aperture playground](aperture_playground.md) spreads light over
+aperture-shaped footprints in a chain of render passes you can edit.
+
 ## Loading glTF and GLB models
 
 ```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/path_tracing/gltf.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="glTF study converged" embed=true hidden=true timeout="240" name="path-tracing-gltf" alt="Textured Toy Car imported from GLB and path traced on a grey floor with hidden sunset environment lighting" macro-file="../../dev_docs/agents/transcripts/path_tracing_gltf.yaml" capture-box="path_trace_gltf"}

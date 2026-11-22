@@ -107,7 +107,7 @@ general.
 
 **There is no moving picture of the native window that an agent can take.** The backdoor's
 `record-window`, `record-editor` and `record-box` all record the *browser*, through the page, so a
-docs fence that asks for `capture="native-window"` together with `video=` is refused.
+[docs fence](diff-player.md#screenshot-runner) that asks for `capture="native-window"` together with `video=` is refused.
 
 A native-window recorder **does** exist: `Window.raiseAndRecord`, in `afield/tools/docs/doc.kt`, raises
 the GLFW window and records its rectangle with macOS `screencapture`. Its only caller is the

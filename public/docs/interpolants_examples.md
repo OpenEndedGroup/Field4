@@ -8,7 +8,9 @@ The examples draw each of these: `showSignals` plots values over time, while `FL
 in space.
 For recovering a hidden value from noisy measurements, see
 [State estimation](state_estimation_examples.md). To draw a value over time by
-hand rather than ease it from code, see [The keyframe editor](keyframe_editor.md).
+hand rather than ease it from code, see [The keyframe editor](keyframe_editor.md). When the
+target itself keeps moving, [springs and dampers](movement_examples.md) keep the motion smooth
+through every change.
 
 ## Interpolants: easing a value to a target
 
@@ -473,6 +475,8 @@ do better than a single step: see
 [blending two programs](keyframer_examples.md#blending-two-programs-not-just-two-numbers). A `Key` also knows how to `diff` against another
 and emit the `update { ... }` code that reproduces it, so a captured look is both
 a value you can interpolate *toward* and a snippet you can paste back into a box.
+A folder of saved keys can also be [swept overnight](keyframe_autosweep.md): the sweep renders
+blends of them that nobody has tried, and records which keys went into each.
 
 ## Correlations: drawing how two signals depend on each other
 

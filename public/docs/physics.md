@@ -819,6 +819,8 @@ that a sheet has begun to vibrate before it becomes visible as motion.
   colliders project particles out of shapes rather than resolving two-body contacts, so you can
   move a collider between frames but nothing the cloth touches is pushed back by it.
 - **`SimdVerletDyn4jBridge`** — the two of them talking.
+- **`afield.simulation.physics.pressure`** — a closed triangle mesh relaxed as a pressurized
+  membrane, with tethers and supports. [Pressure membranes](pressure_membranes.md) covers it.
 
 ## Where to look next
 
@@ -835,6 +837,8 @@ that a sheet has begun to vibrate before it becomes visible as motion.
   starting point.
 - [FLine Examples](fline_examples.md) — `debugLines()` and `cloth.lines()` both return `FLine`s,
   so everything you can do to a line applies to them.
+- [Evolving Creatures](evolving_creatures.md) — bodies of points and springs simulated with
+  `SimdVerlet`, which a genetic algorithm breeds to swim on water or crawl along a floor.
 - [Visualizers & Controls](visualizers.md) and [Field's 3D Output](three_output.md) — where
   to send those lines other than `showPlane`.
 

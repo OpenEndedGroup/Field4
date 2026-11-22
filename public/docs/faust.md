@@ -445,7 +445,9 @@ licence alongside). The same files run on every platform:
 | Windows (x86_64) | nothing |
 
 You do not need `faust` on your `PATH`, LLVM, a C++ toolchain or the `faust2*` scripts. A fresh
-clone can play a Faust box. The cost is the slower compiler described above.
+clone can play a Faust box. The cost is the slower compiler described above. The
+[FM-1 simulator](fm1.md) ships the same way: a groovebox's firmware, built as WebAssembly and run in
+the same runtime.
 
 !!! note "Not yet tried on Linux or Windows"
     The measurements above were taken on macOS (Apple silicon). On another platform, the smoke test

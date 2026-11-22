@@ -204,7 +204,8 @@ Source view work without it.
     `FIELD_NGX_DISABLE=1` disables the adapter for fallback testing.
 
 The next experiments are also Starting Points: [Ray Reconstruction](ray_reconstruction.md),
-[hardware optical flow](optical_flow.md), and [a learned shader function](learned_shader.md).
+[hardware optical flow](optical_flow.md), and [a learned shader function](learned_shader.md),
+which can also [be trained on the GPU from a live render](gpu_shader_learning.md).
 Each has its own input contract and availability check.
 
 For the complete editable pass graph—from `moduleHere()` and three render attachments to this adapter—continue with [From modules to reconstruction](reconstruction_plumbing.md) and its [reconstruction_plumbing](agent_transcripts.md#reconstruction_plumbing) Starting Point.
