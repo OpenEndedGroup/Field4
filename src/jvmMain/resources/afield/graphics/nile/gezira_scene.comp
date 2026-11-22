@@ -24,7 +24,7 @@ layout(local_size_x = 1024) in;
 #elif STAGE == 4
 layout(local_size_x = 256) in;
 #elif STAGE == 5
-layout(local_size_x = 64) in;
+layout(local_size_x = 128) in;
 #else
 layout(local_size_x = 64) in;
 #endif
@@ -206,7 +206,7 @@ void main() {
 #endif
 
 #if STAGE == 5
-#define T 64u
+#define T 128u
 shared vec4 edges[NE];
 shared int dirs[NE];
 shared float ys[NY];
@@ -217,7 +217,7 @@ shared uint nYs;
 shared int colLo;
 shared int colHi;
 #define MAX_RUNS 4096u
-#define MAX_ACTIVE 32u
+#define MAX_ACTIVE 16u
 shared uint touched[MAX_RUNS / 32u];
 
 float xAt(vec4 e, float y) {
