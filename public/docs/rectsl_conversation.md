@@ -1,4 +1,4 @@
-# Talking a scene into existence
+# Talking a RectSL scene into existence
 
 Describe an animation in AI4 chat. The model writes it as [RectSL](rectsl_cheatsheet.md), Field's
 language of animated rectangles, in a Field box, and a window plays the scene, looping, while you

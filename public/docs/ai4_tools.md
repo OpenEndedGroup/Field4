@@ -5,8 +5,10 @@ boxes, runs them, reads what they printed, looks at what they display, searches 
 and source. This page lists every tool Field gives a chat without any setup, and shows the
 common ones at work.
 
-The examples show real calls and their results, starting with an empty document. A model sends
-the same arguments and reads the same responses during a chat. Long strings and lists are
+The examples show real calls and their results, starting with an empty document. Each example is
+a pair of JSON blocks. The first holds the arguments the model sends when it calls the named tool;
+Field runs the tool and sends back the second, which the model reads before it decides what to do
+next. Neither appears in your chat as JSON: you see the boxes change and the model's reply. Long strings and lists are
 shortened here, and box IDs are shown as `<uid of Name>`.
 
 Your own tools join these when you register them; see
@@ -17,7 +19,8 @@ KDoc: start from [`Tools.kt`](reference/ai4.md#tools-kt) for the core set and
 
 ## Making and running boxes
 
-The model starts the way you would: it makes a box. This one exports a value for its children.
+The model starts the way you would: it makes a box, by calling `NewBoxRequest` with a name and
+the code. This one exports a value for its children.
 
 <!-- ai4-call NewBoxRequest -->
 ```diffstatic {data-lang=json}

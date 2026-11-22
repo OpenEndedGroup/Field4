@@ -109,7 +109,7 @@ fixes and wording changes, open **Changelog** on the Welcome screen.
 - Box code instrumentation has three modes. [Code that never returns](running_code.md#code-that-never-returns).
 
 <!-- changelog: aa2da87105..bf3dd896b5 -->
-### Drawing On from an iPad, alias-free saturation and virtual shadow maps
+### *Drawing On* from an iPad, alias-free saturation and virtual shadow maps
 
 *18 November 2026*
 
