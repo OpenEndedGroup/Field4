@@ -5129,15 +5129,15 @@
     },
     "assets/agent_transcripts/solidsl_gallery/metadata.edn": {
       "captureDigest": "dae71325c6de8386066240231aac1762db1b9a954d32608e4f55a847371d2fb6",
-      "capturedAt": "2026-11-22T16:08:10.797Z",
+      "capturedAt": "2026-11-22T16:24:06.918Z",
       "channels": 3,
       "file": "assets/web_publications/solidsl_gallery/document/metadata.edn",
       "files": {
         "assets/web_publications/solidsl_gallery/document/metadata.edn": "9b5d53fcf399f14ff74cabda670163de7f279a49a192f1816104470a4ba1dd61",
-        "assets/web_publications/solidsl_gallery/document/outputs.json": "33b04fe1451d9e32b2a7efeccedaa89a7db28de81fecd24fdbcc2b456f00c674",
-        "assets/web_publications/solidsl_gallery/outputs/0.html": "179184e5f4a5c601ad5e38d380a884f8d23973cf6f9be1f7f8eb0e51f40b6589",
-        "assets/web_publications/solidsl_gallery/outputs/1.html": "a066b4f254ab216698d1120afb87e629d7b43cd58a19765209422ab568431ede",
-        "assets/web_publications/solidsl_gallery/outputs/2.html": "ca61a16bbdbd82b26f33c8823b63f123049961652a7f995a5fba7b307375cfae"
+        "assets/web_publications/solidsl_gallery/document/outputs.json": "66ec3e6dfe10c3535a1c465e6f781bfbd63d4da5281dafa1b848ddfb8da748ab",
+        "assets/web_publications/solidsl_gallery/outputs/0.html": "39c71b2df2fb888e52ceb22ac9492da1c7445ae201f4d5a81974136cb8532d5c",
+        "assets/web_publications/solidsl_gallery/outputs/1.html": "1532a3f1bc56877f49a4ee6de26028d3ecb679e66392ef1f172c00cea0837037",
+        "assets/web_publications/solidsl_gallery/outputs/2.html": "fcd64bf566d205eb9eb2f3832f6ed71e0bd8d3047217f03ba37239342205804e"
       },
       "kinds": [
         "three"
@@ -5145,11 +5145,11 @@
       "outputs": "assets/web_publications/solidsl_gallery/document/outputs.json",
       "sources": {
         "dev_docs/agents/transcripts/solidsl_gallery.yaml": "c395acb4b98bc03b319382fce950505ca6bd664db7611f90035568be0165761e",
-        "public/docs/assets/agent_transcripts/solidsl_gallery/cross_check_code_.kt": "fdc228528ed9adb06237312d6e7b2b26d8f8596e268202f558518c1d8b58150d",
+        "public/docs/assets/agent_transcripts/solidsl_gallery/cross_check_code_.kt": "8132550ecc3726f62e8e150ed3223cb003acf43a57d9a6649f9346ef5425acce",
         "public/docs/assets/agent_transcripts/solidsl_gallery/glsl_backend_code_.kt": "55fbd4d0850acfd4710ce4bdae0501b31cb2648f74cbb37c3f8390a0cecd3e4a",
         "public/docs/assets/agent_transcripts/solidsl_gallery/guides/solid_notation.md": "92fa8d6194636aea07639219933820367b5f844513507c479c75f0ff42ff1e6b",
-        "public/docs/assets/agent_transcripts/solidsl_gallery/metadata.edn": "2d4fbbfecd666dcc7335625e6f25197271513d2ac4c4a405d525aa432ae1bd1d",
-        "public/docs/assets/agent_transcripts/solidsl_gallery/refusals_code_.kt": "80dc2ea314da78ef80ed1c649ecf0c3fe21be02e27fdaa6b57cde9af8286dbfb"
+        "public/docs/assets/agent_transcripts/solidsl_gallery/metadata.edn": "93ab632e9992f17394b2c40ce7df55e2370afbb1faeb97363e8fefd2b7eb8d85",
+        "public/docs/assets/agent_transcripts/solidsl_gallery/refusals_code_.kt": "285c4ee14731f6a751581e6303a5ed885d8e5d5761e2c8bea9ffaae009ae9f35"
       }
     },
     "assets/agent_transcripts/solidsl_inverse/metadata.edn": {
