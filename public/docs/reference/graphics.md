@@ -9870,7 +9870,7 @@ A premultiplied RGBA image that [`GeziraComposite.compositeOver`](graphics.md#ge
 
 `src/jvmMain/kotlin/afield/graphics/nile/Nile.kt` — [read the source](source/jvmMain/afield/graphics/nile/Nile/)
 
-**Used in:** [Talking a scene into existence](../rectsl_conversation.md)
+**Used in:** [Talking a RectSL scene into existence](../rectsl_conversation.md)
 
 ### Top-level functions { #nile-kt-functions }
 

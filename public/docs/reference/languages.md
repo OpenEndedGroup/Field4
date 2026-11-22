@@ -8021,7 +8021,7 @@ with its document as the scope.
 
 `src/jvmMain/kotlin/afield/lang/rectsl/study/RectSLStudyTools.kt` — [read the source](source/jvmMain/afield/lang/rectsl/study/RectSLStudyTools/)
 
-**Used in:** [Talking a scene into existence](../rectsl_conversation.md)
+**Used in:** [Talking a RectSL scene into existence](../rectsl_conversation.md)
 
 ### Top-level functions { #rectslstudytools-kt-functions }
 
