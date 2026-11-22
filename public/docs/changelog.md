@@ -16,6 +16,10 @@ fixes and wording changes, open **Changelog** on the Welcome screen.
 - **Fill rules** for the stream-kernel rasteriser, and FLines filled and stroked into a GPU
   buffer. [Overlaps and fill rules](afield_four_graphics.md#overlaps-and-fill-rules),
   [An outline filled into a buffer](visualizers.md#an-outline-filled-into-a-buffer).
+  `Gezira.rasterizer` is now the winding rasteriser, and Gezira's own edge-sample pipeline is
+  `Gezira.edgeSampleRasterizer`: a box that calls
+  `Gezira.rasterizer.trace(...).get("DecomposeBeziers")` (or reads `EdgeSamples` or
+  `CombineEdgeSamples`) must switch to `Gezira.edgeSampleRasterizer`.
 - **Interaction nets** reduce a λ-term as a video, one reaction at a time, and numeric programs
   are written with a small Kotlin DSL. [Reducing a λ-term](interaction_nets_examples.md#reducing-a-term-end-to-end).
 

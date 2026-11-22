@@ -2170,11 +2170,16 @@ Field computes pixel coverage in several places, and they answer different quest
   front to back, on the CPU or as a compute shader). Both project splats with `SplatRaster.project`.
 - **A filled curved `FLine` on the GPU:** [Slug filled paths](slug_paths.md), analytic curve
   coverage evaluated in the fragment shader.
-- **A filled or stroked `FLine` as exact coverage on the CPU, under non-zero or even-odd, however
-  it overlaps itself:** `Gezira.rasterizer` in
-  [Rasterising with stream kernels](#stream-kernels), `afield.graphics.nile`, written as editable
-  stream kernels. `BufferCanvas.fill` and `stroke` put the same coverage into a buffer a shader
-  reads ([An outline filled into a buffer](visualizers.md#an-outline-filled-into-a-buffer)).
+- **A filled or stroked `FLine` in a GPU buffer, as a mask or field a shader reads:**
+  `BufferCanvas.fill(line, value, rule)` and `BufferCanvas.stroke(line, width, value)` write exact
+  area coverage into the buffer, under non-zero or even-odd, however the outline overlaps itself
+  ([An outline filled into a buffer](visualizers.md#an-outline-filled-into-a-buffer)).
+- **The same coverage as numbers or spans on the CPU, with every stage editable:**
+  `Gezira.rasterize(beziers, w, h, rule)` and the `Gezira.rasterizer` kernels in
+  [Rasterising with stream kernels](#stream-kernels) (`afield.graphics.nile`), which
+  `BufferCanvas.fill` and `stroke` run underneath. Gezira's original edge-sample pipeline is
+  `Gezira.edgeSampleRasterizer`; it is exact only where one outline crosses a pixel
+  ([Overlaps and fill rules](#overlaps-and-fill-rules)).
 
 ## Rasterising with stream kernels { #stream-kernels }
 
@@ -2228,11 +2233,11 @@ On a circle the largest difference is 0.19 at one edge pixel, the mean 0.008.
 Gezira's five stages are exact only while one outline crosses each pixel. CombineEdgeSamples adds
 up signed edge areas, so in a pixel that two outlines cross (two shapes, or two parts of one outline
 that crosses itself) it adds both partial coverages and counts their overlap twice. Against a
-64 × 64 non-zero supersample of a star overlapping a circle, the pixels one outline crosses agree to
-0.0025; in the 17 pixels both cross, the edge samples are up to 0.31 too high. A sum of areas also
+64 × 64 non-zero supersample of a star overlapping a circle, the edge samples are up to 0.31 too
+high, in the few pixels both outlines cross; the mean over all 560 covered pixels is 0.003. A sum of areas also
 has no way to say which overlaps are holes, so there is no even-odd rule.
 
-`Gezira.rasterizer` is a different set of four kernels that does both. FlattenBeziers cuts each curve
+`Gezira.rasterizer` is a different pipeline of four stages that does both. FlattenBeziers cuts each curve
 in half, pushing both halves back, until it lies within 1/10,000 of a pixel of its chord.
 RowEdges cuts the lines at every pixel row, the pieces are sorted by row, and WindingSpans resolves
 one row at a time: it cuts the row into bands at every line end and every place two lines cross, so
