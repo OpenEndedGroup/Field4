@@ -138,13 +138,13 @@ Console-oriented examples for the Boolean-network stdlib.
 
 ### BoxCodeCompileGuard { #boxcodecompileguard-kt-boxcodecompileguard }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">BoxCodeCompileGuard</span></code>](source/jvmMain/afield/examples/BoxCodeCompileGuard/#L23)
+[<code class="highlight"><span class="k">object</span> <span class="nc">BoxCodeCompileGuard</span></code>](source/jvmMain/afield/examples/BoxCodeCompileGuard/#L28)
 
 The landing guard that box code still compiles: each named transcript goes down the path [`DemoTranscriptExecSmokeTest`](examples.md#demotranscriptexecsmoketest-kt-demotranscriptexecsmoketest) classifies it for. COMPILE_ONLY transcripts (the ones that would open a window) build their graph and compile with evaluation skipped; EXECUTE transcripts are headless-safe and run, because a later box may need what an earlier one defines when evaluated; KOTLINJS transcripts compile through the Kotlin/JS path.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="boxcodecompileguard-kt--boxcodecompileguard--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/BoxCodeCompileGuard/#L25) |  |
+| <a id="boxcodecompileguard-kt--boxcodecompileguard--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/BoxCodeCompileGuard/#L42) |  |
 
 ## BoxCodeFormat.kt { #boxcodeformat-kt }
 
