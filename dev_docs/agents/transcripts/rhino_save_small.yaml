@@ -6,6 +6,9 @@ description: >
   other measures each tessellation's area against the analytic shape. Needs the optional openNURBS
   wrapper (./gradlew buildOpenNurbsNative); without it each box says how to build it. Docs page:
   public/docs/rhino_files.md.
+docs:
+  - page: "rhino_files.md#breps-without-meshes"
+    why: "The two boxes compare saved render meshes, rebuilt meshes and exact face areas."
 operations:
   - create:
       box: rhino_save_small_draw

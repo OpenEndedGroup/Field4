@@ -41,6 +41,9 @@ keep interactive previews clean.
 
 ## Hello triangle, first attempt
 
+The [triangle replay](agent_transcripts.md#afield_four_traditional_triangle) creates the draw
+box. Connect it under a running renderer before you run its code.
+
 Start with the rite of passage for any new graphics system: getting a triangle on the screen. That needs one of everything: one shader module, one mesh to draw, one renderer and one window. `moduleHere { ... }` creates a shader module from the current box's shader properties. `Mesh()` creates draw data. `module += m named "my mesh"` attaches the mesh to the module, and `renderer += module` makes the module part of the window.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/00-traditional-triangle.png" alt="a single right triangle filling most of a native render window against black, its right angle at the bottom right. The fill is interpolated from vertex colours: deep blue at the bottom left corner, teal along the bottom edge, and green at the apex top right" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-traditional-triangle" macro-file="../../dev_docs/agents/transcripts/afield_four_traditional_triangle.yaml" capture-box="agent_four_traditional_triangle"}
@@ -1437,6 +1440,27 @@ void main()
 A second probe lesson (`6b. debugging / mapping - Texture probe example`) goes further and warps the sampled distribution before display (`AdaptiveQuantileWarp` and `QuantileWarpConfig`). Reach for that when the interesting variation is buried in a narrow part of the range and a linear readout flattens it.
 
 In the Vulkan window the 100 quads stack along z, so from the camera they land on top of one another and look like one. Everything this example is for is in the box's output area.
+
+## Multi-pass starting points
+
+Open [Bloom across several resolutions](agent_transcripts.md#four_pass_chain) and follow the
+image from the half- and quarter-resolution targets through the two aperture blurs to the
+composite. The [variable-width stroke replay](agent_transcripts.md#variable_width_strokes_gpu)
+uses an existing renderer to draw paths with width specified along the stroke.
+
+[Fluid and jump-flood simulations](agent_transcripts.md#four_simulation_chain) use
+the same pass-chain API for a fluid with state that survives each frame and a distance field
+that is rebuilt when the shape moves.
+
+The [raster summary pyramid](agent_transcripts.md#four_summary_pyramid) replaces colour with
+mergeable moment sums. The [Morton quadtree](agent_transcripts.md#four_morton_quadtree) feeds
+the same reduction from sorted points. Compare the centroid and covariance ellipse of a tile
+in each document to see what carries across the two representations.
+
+The [texture wall transcript](agent_transcripts.md#mega_texture_wall) uses feedback in the
+opposite direction. The shader estimates the mip level it needs on screen, and the CPU uses
+that demand to decide which tiles to load. Connect the wall to a renderer and point it at
+your own image directory.
 
 ## Streaming a target over the network
 

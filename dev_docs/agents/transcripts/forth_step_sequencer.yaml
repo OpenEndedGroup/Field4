@@ -6,6 +6,9 @@ description: >
   a bass line played through a synth word, a chime walking a chord with iter/index over a
   bass line drawn by wchoose, a drum grid from the pinned Dirt-Samples, and a launched grid that
   plays each step through the audio engine as it comes due. Run the others; launch the live one and stop it.
+docs:
+  - page: "forth_examples.md#each-step-is-a-program"
+    why: "The step cells are Forth programs that write notes, set controls and extend the dictionary."
 operations:
   - create:
       box: forth_steps_root

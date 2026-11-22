@@ -5,6 +5,9 @@ description: >
   RepoSearchRequest, RepoPatchFileRequest and RepoWriteFileRequest on it directly, with no model, then shows
   what the scope refuses: a path outside the readable list, `..`, a symbolic link out of the root, and a
   generated file. Needs no API key. Design and the live runs: dev_docs/ai/IN_FIELD_AGENT_HARNESS.md.
+docs:
+  - page: "ai4_tools.md#working-on-fields-own-repository"
+    why: "The toy checkout lets you run the same search, patch and read operations in a disposable repository."
 operations:
   - create:
       box: "ai4-repo-tools-scope"

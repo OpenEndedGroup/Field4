@@ -12,6 +12,9 @@ description: >
   its code hands that module and a cloud to `SplatShader`, with the demo's turn, size, splat size,
   trail and fade controls; the gravity well starts with its trail on. Launching a box replaces
   the cloud showing. Requires a GPU/Vulkan window; capture it with `native-screenshot <path> --uid splat_renderer`.
+docs:
+  - page: "chains.md#studio-tools-from-madp"
+    why: "Edit a compute tab to change splat positions, scales, rotations and colours before drawing."
 operations:
   - create:
       box: splat_renderer

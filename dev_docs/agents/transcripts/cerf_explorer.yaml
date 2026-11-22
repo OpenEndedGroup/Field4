@@ -5,6 +5,9 @@ description: >
   Gray–Scott run whose diagram grows as it goes, and a recorded 4,800-step spot-splitting run, with over a hundred births, with a slider that scrubs a time
   cursor and lights up the critical points on the field. Needs the optional Morse–Smale library:
   ./gradlew buildMorseSmaleNative.
+docs:
+  - page: "topology_tracking.md#cerf-diagrams-when-the-topology-changes"
+    why: "Track the birth and cancellation of critical points in a changing field."
 operations:
   - create:
       box: cerf_live

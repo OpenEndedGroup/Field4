@@ -235,7 +235,6 @@ the whole `page.md#heading` string with a filename.
 - Add second routes to remaining spokes when a reader has a reason to follow them.
 - Use the source drift table to choose examples to re-run. The source timestamp can reflect
   an edit unrelated to the example, so look at the changed calls before recapturing.
-- Connect remaining transcripts to the sections that teach them as the examples are reviewed.
 ### What the API gaps meant
 
 - [Steam Audio scenes](../public/docs/steam_audio_scene.md) now has a runnable direct sound
@@ -253,3 +252,33 @@ the whole `page.md#heading` string with a filename.
   [shared Kotlin starting point](../public/docs/rectsl_conversation.md#check-a-local-edit-from-kotlin)
   now exercises checked comparisons directly, including a candidate that changes protected pixels
   in each language.
+
+
+### Transcript guides and example replay
+
+The 42 remaining transcripts now point to a walkthrough or the relevant section of an
+existing guide. The graph sees a guide link for all 384 transcripts. It also finds a page
+link back to each transcript, including the renderer-dependent replays and native
+integration checks that are listed in the gallery without a standalone document.
+
+The seven pages named in item 15 were rerun on the November 22 checkout.
+
+| Page | Verification |
+| --- | --- |
+| [Rewriting your own syntax](../public/docs/pattern_rewrite.md) | Ran `kotlin.pattern-rewrite.smoke`, `pattern_rewrite_worked_example` and `rewrite_strategies_demo`. |
+| [DoughDSP](../public/docs/dough_dsp_sound.md) | Ran all six plots and rendered their six offline takes. |
+| [Boolean network music](../public/docs/boolean_network_music_examples.md) | Ran the four piano-roll examples and rendered their four offline takes. |
+| [Learn from a shader on the GPU](../public/docs/gpu_shader_learning.md) | Built the pinned shaders and ran `GpuShaderTrainingSmoke` on the RTX 4090. Held-out linear RGB MSE fell from 0.350056 to 0.001852. The saved checkpoint reproduced the live output exactly in this run. The editable starter passed shader reload, resize, stop and relaunch checks. |
+| [Typography as geometry](../public/docs/typography_examples.md) | Ran all eight still captures and the eight-second kinetic typography clip. |
+| [How completions are ranked](../public/docs/completion_ranking.md) | Opened a live completion popup at `FLine().`, checked the ordering against the page, and reran the prior-score table. |
+| [A Drawn Score, Heard](../public/docs/chain_drawn_score.md) | Replayed the drawn score and both readings, then rendered the two audio takes and reran the pitch comparison. |
+
+Six more pages ran through the capture pipeline: [Mapper](../public/docs/mapper.md),
+[Contour trees](../public/docs/contour_trees.md), [Morse–Smale](../public/docs/morse_smale.md),
+[Principal curves](../public/docs/principal_curves.md), [Gaussian-process optimisation](../public/docs/gaussian_process_optimization.md),
+and [A Drawn Morph, Heard](../public/docs/chain_drawn_morph.md). Morse–Smale and Principal
+Curves now declare the native libraries their capture fences need. Both suites passed once
+those libraries were built.
+
+The source-drift table includes more pages after this pass. Review their actual calls
+before recapturing. A newer source file can contain unrelated edits.
