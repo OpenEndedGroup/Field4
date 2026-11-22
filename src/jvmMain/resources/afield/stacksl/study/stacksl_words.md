@@ -43,7 +43,7 @@ p 4 * phacelle palette saturate
 
 ## Complex arithmetic and rotation weights
 
-Start a program with `@types` to use compile-time types. This program reads the input's first two lanes as a complex number and squares it.
+Start a program with `@types` to use compile-time types. A complex value has **rotation weight** \(k\) if rotating the inputs by an angle \(\theta\) multiplies that value by \(e^{ik\theta}\). This program reads the first two input lanes as a weight-1 complex number and squares it.
 
 ```stacksl
 @types
