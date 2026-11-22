@@ -46,7 +46,7 @@ layout(push_constant) uniform Push {
     uint height;
     uint segCap;
     uint bandCap;
-    uint debug;     // timing experiments: 1 skips the band walk, 2 the area adds, 4 the boundaries, 8 the blend
+    uint debug;     // 16 holds the picture (every stage returns at once); timing experiments: 1 skips the band walk, 2 the area adds, 4 the boundaries, 8 the blend
 } pc;
 
 vec2 xf(vec2 p) { return vec2(pc.m0.x * p.x + pc.m0.z * p.y + pc.m1.x, pc.m0.y * p.x + pc.m0.w * p.y + pc.m1.y); }
@@ -63,6 +63,7 @@ void curve(uint i, out vec2 a, out vec2 b, out vec2 c, out vec2 d) {
 
 #if STAGE == 1
 void main() {
+    if ((pc.debug & 16u) != 0u) return;
     uint i = gl_GlobalInvocationID.x;
     if (i >= pc.curveCount) return;
     vec2 a, b, c, d;
@@ -82,6 +83,7 @@ void main() {
 #if STAGE == 2
 shared uint partial[1024];
 void main() {
+    if ((pc.debug & 16u) != 0u) return;
     uint t = gl_LocalInvocationID.x;
     uint per = (pc.curveCount + 1023u) / 1024u;
     uint s0 = t * per;
@@ -108,6 +110,7 @@ void main() {
 
 #if STAGE == 3
 void main() {
+    if ((pc.debug & 16u) != 0u) return;
     uint i = gl_GlobalInvocationID.x;
     if (i >= pc.curveCount) return;
     uint first = pc.offsets.v[i];
@@ -139,6 +142,7 @@ shared uint carryShape;
 shared uint entries;
 shared uint runs;
 void main() {
+    if ((pc.debug & 16u) != 0u) return;
     uint band = gl_WorkGroupID.x;
     uint t = gl_LocalInvocationID.x;
     float lo = float(band * BAND);
@@ -282,6 +286,7 @@ void addTrapezoid(float la, float lb, float ra, float rb, float h, int w) {
 }
 
 void main() {
+    if ((pc.debug & 16u) != 0u) return;
     uint row = gl_WorkGroupID.x;
     uint t = gl_LocalInvocationID.x;
     if (row >= pc.height) return;

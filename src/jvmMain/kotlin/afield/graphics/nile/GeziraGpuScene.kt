@@ -146,6 +146,15 @@ class GeziraGpuScene(
     /** The picture read back. Call once the probe has settled on [image]. */
     fun read(): FloatArray = probe.read(image, width * height * 4)
 
+    /**
+     * While true the pipeline does nothing, so [image] holds still: a box whose renderer runs on its
+     * own thread sets this, lets a couple of frames pass and then [read]s, or the next frame could
+     * be rewriting rows under the readback.
+     */
+    var hold: Boolean
+        get() = (debug and 16) != 0
+        set(v) { debug = if (v) debug or 16 else debug and 16.inv() }
+
     /** Timing experiments only: bits that skip parts of the resolve stage (see `gezira_scene.comp`). 0 draws. */
     @Volatile var debug: Int = 0
 

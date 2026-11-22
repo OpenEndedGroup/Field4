@@ -150,7 +150,11 @@ operations:
                   // a written image is not a finished chain: let all five stages run whole
                   while (probe.stageList.any { !it.valid }) frame()
                   repeat(4) { frame() }
+                  // the renderer runs on its own thread: hold the picture still before reading it
+                  scene.hold = true
+                  repeat(3) { frame() }
                   val gpu = scene.read()
+                  scene.hold = false
                   val cpuStart = System.nanoTime()
                   val cpu = GeziraSvg.render(doc, n, n).canvas.rgba
                   val cpuMs = (System.nanoTime() - cpuStart) / 1e6
