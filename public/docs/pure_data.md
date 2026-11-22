@@ -378,6 +378,8 @@ ui.pause(600)
 ```
 
 
+To start from a working pair, press ++cmd+t++ and insert the `pd-patch` [template](templates.md#templates-that-come-with-field): a Pd root and a filtered saw drone. Launch the drone, then run its `freq 330` line on its own.
+
 ### Sending to a Pd box from Kotlin
 
 A Kotlin box can reach the patch a Pd box is playing. `pdBox` finds the box by name, and `pdSend`

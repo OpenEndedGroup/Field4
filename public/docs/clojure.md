@@ -21,6 +21,8 @@ childed to it from then on runs as Clojure. This works the same way it does for
 
 The setting is saved with the document, so the arrangement survives a reload.
 
+To start from a working pair, press ++cmd+t++ and insert the `clojure-cell` [template](templates.md#templates-that-come-with-field): a Clojure root and one Clojure box with a slider.
+
 ## Output lands beside the form that made it
 
 The block below is a Clojure box's `code`, and the picture under it is that box's editor.

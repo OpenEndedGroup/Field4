@@ -185,6 +185,8 @@ notation.onChange { edit -> println("${edit.added.size} added, ${edit.removed.si
 
 A handler runs once the stroke is finished, not while it is being drawn. Running the box again replaces its handlers, and stopping the box removes them. Changes a box makes itself do not call it back.
 
+The `drawing-listener` [template](templates.md#templates-that-come-with-field) (++cmd+t++) is a box with an `onStroke` handler ready to edit.
+
 ## A long tradition
 
 Artists and composers spent much of the twentieth century pulling notation apart, and most of what they found is useful here.

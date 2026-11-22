@@ -32,6 +32,8 @@ loop {
 
 Time is whatever unit your loop counts in; the editor labels it in seconds. Values are not limited to 0 to 1: drag a key above or below and the graph makes room.
 
+The `keyframe-lane` [template](templates.md#templates-that-come-with-field) (++cmd+t++) is a curve like this one, played on a four-second loop into a meter and published as `lane` to the boxes under it.
+
 ## Editing the curve
 
 Double-click empty graph to add a key. Drag a key to move it in time and value at once. Right-click a key for its menu: its exact time and value, its type, copy and paste, lock and delete. Double-click a key to type its value. A bezier key has handles that bend the curve on either side, and ++cmd+z++ undoes any of it:

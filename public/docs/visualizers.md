@@ -1148,7 +1148,7 @@ Four things are special-cased, because their fields are not where the interestin
 
 Some values `.h2` hands straight back to `.h`, because the compact rendering already *is* the value: numbers, strings, enums, a `Pair`, a vector, a matrix (which `.h` draws as a heatmap), and a `Quantity`, whose whole point is a number next to a unit.
 
-To see all of it at once, insert the **h2 Explorer Examples** template and run its boxes top to bottom.
+To see all of it at once, press ++cmd+t++, insert the `h2-explorer-examples` [template](templates.md#templates-that-come-with-field) and run its boxes top to bottom.
 
 ### Tables and heat maps
 
@@ -1734,6 +1734,8 @@ ui.pause(300)
 
 Private properties are left out, as `graphPaths` leaves them out by default. Pass `includePrivate = true` to `tree` or `column` to list them; their paths then need `graphPaths(pattern, GraphWalkOptions(includePrivate = true))`. A row has no path when nothing reaches it by name: an element of a primitive array, a map key that is an object, the second of two map keys that print alike.
 
+The `watch` [template](templates.md#templates-that-come-with-field) (++cmd+t++) is a box that keeps a `tree()` of values you choose current while it runs.
+
 #### Browsing the renderer
 
 A box beneath a renderer box can open the renderer itself. It answers "what am I drawing, in what order, and where does the frame time go?" without a debugger:
@@ -1883,6 +1885,8 @@ group, the second link takes you to that version:
 - [`controlGroup(...) { ... }`](reference/visualization.md#outputs-kt--controlgroup)
 
 `vec2Control(...)` gives you an XY pad with a vector line and readouts for its length and angle.
+
+The `control-surface` [template](templates.md#templates-that-come-with-field) (++cmd+t++) holds a logarithmic slider, a bipolar slider, a momentary gate and a meter, ready to read from your own code.
 
 ### Help on a control
 
@@ -2566,6 +2570,8 @@ println("bright = $bright, bindings = ${midi.bindings}")
 It prints the cutoff at 20, 114, 650, 3705 and 20000 as the stand-in knob goes from 0 to 127: the middle of the knob lands near the middle of the log scale.
 
 To hear hardware, open an input with `MidiDevices` and attach it: `midi.attach(MidiDevices.openInput(MidiDevices.inputs().first()))`, or pass the input to `midiLearnButton(input)`.
+
+The `midi-learn` [template](templates.md#templates-that-come-with-field) (++cmd+t++) is a control group with a MIDI learn button that listens to the first hardware MIDI input while it runs.
 
 ### Saying what a control is for: tooltips
 

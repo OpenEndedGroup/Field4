@@ -132,7 +132,7 @@ A template with no `doc` anywhere shows "No documentation available".
 
 ## Templates that come with Field
 
-The checkout's `templates/` folder holds these, listed in the palette as Bundled templates. Each is
+The checkout's `templates/` folder holds these, listed in the palette as Bundled templates. Most are
 one to three boxes; none runs when inserted.
 
 | Template | Boxes | What it adds |
@@ -162,6 +162,10 @@ one to three boxes; none runs when inserted.
 | `first-steps` | 1 | A moving drawing to edit while it runs. |
 | `first-graphics` | renderer, triangle | A Vulkan window and a triangle beneath it. |
 | `timeSlider` | 1 | A vertical line that launches and stops the boxes it passes over. |
+| `h2-explorer-examples` | 9 | Six numbered boxes that show `.h2` on a data class, a box, a function, an `FLine`, an exception and a `Set`, with notes. [Visualizers](visualizers.md) |
+| `presentation` | 5 | The presentation starter as a plain copy, outside the kit. [Presenting with Field](presentation_studio.md) |
+| `animate-examples` | root, 2 | An `animate { }` block that stops after 60 frames, and a box of notes on the syntax. |
+| `field.sketch2_examples` | many | An older collection of sketches: bouncing points, noise, falling lines, geometry and stereo. |
 
 ## A copy remembers where it came from
 

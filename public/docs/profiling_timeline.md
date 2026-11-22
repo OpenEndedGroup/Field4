@@ -87,6 +87,8 @@ ui.eval(
 ui.pause(300)
 ```
 
+To profile your own document, press ++cmd+t++ and insert the `record-and-explore` [template](templates.md#templates-that-come-with-field): run it while the document is busy and it records three seconds and opens this timeline.
+
 ## Complete frames and named scopes
 
 The [simulation_clock starting point](#simulation-time) adds explicit application frame

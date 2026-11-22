@@ -80,6 +80,8 @@ Each example shows its source first, then the render. The source is the whole
 `.rectsl` program, and the viewer above is where to edit one and watch it
 re-render, if you would rather scrub a scene than retype it.
 
+To play with RectSL yourself, press ++cmd+t++ and insert the `rectsl-playground` [template](templates.md#templates-that-come-with-field): a live program with play, loop, speed and time controls, drawn under its renderer.
+
 ## Reproduction with modification — array primitives
 
 Motion-graphic design, from Oskar Fischinger's marching squares to today's
