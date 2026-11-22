@@ -528,3 +528,10 @@ the same.
 
 The page's boxes are also the [`typography_worked_example`](agent_transcripts.md#typography_worked_example)
 starting point, a document you can open and edit.
+
+For mixed font runs with geometry anchored to the text, see the
+[shallow-3D reading examples](sentence_diagrams.md#from-geometry-to-a-shallow-3d-reading-space).
+
+## See also
+
+[A Word Cut as a Stencil](chain_stencil_bridges.md) works with the islands inside letter outlines.

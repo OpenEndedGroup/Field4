@@ -186,3 +186,47 @@ These pairs reach the same specific source files but don't link each other.
     | Drawing From Data pages within two links of its main page | 24 of 93 |
     | Links with a link back | 38% |
     | Pages last linked under 30 days / 30–60 days / over 60 days ago | 104 / 83 / 27 |
+
+## Follow-up on 2026-11-22
+
+The [Drawing From Data overview](../public/docs/drawing_from_data.md) leads with what a reader
+already has. It gives each of the existing navigation groups a place to start. The Tour links
+to [Where to Go Next](../public/docs/staging.md), and all 42 graphics pages are within two
+hand-written links of [Field 4 Graphics](../public/docs/afield_four_graphics.md).
+
+Two examples now carry work across systems.
+
+- [Watch a route change](../public/docs/mqtt.md#watch-a-route-change) publishes an editable
+  wiring state over MQTT. Datalog derives connectivity and its proof from the received
+  snapshot. `Datalog.replaceFacts` makes removals visible to recursive rules and keeps the
+  solved model when the same snapshot arrives again.
+- [Point at a face and find its source](../public/docs/chain_polytope_render.md#point-at-a-face-and-find-its-source)
+  uses a ray pick to highlight a complete Conway polygon and recover the seed element that
+  produced it. The example keeps that identity across different normal policies.
+
+MADP, ARDY/CLoSD and Kratos starting points now link to the sections that explain them. The
+landing precheck flags new pages without a link from an existing hand-written page. The
+default graph command also works with its code layer switched off.
+
+| Measure | Upstream `6d6af3a42` | Follow-up |
+| --- | ---: | ---: |
+| Orphans | 34 | 0 |
+| Dead ends | 24 | 0 |
+| Spokes | 52 | 52 |
+| Links with a link back | 458 of 1,140 (40%) | 580 of 1,305 (44%) |
+| Drawing From Data pages within two links of Patterns | 24 of 93 | 50 of 94 |
+| Drawing From Data pages within two links of the new overview | — | 76 of 94 |
+| Graphics pages within two links of Field 4 Graphics | 34 of 42 | 42 of 42 |
+
+The 34 upstream orphans are the updated baseline for this pass. The original audit above
+reported 32 at its earlier revision.
+
+### Remaining work
+
+- Add second routes to remaining spokes when a reader has a reason to follow them.
+- Use the source drift table to choose examples to re-run. The source timestamp can reflect
+  an edit unrelated to the example, so look at the changed calls before recapturing.
+- Connect remaining transcripts to the sections that teach them as the examples are reviewed.
+- Choose a runnable application for the remaining large API gaps, especially Steam Audio
+  spatial simulation, adaptive modelling and the RectSL/StackSL study code. Decide which
+  layers belong in the public documentation as part of designing those examples.

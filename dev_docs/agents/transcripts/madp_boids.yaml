@@ -11,6 +11,9 @@ description: >
   `#include "boids/flock"` in its compute tab, with the page's fps, steps, trail and fade controls,
   an inspector and a metrics card. Launching a flock box replaces the one showing. Requires a
   GPU/Vulkan window; capture it with `native-screenshot <path> --uid boids_renderer`.
+docs:
+  - page: chains.md#studio-tools-from-madp
+    why: "The studio sketchbook in its editable Field document."
 operations:
   - create:
       box: boids_renderer

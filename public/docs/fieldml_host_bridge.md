@@ -487,3 +487,8 @@ The reflection lives in `afield.lang.fieldml.core.FieldMLHostBridge` (candidates
     surface: every test in it asserts that the closure *ran*, not that a proxy exists.
     `FieldMLAfieldFourReachTest` is the `threebox-2` survey with its citations, and `FieldMLSourceMacroTest`
     holds the macro ledger to the live contents of `afield.runtime.macros.MacroRegistry` in both directions.
+
+## See also
+
+For the surrounding document model, see [Running code in a box](running_code.md) and
+[Properties that re-run boxes](reactive_properties.md).

@@ -2898,12 +2898,12 @@
     },
     "assets/agent_transcripts/madp_boids/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "capturedAt": "2026-11-18T15:24:28.376Z",
+      "capturedAt": "2026-11-22T11:34:07.172Z",
       "channels": 1,
       "file": "assets/web_publications/madp_boids/document/metadata.edn",
       "files": {
-        "assets/web_publications/madp_boids/document/metadata.edn": "d8a121a75e6eee71baf4bb473a5a6a73da309f6c19918f4b7840c9a2c5a8e3d8",
-        "assets/web_publications/madp_boids/document/outputs.json": "07381773040a9b76d8549a7f3caa3d475bd65cda80e061c56f715fa9f69548ca",
+        "assets/web_publications/madp_boids/document/metadata.edn": "b9fab45ba6d6020b0cf4fb61fae3548b929ff8cd59e87fde9783da25a2bc5994",
+        "assets/web_publications/madp_boids/document/outputs.json": "67b9cc1b2291e33b5c15cf9b664906a7073ff42cdc64a2db3652b6e356d0f9b1",
         "assets/web_publications/madp_boids/outputs/0.html": "ebf676f99323edcf314ea3093d87d8d566a3ecb68cf1bbad1bbaf7ca77d1fd7e"
       },
       "kinds": [
@@ -2911,7 +2911,7 @@
       ],
       "outputs": "assets/web_publications/madp_boids/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/madp_boids.yaml": "631ae33bad0aea35ca5a32076a932b47e89b7ae7c13c3c010ca7dff74784cb2a",
+        "dev_docs/agents/transcripts/madp_boids.yaml": "9b05f614601961a0bfa2d93c67b1175120eeb63b9ce3d222f7ce3db385a327ef",
         "public/docs/agent_transcripts.md#capture-box=boids_renderer": "13c544c33e07eaeb15e3131385cdd3baf78cba56e27de86ba0e55f6c65de84fc",
         "public/docs/assets/agent_transcripts/madp_boids/boids_bait_ball_code_.kt": "f0ea1e6f2ad52df552cda83b6ebb855407a0faeeb4791c5eb6382323b06a2248",
         "public/docs/assets/agent_transcripts/madp_boids/boids_bait_ball_compute_.glsl": "69e860072ee2490be04021ef5d5c4629f97bf3f0ab63fba355515584646c3812",
@@ -2935,6 +2935,7 @@
         "public/docs/assets/agent_transcripts/madp_boids/boids_two_tribes_code_.kt": "86256116c2a8dd1358bf48ef4a4d0aa5cd30425414d90b82f7653bd25f18f883",
         "public/docs/assets/agent_transcripts/madp_boids/boids_two_tribes_compute_.glsl": "935f960fc6de3de263df5acbb5809201bc4e718a05e36de059d31328d6120b28",
         "public/docs/assets/agent_transcripts/madp_boids/boids_two_tribes_notes_.md": "59aceca9ccccd15b433fef36e66c1c43d88b515df26e8990500bdfcb0b886f19",
+        "public/docs/assets/agent_transcripts/madp_boids/guides/chains-studio-tools-from-madp.md": "9664739c57e989b30f6b883d876febd7ffbc6090879c095d0800065ba141a2e3",
         "public/docs/assets/agent_transcripts/madp_boids/metadata.edn": "06703e9a9877e1b09c305765ee1df2b9186627249c37c65865206f97b9278f62",
         "public/docs/assets/agent_transcripts_gallery/madp_boids_murmuration.png": "12051ce5928f40e30cc804edf95cb51f791d66084e5f46206fac9391c08ecb57"
       },
@@ -2945,21 +2946,22 @@
     },
     "assets/agent_transcripts/madp_ga/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "capturedAt": "2026-11-18T15:24:35.242Z",
+      "capturedAt": "2026-11-22T11:34:04.184Z",
       "channels": 4,
       "file": "assets/web_publications/madp_ga/document/metadata.edn",
       "files": {
-        "assets/web_publications/madp_ga/document/metadata.edn": "07d67424c1171ec80aceddb143dea35f12803aa53673f58490e52e96d3bf36dd",
-        "assets/web_publications/madp_ga/document/outputs.json": "b13daa91c12a2c9d340d2c677c5fc989ea7f16a9acb829d68451975921e204fb",
-        "assets/web_publications/madp_ga/outputs/0.html": "d03fe5487758e3e471897859e1871e06ab3297c0ad11cc08bab785756a5dca56",
-        "assets/web_publications/madp_ga/outputs/1.html": "33679b658f3ffb4f3c2116171d00405e0903ddc5df2104abb98b091210cd23a3",
-        "assets/web_publications/madp_ga/outputs/2.html": "54529931b684c065c95d72eaed5a54a1869f2716715f94526652c9dbc253c153",
-        "assets/web_publications/madp_ga/outputs/3.html": "60040148827ec44d37bb2091644b21f5470f9fea9889a7a2e4ac18d2543b1ef5"
+        "assets/web_publications/madp_ga/document/metadata.edn": "583b826f23f7ed95dc203f10a07f1a515e3106a3d9757db1e53991dd48eb30ee",
+        "assets/web_publications/madp_ga/document/outputs.json": "ccbb0ee5f28c40abef13995871ad0f45c40d345e54e617ad295b2cd5ebdc3a86",
+        "assets/web_publications/madp_ga/outputs/0.html": "9782e35c51c25616e4f34aaa4a8bed2ea00d679a03971e71da7a09383b1b7ec6",
+        "assets/web_publications/madp_ga/outputs/1.html": "419652e95194e91afc516cedb2469f7114e1aebf9668ff011ab6573c798ab49b",
+        "assets/web_publications/madp_ga/outputs/2.html": "42f1d89da235e54e4cc9d0fb355fb19e1a427af884300bfdf416c6ad3d64e1fc",
+        "assets/web_publications/madp_ga/outputs/3.html": "fad4e31bfa3e3601bb25661e800228a8165db414469b6d81e53305e466aa3301"
       },
       "kinds": [],
       "outputs": "assets/web_publications/madp_ga/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/madp_ga.yaml": "cfb45640478c025ea097c97b2329aa4ec8d979040d083d4807ef7b4ad458b6b6",
+        "dev_docs/agents/transcripts/madp_ga.yaml": "76e64259e09072b067c42978be6ee95c5766d1541c3c8305088f6d43e1358d13",
+        "public/docs/assets/agent_transcripts/madp_ga/guides/chains-studio-tools-from-madp.md": "9664739c57e989b30f6b883d876febd7ffbc6090879c095d0800065ba141a2e3",
         "public/docs/assets/agent_transcripts/madp_ga/madp_ga_fbm_code_.kt": "ce1e5ab23141a60b5d1b762b679ea836b58373a407542a7d1206fb90c8a16452",
         "public/docs/assets/agent_transcripts/madp_ga/madp_ga_fbm_notes_.md": "a77c4baf337fb5d49d1aaaafcfacf390d00e61e9989ccd84eac4a6a501190382",
         "public/docs/assets/agent_transcripts/madp_ga/madp_ga_lead_code_.kt": "64171412dd8bd174c47c3629632bf75198a0e0642b9b973d005bf991aa28e8d6",
@@ -2973,30 +2975,30 @@
     },
     "assets/agent_transcripts/madp_geometry/metadata.edn": {
       "captureDigest": "dae71325c6de8386066240231aac1762db1b9a954d32608e4f55a847371d2fb6",
-      "capturedAt": "2026-11-21T01:15:10.238Z",
+      "capturedAt": "2026-11-22T11:33:55.820Z",
       "channels": 11,
       "file": "assets/web_publications/madp_geometry/document/metadata.edn",
       "files": {
-        "assets/web_publications/madp_geometry/document/metadata.edn": "434286298fc1428289bd3b2b5d8f736cbb1da97b1a6e68dfd83bcd738a580b66",
-        "assets/web_publications/madp_geometry/document/outputs.json": "9d62e8dae398b9a218d8345276b1fd804a93f804bc7ece7604cd34914e08eba0",
-        "assets/web_publications/madp_geometry/outputs/0.html": "935f2a7d0bde72418ea254224229c317d9a159f7b2c8443c4453eb373a3168da",
-        "assets/web_publications/madp_geometry/outputs/1.html": "5ee70f6bb6ecf9535c882d90b67dcb5fee4238c4d9ed0ef7b339cbc7ecf16278",
-        "assets/web_publications/madp_geometry/outputs/10.html": "8a851f3100626cef9e6ed9d0f5e774096494bc725ac03bdeb06e0a9f1134d583",
-        "assets/web_publications/madp_geometry/outputs/2.html": "f522973bc0dcc83c8a64ad22055b064bbee3a8370b285abfbf87e70bf482e57a",
-        "assets/web_publications/madp_geometry/outputs/3.html": "bf3079eda01db6a0bc891545916b5da88329512cb9ba9d40a7a5bdea52e07221",
-        "assets/web_publications/madp_geometry/outputs/4.html": "5aaf4de682892caaf9c0d6f194728b8435880cb34e69cd5c4971129e4eeff8e6",
-        "assets/web_publications/madp_geometry/outputs/5.html": "9010ca5ac35baad6da8c7da1e5f50bc486854cb9a7f37a4ad35e109ad63753c0",
-        "assets/web_publications/madp_geometry/outputs/6.html": "ff67b3aef1a5e11c324a16fa72a8c2587d357a4c5bd8384a46369d9eaf22cac1",
-        "assets/web_publications/madp_geometry/outputs/7.html": "b8896c59f5d54df1bbca2db13ff0a48f0ecbdbd99890a1c8bb70a62e9d39c603",
-        "assets/web_publications/madp_geometry/outputs/8.html": "6c39790ebe61115b14613b6b7a4955d9c360d6364afcb3e5eee436b21c20dd74",
-        "assets/web_publications/madp_geometry/outputs/9.html": "f760e4965fc5b3ba7ddebbf033cdea08ff5659ffee1cec4e868827fca7fc9663"
+        "assets/web_publications/madp_geometry/document/metadata.edn": "9089e1beb72a2cfc36905a6da434719be926371bc8ec6fb18879508678fbe619",
+        "assets/web_publications/madp_geometry/document/outputs.json": "11faa6623faafadeec2adbae918da69b8ad3c8a2e46d4192487d4f16b8159b85",
+        "assets/web_publications/madp_geometry/outputs/0.html": "7f7a564ff4f68728593fc0e28aaa01db15b0452b8dfe9908657bc90708a8275a",
+        "assets/web_publications/madp_geometry/outputs/1.html": "d6ab0106e139f7b3afaa06354ceacbee29ef8c5af6b95f60f2d7fc5ccb5f06a0",
+        "assets/web_publications/madp_geometry/outputs/10.html": "44980709a98ae64c00cc3b76991ac1e5e22c99c2d7de3524b8ed3cc1c2a0a93c",
+        "assets/web_publications/madp_geometry/outputs/2.html": "43c4d319beef6b325bf1d17fc2de9d047611b944802ecb083e5b1ac38c570874",
+        "assets/web_publications/madp_geometry/outputs/3.html": "2706cb6fb080f20731de81651a8846607c4f9d29935fb007e851cfb34a28a8cb",
+        "assets/web_publications/madp_geometry/outputs/4.html": "6b104848910f5a26a600ff3643ee0c0b2556dfc733b60b857054823ae1f2e248",
+        "assets/web_publications/madp_geometry/outputs/5.html": "6522a1cdfcdc3850eb7e124b93cc60db5591534589e1422c012630bd05e19b67",
+        "assets/web_publications/madp_geometry/outputs/6.html": "be8ef4d10fceca656423e183424a2ed2decf222f2a731422aee628bb1fb1a434",
+        "assets/web_publications/madp_geometry/outputs/7.html": "eadb8abd89dd86f61315c4af099ec458b2e5d5660aff96b731509995fa970528",
+        "assets/web_publications/madp_geometry/outputs/8.html": "0cddb3dd81b6c94a4f8a2c960e9300f2912acaccc06344941693dc405a2416e9",
+        "assets/web_publications/madp_geometry/outputs/9.html": "4b5cf253154138c674315ac2193589855ae20b9076ed5fed79d1c28cc08796a1"
       },
       "kinds": [
         "three"
       ],
       "outputs": "assets/web_publications/madp_geometry/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/madp_geometry.yaml": "f01f0f5056a174397221d0127f49f477b33fab3e89c98f16066b5a7e421e8d19",
+        "dev_docs/agents/transcripts/madp_geometry.yaml": "c33d26f8c061c5350df2c11f5a8608e1adac41106c2cd4502708166b30ef2386",
         "public/docs/assets/agent_transcripts/madp_geometry/breathing_sheet_code_.kt": "aa93c5991679b3525b5da06a55cad0b48cd881f0735bb7b60f18bf234b4efa8f",
         "public/docs/assets/agent_transcripts/madp_geometry/breathing_sheet_notes_.md": "d5ca2a5324ef72a9820892024e159a302b668c5b9820422a1584e459b2e7c6b4",
         "public/docs/assets/agent_transcripts/madp_geometry/city_blocks_code_.kt": "6cfcf2e660e3b3c9d1f2cb9c3fb4959ea29daeca230372d33a3a08fd0655e593",
@@ -3005,6 +3007,7 @@
         "public/docs/assets/agent_transcripts/madp_geometry/crystal_bloom_notes_.md": "eb14a30910bcbdbb39b3af80c4bfaedb7a8942393edf336a03ba8a5eb3135092",
         "public/docs/assets/agent_transcripts/madp_geometry/fungal_tree_code_.kt": "85c3a5dcde733cea5374b6cb489fbc1753ab53ea8a89d4c5bc2fa6c75687595e",
         "public/docs/assets/agent_transcripts/madp_geometry/fungal_tree_notes_.md": "a5bafe6ef1ffdd94d40c681c01860c243810847743a63fc8d7f3188b5fdf8f63",
+        "public/docs/assets/agent_transcripts/madp_geometry/guides/chains-studio-tools-from-madp.md": "9664739c57e989b30f6b883d876febd7ffbc6090879c095d0800065ba141a2e3",
         "public/docs/assets/agent_transcripts/madp_geometry/knot_tube_code_.kt": "9afc5cb37ce49d1cee21e673bf4bfb8459fcb16f9a02a3ee877ed15bbc8bbb89",
         "public/docs/assets/agent_transcripts/madp_geometry/knot_tube_notes_.md": "e3ed44278872dee3e5b4030b6f8a35437c073143d282a77eec1b10db3890086f",
         "public/docs/assets/agent_transcripts/madp_geometry/lathe_vessel_code_.kt": "159df79aea8e8cc7842f8c496faf175ce8526881e47d147d5dc5db69cd01c812",
@@ -4690,6 +4693,29 @@
         "public/docs/assets/chain_polytope_render/lineage.png",
         "public/docs/chain_polytope_render.md#capture-box=polytope_lineage_trace"
       ]
+    },
+    "assets/agent_transcripts/polytope_pick_lineage/metadata.edn": {
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-22T11:33:36.420Z",
+      "channels": 3,
+      "file": "assets/web_publications/polytope_pick_lineage/document/metadata.edn",
+      "files": {
+        "assets/web_publications/polytope_pick_lineage/document/metadata.edn": "1de0384d2816b9b98c33f9e6cc18d176a1310e59e05dbd4e5b59a96f5fc2b91e",
+        "assets/web_publications/polytope_pick_lineage/document/outputs.json": "f163857d114e0e88779260e06675d9d8609942f2d6d97ccd0cb255f513a7dfb0",
+        "assets/web_publications/polytope_pick_lineage/outputs/0.html": "67a4d383b6b527645518a687d42cf6a452ba64f34c3bb1c7e5e7cc852e359673",
+        "assets/web_publications/polytope_pick_lineage/outputs/1.html": "20302a8b52d437356a92ce0f38246140c744561531f45b2eebae3ebcdf717076",
+        "assets/web_publications/polytope_pick_lineage/outputs/2.html": "599b0d8aa864897355216394490add180c42d1092af86529b19c9c44bcbfa35f"
+      },
+      "kinds": [
+        "svg"
+      ],
+      "outputs": "assets/web_publications/polytope_pick_lineage/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/polytope_pick_lineage.yaml": "11020ad8404562ceca3a620987e746440ebdafa64bceb2b2a67c761758f99452",
+        "public/docs/assets/agent_transcripts/polytope_pick_lineage/guides/chain_polytope_render-point-at-a-face-and-find-its-source.md": "543eb4b5e25ae9b00b30b7aa0130e391135fb6d7dd74f4c664c45a06704fc9a0",
+        "public/docs/assets/agent_transcripts/polytope_pick_lineage/metadata.edn": "00fc90672ac5f160d063265c51d7f891e8039ce1675422c9fc7ebe57921cd5e1",
+        "public/docs/assets/agent_transcripts/polytope_pick_lineage/polytope_pick_code_.kt": "4ed38275374e6ebc2150d8edd8aa34b03245fcb20b0b8e3b7a9812b1d1b37ec8"
+      }
     },
     "assets/agent_transcripts/popup_prior_inspect/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",

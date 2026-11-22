@@ -285,6 +285,10 @@ For the next step, where those grids become `NoteProcess` objects and live Dirt 
 
 *The public declarations used on this page are listed, with their KDoc, in the codebase reference: [`booleannetworks.kt`](reference/data.md#booleannetworks-kt). Start from [what's already in the box](reference/index.md).*
 
+## See also
+
+See [Sorting networks](sorting_networks_examples.md) for another way to draw a fixed circuit as wires.
+
 ## API reference
 
 - Attractors and musical events: [`BooleanNetwork`](reference/data.md#booleannetworks-kt-booleannetwork) —

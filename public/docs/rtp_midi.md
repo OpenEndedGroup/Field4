@@ -130,3 +130,6 @@ A session accepts every invitation it receives, from any machine on the network.
     hand-built packet with a journal tail checks that journals are skipped. The demo document's
     three boxes were run in Field through the backdoor. Interoperation with macOS's own network
     session was not tested automatically. Notes are in `dev_docs/RTP_MIDI.md`.
+
+For picture and sound on a shared clock, see [SMPTE timecode](smpte_timecode.md).
+For timeline markers and playhead control, see [DaVinci Resolve](davinci_resolve.md).

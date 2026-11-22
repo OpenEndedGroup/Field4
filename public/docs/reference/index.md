@@ -687,7 +687,7 @@ To see it all at once, open the [map of the docs](../docs_map.md): every page, a
 
 ## Reference pages
 
-**42825 public symbols across 1897 source files**, 25618 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**42826 public symbols across 1897 source files**, 25619 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -714,7 +714,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Patterns](patterns.md) | 40 | 1332 | 729 (54%) | Musical time, as a value. |
 | [Audio](audio.md) | 101 | 2666 | 1436 (53%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 22 | 592 | 592 (100%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
-| [Languages](languages.md) | 133 | 3360 | 1699 (50%) | Field's small languages, from the host side. |
+| [Languages](languages.md) | 133 | 3361 | 1700 (50%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 261 | 3636 | 1547 (42%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [AI4](ai4.md) | 103 | 2318 | 869 (37%) | AI4 is the agent that lives inside Field: the chat panel on every box, the document chat, editor completion, and headless agent tasks. |
 | [Machine learning](machine-learning.md) | 26 | 727 | 444 (61%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
@@ -1052,7 +1052,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>visualization/<wbr></small> [DataFrameSchemas.kt](visualization.md#dataframeschemas-kt) | Visualization | 1 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>visualization/<wbr></small> [DataFrameVisualizer.kt](visualization.md#dataframevisualizer-kt) | Visualization | 3 | 3 | Makes Kotlin DataFrame values render as Field values (`.h`, `.h2`, `display` and box return values) without DataFrame having to know Field exists. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>visualization/<wbr></small> [DataFrameVisualizerSmokeTest.kt](visualization.md#dataframevisualizersmoketest-kt) | Visualization · internal | 3 | 0 | Checks that DataFrame values render through Field's value registries — `DataFrameVisualizer`. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>query/<wbr>datalog/<wbr></small> [Datalog.kt](languages.md#datalog-kt) | Languages | 35 | 22 | The facade over parser and engine: a `Datalog` holds a program, answers queries as `DlRows`, and reconstructs the proof of a derived fact. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>query/<wbr>datalog/<wbr></small> [Datalog.kt](languages.md#datalog-kt) | Languages | 36 | 23 | The facade over parser and engine: a `Datalog` holds a program, answers queries as `DlRows`, and reconstructs the proof of a derived fact. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>query/<wbr>datalog/<wbr></small> [DatalogAst.kt](languages.md#datalogast-kt) | Languages | 41 | 17 | The abstract syntax of Field's Datalog — see `Datalog` for the facade, `DatalogParser` for the concrete syntax and `DatalogEngine` for what evaluates this. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>query/<wbr>datalog/<wbr></small> [DatalogBoxes.kt](languages.md#datalogboxes-kt) | Languages | 4 | 4 | The Field bridge: the live box graph as Datalog base relations. | [Datalog in a box](../datalog.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>query/<wbr>datalog/<wbr></small> [DatalogEditorExtension.kt](languages.md#datalogeditorextension-kt) | Languages | 6 | 6 | Serves `datalog.js`, the browser-side Datalog editor support, to the page and to the test that checks it. |  |

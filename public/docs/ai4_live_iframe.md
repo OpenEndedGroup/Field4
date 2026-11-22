@@ -38,3 +38,7 @@ offscreen.
 
 The tools come from [`exposeOutputIframeTools`](reference/ai4.md#outputiframeaitools-kt), in the
 [AI4 reference](reference/ai4.md).
+
+## See also
+
+For the tools available to AI4 and how to open them, see [AI features](aiFeatures.md).

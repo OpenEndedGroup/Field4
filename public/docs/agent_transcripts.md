@@ -85,6 +85,14 @@ Kotlin is compiled on every build.
 These build and run headless: no window, no GPU. Open one to get the code in front of you, then run
 its box to see the output (a plot, an inline value thumbnail, a printed line).
 
+### polytope_pick_lineage
+
+Aim at a beveled dodecahedron and highlight a whole face. The pick names the original polygon
+and traces it to a vertex, edge or pentagon of the seed. See
+[Point at a face and find its source](chain_polytope_render.md#point-at-a-face-and-find-its-source).
+
+[Open →](offline.html?file=assets/agent_transcripts/polytope_pick_lineage/metadata.edn)
+
 ### nile_gezira_kernels
 
 **Rasterisation as editable stream kernels.** Nile-style kernels run the Gezira rasteriser over a
@@ -3589,6 +3597,14 @@ listens to every temperature, one plots them, and one shows a retained message. 
 first.
 
 [Open →](offline.html?file=assets/agent_transcripts/mqtt_demo/metadata.edn)
+
+### mqtt_datalog_routing
+
+Switch three links on and off in a small installation network. One box publishes MQTT
+snapshots and another uses Datalog to draw the current routes and explain how the console reaches
+the screen. See [Watch a route change](mqtt.md#watch-a-route-change).
+
+[Open →](offline.html?file=assets/agent_transcripts/mqtt_datalog_routing/metadata.edn)
 
 ### dmx_lighting_demo
 

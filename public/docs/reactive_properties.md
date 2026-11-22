@@ -167,3 +167,6 @@ To ask *where* a value came from rather than what ran, use [`why`](why.md).
 - [Box output](box_output.md): `display` and output channels.
 - The design notes, with every guard and known limit:
   [PROPERTY_DEPENDENCIES.md](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/PROPERTY_DEPENDENCIES.md).
+
+For FieldML boxes, see [the FieldML cheatsheet](fieldml_cheatsheet.md) for the expression
+syntax and [the JVM bridge](fieldml_host_bridge.md) for inherited properties and host calls.

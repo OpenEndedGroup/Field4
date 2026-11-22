@@ -4824,3 +4824,9 @@ Open questions and next builds:
   width depends on the direction of travel; its envelope comes from the same tangency condition.
 - **Tubes in 3D.** The same construction with spheres gives a tube whose radius varies, for
   `threeLines` and the Vulkan scene.
+
+- [Charts as FLines](chart.md) puts data on axes as editable geometry.
+- [Typography as geometry](typography_examples.md) starts with the outlines of letters.
+- [Points into structure](spatial_geometry_examples.md) draws regions and contours from point sets.
+
+- [PostScript in a Box](postscript.md) creates paths from PostScript drawing commands.

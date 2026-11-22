@@ -301,3 +301,8 @@ display(
 
 See also: [Audio AI analysis](audio_ai_analysis.md) for beats and pitch, and
 [Visualizers](visualizers.md#short-time-spectral-phase-portraits) for how the panels share a cursor.
+
+## See also
+
+To browse similarities across a library of clips, see the
+[Corpus microscope](audio_ai_corpus_microscope.md).

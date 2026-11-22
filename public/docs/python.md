@@ -340,3 +340,8 @@ interpreter whose `jep` is a different release, and says which two versions it f
     illustration only. The `tqdm` progress bar and the shared namespace have no picture: a still
     after the loop shows an empty bar, and a runner fence builds only one box.
     `dev_docs/DOCS_PAGE_SNIPPET_COVERAGE.md` has the mechanics.
+
+## See also
+
+For worked uses of Python in a document, see [Imaging and computer vision](imaging_examples.md),
+[DaVinci Resolve](davinci_resolve.md#from-a-python-box), and [a terminal in a box](terminal.md).

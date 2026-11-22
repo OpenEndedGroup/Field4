@@ -128,6 +128,12 @@ works: it lifts each of them to the top of a section nobody is looking at, seven
 With the same payload and the same ranker, one classification change moves `moveTo` from off-screen
 to first.
 
+### Completing inside a string
+
+Inside a Kotlin string, completion uses paths or choices supplied for that parameter. For
+example, complete the argument to `Rhino3dm.load("…")` to see `.3dm` files. Selecting a
+folder opens its contents. See [Completing a path as you type](files_and_paths.md#completing-a-path-as-you-type).
+
 ## Seeing it
 
 The first figure is a ++ctrl+space++ on a box containing `val f = FLine()` and a bare `f.`, with
@@ -408,3 +414,6 @@ In rough order of how often each turns out to be the answer:
 
 </div>
 
+## See also
+
+See [Browsing code from the completion panel](completion_doc_browser.md) to inspect a suggestion in the editor.

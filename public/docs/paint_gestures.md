@@ -381,3 +381,8 @@ it was then.
 See also: [Paint settings, swept](paint_sweeps.md), where one gesture is painted with each setting in
 turn, [Paint and pencil from FLines](paint_canvas.md), [Watercolour and ink](watercolor.md),
 [AI4 paints](ai4_painting.md).
+
+## See also
+
+To use strokes from the canvas as brush input, follow
+[Drawn Strokes Become Paint](chain_drawn_paint.md).

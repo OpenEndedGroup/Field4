@@ -200,6 +200,10 @@ synth voice (no Dirt-Samples found; set FIELD_DIRT_SAMPLES to use real samples)
 
 ---
 
+- Use [Network MIDI](rtp_midi.md) to play and control boxes over the network,
+  [SMPTE timecode](smpte_timecode.md) to follow a clock, or
+  [DaVinci Resolve](davinci_resolve.md) to place markers and follow an edit's playhead.
+
 ## Getting real drums in your own box
 
 Install the quark (`Quarks.install("Dirt-Samples")` in SuperCollider, or clone

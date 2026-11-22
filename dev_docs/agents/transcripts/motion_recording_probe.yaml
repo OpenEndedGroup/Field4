@@ -1,6 +1,8 @@
 name: motion_recording_probe
 description: >
   A diagnostic two-joint recording, independent of either network.
+docs:
+  - page: motion_recordings.md#open-a-recording
 operations:
   - create:
       box: motion_recording_probe

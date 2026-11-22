@@ -6,6 +6,9 @@ description: >-
   starts from the demo's two starters, two more start from its example programs, and the last
   changes the breeding rules so that only numbers mutate. Pure CPU: the programs run on the JVM,
   the grid is HTML in the box's output panel.
+docs:
+  - page: chains.md#studio-tools-from-madp
+    why: "The studio sketchbook in its editable Field document."
 operations:
   - create:
       box: madp_ga_lead

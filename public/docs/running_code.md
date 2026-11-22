@@ -700,3 +700,8 @@ Field, over both the welcome page and code, and the welcome page says so.
 
 See also: [Feature Overview](funFeatures.md) (user-level `prop`/`connect`/`once`), [Field 4 Graphics](afield_four_graphics.md) (graphics API), [StackSL Examples](stacksl_examples.md) (`stack.auto`), [RectSL Examples](rectsl_examples.md), [Why Does This Value Resolve Here?](why.md) (which box a
 value came from), and the [Kotlin Overview](kotlin_overview.md).
+
+## See also
+
+A box can also run [FieldML expressions](fieldml_cheatsheet.md), including calls
+to Kotlin and Java through [FieldML's JVM bridge](fieldml_host_bridge.md).

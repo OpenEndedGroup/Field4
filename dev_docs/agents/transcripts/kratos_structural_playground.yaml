@@ -12,6 +12,7 @@ description: >
 docs:
   - page: tetgen.md#into-kratos
     why: "Explains meshing for Kratos, including 10-node elements."
+  - page: physics.md#solve-a-material-or-flow-field
 operations:
   - create:
       box: kratos_structural

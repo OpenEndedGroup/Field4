@@ -182,3 +182,7 @@ work and AI history are kept, see [Your code, AI and local history](privacy.md).
 
 To get either example again in another document, press ++cmd+t++ and insert the `first-steps` or
 `first-graphics` [template](templates.md#templates-that-come-with-field).
+
+## See also
+
+The [Field documentation home](index.md) links the Tour and examples you can explore after these first steps.

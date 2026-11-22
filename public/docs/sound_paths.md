@@ -341,3 +341,7 @@ renders above back to back and plots their short-time brightness, so you can see
 as hear them. The second box needs the Dirt-Samples folders once, from `./gradlew fetchDocsDirtSamples`;
 without them it stops and names that command. Or [browse it in the offline
 viewer](offline.html?file=assets/agent_transcripts/sound_path_map/metadata.edn).
+
+## See also
+
+Start with [Sound](sound.md) for the short route from a pattern to a part you can hear.

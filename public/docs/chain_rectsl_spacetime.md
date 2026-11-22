@@ -197,3 +197,8 @@ with a sawtooth wherever neighbouring samples differ, because the jump to `sampl
   per-triangle materials.
 * [Three-dimensional Life, counted and traced](chain_life3d_render.md) is the neighbouring chain: the
   same two marchers on a different field, and what their genus numbers disagree about.
+
+## See also
+
+[Three.js scenes](three_output.md) shows how to put an interactive view of the mesh
+in a box output panel.

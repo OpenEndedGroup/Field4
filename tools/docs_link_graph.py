@@ -903,15 +903,16 @@ def layout(graph: Graph) -> tuple[dict[str, tuple[float, float, float]], dict[st
     leaves = sorted(files_in)
     # A whisker of per-directory jitter: two directories aimed at exactly the same pages would
     # otherwise coincide, and coincident points have no direction to push apart in.
-    jitter = np.array([[stable_unit(p, axis) for axis in "xyz"] for p in leaves]) * 1e-3
-    target = normalised(normalised(np.array([aim[p] for p in leaves])) + jitter)
+    jitter = np.array([[stable_unit(p, axis) for axis in "xyz"] for p in leaves]).reshape(-1, 3) * 1e-3
+    directions = np.array([aim[p] for p in leaves]).reshape(-1, 3)
+    target = normalised(normalised(directions) + jitter)
     # Relax on the sphere: each directory is pulled to its aim and pushed off its neighbours in
     # proportion to the disc its files need.
     core_radius = float(np.percentile([np.linalg.norm(pos[k]) for k in core_keys], 95)) if core_keys else 1.0
     shell = SHELL_GAP * core_radius
     disc = np.array([FILE_SPACING * math.sqrt(len(files_in[p])) + FILE_SPACING for p in leaves]) / shell
     d = target.copy()
-    for step in range(300):
+    for _ in range(300 if leaves else 0):
         diff = d[:, None, :] - d[None, :, :]
         dist = np.linalg.norm(diff, axis=2) + np.eye(len(d)) + 1e-9
         reach = disc[:, None] + disc[None, :]
