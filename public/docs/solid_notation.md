@@ -9,10 +9,10 @@ with a hole through it. That expression does not compute any geometry yet. It bu
 that records "a cuboid, minus a cylinder", and the tree is the shape. Each output is a
 separate reading of the same tree. A document you can open and run is
 [at the bottom of the page](#open-this); the reference for
-[`SolidExpr`](reference/graphics.md#solidexpr-kt--solidexpr),
-[`Profile`](reference/graphics.md#solidexpr-kt--profile),
+[`SolidExpr`](reference/graphics.md#solidexpr-kt-solidexpr),
+[`Profile`](reference/graphics.md#solidexpr-kt-profile),
 [`SolidLowering`](reference/graphics.md#solidexact-kt) and
-[`SolidTemplate`](reference/graphics.md#solidgradient-kt--solidtemplate) covers every
+[`SolidTemplate`](reference/graphics.md#solidgradient-kt-solidtemplate) covers every
 declaration used here.
 
 Field already has a way to build shapes from signed distance functions (SDFs): functions that
