@@ -23,7 +23,7 @@ right. In the second take, listen for the loss of level and the softer high end.
 
 Fetch Field's pinned Steam Audio library and Dirt samples once for this checkout:
 
-```bash
+```diffstatic {data-lang=bash}
 ./gradlew fetchSteamAudioNatives fetchDocsDirtSamples
 ```
 
