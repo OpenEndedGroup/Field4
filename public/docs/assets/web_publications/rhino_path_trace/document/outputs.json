@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-22T00:44:21.276Z",
+  "documentName": "rhino_path_trace",
+  "outputs": [
+    {
+      "uid": "rhino_path_trace",
+      "channel": "Vulkan window · still image",
+      "open": true,
+      "path": "outputs/0.html",
+      "width": 1600,
+      "height": 982,
+      "kinds": [
+        "native-image"
+      ],
+      "warnings": []
+    }
+  ]
+}

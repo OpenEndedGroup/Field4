@@ -1675,7 +1675,7 @@ checks it against known byte values.
 
 `src/jvmMain/kotlin/afield/graphics/scene/fabricated/PathTraceScene.kt` — [read the source](source/jvmMain/afield/graphics/scene/fabricated/PathTraceScene/)
 
-**Used in:** [Progressive path tracing](../path_tracing.md), [A polytope, cut open, and traced](../chain_polytope_render.md)
+**Used in:** [Progressive path tracing](../path_tracing.md), [A polytope, cut open, and traced](../chain_polytope_render.md), [A Rhino file, path traced](../chain_rhino_render.md)
 
 ### PathTraceMaterial { #pathtracescene-kt-pathtracematerial }
 
