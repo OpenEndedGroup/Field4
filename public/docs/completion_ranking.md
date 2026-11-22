@@ -2,7 +2,8 @@
 
 What makes one completion appear above another? If you're writing a class and want its useful
 members to show up early, or you're changing Field's completion code, this page explains how the
-ordering works and how a class can influence it.
+ordering works and how a class can influence it. The documentation card beside the list, and the
+links you can follow from it, are covered in [Browsing code from the completion panel](completion_doc_browser.md).
 
 The server gathers candidates, and the browser ranks them. The server sends up to 1200 candidates;
 its ordering is a last-resort tie-break (see [the authority order](#the-authority-order)). The

@@ -114,7 +114,7 @@ For its main code-writing experience _Field·4_ wraps the [Monaco text editor](h
 
 ## Autocomplete
 
-One of the most useful keyboard shortcuts of all is autocomplete — ++ctrl+space++. Use it to provide ideas about what you might type, and documentation about those things:
+One of the most useful keyboard shortcuts of all is autocomplete — ++ctrl+space++. Use it to provide ideas about what you might type, and [documentation about those things](completion_doc_browser.md):
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="editor" warm-completion=true screenshot="assets/autocomplete.png" wait="0" timeout="90" embed=true hidden=true name="autocomplete"}
 ui.eval(
@@ -149,3 +149,4 @@ Autocomplete answers "what can I write *here*". For the other question — what 
 
 Take [a Tour](funFeatures.md); if you're new to Kotlin, read the [Kotlin guide](kotlin_overview.md); learn what happens
 when you [run code in a box](running_code.md); understand the [AI features](aiFeatures.md).
+If you already know what you want to make, [Where to Go Next](staging.md) maps the rest of the documentation.

@@ -241,8 +241,8 @@ second. It stores:
 - source format, channel mix, resampling, librosa version, FFT, hop, frequency limits, and every
   other resolved parameter.
 
-The source asset remains unchanged. The NPZ is the full numerical analysis; the service endpoint
-downsamples only the five scalar curves for browser-safe previews. Field downloads the dense
+The source asset remains unchanged. The NPZ is the full numerical analysis; the service's
+[preview endpoint](field_audio_service_reference.md#http-operations) downsamples only the five scalar curves for browser-safe previews. Field downloads the dense
 MessagePack artifact when it needs to build a space.
 
 ## Temporal pooling and projection
@@ -257,7 +257,9 @@ MDS and t-SNE are views, not new audio features. MDS tries to preserve global pa
 t-SNE is usually more revealing for local state changes but its axes, rotation, and long-range
 geometry have no stable meaning. Either algorithm can use any of the distances above, including
 mel Wasserstein, which is the integral of the absolute difference between two cumulative mel distributions, on a shared
-0–1 mel-bin axis.
+0–1 mel-bin axis. To use that distance as a live control, with axes that hold still from one
+moment to the next, see [audio curves](audio_curves.md), which runs MDS over the last second or so
+of the sound instead of the whole recording.
 
 The same ten seconds, pooled at 200 ms with a 40 ms hop, compared by log-mel cosine and laid out
 both ways. MDS on top keeps most of the trajectory in one dense knot with a few long excursions;

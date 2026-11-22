@@ -91,7 +91,7 @@ The stream gets a `+0.95` spike at every 83rd sample and a `-0.8` dip at every 1
 
 The gamma detector, fed `abs(x)`, marks single samples. The beta detector holds `+1` and `-1` across whole stretches instead, and its window is why: 64 samples is shorter than the 109 the 1.1 Hz sine takes to come round at 120 samples a second, so every fit is a fit over a trend and the trend's own continuation keeps landing in a tail. Give a distribution fit at least one full cycle of any periodic component, or detrend before the detector sees it.
 
-For inline diagnostics of similar live values, continue with [Visualizers](visualizers.md). When you need to estimate a state you can only measure indirectly, see [State estimation](state_estimation_examples.md).
+For inline diagnostics of similar live values, continue with [Visualizers](visualizers.md). When you need to estimate a state you can only measure indirectly, see [State estimation](state_estimation_examples.md). To find a whole stretch of signal that is unlike any other, rather than one sample in a tail, look for [discords in the matrix profile](matrix_profile.md#discords).
 
 ## From time to frequency
 

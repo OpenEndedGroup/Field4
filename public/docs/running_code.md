@@ -75,7 +75,8 @@ palette.
 
 ## Calling suspend functions with `go { }`
 
-Some Field APIs, including calls into embedded editors, are `suspend` functions: they wait for a
+Some Field APIs, including calls into embedded editors and the waits on a
+[terminal in a box](terminal.md#waiting-for-a-program), are `suspend` functions: they wait for a
 reply while the rest of Field keeps running. From ordinary box code, put these calls in `go { }`:
 
 ```diffstatic {data-lang=kotlin}
@@ -505,6 +506,8 @@ class Params(/* layout members */ ) : Structure(/* ... */ ) {
 fun ParamsByteSize(): Long = 464L
 fun HasBuffer.asParams(): Params = asStructure(Params(), ParamsLayoutMembers())
 ```
+
+To go the other way, from a Kotlin data class to the GLSL struct, use a [GPU schema](gpu_schema.md).
 
 `{{ stack.auto.name }}` slots in GLSL generate assignable StackSL properties on the module pointer (`var ModulePointer.name: String`); see [`stack.auto` in the StackSL examples](stacksl_examples.md).
 

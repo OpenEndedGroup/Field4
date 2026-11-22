@@ -587,6 +587,8 @@ and what the draw box puts in the window: 100,000 particles drawn straight from 
 
 To see it running, open the corpus document in the viewer above, or open [threebox](offline.html?file=assets/agent_transcripts/threebox/metadata.edn), the same renderer/compute/draw shape built as a runnable three-box scene.
 
+This compute shader reads the same input every frame. For particles whose velocity carries over from one frame to the next, see [GPU State](gpu_state.md), which keeps that state on the card.
+
 ### Pushing particles around a shape
 
 A compute pass like the one above can keep its particles off, onto or around a shape with
@@ -955,6 +957,8 @@ void main()
 Compare that with the texturing fragment shader: it is the same shader. From the consumer's side there is no difference between sampling a file loaded from disk and sampling the output of another box. Two boxes and one renamed property are the smallest complete statement of how `Field 4` composes.
 
 [threebox](offline.html?file=assets/agent_transcripts/threebox/metadata.edn) and [spin_glass](offline.html?file=assets/agent_transcripts/spin_glass/metadata.edn), from the [agent transcripts](agent_transcripts.md), are runnable versions of the same producer/consumer shape.
+[Shape-aware ASCII](ascii_shape.md#on-the-gpu-over-a-live-scene) chains two targets this way: a
+scene drawn offscreen, then a pass with one pixel per character cell that picks a glyph for each.
 
 ## Ping-pong render to texture
 
@@ -1183,6 +1187,9 @@ and what the last box draws:
 // The transcript builds window, 5. Bluring, 5. kernel and 5. draw blur from their sidecars and launches each.
 ```
 
+[Aperture playground](aperture_playground.md) builds on this chain: its render passes spread light
+into defocus through aperture-shaped filters, with every shader stage in a box of its own.
+
 ## Shader includes
 
 Shader properties are templated before they reach the compiler, and `{% property "name" %}` pulls in another property by name. `5. included` shares its attribute and push-constant declarations with a sibling box:
@@ -1331,6 +1338,8 @@ void main()
 ```
 
 `pc.glsl()` emits the block declaration; `{{ pc.dec }}` splices it in; `m.push.bindAll { pc }` binds the whole Kotlin object to it in one call rather than member by member; and `loadRegs()` plus the accessor `a()` are part of the generated preamble, which is why the shader reads `a()` rather than `pc.a`. `nextFreeOffset(16)` computes where a hand-written extra member can sit without colliding with the generated layout, the escape hatch for the case the generator does not cover.
+
+[GPU schemas](gpu_schema.md) take the same direction further: one annotated data class becomes a layout that can sit in push constants, a storage buffer, or any buffer a shader reaches through a pointer.
 
 ## Debugging: printf from a shader
 
@@ -1558,6 +1567,8 @@ The corpus box for this lesson (`7. slang — hello triangle`) is also the best-
 A second Slang lesson (`7b. slang — Texture`) is the same step again with a texture bound, and it makes the language-independence claim concrete: the Kotlin is the texturing code from earlier, unchanged, `prop<LoadedTexture>` and all, because the resource is matched by reflected name and the name survives the change of shader language.
 
 Slang requires `slangc` to be available. Field checks an explicit `AFIELD_SLANGC` or `-Dafield.slangc` override, then `PATH`, then the optional compiler prepared by `./gradlew buildLearnedShaders`. That task uses a pinned shared cache; live compilation itself does not download anything. See the [optional toolchain](learned_shader.md#optional-toolchain).
+
+Slang can also differentiate a shader. [Learn from a shader on the GPU](gpu_shader_learning.md) uses that to train a small network on what a `moduleHere()` shader renders, while you edit it.
 
 ## Diffusion-limited aggregation
 
@@ -2437,6 +2448,7 @@ For experimental area lights, Vulkan ray-query shadows and optional RTXDI resamp
 - [Compute your ray-traced geometry](computed_ray_geometry.md): a compute shader writes the triangles the ray tracer sees.
 - [Ray Reconstruction](ray_reconstruction.md): denoising RTXDI samples into a stable image.
 - [Field Probes](field_probes.md): instrumenting shaders that have no `println`.
+- [CUDA Beside the Renderer](cuda.md): particles moved by a CUDA kernel in the renderer's own buffer, on Linux with an NVIDIA GPU.
 - [WebRTC Streams](webrtc.md): publishing a render as a live video stream, and sampling other streams as textures.
 - [Stereo RTT composite](stereo_rtt_composite.md): a small scene you can change while wearing a headset.
 

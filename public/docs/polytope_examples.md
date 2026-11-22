@@ -1154,6 +1154,8 @@ spread up from `3.4e-01` to `1.9e+00`. Tangency is measured to the line through 
 shrinking edge satisfies its constraint for free, and the iteration finds that collapse instead of
 the answer. When `canonicalize()` reports `converged = false`, try `relaxWithCeres` with
 `RelaxationPlan.canonicalConditions()`, as in the right panel.
+[A polytope, canonicalised, and sliced into layers](chain_ceres_manifold_contours.md) slices both
+results and finds that the Ceres form meets every canonical condition but passes through itself.
 
 ??? aside "Why relaxWithCeres reaches kkC"
 
@@ -1711,6 +1713,8 @@ Each of these starting points is a document you can open, edit and re-run:
   and the `FLine`/`TriMesh` adapters.
 - [Solvers reference](reference/solvers.md) — the Ceres constraint vocabulary behind `relax` and
   `CeresRealization`, plus the expression VM for residuals the vocabulary cannot say.
+- [Shapes from constraints](ceres.md) — the same Ceres solver on shapes you describe by hand
+  (equal edges, flat faces, lines meeting at a vanishing point), re-solved as you drag a corner.
 - [Meshes & 3D Geometry](mesh_examples.md) — `TriMesh`, `MeshView`, `showMesh` and the Three.js viewer
   every gallery on this page is rendered by.
 - [FLine Examples](fline_examples.md) — `threeLines(...)`, `onClick`, `hoverColor` and the rest of

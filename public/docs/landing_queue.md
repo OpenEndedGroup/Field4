@@ -1,6 +1,6 @@
 # Landing on `main`
 
-Field is developed by several people and many agents at once, each working in a separate
+Field is developed by [several people and many agents at once](how_field_is_built.md), each working in a separate
 worktree on a topic branch. None of them merge into `main` themselves. Instead they hand the
 branch to `tools/land.py`, which keeps one queue per clone and has a single process, the
 *lander*, put branches onto `main` one at a time.

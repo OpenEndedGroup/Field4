@@ -283,6 +283,10 @@ rather than Clipper's `EVEN_ODD`, because it is the rule under which winding *me
 overlapping same-wound outlines are one shape, where `EVEN_ODD` would punch their overlap out as a
 hole.
 
+[A Penrose relief](debruijn_tilings.md#a-relief-through-manifold) passes every rhombus of a tiling
+through `Section.ofFLines`, insets it with `offset`, and extrudes and unions the results into one
+printable solid.
+
 ## Previewing a ball-end mill
 
 A ball-end mill cannot cut a sharp inside corner. Wherever two faces meet in a concave edge, the
@@ -444,6 +448,10 @@ far-outside sentinel, and `levelSet` rethrows once the native call is over: you 
 **not** re-mesh, so put `refined()` in front of it or a 12-triangle cube's eight corners move and
 nothing looks different.
 
+An image can be the field too: [A photograph, closed and mounted](chain_photo_to_solid.md) marches
+a depth map as a level set and compares the result with a relief mesh built directly from the same
+image.
+
 ## Backing off some faces: clearance between parts
 
 Parts designed to meet exactly have no room to go together. `insetFaces(distance, except = [...])`
@@ -589,6 +597,9 @@ showPlaneGrid(
 )
 part.close()
 ```
+
+[A polytope, canonicalised, and sliced into layers](chain_ceres_manifold_contours.md) slices a
+Conway polytope into a stack of layers and checks that their areas add up to the solid's volume.
 
 ## The bridges, both ways
 

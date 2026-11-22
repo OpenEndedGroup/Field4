@@ -104,7 +104,8 @@ paper is still wet (`paint_look` with `map="surface"`).
 
 A brush kept with `paint_tool` and `moving=true` is a [brush with moving hairs](paint_gestures.md).
 The agent paints with it through `paint_gesture`, giving the speed, pressure along the stroke, and
-the tilt and roll of the handle, for the marks that depend on the hand. Below, the agent was asked
+the tilt and roll of the handle, for the marks that depend on the hand.
+[Paint settings, swept](paint_sweeps.md#the-hand) shows what tilt and speed do to one gesture. Below, the agent was asked
 for grasses at the edge of a wood, scrubbing the wood in with a moving hog flat, flicking the
 blades up with a moving rigger and rolling the flat through a path; then to scrub the hog hard
 along the bottom edge and lay three light strokes with it. The conversation was then rewound to

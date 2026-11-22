@@ -252,7 +252,7 @@ What the two scores reward is different. Average pixel error is satisfied first 
 
 ## What beating the control means
 
-Every result from `evolveStackSLTowards` is reported against the random control at the same budget, because a vocabulary this expressive produces plausible pictures by chance. A search that only matched what random drawing finds would look identical from outside.
+Every result from `evolveStackSLTowards` is reported against the random control at the same budget, because a vocabulary this expressive produces plausible pictures by chance. A search that only matched what random drawing finds would look identical from outside. [Searching for MorphoHDL Circuits](morpho_search.md) reports its circuit programs against a random control in the same way, and [Braitenberg vehicles with memory](braitenberg_vehicles.md#10-a-larger-genome-does-evolution-beat-random-sampling) does the same for vehicle brains.
 
 !!! note "Beating the control is not resembling the target"
     "Evolution beat the control" means the evolved program **scores** higher under the metric the search optimised. It does not mean the picture looks like the target. Under average pixel error, evolution beat the control on four of five targets while drawing dark diagonal streaks for a yellow disc and a vertical gradient for four quadrants. Look at the contact sheet before believing a score.

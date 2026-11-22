@@ -88,7 +88,7 @@ perception and masking around it.
 The same rule runs as a compute shader on a 96 × 96 grid beneath a renderer box. The flower was
 trained at 64 × 64, but the rule is local, so the grid can be any size. Two grids share one buffer:
 one compute pass reads the first and writes the second, a barrier follows, and a second pass writes
-back. The fragment shader draws the colour channels. Hold the left mouse button over the window to
+back ([GPU State](gpu_state.md#both-halves-of-the-ping-pong) explains this ping-pong). The fragment shader draws the colour channels. Hold the left mouse button over the window to
 erase cells. While `autoCut` is on, the box also cuts a random disc every 600 steps:
 
 ```diffstatic {data-lang=kotlin}
@@ -696,7 +696,8 @@ grows back a little less exactly: 5.2 × 10⁻⁴ at step 999, then 1.1 × 10⁻
 Open the [Growing NCA starting point](agent_transcripts.md#growing_nca) to try these boxes: the
 strip at the top, a live CPU version (launch it), the turning, angle-field, damage and fish boxes,
 and two renderers, each with a GPU box beneath it. See [Spatial artificial life](alife_examples.md)
-for cellular automata whose rules are written by hand.
+for cellular automata whose rules are written by hand, and [Particle Lenia](particle_lenia.md) for
+a model by three of the same authors that takes the grid away and moves particles instead.
 
 ## API reference
 

@@ -384,7 +384,7 @@ one source. Declare which numbers in a shape are free, hand over some samples of
 actually want, and a gradient finds them — the 3D version of what
 [RectSL's inverse animation](rectsl_inverse_animation.md) (`RectSLFn.kt` in `afield.lang.rectsl`) does for 2D tracks.
 
-The machinery is `afield.math.autodiff.AD`, reverse-mode automatic differentiation over `Double`:
+The machinery is `afield.math.autodiff.AD`, reverse-mode [automatic differentiation](autodiff_examples.md) over `Double`:
 `SolidGradient.kt` is `SolidField.kt`'s `toField3` transposed line for line into `AD` arithmetic.
 Reverse mode because the objective is one scalar loss over many sample points and a handful of
 parameters, so one forward pass and one backward sweep give every parameter derivative at once. The

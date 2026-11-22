@@ -338,7 +338,7 @@ Manifold's `volume` works on the surface in 3D. Comparing them can reveal a prob
 
 Every form above sums correctly. `kkC` (kis, which raises a pyramid on every face, applied twice to the cube) is a polytope that
 `canonicalize()` cannot make canonical, and
-[Polytopes & the Conway Algebra](polytope_examples.md) uses it as its counter-example. The Ceres
+[Polytopes & the Conway Algebra](polytope_examples.md) uses it as its counter-example. The [Ceres](ceres.md)
 solver, `relaxWithCeres`, does meet every canonical condition, though, as the bottom row shows,
 not as a solid. This box tries both and slices each result.
 
