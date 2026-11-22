@@ -889,12 +889,22 @@ what a torus is.
 
 The [`solidsl_gallery`](agent_transcripts.md#solidsl_gallery) starting point has three boxes. Open it and run them:
 
-- **one shape, two evaluations** — one part put through both lowerings, with the meshes side by side.
-  Change `boreRadius` or drop `quality` to 24 and watch the agreement degrade to the faceting floor.
-- **the same source as a GLSL raymarcher** — the emitted shader, the step scale, and the simplifier
-  dropping 40 extra bores, most of them nowhere near the part.
-- **refusals, and the hybrid build** — the whole refusal catalogue with its reasons, and the
-  smallest-subtree level set beside what the naive one would have cost.
+**One shape, two evaluations** puts one part through both lowerings and shows the meshes side by side.
+Change `boreRadius` or drop `quality` to 24 and watch the agreement degrade to the faceting floor.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/gallery-cross-check.png" wait="8.0" capture="box" open-outputs="true" padding="20" embed=true hidden=true name="solidsl-gallery-cross-check" macro-file="../../dev_docs/agents/transcripts/solidsl_gallery.yaml" capture-box="cross_check" alt="The one shape, two evaluations box after a run: the same bracket meshed by Manifold exact CSG and by marching its distance field, with triangle counts, volumes and how far apart the two surfaces are."}
+// dev_docs/agents/transcripts/solidsl_gallery.yaml creates and runs the three gallery boxes.
+```
+
+**The same source as a GLSL raymarcher** shows the emitted shader, the step scale, and the simplifier
+dropping 40 extra bores, most of them nowhere near the part.
+
+**Refusals, and the hybrid build** lists the whole refusal catalogue with its reasons, and sets the
+smallest-subtree level set beside what the naive one would have cost.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/gallery-refusals.png" wait="8.0" capture="box" open-outputs="true" padding="20" embed=true hidden=true name="solidsl-gallery-refusals" macro-file="../../dev_docs/agents/transcripts/solidsl_gallery.yaml" capture-box="refusals" alt="The hybrid build panel of the refusals box: a plate with four exact bores and one marched, blended spherical post, reported as a single watertight solid."}
+// dev_docs/agents/transcripts/solidsl_gallery.yaml creates and runs the three gallery boxes.
+```
 
 All three need nothing but Field; the second needs no Manifold at all. The first and third print a
 clear "install Manifold" message and fall back to the field lowering when it is absent.
