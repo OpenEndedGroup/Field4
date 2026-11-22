@@ -335,8 +335,7 @@ ui.pause(1200)
 
 The newest entry, marked **Current**, is the document as it is now; the others are earlier saves,
 numbered `#0` (oldest), `#1`, … Each shows its box count, the size of the saved file and how long
-ago it was saved. Counts and diffs for older versions arrive a moment after the list, so an entry
-can briefly read `0 boxes`.
+ago it was saved.
 
 - **Saves** / **Time** spaces the timeline one slot per save, or by when each save happened;
   **Focus**, **−** and **+** zoom it.
