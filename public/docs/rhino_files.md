@@ -267,4 +267,6 @@ first set Field up. `Rhino3dm.describe()` says whether Field found it.
 - [Geometry from disk](geometry_from_disk.md): the other formats Field reads, and repairing a mesh
   into a solid.
 - [Meshes and 3D geometry](mesh_examples.md): what to do with a `TriMesh` once you have one.
+- [A Rhino file, path traced](chain_rhino_render.md): the same objects rendered by the GPU path
+  tracer, each in its display colour.
 - [Graphics reference](reference/graphics.md): `Rhino3dm`, `RhinoModel` and the object classes.
