@@ -64,6 +64,77 @@ Worked: [The input convention](stacksl_examples.md#the-input-convention), and th
 
 </div>
 
+## Complex arithmetic and rotation weights
+
+Start a program with `@types` to use compile-time types. This program reads the input's first two
+lanes as a complex number and squares it.
+
+```diffstatic {data-lang=stacksl}
+@types
+assume-c1 dup *
+```
+
+The result has weight 2. A rotation through angle θ multiplies a complex value of weight *k* by
+\(e^{ik\theta}\). Complex multiplication adds weights, and conjugation negates the weight. Values of
+the same weight can be added, subtracted, or mixed with a real invariant amount.
+
+<div data-code-lang="stacksl" markdown>
+
+| Word | Stack | Effect |
+| --- | --- | --- |
+| `assume-c1` | input → complex | Read xy as a complex value of weight 1. Use `assume-c0`, `assume-c-1`, or another signed integer weight to declare a different action. |
+| `assume-r0` | input → real | Read x and declare it invariant under rotation. |
+| `as-raw` | value → raw | Keep the four lanes and continue with ordinary StackSL words. |
+| `i` | → complex | The imaginary unit, of weight 0. |
+| `conj` | complex → complex | Conjugate the value and negate its weight. |
+| `norm2` | complex → real | Square the magnitude, including at zero. |
+| `real`, `imag`, `.re`, `.im` | complex → real | Read a component of a weight-zero complex value. |
+| `to-complex` | real → complex | Put a real invariant in the real lane of a weight-zero complex value. |
+| `cis` | real → complex | Compute `cos(phase) + i*sin(phase)` with weight 0. |
+| `tanh` | real → real | Apply the hyperbolic tangent to a real invariant. |
+
+</div>
+
+The assumption words accept direct reads of the initial input, `input`, `uv`, `p`, `time`, and
+unindexed host variables or members such as `?pc.b`. A complex input contract applies to the two
+coordinates in xy. Declare `p assume-c1` when the host action rotates
+position around the center of the frame. Declare `input assume-c1` when it rotates the first two
+lanes around zero. Use `time assume-r0` when time stays fixed. Each host binding and its
+rotation action must come from the shader's caller.
+
+Complex values use `(re, im, 0, 0)`. Real invariants are splatted across all four lanes. Numeric
+literals are real invariants, so `2 *` scales a complex value. A fixed literal `0` can also be added
+to or subtracted from a complex value of any weight. Externalized literals are adjustable invariant
+parameters. Use `to-complex` before adding a real invariant to a weight-zero complex value.
+
+`sin`, `cos`, `exp`, and `tanh` preserve real invariants. Multiplying by `cis` of an invariant
+phase multiplies the complex coordinate by that phase factor. For weight 2, a phase change of
+φ represents a physical axis rotation of φ/2.
+
+This program combines a centred position with two host-bound vectors (`pc.b` and `pc.c`). It
+returns a complex value of weight 1.
+
+```diffstatic {data-lang=stacksl}
+@types
+p assume-c1 >a
+?pc.b assume-c1 >b
+?pc.c assume-c1 >c
+<a dup * <b conj *
+<a conj <b * imag sin <c *
++
+```
+
+With `@types`, supply operands explicitly. Legacy lane reads and writes, selectors, guarded
+division and other raw words require raw operands. Marks and stack shuffles carry the value's type.
+Definitions and quoted definitions used with `apply` resolve at each call site. Noise words that
+call a separate GLSL function for a quoted definition require legacy mode.
+
+Call `compileStackSL` to inspect `analysis.semantics` for the output type, the input assumptions
+used by the result, and the conditional SO(2) certificate. The certificate describes the
+mathematical composition under those contracts. Floating-point precision and range depend on the
+shader and its inputs. A live raw expression or a store or external write prevents certification.
+Unused raw expressions can be pruned.
+
 ## Kotlin helpers
 
 These helpers compile StackSL to GLSL and run it through a tiny on-demand compute shader. They need a running `Renderer` in context.
