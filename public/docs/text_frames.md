@@ -157,6 +157,44 @@ in screen pixels; the trace follows corners and sits 5px outside the selection b
 `autocomplete: true` enables prose suggestions through the configured AI4 text model. Accept a
 suggestion with ++tab++ and dismiss it with ++escape++; availability follows your AI4 configuration.
 
+## Notes on a passage
+
+Select text in a frame, then ++alt++-click and choose **New note from selection**. Field creates
+a child text frame below it. The note has a **Source passage** button: click it to frame the
+parent and highlight the passage. This works with a selection in the reader, in the visual
+editor, or in the inline Markdown editor.
+
+The link follows the passage as you write before, within, or after it. Insertions just outside
+its ends stay outside the link. If you delete the passage completely, the note and graph
+connection stay in place and the button reads **Passage lost**.
+
+Cut a selection that contains the whole passage and paste it elsewhere on the canvas to move
+the link with the text. This works in the visual and inline Markdown editors. Pasting into
+another frame in the same document moves the note's parent connection to that frame and keeps
+its other connections. Only the first paste of a cut moves the passage; copies and later
+pastes insert ordinary text.
+
+## Paste as transclusion
+
+Copy a selection from a text frame, then press ++cmd+shift+v++ on macOS or ++ctrl+shift+v++
+elsewhere in the canvas visual or inline Markdown editor. The destination must be in the same
+document. Field inserts a live excerpt. Edit the
+source and the excerpt updates; click the excerpt to highlight its source. Ordinary paste
+still inserts a copy.
+
+The Markdown stores a `field://passage/` link to the passage ID. The excerpt is read-only,
+including in the visual editor, but you can edit the text around it. Cutting and pasting the
+source passage within the document moves that ID with it. If the source passage is deleted,
+the excerpt shows **Passage lost**.
+
+## Find sources and backlinks
+
+In **Open Anything**, search for the wording of a passage, either box's name, or a passage ID.
+Use **Source:** results to jump from the referencing box to its source. Use **Backlink:**
+results to jump to the linked note, transclusion, or Markdown box link. Prefix the search
+with `sources:`, `backlinks:`, or `links:` to show just those results. Lost passages
+remain searchable by their last saved excerpt.
+
 ## Connected writing
 
 Shift-select two boxes and press ++g++ to connect them. ++alt++-click a frame and move **down** to choose
@@ -180,3 +218,21 @@ saved document; for the latest unsaved state AI4 should read the live box proper
 Updates from another person or an agent use Field's property synchronization. If an incoming change
 collides with your active draft, Field keeps the draft and offers **Use incoming** or **Keep my version**.
 This is whole-property conflict handling; simultaneous character-by-character merging is not provided.
+
+
+### Work with notes and passages in AI4
+
+In a document's AI4 chat, ask for a Markdown note or for notes matching a phrase. AI4 can work
+with unsaved box text. It can also create a child note tied to an exact quote, return a stable
+clickable passage link, or insert a live transclusion into an existing frame. If a quote occurs
+more than once, give surrounding text or specify which occurrence to use.
+
+- `FindTextNotesRequest` finds text-frame notes and the `notes` property of ordinary boxes.
+- `CreateTextNoteRequest` creates a frame, with an optional parent and exact passage.
+- `GetBoxPropertyRequest` reads the note; `PatchBoxTextRequest` edits `contents` for a text frame
+  or `notes` for box notes. Editing a note doesn't run it.
+- `TrackTextPassageRequest` returns a durable passage ID and link.
+- `TranscludeTextPassageRequest` inserts a live reference from a quote or an existing passage ID.
+- `FindTextLinksRequest` finds sources and backlinks, including links to lost passages.
+
+The results include clickable Field links so you can check what the agent found or wrote.

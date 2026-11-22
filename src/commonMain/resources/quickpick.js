@@ -275,6 +275,7 @@ const anywhereScopes = {
         command: ["command"], commands: ["command"], cmd: ["command"],
         macro: ["macro"], macros: ["macro"],
         guide: ["guide"], guides: ["guide"],
+        links: ["passage-source", "passage-backlink"], sources: ["passage-source"], backlinks: ["passage-backlink"],
         workspace: ["workspace"], document: ["workspace"], documents: ["workspace"],
         code: ["box-prop", "semantic"], semantic: ["semantic"],
 }
@@ -562,6 +563,21 @@ function bootstrapAnywhereProviders() {
                 }))].filter(item => Number.isFinite(paletteFuzzyScore(query,
                         `${item.label} ${item.description} ${item.detail} Document Guides`)))
         })
+
+        for (const direction of ["source", "backlink"]) {
+                registerAnywhereProvider(`passage-${direction}`, (query) =>
+                        (window.queryTextFrameLinks?.({query, direction}) || []).slice(0, 40).map(link => ({
+                                id: `${link.destinationUid}-${link.passageId || link.href}-${link.occurrence}`,
+                                label: direction === "source" ? `Source: ${link.sourceName}` : `Backlink: ${link.destinationName}`,
+                                description: `${link.kind} · ${link.sourceName} → ${link.destinationName}${link.lost ? " · lost" : ""}`,
+                                detail: link.text.replace(/\s+/g, " ").slice(0, 240),
+                                icon: direction === "source" ? "↗" : "↶",
+                                score: 25,
+                                serverRanked: true,
+                                run: () => window.followTextFrameLink?.(link, direction),
+                        }))
+                )
+        }
 
         let macroCache = null
         let macroCacheAt = 0
@@ -869,6 +885,8 @@ const paletteProviderTitle = (provider) => {
                 "editor": "Editor",
                 "macro": "Macros",
                 "guide": "Document Guides",
+                "passage-source": "Link Sources",
+                "passage-backlink": "Backlinks",
                 "docs": "Docs",
                 "workspace": "Workspace Documents",
                 "option": "Options",
@@ -2074,7 +2092,7 @@ function openAnywherePalette() {
         ensureEditor()
         fieldPalette().open({
                 title: "Open Anything",
-                placeholder: "Search controls, boxes, commands, docs, or text...",
+                placeholder: "Search controls, boxes, commands, docs, links, or text...",
                 hint: "> controls · ? docs · ` code · , box names",
                 searchQuery: value => paletteAnywhereQuery(value).query,
                 getItems: async (value) => {

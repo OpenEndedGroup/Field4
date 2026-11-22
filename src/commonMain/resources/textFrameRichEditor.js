@@ -1,6 +1,10 @@
+import {textFrameMarkdownToHtml} from './afield.mjs';
+import {markdownCharacters} from './markdownTextRuns.js';
+
 const proseSelector = 'p,h1,h2,h3,h4,h5,h6';
 const imageSource = /^!\[([^\]]*)\]\(([^)]+)\)/;
 const inlineTags = 'span,b,strong,i,em,br,img';
+const passageLink = 'a[href^="field://passage/"]';
 const children = (node, render) => [...node.childNodes].map(render).join('');
 
 function inlineMarkdown(node, marks = '') {
@@ -10,7 +14,7 @@ function inlineMarkdown(node, marks = '') {
         return node.data.replace(/\S(?:.*\S)?/g, value => marks + value + marks);
     }
     if (node.nodeType !== Node.ELEMENT_NODE) return '';
-    if (node.matches('img')) return node.dataset.richMarkdown || '';
+    if (node.matches('img,' + passageLink)) return node.dataset.richMarkdown || '';
     if (node.matches('br')) return ' ';
     const bold = marks.length >= 2 || node.matches('b,strong') || /^(bold|[6-9]00)$/.test(node.style.fontWeight);
     const italic = marks.length % 2 === 1 || node.matches('i,em') || node.style.fontStyle === 'italic';
@@ -42,7 +46,10 @@ function blockMarkdown(host) {
 // The reader already maps visible text back to source. Use that mapping to make independent
 // editing hosts for simple blocks. Everything between those ranges stays byte-for-byte intact.
 function editableRange(block, source) {
-    if (!block.matches(proseSelector) || [...block.querySelectorAll('*')].some(el => !el.matches(inlineTags))) return null;
+    if (!block.matches(proseSelector) || [...block.querySelectorAll('*')].some(el => !el.matches(inlineTags + ',' + passageLink))) return null;
+    for (const link of block.querySelectorAll(passageLink)) {
+        link.dataset.richMarkdown = `[Source passage](${link.getAttribute('href')})`;
+    }
     let first = Infinity, last = -1;
     for (const el of block.querySelectorAll('[data-markdown-offsets],img[data-markdown-start]')) {
         if (el.matches('img')) {
@@ -72,7 +79,7 @@ function editableRange(block, source) {
 }
 
 export function mountRichText(root, markdown) {
-    const source = markdown.replace(/\r\n/g, '\n');
+    const source = markdown.replace(/\r\n?/g, '\n');
     if (!source.trim()) root.innerHTML = '<div class="ai-chat-markdown"><p><br></p></div>';
     const reader = root.querySelector('.ai-chat-markdown');
     const blocks = [];
@@ -88,6 +95,7 @@ export function mountRichText(root, markdown) {
         host.setAttribute('aria-multiline', 'true');
         block.replaceWith(host);
         host.append(block);
+        for (const link of host.querySelectorAll(passageLink)) link.contentEditable = 'false';
         for (const span of host.querySelectorAll('span[data-markdown-offsets]')) span.replaceWith(...span.childNodes);
         blocks.push({...range, host, baseline: blockMarkdown(host)});
     }
@@ -101,21 +109,94 @@ export function mountRichText(root, markdown) {
         reader.append(host);
         blocks.push({start: source.length, end: source.length, host, baseline: '', prefix: '\n\n'});
     }
+    function serialize() {
+        let result = '', cursor = 0, changed = false;
+        const regions = [];
+        for (const {start, end, host, baseline, prefix = ''} of blocks) {
+            const value = blockMarkdown(host);
+            result += source.slice(cursor, start);
+            const next = value === baseline ? source.slice(start, end) : value;
+            if (value !== baseline) { result += prefix; changed = true; }
+            regions.push({host, start: result.length, raw: next});
+            result += next;
+            cursor = end;
+        }
+        return {text: changed ? result + source.slice(cursor) : source, regions};
+    }
+    const prose = value => value.replace(/\s/g, '');
+    const plainProse = root => {
+        root.querySelectorAll(passageLink).forEach(link => link.remove());
+        return prose(root.textContent);
+    };
+    const prosePositions = raw => {
+        const detached = document.createElement('div');
+        detached.innerHTML = textFrameMarkdownToHtml(raw);
+        return markdownCharacters(detached).filter(item => !/\s/.test(item.char) && !item.node.parentElement.closest(passageLink));
+    };
     return {
         first: blocks[0].host,
-        markdown() {
-            let result = '', cursor = 0, changed = false;
-            for (const {start, end, host, baseline, prefix = ''} of blocks) {
-                const value = blockMarkdown(host);
-                result += source.slice(cursor, start);
-                if (value === baseline) result += source.slice(start, end);
-                else {
-                    result += prefix + value;
-                    changed = true;
+        markdown: () => serialize().text,
+        sourceRange(range, allowCaret = false) {
+            if (range.collapsed && !allowCaret) return null;
+            const {regions} = serialize();
+            const map = (node, offset, end) => {
+                const region = regions.find(({host}) => host.contains(node));
+                if (!region) return null;
+                // Compare prose characters rather than DOM structure: the browser may split
+                // text nodes, and the Markdown renderer can collapse line breaks and spaces.
+                const before = document.createRange();
+                before.selectNodeContents(region.host);
+                before.setEnd(node, offset);
+                const prefix = before.toString();
+                const index = plainProse(before.cloneContents()).length;
+                const chars = prosePositions(region.raw);
+                if (chars.map(item => item.char).join('') !== plainProse(region.host.cloneNode(true))) return null;
+                if (range.collapsed) {
+                    const link = (node.nodeType === Node.TEXT_NODE ? node.parentElement : node).closest?.(passageLink);
+                    if (link) return null;
+                    if (!chars.length) {
+                        if (!region.raw.trim() && !source.trim()) return region.start + region.raw.length;
+                        if (region.host.querySelector(passageLink)) return region.start + region.raw.length;
+                        return null;
+                    }
+                    const left = chars[index - 1]?.source;
+                    const right = chars[index]?.source;
+                    if (left == null) return region.start + right;
+                    if (right == null) return region.start + left + 1;
+                    const between = region.raw.slice(left + 1, right);
+                    const typedSpace = prefix.match(/\s*$/)[0].length;
+                    return region.start + (/^\s*$/.test(between) ? Math.min(left + 1 + typedSpace, right)
+                        : typedSpace ? right : left + 1);
                 }
-                cursor = end;
+                const item = chars[index - (end ? 1 : 0)];
+                return item ? region.start + item.source + (end ? 1 : 0) : null;
+            };
+            const start = map(range.startContainer, range.startOffset, false);
+            const end = range.collapsed ? start : map(range.endContainer, range.endOffset, true);
+            return start != null && end != null && (allowCaret ? start <= end : start < end) ? {start, end} : null;
+        },
+        placeAtSourceOffset(offset) {
+            const {regions} = serialize();
+            const region = regions.find(({start, raw}) => start <= offset && offset <= start + raw.length) ||
+                regions.find(({start}) => start > offset) || regions.at(-1);
+            const {host, start, raw} = region;
+            let remaining = prosePositions(raw).filter(item => item.source < offset - start).length;
+            const walker = document.createTreeWalker(host, NodeFilter.SHOW_TEXT);
+            const caret = document.createRange();
+            caret.selectNodeContents(host);
+            caret.collapse(offset <= start);
+            search: for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+                if (node.parentElement.closest(passageLink)) continue;
+                for (let j = 0; j < node.length; j++) {
+                    if (/\s/.test(node.data[j])) continue;
+                    if (remaining === 0) { caret.setStart(node, j); caret.collapse(true); break search; }
+                    remaining--;
+                }
             }
-            return changed ? result + source.slice(cursor) : markdown;
+            host.focus({preventScroll: true});
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(caret);
         }
     };
 }

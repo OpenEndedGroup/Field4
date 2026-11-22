@@ -2,6 +2,10 @@
 
 package afield.app.server
 
+import afield.document.text.TEXT_RUN_ANCHOR
+import afield.document.text.applyTextRunClipboardEdit
+import afield.document.text.textRunSources
+import afield.document.text.validateTextRunAnchor
 import afield.animation.keyframes.Handle
 import afield.app.diagnostics.named
 import afield.app.protocol.AgentOpenDocument
@@ -3059,7 +3063,18 @@ class Server {
                     // Monaco view/cursor state should persist with the document, but live rebroadcast
                     // makes multiple clients on the same box fight over their local editor position.
                     // `textPropertyValue`: text spelling a Boolean, for a Boolean property, is stored as one.
-                    targetBox.setPropertyRaw(set.property, textPropertyValue(targetBox, set.property, set.value), doResync = !isEditorStateProperty)
+                    val value = if (set.property == TEXT_RUN_ANCHOR) {
+                        val boxes = thisSessionInfo.get().boxes
+                        validateTextRunAnchor(set.value) { boxes[it] }
+                    } else textPropertyValue(targetBox, set.property, set.value)
+                    val clipboardEdit = set.textRunClipboard
+                    val movedPassage = set.property == "contents" && clipboardEdit != null && run {
+                        val boxes = thisSessionInfo.get().boxes
+                        applyTextRunClipboardEdit(targetBox, set.value, clipboardEdit,
+                            knownPassage = { id -> boxes.values.any { box -> box.textRunSources().any { it.id == id } } },
+                            boxByUid = { boxes[it] })
+                    }
+                    if (!movedPassage) targetBox.setPropertyRaw(set.property, value, doResync = !isEditorStateProperty)
                     OperationTranscript.recordEdit(
                         targetBox,
                         set.property,

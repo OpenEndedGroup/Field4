@@ -1828,6 +1828,7 @@ fun newBox(options: Any? = null) {
     val frameContents = (o?.contents as? String) ?: ""
     val frameStyle = (o?.textFrame as? String) ?: "{}"
     val parentUid = o?.parentUid as? String
+    val textRunAnchor = (o?.textRunAnchor as? String)?.takeIf { parentUid != null }
     var createdUid: String? = null
     mainCanvas.append {
         val el = createBox(name, frame = Rect(x, y, w, h))
@@ -1839,7 +1840,7 @@ fun newBox(options: Any? = null) {
                 "default_property" to "contents",
                 "textFrame" to frameStyle,
                 "box_kind" to "text-frame"
-            )
+            ) + if (textRunAnchor != null) mapOf("textRunAnchor" to textRunAnchor) else emptyMap()
             properties.forEach { (property, value) ->
                 el.asDynamic()[property] = value
                 // Stamp creation values too: their delayed echoes must not undo the first canvas edit.
@@ -3207,15 +3208,31 @@ fun registerBuiltinCommands() {
 /** A connected writing frame below the source, with the same width and typography. */
 @OptIn(ExperimentalJsExport::class)
 @JsExport
-fun newTextFrameBelow(uid: String) {
+fun newTextFrameBelow(uid: String, textRunAnchor: String? = null) {
     val source = findBoxByUid(uid) ?: return
     val d = source.asDynamic()
     val settings = (d.textFrame as? String) ?: "{}"
     val forChild = window.asDynamic().textFrameSettingsForChild
+    var y = (d.data_y as Number).toDouble() + (d.data_h as Number).toDouble() + 32.0
+    if (textRunAnchor != null) {
+        val left = (d.data_x as Number).toDouble()
+        val right = left + (d.data_w as Number).toDouble()
+        val children = d.box_children as? Array<String> ?: emptyArray()
+        for (child in children.mapNotNull(::findBoxByUid)) {
+            val c = child.asDynamic()
+            val x = (c.data_x as? Number)?.toDouble() ?: continue
+            val top = (c.data_y as? Number)?.toDouble() ?: continue
+            val w = (c.data_w as? Number)?.toDouble() ?: continue
+            val bottom = top + ((c.data_h as? Number)?.toDouble() ?: continue)
+            if (c.box_kind == "text-frame" && x < right && x + w > left &&
+                bottom > (d.data_y as Number).toDouble() + (d.data_h as Number).toDouble()) {
+                y = maxOf(y, bottom + 32.0)
+            }
+        }
+    }
     newBox(json(
-        "kind" to "text-frame", "name" to "Text", "parentUid" to uid,
-        "textFrame" to (if (forChild == null) settings else forChild(settings) as String),
-        "frame" to json("x" to d.data_x, "y" to ((d.data_y as Number).toDouble() +
-            (d.data_h as Number).toDouble() + 32.0), "w" to d.data_w, "h" to 180.0)
+        "kind" to "text-frame", "name" to (if (textRunAnchor == null) "Text" else "Note"), "parentUid" to uid,
+        "textRunAnchor" to textRunAnchor, "textFrame" to (if (forChild == null) settings else forChild(settings) as String),
+        "frame" to json("x" to d.data_x, "y" to y, "w" to d.data_w, "h" to 180.0)
     ))
 }

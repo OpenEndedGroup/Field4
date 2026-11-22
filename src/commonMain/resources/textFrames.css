@@ -116,3 +116,28 @@
 }
 .text-frame-preview .ai-chat-copy:not([data-copy-state="copied"]) .copy-check,
 .text-frame-preview .ai-chat-copy[data-copy-state="copied"] svg > :not(.copy-check) { display: none; }
+
+.text-frame-box .text-frame-passage {
+    position: absolute;
+    top: 0;
+    right: 0;
+    transform: translateY(calc(-100% - 6px));
+    z-index: 2;
+    font-size: 10px;
+    color: var(--field-fg);
+    white-space: nowrap;
+}
+.text-frame-box .text-frame-passage-lost { color: var(--field-warning, #e6ad75); }
+::highlight(field-source-passage) { background-color: #14566b; color: #fff; }
+
+.text-frame-preview a.text-frame-transclusion {
+    border-left: 2px solid var(--field-accent);
+    padding-left: .45em;
+    text-decoration: none;
+    cursor: pointer;
+}
+.text-frame-preview a.text-frame-transclusion-lost {
+    border-color: currentColor;
+    color: var(--field-warning);
+}
+.text-frame-link-target { outline: 1px solid var(--field-accent); outline-offset: 3px; }
