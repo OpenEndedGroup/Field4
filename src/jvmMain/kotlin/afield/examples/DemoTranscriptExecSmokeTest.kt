@@ -975,6 +975,10 @@ object DemoTranscriptExecSmokeTest {
         // by a fragment shader. Needs a native Window; GeziraWindingTest and BufferCanvasOutlineTest
         // check the coverage itself, and the `fline-coverage-gpu` docs capture checks the pixels.
         "fline_coverage_gpu",
+        // Gezira's WindingSpans as a compute shader (2026-11-22). Needs a native Window and a GPU;
+        // the four.gezira-gpu.probe FIELD_TEST checks the coverage and the `gezira-gpu` docs capture
+        // checks the pixels.
+        "gezira_gpu_winding",
         "threebox",
         "rectsl_dataviz",
         "rectsl_plot_axes",
