@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-22T11:19:51.286Z",
+  "capturedAt": "2026-11-22T16:10:13.755Z",
   "documentName": "nile_gezira_svg",
   "outputs": [
     {
@@ -21,7 +21,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 465,
+      "width": 469,
       "height": 59,
       "path": "outputs/1.html"
     },
@@ -41,7 +41,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 232,
+      "width": 228,
       "height": 138,
       "path": "outputs/3.html"
     },
@@ -63,7 +63,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 372,
+      "width": 368,
       "height": 188,
       "path": "outputs/5.html"
     }
