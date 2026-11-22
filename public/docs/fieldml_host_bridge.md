@@ -204,6 +204,9 @@ Two more things to know:
 - You do not get a macro's generated accessors. `moduleHere`'s expansion also returns typed Kotlin declarations (`val Mesh.pos by FromInput()`, an accessor per push-constant member, the `triangles` constant). In FieldML the same members are reached through `hostGet` and `hostCall`.
 - A FieldML integer is a JVM `Long`. Writing one into a slot a Kotlin box declared as `prop<Int>` would change what is *in* the slot even though the Kotlin read still works, so `setProp` keeps the width that is already there. Nothing protects you from a value too large for the declared type; that truncates silently, as it would in Kotlin.
 
+Use [a Kotlin slider to drive a FieldML rule](reactive_properties.md#run-a-rule-in-fieldml)
+to see `propDown` and `setPropDown` rerun boxes across both languages.
+
 ## Every frame
 
 Field's animation helpers, `eachFrame { … }`, `loop { … }`, `forever { … }` and `animate { … }`, take a `suspend Frames.() -> Unit`, and a FieldML function can fill it. Write it with one parameter, the `Frames`, and start it with `launchFrames`:

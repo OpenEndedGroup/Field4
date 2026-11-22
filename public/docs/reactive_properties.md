@@ -84,6 +84,40 @@ Drag Gain's slider and Meter redraws as you go; there is no need to run Meter yo
     `ReactivePropsTest.aRawWriteToADeclaredDownPropertyIsAChange` pins the
     control's write as a change.
 
+## Run a rule in FieldML
+
+[Open the mixed-language starting point](agent_transcripts.md#fieldml_reactive_bridge).
+Run **Light level**, **Map light to opacity**, then **Compare the values**. After
+that, drag **Light level**. The two bars show the Kotlin slider's input and the
+opacity that FieldML derived from it.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/reactive_properties/fieldml-bridge.png" capture="box" open-outputs=true wait-output=true wait-output-kind=all wait-output-contains="Light 0.500" embed=true hidden=true timeout="90" name="fieldml-reactive-bridge" scale="2" alt="Two bars in the Kotlin display: light level 0.500 from the slider, and mapped opacity 0.325 from FieldML" macro-file="../../dev_docs/agents/transcripts/fieldml_reactive_bridge.yaml" capture-box="exposure_meters"}
+// The Kotlin reader after the FieldML rule has published its first result.
+```
+
+Kotlin declares a reactive input and binds the control to its property.
+
+```diffstatic {data-lang=kotlin}
+propDown<Double>(lightLevel)
+syncToProperty("lightLevel", 0.5, min = 0.0, max = 1.0)
+```
+
+The FieldML box reads that same slot and publishes a new reactive property.
+Try replacing the quadratic rule with a linear one.
+
+```diffstatic {data-lang=text}
+let measured = propDown "lightLevel" |> hostAsFloat
+let mapped = 0.1 + 0.9 * measured * measured
+setPropDown "mappedOpacity" mapped
+```
+
+**Map light to opacity** has two parents. **Light level** supplies the data.
+The **FieldML** parent selects the language for its immediate child. The
+Kotlin display is a child of the rule and inherits both properties. Its
+`prop<Double>(mappedOpacity)` gives the FieldML result a Kotlin name and type.
+See [FieldML source macros](fieldml_host_bridge.md#source-macros) for the
+other spellings of inherited and reactive properties.
+
 ## A missing value runs its supplier
 
 `propDown` covers a value that changes. `propUp` covers a value that is not there yet: you open a

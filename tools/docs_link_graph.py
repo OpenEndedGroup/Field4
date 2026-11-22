@@ -591,7 +591,7 @@ def build_graph(
     page_set = set(pages)
     nav = load_nav(repo_root)
     graph = Graph()
-    hooks = import_docs_hooks() if code or transcripts else None
+    hooks = import_docs_hooks() if code else None
     symbol_index = hooks.load_source_symbol_index(repo_root) if hooks else {}
     if hooks and not symbol_index:
         raise SystemExit("the symbol index read out of public/docs/reference is empty; is the reference generated?")
@@ -640,6 +640,10 @@ def build_graph(
             resolved = resolve_page_target(target, page, page_set)
             if resolved is not None:
                 graph.edge(page_key(page), page_key(resolved), "links")
+                if transcripts and resolved == "agent_transcripts.md":
+                    name = target.partition("#")[2]
+                    if name in transcript_names:
+                        graph.edge(page_key(page), "transcript:" + name, "opens")
         graph.nodes[page_key(page)]["externalLinks"] = external
         if code:
             for span in INLINE_CODE_RE.finditer(split.prose):
@@ -665,8 +669,12 @@ def build_graph(
                 print(f"skipping {path.name}: {error}", file=sys.stderr)
                 continue
             key = "transcript:" + path.stem
-            documented = [d.get("page") for d in data.get("docs") or [] if isinstance(d, dict)]
-            documented = [d for d in documented if d in page_set]
+            documented = [
+                entry["page"].partition("#")[0]
+                for entry in data.get("docs") or []
+                if isinstance(entry, dict) and isinstance(entry.get("page"), str)
+            ]
+            documented = list(dict.fromkeys(page for page in documented if page in page_set))
             codes = list(strings_in(data.get("operations")))
             packages = sorted({m.group("pkg") for c in codes for m in IMPORT_RE.finditer(c)})
             owner_system = graph.nodes.get(page_key(documented[0]), {}).get("system") if documented else None

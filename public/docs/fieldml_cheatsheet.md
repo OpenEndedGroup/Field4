@@ -312,6 +312,9 @@ Write `setPropUp "speed" 3` in a supplier box, then `propUp "speed"` in a child:
 read runs the supplier first. Use the `Down` forms when changed writes should rerun boxes that
 previously read the slot. A writer that needs both directions uses `setPropUpDown`.
 
+See [the reactive Kotlin and FieldML example](reactive_properties.md#run-a-rule-in-fieldml)
+for a runnable `propDown` and `setPropDown` chain.
+
 ## See also
 
 See [Running code in a box](running_code.md) for the execution model and

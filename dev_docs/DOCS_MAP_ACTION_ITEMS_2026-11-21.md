@@ -204,6 +204,10 @@ Two examples now carry work across systems.
   uses a ray pick to highlight a complete Conway polygon and recover the seed element that
   produced it. The example keeps that identity across different normal policies.
 
+[Run a rule in FieldML](../public/docs/reactive_properties.md#run-a-rule-in-fieldml)
+makes the connection with Kotlin reactive properties explicit. A Kotlin slider reruns a FieldML
+rule, whose published value reruns a Kotlin reader.
+
 MADP, ARDY/CLoSD and Kratos starting points now link to the sections that explain them. The
 landing precheck flags new pages without a link from an existing hand-written page. The
 default graph command also works with its code layer switched off.
@@ -221,6 +225,11 @@ default graph command also works with its code layer switched off.
 The 34 upstream orphans are the updated baseline for this pass. The original audit above
 reported 32 at its earlier revision.
 
+The graph now resolves transcript `docs:` links that name a heading and follows links
+to individual starting points in the gallery. On the same November 22 tree, 42
+transcripts lack a guide link. The previous scan counted 129 because it compared
+the whole `page.md#heading` string with a filename.
+
 ### Remaining work
 
 - Add second routes to remaining spokes when a reader has a reason to follow them.
@@ -233,15 +242,14 @@ reported 32 at its earlier revision.
   comparison with editable screen geometry, listening clips and links to the reflection and
   pathing experiments. The optional acceleration device wrappers are an implementation-level
   topic.
-- [Adaptive modelling](../src/jvmMain/kotlin/afield/math/control/modelling.kt) is the controller
-  that fits distributions of measured values. Its demonstrated use is
-  [fieldProbeAutoControl](../src/jvmMain/kotlin/afield/graphics/shader/shaders.kt), which feeds GPU
-  samples into the controller and writes the resulting shader parameters. The
-  [Field Probes page](../public/docs/field_probes.md) teaches measurement. A worked example that
-  closes the loop and shows the response to a disturbance is still missing.
+- [Adaptive modelling](../public/docs/field_probes.md#close-the-loop-on-a-distribution) now has
+  a CPU starting point with a measurable disturbance, delayed controls, and a matched baseline.
+  Its control loop is visible in the box, and the guide connects it to GPU probe read-back.
 - [RectSL](../public/docs/rectsl_conversation.md), [StackSL](../public/docs/stacksl_conversation.md)
   and [Stack Auto](../public/docs/stackauto_conversation.md) already have worked studies,
   editable starters and descriptions of the study tools. The report attributed coverage to
   source files directly named or called by pages and transcripts. Most calls into the
-  revision, trace and variant machinery go through the box language and its tools. Treat the
-  low score as a question about direct Kotlin API coverage.
+  revision, trace and variant machinery go through the box language and its tools. A
+  [shared Kotlin starting point](../public/docs/rectsl_conversation.md#check-a-local-edit-from-kotlin)
+  now exercises checked comparisons directly, including a candidate that changes protected pixels
+  in each language.

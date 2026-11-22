@@ -85,6 +85,30 @@ Kotlin is compiled on every build.
 These build and run headless: no window, no GPU. Open one to get the code in front of you, then run
 its box to see the output (a plot, an inline value thumbnail, a printed line).
 
+### adaptive_distribution_feedback
+
+Compare quantile errors with fixed controls and with feedback after an input shift.
+Change the disturbance with a slider and inspect the controls that produced each
+observation. See [Field Probes](field_probes.md#close-the-loop-on-a-distribution).
+
+[Open →](offline.html?file=assets/agent_transcripts/adaptive_distribution_feedback/metadata.edn)
+
+### shader_study_region_checks
+
+Compare RectSL or StackSL revisions from Kotlin and check that pixels outside an
+allowed rectangle stay fixed. Each study includes a candidate that passes and one
+that changes protected pixels. See the [RectSL](rectsl_conversation.md#check-a-local-edit-from-kotlin)
+and [StackSL](stacksl_conversation.md#check-a-local-edit-from-kotlin) guides.
+
+[Open →](offline.html?file=assets/agent_transcripts/shader_study_region_checks/metadata.edn)
+
+### fieldml_reactive_bridge
+
+Drive a FieldML rule with a Kotlin slider, then draw the rule's output in a Kotlin
+box that updates when the result changes. See [Reactive properties](reactive_properties.md#run-a-rule-in-fieldml).
+
+[Open →](offline.html?file=assets/agent_transcripts/fieldml_reactive_bridge/metadata.edn)
+
 ### polytope_pick_lineage
 
 Aim at a beveled dodecahedron and highlight a whole face. The pick names the original polygon

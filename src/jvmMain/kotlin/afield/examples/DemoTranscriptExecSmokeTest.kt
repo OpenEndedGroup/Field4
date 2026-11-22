@@ -10,6 +10,7 @@ import afield.document.graph.isTrue
 import afield.runtime.macros.checkAtticAndExecute
 import afield.runtime.macros.checkIntroductionAndExecute
 import afield.runtime.macros.checkPreambleAndExecute
+import afield.lang.fieldml.installFieldML
 import afield.lang.remotejs.KotlinJsExecution
 import afield.lang.remotejs.kotlinJsTopologyNeedsUpdating
 import afield.app.server.thisSessionInfo
@@ -96,6 +97,9 @@ object DemoTranscriptExecSmokeTest {
 
     /** Pure-compute demos that are safe to run to completion headless. */
     internal val EXECUTE = setOf(
+        "adaptive_distribution_feedback",
+        "fieldml_reactive_bridge",
+        "shader_study_region_checks",
         "polytope_pick_lineage",
         // afield_four_graphics.md, Rasterising with stream kernels: Gezira kernels, Skia beside them; pure CPU.
         "nile_gezira_kernels",
@@ -1575,6 +1579,8 @@ object DemoTranscriptExecSmokeTest {
     }
 
     internal fun startRunloopDaemon() {
+        // The headless harness skips server startup, where FieldML normally registers its runtime.
+        installFieldML()
         val t = Thread({ afield.runtime.lifecycle.Runloop.runLoop.start() }, "demo-transcript-harness-runloop")
         t.isDaemon = true
         t.start()

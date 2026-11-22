@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-22T12:28:35.790Z",
+  "documentName": "adaptive_distribution_feedback",
+  "outputs": [
+    {
+      "uid": "feedback",
+      "channel": "controls",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 473,
+      "height": 54,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "feedback",
+      "channel": "error",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly"
+      ],
+      "width": 612,
+      "height": 263,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "feedback",
+      "channel": "correction",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly"
+      ],
+      "width": 620,
+      "height": 263,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "feedback",
+      "channel": "result",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 458,
+      "height": 45,
+      "path": "outputs/3.html"
+    }
+  ]
+}
