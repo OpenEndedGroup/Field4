@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 25674 of 42896 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 25678 of 42908 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2082 undocumented entry points** (types, top-level functions and values) and 14372 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2083 undocumented entry points** (types, top-level functions and values) and 14379 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -30,11 +30,11 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [dynamic_graph_systems.kt](../src/jvmMain/kotlin/afield/data/graph/dynamic_graph_systems.kt) | Data | dynamic_graph_systems_examples | 16 | 109 | 20% |
 | [RectSLStudyTools.kt](../src/jvmMain/kotlin/afield/lang/rectsl/study/RectSLStudyTools.kt) | Languages | rectsl_conversation | 14 | 17 | 21% |
 | [StackSLStudyTools.kt](../src/jvmMain/kotlin/afield/lang/stacksl/study/StackSLStudyTools.kt) | Languages | stacksl_conversation | 13 | 16 | 21% |
+| [StackSL.kt](../src/jvmMain/kotlin/afield/lang/stacksl/StackSL.kt) | Languages | stacksl_examples | 12 | 48 | 15% |
 | [Oscillators.kt](../src/jvmMain/kotlin/afield/audio/synth/Oscillators.kt) | Synthesis | explainer_sound, spectral_examples, csound | 12 | 42 | 42% |
 | [ThreeJsViewer.kt](../src/jvmMain/kotlin/afield/graphics/three/ThreeJsViewer.kt) | Graphics | three_output, fline_examples | 11 | 76 | 40% |
 | [PuppetBrowser.kt](../src/jvmMain/kotlin/afield/media/browser/PuppetBrowser.kt) | Imaging | puppet_browser | 11 | 70 | 10% |
 | [Filters.kt](../src/jvmMain/kotlin/afield/audio/synth/Filters.kt) | Synthesis | spectral_examples, agent_transcripts, subharmonic_sound | 11 | 59 | 31% |
-| [StackSL.kt](../src/jvmMain/kotlin/afield/lang/stacksl/StackSL.kt) | Languages | stacksl_examples | 11 | 47 | 15% |
 | [Signal.kt](../src/jvmMain/kotlin/afield/audio/synth/Signal.kt) | Synthesis | sound_paths, faust, spectral_examples | 10 | 52 | 30% |
 | [RayTracingModule.kt](../src/jvmMain/kotlin/afield/graphics/render/RayTracingModule.kt) | Graphics | ray_tracing_examples | 10 | 47 | 4% |
 | [StackAutoStudyTools.kt](../src/jvmMain/kotlin/afield/lang/stacksl/study/StackAutoStudyTools.kt) | Languages | stackauto_conversation, stacksl_examples | 10 | 13 | 23% |
@@ -828,6 +828,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Bvh.kt](../src/jvmMain/kotlin/afield/io/mocap/Bvh.kt) | Data | — | 0 | 6 | 72% |
 | [SyphonNative.kt](../src/jvmMain/kotlin/afield/io/syphon/SyphonNative.kt) | Internal | — | 0 | 6 | 33% |
 | [RectSLPrograms.kt](../src/jvmMain/kotlin/afield/lang/rectsl/study/RectSLPrograms.kt) | Languages | — | 0 | 6 | 86% |
+| [StackSLSemantics.kt](../src/jvmMain/kotlin/afield/lang/stacksl/StackSLSemantics.kt) | Languages | — | 0 | 6 | 40% |
 | [StackSLGpu.kt](../src/jvmMain/kotlin/afield/lang/stacksl/study/StackSLGpu.kt) | Languages | — | 0 | 6 | 50% |
 | [FieldEncodeProcess.kt](../src/jvmMain/kotlin/afield/media/stream/FieldEncodeProcess.kt) | Imaging | — | 0 | 6 | 60% |
 | [KDocExtractor.kt](../src/jvmMain/kotlin/afield/tools/docs/index/KDocExtractor.kt) | Workspace | — | 0 | 6 | 33% |
@@ -1407,4 +1408,4 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `AllpassFilter` | class | `src/jvmMain/kotlin/afield/audio/synth/Filters.kt:350` |
 | `DCBlocker` | class | `src/jvmMain/kotlin/afield/audio/synth/Filters.kt:388` |
 
-…and **1962 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
+…and **1963 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
