@@ -303,13 +303,21 @@ object FieldMLHostBridge {
         return hostToFieldMLValue(invokeNamed(chosen, null, null, arguments))
     }
 
+    /**
+     * Whether JVM member name [jvm] is Kotlin source name [name]. An `internal` member is compiled
+     * as `name$module` (its getter as `getName$module`), so that spelling counts as the source name.
+     */
+    fun sourceNamed(jvm: String, name: String): Boolean =
+        jvm == name || (jvm.length > name.length + 1 && jvm.startsWith(name) && jvm[name.length] == '$' &&
+            jvm.indexOf('$', name.length + 1) < 0)
+
     /** All same-named members, any arity: a named call chooses by name set, not by count. */
     fun instanceMethods(owner: Class<*>, name: String): List<Method> =
-        owner.methods.filter { !Modifier.isStatic(it.modifiers) && it.name == name }
+        owner.methods.filter { !Modifier.isStatic(it.modifiers) && sourceNamed(it.name, name) }
 
     /** [instanceMethods] for statics: all same-named ones, any arity. */
     fun staticMethods(owner: Class<*>, name: String): List<Method> =
-        owner.methods.filter { Modifier.isStatic(it.modifiers) && it.name == name }
+        owner.methods.filter { Modifier.isStatic(it.modifiers) && sourceNamed(it.name, name) }
 
     /**
      * The Kotlin view of some JVM methods, dropping the ones there is no Kotlin view of.
@@ -493,11 +501,11 @@ object FieldMLHostBridge {
      * can appear for several different call shapes.
      */
     fun instanceMethods(owner: Class<*>, name: String, arity: Int): List<Method> =
-        owner.methods.filter { !Modifier.isStatic(it.modifiers) && it.name == name && acceptsArity(it, arity) }
+        owner.methods.filter { !Modifier.isStatic(it.modifiers) && sourceNamed(it.name, name) && acceptsArity(it, arity) }
 
     /** [instanceMethods] for statics, with the same `vararg` allowance. */
     fun staticMethods(owner: Class<*>, name: String, arity: Int): List<Method> =
-        owner.methods.filter { Modifier.isStatic(it.modifiers) && it.name == name && acceptsArity(it, arity) }
+        owner.methods.filter { Modifier.isStatic(it.modifiers) && sourceNamed(it.name, name) && acceptsArity(it, arity) }
 
     /** Public constructors of [owner] that could take [arity] arguments. */
     fun constructors(owner: Class<*>, arity: Int): List<Constructor<*>> =
@@ -514,11 +522,11 @@ object FieldMLHostBridge {
      * Kotlin's `@JvmField`.
      */
     fun instanceField(owner: Class<*>, name: String): Field? =
-        owner.fields.firstOrNull { !Modifier.isStatic(it.modifiers) && it.name == name }?.also { it.tryOpen() }
+        owner.fields.firstOrNull { !Modifier.isStatic(it.modifiers) && sourceNamed(it.name, name) }?.also { it.tryOpen() }
 
     /** [instanceField] for statics: a public static field, a Java constant, or a `@JvmStatic` one. */
     fun staticField(owner: Class<*>, name: String): Field? =
-        owner.fields.firstOrNull { Modifier.isStatic(it.modifiers) && it.name == name }?.also { it.tryOpen() }
+        owner.fields.firstOrNull { Modifier.isStatic(it.modifiers) && sourceNamed(it.name, name) }?.also { it.tryOpen() }
 
     /**
      * Kotlin properties reach reflection as `getFoo()`; Java records and Kotlin's `is`-prefixed
@@ -528,7 +536,7 @@ object FieldMLHostBridge {
     fun instanceGetter(owner: Class<*>, name: String): Method? =
         getterNames(name).firstNotNullOfOrNull { candidate ->
             owner.methods.firstOrNull {
-                !Modifier.isStatic(it.modifiers) && it.name == candidate && it.parameterCount == 0
+                !Modifier.isStatic(it.modifiers) && sourceNamed(it.name, candidate) && it.parameterCount == 0
             }
         }?.also { it.tryOpen() }
 
@@ -536,7 +544,7 @@ object FieldMLHostBridge {
     fun staticGetter(owner: Class<*>, name: String): Method? =
         getterNames(name).firstNotNullOfOrNull { candidate ->
             owner.methods.firstOrNull {
-                Modifier.isStatic(it.modifiers) && it.name == candidate && it.parameterCount == 0
+                Modifier.isStatic(it.modifiers) && sourceNamed(it.name, candidate) && it.parameterCount == 0
             }
         }?.also { it.tryOpen() }
 
@@ -548,14 +556,14 @@ object FieldMLHostBridge {
     private fun instanceSetter(owner: Class<*>, name: String): Method? =
         owner.methods.firstOrNull {
             !Modifier.isStatic(it.modifiers) &&
-                it.name == "set${name.replaceFirstChar(Char::uppercaseChar)}" &&
+                sourceNamed(it.name, "set${name.replaceFirstChar(Char::uppercaseChar)}") &&
                 it.parameterCount == 1
         }?.also { it.tryOpen() }
 
     private fun staticSetter(owner: Class<*>, name: String): Method? =
         owner.methods.firstOrNull {
             Modifier.isStatic(it.modifiers) &&
-                it.name == "set${name.replaceFirstChar(Char::uppercaseChar)}" &&
+                sourceNamed(it.name, "set${name.replaceFirstChar(Char::uppercaseChar)}") &&
                 it.parameterCount == 1
         }?.also { it.tryOpen() }
 
@@ -1022,7 +1030,7 @@ object FieldMLHostBridge {
                             }
                             when (resultType) {
                                 Void.TYPE, Unit::class.java -> Unit
-                                else -> coerce(resultType, null, fieldMLValueToHost(current))
+                                else -> lambdaResult(iface, resultType, current)
                             }
                         }
                         @Suppress("UNCHECKED_CAST")
@@ -1045,12 +1053,31 @@ object FieldMLHostBridge {
                     when {
                         resultType == Void.TYPE -> null
                         resultType == Unit::class.java -> Unit
-                        else -> coerce(resultType, null, fieldMLValueToHost(current))
+                        else -> lambdaResult(iface, resultType, current)
                     }
                 }
             }
         }
         return Proxy.newProxyInstance(loader, arrayOf(iface), handler)
+    }
+
+    /** A FieldML function's result, as the Kotlin slot it was passed into wants it, or a pointed refusal. */
+    private fun lambdaResult(iface: Class<*>, resultType: Class<*>, result: FieldMLValue): Any? {
+        fun refuse(cause: Throwable?): Nothing = throw IllegalArgumentException(
+            "a FieldML function passed as ${iface.simpleName} returned ${renderFieldMLValue(result).take(80)}, " +
+                "but Kotlin wants a ${resultType.simpleName} from it" + (cause?.message?.let { ": $it" } ?: ""),
+            cause,
+        )
+        val converted = try {
+            coerce(resultType, null, fieldMLValueToHost(result))
+        } catch (e: RuntimeException) {
+            refuse(e)
+        }
+        // coerce leaves a value it cannot convert as it is; checked here, the mismatch is reported
+        // now and in FieldML's terms, not later as a ClassCastException in the Kotlin that called it.
+        val boxed = resultType.kotlin.javaObjectType
+        if (converted != null && resultType != Any::class.java && !boxed.isInstance(converted)) refuse(null)
+        return converted
     }
 
     private fun typeArguments(iface: Class<*>, generic: java.lang.reflect.Type?): Map<String, java.lang.reflect.Type> {

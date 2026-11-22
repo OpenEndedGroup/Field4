@@ -704,7 +704,7 @@ object FieldMLRuntimePrelude {
         val host = fieldMLValueToHost(value)
             ?: error("setProp cannot store Unit in '$name' — an absent slot is how `prop` and `once` spell 'not set yet'")
         val old = target.getPropertyRaw(name)
-        val stored = narrowToTheWidthAlreadyThere(inheritedPropertyRaw(target, name), host)
+        val stored = narrowToTheWidthAlreadyThere(name, inheritedPropertyRaw(target, name), host)
         target.setPropertyRaw(name, stored, true)
         PropertyDependencies.recordWrite(target, name, ContextResolution.Mechanism.INHERITANCE)
         // A propDown property was already noted by setPropertyRaw; notify the rest as asked.
@@ -728,16 +728,24 @@ object FieldMLRuntimePrelude {
      * preserve, and then FieldML's own widths are the right answer.
      *
      * Deliberately only narrowing, and only between the JVM widths of one FieldML type: this never turns
-     * a Float into an Int or a number into something else.
+     * a Float into an Int or a number into something else. An integer that does not fit the narrower
+     * width is refused, naming the slot and its range, rather than wrapping as a Kotlin `toInt()` would.
      */
-    private fun narrowToTheWidthAlreadyThere(existing: Any?, incoming: Any): Any =
-        when {
-            incoming is Long && existing is Int -> incoming.toInt()
-            incoming is Long && existing is Short -> incoming.toShort()
-            incoming is Long && existing is Byte -> incoming.toByte()
+    private fun narrowToTheWidthAlreadyThere(name: String, existing: Any?, incoming: Any): Any {
+        fun fits(min: Long, max: Long, type: String) {
+            if (incoming is Long && incoming !in min..max) error(
+                "setProp: $incoming does not fit '$name', which holds a Kotlin $type ($min to $max); " +
+                    "it would wrap to a different number"
+            )
+        }
+        return when {
+            incoming is Long && existing is Int -> { fits(Int.MIN_VALUE.toLong(), Int.MAX_VALUE.toLong(), "Int"); incoming.toInt() }
+            incoming is Long && existing is Short -> { fits(Short.MIN_VALUE.toLong(), Short.MAX_VALUE.toLong(), "Short"); incoming.toShort() }
+            incoming is Long && existing is Byte -> { fits(Byte.MIN_VALUE.toLong(), Byte.MAX_VALUE.toLong(), "Byte"); incoming.toByte() }
             incoming is Double && existing is Float -> incoming.toFloat()
             else -> incoming
         }
+    }
 
     /**
      * The same diagnosis `MissingInheritedPropertyException` gives, in FieldML's voice: nothing up the
