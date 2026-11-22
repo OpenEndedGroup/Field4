@@ -1,0 +1,210 @@
+name: rhino_round_trip
+description: >
+  A Rhino round trip, measured: one box writes Breps (sphere, cylinder, box, a trimmed plate), a
+  SubD, a mesh with vertex colours, a curve, a hatch and a block placed twice with Rhino3dm.save,
+  reads the file back with Rhino3dm.load (EVALUATE meshing), and tabulates each object's triangles,
+  area, volume and open edges against the exact shapes, then draws it. Needs the optional openNURBS
+  wrapper (./gradlew buildOpenNurbsNative); without it the box says how to build it. Docs page:
+  public/docs/rhino_files.md.
+operations:
+  - create:
+      box: rhino_round_trip
+      name: write, read back, measure
+      frame: {x: 40.0, y: 40.0, w: 420.0, h: 120.0}
+      properties:
+        code: |
+          import afield.geometry.mesh.TriMesh
+          import afield.geometry.rhino.*
+          import kotlin.math.*
+
+          // Write one of each kind of object to a .3dm, read it back, and measure what survived against
+          // the exact shapes; without the openNURBS wrapper, say how to build it
+          if (!Rhino3dm.isAvailable) {
+              println(Rhino3dm.describe())
+          } else {
+              fun square(x: Double, y: Double, size: Double) =
+                  FLine().moveTo(x, y, 0.0).lineTo(x + size, y, 0.0).lineTo(x + size, y + size, 0.0).lineTo(x, y + size, 0.0).close()
+
+              // Four corners, linear red, grey and white.
+              val quad = TriMesh(
+                  floatArrayOf(60f, 0f, 0f, 64f, 0f, 0f, 64f, 3f, 0f, 60f, 3f, 0f),
+                  intArrayOf(0, 1, 2, 0, 2, 3),
+                  colors = floatArrayOf(1f, 0f, 0f, 0.2f, 0.1f, 0.05f, 0.5f, 0.5f, 0.5f, 1f, 1f, 1f),
+              )
+
+              val dir = java.nio.file.Files.createTempDirectory("rhino-roundtrip").toFile()
+              val file = Rhino3dm.save(java.io.File(dir, "roundtrip.3dm"), units = "millimeters", version = 7) {
+                  layer("Solids", vec(0.27, 0.51, 0.78, 1.0))
+                  layer("Solids::Trimmed", vec(0.78, 0.47, 0.16, 1.0))
+                  layer("SubD", vec(0.35, 0.67, 0.35, 1.0))
+                  layer("Flat", vec(0.6, 0.6, 0.6, 1.0))
+                  brep(RhinoBreps.sphere(vec(0.0, 0.0, 0.0), 10.0), layer = "Solids", name = "sphere")
+                  brep(RhinoBreps.cylinder(vec(30.0, 0.0, -10.0), 5.0, 20.0), layer = "Solids", name = "cylinder")
+                  brep(RhinoBreps.box(vec(-30.0, -5.0, -5.0), vec(-20.0, 5.0, 5.0)), layer = "Solids", name = "box")
+                  brep(RhinoBreps.plate(vec(0.0, -30.0, 0.0), 20.0, listOf(Triple(0.0, -30.0, 5.0))), layer = "Solids::Trimmed", name = "plate with hole")
+                  val (points, faces, creases) = RhinoBreps.subdBox(vec(25.0, -35.0, -5.0), vec(35.0, -25.0, 5.0), 2, false)
+                  subd(points, faces, creases, layer = "SubD", name = "subd box")
+                  mesh(quad, layer = "Flat", name = "coloured quad")
+                  curve(square(-35.0, -40.0, 10.0), layer = "Flat", name = "outline")
+                  val withHole = square(-35.0, 20.0, 10.0)
+                  withHole.nodes.addAll(square(-32.0, 23.0, 4.0).nodes)
+                  hatch(withHole, layer = "Flat", name = "hatch")
+                  block("fin") { mesh(TriMesh(floatArrayOf(0f, 0f, 0f, 4f, 0f, 0f, 0f, 0f, 6f), intArrayOf(0, 1, 2)), layer = "Flat", name = "fin skin") }
+                  instance("fin", vec(50.0, 20.0, 0.0), layer = "Flat", name = "fin A")
+                  instance("fin", vec(56.0, 20.0, 0.0), layer = "Flat", name = "fin B")
+              }
+              val model = Rhino3dm.load(file, meshing = RhinoBrepMeshing.EVALUATE)
+
+              fun area(m: TriMesh) = (0 until m.triangleCount).sumOf { t ->
+                  val (a, b, c) = (0..2).map { k -> m.indices[3 * t + k].let { vec(m.positions[3 * it], m.positions[3 * it + 1], m.positions[3 * it + 2]) } }
+                  Vec3(b).sub(a).cross(Vec3(c).sub(a)).length() / 2.0
+              }
+              fun volume(m: TriMesh) = (0 until m.triangleCount).sumOf { t ->
+                  val (a, b, c) = (0..2).map { k -> m.indices[3 * t + k].let { vec(m.positions[3 * it], m.positions[3 * it + 1], m.positions[3 * it + 2]) } }
+                  Vec3(a).dot(Vec3(b).cross(c)) / 6.0
+              }
+              fun openEdges(m: TriMesh): Int {
+                  val id = HashMap<Triple<Float, Float, Float>, Int>()
+                  val ids = IntArray(m.vertexCount) { id.getOrPut(Triple(m.positions[3 * it], m.positions[3 * it + 1], m.positions[3 * it + 2])) { id.size } }
+                  val count = HashMap<Pair<Int, Int>, Int>()
+                  for (t in 0 until m.triangleCount) for (e in 0..2) {
+                      val a = ids[m.indices[3 * t + e]]; val b = ids[m.indices[3 * t + (e + 1) % 3]]
+                      count.merge(minOf(a, b) to maxOf(a, b), 1, Int::plus)
+                  }
+                  return count.values.count { it == 1 }
+              }
+              val exact = mapOf(
+                  "sphere" to (400 * PI to 4000 * PI / 3), "cylinder" to (250 * PI to 500 * PI),
+                  "box" to (600.0 to 1000.0), "plate with hole" to (400 - 25 * PI to null),
+              )
+              fun f(x: Double) = "%.1f".format(x)
+              val rows = model.objects.joinToString("\n") { o ->
+                  when (o) {
+                      is RhinoMesh -> {
+                          val m = o.mesh
+                          val (a, v) = exact[o.name] ?: (null to null)
+                          val vol = if (openEdges(m) == 0) f(volume(m)) + (v?.let { " of " + f(it) } ?: "") else "open"
+                          "| ${o.name} | ${o.layer?.path} | ${m.triangleCount} | ${f(area(m))}${a?.let { " of " + f(it) } ?: ""} | $vol | ${openEdges(m)} |"
+                      }
+                      is RhinoCurve -> "| ${o.name} | ${o.layer?.path} | ${if (o.isHatch) "hatch" else "curve"}, ${o.line.nodes.size} nodes | | | |"
+                      else -> "| ${o.name} | ${o.layer?.path} | ${o.type} | | | |"
+                  }
+              }
+              val back = model.meshes.single { it.name == "coloured quad" }.mesh.colors
+              val sent = quad.colors!!
+              markdown(
+                  "readout",
+                  """
+              | object read back | layer | triangles | area mm² (exact) | volume mm³ (exact) | open edges |
+              |---|---|---|---|---|---|
+              $rows
+
+              ${model.objects.size} objects on ${model.layers.size} layers from 10 written; the two block placements
+              came back as their member, `block` = ${model.meshes.filter { it.block != null }.map { it.block }.toSet()}.
+              Vertex colours: largest error ${back?.let { "%.4f".format(sent.indices.maxOf { abs(sent[it] - back[it]) }) } ?: "none came back"}.
+              """,
+                  width = 820,
+              )
+              three(height = 380) { rhino(model) }
+              dir.deleteRecursively()
+          }
+  - execute:
+      box: rhino_round_trip
+      property: code
+      type: code
+      code: |
+        import afield.geometry.mesh.TriMesh
+        import afield.geometry.rhino.*
+        import kotlin.math.*
+
+        // Write one of each kind of object to a .3dm, read it back, and measure what survived against
+        // the exact shapes; without the openNURBS wrapper, say how to build it
+        if (!Rhino3dm.isAvailable) {
+            println(Rhino3dm.describe())
+        } else {
+            fun square(x: Double, y: Double, size: Double) =
+                FLine().moveTo(x, y, 0.0).lineTo(x + size, y, 0.0).lineTo(x + size, y + size, 0.0).lineTo(x, y + size, 0.0).close()
+
+            // Four corners, linear red, grey and white.
+            val quad = TriMesh(
+                floatArrayOf(60f, 0f, 0f, 64f, 0f, 0f, 64f, 3f, 0f, 60f, 3f, 0f),
+                intArrayOf(0, 1, 2, 0, 2, 3),
+                colors = floatArrayOf(1f, 0f, 0f, 0.2f, 0.1f, 0.05f, 0.5f, 0.5f, 0.5f, 1f, 1f, 1f),
+            )
+
+            val dir = java.nio.file.Files.createTempDirectory("rhino-roundtrip").toFile()
+            val file = Rhino3dm.save(java.io.File(dir, "roundtrip.3dm"), units = "millimeters", version = 7) {
+                layer("Solids", vec(0.27, 0.51, 0.78, 1.0))
+                layer("Solids::Trimmed", vec(0.78, 0.47, 0.16, 1.0))
+                layer("SubD", vec(0.35, 0.67, 0.35, 1.0))
+                layer("Flat", vec(0.6, 0.6, 0.6, 1.0))
+                brep(RhinoBreps.sphere(vec(0.0, 0.0, 0.0), 10.0), layer = "Solids", name = "sphere")
+                brep(RhinoBreps.cylinder(vec(30.0, 0.0, -10.0), 5.0, 20.0), layer = "Solids", name = "cylinder")
+                brep(RhinoBreps.box(vec(-30.0, -5.0, -5.0), vec(-20.0, 5.0, 5.0)), layer = "Solids", name = "box")
+                brep(RhinoBreps.plate(vec(0.0, -30.0, 0.0), 20.0, listOf(Triple(0.0, -30.0, 5.0))), layer = "Solids::Trimmed", name = "plate with hole")
+                val (points, faces, creases) = RhinoBreps.subdBox(vec(25.0, -35.0, -5.0), vec(35.0, -25.0, 5.0), 2, false)
+                subd(points, faces, creases, layer = "SubD", name = "subd box")
+                mesh(quad, layer = "Flat", name = "coloured quad")
+                curve(square(-35.0, -40.0, 10.0), layer = "Flat", name = "outline")
+                val withHole = square(-35.0, 20.0, 10.0)
+                withHole.nodes.addAll(square(-32.0, 23.0, 4.0).nodes)
+                hatch(withHole, layer = "Flat", name = "hatch")
+                block("fin") { mesh(TriMesh(floatArrayOf(0f, 0f, 0f, 4f, 0f, 0f, 0f, 0f, 6f), intArrayOf(0, 1, 2)), layer = "Flat", name = "fin skin") }
+                instance("fin", vec(50.0, 20.0, 0.0), layer = "Flat", name = "fin A")
+                instance("fin", vec(56.0, 20.0, 0.0), layer = "Flat", name = "fin B")
+            }
+            val model = Rhino3dm.load(file, meshing = RhinoBrepMeshing.EVALUATE)
+
+            fun area(m: TriMesh) = (0 until m.triangleCount).sumOf { t ->
+                val (a, b, c) = (0..2).map { k -> m.indices[3 * t + k].let { vec(m.positions[3 * it], m.positions[3 * it + 1], m.positions[3 * it + 2]) } }
+                Vec3(b).sub(a).cross(Vec3(c).sub(a)).length() / 2.0
+            }
+            fun volume(m: TriMesh) = (0 until m.triangleCount).sumOf { t ->
+                val (a, b, c) = (0..2).map { k -> m.indices[3 * t + k].let { vec(m.positions[3 * it], m.positions[3 * it + 1], m.positions[3 * it + 2]) } }
+                Vec3(a).dot(Vec3(b).cross(c)) / 6.0
+            }
+            fun openEdges(m: TriMesh): Int {
+                val id = HashMap<Triple<Float, Float, Float>, Int>()
+                val ids = IntArray(m.vertexCount) { id.getOrPut(Triple(m.positions[3 * it], m.positions[3 * it + 1], m.positions[3 * it + 2])) { id.size } }
+                val count = HashMap<Pair<Int, Int>, Int>()
+                for (t in 0 until m.triangleCount) for (e in 0..2) {
+                    val a = ids[m.indices[3 * t + e]]; val b = ids[m.indices[3 * t + (e + 1) % 3]]
+                    count.merge(minOf(a, b) to maxOf(a, b), 1, Int::plus)
+                }
+                return count.values.count { it == 1 }
+            }
+            val exact = mapOf(
+                "sphere" to (400 * PI to 4000 * PI / 3), "cylinder" to (250 * PI to 500 * PI),
+                "box" to (600.0 to 1000.0), "plate with hole" to (400 - 25 * PI to null),
+            )
+            fun f(x: Double) = "%.1f".format(x)
+            val rows = model.objects.joinToString("\n") { o ->
+                when (o) {
+                    is RhinoMesh -> {
+                        val m = o.mesh
+                        val (a, v) = exact[o.name] ?: (null to null)
+                        val vol = if (openEdges(m) == 0) f(volume(m)) + (v?.let { " of " + f(it) } ?: "") else "open"
+                        "| ${o.name} | ${o.layer?.path} | ${m.triangleCount} | ${f(area(m))}${a?.let { " of " + f(it) } ?: ""} | $vol | ${openEdges(m)} |"
+                    }
+                    is RhinoCurve -> "| ${o.name} | ${o.layer?.path} | ${if (o.isHatch) "hatch" else "curve"}, ${o.line.nodes.size} nodes | | | |"
+                    else -> "| ${o.name} | ${o.layer?.path} | ${o.type} | | | |"
+                }
+            }
+            val back = model.meshes.single { it.name == "coloured quad" }.mesh.colors
+            val sent = quad.colors!!
+            markdown(
+                "readout",
+                """
+            | object read back | layer | triangles | area mm² (exact) | volume mm³ (exact) | open edges |
+            |---|---|---|---|---|---|
+            $rows
+
+            ${model.objects.size} objects on ${model.layers.size} layers from 10 written; the two block placements
+            came back as their member, `block` = ${model.meshes.filter { it.block != null }.map { it.block }.toSet()}.
+            Vertex colours: largest error ${back?.let { "%.4f".format(sent.indices.maxOf { abs(sent[it] - back[it]) }) } ?: "none came back"}.
+            """,
+                width = 820,
+            )
+            three(height = 380) { rhino(model) }
+            dir.deleteRecursively()
+        }

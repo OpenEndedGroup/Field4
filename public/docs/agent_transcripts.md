@@ -2901,6 +2901,15 @@ against the exact shape. Needs the optional openNURBS wrapper. See
 
 [Open ↗](offline.html?file=assets/agent_transcripts/rhino_save_small/metadata.edn)
 
+### rhino_round_trip
+
+**A Rhino file written and read back, measured**: one box saves Breps, a trimmed plate, a SubD, a
+coloured mesh, a curve, a hatch and a block placed twice, reads them back and tabulates each
+object's triangles, area, volume and open edges against the exact shapes. Needs the optional
+openNURBS wrapper. See [Writing a file and reading it back](rhino_files.md#writing-a-file-and-reading-it-back).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/rhino_round_trip/metadata.edn)
+
 ### spinny_algebras
 
 **Spinny algebras.** Multiply the plane by w = 0.9 + 0.5ε and drag ε² from -1 to +1. At -1 the grid

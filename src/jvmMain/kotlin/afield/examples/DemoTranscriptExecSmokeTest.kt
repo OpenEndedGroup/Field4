@@ -114,6 +114,9 @@ object DemoTranscriptExecSmokeTest {
         // rhino_files.md, Breps without meshes: a Save Small .3dm tessellated from its NURBS surfaces
         // and SubDs; pure CPU, and each box prints how to build the openNURBS wrapper when it is absent.
         "rhino_save_small",
+        // rhino_files.md, Writing a file and reading it back: write, read and measure one .3dm; pure CPU,
+        // and the box prints how to build the openNURBS wrapper when it is absent.
+        "rhino_round_trip",
         // stacksl_examples.md's fitting demo: fits a StackSL program's literals on the CPU.
         "stacksl_fit_demo",
         // stacksl_examples.md's partial-evaluation demo: specializes on the CPU, no renderer.

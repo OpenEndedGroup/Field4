@@ -57,7 +57,7 @@ Object by object:
 
 | in Rhino | in the `RhinoModel` | exact? |
 | --- | --- | --- |
-| mesh | `RhinoMesh`, its quads split into triangles | yes |
+| mesh | `RhinoMesh`, its quads split into triangles, with its vertex normals and (linear) vertex colours | yes |
 | Brep, extrusion | `RhinoMesh` from the render mesh Rhino saved, or tessellated from its NURBS surfaces where there is none, plus its edges as an `FLine` | Rhino's mesh, or vertices on the exact surface |
 | SubD | `RhinoMesh` on its limit surface, subdivided `subdLevel` times | vertices on the limit surface |
 | line, polyline, polycurve, NURBS curve | `RhinoCurve` with an `FLine` | lines and polynomial spans up to cubic, yes; arcs and other rational spans within 10⁻⁵ of the curve's size, flagged `approximated` |
