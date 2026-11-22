@@ -42,14 +42,13 @@ operations:
           val N = 900
           val doc = GeziraSvg.parse(GeziraSvg.tiger())
           // Every fill and every stroke outline, in paint order, uploaded once.
-          val paths = GeziraGpuScene.paths(doc.lines)
           val fit = doc.fit(N, N)
           val probe = GpuProbe(renderer, "gezira-gpu-tiger")
-          val scene = GeziraGpuScene(probe, paths, N, N, transform = fit)
+          val scene = GeziraGpuScene.of(probe, doc.lines, N, N, fit)
 
           prop<FrameBufferGroup>(tigerImage) = scene.image
           prop<Int>(tigerSize) = N
-          println("${paths.size} paths, ${scene.curveCount} curves")
+          println("${scene.paths.size} paths, ${scene.curveCount} curves")
 
           // Turn and breathe about the middle: only the six numbers of the transform change per frame.
           var frames = 0
@@ -142,7 +141,7 @@ operations:
           val svg = GeziraSvg.tiger()
           val doc = GeziraSvg.parse(svg)
           val probe = GpuProbe(renderer, "gezira-gpu-tiger-compare")
-          val scene = GeziraGpuScene(probe, GeziraGpuScene.paths(doc.lines), n, n, transform = doc.fit(n, n))
+          val scene = GeziraGpuScene.of(probe, doc.lines, n, n, doc.fit(n, n))
 
           frames {
               try {
@@ -152,7 +151,13 @@ operations:
                   while (probe.stageList.any { !it.valid }) frame()
                   repeat(4) { frame() }
                   val gpu = scene.read()
+                  val cpuStart = System.nanoTime()
                   val cpu = GeziraSvg.render(doc, n, n).canvas.rgba
+                  val cpuMs = (System.nanoTime() - cpuStart) / 1e6
+                  // Field's frames over a second, with this scene and the live tiger box both drawing.
+                  val frameStart = System.nanoTime()
+                  repeat(60) { frame() }
+                  val frameMs = (System.nanoTime() - frameStart) / 1e6 / 60
                   var worst = 0.0
                   var sum = 0.0
                   for (i in gpu.indices) {
@@ -175,6 +180,15 @@ operations:
                       }
                   }
                   display("gpu | cpu | difference x10", GeziraSvg.png(sheet, w, n))
+                  display(
+                      "readout",
+                      "<pre style='margin:0'>" +
+                          "${scene.paths.size} paths, ${scene.curveCount} curves, ${n} x ${n}\n" +
+                          "gpu vs cpu per channel: largest %.4f, mean %.1e\n".format(worst, sum / gpu.size) +
+                          "frame, both scenes on the gpu: %.1f ms\n".format(frameMs) +
+                          "cpu GeziraSvg.render: %.0f ms".format(cpuMs) +
+                          "</pre>",
+                  )
               } finally {
                   probe.close()
               }

@@ -4228,8 +4228,8 @@ magnified 100,000 times, and prints the largest difference.
 
 ### gezira_gpu_tiger
 
-**The Ghostscript tiger through Gezira on the GPU, live.** [WindingSpans on the GPU](afield_four_graphics.md#gezira-gpu)
-taken to a whole document: a renderer, a box that uploads the tiger's 304 painted paths once to
+**The Ghostscript tiger through Gezira on the GPU, live.** [The tiger on the GPU](afield_four_graphics.md#gezira-gpu-tiger)
+as four boxes: a renderer, a box that hands the tiger's FLines once to
 `GeziraGpuScene` and turns and zooms its transform every frame, a draw box that shows the image in the
 native window, and a box that reads one frame back beside the CPU's `GeziraSvg.render` and their
 difference.

@@ -2391,6 +2391,7 @@ It is not yet faster. On an Apple GPU the shader takes 29 to 55 ms on those fiel
 1024 × 1024, where the whole CPU rasteriser takes 31 to 65 ms, and the CPU's share of the GPU path
 (flattening, cutting and laying out) adds 14 to 30 ms. The flattening, to 1/10,000 of a pixel, puts
 a few hundred edges in each row of a small circle, and each band still visits every edge in its row.
+[The tiger on the GPU](#gezira-gpu-tiger) below puts the whole pipeline there.
 
 ### A line of text
 
@@ -2457,11 +2458,64 @@ as one layer. The tiger is Ghostscript's `tiger.eps`, AGPL, as converted on
 [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Ghostscript_Tiger.svg); the
 [SVG starting point](agent_transcripts.md#nile_gezira_svg) replays these boxes.
 
+### The tiger on the GPU { #gezira-gpu-tiger }
+
+`GeziraGpuScene` draws a whole document on the GPU, every frame, from the same FLines
+`GeziraFLine.render` takes. The FLines go up once, with each stroke outlined by `StrokeBezierPath`
+on the CPU at load, and each frame five compute stages run with nothing done on the CPU:
+
+1. *count*: each curve, through the frame's transform, gets the number of pieces Wang's bound says
+   keep it within 0.02 pixels of its chords;
+2. *scan*: a prefix sum turns the counts into where each curve's segments go;
+3. *emit*: each curve writes its segments, so they stay in paint order;
+4. *bin*: each band of 16 rows keeps the segments that reach it, in order, and marks where each
+   path's run of them starts;
+5. *resolve*: each pixel row takes the runs that reach it in paint order, resolves each one exactly
+   as WindingSpans does under the path's fill rule, and composites the path's colour over the row.
+
+The transform is six numbers, so turning or zooming the tiger costs the CPU nothing:
+
+```diffstatic {data-lang=kotlin}
+val scene = GeziraGpuScene.of(probe, doc.lines, N, N, fit)
+loop {
+    scene.transform = about * fit
+    frame()
+}
+```
+
+One frame read back at 300 × 300, beside the CPU's `GeziraSvg.render` and the difference times ten,
+with the readout of what was measured:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/gezira-gpu-tiger.png" capture="box" open-outputs="true" padding="20" trim="true" wait="10" timeout="300" embed=true name="gezira-gpu-tiger" macro-file="../../dev_docs/agents/transcripts/gezira_gpu_tiger.yaml" capture-box="ggt_compare" alt="Three 300 pixel tiger heads side by side: the first drawn on the GPU, the second by the CPU kernels, which look the same; the third almost all white, with faint outlines along the whiskers and edges. Below, a readout of the paths and curves, the largest and mean difference per channel, the frame time with both GPU scenes drawing, and the CPU's time."}
+// dev_docs/agents/transcripts/gezira_gpu_tiger.yaml, box "gpu beside cpu"
+```
+
+The GPU and the CPU differ by the flattening: the CPU halves curves to 1/10,000 of a pixel, the GPU
+cuts each into Wang's count of equal pieces at 0.02. `four.gezira-gpu-tiger.probe` measures both
+against each other and against Skia, and times them:
+
+| size | largest / mean difference from the CPU | frame, wall | pipeline on the GPU | CPU `GeziraSvg.render` |
+| --- | --- | --- | --- | --- |
+| 450 × 450 | 0.021 / 1.5e-4 | 18.5 ms | 13.8 ms | 1,254 ms |
+| 900 × 900 | 0.025 / 8.2e-5 | 19.2 ms | 17.5 ms | 830 ms |
+| 1800 × 1800 | 0.032 / 5.0e-5 | 28.6 ms | 25.9 ms | 1,265 ms |
+
+An empty frame in the same window takes 8.4 ms. The pipeline's own time is the difference between
+frames that run it five times and frames that run it once; the renderer's GPU timestamps came back
+unusable on this driver. Against Skia the GPU and the CPU differ by the same 2.1e-3 on average at
+900 × 900. Almost all of the time is the resolve stage (16 of 17.5 ms at 900 × 900); bin is about
+1 ms and the other three under 1 ms between them. Inside resolve, switching parts off shows the band
+walk is most of it: a flattened curve puts up to about 200 edges of one path in a row, and every
+band still looks at all of them to find the few it crosses.
+
+The [GPU tiger starting point](agent_transcripts.md#gezira_gpu_tiger) opens the live version: a box
+turns and zooms the tiger in the native window while another draws the frame above.
+
 Open the [starting point](agent_transcripts.md#nile_gezira_kernels) to edit the kernels. The
 method is from *[Pixels on a screen](https://whitebeard.blog/posts/pixels-on-a-screen/)*, a post
 on umgeni, a compiler for Nile that renders the SVG tiger from Gezira kernels; Field's kernels are
 written from that description. Round joins and caps, Gezira's other blend modes and image
-textures are not implemented here, and only WindingSpans runs on the GPU.
+textures are not implemented here; on the GPU, strokes are outlined on the CPU once at load.
 
 ## Stopping the renderer
 
