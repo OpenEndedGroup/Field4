@@ -510,6 +510,7 @@ exactly what a fresh `keybindings.yaml` says.
 - [Survival Guide](survivalGuide.md) — the shortcuts worth learning first.
 - [Feature Overview](funFeatures.md) — what the commands in that table actually do.
 - [Layers](layers.md) — the layer commands (++alt+l++, ++alt+bracket-right++, ++alt+bracket-left++) in use.
+- [Talking to AI4](voice_input.md) — the push-to-talk key, which is set in the browser rather than in this file.
 
 ## API reference
 

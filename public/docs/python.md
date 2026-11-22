@@ -3,6 +3,8 @@
 You can write Python alongside Kotlin in the same Field document. A Python box has its own output,
 can be launched and stopped, and can reach the box it runs in. Field embeds CPython through
 [JEP](https://github.com/ninia/jep), so you can use libraries such as NumPy from your Python code.
+Field ships one such library of its own, `fieldcv`, for webcam and film tracking with OpenCV and
+mediapipe: see [Computer vision in Python](python_cv.md).
 
 Python needs an interpreter with JEP installed. If your cells keep running as Kotlin, see
 [Setting Python up](#setting-python-up) at the end of the page.

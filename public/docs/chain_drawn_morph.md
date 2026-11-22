@@ -5,7 +5,7 @@ a morph; measure its size as it moves and you can turn that measurement into a t
 the shape change as well as see it.
 
 Here `notation` reads two strokes from the drawing layer. `resampleByLength` spaces their points
-evenly, and `matchPoints` pairs the circle's points with the heart's. The example draws its strokes
+evenly, and [`matchPoints`](optimal_transport.md) pairs the circle's points with the heart's. The example draws its strokes
 in code, but you can draw your own and name them "from" and "to".
 
 ## Two strokes, paired

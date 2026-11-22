@@ -145,5 +145,8 @@ runAsync(
 GPU time. Re-evaluating an unchanged operation reuses the same content-addressed candidate family
 and its stored gesture measurements.
 
+[Generating with a LoRA](audio_ai_underfit_mancini.md) sends a source to Stable Audio 3 through a
+LoRA trained on one album, and auditions the takes on the same candidate board.
+
 See also the [EnCodec round trip](audio_ai_codec.md) for token-level material, and
 [beat and pitch analysis](audio_ai_analysis.md).

@@ -220,6 +220,9 @@ extra space is visibly *between* the letters and not after the last one.
 Word wrap measures with the real layout, so it is correct for the tracking and kerning you are
 actually going to use, and all three alignments come off the same wrapped string.
 
+To lay words out by their grammar instead, with a parse drawn above and below them as FLines, see
+[Sentence diagrams](sentence_diagrams.md).
+
 ## Text on a curve
 
 `onCurve` does not distort a glyph. It looks the glyph's advance-box centre up at that **distance**
@@ -528,3 +531,6 @@ the same.
 
 The page's boxes are also the [`typography_worked_example`](agent_transcripts.md#typography_worked_example)
 starting point, a document you can open and edit.
+
+[Euclid's Elements](euclid_elements.md) letters the points of its diagrams with these glyphs, in the
+style of Oliver Byrne's 1847 plates.

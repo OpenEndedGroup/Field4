@@ -187,7 +187,7 @@ mismatch costs more than every other setting on this page combined, and training
 help: a longer run only fits the crossing-averaged velocity more precisely. Give a closed target a closed source, an open target an open one.
 
 `FlowCoupling` has a third option, `MINIBATCH_OT`, which pairs points within each batch by solving
-the assignment that minimises total squared travel. It cuts the training loss by about ten times
+[the assignment](optimal_transport.md#matching-two-sets-one-to-one) that minimises total squared travel. It cuts the training loss by about ten times
 because it removes most of the crossing. It does not follow that the samples improve: on the ring
 above it is slightly worse than independent pairing, since it only ever sees one batch of the cloud
 at a time. `INDEPENDENT` is the default.

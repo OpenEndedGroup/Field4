@@ -1134,7 +1134,8 @@ scope.stackAutoNumbers(module, "program") // its numbers, as lanes program.k0, p
 `stackAutoNumbers` registers one lane per typed number, numbered as the card
 numbers them, so applying or blending keys moves the numbers on the GPU with no
 recompile. `scope.target("zoom@program_wire_2", module.program_numbers)` keys a
-single member directly, the way any uniform is keyed.
+single member directly, the way any uniform is keyed. Keys saved over these lanes
+can be [swept overnight](keyframe_autosweep.md), rendering one blend of them after another.
 
 The block's layout never changes, whatever the program: `program_live` and 128
 numbers. That is what lets an edit to the StackSL still update the running

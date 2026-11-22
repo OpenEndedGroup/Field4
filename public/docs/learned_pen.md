@@ -325,7 +325,8 @@ learn that. [Teaching a pen](teaching_a_pen.md) trains six new pens on drawings 
 (plotter lettering, harmonographs, plants, Truchet curves, flocking trails and a two-handed
 script), finds a learned habit inside one of them, and fine-tunes this pen on a taste. They all
 ship with Field: `PenModel.bundled("hershey")` passed to `continueWith` writes in plotter
-lettering.
+lettering. [A pen that sees](a_pen_that_sees.md) trains pens that also sense the ink around their
+tip, so they can follow a line, stop when they meet one, or hatch around a drawing.
 
 Training uses the optional `fieldpen` Python package (in `python/fieldpen`, the same model in
 PyTorch). The package also runs in a [Python box](python.md)

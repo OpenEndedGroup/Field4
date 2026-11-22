@@ -483,7 +483,8 @@ showSignals(
 
 Three controllers, three sets of gains, and none of them declares a state class. `yield(x)` suspends
 in the middle of the `while (true)`, so `integral` and `previousError` are simply still there when
-`next(tick)` resumes it.
+`next(tick)` resumes it. If all you want is a value that chases a moving target without ringing,
+[springs](movement_examples.md) do it with one dial, a half-life, instead of three gains.
 
 ### Composing them
 

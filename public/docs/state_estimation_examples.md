@@ -598,6 +598,8 @@ estimate has settled.
 
 For raw and filtered *signals* rather than these derived quantities, continue with
 [the time-domain signal examples](spectral_examples.md#filter-chains-as-layered-curves); for interpolation, keyframes, and
-correlation, see [Values over time](interpolants_examples.md).
+correlation, see [Values over time](interpolants_examples.md). For a particle filter written as
+arithmetic on distributions, where the transition and observation models are ordinary expressions,
+see [learning as data arrives](distributions.md#learning-as-data-arrives).
 
 *The public declarations used on this page are listed, with their KDoc, in the codebase reference: [`pf.kt`](reference/math.md#pf-kt). Start from [what's already in the box](reference/index.md).*

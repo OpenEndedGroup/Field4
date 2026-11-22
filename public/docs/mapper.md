@@ -160,7 +160,7 @@ showImgGrid(
 )
 ```
 
-Mapper and principal curves answer the same question in different ways. Mapper is quick, works in
+Mapper and [principal curves](principal_curves.md) answer the same question in different ways. Mapper is quick, works in
 any number of dimensions, and reports topology (pieces, branches and loops) without fitting
 anything, but its nodes sit at cluster centres and its edges are straight. Principal curves fit
 smooth curves through the middle of the points, with widths, at the cost of an optimisation. A
@@ -178,3 +178,7 @@ counts independent loops, and `nodesOfPoint` says which nodes each point belongs
 coloured by lens, and `network()` returns the graph as a [GeometryNetwork](geometry_chains.md)
 with the nodes' `size` and `lens` as channels. Points can also be a `List<Vec2>`, and 3D or
 higher-dimensional points work with `dimension`.
+
+For a field on a grid rather than a cloud of points, with the field's own value as the lens, a
+[contour tree](contour_trees.md) draws this kind of graph exactly: one arc for each region above or
+below a height, joined where regions meet at a saddle.
