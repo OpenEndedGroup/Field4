@@ -7,6 +7,9 @@ description: >
   Click a slider, then turn the wheel. Box 2 re-renders its own slider mid-drag (its callback
   rebuilds the group once past 0.5): the drag carries on. Replay with
   `field_backdoor.py --command 'macro write controls_surface --file dev_docs/agents/demos/controls_surface/build.yaml' --command 'macro run controls_surface'`.
+docs:
+  - page: "visualizers.md#build-one-surface-with-mixed-control-types"
+    why: "Play a grouped surface with continuous controls, a toggle and a value readout."
 operations:
   - create:
       box: surface

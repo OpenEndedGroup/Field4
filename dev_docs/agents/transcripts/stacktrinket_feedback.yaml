@@ -11,6 +11,9 @@ description: >
   bound as `state`, follows edits to the program live, and shows stack depth, wires and
   diagnostics in the box's lowering panel and the lowered GLSL in its glsl panel. Launching a box replaces the program showing.
   Requires a GPU/Vulkan window; capture it with `native-screenshot <path> --uid stacktrinket_renderer`.
+docs:
+  - page: "stacksl_examples.md#ping-pong-rtt-sampling"
+    why: "Open the feedback sketches to see what changes when a StackSL program reads its previous frame."
 operations:
   - create:
       box: stacktrinket_renderer

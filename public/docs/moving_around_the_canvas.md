@@ -681,3 +681,7 @@ A resized edge jumps within 10 px.
 - [Filming the canvas](filming_the_canvas.md) flies through the bookmarks, and films the flight.
 - [Layers](layers.md) decides which boxes are on the canvas, and where, per layer.
 - [Document History](document_history.md) saves the document's content rather than your view of it.
+
+## See also
+
+To search your workspace by meaning, use [The Semantic Index](semantic_index.md).

@@ -6,6 +6,9 @@ description: |
   waits for the post-fence PRESENTED release, and reads the resident image back to assert its pixel.
   This is intentionally a source RTT rather than a fake CPU image: every macOS import, Vulkan copy,
   layout, fence, and retain/release step is live. Requires a macOS Vulkan window.
+docs:
+  - page: "puppet_browser.md#pixels-without-readback"
+    why: "The macOS receiver smoke imports an IOSurface through a Mach send right."
 operations:
   - create:
       box: external_browser_surface_renderer

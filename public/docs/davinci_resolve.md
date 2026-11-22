@@ -172,6 +172,11 @@ program, and the next call starts another. Its error output goes to `Resolve.log
 Resolve installed somewhere other than the default place, set `RESOLVE_SCRIPT_API` and
 `RESOLVE_SCRIPT_LIB` as Resolve's scripting README describes.
 
+## See also
+
+Use [SMPTE timecode](smpte_timecode.md) to follow a shared clock and
+[Network MIDI](rtp_midi.md) for notes and controllers from another machine.
+
 ## API reference
 
 Implementation and parameter details for the helpers used above:

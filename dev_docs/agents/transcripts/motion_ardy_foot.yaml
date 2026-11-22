@@ -1,6 +1,8 @@
 name: motion_ardy_foot
 description: >
   Live Core27 motion with prompts, timed paths and sparse joint conditioning. Requires optional ARDY setup and cached prompts or the CPU encoder service.
+docs:
+  - page: motion_recordings.md#run-a-live-body
 operations:
   - create:
       box: motion_ardy_foot

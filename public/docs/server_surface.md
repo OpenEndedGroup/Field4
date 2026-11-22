@@ -81,3 +81,8 @@ origin guard.
 lists every HTTP route, static mount and command channel, with the access controls each one has
 of its own. A route marked `none` has none beyond the listener and the application-wide browser
 policy above.
+
+## See also
+
+See [What a document is on disk](document_on_disk.md) for the data the server reads
+and writes.

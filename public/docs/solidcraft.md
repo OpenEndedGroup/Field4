@@ -310,3 +310,7 @@ against half a second for the fillet itself.
   meshes rather than B-reps.
 - [Agent transcripts](agent_transcripts.md#solidcraft_intro) lists the SolidCraft starting points:
   `solidcraft_intro`, `chamfer_everything` and `fillet_everything`.
+
+## See also
+
+For explicitly unit-aware dimensions, see [Lengths in Millimetres and Inches](lengths.md).

@@ -134,3 +134,7 @@ Refused, by name:
 
 ??? aside "Agents: where this lives"
     The walker is `evalFormulaInterval` in [`FnInterval.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/math/functions/FnInterval.kt), the third walker over the `FnExpr` formulas in [`autodiff_formula.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/math/autodiff/autodiff_formula.kt) (the other two are the plain `Double` evaluator and reverse-mode autodiff). The fractional-part rule and the branch narrowing are both recognised structurally in that walker, not per op, so a new formula that uses either shape gets the tight bound without extra code. `FnIntervalTest` checks containment over a generated population of several hundred functions, the three generators among them, and `FnIntervalPictureTest` checks that every box the picture draws is a real enclosure. The design note is [`dev_docs/FN_INTERVAL.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/FN_INTERVAL.md).
+
+## See also
+
+[Differentiating functions](autodiff_examples.md) works with the same function expressions to find slopes.

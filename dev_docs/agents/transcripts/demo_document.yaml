@@ -15,6 +15,9 @@ description: >
 
   Needs Vulkan for the renderer, the spiral view and the probe. The spiral's frames only reach a
   page in Field's Electron app; a plain browser shows a message in that panel instead.
+docs:
+  - page: "demo_document.md"
+    why: "The guide takes you through the boxes in this document and explains their connections."
 operations:
   # ---------------------------------------------------------------- the graph: connected and nested
   - create:

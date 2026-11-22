@@ -234,3 +234,7 @@ A [kit](kits.md) packages starting points with the code, dependencies and assets
 keeps track of which version each document received. Reach for a kit when the thing you want to
 reuse is more than a few boxes, or when copies should be able to take updates; a template copy
 never changes after it is inserted.
+
+## See also
+
+For a guided look at a complete example, open [The Demo Document](demo_document.md).

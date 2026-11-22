@@ -1548,6 +1548,11 @@ Use `tolerant = true` for mutation runs. Unknown words become no-ops with warnin
 
 When a program becomes too short, it still returns a valid `vec4`, so mutation makes strange images rather than broken shaders.
 
+## See also
+
+Use [interval analysis](stacksl_intervals.md) to bound the output of a shader, or
+[evolve a shader](stacksl_evolve.md) by searching over StackSL programs.
+
 ## API reference
 
 - Fitting the numbers in a shader program: [`StackSLFit`](reference/languages.md#stackslfit-kt-stackslfit) —

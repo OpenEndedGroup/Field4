@@ -180,6 +180,10 @@ every path.
 
 ## What the scheduler does change
 
+Open [Confluence grid](agent_transcripts.md#confluence_grid) to compare five terms under four
+schedulers. A row follows one term under each scheduler, so you can see the different
+intermediate graphs on the way to the same normal form.
+
 Because the order differs, the β-steps land in different places, and `patCondense` can return a
 different notation for each scheduler. The box below takes `three two` under all four schedulers
 and draws where its β-steps fall. The loop below reuses the recorder above, then compares each readback with a plain evaluator.

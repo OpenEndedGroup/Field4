@@ -513,6 +513,10 @@ animateEvolution(
   (`muK` 4.3, `sigmaK` 1.1, `muG` 0.23, `sigmaG` 0.06), and its sonification, in which every particle
   sings at a pitch set by its energy, as loud as it is fast.
 
+## See also
+
+For other GPU particle rules, see [Neural particle systems](neural_particles.md).
+
 ## API reference
 
 Implementation and parameter details for the helpers used above:

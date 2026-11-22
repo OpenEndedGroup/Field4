@@ -227,3 +227,9 @@ displayOpen("divergence")
 Unlike a distance between means or histograms, this compares the shapes of the two clouds as well as
 where they sit, and it is smooth in the point positions, which is why it is a common training loss
 for generated point clouds.
+
+## See also
+
+To place items in a low-dimensional plot from their pairwise distances, see
+[Projecting a distance matrix](projection_examples.md).
+[Points into structure](spatial_geometry_examples.md) works with coordinates you already have.

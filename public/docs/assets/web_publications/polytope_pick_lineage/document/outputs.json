@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-22T11:33:36.420Z",
+  "documentName": "polytope_pick_lineage",
+  "outputs": [
+    {
+      "uid": "polytope_pick",
+      "channel": "Pointer",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 536,
+      "height": 154,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "polytope_pick",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 542,
+      "height": 388,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "polytope_pick",
+      "channel": "lineage",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 203,
+      "height": 40,
+      "path": "outputs/2.html"
+    }
+  ]
+}

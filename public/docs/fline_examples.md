@@ -4918,3 +4918,9 @@ Open questions and next builds:
   in a Vulkan scene with additive blending, would show density as it really adds up.
 - **Several threads.** One string per colour, each fitted to its own channel of an image or its own
   shape, wound over the same pins.
+
+- [Charts as FLines](chart.md) puts data on axes as editable geometry.
+- [Typography as geometry](typography_examples.md) starts with the outlines of letters.
+- [Points into structure](spatial_geometry_examples.md) draws regions and contours from point sets.
+
+- [PostScript in a Box](postscript.md) creates paths from PostScript drawing commands.

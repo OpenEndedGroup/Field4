@@ -10,6 +10,9 @@ description: |
 
   Re-mine with `field_backdoor.py agent-eval --calibrate`; run with `agent-eval --corpus heldout --sample 20 --seed 1`.
   Write-up: `dev_docs/ai/IN_FIELD_AGENT_HARNESS.md` ("Mined corpus").
+docs:
+  - page: "ai4_experiments.md#measuring-a-change"
+    why: "The corpus supplies the live-box tasks used to measure changes to AI4."
 operations:
   - create:
       box: corpus_summary

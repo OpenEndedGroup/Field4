@@ -3,6 +3,9 @@ description: >
   Mapper graphs of point clouds: a ring with a tail and a separate blob, its graph drawn over the
   points with sliders for the number of bins and their overlap and a choice of lens; and three
   letters whose graphs count their loops. Plain Kotlin, no optional libraries.
+docs:
+  - page: "mapper.md#choosing-the-lens"
+    why: "Change the lens, bins and overlap and see how the graph changes."
 operations:
   - create:
       box: mapper_ring

@@ -11,6 +11,9 @@ description: >
   neighbour grid, and the demo's `init()` world settings as ParticleSketch settings in its code,
   with a trail slider, pause and reset. Launching a sketch box replaces the one showing. Requires a
   GPU/Vulkan window; capture it with `native-screenshot <path> --uid particles_renderer`.
+docs:
+  - page: "chains.md#studio-tools-from-madp"
+    why: "The sketches share an interactive particle painter and swap the laws that advance it."
 operations:
   - create:
       box: particles_renderer

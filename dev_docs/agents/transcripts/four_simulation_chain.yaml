@@ -62,6 +62,8 @@ description: |
   with assertions on the pixels — including the jump flood checked against *exact* ground truth, and
   the one assertion a plan cannot make: with the input switched off, the picture must keep changing.
 docs:
+  - page: "afield_four_graphics.md#multi-pass-starting-points"
+    why: "Draw into a persistent fluid or move the shape used by a jump-flood distance transform."
   - page: reference/renderers.md
     why: "Reference for pass chains, including fluid and jump flood passes."
 operations:

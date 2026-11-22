@@ -1304,3 +1304,8 @@ saved output across a server restart. Older panels are evicted when that budget 
 - [Exact triangle coverage](afield_four_graphics.md#exact-triangle-coverage) computes the exact
   pixel area a triangle covers, beside a list of Field's other coverage code.
 
+## See also
+
+For complete examples that build the geometry before displaying it, see
+[A photograph, closed and mounted](chain_photo_to_solid.md) and
+[A RectSL animation as a solid](chain_rectsl_spacetime.md).

@@ -1,6 +1,8 @@
 name: motion_resistance_replay
 description: >
   Replay a stronger foot tether, with force, stretch and a following camera. No model installation.
+docs:
+  - page: motion_recordings.md#recorded-results
 operations:
   - create:
       box: motion_resistance_replay

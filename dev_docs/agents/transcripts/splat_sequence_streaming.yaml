@@ -23,6 +23,9 @@ description: |
       sort, no per-frame pre-target. The sort of 310k longs is 2.8 ms parallel.
     - SplatTransport.advance() returns false on the display frames where the resolved frame did not
       move — six in seven at 12 fps into 90 Hz — which is why scrubbing is cheap.
+docs:
+  - page: "geometry_from_disk.md#play-a-sequence-of-splat-clouds"
+    why: "The streaming transcript extends the splat renderer to many simultaneous frame sequences."
 operations:
   - create:
       box: splat_sequence_streaming

@@ -7,6 +7,9 @@ description: >-
   window, as scene, match and draw boxes whose shaders are their fragment properties, with a box
   that checks the GPU's characters against the CPU's.
   Companion to public/docs/ascii_shape.md.
+docs:
+  - page: "ascii_shape.md"
+    why: "The boxes show the six-circle character comparison on drawings, glyphs and images."
 operations:
   - create:
       box: ascii_shape_shapes

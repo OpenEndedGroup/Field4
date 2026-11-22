@@ -41,6 +41,9 @@ keep interactive previews clean.
 
 ## Hello triangle, first attempt
 
+The [triangle replay](agent_transcripts.md#afield_four_traditional_triangle) creates the draw
+box. Connect it under a running renderer before you run its code.
+
 Start with the rite of passage for any new graphics system: getting a triangle on the screen. That needs one of everything: one shader module, one mesh to draw, one renderer and one window. The code below makes each of these in turn:
 
 - `moduleHere { ... }` creates a shader module, one draw pipeline, from the `vertex` and `fragment` shader properties of the box it runs in. If the box has no shader of its own yet, `moduleHere` first fills both properties with a small working default (a vertex shader with a single `pos` input and a flat orange fragment shader), so the code compiles and draws something from the first run. You then edit those shaders in place.
@@ -1452,6 +1455,27 @@ A second probe lesson (`6b. debugging / mapping - Texture probe example`) goes f
 
 In the Vulkan window the 100 quads stack along z, so from the camera they land on top of one another and look like one. Everything this example is for is in the box's output area.
 
+## Multi-pass starting points
+
+Open [Bloom across several resolutions](agent_transcripts.md#four_pass_chain) and follow the
+image from the half- and quarter-resolution targets through the two aperture blurs to the
+composite. The [variable-width stroke replay](agent_transcripts.md#variable_width_strokes_gpu)
+uses an existing renderer to draw paths with width specified along the stroke.
+
+[Fluid and jump-flood simulations](agent_transcripts.md#four_simulation_chain) use
+the same pass-chain API for a fluid with state that survives each frame and a distance field
+that is rebuilt when the shape moves.
+
+The [raster summary pyramid](agent_transcripts.md#four_summary_pyramid) replaces colour with
+mergeable moment sums. The [Morton quadtree](agent_transcripts.md#four_morton_quadtree) feeds
+the same reduction from sorted points. Compare the centroid and covariance ellipse of a tile
+in each document to see what carries across the two representations.
+
+The [texture wall transcript](agent_transcripts.md#mega_texture_wall) uses feedback in the
+opposite direction. The shader estimates the mip level it needs on screen, and the CPU uses
+that demand to decide which tiles to load. Connect the wall to a renderer and point it at
+your own image directory.
+
 ## Streaming a target over the network
 
 `FieldRTTStreamer` turns a render target into an encoded video stream, which is how a Field sketch drives a display it is not attached to. A render can also be streamed over WebRTC to other Field instances and to browser ShaderTrinkets ([WebRTC Streams](webrtc.md)), or shown in Field's own desktop app ([graphics in output areas](four_in_output_areas.md)). The largest consumer of `FieldRTTStreamer` is the Vision Pro front end; see [Apple Vision Pro](vision.md), which covers the stereo side-by-side layout, the media wire's pose tail, and `tagPosesFrom` for stamping a frame with the head pose it was rendered from:
@@ -2503,6 +2527,17 @@ For pixel coverage computed on the CPU rather than by the GPU's rasterizer, star
 draws meshes with no GPU at all, [Splats by tile](geometry_from_disk.md#splats-by-tile-and-what-a-tile-costs)
 does the same for Gaussian splats, and [how wrong soft coverage is](rectsl_inverse_animation.md#fitting-against-an-image)
 measures RectSL's differentiable raster against exact area.
+
+### Related rendering projects
+
+- [Chromium](puppet_browser.md) and [video particles](particle_video.md) use browser and video frames as textures.
+  [Syphon](syphon.md) shares frames with other macOS applications.
+- [Streaming diffusion](streaming_diffusion.md) puts live image generation in the render graph.
+  [OpenDLSS-NR](open_dlss_nr.md) applies a neural filter to rendered images.
+- [Particles, cloth and constraints](physics.md) covers particle and constraint simulation.
+  [Pressure membranes](pressure_membranes.md) builds inflated surfaces from pressure and tension.
+- In a headset, put [stereo video in a room](stereo_video.md), use
+  [body and hand tracking](body_tracking.md), or place an [eye-tracked gaze marker](openxr_eye_intersection.md).
 
 ## API reference
 

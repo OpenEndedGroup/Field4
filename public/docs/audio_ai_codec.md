@@ -45,3 +45,6 @@ To analyse your own sound, submit `codecReconstruction(region)`, wait for it wit
 
 - [Field Audio AI](field_audio_ai.md)
 - [Faust](faust.md)
+
+- [Corpus microscope](audio_ai_corpus_microscope.md) for browsing and comparing clips.
+- [Gesture board](audio_ai_gesture_board.md) for selecting and arranging short sound candidates.

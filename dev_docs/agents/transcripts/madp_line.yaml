@@ -10,6 +10,9 @@ description: >-
   (a stroke quantised into a twelve-step sequencer whose cursor is the sounding step), plus draw for
   me, which sends three strokes from the page the way the drawing layer does. Ported from
   aaaframe's madp/line.html; see dev_docs/madp/line.md.
+docs:
+  - page: chains.md#studio-tools-from-madp
+    why: "The studio sketchbook in its editable Field document."
 operations:
   - create:
       box: madp_line_prism_choir

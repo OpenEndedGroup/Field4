@@ -242,6 +242,11 @@ is not thread-safe. `now()`, `seconds` and `locked` are safe to read from any th
 The four boxes behind this page, including MTC into a clock and a clock following LTC in
 512-sample blocks, are the [smpte_timecode](agent_transcripts.md#smpte_timecode) starting point.
 
+## See also
+
+[Network MIDI](rtp_midi.md) covers sending MIDI between machines.
+[DaVinci Resolve](davinci_resolve.md) shows how to read an edit's frame positions and place markers.
+
 ## API reference
 
 Implementation and parameter details for the helpers used above:
