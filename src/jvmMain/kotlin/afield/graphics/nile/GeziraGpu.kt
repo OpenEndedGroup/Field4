@@ -1,11 +1,12 @@
 /**
  * The last stage of [Gezira.rasterizer], WindingSpans, as a Vulkan compute shader: one invocation
- * per pixel row resolves that row's edges exactly into a coverage image.
+ * workgroup per pixel row resolves that row's edges exactly into a coverage image.
  */
 
 package afield.graphics.nile
 
 import afield.graphics.vulkan.buffers.FrameBufferGroup
+import afield.graphics.vulkan.buffers.defaultBuffer
 import afield.graphics.vulkan.util.GpuProbe
 import kotlin.math.floor
 import kotlin.math.max
@@ -16,17 +17,21 @@ import kotlin.math.min
  *
  * The first three stages of the winding rasteriser, FlattenBeziers → RowEdges → sort, stay on the
  * CPU as the same kernels ([pack]); what runs on the GPU is WindingSpans, the stage that does the
- * arithmetic. Each invocation owns one pixel row. It gathers the row's band boundaries (every edge
- * end and every crossing of two edges) into a scratch slice and sorts them; in each band it finds,
- * for every active edge, the winding number just to its right and its right-hand neighbour, and
- * wherever the fill rule says that region is inside it adds the trapezoid's exact area to each
- * pixel column it covers. No two invocations touch the same pixels, so there are no atomics.
+ * arithmetic. Each pixel row is one workgroup of [THREADS_PER_ROW] invocations. Together they gather
+ * the row's band boundaries (every edge end and every crossing of two edges) into a scratch slice
+ * and rank-sort them; then each invocation takes a run of consecutive bands, walks each band's edges
+ * left to right counting the winding number, and wherever the fill rule says the region between two
+ * neighbours is inside adds that trapezoid's exact area to each pixel column it covers. The row is
+ * summed in shared memory as fixed point (2^24 to a pixel), since integer atomics are everywhere and
+ * float ones are not.
  *
- * The row's edges are kept in a permutation ordered by x at the band's middle (ties by index, as the
- * CPU's stable sort does). The order changes only at crossings, which are band boundaries, so each
- * band re-sorts an almost sorted list by insertion: a band costs about O(n), as on the CPU. Flattened
- * curves put hundreds of edges in a row, so this matters; an earlier version that found each edge's
- * neighbour by counting, O(n²) a band, took seconds a frame on a 128 × 128 field of circles.
+ * Each invocation keeps the row's edges in a permutation ordered by x at the band's middle (ties by
+ * index, as the CPU's stable sort does). The order changes only at crossings, which are band
+ * boundaries, so each band re-sorts an almost sorted list by insertion: a band costs about O(n), as on
+ * the CPU. Flattened curves put hundreds of edges in a row, so this matters; a first version that
+ * found each edge's neighbour by counting, O(n²) a band, took seconds a frame on a 128 × 128 field of
+ * circles. Each invocation's first band is sorted by heap sort, O(n log n): insertion from an
+ * arbitrary order there cost O(n²) per invocation and made the shader five times slower.
  *
  * Coordinates go to the GPU relative to the row (y in 0..1) and to the row's leftmost column, so
  * float32 keeps about seven digits of the position within the shape, not within the image.
@@ -37,8 +42,11 @@ import kotlin.math.min
  */
 object GeziraGpu {
 
-    /** Rows per workgroup; matches `local_size_x` in [GLSL]. */
-    const val ROWS_PER_GROUP = 64
+    /** Invocations per row (one workgroup a row); matches `T` in [GLSL]. */
+    const val THREADS_PER_ROW = 32
+
+    /** Widest image the shader's shared-memory row accumulator holds; `MAX_WIDTH` in [GLSL]. */
+    const val MAX_WIDTH = 4096
 
     /** The WindingSpans compute shader. */
     val GLSL: String by lazy {
@@ -52,9 +60,9 @@ object GeziraGpu {
         val rule: FillRule,
         /** Two vec4 per edge: `x0, y0, x1, y1` (x from the row's left, y from the row's top), then `dir, 0, 0, 0`. */
         val edges: FloatArray,
-        /** Four uints per row, as float bits: first edge, edge count, scratch start, left column (signed). */
+        /** Four uints per row, as float bits: first edge, edge count, scratch start, left column (signed); then one more row whose scratch start is the total. */
         val rows: FloatArray,
-        /** Floats of band-boundary scratch the rows need between them. */
+        /** Floats of scratch the rows need between them: two boundary lists and a permutation per invocation each. */
         val scratch: Int,
         /** Row edges in all. */
         val edgeCount: Int,
@@ -68,12 +76,13 @@ object GeziraGpu {
         beziers: List<Bezier>, w: Int, h: Int,
         rule: FillRule = FillRule.NON_ZERO, tolerance: Double = Gezira.FLATNESS,
     ): Packed {
+        require(w in 1..MAX_WIDTH) { "GeziraGpu rasterises images 1 to $MAX_WIDTH pixels wide, not $w" }
         val rowEdges = (Gezira.flattenBeziers(tolerance) then Gezira.rowEdges then Gezira.sortRows)(beziers)
             .filter { it.row in 0 until h }
         val byRow = arrayOfNulls<MutableList<RowEdge>>(h)
         for (e in rowEdges) (byRow[e.row] ?: ArrayList<RowEdge>().also { byRow[e.row] = it }).add(e)
         val edges = FloatArray(max(1, rowEdges.size) * 8)
-        val rows = FloatArray(h * 4)
+        val rows = FloatArray((h + 1) * 4)
         var next = 0
         var scratch = 0
         for (r in 0 until h) {
@@ -95,14 +104,39 @@ object GeziraGpu {
                 edges[o + 4] = e.dir.toFloat()
                 next++
             }
-            // every end, at most one crossing per pair, then a permutation and its keys
-            if (n >= 2) scratch += 4 * n + n * (n - 1) / 2
+            // Two boundary lists (every end and every crossing, counted here as the CPU finds them,
+            // with slack for the few the shader's float32 test may find besides), then a
+            // permutation and its keys for each invocation.
+            if (n >= 2) scratch += 2 * (2 * n + crossings(list) + 8 + n / 8) + 2 * THREADS_PER_ROW * n
         }
+        rows[h * 4 + 2] = Float.fromBits(scratch)
         return Packed(w, h, rule, edges, rows, max(1, scratch), rowEdges.size)
     }
 
-    /** One shape's buffers on a probe; [coverage] is `w × h` floats, row-major, y down. */
-    class Job(val probe: GpuProbe, val packed: Packed, val coverage: FrameBufferGroup) {
+    /** Pairs of [edges] that cross strictly inside the band both span, as [Gezira.resolveRow] finds them. */
+    private fun crossings(edges: List<RowEdge>): Int {
+        var c = 0
+        for (i in edges.indices) for (j in i + 1 until edges.size) {
+            val a = edges[i]
+            val b = edges[j]
+            val y0 = max(a.y0, b.y0)
+            val y1 = min(a.y1, b.y1)
+            if (y1 <= y0) continue
+            val d0 = a.xAt(y0) - b.xAt(y0)
+            val d1 = a.xAt(y1) - b.xAt(y1)
+            if ((d0 < 0 && d1 > 0) || (d0 > 0 && d1 < 0)) c++
+        }
+        return c
+    }
+
+    /**
+     * One shape's buffers on a probe; [coverage] is `w × h` floats, row-major, y down. [status] holds
+     * per row the band boundaries the shader dropped for want of scratch, which should be none.
+     */
+    class Job(val probe: GpuProbe, val packed: Packed, val coverage: FrameBufferGroup, val status: FrameBufferGroup) {
+        /** Band boundaries dropped, over all rows; nonzero means the coverage is approximate. */
+        fun dropped(): Int = probe.readInts(status, packed.height).sum()
+
         /** The coverage image, read back. Call after the probe has settled on [coverage]. */
         fun read(): DoubleArray {
             val f = probe.read(coverage, packed.width * packed.height)
@@ -120,21 +154,27 @@ object GeziraGpu {
     fun dispatch(probe: GpuProbe, stage: GpuProbe.Stage, packed: Packed, label: String = "shape"): Job {
         val edges = probe.fixture("$label.edges", packed.edges.size)
         val rows = probe.fixture("$label.rows", max(4, packed.rows.size))
-        val scratch = probe.fixture("$label.scratch", packed.scratch)
+        // Scratch is the shader's alone, so device-local rather than a host-readable fixture.
+        val scratch = defaultBuffer(name = "${probe.name}.$label.scratch") {
+            size = packed.scratch.floats
+            zeroInit()
+        }.toBuffer(probe.renderer)
         val coverage = probe.fixture("$label.coverage", packed.width * packed.height)
+        val status = probe.fixture("$label.status", packed.height)
         probe.upload(edges, packed.edges)
         probe.upload(rows, packed.rows)
-        val groups = (packed.height + ROWS_PER_GROUP - 1) / ROWS_PER_GROUP
-        stage.dispatch(groups = max(1, groups), label = label) {
+        probe.fill(status, 0f)
+        stage.dispatch(groups = packed.height, label = label) {
             bind("edges") { edges }
             bind("rows") { rows }
             bind("scratch") { scratch }
             bind("coverage") { coverage }
+            bind("status") { status }
             bind("width") { packed.width }
             bind("height") { packed.height }
             bind("evenOdd") { if (packed.rule == FillRule.EVEN_ODD) 1 else 0 }
         }
-        return Job(probe, packed, coverage)
+        return Job(probe, packed, coverage, status)
     }
 
     /** [pack] then [dispatch]. */

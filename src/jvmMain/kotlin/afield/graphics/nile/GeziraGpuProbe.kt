@@ -105,6 +105,7 @@ object GeziraGpuProbe {
                     println("  %-30s %-9s %dx%d  %5d row edges  %4d edge px  max %.2e  mean %.2e  ink cpu %.4f gpu %.4f".format(
                         name, rule, p.width, p.height, p.edgeCount, edge, w, s / cpu.size, cpu.sum(), gpu.sum()))
                     probe.atMost("max |gpu - cpu| ($name, $rule)", w, MAX_DIFF, buffer = "${name}.coverage")
+                    probe.exactly("band boundaries dropped ($name, $rule)", job.dropped(), 0, buffer = "${name}.status")
                 }
                 println("corpus: ${jobs.size} images, ${count} pixels, largest difference %.3e, mean %.3e".format(worst, sum / count))
                 probe.verdict("gezira gpu corpus")
@@ -126,6 +127,7 @@ object GeziraGpuProbe {
                             val gpu = jobs[0].read()
                             for (i in cpu.indices) diff = max(diff, abs(cpu[i] - gpu[i]))
                             probe.atMost("max |gpu - cpu| (field $s)", diff, MAX_DIFF, buffer = "coverage")
+                            probe.exactly("band boundaries dropped (field $s)", jobs[0].dropped(), 0, buffer = "status")
                         }
                         ms[k] = timeFrames(probe)
                         probe.verdict("gezira gpu timing $s x$repeats")
