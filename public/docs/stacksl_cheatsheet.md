@@ -66,17 +66,21 @@ Worked: [The input convention](stacksl_examples.md#the-input-convention), and th
 
 ## Complex arithmetic and rotation weights
 
-Start a program with `@types` to use compile-time types. This program reads the input's first two
-lanes as a complex number and squares it.
+Start a program with `@types` to use compile-time types. A complex value has **rotation weight**
+\(k\) if rotating the inputs by an angle \(\theta\) multiplies that value by \(e^{ik\theta}\).
+This program reads the first two input lanes as a weight-1 complex number and squares it.
 
 ```diffstatic {data-lang=stacksl}
 @types
 assume-c1 dup *
 ```
 
-The result has weight 2. A rotation through angle θ multiplies a complex value of weight *k* by
-\(e^{ik\theta}\). Complex multiplication adds weights, and conjugation negates the weight. Values of
-the same weight can be added, subtracted, or mixed with a real invariant amount.
+The square has rotation weight 2. Rotating the input by 30° rotates the output by 60°, since
+\((e^{i\theta}z)^2 = e^{2i\theta}z^2\).
+[Peter J. Olver, *Classical Invariant Theory*, Exercise 4.17, p. 72](https://www.math.utoronto.ca/~ila/ClassicalInvariantTheory.pdf)
+
+Complex multiplication adds weights, and conjugation negates the weight. Values of the same weight
+can be added, subtracted, or mixed with a real invariant amount.
 
 <div data-code-lang="stacksl" markdown>
 
