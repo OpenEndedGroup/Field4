@@ -89,6 +89,11 @@ object GeziraGpuTigerProbe {
                     while (probe.stageList.any { !it.valid } && waited++ < 600) pump()
                     repeat(4) { pump() }
                     probe.idle()
+                    // Count overflow only over whole frames: the first frames run on buffers the
+                    // earlier stages have not written yet.
+                    scene.resetOverflow()
+                    repeat(3) { pump() }
+                    probe.idle()
                     val gpu = scene.read()
                     val over = scene.overflow()
                     probe.exactly("segments dropped ($size)", over[0], 0, buffer = "counts")
@@ -101,8 +106,8 @@ object GeziraGpuTigerProbe {
                     val (worstCpu, meanCpu) = diff(gpu, cpu)
                     val (worstSkia, meanSkia) = diff(gpu, skia)
                     val (worstCs, meanCs) = diff(cpu, skia)
-                    println("  $size: gpu vs cpu max %.4f mean %.2e | gpu vs skia max %.4f mean %.2e | cpu vs skia max %.4f mean %.2e | binned %d".format(
-                        worstCpu, meanCpu, worstSkia, meanSkia, worstCs, meanCs, scene.binned()))
+                    println("  $size: gpu vs cpu max %.4f mean %.2e | gpu vs skia max %.4f mean %.2e | cpu vs skia max %.4f mean %.2e | binned %d | widest run %d edges".format(
+                        worstCpu, meanCpu, worstSkia, meanSkia, worstCs, meanCs, scene.binned(), scene.widestRun()))
                     if (size == 900) {
                         out.resolve("gpu.png").writeBytes(GeziraSvg.png(gpu, size, size))
                         out.resolve("cpu.png").writeBytes(GeziraSvg.png(cpu, size, size))
@@ -120,6 +125,21 @@ object GeziraGpuTigerProbe {
                     repeat(3) { pump() }
                     cpuTimes[size] = cpuMs
                     probe.verdict("gezira gpu tiger $size")
+                }
+                // What the resolve stage spends its time on: frames with parts of it switched off.
+                failures += gpuProbe(renderer, "gezira-tiger-$size-parts", pump = pump) { probe ->
+                    val scene = GeziraGpuScene(probe, paths, size, size, transform = fit)
+                    probe.settle(scene.image, seconds = 60.0)
+                    var waited = 0
+                    while (probe.stageList.any { !it.valid } && waited++ < 600) pump()
+                    val parts = ArrayList<String>()
+                    for ((bits, what) in listOf(0 to "all", 2 to "no area adds", 1 to "no band walk", 5 to "no boundaries or walk", 13 to "no boundaries, walk or blend")) {
+                        scene.debug = bits
+                        parts += "%s %.2f".format(what, timeFrames(probe))
+                    }
+                    scene.debug = 0
+                    table += "        resolve parts, wall ms/frame: " + parts.joinToString(", ")
+                    probe.verdict("gezira gpu tiger parts $size")
                 }
                 // The pipeline's own GPU cost: frames with it dispatched REPEATS times, against once;
                 // then each stage alone, the same way.

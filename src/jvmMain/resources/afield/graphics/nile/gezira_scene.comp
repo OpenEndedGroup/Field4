@@ -46,6 +46,7 @@ layout(push_constant) uniform Push {
     uint height;
     uint segCap;
     uint bandCap;
+    uint debug;     // timing experiments: 1 skips the band walk, 2 the area adds, 4 the boundaries, 8 the blend
 } pc;
 
 vec2 xf(vec2 p) { return vec2(pc.m0.x * p.x + pc.m0.z * p.y + pc.m1.x, pc.m0.y * p.x + pc.m0.w * p.y + pc.m1.y); }
@@ -215,6 +216,9 @@ shared uint nEdges;
 shared uint nYs;
 shared int colLo;
 shared int colHi;
+#define MAX_RUNS 4096u
+#define MAX_ACTIVE 32u
+shared uint touched[MAX_RUNS / 32u];
 
 float xAt(vec4 e, float y) {
     if (y <= e.y) return e.x;
@@ -251,7 +255,33 @@ void main() {
     uint dropped = 0u;
     barrier();
 
-    for (uint r = 0u; r < nRuns; r++) {
+    // Which of the band's runs reach this row at all: one pass over the band's entries, each
+    // finding its run by binary search over the run starts. Rows then visit only those runs, in
+    // paint order, instead of every run in the band (most of a band's paths miss most of its rows).
+    bool everyRun = nRuns > MAX_RUNS;
+    uint words = (min(nRuns, MAX_RUNS) + 31u) / 32u;
+    for (uint q = t; q < words; q += T) touched[q] = 0u;
+    barrier();
+    if (!everyRun) {
+        for (uint k = t; k < nEntries; k += T) {
+            vec4 g = pc.segs.v[pc.bins.v[bbase + k]];
+            if (min(g.y, g.w) >= fr + 1.0 || max(g.y, g.w) <= fr) continue;
+            uint lo = 0u, hi = nRuns;   // last run start <= k
+            while (hi - lo > 1u) {
+                uint mid = (lo + hi) / 2u;
+                if (pc.bins.v[bbase + pc.bandCap + mid] <= k) lo = mid; else hi = mid;
+            }
+            atomicOr(touched[lo / 32u], 1u << (lo % 32u));
+        }
+    }
+    barrier();
+
+    for (uint word = 0u; word < (everyRun ? (nRuns + 31u) / 32u : words); word++) {
+      uint bits = everyRun ? 0xffffffffu : touched[word];
+      while (bits != 0u) {
+        uint r = word * 32u + uint(findLSB(bits));
+        bits &= bits - 1u;
+        if (r >= nRuns) break;
         uint s = pc.bins.v[bbase + pc.bandCap + r];
         uint e = r + 1u < nRuns ? pc.bins.v[bbase + pc.bandCap + r + 1u] : nEntries;
         uint shape = pc.segShape.v[pc.bins.v[bbase + s]];
@@ -280,6 +310,7 @@ void main() {
         }
         barrier();
         uint n = min(nEdges, NE);
+        if (t == 0u) atomicMax(pc.counts.v[2u * bands() + 3u], n);
         if (n < 2u) { barrier(); continue; }
         for (uint i = t; i < n; i += T) {
             ys[2u * i] = edges[i].y;
@@ -304,7 +335,7 @@ void main() {
             }
         }
         barrier();
-        uint m = min(nYs, NY);
+        uint m = (pc.debug & 4u) != 0u ? 0u : min(nYs, NY);
         for (uint q = t; q < m; q += T) {
             float y = ys[q];
             uint rank = 0u;
@@ -316,13 +347,53 @@ void main() {
         }
         barrier();
         bool evenOdd = pc.shapes.v[shape * 2u + 1u].x != 0.0;
-        // Bands shared out; each finds every active edge's winding and right neighbour by counting.
+        // Bands shared out. Each band first gathers its active edges (one pass over the run's
+        // edges; a flattened curve puts many short edges in a row but few in any one band), sorts
+        // them by x at the band's middle, and walks them left to right counting winding. Past
+        // MAX_ACTIVE active edges it falls back to finding each one's neighbour by counting.
+        if ((pc.debug & 1u) == 0u)
         for (uint k = t; k + 1u < m; k += T) {
             float ya = sorted[k];
             float yb = sorted[k + 1u];
             float h = yb - ya;
             if (h <= 0.0) continue;
             float ym = 0.5 * (ya + yb);
+            uint act[MAX_ACTIVE];
+            float ax[MAX_ACTIVE];
+            uint a = 0u;
+            for (uint i = 0u; i < n; i++) {
+                vec4 ei = edges[i];
+                if (!(ei.y < ym && ym < ei.w)) continue;
+                if (a < MAX_ACTIVE) {
+                    // insertion by (x, index)
+                    float x = xAt(ei, ym);
+                    uint j = a;
+                    while (j > 0u && before(x, i, ax[j - 1u], act[j - 1u])) { ax[j] = ax[j - 1u]; act[j] = act[j - 1u]; j--; }
+                    ax[j] = x;
+                    act[j] = i;
+                }
+                a++;
+            }
+            if (a <= MAX_ACTIVE) {
+                int wind = 0;
+                for (uint q = 0u; q + 1u < a; q++) {
+                    wind += dirs[act[q]];
+                    bool inside = evenOdd ? (wind & 1) != 0 : wind != 0;
+                    if (!inside) continue;
+                    vec4 ei = edges[act[q]];
+                    vec4 er = edges[act[q + 1u]];
+                    float la = xAt(ei, ya), lb = xAt(ei, yb);
+                    float ra = xAt(er, ya), rb = xAt(er, yb);
+                    int c0 = max(int(floor(min(la, lb))), 0);
+                    int c1 = min(int(ceil(max(ra, rb))), int(w));
+                    if ((pc.debug & 2u) == 0u)
+                    for (int c = c0; c < c1; c++) {
+                        float fc = float(c);
+                        atomicAdd(acc[c], int(round(h * (meanClamp(ra - fc, rb - fc) - meanClamp(la - fc, lb - fc)) * FIXED)));
+                    }
+                }
+                continue;
+            }
             for (uint i = 0u; i < n; i++) {
                 vec4 ei = edges[i];
                 if (!(ei.y < ym && ym < ei.w)) continue;
@@ -355,6 +426,7 @@ void main() {
         vec4 colour = pc.shapes.v[shape * 2u];
         int c0 = max(colLo, 0);
         int c1 = min(colHi, int(w));
+        if ((pc.debug & 8u) == 0u)
         for (int c = c0 + int(t); c < c1; c += int(T)) {
             float cov = clamp(float(acc[c]) / FIXED, 0.0, 1.0);
             acc[c] = 0;
@@ -364,6 +436,7 @@ void main() {
             pc.image.v[base + uint(c)] = src + dst * (1.0 - src.a);
         }
         barrier();
+      }
     }
     if (dropped > 0u) atomicAdd(pc.counts.v[2u * bands() + 2u], dropped);
 }

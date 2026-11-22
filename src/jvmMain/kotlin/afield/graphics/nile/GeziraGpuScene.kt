@@ -140,13 +140,23 @@ class GeziraGpuScene(
         bind("height") { height }
         bind("segCap") { segCap }
         bind("bandCap") { bandCap }
+        bind("debug") { scene.debug }
     }
 
     /** The picture read back. Call once the probe has settled on [image]. */
     fun read(): FloatArray = probe.read(image, width * height * 4)
 
+    /** Timing experiments only: bits that skip parts of the resolve stage (see `gezira_scene.comp`). 0 draws. */
+    @Volatile var debug: Int = 0
+
     /** Pieces dropped for want of room: segments, band entries, row edges and crossings. Should all be 0. */
     fun overflow(): IntArray = probe.readInts(counts, bands * 2 + 3).copyOfRange(bands * 2, bands * 2 + 3)
+
+    /** Zero the overflow counters (and [widestRun]); the per-band counts are rewritten every frame anyway. */
+    fun resetOverflow() = probe.fill(counts, 0f)
+
+    /** The most edges any path put in any one row, the resolve stage's inner size. */
+    fun widestRun(): Int = probe.readInts(counts, bands * 2 + 4)[bands * 2 + 3]
 
     /** Band entries summed over bands, from the last frame: the binned segment count. */
     fun binned(): Int = probe.readInts(counts, bands * 2).filterIndexed { i, _ -> i % 2 == 0 }.sum()
