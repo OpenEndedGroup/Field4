@@ -367,8 +367,8 @@ Three details in that output are easy to miss:
 **STEP, IGES, BREP and other CAD formats** are not read. A `.step` file is NURBS surfaces trimmed
 against each other rather than a mesh, and Field has no CAD kernel. Export STL from FreeCAD or your
 CAD tool and read that. `meshFromAnyFile` on a `.step` throws rather than returning an empty mesh.
-Rhino's `.3dm` is the exception, because Rhino saves a render mesh with every surface; see
-[Rhino files](rhino_files.md).
+Rhino's `.3dm` is the exception: Field reads the render mesh Rhino saves with a surface, or
+tessellates the surface itself where the file was saved small; see [Rhino files](rhino_files.md).
 
 **Textures and materials** do not come across into a `TriMesh`, which has positions, normals, uvs and
 per-vertex colours only; `assimpToTriMesh` drops the material. For a textured, rendered model use

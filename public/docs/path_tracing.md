@@ -1749,6 +1749,8 @@ Implementation and parameter details for the helpers used above:
 
 - [Neural particles](neural_particles.md) trains a velocity field with the same `VectorMLP` and runs it in a compute shader.
 - [A learned shader function](learned_shader.md) fits a network to a shader's output on the GPU.
+- [A Rhino file, path traced](chain_rhino_render.md) loads a `.3dm` model and traces it here, each
+  object in its display colour.
 - [Path-traced reconstruction](path_traced_reconstruction.md) cleans up a noisy path-traced frame.
 - [Denoising a still](#denoising-a-still) cleans up an accumulated image once, on any Vulkan GPU.
 

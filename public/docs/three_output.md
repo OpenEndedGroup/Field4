@@ -1296,6 +1296,8 @@ saved output across a server restart. Older panels are evicted when that budget 
 - [Shapes from constraints](ceres.md) puts drag handles on a Ceres model: a cube held only by
   flat faces, and boxes in one- and two-point perspective, re-solved as you drag.
 - [Solids & Booleans (Manifold)](manifold.md) builds the closed solids these viewers often show.
+- [Rhino files](rhino_files.md) draws a whole `.3dm` model in one of these viewers with
+  `rhino(model)`, each object in its layer's display colour.
 - [Meshes and 3D geometry](mesh_examples.md) covers `triMesh`, `boxMesh` and the other mesh
   builders used above.
 - [Exact triangle coverage](afield_four_graphics.md#exact-triangle-coverage) computes the exact
