@@ -4908,6 +4908,50 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="text-frame-rich",
+            description="Visual text-frame formatting and image paste preserve the underlying Markdown.",
+            commands=[
+                "viewport 1060x760",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/text-frame-rich.js"), "--timeout", pw_timeout]),
+                shell_join(["macro", "write", "text_frame_edit_marking", "--file", str(TOOLS_ROOT / "ui_regressions/text-frame-edit-marking.yaml")]),
+                "macro run text_frame_edit_marking --timeout 90",
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="text-frame-linked-notes",
+            description="Create a child note on selected formatted text, follow its passage through edits, and keep the note when the passage is deleted.",
+            commands=[
+                "viewport 1060x760",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/text-frame-linked-notes.js"), "--timeout", pw_timeout]),
+                shell_join(["macro", "write", "text_frame_linked_notes", "--file", str(TOOLS_ROOT / "ui_regressions/text-frame-linked-notes.yaml")]),
+                "macro run text_frame_linked_notes --timeout 90",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/text-frame-linked-notes-assert.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="text-frame-cut-passages",
+            description="Cut and paste a passage with normal clipboard events, preserving its identity and moving its child edge across frames only once.",
+            commands=[
+                "viewport 1060x760",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/text-frame-linked-notes.js"), "--timeout", pw_timeout]),
+                shell_join(["macro", "write", "text_frame_linked_notes", "--file", str(TOOLS_ROOT / "ui_regressions/text-frame-linked-notes.yaml")]),
+                "macro run text_frame_linked_notes --timeout 90",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/text-frame-cut-passages.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="text-frame-transclusion",
+            description="Paste a live passage reference and follow its text and stable ID through edits and cross-frame moves.",
+            commands=[
+                "viewport 1060x760",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/text-frame-transclusion.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="regular-connections",
             description="Ordinary box connections retain curved routing while their minimum radius eases down near neighbouring boxes, without oversized loops.",
             commands=[
@@ -5037,6 +5081,7 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 "new-box --name GuideTarget --alias guide_target --x 300 --y 100",
                 shell_join(["set", "@last", "code", "// Movement recipe\nval pace = 2.0\nprintln(pace)"]),
                 "new-box --name GuideFixture --x 40 --y 100",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/document-guide-notes-only.js"), "--timeout", pw_timeout]),
                 shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/document-guide.kt"), "--timeout", timeout_text]),
                 "wait-output @last --contains GUIDE_FIXTURE_READY",
                 "editor-open @guide_target --property code",

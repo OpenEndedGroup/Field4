@@ -19,8 +19,25 @@ import kotlin.system.exitProcess
  *
  * Running the code is the smoke catalog's job (`examples.demo-transcript.exec`), which the
  * nightly runs; this guard only answers "did the edit break resolution or types".
+ *
+ * [COMPILE_ONLY_HERE] names the EXECUTE transcripts this guard compiles instead of running: ones
+ * whose boxes are independent (no box reads a value another box defines when evaluated) and whose
+ * run is long enough to trip the Runloop watchdog on a loaded machine. The smoke test still
+ * executes them.
  */
 object BoxCodeCompileGuard {
+    /**
+     * EXECUTE transcripts compiled, not run, here — each with why. An entry must have independent
+     * boxes; the smoke test's EXECUTE sweep keeps running it.
+     */
+    internal val COMPILE_ONLY_HERE: Map<String, String> = mapOf(
+        // Ten independent evolution boxes; on 2026-11-21 at load 44, evolve_ca held the Runloop
+        // 29.2 s of the watchdog's 30 s, so at load ~60 it was interrupted every night.
+        "alife_evolution" to "independent boxes; evolve_lenia/evolve_ca/map_elites hold the Runloop 17-29 s each",
+        // Five independent vehicle boxes; evolved_wiring alone holds the Runloop 18 s.
+        "braitenberg_where_next" to "independent boxes; evolved_wiring holds the Runloop 18 s",
+    )
+
     @JvmStatic
     fun main(args: Array<String>) {
         // As in DemoTranscriptExecSmokeTest: nothing here pumps the first-thread run loop.
@@ -53,6 +70,7 @@ object BoxCodeCompileGuard {
                 // Tone), and an EXECUTE transcript may read types or values an earlier box defines
                 // only when evaluated (shared_types_demo, the DataFrame plugin's generated schema).
                 when (name) {
+                    in COMPILE_ONLY_HERE -> DemoTranscriptExecSmokeTest.runCompileOnlyDemo(yaml, name, failures)
                     in DemoTranscriptExecSmokeTest.COMPILE_ONLY -> DemoTranscriptExecSmokeTest.runCompileOnlyDemo(yaml, name, failures)
                     in DemoTranscriptExecSmokeTest.EXECUTE -> DemoTranscriptExecSmokeTest.runExecuteDemo(yaml, name, failures)
                     in DemoTranscriptExecSmokeTest.KOTLINJS -> DemoTranscriptExecSmokeTest.runKotlinJsDemo(yaml, name, failures)

@@ -1,5 +1,6 @@
 package afield.graphics.scene
 
+import afield.media.image.savePng
 import afield.graphics.render.before
 import afield.graphics.render.main
 
@@ -501,7 +502,7 @@ object GpuSkinningEvidence {
         )
         g.drawImage(src.getScaledInstance(w, h, java.awt.Image.SCALE_SMOOTH), 0, 0, null)
         g.dispose()
-        ImageIO.write(dst, "png", file)
+        dst.savePng(file)
         return file
     }
 
@@ -541,7 +542,7 @@ object GpuSkinningEvidence {
             if (worst > max) max = worst
             diff.setRGB(x, y, amplified)
         }
-        ImageIO.write(diff, "png", into)
+        diff.savePng(into)
         return Diff(total.toDouble() / (ia.width * ia.height * 3), max, ink)
     }
 

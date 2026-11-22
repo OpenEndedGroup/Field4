@@ -367,8 +367,8 @@ Three details in that output are easy to miss:
 **STEP, IGES, BREP and other CAD formats** are not read. A `.step` file is NURBS surfaces trimmed
 against each other rather than a mesh, and Field has no CAD kernel. Export STL from FreeCAD or your
 CAD tool and read that. `meshFromAnyFile` on a `.step` throws rather than returning an empty mesh.
-Rhino's `.3dm` is the exception, because Rhino saves a render mesh with every surface; see
-[Rhino files](rhino_files.md).
+Rhino's `.3dm` is the exception: Field reads the render mesh Rhino saves with a surface, or
+tessellates the surface itself where the file was saved small; see [Rhino files](rhino_files.md).
 
 **Textures and materials** do not come across into a `TriMesh`, which has positions, normals, uvs and
 per-vertex colours only; `assimpToTriMesh` drops the material. For a textured, rendered model use
@@ -944,9 +944,15 @@ only read inside roots you have added.
 See [Give the AI a tool of your own](aiFeatures.md), which uses this tool set as its worked example
 and shows the schema and the picture the model receives.
 
-Related pages: [Meshes and 3D geometry](mesh_examples.md) for everything you can *do* with a mesh
+## Where to go next
+
+[Meshes and 3D geometry](mesh_examples.md) for everything you can *do* with a mesh
 once you have one; [the Fabricate renderer](fabricate_renderer.md) for textured PBR rendering of the
 same files; [Field 4 graphics](afield_four_graphics.md) for the module/shader layer the GPU
 loaders plug into; [FLine examples](fline_examples.md) for `toFLines`, the route from a mesh back into
 Field's drawing. Developer notes: [`dev_docs/MESH_GEOMETRY.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/MESH_GEOMETRY.md) and
 [`dev_docs/ply_loader.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/ply_loader.md).
+
+For how the splat rasterizer on this page relates to Field's other ways of computing pixel
+coverage (the CPU mesh rasterizer, exact triangle coverage, stream kernels and Slug paths), see
+[Which one to use](afield_four_graphics.md#which-coverage-to-use).

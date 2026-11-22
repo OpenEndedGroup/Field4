@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-21T15:44:40.736Z",
+  "documentName": "fline_coverage_gpu",
+  "outputs": [
+    {
+      "uid": "fcg_renderer",
+      "channel": "Vulkan window · still image",
+      "open": true,
+      "path": "outputs/0.html",
+      "width": 1956,
+      "height": 630,
+      "kinds": [
+        "native-image"
+      ],
+      "warnings": []
+    }
+  ]
+}

@@ -266,6 +266,8 @@ interface FieldGraphHost {
     /** Run [action] where box graph mutations belong, with [info] bound as the current session. */
     fun <T> onOwner(info: SessionInformation, action: () -> T): T
     fun newBox(info: SessionInformation, name: String, frame: Rect, properties: Map<String, String>): Box
+    fun newTextFrame(info: SessionInformation, name: String, frame: Rect, properties: Map<String, String>): Box =
+        newBox(info, name, frame, properties)
     fun delete(info: SessionInformation, box: Box)
     /** Start a whole-property run; the verdict arrives through [reply] as `execution-verdict`. */
     fun run(info: SessionInformation, box: Box, exec: Execute, reply: (Message) -> Unit)
@@ -297,6 +299,9 @@ object LiveFieldGraphHost : FieldGraphHost {
 
     override fun newBox(info: SessionInformation, name: String, frame: Rect, properties: Map<String, String>): Box =
         createAgentBox(info, name, frame, properties.mapValues { JsonPrimitive(it.value) })
+
+    override fun newTextFrame(info: SessionInformation, name: String, frame: Rect, properties: Map<String, String>): Box =
+        createAgentBox(info, name, frame, properties.mapValues { JsonPrimitive(it.value) }, initKi = false)
 
     override fun delete(info: SessionInformation, box: Box) {
         actionTable["-delete-box"]!!.invoke(listOf(box))
@@ -372,6 +377,8 @@ class FieldGraphTools(
         val end = (start + req.maxChars.coerceIn(500, 16000)).coerceAtMost(content.length)
         content.substring(start, end) + if (end < content.length) "\n[continues: offset=$end]" else ""
     }
+
+    internal val textPassages by lazy { TextPassageTools(this, host) }
 
     internal val geometryReviews by lazy {
         GeometryReviewTools(info, { action -> host.onOwner(info, action) }) { runs -> studyBuilds.runsFromEarlierInputs(runs) }
@@ -826,6 +833,7 @@ internal fun registerFieldGraphTools(tools: ToolRegistry) {
     tools.register(SymbolAtRequest::class.java, on) { ctx, req -> ctx.fieldGraph!!.symbolAt(req) }
     tools.register(ViewBoxOutputRequest::class.java, { ctx -> ctx.fieldGraph?.seesOutput == true }) { ctx, req -> ctx.fieldGraph!!.viewOutput(req) }
     registerNotationTools(tools)
+    registerTextPassageTools(tools)
 }
 
 /** The tool names [registerFieldGraphTools] adds, for instructions and tests. */
@@ -833,7 +841,7 @@ val fieldGraphToolNames: List<String> = listOf(
     ListBoxesRequest::class, NewBoxRequest::class, DeleteBoxRequest::class, SetBoxPropertyRequest::class,
     GetBoxPropertyRequest::class, PatchBoxTextRequest::class, ConnectBoxesRequest::class, DisconnectBoxesRequest::class, RunBoxRequest::class,
     LaunchBoxRequest::class, StopBoxRequest::class, ReadBoxOutputRequest::class, ViewBoxOutputRequest::class, SymbolAtRequest::class
-).map { it.java.simpleName } + notationToolNames
+).map { it.java.simpleName } + notationToolNames + textPassageToolNames
 
 
 internal class PatchEditsResult(val text: String, val failures: List<String>, val diff: String)

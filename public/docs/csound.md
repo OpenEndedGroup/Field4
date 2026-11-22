@@ -65,6 +65,8 @@ audio engine is the device. Text without `<CsInstruments>` is read as a bare orc
 A `chn_k` channel starts at the default it declares: above, `chnget "cutoff"` reads 2400 until
 something writes the channel. Other Csound hosts may start it at 0, which makes this `butterlp` silent there.
 
+To start from a working pair, press ++cmd+t++ and insert the `csound-instrument` [template](templates.md#templates-that-come-with-field): a Csound root and a plucked string with a reverb, played by its score and by any MIDI keyboard.
+
 ### The keys
 
 | Key | Where | What it does |

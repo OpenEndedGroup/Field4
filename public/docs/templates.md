@@ -38,6 +38,35 @@ The template is a snapshot of the boxes when you save them. You can keep editing
 the template stays as it was. Save over it and future insertions use the new version, while copies
 you've already made stay as they are.
 
+### Make a template safe to insert twice
+
+A template is dropped into documents that already have boxes of their own, often more than once.
+Each copy gets new uids but keeps its box names, so a template keeps working when:
+
+- its boxes find each other through connections (a parent's `prop`, read by the child beneath
+  it), not by name. `box("Rates")` finds whichever `Rates` it reaches first, and with two copies
+  that may be the other copy's.
+- it writes nothing document-wide. `rootProp`, `@rootExported` and `sharedTypes` are shared by
+  every box, so a second copy overwrites the first.
+- it opens no fixed port or service name that a second copy would collide with.
+- whatever it registers under a name — a module on a renderer, an AI tool, an OSCQuery path —
+  carries the box's id, as in `renderer += "sky_" + id.take(8) to sky`. Two copies have the same
+  box name, so a name built from it collides.
+- it leaves **autorun** off, so inserting it changes nothing until you run it.
+
+### Say what a template needs above it
+
+Some boxes only work beneath another: a graphics box needs a renderer above it. Give such a box a
+`parentHint` and the canvas shows it just above the box's top edge for as long as the box has no
+parent, then takes it away once you connect it:
+
+```diffstatic {data-lang=kotlin}
+parentHint = "Connect under a renderer: select the renderer box, then this one, and press G."
+```
+
+The hint is saved with the box, so set it once, save the template, and every copy shows it. The
+bundled `sky`, `gpu-particles`, `rectsl-playground` and `shadertoy-pass` templates carry one.
+
 ## Insert a template
 
 Move the mouse to where you want the copy, press ++cmd+t++ and start typing the name. The
@@ -100,6 +129,43 @@ doc: |
 ```
 
 A template with no `doc` anywhere shows "No documentation available".
+
+## Templates that come with Field
+
+The checkout's `templates/` folder holds these, listed in the palette as Bundled templates. Most are
+one to three boxes; none runs when inserted.
+
+| Template | Boxes | What it adds |
+| --- | --- | --- |
+| `python-cell` | root, cell | A Python root and one Python cell under it. More boxes connected under the root are more cells in the same namespace. [Python](python.md) |
+| `lua-cell` | root, box | A Lua root and one Lua box under it. [Lua](lua.md) |
+| `pd-patch` | root, patch | A Pure Data root and a filtered saw drone; launch it, then run a `freq 330` line on its own. [Pure Data](pure_data.md) |
+| `clojure-cell` | root, box | A Clojure root and one Clojure box with a slider. [Clojure](clojure.md) |
+| `csound-instrument` | root, instrument | A Csound root and a plucked string with a reverb, played by its score and by any MIDI keyboard. [Csound](csound.md) |
+| `parameter-parent` | parent, child | A parent that publishes `level` with a slider, and a child that draws it. Any box connected under the parent reads the same `level`. [Property inheritance](running_code.md#property-inheritance-how-children-see-a-parents-values) |
+| `keyframe-lane` | 1 | A hand-edited curve played on a four-second loop into a meter, and published as `lane` to the boxes under it. [Keyframe editor](keyframe_editor.md) |
+| `midi-learn` | 1 | A control group with a MIDI learn button, listening to the first hardware MIDI input while it runs. [MIDI learn](visualizers.md#midi-learn) |
+| `watch` | 1 | A live `tree()` of values you choose, kept current while the box runs. [Trees and columns](visualizers.md#trees-and-columns) |
+| `drawing-listener` | 1 | A handler for each stroke drawn by hand on the drawing layer. [Listening to the drawing](drawing_and_notation.md#listening-to-the-drawing) |
+| `record-and-explore` | 1 | Records three seconds of everything running in the document and opens the profiling timeline. [Profiling timeline](profiling_timeline.md) |
+| `orca` | 1 | An ORCA grid in a box output, playing through a synth. [ORCA](orca.md) |
+| `control-surface` | 1 | A logarithmic slider, a bipolar slider, a momentary gate and a meter, to read from your own code. [Visualizers](visualizers.md) |
+| `tour` | 1 | A slideshow over the boxes connected beneath it, top to bottom, showing each box's notes. [Interactive guides](interactive_guides.md) |
+| `rates-and-sheet` | parent, sheet | A parent that publishes `taxRate` and `discountRate`, and a spreadsheet beneath it that prices a bill with them. [Spreadsheets](spreadsheets.md) |
+| `oscquery-controls` | 1 | A slider and a checkbox that are also OSCQuery parameters, under a path of their own. [OSCQuery](oscquery.md) |
+| `mqtt-listener` | 1 | The latest messages on an MQTT topic, from Field's embedded broker or another one. [MQTT](mqtt.md) |
+| `renderer` | 1 | A window and a Vulkan renderer for graphics boxes to hang beneath. [Field 4 graphics](afield_four_graphics.md) |
+| `sky` | 1 | A physically based sky with sliders for the sun, altitude and exposure, drawn behind everything else under its renderer. [An atmospheric sky](afield_four_graphics.md#atmospheric-sky) |
+| `gpu-particles` | compute, draw | 100 000 particles moved by a compute shader, and a box beneath it that draws them. |
+| `rectsl-playground` | 1 | A live RectSL program with play, loop, speed and time controls, drawn under its renderer. [RectSL examples](rectsl_examples.md) |
+| `shadertoy-pass` | 1 | A ShaderToy-style Image pass: paste a `mainImage` and it draws in the renderer's window. |
+| `first-steps` | 1 | A moving drawing to edit while it runs. |
+| `first-graphics` | renderer, triangle | A Vulkan window and a triangle beneath it. |
+| `timeSlider` | 1 | A vertical line that launches and stops the boxes it passes over. |
+| `h2-explorer-examples` | 9 | Six numbered boxes that show `.h2` on a data class, a box, a function, an `FLine`, an exception and a `Set`, with notes. [Visualizers](visualizers.md) |
+| `presentation` | 5 | The presentation starter as a plain copy, outside the kit. [Presenting with Field](presentation_studio.md) |
+| `animate-examples` | root, 2 | An `animate { }` block that stops after 60 frames, and a box of notes on the syntax. |
+| `field.sketch2_examples` | many | An older collection of sketches: bouncing points, noise, falling lines, geometry and stereo. |
 
 ## A copy remembers where it came from
 

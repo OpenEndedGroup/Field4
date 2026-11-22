@@ -1,0 +1,3 @@
+doc: |
+  A control group with a MIDI learn button, listening to the first hardware MIDI input while it
+  runs. Bindings are saved with the box.

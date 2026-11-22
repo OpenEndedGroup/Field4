@@ -166,13 +166,6 @@ FIELD_OPENNURBS_API const int* field_opennurbs_object_edge_indices(void* model, 
  */
 FIELD_OPENNURBS_API const double* field_opennurbs_object_frame(void* model, int object);
 
-/**
- * Write a small .3dm file exercising every kind above — nested layers, a mesh, a Brep with and one
- * without render meshes, line / polyline / cubic / circle / polycurve, text, a point, a hatch, a
- * block with two instances. It is how the JVM tests get a fixture without committing one.
- */
-FIELD_OPENNURBS_API int field_opennurbs_write_fixture(const char* utf8Path, char* message, int messageCapacity);
-
 #ifdef __cplusplus
 }
 #endif

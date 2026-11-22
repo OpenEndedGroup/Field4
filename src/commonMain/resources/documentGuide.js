@@ -180,11 +180,16 @@ function setMode(toSource) {
     else { renderReader(); reader.focus(); }
     updateControls();
 }
+function frameNote(path) {
+    const uid = noteUid(path);
+    if (uid && !window.frameBoxFromGuide?.(uid)) message(`Box “${uid}” is no longer in this document`);
+}
 async function navigate(path, hash = '', push = true) {
     if (!path) return;
+    const token = ++epoch;
     remember();
-    if (current?.path === path) { setMode(false); jump(hash); return; }
-    const token = ++epoch; message('Opening guide…');
+    if (current?.path === path) { setMode(false); jump(hash); frameNote(path); return; }
+    message('Opening guide…');
     try {
         const response = await rpc({action:'read', path});
         if (token !== epoch) return;
@@ -203,6 +208,7 @@ async function navigate(path, hash = '', push = true) {
         renderEntries(); renderReader(hash); updateControls();
         message(isNote() ? 'Box notes · Open box to edit them' :
             readOnly ? 'Read-only document' : dirty() ? 'Unsaved draft restored' : 'Markdown file · Changes on disk refresh here');
+        frameNote(path);
         remember();
     } catch (error) { if (token === epoch) report(error); }
 }
@@ -335,13 +341,18 @@ async function show(path = '') {
             try { saved = {path:'',positions:{},...JSON.parse(localStorage.getItem(storageKey()) || '{}')}; } catch (_) { saved = {path:'',positions:{}}; }
             if (saved.rect) setRect(saved.rect);
         }
-        readOnly = response.readOnly; entries = response.entries || []; renderEntries();
+        readOnly = response.readOnly; entries = response.entries || [];
+        if (isNote() && !entries.some(e => e.path === current.path)) {
+            current = null;
+            delete panel.dataset.path;
+        }
+        renderEntries();
         // A docs redirect asked for by path (Open Anything, ?guide=) opens its page; the panel shows the rest.
         const redirect = entries.find(e => e.kind === 'docs' && e.path === path);
         if (redirect) { openDocs(redirect.docs); path = ''; }
         const readable = entries.filter(e => e.kind !== 'docs');
         const target = path || current?.path || (readable.some(e=>e.path===saved.path) ? saved.path : readable[0]?.path);
-        if (target) { if (target !== current?.path) await navigate(target); else { renderReader(); updateControls(); } }
+        if (target) { if (path || target !== current?.path) await navigate(target); else { renderReader(); updateControls(); } }
         else if (entries.length) {
             reader.textContent = 'Choose a documentation page on the left; it opens in the docs pane.';
             message(`${entries.length} documentation page${entries.length === 1 ? '' : 's'}`);
@@ -402,7 +413,16 @@ window.copyDocumentGuideBoxLink = async () => {
 };
 // Small document-level entry point. Check occasionally so externally added guides become discoverable.
 let discovered = '', discoveryAt = 0, discoveryPending = false, deepLinkOpened = false;
-setInterval(async () => {
+let discoveryTimer;
+window.refreshDocumentGuideLauncher = () => {
+    discoveryAt = 0;
+    if (discoveryTimer != null) return;
+    discoveryTimer = setTimeout(() => {
+        discoveryTimer = null;
+        discoverGuides();
+    }, 100);
+};
+async function discoverGuides() {
     const name = window.currentDocumentFilename;
     if (!name || discoveryPending || (name === discovered && Date.now()-discoveryAt < 15000)) return;
     discovered = name; discoveryAt = Date.now(); discoveryPending = true;
@@ -413,10 +433,15 @@ setInterval(async () => {
             window.documentGuideSessionKey = response.document; window.syncNotesMarkdownPreview?.();
         }
         build();
-        if (!launcher) { launcher=button('Guides', 'document-guide-launcher',()=>show()); launcher.title='Open this document’s guides and notes'; document.body.append(launcher); }
+        if (!launcher) {
+            launcher = button('Guides', 'document-guide-launcher', () => show());
+            launcher.hidden = true;
+            document.body.append(launcher);
+        }
         const found = response.entries || [];
         const noteCount = found.filter(e => e.kind === 'note').length;
         const docsCount = found.filter(e => e.kind === 'docs').length;
+        const visibilityChanged = launcher.hidden !== !found.length;
         launcher.hidden = !found.length;
         // Name what is actually there: a document can carry notes and no Markdown files, or the reverse.
         const guideCount = found.length - noteCount;
@@ -425,8 +450,10 @@ setInterval(async () => {
             : `Guides · ${guideCount}`;
         launcher.title = docsCount ? `Open this document’s guides and notes · ${docsCount} documentation page${docsCount === 1 ? '' : 's'}`
             : 'Open this document’s guides and notes';
+        if (visibilityChanged) window.restackNotifyBubbles?.();
         const initial = new URL(location.href).searchParams.get('guide');
         if (initial && !deepLinkOpened) { deepLinkOpened = true; await show(initial); }
     } catch (_) { discovered=''; }
     finally { discoveryPending = false; }
-}, 2000);
+}
+setInterval(discoverGuides, 2000);

@@ -1,0 +1,3 @@
+doc: |
+  A Python root and one Python cell under it. Connect more boxes under the root for
+  more cells; they share one namespace and can import the JVM.

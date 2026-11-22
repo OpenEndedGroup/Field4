@@ -713,7 +713,7 @@ Edited keyframes are stored inside the box — the `defaults` argument is just t
 
 ## Time sliders & Custom UI
 
-Inserting a `field.timeSlider` template from the `f1` menu gets you a box that a) draws itself as a vertical line and b) launches and stops boxes it passes over:
+Inserting the `timeSlider` [template](templates.md#templates-that-come-with-field) with ++cmd+t++ gets you a box that a) draws itself as a vertical line and b) launches and stops boxes it passes over:
 
 <video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="assets/ts.mp4" type="video/mp4">

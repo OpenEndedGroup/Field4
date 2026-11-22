@@ -6,7 +6,7 @@ whole palette as geometry, so you can see how its colours work together.
 Every constructor returns an sRGB-encoded `Vec4` with components in `[0,1]`. There are four color spaces to build from:
 
 - **sRGB**: `rgb(r, g, b, a)` (alias `rgba`) takes components already sRGB-encoded, on 0..1 or 0..255. The scale is guessed per call: any of `r`, `g`, `b` above 1 means 0..255. `rgb255(...)` is the same thing always on 0..255, so nothing is guessed.
-- **HSL**: `hsl(h, s, l, a)` (alias `hsla`) is the classic cylinder, treated as linear light and then encoded to sRGB, so it is brighter than CSS `hsl()` at the same numbers.
+- **HSL**: `hsl(h, s, l, a)` (alias `hsla`) is the classic cylinder on sRGB-encoded values, so it gives the same colour as CSS `hsl()` for the same numbers. `cssHsla` is the same colour with CSS's conventions: hue always in degrees.
 - **OKHSL**: `okhsl(h, s, l, a)` is hue, saturation and lightness built on Oklab, with `l` as *perceived* lightness and `s = 1` at the gamut edge for that hue.
 - **OKHSV**: `okhsv(h, s, v, a)` is the HSV-shaped version of the same, where `v` dims a color toward black.
 

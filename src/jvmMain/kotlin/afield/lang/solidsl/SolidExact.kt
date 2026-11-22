@@ -2,6 +2,7 @@
 
 package afield.lang.solidsl
 
+import afield.geometry.path.signedArea2D
 import afield.geometry.solid.manifold.JoinType
 import afield.geometry.solid.manifold.ManifoldLibrary
 import afield.geometry.solid.manifold.Section
@@ -425,15 +426,7 @@ private fun buildExactSection(p: Profile, q: SolidQuality): Section = when (p) {
 }
 
 /** Twice the signed area of a closed contour — positive for counter-clockwise. */
-internal fun signedArea(points: List<P2>): Double {
-    var total = 0.0
-    for (i in points.indices) {
-        val a = points[i]
-        val b = points[(i + 1) % points.size]
-        total += a.x * b.y - b.x * a.y
-    }
-    return total / 2.0
-}
+internal fun signedArea(points: List<P2>): Double = signedArea2D(points.size, { points[it].x }, { points[it].y })
 
 /** These points, reversed if they were clockwise. See the note at [Profile.Polygon]'s lowering. */
 internal fun counterClockwise(points: List<P2>): List<P2> =

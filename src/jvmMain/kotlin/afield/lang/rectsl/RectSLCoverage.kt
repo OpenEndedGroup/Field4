@@ -1,5 +1,6 @@
 package afield.lang.rectsl
 
+import afield.geometry.path.signedArea2D
 import org.locationtech.jts.geom.Coordinate
 import org.locationtech.jts.geom.Geometry
 import org.locationtech.jts.geom.GeometryFactory
@@ -188,14 +189,8 @@ fun clipConvexToBox(polygon: DoubleArray, x0: Double, y0: Double, x1: Double, y1
 
 /** The unsigned area of a flat `x, y` ring by the shoelace formula; fewer than three points is 0. */
 fun polygonArea(polygon: DoubleArray): Double {
-    val count = polygon.size / 2
-    if (count < 3) return 0.0
-    var twice = 0.0
-    for (i in 0 until count) {
-        val j = (i + 1) % count
-        twice += polygon[i * 2] * polygon[j * 2 + 1] - polygon[j * 2] * polygon[i * 2 + 1]
-    }
-    return abs(twice) * 0.5
+    if (polygon.size / 2 < 3) return 0.0
+    return abs(signedArea2D(polygon))
 }
 
 /**

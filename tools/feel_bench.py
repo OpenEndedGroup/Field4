@@ -9,7 +9,7 @@ points the way a person does, step by step, through the backdoor's own command d
                    reruns, and edit-and-rerun (a different literal each time).
   first-steps      the "Start here" FLine drawing: first launch to its first drawing, the
                    Alt+Enter edit of `petals` while it runs, stop and relaunch.
-  first-graphics   "Next: native graphics": renderer launch to its first frame, the triangle's
+  first-graphics   Welcome → Templates → first-graphics: renderer launch to its first frame, the triangle's
                    launch (shader compile + pipeline), a fragment-shader edit and relaunch,
                    a Kotlin edit and relaunch.
   demo-document    `dev_docs/agents/transcripts/demo_document.yaml` replayed into a fresh document:

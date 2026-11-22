@@ -47,7 +47,7 @@
 .text-frame-overflow { position: absolute; bottom: 4px; right: 4px; z-index: 2; }
 .text-frame-conflict { position: absolute; bottom: 4px; right: 6px; width: 250px; padding: 12px; background: var(--field-bg, #080808); border: 1px solid #777; z-index: 20; font: 13px var(--field-font, monospace); color: inherit; user-select: text; }
 .text-frame-conflict span { display: block; margin-bottom: 8px; }
-.text-frame-box [hidden] { display: none !important; }
+.text-frame-box [hidden], .text-frame-rich-toolbar[hidden] { display: none !important; }
 /* The writing is the canvas object; its frame and chrome appear when selected or being edited. */
 .box.text-frame-box { border-color: var(--text-frame-border, transparent) !important; background: var(--text-frame-background, transparent) !important; backdrop-filter: none !important; }
 .box.text-frame-box.selected { border-color: var(--text-frame-border, var(--field-box-selected-border)) !important; }
@@ -55,6 +55,41 @@
 /* The formatted preview remains measurable while editing, without painting or receiving input. */
 .box.text-frame-box.text-frame-editing .text-frame-preview[hidden] { display: block !important; visibility: hidden; position: absolute; inset: 0; pointer-events: none; }
 .text-frame-editing .text-frame-editor { position: absolute; inset: 0; }
+.text-frame-editing .text-frame-rich { position: absolute; inset: 0; overflow: auto; }
+.text-frame-rich-block { outline: none; min-height: 1em; }
+.text-frame-rich-block img { vertical-align: middle; }
+.text-frame-rich-toolbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 21;
+    transform-origin: top left;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 3px 0;
+    border: 0;
+    border-radius: 0;
+    background: #000;
+    color: #ddd;
+}
+.text-frame-rich-toolbar button {
+    min-height: 20px;
+    padding: 0 6px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font: 11px var(--field-font, monospace);
+    font-variant-caps: all-small-caps;
+}
+.text-frame-rich-toolbar button:is(:hover, :focus-visible) { background: #222; }
+.text-frame-rich-toolbar button[aria-pressed="true"] { background: #292929; color: #fff; }
+.text-frame-rich-toolbar :is(.text-frame-format-bold, .text-frame-format-source) { margin-top: 7px; }
+.text-frame-rich-toolbar .text-frame-format-source { display: grid; place-items: center; }
+.text-frame-rich-toolbar .text-frame-format-bold { font-weight: 700; }
+.text-frame-rich-toolbar .text-frame-format-italic { font-style: italic; }
 .text-frame-body .ai-chat-ghost { position: absolute; box-sizing: border-box; pointer-events: none; overflow: hidden; white-space: pre-wrap; z-index: 1; }
 .text-frame-body .ai-chat-ghost-typed { color: transparent; }
 .text-frame-body .ai-chat-ghost-rest { color: var(--field-box-fg, #ddd); opacity: .4; }
@@ -71,14 +106,38 @@
     letter-spacing: var(--text-frame-tracking, normal);
 }
 .text-frame-preview .ai-chat-copy {
-    width: max-content;
-    height: auto;
-    min-height: 24px;
-    white-space: nowrap;
-    overflow-wrap: normal;
-    letter-spacing: normal;
-    text-align: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    display: grid;
+    place-items: center;
     background-image: none;
-    color: var(--field-fg, #ddd);
     transform: none;
 }
+.text-frame-preview .ai-chat-copy:not([data-copy-state="copied"]) .copy-check,
+.text-frame-preview .ai-chat-copy[data-copy-state="copied"] svg > :not(.copy-check) { display: none; }
+
+.text-frame-box .text-frame-passage {
+    position: absolute;
+    top: 0;
+    right: 0;
+    transform: translateY(calc(-100% - 6px));
+    z-index: 2;
+    font-size: 10px;
+    color: var(--field-fg);
+    white-space: nowrap;
+}
+.text-frame-box .text-frame-passage-lost { color: var(--field-warning, #e6ad75); }
+::highlight(field-source-passage) { background-color: #14566b; color: #fff; }
+
+.text-frame-preview a.text-frame-transclusion {
+    border-left: 2px solid var(--field-accent);
+    padding-left: .45em;
+    text-decoration: none;
+    cursor: pointer;
+}
+.text-frame-preview a.text-frame-transclusion-lost {
+    border-color: currentColor;
+    color: var(--field-warning);
+}
+.text-frame-link-target { outline: 1px solid var(--field-accent); outline-offset: 3px; }

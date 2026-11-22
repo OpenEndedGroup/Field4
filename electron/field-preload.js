@@ -51,6 +51,56 @@ ipcRenderer.on("field4-presentation-project", (_, paths) => {
   window.dispatchEvent(new CustomEvent("field-presentation-project", { detail: paths }));
 });
 
+// Browser keys for a page tab (Documentation, Welcome, history, ...): Cmd/Ctrl+F opens the tab strip's
+// find bar, Cmd/Ctrl+G steps through matches, Cmd+[ / Cmd+] (Alt+Left / Alt+Right elsewhere) go back
+// and forward, as do the mouse side buttons. A Field document tab (`?file=`) is left alone: its
+// canvas, Monaco and drawing layer own those keys, and documentSearch.kt opens the same find bar as a
+// box search through `fieldElectron.canvasFind` when Cmd+F is not Monaco's. The listener is on window in the bubble phase and
+// skips an event a page already handled, so an editor embedded in a page keeps its own Cmd+F. Main
+// checks the tab again before acting.
+const isFieldDocumentPage = () => {
+  try {
+    return !!new URLSearchParams(window.location.search).get("file")?.trim();
+  } catch (_) {
+    return true;
+  }
+};
+
+const pageKeyCommand = (event) => {
+  const mac = process.platform === "darwin";
+  const mod = mac ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey;
+  const key = String(event.key || "").toLowerCase();
+  if (mod && !event.altKey && !event.shiftKey && (key === "f" || event.code === "KeyF")) return ["field4-tab-find-open"];
+  if (mod && !event.altKey && (key === "g" || event.code === "KeyG")) return ["field4-tab-find-step", !event.shiftKey];
+  if (mac && mod && !event.altKey && !event.shiftKey) {
+    if (event.key === "[" || event.code === "BracketLeft") return ["field4-tab-navigate", -1];
+    if (event.key === "]" || event.code === "BracketRight") return ["field4-tab-navigate", 1];
+  }
+  if (!mac && event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+    if (event.key === "ArrowLeft") return ["field4-tab-navigate", -1];
+    if (event.key === "ArrowRight") return ["field4-tab-navigate", 1];
+  }
+  return null;
+};
+
+window.addEventListener("keydown", (event) => {
+  if (event.defaultPrevented || event.isComposing || isFieldDocumentPage()) return;
+  const command = pageKeyCommand(event);
+  if (!command) return;
+  event.preventDefault();
+  ipcRenderer.send(...command);
+});
+
+window.addEventListener(
+  "mouseup",
+  (event) => {
+    if ((event.button !== 3 && event.button !== 4) || isFieldDocumentPage()) return;
+    event.preventDefault();
+    ipcRenderer.send("field4-tab-navigate", event.button === 3 ? -1 : 1);
+  },
+  true,
+);
+
 contextBridge.exposeInMainWorld("fieldElectron", {
   chooseKitFolder() { return ipcRenderer.invoke("field4-kit-folder"); },
   filePath(file) { return webUtils.getPathForFile(file); },
@@ -80,6 +130,25 @@ contextBridge.exposeInMainWorld("fieldElectron", {
   // (see aaaframe-sign-in.js). `force` discards a remembered login first.
   aaaframeSignIn(url, force = false) {
     return ipcRenderer.invoke("field4-aaaframe-sign-in", { url, force });
+  },
+  // Box search in the tab strip's find bar (documentSearch.kt): `open()` shows the bar, `onCommand`
+  // receives { action: "query", query } | { action: "step", forward } | { action: "close" } from it,
+  // and `report` sends back { matches, active (1-based, 0 = none), detail } for its counter.
+  canvasFind: {
+    open() {
+      ipcRenderer.send("field4-canvas-find-open");
+    },
+    onCommand(callback) {
+      if (typeof callback !== "function") return;
+      ipcRenderer.on("field4-canvas-find", (_event, command) => callback(command));
+    },
+    report(result) {
+      ipcRenderer.send("field4-canvas-find-result", {
+        matches: Number(result?.matches) || 0,
+        active: Number(result?.active) || 0,
+        detail: String(result?.detail ?? ""),
+      });
+    },
   },
   diagnostic(event, details = {}) {
     ipcRenderer.send("field4-renderer-diagnostic", { event, details });

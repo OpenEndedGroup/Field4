@@ -2,6 +2,7 @@
 
 package afield.geometry.solid.manifold
 
+import afield.geometry.path.signedArea2D
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.sqrt
@@ -155,12 +156,5 @@ private fun overlapOnPlane(p: DoubleArray, tri: IntArray, normal: DoubleArray, t
 }
 
 /** Signed area of a polygon, positive when counter-clockwise. */
-private fun polygonArea(polygon: List<Pair<Double, Double>>): Double {
-    var twice = 0.0
-    for (k in polygon.indices) {
-        val (ax, ay) = polygon[k]
-        val (bx, by) = polygon[(k + 1) % polygon.size]
-        twice += ax * by - bx * ay
-    }
-    return twice / 2
-}
+private fun polygonArea(polygon: List<Pair<Double, Double>>): Double =
+    signedArea2D(polygon.size, { polygon[it].first }, { polygon[it].second })

@@ -22,7 +22,12 @@ import kotlinx.browser.window
  * Sends a request to the server for the box's custom marking entries,
  * then shows them as a radial marking menu with Voronoi-domain targets.
  */
+@OptIn(ExperimentalJsExport::class)
+@JsExport
 fun requestCustomMarkingMenu(uid: String, x: Double, y: Double, event: dynamic) {
+    // Capture before the menu takes the pointer. The callback must use this particular selection.
+    val capture = window.asDynamic().captureTextFrameRun
+    val anchor = if (capture != null) capture(uid) as? String else null
     val callbackName = "custom-marking-response-$uid-${kotlin.random.Random.nextInt()}"
     sendWithReply(
         Message("custom-marking-request", uid = uid).payload(CustomMarkingRequest(uid)),
@@ -35,12 +40,26 @@ fun requestCustomMarkingMenu(uid: String, x: Double, y: Double, event: dynamic) 
             "radius" to 1.0, "angle" to 0.0
         ))
         if (findBoxByUid(uid)?.asDynamic()?.box_kind == "text-frame") {
+            if (anchor != null && window.asDynamic().currentDocumentReadOnly != true) {
+                builtins += json(
+                    "text" to "New note from selection",
+                    "callback" to { newTextFrameBelow(uid, anchor) },
+                    "radius" to 1.0, "angle" to 135.0
+                )
+            }
             builtins += json(
                 "text" to "Open settings",
                 // Release the marking gesture and its pointer capture before Monaco takes focus.
                 "callback" to { window.setTimeout({ window.asDynamic().openTextFrameSettings(uid) }, 100) },
                 "radius" to 1.0, "angle" to 90.0
             )
+            if (window.asDynamic().currentDocumentReadOnly != true) {
+                builtins += json(
+                    "text" to "Edit Markdown",
+                    "callback" to { window.setTimeout({ window.asDynamic().openTextFrameMarkdown(uid) }, 100) },
+                    "radius" to 1.0, "angle" to 180.0
+                )
+            }
         }
         if (window.asDynamic().currentDocumentReadOnly != true) {
             fun visibilityEntry(label: String, actionId: String, angle: Double) = json(

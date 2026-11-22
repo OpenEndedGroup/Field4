@@ -30,9 +30,15 @@ const TAB_STRIP_HEIGHT = 44;
 const TAB_STRIP_REVEAL_ZONE_HEIGHT = 6;
 const TAB_TRAFFIC_LIGHT_INSET = process.platform === "darwin" ? 88 : 12;
 const TAB_WINDOW_CONTROL_INSET = process.platform === "win32" ? 150 : 12;
+const NAV_BACK_TITLE =
+  process.platform === "darwin" ? "Back (⌘[)" : "Back (Alt+Left)";
+const NAV_FORWARD_TITLE =
+  process.platform === "darwin" ? "Forward (⌘])" : "Forward (Alt+Right)";
 const SHELL_BACKGROUND = "#000000";
 const TAB_STRIP_BACKGROUND = "#2a2b2f";
-const WELCOME_BACKGROUND = "rgb(20, 20, 20)";
+// Welcome and the documentation paint their own #141414 page; their view matches it so the shell's
+// black never shows behind them while they load.
+const OWN_PAGE_BACKGROUND = "rgb(20, 20, 20)";
 const ZOOM_LEVEL_STEP = 0.5;
 const MIN_ZOOM_LEVEL = -8;
 const MAX_ZOOM_LEVEL = 8;
@@ -269,7 +275,7 @@ function filenameFromUrl(rawUrl) {
 
     const pathname = parsed.pathname.replace(/\/+$/, "");
     if (pathname.endsWith("/welcome")) return "Welcome";
-    if (/\/(field-docs|field4)(\/|$)/.test(pathname)) return "Documentation";
+    if (isDocsUrl(rawUrl)) return "Documentation";
     if (pathname.endsWith("/dir")) return "Directory";
     if (pathname.endsWith("/code-use")) return "Code Use";
     if (pathname.endsWith("/index.html")) return "document";
@@ -309,6 +315,19 @@ function isWelcomeUrl(rawUrl) {
   }
 }
 
+// `/field-docs/` is Field's mirror of the docs site; `/field4/` is the site itself.
+function isDocsUrl(rawUrl) {
+  try {
+    return /\/(field-docs|field4)(\/|$)/.test(new URL(rawUrl).pathname.replace(/\/+$/, ""));
+  } catch (_) {
+    return false;
+  }
+}
+
+function paintsOwnBackground(rawUrl) {
+  return isWelcomeUrl(rawUrl) || isDocsUrl(rawUrl);
+}
+
 function titleForUrl(rawUrl) {
   return `${APP_NAME} — ${filenameFromUrl(rawUrl)}`;
 }
@@ -319,7 +338,7 @@ function setViewBackground(view, color = SHELL_BACKGROUND) {
 }
 
 function colorForUrl(rawUrl) {
-  return isWelcomeUrl(rawUrl) ? WELCOME_BACKGROUND : SHELL_BACKGROUND;
+  return paintsOwnBackground(rawUrl) ? OWN_PAGE_BACKGROUND : SHELL_BACKGROUND;
 }
 
 function displayScaleFactor(win) {
@@ -335,7 +354,7 @@ function installPageBackgroundGuard(tab) {
   if (!webContents) return;
   const insert = () => {
     if (webContents.isDestroyed()) return;
-    if (isWelcomeUrl(webContents.getURL() || tab.url)) return;
+    if (paintsOwnBackground(webContents.getURL() || tab.url)) return;
     webContents
       .insertCSS(
         `
@@ -528,6 +547,92 @@ function createTabStripMarkup() {
       flex: 1 1 auto;
       min-width: 12px;
     }
+
+    /* Back/forward and find-in-page for the active page tab (Documentation and other utility pages).
+       A document tab shows only the find bar, as its box search, while that is open. */
+    #page-tools {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      /* #tabstrip's 7px top padding seats the tabs on the page; step over it so these centre on the
+         whole strip, not on the part below the padding. */
+      height: calc(100% + 7px);
+      margin-top: -7px;
+      -webkit-app-region: no-drag;
+    }
+
+    #page-tools[hidden],
+    #find[hidden],
+    #nav[hidden] {
+      display: none;
+    }
+
+    .tool-button {
+      height: 24px;
+      min-width: 26px;
+      padding: 0 6px;
+      border: 0;
+      border-radius: 4px;
+      background: transparent;
+      color: var(--text-soft);
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+    }
+
+    .tool-button:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text);
+    }
+
+    .tool-button:disabled {
+      opacity: 0.3;
+      cursor: default;
+    }
+
+    #nav {
+      display: flex;
+      gap: 2px;
+    }
+
+    #find {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      height: 26px;
+      padding: 0 2px 0 8px;
+      border: 1px solid var(--tab-separator);
+      border-radius: 5px;
+      background: var(--tab-bg);
+    }
+
+    #find-input {
+      width: 180px;
+      border: 0;
+      outline: none;
+      background: transparent;
+      color: var(--text);
+      font-size: 12px;
+      user-select: text;
+    }
+
+    #find-input::placeholder {
+      color: var(--text-soft);
+    }
+
+    #find-count {
+      min-width: 44px;
+      padding-right: 4px;
+      color: var(--text-soft);
+      font-size: 11px;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    #find.no-match #find-count {
+      color: #e8837c;
+    }
   </style>
 </head>
 <body>
@@ -535,13 +640,87 @@ function createTabStripMarkup() {
     <div id="tabs"></div>
     <button id="tab-add" class="tab-add" type="button" aria-label="Open welcome tab">+</button>
     <div class="tab-spacer"></div>
+    <div id="page-tools" hidden>
+      <div id="find" hidden>
+        <input id="find-input" type="text" placeholder="Find in page" spellcheck="false" autocomplete="off">
+        <span id="find-count"></span>
+        <button id="find-prev" class="tool-button" type="button" title="Previous match (Shift+Enter)">&uarr;</button>
+        <button id="find-next" class="tool-button" type="button" title="Next match (Enter)">&darr;</button>
+        <button id="find-close" class="tool-button" type="button" title="Close (Esc)">&times;</button>
+      </div>
+      <div id="nav" hidden>
+        <button id="nav-back" class="tool-button" type="button" title="${NAV_BACK_TITLE}" disabled>&larr;</button>
+        <button id="nav-forward" class="tool-button" type="button" title="${NAV_FORWARD_TITLE}" disabled>&rarr;</button>
+      </div>
+    </div>
   </div>
   <script>
     const tabsNode = document.getElementById('tabs');
     const addButton = document.getElementById('tab-add');
+    const pageTools = document.getElementById('page-tools');
+    const navNode = document.getElementById('nav');
+    const backButton = document.getElementById('nav-back');
+    const forwardButton = document.getElementById('nav-forward');
+    const findNode = document.getElementById('find');
+    const findInput = document.getElementById('find-input');
+    const findCount = document.getElementById('find-count');
     let welcomeOpen = false;
+    let findTabId = null;
+
+    // The find bar is static DOM (render() rebuilds only #tabs), so typing in it never loses the caret.
+    function renderPageTools(page) {
+      pageTools.hidden = !page;
+      if (!page) return;
+      navNode.hidden = !page.navigable;
+      backButton.disabled = !page.canGoBack;
+      forwardButton.disabled = !page.canGoForward;
+      const find = page.find || {};
+      findNode.hidden = !find.open;
+      if (page.tabId !== findTabId) {
+        findInput.value = find.query || '';
+        findTabId = page.tabId;
+      }
+      findInput.placeholder = find.placeholder || 'Find in page';
+      const hasQuery = !!find.query;
+      const matches = Number.isFinite(find.matches) ? find.matches : null;
+      // Box search counts matches before you step to one ("12 matches"), then names the property
+      // the active match is in ("3/12 · code"); find-in-page always has an active match.
+      const detail = find.detail ? ' \u00b7 ' + find.detail : '';
+      findCount.textContent =
+        !hasQuery || matches === null ? ''
+          : matches === 0 ? 'No matches'
+          : find.active > 0 ? find.active + '/' + matches + detail
+          : matches === 1 ? '1 match' : matches + ' matches';
+      findNode.classList.toggle('no-match', hasQuery && matches === 0);
+      if (find.open && find.focus) {
+        findInput.focus();
+        findInput.select();
+      }
+    }
+
+    backButton.addEventListener('click', () => window.fieldTabs.navigate(-1));
+    forwardButton.addEventListener('click', () => window.fieldTabs.navigate(1));
+    findInput.addEventListener('input', () => window.fieldTabs.findQuery(findInput.value));
+    findInput.addEventListener('keydown', (event) => {
+      const mod = event.metaKey || event.ctrlKey;
+      const key = event.key.toLowerCase();
+      if (event.key === 'Enter' || (mod && key === 'g')) {
+        event.preventDefault();
+        window.fieldTabs.findStep(!event.shiftKey);
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        window.fieldTabs.findClose();
+      } else if (mod && key === 'f') {
+        event.preventDefault();
+        findInput.select();
+      }
+    });
+    document.getElementById('find-prev').addEventListener('click', () => window.fieldTabs.findStep(false));
+    document.getElementById('find-next').addEventListener('click', () => window.fieldTabs.findStep(true));
+    document.getElementById('find-close').addEventListener('click', () => window.fieldTabs.findClose());
 
     function render(state) {
+      renderPageTools(state?.page || null);
       const tabs = Array.isArray(state?.tabs) ? state.tabs : [];
       welcomeOpen = tabs.some((tab) => tab.welcome);
       addButton.hidden = welcomeOpen;
@@ -977,7 +1156,55 @@ function createMainWindow() {
     );
   };
 
-  const sendTabState = () => {
+  // A page tab (Documentation, Welcome, history, logs, ...) gets find-in-page in the tab strip, and
+  // all but Welcome (whose links open new tabs) get back/forward. A document tab gets no back/forward
+  // ("back" would leave the document), and its find bar searches boxes, not the page: the page decides
+  // when Cmd+F means that (Monaco keeps its own Find) and runs the search itself (documentSearch.kt),
+  // relayed over "field4-canvas-find" and answered on "field4-canvas-find-result".
+  const isPageTab = (tab) => !!liveContents(tab) && isUtilityUrl(contentsUrl(tab));
+  const isDocumentTab = (tab) => !!liveContents(tab) && !isUtilityUrl(contentsUrl(tab));
+  const isFindTab = (tab) => isPageTab(tab) || isDocumentTab(tab);
+  const isNavigableTab = (tab) => isPageTab(tab) && !isWelcomeUrl(contentsUrl(tab));
+
+  const historyFlags = (tab) => {
+    if (!isNavigableTab(tab)) return { canGoBack: false, canGoForward: false };
+    try {
+      const history = liveContents(tab).navigationHistory;
+      return { canGoBack: history.canGoBack(), canGoForward: history.canGoForward() };
+    } catch (_) {
+      return { canGoBack: false, canGoForward: false };
+    }
+  };
+
+  const findState = (tab) => {
+    if (!tab.find) {
+      tab.find = { open: false, query: "", matches: null, active: 0, detail: "", fresh: true, requestId: null };
+    }
+    return tab.find;
+  };
+
+  const pageToolsState = (tab, focusFind) => {
+    const canvas = isDocumentTab(tab);
+    if (!isPageTab(tab) && !(canvas && tab.find?.open)) return null;
+    const find = findState(tab);
+    return {
+      tabId: tab.id,
+      navigable: isNavigableTab(tab),
+      ...historyFlags(tab),
+      find: {
+        open: find.open,
+        query: find.query,
+        matches: find.matches,
+        active: find.active,
+        // Which property the active box match is in ("code", "fragment", ...), shown after the count.
+        detail: canvas ? find.detail : "",
+        placeholder: canvas ? "Search boxes" : "Find in page",
+        focus: !!focusFind,
+      },
+    };
+  };
+
+  const sendTabState = ({ focusFind = false } = {}) => {
     if (tabStripView.webContents.isDestroyed()) return;
     tabStripView.webContents.send("tabs-state", {
       tabs: tabs.map((tab) => ({
@@ -988,6 +1215,7 @@ function createMainWindow() {
         utility: isUtilityUrl(tab.url),
       })),
       activeTabId,
+      page: pageToolsState(activeTab(), focusFind),
     });
   };
 
@@ -1289,7 +1517,30 @@ function createMainWindow() {
 
     tab.view.webContents.on("did-navigate", (_event, url) => {
       diagnosticLog("tab-did-navigate", tabDetails({ targetUrl: url }));
+      // A new page: the find bar stays open with its query, but the old counts no longer apply.
+      // A reloaded document has lost its box highlights, so its box search closes.
+      if (tab.find) {
+        tab.find.matches = null;
+        tab.find.active = 0;
+        tab.find.detail = "";
+        tab.find.fresh = true;
+        if (isDocumentTab(tab)) tab.find.open = false;
+        if (tab.id === activeTabId) sendTabState();
+      }
       updateTitle(url);
+    });
+    tab.view.webContents.on("found-in-page", (_event, result) => {
+      const find = tab.find;
+      if (!find || !find.query || result.requestId !== find.requestId) return;
+      if (Number.isFinite(result.matches)) find.matches = result.matches;
+      if (Number.isFinite(result.activeMatchOrdinal)) find.active = result.activeMatchOrdinal;
+      if (tab.id === activeTabId) sendTabState();
+    });
+    tab.view.webContents.on("before-input-event", (event, input) => {
+      if (input.type !== "keyDown" || input.key !== "Escape" || !tab.find?.open) return;
+      if (input.meta || input.control || input.alt || input.shift) return;
+      event.preventDefault();
+      closeFind(tab);
     });
     tab.view.webContents.on("did-navigate-in-page", (_event, url) => {
       diagnosticLog("tab-did-navigate-in-page", tabDetails({ targetUrl: url }));
@@ -1447,8 +1698,120 @@ function createMainWindow() {
   const hideTabs = () => {
     if (!win.isFullScreen()) return;
     if (!tabStripRevealedInFullScreen) return;
+    // In full screen the strip hides when the pointer leaves it; an open find bar keeps it shown.
+    if (activeTab()?.find?.open) return;
     tabStripRevealedInFullScreen = false;
     applyLayout();
+  };
+
+  const navigateTab = (tab, direction) => {
+    const { canGoBack, canGoForward } = historyFlags(tab);
+    const contents = liveContents(tab);
+    if (!contents) return;
+    diagnosticLog("tab-history-navigate", { windowId: win.id, tabId: tab.id, direction, canGoBack, canGoForward });
+    if (direction < 0 && canGoBack) contents.navigationHistory.goBack();
+    else if (direction > 0 && canGoForward) contents.navigationHistory.goForward();
+  };
+
+  // Find in page: Electron's findInPage, driven from the find bar in the tab strip. `fresh` starts a
+  // new find session (after the query or the page changed); a follow-up request steps to the next
+  // or previous match. Counts come back through the tab's "found-in-page" event.
+  //
+  // In a document tab the same bar searches boxes instead: a fresh request sends the query to the
+  // page and a follow-up steps through its matches; the page answers on "field4-canvas-find-result".
+  const runFind = (tab, forward = true) => {
+    const contents = liveContents(tab);
+    if (!contents || !isFindTab(tab)) return;
+    const find = findState(tab);
+    if (isDocumentTab(tab)) {
+      if (!find.query) {
+        find.matches = null;
+        find.active = 0;
+        find.detail = "";
+        sendTabState();
+      }
+      contents.send(
+        "field4-canvas-find",
+        find.fresh || !find.query ? { action: "query", query: find.query } : { action: "step", forward },
+      );
+      find.fresh = !find.query;
+      return;
+    }
+    if (!find.query) {
+      contents.stopFindInPage("clearSelection");
+      find.matches = null;
+      find.active = 0;
+      find.fresh = true;
+      sendTabState();
+      return;
+    }
+    find.requestId = contents.findInPage(find.query, { forward, findNext: find.fresh });
+    find.fresh = false;
+  };
+
+  const openFind = (tab) => {
+    if (!isFindTab(tab) || tab.id !== activeTabId) return;
+    const find = findState(tab);
+    find.open = true;
+    revealTabs();
+    tabStripView.webContents.focus();
+    sendTabState({ focusFind: true });
+    if (find.query) {
+      find.fresh = true;
+      runFind(tab, true);
+    }
+  };
+
+  const stepFind = (tab, forward) => {
+    if (!isFindTab(tab)) return;
+    const find = findState(tab);
+    if (!find.query) {
+      openFind(tab);
+      return;
+    }
+    if (!find.open) {
+      find.open = true;
+      sendTabState();
+    }
+    runFind(tab, forward);
+  };
+
+  const setFindQuery = (tab, text) => {
+    if (!isFindTab(tab)) return;
+    const find = findState(tab);
+    find.query = String(text || "").slice(0, 1000);
+    find.fresh = true;
+    runFind(tab, true);
+  };
+
+  const closeFind = (tab) => {
+    const contents = liveContents(tab);
+    if (!contents || !tab.find?.open) return;
+    const find = tab.find;
+    find.open = false;
+    find.matches = null;
+    find.active = 0;
+    find.detail = "";
+    find.fresh = true;
+    if (isDocumentTab(tab)) {
+      contents.send("field4-canvas-find", { action: "close" });
+    } else {
+      // Keep the active match selected, as a browser does, so Escape leaves you where you found it.
+      contents.stopFindInPage("keepSelection");
+    }
+    sendTabState();
+    if (tab.id === activeTabId) contents.focus();
+  };
+
+  const setCanvasFindResult = (tab, result) => {
+    const find = tab.find;
+    if (!find?.open || !result || typeof result !== "object") return;
+    const matches = Number(result.matches);
+    const active = Number(result.active);
+    find.matches = Number.isFinite(matches) && matches >= 0 ? Math.floor(matches) : null;
+    find.active = Number.isFinite(active) && active > 0 ? Math.floor(active) : 0;
+    find.detail = typeof result.detail === "string" ? result.detail.slice(0, 80) : "";
+    if (tab.id === activeTabId) sendTabState();
   };
 
   const onTabsReady = onlyFromStrip(() => sendTabState());
@@ -1464,6 +1827,39 @@ function createMainWindow() {
   });
   const onRevealTabs = onlyFromChrome(() => revealTabs());
   const onHideTabs = onlyFromChrome(() => hideTabs());
+  const afterStripCommand = (tab) => {
+    // A click in the strip focuses the strip; hand the keyboard back to the page.
+    if (tab && tab.id === activeTabId && !tab.find?.open) liveContents(tab)?.focus();
+  };
+  const onStripNavigate = onlyFromStrip((direction) => {
+    const tab = activeTab();
+    navigateTab(tab, Math.sign(Number(direction) || 0));
+    afterStripCommand(tab);
+  });
+  const onStripFindQuery = onlyFromStrip((text) => setFindQuery(activeTab(), text));
+  const onStripFindStep = onlyFromStrip((forward) => stepFind(activeTab(), !!forward));
+  const onStripFindClose = onlyFromStrip(() => closeFind(activeTab()));
+  // The same commands from a page's own keys and mouse buttons (field-preload.js).
+  const fromPageTab =
+    (handler) =>
+    (event, ...args) => {
+      const tab = tabs.find((candidate) => liveContents(candidate) === event.sender);
+      if (!tab || tab.id !== activeTabId || !isPageTab(tab)) return;
+      handler(tab, ...args);
+    };
+  const onPageNavigate = fromPageTab((tab, direction) => navigateTab(tab, Math.sign(Number(direction) || 0)));
+  const onPageFindOpen = fromPageTab((tab) => openFind(tab));
+  const onPageFindStep = fromPageTab((tab, forward) => stepFind(tab, !!forward));
+  // A document tab opens its box search, and reports its matches, from documentSearch.kt.
+  const fromDocumentTab =
+    (handler) =>
+    (event, ...args) => {
+      const tab = tabs.find((candidate) => liveContents(candidate) === event.sender);
+      if (!tab || !isDocumentTab(tab)) return;
+      handler(tab, ...args);
+    };
+  const onCanvasFindOpen = fromDocumentTab((tab) => openFind(tab));
+  const onCanvasFindResult = fromDocumentTab((tab, result) => setCanvasFindResult(tab, result));
   // capturePage() hands back *device* pixels, so on a 2x display a 1644x988 window arrives as a
   // 3288x1976 image. Every step after it -- resize, encode, base64 -- is synchronous on the
   // browser/main thread, which is also the only thread that routes input to the renderers: a
@@ -1624,6 +2020,15 @@ function createMainWindow() {
   ipcMain.on("field4-tabs-open-welcome", onOpenWelcomeTab);
   ipcMain.on("field4-tabs-reveal", onRevealTabs);
   ipcMain.on("field4-tabs-hide", onHideTabs);
+  ipcMain.on("field4-tabs-navigate", onStripNavigate);
+  ipcMain.on("field4-tabs-find-query", onStripFindQuery);
+  ipcMain.on("field4-tabs-find-step", onStripFindStep);
+  ipcMain.on("field4-tabs-find-close", onStripFindClose);
+  ipcMain.on("field4-tab-navigate", onPageNavigate);
+  ipcMain.on("field4-tab-find-open", onPageFindOpen);
+  ipcMain.on("field4-tab-find-step", onPageFindStep);
+  ipcMain.on("field4-canvas-find-open", onCanvasFindOpen);
+  ipcMain.on("field4-canvas-find-result", onCanvasFindResult);
   ipcMain.removeHandler("field4-history-capture-window");
   ipcMain.handle("field4-history-capture-window", onHistoryCaptureWindow);
   ipcMain.removeHandler("field4-live-output-iframe");
@@ -1654,6 +2059,15 @@ function createMainWindow() {
     ipcMain.removeListener("field4-tabs-open-welcome", onOpenWelcomeTab);
     ipcMain.removeListener("field4-tabs-reveal", onRevealTabs);
     ipcMain.removeListener("field4-tabs-hide", onHideTabs);
+    ipcMain.removeListener("field4-tabs-navigate", onStripNavigate);
+    ipcMain.removeListener("field4-tabs-find-query", onStripFindQuery);
+    ipcMain.removeListener("field4-tabs-find-step", onStripFindStep);
+    ipcMain.removeListener("field4-tabs-find-close", onStripFindClose);
+    ipcMain.removeListener("field4-tab-navigate", onPageNavigate);
+    ipcMain.removeListener("field4-tab-find-open", onPageFindOpen);
+    ipcMain.removeListener("field4-tab-find-step", onPageFindStep);
+    ipcMain.removeListener("field4-canvas-find-open", onCanvasFindOpen);
+    ipcMain.removeListener("field4-canvas-find-result", onCanvasFindResult);
     ipcMain.removeHandler("field4-history-capture-window");
     ipcMain.removeHandler("field4-tab-identity");
     ipcMain.removeHandler("field4-kit-folder");

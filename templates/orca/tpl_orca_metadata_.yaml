@@ -1,0 +1,3 @@
+doc: |
+  An ORCA livecoding grid in a box output, playing through a PatSynthBank, with AI4
+  tools to read and write its grid.

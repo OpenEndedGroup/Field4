@@ -1,0 +1,175 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-21T15:44:37.569Z",
+  "documentName": "nile_gezira_kernels",
+  "outputs": [
+    {
+      "uid": "gezira_stroke",
+      "channel": "stroked wave",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "gezira_composite",
+      "channel": "canvas",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "gezira_text",
+      "channel": "kernels",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "gezira_text",
+      "channel": "skia",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "gezira_new_kernel",
+      "channel": "rotated",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "gezira_streams",
+      "channel": "1 pieces",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/5.html"
+    },
+    {
+      "uid": "gezira_streams",
+      "channel": "2 edge samples",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/6.html"
+    },
+    {
+      "uid": "gezira_streams",
+      "channel": "3 spans",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/7.html"
+    },
+    {
+      "uid": "gezira_vs_skia",
+      "channel": "kernels",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/8.html"
+    },
+    {
+      "uid": "gezira_vs_skia",
+      "channel": "skia",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/9.html"
+    },
+    {
+      "uid": "gezira_vs_skia",
+      "channel": "difference x10",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/10.html"
+    },
+    {
+      "uid": "gezira_fill_rules",
+      "channel": "non-zero",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/11.html"
+    },
+    {
+      "uid": "gezira_fill_rules",
+      "channel": "even-odd",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/12.html"
+    },
+    {
+      "uid": "gezira_fill_rules",
+      "channel": "edge samples, error x10",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/13.html"
+    }
+  ]
+}

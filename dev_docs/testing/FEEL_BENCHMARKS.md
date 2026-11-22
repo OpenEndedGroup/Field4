@@ -36,7 +36,7 @@ The run exits non-zero when a step fails.
 | --- | --- | --- |
 | `kotlin-println` | a new box running `println("hello")` | first run, same code again, warm reruns, edit + rerun (a new literal each time) |
 | `first-steps` | `templates/first-steps`, the welcome page's "Start here" | first launch, Alt+Enter `var petals = N` while it runs (`execute-fragment`), stop, second launch, warm relaunches |
-| `first-graphics` | `templates/first-graphics`, "Next: native graphics" | renderer launch, its first frames, triangle launch, its frames, same relaunch, fragment edit + Reload Shader, fragment edit + Update Shader, fragment edit + relaunch, Kotlin edit + relaunch |
+| `first-graphics` | `templates/first-graphics` (Welcome → Templates) | renderer launch, its first frames, triangle launch, its frames, same relaunch, fragment edit + Reload Shader, fragment edit + Update Shader, fragment edit + relaunch, Kotlin edit + relaunch |
 | `demo-document` | `dev_docs/agents/transcripts/demo_document.yaml`, the [demo document](../../public/docs/demo_document.md) | the whole transcript replayed into a fresh, empty document by one `macro run` (every create, connect, execute and launch, to its last `await`), then once more into another |
 
 The shader steps send what the editor sends. Alt+Enter in a `fragment`/`vertex` editor (and

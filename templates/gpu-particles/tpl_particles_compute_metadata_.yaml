@@ -1,0 +1,3 @@
+doc: |
+  100 000 particles moved by a compute shader every frame, and a box beneath it that
+  draws them. Connect the compute box under a renderer.

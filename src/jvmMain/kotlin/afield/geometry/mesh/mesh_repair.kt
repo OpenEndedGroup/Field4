@@ -2,6 +2,7 @@
 
 package afield.geometry.mesh
 
+import afield.geometry.path.signedArea2D
 import afield.data.collections.get
 import afield.data.collections.invoke
 import afield.data.collections.times
@@ -953,7 +954,7 @@ private fun projectRing(mesh: TriMesh, ring: List<Int>): List<Vec2>? {
     }
     // A negative area here means the Newell normal and the projection disagree, which only happens on a
     // ring so non-planar that neither is meaningful. Refuse, and let the caller fan it and say so.
-    return if (polygonSignedArea(out) > 0.0) out else null
+    return if (signedArea2D(out) > 0.0) out else null
 }
 
 /**

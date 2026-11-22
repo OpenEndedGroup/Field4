@@ -2,7 +2,13 @@
 
 package afield.media.image
 
+import afield.geometry.path.FLine
 import afield.geometry.path.ScalarField2D
+import afield.graphics.nile.Bezier
+import afield.graphics.nile.FillRule
+import afield.graphics.nile.Gezira
+import afield.graphics.nile.GeziraStroke
+import afield.graphics.nile.Span
 import afield.media.image.util.PngEncoder
 import afield.ui.visualization.ToHTML
 import java.nio.ByteBuffer
@@ -23,7 +29,8 @@ import kotlin.math.roundToInt
  * using: a simulation's `FloatArray`, a delay line, a `FloatBuffer` or `ByteBuffer` read back from
  * (or about to be uploaded to) the GPU. It copies nothing. Every edit — [paint], [stroke],
  * [fill], [paste], [blur], [motionBlur], [smudge], [clone] — writes straight into that storage,
- * so the next tick of the owning program sees it.
+ * so the next tick of the owning program sees it. [fill] and [stroke] also take an [FLine], with
+ * exact anti-aliased coverage, so a drawn or coded outline lands in the buffer as a mask.
  *
  * Element `(x, y)` channel `c` lives at `offset + y * rowStride + x * channels + c`, in elements of
  * the buffer's own type. Reads return the stored number itself: a byte buffer gives `0..255`, an
@@ -237,6 +244,101 @@ class BufferCanvas(
         for (y in r.y until r.y + r.h) for (x in r.x until r.x + r.w) {
             val i = index(x, y, channel)
             if (i >= 0) write(i, field(x0 + (x + 0.5) * cell, y0 + (y + 0.5) * cell).toFloat())
+        }
+    }
+
+    // ---- filling outlines ------------------------------------------------------------------
+
+    /**
+     * Fill the closed outline [line] with exact area coverage: each element moves toward [value] by
+     * `opacity` times the fraction of its square the shape covers, so an element the edge cuts in
+     * half moves halfway. A buffer of zeros filled with `1f` ends up holding the coverage itself,
+     * which is what a shader reading the buffer wants for an anti-aliased mask.
+     *
+     * The outline is in the same coordinates as [sample]: element `(x, y)` is the square from
+     * `(x0 + x * cell, y0 + y * cell)` to one cell further along each axis. Every subpath is closed,
+     * curves are kept as curves to within 1e-4 elements, and [rule] decides overlaps, self-crossings
+     * and holes ([FillRule.NON_ZERO] fills them, [FillRule.EVEN_ODD] leaves them empty). Edits clip
+     * at the canvas edge whatever [wrapX] and [wrapY] say. Coverage comes from [Gezira.rasterizer].
+     *
+     * ```
+     * val mask = bufferCanvas(memory, width = 256, height = 256)
+     * mask.fill(FLine().circle(128.0, 128.0, 80.0), 1f)
+     * mask.fill(FLine().circle(128.0, 128.0, 40.0), 0f)            // punch a hole back out
+     * ```
+     */
+    fun fill(
+        line: FLine, value: FloatArray, rule: FillRule = FillRule.NON_ZERO, opacity: Double = 1.0, channel: Int = -1,
+        x0: Double = 0.0, y0: Double = 0.0, cell: Double = 1.0,
+    ) = fill(listOf(line), value, rule, opacity, channel, x0, y0, cell)
+
+    /** [fill] with a single value. */
+    fun fill(
+        line: FLine, value: Float, rule: FillRule = FillRule.NON_ZERO, opacity: Double = 1.0, channel: Int = -1,
+        x0: Double = 0.0, y0: Double = 0.0, cell: Double = 1.0,
+    ) = fill(listOf(line), floatArrayOf(value), rule, opacity, channel, x0, y0, cell)
+
+    /**
+     * Fill several outlines as one shape: [rule] sees all of them together, so two overlapping
+     * outlines are their union under [FillRule.NON_ZERO], and an outline inside another, drawn the
+     * other way round (or under [FillRule.EVEN_ODD] either way), is a hole.
+     */
+    fun fill(
+        lines: List<FLine>, value: FloatArray, rule: FillRule = FillRule.NON_ZERO, opacity: Double = 1.0, channel: Int = -1,
+        x0: Double = 0.0, y0: Double = 0.0, cell: Double = 1.0,
+    ) {
+        require(cell > 0) { "cell must be > 0, got $cell" }
+        val beziers = lines.flatMap { Gezira.beziers(it) }.map { toCells(it, x0, y0, cell) }
+        blendCoverage(Gezira.rasterizer(rule)(beziers), value, opacity, channel)
+    }
+
+    /** [fill] of several outlines with a single value. */
+    fun fill(
+        lines: List<FLine>, value: Float, rule: FillRule = FillRule.NON_ZERO, opacity: Double = 1.0, channel: Int = -1,
+        x0: Double = 0.0, y0: Double = 0.0, cell: Double = 1.0,
+    ) = fill(lines, floatArrayOf(value), rule, opacity, channel, x0, y0, cell)
+
+    /**
+     * Stroke [line] [width] cells wide (in the outline's units, like [x0] and [cell]) with exact area
+     * coverage, the way [fill] fills. Each subpath is stroked on its own with bevel joins and butt
+     * caps by [GeziraStroke.strokeBezierPath]; a subpath that ends where it starts, or ends in a
+     * close, is stroked as a loop. Where the stroke overlaps itself it is covered once.
+     *
+     * Unlike [stroke] with a list of points, which dabs a soft round brush, this is a hard-edged
+     * line whose only softness is the part of each element it covers.
+     */
+    fun stroke(
+        line: FLine, width: Double, value: FloatArray, opacity: Double = 1.0, channel: Int = -1,
+        x0: Double = 0.0, y0: Double = 0.0, cell: Double = 1.0,
+    ) {
+        require(width > 0) { "width must be > 0, got $width" }
+        require(cell > 0) { "cell must be > 0, got $cell" }
+        val outline = Gezira.subpaths(line).flatMap { path ->
+            GeziraStroke.strokeBezierPath(width / cell)(path.map { toCells(it, x0, y0, cell) })
+        }
+        blendCoverage(Gezira.rasterizer(FillRule.NON_ZERO)(outline), value, opacity, channel)
+    }
+
+    /** [stroke] of an outline with a single value. */
+    fun stroke(
+        line: FLine, width: Double, value: Float, opacity: Double = 1.0, channel: Int = -1,
+        x0: Double = 0.0, y0: Double = 0.0, cell: Double = 1.0,
+    ) = stroke(line, width, floatArrayOf(value), opacity, channel, x0, y0, cell)
+
+    private fun toCells(b: Bezier, x0: Double, y0: Double, cell: Double): Bezier =
+        Bezier(DoubleArray(b.p.size) { if (it % 2 == 0) (b.p[it] - x0) / cell else (b.p[it] - y0) / cell })
+
+    private fun blendCoverage(spans: List<Span>, value: FloatArray, opacity: Double, channel: Int) {
+        require(channel < channels) { "channel $channel is not in 0 until $channels" }
+        for (s in spans) {
+            if (s.y !in 0 until height) continue
+            val a = (s.coverage * opacity).toFloat()
+            for (x in max(0, s.x) until min(width, s.x + s.length)) for (c in 0 until channels) {
+                if (channel >= 0 && c != channel) continue
+                val i = offset + s.y * rowStride + x * channels + c
+                val target = value[min(c, value.size - 1)]
+                write(i, read(i) + (target - read(i)) * a)
+            }
         }
     }
 

@@ -6,6 +6,8 @@
 
 #include "opennurbs.h"
 
+#include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <exception>
 #include <new>
@@ -47,34 +49,125 @@ int samplesPerSpan(const ON_Curve& curve) {
     return 64;
 }
 
-void appendLoop(const ON_Brep& brep, const ON_BrepLoop& loop, const ON_Surface& surface, std::vector<double>& out) {
-    std::vector<double> points;
-    for (int t = 0; t < loop.m_ti.Count(); ++t) {
-        const ON_BrepTrim& trim = brep.m_T[loop.m_ti[t]];
-        const int spans = trim.SpanCount();
-        if (spans <= 0) continue;
-        std::vector<double> knots(spans + 1);
-        if (!trim.GetSpanVector(knots.data())) continue;
-        const int per = samplesPerSpan(trim);
-        // Every point but the trim's last, which is the next trim's first.
-        for (int s = 0; s < spans; ++s) {
-            for (int k = 0; k < per; ++k) {
-                const double param = knots[s] + (knots[s + 1] - knots[s]) * k / per;
-                const ON_3dPoint p = trim.PointAt(param);
-                double u = p.x, v = p.y;
-                surface.GetNurbFormParameterFromSurfaceParameter(p.x, p.y, &u, &v);
-                points.push_back(u);
-                points.push_back(v);
+// Each Brep edge sampled once, on its 3D curve, span by span, its ends pinned to its two Brep
+// vertices: every trim of the edge hands out these same points, so faces that share the edge share
+// their boundary samples exactly.
+struct EdgeSamples {
+    std::vector<ON_3dPoint> points;  // in the edge's own direction, both ends included
+};
+
+const EdgeSamples& edgeSamples(const ON_Brep& brep, int ei, std::vector<EdgeSamples>& cache) {
+    EdgeSamples& out = cache[ei];
+    if (!out.points.empty()) return out;
+    const ON_BrepEdge& edge = brep.m_E[ei];
+    const int spans = edge.SpanCount();
+    std::vector<double> knots(spans > 0 ? spans + 1 : 2);
+    if (spans <= 0 || !edge.GetSpanVector(knots.data())) {
+        const ON_Interval d = edge.Domain();
+        knots = {d[0], d[1]};
+    }
+    const int per = samplesPerSpan(edge);
+    const int n = static_cast<int>(knots.size()) - 1;
+    for (int s = 0; s < n; ++s)
+        for (int k = 0; k < per; ++k) out.points.push_back(edge.PointAt(knots[s] + (knots[s + 1] - knots[s]) * k / per));
+    out.points.push_back(edge.PointAt(knots[n]));
+    out.points.front() = brep.m_V[edge.m_vi[0]].point;
+    out.points.back() = brep.m_V[edge.m_vi[1]].point;
+    return out;
+}
+
+// The trim parameter whose image on the surface is nearest `target`, searched in [lo, hi].
+double nearestOnTrim(const ON_BrepTrim& trim, const ON_Surface& surface, const ON_3dPoint& target, double lo, double hi) {
+    auto distance = [&](double t) {
+        const ON_3dPoint uv = trim.PointAt(t);
+        return surface.PointAt(uv.x, uv.y).DistanceTo(target);
+    };
+    const double g = 0.5 * (std::sqrt(5.0) - 1.0);
+    double a = lo, b = hi;
+    double c = b - g * (b - a), d = a + g * (b - a);
+    double fc = distance(c), fd = distance(d);
+    for (int i = 0; i < 48; ++i) {
+        if (fc < fd) { b = d; d = c; fd = fc; c = b - g * (b - a); fc = distance(c); }
+        else { a = c; c = d; fc = fd; d = a + g * (b - a); fd = distance(d); }
+    }
+    return 0.5 * (a + b);
+}
+
+void pushPoint(const ON_Surface& surface, double u, double v, const ON_3dPoint& p, std::vector<double>& points) {
+    double nu = u, nv = v;
+    surface.GetNurbFormParameterFromSurfaceParameter(u, v, &nu, &nv);
+    points.push_back(nu);
+    points.push_back(nv);
+    points.push_back(p.x);
+    points.push_back(p.y);
+    points.push_back(p.z);
+}
+
+// One trim's points, all but its last (the next trim's first). With an edge: the edge's samples, in
+// the trim's direction, each at the trim parameter whose image is nearest it. Singular: the trim's own
+// samples, all at its vertex. Neither: the trim's own samples and their images (no topology).
+void appendTrim(const ON_Brep& brep, const ON_BrepTrim& trim, const ON_Surface& surface,
+                std::vector<EdgeSamples>& cache, std::vector<double>& points, int& untopological) {
+    const ON_Interval domain = trim.Domain();
+    const bool hasEdge = trim.m_ei >= 0 && trim.m_ei < brep.m_E.Count() && trim.m_type != ON_BrepTrim::singular;
+    if (hasEdge) {
+        const EdgeSamples& e = edgeSamples(brep, trim.m_ei, cache);
+        const int n = static_cast<int>(e.points.size()) - 1;
+        // Dense images of the trim, to bracket each sample before refining it.
+        const int dense = std::max(64, 8 * n);
+        std::vector<ON_3dPoint> image(dense + 1);
+        for (int j = 0; j <= dense; ++j) {
+            const ON_3dPoint uv = trim.PointAt(domain.ParameterAt(static_cast<double>(j) / dense));
+            image[j] = surface.PointAt(uv.x, uv.y);
+        }
+        int from = 0;
+        for (int k = 0; k < n; ++k) {
+            const ON_3dPoint& p = e.points[trim.m_bRev3d ? n - k : k];
+            double t = domain[0];
+            if (k > 0) {
+                int best = from;
+                double bestD = image[from].DistanceTo(p);
+                for (int j = from + 1; j <= dense; ++j) {
+                    const double dj = image[j].DistanceTo(p);
+                    if (dj < bestD) { bestD = dj; best = j; }
+                }
+                from = best;
+                const double lo = domain.ParameterAt(static_cast<double>(std::max(best - 1, 0)) / dense);
+                const double hi = domain.ParameterAt(static_cast<double>(std::min(best + 1, dense)) / dense);
+                t = nearestOnTrim(trim, surface, p, lo, hi);
             }
+            const ON_3dPoint uv = trim.PointAt(t);
+            pushPoint(surface, uv.x, uv.y, p, points);
+        }
+        return;
+    }
+    const int spans = trim.SpanCount();
+    if (spans <= 0) return;
+    std::vector<double> knots(spans + 1);
+    if (!trim.GetSpanVector(knots.data())) return;
+    const int per = samplesPerSpan(trim);
+    const bool singular = trim.m_type == ON_BrepTrim::singular && trim.m_vi[0] >= 0;
+    if (!singular) ++untopological;
+    for (int s = 0; s < spans; ++s) {
+        for (int k = 0; k < per; ++k) {
+            const ON_3dPoint uv = trim.PointAt(knots[s] + (knots[s + 1] - knots[s]) * k / per);
+            const ON_3dPoint p = singular ? brep.m_V[trim.m_vi[0]].point : surface.PointAt(uv.x, uv.y);
+            pushPoint(surface, uv.x, uv.y, p, points);
         }
     }
+}
+
+void appendLoop(const ON_Brep& brep, const ON_BrepLoop& loop, const ON_Surface& surface,
+                std::vector<EdgeSamples>& cache, std::vector<double>& out, int& untopological) {
+    std::vector<double> points;
+    for (int t = 0; t < loop.m_ti.Count(); ++t) appendTrim(brep, brep.m_T[loop.m_ti[t]], surface, cache, points, untopological);
     out.push_back(loop.m_type == ON_BrepLoop::inner ? 2.0 : 1.0);
-    out.push_back(static_cast<double>(points.size() / 2));
+    out.push_back(static_cast<double>(points.size() / 5));
     out.insert(out.end(), points.begin(), points.end());
 }
 
 // False when a face's surface has no NURBS form; the face is then packed with zero CVs.
-void appendFace(const ON_Brep& brep, const ON_BrepFace& face, std::vector<double>& out) {
+void appendFace(const ON_Brep& brep, const ON_BrepFace& face, std::vector<EdgeSamples>& cache, std::vector<double>& out, int& untopological) {
     out.push_back(faceHasMesh(face) ? 1.0 : 0.0);
     out.push_back(face.m_bRev ? 1.0 : 0.0);
     const ON_Surface* surface = face.m_si >= 0 && face.m_si < brep.m_S.Count() ? brep.m_S[face.m_si] : nullptr;
@@ -107,7 +200,7 @@ void appendFace(const ON_Brep& brep, const ON_BrepFace& face, std::vector<double
         }
     }
     out.push_back(face.m_li.Count());
-    for (int l = 0; l < face.m_li.Count(); ++l) appendLoop(brep, brep.m_L[face.m_li[l]], *surface, out);
+    for (int l = 0; l < face.m_li.Count(); ++l) appendLoop(brep, brep.m_L[face.m_li[l]], *surface, cache, out, untopological);
 }
 
 // A SubD as triangles: openNURBS's own Catmull-Clark subdivision, `level` times, then every vertex
@@ -148,105 +241,12 @@ std::vector<double> packSubD(const ON_SubD& source, int level) {
 
 std::vector<double> pack(const ON_Brep& brep) {
     std::vector<double> out;
+    std::vector<EdgeSamples> cache(brep.m_E.Count());
+    int untopological = 0;
     out.push_back(brep.m_F.Count());
-    for (int f = 0; f < brep.m_F.Count(); ++f) appendFace(brep, brep.m_F[f], out);
+    for (int f = 0; f < brep.m_F.Count(); ++f) appendFace(brep, brep.m_F[f], cache, out, untopological);
+    out.push_back(untopological);
     return out;
-}
-
-// ---------------------------------------------------------------------------------------------
-// The fixture
-
-ON_3dmObjectAttributes* brepAttributes(int layer, const wchar_t* name) {
-    ON_3dmObjectAttributes* attributes = new ON_3dmObjectAttributes();
-    attributes->m_layer_index = layer;
-    attributes->SetName(name, true);
-    return attributes;
-}
-
-ON_Brep* squareWithHole() {
-    const ON_Plane plane(ON_3dPoint(30, -10, 0), ON_3dVector::ZAxis);
-    ON_SimpleArray<ON_Curve*> outer;
-    const ON_3dPoint c[4] = {ON_3dPoint(20, -20, 0), ON_3dPoint(40, -20, 0), ON_3dPoint(40, 0, 0), ON_3dPoint(20, 0, 0)};
-    for (int i = 0; i < 4; ++i) outer.Append(new ON_LineCurve(c[i], c[(i + 1) % 4]));
-    ON_Brep* brep = ON_BrepTrimmedPlane(plane, outer, false);
-    if (brep == nullptr) return nullptr;
-    ON_SimpleArray<ON_Curve*> hole;
-    // Inner loops run clockwise seen from the face's normal.
-    ON_Circle circle(ON_Plane(ON_3dPoint(30, -10, 0), -ON_3dVector::ZAxis), 5.0);
-    hole.Append(new ON_ArcCurve(circle));
-    brep->NewPlanarFaceLoop(0, ON_BrepLoop::inner, hole, false);
-    return brep;
-}
-
-bool writeBrepFixture(const char* path, std::string& error) {
-    ONX_Model model;
-    model.m_properties.m_RevisionHistory.NewRevision();
-    model.m_settings.m_ModelUnitsAndTolerances.m_unit_system = ON_UnitSystem::Millimeters;
-    model.AddDefaultLayer(nullptr, ON_Color::UnsetColor);
-    const int nurbs = model.AddLayer(L"NURBS", ON_Color(70, 130, 200));
-    const int boxes = model.AddLayer(L"Boxes", ON_Color(200, 120, 40));
-
-    ON_Brep* sphere = ON_BrepSphere(ON_Sphere(ON_3dPoint(0, 0, 0), 10.0));
-    ON_Brep* cylinder = ON_BrepCylinder(ON_Cylinder(ON_Circle(ON_Plane(ON_3dPoint(30, 20, -10), ON_3dVector::ZAxis), 5.0), 20.0), true, true);
-    ON_Brep* plate = squareWithHole();
-    if (sphere == nullptr || cylinder == nullptr || plate == nullptr) {
-        error = "openNURBS could not build the fixture Breps";
-        return false;
-    }
-    model.AddManagedModelGeometryComponent(sphere, brepAttributes(nurbs, L"sphere"));
-    model.AddManagedModelGeometryComponent(cylinder, brepAttributes(nurbs, L"capped cylinder"));
-    model.AddManagedModelGeometryComponent(plate, brepAttributes(nurbs, L"plate with hole"));
-
-    // A box with a saved render mesh per face (one quad), and the same box without, side by side.
-    for (int saved = 0; saved < 2; ++saved) {
-        const double x = saved ? -30.0 : -15.0;
-        ON_3dPoint corners[8] = {
-            ON_3dPoint(x, 20, -5), ON_3dPoint(x + 10, 20, -5), ON_3dPoint(x + 10, 30, -5), ON_3dPoint(x, 30, -5),
-            ON_3dPoint(x, 20, 5), ON_3dPoint(x + 10, 20, 5), ON_3dPoint(x + 10, 30, 5), ON_3dPoint(x, 30, 5)};
-        ON_Brep* box = ON_BrepBox(corners);
-        if (saved) {
-            for (int f = 0; f < box->m_F.Count(); ++f) {
-                ON_BrepFace& face = box->m_F[f];
-                const ON_BrepLoop* loop = face.OuterLoop();
-                if (loop == nullptr || loop->m_ti.Count() != 4) continue;
-                ON_Mesh* quad = new ON_Mesh(1, 4, false, false);
-                for (int i = 0; i < 4; ++i) quad->SetVertex(i, box->m_V[box->m_T[loop->m_ti[i]].m_vi[0]].point);
-                if (face.m_bRev) quad->SetQuad(0, 0, 3, 2, 1); else quad->SetQuad(0, 0, 1, 2, 3);
-                quad->ComputeVertexNormals();
-                face.SetMesh(ON::render_mesh, quad);
-            }
-        }
-        model.AddManagedModelGeometryComponent(box, brepAttributes(boxes, saved ? L"box, saved mesh" : L"box, no mesh"));
-    }
-
-    // SubDs: a smooth one (its limit surface is a rounded blob inside the cage) and a creased one
-    // (its limit surface is the box itself), each a 2 x 2 x 2 cage 10 across.
-    const int subds = model.AddLayer(L"SubD", ON_Color(90, 170, 90));
-    for (int creased = 0; creased < 2; ++creased) {
-        const double x = creased ? 15.0 : -5.0;
-        const ON_3dPoint corners[8] = {
-            ON_3dPoint(x, -45, -5), ON_3dPoint(x + 10, -45, -5), ON_3dPoint(x + 10, -35, -5), ON_3dPoint(x, -35, -5),
-            ON_3dPoint(x, -45, 5), ON_3dPoint(x + 10, -45, 5), ON_3dPoint(x + 10, -35, 5), ON_3dPoint(x, -35, 5)};
-        ON_SubD* subd = ON_SubD::CreateSubDBox(corners, creased ? ON_SubDEdgeTag::Crease : ON_SubDEdgeTag::Smooth, 2, 2, 2, nullptr);
-        if (subd == nullptr) {
-            error = "openNURBS could not build the fixture SubD";
-            return false;
-        }
-        model.AddManagedModelGeometryComponent(subd, brepAttributes(subds, creased ? L"creased SubD" : L"smooth SubD"));
-    }
-
-    FILE* fp = ON::OpenFile(path, "wb");
-    if (fp == nullptr) {
-        error = std::string("cannot open ") + path + " for writing";
-        return false;
-    }
-    ON_BinaryFile archive(ON::archive_mode::write3dm, fp);
-    ON_wString log;
-    ON_TextLog textLog(log);
-    const bool ok = model.Write(archive, 7, &textLog);
-    ON::CloseFile(fp);
-    if (!ok) error = "openNURBS failed to write the Brep fixture";
-    return ok;
 }
 
 }  // namespace
@@ -352,25 +352,5 @@ const double* field_opennurbs_subds_data(void* handle, int index) {
     return static_cast<Breps*>(handle)->subdData[index].data();
 }
 
-int field_opennurbs_write_brep_fixture(const char* utf8Path, char* message, int messageCapacity) {
-    if (utf8Path == nullptr) {
-        brepMessage(message, messageCapacity, "null path");
-        return FIELD_OPENNURBS_BAD_INPUT;
-    }
-    try {
-        std::string error;
-        if (!writeBrepFixture(utf8Path, error)) {
-            brepMessage(message, messageCapacity, error);
-            return FIELD_OPENNURBS_FAILED;
-        }
-        return FIELD_OPENNURBS_OK;
-    } catch (const std::exception& e) {
-        brepMessage(message, messageCapacity, e.what());
-        return FIELD_OPENNURBS_FAILED;
-    } catch (...) {
-        brepMessage(message, messageCapacity, "unknown failure writing the Brep fixture");
-        return FIELD_OPENNURBS_FAILED;
-    }
-}
 
 }  // extern "C"

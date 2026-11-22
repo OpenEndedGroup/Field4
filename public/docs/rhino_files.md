@@ -171,6 +171,11 @@ What goes in, and what Rhino gets:
 | `nurbs(degree, points, knots, weights)` | a NURBS curve, rational when you give weights, knots as openNURBS counts them | yes |
 | `points(list)`, `point(p)` | a point cloud, or a point | yes |
 | `text(string, origin, height)` | text on a plane, `xAxis` and `yAxis` giving its orientation | the font is Rhino's |
+| `brep(faces)` | a Brep: each `RhinoBrepFace` is a NURBS surface with trim loops and, optionally, a cached render mesh; shared edges, seams and poles are worked out for you. `RhinoBreps.sphere`, `cylinder`, `box` and `plate` make the faces of those solids | yes |
+| `surface(nurbsSurface)` | an untrimmed NURBS surface, which Rhino keeps as a one-face Brep | yes |
+| `subd(points, faces, creases)` | a SubD from its control net, with the edges you name kept sharp; `RhinoBreps.subdBox` makes a box's net | yes |
+| `hatch(fline)` | a solid hatch: the first subpath is the outline, the rest holes | yes |
+| `block(name) { ... }`, `instance(name, translation)` | a block definition holding what the block adds, and a placement of it | yes |
 
 </div>
 
@@ -228,13 +233,20 @@ dir.deleteRecursively()
 
 </div>
 
-A tessellated face is a grid over the face's parameters, a line at every knot, with each span
-halved until the surface strays from the triangles by less than `tolerance` (a thousandth of the
-Brep's size unless you pass one, in model units). Cells the trim curves cross are cut along them,
-so holes and trimmed edges follow the trim. Every vertex lies on the exact surface. Faces are
-joined where they meet smoothly and kept apart at creases, so the shading stays sharp at a box's
-edges and smooth across a sphere's seam. `RhinoMesh.evaluatedFaces` says how many of an object's
-faces were tessellated.
+A tessellated face starts as one cell per knot span of its surface, and each cell is split, in
+one direction or both, until the surface strays from the triangles by less than `tolerance` (a
+thousandth of the Brep's size unless you pass one, in model units). A flat face stays a few large
+triangles; a cylinder is divided around and not along. Cells the trim curves cross are cut along
+them, so holes and trimmed edges follow the trim. Every vertex lies on the exact surface.
+
+Neighbouring faces are then stitched together by the Brep's own topology. Each Brep edge is
+sampled once, along its 3D curve, and every face that uses the edge gets those same points as its
+boundary, however its trim curve is parameterised, so the two sides meet vertex for vertex. Where
+a cell cuts a face's edge between two of those points, the face across the edge is split at the
+same place. A closed Brep therefore comes back as a closed mesh, with no cracks along its edges. Faces
+are joined where they meet smoothly and kept apart at creases, so the shading stays sharp at a
+box's edges and smooth across a sphere's seam. `RhinoMesh.evaluatedFaces` says how many of an
+object's faces were tessellated.
 
 A SubD is subdivided `subdLevel` times (3 unless you say otherwise; each level makes four times
 the triangles) by openNURBS's own Catmull-Clark rules, and each vertex is moved onto the limit
@@ -255,4 +267,10 @@ first set Field up. `Rhino3dm.describe()` says whether Field found it.
 - [Geometry from disk](geometry_from_disk.md): the other formats Field reads, and repairing a mesh
   into a solid.
 - [Meshes and 3D geometry](mesh_examples.md): what to do with a `TriMesh` once you have one.
+- [A Rhino file, path traced](chain_rhino_render.md): the same objects rendered by the GPU path
+  tracer, each in its display colour.
+- [Three.js output](three_output.md): the viewer `rhino(model)` draws into, and what else a
+  `three { }` scene can hold.
+- [Solids & Booleans (Manifold)](manifold.md): a `RhinoMesh.mesh` is a `TriMesh`, so `toSolid()`
+  checks it and, if it is closed and manifold, turns it into a solid you can boolean.
 - [Graphics reference](reference/graphics.md): `Rhino3dm`, `RhinoModel` and the object classes.

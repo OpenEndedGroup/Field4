@@ -48,6 +48,29 @@ List<Vec2>)` in `FLineMeasure.kt` is the shoelace area of a point list, beside t
 (`pointSegmentDistance2D`, `segmentsCrossProperly2D`, `segmentsTouch2D`, `pointBounds2D`). It is
 not the removed `FLine` member; for an `FLine` with curves use `area2D()`.
 
+### Planar kernel consolidation, 2026-11-21
+
+The second sweep added `signedArea2D(xy: DoubleArray)`, an inline by-index form
+`signedArea2D(count, x, y)` and `pointInRing2D` (same three shapes, even-odd, half-open edges) to
+`FLineMeasure.kt`, and moved every copy whose arithmetic matched exactly, so results are
+bit-identical (`FLineMeasureTest.signedArea2DOverloadsAgree`, `pointInRing2DKernel`,
+`delegatingCallersKeepTheirConventions`). Counts in `src/jvmMain` (`git grep -nE`), base
+`ee075cd662` to this branch:
+
+| Helper | Pattern | Before | After |
+| --- | --- | --- | --- |
+| hand-written shoelace loop bodies (outside the kernel) | `+= x.x * y.y - x.x * y.y` shape | 9 | 4, none a polygon area: two LPC sums, one angular-momentum sum, one embedded JS string |
+| area function definitions | `fun ...(signedArea\|polygonArea\|ringArea\|polygonSignedArea\|signedAreaOf)` | 15 | 11 (3 are kernel overloads; the rest are one-line adapters or different shapes) |
+| even-odd ray bodies | `(yi > py) != (yj > py)` | 6 | 4 (kernel, sdf_repair row buckets, FloatEarcut linked list, PlanarTessellation Float + epsilon) |
+| bounds-of-points definitions | `fun (pointBounds2D\|boundsOfPoints\|boundsOfAll)` | 3 | 1 |
+| point-in-ring definitions | `fun (pointInRing\|insidePolygon\|pointInPolygon\|pointInRing2D)` | 3 | 5: 3 kernel overloads, `Eigendrum.insidePolygon` adapter, PlanarTessellation's own |
+
+Left on purpose: `sdf_repair.kt`/`PointBuckets2D` measure point-to-sample distance, not
+point-to-segment, so moving them would change the field; the jsMain `gestures.kt` projection is one
+inline expression and does not justify moving the kernel to commonMain; `voronoi.signedAreaAlong`
+is 3D about a normal.
+
+
 ## Cursor defects found by characterization (pinned in `CursorCharacterizationTest`)
 
 - `tangent()` was `B'(u)`, not a unit vector (magnitude ~150 on a 100-unit arc); `normal2()` the same,

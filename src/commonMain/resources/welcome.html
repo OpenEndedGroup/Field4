@@ -2047,7 +2047,6 @@
         <div class="button-row">
             <button id="open-first-steps" class="start-here" type="button">Start here: a moving drawing</button>
             <a class="button-link" href="/field-docs/first_steps/">Five-minute guide</a>
-            <button id="open-first-graphics" type="button">Next: native graphics</button>
             <a class="button-link" href="/field-docs/" title="Open documentation; select text to leave a note.">Documentation</a>
             <button id="shutdown-instance" type="button" class="button-danger">shutdown this instance of Field</button>
         </div>
@@ -4155,7 +4154,6 @@
     }
 
     document.getElementById("open-first-steps").addEventListener("click", () => openStartingPoint("first-steps"));
-    document.getElementById("open-first-graphics").addEventListener("click", () => openStartingPoint("first-graphics"));
 
     function revealDocumentLabel() {
         const platform = String(navigator.userAgentData?.platform || navigator.platform || "").toLowerCase();

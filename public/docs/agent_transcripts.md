@@ -85,6 +85,21 @@ Kotlin is compiled on every build.
 These build and run headless: no window, no GPU. Open one to get the code in front of you, then run
 its box to see the output (a plot, an inline value thumbnail, a printed line).
 
+### nile_gezira_kernels
+
+**Rasterisation as editable stream kernels.** Nile-style kernels run the Gezira rasteriser over a
+curved shape and draw each stream over the pixel grid: the pieces a curve is cut into, the edge
+samples, the coverage spans. Further boxes put the result beside Skia, add a rotation kernel in
+front of the pipeline, stroke a wave with StrokeBezierPath, paint a gradient and blends onto a canvas
+with the texture and compositing kernels, and set a line of text. See [Rasterising with stream kernels](afield_four_graphics.md#stream-kernels).
+
+```diffstatic {data-lang=text}
+macro write nile_gezira_kernels --file dev_docs/agents/transcripts/nile_gezira_kernels.yaml
+macro run nile_gezira_kernels
+```
+
+[Open →](offline.html?file=assets/agent_transcripts/nile_gezira_kernels/metadata.edn)
+
 ### knight_tour_workshop
 
 **Knight tours, many ways of drawing a move.** Five connected CPU-only FLine boxes:
@@ -4118,6 +4133,16 @@ the drawn ones.
 
 [Open →](offline.html?file=assets/agent_transcripts/outline_field_gpu/metadata.edn)
 
+### fline_coverage_gpu
+
+**FLines filled into a GPU buffer with exact coverage.** [An outline filled into a buffer](visualizers.md#an-outline-filled-into-a-buffer)
+as three boxes: a renderer, a box that fills and strokes `FLine`s into a storage buffer with
+`BufferCanvas.fill` and `stroke` (non-zero in one channel, even-odd in the other), and a draw box
+whose fragment shader shows both side by side in the native window. A closed freehand stroke over
+the *mask* frame (Alt+D) is filled into the buffer while it runs; an ellipse clears the drawn ones.
+
+[Open →](offline.html?file=assets/agent_transcripts/fline_coverage_gpu/metadata.edn)
+
 ### gpu_state
 
 A stateful GPU simulation: 40,000 particles whose positions and velocities live in a
@@ -4796,6 +4821,16 @@ pass to put it on screen.
 
 [Open →](offline.html?file=assets/agent_transcripts/path_tracing_materials/metadata.edn)
 
+### oidn_raster_particles
+
+**Open Image Denoise on a raster render.** A spiral of 3,000 particles drawn with stochastic
+transparency into a float render target, then denoised through `OidnImageSource`: see
+[Denoising any image](path_tracing.md#denoising-any-image).
+
+![A spiral of particles drawn with stochastic transparency: grainy on the left, and smooth after Open Image Denoise on the right](assets/path_tracing/denoise/raster_particles.png)
+
+[Open →](offline.html?file=assets/agent_transcripts/oidn_raster_particles/metadata.edn)
+
 ### path_tracing_glass
 
 Clear, absorbing and frosted glass spheres, plus a thin blue pane, over
@@ -4852,6 +4887,14 @@ dodecahedron's own faces, edges and vertices. See
 [the walkthrough](chain_polytope_render.md).
 
 [Open →](offline.html?file=assets/agent_transcripts/polytope_path_trace_lineage/metadata.edn)
+
+### rhino_path_trace
+
+**A Rhino `.3dm` file, path traced.** The Save Small sample's Breps and SubDs are tessellated on
+load, then `PathTraceScene.rhino` appends them object by object, so each keeps its display colour as
+a material. Needs the optional openNURBS wrapper. See [the walkthrough](chain_rhino_render.md).
+
+[Open →](offline.html?file=assets/agent_transcripts/rhino_path_trace/metadata.edn)
 
 ### polytope_manifold_path_trace
 

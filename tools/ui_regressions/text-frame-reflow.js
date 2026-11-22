@@ -13,7 +13,7 @@ async function make(name, x, y, kind = 'text-frame', textFrame = 'sizing: fixed\
     await wait(() => boxes().some(b => b.name === name), 'Reflow fixture missing');
     const box = boxes().find(b => b.name === name);
     created.push(box);
-    box.querySelector('.text-frame-editor')?.dispatchEvent(new KeyboardEvent('keydown', {key:'Escape', bubbles:true,cancelable:true}));
+    box.querySelector('.text-frame-rich-block')?.dispatchEvent(new KeyboardEvent('keydown', {key:'Escape', bubbles:true,cancelable:true}));
     await delay(100);
     return box;
 }

@@ -33,6 +33,12 @@ These chains end in the GPU path tracer, and each starts somewhere a renderer wo
     hundreds of capsules, and the capsules are welded into one solid whose holes you can count
     exactly.
 
+-   ![A path-traced Rhino file: a blue sphere, cylinder and holed plate, two orange boxes and two green SubD cubes on a pale floor](assets/chain_rhino_render/trace.png)
+
+    **[A Rhino File, Path Traced](chain_rhino_render.md).** A `.3dm` saved without render meshes
+    is tessellated from its NURBS surfaces and traced object by object, each in the colour Rhino
+    shows it in.
+
 -   ![Dozens of small blue faceted lumps floating over a pale floor, one larger lump in gold](assets/chain_life3d_render/clusters.png)
 
     **[Three-Dimensional Life, Counted and Traced](chain_life3d_render.md).** The question you

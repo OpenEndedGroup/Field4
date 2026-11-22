@@ -50,7 +50,7 @@ compass, and can contain further submenus.
 
 A short hover over a submenu label opens the next level. Releasing on the label opens it too, so
 you can choose the next item with a click. Opening a level does not execute a leaf beneath the
-pointer. **Back**, at the centre, returns to the previous level; ++escape++ goes back one level and
+pointer. The circle at the centre returns to the previous level; ++escape++ goes back one level and
 cancels at the root. Releasing on the centre cancels a root menu.
 
 Rerunning `markingMenu { ... }` replaces that box's menu and its callbacks. An empty

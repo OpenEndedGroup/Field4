@@ -76,6 +76,8 @@ Every call also takes a `description`, which other programs show as a tooltip.
 keeps the current values, so a value another program set is not reset when you edit the box.
 Deleting the box removes its parameters, and connected programs see them disappear.
 
+The `oscquery-controls` [template](templates.md#templates-that-come-with-field) (++cmd+t++) is a slider and a checkbox published this way, each copy under a path of its own.
+
 ## Sending values out
 
 `set` changes a parameter from Field. Every program that is listening receives the new value

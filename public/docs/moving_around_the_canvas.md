@@ -414,6 +414,12 @@ ui.up("Alt")
 ui.pause(1200)
 ```
 
+++alt+shift+f++ (**Fit Selected**, rebindable as `fit-selected`) zooms in as well as out, until the
+selection and its open output panels just fill the space beside the editor. That space is kept
+clear whether the editor is open or not, so a box you fit with the editor closed is still in full
+view when you open it. Use it for a close look at one small box, or to see a box and a large output
+panel together at the biggest size that fits.
+
 ## Bookmarks
 
 To return to a part of the document you visit often, save its view in one of nine numbered slots.

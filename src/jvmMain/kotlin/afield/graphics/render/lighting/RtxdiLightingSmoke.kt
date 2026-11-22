@@ -9,8 +9,8 @@ import afield.math.linalg.Matrix4f
 import afield.math.linalg.Vector3f
 import org.json.JSONObject
 import java.io.File
-import java.awt.image.BufferedImage
-import javax.imageio.ImageIO
+import afield.media.image.HdrPngEncoding
+import afield.media.image.saveHdrPng
 import kotlin.math.*
 import kotlin.system.exitProcess
 
@@ -142,11 +142,6 @@ object RtxdiLightingSmoke {
         exitProcess(0)
     }
     private fun save(dir: File,name: String,data: FloatArray,width: Int,height: Int) {
-        val image=BufferedImage(width,height,BufferedImage.TYPE_INT_RGB)
-        for(y in 0 until height)for(x in 0 until width) {
-            fun code(c: Int): Int { val v=data[(y*width+x)*4+c].toDouble().coerceAtLeast(0.0);return (255*(v/(1+v)).pow(1/2.2)).roundToInt().coerceIn(0,255) }
-            image.setRGB(x,y,(code(0) shl 16) or (code(1) shl 8) or code(2))
-        }
-        ImageIO.write(image,"png",File(dir,"$name.png"))
+        saveHdrPng(File(dir,"$name.png"),data,width,height,encoding=HdrPngEncoding.GAMMA_22)
     }
 }
