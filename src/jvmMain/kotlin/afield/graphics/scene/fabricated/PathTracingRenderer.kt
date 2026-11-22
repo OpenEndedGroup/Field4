@@ -1,5 +1,6 @@
 package afield.graphics.scene.fabricated
 
+import afield.app.diagnostics.logging.lprintln
 import afield.graphics.vulkan.Renderer
 import afield.graphics.vulkan.Target
 import afield.graphics.vulkan.targets.RenderToTexture
@@ -92,6 +93,7 @@ class PathTracingRenderer(
     /** Reproject compatible surface history on camera motion. Approximate, bounded, and off by default. */
     var temporalReuse: Boolean = false
         set(value) { if (value != field) reset(); field = value }
+    private var warnedMediumReuse = false
     /** Maximum old samples carried across a camera move; glossy surfaces or a changing view may retain fewer. */
     var temporalMaxSamples: Int = 16
         set(value) { require(value in 1..256); if (value != field) reset(); field = value }
@@ -462,6 +464,17 @@ class PathTracingRenderer(
             require(apertureRadius == 0f && mediumDensity == 0f && fogDensity == 0f && (showEnvironment || background.w == 1f)) {
                 "Path reconstruction requires a pinhole, opaque surface signal without fog/participating media"
             }
+        }
+        if (temporalReuse && mediumDensity > 0f && !warnedMediumReuse) {
+            // A medium collision on the camera ray leaves the history guide's normal unset, so
+            // reprojection rejects that pixel: a dense medium gets almost no reuse.
+            warnedMediumReuse = true
+            lprintln(
+                "warning,graphics",
+                "PathTracingRenderer '$name': temporalReuse does little with mediumDensity = $mediumDensity, " +
+                    "because pixels whose camera ray scatters in the medium are not reprojected. " +
+                    "Raise samplesPerFrame instead.",
+            )
         }
         updateFrame()
         memoryBarrier(command, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_MEMORY_READ_BIT or VK_ACCESS_2_MEMORY_WRITE_BIT,

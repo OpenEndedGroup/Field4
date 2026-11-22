@@ -623,10 +623,6 @@ The [path_tracing_medium](agent_transcripts.md#path_tracing_medium) starting poi
 slatted strip light over a hazed room, cycling `mediumDensity` so you can watch the
 shafts appear. How the medium is tested is in `dev_docs/PARTICIPATING_MEDIA.md`.
 
-**A medium and `temporalReuse` are effectively exclusive.** A collision on the camera ray leaves the history guide's
-surface normal unset, so reprojection rejects that pixel, and a dense medium gets no temporal reuse for most of the frame. Raise `samplesPerFrame` instead
-of reaching for reuse.
-
 ## Neural multiple scattering in a raymarched cloud
 
 A raymarched cloud is cheap to light with *single* scattering: at each step, add the sun dimmed by
