@@ -2341,7 +2341,7 @@ renderer, under it here, fills the frame's hole:
 frame.filled = true
 frame.fillRule = FillRule.EVEN_ODD
 ring.thickness = 6.0
-val r = GeziraFLine.render(listOf(disc, ring, frame, wave), 220, 130)
+val r = GeziraFLine.render([disc, ring, frame, wave], 220, 130)
 ```
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/gezira-fline-paint.png" capture="box" open-outputs="true" padding="20" trim="true" wait="4" timeout="180" embed=true name="gezira-fline-paint" macro-file="../../dev_docs/agents/transcripts/nile_gezira_svg.yaml" capture-box="gezira_fline_paint" alt="Four FLines drawn twice. Above, by the Gezira kernels on white: an orange disc with a dark brown ring, a translucent blue square frame with a square hole, and a crimson wave across the bottom. Below, larger, by Field's line renderer on black: the same, except the blue square is solid, since that renderer does not read fillRule."}

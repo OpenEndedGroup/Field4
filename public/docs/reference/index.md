@@ -687,7 +687,7 @@ To see it all at once, open the [map of the docs](../docs_map.md): every page, a
 
 ## Reference pages
 
-**42863 public symbols across 1898 source files**, 25643 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**42864 public symbols across 1899 source files**, 25644 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -700,7 +700,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Video](video.md) | 14 | 195 | 194 (99%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 60 | 2524 | 1904 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 27 | 1231 | 570 (46%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 442 | 10725 | 6818 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 443 | 10726 | 6819 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 48 | 911 | 515 (56%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 596 | 440 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 787 | 530 (67%) | Nonlinear least squares, aimed at geometry. |
@@ -1377,8 +1377,9 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>paint/<wbr></small> [gestureReplay.kt](graphics.md#gesturereplay-kt) | Graphics | 4 | 4 | Gesture pad to brush: a take recorded on a `gesture(...)` pad, or its x and y keyframe lanes after editing, painted onto a canvas as a `TimedGesture`. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>paint/<wbr></small> [GestureReplayMain.kt](internal.md#gesturereplaymain-kt) | Internal · internal | 39 | 4 | A command-line entry point that replays a recorded pen gesture through a brush and writes the painted PNG, so an agent can try a gesture without a browser. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>nile/<wbr></small> [Gezira.kt](graphics.md#gezira-kt) | Graphics | 55 | 50 |  | [Field 4 Graphics](../afield_four_graphics.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>nile/<wbr></small> [GeziraFLine.kt](graphics.md#gezirafline-kt) | Graphics | 5 | 5 |  | [Field 4 Graphics](../afield_four_graphics.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>nile/<wbr></small> [GeziraPaint.kt](graphics.md#gezirapaint-kt) | Graphics | 25 | 23 |  | [Field 4 Graphics](../afield_four_graphics.md) |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>nile/<wbr></small> [GeziraSvg.kt](graphics.md#gezirasvg-kt) | Graphics | 38 | 25 |  | [Field 4 Graphics](../afield_four_graphics.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>nile/<wbr></small> [GeziraSvg.kt](graphics.md#gezirasvg-kt) | Graphics | 34 | 21 |  | [Field 4 Graphics](../afield_four_graphics.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>stacksl/<wbr>cpu/<wbr></small> [GlslAd.kt](languages.md#glslad-kt) | Languages | 0 | 0 | Reverse-mode automatic differentiation for the GLSL interpreter: `d(pixel)/d(literal)`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>stacksl/<wbr>cpu/<wbr></small> [GlslAdSurrogate.kt](languages.md#glsladsurrogate-kt) | Languages | 29 | 25 | The surrogate vocabulary a differentiable StackSL fit descends through: a mollified delta, the jump families it may be applied to, and the schedule that narrows it. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>completion/<wbr></small> [GlslCompletionSupport.kt](workspace.md#glslcompletionsupport-kt) | Workspace · internal | 4 | 0 | Completion and hover context for GLSL shader properties (`fragment`, `vertex`, `compute` and the rest), including Field's `{% ... |  |
