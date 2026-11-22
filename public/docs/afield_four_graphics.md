@@ -2333,15 +2333,19 @@ val stage = GeziraGpu.stage(probe)
 val jobs = FillRule.entries.map { GeziraGpu.dispatch(probe, stage, shape, W, H, it, it.name) }
 ```
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/gezira-gpu.png" capture="box" open-outputs="true" padding="20" wait="6" timeout="240" embed=true name="gezira-gpu" macro-file="../../dev_docs/agents/transcripts/gezira_gpu_winding.yaml" capture-box="ggw_raster" alt="Six panels at 120 by 48 pixels: a pentagram, two overlapping circles and a square with a square hole, under the non-zero rule rasterised on the GPU and on the CPU, solid, then their difference magnified 100,000 times, a faint red outline brightest on the square's vertical edges; then the same under even-odd, with the pentagram's centre, the circles' lens and the square's hole empty."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/gezira-gpu.png" capture="box" open-outputs="true" padding="20" wait="6" timeout="240" embed=true name="gezira-gpu" macro-file="../../dev_docs/agents/transcripts/gezira_gpu_winding.yaml" capture-box="ggw_raster" alt="Six panels in two rows and three columns, each 120 by 48 pixels: a pentagram, two overlapping circles and a square with a square hole. The top row is the non-zero rule, all three shapes solid; the bottom row is even-odd, with the pentagram's centre, the circles' lens and the square's hole empty. The columns are the GPU, the CPU, and their difference magnified 100,000 times, a faint red outline brightest on the square's vertical edges."}
 // dev_docs/agents/transcripts/gezira_gpu_winding.yaml, box "gezira on the gpu"
 ```
 
-The difference is float32 against the CPU's doubles. The probe `four.gezira-gpu.probe` runs both
+The rows are the two fill rules; the columns are the GPU, the CPU and their difference magnified
+100,000 times. The difference is float32 against the CPU's doubles. The probe `four.gezira-gpu.probe` runs both
 on eighteen images (stars, a pentagram, circles, overlapping curves, a square with a hole wound
 each way, a word of glyphs, under each rule): the largest difference over 47,232 pixels is 1.5e-6
 and the mean 1.4e-8. On fields of 64 stars and circles it is 5e-6 at 128 × 128, rising with the
 image to 3.9e-5 at 1024 × 1024, where x is stored to fewer digits.
+
+This is a study of one stage checked against its CPU kernel, not a renderer to draw with: for
+filled paths on the GPU use [Slug](slug_paths.md), which shades coverage per fragment.
 
 It is not yet faster. On an Apple GPU the shader takes 29 to 55 ms on those fields, from 128 × 128 to
 1024 × 1024, where the whole CPU rasteriser takes 31 to 65 ms, and the CPU's share of the GPU path

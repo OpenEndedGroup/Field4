@@ -51,7 +51,16 @@ operations:
           val stage = GeziraGpu.stage(probe)
           val jobs = FillRule.entries.map { GeziraGpu.dispatch(probe, stage, shape, W, H, it, it.name) }
 
-          val s = 4.0
+          // One picture, 2 x 3: a row per fill rule; GPU, CPU, and their difference x 100,000.
+          val gap = 4
+          val cw = 3 * W + 2 * gap
+          val white = DoubleArray(cw * (2 * H + gap))
+          val red = DoubleArray(white.size)
+          fun place(into: DoubleArray, c: DoubleArray, col: Int, row: Int) {
+              for (y in 0 until H) for (x in 0 until W) {
+                  into[(row * (H + gap) + y) * cw + col * (W + gap) + x] = c[y * W + x]
+              }
+          }
           frames {
               try {
                   probe.arm(*jobs.map { it.coverage }.toTypedArray())
@@ -62,11 +71,14 @@ operations:
                       val cpu = Gezira.rasterize(shape, W, H, rule)
                       val (worst, mean) = Gezira.error(gpu, cpu)
                       println("$rule: largest |gpu - cpu| %.2e, mean %.2e over the covered pixels".format(worst, mean))
-                      val diff = DoubleArray(gpu.size) { Math.abs(gpu[it] - cpu[it]) * 1e5 }
-                      lines(Gezira.pixels(gpu, W, s), channel = "${n + 1}a GPU ${rule.name.lowercase()}")
-                      lines(Gezira.pixels(cpu, W, s), channel = "${n + 1}b CPU ${rule.name.lowercase()}")
-                      lines(Gezira.pixels(diff, W, s, 1.0, 0.25, 0.2), channel = "${n + 1}c difference x 100000")
+                      place(white, gpu, 0, n)
+                      place(white, cpu, 1, n)
+                      place(red, DoubleArray(gpu.size) { Math.abs(gpu[it] - cpu[it]) * 1e5 }, 2, n)
                   }
+                  lines(
+                      Gezira.pixels(white, cw, 4.0) + Gezira.pixels(red, cw, 4.0, 1.0, 0.25, 0.2),
+                      channel = "gpu, cpu, difference",
+                  )
               } finally {
                   probe.close()
               }
