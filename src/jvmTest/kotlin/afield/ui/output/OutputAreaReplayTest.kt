@@ -66,6 +66,22 @@ class OutputAreaReplayTest {
         assertEquals(1,state.snapshot("a").size)
         state.control("clear-all",null);assertTrue(state.snapshot("a").isEmpty())
     }
+    @Test
+    fun closingAnOutputKeepsTheLatestContentForReconnect() {
+        val box = Box("closed-output")
+        afield.study.source.BoxStudies.show(box, "take", "original audio")
+        box.displayClose("take")
+        box.output.retainedAreas.put("take", "updated audio")
+
+        val messages = box.output.retainedAreas.snapshot(box.id)
+        assertEquals(listOf("set-output", "output-control"), messages.map { it.name })
+        val content = Json.decodeFromJsonElement(Set_output.serializer(), messages[0].payload!!)
+        val control = Json.decodeFromJsonElement(OutputControl.serializer(), messages[1].payload!!)
+        assertEquals("updated audio", content.value)
+        assertEquals("take", control.channel)
+        assertEquals("close", control.action)
+    }
+
     @Test fun ownershipAndSizeAreBounded() {
         val a=OutputAreaReplay(6); val b=OutputAreaReplay()
         a.put("one","1234");a.put("two","5678")

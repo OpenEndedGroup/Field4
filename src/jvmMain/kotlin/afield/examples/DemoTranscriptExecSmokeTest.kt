@@ -1111,6 +1111,8 @@ object DemoTranscriptExecSmokeTest {
         "mqtt_demo",
         // The routing page runs the broker and publisher during its real capture.
         "mqtt_datalog_routing",
+        // Native Steam Audio and pinned Dirt-Samples are required to render this transcript.
+        "steamaudio_screen_study",
         "oscquery_demo",
         // dmx_lighting.md's demo: `loop { }` boxes on Art-Net's and sACN's fixed UDP ports (6454,
         // 5568). DmxLightingDemoBundleTest checks the bundle; the page's fences run each box's
