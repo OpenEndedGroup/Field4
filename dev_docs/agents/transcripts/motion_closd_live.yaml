@@ -1,6 +1,8 @@
 name: motion_closd_live
 description: >
   Live physical attachment, release/break, moving anchor, impulses and prompts. Requires optional CLoSD setup.
+docs:
+  - page: motion_recordings.md#run-a-live-body
 operations:
   - create:
       box: motion_closd_live

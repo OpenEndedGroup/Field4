@@ -253,3 +253,8 @@ there stops the box with an error saying so. See the [FieldML JVM Bridge](fieldm
 There is no stage after core: no bytecode and no optimiser. The evaluator walks the core tree
 directly, which is why a box responds to an edit immediately. For code that needs to be fast, call
 Kotlin through the host bridge.
+
+## See also
+
+Start with the [worked FieldML examples](fieldml_examples.md) and keep the
+[FieldML cheatsheet](fieldml_cheatsheet.md) open for the expression syntax.

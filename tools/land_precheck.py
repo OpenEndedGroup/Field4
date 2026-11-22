@@ -44,6 +44,7 @@ from pathlib import Path
 from typing import Callable
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from docs_link_graph import DOCS_RELATIVE, INDEX_PAGES, link_targets, resolve_page_target, split_fences  # noqa: E402
 from check_staged_generated_artifacts import (  # noqa: E402
     _box_code_input,
     _compiled_transcript,
@@ -323,6 +324,21 @@ def select(change: Change) -> list[tuple[Check, list[str]]]:
     return [(check, why) for check in CHECKS if (why := check.selects(change))]
 
 
+def new_pages_without_inbound_links(repo: Path, change: Change) -> list[str]:
+    """Find new authored pages with no link from a page that already existed."""
+    docs = repo / DOCS_RELATIVE
+    pages = {path.name for path in docs.glob("*.md")} - set(INDEX_PAGES)
+    added = {page for page in pages if change.added(f"{DOCS_RELATIVE}/{page}")}
+    if not added:
+        return []
+
+    linked = set()
+    for page in pages - added:
+        prose = split_fences((docs / page).read_text(encoding="utf-8")).prose
+        linked.update(resolve_page_target(target, page, added) for target in link_targets(prose))
+    return sorted(added - linked)
+
+
 def gradle_arguments(selected: list[Check], reference_out: Path) -> list[str]:
     """One Gradle command line for every selected Gradle check.
 
@@ -555,6 +571,8 @@ def run(args: argparse.Namespace) -> int:
     try:
         diff_base = base if (merged or not behind) else _git("merge-base", base, "HEAD").stdout.strip()
         change = read_change(diff_base)
+        for page in new_pages_without_inbound_links(REPO, change):
+            _say(f"docs navigation: add a link to {page} from a related existing page")
         selected = select(change)
         if not selected:
             _say(f"nothing in this diff ({len(change.paths)} path(s)) selects a check; enqueue")

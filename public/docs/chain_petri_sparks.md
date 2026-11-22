@@ -159,3 +159,7 @@ sparks add up and the centre of a fresh burst burns white.
 * [Field 4 Graphics](afield_four_graphics.md) for modules, meshes, buffers and push constants.
 * [Making a sound, every path there is](sound_paths.md) for the Dirt-Samples and the other ways to
   play a pattern.
+
+## See also
+
+Use the [Petri notation cheatsheet](petri_cheatsheet.md) when changing the net's rules.

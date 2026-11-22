@@ -1489,6 +1489,9 @@ it.
 `EarcutFaceTriangulator` is the default; it handles concave faces and faces with holes.
 `FanFaceTriangulator` is for convex faces only.
 
+To use that provenance in an interactive preview, try
+[Point at a face and find its source](chain_polytope_render.md#point-at-a-face-and-find-its-source).
+
 ## A face can have holes
 
 A face is an outer cycle plus zero or more inner rings: `faceCycle` returns the outer one,

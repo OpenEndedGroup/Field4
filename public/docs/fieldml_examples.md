@@ -454,3 +454,8 @@ FieldML is strict and typed. A few rules explain most surprises:
 | Lists are homogeneous | `[1, 2, 3]` is valid; `[1, true]` is not. |
 | Match branches must agree | Every branch of a `match` expression has the same result type. |
 | The last expression is the result | Leave an `FLine`, record, list, or scalar at the end of the box to return it to Field. |
+
+## See also
+
+Follow one expression through the compiler in [FieldML stage by stage](fieldml_stages.md),
+or see [FieldML's JVM bridge](fieldml_host_bridge.md) for the rules behind calling Kotlin and Java.

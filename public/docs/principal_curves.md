@@ -299,6 +299,10 @@ statistics, and pinning, splitting and replacing points.
     given half its share of nodes. `PrincipalCurvesBenchmark` times growth at 10⁴, 10⁵ and 10⁶
     points in 2D and 3D: a 40-node tree through a million 3D points grows in about six seconds.
 
+## See also
+
+For other ways to summarize a point cloud, see [Points into structure](spatial_geometry_examples.md).
+
 ## API reference
 
 - Fitting a principal forest: [`PrincipalCurves`](reference/graphics.md#principalcurves-kt-principalcurves) —

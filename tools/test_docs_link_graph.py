@@ -7,13 +7,14 @@ dead link on the public site. The address tests read the real reference pages ra
 Run with:  uv run --project . --group backdoor python -m unittest tools.test_docs_link_graph
 """
 
+import importlib.util
 import re
 import tempfile
 import unittest
 from pathlib import Path
 
 from tools.docs_link_graph import (CAPTURE_CODE_PREFIX, DOCS_RELATIVE, REPO_ROOT, Graph, code_files_for, code_neighbours, link_pages_to_map,
-                                  parse_link_log, reference_anchors, site_url, used_symbols)
+                                  layout, parse_link_log, reference_anchors, site_url, used_symbols)
 
 
 class SiteUrlTest(unittest.TestCase):
@@ -25,6 +26,22 @@ class SiteUrlTest(unittest.TestCase):
 
     def test_a_page_named_like_index_is_not_an_index(self) -> None:
         self.assertEqual(site_url("reindex.md", ""), "reindex/")
+
+
+class LayoutTest(unittest.TestCase):
+    @unittest.skipUnless(
+        importlib.util.find_spec("networkx") and importlib.util.find_spec("numpy"),
+        "requires the docs dependency group",
+    )
+    def test_pages_only_layout_has_no_code_shell(self) -> None:
+        graph = Graph()
+        graph.node("page:a.md", kind="page")
+        graph.node("page:b.md", kind="page")
+        graph.edge("page:a.md", "page:b.md", "links")
+        positions, packages = layout(graph)
+        self.assertEqual({"page:a.md", "page:b.md"}, set(positions))
+        self.assertEqual({}, packages)
+        self.assertNotEqual(positions["page:a.md"], positions["page:b.md"])
 
 
 class ReferenceAnchorsTest(unittest.TestCase):

@@ -644,3 +644,7 @@ loop {
 | `EvolutionConfig.populationSize`, `generations`, `randomSeed` | The size and the seed of the search. |
 | `minPoints`, `maxPoints`, `targetEdgeCount`, `targetJointActivations` | The size of the bodies. |
 | `alwaysUpFootFraction`, `cyclingFootFraction` | How many points are body only, and how many must step. |
+
+## See also
+
+[Braitenberg vehicles](braitenberg_vehicles.md) is a smaller example of evolving a controller.

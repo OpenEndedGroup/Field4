@@ -465,3 +465,7 @@ The generic core is `afield.ai.diagnostics.Logging`: `LogEvent`, `LogSink`, `Log
 `lprintln`, `lprint`, `lblock`, `indent`, `formatMillis`, `PinnedConsole`, `StatsHeatmap`,
 `SessionErrorLog`, `SaveReloadLog`. The web sink is `afield.app.server.LogStream`, which serves
 the log widget over the `__logs__` websocket handler.
+
+## See also
+
+Use [Box Output](box_output.md) to show results alongside the code that produced them.

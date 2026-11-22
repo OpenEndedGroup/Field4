@@ -42,13 +42,8 @@ The value a box ends with is shown beneath it. These pages cover where that outp
 
 ## Drawing from data
 
-- [Linear Algebra](linear_algebra.md) comes first because everything after it uses it: the vector, matrix and quaternion vocabulary underneath movement, cameras, meshes and spatial data.
-- [Functions Examples](functions_examples.md) turns `Functions` stacks into graphs and parametric FLines, and [Functions Domains](functions_domains.md) covers the domain algebra that governs how an `Fn` is sampled.
-- [Values Over Time](interpolants_examples.md) draws interpolants, `KeyframeScope` parameter and code morphs, rolling correlations, and Kalman and particle-filter estimation, all as FLines or live plots.
-- [Signal Examples](spectral_examples.md) keeps raw signals next to filtered and event-detected ones, then turns to what they are made of in frequency: spectra, spectrograms, mel bands and resonators.
-- [Colors Examples](colors_examples.md) compares colour helpers on actual geometry.
-
-The geometry, sound and audio-AI groups in that section are larger than this list suggests; open the section itself for the full set.
+[Drawing from data](drawing_from_data.md) has short routes into functions, signals, point sets,
+images, geometry, music and audio analysis.
 
 ## Networks and dynamics
 
@@ -100,3 +95,5 @@ Neither section is a worked example. The reference is for looking something up; 
     Many pictures and videos on these pages are captured by running their examples in Field.
     [Building the Docs & Running the Tests](building_and_testing.md) has the build command and its
     capture modes, and [Code Diff Player](diff-player.md) lists the attributes a capture fence can carry.
+
+For a visual overview of the connections between pages, open the [map of the docs](docs_map.md).

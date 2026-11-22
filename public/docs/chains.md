@@ -150,6 +150,12 @@ These chains end in something you could print, mount, hang or light.
 
 </div>
 
+## From a rule, outline or tracked movement
+
+- [A Generator, Graded by Datalog](chain_flow_islands.md) measures the regions a generator makes.
+- [A Word Cut as a Stencil](chain_stencil_bridges.md) adds bridges that hold the islands inside letters in place.
+- [A Tracked Body, Measured and Heard](chain_tracked_body.md) turns body poses into measurements and sound.
+
 ## Studio tools from MADP
 
 MADP is Media Arts and Design Practice at the University of Chicago. Its tools are single-page

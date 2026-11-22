@@ -655,3 +655,7 @@ constraint solve rather than a steering instruction, see
 loop, [Frames and the animation loop](animation_time_model.md).
 
 *The public declarations used on this page are listed, with their KDoc, in the codebase reference: [`movement.kt`](reference/simulation.md#movement-kt). Start from [what's already in the box](reference/index.md).*
+
+## See also
+
+[Generative Mocap](motion_recordings.md) covers playing a recorded movement or driving a learned body.

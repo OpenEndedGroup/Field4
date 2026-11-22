@@ -802,3 +802,11 @@ Memory is the library's own `malloc`, via its `manifold_alloc_*` / `manifold_del
 than an FFM `Arena`. A confined `Arena` can only be used from the thread that made it, and a `Solid`
 built in a box is routinely read from the runloop thread; a shared one costs a thread handshake to
 close. `malloc` has neither problem, and the `Cleaner` sits behind it.
+
+## See also
+
+Write a solid as a composition of primitives and operations in
+[solidsl](solid_notation.md), fill a closed surface with tetrahedra using [TetGen](tetgen.md),
+or bring an existing model in with [Geometry from disk](geometry_from_disk.md).
+
+[SolidCraft](solidcraft.md) builds parametric designs whose parts can be edited before export.

@@ -198,3 +198,8 @@ their own exported media.
 - [Graphics in an Output Area](four_in_output_areas.md): Vulkan rendering inside a panel.
 - [Where Field's Output Goes](logging.md): output that is not a box's own, from the server and its
   logs.
+
+For the rules governing height, width and scrolling, see
+[How an output panel decides its size](output_panel_sizing.md).
+
+To run and interact with a command-line program from a box, see [A Terminal in a Box](terminal.md).

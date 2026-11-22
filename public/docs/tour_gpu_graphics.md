@@ -245,3 +245,7 @@ A web browser, including Field's HTTP mirror, shows a message in place of the fr
 
 Next on the Tour, [Looking at Data](tour_data.md) starts with values you can inspect in a box and
 works up to a live GPU probe.
+
+## See also
+
+[Satellites and orbits](satellites.md) uses GPU drawing to show trajectories in motion.

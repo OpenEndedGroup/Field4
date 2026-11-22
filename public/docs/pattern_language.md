@@ -1124,6 +1124,11 @@ crosses bar lines plays correctly without the consumer knowing anything about cy
 - [Audio render and analysis](audio_render_analysis.md) renders a pattern to a file and
   transcribes audio back into one.
 
+## See also
+
+Use [a pattern as a function generator](marf.md) to feed a sequence of functions
+to a drawing, or [turn audio into a few controls](audio_curves.md) to drive a drawing from a recording.
+
 ## API reference
 
 Implementation and parameter details for the helpers used above:

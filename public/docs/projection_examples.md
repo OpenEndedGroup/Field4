@@ -702,3 +702,8 @@ coefficients the fences use to check themselves, [Statistics & dependence](stati
 
 *The public declarations used on this page are listed, with their KDoc, in the codebase reference:
 [Data](reference/data.md#smile-mds-kt) and [Math](reference/math.md).*
+
+## See also
+
+If the points already have positions, see [Points into structure](spatial_geometry_examples.md)
+for ways to draw their neighbourhoods and clusters.

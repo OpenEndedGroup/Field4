@@ -334,3 +334,5 @@ panel. The three functions that resize the box themselves, `applyOpen`, `primeAu
 
 - [Box-owned requests](output_requests.md): connect the controls in an iframe to Kotlin, for an
   iframe that edits a shared model.
+- [What a capture can and cannot show](capture_limits.md) explains which areas of the browser or
+  renderer a screenshot can include.

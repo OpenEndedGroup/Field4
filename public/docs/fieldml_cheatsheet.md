@@ -311,3 +311,8 @@ For reactive properties, the read and write forms share the same slot as `prop` 
 Write `setPropUp "speed" 3` in a supplier box, then `propUp "speed"` in a child: a missing
 read runs the supplier first. Use the `Down` forms when changed writes should rerun boxes that
 previously read the slot. A writer that needs both directions uses `setPropUpDown`.
+
+## See also
+
+See [Running code in a box](running_code.md) for the execution model and
+[Properties that re-run boxes](reactive_properties.md) for updating inputs through the box graph.

@@ -179,3 +179,7 @@ The Kotlin calls that build, play and analyse a net.
 | `PetriLayout.TALA` | d2's diagram engine, via the optional `native/field-d2-layout`; draws with `FORCE` when it is absent |
 
 </div>
+
+## See also
+
+For a net that drives drums and graphics, try [A Petri net that throws sparks](chain_petri_sparks.md).

@@ -135,6 +135,11 @@ loop {
     `afield.io.syphon` turns the run loop once per Field frame. Without that, Field's servers were seen
     only by clients that were already listening when they started.
 
+## See also
+
+For graphics inside Field, see [Field 4 Graphics](afield_four_graphics.md).
+[Chromium](puppet_browser.md) supplies a texture from a browser page.
+
 ## API reference
 
 Implementation and parameter details for the helpers used above:

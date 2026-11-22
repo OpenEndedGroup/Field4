@@ -2398,6 +2398,17 @@ draws meshes with no GPU at all, [Splats by tile](geometry_from_disk.md#splats-b
 does the same for Gaussian splats, and [how wrong soft coverage is](rectsl_inverse_animation.md#fitting-against-an-image)
 measures RectSL's differentiable raster against exact area.
 
+### Related rendering projects
+
+- [Chromium](puppet_browser.md) and [video particles](particle_video.md) use browser and video frames as textures.
+  [Syphon](syphon.md) shares frames with other macOS applications.
+- [Streaming diffusion](streaming_diffusion.md) puts live image generation in the render graph.
+  [OpenDLSS-NR](open_dlss_nr.md) applies a neural filter to rendered images.
+- [Particles, cloth and constraints](physics.md) covers particle and constraint simulation.
+  [Pressure membranes](pressure_membranes.md) builds inflated surfaces from pressure and tension.
+- In a headset, put [stereo video in a room](stereo_video.md), use
+  [body and hand tracking](body_tracking.md), or place an [eye-tracked gaze marker](openxr_eye_intersection.md).
+
 ## API reference
 
 - Installing the diffusion-limited aggregation system:

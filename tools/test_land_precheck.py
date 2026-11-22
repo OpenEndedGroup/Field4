@@ -24,6 +24,27 @@ def keys(change: Change) -> set[str]:
     return {check.key for check, _ in precheck.select(change)}
 
 
+class DocsNavigationTest(unittest.TestCase):
+    def test_only_authored_links_from_existing_pages_count(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            docs = repo / "public/docs"
+            docs.mkdir(parents=True)
+            (docs / "guide.md").write_text(
+                '[An experiment](experiment.md#sample)\n'
+                '```text\n[Unlinked](unlinked.md)\n```\n', encoding="utf-8"
+            )
+            (docs / "agent_transcripts.md").write_text("[Unlinked](unlinked.md)", encoding="utf-8")
+            (docs / "experiment.md").write_text("[Unlinked](unlinked.md)", encoding="utf-8")
+            (docs / "unlinked.md").write_text("# Unlinked", encoding="utf-8")
+            change = Change({
+                "public/docs/experiment.md": "A",
+                "public/docs/unlinked.md": "A",
+                "public/docs/guide.md": "M",
+            })
+            self.assertEqual(["unlinked.md"], precheck.new_pages_without_inbound_links(repo, change))
+
+
 class SelectionTest(unittest.TestCase):
     """The diffs below are cut down from the bounced commits named in each test."""
 

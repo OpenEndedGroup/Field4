@@ -563,6 +563,8 @@ built on. The API is in [Machine learning](reference/machine-learning.md) and
     figures are screenshots of the live system, because the native window capture takes stills
     only.
 
+Compare the learned rules here with the hand-written interactions in [Particle Lenia](particle_lenia.md).
+
 ## API reference
 
 - Sampling and integrating the learned flow:

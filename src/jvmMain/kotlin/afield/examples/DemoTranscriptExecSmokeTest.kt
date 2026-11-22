@@ -96,6 +96,7 @@ object DemoTranscriptExecSmokeTest {
 
     /** Pure-compute demos that are safe to run to completion headless. */
     internal val EXECUTE = setOf(
+        "polytope_pick_lineage",
         // afield_four_graphics.md, Rasterising with stream kernels: Gezira kernels, Skia beside them; pure CPU.
         "nile_gezira_kernels",
         // geometry_from_disk.md, Splats by tile: SplatTiles binning, heat map and schedule timing; pure CPU.
@@ -1108,6 +1109,8 @@ object DemoTranscriptExecSmokeTest {
         // OSCQuery service on fixed ports, meant to be launched and stopped by hand. MqttDemoBundleTest
         // checks the bundle opens.
         "mqtt_demo",
+        // The routing page runs the broker and publisher during its real capture.
+        "mqtt_datalog_routing",
         "oscquery_demo",
         // dmx_lighting.md's demo: `loop { }` boxes on Art-Net's and sACN's fixed UDP ports (6454,
         // 5568). DmxLightingDemoBundleTest checks the bundle; the page's fences run each box's

@@ -511,3 +511,7 @@ Redefine `line` while it runs and the next step plays the new program. Stopping 
 Use `see name` to check that the word running is the definition you think it is, and read the error before adding prints: it already names the failing token, the stack and the chain of word calls.
 
 Builtins and your own words share one dictionary, so `: dup ... ;` replaces the real `dup` for the rest of the run, with a warning in the output; `forget dup` brings the builtin back.
+
+## See also
+
+[Nano examples](nano_examples.md) explores a smaller instruction set, with views of its registers and RAM.
