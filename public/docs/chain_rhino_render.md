@@ -12,7 +12,7 @@ cylinder, a plate with a hole, two boxes and two SubD boxes, saved without the r
 usually stores. Every surface in the picture was tessellated from its exact NURBS description when
 the file was read.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_rhino_render/trace.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="rhino trace converged" embed=true hidden=true timeout="300" requires="opennurbs" name="chain-rhino-trace" alt="A path-traced Rhino file over a pale floor under an evening sky: a blue sphere, a blue capped cylinder and a blue plate with a round hole, two orange boxes, and two green SubD cubes, one rounded and one sharp-edged" macro-file="../../dev_docs/agents/transcripts/rhino_path_trace.yaml" capture-box="rhino_path_trace"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_rhino_render/trace.png" capture="native-window" max-width="1600" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="rhino trace converged" embed=true hidden=true timeout="300" requires="opennurbs" name="chain-rhino-trace" alt="A path-traced Rhino file over a pale floor under an evening sky: a blue sphere, a blue capped cylinder and a blue plate with a round hole, two orange boxes, and two green SubD cubes, one rounded and one sharp-edged" macro-file="../../dev_docs/agents/transcripts/rhino_path_trace.yaml" capture-box="rhino_path_trace"}
 // Built and launched from dev_docs/agents/transcripts/rhino_path_trace.yaml.
 ```
 
