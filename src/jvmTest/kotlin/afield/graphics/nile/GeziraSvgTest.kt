@@ -1,11 +1,15 @@
 package afield.graphics.nile
 
+import afield.geometry.path.FLine
+import afield.graphics.render.color
+import afield.graphics.render.filled
+import afield.graphics.render.stroked
+import afield.graphics.render.thickness
 import kotlin.math.abs
 import kotlin.math.hypot
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -135,25 +139,27 @@ class GeziraSvgTest {
     fun styleIsInheritedAndOverridden() {
         val doc = GeziraSvg.parse(styled)
         assertContentEquals(doubleArrayOf(0.0, 0.0, 100.0, 50.0), doc.viewBox)
-        assertEquals(listOf("a", "b", "c", "d", "e"), doc.shapes.map { it.id })
+        // A filled and stroked element is two FLines, the fill first.
+        assertEquals(listOf("a", "b", "c", "d", "d", "e", "e"), doc.lines.map { it.svgId })
+        assertEquals(5, doc.elements)
         assertEquals(mapOf("linearGradient" to 1), doc.skipped)
-        val (a, b, c, d, e) = doc.shapes
-        assertEquals(Rgba.of(1.0, 0.0, 0.0, 0.5), a.fill)
+        val (a, b, c, d) = doc.lines
+        fun rgba(l: FLine) = listOf(l.color.x, l.color.y, l.color.z, l.color.w).map { it.toDouble() }
+        assertEquals(listOf(1.0, 0.0, 0.0, 0.5), rgba(a))
+        assertTrue(a.filled && !a.stroked, "style stroke:none overrides the inherited stroke")
         assertEquals(FillRule.EVEN_ODD, a.fillRule)
-        assertNull(a.stroke, "style stroke:none overrides the inherited stroke")
         // translate(10 0) scale(2): (10, 10) -> (30, 20).
-        assertEquals(listOf(30.0, 0.0, 30.0, 20.0), pts(a.subpaths[0].beziers[1]))
-        assertEquals(Rgba.of(0.0, 1.0, 0.0, 0.25), b.fill)
-        assertEquals(listOf(12.0, 4.0, 18.0, 4.0), pts(b.subpaths[0].beziers[0]))
-        assertNull(c.fill)
-        assertEquals(Rgba.of(0.0, 0.0, 1.0, 0.5), c.stroke)
-        assertEquals(2.0, c.strokeWidth)
-        assertEquals(4, c.subpaths[0].beziers.size)
+        assertEquals(listOf(30.0, 0.0, 30.0, 20.0), pts(Gezira.subpaths(a)[0][1]))
+        assertEquals(listOf(0.0, 1.0, 0.0, 0.25), rgba(b))
+        assertEquals(listOf(12.0, 4.0, 18.0, 4.0), pts(Gezira.subpaths(b)[0][0]))
+        assertTrue(c.stroked && !c.filled)
+        assertEquals(listOf(0.0, 0.0, 1.0, 0.5), rgba(c))
+        assertEquals(2.0, c.thickness)
+        assertEquals(4, Gezira.subpaths(c)[0].size)
         assertEquals(FillRule.NON_ZERO, c.fillRule)
-        assertEquals(3, d.subpaths[0].beziers.size, "a polygon closes itself")
-        assertTrue(d.subpaths[0].closed)
-        assertEquals(Rgba.of(0.0, 0.0, 0.0, 1.0), e.fill, "fill defaults to black")
-        assertEquals(1.0, e.strokeWidth)
+        assertEquals(3, Gezira.subpaths(d)[0].size, "a polygon closes itself")
+        assertEquals(listOf(0.0, 0.0, 0.0, 1.0), rgba(doc.lines[5]), "fill defaults to black")
+        assertEquals(1.0, doc.lines[6].thickness)
         // The view box fits 200 x 100 at scale 2.
         assertEquals(20.0, doc.fit(200, 100).x(10.0, 0.0))
     }
@@ -179,7 +185,7 @@ class GeziraSvgTest {
         val doc = GeziraSvg.parse(text)
         println(doc)
         // 240 paths, one of them "M-65.4,9z", which paints nothing.
-        assertEquals(239, doc.shapes.size)
+        assertEquals(239, doc.elements)
         assertEquals(2184, doc.segments)
         assertTrue(doc.skipped.isEmpty(), "skipped ${doc.skipped}")
         val n = 200
