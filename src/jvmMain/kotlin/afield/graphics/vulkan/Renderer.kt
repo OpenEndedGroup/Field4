@@ -2203,6 +2203,13 @@ class Renderer(
 
     fun getProfiler(): GpuProfiler? = defaultContext.profilerState?.profiler
 
+    /**
+     * GPU time of the last profiled frame's compute pass, in milliseconds, from timestamps around it;
+     * NaN until a frame has been profiled. Needs [Options.profiling].
+     */
+    @Volatile
+    var lastGpuComputeMs: Double = Double.NaN
+
     private fun resolveProfilingForImage(context: WindowContext, imageIndex: Int) {
         val ps = context.profilerState ?: return
         synchronized(ps.lock) {
@@ -2238,6 +2245,7 @@ class Renderer(
                 if (frameBegin != null && afterCompute != null && afterGraphics != null && frameEnd != null) {
                     val frameNs = frameEnd - frameBegin
                     val computeNs = afterCompute - frameBegin
+                    lastGpuComputeMs = computeNs / 1e6
                     val graphicsNs = afterGraphics - afterCompute
                     val postNs = frameEnd - afterGraphics
                     lprintln(
