@@ -34,9 +34,12 @@ What it reads
 What it writes (``build/docs_link_graph/`` by default)
 ------------------------------------------------------
 * ``report.md`` — hubs (in-degree, PageRank, HITS hub/authority), bridges (betweenness), orphans
-  and dead ends, the system×system link matrix and the systems that keep to themselves, code
-  with public API that no page or transcript reaches, short and long pages, and age: pages the
-  code they cite has moved on from, and pages nothing newer links to.
+  and dead ends, the system×system link matrix and the systems that keep to themselves, how far
+  each section's main page reaches into it and pages filed away from their neighbours, code with
+  public API that no page or transcript reaches, page pairs (and hubs) whose code reaches the same
+  files but which never link, short and long pages, and age: pages the code they cite has moved
+  on from, when each page was last linked to (``parse_link_log`` dates every link from one
+  ``git log -p`` pass), and pages nothing newer links to.
 * ``graph.html`` — the graph drawn in 3D, self-contained (it inlines Field's vendored three.js and
   d3-force-3d-webgpu, and opens from disk). The page lays itself out live: a force simulation
   (link springs, octree Barnes–Hut repulsion, gravity) over every visible node, in a Web Worker
@@ -495,6 +498,59 @@ def parse_history(log_text: str) -> dict[str, FileHistory]:
     return dict(histories)
 
 
+def page_link_log(repo_root: Path) -> str:
+    """Every change to the hand-written pages, oldest first, as zero-context diffs with renames
+    (a couple of seconds: diffs of Markdown only, nothing to cache)."""
+    return git(repo_root, "log", "-p", "--reverse", "--no-merges", "-M", "--unified=0", "--format=%x00%ct",
+               "--", f"{DOCS_RELATIVE}/*.md", f":!{DOCS_RELATIVE}/assets", f":!{DOCS_RELATIVE}/{REFERENCE_PREFIX}")
+
+
+def parse_link_log(log_text: str, pages: set[str]) -> dict[tuple[str, str], float]:
+    """When each page→page link appeared: the commit where the source's count of lines naming the
+    target went from none to some. A paragraph rewritten in one commit (the line removed and added
+    back) keeps its date, and a rename carries the source's links to its new path. A link to a page
+    that was renamed since resolves only from the rename on, so it dates from then."""
+    prefix = DOCS_RELATIVE + "/"
+    counts: dict[str, collections.Counter] = collections.defaultdict(collections.Counter)
+    appeared: dict[tuple[str, str], float] = {}
+    when, path, renamed_from = 0.0, None, None
+    delta: collections.Counter = collections.Counter()
+
+    def flush() -> None:
+        if path is not None:
+            have = counts[path]
+            for target, change in delta.items():
+                before = have[target]
+                have[target] = max(0, before + change)
+                if before == 0 and have[target] > 0:
+                    appeared[(path, target)] = when
+        delta.clear()
+
+    for line in log_text.splitlines():
+        if line.startswith("\x00"):
+            flush()
+            when, path = float(line[1:] or 0), None
+        elif line.startswith("diff --git "):
+            flush()
+            path, renamed_from = None, None
+            match = re.match(r"diff --git a/.* b/(.*)", line)
+            if match and match.group(1).startswith(prefix):
+                path = match.group(1)[len(prefix):]
+        elif line.startswith("rename from ") and line[12:].startswith(prefix):
+            renamed_from = line[12 + len(prefix):]
+        elif line.startswith("rename to ") and renamed_from and path:
+            counts[path] = counts.pop(renamed_from, collections.Counter())
+            for (source, target) in [k for k in appeared if k[0] == renamed_from]:
+                appeared[(path, target)] = appeared.pop((source, target))
+        elif path and line[:1] in ("+", "-") and not line.startswith(("+++", "---")):
+            for target in link_targets(line[1:]):
+                resolved = resolve_page_target(target, path, pages)
+                if resolved and resolved != path:
+                    delta[resolved] += 1 if line[0] == "+" else -1
+    flush()
+    return {key: added for key, added in appeared.items() if counts[key[0]][key[1]] > 0}
+
+
 # --------------------------------------------------------------------------------------------
 # Graph
 
@@ -671,6 +727,11 @@ def build_graph(
                 commits=item.commits,
                 substantiveCommits=item.substantive_commits,
             )
+        added = parse_link_log(page_link_log(repo_root), set(all_pages))
+        for (source, target), when in added.items():
+            edge = graph.edges.get((page_key(source), page_key(target)))
+            if edge is not None and "links" in edge["kinds"]:
+                edge["added"] = when
     return graph
 
 
@@ -1072,6 +1133,61 @@ def table(headers: list[str], rows: list[list[Any]]) -> list[str]:
     return lines
 
 
+# Pages that should know about each other: what their code reaches. A citation says more than a
+# fence call, and a call more than a prose mention. The docs capture helpers (`screenshot` and the
+# rest under afield/tools) are called from fences on every kind of page, and a file nearly every
+# page reaches (FLine, outputs) says nothing about two pages in particular, so both are left out.
+CODE_KIND_WEIGHT = {"cites": 3.0, "calls": 1.0, "mentions": 0.5}
+CAPTURE_CODE_PREFIX = "src/jvmMain/kotlin/afield/tools/"
+COMMON_CODE_PAGES = 16
+SHARED_CODE_MIN = 0.35
+HUB_CODE_MIN = 0.2
+
+
+def code_vectors(graph: Graph, pages: list[str]) -> dict[str, dict[str, float]]:
+    """Each page's source files, weighted by how it reaches them and by how few pages do (IDF)."""
+    weights: dict[str, collections.Counter] = {}
+    for (source, target), edge in graph.edges.items():
+        if source in pages and target.startswith("code:") and not graph.nodes[target]["path"].startswith(CAPTURE_CODE_PREFIX):
+            weight = sum(CODE_KIND_WEIGHT.get(kind, 0) * n for kind, n in edge["kinds"].items())
+            if weight:
+                weights.setdefault(source, collections.Counter())[target] += weight
+    reach = collections.Counter(c for files in weights.values() for c in files)
+    total = len(weights)
+    return {p: {c: w * math.log(total / reach[c]) for c, w in files.items() if reach[c] < COMMON_CODE_PAGES}
+            for p, files in weights.items()}
+
+
+def _cosine(a: dict[str, float], b: dict[str, float]) -> tuple[float, list[str]]:
+    common = sorted(a.keys() & b.keys(), key=lambda c: -a[c] * b[c])
+    if len(common) < 2:
+        return 0.0, common
+    dot = sum(a[c] * b[c] for c in common)
+    return dot / math.sqrt(sum(x * x for x in a.values()) * sum(x * x for x in b.values())), common
+
+
+def code_neighbours(graph: Graph, pages: list[str], minimum: float = SHARED_CODE_MIN) -> list[tuple[float, str, str, list[str]]]:
+    """Page pairs whose code reaches the same specific files, most similar first, with those files."""
+    vectors = code_vectors(graph, pages)
+    keys = sorted(vectors)
+    found = []
+    for i, a in enumerate(keys):
+        for b in keys[i + 1:]:
+            score, common = _cosine(vectors[a], vectors[b])
+            if score >= minimum:
+                found.append((score, a, b, common))
+    return sorted(found, reverse=True)
+
+
+def code_neighbours_of(graph: Graph, pages: list[str], page: str, minimum: float) -> list[tuple[float, str, list[str]]]:
+    vectors = code_vectors(graph, pages)
+    if page not in vectors:
+        return []
+    found = [(score, other, common) for other in vectors if other != page
+             for score, common in [_cosine(vectors[page], vectors[other])] if score >= minimum]
+    return sorted(found, reverse=True)
+
+
 def analyse(graph: Graph, out_dir: Path, *, top: int, now: float, options: dict[str, bool]) -> str:
     import networkx as nx
 
@@ -1199,6 +1315,32 @@ def analyse(graph: Graph, out_dir: Path, *, top: int, now: float, options: dict[
         singles = sorted(next(iter(c)) for c in components[1:] if len(c) == 1)
         if singles:
             out += [f"- {len(singles)} pages with no hand-written link in or out: " + ", ".join(L(k) for k in singles)]
+
+    near = pg.to_undirected()
+    rows = []
+    for s in systems:
+        members = [k for k in pages if nodes[k]["system"] == s]
+        if len(members) < 5:
+            continue
+        head = max(members, key=lambda k: (pg.in_degree(k), nodes[k]["pagerank"]))
+        reach = nx.single_source_shortest_path_length(near, head, cutoff=2)
+        far = sorted((k for k in members if k not in reach), key=lambda k: nodes[k]["label"])
+        rows.append([s, L(head), pg.in_degree(head), f"{len(far)} of {len(members)}", ", ".join(L(k) for k in far[:8]) + (" …" if len(far) > 8 else "")])
+    out += ["", "**Reach of each section's main page** — its most linked-to page, and the section's pages more than two links from it either way:", ""]
+    out += table(["system", "main page", "in", "beyond two links", "some of them"], sorted(rows, key=lambda r: -int(r[3].split()[0])))
+
+    misfiled = []
+    for k in pages:
+        neighbours = set(near[k]) if k in near else set()
+        if len(neighbours) < 4:
+            continue
+        where = collections.Counter(nodes[n]["system"] for n in neighbours)
+        other, count = next(((s, c) for s, c in where.most_common() if s != nodes[k]["system"]), (None, 0))
+        if other and count / len(neighbours) >= 0.6 and where[nodes[k]["system"]] <= len(neighbours) * 0.2:
+            misfiled.append((count / len(neighbours), k, other, count, len(neighbours), where[nodes[k]["system"]]))
+    out += ["", f"**Filed away from its neighbours** — at least 60% of a page's linked pages sit in one other section and at most 20% in its own ({len(misfiled)}):", ""]
+    out += table(["page", "filed under", "neighbours mostly in", "there / own / all"],
+                 [[L(k), nodes[k]["system"], other, f"{c}/{own}/{n}"] for _, k, other, c, n, own in sorted(misfiled, reverse=True)[:top]])
     out.append("")
 
     # ---- Code
@@ -1226,6 +1368,24 @@ def analyse(graph: Graph, out_dir: Path, *, top: int, now: float, options: dict[
         most = sorted(code_nodes, key=lambda c: -len(readers(c)))[:top]
         out += ["", "**Most-read code** — files the most pages and transcripts reach:", ""]
         out += table(["file", "pages", "transcripts"], [[L(c), sum(nodes[p]["kind"] == "page" for p in readers(c)), sum(nodes[p]["kind"] == "transcript" for p in readers(c))] for c in most])
+
+        similar = code_neighbours(graph, pages)
+        def hops(a: str, b: str) -> str:
+            return "2" if a in near and b in near and set(near[a]) & set(near[b]) else "3+"
+        def shared_files(files: list[str]) -> str:
+            return ", ".join(L(c) for c in files[:4])
+        unlinked = [(s, a, b, f) for s, a, b, f in similar if not pg.has_edge(a, b) and not pg.has_edge(b, a)]
+        out += ["", f"**Share code, no link** — page pairs whose code reaches the same specific source files "
+                f"(IDF-weighted cosine ≥ {SHARED_CODE_MIN:.2f}, at least two files in common; files under "
+                f"`{CAPTURE_CODE_PREFIX}` and files {COMMON_CODE_PAGES}+ pages reach are left out), with no link either way ({len(unlinked)}):", ""]
+        out += table(["page", "page", "similarity", "links apart", "shared files"],
+                     [[L(a), L(b), f"{s:.2f}", hops(a, b), shared_files(f)] for s, a, b, f in unlinked[:top]])
+        hubs_by_in = sorted(pages, key=lambda k: -pg.in_degree(k))[:15]
+        hub_gaps = [(s, h, p, f) for h in hubs_by_in for s, p, f in code_neighbours_of(graph, pages, h, HUB_CODE_MIN)
+                    if not pg.has_edge(h, p) and not pg.has_edge(p, h)]
+        out += ["", f"**Close to a hub, not linked** — the same measure (≥ {HUB_CODE_MIN:.2f}) between one of the 15 most linked-to pages and a page that neither links it nor is linked from it ({len(hub_gaps)}):", ""]
+        out += table(["hub", "page", "similarity", "links apart", "shared files"],
+                     [[L(h), L(p), f"{s:.2f}", hops(h, p), shared_files(f)] for s, h, p, f in sorted(hub_gaps, reverse=True)[:top]])
         out.append("")
 
     # ---- Transcripts
@@ -1282,6 +1442,24 @@ def analyse(graph: Graph, out_dir: Path, *, top: int, now: float, options: dict[
             nodes[k]["newerInLinks"] = len(newer)
             if not newer:
                 never.append(k)
+        last_linked = []
+        for k in dated:
+            added = [graph.edges[(u, k)].get("added") for u in pg.predecessors(k)]
+            added = [a for a in added if a]
+            if added:
+                nodes[k]["lastLinkedIn"] = max(added)
+                if now - (nodes[k].get("created") or now) >= 30 * DAY:
+                    last_linked.append(k)
+        if last_linked:
+            ages = collections.Counter("under 30 days" if now - nodes[k]["lastLinkedIn"] < 30 * DAY
+                                       else "30–60 days" if now - nodes[k]["lastLinkedIn"] < 60 * DAY else "over 60 days"
+                                       for k in last_linked)
+            out += ["", "**Last linked** — when the newest hand-written link into the page was written (the commit where "
+                    "that line first named it; a renamed page's links date from the rename). Pages over 30 days old, "
+                    f"stalest first. Newest link in: " + ", ".join(f"{v} {b}" for b, v in ages.most_common()) + ".", ""]
+            out += table(["page", "system", "last linked", "in", "created", "last edit"],
+                         [[L(k), nodes[k]["system"], day(nodes[k]["lastLinkedIn"]), nodes[k]["inLinks"], day(nodes[k].get("created")), day(nodes[k]["lastEdit"])]
+                          for k in sorted(last_linked, key=lambda k: nodes[k]["lastLinkedIn"])[:top]])
         out += ["", f"**Not integrated** — over 30 days old and no page written since links to it ({len(never)}):", ""]
         out += table(["page", "system", "created", "in", "last edit"],
                      [[L(k), nodes[k]["system"], day(nodes[k].get("created")), nodes[k]["inLinks"], day(nodes[k]["lastEdit"])]
@@ -1297,7 +1475,8 @@ def write_outputs(graph: Graph, out_dir: Path, report: str) -> None:
     (out_dir / "report.md").write_text(report, encoding="utf-8")
     payload = {
         "nodes": [{"id": k, **a} for k, a in graph.nodes.items()],
-        "links": [{"source": s, "target": t, "weight": a["weight"], "kinds": dict(a["kinds"])} for (s, t), a in graph.edges.items()],
+        "links": [{"source": s, "target": t, "weight": a["weight"], "kinds": dict(a["kinds"]),
+                   **({"added": a["added"]} if a.get("added") else {})} for (s, t), a in graph.edges.items()],
     }
     (out_dir / "graph.json").write_text(json.dumps(payload, indent=1, default=str), encoding="utf-8")
     g = to_networkx(graph)
