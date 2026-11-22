@@ -4,7 +4,7 @@ from unittest.mock import patch
 import unittest
 from pathlib import Path
 
-from tools.setup_wivrn_input import matching_nodes, rules, configure_private_serve, register_private_serve_host
+from tools.setup_wivrn_input import matching_nodes, rules, configure_private_serve, register_private_serve_host, register_existing_private_listeners
 
 
 class WiVRnInputSetupTests(unittest.TestCase):
@@ -72,3 +72,23 @@ class WiVRnInputSetupTests(unittest.TestCase):
                 with self.assertRaises(RuntimeError):
                     register_private_serve_host(8443, 9092, Path(directory))
                 self.assertFalse((Path(directory) / '.afield/browser-hosts.json').exists())
+
+    def test_any_invocation_registers_an_existing_private_listener_once(self):
+        serve = {'TCP': {'8443': {'HTTPS': True}, '443': {'HTTPS': True}},
+                 'Web': {'node.test:8443': {'Handlers': {'/': {'Proxy': 'https+insecure://localhost:9092'}}},
+                         'node.test:443': {'Handlers': {'/': {'Proxy': 'https+insecure://localhost:9092'}}}},
+                 'AllowFunnel': {'node.test:443': True}}
+        status = {'Self': {'DNSName': 'node.test.'}}
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            outputs = [json.dumps(serve), json.dumps(status), json.dumps(serve), json.dumps(status)]
+            with patch('tools.setup_wivrn_input.subprocess.check_output', side_effect=outputs):
+                self.assertEqual(register_existing_private_listeners(9092, home), ['node.test:8443'])
+            self.assertEqual(json.loads((home / '.afield/browser-hosts.json').read_text()), ['node.test:8443'])
+            with patch('tools.setup_wivrn_input.subprocess.check_output', side_effect=[json.dumps(serve), json.dumps(status)]):
+                self.assertEqual(register_existing_private_listeners(9092, home), [])
+
+    def test_existing_listener_registration_is_quiet_without_tailscale(self):
+        with tempfile.TemporaryDirectory() as directory, patch('tools.setup_wivrn_input.subprocess.check_output', side_effect=FileNotFoundError):
+            self.assertEqual(register_existing_private_listeners(9092, Path(directory)), [])
+            self.assertFalse((Path(directory) / '.afield').exists())

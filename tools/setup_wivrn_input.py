@@ -121,6 +121,37 @@ def register_private_serve_host(port: int, field_port: int, home: Path | None = 
     print(f'Registered browser host {authority}. Restart Field to load {config}.')
 
 
+def register_existing_private_listeners(field_port: int, home: Path | None = None) -> list[str]:
+    """Register every private HTTPS Serve listener for this Field port that the browser-origin
+    guard does not know yet, so an install from before hostname registration needs no extra step.
+    Does nothing, quietly, where Tailscale is absent or not running."""
+    try:
+        serve = json.loads(subprocess.check_output(['tailscale', 'serve', 'status', '--json'], text=True,
+                                                   stderr=subprocess.DEVNULL) or '{}')
+        host = json.loads(subprocess.check_output(['tailscale', 'status', '--json'], text=True,
+                                                  stderr=subprocess.DEVNULL))['Self']['DNSName'].rstrip('.')
+    except (OSError, subprocess.CalledProcessError, ValueError, KeyError, TypeError):
+        return []
+    home = home or Path(pwd.getpwuid(os.getuid()).pw_dir)
+    config = home / '.afield/browser-hosts.json'
+    try:
+        known = set(json.loads(config.read_text())) if config.exists() else set()
+    except (ValueError, TypeError):
+        return []
+    expected = f'https+insecure://localhost:{field_port}'
+    registered = []
+    for port, listener in sorted((serve.get('TCP') or {}).items()):
+        authority = f'{host}:{port}'
+        handler = (serve.get('Web') or {}).get(authority, {}).get('Handlers', {}).get('/', {})
+        if (authority in known or not port.isdigit() or listener.get('HTTPS') is not True
+                or (serve.get('AllowFunnel') or {}).get(authority, False) is not False
+                or handler.get('Proxy', '').rstrip('/') != expected):
+            continue
+        register_private_serve_host(int(port), field_port, home)
+        registered.append(authority)
+    return registered
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--install', action='store_true', help='Install the rule, reload it, and enable WiVRn HID forwarding')
@@ -141,6 +172,8 @@ def main() -> int:
     if args.enable_forwarding:
         enable_forwarding()
         return 0
+    if os.getuid() != 0 and 1 <= args.field_port <= 65535:
+        register_existing_private_listeners(args.field_port)
     account = pwd.getpwnam(args.user)
     content = rules(account.pw_uid)
     if args.serve_port is not None and not 1024 <= args.serve_port <= 65535:

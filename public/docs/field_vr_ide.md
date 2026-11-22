@@ -161,14 +161,6 @@ translated without relying on a desktop keyboard seat. For example, use layout `
 
 ## A remote browser on the same document
 
-If you installed the helper before hostname registration was added, register the existing private
-listener as your ordinary user, then restart Field. This does not change the listener:
-
-```diffstatic {data-lang=bash}
-python3 tools/setup_wivrn_input.py --register-serve-host 8443
-```
-
-
 The setup helper prints a **Private Field URL** after installing the listener. Open that address
 from a browser with access to the same tailnet. Set its `file` query parameter to the document
 shown in your VR panel; for example, `?file=Field-VR-IDE`. If Field runs on a different port, pass
