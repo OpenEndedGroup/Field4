@@ -100,6 +100,21 @@ macro run nile_gezira_kernels
 
 [Open →](offline.html?file=assets/agent_transcripts/nile_gezira_kernels/metadata.edn)
 
+### nile_gezira_svg
+
+**SVG into Gezira, and the tiger.** `GeziraSvg` reads SVG path data, shapes, nested transforms and
+inherited paint into Bézier lists. One box reads a small hand-written SVG and draws it; the next
+draws the Ghostscript tiger through the Gezira kernels beside Skia's own SVG renderer and their
+difference times ten, with counts and stage timings; the last hands the tiger to Field as FLines.
+See [The SVG tiger](afield_four_graphics.md#the-svg-tiger).
+
+```diffstatic {data-lang=text}
+macro write nile_gezira_svg --file dev_docs/agents/transcripts/nile_gezira_svg.yaml
+macro run nile_gezira_svg
+```
+
+[Open →](offline.html?file=assets/agent_transcripts/nile_gezira_svg/metadata.edn)
+
 ### knight_tour_workshop
 
 **Knight tours, many ways of drawing a move.** Five connected CPU-only FLine boxes:
