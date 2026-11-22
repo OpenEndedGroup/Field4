@@ -5,7 +5,7 @@ val n = 300
 val svg = GeziraSvg.tiger()
 val doc = GeziraSvg.parse(svg)
 val probe = GpuProbe(renderer, "gezira-gpu-tiger-compare")
-val scene = GeziraGpuScene(probe, GeziraGpuScene.paths(doc.lines), n, n, transform = doc.fit(n, n))
+val scene = GeziraGpuScene.of(probe, doc.lines, n, n, doc.fit(n, n))
 
 frames {
     try {
@@ -14,8 +14,18 @@ frames {
         // a written image is not a finished chain: let all five stages run whole
         while (probe.stageList.any { !it.valid }) frame()
         repeat(4) { frame() }
+        // the renderer runs on its own thread: hold the picture still before reading it
+        scene.hold = true
+        repeat(3) { frame() }
         val gpu = scene.read()
+        scene.hold = false
+        val cpuStart = System.nanoTime()
         val cpu = GeziraSvg.render(doc, n, n).canvas.rgba
+        val cpuMs = (System.nanoTime() - cpuStart) / 1e6
+        // Field's frames over a second, with this scene and the live tiger box both drawing.
+        val frameStart = System.nanoTime()
+        repeat(60) { frame() }
+        val frameMs = (System.nanoTime() - frameStart) / 1e6 / 60
         var worst = 0.0
         var sum = 0.0
         for (i in gpu.indices) {
@@ -38,6 +48,15 @@ frames {
             }
         }
         display("gpu | cpu | difference x10", GeziraSvg.png(sheet, w, n))
+        display(
+            "readout",
+            "<pre style='margin:0'>" +
+                "${scene.paths.size} paths, ${scene.curveCount} curves, ${n} x ${n}\n" +
+                "gpu vs cpu per channel: largest %.4f, mean %.1e\n".format(worst, sum / gpu.size) +
+                "frame, both scenes on the gpu: %.1f ms\n".format(frameMs) +
+                "cpu GeziraSvg.render: %.0f ms".format(cpuMs) +
+                "</pre>",
+        )
     } finally {
         probe.close()
     }

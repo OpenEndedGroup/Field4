@@ -4,14 +4,13 @@ import afield.graphics.vulkan.util.GpuProbe
 val N = 900
 val doc = GeziraSvg.parse(GeziraSvg.tiger())
 // Every fill and every stroke outline, in paint order, uploaded once.
-val paths = GeziraGpuScene.paths(doc.lines)
 val fit = doc.fit(N, N)
 val probe = GpuProbe(renderer, "gezira-gpu-tiger")
-val scene = GeziraGpuScene(probe, paths, N, N, transform = fit)
+val scene = GeziraGpuScene.of(probe, doc.lines, N, N, fit)
 
 prop<FrameBufferGroup>(tigerImage) = scene.image
 prop<Int>(tigerSize) = N
-println("${paths.size} paths, ${scene.curveCount} curves")
+println("${scene.paths.size} paths, ${scene.curveCount} curves")
 
 // Turn and breathe about the middle: only the six numbers of the transform change per frame.
 var frames = 0

@@ -2,7 +2,7 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 25694 of 42933 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 25698 of 42937 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
 **2083 undocumented entry points** (types, top-level functions and values) and 14388 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
@@ -770,7 +770,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [UserMemory.kt](../src/jvmMain/kotlin/afield/ai/memory/UserMemory.kt) | Machine learning | — | 0 | 8 | 66% |
 | [fline_graph_connectivity.kt](../src/jvmMain/kotlin/afield/data/graph/fline_graph_connectivity.kt) | Graphics | — | 0 | 8 | 38% |
 | [HistoryMetrics.kt](../src/jvmMain/kotlin/afield/document/history/HistoryMetrics.kt) | Workspace | — | 0 | 8 | 11% |
-| [GeziraGpuScene.kt](../src/jvmMain/kotlin/afield/graphics/nile/GeziraGpuScene.kt) | Graphics | — | 0 | 8 | 60% |
+| [GeziraGpuScene.kt](../src/jvmMain/kotlin/afield/graphics/nile/GeziraGpuScene.kt) | Graphics | — | 0 | 8 | 66% |
 | [OpenDlssNrImage.kt](../src/jvmMain/kotlin/afield/graphics/render/neural/OpenDlssNrImage.kt) | Graphics | — | 0 | 8 | 20% |
 | [BodySegments.kt](../src/jvmMain/kotlin/afield/graphics/scene/body/BodySegments.kt) | Graphics | — | 0 | 8 | 52% |
 | [ReadingFrostSurface.kt](../src/jvmMain/kotlin/afield/graphics/scene/reading/ReadingFrostSurface.kt) | Graphics | — | 0 | 8 | 20% |

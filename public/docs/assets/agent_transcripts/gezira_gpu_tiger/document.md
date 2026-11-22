@@ -35,7 +35,7 @@ start(renderer::run)
 <!-- field-box id="ggt_tiger" index="1" -->
 
 ```edn [field-box id="ggt_tiger" role="properties"]
-{"id" "ggt_tiger" "index" 1 "name" "tiger on the gpu" "parents" ["root" "ggt_renderer"] "children" ["ggt_draw"] "properties" {"children" #{#afield/box "ggt_draw"} "parents" #{#afield/box "root" #afield/box "ggt_renderer"} "name" "tiger on the gpu" "_tombstone" false "frame" #afield/rect [40.0 200.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ggt_tiger_code_.kt" "lines" 36 "characters" 1213 "sha256" "626982ad1642dc0c109cf1f23494e2357d96538116e30a5b4595185b0b22d206"}]}
+{"id" "ggt_tiger" "index" 1 "name" "tiger on the gpu" "parents" ["root" "ggt_renderer"] "children" ["ggt_draw"] "properties" {"children" #{#afield/box "ggt_draw"} "parents" #{#afield/box "root" #afield/box "ggt_renderer"} "name" "tiger on the gpu" "_tombstone" false "frame" #afield/rect [40.0 200.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ggt_tiger_code_.kt" "lines" 35 "characters" 1170 "sha256" "670239a36c94c7a671f04312943da909f547a8b8d43fd76bf4e0f188570ee89a"}]}
 ```
 
 ```kotlin [field-property box="ggt_tiger" name="code" path="ggt_tiger_code_.kt"]
@@ -45,14 +45,13 @@ import afield.graphics.vulkan.util.GpuProbe
 val N = 900
 val doc = GeziraSvg.parse(GeziraSvg.tiger())
 // Every fill and every stroke outline, in paint order, uploaded once.
-val paths = GeziraGpuScene.paths(doc.lines)
 val fit = doc.fit(N, N)
 val probe = GpuProbe(renderer, "gezira-gpu-tiger")
-val scene = GeziraGpuScene(probe, paths, N, N, transform = fit)
+val scene = GeziraGpuScene.of(probe, doc.lines, N, N, fit)
 
 prop<FrameBufferGroup>(tigerImage) = scene.image
 prop<Int>(tigerSize) = N
-println("${paths.size} paths, ${scene.curveCount} curves")
+println("${scene.paths.size} paths, ${scene.curveCount} curves")
 
 // Turn and breathe about the middle: only the six numbers of the transform change per frame.
 var frames = 0
@@ -82,7 +81,7 @@ loop {
 <!-- field-box id="ggt_compare" index="2" -->
 
 ```edn [field-box id="ggt_compare" role="properties"]
-{"id" "ggt_compare" "index" 2 "name" "gpu beside cpu" "parents" ["root" "ggt_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "ggt_renderer"} "name" "gpu beside cpu" "_tombstone" false "frame" #afield/rect [460.0 200.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ggt_compare_code_.kt" "lines" 44 "characters" 1615 "sha256" "a9977b7778aad1be34ca7dad48a23a4041c61381c866ec4a01f624236938f97b"}]}
+{"id" "ggt_compare" "index" 2 "name" "gpu beside cpu" "parents" ["root" "ggt_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "ggt_renderer"} "name" "gpu beside cpu" "_tombstone" false "frame" #afield/rect [460.0 200.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ggt_compare_code_.kt" "lines" 63 "characters" 2533 "sha256" "da63e8953d3c6fdd2420334c5a3e5c4aa4965e107940a922fca9b435cb17c646"}]}
 ```
 
 ```kotlin [field-property box="ggt_compare" name="code" path="ggt_compare_code_.kt"]
@@ -93,7 +92,7 @@ val n = 300
 val svg = GeziraSvg.tiger()
 val doc = GeziraSvg.parse(svg)
 val probe = GpuProbe(renderer, "gezira-gpu-tiger-compare")
-val scene = GeziraGpuScene(probe, GeziraGpuScene.paths(doc.lines), n, n, transform = doc.fit(n, n))
+val scene = GeziraGpuScene.of(probe, doc.lines, n, n, doc.fit(n, n))
 
 frames {
     try {
@@ -102,8 +101,18 @@ frames {
         // a written image is not a finished chain: let all five stages run whole
         while (probe.stageList.any { !it.valid }) frame()
         repeat(4) { frame() }
+        // the renderer runs on its own thread: hold the picture still before reading it
+        scene.hold = true
+        repeat(3) { frame() }
         val gpu = scene.read()
+        scene.hold = false
+        val cpuStart = System.nanoTime()
         val cpu = GeziraSvg.render(doc, n, n).canvas.rgba
+        val cpuMs = (System.nanoTime() - cpuStart) / 1e6
+        // Field's frames over a second, with this scene and the live tiger box both drawing.
+        val frameStart = System.nanoTime()
+        repeat(60) { frame() }
+        val frameMs = (System.nanoTime() - frameStart) / 1e6 / 60
         var worst = 0.0
         var sum = 0.0
         for (i in gpu.indices) {
@@ -126,6 +135,15 @@ frames {
             }
         }
         display("gpu | cpu | difference x10", GeziraSvg.png(sheet, w, n))
+        display(
+            "readout",
+            "<pre style='margin:0'>" +
+                "${scene.paths.size} paths, ${scene.curveCount} curves, ${n} x ${n}\n" +
+                "gpu vs cpu per channel: largest %.4f, mean %.1e\n".format(worst, sum / gpu.size) +
+                "frame, both scenes on the gpu: %.1f ms\n".format(frameMs) +
+                "cpu GeziraSvg.render: %.0f ms".format(cpuMs) +
+                "</pre>",
+        )
     } finally {
         probe.close()
     }
