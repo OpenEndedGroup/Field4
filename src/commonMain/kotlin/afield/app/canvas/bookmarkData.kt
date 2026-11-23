@@ -29,11 +29,19 @@ data class Bookmark(
     /** Restore the selected box, the property open in Monaco and the cursor. */
     val restoreSelection: Boolean = true,
     /** Also close every output panel the bookmark did not record (not just recorded-closed ones). */
-    val closeUnrecordedOutputs: Boolean = false
+    val closeUnrecordedOutputs: Boolean = false,
+    val layerState: BookmarkLayerState? = null
 ) {
     /** The slot, 1-9, from the id `bookmark_N`. */
     val slot: Int? get() = id.removePrefix("bookmark_").toIntOrNull()
 }
+
+@Serializable
+data class BookmarkLayerState(
+    val visible: List<String>,
+    val active: String?,
+    val drawingVisible: Boolean
+)
 
 @Serializable
 data class ScrollPosition(
