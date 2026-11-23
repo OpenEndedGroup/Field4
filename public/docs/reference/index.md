@@ -484,7 +484,7 @@ To see it all at once, open the [map of the docs](../docs_map.md): every page, a
 
 ### graphics
 
-- [color](graphics.md#colormaps-kt)
+- [color](graphics.md#colorcoordinates-kt)
 - [interaction](graphics.md#pointing-kt)
 - [lighting](graphics.md#lighting-kt)
 - [nile](graphics.md#gezira-kt)
@@ -687,7 +687,7 @@ To see it all at once, open the [map of the docs](../docs_map.md): every page, a
 
 ## Reference pages
 
-**43085 public symbols across 1913 source files**, 25804 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**43119 public symbols across 1915 source files**, 25832 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -700,7 +700,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Video](video.md) | 14 | 195 | 194 (99%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 60 | 2524 | 1904 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 27 | 1231 | 570 (46%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 453 | 10927 | 6963 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 455 | 10961 | 6991 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 48 | 911 | 515 (56%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 596 | 440 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 787 | 530 (67%) | Nonlinear least squares, aimed at geometry. |
@@ -977,11 +977,13 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [CodeUseTelemetrySidecarStoreSmokeTest.kt](examples.md#codeusetelemetrysidecarstoresmoketest-kt) | Examples · internal | 2 | 0 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [CodeUseTelemetrySmokeTest.kt](examples.md#codeusetelemetrysmoketest-kt) | Examples · internal | 2 | 0 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [CollectionLiteralCompileAudit.kt](internal.md#collectionliteralcompileaudit-kt) | Internal · internal | 2 | 1 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>color/<wbr></small> [ColorCoordinates.kt](graphics.md#colorcoordinates-kt) | Graphics | 16 | 11 |  | [Color trajectories and palettes](../colors_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>color/<wbr></small> [Colormaps.kt](graphics.md#colormaps-kt) | Graphics | 24 | 13 | The colour vocabulary the visualization helpers share: `Color4`, a `[0,1]`-component colour value with no dependencies, and `Colormaps`, eight named ramps that can be sampled at any parameter. | [Imaging and computer vision](../imaging_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>rpn/<wbr></small> [ColorRpn.kt](search.md#colorrpn-kt) | Search | 27 | 27 | A reverse-Polish language whose programs are pictures: tokens push numbers and colours onto a stack, the program runs once per pixel of a square, and what is left on the stack is that pixel's colour. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>rpn/<wbr></small> [ColorRpnEvolution.kt](search.md#colorrpnevolution-kt) | Search | 1 | 1 | The box-facing front of the `ColorRpn` family: one call puts a breeding grid of generated pictures in a box's output panel, and clicking two of them breeds the next generation. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>rpn/<wbr></small> [ColorRpnGenome.kt](search.md#colorrpngenome-kt) | Search | 17 | 17 | The breeding rules for `ColorRpn` programs: what a child of two programs is, and the eight mutations that make one. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>color/<wbr></small> [colors.kt](graphics.md#colors-kt) | Graphics | 15 | 15 | Colour constructors for the stdlib. | [Colors to FLine examples](../colors_examples.md), [Neighbours and graphs on a point cloud](../graph_connectivity_examples.md), [Visualizers, Displays, and Little Instruments](../visualizers.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>color/<wbr></small> [colors.kt](graphics.md#colors-kt) | Graphics | 15 | 15 | Colour constructors for the stdlib. | [Color trajectories and palettes](../colors_examples.md), [Neighbours and graphs on a point cloud](../graph_connectivity_examples.md), [Visualizers, Displays, and Little Instruments](../visualizers.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>color/<wbr></small> [ColorTrajectory.kt](graphics.md#colortrajectory-kt) | Graphics | 18 | 17 |  | [Color trajectories and palettes](../colors_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>device/<wbr></small> [CommandBuffer.kt](graphics.md#commandbuffer-kt) | Graphics | 11 | 11 | A Vulkan command buffer allocated from a `CommandPool`: primary or secondary, one-time-submit or reusable, with `CommandBuffer.beginRecording`, `CommandBuffer.endRecording` and `CommandBuffer.reset`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>device/<wbr></small> [CommandPool.kt](graphics.md#commandpool-kt) | Graphics | 5 | 0 | A Vulkan command pool for one queue family, from which Field allocates command buffers. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>completion/<wbr></small> [CommonMemberPrior.kt](workspace.md#commonmemberprior-kt) | Workspace · internal | 7 | 7 | A ranking prior for the completion popup taken from a type's `CommonMembers` annotation, so that an empty-prefix popup such as a bare `f.` lists the members that matter first. |  |
