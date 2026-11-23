@@ -8,7 +8,7 @@ operations:
     properties:
       code: |
         import afield.graphics.vulkan.util.Options
-        
+
         // Set BEFORE the first renderer in this Field JVM; switching modes needs a fresh JVM.
         val headsetMode = false // true for OpenXR (WiVRn, CloudXR); false for the desktop stereo mirror
         Options.enableVR = headsetMode
@@ -42,7 +42,7 @@ operations:
     properties:
       code: |
         import afield.graphics.scene.reading.*
-        
+
         // A reading diagram whose words and marks carry what they stand for. Picking hands it back:
         // properties on items, annotations on character ranges (innermost first).
         val graph = readingDiagram {
@@ -76,7 +76,7 @@ operations:
     properties:
       code: |
         import afield.graphics.scene.reading.*
-        
+
         prop<StereoDiagramRenderer>(drawing) = StereoDiagramRenderer(renderer, stereo, sumPlayer)
         val ownedDrawing = drawing
         println("drawing ready")
@@ -92,10 +92,10 @@ operations:
     frame: { x: 640.0, y: 800.0, w: 300.0, h: 100.0 }
     properties:
       code: |
-        import afield.graphics.scene.reading.*
         import afield.graphics.interaction.*
+        import afield.graphics.scene.reading.*
         import afield.graphics.vulkan.util.WindowPointer
-        
+
         // Point at the reading space: the mouse over the desktop mirror, or the right controller in a headset.
         // The hovered item stays bright and everything else dims; a click prints what was clicked.
         val pointingDrawing = drawing
@@ -118,10 +118,20 @@ operations:
         fun dimAllBut(keep: DiagramItem) {
             val d = pointingPlayer.diagram
             for (item in d.texts + d.paths + d.dots) if (item !== keep) {
-                val c = when (item) { is DiagramText -> item.color; is DiagramPath -> item.color; is DiagramDot -> item.color; else -> null } ?: continue
+                val c = when (item) {
+                    is DiagramText -> item.color
+                    is DiagramPath -> item.color
+                    is DiagramDot -> item.color
+                    else -> null
+                } ?: continue
                 dimmed[item] = c.w
                 val faint = Vector4f(c).apply { w *= .3f }
-                when (item) { is DiagramText -> item.color = faint; is DiagramPath -> item.color = faint; is DiagramDot -> item.color = faint; else -> {} }
+                when (item) {
+                    is DiagramText -> item.color = faint
+                    is DiagramPath -> item.color = faint
+                    is DiagramDot -> item.color = faint
+                    else -> {}
+                }
             }
         }
         var pointingLit: DiagramItem? = null
@@ -141,7 +151,7 @@ operations:
         }
         pointingDrawing.beforeUpdate = pointingUpdate
         println("pointing ready: mouse over the mirror, or the right controller in a headset")
-        
+
         loop { frame() }
             .end {
                 restoreDimmed()

@@ -1,5 +1,5 @@
-import afield.graphics.scene.reading.*
 import afield.graphics.interaction.*
+import afield.graphics.scene.reading.*
 import afield.graphics.vulkan.util.WindowPointer
 
 // Point at the reading space: the mouse over the desktop mirror, or the right controller in a headset.
@@ -24,10 +24,20 @@ fun restoreDimmed() {
 fun dimAllBut(keep: DiagramItem) {
     val d = pointingPlayer.diagram
     for (item in d.texts + d.paths + d.dots) if (item !== keep) {
-        val c = when (item) { is DiagramText -> item.color; is DiagramPath -> item.color; is DiagramDot -> item.color; else -> null } ?: continue
+        val c = when (item) {
+            is DiagramText -> item.color
+            is DiagramPath -> item.color
+            is DiagramDot -> item.color
+            else -> null
+        } ?: continue
         dimmed[item] = c.w
         val faint = Vector4f(c).apply { w *= .3f }
-        when (item) { is DiagramText -> item.color = faint; is DiagramPath -> item.color = faint; is DiagramDot -> item.color = faint; else -> {} }
+        when (item) {
+            is DiagramText -> item.color = faint
+            is DiagramPath -> item.color = faint
+            is DiagramDot -> item.color = faint
+            else -> {}
+        }
     }
 }
 var pointingLit: DiagramItem? = null

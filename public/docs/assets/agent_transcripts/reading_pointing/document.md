@@ -111,12 +111,12 @@ loop {
 <!-- field-box id="pick_pointing" index="3" -->
 
 ```edn [field-box id="pick_pointing" role="properties"]
-{"id" "pick_pointing" "index" 3 "name" "4 · Pointing" "parents" ["root" "pick_drawing"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "pick_drawing"} "name" "4 · Pointing" "_tombstone" false "frame" #afield/rect [640.0 800.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pick_pointing_code_.kt" "lines" 55 "characters" 2668 "sha256" "4a5ffa4d72396158202c6f3decbab6197efe0b6f57fb4a6f864339469a92ccb0"}]}
+{"id" "pick_pointing" "index" 3 "name" "4 · Pointing" "parents" ["root" "pick_drawing"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "pick_drawing"} "name" "4 · Pointing" "_tombstone" false "frame" #afield/rect [640.0 800.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pick_pointing_code_.kt" "lines" 65 "characters" 2774 "sha256" "cf9e7f21ce2d76277ae12b7a742215201fcd2c38f16d6bad00f7f25eabaef610"}]}
 ```
 
 ```kotlin [field-property box="pick_pointing" name="code" path="pick_pointing_code_.kt"]
-import afield.graphics.scene.reading.*
 import afield.graphics.interaction.*
+import afield.graphics.scene.reading.*
 import afield.graphics.vulkan.util.WindowPointer
 
 // Point at the reading space: the mouse over the desktop mirror, or the right controller in a headset.
@@ -141,10 +141,20 @@ fun restoreDimmed() {
 fun dimAllBut(keep: DiagramItem) {
     val d = pointingPlayer.diagram
     for (item in d.texts + d.paths + d.dots) if (item !== keep) {
-        val c = when (item) { is DiagramText -> item.color; is DiagramPath -> item.color; is DiagramDot -> item.color; else -> null } ?: continue
+        val c = when (item) {
+            is DiagramText -> item.color
+            is DiagramPath -> item.color
+            is DiagramDot -> item.color
+            else -> null
+        } ?: continue
         dimmed[item] = c.w
         val faint = Vector4f(c).apply { w *= .3f }
-        when (item) { is DiagramText -> item.color = faint; is DiagramPath -> item.color = faint; is DiagramDot -> item.color = faint; else -> {} }
+        when (item) {
+            is DiagramText -> item.color = faint
+            is DiagramPath -> item.color = faint
+            is DiagramDot -> item.color = faint
+            else -> {}
+        }
     }
 }
 var pointingLit: DiagramItem? = null
