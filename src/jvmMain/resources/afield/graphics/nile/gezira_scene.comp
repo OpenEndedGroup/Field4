@@ -13,9 +13,17 @@ layout(std430, buffer_reference) buffer Vec4s { vec4 v[]; };
 layout(std430, buffer_reference) buffer Uints { uint v[]; };
 
 #define BAND 16u
+// Shared-memory sizes of the resolve stage; GeziraGpuScene defines them per scene (MAXW its width),
+// since they set how many rows' workgroups fit on a GPU core at once.
+#ifndef NE
 #define NE 512u
+#endif
+#ifndef NY
 #define NY 1536u
+#endif
+#ifndef MAXW
 #define MAXW 2048
+#endif
 #define FIXED 16777216.0
 #define MAX_PIECES 512u
 

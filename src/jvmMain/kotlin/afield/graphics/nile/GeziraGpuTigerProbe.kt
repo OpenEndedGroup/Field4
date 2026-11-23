@@ -160,6 +160,42 @@ object GeziraGpuTigerProbe {
                 }
                 table += "        stages (ms): " + perStage.joinToString(", ")
             }
+            // The resolve stage's shared memory, set by rowEdges, against its time: the same 900 x 900
+            // frame at the old 512 and the default, back to back in one run.
+            val fit900 = doc.fit(900, 900)
+            for (edges in listOf(512, 384, 320, 256)) {
+                val wall = HashMap<Int, Double>()
+                for (repeats in listOf(1, REPEATS)) {
+                    failures += gpuProbe(renderer, "gezira-tiger-900-rowedges-$edges-x$repeats", pump = pump) { probe ->
+                        val scene = GeziraGpuScene(probe, paths, 900, 900, transform = fit900, rowEdges = edges, repeats = repeats)
+                        probe.settle(scene.image, seconds = 60.0)
+                        var waited = 0
+                        while (probe.stageList.any { !it.valid } && waited++ < 600) pump()
+                        wall[repeats] = timeFrames(probe)
+                        probe.verdict("gezira gpu tiger rowEdges $edges x$repeats")
+                    }
+                }
+                table += "  900 x 900, rowEdges %d: wall %.2f ms/frame, pipeline on the GPU %.2f ms".format(
+                    edges, wall.getValue(1), (wall.getValue(REPEATS) - wall.getValue(1)) / (REPEATS - 1))
+            }
+            // Smaller pictures put more of a path's edges in one row: check the default holds them.
+            for (size in listOf(150, 225, 300)) {
+                failures += gpuProbe(renderer, "gezira-tiger-$size-fits", pump = pump) { probe ->
+                    val scene = GeziraGpuScene(probe, paths, size, size, transform = doc.fit(size, size))
+                    probe.settle(scene.image, seconds = 60.0)
+                    var waited = 0
+                    while (probe.stageList.any { !it.valid } && waited++ < 600) pump()
+                    repeat(4) { pump() }
+                    probe.idle()
+                    scene.resetOverflow()
+                    repeat(3) { pump() }
+                    probe.idle()
+                    val over = scene.overflow()
+                    println("  $size: widest run ${scene.widestRun()} edges")
+                    probe.exactly("row edges dropped ($size)", over[2], 0, buffer = "counts")
+                    probe.verdict("gezira gpu tiger fits $size")
+                }
+            }
         } catch (t: Throwable) {
             t.printStackTrace()
             failures++

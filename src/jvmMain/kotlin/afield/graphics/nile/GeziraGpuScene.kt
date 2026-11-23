@@ -45,6 +45,11 @@ class GeziraPath(val beziers: List<Bezier>, val paint: Rgba, val rule: FillRule 
  *
  * @param segmentCapacity segments the buffer holds; pieces past it are dropped and counted in [overflow].
  * @param bandCapacity entries (and runs) each band of 16 rows can hold.
+ * @param rowEdges edges one path can put in one pixel row; more are dropped and counted in [overflow].
+ *   It sizes the resolve stage's shared memory (with room for `2 × rowEdges` crossings, and one
+ *   accumulator per column of [width]), and that is what sets how many rows a GPU core resolves at
+ *   once: on an M-series Mac, 256 here resolves the 900 × 900 tiger in about two thirds of the time
+ *   512 does (`dev_docs/GEZIRA_GPU_TIMING.md`).
  * @param repeats dispatches of each stage per frame: 1 to draw, more only to time the pipeline as the
  *   difference between frames with several and with one (repeats run back to back and each stage is
  *   idempotent, so the picture is the same).
@@ -60,11 +65,13 @@ class GeziraGpuScene(
     @Volatile var tolerance: Double = 0.02,
     segmentCapacity: Int = 1 shl 20,
     bandCapacity: Int = 1 shl 15,
+    val rowEdges: Int = 256,
     repeats: Int = 1,
     repeatStage: Int = -1,
 ) {
     init {
         require(width in 1..2048) { "GeziraGpuScene draws images 1 to 2048 pixels wide, not $width" }
+        require(rowEdges in 16..512) { "rowEdges is 16 to 512, not $rowEdges" }
     }
 
     /** Curves uploaded, every one a cubic (lines and quadratics are raised exactly). */
@@ -111,7 +118,7 @@ class GeziraGpuScene(
         val glsl = GeziraGpuScene::class.java.getResource("/afield/graphics/nile/gezira_scene.comp")!!.readText()
         val stageNames = listOf("count", "scan", "emit", "bin", "resolve")
         for ((n, name) in stageNames.withIndex()) {
-            val src = glsl.replaceFirst("#version 450\n", "#version 450\n#define STAGE ${n + 1}\n")
+            val src = glsl.replaceFirst("#version 450\n", "#version 450\n#define STAGE ${n + 1}\n#define MAXW ${(width + 31) / 32 * 32}\n#define NE ${rowEdges}u\n#define NY ${3 * rowEdges}u\n")
             val groups = when (n) {
                 0, 2 -> (curveCount + 63) / 64
                 1 -> 1
