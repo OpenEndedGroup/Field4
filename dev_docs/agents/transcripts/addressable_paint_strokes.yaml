@@ -147,7 +147,10 @@ operations:
 
               fun show() {
                   display("main", pngRow([original.render(), sheet.render()]))
-                  markdown("status", "${sheet.strokes.size} strokes, ${sheet.notes.size} notes " + sheet.notes.joinToString { "\"${it.text}\"" })
+                  markdown(
+                      "status",
+                      "${sheet.strokes.size} strokes, ${sheet.notes.size} notes " + sheet.notes.joinToString { "\"${it.text}\"" },
+                  )
               }
 
               // the strokes_* tools: open this box's AI panel and ask it to act on the note

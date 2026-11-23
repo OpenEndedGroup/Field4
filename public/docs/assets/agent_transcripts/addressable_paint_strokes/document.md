@@ -172,7 +172,7 @@ run {
 <!-- field-box id="paint_strokes_note" index="3" -->
 
 ```edn [field-box id="paint_strokes_note" role="properties"]
-{"id" "paint_strokes_note" "index" 3 "name" "3 - A pinned note, for the AI" "parents" ["root" "paint_strokes_creature"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "paint_strokes_creature"} "name" "3 - A pinned note, for the AI" "_tombstone" false "frame" #afield/rect [1500.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "paint_strokes_note_code_.kt" "lines" 20 "characters" 822 "sha256" "d047c9a8937fc9a768555399d7fd9a9bfa20fc16fdb8ac90fc47df022811782a"}]}
+{"id" "paint_strokes_note" "index" 3 "name" "3 - A pinned note, for the AI" "parents" ["root" "paint_strokes_creature"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "paint_strokes_creature"} "name" "3 - A pinned note, for the AI" "_tombstone" false "frame" #afield/rect [1500.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "paint_strokes_note_code_.kt" "lines" 23 "characters" 857 "sha256" "99b40640cae56e38e66d4431bafa209ceb5f8ceb4090b759780b7614cf771872"}]}
 ```
 
 ```kotlin [field-property box="paint_strokes_note" name="code" path="paint_strokes_note_code_.kt"]
@@ -189,7 +189,10 @@ run {
 
     fun show() {
         display("main", pngRow([original.render(), sheet.render()]))
-        markdown("status", "${sheet.strokes.size} strokes, ${sheet.notes.size} notes " + sheet.notes.joinToString { "\"${it.text}\"" })
+        markdown(
+            "status",
+            "${sheet.strokes.size} strokes, ${sheet.notes.size} notes " + sheet.notes.joinToString { "\"${it.text}\"" },
+        )
     }
 
     // the strokes_* tools: open this box's AI panel and ask it to act on the note

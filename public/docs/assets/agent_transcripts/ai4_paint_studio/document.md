@@ -106,7 +106,7 @@ the easel, the tube paints, the kept tools and the hung paintings.
 Needs the paint library: ./gradlew buildPaintNative.
 
 ```edn [field-box id="ai4_paint_studio" role="properties"]
-{"id" "ai4_paint_studio" "index" 1 "name" "Studio" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Studio" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai4_paint_studio_code_.kt" "lines" 983 "characters" 54193 "sha256" "4782c057e85e29059da52e9f418439b26c764b8be363bfb48c45d4aeb0687da5"}]}
+{"id" "ai4_paint_studio" "index" 1 "name" "Studio" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Studio" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai4_paint_studio_code_.kt" "lines" 993 "characters" 54333 "sha256" "7cf208f0127b584feef7afa59a5354195371e7062a9c77a4f336da11cac8f6cd"}]}
 ```
 
 ```kotlin [field-property box="ai4_paint_studio" name="code" path="ai4_paint_studio_code_.kt"]
@@ -976,7 +976,9 @@ else
             onto = { strokesBase() },
         )
         // a paint_* tool paints on the canvas itself, so the strokes laid so far become part of it
-        afterTool({ it.startsWith("paint") }) { _, _ -> if (thisBox.properties.containsKey("studio.strokes")) bakeStrokes() }
+        afterTool({ it.startsWith("paint") }) { _, _ ->
+            if (thisBox.properties.containsKey("studio.strokes")) bakeStrokes()
+        }
 
         context("canvas") {
             val c = canvas()
@@ -1064,18 +1066,26 @@ else
         // and so do the addressable strokes and the canvas under them
         branchState(
             "strokes",
-            save = { f -> if (thisBox.properties.containsKey("studio.strokes")) f.writeText(strokes().toJson()) else f.delete() },
+            save = { f ->
+                if (thisBox.properties.containsKey("studio.strokes")) f.writeText(strokes().toJson()) else f.delete()
+            },
             restore = { f ->
                 bakeStrokes()
-                if (f != null && f.exists()) thisBox.properties["studio.strokes"] = PaintStrokes.fromJson(f.readText(), 900, canvas().aspect, 7)
+                if (f != null && f.exists())
+                    thisBox.properties["studio.strokes"] = PaintStrokes.fromJson(f.readText(), 900, canvas().aspect, 7)
             },
             onConflict = BranchConflict.RESTORE,
             resumeOnOpen = true,
         )
         branchState(
             "strokesBase",
-            save = { f -> if (thisBox.properties.containsKey("studio.strokesBase")) strokesBase().saveState(f.path) else f.delete() },
-            restore = { f -> if (f != null && f.exists()) thisBox.properties["studio.strokesBase"] = PaintCanvas.load(f.path) },
+            save = { f ->
+                if (thisBox.properties.containsKey("studio.strokesBase")) strokesBase().saveState(f.path)
+                else f.delete()
+            },
+            restore = { f ->
+                if (f != null && f.exists()) thisBox.properties["studio.strokesBase"] = PaintCanvas.load(f.path)
+            },
             onConflict = BranchConflict.RESTORE,
             resumeOnOpen = true,
         )
