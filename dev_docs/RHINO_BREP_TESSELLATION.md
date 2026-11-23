@@ -58,3 +58,21 @@ vertices along an edge that the neighbour only gets through the stitch. The stit
 spatial hash in steps of `2 * tolerance`, so a very small explicit tolerance on a large model is
 slow. A non-manifold edge (three faces) is left alone.
 Block members are not evaluated. Tests: `src/jvmTest/kotlin/afield/geometry/rhino/BrepTessellatorTest.kt`.
+
+## Count sweep after topological stitching (2026-11-23)
+
+0ca66277cf changed what a Brep tessellates to. Every published number describing that output was
+checked against whether its capture descends from that commit, and the ones that did not were
+recaptured with `FIELD_DOCS_RUNNER_MODE=always --page chain_rhino_render.md --page rhino_files.md`.
+
+| claim | file | old | new | how measured |
+|---|---|---|---|---|
+| per-object triangles (sphere 3968, capped cylinder 2268, plate 260, boxes 12, SubDs 3072), merged 12664, 0 dropped | `chain_rhino_render.md` readout.png | same | same (byte-identical PNG) | runner recapture |
+| path-traced Save Small scene | `chain_rhino_render.md` trace.png | pre-change capture | recaptured, looked at, no visible change | runner recapture |
+| Save Small viewers (no numbers) | `rhino_files.md` save_small.png | pre-change capture | recaptured, pixel-level change only | runner recapture |
+| round-trip table: open edges 0 on every solid, 260 on the plate | `rhino_files.md` round_trip.png | already post-change (f8668e9875) | same (byte-identical) | runner recapture |
+| 0 open edges on closed Breps and SubD | `Rhino3dmRoundTripTest`, `BrepWatertightTest` | — | assertions already post-change | test source |
+
+Numbers in `manifold.md` and `path_tracing.md` describe Manifold and the tracer's own scenes, not
+Brep tessellation, so none changed. The triangle counts above came out unchanged on this sample; the change shows in shared vertices
+and open edges, not in how many triangles a face gets.
