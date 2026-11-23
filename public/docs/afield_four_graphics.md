@@ -2395,8 +2395,8 @@ a few hundred edges in each row of a small circle, and each band still visits ev
 
 ### A line of text
 
-Glyph outlines are quadratic Béziers, the same input the Gezira tiger is made of. `Gezira.glyphs`
-sets a string with Java's fonts and keeps the quadratics:
+Glyph outlines are quadratic Béziers. (The SVG tiger below is cubics and straight lines; the kernels
+take both.) `Gezira.glyphs` sets a string with Java's fonts and keeps the quadratics:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/gezira-text.png" capture="box" open-outputs="true" padding="20" wait="4" timeout="180" embed=true name="gezira-text" macro-file="../../dev_docs/agents/transcripts/nile_gezira_kernels.yaml" capture-box="gezira_text" alt="Two panels each showing the words Pixels on a screen in a serif face, white on black, the first rasterised by the kernels and the second by Skia; at this size they look the same."}
 // dev_docs/agents/transcripts/nile_gezira_kernels.yaml, box "text beside skia"
