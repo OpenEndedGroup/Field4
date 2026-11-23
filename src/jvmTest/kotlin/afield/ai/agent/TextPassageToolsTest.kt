@@ -1,6 +1,9 @@
 package afield.ai.agent
 
+import afield.ai.conversation.Stability
+import afield.ai.conversation.focusedPassageContext
 import afield.ai.tools.Ai4BackdoorTools
+import afield.ai.tools.ToolFocus
 import afield.ai.tools.ToolExecutionContext
 import afield.ai.tools.ToolRegistry
 import afield.ai.tools.aiToolMapper
@@ -16,6 +19,55 @@ import java.nio.file.Files
 import kotlin.test.*
 
 class TextPassageToolsTest {
+    @Test
+    fun boxChatGetsLivePassageLinksInBothDirectionsAndCanPageOtherChildren() {
+        val folder = Files.createTempDirectory("ai4-passage-chat").toFile()
+        try {
+            val root = Box("root")
+            val info = SessionInformation(filename = folder.path, documentName = "passage chat", root = root, ephemeral = true)
+            root.inside = info
+            val graph = FieldGraphTools(info, InFieldAgentHarnessTest.FakeHost(emptyMap()))
+            val tools = graph.textPassages
+            val source = tools.create(CreateTextNoteRequest("Draft", "Opening line.\n\nAmber pin.\n\nFinal thought."))
+            val amber = tools.create(CreateTextNoteRequest("Amber note", "Check the color.", source.uid, "Amber pin."))
+            val final = tools.create(CreateTextNoteRequest("Ending note", "Keep this short.", source.uid, "Final thought."))
+            val general = tools.create(CreateTextNoteRequest("General note", "About everything.", source.uid))
+            fun context(uid: String, path: String = info.filename) = focusedPassageContext(
+                ToolExecutionContext(fieldGraph = graph, focus = ToolFocus(path, info.boxes.getValue(uid), "contents"))
+            )
+
+            val child = assertNotNull(context(amber.uid))
+            assertEquals(Stability.VOLATILE, child.stability)
+            assertContains(child.text, source.uid)
+            assertContains(child.text, amber.sourceLink)
+            assertContains(child.text, "Amber pin.")
+            assertFalse(child.text.contains("Final thought."))
+            assertNull(context(general.uid))
+            assertNull(context(amber.uid, info.filename + "-other"))
+
+            val parent = assertNotNull(context(source.uid))
+            assertContains(parent.text, amber.uid)
+            assertContains(parent.text, "Check the color.")
+            assertContains(parent.text, final.uid)
+            assertContains(parent.text, "Final thought.")
+            assertFalse(parent.text.contains(general.uid))
+            val firstPage = tools.findLinks(FindTextLinksRequest(box = source.uid, direction = "backlinks", kind = "linked note", limit = 1))
+            val next = assertNotNull(firstPage.nextOffset)
+            val secondPage = tools.findLinks(FindTextLinksRequest(box = source.uid, direction = "backlinks", kind = "linked note", limit = 1, offset = next))
+            assertEquals(setOf(amber.uid, final.uid), (firstPage.links + secondPage.links).map { it.destinationUid }.toSet())
+            assertNull(secondPage.nextOffset)
+
+            info.boxes.getValue(source.uid).setPropertyRaw("contents", "Opening line.\n\nAzure pin.\n\nFinal thought.")
+            assertContains(assertNotNull(context(amber.uid)).text, "Azure pin.")
+            info.boxes.getValue(source.uid).setPropertyRaw("contents", "Opening line.\n\nFinal thought.")
+            val lost = assertNotNull(context(amber.uid)).text
+            assertContains(lost, "\"passageLost\":true")
+            assertContains(lost, "\"lastKnownExcerpt\":\"Azure pin.\"")
+        } finally {
+            folder.deleteRecursively()
+        }
+    }
+
     @Test
     fun realRegistriesCreateEditDiscoverAndTranscludeLiveText() {
         val directory = Files.createTempDirectory("ai4-text-passages").toFile()

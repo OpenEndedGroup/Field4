@@ -251,6 +251,11 @@ more than once, give surrounding text or specify which occurrence to use.
 
 The results include clickable Field links so you can check what the agent found or wrote.
 
+In a linked child’s **AI Chat**, AI4 sees the source box and the passage the
+note annotates. In the source box’s **AI Chat**, it sees the linked children
+and the passages they discuss. AI4 can use `FindTextLinksRequest` to look up
+more children. Lost passages carry their last known excerpt.
+
 ### Review AI4 edits
 
 Ask AI4 to suggest edits to a text frame. Open **Review edits** above the frame
