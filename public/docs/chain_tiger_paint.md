@@ -7,9 +7,11 @@ and its stroke width. [`PaintCanvas`](paint_canvas.md) takes any FLine as a regi
 path to drag a brush along. Put the two together and a vector drawing becomes an oil painting, one
 path at a time, in the order the SVG paints them.
 
-This page is about what that takes for a real artwork rather than a handful of shapes: how to size
-the brush to each shape, why the black stripes go grey unless the paint dries between layers, how
-long it takes, and how a pencil behaves over a few hundred regions.
+The SVG fixes what goes where; everything else is the painter's choice. The same few hundred
+shapes come out as a heavy wet-into-wet oil sketch, slabs of knifed paint, a field of dots, a
+nervous line drawing, a watercolour whose colours run into each other, or a painting blown apart
+with a straw. Staying close to the original is one more choice among these, with its own costs, and
+the page measures it near the end.
 
 ## The tiger as FLines
 
@@ -64,9 +66,176 @@ rings. The SVG's fills are non-zero. For this tiger the two agree on every fill,
 counts, so nothing is lost by handing its FLines to the canvas unchanged. For another drawing, run
 the same count first.
 
-## Three ways to paint it
+## Six ways to interpret it
 
-Every FLine is painted in document order. A fill goes to `work(region, color, handling)`, which
+Each canvas below takes the tiger's FLines in order and hands them to a different part of the
+paint system. All of them are slow enough that the box paints in
+`runInterruptible(Dispatchers.Default)` inside `go { }`, off Field's main loop, and shows the
+canvases when they are done.
+
+The first three are oil:
+
+- **A broad brush, wet into wet.** Every fill is worked with `Handling.Broad` and a brush 40 units
+  wide on an oil ground, whatever the size of the shape, and nothing dries, so each layer drags the
+  one under it along.
+- **A painting knife.** Each shape's own edge becomes the path of a knife loaded with its colour.
+  A long outline is cut into short passes, since a knife stroke takes at most 2000 points.
+- **Stippled.** Every fill is covered with separate dabs of an upright brush, bigger in bigger
+  shapes.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_tiger_paint/gallery_oil.png" wait="5" capture="box" open-outputs="true" padding="18" timeout="600" wait-output="true" wait-output-channel="styles" wait-output-contains="stippled" requires="paint" name="chain-tiger-paint-gallery-oil" embed=true alt="Three interpretations of the tiger side by side. Left, on a warm brown oil ground: broad smeared blocks of orange, black, white and pink brushstrokes, the stripes and mouth only roughly placed and blurred into each other. Middle, on the same ground: ragged slabs and rings of knifed paint following the edges of the shapes, black arcs over the brow, an orange and red ring round the muzzle, a pink loop for the mouth and grey flakes for the fur. Right, on white: the head built from thousands of small dots, golden yellow and orange on top with black dot clusters for the stripes, a pink patch of dots for the mouth and scattered grey and black dots for the fur below."}
+:::static
+import afield.graphics.nile.*
+import afield.graphics.paint.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runInterruptible
+import kotlin.math.abs
+
+val doc = GeziraSvg.parse(GeziraSvg.tiger())
+val v = doc.viewBox
+val view = Rect(v[0], v[1], v[2], v[3])
+fun area(l: FLine) = abs(l.area2D().d)
+
+// One huge brush for everything, on an oil ground, all wet into wet.
+fun broad() = PaintCanvas(420, ground = PaintGround.Oil, view = view, sizeMm = 400.0, seed = 7).apply {
+    for (l in doc.lines) if (l.filled) work(l, l.color, Handling.Broad, width = 40.0, coverage = 0.8, stiff = 0.3)
+}
+
+// Every shape laid with a painting knife dragged round its own edge.
+fun knifed() = PaintCanvas(420, ground = PaintGround.Oil, view = view, sizeMm = 400.0, seed = 8).apply {
+    val k = knife(40.0)
+    for (l in doc.lines) if (l.filled && area(l) > 300) {
+        k.load(l.color, amount = 1.0)
+        // a long outline is cut into knife passes of at most 40 points
+        for (piece in l.pieces()) for (run in piece.sampleByDistance(6f).chunked(40)) {
+            if (run.size < 2) continue
+            val pass = FLine().moveTo(run[0].x.d, run[0].y.d)
+            for (p in run.drop(1)) pass.lineTo(p.x.d, p.y.d)
+            knife(pass, k, pressure = 0.4..0.7)
+        }
+    }
+}
+
+// Dabs of an upright brush, bigger in bigger shapes.
+fun dotted() = PaintCanvas(420, view = view, seed = 9).apply {
+    for (l in doc.lines) if (l.filled) stipple(l, l.color, size = (kotlin.math.sqrt(area(l)) / 12).coerceIn(3.0, 12.0), coverage = 0.8)
+}
+
+go {
+    val canvases = runInterruptible(Dispatchers.Default) { [broad(), knifed(), dotted()] }
+    display("main", pngRow(canvases, relief = 0.8))
+    markdown("styles", "broad brush, wet into wet · painting knife · stippled", width = 520)
+}
+```
+
+The next three leave oil paint behind or attack it afterwards:
+
+- **Searching outlines.** No fills at all: `outline` draws each shape's edge in its own colour the
+  way a hand would, lifting, overlapping and restarting, with a thin rigger.
+- **Watercolour floods.** On paper, `wet(region, microns, paint)` floods each shape with water
+  carrying pigments mixed to its colour. The shapes touch while they are wet, so the black stripes
+  bleed into the orange and darken the whole head.
+- **Blown.** The tiger is painted close to the original, then a straw is blown along every
+  whisker and outline with `blow`, which pushes the wet paint aside into frayed tracks.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_tiger_paint/gallery_mixed.png" wait="5" capture="box" open-outputs="true" padding="18" timeout="600" wait-output="true" wait-output-channel="styles" wait-output-contains="whiskers" requires="paint" name="chain-tiger-paint-gallery-mixed" embed=true alt="Three more interpretations of the tiger. Left, on white: a line drawing in thin broken strokes, each shape's edge in its own colour, orange and red round the muzzle and brow, black dashes for the stripes, green eyes and a pink outlined mouth, with grey fur lines below. Middle, on cream paper: a watercolour where the head has run together into a dark umber and amber wash with black stripes bleeding through, a deep violet mouth, crisp black stripes on the white lower face, and pale grey fur strokes. Right, on white: an oil tiger close to the original but frayed and torn along every whisker and outline, the paint pushed into ragged tracks and speckled edges, the white fur grey and broken."}
+:::static
+import afield.graphics.nile.*
+import afield.graphics.paint.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runInterruptible
+import kotlin.math.abs
+
+val doc = GeziraSvg.parse(GeziraSvg.tiger())
+val v = doc.viewBox
+val view = Rect(v[0], v[1], v[2], v[3])
+fun area(l: FLine) = abs(l.area2D().d)
+
+// No fills at all: each shape's edge drawn by a searching hand, in its own colour.
+fun outlined() = PaintCanvas(420, view = view, seed = 10).apply {
+    val pen = brush(BrushKind.Rigger, 5.0)
+    for (l in doc.lines) if (l.filled && area(l) > 60) {
+        pen.load(l.color)
+        outline(l, pen, OutlineCharacter.Searching)
+    }
+}
+
+// Each shape flooded with water carrying pigments mixed to its colour; neighbours bleed.
+fun water(c: Vec4): WaterPaint {
+    val r = c.x.d
+    val g = c.y.d
+    val b = c.z.d
+    val dark = 1 - maxOf(r, g, b)
+    return Watercolors.sumi * (6.0 * dark * dark) +
+        Watercolors.burntSienna * (3.0 * (r - b).coerceAtLeast(0.0) * (1 - dark)) +
+        Watercolors.cadmiumYellow * (2.0 * (g - b).coerceAtLeast(0.0)) +
+        Watercolors.quinacridoneRose * (2.5 * (r - g - 0.3).coerceAtLeast(0.0)) +
+        Watercolors.viridian * (2.0 * (g - r).coerceAtLeast(0.0))
+}
+fun washed() = PaintCanvas.paper(420, aspect = 1.0, sizeMm = 300.0, seed = 11, view = view).apply {
+    for (l in doc.lines) if (l.filled && minOf(l.color.x, l.color.y, l.color.z) < 0.9f) {
+        wet(l, microns = 120.0, paint = water(l.color))
+    }
+    dry()
+}
+
+// Painted quickly, then blown with a straw along every whisker and outline.
+fun blown() = PaintCanvas(420, view = view, seed = 12).apply {
+    for (l in doc.lines) if (l.filled) {
+        val w = (kotlin.math.sqrt(area(l)) / 6).coerceIn(2.0, 24.0)
+        work(l, l.color, if (area(l) < 2000) Handling.Detail else Handling.Body, width = w, clip = true, hiding = 0.95, stiff = 0.2)
+    }
+    for (l in doc.lines) if (l.stroked) blow(l, radius = 10.0, pressure = 1.0, tendril = 12.0)
+}
+
+go {
+    val canvases = runInterruptible(Dispatchers.Default) { [outlined(), washed(), blown()] }
+    display("main", pngRow(canvases, relief = 0.8))
+    markdown("styles", "searching outlines · watercolour floods · blown along the whiskers", width = 520)
+}
+```
+
+## A looser hand
+
+`outline` takes an `amount` that scales every irregularity of its character, from 0, a clean
+tracing, upwards. This video sweeps it from 0 to 6 in tenths over the same shapes, one drawing a frame:
+
+```diffstatic_runner {data-lang=kotlin video="assets/chain_tiger_paint/looser.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="6.5" fps="10" timeout="600" requires="paint" embed=true name="chain-tiger-paint-looser" alt="The tiger as a coloured line drawing, redrawn several times. At first short broken strokes follow each stripe, the eyes, the muzzle and the mouth closely. Frame by frame the strokes overshoot their corners, double back and wander off the shapes, until the last drawing is a loose scribble of coloured strokes, orange flaring off the back of the head, in which the tiger is still recognisable."}
+:::static
+import afield.graphics.nile.*
+import afield.graphics.paint.*
+import kotlin.math.abs
+
+val doc = GeziraSvg.parse(GeziraSvg.tiger())
+val v = doc.viewBox
+val shapes = doc.lines.filter { it.filled && abs(it.area2D().d) > 60 }
+
+// The same searching hand, from a clean tracing to a loose one, one canvas per frame.
+fun outlined(amount: Double) = PaintCanvas(420, view = Rect(v[0], v[1], v[2], v[3]), seed = 10).apply {
+    val pen = brush(BrushKind.Rigger, 5.0)
+    for (l in shapes) {
+        pen.load(l.color)
+        outline(l, pen, OutlineCharacter.Searching, amount = amount)
+    }
+}
+
+// 0 to 6 in steps of a tenth, one drawing a frame
+val amounts = (0..60).map { it * 0.1 }
+var at = 0
+loop {
+    if (at < amounts.size) {
+        display("main", outlined(amounts[at]).png())
+        display("amount", "amount = ${amounts[at].f1}")
+        at++
+    } else end()
+}
+```
+
+## Staying close to the original
+
+To paint the tiger as drawn, with every shape in its place and its own colour, takes two choices
+the gallery mostly ignores: a brush sized to each shape, and dry paint under each layer. Here they
+are one at a time, with the kernels' picture above as the yardstick. Every FLine is painted in document order. A fill goes to `work(region, color, handling)`, which
 plans and paints strokes that cover the region the way a painter blocks in an area. A stroke gets a
 round brush as wide as its `thickness`, converted from view-box units to the canvas's 1000-unit
 width, and is dragged along the line with `stroke`.
@@ -81,9 +250,7 @@ The three canvases differ in two things:
 - **Sized, and dried after each FLine.** The same, with `dry()` after every path, so each layer
   goes on over dry paint instead of into wet paint.
 
-Painting the tiger takes longer than Field's thirty-second limit for holding the main loop, so the
-box does the painting in `runInterruptible(Dispatchers.Default)` inside `go { }` and shows the
-result when it is done. The table compares each painting with the kernels' picture above, as the
+As in the gallery, the painting runs off the main loop. The table compares each painting with the kernels' picture above, as the
 mean difference per colour channel:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_tiger_paint/strategies.png" wait="5" capture="box" open-outputs="true" padding="18" timeout="420" wait-output="true" wait-output-channel="table" wait-output-contains="strategy" requires="paint" name="chain-tiger-paint-strategies" embed=true alt="Three oil paintings of the tiger side by side on white. Left: the head is a mess of broad horizontal brushstrokes, the black stripes smeared into wide dark patches, the white fur turned grey, and the eyes and mouth blurred, while the thin whiskers are crisp. Middle: the shapes are now in the right places, the stripes, eyes, fangs and mouth recognisable, but the black stripes on the lower face are streaked grey where the white fur paint was worked into them. Right: a clean painting with solid black stripes, white fur, green eyes, cream fangs and a pink mouth, close to the vector original, with brush texture inside each shape. Below, a table of the three strategies with the seconds each took and its mean difference from the kernels' picture, which falls from left to right."}
@@ -161,9 +328,9 @@ The middle painting shows the other half of the problem. Oil paint stays wet, an
 whatever wet paint the brush meets, which is what makes the meadow on
 [Drawn Strokes Become Paint](chain_drawn_paint.md) look painted. Here the SVG paints white fur over
 black stripes and black over orange, and wet into wet those mix to grey and brown. Drying after
-each FLine gives each layer a dry surface, as an SVG renderer's compositing does, at little extra
-cost. Between the two, dry only where a layer must stay clean: `canvas.wait(minutes)` lets paint
-stiffen without drying it completely.
+each FLine gives each layer a dry surface, as an SVG renderer's compositing does, and costs some
+more time again. The table is one measurement among the styles above: the closest copy is also the
+least like paint.
 
 ## In pencil
 

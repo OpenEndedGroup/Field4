@@ -211,7 +211,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [DepthAnything.kt](../src/jvmMain/kotlin/afield/ai/inference/onnx/DepthAnything.kt) | Machine learning | onnx | 0 | 10 | 62% |
 | [movement.kt](../src/jvmMain/kotlin/afield/animation/motion/movement.kt) | Simulation | movement_examples | 0 | 10 | 76% |
 | [PatCondense.kt](../src/jvmMain/kotlin/afield/audio/synth/PatCondense.kt) | Patterns | pattern_language | 0 | 10 | 57% |
-| [PaintTools.kt](../src/jvmMain/kotlin/afield/graphics/paint/PaintTools.kt) | Graphics | paint_canvas, chain_drawn_paint, paint_gestures | 0 | 10 | 91% |
+| [PaintTools.kt](../src/jvmMain/kotlin/afield/graphics/paint/PaintTools.kt) | Graphics | paint_canvas, chain_drawn_paint, chain_tiger_paint | 0 | 10 | 91% |
 | [ThreeMotion.kt](../src/jvmMain/kotlin/afield/graphics/three/ThreeMotion.kt) | Graphics | three_output | 0 | 10 | 65% |
 | [SolidGradient.kt](../src/jvmMain/kotlin/afield/lang/solidsl/SolidGradient.kt) | Graphics | solid_notation | 0 | 10 | 62% |
 | [SolidPointCloudFit.kt](../src/jvmMain/kotlin/afield/lang/solidsl/SolidPointCloudFit.kt) | Graphics | solid_notation | 0 | 10 | 50% |

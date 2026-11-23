@@ -10411,7 +10411,7 @@ is moved, and [`Tubes`](graphics.md#painttools-kt-tubes) names ready-mixed colou
 
 `src/jvmMain/kotlin/afield/graphics/paint/PaintTools.kt` — [read the source](source/jvmMain/afield/graphics/paint/PaintTools/)
 
-**Used in:** [Paint and pencil from FLines](../paint_canvas.md), [Drawn Strokes Become Paint](../chain_drawn_paint.md), [Brushes with moving hairs](../paint_gestures.md)
+**Used in:** [Paint and pencil from FLines](../paint_canvas.md), [Drawn Strokes Become Paint](../chain_drawn_paint.md), [An SVG Tiger, Painted](../chain_tiger_paint.md)
 
 ### PaintGround { #painttools-kt-paintground }
 
@@ -10771,7 +10771,7 @@ names the fields of the sheet's state that can be read back. Test: `WaterMediaTe
 
 `src/jvmMain/kotlin/afield/graphics/paint/WaterMedia.kt` — [read the source](source/jvmMain/afield/graphics/paint/WaterMedia/)
 
-**Used in:** [Watercolour and ink](../watercolor.md), [Brushes with moving hairs](../paint_gestures.md)
+**Used in:** [Watercolour and ink](../watercolor.md), [An SVG Tiger, Painted](../chain_tiger_paint.md), [Brushes with moving hairs](../paint_gestures.md)
 
 ### Paper { #watermedia-kt-paper }
 

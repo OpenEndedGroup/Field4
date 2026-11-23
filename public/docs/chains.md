@@ -142,10 +142,10 @@ These chains end in something you could print, mount, hang or light.
     **[Drawn Strokes Become Paint](chain_drawn_paint.md).** Pen strokes on the drawing layer,
     with their pressure, drag a simulated oil brush across a canvas of wet paint.
 
--   ![The Ghostscript tiger as an oil painting: black stripes, white fur, green eyes and a pink mouth with brush texture in each shape](assets/chain_tiger_paint/strategies.png)
+-   ![The Ghostscript tiger three ways: smeared wet-into-wet oil, slabs of knifed paint, and a field of coloured dots](assets/chain_tiger_paint/gallery_oil.png)
 
     **[An SVG Tiger, Painted](chain_tiger_paint.md).** The tiger's few hundred SVG paths, read
-    into FLines, each worked as a region of oil paint with a brush sized to it.
+    into FLines and handed to brushes, knives, stipple, outlines, watercolour and a straw.
 
 -   ![Nested offset contours, red and blue, around a rounded shape with a soft waist](assets/chain_squircle_offsets/offsets.png)
 
