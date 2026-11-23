@@ -410,7 +410,7 @@ To see it all at once, open the [map of the docs](../docs_map.md): every page, a
 - <span class="reference-internal">[history](workspace.md#historymetrics-kt)</span>
 - <span class="reference-internal">[persistence](workspace.md#documentshutdownflush-kt)</span>
 - *properties* — [Data](data.md#saved-kt) · [Internal](internal.md#binding-kt) · [Workspace](workspace.md#propertybag-kt)
-- [text](workspace.md#textrunanchor-kt)
+- [text](workspace.md#textframereview-kt)
 - *workspace* — [Data](data.md#filemanager-kt) · [Workspace](workspace.md#kitdedicatedhost-kt)
 
 </div>
@@ -687,7 +687,7 @@ To see it all at once, open the [map of the docs](../docs_map.md): every page, a
 
 ## Reference pages
 
-**43038 public symbols across 1910 source files**, 25771 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**43057 public symbols across 1912 source files**, 25771 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -715,8 +715,8 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Audio](audio.md) | 101 | 2666 | 1436 (53%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 22 | 592 | 592 (100%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 134 | 3374 | 1705 (50%) | Field's small languages, from the host side. |
-| [Workspace](workspace.md) | 261 | 3637 | 1548 (42%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
-| [AI4](ai4.md) | 103 | 2305 | 866 (37%) | AI4 is the agent that lives inside Field: the chat panel on every box, the document chat, editor completion, and headless agent tasks. |
+| [Workspace](workspace.md) | 262 | 3652 | 1548 (42%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
+| [AI4](ai4.md) | 104 | 2309 | 866 (37%) | AI4 is the agent that lives inside Field: the chat panel on every box, the document chat, editor completion, and headless agent tasks. |
 | [Machine learning](machine-learning.md) | 26 | 727 | 444 (61%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Animation](animation.md) | 10 | 186 | 43 (23%) |  |
 | [Execution](execution.md) | 2 | 9 | 9 (100%) |  |
@@ -2483,7 +2483,9 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>mesh/<wbr>tetgen/<wbr></small> [TetgenSolid.kt](graphics.md#tetgensolid-kt) | Graphics | 1 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>mesh/<wbr>tetgen/<wbr></small> [TetMeshViews.kt](simulation.md#tetmeshviews-kt) | Simulation | 6 | 6 | Ways of looking at a `TetMesh`: its element quality, a slice of it, and the triangles that draw it. | [Filling a solid: tetrahedral meshing with TetGen](../tetgen.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [textFrameAssets.kt](workspace.md#textframeassets-kt) | Workspace · internal | 1 | 1 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>agent/<wbr></small> [TextPassageTools.kt](ai4.md#textpassagetools-kt) | AI4 | 18 | 5 |  | [AI4's built-in tools](../ai4_tools.md), [Writing on the canvas](../text_frames.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>text/<wbr></small> [TextFrameReview.kt](workspace.md#textframereview-kt) | Workspace | 15 | 0 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>agent/<wbr></small> [TextPassageTools.kt](ai4.md#textpassagetools-kt) | AI4 | 19 | 5 |  | [AI4's built-in tools](../ai4_tools.md), [Writing on the canvas](../text_frames.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>agent/<wbr></small> [TextReviewTools.kt](ai4.md#textreviewtools-kt) | AI4 | 3 | 0 |  | [Writing on the canvas](../text_frames.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>text/<wbr></small> [TextRunAnchor.kt](workspace.md#textrunanchor-kt) | Workspace | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>text/<wbr></small> [TextRunClipboard.kt](workspace.md#textrunclipboard-kt) | Workspace | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>texture/<wbr></small> [textures.kt](graphics.md#textures-kt) | Graphics | 45 | 20 | Sampled textures for Field 4 shaders: images decoded from disk or memory, CPU-streamed frames, and GPU-writable storage images. |  |
