@@ -687,7 +687,7 @@ To see it all at once, open the [map of the docs](../docs_map.md): every page, a
 
 ## Reference pages
 
-**43031 public symbols across 1910 source files**, 25764 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**43032 public symbols across 1910 source files**, 25765 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -700,7 +700,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Video](video.md) | 14 | 195 | 194 (99%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 60 | 2524 | 1904 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 27 | 1231 | 570 (46%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 451 | 10880 | 6930 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 451 | 10881 | 6931 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 48 | 911 | 515 (56%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 596 | 440 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 787 | 530 (67%) | Nonlinear least squares, aimed at geometry. |
@@ -909,7 +909,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>brief/<wbr></small> [BriefLowering.kt](solvers.md#brieflowering-kt) | Solvers | 43 | 43 | Resolution and lowering: a `BriefSyntax` becomes a `BriefProgram`, and a `BriefProgram` becomes an `afield.math.optimization.ceres.GeometryModel` solved through the real Ceres backend. | [Shapes from constraints: Ceres in Field](../ceres.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>brief/<wbr></small> [BriefSolveSmoke.kt](examples.md#briefsolvesmoke-kt) | Examples | 1 | 1 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [browsing.kt](workspace.md#browsing-kt) | Workspace · internal | 44 | 9 | The object inspector behind `/browse`: a live, clickable tree of any value, reached from a box with `Inspector.linkFor`. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>spatial/<wbr></small> [bspot.kt](graphics.md#bspot-kt) | Graphics | 10 | 10 | One-to-one matching between two equally sized 2D point clouds, at a million points a side, using BSP-OT: every source point gets exactly one target and every target is used exactly once, with the total squared travel distance kept small. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>spatial/<wbr></small> [bspot.kt](graphics.md#bspot-kt) | Graphics | 11 | 11 | One-to-one matching between two equally sized 2D point clouds, at a million points a side, using BSP-OT: every source point gets exactly one target and every target is used exactly once, with the total squared travel distance kept small. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>spatial/<wbr></small> [BspOt3D.kt](graphics.md#bspot3d-kt) | Graphics | 5 | 5 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [Buf.kt](synthesis.md#buf-kt) | Synthesis | 22 | 22 | Bulk float-array arithmetic for the synthesis graph, written against the Java Vector API. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>image/<wbr></small> [BufferCanvas.kt](imaging.md#buffercanvas-kt) | Imaging | 55 | 53 |  | [Visualizers, Displays, and Little Instruments](../visualizers.md) |
