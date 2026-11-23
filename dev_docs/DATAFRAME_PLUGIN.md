@@ -157,8 +157,8 @@ no-op (`DataFrameSchemas.kt:58#no box in context`).
 `typed()` publishes to the preamble, which reads like "you must run the box twice". You must not,
 because Field re-runs setup blocks before **every** `//%-` fragment, not once per execution:
 `runLaunchSetupBlocks(box)` sits *inside* the `for (breakIndex in breaks)` loop —
-`execution.kt:1400#runLaunchSetupBlocks(box) }`, defined at
-`execution.kt:1488#private suspend fun runLaunchSetupBlocks`, and it runs preamble, then introduction,
+`execution.kt:1760#runLaunchSetupBlocks(box) { setupFailure = it }`, defined at
+`execution.kt:1888#private suspend fun runLaunchSetupBlocks`, and it runs preamble, then introduction,
 then attic.
 
 So `typed()` in the first fragment is visible to the second in a single run, and **removing the marker
