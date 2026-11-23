@@ -7,6 +7,7 @@ import afield.app.protocol.put
 
 import afield.app.client.FieldPanel
 import afield.app.client.allActions
+import afield.app.client.activeLayer
 import afield.app.client.canvasGestures
 import afield.app.client.copy
 import afield.app.client.deselectBox
@@ -19,9 +20,12 @@ import afield.app.client.resetCanvasZoom
 import afield.app.client.selectBox
 import afield.app.client.selected
 import afield.app.client.selectedProperty
+import afield.app.client.setActiveLayer
+import afield.app.client.setVisibleLayers
 import afield.app.client.selectionContextChanged
 import afield.app.client.showMonaco
 import afield.app.client.updateActions
+import afield.app.client.visibleLayers
 import afield.app.editor.Keybindings
 import afield.app.notifications.notify
 import afield.app.protocol.send
@@ -313,7 +317,8 @@ fun captureBookmark(bookmarkNumber: Int): Bookmark {
         cursorColumn = cursor?.second,
         nestingState = captureNestingState(),
         outputAreaState = captureOutputAreaState(),
-        outputAreaSizes = captureOutputAreaSizes()
+        outputAreaSizes = captureOutputAreaSizes(),
+        layerState = BookmarkLayerState(visibleLayers.sorted(), activeLayer, drawingLayerVisible)
     )
 }
 
@@ -422,6 +427,12 @@ fun restoreBookmark(bookmark: Bookmark) {
     try {
         bookmarkDebug("restoring bookmark ${bookmark.name} at ${bookmark.timestamp}")
         bookmarkDebug(bookmark.toString())
+
+        bookmark.layerState?.let { layers ->
+            setVisibleLayers(layers.visible.toSet())
+            if (activeLayer != layers.active) setActiveLayer(layers.active)
+            setDrawingLayerVisible(layers.drawingVisible)
+        }
 
         // Restore scroll position
         if (bookmark.restoreView) bookmark.scrollPosition?.let { restoreScrollPosition(it) }
