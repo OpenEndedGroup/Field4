@@ -15,6 +15,7 @@ data class DiagramPose(
     var blur: Float = 0f, // additive Gaussian-radius score channel, in ems
     var overstrokeFraction: Float? = null, // null keeps the frame's authored extension fraction
     var overstrokeDistance: Float? = null, // null keeps the authored extension distance in metres
+    var morph: Float = 0f, // a text morph's progress, carried on its first layout run: 0 first line, 1 second
 )
 
 class DiagramScore
@@ -36,6 +37,9 @@ class DiagramScoreBuilder
 internal constructor(private val diagram: ReadingDiagram, private val duration: Double) {
     private val blurCapacities = LinkedHashMap<DiagramText, Float>()
     private val tracks = LinkedHashMap<String, MutableList<(Double, DiagramPose) -> Unit>>()
+    private val morphCues = LinkedHashMap<DiagramTextMorph, MutableList<MorphCue>>()
+
+    private class MorphCue(val at: Double, val seconds: Double, val from: Float, val to: Float)
 
     private fun track(item: DiagramItem, block: (Double, DiagramPose) -> Unit) {
         require(item.owner === diagram.owner) { "Scored item belongs to another diagram" }
@@ -207,7 +211,46 @@ internal constructor(private val diagram: ReadingDiagram, private val duration: 
         }
     }
 
-    internal fun build() = DiagramScore(diagram, duration, tracks.mapValues { it.value.toList() }, blurCapacities.toMap())
+    /**
+     * Play [morph] from [from] to [to] (0 is its first line, 1 its second) over `[at, at + seconds]`.
+     * Matched pieces glide, unmatched ones fade where they stand. Several cues on one morph run in
+     * time order; before the first the morph holds at its `from`, between cues at the last `to`. A
+     * morph with no cue shows its first line.
+     */
+    fun morph(morph: DiagramTextMorph, at: Double, seconds: Double = 1.2, from: Float = 0f, to: Float = 1f) {
+        require(morph.from.owner === diagram.owner) { "Scored morph belongs to another diagram" }
+        timing(at, seconds)
+        require(from.isFinite() && to.isFinite())
+        morphCues.getOrPut(morph) { ArrayList() }.add(MorphCue(at, seconds, from, to))
+    }
+
+    private fun morphTracks() {
+        for (morph in diagram.textMorphs) {
+            val cues = morphCues[morph].orEmpty().sortedBy { it.at }
+            val progress: (Double) -> Float = { t ->
+                if (cues.isEmpty()) 0f
+                else {
+                    var p = cues.first().from
+                    for (c in cues) if (t >= c.at) p = c.from + (c.to - c.from) * phase(t, c.at, c.seconds)
+                    p
+                }
+            }
+            track(morph.from) { t, p -> p.morph = progress(t) }
+            for (piece in morph.pieces) {
+                val weight: (Float) -> Float = when (piece.role) {
+                    DiagramTextMorph.Role.GLIDE -> { _ -> 1f }
+                    DiagramTextMorph.Role.CROSS_FROM, DiagramTextMorph.Role.FADE_OUT -> { m -> 1f - m.coerceIn(0f, 1f) }
+                    DiagramTextMorph.Role.CROSS_TO, DiagramTextMorph.Role.FADE_IN -> { m -> m.coerceIn(0f, 1f) }
+                }
+                track(piece.text) { t, p -> p.opacity *= weight(progress(t)) }
+            }
+        }
+    }
+
+    internal fun build(): DiagramScore {
+        morphTracks()
+        return DiagramScore(diagram, duration, tracks.mapValues { it.value.toList() }, blurCapacities.toMap())
+    }
 }
 
 fun diagramScore(

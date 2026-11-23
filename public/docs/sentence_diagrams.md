@@ -650,6 +650,35 @@ blur and move the holder as a whole, or animate the text at each end independent
 lines crossfade without drawing themselves in. Examples 10–13 and the document's **Mechanical
 text holders** guide show how to build and animate them.
 
+## Morphing one line into another
+
+`textMorph` turns one line of text into another, piece by piece. You give each line as text plus a
+list of `DiagramKeyedSpan(start, endExclusive, key)`. A piece whose key appears in both lines glides
+from its characters in the first line to its characters in the second. A piece with no partner
+fades out or in where it stands, and so do the characters you left unkeyed. The keys are yours: the
+words of a parse, the cells of a table, the subterms of an expression. The morph never guesses a
+match from the characters themselves.
+
+```kotlin
+val graph = readingDiagram {
+    val p = point("p", 0, 0, pinned = true)
+    textMorph("swap",
+        "a + b", [DiagramKeyedSpan(0, 1, "a"), DiagramKeyedSpan(4, 5, "b")],
+        "b + a", [DiagramKeyedSpan(0, 1, "b"), DiagramKeyedSpan(4, 5, "a")],
+        p.anchor) { scale = 1.4f }
+}
+val score = diagramScore(graph, 6.0) { morph(graph.textMorph("swap"), at = 1.0, seconds = 2.0) }
+```
+
+Both lines are laid out whole and never drawn, and each piece is placed by where its characters sit
+in its line. At mid-flight a gliding piece comes `lift` metres toward the reader. It also moves
+`arc` metres off the line: up when it travels right, down when it travels left. So two pieces that
+swap pass on either side of each other. A piece whose key matches but whose characters differ
+crossfades as it moves. `morph(…, from, to)` cues run in time order. With no cue, the morph shows
+its first line. `textMorph.group` fades the whole line in or out. The
+[`reading_morph`](agent_transcripts.md#reading_morph) starting point distributes `a × (b + c)` and
+then commutes a product.
+
 ## API reference
 
 Implementation and parameter details for the helpers used above:
