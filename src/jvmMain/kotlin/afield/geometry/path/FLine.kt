@@ -1104,6 +1104,10 @@ class FLine : HasProperties {
      *
      * [meshAcceptor] is called once per filled polygon, and never with an empty index list.
      *
+     * A line whose `fillRule` attribute is set is first resolved under that rule into
+     * non-overlapping contours, so the triangles cover what the SVG, Skia and Gezira fills cover;
+     * with no rule set, nested rings alternate filled and hole, whatever their direction.
+     *
      * @param samplesPerCubic flattening density for curved segments.
      * @param coplanarity how close two subpaths have to be to count as the same surface.
      * @param meshAcceptor Called with a packed vertex array (x,y,z) and index list.
@@ -1113,6 +1117,10 @@ class FLine : HasProperties {
         coplanarity: Coplanarity = Coplanarity.DEFAULT,
         meshAcceptor: (FloatArray, List<Int>) -> Unit,
     ) {
+        // An explicit fill rule is resolved into non-overlapping contours first (see resolveFillRule);
+        // with none set this is the line itself and nothing below changes.
+        val resolved = resolveFillRule()
+        if (resolved !== this) return resolved.tessellate(samplesPerCubic, coplanarity, meshAcceptor)
         var current = mutableListOf<Vec3>()
         val rings = mutableListOf<List<Vec3>>()
         val eps = 1e-5f

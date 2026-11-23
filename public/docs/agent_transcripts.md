@@ -137,6 +137,21 @@ macro run nile_gezira_kernels
 
 [Open →](offline.html?file=assets/agent_transcripts/nile_gezira_kernels/metadata.edn)
 
+### fline_fill_rule
+
+**One fill rule, every renderer.** A pentagram and two nested squares, wound the same way, filled
+under the non-zero and the even-odd rule by setting the FLine's own `fillRule`, and drawn by Field's
+line renderer, by Gezira, and as the triangles `FLine.tessellate` gives the Vulkan fill; `contains2D`
+answers at the contested points. See
+[Overlaps and fill rules](afield_four_graphics.md#overlaps-and-fill-rules).
+
+```diffstatic {data-lang=text}
+macro write fline_fill_rule --file dev_docs/agents/transcripts/fline_fill_rule.yaml
+macro run fline_fill_rule
+```
+
+[Open →](offline.html?file=assets/agent_transcripts/fline_fill_rule/metadata.edn)
+
 ### nile_gezira_svg
 
 **SVG into Gezira, and the tiger.** `GeziraSvg` reads SVG path data, shapes, nested transforms and

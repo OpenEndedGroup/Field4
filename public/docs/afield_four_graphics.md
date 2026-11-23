@@ -2307,6 +2307,27 @@ Skia is up to 0.16 off the same supersample on the pentagram.
 The edge samples keep their place as Gezira's design, and the streams above are theirs.
 `BufferCanvas.fill` and `stroke`, and `Canvas.draw` below, use the winding rasteriser.
 
+The rule is one type across Field, `FLineFillRule`; Gezira's `FillRule` and typography's
+`TextFillRule` are other names for it. An FLine carries its own as the `fillRule` attribute, non-zero
+unless set, and every filler reads it: Field's SVG and Skia line renderers, Gezira, `contains2D`,
+Java2D shapes (and so the boolean operations), `BufferCanvas.fill`, and `FLine.tessellate`, which
+the Vulkan and three.js fills are made of. The triangulator only knows nesting, so `tessellate` first
+resolves a line with a rule set into contours that do not overlap. Manifold's `FillRule` adds
+`POSITIVE` and `NEGATIVE`, which only a solid boolean needs; `Section.ofFLines(lines, rule = line.fillRule)`
+takes Field's.
+
+```diffstatic {data-lang=kotlin}
+star.filled = true
+star.fillRule = FillRule.EVEN_ODD
+```
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/fline-fill-rule.png" capture="box" open-outputs="true" padding="20" wait="4" timeout="180" embed=true name="fline-fill-rule" macro-file="../../dev_docs/agents/transcripts/fline_fill_rule.yaml" capture-box="ffr_every_renderer" alt="A pentagram and two nested squares drawn twice side by side, non-zero on the left and even-odd on the right, three ways: by Field's line renderer, by Gezira, and as the outlines of the triangles the Vulkan fill uses. On the left every way fills the star's centre and the inner square; on the right every way leaves both empty."}
+// dev_docs/agents/transcripts/fline_fill_rule.yaml, box "one fill rule, every renderer"
+```
+
+`FillRuleConsumersTest` fills the nested squares and two overlapping squares under both rules
+through each of these and checks the contested region against Gezira's coverage.
+
 A new stage is one more kernel. Gezira's TransformBeziers, a rotation here, goes in front of the
 rasteriser with `then`:
 
@@ -2411,10 +2432,9 @@ and it draws 0.7 % less ink in total.
 
 `GeziraFLine.render` draws Field's own FLines with the kernels above, painted by the attributes
 every Field renderer reads: `color` (its alpha is the opacity), `filled`, `stroked` and
-`thickness`. FLine has no fill rule, so `GeziraFLine` adds one, `fillRule`, non-zero unless set.
-Each line is filled with the winding rasteriser under its rule, then stroked with
-`StrokeBezierPath`, then composited. Only `GeziraFLine` reads `fillRule`, so Field's own line
-renderer, under it here, fills the frame's hole:
+`thickness`, and the `fillRule` above. Each line is filled with the winding rasteriser under its
+rule, then stroked with `StrokeBezierPath`, then composited. Field's own line renderer, under it
+here, leaves the same hole in the frame:
 
 ```diffstatic {data-lang=kotlin}
 frame.filled = true
@@ -2423,7 +2443,7 @@ ring.thickness = 6.0
 val r = GeziraFLine.render([disc, ring, frame, wave], 220, 130)
 ```
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/gezira-fline-paint.png" capture="box" open-outputs="true" padding="20" trim="true" wait="4" timeout="180" embed=true name="gezira-fline-paint" macro-file="../../dev_docs/agents/transcripts/nile_gezira_svg.yaml" capture-box="gezira_fline_paint" alt="Four FLines drawn twice. Above, by the Gezira kernels on white: an orange disc with a dark brown ring, a translucent blue square frame with a square hole, and a crimson wave across the bottom. Below, larger, by Field's line renderer on black: the same, except the blue square is solid, since that renderer does not read fillRule."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/gezira-fline-paint.png" capture="box" open-outputs="true" padding="20" trim="true" wait="4" timeout="180" embed=true name="gezira-fline-paint" macro-file="../../dev_docs/agents/transcripts/nile_gezira_svg.yaml" capture-box="gezira_fline_paint" alt="Four FLines drawn twice. Above, by the Gezira kernels on white: an orange disc with a dark brown ring, a translucent blue square frame with a square hole, and a crimson wave across the bottom. Below, larger, by Field's line renderer on black: the same, the blue frame's hole left empty too."}
 // dev_docs/agents/transcripts/nile_gezira_svg.yaml, box "flines through gezira"
 ```
 
