@@ -5769,6 +5769,8 @@ speed, add motion exposure to the movie and hold frames at 12 or 24 fps while th
 rendering. A desktop preview shows the same eye images, and you can bring Field's live browser
 into the room. The player has no audio; it needs Vulkan.
 
+![Field's native side-by-side eye preview: both eyes see a curved screen carrying cyan, orange and violet spheres above a floor grid.](assets/stereo_video/player.png)
+
 [Open →](offline.html?file=assets/agent_transcripts/video_one_vr/metadata.edn)
 
 
