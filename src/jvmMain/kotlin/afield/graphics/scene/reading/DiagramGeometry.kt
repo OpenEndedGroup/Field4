@@ -216,8 +216,10 @@ class DiagramGeometry(val tolerance: Float = .0003f) {
         }
     }
 
-    /** Eight vec4 records per segment; no CPU-generated triangles. */
-    /** [encode] turns each colour into what the stroke shader reads; the renderer passes the palette encoding. */
+    /**
+     * Eight vec4 records per segment; no CPU-generated triangles. [encode] turns each colour into
+     * what the stroke shader reads; the renderer passes the palette encoding.
+     */
     fun writeSegments(b: ByteBuffer, encode: (Vector4f) -> Vector4f = { it }) {
         fun vector(v: Vector3f, w: Float) {
             b.putFloat(v.x).putFloat(v.y).putFloat(v.z).putFloat(w)

@@ -211,9 +211,6 @@ internal constructor(private val diagram: ReadingDiagram, private val duration: 
     }
 
     /**
-     * Advanced channel intervention; mutate only the supplied pose, never persistent scene state.
-     */
-    /**
      * Mix [color] into the item's RGB from [from] to [to] of the way over [seconds] starting [at]:
      * a flare that settles (`from = 1, to = 0`, the default), a hold (`1, 1`), or a release. Before
      * [at] the cue does nothing; once started, it holds its final amount, and of the cues that have
@@ -258,6 +255,9 @@ internal constructor(private val diagram: ReadingDiagram, private val duration: 
         for ((i, item) in group.items.filter { it !is DiagramParticle }.withIndex()) tint(item, color, at + i * stagger, seconds, from, to)
     }
 
+    /**
+     * Advanced channel intervention; mutate only the supplied pose, never persistent scene state.
+     */
     fun animate(item: DiagramItem, channel: (seconds: Double, pose: DiagramPose) -> Unit) =
         track(item, channel)
 

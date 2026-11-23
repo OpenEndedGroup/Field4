@@ -718,10 +718,7 @@ val score = diagramScore(graph, 8.0) {
     saturate(graph.text("goal"), at = 1.0, seconds = 2.5, from = 2f)
 }
 val player = ReadingDiagramPlayer.prepare(graph, Typefaces.named("Monospaced", 100), "field-slug".file, score)
-player.palette = DiagramPalette.hex(
-    "990000", "ac2900", "ca5b09", "dd872a", "e6b058", "ebd189", "f2e9b4", "faf9d3", "ffffe0",
-    "f4f9d7", "dcebc5", "b4d8b2", "7ebea0", "419e95", "00738f", "003b86", "220080",
-)
+player.palette = DiagramPalette.hex("ca5b09", "e6b058", "ffffe0", "7ebea0", "00738f")
 ```
 
 `span.color(c)` replaces the run's RGB for those characters and multiplies its alpha, so fading or
@@ -735,7 +732,7 @@ started, the latest wins. Without a palette, `saturate` and `tint` work in RGB.
 The renderer keeps its channels as they were: red and blue carry light, and green carries the
 coverage that selects blur. Alpha carries light times the item's position on the ramp. Blending is
 additive, so the compositor divides alpha by light to find the hue at each pixel, weighted by light
-where items overlap or blur. A palette has an odd number of stops, at most 17.
+where items overlap or blur. A palette has an odd number of stops, at most 17; this one has five, warm to cool around a cream middle.
 
 ## API reference
 
