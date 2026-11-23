@@ -283,6 +283,15 @@ textPath(
 )
 ```
 
+A character the run's face has no glyph for is borrowed from another font, as a terminal
+or browser would. The run's size and style carry over, so `∀` in italic Noto Serif comes back
+italic. The fonts tried are the installed ones among `DiagramFontFallback.candidates`, with math
+faces first (Noto Sans Math, STIX Two Math, DejaVu Math TeX Gyre), then symbol and general faces.
+Set `fallbacks = listOf(...)` on a text item to choose its own chain, or `fallbacks = emptyList()`
+to have a missing glyph stop preparation instead. If no font can show a character, preparation
+fails and names the character, its code point, where it is in the text and every face it tried.
+Styled ranges, borrowed glyphs included, work across line breaks in a multi-line run.
+
 `inkBounds` includes the actual curved outlines and italic overhangs. `bodyBounds` clips
 those bounds at each baseline to exclude descenders. `emBounds`, `capBounds`,
 `xHeightBounds` and `advanceBounds` provide the other useful typographic rectangles.
