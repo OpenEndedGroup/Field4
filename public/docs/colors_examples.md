@@ -16,13 +16,13 @@ var last = colorHex("#ffd062")
 var position = 0.5
 
 fun drawRamps() {
-    val stops = listOf(first, last)
-    val ramps = listOf(
+    val stops: List<Vec4> = [first, last]
+    val ramps: List<ColorTrajectory> = [
         colorRamp(stops, ColorSpace.SRGB),
         colorRamp(stops, ColorSpace.LINEAR_SRGB),
         colorRamp(stops, ColorSpace.OKLAB),
         colorRamp(stops, ColorSpace.OKLCH, HuePath.LONGER)
-    )
+    ]
 
     :::fold Draw the strips and position markers
     val drawing = ramps.flatMapIndexed { row, ramp ->
@@ -130,7 +130,7 @@ Try darkening the ground to reach the last target. [Adobe Leonardo](https://gith
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/colors_examples/contrast-instrument.png" alt="Three hue families on a dark ground. Small outlined circles mark unreachable contrast targets." wait="1.0" capture="box" open-outputs="true" w="690" h="250" name="contrast-instrument" embed=true}
 :::static
-val targets = listOf(1.5, 3.0, 4.5, 7.0, 12.0)
+val targets: List<Double> = [1.5, 3.0, 4.5, 7.0, 12.0]
 var groundLightness = 0.32
 var chroma = 0.77
 
@@ -209,11 +209,11 @@ val yellow = "cadmium yellow"
 val blue = "ultramarine blue"
 val first = Tubes[yellow].color
 val last = Tubes[blue].color
-val rows = listOf(
-    colorRamp(listOf(first, last)),
+val rows: List<ColorTrajectory> = [
+    colorRamp([first, last]),
     spectralColorRamp(first, last),
     tubeColorRamp(yellow, blue)
-)
+]
 
 val chips = rows.flatMapIndexed { row, ramp ->
     ramp.sample(17).mapIndexed { i, swatch ->
