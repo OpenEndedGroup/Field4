@@ -65,7 +65,9 @@ operations:
 
           for ((name, f) in ["non-zero" to nonZero, "even-odd" to evenOdd]) {
               val dx = if (f === nonZero) 0f else 190f
-              println("$name: contains2D star centre ${f.contains2D(Vec2(dx + 45f, 50f))}, inner square ${f.contains2D(Vec2(dx + 135f, 50f))}")
+              println(
+                  "$name: contains2D star centre ${f.contains2D(Vec2(dx + 45f, 50f))}, inner square ${f.contains2D(Vec2(dx + 135f, 50f))}",
+              )
           }
   - execute:
       box: ffr_every_renderer
