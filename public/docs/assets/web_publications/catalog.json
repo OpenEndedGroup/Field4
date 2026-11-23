@@ -4972,13 +4972,13 @@
     },
     "assets/agent_transcripts/rhino_path_trace/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "capturedAt": "2026-11-22T00:44:21.276Z",
+      "capturedAt": "2026-11-23T09:01:21.990Z",
       "channels": 1,
       "file": "assets/web_publications/rhino_path_trace/document/metadata.edn",
       "files": {
         "assets/web_publications/rhino_path_trace/document/metadata.edn": "e85dd33ad0aeae2eadc860a940e664eaf7a17ab0aa10c4c81a840bf5f05cdc91",
-        "assets/web_publications/rhino_path_trace/document/outputs.json": "a692d59cebb278850d201cd632016e2d04d02847b73028d8244bdd194c20529d",
-        "assets/web_publications/rhino_path_trace/outputs/0.html": "33e14e7a0305021d95b1020fdb99987663b323c9cd3eeaef8e41fd2a7417061d"
+        "assets/web_publications/rhino_path_trace/document/outputs.json": "e24825db574481351f63565eff72ac7833f6e1aae79b4198d209c0670347eb1b",
+        "assets/web_publications/rhino_path_trace/outputs/0.html": "2228c1d01abfab1349683a72b3cebf0c4cd4f33af2593879b3d18c8a976dc53f"
       },
       "kinds": [
         "native-image"
@@ -4990,7 +4990,7 @@
         "public/docs/assets/agent_transcripts/rhino_path_trace/metadata.edn": "5af92e1a0db232774af980a456e34ff96643586f275c0be627c8e2a58b8f4b53",
         "public/docs/assets/agent_transcripts/rhino_path_trace/rhino_path_trace_code_.kt": "a4ec59021b1031e8e97ad820c9e28910e7487690b4c3050d9088760a14d4f613",
         "public/docs/assets/agent_transcripts/rhino_path_trace/rhino_trace_renderer_code_.kt": "6cc4c9ecd83835a261dd6fcb979dc60223259f35724a98d21cd16ae88b047777",
-        "public/docs/assets/chain_rhino_render/trace.png": "49ddf45395641d3944d39920900fea65a4777e832bb2aa43163bbc99295c8583",
+        "public/docs/assets/chain_rhino_render/trace.png": "35a7d0606195f4ae61474da483b4ec5b412c82c742bef62c374ff5341c68342a",
         "public/docs/chain_rhino_render.md#capture-box=rhino_path_trace": "d608881d540537dccb4a84fa37df6504fb4faf5b8c3d257d08e06f6ae8c80a50"
       },
       "supplementalSources": [
