@@ -659,7 +659,7 @@ fades out or in where it stands, and so do the characters you left unkeyed. The 
 words of a parse, the cells of a table, the subterms of an expression. The morph never guesses a
 match from the characters themselves.
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val graph = readingDiagram {
     val p = point("p", 0, 0, pinned = true)
     textMorph("swap",
