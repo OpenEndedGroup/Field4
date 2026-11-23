@@ -1,0 +1,490 @@
+#version 450
+// A whole Gezira scene on the GPU (afield.graphics.nile.GeziraGpuScene), five stages compiled from
+// this one source with STAGE defined to 1..5 and run in order every frame:
+//   1 COUNT    per curve: transform, Wang's bound on the pieces it needs at tolerance `tol`
+//   2 SCAN     one workgroup: exclusive prefix sum of the counts -> each curve's first segment
+//   3 EMIT     per curve: its uniform pieces as line segments, in paint order
+//   4 BIN      per band of 16 rows: the segments touching it, in order, and where each shape's run starts
+//   5 RESOLVE  per pixel row: for each shape run in paint order, Gezira's WindingSpans (bands at edge
+//              ends and crossings, winding walk, exact trapezoid areas) under the shape's rule, then
+//              source-over of its colour into the row.
+#extension GL_EXT_buffer_reference : require
+layout(std430, buffer_reference) buffer Vec4s { vec4 v[]; };
+layout(std430, buffer_reference) buffer Uints { uint v[]; };
+
+#define BAND 16u
+#define NE 512u
+#define NY 1536u
+#define MAXW 2048
+#define FIXED 16777216.0
+#define MAX_PIECES 512u
+
+#if STAGE == 2
+layout(local_size_x = 1024) in;
+#elif STAGE == 4
+layout(local_size_x = 256) in;
+#elif STAGE == 5
+layout(local_size_x = 128) in;
+#else
+layout(local_size_x = 64) in;
+#endif
+
+layout(push_constant) uniform Push {
+    Vec4s curves;   // 3 vec4 per curve: p0 p1, p2 p3 (document units, cubic), (shape bits, 0, 0, 0)
+    Vec4s shapes;   // 2 vec4 per shape: premultiplied rgba, (even-odd, 0, 0, 0)
+    Uints offsets;  // [0, curves]: exclusive offsets, [curves] the total; [curves + 1 + i]: curve i's count
+    Vec4s segs;     // one vec4 per segment: x0 y0 x1 y1 in pixels
+    Uints segShape; // shape of each segment
+    Uints bins;     // per band: entries (bandCap) then run starts (bandCap)
+    Uints counts;   // per band: entries, runs; then [2 * bands ..] overflow counters
+    Vec4s image;    // width * height premultiplied rgba
+    vec4 m0;        // x' = m0.x * x + m0.z * y + m1.x
+    vec4 m1;        // y' = m0.y * x + m0.w * y + m1.y
+    float tol;
+    uint curveCount;
+    uint width;
+    uint height;
+    uint segCap;
+    uint bandCap;
+    uint debug;     // 16 holds the picture (every stage returns at once); timing experiments: 1 skips the band walk, 2 the area adds, 4 the boundaries, 8 the blend
+} pc;
+
+vec2 xf(vec2 p) { return vec2(pc.m0.x * p.x + pc.m0.z * p.y + pc.m1.x, pc.m0.y * p.x + pc.m0.w * p.y + pc.m1.y); }
+
+uint bands() { return (pc.height + BAND - 1u) / BAND; }
+
+#if STAGE == 1 || STAGE == 3
+void curve(uint i, out vec2 a, out vec2 b, out vec2 c, out vec2 d) {
+    vec4 u = pc.curves.v[i * 3u];
+    vec4 w = pc.curves.v[i * 3u + 1u];
+    a = xf(u.xy); b = xf(u.zw); c = xf(w.xy); d = xf(w.zw);
+}
+#endif
+
+#if STAGE == 1
+void main() {
+    if ((pc.debug & 16u) != 0u) return;
+    uint i = gl_GlobalInvocationID.x;
+    if (i >= pc.curveCount) return;
+    vec2 a, b, c, d;
+    curve(i, a, b, c, d);
+    float lo = min(min(a.y, b.y), min(c.y, d.y));
+    float hi = max(max(a.y, b.y), max(c.y, d.y));
+    uint n = 0u;
+    if (hi > 0.0 && lo < float(pc.height)) {
+        // Wang: n pieces keep a cubic within tol of its chords when n^2 >= 3/4 max|second difference| / tol
+        float m = max(length(a - 2.0 * b + c), length(b - 2.0 * c + d));
+        n = uint(clamp(ceil(sqrt(0.75 * m / pc.tol)), 1.0, float(MAX_PIECES)));
+    }
+    pc.offsets.v[pc.curveCount + 1u + i] = n;
+}
+#endif
+
+#if STAGE == 2
+shared uint partial[1024];
+void main() {
+    if ((pc.debug & 16u) != 0u) return;
+    uint t = gl_LocalInvocationID.x;
+    uint per = (pc.curveCount + 1023u) / 1024u;
+    uint s0 = t * per;
+    uint s1 = min(s0 + per, pc.curveCount);
+    uint sum = 0u;
+    for (uint i = s0; i < s1; i++) sum += pc.offsets.v[pc.curveCount + 1u + i];
+    partial[t] = sum;
+    barrier();
+    for (uint d = 1u; d < 1024u; d <<= 1) {
+        uint v = t >= d ? partial[t - d] : 0u;
+        barrier();
+        partial[t] += v;
+        barrier();
+    }
+    uint run = partial[t] - sum;
+    for (uint i = s0; i < s1; i++) {
+        uint c = pc.offsets.v[pc.curveCount + 1u + i];
+        pc.offsets.v[i] = run;
+        run += c;
+    }
+    if (t == 1023u) pc.offsets.v[pc.curveCount] = partial[1023];
+}
+#endif
+
+#if STAGE == 3
+void main() {
+    if ((pc.debug & 16u) != 0u) return;
+    uint i = gl_GlobalInvocationID.x;
+    if (i >= pc.curveCount) return;
+    uint first = pc.offsets.v[i];
+    uint n = pc.offsets.v[i + 1u] - first;
+    if (n == 0u) return;
+    vec2 a, b, c, d;
+    curve(i, a, b, c, d);
+    uint shape = floatBitsToUint(pc.curves.v[i * 3u + 2u].x);
+    vec2 prev = a;
+    for (uint k = 1u; k <= n; k++) {
+        float t = float(k) / float(n);
+        float s = 1.0 - t;
+        vec2 p = k == n ? d : s * s * s * a + 3.0 * s * s * t * b + 3.0 * s * t * t * c + t * t * t * d;
+        uint o = first + k - 1u;
+        if (o < pc.segCap) {
+            pc.segs.v[o] = vec4(prev, p);
+            pc.segShape.v[o] = shape;
+        }
+        prev = p;
+    }
+    if (first + n > pc.segCap && first <= pc.segCap) atomicAdd(pc.counts.v[2u * bands()], first + n - pc.segCap);
+}
+#endif
+
+#if STAGE == 4
+shared uint scan[256];
+shared uint chunkShape[256];
+shared uint carryShape;
+shared uint entries;
+shared uint runs;
+void main() {
+    if ((pc.debug & 16u) != 0u) return;
+    uint band = gl_WorkGroupID.x;
+    uint t = gl_LocalInvocationID.x;
+    float lo = float(band * BAND);
+    float hi = lo + float(BAND);
+    uint total = min(pc.offsets.v[pc.curveCount], pc.segCap);
+    uint base = band * 2u * pc.bandCap;
+    if (t == 0u) { carryShape = 0xffffffffu; entries = 0u; runs = 0u; }
+    barrier();
+    for (uint chunk = 0u; chunk < total; chunk += 256u) {
+        uint i = chunk + t;
+        uint inc = 0u;
+        uint shape = 0u;
+        if (i < total) {
+            vec4 s = pc.segs.v[i];
+            if (s.y != s.w && min(s.y, s.w) < hi && max(s.y, s.w) > lo) { inc = 1u; shape = pc.segShape.v[i]; }
+        }
+        scan[t] = inc;
+        barrier();
+        for (uint d = 1u; d < 256u; d <<= 1) {
+            uint v = t >= d ? scan[t - d] : 0u;
+            barrier();
+            scan[t] += v;
+            barrier();
+        }
+        uint pos = scan[t] - inc;   // place among this chunk's entries
+        uint got = scan[255];
+        if (inc == 1u) chunkShape[pos] = shape;
+        barrier();
+        uint start = 0u;
+        if (inc == 1u) {
+            uint before = pos == 0u ? carryShape : chunkShape[pos - 1u];
+            start = before != shape ? 1u : 0u;
+        }
+        barrier();
+        scan[t] = start;
+        barrier();
+        for (uint d = 1u; d < 256u; d <<= 1) {
+            uint v = t >= d ? scan[t - d] : 0u;
+            barrier();
+            scan[t] += v;
+            barrier();
+        }
+        uint e = entries + pos;
+        if (inc == 1u && e < pc.bandCap) {
+            pc.bins.v[base + e] = i;
+            if (start == 1u) {
+                uint r = runs + scan[t] - 1u;
+                if (r < pc.bandCap) pc.bins.v[base + pc.bandCap + r] = e;
+            }
+        }
+        barrier();
+        if (t == 0u) {
+            if (got > 0u) carryShape = chunkShape[got - 1u];
+            entries += got;
+            runs += scan[255];
+        }
+        barrier();
+    }
+    if (t == 0u) {
+        if (entries > pc.bandCap) atomicAdd(pc.counts.v[2u * bands() + 1u], entries - pc.bandCap);
+        pc.counts.v[band * 2u] = min(entries, pc.bandCap);
+        pc.counts.v[band * 2u + 1u] = min(runs, pc.bandCap);
+    }
+}
+#endif
+
+#if STAGE == 5
+#define T 128u
+shared vec4 edges[NE];
+shared int dirs[NE];
+shared float ys[NY];
+shared float sorted[NY];
+shared int acc[MAXW];
+shared uint nEdges;
+shared uint nYs;
+shared int colLo;
+shared int colHi;
+#define MAX_RUNS 4096u
+#define MAX_ACTIVE 16u
+shared uint touched[MAX_RUNS / 32u];
+
+float xAt(vec4 e, float y) {
+    if (y <= e.y) return e.x;
+    if (y >= e.w) return e.z;
+    return e.x + (y - e.y) / (e.w - e.y) * (e.z - e.x);
+}
+
+float meanClamp(float u0, float u1) {
+    float lo = min(u0, u1);
+    float hi = max(u0, u1);
+    if (hi <= 0.0) return 0.0;
+    if (lo >= 1.0) return 1.0;
+    float len = hi - lo;
+    if (len < 1e-30) return clamp(lo, 0.0, 1.0);
+    float a = max(lo, 0.0);
+    float b = min(hi, 1.0);
+    return ((b - a) * (a + b) * 0.5 + max(0.0, hi - max(lo, 1.0))) / len;
+}
+
+bool before(float xj, uint j, float xi, uint i) { return xj < xi || (xj == xi && j < i); }
+
+// acc holds coverage difference-coded, column c's value being the sum of acc[0..c]: one column's
+// exact area v adds v at c and takes it off at c + 1, and a run of fully covered columns costs two
+// atomics however wide it is.
+void addColumn(int c, float v, int w) {
+    if (c < 0 || c >= w) return;
+    int q = int(round(v * FIXED));
+    atomicAdd(acc[c], q);
+    if (c + 1 < w) atomicAdd(acc[c + 1], -q);
+}
+
+// The trapezoid between a left line (la at the band's top, lb at its bottom) and a right line
+// (ra, rb) over a band h high: exact areas in the columns either line crosses, h in between.
+void addTrapezoid(float la, float lb, float ra, float rb, float h, int w) {
+    int l0 = int(floor(min(la, lb)));
+    int l1 = int(ceil(max(la, lb)));
+    int r0 = int(floor(min(ra, rb)));
+    int r1 = int(ceil(max(ra, rb)));
+    if (l1 > r0) {
+        for (int c = max(l0, 0); c < min(r1, w); c++) {
+            float fc = float(c);
+            addColumn(c, h * (meanClamp(ra - fc, rb - fc) - meanClamp(la - fc, lb - fc)), w);
+        }
+        return;
+    }
+    for (int c = max(l0, 0); c < min(l1, w); c++) {
+        float fc = float(c);
+        addColumn(c, h * (1.0 - meanClamp(la - fc, lb - fc)), w);
+    }
+    int a = max(l1, 0);
+    int b = min(r0, w);
+    if (a < b) {
+        int q = int(round(h * FIXED));
+        atomicAdd(acc[a], q);
+        if (b < w) atomicAdd(acc[b], -q);
+    }
+    for (int c = max(r0, 0); c < min(r1, w); c++) {
+        float fc = float(c);
+        addColumn(c, h * meanClamp(ra - fc, rb - fc), w);
+    }
+}
+
+void main() {
+    if ((pc.debug & 16u) != 0u) return;
+    uint row = gl_WorkGroupID.x;
+    uint t = gl_LocalInvocationID.x;
+    if (row >= pc.height) return;
+    uint w = pc.width;
+    uint base = row * w;
+    for (uint c = t; c < w; c += T) { pc.image.v[base + c] = vec4(0.0); acc[c] = 0; }
+    uint band = row / BAND;
+    uint bbase = band * 2u * pc.bandCap;
+    uint nEntries = pc.counts.v[band * 2u];
+    uint nRuns = pc.counts.v[band * 2u + 1u];
+    float fr = float(row);
+    uint dropped = 0u;
+    barrier();
+
+    // Which of the band's runs reach this row at all: one pass over the band's entries, each
+    // finding its run by binary search over the run starts. Rows then visit only those runs, in
+    // paint order, instead of every run in the band (most of a band's paths miss most of its rows).
+    bool everyRun = nRuns > MAX_RUNS;
+    uint words = (min(nRuns, MAX_RUNS) + 31u) / 32u;
+    for (uint q = t; q < words; q += T) touched[q] = 0u;
+    barrier();
+    if (!everyRun) {
+        for (uint k = t; k < nEntries; k += T) {
+            vec4 g = pc.segs.v[pc.bins.v[bbase + k]];
+            if (min(g.y, g.w) >= fr + 1.0 || max(g.y, g.w) <= fr) continue;
+            uint lo = 0u, hi = nRuns;   // last run start <= k
+            while (hi - lo > 1u) {
+                uint mid = (lo + hi) / 2u;
+                if (pc.bins.v[bbase + pc.bandCap + mid] <= k) lo = mid; else hi = mid;
+            }
+            atomicOr(touched[lo / 32u], 1u << (lo % 32u));
+        }
+    }
+    barrier();
+
+    for (uint word = 0u; word < (everyRun ? (nRuns + 31u) / 32u : words); word++) {
+      uint bits = everyRun ? 0xffffffffu : touched[word];
+      while (bits != 0u) {
+        uint r = word * 32u + uint(findLSB(bits));
+        bits &= bits - 1u;
+        if (r >= nRuns) break;
+        uint s = pc.bins.v[bbase + pc.bandCap + r];
+        uint e = r + 1u < nRuns ? pc.bins.v[bbase + pc.bandCap + r + 1u] : nEntries;
+        uint shape = pc.segShape.v[pc.bins.v[bbase + s]];
+        if (t == 0u) { nEdges = 0u; nYs = 0u; colLo = 0x7fffffff; colHi = -0x7fffffff; }
+        barrier();
+        // This row's piece of each of the run's segments.
+        for (uint k = s + t; k < e; k += T) {
+            vec4 g = pc.segs.v[pc.bins.v[bbase + k]];
+            float top = min(g.y, g.w);
+            float bot = max(g.y, g.w);
+            float a = max(top, fr);
+            float b = min(bot, fr + 1.0);
+            if (b <= a) continue;
+            int dir = g.w > g.y ? 1 : -1;
+            vec2 pt = g.y < g.w ? g.xy : g.zw;
+            vec2 pb = g.y < g.w ? g.zw : g.xy;
+            float xa = a == top ? pt.x : pt.x + (a - top) / (bot - top) * (pb.x - pt.x);
+            float xb = b == bot ? pb.x : pt.x + (b - top) / (bot - top) * (pb.x - pt.x);
+            uint q = atomicAdd(nEdges, 1u);
+            if (q < NE) {
+                edges[q] = vec4(xa, a - fr, xb, b - fr);
+                dirs[q] = dir;
+                atomicMin(colLo, int(floor(min(xa, xb))));
+                atomicMax(colHi, int(ceil(max(xa, xb))));
+            } else dropped++;
+        }
+        barrier();
+        uint n = min(nEdges, NE);
+        if (t == 0u) atomicMax(pc.counts.v[2u * bands() + 3u], n);
+        if (n < 2u) { barrier(); continue; }
+        for (uint i = t; i < n; i += T) {
+            ys[2u * i] = edges[i].y;
+            ys[2u * i + 1u] = edges[i].w;
+        }
+        if (t == 0u) nYs = 2u * n;
+        barrier();
+        for (uint i = t; i < n; i += T) {
+            vec4 ea = edges[i];
+            for (uint j = i + 1u; j < n; j++) {
+                vec4 eb = edges[j];
+                float y0 = max(ea.y, eb.y);
+                float y1 = min(ea.w, eb.w);
+                if (y1 <= y0) continue;
+                float d0 = xAt(ea, y0) - xAt(eb, y0);
+                float d1 = xAt(ea, y1) - xAt(eb, y1);
+                if ((d0 < 0.0 && d1 > 0.0) || (d0 > 0.0 && d1 < 0.0)) {
+                    uint q = atomicAdd(nYs, 1u);
+                    if (q < NY) ys[q] = y0 + d0 / (d0 - d1) * (y1 - y0);
+                    else dropped++;
+                }
+            }
+        }
+        barrier();
+        uint m = (pc.debug & 4u) != 0u ? 0u : min(nYs, NY);
+        for (uint q = t; q < m; q += T) {
+            float y = ys[q];
+            uint rank = 0u;
+            for (uint p = 0u; p < m; p++) {
+                float yp = ys[p];
+                if (yp < y || (yp == y && p < q)) rank++;
+            }
+            sorted[rank] = y;
+        }
+        barrier();
+        bool evenOdd = pc.shapes.v[shape * 2u + 1u].x != 0.0;
+        // Bands shared out. Each band first gathers its active edges (one pass over the run's
+        // edges; a flattened curve puts many short edges in a row but few in any one band), sorts
+        // them by x at the band's middle, and walks them left to right counting winding. Past
+        // MAX_ACTIVE active edges it falls back to finding each one's neighbour by counting.
+        if ((pc.debug & 1u) == 0u)
+        for (uint k = t; k + 1u < m; k += T) {
+            float ya = sorted[k];
+            float yb = sorted[k + 1u];
+            float h = yb - ya;
+            if (h <= 0.0) continue;
+            float ym = 0.5 * (ya + yb);
+            uint act[MAX_ACTIVE];
+            float ax[MAX_ACTIVE];
+            uint a = 0u;
+            for (uint i = 0u; i < n; i++) {
+                vec4 ei = edges[i];
+                if (!(ei.y < ym && ym < ei.w)) continue;
+                if (a < MAX_ACTIVE) {
+                    // insertion by (x, index)
+                    float x = xAt(ei, ym);
+                    uint j = a;
+                    while (j > 0u && before(x, i, ax[j - 1u], act[j - 1u])) { ax[j] = ax[j - 1u]; act[j] = act[j - 1u]; j--; }
+                    ax[j] = x;
+                    act[j] = i;
+                }
+                a++;
+            }
+            if (a <= MAX_ACTIVE) {
+                int wind = 0;
+                for (uint q = 0u; q + 1u < a; q++) {
+                    wind += dirs[act[q]];
+                    bool inside = evenOdd ? (wind & 1) != 0 : wind != 0;
+                    if (!inside) continue;
+                    vec4 ei = edges[act[q]];
+                    vec4 er = edges[act[q + 1u]];
+                    float la = xAt(ei, ya), lb = xAt(ei, yb);
+                    float ra = xAt(er, ya), rb = xAt(er, yb);
+                    if ((pc.debug & 2u) == 0u) addTrapezoid(la, lb, ra, rb, h, int(w));
+                }
+                continue;
+            }
+            for (uint i = 0u; i < n; i++) {
+                vec4 ei = edges[i];
+                if (!(ei.y < ym && ym < ei.w)) continue;
+                float xi = xAt(ei, ym);
+                int wind = 0;
+                uint right = 0xffffffffu;
+                float xr = 0.0;
+                for (uint j = 0u; j < n; j++) {
+                    vec4 ej = edges[j];
+                    if (!(ej.y < ym && ym < ej.w)) continue;
+                    float xj = xAt(ej, ym);
+                    if (j == i || before(xj, j, xi, i)) wind += dirs[j];
+                    else if (right == 0xffffffffu || before(xj, j, xr, right)) { right = j; xr = xj; }
+                }
+                bool inside = evenOdd ? (wind & 1) != 0 : wind != 0;
+                if (right == 0xffffffffu || !inside) continue;
+                vec4 er = edges[right];
+                float la = xAt(ei, ya), lb = xAt(ei, yb);
+                float ra = xAt(er, ya), rb = xAt(er, yb);
+                addTrapezoid(la, lb, ra, rb, h, int(w));
+            }
+        }
+        barrier();
+        // Undo the difference coding with a prefix sum over the run's columns (a chunk per
+        // invocation, then the chunks' totals), and composite the run's colour source-over at that
+        // coverage into the row, clearing acc behind it.
+        vec4 colour = pc.shapes.v[shape * 2u];
+        int c0 = max(colLo, 0);
+        int c1 = min(colHi + 1, int(w));
+        int span = max(c1 - c0, 0);
+        int per = (span + int(T) - 1) / int(T);
+        int s0 = c0 + int(t) * per;
+        int s1 = min(s0 + per, c1);
+        int part = 0;
+        for (int c = s0; c < s1; c++) part += acc[c];
+        sorted[t] = intBitsToFloat(part);
+        barrier();
+        int run = 0;
+        for (uint q = 0u; q < t; q++) run += floatBitsToInt(sorted[q]);
+        for (int c = s0; c < s1; c++) {
+            run += acc[c];
+            acc[c] = 0;
+            float cov = clamp(float(run) / FIXED, 0.0, 1.0);
+            if (cov <= 0.0 || (pc.debug & 8u) != 0u) continue;
+            vec4 src = colour * cov;
+            vec4 dst = pc.image.v[base + uint(c)];
+            pc.image.v[base + uint(c)] = src + dst * (1.0 - src.a);
+        }
+        barrier();
+      }
+    }
+    if (dropped > 0u) atomicAdd(pc.counts.v[2u * bands() + 2u], dropped);
+}
+#endif

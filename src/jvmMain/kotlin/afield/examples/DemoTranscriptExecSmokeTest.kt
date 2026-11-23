@@ -979,6 +979,8 @@ object DemoTranscriptExecSmokeTest {
         // the four.gezira-gpu.probe FIELD_TEST checks the coverage and the `gezira-gpu` docs capture
         // checks the pixels.
         "gezira_gpu_winding",
+        // The whole tiger through GeziraGpuScene (2026-11-22); needs a native Window and a GPU.
+        "gezira_gpu_tiger",
         "threebox",
         "rectsl_dataviz",
         "rectsl_plot_axes",

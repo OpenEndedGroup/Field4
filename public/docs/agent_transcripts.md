@@ -4226,6 +4226,16 @@ magnified 100,000 times, and prints the largest difference.
 
 [Open →](offline.html?file=assets/agent_transcripts/gezira_gpu_winding/metadata.edn)
 
+### gezira_gpu_tiger
+
+**The Ghostscript tiger through Gezira on the GPU, live.** [The tiger on the GPU](afield_four_graphics.md#gezira-gpu-tiger)
+as four boxes: a renderer, a box that hands the tiger's FLines once to
+`GeziraGpuScene` and turns and zooms its transform every frame, a draw box that shows the image in the
+native window, and a box that reads one frame back beside the CPU's `GeziraSvg.render` and their
+difference.
+
+[Open →](offline.html?file=assets/agent_transcripts/gezira_gpu_tiger/metadata.edn)
+
 ### gpu_state
 
 A stateful GPU simulation: 40,000 particles whose positions and velocities live in a
