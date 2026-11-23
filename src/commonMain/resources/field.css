@@ -4661,6 +4661,24 @@ body::-webkit-scrollbar {
     position: absolute !important;
 }
 
+/* Box.parentHint: what a box needs above it, shown over its top edge until it has a parent. */
+.box > .box-parent-hint {
+    position: absolute !important;
+    left: 0;
+    bottom: calc(100% + 5px);
+    max-width: max(100%, 260px);
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: 1px solid rgba(var(--field-warning-rgb), 0.55);
+    background: rgba(var(--field-warning-rgb), 0.14);
+    color: var(--field-fg-strong);
+    font-family: var(--field-font);
+    font-size: 11px;
+    line-height: 1.35;
+    white-space: normal;
+    pointer-events: none;
+}
+
 .spatial-nav-overlay {
     position: fixed;
     top: 0;
@@ -4733,22 +4751,22 @@ body::-webkit-scrollbar {
     white-space: nowrap;
 }
 
+:root { --field-green-stripes: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'17'%20height%3D'17'%20viewBox%3D'0%200%2017%2017'%3E%3Crect%20width%3D'17'%20height%3D'17'%20fill%3D'black'%2F%3E%3Cpath%20d%3D'M7%200H17L0%2017V7ZM17%207V17H7Z'%20fill%3D'rgb(150%2C255%2C208)'%20fill-opacity%3D'.3'%2F%3E%3C%2Fsvg%3E"); }
+
 .running,
 .running-launching,
 .running-continued,
 .running-ending,
-.go-jobs-badge,
-.markingHover {
+.go-jobs-badge {
     background-color: rgb(var(--field-black-rgb));
     background-repeat: repeat;
     background-size: 17px 17px;
 }
 
 .running,
-.go-jobs-badge,
-.markingHover {
+.go-jobs-badge {
     background-position: 0 0;
-    background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'17'%20height%3D'17'%20viewBox%3D'0%200%2017%2017'%3E%3Crect%20width%3D'17'%20height%3D'17'%20fill%3D'black'%2F%3E%3Cpath%20d%3D'M7%200H17L0%2017V7ZM17%207V17H7Z'%20fill%3D'rgb(150%2C255%2C208)'%20fill-opacity%3D'.3'%2F%3E%3C%2Fsvg%3E");
+    background-image: var(--field-green-stripes);
 }
 
 .running {
@@ -4805,7 +4823,8 @@ body::-webkit-scrollbar {
 .box.running-launching .doubleClickToEdit,
 .box.running-continued .doubleClickToEdit,
 .box.running-ending .doubleClickToEdit {
-    backdrop-filter: none;
+    backdrop-filter: blur(5px);
+    background-color: rgba(var(--field-black-rgb), 0.35);
 }
 
 @keyframes flashInverted {
@@ -4912,7 +4931,7 @@ body::-webkit-scrollbar {
 }
 
 .markingButton {
-    font-size: 90%;
+    font-size: 110%;
     font-family: var(--field-font) !important;
     filter: var(--field-drop-shadow-soft);
     border: 1px solid var(--field-border-medium);
@@ -4929,16 +4948,49 @@ body::-webkit-scrollbar {
 }
 
 .fadeToBlack {
-    background: var(--field-panel-strong);
+    background: rgba(var(--field-black-rgb), 0.70);
 }
 
-.markingHover {
-    /*background-color: rgba(40, 220, 110, 0.5);*/
+.markingButton:not(.markingCenter).markingHover {
+    isolation: isolate;
     color: var(--field-marking-hover-fg);
-
-    border: 2px solid var(--field-border-dark-solid);
-    margin: -1px;
+    border-color: transparent;
+    background: transparent;
 }
+.markingButton:not(.markingCenter).markingHover::before,
+.markingButton:not(.markingCenter).markingHover::after {
+    content: "";
+    position: absolute;
+    pointer-events: none;
+}
+.markingButton:not(.markingCenter).markingHover::before {
+    inset: -1px;
+    border-radius: inherit;
+    background: var(--field-green-stripes) 0 0 / 17px 17px;
+    z-index: -2;
+}
+.markingButton:not(.markingCenter).markingHover::after {
+    inset: 2px;
+    border-radius: 5px;
+    background: rgb(var(--field-black-rgb));
+    z-index: -1;
+}
+
+/* The canvas draws the center dot; this circle is its hit target. */
+.markingButton.markingCenter {
+    box-sizing: border-box;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border-color: transparent;
+    border-radius: 50%;
+    background: transparent;
+    cursor: pointer;
+}
+.markingButton.markingCenter.markingHover {
+    border-color: var(--field-border-medium);
+}
+.markingCenter + .markingButtonBackground { background: transparent; }
 
 .markingButton + .markingActive {
     background-color: var(--field-marking-active-bg);

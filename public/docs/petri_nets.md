@@ -538,7 +538,7 @@ draws the state space of the deadlocking table, with the shortest route to the d
 The [petri_state_space](agent_transcripts.md#petri_state_space) starting point has these examples
 as runnable boxes.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/petri_nets/state_space.png" alt="the reachability graph drawn as six columns of pale dots joined by a dense grey web, with one thick orange path traced from a green 'start' node on the left through grab.0, grab.1, grab.2, grab.3 and grab.4 to a red node labelled 'stuck' on the right. The summary panel reads 82 markings, 265 firings, depth 5, tagged can deadlock, safe (1-bounded), not live, not reversible, with the shortest counterexample spelled out. The text panel repeats those and names the fifteen transitions that can be lost for good" wait="2.0" capture="box" open-outputs="true" embed=true name="petri-state-space" w="1240" padding="12"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/petri_nets/state_space.png" alt="the reachability graph drawn as six columns of blue-grey dots joined by a dense grey web, with one thick orange path traced from a green 'start' node on the left through grab.0, grab.1, grab.2, grab.3 and grab.4 to a red node labelled 'stuck' on the right. The summary panel reads 82 markings, 265 firings, depth 5, tagged can deadlock, safe (1-bounded), not live, not reversible, with the shortest counterexample spelled out. The text panel repeats those and names the fifteen transitions that can be lost for good" wait="2.0" capture="box" open-outputs="true" embed=true name="petri-state-space" w="1240" padding="12"}
 :::static
 import afield.simulation.petri.*
 

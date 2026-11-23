@@ -7,7 +7,9 @@ operations:
         ui.clickAt(1100.0, 820.0)
         val linkX = ui.eval("const n=document.querySelector('[data-caret-fixture] a').firstChild.firstChild;const r=document.createRange();r.setStart(n,0);r.setEnd(n,1);return r.getBoundingClientRect().left+1;").toString().toDouble()
         val linkY = ui.eval("const b=document.querySelector('[data-caret-fixture] a').getBoundingClientRect();return (b.top+b.bottom)/2;").toString().toDouble()
+        ui.down("Shift")
         ui.doubleClickAt(linkX, linkY)
+        ui.up("Shift")
         ui.waitForSelector("[data-caret-fixture] .text-frame-editor:focus", 10000.0)
         ui.pause(600)
         check(ui.eval("return window.__caretLinkFollowed===0 && document.activeElement.selectionStart===document.querySelector('[data-caret-fixture]').contents.indexOf('[repeated]')+1;").toString()=="true") { "Double-click followed the link or misplaced its source caret" }
@@ -20,7 +22,9 @@ operations:
         ui.clickAt(1100.0, 820.0)
         val x = ui.eval("const n=document.querySelector('[data-caret-fixture] strong').firstChild.firstChild; const r=document.createRange(); r.setStart(n,0);r.setEnd(n,1);const b=r.getBoundingClientRect();return b.left+1;").toString().toDouble()
         val y = ui.eval("const b=document.querySelector('[data-caret-fixture] strong').getBoundingClientRect();return (b.top+b.bottom)/2;").toString().toDouble()
+        ui.down("Shift")
         ui.doubleClickAt(x, y)
+        ui.up("Shift")
         ui.waitForSelector("[data-caret-fixture] .text-frame-editor:focus", 10000.0)
         ui.pause(150)
         check(ui.eval("const e=document.querySelector('[data-caret-fixture] .text-frame-editor');return e.selectionStart===window.__textFrameCaret.expected && e.selectionEnd===window.__textFrameCaret.expected && e.scrollTop>200;").toString()=="true") { "Trusted double-click did not place/reveal the source caret" }

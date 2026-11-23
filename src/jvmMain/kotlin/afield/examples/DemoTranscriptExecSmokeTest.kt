@@ -10,6 +10,7 @@ import afield.document.graph.isTrue
 import afield.runtime.macros.checkAtticAndExecute
 import afield.runtime.macros.checkIntroductionAndExecute
 import afield.runtime.macros.checkPreambleAndExecute
+import afield.lang.fieldml.installFieldML
 import afield.lang.remotejs.KotlinJsExecution
 import afield.lang.remotejs.kotlinJsTopologyNeedsUpdating
 import afield.app.server.thisSessionInfo
@@ -96,6 +97,12 @@ object DemoTranscriptExecSmokeTest {
 
     /** Pure-compute demos that are safe to run to completion headless. */
     internal val EXECUTE = setOf(
+        "adaptive_distribution_feedback",
+        "fieldml_reactive_bridge",
+        "shader_study_region_checks",
+        "polytope_pick_lineage",
+        // afield_four_graphics.md, Rasterising with stream kernels: Gezira kernels, Skia beside them; pure CPU.
+        "nile_gezira_kernels",
         // geometry_from_disk.md, Splats by tile: SplatTiles binning, heat map and schedule timing; pure CPU.
         "splat_tiles",
         // mesh_examples.md, Repairing a field that is only a bound: SdfGrid2D circles and offsets; pure CPU.
@@ -838,6 +845,8 @@ object DemoTranscriptExecSmokeTest {
         "path_tracing_glass",
         "path_tracing_gltf",
         "path_tracing_hidden_environment",
+        // path_tracing.md#denoising-any-image: a raster render into a float target, denoised on the GPU.
+        "oidn_raster_particles",
         // cuda.md: a CUDA kernel moving particles in a Vulkan buffer that a mesh draws. Needs a
         // window and Linux with an NVIDIA GPU; the CUDA side is checked by cuda.interop.smoke.
         "cuda_particles",
@@ -850,6 +859,9 @@ object DemoTranscriptExecSmokeTest {
         "polytope_layer_stack_path_trace",
         "photo_mount_path_trace",
         "physics_manifold_path_trace",
+        // chain_rhino_render.md: the Save Small .3dm through PathTraceScene.rhino. Its CPU half is
+        // RhinoPathTraceTest, which needs the optional openNURBS wrapper as well.
+        "rhino_path_trace",
         // Also a window, and additionally a compute dispatch whose push constants are bound to
         // lambdas; the pattern scheduler and the band analysis in front of it are covered by
         // synth.pat.seam, which needs no device at all.
@@ -954,6 +966,10 @@ object DemoTranscriptExecSmokeTest {
         // Outline field on the GPU (2026-11-20): FLines -> signedDistance2D -> BufferCanvas.sample into a
         // wall buffer read by a Gray-Scott compute box, plus a box adding a star outline. Needs a native Window.
         "outline_field_gpu",
+        // FLine coverage on the GPU (2026-11-21): BufferCanvas.fill/stroke of FLines into a mask buffer read
+        // by a fragment shader. Needs a native Window; GeziraWindingTest and BufferCanvasOutlineTest
+        // check the coverage itself, and the `fline-coverage-gpu` docs capture checks the pixels.
+        "fline_coverage_gpu",
         "threebox",
         "rectsl_dataviz",
         "rectsl_plot_axes",
@@ -1097,6 +1113,10 @@ object DemoTranscriptExecSmokeTest {
         // OSCQuery service on fixed ports, meant to be launched and stopped by hand. MqttDemoBundleTest
         // checks the bundle opens.
         "mqtt_demo",
+        // The routing page runs the broker and publisher during its real capture.
+        "mqtt_datalog_routing",
+        // Native Steam Audio and pinned Dirt-Samples are required to render this transcript.
+        "steamaudio_screen_study",
         "oscquery_demo",
         // dmx_lighting.md's demo: `loop { }` boxes on Art-Net's and sACN's fixed UDP ports (6454,
         // 5568). DmxLightingDemoBundleTest checks the bundle; the page's fences run each box's
@@ -1559,6 +1579,8 @@ object DemoTranscriptExecSmokeTest {
     }
 
     internal fun startRunloopDaemon() {
+        // The headless harness skips server startup, where FieldML normally registers its runtime.
+        installFieldML()
         val t = Thread({ afield.runtime.lifecycle.Runloop.runLoop.start() }, "demo-transcript-harness-runloop")
         t.isDaemon = true
         t.start()

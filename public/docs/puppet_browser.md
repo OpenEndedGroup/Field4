@@ -42,6 +42,12 @@ uses the same fitted rectangle for hit testing, so pixels and input cannot drift
 
 ## Pixels without readback
 
+To verify the transport in isolation, use the [Linux dma-buf receiver
+smoke](agent_transcripts.md#external_browser_surface_linux_smoke) or the [macOS IOSurface
+receiver smoke](agent_transcripts.md#external_browser_surface_macos_smoke). The
+[IOSurface ring round trip](agent_transcripts.md#iosurface_ring_roundtrip_smoke) starts at
+the encoder's ring and checks the colour after import.
+
 The browser and renderer stay separate processes. Chromium produces an accelerated offscreen paint
 with a native GPU handle and an explicit lease. Field imports that image, performs one GPU copy into
 a stable resident `VkImage`, and returns the lease only after the graphics fence says the copy has

@@ -297,7 +297,7 @@ keep their edges.
 Here 300 particles in a shell are joined to their slot neighbours, each edge coloured by its
 octant:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_connectivity_examples/orthant_slots_3d.png" wait="2.0" capture="box" open-outputs="true" w="1200" alt="a hollow shell of points joined by a web of thin edges in eight colours, one per octant; most edges join neighbours on the shell and some cut across its hollow middle"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_connectivity_examples/orthant_slots_3d.png" embed=true wait="2.0" capture="box" open-outputs="true" w="1200" alt="a hollow shell of points joined by a web of thin edges in eight colours, one per octant; most edges join neighbours on the shell and some cut across its hollow middle"}
 :::static
 val rnd = java.util.Random(4)
 val xyz = FloatArray(300 * 3)

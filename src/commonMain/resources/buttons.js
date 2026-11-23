@@ -262,14 +262,16 @@ const goMarkingMenu = (originx, originy, menus, originatingEvent, cancelCallback
                         back.focus({preventScroll: true});
                         return;
                 }
-                const center = makeDivAt(stack.length > 1 ? 'Back' : '&nbsp;&nbsp;&nbsp;', frame.x, frame.y,
+                const center = makeDivAt('', frame.x, frame.y,
                         frame.x, frame.y, rr, event => {
                                 if (event) handledMarkingMouseups.add(event);
                                 if (activeMarkingMenu !== session || generation !== current) return false;
                                 if (!level.ready) return true;
                                 session.back(); return !closed;
-                        });
-                center.title = stack.length > 1 ? 'Back (Esc)' : 'Cancel (Esc)';
+                        }, [], 'markingCenter');
+                const centerAction = stack.length > 1 ? 'Back' : 'Cancel';
+                center.title = centerAction + ' (Esc)';
+                center.setAttribute('aria-label', centerAction);
                 center.dataset.markingBack = stack.length > 1 ? 'true' : 'false';
                 level.center = center; liveDivs.push(center);
                 drawCircle(ctx, frame.x, frame.y, rr, 'rgba(255,255,255,0.5)');
@@ -358,7 +360,7 @@ const provideMissingMouseup = (event) => {
         missingMouseupHandler(event)
 }
 
-const makeDivAt = (text, x, y, originx, originy, r, callbackUp, divs = []) => {
+const makeDivAt = (text, x, y, originx, originy, r, callbackUp, divs = [], className = '') => {
         const newDiv = document.createElement("div");
         newDiv.style.position = "absolute";
         newDiv.style.zIndex = 1000;
@@ -367,7 +369,8 @@ const makeDivAt = (text, x, y, originx, originy, r, callbackUp, divs = []) => {
         newDiv.style.visibility = "hidden";
         newDiv.style.transition = "opacity 0.5s";
         newDiv.style.left = `${x}px`;
-        newDiv.classList = "markingButton";
+        newDiv.className = "markingButton";
+        if (className) newDiv.classList.add(className);
         newDiv.style.top = `${y}px`;
         newDiv.innerHTML = text;
         newDiv.oncontextmenu = "return false;";

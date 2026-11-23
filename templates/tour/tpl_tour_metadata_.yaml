@@ -1,0 +1,3 @@
+doc: |
+  A slideshow that tours the boxes connected beneath it, top to bottom, showing each
+  box's notes.

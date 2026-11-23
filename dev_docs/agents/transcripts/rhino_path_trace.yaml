@@ -1,0 +1,111 @@
+name: rhino_path_trace
+description: >
+  A Rhino .3dm file rendered by the GPU path tracer. The file is the Save Small fixture from
+  rhino_files.md: NURBS Breps and SubDs saved without render meshes, tessellated on load from their
+  exact surfaces. `PathTraceScene.rhino(model)` appends each object separately with
+  `importTriMesh`, so every object keeps its display colour as a plastic material, and turns Rhino's
+  Z up into the tracer's Y up. Needs a live renderer parent and the optional openNURBS wrapper
+  (./gradlew buildOpenNurbsNative); without the wrapper the trace box says how to build it.
+docs:
+  - page: chain_rhino_render.md
+    why: "Walks through this Rhino-to-path-tracer chain."
+operations:
+  - create:
+      box: rhino_trace_renderer
+      name: path tracing renderer
+      frame: { x: 40.0, y: 40.0, w: 220.0, h: 60.0 }
+      properties:
+        code: |
+          import afield.graphics.vulkan.util.Options
+
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+          Options.enableHDR = false
+          once.renderer {
+              window = Window("Field · Rhino to path tracer")
+              Renderer(window)
+          }
+          start(renderer::run)
+  - create:
+      box: rhino_path_trace
+      name: "a .3dm, path traced"
+      frame: { x: 320.0, y: 140.0, w: 280.0, h: 70.0 }
+      properties:
+        code: |
+          import afield.geometry.rhino.*
+          import afield.graphics.scene.fabricated.PathTraceEnvironment
+          import afield.graphics.scene.fabricated.PathTraceMaterial
+          import afield.graphics.scene.fabricated.PathTraceScene
+          import afield.graphics.scene.fabricated.PathTracingRenderer
+          import afield.graphics.vulkan.util.Camera
+          import java.io.File
+
+          prop<PathTracingRenderer>(tracer)
+
+          // Start here when changing render cost, lighting or convergence.
+          val samplesPerFrame = 2
+          val maxBounces = 6
+          val exposure = 1.3f
+          val environmentRotation = 2.1f
+          val targetSamples = 600
+
+          // The reader is an optional native library; this says how to build it when it is absent.
+          check(Rhino3dm.isAvailable) { Rhino3dm.describe() }
+
+          // ---- the file ------------------------------------------------------------------
+          // Swap this for Rhino3dm.load("~/Downloads/model.3dm") to trace your own.
+          val dir = java.nio.file.Files.createTempDirectory("rhino-trace").toFile()
+          val model = Rhino3dm.load(Rhino3dm.writeNurbsSample(File(dir, "save_small.3dm")))
+          dir.deleteRecursively()
+          println(model)
+
+          // ---- the scene -----------------------------------------------------------------
+          // The fixture is in model units of about 50 across; a twentieth puts it near 2.5.
+          val scene = PathTraceScene()
+          val added = scene.rhino(model, scale = 0.05f)
+          println("scene: ${added.objects} objects, ${added.triangleCount} triangles, ${added.degenerateCount} dropped")
+          println("       ${added.materials.values.toSet().size} materials, one per display colour")
+          println("model.mesh(): ${model.mesh().triangleCount} triangles")
+
+          val floor = scene.material(PathTraceMaterial.plastic(0.55f, 0.56f, 0.58f, 0.55f))
+          val low = added.boundsMin.y - 0.01f
+          val reach = 8f
+          scene.quad(
+              Vector3f(-reach, low, -reach),
+              Vector3f(reach, low, -reach),
+              Vector3f(reach, low, reach),
+              Vector3f(-reach, low, reach),
+              floor,
+          )
+
+          // ---- the render ----------------------------------------------------------------
+          val environment = PathTraceEnvironment.fromFile(
+              File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath,
+          )
+          val c = added.center
+          val span = maxOf(added.size.x, added.size.z)
+          val camera = Camera(renderer).also {
+              it.at.set(c.x + span * 0.55f, c.y + span * 0.55f, c.z + span * 1.25f)
+              it.target.set(c.x, c.y - added.size.y * 0.15f, c.z)
+              it.p.fov = 0.6
+          }
+          // 1000 x 614 is the window's own aspect, so the blit fills it rather than letterboxing.
+          tracer = PathTracingRenderer(renderer, scene, environment, 1000, 614, camera).install()
+          tracer.samplesPerFrame = samplesPerFrame
+          tracer.maxBounces = maxBounces
+          tracer.exposure = exposure
+          tracer.environmentRotation = environmentRotation
+          tracer.blitToScreen()
+          println("${tracer.backend}: ${tracer.triangleCount} triangles")
+          frames {
+              while (tracer.samples < targetSamples) {
+                  frame()
+              }
+              println("rhino trace converged: ${tracer.samples} samples")
+          }
+  - connect: { parent: rhino_trace_renderer, child: rhino_path_trace }
+  - launch: { box: rhino_trace_renderer, property: code, strand: renderer }
+  - await: { wait: pending }
+  - wait: { frames: 3 }
+  - launch: { box: rhino_path_trace, property: code }
+  - await: { wait: pending }

@@ -180,15 +180,7 @@ class DeBruijnSlicePiece(
     }
 
     /** The polygon's area. */
-    fun area(): Double {
-        var a = 0.0
-        for (i in polygon.indices) {
-            val p = polygon[i]
-            val q = polygon[(i + 1) % polygon.size]
-            a += p.x * q.y - q.x * p.y
-        }
-        return a / 2
-    }
+    fun area(): Double = signedArea2D(polygon.size, { polygon[it].x }, { polygon[it].y })
 }
 
 /**

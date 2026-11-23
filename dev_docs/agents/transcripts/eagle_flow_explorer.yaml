@@ -5,6 +5,9 @@ description: >
   raw flow, whose topology is the film weaving in the gate and sweeps across the sky, or the flow
   with the camera's motion fitted and removed, which leaves only the eagle. The second renders the
   whole clip in the raw look to a movie. Plain Kotlin; the movie needs FFmpeg.
+docs:
+  - page: "vector_field_topology.md#flow-from-old-film"
+    why: "Compare the same tracked footage with and without the motion of the film gate."
 operations:
   - create:
       box: eagle_flow_live

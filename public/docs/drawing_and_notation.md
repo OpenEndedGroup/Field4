@@ -185,6 +185,8 @@ notation.onChange { edit -> println("${edit.added.size} added, ${edit.removed.si
 
 A handler runs once the stroke is finished, not while it is being drawn. Running the box again replaces its handlers, and stopping the box removes them. Changes a box makes itself do not call it back.
 
+The `drawing-listener` [template](templates.md#templates-that-come-with-field) (++cmd+t++) is a box with an `onStroke` handler ready to edit.
+
 ## A long tradition
 
 Artists and composers spent much of the twentieth century pulling notation apart, and most of what they found is useful here.
@@ -326,3 +328,10 @@ Open [drawing_notation](agent_transcripts.md#drawing_notation) from the welcome 
 The drawing is one scene per document, kept in the document's root box. When code and a hand change it at the same moment, both changes are kept.
 
 Next on the Tour, [The Documentation Browser](completion_doc_browser.md) shows how to find out what calls like these do without leaving the editor.
+
+## See also
+
+To use canvas strokes as program inputs, see [A Drawn Score, Heard](chain_drawn_score.md)
+for a score or [Drawn Strokes Become Paint](chain_drawn_paint.md) for pressure-sensitive brushes.
+
+Use [Drawing on iPad](drawing_on.md) to bring pen input from a tablet into a Field document.

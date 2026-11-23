@@ -14,8 +14,8 @@ const make=async(name,x,kind='text-frame')=>{
     const box=[...document.querySelectorAll('.box')].find(b=>b.name==='Focus '+name);
     box.dataset.focusFixture=name;created.push(box);
     if(kind==='text-frame'){
-        const editor=box.querySelector('.text-frame-editor');
-        await wait(()=>document.activeElement===editor,'Frame did not enter editing');
+        await wait(()=>box.contains(document.activeElement) && document.activeElement.isContentEditable,'Frame did not enter editing');
+        const editor=document.activeElement;
         editor.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
     }
     return box;

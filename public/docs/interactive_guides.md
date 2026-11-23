@@ -102,6 +102,8 @@ no box has is skipped without an error: the note still opens but the selection d
 check the names if the editor stays put. The [slideshow_guide](#a-guide-to-open) starting point at
 the end of this page is this tour with callout lines and a counter added.
 
+The `tour` [template](templates.md#templates-that-come-with-field) (++cmd+t++) is this tour in a box: connect boxes beneath it, write a line in each one's notes, and run it.
+
 ## Moving between steps
 
 The reader moves through a guide with links in its notes. A `[[...]]` shortcut in a Markdown note

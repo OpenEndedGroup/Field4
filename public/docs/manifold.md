@@ -180,7 +180,9 @@ pinch vertices and disjoint components pass, and the volumes of disjoint pieces 
 `repairToSolid()` refuses that one outright rather than repairing around it — dropping the affected
 triangles and capping the gap would produce a plausible solid missing an unknown amount of the model.
 
-`TriMesh.isValidSolid()` is the cheap pre-flight, and `toSolid()` checks by default.
+`TriMesh.isValidSolid()` is the cheap pre-flight, and `toSolid()` checks by default. A mesh read
+from a file goes the same way: [Geometry from disk](geometry_from_disk.md) for STL, OBJ and glTF,
+[Rhino files](rhino_files.md) for the `TriMesh` inside each `RhinoMesh` of a `.3dm`.
 
 ## 2D sections and offsets
 
@@ -800,3 +802,11 @@ Memory is the library's own `malloc`, via its `manifold_alloc_*` / `manifold_del
 than an FFM `Arena`. A confined `Arena` can only be used from the thread that made it, and a `Solid`
 built in a box is routinely read from the runloop thread; a shared one costs a thread handshake to
 close. `malloc` has neither problem, and the `Cleaner` sits behind it.
+
+## See also
+
+Write a solid as a composition of primitives and operations in
+[solidsl](solid_notation.md), fill a closed surface with tetrahedra using [TetGen](tetgen.md),
+or bring an existing model in with [Geometry from disk](geometry_from_disk.md).
+
+[SolidCraft](solidcraft.md) builds parametric designs whose parts can be edited before export.

@@ -65,6 +65,28 @@ class HistoryBoxStoryTest {
         assertEquals(2, story.entries[1].lineCount)
     }
 
+    @Test
+    fun markdownAppearsInDocumentHistoryAndInTheInlineLens() {
+        fun version(word: String) = """{"version" 2 "boxes" [{"id" "sketch" "properties" {
+            "name" "sketch" "box_kind" "text-frame" "contents" "# Frame $word"
+            "notes" #afield/file-inline {"path" "sketch_notes_.md" "inline" "# Note $word"}
+        }} {"id" "root" "properties" {"name" "root"}}]}"""
+        writeVersions(version("first"), version("second"))
+        File(dir, "sketch_notes_.md").writeText("# Note second")
+        HistoryManager.clearCache(dir.path)
+
+        val versions = HistoryManager.listVersions(dir.path)
+        val (before, after) = versions.map { HistoryManager.loadVersionDiffSummary(dir.path, it) }
+        val diff = HistoryManager.computeDiffStat(before, after)
+        assertEquals(2, diff.totalLinesChanged)
+        for ((property, title) in listOf("contents" to "Frame", "notes" to "Note")) {
+            val current = "# $title second"
+            assertEquals(listOf(0, 1), HistoryManager.selectionTraceVersions(dir.path, "sketch", property, 1, 1, "", current))
+            assertEquals("# $title first", HistoryManager.propertyTextAtVersion(dir.path, 0, "sketch", property))
+            assertEquals(current, HistoryManager.propertyTextAtVersion(dir.path, 1, "sketch", property))
+        }
+    }
+
     /** The panel reads a missing `exists` as false; the first live drive listed every version as absent. */
     @Test
     fun defaultsAreOnTheWire() {

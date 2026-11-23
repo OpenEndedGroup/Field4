@@ -71,10 +71,12 @@ import kotlin.math.sqrt
  *
  * #### Colours
  *
- * Colours are Field's: sRGB [Vec4]s from [afield.graphics.color.hsl], [afield.graphics.color.rgb] and
- * friends, or CSS hex strings (`"#ffe4a0"`). Field's `hsl` reads the HSL cube as linear light, which is
- * also what three.js's `Color.setHSL` does, so a palette written for the madp toolbox comes out the
- * same here. The [TriMesh] parts store their vertex colours **linear**, as three.js and glTF expect.
+ * Colours are Field's: sRGB [Vec4]s from [afield.graphics.color.rgb] and friends, or CSS hex strings
+ * (`"#ffe4a0"`). The one exception is `hsl`: inside a builder it is the builder's own [hsl], which reads
+ * the HSL cube as linear light the way three.js's `Color.setHSL` does, so a palette written for the madp
+ * toolbox comes out the same here. Field's own [afield.graphics.color.hsl] is CSS's, on sRGB values, and
+ * would come out darker. The [TriMesh] parts store their vertex colours **linear**, as three.js and glTF
+ * expect.
  *
  * #### Randomness
  *
@@ -264,6 +266,19 @@ class GeometryBuilder(
     // ---------------------------------------------------------------------------------------------
     // Points
     // ---------------------------------------------------------------------------------------------
+
+    /**
+     * three.js's `Color.setHSL`: HSL read in three.js's *linear* working space, returned as an sRGB [Vec4] like
+     * every other Field colour.
+     *
+     * This shadows Field's [afield.graphics.color.hsl] inside a builder, because the madp toolbox's palettes
+     * are written against three.js and Field's `hsl` is CSS's: the same numbers there give a darker, more
+     * saturated colour. Hue is read as Field's `hsl` reads it, turns below 1 and degrees from 1 up.
+     */
+    fun hsl(h: Number, s: Number, l: Number, a: Number = 1.0): Vec4 {
+        val cube = afield.graphics.color.hsl(h, s, l, a)
+        return Vec4(linearToSrgb(cube.x), linearToSrgb(cube.y), linearToSrgb(cube.z), cube.w)
+    }
 
     /** A point with an optional colour of its own, for [tri], [quad] and [surface]. Emits nothing. */
     fun vertex(x: Double, y: Double, z: Double, color: Vec4? = null) =
@@ -633,6 +648,9 @@ internal fun cssColor(css: String): Vec4 {
 }
 
 internal fun srgbToLinear(c: Float): Float = if (c <= 0.04045f) c / 12.92f else ((c + 0.055f) / 1.055f).pow(2.4f)
+
+internal fun linearToSrgb(c: Float): Float =
+    if (c <= 0.0031308f) 12.92f * c else 1.055f * c.pow(1f / 2.4f) - 0.055f
 
 /** The toolbox's permutation table: the same shuffle, so the same noise. */
 private val PERM: IntArray = run {

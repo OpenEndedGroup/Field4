@@ -23,6 +23,7 @@ import afield.ui.output.templates.filter
 import afield.ui.visualization.h
 
 import afield.geometry.path.FLine
+import afield.geometry.path.pointBounds2D
 import afield.math.linalg.Vec2
 import afield.math.linalg.vec
 import kotlinx.serialization.json.Json
@@ -225,6 +226,9 @@ enum class MarkType {
 
 internal fun JsonObject.string(key: String): String? = (this[key] as? JsonPrimitive)?.takeIf { it.isString }?.content
 internal fun JsonObject.double(key: String): Double? = (this[key] as? JsonPrimitive)?.doubleOrNull
+
+/** [double], but null for NaN and ±infinity too, so one bad field cannot poison geometry built from it. */
+internal fun JsonObject.finite(key: String): Double? = double(key)?.takeIf { it.isFinite() }
 internal fun JsonObject.long(key: String): Long? = (this[key] as? JsonPrimitive)?.let { it.longOrNull ?: it.doubleOrNull?.toLong() }
 internal fun JsonObject.bool(key: String): Boolean? = (this[key] as? JsonPrimitive)?.booleanOrNull
 internal fun JsonObject.obj(key: String): JsonObject? = this[key] as? JsonObject
@@ -241,24 +245,30 @@ internal fun JsonObject.withCustom(key: String, value: JsonElement?): JsonObject
 
 internal fun JsonObject.custom(key: String): JsonElement? = obj("customData")?.get(key)
 
-/** Points of a linear element in world coordinates (Excalidraw stores them relative to `x, y`). */
+/**
+ * Points of a linear element in world coordinates (Excalidraw stores them relative to `x, y`).
+ * Malformed and non-finite points are skipped.
+ */
 internal fun JsonObject.worldPoints(): List<Vec2> {
-    val ox = double("x") ?: 0.0
-    val oy = double("y") ?: 0.0
+    val ox = finite("x") ?: 0.0
+    val oy = finite("y") ?: 0.0
     val pts = this["points"] as? JsonArray ?: return emptyList()
     return pts.mapNotNull { p ->
         val a = p as? JsonArray ?: return@mapNotNull null
         val px = a.getOrNull(0)?.jsonPrimitive?.doubleOrNull ?: return@mapNotNull null
         val py = a.getOrNull(1)?.jsonPrimitive?.doubleOrNull ?: return@mapNotNull null
+        if (!px.isFinite() || !py.isFinite()) return@mapNotNull null
         vec(ox + px, oy + py)
     }
 }
 
 /**
- * [element] with its points replaced by [world] points: `x, y` becomes the first point, `points` are
+ * [element] with its points replaced by [points]: `x, y` becomes the first point, `points` are
  * relative to it, and `width`/`height` are the points' extent, which is what Excalidraw expects.
+ * Non-finite points are dropped (JSON cannot carry them); with none left, [element] is returned unchanged.
  */
-internal fun JsonObject.withWorldPoints(world: List<Vec2>): JsonObject {
+internal fun JsonObject.withWorldPoints(points: List<Vec2>): JsonObject {
+    val world = points.filter { it.x.toDouble().isFinite() && it.y.toDouble().isFinite() }
     if (world.isEmpty()) return this
     val ox = world[0].x.toDouble()
     val oy = world[0].y.toDouble()
@@ -278,20 +288,18 @@ internal fun JsonObject.withWorldPoints(world: List<Vec2>): JsonObject {
     )
 }
 
-/** World-space bounds of an element, unrotated. */
+/** World-space bounds of an element, unrotated; a missing or non-finite field counts as 0. */
 internal fun JsonObject.worldBounds(): Rect {
     val kind = MarkType.of(string("type"))
     if (kind.isLinear) {
         val pts = worldPoints()
-        if (pts.isEmpty()) return Rect(double("x") ?: 0.0, double("y") ?: 0.0, 0.0, 0.0)
-        val minX = pts.minOf { it.x.toDouble() }
-        val minY = pts.minOf { it.y.toDouble() }
-        return Rect(minX, minY, pts.maxOf { it.x.toDouble() } - minX, pts.maxOf { it.y.toDouble() } - minY)
+        if (pts.isEmpty()) return Rect(finite("x") ?: 0.0, finite("y") ?: 0.0, 0.0, 0.0)
+        return pointBounds2D(pts)
     }
-    var x = double("x") ?: 0.0
-    var y = double("y") ?: 0.0
-    var w = double("width") ?: 0.0
-    var h = double("height") ?: 0.0
+    var x = finite("x") ?: 0.0
+    var y = finite("y") ?: 0.0
+    var w = finite("width") ?: 0.0
+    var h = finite("height") ?: 0.0
     if (w < 0) { x += w; w = -w }
     if (h < 0) { y += h; h = -h }
     return Rect(x, y, w, h)

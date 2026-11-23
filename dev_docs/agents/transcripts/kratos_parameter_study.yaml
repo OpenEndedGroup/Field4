@@ -11,6 +11,7 @@ description: >
 docs:
   - page: reference/simulation.md
     why: "Reference for the Kratos simulation API this study uses."
+  - page: physics.md#solve-a-material-or-flow-field
 operations:
   - create:
       box: kratos_study

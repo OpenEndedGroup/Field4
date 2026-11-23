@@ -1,0 +1,2 @@
+doc: |
+  A Clojure root and one Clojure box under it, with a slider whose handler is Clojure.

@@ -80,3 +80,8 @@ The working document is `eyeRayIntersection` in the local AField workspace. Its
 `launch-eye-rays` macro launches the renderer and scene in order. The repository transcript
 `dev_docs/agents/transcripts/openxr_eye_intersection.yaml` recreates the two-box graph in a
 new document; the generated starting point ships the same Kotlin and shaders.
+
+## See also
+
+See [Body and hand tracking](body_tracking.md) for another source of live headset
+poses, or [Stereo video in a room](stereo_video.md) for placing a video surface in OpenXR.

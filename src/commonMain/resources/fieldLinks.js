@@ -14,6 +14,11 @@ export async function activateFieldLink(href, anchor) {
         }
         return true;
     }
+    if (link.kind === 'passage') {
+        if (window.openTextFramePassage?.(link.id)) return true;
+        report('The source passage is no longer available');
+        return false;
+    }
     if (link.kind === 'guide') {
         await window.openDocumentGuideLink?.(link);
         return true;

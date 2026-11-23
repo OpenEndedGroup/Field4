@@ -48,6 +48,8 @@ Click the grid to give ORCA the keyboard: arrows move, letters write, ++space++ 
 to every operator. [ORCA's README](https://github.com/hundredrabbits/Orca#operators) lists the
 operators too.
 
+The `orca` [template](templates.md#templates-that-come-with-field) (++cmd+t++) is an ORCA grid playing through a synth, ready to launch.
+
 ## What comes back
 
 Each operator that talks to the outside world has a callback. They run once per frame, in the

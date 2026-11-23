@@ -7,6 +7,9 @@ export function classifyGuideLink(href, currentPath = "README.md") {
     const raw = String(href || "").trim();
     if (!raw) return { kind: "invalid" };
     try {
+        if (/^field:\/\/passage\/[a-f0-9-]{36}$/.test(raw)) {
+            return {kind:"passage", id:raw.slice("field://passage/".length)};
+        }
         if (raw.startsWith("field://guide/")) {
             const url = new URL(raw);
             return classifyGuideLink(url.pathname.slice(1) + url.hash, "README.md");

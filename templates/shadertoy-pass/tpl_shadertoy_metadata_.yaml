@@ -1,0 +1,3 @@
+doc: |
+  A ShaderToy-style Image pass, mainImage and the ShaderToy uniforms, drawn into the
+  window of the renderer above it.

@@ -734,6 +734,10 @@ Random sampling gains only 0.15 from ten times the budget.
     seeds reproduce the first six rows of the twelve-seed per-seed table exactly; the seeds run in
     parallel and `theComparisonIsDeterministic` pins that this changes nothing.
 
+## See also
+
+[Evolving creatures](evolving_creatures.md) evolves bodies as well as controllers.
+
 ## API reference
 
 Implementation and parameter details for the helpers used above:

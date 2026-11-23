@@ -10,6 +10,8 @@
 
 package afield.graphics.render.lighting
 
+import afield.media.image.saveHdrPng
+import afield.media.image.HdrPngEncoding
 import afield.document.graph.Box
 import afield.graphics.vulkan.Renderer
 import afield.graphics.vulkan.device.lightingCapabilityReport
@@ -20,9 +22,7 @@ import afield.math.linalg.Matrix4f
 import afield.math.linalg.Vector3f
 import org.json.JSONObject
 import org.lwjgl.vulkan.VK10.VK_FORMAT_R32G32B32A32_SFLOAT
-import java.awt.image.BufferedImage
 import java.io.File
-import javax.imageio.ImageIO
 import kotlin.math.*
 import kotlin.system.exitProcess
 
@@ -219,11 +219,6 @@ object DirectLightingSmoke {
     }
     private fun error(a: FloatArray,b: FloatArray): Double = a.indices.filter { it%4!=3 }.sumOf { abs(a[it]-b[it]).toDouble() }/(a.size/4*3)
     private fun save(dir: File,name: String,data: FloatArray,width: Int,height: Int) {
-        val image=BufferedImage(width,height,BufferedImage.TYPE_INT_RGB)
-        for(y in 0 until height)for(x in 0 until width) {
-            fun code(c: Int): Int { val v=data[(y*width+x)*4+c].toDouble().coerceAtLeast(0.0);return (255*(v/(1+v)).pow(1/2.2)).roundToInt().coerceIn(0,255) }
-            image.setRGB(x,y,(code(0) shl 16) or (code(1) shl 8) or code(2))
-        }
-        ImageIO.write(image,"png",File(dir,"$name.png"))
+        saveHdrPng(File(dir,"$name.png"),data,width,height,encoding=HdrPngEncoding.GAMMA_22)
     }
 }

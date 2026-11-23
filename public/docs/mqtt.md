@@ -44,6 +44,8 @@ display output directly. Re-running the box replaces the callback rather than ad
 Stopping the box leaves the subscription in place, so a feed keeps arriving while you work on the
 box that uses it; `mqtt.unsubscribe()` ends it.
 
+The `mqtt-listener` [template](templates.md#templates-that-come-with-field) (++cmd+t++) shows the latest messages under `field/#`, from the embedded broker or the one `AFIELD_MQTT_URL` names.
+
 ## Publishing
 
 `publish` sends text, numbers, bytes, or JSON for a `Map` or `List`:
@@ -110,6 +112,32 @@ loop {
 `{"temp": 12.5, "humidity": 70}`; give a field name (or a dotted path, `"env.temp"`, `"values.2"`)
 as the second argument to `series` or `number`. On a message itself, `message.number("temp")`,
 `message.string("name")` and `message.json` do the same.
+
+## Watch a route change
+
+Open the [MQTT routing starting point](agent_transcripts.md#mqtt_datalog_routing). Run
+**Derive and draw the routes**, then launch **Switch the connections**. The boxes use Field's
+built-in broker when no external broker is configured.
+
+The console on the left reaches the screen on the right through the relay. Uncheck **Relay to
+screen** to break that route. The screen turns grey and the proof disappears. Check **Direct:
+console to screen** and the screen comes back with a one-link proof. The proof names the links
+that support the conclusion.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/mqtt/route_via_relay.png" capture="box" open-outputs="true" wait-output="true" wait-output-kind="all" wait-output-contains="Screen reachable" timeout="120" padding="10" embed=true hidden=true name="mqtt-datalog-routing" alt="A route diagram with a grey direct link and teal links through the relay, alongside a Datalog proof that the screen is reachable" macro-file="../../dev_docs/agents/transcripts/mqtt_datalog_routing.yaml" capture-box="mqtt_route_model"}
+// Run the starting point against Field's MQTT broker.
+```
+
+The publisher sends a complete JSON snapshot every 400 ms. Each flag is `1` for a live link
+or `0` for an open switch. The receiver checks all three fields before replacing the `link`
+facts. A missing or invalid field leaves the current diagram in place. Complete messages let
+the diagram recover on the next publish after a dropped message. The diagram shows the last
+valid snapshot, with the switches supplying link state for this example.
+
+Try adding another relay. Add its position and links to the diagram, then send the corresponding
+flags from the publisher. The recursive rules in [Datalog](datalog.md#facts-that-change-while-the-box-is-running)
+will follow the new route without changes. To supply real link observations, publish the same
+payload to the topic stored in the receiving box's `routingTopic` property.
 
 ## Passing messages on to OSC and DMX
 

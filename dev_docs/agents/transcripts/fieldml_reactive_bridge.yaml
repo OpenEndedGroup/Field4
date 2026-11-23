@@ -1,0 +1,66 @@
+name: fieldml_reactive_bridge
+description: >
+  Use a Kotlin slider to drive a FieldML calculation. Feed its result to a Kotlin box
+  that draws the measured and mapped values.
+docs:
+  - page: reactive_properties.md#run-a-rule-in-fieldml
+    why: "Shows reactive property updates through a mixed-language graph."
+  - page: fieldml_host_bridge.md#source-macros
+    why: "Shares the same inherited slots with Kotlin and publishes a reactive result."
+operations:
+  - create:
+      box: exposure_slider
+      name: "Light level"
+      frame: { x: 60.0, y: 60.0, w: 255.0, h: 70.0 }
+      properties:
+        code: |
+          propDown<Double>(lightLevel)
+          syncToProperty("lightLevel", 0.5, min = 0.0, max = 1.0)
+          displayOpen("controls")
+  - create:
+      box: exposure_fieldml
+      name: "FieldML"
+      frame: { x: 390.0, y: 60.0, w: 180.0, h: 70.0 }
+      properties:
+        isFieldMLRoot: true
+        mainLanguage: fieldml
+  - create:
+      box: exposure_rule
+      name: "Map light to opacity"
+      frame: { x: 60.0, y: 250.0, w: 255.0, h: 85.0 }
+      properties:
+        code: |
+          let measured = propDown "lightLevel" |> hostAsFloat
+          let mapped = 0.1 + 0.9 * measured * measured
+          setPropDown "mappedOpacity" mapped
+  - create:
+      box: exposure_meters
+      name: "Compare the values"
+      frame: { x: 60.0, y: 430.0, w: 255.0, h: 85.0 }
+      properties:
+        code: |
+          prop<Double>(mappedOpacity)
+
+          val measured = lightLevel
+          val mapped = mappedOpacity
+          val track = 320
+
+          fun row(label: String, value: Double, color: String): String {
+              val width = (track * value).toInt()
+              return """
+                  <p>$label ${value.f3}</p>
+                  <div style="width:${track}px;background:#29303c">
+                      <div style="width:${width}px;height:12px;background:$color"></div>
+                  </div>""".trimIndent()
+          }
+
+          display("values", row("Light level", measured, "#c4d5e7") + row("Mapped opacity", mapped, "#8ed2b3"))
+          displayOpen("values")
+          println("Light ${measured.f3} · opacity ${mapped.f3}")
+  - connect: { parent: exposure_slider, child: exposure_rule }
+  - connect: { parent: exposure_fieldml, child: exposure_rule }
+  - connect: { parent: exposure_rule, child: exposure_meters }
+  - execute: { box: exposure_slider, property: code }
+  - execute: { box: exposure_rule, property: code }
+  - execute: { box: exposure_meters, property: code }
+  - await: {}

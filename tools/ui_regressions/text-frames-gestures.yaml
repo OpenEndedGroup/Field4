@@ -9,14 +9,15 @@ operations:
         ui.clickAt(1040.0, 100.0)
         ui.moveMouse(820.0, 160.0)
         ui.press("Shift+N")
-        ui.waitForSelector(".text-frame-editor:focus", 10000.0)
-        ui.type("## Another thread\n\nMade with Shift+N, using the keyboard.")
+        ui.waitForSelector(".text-frame-rich-block:focus", 10000.0)
+        ui.type("Another thread")
+        ui.clickSelector(".text-frame-rich-toolbar button[aria-label='Heading 2']")
         ui.clickAt(1100.0, 100.0)
         ui.pause(350)
         ui.eval("""window.__shortcutFrame = [...document.querySelectorAll('.text-frame-box')].find(b => !Object.values(window.__textFrameTest).includes(b.uid)); return true;""")
         check(ui.eval("return !!window.__shortcutFrame;").toString() == "true") { "Shift+N did not make a text frame: " + ui.eval("return JSON.stringify({focus:document.activeElement?.tagName,quickPick:!!window.globalIS,actions:window.allActions.builtin.filter(a=>a.id==='new-text-frame').map(a=>({keys:a.keys,predicate:typeof a.canvasKeybinding})),frames:[...document.querySelectorAll('.text-frame-box')].map(b=>({uid:b.uid,name:b.name}))});") }
         check(ui.eval("return window.__shortcutFrame.contents.startsWith('## Another thread') && !!window.__shortcutFrame.querySelector('.text-frame-preview h2');").toString() == "true") { "Shift+N leaked its triggering character into Markdown" }
-        check(ui.eval("return window.__shortcutFrame.querySelector('.text-frame-editor').hidden;").toString() == "true") { "Clicking away did not release Markdown editing" }
+        check(ui.eval("return window.__shortcutFrame.querySelector('.text-frame-rich').hidden;").toString() == "true") { "Clicking away did not release visual editing" }
         ui.clickAt(160.0, 170.0)
         ui.clickAt(700.0, 140.0, "Shift")
         ui.pause(150)
@@ -32,8 +33,8 @@ operations:
         ui.hoverSelector(".markingButton:has-text('New text frame below')")
         ui.mouseUp()
         ui.up("Alt")
-        ui.waitForSelector(".text-frame-editor:focus", 10000.0)
-        ui.type("### Follow-up\n\nMade from the marking menu, already connected.")
+        ui.waitForSelector(".text-frame-rich-block:focus", 10000.0)
+        ui.type("Follow-up")
         ui.press("Escape")
         ui.pause(500)
         check(ui.eval("for(let i=0;i<100;i++){if(window.__shortcutFrame.box_children.length===1)return true;await new Promise(r=>setTimeout(r,50));}return false;").toString() == "true") { "Marking-menu child state: " + ui.eval("return JSON.stringify({source:window.__shortcutFrame.uid,children:window.__shortcutFrame.box_children,frames:[...document.querySelectorAll('.text-frame-box')].map(b=>({uid:b.uid,x:b.data_x,y:b.data_y,children:b.box_children}))});") }
@@ -41,7 +42,7 @@ operations:
         ui.clickAt(160.0, 170.0)
         ui.pause(500)
         check(ui.eval("""return window.currentSelectedProperty === 'contents' && getComputedStyle(document.querySelector('.monaco-editor-container')).visibility === 'visible';""").toString() == "true") { "Frame selection did not honor automatic editor opening" }
-        ui.eval("""const box = [...document.querySelectorAll('.text-frame-box')].find(b => b.uid === window.__textFrameTest.source); window.globalEditor.getModel().setValue(box.contents + '\n\nA last property-editor keystroke.'); box.querySelector('.text-frame-preview').dispatchEvent(new MouseEvent('dblclick', {bubbles:true})); return true;""")
+        ui.eval("""const box = [...document.querySelectorAll('.text-frame-box')].find(b => b.uid === window.__textFrameTest.source); window.globalEditor.getModel().setValue(box.contents + '\n\nA last property-editor keystroke.'); box.querySelector('.text-frame-preview').dispatchEvent(new MouseEvent('dblclick', {bubbles:true,shiftKey:true})); return true;""")
         ui.waitForSelector(".text-frame-editor:focus", 10000.0)
         check(ui.eval("return document.activeElement.value.includes('A last property-editor keystroke.');").toString() == "true") { "Switching surfaces lost an unpolled property-editor edit" }
         ui.pause(500)

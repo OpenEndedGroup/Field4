@@ -371,6 +371,8 @@ Tempo holds `bpm` and `key`, and Accent, two levels down, reads both straight fr
 
 [Reactive properties](reactive_properties.md#seeing-who-reads-what) has the layer in more detail.
 
+The `parameter-parent` [template](templates.md#templates-that-come-with-field) (++cmd+t++) is this arrangement ready to run: a parent that publishes `level` with a slider, and a child that draws it.
+
 ### Which box is whose parent decides what is visible
 
 Both the preamble gather and the value walk follow `parents`. Connecting a child under a parent (`parent.connect(child)`, or selecting the parent and pressing `g` in the UI) is what puts the parent into the child's ancestor chain.
@@ -471,6 +473,14 @@ both resolve the value by walking the graph when you read it. Use `prop` to make
 assign; use `@exported` to share a declaration you have already written.
 
 ---
+
+## Shared Kotlin types
+
+Use `sharedTypes(...)` when independently compiled boxes need the same class. A data class
+declared in one box's script is otherwise local to that script's compilation. In [Shared
+types](agent_transcripts.md#shared_types_demo), run the declaration box first, then the boxes
+that construct and destructure `shared.Particle`. The last pair passes a typed instance
+through `@rootExported`, so the receiving box can read it with the same type.
 
 ## Generated GLSL accessors: `moduleHere { }`
 
@@ -698,3 +708,8 @@ Field, over both the welcome page and code, and the welcome page says so.
 
 See also: [Feature Overview](funFeatures.md) (user-level `prop`/`connect`/`once`), [Field 4 Graphics](afield_four_graphics.md) (graphics API), [StackSL Examples](stacksl_examples.md) (`stack.auto`), [RectSL Examples](rectsl_examples.md), [Why Does This Value Resolve Here?](why.md) (which box a
 value came from), and the [Kotlin Overview](kotlin_overview.md).
+
+## See also
+
+A box can also run [FieldML expressions](fieldml_cheatsheet.md), including calls
+to Kotlin and Java through [FieldML's JVM bridge](fieldml_host_bridge.md).

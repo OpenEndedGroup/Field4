@@ -1,6 +1,9 @@
 package afield.media.image
 
 import afield.geometry.path.FLine
+import afield.graphics.nile.Bezier
+import afield.graphics.nile.FillRule
+import afield.graphics.nile.Gezira
 import afield.math.linalg.Vec3
 import afield.math.linalg.Vec4
 import kotlin.math.ceil
@@ -14,10 +17,10 @@ import kotlin.math.sqrt
  *
  * [Img.drawFLines] is the whole surface. It resamples the image up by a scale factor and blends
  * each line over it, reading `color`, `thickness`, `pointed`, `filled` and the rest from the line's
- * own properties the way Field draws it on the canvas; round-capped segments and even-odd fills are
- * rasterised here, each with a pixel of antialiasing. What comes back is another [Img], so an
- * overlay costs no GPU, no window and no AWT font or toolkit, and `showImgGrid` can show it
- * wherever a box runs.
+ * own properties the way Field draws it on the canvas. Round-capped segments are drawn here with a
+ * pixel of antialiasing; even-odd fills get exact area coverage from `Gezira.rasterizer`. What
+ * comes back is another [Img], so an overlay costs no GPU, no window and no AWT font or toolkit, and
+ * `showImgGrid` can show it wherever a box runs.
  */
 
 /**
@@ -62,7 +65,7 @@ fun Img.drawFLines(
             }
         } else if (line.properties["filled"] == true) {
             val c = (line.properties["fill"] as? Vec4) ?: (line.properties["color"] as? Vec4) ?: color
-            out.fillPolygons(line.polylines().map { poly -> poly.map { Vec3(it.x * scale.toFloat(), it.y * scale.toFloat(), 0f) } }, c)
+            out.fillOutline(line, scale, c)
             if (line.properties["stroked"] != false) {
                 val half = ((line.properties["thickness"] as? Number)?.toDouble() ?: thickness) / 2
                 line.polylines().forEach { poly -> for (i in 1 until poly.size) out.stampCapsule(poly[i - 1].x * scale, poly[i - 1].y * scale, poly[i].x * scale, poly[i].y * scale, half, c) }
@@ -124,30 +127,21 @@ private fun Img.stampCapsule(ax: Double, ay: Double, bx: Double, by: Double, r: 
     }
 }
 
-/** Blends the even-odd interior of [polys] into this RGB image, sampling each pixel at its centre. */
-private fun Img.fillPolygons(polys: List<List<Vec3>>, c: Vec4) {
-    val all = polys.flatten()
-    if (all.isEmpty()) return
-    val y0 = max(0, floor(all.minOf { it.y }.toDouble()).toInt())
-    val y1 = min(height - 1, ceil(all.maxOf { it.y }.toDouble()).toInt())
-    val xs = ArrayList<Double>()
-    for (y in y0..y1) {
-        val sy = y + 0.5
-        xs.clear()
-        polys.forEach { poly ->
-            for (i in poly.indices) {
-                val a = poly[i]; val b = poly[(i + 1) % poly.size]
-                if ((a.y <= sy) != (b.y <= sy)) xs.add(a.x + (sy - a.y) / (b.y - a.y) * (b.x - a.x))
-            }
-        }
-        xs.sort()
-        for (k in 0 until xs.size - 1 step 2) {
-            for (x in max(0, ceil(xs[k] - 0.5).toInt())..min(width - 1, floor(xs[k + 1] - 0.5).toInt())) {
-                val i = (y * width + x) * 3
-                data[i] += ((c.x - data[i]) * c.w)
-                data[i + 1] += ((c.y - data[i + 1]) * c.w)
-                data[i + 2] += ((c.z - data[i + 2]) * c.w)
-            }
+/**
+ * Blends the even-odd interior of [line], scaled by [scale], into this RGB image with exact area
+ * coverage from [Gezira.rasterizer]: an edge pixel gets the fraction of it the shape covers, and
+ * curves stay curves.
+ */
+private fun Img.fillOutline(line: FLine, scale: Double, c: Vec4) {
+    val beziers = Gezira.beziers(line).map { b -> Bezier(DoubleArray(b.p.size) { b.p[it] * scale }) }
+    for (s in Gezira.rasterizer(FillRule.EVEN_ODD)(beziers)) {
+        if (s.y !in 0 until height) continue
+        val a = (s.coverage * c.w).toFloat()
+        for (x in max(0, s.x) until min(width, s.x + s.length)) {
+            val i = (s.y * width + x) * 3
+            data[i] += (c.x - data[i]) * a
+            data[i + 1] += (c.y - data[i + 1]) * a
+            data[i + 2] += (c.z - data[i + 2]) * a
         }
     }
 }

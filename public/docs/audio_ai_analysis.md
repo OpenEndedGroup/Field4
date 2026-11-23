@@ -131,3 +131,9 @@ copies either immutable asset when local numerical work needs the full resolutio
 
 See also the [general audio visualizers](visualizers.md#beat-and-pitch-analysis-views), the
 [gesture board](audio_ai_gesture_board.md) and [speech embeddings](audio_ai_speech_embeddings.md).
+
+## See also
+
+For a recording with several instruments, [MuScriptor](audio_ai_muscriptor.md)
+returns separate note tracks. [Short-time spectral spaces](audio_ai_spectral_embeddings.md)
+lets you compare short regions by timbre.

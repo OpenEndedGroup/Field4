@@ -32,6 +32,7 @@ Windows and Linux; ++alt++ is Option or Alt.
 | Search boxes | `document-search` | ++cmd+f++ (canvas focused) |
 | Bookmarks panel | `show-bookmarks` | ++alt+b++ |
 | Frame the selection | `frame-selected` | ++alt+f++ |
+| Zoom to fit the selection | `fit-selected` | ++alt+shift+f++ |
 | Reset the view | `reset-view` | ++alt+h++ |
 | Layers panel | `show-layers-panel` | ++alt+l++ |
 | Drawing layer | `toggle-drawing-layer` | ++alt+d++ |
@@ -94,6 +95,8 @@ ui.pause(1200)
 
 Press ++question++ on the canvas to see every shortcut on one card. It reads your current bindings, so a
 change to `keybindings.yaml` shows up there; see [Keyboard shortcuts](keybindings.md).
+
+Try the two layout commands on [Box layout demo](agent_transcripts.md#box_layout_demo). The nine boxes start scattered. Select part of the graph and use **Lay out selection** first, then **Lay out whole document** to arrange the entire graph.
 
 ## Search boxes
 
@@ -365,14 +368,17 @@ check(shown.contains("target=#1") && shown.contains("active=#1")) {
 ui.pause(1200)
 ```
 
-For one line of code rather than the whole document, put the cursor on it and press
-++alt+shift+h++: the editor opens that line's history in place, version by version.
+For one line rather than the whole document, put the cursor on it and press ++alt+shift+h++:
+the editor opens that line's history in place, version by version. This works in code, text-frame
+Markdown, and box notes. For Markdown, open the source in the editor first.
 
 ## The document guide
 
 The document guide is a reader for a document's own Markdown files and notes, beside the
-canvas. Open it with **Show Document Guide** in the command palette. A box's `notes` property
-is listed too; here the guide is reading the notes on `sketch`.
+canvas. Click **Guides** in the bottom left, or **Notes** if the document only has box notes. You can
+also use **Show Document Guide** in the command palette. A box's `notes` property
+is listed under **Box notes**. Select a note to bring its box into view, or choose **Open box**
+to edit the note on the box. Here the guide is reading the notes on `sketch`.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x600" clip-selector="#document-guide" screenshot="assets/tour_interface/document-guide.png" transcript="../../dev_docs/agents/transcripts/docs_capture/tour_interface_document.yaml" document="docs-tour-interface-document-guide" fresh-document=true hide-toasts=true padding="8" wait="0" timeout="150" embed=true hidden=true name="tour-interface-document-guide" alt="The Document Guide reading the box notes of sketch: the list on the left with sketch under Box notes, and the notes themselves, a heading Ring sketch, a sentence and two bullet points, on the right."}
 ui.eval("window.showDocumentGuide(); return true")

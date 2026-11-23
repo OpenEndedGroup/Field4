@@ -14,7 +14,7 @@ lprintln("info,mypage", "something happened")
 
 `"info,mypage"` is a **channel**: a comma-separated list of *tags* that consumers use to select
 messages. There
-are **1139**<!--count:lprintlnChannelCallSites--> places in `src/jvmMain` that call
+are **1141**<!--count:lprintlnChannelCallSites--> places in `src/jvmMain` that call
 `lprintln` with the channel written out as a literal, spelling
 **263**<!--count:logChannelStrings--> distinct channel strings between them.
 
@@ -465,3 +465,7 @@ The generic core is `afield.ai.diagnostics.Logging`: `LogEvent`, `LogSink`, `Log
 `lprintln`, `lprint`, `lblock`, `indent`, `formatMillis`, `PinnedConsole`, `StatsHeatmap`,
 `SessionErrorLog`, `SaveReloadLog`. The web sink is `afield.app.server.LogStream`, which serves
 the log widget over the `__logs__` websocket handler.
+
+## See also
+
+Use [Box Output](box_output.md) to show results alongside the code that produced them.

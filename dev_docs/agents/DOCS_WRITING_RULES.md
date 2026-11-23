@@ -120,6 +120,8 @@ This file is about what goes on a page and how it reads.
    `public/docs/assets/` and `dev_docs/agents/demos/` is a starting point, linked as
    `agent_transcripts.md#<name>`; `AgentDemoRegistrationTest` fails on one that is not, apart
    from a named backlog that may only shrink.
+    When you add a page, link to it from an existing page where a reader would look for it.
+    The landing precheck points out new pages that have no such link.
 20. **A fact on a page stays true.** When code changes, the page changes in the same commit, and a
    number that can be derived (a count of call sites, pages, transcripts) is derived by its
    guard, not typed.

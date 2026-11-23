@@ -228,6 +228,36 @@ time. Take `shot(S)` out and you get one number for the whole table.
 take whose clip and rating are equal. Under `!` a hole is existential, so `!covered(S)` and
 `!child(_, X)` both mean "no row matches".
 
+## Facts that change while the box is running
+
+When an input describes the complete current state, use
+[`replaceFacts`](reference/languages.md#datalog-kt--datalog--replacefacts) to replace the base rows
+of one relation. Any rows missing from the new snapshot are removed. Rules and other relations
+stay in the model, and repeating the same set of rows reuses the solved model.
+
+This example takes away the last link in a two-link route. The recursive answer and its proof both
+change.
+
+```diffstatic {data-lang=kotlin}
+val model = Datalog()
+model.add(
+    """
+    reach(A, B) :- link(A, B).
+    reach(A, C) :- reach(A, B), link(B, C).
+    """,
+)
+
+model.replaceFacts("link", [["console", "relay"], ["relay", "screen"]])
+println(model.why("reach(console, screen)")?.render())
+
+model.replaceFacts("link", [["console", "relay"]])
+println(model.why("reach(console, screen)")?.render() ?: "Screen unreachable")
+```
+
+In [Watch a route change](mqtt.md#watch-a-route-change), an MQTT callback supplies these
+snapshots, and the same model drives a live diagram. An empty snapshot clears the base rows.
+The method validates every row's column count before installing a snapshot.
+
 ## The document is a database
 
 `Box.datalog(...)` loads the graph you are looking at. Boxes, names, edges, nesting, frames and
@@ -684,3 +714,9 @@ aggregation inside a recursive cycle, which it reports with the cycle named rath
 evaluation order.
 
 **Source.** `src/jvmMain/kotlin/afield/data/query/datalog/`.
+
+## See also
+
+For constraints on neighbouring tiles, see [Wave Function Collapse](wfc_examples.md).
+
+See [A Generator, Graded by Datalog](chain_flow_islands.md) for scoring connected regions.

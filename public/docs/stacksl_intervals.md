@@ -175,3 +175,9 @@ Builtins with no interval rule yet are refused by name rather than guessed: the 
 
 ??? aside "Agents: where this lives and what pins it"
     The interval values are `GlslIntervalScalars` in `src/jvmMain/kotlin/afield/lang/stacksl/cpu/GlslInterval.kt`, the third value type for the GLSL interpreter after the `Float` reference and the reverse-mode one in `GlslAd.kt`. The three-valued conditions are in `GlslMachine` (`GlslInterpreter.kt`): `GlslScalars.truth` answers `UNKNOWN` only for the interval values, so the other two are unchanged, and `StackSLCpuFloatPathManifestTest` and `StackSLGradientTest` still pin their bits. `StackSLIntervals.kt` holds `enclosePixels`, `certifiedTiles` and `tilePicture`. `StackSLIntervalTest` renders the whole non-texture gallery and checks every pixel against the bounds of the rectangles they sit in, with no violations. The Fn version of the same idea, and the design note for both, is [Proving a Function's Range](fn_intervals.md) and `dev_docs/FN_INTERVAL.md`.
+
+## See also
+
+The [StackSL examples](stacksl_examples.md) show the drawing operations that the
+interval analysis works over. [Evolving a Shader](stacksl_evolve.md) searches programs made from
+those same operations.

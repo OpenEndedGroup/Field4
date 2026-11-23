@@ -33,6 +33,12 @@ These chains end in the GPU path tracer, and each starts somewhere a renderer wo
     hundreds of capsules, and the capsules are welded into one solid whose holes you can count
     exactly.
 
+-   ![A path-traced Rhino file: a blue sphere, cylinder and holed plate, two orange boxes and two green SubD cubes on a pale floor](assets/chain_rhino_render/trace.png)
+
+    **[A Rhino File, Path Traced](chain_rhino_render.md).** A `.3dm` saved without render meshes
+    is tessellated from its NURBS surfaces and traced object by object, each in the colour Rhino
+    shows it in.
+
 -   ![Dozens of small blue faceted lumps floating over a pale floor, one larger lump in gold](assets/chain_life3d_render/clusters.png)
 
     **[Three-Dimensional Life, Counted and Traced](chain_life3d_render.md).** The question you
@@ -143,6 +149,12 @@ These chains end in something you could print, mount, hang or light.
     difference in the insets a cutter would follow: the blend's split in two at the waist.
 
 </div>
+
+## From a rule, outline or tracked movement
+
+- [A Generator, Graded by Datalog](chain_flow_islands.md) measures the regions a generator makes.
+- [A Word Cut as a Stencil](chain_stencil_bridges.md) adds bridges that hold the islands inside letters in place.
+- [A Tracked Body, Measured and Heard](chain_tracked_body.md) turns body poses into measurements and sound.
 
 ## Studio tools from MADP
 

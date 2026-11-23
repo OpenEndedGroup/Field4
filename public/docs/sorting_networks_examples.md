@@ -358,3 +358,7 @@ The scatter puts comparator count across the page and depth up it. Where a run f
 For more fixed structure with plotted behaviour, continue with [Graph connectivity examples](graph_connectivity_examples.md) and [Boolean networks examples](boolean_networks_examples.md).
 
 *The public declarations used on this page are listed, with their KDoc, in the codebase reference: [`sorting_networks.kt`](reference/data.md#sorting-networks-kt). Start from [what's already in the box](reference/index.md).*
+
+## See also
+
+For networks built from logic gates and drawn as FLines, see [Boolean networks](boolean_networks_examples.md).

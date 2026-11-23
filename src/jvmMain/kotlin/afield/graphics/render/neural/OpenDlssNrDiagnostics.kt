@@ -1,6 +1,7 @@
 @file:afield.runtime.completion.CompletionCategory("Internal")
 package afield.graphics.render.neural
 
+import afield.media.image.savePng
 import afield.graphics.vulkan.Renderer
 import afield.graphics.vulkan.buffers.VulkanBuffer
 import afield.graphics.vulkan.device.vkLayout
@@ -14,7 +15,6 @@ import org.lwjgl.vulkan.*
 import java.awt.image.BufferedImage
 import java.nio.ByteOrder
 import java.nio.file.Path
-import javax.imageio.ImageIO
 import kotlin.math.pow
 
 internal object OpenDlssNrDiagnostics {
@@ -47,6 +47,6 @@ internal object OpenDlssNrDiagnostics {
         val image=BufferedImage(width,height,BufferedImage.TYPE_INT_ARGB)
         fun encode(v: Float): Int {val x=v.coerceIn(0f,1f);return ((if(x<=0.0031308f)x*12.92f else 1.055f*x.pow(1f/2.4f)-0.055f)*255f+0.5f).toInt().coerceIn(0,255)}
         for(y in 0 until height)for(x in 0 until width){val i=(y*width+x)*4;image.setRGB(x,y,(pixels[i+3].coerceIn(0f,1f)*255+0.5f).toInt().shl(24) or encode(pixels[i]).shl(16) or encode(pixels[i+1]).shl(8) or encode(pixels[i+2]))}
-        ImageIO.write(image,"png",path.toFile())
+        image.savePng(path.toFile())
     }
 }

@@ -178,3 +178,7 @@ The question a constructor has to answer is whether its function is defined ever
 See also the [Functions examples](functions_examples.md) page, whose *Domains and timeline composition* section covers `domain = ...` versus `over`, `stretch`, and the timeline helpers in more depth.
 
 *The public declarations used on this page are listed, with their KDoc, in the codebase reference: [`Functions.kt`](reference/math.md#functions-kt). Start from [what's already in the box](reference/index.md).*
+
+## See also
+
+For slopes and gradients on those domains, see [Differentiating functions](autodiff_examples.md).

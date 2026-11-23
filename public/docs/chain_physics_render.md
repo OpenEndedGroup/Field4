@@ -118,3 +118,7 @@ producing slivers.
   [`SimdVerlet`](reference/simulation.md#simdverlet-kt-simdverlet) —
   [`addCloth`](reference/simulation.md#cloth-kt--addcloth),
   [`addColliders`](reference/simulation.md#simdverletcolliders-kt--addcolliders).
+
+## See also
+
+[Particles, cloth and constraints](physics.md) covers the simulation that produces the geometry.

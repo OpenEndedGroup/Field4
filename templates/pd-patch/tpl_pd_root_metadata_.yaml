@@ -1,0 +1,3 @@
+doc: |
+  A Pure Data root and one patch under it: a filtered saw drone. Launch the patch,
+  then run one of its message lines on its own to change it.

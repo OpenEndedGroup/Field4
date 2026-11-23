@@ -42,6 +42,8 @@ print(a)
 Multi-line output keeps its columns, so a `DataFrame` or a 2-D array stays legible. See
 [Output](#output).
 
+To start from a working pair, press ++cmd+t++ and insert the `python-cell` [template](templates.md#templates-that-come-with-field): a Python root and one cell under it, with a slider.
+
 ## One interpreter, one namespace
 
 Field runs one Python interpreter, shared by every Python box in every open document. A name bound
@@ -338,3 +340,8 @@ interpreter whose `jep` is a different release, and says which two versions it f
     illustration only. The `tqdm` progress bar and the shared namespace have no picture: a still
     after the loop shows an empty bar, and a runner fence builds only one box.
     `dev_docs/DOCS_PAGE_SNIPPET_COVERAGE.md` has the mechanics.
+
+## See also
+
+For worked uses of Python in a document, see [Imaging and computer vision](imaging_examples.md),
+[DaVinci Resolve](davinci_resolve.md#from-a-python-box), and [a terminal in a box](terminal.md).

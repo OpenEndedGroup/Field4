@@ -1,5 +1,6 @@
 package afield.examples.four
 
+import afield.media.image.saveRgbPng
 import afield.document.graph.Box
 import afield.graphics.vulkan.Renderer
 import afield.graphics.vulkan.util.Options
@@ -10,10 +11,8 @@ import afield.media.image.Img
 import afield.simulation.agents.ShaderPhysarumSettings
 import afield.simulation.agents.ShaderPhysarumSystem
 import afield.simulation.agents.TrailField
-import java.awt.image.BufferedImage
 import java.io.File
 import java.util.concurrent.TimeUnit
-import javax.imageio.ImageIO
 import kotlin.math.exp
 import kotlin.system.exitProcess
 
@@ -165,18 +164,16 @@ object StigmergySweep {
         val tot = FloatArray(n) { i -> (0 until species).sumOf { maxOf(0f, img.data[i * 4 + it]).toDouble() }.toFloat() }
         val p98 = tot.sortedArray()[(n * 0.98).toInt()].coerceAtLeast(1e-6f)
         val exposure = 2.3 / p98
-        val out = BufferedImage(img.width, img.height, BufferedImage.TYPE_INT_RGB)
         val palette = TrailField.DEFAULT_PALETTE
-        for (y in 0 until img.height) for (x in 0 until img.width) {
+        saveRgbPng(file, img.width, img.height) { x, y ->
             var r = 0.0; var g = 0.0; var b = 0.0
             for (c in 0 until species) {
                 val k = 1 - exp(-exposure * maxOf(0f, img.data[(y * img.width + x) * 4 + c]))
                 r += k * palette[c].x; g += k * palette[c].y; b += k * palette[c].z
             }
             fun q(v: Double) = (v.coerceIn(0.0, 1.0) * 255).toInt()
-            out.setRGB(x, y, (q(r) shl 16) or (q(g) shl 8) or q(b))
+            (q(r) shl 16) or (q(g) shl 8) or q(b)
         }
-        ImageIO.write(out, "png", file)
         println("SWEEP ${file.nameWithoutExtension} exposure ${"%.4f".format(exposure)}")
     }
 }

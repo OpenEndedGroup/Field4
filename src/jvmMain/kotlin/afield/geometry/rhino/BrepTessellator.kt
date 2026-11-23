@@ -1,5 +1,7 @@
 package afield.geometry.rhino
 
+import afield.geometry.path.pointInRing2D
+import afield.geometry.path.signedArea2D
 import afield.geometry.mesh.TriMesh
 import afield.geometry.path.FloatEarcut
 import java.awt.geom.Area
@@ -200,6 +202,10 @@ class NurbsSurface(
  *
  * @param outer the outer loop, `u v` pairs; it closes from the last point to the first.
  * @param inner the hole loops, in the same form.
+ * @param outerPoints the outer loop's points in model space, `x y z` per `u v` of [outer]; `null`
+ *   to take them from the surface. The reader fills them from the Brep's edges, each edge sampled
+ *   once, so two faces sharing an edge carry the same points and [BrepTessellator] joins them exactly.
+ * @param innerPoints the hole loops' points in model space, likewise.
  */
 class BrepFace(
     val surface: NurbsSurface?,
@@ -207,19 +213,29 @@ class BrepFace(
     val hasSavedMesh: Boolean,
     val outer: List<DoubleArray>,
     val inner: List<DoubleArray>,
+    val outerPoints: List<DoubleArray>? = null,
+    val innerPoints: List<DoubleArray>? = null,
 )
 
 /**
  * Tessellates trimmed NURBS Brep faces into a [TriMesh].
  *
- * Per face: a tensor grid over the trim loops' parameter box, with a line at every knot and each
- * knot span split in half until the surface strays from its chord by less than [tolerance]
- * (checked along several lines across the face). Grid cells wholly inside the trimmed region
- * become two triangles each; cells a trim crosses are intersected with the region
- * (`java.awt.geom.Area`) and the pieces handed to [FloatEarcut]. Every vertex is evaluated on the
- * exact surface, so the mesh is inscribed in it. Faces are then welded where their vertices meet
- * within a millionth of the Brep's size and their normals agree, so a smooth seam shades smoothly
- * and a crease stays sharp.
+ * Per face: an adaptive subdivision of the trim loops' parameter box, one root cell per knot
+ * span, each cell split in u, in v or both until the surface strays from the bilinear patch through
+ * its corners by less than [tolerance]. Cells wholly inside the trimmed region become two triangles
+ * each; cells a trim crosses are intersected with the region (`java.awt.geom.Area`) and the pieces
+ * handed to [FloatEarcut]. Every vertex is evaluated on the exact surface, so the mesh is inscribed
+ * in it.
+ *
+ * The faces are then stitched by the Brep's topology. The reader samples each Brep edge once and
+ * gives every face that uses it the same boundary points ([BrepFace.outerPoints]), so neighbours
+ * meet vertex for vertex. Where a quadtree cell cuts a loop segment the new vertex is put on that
+ * segment's 3D chord, and the face across the edge is split at it, found by the segment's two end
+ * vertices rather than by distance. What is still open after that (faces without edge points, a
+ * cell's hanging vertices) is split geometrically, at any open-edge vertex lying on the edge;
+ * [lastStitch] counts both, and calls a geometric split at a boundary vertex a fallback. A closed
+ * Brep comes out closed. Last, faces are welded where their vertices meet and their normals agree,
+ * so a smooth seam shades smoothly and a crease stays sharp.
  *
  * @param tolerance the largest allowed chord deviation, in model units; `null` for a thousandth of
  *   the Brep's control-point bounding box diagonal.
@@ -235,9 +251,265 @@ class BrepTessellator(val tolerance: Double? = null) {
         val positions = ArrayList<Double>()
         val normals = ArrayList<Double>()
         val indices = ArrayList<Int>()
-        for (face in chosen) face(face, tol, positions, normals, indices)
+        val boundary = HashSet<Int>()
+        val crossings = ArrayList<Crossing>()
+        val chains = ArrayList<DoubleArray>()
+        for (face in chosen) face(face, tol, positions, normals, indices, boundary, crossings, chains)
         if (indices.isEmpty()) return null
-        return weld(positions, normals, indices, diagonal * 1e-6)
+        val stitched = stitch(positions, normals, indices, diagonal * 1e-6, 2 * tol, boundary, crossings, chains)
+        lastStitch = stitched.second
+        return stitched.first
+    }
+
+    /** What the last [meshFaces] call's [stitch] did, for measuring. */
+    var lastStitch: StitchReport? = null
+        private set
+
+    /**
+     * Counts from one [stitch]: open edges (used by one triangle) after welding by position alone,
+     * before and after; [splits], edges split geometrically at a vertex found lying on them, of which
+     * [fallbackSplits] were at a face-boundary vertex (a shared Brep edge the topology did not join;
+     * 0 for a file read with edge points); and [topologicalSplits], edges split at a vertex the face
+     * across a loop segment put on it.
+     */
+    data class StitchReport(
+        val openEdgesBefore: Int, val openEdgesAfter: Int, val splits: Int, val passes: Int,
+        val topologicalSplits: Int = 0, val fallbackSplits: Int = 0,
+    )
+
+    /** Input vertex [vertex], which a quadtree cell put on segment [k] (points `k` to `k + 1`) of loop [chain], at fraction [f]. */
+    internal class Crossing(val vertex: Int, val chain: Int, val k: Int, val f: Double)
+
+    /**
+     * Makes neighbouring faces share their boundary samples. Vertices are first joined by position
+     * alone (within [eps]); then every edge only one triangle uses, with another such edge's vertex
+     * lying on it (within [reach], strictly between its ends), is split at that very vertex, its
+     * triangle becoming a fan. Two faces that sampled their common Brep edge at different points
+     * thereby both end up with the union of the points, and a quadtree's hanging vertices are closed
+     * the same way. Finally the corners are welded by position and normal for shading.
+     */
+    internal fun stitch(
+        positions: ArrayList<Double>, normals: ArrayList<Double>, indices: ArrayList<Int>, eps: Double, reach: Double,
+        boundary: Set<Int> = emptySet(), crossings: List<Crossing> = emptyList(), chains: List<DoubleArray> = emptyList(),
+    ): Pair<TriMesh, StitchReport> {
+        val n = positions.size / 3
+        // Position-only weld into topological vertices.
+        val topo = IntArray(n)
+        val tp = ArrayList<Double>()
+        val grid = HashMap<Triple<Long, Long, Long>, MutableList<Int>>()
+        val inv = 1.0 / max(eps, 1e-300)
+        for (i in 0 until n) {
+            val x = positions[3 * i]; val y = positions[3 * i + 1]; val z = positions[3 * i + 2]
+            val kx = floor(x * inv).toLong(); val ky = floor(y * inv).toLong(); val kz = floor(z * inv).toLong()
+            var found = -1
+            search@ for (dx in -1L..1L) for (dy in -1L..1L) for (dz in -1L..1L) {
+                for (o in grid[Triple(kx + dx, ky + dy, kz + dz)] ?: continue) {
+                    val ox = tp[3 * o] - x; val oy = tp[3 * o + 1] - y; val oz = tp[3 * o + 2] - z
+                    if (ox * ox + oy * oy + oz * oz <= eps * eps) { found = o; break@search }
+                }
+            }
+            if (found < 0) {
+                found = tp.size / 3
+                tp.add(x); tp.add(y); tp.add(z)
+                grid.getOrPut(Triple(kx, ky, kz)) { ArrayList() }.add(found)
+            }
+            topo[i] = found
+        }
+        // Triangles as corners: topological vertex and that corner's own normal.
+        val tv = ArrayList<IntArray>()
+        val tn = ArrayList<DoubleArray>()
+        var t = 0
+        while (t < indices.size) {
+            val c = IntArray(3) { topo[indices[t + it]] }
+            if (c[0] != c[1] && c[1] != c[2] && c[0] != c[2]) {
+                tv.add(c)
+                tn.add(DoubleArray(9) { normals[3 * indices[t + it / 3] + it % 3] })
+            }
+            t += 3
+        }
+        fun key(a: Int, b: Int) = (min(a, b).toLong() shl 32) or max(a, b).toLong()
+        fun openEdges(): Map<Long, Int> {
+            val count = HashMap<Long, Int>()
+            for (c in tv) for (e in 0..2) count.merge(key(c[e], c[(e + 1) % 3]), 1, Int::plus)
+            return count
+        }
+        val before = openEdges().count { it.value == 1 }
+        // A loop point's topological vertex; a new one (on no triangle yet) when no face kept that point.
+        fun lookupOrAdd(x: Double, y: Double, z: Double): Int {
+            val kx = floor(x * inv).toLong(); val ky = floor(y * inv).toLong(); val kz = floor(z * inv).toLong()
+            for (dx in -1L..1L) for (dy in -1L..1L) for (dz in -1L..1L) {
+                for (o in grid[Triple(kx + dx, ky + dy, kz + dz)] ?: continue) {
+                    val ox = tp[3 * o] - x; val oy = tp[3 * o + 1] - y; val oz = tp[3 * o + 2] - z
+                    if (ox * ox + oy * oy + oz * oz <= eps * eps) return o
+                }
+            }
+            val added = tp.size / 3
+            tp.add(x); tp.add(y); tp.add(z)
+            grid.getOrPut(Triple(kx, ky, kz)) { ArrayList() }.add(added)
+            return added
+        }
+        // Replace triangle ti's edge e (corners a -> b) by a fan through `chain` (ending in b), with
+        // normals interpolated at the fractions `at` along the edge.
+        fun fan(ti: Int, e: Int, chainInner: List<Int>, at: List<Double>) {
+            val c = tv[ti]
+            val a = c[e]; val b = c[(e + 1) % 3]; val o = c[(e + 2) % 3]
+            val nrm = tn[ti]
+            val na = DoubleArray(3) { nrm[3 * e + it] }; val nb = DoubleArray(3) { nrm[3 * ((e + 1) % 3) + it] }
+            val no = DoubleArray(3) { nrm[3 * ((e + 2) % 3) + it] }
+            var prev = a; var prevN = na
+            val chain = chainInner + b
+            val chainN = at.map { sp -> DoubleArray(3) { na[it] + (nb[it] - na[it]) * sp } } + listOf(nb)
+            for (k in chain.indices) {
+                val tri = intArrayOf(prev, chain[k], o)
+                val triN = DoubleArray(9).also { prevN.copyInto(it, 0); chainN[k].copyInto(it, 3); no.copyInto(it, 6) }
+                if (k == 0) { tv[ti] = tri; tn[ti] = triN } else { tv.add(tri); tn.add(triN) }
+                prev = chain[k]; prevN = chainN[k]
+            }
+        }
+        // Topological pass. Each trim loop is a chain of edge points shared bit-for-bit with the face
+        // across each edge; with the vertices cells put on its segments, from either side, each chain
+        // is an ordered list of topological vertices. An open edge between two vertices of one chain
+        // is split at every chain vertex between them.
+        val chainTopo = chains.map { xyz -> IntArray(xyz.size / 3) { k -> lookupOrAdd(xyz[3 * k], xyz[3 * k + 1], xyz[3 * k + 2]) } }
+        val segPoints = HashMap<Long, MutableList<Pair<Double, Int>>>()
+        for (x in crossings) {
+            val ct = chainTopo[x.chain]
+            val ta = ct[x.k]; val tb = ct[(x.k + 1) % ct.size]
+            val v = topo[x.vertex]
+            if (ta == tb || v == ta || v == tb) continue
+            segPoints.getOrPut(key(ta, tb)) { ArrayList() }.add((if (ta < tb) x.f else 1 - x.f) to v)
+        }
+        // chainPoints[c]: (parameter along the chain, vertex), sorted; where[v]: (chain, index) entries.
+        val chainPoints = chainTopo.map { ct ->
+            val out = ArrayList<Pair<Double, Int>>()
+            for (k in ct.indices) {
+                val ta = ct[k]; val tb = ct[(k + 1) % ct.size]
+                out.add(k.toDouble() to ta)
+                val on = segPoints[key(ta, tb)] ?: continue
+                for ((f, v) in on) out.add(k + (if (ta < tb) f else 1 - f) to v)
+            }
+            out.sortedBy { it.first }
+        }
+        val where = HashMap<Int, MutableList<Pair<Int, Int>>>()
+        chainPoints.forEachIndexed { c, pts -> pts.forEachIndexed { i, (_, v) -> where.getOrPut(v) { ArrayList() }.add(c to i) } }
+        var topological = 0
+        var tpasses = 0
+        while (chains.isNotEmpty() && tpasses < 24) {
+            tpasses++
+            val count = openEdges()
+            var changed = false
+            val size = tv.size
+            for (ti in 0 until size) {
+                val c = tv[ti]
+                for (e in 0..2) {
+                    val a = c[e]; val b = c[(e + 1) % 3]
+                    if (count[key(a, b)] != 1) continue
+                    val wa = where[a] ?: continue; val wb = where[b] ?: continue
+                    // The nearest pair of places along one chain (a seam puts a vertex on a chain twice).
+                    var best: Triple<Int, Int, Int>? = null; var bestGap = Int.MAX_VALUE
+                    for ((ca, ia) in wa) for ((cb, ib) in wb) {
+                        if (ca != cb) continue
+                        val n = chainPoints[ca].size
+                        val d = abs(ia - ib); val gap = min(d, n - d)
+                        if (gap in 2 until bestGap) { bestGap = gap; best = Triple(ca, ia, ib) }
+                    }
+                    val (ch, ia, ib) = best ?: continue
+                    val pts = chainPoints[ch]; val n = pts.size
+                    val forward = ((ib - ia + n) % n) <= ((ia - ib + n) % n)
+                    val o = c[(e + 2) % 3]
+                    val between = ArrayList<Int>()
+                    var i = ia
+                    while (true) {
+                        i = if (forward) (i + 1) % n else (i - 1 + n) % n
+                        if (i == ib) break
+                        val v = pts[i].second
+                        if (v != a && v != b && v != o && (between.isEmpty() || between.last() != v) && v !in between) between.add(v)
+                    }
+                    if (between.isEmpty()) continue
+                    // Fractions along a -> b by projection, for the interpolated normals.
+                    val ax = tp[3 * a]; val ay = tp[3 * a + 1]; val az = tp[3 * a + 2]
+                    val ex = tp[3 * b] - ax; val ey = tp[3 * b + 1] - ay; val ez = tp[3 * b + 2] - az
+                    val len2 = max(ex * ex + ey * ey + ez * ez, 1e-300)
+                    val at = between.map { v -> ((tp[3 * v] - ax) * ex + (tp[3 * v + 1] - ay) * ey + (tp[3 * v + 2] - az) * ez) / len2 }
+                    // Only along the edge: a diagonal that touches the loop at both ends is not a loop edge.
+                    val r2 = reach * reach
+                    val along = between.indices.all { j ->
+                        val f = at[j]; val v = between[j]
+                        val qx = tp[3 * v] - ax - f * ex; val qy = tp[3 * v + 1] - ay - f * ey; val qz = tp[3 * v + 2] - az - f * ez
+                        f > 0 && f < 1 && (j == 0 || f > at[j - 1]) && qx * qx + qy * qy + qz * qz <= r2
+                    }
+                    if (!along) continue
+                    fan(ti, e, between, at)
+                    topological += between.size
+                    changed = true
+                    break
+                }
+            }
+            if (!changed) break
+        }
+        val boundaryTopo = HashSet<Int>().also { set -> for (i in boundary) set.add(topo[i]) }
+        var splits = 0
+        var fallback = 0
+        var passes = 0
+        val cs = max(reach, 1e-300)
+        while (passes < 24) {
+            passes++
+            val count = openEdges()
+            val candidates = HashSet<Int>()
+            for (c in tv) for (e in 0..2) if (count[key(c[e], c[(e + 1) % 3])] == 1) { candidates.add(c[e]); candidates.add(c[(e + 1) % 3]) }
+            if (candidates.isEmpty()) break
+            val near = HashMap<Triple<Long, Long, Long>, MutableList<Int>>()
+            for (v in candidates) near.getOrPut(Triple(floor(tp[3 * v] / cs).toLong(), floor(tp[3 * v + 1] / cs).toLong(), floor(tp[3 * v + 2] / cs).toLong())) { ArrayList() }.add(v)
+            var changed = false
+            val size = tv.size
+            for (ti in 0 until size) {
+                val c = tv[ti]
+                for (e in 0..2) {
+                    val a = c[e]; val b = c[(e + 1) % 3]
+                    if (count[key(a, b)] != 1) continue
+                    val ax = tp[3 * a]; val ay = tp[3 * a + 1]; val az = tp[3 * a + 2]
+                    val ex = tp[3 * b] - ax; val ey = tp[3 * b + 1] - ay; val ez = tp[3 * b + 2] - az
+                    val len2 = ex * ex + ey * ey + ez * ez
+                    if (len2 <= 0) continue
+                    val r = min(reach, 0.25 * sqrt(len2))
+                    val on = ArrayList<Pair<Double, Int>>()
+                    // Walk the segment through the hash; r <= cs, so the 3x3x3 block around each step covers it.
+                    val steps = (sqrt(len2) / cs).toInt() + 1
+                    val seen = HashSet<Int>()
+                    for (k in 0..steps) {
+                        val f = k.toDouble() / steps
+                        val gx = floor((ax + ex * f) / cs).toLong(); val gy = floor((ay + ey * f) / cs).toLong(); val gz = floor((az + ez * f) / cs).toLong()
+                        for (dx in -1L..1L) for (dy in -1L..1L) for (dz in -1L..1L) {
+                            for (v in near[Triple(gx + dx, gy + dy, gz + dz)] ?: continue) {
+                                if (v == a || v == b || !seen.add(v)) continue
+                                val px = tp[3 * v] - ax; val py = tp[3 * v + 1] - ay; val pz = tp[3 * v + 2] - az
+                                val sParam = (px * ex + py * ey + pz * ez) / len2
+                                if (sParam <= 1e-6 || sParam >= 1 - 1e-6) continue
+                                val qx = px - sParam * ex; val qy = py - sParam * ey; val qz = pz - sParam * ez
+                                if (qx * qx + qy * qy + qz * qz <= r * r) on.add(sParam to v)
+                            }
+                        }
+                    }
+                    if (on.isEmpty()) continue
+                    on.sortBy { it.first }
+                    val o = c[(e + 2) % 3]
+                    if (on.any { it.second == o }) continue
+                    fan(ti, e, on.map { it.second }, on.map { it.first })
+                    splits += on.size
+                    fallback += on.count { it.second in boundaryTopo }
+                    changed = true
+                    break // this triangle's other edges are handled next pass
+                }
+            }
+            if (!changed) break
+        }
+        val after = openEdges().count { it.value == 1 }
+        val cp = ArrayList<Double>(tv.size * 9); val cn = ArrayList<Double>(tv.size * 9)
+        for (k in tv.indices) for (j in 0..2) {
+            val v = tv[k][j]
+            for (c in 0..2) { cp.add(tp[3 * v + c]); cn.add(tn[k][3 * j + c]) }
+        }
+        return weld(cp, cn, ArrayList((0 until tv.size * 3).toList()), eps) to StitchReport(before, after, splits, passes, topological, fallback)
     }
 
     private fun diagonal(surfaces: List<NurbsSurface>): Double {
@@ -249,10 +521,29 @@ class BrepTessellator(val tolerance: Double? = null) {
         return sqrt((0..2).sumOf { (hi[it] - lo[it]).let { d -> d * d } }).takeIf { it > 0 } ?: 1.0
     }
 
-    private fun face(face: BrepFace, tol: Double, positions: ArrayList<Double>, normals: ArrayList<Double>, indices: ArrayList<Int>) {
+    private fun face(
+        face: BrepFace, tol: Double, positions: ArrayList<Double>, normals: ArrayList<Double>, indices: ArrayList<Int>,
+        boundary: MutableSet<Int>, crossings: MutableList<Crossing>, chains: MutableList<DoubleArray>,
+    ) {
         val s = face.surface!!
         val loops = face.outer + face.inner
         if (face.outer.isEmpty()) return
+        // Each loop point's model-space position: the reader's edge point, else the surface's.
+        val given = (face.outerPoints ?: List(face.outer.size) { null }) + (face.innerPoints ?: List(face.inner.size) { null })
+        val loopXyz = loops.mapIndexed { li, l ->
+            given.getOrNull(li)?.takeIf { it.size == l.size / 2 * 3 } ?: DoubleArray(l.size / 2 * 3).also { xyz ->
+                val e = DoubleArray(6)
+                val du0 = s.domainU; val dv0 = s.domainV
+                for (k in 0 until l.size / 2) {
+                    s.evaluate(min(max(l[2 * k], du0[0]), du0[1]), min(max(l[2 * k + 1], dv0[0]), dv0[1]), e)
+                    for (c in 0..2) xyz[3 * k + c] = e[c]
+                }
+            }
+        }
+        // Only loops with the reader's edge points join by topology; the rest fall back to positions.
+        val topological = face.outerPoints != null
+        val chain0 = chains.size
+        if (topological) chains.addAll(loopXyz)
         val du = s.domainU; val dv = s.domainV
         var u0 = Double.MAX_VALUE; var u1 = -Double.MAX_VALUE; var v0 = Double.MAX_VALUE; var v1 = -Double.MAX_VALUE
         for (l in loops) for (k in 0 until l.size / 2) {
@@ -260,9 +551,6 @@ class BrepTessellator(val tolerance: Double? = null) {
         }
         u0 = max(u0, du[0]); u1 = min(u1, du[1]); v0 = max(v0, dv[0]); v1 = min(v1, dv[1])
         if (u1 <= u0 || v1 <= v0) return
-
-        val gu = gridLines(s, true, u0, u1, v0, v1, tol)
-        val gv = gridLines(s, false, v0, v1, u0, u1, tol)
 
         val region = Path2D.Double(Path2D.WIND_EVEN_ODD)
         for (l in loops) {
@@ -273,30 +561,74 @@ class BrepTessellator(val tolerance: Double? = null) {
         }
         val area = Area(region)
 
-        // Which cells a trim segment's bounding box touches; the rest are wholly in or out.
-        val nu = gu.size - 1; val nv = gv.size - 1
-        val crossed = BooleanArray(nu * nv)
+        // Trim segments' parameter boxes, binned by u so a cell only looks at the segments near it.
+        val segs = ArrayList<DoubleArray>()
         for (l in loops) {
             val n = l.size / 2
             for (k in 0 until n) {
                 val a = k; val b = (k + 1) % n
-                val iu0 = cell(gu, min(l[2 * a], l[2 * b])); val iu1 = cell(gu, max(l[2 * a], l[2 * b]))
-                val iv0 = cell(gv, min(l[2 * a + 1], l[2 * b + 1])); val iv1 = cell(gv, max(l[2 * a + 1], l[2 * b + 1]))
-                for (i in iu0..iu1) for (j in iv0..iv1) crossed[i * nv + j] = true
+                segs.add(doubleArrayOf(min(l[2 * a], l[2 * b]), max(l[2 * a], l[2 * b]), min(l[2 * a + 1], l[2 * b + 1]), max(l[2 * a + 1], l[2 * b + 1])))
             }
         }
+        val bins = 64
+        val binOf = Array(bins) { ArrayList<DoubleArray>() }
+        fun bin(u: Double) = min(bins - 1, max(0, ((u - u0) / (u1 - u0) * bins).toInt()))
+        for (g in segs) for (b in bin(g[0])..bin(g[1])) binOf[b].add(g)
+        fun crossed(ua: Double, ub: Double, va: Double, vb: Double): Boolean {
+            for (b in bin(ua)..bin(ub)) for (g in binOf[b]) if (g[1] >= ua && g[0] <= ub && g[3] >= va && g[2] <= vb) return true
+            return false
+        }
+
+        val cells = quadtree(s, area, ::crossed, u0, u1, v0, v1, tol)
 
         val vertexOf = HashMap<Long, Int>()
         val keyScaleU = 1e9 / (u1 - u0); val keyScaleV = 1e9 / (v1 - v0)
+        fun uvKey(u: Double, v: Double) = (Math.round((u - u0) * keyScaleU) shl 31) xor Math.round((v - v0) * keyScaleV)
+        // Loop points by their uv, and loop segments binned by u, to place boundary vertices in 3D.
+        val sampleAt = HashMap<Long, DoubleArray>()
+        val segBins = Array(bins) { ArrayList<IntArray>() } // (loop, start point)
+        loops.forEachIndexed { li, l ->
+            val n = l.size / 2
+            for (k in 0 until n) {
+                sampleAt.putIfAbsent(uvKey(l[2 * k], l[2 * k + 1]), loopXyz[li].copyOfRange(3 * k, 3 * k + 3))
+                val k2 = (k + 1) % n
+                for (b in bin(min(l[2 * k], l[2 * k2]))..bin(max(l[2 * k], l[2 * k2]))) segBins[b].add(intArrayOf(li, k))
+            }
+        }
+        val onSegment = 1e-9 * ((u1 - u0) + (v1 - v0))
         val eval = DoubleArray(6)
         fun vertex(u: Double, v: Double): Int {
-            val key = (Math.round((u - u0) * keyScaleU) shl 31) xor Math.round((v - v0) * keyScaleV)
+            val key = uvKey(u, v)
             return vertexOf.getOrPut(key) {
                 s.evaluate(min(max(u, du[0]), du[1]), min(max(v, dv[0]), dv[1]), eval)
                 val sign = if (face.reversed) -1.0 else 1.0
                 val len = sqrt(eval[3] * eval[3] + eval[4] * eval[4] + eval[5] * eval[5]).takeIf { it > 0 } ?: 1.0
                 val index = positions.size / 3
-                for (c in 0..2) positions.add(eval[c])
+                var at: DoubleArray? = sampleAt[key]
+                if (at == null) {
+                    // A cell's cut through a loop segment: on that segment's chord in model space.
+                    for (seg in segBins[bin(u)]) {
+                        val l = loops[seg[0]]; val n = l.size / 2; val k = seg[1]; val k2 = (k + 1) % n
+                        val ax = l[2 * k]; val ay = l[2 * k + 1]; val ex = l[2 * k2] - ax; val ey = l[2 * k2 + 1] - ay
+                        val len2 = ex * ex + ey * ey
+                        if (len2 <= 0) continue
+                        val f = ((u - ax) * ex + (v - ay) * ey) / len2
+                        if (f <= 0 || f >= 1) continue
+                        val qx = u - ax - f * ex; val qy = v - ay - f * ey
+                        if (qx * qx + qy * qy > onSegment * onSegment) continue
+                        val xyz = loopXyz[seg[0]]
+                        val a = xyz.copyOfRange(3 * k, 3 * k + 3); val b = xyz.copyOfRange(3 * k2, 3 * k2 + 3)
+                        if (topological) {
+                            at = DoubleArray(3) { a[it] + (b[it] - a[it]) * f }
+                            crossings.add(Crossing(index, chain0 + seg[0], k, f))
+                        } else {
+                            at = doubleArrayOf(eval[0], eval[1], eval[2])
+                        }
+                        break
+                    }
+                }
+                if (at != null) boundary.add(index)
+                for (c in 0..2) positions.add(at?.get(c) ?: eval[c])
                 for (c in 3..5) normals.add(sign * eval[c] / len)
                 index
             }
@@ -314,10 +646,8 @@ class BrepTessellator(val tolerance: Double? = null) {
             if (dot >= 0) { indices.add(a); indices.add(b); indices.add(c) } else { indices.add(a); indices.add(c); indices.add(b) }
         }
 
-        for (i in 0 until nu) for (j in 0 until nv) {
-            val ua = gu[i]; val ub = gu[i + 1]; val va = gv[j]; val vb = gv[j + 1]
-            if (!crossed[i * nv + j]) {
-                if (!area.contains((ua + ub) / 2, (va + vb) / 2)) continue
+        for ((ua, ub, va, vb, cut) in cells) {
+            if (!cut) {
                 val p00 = vertex(ua, va); val p10 = vertex(ub, va); val p11 = vertex(ub, vb); val p01 = vertex(ua, vb)
                 triangle(p00, p10, p11); triangle(p00, p11, p01)
                 continue
@@ -352,46 +682,57 @@ class BrepTessellator(val tolerance: Double? = null) {
         }
     }
 
-    private fun cell(grid: DoubleArray, x: Double): Int {
-        var lo = 0; var hi = grid.size - 1
-        if (x <= grid[0]) return 0
-        if (x >= grid[hi]) return hi - 1
-        while (hi - lo > 1) { val m = (lo + hi) / 2; if (x < grid[m]) hi = m else lo = m }
-        return lo
-    }
+    /** One leaf of a face's parameter quadtree; [cut] when a trim segment's box touches it. */
+    private data class Cell(val ua: Double, val ub: Double, val va: Double, val vb: Double, val cut: Boolean)
 
-    /** Grid lines in one direction: every knot, then each span halved until its sag is under [tol]. */
-    private fun gridLines(s: NurbsSurface, alongU: Boolean, a: Double, b: Double, c0: Double, c1: Double, tol: Double): DoubleArray {
-        val knots = (if (alongU) s.breaksU() else s.breaksV()).filter { it > a && it < b }
-        val stops = (listOf(a) + knots + listOf(b))
-        val across = DoubleArray(7) { c0 + (c1 - c0) * it / 6.0 }
-        val degree = if (alongU) s.degreeU else s.degreeV
-        val out = ArrayList<Double>()
-        val p = DoubleArray(6); val q = DoubleArray(6); val m = DoubleArray(6)
-        fun at(t: Double, c: Double, into: DoubleArray) = if (alongU) s.evaluate(t, c, into) else s.evaluate(c, t, into)
-        fun sag(t0: Double, t1: Double): Double {
-            var worst = 0.0
-            for (c in across) {
-                at(t0, c, p); at(t1, c, q)
-                for (f in doubleArrayOf(0.25, 0.5, 0.75)) {
-                    at(t0 + (t1 - t0) * f, c, m)
-                    val x = m[0] - (p[0] + (q[0] - p[0]) * f)
-                    val y = m[1] - (p[1] + (q[1] - p[1]) * f)
-                    val z = m[2] - (p[2] + (q[2] - p[2]) * f)
-                    worst = max(worst, sqrt(x * x + y * y + z * z))
-                }
+    /**
+     * The leaves of an adaptive subdivision of `[u0, u1] x [v0, v1]`: one root per knot span, each
+     * split in u, in v or both while the surface strays from the bilinear patch through the cell's
+     * corners by more than [tol] in that direction. Cells wholly outside the trimmed region are
+     * dropped without refining them. Neighbours of different sizes leave hanging vertices on the
+     * larger cell's edge; [stitch] closes those along with the cracks between faces.
+     */
+    private fun quadtree(
+        s: NurbsSurface, area: Area, crossed: (Double, Double, Double, Double) -> Boolean,
+        u0: Double, u1: Double, v0: Double, v1: Double, tol: Double,
+    ): List<Cell> {
+        fun stops(b: DoubleArray, lo: Double, hi: Double) = (listOf(lo) + b.filter { it > lo && it < hi } + listOf(hi))
+        val su = stops(s.breaksU(), u0, u1); val sv = stops(s.breaksV(), v0, v1)
+        val out = ArrayList<Cell>()
+        val c00 = DoubleArray(6); val c10 = DoubleArray(6); val c01 = DoubleArray(6); val c11 = DoubleArray(6); val m = DoubleArray(6)
+        fun off(u: Double, v: Double, fu: Double, fv: Double): Double {
+            s.evaluate(u, v, m)
+            var d2 = 0.0
+            for (c in 0..2) {
+                val bl = (1 - fu) * (1 - fv) * c00[c] + fu * (1 - fv) * c10[c] + (1 - fu) * fv * c01[c] + fu * fv * c11[c]
+                d2 += (m[c] - bl) * (m[c] - bl)
             }
-            return worst
+            return sqrt(d2)
         }
-        fun split(t0: Double, t1: Double, depth: Int) {
-            if (depth < 8 && (sag(t0, t1) > tol || (depth == 0 && degree > 1))) {
-                val mid = (t0 + t1) / 2
-                split(t0, mid, depth + 1); split(mid, t1, depth + 1)
-            } else out.add(t0)
+        fun visit(ua: Double, ub: Double, va: Double, vb: Double, du: Int, dv: Int) {
+            val cut = crossed(ua, ub, va, vb)
+            if (!cut && !area.contains((ua + ub) / 2, (va + vb) / 2)) return
+            s.evaluate(ua, va, c00); s.evaluate(ub, va, c10); s.evaluate(ua, vb, c01); s.evaluate(ub, vb, c11)
+            val um = (ua + ub) / 2; val vm = (va + vb) / 2
+            // Bending along u shows at the u-midpoints of the cell's v = const edges, and vice versa.
+            val sagU = max(max(off(um, va, 0.5, 0.0), off(um, vb, 0.5, 1.0)), max(off(ua + (ub - ua) * 0.25, vm, 0.25, 0.5), off(ua + (ub - ua) * 0.75, vm, 0.75, 0.5)))
+            val sagV = max(max(off(ua, vm, 0.0, 0.5), off(ub, vm, 1.0, 0.5)), max(off(um, va + (vb - va) * 0.25, 0.5, 0.25), off(um, va + (vb - va) * 0.75, 0.5, 0.75)))
+            val twist = off(um, vm, 0.5, 0.5)
+            var splitU = du < 12 && (sagU > tol || (du == 0 && s.degreeU > 1))
+            var splitV = dv < 12 && (sagV > tol || (dv == 0 && s.degreeV > 1))
+            if (!splitU && !splitV && twist > tol) { splitU = du < 12; splitV = dv < 12 }
+            when {
+                splitU && splitV -> {
+                    visit(ua, um, va, vm, du + 1, dv + 1); visit(um, ub, va, vm, du + 1, dv + 1)
+                    visit(ua, um, vm, vb, du + 1, dv + 1); visit(um, ub, vm, vb, du + 1, dv + 1)
+                }
+                splitU -> { visit(ua, um, va, vb, du + 1, dv); visit(um, ub, va, vb, du + 1, dv) }
+                splitV -> { visit(ua, ub, va, vm, du, dv + 1); visit(ua, ub, vm, vb, du, dv + 1) }
+                else -> out.add(Cell(ua, ub, va, vb, cut))
+            }
         }
-        for (k in 0 until stops.size - 1) split(stops[k], stops[k + 1], 0)
-        out.add(b)
-        return out.toDoubleArray()
+        for (i in 0 until su.size - 1) for (j in 0 until sv.size - 1) visit(su[i], su[i + 1], sv[j], sv[j + 1], 0, 0)
+        return out
     }
 
     /** An Area's boundary as outer rings, each with the holes inside it. */
@@ -412,33 +753,14 @@ class BrepTessellator(val tolerance: Double? = null) {
         if (current.size >= 6) all.add(current.toDoubleArray())
         if (all.isEmpty()) return emptyList()
         // Area winds outer rings one way and holes the other; the largest ring is an outer one.
-        val signed = all.map { signedArea(it) }
+        val signed = all.map { signedArea2D(it) }
         val outerSign = Math.signum(signed[signed.indices.maxBy { abs(signed[it]) }])
         val outers = all.indices.filter { Math.signum(signed[it]) == outerSign }
         val holes = all.indices.filter { Math.signum(signed[it]) != outerSign && signed[it] != 0.0 }
         return outers.map { o ->
             val ring = all[o]
-            ring to holes.filter { h -> contains(ring, all[h][0], all[h][1]) }.map { all[it] }
+            ring to holes.filter { h -> pointInRing2D(ring, all[h][0], all[h][1]) }.map { all[it] }
         }
-    }
-
-    private fun signedArea(r: DoubleArray): Double {
-        var a = 0.0
-        val n = r.size / 2
-        for (k in 0 until n) { val l = (k + 1) % n; a += r[2 * k] * r[2 * l + 1] - r[2 * l] * r[2 * k + 1] }
-        return a / 2
-    }
-
-    private fun contains(r: DoubleArray, x: Double, y: Double): Boolean {
-        var inside = false
-        val n = r.size / 2
-        var j = n - 1
-        for (i in 0 until n) {
-            val xi = r[2 * i]; val yi = r[2 * i + 1]; val xj = r[2 * j]; val yj = r[2 * j + 1]
-            if ((yi > y) != (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside
-            j = i
-        }
-        return inside
     }
 
     /**
@@ -536,16 +858,11 @@ internal object OpenNurbsBrepNative {
     private val id by lazy { handle("field_opennurbs_breps_id", FunctionDescriptor.of(ADDRESS, ADDRESS, JAVA_INT)) }
     private val length by lazy { handle("field_opennurbs_breps_length", FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT)) }
     private val data by lazy { handle("field_opennurbs_breps_data", FunctionDescriptor.of(ADDRESS, ADDRESS, JAVA_INT)) }
-    private val writeFixture by lazy { handle("field_opennurbs_write_brep_fixture", FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_INT)) }
-
-    fun writeFixture(file: File) = Arena.ofConfined().use { arena ->
-        val message = arena.allocate(JAVA_BYTE, MESSAGE_CAPACITY.toLong())
-        val status = writeFixture.invokeExact(arena.allocateFrom(file.absolutePath), message, MESSAGE_CAPACITY) as Int
-        if (status != 0) throw RhinoException("openNURBS could not write ${file.absolutePath}: ${message.getString(0)}")
-    }
-
-    /** What [read] returns: Brep faces and SubD triangle corners, each by object id. */
-    class Contents(val breps: Map<String, List<BrepFace>>, val subds: Map<String, DoubleArray>)
+    /**
+     * What [read] returns: Brep faces and SubD triangle corners, each by object id, and how many
+     * trims had no Brep edge to take their points from (their faces join by position, not topology).
+     */
+    class Contents(val breps: Map<String, List<BrepFace>>, val subds: Map<String, DoubleArray>, val untopologicalTrims: Int = 0)
 
     /**
      * Every top-level Brep (and extrusion) in [file], by object id, as its faces; and every SubD,
@@ -560,22 +877,24 @@ internal object OpenNurbsBrepNative {
         try {
             fun packed(at: MemorySegment, len: Int): DoubleArray =
                 if (len == 0 || at == MemorySegment.NULL) DoubleArray(0) else at.reinterpret(len * 8L).toArray(JAVA_DOUBLE)
+            var untopological = 0
             val breps = (0 until count.invokeExact(h) as Int).associate { i ->
                 val key = (id.invokeExact(h, i) as MemorySegment).reinterpret(Long.MAX_VALUE).getString(0)
-                key to unpack(packed(data.invokeExact(h, i) as MemorySegment, length.invokeExact(h, i) as Int))
+                val faces = unpack(packed(data.invokeExact(h, i) as MemorySegment, length.invokeExact(h, i) as Int)) { untopological += it }
+                key to faces
             }
             val subds = (0 until subdCount.invokeExact(h) as Int).associate { i ->
                 val key = (subdId.invokeExact(h, i) as MemorySegment).reinterpret(Long.MAX_VALUE).getString(0)
                 key to packed(subdData.invokeExact(h, i) as MemorySegment, subdLength.invokeExact(h, i) as Int)
             }
-            Contents(breps, subds)
+            Contents(breps, subds, untopological)
         } finally {
             close.invokeExact(h)
         }
     }
 
-    /** The layout in `field_opennurbs_brep.h`. */
-    internal fun unpack(d: DoubleArray): List<BrepFace> {
+    /** The layout in `field_opennurbs_brep.h`; [untopological] receives the trailing count of trims without an edge. */
+    internal fun unpack(d: DoubleArray, untopological: (Int) -> Unit = {}): List<BrepFace> {
         var p = 0
         fun next(): Double = d[p++]
         fun take(n: Int): DoubleArray = d.copyOfRange(p, p + n).also { p += n }
@@ -590,12 +909,16 @@ internal object OpenNurbsBrepNative {
             }
             val loops = next().toInt()
             val outer = ArrayList<DoubleArray>(); val inner = ArrayList<DoubleArray>()
+            val outerXyz = ArrayList<DoubleArray>(); val innerXyz = ArrayList<DoubleArray>()
             repeat(loops) {
                 val type = next().toInt()
-                val points = take(next().toInt() * 2)
-                if (type == 2) inner.add(points) else outer.add(points)
+                val n = next().toInt()
+                val packed = take(n * 5)
+                val uv = DoubleArray(n * 2) { packed[5 * (it / 2) + it % 2] }
+                val xyz = DoubleArray(n * 3) { packed[5 * (it / 3) + 2 + it % 3] }
+                if (type == 2) { inner.add(uv); innerXyz.add(xyz) } else { outer.add(uv); outerXyz.add(xyz) }
             }
-            BrepFace(surface, reversed, hasMesh, outer, inner)
-        }
+            BrepFace(surface, reversed, hasMesh, outer, inner, outerXyz, innerXyz)
+        }.also { if (p < d.size) untopological(next().toInt()) }
     }
 }

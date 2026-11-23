@@ -1,0 +1,3 @@
+doc: |
+  A slider and a checkbox that are also OSCQuery parameters, published on the network
+  under a path of this box's own.

@@ -2,6 +2,7 @@
 
 package afield.graphics.text
 
+import afield.geometry.path.pointInRing2D
 import afield.geometry.path.signedArea2D
 import afield.data.collections.get
 import afield.data.collections.invoke
@@ -289,14 +290,12 @@ fun TextLayout.toContours(honourHoles: Boolean = true): List<GlyphContour> {
             // layer with no winding convention hands its consumers. Under NON_ZERO fill the counter
             // of an `o` then vanishes into the bowl — see rasterizeText's fillRule.
             val wantPositive = !honourHoles || !ring.isHole
-            val area = signedAreaOf(pts)
+            val area = signedArea2D(pts)
             out.add(GlyphContour(if ((area > 0.0) == wantPositive) pts else pts.reversed(), ring.depth))
         }
     }
     return out
 }
-
-private fun signedAreaOf(contour: List<Vec2>): Double = signedArea2D(contour)
 
 // ==============================================================================================
 // TextLayout -> points
@@ -376,14 +375,14 @@ fun TextLayout.toMesh(
         val rings = placed.glyph.contours.map { ring ->
             val pts = ring.points.map { t.tx(it) }
             val wantPositive = !ring.isHole
-            val area = signedAreaOf(pts)
+            val area = signedArea2D(pts)
             GlyphContour(if ((area > 0.0) == wantPositive) pts else pts.reversed(), ring.depth)
         }
         val outers = rings.filter { it.isOuter }
         outers.forEach { outer ->
             val holes = rings.filter { r ->
                 r.isHole && r.depth == outer.depth + 1 && r.points.isNotEmpty() &&
-                    pointInRing(outer.points, r.points[0].x.toDouble(), r.points[0].y.toDouble())
+                    pointInRing2D(outer.points, r.points[0].x.toDouble(), r.points[0].y.toDouble())
             }
             addExtrudedRingGroup(builder, outer, holes, h, solid)
         }
@@ -603,7 +602,7 @@ fun TextLayout.distanceField(resolution: Int = 256, margin: Double = 0.15): Text
                         if (d2 < best) best = d2
                     }
                 }
-                if (pointInRing(ring.points, x, y)) inside = !inside
+                if (pointInRing2D(ring.points, x, y)) inside = !inside
             }
             val d = if (best == Double.MAX_VALUE) 0.0 else sqrt(best)
             values[j * nx + i] = (if (inside) -d else d).toFloat()

@@ -5,12 +5,10 @@ import afield.graphics.vulkan.util.Camera
 import afield.math.linalg.Vector3f
 import afield.math.linalg.Vector4f
 import kotlinx.coroutines.delay
-import java.awt.image.BufferedImage
 import java.io.File
-import javax.imageio.ImageIO
+import afield.media.image.saveHdrPng
 import kotlin.math.abs
 import kotlin.math.exp
-import kotlin.math.pow
 import kotlin.math.sqrt
 import kotlin.math.tan
 
@@ -434,25 +432,12 @@ object PathTraceMediumGpuSmoke {
         return sqrt(sum / (pixels.size * 3))
     }
 
-    private fun srgb(v: Double) = (if (v <= 0.0031308) 12.92 * v else 1.055 * v.pow(1 / 2.4) - 0.055).coerceIn(0.0, 1.0)
     private fun show(v: Double) = "%.5f".format(v)
     private fun show(v: Float) = "%.5f".format(v)
 
     /** Exposure plus the same Reinhard curve the tracer's own presentation pass uses, then sRGB. */
     private fun writePng(pixels: FloatArray, width: Int, height: Int, exposure: Float, file: File) {
-        val image = BufferedImage(width, height, BufferedImage.TYPE_INT_RGB)
-        for (y in 0 until height) for (x in 0 until width) {
-            val i = (y * width + x) * 4
-            val alpha = maxOf(pixels[i + 3], 1e-20f)
-            var rgb = 0
-            for (c in 0..2) {
-                val hdr = (pixels[i + c] / alpha * exposure).coerceAtLeast(0f).toDouble()
-                rgb = (rgb shl 8) or (srgb(hdr / (1.0 + hdr)) * 255.0 + 0.5).toInt().coerceIn(0, 255)
-            }
-            image.setRGB(x, y, rgb)
-        }
-        file.parentFile?.mkdirs()
-        ImageIO.write(image, "png", file)
+        saveHdrPng(file, pixels, width, height, exposure, divideByAlpha = true)
         check(file.length() > 512) { "Wrote a suspiciously small PNG: ${file.absolutePath} (${file.length()} bytes)" }
     }
 

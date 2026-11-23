@@ -817,3 +817,8 @@ Next builds:
 - A drawn photograph: pin a box's corners to points picked on an image and solve for the vanishing
   points, which recovers a camera from a picture.
 - A starting-point document with these four boxes, so the page can link one you can open.
+
+## See also
+
+For worked examples of drawing the feasible region of a linear program, see
+[Linear programs as curves](lp_curves.md).

@@ -39,6 +39,10 @@ import afield.app.server.updateCheckMessages
 import afield.app.settings.NEEDS_RERUN_PROPERTY
 import afield.data.table.get
 import afield.document.properties.PropertyBag
+import afield.document.text.TEXT_RUN_ANCHOR
+import afield.document.text.TEXT_RUN_SOURCES
+import afield.document.text.TextDiff
+import afield.document.text.rebaseChildTextRuns
 import afield.document.workspace.copyBoxes
 import afield.media.stream.*
 import afield.runtime.execution.BoxExecution
@@ -538,6 +542,20 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
      * ```
      */
     var tint by Delegation<String>(defaultValue = { "" })
+
+    /**
+     * A note the canvas shows just above this box's top edge while nothing but the document root is
+     * its parent, or `""` for none. It goes the moment the box is connected beneath another box and
+     * comes back if that connection goes, so it suits a box that only works under something: a
+     * graphics template that needs a renderer above it says so where it is dropped.
+     *
+     * ```
+     * parentHint = "Connect under a renderer: select the renderer, then this box, and press G"
+     * ```
+     *
+     * Unlike [tint] it is saved with the box, so a template carries it into every copy.
+     */
+    var parentHint by Delegation<String>(defaultValue = { "" })
     private val viewportDelegation = Delegation<Rect>(defaultValue = { Rect(0.0, 0.0, 0.0, 0.0) }, hook = ::onViewportChange)
 
     /**
@@ -705,6 +723,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "contents",
             "box_kind",
             "textFrame",
+            TEXT_RUN_ANCHOR,
+            TEXT_RUN_SOURCES,
             "contents_language",
             "default_property",
             "file_proxy_mode",
@@ -752,6 +772,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "customization",
             // Box.tint: a transient canvas colour; resynced like frame, deliberately not persisted.
             "tint",
+            // Box.parentHint: drawn above the box while it has no parent but the root; persisted below.
+            "parentHint",
             "_tombstone",
             // Set by reloadPersonal when a box's Kotlin environment is dropped out from under it.
             // Has to reach the client or the mark is invisible and the box looks fine while holding
@@ -789,6 +811,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "code_language",
             "box_kind",
             "textFrame",
+            TEXT_RUN_ANCHOR,
+            TEXT_RUN_SOURCES,
             "contents_language",
             "default_property",
             "file_proxy_mode",
@@ -835,6 +859,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "customization",
             "source_id",
             "templateId",
+            "parentHint",
             "_tombstone",
             "isRemoteJSRoot",
             "isPythonRoot",
@@ -1207,7 +1232,13 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
 
     }
 
-    override fun setPropertyRaw(name: String, value: Any, doResync: Boolean) {
+    override fun setPropertyRaw(name: String, value: Any, doResync: Boolean) =
+        setPropertyRaw(name, value, doResync, null)
+
+    internal fun setTextRunEditedContents(value: String, diff: TextDiff) =
+        setPropertyRaw("contents", value, true, diff)
+
+    private fun setPropertyRaw(name: String, value: Any, doResync: Boolean, diff: TextDiff?) {
         // The one choke point every whole-set assignment to a topology property passes through --
         // Delegation.setValue for `box.children = ...`, and the document loader, which calls
         // setPropertyRaw directly with a plain LinkedHashSet (saving.kt). Normalising here is what
@@ -1220,6 +1251,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
         } else {
             properties[name] = incoming
         }
+
+        rebaseChildTextRuns(this, name, oldValue, incoming, diff)
 
         // A Delegation default materialising an empty collection on first read is not an edit.
         if (oldValue != incoming && !(oldValue == null && isEmptyContainer(incoming))) notePersistentChange(name)
@@ -1235,6 +1268,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
     override fun removePropertyRaw(name: String, doResync: Boolean) {
         if (!properties.containsKey(name)) return
         val oldValue = properties.remove(name)
+        rebaseChildTextRuns(this, name, oldValue, null)
         // Same resync bookkeeping as setPropertyRaw: the UI has to hear that the property went away,
         // not just that it changed value, or the inspector keeps showing the stale one.
         if (doResync && uiResyncProperties.any { it.matches(name) }) {
@@ -1395,7 +1429,10 @@ fun doResync() {
         var message: Message? = null
         when (name) {
             "parents" -> {
-
+                val parents = (value as? Collection<*>)?.filterIsInstance<Box>().orEmpty()
+                message = Message("set-topology").payload(
+                    Set_topology(box.id, "box_parents", parents.filterNot { it.properties.get("_tombstone").isTrue() }.map { it.id })
+                )
             }
 
             "children" -> {

@@ -713,7 +713,7 @@ Edited keyframes are stored inside the box — the `defaults` argument is just t
 
 ## Time sliders & Custom UI
 
-Inserting a `field.timeSlider` template from the `f1` menu gets you a box that a) draws itself as a vertical line and b) launches and stops boxes it passes over:
+Inserting the `timeSlider` [template](templates.md#templates-that-come-with-field) with ++cmd+t++ gets you a box that a) draws itself as a vertical line and b) launches and stops boxes it passes over:
 
 <video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="assets/ts.mp4" type="video/mp4">
@@ -1046,3 +1046,7 @@ front of it. On the left is a box in the desktop app, its code open in the edito
 [Field from your phone](mobile_controllers.md) has the URL, what each of the six tabs does, and the
 warning that goes with any of this: the page can run boxes, edit code and call AI4 tools, so it
 belongs on a network you trust and never on the open internet.
+
+## See also
+
+To choose a topic after the Tour, open [Where to Go Next](staging.md).

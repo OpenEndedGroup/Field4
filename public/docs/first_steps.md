@@ -3,7 +3,7 @@
 Field opens on its Welcome page. Click **Start here: a moving drawing** at the top. Field copies
 the example into your workspace as a document of its own. You can edit your copy freely. For this example, you won't need a GPU driver, Python or an AI key.
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x900" clip-selector="#docs-first-welcome" screenshot="assets/first_steps/welcome.png" padding="0" wait="0" timeout="120" embed=true hidden=true name="first-welcome" alt="Welcome with the Start here: a moving drawing button at the top, beside the five-minute guide and Next: native graphics."}
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x900" clip-selector="#docs-first-welcome" screenshot="assets/first_steps/welcome.png" padding="0" wait="0" timeout="120" embed=true hidden=true name="first-welcome" alt="Welcome with the Start here: a moving drawing button at the top, beside the five-minute guide and the documentation."}
 // Capture the compact Welcome action row and the first-document prompt.
 ui.eval(
     """
@@ -132,7 +132,7 @@ The drawing above runs in a box's output panel. If you'd like to try a separate 
 window too, the next starting point takes you there. You can skip it and continue to the
 [Survival Guide](survivalGuide.md) if you want to stay with the basics for now.
 
-Return to Welcome and click **Next: native graphics**. This opens an editable `first-graphics`
+Return to Welcome, open **Templates** and click **first-graphics**. This opens an editable `first-graphics`
 copy with two connected boxes. The window draws with Vulkan, the GPU graphics system Field uses,
 so first open the **Vulkan** panel on the Welcome page and check that it finds a working GPU
 driver. You also need a desktop session for the window to appear in.
@@ -179,3 +179,10 @@ From here, the [Survival Guide](survivalGuide.md) gives you the moves you'll use
 make more drawings like the first one, go to [Drawing with FLines](fline_examples.md). To learn
 where `println` and `display` put their results, see [Box Output](box_output.md); for where your
 work and AI history are kept, see [Your code, AI and local history](privacy.md).
+
+To get either example again in another document, press ++cmd+t++ and insert the `first-steps` or
+`first-graphics` [template](templates.md#templates-that-come-with-field).
+
+## See also
+
+The [Field documentation home](index.md) links the Tour and examples you can explore after these first steps.

@@ -4,6 +4,9 @@ description: >
   tree's nodes, the regions its arcs stand for, and the tree drawn as a plot, simplified by a
   persistence slider; and the brightness of a photograph divided into contour-tree regions.
   Plain Kotlin, no optional libraries.
+docs:
+  - page: "contour_trees.md#simplifying"
+    why: "Adjust persistence and watch the selected regions and tree branches update together."
 operations:
   - create:
       box: contour_tree_landscape

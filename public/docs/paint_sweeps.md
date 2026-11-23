@@ -4144,3 +4144,8 @@ sheet.savePng("/tmp/field-docs-paint-sweep-moving.png")
 ```
 
 See also: [Brushes with moving hairs](paint_gestures.md), [Paint and pencil from FLines](paint_canvas.md#brushes-made-to-order).
+
+## See also
+
+[Drawn Strokes Become Paint](chain_drawn_paint.md) uses these brush controls with
+strokes drawn on the canvas.

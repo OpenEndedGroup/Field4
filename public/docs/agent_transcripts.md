@@ -85,6 +85,53 @@ Kotlin is compiled on every build.
 These build and run headless: no window, no GPU. Open one to get the code in front of you, then run
 its box to see the output (a plot, an inline value thumbnail, a printed line).
 
+### adaptive_distribution_feedback
+
+Compare quantile errors with fixed controls and with feedback after an input shift.
+Change the disturbance with a slider and inspect the controls that produced each
+observation. See [Field Probes](field_probes.md#close-the-loop-on-a-distribution).
+
+[Open →](offline.html?file=assets/agent_transcripts/adaptive_distribution_feedback/metadata.edn)
+
+### shader_study_region_checks
+
+Compare RectSL or StackSL revisions from Kotlin and check that pixels outside an
+allowed rectangle stay fixed. Each study includes a candidate that passes and one
+that changes protected pixels. See the [RectSL](rectsl_conversation.md#check-a-local-edit-from-kotlin)
+and [StackSL](stacksl_conversation.md#check-a-local-edit-from-kotlin) guides.
+
+[Open →](offline.html?file=assets/agent_transcripts/shader_study_region_checks/metadata.edn)
+
+### fieldml_reactive_bridge
+
+Drive a FieldML rule with a Kotlin slider, then draw the rule's output in a Kotlin
+box that updates when the result changes. See [Reactive properties](reactive_properties.md#run-a-rule-in-fieldml).
+
+[Open →](offline.html?file=assets/agent_transcripts/fieldml_reactive_bridge/metadata.edn)
+
+### polytope_pick_lineage
+
+Aim at a beveled dodecahedron and highlight a whole face. The pick names the original polygon
+and traces it to a vertex, edge or pentagon of the seed. See
+[Point at a face and find its source](chain_polytope_render.md#point-at-a-face-and-find-its-source).
+
+[Open →](offline.html?file=assets/agent_transcripts/polytope_pick_lineage/metadata.edn)
+
+### nile_gezira_kernels
+
+**Rasterisation as editable stream kernels.** Nile-style kernels run the Gezira rasteriser over a
+curved shape and draw each stream over the pixel grid: the pieces a curve is cut into, the edge
+samples, the coverage spans. Further boxes put the result beside Skia, add a rotation kernel in
+front of the pipeline, stroke a wave with StrokeBezierPath, paint a gradient and blends onto a canvas
+with the texture and compositing kernels, and set a line of text. See [Rasterising with stream kernels](afield_four_graphics.md#stream-kernels).
+
+```diffstatic {data-lang=text}
+macro write nile_gezira_kernels --file dev_docs/agents/transcripts/nile_gezira_kernels.yaml
+macro run nile_gezira_kernels
+```
+
+[Open →](offline.html?file=assets/agent_transcripts/nile_gezira_kernels/metadata.edn)
+
 ### knight_tour_workshop
 
 **Knight tours, many ways of drawing a move.** Five connected CPU-only FLine boxes:
@@ -3019,8 +3066,8 @@ graph. Plain Kotlin, no optional libraries.
 <!-- transcript-index: verified-by = compile -->
 
 These boxes are all compiled through Field's real Kotlin/preamble path, but not evaluated by CI:
-their purpose is to cross a process, audio-device or capture-device boundary that the lightweight
-build does not own.
+they use external services, optional native libraries, or audio and capture devices that the
+lightweight build does not provision.
 
 ### evieve_filters
 
@@ -3393,6 +3440,14 @@ boxes and skips the three Pd ones, as it skips Python cells. [Pure Data](pure_da
 
 [Open →](offline.html?file=assets/agent_transcripts/pure_data_demo/metadata.edn)
 
+### steamaudio_screen_study
+
+Compare the same hi-hat with a clear path and behind a wooden screen. Move the screen through
+the ray and see the simulated visibility and transmission change. The box renders stereo WAV
+previews offline. See [Steam Audio scenes](steam_audio_scene.md).
+
+[Open →](offline.html?file=assets/agent_transcripts/steamaudio_screen_study/metadata.edn)
+
 ### csound_demo
 
 **Csound inside Field.** A Kotlin root whose `mainLanguage` makes three Csound boxes under it, and
@@ -3574,6 +3629,14 @@ listens to every temperature, one plots them, and one shows a retained message. 
 first.
 
 [Open →](offline.html?file=assets/agent_transcripts/mqtt_demo/metadata.edn)
+
+### mqtt_datalog_routing
+
+Switch three links on and off in a small installation network. One box publishes MQTT
+snapshots and another uses Datalog to draw the current routes and explain how the console reaches
+the screen. See [Watch a route change](mqtt.md#watch-a-route-change).
+
+[Open →](offline.html?file=assets/agent_transcripts/mqtt_datalog_routing/metadata.edn)
 
 ### dmx_lighting_demo
 
@@ -4117,6 +4180,16 @@ freehand stroke over the *walls* frame (Alt+D) adds another outline while it run
 the drawn ones.
 
 [Open →](offline.html?file=assets/agent_transcripts/outline_field_gpu/metadata.edn)
+
+### fline_coverage_gpu
+
+**FLines filled into a GPU buffer with exact coverage.** [An outline filled into a buffer](visualizers.md#an-outline-filled-into-a-buffer)
+as three boxes: a renderer, a box that fills and strokes `FLine`s into a storage buffer with
+`BufferCanvas.fill` and `stroke` (non-zero in one channel, even-odd in the other), and a draw box
+whose fragment shader shows both side by side in the native window. A closed freehand stroke over
+the *mask* frame (Alt+D) is filled into the buffer while it runs; an ellipse clears the drawn ones.
+
+[Open →](offline.html?file=assets/agent_transcripts/fline_coverage_gpu/metadata.edn)
 
 ### gpu_state
 
@@ -4796,6 +4869,16 @@ pass to put it on screen.
 
 [Open →](offline.html?file=assets/agent_transcripts/path_tracing_materials/metadata.edn)
 
+### oidn_raster_particles
+
+**Open Image Denoise on a raster render.** A spiral of 3,000 particles drawn with stochastic
+transparency into a float render target, then denoised through `OidnImageSource`: see
+[Denoising any image](path_tracing.md#denoising-any-image).
+
+![A spiral of particles drawn with stochastic transparency: grainy on the left, and smooth after Open Image Denoise on the right](assets/path_tracing/denoise/raster_particles.png)
+
+[Open →](offline.html?file=assets/agent_transcripts/oidn_raster_particles/metadata.edn)
+
 ### path_tracing_glass
 
 Clear, absorbing and frosted glass spheres, plus a thin blue pane, over
@@ -4852,6 +4935,14 @@ dodecahedron's own faces, edges and vertices. See
 [the walkthrough](chain_polytope_render.md).
 
 [Open →](offline.html?file=assets/agent_transcripts/polytope_path_trace_lineage/metadata.edn)
+
+### rhino_path_trace
+
+**A Rhino `.3dm` file, path traced.** The Save Small sample's Breps and SubDs are tessellated on
+load, then `PathTraceScene.rhino` appends them object by object, so each keeps its display colour as
+a material. Needs the optional openNURBS wrapper. See [the walkthrough](chain_rhino_render.md).
+
+[Open →](offline.html?file=assets/agent_transcripts/rhino_path_trace/metadata.edn)
 
 ### polytope_manifold_path_trace
 

@@ -901,3 +901,10 @@ void main() {
 }
 :::endfold
 ```
+
+## See also
+
+For other headset inputs and outputs, see the [eye-tracked gaze marker](openxr_eye_intersection.md)
+and [Stereo video in a room](stereo_video.md).
+
+Follow [A Tracked Body, Measured and Heard](chain_tracked_body.md) for a full example that turns tracked joints into sound.

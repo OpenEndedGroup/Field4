@@ -185,6 +185,40 @@ AgentToolExtensions.register(ColoursOfStackSLStudy::class.java,
 The model reads what the handler returns, as JSON: here the program's colour literals as the window
 shows them, such as `["#f3bc7c"]`.
 
+### Check a local edit from Kotlin
+
+To keep part of a shader unchanged, compare checked revisions at the same
+resolution and times with an explicit allowed region. You can run the check in
+a Kotlin box without a chat session.
+
+[Open the region-check starting point](agent_transcripts.md#shader_study_region_checks)
+and run **StackSL: protect the left half**. The first candidate changes the
+right half with a mask that starts at `u = 0.5`. The second starts at
+`u = 0.35`, so it changes part of the protected left half. Open either
+comparison to read the difference image alongside the two renders.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/shader_study_region_checks/stacksl.png" capture="box" open-outputs=true wait-output=true wait-output-kind=display wait-output-channel="Mask crosses the midpoint" embed=true hidden=true timeout="90" name="stacksl-region-guard" clip="0,1390,2200,1399" scale="2" alt="StackSL comparison showing where the white mask crosses into the protected left half" macro-file="../../dev_docs/agents/transcripts/shader_study_region_checks.yaml" capture-box="stacksl_region"}
+// The two candidates compared with the same original, drawn by the CPU reference.
+```
+
+```diffstatic {data-lang=kotlin}
+val report = study.compare(
+    baseline, revision,
+    seconds = [0.0],
+    region = [0.5, 0.0, 1.0, 1.0], // u0, v0, u1, v1
+    size = 128,
+)
+val held = report.facts["preservedOutsideRegion"] == true
+```
+
+The box uses the StackSL CPU reference and removes its scratch revisions after
+displaying the evidence. Try moving the threshold in the second mask to
+`0.55` and rerun. The comparison samples pixel centres, so use higher
+resolution for thinner features and check several times for a moving mask.
+For a scene with coordinates in wall units, use the
+[RectSL box](rectsl_conversation.md#check-a-local-edit-from-kotlin).
+
+
 ## Three recorded sessions
 
 Each session below is a real AI4 conversation with the window running, through OpenAI: the ink

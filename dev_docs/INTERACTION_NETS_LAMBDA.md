@@ -71,17 +71,23 @@ They exist to fail a test, not to be tolerated.
 
 **The word "optimal" is not used.** There are no brackets and no croissants, so nothing here bounds how many times a fan may be copied. Correct sharing, not maximal sharing.
 
-**The figure.** `afield.examples.stdlib.LambdaNetFigure` writes `(λx. x x) (λy. y)` as five panels through `Net.toFLines` and `drawToSVG`, committed at `public/docs/assets/interaction_nets_lambda/lambda_reduction.svg`. The reduction it found:
+**The figure.** `afield.examples.stdlib.LambdaNetFigure` writes `(λx. x x) (λy. y)` as one panel per stage, four to a row, through `Net.toFLines` and `drawToSVG`, committed at `public/docs/assets/interaction_nets_lambda/lambda_reduction.svg`. The figure first went in at five panels; since the rule book became Lambdascope, every β leaves two scope delimiters that then have to be walked out of the way, and the same term takes ten reactions. Regenerated 2026-11-21:
 
 | panel | agents |
 |---|---|
-| compiled | 6 — APP ×2, DUP ×1, LAM ×2, ROOT ×1 |
-| 1. `beta-linear` | 4 — APP, DUP, LAM, ROOT |
-| 2. `dup-lam` | 6 — APP, DUP ×2, LAM ×2, ROOT |
-| 3. `beta-linear` | 4 — DUP ×2, LAM, ROOT |
-| 4. `fan-fan` | 2 — LAM, ROOT, holding `λa. a` |
+| compiled | 6 — APP ×2, DUP, LAM ×2, ROOT |
+| 1. `beta-linear` | 6 — APP, DELIM ×2, DUP, LAM, ROOT |
+| 2. `delim-root` | 5 — APP, DELIM, DUP, LAM, ROOT |
+| 3. `delim-lam` | 6 — APP, DELIM ×2, DUP, LAM, ROOT |
+| 4. `delim-delim` | 4 — APP, DUP, LAM, ROOT |
+| 5. `dup-lam` | 6 — APP, DUP ×2, LAM ×2, ROOT |
+| 6. `fan-fan` | 4 — APP, LAM ×2, ROOT |
+| 7. `beta-linear` | 4 — DELIM ×2, LAM, ROOT |
+| 8. `delim-root` | 3 — DELIM, LAM, ROOT |
+| 9. `delim-lam` | 4 — DELIM ×2, LAM, ROOT |
+| 10. `delim-delim` | 2 — LAM, ROOT, holding `λa. a` |
 
-`dup-lam` on an abstraction whose binder is wired to its own body, then two fans annihilating: the two things neither of which could happen the day before. The count goes **up** at `dup-lam`, which is the point — duplication is work the net does explicitly rather than by copying a subtree behind your back. Each panel is fitted to its own box, so the panel scales are not comparable; the agent counts are what carry the size.
+`dup-lam` on an abstraction whose binder is wired to its own body, then two fans annihilating, are still the middle of it. The count goes **up** at `dup-lam`, which is the point — duplication is work the net does explicitly rather than by copying a subtree behind your back. Each panel is fitted to its own box, so the panel scales are not comparable; the agent counts are what carry the size.
 
 **Existing tests.** `stdlib.interaction-nets.smoke` — six named assertions pinning the `Lambda.rules()` behaviour these changes touch, including `testBetaRuleHandlesSwappedPairOrientation` and `testEraseRuleCreatesDecayAgents` — **passes**. Adding `fan-fan` and `erase-erase` and chasing wires altered nothing it observes. The four `backdoor-box` tests `docs.interaction-nets.{beta-bridge, duplication, energy-scheduler, erase}` pass both before and after the docs page edit, 4 of 4 each time.
 

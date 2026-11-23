@@ -84,7 +84,7 @@ class GeometryBuilderTest {
     }
 
     @Test
-    fun `colours are stored linear, and hsl means what three's setHSL means`() {
+    fun `colours are stored linear, and a builder's hsl means what three's setHSL means`() {
         val scene = geometryScene { tri(vertex(0.0, 0.0, 0.0, hsl(0, 1, 0.25)), vertex(1.0, 0.0, 0.0), vertex(0.0, 1.0, 0.0)) }
         val c = scene.parts.single().mesh.colors!!
         // three.js Color.setHSL(0, 1, 0.25) in its linear working space is (0.5, 0, 0).

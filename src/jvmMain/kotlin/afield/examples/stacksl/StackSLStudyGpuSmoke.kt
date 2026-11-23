@@ -1,5 +1,6 @@
 package afield.examples.stacksl
 
+import afield.media.image.savePng
 import afield.study.evidence.StudyEvidence
 import afield.lang.stacksl.cpu.AgreementTier
 import afield.lang.stacksl.cpu.GalleryAgreement
@@ -10,7 +11,6 @@ import afield.lang.stacksl.study.StackSLRasterizer
 import afield.lang.stacksl.study.StackSLStudyShader
 import afield.lang.stacksl.study.renderAll
 import java.io.File
-import javax.imageio.ImageIO
 import java.awt.image.BufferedImage
 
 /*
@@ -129,7 +129,6 @@ object StackSLStudyGpuSmoke {
             image.setRGB(i * (DIM + 4), 0, DIM, DIM, gpu, 0, DIM)
             image.setRGB(i * (DIM + 4), DIM + 4, DIM, DIM, cpu, 0, DIM)
         }
-        sheet.absoluteFile.parentFile.mkdirs()
-        ImageIO.write(image, "png", sheet)
+        image.savePng(sheet)
     }
 }

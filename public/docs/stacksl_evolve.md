@@ -279,6 +279,11 @@ Without the watchmaker, these are the five built-in targets' best programs at 1,
 ??? aside "Why the targets are made in Kotlin, not taken from the StackSL gallery"
     A gallery still is a picture some StackSL program already makes, so searching for it would be a program-recovery task, and a good score could mean either "the search works" or "it rediscovered a short program from its own vocabulary". The built-in targets are drawn with arithmetic StackSL has no single word for. Each one can still be drawn by a hand-written program of 7 to 19 words, which the smoke test checks, so a target the search fails on is one it could have reached.
 
+## See also
+
+See [Proving What a Shader Draws](stacksl_intervals.md) for bounding the output of
+a candidate program over a region.
+
 ## API reference
 
 - Running evolution and fitting the programs:

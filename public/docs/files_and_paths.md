@@ -162,6 +162,72 @@ Use an explicit path for a file that lives outside the document, such as a datas
 copy in. Someone opening the document on another machine will need to provide that file and adjust
 the path. If you refer to the same external directory more than once, give it a name as a root.
 
+## Completing a path as you type
+
+Press ++ctrl+space++ inside a string that already looks like a path and the completion panel lists
+files instead of Kotlin. "Looks like a path" means one of the spellings above: absolute,
+`"~/…"`, `"%name/…"` (or just `"%"`, which lists the names), or a relative path such as
+`"scans/…"` whose folder exists in the document's `files/`. Picking a folder goes straight on to
+what is inside it, so you can walk down a path one segment at a time. A string that
+looks like nothing in particular, such as `"<div>"` or `"https://…"`, gets ordinary completion.
+
+Some parameters say more about what they want. `Rhino3dm.load("…")` lists folders and `.3dm`
+files, and starts from the document's `files/` even before you have typed a `/`, because its
+`path` parameter is declared like this:
+
+```diffstatic {data-lang=kotlin}
+fun load(@CompletesPath("*.3dm") path: String, ...): RhinoModel
+```
+
+`@CompletesPath` takes the same `mask` a [file chooser](visualizers.md#choosing-a-file) does, a `root` for relative
+paths (a FileManager spec; blank is the document's `files/`), and `chooseDirectory`.
+
+The same panel completes strings that are not files. Once a box has run
+`val model = Rhino3dm.load("house.3dm")`, typing `model.layer("` or `model.on("` offers the full
+path of every layer in that model, narrowed as you type, so `"wal"` finds `"Building::Walls"`.
+`layer`'s parameter names an object that computes the strings, asked again each time the panel
+opens:
+
+```diffstatic {data-lang=kotlin}
+object RhinoLayerPaths : StringCompletions {
+    override fun candidates(context: StringCompletionContext) =
+        (context.receiver as? RhinoModel)?.layers?.map { it.path }.orEmpty()
+}
+
+fun layer(@CompletesWith(RhinoLayerPaths::class) name: String): RhinoLayer
+```
+
+`context.receiver` is the model itself: the value `model` holds right now, because Field is live
+and the box's variables outlive the run that made them. Completion never runs anything to get it,
+so there is no receiver for `Rhino3dm.load("house.3dm").layer("`, for a `val` you have typed but
+not yet run, or for a local inside a function. `context` also carries the box being edited and
+what has been typed so far.
+
+Index access completes the same way. `FileManager["` offers the names registered so far, and with
+`val tools = PaintToolbox()`, both `tools["` and `tools.brush("` offer the tools it holds. For
+`foo.bar["pea`, an annotation on the property `bar` decides, and failing that, one on the key
+parameter of `bar`'s `operator fun get` or `set`. A class declared in a box can use this too:
+
+```diffstatic {data-lang=kotlin}
+object Fruit : StringCompletions {
+    override fun candidates(context: StringCompletionContext): List<String> = ["peach", "pear", "plum"]
+}
+
+class Shelf {
+    @CompletesWith(Fruit::class)
+    val stock = mutableMapOf<String, Int>()
+}
+
+val foo = Shelf()
+```
+
+Once that box has run, `foo.stock["pe` offers `peach` and `pear`. Field follows `foo.stock` by
+reading the property's stored value, never by calling a getter, so a property computed by a getter
+still finds its annotation but hands the provider no receiver. Field finds these annotations by
+reflection on compiled code: on functions in Field itself, in your `src/personal` layer, and on the
+members of a box's class once a variable holds one. It does not see a top-level function declared
+in a box.
+
 ## When resolution fails
 
 <div class="field-reference" data-code-lang="kotlin" markdown>
@@ -195,3 +261,8 @@ a complete one.
 
 Full signatures and the rest of the API are in
 [FileManager.kt in the Data reference](reference/data.md#filemanager-kt).
+
+## See also
+
+For the stored metadata, sidecars and history, see
+[What a document is on disk](document_on_disk.md).

@@ -119,3 +119,7 @@ Jobs also stream `ProgressEvent` objects over
 - `python scripts/generate-docs.py --check` verifies this committed contract.
 - Analysis and AudioCraft environments are separate, explicit opt-in checks.
 - A model inference smoke test requires an explicit download permission flag.
+
+## See also
+
+For examples that submit jobs from a box, start with [Field Audio AI](field_audio_ai.md).

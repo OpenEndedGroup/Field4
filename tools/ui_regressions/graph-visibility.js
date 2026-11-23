@@ -8,8 +8,8 @@ for(const [name,x,y,w=200,h=100] of [['P',20,40],['Q',900,40],['A',500,300],['B'
     newBox({kind:'text-frame',name:'Visibility '+name,contents:name,textFrame:'sizing: fixed\nreflow: false\n',frame:{x,y,w,h}});
     const box=[...document.querySelectorAll('.text-frame-box')].find(b=>b.name==='Visibility '+name);
     box.dataset.visibilityFixture=name;graph[name]=box;
-    const editor=box.querySelector('.text-frame-editor');
-    await wait(()=>document.activeElement===editor,'Fixture did not focus');
+    await wait(()=>box.contains(document.activeElement) && document.activeElement.isContentEditable,'Fixture did not focus');
+    const editor=document.activeElement;
     editor.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
 }
 const rpc=(name,payload)=>new Promise((resolve,reject)=>{
