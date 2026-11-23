@@ -127,7 +127,8 @@ For playback with a fixed point budget, stipple each decoded frame with the same
 one-to-one BSP-OT matcher. It starts with consecutive matches, then refines the loop using both
 neighbouring frames. Omit a duplicate closing frame. Frame zero defines the slot order.
 
-```kotlin
+```diffstatic {data-lang=kotlin}
+:::static
 val clouds = decodedFrames.map { it.stipple(count = 10_000, iterations = 5) }
 val pointOfSlot = matchPointLoop(clouds, sweeps = 12, seamWeight = 12.0)
 val tracked = clouds.mapIndexed { frame, points ->
