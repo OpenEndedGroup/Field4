@@ -87,8 +87,9 @@ optional fields:
   is expected; an `expect.image.path` is itself the readiness signal;
 - `waitOutput` (`contains`, and optionally `channel` and `kind`: `inline`, `display` or `all`)
   instead of `waitSec` when the evidence arrives after `run` returns, such as a card a build worker
-  redraws: the runner appends `wait-output`, whose match the expectations then see. A `sleep`
-  records no events, so output that arrives during `waitSec` is invisible to `expect`;
+  redraws: the runner appends `wait-output` and then `output`, so the expectations see everything
+  the box printed by then, not only the match. A `sleep` records no events, so output that arrives
+  during `waitSec` is invisible to `expect`;
 - `timeoutSec`, applied to the backdoor and individual operations.
 
 For an editor screenshot, the runner sets the property, opens Monaco before
