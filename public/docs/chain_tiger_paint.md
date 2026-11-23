@@ -48,8 +48,8 @@ markdown(
     | elements read | ${doc.elements} |
     | FLines | ${doc.lines.size}: ${fills.size} fills, ${strokes.size} strokes |
     | colours | ${doc.lines.map { it.color }.distinct().size} |
-    | fill area, view-box units² | ${"%.0f".format(areas.first())} to ${"%.0f".format(areas.last())}, median ${"%.0f".format(areas[areas.size / 2])} |
-    | stroke widths | ${strokes.mapNotNull { it.thickness }.distinct().sorted().joinToString(", ") { "%.2f".format(it) }} |
+    | fill area, view-box units² | ${areas.first().f0} to ${areas.last().f0}, median ${areas[areas.size / 2].f0} |
+    | stroke widths | ${strokes.mapNotNull { it.thickness }.distinct().sorted().joinToString(", ") { it.f2 }} |
     | fills that change under even-odd | $differ of ${fills.size} |
     """.trimIndent(),
     width = 520,

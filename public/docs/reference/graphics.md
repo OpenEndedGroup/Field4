@@ -9852,7 +9852,7 @@ Rasterisers written as Nile-style kernels.
 
 `src/jvmMain/kotlin/afield/graphics/nile/GeziraFLine.kt` — [read the source](source/jvmMain/afield/graphics/nile/GeziraFLine/)
 
-**Used in:** [Field 4 Graphics](../afield_four_graphics.md)
+**Used in:** [Field 4 Graphics](../afield_four_graphics.md), [An SVG Tiger, Painted](../chain_tiger_paint.md)
 
 ### Top-level values { #gezirafline-kt-values }
 
@@ -10050,7 +10050,7 @@ A premultiplied RGBA image that [`GeziraComposite.compositeOver`](graphics.md#ge
 
 `src/jvmMain/kotlin/afield/graphics/nile/GeziraSvg.kt` — [read the source](source/jvmMain/afield/graphics/nile/GeziraSvg/)
 
-**Used in:** [Field 4 Graphics](../afield_four_graphics.md)
+**Used in:** [Field 4 Graphics](../afield_four_graphics.md), [An SVG Tiger, Painted](../chain_tiger_paint.md)
 
 ### Top-level values { #gezirasvg-kt-values }
 
@@ -10208,7 +10208,7 @@ building it. Tests: `PaintCanvasTest`, `GesturePaintReplayTest`, `StereoTest`.
 
 `src/jvmMain/kotlin/afield/graphics/paint/PaintCanvas.kt` — [read the source](source/jvmMain/afield/graphics/paint/PaintCanvas/)
 
-**Used in:** [Watercolour and ink](../watercolor.md)
+**Used in:** [An SVG Tiger, Painted](../chain_tiger_paint.md), [Watercolour and ink](../watercolor.md)
 
 ### Top-level functions { #paintcanvas-kt-functions }
 
