@@ -92,6 +92,7 @@ internal constructor(id: String, owner: Any, val text: String, val at: DiagramAn
 
     var tracking = 0.0 // font units between shaped glyphs
     internal val styles = ArrayList<Pair<DiagramTextSpan, DiagramTypography>>()
+    internal val colorList = ArrayList<Pair<DiagramTextSpan, Vector4f>>()
     var scale = 1f
     var rotation = 0f // local roll, radians around the run baseline midpoint
     val orientation = Quaternionf() // authored 3D orientation, relative to reader facing when enabled
@@ -215,6 +216,17 @@ internal constructor(val run: DiagramText, val start: Int, val endExclusive: Int
      */
     fun annotate(value: Any): DiagramTextSpan = apply {
         run.annotationList += DiagramTextAnnotation(start, endExclusive, value)
+    }
+
+    /**
+     * Draw these characters in [color] instead of the run's colour: its RGB replaces the run's,
+     * and its alpha multiplies the run's, so fading or dimming the run still dims them. Later
+     * overlapping colours take precedence. Preparation-time: the run is drawn in one part per
+     * colour and line, so set colours before [ReadingDiagramPlayer.prepare].
+     */
+    fun color(color: Vector4f): DiagramTextSpan = apply {
+        require(color.x.isFinite() && color.y.isFinite() && color.z.isFinite() && color.w.isFinite())
+        run.colorList.add(this to Vector4f(color))
     }
 
     /** Apply a preparation-time font/style override; later overlapping styles take precedence. */

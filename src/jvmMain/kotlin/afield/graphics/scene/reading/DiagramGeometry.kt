@@ -217,7 +217,8 @@ class DiagramGeometry(val tolerance: Float = .0003f) {
     }
 
     /** Eight vec4 records per segment; no CPU-generated triangles. */
-    fun writeSegments(b: ByteBuffer) {
+    /** [encode] turns each colour into what the stroke shader reads; the renderer passes the palette encoding. */
+    fun writeSegments(b: ByteBuffer, encode: (Vector4f) -> Vector4f = { it }) {
         fun vector(v: Vector3f, w: Float) {
             b.putFloat(v.x).putFloat(v.y).putFloat(v.z).putFloat(w)
         }
@@ -229,8 +230,8 @@ class DiagramGeometry(val tolerance: Float = .0003f) {
             vector(s.a.p, s.s0)
             vector(s.b.p, s.s1)
             vector(s.next, s.b.width * .5f)
-            color(s.a.color)
-            color(s.b.color)
+            color(encode(s.a.color))
+            color(encode(s.b.color))
             b.putFloat(s.ink.dashPeriod)
                 .putFloat(s.ink.dashDuty)
                 .putFloat(s.ink.dashPhase)
@@ -243,10 +244,11 @@ class DiagramGeometry(val tolerance: Float = .0003f) {
     }
 
     /** Three vec4 records per marker: position/radius, colour, shape parameters. */
-    fun writePoints(b: ByteBuffer) {
+    fun writePoints(b: ByteBuffer, encode: (Vector4f) -> Vector4f = { it }) {
         for (p in points) {
             b.putFloat(p.p.x).putFloat(p.p.y).putFloat(p.p.z).putFloat(p.radius)
-            b.putFloat(p.color.x).putFloat(p.color.y).putFloat(p.color.z).putFloat(p.color.w)
+            val c = encode(p.color)
+            b.putFloat(c.x).putFloat(c.y).putFloat(c.z).putFloat(c.w)
             b.putFloat(p.shape.ordinal.toFloat())
                 .putFloat(p.ringWidth)
                 .putFloat(p.rotation)

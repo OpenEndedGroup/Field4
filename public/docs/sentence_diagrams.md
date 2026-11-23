@@ -695,6 +695,48 @@ its first line. `textMorph.group` fades the whole line in or out. The
 [`reading_morph`](agent_transcripts.md#reading_morph) starting point distributes `a × (b + c)` and
 then commutes a product.
 
+## Colour from a palette
+
+Reading light is white unless you give the player a palette, a ramp of colours with the neutral one
+in the middle. Item colours then land on the ramp: each text, path and dot takes the ramp colour
+nearest its own, and overlapping light still adds. A span of a run can have its own colour, which
+is how you colour syntax, and two score cues move colours along the ramp.
+
+```diffstatic {data-lang=kotlin}
+val warm = Vector4f(.98f, .98f, .83f, .8f)
+val cool = Vector4f(.86f, .92f, .77f, 1f)
+val graph = readingDiagram {
+    val p = point("p", 0, 0, pinned = true)
+    text("goal", "f (x + 1) = y", p) {
+        color = warm
+        characters(2, 3).color(cool)
+        characters(8, 9).color(cool)
+    }
+}
+val score = diagramScore(graph, 8.0) {
+    fadeIn(graph.text("goal"), at = 1.0)
+    saturate(graph.text("goal"), at = 1.0, seconds = 2.5, from = 2f)
+}
+val player = ReadingDiagramPlayer.prepare(graph, Typefaces.named("Monospaced", 100), "field-slug".file, score)
+player.palette = DiagramPalette.hex(
+    "990000", "ac2900", "ca5b09", "dd872a", "e6b058", "ebd189", "f2e9b4", "faf9d3", "ffffe0",
+    "f4f9d7", "dcebc5", "b4d8b2", "7ebea0", "419e95", "00738f", "003b86", "220080",
+)
+```
+
+`span.color(c)` replaces the run's RGB for those characters and multiplies its alpha, so fading or
+dimming the run dims them too. Set it before `prepare`: the run is drawn in one part per colour.
+`saturate(item, at, seconds, from, to)` pushes colours away from the neutral middle and lets them
+settle, so warm colours glow warmer and cool ones cooler as they arrive.
+`tint(item, color, at, seconds, from, to)` pulls an item toward one colour. With `from = 1, to = 1`
+it holds that colour, and a later cue with `from = 1, to = 0` releases it. Of the cues that have
+started, the latest wins. Without a palette, `saturate` and `tint` work in RGB.
+
+The renderer keeps its channels as they were: red and blue carry light, and green carries the
+coverage that selects blur. Alpha carries light times the item's position on the ramp. Blending is
+additive, so the compositor divides alpha by light to find the hue at each pixel, weighted by light
+where items overlap or blur. A palette has an odd number of stops, at most 17.
+
 ## API reference
 
 Implementation and parameter details for the helpers used above:

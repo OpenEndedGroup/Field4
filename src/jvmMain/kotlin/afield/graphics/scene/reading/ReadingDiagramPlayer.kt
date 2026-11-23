@@ -148,6 +148,11 @@ class ReadingDiagramPlayer(
         diagram.texts.associateWith { shapes.getValue(it.text) },
 ) : ReadingScene {
     val playback = DiagramPlayback(score)
+    /**
+     * The ramp reading light is mapped onto (see [DiagramPalette]); null keeps white light. With a
+     * palette, `tint` and `saturate` move colours along the ramp rather than through RGB.
+     */
+    override var palette: DiagramPalette? = null
     val state = SimdVerlet.State3.empty(diagram.particles.size)
     private val constraints = SimdVerlet.DirectedConstraints4.ofCapacity(diagram.particles.size)
     private val solver =
@@ -268,18 +273,24 @@ class ReadingDiagramPlayer(
                         val glyphFaces = layout.glyphs.associate { g ->
                             g.charIndex to (key.ranges.lastOrNull { g.charIndex in it.start until it.end }?.face ?: key.face)
                         }
-                        val parts = if (key.dropCap == null && layout.lines.size <= 1) emptyList() else {
+                        // The last colour range covering a character wins; -1 is the run's own colour.
+                        fun colorAt(i: Int) = key.colors.indexOfLast { i >= it[0] && i < it[1] }
+                        val parts = if (key.dropCap == null && layout.lines.size <= 1 && key.colors.isEmpty()) emptyList() else {
                             // Slug's per-path band offsets are 16-bit. Keep the large initial and
                             // each body line in separate atlases, in the SAME paragraph coordinates.
-                            layout.glyphs.groupBy { if (key.dropCap != null && it.charIndex < key.dropCap.end) -1 else it.lineIndex }
-                                .values.filter { glyphs -> glyphs.any { !it.glyph.isBlank } }.map { glyphs ->
+                            // Each colour is a part of its own too, since a part is drawn with one tint.
+                            layout.glyphs.groupBy {
+                                (if (key.dropCap != null && it.charIndex < key.dropCap.end) -1 else it.lineIndex) to colorAt(it.charIndex)
+                            }
+                                .entries.filter { (_, glyphs) -> glyphs.any { !it.glyph.isBlank } }.map { (group, glyphs) ->
+                                    val c = key.colors.getOrNull(group.second)?.let { Vector4f(it[2], it[3], it[4], it[5]) }
                                     val partLayout = TextLayout(layout.text, layout.typeface, glyphs, layout.lines,
                                         layout.tracking, layout.lineHeight, layout.align)
                                     val partOutline = partLayout.toFLine(filled = true, stroked = false).copy().transform { p ->
                                         Vector3f(p.x - layout.advanceWidth.toFloat() * .5f, -p.y, 0f)
                                     }
                                     ReadingText(run.text, layout.advanceWidth.toFloat(), partOutline,
-                                        SlugPath.compile(partOutline, helper, .01f), layout, faces, glyphFaces)
+                                        SlugPath.compile(partOutline, helper, .01f), layout, faces, glyphFaces, color = c)
                                 }
                         }
                         ReadingText(run.text, layout.advanceWidth.toFloat(), outline,
@@ -402,7 +413,7 @@ class ReadingDiagramPlayer(
                         frame.textPosition(text),
                         p.opacity,
                         frame.textScale(text),
-                        Vector4f(text.color),
+                        p.tinted(palette, part.color?.let { Vector4f(it.x, it.y, it.z, it.w * text.color.w) } ?: text.color),
                         text.rotation,
                         text.blur + p.blur,
                         frame.textOrientation(text),
@@ -415,20 +426,20 @@ class ReadingDiagramPlayer(
             val line = frame.path(path)
             // Per-node colours remain supported, including score alpha rather than bypassing it.
             val painted =
-                if (p.opacity == 1f) line
+                if (p.opacity == 1f && p.tint == null && p.saturation == 0f) line
                 else
                     line.copy().also { copy ->
                         (copy.properties["color"] as? Vector4f)?.let {
-                            copy.properties["color"] = Vector4f(it).apply { w *= p.opacity }
+                            copy.properties["color"] = p.tinted(palette, it).apply { w *= p.opacity }
                         }
                         for (n in copy.nodes) (n.properties["color"] as? Vector4f)?.let {
-                            n.properties["color"] = Vector4f(it).apply { w *= p.opacity }
+                            n.properties["color"] = p.tinted(palette, it).apply { w *= p.opacity }
                         }
                     }
             geometry.stroke(
                 painted,
                 path.ink.copy(
-                    color = Vector4f(path.ink.color).apply { w *= p.opacity },
+                    color = p.tinted(palette, path.ink.color).apply { w *= p.opacity },
                     drawFrom = maxOf(path.ink.drawFrom, p.erase),
                     drawTo = minOf(path.ink.drawTo, p.reveal),
                 ),
@@ -443,7 +454,7 @@ class ReadingDiagramPlayer(
                         DiagramGeometry.Point(
                             frame.position(dot.at).add(p.offset),
                             dot.radius * p.scale * dotRadiusScale,
-                            Vector4f(dot.color).apply { w *= p.opacity },
+                            p.tinted(palette, dot.color).apply { w *= p.opacity },
                             dot.shape,
                         ),
                     )

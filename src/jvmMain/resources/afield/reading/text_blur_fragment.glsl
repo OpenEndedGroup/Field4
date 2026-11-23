@@ -72,5 +72,6 @@ void main() {
     // Shape the filtered mask, not the score opacity: fading remains an independent linear channel.
     float light = pow(coverage, clamp(appearance.y, .25, 4)) * max(appearance.x, 0);
     // Premultiplied additive light preserves the true coverage channel independently of artistic shaping.
-    outColor = vec4(light, coverage, light, coverage) * pc.tint.a; // green stays linear control data
+    // Green stays linear control data; alpha carries light times the palette position in tint.x.
+    outColor = vec4(light, coverage, light, light * pc.tint.x) * pc.tint.a;
 }
