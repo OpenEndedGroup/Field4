@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 25804 of 43085 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 25832 of 43119 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2084 undocumented entry points** (types, top-level functions and values) and 14428 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2084 undocumented entry points** (types, top-level functions and values) and 14434 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -269,6 +269,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [CeresRealization.kt](../src/jvmMain/kotlin/afield/geometry/polytope/CeresRealization.kt) | Polytopes | polytope_examples, chain_ceres_manifold_contours | 0 | 5 | 75% |
 | [Conway.kt](../src/jvmMain/kotlin/afield/geometry/polytope/Conway.kt) | Polytopes | polytope_examples | 0 | 5 | 64% |
 | [RhinoWriter.kt](../src/jvmMain/kotlin/afield/geometry/rhino/RhinoWriter.kt) | Graphics | rhino_files | 0 | 5 | 87% |
+| [ColorCoordinates.kt](../src/jvmMain/kotlin/afield/graphics/color/ColorCoordinates.kt) | Graphics | colors_examples | 0 | 5 | 68% |
 | [TriangleCoverage.kt](../src/jvmMain/kotlin/afield/graphics/render/TriangleCoverage.kt) | Graphics | afield_four_graphics | 0 | 5 | 76% |
 | [OscQueryBox.kt](../src/jvmMain/kotlin/afield/io/osc/query/OscQueryBox.kt) | Networking | oscquery | 0 | 5 | 80% |
 | [charts.kt](../src/jvmMain/kotlin/afield/ui/visualization/charts.kt) | Visualization | chart, tetgen | 0 | 5 | 91% |
@@ -322,6 +323,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [FnSignal.kt](../src/jvmMain/kotlin/afield/audio/synth/FnSignal.kt) | Synthesis | chain_fn_sound_roundtrip | 0 | 1 | 66% |
 | [NotationPatterns.kt](../src/jvmMain/kotlin/afield/audio/synth/NotationPatterns.kt) | Patterns | chain_drawn_score, chain_drawn_morph, chain_tracked_body | 0 | 1 | 71% |
 | [Realize.kt](../src/jvmMain/kotlin/afield/geometry/polytope/Realize.kt) | Polytopes | polytope_examples | 0 | 1 | 94% |
+| [ColorTrajectory.kt](../src/jvmMain/kotlin/afield/graphics/color/ColorTrajectory.kt) | Graphics | colors_examples | 0 | 1 | 94% |
 | [Nile.kt](../src/jvmMain/kotlin/afield/graphics/nile/Nile.kt) | Graphics | rectsl_conversation | 0 | 1 | 87% |
 | [RtxdiSettings.kt](../src/jvmMain/kotlin/afield/graphics/render/lighting/RtxdiSettings.kt) | Graphics | direct_lighting | 0 | 1 | 93% |
 | [KeyCamera.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/util/KeyCamera.kt) | Graphics | afield_four_graphics | 0 | 1 | 91% |

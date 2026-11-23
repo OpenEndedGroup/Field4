@@ -78,8 +78,8 @@ import kotlin.math.sqrt
  * the highest-contrast candidate it found when it cannot reach the target.
  */
 
-private data class LinearRgb(val r: Float, val g: Float, val b: Float)
-private data class Oklab(val l: Float, val a: Float, val b: Float)
+internal data class LinearRgb(val r: Float, val g: Float, val b: Float)
+internal data class Oklab(val l: Float, val a: Float, val b: Float)
 private data class LC(val l: Float, val c: Float)
 private data class ST(val s: Float, val t: Float)
 private data class Cs(val c0: Float, val cMid: Float, val cMax: Float)
@@ -106,7 +106,7 @@ private fun srgbTransferInv(srgb: Float): Float =
     if (srgb > 0.04045f) ((srgb + 0.055f) / 1.055f).pow(2.4f)
     else srgb / 12.92f
 
-private fun linearSrgbToOklab(c: LinearRgb): Oklab {
+internal fun linearSrgbToOklab(c: LinearRgb): Oklab {
     val l = 0.4122214708f * c.r + 0.5363325363f * c.g + 0.0514459929f * c.b
     val m = 0.2119034982f * c.r + 0.6806995451f * c.g + 0.1073969566f * c.b
     val s = 0.0883024619f * c.r + 0.2817188376f * c.g + 0.6299787005f * c.b
@@ -122,7 +122,7 @@ private fun linearSrgbToOklab(c: LinearRgb): Oklab {
     )
 }
 
-private fun oklabToLinearSrgb(c: Oklab): LinearRgb {
+internal fun oklabToLinearSrgb(c: Oklab): LinearRgb {
     val l_ = c.l + 0.3963377774f * c.a + 0.2158037573f * c.b
     val m_ = c.l - 0.1055613458f * c.a - 0.0638541728f * c.b
     val s_ = c.l - 0.0894841775f * c.a - 1.2914855480f * c.b

@@ -1,16 +1,314 @@
-# Colors to FLine examples
+# Color trajectories and palettes
 
-A colour can look good on its own and disappear beside its neighbours. These examples draw a
-whole palette as geometry, so you can see how its colours work together.
+Start with two colours and draw the space between them. A ramp is a function of position, so
+you can paint a sequence of swatches, colour a path, or move through it with a slider. Change
+the interpolation space and the same endpoints give you a different middle.
 
-Every constructor returns an sRGB-encoded `Vec4` with components in `[0,1]`. There are four color spaces to build from:
+## The same stops, four routes
 
-- **sRGB**: `rgb(r, g, b, a)` (alias `rgba`) takes components already sRGB-encoded, on 0..1 or 0..255. The scale is guessed per call: any of `r`, `g`, `b` above 1 means 0..255. `rgb255(...)` is the same thing always on 0..255, so nothing is guessed.
-- **HSL**: `hsl(h, s, l, a)` (alias `hsla`) is the classic cylinder on sRGB-encoded values, so it gives the same colour as CSS `hsl()` for the same numbers. `cssHsla` is the same colour with CSS's conventions: hue always in degrees.
-- **OKHSL**: `okhsl(h, s, l, a)` is hue, saturation and lightness built on Oklab, with `l` as *perceived* lightness and `s = 1` at the gamut edge for that hue.
-- **OKHSV**: `okhsv(h, s, v, a)` is the HSV-shaped version of the same, where `v` dims a color toward black.
+Compare four blue-to-gold ramps. Move the position slider to mark the same point on every
+route, then change the endpoint colours and see where the routes diverge.
 
-The three hue-based spaces read `h` as a fraction of a turn below 1 and as degrees from 1 up. Each one also has a ring generator that spaces `count` hues evenly: `hueSetHsl`, `hueSetOkhsl` and `hueSetOkhsv`, with the short aliases `hslSet`, `okhslSet` and `okhsvSet`. `paletteForBackground` builds an OKHSL ring and then corrects it for contrast. Oklab itself is used inside the file and has no public constructor.
+```diffstatic_runner {data-lang=kotlin screenshot="assets/colors_examples/interpolation.png" alt="Four blue-to-gold ramps with their midpoints marked." wait="1.0" capture="box" open-outputs="true" w="760" h="220" name="four-routes" embed=true}
+:::static
+var first = colorHex("#3744df")
+var last = colorHex("#ffd062")
+var position = 0.5
+
+fun drawRamps() {
+    val stops = listOf(first, last)
+    val ramps = listOf(
+        colorRamp(stops, ColorSpace.SRGB),
+        colorRamp(stops, ColorSpace.LINEAR_SRGB),
+        colorRamp(stops, ColorSpace.OKLAB),
+        colorRamp(stops, ColorSpace.OKLCH, HuePath.LONGER)
+    )
+
+    :::fold Draw the strips and position markers
+    val drawing = ramps.flatMapIndexed { row, ramp ->
+        val y = 12.0 + row * 51.0
+        ramp.sample(72).mapIndexed { i, swatch ->
+            fline {
+                rect(16.0 + i * 10.0, y, 10.2, 32.0)
+                filled = true
+                stroked = false
+                color = swatch
+            }
+        } + fline {
+            circle(21.0 + position * 710.0, y + 40.0, 4.0)
+            filled = true
+            stroked = false
+            color = ramp(position)
+        }
+    }
+    lines(drawing, channel = "Interpolation", w = 752.0, h = 213.0)
+    :::endfold
+}
+
+drawRamps()
+controlGroup("Endpoints") {
+    colorPicker("Start", first) {
+        first = it
+        drawRamps()
+    }
+    colorPicker("End", last) {
+        last = it
+        drawRamps()
+    }
+    slider("Position", initialValue = position) {
+        position = it
+        drawRamps()
+    }
+}
+```
+
+Read the strips from top to bottom. **sRGB** averages the numbers you would type into a CSS
+colour. **Linear sRGB** averages light and often makes a brighter middle. **OKLab** takes a
+straight line in coordinates designed to make equal distances look more nearly equal.
+**OKLCH** lets you choose which way to turn around the hue circle. Try `SHORTER` in the last
+row, then add a third stop to all four ramps. Stops are evenly spaced in the parameter range.
+Call `byPerceptualDistance()` to redistribute samples along the displayed path.
+
+## Bend a path through OKLab
+
+In OKLab, `L` is lightness and `a` and `b` are opponent axes. An OKLCH view rewrites the two
+axes as chroma and hue. This box draws the sRGB gamut at a single lightness and lays a Bézier
+trajectory across it. Edit the two handles to pull the trajectory around the grey centre.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/colors_examples/gamut-path.png" alt="An OKLab gamut slice crossed by a curve of marked swatches, with the resulting ramp at the right." wait="1.0" capture="box" open-outputs="true" w="620" h="365" name="gamut-path" embed=true}
+:::static
+val lightness = 0.71
+fun point(a: Double, b: Double) = ColorCoordinates(ColorSpace.OKLAB, lightness, a, b)
+val path = colorBezier(point(-0.13, 0.06), point(-0.04, -0.29), point(0.23, -0.08), point(0.08, 0.13))
+val swatches = path.byPerceptualDistance().sample(12)
+
+:::fold Draw the slice, trajectory and ramp
+val slice = buildList {
+    for (j in -19..19) for (i in -30..30) {
+        val p = point(i * 0.009, j * 0.009)
+        if (p.isInSrgb()) add(fline {
+            rect(224.0 + i * 8.0, 164.0 - j * 8.0, 8.3, 8.3)
+            filled = true
+            stroked = false
+            color = p.toSrgb()
+        })
+    }
+}
+val markers = swatches.map { swatch ->
+    val p = colorCoordinates(swatch)
+    fline {
+        circle(228.0 + p.y / 0.009 * 8.0, 168.0 - p.z / 0.009 * 8.0, 5.0)
+        filled = false
+        stroked = true
+        thickness = 2.0
+        color = colorHex("#16151c")
+    }
+}
+val strip = swatches.mapIndexed { i, swatch ->
+    fline {
+        rect(490.0, 19.0 + i * 25.0, 82.0, 24.0)
+        filled = true
+        stroked = false
+        color = swatch
+    }
+}
+lines(slice + markers + strip, channel = "OKLab slice", w = 595.0, h = 332.0)
+:::endfold
+```
+
+For a path with changing lightness, try `colorHelix(startLightness = 0.22, endLightness = 0.91,
+startHueDegrees = 285.0, turns = -0.8)`. The helix takes a share of the available chroma at
+each point, so the path stays inside sRGB as it approaches white or black. A rising lightness
+helps show an ordered quantity. Field’s [named colormaps](reference/graphics.md#colormaps-kt)
+offer another starting point.
+
+## Pick swatches by contrast
+
+Give `contrastPalette` a trajectory and target ratios, as in Adobe’s Leonardo. This instrument
+runs three hue trajectories against one background. Each column requests a higher ratio.
+Try darkening the ground to reach the last target. [Adobe Leonardo](https://github.com/adobe/leonardo)
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/colors_examples/contrast-instrument.png" alt="Three hue families on a dark ground. Small outlined circles mark unreachable contrast targets." wait="1.0" capture="box" open-outputs="true" w="690" h="250" name="contrast-instrument" embed=true}
+:::static
+val targets = listOf(1.5, 3.0, 4.5, 7.0, 12.0)
+var groundLightness = 0.32
+var chroma = 0.77
+
+fun drawPalette() {
+    val ground = oklch(groundLightness, 0.025, 265)
+    val rows = listOf(28.0, 157.0, 270.0).map { hue ->
+        val path = colorHelix(groundLightness, 0.93, hue, turns = -0.13, chromaFraction = chroma)
+        contrastPalette(path, ground, targets)
+    }
+
+    :::fold Draw on the actual ground and mark misses
+    val paper = fline {
+        rect(0.0, 0.0, 682.0, 226.0)
+        filled = true
+        stroked = false
+        color = ground
+    }
+    val swatches = rows.flatMapIndexed { row, colors ->
+        colors.flatMapIndexed { col, swatch ->
+            val x = 22.0 + col * 135.0
+            val y = 20.0 + row * 69.0
+            val tile = fline {
+                rect(x, y, 98.0, 48.0)
+                filled = true
+                stroked = false
+                color = swatch.color
+            }
+            if (swatch.reached) listOf(tile) else listOf(tile, fline {
+                circle(x + 113, y + 24, 5.0)
+                filled = false
+                stroked = true
+                color = colorHex("#f3efea")
+            })
+        }
+    }
+    lines(listOf(paper) + swatches, channel = "Contrast on ground", w = 682.0, h = 226.0)
+    :::endfold
+    markdown("Ratios", rows.joinToString("\n\n") { row ->
+        row.joinToString(" · ") { swatch ->
+            val actual = "%.2f".format(java.util.Locale.ROOT, swatch.achieved)
+            "${swatch.target} → $actual" + if (swatch.reached) "" else " (miss)"
+        }
+    }, open = false)
+}
+
+drawPalette()
+controlGroup("Palette") {
+    slider("Ground lightness", min = 0.08, max = 0.78, initialValue = groundLightness) {
+        groundLightness = it
+        drawPalette()
+    }
+    slider("Chroma fraction", initialValue = chroma) {
+        chroma = it
+        drawPalette()
+    }
+}
+```
+
+The search measures the drawable colour over the opaque ground. It samples the whole path
+and refines the first detected crossing. Raise `resolution` if the curve has narrow peaks.
+**3:1** and **4.5:1** are WCAG’s large-text and body-text AA thresholds respectively.
+Those ratios describe each swatch against the ground. Use `deltaEOK` to compare distances
+*between* swatches. For a quick categorical ring, use `paletteForBackground` below.
+[WCAG contrast definition](https://www.w3.org/TR/WCAG22/#dfn-contrast-ratio)
+
+## Mix paint with the same endpoints
+
+Take two named tubes and draw their thick paint colours at the edges. The top row interpolates
+in OKLab. The middle feeds the same endpoints to the spectral Kubelka–Munk mixer, which
+estimates reflectance from RGB. The bottom mixes named tubes as Field’s brush palette does,
+including their tinting strengths. In the bottom row, 50% means equal parts by volume.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/colors_examples/paint-trajectories.png" alt="Three rows from yellow to blue, comparing an OKLab ramp with spectral mixtures and the brush’s named-tube mixtures." wait="1.0" capture="box" open-outputs="true" requires="paint" w="700" h="215" name="paint-trajectories" embed=true}
+:::static
+val yellow = "cadmium yellow"
+val blue = "ultramarine blue"
+val first = Tubes[yellow].color
+val last = Tubes[blue].color
+val rows = listOf(
+    colorRamp(listOf(first, last)),
+    spectralColorRamp(first, last),
+    tubeColorRamp(yellow, blue)
+)
+
+val chips = rows.flatMapIndexed { row, ramp ->
+    ramp.sample(17).mapIndexed { i, swatch ->
+        fline {
+            rect(18.0 + i * 39.0, 15.0 + row * 59.0, 36.0, 42.0)
+            filled = true
+            stroked = false
+            color = swatch
+        }
+    }
+}
+lines(chips, channel = "Yellow into blue", w = 698.0, h = 193.0)
+```
+
+Open `Tubes.names` and swap in a stronger blue or a less opaque yellow. To turn a point on
+the bottom row into a brush load, pass the same parts to `brush.load(mapOf(yellow to
+(1.0 - t), blue to t))`. The strip shows the mixture’s masstone, the colour of a thick
+application. See what thickness, solvent and the ground do to a stroke. [Paint canvas](paint_canvas.md)
+
+## One colour on two grounds
+
+In Josef Albers’s *Interaction of Color*, a single piece of coloured paper can appear to
+change when it sits on two different grounds. The two inner squares below share one sRGB
+value. Enable **Neutral grounds** to compare the squares directly. Change the centre colour
+and see how much the surrounds shift it.
+[Interaction of Color](https://yalebooks.yale.edu/book/9780300179354/interaction-of-color/)
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/colors_examples/one-color-two-grounds.png" alt="Identical muted squares on navy and apricot grounds. The centre appears lighter on the darker ground." wait="1.0" capture="box" open-outputs="true" w="685" h="235" name="two-grounds" embed=true}
+:::static
+var patch = colorHex("#a4968e")
+var neutral = false
+
+fun square(x: Double, y: Double, side: Double, pigment: Vec4) = fline {
+    rect(x, y, side, side)
+    filled = true
+    stroked = false
+    color = pigment
+}
+
+fun showGrounds() {
+    val grey = colorHex("#808080")
+    val left = if (neutral) grey else colorHex("#25345d")
+    val right = if (neutral) grey else colorHex("#f8b177")
+    lines(
+        square(110.0, 10.0, 220.0, left), square(340.0, 10.0, 220.0, right),
+        square(184.0, 84.0, 72.0, patch), square(414.0, 84.0, 72.0, patch),
+        channel = "One colour, two grounds", w = 670.0, h = 240.0
+    )
+}
+
+showGrounds()
+controlGroup("Surrounds") {
+    colorPicker("Centre", patch) {
+        patch = it
+        showGrounds()
+    }
+    checkbox("Neutral grounds") {
+        neutral = it
+        showGrounds()
+    }
+}
+```
+
+Goethe’s *Theory of Colours* asks what the eye contributes over time. Try an afterimage
+with this drawing. Look at an uninterrupted area of the apricot ground for several seconds,
+then move your gaze to a blank pale area. You may see a fleeting cool patch. The two-ground
+exercise changes the two surrounds concurrently. The afterimage follows a change in where
+you look. An OKLCH half-turn designs an opposing hue for a palette. The appearance of an
+afterimage depends on the viewer and the viewing conditions.
+[Goethe’s *Theory of Colours*, Physiological Colours](https://www.gutenberg.org/ebooks/50572)
+
+## Coordinates, gamut and drawing values
+
+Read a drawing colour with `colorCoordinates(color, space)`. For an out-of-gamut colour you
+want to keep editing, start with `ColorCoordinates` and use `convert`. Call `toSrgb()` when
+you need a `Vec4` for a line, fill or shader. The default gamut mapping reduces OKLCH chroma
+at fixed lightness and hue. Use `ColorGamut.CLIP` to compare with per-channel clipping.
+
+| Space | Coordinates |
+| --- | --- |
+| `SRGB`, `LINEAR_SRGB` | Encoded RGB and linear light respectively. Reference white has channels of 1. |
+| `DISPLAY_P3` | Display P3 primaries with the sRGB transfer curve. |
+| `XYZ_D65` | Tristimulus coordinates with a D65 white and reference Y of 1. |
+| `LAB_D65` | CIELAB relative to D65. Lightness runs from 0 to 100. |
+| `OKLAB` | Lightness from 0 to 1, then two opponent axes. |
+| `OKLCH` | OKLab lightness, chroma and hue in degrees. |
+
+For the models and conversion conventions, see [Björn Ottosson’s Oklab derivation](https://bottosson.github.io/posts/oklab/),
+[CSS Color 4](https://www.w3.org/TR/css-color-4/) and
+[Color.js’s interpolation examples](https://colorjs.io/docs/interpolation.html).
+
+For a literal colour, use `colorHex("#c66c5f")`, `rgb255(198, 108, 95)` or
+`rgb(0.78, 0.42, 0.37)`. With `rgb`, any RGB channel above 1 selects the 0–255 scale for
+all three. For a hue wheel, `hsl`, `okhsl` and `okhsv` accept turns up to magnitude 1
+and degrees above that. `cssHsla` always accepts degrees.
 
 ## HSL vs OKHSL hue sets
 
@@ -71,15 +369,27 @@ fun ring(radius: Double, phase: Double, color: Vec4): FLine = fline {
     this.thickness = 3.0
 }
 
+val ground = fline {
+    rect(160.0, 130.0, 760.0, 420.0)
+    filled = true
+    stroked = false
+    color = bg
+}
 val rings = palette.mapIndexed { i, c -> ring(80.0 + i * 38.0, i * 0.21, c) }
 
-lines(rings, channel = "colors-rings", w = 1120.0, h = 740.0, fitToSize = true)
+lines(listOf(ground) + rings, channel = "colors-rings", w = 760.0, h = 420.0, fitToSize = true)
 ```
 
 `paletteForBackground(...)` starts from the same evenly spaced okhsl ring as `hueSetOkhsl`, then for any entry whose WCAG contrast against the background falls short of `minContrast` it walks that entry's lightness until it clears the bar; a dark background is searched lighter first. Here it gets `minContrast = 3.5`, a little above the WCAG large-text threshold of 3, and all seven colors go on nested rings where a weak one would be easy to spot.
 
 ![Seven nested rings in paletteForBackground colors on a dark background](assets/colors_examples/palette_background_paths.png)
 
-Every ring stays readable and none sinks into the background. If nothing reaches `minContrast` the best candidate found is returned rather than an exception, so the call always hands back the count you asked for and it is the picture that tells you whether it managed. For more on constructing the underlying paths, see [FLine examples](fline_examples.md); for functional signal stacks that can drive color or geometry, see [Functions examples](functions_examples.md).
+The ring generator always returns the requested count. When a hue misses the threshold, you
+get its highest-contrast candidate from the search. Measure each colour with
+`wcagContrast(it, bg)` to see which ones cleared the target. For the geometry and signals
+that can drive the palette, see [FLine examples](fline_examples.md) and
+[Functions examples](functions_examples.md).
 
-*The public declarations used on this page are listed, with their KDoc, in the codebase reference: [`colors.kt`](reference/graphics.md#colors-kt). Start from [what's already in the box](reference/index.md).*
+See the [trajectory API](reference/graphics.md#colortrajectory-kt),
+[coordinate conversions](reference/graphics.md#colorcoordinates-kt), and
+[original color constructors](reference/graphics.md#colors-kt).
