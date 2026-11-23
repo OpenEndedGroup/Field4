@@ -13,9 +13,17 @@ layout(std430, buffer_reference) buffer Vec4s { vec4 v[]; };
 layout(std430, buffer_reference) buffer Uints { uint v[]; };
 
 #define BAND 16u
+// Shared-memory sizes of the resolve stage; GeziraGpuScene defines them per scene (MAXW its width),
+// since they set how many rows' workgroups fit on a GPU core at once.
+#ifndef NE
 #define NE 512u
+#endif
+#ifndef NY
 #define NY 1536u
+#endif
+#ifndef MAXW
 #define MAXW 2048
+#endif
 #define FIXED 16777216.0
 #define MAX_PIECES 512u
 
@@ -290,6 +298,15 @@ void main() {
     uint row = gl_WorkGroupID.x;
     uint t = gl_LocalInvocationID.x;
     if (row >= pc.height) return;
+    // A row one path crowds past NE edges (or its crossings past NY) is not drawn here: this pass
+    // flags it and stops, and the WIDE pass, the same code at the largest sizes, redraws only the
+    // flagged rows from scratch. Flags sit in counts after the overflow counters.
+    uint flag = 2u * bands() + 4u + row;
+#ifdef WIDE
+    if (pc.counts.v[flag] == 0u) return;
+#else
+    if (t == 0u) pc.counts.v[flag] = 0u;
+#endif
     uint w = pc.width;
     uint base = row * w;
     for (uint c = t; c < w; c += T) { pc.image.v[base + c] = vec4(0.0); acc[c] = 0; }
@@ -357,6 +374,9 @@ void main() {
         barrier();
         uint n = min(nEdges, NE);
         if (t == 0u) atomicMax(pc.counts.v[2u * bands() + 3u], n);
+#ifndef WIDE
+        if (nEdges > NE) { if (t == 0u) pc.counts.v[flag] = 1u; return; }
+#endif
         if (n < 2u) { barrier(); continue; }
         for (uint i = t; i < n; i += T) {
             ys[2u * i] = edges[i].y;
@@ -381,6 +401,9 @@ void main() {
             }
         }
         barrier();
+#ifndef WIDE
+        if (nYs > NY) { if (t == 0u) pc.counts.v[flag] = 1u; return; }
+#endif
         uint m = (pc.debug & 4u) != 0u ? 0u : min(nYs, NY);
         for (uint q = t; q < m; q += T) {
             float y = ys[q];

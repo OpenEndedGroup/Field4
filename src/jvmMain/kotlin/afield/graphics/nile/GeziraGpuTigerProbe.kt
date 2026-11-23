@@ -34,6 +34,9 @@ expect:
  * flattening moves it. Timing is over [TIMED_FRAMES] frames: wall time per frame with presentation
  * in it, and the pipeline's own GPU cost as (frames with it dispatched [REPEATS] times − frames with
  * it once) / ([REPEATS] − 1).
+ * Then the 900 × 900 frame at several [GeziraGpuScene.rowEdges], which sizes the resolve stage's shared
+ * memory, timed back to back; and the wide pass: rows past `rowEdges` must come out exactly as at
+ * the default, with no edge dropped, at 150 and 300 pixels and with `rowEdges` forced down to 64. Method and results: `dev_docs/GEZIRA_GPU_TIMING.md`.
  * Difference images go to `build/gezira-gpu-tiger/`.
  */
 object GeziraGpuTigerProbe {
@@ -43,6 +46,7 @@ object GeziraGpuTigerProbe {
 
     private const val TIMED_FRAMES = 60
     private const val REPEATS = 5
+    private var sameSize450: FloatArray? = null
 
     private fun timeFrames(probe: GpuProbe): Double {
         probe.pumpFrames(5)
@@ -159,6 +163,53 @@ object GeziraGpuTigerProbe {
                     }
                 }
                 table += "        stages (ms): " + perStage.joinToString(", ")
+            }
+            // The resolve stage's shared memory, set by rowEdges, against its time: the same 900 x 900
+            // frame at the old 512 and the default, back to back in one run.
+            val fit900 = doc.fit(900, 900)
+            for (edges in listOf(512, 384, 320, 256)) {
+                val wall = HashMap<Int, Double>()
+                for (repeats in listOf(1, REPEATS)) {
+                    failures += gpuProbe(renderer, "gezira-tiger-900-rowedges-$edges-x$repeats", pump = pump) { probe ->
+                        val scene = GeziraGpuScene(probe, paths, 900, 900, transform = fit900, rowEdges = edges, repeats = repeats)
+                        probe.settle(scene.image, seconds = 60.0)
+                        var waited = 0
+                        while (probe.stageList.any { !it.valid } && waited++ < 600) pump()
+                        wall[repeats] = timeFrames(probe)
+                        probe.verdict("gezira gpu tiger rowEdges $edges x$repeats")
+                    }
+                }
+                table += "  900 x 900, rowEdges %d: wall %.2f ms/frame, pipeline on the GPU %.2f ms".format(
+                    edges, wall.getValue(1), (wall.getValue(REPEATS) - wall.getValue(1)) / (REPEATS - 1))
+            }
+            // Rows past rowEdges go to the wide pass, not the floor: at a tiny rowEdges most rows do,
+            // and the picture must be the default's exactly. Smaller pictures crowd rows the most.
+            for ((size, edges) in listOf(150 to 256, 300 to 256, 450 to 64, 450 to 256)) {
+                failures += gpuProbe(renderer, "gezira-tiger-$size-rows-$edges", pump = pump) { probe ->
+                    val scene = GeziraGpuScene(probe, paths, size, size, transform = doc.fit(size, size), rowEdges = edges)
+                    probe.settle(scene.image, seconds = 60.0)
+                    var waited = 0
+                    while (probe.stageList.any { !it.valid } && waited++ < 600) pump()
+                    repeat(4) { pump() }
+                    probe.idle()
+                    scene.resetOverflow()
+                    repeat(3) { pump() }
+                    probe.idle()
+                    val over = scene.overflow()
+                    val img = scene.read()
+                    val (worst, mean) = diff(img, GeziraSvg.render(doc, size, size).canvas.rgba)
+                    val wide = scene.wideRows()
+                    println("  $size, rowEdges $edges: widest run ${scene.widestRun()} edges, $wide rows to the wide pass, gpu vs cpu max %.4f mean %.2e".format(worst, mean))
+                    probe.exactly("row edges dropped ($size, rowEdges $edges)", over[2], 0, buffer = "counts")
+                    probe.atMost("mean |gpu - cpu| ($size, rowEdges $edges)", mean, MAX_MEAN, buffer = "image")
+                    if (edges == 64) probe.atLeast("rows to the wide pass ($size, rowEdges 64)", wide, 1, buffer = "counts")
+                    if (size == 450) {
+                        val previous = sameSize450
+                        if (previous == null) sameSize450 = img
+                        else probe.atMost("rowEdges 64 vs 256 at 450, largest difference", diff(img, previous).first, 0.0, buffer = "image")
+                    }
+                    probe.verdict("gezira gpu tiger rows $size rowEdges $edges")
+                }
             }
         } catch (t: Throwable) {
             t.printStackTrace()
