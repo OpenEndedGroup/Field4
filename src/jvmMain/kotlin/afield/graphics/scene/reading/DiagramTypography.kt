@@ -93,6 +93,8 @@ internal data class ReadingPreparationKey(
     val tracking: Double,
     val ranges: List<ReadingStyleRange>,
     val dropCap: ReadingDropCapKey? = null,
+    /** Coloured character ranges as (start, end, r, g, b, a), in the order they were set. */
+    val colors: List<List<Float>> = emptyList(),
 )
 
 internal fun readingPreparationKey(run: DiagramText, fallback: Typeface): ReadingPreparationKey {
@@ -120,7 +122,10 @@ internal fun readingPreparationKey(run: DiagramText, fallback: Typeface): Readin
     val styled = if (cap == null) ranges else ranges + ReadingStyleRange(0, cap.end, cap.face)
     // Borrowed faces go last so they win over the style they patch, exactly where it has no glyph.
     val resolvedRanges = styled + fallbackRanges(run.text, base, styled) { run.fallbacks ?: DiagramFontFallback.installed }
-    return ReadingPreparationKey(run.text, base, run.tracking, resolvedRanges, cap)
+    val colors = run.colorList.map { (span, c) ->
+        listOf(span.start.toFloat(), span.endExclusive.toFloat(), c.x, c.y, c.z, c.w)
+    }
+    return ReadingPreparationKey(run.text, base, run.tracking, resolvedRanges, cap, colors)
 }
 
 internal fun prepareReadingLayout(run: DiagramText, key: ReadingPreparationKey): TextLayout {

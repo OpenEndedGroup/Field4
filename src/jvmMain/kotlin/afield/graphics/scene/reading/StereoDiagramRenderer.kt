@@ -79,7 +79,7 @@ class StereoDiagramRenderer(
             depthTest = false
             depthWrite = false
             blend = true
-            srcColor = VK_BLEND_FACTOR_SRC_ALPHA
+            srcColor = VK_BLEND_FACTOR_ONE // shaders premultiply: alpha carries palette position, not coverage
             dstColor = VK_BLEND_FACTOR_ONE
             srcAlpha = VK_BLEND_FACTOR_ONE
             dstAlpha = VK_BLEND_FACTOR_ONE
@@ -274,6 +274,7 @@ class StereoDiagramRenderer(
         }
         model.identity().translation(origin).rotateY(yaw)
         scene.setReaderPosition(Matrix4f(model).invert().transformPosition(Vector3f(head)))
+        scene.palette?.let { compositor.settings.palette = it }
         scene.update(dt)
         check(scene.geometry.segments.size <= maxSegments) {
             "Diagram has ${scene.geometry.segments.size} segments; capacity $maxSegments"
@@ -283,11 +284,11 @@ class StereoDiagramRenderer(
         }
         segments.mapAndWrite_bytes {
             clear()
-            scene.geometry.writeSegments(this)
+            scene.geometry.writeSegments(this, compositor.settings::encode)
         }
         points.mapAndWrite_bytes {
             clear()
-            scene.geometry.writePoints(this)
+            scene.geometry.writePoints(this, compositor.settings::encode)
         }
         strokeMesh.resize(scene.geometry.segments.size * 6, 0)
         pointMesh.resize(scene.geometry.points.size * 6, 0)
@@ -312,9 +313,9 @@ class StereoDiagramRenderer(
             mesh.push["slugData"] = slugData.getValue(word.shape)
             mesh.push["viewport"] =
                 Vector2f(compositor.sharp.width.toFloat(), compositor.sharp.height.toFloat())
-            mesh.push["tint"] = Vector4f(labelColor).mul(word.color).apply { w *= word.opacity * (1f - cached) }
+            mesh.push["tint"] = compositor.settings.encode(Vector4f(labelColor).mul(word.color).apply { w *= word.opacity * (1f - cached) })
         }
-        localBlurCaches.forEach { it.update(scene.labels, model, labelColor) }
+        localBlurCaches.forEach { it.update(scene.labels, model, labelColor, compositor.settings::encode) }
     }
 
     /**

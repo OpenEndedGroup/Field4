@@ -27,7 +27,22 @@ layout(std140,set=0,binding=3) uniform CompositeGrade {
     vec4 fxaa; // overall mix, relative edge threshold, absolute threshold, span pixels
     vec4 subpixel; // subpixel smoothing, output-eye width/height, linear-light FXAA flag
     vec4 supersampling; // per-pixel rotation mix, footprint radius, stable integer seed, display dither in 8-bit code steps
+    vec4 paletteInfo; // stop count, palette mix, reserved, reserved
+    // Palette stops: alpha carries light times a ramp position u (0 first stop, 1 middle, 2 last).
+    vec4 palette0; vec4 palette1; vec4 palette2; vec4 palette3; vec4 palette4; vec4 palette5;
+    vec4 palette6; vec4 palette7; vec4 palette8; vec4 palette9; vec4 palette10; vec4 palette11;
+    vec4 palette12; vec4 palette13; vec4 palette14; vec4 palette15; vec4 palette16;
 } grade;
+
+vec3 paletteAt(float u) {
+    vec4 stops[17]=vec4[17](grade.palette0,grade.palette1,grade.palette2,grade.palette3,grade.palette4,
+        grade.palette5,grade.palette6,grade.palette7,grade.palette8,grade.palette9,grade.palette10,
+        grade.palette11,grade.palette12,grade.palette13,grade.palette14,grade.palette15,grade.palette16);
+    int n=clamp(int(grade.paletteInfo.x+.5),2,17);
+    float x=clamp(u,0.0,2.0)*.5*float(n-1);
+    int i=min(int(x),n-2);
+    return mix(stops[i].rgb,stops[i+1].rgb,x-float(i));
+}
 
 // Editable effective LUT. Outside 0..1 these sum-to-one weights deliberately go
 // negative, so preserve signed RGB until background and artistic gamma are applied.
@@ -108,6 +123,12 @@ vec3 composeScene(vec2 at) {
     vec3 weights=blurWeights(foldedGreen);
     vec4 c=mix(sharp,sharp*weights.x+medium*weights.y+broad*weights.z,pc.selection.z);
     c.g=dot(c.rb,pc.reconstruction.xy)/max(pc.reconstruction.x+pc.reconstruction.y,1e-6);
+    // Palette: alpha is light times ramp position, so their ratio is the light-weighted hue here.
+    if(grade.paletteInfo.y>0.0) {
+        float light=.5*(c.r+c.b);
+        float u=abs(light)>1e-5?c.a/light:1.0;
+        c.rgb=mix(c.rgb,paletteAt(u)*light,clamp(grade.paletteInfo.y,0.0,1.0));
+    }
 
     // Optional channel foldovers retain the original recipe's signed response.
     vec3 folded=c.rgb;
