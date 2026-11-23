@@ -5654,6 +5654,18 @@ the browser stays sharp. Vulkan and the Slug helper are required.
 
 [Open →](offline.html?file=assets/agent_transcripts/text_one_vr/metadata.edn)
 
+### reading_pointing
+
+Point at a reading diagram. The mouse over the desktop stereo mirror, or the right controller in a
+headset, becomes a ray; the hovered text run, stroke or dot stays bright while the rest dims to 30%.
+A pick reports the character under the ray, how far along a stroke it passed, and whatever the scene
+attached there. Here the words of `1 + 3 + 5 + 7 = 4 × 4` carry nested annotations, so the `×`
+answers "the square it makes" and the `+` answers only "the whole identity". The mirror ray is
+unprojected through the eye actually shown, so it lands within a nanometre of the ink it is aimed at.
+Vulkan and the Slug helper are required.
+
+[Open →](offline.html?file=assets/agent_transcripts/reading_pointing/metadata.edn)
+
 ### video_one_vr
 
 [A stereo movie in a room](stereo_video.md): play the bundled ten-bit demo, or choose a local

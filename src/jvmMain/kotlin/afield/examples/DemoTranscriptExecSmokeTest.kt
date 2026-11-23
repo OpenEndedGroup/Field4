@@ -735,6 +735,8 @@ object DemoTranscriptExecSmokeTest {
         // Requires a connected OpenXR runtime and real tracking; geometry math is covered by BodyGeometryTest.
         "body_one",
         "text_one_vr",
+        // Opens a native window and a stereo target; ReadingPickingTest covers the picking on the CPU.
+        "reading_pointing",
         "video_one_vr",
         // Audio curves: every box is a playback loop under a waveform player that waits for the
         // user to press play, and the analysis shells out to uv. AudioCurvesTest runs audioCurves,

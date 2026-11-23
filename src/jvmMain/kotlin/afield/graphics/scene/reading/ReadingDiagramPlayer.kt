@@ -13,6 +13,8 @@ import kotlin.math.*
  */
 class DiagramFrame
 internal constructor(private val player: ReadingDiagramPlayer, private val time: Double) {
+    internal val diagramPlayer: ReadingDiagramPlayer get() = player
+    internal val diagram: ReadingDiagram get() = player.diagram
     private val poses = HashMap<String, DiagramPose>()
     private val paths = HashMap<String, FLine>()
     private val visiting = HashSet<String>()

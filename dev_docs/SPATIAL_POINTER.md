@@ -280,12 +280,70 @@ run `./gradlew materializeAgentTranscripts`.
 
 ---
 
+## Reading diagrams: a second kind of hit (2026-11-23)
+
+The hover/press/drag machine is now `PointerMachine<H>`, generic over what a ray hits. It asks a
+subclass three things: `pick(ray)`, `keyOf(hit)` (the identity the hover dwell compares) and
+`contactPoint(hit)` (where a drag's plane passes). `PointerInteraction` is that machine over a
+`PickScene` of triangle meshes, with the same constructor and the same 38 tests, unchanged.
+
+`afield.graphics.scene.reading.DiagramPicking.kt` adds the second kind: the text runs, strokes and
+dots of a reading diagram (`readingDiagram { … }`), picked from the same `DiagramFrame` the renderer
+draws from, so what is hit is what is drawn.
+
+- **Text**: the ray meets the run's plane, found from the same transform that places its glyphs
+  (`textPoint`). The run is hit inside its ink box plus `textPadding`. The hit carries the font-space
+  contact and the character under it, falling back to the nearest one.
+- **Strokes** are flattened (cubics subdivided) and reached within half their width plus an
+  *angular* reach: `angularReach` radians of the pointer's view, at least `minReach` metres. A 1.5 mm
+  stroke two metres away is far thinner than a hand holds still, so reach has to grow with
+  distance. Score reveal and erase limit where along the stroke a hit counts, and the hit reports
+  that fraction.
+- **Dots** use their drawn radius plus the same reach. A dot or stroke drawn over text wins over the
+  text within a small depth window.
+- Items fainter than `minOpacity` (score opacity times colour alpha) cannot be hit, so material that
+  has not entered yet is not there to point at.
+
+**Provenance** travels with the hit, untouched:
+- `DiagramItem.properties` is a free map on every item.
+- `span.annotate(value)` attaches a value to characters. A hit lists the annotations under its
+  character innermost first, so nested spans (a subterm inside a formula) resolve to the most
+  specific value.
+
+`DiagramPointerInteraction` keys its hover on the item narrowed to its innermost annotation. Moving
+across the subterms of an annotated formula therefore moves the hover, and moving within one does not.
+
+**Devices.**
+- `MultiviewStereoTarget.pointer()` is the controller: OpenXR in a headset, the mock controller
+  otherwise.
+- `MultiviewStereoTarget.mirrorPointer(WindowPointer)` is the mouse over the desktop mirror. The
+  mirror letterboxes one eye image (or both, side by side), so `mirrorRay` inverts the mirror
+  shader's aspect fit to an exact eye pixel and unprojects it through that eye's own view and
+  projection. The ray passes through what is drawn under the cursor. The mock controller does not:
+  it aims from the centre camera with a widened field of view, and it divides a cursor in points by
+  a width in framebuffer pixels, which on a Retina display puts it off by a factor of two (not
+  fixed here).
+
+**Evidence.**
+- `ReadingPickingTest` (9 tests) covers: a word and its innermost annotation; nested and enclosing
+  annotations; misses and rays pointing away; invisible items; reach and fraction on a stroke; a dot
+  winning over text; picks under a rotated, translated placement; hover dwell across annotations
+  with a click; and the mirror-fit inverse, including letterbox and side-by-side cases.
+- Live, `dev_docs/agents/transcripts/reading_pointing.yaml` on macOS (KosmicKrisp) aimed through
+  `mirrorRay` at the ink centre of `1 + 3 + 5 + 7 = 4 × 4`. The pick returned that run at its
+  centre character, with the contact 1.6e-9 m from the target. The native capture showed the run lit
+  and the gloss and arc dimmed. The real mouse, resting over the window, had already produced an
+  `×` hover with its "the square it makes" annotation. No headset run yet: the controller path is
+  `controllerPointer`'s arithmetic, which is tested, over `controllerState`, which is not.
+
 ## Deliberately not done
 
 - **Picking FLines in 3D.** Nothing in Field 4 draws an FLine into a 3D scene: `grep -rln FLine
   src/jvmMain/kotlin/afield/four` returns 11 files and all of them *produce* FLines for the 2D/browser
   output. There is no 3D FLine path to pick *in*, so the JVM does not fill `FLineIntersection`-shaped
-  records for 3D geometry. `clickableProjection` is the 2D bridge instead.
+  records for 3D geometry. `clickableProjection` is the 2D bridge instead. *Since superseded for
+  reading diagrams*, which do draw FLines in 3D through `StereoDiagramRenderer` and are picked as
+  described under "Reading diagrams" above.
 - **GPU picking.** An id-buffer readback would be exact and per-pixel, and would need a live renderer,
   which is the opposite of what made this branch verifiable.
 - **A public `TriMesh.transformedBy`.** `PickScene.mergedMesh` needs one and has a private
