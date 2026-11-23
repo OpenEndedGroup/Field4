@@ -2,7 +2,7 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 25698 of 42938 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 25700 of 42940 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
 **2083 undocumented entry points** (types, top-level functions and values) and 14389 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
@@ -759,7 +759,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [linalg_spatial.kt](../src/jvmMain/kotlin/afield/geometry/spatial/linalg_spatial.kt) | Math | — | 0 | 9 | 81% |
 | [MorseSmaleNative.kt](../src/jvmMain/kotlin/afield/geometry/topology/morsesmale/MorseSmaleNative.kt) | Graphics | — | 0 | 9 | 25% |
 | [PolyvectorNative.kt](../src/jvmMain/kotlin/afield/geometry/vectorize/polyvector/PolyvectorNative.kt) | Graphics | — | 0 | 9 | 25% |
-| [GeziraGpuScene.kt](../src/jvmMain/kotlin/afield/graphics/nile/GeziraGpuScene.kt) | Graphics | — | 0 | 9 | 64% |
+| [GeziraGpuScene.kt](../src/jvmMain/kotlin/afield/graphics/nile/GeziraGpuScene.kt) | Graphics | — | 0 | 9 | 66% |
 | [DiagramTextFrustum.kt](../src/jvmMain/kotlin/afield/graphics/scene/reading/DiagramTextFrustum.kt) | Graphics | — | 0 | 9 | 30% |
 | [RtpMidiCodec.kt](../src/jvmMain/kotlin/afield/io/midi/rtp/RtpMidiCodec.kt) | Networking | — | 0 | 9 | 43% |
 | [RectSLStudyRender.kt](../src/jvmMain/kotlin/afield/lang/rectsl/study/RectSLStudyRender.kt) | Languages | — | 0 | 9 | 64% |
