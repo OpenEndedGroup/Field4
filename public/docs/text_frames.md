@@ -250,3 +250,18 @@ more than once, give surrounding text or specify which occurrence to use.
 - `FindTextLinksRequest` finds sources and backlinks, including links to lost passages.
 
 The results include clickable Field links so you can check what the agent found or wrote.
+
+### Review AI4 edits
+
+Ask AI4 to suggest edits to a text frame. Open **Review edits** above the frame
+to see removed Markdown in red strikethrough and added Markdown in green.
+**Accept** applies one change. **Reject** dismisses one, and **Reject all**
+dismisses the remaining suggestions for that frame. If you edit the source
+of a suggestion before accepting it, Field may mark it **Source changed**
+and ask you to get a fresh suggestion.
+
+Use **Comment** on a suggestion, then ask AI4 to read the review and revise
+its proposal. Comments and decisions stay with the frame and are available
+under **Review history** after you've reviewed the last suggestion.
+AI4 uses `SuggestTextEditsRequest` to propose edits and `ListTextReviewRequest`
+to read the review.

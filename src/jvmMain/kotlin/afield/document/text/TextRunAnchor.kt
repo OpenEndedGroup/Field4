@@ -8,7 +8,7 @@ internal const val TEXT_RUN_ANCHOR = "textRunAnchor"
 internal const val TEXT_RUN_SOURCES = "textRunSources"
 private const val EXCERPT_LENGTH = 120
 
-private fun String.runBoundary(offset: Int) = offset == 0 || offset == length ||
+internal fun String.runBoundary(offset: Int) = offset == 0 || offset == length ||
     !(this[offset - 1].isHighSurrogate() && this[offset].isLowSurrogate())
 
 internal fun runExcerpt(text: String, start: Int, end: Int): String {
@@ -106,11 +106,13 @@ internal fun rebaseChildTextRuns(source: Box, property: String, oldValue: Any?, 
         val range = TextRunAnchor.decode(child.getPropertyRaw(TEXT_RUN_ANCHOR))
         if (range != null && !range.lost && range.sourceUid == source.id && range.property == property) child to range else null
     }
-    if (links.isEmpty() && sources.none { !it.lost }) return
+    val suggestions = source.textReviewSuggestions()
+    if (links.isEmpty() && sources.none { !it.lost } && suggestions.none { it.pending && it.start != null }) return
     val before = oldValue.normalizedRunSource()
     val after = (newValue as? String).orEmpty().normalizedRunSource()
     if (before == after && exactDiff == null) return
     val matches = exactDiff ?: textMatches(before, after)
+    source.rebaseTextReview(suggestions, before, after, matches, exactDiff != null)
     val updated = sources.map { anchor -> anchor.rebase(before, after, matches) }
     if (updated != sources) source.writeTextRunSources(updated)
     for ((child, range) in links) {

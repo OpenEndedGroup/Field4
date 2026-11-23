@@ -2,6 +2,7 @@ import {send, growTextFrame, setTextFrameContents, flushTextFramePropertyEditor,
 import {mountChatAutocomplete} from './aiChatAutocomplete.js';
 import {renderFieldMarkdown} from './markdownView.js';
 import {markdownOffsetAtPoint, revealTextareaCaret} from './markdownCaret.js';
+import {mountTextFrameReview} from './textFrameReview.js';
 import {queryPassageLinks} from './textFrameLinks.js';
 import {markdownRangeFromDOM, domRangeForMarkdown} from './markdownTextRuns.js';
 import {mountRichText, placeRichCaret, pasteRichText, moveBetweenRichBlocks} from './textFrameRichEditor.js';
@@ -774,6 +775,11 @@ function mount(box) {
     editor.placeholder = 'Write Markdown…'; editor.spellcheck = true; editor.hidden = true;
     const conflict = node('div', 'text-frame-conflict'); conflict.hidden = true; conflict.setAttribute('role', 'alert');
     const state = {box, body, preview, editor, conflict, seenContents: box.contents || '', incoming: null, dirty: false, composing: false};
+    state.review = mountTextFrameReview(box, () => {
+        flushTextFramePropertyEditor(box.uid);
+        finish(state);
+        return !state.composing && state.incoming === null;
+    });
     state.passageBadge = button('', () => showPassage(state), 'text-frame-passage');
     state.passageBadge.hidden = true;
     state.overflow = button('+', () => beginRich(state), 'text-frame-overflow');
@@ -845,7 +851,7 @@ function mount(box) {
     rich.addEventListener('pointerup', state.captureRichSelection);
     rich.addEventListener('keyup', state.captureRichSelection);
     rich.addEventListener('focusout', state.captureRichSelection);
-    body.append(preview, editor, rich); box.append(body, state.overflow, conflict, state.passageBadge);
+    body.append(preview, editor, rich); box.append(body, state.overflow, conflict, state.passageBadge, state.review.badge);
     // The foreground connections sit outside the canvas's stacking context.
     document.body.append(toolbar);
     box.classList.add('text-frame-box');
@@ -939,6 +945,7 @@ function mount(box) {
     state.observer = new ResizeObserver(() => layout(state));
     state.observer.observe(box); state.observer.observe(preview);
     frames.set(box, state);
+    state.review.sync();
     updatePassageBadge(state);
     syncRunSources(state);
     refreshStyleInheritance();
@@ -950,6 +957,7 @@ export function syncTextFrame(box, property) {
     let state = frames.get(box);
     if (box.box_kind !== 'text-frame') {
         if (state) {
+            state.review.dispose();
             flush(state); state.observer.disconnect(); state.autocomplete.dispose(); cancelAnimationFrame(state.layoutFrame);
             cancelAnimationFrame(state.toolbarFrame); state.localStyle?.remove();
             for (const part of [state.body, state.overflow, state.conflict, state.toolbar, state.passageBadge]) part.remove();
@@ -958,6 +966,7 @@ export function syncTextFrame(box, property) {
         return;
     }
     if (!state) { mount(box); return; }
+    if (property === 'textFrameReview') { state.review.sync(); return; }
     if (property === 'textRunAnchor') { updatePassageBadge(state); return; }
     if (property === 'textRunSources') { syncRunSources(state); return; }
     if (property === 'contents') refreshTransclusions();
@@ -989,6 +998,7 @@ window.openTextFrameMarkdown = uid => {
 document.querySelectorAll('.box').forEach(syncTextFrame);
 new MutationObserver(() => {
     for (const [box, state] of frames) if (!box.isConnected) {
+        state.review.dispose();
         clearTimeout(state.saveTimer); cancelAnimationFrame(state.layoutFrame); state.observer.disconnect(); state.autocomplete.dispose(); frames.delete(box);
         cancelAnimationFrame(state.toolbarFrame); state.toolbar.remove(); state.localStyle?.remove();
         refreshTransclusions();
