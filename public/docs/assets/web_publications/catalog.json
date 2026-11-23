@@ -4194,6 +4194,31 @@
         "public/docs/chain_pattern_particles.md#capture-box=pp_draw"
       ]
     },
+    "assets/agent_transcripts/pattern_rewrite_worked_example/metadata.edn": {
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-23T20:36:17.026Z",
+      "channels": 1,
+      "file": "assets/web_publications/pattern_rewrite_worked_example/document/metadata.edn",
+      "files": {
+        "assets/web_publications/pattern_rewrite_worked_example/document/metadata.edn": "57f56c04674ab892b3a963fa7a946d20d510656c81eec6af0755bed13933101c",
+        "assets/web_publications/pattern_rewrite_worked_example/document/outputs.json": "2907da06d0451585eab5d76ecdca99c5ff8af4783895c252c330f43ec7a57b22",
+        "assets/web_publications/pattern_rewrite_worked_example/outputs/0.html": "ab45ce4a3b6c7076742751c042817106bfed40a9a72c7ef799f0ec979aebff04"
+      },
+      "kinds": [],
+      "outputs": "assets/web_publications/pattern_rewrite_worked_example/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/pattern_rewrite_worked_example.yaml": "05f636905530b8446600984cb558d4bf29e0bdb10e6a8fcd8b75bde77decc668",
+        "public/docs/assets/agent_transcripts/pattern_rewrite_worked_example/guides/pattern_rewrite.md": "b273f9f5f083ff9620af9135b4ea64a0198577b2bb83f655c6fbf0f54d6a27ab",
+        "public/docs/assets/agent_transcripts/pattern_rewrite_worked_example/metadata.edn": "f5b3b7b3588921c2243134d34e2850c3520410bb9e1980db1ed457c05a7b3256",
+        "public/docs/assets/agent_transcripts/pattern_rewrite_worked_example/rw_ambient_child_code_.kt": "6e2940ee1d61fdadcae881ec49da83a44d424a9b1e0b24e5348af016aaefac15",
+        "public/docs/assets/agent_transcripts/pattern_rewrite_worked_example/rw_ambient_parent_code_.kt": "b3a0b378b93fb0b03268de40c5192cd88131f398b75fcabb31a8a3e76078f377",
+        "public/docs/assets/agent_transcripts/pattern_rewrite_worked_example/rw_negation_code_.kt": "8a8366d74105b9cdb5de0be405ff3d51aa45fc0eae9501062b8769b9390d7db2",
+        "public/docs/assets/agent_transcripts/pattern_rewrite_worked_example/rw_precedence_code_.kt": "d1980a6daa59ef6c6b387c794cb9f6d690c2e05fea19efac3321b059d045c895",
+        "public/docs/assets/agent_transcripts/pattern_rewrite_worked_example/rw_terminate_code_.kt": "6490e6d54092af4275b2df580f8b9f860ef2d95a3c2807d042e24ea1427c06f9",
+        "public/docs/assets/agent_transcripts/pattern_rewrite_worked_example/rw_unquote_code_.kt": "b3f56be11a04581668bfd70bebc14ed174f42e63c7116c75cf028178f967e40f",
+        "public/docs/assets/agent_transcripts/pattern_rewrite_worked_example/rw_variadic_code_.kt": "962480b2e6bd21cc7c8c8305093e222a1547b623b84c8c00c4b024b0e2d0d5c7"
+      }
+    },
     "assets/agent_transcripts/penrose_spectra/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
       "capturedAt": "2026-11-18T15:46:06.496Z",
@@ -7151,23 +7176,6 @@
         "public/docs/assets/agent_transcripts/norns_demo/norns_orbits_code_.kt": "08d48062e7dc32d68d0cca3d4bbc58ac760dea29e0afdc6a2b8e77e174c326f5",
         "public/docs/assets/agent_transcripts/norns_demo/norns_orbits_render_code_.kt": "5c95f1aa006122129d9ccba2a75dc87b921cbf95be6544e6ebdb5f097061d066",
         "public/docs/assets/agent_transcripts/norns_demo/norns_root_code_.kt": "0c5c3b05d0033b63699db8214037fa6effb0f36d7367653fff0b359394b927ab"
-      }
-    },
-    "assets/agent_transcripts/pattern_rewrite_worked_example/metadata.edn": {
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "channels": 0,
-      "reason": "No output-area channels; the code remains available.",
-      "sources": {
-        "dev_docs/agents/transcripts/pattern_rewrite_worked_example.yaml": "075c434af02d612f3db0d8dbdbf78b69821f54064ec73a092a0ce6032c463d3c",
-        "public/docs/assets/agent_transcripts/pattern_rewrite_worked_example/guides/pattern_rewrite.md": "b273f9f5f083ff9620af9135b4ea64a0198577b2bb83f655c6fbf0f54d6a27ab",
-        "public/docs/assets/agent_transcripts/pattern_rewrite_worked_example/metadata.edn": "6110a0bcc005c5ad4a473156507869c16f21ca03dc036489bbee8459247712cb",
-        "public/docs/assets/agent_transcripts/pattern_rewrite_worked_example/rw_ambient_child_code_.kt": "6e2940ee1d61fdadcae881ec49da83a44d424a9b1e0b24e5348af016aaefac15",
-        "public/docs/assets/agent_transcripts/pattern_rewrite_worked_example/rw_ambient_parent_code_.kt": "b3a0b378b93fb0b03268de40c5192cd88131f398b75fcabb31a8a3e76078f377",
-        "public/docs/assets/agent_transcripts/pattern_rewrite_worked_example/rw_negation_code_.kt": "8a8366d74105b9cdb5de0be405ff3d51aa45fc0eae9501062b8769b9390d7db2",
-        "public/docs/assets/agent_transcripts/pattern_rewrite_worked_example/rw_precedence_code_.kt": "d1980a6daa59ef6c6b387c794cb9f6d690c2e05fea19efac3321b059d045c895",
-        "public/docs/assets/agent_transcripts/pattern_rewrite_worked_example/rw_terminate_code_.kt": "6490e6d54092af4275b2df580f8b9f860ef2d95a3c2807d042e24ea1427c06f9",
-        "public/docs/assets/agent_transcripts/pattern_rewrite_worked_example/rw_unquote_code_.kt": "87e0bdc126b05f0261f719bc95056244b71a4dd20f3ee0f0d1c340471b3e2ddd",
-        "public/docs/assets/agent_transcripts/pattern_rewrite_worked_example/rw_variadic_code_.kt": "962480b2e6bd21cc7c8c8305093e222a1547b623b84c8c00c4b024b0e2d0d5c7"
       }
     },
     "assets/agent_transcripts/profiling_timeline/metadata.edn": {

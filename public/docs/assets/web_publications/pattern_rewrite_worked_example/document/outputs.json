@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-23T20:36:17.026Z",
+  "documentName": "pattern_rewrite_worked_example",
+  "outputs": [
+    {
+      "uid": "rw_unquote",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 449,
+      "height": 60,
+      "path": "outputs/0.html"
+    }
+  ]
+}
