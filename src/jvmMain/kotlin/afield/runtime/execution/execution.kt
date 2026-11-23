@@ -1756,8 +1756,13 @@ class KotlinExecution : BoxExecution {
                         }
 
                         // 2) setup blocks (preamble/introduction/attic) on the main thread.
-                        val setupSucceeded = withContext(Runloop.runLoop.main) { runLaunchSetupBlocks(box) }
+                        var setupFailure: SetupFailure? = null
+                        val setupSucceeded = withContext(Runloop.runLoop.main) { runLaunchSetupBlocks(box) { setupFailure = it } }
                         if (!setupSucceeded) {
+                            // Report it through the launch's reply like a compile error in the code itself, so a
+                            // macro run, the backdoor and the editor all see that this box never ran. Pinning it
+                            // to the console alone let `macro run` report errors=0 for a box that did nothing.
+                            setupFailure?.let { f -> reportSetupFailure(box, trace.reply, request.originSession, f) }
                             hasError = true
                             break
                         }
@@ -1877,10 +1882,13 @@ class KotlinExecution : BoxExecution {
             return "\n".repeat(leadingLines) + exec.code.trimEnd()
         }
 
-        private suspend fun runLaunchSetupBlocks(box: Box): Boolean {
-            if (!runSetupBlock(box, "preamble") { c, e, x -> checkPreambleAndExecute(box, c, e, x) }) return false
-            if (!runSetupBlock(box, "introduction") { c, e, x -> checkIntroductionAndExecute(box, c, e, x) }) return false
-            return runSetupBlock(box, "attic") { c, e, x -> checkAtticAndExecute(box, c, e, x) }
+        /** A setup block (preamble, introduction or attic) that failed, with what it reported. */
+        private class SetupFailure(val block: String, val diagnostics: List<ScriptDiagnostic>, val throwable: Throwable?)
+
+        private suspend fun runLaunchSetupBlocks(box: Box, onFailure: (SetupFailure) -> Unit = {}): Boolean {
+            if (!runSetupBlock(box, "preamble", onFailure) { c, e, x -> checkPreambleAndExecute(box, c, e, x) }) return false
+            if (!runSetupBlock(box, "introduction", onFailure) { c, e, x -> checkIntroductionAndExecute(box, c, e, x) }) return false
+            return runSetupBlock(box, "attic", onFailure) { c, e, x -> checkAtticAndExecute(box, c, e, x) }
         }
 
         /**
@@ -1892,6 +1900,7 @@ class KotlinExecution : BoxExecution {
         private suspend fun runSetupBlock(
             box: Box,
             block: String,
+            onFailure: (SetupFailure) -> Unit,
             run: suspend (
                 onCompileError: (List<ScriptDiagnostic>) -> Unit,
                 onEvalError: (List<ScriptDiagnostic>) -> Unit,
@@ -1899,26 +1908,27 @@ class KotlinExecution : BoxExecution {
             ) -> Unit
         ): Boolean {
             val key = "${box.id}#$block"
-            var failed = false
+            var failure: SetupFailure? = null
             PinnedConsole.clearError(key)
             run(
                 { diagnostics ->
-                    failed = true
+                    failure = failure ?: SetupFailure(block, diagnostics, null)
                     diagnostics.forEach { lprintln("warning,macros", "setup compile: ${it.message} ${it.location}") }
                     pinSetupError(box, key, block, diagnostics)
                 },
                 { diagnostics ->
-                    failed = true
+                    failure = failure ?: SetupFailure(block, diagnostics, null)
                     diagnostics.forEach { lprintln("warning,macros", "setup eval: ${it.message}") }
                     pinSetupError(box, key, block, diagnostics)
                 },
                 { throwable ->
-                    failed = true
+                    failure = failure ?: SetupFailure(block, emptyList(), throwable)
                     lprintln("error,macros", "setup exception: ${throwable.message}")
                     pinSetupException(box, key, block, throwable)
                 }
             )
-            return !failed
+            failure?.let(onFailure)
+            return failure == null
         }
 
         private fun clearPendingLaunch(request: BatchLaunchRequest) {
@@ -2067,6 +2077,17 @@ class KotlinExecution : BoxExecution {
                     }
                 }
             }
+        }
+
+        private fun reportSetupFailure(box: Box, reply: ((Message) -> Unit)?, originSession: WebSocketSession?, failure: SetupFailure) {
+            val first = failure.diagnostics.firstOrNull { it.severity.ordinal > ScriptDiagnostic.Severity.WARNING.ordinal }
+            val what = first?.message ?: failure.throwable?.let { userFacingThrowable(it).message ?: it::class.simpleName } ?: "it failed"
+            // The preamble is assembled from ancestors' prop declarations, so its line numbers mean nothing
+            // in this box's code; name the block and the first error instead.
+            val text = "This box's ${failure.block} failed, so its code did not run: $what" +
+                (if (failure.block == "preamble") " (the preamble is built from the prop declarations of this box and its parents; their types must be imported or fully qualified)" else "")
+            val output = Output(uid = box.id, line = 0, kind = "error", property = "code", html = escapeForHtml(text), frame = Runloop.runLoop.frame.toInt())
+            dispatchExecutionOutput(box, reply, output, originSession = originSession)
         }
 
         internal fun reportEvalException(
