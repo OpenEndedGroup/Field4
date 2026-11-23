@@ -34,6 +34,9 @@ expect:
  * flattening moves it. Timing is over [TIMED_FRAMES] frames: wall time per frame with presentation
  * in it, and the pipeline's own GPU cost as (frames with it dispatched [REPEATS] times − frames with
  * it once) / ([REPEATS] − 1).
+ * Then the 900 × 900 frame at several [GeziraGpuScene.rowEdges], which sizes the resolve stage's shared
+ * memory, timed back to back; and a check that the default holds the tiger's widest rows at 150, 225
+ * and 300 pixels. Method and results: `dev_docs/GEZIRA_GPU_TIMING.md`.
  * Difference images go to `build/gezira-gpu-tiger/`.
  */
 object GeziraGpuTigerProbe {

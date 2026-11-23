@@ -2494,19 +2494,34 @@ The GPU and the CPU differ by the flattening: the CPU halves curves to 1/10,000 
 cuts each into Wang's count of equal pieces at 0.02. `four.gezira-gpu-tiger.probe` measures both
 against each other and against Skia, and times them:
 
-| size | largest / mean difference from the CPU | frame, wall | pipeline on the GPU | CPU `GeziraSvg.render` |
-| --- | --- | --- | --- | --- |
-| 450 × 450 | 0.021 / 1.5e-4 | 18.5 ms | 13.8 ms | 1,254 ms |
-| 900 × 900 | 0.025 / 8.2e-5 | 19.2 ms | 17.5 ms | 830 ms |
-| 1800 × 1800 | 0.032 / 5.0e-5 | 28.6 ms | 25.9 ms | 1,265 ms |
+| size | largest / mean difference from the CPU | frame, wall | pipeline on the GPU | resolve stage | CPU `GeziraSvg.render` |
+| --- | --- | --- | --- | --- | --- |
+| 450 × 450 | 0.021 / 1.5e-4 | 15.8 ms | 10.2 ms | 9.2 ms | 1,029 ms |
+| 900 × 900 | 0.025 / 8.2e-5 | 16.0 ms | 11.2 ms | 9.9 ms | 769 ms |
+| 1800 × 1800 | 0.032 / 5.0e-5 | 18.4 ms | 17.8 ms | 16.0 ms | 1,211 ms |
 
-An empty frame in the same window takes 8.4 ms. The pipeline's own time is the difference between
-frames that run it five times and frames that run it once; the renderer's GPU timestamps came back
-unusable on this driver. Against Skia the GPU and the CPU differ by the same 2.1e-3 on average at
-900 × 900. Almost all of the time is the resolve stage (16 of 17.5 ms at 900 × 900); bin is about
-1 ms and the other three under 1 ms between them. Inside resolve, switching parts off shows the band
-walk is most of it: a flattened curve puts up to about 200 edges of one path in a row, and every
-band still looks at all of them to find the few it crosses.
+An empty frame in the same window takes 8.3 ms. The pipeline's own time is the difference between
+frames that run it five times and frames that run it once, and each stage's the same way with only
+that stage repeated; the renderer's own GPU timestamps come back unusable on this driver. Against
+Skia the GPU and the CPU differ by the same 2.1e-3 on average at 900 × 900. Almost all of the time
+is the resolve stage; bin is under 2 ms and the other three under 0.3 ms between them.
+
+What sets the resolve stage's speed is its shared memory, because that decides how many rows a GPU
+core works on at once. `rowEdges`, the most edges one path may put in one pixel row, sizes it:
+
+```diffstatic {data-lang=kotlin}
+val scene = GeziraGpuScene(probe, GeziraGpuScene.paths(doc.lines), N, N, fit, rowEdges = 256)
+```
+
+At 900 × 900 the pipeline takes 16.8 ms at 512, 13.1 ms at 320 and 11.3 ms at 256, the default,
+with the same picture. Edges past `rowEdges` are dropped and counted in `overflow()`; the tiger's
+busiest row has 242 at 150 × 150, so a very small or a busier drawing may need 512.
+Under MoltenVK (`AFIELD_VULKAN_DRIVER=moltenvk`) the same frame takes 10.8 ms wall.
+
+??? aside "Agents: how these were measured"
+    Every number in this section is printed by `four.gezira-gpu-tiger.probe`
+    (`GeziraGpuTigerProbe`); the runs, the per-stage tables before and after, and what was tried
+    and did not help are in `dev_docs/GEZIRA_GPU_TIMING.md`.
 
 The [GPU tiger starting point](agent_transcripts.md#gezira_gpu_tiger) opens the live version: a box
 turns and zooms the tiger in the native window while another draws the frame above.
