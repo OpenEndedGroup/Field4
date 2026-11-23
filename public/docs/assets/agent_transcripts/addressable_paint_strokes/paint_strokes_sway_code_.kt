@@ -8,9 +8,11 @@ run {
     val keys = listOf(0.0, 30.0, 0.0, -30.0)
     val frames = keys.map { k ->
         val f = sheet.copy()
-        f.apply("""[{"op": "move", "at": "@leaves", "dx": $k},
+        f.apply(
+            """[{"op": "move", "at": "@leaves", "dx": $k},
                     {"op": "bend", "at": "@mouth", "dy": ${abs(k) / 2}},
-                    {"op": "move", "at": "@legs", "dy": ${-abs(k) / 3}}]""")
+                    {"op": "move", "at": "@legs", "dy": ${-abs(k) / 3}}]""",
+        )
         f.render()
     }
     display("main", pngRow(frames))
