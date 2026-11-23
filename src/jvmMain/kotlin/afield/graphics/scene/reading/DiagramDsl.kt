@@ -45,6 +45,11 @@ internal constructor(id: String, owner: Any, val text: String, val at: DiagramAn
     var bold = false
     var italic = false
     var weight: Double? = null
+    /**
+     * Faces to borrow a glyph from when this run's face has none; `null` uses
+     * [DiagramFontFallback.installed], and an empty list makes a missing glyph an error.
+     */
+    var fallbacks: List<Typeface>? = null
     /** Gaussian standard deviation in ems. Zero draws the original analytic Slug outline. */
     var blur = 0f
         set(value) { require(value.isFinite() && value >= 0f); field = value }

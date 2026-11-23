@@ -28,6 +28,63 @@ class DiagramTypography {
     }
 }
 
+/**
+ * Fonts tried, in order, for a character the run's own face cannot display, the way a terminal or
+ * browser borrows a glyph. Only families installed on this machine take part. Each borrowed face
+ * is set at the run's size and style, and kerning stops at the borrowed character.
+ *
+ * Set [DiagramText.fallbacks] to choose a chain for one run, or to an empty list to fail instead.
+ */
+object DiagramFontFallback {
+    /** Families to try, in order. Math faces come first: Mathlib text is where gaps show up. */
+    val candidates: List<String> = listOf(
+        "Noto Sans Math", "STIX Two Math", "DejaVu Math TeX Gyre", "Noto Sans Symbols",
+        "Noto Sans Symbols 2", "DejaVu Sans", "Noto Sans", "Noto Sans CJK SC",
+    )
+
+    /** The installed members of [candidates], found on first use. */
+    val installed: List<Typeface> by lazy {
+        val have = Typefaces.available().toSet()
+        candidates.filter { it in have }.map { Typefaces.named(it, strict = true) }
+    }
+}
+
+/**
+ * Ranges for the characters [ranges] (or [base]) cannot display, each set in the first face of
+ * [chain] that can. Fails naming the character, its code point and the faces tried.
+ */
+internal fun fallbackRanges(
+    text: String,
+    base: Typeface,
+    ranges: List<ReadingStyleRange>,
+    chain: () -> List<Typeface>,
+): List<ReadingStyleRange> {
+    val out = ArrayList<ReadingStyleRange>()
+    var i = 0
+    while (i < text.length) {
+        val cp = text.codePointAt(i)
+        val end = i + Character.charCount(cp)
+        val face = ranges.lastOrNull { i >= it.start && end <= it.end }?.face ?: base
+        if (cp != '\n'.code && !face.awtFont.canDisplay(cp)) {
+            val tried = chain()
+            val pick = tried.firstOrNull { it.awtFont.canDisplay(cp) }
+                ?: throw IllegalArgumentException(
+                    "No font can display '${String(Character.toChars(cp))}' " +
+                        "(U+${"%04X".format(cp)}) at $i in '${text.take(80)}${if (text.length > 80) "…" else ""}': " +
+                        "tried ${(listOf(face) + tried).joinToString { it.awtFont.family }}",
+                )
+            val f = face.awtFont
+            var borrowed = pick.atSize(face.size)
+            if (f.isBold || f.isItalic) borrowed = borrowed.withStyle(f.isBold, f.isItalic)
+            val last = out.lastOrNull()
+            if (last != null && last.end == i && last.face == borrowed) out[out.size - 1] = last.copy(end = end)
+            else out.add(ReadingStyleRange(i, end, borrowed))
+        }
+        i = end
+    }
+    return out
+}
+
 internal data class ReadingStyleRange(val start: Int, val end: Int, val face: Typeface)
 
 internal data class ReadingPreparationKey(
@@ -60,7 +117,9 @@ internal fun readingPreparationKey(run: DiagramText, fallback: Typeface): Readin
         ReadingDropCapKey(definition.lines, definition.gapEm, definition.end,
             face.atSize(face.size * height / source.h))
     }
-    val resolvedRanges = if (cap == null) ranges else ranges + ReadingStyleRange(0, cap.end, cap.face)
+    val styled = if (cap == null) ranges else ranges + ReadingStyleRange(0, cap.end, cap.face)
+    // Borrowed faces go last so they win over the style they patch, exactly where it has no glyph.
+    val resolvedRanges = styled + fallbackRanges(run.text, base, styled) { run.fallbacks ?: DiagramFontFallback.installed }
     return ReadingPreparationKey(run.text, base, run.tracking, resolvedRanges, cap)
 }
 
@@ -73,40 +132,49 @@ internal fun prepareReadingLayout(run: DiagramText, key: ReadingPreparationKey):
         return layoutText(run.text, key.face, tracking = key.tracking)
     }
     // Shape contiguous style sections, not individual characters: kerning and ligatures survive
-    // within each section. A style boundary deliberately starts a new shaping context.
-    require('\n' !in run.text) {
-        "Inline styles currently require a single baseline; use separate styled runs for multiple lines"
-    }
-    val cuts =
-        (listOf(0, run.text.length) + key.ranges.flatMap { listOf(it.start, it.end) })
-            .distinct()
-            .sorted()
-    require(cuts.all { it == run.text.length || !Character.isLowSurrogate(run.text[it]) }) {
-        "A style boundary splits a Unicode surrogate pair"
-    }
+    // within each section. A style boundary deliberately starts a new shaping context. Lines stack
+    // at the face's line height, as layoutText does for an unstyled run.
     val glyphs = ArrayList<PlacedGlyph>()
-    var pen = 0.0
-    for ((a, b) in cuts.zipWithNext()) {
-        val face = key.ranges.lastOrNull { a >= it.start && b <= it.end }?.face ?: key.face
-        val text = run.text.substring(a, b)
-        require(face.canDisplay(text)) { "${face.fontName} cannot display '$text'" }
-        val part = layoutText(text, face, tracking = key.tracking)
-        for (g in part.glyphs) glyphs.add(
-            PlacedGlyph(
-                g.glyph,
-                Vec2((g.origin.x + pen).toFloat(), g.origin.y),
-                0,
-                a + g.charIndex,
-            ),
-        )
-        pen += part.advanceWidth
-        if (b < run.text.length) pen += key.tracking
+    val lines = ArrayList<TextLine>()
+    var lineStart = 0
+    for ((li, lineText) in run.text.split('\n').withIndex()) {
+        val lineEnd = lineStart + lineText.length
+        val baselineY = li * key.face.lineHeight
+        val cuts =
+            (listOf(lineStart, lineEnd) +
+                key.ranges.flatMap { listOf(it.start, it.end) }.filter { it in lineStart..lineEnd })
+                .distinct()
+                .sorted()
+        require(cuts.all { it == run.text.length || !Character.isLowSurrogate(run.text[it]) }) {
+            "A style boundary splits a Unicode surrogate pair"
+        }
+        val lineGlyphs = ArrayList<PlacedGlyph>()
+        var pen = 0.0
+        for ((a, b) in cuts.zipWithNext()) {
+            val face = key.ranges.lastOrNull { a >= it.start && b <= it.end }?.face ?: key.face
+            val text = run.text.substring(a, b)
+            require(face.canDisplay(text)) { "${face.fontName} cannot display '$text'" }
+            val part = layoutText(text, face, tracking = key.tracking)
+            for (g in part.glyphs) lineGlyphs.add(
+                PlacedGlyph(
+                    g.glyph,
+                    Vec2((g.origin.x + pen).toFloat(), baselineY.toFloat()),
+                    li,
+                    a + g.charIndex,
+                ),
+            )
+            pen += part.advanceWidth
+            if (b < lineEnd) pen += key.tracking
+        }
+        glyphs.addAll(lineGlyphs)
+        lines.add(TextLine(li, lineText, baselineY, pen, lineGlyphs))
+        lineStart = lineEnd + 1
     }
     return TextLayout(
         run.text,
         key.face,
         glyphs,
-        listOf(TextLine(0, run.text, 0.0, pen, glyphs)),
+        lines,
         key.tracking,
         key.face.lineHeight,
         TextAlign.LEFT,
