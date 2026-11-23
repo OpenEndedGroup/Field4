@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-22T15:52:30.178Z",
+  "capturedAt": "2026-11-22T18:52:15.452Z",
   "documentName": "vector_field_explorer",
   "outputs": [
     {
@@ -43,7 +43,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 368,
+      "width": 364,
       "height": 350,
       "path": "outputs/3.html"
     }

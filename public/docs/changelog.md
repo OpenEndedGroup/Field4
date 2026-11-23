@@ -6,6 +6,48 @@ fixes and wording changes, open **Changelog** on the Welcome screen.
 
 ## November 2026
 
+<!-- changelog: 73e864d2aa..9235890b33 -->
+### Gezira on the GPU, string art and a screen you can hear
+
+*22 November 2026*
+
+- **WindingSpans on the GPU**: the winding rasteriser as a Vulkan compute shader.
+  [WindingSpans on the GPU](afield_four_graphics.md#gezira-gpu).
+- **String art**: `stringArt(...)` winds one string around a ring of pins to trace any shape.
+  [String art](fline_examples.md#string-art-stringart).
+- **Hear a screen between you and a sound**: a Steam Audio study of a screen sliding across the
+  path from a hi-hat. [Hear a screen between you and a sound](steam_audio_scene.md).
+- **Drawing from data**, a page of routes from the material you have to an example you can edit,
+  and complex semantic types in StackSL.
+  [Drawing from data](drawing_from_data.md), [Complex arithmetic](stacksl_cheatsheet.md#complex-arithmetic-and-rotation-weights).
+
+<!-- changelog: 7d005ae253..c687f3e526 -->
+### A Rhino file path traced, and the SVG tiger through Gezira
+
+*22 November 2026*
+
+- **A Rhino file, path traced**: one call turns a .3dm into a path-traced scene, object by
+  object. [A Rhino file, path traced](chain_rhino_render.md).
+- **Round trips**: write a .3dm, read it back and measure it, now with vertex colours.
+  [Writing a file and reading it back](rhino_files.md#writing-a-file-and-reading-it-back).
+- **The SVG tiger**: Gezira reads SVG documents into FLines and draws them beside Skia.
+  [The SVG tiger](afield_four_graphics.md#the-svg-tiger).
+- **Markdown passages for AI4**: track, move and transclude passages of a text note.
+  [Text-note tools](ai4_tools.md#text-notes-tools).
+
+<!-- changelog: c3c5f36ee1..538ab18ff4 -->
+### Denoising any image, and Breps that stitch by topology
+
+*21–22 November 2026*
+
+- **Denoising any image**: Open Image Denoise now cleans up any image source, not only the path
+  tracer, shown on a raster render. [Denoising any image](path_tracing.md#denoising-any-image).
+- **Breps without meshes** stitch shared edges by their openNURBS topology, and the Rhino writer
+  takes Breps, surfaces, SubDs, hatches and blocks. [Breps without meshes](rhino_files.md#breps-without-meshes).
+- Interaction-net programs use the `fn()`/`def` DSL throughout, and each bundled template is
+  linked from its system's page.
+  [From a program to a net](interaction_nets_examples.md#from-a-program-to-a-net).
+
 <!-- changelog: 239d043d33..46ec270e89 -->
 ### A map of the docs, and fill rules for stream kernels
 
@@ -109,7 +151,7 @@ fixes and wording changes, open **Changelog** on the Welcome screen.
 - Box code instrumentation has three modes. [Code that never returns](running_code.md#code-that-never-returns).
 
 <!-- changelog: aa2da87105..bf3dd896b5 -->
-### Drawing On from an iPad, alias-free saturation and virtual shadow maps
+### *Drawing On* from an iPad, alias-free saturation and virtual shadow maps
 
 *18 November 2026*
 

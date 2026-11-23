@@ -132,6 +132,22 @@ macro run nile_gezira_kernels
 
 [Open →](offline.html?file=assets/agent_transcripts/nile_gezira_kernels/metadata.edn)
 
+### nile_gezira_svg
+
+**SVG into Gezira, and the tiger.** `GeziraSvg` reads SVG path data, shapes, nested transforms and
+inherited paint into FLines, and `GeziraFLine` draws FLines with the Gezira kernels. One box reads a small hand-written SVG and draws it; the next
+draws the Ghostscript tiger through the Gezira kernels beside Skia's own SVG renderer and their
+difference times ten, with counts and stage timings; the third draws the tiger's FLines with Field's
+own renderer, and the last draws a few plain FLines through `GeziraFLine`.
+See [The SVG tiger](afield_four_graphics.md#the-svg-tiger).
+
+```diffstatic {data-lang=text}
+macro write nile_gezira_svg --file dev_docs/agents/transcripts/nile_gezira_svg.yaml
+macro run nile_gezira_svg
+```
+
+[Open →](offline.html?file=assets/agent_transcripts/nile_gezira_svg/metadata.edn)
+
 ### knight_tour_workshop
 
 **Knight tours, many ways of drawing a move.** Five connected CPU-only FLine boxes:
@@ -2340,6 +2356,20 @@ describes it. It needs an AI provider.
 
 [Open →](offline.html?file=assets/agent_transcripts/stacksl_evolve_studio/metadata.edn)
 
+### addressable_paint_strokes
+
+**A painting whose strokes stay editable.** [Strokes kept as data](paint_canvas.md#strokes-kept-as-data)
+as four boxes. *A creature, stroke by stroke* paints a small green creature as 24 addressed strokes
+in groups and prints the list an agent reads. *Edited by address* recolours the leaves, bends the
+smile into a frown and moves the pink smudge to the other cheek with one JSON batch, shows the
+before and after, and prints how many pixels changed. *A pinned note, acted on* pins "more moss on
+this side" and answers it through the strokes under it. *Swayed, one key per frame* paints four
+frames from the same records with the leaves and legs moved. After
+[Klad](https://github.com/klad-app/klad). Needs the optional paint library
+(`./gradlew buildPaintNative`).
+
+[Open →](offline.html?file=assets/agent_transcripts/addressable_paint_strokes/metadata.edn)
+
 ### paint_canvas
 
 Three boxes that paint and draw [FLines with simulated paint and pencil](paint_canvas.md). *A
@@ -2932,6 +2962,15 @@ against the exact shape. Needs the optional openNURBS wrapper. See
 [Breps without meshes](rhino_files.md#breps-without-meshes).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/rhino_save_small/metadata.edn)
+
+### rhino_round_trip
+
+**A Rhino file written and read back, measured**: one box saves Breps, a trimmed plate, a SubD, a
+coloured mesh, a curve, a hatch and a block placed twice, reads them back and tabulates each
+object's triangles, area, volume and open edges against the exact shapes. Needs the optional
+openNURBS wrapper. See [Writing a file and reading it back](rhino_files.md#writing-a-file-and-reading-it-back).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/rhino_round_trip/metadata.edn)
 
 ### spinny_algebras
 
@@ -4190,6 +4229,26 @@ whose fragment shader shows both side by side in the native window. A closed fre
 the *mask* frame (Alt+D) is filled into the buffer while it runs; an ellipse clears the drawn ones.
 
 [Open →](offline.html?file=assets/agent_transcripts/fline_coverage_gpu/metadata.edn)
+
+### gezira_gpu_winding
+
+**Gezira's winding rasteriser on the GPU.** [WindingSpans on the GPU](afield_four_graphics.md#gezira-gpu)
+as two boxes: a renderer, and a box that rasterises a pentagram, two overlapping circles and a
+square with a same-way hole under both fill rules with `GeziraGpu`, one compute invocation per pixel
+row, then draws the GPU coverage, the CPU's `Gezira.rasterize` beside it and their difference
+magnified 100,000 times, and prints the largest difference.
+
+[Open →](offline.html?file=assets/agent_transcripts/gezira_gpu_winding/metadata.edn)
+
+### gezira_gpu_tiger
+
+**The Ghostscript tiger through Gezira on the GPU, live.** [The tiger on the GPU](afield_four_graphics.md#gezira-gpu-tiger)
+as four boxes: a renderer, a box that hands the tiger's FLines once to
+`GeziraGpuScene` and turns and zooms its transform every frame, a draw box that shows the image in the
+native window, and a box that reads one frame back beside the CPU's `GeziraSvg.render` and their
+difference.
+
+[Open →](offline.html?file=assets/agent_transcripts/gezira_gpu_tiger/metadata.edn)
 
 ### gpu_state
 
@@ -5594,6 +5653,18 @@ The green-channel blur cascade and additive/weighted paint compositor process th
 the browser stays sharp. Vulkan and the Slug helper are required.
 
 [Open →](offline.html?file=assets/agent_transcripts/text_one_vr/metadata.edn)
+
+### reading_pointing
+
+Point at a reading diagram. The mouse over the desktop stereo mirror, or the right controller in a
+headset, becomes a ray; the hovered text run, stroke or dot stays bright while the rest dims to 30%.
+A pick reports the character under the ray, how far along a stroke it passed, and whatever the scene
+attached there. Here the words of `1 + 3 + 5 + 7 = 4 × 4` carry nested annotations, so the `×`
+answers "the square it makes" and the `+` answers only "the whole identity". The mirror ray is
+unprojected through the eye actually shown, so it lands within a nanometre of the ink it is aimed at.
+Vulkan and the Slug helper are required.
+
+[Open →](offline.html?file=assets/agent_transcripts/reading_pointing/metadata.edn)
 
 ### video_one_vr
 

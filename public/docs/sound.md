@@ -193,6 +193,7 @@ synth voice (no Dirt-Samples found; set FIELD_DIRT_SAMPLES to use real samples)
 * [Patterns & Rhythm](pattern_language.md) — writing patterns, with Dirt-Samples drums on its cards.
 * [DoughDSP Sound Examples](dough_dsp_sound.md) — effects on real signals.
 * [Faust](faust.md#what-it-sounds-like-at-eight-voices-and-at-one) — a pattern playing a Faust instrument.
+* [FM-1 simulator](fm1.md) — a pattern playing one track of a groovebox, beside its own DX7, 303 and 808 tracks.
 * [Subharmonic Synthesis](subharmonic_sound.md) — a new tone under a bassline, drums and film dialogue.
 * [A pattern in space](pat_spatial.md) — a pattern rendered binaurally through Steam Audio.
 * [How to make sound in Field](sound_paths.md#one-buffer-three-paths) and

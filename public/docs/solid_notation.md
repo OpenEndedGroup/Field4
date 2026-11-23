@@ -1,11 +1,25 @@
 # A solid, written down: `afield.lang.solidsl`
 
-In `afield.lang.solidsl` a shape is a **value**. Subtracting a cylinder from a cuboid builds an expression
-tree, and from that one tree you can march a mesh, build an exact CSG solid, emit GLSL, or simplify
-it. A document you can open and run is [at the bottom of the page](#open-this); the KDoc for
-`SolidExpr`, `Profile`, `SolidLowering` and `SolidTemplate` covers every declaration used here.
+SolidSL is a way to write down a 3D part (a bracket, a knob, a bored block) once, and then turn
+that description into whatever you need next: a triangle mesh to look at or print, an exact
+solid that is safe to cut holes from, or a shader that draws it live on the GPU.
 
-The signed-distance vocabulary in `mesh_sdf.kt` works the other way round. It declares
+You write the part as ordinary Kotlin: `cuboid(4, 2.6, 0.7) - cylinder(3.0, 0.42)` is a block
+with a hole through it. That expression does not compute any geometry yet. It builds a small tree
+that records "a cuboid, minus a cylinder", and the tree is the shape. Each output is a
+separate reading of the same tree. A document you can open and run is
+[at the bottom of the page](#open-this); the reference for
+[`SolidExpr`](reference/graphics.md#solidexpr-kt-solidexpr),
+[`Profile`](reference/graphics.md#solidexpr-kt-profile),
+[`SolidLowering`](reference/graphics.md#solidexact-kt) and
+[`SolidTemplate`](reference/graphics.md#solidgradient-kt-solidtemplate) covers every
+declaration used here.
+
+Field already has a way to build shapes from signed distance functions (SDFs): functions that
+take a point and return how far it is from the surface, negative inside. `mesh_sdf.kt` holds them,
+and marching cubes turns one into a mesh. SolidSL keeps that as one of its outputs, but turns the
+order around: in `mesh_sdf.kt` the function is the shape, while in SolidSL the tree is the shape
+and the distance function is computed from it. `mesh_sdf.kt` declares
 
 ```diffstatic {data-lang=kotlin}
 typealias ScalarField3D = (Vec3) -> Float
@@ -109,8 +123,9 @@ cross-section at every resolution, and is wrong in a different way instead.
 
 ## Two lowerings of one source
 
-A `SolidExpr` lowers two ways, and [`afield.geometry.solid.manifold`](manifold.md) supplies the second of them.
-Neither is a superset of the other, so which one you want depends on what you are going to do next:
+There are two ways to turn a `SolidExpr` into geometry. `toScalarField()` makes a distance field
+and marches it; `exactSolid()` hands the tree to [Manifold](manifold.md), which does exact CSG.
+Each can do things the other cannot, so pick by what you are going to do next:
 
 <div class="field-data-table" markdown>
 
@@ -369,7 +384,7 @@ one source. Declare which numbers in a shape are free, hand over some samples of
 actually want, and a gradient finds them — the 3D version of what
 [RectSL's inverse animation](rectsl_inverse_animation.md) (`RectSLFn.kt` in `afield.lang.rectsl`) does for 2D tracks.
 
-The machinery is `afield.math.autodiff.AD`, reverse-mode automatic differentiation over `Double`:
+The machinery is `afield.math.autodiff.AD`, reverse-mode [automatic differentiation](autodiff_examples.md) over `Double`:
 `SolidGradient.kt` is `SolidField.kt`'s `toField3` transposed line for line into `AD` arithmetic.
 Reverse mode because the objective is one scalar loss over many sample points and a handful of
 parameters, so one forward pass and one backward sweep give every parameter derivative at once. The
@@ -874,12 +889,22 @@ what a torus is.
 
 The [`solidsl_gallery`](agent_transcripts.md#solidsl_gallery) starting point has three boxes. Open it and run them:
 
-- **one shape, two evaluations** — one part put through both lowerings, with the meshes side by side.
-  Change `boreRadius` or drop `quality` to 24 and watch the agreement degrade to the faceting floor.
-- **the same source as a GLSL raymarcher** — the emitted shader, the step scale, and the simplifier
-  dropping 40 extra bores, most of them nowhere near the part.
-- **refusals, and the hybrid build** — the whole refusal catalogue with its reasons, and the
-  smallest-subtree level set beside what the naive one would have cost.
+**One shape, two evaluations** puts one part through both lowerings and shows the meshes side by side.
+Change `boreRadius` or drop `quality` to 24 and watch the agreement degrade to the faceting floor.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/gallery-cross-check.png" wait="8.0" capture="box" open-outputs="true" padding="20" embed=true hidden=true name="solidsl-gallery-cross-check" macro-file="../../dev_docs/agents/transcripts/solidsl_gallery.yaml" capture-box="cross_check" alt="The one shape, two evaluations box after a run: the same bracket meshed by Manifold exact CSG and by marching its distance field, with triangle counts, volumes and how far apart the two surfaces are."}
+// dev_docs/agents/transcripts/solidsl_gallery.yaml creates and runs the three gallery boxes.
+```
+
+**The same source as a GLSL raymarcher** shows the emitted shader, the step scale, and the simplifier
+dropping 40 extra bores, most of them nowhere near the part.
+
+**Refusals, and the hybrid build** lists the whole refusal catalogue with its reasons, and sets the
+smallest-subtree level set beside what the naive one would have cost.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/gallery-refusals.png" wait="8.0" capture="box" open-outputs="true" padding="20" embed=true hidden=true name="solidsl-gallery-refusals" macro-file="../../dev_docs/agents/transcripts/solidsl_gallery.yaml" capture-box="refusals" alt="The hybrid build panel of the refusals box: a plate with four exact bores and one marched, blended spherical post, reported as a single watertight solid."}
+// dev_docs/agents/transcripts/solidsl_gallery.yaml creates and runs the three gallery boxes.
+```
 
 All three need nothing but Field; the second needs no Manifold at all. The first and third print a
 clear "install Manifold" message and fall back to the field lowering when it is absent.

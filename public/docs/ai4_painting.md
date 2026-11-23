@@ -104,7 +104,8 @@ paper is still wet (`paint_look` with `map="surface"`).
 
 A brush kept with `paint_tool` and `moving=true` is a [brush with moving hairs](paint_gestures.md).
 The agent paints with it through `paint_gesture`, giving the speed, pressure along the stroke, and
-the tilt and roll of the handle, for the marks that depend on the hand. Below, the agent was asked
+the tilt and roll of the handle, for the marks that depend on the hand.
+[Paint settings, swept](paint_sweeps.md#the-hand) shows what tilt and speed do to one gesture. Below, the agent was asked
 for grasses at the edge of a wood, scrubbing the wood in with a moving hog flat, flicking the
 blades up with a moving rigger and rolling the flat through a path; then to scrub the hog hard
 along the bottom edge and lay three light strokes with it. The conversation was then rewound to
@@ -120,6 +121,75 @@ before the scrub, and both brushes came back exactly as the grasses had left the
     brushes' `state()` and the canvas between the steps: after the rewind all three hashed as they had
     after the first request (the hog's retained bend back to 0.005 rad from 0.013). The docs build
     cannot remake the figure, since that needs a model.
+
+## Editing strokes by address
+
+The paint tools above lay paint on the canvas, and once it is there it stays paint. Strokes kept
+as data ([Strokes kept as data](paint_canvas.md#strokes-kept-as-data)) stay editable: each has an
+address, `s12`, and the chat can recolour, move, bend or delete it later. `strokeTools` gives a
+box's AI chat the tools for that, over a `PaintStrokes` sheet:
+
+- `strokes_read` lists the pinned notes, each with the strokes under it, and then every stroke
+  with its address, group, colour, brush and bounds;
+- `strokes_apply` takes a JSON batch of edits, applied together and undone together;
+- `strokes_undo`, `strokes_redo`, `strokes_near` (the strokes under a point) and `strokes_look`.
+
+A `strokes` context tells the agent about every pinned note at the start of each request, so a
+note is a way of pointing at part of the picture: "more moss on this side". This box pins that
+note on a copy of Sprout, the creature from the paint page, and hands its chat the tools. Open its AI panel
+and ask it to act on the note:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/ai4_painting/strokes_note.png" alt="two copies of a round green painted creature with green leaves on its head, pale eyes, a smile, a pink cheek smudge and brown legs, side by side and identical, with a status line under them: 24 strokes, 1 notes, more moss on this side" wait="20" capture="box" open-outputs="true" padding="20" requires="paint" name="ai4-strokes-note" embed=true}
+:::static
+:::fold the creature from the first example
+// points around an ellipse from angle a0 to a1 (radians), as [x0, y0, x1, y1, ...]
+fun arc(cx: Double, cy: Double, rx: Double, ry: Double, a0: Double, a1: Double, n: Int = 24) =
+    (0..n).flatMap { val a = a0 + (a1 - a0) * it / n; [cx + rx * cos(a), cy + ry * sin(a)] }
+
+val sheet = PaintStrokes(700, aspect = 1.4, seed = 3)
+// the body: rows of a hog flat, filling an ellipse
+for (i in -5..5) {
+    val y = 400.0 + i * 26
+    val w = 190 * sqrt(1 - (i / 6.0).pow(2))
+    sheet.add([500 - w, y, 500 + w, y + 6], color = if (i % 2 == 0) "#8a9a3a" else "#a0a848", brush = BrushKind.HogFlat, width = 34.0, group = "body")
+}
+// legs, and leaves sprouting from the head
+sheet.add([430.0, 540.0, 420.0, 640.0], color = "#4a3a20", brush = BrushKind.HogFlat, width = 26.0, group = "legs")
+sheet.add([570.0, 540.0, 585.0, 640.0], color = "#4a3a20", brush = BrushKind.HogFlat, width = 26.0, group = "legs")
+for (a in [-2.3, -1.9, -1.57, -1.25, -0.85]) {
+    val x = 500 + 60 * cos(a); val y = 290 + 30 * sin(a)
+    sheet.add([x, y, x + 60 * cos(a) - 12, y + 60 * sin(a), x + 120 * cos(a), y + 110 * sin(a)],
+        color = "#2f6a2a", brush = BrushKind.Filbert, width = 30.0, pressure = 0.9 to 0.4, group = "leaves")
+}
+// eyes, a smiling mouth and a pink smudge on one cheek
+for (x in [440.0, 560.0]) {
+    sheet.add([x - 8, 360.0, x + 8, 362.0], color = "#f4f0e4", width = 44.0, pressure = 1.0 to 1.0, group = "eyes")
+    sheet.add([x, 364.0, x + 8, 365.0], color = "#1a1a1a", width = 16.0, pressure = 1.0 to 1.0, group = "eyes")
+}
+sheet.add(arc(500.0, 420.0, 70.0, 45.0, 0.4, PI - 0.4), color = "#3a1a10", width = 10.0, group = "mouth")
+sheet.add([400.0, 440.0, 410.0, 445.0], color = "#e07080", brush = BrushKind.Badger, width = 50.0, hiding = 0.6, group = "smudge")
+:::endfold
+val edited = thisBox.properties.getOrPut("strokes.sheet") {
+    sheet.copy().also { it.pin(660.0, 430.0, "more moss on this side") }
+} as PaintStrokes
+
+fun show() {
+    display("main", pngRow([sheet.render(), edited.render()]))
+    markdown("status", "${edited.strokes.size} strokes, ${edited.notes.size} notes " + edited.notes.joinToString { "\"${it.text}\"" })
+}
+
+agentExtension("strokes") { strokeTools(sheet = { edited }, changed = { show() }) }
+show()
+```
+
+The sheet is kept on the box, so running the box again keeps what the chat did. After each edit
+the tools call `changed`, here `show()`, which paints the sheet again.
+
+The Studio has the same tools. Its strokes are painted over the canvas as it was when the first
+one was added, so the chat can block a picture in with the paint tools and then lay strokes it
+can come back to. The next paint tool paints on the canvas itself and takes those strokes into
+it, after which they can no longer be edited. The strokes are part of the conversation as the
+canvas is: rewinding the chat brings back the strokes as they were.
 
 ## The same request, another model
 

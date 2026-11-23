@@ -218,6 +218,11 @@ object HistoryManager {
      */
     data class VersionsData(
         val transitions: MutableList<Transition> = mutableListOf(),
+        /**
+         * Version names keyed by backup number: the `NNNNN` of `metadata_backup_NNNNN.edn`, and for
+         * the current `metadata.edn` the number its backup will take. A backup number never changes
+         * when another backup is deleted or pruned, where a list position would.
+         */
         val names: MutableMap<Int, String> = mutableMapOf()
     )
 
@@ -1498,7 +1503,7 @@ object HistoryManager {
         val versionsFile = File(documentPath, "versions.edn")
         versionsFile.parentFile?.mkdirs()
         val data = loadVersionsData(documentPath)
-        data.names[versionIndex] = name
+        data.names[backupNumbers(documentPath).getOrElse(versionIndex) { versionIndex }] = name
         return try {
             saveVersionsData(versionsFile, data)
             true
@@ -1511,12 +1516,33 @@ object HistoryManager {
      * Get names map
      */
     fun getVersionNames(documentPath: String): Map<Int, String> {
-        return loadVersionsData(documentPath).names
+        val names = loadVersionsData(documentPath).names
+        if (names.isEmpty()) return names
+        val positionOf = backupNumbers(documentPath).withIndex().associate { (position, number) -> number to position }
+        return names.mapNotNull { (number, name) -> positionOf[number]?.let { it to name } }.toMap()
     }
+
+    /**
+     * The backup number of each version, in version-list order: a backup's own `NNNNN`, and for the
+     * current `metadata.edn` one more than the largest, which is what `safeSave` numbers its backup.
+     */
+    private fun backupNumbers(documentPath: String): List<Int> {
+        val versions = listVersions(documentPath)
+        val numbers = versions.map { backupNumberOf(it.file) }
+        val next = (numbers.filterNotNull().maxOrNull() ?: -1) + 1
+        return numbers.map { it ?: next }
+    }
+
+    private fun backupNumberOf(file: File): Int? =
+        file.name.removePrefix("metadata_backup_").removeSuffix(".edn")
+            .takeIf { file.name.startsWith("metadata_backup_") && file.name.endsWith(".edn") }
+            ?.toIntOrNull()
 
     /**
      * Load versions.edn data
      */
+    private const val NAME_KEYS_BACKUP_NUMBER = "backup-number"
+
     private fun loadVersionsData(documentPath: String): VersionsData {
         val versionsFile = File(documentPath, "versions.edn")
 
@@ -1550,6 +1576,14 @@ object HistoryManager {
                         }
                     }
 
+                    // Before nameKeys existed, names were keyed by list position. Read against
+                    // today's list, which is what they meant until a backup goes missing.
+                    if (namesMap.isNotEmpty() && root["nameKeys"]?.toString() != NAME_KEYS_BACKUP_NUMBER) {
+                        val numbers = backupNumbers(documentPath)
+                        val migrated = namesMap.mapKeys { (position, _) -> numbers.getOrElse(position) { position } }
+                        namesMap.clear()
+                        namesMap.putAll(migrated)
+                    }
                     VersionsData(transitions = transitions, names = namesMap)
                 }
 
@@ -1577,6 +1611,7 @@ object HistoryManager {
 
             val payload = linkedMapOf<String, Any?>(
                 "transitions" to transitionsData,
+                "nameKeys" to NAME_KEYS_BACKUP_NUMBER,
                 "names" to data.names
             )
 

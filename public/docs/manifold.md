@@ -283,6 +283,10 @@ rather than Clipper's `EVEN_ODD`, because it is the rule under which winding *me
 overlapping same-wound outlines are one shape, where `EVEN_ODD` would punch their overlap out as a
 hole.
 
+[A Penrose relief](debruijn_tilings.md#a-relief-through-manifold) passes every rhombus of a tiling
+through `Section.ofFLines`, insets it with `offset`, and extrudes and unions the results into one
+printable solid.
+
 ## Previewing a ball-end mill
 
 A ball-end mill cannot cut a sharp inside corner. Wherever two faces meet in a concave edge, the
@@ -440,9 +444,13 @@ caller; unwinding through them is undefined, and FFM's response to an escaping e
 far-outside sentinel, and `levelSet` rethrows once the native call is over: you get an
 `IllegalStateException` with your own exception as its cause.
 
-`Solid.warped { }` is the same mechanism for moving every vertex: a bend, a twist, a taper. It does
-**not** re-mesh, so put `refined()` in front of it or a 12-triangle cube's eight corners move and
-nothing looks different.
+`Solid.warped { }` is the same mechanism for moving every vertex: a bend, a twist, a taper. A warp
+moves only the vertices there are, so give it a length, `warped(maxEdge = 0.1) { }`, and it
+subdivides until no edge is longer than that before it moves anything.
+
+An image can be the field too: [A photograph, closed and mounted](chain_photo_to_solid.md) marches
+a depth map as a level set and compares the result with a relief mesh built directly from the same
+image.
 
 ## Backing off some faces: clearance between parts
 
@@ -590,6 +598,9 @@ showPlaneGrid(
 part.close()
 ```
 
+[A polytope, canonicalised, and sliced into layers](chain_ceres_manifold_contours.md) slices a
+Conway polytope into a stack of layers and checks that their areas add up to the solid's volume.
+
 ## The bridges, both ways
 
 Manifold does not replace Field's mesh family; a `Solid` converts to and from a `TriMesh`:
@@ -625,9 +636,8 @@ different normal per face and therefore cannot be shared:
 | `cube.toTriMesh(normals = true)` | **24** | **`false`** | `true` | `8.0` |
 
 `isWatertight()`, `genus()` and `showMesh`'s footer weld a mesh that carries normals by position
-before measuring, so both forms report the same surface. `topology()` reads the indices as they are,
-and `toSolid` needs the plain form: Manifold refuses a crease-split mesh. Ask for the plain form when
-the mesh goes back into Manifold, and `weld()` a shaded one if you need to.
+before measuring, so both forms report the same surface, and `toSolid` welds the same way, so either
+form goes back into Manifold. `topology()` reads the indices as they are.
 
 ## Lifetime
 

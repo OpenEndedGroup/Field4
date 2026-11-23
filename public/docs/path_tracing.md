@@ -190,6 +190,9 @@ appears when you resume. Scaling a scene calls for scaling its aperture and expl
 focus distance too. This models a circular aperture; it does not simulate shutter
 motion blur, diffraction or a multi-element photographic lens.
 
+For defocus without tracing, [Aperture playground](aperture_playground.md) spreads light over
+aperture-shaped footprints in a chain of render passes you can edit.
+
 ## Loading glTF and GLB models
 
 ```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/path_tracing/gltf.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="glTF study converged" embed=true hidden=true timeout="240" name="path-tracing-gltf" alt="Textured Toy Car imported from GLB and path traced on a grey floor with hidden sunset environment lighting" macro-file="../../dev_docs/agents/transcripts/path_tracing_gltf.yaml" capture-box="path_trace_gltf"}
@@ -619,10 +622,6 @@ tracking in place of both, which Field does not provide; see
 The [path_tracing_medium](agent_transcripts.md#path_tracing_medium) starting point is a
 slatted strip light over a hazed room, cycling `mediumDensity` so you can watch the
 shafts appear. How the medium is tested is in `dev_docs/PARTICIPATING_MEDIA.md`.
-
-**A medium and `temporalReuse` are effectively exclusive.** A collision on the camera ray leaves the history guide's
-surface normal unset, so reprojection rejects that pixel, and a dense medium gets no temporal reuse for most of the frame. Raise `samplesPerFrame` instead
-of reaching for reuse.
 
 ## Neural multiple scattering in a raymarched cloud
 

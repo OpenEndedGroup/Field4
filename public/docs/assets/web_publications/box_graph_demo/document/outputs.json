@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-22T15:52:54.719Z",
+  "capturedAt": "2026-11-22T18:53:28.263Z",
   "documentName": "box_graph_demo",
   "outputs": [
     {
@@ -19,7 +19,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 268,
+      "width": 293,
       "height": 40,
       "path": "outputs/1.html"
     },

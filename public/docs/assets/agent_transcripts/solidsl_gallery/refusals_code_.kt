@@ -94,8 +94,8 @@ run {
         channel = "hybrid",
         title = "exact where it can be, marched where it cannot",
         caption =
-            "${build.solid.triangleCount} triangles &middot; the plate and its four bores are exact CSG; " +
-                "only the blended post was marched &middot; the whole thing is still one guaranteed-closed solid",
+            "${build.solid.triangleCount} triangles · the plate and its four bores are exact CSG; " +
+                "only the blended post was marched · the whole thing is still one guaranteed-closed solid",
         view = MeshView(yawDegrees = 36.0, pitchDegrees = 22.0, width = 720, height = 470),
     )
     naive.close()

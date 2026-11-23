@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-23T12:18:05.720Z",
+  "documentName": "addressable_paint_strokes",
+  "outputs": [
+    {
+      "uid": "paint_strokes_creature",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 469,
+      "height": 45,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "paint_strokes_sway",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 469,
+      "height": 45,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "paint_strokes_edit",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 469,
+      "height": 45,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "paint_strokes_note",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 469,
+      "height": 45,
+      "path": "outputs/3.html"
+    }
+  ]
+}

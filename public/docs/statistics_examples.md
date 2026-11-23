@@ -770,7 +770,9 @@ For the signals themselves rather than these derived quantities, see
 measurements, [State estimation](state_estimation_examples.md); and for the rolling-dependence
 fences in their original setting, [Values Over Time](interpolants_examples.md). For a
 distribution over whole functions, curves and fields — means, uncertainty and coherent draws from a few observations — see
-[Drawing with Gaussian processes](gaussian_processes.md).
+[Drawing with Gaussian processes](gaussian_processes.md). To ask which *shapes* two signals
+share, rather than how strongly their values depend on each other, join them with
+[the matrix profile](matrix_profile.md#comparing-two-signals).
 
 *The public declarations used on this page are listed, with their KDoc, in the codebase reference:
 [Math](reference/math.md) and [Data](reference/data.md).*

@@ -218,7 +218,8 @@ Measured force and mechanical power are not a measure of the performer's effort.
 Enable **Follow body** in either live scene. **Follow half-life seconds** controls how quickly the
 camera catches up: at 0.4 s, half the remaining translation is covered every 0.4 s. Following is
 horizontal, so jumping does not bob the camera. You can still orbit, pan and zoom. Disable Follow
-to leave the camera in the world.
+to leave the camera in the world. To ease your own values by a half-life in the same way, use the
+[springs and dampers](movement_examples.md#half-life-is-the-dial).
 
 This replay starts with a fixed camera, then enables Follow at two seconds. Watch the ground grid
 move past the body:

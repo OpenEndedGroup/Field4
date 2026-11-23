@@ -514,6 +514,8 @@ starting point to finish rather than code to paste.
 
 - [Imaging and computer vision](imaging_examples.md) — `Img`, and everything you would do to a depth
   map once you have one: colour maps, gradients, thresholds, contours.
+- [A photograph, closed and mounted](chain_photo_to_solid.md) — the depth map of the same room,
+  closed into a solid plaque and mounted in a frame.
 - [Field 4 graphics](afield_four_graphics.md) — `StreamingTexture` and the Vulkan side of getting
   an `R16_SFLOAT` map onto the GPU.
 - [`onnx_webcam_live`](agent_transcripts.md#onnx_webcam_live): a starting point running both models

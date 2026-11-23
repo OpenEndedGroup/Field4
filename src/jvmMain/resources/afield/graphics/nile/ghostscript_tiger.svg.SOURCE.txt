@@ -1,0 +1,9 @@
+ghostscript_tiger.svg — the Ghostscript tiger, as used by GeziraSvg.tiger().
+
+Source: https://upload.wikimedia.org/wikipedia/commons/f/fd/Ghostscript_Tiger.svg
+        (file page https://commons.wikimedia.org/wiki/File:Ghostscript_Tiger.svg), fetched 2026-11-22, unmodified.
+Derived from examples/tiger.eps in GPL Ghostscript
+        (https://git.ghostscript.com/?p=ghostpdl.git;a=blob;f=examples/tiger.eps).
+Author:  the Ghostscript authors.
+Licence: GNU Affero General Public License — Ghostscript's own licence, which tiger.eps ships
+         under, and the licence the Commons file page records for this SVG ("AGPL").

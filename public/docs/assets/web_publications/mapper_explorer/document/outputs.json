@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-22T15:52:34.032Z",
+  "capturedAt": "2026-11-22T18:52:23.530Z",
   "documentName": "mapper_explorer",
   "outputs": [
     {
@@ -28,11 +28,11 @@
     {
       "uid": "mapper_letters",
       "channel": "main",
-      "open": false,
+      "open": true,
       "warnings": [],
       "kinds": [],
       "width": 523,
-      "height": 40,
+      "height": 270,
       "path": "outputs/2.html"
     }
   ]

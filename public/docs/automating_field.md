@@ -142,7 +142,8 @@ is missing or has no code, the failure names it.
 
 The backdoor also captures pictures of a single box, the editor, the whole window, or the
 native Field 4 graphics window. It can also record short videos of a box, the editor or the
-window, but not of the graphics window.
+window, but not of the graphics window. To film a document's outputs to a plan, with a 3D camera
+move, a drag, a slider and captions, see [Filming a Timeline](filming_a_timeline.md).
 
 [What a Capture Can and Cannot Show](capture_limits.md) lists what a capture cannot see, and
 the reply fields that tell you when you have hit one of those limits.
@@ -169,4 +170,6 @@ example.
 
 When Field opens a workspace it writes an `AGENTS.md` file there if none exists. Coding agents
 read that file automatically; it tells an agent working in the folder how documents are stored
-and points it at transcripts and the backdoor.
+and points it at transcripts and the backdoor. An agent can also write a box's code file directly
+while the document is open; [Editing a document from outside Field](editing_from_outside.md) says
+which file to write and when Field picks the change up.

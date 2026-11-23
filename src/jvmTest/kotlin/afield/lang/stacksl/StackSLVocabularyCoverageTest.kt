@@ -124,7 +124,7 @@ class StackSLVocabularyCoverageTest {
         val documented = (cheatsheetTokens() + vocabularyTokens()).map(::collapse).toSet()
         check(documented.size > 200) { "the documentation scrape looks broken: only ${documented.size} tokens" }
 
-        val undocumented = stackSLDocumentableWords
+        val undocumented = (stackSLDocumentableWords + stackSLTypedWords)
             .filter { collapse(it) !in documented }
             .sorted()
 
@@ -134,7 +134,7 @@ class StackSLVocabularyCoverageTest {
                 "add a row to public/docs/stacksl_cheatsheet.md or an entry to the vocabulary section of " +
                 "public/docs/stacksl_examples.md:\n  " + undocumented.joinToString(" ")
         )
-        println("stacksl vocabulary coverage: all ${stackSLDocumentableWords.size} documentable words are documented")
+        println("stacksl vocabulary coverage: all legacy and typed words are documented")
     }
 
     @Test

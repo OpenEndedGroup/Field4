@@ -106,7 +106,7 @@ the easel, the tube paints, the kept tools and the hung paintings.
 Needs the paint library: ./gradlew buildPaintNative.
 
 ```edn [field-box id="ai4_paint_studio" role="properties"]
-{"id" "ai4_paint_studio" "index" 1 "name" "Studio" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Studio" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai4_paint_studio_code_.kt" "lines" 944 "characters" 52133 "sha256" "29a3f2350aaeec0a1d59340548f18611ea3e6445d4bf09d381a5a6a5c62bf7cb"}]}
+{"id" "ai4_paint_studio" "index" 1 "name" "Studio" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Studio" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai4_paint_studio_code_.kt" "lines" 993 "characters" 54333 "sha256" "7cf208f0127b584feef7afa59a5354195371e7062a9c77a4f336da11cac8f6cd"}]}
 ```
 
 ```kotlin [field-property box="ai4_paint_studio" name="code" path="ai4_paint_studio_code_.kt"]
@@ -133,6 +133,15 @@ fun replace(c: PaintCanvas) {
 }
 // The tools the painter keeps by name, on the box for the same reason: a brush stays dirty between requests.
 fun tools(): PaintToolbox = thisBox.properties.getOrPut("studio.tools") { PaintToolbox() } as PaintToolbox
+// Strokes kept as data (paint_canvas.md#strokes-kept-as-data), edited by address with the strokes_* tools. They are
+// painted over a copy of the canvas as it was when the first went down; the next paint_* tool bakes them into it.
+fun strokes(): PaintStrokes =
+    thisBox.properties.getOrPut("studio.strokes") { PaintStrokes(900, canvas().aspect, seed = 7) } as PaintStrokes
+fun strokesBase(): PaintCanvas = thisBox.properties.getOrPut("studio.strokesBase") { canvas().copy() } as PaintCanvas
+fun bakeStrokes() {
+    thisBox.properties.remove("studio.strokes")
+    thisBox.properties.remove("studio.strokesBase")
+}
 
 fun pngUrl(bytes: ByteArray) = "data:image/png;base64," + Base64.getEncoder().encodeToString(bytes)
 fun show() = display("main", canvas().png())
@@ -957,6 +966,20 @@ else
             }
         }
 
+        strokeTools(
+            sheet = { strokes() },
+            changed = {
+                val base = strokesBase()
+                replace(strokes().render(base))
+                show()
+            },
+            onto = { strokesBase() },
+        )
+        // a paint_* tool paints on the canvas itself, so the strokes laid so far become part of it
+        afterTool({ it.startsWith("paint") }) { _, _ ->
+            if (thisBox.properties.containsKey("studio.strokes")) bakeStrokes()
+        }
+
         context("canvas") {
             val c = canvas()
             "The canvas on the Studio easel is 1000 units wide and ${c.heightUnits.roundToInt()} tall (aspect ${c.aspect}), " +
@@ -1036,6 +1059,32 @@ else
             restore = { f ->
                 replace(f?.let { PaintCanvas.load(it.path) } ?: fresh())
                 show()
+            },
+            onConflict = BranchConflict.RESTORE,
+            resumeOnOpen = true,
+        )
+        // and so do the addressable strokes and the canvas under them
+        branchState(
+            "strokes",
+            save = { f ->
+                if (thisBox.properties.containsKey("studio.strokes")) f.writeText(strokes().toJson()) else f.delete()
+            },
+            restore = { f ->
+                bakeStrokes()
+                if (f != null && f.exists())
+                    thisBox.properties["studio.strokes"] = PaintStrokes.fromJson(f.readText(), 900, canvas().aspect, 7)
+            },
+            onConflict = BranchConflict.RESTORE,
+            resumeOnOpen = true,
+        )
+        branchState(
+            "strokesBase",
+            save = { f ->
+                if (thisBox.properties.containsKey("studio.strokesBase")) strokesBase().saveState(f.path)
+                else f.delete()
+            },
+            restore = { f ->
+                if (f != null && f.exists()) thisBox.properties["studio.strokesBase"] = PaintCanvas.load(f.path)
             },
             onConflict = BranchConflict.RESTORE,
             resumeOnOpen = true,

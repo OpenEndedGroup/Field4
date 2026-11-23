@@ -142,6 +142,11 @@ These chains end in something you could print, mount, hang or light.
     **[Drawn Strokes Become Paint](chain_drawn_paint.md).** Pen strokes on the drawing layer,
     with their pressure, drag a simulated oil brush across a canvas of wet paint.
 
+-   ![The Ghostscript tiger three ways: smeared wet-into-wet oil, slabs of knifed paint, and a field of coloured dots](assets/chain_tiger_paint/gallery_oil.png)
+
+    **[An SVG Tiger, Painted](chain_tiger_paint.md).** The tiger's few hundred SVG paths, read
+    into FLines and handed to brushes, knives, stipple, outlines, watercolour and a straw.
+
 -   ![Nested offset contours, red and blue, around a rounded shape with a soft waist](assets/chain_squircle_offsets/offsets.png)
 
     **[A Drawn Outline, Repaired and Offset](chain_squircle_offsets.md).** Two squircles joined
@@ -237,6 +242,8 @@ every box in the document does.
     **[charGrid](agent_transcripts.md#madp_chargrid).** A picture as a 40 × 25 grid of glyph
     numbers, rewritten once a tick. Reading the last tick is all Conway's Life needs, and a glyph
     can also be a note, so an arpeggio draws and plays at once.
+    [Shape-aware ASCII](ascii_shape.md#live-in-a-char-grid) fills one each tick from anything
+    drawn into an `Img`.
 
 -   ![A three-by-three grid of colour tiles: two rainbow parents, stripes and spokes, above seven mutated children, each with its program written under it](assets/agent_transcripts_gallery/madp_ga_lead.png)
 

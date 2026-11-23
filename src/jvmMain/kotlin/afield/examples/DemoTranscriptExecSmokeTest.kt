@@ -103,6 +103,8 @@ object DemoTranscriptExecSmokeTest {
         "polytope_pick_lineage",
         // afield_four_graphics.md, Rasterising with stream kernels: Gezira kernels, Skia beside them; pure CPU.
         "nile_gezira_kernels",
+        // afield_four_graphics.md, The SVG tiger: SVG reader, tiger by Gezira beside Skia SVGDOM; pure CPU.
+        "nile_gezira_svg",
         // geometry_from_disk.md, Splats by tile: SplatTiles binning, heat map and schedule timing; pure CPU.
         "splat_tiles",
         // mesh_examples.md, Repairing a field that is only a bound: SdfGrid2D circles and offsets; pure CPU.
@@ -119,6 +121,9 @@ object DemoTranscriptExecSmokeTest {
         // rhino_files.md, Breps without meshes: a Save Small .3dm tessellated from its NURBS surfaces
         // and SubDs; pure CPU, and each box prints how to build the openNURBS wrapper when it is absent.
         "rhino_save_small",
+        // rhino_files.md, Writing a file and reading it back: write, read and measure one .3dm; pure CPU,
+        // and the box prints how to build the openNURBS wrapper when it is absent.
+        "rhino_round_trip",
         // stacksl_examples.md's fitting demo: fits a StackSL program's literals on the CPU.
         "stacksl_fit_demo",
         // stacksl_examples.md's partial-evaluation demo: specializes on the CPU, no renderer.
@@ -637,6 +642,10 @@ object DemoTranscriptExecSmokeTest {
         "paint_canvas",
         "paint_fold_press", // CPU paint simulation; boxes stop with a message without the library
         "paint_blow_fingers", // the same, for blowing and viscous fingering
+        // Addressable strokes (2026-11-23): a creature kept as PaintStrokes records, edited by address with
+        // JSON ops, a pinned note answered, four frames from the same records. Pure CPU; without the
+        // paint library the records still build and the boxes say so and stop.
+        "addressable_paint_strokes",
         // Two pure-CPU boxes over the same paint canvas: one registers an agentExtension (paint tools,
         // context, commands, the canvas as branch state) and shows the bare canvas, the other adds a
         // scribble aiTool that paints on it. No model is called; without the paint library the Studio
@@ -726,6 +735,8 @@ object DemoTranscriptExecSmokeTest {
         // Requires a connected OpenXR runtime and real tracking; geometry math is covered by BodyGeometryTest.
         "body_one",
         "text_one_vr",
+        // Opens a native window and a stereo target; ReadingPickingTest covers the picking on the CPU.
+        "reading_pointing",
         "video_one_vr",
         // Audio curves: every box is a playback loop under a waveform player that waits for the
         // user to press play, and the analysis shells out to uv. AudioCurvesTest runs audioCurves,
@@ -970,6 +981,12 @@ object DemoTranscriptExecSmokeTest {
         // by a fragment shader. Needs a native Window; GeziraWindingTest and BufferCanvasOutlineTest
         // check the coverage itself, and the `fline-coverage-gpu` docs capture checks the pixels.
         "fline_coverage_gpu",
+        // Gezira's WindingSpans as a compute shader (2026-11-22). Needs a native Window and a GPU;
+        // the four.gezira-gpu.probe FIELD_TEST checks the coverage and the `gezira-gpu` docs capture
+        // checks the pixels.
+        "gezira_gpu_winding",
+        // The whole tiger through GeziraGpuScene (2026-11-22); needs a native Window and a GPU.
+        "gezira_gpu_tiger",
         "threebox",
         "rectsl_dataviz",
         "rectsl_plot_axes",

@@ -1453,6 +1453,7 @@ letters, and `labelSize` and `labelDistance` (both in multiples of `thickness`) 
   It also has III.1 (the centre of a circle), IV.4 and IV.5 (a triangle's incircle and
   circumcircle) and VI.13 (a mean proportional), which this page does not show.
 - [Typography as Geometry](typography_examples.md), where the letters come from.
+- [Sentence diagrams](sentence_diagrams.md), whose examples write out their choices the same way.
 
 ## API reference
 

@@ -7,7 +7,8 @@ you can read and change. Choose the ones you want and give them to a scheduler y
 an agent's scheduled tasks, `launchd` or `cron`.
 
 None of them is needed to use Field. They are for people who work on Field, or on a fork of it,
-and want the same overnight help.
+and want the same overnight help. [How Field Is Built](how_field_is_built.md#while-nobody-is-looking)
+shows where they fit among the tests, the landing queue and the docs build.
 
 ## The routines
 

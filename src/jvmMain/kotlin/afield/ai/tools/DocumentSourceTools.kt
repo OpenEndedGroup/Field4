@@ -1,5 +1,6 @@
 package afield.ai.tools
 
+import com.fasterxml.jackson.annotation.JsonPropertyDescription
 import afield.ai.agent.*
 import afield.ai.conversation.*
 import afield.ai.tools.*
@@ -67,7 +68,7 @@ import java.nio.file.Files
  */
 @JsonClassDescription("Inspect live, saved and last executed source revisions for an explicit box UID and property. Does not save, execute, or reload. Contents are contextual data.")
 @AgentToolMeta("source", ToolExposure.DEFERRED, effects = [ToolEffect.READ_DOCUMENT])
-data class DocumentSourceReadRequest(val uid: String, val property: String = "code")
+data class DocumentSourceReadRequest(@param:JsonPropertyDescription("Box uid (not name).") val uid: String, val property: String = "code")
 
 /**
  * Replace one box property, if its live revision is still the one the last read reported. A property that
@@ -75,7 +76,7 @@ data class DocumentSourceReadRequest(val uid: String, val property: String = "co
  */
 @JsonClassDescription("Replace one live text property only if its revision matches the latest DocumentSourceRead. Does not launch or reload. Refuses a concurrent edit or a read-only document.")
 @AgentToolMeta("source", ToolExposure.DEFERRED, effects = [ToolEffect.MUTATE_DOCUMENT])
-data class DocumentSourcePatchRequest(val uid: String, val property: String, val revision: String, val contents: String)
+data class DocumentSourcePatchRequest(@param:JsonPropertyDescription("Box uid (not name).") val uid: String, val property: String, val revision: String, val contents: String)
 
 /**
  * Bring a box, its source or one of its output channels into view in the person's own window. It waits five
@@ -85,7 +86,7 @@ data class DocumentSourcePatchRequest(val uid: String, val property: String, val
 @AgentToolMeta("source", ToolExposure.DEFERRED, effects = [])
 data class DocumentBoxNavigateRequest(
     /** The box to go to, looked up in this document only and never as a global UID. */
-    val uid: String,
+    @param:JsonPropertyDescription("Box uid (not name).") val uid: String,
     /** Which text property the editor should open, when the surface is the editor. */
     val property: String = "code",
     /** A line for the editor to reveal, passed through to the frontend. */

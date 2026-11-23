@@ -226,7 +226,7 @@ data class ListContentEntry(
 @AgentToolMeta("kotlin", effects = [ToolEffect.READ_DOCUMENT])
 data class ListKotlinContextVariablesRequest(
     /** Blank for the current box, or a box uid, name or `afield://` ref. */
-    val target: String = "",
+    @param:JsonPropertyDescription("Blank for the current box, or a box uid, unique name or afield:// ref.") val target: String = "",
     /** The bound on each string value, 64 to 100000 characters; a shortened value says so. */
     val maxValueChars: Int = 300
 )
@@ -271,7 +271,7 @@ data class ListKotlinContextVariablesResult(
 @AgentToolMeta("kotlin", effects = [ToolEffect.EXECUTE_CODE])
 data class EvaluateKotlinExpressionRequest(
     /** Blank for the current box, or a box uid, name or `afield://` ref. */
-    val target: String = "",
+    @param:JsonPropertyDescription("Blank for the current box, or a box uid, unique name or afield:// ref.") val target: String = "",
     /** The Kotlin to evaluate in that box's live context, where the box is `thisBox`. */
     val expression: String,
     /** Also return an HTML rendering of the value. */
@@ -361,7 +361,7 @@ data class CompileKotlinResult(
 @JsonClassDescription("Reload shader modules for the current Field box or target box/file ref. Call this after editing GLSL/Slang shader properties and before finishing the turn; fix errors and rerun until success.")
 @AgentToolMeta("render", ToolExposure.DEFERRED, effects = [ToolEffect.CONTROL_RUNTIME, ToolEffect.GPU, ToolEffect.CAPTURE_IMAGE])
 data class ReloadShadersRequest(
-    val target: String = "",
+    @param:JsonPropertyDescription("Blank for the current box, or a box uid, unique name or afield:// file ref.") val target: String = "",
     val mode: String = "auto",
     val visualCheck: Boolean = true
 )
@@ -555,7 +555,7 @@ data class CodeUseQueryRequest(
     val kind: String = "failures",
     val limit: Int = 20,
     val document: String = "",
-    val box: String = "",
+    @param:JsonPropertyDescription("Filter: case-insensitive substring of the box name; blank for all.") val box: String = "",
     val sourcePath: String = "",
     val line: Int = 0,
     val code: String = "",
@@ -646,7 +646,7 @@ data class SemanticRetrievalSearchRequest(
     val pathPrefix: String = "",
     val kinds: List<String> = emptyList(),
     val documentName: String = "",
-    val boxId: String = "",
+    @param:JsonPropertyDescription("Only results from this box uid (exact); blank for all.") val boxId: String = "",
     val property: String = "",
     val includeCapsule: Boolean = false,
     val includeSource: Boolean = false

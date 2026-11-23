@@ -326,6 +326,87 @@ fun afield.graphics.vulkan.targets.SideBySideStereoTarget.pointer(
 }
 
 /**
+ * This multiview stereo target's controller, as a [Pointer]: the OpenXR controller in a headset, the
+ * target's desktop mock controller otherwise. [controllerPointer] over
+ * [afield.graphics.vulkan.targets.MultiviewStereoTarget.controllerState], the same pairing as the
+ * [afield.graphics.vulkan.targets.SideBySideStereoTarget] binding above.
+ */
+fun afield.graphics.vulkan.targets.MultiviewStereoTarget.pointer(
+    hand: afield.graphics.vulkan.targets.OpenXRHmdTarget.Hand = afield.graphics.vulkan.targets.OpenXRHmdTarget.Hand.RIGHT,
+    name: String = "controller ${hand.name.lowercase()}",
+): Pointer {
+    val reusable = ControllerState()
+    return controllerPointer(name, state = { controllerState(hand, reusable) })
+}
+
+/**
+ * The ray under a point of this target's desktop mirror ([afield.graphics.vulkan.targets.MultiviewStereoTarget.mirrorToScreen]),
+ * or `null` where the mirror shows its letterbox.
+ *
+ * The mirror draws one eye image (the left, or both side by side with [stereoPair]) aspect-fitted
+ * into the window, so a window point is an exact pixel of an eye image, and the ray is that pixel
+ * unprojected through the eye's own view and projection. It therefore passes through whatever is
+ * drawn under the cursor — unlike the mock controller, which aims from the centre camera.
+ *
+ * @param x, y the point, from the window's top-left, in the same units as [width] and [height] —
+ *   window points from a [afield.graphics.vulkan.util.WindowPointer], say. Only ratios are used.
+ */
+fun afield.graphics.vulkan.targets.MultiviewStereoTarget.mirrorRay(
+    x: Double,
+    y: Double,
+    width: Double,
+    height: Double,
+    stereoPair: Boolean = false,
+): Ray? {
+    val (eye, px, py) = mirrorEyePixel(x, y, width, height, eyeWidth, eyeHeight, stereoPair) ?: return null
+    val camera = rayCameraFor(eyeProjectionMatrix(eye), eyeViewMatrix(eye), eyeWidth, eyeHeight)
+    return camera.rayThrough(px, py)
+}
+
+/**
+ * Which eye image, and which pixel of it, the stereo mirror shows at window point ([x], [y]) — or
+ * `null` over the letterbox. The inverse of the mirror fragment shader's aspect fit,
+ * `q = (uv - 0.5) * fit + 0.5`, with `uv` measured from the window's top-left.
+ */
+internal fun mirrorEyePixel(
+    x: Double, y: Double, width: Double, height: Double,
+    eyeWidth: Int, eyeHeight: Int, stereoPair: Boolean,
+): Triple<Int, Double, Double>? {
+    if (width <= 0.0 || height <= 0.0) return null
+    val ratio = (width / height) / (eyeWidth.toDouble() / eyeHeight * if (stereoPair) 2.0 else 1.0)
+    var qx = (x / width - 0.5) * (if (ratio > 1.0) ratio else 1.0) + 0.5
+    val qy = (y / height - 0.5) * (if (ratio < 1.0) 1.0 / ratio else 1.0) + 0.5
+    if (qx < 0.0 || qx > 1.0 || qy < 0.0 || qy > 1.0) return null
+    var eye = 0
+    if (stereoPair) {
+        eye = if (qx < 0.5) 0 else 1
+        qx = if (qx >= 1.0) 1.0 else (qx * 2.0) % 1.0
+    }
+    return Triple(eye, qx * eyeWidth, qy * eyeHeight)
+}
+
+/**
+ * The mouse over this target's desktop mirror, as a [Pointer]: [mirrorRay] at the cursor, selecting
+ * while the left button is down. Inactive when the cursor is outside the window or over the
+ * letterbox, so a hover ends when the mouse leaves.
+ *
+ * ```kotlin
+ * val mouse = stereo.mirrorPointer(WindowPointer(window, "reading-mouse"))
+ * ```
+ */
+fun afield.graphics.vulkan.targets.MultiviewStereoTarget.mirrorPointer(
+    pointer: afield.graphics.vulkan.util.WindowPointer,
+    stereoPair: () -> Boolean = { false },
+    name: String = "mirror mouse",
+): Pointer = LambdaPointer(name) {
+    if (!pointer.polled || !pointer.inside) return@LambdaPointer PointerState.inactive
+    val ray = mirrorRay(
+        pointer.x.toDouble(), pointer.y.toDouble(), pointer.width.toDouble(), pointer.height.toDouble(), stereoPair(),
+    ) ?: return@LambdaPointer PointerState.inactive
+    PointerState(ray, if (pointer.down) 1.0 else 0.0)
+}
+
+/**
  * This headset's bare hand, as a [Pointer] — pinch to select.
  *
  * [pinchPointer] over [afield.graphics.vulkan.targets.OpenXRHmdTarget.handState], which is `null` unless the
@@ -360,17 +441,18 @@ enum class PointerPhase {
 
 /**
  * A stream of [PointerState]s turned into an interaction: what is hovered, what is grabbed, and what
- * a drag has moved by.
+ * a drag has moved by — over any kind of hit [H].
  *
  * Stateful and single-threaded — one per pointer. Call [update] once per frame with that pointer's
  * sample; everything else is a read.
  *
- * See this file's documentation for why there are two independent kinds of hysteresis and what each
- * one is for.
+ * The machine owns the hysteresis and nothing else; what a ray hits is the subclass's business.
+ * [PointerInteraction] picks triangle meshes through a [PickScene];
+ * `afield.graphics.scene.reading.DiagramPointerInteraction` picks the text, strokes and dots of a reading
+ * diagram. See this file's documentation for why there are two independent kinds of hysteresis and
+ * what each one is for.
  */
-class PointerInteraction(
-    /** What to pick against. Swap it freely between calls; the machine holds hits, not indices. */
-    var scene: PickScene,
+abstract class PointerMachine<H : Any>(
     /**
      * Select value at which a press begins. Above [releaseThreshold] by construction.
      *
@@ -392,11 +474,19 @@ class PointerInteraction(
      * the dwell.
      */
     val switchSamples: Int = 3,
-    /** Ignore anything further away than this. */
-    val maxDistance: Double = Double.MAX_VALUE,
-    /** Skip triangles facing away, as a renderer would. */
-    val cullBackFaces: Boolean = false,
 ) {
+    /** The nearest target under [ray], or `null`. Asked once per [update] while nothing is held. */
+    protected abstract fun pick(ray: Ray): H?
+
+    /**
+     * A hit's identity for the hover dwell: two hits with equal keys are the same target, however far
+     * the contact point moved between them. Return something with value equality.
+     */
+    protected abstract fun keyOf(hit: H): Any
+
+    /** Where the ray met the target, in world space. A drag's plane passes through it. */
+    protected abstract fun contactPoint(hit: H): Vec3
+
     init {
         require(pressThreshold > releaseThreshold) {
             "the press threshold ($pressThreshold) must be above the release threshold " +
@@ -414,11 +504,11 @@ class PointerInteraction(
      * What the pointer is over. Frozen to [grabbed] while [PointerPhase.PRESSED] or
      * [PointerPhase.DRAGGING] — a drag belongs to what it grabbed.
      */
-    var hover: PickHit? = null
+    var hover: H? = null
         private set
 
     /** What the press landed on, or `null` when nothing is pressed. */
-    var grabbed: PickHit? = null
+    var grabbed: H? = null
         private set
 
     /** The last sample's ray, for whoever wants to draw it. */
@@ -442,7 +532,7 @@ class PointerInteraction(
 
     /** How many consecutive samples the current candidate has been winning. */
     private var candidateRuns: Int = 0
-    private var candidateKey: Pair<String, Int>? = null
+    private var candidateKey: Any? = null
 
     /**
      * How far the drag has moved the grabbed point, in world units, or `null` when nothing is
@@ -516,7 +606,7 @@ class PointerInteraction(
         val target = hover
         if (target != null && state.select >= pressThreshold) {
             grabbed = target
-            grabPlanePoint = Vec3(target.point)
+            grabPlanePoint = Vec3(contactPoint(target))
             grabPlaneNormal = Vec3(
                 (-currentRay.dirX).toFloat(), (-currentRay.dirY).toFloat(), (-currentRay.dirZ).toFloat(),
             )
@@ -550,11 +640,11 @@ class PointerInteraction(
      * 90 Hz — before releasing. That is the price of zero acquisition lag and it is the right way
      * round.
      */
-    private fun resolveHover(currentRay: Ray): PickHit? {
-        val candidate = scene.pick(currentRay, maxDistance, cullBackFaces)
+    private fun resolveHover(currentRay: Ray): H? {
+        val candidate = pick(currentRay)
         val held = hover
-        val candidateId = candidate?.let { it.objectName to it.part }
-        val heldId = held?.let { it.objectName to it.part }
+        val candidateId = candidate?.let { keyOf(it) }
+        val heldId = held?.let { keyOf(it) }
 
         if (heldId == null) {
             // Nothing held: acquire at once. Also the switchSamples == 1 path for everything.
@@ -591,7 +681,34 @@ class PointerInteraction(
     }
 
     override fun toString(): String =
-        "PointerInteraction($phase" +
-            (hover?.let { ", over ${it.objectName}/${it.partName}" } ?: "") +
+        "${this::class.simpleName}($phase" +
+            (hover?.let { ", over ${describeHit(it)}" } ?: "") +
             (if (phase == PointerPhase.DRAGGING) ", dragged %.4f".format(dragDistance) else "") + ")"
+
+    /** How [toString] names a hit. */
+    protected open fun describeHit(hit: H): String = keyOf(hit).toString()
+}
+
+/**
+ * [PointerMachine] over triangle meshes: what is hovered is a [PickHit] — an object and a named part
+ * of it — resolved through [scene].
+ */
+class PointerInteraction(
+    /** What to pick against. Swap it freely between calls; the machine holds hits, not indices. */
+    var scene: PickScene,
+    pressThreshold: Double = 0.6,
+    releaseThreshold: Double = 0.35,
+    switchSamples: Int = 3,
+    /** Ignore anything further away than this. */
+    val maxDistance: Double = Double.MAX_VALUE,
+    /** Skip triangles facing away, as a renderer would. */
+    val cullBackFaces: Boolean = false,
+) : PointerMachine<PickHit>(pressThreshold, releaseThreshold, switchSamples) {
+    override fun pick(ray: Ray): PickHit? = scene.pick(ray, maxDistance, cullBackFaces)
+
+    override fun keyOf(hit: PickHit): Any = hit.objectName to hit.part
+
+    override fun contactPoint(hit: PickHit): Vec3 = hit.point
+
+    override fun describeHit(hit: PickHit): String = "${hit.objectName}/${hit.partName}"
 }

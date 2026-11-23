@@ -45,7 +45,8 @@ camera-facing quad; the fragment shader draws a soft dot. This is the ordinary
 two-module (compute + draw) pattern from
 [Field 4 Graphics](afield_four_graphics.md). The only probe-specific lines
 are the include and the single `fieldProbe(length(delta))` call, which records
-how far each particle moved this step.
+how far each particle moved this step. [GPU State](gpu_state.md#watching-it-without-reading-it-back)
+puts the same probe on a simulation whose particles keep their velocity on the card.
 
 ```diffstatic {data-lang=glsl}
 #version 450

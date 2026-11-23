@@ -349,6 +349,35 @@ class FieldMLHostBridgeTest {
         )
     }
 
+    @Test
+    fun aLambdaResultOfTheWrongShapeIsRefusedNamingWhatKotlinWanted() {
+        // A Comparator's compare returns an int; this one returns a string.
+        val result = FieldMLCompiler.compile(
+            """
+            let Collections = hostClass "java.util.Collections"
+            hostStaticCall "max" ([5, 1, 9, 3], fun a b -> "later") Collections
+            """.trimIndent(),
+        )
+        if (!result.successful) return // refused before it ran, which is better still
+        val failure = runCatching { evaluate(result) }.exceptionOrNull()
+        val messages = generateSequence(failure) { it.cause }.mapNotNull { it.message }.joinToString(" | ")
+        assertTrue("passed as Comparator returned" in messages && "wants a" in messages, messages)
+    }
+
+    @Test
+    fun anInternalMemberIsReachedByItsSourceName() {
+        // Kotlin compiles these as `scaled$<module>` and `getLabel$<module>`; FieldML uses the source names.
+        val target = InternalMembers()
+        box.setPropertyRaw("internalTarget", target, false)
+        assertEquals(
+            "(\"internal\", 14)",
+            renderFieldMLValue(run("""
+                let t = prop "internalTarget"
+                (t |> hostGet "label", t |> hostCall1 "scaled" 7)
+            """)),
+        )
+    }
+
     private fun run(source: String): FieldMLValue = evaluate(compileOk(source))
 
     private fun evaluate(result: CompilationResult): FieldMLValue =
@@ -364,4 +393,10 @@ class FieldMLHostBridgeTest {
         )
         return result
     }
+}
+
+/** A class with `internal` members, which reach the JVM under mangled names. */
+class InternalMembers {
+    internal val label: String = "internal"
+    internal fun scaled(x: Int): Int = x * 2
 }

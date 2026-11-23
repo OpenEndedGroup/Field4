@@ -1746,7 +1746,14 @@
 	                    preserveNextHistorySelection = false;
 	                    exactLineDeltaCache.clear();
 	                    railLineStatsRequestSignature = "";
-	                    versions = message.payload?.versions || [];
+	                    // A list read from disk carries no box ids yet; the stats stream fills
+	                    // them in, so until then the count is unknown, not zero.
+	                    versions = (message.payload?.versions || []).map((version) => ({
+	                        ...version,
+	                        boxCountPending:
+	                            !(version.boxIds && version.boxIds.length) &&
+	                            !version.boxCount,
+	                    }));
                     transitions = message.payload?.transitions || [];
                     historyLog("versions list received", {
                         versions: versions.length,
@@ -2434,6 +2441,7 @@
                 if (payload.diffStats) next.diffStats = payload.diffStats;
                 if (payload.boxCount != null) {
                     next.boxCount = Number(payload.boxCount) || 0;
+                    next.boxCountPending = false;
                 }
                 if (Array.isArray(payload.boxIds)) next.boxIds = payload.boxIds;
                 versions[index] = next;
@@ -2548,8 +2556,9 @@
 
             function versionMeta(version, includeLabel = false) {
                 if (!version) return "No versions";
-                const boxes =
-                    version.boxCount === 1
+                const boxes = version.boxCountPending
+                    ? "… boxes"
+                    : version.boxCount === 1
                         ? "1 box"
                         : `${version.boxCount || 0} boxes`;
                 const size = formatBytes(version.byteSize);

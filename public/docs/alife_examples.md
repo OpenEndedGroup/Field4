@@ -497,6 +497,8 @@ ratio of **0.80** and a largest-blob share of **0.008**; the two labyrinth prese
 features with ratios of **2.5** and **2.4** and largest shares of **0.64** and **0.45**. Three times
 less round, and dominated by one connected structure. The `holes` preset is the inverse morphology and
 reads as a single blob at 0.78 coverage with a ratio of **90**.
+To follow the spots of a run as they are born and split, frame by frame, see
+[Tracking features through time](topology_tracking.md#a-simulation-whose-topology-churns).
 
 ??? note "The \( 4/\pi \) perimeter correction"
     The digital "crack perimeter" over-estimates a smooth boundary by about \( 4/\pi \), so `blobShapes`
@@ -2758,7 +2760,9 @@ random never does. The L-system objective is saturated: every arm, random includ
 of 0.25, its practical ceiling (an exact dimension plus the straightness bonus), so this objective
 cannot tell the methods apart. A harder target or a finer score would be needed before it could.
 The vehicle brains of [Braitenberg vehicles §10](braitenberg_vehicles.md) run through the same
-`compareSearch`.
+`compareSearch`. [Searching for MorphoHDL Circuits](morpho_search.md) sets random sampling, hill
+climbing and evolution against each other on circuit programs, where random sampling sometimes beats
+the hill climber.
 
 ### Evolved grain sets: an L-system as a score
 

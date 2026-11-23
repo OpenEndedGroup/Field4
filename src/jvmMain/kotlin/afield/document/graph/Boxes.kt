@@ -570,6 +570,18 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
         set(value) = viewportDelegation.setValue(this, ::viewport, value)
 
     /**
+     * What the canvas's main pane shows as a plain world rect `(x, y, w, h)`: [viewport] with its
+     * position un-negated, the same sign as each rect in [viewports].
+     *
+     * ```
+     * val v = viewportWorld
+     * println("main pane: ${v.x}, ${v.y}: ${v.w} × ${v.h}")
+     * ```
+     */
+    val viewportWorld: Rect
+        get() = viewport.let { Rect(-it.x, -it.y, it.w, it.h) }
+
+    /**
      * Every pane's visible world rect `(x, y, w, h)` on a split canvas, the main (bottom-right) pane
      * last; a single rect when the canvas is not split, and empty before a browser has reported.
      */

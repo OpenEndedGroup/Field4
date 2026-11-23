@@ -21,6 +21,8 @@ then follow the links for the details.
 * **"I want the rhythm to come from *somewhere* — a direction, a distance."** → `pat-spatial`,
   through headphones. [A pattern in space](pat_spatial.md).
 * **"I want a whole groovebox, sequencer and all."** → `fm1-sim`. [FM-1 simulator](fm1.md).
+* **"I want to livecode it in ORCA's grid."** → `orca()` in a box, whose notes arrive in your
+  Kotlin for whichever synth you choose. [ORCA](orca.md).
 * **"I want to patch it in Pure Data."** → `pure-data`. A patch inline in the box or a `.pd` file,
   once libpd is built. [Pure Data](pure_data.md).
 * **"I want to write an orchestra and score."** → `csound`. Use Csound as a box language or call it

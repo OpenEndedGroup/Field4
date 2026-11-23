@@ -171,7 +171,8 @@ the shared Sonic Pi daemon.
 
 ## The service waveform
 
-This view requests the same render through Field Audio's waveform-summary endpoint.
+This view requests the same render through Field Audio's
+[waveform-summary endpoint](field_audio_service_reference.md#http-operations).
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_render_analysis/service_waveform.png" capture="box" open-outputs="true" wait="4" padding="16" timeout="180" w="1120" h="1100" hidden=true embed=true name="elsewhere-waveform" alt="Real service waveform envelopes of a Pat Dirt render" capture-profile="linux-nvidia"}
 :::static

@@ -95,6 +95,8 @@ draw. A seed reproduces the result for the same model and query order.
 An interval is **pointwise**: it describes one position at a time. A 95% pointwise band does not
 contain 95% of whole functions. Draws can leave that band somewhere without anything being wrong.
 For a 1D plot, `posterior.intervalFLines(grid)` returns its lower and upper boundary curves.
+To ask about whole draws, such as where the highest point is or how likely the curve is to cross a
+line anywhere, turn the fitted curve into [distributions](distributions.md#gaussian-processes-as-distributions).
 
 ## Choose the kind of function
 

@@ -41,6 +41,38 @@ p 4 * phacelle palette saturate
 | `time`, `t` | `vec4(time)` | time from `stack_in.w`. |
 | `uv` | `vec4(uv.xy, 0, 1)` | normalized texture coordinate in `0..1`. |
 
+## Complex arithmetic and rotation weights
+
+Start a program with `@types` to use compile-time types. A complex value has **rotation weight** \(k\) if rotating the inputs by an angle \(\theta\) multiplies that value by \(e^{ik\theta}\). This program reads the first two input lanes as a weight-1 complex number and squares it.
+
+```stacksl
+@types
+assume-c1 dup *
+```
+
+| Word | Stack | Effect |
+| --- | --- | --- |
+| `assume-c1` | input → complex | Read xy as a complex value of weight 1. Use `assume-c0`, `assume-c-1`, or another signed integer weight to declare a different action. |
+| `assume-r0` | input → real | Read x and declare it invariant under rotation. |
+| `as-raw` | value → raw | Keep the four lanes and continue with ordinary StackSL words. |
+| `i` | → complex | The imaginary unit, of weight 0. |
+| `conj` | complex → complex | Conjugate the value and negate its weight. |
+| `norm2` | complex → real | Square the magnitude, including at zero. |
+| `real`, `imag`, `.re`, `.im` | complex → real | Read a component of a weight-zero complex value. |
+| `to-complex` | real → complex | Put a real invariant in the real lane of a weight-zero complex value. |
+| `cis` | real → complex | Compute `cos(phase) + i*sin(phase)` with weight 0. |
+| `tanh` | real → real | Apply the hyperbolic tangent to a real invariant. |
+
+```stacksl
+@types
+p assume-c1 >a
+?pc.b assume-c1 >b
+?pc.c assume-c1 >c
+<a dup * <b conj *
+<a conj <b * imag sin <c *
++
+```
+
 ## Stack words
 
 All values are `vec4`. Swizzles turn selected channels back into a `vec4`: one channel is splatted, two channels become `xy,0,1`, three become `xyz,1`, and four stay four-wide. The dot prefix is optional.

@@ -62,7 +62,9 @@ adds critical points and separatrices. The **persistence** of a hill is how far 
 lower it before it merged into a neighbour: its height above the pass that joins it to higher
 ground. Simplifying at persistence *p* cancels every pair of critical points whose persistence is
 below *p*, and reroutes the separatrices around them, so what remains is the structure that
-stands out by more than *p*.
+stands out by more than *p*. A [contour tree](contour_trees.md) draws those same merges as a tree,
+from each peak or pit to the saddle where it joins its neighbour, and simplifies by the same
+persistence.
 
 The example below puts noise over the same five bumps. [`MorseSmale.build`](reference/graphics.md#morsesmale-kt--morsesmale--build) computes the complex
 once, along with the order in which every pair would cancel. `simplify(p)` then reads off the
@@ -253,7 +255,8 @@ The parts of a result:
 
 Ids are grid cells, so a critical point keeps its id across thresholds, and across recomputation
 of a changing field for as long as it stays on the same cell. A separatrix keeps its id for as long
-as both its ends survive. Animations and other objects can be keyed to them.
+as both its ends survive. Animations and other objects can be keyed to them. To follow a feature
+that moves to other cells from frame to frame, use [`FeatureTracker`](topology_tracking.md).
 
 ## Running it off the main thread
 

@@ -34,6 +34,8 @@ from verification_runtime import verification_lock  # noqa: E402
 
 from cow_clone import clone_file  # noqa: E402
 
+import docs_search_boost  # noqa: E402
+
 # Where `generate_source_pages` tells `public/docs_hooks.py` to find the basename -> page/anchor map
 # that turns a citation into a link. Named here and read there; an absent variable is the signal that
 # no source pages exist this run, which is what makes the citation chips degrade rather than break.
@@ -1812,6 +1814,18 @@ def run(args: argparse.Namespace) -> int:
     emit_build_info(site_dir=staging, repo_root=repo_root)
     copied = copy_workspace_markdown(source_docs=public_dir / "docs", site_dir=staging)
     print(f"Copied {copied} workspace markdown file(s) verbatim (not built as pages).")
+    # Before fingerprinting and sharing, which compare final bytes: this rewrites search.json, the
+    # search worker and every page's `__config`. Written pages outrank generated reference pages.
+    try:
+        boost = docs_search_boost.apply(site_dir=staging, docs_dir=generated_docs)
+    except docs_search_boost.WorkerPatchError as error:
+        if args.strict:
+            print(f"{FAILURE_PREFIX}{error}; failing because --strict.", file=sys.stderr)
+            return 1
+        print(f"WARNING: search is not boosted toward written pages: {error}")
+    else:
+        print(f"Boosted {boost.boosted_items} of {boost.total_items} search entries on written pages "
+              f"({boost.generated_pages} generated page(s) left at 1); search worker is {boost.worker}.")
     stamped, stamped_pages = fingerprint_assets(staging)
     print(f"Fingerprinted {stamped} stylesheet/script reference(s) on {stamped_pages} page(s).")
     # Last before the install: every step that rewrites a site file has run, so it compares final bytes.

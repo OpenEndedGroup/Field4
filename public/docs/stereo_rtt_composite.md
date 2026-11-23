@@ -77,15 +77,17 @@ inside this frame, rather than in a second independent render loop.
 
 The scene was exercised on a Quest 3 through WiVRn, including the editable FXAA pass. Reported
 motion-to-photon estimates depend on runtime, network, codec and headset settings; this starting
-point makes no fixed latency promise. Its automated headless check compiles the boxes without
-opening a window; the image above runs the actual desktop Vulkan path.
+point makes no fixed latency promise.
 
-The native regression check exercises first-frame sampling, one render pass per eye and square-eye
-projection on a non-square window, with Vulkan validation enabled:
+??? aside "Agents: regression check"
+    The starting point's automated headless check compiles the boxes without opening a window; the
+    image above runs the actual desktop Vulkan path. The native regression check exercises
+    first-frame sampling, one render pass per eye and square-eye projection on a non-square window,
+    with Vulkan validation enabled:
 
-```diffstatic {data-lang=bash}
-uv run --project . --group backdoor python tools/run_field_tests.py --id four.stereo-packing.smoke
-```
+    ```diffstatic {data-lang=bash}
+    uv run --project . --group backdoor python tools/run_field_tests.py --id four.stereo-packing.smoke
+    ```
 
 For interactive controls in the scene itself, continue with [ImGui as an in-VR panel](imgui_vr_panel.md).
 For a desktop OpenXR scene on Vision Pro over Wi-Fi, use

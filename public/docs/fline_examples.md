@@ -2074,6 +2074,10 @@ for ((i, style) in [SquircleStyle.Figma, SquircleStyle.Clothoid].withIndex()) {
 lines(drawn, w = 460.0, h = 160.0, fitToSize = true)
 ```
 
+[A drawn outline, repaired and offset](chain_squircle_offsets.md) turns two clothoid-cornered
+rectangles into distance fields, blends them into one shape, and steps inwards from its outline to
+make a pocketing toolpath.
+
 ## 2D transformations (geometry-aware)
 
 These transforms are for 2D shapes in the XY plane: rotate around a centre, reflect across a line, shear. They save writing a custom `transform { p -> ... }`.
@@ -3091,7 +3095,7 @@ This box only does something when you draw, so there is no picture of it here. R
 
 #### In a Vulkan scene
 
-`shell` is an ordinary filled `FLine`. To draw it in a Vulkan scene, turn it into triangles with `FLine.tessellate` (or `trianglesOut`, which writes them straight into vertex buffers) and give those to a `Mesh` with `primitiveType = triangles`, as in [Hello triangle, first attempt](afield_four_graphics.md#hello-triangle-first-attempt). The tessellation keeps holes, so the inside of an "o" stays empty. `SweptCircleEnvelopeTest` checks this on a ring-shaped stroke, whose triangles cover the ring's area and not its centre.
+`shell` is an ordinary filled `FLine`. To draw it in a Vulkan scene, turn it into triangles with `FLine.tessellate` (or `trianglesOut`, which writes them straight into vertex buffers) and give those to a `Mesh` with `primitiveType = triangles`, as in [Hello triangle, first attempt](afield_four_graphics.md#hello-triangle-first-attempt). The tessellation keeps holes, so the inside of an "o" stays empty. `SweptCircleEnvelopeTest` checks this on a ring-shaped stroke, whose triangles cover the ring's area and not its centre. For a filled shape whose curved edge stays smooth at any size, [Slug filled paths](slug_paths.md) draws the outline itself in the fragment shader instead of its triangles.
 
 This box sits beneath a renderer box and draws the "o" from the top of this section beside a "z" with its corners kept. Its `vertex` and `fragment` shaders are the pass-through pair from that first triangle, with the fragment shader returning `fcol` unchanged:
 
@@ -3908,6 +3912,78 @@ display(
 )
 lines([rough, fitted] + levels, w = 720.0, h = 220.0, fitToSize = true)
 ```
+
+### String art: `stringArt(...)`
+
+`shape.stringArt()` winds one string around a ring of pins until its straight chords trace `shape`. It works the way [Erik and Martin Demaine's 1,500-string font](https://erikdemaine.org/fonts/stringart/) does, using [Petros Vrellis's](http://artof01.com/vrellis/works/knit.html) method: from the pin the string is on, take the chord that runs over the most of the shape not yet covered, wrap the pin at its far end, and repeat.
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun FLine.stringArt(
+    strings: Int = 1500,
+    pins: Int = 200,
+    frame: FLine? = null,
+    resolution: Int = 400,
+    lineWidth: Double? = null,
+    filled: Boolean = false,
+    stringWeight: Double = 0.2,
+    background: Double = 0.5,
+    minSkip: Int? = null,
+    stopWhenNoGain: Boolean = false,
+    lengthBias: Double = 1.0,
+): StringArt
+```
+
+The shape can be any `FLine`: a glyph outline from `layoutText`, a curve you drew, a polygon. The pins go on a circle around it unless you pass a `frame`. Draw the result with `art.chordLines()`, which gives one line per chord. A single line is painted as one stroke at one opacity, so where it crosses itself nothing builds up. Separate lines composite over each other, and the shape appears where they bunch together. `art.string()` is the whole winding as one continuous line, for a plotter or an export, and `art.path` is the order the string visits the pins.
+
+Here is a Helvetica "m" with 200 pins and 1,500 strings, the setup of the Demaine font. On the left is the default scoring. On the right, `lengthBias = 0` ranks chords by their total coverage rather than their average, which favours long chords; their tangents trace the curves more loosely. Total coverage needs a light `background` penalty: with a heavy one, once the long chords are used up the cheapest move is a short chord along the rim, and the string spends the rest of its length there.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/string_art_m.png" embed=true alt="Two discs of thin white chords on black, each ringed by 200 orange pins. In both, the chords bunch along the outline of a lowercase m. On the left the outline is sharp; on the right, made of longer chords, it is softer and the chords sweep across the whole disc."}
+:::static
+val m = layoutText("m", typeface("Helvetica", 400.0)).toFLine()
+
+val sharp = m.stringArt(strings = 1500, pins = 200)
+val long = m.stringArt(strings = 1500, pins = 200, lengthBias = 0.0, background = 0.05)
+
+val gap = vec(sharp.pins.maxOf { it.x } - sharp.pins.minOf { it.x } + 40.0, 0.0)
+lines(
+    sharp.chordLines() + sharp.pinDots() + (long.chordLines() + long.pinDots()).map { it + gap },
+    w = 720.0,
+    h = 350.0,
+    fitToSize = true,
+)
+```
+
+`frame` puts the pins anywhere: they are spaced evenly along whatever line you give it, closed or open. `filled = true` fits the inside of the shape instead of its outline (a glyph's counters stay empty). Below, the same cubic heart is strung on a square frame of 160 pins, first as an outline, then filled.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/string_art_frame.png" embed=true alt="Two squares edged with orange pins. In the left one, thin white chords outline a heart. In the right one, the chords pile up inside the heart, so it shows as a bright filled shape crossed by a fine grid of brighter lines."}
+:::static
+val heart = fline {
+    moveTo(0, -60)
+    cubicTo(40, -140, 160, -80, 0, 90)
+    cubicTo(-160, -80, -40, -140, 0, -60)
+}
+val square = fline {
+    moveTo(-140, -160)
+    lineTo(140, -160)
+    lineTo(140, 130)
+    lineTo(-140, 130)
+    close()
+}
+
+val outline = heart.stringArt(strings = 1200, pins = 160, frame = square)
+val filled = heart.stringArt(strings = 1200, pins = 160, frame = square, filled = true)
+
+val gap = vec(320.0, 0.0)
+lines(
+    outline.chordLines() + outline.pinDots() + (filled.chordLines() + filled.pinDots()).map { it + gap },
+    w = 640.0,
+    h = 330.0,
+    fitToSize = true,
+)
+```
+
+The string is fitted on a raster of the shape, `resolution` pixels on its longer side. The outline is `lineWidth` wide, 1.2% of the frame's size by default. Each chord covers `stringWeight` of every pixel it crosses, so a pixel on the outline wants about five chords. Each pixel of empty space a chord crosses costs `background`. The string never takes the same chord twice, and it skips pins closer than `minSkip` along the frame. When no chord from the current pin would help, it still takes the least bad one, because a wound string has to go somewhere; `stopWhenNoGain = true` makes it stop there instead. `art.remaining` says how much of the shape the string left uncovered, from 0 to 1. `art.chordLines(upTo = n)` draws only the first `n` chords, so you can show the string being wound.
 
 ## Advanced / experimental curves (FLineGeometry)
 
@@ -4764,6 +4840,10 @@ val hitPts = polylineFrom(hits.map { it.v2 }).apply {
 lines(circle, diag, hitPts, w = 420.0, h = 320.0, fitToSize = true)
 ```
 
+To intersect circles, lines and arcs as shapes rather than as drawn FLines, use
+`afield.geometry.euclid`. [Euclid's Elements](euclid_elements.md) builds Byrne's constructions from
+those intersections.
+
 ## Reference
 
 Every public declaration used on this page is listed, with its KDoc, in the codebase reference under [`StandardDrawing.kt`](reference/graphics.md#standarddrawing-kt). The rest of the standard library is in [what's already in the box](reference/index.md).
@@ -4790,6 +4870,10 @@ Next on the Tour, [Drawing and Notation](drawing_and_notation.md) draws by hand 
 - Source: [`FLineGeometry.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/geometry/path/FLineGeometry.kt)
   (`clothoidSplineFrom`, `hobbySplineFrom`, `curvatureComb`, `curvaturePlot`, `eulerSpiralBetween3D`) and its test,
   [`ClothoidSplineTest.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmTest/kotlin/afield/geometry/path/ClothoidSplineTest.kt).
+
+- [String art](#string-art-stringart) above winds one string over pins to trace any `FLine`.
+  Source: [`StringArt.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/geometry/path/StringArt.kt)
+  and its test, [`StringArtTest.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmTest/kotlin/afield/geometry/path/StringArtTest.kt).
 
 Open questions and next builds:
 
@@ -4824,6 +4908,16 @@ Open questions and next builds:
   width depends on the direction of travel; its envelope comes from the same tangency condition.
 - **Tubes in 3D.** The same construction with spheres gives a tube whose radius varies, for
   `threeLines` and the Vulkan scene.
+- **String art without seams on straight frames.** Pins in rows along a square line up, so chords
+  parallel to its sides pile up into a grid of brighter lines across the filled heart above. Jittering
+  the pins slightly, or penalising a chord by how many near-parallel chords already sit beside it,
+  should break the pattern.
+- **Real additive blending for chords.** `chordLines()` gets crossings to build up by stacking
+  translucent lines, which saturates toward the chord colour rather than adding. A per-line blend
+  mode in the `lines(...)` SVG (Chromium's `mix-blend-mode: plus-lighter`), or drawing the chords
+  in a Vulkan scene with additive blending, would show density as it really adds up.
+- **Several threads.** One string per colour, each fitted to its own channel of an image or its own
+  shape, wound over the same pins.
 
 - [Charts as FLines](chart.md) puts data on axes as editable geometry.
 - [Typography as geometry](typography_examples.md) starts with the outlines of letters.

@@ -178,6 +178,8 @@ showImgGrid(
 the line through their neighbours. Every line also carries
 `curveId`, `startNode` and `endNode` in its properties, and the `GeometryNetwork` it came from,
 so a manipulated copy can still be traced back to the stroke it came from.
+To smooth the hand's wobble out of the curves while keeping their junctions, refit them to the ink
+as [principal curves](principal_curves.md), the way [Geometry chains](geometry_chains.md) does.
 
 ## Photographs: evidence first
 

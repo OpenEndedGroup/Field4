@@ -27,7 +27,6 @@ import afield.app.protocol.AgentBoxScreenshot
 import afield.app.protocol.AgentWindowScreenshot
 import afield.app.protocol.ClearEditorOutputs
 import afield.app.protocol.Execute
-import afield.app.protocol.ExecutionReport
 import afield.app.protocol.MacroOutputLine
 import afield.app.protocol.Message
 import afield.app.protocol.Notify
@@ -67,7 +66,6 @@ import afield.media.video.*
 import afield.runtime.execution.ExecutionVerdict
 import afield.runtime.execution.KotlinExecution
 import afield.runtime.execution.launches
-import afield.runtime.execution.sourceRevision
 import afield.runtime.lifecycle.Runloop
 import afield.runtime.lifecycle.frames
 import afield.runtime.lifecycle.inMain
@@ -135,6 +133,8 @@ internal class InFlightOperationCoalescer<K, V> {
 
 object OperationTranscript {
     private const val COALESCE_FRAMES = 12L
+    /** How long a launch group waits for one non-Kotlin box's setup before giving up on the group. */
+    private const val ENGINE_LAUNCH_TIMEOUT_MS = 120_000L
     private const val WAIT_THRESHOLD_FRAMES = 2L
     private const val MACROS_DIR = "macros"
 
@@ -717,23 +717,9 @@ object OperationTranscript {
         var applied = 0
         var skipped = 0
         val collected = java.util.Collections.synchronizedList(mutableListOf<MacroOutputLine>())
-        val unverified = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+        // A launch's own verdict is checked where it is awaited (checkedMacroExecution), for every
+        // language, so a failed setup stops the run there.
         val collect: (Message) -> Unit = { msg ->
-            if (msg.name == "execution-dispatched") {
-                val payload = msg.payload as? kotlinx.serialization.json.JsonObject
-                unverified.add(payload?.get("uid")?.toString().orEmpty())
-            }
-            // Every engine answers a dispatched execution with a verdict; that is the receipt that
-            // turns "dispatched" into "completed" (or into an error) for a non-Kotlin box.
-            if (msg.name == "execution-verdict") {
-                val payload = msg.payload as? kotlinx.serialization.json.JsonObject
-                val uid = payload?.get("uid")?.toString().orEmpty()
-                if (unverified.remove(uid)) {
-                    val ok = (payload?.get("success") as? kotlinx.serialization.json.JsonPrimitive)?.content == "true"
-                    if (!ok) errors += "execution of $uid failed: " +
-                        ((payload?.get("error") as? kotlinx.serialization.json.JsonPrimitive)?.content ?: "no message")
-                }
-            }
             synchronized(collected) { if (collected.size < 200) captureMacroOutput(msg, collected) }
         }
 
@@ -817,23 +803,15 @@ object OperationTranscript {
                 }
             }
         }
-        // Give non-Kotlin executions a bounded moment to report their verdicts before the receipt is written.
-        val verdictDeadline = System.nanoTime() + 10_000_000_000L
-        // Only off the Runloop: verdicts are delivered through it, so waiting on it would only stall.
-        if (!afield.runtime.lifecycle.Runloop.isMainThread) {
-            while (unverified.isNotEmpty() && System.nanoTime() < verdictDeadline) Thread.sleep(20)
-        }
         if (applied > 0) runCatching { doResync() }
         val noChangeMessage = if (errors.isEmpty() && applied == 0) {
             " No operations changed anything; check the target selection and source uid mapping."
         } else {
             ""
         }
-        val dispatchMessage = if (unverified.isEmpty()) "" else
-            " ${unverified.size} non-Kotlin execution(s) dispatched; setup completion is unverified."
         return MacroRunResult(
             success = errors.isEmpty(),
-            message = "Ran macro '$cleanName': applied=$applied skipped=$skipped errors=${errors.size}.$noChangeMessage$dispatchMessage",
+            message = "Ran macro '$cleanName': applied=$applied skipped=$skipped errors=${errors.size}.$noChangeMessage",
             name = cleanName,
             direction = normalizedDirection,
             targetBoxes = targetBoxes,
@@ -841,7 +819,8 @@ object OperationTranscript {
             skipped = skipped,
             errors = errors,
             output = collected.toList(),
-            setupVerified = unverified.isEmpty() && errors.isEmpty()
+            // Every launch, in any language, was awaited to its verdict above.
+            setupVerified = errors.isEmpty()
         )
     }
 
@@ -2367,9 +2346,7 @@ object OperationTranscript {
                     if (launch.target.ke is KotlinExecution) {
                         runBlocking { KotlinExecution.launchBatchAndWait(listOf(launch.target to launch.exec), reply) }
                     } else {
-                        // Preserve the ordinary engine's launch path. The result below marks
-                        // dispatch separately; only Kotlin currently promises awaited setup.
-                        launch.target.ke.launchAll(launch.target, launch.exec, launch.exec.code, launch.exec.strand, reply)
+                        awaitEngineLaunch(launch.target, launch.exec, reply)
                     }
                 }
             }
@@ -2397,11 +2374,36 @@ object OperationTranscript {
             collect(message)
         }
         verdict.check()
-        if (target.ke !is KotlinExecution) {
-            collect(Message("execution-dispatched").payload(ExecutionReport(
-                target.id, exec.property, sourceRevision(exec.code), mode = "macro",
-                stage = "dispatched", success = true
-            )))
+    }
+
+    /**
+     * Launch a box in any language but Kotlin and wait for its engine's verdict, so the next box in
+     * the launch group starts only once this one's setup has run, as a Kotlin box's does.
+     *
+     * Every engine finishes an [afield.runtime.execution.ExecutionTrace] when its dispatched work
+     * completes, and the trace sends `execution-verdict` only for a request with an id; this gives
+     * the launch one. On the Runloop thread the wait pumps frames, because that is where the engine's
+     * work runs.
+     */
+    private fun awaitEngineLaunch(target: Box, exec: Execute, reply: (Message) -> Unit) {
+        val requestId = "macro-launch-" + java.util.UUID.randomUUID()
+        val awaited = exec.copy(requestId = requestId)
+        val done = java.util.concurrent.CountDownLatch(1)
+        target.ke.launchAll(target, awaited, awaited.code, awaited.strand) { message ->
+            reply(message)
+            if (message.name == "execution-verdict") {
+                val payload = message.payload as? kotlinx.serialization.json.JsonObject
+                val id = (payload?.get("requestId") as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull
+                if (id == requestId) done.countDown()
+            }
+        }
+        val deadline = System.currentTimeMillis() + ENGINE_LAUNCH_TIMEOUT_MS
+        while (done.count > 0L) {
+            check(System.currentTimeMillis() < deadline) {
+                "${target.ke.languageName} box `${target.name.ifBlank { target.id }}` did not finish its launch " +
+                    "within ${ENGINE_LAUNCH_TIMEOUT_MS / 1000} s, so the rest of its launch group was not started"
+            }
+            if (Runloop.isMainThread) Runloop.runLoop.main.frame() else done.await(5L, java.util.concurrent.TimeUnit.MILLISECONDS)
         }
     }
 

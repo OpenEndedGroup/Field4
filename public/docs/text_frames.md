@@ -31,23 +31,23 @@ ui.pause(800)
 
 ## Markdown, then typeset text
 
-The inline editor uses Field's normal Iosevka at 12px. Reading uses **Iosevka Etoile**, a text face
+The Markdown source editor uses Field's normal Iosevka at 12px. Reading uses **Iosevka Etoile**, a text face
 with Field's reverse-slashed zero, including light, regular, bold and italic faces. Headings,
 emphasis, links, lists, tables, fenced code, images, and inline or display math are supported.
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1060x720" clip="0,0,560,700" screenshot="assets/text_frames/editing.png" transcript="../../dev_docs/agents/transcripts/docs_capture/text_frames.yaml" document="docs-text-frames-editing" fresh-document=true hide-toasts=true padding="0" wait="0" timeout="180" embed=true hidden=true name="text-frames-editing" alt="The first text frame is being edited as plain Markdown in Iosevka on a pure black background. The connected frame beneath it remains formatted."}
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1060x720" clip="0,0,560,700" screenshot="assets/text_frames/editing.png" transcript="../../dev_docs/agents/transcripts/docs_capture/text_frames.yaml" document="docs-text-frames-editing" fresh-document=true hide-toasts=true padding="0" wait="0" timeout="180" embed=true hidden=true name="text-frames-editing" alt="The first text frame is being edited in place: its heading, bold text, diagram and code block stay formatted on a black background, and a small formatting toolbar sits at the frame's left edge beside the caret. The connected frame beneath it remains formatted."}
 ui.eval(
-    "window.setAutoDisplayEditor(false);window.moveCanvasCamera(0,0,1);const b=[...document.querySelectorAll('.text-frame-box')].find(b=>b.name==='Research notes');window.selectBox(b);window.editTextFrame(b);return true;",
+    "window.setAutoDisplayEditor(false);window.moveCanvasCamera(0,0,1);const b=[...document.querySelectorAll('.text-frame-box')].find(b=>b.name==='Research notes');window.selectBox(b);window.writeTextFrame(b);return true;",
 )
-ui.waitForSelector(".text-frame-editing .text-frame-editor", 15000.0)
+ui.waitForSelector(".text-frame-rich-toolbar:not([hidden])", 15000.0)
 ui.pause(500)
 check(
     ui.eval(
-            "const a=[...document.querySelectorAll('.text-frame-box')].find(b=>b.name==='Research notes'),b=[...document.querySelectorAll('.text-frame-box')].find(b=>b.name==='Next question');return b.data_y===490&&b.getBoundingClientRect().top>a.getBoundingClientRect().bottom;",
+            "const a=[...document.querySelectorAll('.text-frame-box')].find(b=>b.name==='Research notes'),b=[...document.querySelectorAll('.text-frame-box')].find(b=>b.name==='Next question');return a.classList.contains('text-frame-editing')&&b.getBoundingClientRect().top>a.getBoundingClientRect().bottom;",
         )
         .toString() == "true",
 ) {
-    "Editing overlaps the connected frame"
+    "WYSIWYG editing did not start, or overlaps the connected frame"
 }
 ```
 
@@ -63,7 +63,9 @@ can be taller than the typeset result, so it scrolls inside the same frame while
 
 ## Images and other content
 
-Ordinary Markdown image syntax works:
+The quickest way to add a picture is to paste it from the clipboard while editing the formatted
+text: a PNG, JPEG, GIF, or WebP up to 1 MiB is embedded in the frame's Markdown. Ordinary Markdown
+image syntax also works:
 
 ```diffstatic {data-lang=markdown}
 ![A diagram](https://example.org/diagram.png)
@@ -205,12 +207,24 @@ or to reveal them again. This walks the whole branch, handles cycles, and preser
 if you hide everything. Hiding is session visibility; reopening the document or changing layers may
 reset it, and active layer filters still apply.
 
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1060x720" clip="0,0,700,700" screenshot="assets/text_frames/frame-marking-menu.png" transcript="../../dev_docs/agents/transcripts/docs_capture/text_frames.yaml" document="docs-text-frames-marking" fresh-document=true hide-toasts=true padding="0" wait="0" timeout="180" embed=true hidden=true name="text-frames-marking-menu" alt="The marking menu on a text frame, opened with Alt-click. New text frame below points down, alongside Edit Markdown, Open settings and the Hide / Reveal submenu."}
+ui.eval(
+    "window.setAutoDisplayEditor(false);for(const b of [...window.selectedList])window.deselectBox(b);window.moveCanvasCamera(0,0,1);const b=[...document.querySelectorAll('.text-frame-box')].find(b=>b.name==='Research notes');b.dataset.docsMenu='true';return true;",
+)
+ui.hoverSelector("[data-docs-menu='true']")
+ui.down("Alt")
+ui.mouseDown()
+ui.waitForSelector(".markingButton:has-text('New text frame below')", 15000.0)
+ui.waitForSelector(".markingButton:has-text('Hide / Reveal')", 15000.0)
+ui.pause(300)
+```
+
 Boxes can install their own [marking menus with callbacks and submenus](marking_menus.md).
 
 ## Text as part of the document
 
 The source lives in `thisBox.contents`; typography lives in `thisBox.textFrame`. Both are ordinary
-synchronized box properties. Code can update them without executing the Markdown. AI4 can read and
+synchronized box properties. Code in another box can read or set them like any other property. AI4 can read and
 patch `contents`, and related-box content listings include it. Semantic workspace search indexes
 saved text frames as Markdown, with their box names and headings. Literal workspace search sees the
 saved document; for the latest unsaved state AI4 should read the live box property.

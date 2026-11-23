@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-22T16:10:13.755Z",
+  "documentName": "nile_gezira_svg",
+  "outputs": [
+    {
+      "uid": "gezira_svg_flines",
+      "channel": "flines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "gezira_svg_tiger",
+      "channel": "readout",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 469,
+      "height": 59,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "gezira_svg_tiger",
+      "channel": "gezira | skia | difference x10",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 912,
+      "height": 300,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "gezira_fline_paint",
+      "channel": "gezira",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 228,
+      "height": 138,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "gezira_fline_paint",
+      "channel": "field",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "gezira_svg_reader",
+      "channel": "gezira",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 368,
+      "height": 188,
+      "path": "outputs/5.html"
+    }
+  ]
+}

@@ -298,7 +298,8 @@ grid.install(renderer.renderList, myParticles, count, strideFloats = 8, offsetFl
 ```
 
 `ShaderBoids` calls `install` for you; you need it only when putting the grid under something of
-your own.
+your own. [Particle Lenia](particle_lenia.md) puts its own compute shader on this grid, to sum each
+particle's kernel over its neighbours.
 
 Four steps, each avoiding something a compute shader cannot cheaply do:
 

@@ -75,7 +75,8 @@ palette.
 
 ## Calling suspend functions with `go { }`
 
-Some Field APIs, including calls into embedded editors, are `suspend` functions: they wait for a
+Some Field APIs, including calls into embedded editors and the waits on a
+[terminal in a box](terminal.md#waiting-for-a-program), are `suspend` functions: they wait for a
 reply while the rest of Field keeps running. From ordinary box code, put these calls in `go { }`:
 
 ```diffstatic {data-lang=kotlin}
@@ -514,6 +515,8 @@ fun ParamsByteSize(): Long = 464L
 fun HasBuffer.asParams(): Params = asStructure(Params(), ParamsLayoutMembers())
 ```
 
+To go the other way, from a Kotlin data class to the GLSL struct, use a [GPU schema](gpu_schema.md).
+
 `{{ stack.auto.name }}` slots in GLSL generate assignable StackSL properties on the module pointer (`var ModulePointer.name: String`); see [`stack.auto` in the StackSL examples](stacksl_examples.md).
 
 **Where the module's shaders come from.** `moduleHere { }` builds its module from the box's **shader-source properties** (`vertex`, `fragment`, prepared into `_vertex`/`_fragment`), **not** from assignments inside the lambda. If the box has no shaders yet, it seeds the defaults (a plain `in vec3 pos` vertex shader and a solid-colour fragment). To hand `moduleHere` a *non-default* shader from code, you must set the box's shader-source property **before** `moduleHere` expands, either by editing the box's shader tab or from code with `once.vertex { … }` / `once.fragment { … }`:
@@ -543,11 +546,6 @@ That ordering matters because macro expansion is not pure (see **Macros** above)
 fragment's macro can read state an earlier fragment set at runtime. Seeding a shader before
 `moduleHere` is the common case, and Field inserts that break for you; the DataFrame case below
 needs it written.
-
-??? aside "Agents: fragment ordering in launch groups"
-    A single Kotlin box launched through the transcript/multi-box path is also awaited fragment by
-    fragment; mixed-language launch groups do not promise the same first-frame ordering across
-    boxes.
 
 The preamble and setup blocks also re-run between fragments, so a fragment that *writes* to the box's preamble at runtime has published a real source declaration by the time the next fragment is compiled. That is how `DataFrame.typed("People")` makes typed columns survive into the second half of the same execution; see [DataFrames in a Box](dataframe.md#fragment-marker).
 

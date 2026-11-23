@@ -328,7 +328,7 @@ Via the JEP project, Python works splendidly in Field — who among us doesn't n
 	<source src="assets/tinypython.mp4" type="video/mp4">
 </video>
 
-This means, in effect, that you can live code things like OpenCV and Torch with Jupyter-level autocomplete and Field-level AI support. We'd like Field to be good enough to end some people's use of Jupyter. Thanks to JEP, interoperation between NumPy and Field's memory buffers is perfectly reasonable. And code like this:
+This means, in effect, that you can live code things like [OpenCV](python_cv.md) and Torch with Jupyter-level autocomplete and Field-level AI support. We'd like Field to be good enough to end some people's use of Jupyter. Thanks to JEP, interoperation between NumPy and Field's memory buffers is perfectly reasonable. And code like this:
 
 ```diffstatic {data-lang=python}
 :::static
@@ -389,7 +389,7 @@ Primarily for teaching purposes, a bizarrely useful live-coding dialect of Forth
 	<source src="assets/someForth.mp4" type="video/mp4">
 </video>
 
-a-Nano is a little teaching assembly language with completely over-the-top integrated visualizers. We're using (a GPU-accelerated) version of this language for a little ALife research — small enough to run Core Wars-style simulations on GPUs.
+[a-Nano](nano_examples.md) is a little teaching assembly language with completely over-the-top integrated visualizers. We're using (a GPU-accelerated) version of this language for a little ALife research — small enough to run Core Wars-style simulations on GPUs.
 
 <video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="assets/somenano.mp4" type="video/mp4">

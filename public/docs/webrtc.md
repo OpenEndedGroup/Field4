@@ -96,6 +96,9 @@ stops and starts again the texture picks it up by itself. `source.status` is tha
 Re-running the receiving box keeps the stream connected and only changes what it watches, so you
 can edit the shader that uses it without reconnecting.
 
+Any web page can be sampled the same way. [Chromium as a native Field surface](puppet_browser.md)
+puts a whole browser tab into a shader as a texture, with mouse and keyboard input.
+
 ## In a class with aaaframe
 
 Join the class once, by running this in any box with your class's aaaframe address:

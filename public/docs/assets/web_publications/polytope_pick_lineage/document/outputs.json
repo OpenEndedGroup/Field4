@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-22T11:33:36.420Z",
+  "capturedAt": "2026-11-22T18:51:34.270Z",
   "documentName": "polytope_pick_lineage",
   "outputs": [
     {
@@ -22,7 +22,7 @@
       "warnings": [],
       "kinds": [],
       "width": 542,
-      "height": 388,
+      "height": 382,
       "path": "outputs/1.html"
     },
     {
@@ -31,7 +31,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 203,
+      "width": 222,
       "height": 40,
       "path": "outputs/2.html"
     }

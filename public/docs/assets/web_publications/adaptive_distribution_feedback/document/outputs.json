@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-22T12:28:35.790Z",
+  "capturedAt": "2026-11-22T18:51:01.337Z",
   "documentName": "adaptive_distribution_feedback",
   "outputs": [
     {
@@ -35,7 +35,7 @@
       "kinds": [
         "plotly"
       ],
-      "width": 620,
+      "width": 612,
       "height": 263,
       "path": "outputs/2.html"
     },
@@ -45,7 +45,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 458,
+      "width": 452,
       "height": 45,
       "path": "outputs/3.html"
     }
