@@ -161,7 +161,7 @@ println("adults: " + p.filter { age >= 18 }.name.toList())
 Delete the `//%-` and the box stops compiling: with a single fragment, the schema is written only after that fragment has been compiled, so `Peach` does not exist yet.
 
 ??? aside "Why: setup blocks re-run before each fragment"
-    Field re-runs a box's setup blocks (preamble, introduction, attic) before every `//%-` fragment, not once per execution: `runLaunchSetupBlocks(box)` sits *inside* the fragment loop (`execution.kt:1427#withContext(Runloop.runLoop.main) { runLaunchSetupBlocks(box) }`, defined at `execution.kt:1539#private suspend fun runLaunchSetupBlocks(box: Box): Boolean {`). A `typed()` call in the first fragment has already written its schema to the preamble, and that preamble re-compiles before the second fragment runs, so the schema is available.
+    Field re-runs a box's setup blocks (preamble, introduction, attic) before every `//%-` fragment, not once per execution: `runLaunchSetupBlocks(box)` sits *inside* the fragment loop (`execution.kt:1760#withContext(Runloop.runLoop.main) { runLaunchSetupBlocks(box) { setupFailure = it } }`, defined at `execution.kt:1888#private suspend fun runLaunchSetupBlocks(box: Box, onFailure: (SetupFailure) -> Unit = {}): Boolean {`). A `typed()` call in the first fragment has already written its schema to the preamble, and that preamble re-compiles before the second fragment runs, so the schema is available.
 
 Once it has run, the second half is independently re-runnable: select those lines, run them as often as you like, and the frame is never reloaded.
 
