@@ -154,6 +154,9 @@
 }
 
 .text-frame-review {
+    position: fixed;
+    inset: auto;
+    margin: 0;
     box-sizing: border-box;
     width: min(660px, calc(100vw - 36px));
     max-height: min(78vh, 780px);
@@ -166,7 +169,7 @@
     font: 13px/1.5 var(--field-font, monospace);
 }
 .text-frame-review[open] { display: flex; flex-direction: column; }
-.text-frame-review::backdrop { background: rgb(0 0 0 / 70%); }
+.text-frame-review::backdrop { background: rgb(0 0 0 / 22%); }
 .text-frame-review > header {
     display: flex;
     align-items: center;
@@ -177,9 +180,32 @@
     border-bottom: 1px solid #333;
 }
 .text-frame-review h2 { font: inherit; font-weight: 700; margin: 0; overflow-wrap: anywhere; }
-.text-frame-review-list { overflow: auto; overscroll-behavior: contain; }
+.text-frame-review-list { min-height: 0; overflow: auto; overscroll-behavior: contain; }
 .text-frame-review-change { padding: 12px 16px; border-bottom: 1px solid #292929; }
 .text-frame-review-change:last-child { border-bottom: 0; }
+.text-frame-review-change.is-active { background: #131313; box-shadow: inset 2px 0 #4aa7c4; }
+.text-frame-review-card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.text-frame-review-card-heading .text-frame-review-reason { margin: 2px 0 0; }
+.text-frame-review-card-heading .text-frame-review-actions { flex: none; }
+.text-frame-review .text-frame-review-icon { display: grid; place-items: center; width: 26px; height: 26px; padding: 0; }
+.text-frame-review-diff :is(del, ins):focus-visible { outline: 1px solid currentColor; }
+.text-frame-review-context {
+    box-sizing: border-box;
+    flex: none;
+    height: 4.75em;
+    overflow: auto;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+    padding: 7px 16px;
+    color: #b9b9b9;
+    border-top: 1px solid #393939;
+}
+.text-frame-review-context mark { color: #dcf7ff; background: #63383d; }
+.text-frame-review-context .text-frame-review-new-context { color: #d9f5dd; background: #285133; }
+.text-frame-review-projecting > .text-frame-preview:not(.text-frame-review-projection) { visibility: hidden; }
+.text-frame-review-projection { position: absolute; inset: 0; pointer-events: none; }
+::highlight(field-text-frame-review) { color: #fff4f4; background-color: #63383d; }
+::highlight(field-text-frame-review-insert) { color: #eaffea; background-color: #285b37; }
 .text-frame-review-diff { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0 0 8px; }
 .text-frame-review-diff del { color: #ba8282; background: #2b1717; text-decoration: line-through; }
 .text-frame-review-diff ins { color: #9fcaa4; background: #142719; text-decoration: none; }

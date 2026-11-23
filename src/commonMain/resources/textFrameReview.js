@@ -1,4 +1,5 @@
 import {clearReplyHandler, sendWithReply} from './afield.mjs';
+import {domRangeForMarkdown} from './markdownTextRuns.js';
 
 function element(tag, text = '', className = '') {
     const result = document.createElement(tag);
@@ -31,30 +32,135 @@ function review(uid, action, id, comment) {
     });
 }
 
-function diffPreview({original, replacement}) {
+function diffParts({original, replacement}) {
     const before = Array.from(original), after = Array.from(replacement);
     let prefix = 0, suffix = 0;
     const length = Math.min(before.length, after.length);
     while (prefix < length && before[prefix] === after[prefix]) prefix++;
     while (suffix < length - prefix && before.at(-1 - suffix) === after.at(-1 - suffix)) suffix++;
+    return {
+        prefix: before.slice(0, prefix).join(''),
+        removed: before.slice(prefix, before.length - suffix).join(''),
+        added: after.slice(prefix, after.length - suffix).join(''),
+        suffix: suffix ? before.slice(-suffix).join('') : '',
+    };
+}
+
+function diffPreview(change) {
+    const {prefix, removed, added, suffix} = diffParts(change);
     const result = element('p', '', 'text-frame-review-diff');
-    result.append(before.slice(0, prefix).join(''));
-    if (prefix + suffix < before.length) result.append(element('del', before.slice(prefix, before.length - suffix).join('')));
-    if (prefix + suffix < after.length) result.append(element('ins', after.slice(prefix, after.length - suffix).join('')));
-    if (suffix) result.append(before.slice(-suffix).join(''));
+    result.append(prefix);
+    for (const [tag, text] of [['del', removed], ['ins', added]]) {
+        if (!text) continue;
+        const part = element(tag, text);
+        if (pending(change) && change.start != null) {
+            part.tabIndex = 0;
+            part.dataset.suggestion = change.id;
+            part.dataset.control = tag;
+        }
+        result.append(part);
+    }
+    result.append(suffix);
     return result;
+}
+
+const actionIcons = {
+    Accept: '<path d="m3 8 3 3 7-7"/>',
+    Reject: '<path d="m4 4 8 8m0-8-8 8"/>',
+    Comment: '<path d="M3 3h10v7H7l-4 3z"/>',
+};
+
+function contextExcerpt(text, start, end, mode) {
+    const preceding = text.slice(0, start);
+    const paragraphStart = preceding.lastIndexOf('\n\n');
+    const following = text.indexOf('\n\n', end);
+    const paragraphFrom = paragraphStart < 0 ? 0 : paragraphStart + 2;
+    const paragraphTo = following < 0 ? text.length : following;
+    const startLimit = Math.max(paragraphFrom, start - 84);
+    const endLimit = Math.min(paragraphTo, end + 84);
+    const clip = text.slice(start, Math.min(end, start + 100)) + (end - start > 100 ? '…' : '');
+    const marker = element('mark', clip, mode === 'insert' ? 'text-frame-review-new-context' : '');
+    const before = (startLimit > paragraphFrom ? '…' : '') + text.slice(startLimit, start);
+    const after = text.slice(end, endLimit) + (endLimit < paragraphTo ? '…' : '');
+    return [before, marker, after];
 }
 
 const pending = change => !change.status || change.status === 'pending';
 
-export function mountTextFrameReview(box, prepare) {
-    let changes = [], seen, dialog, list, error, rejectAll, busy = false;
+export function mountTextFrameReview(box, prepare, source) {
+    let changes = [], seen, dialog, list, error, rejectAll, context, busy = false;
+    let hovered, focusedAt, preferFocus = false;
+    const sourceHighlight = 'field-text-frame-review';
+    const insertedHighlight = 'field-text-frame-review-insert';
+    function clearHighlight() {
+        window.CSS?.highlights?.delete(sourceHighlight);
+        window.CSS?.highlights?.delete(insertedHighlight);
+    }
     const drafts = new Map();
     const badge = button('Review edits', open);
     badge.className = 'text-frame-review-badge';
     badge.hidden = true;
     for (const event of ['pointerdown', 'mousedown', 'dblclick', 'contextmenu']) {
         badge.addEventListener(event, e => e.stopPropagation());
+    }
+
+    function updateContext() {
+        if (!dialog?.open) return;
+        const active = preferFocus ? focusedAt || hovered : hovered || focusedAt;
+        const change = changes.find(entry => entry.id === active?.id && pending(entry));
+        const {text, root} = source.read();
+        const start = change?.start;
+        const usable = start != null && text.startsWith(change.original, start);
+        for (const card of list.children) card.classList.toggle('is-active', usable && card.dataset.reviewId === change.id);
+        clearHighlight();
+        if (!usable) {
+            source.preview(null);
+            context.textContent = 'Hover or focus a change to see it in context.';
+            return;
+        }
+        const parts = diffParts(change);
+        const insertion = active.mode === 'insert' && parts.added.length > 0;
+        const end = start + change.original.length;
+        const markdown = insertion ? text.slice(0, start) + change.replacement + text.slice(end) : text;
+        const changed = insertion ? parts.added : parts.removed;
+        const from = changed ? start + parts.prefix.length : start;
+        const to = changed ? from + changed.length : end;
+        const preview = source.preview(insertion ? markdown : null);
+        const display = insertion ? preview : root;
+        const range = display && domRangeForMarkdown(display, from, to);
+        if (range && window.CSS?.highlights) window.CSS.highlights.set(insertion ? insertedHighlight : sourceHighlight, new Highlight(range));
+        context.replaceChildren(...contextExcerpt(markdown, from, to, insertion ? 'insert' : 'remove'));
+    }
+
+    function targetAt(node) {
+        const card = node?.closest?.('[data-review-id]');
+        if (!card || !list.contains(card)) return null;
+        return {id: card.dataset.reviewId, mode: node.closest('ins') ? 'insert' : 'source'};
+    }
+
+    function position() {
+        if (!dialog?.open) return;
+        const sourceBox = box.getBoundingClientRect();
+        const gutter = 18;
+        const left = Math.min(sourceBox.left, window.innerWidth);
+        const right = Math.max(sourceBox.right, 0);
+        const leftRoom = left - 2 * gutter;
+        const rightRoom = window.innerWidth - right - 2 * gutter;
+        const dockRight = rightRoom >= 540 || rightRoom >= leftRoom;
+        const room = dockRight ? rightRoom : leftRoom;
+        if (room >= 360) {
+            const width = Math.min(660, room);
+            dialog.style.width = width + 'px';
+            dialog.style.left = (dockRight ? right + gutter : left - gutter - width) + 'px';
+            const top = Math.max(gutter, Math.min(sourceBox.top, window.innerHeight - dialog.offsetHeight - gutter));
+            dialog.style.top = top + 'px';
+            dialog.style.bottom = 'auto';
+        } else {
+            dialog.style.width = '';
+            dialog.style.left = Math.max(gutter, (window.innerWidth - dialog.offsetWidth) / 2) + 'px';
+            dialog.style.top = 'auto';
+            dialog.style.bottom = gutter + 'px';
+        }
     }
 
     async function submit(action, id = '', comment = '') {
@@ -94,10 +200,15 @@ export function mountTextFrameReview(box, prepare) {
         rejectAll.disabled = busy;
         const cards = [...remaining, ...changes.filter(change => !pending(change)).reverse()].map(change => {
             const card = element('section', '', 'text-frame-review-change');
+            card.dataset.reviewId = change.id;
+            const title = element('div', '', 'text-frame-review-card-heading');
+            const copy = element('div');
+            title.append(copy);
+            card.append(title);
             const state = pending(change) ? (change.start == null ? 'Source changed' : '') :
                 ({accepted: 'Accepted', rejected: 'Rejected', superseded: 'Superseded'}[change.status] || '');
-            if (state) card.append(element('div', state, 'text-frame-review-state'));
-            if (change.reason) card.append(element('p', change.reason, 'text-frame-review-reason'));
+            if (state) copy.append(element('div', state, 'text-frame-review-state'));
+            if (change.reason) copy.append(element('p', change.reason, 'text-frame-review-reason'));
             card.append(diffPreview(change));
             for (const comment of change.comments || []) {
                 card.append(element('p', comment, 'text-frame-review-comment'));
@@ -105,7 +216,11 @@ export function mountTextFrameReview(box, prepare) {
             if (readOnly) return card;
             const actions = element('div', '', 'text-frame-review-actions');
             function act(label, callback) {
-                const result = button(label, callback);
+                const result = button('', callback);
+                result.className = 'text-frame-review-icon';
+                result.title = label;
+                result.setAttribute('aria-label', label);
+                result.innerHTML = '<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + actionIcons[label] + '</svg>';
                 result.dataset.suggestion = change.id;
                 result.dataset.control = label;
                 return result;
@@ -138,7 +253,8 @@ export function mountTextFrameReview(box, prepare) {
                 drafts.set(change.id, comment.value);
                 comment.focus();
             }));
-            card.append(actions, form);
+            title.append(actions);
+            card.append(form);
             return card;
         });
         list.replaceChildren(...cards);
@@ -150,10 +266,13 @@ export function mountTextFrameReview(box, prepare) {
                 if (selection) replacement.setSelectionRange(...selection);
             }
         }
+        updateContext();
+        position();
     }
 
     function open() {
         if (dialog?.open) return;
+        source.open();
         dialog = element('dialog', '', 'text-frame-review');
         const title = element('h2', box.name ? 'Review edits · ' + box.name : 'Review edits');
         dialog.setAttribute('aria-label', title.textContent);
@@ -167,7 +286,19 @@ export function mountTextFrameReview(box, prepare) {
         error = element('div', '', 'text-frame-review-error');
         error.setAttribute('role', 'status');
         list = element('div', '', 'text-frame-review-list');
-        dialog.append(header, error, list);
+        context = element('div', '', 'text-frame-review-context');
+        function pointAt(node) {
+            const next = targetAt(node);
+            if (!preferFocus && next?.id === hovered?.id && next?.mode === hovered?.mode) return;
+            hovered = next;
+            preferFocus = false;
+            updateContext();
+        }
+        list.addEventListener('pointerover', event => pointAt(event.target));
+        list.addEventListener('pointerout', event => pointAt(event.relatedTarget));
+        list.addEventListener('focusin', event => { focusedAt = targetAt(event.target); preferFocus = true; updateContext(); });
+        list.addEventListener('focusout', event => { focusedAt = targetAt(event.relatedTarget); updateContext(); });
+        dialog.append(header, error, list, context);
         for (const event of ['keydown', 'keyup', 'pointerdown', 'mousedown', 'dblclick', 'wheel']) {
             dialog.addEventListener(event, e => e.stopPropagation());
         }
@@ -175,15 +306,23 @@ export function mountTextFrameReview(box, prepare) {
         const opened = dialog;
         dialog.addEventListener('close', () => {
             opened.remove();
-            if (dialog === opened) dialog = undefined;
+            if (dialog !== opened) return;
+            window.removeEventListener('resize', position);
+            clearHighlight();
+            source.preview(null);
+            hovered = focusedAt = null;
+            preferFocus = false;
+            dialog = undefined;
         });
         document.body.append(dialog);
         dialog.showModal();
+        window.addEventListener('resize', position);
         render();
     }
 
     return {
         badge,
+        refreshSource: updateContext,
         sync() {
             if (seen === box.textFrameReview) return;
             seen = box.textFrameReview;

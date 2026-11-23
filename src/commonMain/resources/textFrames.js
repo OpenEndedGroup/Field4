@@ -588,6 +588,7 @@ function render(state) {
     if (!text.trim()) state.preview.textContent = 'Double-click to write';
     if (shownPassage?.source === state) updatePassageHighlight();
     refreshTransclusions();
+    state.review?.refreshSource();
     layout(state);
 }
 function layout(state) {
@@ -779,6 +780,32 @@ function mount(box) {
         flushTextFramePropertyEditor(box.uid);
         finish(state);
         return !state.composing && state.incoming === null;
+    }, {
+        open: () => finish(state),
+        read: () => ({
+            root: state.preview.hidden ? null : state.preview,
+            text: normalizeMarkdown(box.contents || ''),
+        }),
+        preview(markdown) {
+            let projection = state.reviewProjection;
+            if (markdown == null || state.preview.hidden) {
+                projection?.remove();
+                state.reviewProjection = null;
+                state.body.classList.remove('text-frame-review-projecting');
+                return null;
+            }
+            if (!projection) {
+                projection = state.reviewProjection = node('div', 'text-frame-preview text-frame-review-projection');
+                projection.dataset.textFrameStyle = state.styleId;
+                state.body.append(projection);
+            }
+            if (projection.reviewMarkdown !== markdown) {
+                renderFieldMarkdown(projection, markdown, markdownOptions(state, true));
+                projection.reviewMarkdown = markdown;
+            }
+            state.body.classList.add('text-frame-review-projecting');
+            return projection;
+        },
     });
     state.passageBadge = button('', () => showPassage(state), 'text-frame-passage');
     state.passageBadge.hidden = true;
