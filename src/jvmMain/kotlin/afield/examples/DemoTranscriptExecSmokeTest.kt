@@ -642,6 +642,10 @@ object DemoTranscriptExecSmokeTest {
         "paint_canvas",
         "paint_fold_press", // CPU paint simulation; boxes stop with a message without the library
         "paint_blow_fingers", // the same, for blowing and viscous fingering
+        // Addressable strokes (2026-11-23): a creature kept as PaintStrokes records, edited by address with
+        // JSON ops, a pinned note answered, four frames from the same records. Pure CPU; without the
+        // paint library the records still build and the boxes say so and stop.
+        "addressable_paint_strokes",
         // Two pure-CPU boxes over the same paint canvas: one registers an agentExtension (paint tools,
         // context, commands, the canvas as branch state) and shows the bare canvas, the other adds a
         // scribble aiTool that paints on it. No model is called; without the paint library the Studio
