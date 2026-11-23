@@ -504,6 +504,44 @@ for the reusable renderer-parent pattern the docs runner uses.
 
 ---
 
+## Mounting a transcript under a box (a scene runner)
+
+`afield.tools.automation.TranscriptMount` puts a whole transcript into a live document as a
+namespaced subgraph, and takes it out again. That is what a gallery, a slideshow of transcripts or a
+scene runner needs: each scene is an ordinary transcript, mounted beneath the box that owns the
+renderer and torn down when the next one arrives.
+
+```kotlin
+import afield.tools.automation.TranscriptMount
+
+val runner = thisBox
+Thread {
+    val a = TranscriptMount.mount(runner, File("scene.yaml").readText(), prefix = "scene.a.")
+    println(a.uids)          // {ctx=scene.a.ctx, draw=scene.a.draw}: the transcript's names -> real uids
+    // … later
+    TranscriptMount.unmount(runner, "scene.a.", a)
+}.start()
+```
+
+- **Mount** reads the transcript from a string. Every box it creates gets the uid `prefix + name`,
+  wherever the transcript names it. Created boxes with no parent inside the transcript are connected
+  beneath the given parent *before* anything launches, so they inherit its context (a `renderer`, a
+  `stereo` target, any `prop`). `save` operations are dropped. The run result (`a.run`: applied,
+  errors, output) comes back with the uid map. A prefix that still has live boxes is refused.
+- **Unmount** stops every live box under the prefix, newest first, waits three frames for their
+  `.end { }` blocks, then deletes them. It also cleans up after a failed or partial mount. Creation
+  order comes from the `Mounted` you pass, else from the `mount_<prefix>` macro the document keeps.
+- Both run operations and wait for launches. Call them from a thread, as above, never from code on
+  the main loop: a launch they wait for needs that loop.
+- A mountable transcript refers to its siblings through properties and `fromContext`, never by uid.
+- The overloads taking a `documentPath` and a parent uid serve server and agent code.
+  `TranscriptMount.mounted(documentPath, prefix)` lists what is live under a prefix.
+
+`TranscriptMountTest` covers the renaming, the parent connections before the first launch, frame
+offsets, the teardown order and the prefix rules. A live run in a scratch document mounted two scenes
+in turn. The mounted root read the runner's `prop`, a second mount under the same prefix was refused,
+and unmount left no box behind.
+
 ## Reading and rewriting a user's saved macros
 
 Macros are documents' saved automations — a user can record or write them, and an agent
