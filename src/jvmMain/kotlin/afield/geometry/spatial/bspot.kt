@@ -189,6 +189,66 @@ fun matchPoints(
 }
 
 /**
+ * Assigns stable slots to an ordered loop of equal-size 2D point clouds.
+ *
+ * Each result array maps slot ID to input point index for that frame. Frame zero defines the
+ * slots, so its permutation is the identity. Apply the same permutation to every associated
+ * attribute. Supply each frame once and omit a duplicate frame at the loop endpoint.
+ *
+ * Consecutive BSP-OT matches give the initial tracks. [sweeps] passes refine the correspondence
+ * using both temporal neighbours, including the wrap. [seamWeight] weights the last-to-first
+ * squared displacement relative to other steps. More emphasis can shift motion to other frames.
+ * This is an approximate geometric assignment.
+ */
+fun matchPointLoop(
+    frames: List<List<Vec2>>,
+    sweeps: Int = 8,
+    seamWeight: Double = 8.0,
+    options: BspOt2D.Options = BspOt2D.Options(trees = 4),
+): List<IntArray> {
+    require(frames.size >= 2) { "A point loop needs at least two frames" }
+    require(sweeps >= 0) { "sweeps must be nonnegative" }
+    require(seamWeight.isFinite() && seamWeight > 0.0) { "seamWeight must be finite and positive" }
+    val count = frames.first().size
+    require(frames.all { frame -> frame.size == count && frame.all { it.x.isFinite() && it.y.isFinite() } }) {
+        "Point loop frames must have the same count and finite coordinates"
+    }
+
+    val x = frames.map { frame -> FloatArray(count) { frame[it].x } }
+    val y = frames.map { frame -> FloatArray(count) { frame[it].y } }
+    val order = List(frames.size) { IntArray(count) { it } }
+    val fromX = FloatArray(count)
+    val fromY = FloatArray(count)
+    for (f in 1..frames.lastIndex) {
+        for (id in 0 until count) {
+            fromX[id] = x[f - 1][order[f - 1][id]]
+            fromY[id] = y[f - 1][order[f - 1][id]]
+        }
+        BspOt2D.match(fromX, fromY, x[f], y[f], options, order[f]).targetOfSource.copyInto(order[f])
+    }
+    if (frames.size == 2) return order
+
+    repeat(sweeps) { pass ->
+        val frameOrder = if (pass % 2 == 0) frames.lastIndex downTo 1 else 1..frames.lastIndex
+        for (f in frameOrder) {
+            val prev = f - 1
+            val next = (f + 1) % frames.size
+            val nextWeight = if (next == 0) seamWeight else 1.0
+            val left = 1.0 / (1.0 + nextWeight)
+            val right = nextWeight / (1.0 + nextWeight)
+            for (id in 0 until count) {
+                val a = order[prev][id]
+                val b = order[next][id]
+                fromX[id] = (left * x[prev][a] + right * x[next][b]).toFloat()
+                fromY[id] = (left * y[prev][a] + right * y[next][b]).toFloat()
+            }
+            BspOt2D.match(fromX, fromY, x[f], y[f], options, order[f]).targetOfSource.copyInto(order[f])
+        }
+    }
+    return order
+}
+
+/**
  * Equal-cardinality, equal-mass 2D BSP-OT with squared Euclidean cost: median BSP proposals split
  * along Gaussian-guided or random directions, merged by alternating cycles and improving two-point
  * swaps.
