@@ -1,0 +1,160 @@
+name: reading_pointing
+description: Point at a reading diagram with the mouse over the desktop stereo mirror, or a controller in a headset. The hovered run, stroke or dot stays bright and the rest dims; a pick reports the character, the path fraction and what the scene attached there.
+operations:
+- create:
+    box: pick_context
+    name: 1 · Stereo context
+    frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
+    properties:
+      code: |
+        import afield.graphics.vulkan.util.Options
+        
+        // Set BEFORE the first renderer in this Field JVM; switching modes needs a fresh JVM.
+        val headsetMode = false // true for OpenXR (WiVRn, CloudXR); false for the desktop stereo mirror
+        Options.enableVR = headsetMode
+        if (headsetMode) Options.validateOpenXR = false
+        prop<Window>(window) = Window("pointing at a reading diagram", initialDimensions = Rect(60.0, 60.0, 1280.0, 900.0))
+        prop<Renderer>(renderer) = Renderer(window)
+        val ownedRenderer = renderer
+        if (headsetMode) {
+            renderer.openXRHmdTarget = OpenXRHmdTarget(renderer)
+            repeat(8) { if (renderer.openXRHmdTarget?.hasEyeViews == false) renderer.render() }
+        }
+        prop<MultiviewStereoTarget>(stereo) = MultiviewStereoTarget(renderer, 1600, 1200, withDepth = false)
+        val ownedStereo = stereo
+        if (!headsetMode) {
+            stereo.stereoCamera.base.at = vec(0f, 0f, 2.35f)
+            stereo.stereoCamera.base.target = vec(0f, 0f, 0f)
+        }
+        stereo.layered.parameters.clearColor = vec(.003f, .005f, .010f, 1f)
+        prop<Boolean>(showStereoPair) = false
+        stereo.mirrorToScreen(name = "pointing-preview", stereoPair = { showStereoPair })
+        println("context ready: " + stereo.eyeWidth + " x " + stereo.eyeHeight + " per eye")
+        loop { frame() }
+            .end {
+                ownedRenderer.renderList.preTargets.remove("stereo-multiview", ownedStereo)
+                ownedRenderer.cleanup()
+            }
+- create:
+    box: pick_scene
+    name: 2 · Annotated diagram
+    frame: { x: 40.0, y: 420.0, w: 300.0, h: 100.0 }
+    properties:
+      code: |
+        import afield.graphics.scene.reading.*
+        
+        // A reading diagram whose words and marks carry what they stand for. Picking hands it back:
+        // properties on items, annotations on character ranges (innermost first).
+        val graph = readingDiagram {
+            val top = point("top", 0, .16, pinned = true)
+            val bottom = point("bottom", 0, -.12, pinned = true)
+            val sum = text("sum", "1 + 3 + 5 + 7 = 4 × 4", top)
+            sum.all.annotate("the whole identity")
+            for (odd in listOf("1", "3", "5", "7")) sum.word(odd).annotate("the odd number " + odd)
+            sum.span("4 × 4").annotate("the square it makes")
+            val gloss = text("gloss", "odd numbers wrap a square", bottom)
+            gloss.word("odd").annotate("each term is 2i + 1")
+            gloss.word("square").annotate("n × n")
+            val turn = arc("turn", sum.word("7").below.offset(y = -.03f), gloss.word("square").above.offset(y = .02f), rise = -.06f) {
+                width = .0015f
+                arrow = .012f
+            }
+            endpointDots(turn)
+            dot("bead", turn.at(.5f)) { radius = .006f }
+        }
+        graph.path("turn").properties["says"] = "the last gnomon completes the square"
+        graph.dot("bead").properties["says"] = "halfway"
+        prop<ReadingDiagramPlayer>(sumPlayer) =
+            ReadingDiagramPlayer.prepare(graph, Typefaces.named("Serif", 100), "field-slug".file, diagramScore(graph, 20.0) {})
+        sumPlayer.gravity = 0f
+        sumPlayer.wind = 0f
+        println("scene ready: " + graph.texts.size + " runs, " + graph.paths.size + " paths, " + graph.dots.size + " dots")
+- create:
+    box: pick_drawing
+    name: 3 · Drawing
+    frame: { x: 40.0, y: 800.0, w: 300.0, h: 100.0 }
+    properties:
+      code: |
+        import afield.graphics.scene.reading.*
+        
+        prop<StereoDiagramRenderer>(drawing) = StereoDiagramRenderer(renderer, stereo, sumPlayer)
+        val ownedDrawing = drawing
+        println("drawing ready")
+        loop {
+            renderer.windows.forEach { it.pollEvents() }
+            renderer.render()
+            frame()
+        }
+            .end { ownedDrawing.close() }
+- create:
+    box: pick_pointing
+    name: 4 · Pointing
+    frame: { x: 640.0, y: 800.0, w: 300.0, h: 100.0 }
+    properties:
+      code: |
+        import afield.graphics.scene.reading.*
+        import afield.graphics.interaction.*
+        import afield.graphics.vulkan.util.WindowPointer
+        
+        // Point at the reading space: the mouse over the desktop mirror, or the right controller in a headset.
+        // The hovered item stays bright and everything else dims; a click prints what was clicked.
+        val pointingDrawing = drawing
+        val pointingPlayer = sumPlayer
+        val pointingMouse = stereo.mirrorPointer(WindowPointer(window, "reading-pointer"), stereoPair = { showStereoPair })
+        val pointingController = stereo.pointer()
+        val pointing = DiagramPointerInteraction({ ray -> pointingDrawing.pick(ray, pointingPlayer) })
+        val pointingOverride = arrayOfNulls<Pointer>(1) // a fixed pointer for captures and tests; empty uses the device
+        val pointingLog = mutableListOf<String>()
+        val dimmed = HashMap<DiagramItem, Float>()
+        fun restoreDimmed() {
+            for ((item, alpha) in dimmed) when (item) {
+                is DiagramText -> item.color = Vector4f(item.color).apply { w = alpha }
+                is DiagramPath -> item.color = Vector4f(item.color).apply { w = alpha }
+                is DiagramDot -> item.color = Vector4f(item.color).apply { w = alpha }
+                else -> {}
+            }
+            dimmed.clear()
+        }
+        fun dimAllBut(keep: DiagramItem) {
+            val d = pointingPlayer.diagram
+            for (item in d.texts + d.paths + d.dots) if (item !== keep) {
+                val c = when (item) { is DiagramText -> item.color; is DiagramPath -> item.color; is DiagramDot -> item.color; else -> null } ?: continue
+                dimmed[item] = c.w
+                val faint = Vector4f(c).apply { w *= .3f }
+                when (item) { is DiagramText -> item.color = faint; is DiagramPath -> item.color = faint; is DiagramDot -> item.color = faint; else -> {} }
+            }
+        }
+        var pointingLit: DiagramItem? = null
+        val previousPointingUpdate = pointingDrawing.beforeUpdate
+        val pointingUpdate: () -> Unit = {
+            previousPointingUpdate()
+            val device = pointingOverride[0] ?: if (renderer.openXRHmdTarget != null) pointingController else pointingMouse
+            pointing.update(device.sample())
+            val over = pointing.hover?.item
+            if (over !== pointingLit) {
+                restoreDimmed()
+                if (over != null) dimAllBut(over)
+                pointingLit = over
+                pointingLog += "hover " + (pointing.hover?.describe() ?: "nothing")
+            }
+            if (pointing.justReleased) pointingLog += "click " + (pointing.hover?.describe() ?: "nothing")
+        }
+        pointingDrawing.beforeUpdate = pointingUpdate
+        println("pointing ready: mouse over the mirror, or the right controller in a headset")
+        
+        loop { frame() }
+            .end {
+                restoreDimmed()
+                if (pointingDrawing.beforeUpdate === pointingUpdate) pointingDrawing.beforeUpdate = previousPointingUpdate
+            }
+- connect: { parent: pick_context, child: pick_scene }
+- connect: { parent: pick_scene, child: pick_drawing }
+- connect: { parent: pick_drawing, child: pick_pointing }
+- launch: { box: pick_context }
+- await: { wait: pending }
+- launch: { box: pick_scene }
+- await: { wait: pending }
+- launch: { box: pick_drawing }
+- await: { wait: pending }
+- launch: { box: pick_pointing }
+- await: { wait: pending }

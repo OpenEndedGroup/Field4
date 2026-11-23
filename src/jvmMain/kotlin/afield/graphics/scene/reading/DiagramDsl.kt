@@ -7,7 +7,20 @@ import afield.math.linalg.*
 @DslMarker annotation class ReadingDsl
 
 /** Every visible item and physics point has a stable name for scoring and inspection. */
-sealed class DiagramItem(val id: String, internal val owner: Any)
+sealed class DiagramItem(val id: String, internal val owner: Any) {
+    /**
+     * Whatever a scene wants to say about this item — where it came from, what it stands for, where
+     * following it leads. Drawing ignores it; a pick ([DiagramFrame.pick]) hands it back.
+     */
+    val properties: MutableMap<String, Any?> = linkedMapOf()
+}
+
+/** A value attached to characters `[start, endExclusive)` of a [DiagramText]; see [DiagramTextSpan.annotate]. */
+data class DiagramTextAnnotation(val start: Int, val endExclusive: Int, val value: Any) {
+    val length get() = endExclusive - start
+
+    operator fun contains(index: Int) = index in start until endExclusive
+}
 
 class DiagramAnchor
 internal constructor(internal val owner: Any, internal val resolve: (DiagramFrame) -> Vector3f) {
@@ -39,6 +52,14 @@ internal constructor(id: String, owner: Any, val text: String, val at: DiagramAn
     var blurCapacity = 0f
         set(value) { require(value.isFinite() && value >= 0f); field = value }
     internal var dropCapDefinition: DiagramDropCap? = null
+    internal val annotationList = ArrayList<DiagramTextAnnotation>()
+
+    /** Values attached to character ranges with [DiagramTextSpan.annotate], in the order they were added. */
+    val annotations: List<DiagramTextAnnotation> get() = annotationList
+
+    /** The annotations covering character [index], innermost (shortest) first. */
+    fun annotationsAt(index: Int): List<DiagramTextAnnotation> =
+        annotationList.filter { index in it }.sortedBy { it.length }
 
     /** Reserve an ink-fitted opening initial across authored lines. Preparation-time typography. */
     fun dropCap(
@@ -183,6 +204,14 @@ internal constructor(id: String, owner: Any, val text: String, val at: DiagramAn
 
 class DiagramTextSpan
 internal constructor(val run: DiagramText, val start: Int, val endExclusive: Int) {
+    /**
+     * Attach [value] to these characters. A pick that lands on one of them reports it, innermost
+     * first, so nested spans — a subterm inside a formula — resolve to the most specific value.
+     */
+    fun annotate(value: Any): DiagramTextSpan = apply {
+        run.annotationList += DiagramTextAnnotation(start, endExclusive, value)
+    }
+
     /** Apply a preparation-time font/style override; later overlapping styles take precedence. */
     fun style(block: DiagramTypography.() -> Unit): DiagramTextSpan = apply {
         run.styles.add(this to DiagramTypography().apply(block))
