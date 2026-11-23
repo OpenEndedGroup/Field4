@@ -5666,6 +5666,18 @@ Vulkan and the Slug helper are required.
 
 [Open →](offline.html?file=assets/agent_transcripts/reading_pointing/metadata.edn)
 
+### reading_morph
+
+Morph one line of text into another by key, as Manim's `TransformMatching` does, but with keys the
+scene supplies rather than guessed from the strings. `textMorph` lays out both lines whole and cuts
+each into keyed pieces. A piece whose key is on both sides glides from its characters in the first
+line to its characters in the second, arcing up when it travels right and down when it travels left.
+A piece with no partner fades where it stands. Here `a × (b + c)` distributes into `a × b + a × c`:
+the brackets fade and a second `a ×` arrives. Then `c` and `a` change places and pass either side of
+each other. Vulkan and the Slug helper are required.
+
+[Open →](offline.html?file=assets/agent_transcripts/reading_morph/metadata.edn)
+
 ### video_one_vr
 
 [A stereo movie in a room](stereo_video.md): play the bundled ten-bit demo, or choose a local

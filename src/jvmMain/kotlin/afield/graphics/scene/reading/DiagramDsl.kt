@@ -333,6 +333,7 @@ internal constructor(
     val groups: List<DiagramGroup>,
     val textFrames: List<DiagramTextFrame>,
     val textFrusta: List<DiagramTextFrustum> = emptyList(),
+    val textMorphs: List<DiagramTextMorph> = emptyList(),
 ) {
     val connections: List<DiagramConnection> = paths.mapNotNull { it.connection }
 
@@ -354,6 +355,8 @@ internal constructor(
     fun textFrame(id: String) = textFrames.single { it.path.id == id }
 
     fun textFrustum(id: String) = textFrusta.single { it.id == id }
+
+    fun textMorph(id: String) = textMorphs.single { it.id == id }
 }
 
 @ReadingDsl
@@ -368,6 +371,7 @@ class ReadingDiagramBuilder internal constructor() {
     private val groups = ArrayList<DiagramGroup>()
     internal val textFrames = ArrayList<DiagramTextFrame>()
     internal val textFrusta = ArrayList<DiagramTextFrustum>()
+    internal val textMorphs = ArrayList<DiagramTextMorph>()
 
     private fun name(id: String) {
         require(id.isNotBlank() && names.add(id)) { "Duplicate or blank diagram name '$id'" }
@@ -524,6 +528,7 @@ class ReadingDiagramBuilder internal constructor() {
             groups.toList(),
             textFrames.toList(),
             textFrusta.toList(),
+            textMorphs.toList(),
         )
     }
 }
