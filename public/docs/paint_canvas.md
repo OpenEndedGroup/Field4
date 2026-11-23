@@ -636,6 +636,244 @@ display("main", canvas.png())
 brushes this way, so a conversation rewound to an earlier request gets its brushes back as dirty as
 they were.
 
+## Strokes kept as data
+
+A canvas remembers paint, not strokes: once a stroke is laid it is pigment on the canvas, and
+the only way to change it is to paint over it. `PaintStrokes` keeps the strokes instead. Each one
+is a record (its path, pressure, brush, width and colour) with an address, `s1`, `s2`, ..., that
+never changes. The picture is painted from the list whenever you ask for it, so changing a stroke
+means changing its record and painting again. This is the method of
+[Klad](https://github.com/klad-app/klad), a painting app built so that an agent can read and edit
+the strokes; the simulation underneath is still this page's canvas.
+
+This box paints a small creature stroke by stroke. Each `add` returns the stroke's address, and
+`group` puts strokes under a name that addresses all of them at once:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/strokes_creature.png" alt="a cream canvas with a round green creature in the middle, its body made of eleven horizontal hog-flat strokes in two alternating olive greens, with five dark green filbert leaves sprouting from the top of its head, two pale eyes with dark pupils, a thin brown smiling mouth, a faint pink smudge on its left cheek and two brown legs" wait="20" capture="box" open-outputs="true" padding="20" requires="paint" name="strokes_creature" embed=true}
+:::static
+// points around an ellipse from angle a0 to a1 (radians), as [x0, y0, x1, y1, ...]
+fun arc(cx: Double, cy: Double, rx: Double, ry: Double, a0: Double, a1: Double, n: Int = 24) =
+    (0..n).flatMap { val a = a0 + (a1 - a0) * it / n; listOf(cx + rx * cos(a), cy + ry * sin(a)) }
+
+val sheet = PaintStrokes(700, aspect = 1.4, seed = 3)
+// the body: rows of a hog flat, filling an ellipse
+for (i in -5..5) {
+    val y = 400.0 + i * 26
+    val w = 190 * sqrt(1 - (i / 6.0).pow(2))
+    sheet.add(listOf(500 - w, y, 500 + w, y + 6), color = if (i % 2 == 0) "#8a9a3a" else "#a0a848", brush = BrushKind.HogFlat, width = 34.0, group = "body")
+}
+// legs, and leaves sprouting from the head
+sheet.add(listOf(430.0, 540.0, 420.0, 640.0), color = "#4a3a20", brush = BrushKind.HogFlat, width = 26.0, group = "legs")
+sheet.add(listOf(570.0, 540.0, 585.0, 640.0), color = "#4a3a20", brush = BrushKind.HogFlat, width = 26.0, group = "legs")
+for (a in listOf(-2.3, -1.9, -1.57, -1.25, -0.85)) {
+    val x = 500 + 60 * cos(a); val y = 290 + 30 * sin(a)
+    sheet.add(listOf(x, y, x + 60 * cos(a) - 12, y + 60 * sin(a), x + 120 * cos(a), y + 110 * sin(a)),
+        color = "#2f6a2a", brush = BrushKind.Filbert, width = 30.0, pressure = 0.9 to 0.4, group = "leaves")
+}
+// eyes, a smiling mouth and a pink smudge on one cheek
+for (x in listOf(440.0, 560.0)) {
+    sheet.add(listOf(x - 8, 360.0, x + 8, 362.0), color = "#f4f0e4", width = 44.0, pressure = 1.0 to 1.0, group = "eyes")
+    sheet.add(listOf(x, 364.0, x + 8, 365.0), color = "#1a1a1a", width = 16.0, pressure = 1.0 to 1.0, group = "eyes")
+}
+sheet.add(arc(500.0, 420.0, 70.0, 45.0, 0.4, PI - 0.4), color = "#3a1a10", width = 10.0, group = "mouth")
+sheet.add(listOf(400.0, 440.0, 410.0, 445.0), color = "#e07080", brush = BrushKind.Badger, width = 50.0, hiding = 0.6, group = "smudge")
+
+display("main", sheet.png())
+println(sheet.describe())
+```
+
+`sheet.describe()` lists every stroke with its address, group, colour, brush and bounds, which
+is what an agent reads before it edits:
+
+```text
+s1 @body #a0a848 HogFlat w34 bounds [377, 253, 622, 293]
+...
+s23 @mouth #3a1a10 Round w10 bounds [430, 432, 569, 470]
+s24 @smudge #e07080 Badger w50 bounds [375, 415, 435, 470]
+```
+
+### Editing by address
+
+`apply` takes a batch of edits as JSON, the form an agent writes them in. Each edit names an
+`op` and the strokes it acts `at`: an address, `@group`, `*` for all, or several separated by
+commas. This batch turns the leaves orange, bends the middle of the mouth up 45 units so the smile
+becomes a frown, and moves the smudge across to the other cheek. `copy()` keeps the original to
+compare with:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/strokes_edited.png" alt="two copies of the green creature side by side. On the left it is as first painted, with green leaves, a smile and a pink smudge on its left cheek. On the right its leaves are burnt orange, its mouth is a downturned frown, and the pink smudge sits on its right cheek, blended into the green body there; everything else is the same" wait="20" capture="box" open-outputs="true" padding="20" requires="paint" name="strokes_edited" embed=true}
+:::static
+:::fold the creature from the first example
+// points around an ellipse from angle a0 to a1 (radians), as [x0, y0, x1, y1, ...]
+fun arc(cx: Double, cy: Double, rx: Double, ry: Double, a0: Double, a1: Double, n: Int = 24) =
+    (0..n).flatMap { val a = a0 + (a1 - a0) * it / n; listOf(cx + rx * cos(a), cy + ry * sin(a)) }
+
+val sheet = PaintStrokes(700, aspect = 1.4, seed = 3)
+// the body: rows of a hog flat, filling an ellipse
+for (i in -5..5) {
+    val y = 400.0 + i * 26
+    val w = 190 * sqrt(1 - (i / 6.0).pow(2))
+    sheet.add(listOf(500 - w, y, 500 + w, y + 6), color = if (i % 2 == 0) "#8a9a3a" else "#a0a848", brush = BrushKind.HogFlat, width = 34.0, group = "body")
+}
+// legs, and leaves sprouting from the head
+sheet.add(listOf(430.0, 540.0, 420.0, 640.0), color = "#4a3a20", brush = BrushKind.HogFlat, width = 26.0, group = "legs")
+sheet.add(listOf(570.0, 540.0, 585.0, 640.0), color = "#4a3a20", brush = BrushKind.HogFlat, width = 26.0, group = "legs")
+for (a in listOf(-2.3, -1.9, -1.57, -1.25, -0.85)) {
+    val x = 500 + 60 * cos(a); val y = 290 + 30 * sin(a)
+    sheet.add(listOf(x, y, x + 60 * cos(a) - 12, y + 60 * sin(a), x + 120 * cos(a), y + 110 * sin(a)),
+        color = "#2f6a2a", brush = BrushKind.Filbert, width = 30.0, pressure = 0.9 to 0.4, group = "leaves")
+}
+// eyes, a smiling mouth and a pink smudge on one cheek
+for (x in listOf(440.0, 560.0)) {
+    sheet.add(listOf(x - 8, 360.0, x + 8, 362.0), color = "#f4f0e4", width = 44.0, pressure = 1.0 to 1.0, group = "eyes")
+    sheet.add(listOf(x, 364.0, x + 8, 365.0), color = "#1a1a1a", width = 16.0, pressure = 1.0 to 1.0, group = "eyes")
+}
+sheet.add(arc(500.0, 420.0, 70.0, 45.0, 0.4, PI - 0.4), color = "#3a1a10", width = 10.0, group = "mouth")
+sheet.add(listOf(400.0, 440.0, 410.0, 445.0), color = "#e07080", brush = BrushKind.Badger, width = 50.0, hiding = 0.6, group = "smudge")
+:::endfold
+val edited = sheet.copy()
+edited.apply("""[
+  {"op": "recolor", "at": "@leaves", "color": "#c0602a"},
+  {"op": "bend", "at": "@mouth", "dy": -45},
+  {"op": "move", "at": "@smudge", "dx": 200}
+]""")
+val before = sheet.render()
+val after = edited.render()
+// how much of the picture changed, and how much of that lies outside the edited strokes
+val a = before.render(); val b = after.render()
+val w = before.widthPx
+val touched = edited.select("@leaves, @mouth, @smudge").flatMap { listOf(sheet[it]!!.bounds(), edited[it]!!.bounds()) }
+fun inside(i: Int) = touched.any { r -> val x = (i % w) * 1000.0 / w; val y = (i / w) * 1000.0 / w; x in r[0] - 20..r[2] + 20 && y in r[1] - 20..r[3] + 20 }
+val changed = a.indices.filter { a[it] != b[it] }
+println("${changed.size} of ${a.size} pixels changed; ${changed.count { !inside(it) }} more than 20 units outside the edited strokes")
+display("main", pngRow(listOf(before, after)))
+```
+
+The ops are `recolor`, `restyle` (width, brush, hiding, pressure), `move`, `bend` (the middle of
+the path moves, the ends stay), `delete`, `hide` and `show`, `group`, `reorder` (a stroke's place
+in the painting order), `add`, and `pin` and `unpin` for notes. A batch is all or nothing: if one
+op fails, for an unknown address or a colour that is not `#rrggbb`, none of them is applied.
+Every batch, every `add` and every `pin` is one step of the history, and `undo()` and `redo()`
+walk it.
+
+Painting from the list is exact: the same records paint the same pixels every time, because each
+stroke gets a fresh brush and a seed taken from its address. An edit is not perfectly local,
+though, because the paint is wet. The smudge, painted last, is laid into the green body and picks
+some of it up, so where it lands it blends in differently from where it was. Of the 350,000 pixels in this
+picture, the edit changes about 14,500. The box prints how many of them lie more than 20 units
+outside the edited strokes, which is a handful at most: the edge of the smudge's Badger hairs. A
+stroke painted after an edited one, on top of it, would change as well, since it drags the new
+colour along with it.
+
+### Notes the agent reads
+
+A note pinned on the picture is how a person points at something. `pin(x, y, text)` puts one
+there, and `near(x, y)` gives the addresses of the strokes under it, nearest first; `describe()`
+starts with each note and those addresses. Here the note asks for more moss on the creature's
+right flank, and the batch that answers it, written out as an agent would send it, recolours
+the strokes under the note and adds a group of fan-brush moss strokes along that side:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/strokes_note.png" alt="two copies of the green creature. On the right, the five middle rows of its body are a deeper, fresher green and a column of small dark green fan-brush marks runs down its right edge; the leaves, eyes, mouth, legs and smudge are as on the left" wait="20" capture="box" open-outputs="true" padding="20" requires="paint" name="strokes_note" embed=true}
+:::static
+:::fold the creature from the first example
+// points around an ellipse from angle a0 to a1 (radians), as [x0, y0, x1, y1, ...]
+fun arc(cx: Double, cy: Double, rx: Double, ry: Double, a0: Double, a1: Double, n: Int = 24) =
+    (0..n).flatMap { val a = a0 + (a1 - a0) * it / n; listOf(cx + rx * cos(a), cy + ry * sin(a)) }
+
+val sheet = PaintStrokes(700, aspect = 1.4, seed = 3)
+// the body: rows of a hog flat, filling an ellipse
+for (i in -5..5) {
+    val y = 400.0 + i * 26
+    val w = 190 * sqrt(1 - (i / 6.0).pow(2))
+    sheet.add(listOf(500 - w, y, 500 + w, y + 6), color = if (i % 2 == 0) "#8a9a3a" else "#a0a848", brush = BrushKind.HogFlat, width = 34.0, group = "body")
+}
+// legs, and leaves sprouting from the head
+sheet.add(listOf(430.0, 540.0, 420.0, 640.0), color = "#4a3a20", brush = BrushKind.HogFlat, width = 26.0, group = "legs")
+sheet.add(listOf(570.0, 540.0, 585.0, 640.0), color = "#4a3a20", brush = BrushKind.HogFlat, width = 26.0, group = "legs")
+for (a in listOf(-2.3, -1.9, -1.57, -1.25, -0.85)) {
+    val x = 500 + 60 * cos(a); val y = 290 + 30 * sin(a)
+    sheet.add(listOf(x, y, x + 60 * cos(a) - 12, y + 60 * sin(a), x + 120 * cos(a), y + 110 * sin(a)),
+        color = "#2f6a2a", brush = BrushKind.Filbert, width = 30.0, pressure = 0.9 to 0.4, group = "leaves")
+}
+// eyes, a smiling mouth and a pink smudge on one cheek
+for (x in listOf(440.0, 560.0)) {
+    sheet.add(listOf(x - 8, 360.0, x + 8, 362.0), color = "#f4f0e4", width = 44.0, pressure = 1.0 to 1.0, group = "eyes")
+    sheet.add(listOf(x, 364.0, x + 8, 365.0), color = "#1a1a1a", width = 16.0, pressure = 1.0 to 1.0, group = "eyes")
+}
+sheet.add(arc(500.0, 420.0, 70.0, 45.0, 0.4, PI - 0.4), color = "#3a1a10", width = 10.0, group = "mouth")
+sheet.add(listOf(400.0, 440.0, 410.0, 445.0), color = "#e07080", brush = BrushKind.Badger, width = 50.0, hiding = 0.6, group = "smudge")
+:::endfold
+val original = sheet.copy()
+// the human pins a note; the agent reads it with the strokes under it
+sheet.pin(660.0, 430.0, "more moss on this side")
+println(sheet.describe().lines().first())
+
+// the batch the agent answers with: darken the strokes under the note, and add moss along that flank
+val under = sheet.near(660.0, 430.0, radius = 40.0)
+val moss = (0 until 9).map { k ->
+    val y = 330.0 + k * 22
+    val x = 640.0 + 40 * sqrt(1 - ((y - 420) / 120).pow(2))
+    """{"op": "add", "points": [$x, $y, ${x + 18}, ${y + 6}], "color": "#4a6a28", "brush": "Fan", "width": 28, "group": "moss"}"""
+}
+sheet.apply("""[{"op": "recolor", "at": "${under.joinToString(",")}", "color": "#6a8a30"}, ${moss.joinToString(",")}]""")
+println("recoloured ${under.joinToString(", ")}; added ${sheet.select("@moss").joinToString(", ")}")
+display("main", pngRow(listOf(original.render(), sheet.render())))
+```
+
+A body row is one stroke that runs right across the creature, so recolouring the strokes under
+the note recolours those rows all the way to the other cheek. What an agent can address is a
+stroke, the way the picture was painted.
+
+### Moving strokes over time
+
+Because every picture comes from the records, animation does not repaint anything by hand. Each
+frame is the same strokes with a few of them moved. Here one value per frame sways the leaves,
+lifts the legs and bends the mouth:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/strokes_sway.png" alt="four small frames of the green creature in a row. Its leaves lean right in the second frame and left in the fourth, its legs rise a little and its smile deepens in those two frames, and the first and third frames are the same" wait="20" capture="box" open-outputs="true" padding="20" requires="paint" name="strokes_sway" embed=true}
+:::static
+:::fold the creature from the first example
+// points around an ellipse from angle a0 to a1 (radians), as [x0, y0, x1, y1, ...]
+fun arc(cx: Double, cy: Double, rx: Double, ry: Double, a0: Double, a1: Double, n: Int = 24) =
+    (0..n).flatMap { val a = a0 + (a1 - a0) * it / n; listOf(cx + rx * cos(a), cy + ry * sin(a)) }
+
+val sheet = PaintStrokes(700, aspect = 1.4, seed = 3)
+// the body: rows of a hog flat, filling an ellipse
+for (i in -5..5) {
+    val y = 400.0 + i * 26
+    val w = 190 * sqrt(1 - (i / 6.0).pow(2))
+    sheet.add(listOf(500 - w, y, 500 + w, y + 6), color = if (i % 2 == 0) "#8a9a3a" else "#a0a848", brush = BrushKind.HogFlat, width = 34.0, group = "body")
+}
+// legs, and leaves sprouting from the head
+sheet.add(listOf(430.0, 540.0, 420.0, 640.0), color = "#4a3a20", brush = BrushKind.HogFlat, width = 26.0, group = "legs")
+sheet.add(listOf(570.0, 540.0, 585.0, 640.0), color = "#4a3a20", brush = BrushKind.HogFlat, width = 26.0, group = "legs")
+for (a in listOf(-2.3, -1.9, -1.57, -1.25, -0.85)) {
+    val x = 500 + 60 * cos(a); val y = 290 + 30 * sin(a)
+    sheet.add(listOf(x, y, x + 60 * cos(a) - 12, y + 60 * sin(a), x + 120 * cos(a), y + 110 * sin(a)),
+        color = "#2f6a2a", brush = BrushKind.Filbert, width = 30.0, pressure = 0.9 to 0.4, group = "leaves")
+}
+// eyes, a smiling mouth and a pink smudge on one cheek
+for (x in listOf(440.0, 560.0)) {
+    sheet.add(listOf(x - 8, 360.0, x + 8, 362.0), color = "#f4f0e4", width = 44.0, pressure = 1.0 to 1.0, group = "eyes")
+    sheet.add(listOf(x, 364.0, x + 8, 365.0), color = "#1a1a1a", width = 16.0, pressure = 1.0 to 1.0, group = "eyes")
+}
+sheet.add(arc(500.0, 420.0, 70.0, 45.0, 0.4, PI - 0.4), color = "#3a1a10", width = 10.0, group = "mouth")
+sheet.add(listOf(400.0, 440.0, 410.0, 445.0), color = "#e07080", brush = BrushKind.Badger, width = 50.0, hiding = 0.6, group = "smudge")
+:::endfold
+// one key per frame: how far the leaves sway and the legs step; every frame is the same records, moved
+val keys = listOf(0.0, 30.0, 0.0, -30.0)
+val frames = keys.map { k ->
+    val f = sheet.copy()
+    f.apply("""[{"op": "move", "at": "@leaves", "dx": $k},
+                {"op": "bend", "at": "@mouth", "dy": ${abs(k) / 2}},
+                {"op": "move", "at": "@legs", "dy": ${-abs(k) / 3}}]""")
+    f.render()
+}
+display("main", pngRow(frames))
+```
+
+`toJson()` writes the strokes and notes out, and `PaintStrokes.fromJson` reads them back, so the
+list can be saved, handed to an agent, or kept with the document.
+
 ## The canvas itself
 
 `PaintCanvas(widthPx, aspect, ground, groundColor, seed, view, sizeMm, engine)`:

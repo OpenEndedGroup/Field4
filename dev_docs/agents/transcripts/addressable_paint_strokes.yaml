@@ -1,0 +1,159 @@
+name: addressable_paint_strokes
+description: >
+  Paint strokes kept as data with addresses (afield.graphics.paint.PaintStrokes). The first box
+  paints a small creature as 24 addressed strokes in groups (body, legs, leaves, eyes, mouth,
+  smudge) and prints the list an agent reads. The second edits a copy by address with one JSON
+  batch: the leaves recoloured, the mouth bent into a frown, the smudge moved to the other cheek,
+  where it re-blends into the wet body; it prints how many pixels changed and how few lie outside
+  the edited strokes. The third pins a note ("more moss on this side") and answers it with a batch
+  aimed at the strokes under the note. The fourth sways the leaves and lifts the legs over four
+  frames, each painted from the same records. After Klad (https://github.com/klad-app/klad): its
+  method, none of its code. Needs the optional paint library (`./gradlew buildPaintNative`).
+docs:
+  - page: paint_canvas.md#strokes-kept-as-data
+    why: "Explains PaintStrokes, its addresses, ops, notes and history."
+operations:
+  - create:
+      box: paint_strokes_creature
+      name: "1 - A creature, stroke by stroke"
+      frame: { x: 80.0, y: 80.0, w: 340.0, h: 100.0 }
+      properties:
+        code: |
+          // points around an ellipse from angle a0 to a1 (radians), as [x0, y0, x1, y1, ...]
+          fun arc(cx: Double, cy: Double, rx: Double, ry: Double, a0: Double, a1: Double, n: Int = 24) =
+              (0..n).flatMap { val a = a0 + (a1 - a0) * it / n; listOf(cx + rx * cos(a), cy + ry * sin(a)) }
+
+          val sheet = PaintStrokes(700, aspect = 1.4, seed = 3)
+          // the body: rows of a hog flat, filling an ellipse
+          for (i in -5..5) {
+              val y = 400.0 + i * 26
+              val w = 190 * sqrt(1 - (i / 6.0).pow(2))
+              sheet.add(listOf(500 - w, y, 500 + w, y + 6), color = if (i % 2 == 0) "#8a9a3a" else "#a0a848", brush = BrushKind.HogFlat, width = 34.0, group = "body")
+          }
+          // legs, and leaves sprouting from the head
+          sheet.add(listOf(430.0, 540.0, 420.0, 640.0), color = "#4a3a20", brush = BrushKind.HogFlat, width = 26.0, group = "legs")
+          sheet.add(listOf(570.0, 540.0, 585.0, 640.0), color = "#4a3a20", brush = BrushKind.HogFlat, width = 26.0, group = "legs")
+          for (a in listOf(-2.3, -1.9, -1.57, -1.25, -0.85)) {
+              val x = 500 + 60 * cos(a); val y = 290 + 30 * sin(a)
+              sheet.add(listOf(x, y, x + 60 * cos(a) - 12, y + 60 * sin(a), x + 120 * cos(a), y + 110 * sin(a)),
+                  color = "#2f6a2a", brush = BrushKind.Filbert, width = 30.0, pressure = 0.9 to 0.4, group = "leaves")
+          }
+          // eyes, a smiling mouth and a pink smudge on one cheek
+          for (x in listOf(440.0, 560.0)) {
+              sheet.add(listOf(x - 8, 360.0, x + 8, 362.0), color = "#f4f0e4", width = 44.0, pressure = 1.0 to 1.0, group = "eyes")
+              sheet.add(listOf(x, 364.0, x + 8, 365.0), color = "#1a1a1a", width = 16.0, pressure = 1.0 to 1.0, group = "eyes")
+          }
+          sheet.add(arc(500.0, 420.0, 70.0, 45.0, 0.4, PI - 0.4), color = "#3a1a10", width = 10.0, group = "mouth")
+          sheet.add(listOf(400.0, 440.0, 410.0, 445.0), color = "#e07080", brush = BrushKind.Badger, width = 50.0, hiding = 0.6, group = "smudge")
+
+          // the records need no paint library; painting them does
+          if (PaintCanvas.isAvailable) display("main", sheet.png()) else markdown(PaintLibrary.describe())
+          println(sheet.describe())
+  - create:
+      box: paint_strokes_edit
+      name: "2 - Edited by address"
+      frame: { x: 80.0, y: 780.0, w: 340.0, h: 100.0 }
+      properties:
+        code: |
+          run {
+              if (!PaintCanvas.isAvailable) {
+                  markdown(PaintLibrary.describe())
+                  return@run
+              }
+              val sheet = fromContext<PaintStrokes>()
+              val edited = sheet.copy()
+              edited.apply("""[
+                {"op": "recolor", "at": "@leaves", "color": "#c0602a"},
+                {"op": "bend", "at": "@mouth", "dy": -45},
+                {"op": "move", "at": "@smudge", "dx": 200}
+              ]""")
+              val before = sheet.render()
+              val after = edited.render()
+              // how much of the picture changed, and how much of that lies outside the edited strokes
+              val a = before.render(); val b = after.render()
+              val w = before.widthPx
+              val touched = edited.select("@leaves, @mouth, @smudge").flatMap { listOf(sheet[it]!!.bounds(), edited[it]!!.bounds()) }
+              fun inside(i: Int) = touched.any { r -> val x = (i % w) * 1000.0 / w; val y = (i / w) * 1000.0 / w; x in r[0] - 20..r[2] + 20 && y in r[1] - 20..r[3] + 20 }
+              val changed = a.indices.filter { a[it] != b[it] }
+              println("${changed.size} of ${a.size} pixels changed; ${changed.count { !inside(it) }} more than 20 units outside the edited strokes")
+              display("main", pngRow(listOf(before, after)))
+          }
+  - create:
+      box: paint_strokes_note
+      name: "3 - A pinned note, acted on"
+      frame: { x: 1500.0, y: 80.0, w: 340.0, h: 100.0 }
+      properties:
+        code: |
+          run {
+              if (!PaintCanvas.isAvailable) {
+                  markdown(PaintLibrary.describe())
+                  return@run
+              }
+              val sheet = fromContext<PaintStrokes>().copy()
+              // the human pins a note; the agent reads it with the strokes under it
+              sheet.pin(660.0, 430.0, "more moss on this side")
+              println(sheet.describe().lines().first())
+
+              // the batch the agent answers with: darken the strokes under the note, and add moss along that flank
+              val under = sheet.near(660.0, 430.0, radius = 40.0)
+              val moss = (0 until 9).map { k ->
+                  val y = 330.0 + k * 22
+                  val x = 640.0 + 40 * sqrt(1 - ((y - 420) / 120).pow(2))
+                  """{"op": "add", "points": [$x, $y, ${x + 18}, ${y + 6}], "color": "#4a6a28", "brush": "Fan", "width": 28, "group": "moss"}"""
+              }
+              sheet.apply("""[{"op": "recolor", "at": "${under.joinToString(",")}", "color": "#6a8a30"}, ${moss.joinToString(",")}]""")
+              println("recoloured ${under.joinToString(", ")}; added ${sheet.select("@moss").joinToString(", ")}")
+              display("main", pngRow(listOf(fromContext<PaintStrokes>().render(), sheet.render())))
+          }
+  - create:
+      box: paint_strokes_sway
+      name: "4 - Swayed, one key per frame"
+      frame: { x: 1500.0, y: 780.0, w: 340.0, h: 100.0 }
+      properties:
+        code: |
+          run {
+              if (!PaintCanvas.isAvailable) {
+                  markdown(PaintLibrary.describe())
+                  return@run
+              }
+              val sheet = fromContext<PaintStrokes>()
+              // one key per frame: how far the leaves sway and the legs step; every frame is the same records, moved
+              val keys = listOf(0.0, 30.0, 0.0, -30.0)
+              val frames = keys.map { k ->
+                  val f = sheet.copy()
+                  f.apply("""[{"op": "move", "at": "@leaves", "dx": $k},
+                              {"op": "bend", "at": "@mouth", "dy": ${abs(k) / 2}},
+                              {"op": "move", "at": "@legs", "dy": ${-abs(k) / 3}}]""")
+                  f.render()
+              }
+              display("main", pngRow(frames))
+          }
+  - connect:
+      parent: paint_strokes_creature
+      child: paint_strokes_edit
+  - connect:
+      parent: paint_strokes_creature
+      child: paint_strokes_note
+  - connect:
+      parent: paint_strokes_creature
+      child: paint_strokes_sway
+  - execute:
+      box: paint_strokes_creature
+      property: code
+  - wait:
+      millis: 300
+  - execute:
+      box: paint_strokes_edit
+      property: code
+  - wait:
+      millis: 300
+  - execute:
+      box: paint_strokes_note
+      property: code
+  - wait:
+      millis: 300
+  - execute:
+      box: paint_strokes_sway
+      property: code
+  - wait:
+      millis: 300

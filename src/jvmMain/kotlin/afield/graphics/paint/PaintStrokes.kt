@@ -283,7 +283,10 @@ class PaintStrokes(
     /** [render] as PNG. */
     fun png(relief: Double = 0.6): ByteArray = render().use { it.png(relief = relief) }
 
-    /** The strokes and notes as JSON, for an agent to read: `{"strokes": [...], "notes": [...]}`. */
+    /** An independent sheet with the same strokes, notes and seed, and an empty history: edit it and keep this one. */
+    fun copy(): PaintStrokes = PaintStrokes(widthPx, aspect, seed, ground).also { it.restore(state()) }
+
+    /** The strokes and notes as JSON, for an agent to read: `{"next": .., "strokes": [...], "notes": [...]}`. */
     fun toJson(): String = json.encodeToString(state())
 
     /**

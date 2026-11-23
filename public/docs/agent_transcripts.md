@@ -2356,6 +2356,20 @@ describes it. It needs an AI provider.
 
 [Open →](offline.html?file=assets/agent_transcripts/stacksl_evolve_studio/metadata.edn)
 
+### addressable_paint_strokes
+
+**A painting whose strokes stay editable.** [Strokes kept as data](paint_canvas.md#strokes-kept-as-data)
+as four boxes. *A creature, stroke by stroke* paints a small green creature as 24 addressed strokes
+in groups and prints the list an agent reads. *Edited by address* recolours the leaves, bends the
+smile into a frown and moves the pink smudge to the other cheek with one JSON batch, shows the
+before and after, and prints how many pixels changed. *A pinned note, acted on* pins "more moss on
+this side" and answers it through the strokes under it. *Swayed, one key per frame* paints four
+frames from the same records with the leaves and legs moved. After
+[Klad](https://github.com/klad-app/klad). Needs the optional paint library
+(`./gradlew buildPaintNative`).
+
+[Open →](offline.html?file=assets/agent_transcripts/addressable_paint_strokes/metadata.edn)
+
 ### paint_canvas
 
 Three boxes that paint and draw [FLines with simulated paint and pencil](paint_canvas.md). *A
