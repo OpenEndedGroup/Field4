@@ -97,13 +97,73 @@ data class FLineCrossing(
     val otherT: Float,
 )
 
-/** How [contains2D] decides "inside" when contours overlap or nest — the SVG / canvas `fill-rule`. */
+/**
+ * Which winding numbers count as inside a filled outline when its contours overlap or nest — the
+ * SVG / canvas `fill-rule`. This is Field's one fill-rule type: [contains2D], Gezira
+ * (`afield.graphics.nile.FillRule` is this type), the SVG and Skia FLine renderers, Java2D shapes,
+ * the Vulkan fill, `BufferCanvas` and typography (`TextFillRule` is this type too) all take it, and a
+ * line carries its own as the `fillRule` attribute (`afield.graphics.nile.fillRule`).
+ *
+ * Manifold's `FillRule` stays a separate superset because its `POSITIVE` / `NEGATIVE` count the
+ * *sign* of the winding, which only means something to a solid-modelling boolean; convert with
+ * `afield.geometry.solid.manifold.toManifold`.
+ */
 enum class FLineFillRule {
-    /** inside when the winding number is not zero: overlapping same-direction contours stay filled. */
-    NonZero,
+    /** Inside where the outline winds round the point at all, either way: overlaps stay filled. */
+    NON_ZERO,
 
-    /** inside when the contour is crossed an odd number of times: every nested contour toggles. */
-    EvenOdd,
+    /** Inside where the outline winds round an odd number of times: overlaps and inner loops are holes. */
+    EVEN_ODD;
+
+    /** True when winding number [w] is inside. */
+    fun inside(w: Int): Boolean = if (this == NON_ZERO) w != 0 else (w and 1) != 0
+
+    /** The SVG `fill-rule` keyword: `nonzero` or `evenodd`. */
+    val svg: String get() = if (this == NON_ZERO) "nonzero" else "evenodd"
+
+    companion object {
+        /** [NON_ZERO], under the name [contains2D] first used. */
+        val NonZero: FLineFillRule get() = NON_ZERO
+
+        /** [EVEN_ODD], under the name [contains2D] first used. */
+        val EvenOdd: FLineFillRule get() = EVEN_ODD
+
+        /** The rule for an SVG `fill-rule` keyword; anything but `evenodd` is [NON_ZERO], as in SVG. */
+        fun ofSvg(keyword: String?): FLineFillRule = if (keyword?.trim() == "evenodd") EVEN_ODD else NON_ZERO
+    }
+}
+
+/**
+ * This line with an explicitly set fill rule (the `fillRule` attribute) applied: its contours are
+ * resolved under that rule by `java.awt.geom.Area` into non-overlapping outlines and holes,
+ * flattened to straight segments within [flatness] at the line's own depth, so a triangulator that
+ * only knows nesting ([FLine.tessellate], and through it the Vulkan and three.js fills) fills what
+ * SVG, Skia and Gezira fill. A line with no rule set, with per-node colours, or not flat in z is
+ * returned as it is: the triangulator's nesting parity is then the rule, as it always was.
+ */
+internal fun FLine.resolveFillRule(flatness: Double = 0.05): FLine {
+    if (getPropertyRaw("fillRule") !is FLineFillRule) return this
+    if (nodes.isEmpty() || nodes.any { it.properties["color"] != null }) return this
+    val z = nodes.firstNotNullOfOrNull { it.toOrNull }?.z ?: return this
+    val flat = nodes.all { n ->
+        val to = n.toOrNull ?: return@all true
+        abs(to.z - z) < 1e-6f && (n !is FLine.CubicTo || (abs(n.c1.z - z) < 1e-6f && abs(n.c2.z - z) < 1e-6f))
+    }
+    if (!flat) return this
+    val area = java.awt.geom.Area(afield.geometry.path.java2d.FLinesAndJavaShapes.flineToJavaShape_notThickened(this))
+    val out = FLine()
+    val c = DoubleArray(6)
+    val it = area.getPathIterator(null, flatness)
+    while (!it.isDone) {
+        when (it.currentSegment(c)) {
+            java.awt.geom.PathIterator.SEG_MOVETO -> out.moveTo(Vec3(c[0].toFloat(), c[1].toFloat(), z))
+            java.awt.geom.PathIterator.SEG_LINETO -> out.lineTo(Vec3(c[0].toFloat(), c[1].toFloat(), z))
+            java.awt.geom.PathIterator.SEG_CLOSE -> out.close()
+        }
+        it.next()
+    }
+    properties["color"]?.let { out.properties["color"] = it }
+    return out
 }
 
 /** one drawn segment of a line as a cubic (lines are degree-elevated), ending at node [index]. */
@@ -567,15 +627,16 @@ private fun FLine.windingAndCrossings2D(point: Vec2): Pair<Int, Int> {
 fun FLine.windingNumber2D(point: Vec2): Int = windingAndCrossings2D(point).first
 
 /**
- * Whether [point] is inside this line in the xy plane under [rule] (non-zero by default), following
- * its curves, with every subpath treated as closed. Use [FLineFillRule.EvenOdd] when a counter should
+ * Whether [point] is inside this line in the xy plane under [rule], following its curves, with every
+ * subpath treated as closed. [rule] defaults to the line's own `fillRule` attribute
+ * (`afield.graphics.nile.fillRule`), non-zero when none is set, so a hit test agrees with the fill. Use [FLineFillRule.EVEN_ODD] when a counter should
  * be a hole regardless of its winding direction.
  */
-fun FLine.contains2D(point: Vec2, rule: FLineFillRule = FLineFillRule.NonZero): Boolean {
+fun FLine.contains2D(point: Vec2, rule: FLineFillRule = getPropertyRaw("fillRule") as? FLineFillRule ?: FLineFillRule.NON_ZERO): Boolean {
     val (winding, crossings) = windingAndCrossings2D(point)
     return when (rule) {
-        FLineFillRule.NonZero -> winding != 0
-        FLineFillRule.EvenOdd -> crossings % 2 == 1
+        FLineFillRule.NON_ZERO -> winding != 0
+        FLineFillRule.EVEN_ODD -> crossings % 2 == 1
     }
 }
 

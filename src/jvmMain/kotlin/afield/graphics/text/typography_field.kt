@@ -705,17 +705,18 @@ class TextSdf internal constructor(
  * The two rules a filled outline can be interpreted under, and the reason the winding convention in
  * `typography.kt` changes the result rather than tidying it:
  *
- *  - [NON_ZERO] sums the *directions* of the crossings, and is what Skia (`someSkiko.kt`'s
+ *  - [TextFillRule.NON_ZERO] sums the *directions* of the crossings, and is what Skia (`someSkiko.kt`'s
  *    `outputTo`) and Java2D's `GeneralPath` both do by default. A counter is a hole under this rule
  *    **only** if its ring runs the opposite way to its bowl — which is exactly what this family
  *    guarantees, and exactly what [TextLayout.toContours]`(honourHoles = false)` takes away.
- *  - [EVEN_ODD] counts crossings and ignores their direction, so it depends on nesting parity
+ *  - [TextFillRule.EVEN_ODD] counts crossings and ignores their direction, so it depends on nesting parity
  *    instead. Robust to a broken winding, blind to a self-overlapping stroke.
  *
  * Two rules that agree on correct input and disagree on broken input is a control arm, so both are
- * here for that reason.
+ * here for that reason. This is [afield.geometry.path.FLineFillRule], Field's one fill-rule type,
+ * under the name typography has always used.
  */
-enum class TextFillRule { NON_ZERO, EVEN_ODD }
+typealias TextFillRule = afield.geometry.path.FLineFillRule
 
 /**
  * Rasterise a layout by filling its own rings: an analytic-in-x, supersampled-in-y scanline fill.

@@ -92,17 +92,11 @@ data class RowEdge(val row: Int, val x0: Double, val y0: Double, val x1: Double,
     fun xAt(y: Double): Double = if (y <= y0) x0 else if (y >= y1) x1 else x0 + (y - y0) / (y1 - y0) * (x1 - x0)
 }
 
-/** Which winding numbers count as inside an outline. */
-enum class FillRule {
-    /** Inside where the outline winds round the point at all, either way: overlaps stay filled. */
-    NON_ZERO,
-
-    /** Inside where the outline winds round an odd number of times: overlaps and inner loops are holes. */
-    EVEN_ODD;
-
-    /** True when winding number [w] is inside. */
-    fun inside(w: Int): Boolean = if (this == NON_ZERO) w != 0 else (w and 1) != 0
-}
+/**
+ * Which winding numbers count as inside an outline: Field's one fill-rule type,
+ * [afield.geometry.path.FLineFillRule], under the name Gezira has always used.
+ */
+typealias FillRule = afield.geometry.path.FLineFillRule
 
 /** A run of [length] pixels starting at `(x, y)`, all covered by [coverage] in `[0, 1]`. */
 data class Span(val x: Int, val y: Int, val length: Int, val coverage: Double)

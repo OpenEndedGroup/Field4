@@ -1869,6 +1869,10 @@ class FLinesAndJavaShapes {
 
         private fun _flineToJavaShape(f: FLine): GeneralPath {
             val p = GeneralPath()
+            // The line's fill rule (afield.graphics.nile.fillRule) decides what an Area built from
+            // this shape contains, so the boolean ops agree with the renderers. GeneralPath's
+            // default is WIND_NON_ZERO, the attribute's default too.
+            if (f.getPropertyRaw("fillRule") == afield.geometry.path.FLineFillRule.EVEN_ODD) p.windingRule = GeneralPath.WIND_EVEN_ODD
             // AWT insists on an explicit initial moveTo and throws IllegalPathStateException
             // without one; the renderer does not, and treats a leading LineTo/CubicTo as a moveTo
             // (someSkiko.kt:332-337, :339-352). Following the renderer, so that a line that draws

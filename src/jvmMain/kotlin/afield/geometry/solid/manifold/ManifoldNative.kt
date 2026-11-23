@@ -905,6 +905,14 @@ enum class JoinType(internal val code: Int) { SQUARE(0), ROUND(1), MITER(2), BEV
  */
 enum class FillRule(internal val code: Int) { EVEN_ODD(0), NON_ZERO(1), POSITIVE(2), NEGATIVE(3) }
 
+/**
+ * This rule as Manifold's: a superset of Field's [afield.geometry.path.FLineFillRule], kept separate
+ * because only a solid boolean gives [FillRule.POSITIVE] / [FillRule.NEGATIVE] (the sign of the
+ * winding) a meaning. `Section.ofFLines(lines, rule = line.fillRule)` takes either.
+ */
+fun afield.geometry.path.FLineFillRule.toManifold(): FillRule =
+    if (this == afield.geometry.path.FLineFillRule.EVEN_ODD) FillRule.EVEN_ODD else FillRule.NON_ZERO
+
 /** One intersection from [Solid.raycast]. */
 data class RayHit(
     /** Which triangle of the solid was hit, as Manifold's face id. */

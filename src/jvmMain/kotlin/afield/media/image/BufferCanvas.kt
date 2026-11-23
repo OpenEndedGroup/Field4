@@ -6,6 +6,7 @@ import afield.geometry.path.FLine
 import afield.geometry.path.ScalarField2D
 import afield.graphics.nile.Bezier
 import afield.graphics.nile.FillRule
+import afield.graphics.nile.explicitFillRule
 import afield.graphics.nile.Gezira
 import afield.graphics.nile.GeziraStroke
 import afield.graphics.nile.Span
@@ -258,7 +259,8 @@ class BufferCanvas(
      * The outline is in the same coordinates as [sample]: element `(x, y)` is the square from
      * `(x0 + x * cell, y0 + y * cell)` to one cell further along each axis. Every subpath is closed,
      * curves are kept as curves to within 1e-4 elements, and [rule] decides overlaps, self-crossings
-     * and holes ([FillRule.NON_ZERO] fills them, [FillRule.EVEN_ODD] leaves them empty). Edits clip
+     * and holes ([FillRule.NON_ZERO] fills them, [FillRule.EVEN_ODD] leaves them empty); it defaults to
+ * the line's own `fillRule` attribute, non-zero unless set. Edits clip
      * at the canvas edge whatever [wrapX] and [wrapY] say. Coverage comes from [Gezira.rasterizer].
      *
      * ```
@@ -268,13 +270,13 @@ class BufferCanvas(
      * ```
      */
     fun fill(
-        line: FLine, value: FloatArray, rule: FillRule = FillRule.NON_ZERO, opacity: Double = 1.0, channel: Int = -1,
+        line: FLine, value: FloatArray, rule: FillRule = line.explicitFillRule ?: FillRule.NON_ZERO, opacity: Double = 1.0, channel: Int = -1,
         x0: Double = 0.0, y0: Double = 0.0, cell: Double = 1.0,
     ) = fill(listOf(line), value, rule, opacity, channel, x0, y0, cell)
 
     /** [fill] with a single value. */
     fun fill(
-        line: FLine, value: Float, rule: FillRule = FillRule.NON_ZERO, opacity: Double = 1.0, channel: Int = -1,
+        line: FLine, value: Float, rule: FillRule = line.explicitFillRule ?: FillRule.NON_ZERO, opacity: Double = 1.0, channel: Int = -1,
         x0: Double = 0.0, y0: Double = 0.0, cell: Double = 1.0,
     ) = fill(listOf(line), floatArrayOf(value), rule, opacity, channel, x0, y0, cell)
 
@@ -284,7 +286,7 @@ class BufferCanvas(
      * other way round (or under [FillRule.EVEN_ODD] either way), is a hole.
      */
     fun fill(
-        lines: List<FLine>, value: FloatArray, rule: FillRule = FillRule.NON_ZERO, opacity: Double = 1.0, channel: Int = -1,
+        lines: List<FLine>, value: FloatArray, rule: FillRule = lines.firstOrNull()?.explicitFillRule ?: FillRule.NON_ZERO, opacity: Double = 1.0, channel: Int = -1,
         x0: Double = 0.0, y0: Double = 0.0, cell: Double = 1.0,
     ) {
         require(cell > 0) { "cell must be > 0, got $cell" }
@@ -294,7 +296,7 @@ class BufferCanvas(
 
     /** [fill] of several outlines with a single value. */
     fun fill(
-        lines: List<FLine>, value: Float, rule: FillRule = FillRule.NON_ZERO, opacity: Double = 1.0, channel: Int = -1,
+        lines: List<FLine>, value: Float, rule: FillRule = lines.firstOrNull()?.explicitFillRule ?: FillRule.NON_ZERO, opacity: Double = 1.0, channel: Int = -1,
         x0: Double = 0.0, y0: Double = 0.0, cell: Double = 1.0,
     ) = fill(lines, floatArrayOf(value), rule, opacity, channel, x0, y0, cell)
 

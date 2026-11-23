@@ -8,11 +8,26 @@ import afield.graphics.render.stroked
 import afield.graphics.render.thickness
 
 /**
- * The fill rule Gezira's rasteriser uses when it fills this line ([filled]). Non-zero by default,
- * as every other Field renderer fills. FLine has no fill rule of its own; [GeziraSvg] sets this
- * from SVG's `fill-rule`, and only [GeziraFLine] reads it.
+ * The fill rule this line is filled under when it is [filled] and its contours overlap or nest.
+ * Non-zero by default, which is also SVG's, Skia's and Java2D's default. Every FLine filler reads
+ * it: Gezira ([GeziraFLine], `GeziraGpuScene`, `BufferCanvas.fill`), the SVG and Skia renderers
+ * (`fill-rule` / `PathFillMode`), Java2D shapes (`GeneralPath.windingRule`, so the boolean ops), and
+ * the Vulkan fill, which resolves an explicitly set rule into non-overlapping contours before it
+ * triangulates. [GeziraSvg] sets it from SVG's `fill-rule`. It is declared here, beside Gezira, for
+ * the box code that already imports it as `afield.graphics.nile.fillRule`.
+ *
+ * ```
+ * eight.filled = true
+ * eight.fillRule = FillRule.EVEN_ODD   // the overlap of a figure-eight is a hole everywhere
+ * ```
  */
 var FLine.fillRule by Delegation<FillRule> { FillRule.NON_ZERO }
+
+/**
+ * The fill rule set on this line, or null when none has been: reading [fillRule] would store its
+ * default, and a renderer asking "was a rule chosen?" must not leave one behind.
+ */
+internal val FLine.explicitFillRule: FillRule? get() = getPropertyRaw("fillRule") as? FillRule
 
 /**
  * Field's FLines drawn by Gezira's kernels, painted by their own attributes: [color] (alpha is the
