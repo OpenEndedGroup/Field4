@@ -110,6 +110,45 @@ internal fun Box.rebaseTextReview(
     if (updated != suggestions) setPropertyRaw(TEXT_FRAME_REVIEW, Json.encodeToString(updated))
 }
 
+private fun Box.acceptTextReview(suggestions: List<TextReviewSuggestion>, id: String?) {
+    val raw = getPropertyRaw("contents")?.toString().orEmpty()
+    val before = raw.normalizedRunSource()
+    val applicable = suggestions.filter { suggestion ->
+        suggestion.pending && (id == null || suggestion.id == id) &&
+            suggestion.start?.let { before.startsWith(suggestion.original, it) } == true
+    }.sortedBy { it.start }
+    require(applicable.isNotEmpty()) {
+        "The source text changed. Ask AI4 for an updated suggestion."
+    }
+    val runs = mutableListOf<TextMatch>()
+    val after = buildString {
+        var cursor = 0
+        for (suggestion in applicable) {
+            val start = checkNotNull(suggestion.start)
+            check(start >= cursor) { "These suggestions overlap. Accept them individually." }
+            if (start > cursor) {
+                runs.add(TextMatch(cursor, length, start - cursor))
+                append(before, cursor, start)
+            }
+            // Preserve matching text inside each replacement for other tracked passages.
+            for ((oldStart, newStart, size) in textMatches(suggestion.original, suggestion.replacement).runs) {
+                runs.add(TextMatch(start + oldStart, length + newStart, size))
+            }
+            append(suggestion.replacement)
+            cursor = start + suggestion.original.length
+        }
+        if (cursor < before.length) {
+            runs.add(TextMatch(cursor, length, before.length - cursor))
+            append(before, cursor, before.length)
+        }
+    }
+    val value = if ("\r\n" in raw && '\n' !in raw.replace("\r\n", "")) after.replace("\n", "\r\n") else after
+    val accepted = applicable.map { it.id }.toSet()
+    setTextRunEditedContents(value, TextDiff(runs, boundedOut = false))
+    OperationTranscript.recordEdit(this, "contents", raw, value)
+    writeTextReview(textReviewSuggestions().map { if (it.id in accepted) it.copy(status = "accepted") else it })
+}
+
 internal fun Box.reviewTextSuggestion(action: String, id: String, comment: String): Unit = synchronized(textContentsLock) {
     require(getPropertyRaw("box_kind") == "text-frame") { "Review suggestions require a text frame." }
     val suggestions = textReviewSuggestions()
@@ -117,6 +156,10 @@ internal fun Box.reviewTextSuggestion(action: String, id: String, comment: Strin
         if (suggestions.any { it.pending }) writeTextReview(suggestions.map {
             if (it.pending) it.copy(status = "rejected") else it
         })
+        return@synchronized
+    }
+    if (action == "accept-all") {
+        acceptTextReview(suggestions, id = null)
         return@synchronized
     }
     val suggestion = suggestions.firstOrNull { it.id == id } ?: error("That suggestion no longer exists.")
@@ -128,27 +171,7 @@ internal fun Box.reviewTextSuggestion(action: String, id: String, comment: Strin
     }
     require(suggestion.pending) { "That suggestion has already been reviewed." }
     when (action) {
-        "accept" -> {
-            val raw = getPropertyRaw("contents")?.toString().orEmpty()
-            val before = raw.normalizedRunSource()
-            val start = suggestion.start
-            require(start != null && before.startsWith(suggestion.original, start)) {
-                "The source text changed. Reject this suggestion and ask AI4 for an updated one."
-            }
-            val end = start + suggestion.original.length
-            val after = before.replaceRange(start, end, suggestion.replacement)
-            // Keep matching text inside the replacement so other tracked passages retain their anchors.
-            val middle = textMatches(suggestion.original, suggestion.replacement)
-            val diff = TextDiff(buildList {
-                if (start > 0) add(TextMatch(0, 0, start))
-                addAll(middle.runs.map { TextMatch(start + it.oldStart, start + it.newStart, it.length) })
-                if (end < before.length) add(TextMatch(end, start + suggestion.replacement.length, before.length - end))
-            }, boundedOut = false)
-            val value = if ("\r\n" in raw && '\n' !in raw.replace("\r\n", "")) after.replace("\n", "\r\n") else after
-            setTextRunEditedContents(value, diff)
-            OperationTranscript.recordEdit(this, "contents", raw, value)
-            writeTextReview(textReviewSuggestions().map { if (it.id == id) it.copy(status = "accepted") else it })
-        }
+        "accept" -> acceptTextReview(suggestions, id)
         "reject" -> writeTextReview(suggestions.map { if (it.id == id) it.copy(status = "rejected") else it })
         else -> error("Unknown review action.")
     }

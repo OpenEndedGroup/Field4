@@ -98,7 +98,7 @@ function contextExcerpt(text, start, end, mode) {
 const pending = change => !change.status || change.status === 'pending';
 
 export function mountTextFrameReview(box, prepare, source) {
-    let changes = [], seen, dialog, list, error, rejectAll, context, busy = false;
+    let changes = [], seen, dialog, list, error, acceptAll, rejectAll, context, busy = false;
     let hovered, focusedAt, preferFocus = false;
     let revealTimer, savedScroll;
     const sourceHighlight = 'field-text-frame-review';
@@ -205,14 +205,23 @@ export function mountTextFrameReview(box, prepare, source) {
         }
     }
 
+    function updateBulkControls() {
+        const remaining = changes.filter(pending);
+        const hidden = window.currentDocumentReadOnly || !remaining.length;
+        acceptAll.hidden = rejectAll.hidden = hidden;
+        acceptAll.disabled = busy || !remaining.some(change => change.start != null);
+        rejectAll.disabled = busy || !remaining.length;
+    }
+
     async function submit(action, id = '', comment = '') {
         if (busy) return;
         busy = true;
         error.textContent = '';
-        list.inert = rejectAll.disabled = true;
+        list.inert = true;
+        updateBulkControls();
         let result;
         try {
-            if (action === 'accept' && !prepare()) {
+            if ((action === 'accept' || action === 'accept-all') && !prepare()) {
                 result = {ok: false, error: 'Resolve the draft conflict on the frame before accepting an edit.'};
             } else result = await review(box.uid, action, id, comment);
             if (result?.ok && action === 'comment') {
@@ -226,7 +235,7 @@ export function mountTextFrameReview(box, prepare, source) {
         } finally {
             busy = false;
             list.inert = false;
-            rejectAll.disabled = !changes.some(pending);
+            updateBulkControls();
         }
     }
 
@@ -239,8 +248,7 @@ export function mountTextFrameReview(box, prepare, source) {
         const selection = focused?.tagName === 'TEXTAREA' ? [focused.selectionStart, focused.selectionEnd] : null;
         const readOnly = window.currentDocumentReadOnly;
         const remaining = changes.filter(pending);
-        rejectAll.hidden = readOnly || !remaining.length;
-        rejectAll.disabled = busy;
+        updateBulkControls();
         const cards = [...remaining, ...changes.filter(change => !pending(change)).reverse()].map(change => {
             const card = element('section', '', 'text-frame-review-change');
             card.dataset.reviewId = change.id;
@@ -317,9 +325,11 @@ export function mountTextFrameReview(box, prepare, source) {
         title.autofocus = true;
         dialog.setAttribute('aria-label', box.name ? 'Review edits for ' + box.name : 'Review edits');
         const controls = element('div', '', 'text-frame-review-actions');
+        acceptAll = button('Accept all', () => submit('accept-all'));
+        acceptAll.title = 'Accept all suggestions that still match the source';
         rejectAll = button('Reject all', () => submit('reject-all'));
         const close = iconButton('Close', 'Reject', () => { if (!busy) dialog.close(); });
-        controls.append(rejectAll, close);
+        controls.append(acceptAll, rejectAll, close);
         const header = element('header');
         header.append(title, controls);
         error = element('div', '', 'text-frame-review-error');

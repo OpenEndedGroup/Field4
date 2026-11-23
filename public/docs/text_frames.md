@@ -259,8 +259,7 @@ Hover or focus the red text to highlight its passage on the frame. Hover or
 focus the green text to preview the replacement in the typeset prose. The
 panel also shows the surrounding text. If the passage is off-screen, Field
 scrolls it into view while the review panel stays in place.
-The check mark (**Accept**) applies one change. **Reject** dismisses one, and **Reject all**
-dismisses the remaining suggestions for that frame. If you edit the source
+The check mark (**Accept**) applies one change. **Reject** dismisses one. **Accept all** applies every suggestion that still matches the source, and **Reject all** dismisses the remaining suggestions for that frame. If you edit the source
 of a suggestion before accepting it, Field may mark it **Source changed**
 and ask you to get a fresh suggestion.
 

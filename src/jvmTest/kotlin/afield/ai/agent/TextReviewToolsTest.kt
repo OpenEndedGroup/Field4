@@ -68,6 +68,28 @@ class TextReviewToolsTest {
     }
 
     @Test
+    fun acceptAllAppliesOneRevisionAndLeavesStaleSuggestionsPending() {
+        val frame = Box("bulk")
+        frame.setPropertyRaw("box_kind", "text-frame")
+        frame.setPropertyRaw("contents", "First.\r\n\r\nMiddle.\r\n\r\nLast.")
+        val (last, middle, first) = frame.proposeTextReview(listOf(
+            TextReviewEdit("Last.", ""),
+            TextReviewEdit("Middle.", "Replace the middle."),
+            TextReviewEdit("First.", "The new opening."),
+        ))
+        frame.setPropertyRaw("contents", "First.\r\n\r\nAuthor edit.\r\n\r\nLast.")
+
+        frame.reviewTextSuggestion("accept-all", id = "", comment = "")
+
+        assertEquals("The new opening.\r\n\r\nAuthor edit.\r\n\r\n", frame.getPropertyRaw("contents"))
+        val reviewed = frame.textReviewSuggestions().associateBy { it.id }
+        assertEquals("accepted", reviewed.getValue(first.id).status)
+        assertEquals("accepted", reviewed.getValue(last.id).status)
+        assertEquals("pending", reviewed.getValue(middle.id).status)
+        assertNull(reviewed.getValue(middle.id).start)
+    }
+
+    @Test
     fun staleAndAmbiguousSuggestionsNeverOverwriteAnEdit() {
         val frame = Box("frame")
         frame.setPropertyRaw("box_kind", "text-frame")

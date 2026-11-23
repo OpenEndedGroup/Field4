@@ -229,7 +229,14 @@
 .text-frame-review-diff del { color: #ba8282; background: #2b1717; text-decoration: line-through; }
 .text-frame-review-diff ins { color: #9fcaa4; background: #142719; text-decoration: none; }
 .text-frame-review-diff del + ins { margin-left: .35em; }
-.text-frame-review-reason { color: var(--field-fg-muted); font-size: 12px; margin: 0; overflow-wrap: anywhere; }
+.text-frame-review-reason {
+    color: var(--field-fg-muted);
+    font-size: 12px;
+    font-style: italic;
+    font-weight: 100;
+    margin: 0;
+    overflow-wrap: anywhere;
+}
 .text-frame-review-state { color: var(--field-fg-muted); font-variant-caps: all-small-caps; }
 .text-frame-review-error:not(:empty) { padding: 8px 16px; color: #e5aaaa; }
 .text-frame-review-actions { display: flex; flex: none; align-items: center; gap: 1px; }
