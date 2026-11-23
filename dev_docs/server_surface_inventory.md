@@ -313,7 +313,7 @@ the file, and the reach is described per file below in prose that a human checke
 
 | declaring file | commands |
 | --- | --- |
-| `Server.kt` | 59 |
+| `Server.kt` | 60 |
 | `agent_backdoor.kt` | 28 |
 | `history.kt` | 14 |
 | `executing.kt` | 10 |
@@ -344,7 +344,7 @@ What each of those reaches, checked against the code rather than inferred from t
 
 | file | what its commands reach |
 | --- | --- |
-| `Server.kt` | document and box state, the completion engine, clipboard, layers, FLine editing, `set-string`, which writes box source to disk, and the live output iframe ready/reply relay. The relay accepts client readiness and replies within the existing `/ws` trust boundary; a native client can claim readiness, and a matching pending reply is accepted only from the selected socket |
+| `Server.kt` | document and box state, the completion engine, clipboard, layers, FLine editing, `set-string`, which writes box source to disk, the live output iframe ready/reply relay, and review decisions for the attached document’s text-frame edits. The relay accepts client readiness and replies within the existing `/ws` trust boundary; a native client can claim readiness, and a matching pending reply is accepted only from the selected socket |
 | `agent_backdoor.kt` | the agent path: read/write boxes, run transcripts, screenshot, macros. The published automation surface |
 | `history.kt` | the document history store — versions, screenshots, restore |
 | `executing.kt` | **box execution.** `launch-all`, `launch-batch`, `launch-fragment`, `stop-box`, `stop-all`, `interrupt-box`. This is arbitrary Kotlin in Field's own JVM |
@@ -549,6 +549,7 @@ reach to a client that `agent-eval` and `launch-all` already let run arbitrary c
 | `stacksl-regions` | `Server.kt` |
 | `stop-all` | `executing.kt` |
 | `stop-box` | `executing.kt` |
+| `text-frame-review` | `Server.kt` |
 | `store-history-screenshot` | `history.kt` |
 | `string-update` | `Server.kt` |
 | `stroke-layer-ack` | `StrokeSketch.kt` |

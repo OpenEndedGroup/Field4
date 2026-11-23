@@ -49,10 +49,11 @@ data class TranscludeTextPassageRequest(
 )
 
 /** Inspect both directions of live passage and Markdown box links. */
-@JsonClassDescription("Find linked notes, live transclusions and ordinary Markdown box links in the current document. Optional box scopes the search: direction=sources lists links going out of that box, backlinks lists uses of that box, both lists either. Filter by passageId or search words in titles and excerpts, including lost passages. Results have clickable source and referencing-box links. Pass the destination UID/property/line to DocumentSourceNavigateRequest to navigate explicitly.")
+@JsonClassDescription("Find linked notes, live transclusions and ordinary Markdown box links in the current document. Optional box scopes the search: direction=sources lists links going out of that box, backlinks lists uses of that box, both lists either. Filter by passageId or search words in titles and excerpts, including lost passages. Set kind to linked note to find only passage-linked children or their parent source. Use nextOffset to continue a truncated search. Results have clickable source and referencing-box links. Pass the destination UID/property/line to DocumentSourceNavigateRequest to navigate explicitly.")
 @AgentToolMeta("text-notes", effects = [ToolEffect.READ_DOCUMENT])
 data class FindTextLinksRequest(
     val query: String = "", @param:JsonPropertyDescription("Limit to this box: uid or unique name; blank for the whole document.") val box: String = "", val direction: String = "both", val passageId: String = "", val limit: Int = 25,
+    val kind: String = "", val offset: Int = 0,
 )
 
 data class TextNoteHit(val uid: String, val name: String, val property: String, val excerpt: String, val link: String)
@@ -66,10 +67,31 @@ data class TextLinkHit(
 data class TextPassageToolResult(
     val message: String, val uid: String = "", val property: String = "", val link: String = "",
     val passageId: String = "", val sourceLink: String = "", val notes: List<TextNoteHit> = emptyList(),
-    val links: List<TextLinkHit> = emptyList(), val truncated: Boolean = false,
+    val links: List<TextLinkHit> = emptyList(), val truncated: Boolean = false, val nextOffset: Int? = null,
 ) : SummarisesForToolLog {
     override fun toolLogSummary(): String = message
 }
+
+internal data class FocusedPassageNote(
+    val sourceUid: String,
+    val sourceName: String,
+    val passageId: String,
+    val passageLink: String,
+    val sourceMissing: Boolean,
+    val passageLost: Boolean,
+    val livePassage: String?,
+    val lastKnownExcerpt: String?,
+    val childUid: String,
+    val childName: String,
+    val childLink: String,
+    val childMarkdownExcerpt: String,
+)
+
+internal data class FocusedPassageNotes(
+    val parent: FocusedPassageNote?,
+    val children: List<FocusedPassageNote>,
+    val linkedChildCount: Int,
+)
 
 private fun Box.hasTextFrame() = getPropertyRaw("box_kind") == "text-frame"
 
@@ -186,6 +208,37 @@ internal class TextPassageTools(private val graph: FieldGraphTools, private val 
         TextPassageToolResult("${minOf(hits.size, limit)} live notes matched.", notes = hits.take(limit), truncated = hits.size > limit)
     }
 
+    private fun liveQuote(anchor: TextRunAnchor, source: Box?): String? {
+        if (source == null || anchor.lost) return null
+        val text = source.text(anchor.property)
+        return if (anchor.matches(text)) text.substring(anchor.start, anchor.end) else null
+    }
+
+    /** Read the focused note's own link and a bounded sample of its directly linked children. */
+    fun focusedNotes(focus: Box): FocusedPassageNotes? = host.onOwner(info) {
+        fun active(box: Box?) = box?.takeUnless { it.getPropertyRaw("_tombstone").isTrue() }
+        if (active(info.boxes[focus.id]) !== focus) return@onOwner null
+
+        fun row(child: Box, anchor: TextRunAnchor): FocusedPassageNote {
+            val source = active(info.boxes[anchor.sourceUid])
+            val quote = liveQuote(anchor, source)
+            return FocusedPassageNote(anchor.sourceUid, source?.title().orEmpty(), anchor.id, passageLink(anchor.id),
+                sourceMissing = source == null, passageLost = quote == null,
+                livePassage = quote?.let { excerpt(it, emptyList()) },
+                lastKnownExcerpt = anchor.excerpt.takeIf { quote == null },
+                childUid = child.id, childName = child.title(), childLink = boxLink(child.id, "contents"),
+                childMarkdownExcerpt = excerpt(child.text("contents"), emptyList()))
+        }
+
+        val parent = TextRunAnchor.decode(focus.getPropertyRaw(TEXT_RUN_ANCHOR))?.let { row(focus, it) }
+        val childAnchors = focus.children.asSequence().filter { active(it) === it }.mapNotNull { child ->
+            TextRunAnchor.decode(child.getPropertyRaw(TEXT_RUN_ANCHOR))
+                ?.takeIf { it.sourceUid == focus.id }?.let { child to it }
+        }.sortedWith(compareBy({ it.second.lost }, { it.second.start }, { it.first.id })).toList()
+        if (parent == null && childAnchors.isEmpty()) return@onOwner null
+        FocusedPassageNotes(parent, childAnchors.take(8).map { (child, anchor) -> row(child, anchor) }, childAnchors.size)
+    }
+
     fun findLinks(req: FindTextLinksRequest) = host.onOwner(info) {
         require(req.direction in listOf("sources", "backlinks", "both")) { "Use sources, backlinks or both." }
         val scope = req.box.takeIf { it.isNotBlank() }?.let { graph.resolve(it).id }
@@ -193,19 +246,18 @@ internal class TextPassageTools(private val graph: FieldGraphTools, private val 
         val ranges = boxes.values.flatMap { it.textRunSources() }.associateBy { it.id }
         val terms = words(req.query)
         val limit = req.limit.coerceIn(1, 100)
-        fun quote(anchor: TextRunAnchor?): String {
-            if (anchor == null) return ""
-            val text = boxes[anchor.sourceUid]?.text("contents") ?: return anchor.excerpt
-            return if (!anchor.lost && anchor.matches(text)) text.substring(anchor.start, anchor.end) else anchor.excerpt
-        }
+        require(req.kind in setOf("", "linked note", "transclusion", "box link")) { "Choose linked note, transclusion, or box link." }
+        val offset = req.offset.coerceIn(0, Int.MAX_VALUE - limit)
         fun hit(kind: String, anchor: TextRunAnchor?, uid: String, dest: Box, prop: String, line: Int, label: String = "",
                 sourceProperty: String = "contents", sourceLine: Int = 1): TextLinkHit? {
+            if (req.kind.isNotEmpty() && req.kind != kind) return null
             if (req.passageId.isNotBlank() && req.passageId != anchor?.id && req.passageId != uid) return null
             val source = anchor?.sourceUid ?: if (kind == "box link") uid else ""
             if (scope != null && !(req.direction != "backlinks" && dest.id == scope || req.direction != "sources" && source == scope)) return null
             val sourceName = boxes[source]?.title() ?: source
-            val text = if (anchor == null) label else quote(anchor)
-            val lost = source !in boxes || anchor?.lost == true
+            val live = anchor?.let { liveQuote(it, boxes[source]) }
+            val text = if (anchor == null) label else live ?: anchor.excerpt
+            val lost = source !in boxes || (anchor != null && live == null)
             if (!matches(terms, text, sourceName, dest.title(), kind, anchor?.id.orEmpty(), uid, if (lost) "lost missing" else "live")) return null
             val toSource = if (kind != "box link") passageLink(anchor?.id ?: uid) else boxLink(source, sourceProperty, sourceLine)
             return TextLinkHit(kind, source, sourceName, toSource, dest.id, dest.title(), prop, line,
@@ -216,6 +268,7 @@ internal class TextPassageTools(private val graph: FieldGraphTools, private val 
                 TextRunAnchor.decode(dest.getPropertyRaw(TEXT_RUN_ANCHOR))?.let {
                     hit("linked note", it, it.id, dest, "contents", 1)?.let { entry -> yield(entry) }
                 }
+                if (req.kind == "linked note") continue
                 for (prop in noteProperties(dest)) {
                     val markdown = dest.text(prop)
                     if ("field://" !in markdown) continue
@@ -238,8 +291,10 @@ internal class TextPassageTools(private val graph: FieldGraphTools, private val 
                     }
                 }
             }
-        }.take(limit + 1).toList()
-        TextPassageToolResult("${minOf(hits.size, limit)} links matched.", links = hits.take(limit), truncated = hits.size > limit)
+        }.drop(offset).take(limit + 1).toList()
+        val more = hits.size > limit
+        TextPassageToolResult("${minOf(hits.size, limit)} links matched.", links = hits.take(limit), truncated = more,
+            nextOffset = (offset + limit).takeIf { more })
     }
 
     companion object {

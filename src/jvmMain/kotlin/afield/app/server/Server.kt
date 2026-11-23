@@ -2,7 +2,11 @@
 
 package afield.app.server
 
+import afield.document.text.TEXT_FRAME_REVIEW
 import afield.document.text.TEXT_RUN_ANCHOR
+import afield.document.text.reviewTextSuggestion
+import afield.app.protocol.TextFrameReviewReply
+import afield.app.protocol.TextFrameReviewRequest
 import afield.document.text.applyTextRunClipboardEdit
 import afield.document.text.textRunSources
 import afield.document.text.validateTextRunAnchor
@@ -353,6 +357,8 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.decodeFromJsonElement
 import afield.math.linalg.Vector2f
 import afield.math.linalg.Vector4f
@@ -3002,9 +3008,24 @@ class Server {
                 Handled.yes
             })
 
+            handlers["text-frame-review"] = mutableSetOf({ message, reply ->
+                val result = runCatching {
+                    val info = thisSessionInfo.get()
+                    check(!info.readOnly && !ReadOnlyDocuments.global) { "This document is read-only." }
+                    val req = Json.decodeFromJsonElement<TextFrameReviewRequest>(message.payload!!)
+                    val target = info.boxes[req.uid]?.takeUnless { it.getPropertyRaw("_tombstone").isTrue() }
+                        ?: error("That frame is no longer in this document.")
+                    target.reviewTextSuggestion(req.action, req.id, req.comment)
+                    doResync()
+                }
+                reply(Message("text-frame-review").payload(TextFrameReviewReply(result.isSuccess, result.exceptionOrNull()?.message.orEmpty())))
+                Handled.yes
+            })
+
             handlers["set-string"] = mutableSetOf({ message, reply ->
 
                 val set = Json.decodeFromJsonElement<Set_string>(message.payload!!)
+                if (set.property == TEXT_FRAME_REVIEW) return@mutableSetOf Handled.yes
                 val isEditorStateProperty = set.property.endsWith("_editorState")
                 // A uid the server has never seen is a box the canvas just made (`createBox` sends
                 // its name first): record it as a `create`, not as an edit from nothing.
@@ -5729,7 +5750,10 @@ class Server {
                                                     t.printStackTrace()
                                                 }
                                             }
-                                            if (message.name in ORDERED_CONTROL_MESSAGES)
+                                            // A review decision must see any text draft flushed before it on this socket.
+                                            val textEdit = message.name == "set-string" &&
+                                                (message.payload as? JsonObject)?.get("property") == JsonPrimitive("contents")
+                                            if (textEdit || message.name in ORDERED_CONTROL_MESSAGES)
                                                 orderedControls.send(dispatch)
                                             else launch(block = dispatch)
                                         }
@@ -6676,5 +6700,5 @@ internal val ORDERED_CONTROL_MESSAGES = setOf(
     "slider-update", "button-update", "output-request",
     "vec2-update", "checkbox-update", "string-update", "color-update", "array-update",
     // A drag's press, moves and release; its handler only queues them (LinesHandles.kt), so it never holds the line.
-    "lines-drag",
+    "lines-drag", "text-frame-review",
 )
