@@ -6,7 +6,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 {"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["contents" "frame" "name" "code" "code_language" "box_kind" "textFrame" "textRunAnchor" "textRunSources" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "parentHint" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_panel" "ai4_continuation" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "ai4_garden" "fileManagerAccessHistory" "kitRole"]}
 ```
 
-## 1. 1 - A creature, stroke by stroke
+## 1. 1 - Sprout, stroke by stroke
 
 <!-- field-box id="paint_strokes_creature" index="0" -->
 
@@ -17,7 +17,7 @@ From `code`
 points around an ellipse from angle a0 to a1 (radians), as [x0, y0, x1, y1, ...]
 
 ```edn [field-box id="paint_strokes_creature" role="properties"]
-{"id" "paint_strokes_creature" "index" 0 "name" "1 - A creature, stroke by stroke" "parents" ["root"] "children" ["paint_strokes_edit" "paint_strokes_note" "paint_strokes_sway"] "properties" {"children" #{#afield/box "paint_strokes_edit" #afield/box "paint_strokes_note" #afield/box "paint_strokes_sway"} "parents" #{#afield/box "root"} "name" "1 - A creature, stroke by stroke" "_tombstone" false "frame" #afield/rect [80.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "paint_strokes_creature_code_.kt" "lines" 70 "characters" 2223 "sha256" "6c85ad3b387301357ae6d4a22a0a127e5210e0155adcd4693363da007414d308"}]}
+{"id" "paint_strokes_creature" "index" 0 "name" "1 - Sprout, stroke by stroke" "parents" ["root"] "children" ["paint_strokes_edit" "paint_strokes_note" "paint_strokes_sway"] "properties" {"children" #{#afield/box "paint_strokes_edit" #afield/box "paint_strokes_note" #afield/box "paint_strokes_sway"} "parents" #{#afield/box "root"} "name" "1 - Sprout, stroke by stroke" "_tombstone" false "frame" #afield/rect [80.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "paint_strokes_creature_code_.kt" "lines" 70 "characters" 2223 "sha256" "6c85ad3b387301357ae6d4a22a0a127e5210e0155adcd4693363da007414d308"}]}
 ```
 
 ```kotlin [field-property box="paint_strokes_creature" name="code" path="paint_strokes_creature_code_.kt"]

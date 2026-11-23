@@ -646,7 +646,7 @@ means changing its record and painting again. This is the method of
 [Klad](https://github.com/klad-app/klad), a painting app built so that an agent can read and edit
 the strokes; the simulation underneath is still this page's canvas.
 
-This box paints a small creature stroke by stroke. Each `add` returns the stroke's address, and
+This box paints Sprout, a small creature, stroke by stroke. Each `add` returns the stroke's address, and
 `group` puts strokes under a name that addresses all of them at once:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/strokes_creature.png" alt="a cream canvas with a round green creature in the middle, its body made of eleven horizontal hog-flat strokes in two alternating olive greens, with five dark green filbert leaves sprouting from the top of its head, two pale eyes with dark pupils, a thin brown smiling mouth, a faint pink smudge on its left cheek and two brown legs" wait="20" capture="box" open-outputs="true" padding="20" requires="paint" name="strokes_creature" embed=true}
@@ -683,7 +683,7 @@ println(sheet.describe())
 ```
 
 `sheet.describe()` lists every stroke with its address, group, colour, brush, width and bounds,
-which is what an agent reads before it edits. Shown as markdown, the creature's list is:
+which is what an agent reads before it edits. Shown as markdown, Sprout's list is:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/strokes_list.png" alt="a monospaced list of the creature's 24 strokes, one per line: s1 to s11 in the body group, alternating colours #a0a848 and #8a9a3a, HogFlat, width 34, each with its bounds; s12 and s13 the brown legs; s14 to s18 the green Filbert leaves; s19 to s22 the eyes, pale then dark; s23 the mouth, a Round of width 10; s24 the pink Badger smudge" wait="20" capture="box" open-outputs="true" padding="20" requires="paint" name="strokes_list" embed=true}
 :::static
@@ -794,7 +794,7 @@ colour along with it.
 
 A note pinned on the picture is how a person points at something. `pin(x, y, text)` puts one
 there, and `near(x, y)` gives the addresses of the strokes under it, nearest first; `describe()`
-starts with each note and those addresses. Here the note asks for more moss on the creature's
+starts with each note and those addresses. Here the note asks for more moss on Sprout's
 right flank. [AI4 paints](ai4_painting.md#editing-strokes-by-address) gives the AI chat tools that
 read the note and answer it; this batch is the kind of answer they send, written out by hand. It
 recolours the strokes under the note and adds a group of fan-brush moss strokes along that side:
@@ -846,7 +846,7 @@ println("recoloured ${under.joinToString(", ")}; added ${sheet.select("@moss").j
 display("main", pngRow([original.render(), sheet.render()]))
 ```
 
-A body row is one stroke that runs right across the creature, so recolouring the strokes under
+A body row is one stroke that runs right across Sprout, so recolouring the strokes under
 the note recolours those rows all the way to the other cheek. What an agent can address is a
 stroke, the way the picture was painted.
 

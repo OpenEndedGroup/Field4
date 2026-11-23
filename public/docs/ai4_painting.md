@@ -136,7 +136,7 @@ box's AI chat the tools for that, over a `PaintStrokes` sheet:
 
 A `strokes` context tells the agent about every pinned note at the start of each request, so a
 note is a way of pointing at part of the picture: "more moss on this side". This box pins that
-note on a copy of the creature from the paint page and hands its chat the tools. Open its AI panel
+note on a copy of Sprout, the creature from the paint page, and hands its chat the tools. Open its AI panel
 and ask it to act on the note:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/ai4_painting/strokes_note.png" alt="two copies of a round green painted creature with green leaves on its head, pale eyes, a smile, a pink cheek smudge and brown legs, side by side and identical, with a status line under them: 24 strokes, 1 notes, more moss on this side" wait="20" capture="box" open-outputs="true" padding="20" requires="paint" name="ai4-strokes-note" embed=true}

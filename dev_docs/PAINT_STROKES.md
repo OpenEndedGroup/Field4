@@ -19,7 +19,7 @@ from one stroke's brush to the next, so:
 - a stroke's pixels depend only on the canvas under it when it is laid, i.e. on the strokes
   before it in the list that it touches.
 
-Consequences, measured on the demo creature (700 x 500 px, 24 strokes), recolouring the leaves,
+Consequences, measured on Sprout, the demo creature (700 x 500 px, 24 strokes), recolouring the leaves,
 bending the mouth and moving the smudge (box 2 of the transcript): 14,493 of 350,000 pixels change,
 and 1 of them lies more than 20 canvas units outside the old and new bounds of the edited strokes
 (bounds grown by half the brush width). The pixel-locality test pins the cleaner case: recolouring

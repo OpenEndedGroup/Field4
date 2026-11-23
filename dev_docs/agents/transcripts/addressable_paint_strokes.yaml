@@ -1,7 +1,7 @@
 name: addressable_paint_strokes
 description: >
   Paint strokes kept as data with addresses (afield.graphics.paint.PaintStrokes). The first box
-  paints a small creature as 24 addressed strokes in groups (body, legs, leaves, eyes, mouth,
+  paints Sprout, a small creature, as 24 addressed strokes in groups (body, legs, leaves, eyes, mouth,
   smudge) and prints the list an agent reads. The second edits a copy by address with one JSON
   batch: the leaves recoloured, the mouth bent into a frown, the smudge moved to the other cheek,
   where it re-blends into the wet body; it prints how many pixels changed and how few lie outside
@@ -15,7 +15,7 @@ docs:
 operations:
   - create:
       box: paint_strokes_creature
-      name: "1 - A creature, stroke by stroke"
+      name: "1 - Sprout, stroke by stroke"
       frame: { x: 80.0, y: 80.0, w: 340.0, h: 100.0 }
       properties:
         code: |
