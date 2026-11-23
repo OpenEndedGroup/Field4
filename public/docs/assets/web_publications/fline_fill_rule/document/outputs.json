@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-23T22:23:36.003Z",
+  "documentName": "fline_fill_rule",
+  "outputs": [
+    {
+      "uid": "ffr_every_renderer",
+      "channel": "field",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "ffr_every_renderer",
+      "channel": "gezira",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 388,
+      "height": 108,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "ffr_every_renderer",
+      "channel": "triangles",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/2.html"
+    }
+  ]
+}

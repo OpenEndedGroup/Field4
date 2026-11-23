@@ -1939,6 +1939,29 @@
         "public/docs/assets/agent_transcripts/fline_exact_booleans/metadata.edn": "6ad6422b06c0c0c5c691b248585a5b1899817d6bbbc875216e98f20f194d0b67"
       }
     },
+    "assets/agent_transcripts/fline_fill_rule/metadata.edn": {
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-23T22:23:36.003Z",
+      "channels": 3,
+      "file": "assets/web_publications/fline_fill_rule/document/metadata.edn",
+      "files": {
+        "assets/web_publications/fline_fill_rule/document/metadata.edn": "134d5fe34b2d0705b4b0c76098e1a5f2b5577451fe711fdf0d16a3124c5a147f",
+        "assets/web_publications/fline_fill_rule/document/outputs.json": "81de80449f6bdcde554edbd546dde60b8f28598b14a71e9f7722e9600fab1296",
+        "assets/web_publications/fline_fill_rule/outputs/0.html": "7b26eec39b2c57f2db969273f94cfa0997f875d6036078c06f46e3aef2fdd97e",
+        "assets/web_publications/fline_fill_rule/outputs/1.html": "7d27fa49bfb94a959483c7131f3daaab5052bd8b47e37de0cbb7afcb5603312f",
+        "assets/web_publications/fline_fill_rule/outputs/2.html": "c78a6c3650f8672720ff4adc9da1df467596665a9f47776332f6b88064f19a9e"
+      },
+      "kinds": [
+        "svg"
+      ],
+      "outputs": "assets/web_publications/fline_fill_rule/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/fline_fill_rule.yaml": "cdce1a98373f0613d387526394393ecea49888c454bc156e0e6ba991afbb613b",
+        "public/docs/assets/agent_transcripts/fline_fill_rule/ffr_every_renderer_code_.kt": "34b79c44cf324e95c270269e38e5f6ce5b400b865d9a45131ef808132b38ee6b",
+        "public/docs/assets/agent_transcripts/fline_fill_rule/guides/afield_four_graphics.md": "53d1f0dd6a1859b68355230195eab82fb1a640cb022b88c8a37fe4805fcd73d3",
+        "public/docs/assets/agent_transcripts/fline_fill_rule/metadata.edn": "70ebc760f354b5be42eaaf6509b3c9a5ca318813e69d1a51c7840f02a63312e1"
+      }
+    },
     "assets/agent_transcripts/fline_hit_records/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
       "capturedAt": "2026-11-18T15:02:40.198Z",
