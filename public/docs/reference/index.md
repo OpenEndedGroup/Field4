@@ -687,7 +687,7 @@ To see it all at once, open the [map of the docs](../docs_map.md): every page, a
 
 ## Reference pages
 
-**42937 public symbols across 1907 source files**, 25698 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**42938 public symbols across 1907 source files**, 25698 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -700,7 +700,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Video](video.md) | 14 | 195 | 194 (99%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 60 | 2524 | 1904 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 27 | 1231 | 570 (46%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 448 | 10786 | 6864 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 448 | 10787 | 6864 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 48 | 911 | 515 (56%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 596 | 440 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 787 | 530 (67%) | Nonlinear least squares, aimed at geometry. |
@@ -1380,7 +1380,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>nile/<wbr></small> [GeziraFLine.kt](graphics.md#gezirafline-kt) | Graphics | 5 | 5 |  | [Field 4 Graphics](../afield_four_graphics.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>nile/<wbr></small> [GeziraGpu.kt](graphics.md#geziragpu-kt) | Graphics | 14 | 14 | The last stage of `Gezira.rasterizer`, WindingSpans, as a Vulkan compute shader: one invocation workgroup per pixel row resolves that row's edges exactly into a coverage image. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>nile/<wbr></small> [GeziraGpuProbe.kt](graphics.md#geziragpuprobe-kt) | Graphics | 5 | 4 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>nile/<wbr></small> [GeziraGpuScene.kt](graphics.md#geziragpuscene-kt) | Graphics | 24 | 16 | A whole Gezira scene, many filled paths in paint order, rasterised and composited on the GPU in one five-stage compute pipeline per frame. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>nile/<wbr></small> [GeziraGpuScene.kt](graphics.md#geziragpuscene-kt) | Graphics | 25 | 16 | A whole Gezira scene, many filled paths in paint order, rasterised and composited on the GPU in one five-stage compute pipeline per frame. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>nile/<wbr></small> [GeziraGpuTigerProbe.kt](graphics.md#geziragputigerprobe-kt) | Graphics | 4 | 3 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>nile/<wbr></small> [GeziraPaint.kt](graphics.md#gezirapaint-kt) | Graphics | 25 | 23 |  | [Field 4 Graphics](../afield_four_graphics.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>nile/<wbr></small> [GeziraSvg.kt](graphics.md#gezirasvg-kt) | Graphics | 34 | 21 |  | [Field 4 Graphics](../afield_four_graphics.md) |
