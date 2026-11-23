@@ -3180,15 +3180,12 @@ internal fun ensureBoxVisibleForNavigation(target: HTMLElement) {
     )
 }
 
-/** Center a linked box in the exposed canvas, accounting for the guide and editor together. */
-private fun centerBoxForMarkdownNavigation(target: HTMLElement) {
-    val rect = target.getBoundingClientRect()
-    if (rect.width <= 0.0 || rect.height <= 0.0) return
-    val pane = CanvasCamera.paneOf(target)
+private fun navigationCanvasSpaces(pane: CanvasPane, extraOverlay: HTMLElement? = null): List<Rect> {
     val p = pane.rect
     var spaces = listOf(Rect(p.x + 16.0, p.y + 16.0, p.w - 32.0, p.h - 32.0))
-    for (selector in listOf(".docs-iframe-container", ".monaco-editor-container", "#document-guide")) {
-        val overlay = document.querySelector(selector) ?: continue
+    val overlays = listOf(".docs-iframe-container", ".monaco-editor-container", "#document-guide")
+        .mapNotNull(document::querySelector) + listOfNotNull(extraOverlay)
+    for (overlay in overlays) {
         if (!isOverlayVisible(overlay)) continue
         val r = overlay.getBoundingClientRect()
         val obstacle = Rect(r.left - 14, r.top - 14, r.width + 28, r.height + 28)
@@ -3202,13 +3199,48 @@ private fun centerBoxForMarkdownNavigation(target: HTMLElement) {
             ).filter { it.w >= 96 && it.h >= 96 }
         }
     }
-    val safe = spaces.maxByOrNull { it.w * it.h } ?: navigationSafeViewportRect(pane = pane)
+    return spaces
+}
+
+/** Center a linked box in the exposed canvas, accounting for the guide and editor together. */
+private fun centerBoxForMarkdownNavigation(target: HTMLElement) {
+    val rect = target.getBoundingClientRect()
+    if (rect.width <= 0.0 || rect.height <= 0.0) return
+    val pane = CanvasCamera.paneOf(target)
+    val safe = navigationCanvasSpaces(pane).maxByOrNull { it.w * it.h } ?: navigationSafeViewportRect(pane = pane)
     animateViewportTranslation(
         nextX = pane.tx + safe.x + safe.w / 2 - rect.left - rect.width / 2,
         nextY = pane.ty + safe.y + safe.h / 2 - rect.top - rect.height / 2,
         durationMs = 420.0,
         refreshSpatialDuringAnimation = spatialNavActive,
         pane = pane
+    )
+}
+
+private fun revealTextReviewPassage(box: HTMLElement, line: DOMRect, review: HTMLElement) {
+    val pane = CanvasCamera.paneOf(box)
+    val spaces = navigationCanvasSpaces(pane, review)
+    if (spaces.isEmpty()) return
+    cancelNavigationPanAnimation()
+    fun shift(start: Double, end: Double, low: Double, high: Double): Double = when {
+        end - start > high - low -> low - start
+        start < low -> low - start
+        end > high -> high - end
+        else -> 0.0
+    }
+    val fitting = spaces.filter { line.width <= it.w && line.height <= it.h }
+    val candidates = fitting.ifEmpty { spaces }
+    val (dx, dy) = candidates.map { area ->
+        shift(line.left, line.right, area.x, area.right) to
+            shift(line.top, line.bottom, area.y, area.bottom)
+    }.minBy { (x, y) -> x * x + y * y }
+    if (abs(dx) < 0.5 && abs(dy) < 0.5) return
+    animateViewportTranslation(
+        nextX = pane.tx + dx,
+        nextY = pane.ty + dy,
+        durationMs = 220.0,
+        refreshSpatialDuringAnimation = spatialNavActive,
+        pane = pane,
     )
 }
 
@@ -5920,6 +5952,7 @@ suspend fun main() {
             true
         }
     }
+    window.asDynamic().revealTextReviewPassage = ::revealTextReviewPassage
     window.asDynamic().revealBoxOutputs = { uid: String, output: HTMLElement? -> revealBoxOutputs(uid, output) }
     window.unsafeCast<dynamic>().selectBox = ::selectBox
     window.unsafeCast<dynamic>().deselectBox = ::deselectBox

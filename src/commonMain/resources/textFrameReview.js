@@ -64,11 +64,21 @@ function diffPreview(change) {
     return result;
 }
 
+const reviewWidth = 540;
 const actionIcons = {
     Accept: '<path d="m3 8 3 3 7-7"/>',
     Reject: '<path d="m4 4 8 8m0-8-8 8"/>',
     Comment: '<path d="M3 3h10v7H7l-4 3z"/>',
 };
+
+function iconButton(label, icon, action) {
+    const result = button('', action);
+    result.className = 'text-frame-review-icon';
+    result.title = label;
+    result.setAttribute('aria-label', label);
+    result.innerHTML = '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + actionIcons[icon] + '</svg>';
+    return result;
+}
 
 function contextExcerpt(text, start, end, mode) {
     const preceding = text.slice(0, start);
@@ -76,8 +86,8 @@ function contextExcerpt(text, start, end, mode) {
     const following = text.indexOf('\n\n', end);
     const paragraphFrom = paragraphStart < 0 ? 0 : paragraphStart + 2;
     const paragraphTo = following < 0 ? text.length : following;
-    const startLimit = Math.max(paragraphFrom, start - 84);
-    const endLimit = Math.min(paragraphTo, end + 84);
+    const startLimit = Math.max(paragraphFrom, start - 112);
+    const endLimit = Math.min(paragraphTo, end + 112);
     const clip = text.slice(start, Math.min(end, start + 100)) + (end - start > 100 ? '…' : '');
     const marker = element('mark', clip, mode === 'insert' ? 'text-frame-review-new-context' : '');
     const before = (startLimit > paragraphFrom ? '…' : '') + text.slice(startLimit, start);
@@ -90,6 +100,7 @@ const pending = change => !change.status || change.status === 'pending';
 export function mountTextFrameReview(box, prepare, source) {
     let changes = [], seen, dialog, list, error, rejectAll, context, busy = false;
     let hovered, focusedAt, preferFocus = false;
+    let revealTimer, savedScroll;
     const sourceHighlight = 'field-text-frame-review';
     const insertedHighlight = 'field-text-frame-review-insert';
     function clearHighlight() {
@@ -104,8 +115,33 @@ export function mountTextFrameReview(box, prepare, source) {
         badge.addEventListener(event, e => e.stopPropagation());
     }
 
+    function restoreScroll() {
+        clearTimeout(revealTimer);
+        if (savedScroll) savedScroll.root.scrollTop = savedScroll.top;
+        savedScroll = null;
+    }
+
+    function revealRange(root, range, original) {
+        clearTimeout(revealTimer);
+        revealTimer = setTimeout(() => {
+            if (!dialog?.open || !root.isConnected) return;
+            const line = () => Array.from(range.getClientRects()).find(rect => rect.width > 0 && rect.height > 0);
+            const rect = line();
+            if (!rect) return;
+            const frame = root.getBoundingClientRect();
+            const scale = frame.height / root.offsetHeight;
+            if (scale > 0 && (rect.top < frame.top || rect.bottom > frame.bottom)) {
+                if (root === original) savedScroll ||= {root, top: root.scrollTop};
+                root.scrollTop += (rect.top - frame.top - frame.height * .24) / scale;
+            }
+            const target = line();
+            if (target) window.revealTextReviewPassage?.(box, target, dialog);
+        }, 100);
+    }
+
     function updateContext() {
         if (!dialog?.open) return;
+        clearTimeout(revealTimer);
         const active = preferFocus ? focusedAt || hovered : hovered || focusedAt;
         const change = changes.find(entry => entry.id === active?.id && pending(entry));
         const {text, root} = source.read();
@@ -114,6 +150,7 @@ export function mountTextFrameReview(box, prepare, source) {
         for (const card of list.children) card.classList.toggle('is-active', usable && card.dataset.reviewId === change.id);
         clearHighlight();
         if (!usable) {
+            restoreScroll();
             source.preview(null);
             context.textContent = 'Hover or focus a change to see it in context.';
             return;
@@ -128,7 +165,10 @@ export function mountTextFrameReview(box, prepare, source) {
         const preview = source.preview(insertion ? markdown : null);
         const display = insertion ? preview : root;
         const range = display && domRangeForMarkdown(display, from, to);
-        if (range && window.CSS?.highlights) window.CSS.highlights.set(insertion ? insertedHighlight : sourceHighlight, new Highlight(range));
+        if (range) {
+            window.CSS?.highlights?.set(insertion ? insertedHighlight : sourceHighlight, new Highlight(range));
+            revealRange(display, range, root);
+        }
         context.replaceChildren(...contextExcerpt(markdown, from, to, insertion ? 'insert' : 'remove'));
     }
 
@@ -140,21 +180,23 @@ export function mountTextFrameReview(box, prepare, source) {
 
     function position() {
         if (!dialog?.open) return;
+        dialog.style.maxHeight = '';
         const sourceBox = box.getBoundingClientRect();
         const gutter = 18;
         const left = Math.min(sourceBox.left, window.innerWidth);
         const right = Math.max(sourceBox.right, 0);
         const leftRoom = left - 2 * gutter;
         const rightRoom = window.innerWidth - right - 2 * gutter;
-        const dockRight = rightRoom >= 540 || rightRoom >= leftRoom;
+        const dockRight = rightRoom >= reviewWidth || rightRoom >= leftRoom;
         const room = dockRight ? rightRoom : leftRoom;
         if (room >= 360) {
-            const width = Math.min(660, room);
+            const width = Math.min(reviewWidth, room);
             dialog.style.width = width + 'px';
             dialog.style.left = (dockRight ? right + gutter : left - gutter - width) + 'px';
             const top = Math.max(gutter, Math.min(sourceBox.top, window.innerHeight - dialog.offsetHeight - gutter));
             dialog.style.top = top + 'px';
             dialog.style.bottom = 'auto';
+            dialog.style.maxHeight = `min(78vh, 780px, ${window.innerHeight - top - gutter}px)`;
         } else {
             dialog.style.width = '';
             dialog.style.left = Math.max(gutter, (window.innerWidth - dialog.offsetWidth) / 2) + 'px';
@@ -190,6 +232,7 @@ export function mountTextFrameReview(box, prepare, source) {
 
     function render() {
         if (!dialog?.open) return;
+        const scrollTop = list.scrollTop;
         const focused = list.contains(document.activeElement) ? document.activeElement : null;
         const suggestion = focused?.dataset.suggestion;
         const control = focused?.dataset.control;
@@ -202,25 +245,19 @@ export function mountTextFrameReview(box, prepare, source) {
             const card = element('section', '', 'text-frame-review-change');
             card.dataset.reviewId = change.id;
             const title = element('div', '', 'text-frame-review-card-heading');
-            const copy = element('div');
-            title.append(copy);
+            title.append(diffPreview(change));
             card.append(title);
             const state = pending(change) ? (change.start == null ? 'Source changed' : '') :
                 ({accepted: 'Accepted', rejected: 'Rejected', superseded: 'Superseded'}[change.status] || '');
-            if (state) copy.append(element('div', state, 'text-frame-review-state'));
-            if (change.reason) copy.append(element('p', change.reason, 'text-frame-review-reason'));
-            card.append(diffPreview(change));
+            if (state) card.append(element('div', state, 'text-frame-review-state'));
+            if (change.reason) card.append(element('p', change.reason, 'text-frame-review-reason'));
             for (const comment of change.comments || []) {
                 card.append(element('p', comment, 'text-frame-review-comment'));
             }
             if (readOnly) return card;
             const actions = element('div', '', 'text-frame-review-actions');
             function act(label, callback) {
-                const result = button('', callback);
-                result.className = 'text-frame-review-icon';
-                result.title = label;
-                result.setAttribute('aria-label', label);
-                result.innerHTML = '<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + actionIcons[label] + '</svg>';
+                const result = iconButton(label, label, callback);
                 result.dataset.suggestion = change.id;
                 result.dataset.control = label;
                 return result;
@@ -258,6 +295,7 @@ export function mountTextFrameReview(box, prepare, source) {
             return card;
         });
         list.replaceChildren(...cards);
+        list.scrollTop = scrollTop;
         if (suggestion) {
             const replacement = Array.from(list.querySelectorAll('[data-control]')).find(entry =>
                 entry.dataset.suggestion === suggestion && entry.dataset.control === control && !entry.disabled);
@@ -267,19 +305,20 @@ export function mountTextFrameReview(box, prepare, source) {
             }
         }
         updateContext();
-        position();
     }
 
     function open() {
         if (dialog?.open) return;
         source.open();
         dialog = element('dialog', '', 'text-frame-review');
-        const title = element('h2', box.name ? 'Review edits · ' + box.name : 'Review edits');
-        dialog.setAttribute('aria-label', title.textContent);
+        const title = element('h2', 'Review edits');
+        if (box.name) title.append(element('span', box.name));
+        title.tabIndex = -1;
+        title.autofocus = true;
+        dialog.setAttribute('aria-label', box.name ? 'Review edits for ' + box.name : 'Review edits');
         const controls = element('div', '', 'text-frame-review-actions');
         rejectAll = button('Reject all', () => submit('reject-all'));
-        const close = button('Close', () => { if (!busy) dialog.close(); });
-        close.autofocus = true;
+        const close = iconButton('Close', 'Reject', () => { if (!busy) dialog.close(); });
         controls.append(rejectAll, close);
         const header = element('header');
         header.append(title, controls);
@@ -309,6 +348,7 @@ export function mountTextFrameReview(box, prepare, source) {
             if (dialog !== opened) return;
             window.removeEventListener('resize', position);
             clearHighlight();
+            restoreScroll();
             source.preview(null);
             hovered = focusedAt = null;
             preferFocus = false;
@@ -318,6 +358,7 @@ export function mountTextFrameReview(box, prepare, source) {
         dialog.showModal();
         window.addEventListener('resize', position);
         render();
+        position();
     }
 
     return {

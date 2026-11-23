@@ -257,7 +257,8 @@ Ask AI4 to suggest edits to a text frame. Open **Review edits** above the frame
 to see removed Markdown in red strikethrough and added Markdown in green.
 Hover or focus the red text to highlight its passage on the frame. Hover or
 focus the green text to preview the replacement in the typeset prose. The
-panel also shows the surrounding text.
+panel also shows the surrounding text. If the passage is off-screen, Field
+scrolls it into view while the review panel stays in place.
 The check mark (**Accept**) applies one change. **Reject** dismisses one, and **Reject all**
 dismisses the remaining suggestions for that frame. If you edit the source
 of a suggestion before accepting it, Field may mark it **Source changed**
