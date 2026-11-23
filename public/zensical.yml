@@ -106,6 +106,7 @@ nav:
     - A Drawn Score, Heard: chain_drawn_score.md
     - A Drawn Morph, Heard: chain_drawn_morph.md
     - Drawn Strokes Become Paint: chain_drawn_paint.md
+    - An SVG Tiger, Painted: chain_tiger_paint.md
     - A Generator, Graded by Datalog: chain_flow_islands.md
     - A Word Cut as a Stencil: chain_stencil_bridges.md
     - A Tracked Body, Measured and Heard: chain_tracked_body.md
