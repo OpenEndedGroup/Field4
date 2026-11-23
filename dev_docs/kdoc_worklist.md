@@ -197,7 +197,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [PetriStateSpace.kt](../src/jvmMain/kotlin/afield/simulation/petri/PetriStateSpace.kt) | Visualization | petri_nets, chain_petri_sculpture, petri_cheatsheet | 0 | 13 | 76% |
 | [AudioCurveFile.kt](../src/jvmMain/kotlin/afield/audio/analysis/AudioCurveFile.kt) | Audio | audio_curves | 0 | 12 | 42% |
 | [BooleanNetworkSequencing.kt](../src/jvmMain/kotlin/afield/audio/synth/BooleanNetworkSequencing.kt) | Patterns | boolean_network_music_examples | 0 | 12 | 58% |
-| [GeziraSvg.kt](../src/jvmMain/kotlin/afield/graphics/nile/GeziraSvg.kt) | Graphics | afield_four_graphics | 0 | 12 | 61% |
+| [GeziraSvg.kt](../src/jvmMain/kotlin/afield/graphics/nile/GeziraSvg.kt) | Graphics | afield_four_graphics, chain_tiger_paint | 0 | 12 | 61% |
 | [alife_walls.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_walls.kt) | ALife | alife_examples | 0 | 12 | 73% |
 | [SourceFramesStudy.kt](../src/jvmMain/kotlin/afield/study/source/SourceFramesStudy.kt) | Workspace | studies | 0 | 12 | 40% |
 | [intervalPicture.kt](../src/jvmMain/kotlin/afield/ui/visualization/intervalPicture.kt) | Visualization | fn_intervals | 0 | 12 | 25% |
@@ -212,7 +212,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [DepthAnything.kt](../src/jvmMain/kotlin/afield/ai/inference/onnx/DepthAnything.kt) | Machine learning | onnx | 0 | 10 | 62% |
 | [movement.kt](../src/jvmMain/kotlin/afield/animation/motion/movement.kt) | Simulation | movement_examples | 0 | 10 | 76% |
 | [PatCondense.kt](../src/jvmMain/kotlin/afield/audio/synth/PatCondense.kt) | Patterns | pattern_language | 0 | 10 | 57% |
-| [PaintTools.kt](../src/jvmMain/kotlin/afield/graphics/paint/PaintTools.kt) | Graphics | paint_canvas, chain_drawn_paint, paint_gestures | 0 | 10 | 91% |
+| [PaintTools.kt](../src/jvmMain/kotlin/afield/graphics/paint/PaintTools.kt) | Graphics | paint_canvas, chain_drawn_paint, chain_tiger_paint | 0 | 10 | 91% |
 | [ThreeMotion.kt](../src/jvmMain/kotlin/afield/graphics/three/ThreeMotion.kt) | Graphics | three_output | 0 | 10 | 65% |
 | [SolidGradient.kt](../src/jvmMain/kotlin/afield/lang/solidsl/SolidGradient.kt) | Graphics | solid_notation | 0 | 10 | 62% |
 | [SolidPointCloudFit.kt](../src/jvmMain/kotlin/afield/lang/solidsl/SolidPointCloudFit.kt) | Graphics | solid_notation | 0 | 10 | 50% |
@@ -308,7 +308,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Canonical.kt](../src/jvmMain/kotlin/afield/geometry/polytope/Canonical.kt) | Polytopes | polytope_examples, chain_ceres_manifold_contours, stackauto_conversation | 0 | 2 | 95% |
 | [lp_polytope.kt](../src/jvmMain/kotlin/afield/geometry/spatial/lp_polytope.kt) | Graphics | lp_curves | 0 | 2 | 96% |
 | [GeziraPaint.kt](../src/jvmMain/kotlin/afield/graphics/nile/GeziraPaint.kt) | Graphics | afield_four_graphics | 0 | 2 | 92% |
-| [PaintCanvas.kt](../src/jvmMain/kotlin/afield/graphics/paint/PaintCanvas.kt) | Graphics | ai4_painting, paint_canvas, watercolor | 0 | 2 | 98% |
+| [PaintCanvas.kt](../src/jvmMain/kotlin/afield/graphics/paint/PaintCanvas.kt) | Graphics | ai4_painting, chain_tiger_paint, paint_canvas | 0 | 2 | 98% |
 | [shaders.kt](../src/jvmMain/kotlin/afield/graphics/shader/shaders.kt) | Graphics | afield_four_graphics, learned_shader, editing_from_outside | 0 | 2 | 98% |
 | [CameraPose.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/util/CameraPose.kt) | Graphics | keyframer_examples | 0 | 2 | 87% |
 | [SolidField.kt](../src/jvmMain/kotlin/afield/lang/solidsl/SolidField.kt) | Graphics | solid_notation | 0 | 2 | 80% |
