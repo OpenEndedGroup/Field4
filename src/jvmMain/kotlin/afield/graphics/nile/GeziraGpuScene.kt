@@ -45,7 +45,9 @@ class GeziraPath(val beziers: List<Bezier>, val paint: Rgba, val rule: FillRule 
  *
  * @param segmentCapacity segments the buffer holds; pieces past it are dropped and counted in [overflow].
  * @param bandCapacity entries (and runs) each band of 16 rows can hold.
- * @param rowEdges edges one path can put in one pixel row; more are dropped and counted in [overflow].
+ * @param rowEdges edges one path can put in one pixel row in the fast resolve pass. A row past it is
+ *   not dropped: the fast pass flags it and a second, wide pass at [WIDE_EDGES] redraws just that row
+ *   ([wideRows] counts them); only edges past [WIDE_EDGES] are dropped, counted in [overflow].
  *   It sizes the resolve stage's shared memory (with room for `2 × rowEdges` crossings, and one
  *   accumulator per column of [width]), and that is what sets how many rows a GPU core resolves at
  *   once: on an M-series Mac, 256 here resolves the 900 × 900 tiger in about two thirds of the time
@@ -53,7 +55,7 @@ class GeziraPath(val beziers: List<Bezier>, val paint: Rgba, val rule: FillRule 
  * @param repeats dispatches of each stage per frame: 1 to draw, more only to time the pipeline as the
  *   difference between frames with several and with one (repeats run back to back and each stage is
  *   idempotent, so the picture is the same).
- * @param repeatStage with [repeats], repeat only this stage (0 count .. 4 resolve); -1 repeats all five.
+ * @param repeatStage with [repeats], repeat only this stage (0 count .. 4 resolve, 5 the wide pass); -1 repeats all.
  */
 class GeziraGpuScene(
     val probe: GpuProbe,
@@ -71,7 +73,7 @@ class GeziraGpuScene(
 ) {
     init {
         require(width in 1..2048) { "GeziraGpuScene draws images 1 to 2048 pixels wide, not $width" }
-        require(rowEdges in 16..512) { "rowEdges is 16 to 512, not $rowEdges" }
+        require(rowEdges in 16..WIDE_EDGES) { "rowEdges is 16 to $WIDE_EDGES, not $rowEdges" }
     }
 
     /** Curves uploaded, every one a cubic (lines and quadratics are raised exactly). */
@@ -92,8 +94,11 @@ class GeziraGpuScene(
     private val segShape = local("segShape", segCap)
     private val bins = local("bins", bands * 2 * bandCap)
 
-    /** Per band entries and runs, then three overflow counters: segments, band entries, row edges. */
-    val counts: FrameBufferGroup = probe.fixture("counts", bands * 2 + 4)
+    /**
+     * Per band entries and runs, three overflow counters (segments, band entries, row edges), the
+     * widest run, then a flag per row the resolve stage left to the wide pass.
+     */
+    val counts: FrameBufferGroup = probe.fixture("counts", bands * 2 + 4 + height)
 
     /** The composited picture, `width × height` premultiplied RGBA, row-major, y down. */
     val image: FrameBufferGroup = probe.fixture("image", width * height * 4)
@@ -116,9 +121,12 @@ class GeziraGpuScene(
         probe.upload(shapes, s)
         probe.fill(counts, 0f)
         val glsl = GeziraGpuScene::class.java.getResource("/afield/graphics/nile/gezira_scene.comp")!!.readText()
-        val stageNames = listOf("count", "scan", "emit", "bin", "resolve")
+        val stageNames = listOf("count", "scan", "emit", "bin", "resolve") + if (rowEdges < WIDE_EDGES) listOf("resolve-wide") else emptyList()
         for ((n, name) in stageNames.withIndex()) {
-            val src = glsl.replaceFirst("#version 450\n", "#version 450\n#define STAGE ${n + 1}\n#define MAXW ${(width + 31) / 32 * 32}\n#define NE ${rowEdges}u\n#define NY ${3 * rowEdges}u\n")
+            val edges = if (n == 5) WIDE_EDGES else rowEdges
+            val defines = "#define STAGE ${minOf(n + 1, 5)}\n#define MAXW ${(width + 31) / 32 * 32}\n#define NE ${edges}u\n#define NY ${3 * edges}u\n" +
+                if (n == 5) "#define WIDE 1\n" else ""
+            val src = glsl.replaceFirst("#version 450\n", "#version 450\n$defines")
             val groups = when (n) {
                 0, 2 -> (curveCount + 63) / 64
                 1 -> 1
@@ -174,10 +182,19 @@ class GeziraGpuScene(
     /** The most edges any path put in any one row, the resolve stage's inner size. */
     fun widestRun(): Int = probe.readInts(counts, bands * 2 + 4)[bands * 2 + 3]
 
+    /**
+     * Rows of the last frame that one path crowded past [rowEdges] edges, which the resolve stage
+     * left for its wide pass (512 edges, the old speed) to redraw. 0 means the fast pass drew every row.
+     */
+    fun wideRows(): Int = probe.readInts(counts, bands * 2 + 4 + height).copyOfRange(bands * 2 + 4, bands * 2 + 4 + height).count { it != 0 }
+
     /** Band entries summed over bands, from the last frame: the binned segment count. */
     fun binned(): Int = probe.readInts(counts, bands * 2).filterIndexed { i, _ -> i % 2 == 0 }.sum()
 
     companion object {
+        /** The resolve stage's largest size, used by the wide pass for rows past [rowEdges]. */
+        const val WIDE_EDGES = 512
+
         /** [b] as a cubic's eight coordinates, raising a line or quadratic exactly. */
         fun cubic(b: Bezier): DoubleArray {
             val p = b.p

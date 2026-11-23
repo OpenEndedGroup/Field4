@@ -2514,8 +2514,10 @@ val scene = GeziraGpuScene(probe, GeziraGpuScene.paths(doc.lines), N, N, fit, ro
 ```
 
 At 900 × 900 the pipeline takes 16.8 ms at 512, 13.1 ms at 320 and 11.3 ms at 256, the default,
-with the same picture. Edges past `rowEdges` are dropped and counted in `overflow()`; the tiger's
-busiest row has 242 at 150 × 150, so a very small or a busier drawing may need 512.
+with the same picture. A row that one path crowds past `rowEdges` is not lost: the fast pass leaves it,
+and a second pass at 512 redraws just that row, so a small or busy drawing costs the old speed only
+in its crowded rows (`wideRows()` counts them; the tiger has none at 150 × 150, where its busiest
+row has 242 edges).
 Under MoltenVK (`AFIELD_VULKAN_DRIVER=moltenvk`) the same frame takes 10.8 ms wall.
 
 ??? aside "Agents: how these were measured"

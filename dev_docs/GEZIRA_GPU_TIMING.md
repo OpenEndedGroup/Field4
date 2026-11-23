@@ -95,13 +95,28 @@ The same probe under MoltenVK (`AFIELD_VULKAN_DRIVER=moltenvk`), same build:
 
 and there `rowEdges` 512 / 384 / 320 / 256 gives 900 × 900 wall 14.24 / 14.27 / 12.17 / 10.81 ms.
 
-## The limit `rowEdges` sets
+## Rows past `rowEdges`: the wide pass
 
-An edge past `rowEdges` in one path's row is dropped and counted (`overflow()[2]`); the probe
-fails on any. The tiger's widest row, as `widestRun()`: 242 edges at 150 px, 217 at 225, 220 at
-300, 221 at 450, 186 at 900, 153 at 1800. Smaller pictures put more of a path in a row, so a scene
-drawn tiny, or a busier document, may need `rowEdges = 512` and the old speed. Choosing it from the
-scene automatically (a first frame at 512 that reads `widestRun()`, then a rebuild) is the next step.
+A row in which one path puts more than `rowEdges` edges (or its crossings more than `3 × rowEdges`)
+is not drawn by the fast resolve pass: it flags the row (in `counts`, after the overflow counters)
+and stops. A sixth dispatch, `resolve-wide`, is the same code compiled at 512 edges; it returns at
+once for unflagged rows and redraws a flagged row from scratch. Only edges past 512 are dropped.
+`wideRows()` counts the flagged rows of the last frame.
+
+The probe checks it (2026-11-23, a later run, when the machine's empty frame was 6.7 ms instead of
+8.3, so compare within the run only):
+
+| size, `rowEdges` | widest run | rows to the wide pass | largest / mean difference from the CPU |
+| --- | --- | --- | --- |
+| 150, 256 | 242 | 0 | 0.0225 / 3.94e-4 |
+| 300, 256 | 220 | 0 | 0.0185 / 2.13e-4 |
+| 450, 64 | 221 | 74 | 0.0212 / 1.51e-4 |
+| 450, 256 | 221 | 0 | 0.0212 / 1.51e-4 |
+
+At `rowEdges = 64` the 450 picture equals the 256 one exactly (largest difference 0, asserted).
+In that run 900 × 900 measured wall 12.86 ms, pipeline 11.93 ms (resolve 10.66) with the wide
+dispatch present and idle; the 512 / 384 / 320 / 256 sweep gave pipeline 16.41 / 16.44 / 13.40 /
+11.91 ms.
 
 ## Next
 
