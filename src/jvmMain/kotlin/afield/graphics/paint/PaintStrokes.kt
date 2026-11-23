@@ -273,9 +273,12 @@ class PaintStrokes(
         past.addLast(state()); restore(s); return true
     }
 
-    /** Paint the visible strokes, in order, onto a fresh canvas. */
-    fun render(): PaintCanvas {
-        val canvas = PaintCanvas(widthPx, aspect, ground = PaintGround.Bare, groundColor = ground, seed = seed)
+    /**
+     * Paint the visible strokes, in order, onto a fresh canvas, or onto a copy of [onto] (which is
+     * left as it is): a canvas painted some other way, that the strokes go over.
+     */
+    fun render(onto: PaintCanvas? = null): PaintCanvas {
+        val canvas = onto?.copy() ?: PaintCanvas(widthPx, aspect, ground = PaintGround.Bare, groundColor = ground, seed = seed)
         for (r in list) if (!r.hidden) paint(canvas, r)
         return canvas
     }
