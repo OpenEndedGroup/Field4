@@ -715,7 +715,7 @@ for (x in [440.0, 560.0]) {
 sheet.add(arc(500.0, 420.0, 70.0, 45.0, 0.4, PI - 0.4), color = "#3a1a10", width = 10.0, group = "mouth")
 sheet.add([400.0, 440.0, 410.0, 445.0], color = "#e07080", brush = BrushKind.Badger, width = 50.0, hiding = 0.6, group = "smudge")
 :::endfold
-markdown(sheet.describe().lines().joinToString("\n") { "    $it" })
+markdown("```text\n" + sheet.describe() + "```")
 ```
 
 ### Editing by address
