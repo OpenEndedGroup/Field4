@@ -683,14 +683,9 @@ println(sheet.describe())
 ```
 
 `sheet.describe()` lists every stroke with its address, group, colour, brush and bounds, which
-is what an agent reads before it edits:
-
-```text
-s1 @body #a0a848 HogFlat w34 bounds [377, 253, 622, 293]
-...
-s23 @mouth #3a1a10 Round w10 bounds [430, 432, 569, 470]
-s24 @smudge #e07080 Badger w50 bounds [375, 415, 435, 470]
-```
+is what an agent reads before it edits.
+The first line of that list is `s1 @body #a0a848 HogFlat w34 bounds [377, 253, 622, 293]`,
+and the last is `s24 @smudge #e07080 Badger w50 bounds [375, 415, 435, 470]`.
 
 ### Editing by address
 
