@@ -3781,6 +3781,8 @@ Extensions are per document: they apply to AI conversations about that document 
 
 `src/jvmMain/kotlin/afield/ai/tools/AgentExtensions.kt` — [read the source](source/jvmMain/afield/ai/tools/AgentExtensions/)
 
+**Used in:** [AI4 Paints](../ai4_painting.md)
+
 ### Top-level functions { #agentextensions-kt-functions }
 
 | Declaration | Summary |

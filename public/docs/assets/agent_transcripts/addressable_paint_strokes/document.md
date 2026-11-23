@@ -167,12 +167,12 @@ run {
 }
 ```
 
-## 4. 3 - A pinned note, acted on
+## 4. 3 - A pinned note, for the AI
 
 <!-- field-box id="paint_strokes_note" index="3" -->
 
 ```edn [field-box id="paint_strokes_note" role="properties"]
-{"id" "paint_strokes_note" "index" 3 "name" "3 - A pinned note, acted on" "parents" ["root" "paint_strokes_creature"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "paint_strokes_creature"} "name" "3 - A pinned note, acted on" "_tombstone" false "frame" #afield/rect [1500.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "paint_strokes_note_code_.kt" "lines" 24 "characters" 1134 "sha256" "4a8aff5853f8a633801599a789e4a47b94306b6320b24301837bbb7601ff46f6"}]}
+{"id" "paint_strokes_note" "index" 3 "name" "3 - A pinned note, for the AI" "parents" ["root" "paint_strokes_creature"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "paint_strokes_creature"} "name" "3 - A pinned note, for the AI" "_tombstone" false "frame" #afield/rect [1500.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "paint_strokes_note_code_.kt" "lines" 20 "characters" 822 "sha256" "d047c9a8937fc9a768555399d7fd9a9bfa20fc16fdb8ac90fc47df022811782a"}]}
 ```
 
 ```kotlin [field-property box="paint_strokes_note" name="code" path="paint_strokes_note_code_.kt"]
@@ -181,24 +181,20 @@ run {
         markdown(PaintLibrary.describe())
         return@run
     }
-    val sheet = fromContext<PaintStrokes>().copy()
-    // the human pins a note; the agent reads it with the strokes under it
-    sheet.pin(660.0, 430.0, "more moss on this side")
-    println(sheet.describe().lines().first())
+    val original = fromContext<PaintStrokes>()
+    // the sheet the AI edits is kept on the box, so re-running the box keeps its edits
+    val sheet = thisBox.properties.getOrPut("strokes.sheet") {
+        original.copy().also { it.pin(660.0, 430.0, "more moss on this side") }
+    } as PaintStrokes
 
-    // the batch the agent answers with: darken the strokes under the note, and add moss along that flank
-    val under = sheet.near(660.0, 430.0, radius = 40.0)
-    val moss =
-        (0 until 9).map { k ->
-            val y = 330.0 + k * 22
-            val x = 640.0 + 40 * sqrt(1 - ((y - 420) / 120).pow(2))
-            """{"op": "add", "points": [$x, $y, ${x + 18}, ${y + 6}], "color": "#4a6a28", "brush": "Fan", "width": 28, "group": "moss"}"""
-        }
-    sheet.apply(
-        """[{"op": "recolor", "at": "${under.joinToString(",")}", "color": "#6a8a30"}, ${moss.joinToString(",")}]""",
-    )
-    println("recoloured ${under.joinToString(", ")}; added ${sheet.select("@moss").joinToString(", ")}")
-    display("main", pngRow(listOf(fromContext<PaintStrokes>().render(), sheet.render())))
+    fun show() {
+        display("main", pngRow([original.render(), sheet.render()]))
+        markdown("status", "${sheet.strokes.size} strokes, ${sheet.notes.size} notes " + sheet.notes.joinToString { "\"${it.text}\"" })
+    }
+
+    // the strokes_* tools: open this box's AI panel and ask it to act on the note
+    agentExtension("strokes") { strokeTools(sheet = { sheet }, changed = { show() }) }
+    show()
 }
 ```
 
