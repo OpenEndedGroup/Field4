@@ -687,7 +687,7 @@ To see it all at once, open the [map of the docs](../docs_map.md): every page, a
 
 ## Reference pages
 
-**43056 public symbols across 1912 source files**, 25783 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**43060 public symbols across 1912 source files**, 25787 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -700,7 +700,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Video](video.md) | 14 | 195 | 194 (99%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 60 | 2524 | 1904 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 27 | 1231 | 570 (46%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 452 | 10898 | 6942 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 452 | 10902 | 6946 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 48 | 911 | 515 (56%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 596 | 440 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 787 | 530 (67%) | Nonlinear least squares, aimed at geometry. |
@@ -1093,7 +1093,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>reading/<wbr></small> [DiagramConnection.kt](graphics.md#diagramconnection-kt) | Graphics | 25 | 6 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>reading/<wbr></small> [DiagramConnectionPhysics.kt](graphics.md#diagramconnectionphysics-kt) | Graphics | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>reading/<wbr></small> [DiagramDropCap.kt](graphics.md#diagramdropcap-kt) | Graphics | 0 | 0 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>reading/<wbr></small> [DiagramDsl.kt](graphics.md#diagramdsl-kt) | Graphics | 117 | 26 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>reading/<wbr></small> [DiagramDsl.kt](graphics.md#diagramdsl-kt) | Graphics | 118 | 27 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>reading/<wbr></small> [DiagramGeometry.kt](graphics.md#diagramgeometry-kt) | Graphics | 21 | 6 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>reading/<wbr></small> [DiagramModuleFactory.kt](graphics.md#diagrammodulefactory-kt) | Graphics | 1 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>reading/<wbr></small> [DiagramPicking.kt](graphics.md#diagrampicking-kt) | Graphics | 37 | 24 |  |  |
@@ -1103,7 +1103,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>reading/<wbr></small> [DiagramTextFrustum.kt](graphics.md#diagramtextfrustum-kt) | Graphics | 13 | 4 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>reading/<wbr></small> [DiagramTextGeometry.kt](graphics.md#diagramtextgeometry-kt) | Graphics | 37 | 7 |  | [Sentence diagrams](../sentence_diagrams.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>reading/<wbr></small> [DiagramTextMorph.kt](graphics.md#diagramtextmorph-kt) | Graphics | 13 | 10 |  | [Sentence diagrams](../sentence_diagrams.md) |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>reading/<wbr></small> [DiagramTypography.kt](graphics.md#diagramtypography-kt) | Graphics | 5 | 1 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>reading/<wbr></small> [DiagramTypography.kt](graphics.md#diagramtypography-kt) | Graphics | 8 | 4 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [dir.kt](workspace.md#dir-kt) | Workspace | 412 | 21 | The server side of the workspace browser: listing, searching, tagging and copying the documents under a workspace folder. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>spatial/<wbr>steamaudio/<wbr></small> [DirectEffect.kt](audio.md#directeffect-kt) | Audio | 23 | 18 | Rendering the direct sound path: distance attenuation, air absorption, directivity, occlusion and transmission. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr>lighting/<wbr></small> [DirectLighting.kt](graphics.md#directlighting-kt) | Graphics | 26 | 7 | Direct lighting from one-sided rectangular area emitters, shaded over a raster G-buffer. | [Direct lighting](../direct_lighting.md) |
