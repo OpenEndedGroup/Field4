@@ -89,7 +89,9 @@ class ReadingTextMorphTest {
         val p0 = start.position(g.text.at)
         val p1 = end.position(g.text.at)
         assertTrue(p1.x < p0.x)
-        assertEquals((p0.y + p1.y) / 2 - .025f, pm.y, 1e-5f)
+        val expectedArc = minOf(.025f, (p0.x - p1.x) * ARC_PER_METRE)
+        assertTrue(expectedArc > 0f && expectedArc <= .025f)
+        assertEquals((p0.y + p1.y) / 2 - expectedArc, pm.y, 1e-5f)
     }
 
     @Test

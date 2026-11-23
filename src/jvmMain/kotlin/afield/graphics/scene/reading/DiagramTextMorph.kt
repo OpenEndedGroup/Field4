@@ -2,6 +2,7 @@ package afield.graphics.scene.reading
 
 import afield.math.linalg.Vector3f
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.sin
 
 /**
@@ -81,8 +82,10 @@ internal constructor(
  * leave out become unkeyed pieces (whitespace alone is dropped), which fade. A key may be used once
  * per side. [block] styles every run alike — font, scale, colour — and is applied to the hidden
  * layout runs too, so pieces and layout agree. At mid-flight a gliding piece is [lift] metres nearer
- * the reader and [arc] metres off its line, up when it travels right and down when it travels left,
- * so two pieces that swap places pass on either side of each other rather than through.
+ * the reader and off its line, up when it travels right and down when it travels left, so two pieces
+ * that swap places pass on either side of each other rather than through. That offset is a quarter of
+ * the distance travelled, never more than [arc] metres: a piece that only shifts to make room stays
+ * close to its line.
  *
  * ```kotlin
  * val graph = readingDiagram {
@@ -133,8 +136,12 @@ fun ReadingDiagramBuilder.textMorph(
         val t = morph.progress(f)
         val bump = sin(PI * t).toFloat()
         // Rightward pieces arc up, leftward ones down, so two pieces that swap pass on either side.
-        val side = if (q.x > p.x) 1f else if (q.x < p.x) -1f else 0f
-        p.lerp(q, t).add(0f, side * arc * bump, lift * bump)
+        // The arc grows with the distance travelled, up to [arc]: a piece that shifts a little to make
+        // room for a neighbour stays near its line; one that crosses the line takes the full arc.
+        val dxTravel = q.x - p.x
+        val side = if (dxTravel > 0f) 1f else if (dxTravel < 0f) -1f else 0f
+        val amplitude = minOf(arc, abs(dxTravel) * ARC_PER_METRE)
+        p.lerp(q, t).add(0f, side * amplitude * bump, lift * bump)
     }
     for (a in fromCut) {
         val b = a.key?.let { toByKey[it] }
@@ -156,6 +163,9 @@ fun ReadingDiagramBuilder.textMorph(
     textMorphs.add(morph)
     return morph
 }
+
+/** How far off its line a gliding piece arcs per metre it travels, until it reaches the morph's `arc`. */
+internal const val ARC_PER_METRE = .25f
 
 /** Sorted, non-overlapping keyed spans plus unkeyed pieces for the characters between them. */
 internal fun morphCut(text: String, spans: List<DiagramKeyedSpan>, side: String): List<DiagramKeyedSpan> {

@@ -662,17 +662,24 @@ match from the characters themselves.
 ```diffstatic {data-lang=kotlin}
 val graph = readingDiagram {
     val p = point("p", 0, 0, pinned = true)
-    textMorph("swap",
-        "a + b", [DiagramKeyedSpan(0, 1, "a"), DiagramKeyedSpan(4, 5, "b")],
-        "b + a", [DiagramKeyedSpan(0, 1, "b"), DiagramKeyedSpan(4, 5, "a")],
-        p.anchor) { scale = 1.4f }
+    textMorph(
+        "swap",
+        "a + b",
+        [DiagramKeyedSpan(0, 1, "a"), DiagramKeyedSpan(4, 5, "b")],
+        "b + a",
+        [DiagramKeyedSpan(0, 1, "b"), DiagramKeyedSpan(4, 5, "a")],
+        p.anchor,
+    ) {
+        scale = 1.4f
+    }
 }
 val score = diagramScore(graph, 6.0) { morph(graph.textMorph("swap"), at = 1.0, seconds = 2.0) }
 ```
 
 Both lines are laid out whole and never drawn, and each piece is placed by where its characters sit
-in its line. At mid-flight a gliding piece comes `lift` metres toward the reader. It also moves
-`arc` metres off the line: up when it travels right, down when it travels left. So two pieces that
+in its line. At mid-flight a gliding piece comes `lift` metres toward the reader. It also moves off
+the line, up when it travels right and down when it travels left, by a quarter of the distance it
+travels and never more than `arc` metres. So two pieces that
 swap pass on either side of each other. A piece whose key matches but whose characters differ
 crossfades as it moves. `morph(…, from, to)` cues run in time order. With no cue, the morph shows
 its first line. `textMorph.group` fades the whole line in or out. The
