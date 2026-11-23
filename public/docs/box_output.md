@@ -26,6 +26,11 @@ petals * 2
 Printed text belongs to the editor and never appears on the canvas. To show something that stays visible under the box,
 display it.
 
+Printing works from any thread the box starts. Inside `go { }`, inside
+`withContext(Dispatchers.Default)` or `runInterruptible(Dispatchers.Default)`, in a plain `Thread`
+or on an executor, `println` and `display` still reach this box, after the run that started them
+has finished.
+
 ## Displaying into a panel
 
 `display("name", content)` puts `content` in a panel titled `name` under the box. That name is the

@@ -484,3 +484,52 @@ private fun Box.ensureActorPump() {
     }
     afield.runtime.execution.ensureActorPump()
 }
+
+/*
+FIELD_TEST
+id: box-output.off-thread-println.box
+runner: backdoor-box
+tags: [smoke, output, coroutines, regression, backdoor]
+timeoutSec: 120
+waitOutput:
+  kind: inline
+  contains: "off-thread done"
+expect:
+  outputContains:
+    - "on-run"
+    - "in-go"
+    - "withContext-Default"
+    - "runInterruptible-Default"
+    - "withContext-IO"
+    - "raw-thread"
+    - "executor-thread"
+    - "display-from-thread"
+    - "off-thread done"
+*/
+/**
+ * Output a box prints from its own coroutines and from threads it starts reaches that box. Every
+ * print here runs on a thread other than the one that ran the box, except the first, and the box's
+ * output proxy carries it there: nothing in the path is thread-local. A report on 2026-11-23 that
+ * `println` inside `runInterruptible(Dispatchers.Default)` was lost came from reading the events of
+ * a backdoor `sleep`, which records none; `wait-output` (here, `waitOutput`) sees the output.
+ */
+private val OFF_THREAD_PRINTLN_SNIPPET = """
+import kotlinx.coroutines.*
+println("on-run")
+go {
+    println("in-go")
+    withContext(Dispatchers.Default) { println("withContext-Default") }
+    runInterruptible(Dispatchers.Default) { println("runInterruptible-Default") }
+    withContext(Dispatchers.IO) { println("withContext-IO") }
+    val t = Thread { println("raw-thread") }
+    t.start()
+    runInterruptible { t.join() }
+    val pool = java.util.concurrent.Executors.newSingleThreadExecutor()
+    runInterruptible { pool.submit { println("executor-thread") }.get() }
+    pool.shutdown()
+    val d = Thread { display("side", "<div>display-from-thread</div>") }
+    d.start()
+    runInterruptible { d.join() }
+    println("off-thread done")
+}
+"""

@@ -1670,6 +1670,11 @@ def build_backdoor_command(
             if wanted.get("channel"):
                 line += ["--channel", str(wanted["channel"])]
             commands.append(shlex.join(line))
+            if execution != "launch":
+                # `wait-output` returns only its match, so whatever else the box printed after `run`
+                # returned (from `go { }`, a worker thread, an executor) was invisible to `expect`,
+                # and read as lost output. `output` collects all of it; launches append it below.
+                commands.append(shlex.join(["output", "@last", "--kind", "all"]))
         elif wait_seconds > 0:
             # Tests without a concrete readiness artifact still need a bounded
             # settle period. Image-producing tests wait for the freshly deleted
