@@ -67,12 +67,18 @@ recaptured with `FIELD_DOCS_RUNNER_MODE=always --page chain_rhino_render.md --pa
 
 | claim | file | old | new | how measured |
 |---|---|---|---|---|
-| per-object triangles (sphere 3968, capped cylinder 2268, plate 260, boxes 12, SubDs 3072), merged 12664, 0 dropped | `chain_rhino_render.md` readout.png | same | same (byte-identical PNG) | runner recapture |
+| per-object triangles (sphere 3968, capped cylinder 2268, plate 260, two boxes 12 each, two SubDs 3072 each), merged 12664, 0 dropped | `chain_rhino_render.md` readout.png | same | same (byte-identical PNG) | runner recapture |
 | path-traced Save Small scene | `chain_rhino_render.md` trace.png | pre-change capture | recaptured, looked at, no visible change | runner recapture |
-| Save Small viewers (no numbers) | `rhino_files.md` save_small.png | pre-change capture | recaptured, pixel-level change only | runner recapture |
+| Save Small viewers | `rhino_files.md` save_small.png | pre-change capture | recaptured, pixel-level change only; the three.js viewer's own label reads 189 ln / 24 tri (saved) and 189 ln / 12676 tri (evaluated) | runner recapture |
 | round-trip table: open edges 0 on every solid, 260 on the plate | `rhino_files.md` round_trip.png | already post-change (f8668e9875) | same (byte-identical) | runner recapture |
 | 0 open edges on closed Breps and SubD | `Rhino3dmRoundTripTest`, `BrepWatertightTest` | — | assertions already post-change | test source |
 
 Numbers in `manifold.md` and `path_tracing.md` describe Manifold and the tracer's own scenes, not
 Brep tessellation, so none changed. The triangle counts above came out unchanged on this sample; the change shows in shared vertices
 and open edges, not in how many triangles a face gets.
+
+The evaluated viewer's 12676 is 12 more than `model.mesh()`'s 12664. Measured on 2026-11-23 by
+loading `Rhino3dm.writeNurbsSample` in a box: the seven objects are sphere 3968, capped cylinder 2268,
+plate with hole 260, "box, saved mesh" 12, "box, no mesh" 12, smooth SubD 3072 and creased SubD 3072,
+which sum to 12664, the merged count. Where the viewer's extra 12 come from (most likely one
+12-triangle box counted twice on the three.js side) has not been traced; no page quotes 12676.
