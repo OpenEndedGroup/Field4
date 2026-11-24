@@ -89,8 +89,8 @@ class Check:
     selects: Callable[[Change], list[str]]
     """The changed paths that select this check (empty: not selected)."""
     gradle: tuple[str, ...] = ()
-    citation_test: str | None = None
-    """A `citationGates` class to run with `--tests`, instead of all fifteen."""
+    citation_tests: tuple[str, ...] = ()
+    """`citationGates` classes to run with `--tests`, instead of all of them."""
     python: tuple[str, ...] = ()
     """Python commands (a script and its arguments), run under the repo `uv` environment."""
     jvm_tests: tuple[str, ...] = ()
@@ -157,6 +157,26 @@ def _reference_nav(change: Change) -> list[str]:
     ]
 
 
+def _docs_markdown(path: str) -> bool:
+    return path.endswith(".md") and path.startswith(("public/docs/", "dev_docs/"))
+
+
+def _published_markdown(path: str) -> bool:
+    return path.endswith(".md") and path.startswith("public/docs/") and not path.startswith("public/docs/reference/")
+
+
+def _citation_contract(change: Change) -> list[str]:
+    """What CitationContractTest reads: the pages that cite `file:line`, and any source they may cite.
+
+    A cited source moves under a citation by being edited or deleted, not by being added, so added
+    source does not select it (b13a61b222: a vendor bump moved a cited import-map line; 27963ee971:
+    a saving.kt edit moved a cited signature).
+    """
+    pages = _paths(change, _docs_markdown)
+    sources = [p for p in change.paths if p.startswith("src/") and change.status[p] in {"M", "D", "R"}]
+    return sorted(set(pages + sources))
+
+
 def _js_module(path: str) -> bool:
     return path.startswith("src/") and path.endswith((".js", ".mjs")) and "/resources/" in path
 
@@ -179,15 +199,48 @@ CHECKS: tuple[Check, ...] = (
         "server-surface",
         "ServerSurfaceLedgerTest (WebRTC: /ws commands missing from dev_docs/server_surface_inventory.md)",
         _server_surface,
-        citation_test="afield.app.server.ServerSurfaceLedgerTest",
+        citation_tests=("afield.app.server.ServerSurfaceLedgerTest",),
         lander_guards=("citationGates",),
     ),
     Check(
         "documented-api",
         "DocumentedApiEvaluationTest (Fern: an API taught and never run; Splat: a stale ledger row)",
         _documented_api,
-        citation_test="afield.tools.docs.DocumentedApiEvaluationTest",
+        citation_tests=("afield.tools.docs.DocumentedApiEvaluationTest",),
         lander_guards=("citationGates",),
+    ),
+    Check(
+        "docs-contracts",
+        "the citationGates page contracts the lander runs on every docs Markdown edit: DocsFenceTreatmentTest "
+        "(b672b8efa2, f2e637ffeb: a raw ```bash / ```text fence), PersonalBoundaryTest (45f4971791, "
+        "256079aea9: a page citing src/personal/), ImpossibilityClaimContractTest (0aa89226b2: a quoted "
+        "\"cannot\")",
+        lambda c: _paths(c, _docs_markdown),
+        citation_tests=(
+            "afield.tools.docs.DocsFenceTreatmentTest",
+            "afield.tools.docs.PersonalBoundaryTest",
+            "afield.tools.docs.ImpossibilityClaimContractTest",
+        ),
+        lander_guards=("citationGates",),
+    ),
+    Check(
+        "citation-contract",
+        "CitationContractTest (b13a61b222, 27963ee971: an edit moved the source line a page cites)",
+        _citation_contract,
+        citation_tests=("afield.tools.docs.CitationContractTest",),
+        lander_guards=("citationGates",),
+    ),
+    Check(
+        "docs-links",
+        "dead links, anchors and bare shortcuts on published pages (0e55d17b4e, edf934d86e, b53ff0132c: "
+        "an anchor with the wrong slug; f572fd7483: a link to a renamed page; b880da9d64: Alt+D not "
+        "written as a keycap)",
+        lambda c: _paths(c, _published_markdown),
+        python=(
+            "tools/docs_voice/check_anchors.py public/docs",
+            "tools/docs_voice/check_links.py public/docs",
+            "tools/test_docs_keycaps.py",
+        ),
     ),
     Check(
         "reference-nav",
@@ -358,10 +411,10 @@ def gradle_arguments(selected: list[Check], reference_out: Path) -> list[str]:
         args += ["jvmTest", "--rerun"]
         for test in dict.fromkeys(jvm_tests):
             args += ["--tests", test]
-    tests = [c.citation_test for c in selected if c.citation_test]
+    tests = [t for c in selected for t in c.citation_tests]
     if tests:
         args += ["citationGates", "--rerun"]
-        for test in tests:
+        for test in dict.fromkeys(tests):
             args += ["--tests", test]
     return args
 
@@ -601,7 +654,7 @@ def run(args: argparse.Namespace) -> int:
             _git("add", "--", "dev_docs/GUARD_CORPORA.md")
         failed: list[str] = []
         with tempfile.TemporaryDirectory(prefix="precheck-reference-") as reference_out:
-            if any(c.gradle or c.citation_test or c.jvm_tests for c in checks):
+            if any(c.gradle or c.citation_tests or c.jvm_tests for c in checks):
                 if _run_gradle(gradle_arguments(checks, Path(reference_out)), change.paths) != 0:
                     failed.append("gradle (read the FAILED tasks and tests above)")
             if any(c.key == "reference-nav" for c in checks):
