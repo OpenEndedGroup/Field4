@@ -5,6 +5,7 @@ package afield.geometry.mesh
 import afield.geometry.path.FLine
 import afield.graphics.render.color
 import afield.graphics.render.thickness
+import afield.math.linalg.Vec2
 import afield.math.linalg.Vec3
 import afield.math.linalg.Vec4
 import afield.math.linalg.vec
@@ -219,6 +220,63 @@ class HeatGeodesics(val mesh: TriMesh, timeScale: Double = 1.0) {
     }
 }
 
+/**
+ * A flat mesh filling [outline] (a closed polygon, `x` and `y` of each point mapped to the floor's
+ * `x` and `z`, at `y = 0`), made of square cells of side [cell] with the boundary vertices snapped onto
+ * the outline. For geodesics on a floor plan: unlike [polygonMesh], whose ear-clipped triangles run
+ * from wall to wall, every triangle is about [cell] across, which is what the heat method needs.
+ * Corners narrower than a cell are rounded off.
+ */
+fun outlineMesh(outline: List<Vec2>, cell: Double): TriMesh {
+    require(outline.size >= 3 && cell > 0.0) { "outlineMesh needs a polygon and a positive cell size" }
+    val pts = if (outline.first() == outline.last()) outline.dropLast(1) else outline
+    fun inside(x: Double, y: Double): Boolean {
+        var c = false
+        var j = pts.size - 1
+        for (i in pts.indices) {
+            val a = pts[i]; val b = pts[j]
+            if ((a.y > y) != (b.y > y) && x < (b.x - a.x) * (y - a.y) / (b.y - a.y) + a.x) c = !c
+            j = i
+        }
+        return c
+    }
+    fun snap(x: Double, y: Double): Pair<Double, Double> {
+        var best = Double.MAX_VALUE; var bx = x; var by = y
+        for (i in pts.indices) {
+            val a = pts[i]; val b = pts[(i + 1) % pts.size]
+            val ex = (b.x - a.x).toDouble(); val ey = (b.y - a.y).toDouble()
+            val t = (((x - a.x) * ex + (y - a.y) * ey) / (ex * ex + ey * ey).coerceAtLeast(1e-18)).coerceIn(0.0, 1.0)
+            val px = a.x + t * ex; val py = a.y + t * ey
+            val d = (px - x) * (px - x) + (py - y) * (py - y)
+            if (d < best) { best = d; bx = px; by = py }
+        }
+        return bx to by
+    }
+    val minX = pts.minOf { it.x }.toDouble(); val maxX = pts.maxOf { it.x }.toDouble()
+    val minY = pts.minOf { it.y }.toDouble(); val maxY = pts.maxOf { it.y }.toDouble()
+    val nx = kotlin.math.ceil((maxX - minX) / cell).toInt(); val ny = kotlin.math.ceil((maxY - minY) / cell).toInt()
+    val keep = Array(nx) { i -> BooleanArray(ny) { j -> inside(minX + (i + 0.5) * cell, minY + (j + 0.5) * cell) } }
+    val index = IntArray((nx + 1) * (ny + 1)) { -1 }
+    val positions = ArrayList<Float>(); val indices = ArrayList<Int>()
+    fun vertex(i: Int, j: Int): Int {
+        val k = j * (nx + 1) + i
+        if (index[k] >= 0) return index[k]
+        var x = minX + i * cell; var y = minY + j * cell
+        // A vertex next to a dropped (or missing) cell is on the boundary: move it onto the outline.
+        val onEdge = (i - 1..i).any { a -> (j - 1..j).any { b -> a !in 0 until nx || b !in 0 until ny || !keep[a][b] } }
+        if (onEdge) snap(x, y).let { (sx, sy) -> x = sx; y = sy }
+        index[k] = positions.size / 3
+        positions += x.toFloat(); positions += 0f; positions += y.toFloat()
+        return index[k]
+    }
+    for (i in 0 until nx) for (j in 0 until ny) if (keep[i][j]) {
+        val a = vertex(i, j); val b = vertex(i + 1, j); val c = vertex(i + 1, j + 1); val d = vertex(i, j + 1)
+        indices += a; indices += c; indices += b
+        indices += a; indices += d; indices += c
+    }
+    return TriMesh(positions.toFloatArray(), indices.toIntArray())
+}
+
 /** Heat-method geodesic distance from [sources] (vertex indices). Build a [HeatGeodesics] to reuse the factorisation. */
 fun TriMesh.geodesicDistance(vararg sources: Int, timeScale: Double = 1.0): DoubleArray =
     HeatGeodesics(this, timeScale).distance(sources.toList())
@@ -332,18 +390,98 @@ fun TriMesh.evenIsolines(values: DoubleArray, spacing: Double, phase: Double = 0
  *
  * [rings] are ordered from one end to the other (the output of an [evenIsolines], one ring
  * a level). Each ring is re-started at the point nearest where the path is, oriented like the first
- * ring, and then walked once while being blended, by arc length, towards the next ring: at the start
- * of a lap the tool is on ring `k`, at the end it is on ring `k + 1`. So the path never jumps and
+ * ring, and then walked once while being blended towards the next ring: the point a fraction `s`
+ * of the way round the lap is paired with a point of ring `k + 1` and moved
+ * `s` of the way to it, so at the start of a lap the tool is on ring `k` and at the end on ring
+ * `k + 1`. The pairing is the nearest point searched only forwards along ring `k + 1`, which keeps
+ * the laps from folding where consecutive rings change shape, as round the inside corner of an
+ * L-shaped plan. So the path never jumps and
  * never retraces, and its spacing is the ring spacing — the "spiral from isolines" construction.
  *
  * Rings that are open, or a level with more than one ring, cannot be spiralled through; pass one
  * ring a level (the longest, say) and connect the rest separately.
  */
 fun spiralFromRings(rings: List<List<Vec3>>): List<Vec3> {
+    val oriented = orientedRings(rings)
+    if (oriented.isEmpty()) return emptyList()
+    return spiralThrough(oriented, oriented.first().first())
+}
+
+/**
+ * A counterflow double spiral through concentric closed rings: the path spirals in on every other
+ * ring, turns round in the middle in a U-bend, and spirals back out along the rings in between,
+ * so each lap out runs between two laps in. This is the pattern underfloor-heating pipe is laid
+ * in (supply and return side by side keep the floor evenly warm), and a single tool pass that
+ * starts and ends at the edge.
+ *
+ * [rings] are ordered from the outside in, as for [spiralFromRings]; their spacing is the
+ * spacing between neighbouring passes, and each arm's own pitch is twice that. The inward arm
+ * uses rings 0, 2, 4, … and the outward arm rings 1, 3, 5, …; the outward arm is started level
+ * with the inward one so that both reach the middle at the same place, where a semicircular
+ * bend of diameter one spacing joins them. Both ends of the path lie on the outer two rings,
+ * next to each other. Needs at least two rings.
+ */
+fun doubleSpiralFromRings(rings: List<List<Vec3>>): List<Vec3> {
+    val (supply, back) = doubleSpiralArms(rings)
+    val out = ArrayList<Vec3>(supply.size + back.size)
+    out += supply
+    for (p in back) if (out.isEmpty() || d2(out.last(), p) > 1e-14f) out += p
+    return out
+}
+
+/**
+ * The two halves of [doubleSpiralFromRings]: the way in, ending with the U-bend, and the way back out
+ * from the end of the bend. Draw them in two colours to see supply and return side by side.
+ */
+fun doubleSpiralArms(rings: List<List<Vec3>>): Pair<List<Vec3>, List<Vec3>> {
+    val oriented = orientedRings(rings)
+    if (oriented.size < 2) return spiralFromRings(rings) to emptyList()
+    val inward = oriented.filterIndexed { i, _ -> i % 2 == 0 }
+    val between = oriented.filterIndexed { i, _ -> i % 2 == 1 }
+    // Neither arm goes round its innermost ring a last time: that loop would cross the other
+    // arm's last lap, which is still on its way in.
+    val pathIn = spiralThrough(inward, inward.first().first(), finalLap = false)
+    // Start the second arm beside the first so the laps stay in step all the way in.
+    val pathBack = spiralThrough(between, between.first()[nearestIndex(between.first(), pathIn.first())], finalLap = false)
+    val supply = ArrayList<Vec3>(pathIn.size + 16)
+    supply += pathIn
+    supply += uTurn(pathIn, pathBack.last())
+    val back = ArrayList<Vec3>(pathBack.size)
+    for (p in pathBack.asReversed()) if (back.isNotEmpty() || d2(supply.last(), p) > 1e-14f) back += p
+    return supply to listOf(supply.last()) + back
+}
+
+/** A semicircle from the end of [path] to [to], bulging forward along the path's final direction. */
+private fun uTurn(path: List<Vec3>, to: Vec3, steps: Int = 12): List<Vec3> {
+    val a = path.last()
+    val back = path.asReversed().firstOrNull { d2(it, a) > 1e-10f } ?: return emptyList()
+    val hx = to.x - a.x; val hy = to.y - a.y; val hz = to.z - a.z
+    val h2 = hx * hx + hy * hy + hz * hz
+    if (h2 < 1e-14f) return emptyList()
+    // Travel direction with its component along the hop removed, scaled to the bend's radius.
+    var tx = a.x - back.x; var ty = a.y - back.y; var tz = a.z - back.z
+    val along = (tx * hx + ty * hy + tz * hz) / h2
+    tx -= along * hx; ty -= along * hy; tz -= along * hz
+    val tl = sqrt((tx * tx + ty * ty + tz * tz).toDouble()).toFloat()
+    if (tl < 1e-9f) return emptyList()
+    val r = sqrt(h2.toDouble()).toFloat() / 2f
+    tx *= r / tl; ty *= r / tl; tz *= r / tl
+    val cx = a.x + hx / 2; val cy = a.y + hy / 2; val cz = a.z + hz / 2
+    return (1 until steps).map { i ->
+        val phi = Math.PI * i / steps
+        val c = kotlin.math.cos(phi).toFloat(); val sn = kotlin.math.sin(phi).toFloat()
+        vec(cx - hx / 2 * c + tx * sn, cy - hy / 2 * c + ty * sn, cz - hz / 2 * c + tz * sn)
+    }
+}
+
+private fun d2(a: Vec3, b: Vec3): Float { val dx = a.x - b.x; val dy = a.y - b.y; val dz = a.z - b.z; return dx * dx + dy * dy + dz * dz }
+
+private fun nearestIndex(r: List<Vec3>, p: Vec3) = r.indices.minByOrNull { d2(r[it], p) } ?: 0
+
+/** Closed rings without their repeated end point, all turned the same way round as the first. */
+private fun orientedRings(rings: List<List<Vec3>>): List<List<Vec3>> {
     val closed = rings.filter { it.size > 3 }.map { r -> if (r.first() == r.last()) r.dropLast(1) else r }
     if (closed.isEmpty()) return emptyList()
-    fun d2(a: Vec3, b: Vec3): Float { val dx = a.x - b.x; val dy = a.y - b.y; val dz = a.z - b.z; return dx * dx + dy * dy + dz * dz }
-    fun nearest(r: List<Vec3>, p: Vec3) = r.indices.minByOrNull { d2(r[it], p) } ?: 0
     // Orientation: the sign of the ring's area vector projected on the first ring's.
     fun areaVector(r: List<Vec3>): DoubleArray {
         val a = DoubleArray(3)
@@ -354,22 +492,49 @@ fun spiralFromRings(rings: List<List<Vec3>>): List<Vec3> {
         return a
     }
     val ref = areaVector(closed.first())
-    val oriented = closed.map { r ->
+    return closed.map { r ->
         val a = areaVector(r)
         if (a[0] * ref[0] + a[1] * ref[1] + a[2] * ref[2] < 0) r.reversed() else r
     }
+}
+
+/**
+ * Walk [oriented] rings from [start], blending each lap towards the next ring (see [spiralFromRings]).
+ * With [finalLap] the walk ends with one plain lap of the last ring; without, it ends where the last
+ * blended lap reaches that ring.
+ */
+private fun spiralThrough(oriented: List<List<Vec3>>, start: Vec3, finalLap: Boolean = true): List<Vec3> {
     val out = ArrayList<Vec3>()
-    var at = oriented.first().first()
+    var at = start
     for (k in oriented.indices) {
-        val ring = oriented[k].let { r -> val s = nearest(r, at); r.drop(s) + r.take(s) + r[s] }
+        val ring = oriented[k].let { r -> val s = nearestIndex(r, at); r.drop(s) + r.take(s) + r[s] }
         val next = oriented.getOrNull(k + 1)
+        // The last blended lap already ends on the last ring; going round it again is optional.
+        if (next == null && !finalLap && k > 0) break
         val lengths = DoubleArray(ring.size)
         for (i in 1 until ring.size) lengths[i] = lengths[i - 1] + sqrt(d2(ring[i], ring[i - 1]).toDouble())
         val total = lengths.last().coerceAtLeast(1e-12)
+        // The next ring, started level with this lap's start. Each point of this lap is paired with
+        // the nearest point of the next ring found by searching only forwards from the last pairing,
+        // so the pairing never runs backwards (plain nearest point folds back on itself where the
+        // rings change shape) and never skips ahead to a far side of the ring (plain arc length drifts
+        // where part of the ring shrinks faster than the rest, as one wing of an L-shaped plan does).
+        val target = next?.let { r -> val s = nearestIndex(r, ring.first()); r.drop(s) + r.take(s) + r[s] }
+        val window = target?.let { maxOf(4, it.size / 4) } ?: 0
+        var cursor = 0
         for (i in ring.indices) {
             val p = ring[i]
-            if (next == null) { if (out.isEmpty() || d2(out.last(), p) > 1e-14f) out += p; continue }
-            val q = next[nearest(next, p)]
+            if (target == null) { if (out.isEmpty() || d2(out.last(), p) > 1e-14f) out += p; continue }
+            if (i == ring.lastIndex) cursor = target.lastIndex
+            else {
+                var best = cursor; var bestD = d2(target[cursor], p)
+                for (j in cursor + 1..minOf(cursor + window, target.lastIndex)) {
+                    val d = d2(target[j], p)
+                    if (d < bestD) { bestD = d; best = j }
+                }
+                cursor = best
+            }
+            val q = target[cursor]
             val s = (lengths[i] / total).toFloat()
             val blended = vec(p.x + s * (q.x - p.x), p.y + s * (q.y - p.y), p.z + s * (q.z - p.z))
             // Where one lap ends and the next begins the point repeats; a zero-length segment draws nothing useful.
@@ -423,4 +588,213 @@ fun List<Vec3>.toFLine3(color: Vec4 = vec(1.0, 1.0, 1.0, 1.0), thickness: Double
     line.color = color
     line.thickness = thickness
     return line
+}
+
+/**
+ * A harmonic winding angle about the point of a disc-like surface farthest from its edge, on a copy
+ * of the mesh with a small hole left round that point and cut open from the hole to the edge.
+ *
+ * [mesh] is the cut copy: the vertices along the cut are doubled, and the triangles on one side use
+ * the copies. [angle] runs from 0 to 1 once round, jumping by exactly 1 across the cut; it is the
+ * harmonic function with that jump (cotangent weights, natural boundary condition), so it spreads the
+ * turn evenly round any outline, the way the angle of a conformal map does. [distance] is the field it
+ * was built from, carried onto the cut copy, and [centre] is the vertex it winds about (an index into
+ * [mesh]).
+ *
+ * The point is [fieldSpiral]: the contours of `distance / pitch + angle` are one curve that winds
+ * inward a pitch per turn, and two contours of one function never cross.
+ */
+class WindingAngle internal constructor(
+    val mesh: TriMesh,
+    val angle: DoubleArray,
+    val distance: DoubleArray,
+    val centre: Int,
+)
+
+/**
+ * The [WindingAngle] of this mesh about the vertex where [distance] (usually
+ * [geodesicDistanceFromBoundary]) is largest. The cut follows steepest descent of [distance] from
+ * there to the edge, and triangles within [hole] of the largest distance are left out (see the
+ * class). Expects a welded mesh with one boundary loop.
+ */
+fun TriMesh.windingAngle(distance: DoubleArray, hole: Double = 0.15 * (distance.maxOrNull() ?: 0.0)): WindingAngle {
+    require(distance.size == vertexCount) { "windingAngle needs one distance per vertex" }
+    val n = vertexCount
+    // An angle has no value at the point it winds about, and asked to be harmonic right up to that
+    // point it puts the whole turn in a sliver beside the cut. Leaving out a small hole there makes
+    // the surface a ring, where the angle spreads evenly.
+    val dMax = distance.maxOrNull() ?: 0.0
+    val kept = BooleanArray(triangleCount) { t -> maxOf(distance[ia(t)], distance[ib(t)], distance[ic(t)]) <= dMax - hole }
+    val nb = Array(n) { HashSet<Int>() }
+    val edgeFaces = HashMap<Long, Int>()
+    fun key(a: Int, b: Int) = if (a < b) a.toLong() * n + b else b.toLong() * n + a
+    for (t in 0 until triangleCount) {
+        val c = intArrayOf(ia(t), ib(t), ic(t))
+        for (e in 0..2) {
+            val a = c[e]; val b = c[(e + 1) % 3]
+            nb[a] += b; nb[b] += a
+            edgeFaces.merge(key(a, b), 1, Int::plus)
+        }
+    }
+    val onBoundary = BooleanArray(n)
+    for ((k, count) in edgeFaces) if (count == 1) { onBoundary[(k / n).toInt()] = true; onBoundary[(k % n).toInt()] = true }
+    require(onBoundary.any { it }) { "windingAngle needs a surface with an edge" }
+
+    val centre = distance.indices.maxBy { distance[it] }
+    val cut = arrayListOf(centre)
+    while (!onBoundary[cut.last()]) {
+        val here = cut.last()
+        val next = nb[here].minBy { distance[it] }
+        require(distance[next] < distance[here]) { "distance has a pit at vertex $here; the cut cannot reach the edge" }
+        cut += next
+    }
+    val onCut = HashMap<Int, Int>()
+    cut.forEachIndexed { i, v -> onCut[v] = i }
+
+    fun p(i: Int) = doubleArrayOf(x(i).toDouble(), y(i).toDouble(), z(i).toDouble())
+    fun sub(a: DoubleArray, b: DoubleArray) = doubleArrayOf(a[0] - b[0], a[1] - b[1], a[2] - b[2])
+    fun cross(a: DoubleArray, b: DoubleArray) = doubleArrayOf(a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0])
+    fun dot(a: DoubleArray, b: DoubleArray) = a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+
+    // Which triangles lie on the left of the cut (seen from the surface's normal side) and take the copies.
+    val left = BooleanArray(triangleCount)
+    val used = BooleanArray(n)
+    for (t in 0 until triangleCount) if (kept[t]) { used[ia(t)] = true; used[ib(t)] = true; used[ic(t)] = true }
+    for (t in 0 until triangleCount) {
+        if (!kept[t]) continue
+        val c = intArrayOf(ia(t), ib(t), ic(t))
+        val touching = c.filter { it in onCut }
+        if (touching.isEmpty()) continue
+        val normal = cross(sub(p(c[1]), p(c[0])), sub(p(c[2]), p(c[0])))
+        val mid = doubleArrayOf((p(c[0])[0] + p(c[1])[0] + p(c[2])[0]) / 3, (p(c[0])[1] + p(c[1])[1] + p(c[2])[1]) / 3, (p(c[0])[2] + p(c[1])[2] + p(c[2])[2]) / 3)
+        // Side of the nearest cut segment the triangle's centre is on.
+        var best = Double.MAX_VALUE; var side = 0.0
+        for (v in touching) {
+            val i = onCut.getValue(v)
+            for (j in listOf(i - 1, i)) {
+                if (j < 0 || j + 1 >= cut.size) continue
+                val a = p(cut[j]); val b = p(cut[j + 1])
+                val ab = sub(b, a); val am = sub(mid, a)
+                val s = (dot(am, ab) / dot(ab, ab)).coerceIn(0.0, 1.0)
+                val foot = doubleArrayOf(a[0] + s * ab[0], a[1] + s * ab[1], a[2] + s * ab[2])
+                val d = dot(sub(mid, foot), sub(mid, foot))
+                if (d < best) { best = d; side = dot(normal, cross(ab, am)) }
+            }
+        }
+        left[t] = side > 0
+    }
+    // Every cut vertex on the kept surface is doubled, from the hole's edge out to the outline.
+    val copyOf = HashMap<Int, Int>()
+    var next = n
+    for (v in cut) if (used[v]) copyOf[v] = next++
+    val jump = IntArray(next)
+    for ((_, c) in copyOf) jump[c] = 1
+
+    val keptTriangles = (0 until triangleCount).filter { kept[it] }
+    val cutIndices = IntArray(keptTriangles.size * 3) { k ->
+        val t = keptTriangles[k / 3]
+        val v = indices[3 * t + k % 3]
+        if (left[t] && v in copyOf) copyOf.getValue(v) else v
+    }
+    val cutPositions = FloatArray(next * 3)
+    System.arraycopy(positions, 0, cutPositions, 0, n * 3)
+    for ((v, c) in copyOf) for (d in 0..2) cutPositions[3 * c + d] = positions[3 * v + d]
+    val cutMesh = TriMesh(cutPositions, cutIndices)
+    val originalOf = IntArray(next) { if (it < n) it else -1 }
+    for ((v, c) in copyOf) originalOf[c] = v
+
+    // Minimise sum w_ij ((th_i + J_i) - (th_j + J_j))^2 over the original vertices th, with J the jump
+    // carried by each corner: L th = b. Vertex 0 is pinned (the angle is defined up to a constant).
+    val trip = DMatrixSparseTriplet(n, n, 7 * n)
+    val diag = DoubleArray(n)
+    val off = HashMap<Long, Double>()
+    val rhs = DMatrixRMaj(n, 1)
+    for (t in keptTriangles.indices) {
+        val c = intArrayOf(cutIndices[3 * t], cutIndices[3 * t + 1], cutIndices[3 * t + 2])
+        for (e in 0..2) {
+            val i = c[e]; val j = c[(e + 1) % 3]; val k = c[(e + 2) % 3]
+            val u = sub(p(originalOf[i]), p(originalOf[k])); val w2 = sub(p(originalOf[j]), p(originalOf[k]))
+            val cr = cross(u, w2)
+            val w = 0.5 * dot(u, w2) / sqrt(dot(cr, cr)).coerceAtLeast(1e-300)
+            val a = originalOf[i]; val b = originalOf[j]
+            if (a == b) continue
+            diag[a] += w; diag[b] += w
+            // Each interior edge comes up once per triangle; the triplet form does not sum repeats.
+            off.merge(if (a < b) a.toLong() * n + b else b.toLong() * n + a, w, Double::plus)
+            val dj = (jump[i] - jump[j]).toDouble()
+            rhs[a, 0] -= w * dj; rhs[b, 0] += w * dj
+        }
+    }
+    for ((k, w) in off) { val a = (k / n).toInt(); val b = (k % n).toInt(); trip.addItem(a, b, -w); trip.addItem(b, a, -w) }
+    // Vertices inside the hole have no triangles left; an identity row keeps the system definite.
+    for (i in 0 until n) if (!used[i]) diag[i] = 1.0
+    val pin = (0 until n).first { used[it] }
+    for (i in 0 until n) trip.addItem(i, i, diag[i] + if (i == pin) 1e6 * (diag[i] + 1.0) else 0.0)
+    rhs[pin, 0] = 0.0
+    val solver = LinearSolverFactory_DSCC.cholesky(FillReducing.NONE)
+    require(solver.setA(DConvertMatrixStruct.convert(trip, null as DMatrixSparseCSC?))) { "winding-angle system did not factor" }
+    val th = DMatrixRMaj(n, 1)
+    solver.solve(rhs, th)
+
+    val angle = DoubleArray(next) { th[originalOf[it], 0] + jump[it] }
+    val lo = (0 until next).filter { it >= n || used[it] }.minOf { angle[it] }
+    for (i in angle.indices) angle[i] -= lo
+    return WindingAngle(cutMesh, angle, DoubleArray(next) { distance[originalOf[it]] }, centre)
+}
+
+/**
+ * A spiral toolpath traced as one contour of a single field, `distance / pitch + angle`, on the
+ * [WindingAngle]'s cut mesh: each contour runs once round from one side of the cut to the other,
+ * where it meets the next contour a [pitch] further in, and the pieces join into one curve from the
+ * edge to the middle. Because they are contours of one function, no two laps can cross, whatever the
+ * outline does, where [spiralFromRings], which blends between separate rings, folds where one wing of
+ * a plan runs out before the rest. [phase] (0..1) shifts the laps by a fraction of a pitch.
+ */
+fun WindingAngle.fieldSpiral(pitch: Double, phase: Double = 0.5): List<Vec3> {
+    require(pitch > 0.0) { "pitch must be positive" }
+    val g = DoubleArray(angle.size) { distance[it] / pitch + angle[it] }
+    val lo = kotlin.math.floor(g.min()).toInt(); val hi = kotlin.math.ceil(g.max()).toInt()
+    // Only whole laps: a lap runs from distance (k + phase - 1) · pitch on one side of the cut to
+    // (k + phase) · pitch on the other, so keep those that start inside the walls and end short of the hole.
+    val inner = (0 until mesh.triangleCount).maxOf { t -> minOf(distance[mesh.ia(t)], distance[mesh.ib(t)], distance[mesh.ic(t)]) }
+    val out = ArrayList<Vec3>()
+    for (k in lo..hi) {
+        if ((k + phase - 1) * pitch < 0.0 || (k + phase) * pitch > inner) continue
+        val arc = mesh.isolines(g, k + phase).maxByOrNull { it.size } ?: continue
+        if (arc.size < 2) continue
+        val oriented = if (out.isEmpty()) {
+            // Start at the outer end: the end nearer the edge has the smaller distance.
+            if (fieldAt(arc.first()) <= fieldAt(arc.last())) arc else arc.reversed()
+        } else if (d2(arc.first(), out.last()) <= d2(arc.last(), out.last())) arc else arc.reversed()
+        for (q in oriented) if (out.isEmpty() || d2(out.last(), q) > 1e-14f) out += q
+    }
+    return out
+}
+
+private fun WindingAngle.fieldAt(p: Vec3): Double {
+    var best = Float.MAX_VALUE; var at = 0
+    for (i in 0 until mesh.vertexCount) {
+        val dx = mesh.x(i) - p.x; val dy = mesh.y(i) - p.y; val dz = mesh.z(i) - p.z
+        val d = dx * dx + dy * dy + dz * dz
+        if (d < best) { best = d; at = i }
+    }
+    return distance[at]
+}
+
+/**
+ * The counterflow double spiral as two contours of the field of [fieldSpiral]: supply on the laps at
+ * phase 0.25 and return on those at 0.75 of a pitch of `2 · spacing`, so every return lap lies
+ * between two supply laps a [spacing] from each, joined in the middle by a U-bend. Returns supply
+ * (ending with the bend) and return, the way [doubleSpiralArms] does, and like it never crosses —
+ * but here on any disc-like outline, an L-shaped room included.
+ */
+fun WindingAngle.fieldDoubleSpiral(spacing: Double): Pair<List<Vec3>, List<Vec3>> {
+    val supply = ArrayList(fieldSpiral(2 * spacing, 0.25))
+    val back = fieldSpiral(2 * spacing, 0.75)
+    if (supply.size < 2 || back.size < 2) return supply to back
+    supply += uTurn(supply, back.last())
+    val out = ArrayList<Vec3>(back.size + 1)
+    out += supply.last()
+    for (p in back.asReversed()) if (d2(out.last(), p) > 1e-14f) out += p
+    return supply to out
 }

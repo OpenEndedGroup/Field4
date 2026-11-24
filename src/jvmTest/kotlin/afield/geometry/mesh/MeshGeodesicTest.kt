@@ -1,5 +1,7 @@
 package afield.geometry.mesh
 
+import afield.math.linalg.Vec2
+import afield.math.linalg.Vec3
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.acos
@@ -82,6 +84,91 @@ class MeshGeodesicTest {
         var maxStep = 0.0
         for (i in 1 until spiral.size) maxStep = maxOf(maxStep, spiral[i].distance(spiral[i - 1]).toDouble())
         assertTrue(maxStep < 0.2, "spiral jumps $maxStep somewhere")
+    }
+
+    /**
+     * The double spiral on a flat square: continuous, starts and ends at the outside side by side,
+     * turns round near the centre, and the way out keeps clear of the way in (it runs between the
+     * inward laps, not on top of them).
+     */
+    @Test
+    fun doubleSpiralRunsOutBetweenTheWayIn() {
+        val disc = heightfieldMesh(120, 120, 2.0, 2.0) { _, _ -> 0f }
+        val fromCentre = disc.geodesicDistance(disc.nearestVertex(0, 0, 0))
+        val spacing = 0.08
+        val rings = disc.evenIsolines(fromCentre, spacing).map { it.maxBy { r -> r.size } }
+            .filter { r -> r.all { p -> abs(p.x) < 0.98f && abs(p.z) < 0.98f } }
+            .reversed()
+        val path = doubleSpiralFromRings(rings)
+        var maxStep = 0.0
+        for (i in 1 until path.size) maxStep = maxOf(maxStep, path[i].distance(path[i - 1]).toDouble())
+        assertTrue(maxStep < 0.1, "double spiral jumps $maxStep somewhere")
+
+        fun radius(p: Vec3) = kotlin.math.hypot(p.x.toDouble(), p.z.toDouble())
+        val outer = radius(rings.first().first())
+        assertTrue(abs(radius(path.first()) - outer) < spacing, "starts on the outer ring")
+        assertTrue(abs(radius(path.last()) - outer) < 2 * spacing, "ends at the outside")
+        assertTrue(path.first().distance(path.last()) < 3 * spacing, "both ends side by side")
+        // Away from the U-bend, the way out stays about one spacing from the way in: between its laps.
+        val bend = path.indices.minBy { radius(path[it]) }
+        assertTrue(radius(path[bend]) < 3 * spacing, "turns round in the middle")
+        val wayIn = path.subList(0, (bend - 60).coerceAtLeast(1))
+        val wayOut = path.subList((bend + 60).coerceAtMost(path.size - 1), path.size)
+        var closest = Double.MAX_VALUE
+        for (p in wayOut) for (q in wayIn) closest = minOf(closest, p.distance(q).toDouble())
+        println("double spiral: ${rings.size} rings, ${path.size} points, max step $maxStep, closest approach out→in $closest (spacing $spacing)")
+        assertTrue(closest > 0.9 * spacing, "way out comes within $closest of the way in")
+    }
+
+    /**
+     * An L-shaped plan filled by [outlineMesh]: the mesh covers the plan's area, its edge lies on the
+     * walls, and the double spiral through its rings is continuous with both ends at the walls.
+     */
+    @Test
+    fun outlineMeshFillsAnLShapedRoom() {
+        val plan = listOf(Vec2(-1f, -0.7f), Vec2(1f, -0.7f), Vec2(1f, 0.1f), Vec2(0.1f, 0.1f), Vec2(0.1f, 0.7f), Vec2(-1f, 0.7f))
+        val floor = outlineMesh(plan, 0.02)
+        var area = 0.0
+        val p = floor.positions
+        for (t in 0 until floor.indices.size / 3) {
+            val a = floor.indices[3 * t]; val b = floor.indices[3 * t + 1]; val c = floor.indices[3 * t + 2]
+            area += abs((p[3 * b] - p[3 * a]) * (p[3 * c + 2] - p[3 * a + 2]) - (p[3 * c] - p[3 * a]) * (p[3 * b + 2] - p[3 * a + 2])) / 2.0
+        }
+        val expected = 2.0 * 1.4 - 0.9 * 0.6
+        assertTrue(abs(area - expected) < 0.01, "floor area $area, plan area $expected")
+
+        val fromWalls = floor.geodesicDistanceFromBoundary()
+        val rings = floor.evenIsolines(fromWalls, 0.08).map { it.maxBy { r -> r.size } }
+        val path = doubleSpiralFromRings(rings)
+        var maxStep = 0.0
+        for (i in 1 until path.size) maxStep = maxOf(maxStep, path[i].distance(path[i - 1]).toDouble())
+        assertTrue(maxStep < 0.1, "double spiral jumps $maxStep somewhere")
+        assertTrue(path.first().distance(path.last()) < 3 * 0.08, "both ends side by side at the wall")
+    }
+
+    /**
+     * The field double spiral in an L-shaped room with a bay: continuous, and the way out keeps
+     * about a spacing from the way in everywhere away from the bend, including round the inside
+     * corner where blending between rings folds.
+     */
+    @Test
+    fun fieldDoubleSpiralNeverCrossesInAnLShapedRoom() {
+        val bay = (0..16).map { i ->
+            val a = PI * i / 16
+            Vec2((-1.0 - 0.3 * kotlin.math.sin(a)).toFloat(), (0.25 + 0.25 * kotlin.math.cos(a)).toFloat())
+        }
+        val plan = listOf(Vec2(-1f, -0.7f), Vec2(1f, -0.7f), Vec2(1f, 0.1f), Vec2(0.1f, 0.1f), Vec2(0.1f, 0.7f), Vec2(-1f, 0.7f)) + bay
+        val floor = outlineMesh(plan, 0.0125)
+        val spacing = 0.07
+        val (supply, back) = floor.windingAngle(floor.geodesicDistanceFromBoundary()).fieldDoubleSpiral(spacing)
+        fun maxStep(path: List<Vec3>): Double { var m = 0.0; for (i in 1 until path.size) m = maxOf(m, path[i].distance(path[i - 1]).toDouble()); return m }
+        val bendAt = supply.last()
+        fun awayFromBend(path: List<Vec3>) = path.filter { it.distance(bendAt) > 3 * spacing }
+        var closest = Double.MAX_VALUE
+        for (p in awayFromBend(supply)) for (q in awayFromBend(back)) closest = minOf(closest, p.distance(q).toDouble())
+        println("field double spiral: supply ${supply.size}, return ${back.size}, steps ${maxStep(supply)} / ${maxStep(back)}, closest ${closest} (spacing $spacing)")
+        assertTrue(maxStep(supply) < 0.1 && maxStep(back) < 0.1, "a jump in the path")
+        assertTrue(closest > 0.5 * spacing, "return comes within $closest of supply")
     }
 
     /** Roughing passes on a sphere come out top to bottom, one ring each. */
