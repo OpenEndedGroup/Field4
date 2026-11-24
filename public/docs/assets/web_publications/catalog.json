@@ -1236,6 +1236,32 @@
         "public/docs/assets/agent_transcripts/contour_trees_explorer/metadata.edn": "8b436124910b8fc4048d5b06fe8254ad0e61c7317608cc40a4ecc7a963d5425c"
       }
     },
+    "assets/agent_transcripts/contrast_scale_demo/metadata.edn": {
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-24T08:52:17.797Z",
+      "channels": 4,
+      "file": "assets/web_publications/contrast_scale_demo/document/metadata.edn",
+      "files": {
+        "assets/web_publications/contrast_scale_demo/document/metadata.edn": "3fddba9072e34c40e3593dfea14189e7f46428b302bb13e47b58f7d26b52462f",
+        "assets/web_publications/contrast_scale_demo/document/outputs.json": "136585d23e198c5a2821d36a5eb10d097f688f9b72daf265ae5be54ca7e5ce8a",
+        "assets/web_publications/contrast_scale_demo/outputs/0.html": "6c3e5770b7b6579b7b33464cfc268478a6a80e44eae0ee1c3bd430020f258b6e",
+        "assets/web_publications/contrast_scale_demo/outputs/1.html": "623fcb88af25270f6be7288d81d0b0b4933f97366d2164f35a815ffcfc28b959",
+        "assets/web_publications/contrast_scale_demo/outputs/2.html": "c3a1a4ee776b7177efaddfc05eea3ce3ecc9555684e7c287ae3608e4caad547c",
+        "assets/web_publications/contrast_scale_demo/outputs/3.html": "176d08d32de5228c25cc02fcceedca4f869727ffc934b04a7f1ae1bcea6ad950"
+      },
+      "kinds": [
+        "svg"
+      ],
+      "outputs": "assets/web_publications/contrast_scale_demo/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/contrast_scale_demo.yaml": "749cfacaa34f07452976a93a2077b5852359569c24c66af11a547c711f02e4ff",
+        "public/docs/assets/agent_transcripts/contrast_scale_demo/contrast_bands_code_.kt": "41ed952c6b2b4812f9e117b6e53ea8c8634bbe8363ae32f5e4f19691773396e1",
+        "public/docs/assets/agent_transcripts/contrast_scale_demo/contrast_picker_code_.kt": "b0aefcdcbe49937da1823d0e3edfa8b8fa500c31e6a9da697563fae2272c661f",
+        "public/docs/assets/agent_transcripts/contrast_scale_demo/contrast_swatches_code_.kt": "5152bfa3ffe26320d52854925457799d823ef398ca5d935f32e9a247c71af06c",
+        "public/docs/assets/agent_transcripts/contrast_scale_demo/guides/colors_examples-one-colour-ten-steps-contrastscale.md": "a9d5004d76ade444e0319e39afb1b53296c5a49f11917234e6986488e7da1033",
+        "public/docs/assets/agent_transcripts/contrast_scale_demo/metadata.edn": "4a1fa7eced34d61a2b50ca824ff250d273d485e7d38becd26ae39c8bac52e7a3"
+      }
+    },
     "assets/agent_transcripts/control_surface_laws/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
       "capturedAt": "2026-11-18T14:53:04.299Z",
