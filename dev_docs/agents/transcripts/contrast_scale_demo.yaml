@@ -24,9 +24,9 @@ operations:
       frame: { x: 80.0, y: 80.0, w: 380.0, h: 100.0 }
       properties:
         code: |
-          val seeds = ["#3b82f6", "#ef4444", "#22c55e", "#eab308"].map { hexColor(it) }
+          val seeds = ["#3b82f6", "#ef4444", "#22c55e", "#eab308"].map { colorHex(it) }
           val white = vec(1.0, 1.0, 1.0, 1.0)
-          val nearBlack = hexColor("#0a0a0a")
+          val nearBlack = colorHex("#0a0a0a")
 
           fun css(c: Vec4) = "rgb(${(c.x * 255).roundToInt()},${(c.y * 255).roundToInt()},${(c.z * 255).roundToInt()})"
 
@@ -41,7 +41,7 @@ operations:
                                   if (step == scale.seedStep) "outline:2px solid ${css(scale.textOn[i])};outline-offset:-4px;"
                                   else ""
                               "<div style='width:52px;height:52px;background:${css(scale.colors[i])};color:${css(scale.textOn[i])};$ring" +
-                                  "font:600 11px system-ui;padding:5px;box-sizing:border-box'>$step<br>${scale.contrasts[i].f1}</div>"
+                                  "font:600 11px system-ui;padding:5px;box-sizing:border-box'>$step<br>${scale.swatches[i].achieved.f1}</div>"
                           }
                       "<div style='display:flex;gap:3px;margin:5px 0'>$cells</div>"
                   }
@@ -55,13 +55,13 @@ operations:
       frame: { x: 80.0, y: 220.0, w: 380.0, h: 100.0 }
       properties:
         code: |
-          var seed = hexColor("#3b82f6")
+          var seed = colorHex("#3b82f6")
           var dark = false
 
           fun css(c: Vec4) = "rgb(${(c.x * 255).roundToInt()},${(c.y * 255).roundToInt()},${(c.z * 255).roundToInt()})"
 
           fun redraw() {
-              val background = if (dark) hexColor("#0a0a0a") else vec(1.0, 1.0, 1.0, 1.0)
+              val background = if (dark) colorHex("#0a0a0a") else vec(1.0, 1.0, 1.0, 1.0)
               val scale = contrastScale(seed, background)
               val cells =
                   scale.colors.indices.joinToString("") { i ->
@@ -69,7 +69,7 @@ operations:
                       val ring =
                           if (step == scale.seedStep) "outline:2px solid ${css(scale.textOn[i])};outline-offset:-4px;" else ""
                       "<div style='width:60px;height:60px;background:${css(scale.colors[i])};color:${css(scale.textOn[i])};$ring" +
-                          "font:600 11px system-ui;padding:6px;box-sizing:border-box'>$step<br>${scale.contrasts[i].f2}</div>"
+                          "font:600 11px system-ui;padding:6px;box-sizing:border-box'>$step<br>${scale.swatches[i].achieved.f2}</div>"
                   }
               display("scale", "<div style='background:${css(background)};padding:12px;display:flex;gap:3px'>$cells</div>")
           }
@@ -90,8 +90,8 @@ operations:
       properties:
         code: |
           val white = vec(1.0, 1.0, 1.0, 1.0)
-          val blues = contrastScale(hexColor("#3b82f6"), white)
-          val ambers = contrastScale(hexColor("#eab308"), white)
+          val blues = contrastScale(colorHex("#3b82f6"), white)
+          val ambers = contrastScale(colorHex("#eab308"), white)
 
           fun bands(scale: ContrastScale, x0: Double, phase: Double): List<FLine> =
               (0 until 6)

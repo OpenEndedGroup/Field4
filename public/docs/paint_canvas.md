@@ -300,7 +300,8 @@ mixed by parts: `brush.load(mapOf("lead white" to 3.0, "vermilion" to 1.0))`. Th
 paint does, weighted by how strongly each pigment tints, and the pile keeps their hiding, stiffness
 and drying rate. `Tubes.names` lists the catalogue, `Tubes["smalt"]` describes one tube,
 `Tubes.mix(...)` gives the colour of a mixture without painting it, and `Tubes.mixSpectral(...)`
-mixes any colours as pigments rather than as light.
+mixes any colours as pigments rather than as light. For a swatch strip that uses the same
+mixing rules, see [Mix paint with the same endpoints](colors_examples.md#mix-paint-with-the-same-endpoints).
 
 Two more steps finish a painting:
 

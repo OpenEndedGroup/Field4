@@ -19,5 +19,7 @@ void main() {
     }
     float coverage=clamp(.5-d/max(fwidth(d),1e-5),0,1);
     // White ink; retain the marker's opacity and antialiased boundary.
-    outColor=vec4(vec3(1.0),tint.a*coverage);
+    // Premultiplied additive light; alpha carries light times the palette position in tint.x.
+    float light=tint.a*coverage;
+    outColor=vec4(vec3(light),light*tint.x);
 }

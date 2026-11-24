@@ -76,7 +76,7 @@ val echo = aiTool("echo.box") {
     val times by param<Int>("repeat count", default = 2)
     action { mapOf("boxId" to thisBox.id, "echo" to text().repeat(times())) }   // suspend, on the runloop
 }
-start { println(echo("hi", 3)) }                      // the handle is directly callable
+frames { println(echo("hi", 3)) }                     // the handle is directly callable; a bare `start { }` is an overload ambiguity
 ```
 
 It does not go through `ToolRegistry`'s handler map at all. Tools live in the per-document

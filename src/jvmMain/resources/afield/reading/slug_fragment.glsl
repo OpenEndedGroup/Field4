@@ -8,7 +8,7 @@ layout(push_constant) uniform SlugPC {
     mat4 model; // word plane to world (the vertex stage applies the current eye VP)
     SlugData slugData; // immutable word-outline atlas
     vec2 viewport; // dimensions of this eye
-    vec4 tint; // linear RGBA and score-driven opacity
+    vec4 tint; // x: palette position (DiagramPalette, 1 = neutral); w: score-driven opacity
     vec4 clipPlane; // world-space backdrop plane, shared with the vertex stage
 } pc;
 vec4 data4(uint at) {
@@ -186,5 +186,7 @@ void main() {
     if (coverage <= 0.0) discard;
     // Straight alpha; use a source-alpha blending pipeline. Convert explicitly for
     // premultiplied-alpha targets. Neither atlas data nor coverage are sRGB colors.
-    fragColor = vec4(shade(emCoord), coverage * pc.tint.a);
+    // Premultiplied additive light (ONE/ONE): alpha carries light times the palette position in tint.x.
+    float light = coverage * pc.tint.a;
+    fragColor = vec4(shade(emCoord) * light, light * pc.tint.x);
 }
