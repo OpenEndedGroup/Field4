@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-24T10:47:21.997Z",
+  "documentName": "geodesic_carving",
+  "outputs": [
+    {
+      "uid": "double-spiral",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "geodesic-vs-euclidean",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 480,
+      "height": 360,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "roughing-passes",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 480,
+      "height": 360,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "double-spiral-room",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "geodesic-spiral",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 480,
+      "height": 360,
+      "path": "outputs/4.html"
+    }
+  ]
+}
