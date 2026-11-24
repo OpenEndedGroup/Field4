@@ -817,6 +817,53 @@ kept, so the pipe stays at least half a spacing from the walls and leaves the ho
 (`hole`, by default 8% of the deepest distance) bare. A smaller hole covers more floor, until a
 lap into a narrow wing turns into a hairpin.
 
+The field gets the topology right, but its laps are only as even as the angle: they crowd in the
+narrow wing, spread in the wide part, and leave the middle bare. `relaxPath` treats the pipe as a
+physical thing and lets it settle, the way differential growth does, with both ports pinned. Laps
+closer than a spacing push apart; each point moves towards whichever side has more room, a wall
+counting at twice its distance, so laps centre between their neighbours and sit half a spacing off
+the walls; a fourth-order stiffness damps ripples without pulling the pipe off the corners; and the
+bend in the middle, the one place with free floor on both sides, grows, so the spiral winds further
+in. Growth anywhere else buckles the laps into a labyrinth, which is what differential growth does
+when it is left to itself. No point moves more than 3% of a spacing in a step, so laps cannot pass
+through each other, and the result reports whether any did.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/mesh_examples/relaxed_spiral.png" wait="3.0" capture="box" open-outputs="true" padding="20"}
+// The L-shaped room again: the field spiral, then the same pipe relaxed.
+val bay =
+    (0..16).map { i ->
+        val a = kotlin.math.PI * i / 16
+        vec(-1.0 - 0.3 * kotlin.math.sin(a), 0.25 + 0.25 * kotlin.math.cos(a))
+    }
+val plan = [vec(-1.0, -0.7), vec(1.0, -0.7), vec(1.0, 0.1), vec(0.1, 0.1), vec(0.1, 0.7), vec(-1.0, 0.7)] + bay
+val floor = outlineMesh(plan, 0.0125)
+val spacing = 0.07
+val (supply, back) = floor.windingAngle(floor.geodesicDistanceFromBoundary()).fieldDoubleSpiral(spacing)
+val wall = outlineWallDistance(plan)
+val relaxed = relaxPath(supply, back, spacing, wall)
+println("closest lap ${relaxed.closest.f3}, tightest bend ${relaxed.tightestBend.f3}, crossings ${relaxed.crossings}")
+
+// Field spiral on the left, relaxed on the right.
+val walls = (plan + plan.first()).map { vec(it.x, 0f, it.y) }
+fun drawn(path: List<Vec3>, dx: Float) = path.map { vec(it.x * 300f + dx, it.z * 300f, 0f) }
+val shown = ArrayList<FLine>()
+for (dx in [0f, 780f]) shown += drawn(walls, dx).toFLine3(vec(0.45, 0.45, 0.45, 1.0), 3.0)
+shown += drawn(supply, 0f).toFLine3(vec(0.9, 0.25, 0.15, 1.0), 2.0)
+shown += drawn(back, 0f).toFLine3(vec(0.15, 0.4, 0.9, 1.0), 2.0)
+shown += drawn(relaxed.first, 780f).toFLine3(vec(0.9, 0.25, 0.15, 1.0), 2.0)
+shown += drawn(relaxed.second, 780f).toFLine3(vec(0.15, 0.4, 0.9, 1.0), 2.0)
+lines(shown, w = 1000.0, h = 400.0, fitToSize = true)
+```
+
+![Two copies of the L-shaped room with the bay, side by side. Left, the field double spiral: laps crowded in the narrow upper wing, spread wider in the main room, angular where they turn, and a bare patch in the middle. Right, the same pipe after relaxing: smooth rounded laps at an even spacing, following the walls, sweeping into the bay, winding further into the middle, red supply and blue return still alternating all the way in and nowhere crossing](assets/mesh_examples/relaxed_spiral.png)
+
+On this room the relaxed pipe keeps every lap at least 0.061 from the next (the spacing is 0.07),
+bends no tighter than a radius of 0.021, and crosses itself nowhere; the largest bare circle on the
+floor shrinks from 0.111 to 0.097 (`largestBareCircle` measures it). A real pipe has a minimum bend
+radius: raise `stiffness` until `tightestBend` clears it. Started from a short arc between the two
+ports instead of the field spiral, the same forces would fill the room with a meander, not a spiral:
+relaxing keeps the shape it is given, it does not choose one.
+
 Before finishing comes roughing: a flat-bottomed tool clears the block one horizontal layer at a
 time, following the part's outline at each height. `roughingPasses(stepDown)` gives those
 contours from the top down, as `(height, rings)` pairs:
