@@ -2241,17 +2241,18 @@
     },
     "assets/agent_transcripts/geodesic_carving/metadata.edn": {
       "captureDigest": "dae71325c6de8386066240231aac1762db1b9a954d32608e4f55a847371d2fb6",
-      "capturedAt": "2026-11-24T10:47:21.997Z",
-      "channels": 5,
+      "capturedAt": "2026-11-24T12:45:01.187Z",
+      "channels": 6,
       "file": "assets/web_publications/geodesic_carving/document/metadata.edn",
       "files": {
-        "assets/web_publications/geodesic_carving/document/metadata.edn": "1fec7c77c52fc773c0b862091869cffdc125461af8710bcf2868ebbcc41b5316",
-        "assets/web_publications/geodesic_carving/document/outputs.json": "0afc562709c2b7fab6da530bbfa5b3ecbab720d78ef9eb36c7990872c921d115",
-        "assets/web_publications/geodesic_carving/outputs/0.html": "74e29544cf82c37f1a834bc07cb4e1be8483d6ed31c03dd8d514df4f59e3ef13",
-        "assets/web_publications/geodesic_carving/outputs/1.html": "8ad9df997138c51762fa95abfea55076a9d0aa37d4eb8623249bd4057758f9b7",
-        "assets/web_publications/geodesic_carving/outputs/2.html": "a83b2b32b843c96a9b727b71ef3eaad651f1affd1b0a72267aba786c4e1635c5",
-        "assets/web_publications/geodesic_carving/outputs/3.html": "4b049d33a9db5d93dc69a5b5b1a8fd8bc4757ac584000406c9d5d4af193d2db0",
-        "assets/web_publications/geodesic_carving/outputs/4.html": "3d0666eb1175ba9cf68912a1a3838f069c2971457660a025d532c7ea88800334"
+        "assets/web_publications/geodesic_carving/document/metadata.edn": "9547d6938f26f4db9f815215505d5da039f90b729b73385032422ae7c67ce579",
+        "assets/web_publications/geodesic_carving/document/outputs.json": "9d105df015ae9f202ae52f9bc5079dda36bb47000ef718cbc3ede4aeaf2924c1",
+        "assets/web_publications/geodesic_carving/outputs/0.html": "8dca6015ddf4cce7d23f6d4603e7e2b1713718bafe8dff6ab506639e51664073",
+        "assets/web_publications/geodesic_carving/outputs/1.html": "38bdf41aa30fe059c432a0a13baebbb31c00a6fe07c7468994917539a61099e3",
+        "assets/web_publications/geodesic_carving/outputs/2.html": "d3b1387f4fa675d58fb51a4a61b79a8c509ac7a1e138f5b669074e7549e70dd7",
+        "assets/web_publications/geodesic_carving/outputs/3.html": "643e7e84688b727c3579be94b09bd1fa7b2537f56a4127ff8cd2d3af2a26e3be",
+        "assets/web_publications/geodesic_carving/outputs/4.html": "997e5c2f804b3a9a95a3f7879d2b7f204bc0412c0b0e526fd0fd9f53df8fae90",
+        "assets/web_publications/geodesic_carving/outputs/5.html": "252508e78f8b04751e5adb557292a950e5c6e1e08c8a96c1b95a85fa36f69665"
       },
       "kinds": [
         "svg",
@@ -2259,13 +2260,14 @@
       ],
       "outputs": "assets/web_publications/geodesic_carving/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/geodesic_carving.yaml": "79ee4d50d0c7f3c83d3d2fb40c5e0ba35206b483db8897b180f233f84afe9ffe",
+        "dev_docs/agents/transcripts/geodesic_carving.yaml": "7bc2fc9625670dfd1e5b191bd58195a8a906f0a7edcc2839a552d78db93156ae",
         "public/docs/assets/agent_transcripts/geodesic_carving/double-spiral-room_code_.kt": "7c9dd29d4075083fa246958ed2595be2f7b5cf62cb3fe561e1763c936b2862a9",
         "public/docs/assets/agent_transcripts/geodesic_carving/double-spiral_code_.kt": "737ca840e117f92b386f46c87b6dcf59b680ea35025e3a0d338f618df6d811c2",
         "public/docs/assets/agent_transcripts/geodesic_carving/geodesic-spiral_code_.kt": "3758671033cc2477e7e5622737cc14dcd535cd83ff3ee25e3e7db2785646ade1",
         "public/docs/assets/agent_transcripts/geodesic_carving/geodesic-vs-euclidean_code_.kt": "15609ef8db7e2407d596a7ad464420cb08832dbd5e70f3952c07a0db155869ed",
-        "public/docs/assets/agent_transcripts/geodesic_carving/guides/mesh_examples.md": "e333d65580aaf3e2e99d29e56575ce2ff35d8473ec57419e33f4b149035edf94",
-        "public/docs/assets/agent_transcripts/geodesic_carving/metadata.edn": "119789913af7c2c2c4885f5b363c7e3513c38ab9ee1ccc47612c8561c427b50d",
+        "public/docs/assets/agent_transcripts/geodesic_carving/guides/mesh_examples.md": "f9355a5b8be98f2c6c321d600789ee67ca0a9155e3de8ebb6db6715c1ba053c3",
+        "public/docs/assets/agent_transcripts/geodesic_carving/metadata.edn": "a75b8a7cc9a6b73e48bc2411550722574efe6a9a57ca180076054c3a7fc211a3",
+        "public/docs/assets/agent_transcripts/geodesic_carving/relaxed-spiral_code_.kt": "383ffb00cf9edc3341a75f1383585594bc29eacd6dd57758ee52622baa9cc0cb",
         "public/docs/assets/agent_transcripts/geodesic_carving/roughing-passes_code_.kt": "e392b4634090c8a0196ffbc6988e71f007d3a68c23a2ab425800fcc9ec8eb197"
       }
     },

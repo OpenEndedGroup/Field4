@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-24T10:47:21.997Z",
+  "capturedAt": "2026-11-24T12:45:01.187Z",
   "documentName": "geodesic_carving",
   "outputs": [
     {
@@ -52,6 +52,18 @@
       "path": "outputs/3.html"
     },
     {
+      "uid": "relaxed-spiral",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/4.html"
+    },
+    {
       "uid": "geodesic-spiral",
       "channel": "main",
       "open": true,
@@ -61,7 +73,7 @@
       ],
       "width": 480,
       "height": 360,
-      "path": "outputs/4.html"
+      "path": "outputs/5.html"
     }
   ]
 }
