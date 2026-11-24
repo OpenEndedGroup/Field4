@@ -149,6 +149,8 @@ macro write vector_scenes --file dev_docs/agents/transcripts/vector_scenes.yaml
 macro run vector_scenes
 ```
 
+[Open →](offline.html?file=assets/agent_transcripts/vector_scenes/metadata.edn)
+
 ### fline_fill_rule
 
 **One fill rule, every renderer.** A pentagram and two nested squares, wound the same way, filled
