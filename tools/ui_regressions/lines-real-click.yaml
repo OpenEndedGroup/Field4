@@ -1,0 +1,21 @@
+name: lines_real_click
+operations:
+  - drive:
+      script: |
+        fun clicks() = ui.eval("return document.getElementById('lines-real-click-state')?.textContent ?? '';").toString().trim('"')
+        fun waitFor(test: () -> Boolean): Boolean { repeat(60) { if (test()) return true; ui.pause(50) }; return test() }
+        // 1. A still press and release on a keyed line is a click on that line.
+        ui.clickSelector("g[data-fline-key=\"left\"]")
+        check(waitFor { clicks() == "left" }) { "A real click on a clickable line did not reach its onClick: '" + clicks() + "'" }
+        // 2. A press that moves pans the drawing, and the release is not a click on what lies under it.
+        val at = ui.eval("const r=document.querySelector('g[data-fline-key=\"right\"]').getBoundingClientRect();return (r.left+r.width/2)+','+(r.top+r.height/2);").toString().trim('"').split(',').map { it.toDouble() }
+        val before = ui.eval("return document.querySelector('.nested-svg-stage > g').getAttribute('transform');").toString()
+        ui.moveMouse(at[0], at[1])
+        ui.mouseDown()
+        repeat(6) { ui.moveMouse(at[0] + 10.0 * (it + 1), at[1] + 4.0 * (it + 1)) }
+        ui.mouseUp()
+        ui.pause(400)
+        val after = ui.eval("return document.querySelector('.nested-svg-stage > g').getAttribute('transform');").toString()
+        check(after != before) { "A drag across the drawing did not pan it" }
+        check(clicks() == "left") { "The release that ended a pan clicked the line under it: '" + clicks() + "'" }
+        ui.eval("window.__linesRealClick = {ok: true, clicks: document.getElementById('lines-real-click-state').textContent}; return true;")

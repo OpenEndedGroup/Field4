@@ -4332,6 +4332,31 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="lines-real-click",
+            description="A real mouse click on a clickable lines drawing reaches the line's onClick; a press that moves pans instead, and its release clicks nothing.",
+            commands=[
+                "new-box --name LinesRealClick",
+                shell_join(["run", "@last", "--file", str(REPO_ROOT / "tools/ui_regressions/lines-real-click.kt")]),
+                shell_join(["macro", "write", "lines_real_click", "--file", str(TOOLS_ROOT / "ui_regressions/lines-real-click.yaml")]),
+                "macro run lines_real_click",
+                shell_join(["page-eval", "--body", "return window.__linesRealClick;", "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="treemap-real-mouse",
+            description="A real mouse click on a treemap cell selects it through the WebGL viewer's socket; a press that moves pans the camera instead, and its release selects nothing.",
+            commands=[
+                "new-box --name TreemapRealMouse",
+                shell_join(["run", "@last", "--file", str(REPO_ROOT / "tools/ui_regressions/treemap-real-mouse.kt")]),
+                shell_join(["screenshot-box", "@last", "/dev/null", "--timeout", pw_timeout]),
+                shell_join(["macro", "write", "treemap_real_mouse", "--file", str(TOOLS_ROOT / "ui_regressions/treemap-real-mouse.yaml")]),
+                "macro run treemap_real_mouse",
+                shell_join(["page-eval", "--body", "return window.__treemapRealMouse;", "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="three-drag-bench",
             description="A datum drag on a 200-part scene (3 parts reshaped, 5 moved, per step) redraws within 50 ms median, end to end.",
             commands=[

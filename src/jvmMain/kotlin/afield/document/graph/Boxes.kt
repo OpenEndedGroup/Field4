@@ -2164,6 +2164,7 @@ import afield.ui.output.*
 import afield.ui.output.templates.*
 import afield.ui.slides.*
 import afield.ui.visualization.*
+import afield.ui.visualization.treemap.*
 import kotlin.math.*
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.yield

@@ -10,6 +10,7 @@ import afield.geometry.path.start
 import afield.document.graph.Box
 import afield.examples.graphics.FLineGeometryExamples
 import afield.ui.output.registerFLineClickCallback
+import afield.ui.output.registerFLineHoverCallback
 import afield.ai.learning.*
 import afield.ai.retrieval.*
 import afield.animation.interpolation.*
@@ -111,20 +112,21 @@ fun linesToHTML(
 /** [linesToHTML] framed on [frame] (source coordinates) rather than on these lines' own bounds. */
 internal fun linesToHTML(
     lines: List<FLine>, w: Double, h: Double, fitToSize: Boolean, frame: afield.app.protocol.Rect?,
-    callbackKey: String? = null, dragId: String? = null, handles: String? = null
+    callbackKey: String? = null, dragId: String? = null, handles: String? = null,
+    transition: Double = 0.0, viewId: String? = null,
 ): String {
     val renderable = lines.renderableLines()
     val fit = computeFitTransform(renderable, w, h, fitToSize, frame)
-    return if (renderable.any { it.onClick != null || it.hoverColor != null }) {
+    return if (needsInteractiveSvg(renderable)) {
         val pairs = renderable.map { it to it.applyFit(fit) }
         wrapLinesOutput(
             buildInteractiveSVG(pairs, w, h, fit, callbackKey),
             frame?.let { framedBounds(it, fit, w, h, keepOrigin = true) } ?: pairs.map { it.second }.combinedRenderableBoundsOrNull(),
-            dragId, handles
+            dragId, handles, transition, viewId
         )
     } else {
         val scaled = renderable.map { it.applyFit(fit) }
-        wrapLinesOutput(drawToSVG(scaled, w, h), frame?.let { framedBounds(it, fit, w, h) } ?: renderedSvgBoundsFor(scaled, w, h), dragId, handles)
+        wrapLinesOutput(drawToSVG(scaled, w, h), frame?.let { framedBounds(it, fit, w, h) } ?: renderedSvgBoundsFor(scaled, w, h), dragId, handles, transition, viewId)
     }
 }
 
@@ -144,6 +146,10 @@ internal fun linesToHTML(
  *   (pluck a string while it rings); an editable widget is for moving the drawing's own points.
  * @param onEditCommitted With [editable], receives detached copies of the lines each time a drag
  *   finishes. Keep it short; it runs on the server's message thread.
+ * @param transition seconds over which lines with an [FLine.key] morph from the previous display to this
+ *   one, while new keys fade in and missing ones fade out; 0 replaces the drawing at once.
+ * @param onView receives the part of the drawing the viewer shows after the user pans or zooms it, in
+ *   the lines' own coordinates, so a drawing can add detail where it is being looked at.
  */
 @JvmOverloads
 fun Box.lines(
@@ -159,6 +165,8 @@ fun Box.lines(
     handles: List<LinesHandle> = emptyList(),
     onDrag: ((LinesDragEvent) -> Unit)? = null,
     onEditCommitted: ((List<FLine>) -> Unit)? = null,
+    transition: Double = 0.0,
+    onView: ((LinesViewEvent) -> Unit)? = null,
 ): EditableFLineViewState? {
     val lines = m.asList().renderableLines()
     val frame = linesFrame(channel, lines, framing)
@@ -172,7 +180,9 @@ fun Box.lines(
     val fit = computeFitTransform(lines, w, h, fitToSize, frame)
     display(channel, linesToHTML(lines, w, h, fitToSize, frame, callbackKey = "$id/$channel",
         dragId = onDrag?.let { registerLinesDrag(this, channel, fit, it, handles) },
-        handles = if (onDrag != null) linesHandlesAttribute(handles, fit) else null))
+        handles = if (onDrag != null) linesHandlesAttribute(handles, fit) else null,
+        transition = transition,
+        viewId = onView?.let { registerLinesView(this, channel, fit, it) }))
     return null
 }
 
@@ -192,6 +202,10 @@ fun Box.lines(
  *   (pluck a string while it rings); an editable widget is for moving the drawing's own points.
  * @param onEditCommitted With [editable], receives detached copies of the lines each time a drag
  *   finishes. Keep it short; it runs on the server's message thread.
+ * @param transition seconds over which lines with an [FLine.key] morph from the previous display to this
+ *   one, while new keys fade in and missing ones fade out; 0 replaces the drawing at once.
+ * @param onView receives the part of the drawing the viewer shows after the user pans or zooms it, in
+ *   the lines' own coordinates, so a drawing can add detail where it is being looked at.
  */
 @JvmOverloads
 fun Box.lines(
@@ -207,6 +221,8 @@ fun Box.lines(
     handles: List<LinesHandle> = emptyList(),
     onDrag: ((LinesDragEvent) -> Unit)? = null,
     onEditCommitted: ((List<FLine>) -> Unit)? = null,
+    transition: Double = 0.0,
+    onView: ((LinesViewEvent) -> Unit)? = null,
 ): EditableFLineViewState? {
     val lines = m.renderableLines()
     val frame = linesFrame(channel, lines, framing)
@@ -220,7 +236,9 @@ fun Box.lines(
     val fit = computeFitTransform(lines, w, h, fitToSize, frame)
     display(channel, linesToHTML(lines, w, h, fitToSize, frame, callbackKey = "$id/$channel",
         dragId = onDrag?.let { registerLinesDrag(this, channel, fit, it, handles) },
-        handles = if (onDrag != null) linesHandlesAttribute(handles, fit) else null))
+        handles = if (onDrag != null) linesHandlesAttribute(handles, fit) else null,
+        transition = transition,
+        viewId = onView?.let { registerLinesView(this, channel, fit, it) }))
     return null
 }
 
@@ -257,7 +275,7 @@ fun Box.lines(
     val states = linkedMapOf<String, EditableFLineViewState>()
     if (splitByChannel) {
         filteredLinesByChannel.forEach { (channelName, lines) ->
-            val hasInteractive = lines.any { it.onClick != null || it.hoverColor != null }
+            val hasInteractive = needsInteractiveSvg(lines)
             if (editable) {
                 val pairs = lines.map { it to it.applyFit(fit) }
                 val widget = buildEditableSVGWidget(pairs, fit, w, h, drawingEnabled = drawing, liveDrawingEnabled = liveDrawing, onEditCommitted = onEditCommitted)
@@ -273,7 +291,7 @@ fun Box.lines(
             }
         }
     } else {
-        val hasInteractive = allLines.any { it.onClick != null || it.hoverColor != null }
+        val hasInteractive = needsInteractiveSvg(allLines)
         if (editable) {
             val pairs = allLines.map { it to it.applyFit(fit) }
             val widget = buildEditableSVGWidget(pairs, fit, w, h, drawingEnabled = drawing, liveDrawingEnabled = liveDrawing, onEditCommitted = onEditCommitted)
@@ -323,14 +341,19 @@ private fun emptySvg(w: Double, h: Double): String {
     return """<svg xmlns="http://www.w3.org/2000/svg" width="$width" height="$height" style="overflow:visible"/>"""
 }
 
-private fun wrapLinesOutput(svg: String, bounds: afield.app.protocol.Rect? = null, dragId: String? = null, handles: String? = null): String {
+private fun wrapLinesOutput(
+    svg: String, bounds: afield.app.protocol.Rect? = null, dragId: String? = null, handles: String? = null,
+    transition: Double = 0.0, viewId: String? = null,
+): String {
     val boundsAttrs = bounds?.let {
         """ data-afield-bounds-x="${jsonN(it.x)}" data-afield-bounds-y="${jsonN(it.y)}" data-afield-bounds-w="${jsonN(it.w)}" data-afield-bounds-h="${jsonN(it.h)}""""
     } ?: ""
     fun attr(v: String) = v.replace("&", "&amp;").replace("\"", "&quot;")
     val dragAttr = dragId?.let { """ data-afield-drag="${attr(it)}"""" } ?: ""
     val handlesAttr = handles?.let { """ data-afield-handles="${attr(it)}"""" } ?: ""
-    return """<div class="afield-lines-output" data-afield-lines-output="true"$boundsAttrs$dragAttr$handlesAttr>$svg</div>"""
+    val transitionAttr = if (transition > 0.0 && transition.isFinite()) """ data-afield-transition="${jsonN(transition)}"""" else ""
+    val viewAttr = viewId?.let { """ data-afield-view="${attr(it)}"""" } ?: ""
+    return """<div class="afield-lines-output" data-afield-lines-output="true"$boundsAttrs$dragAttr$handlesAttr$transitionAttr$viewAttr>$svg</div>"""
 }
 
 /**
@@ -737,46 +760,91 @@ internal fun buildInteractiveSVG(pairs: List<Pair<FLine, FLine>>, w: Double, h: 
     renderablePairs.forEach { (lineIndex, original, scaled) ->
         val onClick = original.onClick
         val hoverColor = original.hoverColor
-        val hasInteraction = onClick != null || hoverColor != null
+        val onHover = original.onHover
+        val key = original.key
+        val caption = original.caption
+        val tooltip = original.tooltip
+        val hasGroup = onClick != null || hoverColor != null || onHover != null || key != null || caption != null || tooltip != null
+        // Keyed by box, channel and the line's key (or its place in the list), so a drawing redisplayed every
+        // frame replaces its callbacks; a fresh id per display left one per frame behind.
+        val slot = key?.let { "k:$it" } ?: "$lineIndex"
 
         val callbackId: String? = if (onClick != null) {
-            // Keyed by box, channel and line when the caller names them, so a drawing redisplayed every
-            // frame replaces its click callbacks; a fresh id per display left one per frame behind.
-            val id = callbackKey?.let { "fline-$it-$lineIndex" } ?: "fline-${UUID.randomUUID()}"
+            val id = callbackKey?.let { "fline-$it-$slot" } ?: "fline-${UUID.randomUUID()}"
             registerFLineClickCallback(id, onClick)
             id
         } else null
+        val hoverId: String? = if (onHover != null) {
+            val id = callbackKey?.let { "fline-hover-$it-$slot" } ?: "fline-hover-${UUID.randomUUID()}"
+            registerFLineHoverCallback(id, onHover)
+            id
+        } else null
 
-        if (hasInteraction) {
+        if (hasGroup) {
             sb.append("<g")
+            if (key != null) sb.append(""" data-fline-key="${svgAttr(key)}"""")
             if (callbackId != null) {
                 sb.append(""" data-fline-callback-id="$callbackId"""")
-                sb.append(""" data-fline-vertices='${flineVertexData(original)}'""")
+                val detail = original.pickDetail != false
+                if (detail) sb.append(""" data-fline-vertices='${flineVertexData(original)}'""")
                 sb.append(""" data-fline-index="$lineIndex"""")
                 original.label?.let { sb.append(""" data-fline-label="${svgAttr(it)}"""") }
-                sb.append(""" data-fline-elements='${flineTopologyJson(original)}'""")
-                sb.append(""" data-fline-pick='${flinePickData(original, fit)}'""")
+                if (detail) {
+                    sb.append(""" data-fline-elements='${flineTopologyJson(original)}'""")
+                    sb.append(""" data-fline-pick='${flinePickData(original, fit)}'""")
+                }
                 if (fit != null) {
                     sb.append(""" data-fit-scale="${jsonN(fit.scale)}" data-fit-offset-x="${jsonN(fit.offsetX)}" data-fit-offset-y="${jsonN(fit.offsetY)}"""")
                 }
-                sb.append(""" onclick="window.sendFLineClick&&window.sendFLineClick('$callbackId',window.__flineIntersectionFromSvg&&window.__flineIntersectionFromSvg(event,this))" style="cursor:pointer"""")
+                sb.append(""" onclick="window.sendFLineClick&&window.sendFLineClick('$callbackId',window.__flineIntersectionFromSvg&&window.__flineIntersectionFromSvg(event,this),event)" style="cursor:pointer"""")
             }
-            if (hoverColor != null) {
-                val hc = vec4ToSvgColor(hoverColor)
-                sb.append(""" data-hover-color="$hc"""")
-                sb.append(""" onmouseover="window.__flineHoverIn&&window.__flineHoverIn(this)"""")
-                sb.append(""" onmouseout="window.__flineHoverOut&&window.__flineHoverOut(this)"""")
+            if (hoverId != null) {
+                sb.append(""" data-fline-hover-id="$hoverId"""")
+                if (callbackId == null) {
+                    sb.append(""" data-fline-index="$lineIndex"""")
+                    original.label?.let { sb.append(""" data-fline-label="${svgAttr(it)}"""") }
+                }
+            }
+            if (hoverColor != null) sb.append(""" data-hover-color="${vec4ToSvgColor(hoverColor)}"""")
+            if (hoverColor != null || hoverId != null) {
+                sb.append(""" onmouseover="window.__flineHoverIn&&window.__flineHoverIn(this,event)"""")
+                sb.append(""" onmouseout="window.__flineHoverOut&&window.__flineHoverOut(this,event)"""")
             }
             sb.append(">")
+            if (tooltip != null) sb.append("<title>").append(svgText(tooltip)).append("</title>")
         }
 
         renderFLineToSVG(scaled, sb)
+        if (caption != null) renderCaptionToSVG(caption, original, fit, sb)
 
-        if (hasInteraction) sb.append("</g>")
+        if (hasGroup) sb.append("</g>")
     }
 
     sb.append("</g></svg>")
     return sb.toString()
+}
+
+/** Escape text content for an SVG element. */
+private fun svgText(value: String): String = value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+/**
+ * Append [caption] as an SVG `<text>`, placed through [fit] like its line. It is `pointer-events="none"`, so a
+ * click on the words is a click on the shape under them.
+ */
+private fun renderCaptionToSVG(caption: LineCaption, line: FLine, fit: FitTransform?, sb: StringBuilder) {
+    if (caption.text.isEmpty()) return
+    val s = fit?.scale?.toDouble() ?: 1.0
+    val x = if (fit == null) caption.x else (caption.x + fit.offsetX) * s
+    val y = if (fit == null) caption.y else (caption.y + fit.offsetY) * s
+    val color = vec4ToSvgColor(caption.color ?: line.color)
+    val anchor = when (caption.anchor) { "middle", "end" -> caption.anchor; else -> "start" }
+    val baseline = when (caption.baseline) { "middle", "alphabetic", "central" -> caption.baseline; else -> "hanging" }
+    sb.append("""<text x="${svgN(x.toFloat())}" y="${svgN(y.toFloat())}" font-size="${svgN((caption.size * s).toFloat())}"""")
+    sb.append(""" fill="$color" text-anchor="$anchor" dominant-baseline="$baseline" pointer-events="none"""")
+    sb.append(""" font-family="var(--field-font-ui, system-ui, sans-serif)"""")
+    if (caption.bold) sb.append(""" font-weight="600"""")
+    if (caption.opacity < 1.0) sb.append(""" opacity="${jsonN(caption.opacity.coerceIn(0.0, 1.0))}"""")
+    sb.append(">").append(svgText(caption.text)).append("</text>")
 }
 
 /** Build compact endpoint metadata for SVG click picking: [x, y, z, originalNodeIndex]. */

@@ -22,6 +22,7 @@ package afield.ui.visualization
 
 import afield.app.diagnostics.logging.lprintln
 import afield.app.protocol.LinesDrag
+import afield.app.protocol.LinesView
 import afield.document.graph.Box
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.addJsonObject
@@ -249,4 +250,53 @@ fun Box.dragHandle(name: String, x: Double, y: Double, channel: String = "lines"
     send("start", h.x ?: x, h.y ?: y)
     send("move", x, y)
     send("end", x, y)
+}
+
+/**
+ * What a `lines(...)` viewer shows after the user pans or zooms it, in the lines' own coordinates: the
+ * visible rectangle [x], [y], [w], [h], and [pixelsPerUnit] screen pixels per unit of those coordinates.
+ * [manual] is false once a double click has refitted the drawing to its panel. A drawing uses it to add
+ * detail where it is being looked at.
+ */
+data class LinesViewEvent(
+    val x: Double, val y: Double, val w: Double, val h: Double,
+    val pixelsPerUnit: Double,
+    val manual: Boolean,
+)
+
+private class LinesViewTarget(val callback: (LinesViewEvent) -> Unit, val fit: FitTransform?) {
+    fun deliver(view: LinesView) {
+        val s = fit?.scale?.toDouble() ?: 1.0
+        val ox = fit?.offsetX?.toDouble() ?: 0.0
+        val oy = fit?.offsetY?.toDouble() ?: 0.0
+        callback(LinesViewEvent(view.x / s - ox, view.y / s - oy, view.w / s, view.h / s, view.scale * s, view.manual))
+    }
+}
+
+private val linesViewTargets = afield.runtime.lifecycle.OwnedCallbackRegistry<LinesViewTarget>("linesView")
+
+/** Register [callback] for view changes on [box]'s [channel] drawing; the id is box and channel, so a redisplay replaces it. */
+internal fun registerLinesView(box: Box, channel: String, fit: FitTransform?, callback: (LinesViewEvent) -> Unit): String {
+    val id = "lines-view:${box.id}:$channel"
+    linesViewTargets.register(id, LinesViewTarget(callback, fit))
+    return id
+}
+
+private val linesViewExecutor = Executors.newSingleThreadExecutor { r -> Thread(r, "lines-view").apply { isDaemon = true } }
+private val pendingLinesViews = ConcurrentHashMap<String, LinesView>()
+
+/**
+ * A [LinesView] from a viewer, delivered off the message thread. A view that arrives while an earlier one for
+ * the same drawing is still waiting replaces it: only where the user ended up matters.
+ */
+internal fun receiveLinesView(view: LinesView) {
+    if (pendingLinesViews.put(view.id, view) != null) return
+    linesViewExecutor.execute {
+        val next = pendingLinesViews.remove(view.id) ?: return@execute
+        try {
+            linesViewTargets[next.id]?.deliver(next) ?: lprintln("debug,fline", "No view callback for ${next.id}")
+        } catch (e: Exception) {
+            lprintln("error,fline", "Error in lines view callback: ${e.message}")
+        }
+    }
 }

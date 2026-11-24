@@ -183,6 +183,7 @@ internal fun ThreeWireSource.contentHash(): String {
         is ThreeWireSource.Doubles -> for (v in values) mix(java.lang.Double.doubleToRawLongBits(v))
         is ThreeWireSource.Ints -> for (v in values) mix(v.toLong())
         is ThreeWireSource.Pairs -> for (e in values) for (v in e) mix(v.toLong())
+        is ThreeWireSource.Bytes -> for (v in values) mix(v.toLong())
     }
     return java.lang.Long.toHexString(h)
 }
@@ -191,12 +192,14 @@ internal fun ThreeWireSource.contentHash(): String {
 internal sealed class ThreeWireSource(val type: String, val count: Int, val width: Int) {
     val byteLength: Long get() = count.toLong() * width
     /** The array this reads, for identity. */
-    val array: Any get() = when (this) { is Floats -> values; is Doubles -> values; is Ints -> values; is Pairs -> values }
+    val array: Any get() = when (this) { is Floats -> values; is Doubles -> values; is Ints -> values; is Pairs -> values; is Bytes -> values }
     class Floats(val values: FloatArray) : ThreeWireSource("Float32Array", values.size, 4)
     class Doubles(val values: DoubleArray) : ThreeWireSource("Float64Array", values.size, 8)
     class Ints(type: String, width: Int, val values: IntArray) : ThreeWireSource(type, values.size, width)
     /** `[[a, b], …]` edge lists, flattened. */
     class Pairs(val values: List<List<Int>>) : ThreeWireSource("Int32Array", values.size * 2, 4)
+    /** Raw bytes, sent as they are: UTF-8 text, or colours already packed four to a pixel. */
+    class Bytes(val values: ByteArray) : ThreeWireSource("Uint8Array", values.size, 1)
 }
 
 /** A view's buffers for one generation: what `/three-buffers` writes. */
@@ -389,6 +392,16 @@ internal fun writeThreeBuffers(sources: List<ThreeWireSource>, out: OutputStream
                 room(8)
                 chunk.putInt(edge[0])
                 chunk.putInt(edge[1])
+            }
+            is ThreeWireSource.Bytes -> {
+                val values = source.values
+                var i = 0
+                while (i < values.size) {
+                    room(1)
+                    val n = minOf(values.size - i, chunk.remaining())
+                    chunk.put(values, i, n)
+                    i += n
+                }
             }
         }
         position += source.byteLength

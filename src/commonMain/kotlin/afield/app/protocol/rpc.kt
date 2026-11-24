@@ -1847,7 +1847,38 @@ data class FLineClick(
     val v: Double? = null,
     val ex: Double? = null,
     val ey: Double? = null,
-    val ez: Double? = null
+    val ez: Double? = null,
+    val key: String? = null,
+    val shift: Boolean = false,
+    val alt: Boolean = false,
+    val meta: Boolean = false,
+    val clickCount: Int = 1,
+)
+
+/** The pointer entering ([entered]) or leaving an interactive FLine `<g>` whose line has an `onHover`. */
+@Serializable
+data class FLineHoverEvent(
+    val callbackId: String,
+    val entered: Boolean,
+    val key: String? = null,
+    val label: String? = null,
+    val lineIndex: Int = -1,
+)
+
+/**
+ * The part of a `lines(...)` drawing a viewer shows after the user pans or zooms it, in the drawing's
+ * SVG coordinates. [scale] is screen pixels per SVG unit. [manual] is false once a double click has
+ * refitted the view.
+ */
+@Serializable
+data class LinesView(
+    val id: String,
+    val x: Double,
+    val y: Double,
+    val w: Double,
+    val h: Double,
+    val scale: Double,
+    val manual: Boolean = true,
 )
 
 @Serializable
