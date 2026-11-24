@@ -1,6 +1,8 @@
 @file:afield.runtime.completion.CompletionCategory("Audio")
 package afield.audio.synth
 
+import afield.document.workspace.loaderFile
+import afield.runtime.completion.CompletesPath
 import afield.audio.engine.WavFloatArrayLoader
 import org.w3c.dom.Document
 import org.w3c.dom.Element
@@ -180,7 +182,7 @@ data class AbletonSet(
     }
 
     companion object {
-        fun read(path: String): AbletonSet = read(File(path))
+        fun read(@CompletesPath("*.als") path: String): AbletonSet = read(loaderFile(path))
 
         fun read(file: File): AbletonSet {
             val document = parseXml(file)

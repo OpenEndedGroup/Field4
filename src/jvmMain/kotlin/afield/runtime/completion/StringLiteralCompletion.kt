@@ -18,8 +18,10 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KFunction
 import kotlin.reflect.KParameter
 import kotlin.reflect.KProperty1
+import kotlin.reflect.full.allSuperclasses
 import kotlin.reflect.full.companionObject
 import kotlin.reflect.full.createInstance
+import kotlin.reflect.full.declaredMemberFunctions
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.memberFunctions
 import kotlin.reflect.full.memberProperties
@@ -296,6 +298,22 @@ object StringLiteralCompletion {
         if (named == null && before.isNotBlank()) return null
         var end = frame.at
         while (end > 0 && code[end - 1].isWhitespace()) end--
+        // Explicit type arguments, `fromContextWithNameOrNull<Renderer>("…")`: the callee is before them.
+        if (end > 0 && code[end - 1] == '>') {
+            var depth = 0
+            var t = end
+            while (t > 0) {
+                val ch = code[t - 1]
+                if (ch == '>') depth++
+                else if (ch == '<') depth--
+                else if (!(ch.isLetterOrDigit() || ch in "_.,?* \t")) return null
+                t--
+                if (depth == 0) break
+            }
+            if (depth != 0) return null
+            end = t
+            while (end > 0 && code[end - 1].isWhitespace()) end--
+        }
         var start = end
         while (start > 0 && (code[start - 1].isLetterOrDigit() || code[start - 1] == '_')) start--
         if (start == end) return null
@@ -336,10 +354,11 @@ object StringLiteralCompletion {
     /**
      * [call]'s receiver: a live variable of [box] followed property by property, else the longest
      * leading part that names a class followed by property types, else (for a call) the compiler's
-     * type at the callee. Null for no receiver, or none of those.
+     * type at the callee. A call with no receiver has the box being edited as its implicit one, the
+     * way `display("…")` in box code is the box's own `display`. Null for none of those.
      */
     internal fun receiverOf(box: Box?, code: String, call: CallSite): Receiver? {
-        val text = call.receiver ?: return null
+        val text = call.receiver ?: return box?.takeIf { call.callee != INDEX }?.let { Receiver(it::class, it) }
         val segments = text.split('.')
         val live = box?.let { runCatching { it.ki.context.vars[segments[0]] }.getOrNull() }
         if (live != null) {
@@ -422,20 +441,31 @@ object StringLiteralCompletion {
         }
         if (call.receiver != null) {
             val receiverClass: KClass<*>? = receiver?.type
-            val members = receiverClass?.let { k ->
-                functionCache.getOrPut("member:${k.java.name}#${call.callee}") {
-                    runCatching {
-                        (k.memberFunctions + (k.companionObject?.memberFunctions ?: emptyList())).filter { it.name == call.callee }
-                    }.getOrDefault(emptyList())
-                }
-            }.orEmpty()
+            val members = receiverClass?.let { membersNamed(it, call.callee) }.orEmpty()
             return members.asSequence() + sequence<KFunction<*>> { yieldAll(topLevelFunctions(call.callee)) }
         }
         val constructors: List<KFunction<*>> = if (call.callee.first().isUpperCase()) {
             resolveClass(code, call.callee)?.let { runCatching { it.constructors.toList() }.getOrNull() }.orEmpty()
         } else emptyList()
-        return constructors.asSequence() + sequence<KFunction<*>> { yieldAll(topLevelFunctions(call.callee)) }
+        // No written receiver: the implicit box's members (`display`), then constructors and top-level functions.
+        val implicit = receiver?.type?.let { membersNamed(it, call.callee) }.orEmpty()
+        return implicit.asSequence() + constructors.asSequence() + sequence<KFunction<*>> { yieldAll(topLevelFunctions(call.callee)) }
     }
+
+    /**
+     * Member functions of [k] named [name], each as declared in [k] or a supertype: an annotation
+     * written on an interface method (`HasOutput.display`) is not repeated on the class that
+     * implements or delegates it, so the declaration that carries it is the one to read.
+     */
+    private fun membersNamed(k: KClass<*>, name: String): List<KFunction<*>> =
+        functionCache.getOrPut("member:${k.java.name}#$name") {
+            runCatching {
+                val declared = (listOf(k) + k.allSuperclasses).flatMap { c ->
+                    runCatching { c.declaredMemberFunctions.filter { it.name == name } }.getOrDefault(emptyList())
+                }
+                declared + (k.companionObject?.memberFunctions?.filter { it.name == name } ?: emptyList())
+            }.getOrDefault(emptyList())
+        }
 
     /** Top-level (and extension) functions named [name], through the source index and each file's facade class. */
     private fun topLevelFunctions(name: String): List<KFunction<*>> {

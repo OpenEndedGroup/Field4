@@ -389,6 +389,24 @@ internal object NamedDirectoryNames : StringCompletions {
 }
 
 /**
+ * [path] as a loader taking a filename opens it, so that what `@CompletesPath` inserts is something the
+ * loader can read. `~/` is expanded; an absolute path, or a relative one naming a file in the working
+ * directory, is used as it is, as these loaders always did. Any other relative path resolves as
+ * `path.file` does: the document's `files/`, its projects, registered search directories and `%name/`
+ * roots. With no session in scope (a unit test, a bare thread) the plain reading stands.
+ */
+internal fun loaderFile(path: String): File {
+    val plain = expandHome(path).toFile()
+    if (plain.isAbsolute || plain.exists()) return plain
+    return runCatching { FileManager.current().file(path) }.getOrElse { plain }
+}
+
+/** Completion for `FileManager.removeFile("…")`: the filenames registered with [FileManager.addFile]. */
+internal object FallbackFileNames : StringCompletions {
+    override fun candidates(context: StringCompletionContext): List<String> = FileManager.fallbackFileNames()
+}
+
+/**
  * File-related utilities for the active AField session.
  *
  * Resolves document/project-relative paths, named `%directory` mappings, globs,
@@ -430,8 +448,11 @@ object FileManager {
     /** [addFile] with a string target; expands a leading `~/`. */
     fun addFile(name: String, file: String): Path = addFile(name, expandHome(file))
 
+    /** The filenames registered with [addFile], in no particular order. */
+    internal fun fallbackFileNames(): List<String> = fallbackFiles.keys.toList()
+
     /** Removes an exact-file fallback and invalidates caches; leaves the target on disk. */
-    fun removeFile(name: String): Boolean {
+    fun removeFile(@CompletesWith(FallbackFileNames::class) name: String): Boolean {
         validateFileName(name)
         val removed = fallbackFiles.remove(name) != null
         if (removed) version.incrementAndGet()
@@ -556,7 +577,7 @@ object FileManager {
      *
      * @throws IllegalArgumentException on a malformed or reserved name, the same as [add]
      */
-    fun remove(name: String): Boolean {
+    fun remove(@CompletesWith(NamedDirectoryNames::class) name: String): Boolean {
         val cleanName = validateName(name)
         return synchronized(searchOrder) {
             val removed = namedDirectories.remove(cleanName) != null

@@ -1,5 +1,7 @@
 package afield.graphics.scene.fabricated
 
+import afield.document.workspace.loaderFile
+import afield.runtime.completion.CompletesPath
 import afield.graphics.scene.GltfSupport
 import afield.graphics.scene.PlyFloatTable
 import afield.graphics.scene.readPlyAsFloatTable
@@ -173,8 +175,8 @@ class SplatSet(initialCapacity: Int = 1024) {
          * exactly as [GaussianSplatRenderer.pack] decodes it: log scales, logit opacity and
          * degree-zero spherical-harmonic colour, taken out of their storage forms.
          */
-        fun fromPly(path: String, config: GaussianSplatRenderer.Config = GaussianSplatRenderer.Config()): SplatSet =
-            GaussianSplatRenderer.parametric(readPlyAsFloatTable(path), config)
+        fun fromPly(@CompletesPath("*.ply") path: String, config: GaussianSplatRenderer.Config = GaussianSplatRenderer.Config()): SplatSet =
+            GaussianSplatRenderer.parametric(readPlyAsFloatTable(loaderFile(path).path), config)
 
         /** [fromPly] for a table already in memory. */
         fun fromTable(table: PlyFloatTable, config: GaussianSplatRenderer.Config = GaussianSplatRenderer.Config()): SplatSet =
@@ -194,8 +196,8 @@ class SplatSet(initialCapacity: Int = 1024) {
          *
          * @param meshes which of the file's meshes to keep, by node name; all of them by default.
          */
-        fun fromGltf(path: String, meshes: (name: String) -> Boolean = { true }): SplatSet {
-            require(File(path).exists()) { "glTF file not found: $path" }
+        fun fromGltf(@CompletesPath("*.{gltf,glb}") path: String, meshes: (name: String) -> Boolean = { true }): SplatSet {
+            require(loaderFile(path).exists()) { "glTF file not found: $path" }
             val model = GltfSupport.loadGltfBasic(
                 path, GltfSupport.GltfLoadConfig(includeVertexColors = true, loadTextures = false, loadSkins = false)
             )

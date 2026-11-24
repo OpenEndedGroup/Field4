@@ -687,7 +687,7 @@ To see it all at once, open the [map of the docs](../docs_map.md): every page, a
 
 ## Reference pages
 
-**43038 public symbols across 1910 source files**, 25771 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**43044 public symbols across 1911 source files**, 25774 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -715,7 +715,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Audio](audio.md) | 101 | 2666 | 1436 (53%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 22 | 592 | 592 (100%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 134 | 3374 | 1705 (50%) | Field's small languages, from the host side. |
-| [Workspace](workspace.md) | 261 | 3637 | 1548 (42%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
+| [Workspace](workspace.md) | 262 | 3643 | 1551 (42%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [AI4](ai4.md) | 103 | 2305 | 866 (37%) | AI4 is the agent that lives inside Field: the chat panel on every box, the document chat, editor completion, and headless agent tasks. |
 | [Machine learning](machine-learning.md) | 26 | 727 | 444 (61%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Animation](animation.md) | 10 | 186 | 43 (23%) |  |
@@ -2437,6 +2437,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>video/<wbr>diffusion/<wbr></small> [StreamDiffusionTemporalOutput.kt](video.md#streamdiffusiontemporaloutput-kt) | Video | 0 | 0 | The temporal half of a diffusion view: it holds the last two results the worker returned and renders the texture the view publishes. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>video/<wbr>diffusion/<wbr></small> [StreamDiffusionView.kt](video.md#streamdiffusionview-kt) | Video | 24 | 24 | A render target that sends a source `RenderToTexture` through the streaming-diffusion worker and returns the result as an ordinary sampled texture, `StreamDiffusionView.output`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr></small> [StringArt.kt](graphics.md#stringart-kt) | Graphics | 12 | 7 | String art: one thread wound around a ring of pins until its straight chords trace a shape. | [FLine examples (Field graphics)](../fline_examples.md) |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>completion/<wbr></small> [StringCompletionProviders.kt](workspace.md#stringcompletionproviders-kt) | Workspace · internal | 6 | 3 | `StringCompletions` providers for strings that name parts of the open document: boxes, output channels and the variables a box can find with `fromContextWithNameOrNull`. | [File management](../files_and_paths.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>completion/<wbr></small> [StringLiteralCompletion.kt](workspace.md#stringliteralcompletion-kt) | Workspace · internal | 15 | 7 |  | [File management](../files_and_paths.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>notation/<wbr></small> [StrokeLayerFrames.kt](visualization.md#strokelayerframes-kt) | Visualization | 4 | 4 | What a window is sent to draw the stroke layer: every living stroke's lines as compact JSON, and the point index the strokes use to find each other. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>notation/<wbr></small> [StrokeSketch.kt](visualization.md#strokesketch-kt) | Visualization | 43 | 33 | Living strokes: each stroke drawn by hand on the drawing layer becomes an animated, sounding object running code of its own, after the madp line demo. |  |

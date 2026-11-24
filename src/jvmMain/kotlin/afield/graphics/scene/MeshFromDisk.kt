@@ -1,5 +1,7 @@
 package afield.graphics.scene
 
+import afield.document.workspace.loaderFile
+import afield.runtime.completion.CompletesPath
 import afield.graphics.render.before
 import afield.graphics.render.main
 
@@ -138,7 +140,7 @@ fun PlySupport.PlyModel.toTriMesh(keepNormals: Boolean = true, keepColors: Boole
  *   colour array is dropped whatever this says, so the renderer's own shading shows through.
  * @throws IllegalStateException with Assimp's own message if the file cannot be read at all.
  */
-fun assimpToTriMesh(path: String, keepColors: Boolean = true): TriMesh {
+fun assimpToTriMesh(@CompletesPath("*.{gltf,glb,fbx,dae,3ds,obj}") path: String, keepColors: Boolean = true): TriMesh {
     val model = GltfSupport.loadGltfBasic(
         path,
         GltfSupport.GltfLoadConfig(loadTextures = false),
@@ -237,8 +239,8 @@ fun assimpToTriMesh(path: String, keepColors: Boolean = true): TriMesh {
  * showMesh(m)              // and look at it
  * ```
  */
-fun meshFromAnyFile(path: String): TriMesh {
-    val file = File(path)
+fun meshFromAnyFile(@CompletesPath("*.{obj,stl,ply,gltf,glb,fbx,dae,3ds}") path: String): TriMesh {
+    val file = loaderFile(path)
     require(file.isFile) { "no such mesh file: $path" }
     return when (file.extension.lowercase()) {
         "obj", "stl" -> meshFromFile(path)
