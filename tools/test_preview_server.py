@@ -12,7 +12,7 @@ from pathlib import Path
 TOOL = Path(__file__).resolve().parent / "preview_server.py"
 
 
-class PreviewServerTests(unittest.TestCase):
+class _Registry(unittest.TestCase):
     """Real servers on real ports: what matters is which processes `stop` signals."""
 
     def setUp(self) -> None:
@@ -39,6 +39,9 @@ class PreviewServerTests(unittest.TestCase):
 
     def entries(self) -> list[dict]:
         return json.loads(self.registry.read_text())
+
+
+class PreviewServerTests(_Registry):
 
     def test_start_serves_the_directory_and_logs_outside_it(self) -> None:
         server = self.start(self.tree / "public" / "field4")
@@ -134,6 +137,87 @@ class PreviewServerTests(unittest.TestCase):
         result = self.tool("stop")
         self.assertNotEqual(0, result.returncode)
         self.assertIn("--older-than-hours, --dir or --all", result.stderr)
+
+
+# Stands in for a worktree's ./field.sh: records what it was given, then runs a child that listens
+# on $PORT with its cwd in the worktree, as the Field JVM does under field.sh -> gradlew -> runJvm.
+FAKE_FIELD_SH = """#!/bin/sh
+printf '%s\\n' "$@" > .field-args
+echo "$PORT $AFIELD_FIELD_SH_NO_TERMINAL" > .field-env
+"{python}" -c 'import socket, sys, time
+s = socket.socket(); s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+s.bind(("127.0.0.1", int(sys.argv[1]))); s.listen(); time.sleep(600)' "$PORT"
+"""
+
+
+class DemoFieldTests(_Registry):
+    """`field` registers a worktree's Field so the 16-hour `stop` reaches it like a preview server."""
+
+    def make_worktree(self, name: str = "wt") -> Path:
+        worktree = self.scratch / name
+        worktree.mkdir()
+        script = worktree / "field.sh"
+        script.write_text(FAKE_FIELD_SH.format(python=sys.executable))
+        script.chmod(0o755)
+        return worktree
+
+    def start_field(self, worktree: Path) -> dict:
+        result = self.tool("field", str(worktree), "--owner", "nightly/x", "--wait-seconds", "20",
+                           "--", "build/morning-ws", "--read-only")
+        self.assertEqual(0, result.returncode, result.stderr)
+        return json.loads(result.stdout)
+
+    def listener(self, port: int) -> int:
+        out = subprocess.run(["lsof", "-nP", f"-iTCP:{port}", "-sTCP:LISTEN", "-t"], capture_output=True, text=True)
+        return int(out.stdout.split()[0])
+
+    def test_field_gets_only_its_own_arguments_and_a_port_with_a_valid_mirror(self) -> None:
+        worktree = self.make_worktree()
+        started = self.start_field(worktree)
+        self.assertEqual(["build/morning-ws", "--read-only"], (worktree / ".field-args").read_text().split())
+        self.assertEqual(f"{started['port']} 1", (worktree / ".field-env").read_text().strip())
+        self.assertLessEqual(started["port"] + 10000, 65535)
+        self.assertEqual([("field", "nightly/x")], [(e["kind"], e["owner"]) for e in self.entries()])
+
+    def test_stop_ends_the_listening_field_and_its_launcher(self) -> None:
+        worktree = self.make_worktree()
+        started = self.start_field(worktree)
+        server = self.listener(started["port"])
+        result = self.tool("stop", "--dir", str(worktree))
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        time.sleep(0.3)
+        self.assertFalse(self.alive(server))
+        self.assertFalse(self.alive(started["pid"]))
+        self.assertEqual([], self.entries())
+
+    def test_a_young_field_survives_the_age_stop(self) -> None:
+        started = self.start_field(self.make_worktree())
+        self.tool("stop", "--older-than-hours", "16")
+        self.assertTrue(self.alive(started["pid"]))
+
+    def test_a_listener_outside_the_worktree_on_a_registered_port_is_never_signalled(self) -> None:
+        # The Field is gone and its port now belongs to a stranger whose cwd is elsewhere.
+        stranger = subprocess.Popen([sys.executable, "-m", "http.server", "0", "--bind", "127.0.0.1"],
+                                    cwd=self.scratch, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        self.addCleanup(stranger.kill)
+        port = None
+        for _ in range(50):
+            out = subprocess.run(["lsof", "-nP", "-a", "-p", str(stranger.pid), "-iTCP", "-sTCP:LISTEN", "-Fn"],
+                                 capture_output=True, text=True).stdout
+            names = [line for line in out.splitlines() if line.startswith("n")]
+            if names:
+                port = int(names[0].rsplit(":", 1)[1])
+                break
+            time.sleep(0.1)
+        self.assertIsNotNone(port)
+        worktree = self.make_worktree()
+        self.registry.parent.mkdir(parents=True, exist_ok=True)
+        self.registry.write_text(json.dumps([
+            {"kind": "field", "pid": 1, "port": port, "dir": str(worktree), "owner": "", "started": 0},
+        ]))
+        result = self.tool("stop", "--all")
+        self.assertIn("forgot", result.stdout)
+        self.assertIsNone(stranger.poll())
 
 
 if __name__ == "__main__":

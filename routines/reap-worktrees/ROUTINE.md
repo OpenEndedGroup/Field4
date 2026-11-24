@@ -21,8 +21,8 @@ and a nearly full disk corrupts builds and captures without saying so. This rout
 `tools/reap_merged_worktrees.py` twice: once to remove worktrees whose branch is merged and whose
 tree is clean and idle, and once with `--clean-builds` to delete regenerable build output (`build/`,
 `.gradle/`, `.venv/`, built docs, caches) from trees nobody has touched for three hours. It first
-stops preview servers that `tools/preview_server.py` started more than 16 hours ago, since a running
-server keeps its worktree alive.
+stops the preview servers and demo Fields that `tools/preview_server.py` started more than 16 hours
+ago, since a running server keeps its worktree alive.
 
 Nothing with uncommitted work, ignored files outside build output, a live process, a `.reaper-keep`
 file or a protected branch is touched. The retention rules and their measurements are in
