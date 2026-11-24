@@ -1714,6 +1714,12 @@ Record an outcome for EVERY note, with this command (it writes to your run journ
   {cli} memory <note-id> "something the next agent on this page should know"
   {cli} memory --page {page_url} "a page-wide fact worth remembering" [--line N]
 
+Run every `{cli} ...` command exactly as printed here: the whole interpreter and script path and
+`--repo` argument first, one command per Bash call. Do not `cd` first, do not chain commands with
+`&&` or `;`, do not put the paths in shell variables, and do not shorten `--repo` to `.`. The
+permission check matches that literal prefix, and any other form asks for an approval nobody is
+there to give.
+
 Some notes ask for more than an edit to your files. File a HANDOFF for those instead of doing
 them — a later, interactive pass with a human works through handoffs one at a time:
 - scope "project": a significant code change, a new feature or tool, a bug in Field itself, a
@@ -1751,14 +1757,19 @@ on that handoff, and it returns to the queue when the handoff closes:
 
   {cli} wait <note-id> <handoff-id> ["what the page needs once it is done"]
 
-If running that command is refused (a permission prompt nobody is there to answer), do not stop
-and do not leave the outcome only in your reply: write it with your Write tool to
+If running any of these commands is refused (a permission prompt nobody is there to answer), do
+not stop and do not leave the outcome only in your reply: write it with your Write tool to
 {outcomes_file} as a JSON list, and the harness records it exactly as if the command had run:
 
   [{{"op": "resolve", "id": "<note-id>", "text": "what you changed", "memory": "optional"}},
    {{"op": "question", "id": "<note-id>", "text": "what the human must decide"}},
    {{"op": "memory", "id": "<note-id>", "text": "..."}},
-   {{"op": "wait", "id": "<note-id>", "handoff": "<handoff-id>", "text": "optional"}}]
+   {{"op": "wait", "id": "<note-id>", "handoff": "<handoff-id>", "text": "optional"}},
+   {{"op": "handoff", "title": "short imperative title", "bodyFile": "{draft_dir}/<name>.md",
+     "notes": ["<note-id>"], "scope": "project", "batch": "code", "blocking": false, "pages": []}}]
+
+A refused handoff goes in that file as a handoff, never as a question about the handoff: the
+harness files its draft exactly as the command would have.
 
 Resolve only what you actually fixed. Ask a question rather than guessing when a note is
 ambiguous or asks for a decision that is the human's. Leave a memory when you learned something
@@ -1786,7 +1797,11 @@ def find_executable(name: str) -> str:
 
 
 def _claude_argv(prompt: str, root: Path, partition: Partition, cli: str) -> list[str]:
-    allowed = ["Read", "Edit", "Write", "Glob", "Grep", f"Bash({cli}:*)", "Bash(git diff:*)", "Bash(git log:*)",
+    # The agent runs in *root*, so `--repo .` is the same command; agents shorten it to that often
+    # enough (the 2026-11-24 drain) that refusing it only sends outcomes the long way round.
+    short = cli.replace(f"--repo {shlex.quote(str(root))}", "--repo .")
+    commands = [f"Bash({cli}:*)"] + ([f"Bash({short}:*)"] if short != cli else [])
+    allowed = ["Read", "Edit", "Write", "Glob", "Grep", *commands, "Bash(git diff:*)", "Bash(git log:*)",
                "Bash(git blame:*)", "Bash(git show:*)", "Bash(git grep:*)", "Bash(rg:*)", "Bash(grep:*)"]
     return [find_executable("claude"), "-p", prompt, "--permission-mode", "acceptEdits", "--allowedTools", ",".join(allowed)]
 
@@ -1798,8 +1813,8 @@ def _codex_argv(prompt: str, root: Path, partition: Partition, cli: str) -> list
 FIELD_AGENT_NOTE = """Field's own agent (AI4) is doing this revision. You have no shell, so every `{cli} ...` command
 below is unavailable: work through the repo tools, and record EVERY outcome by writing the JSON
 outcomes file described below with RepoWriteFileRequest (one file, all outcomes, written once at
-the end; overwrite=true if you rewrite it). You cannot file a handoff: record a question instead,
-saying it needs one. You may write only the files you own, that outcomes file, and drafts under
+the end; overwrite=true if you rewrite it). File a handoff the same way: write its draft under the
+handoff directory, then add a "handoff" entry naming that draft to the outcomes file. You may write only the files you own, that outcomes file, and drafts under
 the handoff directory.
 
 """
@@ -2047,7 +2062,10 @@ def run_partition(partition: Partition, *, agent: AgentSpec, run_dir: Path, stor
     changed = [f for f in partition.files if file_digest(git.root / f) != before[f]]
     ids = {n["id"] for n in partition.notes}
     ops, rejected = [], []
-    for op in read_journal(journal) + read_outcomes_file(outcomes_file, partition, agent.name, ids):
+    journaled = read_journal(journal)
+    filed = {str(op.get("title", "")).strip().casefold() for op in journaled if op.get("op") == "handoff"}
+    for op in journaled + read_outcomes_file(outcomes_file, partition, agent.name, ids, git=git, draft_dir=draft_dir,
+                                             filed_titles=filed):
         if op.get("op") == "handoff" and set(op.get("notes", [])) <= ids:
             ops.append(op)
             if op.get("path") and op["path"] not in changed:
@@ -2067,14 +2085,21 @@ def untouched_notes(result: RunResult) -> list[dict[str, Any]]:
     return [n for n in result.partition.notes if n["id"] not in touched]
 
 
-def read_outcomes_file(path: Path, partition: "Partition", agent_name: str, ids: set[str]) -> list[dict[str, Any]]:
+def read_outcomes_file(path: Path, partition: "Partition", agent_name: str, ids: set[str], *,
+                       git: Git | None = None, draft_dir: Path | None = None,
+                       filed_titles: set[str] = frozenset()) -> list[dict[str, Any]]:
     """Outcomes an agent wrote to a file because its notes command was refused.
 
     The first real drain on 2026-10-01 lost three outcomes that way: each agent printed the exact
     `resolve` command it wanted to run, the permission check asked for an approval nobody could give,
-    and the note stayed open. Only resolve, question, memory and comment are accepted here (a handoff
-    needs a document the command writes), and every id must be one of this partition's notes,
-    matched by prefix as the command would. Anything else is dropped, not guessed at.
+    and the note stayed open. Accepted here: resolve, question, memory, comment and wait, every id
+    one of this partition's notes, matched by prefix as the command would; and a handoff whose draft
+    is under this partition's *draft_dir*, filed here exactly as the `handoff` command files one.
+    Anything else is dropped, not guessed at.
+
+    Handoffs came later: the drain of 2026-11-24 had nine refused (`--repo .`, `cd … &&`, shell
+    variables: none match the allowlist's literal prefix), and with no way to file them each agent
+    asked the human a question instead, pointing at a draft nothing would ever read.
     """
     if not path.is_file():
         return []
@@ -2084,6 +2109,13 @@ def read_outcomes_file(path: Path, partition: "Partition", agent_name: str, ids:
         return []
     ops = []
     for entry in entries if isinstance(entries, list) else []:
+        if isinstance(entry, dict) and entry.get("op") == "handoff":
+            op = _outcome_handoff(entry, partition, agent_name, ids, git=git, draft_dir=draft_dir,
+                                  filed_titles=filed_titles)
+            if op:
+                filed_titles = {*filed_titles, op["title"].casefold()}
+                ops.append(op)
+            continue
         if not isinstance(entry, dict) or entry.get("op") not in ("resolve", "question", "memory", "comment", "wait"):
             continue
         wanted = str(entry.get("id", ""))
@@ -2100,6 +2132,49 @@ def read_outcomes_file(path: Path, partition: "Partition", agent_name: str, ids:
             op["memory"] = str(entry["memory"]).strip()
         ops.append(op)
     return ops
+
+
+def _outcome_handoff(entry: dict[str, Any], partition: "Partition", agent_name: str, ids: set[str], *,
+                     git: Git | None, draft_dir: Path | None, filed_titles: set[str]) -> dict[str, Any] | None:
+    """File the handoff an outcomes-file entry describes, or None when it is not a valid one.
+
+    `{"op": "handoff", "title": ..., "bodyFile": <draft under draft_dir>, "notes": [ids], "scope": ...,
+    "blocking": ..., "batch": ..., "pages": [...]}`. The draft must already be under this partition's
+    handoff directory (the only place the agent was told to write one), and every note must be the
+    partition's. A title already filed through the command in this run is not filed twice.
+    """
+    title = str(entry.get("title", "")).strip()
+    if git is None or draft_dir is None or not title or title.casefold() in filed_titles:
+        return None
+    body_spec = str(entry.get("bodyFile") or entry.get("body_file") or entry.get("body-file") or "").strip()
+    if not body_spec:
+        return None
+    body_path = Path(body_spec) if Path(body_spec).is_absolute() else git.root / body_spec
+    try:
+        body_path = body_path.resolve()
+        if not body_path.is_relative_to(draft_dir.resolve()) or not body_path.is_file():
+            return None
+        body = body_path.read_text(encoding="utf-8")
+    except OSError:
+        return None
+    wanted = entry.get("notes") or ([entry["id"]] if entry.get("id") else [])
+    from_notes = []
+    for spec in wanted if isinstance(wanted, list) else [wanted]:
+        spec = str(spec)
+        match = [n for n in partition.notes if spec and n["id"] in ids and (n["id"] == spec or n["id"].startswith(spec))]
+        if len(match) != 1:
+            return None
+        from_notes.append(match[0])
+    if not from_notes or not body.strip():
+        return None
+    scope = entry.get("scope") if entry.get("scope") in HANDOFF_SCOPES else "project"
+    batch = entry.get("batch") if entry.get("batch") in BATCH_KEYS else None
+    pages = [str(p) for p in entry.get("pages", []) if str(p).strip()] if isinstance(entry.get("pages"), list) else []
+    author = f"agent:{agent_name}"
+    op = file_handoff_document(git, title=title, body=body, scope=scope, blocking=bool(entry.get("blocking")),
+                               batch=batch, from_notes=from_notes, page_url=partition.notes[0].get("pageUrl", ""),
+                               page_specs=pages, author=author)
+    return {**op, "author": author, "atEpochMs": now_ms(), "via": "outcomes file"}
 
 
 def apply_run(store: Store, result: RunResult, run_id: str, agent_name: str) -> None:
@@ -2401,23 +2476,37 @@ def cmd_handoff(args: argparse.Namespace, store: Store, git: Git) -> int:
         page_url = from_notes[0].get("pageUrl", "")
     else:
         raise SystemExit("say which page this comes from: --from-page, or --note")
+    op = file_handoff_document(git, title=args.title, body=body, scope=args.scope, blocking=args.blocking,
+                               batch=args.batch, from_notes=from_notes, page_url=page_url, page_specs=args.page,
+                               author=current_author())
+    result = record(store, op)
+    print(f"handoff {op['handoffId'][:8]} written to {op['path']}" + (" (journaled)" if "journaled" in result else ""))
+    if args.blocking and in_run:
+        print("This handoff blocks the page. Stop now: record nothing further and end your turn.")
+    return 0
+
+
+def file_handoff_document(git: Git, *, title: str, body: str, scope: str, blocking: bool, batch: str | None,
+                          from_notes: list[dict[str, Any]], page_url: str, page_specs: Iterable[str],
+                          author: str) -> dict[str, Any]:
+    """Write a handoff's document into the checkout and return the op that records it.
+
+    Shared by the `handoff` command and a handoff an agent left in its outcomes file because the
+    command was refused, so the two file exactly the same thing.
+    """
     page = resolve_page_source(page_url, git).relative
     source_pages = {_page_key(n) for n in from_notes}
     if from_notes and page not in source_pages:
         page = next(iter(source_pages))
     handoff_id = str(uuid.uuid4())
-    pages = [resolve_page_source(page_url_for(p, git), git).relative or p for p in args.page]
-    path = write_handoff_document(git.root, handoff_id=handoff_id, title=args.title.strip(), body=body,
-                                  scope=args.scope, blocking=args.blocking, page_url=page_url, pages=pages,
-                                  notes=from_notes, author=current_author())
-    result = record(store, {"op": "handoff", "handoffId": handoff_id, "title": args.title.strip(), "path": path,
-                            "scope": args.scope, "blocking": args.blocking, "notes": [n["id"] for n in from_notes],
-                            **({"batch": args.batch} if args.batch else {}),
-                            "pages": pages, "page": page, "pageUrl": page_url})
-    print(f"handoff {handoff_id[:8]} written to {path}" + (" (journaled)" if "journaled" in result else ""))
-    if args.blocking and in_run:
-        print("This handoff blocks the page. Stop now: record nothing further and end your turn.")
-    return 0
+    pages = [resolve_page_source(page_url_for(p, git), git).relative or p for p in page_specs]
+    path = write_handoff_document(git.root, handoff_id=handoff_id, title=title.strip(), body=body,
+                                  scope=scope, blocking=blocking, page_url=page_url, pages=pages,
+                                  notes=from_notes, author=author)
+    return {"op": "handoff", "handoffId": handoff_id, "title": title.strip(), "path": path,
+            "scope": scope, "blocking": blocking, "notes": [n["id"] for n in from_notes],
+            **({"batch": batch} if batch else {}),
+            "pages": pages, "page": page, "pageUrl": page_url}
 
 
 def page_url_for(spec: str, git: Git) -> str:

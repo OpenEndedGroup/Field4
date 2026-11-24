@@ -1080,6 +1080,70 @@ class OutcomesFileTest(unittest.TestCase):
             repo.close()
 
 
+HANDOFF_FILE_AGENT = textwrap.dedent("""\
+    import json, os, re, sys
+    prompt = open(sys.argv[1], encoding="utf-8").read()
+    path = re.search(r"Write tool to\\n(\\S+) as a JSON list", prompt).group(1)
+    drafts = re.search(r"Write the handoff document with your Write tool under (\\S+)/ \\(no title", prompt).group(1)
+    ids = re.findall(r"^### note (\\S+)", prompt, re.M)
+    os.makedirs(drafts, exist_ok=True)
+    open(os.path.join(drafts, "big.md"), "w").write("Why: this needs Field itself to change.\\n")
+    open("stray.md", "w").write("Not under the draft directory.\\n")
+    json.dump([{"op": "handoff", "title": "Teach Field the thing", "bodyFile": os.path.join(drafts, "big.md"),
+                "notes": [ids[0][:8]], "scope": "project", "batch": "code"},
+               {"op": "handoff", "title": "Teach Field the thing", "bodyFile": os.path.join(drafts, "big.md"),
+                "notes": [ids[0][:8]]},
+               {"op": "handoff", "title": "Read anything", "bodyFile": "stray.md", "notes": [ids[1][:8]]},
+               {"op": "handoff", "title": "Not my note", "bodyFile": os.path.join(drafts, "big.md"),
+                "notes": ["not-a-note-of-mine"]}], open(path, "w"))
+    """)
+
+
+class OutcomesFileHandoffTest(unittest.TestCase):
+    """A handoff an agent could not file because its command was refused (the 2026-11-24 drain)."""
+
+    def test_a_refused_handoff_written_to_the_file_is_filed_like_the_command(self) -> None:
+        repo = TempRepo()
+        try:
+            repo.write("public/docs/guide.md", GUIDE)
+            repo.write(".gitignore", ".field-backdoor/\nstore.json*\nstray.md\n")
+            repo.write("agent.py", HANDOFF_FILE_AGENT)
+            repo.commit("docs")
+            store = repo.root / "store.json"
+            store.write_text(json.dumps({"version": 1, "annotations": [
+                {"id": "11111111-a", "pageUrl": PAGE, "note": "needs Field to change", "anchor": {"exact": "says hello"}},
+                {"id": "22222222-b", "pageUrl": PAGE, "note": "typo", "anchor": {"exact": "Install the thing"}}]}))
+            with mock.patch("builtins.print"):
+                code = dn.main(["--store", str(store), "--repo", str(repo.root), "revise", "--jobs", "1",
+                                "--agent-command", f"{sys.executable} {repo.root / 'agent.py'} {{prompt_file}}"])
+            self.assertEqual(code, 0)
+            notes = {n["id"]: n for n in json.loads(store.read_text())["annotations"]}
+            handoffs = [n for n in notes.values() if n.get("kind") == "handoff"]
+            self.assertEqual([h["note"] for h in handoffs], ["Teach Field the thing"], "filed once, the rest dropped")
+            info = handoffs[0]["handoff"]
+            self.assertEqual((info["scope"], info["batch"], info["fromNotes"]), ("project", "code", ["11111111-a"]))
+            self.assertEqual(info["page"], "guide.md")
+            document = (repo.root / info["path"]).read_text()
+            self.assertTrue(document.startswith("# Teach Field the thing\n"))
+            self.assertIn("Why: this needs Field itself to change.", document)
+            self.assertIn("says hello", document, "the note and its quote travel with it")
+            self.assertEqual(dn.note_state(notes["11111111-a"]), "blocked", "the handed-off note waits on it")
+            entry = next(e for e in handoffs[0]["thread"] if e["kind"] == "handoff")
+            self.assertEqual(entry["author"], "agent:custom")
+            # A draft outside the partition's handoff directory is not read.
+            self.assertEqual(dn.note_state(notes["22222222-b"]), "open")
+        finally:
+            repo.close()
+
+    def test_the_claude_allowlist_also_takes_the_short_repo_form(self) -> None:
+        root = Path("/tmp/some checkout")
+        cli = f"/py /x/docs_notes.py --repo {dn.shlex.quote(str(root))}"
+        argv = dn._claude_argv("prompt", root, None, cli)
+        allowed = argv[argv.index("--allowedTools") + 1]
+        self.assertIn(f"Bash({cli}:*)", allowed)
+        self.assertIn("Bash(/py /x/docs_notes.py --repo .:*)", allowed)
+
+
 KOTLIN = textwrap.dedent("""\
     package afield
 
