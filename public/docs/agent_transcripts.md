@@ -1745,6 +1745,8 @@ contrast; *pick a seed* rebuilds the scale from a colour picker, with a dark-bac
 *ramps as area fills* colours stacked bands from two scales. Drag the picker toward yellow and watch
 the dark end turn amber instead of olive.
 
+![Four ten-step ramps on white and on near-black, each swatch labelled with its step and contrast](assets/colors_examples/contrast_scale_light_dark.png)
+
 [Open →](offline.html?file=assets/agent_transcripts/contrast_scale_demo/metadata.edn)
 
 ### debruijn_tilings_demo
