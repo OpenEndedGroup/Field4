@@ -51,10 +51,17 @@ class KotlinFormatterTrailingLambdaChainTest {
 
     @Test
     fun aLongerChainJoinsWhole() {
-        val formatted = format("presentation(title = \"t\") {\n    step(\"a\") { audienceMarkdown(\"# a\") }\n}.arrangeBoxes().present()\n")
-        assertTrue("\n}.arrangeBoxes().present()" in formatted, formatted)
+        val formatted = format("presentation(title = \"t\") {\n    step(\"a\") { audienceMarkdown(\"# a\") }\n}.arranged().present()\n")
+        assertTrue("\n}.arranged().present()" in formatted, formatted)
         assertTrue("\n    step(\"a\")" in formatted, formatted)
         assertFalse(formatted.lines().any { it.trim().startsWith(".") }, formatted)
+    }
+
+    @Test
+    fun aCallWithNoArgumentsJoinsWithoutMoving() {
+        val natural = "presentation {\n    step(\"a\") { audienceMarkdown(\"# a\") }\n}.present()\n"
+        assertEquals(natural, format(natural))
+        assertEquals(natural, format("presentation {\n    step(\"a\") { audienceMarkdown(\"# a\") }\n}\n    .present()\n"))
     }
 
     @Test

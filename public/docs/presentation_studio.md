@@ -239,15 +239,16 @@ presentation(title = "Lecture layouts", transitionMs = 450) {
             div(classes = "lecture-list") {
                 h1 { +"Media art and design = everything else" }
                 ul {
-                    for (topic in [
-                        "Net art",
-                        "Installation art",
-                        "VFX",
-                        "Experimental film",
-                        "Computer games",
-                        "Odd music",
-                        "Emerging and dying technologies",
-                    ]) {
+                    for (topic in
+                        [
+                            "Net art",
+                            "Installation art",
+                            "VFX",
+                            "Experimental film",
+                            "Computer games",
+                            "Odd music",
+                            "Emerging and dying technologies",
+                        ]) {
                         li { +topic }
                     }
                 }

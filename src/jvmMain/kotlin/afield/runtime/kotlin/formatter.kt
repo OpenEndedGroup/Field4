@@ -82,8 +82,9 @@ fun formatKotlinCode(code: String, blockifyComments: Boolean = true): String {
  * ktfmt reads `presentation { … }.present()` as a dotted chain, gives each link a line of its own
  * and indents the receiver one continuation level, so a whole talk sits eight spaces in with its
  * closing brace at four. The join applies when the chain starts with a call whose trailing lambda
- * spans lines, that call's closing brace is alone on its line one continuation level in, and every
- * later link is a one-line call; the call's lines then come back one level. Lines that begin inside
+ * spans lines, that call's closing brace is alone on its line (one continuation level in, or at the
+ * statement's own indentation when the call has no arguments), and every later link is a one-line
+ * call; a call a continuation level in then comes back one level. Lines that begin inside
  * a raw string keep their indentation, which is part of the string's value. ktfmt breaks the chain
  * again on the next format and this joins it again, so the pair is a fixed point.
  */
@@ -119,13 +120,20 @@ private fun tuckOneTrailingLambdaChain(code: String): String? {
         val indent = indentOf(first)
         val close = base.endOffset - 1
         val closeLine = lineStart(close)
-        if (code.substring(closeLine, close) != " ".repeat(indent + 4)) continue
+        // A call with arguments comes back from ktfmt a continuation level in; `presentation { … }`
+        // with none keeps its brace at the statement's indentation, and only the chain needs joining.
+        val closeIndent = code.substring(closeLine, close)
+        val dedent = when (closeIndent) {
+            " ".repeat(indent + 4) -> true
+            " ".repeat(indent) -> false
+            else -> continue
+        }
         val lineEnd = code.indexOf('\n', chain.endOffset).let { if (it < 0) code.length else it }
         val joined = indent + 1 + selectors.sumOf { 1 + it!!.length } + (lineEnd - chain.endOffset)
         if (joined > MAX_WIDTH) continue
 
         // Every line after the call's first, through its closing brace, comes back one level.
-        val starts = generateSequence(code.indexOf('\n', first) + 1) { code.indexOf('\n', it) + 1 }
+        val starts = if (!dedent) emptyList() else generateSequence(code.indexOf('\n', first) + 1) { code.indexOf('\n', it) + 1 }
             .takeWhile { it in 1..closeLine }
             .filterNot { insideRawString(it) }
             .toList()
