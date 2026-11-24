@@ -409,7 +409,7 @@ fun spiralFromRings(rings: List<List<Vec3>>): List<Vec3> {
 
 /**
  * A counterflow double spiral through concentric closed rings: the path spirals in on every other
- * ring, turns round in the middle in a U-bend, and spirals back out along the rings in between,
+ * ring, turns round in the middle in a smooth bend, and spirals back out along the rings in between,
  * so each lap out runs between two laps in. This is the pattern underfloor-heating pipe is laid
  * in (supply and return side by side keep the floor evenly warm), and a single tool pass that
  * starts and ends at the edge.
@@ -417,8 +417,8 @@ fun spiralFromRings(rings: List<List<Vec3>>): List<Vec3> {
  * [rings] are ordered from the outside in, as for [spiralFromRings]; their spacing is the
  * spacing between neighbouring passes, and each arm's own pitch is twice that. The inward arm
  * uses rings 0, 2, 4, … and the outward arm rings 1, 3, 5, …; the outward arm is started level
- * with the inward one so that both reach the middle at the same place, where a semicircular
- * bend of diameter one spacing joins them. Both ends of the path lie on the outer two rings,
+ * with the inward one so that both reach the middle at the same place, where a bend that is
+ * tangent to both arms joins them. Both ends of the path lie on the outer two rings,
  * next to each other. Needs at least two rings.
  */
 fun doubleSpiralFromRings(rings: List<List<Vec3>>): List<Vec3> {
@@ -440,37 +440,69 @@ fun doubleSpiralArms(rings: List<List<Vec3>>): Pair<List<Vec3>, List<Vec3>> {
     val between = oriented.filterIndexed { i, _ -> i % 2 == 1 }
     // Neither arm goes round its innermost ring a last time: that loop would cross the other
     // arm's last lap, which is still on its way in.
-    val pathIn = spiralThrough(inward, inward.first().first(), finalLap = false)
+    // Where the arms start on the outside sets where they meet in the middle (the laps keep in step).
+    // Start at the outer ring's point nearest the middle of the innermost ring: on an elongated room
+    // that is the middle of a long side, so the arms meet side by side on a straight stretch, running
+    // opposite ways, rather than round the end of a long thin inner loop.
+    val core = oriented.last()
+    val middle = vec(core.map { it.x }.average().toFloat(), core.map { it.y }.average().toFloat(), core.map { it.z }.average().toFloat())
+    val pathIn = spiralThrough(inward, inward.first()[nearestIndex(inward.first(), middle)], finalLap = false)
     // Start the second arm beside the first so the laps stay in step all the way in.
     val pathBack = spiralThrough(between, between.first()[nearestIndex(between.first(), pathIn.first())], finalLap = false)
+    val onward = pathBack.asReversed()
     val supply = ArrayList<Vec3>(pathIn.size + 16)
     supply += pathIn
-    supply += uTurn(pathIn, pathBack.last())
-    val back = ArrayList<Vec3>(pathBack.size)
-    for (p in pathBack.asReversed()) if (back.isNotEmpty() || d2(supply.last(), p) > 1e-14f) back += p
-    return supply to listOf(supply.last()) + back
+    backOff(supply, onward.first())
+    supply += link(supply.toList(), onward)
+    return supply to listOf(supply.last()) + onward
 }
 
-/** A semicircle from the end of [path] to [to], bulging forward along the path's final direction. */
-private fun uTurn(path: List<Vec3>, to: Vec3, steps: Int = 12): List<Vec3> {
-    val a = path.last()
-    val back = path.asReversed().firstOrNull { d2(it, a) > 1e-10f } ?: return emptyList()
-    val hx = to.x - a.x; val hy = to.y - a.y; val hz = to.z - a.z
-    val h2 = hx * hx + hy * hy + hz * hz
-    if (h2 < 1e-14f) return emptyList()
-    // Travel direction with its component along the hop removed, scaled to the bend's radius.
-    var tx = a.x - back.x; var ty = a.y - back.y; var tz = a.z - back.z
-    val along = (tx * hx + ty * hy + tz * hz) / h2
-    tx -= along * hx; ty -= along * hy; tz -= along * hz
-    val tl = sqrt((tx * tx + ty * ty + tz * tz).toDouble()).toFloat()
-    if (tl < 1e-9f) return emptyList()
-    val r = sqrt(h2.toDouble()).toFloat() / 2f
-    tx *= r / tl; ty *= r / tl; tz *= r / tl
-    val cx = a.x + hx / 2; val cy = a.y + hy / 2; val cz = a.z + hz / 2
+/**
+ * Back [supply] off along itself while [onwardStart] lies ahead of its end, by up to about the gap
+ * between them, so the bend that follows turns rather than dipping under to come back up.
+ */
+private fun backOff(supply: MutableList<Vec3>, onwardStart: Vec3) {
+    val gap = sqrt(d2(supply.last(), onwardStart).toDouble())
+    var removed = 0.0
+    while (supply.size > 3 && removed < 1.5 * gap) {
+        val a = supply.last()
+        // The direction of travel over a little more than the gap, not the last few segments, which can be a sliver.
+        val prev = supply.asReversed().firstOrNull { sqrt(d2(it, a).toDouble()) > 1.2 * gap } ?: break
+        val tx = a.x - prev.x; val ty = a.y - prev.y; val tz = a.z - prev.z
+        val hx = onwardStart.x - a.x; val hy = onwardStart.y - a.y; val hz = onwardStart.z - a.z
+        val tl = sqrt((tx * tx + ty * ty + tz * tz).toDouble()); val hl = sqrt((hx * hx + hy * hy + hz * hz).toDouble())
+        if (tl < 1e-12 || hl < 1e-12 || (tx * hx + ty * hy + tz * hz) / (tl * hl) < 0.5) break
+        removed += sqrt(d2(a, supply[supply.size - 2]).toDouble())
+        supply.removeAt(supply.size - 1)
+    }
+}
+
+/**
+ * The bend joining the end of [path] to the start of [onward]: a cubic Bezier that leaves along the
+ * direction [path] arrives in and reaches [onward] already heading the way it leaves. When the two
+ * arms lie side by side running opposite ways this is a U; when the return starts straight ahead
+ * it is a smooth turn rather than a hook back on itself.
+ */
+private fun link(path: List<Vec3>, onward: List<Vec3>, steps: Int = 16): List<Vec3> {
+    val a = path.last(); val b = onward.first()
+    val gap = sqrt(d2(a, b).toDouble()).toFloat()
+    if (gap < 1e-7f) return emptyList()
+    fun direction(points: List<Vec3>, from: Vec3): Vec3? {
+        // Over a little more than the gap, so the kink where a lap snaps onto the next ring does not set the tangent.
+        val far = points.firstOrNull { sqrt(d2(it, from).toDouble()) > 1.2 * gap } ?: points.lastOrNull { d2(it, from) > 1e-14f } ?: return null
+        val dx = from.x - far.x; val dy = from.y - far.y; val dz = from.z - far.z
+        val l = sqrt((dx * dx + dy * dy + dz * dz).toDouble()).toFloat()
+        return vec(dx / l, dy / l, dz / l)
+    }
+    val tIn = direction(path.asReversed(), a) ?: return emptyList()
+    val tOut = direction(onward, b)?.let { vec(-it.x, -it.y, -it.z) } ?: return emptyList()
+    val h = 0.75f * gap
+    val p1 = vec(a.x + tIn.x * h, a.y + tIn.y * h, a.z + tIn.z * h)
+    val p2 = vec(b.x - tOut.x * h, b.y - tOut.y * h, b.z - tOut.z * h)
     return (1 until steps).map { i ->
-        val phi = Math.PI * i / steps
-        val c = kotlin.math.cos(phi).toFloat(); val sn = kotlin.math.sin(phi).toFloat()
-        vec(cx - hx / 2 * c + tx * sn, cy - hy / 2 * c + ty * sn, cz - hz / 2 * c + tz * sn)
+        val t = i.toFloat() / steps; val u = 1 - t
+        val c0 = u * u * u; val c1 = 3 * u * u * t; val c2 = 3 * u * t * t; val c3 = t * t * t
+        vec(c0 * a.x + c1 * p1.x + c2 * p2.x + c3 * b.x, c0 * a.y + c1 * p1.y + c2 * p2.y + c3 * b.y, c0 * a.z + c1 * p1.z + c2 * p2.z + c3 * b.z)
     }
 }
 
@@ -617,7 +649,7 @@ class WindingAngle internal constructor(
  * there to the edge, and triangles within [hole] of the largest distance are left out (see the
  * class). Expects a welded mesh with one boundary loop.
  */
-fun TriMesh.windingAngle(distance: DoubleArray, hole: Double = 0.15 * (distance.maxOrNull() ?: 0.0)): WindingAngle {
+fun TriMesh.windingAngle(distance: DoubleArray, hole: Double = 0.08 * (distance.maxOrNull() ?: 0.0)): WindingAngle {
     require(distance.size == vertexCount) { "windingAngle needs one distance per vertex" }
     val n = vertexCount
     // An angle has no value at the point it winds about, and asked to be harmonic right up to that
@@ -759,7 +791,8 @@ fun WindingAngle.fieldSpiral(pitch: Double, phase: Double = 0.5): List<Vec3> {
     val inner = (0 until mesh.triangleCount).maxOf { t -> minOf(distance[mesh.ia(t)], distance[mesh.ib(t)], distance[mesh.ic(t)]) }
     val out = ArrayList<Vec3>()
     for (k in lo..hi) {
-        if ((k + phase - 1) * pitch < 0.0 || (k + phase) * pitch > inner) continue
+        if ((k + phase - 1) * pitch < 0.0) continue
+        if ((k + phase) * pitch > inner) continue
         val arc = mesh.isolines(g, k + phase).maxByOrNull { it.size } ?: continue
         if (arc.size < 2) continue
         val oriented = if (out.isEmpty()) {
@@ -792,9 +825,8 @@ fun WindingAngle.fieldDoubleSpiral(spacing: Double): Pair<List<Vec3>, List<Vec3>
     val supply = ArrayList(fieldSpiral(2 * spacing, 0.25))
     val back = fieldSpiral(2 * spacing, 0.75)
     if (supply.size < 2 || back.size < 2) return supply to back
-    supply += uTurn(supply, back.last())
-    val out = ArrayList<Vec3>(back.size + 1)
-    out += supply.last()
-    for (p in back.asReversed()) if (d2(out.last(), p) > 1e-14f) out += p
-    return supply to out
+    val onward = back.asReversed()
+    backOff(supply, onward.first())
+    supply += link(supply.toList(), onward)
+    return supply to listOf(supply.last()) + onward
 }

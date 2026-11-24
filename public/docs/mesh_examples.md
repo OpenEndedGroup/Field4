@@ -760,9 +760,13 @@ lines(
 )
 ```
 
-![A rectangular floor seen from above, covered by one continuous pipe in two colours: a red supply run spirals in from one corner of the outer edge in rounded rectangles, turns round in a small U-bend in the middle, and a blue return run spirals back out in the gaps between the red laps, ending beside where the red began](assets/mesh_examples/double_spiral.png)
+![A rectangular floor seen from above, covered by one continuous pipe in two colours: a red supply run spirals in from the middle of the bottom wall in rounded rectangles, turns round in a small U-bend on a straight stretch in the middle, and a blue return run spirals back out in the gaps between the red laps, ending beside where the red began](assets/mesh_examples/double_spiral.png)
 
-Both ends finish on the outer two rings, side by side, ready for the manifold. Neither arm goes
+Where the arms start sets where they meet: the laps keep in step, so the two arms reach the middle
+at the angle they left the wall. Starting at the middle of a long wall brings them together side by
+side on a straight stretch, running opposite ways, where a bend tangent to both makes a clean U;
+started at a short wall they would meet round the end of a long thin inner loop, crossing each
+other's direction. Both ends finish on the outer two rings, side by side, ready for the manifold. Neither arm goes
 round its innermost ring a final time, because that loop would cross the other arm's last lap.
 
 Rooms are rarely rectangles, and there the rings stop being enough. `outlineMesh` fills any floor
@@ -810,7 +814,7 @@ lines(shown, w = 640.0, h = 460.0, fitToSize = true)
 The spokes show the angle: they crowd where the room is narrow and fan out where it is wide, and
 the laps step inward evenly along every one of them rather than all at once. Only whole laps are
 kept, so the pipe stays at least half a spacing from the walls and leaves the hole round the middle
-(`hole`, by default 15% of the deepest distance) bare. A smaller hole covers more floor, until a
+(`hole`, by default 8% of the deepest distance) bare. A smaller hole covers more floor, until a
 lap into a narrow wing turns into a hairpin.
 
 Before finishing comes roughing: a flat-bottomed tool clears the block one horizontal layer at a
