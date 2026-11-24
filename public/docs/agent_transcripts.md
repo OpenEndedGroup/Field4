@@ -2547,6 +2547,16 @@ the result. Both build their mesh in the box, so they need no files and no netwo
 
 [Open →](offline.html?file=assets/agent_transcripts/mesh_repair_demo/metadata.edn)
 
+### geodesic_carving
+
+**Carving toolpaths from distance along a surface.** The three boxes from
+[Distance along the surface, and carving toolpaths](mesh_examples.md#distance-along-the-surface-and-carving-toolpaths):
+heat-method geodesic distance against straight-line distance on a folded sheet, iso-geodesic rings
+on a relief joined into one spiral toolpath, and roughing passes around a modelled part. Pure CPU;
+every mesh is built in the box.
+
+[Open →](offline.html?file=assets/agent_transcripts/geodesic_carving/metadata.edn)
+
 ### sorting_networks
 
 The four examples from [Sorting networks](sorting_networks_examples.md), one box each: a bubble

@@ -624,6 +624,236 @@ shorthands that build a throwaway BVH, fine for one query and wrong for a loop.
 
 To pick a named polygon from its triangles, try [Point at a face and find its source](chain_polytope_render.md#point-at-a-face-and-find-its-source).
 
+## Distance along the surface, and carving toolpaths
+
+A robot carving marble does not cut in straight lines through space. It follows the stone's surface:
+rings of equal distance from an edge or a point, joined into one continuous spiral, after
+flat roughing passes have taken off most of the block. Monumental Labs describe this pipeline in
+[Robotic stone carving](https://eleanorwiesler.com/blog/robotic-stone-carving/), and every
+step of it is a mesh operation you can run here.
+
+The distance that matters is **geodesic**: the length of the shortest path that stays on the
+surface. `geodesicDistance(source)` computes it to every vertex by the heat method of
+[Crane, Weischedel and Wardetzky](https://arxiv.org/abs/1204.6216): let heat spread from the source
+for a moment, keep only the direction it flows in, and solve for the function whose gradient points
+that way. The two matrices involved depend only on the mesh, so `HeatGeodesics(mesh)` factors them
+once and every further `distance(...)` call, with one source or many, costs two back-substitutions.
+`distanceFromBoundary()` measures from the open edge of a relief or a shell.
+
+On a curved shell the difference from straight-line distance is plain. Below, a sheet folded into a
+deep trough, measured from one point on the near side. The point straight across the trough is
+1.80 away through the air and 2.98 along the surface. On the left the rings carry on over the far
+side as arcs centred on the source, as if the trough were not there; on the right they pile up down
+the trough walls, and once over the far lip they run parallel to it, because every path there comes
+up out of the same trough.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/mesh_examples/geodesic_vs_euclidean.png" wait="3.0" capture="box" open-outputs="true" padding="20"}
+import afield.graphics.three.ThreeCameraSpec
+
+// A sheet with a deep fold down the middle: the far wall is close through the air and far along the stone.
+val shell = heightfieldMesh(90, 60, 3.0, 2.0) { x, _ -> -1.1f * kotlin.math.exp(-(x * x) / 0.12f) }
+val source = shell.nearestVertex(-0.9, 0, 0)
+
+val straight = shell.euclideanDistance(source)
+val alongSurface = shell.geodesicDistance(source)
+println(
+    "vertex across the fold: straight %.3f, along the surface %.3f"
+        .format(
+            straight[shell.nearestVertex(0.9, 0, 0)],
+            alongSurface[shell.nearestVertex(0.9, 0, 0)],
+        ),
+)
+
+// Same colour scale and the same 0.15 ring spacing on both, so the bands compare directly.
+// The rings are lifted a hair off the sheet so the surface does not hide them.
+val top = alongSurface.max()
+val view = ThreeCameraSpec(yawDegrees = 20.0, pitchDegrees = 40.0)
+three(height = 360) {
+    columns(2)
+    for ((i, panelled) in
+        listOf("straight-line distance" to straight, "geodesic distance" to alongSurface).withIndex()) {
+        val (title, d) = panelled
+        panel(title = title, camera = view)
+        mesh(shell.colouredBy(d, 0.0, top), wireframe = false, cullBackFaces = false)
+        val rings = shell.evenIsolines(d, 0.15).flatten()
+        lines(
+            rings.map { r -> r.map { vec(it.x, it.y + 0.01f, it.z) }.toFLine3(vec(1.0, 1.0, 1.0, 0.95), 1.4) },
+            id = "rings$i",
+            panel = i,
+        )
+    }
+}
+```
+
+![Two copies of a sheet folded into a deep trough, coloured from blue at a source point on the near side to orange far away, with white rings at equal spacing. On the left (straight-line distance) the rings on the far side are arcs centred on the source. On the right (geodesic distance) the rings crowd down the trough walls, the far side is more orange, and its rings run straight, parallel to the trough](assets/mesh_examples/geodesic_vs_euclidean.png)
+
+`evenIsolines(values, spacing)` returns the rings: every triangle a level crosses gives one segment, and
+segments sharing a mesh edge are chained, so a ring around the surface comes back as one closed
+polyline. They work on any per-vertex field, not only distances. The same call on the vertices'
+height, `coordinateField(1)`, slices the mesh into horizontal contours.
+
+For carving, the rings become a toolpath. `spiralFromRings` starts each ring where the last one
+ended and walks it once while easing, by arc length, onto the next ring, so the tool never lifts
+and never retraces. Here it is on a relief, the rings measured from its boundary:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/mesh_examples/geodesic_spiral.png" wait="3.0" capture="box" open-outputs="true" padding="20"}
+import afield.graphics.three.ThreeCameraSpec
+
+// A carved boss: a dome with a ripple, on a square tablet.
+val relief =
+    heightfieldMesh(80, 80, 2.0, 2.0) { x, z ->
+        val r = kotlin.math.sqrt(x * x + z * z)
+        0.5f * kotlin.math.exp(-r * r * 2.2f) + 0.05f * kotlin.math.cos(r * 14f) * kotlin.math.exp(-r * 1.5f)
+    }
+val fromEdge = relief.geodesicDistanceFromBoundary()
+
+// One ring a level, nearest the edge first; join them into one path.
+val rings = relief.evenIsolines(fromEdge, 0.06).map { level -> level.maxBy { it.size } }
+val spiral = spiralFromRings(rings)
+println("${rings.size} rings, spiral of ${spiral.size} points")
+
+fun lifted(path: List<Vec3>) = path.map { vec(it.x, it.y + 0.01f, it.z) }
+val view = ThreeCameraSpec(yawDegrees = 25.0, pitchDegrees = 50.0)
+three(height = 360) {
+    columns(2)
+    panel(title = "iso-geodesic rings from the border", camera = view)
+    mesh(relief.colouredBy(fromEdge), wireframe = false)
+    lines(rings.map { lifted(it).toFLine3(vec(1.0, 1.0, 1.0, 0.95), 1.4) }, id = "rings", panel = 0)
+    panel(title = "one spiral of ${spiral.size} points, never lifting", camera = view)
+    lines([spiral.toFLine3(vec(0.95, 0.35, 0.2, 1.0), 1.6)], id = "spiral", panel = 1)
+}
+```
+
+![Left: a square tablet with a domed, rippled boss, coloured from dark at the border to orange at the summit, with white concentric rings that start square at the edge and round off over the boss. Right: the toolpath on its own, a single orange line spiralling continuously from the square border up to the summit, its laps crowding where the boss rises steeply](assets/mesh_examples/geodesic_spiral.png)
+
+The rings start square, following the tablet's edge, and become round as they climb the boss, which
+is what a finishing tool should do. Spacing is in surface units, so it is the stepover of the cut
+whatever the slope.
+
+A spiral ends in the middle, which is no use when both ends of the path have to come back to the
+edge, as underfloor-heating pipe does: it leaves the manifold, covers the floor and returns.
+`doubleSpiralFromRings` lays it as a counterflow double spiral (`doubleSpiralArms` gives the two
+halves separately). It spirals in on every other ring,
+turns round in the middle in a U-bend, and spirals back out along the rings in between, so every
+lap of hot supply has a lap of cooler return beside it and the floor warms evenly. The ring spacing
+is the pipe spacing; each arm's own pitch is twice that.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/mesh_examples/double_spiral.png" wait="3.0" capture="box" open-outputs="true" padding="20"}
+// A 4 m by 2.8 m room, at 1:2; pipe every 0.08 units (16 cm).
+val floor = heightfieldMesh(100, 70, 2.0, 1.4) { _, _ -> 0f }
+val fromWalls = floor.geodesicDistanceFromBoundary()
+val rings = floor.evenIsolines(fromWalls, 0.08).map { level -> level.maxBy { it.size } }
+// Supply runs in to the bend in the middle, return runs back out between it.
+val (supply, back) = doubleSpiralArms(rings)
+var length = 0.0
+for (arm in [supply, back]) for (i in 1 until arm.size) length += arm[i].distance(arm[i - 1])
+println("${rings.size} rings, ${supply.size + back.size} points, ${(length * 2).f1} m of pipe")
+
+// Seen from above: floor x to the right, floor z down the page.
+fun plan(path: List<Vec3>) = path.map { vec(it.x * 300f, it.z * 300f, 0f) }
+lines(
+    plan(supply).toFLine3(vec(0.9, 0.25, 0.15, 1.0), 2.0),
+    plan(back).toFLine3(vec(0.15, 0.4, 0.9, 1.0), 2.0),
+    w = 640.0,
+    h = 460.0,
+    fitToSize = true,
+)
+```
+
+![A rectangular floor seen from above, covered by one continuous pipe in two colours: a red supply run spirals in from one corner of the outer edge in rounded rectangles, turns round in a small U-bend in the middle, and a blue return run spirals back out in the gaps between the red laps, ending beside where the red began](assets/mesh_examples/double_spiral.png)
+
+Both ends finish on the outer two rings, side by side, ready for the manifold. Neither arm goes
+round its innermost ring a final time, because that loop would cross the other arm's last lap.
+
+Rooms are rarely rectangles, and there the rings stop being enough. `outlineMesh` fills any floor
+plan with a fine mesh, its edge vertices snapped onto the walls, but in an L-shaped room one wing's
+rings run out a few rings before the rest of the room's. A lap blended from a ring that still
+reaches into the wing to one that no longer does has to pull the wing back sideways, through the
+space the other arm is using, and the pipe crosses itself.
+
+So for a plan, trace the pipe as contours of one function instead. `windingAngle` gives the floor
+an angle that turns once round the point farthest from the walls: harmonic, so it spreads the turn
+evenly round any outline, with a cut from a small hole in the middle out to a wall where it jumps
+back by a whole turn. Every contour of `distance / pitch + angle` runs once round and meets the next
+one a pitch further in at the cut, so together they make one spiral; and contours of one function
+cannot cross, whatever the outline does. `fieldDoubleSpiral` takes the contours at a quarter and
+three quarters of a pitch for supply and return.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/mesh_examples/double_spiral_room.png" wait="3.0" capture="box" open-outputs="true" padding="20"}
+// An L-shaped living room with a bay window in the left wall, at 1:2.
+val bay =
+    (0..16).map { i ->
+        val a = kotlin.math.PI * i / 16
+        vec(-1.0 - 0.3 * kotlin.math.sin(a), 0.25 + 0.25 * kotlin.math.cos(a))
+    }
+val plan = [vec(-1.0, -0.7), vec(1.0, -0.7), vec(1.0, 0.1), vec(0.1, 0.1), vec(0.1, 0.7), vec(-1.0, 0.7)] + bay
+val floor = outlineMesh(plan, 0.0125)
+val angle = floor.windingAngle(floor.geodesicDistanceFromBoundary())
+val (supply, back) = angle.fieldDoubleSpiral(0.07)
+var length = 0.0
+for (arm in [supply, back]) for (i in 1 until arm.size) length += arm[i].distance(arm[i - 1])
+println("${supply.size + back.size} points, ${(length * 2).f1} m of pipe")
+
+// The winding angle's spokes, faintly, under the pipe and the walls.
+fun drawn(path: List<Vec3>) = path.map { vec(it.x * 300f, it.z * 300f, 0f) }
+val shown = ArrayList<FLine>()
+for (k in 1..11) for (spoke in angle.mesh.isolines(angle.angle, k / 12.0)) shown +=
+    drawn(spoke).toFLine3(vec(0.3, 0.3, 0.3, 1.0), 1.0)
+shown += drawn((plan + plan.first()).map { vec(it.x, 0f, it.y) }).toFLine3(vec(0.45, 0.45, 0.45, 1.0), 3.0)
+shown += drawn(supply).toFLine3(vec(0.9, 0.25, 0.15, 1.0), 2.0)
+shown += drawn(back).toFLine3(vec(0.15, 0.4, 0.9, 1.0), 2.0)
+lines(shown, w = 640.0, h = 460.0, fitToSize = true)
+```
+
+![An L-shaped floor plan with a semicircular bay in its left wall, seen from above, with faint grey spokes fanning out from the middle of the room to the walls. One continuous pipe covers it: a red supply run follows the walls inward, rounding the inside corner and sweeping through the bay, turns round in a small U-bend near the middle, and a blue return run comes back out between the red laps; nowhere do the two cross, and both ends finish side by side by the inside corner](assets/mesh_examples/double_spiral_room.png)
+
+The spokes show the angle: they crowd where the room is narrow and fan out where it is wide, and
+the laps step inward evenly along every one of them rather than all at once. Only whole laps are
+kept, so the pipe stays at least half a spacing from the walls and leaves the hole round the middle
+(`hole`, by default 15% of the deepest distance) bare. A smaller hole covers more floor, until a
+lap into a narrow wing turns into a hairpin.
+
+Before finishing comes roughing: a flat-bottomed tool clears the block one horizontal layer at a
+time, following the part's outline at each height. `roughingPasses(stepDown)` gives those
+contours from the top down, as `(height, rings)` pairs:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/mesh_examples/roughing_passes.png" wait="3.0" capture="box" open-outputs="true" padding="20"}
+import afield.graphics.three.ThreeCameraSpec
+
+// A part modelled as a field: a ball fused to a bar, with a fillet.
+val part = marchingCubes(
+    sdfSmoothUnion(sdfSphere(0.7), sdfBox(vec(2.0, 0.35, 0.6)), k = 0.25),
+    boundsAround(radius = 1.4),
+    72,
+)
+val passes = part.roughingPasses(stepDown = 0.08)
+println("${passes.size} passes, ${passes.sumOf { it.second.size }} contours")
+
+// Colour each pass by its depth below the top, shallow pale to deep red.
+val top = passes.first().first
+val bottom = passes.last().first
+val contours = passes.flatMap { (h, rings) ->
+    val s = (top - h) / (top - bottom)
+    rings.map { it.toFLine3(vec(1.0, 0.85 - 0.6 * s, 0.6 - 0.5 * s, 1.0), 1.4) }
+}
+val view = ThreeCameraSpec(yawDegrees = 30.0, pitchDegrees = 30.0)
+three(height = 360) {
+    columns(2)
+    panel(title = "the part", camera = view)
+    mesh(part, wireframe = false)
+    panel(title = "${passes.size} roughing passes, coloured by depth", camera = view)
+    lines(contours, id = "passes", panel = 1)
+}
+```
+
+![Left: a grey ball fused to a flat bar. Right: the same shape drawn only as horizontal contour loops stacked from top to bottom, pale yellow at the top shading to deep red at the bottom](assets/mesh_examples/roughing_passes.png)
+
+How accurate is it? On a unit icosphere, against exact great-circle distance from a pole, the mean
+error is 0.021 radians at 642 vertices, 0.014 at 2,562 and 0.011 at 10,242 (0.67%, 0.45% and 0.35% of the half circumference; worst vertex 0.050, 0.033, 0.025) (`MeshGeodesicTest`). The heat
+method smooths a little near the source, controlled by `timeScale`: larger rounds the
+isolines, smaller sharpens them and eventually gets noisy. On an open mesh the rings meet the boundary at right
+angles, because both solves use natural boundary conditions.
+
 ## A Voronoi diagram as solids
 
 `voronoi3d(...)` clips half-spaces and hands back `VoronoiCell3`s with polygonal faces.

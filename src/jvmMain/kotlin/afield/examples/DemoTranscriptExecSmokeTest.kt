@@ -677,6 +677,9 @@ object DemoTranscriptExecSmokeTest {
         // CPU only; the Manifold halves print an install message and fall back when it is absent.
         "solidsl_gallery",
         "mesh_repair_demo",
+        // mesh_examples.md#distance-along-the-surface-and-carving-toolpaths: heat geodesics, isolines,
+        // a spiral toolpath and roughing passes; pure CPU, three { } output.
+        "geodesic_carving",
         // sorting_networks_examples.md's four fences as boxes, pure CPU. Only the two drawing boxes are
         // launched: the two annealing boxes search for 70 and 90 seconds, and the docs runner executes
         // them for the page's captures.
