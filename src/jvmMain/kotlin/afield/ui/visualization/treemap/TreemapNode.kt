@@ -103,7 +103,15 @@ class TreemapNode(
     fun child(name: String): TreemapNode? = kids.firstOrNull { it.name == name }
 
     /** The node beneath this one (or this one) whose [key] is [key]. */
-    fun find(key: String): TreemapNode? = walk().firstOrNull { it.key == key }
+    fun find(key: String): TreemapNode? {
+        // Path keys name their ancestors, so follow them down first; explicit keys fall back to a full search.
+        var n = this
+        while (true) {
+            if (n.key == key) return n
+            n = n.kids.firstOrNull { c -> c.key.let { key == it || key.startsWith("$it/") } } ?: break
+        }
+        return walk().firstOrNull { it.key == key }
+    }
 
     /** This node and everything beneath it, parents before children. */
     fun walk(): Sequence<TreemapNode> = sequence {

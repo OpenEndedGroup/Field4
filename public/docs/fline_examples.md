@@ -717,8 +717,18 @@ fun draw() {
             color = vec(0.35, 0.68, 0.92, 0.85)
             hoverColor = vec(0.55, 0.82, 1.0, 1.0)
             key = name
-            caption = LineCaption(name, x + 45.0, 310.0 - height, size = 14.0, color = vec(1.0, 1.0, 1.0, 1.0), anchor = "middle")
-            onClick = { _ -> order = order.shuffled(); draw() }
+            caption = LineCaption(
+                name,
+                x + 45.0,
+                310.0 - height,
+                size = 14.0,
+                color = vec(1.0, 1.0, 1.0, 1.0),
+                anchor = "middle",
+            )
+            onClick = { _ ->
+                order = order.shuffled()
+                draw()
+            }
         }
     }
     lines(bars, channel = "morph", w = 600.0, h = 340.0, transition = 0.6)

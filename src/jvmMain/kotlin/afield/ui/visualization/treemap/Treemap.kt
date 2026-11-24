@@ -484,9 +484,17 @@ fun interface TreemapColors {
         }
 
         /** Every cell by its depth below the root, through colormap [name] ([Colormaps]). */
-        fun byDepth(name: String = "viridis"): TreemapColors = TreemapColors { node, map ->
-            val height = max(1, map.root.walk().maxOf { it.depth })
-            Colormaps.sample(name, node.depth.toDouble() / height).let { vec(it.r, it.g, it.b, 1.0) }
+        fun byDepth(name: String = "viridis"): TreemapColors {
+            // The tree's height is measured once per drawing: [Treemap.cells] is a new list each time.
+            var cachedFor: Any? = null
+            var height = 1
+            return TreemapColors { node, map ->
+                if (cachedFor !== map.cells) {
+                    height = max(1, map.root.walk().maxOf { it.depth })
+                    cachedFor = map.cells
+                }
+                Colormaps.sample(name, node.depth.toDouble() / height).let { vec(it.r, it.g, it.b, 1.0) }
+            }
         }
 
         /**

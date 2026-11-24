@@ -313,7 +313,7 @@ the file, and the reach is described per file below in prose that a human checke
 
 | declaring file | commands |
 | --- | --- |
-| `Server.kt` | 60 |
+| `Server.kt` | 62 |
 | `agent_backdoor.kt` | 28 |
 | `history.kt` | 14 |
 | `executing.kt` | 10 |
@@ -466,6 +466,7 @@ reach to a client that `agent-eval` and `launch-all` already let run arbitrary c
 | `electron-rtt-release` | `ElectronRTTView.kt` |
 | `electron-rtt-subscribe` | `ElectronRTTView.kt` |
 | `lines-drag` | `Server.kt` |
+| `lines-view` | `Server.kt` |
 | `presentation-shown` | `Server.kt` |
 | `webrtc-aaaframe-signed-in` | `WebRTC.kt` |
 | `webrtc-publishers-pick` | `WebRTC.kt` |
@@ -480,6 +481,7 @@ reach to a client that `agent-eval` and `launch-all` already let run arbitrary c
 | `file-complete` | `FileChooser.kt` |
 | `file-upload-update` | `Server.kt` |
 | `fline-click` | `Server.kt` |
+| `fline-hover` | `Server.kt` |
 | `fline-edit-add-line` | `Server.kt` |
 | `fline-edit-append-line` | `Server.kt` |
 | `fline-edit-begin-line` | `Server.kt` |
