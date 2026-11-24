@@ -1,0 +1,179 @@
+name: vector_scenes
+description: >-
+  Zdog/Zpup-style 3D vector scenes drawn as FLines: vectorScene { } builds round primitives under
+  group transforms, render(yaw, pitch) returns filled FLines in pairwise occlusion order. Four boxes:
+  a lighthouse from four angles, a camera slider, flat/soft/plotted shading, and the wrong-order
+  pixel share of centroid sort against pairwise order.
+docs:
+  - page: fline_examples.md
+    why: "The 'Depth-ordered 3D vector scenes' section uses the same box code."
+operations:
+  - create:
+      box: vs_lighthouse
+      name: lighthouse from four angles
+      frame:
+        x: 40.0
+        y: 40.0
+        w: 320.0
+        h: 100.0
+      properties:
+        code: |
+          val white = vec(0.94, 0.93, 0.89, 1.0)
+          val red = vec(0.82, 0.22, 0.2, 1.0)
+          val lighthouse = vectorScene {
+              segments(20)
+              group({ translate(0.0, -6.0, 0.0) }) { box(260.0, 12.0, 200.0, vec(0.35, 0.55, 0.4, 1.0)) }
+              cylinder(34.0, 70.0, white, topRadius = 30.0)
+              group({ translate(0.0, 70.0, 0.0) }) { cylinder(30.0, 60.0, red, topRadius = 26.0) }
+              group({ translate(0.0, 130.0, 0.0) }) { cylinder(26.0, 50.0, white, topRadius = 22.0) }
+              group({ translate(0.0, 180.0, 0.0) }) { cylinder(30.0, 6.0, vec(0.25, 0.25, 0.28, 1.0)) }
+              group({ translate(0.0, 186.0, 0.0) }) { cylinder(18.0, 22.0, vec(1.0, 0.85, 0.35, 1.0)) }
+              group({ translate(0.0, 208.0, 0.0) }) { cone(24.0, 26.0, red) }
+              group({ translate(80.0, 25.0, 30.0) }) { box(70.0, 50.0, 50.0, white, top = red) }
+              group({ translate(-70.0, 0.0, 50.0) }) { hemisphere(22.0, vec(0.55, 0.52, 0.5, 1.0)) }
+              group({ translate(-40.0, 0.0, 75.0) }) { hemisphere(14.0, vec(0.5, 0.48, 0.47, 1.0)) }
+          }
+
+          // four quarter turns, side by side
+          val views =
+              (0 until 4).flatMap { k ->
+                  lighthouse.render(yaw = 0.4 + k * Math.PI / 2, pitch = -0.35).map { it + vec(k * 330.0, 0.0) }
+              }
+          lines(views, w = 720.0, h = 220.0, fitToSize = true)
+  - create:
+      box: vs_turn
+      name: turn the camera
+      frame:
+        x: 400.0
+        y: 40.0
+        w: 320.0
+        h: 100.0
+      properties:
+        code: |
+          val white = vec(0.94, 0.93, 0.89, 1.0)
+          val red = vec(0.82, 0.22, 0.2, 1.0)
+          val scene = vectorScene {
+              cylinder(30.0, 200.0, white)
+              group({ translate(0.0, 200.0, 0.0) }) { cone(36.0, 40.0, red) }
+              group({ translate(90.0, 20.0, 0.0) }) { box(60.0, 40.0, 40.0, vec(0.4, 0.6, 0.85, 1.0), top = red) }
+              group({ translate(-80.0, 0.0, 20.0) }) { hemisphere(24.0, vec(0.55, 0.52, 0.5, 1.0)) }
+          }
+
+          var yaw = 1.2
+          fun draw() = lines(scene.render(yaw = yaw, pitch = -0.25), w = 420.0, h = 300.0, fitToSize = true)
+
+          slider("camera", min = 0.0, max = 6.28, step = 0.01, initialValue = yaw, channel = "camera") {
+              yaw = it
+              draw()
+          }
+          draw()
+  - create:
+      box: vs_shading
+      name: flat, soft and plotted
+      frame:
+        x: 760.0
+        y: 40.0
+        w: 320.0
+        h: 100.0
+      properties:
+        code: |
+          val model = vectorScene {
+              segments(28)
+              hemisphere(50.0, vec(0.95, 0.75, 0.3, 1.0))
+              group({ translate(0.0, -60.0, 0.0) }) { cylinder(50.0, 60.0, vec(0.3, 0.6, 0.9, 1.0)) }
+              group({ translate(0.0, 50.0, 0.0) }) { cone(14.0, 30.0, vec(0.85, 0.25, 0.25, 1.0)) }
+          }
+          val flat = model.render(yaw = 0.5, pitch = -0.3, shading = Shading.FLAT)
+          val soft = model.render(yaw = 0.5, pitch = -0.3, shading = Shading.SOFT).map { it + vec(160.0, 0.0) }
+          val plotted = model.render(yaw = 0.5, pitch = -0.3, shading = Shading.NONE, outline = vec(0.1, 0.1, 0.1, 1.0)).map {
+              it + vec(320.0, 0.0)
+          }
+          lines(flat + soft + plotted, w = 600.0, h = 220.0, fitToSize = true)
+  - create:
+      box: vs_benchmark
+      name: wrong-order pixels
+      frame:
+        x: 1120.0
+        y: 40.0
+        w: 320.0
+        h: 100.0
+      properties:
+        code: |
+          val white = vec(0.94, 0.93, 0.89, 1.0)
+          val red = vec(0.82, 0.22, 0.2, 1.0)
+          val scenes = mapOf(
+              "lighthouse" to
+                  vectorScene {
+                      segments(20)
+                      group({ translate(0.0, -6.0, 0.0) }) { box(260.0, 12.0, 200.0, vec(0.35, 0.55, 0.4, 1.0)) }
+                      cylinder(34.0, 180.0, white, topRadius = 22.0)
+                      group({ translate(0.0, 180.0, 0.0) }) { cone(24.0, 26.0, red) }
+                      group({ translate(80.0, 25.0, 30.0) }) { box(70.0, 50.0, 50.0, white, top = red) }
+                      group({ translate(-70.0, 0.0, 50.0) }) { hemisphere(22.0, vec(0.55, 0.52, 0.5, 1.0)) }
+                  },
+              "village" to
+                  vectorScene {
+                      segments(16)
+                      group({ translate(0.0, -4.0, 0.0) }) { box(400.0, 8.0, 400.0, vec(0.4, 0.6, 0.4, 1.0)) }
+                      for (i in 0 until 4) for (j in 0 until 4) group(
+                          {
+                              translate(i * 90.0 - 135.0, 20.0, j * 90.0 - 135.0)
+                              rotateY(i * 0.7 + j)
+                          },
+                      ) {
+                          box(50.0, 40.0, 36.0, white, top = red)
+                          group({ translate(30.0, -20.0, 30.0) }) { cylinder(6.0, 50.0, vec(0.5, 0.35, 0.2, 1.0)) }
+                      }
+                  },
+              "sticks" to
+                  vectorScene {
+                      for (k in 0 until 12) group(
+                          {
+                              rotateY(k * 0.52)
+                              rotateZ(0.3)
+                          },
+                      ) {
+                          line(
+                              -120.0,
+                              k * 6.0,
+                              -30.0,
+                              120.0,
+                              k * 6.0,
+                              30.0,
+                              width = 12.0,
+                              color = vec(0.3 + k * 0.05, 0.5, 0.8, 1.0),
+                          )
+                      }
+                  },
+          )
+          fun pct(s: VectorScene, mode: DepthOrder): String {
+              var wrong = 0
+              var covered = 0
+              for (k in 0 until 8) {
+                  val (w, c) = s.wrongOrderShare(yaw = k * Math.PI / 4, pitch = -0.35, mode = mode, w = 200, h = 200)
+                  wrong += w
+                  covered += c
+              }
+              return "%.2f%%".format(100.0 * wrong / covered)
+          }
+          val rows =
+              scenes.entries.joinToString("") { (name, s) ->
+                  "<tr><td>$name</td><td>${pct(s, DepthOrder.CENTROID)}</td><td>${pct(s, DepthOrder.PAIRWISE)}</td></tr>"
+              }
+          display(
+              "main",
+              """<table style="font:14px sans-serif;border-collapse:collapse" cellpadding="6">
+          <tr><th align="left">scene</th><th>centroid sort</th><th>pairwise</th></tr>$rows</table>""",
+          )
+  - execute:
+      box: vs_lighthouse
+      property: code
+  - execute:
+      box: vs_turn
+      property: code
+  - execute:
+      box: vs_shading
+      property: code
+  - execute:
+      box: vs_benchmark
+      property: code

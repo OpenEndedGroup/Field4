@@ -97,6 +97,8 @@ object DemoTranscriptExecSmokeTest {
 
     /** Pure-compute demos that are safe to run to completion headless. */
     internal val EXECUTE = setOf(
+        // fline_examples.md, Depth-ordered 3D vector scenes: vectorScene projection and ordering; pure CPU.
+        "vector_scenes",
         "adaptive_distribution_feedback",
         "fieldml_reactive_bridge",
         "shader_study_region_checks",
