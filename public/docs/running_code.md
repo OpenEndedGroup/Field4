@@ -584,7 +584,7 @@ minutes to settle, can say how long it may run before Field interrupts it. Set `
 number of seconds anywhere in the box's code:
 
 ```diffstatic {data-lang=kotlin}
-watchdog = 300    // this search may take five minutes
+watchdog = 300 // this search may take five minutes
 ```
 
 `watchdog = 0` means this box is never interrupted automatically; **Interrupt Running Box** still
