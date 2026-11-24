@@ -1,5 +1,9 @@
 package afield.runtime.lifecycle
 
+import afield.document.graph.Box
+import afield.document.graph.watchdog
+import afield.runtime.bytecode.BoxBytecode
+import afield.runtime.bytecode.SnippetOrigin
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -10,6 +14,11 @@ class RunawayShapes {
     fun fib(n: Int): Long = if (n < 2) n.toLong() else fib(n - 1) + fib(n - 2)
     fun swallow(): Int { var n = 0; while (true) { try { n++ ; if (n < 0) return n } catch (e: Exception) { } } }
     fun finite(): Int { var s = 0; for (i in 0 until 1000) s += i; return s }
+}
+
+/** Stands in for a second box's snippet class in [BoxInterruptInstrumentationTest.aBoxSetsItsOwnWatchdog]. */
+class WatchdogShapes {
+    fun outer(): Int = 1
 }
 
 class BoxInterruptInstrumentationTest {
@@ -93,5 +102,33 @@ class BoxInterruptInstrumentationTest {
         } finally {
             Runloop.runLoop.frame--
         }
+    }
+
+    @Test
+    fun aBoxSetsItsOwnWatchdog() {
+        val box = Box("watchdog-box")
+        val label = "'long' (watchdog-box)"
+        val name = WatchdogShapes::class.java.name
+        val bytes = WatchdogShapes::class.java.getResourceAsStream("/" + name.replace('.', '/') + ".class")!!.readBytes()
+        BoxBytecode.rewriteClass(bytes, SnippetOrigin(box.id, "code", label, null, null, owner = box), listOf(BoxInterrupt.PollPass))!!
+        val inner = instrumentedShapes() // 'test' (shapes), with no box of its own
+        // The box the Runloop entered first (the outermost snippet frame) decides, not the innermost.
+        val stack = arrayOf(
+            StackTraceElement(inner.name, "spin", null, 0),
+            StackTraceElement(name, "outer", null, 0),
+            StackTraceElement("java.lang.Thread", "run", null, 0),
+        )
+        assertEquals(BoxInterrupt.Watchdog.interruptAfterMs to null, BoxInterrupt.allowanceFor(stack))
+        box.watchdog = 300
+        assertEquals(300_000L to label, BoxInterrupt.allowanceFor(stack))
+        box.watchdog = 0
+        assertEquals(0L to label, BoxInterrupt.allowanceFor(stack), "0 is never")
+        box.watchdog = Double.POSITIVE_INFINITY
+        assertEquals(0L to label, BoxInterrupt.allowanceFor(stack), "infinity is never")
+        box.setPropertyRaw("watchdog", "2.5") // the backdoor's `set` writes text
+        assertEquals(2500L to label, BoxInterrupt.allowanceFor(stack))
+        box.watchdog = null
+        assertEquals(BoxInterrupt.Watchdog.interruptAfterMs to null, BoxInterrupt.allowanceFor(stack))
+        assertEquals(null, BoxInterrupt.allowanceFor(arrayOf(StackTraceElement("java.lang.Thread", "run", null, 0))))
     }
 }
