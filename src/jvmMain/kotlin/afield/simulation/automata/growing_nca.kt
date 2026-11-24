@@ -502,7 +502,7 @@ class GrowingNca(
 
 /**
  * A left-button brush over a native [Window], reported as fractions of the window (0..1, y down)
- * while the button is held. Installing again under the same [key] replaces the earlier brush, so a
+ * while the button is held. Installing again under the same `key` replaces the earlier brush, so a
  * box that installs one can be re-run without stacking listeners.
  *
  * The growing NCA demo uses it to erase cells under the mouse; nothing in it is NCA-specific.
