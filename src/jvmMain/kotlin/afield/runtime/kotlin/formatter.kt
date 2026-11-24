@@ -65,7 +65,79 @@ fun formatKotlinCode(code: String, blockifyComments: Boolean = true): String {
     formatted = joinAssignmentBreaks(formatted)
     formatted = collapseOneLineLambdaAssignments(formatted)
     formatted = tuckRawStringChains(formatted)
+    formatted = tuckTrailingLambdaChains(formatted)
     return if (blockifyComments) blockifyLineCommentRuns(formatted) else formatted
+}
+
+/**
+ * Put a short call chain back on the closing brace of the trailing lambda it follows:
+ *
+ * ```
+ * presentation(title = "Motion") {        presentation(title = "Motion") {
+ *         step("Welcome") { ... }             step("Welcome") { ... }
+ *     }                               ->  }.present()
+ *     .present()
+ * ```
+ *
+ * ktfmt reads `presentation { … }.present()` as a dotted chain, gives each link a line of its own
+ * and indents the receiver one continuation level, so a whole talk sits eight spaces in with its
+ * closing brace at four. The join applies when the chain starts with a call whose trailing lambda
+ * spans lines, that call's closing brace is alone on its line one continuation level in, and every
+ * later link is a one-line call; the call's lines then come back one level. Lines that begin inside
+ * a raw string keep their indentation, which is part of the string's value. ktfmt breaks the chain
+ * again on the next format and this joins it again, so the pair is a fixed point.
+ */
+fun tuckTrailingLambdaChains(code: String): String {
+    var current = code
+    // One chain per pass, re-parsed in between: a dedent moves the offsets of every chain inside it.
+    repeat(256) { current = tuckOneTrailingLambdaChain(current) ?: return current }
+    return current
+}
+
+private fun tuckOneTrailingLambdaChain(code: String): String? {
+    val file = try { FieldKtParser.parse(code) } catch (t: Throwable) { return null }
+    val rawStrings = file.collectDescendantsOfType<KtStringTemplateExpression>()
+        .filter { it.text.startsWith("\"\"\"") && '\n' in it.text }
+        .map { it.startOffset to it.endOffset }
+    fun insideRawString(offset: Int) = rawStrings.any { (start, end) -> offset > start && offset < end }
+    fun lineStart(offset: Int) = code.lastIndexOf('\n', offset - 1) + 1
+    fun indentOf(start: Int) = code.substring(start).takeWhile { it == ' ' }.length
+
+    for (chain in file.collectDescendantsOfType<KtDotQualifiedExpression>()) {
+        if ((chain.parent as? KtDotQualifiedExpression)?.receiverExpression == chain) continue
+        // Innermost link first: `a { }.b().c()` is ((a { }).b()).c().
+        val links = generateSequence(chain) { it.receiverExpression as? KtDotQualifiedExpression }.toList().asReversed()
+        val base = links.first().receiverExpression as? KtCallExpression ?: continue
+        if (base.lambdaArguments.isEmpty() || '\n' !in base.text || code[base.endOffset - 1] != '}') continue
+        val gaps = links.map { it.receiverExpression.endOffset to it.operationTokenNode.startOffset }
+        if (gaps.any { (from, to) -> code.substring(from, to).isNotBlank() }) continue
+        if (gaps.none { (from, to) -> '\n' in code.substring(from, to) }) continue
+        val selectors = links.map { it.selectorExpression?.text }
+        if (selectors.any { it == null || '\n' in it }) continue
+
+        val first = lineStart(base.startOffset)
+        val indent = indentOf(first)
+        val close = base.endOffset - 1
+        val closeLine = lineStart(close)
+        if (code.substring(closeLine, close) != " ".repeat(indent + 4)) continue
+        val lineEnd = code.indexOf('\n', chain.endOffset).let { if (it < 0) code.length else it }
+        val joined = indent + 1 + selectors.sumOf { 1 + it!!.length } + (lineEnd - chain.endOffset)
+        if (joined > MAX_WIDTH) continue
+
+        // Every line after the call's first, through its closing brace, comes back one level.
+        val starts = generateSequence(code.indexOf('\n', first) + 1) { code.indexOf('\n', it) + 1 }
+            .takeWhile { it in 1..closeLine }
+            .filterNot { insideRawString(it) }
+            .toList()
+        val shifted = starts.filter { s -> code.getOrNull(s) != '\n' && s < code.length }
+        if (shifted.any { s -> !code.startsWith("    ", s) && code.substring(s, code.indexOf('\n', s).let { if (it < 0) code.length else it }).isNotBlank() }) continue
+
+        val out = StringBuilder(code)
+        gaps.sortedByDescending { it.first }.forEach { (from, to) -> out.delete(from, to) }
+        shifted.filter { code.startsWith("    ", it) }.sortedDescending().forEach { out.delete(it, it + 4) }
+        return out.toString()
+    }
+    return null
 }
 
 /**
