@@ -769,6 +769,14 @@ reported rather than thrown, because a legitimately dead parameter is a fine thi
 vector — a fit over six holes where one is genuinely irrelevant — and it is the *unexpectedly* dead
 one that looks like a success.
 
+When it names one you did not expect, change the model or the seed, not the optimiser. A small
+random nudge or a restart from nearby does not help: the swallowed sphere's gradient is zero over a
+whole region of seeds, not at one unlucky point, so a nudged seed is just as dead. What works is
+giving the parameter somewhere to be nearest. Blend instead of taking a hard `min` (the
+`smoothUnion` above, whose blend passes some derivative to both children), or seed the parameter
+where its child reaches the surface: the cube above that never moved from `0.40` inside a bar of
+radius `0.55` is the same parameter that the fit above, seeded at `1.35`, carried to `0.855279`.
+
 ### Fitting to a point cloud
 
 `fitParameters` wants signed distances at its sample points, which is a rich target and a slightly

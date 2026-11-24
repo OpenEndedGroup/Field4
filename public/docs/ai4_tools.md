@@ -927,8 +927,10 @@ Housekeeping, and why a name a box reads resolves where it does.
 ## What each tool tells the model
 
 A tool's description is the model's only instruction on when to call it and how. Below is each
-description exactly as AI4 sends it, followed by the tool's parameters. Many parameters have no
-description of their own, because the tool's description explains them. Click a name in the table
+description exactly as AI4 sends it, followed by the tool's parameters. A parameter that refers to a
+box always says whether it takes a uid, a unique name or either, because a model may see one tool
+without the others. A parameter with no description is one the tool's description already
+explains. Click a name in the table
 above to jump to its entry here.
 
 <!-- ai4-tools-descriptions:begin -->

@@ -14,6 +14,10 @@ live document itself. A guide can:
 A guide is a `slideShow { ... }` block. Each `step("...")` is one stage of the guide, and
 `markdownNote(...)` in a step writes the note the reader sees.
 
+To teach in front of a room, [Presenting with Field](presentation_studio.md) builds a slide deck
+in Field, and a deck can [bring a live document on screen](presentation_studio.md#bring-the-working-material-on-screen)
+and step through that document's guide from the slides.
+
 A guide's notes and callout lines come and go with its steps. For marks that stay on the canvas,
 such as a hand-drawn diagram beside the boxes it explains or arrows a box draws for itself, see
 [Drawing and Notation](drawing_and_notation.md), the Excalidraw layer (++alt+d++) that is saved with
