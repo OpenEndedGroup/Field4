@@ -2183,7 +2183,7 @@ written from code. Coverage is in `NotationTest` and `NotationIntersectionTest`;
 
 `src/jvmMain/kotlin/afield/ui/notation/Notation.kt` — [read the source](source/jvmMain/afield/ui/notation/Notation/)
 
-**Used in:** [Drawn Strokes Become Paint](../chain_drawn_paint.md), [Drawing and Notation](../drawing_and_notation.md), [FLine examples (Field graphics)](../fline_examples.md)
+**Used in:** [FLine examples (Field graphics)](../fline_examples.md), [Drawn Strokes Become Paint](../chain_drawn_paint.md), [Drawing and Notation](../drawing_and_notation.md)
 
 ### Top-level functions { #notation-kt-functions }
 
