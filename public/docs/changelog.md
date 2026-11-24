@@ -6,6 +6,25 @@ fixes and wording changes, open **Changelog** on the Welcome screen.
 
 ## November 2026
 
+<!-- changelog: fb56378d36..ab6c622710 -->
+### One fill rule everywhere, and the whole tiger on the GPU
+
+*22–23 November 2026*
+
+- **One fill rule**: `FLineFillRule` is now Field's only non-zero / even-odd type. Gezira's
+  `FillRule` and `TextFillRule` are other names for it, and an FLine's `fillRule` is followed by
+  SVG and Skia drawing, Java2D shapes, `contains2D`, `BufferCanvas.fill` and `tessellate`.
+  Manifold keeps its four rules and converts with `toManifold()`.
+  [Overlaps and fill rules](afield_four_graphics.md#overlaps-and-fill-rules).
+- `Gezira.rasterizer` is now the winding rasteriser, exact wherever outlines overlap. Gezira's
+  original five stages are still there as `Gezira.edgeSampleRasterizer`.
+  [Rasterising with stream kernels](afield_four_graphics.md#stream-kernels).
+- **The tiger on the GPU**: a whole Gezira document drawn by one compute pipeline, with timings
+  for each stage. [The tiger on the GPU](afield_four_graphics.md#gezira-gpu-tiger).
+- **Paint strokes as data** you can list, edit and hand to AI4, and the SVG tiger painted six
+  ways. [Strokes kept as data](paint_canvas.md#strokes-kept-as-data),
+  [An SVG Tiger, Painted](chain_tiger_paint.md).
+
 <!-- changelog: 73e864d2aa..9235890b33 -->
 ### Gezira on the GPU, string art and a screen you can hear
 

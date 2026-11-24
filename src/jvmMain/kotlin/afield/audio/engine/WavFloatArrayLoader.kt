@@ -6,6 +6,8 @@ package afield.audio.engine
  * The result, [WavFloatData], carries the sample rate and can report RMS at a time and apply a filter.
  */
 
+import afield.document.workspace.loaderFile
+import afield.runtime.completion.CompletesPath
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -60,8 +62,8 @@ object WavFloatArrayLoader {
      * Loads a WAV file into a FloatArray with values from -1.0 to 1.0.
      * If the WAV file is stereo, it takes only the left channel.
      */
-    fun loadWavToFloatArray(path: String): WavFloatData {
-        val file = File(path)
+    fun loadWavToFloatArray(@CompletesPath("*.wav") path: String): WavFloatData {
+        val file = loaderFile(path)
         require(file.exists()) { "WAV file not found: $path" }
         val bytes = file.readBytes()
         val buf = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)

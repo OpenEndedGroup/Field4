@@ -543,7 +543,7 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
             }
             val nrPlanResult=afield.graphics.render.neural.OpenDlssNrSupport.prepare(instance.vkInstance.address(),physicalDevice.vkPhysicalDevice.address())
             val nrPlan=nrPlanResult.getOrNull()
-            openDlssNrFeatureFailure=nrPlanResult.exceptionOrNull()?.message
+            var nrFailure=nrPlanResult.exceptionOrNull()?.message
             nrPlan?.let { extNames.addAll(it.native.required()) }
             extNames.addAll(afield.media.reconstruction.NgxSupport.deviceExtensions(instance, physicalDevice.vkPhysicalDevice.address(), supportedExtensions))
             val dedupedExtNames = extNames.distinct()
@@ -807,7 +807,21 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 memPutAddress(tail + VkBaseOutStructure.PNEXT, hostReset.address()); tail = hostReset.address()
             }
 
-            nrPlan?.apply(features.address())
+            if (nrPlan != null) {
+                // The optional adapter edits and extends this chain natively. One built from older
+                // source appends a second VkPhysicalDeviceCooperativeMatrixFeaturesKHR, which makes
+                // vkCreateDevice fail for every renderer (VUID-VkDeviceCreateInfo-sType-unique), so a
+                // chain it leaves invalid is cut back and NR is reported unavailable instead.
+                val fieldTail = featureChainTail(features.address())
+                nrPlan.apply(features.address())
+                duplicateFeatureStructType(features.address())?.let { sType ->
+                    memPutAddress(fieldTail + VkBaseOutStructure.PNEXT, 0L)
+                    nrFailure = "NR adapter added a duplicate Vulkan feature struct (sType $sType); it is older than " +
+                        "its source. Run ./gradlew buildOpenDlssNr and restart the renderer to enable NR"
+                    System.err.println("[warn,vulkan] $nrFailure")
+                }
+            }
+            openDlssNrFeatureFailure = nrFailure
 
             // Enable all queue families.
             val qProps = physicalDevice.vkQueueFamilyProps
@@ -1013,4 +1027,27 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
             return hostNS to gpuNS
         }
     }
+}
+
+/** The last structure of a Vulkan `pNext` chain starting at [head]. */
+internal fun featureChainTail(head: Long): Long {
+    var tail = head
+    while (true) {
+        val next = org.lwjgl.system.MemoryUtil.memGetAddress(tail + VkBaseOutStructure.PNEXT)
+        if (next == 0L) return tail
+        tail = next
+    }
+}
+
+/** The first `sType` that occurs twice in the `pNext` chain starting at [head], or null. */
+internal fun duplicateFeatureStructType(head: Long): Int? {
+    val seen = HashSet<Int>()
+    var s = head
+    var guard = 0
+    while (s != 0L && guard++ < 4096) {
+        val sType = org.lwjgl.system.MemoryUtil.memGetInt(s + VkBaseOutStructure.STYPE)
+        if (!seen.add(sType)) return sType
+        s = org.lwjgl.system.MemoryUtil.memGetAddress(s + VkBaseOutStructure.PNEXT)
+    }
+    return null
 }

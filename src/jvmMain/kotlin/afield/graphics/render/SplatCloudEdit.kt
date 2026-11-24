@@ -2,6 +2,8 @@
 
 package afield.graphics.render
 
+import afield.document.workspace.loaderFile
+import afield.runtime.completion.CompletesPath
 import afield.graphics.scene.CompressedSplatPly
 import afield.graphics.scene.CompressedSplatPlyWriter
 import afield.graphics.scene.PlyFloatTable
@@ -463,10 +465,10 @@ class SplatCloud(
         }
 
         /** Read a `.compressed.ply` (or any splat PLY) into editable conventions. */
-        fun read(path: String): SplatCloud = of(readPlyAsFloatTable(path))
+        fun read(@CompletesPath("*.ply") path: String): SplatCloud = of(readPlyAsFloatTable(loaderFile(path).path))
 
         /** Read a `.compressed.ply` specifically, failing loudly if it is not one. */
-        fun readCompressed(path: String): SplatCloud = of(readCompressedSplatPly(path))
+        fun readCompressed(@CompletesPath("*.ply") path: String): SplatCloud = of(readCompressedSplatPly(path))
 
         /**
          * Several clouds as one, concatenated in order.

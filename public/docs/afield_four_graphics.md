@@ -2314,7 +2314,10 @@ Java2D shapes (and so the boolean operations), `BufferCanvas.fill`, and `FLine.t
 the Vulkan and three.js fills are made of. The triangulator only knows nesting, so `tessellate` first
 resolves a line with a rule set into contours that do not overlap. Manifold's `FillRule` adds
 `POSITIVE` and `NEGATIVE`, which only a solid boolean needs; `Section.ofFLines(lines, rule = line.fillRule)`
-takes Field's.
+takes Field's. Text contours rely on the non-zero rule for their counters
+([The winding convention](typography_examples.md#the-winding-convention-and-the-control-arm)), and
+[2D sections and offsets](manifold.md#2d-sections-and-offsets) and [An outline filled into a buffer](visualizers.md#an-outline-filled-into-a-buffer)
+show the rule in Manifold and in a GPU buffer.
 
 ```diffstatic {data-lang=kotlin}
 star.filled = true

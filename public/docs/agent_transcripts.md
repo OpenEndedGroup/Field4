@@ -137,6 +137,20 @@ macro run nile_gezira_kernels
 
 [Open →](offline.html?file=assets/agent_transcripts/nile_gezira_kernels/metadata.edn)
 
+### vector_scenes
+
+**Depth-ordered 3D vector scenes.** A lighthouse built with `vectorScene { }` from cylinders, cones,
+boxes and hemispheres, drawn from four angles, turned with a camera slider, shaded flat, soft and as
+plotter outlines, and a table of how many pixels a centroid sort and the pairwise order get wrong.
+See [Depth-ordered 3D vector scenes](fline_examples.md#depth-ordered-3d-vector-scenes-vectorscene).
+
+```diffstatic {data-lang=text}
+macro write vector_scenes --file dev_docs/agents/transcripts/vector_scenes.yaml
+macro run vector_scenes
+```
+
+[Open →](offline.html?file=assets/agent_transcripts/vector_scenes/metadata.edn)
+
 ### fline_fill_rule
 
 **One fill rule, every renderer.** A pentagram and two nested squares, wound the same way, filled
@@ -151,6 +165,22 @@ macro run fline_fill_rule
 ```
 
 [Open →](offline.html?file=assets/agent_transcripts/fline_fill_rule/metadata.edn)
+
+### paint_fill_rule
+
+**Paint areas follow the fill rule.** Two overlapping squares are worked with `PaintCanvas.work` under
+the non-zero and the even-odd rule, set as the FLine's own `fillRule`; a second box glazes them
+opaque and counts the pixels that differ from Gezira's coverage. See
+[Overlapping regions and the fill rule](paint_canvas.md#overlapping-regions-and-the-fill-rule).
+
+![Two blue paintings of two overlapping squares: under non-zero the overlap is painted solid, under even-odd it is left white](assets/paint_canvas/fill_rule.png)
+
+```diffstatic {data-lang=text}
+macro write paint_fill_rule --file dev_docs/agents/transcripts/paint_fill_rule.yaml
+macro run paint_fill_rule
+```
+
+[Open →](offline.html?file=assets/agent_transcripts/paint_fill_rule/metadata.edn)
 
 ### nile_gezira_svg
 
@@ -5797,6 +5827,18 @@ unprojected through the eye actually shown, so it lands within a nanometre of th
 Vulkan and the Slug helper are required.
 
 [Open →](offline.html?file=assets/agent_transcripts/reading_pointing/metadata.edn)
+
+### reading_morph
+
+Morph one line of text into another by key, as Manim's `TransformMatching` does, but with keys the
+scene supplies rather than guessed from the strings. `textMorph` lays out both lines whole and cuts
+each into keyed pieces. A piece whose key is on both sides glides from its characters in the first
+line to its characters in the second, arcing up when it travels right and down when it travels left.
+A piece with no partner fades where it stands. Here `a × (b + c)` distributes into `a × b + a × c`:
+the brackets fade and a second `a ×` arrives. Then `c` and `a` change places and pass either side of
+each other. Vulkan and the Slug helper are required.
+
+[Open →](offline.html?file=assets/agent_transcripts/reading_morph/metadata.edn)
 
 ### video_one_vr
 

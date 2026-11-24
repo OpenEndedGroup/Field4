@@ -1,5 +1,7 @@
 package afield.graphics.scene.fabricated
 
+import afield.document.workspace.loaderFile
+import afield.runtime.completion.CompletesPath
 import afield.math.linalg.Vector3f
 import afield.math.linalg.Vector4f
 import afield.math.linalg.Matrix4f
@@ -96,7 +98,7 @@ class PathTraceScene {
     fun texture(image: PathTraceTexture): Int = textureData.size.also { textureData += image }
     companion object {
         /** Static glTF 2.0 scene. Textures and hierarchy are copied; importing requires no renderer. */
-        fun fromGltf(path: String, transform: Matrix4f = Matrix4f()): PathTraceScene =
+        fun fromGltf(@CompletesPath("*.{gltf,glb}") path: String, transform: Matrix4f = Matrix4f()): PathTraceScene =
             PathTraceScene().also { it.importGltf(path, transform) }
     }
     internal val materials = mutableListOf<PathTraceMaterial>()
@@ -316,7 +318,9 @@ class PathTraceEnvironment(val width: Int, val height: Int, rgba: FloatArray) {
     }
     companion object {
         /** OpenEXR, Radiance .hdr and STB-supported LDR files; STB converts LDR input to linear floats. */
-        fun fromFile(path: String): PathTraceEnvironment = MemoryStack.stackPush().use { stack ->
+        fun fromFile(@CompletesPath("*.{hdr,exr}") path: String): PathTraceEnvironment = fromResolvedFile(loaderFile(path).path)
+
+        private fun fromResolvedFile(path: String): PathTraceEnvironment = MemoryStack.stackPush().use { stack ->
             if (path.endsWith(".exr", ignoreCase = true)) return@use fromExr(path)
             val w = stack.mallocInt(1); val h = stack.mallocInt(1); val channels = stack.mallocInt(1)
             stbi_set_flip_vertically_on_load_thread(0)

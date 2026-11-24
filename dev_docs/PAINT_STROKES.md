@@ -41,3 +41,11 @@ depend on every earlier one).
 - Reading pinned notes from the drawing layer (`notation`) rather than `pin(...)`; that needs a
   mapping from world coordinates to the canvas output's canvas units.
 - Klad's MIT drawing-craft skill as a prompt for the Studio's painter.
+
+## Fill rule of area regions
+
+`PaintCanvas` area methods (`work`, `stipple`, `glaze`, `hatch`, `erase`) pass the region through
+`FLine.resolveFillRule()` before handing rings to the crate, whose mask is even-odd. A region with an
+explicit `fillRule` is therefore filled under that rule (exactly as Gezira does, pinned by
+`PaintFillRuleTest`); an unset rule keeps the crate's even-odd fill. Fixing it on the JVM side keeps
+the crate untouched and shares the Area resolution `FLine.tessellate` already uses.

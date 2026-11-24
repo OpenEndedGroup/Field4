@@ -4091,7 +4091,7 @@ val a = aiTool("rectsl.run") {
     }
 }
 // Test it yourself, same marshaling the agent uses — positional & type-coerced:
-start { println(a("wall 1 1 ; rect 0 0 1 1 fill", listOf(0.0, 0.5))) }
+frames { println(a("wall 1 1 ; rect 0 0 1 1 fill", listOf(0.0, 0.5))) }   // start { } is ambiguous here
 ```
 
 The returned handle is directly `suspend`-invocable from box code — positional

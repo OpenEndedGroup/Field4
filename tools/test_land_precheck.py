@@ -95,7 +95,8 @@ class SelectionTest(unittest.TestCase):
         self.assertIn("python-tools", keys(Change({"tools/land.py": "M"})))
 
     def test_a_deleted_file_selects_no_compile(self) -> None:
-        self.assertEqual(set(), keys(Change({"src/jvmMain/kotlin/afield/math/Gone.kt": "D"})))
+        # A deleted source can still break a page that cites it, so only the citation contract runs.
+        self.assertEqual({"citation-contract"}, keys(Change({"src/jvmMain/kotlin/afield/math/Gone.kt": "D"})))
 
     def test_gradle_arguments_run_only_the_selected_citation_classes(self) -> None:
         checks = [c for c in precheck.CHECKS if c.key in {"compile", "server-surface", "reference-nav"}]
@@ -166,6 +167,39 @@ class SelectionTest(unittest.TestCase):
 
     def test_build_gradle_selects_the_python_suites_as_the_lander_does(self) -> None:
         self.assertIn("python-tools", keys(Change({"build.gradle.kts": "M"})))
+
+    def test_historical_lander_fixups_select_their_guard(self) -> None:
+        # One changed path from each 2026-11 lander fixup the selection used to miss (commit named),
+        # with the check that runs the guard the fixer had to satisfy.
+        cases = [
+            ("b672b8efa2", {"public/docs/steam_audio_scene.md": "A"}, "docs-contracts"),
+            ("45f4971791", {"public/docs/some_example.md": "M"}, "docs-contracts"),
+            ("256079aea9", {"dev_docs/GPU_STIGMERGY_FIELD.md": "A"}, "docs-contracts"),
+            ("0aa89226b2", {"dev_docs/some_note.md": "M"}, "docs-contracts"),
+            ("0e55d17b4e", {"public/docs/solid_notation.md": "M"}, "docs-links"),
+            ("b880da9d64", {"public/docs/spectral_examples.md": "M"}, "docs-links"),
+            ("b13a61b222", {"src/jsMain/resources/vendor/import-map.js": "M"}, "citation-contract"),
+            ("27963ee971", {"src/jvmMain/kotlin/afield/document/persistence/saving.kt": "M"}, "citation-contract"),
+            # Already selected before 2026-11-24; pinned so they stay selected.
+            ("54839a37a1", {"dev_docs/agents/transcripts/video_one_vr.yaml": "M"}, "box-format"),
+            ("3a51d54a2c", {"dev_docs/agents/transcripts/buffer_paint_gpu.yaml": "A"}, "box-code"),
+            ("1ec8f8dff3", {"dev_docs/agents/transcripts/bonded_organisms.yaml": "A"}, "transcript-index"),
+        ]
+        for sha, status, key in cases:
+            self.assertIn(key, keys(Change(status)), f"{sha}: {status} should select {key}")
+
+    def test_added_source_does_not_select_the_citation_contract(self) -> None:
+        self.assertNotIn("citation-contract", keys(Change({"src/jvmMain/kotlin/afield/math/New.kt": "A"})))
+
+    def test_generated_reference_pages_do_not_select_the_link_checks(self) -> None:
+        self.assertNotIn("docs-links", keys(Change({"public/docs/reference/math.md": "M"})))
+
+    def test_docs_contracts_run_as_citation_classes(self) -> None:
+        checks = [c for c in precheck.CHECKS if c.key in {"docs-contracts", "citation-contract"}]
+        tail = precheck.gradle_arguments(checks, Path("/tmp/ref"))
+        self.assertEqual(tail[:3], ["--continue", "citationGates", "--rerun"])
+        self.assertIn("afield.tools.docs.DocsFenceTreatmentTest", tail)
+        self.assertIn("afield.tools.docs.CitationContractTest", tail)
 
     def test_every_lander_guard_is_prechecked_or_exempted(self) -> None:
         # The family of gap behind N1029-1: a guard the lander runs that no precheck path selects.

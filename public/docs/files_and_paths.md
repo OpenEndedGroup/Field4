@@ -182,6 +182,14 @@ fun load(@CompletesPath("*.3dm") path: String, ...): RhinoModel
 `@CompletesPath` takes the same `mask` a [file chooser](visualizers.md#choosing-a-file) does, a `root` for relative
 paths (a FileManager spec; blank is the document's `files/`), and `chooseDirectory`.
 
+Field's other file loaders are declared the same way, so each lists only what it can read:
+`imgFromFile` images, `meshFromAnyFile` meshes, `npy` and `npz` NumPy arrays, `Bvh.read` motion
+capture, `typefaceFromFile` fonts, `GltfSupport.loadGltfBasic` glTF, `dirt` and
+`MegaTextureSpec.folder` folders. They also open what completion offers: a relative name that is not
+a file in Field's working directory resolves the way `"name".file` does, in the document's `files/`,
+its projects and `%name/` roots. Absolute and `~/` paths, and relative paths that worked before, open
+as they always did.
+
 The same panel completes strings that are not files. Once a box has run
 `val model = Rhino3dm.load("house.3dm")`, typing `model.layer("` or `model.on("` offers the full
 path of every layer in that model, narrowed as you type, so `"wal"` finds `"Building::Walls"`.
@@ -227,6 +235,13 @@ still finds its annotation but hands the provider no receiver. Field finds these
 reflection on compiled code: on functions in Field itself, in your `src/personal` layer, and on the
 members of a box's class once a variable holds one. It does not see a top-level function declared
 in a box.
+
+A few names in the document complete too. `named("` offers the boxes in the document,
+`display("` and `displayOpen("` the output channels this box and its neighbours already use, and
+`fromContextWithNameOrNull<Renderer>("` the variables of this box's parents, nearest first.
+`notation.named("` offers the labels in the drawing layer. The first three providers are public
+(`BoxNames`, `OutputChannels`, `ContextVariableNames`), so a function of your own that takes a box
+name can declare `@CompletesWith(BoxNames::class)`.
 
 ## When resolution fails
 
