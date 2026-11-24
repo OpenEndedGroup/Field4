@@ -283,7 +283,10 @@ Winding is what decides which contours are holes, under a `FillRule`. Read a reg
 measured on an annulus, `+3.1413` outer and `−0.7853` inner. Field's default is `FillRule.POSITIVE`
 rather than Clipper's `EVEN_ODD`, because it is the rule under which winding *means* something: two
 overlapping same-wound outlines are one shape, where `EVEN_ODD` would punch their overlap out as a
-hole.
+hole. Manifold's `FillRule` is a superset of the two rules the rest of Field uses
+([Overlaps and fill rules](afield_four_graphics.md#overlaps-and-fill-rules)): `POSITIVE` and `NEGATIVE`
+count the sign of the winding, which only a solid boolean needs. Pass a line's own rule with
+`Section.ofFLines(lines, rule = line.fillRule)`, or convert one with `toManifold()`.
 
 [A Penrose relief](debruijn_tilings.md#a-relief-through-manifold) passes every rhombus of a tiling
 through `Section.ofFLines`, insets it with `offset`, and extrudes and unions the results into one
