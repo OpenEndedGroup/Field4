@@ -875,6 +875,78 @@ the seed, after a descent that reports convergence, and `unconstrainedParameters
 the first step. The loss cannot see it: there are no points out there to be off the surface. More
 iterations, a different optimiser or a restart do not change that; more of the view does.
 
+#### The same view, with noise
+
+A real scanner does not return points on the surface. Here is the same cropped view with
+`noise = 0.02` added to every point, five times the jitter of the first example and about a
+twentieth of the smallest radius:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/one_sided_noisy.png" wait="12.0" capture="box" open-outputs="true" padding="20"}
+:::static
+import afield.lang.solidsl.*
+
+val template =
+    smoothUnion(
+            smoothUnion(sphere(0.50), sphere(0.35).at(-0.80, 0.0, 0.0), 0.25),
+            sphere(0.42).at(0.80, 0.0, 0.0),
+            0.25,
+        )
+        .parameterize {
+            param("middle", "SmoothUnion/a/SmoothUnion/a/Sphere.radius")
+            param("left", "SmoothUnion/a/SmoothUnion/b/Translate/Sphere.radius")
+            param("right", "SmoothUnion/b/Translate/Sphere.radius")
+        }
+        .orThrow()
+
+val truth = doubleArrayOf(0.50, 0.35, 0.42)
+val seed = doubleArrayOf(0.30, 0.56, 0.20)
+
+// The same one-sided view, now with Gaussian jitter of 0.02 on every point.
+val cloud =
+    template.withValues(truth).samplePointCloud(count = 4000, seed = 4, noise = 0.02).filter { x, _, _ -> x < 0.10 }
+
+val fit = template.fitToPointCloud(cloud, seed)
+println(fit.report())
+for ((i, name) in template.names.withIndex()) {
+    println("%-6s fitted %.6f  truth %.2f  error %+.4f".format(name, fit.values[i], truth[i], fit.values[i] - truth[i]))
+}
+
+fun dots(c: SolidPointCloud, r: Float = 0.014f): TriMesh {
+    val pos = FloatArray(c.size * 18)
+    val faces = intArrayOf(0, 2, 4, 2, 1, 4, 1, 3, 4, 3, 0, 4, 2, 0, 5, 1, 2, 5, 3, 1, 5, 0, 3, 5)
+    val idx = IntArray(c.size * 24)
+    for (i in 0 until c.size) {
+        val x = c.xs[i].toFloat()
+        val y = c.ys[i].toFloat()
+        val z = c.zs[i].toFloat()
+        floatArrayOf(x + r, y, z, x - r, y, z, x, y + r, z, x, y - r, z, x, y, z + r, x, y, z - r).copyInto(pos, i * 18)
+        for (k in faces.indices) idx[i * 24 + k] = i * 6 + faces[k]
+    }
+    return TriMesh(pos, idx)
+}
+
+val right = template.names.indexOf("right")
+fun m(e: SolidExpr) = e.march(resolution = 96, margin = 0.05)
+threeGrid(
+    "the cloud  ·  ${cloud.size} points, noise 0.02" to dots(cloud),
+    "fitted  ·  right = %.6f".format(fit.values[right]) to m(fit.fitted),
+    "truth  ·  right = %.2f".format(truth[right]) to m(template.withValues(truth)),
+    channel = "one_sided_noisy",
+    columns = 3,
+    height = 230,
+    view =
+        MeshView(width = 250, height = 190, yawDegrees = 0.0, pitchDegrees = 30.0, distance = 3.6, wireframe = false),
+    padding = 1.41,
+)
+```
+
+![Three panels in a row, grey on a dark background, seen from above with X running left to right. First, labelled "the cloud, 2075 points, noise 0.02", a fuzzy scatter of grey dots tracing the left and middle lobes, its right edge ragged. Second, labelled "fitted, right = 0.200000", a left lobe and a larger middle lobe joined smoothly, with a small ball hanging off the middle by a thin neck. Third, labelled "truth, right = 0.42", three well-joined lobes](assets/solid_notation/one_sided_noisy.png)
+
+The printed errors show what the noise costs. `left` comes back at `0.352059` and `middle` at
+`0.500569`, errors of `+0.0021` and `+0.0006`: larger than the clean run's `4e-4`, still a
+fraction of the `0.02` jitter, because two thousand points average it out. `right` is `0.200000` again. Noise makes the parts of the shape you can see a little less
+certain; it does nothing for the part you cannot.
+
 ## Axis conventions
 
 Primitives are centred on the origin. Everything else follows Manifold's conventions unchanged:
