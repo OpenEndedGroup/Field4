@@ -2,7 +2,7 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 26041 of 43407 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 26042 of 43408 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
 **2090 undocumented entry points** (types, top-level functions and values) and 14506 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
@@ -401,7 +401,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [importHelp.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/importHelp.kt) | Workspace | — | 5 | 1 | 57% |
 | [Instructions.kt](../src/jvmMain/kotlin/afield/ai/conversation/Instructions.kt) | AI4 | — | 5 | 0 | 44% |
 | [controllers.kt](../src/jvmMain/kotlin/afield/app/server/controllers.kt) | Workspace | — | 5 | 0 | 16% |
-| [formatter.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/formatter.kt) | Workspace | — | 5 | 0 | 44% |
+| [formatter.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/formatter.kt) | Workspace | — | 5 | 0 | 50% |
 | [Layout.kt](../src/jvmMain/kotlin/afield/graphics/text/sentences/Layout.kt) | Graphics | — | 4 | 39 | 62% |
 | [ExternalBrowserSurface.kt](../src/jvmMain/kotlin/afield/media/browser/ExternalBrowserSurface.kt) | Imaging | — | 4 | 32 | 28% |
 | [Sentence.kt](../src/jvmMain/kotlin/afield/graphics/text/sentences/Sentence.kt) | Graphics | — | 4 | 31 | 41% |
