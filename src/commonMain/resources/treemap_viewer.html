@@ -432,6 +432,8 @@ window.fieldTreemap.find = (name) => { for (let i = 0; i < (frame ? frame.count 
 window.fieldTreemap.name = (i) => nameOf(i);
 window.fieldTreemap.flags = (i) => cells.flags[i];
 window.fieldTreemap.camera = camera;
+window.fieldTreemap.state = () => ({ t: morphT(), duration: morph.duration, since: performance.now() - morph.start,
+  leaving: instances ? instances.leaving : 0, count: instances ? instances.count : 0, awake });
 
 // ---- pointer -----------------------------------------------------------------------------------------------------
 
@@ -541,6 +543,8 @@ function el(tag, attrs, ...children) {
 }
 const css = (rgba) => `rgba(${rgba[0]},${rgba[1]},${rgba[2]},${(rgba[3] / 255).toFixed(3)})`;
 function renderChrome() {
+  if (document.body.style.fontFamily !== frame.font) document.body.style.fontFamily = frame.font;
+  if (frame.hint) document.getElementById('hint').textContent = frame.hint;
   const crumbs = document.getElementById('crumbs');
   crumbs.replaceChildren();
   frame.crumbs.forEach((c, i) => {
@@ -569,7 +573,11 @@ function renderChrome() {
     ...(row.share == null ? [] : [el('span', { className: 'share', textContent: shareText(row.share) })]))));
   resize();
 }
-function shareText(f) { return f >= 0.1 ? `${Math.round(f * 100)}%` : f >= 0.001 ? `${(f * 100).toFixed(1)}%` : '<0.1%'; }
+function shareText(f) {
+  // Never round a part up to the whole: 99.6% stays 99.6%.
+  if (f >= 0.1) return Math.round(f * 100) === 100 && f < 1 ? `${(Math.floor(f * 1000) / 10).toFixed(1)}%` : `${Math.round(f * 100)}%`;
+  return f >= 0.001 ? `${(f * 100).toFixed(1)}%` : '<0.1%';
+}
 
 // ---- drawing -----------------------------------------------------------------------------------------------------
 
@@ -638,8 +646,11 @@ function drawLabels(t, w, h) {
   if (!instances || !frame) return;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   const size = frame.labelSize;
-  const regular = `${size}px system-ui, -apple-system, "Segoe UI", sans-serif`;
-  const bold = `600 ${size}px system-ui, -apple-system, "Segoe UI", sans-serif`;
+  const regular = `${size}px ${frame.font}`;
+  const bold = `600 ${size}px ${frame.font}`;
+  const badges = frame.branchLabels === 'badge';
+  const placed = [];
+  const ops = [];
   ctx.textBaseline = 'top';
   const r0 = instances.rect0, r1 = instances.rect1, leaving = instances.leaving;
   // The server laid out headers in screen pixels at the zoom it last heard about ([frame.ppu]); this is them now.
@@ -654,6 +665,9 @@ function drawLabels(t, w, h) {
     if (x1 < 0 || y1 < 0 || x0 > w || y0 > h) continue;
     const flags = cells.flags[i];
     const open = (flags & 1) !== 0;
+    // The focus is named by the breadcrumbs; a badge on it would only cover its first child's.
+    if (open && badges) { if (i > 0 && x1 - x0 > 60 && y1 - y0 > size * 3) placed.push(i); continue; }
+    if (!open && x1 - x0 < frame.leafLabelMinWidth) continue;
     if (open && (!(flags & 4) || header < size + 3)) continue;
     // Labels keep to the part of their cell that is on screen, so a zoomed-in branch is still named.
     const vx0 = Math.max(x0, 0), vx1 = Math.min(x1, w);
@@ -682,12 +696,60 @@ function drawLabels(t, w, h) {
     const slack = Math.min(room - textWidth(ctx, text, isBold), sh - size - 4);
     ctx.globalAlpha = Math.max(0.35, Math.min(1, 0.35 + slack / 12)) * (instances.col1[4 * k + 3] / 255) *
       (t < 1 && instances.col0[4 * k + 3] === 0 ? t : 1);
-    ctx.fillStyle = inkFor(k);
-    ctx.fillText(text, vx0 + 4, vy0 + (open ? Math.max(2, (header - size) / 2) : 3));
+    ops.push([text, vx0 + 4, vy0 + (open ? Math.max(2, (header - size) / 2) : 3), ctx.globalAlpha, inkFor(k), isBold,
+      textWidth(ctx, text, isBold)]);
+  }
+  // Badges are placed first, and a cell label they would cover is left out.
+  const taken = badges ? placeBadges(ctx, placed, t, w, h, size) : [];
+  for (const [text, x, y, alpha, ink, isBold, tw] of ops) {
+    if (taken.some((q) => x < q[2] && x + tw > q[0] && y < q[3] && y + size > q[1])) continue;
+    ctx.font = isBold ? bold : regular;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = ink;
+    ctx.fillText(text, x, y);
     drawn++;
   }
   ctx.globalAlpha = 1;
-  stats.labels = drawn;
+  for (const q of taken) {
+    ctx.font = q[5];
+    ctx.fillStyle = 'rgba(12,12,13,0.86)';
+    ctx.fillRect(q[0], q[1], q[2] - q[0], q[3] - q[1]);
+    ctx.fillStyle = 'rgba(240,236,226,0.96)';
+    ctx.fillText(q[4], q[0] + 4, q[1] + 3);
+  }
+  stats.labels = drawn + taken.length;
+}
+
+/**
+ * Where branch names go as dark badges over their cells, parents first: [x0, y0, x1, y1, text, font] each. A badge
+ * that would cover one already placed is left out, so a zoom reveals the deeper names as there becomes room for them.
+ */
+function placeBadges(ctx, order, t, w, h, size) {
+  const r0 = instances.rect0, r1 = instances.rect1, leaving = instances.leaving;
+  const taken = [];
+  let drawn = 0;
+  for (const i of order) {
+    if (drawn > 400) break;
+    const b = 4 * (leaving + i);
+    const x0 = (r0[b] + (r1[b] - r0[b]) * t) * camera.scale + camera.tx;
+    const y0 = (r0[b + 1] + (r1[b + 1] - r0[b + 1]) * t) * camera.scale + camera.ty;
+    const x1 = (r0[b + 2] + (r1[b + 2] - r0[b + 2]) * t) * camera.scale + camera.tx;
+    const vx0 = Math.max(x0, 0), vy0 = Math.max(y0, 0);
+    const top = cells.depth[i] <= 1;
+    const fontSize = top ? size * 1.18 : size;
+    ctx.font = `${top ? '600 ' : ''}${fontSize}px ${frame.font}`;
+    const name = nameOf(i);
+    const room = Math.min(x1, w) - vx0 - 10;
+    let text = name;
+    if (ctx.measureText(text).width > room) continue;
+    const bw = ctx.measureText(text).width + 8, bh = fontSize + 6;
+    const bx = vx0 + 2, by = vy0 + 2;
+    if (by > h || bx > w) continue;
+    if (taken.some((q) => bx < q[2] && bx + bw > q[0] && by < q[3] && by + bh > q[1])) continue;
+    taken.push([bx, by, bx + bw, by + bh, text, ctx.font]);
+    drawn++;
+  }
+  return taken;
 }
 
 window.addEventListener('keydown', (event) => { if (event.key === 'Escape') send({ type: 'zoom-out' }); });

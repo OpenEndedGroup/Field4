@@ -135,6 +135,22 @@ class Treemap internal constructor(private val owner: Box?, val channel: String,
     /** Label size in screen pixels. */
     var labelSize = 11.0
 
+    /**
+     * How branches are named: [TreemapBranchLabels.HEADER] gives each a strip along its top, with room made for it
+     * in the layout; [TreemapBranchLabels.BADGE] puts the name in a dark badge over the branch's own cells, which
+     * keeps a dense map dense.
+     */
+    var branchLabels = TreemapBranchLabels.HEADER
+
+    /** The line under the treemap saying what the mouse does; null keeps the viewer's own. */
+    var hint: String? = null
+
+    /** A leaf is labelled only when it is at least this many screen pixels wide; zoom in to read smaller ones. */
+    var leafLabelMinWidth = 26.0
+
+    /** The CSS font family the viewer writes labels, breadcrumbs and the legend in. */
+    var labelFont = "system-ui, -apple-system, \"Segoe UI\", sans-serif"
+
     /** The colour behind the cells, showing through the padding. */
     var background: Vec4 = vec(0.075, 0.08, 0.095, 1.0)
 
@@ -272,7 +288,7 @@ class Treemap internal constructor(private val owner: Box?, val channel: String,
             tiling = tiling,
             paddingInner = paddingInner * px,
             paddingOuter = paddingOuter * px,
-            paddingTop = headerHeight * px,
+            paddingTop = if (branchLabels == TreemapBranchLabels.HEADER) headerHeight * px else 0.0,
             headerMinSize = headerMinSize(px),
             rootHeader = rootHeader,
             sort = sort,
@@ -319,6 +335,10 @@ class Treemap internal constructor(private val owner: Box?, val channel: String,
                 colorings = colorings.keys.toList(), coloring = coloring,
                 selectionRgba = rgbaBytes(SELECTION),
                 valueFormat = if (formatValue != null) "tab" else "none",
+                branchLabels = branchLabels.name.lowercase(),
+                leafLabelMinWidth = leafLabelMinWidth,
+                hint = hint,
+                font = labelFont,
             )
         }
     }
@@ -498,7 +518,9 @@ class Treemap internal constructor(private val owner: Box?, val channel: String,
         synchronized(lock) { memory.view = v }
         // Redraw for a pan or zoom by hand, or for a fitted scale the layout was not made for; not for a fit it already has.
         val rescaled = previous == null || abs(ln(previous.pixelsPerUnit / v.pixelsPerUnit)) > 0.05
-        if (v.manual || previous?.manual == true || rescaled) draw(min(transition, 0.25))
+        // The first fit only corrects the layout for the scale it is really shown at: no one should see that move.
+        val seconds = if (previous == null && !v.manual) 0.0 else min(transition, 0.25)
+        if (v.manual || previous?.manual == true || rescaled) draw(seconds)
     }
 
     private fun defaultDescription(node: TreemapNode): String {
@@ -519,6 +541,9 @@ class Treemap internal constructor(private val owner: Box?, val channel: String,
         private val TEXT_DARK = vec(0.06, 0.07, 0.08, 1.0)
     }
 }
+
+/** How a [Treemap] names its branches. */
+enum class TreemapBranchLabels { HEADER, BADGE }
 
 /** What a treemap keeps across redraws and box runs: plain keys only, so it never pins a box's classes. */
 internal class TreemapMemory {

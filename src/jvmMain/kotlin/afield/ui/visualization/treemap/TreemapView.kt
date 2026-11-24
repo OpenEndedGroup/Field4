@@ -101,6 +101,11 @@ internal data class TreemapFrameMessage(
     val coloring: String? = null,
     val selectionRgba: List<Int>,
     val valueFormat: String,
+    /** `header` or `badge`: see [Treemap.branchLabels]. */
+    val branchLabels: String = "header",
+    val font: String = "system-ui, sans-serif",
+    val leafLabelMinWidth: Double = 26.0,
+    val hint: String? = null,
     val type: String = "treemap/frame",
 )
 
