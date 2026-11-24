@@ -26,6 +26,8 @@ import java.util.concurrent.ConcurrentHashMap
  * [currentCode] reads the box's source property now (it is a function because the box is held
  * weakly and its code changes while it runs). [classLoader] is the loader the snippet's call targets
  * resolve against; [CallTargets] reads class bytes from it as resources, never loading a class.
+ * [owner] is the box [label] names (the engine's own box), also held weakly; the runaway-box
+ * watchdog reads its `watchdog` property from another thread.
  */
 class SnippetOrigin(
     val boxId: String?,
@@ -34,10 +36,16 @@ class SnippetOrigin(
     val label: String,
     val sourceText: String?,
     classLoader: ClassLoader?,
+    owner: afield.document.graph.Box? = null,
+    // Last, so callers keep passing it as a trailing lambda.
     private val currentCode: () -> String? = { null },
 ) {
     // Weak: the engine's loader must not outlive its box because a site or class record names it.
     private val loaderRef = classLoader?.let { WeakReference(it) }
+    private val ownerRef = owner?.let { WeakReference(it) }
+
+    /** The box [label] names, while it is alive; null for detached snippets. */
+    val owner: afield.document.graph.Box? get() = ownerRef?.get()
 
     /** The loader the snippet's call targets resolve against, while it is alive. */
     val classLoader: ClassLoader? get() = loaderRef?.get()

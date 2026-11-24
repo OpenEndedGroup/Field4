@@ -36,6 +36,11 @@ Source: `src/jvmMain/kotlin/afield/runtime/lifecycle/BoxInterrupt.kt`.
 - **Naming the culprit.** `RunScope.current()` and `Box.context` are thread-locals, unreadable from
   the watchdog; instead each instrumented class name is recorded against its box label, and the
   innermost matching frame of `Runloop.mainThread.stackTrace` names the box.
+- **Per-box allowance.** `Box.watchdog` (seconds, persisted; `0`/infinity = never, null = the
+  global `interruptMs`) replaces the interrupt delay for a stall whose *outermost* snippet frame
+  belongs to that box, i.e. the run the Runloop entered. Each class record also holds its box
+  weakly (`SnippetOrigin.owner`) so the watchdog thread can read the property; it re-reads the
+  stack for the allowance at most once a second of a stall (`BoxInterrupt.allowanceFor`).
 
 Switches: one three-way mode, `afield.runtime.lifecycle.BoxInstrumentation`
 (`src/jvmMain/kotlin/afield/runtime/lifecycle/BoxInstrumentation.kt`):
