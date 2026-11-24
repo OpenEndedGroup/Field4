@@ -211,6 +211,22 @@ class Pages(Journal):
         self.assertIn("It does things.", (self.dir / repo.page).read_text())
         self.assertEqual({article.status, repo.status}, {"fetched"})
 
+    def test_a_discourse_topic_is_read_from_its_json(self) -> None:
+        item = self.add("Open firmware for a grid controller", "https://forum.example/t/open-grid/75895")
+        item.move("queued")
+        fetcher = FakeFetcher({
+            "https://forum.example/t/open-grid/75895.json": (200, "application/json", {
+                "title": "Open firmware for a grid controller", "posts_count": 3, "post_stream": {"posts": [
+                    {"username": "ann", "cooked": "<p>Firmware with a Lua VM.</p>"},
+                    {"username": "bo", "cooked": "<p>Does it speak serialosc?</p>"}]}}),
+            "https://forum.example/t/open-grid/75895": (200, "text/html", "<html><body><noscript>x</noscript></body></html>"),
+        })
+        scout.fetch(self.ledger, fetcher, log=lambda _: None)
+        text = (self.dir / item.page).read_text()
+        self.assertIn("[ann] Firmware with a Lua VM.", text)
+        self.assertIn("[bo] Does it speak serialosc?", text)
+        self.assertIn("[1 later posts not fetched]", text)
+
     def test_a_thin_page_gets_its_hn_discussion(self) -> None:
         item = self.add("A WebGPU demo", "https://app.example/demo", hn="77")
         item.move("queued")
