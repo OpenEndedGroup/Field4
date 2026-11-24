@@ -50,8 +50,13 @@ GUIDE = textwrap.dedent("""\
 
 class TempRepo:
     def __init__(self) -> None:
+        # One level down, so that worktrees the code under test puts beside the checkout (a pass's,
+        # a handoff session's `handoffs-<batch>-<minute>`) land in this test's own directory rather
+        # than the shared system temp dir, where two runs in the same minute collided (the lander's
+        # and an agent's, 2026-11-24).
         self._dir = TemporaryDirectory()
-        self.root = Path(self._dir.name)
+        self.root = Path(self._dir.name) / "repo"
+        self.root.mkdir()
         self.git("init", "-q", "-b", "main")
         self.git("config", "user.email", "t@example.com")
         self.git("config", "user.name", "Test")
@@ -535,7 +540,7 @@ class PassTest(unittest.TestCase):
         self.store_path.write_text(json.dumps({"version": 1, "annotations": [
             {"id": "11111111-a", "pageUrl": PAGE, "note": "reword", "anchor": {"exact": "then continue to the next step"}},
             {"id": "33333333-c", "pageUrl": other, "note": "fine?", "anchor": {"exact": "A second page"}}]}))
-        self.worktree = Path(self.repo._dir.name + "-wt")
+        self.worktree = self.repo.root.parent / "pass-wt"
         # `pass land` checks before it enqueues; never with the real precheck in a throwaway repo.
         guard = mock.patch.dict(os.environ, {dn.GUARD_ENV: f"{sys.executable} -c pass"})
         guard.start()
@@ -746,7 +751,7 @@ class GuardLoopTest(unittest.TestCase):
             {"id": "11111111-a", "pageUrl": PAGE, "note": "write }.present()", "anchor": {"exact": "then continue to the next step"}},
             {"id": "33333333-c", "pageUrl": "https://openendedgroup.com/field4/other/", "note": "fine?",
              "anchor": {"exact": "A second page"}}]}))
-        self.worktree = Path(self.repo._dir.name + "-wt")
+        self.worktree = self.repo.root.parent / "pass-wt"
         guard = mock.patch.dict(os.environ, {dn.GUARD_ENV: f"{sys.executable} {{root}}/guard.py"})
         guard.start()
         self.addCleanup(guard.stop)
