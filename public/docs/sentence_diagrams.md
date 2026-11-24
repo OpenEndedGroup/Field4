@@ -255,6 +255,13 @@ only the score leaves the physics, prepared outlines and renderer alive. Stop Dr
 rebuilding graph topology or fonts. The example source and detailed guide are in
 `templates/text_one/`.
 
+To play a score more slowly without rewriting its times, set `player.playback.rate`: `.5` is
+half speed. The rate changes score time only; physics and text facing keep real time.
+
+Arrowheads turn about their line to face the reader, so a head stays an arrow when you walk
+round it in a headset. They turn gradually, with `arrowFacingHalfLife` seconds (default `.6`,
+`0` turns at once); `arrowFacesReader = false` keeps a path's heads in the diagram's XY plane.
+
 Build the scene with [`ReadingDiagram`](reference/graphics.md#diagramdsl-kt-readingdiagram).
 [`ReadingDiagramPlayer.prepare`](reference/graphics.md#readingdiagramplayer-kt--readingdiagramplayer-companion--prepare) prepares its native text once;
 [`textFrame`](reference/graphics.md#diagramtextframe-kt--textframe) fits a surround to a run, and

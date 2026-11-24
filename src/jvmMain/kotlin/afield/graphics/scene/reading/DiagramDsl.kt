@@ -314,6 +314,20 @@ internal constructor(id: String, owner: Any, internal val make: DiagramFrame.() 
             ink = ink.copy(arrow = value)
         }
 
+    /**
+     * Arrowheads turn about the line so that their barbs face the reader, rather than staying in
+     * the diagram's XY plane where a reader walking round sees them edge-on. They turn with this
+     * half-life in seconds; zero turns them at once.
+     */
+    var arrowFacingHalfLife = .6f
+        set(value) {
+            require(value.isFinite() && value >= 0)
+            field = value
+        }
+
+    /** False keeps this path's arrowheads in the diagram's XY plane. */
+    var arrowFacesReader = true
+
     fun dashed(period: Float = .03f, duty: Float = .55f, phase: Float = 0f) {
         require(period.isFinite() && period > 0 && duty in 0f..1f && phase.isFinite())
         ink = ink.copy(dashPeriod = period, dashDuty = duty, dashPhase = phase)

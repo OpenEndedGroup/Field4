@@ -353,6 +353,13 @@ class DiagramPlayback(var score: DiagramScore) {
     var playing = true
     var repeat = true
 
+    /** Score seconds per real second: .5 plays at half speed. Physics keeps real time. */
+    var rate = 1.0
+        set(value) {
+            require(value.isFinite() && value >= 0)
+            field = value
+        }
+
     fun restart() {
         time = 0.0
     }
@@ -363,7 +370,7 @@ class DiagramPlayback(var score: DiagramScore) {
     }
 
     internal fun advance(seconds: Double) {
-        if (playing) time += seconds
+        if (playing) time += seconds * rate
     }
 
     val sampleTime
