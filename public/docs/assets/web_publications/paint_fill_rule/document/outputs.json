@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-24T09:37:32.483Z",
+  "documentName": "paint_fill_rule",
+  "outputs": [
+    {
+      "uid": "pfr_worked",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 469,
+      "height": 45,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "pfr_against_gezira",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 469,
+      "height": 45,
+      "path": "outputs/1.html"
+    }
+  ]
+}
