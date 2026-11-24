@@ -857,12 +857,86 @@ lines(shown, w = 1000.0, h = 400.0, fitToSize = true)
 
 ![Two copies of the L-shaped room with the bay, side by side. Left, the field double spiral: laps crowded in the narrow upper wing, spread wider in the main room, angular where they turn, and a bare patch in the middle. Right, the same pipe after relaxing: smooth rounded laps at an even spacing, following the walls, sweeping into the bay, winding further into the middle, red supply and blue return still alternating all the way in and nowhere crossing](assets/mesh_examples/relaxed_spiral.png)
 
-On this room the relaxed pipe keeps every lap at least 0.061 from the next (the spacing is 0.07),
-bends no tighter than a radius of 0.021, and crosses itself nowhere; the largest bare circle on the
-floor shrinks from 0.111 to 0.097 (`largestBareCircle` measures it). A real pipe has a minimum bend
-radius: raise `stiffness` until `tightestBend` clears it. Started from a short arc between the two
-ports instead of the field spiral, the same forces would fill the room with a meander, not a spiral:
-relaxing keeps the shape it is given, it does not choose one.
+The forces leave small kinks where they fought, so `relaxPath` finishes with Taubin smoothing (a
+shrinking step and then a slightly larger growing one, which removes wiggles a few points long and
+leaves the size alone), in batches that are undone if they would cross, bring laps closer, or touch
+a wall. On this room the relaxed pipe keeps every lap at least 0.057 from the next (the spacing is
+0.07), bends no tighter than a radius of 0.027, and crosses itself nowhere; the largest bare circle
+on the floor shrinks from 0.111 to 0.098 (`largestBareCircle` measures it). A real pipe has a
+minimum bend radius: raise `stiffness` until `tightestBend` clears it. Started from a short arc
+between the two ports instead of the field spiral, the same forces would fill the room with a
+meander, not a spiral: relaxing keeps the shape it is given, it does not choose one.
+
+The ports go where the manifold is. Given a `port`, `windingAngle` runs its cut downhill on the
+distance from that point of the wall instead of from the nearest wall, so the cut, and with it both
+ends of the spiral, comes out there. Here are eight ports spaced evenly round the walls, each laid
+as a field spiral and relaxed:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/mesh_examples/port_sweep.png" wait="3.0" capture="box" open-outputs="true" padding="20" timeout="240"}
+// The L-shaped room, with the supply and return ports moved round the walls.
+val bay =
+    (0..16).map { i ->
+        val a = kotlin.math.PI * i / 16
+        vec(-1.0 - 0.3 * kotlin.math.sin(a), 0.25 + 0.25 * kotlin.math.cos(a))
+    }
+val plan = [vec(-1.0, -0.7), vec(1.0, -0.7), vec(1.0, 0.1), vec(0.1, 0.1), vec(0.1, 0.7), vec(-1.0, 0.7)] + bay
+val floor = outlineMesh(plan, 0.0125)
+val fromWalls = floor.geodesicDistanceFromBoundary()
+val wall = outlineWallDistance(plan)
+val spacing = 0.07
+
+// Eight ports, evenly spaced by length round the walls.
+val loop = plan + plan.first()
+val sides = loop.zipWithNext { a, b -> a.distance(b).toDouble() }
+val perimeter = sides.sum()
+fun pointRound(t: Double): Vec3 {
+    var left = t * perimeter
+    for ((i, side) in sides.withIndex()) {
+        if (left <= side) {
+            val a = loop[i]
+            val b = loop[i + 1]
+            val u = (left / side).toFloat()
+            return vec(a.x + u * (b.x - a.x), 0f, a.y + u * (b.y - a.y))
+        }
+        left -= side
+    }
+    return vec(loop.last().x, 0f, loop.last().y)
+}
+
+val shown = ArrayList<FLine>()
+val walls = loop.map { vec(it.x, 0f, it.y) }
+for (k in 0 until 8) {
+    val port = pointRound(k / 8.0)
+    val (supply, back) = floor.windingAngle(fromWalls, port = port).fieldDoubleSpiral(spacing)
+    val pipe = relaxPath(supply, back, spacing, wall, steps = 1000)
+    val dx = (k % 4) * 780f
+    val dy = (k / 4) * 540f
+    fun drawn(path: List<Vec3>) = path.map { vec(it.x * 300f + dx, it.z * 300f + dy, 0f) }
+    shown += drawn(walls).toFLine3(vec(0.45, 0.45, 0.45, 1.0), 3.0)
+    shown += drawn(pipe.first).toFLine3(vec(0.9, 0.25, 0.15, 1.0), 3.0)
+    shown += drawn(pipe.second).toFLine3(vec(0.15, 0.4, 0.9, 1.0), 3.0)
+    shown +=
+        drawn(
+            (0..24).map { i ->
+                val a = 2 * kotlin.math.PI * i / 24
+                vec(port.x + 0.05f * kotlin.math.cos(a).toFloat(), 0f, port.z + 0.05f * kotlin.math.sin(a).toFloat())
+            },
+        ).toFLine3(vec(1.0, 0.9, 0.3, 1.0), 2.5)
+    println(
+        "port ${k + 1}: ${(pipe.length * 2).f1} m, closest ${pipe.closest.f3}, bend ${pipe.tightestBend.f3}, crossings ${pipe.crossings}",
+    )
+}
+lines(shown, w = 1100.0, h = 420.0, fitToSize = true)
+```
+
+![Eight small copies of the L-shaped room with the bay, in two rows of four, each with a yellow circle on the wall marking its ports: the top-left corner, the middle of the top wall, near the top-right corner, the right end wall, the inside corner, the middle of the lower wall, the bottom-left corner, and the bay. In each, a red supply and a blue return pipe start side by side at the marked port and wind inward as a double spiral, evenly spaced, with the winding turned so that its outermost lap leaves from the port](assets/mesh_examples/port_sweep.png)
+
+Every one of the eight crosses itself nowhere and keeps laps at least 0.056 apart. The pipe runs
+from 39.9 m to 43.1 m depending on where the ports are: the spiral has to reach the far corners
+from wherever it starts, and some starts make that a longer way round. Aiming the cut also showed
+that a cut need not be monotone in the distance from the walls, so a contour can meet it twice and
+break in two; `fieldSpiral` chains the pieces end to end, since each piece that ends on one side of
+the cut is continued by the one starting at the same point on the other.
 
 Before finishing comes roughing: a flat-bottomed tool clears the block one horizontal layer at a
 time, following the part's outline at each height. `roughingPasses(stepDown)` gives those
