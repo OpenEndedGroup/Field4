@@ -655,6 +655,9 @@ object DemoTranscriptExecSmokeTest {
         // scribble aiTool that paints on it. No model is called; without the paint library the Studio
         // says so and stops, like paint_canvas.
         "ai4_paint_studio",
+        // paint_canvas.md, Overlapping regions and the fill rule: regions worked and glazed under each fill rule,
+        // checked against Gezira; pure CPU, and without the paint library the boxes say so and stop.
+        "paint_fill_rule",
         // One pure-CPU box that keeps a StackSLEvolution on itself and registers an agentExtension over
         // it (evolve_* tools, context, commands, the population as branch state). Executing it renders
         // only the target: the search, LPIPS and the watchmaker start at the first evolve_step, which

@@ -3,6 +3,7 @@ package afield.graphics.paint
 
 import afield.app.protocol.Rect
 import afield.geometry.path.FLine
+import afield.geometry.path.resolveFillRule
 import afield.math.linalg.Vec2
 import afield.math.linalg.Vec3
 import afield.math.linalg.Vec4
@@ -946,8 +947,13 @@ class PaintCanvas internal constructor(
         if (pts.size < 2) null else toCanvas(pts.flatMap { listOf(it.x.toDouble(), it.y.toDouble()) })
     }
 
-    /** Each subpath of [region] as a ring, in canvas units. */
-    private fun rings(region: FLine): List<FloatArray> = polylines(region, 2.0).filter { it.size >= 6 }.also {
+    /**
+     * Each subpath of [region] as a ring, in canvas units. The paint crate fills rings even-odd, so
+     * a region carrying a `fillRule` attribute is first resolved under that rule into
+     * non-overlapping outlines and holes (`resolveFillRule`, the path [FLine.tessellate] uses),
+     * which even-odd then fills exactly. A region with no rule set keeps the old even-odd fill.
+     */
+    private fun rings(region: FLine): List<FloatArray> = polylines(region.resolveFillRule(), 2.0).filter { it.size >= 6 }.also {
         require(it.isNotEmpty()) { "a region needs at least one closed subpath with some area" }
     }
 

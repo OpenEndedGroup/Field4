@@ -245,6 +245,33 @@ canvas.outline(
 display("main", canvas.png())
 ```
 
+### Overlapping regions and the fill rule
+
+A region whose rings overlap, or cross themselves, is filled by its `fillRule`, the same attribute
+every FLine filler in Field reads (see [the fill rule](afield_four_graphics.md)). With
+`FillRule.NON_ZERO` the overlap is painted too; with `FillRule.EVEN_ODD`, or no rule set at all, it
+is left bare, as a hole. `work`, `stipple`, `glaze`, `hatch` and `erase` all follow it.
+
+Below, the same two overlapping squares are worked twice, non-zero on the left and even-odd on the
+right.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/fill_rule.png" alt="two paintings side by side on white, each of two overlapping squares worked in blue Body strokes. On the left the squares merge into one solid blue shape. On the right the square where they overlap is clean white" wait="15" capture="box" open-outputs="true" padding="20" requires="paint" name="fill_rule" embed=true}
+:::static
+import afield.graphics.nile.*
+
+val canvas = PaintCanvas(900, aspect = 2.0, sizeMm = 300.0)
+
+fun squares(dx: Double, rule: FillRule) = FLine()
+    .rect(dx + 60.0, 60.0, 220.0, 220.0)
+    .rect(dx + 180.0, 180.0, 220.0, 220.0)
+    .also { it.fillRule = rule }
+
+canvas.work(squares(0.0, FillRule.NON_ZERO), rgb(0.2, 0.4, 0.6), Handling.Body, angle = 0.5, clip = true)
+canvas.work(squares(500.0, FillRule.EVEN_ODD), rgb(0.2, 0.4, 0.6), Handling.Body, angle = 0.5, clip = true)
+
+display("main", canvas.png())
+```
+
 For single marks there is `touch(brush, x, y)`, which presses the brush tip down and lifts it with
 no path: a dab. `drag`, `twist` and `angle` move, roll and turn the tip while it is down.
 
