@@ -159,13 +159,13 @@ class PathSet internal constructor(
     /** Glob-filter an existing set with the same `*` / `**` / `|` rules as [graphPaths]. */
     fun matching(pattern: String): PathSet {
         val branches = splitAlternatives(pattern)
-        return PathSet(root, refs.filter { globMatchesAny(it.pathSegments, branches) })
+        return PathSet(root, refs.filter { refMatchesAny(root, it, branches) })
     }
 
     /** Glob-filter *out* the matches — the complement of [matching]. */
     fun excluding(pattern: String): PathSet {
         val branches = splitAlternatives(pattern)
-        return PathSet(root, refs.filterNot { globMatchesAny(it.pathSegments, branches) })
+        return PathSet(root, refs.filterNot { refMatchesAny(root, it, branches) })
     }
 
     // ── predicates: the XPath `[...]` half of the story ─────────────────────
@@ -762,7 +762,7 @@ class GraphPattern internal constructor(val pattern: String, internal val branch
 
     /** Leading segments that are plain names — the part we can descend without searching. */
     internal val staticPrefix: List<String> =
-        onlyBranch?.takeWhile { !it.contains('*') } ?: emptyList()
+        onlyBranch?.takeWhile { !it.contains('*') && !it.contains(TYPE_TEST) } ?: emptyList()
 
     /** True when the whole pattern is literal, so exactly one slot can match. */
     val isStatic: Boolean get() = onlyBranch != null && staticPrefix.size == onlyBranch.size
@@ -803,7 +803,7 @@ class GraphPattern internal constructor(val pattern: String, internal val branch
                 val refs = mutableListOf<GraphPathRef>()
                 if (resolved.value != null || options.includeNulls) refs += resolved.ref
                 refs += GraphWalker.scanSubtree(resolved.value, staticPrefix, options, resolved.ancestors)
-                return PathSet(root, refs.filter { globMatchesAny(it.pathSegments, branches) })
+                return PathSet(root, refs.filter { refMatchesAny(root, it, branches, options) })
             }
         }
 
@@ -879,30 +879,101 @@ internal fun splitGlob(path: String): List<String> =
  * Empty alternatives are dropped, so a trailing bar is harmless and `"|"` matches nothing.
  */
 internal fun splitAlternatives(pattern: String): List<List<String>> =
-    pattern.split('|').map { splitGlob(it) }.filter { it.isNotEmpty() }
+    pattern.split('|').map { branch ->
+        // `**::T` is "any depth, ending at a T": the same as `**/*::T`.
+        splitGlob(branch).flatMap { if (it.startsWith("**$TYPE_TEST")) listOf("**", "*" + it.removePrefix("**")) else listOf(it) }
+    }.filter { it.isNotEmpty() }
 
 /** True when [path] satisfies any one of [branches] — the whole of what `|` means. */
 internal fun globMatchesAny(path: List<String>, branches: List<List<String>>): Boolean =
     branches.any { globMatches(path, it) }
 
+/**
+ * Does [ref] satisfy any of [branches], `::Type` tests included? A type test on the last
+ * segment reads the ref's own value; one on an earlier segment resolves that prefix from [root],
+ * only when the names have matched that far.
+ */
+internal fun refMatchesAny(
+    root: Any?,
+    ref: GraphPathRef,
+    branches: List<List<String>>,
+    options: GraphWalkOptions = GraphWalkOptions(),
+): Boolean {
+    val path = ref.pathSegments
+    val values = HashMap<Int, Any?>()
+    val valueAt = { index: Int ->
+        values.getOrPut(index) {
+            if (index == path.lastIndex) ref.get()
+            else GraphWalker.resolveStatic(root, path.subList(0, index + 1), options)?.value
+        }
+    }
+    return branches.any { globMatches(path, it, valueAt = valueAt) }
+}
+
 internal fun globMatches(
     path: List<String>,
     pattern: List<String>,
     pathIndex: Int = 0,
-    patternIndex: Int = 0
+    patternIndex: Int = 0,
+    valueAt: (Int) -> Any? = { null },
 ): Boolean {
     if (patternIndex >= pattern.size) return pathIndex >= path.size
     val token = pattern[patternIndex]
     return when (token) {
         "**" -> {
             if (patternIndex == pattern.lastIndex) true
-            else (pathIndex..path.size).any { next -> globMatches(path, pattern, next, patternIndex + 1) }
+            else (pathIndex..path.size).any { next -> globMatches(path, pattern, next, patternIndex + 1, valueAt) }
         }
-        "*" -> pathIndex < path.size && globMatches(path, pattern, pathIndex + 1, patternIndex + 1)
-        else -> pathIndex < path.size && segmentMatches(path[pathIndex], token) &&
-                globMatches(path, pattern, pathIndex + 1, patternIndex + 1)
+        "*" -> pathIndex < path.size && globMatches(path, pattern, pathIndex + 1, patternIndex + 1, valueAt)
+        else -> pathIndex < path.size && tokenMatches(path[pathIndex], token, pathIndex, valueAt) &&
+                globMatches(path, pattern, pathIndex + 1, patternIndex + 1, valueAt)
     }
 }
+
+/** Marks a type test inside a segment: `points::FLine`, `*::Vec3`. */
+internal const val TYPE_TEST = "::"
+
+/** One segment against one token, where the token may end in a `::Type` test on the slot's value. */
+private fun tokenMatches(segment: String, token: String, index: Int, valueAt: (Int) -> Any?): Boolean {
+    val at = token.indexOf(TYPE_TEST)
+    if (at < 0) return segmentMatches(segment, token)
+    val name = token.substring(0, at).ifEmpty { "*" }
+    val type = token.substring(at + TYPE_TEST.length)
+    return (name == "*" || segmentMatches(segment, name)) && isOfNamedType(valueAt(index), type)
+}
+
+/** Field's linear-algebra typealiases, which reflection cannot see, spelled as box code spells them. */
+private val typeAliases = mapOf(
+    "Vec2" to "Vector2f", "Vec3" to "Vector3f", "Vec4" to "Vector4f",
+    "Quat" to "Quaternionf", "DualQuat" to "DualQuaternionf",
+)
+
+private val namedTypeChecks = ConcurrentHashMap<Pair<Class<*>, String>, Boolean>()
+
+/**
+ * Kotlin `is` against a class written by name: [typeName] is a short name (`FLine`), a fully
+ * qualified one, or one of the linear-algebra aliases (`Vec3`), and matches the value's class or
+ * any superclass or interface it implements.
+ */
+internal fun isOfNamedType(value: Any?, typeName: String): Boolean {
+    if (value == null || typeName.isEmpty()) return false
+    return namedTypeChecks.computeIfAbsent(value.javaClass to (typeAliases[typeName] ?: typeName)) { (cls, name) ->
+        val seen = HashSet<Class<*>>()
+        val pending = ArrayDeque<Class<*>>().apply { add(cls) }
+        var found = false
+        while (pending.isNotEmpty() && !found) {
+            val c = pending.removeFirst()
+            if (!seen.add(c)) continue
+            found = c.simpleName == name || c.name == name || kotlinNameOf(c) == name
+            c.superclass?.let(pending::add)
+            pending.addAll(c.interfaces)
+        }
+        found
+    }
+}
+
+/** A JVM class's Kotlin spelling where they differ: `kotlin.String` for `java.lang.String`, and so on. */
+private fun kotlinNameOf(c: Class<*>): String? = runCatching { c.kotlin.qualifiedName }.getOrNull()
 
 /**
  * Does one path segment satisfy one pattern token?

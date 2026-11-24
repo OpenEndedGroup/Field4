@@ -118,10 +118,8 @@ The right-hand `source.zw` is an ordinary read swizzle producing a `vec2`; the
 left-hand `target.xy` receives it. Repeated-index swizzles like `v.xx` have no
 unambiguous target, so they stay read-only: there is no `var` for them.
 
-To write numbers rather than another swizzle, build the vector with `vec`, which takes any mix
-of `Int`, `Float` and `Double`: `target.xy = vec(1, 2.5)`. A bare collection literal such as
-`target.xy = [1, 2]` does not compile, because the swizzle's value is the read-only `Vector2fc`,
-and only the mutable `Vector2f` knows how to be built from `[...]`.
+To write numbers rather than another swizzle, use a collection literal, `target.xy = [1, 2]`, or
+`vec`, which takes any mix of `Int`, `Float` and `Double`: `target.xy = vec(1, 2.5)`.
 
 ## Arithmetic: `+ - * /`
 
@@ -541,6 +539,10 @@ The only choice left is what `ε²` is. Up to rescaling there are three answers:
 - `ε² = 0` gives the **dual numbers**;
 - `ε² = +1` gives the **split-complex numbers**.
 
+Field has all three as one type, `Hypercomplexd(a, b, eps2)` (and `Hypercomplexf`), whose `*`
+expands the brackets with the `ε²` you give it; `Complexd` and `Complexf` are the complex numbers on
+their own, with `conj`, `abs`, `arg`, `exp` and `Complexd.polar(r, angle)`.
+
 Multiplying by a fixed number `w` is a linear map of the plane, so the clearest way to see an
 algebra is to multiply a whole grid by one `w` and draw where it lands. Here `w = 0.9 + 0.5ε` in
 all three, and only `ε²` changes:
@@ -548,8 +550,6 @@ all three, and only `ε²` changes:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/spinny_algebras/grid.png" embed=true name="spinny-grid" alt="Three copies of a 7×7 grid, each multiplied by 0.9 + 0.5ε, over the faint original: on the left (ε² = -1) the grid is turned and enlarged but still square; in the middle (ε² = 0) it is sheared upward; on the right (ε² = +1) it is squeezed into a long thin parallelogram along the diagonal"}
 :::static
 // Multiply every point of a grid by one fixed number w = a + bε, in three algebras that differ only in ε².
-fun times(a: Double, b: Double, c: Double, d: Double, eps2: Double) = vec(a * c + eps2 * b * d, a * d + b * c)
-
 fun gridTimes(a: Double, b: Double, eps2: Double, ox: Double, tint: Vec4): List<FLine> {
     val s = 40.0
     val grid =
@@ -559,9 +559,10 @@ fun gridTimes(a: Double, b: Double, eps2: Double, ox: Double, tint: Vec4): List<
                 (0..60).map { vec(-1 + it / 30.0, k / 3.0) }, // a horizontal one
             ]
         }
+    val w = Hypercomplexd(a, b, eps2)
     fun draw(pts: List<Vec2>, col: Vec4, t: Double) = fline {
         pts.forEachIndexed { i, p ->
-            val q = times(a, b, p.x.toDouble(), p.y.toDouble(), eps2)
+            val q = (w * Hypercomplexd(p.x, p.y, eps2)).toVector()
             if (i == 0) moveTo(ox + s * q.x, -s * q.y) else lineTo(ox + s * q.x, -s * q.y)
         }
         color = col
@@ -601,16 +602,15 @@ and `*`, so every algebra has one. Sum `exp(tε)` for `t` from -π to π and plo
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/spinny_algebras/taylor.png" embed=true name="spinny-taylor" alt="Left: exp(tε) for t from -π to π in three algebras, the 30-term sums drawn bold over faint 3- and 5-term sums: a blue unit circle (ε² = -1), a yellow vertical line through 1 (ε² = 0), and a red hyperbola opening to the right (ε² = +1)"}
 :::static
 // exp(tε) = 1 + tε + (tε)²/2! + ..., summed with nothing but the algebra's own multiplication.
-fun times(p: Vec2, q: Vec2, eps2: Double) = vec(p.x * q.x + eps2 * p.y * q.y, p.x * q.y + p.y * q.x)
-
-fun expSeries(t: Double, eps2: Double, terms: Int): Vec2 {
-    var sum = vec(0.0, 0.0)
-    var term = vec(1.0, 0.0)
+fun expSeries(t: Double, eps2: Double, terms: Int): Vector2d {
+    val tEps = Hypercomplexd(0, t, eps2)
+    var sum = Hypercomplexd(0, 0, eps2)
+    var term = Hypercomplexd(1, 0, eps2)
     for (n in 1..terms) {
         sum = sum + term
-        term = times(term, vec(0.0, t / n), eps2) // term · tε / n
+        term = term * tEps / n
     }
-    return sum
+    return sum.toVector()
 }
 
 val s = 60.0
@@ -661,17 +661,16 @@ running along it. The bar underneath shows where `ε²` is:
 
 ```diffstatic_runner {data-lang=kotlin video="assets/spinny_algebras/eps_sweep.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="10" fps="20" timeout="300" w="1000" embed=true name="spinny-eps-sweep" alt="ε² sliding from -1 to +1 and back. Left, a 7×7 grid multiplied by 0.9 + 0.5ε turns while square, shears, then stretches along a diagonal. Right, exp(tε) is a unit circle with a dot going round it; it stretches into an ellipse, opens into a vertical line and bends into a hyperbola that the dot runs off, then closes again. A bar at the bottom tracks ε²"}
 :::static
-:::fold the product, exp, and the fixed frame
-fun times(p: Vec2, q: Vec2, eps2: Double) = vec(p.x * q.x + eps2 * p.y * q.y, p.x * q.y + p.y * q.x)
-
-fun expSeries(t: Double, eps2: Double): Vec2 {
-    var sum = vec(0.0, 0.0)
-    var term = vec(1.0, 0.0)
+:::fold exp and the fixed frame
+fun expSeries(t: Double, eps2: Double): Vector2d {
+    val tEps = Hypercomplexd(0, t, eps2)
+    var sum = Hypercomplexd(0, 0, eps2)
+    var term = Hypercomplexd(1, 0, eps2)
     for (n in 1..30) {
         sum = sum + term
-        term = times(term, vec(0.0, t / n), eps2)
+        term = term * tEps / n
     }
-    return sum
+    return sum.toVector()
 }
 
 val s = 55.0
@@ -710,11 +709,11 @@ val gridLines =
 fun halfSpan(k: Double) = if (k < 0) kotlin.math.min(Math.PI / kotlin.math.sqrt(-k), 6.0) else 6.0
 
 fun draw(k: Double, phase: Double) {
-    val w = vec(0.9, 0.5)
+    val w = Hypercomplexd(0.9, 0.5, k)
     val span = halfSpan(k)
     val tau = span * (2 * phase - 1) // the dot's parameter: one trip from -span to +span per phase
     val grid = gridLines.map { pts ->
-        polyline(pts.map { p -> times(w, p, k).let { q -> vec(gridX + s * q.x, -s * q.y) } }, tint(k, 0.9), 1.4)
+        polyline(pts.map { p -> (w * Hypercomplexd(p.x, p.y, k)).toVector().let { q -> vec(gridX + s * q.x, -s * q.y) } }, tint(k, 0.9), 1.4)
     }
     val curve =
         (0..240)
