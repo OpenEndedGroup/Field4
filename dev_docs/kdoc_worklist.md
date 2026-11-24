@@ -2,7 +2,7 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 25887 of 43200 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 25895 of 43208 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
 **2089 undocumented entry points** (types, top-level functions and values) and 14455 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
@@ -326,7 +326,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [FnSignal.kt](../src/jvmMain/kotlin/afield/audio/synth/FnSignal.kt) | Synthesis | chain_fn_sound_roundtrip | 0 | 1 | 66% |
 | [NotationPatterns.kt](../src/jvmMain/kotlin/afield/audio/synth/NotationPatterns.kt) | Patterns | chain_drawn_score, chain_drawn_morph, chain_tracked_body | 0 | 1 | 71% |
 | [Realize.kt](../src/jvmMain/kotlin/afield/geometry/polytope/Realize.kt) | Polytopes | polytope_examples | 0 | 1 | 94% |
-| [ColorTrajectory.kt](../src/jvmMain/kotlin/afield/graphics/color/ColorTrajectory.kt) | Graphics | colors_examples | 0 | 1 | 94% |
+| [ColorTrajectory.kt](../src/jvmMain/kotlin/afield/graphics/color/ColorTrajectory.kt) | Graphics | colors_examples | 0 | 1 | 96% |
 | [Nile.kt](../src/jvmMain/kotlin/afield/graphics/nile/Nile.kt) | Graphics | rectsl_conversation | 0 | 1 | 87% |
 | [RtxdiSettings.kt](../src/jvmMain/kotlin/afield/graphics/render/lighting/RtxdiSettings.kt) | Graphics | direct_lighting | 0 | 1 | 93% |
 | [KeyCamera.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/util/KeyCamera.kt) | Graphics | afield_four_graphics | 0 | 1 | 91% |
