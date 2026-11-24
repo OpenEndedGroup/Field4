@@ -235,6 +235,10 @@ class TreemapTest {
         assertEquals("1.23k", compactNumber(1234.0))
         assertEquals("5.6M", compactNumber(5_600_000.0))
         assertEquals("42", compactNumber(42.0))
+        assertEquals("520", compactNumber(520.0), "whole numbers keep their zeros")
+        assertEquals("600", compactNumber(600.0))
+        assertEquals("1k", compactNumber(1000.0))
+        assertEquals("1.5", compactNumber(1.5))
         assertEquals("0", compactNumber(0.0))
     }
 

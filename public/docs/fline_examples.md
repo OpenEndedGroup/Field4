@@ -690,6 +690,53 @@ part. `Box.inspect(lines)` is that pattern packaged: it renders exactly what `li
 names whatever you click. The [`fline_hit_records`](agent_transcripts.md#fline_hit_records) starting
 point is a wall of panels to try it on.
 
+### Keyed lines that morph: `key`, `caption` and `transition`
+
+Give a line a `key` and it keeps its identity from one `lines(...)` display to the next, wherever it sits
+in the list. Pass `transition` (in seconds) and the viewer morphs each keyed line from where it was to
+where it is now. Points and colours glide, and so do captions. A key that is new fades in, and a key that
+has gone fades out. A `caption` is a `LineCaption`: text drawn with the line, in its coordinates, cheap
+enough to put on hundreds of shapes.
+
+These five bars shuffle whenever you click one:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/keyed_morph.png" wait="1.0" capture="box" open-outputs="true" w="1200" embed=true}
+var order = ["alpha", "beta", "gamma", "delta", "epsilon"]
+
+fun draw() {
+    val bars = order.mapIndexed { i, name ->
+        val x = 20.0 + i * 110.0
+        val height = 60.0 + name.length * 28.0
+        fline {
+            moveTo(x, 300.0)
+            lineTo(x + 90.0, 300.0)
+            lineTo(x + 90.0, 300.0 - height)
+            lineTo(x, 300.0 - height)
+            close()
+            filled = true
+            color = vec(0.35, 0.68, 0.92, 0.85)
+            hoverColor = vec(0.55, 0.82, 1.0, 1.0)
+            key = name
+            caption = LineCaption(name, x + 45.0, 310.0 - height, size = 14.0, color = vec(1.0, 1.0, 1.0, 1.0), anchor = "middle")
+            onClick = { _ -> order = order.shuffled(); draw() }
+        }
+    }
+    lines(bars, channel = "morph", w = 600.0, h = 340.0, transition = 0.6)
+}
+
+draw()
+```
+
+An update that arrives mid-morph starts from wherever the drawing is at that moment. So a `loop { }` can
+redraw every frame with a short `transition`, or with none.
+
+A few more properties go with these. `tooltip` gives a line a browser tooltip. `onHover` is called when the
+pointer enters or leaves the line. On a figure with thousands of clickable shapes, `pickDetail = false`
+sends only where a click landed, its `key` and its `lineIndex`, not which segment was hit, which keeps the
+drawing small. `lines(..., onView = { view -> ... })` hears where the user has panned and zoomed to, in the
+lines' own coordinates, so a drawing can add detail where it is being looked at. The
+[treemap](treemaps.md) is built from all of these.
+
 ## Styling: `color`, `stroked`, `filled`, `pointed`
 
 `FLine` geometry (where the points are) is separate from `FLine` styling (how it’s drawn). You’ll use these properties constantly:

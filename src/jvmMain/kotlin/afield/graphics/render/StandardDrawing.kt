@@ -361,7 +361,8 @@ var FLine.key by Delegation<String?>()
  * It is cheap enough to label hundreds of shapes in a display that redraws.
  *
  * The caption sits in the line's own coordinates and goes through the same fit as the line. It morphs with
- * the line when the line has a [key].
+ * the line when the line has a [key]. Only the line's geometry counts toward the drawing's bounds, so a caption
+ * placed outside every line can fall outside the framed view; keep captions on or inside their shapes.
  */
 var FLine.caption by Delegation<LineCaption?>()
 

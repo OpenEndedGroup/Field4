@@ -1,0 +1,223 @@
+# Treemaps
+
+A treemap shows a tree as nested rectangles. Each rectangle's area is its share of the total, so you can
+see at a glance where the bulk of something is: which folders hold the code, which accounts take the
+budget, which branches of a search did the work. `treemap(tree)` draws one into a box's output, and you
+can zoom it, select from it, label it, colour it and animate it.
+
+A treemap in Field is an ordinary `lines(...)` drawing. Every cell is an [FLine](fline_examples.md)
+carrying a key, so each change morphs from the old picture to the new one instead of jumping.
+
+## A first treemap
+
+You build a tree with `treemapTree`, giving branches with `branch` and sized leaves with `leaf`, and hand it
+to `treemap`:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/treemaps/first.png" wait="1.0" capture="box" open-outputs="true" w="1200" embed=true}
+val budget = treemapTree("month") {
+    branch("home") {
+        leaf("rent", 1450.0)
+        leaf("power", 95.0)
+        leaf("internet", 60.0)
+    }
+    branch("food") {
+        leaf("groceries", 520.0)
+        leaf("eating out", 210.0)
+    }
+    branch("getting about") {
+        leaf("transit", 110.0)
+        leaf("bike repairs", 45.0)
+    }
+    leaf("books", 80.0)
+    leaf("savings", 600.0)
+}
+
+treemap(budget, w = 800.0, h = 460.0)
+```
+
+Each top-level branch gets its own hue, and its descendants are lighter shades of it. A branch's name and
+total sit in a header strip along its top. A leaf is labelled when its name fits, with its value too if
+there is room, and its name is cut short with an ellipsis when the value will not fit. Hovering a cell
+lights it and shows its full path and share in a tooltip. The strip above the cells is the breadcrumb
+trail for zooming.
+
+## Trees from your data
+
+You rarely build a tree by hand. Four functions turn something you already have into one:
+
+- `treemapTree(name) { ... }` is the builder above.
+- `treemapTreeOfFiles(dir)` maps a folder, with each file sized by its bytes.
+- `treemapTreeOfMap(value)` takes nested maps and lists, which is what JSON and EDN parse to. A number is a
+  leaf of that size, and a map or list is a branch.
+- `treemapTreeOf(root, children = { ... }, weight = { ... }, name = { ... })` walks any object that has
+  children: a scene graph, a parse tree, a clustering. Each node keeps the object it came from in `data`.
+
+Here is Field's own source code, by size:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/treemaps/source_tree.png" wait="1.5" capture="box" open-outputs="true" w="1200" embed=true}
+import java.io.File
+
+val source = treemapTreeOfFiles(File("src/jvmMain/kotlin/afield"))
+
+treemap(source, w = 900.0, h = 560.0)
+```
+
+That is nearly two thousand files, and the treemap does not draw them all at once. See
+[Level of detail](#level-of-detail) below.
+
+A tree can also show itself as a value. A box whose last expression is a tree, `display(channel, tree)`
+and `tree.h` all draw a smaller treemap that you can hover but not click.
+
+## Zooming, selecting and hovering
+
+The mouse does what you would expect:
+
+| | |
+|---|---|
+| click | select a cell |
+| Shift-click | add to the selection |
+| Cmd-click (Ctrl-click) | toggle a cell in the selection |
+| double-click | zoom one level towards the cell |
+| Alt-click, or a breadcrumb | zoom out |
+| click the background | clear the selection |
+| wheel, drag | zoom and pan the camera |
+| double-click the background | fit the drawing to its panel again |
+
+The block after `treemap(...)` sets properties before the first draw. `onSelect` hears about every change
+to the selection, and `infoChannel` names a channel where the hovered cell (or else the last selected one)
+is described:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/treemaps/zoomed_and_selected.png" wait="1.5" capture="box" open-outputs="true" w="1200" embed=true}
+import java.io.File
+
+val source = treemapTreeOfFiles(File("src/jvmMain/kotlin/afield"))
+
+val map = treemap(source, w = 900.0, h = 520.0) {
+    infoChannel = "about"
+    onSelect = { picked -> println("selected " + picked.map { it.name }) }
+}
+
+map.zoomTo("afield/graphics")
+map.select(map.focus.child("render")!!, map.focus.child("text")!!)
+```
+
+`treemap` returns the `Treemap`, and everything the mouse does is a method on it: `zoomTo`, `zoomOut`,
+`zoomToRoot`, `select` and `clearSelection`. `focus`, `selection` and `hovered` read where things stand.
+Zooming morphs the branch out to fill the whole treemap, while the cells outside it fade away.
+
+When you change the code and run the box again, it keeps its zoom and selection. They are held by each
+node's `key`, the path of names from the root (`afield/graphics/render`), so they survive even a tree
+that has been built afresh. `resetTreemap()` forgets them.
+
+## Level of detail
+
+A treemap of a large tree would be millions of slivers if every node were drawn. Instead each display opens
+cells largest first, and stops at whichever of these comes first:
+
+- `maxCells`, 2500 by default: the most cells one display draws;
+- `minCellSize`, 4 screen pixels by default: a cell smaller than this is drawn, but its children are not;
+- `maxDepth`: the most levels below the focus that are opened.
+
+Labels follow the same rule. A label appears only when it fits, and fades in over the last few pixels
+before it does, so labels coming in with a zoom do not pop. Zooming or panning with the wheel and a drag
+redraws the treemap for where you are looking. Cells that have grown on screen open their children,
+cells that are off screen stay closed, and labels keep their size on screen.
+
+## Colour
+
+`colors` decides each cell's fill. There are four to choose from:
+
+- `TreemapColors.byBranch()`, the default: a hue per top-level branch, lighter with depth.
+- `TreemapColors.byValue("viridis", log = true)`: leaves through a [colormap](colors_examples.md) by their
+  value, or by any `measure = { node -> ... }` you give; branches stay grey.
+- `TreemapColors.byDepth("magma")`: every cell by how deep it is.
+- `TreemapColors.by { node -> ... }`: whatever you return.
+
+A node's own `color`, set in the builder or later, wins over all of them for it and for its descendants.
+Labels are dark or light, whichever reads better on the fill.
+
+This colours each source file by the length of its longest line, read from the file each node keeps in
+`data`:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/treemaps/by_value.png" wait="1.5" capture="box" open-outputs="true" w="1200" embed=true}
+import java.io.File
+
+val source = treemapTreeOfFiles(File("src/jvmMain/kotlin/afield/graphics"))
+
+fun widest(node: TreemapNode): Double {
+    val file = node.data as? File ?: return 0.0
+    return file.readLines().maxOfOrNull { it.length }?.toDouble() ?: 0.0
+}
+
+treemap(source, w = 900.0, h = 520.0) {
+    colors = TreemapColors.byValue("magma", measure = ::widest)
+}
+```
+
+## Changing the tree, and animating it
+
+Nodes can be edited in place. You can set `weight`, `add` or `remove` children, or assign a new `root`.
+`update { ... }` makes the change and redraws, and the treemap morphs from the old layout to the new one
+over `transition` seconds (0.45 by default).
+
+To animate a treemap from a `loop { }`, set `transition = 0.0` and call `show()` every frame. The cells
+then follow your values exactly. `TreemapTiling.Resquarify()` with `sort = false` keeps the cells in place
+as their values change, so they grow and shrink rather than swapping places:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/treemaps/animated.png" wait="2.0" capture="box" open-outputs="true" w="1200" embed=true}
+val tree = treemapTree("signals") {
+    repeat(5) { b -> branch("group $b") { repeat(6) { leaf("s$it", 1.0) } } }
+}
+
+val map = treemap(tree, channel = "live", w = 760.0, h = 440.0) {
+    tiling = TreemapTiling.Resquarify()
+    sort = false
+    transition = 0.0
+}
+
+loop {
+    val t = AnimationClock.nowSeconds()
+    tree.leaves().forEachIndexed { i, leaf -> leaf.weight = 1.6 + sin(t * 1.3 + i * 0.7) }
+    map.show()
+}
+```
+
+A change that arrives while a morph is still running starts from wherever the drawing is at that moment.
+So with a small `transition`, a box can send new values as often as it likes and the motion stays smooth.
+
+## Layouts
+
+`tiling` chooses how a rectangle is divided among its children:
+
+| tiling | what it does |
+|---|---|
+| `TreemapTiling.Squarify()` | rows chosen to keep cells near square; the default, and the easiest to read |
+| `TreemapTiling.Resquarify()` | squarify once, then keep the same rows as values change |
+| `TreemapTiling.Binary` | split by value in halves, along the longer side |
+| `TreemapTiling.SliceDice` | strips that alternate direction with depth, keeping the tree's order exactly |
+| `TreemapTiling.Slice`, `TreemapTiling.Dice` | strips stacked top to bottom, or side by side |
+
+These are ported from [d3-hierarchy](https://d3js.org/d3-hierarchy/treemap)'s tilings. `paddingInner`, `paddingOuter` and `headerHeight` set the gaps between siblings, around
+children, and above them for the branch's name, all in screen pixels. `sort = false` keeps the tree's own
+order instead of largest first.
+
+The layout is also available on its own. `layoutTreemap(root, x0, y0, x1, y1, options)` returns the cells
+as rectangles, which you can draw yourself, export, or hand to the GPU.
+
+## The drawing is FLines
+
+`map.toFLines()` is the drawing as a list of `FLine`s: the background, the breadcrumbs, one filled
+rectangle per cell with its label as a `caption`, and one outline per selected cell. Every line has a
+`key`, so the drawing can join other FLines in one `lines(...)` call and keep morphing. Keys, captions,
+transitions and the pan-and-zoom callback are part of `lines(...)` itself, and
+[Keyed lines that morph](fline_examples.md#keyed-lines-that-morph-key-caption-and-transition) shows them
+on their own.
+
+## Where to go next
+
+- [FLine examples](fline_examples.md) covers the lines the treemap is made of, with clicks, hover
+  and the keyed morph.
+- [Charts as FLines](chart.md) is the same idea for plots.
+- [Looking at Data](tour_data.md) shows the other ways to see values in a box.
+- The generated reference lists every treemap function under
+  [Visualization](reference/visualization.md).

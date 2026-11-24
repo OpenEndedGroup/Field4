@@ -406,7 +406,7 @@ class Treemap internal constructor(private val owner: Box?, val channel: String,
         sb.append("| | |\n|---|---|\n")
         sb.append("| value | ").append(value).append(" |\n")
         node.parent?.takeIf { it.value > 0 }?.let { sb.append("| of ").append(label(it)).append(" | ").append(percent(node.value / it.value)).append(" |\n") }
-        if (focus !== node && focus.contains(node) && focus.value > 0) sb.append("| of ").append(label(focus)).append(" | ").append(percent(node.value / focus.value)).append(" |\n")
+        if (focus !== node && focus !== node.parent && focus.contains(node) && focus.value > 0) sb.append("| of ").append(label(focus)).append(" | ").append(percent(node.value / focus.value)).append(" |\n")
         if (!node.isLeaf) sb.append("| children | ").append(node.children.size).append(" |\n| leaves | ").append(node.leaves().count()).append(" |\n")
         return sb.toString()
     }
@@ -559,7 +559,11 @@ private fun percent(f: Double) = if (f >= 0.1) "${(f * 100).toInt()}%" else Stri
 /** 1234 → `1.2k`, 5_600_000 → `5.6M`: short enough to sit on a small cell. */
 fun compactNumber(v: Double): String {
     val a = abs(v)
-    fun f(x: Double, suffix: String) = (if (x >= 100) "%.0f" else if (x >= 10) "%.1f" else "%.2f").format(java.util.Locale.US, x).trimEnd('0').trimEnd('.') + suffix
+    fun f(x: Double, suffix: String): String {
+        val text = (if (abs(x) >= 100) "%.0f" else if (abs(x) >= 10) "%.1f" else "%.2f").format(java.util.Locale.US, x)
+        // Only a fraction loses its trailing zeros: 520 stays 520.
+        return (if ('.' in text) text.trimEnd('0').trimEnd('.') else text) + suffix
+    }
     return when {
         a >= 1e12 -> f(v / 1e12, "T")
         a >= 1e9 -> f(v / 1e9, "G")
