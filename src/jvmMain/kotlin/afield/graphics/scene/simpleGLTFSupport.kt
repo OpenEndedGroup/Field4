@@ -2,6 +2,8 @@
 
 package afield.graphics.scene
 
+import afield.document.workspace.loaderFile
+import afield.runtime.completion.CompletesPath
 import afield.graphics.render.MeshModule
 import afield.graphics.render.Module
 import afield.graphics.render.VertexData
@@ -414,7 +416,10 @@ object GltfSupport {
     fun loadModel(path: String) = Assimp.aiImportFile(path, POST_FLAGS)
         ?: error("Assimp import failed for '$path': ${Assimp.aiGetErrorString()}")
 
-    fun loadGltfBasic(path: String, config: GltfLoadConfig = GltfLoadConfig()): GltfModel {
+    fun loadGltfBasic(@CompletesPath("*.{gltf,glb}") path: String, config: GltfLoadConfig = GltfLoadConfig()): GltfModel =
+        loadResolvedGltf(loaderFile(path).path, config)
+
+    private fun loadResolvedGltf(path: String, config: GltfLoadConfig): GltfModel {
         val scene = loadModel(path)
         val baseDir: Path? = try {
             Paths.get(path).parent

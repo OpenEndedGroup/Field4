@@ -227,7 +227,7 @@ internal class ReadingTextBlurCache(
         preparationCount++
     }
 
-    fun update(labels: List<ReadingLabel>, model: Matrix4f, colour: Vector4f) {
+    fun update(labels: List<ReadingLabel>, model: Matrix4f, colour: Vector4f, encode: (Vector4f) -> Vector4f = { it }) {
         for ((i, mesh) in meshes.withIndex()) {
             val word = labels.getOrNull(i)
             val layer = if (word == null) -1 else items.indexOfFirst { it.first == word.shape }
@@ -244,7 +244,7 @@ internal class ReadingTextBlurCache(
             meshLevels[i].set(mix.low.toFloat(), mix.high.toFloat(), mix.fraction, clipPlane.w)
             mesh.push["levels"] = meshLevels[i]
             mesh.push["tint"] =
-                Vector4f(colour).mul(word.color).apply { w *= word.opacity * mix.cached }
+                encode(Vector4f(colour).mul(word.color).apply { w *= word.opacity * mix.cached })
             meshInfo[i].set(layer.toFloat(), clipPlane.x, clipPlane.y, clipPlane.z)
             mesh.push["info"] = meshInfo[i]
         }

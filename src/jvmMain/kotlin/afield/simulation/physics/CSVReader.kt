@@ -1,6 +1,8 @@
 package afield.simulation.physics
 
 
+import afield.document.workspace.loaderFile
+import afield.runtime.completion.CompletesPath
 import afield.math.linalg.Vec3
 import afield.math.linalg.Vector3f
 import java.io.File
@@ -135,8 +137,8 @@ class MotionClip(frames: List<Frame>) {
          * carrying fewer than `1 + 3 * joints` fields is skipped rather than reported. An empty
          * file throws.
          */
-        fun load(file: String): MotionClip {
-            val lines = File(file).readLines().filter { it.isNotBlank() }
+        fun load(@CompletesPath("*.csv") file: String): MotionClip {
+            val lines = loaderFile(file).readLines().filter { it.isNotBlank() }
             require(lines.isNotEmpty()) { "Empty file" }
 
             val header = lines.first().split(",").map { it.trim() }

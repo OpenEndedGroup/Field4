@@ -1478,11 +1478,14 @@ mask.mapAndWrite {
 
 The outlines are in the coordinates `sample` uses (`x0`, `y0` and `cell` default to one unit per
 element), every subpath is closed, and curves stay curves. Several outlines filled together are one
-shape, so `FillRule` decides what their overlaps are. Under `NON_ZERO`, overlapping outlines are
+shape, so `FillRule` decides what their overlaps are; leave it out and `fill` uses the first line's own
+`fillRule`, else `NON_ZERO`. Under `NON_ZERO`, overlapping outlines are
 their union and an outline inside another is a hole only if it runs the other way round. Under
 `EVEN_ODD`, every overlap and every inner loop is a hole. The coverage is the exact area of each cell
 inside the outline under that rule, from the winding rasteriser in
-[Rasterising with stream kernels](afield_four_graphics.md#stream-kernels).
+[Rasterising with stream kernels](afield_four_graphics.md#stream-kernels). `FillRule` is Field's one
+fill-rule type, `FLineFillRule`, which the renderers and `contains2D` read too
+([Overlaps and fill rules](afield_four_graphics.md#overlaps-and-fill-rules)).
 
 In this example a buffer holds two floats per cell, the shapes filled under `NON_ZERO` in the first
 and under `EVEN_ODD` in the second: a pentagram drawn as one outline that crosses itself, two

@@ -22,6 +22,9 @@
 
 package afield.simulation.orbits
 
+import afield.runtime.completion.StringCompletionContext
+import afield.runtime.completion.StringCompletions
+import afield.runtime.completion.CompletesWith
 import java.io.File
 import java.net.URI
 import java.net.http.HttpClient
@@ -55,6 +58,12 @@ class Satellite(val tle: Tle) {
     override fun toString() = "Satellite($name)"
 }
 
+/** Completion for `catalogue.byName("…")`: the names of the satellites in the catalogue. */
+internal object SatelliteNames : StringCompletions {
+    override fun candidates(context: StringCompletionContext): List<String> =
+        (context.receiver as? SatelliteCatalogue)?.satellites?.map { it.name }.orEmpty()
+}
+
 /**
  * A list of [Satellite]s.
  *
@@ -76,7 +85,7 @@ class SatelliteCatalogue(val satellites: List<Satellite>, val skippedDeepSpace: 
     )
 
     /** The first satellite whose name is [name] (case-insensitive). */
-    fun byName(name: String): Satellite? = satellites.firstOrNull { it.name.equals(name, ignoreCase = true) }
+    fun byName(@CompletesWith(SatelliteNames::class) name: String): Satellite? = satellites.firstOrNull { it.name.equals(name, ignoreCase = true) }
 
     /** Satellites whose name contains [fragment]. */
     fun search(fragment: String): List<Satellite> = satellites.filter { it.name.contains(fragment, ignoreCase = true) }

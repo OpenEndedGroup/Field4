@@ -1,0 +1,84 @@
+name: paint_fill_rule
+description: >-
+  Paint areas honour the FLine fill rule. PaintCanvas.work, stipple and glaze fill a region by its
+  fillRule attribute (afield.graphics.nile.fillRule), like every other FLine filler: non-zero paints
+  where two rings overlap, even-odd (and an unset rule) leaves the overlap bare. The first box works
+  two overlapping squares under each rule; the second glazes them opaque and prints how many pixels
+  differ from Gezira's coverage of the same line.
+docs:
+  - page: paint_canvas.md
+    why: "The 'Overlapping regions and the fill rule' section shows the same two regions worked under each rule."
+operations:
+  - create:
+      box: pfr_worked
+      name: worked under each fill rule
+      frame:
+        x: 40.0
+        y: 40.0
+        w: 320.0
+        h: 100.0
+      properties:
+        code: |
+          import afield.graphics.nile.*
+
+          run {
+              if (!PaintCanvas.isAvailable) {
+                  markdown(PaintLibrary.describe())
+                  return@run
+              }
+
+              val canvas = PaintCanvas(900, aspect = 2.0, sizeMm = 300.0)
+
+              fun squares(dx: Double, rule: FillRule) =
+                  FLine().rect(dx + 60.0, 60.0, 220.0, 220.0).rect(dx + 180.0, 180.0, 220.0, 220.0).also { it.fillRule = rule }
+
+              canvas.work(squares(0.0, FillRule.NON_ZERO), rgb(0.2, 0.4, 0.6), Handling.Body, angle = 0.5, clip = true)
+              canvas.work(squares(500.0, FillRule.EVEN_ODD), rgb(0.2, 0.4, 0.6), Handling.Body, angle = 0.5, clip = true)
+
+              display("main", canvas.png())
+          }
+  - create:
+      box: pfr_against_gezira
+      name: paint mask against Gezira
+      frame:
+        x: 40.0
+        y: 180.0
+        w: 320.0
+        h: 100.0
+      properties:
+        code: |
+          import afield.graphics.nile.*
+
+          run {
+              if (!PaintCanvas.isAvailable) {
+                  markdown(PaintLibrary.describe())
+                  return@run
+              }
+
+              fun squares(k: Double, rule: FillRule) = FLine().rect(150.0 * k, 50.0 * k, 400.0 * k, 350.0 * k).rect(400.0 * k, 150.0 * k, 450.0 * k, 300.0 * k).also {
+                  it.fillRule = rule
+              }
+
+              for (rule in [FillRule.NON_ZERO, FillRule.EVEN_ODD]) {
+                  val canvas = PaintCanvas(400, aspect = 2.0)
+                  canvas.glaze(rgb(0.05, 0.1, 0.6), squares(1.0, rule), coats = 4.0, hiding = 1.0)
+                  val painted = canvas.render(wet = true).map { ((it shr 16) and 0xff) < 128 }
+                  val reference = squares(0.4, rule).also {
+                      it.filled = true
+                      it.stroked = false
+                  }
+                  val gezira = GeziraFLine.render([reference], 400, 200).canvas
+                  val differ = painted.indices.count { painted[it] != (gezira.alpha(it % 400, it / 400) > 0.5f) }
+                  println(
+                      "$rule: $differ of ${painted.size} pixels differ from Gezira; overlap painted: ${painted[110 * 400 + 190]}",
+                  )
+              }
+          }
+  - execute:
+      box: pfr_worked
+      property: code
+  - wait:
+      millis: 300
+  - execute:
+      box: pfr_against_gezira
+      property: code

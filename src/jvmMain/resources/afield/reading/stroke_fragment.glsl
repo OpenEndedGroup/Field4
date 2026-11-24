@@ -42,5 +42,7 @@ void main() {
     coverage*=clamp((limits.y-limits.x)/unitsPerPixel/max(2*radius,1),0,1);
     vec4 c=mix(colorA,colorB,worldT);
     // White ink: structure comes from coverage, authored opacity and stroke width.
-    outColor=vec4(vec3(1.0),c.a*coverage);
+    // Premultiplied additive light; alpha carries light times the palette position in c.x.
+    float light=c.a*coverage;
+    outColor=vec4(vec3(light),light*c.x);
 }

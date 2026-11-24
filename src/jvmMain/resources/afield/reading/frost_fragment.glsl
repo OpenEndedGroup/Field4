@@ -35,12 +35,19 @@ void main() {
     float sdf=inside?-distanceToEdge:distanceToEdge;
     float coverage=clamp(.5-sdf/max(fwidth(sdf),1e-7),0,1);
     vec3 uv=vec3(gl_FragCoord.xy/vec2(textureSize(sharpBehind,0).xy),gl_ViewIndex);
-    vec3 sharp=texture(sharpBehind,uv).rgb;
+    vec4 sharpAll=texture(sharpBehind,uv);
+    vec3 sharp=sharpAll.rgb;
     // Identity is exact, avoiding even a downsampling residual when blur is zero.
-    vec3 blurred=pc.settings.z<=0?sharp:texture(blurredBehind,uv).rgb;
+    vec4 blurredAll=pc.settings.z<=0?sharpAll:texture(blurredBehind,uv);
+    vec3 blurred=blurredAll.rgb;
     vec3 replacement=blurred*vec3(pc.settings.y,1,pc.settings.y);
     // Green is control data. Reconstructed display green follows the lifted red/blue channels.
     replacement.rb=max(replacement.rb,vec2(max(blackLevel,globalBlackLevel)));
     vec3 delta=replacement-sharp;
-    outColor=vec4(delta*coverage*pc.settings.x,0); // signed light, additive ONE/ONE; alpha unchanged
+    // Alpha is light times palette position (DiagramPalette): the replacement keeps the blurred
+    // light's position, and light lifted out of black is neutral (position 1).
+    float blurredLight=.5*(blurred.r+blurred.b);
+    float u=abs(blurredLight)>1e-5?blurredAll.a/blurredLight:1.0;
+    float deltaA=.5*(replacement.r+replacement.b)*u-sharpAll.a;
+    outColor=vec4(delta,deltaA)*coverage*pc.settings.x; // signed light, additive ONE/ONE
 }

@@ -2,6 +2,8 @@
 
 package afield.graphics.text
 
+import afield.document.workspace.loaderFile
+import afield.runtime.completion.CompletesPath
 import afield.geometry.path.pointInRing2D
 import afield.geometry.path.signedArea2D
 import afield.geometry.path.pointBounds2D
@@ -474,9 +476,9 @@ object Typefaces {
      * works headless and leaves no global state behind. `createFont` returns a 1pt font, hence the
      * immediate `deriveFont`.
      */
-    fun fromFile(path: String, size: Number = 64.0, kerning: Boolean = true): Typeface {
+    fun fromFile(@CompletesPath("*.{ttf,otf,ttc,pfb}") path: String, size: Number = 64.0, kerning: Boolean = true): Typeface {
         warm()
-        val file = File(path)
+        val file = loaderFile(path)
         require(file.isFile) { "no font file at ${file.absolutePath}" }
         val kind = if (file.extension.lowercase() == "pfb") Font.TYPE1_FONT else Font.TRUETYPE_FONT
         var f = Font.createFont(kind, file).deriveFont(size.toFloat())
@@ -556,7 +558,7 @@ fun typeface(
 ): Typeface = Typefaces.named(name, size, bold, italic)
 
 /** A `.ttf`/`.otf` from disk — the short form of [Typefaces.fromFile]. */
-fun typefaceFromFile(path: String, size: Number = 64.0): Typeface = Typefaces.fromFile(path, size)
+fun typefaceFromFile(@CompletesPath("*.{ttf,otf,ttc,pfb}") path: String, size: Number = 64.0): Typeface = Typefaces.fromFile(path, size)
 
 // ==============================================================================================
 // Glyph outlines

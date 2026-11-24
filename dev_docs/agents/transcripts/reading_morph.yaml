@@ -1,0 +1,142 @@
+name: reading_morph
+description: Morph between lines of text by key, the way TransformMatching does but with keys you supply. Pieces whose key appears on both sides glide (lifting toward the reader as they cross); the rest fade where they stand. A distribution, then a commutation.
+operations:
+- create:
+    box: pick_context
+    name: 1 · Stereo context
+    frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
+    properties:
+      code: |
+        import afield.graphics.vulkan.util.Options
+
+        // Set BEFORE the first renderer in this Field JVM; switching modes needs a fresh JVM.
+        val headsetMode = false // true for OpenXR (WiVRn, CloudXR); false for the desktop stereo mirror
+        Options.enableVR = headsetMode
+        if (headsetMode) Options.validateOpenXR = false
+        prop<Window>(window) = Window("morphing text by key", initialDimensions = Rect(60.0, 60.0, 1280.0, 900.0))
+        prop<Renderer>(renderer) = Renderer(window)
+        val ownedRenderer = renderer
+        if (headsetMode) {
+            renderer.openXRHmdTarget = OpenXRHmdTarget(renderer)
+            repeat(8) { if (renderer.openXRHmdTarget?.hasEyeViews == false) renderer.render() }
+        }
+        prop<MultiviewStereoTarget>(stereo) = MultiviewStereoTarget(renderer, 1600, 1200, withDepth = false)
+        val ownedStereo = stereo
+        if (!headsetMode) {
+            stereo.stereoCamera.base.at = vec(0f, 0f, 2.35f)
+            stereo.stereoCamera.base.target = vec(0f, 0f, 0f)
+        }
+        stereo.layered.parameters.clearColor = vec(.003f, .005f, .010f, 1f)
+        prop<Boolean>(showStereoPair) = false
+        stereo.mirrorToScreen(name = "pointing-preview", stereoPair = { showStereoPair })
+        println("context ready: " + stereo.eyeWidth + " x " + stereo.eyeHeight + " per eye")
+        loop { frame() }
+            .end {
+                ownedRenderer.renderList.preTargets.remove("stereo-multiview", ownedStereo)
+                ownedRenderer.cleanup()
+            }
+- create:
+    box: morph_scene
+    name: 2 · Three lines, morphed by key
+    frame: { x: 40.0, y: 420.0, w: 300.0, h: 100.0 }
+    properties:
+      code: |
+        import afield.graphics.scene.reading.*
+
+        // Each line is cut into keyed pieces. A key on both sides glides; a key on one side fades where it stands.
+        // Keys are yours: here they name the terms of an expression, so the second `a` is a new key.
+        fun keyed(text: String, vararg parts: Pair<String, String>): List<DiagramKeyedSpan> {
+            var from = 0
+            return parts.map { (s, k) ->
+                val i = text.indexOf(s, from)
+                from = i + s.length
+                DiagramKeyedSpan(i, i + s.length, k)
+            }
+        }
+        val one = "a × (b + c)"
+        val two = "a × b + a × c"
+        val three = "a × b + c × a"
+        val graph = readingDiagram {
+            val here = point("here", 0, .02, pinned = true)
+            val caption = point("caption", 0, -.12, pinned = true)
+            textMorph(
+                "distribute",
+                one,
+                keyed(one, "a" to "a", "×" to "times", "b" to "b", "+" to "plus", "c" to "c"),
+                two,
+                keyed(two, "a" to "a", "×" to "times", "b" to "b", "+" to "plus", "a" to "a2", "×" to "times2", "c" to "c"),
+                here.anchor,
+            ) {
+                scale = 1.4f
+            }
+            textMorph(
+                "commute",
+                two,
+                keyed(two, "a" to "a", "×" to "times", "b" to "b", "+" to "plus", "a" to "a2", "×" to "times2", "c" to "c"),
+                three,
+                keyed(three, "a" to "a", "×" to "times", "b" to "b", "+" to "plus", "c" to "c", "×" to "times2", "a" to "a2"),
+                here.anchor,
+            ) {
+                scale = 1.4f
+            }
+            text("why-1", "distribute: the brackets go, a second a arrives", caption) {
+                scale = .5f
+                color = Vector4f(1f, 1f, 1f, .6f)
+            }
+            text("why-2", "commute: c and a change places", caption) {
+                scale = .5f
+                color = Vector4f(1f, 1f, 1f, .6f)
+            }
+        }
+        val distribute = graph.textMorph("distribute")
+        val commute = graph.textMorph("commute")
+        val score = diagramScore(graph, 12.0) {
+            fadeIn(distribute.group, at = 0.0, seconds = 1.0)
+            fadeIn(graph.text("why-1"), at = .5, seconds = 1.0)
+            morph(distribute, at = 1.5, seconds = 2.0)
+            fadeOut(distribute.group, at = 5.0, seconds = .01)
+            fadeOut(graph.text("why-1"), at = 4.5, seconds = .8)
+            fadeIn(commute.group, at = 4.99, seconds = .01)
+            fadeIn(graph.text("why-2"), at = 5.0, seconds = 1.0)
+            morph(commute, at = 6.0, seconds = 2.0)
+            fadeOut(commute.group, at = 10.5, seconds = 1.0)
+            fadeOut(graph.text("why-2"), at = 10.5, seconds = 1.0)
+        }
+        println(
+            "distribute: " +
+                distribute.matched +
+                " matched, " +
+                distribute.pieces.size +
+                " pieces; commute: " +
+                commute.matched +
+                " matched",
+        )
+        prop<ReadingDiagramPlayer>(sumPlayer) =
+            ReadingDiagramPlayer.prepare(graph, Typefaces.named("Serif", 100), "field-slug".file, score)
+        sumPlayer.gravity = 0f
+        sumPlayer.wind = 0f
+- create:
+    box: pick_drawing
+    name: 3 · Drawing
+    frame: { x: 40.0, y: 800.0, w: 300.0, h: 100.0 }
+    properties:
+      code: |
+        import afield.graphics.scene.reading.*
+
+        prop<StereoDiagramRenderer>(drawing) = StereoDiagramRenderer(renderer, stereo, sumPlayer)
+        val ownedDrawing = drawing
+        println("drawing ready")
+        loop {
+            renderer.windows.forEach { it.pollEvents() }
+            renderer.render()
+            frame()
+        }
+            .end { ownedDrawing.close() }
+- connect: { parent: pick_context, child: morph_scene }
+- connect: { parent: morph_scene, child: pick_drawing }
+- launch: { box: pick_context }
+- await: { wait: pending }
+- launch: { box: morph_scene }
+- await: { wait: pending }
+- launch: { box: pick_drawing }
+- await: { wait: pending }

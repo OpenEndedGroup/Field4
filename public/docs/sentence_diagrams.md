@@ -283,6 +283,15 @@ textPath(
 )
 ```
 
+A character the run's face has no glyph for is borrowed from another font, as a terminal
+or browser would. The run's size and style carry over, so `∀` in italic Noto Serif comes back
+italic. The fonts tried are the installed ones among `DiagramFontFallback.candidates`, with math
+faces first (Noto Sans Math, STIX Two Math, DejaVu Math TeX Gyre), then symbol and general faces.
+Set `fallbacks = listOf(...)` on a text item to choose its own chain, or `fallbacks = emptyList()`
+to have a missing glyph stop preparation instead. If no font can show a character, preparation
+fails and names the character, its code point, where it is in the text and every face it tried.
+Styled ranges, borrowed glyphs included, work across line breaks in a multi-line run.
+
 `inkBounds` includes the actual curved outlines and italic overhangs. `bodyBounds` clips
 those bounds at each baseline to exclude descenders. `emBounds`, `capBounds`,
 `xHeightBounds` and `advanceBounds` provide the other useful typographic rectangles.
@@ -649,6 +658,81 @@ aspect ratio, while their physics anchors and font scales set the depth and tape
 blur and move the holder as a whole, or animate the text at each end independently. Complete
 lines crossfade without drawing themselves in. Examples 10–13 and the document's **Mechanical
 text holders** guide show how to build and animate them.
+
+## Morphing one line into another
+
+`textMorph` turns one line of text into another, piece by piece. You give each line as text plus a
+list of `DiagramKeyedSpan(start, endExclusive, key)`. A piece whose key appears in both lines glides
+from its characters in the first line to its characters in the second. A piece with no partner
+fades out or in where it stands, and so do the characters you left unkeyed. The keys are yours: the
+words of a parse, the cells of a table, the subterms of an expression. The morph never guesses a
+match from the characters themselves.
+
+```diffstatic {data-lang=kotlin}
+val graph = readingDiagram {
+    val p = point("p", 0, 0, pinned = true)
+    textMorph(
+        "swap",
+        "a + b",
+        [DiagramKeyedSpan(0, 1, "a"), DiagramKeyedSpan(4, 5, "b")],
+        "b + a",
+        [DiagramKeyedSpan(0, 1, "b"), DiagramKeyedSpan(4, 5, "a")],
+        p.anchor,
+    ) {
+        scale = 1.4f
+    }
+}
+val score = diagramScore(graph, 6.0) { morph(graph.textMorph("swap"), at = 1.0, seconds = 2.0) }
+```
+
+Both lines are laid out whole and never drawn, and each piece is placed by where its characters sit
+in its line. At mid-flight a gliding piece comes `lift` metres toward the reader. It also moves off
+the line, up when it travels right and down when it travels left, by a quarter of the distance it
+travels and never more than `arc` metres. So two pieces that
+swap pass on either side of each other. A piece whose key matches but whose characters differ
+crossfades as it moves. `morph(…, from, to)` cues run in time order. With no cue, the morph shows
+its first line. `textMorph.group` fades the whole line in or out. The
+[`reading_morph`](agent_transcripts.md#reading_morph) starting point distributes `a × (b + c)` and
+then commutes a product.
+
+## Colour from a palette
+
+Reading light is white unless you give the player a palette, a ramp of colours with the neutral one
+in the middle. Item colours then land on the ramp: each text, path and dot takes the ramp colour
+nearest its own, and overlapping light still adds. A span of a run can have its own colour, which
+is how you colour syntax, and two score cues move colours along the ramp.
+
+```diffstatic {data-lang=kotlin}
+val warm = Vector4f(.98f, .98f, .83f, .8f)
+val cool = Vector4f(.86f, .92f, .77f, 1f)
+val graph = readingDiagram {
+    val p = point("p", 0, 0, pinned = true)
+    text("goal", "f (x + 1) = y", p) {
+        color = warm
+        characters(2, 3).color(cool)
+        characters(8, 9).color(cool)
+    }
+}
+val score = diagramScore(graph, 8.0) {
+    fadeIn(graph.text("goal"), at = 1.0)
+    saturate(graph.text("goal"), at = 1.0, seconds = 2.5, from = 2f)
+}
+val player = ReadingDiagramPlayer.prepare(graph, Typefaces.named("Monospaced", 100), "field-slug".file, score)
+player.palette = DiagramPalette.hex("ca5b09", "e6b058", "ffffe0", "7ebea0", "00738f")
+```
+
+`span.color(c)` replaces the run's RGB for those characters and multiplies its alpha, so fading or
+dimming the run dims them too. Set it before `prepare`: the run is drawn in one part per colour.
+`saturate(item, at, seconds, from, to)` pushes colours away from the neutral middle and lets them
+settle, so warm colours glow warmer and cool ones cooler as they arrive.
+`tint(item, color, at, seconds, from, to)` pulls an item toward one colour. With `from = 1, to = 1`
+it holds that colour, and a later cue with `from = 1, to = 0` releases it. Of the cues that have
+started, the latest wins. Without a palette, `saturate` and `tint` work in RGB.
+
+The renderer keeps its channels as they were: red and blue carry light, and green carries the
+coverage that selects blur. Alpha carries light times the item's position on the ramp. Blending is
+additive, so the compositor divides alpha by light to find the hue at each pixel, weighted by light
+where items overlap or blur. A palette has an odd number of stops, at most 17; this one has five, warm to cool around a cream middle.
 
 ## API reference
 

@@ -48,9 +48,11 @@ contours follow one rule:
 > authoritative: even depth is an outer ring, odd depth is a hole. A ring whose area sign disagrees
 > with its depth is reversed on the way out.
 
-Skia and Java2D both fill **non-zero**, so a counter survives exactly because its ring runs the
+Skia and Java2D both fill **non-zero** unless a line says otherwise, so a counter survives exactly because its ring runs the
 other way and cancels its bowl. Take the convention away and the letters fill in. Below: identical
 filler, identical fill rule, identical rings, with the hole rings reversed in the middle cell.
+`TextFillRule` is another name for `FLineFillRule`, the one fill-rule type every Field renderer
+reads ([Overlaps and fill rules](afield_four_graphics.md#overlaps-and-fill-rules)).
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/typography_examples/winding.png" wait="3.0" capture="box" open-outputs="true" w="1180" h="620" padding="14"}
 :::static

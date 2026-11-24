@@ -12,6 +12,10 @@ vec2 encode(vec2 value,float gamma) {
 vec4 sampleInBlurSpace(vec2 q,float gamma) {
     vec4 linear=texture(source,vec3(q,gl_ViewIndex));
     if(gamma==1)return linear;
+    // Alpha is light times palette position u: carry u weighted by encoded light, so the blurred
+    // ratio is a position again once main() decodes (see DiagramPalette).
+    float lightHere=max(.5*(linear.r+linear.b),1e-6);
+    linear.a*=pow(lightHere,gamma-1);
     vec2 size=vec2(textureSize(source,0).xy),p=q*size-.5;
     // Encoding must precede bilinear filtering, including the first half-size reduction.
     // The vertical pass normally lands at exact texel centres and needs no extra fetches.
@@ -41,5 +45,10 @@ void main() {
     outColor=sum/total;
     // Decode after each separable axis; re-encoding before the next axis cancels this transform.
     // The intermediate stays linear float16, avoiding HDR overflow in an encoded storage image.
-    if(gamma!=1)outColor.rb=pow(max(outColor.rb,vec2(0)),vec2(1/gamma));
+    if(gamma!=1) {
+        float encoded=.5*(outColor.r+outColor.b);
+        float u=abs(encoded)>1e-6?outColor.a/encoded:1.0;
+        outColor.rb=pow(max(outColor.rb,vec2(0)),vec2(1/gamma));
+        outColor.a=u*.5*(outColor.r+outColor.b); // back to light times palette position
+    }
 }

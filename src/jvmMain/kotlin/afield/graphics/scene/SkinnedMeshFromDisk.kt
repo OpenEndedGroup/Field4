@@ -2,6 +2,7 @@
 
 package afield.graphics.scene
 
+import afield.runtime.completion.CompletesPath
 import afield.graphics.render.before
 
 import afield.geometry.mesh.TriMesh
@@ -174,7 +175,7 @@ fun posedGltfToTriMesh(
 }
 
 /** The clip names in a rigged file, in file order. Empty for a file with no animations. */
-fun gltfClipNames(path: String): List<String> {
+fun gltfClipNames(@CompletesPath("*.{gltf,glb}") path: String): List<String> {
     val model = GltfSupport.loadGltfBasic(path, GltfSupport.GltfLoadConfig(loadTextures = false))
     try {
         return model.meshes.firstNotNullOfOrNull { it.skin?.skeleton?.clips?.map { c -> c.name } } ?: emptyList()

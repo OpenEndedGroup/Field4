@@ -2,6 +2,8 @@
 
 package afield.geometry.mesh
 
+import afield.document.workspace.loaderFile
+import afield.runtime.completion.CompletesPath
 import afield.data.collections.get
 import afield.data.collections.invoke
 import afield.data.collections.s
@@ -354,8 +356,8 @@ fun triMeshFromStl(file: File): TriMesh = stlToTriMesh(file.readBytes())
  *
  * @throws IllegalArgumentException for an extension this family does not read.
  */
-fun meshFromFile(path: String): TriMesh {
-    val file = File(path)
+fun meshFromFile(@CompletesPath("*.{obj,stl}") path: String): TriMesh {
+    val file = loaderFile(path)
     require(file.isFile) { "no such mesh file: $path" }
     return when (file.extension.lowercase()) {
         "obj" -> triMeshFromObj(file)

@@ -2,6 +2,8 @@
 
 package afield.media.image
 
+import afield.document.workspace.loaderFile
+import afield.runtime.completion.CompletesPath
 import afield.ui.visualization.ToHTML
 import afield.media.image.util.PngEncoder
 import java.awt.image.BufferedImage
@@ -431,15 +433,16 @@ fun saveHdrPng(file: File, pixels: FloatArray, width: Int, height: Int, exposure
     }
 
 /**
- * Loads an image from a file path, straight through `ImageIO` — the path is used verbatim and does **not**
- * go through `FileManager`, so a workspace-relative spec will not resolve here.
+ * Loads an image from a file path through `ImageIO`. An absolute or `~/` path, or a relative one naming a
+ * file in the working directory, is read as it is; any other relative path resolves as `path.file` does,
+ * in the document's `files/` and `%name/` roots.
  *
  * @param channels how many channels the result should have; see [BufferedImage.toImg] for what null means
  * @throws IllegalArgumentException when nothing is at [path]
  * @throws IllegalStateException when `ImageIO` cannot decode what is
  */
-fun imgFromFile(path: String, channels: Int? = null): Img {
-    val f = File(path)
+fun imgFromFile(@CompletesPath("*.{png,jpg,jpeg,gif,bmp,tif,tiff}") path: String, channels: Int? = null): Img {
+    val f = loaderFile(path)
     require(f.isFile) { "no such image file: ${f.absolutePath}" }
     val bi = ImageIO.read(f) ?: error("ImageIO could not decode ${f.absolutePath}")
     return bi.toImg(channels)

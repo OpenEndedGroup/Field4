@@ -19,6 +19,8 @@ import afield.data.table.rem
 import afield.data.table.times
 import afield.document.graph.layers
 import afield.document.graph.nested
+import afield.runtime.completion.CompletesWith
+import afield.runtime.completion.OutputChannels
 import afield.runtime.execution.plus
 import afield.runtime.lifecycle.early
 import afield.runtime.lifecycle.end
@@ -124,7 +126,7 @@ interface HasOutput {
      * A `String` is inserted as HTML; anything else is rendered with `.h` first. A channel whose
      * name starts with `*` is a one-line row rather than a panel.
      */
-    fun display(channel: String, message: Any?)
+    fun display(@CompletesWith(OutputChannels::class) channel: String, message: Any?)
 
     /**
      * Paints [message] as an error diagnostic on [property] at [line] of this box; a null message at
@@ -182,12 +184,12 @@ private fun Box.sendOutputControl(action: String, channel: String? = null) {
  * Opens the output panel for [channel], making an empty one first if the channel has none yet.
  * Panels made by [HasOutput.display] start closed; see `public/docs/box_output.md`.
  */
-fun Box.displayOpen(channel: String) {
+fun Box.displayOpen(@CompletesWith(OutputChannels::class) channel: String) {
     sendOutputControl("open", channel)
 }
 
 /** Closes the output panel for [channel] to its title bar, keeping its content and size. */
-fun Box.displayClose(channel: String) {
+fun Box.displayClose(@CompletesWith(OutputChannels::class) channel: String) {
     sendOutputControl("close", channel)
 }
 
@@ -195,7 +197,7 @@ fun Box.displayClose(channel: String) {
  * Removes the output panel for [channel] and its content (it does not merely empty it). The next
  * display into [channel] makes a new, closed panel at the end of the list. `nested` is never removed.
  */
-fun Box.displayClear(channel: String) {
+fun Box.displayClear(@CompletesWith(OutputChannels::class) channel: String) {
     sendOutputControl("clear", channel)
 }
 

@@ -97,6 +97,8 @@ object DemoTranscriptExecSmokeTest {
 
     /** Pure-compute demos that are safe to run to completion headless. */
     internal val EXECUTE = setOf(
+        // fline_examples.md, Depth-ordered 3D vector scenes: vectorScene projection and ordering; pure CPU.
+        "vector_scenes",
         "adaptive_distribution_feedback",
         "fieldml_reactive_bridge",
         "shader_study_region_checks",
@@ -653,6 +655,9 @@ object DemoTranscriptExecSmokeTest {
         // scribble aiTool that paints on it. No model is called; without the paint library the Studio
         // says so and stops, like paint_canvas.
         "ai4_paint_studio",
+        // paint_canvas.md, Overlapping regions and the fill rule: regions worked and glazed under each fill rule,
+        // checked against Gezira; pure CPU, and without the paint library the boxes say so and stop.
+        "paint_fill_rule",
         // One pure-CPU box that keeps a StackSLEvolution on itself and registers an agentExtension over
         // it (evolve_* tools, context, commands, the population as branch state). Executing it renders
         // only the target: the search, LPIPS and the watchmaker start at the first evolve_step, which
@@ -739,6 +744,8 @@ object DemoTranscriptExecSmokeTest {
         "text_one_vr",
         // Opens a native window and a stereo target; ReadingPickingTest covers the picking on the CPU.
         "reading_pointing",
+        // Opens a native window and a stereo target; ReadingTextMorphTest covers the cut, placement and fades on the CPU.
+        "reading_morph",
         "video_one_vr",
         // Audio curves: every box is a playback loop under a waveform player that waits for the
         // user to press play, and the analysis shells out to uv. AudioCurvesTest runs audioCurves,
