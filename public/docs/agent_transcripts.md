@@ -1736,6 +1736,17 @@ middle of the chord and re-run to watch the two columns converge.
 
 [Open →](offline.html?file=assets/agent_transcripts/arclength_spacing_demo/metadata.edn)
 
+### contrast_scale_demo
+
+**Accessible ten-step ramps from one colour**, the companion to
+[One colour, ten steps](colors_examples.md#one-colour-ten-steps-contrastscale). *contrastScale on white
+and near-black* builds scales for four seeds on both grounds and labels every swatch with its WCAG
+contrast; *pick a seed* rebuilds the scale from a colour picker, with a dark-background checkbox;
+*ramps as area fills* colours stacked bands from two scales. Drag the picker toward yellow and watch
+the dark end turn amber instead of olive.
+
+[Open →](offline.html?file=assets/agent_transcripts/contrast_scale_demo/metadata.edn)
+
 ### debruijn_tilings_demo
 
 Quasiperiodic rhombus tilings from de Bruijn multigrids, the companion to

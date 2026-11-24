@@ -420,6 +420,8 @@ object DemoTranscriptExecSmokeTest {
         "statistics_examples",
         // Two pure-CPU FLine boxes; showPlaneGrid is drawToSVG -> display, so no AWT and no GPU.
         "arclength_spacing_demo",
+        // Three pure-CPU colour boxes (colors_examples.md contrastScale): display HTML and lines -> drawToSVG.
+        "contrast_scale_demo",
         // Two more of the same shape: the interior-Close demo reverses, subdivides and dashes
         // closed contours and reports the numbers, all through showPlaneGrid.
         "close_node_demo",
