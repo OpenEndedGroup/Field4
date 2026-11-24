@@ -32,6 +32,7 @@ import afield.geometry.path.*
 import afield.geometry.spatial.*
 import afield.graphics.color.*
 import afield.graphics.interaction.*
+import afield.graphics.nile.explicitFillRule
 import afield.graphics.render.*
 import afield.graphics.shader.*
 import afield.graphics.text.*
@@ -641,6 +642,10 @@ fun outputTo(f: FLine, s: Canvas, antiAlias: Boolean = false) {
             first = false
         }
 
+        // the line's fill rule (afield.graphics.nile.fillRule); Skia's own default is WINDING, which
+        // is the attribute's default too, so only an explicit rule changes anything.
+        if (f.explicitFillRule == afield.geometry.path.FLineFillRule.EVEN_ODD) p.fillMode = org.jetbrains.skia.PathFillMode.EVEN_ODD
+
         paint.strokeWidth = f.thickness?.toFloat() ?: 1.0f
         val c = f.color
         paint.color4f = Color4f(c.x, c.y, c.z, c.w)
@@ -1020,17 +1025,19 @@ private fun renderFLineToSVG(f: FLine, sb: StringBuilder) {
     val colorStr = vec4ToSvgColor(color)
     val strokeWidth = svgN((f.thickness ?: 1.0).toFloat())
     val pathData = flinePathData(f)
+    // SVG's default fill-rule is nonzero, as is the attribute's; only an explicit rule is written.
+    val rule = f.explicitFillRule?.let { """ fill-rule="${it.svg}"""" } ?: ""
 
     if (pathData.isNotEmpty()) {
         when {
             f.stroked && f.filled -> {
-                sb.append("""<path d="$pathData" stroke="$colorStr" stroke-width="$strokeWidth" fill="$colorStr" vector-effect="non-scaling-stroke"/>""")
+                sb.append("""<path d="$pathData" stroke="$colorStr" stroke-width="$strokeWidth" fill="$colorStr"$rule vector-effect="non-scaling-stroke"/>""")
             }
             f.stroked -> {
                 sb.append("""<path d="$pathData" stroke="$colorStr" stroke-width="$strokeWidth" fill="none" vector-effect="non-scaling-stroke"/>""")
             }
             f.filled -> {
-                sb.append("""<path d="$pathData" stroke="none" fill="$colorStr"/>""")
+                sb.append("""<path d="$pathData" stroke="none" fill="$colorStr"$rule/>""")
             }
         }
     }

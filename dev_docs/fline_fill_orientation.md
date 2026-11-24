@@ -100,7 +100,7 @@ measures both halves, including the counterfactual.)
 
 ## Blast radius, and why nobody saw it
 
-`FLine.tessellate` has **3**<!--count:flineTessellateCallSites--> call sites in `src/jvmMain`, and
+`FLine.tessellate` has **4**<!--count:flineTessellateCallSites--> call sites in `src/jvmMain`, and
 the last of them is not what the rest of this section is about:
 
 | | |

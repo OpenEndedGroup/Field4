@@ -36,6 +36,12 @@ data class LiveOutputIframeReply(
     val error: String = "",
 )
 
+@Serializable
+data class TextFrameReviewRequest(val uid: String, val action: String, val id: String = "", val comment: String = "")
+
+@Serializable
+data class TextFrameReviewReply(val ok: Boolean, val error: String = "")
+
 var _uid = 0
 
 fun Any?.toJsonElement(): JsonElement = when (this) {

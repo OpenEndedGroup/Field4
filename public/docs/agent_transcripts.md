@@ -25,9 +25,10 @@ scene builds and which numbers it prints.
 arrow to open a separate tab. Documents with captured outputs show their results immediately;
 **Open in Field·4** imports an editable copy into Field.
 
-About half the entries carry a figure captured from that scene's own code. The rest have none,
-because the scene publishes to a headset, wants a camera or an external service, or opens a window
-the docs build does not capture. Those entries say what to run instead.
+Most entries carry a figure captured from that scene's own code, or from the guide section it
+links to, and no more than three entries in a row go without one. An entry without a figure says
+why: the scene publishes to a headset, wants a camera or an external service, or opens a window the
+docs build does not capture. It also says what to run instead.
 
 ## Running one
 
@@ -100,6 +101,8 @@ allowed rectangle stay fixed. Each study includes a candidate that passes and on
 that changes protected pixels. See the [RectSL](rectsl_conversation.md#check-a-local-edit-from-kotlin)
 and [StackSL](stacksl_conversation.md#check-a-local-edit-from-kotlin) guides.
 
+![RectSL comparison at three times, with a recoloured sun outside the allowed region](assets/shader_study_region_checks/rectsl.png)
+
 [Open →](offline.html?file=assets/agent_transcripts/shader_study_region_checks/metadata.edn)
 
 ### fieldml_reactive_bridge
@@ -114,6 +117,8 @@ box that updates when the result changes. See [Reactive properties](reactive_pro
 Aim at a beveled dodecahedron and highlight a whole face. The pick names the original polygon
 and traces it to a vertex, edge or pentagon of the seed. See
 [Point at a face and find its source](chain_polytope_render.md#point-at-a-face-and-find-its-source).
+
+![A beveled dodecahedron with one polygon highlighted under a crosshair and a readout tracing that face to the starting dodecahedron](assets/chain_polytope_render/pick_lineage.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/polytope_pick_lineage/metadata.edn)
 
@@ -131,6 +136,21 @@ macro run nile_gezira_kernels
 ```
 
 [Open →](offline.html?file=assets/agent_transcripts/nile_gezira_kernels/metadata.edn)
+
+### fline_fill_rule
+
+**One fill rule, every renderer.** A pentagram and two nested squares, wound the same way, filled
+under the non-zero and the even-odd rule by setting the FLine's own `fillRule`, and drawn by Field's
+line renderer, by Gezira, and as the triangles `FLine.tessellate` gives the Vulkan fill; `contains2D`
+answers at the contested points. See
+[Overlaps and fill rules](afield_four_graphics.md#overlaps-and-fill-rules).
+
+```diffstatic {data-lang=text}
+macro write fline_fill_rule --file dev_docs/agents/transcripts/fline_fill_rule.yaml
+macro run fline_fill_rule
+```
+
+[Open →](offline.html?file=assets/agent_transcripts/fline_fill_rule/metadata.edn)
 
 ### nile_gezira_svg
 
@@ -329,6 +349,8 @@ A single box embeds a page served by Field and exposes its iframe to AI4. Run th
 AI Chat panel, and ask it to write “hello” in the textbox. [Live iframe tools](ai4_live_iframe.md)
 explains the opt-in and the tools.
 
+![A Field box with a dark webpage in its page output: a heading A textbox for AI4, an empty Message textbox, and a line saying Nothing typed yet](assets/ai4_live_iframe/hello.png)
+
 [Open →](offline.html?file=assets/agent_transcripts/ai4_iframe_hello/metadata.edn)
 
 ### ai4_cold_reader
@@ -370,6 +392,8 @@ against all three clocks. `STEPS` recovers sub-cycle addresses, but it cannot ch
 simultaneous layers: the stack `"<0 3>, 1"` is refused rather than silently losing a layer.
 All three boxes execute headless without an audio device; the separate `marf_demo` below includes
 a live audio instrument and is compiled instead.
+
+![the same two fields under both readings: a stepped address collapses under CYCLES, and a saw freezes under STEPS](assets/marf/marf-field-clocks.svg)
 
 [Open →](offline.html?file=assets/agent_transcripts/marf_field_clocks/metadata.edn)
 
@@ -422,6 +446,8 @@ See [Motifs, Discords and Contrast](matrix_profile.md).
 chat's outline, one branch read through, and the statistics of a storyline lens. They read the
 example chat that ships under `public/docs/assets/ai4_chat_archive`, so run Field from a checkout.
 See [Reading Saved AI4 Chats](ai4_chat_archive.md).
+
+![The start of the harbour chat outline: a header counting turns, replies, tool calls and images, then turn 1, the dusk painting: the request, each reply as its first line, and each run of tool calls as one round line with its addresses, count and time](assets/ai4_chat_archive/outline.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/ai4_chat_archive/metadata.edn)
 
@@ -612,6 +638,8 @@ it live; **noiz virus, rendered** and **anima, rendered** run them offline, writ
 and print what of the norns API they reached that Field stubs. Needs `brew install luajit`. CI replays
 the graph and runs the Kotlin root only; `NornsHostTest` runs the host against a real `lua_State`. See
 [Lua in a Box](lua.md#a-norns-host).
+
+![A Lua box's output with two panels. The norns panel is a black 128 by 64 screen shown four times larger: five grey orbits round a white dot, a planet on each orbit, two of them bright, and beside them the words orbits and bpm 140. The sound panel below is a six-second player whose waveform is a run of short plucked notes.](assets/lua/norns.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/norns_demo/metadata.edn)
 
@@ -971,6 +999,8 @@ grows it into pattern. Box 2 views a half-second delay line one sample to one pi
 and motion-blurs another inside the ring, prints the RMS of both before and after, and puts
 *before* and *after* players under it. After citrons'
 ["Paint in the memory of other programs"](https://citrons.xyz/journal/2026-04-13).
+
+![six square greyscale frames of a Gray-Scott simulation, each captioned with the step and the edit just made. A thin painted V-shaped stroke and a small seed ring; the stroke grown into a band and a cloned ring at the lower left; the centre square blurred into a soft-edged block; the lower band smeared sideways by a motion blur; a black column filled through the labyrinth; and the final state, labyrinth everywhere except where the fill was](assets/visualizers-buffer-paint.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/buffer_paint/metadata.edn)
 
@@ -2109,6 +2139,8 @@ is what the split does, runs it once.
 
 Walkthrough: [Blending two programs](keyframer_examples.md#blending-two-programs-not-just-two-numbers).
 
+![a table headed stacksl, RUNTIME to RUNTIME, 3 moving of 3 paired sites, with columns site, left, right and at t=0.5: number 3.0 to 8.0 at 5.5, number 0.15 to 0.45 at 0.3, vector (1.0,0.55,0.2) to (0.2,0.5,1.0) at (0.6,0.525,0.6), and a collapsed runtime program row](assets/keyframer_examples/code_blend_plan.png)
+
 [Open →](offline.html?file=assets/agent_transcripts/keyframe_code_blend/metadata.edn)
 
 ### ordered_group_keyframes
@@ -2152,6 +2184,10 @@ one that is never executed: it holds a rule and nothing else, and a child box wi
 compiles against that rule by inheritance, a control for ambient scope, which only means anything
 because the parent stayed un-run.
 
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/pattern_rewrite_unquote.png" capture="box" open-outputs="true" wait="3.0" embed=true hidden=true timeout="180" padding="12" name="gallery-pattern-rewrite-unquote" alt="The Procedural unquote box output: rev(hello) = olleh, a string built at compile time from the identifier's text" macro-file="../../dev_docs/agents/transcripts/pattern_rewrite_worked_example.yaml" capture-box="rw_unquote"}
+// The transcript builds and runs all seven boxes; this is the procedural-unquote box.
+```
+
 [Open →](offline.html?file=assets/agent_transcripts/pattern_rewrite_worked_example/metadata.edn)
 
 ### rewrite_strategies_demo
@@ -2179,6 +2215,8 @@ face, and sends the resulting polygonal faces to the on-canvas `threeLines(...)`
 hover a face, and click one: a provenance card reports the output face id, the transform role, the
 deployed height, the source elements it descends from, and the 3D hit position. The inspection output
 below the view exercises the registered polytope value printers.
+
+![A near-spherical solid built from 360 small translucent triangles, layered so the far side shows through the near side. The colours run right around the spectrum — magenta, purple, blue, teal, green, yellow, orange — and gather into twelve rounded patches, one for each pentagon of the original dodecahedron, with blended in-between colours along the original edges where a triangle straddles two pentagons. A readout underneath reports 182 vertices, 540 edges, 360 faces, twelve seed pentagons, and that 240 faces sit over one pentagon while 120 straddle two](assets/polytope_examples/hero.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/polytope_conway_demo/metadata.edn)
 
@@ -2486,6 +2524,8 @@ network drawn beside an odd-even merge, how fast each removes disorder from rand
 `SortingNetwork.anneal` run searching for a smaller network, and annealing across three starting
 networks, three temperature schedules and three seeds. The two annealing boxes take about a minute each.
 
+![two wire diagrams stacked in tinted panels, ten horizontal wires each, comparators drawn as coloured vertical bars with a dot at either end. The blue upper panel's comparators fill its whole width and form a long descending staircase of nested triangles. The orange lower panel's comparators are packed into a little over half the width, in tight columns of near-full-height bars, and the rest of its panel is empty](assets/sorting_networks_examples/topology_compare.png)
+
 [Open →](offline.html?file=assets/agent_transcripts/sorting_networks/metadata.edn)
 
 ### rectsl_glsl_sdf
@@ -2567,6 +2607,8 @@ compiling and its lines are added back before the marker is placed; get that ari
 diagnostic lands a row or two off, looking like a compiler bug. Only the middle three boxes are replayed
 here; the voice wants an audio device and the last one is meant to fail.
 
+![the box's controls channel: three sliders, CUTOFF (HZ) at 1200, FREQ (HZ) at 220.0 and GAIN at 0.200](assets/faust/lowpass_controls.png)
+
 [Open →](offline.html?file=assets/agent_transcripts/faust_voice/metadata.edn)
 
 ### fm1_simulator
@@ -2590,6 +2632,8 @@ expect near the top of `ctrl-space` is not there. It answers one of the two ques
 the other is which *section* it lands in, which lives behind an `internal` object and so belongs to
 `FIELD_RANK_DUMP` instead. Both are explained on
 [How completions are ranked](completion_ranking.md).
+
+![A Field box output panel labelled main. A heading reads: @CommonMembers on afield.geometry.path.FLine — 8 members, first scores 40, less 2 per position. Below it a three-column table headed position, member, prior score, with eight rows: 1 moveTo 40, 2 lineTo 38, 3 cubicTo 36, 4 close 34, 5 here 32, 6 rot 30, 7 scale 28, 8 copy 26.](assets/popup-decides-prior-table.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/popup_prior_inspect/metadata.edn)
 
@@ -2620,6 +2664,8 @@ knob here you can hear: four notes on two voices, rendered at `stealReleaseFrame
 `1440`, printing **4.23×** and **0.11×** for the normalised waveform step across the steal, with
 both WAVs playable and the line to edit marked. Five of the six are replayed here; the instrument
 wants an audio device.
+
+![the controls channel: a FILTER/BYPASS checkbox, a FILTER/CUTOFF (HZ) slider at 1800 drawn well past the middle because its scale is logarithmic, a FREQ (HZ) slider at 220.00 and a GATE button labelled HOLD](assets/faust/declared_controls.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/faust_polyphony/metadata.edn)
 
@@ -2669,6 +2715,8 @@ off the drawn geometry. Run box 2 and the plot becomes a stamp in one corner of 
 single word and it is that destructive because a panel fits the geometry's *own* bounds: anything
 outside the declared frame is not cropped, it shrinks everything else.
 
+![Two charts of an area, a line and points over x 8 to 32 and y 0 to 20. With clip = false the marks run far past the axes and the whole figure shrinks to fit them, the plot a small rectangle in the middle. With clip = true every mark stops at the plot rectangle and the figure fills its frame](assets/chart_gallery/chart-clip-pair.png)
+
 [Open →](offline.html?file=assets/agent_transcripts/chart_clip/metadata.edn)
 
 ### gp_instruments
@@ -2714,6 +2762,8 @@ band with the data that breaks it recoloured and counted, which is the plot coun
 the axes, the tick labels and the legend are glyph outlines and SVG rather than a raster or a
 third-party JS chart.
 
+![A residual curve that converges but spikes twice above the expectation band; the bound is ruled at 1e-6, four points are red, and the footnote reads 4 points outside expectation](assets/chart_gallery/chart-expect-a-claim-you-can-watch-fail.png)
+
 [Open →](offline.html?file=assets/agent_transcripts/chart_primitive/metadata.edn)
 
 ### completion_rank_at_scale
@@ -2737,6 +2787,8 @@ browsed twice in one box: the top panel uses the last pattern that session tried
 six, and says so, with a button that widens it in one click. Then junk against damage — the two
 are not the same and the browser has to tell them apart — and a saved slot that applies to nowhere.
 
+![The keyframe collection browser in a box's keyframes output: a header naming the glow-looks folder and the note of the last save, counters for 4 keys, 4 versions, 3 slots and 0 selected, the four keys hot, mid, soft and wide as buttons, the Apply, Copy updateCode, Code blend, Clear and Reload buttons, and one row per slot, glow@falloff, glow@intensity and glow@radius, each a float held by 4 of 4 keys with a tick for every key's value along its range and the spread at the right](assets/keyframer_examples/browser.png)
+
 [Open →](offline.html?file=assets/agent_transcripts/keyframe_key_discovery/metadata.edn)
 
 ### logging_layer
@@ -2747,6 +2799,8 @@ actual subscription filter. The reason to run these rather than read them is box
 `ConsoleMute.isMuted` compares the **whole** channel string, the pinned console splits on commas and
 compares a tag, and `LogStream`'s filter takes any case-insensitive substring, so one word selects
 three different sets of lines, and box 3 shows all three with a real subscriber.
+
+![A Field box output panel labelled main, holding a two-column table titled 'a LogStream filter of (kotlin) against three channels', headed channel emitted and pushed to the subscriber. Three rows: info,kotlin is true; info,kotlinjs is false; info,graphics is false. A footnote records that one of the three lines matched.](assets/logging/filter-matches-tags.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/logging_layer/metadata.edn)
 
@@ -2783,6 +2837,8 @@ with nothing between the render and the transcription looking at the pattern. It
 at 0.2501 s/step over 8 steps with a worst residual of 0.001 step, and box 2's two medians are 0.613
 for noise against 0.194 for `kolakoskiMask(16)`, a 3.2x separation.
 
+![Piano roll of four rhythms against their condensations: x(3,8), x(k16), bd hh*2 sd cp*2, and one unchanged](assets/pattern_language/condense.png)
+
 [Open →](offline.html?file=assets/agent_transcripts/pattern_condense/metadata.edn)
 
 ### read_only_session
@@ -2805,6 +2861,8 @@ after each edit, so the document's backups hold four real versions. Select `sket
 History**, and the sidebar's **This Box** list shows its four values newest first. Click a row to select
 that version, or choose **Restore** to put that value back into `sketch` alone. See
 [Document History](document_history.md#one-box-edit-by-edit).
+
+![Field's history view with the sidebar's This Box list for the box sketch: four values over five versions, newest first, each with its version range, the first line it added and its added and removed line counts; the row for version #1 is selected and the editor lays that version's code over the current code](assets/document_history/history-box-story.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/history_box_story/metadata.edn)
 
@@ -2862,6 +2920,8 @@ again and Finish. Run `numbers` and `squares` (they print `[1, 2, …, 10]` and
 `[1, 4, 9, …, 100]`), then run `tour` and follow its links. This is the "tour of your own
 document" example on [Interactive guides](interactive_guides.md), as a document you can open.
 
+![The guide box on the left with a green running dot, and beside it the first note: the heading A three-step tour, the sentence saying the note belongs to the box on the left and to follow the link at the bottom, and a Next link.](assets/interactive_guides/three_step_tour.png)
+
 [Open →](offline.html?file=assets/agent_transcripts/slideshow_own_tour/metadata.edn)
 
 ### solidsl_inverse
@@ -2895,6 +2955,8 @@ you can paste into a shader.
 as two boxes. Box 1 specializes `power(x, 5)` and prints the four multiplications that are left. Box 2
 specializes a StackSL program, renders the residual next to the interpreter, checks the two are
 bit-identical, and prints the residual GLSL. Edit `program` and rerun to see the residual change.
+
+![Residual GLSL for power(x, 5): four lines each multiplying the previous temp by fragUV.x, then outColor = vec4(t4, 0.0, 0.0, 1.0)](assets/stacksl/partial-eval-power.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/stacksl_partial_eval/metadata.edn)
 
@@ -2971,6 +3033,8 @@ object's triangles, area, volume and open edges against the exact shapes. Needs 
 openNURBS wrapper. See [Writing a file and reading it back](rhino_files.md#writing-a-file-and-reading-it-back).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/rhino_round_trip/metadata.edn)
+
+![A table of the ten objects read back, then the file in an orbiting viewer. The table gives each object's layer and triangle count; the sphere's area is 1254.1 of an exact 1256.6 square millimetres and its volume 4171.8 of 4188.8, the cylinder's 784.9 of 785.4 and 1565.3 of 1570.8, the box exactly 600 and 1000, the trimmed plate 321.5 of 321.5 with 260 open edges round its outline and hole; every solid has 0 open edges. Below it, a blue box, sphere and cylinder, an orange plate with a round hole, a green rounded SubD cube, a grey square outline, a grey hatched square with a square hole, two grey triangular fins and a small quad shaded from red to white.](assets/rhino_files/round_trip.png)
 
 ### spinny_algebras
 
@@ -3059,6 +3123,8 @@ related source windows. The resulting board aligns playheads and hover cursors i
 shows each descriptor-group distance, and provides an automatic query-to-neighbour splice audition.
 Walkthrough: [Corpus microscope: from recordings to related windows](audio_ai_corpus_microscope.md).
 
+![Real Nancy query and two Candlestick neighbour windows with waveforms, distance bars and splice players](assets/audio_ai_corpus_microscope/neighbours.png)
+
 [Open →](offline.html?file=assets/agent_transcripts/audio_ai_corpus_microscope/metadata.edn)
 
 ### contour_trees_explorer
@@ -3127,6 +3193,8 @@ clicks. Box 2 plays a self-oscillating `ZdfSvf` band-pass as an oscillator, its 
 Box 3 drives a sine into `tanh` with and without ADAA and crossfades between them. Each box needs
 the audio device; stop one before running the next.
 
+![Two spectrograms side by side on a dark ground, time left to right, frequency upward. In each, an orange fundamental curves up from the bottom left and a fan of fainter cyan harmonics curves up above it. Many cyan lines reflect off the top edge and run back down, crossing the fan in a lattice. The lattice is bright in the left half and visibly dimmer in the right half, especially low in the frame](assets/tpt_filters/adaa_spectrogram.png)
+
 [Open →](offline.html?file=assets/agent_transcripts/nonlinear_filters/metadata.edn)
 
 ### datalog_rhythm_drawn
@@ -3162,6 +3230,8 @@ See [Continuing a Gesture](temporal_memory.md).
 - Building the temporal model and scanning thresholds:
   [`VariableMarkovOracle`](reference/math.md#variablemarkovoracle-kt-variablemarkovoracle) —
   [`build`](reference/math.md#variablemarkovoracle-kt--variablemarkovoracle-companion--build).
+
+![x and y keep oscillating, and the memory position climbs in straight runs with jumps](assets/temporal_memory/improvise.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/temporal_memory/metadata.edn)
 
@@ -3319,6 +3389,8 @@ app; the talk starts each figure when its slide comes up and stops it when the t
 nothing sounds until someone holds a key or ticks **sound**. Built on
 [Live figures beside prose](presentation_studio.md#live-figures-beside-prose).
 
+![The audience window at "How often it repeats": prose on the left, and on the right the live sine figure with its frequency slider at 220 Hz and an unticked sound checkbox.](assets/presentation_studio/figure-slide.png)
+
 [Open →](offline.html?file=assets/agent_transcripts/explainer_sound/metadata.edn)
 
 ### explainer_cameras
@@ -3354,6 +3426,8 @@ checkpoint provenance. The optional authenticated GPU worker is compiled here an
 interactive action.
 Walkthrough: [Generating with a LoRA](audio_ai_underfit_mancini.md),
 with the actual MJQ source excerpt, matched no-LoRA baseline and archived LoRA take.
+
+![Actual MJQ source waveform and Underfit candidate boards for the matched no-LoRA baseline and original Mancini LoRA take](assets/audio_ai_underfit_mancini/comparison.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/audio_ai_underfit_mancini/metadata.edn)
 
@@ -3399,6 +3473,8 @@ chord with `iter index` over a bass note drawn by `wchoose`, a drum grid played 
 and a grid to launch, which plays each step through the audio engine as it comes due. Each of the
 others lists its notes and puts an audio player in its `audio` panel.
 
+![A steps panel lists the six notes the twelve steps played, one per line with its step, cell and MIDI number: step 0 c4, step 2 g3, step 4 d#3, step 6 c4, step 8 g3, step 10 g3, all sine. Below it an audio panel shows the waveform over a player.](assets/forth_examples/steps_alternation.png)
+
 [Open →](offline.html?file=assets/agent_transcripts/forth_step_sequencer/metadata.edn)
 
 ### python_box_parity
@@ -3442,6 +3518,8 @@ from callbacks in the head; a `setTimeout` prints after the run has finished; an
 `DemoTranscriptExecSmokeTest` compiles the Kotlin root and skips the Javascript boxes, which need a
 browser head; `RemoteJsBoxSurfaceTest` runs the JVM half. [Javascript in a browser tab](remotejs.md)
 teaches the same calls.
+
+![A Javascript box in Field's editor. Under line 1, an output block reads hello from the browser, then the head is 480 pixels wide. Under line 4, the box's last value: the array CIRCLE, SQUARE, TRIANGLE.](assets/remotejs/print.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/remotejs_box_parity/metadata.edn)
 
@@ -3522,6 +3600,8 @@ on its own. [PostScript in a Box](postscript.md) has the walkthrough.
 [ORCA](orca.md) in a box output, playing a melody and a bass line through a `PatSynthBank`. Run the
 box, click the grid and type; every note ORCA plays is shown under it. The box also gives its AI
 Chat tools that read and write the grid, so you can ask AI4 to change the tune.
+
+![A Field box with two outputs. The orca output is ORCA's black grid: a comment reading ORCA IN FIELD, a clock C8 feeding a track operator T that holds the notes CDEGAGED, two MIDI operators lit in teal under a pair of delays, and ORCA's status lines along the bottom. Below it, the heard output reads the note, channel and MIDI number of the last note Kotlin received.](assets/orca/hello.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/orca_hello/metadata.edn)
 
@@ -3683,6 +3763,8 @@ The demo for [Driving Lights](dmx_lighting.md), with no lighting hardware: an Ar
 draws the universes it gets, a 200-pixel strip on a curve sent to it, an ArtPoll, and an image on an
 RGBW matrix sent as sACN and received back in the same box. Launch the receiver first.
 
+![The demo document running: an Art-Net receiver drawing two universes, a 200-pixel strip on a curve, and an sACN RGBW matrix with the universe it received](assets/dmx_lighting/demo_document_running.png)
+
 [Open →](offline.html?file=assets/agent_transcripts/dmx_lighting_demo/metadata.edn)
 
 ### oscquery_demo
@@ -3781,6 +3863,8 @@ to follow them, never regrowing it. Needs the optional native library:
   [`PrincipalForest`](reference/graphics.md#principalcurves-kt-principalforest) —
   [`refine`](reference/graphics.md#principalcurves-kt--principalforest--refine).
 
+![blue points scattered around three strands on a dark ground: a thin wave across the top, a broad, gently sloping band through the middle, and a narrow arc at the lower right. An orange curve runs down the middle of each, inside a translucent brown band that is narrow along the wave and the arc and several times wider along the broad middle strand. The curves stop a little short of the last points at each end](assets/principal_curves/strands.png)
+
 [Open →](offline.html?file=assets/agent_transcripts/principal_curves_explorer/metadata.edn)
 
 ### polyvector_explorer
@@ -3862,6 +3946,8 @@ and the Kotlin that `prop` generates, shown as text. Run the parameter box, then
 Kotlin, a FieldML lambda passed to `FLine.transform`, host members with real types, overloads and
 varargs, and named arguments with Kotlin defaults.
 
+![a 240 by 240 raster in the viridis colourmap: concentric rings around a bright yellow centre, the rings shading out through green to deep indigo and back to teal, each ring pinched into lobes above and below the centre](assets/fieldml_host_bridge/generated_field.png)
+
 [Open →](offline.html?file=assets/agent_transcripts/fieldml_host_bridge_demo/metadata.edn)
 
 ### fieldml_lambda_demo
@@ -3892,6 +3978,8 @@ A band raised one column at a time, held, and started again in the other colour,
 FieldML `frames` body that waits between steps, from
 [FieldML and the JVM](fieldml_host_bridge.md#waiting-inside-a-frames-body). Run
 `window and renderer (FieldML)`, then `a script across frames`.
+
+![two captures of a native Vulkan window 0.6 s apart, side by side: on the left an orange band that has risen across the left third of the window, its lower edge a sine curve; on the right the same band reaching three quarters of the way across](assets/fieldml_frames_sequence_demo/sequence-pair.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/fieldml_frames_sequence_demo/metadata.edn)
 
@@ -4090,6 +4178,8 @@ contents at a frame boundary without replacing GPU resources; launch **Profile**
 repeatable camera path in the existing CPU/allocation timeline. See
 [Flow grain and motion](flow_grain.md) for the storage contracts and controls.
 
+![World-space grain curls around obstacles; thin velocity strokes cross the flow and a rotating white marker writes motion coordinates.](assets/flow_grain/flow.png)
+
 [Open →](offline.html?file=assets/agent_transcripts/flow_grain/metadata.edn)
 
 ### openxr_eye_intersection
@@ -4217,6 +4307,8 @@ outline from code. The outlines are closed `FLine`s; `signedDistance2D()` and `B
 write their field into the storage buffer, and the pattern grows only inside them. A closed
 freehand stroke over the *walls* frame (Alt+D) adds another outline while it runs; an ellipse clears
 the drawn ones.
+
+![a Gray-Scott pattern in the native window that fills only a circle, a rectangle and a five-pointed star drawn in orange; outside the outlines is dark, and the stripes inside follow each edge](assets/visualizers-outline-field-gpu.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/outline_field_gpu/metadata.edn)
 
@@ -4882,6 +4974,8 @@ then sample the resulting motion texture in a second `moduleHere()` box. Pause a
 frame ordering visible. Runs on either optical-flow backend.
 See [Optical Flow](optical_flow.md#keep-the-previous-frame-with-ping-pong).
 
+![One editable shader, retained previous/current frames, and the motion texture sampled by another module](assets/optical_flow/pingpong.png)
+
 [Open →](offline.html?file=assets/agent_transcripts/optical_flow_pingpong/metadata.edn)
 
 ### learned_shader
@@ -5001,6 +5095,8 @@ dodecahedron's own faces, edges and vertices. See
 load, then `PathTraceScene.rhino` appends them object by object, so each keeps its display colour as
 a material. Needs the optional openNURBS wrapper. See [the walkthrough](chain_rhino_render.md).
 
+![A path-traced Rhino file over a pale floor under an evening sky: a blue sphere, a blue capped cylinder and a blue plate with a round hole, two orange boxes, and two green SubD cubes, one rounded and one sharp-edged](assets/chain_rhino_render/trace.png)
+
 [Open →](offline.html?file=assets/agent_transcripts/rhino_path_trace/metadata.edn)
 
 ### polytope_manifold_path_trace
@@ -5029,6 +5125,8 @@ The relief and frame returned by `PhotoToSolidChain.mount()`, imported into the
 real tracer and lit with the Venice environment. The retained Linux/NVIDIA figure
 shows the mounted plaque after at least 900 samples. See
 [the photo-to-solid walkthrough](chain_photo_to_solid.md).
+
+![The mounted relief and its frame, lit and rendered with the GPU path tracer.](assets/chain_photo_to_solid/mounted_path_trace.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/photo_mount_path_trace/metadata.edn)
 
@@ -5060,6 +5158,8 @@ fill and a clap empties, and a sparks box that asks a run of the net each frame 
 last 1.6 seconds (`firingsOver`), where each token is (`markingAt`) and how full `charge` is
 (`countAt`). Each firing becomes a burst of streaks in its transition's colour, computed entirely in
 the vertex shader from the burst's origin and age. See [the walkthrough](chain_petri_sparks.md).
+
+![Three concentric rings of faint dust on black, cyan inside, orange in the middle and gold outside, each with a bright comet where its token is. A fresh pale-gold burst of streaks is leaving the hat ring at the lower left, a larger orange burst from the kick ring is spreading at the lower right, and older cyan and green bursts are falling as fading rain near the top](assets/chain_petri_sparks/sparks.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/petri_sparks/metadata.edn)
 
@@ -5104,6 +5204,8 @@ dual quaternions. Each pose becomes a Manifold solid and prints its genus and en
 comes back with creased normals for the path tracer, and the two lie side by side on a floor. The
 linear-blend tube keeps two thirds of the rest volume and narrows to a point at the joint. The
 dual-quaternion one keeps its full width. See [the walkthrough](chain_skinned_volume.md).
+
+![Two twelve-sided tubes lying side by side on a pale floor with the Venice lagoon behind. The nearer cyan tube, posed by linear blend skinning at a half turn, narrows to a point at its middle like a twisted sweet wrapper; the tan tube behind it, posed by dual quaternion skinning, keeps its full width along its whole length](assets/chain_skinned_volume/twist.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/skinned_volume_path_trace/metadata.edn)
 
@@ -5392,6 +5494,8 @@ bit-identity rather than a tolerance, and the captured frames are under
 
 The explicit `moduleHere()` → three `RenderToTexture` attachments → DLAA/SR pipeline, with source bypass and history reset. Read [From modules to reconstruction](reconstruction_plumbing.md) alongside its editable Kotlin and shaders. Requires a Vulkan window; NGX is optional and unavailable machines display the source.
 
+![An editable module producing the inputs to Super Resolution](assets/reconstruction_plumbing/sr.png)
+
 [Open →](offline.html?file=assets/agent_transcripts/reconstruction_plumbing/metadata.edn)
 
 ### rr_plumbing
@@ -5407,6 +5511,8 @@ A renderer and an editable spinning-curves scene with ink, charcoal and barbed-w
 The optional Linux/NVIDIA worker returns a sampled RTT through shared GPU memory; unsupported
 platforms show an availability message. CI compiles the boxes without starting the worker.
 The retained native capture and measured run are on [Streaming diffusion](streaming_diffusion.md).
+
+![Spinning curves rendered in Field, with the current source on the left and returned charcoal on the right](assets/streaming_diffusion/charcoal-085-poster.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/streaming_diffusion/metadata.edn)
 
@@ -5546,6 +5652,8 @@ is this box given that parent.
 Multi-bounce path tracing with raw, progressive and Ray Reconstruction views at 1080p.
 Optional NGX; opaque surfaces and a pinhole camera. See [Path-Traced Reconstruction](path_traced_reconstruction.md).
 
+![Multi-bounce path tracing reconstructed at 1920 by 1080](assets/path_traced_reconstruction/reconstructed.png)
+
 [Open →](offline.html?file=assets/agent_transcripts/path_traced_reconstruction/metadata.edn)
 
 ### computed_ray_geometry
@@ -5561,6 +5669,8 @@ See [Compute your ray-traced geometry](computed_ray_geometry.md).
 Train directly on an editable moduleHere render target, freeze the fit, and export portable learned weights.
 Requires cooperative-vector training and the optional Slang shader build.
 See [Learn from a shader on the GPU](gpu_shader_learning.md).
+
+![Source shader, GPU-trained approximation and absolute RGB error multiplied by eight](assets/gpu_shader_learning/comparison.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/gpu_shader_learning/metadata.edn)
 
@@ -5592,6 +5702,8 @@ smoothed follow camera. This replay needs no models. See [Generative Mocap — A
 A short Kotlin movement score: walk, attach a named foot, continue walking, release. Requires
 optional CLoSD setup. See [writing a score](motion_recordings.md#write-a-movement-score).
 
+<video controls muted loop playsinline preload="metadata" src="assets/motion_recordings/movement-score.mp4" style="max-width:100%;height:auto" aria-label="Field replays the actual Kotlin movement score: walking, a stronger ankle tether, then release. The complete body, reference, anchor and force are visible."></video>
+
 [Open →](offline.html?file=assets/agent_transcripts/motion_tether_score/metadata.edn)
 
 ### motion_closd_live
@@ -5600,17 +5712,23 @@ Give CLoSD an intention, attach a named rigid body to a point tether, apply a to
 release or reset it. Sessions record automatically in the document's files. Requires the optional
 CLoSD environment and `FIELD_MOTION_HOME`; see [motion recordings](motion_recordings.md).
 
+<video controls muted loop playsinline preload="metadata" src="assets/motion_recordings/closd-field-review.mp4" style="max-width:100%;height:auto" aria-label="Recorded human motion rendered by the Kotlin code shown here, inside Field."></video>
+
 [Open →](offline.html?file=assets/agent_transcripts/motion_closd_live/metadata.edn)
 
 ### motion_ardy_path
 
 Timed ARDY routes. Live Core27 motion, timed FLine routes and sparse model conditioning. Requires the optional ARDY environment and cached prompts or the CPU encoder service. No physical attachment is implied.
 
+<video controls muted loop playsinline preload="metadata" src="assets/motion_recordings/ardy-route-comparison.mp4" style="max-width:100%;height:auto" aria-label="Recorded human motion rendered by the Kotlin code shown here, inside Field."></video>
+
 [Open →](offline.html?file=assets/agent_transcripts/motion_ardy_path/metadata.edn)
 
 ### motion_ardy_intentions
 
 Changing ARDY intentions. Live Core27 motion, timed FLine routes and sparse model conditioning. Requires the optional ARDY environment and cached prompts or the CPU encoder service. No physical attachment is implied.
+
+<video controls muted loop playsinline preload="metadata" src="assets/motion_recordings/ardy-live-skipping.mp4" style="max-width:100%;height:auto" aria-label="ARDY skipping, replayed in Field from an uninterrupted excerpt of the interactive session, with moving limbs and a following camera."></video>
 
 [Open →](offline.html?file=assets/agent_transcripts/motion_ardy_intentions/metadata.edn)
 
@@ -5623,6 +5741,8 @@ ARDY kinematic foot restriction. Live Core27 motion, timed FLine routes and spar
 ### motion_recorded_results
 
 Compare recorded ARDY movement, CLoSD tether trials and ARDY route failures in an editable Field 3D renderer. No model installation. Change `experiment` in the box to select a comparison.
+
+<video controls muted loop playsinline preload="metadata" src="assets/motion_recordings/ardy-field-review.mp4" style="max-width:100%;height:auto" aria-label="Recorded human motion rendered by the Kotlin code shown here, inside Field."></video>
 
 [Open →](offline.html?file=assets/agent_transcripts/motion_recorded_results/metadata.edn)
 
@@ -5640,6 +5760,8 @@ optionally, an OpenXR headset. The five-box graph starts in desktop preview mode
 the launch order and the explicit headset switch. The FXAA shader clamps every tap to its own eye
 and the output checkbox compares the same image with and without AA. Requires Vulkan; compiled
 without opening a window in CI, with a real desktop capture on the walkthrough page.
+
+![Desktop stereo preview: red, green and blue wireframe cubes above a floor grid, with a colour and resolution chart below, repeated once for each eye](assets/stereo_rtt_composite/desktop.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/stereo_rtt_composite/metadata.edn)
 
@@ -5686,6 +5808,8 @@ speed, add motion exposure to the movie and hold frames at 12 or 24 fps while th
 rendering. A desktop preview shows the same eye images, and you can bring Field's live browser
 into the room. The player has no audio; it needs Vulkan.
 
+![Field's native side-by-side eye preview: both eyes see a curved screen carrying cyan, orange and violet spheres above a floor grid.](assets/stereo_video/player.png)
+
 [Open →](offline.html?file=assets/agent_transcripts/video_one_vr/metadata.edn)
 
 
@@ -5708,6 +5832,8 @@ headset keyboard and mouse input works without desktop focus, and another browse
 same document independently. The Quest 3 workflow has been tested in the headset.
 Launch 1 then 2; the default is a front-on desktop companion plus a closeable headset scene preview.
 The preview can show one eye or both eyes side by side. Requires Vulkan and Electron.
+
+![Field's live canvas, executed Playground output and VR toolbar, sampled from Chromium into the Vulkan desktop companion](assets/field_vr_ide/companion.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/field_vr_ide/metadata.edn)
 
@@ -5753,3 +5879,6 @@ with grout the person drew in by hand.
 
 The aurora-over-hills session from [Talking a shader into existence](stacksl_conversation.md),
 including the turn that traced the mound and the measured half-speed slowdown.
+
+![The first edit at 0, 6 and 12 seconds above the flat grey it replaced: green-to-violet rays over a blue band and a black hill](assets/stacksl_conversation/aurora/images/9dc529444cb531f565d6.png)
+

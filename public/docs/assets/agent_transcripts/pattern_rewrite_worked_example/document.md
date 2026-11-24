@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 7 "persistentProperties" ["contents" "frame" "name" "code" "code_language" "box_kind" "textFrame" "textRunAnchor" "textRunSources" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "parentHint" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_panel" "ai4_continuation" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "ai4_garden" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 7 "persistentProperties" ["contents" "frame" "name" "code" "code_language" "box_kind" "textFrame" "textRunAnchor" "textRunSources" "textFrameReview" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "parentHint" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_panel" "ai4_continuation" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "ai4_garden" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. isCallTo Termination
@@ -80,7 +80,7 @@ println("neg(10) = " + neg(10))
 <!-- field-box id="rw_unquote" index="4" -->
 
 ```edn [field-box id="rw_unquote" role="properties"]
-{"id" "rw_unquote" "index" 4 "name" "Procedural unquote" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Procedural unquote" "_tombstone" false "frame" #afield/rect [60.0 620.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rw_unquote_code_.kt" "lines" 7 "characters" 164 "sha256" "87e0bdc126b05f0261f719bc95056244b71a4dd20f3ee0f0d1c340471b3e2ddd"}]}
+{"id" "rw_unquote" "index" 4 "name" "Procedural unquote" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Procedural unquote" "_tombstone" false "frame" #afield/rect [60.0 620.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rw_unquote_code_.kt" "lines" 14 "characters" 375 "sha256" "b3f56be11a04581668bfd70bebc14ed174f42e63c7116c75cf028178f967e40f"}]}
 ```
 
 ```kotlin [field-property box="rw_unquote" name="code" path="rw_unquote_code_.kt"]
@@ -90,7 +90,14 @@ rewrite { x: Ident ->
     from { rev(x) }
     to { unquote { "\"" + x.reversed() + "\"" } }
 }
-println("rev(hello) = " + rev(hello))
+val answer = rev(hello)
+println("rev(hello) = " + answer)
+display(
+    "main",
+    "<div style='font:16px monospace;padding:8px'>rev(hello) = <b>" +
+        answer +
+        "</b>, a string built at compile time from the identifier's text</div>",
+)
 ```
 
 ## 6. Precedence Guard

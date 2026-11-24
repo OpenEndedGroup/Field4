@@ -250,3 +250,26 @@ more than once, give surrounding text or specify which occurrence to use.
 - `FindTextLinksRequest` finds sources and backlinks, including links to lost passages.
 
 The results include clickable Field links so you can check what the agent found or wrote.
+
+In a linked child’s **AI Chat**, AI4 sees the source box and the passage the
+note annotates. In the source box’s **AI Chat**, it sees the linked children
+and the passages they discuss. AI4 can use `FindTextLinksRequest` to look up
+more children. Lost passages carry their last known excerpt.
+
+### Review AI4 edits
+
+Ask AI4 to suggest edits to a text frame. Open **Review edits** above the frame
+to see removed Markdown in red strikethrough and added Markdown in green.
+Hover or focus the red text to highlight its passage on the frame. Hover or
+focus the green text to preview the replacement in the typeset prose. The
+panel also shows the surrounding text. If the passage is off-screen, Field
+scrolls it into view while the review panel stays in place.
+The check mark (**Accept**) applies one change. **Reject** dismisses one. **Accept all** applies every suggestion that still matches the source, and **Reject all** dismisses the remaining suggestions for that frame. If you edit the source
+of a suggestion before accepting it, Field may mark it **Source changed**
+and ask you to get a fresh suggestion.
+
+Use **Comment** on a suggestion, then ask AI4 to read the review and revise
+its proposal. Comments and decisions stay with the frame and are available
+under **Review history** after you've reviewed the last suggestion.
+AI4 uses `SuggestTextEditsRequest` to propose edits and `ListTextReviewRequest`
+to read the review.

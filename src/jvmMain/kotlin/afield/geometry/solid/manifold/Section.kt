@@ -491,6 +491,13 @@ class Section internal constructor(handle: MemorySegment) : AutoCloseable {
             return ofPolygons(contours, fillRule)
         }
 
+        /**
+         * [ofFLines] under one of Field's FLine fill rules — for instance the line's own
+         * `fillRule` attribute, so the region is the one SVG, Skia and Gezira fill.
+         */
+        fun ofFLines(lines: List<FLine>, sampleDistance: Double = 1.0, rule: afield.geometry.path.FLineFillRule): Section =
+            ofFLines(lines, sampleDistance, rule.toManifold())
+
         /** [ofFLines] for one line. */
         fun ofFLine(line: FLine, sampleDistance: Double = 1.0, fillRule: FillRule = FillRule.POSITIVE): Section =
             ofFLines(listOf(line), sampleDistance, fillRule)

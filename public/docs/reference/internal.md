@@ -4,7 +4,7 @@
 
 Implementation details explicitly marked Internal by their source. They remain available to browse here, but are not intended as entry points for code written in a Field box.
 
-27 source file(s), 229 public symbol(s), 97 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+27 source file(s), 230 public symbol(s), 98 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -191,6 +191,12 @@ option enums [`BooleanOp`](internal.md#manifoldnative-kt-booleanop), [`JoinType`
 
 **Used in:** [Solids that cannot fail: Manifold in Field](../manifold.md)
 
+### Top-level functions { #manifoldnative-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="manifoldnative-kt--tomanifold"></a>[<code class="highlight"><span class="k">fun</span> <span class="n">afield</span><span class="p">.</span><span class="n">geometry</span><span class="p">.</span><span class="n">path</span><span class="p">.</span><span class="nc">FLineFillRule</span><span class="p">.</span><span class="nf">toManifold</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">FillRule</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L913) | This rule as Manifold's: a superset of Field's [`afield.geometry.path.FLineFillRule`](graphics.md#flinemeasure-kt-flinefillrule), kept separate because only a solid boolean gives `FillRule.POSITIVE` / `FillRule.NEGATIVE` (the sign of the winding) a meaning. `Section.ofFLines(lines, rule = line.fillRule)` takes either. |
+
 ### ManifoldLibrary { #manifoldnative-kt-manifoldlibrary }
 
 [<code class="highlight"><span class="k">object</span> <span class="nc">ManifoldLibrary</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L777)
@@ -246,7 +252,7 @@ Constants: `EVEN_ODD`, `NON_ZERO`, `POSITIVE`, `NEGATIVE`.
 
 ### RayHit { #manifoldnative-kt-rayhit }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">RayHit</span><span class="p">(</span><span class="k">val</span> <span class="n">faceId</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">distance</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">normalX</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">normalY</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">normalZ</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L909)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">RayHit</span><span class="p">(</span><span class="k">val</span> <span class="n">faceId</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">distance</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">normalX</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">normalY</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">normalZ</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L917)
 
 One intersection from [`Solid.raycast`](graphics.md#solid-kt--solid--raycast).
 

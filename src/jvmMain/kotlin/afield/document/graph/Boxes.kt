@@ -39,6 +39,7 @@ import afield.app.server.updateCheckMessages
 import afield.app.settings.NEEDS_RERUN_PROPERTY
 import afield.data.table.get
 import afield.document.properties.PropertyBag
+import afield.document.text.TEXT_FRAME_REVIEW
 import afield.document.text.TEXT_RUN_ANCHOR
 import afield.document.text.TEXT_RUN_SOURCES
 import afield.document.text.TextDiff
@@ -737,6 +738,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "textFrame",
             TEXT_RUN_ANCHOR,
             TEXT_RUN_SOURCES,
+            TEXT_FRAME_REVIEW,
             "contents_language",
             "default_property",
             "file_proxy_mode",
@@ -825,6 +827,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "textFrame",
             TEXT_RUN_ANCHOR,
             TEXT_RUN_SOURCES,
+            TEXT_FRAME_REVIEW,
             "contents_language",
             "default_property",
             "file_proxy_mode",
@@ -1244,11 +1247,17 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
 
     }
 
-    override fun setPropertyRaw(name: String, value: Any, doResync: Boolean) =
-        setPropertyRaw(name, value, doResync, null)
+    internal val textContentsLock = Any()
 
-    internal fun setTextRunEditedContents(value: String, diff: TextDiff) =
+    override fun setPropertyRaw(name: String, value: Any, doResync: Boolean) {
+        if (name == "contents" || name == TEXT_FRAME_REVIEW) {
+            synchronized(textContentsLock) { setPropertyRaw(name, value, doResync, null) }
+        } else setPropertyRaw(name, value, doResync, null)
+    }
+
+    internal fun setTextRunEditedContents(value: String, diff: TextDiff) = synchronized(textContentsLock) {
         setPropertyRaw("contents", value, true, diff)
+    }
 
     private fun setPropertyRaw(name: String, value: Any, doResync: Boolean, diff: TextDiff?) {
         // The one choke point every whole-set assignment to a topology property passes through --
@@ -1278,6 +1287,12 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
     }
 
     override fun removePropertyRaw(name: String, doResync: Boolean) {
+        if (name == "contents" || name == TEXT_FRAME_REVIEW) {
+            synchronized(textContentsLock) { removePropertyRawUnlocked(name, doResync) }
+        } else removePropertyRawUnlocked(name, doResync)
+    }
+
+    private fun removePropertyRawUnlocked(name: String, doResync: Boolean) {
         if (!properties.containsKey(name)) return
         val oldValue = properties.remove(name)
         rebaseChildTextRuns(this, name, oldValue, null)

@@ -432,6 +432,7 @@ To return to a part of the document you visit often, save its view in one of nin
 
 A slot stores a view rather than a box reference. Restoring one reapplies, in this order:
 
+- the visible layers, active layer and drawing layer visibility. Older bookmarks keep the current layer state
 - the canvas pan position and zoom, and the split with each pane's position if the canvas was split
 - the open or closed state of the nested disclosures, before anything is selected
 - the size of each output panel that was open, and the open or closed state of every output

@@ -174,14 +174,17 @@ fun trianglesOut(
 
 
 /**
- * Tessellate filled [FLine]s into triangles and write positions and colors.
+ * Tessellate filled [FLine]s into triangles and write positions and colors. A line's explicit fill
+ * rule is honoured, as in [FLine.tessellate].
  *
  * @return number of vertices written.
  */
 fun trianglesOut(
-    m: Collection<FLine>, vertexData: DynamicallyWriteable, colorData: DynamicallyWriteable, samplesPerCubic: Int = 100
+    lines: Collection<FLine>, vertexData: DynamicallyWriteable, colorData: DynamicallyWriteable, samplesPerCubic: Int = 100
 ): Int {
 
+    // resolved here as well as in tessellate, so the per-node colours below index the resolved nodes
+    val m = lines.map { it.resolveFillRule() }
     var a = 0
     var splits = m.map { f ->
         val colors = f.colorsPer()

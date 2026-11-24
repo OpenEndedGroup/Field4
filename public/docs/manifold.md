@@ -182,7 +182,9 @@ triangles and capping the gap would produce a plausible solid missing an unknown
 
 `TriMesh.isValidSolid()` is the cheap pre-flight, and `toSolid()` checks by default. A mesh read
 from a file goes the same way: [Geometry from disk](geometry_from_disk.md) for STL, OBJ and glTF,
-[Rhino files](rhino_files.md) for the `TriMesh` inside each `RhinoMesh` of a `.3dm`.
+[Rhino files](rhino_files.md) for the `TriMesh` inside each `RhinoMesh` of a `.3dm`. A Brep
+or SubD with no cached mesh is tessellated with its shared edges stitched, so a closed one comes
+back with no open edges.
 
 ## 2D sections and offsets
 

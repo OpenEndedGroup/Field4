@@ -1,5 +1,9 @@
 package afield.ai.agent
 
+import afield.app.server.ReadOnlyDocuments
+import afield.document.text.TEXT_FRAME_REVIEW
+import afield.document.text.proposeTextReview
+import afield.document.text.textReviewSuggestions
 import afield.document.graph.Box
 import afield.app.diagnostics.BoxOutputLog
 import afield.app.protocol.Execute
@@ -74,7 +78,7 @@ data class NewBoxRequest(
 @afield.ai.tools.AgentToolMeta("graph", effects = [afield.ai.tools.ToolEffect.MUTATE_DOCUMENT])
 data class DeleteBoxRequest(@param:JsonPropertyDescription("Box uid or unique name, e.g. `Plot`.") val box: String)
 
-@JsonClassDescription("Replace a whole text property on a box, most often `code`, e.g. property = `code`, value = `println(1)`. Returns success and the length set. Use it for a rewrite; for a small change prefer PatchBoxTextRequest, which resends nothing else. Does not run it: call RunBox or LaunchBox afterwards. An unknown or ambiguous box fails with the list of known boxes.")
+@JsonClassDescription("Replace a whole text property on a box, most often `code`, e.g. property = `code`, value = `println(1)`. Returns success and the length set. Use it for a rewrite; for a small code change prefer PatchBoxTextRequest. For a reviewable change to text-frame prose (contents), use SuggestTextEditsRequest. Does not run it: call RunBox or LaunchBox afterwards. An unknown or ambiguous box fails with the list of known boxes.")
 @afield.ai.tools.AgentToolMeta("graph", effects = [afield.ai.tools.ToolEffect.MUTATE_DOCUMENT])
 data class SetBoxPropertyRequest(
     @param:JsonPropertyDescription("Box uid or unique name, e.g. `Plot`.") val box: String,
@@ -83,7 +87,7 @@ data class SetBoxPropertyRequest(
     val value: String,
 )
 
-@JsonClassDescription("Edit part of a box's text property in place, without resending the whole text. This is the cheap way to change code: prefer it to GetBoxProperty + string replace + SetBoxProperty (by hand or in a RunToolProgram), which re-reads and resends everything. Three forms: (1) `edits` = [{find, replace}, ...] applies several exact find/replace edits in order, all or nothing: each `find` must occur exactly once in the text as left by the earlier edits, and if any is missing or ambiguous nothing is written and the reply names each failing anchor; (2) a single `find`/`replace` (`occurrence` N = the Nth non-overlapping match, 0 = every match; fails if absent or, with occurrence 1, ambiguous unless allowMultiple); (3) a line range (`startLine`..`endLine`, 1-based, inclusive, replaced by `replacement`; endLine 0 means endLine = startLine; `insert` = true inserts before startLine). Returns success, the length before and after, and a short diff of what changed. `runAfter` = true then runs the box (like RunBoxRequest) in the same call and returns its verdict and output. Recorded like SetBoxPropertyRequest.")
+@JsonClassDescription("Edit part of a box's text property in place, without resending the whole text. This is the cheap way to change code: prefer it to GetBoxProperty + string replace + SetBoxProperty (by hand or in a RunToolProgram), which re-reads and resends everything. Three forms: (1) `edits` = [{find, replace}, ...] applies several exact find/replace edits in order, all or nothing: each `find` must occur exactly once in the text as left by the earlier edits, and if any is missing or ambiguous nothing is written and the reply names each failing anchor; (2) a single `find`/`replace` (`occurrence` N = the Nth non-overlapping match, 0 = every match; fails if absent or, with occurrence 1, ambiguous unless allowMultiple); (3) a line range (`startLine`..`endLine`, 1-based, inclusive, replaced by `replacement`; endLine 0 means endLine = startLine; `insert` = true inserts before startLine). Returns success, the length before and after, and a short diff of what changed. `runAfter` = true then runs the box (like RunBoxRequest) in the same call and returns its verdict and output. Recorded like SetBoxPropertyRequest. Prefer SuggestTextEditsRequest for reviewable edits to text-frame prose.")
 @afield.ai.tools.AgentToolMeta("graph", effects = [afield.ai.tools.ToolEffect.MUTATE_DOCUMENT])
 data class PatchBoxTextRequest(
     @param:JsonPropertyDescription("Box uid or unique name, e.g. `Plot`.") val box: String,
@@ -499,8 +503,25 @@ class FieldGraphTools(
         FieldGraphResult(true, "Deleted '${box.name}'.", uid = box.id, name = box.name)
     }
 
+    internal fun suggestTextEdits(req: SuggestTextEditsRequest) = host.onOwner(info) {
+        check(!info.readOnly && !ReadOnlyDocuments.global) { "This document is read-only." }
+        val box = resolve(req.box)
+        val suggestions = box.proposeTextReview(req.edits)
+        doResync()
+        TextReviewToolResult(box.id, "field://box/${box.id}?property=contents&line=1", suggestions)
+    }
+
+    internal fun listTextReview(req: ListTextReviewRequest) = host.onOwner(info) {
+        val box = resolve(req.box)
+        val suggestions = box.textReviewSuggestions().asReversed()
+            .filter { req.suggestionId.isBlank() || it.id == req.suggestionId }
+            .take(req.limit.coerceIn(1, 50))
+        TextReviewToolResult(box.id, "field://box/${box.id}?property=contents&line=1", suggestions)
+    }
+
     fun setProperty(req: SetBoxPropertyRequest): FieldGraphResult = host.onOwner(info) {
         val box = resolve(req.box)
+        require(req.property != TEXT_FRAME_REVIEW) { "Use SuggestTextEditsRequest to propose reviewable changes." }
         refuseReplyOwned(box, req.property)?.let { return@onOwner it }
         require(req.value.length <= 2_000_000) { "Value is too large." }
         check(!info.readOnly) { "This document is read-only." }
@@ -522,6 +543,7 @@ class FieldGraphTools(
     }
 
     private fun patchTextOnly(req: PatchBoxTextRequest): FieldGraphResult = host.onOwner(info) {
+        require(req.property != TEXT_FRAME_REVIEW) { "Use SuggestTextEditsRequest to propose reviewable changes." }
         val box = resolve(req.box)
         refuseReplyOwned(box, req.property)?.let { return@onOwner it }
         check(!info.readOnly) { "This document is read-only." }
@@ -834,6 +856,7 @@ internal fun registerFieldGraphTools(tools: ToolRegistry) {
     tools.register(ViewBoxOutputRequest::class.java, { ctx -> ctx.fieldGraph?.seesOutput == true }) { ctx, req -> ctx.fieldGraph!!.viewOutput(req) }
     registerNotationTools(tools)
     registerTextPassageTools(tools)
+    registerTextReviewTools(tools)
 }
 
 /** The tool names [registerFieldGraphTools] adds, for instructions and tests. */
@@ -841,7 +864,8 @@ val fieldGraphToolNames: List<String> = listOf(
     ListBoxesRequest::class, NewBoxRequest::class, DeleteBoxRequest::class, SetBoxPropertyRequest::class,
     GetBoxPropertyRequest::class, PatchBoxTextRequest::class, ConnectBoxesRequest::class, DisconnectBoxesRequest::class, RunBoxRequest::class,
     LaunchBoxRequest::class, StopBoxRequest::class, ReadBoxOutputRequest::class, ViewBoxOutputRequest::class, SymbolAtRequest::class
-).map { it.java.simpleName } + notationToolNames + textPassageToolNames
+).map { it.java.simpleName } + notationToolNames + textPassageToolNames +
+    listOf(SuggestTextEditsRequest::class.java.simpleName, ListTextReviewRequest::class.java.simpleName)
 
 
 internal class PatchEditsResult(val text: String, val failures: List<String>, val diff: String)

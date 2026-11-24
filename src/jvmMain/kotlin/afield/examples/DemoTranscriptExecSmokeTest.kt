@@ -105,6 +105,8 @@ object DemoTranscriptExecSmokeTest {
         "nile_gezira_kernels",
         // afield_four_graphics.md, The SVG tiger: SVG reader, tiger by Gezira beside Skia SVGDOM; pure CPU.
         "nile_gezira_svg",
+        // afield_four_graphics.md, Overlaps and fill rules: one FLine under both rules, three renderers; pure CPU.
+        "fline_fill_rule",
         // geometry_from_disk.md, Splats by tile: SplatTiles binning, heat map and schedule timing; pure CPU.
         "splat_tiles",
         // mesh_examples.md, Repairing a field that is only a bound: SdfGrid2D circles and offsets; pure CPU.
