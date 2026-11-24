@@ -83,8 +83,8 @@ PORTS           = assign agents Field ports from 9960 upward. Self-improve's age
 1. `date +%F` → `$DATE` (e.g. 2026-07-12). `date +%FT%T` → run start time.
 2. **Retention, then reserved disk check:** first run
    `python3 $REPO/tools/preview_server.py stop --older-than-hours 16`, which stops the earlier
-   nights' preview servers (Step 6) so that their worktrees can be reaped; it signals only servers
-   the tool started. Then, if `$REPO/tools/reap_merged_worktrees.py` exists, run it with `--apply`; its printed candidate/removal summary belongs in the report. Before
+   nights' preview servers and demo Fields (Step 6) so that their worktrees can be reaped; it
+   signals only servers the tool started. Then, if `$REPO/tools/reap_merged_worktrees.py` exists, run it with `--apply`; its printed candidate/removal summary belongs in the report. Before
    creating three worktrees, run it again as `$REPO/tools/reap_merged_worktrees.py
    --disk-floor-gib 5 --reserve-gib 8 --planned-gib 6`. The 8 GiB reservation belongs to the
    06:00 docs run; the 6 GiB planned cost is this loop's measured three-worktree appetite. Exit 2
@@ -525,8 +525,14 @@ branch, the closeout must record, and the orchestrator must have actually run:
    worktree, so the reaper keeps the whole 10–16 GiB tree; on 2026-11-03..06 that left 20–30 GiB a
    night that only a hand `kill` freed. A server started through the tool lasts through the morning
    review and is stopped by the next night's Step 0, or by the 4-hourly reaper job.
-2. **A replay, if the branch ships a transcript.** Launch Field FROM THAT WORKTREE — `PORT=⟨free⟩
-   AFIELD_FIELD_SH_NO_TERMINAL=1 ./field.sh` — then **verify the server you are about to drive is that
+2. **A replay, if the branch ships a transcript.** Launch Field FROM THAT WORKTREE with
+   `python3 $REPO/tools/preview_server.py field ⟨WT⟩ --owner ⟨branch⟩ -- ⟨field.sh args⟩`, which
+   picks a free port (and a free HTTP mirror), runs `./field.sh` there, waits until it listens,
+   records it and prints the URL and port as JSON. **Never launch `./field.sh` by hand for a demo.**
+   A Field nobody stops keeps its worktree, its Electron window and a Gradle client alive: on
+   2026-11-22 nine of them held six landed trees (about 18 GiB) and 26 processes until a hand
+   `kill`. One started through the tool lasts through the morning review and is stopped by the next
+   night's Step 0 or the 4-hourly reaper job. Then **verify the server you are about to drive is that
    checkout** (`lsof -nP -iTCP:⟨port⟩ -sTCP:LISTEN -t`, then the pid's `cwd`) before believing anything
    it tells you. Replay into a FRESH document name and report `applied=N skipped=0 errors=0`.
    The cwd check is not ceremony: on 2026-07-31 a replay silently ran against a *sibling worktree's*
