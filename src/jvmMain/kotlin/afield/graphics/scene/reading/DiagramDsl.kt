@@ -45,6 +45,11 @@ internal constructor(id: String, owner: Any, val text: String, val at: DiagramAn
     var bold = false
     var italic = false
     var weight: Double? = null
+    /**
+     * Faces to borrow a glyph from when this run's face has none; `null` uses
+     * [DiagramFontFallback.installed], and an empty list makes a missing glyph an error.
+     */
+    var fallbacks: List<Typeface>? = null
     /** Gaussian standard deviation in ems. Zero draws the original analytic Slug outline. */
     var blur = 0f
         set(value) { require(value.isFinite() && value >= 0f); field = value }
@@ -87,6 +92,7 @@ internal constructor(id: String, owner: Any, val text: String, val at: DiagramAn
 
     var tracking = 0.0 // font units between shaped glyphs
     internal val styles = ArrayList<Pair<DiagramTextSpan, DiagramTypography>>()
+    internal val colorList = ArrayList<Pair<DiagramTextSpan, Vector4f>>()
     var scale = 1f
     var rotation = 0f // local roll, radians around the run baseline midpoint
     val orientation = Quaternionf() // authored 3D orientation, relative to reader facing when enabled
@@ -212,6 +218,17 @@ internal constructor(val run: DiagramText, val start: Int, val endExclusive: Int
         run.annotationList += DiagramTextAnnotation(start, endExclusive, value)
     }
 
+    /**
+     * Draw these characters in [color] instead of the run's colour: its RGB replaces the run's,
+     * and its alpha multiplies the run's, so fading or dimming the run still dims them. Later
+     * overlapping colours take precedence. Preparation-time: the run is drawn in one part per
+     * colour and line, so set colours before [ReadingDiagramPlayer.prepare].
+     */
+    fun color(color: Vector4f): DiagramTextSpan = apply {
+        require(color.x.isFinite() && color.y.isFinite() && color.z.isFinite() && color.w.isFinite())
+        run.colorList.add(this to Vector4f(color))
+    }
+
     /** Apply a preparation-time font/style override; later overlapping styles take precedence. */
     fun style(block: DiagramTypography.() -> Unit): DiagramTextSpan = apply {
         run.styles.add(this to DiagramTypography().apply(block))
@@ -333,6 +350,7 @@ internal constructor(
     val groups: List<DiagramGroup>,
     val textFrames: List<DiagramTextFrame>,
     val textFrusta: List<DiagramTextFrustum> = emptyList(),
+    val textMorphs: List<DiagramTextMorph> = emptyList(),
 ) {
     val connections: List<DiagramConnection> = paths.mapNotNull { it.connection }
 
@@ -354,6 +372,8 @@ internal constructor(
     fun textFrame(id: String) = textFrames.single { it.path.id == id }
 
     fun textFrustum(id: String) = textFrusta.single { it.id == id }
+
+    fun textMorph(id: String) = textMorphs.single { it.id == id }
 }
 
 @ReadingDsl
@@ -368,6 +388,7 @@ class ReadingDiagramBuilder internal constructor() {
     private val groups = ArrayList<DiagramGroup>()
     internal val textFrames = ArrayList<DiagramTextFrame>()
     internal val textFrusta = ArrayList<DiagramTextFrustum>()
+    internal val textMorphs = ArrayList<DiagramTextMorph>()
 
     private fun name(id: String) {
         require(id.isNotBlank() && names.add(id)) { "Duplicate or blank diagram name '$id'" }
@@ -524,6 +545,7 @@ class ReadingDiagramBuilder internal constructor() {
             groups.toList(),
             textFrames.toList(),
             textFrusta.toList(),
+            textMorphs.toList(),
         )
     }
 }

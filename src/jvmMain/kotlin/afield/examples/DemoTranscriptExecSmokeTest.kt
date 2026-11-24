@@ -739,6 +739,8 @@ object DemoTranscriptExecSmokeTest {
         "text_one_vr",
         // Opens a native window and a stereo target; ReadingPickingTest covers the picking on the CPU.
         "reading_pointing",
+        // Opens a native window and a stereo target; ReadingTextMorphTest covers the cut, placement and fades on the CPU.
+        "reading_morph",
         "video_one_vr",
         // Audio curves: every box is a playback loop under a waveform player that waits for the
         // user to press play, and the analysis shells out to uv. AudioCurvesTest runs audioCurves,

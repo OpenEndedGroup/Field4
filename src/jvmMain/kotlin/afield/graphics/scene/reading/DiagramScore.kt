@@ -1,6 +1,7 @@
 package afield.graphics.scene.reading
 
 import afield.math.linalg.Vector3f
+import afield.math.linalg.Vector4f
 
 /**
  * Absolute, seekable scene state. Evaluating a score neither advances physics nor accumulates
@@ -15,7 +16,47 @@ data class DiagramPose(
     var blur: Float = 0f, // additive Gaussian-radius score channel, in ems
     var overstrokeFraction: Float? = null, // null keeps the frame's authored extension fraction
     var overstrokeDistance: Float? = null, // null keeps the authored extension distance in metres
-)
+    var morph: Float = 0f, // a text morph's progress, carried on its first layout run: 0 first line, 1 second
+    var tint: Vector4f? = null, // colour mixed into the item's RGB by tintAmount; alpha untouched
+    var tintAmount: Float = 0f,
+    var tintAt: Double = Double.NEGATIVE_INFINITY, // start of the governing tint cue: the latest started one wins
+    var saturation: Float = 0f, // extra saturation: each colour pushed this many times its own distance from its grey
+    var saturationAt: Double = Double.NEGATIVE_INFINITY,
+) {
+    /**
+     * [base] as this pose colours it, alpha kept: first [saturation] pushes the RGB away from its
+     * own luminance (so an off-white flares toward the hue it leans to), then [tint] is mixed in by
+     * [tintAmount]. Channels are clamped to 0..1. A fresh vector.
+     */
+    fun tinted(base: Vector4f): Vector4f = tinted(null, base)
+
+    /**
+     * As [tinted], but with a [palette] the colour moves along the ramp: saturation pushes its
+     * position away from the neutral middle (`u − 1` grows by `1 + saturation`), the tint pulls
+     * the position toward the tint's, and the result is the ramp's colour there. Warm and cool
+     * colours flare toward their own ends instead of all toward one hue.
+     */
+    fun tinted(palette: DiagramPalette?, base: Vector4f): Vector4f {
+        if (palette != null) {
+            if (tint == null && saturation == 0f) return Vector4f(base)
+            var u = palette.coordinate(base)
+            u = 1f + (u - 1f) * (1f + saturation)
+            tint?.let { u += (palette.coordinate(it) - u) * tintAmount.coerceIn(0f, 1f) }
+            return palette.at(u.coerceIn(0f, 2f)).apply { w = base.w }
+        }
+        var r = base.x; var g = base.y; var b = base.z
+        if (saturation != 0f) {
+            val grey = .2126f * r + .7152f * g + .0722f * b
+            val k = 1f + saturation
+            r = grey + (r - grey) * k; g = grey + (g - grey) * k; b = grey + (b - grey) * k
+        }
+        tint?.let { t ->
+            val a = tintAmount.coerceIn(0f, 1f)
+            r += (t.x - r) * a; g += (t.y - g) * a; b += (t.z - b) * a
+        }
+        return Vector4f(r.coerceIn(0f, 1f), g.coerceIn(0f, 1f), b.coerceIn(0f, 1f), base.w)
+    }
+}
 
 class DiagramScore
 internal constructor(
@@ -36,6 +77,9 @@ class DiagramScoreBuilder
 internal constructor(private val diagram: ReadingDiagram, private val duration: Double) {
     private val blurCapacities = LinkedHashMap<DiagramText, Float>()
     private val tracks = LinkedHashMap<String, MutableList<(Double, DiagramPose) -> Unit>>()
+    private val morphCues = LinkedHashMap<DiagramTextMorph, MutableList<MorphCue>>()
+
+    private class MorphCue(val at: Double, val seconds: Double, val from: Float, val to: Float)
 
     private fun track(item: DiagramItem, block: (Double, DiagramPose) -> Unit) {
         require(item.owner === diagram.owner) { "Scored item belongs to another diagram" }
@@ -167,6 +211,51 @@ internal constructor(private val diagram: ReadingDiagram, private val duration: 
     }
 
     /**
+     * Mix [color] into the item's RGB from [from] to [to] of the way over [seconds] starting [at]:
+     * a flare that settles (`from = 1, to = 0`, the default), a hold (`1, 1`), or a release. Before
+     * [at] the cue does nothing; once started, it holds its final amount, and of the cues that have
+     * started the latest governs. Alpha, and so opacity, is untouched. Coloured spans are tinted too.
+     */
+    fun tint(item: DiagramItem, color: Vector4f, at: Double, seconds: Double = 2.0, from: Float = 1f, to: Float = 0f) {
+        timing(at, seconds)
+        require(from.isFinite() && to.isFinite())
+        val c = Vector4f(color)
+        track(item) { t, p ->
+            if (t >= at && at >= p.tintAt) {
+                p.tint = c
+                p.tintAmount = from + (to - from) * phase(t, at, seconds)
+                p.tintAt = at
+            }
+        }
+    }
+
+    /**
+     * Push the item's colours away from grey by [from] times their own chroma, easing to [to] over
+     * [seconds] from [at]: the default is a flare that settles. Each coloured span flares toward its
+     * own hue, so syntax classes stay distinct while they glow. Same cue rules as [tint].
+     */
+    fun saturate(item: DiagramItem, at: Double, seconds: Double = 2.0, from: Float = 3f, to: Float = 0f) {
+        timing(at, seconds)
+        require(from.isFinite() && to.isFinite() && from >= -1f && to >= -1f)
+        track(item) { t, p ->
+            if (t >= at && at >= p.saturationAt) {
+                p.saturation = from + (to - from) * phase(t, at, seconds)
+                p.saturationAt = at
+            }
+        }
+    }
+
+    fun saturate(group: DiagramGroup, at: Double, seconds: Double = 2.0, from: Float = 3f, to: Float = 0f, stagger: Double = 0.0) {
+        require(group.owner === diagram.owner && stagger.isFinite() && stagger >= 0)
+        for ((i, item) in group.items.filter { it !is DiagramParticle }.withIndex()) saturate(item, at + i * stagger, seconds, from, to)
+    }
+
+    fun tint(group: DiagramGroup, color: Vector4f, at: Double, seconds: Double = 2.0, from: Float = 1f, to: Float = 0f, stagger: Double = 0.0) {
+        require(group.owner === diagram.owner && stagger.isFinite() && stagger >= 0)
+        for ((i, item) in group.items.filter { it !is DiagramParticle }.withIndex()) tint(item, color, at + i * stagger, seconds, from, to)
+    }
+
+    /**
      * Advanced channel intervention; mutate only the supplied pose, never persistent scene state.
      */
     fun animate(item: DiagramItem, channel: (seconds: Double, pose: DiagramPose) -> Unit) =
@@ -207,7 +296,46 @@ internal constructor(private val diagram: ReadingDiagram, private val duration: 
         }
     }
 
-    internal fun build() = DiagramScore(diagram, duration, tracks.mapValues { it.value.toList() }, blurCapacities.toMap())
+    /**
+     * Play [morph] from [from] to [to] (0 is its first line, 1 its second) over `[at, at + seconds]`.
+     * Matched pieces glide, unmatched ones fade where they stand. Several cues on one morph run in
+     * time order; before the first the morph holds at its `from`, between cues at the last `to`. A
+     * morph with no cue shows its first line.
+     */
+    fun morph(morph: DiagramTextMorph, at: Double, seconds: Double = 1.2, from: Float = 0f, to: Float = 1f) {
+        require(morph.from.owner === diagram.owner) { "Scored morph belongs to another diagram" }
+        timing(at, seconds)
+        require(from.isFinite() && to.isFinite())
+        morphCues.getOrPut(morph) { ArrayList() }.add(MorphCue(at, seconds, from, to))
+    }
+
+    private fun morphTracks() {
+        for (morph in diagram.textMorphs) {
+            val cues = morphCues[morph].orEmpty().sortedBy { it.at }
+            val progress: (Double) -> Float = { t ->
+                if (cues.isEmpty()) 0f
+                else {
+                    var p = cues.first().from
+                    for (c in cues) if (t >= c.at) p = c.from + (c.to - c.from) * phase(t, c.at, c.seconds)
+                    p
+                }
+            }
+            track(morph.from) { t, p -> p.morph = progress(t) }
+            for (piece in morph.pieces) {
+                val weight: (Float) -> Float = when (piece.role) {
+                    DiagramTextMorph.Role.GLIDE -> { _ -> 1f }
+                    DiagramTextMorph.Role.CROSS_FROM, DiagramTextMorph.Role.FADE_OUT -> { m -> 1f - m.coerceIn(0f, 1f) }
+                    DiagramTextMorph.Role.CROSS_TO, DiagramTextMorph.Role.FADE_IN -> { m -> m.coerceIn(0f, 1f) }
+                }
+                track(piece.text) { t, p -> p.opacity *= weight(progress(t)) }
+            }
+        }
+    }
+
+    internal fun build(): DiagramScore {
+        morphTracks()
+        return DiagramScore(diagram, duration, tracks.mapValues { it.value.toList() }, blurCapacities.toMap())
+    }
 }
 
 fun diagramScore(

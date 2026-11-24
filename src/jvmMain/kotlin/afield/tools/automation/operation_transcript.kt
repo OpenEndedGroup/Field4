@@ -1662,6 +1662,13 @@ object OperationTranscript {
     private fun normalizeDocumentPath(documentPath: String): String =
         File(documentPath).absolutePath
 
+    /** The uids of the live (not tombstoned) boxes of the open document at [documentPath], or null if it is not open. */
+    internal fun liveBoxIds(documentPath: String): List<String>? =
+        documents.values.firstOrNull { normalizeDocumentPath(it.filename) == normalizeDocumentPath(documentPath) }
+            ?.boxes?.values
+            ?.filter { it.id != "root" && it.id != METAROOT_ID && !it.getPropertyRaw("_tombstone").isTrue() }
+            ?.map { it.id }
+
     private fun currentDocumentPath(): String? =
         runCatching { thisSessionInfo.get()?.filename }.getOrNull()?.let(::normalizeDocumentPath)
 
@@ -1869,9 +1876,10 @@ object OperationTranscript {
         dx: Double,
         dy: Double,
         newUid: () -> String = { UUID.randomUUID().toString() },
+        rename: ((String) -> String)? = null,
     ): List<LinkedHashMap<String, Any?>> {
         val created = createdBoxes(operations)
-        val renames = if (fresh) created.associateWith { newUid() } else emptyMap()
+        val renames = if (fresh) created.associateWith { rename?.invoke(it) ?: newUid() } else emptyMap()
         fun shifted(rect: Any?): Any? {
             val map = rect as? Map<*, *> ?: return rect
             if (dx == 0.0 && dy == 0.0) return deepLinkedMap(map)

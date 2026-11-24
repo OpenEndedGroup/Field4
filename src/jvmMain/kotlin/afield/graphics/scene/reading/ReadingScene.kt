@@ -19,6 +19,8 @@ data class ReadingText(
     val glyphFaces: Map<Int, Typeface> = emptyMap(),
     /** Render-only partitions; the logical run retains its complete layout, outline and measurements. */
     val renderParts: List<ReadingText> = emptyList(),
+    /** A render part's own colour from [DiagramTextSpan.color]: RGB replaces the run's, alpha multiplies it. */
+    val color: Vector4f? = null,
 ) {
     /** A partitioned run's slug is its first part; renderers draw these leaves, not that atlas alone. */
     val renderShapes: List<ReadingText> get() = renderParts.ifEmpty { listOf(this) }
@@ -55,6 +57,8 @@ interface ReadingScene {
     val frostSurfaces: List<ReadingFrostSurface> get() = emptyList()
 
     val individualTextFacing: Boolean get() = false
+    /** The ramp this scene's colours mean (see [DiagramPalette]); a renderer installs it in its compositor. */
+    val palette: DiagramPalette? get() = null
     /** Reader position in the diagram's coordinate system; publishing it does not advance physics. */
     fun setReaderPosition(position: Vector3f) {}
     fun update(elapsedSeconds: Double)

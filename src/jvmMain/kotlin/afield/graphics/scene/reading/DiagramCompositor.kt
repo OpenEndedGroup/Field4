@@ -34,6 +34,14 @@ class DiagramCompositeSettings {
     val fxaa = Vector4f(0f, .125f, .03125f, 8f)
     val subpixel = Vector4f(.5f, 0f, 0f, 1f)
     val supersampling = Vector4f(1f, 1f, 0f, 0f)
+    /** Maps reading light onto a ramp of colours, through alpha (see [DiagramPalette]); null keeps white light. */
+    var palette: DiagramPalette? = null
+    /** How far the palette replaces white light, 0..1. */
+    var paletteMix = 1f
+    /** Ramp position of [color] for the GPU: 1 (neutral) without a palette. */
+    fun paletteCoordinate(color: Vector4f): Float = palette?.coordinate(color) ?: 1f
+    /** [color] as the reading shaders read it: (ramp position, 0, 0, alpha). */
+    fun encode(color: Vector4f): Vector4f = Vector4f(paletteCoordinate(color), 0f, 0f, color.w)
 }
 
 /**
@@ -151,6 +159,12 @@ class DiagramCompositor(
             grade.bind("fxaa") { fxaa }
             grade.bind("subpixel") { subpixel }
             grade.bind("supersampling") { supersampling }
+            grade.bind("paletteInfo") {
+                val p = palette
+                Vector4f(p?.stops?.size?.toFloat() ?: 0f, if (p == null) 0f else paletteMix.coerceIn(0f, 1f), 0f, 0f)
+            }
+            for (i in 0 until DiagramPalette.MAX_STOPS)
+                grade.bind("palette$i") { palette?.stops?.getOrNull(i) ?: Vector4f(1f) }
         }
         module.current.before["reading-scene-and-blur"] = Target { command, index ->
             beforeScene?.render(command, index)
