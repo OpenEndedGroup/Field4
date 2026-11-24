@@ -94,16 +94,37 @@ class Treemap internal constructor(private val owner: Box?, val channel: String,
     var maxDepth = Int.MAX_VALUE
 
     /** A cell narrower or shorter than this many screen pixels is drawn but not opened. */
-    var minCellSize = 4.0
+    var minCellSize = 2.0
 
-    /** The most cells one display draws; the largest are opened first. */
-    var maxCells = 2500
+    /**
+     * The most cells one display draws; the largest are opened first. The viewer draws a hundred thousand cells
+     * as easily as a hundred; the budget is there so that a tree of millions still lays out in a frame.
+     */
+    var maxCells = 150_000
 
     /** Seconds each change morphs over. 0 redraws at once, which is what a `loop { }` that redraws every frame wants. */
     var transition = 0.45
 
     /** How cells are coloured; see [TreemapColors]. */
     var colors: TreemapColors = TreemapColors.byBranch()
+
+    /**
+     * Named colourings the viewer offers as a "Colour by" switch, in order. Choosing one makes it [colors] and
+     * redraws: only the colours change, so only they are sent, and they morph.
+     */
+    var colorings: Map<String, TreemapColors> = emptyMap()
+        set(v) { field = v; if (coloring == null || coloring !in v) v.entries.firstOrNull()?.let { coloring = it.key; colors = it.value } }
+
+    /** The name of the [colorings] entry in use, if any. */
+    var coloring: String? = null
+        private set
+
+    /** Use the colouring called [name] from [colorings], and redraw. */
+    fun colorBy(name: String) {
+        val chosen = colorings[name] ?: return
+        synchronized(lock) { coloring = name; colors = chosen }
+        show()
+    }
 
     /** The text on a cell. */
     var label: (TreemapNode) -> String = { it.name }
@@ -161,6 +182,12 @@ class Treemap internal constructor(private val owner: Box?, val channel: String,
     var cells: List<TreemapCell> = emptyList()
         private set
 
+    /** The viewer this treemap draws into; null for a treemap shown as a value. */
+    internal var view: TreemapView? = null
+
+    /** What the last frame cost to pack: cells, bytes and milliseconds. */
+    val lastFrame: TreemapFrameStats? get() = view?.lastFrame
+
     private val lock = Any()
 
     // ---- changes -------------------------------------------------------------------------------------------
@@ -172,7 +199,7 @@ class Treemap internal constructor(private val owner: Box?, val channel: String,
             memory.focusKey = if (target === root) null else target.key
             memory.view = null
         }
-        show()
+        draw(transition, refit = true)
         onZoom?.invoke(focus)
     }
 
@@ -227,11 +254,101 @@ class Treemap internal constructor(private val owner: Box?, val channel: String,
     /** Redraw now, morphing over [transition] seconds. */
     fun show() = draw(transition)
 
-    private fun draw(seconds: Double) {
-        val lines = synchronized(lock) { toFLines() }
-        val box = this.box
-        RunScope.withCurrent(RunScope.currentFor(box)) {
-            box.lines(lines, channel = channel, w = w, h = h, transition = seconds, onView = ::viewChanged)
+    private fun draw(seconds: Double, refit: Boolean = false) {
+        val view = this.view ?: return
+        val began = System.nanoTime()
+        val frame = synchronized(lock) { packFrame(seconds, refit) }
+        view.lastFrame = TreemapFrameStats(frame.cells.size, frame.description.size, frame.buffers.bytes, (System.nanoTime() - began) / 1e6)
+        view.publish(frame)
+    }
+
+    /** Lay out the focus in the drawing below [top], with padding in screen pixels at the viewer's current zoom. */
+    private fun layoutCells(top: Double, rootHeader: Boolean): List<TreemapCell> {
+        val view = memory.view
+        val ppu = view?.pixelsPerUnit?.takeIf { it > 0.0 && it.isFinite() } ?: 1.0
+        val px = 1.0 / ppu
+        val focus = this.focus
+        val options = TreemapLayoutOptions(
+            tiling = tiling,
+            paddingInner = paddingInner * px,
+            paddingOuter = paddingOuter * px,
+            paddingTop = headerHeight * px,
+            headerMinSize = headerMinSize(px),
+            rootHeader = rootHeader,
+            sort = sort,
+            maxDepth = maxDepth,
+            minCellSize = minCellSize,
+            maxCells = maxCells,
+        )
+        val visible = view?.takeIf { it.manual }?.let { TreemapCell(focus, it.x, it.y, it.x + it.w, it.y + it.h, 0, false) }
+        root.sum()
+        return layoutTreemap(focus, 0.0, top, w, h, options, ppu, visible, memory.rows).also { cells = it }
+    }
+
+    private fun headerMinSize(px: Double) = headerHeight * 2.4 * px
+
+    /** The current layout packed for the viewer, morphing in over [seconds]. */
+    private fun packFrame(seconds: Double, refit: Boolean): TreemapPublished {
+        val laid = layoutCells(0.0, rootHeader = false)
+        val ppu = memory.view?.pixelsPerUnit?.takeIf { it > 0.0 && it.isFinite() } ?: 1.0
+        val headerMin = headerMinSize(1.0 / ppu)
+        val selected = memory.selected.toHashSet()
+        val focus = this.focus
+        val legend = colors.legend(this)
+        return packTreemapFrame(
+            laid, newGeneration(),
+            colorOf = { colors.colorOf(it.node, this) },
+            idOf = { node -> memory.ids.getOrPut(node.key) { memory.ids.size + 1 } },
+            flagsOf = { c ->
+                var f = 0
+                if (c.open) f = f or CELL_OPEN
+                if (c.node.key in selected) f = f or CELL_SELECTED
+                if (c.open && c.depth > 0 && c.w >= headerMin && c.h >= headerMin) f = f or CELL_HEADER
+                if (c.node.isLeaf) f = f or CELL_LEAF
+                f
+            },
+            nameOf = { node -> label(node) + (formatValue?.let { "\t" + it(node.value) } ?: "") },
+        ) { table ->
+            TreemapFrameMessage(
+                uid = view!!.uid, generation = table.generation, count = laid.size, arrays = FRAME_ARRAYS, buffers = table,
+                width = w, height = h, background = rgbaBytes(background), labelSize = labelSize, headerHeight = headerHeight, ppu = ppu,
+                transition = seconds, refit = refit,
+                crumbs = if (breadcrumbs) focus.path.map { TreemapCrumb(label(it), it.value, memory.ids.getOrPut(it.key) { memory.ids.size + 1 }) } else emptyList(),
+                legend = legend?.entries.orEmpty().map { TreemapLegendRow(it.label, rgbaBytes(it.color), it.share) },
+                legendTitle = legend?.title,
+                colorings = colorings.keys.toList(), coloring = coloring,
+                selectionRgba = rgbaBytes(SELECTION),
+                valueFormat = if (formatValue != null) "tab" else "none",
+            )
+        }
+    }
+
+    /** A message from the viewer: a click, a hover, a camera move, a breadcrumb or a colouring. */
+    internal fun receiveFromViewer(view: TreemapView, type: String, message: kotlinx.serialization.json.JsonObject) {
+        fun cellAt(): TreemapNode? {
+            val cells = message.string("generation")?.let { view.cells(it) } ?: return null
+            return message.int("index")?.let { cells.getOrNull(it)?.node }
+        }
+        when (type) {
+            "click" -> {
+                val hit = FLineIntersection(-1, vec(message.double("x") ?: 0.0, message.double("y") ?: 0.0, 0.0),
+                    shift = message.bool("shift"), alt = message.bool("alt"), meta = message.bool("meta"),
+                    clickCount = message.int("clickCount") ?: 1)
+                val node = cellAt()
+                if (node == null) {
+                    if (hit.alt) zoomOut() else if (selectable && !hit.shift && !hit.meta) clearSelection()
+                } else clicked(node, hit.copy(key = node.key, label = node.name))
+            }
+            "hover" -> hoverChanged(cellAt())
+            "view" -> viewChanged(LinesViewEvent(
+                message.double("x") ?: 0.0, message.double("y") ?: 0.0, message.double("w") ?: w, message.double("h") ?: h,
+                message.double("scale") ?: 1.0, message.bool("manual")))
+            "crumb" -> {
+                val id = message.int("id") ?: return
+                focus.path.firstOrNull { memory.ids[it.key] == id }?.let { zoomTo(it) }
+            }
+            "coloring" -> message.string("name")?.let { colorBy(it) }
+            "zoom-out" -> zoomOut()
         }
     }
 
@@ -244,26 +361,11 @@ class Treemap internal constructor(private val owner: Box?, val channel: String,
      * an outline per selected cell. Each line is keyed by its node, so successive drawings morph into each other.
      */
     fun toFLines(): List<FLine> {
-        val view = memory.view
-        val ppu = view?.pixelsPerUnit?.takeIf { it > 0.0 && it.isFinite() } ?: 1.0
+        val ppu = memory.view?.pixelsPerUnit?.takeIf { it > 0.0 && it.isFinite() } ?: 1.0
         val px = 1.0 / ppu  // one screen pixel in layout units
         val focus = this.focus
         val top = crumbHeight
-        val options = TreemapLayoutOptions(
-            tiling = tiling,
-            paddingInner = paddingInner * px,
-            paddingOuter = paddingOuter * px,
-            paddingTop = headerHeight * px,
-            headerMinSize = (headerHeight * 2.4) * px,
-            rootHeader = !breadcrumbs,
-            sort = sort,
-            maxDepth = maxDepth,
-            minCellSize = minCellSize,
-            maxCells = maxCells,
-        )
-        val visible = view?.takeIf { it.manual }?.let { TreemapCell(focus, it.x, it.y, it.x + it.w, it.y + it.h, 0, false) }
-        root.sum()
-        cells = layoutTreemap(focus, 0.0, top, w, h, options, ppu, visible, memory.rows)
+        val cells = layoutCells(top, rootHeader = !breadcrumbs)
         val selected = memory.selected.toHashSet()
         val face = labelTypeface(labelSize)
         val faceBold = labelTypeface(labelSize, bold = true)
@@ -393,10 +495,10 @@ class Treemap internal constructor(private val owner: Box?, val channel: String,
 
     private fun viewChanged(v: LinesViewEvent) {
         val previous = memory.view
-        synchronized(lock) { memory.view = if (v.manual) v else null }
-        // Only a change of scale or a pan past what is laid out changes the picture.
-        if (previous == null && !v.manual) return
-        draw(min(transition, 0.25))
+        synchronized(lock) { memory.view = v }
+        // Redraw for a pan or zoom by hand, or for a fitted scale the layout was not made for; not for a fit it already has.
+        val rescaled = previous == null || abs(ln(previous.pixelsPerUnit / v.pixelsPerUnit)) > 0.05
+        if (v.manual || previous?.manual == true || rescaled) draw(min(transition, 0.25))
     }
 
     private fun defaultDescription(node: TreemapNode): String {
@@ -424,6 +526,8 @@ internal class TreemapMemory {
     val selected = LinkedHashSet<String>()
     val rows = TreemapRows.create()
     var view: LinesViewEvent? = null
+    /** Each node's stable id in the viewer, by key, so the same node morphs from frame to frame and run to run. */
+    val ids = HashMap<String, Int>()
 }
 
 private val memories = ConcurrentHashMap<String, TreemapMemory>()
@@ -447,9 +551,23 @@ fun Box.treemap(
     map.w = w
     map.h = h
     map.configure()
+    val view = treemapViewFor(treemapViewerUid(this, channel))
+    view.treemap = map
+    map.view = view
+    // The viewer fits the drawing to its width; the strip above holds the breadcrumbs, the colouring switch and the legend.
+    val frameW = map.w.toInt()
+    val frameH = (map.h + TREEMAP_CHROME_PX).toInt()
+    display(channel, "<iframe src='${treemapViewerSource(view.uid)}' data-afield-intrinsic-width='$frameW' data-afield-intrinsic-height='$frameH' " +
+        "style='border:none;padding:0;margin:0;display:block;width:${frameW}px;max-width:100%;height:${frameH}px'></iframe>")
     map.show()
     return map
 }
+
+/** Room above the drawing for the viewer's breadcrumbs, colouring switch and legend. */
+private const val TREEMAP_CHROME_PX = 72.0
+
+internal fun treemapViewerUid(box: Box, channel: String): String =
+    "${afield.graphics.three.threeDocumentScope(box)}_${box.id}_$channel"
 
 /** Forget a treemap's focus, selection and rows, so its next draw starts afresh. */
 fun Box.resetTreemap(channel: String = "treemap") {
@@ -462,6 +580,9 @@ fun Box.resetTreemap(channel: String = "treemap") {
 fun interface TreemapColors {
     fun color(node: TreemapNode, treemap: Treemap): Vec4
 
+    /** What the colours mean, for the viewer to show above the treemap; null for no legend. */
+    fun legend(treemap: Treemap): TreemapLegend? = null
+
     /** [color], unless the node or an ancestor sets its own. */
     fun colorOf(node: TreemapNode, treemap: Treemap): Vec4 =
         generateSequence(node) { it.parent }.firstNotNullOfOrNull { it.color } ?: color(node, treemap)
@@ -471,16 +592,62 @@ fun interface TreemapColors {
          * A hue per top-level branch, so a branch keeps its colour however far you zoom into it, lighter with depth,
          * with neighbouring leaves nudged apart in lightness so they read as separate cells.
          */
-        fun byBranch(saturation: Double = 0.55, lightness: Double = 0.40, depthStep: Double = 0.07): TreemapColors = TreemapColors { node, map ->
-            val path = node.path
-            val top = path.getOrNull(1) ?: return@TreemapColors okhsl(0.6, 0.12, lightness)
-            val siblings = map.root.children
-            val i = siblings.indexOf(top).coerceAtLeast(0)
-            // Golden-angle hues keep any two branches apart, however many there are.
-            val hue = (i * 0.381966) % 1.0
-            val jitter = if (node.isLeaf) ((node.key.hashCode() and 0xff) / 255.0 - 0.5) * 0.06 else 0.0
-            val l = (lightness + depthStep * (path.size - 2) + jitter).coerceIn(0.2, 0.86)
-            okhsl(hue, saturation, l)
+        fun byBranch(saturation: Double = 0.55, lightness: Double = 0.40, depthStep: Double = 0.07): TreemapColors {
+            fun hue(i: Int) = (i * 0.381966) % 1.0  // golden-angle hues keep any two branches apart, however many
+            return colors(
+                legend = { map ->
+                    val total = map.focus.value.takeIf { it > 0 } ?: 1.0
+                    val top = map.root.children.withIndex().sortedByDescending { it.value.value }.take(12)
+                    // Zoomed into a branch, the legend lists only the branches the focus shows.
+                    val shown = top.map { (i, n) -> TreemapLegendEntry(map.label(n), okhsl(hue(i), saturation, lightness + depthStep), shareWithin(map.focus, n, total)) }
+                    TreemapLegend(null, shown.filter { (it.share ?: 0.0) > 0.0 })
+                },
+            ) { node, map ->
+                val path = node.path
+                val top = path.getOrNull(1) ?: return@colors okhsl(0.6, 0.12, lightness)
+                val i = map.root.children.indexOf(top).coerceAtLeast(0)
+                val jitter = if (node.isLeaf) ((node.name.hashCode() * 31 + node.depth and 0xff) / 255.0 - 0.5) * 0.06 else 0.0
+                val l = (lightness + depthStep * (path.size - 2) + jitter).coerceIn(0.2, 0.86)
+                okhsl(hue(i), saturation, l)
+            }
+        }
+
+        /**
+         * Leaves by the category [classify] puts them in, one colour per category, with a legend of each category's
+         * share of the focus. Categories are coloured in order of their share of the whole tree, so the biggest get
+         * the most distinct hues and a category keeps its colour while you zoom. Branches, and leaves [classify]
+         * returns null for, are grey and listed as "Not classified".
+         *
+         * ```kotlin
+         * colors = TreemapColors.byCategory("Extension") { node -> (node.data as? File)?.extension }
+         * ```
+         */
+        fun byCategory(title: String? = null, classify: (TreemapNode) -> String?): TreemapColors {
+            val unclassified = okhsl(0.6, 0.04, 0.36)
+            var cachedFor: TreemapNode? = null
+            var palette: Map<String, Vec4> = emptyMap()
+            fun paletteFor(map: Treemap): Map<String, Vec4> {
+                if (cachedFor === map.root) return palette
+                val totals = HashMap<String, Double>()
+                map.root.leaves().forEach { leaf -> classify(leaf)?.let { totals.merge(it, leaf.value, Double::plus) } }
+                val order = totals.entries.sortedByDescending { it.value }.map { it.key }
+                val colours = if (order.isEmpty()) emptyList() else afield.graphics.color.paletteForBackground(map.background, order.size, saturation = 0.62, lightness = 0.58)
+                palette = order.zip(colours).toMap()
+                cachedFor = map.root
+                return palette
+            }
+            return colors(
+                legend = { map ->
+                    val p = paletteFor(map)
+                    val totals = LinkedHashMap<String?, Double>()
+                    map.focus.leaves().forEach { leaf -> totals.merge(classify(leaf)?.takeIf { it in p }, leaf.value, Double::plus) }
+                    val whole = totals.values.sum().takeIf { it > 0 } ?: 1.0
+                    val rows = p.keys.filter { it in totals }.map { TreemapLegendEntry(it, p.getValue(it), totals.getValue(it) / whole) }
+                    TreemapLegend(title, rows + (totals[null]?.let { listOf(TreemapLegendEntry("Not classified", unclassified, it / whole)) } ?: emptyList()))
+                },
+            ) { node, map ->
+                if (!node.isLeaf) okhsl(0.6, 0.05, 0.22) else classify(node)?.let { paletteFor(map)[it] } ?: unclassified
+            }
         }
 
         /** Every cell by its depth below the root, through colormap [name] ([Colormaps]). */
@@ -517,12 +684,44 @@ fun interface TreemapColors {
                 }
                 val t = if (hi > lo) (f(measure(node)) - lo) / (hi - lo) else 0.5
                 Colormaps.sample(name, t).let { vec(it.r, it.g, it.b, 1.0) }
+            }.withLegend { map ->
+                val format = map.formatValue ?: ::compactNumber
+                fun back(v: Double) = if (log) kotlin.math.exp(v) else v
+                TreemapLegend(null, (0..4).map { k ->
+                    val t = k / 4.0
+                    TreemapLegendEntry(format(back(lo + (hi - lo) * t)), Colormaps.sample(name, t).let { vec(it.r, it.g, it.b, 1.0) })
+                })
             }
+        }
+
+        /** A [TreemapColors] from [color], with [legend]. */
+        fun colors(legend: (Treemap) -> TreemapLegend?, color: (TreemapNode, Treemap) -> Vec4): TreemapColors = object : TreemapColors {
+            override fun color(node: TreemapNode, treemap: Treemap) = color(node, treemap)
+            override fun legend(treemap: Treemap) = legend(treemap)
         }
 
         /** Each cell by whatever [pick] returns for it. */
         fun by(pick: (TreemapNode) -> Vec4): TreemapColors = TreemapColors { node, _ -> pick(node) }
     }
+}
+
+/** [this] colouring with [legend] added. */
+fun TreemapColors.withLegend(legend: (Treemap) -> TreemapLegend?): TreemapColors {
+    val base = this
+    return TreemapColors.colors(legend) { node, map -> base.color(node, map) }
+}
+
+/** What a treemap's colours mean: rows of colour and label, each with its share of the focus (0..1) when it has one. */
+data class TreemapLegend(val title: String?, val entries: List<TreemapLegendEntry>)
+
+/** One row of a [TreemapLegend]. */
+data class TreemapLegendEntry(val label: String, val color: Vec4, val share: Double? = null)
+
+/** [node]'s share of [focus], by value: 0 when it lies outside the focus. */
+private fun shareWithin(focus: TreemapNode, node: TreemapNode, total: Double): Double = when {
+    focus.contains(node) -> node.value / total
+    node.contains(focus) -> focus.value / total
+    else -> 0.0
 }
 
 // ---- helpers -------------------------------------------------------------------------------------------------
@@ -592,6 +791,9 @@ fun TreemapNode.toTreemapHTML(w: Double = 720.0, h: Double = 420.0): String {
     map.w = w
     map.h = h
     map.breadcrumbs = false
+    // Drawn as SVG, so held to the budget an SVG figure can carry.
+    map.maxCells = 2500
+    map.minCellSize = 4.0
     // Hover colour and tooltips work in the browser alone; clicks need a box to call back to.
     val lines = map.toFLines().onEach { it.onClick = null; it.onHover = null }
     return linesToHTML(lines, w, h)

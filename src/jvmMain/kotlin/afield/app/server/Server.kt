@@ -5789,6 +5789,7 @@ class Server {
                                 detachDocumentSession(ts)
                                 leaveSelectionContexts(ts)
                                 afield.graphics.three.detachThreeSession(ts)
+                                afield.ui.visualization.treemap.detachTreemapSession(ts)
                                 afield.graphics.visionos.detachVisionMetalGlobalListener(ts)
                                 afield.graphics.visionos.VisionPoseStream.detach(ts)
                                 // Clean up back pressure state for this session.
@@ -5909,6 +5910,23 @@ class Server {
                                 }
                             }
                         }
+                        route("/treemap-buffers") {
+                            get {
+                                // A treemap frame's arrays (TreemapView.kt), encoded as `/three-buffers` encodes
+                                // geometry, with the same `only=` subsets for a viewer reusing arrays it holds.
+                                val uid = call.request.queryParameters["uid"] ?: ""
+                                val generation = call.request.queryParameters["generation"] ?: ""
+                                val only = call.request.queryParameters["only"]?.split(',')?.mapNotNull { it.trim().toIntOrNull() }
+                                val all = afield.ui.visualization.treemap.treemapBuffers(uid, generation)
+                                val buffers = if (only == null) all else all?.subset(only)
+                                if (buffers == null) call.respond(HttpStatusCode.NotFound, "No current frame for that treemap and generation")
+                                else {
+                                    call.response.header(HttpHeaders.CacheControl, "private, max-age=3600, immutable")
+                                    call.respondOutputStream(ContentType.parse(afield.graphics.three.THREE_BUFFERS_CONTENT_TYPE),
+                                        HttpStatusCode.OK, buffers.bytes) { buffers.writeTo(this) }
+                                }
+                            }
+                        }
                         route("/three-gltfpack") {
                             post {
                                 // The three viewer's Export GLB, compressed by Field's optional gltfpack
@@ -5985,6 +6003,13 @@ class Server {
                                     File("./src/commonMain/resources/threejs_viewer.html").readText(Charsets.UTF_8)
                                 val modifiedContent = filter(originalContent)
                                 call.respondText(modifiedContent, ContentType.Text.Html)
+                            }
+                        }
+                        route("/treemap") {
+                            handle {
+                                val originalContent =
+                                    File("./src/commonMain/resources/treemap_viewer.html").readText(Charsets.UTF_8)
+                                call.respondText(filter(originalContent), ContentType.Text.Html)
                             }
                         }
                         route("/history") {

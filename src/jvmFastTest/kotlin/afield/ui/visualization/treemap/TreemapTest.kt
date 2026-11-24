@@ -169,18 +169,149 @@ class TreemapTest {
         }
     }
 
-    @Test fun theDrawingIsKeyedCaptionedAndCheapToClick() {
+    /** The frames a treemap's viewer is sent, decoded: description and arrays. */
+    private class Sent(val message: TreemapFrameMessage, val arrays: Map<String, java.nio.ByteBuffer>) {
+        fun floats(name: String) = arrays.getValue(name).asFloatBuffer().let { b -> FloatArray(b.remaining()).also { b.get(it) } }
+        fun ints(name: String) = arrays.getValue(name).asIntBuffer().let { b -> IntArray(b.remaining()).also { b.get(it) } }
+        fun bytes(name: String) = arrays.getValue(name).let { b -> ByteArray(b.remaining()).also { b.duplicate().get(it) } }
+        fun names(): List<String> {
+            val offsets = ints("nameOffsets")
+            val text = bytes("names")
+            return (0 until message.count).map { String(text, offsets[it], offsets[it + 1] - offsets[it], Charsets.UTF_8) }
+        }
+        fun hash(name: String) = message.buffers.entries[message.arrays.indexOf(name)].hash
+    }
+
+    private fun viewOf(b: Box, channel: String = "treemap") = treemapViewFor(treemapViewerUid(b, channel))
+
+    private fun decode(view: TreemapView, description: ByteArray): Sent {
+        val message = treemapJson.decodeFromString(TreemapFrameMessage.serializer(), description.decodeToString())
+        val all = java.nio.ByteBuffer.wrap(view.buffers(message.generation)!!.toByteArray()).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+        val arrays = message.arrays.withIndex().associate { (i, name) ->
+            val e = message.buffers.entries[i]
+            val width = when (e.type) { "Float32Array", "Uint32Array", "Int32Array" -> 4; else -> 1 }
+            name to all.duplicate().order(java.nio.ByteOrder.LITTLE_ENDIAN).position(e.offset.toInt()).limit(e.offset.toInt() + e.count * width)
+                .slice().order(java.nio.ByteOrder.LITTLE_ENDIAN)
+        }
+        return Sent(message, arrays)
+    }
+
+    private fun recording(b: Box, channel: String = "treemap"): MutableList<ByteArray> {
+        val sent = mutableListOf<ByteArray>()
+        viewOf(b, channel).onBroadcast = { sent += it }
+        return sent
+    }
+
+    @Test fun aFrameCarriesEveryCellAsTypedArrays() {
         val b = box()
+        val sent = recording(b)
         val map = b.treemap(sample(), w = 600.0, h = 400.0)
-        val svg = shown.last()
-        assertTrue("data-afield-transition=\"0.45\"" in svg, "the display asks for a morph")
-        assertTrue("data-fline-key=\"root/a/a1\"" in svg)
-        assertTrue(Regex("<text[^>]*>a1").containsMatchIn(svg), "a large cell is labelled")
-        assertFalse("data-fline-elements" in svg, "cells skip the per-segment hit records")
-        assertTrue("data-afield-view=" in svg, "the treemap listens for pans and zooms")
-        // Each line is keyed, so a redraw replaces rather than adds callbacks.
-        val lines = map.toFLines()
-        assertEquals(lines.size, lines.mapNotNull { it.key }.toSet().size, "keys are unique")
+        assertTrue("/treemap?uid=" in shown.last(), "the box shows the viewer")
+        val frame = decode(viewOf(b), sent.last())
+        assertEquals(map.cells.size, frame.message.count)
+        assertEquals(FRAME_ARRAYS, frame.message.arrays)
+        val rects = frame.floats("rects")
+        map.cells.forEachIndexed { i, c ->
+            assertEquals(c.x0, rects[4 * i].toDouble(), 1e-3); assertEquals(c.y1, rects[4 * i + 3].toDouble(), 1e-3)
+        }
+        val names = frame.names()
+        assertEquals("a1\t6", names[map.cells.indexOfFirst { it.node.key == "root/a/a1" }], "name and formatted value, tab apart")
+        val parents = frame.ints("parents")
+        map.cells.forEachIndexed { i, c -> assertEquals(map.cells.indexOfFirst { it.node === c.node.parent }, parents[i], "parent of ${c.node.key}") }
+        val flags = frame.bytes("flags")
+        assertTrue(flags[0].toInt() and CELL_OPEN != 0, "the focus is open")
+        assertTrue(flags[map.cells.indexOfFirst { it.node.key == "root/c" }].toInt() and CELL_LEAF != 0)
+        assertEquals(listOf("root"), frame.message.crumbs.map { it.name })
+    }
+
+    @Test fun aSelectionSendsOnlyTheFlagsAndIdsAreStable() {
+        val b = box()
+        val sent = recording(b, "s")
+        val map = b.treemap(sample(), channel = "s", w = 600.0, h = 400.0)
+        val view = viewOf(b, "s")
+        val before = decode(view, sent.last())
+        map.select(map.root.find("root/b/b2")!!)
+        val after = decode(view, sent.last())
+        val changed = FRAME_ARRAYS.filter { before.hash(it) != after.hash(it) }
+        assertEquals(listOf("flags"), changed, "a selection changes the flags array alone, so the viewer fetches only that")
+        val i = map.cells.indexOfFirst { it.node.key == "root/b/b2" }
+        assertTrue(after.bytes("flags")[i].toInt() and CELL_SELECTED != 0)
+        // A node keeps its id when the tree is rebuilt and the box runs again, which is what the viewer morphs by.
+        val idBefore = after.ints("ids")[i]
+        val again = b.treemap(sample(), channel = "s", w = 600.0, h = 400.0)
+        val rerun = decode(view, sent.last())
+        assertEquals(idBefore, rerun.ints("ids")[again.cells.indexOfFirst { it.node.key == "root/b/b2" }])
+        assertEquals(rerun.ints("ids").size, rerun.ints("ids").toSet().size, "ids are unique within a frame")
+    }
+
+    @Test fun viewerMessagesReachTheNodesTheyName() {
+        val b = box()
+        val sent = recording(b, "v")
+        var picked: List<String> = emptyList()
+        val map = b.treemap(sample(), channel = "v", w = 600.0, h = 400.0) {
+            onSelect = { s -> picked = s.map { it.key } }
+            infoChannel = "about"
+            colorings = linkedMapOf("branch" to TreemapColors.byBranch(), "depth" to TreemapColors.byDepth())
+        }
+        val view = viewOf(b, "v")
+        fun gen() = decode(view, sent.last()).message.generation
+        fun say(type: String, vararg fields: Pair<String, Any>) = map.receiveFromViewer(view, type, kotlinx.serialization.json.buildJsonObject {
+            fields.forEach { (k, v) -> when (v) { is Number -> put(k, kotlinx.serialization.json.JsonPrimitive(v)); is Boolean -> put(k, kotlinx.serialization.json.JsonPrimitive(v)); else -> put(k, kotlinx.serialization.json.JsonPrimitive(v.toString())) } }
+        })
+        fun index(key: String) = map.cells.indexOfFirst { it.node.key == key }
+        say("click", "generation" to gen(), "index" to index("root/a/a2"))
+        assertEquals(listOf("root/a/a2"), picked)
+        say("click", "generation" to gen(), "index" to index("root/c"), "shift" to true)
+        assertEquals(listOf("root/a/a2", "root/c"), picked)
+        say("click", "generation" to gen(), "index" to -1)
+        assertEquals(emptyList(), picked, "a click on the background clears the selection")
+        say("hover", "generation" to gen(), "index" to index("root/b"))
+        assertEquals("root/b", map.hovered?.key)
+        assertTrue(shown.any { "root" in it && "children" in it }, "the hovered branch is described in its channel")
+        say("click", "generation" to gen(), "index" to index("root/b/b3"), "clickCount" to 2)
+        assertEquals("root/b", map.focus.key)
+        val zoomed = decode(view, sent.last())
+        assertTrue(zoomed.message.refit, "a zoom tells the viewer to refit its camera")
+        assertEquals(listOf("root", "b"), zoomed.message.crumbs.map { it.name })
+        say("crumb", "id" to zoomed.message.crumbs[0].id)
+        assertEquals("root", map.focus.key, "a breadcrumb zooms out to it")
+        val colouredBefore = decode(view, sent.last())
+        say("coloring", "name" to "depth")
+        val colouredAfter = decode(view, sent.last())
+        assertEquals("depth", colouredAfter.message.coloring)
+        assertEquals(listOf("colors"), FRAME_ARRAYS.filter { colouredBefore.hash(it) != colouredAfter.hash(it) }, "a new colouring sends only the colours")
+        // A click naming a superseded generation, or nothing, is ignored rather than misread.
+        say("click", "generation" to "no-such-generation", "index" to 3)
+        assertEquals("root", map.focus.key)
+    }
+
+    @Test fun legendsGiveSharesOfTheFocus() {
+        val b = box()
+        val sent = recording(b, "l")
+        val map = b.treemap(sample(), channel = "l", w = 600.0, h = 400.0) {
+            colors = TreemapColors.byCategory("parity") { n -> if (n.name.last().digitToIntOrNull()?.rem(2) == 0) "even" else "odd" }
+        }
+        val legend = decode(viewOf(b, "l"), sent.last()).message.legend
+        assertEquals(1.0, legend.sumOf { it.share ?: 0.0 }, 1e-9)
+        assertEquals(setOf("even", "odd"), legend.map { it.label }.toSet())
+        map.colors = TreemapColors.byBranch()
+        map.zoomTo("root/b")
+        val zoomed = decode(viewOf(b, "l"), sent.last()).message.legend
+        assertEquals(listOf("b"), zoomed.map { it.label }, "zoomed into b, the branch legend lists only b")
+        assertEquals(1.0, zoomed.single().share!!, 1e-9)
+    }
+
+    @Test fun aHundredThousandCellsPackSmall() {
+        val tree = treemapTree("lib") { repeat(40) { a -> branch("a$a") { repeat(25) { c -> branch("d$c") { repeat(100) { leaf("m$it", 1.0 + (a + c + it) % 17) } } } } } }
+        val b = box()
+        val sent = recording(b, "big")
+        val map = b.treemap(tree, channel = "big", w = 1400.0, h = 900.0)
+        val frame = decode(viewOf(b, "big"), sent.last())
+        assertTrue(frame.message.count > 100_000, "${frame.message.count} cells")
+        val perCell = frame.message.buffers.bytes.toDouble() / frame.message.count
+        assertTrue(perCell < 60, "$perCell bytes a cell")
+        assertTrue(sent.last().size < 8_000, "the description stays small: ${sent.last().size} bytes")
+        assertEquals(map.cells.size, frame.message.count)
     }
 
     @Test fun clicksSelectAndDoubleClicksZoom() {
@@ -197,7 +328,7 @@ class TreemapTest {
         assertEquals(listOf("root/a/a1", "root/b/b2"), picked)
         click("root/a/a1", meta = true)
         assertEquals(listOf("root/b/b2"), picked)
-        assertTrue("treemap:selected:root/b/b2" in shown.last(), "the selection is outlined")
+        assertTrue(map.toFLines().any { it.key == "treemap:selected:root/b/b2" }, "the selection is outlined in the FLine drawing")
 
         click("root/b/b2", count = 2)
         assertEquals("root/b", map.focus.key, "a double click zooms one level toward the cell")
@@ -222,7 +353,7 @@ class TreemapTest {
         val after = map.cells.first { it.node.key == "root/c" }.area
         assertTrue(after > before * 1.4, "c grew from $before to $after")
         map.update { tree.find("root/b")!!.leaf("b5", 5.0) }
-        assertTrue("data-fline-key=\"root/b/b5\"" in shown.last())
+        assertTrue(map.cells.any { it.node.key == "root/b/b5" }, "the new leaf is laid out and sent")
     }
 
     @Test fun aTreeDisplaysItselfAsAValue() {
