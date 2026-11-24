@@ -137,6 +137,18 @@ macro run nile_gezira_kernels
 
 [Open →](offline.html?file=assets/agent_transcripts/nile_gezira_kernels/metadata.edn)
 
+### vector_scenes
+
+**Depth-ordered 3D vector scenes.** A lighthouse built with `vectorScene { }` from cylinders, cones,
+boxes and hemispheres, drawn from four angles, turned with a camera slider, shaded flat, soft and as
+plotter outlines, and a table of how many pixels a centroid sort and the pairwise order get wrong.
+See [Depth-ordered 3D vector scenes](fline_examples.md#depth-ordered-3d-vector-scenes-vectorscene).
+
+```diffstatic {data-lang=text}
+macro write vector_scenes --file dev_docs/agents/transcripts/vector_scenes.yaml
+macro run vector_scenes
+```
+
 ### fline_fill_rule
 
 **One fill rule, every renderer.** A pentagram and two nested squares, wound the same way, filled
