@@ -342,9 +342,31 @@ private fun ensureLinesOutputView(contentRoot: HTMLElement): dynamic {
         updateTransform()
     }
 
+    // A drawing with onView hears where the user has panned or zoomed to, once they pause, in SVG coordinates.
+    fun reportView() {
+        val id = view.viewId as? String ?: return
+        (view.viewTimer as? Int)?.let { window.clearTimeout(it) }
+        view.viewTimer = window.setTimeout({
+            view.viewTimer = null
+            val scale = view.scale as Double
+            send(Message("lines-view").payload(LinesView(
+                id,
+                x = -(view.tx as Double) / scale,
+                y = -(view.ty as Double) / scale,
+                w = (view.viewportWidth as Double) / scale,
+                h = (view.viewportHeight as Double) / scale,
+                scale = scale,
+                manual = view.manual as Boolean,
+            )))
+        }, 120)
+    }
+
     fun endPan() {
+        val wasPanning = view.panPointerId != null
         view.panPointerId = null
         viewport.style.cursor = "grab"
+        if (wasPanning && view.panMoved == true) reportView()
+        view.panMoved = false
     }
 
     viewport.onwheel = { event ->
@@ -365,6 +387,7 @@ private fun ensureLinesOutputView(contentRoot: HTMLElement): dynamic {
             view.ty = py - worldY * nextScale
             view.manual = true
             updateTransform()
+            reportView()
         }
         null
     }
@@ -450,6 +473,7 @@ private fun ensureLinesOutputView(contentRoot: HTMLElement): dynamic {
             null
         } else {
         view.panPointerId = event.pointerId
+        view.panMoved = false
         view.panLastX = event.clientX
         view.panLastY = event.clientY
         view.manual = true
@@ -494,6 +518,7 @@ private fun ensureLinesOutputView(contentRoot: HTMLElement): dynamic {
             view.panLastY = event.clientY
             view.tx = (view.tx as Double) + dx
             view.ty = (view.ty as Double) + dy
+            if (dx != 0.0 || dy != 0.0) view.panMoved = true
             updateTransform()
             null
         }
@@ -517,8 +542,10 @@ private fun ensureLinesOutputView(contentRoot: HTMLElement): dynamic {
     }
 
     viewport.ondblclick = {
+        val wasManual = view.manual as Boolean
         view.manual = false
         fitToContent()
+        if (wasManual) reportView()
         null
     }
 
@@ -699,16 +726,9 @@ private fun updatePersistentLinesOutput(contentRoot: HTMLElement, htmlString: St
     applyLinesFigureChrome(contentRoot, view, parseLinesFigureChrome(wrapper))
     val stageGroup = view.stageGroup as Element
 
-    while (stageGroup.firstChild != null) {
-        stageGroup.removeChild(stageGroup.firstChild!!)
-    }
-    val sourceChildren = sourceSvg.childNodes
-    for (index in 0 until sourceChildren.length) {
-        val child = sourceChildren.item(index) ?: continue
-        val cloned = child.cloneNode(true)
-        (cloned as? Element)?.let { applyNonScalingStroke(it) }
-        stageGroup.appendChild(cloned)
-    }
+    // Keyed lines (`FLine.key`) are updated in place, and morph over `transition` seconds when the display asks.
+    val transition = wrapper.getAttribute("data-afield-transition")?.toDoubleOrNull()?.takeIf { it.isFinite() && it > 0.0 } ?: 0.0
+    reconcileLinesStage(view, stageGroup, sourceSvg, transition) { applyNonScalingStroke(it) }
 
     val wrapperBounds = usableLinesBounds(parseLinesWrapperBounds(wrapper))
     val sourceViewBox = usableLinesBounds(parseSvgViewBox(sourceSvg.getAttribute("viewBox")))
@@ -736,6 +756,7 @@ private fun updatePersistentLinesOutput(contentRoot: HTMLElement, htmlString: St
     view.sourceHeight = sourceHeight
     view.contentBounds = contentBounds
     view.dragId = wrapper.getAttribute("data-afield-drag")?.takeIf { it.isNotBlank() }
+    view.viewId = wrapper.getAttribute("data-afield-view")?.takeIf { it.isNotBlank() }
     view.handles = wrapper.getAttribute("data-afield-handles")?.takeIf { it.isNotBlank() }
         ?.let { runCatching { JSON.parse<dynamic>(it) }.getOrNull() } ?: js("[]")
     installFieldLines(view)

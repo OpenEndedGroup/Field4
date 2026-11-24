@@ -14,6 +14,8 @@ import afield.animation.keyframes.Handle
 import afield.app.diagnostics.named
 import afield.app.protocol.AgentOpenDocument
 import afield.app.protocol.LinesDrag
+import afield.app.protocol.LinesView
+import afield.app.protocol.FLineHoverEvent
 import afield.data.table.cell
 import afield.data.table.div
 import afield.data.table.minus
@@ -3830,6 +3832,27 @@ class Server {
                 val drag = Json.decodeFromJsonElement<LinesDrag>(message.payload!!)
                 // In order per drawing, off this thread; a queued move is replaced by a newer one.
                 afield.ui.visualization.receiveLinesDrag(drag)
+                Handled.yes
+            })
+
+            handlers["lines-view"] = mutableSetOf({ message, _ ->
+                // Latest wins per drawing, off this thread: only where a pan or zoom ended up matters.
+                afield.ui.visualization.receiveLinesView(Json.decodeFromJsonElement<LinesView>(message.payload!!))
+                Handled.yes
+            })
+
+            handlers["fline-hover"] = mutableSetOf({ message, _ ->
+                val hover = Json.decodeFromJsonElement<FLineHoverEvent>(message.payload!!)
+                val callback = afield.ui.output.getFLineHoverCallback(hover.callbackId)
+                if (callback != null) {
+                    GlobalScope.launch {
+                        try {
+                            callback(afield.graphics.render.FLineHover(hover.entered, hover.key, hover.label, hover.lineIndex))
+                        } catch (e: Exception) {
+                            lprintln("error,fline", "Error in FLine hover callback: ${e.message}")
+                        }
+                    }
+                }
                 Handled.yes
             })
 

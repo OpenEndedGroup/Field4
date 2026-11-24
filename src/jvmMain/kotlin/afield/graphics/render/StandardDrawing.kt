@@ -312,7 +312,17 @@ data class FLineIntersection(
      * along the segment: a 3D line drawn into the 2D SVG output recovers a real depth here even though
      * [position] cannot have one.
      */
-    val onElement: Vec3? = null
+    val onElement: Vec3? = null,
+    /** The clicked line's [FLine.key], if it had one. */
+    val key: String? = null,
+    /** Whether Shift was held: a selection that extends rather than replaces. */
+    val shift: Boolean = false,
+    /** Whether Alt (Option) was held. */
+    val alt: Boolean = false,
+    /** Whether Cmd (macOS) or Ctrl was held: a selection that toggles. */
+    val meta: Boolean = false,
+    /** 1 for a single click and 2 for the second click of a double click. */
+    val clickCount: Int = 1,
 )
 
 /** Callback invoked when this FLine is clicked in an interactive output. */
@@ -332,6 +342,75 @@ var FLine.label by Delegation<String?>()
  * When null no hover color change is applied.
  */
 var FLine.hoverColor by Delegation<Vec4?>()
+
+/**
+ * This line's identity from one display of a `lines(...)` output to the next.
+ *
+ * A keyed line is the *same* line in the next display that carries the same key, wherever it sits in the
+ * list. The viewer then updates it in place instead of rebuilding it, and with a `transition` on the
+ * display it morphs from where it was to where it is now. A key that appears fresh fades in, and a key
+ * that disappears fades out. Clicks on a keyed line report the key in [FLineIntersection.key], and its
+ * callback ids are keyed by it rather than by list position.
+ *
+ * Unset by default. Keys only need to be unique within one display.
+ */
+var FLine.key by Delegation<String?>()
+
+/**
+ * Text drawn with this line in an interactive `lines(...)` output, as SVG text rather than glyph outlines.
+ * It is cheap enough to label hundreds of shapes in a display that redraws.
+ *
+ * The caption sits in the line's own coordinates and goes through the same fit as the line. It morphs with
+ * the line when the line has a [key].
+ */
+var FLine.caption by Delegation<LineCaption?>()
+
+/**
+ * Called when the pointer enters ([FLineHover.entered] true) and leaves this line in an interactive SVG
+ * output. Hover colouring ([hoverColor]) stays in the browser; this is for code that wants to know.
+ */
+var FLine.onHover by Delegation<((FLineHover) -> Unit)?>()
+
+/** A native browser tooltip for this line in an interactive SVG output. */
+var FLine.tooltip by Delegation<String?>()
+
+/**
+ * Whether a click on this line sends its full hit record: which node, segment or face was hit and where along it.
+ * Set it to false on figures with thousands of clickable shapes. The drawing stays smaller, and a click still
+ * reports its position, [FLineIntersection.key] and [FLineIntersection.lineIndex].
+ */
+var FLine.pickDetail by Delegation<Boolean?>()
+
+/**
+ * A text label for [FLine.caption], placed at ([x], [y]) in the line's own coordinates.
+ *
+ * [size] is the font size in those same units, [color] RGBA in `0..1` (null uses the line's colour),
+ * [anchor] is where [x] falls along the text (`start`, `middle` or `end`), and [baseline] where [y]
+ * falls across it (`hanging`, `middle` or `alphabetic`). [opacity] fades the caption on its own, which is
+ * what a level-of-detail scheme uses to fade a label in as there becomes room for it.
+ */
+data class LineCaption(
+    val text: String,
+    val x: Double,
+    val y: Double,
+    val size: Double = 12.0,
+    val color: Vec4? = null,
+    val anchor: String = "start",
+    val baseline: String = "hanging",
+    val bold: Boolean = false,
+    val opacity: Double = 1.0,
+)
+
+/** The pointer entering or leaving an [FLine] with [FLine.onHover]; [key] and [label] are the line's. */
+data class FLineHover(val entered: Boolean, val key: String?, val label: String?, val lineIndex: Int)
+
+/**
+ * True when [lines] need the interactive SVG renderer: something to click, hover, caption or key.
+ * Skia's SVG canvas cannot carry any of those.
+ */
+fun needsInteractiveSvg(lines: Collection<FLine>): Boolean = lines.any {
+    it.onClick != null || it.hoverColor != null || it.onHover != null || it.caption != null || it.key != null || it.tooltip != null
+}
 
 /**
  * One straight 2D segment from [a] to [b], styled in the same call — the named form of

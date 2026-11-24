@@ -57,8 +57,10 @@ function cssEscape(value) {
  * to exist on Kotlin's `FLineClick`, and `u`/`v`/`ex`/`ey`/`ez` are sent as `null` rather than `NaN`
  * because JSON cannot carry a NaN and the whole message would be rejected.
  */
-window.sendFLineClick = function(callbackId, intersection) {
+window.sendFLineClick = function(callbackId, intersection, event) {
     var hit = intersection || {};
+    var group = event && event.currentTarget && event.currentTarget.getAttribute ? event.currentTarget : null;
+    var key = group ? group.getAttribute('data-fline-key') : null;
     function int(value, fallback) {
         return Number.isFinite(value) ? Math.round(value) : fallback;
     }
@@ -82,9 +84,33 @@ window.sendFLineClick = function(callbackId, intersection) {
         v: real(hit.v),
         ex: real(hit.ex),
         ey: real(hit.ey),
-        ez: real(hit.ez)
+        ez: real(hit.ez),
+        key: key,
+        shift: !!(event && event.shiftKey),
+        alt: !!(event && event.altKey),
+        meta: !!(event && (event.metaKey || event.ctrlKey)),
+        clickCount: event && Number.isFinite(event.detail) && event.detail > 0 ? Math.round(event.detail) : 1
     });
 };
+
+/**
+ * Tell the server the pointer entered or left an FLine `<g>` that has `data-fline-hover-id`. Moves between
+ * the group's own children (its path and its caption) are not entries or exits, so they send nothing.
+ */
+function flineSendHover(groupEl, event, entered) {
+    var id = groupEl.getAttribute('data-fline-hover-id');
+    if (!id) return;
+    var related = event && event.relatedTarget;
+    if (related && groupEl.contains && groupEl.contains(related)) return;
+    var index = parseInt(groupEl.getAttribute('data-fline-index'), 10);
+    sendViaAfield('fline-hover', {
+        callbackId: id,
+        entered: entered,
+        key: groupEl.getAttribute('data-fline-key'),
+        label: groupEl.getAttribute('data-fline-label'),
+        lineIndex: Number.isFinite(index) ? index : -1
+    });
+}
 
 // Reconstructing *what* was clicked ------------------------------------------
 //
@@ -449,7 +475,8 @@ window.__flineIntersectionFromSvg = function(event, groupEl) {
  * Guards against multiple consecutive `mouseover` fires (e.g. rapid pointer
  * movement across child elements) by only saving the originals once.
  */
-window.__flineHoverIn = function(groupEl) {
+window.__flineHoverIn = function(groupEl, event) {
+    flineSendHover(groupEl, event, true);
     var hoverColor = groupEl.getAttribute('data-hover-color');
     if (!hoverColor) return;
     groupEl.querySelectorAll('path, circle').forEach(function(child) {
@@ -475,7 +502,8 @@ window.__flineHoverIn = function(groupEl) {
  * Restore the original stroke/fill colours for an interactive FLine `<g>` element
  * after the pointer leaves.
  */
-window.__flineHoverOut = function(groupEl) {
+window.__flineHoverOut = function(groupEl, event) {
+    flineSendHover(groupEl, event, false);
     groupEl.querySelectorAll('path, circle').forEach(function(child) {
         var origStroke = child.getAttribute('data-orig-stroke');
         var origFill = child.getAttribute('data-orig-fill');

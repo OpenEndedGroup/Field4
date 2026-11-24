@@ -83,6 +83,7 @@ import afield.app.server.registerKeyframeBrowser
 import afield.graphics.render.FLineFaceCoordinates
 import afield.graphics.render.FLineHitKind
 import afield.graphics.render.FLineIntersection
+import afield.graphics.render.FLineHover
 import afield.document.workspace.FileManager
 import afield.animation.keyframes.KeyframeScope
 import afield.animation.keyframes.everyKeyGlob
@@ -1214,6 +1215,14 @@ internal fun getFLineClickCallback(callbackId: String): ((FLineIntersection) -> 
     return flineClickCallbacks[callbackId]
 }
 
+private val flineHoverCallbacks = OwnedCallbackRegistry<(FLineHover) -> Unit>("flineHover")
+
+internal fun registerFLineHoverCallback(callbackId: String, callback: (FLineHover) -> Unit) {
+    flineHoverCallbacks.register(callbackId, callback)
+}
+
+internal fun getFLineHoverCallback(callbackId: String): ((FLineHover) -> Unit)? = flineHoverCallbacks[callbackId]
+
 /**
  * The one place a posted [FLineClick] becomes the [FLineIntersection] a callback sees.
  *
@@ -1243,7 +1252,12 @@ internal fun FLineClick.toIntersection(): FLineIntersection = FLineIntersection(
         "bbox", "bounding_box" -> FLineFaceCoordinates.BOUNDING_BOX
         else -> FLineFaceCoordinates.NONE
     },
-    onElement = if (ex != null && ey != null) afield.math.linalg.vec(ex, ey, ez ?: 0.0) else null
+    onElement = if (ex != null && ey != null) afield.math.linalg.vec(ex, ey, ez ?: 0.0) else null,
+    key = key,
+    shift = shift,
+    alt = alt,
+    meta = meta,
+    clickCount = clickCount,
 )
 
 /**
