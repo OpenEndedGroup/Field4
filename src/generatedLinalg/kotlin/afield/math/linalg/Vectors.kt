@@ -202,6 +202,8 @@ interface Vector2fc {
      * Linearly interpolates from this vector toward another.
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     *
+     * In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone.
      * @param other the endpoint
      * @param t the interpolation amount
      * @param dest the vector that receives the result
@@ -298,6 +300,14 @@ interface Vector2fc {
         buffer.putFloat(index + 0, x())
         buffer.putFloat(index + 4, y())
         return buffer
+    }
+
+    companion object {
+        /**
+         * Collection-literal constructor for a read-only target, so `v.xy = [1, 2]` and
+         * `val p: Vector2fc = [0, 1]` compile. The value is a new Vector2f.
+         */
+        operator fun of(vararg components: Number): Vector2fc = Vector2f.of(*components)
     }
 }
 
@@ -480,6 +490,8 @@ open class Vector2f() : Vector2fc, Cloneable {
      * Linearly interpolates from this vector toward another.
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     *
+     * In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone.
      *
      * This overload writes the result back into this vector.
      * @param other the endpoint
@@ -739,6 +751,8 @@ interface Vector3fc {
      * Linearly interpolates from this vector toward another.
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     *
+     * In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone.
      * @param other the endpoint
      * @param t the interpolation amount
      * @param dest the vector that receives the result
@@ -855,6 +869,14 @@ interface Vector3fc {
         buffer.putFloat(index + 4, y())
         buffer.putFloat(index + 8, z())
         return buffer
+    }
+
+    companion object {
+        /**
+         * Collection-literal constructor for a read-only target, so `v.xy = [1, 2]` and
+         * `val p: Vector3fc = [0, 1, 2]` compile. The value is a new Vector3f.
+         */
+        operator fun of(vararg components: Number): Vector3fc = Vector3f.of(*components)
     }
 }
 
@@ -1044,6 +1066,8 @@ open class Vector3f() : Vector3fc, Cloneable {
      * Linearly interpolates from this vector toward another.
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     *
+     * In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone.
      *
      * This overload writes the result back into this vector.
      * @param other the endpoint
@@ -1330,6 +1354,8 @@ interface Vector4fc {
      * Linearly interpolates from this vector toward another.
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     *
+     * In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone.
      * @param other the endpoint
      * @param t the interpolation amount
      * @param dest the vector that receives the result
@@ -1436,6 +1462,14 @@ interface Vector4fc {
         buffer.putFloat(index + 8, z())
         buffer.putFloat(index + 12, w())
         return buffer
+    }
+
+    companion object {
+        /**
+         * Collection-literal constructor for a read-only target, so `v.xy = [1, 2]` and
+         * `val p: Vector4fc = [0, 1, 2, 3]` compile. The value is a new Vector4f.
+         */
+        operator fun of(vararg components: Number): Vector4fc = Vector4f.of(*components)
     }
 }
 
@@ -1632,6 +1666,8 @@ open class Vector4f() : Vector4fc, Cloneable {
      * Linearly interpolates from this vector toward another.
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     *
+     * In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone.
      *
      * This overload writes the result back into this vector.
      * @param other the endpoint
@@ -1877,6 +1913,8 @@ interface Vector2dc {
      * Linearly interpolates from this vector toward another.
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     *
+     * In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone.
      * @param other the endpoint
      * @param t the interpolation amount
      * @param dest the vector that receives the result
@@ -1973,6 +2011,14 @@ interface Vector2dc {
         buffer.putDouble(index + 0, x())
         buffer.putDouble(index + 8, y())
         return buffer
+    }
+
+    companion object {
+        /**
+         * Collection-literal constructor for a read-only target, so `v.xy = [1, 2]` and
+         * `val p: Vector2dc = [0, 1]` compile. The value is a new Vector2d.
+         */
+        operator fun of(vararg components: Number): Vector2dc = Vector2d.of(*components)
     }
 }
 
@@ -2155,6 +2201,8 @@ open class Vector2d() : Vector2dc, Cloneable {
      * Linearly interpolates from this vector toward another.
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     *
+     * In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone.
      *
      * This overload writes the result back into this vector.
      * @param other the endpoint
@@ -2414,6 +2462,8 @@ interface Vector3dc {
      * Linearly interpolates from this vector toward another.
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     *
+     * In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone.
      * @param other the endpoint
      * @param t the interpolation amount
      * @param dest the vector that receives the result
@@ -2530,6 +2580,14 @@ interface Vector3dc {
         buffer.putDouble(index + 8, y())
         buffer.putDouble(index + 16, z())
         return buffer
+    }
+
+    companion object {
+        /**
+         * Collection-literal constructor for a read-only target, so `v.xy = [1, 2]` and
+         * `val p: Vector3dc = [0, 1, 2]` compile. The value is a new Vector3d.
+         */
+        operator fun of(vararg components: Number): Vector3dc = Vector3d.of(*components)
     }
 }
 
@@ -2719,6 +2777,8 @@ open class Vector3d() : Vector3dc, Cloneable {
      * Linearly interpolates from this vector toward another.
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     *
+     * In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone.
      *
      * This overload writes the result back into this vector.
      * @param other the endpoint
@@ -3005,6 +3065,8 @@ interface Vector4dc {
      * Linearly interpolates from this vector toward another.
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     *
+     * In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone.
      * @param other the endpoint
      * @param t the interpolation amount
      * @param dest the vector that receives the result
@@ -3111,6 +3173,14 @@ interface Vector4dc {
         buffer.putDouble(index + 16, z())
         buffer.putDouble(index + 24, w())
         return buffer
+    }
+
+    companion object {
+        /**
+         * Collection-literal constructor for a read-only target, so `v.xy = [1, 2]` and
+         * `val p: Vector4dc = [0, 1, 2, 3]` compile. The value is a new Vector4d.
+         */
+        operator fun of(vararg components: Number): Vector4dc = Vector4d.of(*components)
     }
 }
 
@@ -3307,6 +3377,8 @@ open class Vector4d() : Vector4dc, Cloneable {
      * Linearly interpolates from this vector toward another.
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     *
+     * In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone.
      *
      * This overload writes the result back into this vector.
      * @param other the endpoint
@@ -3648,6 +3720,8 @@ interface Vector8hc {
      * Linearly interpolates from this vector toward another.
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     *
+     * In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone.
      * @param other the endpoint
      * @param t the interpolation amount
      * @param dest the vector that receives the result
@@ -3774,6 +3848,14 @@ interface Vector8hc {
         buffer.putShort(index + 12, floatToHalfBits(c()))
         buffer.putShort(index + 14, floatToHalfBits(d()))
         return buffer
+    }
+
+    companion object {
+        /**
+         * Collection-literal constructor for a read-only target, so `v.xy = [1, 2]` and
+         * `val p: Vector8hc = [0, 1, 2, 3, 4, 5, 6, 7]` compile. The value is a new Vector8h.
+         */
+        operator fun of(vararg components: Number): Vector8hc = Vector8h.of(*components)
     }
 }
 
@@ -3992,6 +4074,8 @@ open class Vector8h() : Vector8hc, Cloneable {
      * Linearly interpolates from this vector toward another.
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     *
+     * In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone.
      *
      * This overload writes the result back into this vector.
      * @param other the endpoint

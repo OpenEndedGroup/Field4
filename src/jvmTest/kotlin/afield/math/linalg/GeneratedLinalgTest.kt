@@ -8,6 +8,10 @@ import afield.math.linalg.Vec4
 import afield.data.collections.invoke
 import afield.math.linalg.invoke
 import afield.math.linalg.len
+import afield.math.linalg.length
+import afield.math.linalg.lerp
+import afield.math.linalg.n
+import afield.math.linalg.step
 import afield.math.linalg.remAssign
 import afield.math.linalg.vec
 import afield.math.linalg.wx
@@ -46,6 +50,53 @@ import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class GeneratedLinalgTest {
+    /** `a.n`, `a.length`, `a lerp t to b` and `a step d to b` on every storage form. */
+    @Test
+    fun shorthandsNormalizeMeasureLerpAndStep() {
+        val a = Vector3f(1f, 0f, 0f)
+        val b = Vector3f(1f, 4f, 0f)
+        assertEquals(5f, Vector3f(3f, 4f, 0f).length)
+        assertVectorEquals(Vector3f(0.6f, 0.8f, 0f), Vector3f(3f, 4f, 0f).n)
+        assertVectorEquals(Vector3f(), Vector3f().n)
+        assertVectorEquals(Vector3f(1f, 2f, 0f), a lerp 0.5 to b)
+        assertVectorEquals(Vector3f(1f, 1f, 0f), a step 1 to b)
+        // A step longer than the gap overshoots; coincident points have no direction.
+        assertVectorEquals(Vector3f(1f, 10f, 0f), a step 10 to b)
+        assertVectorEquals(a, a step 3 to Vector3f(a))
+        assertVectorEquals(Vector3f(1f, 0f, 0f), a)
+
+        val d = Vector2d(0.0, 0.0) step 2 to Vector2d(0.0, -8.0)
+        assertEquals(-2.0, d.y)
+        assertEquals(5.0, Vector2d(3.0, 4.0).length)
+        assertEquals(1.0, (Vector4d(0.0, 0.0, 0.0, 7.0).n).w)
+        assertEquals(3.0, (Vector2d(0.0, 0.0) lerp 0.25 to Vector2d(12.0, 0.0)).x)
+
+        FrameArena().use { arena ->
+            arena.scoped {
+                val p = vec3(0f, 0f, 0f)
+                val q = vec3(0f, 0f, 8f)
+                assertEquals(8f, q.length)
+                assertEquals(1f, q.n.z)
+                assertEquals(2f, (p lerp 0.25 to q).z)
+                assertEquals(11f, (p step 11 to q).z)
+                assertEquals(0f, p.z, "arena operands stay untouched")
+            }
+        }
+
+        Arena.ofConfined().use { owner ->
+            val view = SegmentVec2Buffer(owner.allocate(16, 8), 2)
+            with(view) {
+                view[0].set(0f, 0f)
+                view[1].set(6f, 8f)
+                assertEquals(10f, view[1].length)
+                assertVectorEquals(Vector2f(0.6f, 0.8f), view[1].n)
+                assertVectorEquals(Vector2f(3f, 4f), view[0] lerp 0.5 to view[1])
+                assertVectorEquals(Vector2f(3f, 4f), view[0] step 5 to view[1])
+                assertEquals(6f, view[1].x, "segment operands stay untouched")
+            }
+        }
+    }
+
     @Test
     fun liveCodingConstructorsAcceptKotlinNumbersAndTypedCollectionLiterals() {
         val v2: Vec2 = [1, 2.5]

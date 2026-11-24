@@ -1,5 +1,7 @@
 package afield.ui.slides
 
+import afield.runtime.completion.BoxNames
+import afield.runtime.completion.CompletesWith
 import afield.app.protocol.AudienceContent
 import afield.app.protocol.PresentationState
 import kotlinx.coroutines.launch
@@ -227,7 +229,7 @@ class SlideStepBuilder(val title: String, val hostBox: Box) {
     /**
      * Selects a box by name (searches through children recursively) and optionally scrolls to a specific line
      */
-    fun selectBoxByName(name: String, property: String = "code", line: Int? = null, highlight: Int? = null) {
+    fun selectBoxByName(@CompletesWith(BoxNames::class) name: String, property: String = "code", line: Int? = null, highlight: Int? = null) {
         // Search for box with matching name in all children recursively
         fun findBoxByName(box: Box, targetName: String): Box? {
             if (box.name == targetName) return box

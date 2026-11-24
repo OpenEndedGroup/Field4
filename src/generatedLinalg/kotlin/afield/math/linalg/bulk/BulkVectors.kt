@@ -486,6 +486,8 @@ fun maxRange(selfX: FloatArray, selfY: FloatArray, scalar: Float, destX: FloatAr
  * Linearly interpolates from this vector toward another.
  *
  * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+ *
+ * In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone.
  * @param other the endpoint
  * @param t the interpolation amount
  * @param dest the vector that receives the result
@@ -1550,6 +1552,8 @@ fun maxRange(selfX: FloatArray, selfY: FloatArray, selfZ: FloatArray, scalar: Fl
  * Linearly interpolates from this vector toward another.
  *
  * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+ *
+ * In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone.
  * @param other the endpoint
  * @param t the interpolation amount
  * @param dest the vector that receives the result
@@ -2865,6 +2869,8 @@ fun maxRange(selfX: FloatArray, selfY: FloatArray, selfZ: FloatArray, selfW: Flo
  * Linearly interpolates from this vector toward another.
  *
  * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+ *
+ * In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone.
  * @param other the endpoint
  * @param t the interpolation amount
  * @param dest the vector that receives the result

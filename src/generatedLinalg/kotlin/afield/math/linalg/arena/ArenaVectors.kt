@@ -341,6 +341,8 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * Linearly interpolates from this vector toward another.
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     *
+     * In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone.
      * @param other the endpoint
      * @param t the interpolation amount
      * @param dest the vector that receives the result
@@ -484,6 +486,42 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * Reports whether every component is finite.
      */
     fun ArenaVec2f.isFinite(): Boolean = x.isFinite() && y.isFinite()
+
+    /** A normalized copy of this vector, the shorthand for `normalized()`. Zero stays zero. */
+    val ArenaVec2f.n: ArenaVec2f get() = vec2(this.x, this.y).also { val l = it.length(); if (l != 0.0f) it.mul(1.0f / l) }
+    /** This vector's Euclidean length, the property form of `length()`. */
+    val ArenaVec2f.length: Float get() = length()
+
+    /** The first half of `a lerp t to b`; finish it with [to]. */
+    inner class ArenaVec2fLerp internal constructor(private val from: ArenaVec2f, private val t: Float) {
+        /** Returns a new vector [t] of the way from the left-hand vector to [b]: 0 gives it, 1 gives [b]. */
+        infix fun to(b: ArenaVec2f): ArenaVec2f {
+            val a = vec2(from.x, from.y)
+            val d = vec2(b.x, b.y)
+            return d.sub(a).mul(t).add(a)
+        }
+    }
+
+    /** The first half of `a step d to b`; finish it with [to]. */
+    inner class ArenaVec2fStep internal constructor(private val from: ArenaVec2f, private val distance: Float) {
+        /**
+         * Returns a new vector [distance] units from the left-hand vector in the direction of [b].
+         * It does not stop at [b]: a distance longer than the gap overshoots. When the two
+         * vectors coincide there is no direction, so the result is a copy of the left-hand one.
+         */
+        infix fun to(b: ArenaVec2f): ArenaVec2f {
+            val a = vec2(from.x, from.y)
+            val d = vec2(b.x, b.y).sub(a)
+            val l = d.length()
+            if (l != 0.0f) d.mul(distance / l)
+            return d.add(a)
+        }
+    }
+
+    /** Starts `a lerp t to b`: the point [t] of the way from this vector to `b`. */
+    infix fun ArenaVec2f.lerp(t: Number): ArenaVec2fLerp = ArenaVec2fLerp(this, t.toFloat())
+    /** Starts `a step d to b`: move [distance] units from this vector toward `b`. */
+    infix fun ArenaVec2f.step(distance: Number): ArenaVec2fStep = ArenaVec2fStep(this, distance.toFloat())
 
     fun vec3(): ArenaVec3f = ArenaVec3f(arena.allocateVector(FrameArena.Kind.VEC3))
     fun vec3(x: Float, y: Float, z: Float): ArenaVec3f = vec3().also { it.set(x, y, z) }
@@ -846,6 +884,8 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * Linearly interpolates from this vector toward another.
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     *
+     * In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone.
      * @param other the endpoint
      * @param t the interpolation amount
      * @param dest the vector that receives the result
@@ -1036,6 +1076,42 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * Reports whether every component is finite.
      */
     fun ArenaVec3f.isFinite(): Boolean = x.isFinite() && y.isFinite() && z.isFinite()
+
+    /** A normalized copy of this vector, the shorthand for `normalized()`. Zero stays zero. */
+    val ArenaVec3f.n: ArenaVec3f get() = vec3(this.x, this.y, this.z).also { val l = it.length(); if (l != 0.0f) it.mul(1.0f / l) }
+    /** This vector's Euclidean length, the property form of `length()`. */
+    val ArenaVec3f.length: Float get() = length()
+
+    /** The first half of `a lerp t to b`; finish it with [to]. */
+    inner class ArenaVec3fLerp internal constructor(private val from: ArenaVec3f, private val t: Float) {
+        /** Returns a new vector [t] of the way from the left-hand vector to [b]: 0 gives it, 1 gives [b]. */
+        infix fun to(b: ArenaVec3f): ArenaVec3f {
+            val a = vec3(from.x, from.y, from.z)
+            val d = vec3(b.x, b.y, b.z)
+            return d.sub(a).mul(t).add(a)
+        }
+    }
+
+    /** The first half of `a step d to b`; finish it with [to]. */
+    inner class ArenaVec3fStep internal constructor(private val from: ArenaVec3f, private val distance: Float) {
+        /**
+         * Returns a new vector [distance] units from the left-hand vector in the direction of [b].
+         * It does not stop at [b]: a distance longer than the gap overshoots. When the two
+         * vectors coincide there is no direction, so the result is a copy of the left-hand one.
+         */
+        infix fun to(b: ArenaVec3f): ArenaVec3f {
+            val a = vec3(from.x, from.y, from.z)
+            val d = vec3(b.x, b.y, b.z).sub(a)
+            val l = d.length()
+            if (l != 0.0f) d.mul(distance / l)
+            return d.add(a)
+        }
+    }
+
+    /** Starts `a lerp t to b`: the point [t] of the way from this vector to `b`. */
+    infix fun ArenaVec3f.lerp(t: Number): ArenaVec3fLerp = ArenaVec3fLerp(this, t.toFloat())
+    /** Starts `a step d to b`: move [distance] units from this vector toward `b`. */
+    infix fun ArenaVec3f.step(distance: Number): ArenaVec3fStep = ArenaVec3fStep(this, distance.toFloat())
 
     fun vec4(): ArenaVec4f = ArenaVec4f(arena.allocateVector(FrameArena.Kind.VEC4))
     fun vec4(x: Float, y: Float, z: Float, w: Float): ArenaVec4f = vec4().also { it.set(x, y, z, w) }
@@ -1450,6 +1526,8 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * Linearly interpolates from this vector toward another.
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     *
+     * In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone.
      * @param other the endpoint
      * @param t the interpolation amount
      * @param dest the vector that receives the result
@@ -1631,4 +1709,40 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * Reports whether every component is finite.
      */
     fun ArenaVec4f.isFinite(): Boolean = x.isFinite() && y.isFinite() && z.isFinite() && w.isFinite()
+
+    /** A normalized copy of this vector, the shorthand for `normalized()`. Zero stays zero. */
+    val ArenaVec4f.n: ArenaVec4f get() = vec4(this.x, this.y, this.z, this.w).also { val l = it.length(); if (l != 0.0f) it.mul(1.0f / l) }
+    /** This vector's Euclidean length, the property form of `length()`. */
+    val ArenaVec4f.length: Float get() = length()
+
+    /** The first half of `a lerp t to b`; finish it with [to]. */
+    inner class ArenaVec4fLerp internal constructor(private val from: ArenaVec4f, private val t: Float) {
+        /** Returns a new vector [t] of the way from the left-hand vector to [b]: 0 gives it, 1 gives [b]. */
+        infix fun to(b: ArenaVec4f): ArenaVec4f {
+            val a = vec4(from.x, from.y, from.z, from.w)
+            val d = vec4(b.x, b.y, b.z, b.w)
+            return d.sub(a).mul(t).add(a)
+        }
+    }
+
+    /** The first half of `a step d to b`; finish it with [to]. */
+    inner class ArenaVec4fStep internal constructor(private val from: ArenaVec4f, private val distance: Float) {
+        /**
+         * Returns a new vector [distance] units from the left-hand vector in the direction of [b].
+         * It does not stop at [b]: a distance longer than the gap overshoots. When the two
+         * vectors coincide there is no direction, so the result is a copy of the left-hand one.
+         */
+        infix fun to(b: ArenaVec4f): ArenaVec4f {
+            val a = vec4(from.x, from.y, from.z, from.w)
+            val d = vec4(b.x, b.y, b.z, b.w).sub(a)
+            val l = d.length()
+            if (l != 0.0f) d.mul(distance / l)
+            return d.add(a)
+        }
+    }
+
+    /** Starts `a lerp t to b`: the point [t] of the way from this vector to `b`. */
+    infix fun ArenaVec4f.lerp(t: Number): ArenaVec4fLerp = ArenaVec4fLerp(this, t.toFloat())
+    /** Starts `a step d to b`: move [distance] units from this vector toward `b`. */
+    infix fun ArenaVec4f.step(distance: Number): ArenaVec4fStep = ArenaVec4fStep(this, distance.toFloat())
 }

@@ -113,7 +113,7 @@ types, see [Linear Algebra](linear_algebra.md).
 For an [`FLine`](fline_examples.md), Field shows the node counts, bounding box, length and a
 compressed path signature, followed by a small SVG drawing of the path:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-fline-spiral.png" alt="an output channel named spiral headed FLine (141 nodes), then M=1 L=140 C=0, bounds 130x124 and length 1.19e+03, the signature M(Lx41) … (Lx22), and a thumbnail of a five-turn spiral" wait="1.0" capture="box" open-outputs="true" w="640" h="200" embed=true name="fline-spiral"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-fline-spiral.png" alt="an output channel named spiral headed FLine (141 nodes), then M=1 L=140 C=0, bounds 130x124 and length 1.19e+03, the signature M(Lx140), and a thumbnail of a five-turn spiral" wait="1.0" capture="box" open-outputs="true" w="640" h="200" embed=true name="fline-spiral"}
 :::static
 val spiral = FLine()
 val steps = 140
@@ -130,10 +130,10 @@ display("spiral", spiral.h)
 ```
 
 The header reads `FLine (141 nodes)`, then `M=1 L=140 C=0 · b=130×124 ·
-len=1.19e+03`, then the signature `M(Lx41) … (Lx22)`, and finally
-the thumbnail. The signature has one letter per node; past 80 nodes only the
-first 42 and last 22 letters are kept, and then any run of more than six equal
-letters is shortened to `(Lxn)`, which is why one run of 140 `L`s shows as two. The thumbnail is normalised into its box and only rendered for
+len=1.19e+03`, then the signature `M(Lx140)`, and finally
+the thumbnail. The signature has one letter per node, and a run of more than six
+equal letters is written `(Lxn)`. A long, mixed path keeps about 40 characters
+from its start and 20 from its end, with `…` between. The thumbnail is normalised into its box and only rendered for
 paths under a complexity budget, so pasting a huge path into a value view never
 becomes a rendering hazard.
 
@@ -1702,7 +1702,20 @@ The rows are the same edges [`graphPaths`](graph_query.md) walks, so every row h
 val age = scene.graphPath("particle/age")?.get()
 ```
 
-Type a pattern containing `/`, `*` or `|` into the filter and it runs `graphPaths` on the whole value instead of filtering one level: `**/tag` lists every `tag` at any depth, labelled by path. Choose one (Enter, or double-click) and the tree or columns open to it. Plain text still just filters the rows in view.
+Type a pattern containing `/`, `*`, `|` or `::` into the filter and it runs `graphPaths` on the whole value instead of filtering one level: `**/tag` lists every `tag` at any depth, labelled by path. Choose one (Enter, or double-click) and the tree or columns open to it. Plain text still just filters the rows in view.
+
+A segment can also test the type of the value it reaches. `::FLine` after a segment keeps only the slots holding an `FLine` (or a subclass), so `**::FLine` finds every line at any depth however it is stored, `strokes/*::FLine` only the lines directly in `strokes`, and `*::Vec3` the `Vec3`s one level down. A name and a type in one segment must both hold, and `|` still separates whole alternatives: `**::FLine | **::Vec3`. The same patterns work in the filter box, and `graphLenses<FLine>()` gives typed handles to the same slots:
+
+```diffstatic {data-lang=kotlin}
+:::static
+val drawing = linkedMapOf(
+    "outline" to fline { rect(0, 0, 100, 50) },
+    "strokes" to [fline { moveTo(0, 0); lineTo(10, 10) }, "a label"],
+    "layers" to [linkedMapOf("hatch" to fline { moveTo(0, 10); lineTo(10, 0) })],
+)
+drawing.graphPaths("**::FLine").paths() // [outline, strokes/0, layers/0/hatch]
+drawing.graphLenses<FLine>().size // 3
+```
 
 This recording types `**/name` into the filter of a tree over a small scene of groups and layers. Every `name` at any depth is listed by its path; the arrow keys pick `groups/1/layers/1/name`, and Enter opens the tree down to it.
 
