@@ -18,6 +18,11 @@ class DocsPassArgumentsTest {
             listOf("pass", "revise", "--jobs", "3", "--agent", "codex", "--tag", "voice", "--page", "sound.md"),
             docsPassArguments(DocsPassAction("revise", jobs = 3, agent = "codex", tags = listOf("@Voice"), pages = listOf("sound.md"))),
         )
+        assertEquals(
+            listOf("pass", "revise", "--reopened", "--jobs", "2", "--agent", "claude"),
+            docsPassArguments(DocsPassAction("revise-again", jobs = 2, agent = "claude")),
+        )
+        assertEquals(listOf("pass", "check"), docsPassArguments(DocsPassAction("check")))
         assertEquals(listOf("pass", "stop", "--now"), docsPassArguments(DocsPassAction("stop-now")))
         assertEquals(listOf("pass", "rebuild", "--mode", "incremental"), docsPassArguments(DocsPassAction("rebuild", mode = "incremental")))
         assertEquals(listOf("pass", "finish", "--abandon"), docsPassArguments(DocsPassAction("finish", abandon = true)))
@@ -54,6 +59,8 @@ class DocsPassArgumentsTest {
             DocsPassAction("revise", jobs = 0),
             DocsPassAction("revise", jobs = 50),
             DocsPassAction("revise", agent = "sh"),
+            DocsPassAction("revise-again", jobs = 0),
+            DocsPassAction("revise-again", agent = "sh"),
             DocsPassAction("revise", tags = listOf("--commit")),
             DocsPassAction("revise", pages = listOf("../../etc")),
             DocsPassAction("rebuild", mode = "always; rm -rf /"),

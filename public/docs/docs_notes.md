@@ -83,13 +83,21 @@ on it is worked like one of yours. See [AI documentation polish](ai_doc_polish.m
 4. **Changes** shows every file's diff against where the pass started. **Discard** throws one
    file's edit away and puts the notes it resolved back in the queue.
 5. **Rebuild docs** builds the site in the worktree and links each changed page to its rebuilt copy.
-   **Commit** makes one commit listing every resolved note. **Enqueue for landing** hands the branch
-   to the repository's landing queue (`tools/land.py`), whose lander merges `main` in, runs the
-   checks once and fast-forwards `main`. The page shows when it has landed, or the reason it
-   bounced. **Finish** removes the worktree once the pass has landed.
+   **Commit** makes one commit listing every resolved note. **Check and enqueue for landing** first
+   runs the guards the pass's diff can trip (`tools/land.py precheck` in the worktree), and only
+   when they pass hands the branch to the repository's landing queue (`tools/land.py`). Its lander
+   merges `main` in, runs the checks once and fast-forwards `main`. The page shows when it has
+   landed, or the reason it bounced. **Finish** removes the worktree once the pass has landed.
 
-Everything on the page is also `docs_notes.py pass …` (`create`, `revise`, `stop`, `diff`,
-`discard`, `rebuild`, `commit`, `land`, `finish`). The page accepts requests only from a browser on
+A guard that fails, before landing or in the lander's bounce, goes back to the notes that made
+the edit. Every note the pass resolved whose edit changed a file the guard names is reopened,
+with the guard's output in its thread. **Revise again** then drains just those notes, and the
+output is in their agents' briefs. Each agent fixes the edit, or, when the guard itself is wrong,
+files a `code` handoff saying why. In that second case the page's change is dropped from the pass
+so that the rest can land, and its notes wait on the handoff. Commit, then check and enqueue again.
+
+Everything on the page is also `docs_notes.py pass …` (`create`, `revise`, `revise --reopened`,
+`stop`, `diff`, `discard`, `rebuild`, `commit`, `check`, `land`, `finish`). The page accepts requests only from a browser on
 the machine Field is running on, and only from Field's own pages. It needs no switch or token.
 
 ## What an agent is given
