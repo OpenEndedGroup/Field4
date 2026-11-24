@@ -903,12 +903,21 @@ fun pointRound(t: Double): Vec3 {
     return vec(loop.last().x, 0f, loop.last().y)
 }
 
+// The eight layouts do not depend on each other, so lay them out on all the cores at once.
+val ports = (0 until 8).map { pointRound(it / 8.0) }
+val pipes =
+    ports
+        .parallelStream()
+        .map { port ->
+            val (supply, back) = floor.windingAngle(fromWalls, port = port).fieldDoubleSpiral(spacing)
+            relaxPath(supply, back, spacing, wall, steps = 1000)
+        }
+        .toList()
+
 val shown = ArrayList<FLine>()
 val walls = loop.map { vec(it.x, 0f, it.y) }
-for (k in 0 until 8) {
-    val port = pointRound(k / 8.0)
-    val (supply, back) = floor.windingAngle(fromWalls, port = port).fieldDoubleSpiral(spacing)
-    val pipe = relaxPath(supply, back, spacing, wall, steps = 1000)
+for ((k, pipe) in pipes.withIndex()) {
+    val port = ports[k]
     val dx = (k % 4) * 780f
     val dy = (k / 4) * 540f
     fun drawn(path: List<Vec3>) = path.map { vec(it.x * 300f + dx, it.z * 300f + dy, 0f) }

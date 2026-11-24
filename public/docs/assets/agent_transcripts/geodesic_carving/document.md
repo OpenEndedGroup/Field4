@@ -136,7 +136,7 @@ From `code`
 The L-shaped room, with the supply and return ports moved round the walls.
 
 ```edn [field-box id="port-sweep" role="properties"]
-{"id" "port-sweep" "index" 3 "name" "Double spirals with the ports in eight places" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Double spirals with the ports in eight places" "_tombstone" false "frame" #afield/rect [2940.0 60.0 420.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "port-sweep_code_.kt" "lines" 54 "characters" 2241 "sha256" "5db88926894223f4a29bbf86c3d0b35938da7c07d3e2a31c8aaffe98af226a05"}]}
+{"id" "port-sweep" "index" 3 "name" "Double spirals with the ports in eight places" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Double spirals with the ports in eight places" "_tombstone" false "frame" #afield/rect [2940.0 60.0 420.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "port-sweep_code_.kt" "lines" 63 "characters" 2496 "sha256" "3cc2456c932d4ea0156e282fcd449678d92554f69a86641d35b901dfb72e0f9c"}]}
 ```
 
 ```kotlin [field-property box="port-sweep" name="code" path="port-sweep_code_.kt"]
@@ -170,12 +170,21 @@ fun pointRound(t: Double): Vec3 {
     return vec(loop.last().x, 0f, loop.last().y)
 }
 
+// The eight layouts do not depend on each other, so lay them out on all the cores at once.
+val ports = (0 until 8).map { pointRound(it / 8.0) }
+val pipes =
+    ports
+        .parallelStream()
+        .map { port ->
+            val (supply, back) = floor.windingAngle(fromWalls, port = port).fieldDoubleSpiral(spacing)
+            relaxPath(supply, back, spacing, wall, steps = 1000)
+        }
+        .toList()
+
 val shown = ArrayList<FLine>()
 val walls = loop.map { vec(it.x, 0f, it.y) }
-for (k in 0 until 8) {
-    val port = pointRound(k / 8.0)
-    val (supply, back) = floor.windingAngle(fromWalls, port = port).fieldDoubleSpiral(spacing)
-    val pipe = relaxPath(supply, back, spacing, wall, steps = 1000)
+for ((k, pipe) in pipes.withIndex()) {
+    val port = ports[k]
     val dx = (k % 4) * 780f
     val dy = (k / 4) * 540f
     fun drawn(path: List<Vec3>) = path.map { vec(it.x * 300f + dx, it.z * 300f + dy, 0f) }
