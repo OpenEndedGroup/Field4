@@ -43,7 +43,54 @@ trail for zooming.
 
 ## Trees from your data
 
-You rarely build a tree by hand. Four functions turn something you already have into one:
+You rarely build a tree by hand. The quickest way is with paths. Give each thing a path and a size, and the
+branches are made the first time a path names them:
+
+```diffstatic {data-lang=kotlin}
+val week = treemapOf(
+    "work/teaching/lectures" to 6,
+    "work/teaching/office hours" to 2,
+    "work/research/writing" to 9,
+    "work/email" to 5,
+    "home/cooking" to 6,
+    "sleep" to 52,
+)
+```
+
+`toTreemap` does the same in one pass over any collection. Its lambda gives each item's path and size, or
+null to leave the item out. Items that land on the same path are added together, so it is a group-by as well
+as a map: `people.toTreemap { "${it.country}/${it.city}" to 1 }` counts people by city. A leaf's `data` is the
+item it came from, or the list of items when several landed there, so a click gets back what made the cell.
+
+`category = { ... }` and `measure = { ... }` read a label and a number from each item onto its leaf. A tree
+whose leaves carry either gets a "Colour by" switch for them, next to colouring by branch, without any
+colours being set. This maps the class files of the JDK Field is running on, read from its own module image,
+and colours them by whether each is a nested class:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/treemaps/from_paths.png" wait="2.0" capture="box" open-outputs="true" w="1200" timeout="120" embed=true alt="The JDK's class files as a treemap, one branch per module such as java.base, java.desktop and jdk.compiler, with packages inside them, coloured by a Colour by switch set to Category: top-level classes in one colour and nested classes in another, with a legend of their shares"}
+import java.net.URI
+import java.nio.file.FileSystems
+import java.nio.file.Files
+import java.nio.file.Path
+
+val modules = FileSystems.getFileSystem(URI.create("jrt:/")).getPath("/modules")
+val classes = Files.walk(modules).use { paths -> paths.filter { it.toString().endsWith(".class") }.toList() }
+fun kind(file: Path) = if ('$' in file.fileName.toString()) "nested class" else "top-level class"
+
+val jdk =
+    classes.toTreemap(name = "JDK", category = { kind(it) }) { file ->
+        file.toString().removePrefix("/modules/") to Files.size(file)
+    }
+
+treemap(jdk, w = 900.0, h = 560.0)
+```
+
+A tree is also yours to edit by path. `tree["a/b/c"] = 3` sets a size, `tree += "a/b/c" to 1` adds to one,
+`tree["a/b"]` finds a node without making anything, and `tree.at("a/b")` finds a branch or makes it. Each
+takes a list of names instead of a string for names that themselves contain a `/`, and `put` and `add` also
+set `data`, `color`, `category` and `measure`.
+
+The other ways in:
 
 - `treemapTree(name) { ... }` is the builder above.
 - `treemapTreeOfFiles(dir)` maps a folder, with each file sized by its bytes.
@@ -148,8 +195,10 @@ their children, and cells that are off screen stay closed.
 - `TreemapColors.byBranch()`, the default: a hue per top-level branch, lighter with depth.
 - `TreemapColors.byCategory("title") { node -> ... }`: one colour per category you name for each leaf, the
   biggest categories getting the most distinct colours; leaves you return null for are "Not classified".
+  Without the lambda it reads each leaf's `category`.
 - `TreemapColors.byValue("viridis", log = true)`: leaves through a [colormap](colors_examples.md) by their
-  value, or by any `measure = { node -> ... }` you give; branches stay grey.
+  `measure` if they have one, else their value, or by any `measure = { node -> ... }` you give; branches
+  stay grey.
 - `TreemapColors.byDepth("magma")`: every cell by how deep it is.
 - `TreemapColors.by { node -> ... }`: whatever you return.
 
@@ -212,15 +261,13 @@ val binary = [
     "onnx",
     "npy",
 ]
-val tree = treemapTree("Field") {}
-for (path in git("ls-files")) {
-    val parts = path.split('/')
-    if (parts[0] !in roots || "/monaco/" in path || "/artifacts/" in path) continue
-    if (path.substringAfterLast('.').lowercase() in binary) continue
-    var node = tree
-    for (dir in parts.dropLast(1)) node = node.child(dir) ?: node.branch(dir)
-    node.leaf(parts.last(), File(path).length().coerceAtLeast(1).toDouble(), data = path)
-}
+fun wanted(path: String) =
+    path.substringBefore('/') in roots &&
+        "/monaco/" !in path &&
+        "/artifacts/" !in path &&
+        path.substringAfterLast('.').lowercase() !in binary
+
+val tree = git("ls-files").filter { wanted(it) }.toTreemap(name = "Field") { it to File(it).length().coerceAtLeast(1) }
 
 // When each file last changed, from the most recent 6000 commits.
 val changed = HashMap<String, Long>()

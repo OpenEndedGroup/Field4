@@ -105,8 +105,21 @@ class Treemap internal constructor(private val owner: Box?, val channel: String,
     /** Seconds each change morphs over. 0 redraws at once, which is what a `loop { }` that redraws every frame wants. */
     var transition = 0.45
 
-    /** How cells are coloured; see [TreemapColors]. */
+    /**
+     * How cells are coloured; see [TreemapColors]. Left alone, a tree whose leaves carry a [TreemapNode.category] or
+     * [TreemapNode.measure] gets a "Colour by" switch between them and [TreemapColors.byBranch].
+     */
     var colors: TreemapColors = TreemapColors.byBranch()
+        set(v) { field = v; colorsChosen = true }
+
+    private var colorsChosen = false
+
+    /** Offer the colourings the leaves carry data for, unless the caller chose colours of their own. */
+    internal fun applyAutoColorings() {
+        if (colorsChosen || colorings.isNotEmpty()) return
+        val auto = autoColorings(root)
+        if (auto.isNotEmpty()) colorings = auto
+    }
 
     /**
      * Named colourings the viewer offers as a "Colour by" switch, in order. Choosing one makes it [colors] and
@@ -576,6 +589,7 @@ fun Box.treemap(
     map.w = w
     map.h = h
     map.configure()
+    map.applyAutoColorings()
     val view = treemapViewFor(treemapViewerUid(this, channel))
     view.treemap = map
     map.view = view
@@ -641,13 +655,14 @@ fun interface TreemapColors {
          * Leaves by the category [classify] puts them in, one colour per category, with a legend of each category's
          * share of the focus. Categories are coloured in order of their share of the whole tree, so the biggest get
          * the most distinct hues and a category keeps its colour while you zoom. Branches, and leaves [classify]
-         * returns null for, are grey and listed as "Not classified".
+         * returns null for, are grey and listed as "Not classified". By default a leaf's category is its
+         * [TreemapNode.category].
          *
          * ```kotlin
          * colors = TreemapColors.byCategory("Extension") { node -> (node.data as? File)?.extension }
          * ```
          */
-        fun byCategory(title: String? = null, classify: (TreemapNode) -> String?): TreemapColors {
+        fun byCategory(title: String? = null, classify: (TreemapNode) -> String? = { it.category }): TreemapColors {
             val unclassified = okhsl(0.6, 0.04, 0.36)
             var cachedFor: TreemapNode? = null
             var palette: Map<String, Vec4> = emptyMap()
@@ -690,10 +705,10 @@ fun interface TreemapColors {
         }
 
         /**
-         * Leaves by [measure] (by default their value) through colormap [name], scaled over all the leaves, on a log
+         * Leaves by [measure] (by default their [TreemapNode.measure], else their value) through colormap [name], scaled over all the leaves, on a log
          * scale when [log]; branches a neutral grey so the leaves carry the colour.
          */
-        fun byValue(name: String = "viridis", log: Boolean = false, measure: (TreemapNode) -> Double = { it.value }): TreemapColors {
+        fun byValue(name: String = "viridis", log: Boolean = false, measure: (TreemapNode) -> Double = { it.measure ?: it.value }): TreemapColors {
             // The range is measured once per drawing: [Treemap.cells] is a new list each time.
             var cachedFor: Any? = null
             var lo = 0.0
@@ -727,6 +742,26 @@ fun interface TreemapColors {
 
         /** Each cell by whatever [pick] returns for it. */
         fun by(pick: (TreemapNode) -> Vec4): TreemapColors = TreemapColors { node, _ -> pick(node) }
+    }
+}
+
+/**
+ * The colourings a tree's own leaves carry data for: "Category" when any leaf has a [TreemapNode.category],
+ * "Measure" when any has a [TreemapNode.measure], then "Branch"; empty when they carry neither.
+ */
+internal fun autoColorings(root: TreemapNode): Map<String, TreemapColors> {
+    var category = false
+    var measure = false
+    for (leaf in root.leaves()) {
+        category = category || leaf.category != null
+        measure = measure || leaf.measure != null
+        if (category && measure) break
+    }
+    if (!category && !measure) return emptyMap()
+    return buildMap {
+        if (category) put("Category", TreemapColors.byCategory())
+        if (measure) put("Measure", TreemapColors.byValue())
+        put("Branch", TreemapColors.byBranch())
     }
 }
 
@@ -819,6 +854,7 @@ fun TreemapNode.toTreemapHTML(w: Double = 720.0, h: Double = 420.0): String {
     // Drawn as SVG, so held to the budget an SVG figure can carry.
     map.maxCells = 2500
     map.minCellSize = 4.0
+    map.applyAutoColorings()
     // Hover colour and tooltips work in the browser alone; clicks need a box to call back to.
     val lines = map.toFLines().onEach { it.onClick = null; it.onHover = null }
     return linesToHTML(lines, w, h)

@@ -6,8 +6,10 @@
  * A branch's area is its own weight plus everything beneath it, recomputed on every layout, so a tree can be
  * edited in place between displays.
  *
- * Trees come from the builder ([treemapTree]), from any object with children ([treemapTreeOf]), from nested maps
- * and lists ([treemapTreeOfMap]), or from a directory on disk ([treemapTreeOfFiles]).
+ * Trees come from paths, `"src/afield/Box.kt" to 1200`, with the branches made as they are named ([treemapOf],
+ * [toTreemap], [TreemapNode.put]); from the builder ([treemapTree]); from any object with children
+ * ([treemapTreeOf]); from nested maps and lists ([treemapTreeOfMap]); or from a directory on disk
+ * ([treemapTreeOfFiles]).
  */
 package afield.ui.visualization.treemap
 
@@ -24,7 +26,9 @@ import java.io.File
  *
  * [weight] is the node's own size and [value] is its size including children; [value] is what the layout reads.
  * [data] is carried untouched for callbacks, and [color] overrides the treemap's colouring for this node and,
- * unless they have their own, its descendants.
+ * unless they have their own, its descendants. [category] and [measure] are what [TreemapColors.byCategory] and
+ * [TreemapColors.byValue] colour by when they are not told otherwise; a treemap whose leaves carry either offers
+ * them in its "Colour by" switch.
  */
 class TreemapNode(
     val name: String,
@@ -52,8 +56,18 @@ class TreemapNode(
 
     private val kids = ArrayList<TreemapNode>()
 
+    // Children by name, built the first time a name is looked up, so building a tree by paths stays linear however
+    // many children a branch has. Siblings may share a name; the index holds the first.
+    private var byName: HashMap<String, TreemapNode>? = null
+
     /** This node's children, in their drawing order before any sort. */
     val children: List<TreemapNode> get() = kids
+
+    /** The category [TreemapColors.byCategory] colours this leaf by, unless it is given another rule. */
+    var category: String? = null
+
+    /** The number [TreemapColors.byValue] colours this leaf by, unless it is given another rule; its [value] when null. */
+    var measure: Double? = null
 
     /** The node's identity across displays: the explicit key if one was given, else the path of names from the root. */
     val key: String get() = explicitKey ?: parent?.let { "${it.key}/$name" } ?: name
@@ -72,9 +86,10 @@ class TreemapNode(
 
     /** Add [child] beneath this node and return it. A child already elsewhere in a tree is moved. */
     fun add(child: TreemapNode): TreemapNode {
-        child.parent?.kids?.remove(child)
+        child.parent?.remove(child)
         child.parent = this
         kids.add(child)
+        byName?.putIfAbsent(child.name, child)
         return child
     }
 
@@ -90,6 +105,7 @@ class TreemapNode(
     fun remove(child: TreemapNode): Boolean {
         if (!kids.remove(child)) return false
         child.parent = null
+        byName?.let { index -> if (index[child.name] === child) kids.firstOrNull { it.name == child.name }?.let { index[child.name] = it } ?: index.remove(child.name) }
         return true
     }
 
@@ -97,10 +113,110 @@ class TreemapNode(
     fun clear() {
         kids.forEach { it.parent = null }
         kids.clear()
+        byName = null
     }
 
     /** The direct child called [name], if there is one. */
-    fun child(name: String): TreemapNode? = kids.firstOrNull { it.name == name }
+    fun child(name: String): TreemapNode? {
+        if (kids.size < 8) return kids.firstOrNull { it.name == name }
+        val index = byName ?: HashMap<String, TreemapNode>(kids.size * 2).also { m -> kids.forEach { m.putIfAbsent(it.name, it) }; byName = m }
+        return index[name]
+    }
+
+    /**
+     * The branch at [path] beneath this node, `"src/afield/ui"`, making each one that does not exist yet.
+     * Empty segments are skipped, so `"/a//b/"` is `"a/b"`; an empty path is this node.
+     */
+    fun at(path: String, separator: Char = '/'): TreemapNode = at(splitPath(path, separator))
+
+    /** The node at [path], one name per segment, making each one that does not exist yet. */
+    fun at(path: List<String>): TreemapNode {
+        var n = this
+        for (segment in path) n = n.child(segment) ?: n.add(TreemapNode(segment))
+        return n
+    }
+
+    /** The node at [path] beneath this node, or null; it makes nothing. */
+    operator fun get(path: String): TreemapNode? = get(splitPath(path, '/'))
+
+    /** The node at [path], one name per segment, or null; it makes nothing. */
+    operator fun get(path: List<String>): TreemapNode? {
+        var n = this
+        for (segment in path) n = n.child(segment) ?: return null
+        return n
+    }
+
+    /** `tree["src/afield/Box.kt"] = 1200`: [put] without the extras. */
+    operator fun set(path: String, weight: Number) {
+        put(path, weight)
+    }
+
+    /** `tree += "src/afield/Box.kt" to 1200`: [add] without the extras, so repeating a path adds to it. */
+    operator fun plusAssign(entry: Pair<String, Number>) {
+        add(entry.first, entry.second)
+    }
+
+    /**
+     * Set the size of the node at [path] to [weight], making it and the branches above it if they do not exist,
+     * and return it. [data], [color], [category] and [measure] are set on it when given.
+     *
+     * Paths may run through one another: `"a/b"` and `"a/b/c"` make `b` a branch with its own weight, which counts
+     * toward its size but is not drawn as a cell of its own.
+     */
+    fun put(
+        path: String,
+        weight: Number,
+        data: Any? = null,
+        color: Vec4? = null,
+        category: String? = null,
+        measure: Double? = null,
+        separator: Char = '/',
+    ): TreemapNode = put(splitPath(path, separator), weight, data, color, category, measure)
+
+    /** [put], with the path given one name per segment, for names that may themselves contain the separator. */
+    fun put(
+        path: List<String>,
+        weight: Number,
+        data: Any? = null,
+        color: Vec4? = null,
+        category: String? = null,
+        measure: Double? = null,
+    ): TreemapNode = at(path).also { it.weight = weight.toDouble(); it.annotate(data, color, category, measure) }
+
+    /**
+     * Add [weight] to the node at [path], making it and the branches above it if they do not exist, and return it;
+     * so adding the same path twice sums the two. [data], [color], [category] and [measure] are set when given.
+     *
+     * ```kotlin
+     * val byCity = treemapTree { people.forEach { add("${it.country}/${it.city}", 1) } }
+     * ```
+     */
+    fun add(
+        path: String,
+        weight: Number,
+        data: Any? = null,
+        color: Vec4? = null,
+        category: String? = null,
+        measure: Double? = null,
+        separator: Char = '/',
+    ): TreemapNode = add(splitPath(path, separator), weight, data, color, category, measure)
+
+    /** [add], with the path given one name per segment, for names that may themselves contain the separator. */
+    fun add(
+        path: List<String>,
+        weight: Number,
+        data: Any? = null,
+        color: Vec4? = null,
+        category: String? = null,
+        measure: Double? = null,
+    ): TreemapNode = at(path).also { it.weight += weight.toDouble(); it.annotate(data, color, category, measure) }
+
+    private fun annotate(data: Any?, color: Vec4?, category: String?, measure: Double?) {
+        if (data != null) this.data = data
+        if (color != null) this.color = color
+        if (category != null) this.category = category
+        if (measure != null) this.measure = measure
+    }
 
     /** The node beneath this one (or this one) whose [key] is [key]. */
     fun find(key: String): TreemapNode? {
@@ -161,6 +277,78 @@ class TreemapNode(
  * ```
  */
 fun treemapTree(name: String = "root", block: TreemapNode.() -> Unit): TreemapNode = TreemapNode(name).apply(block)
+
+/**
+ * A treemap tree from paths and sizes, the branches made as the paths name them:
+ *
+ * ```kotlin
+ * val tree = treemapOf("foo/bar/gux" to 0.3, "foo/bar/qux" to 0.5, "foo/zap" to 1.2)
+ * ```
+ *
+ * A path given twice is summed.
+ */
+fun treemapOf(vararg entries: Pair<String, Number>, name: String = "root", separator: Char = '/'): TreemapNode =
+    entries.asIterable().toTreemap(name, separator)
+
+/** A treemap tree from a map of paths to sizes, the branches made as the paths name them. */
+fun Map<String, Number>.toTreemap(name: String = "root", separator: Char = '/'): TreemapNode =
+    TreemapNode(name).also { root -> forEach { (path, w) -> root.add(path, w, separator = separator) } }
+
+/** A treemap tree from pairs of path and size, the branches made as the paths name them; a repeated path is summed. */
+@JvmName("toTreemapOfPairs")
+fun Iterable<Pair<String, Number>>.toTreemap(name: String = "root", separator: Char = '/'): TreemapNode =
+    TreemapNode(name).also { root -> forEach { (path, w) -> root.add(path, w, separator = separator) } }
+
+/**
+ * A treemap tree made in one pass over a collection: [entry] gives each item's path and size (or null to leave it
+ * out), and the branches are made as the paths name them.
+ *
+ * ```kotlin
+ * val tree = files.toTreemap(category = { it.extension }) { it.path to it.length() }
+ * val census = people.toTreemap(measure = { it.age.toDouble() }) { "${it.country}/${it.city}" to 1 }
+ * ```
+ *
+ * Items that land on the same path are summed, which makes this a group-by as well as a map. A leaf's
+ * [TreemapNode.data] is its item, or the list of its items when more than one landed there, so a click gets back
+ * what made the cell. [color], [category] and [measure] are read from each item and set on its leaf (the last
+ * item's wins where several share one); a leaf with a [TreemapNode.category] or [TreemapNode.measure] is what the
+ * "Colour by" switch offers.
+ */
+fun <T> Iterable<T>.toTreemap(
+    name: String = "root",
+    separator: Char = '/',
+    color: ((T) -> Vec4?)? = null,
+    category: ((T) -> String?)? = null,
+    measure: ((T) -> Double?)? = null,
+    entry: (T) -> Pair<String, Number>?,
+): TreemapNode = asSequence().toTreemap(name, separator, color, category, measure, entry)
+
+/** [Iterable.toTreemap] over a sequence, read once. */
+fun <T> Sequence<T>.toTreemap(
+    name: String = "root",
+    separator: Char = '/',
+    color: ((T) -> Vec4?)? = null,
+    category: ((T) -> String?)? = null,
+    measure: ((T) -> Double?)? = null,
+    entry: (T) -> Pair<String, Number>?,
+): TreemapNode {
+    val root = TreemapNode(name)
+    // The leaves this build gave a list of items, so a caller's own list held as data is never appended to.
+    val gathered = java.util.IdentityHashMap<TreemapNode, MutableList<T>>()
+    for (item in this) {
+        val (path, w) = entry(item) ?: continue
+        val leaf = root.add(path, w, null, color?.invoke(item), category?.invoke(item), measure?.invoke(item), separator)
+        val items = gathered[leaf]
+        when {
+            items != null -> items.add(item)
+            leaf.data == null -> leaf.data = item
+            else -> gathered[leaf] = mutableListOf(@Suppress("UNCHECKED_CAST") (leaf.data as T), item).also { leaf.data = it }
+        }
+    }
+    return root
+}
+
+private fun splitPath(path: String, separator: Char): List<String> = path.split(separator).filter { it.isNotEmpty() }
 
 /**
  * A treemap tree mirroring any tree-shaped value: [children] gives each item's children, [weight] its own size

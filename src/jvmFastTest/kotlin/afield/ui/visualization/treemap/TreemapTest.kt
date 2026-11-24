@@ -285,6 +285,71 @@ class TreemapTest {
         assertEquals("root", map.focus.key)
     }
 
+    @Test fun pathsMakeTheirBranchesOnDemand() {
+        val tree = treemapOf("foo/bar/gux" to 0.3, "foo/bar/qux" to 0.5, "foo/zap" to 1.2, "/foo//zap/" to 0.8)
+        assertEquals(listOf("foo"), tree.children.map { it.name })
+        assertEquals(listOf("bar", "zap"), tree["foo"]!!.children.map { it.name })
+        assertEquals(2.0, tree["foo/zap"]!!.weight, 1e-12, "a repeated path is summed; empty segments are skipped")
+        assertEquals("root/foo/bar/gux", tree["foo/bar/gux"]!!.key)
+        assertNull(tree["foo/nope"], "get makes nothing")
+        assertEquals(2.8, tree.sum(), 1e-12)
+
+        tree["foo/bar/gux"] = 4
+        tree += "foo/new/leaf" to 2
+        tree += "foo/new/leaf" to 1
+        assertEquals(4.0, tree["foo/bar/gux"]!!.weight, "set replaces")
+        assertEquals(3.0, tree["foo/new/leaf"]!!.weight, "+= adds")
+        val odd = tree.put(listOf("a/b", "c"), 1.0, category = "slashed")
+        assertEquals(listOf("a/b", "c"), odd.path.drop(1).map { it.name }, "segment lists keep a separator inside a name")
+        assertEquals("slashed", odd.category)
+        assertSame(tree.at("foo/bar"), tree["foo/bar"], "at finds what exists")
+
+        val map = mapOf("x.y" to 1, "x.z" to 2.5).toTreemap(separator = '.')
+        assertEquals(3.5, map["x"]!!.let { map.sum(); it.value }, 1e-12)
+    }
+
+    @Test fun oneMapOverACollectionGroupsAndKeepsItsItems() {
+        data class Person(val country: String, val city: String, val age: Int)
+        val people = listOf(Person("fr", "paris", 30), Person("fr", "lyon", 40), Person("fr", "paris", 50), Person("jp", "osaka", 20))
+        val tree = people.toTreemap(category = { it.country }, measure = { it.age.toDouble() }) { "${it.country}/${it.city}" to 1 }
+        assertEquals(2.0, tree["fr/paris"]!!.weight)
+        assertEquals(listOf(people[0], people[2]), tree["fr/paris"]!!.data, "a shared leaf holds every item that landed on it")
+        assertEquals(people[1], tree["fr/lyon"]!!.data, "a leaf of one item holds the item")
+        assertEquals("fr", tree["fr/lyon"]!!.category)
+        assertEquals(50.0, tree["fr/paris"]!!.measure, "the last item's measure wins")
+        val skipped = people.toTreemap { if (it.age < 25) null else it.city to it.age }
+        assertNull(skipped["osaka"], "a null entry leaves the item out")
+
+        // A caller's own list held as data is a single item, never appended to.
+        val lists = listOf(listOf(1), listOf(2)).toTreemap { "same" to 1 }
+        assertEquals(listOf(listOf(1), listOf(2)), lists["same"]!!.data)
+
+        // Leaves with categories and measures offer them in the "Colour by" switch, unless colours were chosen.
+        val b = box()
+        val sent = recording(b, "c")
+        val shownMap = b.treemap(tree, channel = "c", w = 400.0, h = 300.0)
+        assertEquals(listOf("Category", "Measure", "Branch"), shownMap.colorings.keys.toList())
+        val message = decode(viewOf(b, "c"), sent.last()).message
+        assertEquals(setOf("fr", "jp"), message.legend.map { it.label }.toSet())
+        assertEquals(0.75, message.legend.first { it.label == "fr" }.share!!, 1e-9)
+        val chosen = b.treemap(tree, channel = "d", w = 400.0, h = 300.0) { colors = TreemapColors.byDepth() }
+        assertTrue(chosen.colorings.isEmpty(), "colours the caller chose are left alone")
+        assertTrue(b.treemap(sample(), channel = "e").colorings.isEmpty(), "a tree without categories or measures keeps byBranch")
+    }
+
+    @Test fun pathBuildingStaysLinearInAWideBranch() {
+        val t0 = System.nanoTime()
+        val tree = (0 until 200_000).asSequence().toTreemap { "wide/item$it" to 1 }
+        val ms = (System.nanoTime() - t0) / 1e6
+        assertEquals(200_000, tree["wide"]!!.children.size)
+        assertSame(tree["wide"]!!.children[123_456], tree["wide/item123456"])
+        tree["wide"]!!.remove(tree["wide/item7"]!!)
+        assertNull(tree["wide/item7"], "removing a child takes it out of the name index")
+        tree["wide"]!!.add(TreemapNode("item7", 1.0))
+        assertNotNull(tree["wide/item7"])
+        assertTrue(ms < 5_000, "200k paths into one branch took $ms ms")
+    }
+
     @Test fun legendsGiveSharesOfTheFocus() {
         val b = box()
         val sent = recording(b, "l")
