@@ -75,10 +75,10 @@ The mouse does what you would expect:
 | | |
 |---|---|
 | click | select a cell |
-| Shift-click | add to the selection |
-| Cmd-click (Ctrl-click) | toggle a cell in the selection |
+| ++shift++-click | add to the selection |
+| ++cmd++-click | toggle a cell in the selection |
 | double-click | zoom one level towards the cell |
-| Alt-click, or a breadcrumb | zoom out |
+| ++alt++-click, or a breadcrumb | zoom out |
 | click the background | clear the selection |
 | wheel, drag | zoom and pan the camera |
 | double-click the background | fit the drawing to its panel again |
