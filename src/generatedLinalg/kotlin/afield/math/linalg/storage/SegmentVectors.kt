@@ -281,6 +281,8 @@ class SegmentVec2Buffer(
      * Linearly interpolates from this vector toward another.
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     *
+     * In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone.
      * @param other the endpoint
      * @param t the interpolation amount
      * @param dest the vector that receives the result
@@ -366,6 +368,42 @@ class SegmentVec2Buffer(
      * Reports whether every component is finite.
      */
     fun SegmentVec2f.isFinite(): Boolean = x.isFinite() && y.isFinite()
+
+    /** A normalized copy of this vector, the shorthand for `normalized()`. Zero stays zero. */
+    val SegmentVec2f.n: Vector2f get() = this.copyTo(Vector2f()).also { val l = it.length(); if (l != 0.0f) it.mul(1.0f / l) }
+    /** This vector's Euclidean length, the property form of `length()`. */
+    val SegmentVec2f.length: Float get() = length()
+
+    /** The first half of `a lerp t to b`; finish it with [to]. */
+    inner class SegmentVec2fLerp internal constructor(private val from: SegmentVec2f, private val t: Float) {
+        /** Returns a new vector [t] of the way from the left-hand vector to [b]: 0 gives it, 1 gives [b]. */
+        infix fun to(b: SegmentVec2f): Vector2f {
+            val a = from.copyTo(Vector2f())
+            val d = b.copyTo(Vector2f())
+            return d.sub(a).mul(t).add(a)
+        }
+    }
+
+    /** The first half of `a step d to b`; finish it with [to]. */
+    inner class SegmentVec2fStep internal constructor(private val from: SegmentVec2f, private val distance: Float) {
+        /**
+         * Returns a new vector [distance] units from the left-hand vector in the direction of [b].
+         * It does not stop at [b]: a distance longer than the gap overshoots. When the two
+         * vectors coincide there is no direction, so the result is a copy of the left-hand one.
+         */
+        infix fun to(b: SegmentVec2f): Vector2f {
+            val a = from.copyTo(Vector2f())
+            val d = b.copyTo(Vector2f()).sub(a)
+            val l = d.length()
+            if (l != 0.0f) d.mul(distance / l)
+            return d.add(a)
+        }
+    }
+
+    /** Starts `a lerp t to b`: the point [t] of the way from this vector to `b`. */
+    infix fun SegmentVec2f.lerp(t: Number): SegmentVec2fLerp = SegmentVec2fLerp(this, t.toFloat())
+    /** Starts `a step d to b`: move [distance] units from this vector toward `b`. */
+    infix fun SegmentVec2f.step(distance: Number): SegmentVec2fStep = SegmentVec2fStep(this, distance.toFloat())
 
     private fun read(token: Long, component: Int): Float =
         segment.get(ValueLayout.JAVA_FLOAT, offset(token) + component * Float.SIZE_BYTES)
@@ -663,6 +701,8 @@ class SegmentVec3Buffer(
      * Linearly interpolates from this vector toward another.
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     *
+     * In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone.
      * @param other the endpoint
      * @param t the interpolation amount
      * @param dest the vector that receives the result
@@ -767,6 +807,42 @@ class SegmentVec3Buffer(
      * Reports whether every component is finite.
      */
     fun SegmentVec3f.isFinite(): Boolean = x.isFinite() && y.isFinite() && z.isFinite()
+
+    /** A normalized copy of this vector, the shorthand for `normalized()`. Zero stays zero. */
+    val SegmentVec3f.n: Vector3f get() = this.copyTo(Vector3f()).also { val l = it.length(); if (l != 0.0f) it.mul(1.0f / l) }
+    /** This vector's Euclidean length, the property form of `length()`. */
+    val SegmentVec3f.length: Float get() = length()
+
+    /** The first half of `a lerp t to b`; finish it with [to]. */
+    inner class SegmentVec3fLerp internal constructor(private val from: SegmentVec3f, private val t: Float) {
+        /** Returns a new vector [t] of the way from the left-hand vector to [b]: 0 gives it, 1 gives [b]. */
+        infix fun to(b: SegmentVec3f): Vector3f {
+            val a = from.copyTo(Vector3f())
+            val d = b.copyTo(Vector3f())
+            return d.sub(a).mul(t).add(a)
+        }
+    }
+
+    /** The first half of `a step d to b`; finish it with [to]. */
+    inner class SegmentVec3fStep internal constructor(private val from: SegmentVec3f, private val distance: Float) {
+        /**
+         * Returns a new vector [distance] units from the left-hand vector in the direction of [b].
+         * It does not stop at [b]: a distance longer than the gap overshoots. When the two
+         * vectors coincide there is no direction, so the result is a copy of the left-hand one.
+         */
+        infix fun to(b: SegmentVec3f): Vector3f {
+            val a = from.copyTo(Vector3f())
+            val d = b.copyTo(Vector3f()).sub(a)
+            val l = d.length()
+            if (l != 0.0f) d.mul(distance / l)
+            return d.add(a)
+        }
+    }
+
+    /** Starts `a lerp t to b`: the point [t] of the way from this vector to `b`. */
+    infix fun SegmentVec3f.lerp(t: Number): SegmentVec3fLerp = SegmentVec3fLerp(this, t.toFloat())
+    /** Starts `a step d to b`: move [distance] units from this vector toward `b`. */
+    infix fun SegmentVec3f.step(distance: Number): SegmentVec3fStep = SegmentVec3fStep(this, distance.toFloat())
 
     private fun read(token: Long, component: Int): Float =
         segment.get(ValueLayout.JAVA_FLOAT, offset(token) + component * Float.SIZE_BYTES)
@@ -1082,6 +1158,8 @@ class SegmentVec4Buffer(
      * Linearly interpolates from this vector toward another.
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     *
+     * In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone.
      * @param other the endpoint
      * @param t the interpolation amount
      * @param dest the vector that receives the result
@@ -1173,6 +1251,42 @@ class SegmentVec4Buffer(
      * Reports whether every component is finite.
      */
     fun SegmentVec4f.isFinite(): Boolean = x.isFinite() && y.isFinite() && z.isFinite() && w.isFinite()
+
+    /** A normalized copy of this vector, the shorthand for `normalized()`. Zero stays zero. */
+    val SegmentVec4f.n: Vector4f get() = this.copyTo(Vector4f()).also { val l = it.length(); if (l != 0.0f) it.mul(1.0f / l) }
+    /** This vector's Euclidean length, the property form of `length()`. */
+    val SegmentVec4f.length: Float get() = length()
+
+    /** The first half of `a lerp t to b`; finish it with [to]. */
+    inner class SegmentVec4fLerp internal constructor(private val from: SegmentVec4f, private val t: Float) {
+        /** Returns a new vector [t] of the way from the left-hand vector to [b]: 0 gives it, 1 gives [b]. */
+        infix fun to(b: SegmentVec4f): Vector4f {
+            val a = from.copyTo(Vector4f())
+            val d = b.copyTo(Vector4f())
+            return d.sub(a).mul(t).add(a)
+        }
+    }
+
+    /** The first half of `a step d to b`; finish it with [to]. */
+    inner class SegmentVec4fStep internal constructor(private val from: SegmentVec4f, private val distance: Float) {
+        /**
+         * Returns a new vector [distance] units from the left-hand vector in the direction of [b].
+         * It does not stop at [b]: a distance longer than the gap overshoots. When the two
+         * vectors coincide there is no direction, so the result is a copy of the left-hand one.
+         */
+        infix fun to(b: SegmentVec4f): Vector4f {
+            val a = from.copyTo(Vector4f())
+            val d = b.copyTo(Vector4f()).sub(a)
+            val l = d.length()
+            if (l != 0.0f) d.mul(distance / l)
+            return d.add(a)
+        }
+    }
+
+    /** Starts `a lerp t to b`: the point [t] of the way from this vector to `b`. */
+    infix fun SegmentVec4f.lerp(t: Number): SegmentVec4fLerp = SegmentVec4fLerp(this, t.toFloat())
+    /** Starts `a step d to b`: move [distance] units from this vector toward `b`. */
+    infix fun SegmentVec4f.step(distance: Number): SegmentVec4fStep = SegmentVec4fStep(this, distance.toFloat())
 
     private fun read(token: Long, component: Int): Float =
         segment.get(ValueLayout.JAVA_FLOAT, offset(token) + component * Float.SIZE_BYTES)

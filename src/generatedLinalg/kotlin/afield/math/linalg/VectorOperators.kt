@@ -56,3 +56,225 @@ operator fun Vector4f.invoke(block: Vector4f.() -> Unit): Vector4f {
 
 /** Returns a copy rescaled to length [l], keeping direction. */
 infix fun Vector4f.len(l: Number): Vector4f = this { normalize().mul(l.toFloat()) }
+
+// Vector2f shorthands
+/** A normalized copy of this vector, the shorthand for `normalized()`. Zero stays zero. */
+val Vector2fc.n: Vector2f get() = Vector2f(this).also { val l = it.length(); if (l != 0.0f) it.mul(1.0f / l) }
+/** This vector's Euclidean length, the property form of `length()`. */
+val Vector2fc.length: Float get() = length()
+
+/** The first half of `a lerp t to b`; finish it with [to]. */
+class Vector2fLerp internal constructor(private val from: Vector2fc, private val t: Float) {
+    /** Returns a new vector [t] of the way from the left-hand vector to [b]: 0 gives it, 1 gives [b]. */
+    infix fun to(b: Vector2fc): Vector2f {
+        val a = Vector2f(from)
+        val d = Vector2f(b)
+        return d.sub(a).mul(t).add(a)
+    }
+}
+
+/** The first half of `a step d to b`; finish it with [to]. */
+class Vector2fStep internal constructor(private val from: Vector2fc, private val distance: Float) {
+    /**
+     * Returns a new vector [distance] units from the left-hand vector in the direction of [b].
+     * It does not stop at [b]: a distance longer than the gap overshoots. When the two
+     * vectors coincide there is no direction, so the result is a copy of the left-hand one.
+     */
+    infix fun to(b: Vector2fc): Vector2f {
+        val a = Vector2f(from)
+        val d = Vector2f(b).sub(a)
+        val l = d.length()
+        if (l != 0.0f) d.mul(distance / l)
+        return d.add(a)
+    }
+}
+
+/** Starts `a lerp t to b`: the point [t] of the way from this vector to `b`. */
+infix fun Vector2fc.lerp(t: Number): Vector2fLerp = Vector2fLerp(this, t.toFloat())
+/** Starts `a step d to b`: move [distance] units from this vector toward `b`. */
+infix fun Vector2fc.step(distance: Number): Vector2fStep = Vector2fStep(this, distance.toFloat())
+
+// Vector3f shorthands
+/** A normalized copy of this vector, the shorthand for `normalized()`. Zero stays zero. */
+val Vector3fc.n: Vector3f get() = Vector3f(this).also { val l = it.length(); if (l != 0.0f) it.mul(1.0f / l) }
+/** This vector's Euclidean length, the property form of `length()`. */
+val Vector3fc.length: Float get() = length()
+
+/** The first half of `a lerp t to b`; finish it with [to]. */
+class Vector3fLerp internal constructor(private val from: Vector3fc, private val t: Float) {
+    /** Returns a new vector [t] of the way from the left-hand vector to [b]: 0 gives it, 1 gives [b]. */
+    infix fun to(b: Vector3fc): Vector3f {
+        val a = Vector3f(from)
+        val d = Vector3f(b)
+        return d.sub(a).mul(t).add(a)
+    }
+}
+
+/** The first half of `a step d to b`; finish it with [to]. */
+class Vector3fStep internal constructor(private val from: Vector3fc, private val distance: Float) {
+    /**
+     * Returns a new vector [distance] units from the left-hand vector in the direction of [b].
+     * It does not stop at [b]: a distance longer than the gap overshoots. When the two
+     * vectors coincide there is no direction, so the result is a copy of the left-hand one.
+     */
+    infix fun to(b: Vector3fc): Vector3f {
+        val a = Vector3f(from)
+        val d = Vector3f(b).sub(a)
+        val l = d.length()
+        if (l != 0.0f) d.mul(distance / l)
+        return d.add(a)
+    }
+}
+
+/** Starts `a lerp t to b`: the point [t] of the way from this vector to `b`. */
+infix fun Vector3fc.lerp(t: Number): Vector3fLerp = Vector3fLerp(this, t.toFloat())
+/** Starts `a step d to b`: move [distance] units from this vector toward `b`. */
+infix fun Vector3fc.step(distance: Number): Vector3fStep = Vector3fStep(this, distance.toFloat())
+
+// Vector4f shorthands
+/** A normalized copy of this vector, the shorthand for `normalized()`. Zero stays zero. */
+val Vector4fc.n: Vector4f get() = Vector4f(this).also { val l = it.length(); if (l != 0.0f) it.mul(1.0f / l) }
+/** This vector's Euclidean length, the property form of `length()`. */
+val Vector4fc.length: Float get() = length()
+
+/** The first half of `a lerp t to b`; finish it with [to]. */
+class Vector4fLerp internal constructor(private val from: Vector4fc, private val t: Float) {
+    /** Returns a new vector [t] of the way from the left-hand vector to [b]: 0 gives it, 1 gives [b]. */
+    infix fun to(b: Vector4fc): Vector4f {
+        val a = Vector4f(from)
+        val d = Vector4f(b)
+        return d.sub(a).mul(t).add(a)
+    }
+}
+
+/** The first half of `a step d to b`; finish it with [to]. */
+class Vector4fStep internal constructor(private val from: Vector4fc, private val distance: Float) {
+    /**
+     * Returns a new vector [distance] units from the left-hand vector in the direction of [b].
+     * It does not stop at [b]: a distance longer than the gap overshoots. When the two
+     * vectors coincide there is no direction, so the result is a copy of the left-hand one.
+     */
+    infix fun to(b: Vector4fc): Vector4f {
+        val a = Vector4f(from)
+        val d = Vector4f(b).sub(a)
+        val l = d.length()
+        if (l != 0.0f) d.mul(distance / l)
+        return d.add(a)
+    }
+}
+
+/** Starts `a lerp t to b`: the point [t] of the way from this vector to `b`. */
+infix fun Vector4fc.lerp(t: Number): Vector4fLerp = Vector4fLerp(this, t.toFloat())
+/** Starts `a step d to b`: move [distance] units from this vector toward `b`. */
+infix fun Vector4fc.step(distance: Number): Vector4fStep = Vector4fStep(this, distance.toFloat())
+
+// Vector2d shorthands
+/** A normalized copy of this vector, the shorthand for `normalized()`. Zero stays zero. */
+val Vector2dc.n: Vector2d get() = Vector2d(this).also { val l = it.length(); if (l != 0.0) it.mul(1.0 / l) }
+/** This vector's Euclidean length, the property form of `length()`. */
+val Vector2dc.length: Double get() = length()
+
+/** The first half of `a lerp t to b`; finish it with [to]. */
+class Vector2dLerp internal constructor(private val from: Vector2dc, private val t: Double) {
+    /** Returns a new vector [t] of the way from the left-hand vector to [b]: 0 gives it, 1 gives [b]. */
+    infix fun to(b: Vector2dc): Vector2d {
+        val a = Vector2d(from)
+        val d = Vector2d(b)
+        return d.sub(a).mul(t).add(a)
+    }
+}
+
+/** The first half of `a step d to b`; finish it with [to]. */
+class Vector2dStep internal constructor(private val from: Vector2dc, private val distance: Double) {
+    /**
+     * Returns a new vector [distance] units from the left-hand vector in the direction of [b].
+     * It does not stop at [b]: a distance longer than the gap overshoots. When the two
+     * vectors coincide there is no direction, so the result is a copy of the left-hand one.
+     */
+    infix fun to(b: Vector2dc): Vector2d {
+        val a = Vector2d(from)
+        val d = Vector2d(b).sub(a)
+        val l = d.length()
+        if (l != 0.0) d.mul(distance / l)
+        return d.add(a)
+    }
+}
+
+/** Starts `a lerp t to b`: the point [t] of the way from this vector to `b`. */
+infix fun Vector2dc.lerp(t: Number): Vector2dLerp = Vector2dLerp(this, t.toDouble())
+/** Starts `a step d to b`: move [distance] units from this vector toward `b`. */
+infix fun Vector2dc.step(distance: Number): Vector2dStep = Vector2dStep(this, distance.toDouble())
+
+// Vector3d shorthands
+/** A normalized copy of this vector, the shorthand for `normalized()`. Zero stays zero. */
+val Vector3dc.n: Vector3d get() = Vector3d(this).also { val l = it.length(); if (l != 0.0) it.mul(1.0 / l) }
+/** This vector's Euclidean length, the property form of `length()`. */
+val Vector3dc.length: Double get() = length()
+
+/** The first half of `a lerp t to b`; finish it with [to]. */
+class Vector3dLerp internal constructor(private val from: Vector3dc, private val t: Double) {
+    /** Returns a new vector [t] of the way from the left-hand vector to [b]: 0 gives it, 1 gives [b]. */
+    infix fun to(b: Vector3dc): Vector3d {
+        val a = Vector3d(from)
+        val d = Vector3d(b)
+        return d.sub(a).mul(t).add(a)
+    }
+}
+
+/** The first half of `a step d to b`; finish it with [to]. */
+class Vector3dStep internal constructor(private val from: Vector3dc, private val distance: Double) {
+    /**
+     * Returns a new vector [distance] units from the left-hand vector in the direction of [b].
+     * It does not stop at [b]: a distance longer than the gap overshoots. When the two
+     * vectors coincide there is no direction, so the result is a copy of the left-hand one.
+     */
+    infix fun to(b: Vector3dc): Vector3d {
+        val a = Vector3d(from)
+        val d = Vector3d(b).sub(a)
+        val l = d.length()
+        if (l != 0.0) d.mul(distance / l)
+        return d.add(a)
+    }
+}
+
+/** Starts `a lerp t to b`: the point [t] of the way from this vector to `b`. */
+infix fun Vector3dc.lerp(t: Number): Vector3dLerp = Vector3dLerp(this, t.toDouble())
+/** Starts `a step d to b`: move [distance] units from this vector toward `b`. */
+infix fun Vector3dc.step(distance: Number): Vector3dStep = Vector3dStep(this, distance.toDouble())
+
+// Vector4d shorthands
+/** A normalized copy of this vector, the shorthand for `normalized()`. Zero stays zero. */
+val Vector4dc.n: Vector4d get() = Vector4d(this).also { val l = it.length(); if (l != 0.0) it.mul(1.0 / l) }
+/** This vector's Euclidean length, the property form of `length()`. */
+val Vector4dc.length: Double get() = length()
+
+/** The first half of `a lerp t to b`; finish it with [to]. */
+class Vector4dLerp internal constructor(private val from: Vector4dc, private val t: Double) {
+    /** Returns a new vector [t] of the way from the left-hand vector to [b]: 0 gives it, 1 gives [b]. */
+    infix fun to(b: Vector4dc): Vector4d {
+        val a = Vector4d(from)
+        val d = Vector4d(b)
+        return d.sub(a).mul(t).add(a)
+    }
+}
+
+/** The first half of `a step d to b`; finish it with [to]. */
+class Vector4dStep internal constructor(private val from: Vector4dc, private val distance: Double) {
+    /**
+     * Returns a new vector [distance] units from the left-hand vector in the direction of [b].
+     * It does not stop at [b]: a distance longer than the gap overshoots. When the two
+     * vectors coincide there is no direction, so the result is a copy of the left-hand one.
+     */
+    infix fun to(b: Vector4dc): Vector4d {
+        val a = Vector4d(from)
+        val d = Vector4d(b).sub(a)
+        val l = d.length()
+        if (l != 0.0) d.mul(distance / l)
+        return d.add(a)
+    }
+}
+
+/** Starts `a lerp t to b`: the point [t] of the way from this vector to `b`. */
+infix fun Vector4dc.lerp(t: Number): Vector4dLerp = Vector4dLerp(this, t.toDouble())
+/** Starts `a step d to b`: move [distance] units from this vector toward `b`. */
+infix fun Vector4dc.step(distance: Number): Vector4dStep = Vector4dStep(this, distance.toDouble())

@@ -202,6 +202,8 @@ interface Vector2fc {
      * Linearly interpolates from this vector toward another.
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     *
+     * In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone.
      * @param other the endpoint
      * @param t the interpolation amount
      * @param dest the vector that receives the result
@@ -481,6 +483,8 @@ open class Vector2f() : Vector2fc, Cloneable {
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
      *
+     * In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone.
+     *
      * This overload writes the result back into this vector.
      * @param other the endpoint
      * @param t the interpolation amount
@@ -739,6 +743,8 @@ interface Vector3fc {
      * Linearly interpolates from this vector toward another.
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     *
+     * In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone.
      * @param other the endpoint
      * @param t the interpolation amount
      * @param dest the vector that receives the result
@@ -1045,6 +1051,8 @@ open class Vector3f() : Vector3fc, Cloneable {
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
      *
+     * In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone.
+     *
      * This overload writes the result back into this vector.
      * @param other the endpoint
      * @param t the interpolation amount
@@ -1330,6 +1338,8 @@ interface Vector4fc {
      * Linearly interpolates from this vector toward another.
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     *
+     * In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone.
      * @param other the endpoint
      * @param t the interpolation amount
      * @param dest the vector that receives the result
@@ -1633,6 +1643,8 @@ open class Vector4f() : Vector4fc, Cloneable {
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
      *
+     * In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone.
+     *
      * This overload writes the result back into this vector.
      * @param other the endpoint
      * @param t the interpolation amount
@@ -1877,6 +1889,8 @@ interface Vector2dc {
      * Linearly interpolates from this vector toward another.
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     *
+     * In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone.
      * @param other the endpoint
      * @param t the interpolation amount
      * @param dest the vector that receives the result
@@ -2156,6 +2170,8 @@ open class Vector2d() : Vector2dc, Cloneable {
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
      *
+     * In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone.
+     *
      * This overload writes the result back into this vector.
      * @param other the endpoint
      * @param t the interpolation amount
@@ -2414,6 +2430,8 @@ interface Vector3dc {
      * Linearly interpolates from this vector toward another.
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     *
+     * In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone.
      * @param other the endpoint
      * @param t the interpolation amount
      * @param dest the vector that receives the result
@@ -2720,6 +2738,8 @@ open class Vector3d() : Vector3dc, Cloneable {
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
      *
+     * In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone.
+     *
      * This overload writes the result back into this vector.
      * @param other the endpoint
      * @param t the interpolation amount
@@ -3005,6 +3025,8 @@ interface Vector4dc {
      * Linearly interpolates from this vector toward another.
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     *
+     * In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone.
      * @param other the endpoint
      * @param t the interpolation amount
      * @param dest the vector that receives the result
@@ -3307,6 +3329,8 @@ open class Vector4d() : Vector4dc, Cloneable {
      * Linearly interpolates from this vector toward another.
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     *
+     * In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone.
      *
      * This overload writes the result back into this vector.
      * @param other the endpoint
@@ -3648,6 +3672,8 @@ interface Vector8hc {
      * Linearly interpolates from this vector toward another.
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     *
+     * In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone.
      * @param other the endpoint
      * @param t the interpolation amount
      * @param dest the vector that receives the result
@@ -3992,6 +4018,8 @@ open class Vector8h() : Vector8hc, Cloneable {
      * Linearly interpolates from this vector toward another.
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     *
+     * In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone.
      *
      * This overload writes the result back into this vector.
      * @param other the endpoint

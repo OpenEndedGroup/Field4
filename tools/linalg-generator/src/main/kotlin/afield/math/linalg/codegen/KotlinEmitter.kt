@@ -123,6 +123,76 @@ class KotlinEmitter(
             appendLine("/** Returns a copy rescaled to length [l], keeping direction. */")
             appendLine("infix fun $heap.len(l: Number): $heap = this { normalize().mul(l.toFloat()) }")
         }
+        ergonomicTypes.forEach { type ->
+            appendLine()
+            appendLine("// ${type.heapName} shorthands")
+            emitShorthands(
+                indent = "", receiver = type.readName, result = type.heapName, scalar = type.scalar,
+                prefix = type.heapName, inner = false,
+                load = { "${type.heapName}($it)" }, length = { "$it.length()" },
+            )
+        }
+    }
+
+    /** Heap vectors (float and double, dims 2..4) that get the `.n`/`.length`/`lerp … to`/`step … to` surface. */
+    private val ergonomicTypes: List<VectorType>
+        get() = model.heapVectors.filter { it.scalar != ScalarKind.HALF && it.dimension in 2..4 }
+
+    /**
+     * Emits the live-coding shorthands `v.n`, `v.length`, `a lerp t to b` and `a step d to b`.
+     *
+     * `lerp`/`step` return a small pending value whose member `to` finishes the expression; a member
+     * always beats the stdlib's generic `Pair` `to`. [receiver] is the vector type, [result] the type
+     * the expressions return, [load] turns a [receiver]
+     * expression into a fresh mutable [result], and [prefix] names the pending classes.
+     */
+    private fun StringBuilder.emitShorthands(
+        indent: String,
+        receiver: String,
+        result: String,
+        scalar: ScalarKind,
+        prefix: String,
+        inner: Boolean,
+        load: (String) -> String,
+        length: (String) -> String,
+    ) {
+        val s = scalar.kotlinType
+        val classModifier = if (inner) "inner class" else "class"
+        appendLine("$indent/** A normalized copy of this vector, the shorthand for `normalized()`. Zero stays zero. */")
+        appendLine("${indent}val $receiver.n: $result get() = ${load("this")}.also { val l = ${length("it")}; if (l != ${scalar.zero}) it.mul(${scalar.one} / l) }")
+        appendLine("$indent/** This vector's Euclidean length, the property form of `length()`. */")
+        appendLine("${indent}val $receiver.length: $s get() = length()")
+        appendLine()
+        appendLine("$indent/** The first half of `a lerp t to b`; finish it with [to]. */")
+        appendLine("$indent$classModifier ${prefix}Lerp internal constructor(private val from: $receiver, private val t: $s) {")
+        appendLine("$indent    /** Returns a new vector [t] of the way from the left-hand vector to [b]: 0 gives it, 1 gives [b]. */")
+        appendLine("$indent    infix fun to(b: $receiver): $result {")
+        appendLine("$indent        val a = ${load("from")}")
+        appendLine("$indent        val d = ${load("b")}")
+        appendLine("$indent        return d.sub(a).mul(t).add(a)")
+        appendLine("$indent    }")
+        appendLine("$indent}")
+        appendLine()
+        appendLine("$indent/** The first half of `a step d to b`; finish it with [to]. */")
+        appendLine("$indent$classModifier ${prefix}Step internal constructor(private val from: $receiver, private val distance: $s) {")
+        appendLine("$indent    /**")
+        appendLine("$indent     * Returns a new vector [distance] units from the left-hand vector in the direction of [b].")
+        appendLine("$indent     * It does not stop at [b]: a distance longer than the gap overshoots. When the two")
+        appendLine("$indent     * vectors coincide there is no direction, so the result is a copy of the left-hand one.")
+        appendLine("$indent     */")
+        appendLine("$indent    infix fun to(b: $receiver): $result {")
+        appendLine("$indent        val a = ${load("from")}")
+        appendLine("$indent        val d = ${load("b")}.sub(a)")
+        appendLine("$indent        val l = ${length("d")}")
+        appendLine("$indent        if (l != ${scalar.zero}) d.mul(distance / l)")
+        appendLine("$indent        return d.add(a)")
+        appendLine("$indent    }")
+        appendLine("$indent}")
+        appendLine()
+        appendLine("$indent/** Starts `a lerp t to b`: the point [t] of the way from this vector to `b`. */")
+        appendLine("${indent}infix fun $receiver.lerp(t: Number): ${prefix}Lerp = ${prefix}Lerp(this, t.${scalar.numberConversion}())")
+        appendLine("$indent/** Starts `a step d to b`: move [distance] units from this vector toward `b`. */")
+        appendLine("${indent}infix fun $receiver.step(distance: Number): ${prefix}Step = ${prefix}Step(this, distance.${scalar.numberConversion}())")
     }
 
     /** Every length-[arity] sequence of [components] (Cartesian power), in lexicographic order. */
@@ -225,6 +295,31 @@ class KotlinEmitter(
         appendLine()
         appendLine("This page is generated from the typed algebra model that emits Field's heap, frame-arena, and `MemorySegment` vector implementations. For intuition and worked examples, start with [Linear algebra in Field](linear_algebra.md).")
         appendLine()
+        appendLine("## Ergonomic operators")
+        appendLine()
+        appendLine("Vectors are written with ordinary arithmetic, and a handful of shorthands cover the moves live code makes most. Everything here returns a new vector and leaves its operands alone.")
+        appendLine()
+        appendLine("<div class=\"field-reference\" data-code-lang=\"kotlin\" markdown>")
+        appendLine()
+        appendLine("| Operator | Meaning |")
+        appendLine("| --- | --- |")
+        appendLine("| `a + b`, `a - b` | Component-by-component sum and difference. A number on the right applies to every component: `a + 1`. |")
+        appendLine("| `a * b`, `a * 2`, `a / 2` | Component-by-component product, scaling by a number, dividing by a number. |")
+        appendLine("| `-a` | The vector pointing the other way. |")
+        appendLine("| `a.length` | The vector's length, the same as `a.length()`. |")
+        appendLine("| `a.n` | A unit-length copy pointing the same way, the same as `a.normalized()`. Zero stays zero. |")
+        appendLine("| `v len 10` | A copy rescaled to length 10, keeping direction. |")
+        appendLine("| `a lerp 0.5 to b` | The point halfway from `a` to `b`; 0 gives `a`, 1 gives `b`, and values outside 0..1 extend the line. |")
+        appendLine("| `a step 10 to b` | The point 10 units from `a` in the direction of `b`. It does not stop at `b`, so a step longer than the gap goes past it; if `a` and `b` coincide the result is `a`. |")
+        appendLine("| `v(y = 2f)` | A copy with the named components replaced; unnamed components keep this vector's values. |")
+        appendLine("| `v { normalize() }` | A copy after applying the block to it, leaving `v` untouched. |")
+        appendLine("| `a %= b` | In-place assignment: copies b's components into a. |")
+        appendLine("| `v.normalized()` / `v.normalized(dest)` | Unit direction as a new value / into reusable storage. Optional epsilon sets the zero threshold. Finite inputs only. |")
+        appendLine()
+        appendLine("</div>")
+        appendLine()
+        appendLine("`length`, `n`, `lerp … to` and `step … to` exist on the float and double heap vectors and on the frame-arena and segment forms. In a frame arena they allocate their result in the arena; on a segment view they return a heap vector, because a view has nowhere of its own to put one. The arithmetic operators are heap forms, float and double; `len`, `v(...)`, `v { }` and `%=` are float heap forms.")
+        appendLine()
         appendLine("## One algebra, three storage forms")
         appendLine()
         appendLine("<div data-code-lang=\"kotlin\" markdown>")
@@ -294,22 +389,6 @@ class KotlinEmitter(
         appendLine("- Components can be spelled two ways: positional `x`/`y`/`z`/`w` or color `r`/`g`/`b`/`a`. The two are never mixed within one swizzle.")
         appendLine("- A read swizzle returns a same-scalar `VectorKfc` of the swizzle's own arity (`v.xy` is a `Vector2fc`, `v.xyz` a `Vector3fc`).")
         appendLine("- When a swizzle's indices are all distinct it also has a writable `var` on the mutable type, so GLSL-style assignment works: `v.xy = other.zw`. Repeated-index swizzles (`v.xx`) have no unambiguous target and stay read-only.")
-        appendLine()
-        appendLine("## Ergonomic operators")
-        appendLine()
-        appendLine("The float heap vectors also carry a small generated operator surface for live coding:")
-        appendLine()
-        appendLine("<div class=\"field-reference\" data-code-lang=\"kotlin\" markdown>")
-        appendLine()
-        appendLine("| Operator | Meaning |")
-        appendLine("| --- | --- |")
-        appendLine("| `v(y = 2f)` | Returns a copy with the named components replaced; unnamed components keep this vector's values. |")
-        appendLine("| `v.normalized()` / `v.normalized(dest)` | Unit direction as a new value / into reusable storage. Zero remains zero; optional epsilon sets the zero threshold. Finite inputs only. |")
-        appendLine("| `v { normalize() }` | Returns a copy after applying the block to it, leaving this vector untouched. |")
-        appendLine("| `a %= b` | In-place assignment: copies b's components into a. |")
-        appendLine("| `v len 10` | Returns a copy rescaled to the given length, keeping direction. |")
-        appendLine()
-        appendLine("</div>")
         appendLine()
         appendLine("## Rotations and matrices")
         appendLine()
@@ -426,6 +505,12 @@ class KotlinEmitter(
         }
         emitKDoc(ApiDocumentation("Reports whether every component is finite."), "    ")
         appendLine("    fun $handleName.isFinite(): Boolean = ${type.components.joinToString(" && ") { "${it.sourceName}.isFinite()" }}")
+        appendLine()
+        emitShorthands(
+            indent = "    ", receiver = handleName, result = type.heapName, scalar = type.scalar,
+            prefix = handleName, inner = true,
+            load = { "$it.copyTo(${type.heapName}())" }, length = { "$it.length()" },
+        )
         appendLine()
         appendLine("    private fun read(token: Long, component: Int): Float =")
         appendLine("        segment.get(ValueLayout.JAVA_FLOAT, offset(token) + component * Float.SIZE_BYTES)")
@@ -725,6 +810,12 @@ class KotlinEmitter(
         }
         emitKDoc(ApiDocumentation("Reports whether every component is finite."), "    ")
         appendLine("    fun ${type.arenaName}.isFinite(): Boolean = ${type.components.joinToString(" && ") { "${it.sourceName}.isFinite()" }}")
+        appendLine()
+        emitShorthands(
+            indent = "    ", receiver = type.arenaName!!, result = type.arenaName, scalar = type.scalar,
+            prefix = type.arenaName, inner = true,
+            load = { v -> "${type.factoryName}(${type.components.joinToString { "$v.${it.sourceName}" }})" }, length = { "$it.length()" },
+        )
     }
 
     private fun StringBuilder.emitArenaOperation(type: VectorType, operation: Operation, kind: String) {

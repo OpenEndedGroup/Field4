@@ -229,7 +229,7 @@ private object OperationDocumentation {
             )
             "lerp" -> doc(
                 "Linearly interpolates from this vector toward another.",
-                listOf("At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them."),
+                listOf("At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.", "In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone."),
                 common("other" to "the endpoint", "t" to "the interpolation amount"),
             )
             "fma" -> doc(
