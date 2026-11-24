@@ -90,7 +90,7 @@ The box below builds a scale for Tailwind's `#3b82f6` blue and three other colou
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/colors_examples/contrast_scale_light_dark.png" wait="1.0" capture="box" open-outputs="true"}
 :::static
-val seeds = listOf("#3b82f6", "#ef4444", "#22c55e", "#eab308").map { hexColor(it) }
+val seeds = ["#3b82f6", "#ef4444", "#22c55e", "#eab308"].map { hexColor(it) }
 val white = vec(1.0, 1.0, 1.0, 1.0)
 val nearBlack = hexColor("#0a0a0a")
 
@@ -103,7 +103,7 @@ fun panel(background: Vec4): String {
             val step = contrastScaleSteps[i]
             val ring = if (step == scale.seedStep) "outline:2px solid ${css(scale.textOn[i])};outline-offset:-4px;" else ""
             "<div style='width:52px;height:52px;background:${css(scale.colors[i])};color:${css(scale.textOn[i])};$ring" +
-                "font:600 11px system-ui;padding:5px;box-sizing:border-box'>$step<br>${"%.1f".format(scale.contrasts[i])}</div>"
+                "font:600 11px system-ui;padding:5px;box-sizing:border-box'>$step<br>${scale.contrasts[i].f1}</div>"
         }
         "<div style='display:flex;gap:3px;margin:5px 0'>$cells</div>"
     }
