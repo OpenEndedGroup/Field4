@@ -114,7 +114,7 @@ that has been built afresh. `resetTreemap()` forgets them.
 A hundred thousand cells is no trouble. This library of 40 areas, a thousand topics and a hundred
 thousand modules is drawn whole:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/treemaps/hundred_thousand.png" wait="2.0" capture="box" open-outputs="true" w="1300" embed=true alt="A treemap of a hundred thousand modules: forty coloured areas with their names in header strips, each packed with a grid of topics, each topic a fine mesh of module cells a few pixels across"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/treemaps/hundred_thousand.png" wait="2.0" capture="box" open-outputs="true" w="1300" scale="2" embed=true alt="A treemap of a hundred thousand modules: forty coloured areas with their names in header strips, each packed with a grid of topics, each topic a fine mesh of module cells a few pixels across"}
 val library = treemapTree("library") {
     repeat(40) { a ->
         branch("area $a") {
@@ -186,7 +186,7 @@ A treemap is a good way to see a large code base whole. This one maps Field's ow
 twenty thousand files with `git ls-files`, and colours each file by when it last changed. Branches are named in
 badges over their cells, which keeps a dense map dense, and clicking a file opens its code underneath:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/treemaps/code_base.png" wait="3.0" capture="box" open-outputs="true" w="1500" timeout="240" embed=true alt="Field's source tree as a dense treemap in a serif face: a Colour by switch for last changed, kind of file, top-level folder, size and depth, a legend of how recently files changed with their shares, and thousands of small cells in pink, ochre, green, blue and violet under dark badges naming src, render, audio, dev_docs, tools, native and their folders"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/treemaps/code_base.png" wait="3.0" capture="box" open-outputs="true" w="1500" scale="2" timeout="240" embed=true alt="Field's source tree as a dense treemap in a serif face: a Colour by switch for last changed, kind of file, top-level folder, size and depth, a legend of how recently files changed with their shares, and thousands of small cells in pink, ochre, green, blue and violet under dark badges naming src, render, audio, dev_docs, tools, native and their folders"}
 import java.io.File
 
 fun git(vararg args: String) = ProcessBuilder("git", *args).start().inputStream.bufferedReader().readLines()
