@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 6 "persistentProperties" ["contents" "frame" "name" "code" "code_language" "box_kind" "textFrame" "textRunAnchor" "textRunSources" "textFrameReview" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "parentHint" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_panel" "ai4_continuation" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "ai4_garden" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 7 "persistentProperties" ["contents" "frame" "name" "code" "code_language" "box_kind" "textFrame" "textRunAnchor" "textRunSources" "textFrameReview" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "parentHint" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_panel" "ai4_continuation" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "ai4_garden" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. Counterflow double spiral: underfloor-heating pipe
@@ -125,9 +125,89 @@ three(height = 360) {
 }
 ```
 
-## 4. Double spiral in an L-shaped room with a bay window
+## 4. Double spirals with the ports in eight places
 
-<!-- field-box id="double-spiral-room" index="3" -->
+<!-- field-box id="port-sweep" index="3" -->
+
+### Narrative
+
+From `code`
+
+The L-shaped room, with the supply and return ports moved round the walls.
+
+```edn [field-box id="port-sweep" role="properties"]
+{"id" "port-sweep" "index" 3 "name" "Double spirals with the ports in eight places" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Double spirals with the ports in eight places" "_tombstone" false "frame" #afield/rect [2940.0 60.0 420.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "port-sweep_code_.kt" "lines" 63 "characters" 2496 "sha256" "3cc2456c932d4ea0156e282fcd449678d92554f69a86641d35b901dfb72e0f9c"}]}
+```
+
+```kotlin [field-property box="port-sweep" name="code" path="port-sweep_code_.kt"]
+// The L-shaped room, with the supply and return ports moved round the walls.
+val bay =
+    (0..16).map { i ->
+        val a = kotlin.math.PI * i / 16
+        vec(-1.0 - 0.3 * kotlin.math.sin(a), 0.25 + 0.25 * kotlin.math.cos(a))
+    }
+val plan = [vec(-1.0, -0.7), vec(1.0, -0.7), vec(1.0, 0.1), vec(0.1, 0.1), vec(0.1, 0.7), vec(-1.0, 0.7)] + bay
+val floor = outlineMesh(plan, 0.0125)
+val fromWalls = floor.geodesicDistanceFromBoundary()
+val wall = outlineWallDistance(plan)
+val spacing = 0.07
+
+// Eight ports, evenly spaced by length round the walls.
+val loop = plan + plan.first()
+val sides = loop.zipWithNext { a, b -> a.distance(b).toDouble() }
+val perimeter = sides.sum()
+fun pointRound(t: Double): Vec3 {
+    var left = t * perimeter
+    for ((i, side) in sides.withIndex()) {
+        if (left <= side) {
+            val a = loop[i]
+            val b = loop[i + 1]
+            val u = (left / side).toFloat()
+            return vec(a.x + u * (b.x - a.x), 0f, a.y + u * (b.y - a.y))
+        }
+        left -= side
+    }
+    return vec(loop.last().x, 0f, loop.last().y)
+}
+
+// The eight layouts do not depend on each other, so lay them out on all the cores at once.
+val ports = (0 until 8).map { pointRound(it / 8.0) }
+val pipes =
+    ports
+        .parallelStream()
+        .map { port ->
+            val (supply, back) = floor.windingAngle(fromWalls, port = port).fieldDoubleSpiral(spacing)
+            relaxPath(supply, back, spacing, wall, steps = 1000)
+        }
+        .toList()
+
+val shown = ArrayList<FLine>()
+val walls = loop.map { vec(it.x, 0f, it.y) }
+for ((k, pipe) in pipes.withIndex()) {
+    val port = ports[k]
+    val dx = (k % 4) * 780f
+    val dy = (k / 4) * 540f
+    fun drawn(path: List<Vec3>) = path.map { vec(it.x * 300f + dx, it.z * 300f + dy, 0f) }
+    shown += drawn(walls).toFLine3(vec(0.45, 0.45, 0.45, 1.0), 3.0)
+    shown += drawn(pipe.first).toFLine3(vec(0.9, 0.25, 0.15, 1.0), 3.0)
+    shown += drawn(pipe.second).toFLine3(vec(0.15, 0.4, 0.9, 1.0), 3.0)
+    shown +=
+        drawn(
+            (0..24).map { i ->
+                val a = 2 * kotlin.math.PI * i / 24
+                vec(port.x + 0.05f * kotlin.math.cos(a).toFloat(), 0f, port.z + 0.05f * kotlin.math.sin(a).toFloat())
+            },
+        ).toFLine3(vec(1.0, 0.9, 0.3, 1.0), 2.5)
+    println(
+        "port ${k + 1}: ${(pipe.length * 2).f1} m, closest ${pipe.closest.f3}, bend ${pipe.tightestBend.f3}, crossings ${pipe.crossings}",
+    )
+}
+lines(shown, w = 1100.0, h = 420.0, fitToSize = true)
+```
+
+## 5. Double spiral in an L-shaped room with a bay window
+
+<!-- field-box id="double-spiral-room" index="4" -->
 
 ### Narrative
 
@@ -136,7 +216,7 @@ From `code`
 An L-shaped living room with a bay window in the left wall, at 1:2.
 
 ```edn [field-box id="double-spiral-room" role="properties"]
-{"id" "double-spiral-room" "index" 3 "name" "Double spiral in an L-shaped room with a bay window" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Double spiral in an L-shaped room with a bay window" "_tombstone" false "frame" #afield/rect [1980.0 60.0 420.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "double-spiral-room_code_.kt" "lines" 23 "characters" 1290 "sha256" "7c9dd29d4075083fa246958ed2595be2f7b5cf62cb3fe561e1763c936b2862a9"}]}
+{"id" "double-spiral-room" "index" 4 "name" "Double spiral in an L-shaped room with a bay window" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Double spiral in an L-shaped room with a bay window" "_tombstone" false "frame" #afield/rect [1980.0 60.0 420.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "double-spiral-room_code_.kt" "lines" 23 "characters" 1290 "sha256" "7c9dd29d4075083fa246958ed2595be2f7b5cf62cb3fe561e1763c936b2862a9"}]}
 ```
 
 ```kotlin [field-property box="double-spiral-room" name="code" path="double-spiral-room_code_.kt"]
@@ -165,9 +245,9 @@ shown += drawn(back).toFLine3(vec(0.15, 0.4, 0.9, 1.0), 2.0)
 lines(shown, w = 640.0, h = 460.0, fitToSize = true)
 ```
 
-## 5. The L-shaped room's double spiral, relaxed
+## 6. The L-shaped room's double spiral, relaxed
 
-<!-- field-box id="relaxed-spiral" index="4" -->
+<!-- field-box id="relaxed-spiral" index="5" -->
 
 ### Narrative
 
@@ -176,7 +256,7 @@ From `code`
 The L-shaped room again: the field spiral, then the same pipe relaxed.
 
 ```edn [field-box id="relaxed-spiral" role="properties"]
-{"id" "relaxed-spiral" "index" 4 "name" "The L-shaped room's double spiral, relaxed" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The L-shaped room's double spiral, relaxed" "_tombstone" false "frame" #afield/rect [2460.0 60.0 420.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "relaxed-spiral_code_.kt" "lines" 24 "characters" 1385 "sha256" "383ffb00cf9edc3341a75f1383585594bc29eacd6dd57758ee52622baa9cc0cb"}]}
+{"id" "relaxed-spiral" "index" 5 "name" "The L-shaped room's double spiral, relaxed" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The L-shaped room's double spiral, relaxed" "_tombstone" false "frame" #afield/rect [2460.0 60.0 420.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "relaxed-spiral_code_.kt" "lines" 24 "characters" 1385 "sha256" "383ffb00cf9edc3341a75f1383585594bc29eacd6dd57758ee52622baa9cc0cb"}]}
 ```
 
 ```kotlin [field-property box="relaxed-spiral" name="code" path="relaxed-spiral_code_.kt"]
@@ -206,12 +286,12 @@ shown += drawn(relaxed.second, 780f).toFLine3(vec(0.15, 0.4, 0.9, 1.0), 2.0)
 lines(shown, w = 1000.0, h = 400.0, fitToSize = true)
 ```
 
-## 6. Iso-geodesic rings joined into a spiral toolpath
+## 7. Iso-geodesic rings joined into a spiral toolpath
 
-<!-- field-box id="geodesic-spiral" index="5" -->
+<!-- field-box id="geodesic-spiral" index="6" -->
 
 ```edn [field-box id="geodesic-spiral" role="properties"]
-{"id" "geodesic-spiral" "index" 5 "name" "Iso-geodesic rings joined into a spiral toolpath" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Iso-geodesic rings joined into a spiral toolpath" "_tombstone" false "frame" #afield/rect [540.0 60.0 420.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "geodesic-spiral_code_.kt" "lines" 25 "characters" 1228 "sha256" "3758671033cc2477e7e5622737cc14dcd535cd83ff3ee25e3e7db2785646ade1"}]}
+{"id" "geodesic-spiral" "index" 6 "name" "Iso-geodesic rings joined into a spiral toolpath" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Iso-geodesic rings joined into a spiral toolpath" "_tombstone" false "frame" #afield/rect [540.0 60.0 420.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "geodesic-spiral_code_.kt" "lines" 25 "characters" 1228 "sha256" "3758671033cc2477e7e5622737cc14dcd535cd83ff3ee25e3e7db2785646ade1"}]}
 ```
 
 ```kotlin [field-property box="geodesic-spiral" name="code" path="geodesic-spiral_code_.kt"]

@@ -49,12 +49,12 @@ class RelaxedPath internal constructor(
 /**
  * Signed distance from a point on the floor (its `x` and `z`) to the walls of [plan] (a closed
  * polygon, `x` and `y` of each point mapped to the floor's `x` and `z`, as for [outlineMesh]):
- * positive inside, negative outside. For [relaxPath]'s `wall`.
+ * positive inside, negative outside. For [relaxPath]'s `wall`. Sampled onto a grid of [cell] (by default
+ * a 512th of the plan's size) and interpolated, so it is cheap to ask many times.
  */
-fun outlineWallDistance(plan: List<Vec2>): (Vec3) -> Double {
+fun outlineWallDistance(plan: List<Vec2>, cell: Double? = null): (Vec3) -> Double {
     val pts = if (plan.first() == plan.last()) plan.dropLast(1) else plan
-    return { p ->
-        val x = p.x.toDouble(); val y = p.z.toDouble()
+    fun exact(x: Double, y: Double): Double {
         var best = Double.MAX_VALUE
         var inside = false
         var j = pts.size - 1
@@ -67,7 +67,25 @@ fun outlineWallDistance(plan: List<Vec2>): (Vec3) -> Double {
             best = min(best, dx * dx + dy * dy)
             j = i
         }
-        if (inside) sqrt(best) else -sqrt(best)
+        return if (inside) sqrt(best) else -sqrt(best)
+    }
+    // Sampled once onto a grid and read back bilinearly: relaxPath asks for it several times per
+    // point per step, and the exact distance visits every wall each time.
+    val minX = pts.minOf { it.x }.toDouble(); val maxX = pts.maxOf { it.x }.toDouble()
+    val minY = pts.minOf { it.y }.toDouble(); val maxY = pts.maxOf { it.y }.toDouble()
+    val c = cell ?: (max(maxX - minX, maxY - minY) / 512)
+    val pad = 8 * c
+    val x0 = minX - pad; val y0 = minY - pad
+    val nx = ((maxX - minX + 2 * pad) / c).toInt() + 2; val ny = ((maxY - minY + 2 * pad) / c).toInt() + 2
+    val grid = DoubleArray(nx * ny) { exact(x0 + (it % nx) * c, y0 + (it / nx) * c) }
+    return { p ->
+        val gx = (p.x - x0) / c; val gy = (p.z - y0) / c
+        if (gx < 0 || gy < 0 || gx >= nx - 1 || gy >= ny - 1) exact(p.x.toDouble(), p.z.toDouble())
+        else {
+            val i = gx.toInt(); val j = gy.toInt(); val u = gx - i; val v = gy - j
+            val a = grid[j * nx + i]; val b = grid[j * nx + i + 1]; val d = grid[(j + 1) * nx + i]; val e = grid[(j + 1) * nx + i + 1]
+            (a * (1 - u) + b * u) * (1 - v) + (d * (1 - u) + e * u) * v
+        }
     }
 }
 
@@ -83,7 +101,8 @@ fun outlineWallDistance(plan: List<Vec2>): (Vec3) -> Double {
  * [first]); pass an empty [second] for a single path. [wall] is the signed distance to the walls,
  * positive inside ([outlineWallDistance]). No point moves more than 3% of a spacing in a step,
  * so neighbouring laps cannot pass through each other; [RelaxedPath.crossings] reports whether that
- * held. [onStep], if given, is called every [every] steps with the step number and the current points.
+ * held. Then [finish] passes of Taubin smoothing take out the small kinks the forces leave,
+ * in batches of ten that are undone if they would cross, crowd laps or touch a wall. [onStep], if given, is called every [every] steps with the step number and the current points.
  */
 fun relaxPath(
     first: List<Vec3>,
@@ -95,6 +114,7 @@ fun relaxPath(
     stiffness: Double = 0.05,
     growth: Double = 1.5,
     every: Int = 20,
+    finish: Int = 200,
     onStep: ((Int, List<Vec3>) -> Unit)? = null,
 ): RelaxedPath {
     require(spacing > 0.0) { "spacing must be positive" }
@@ -237,15 +257,59 @@ fun relaxPath(
     }
     resample()
 
-    val n = xs.size
-    val grid = buildHash(spacing)
-    var closest = Double.MAX_VALUE
-    for (i in 0 until n) near(grid, spacing, xs[i], zs[i]) { j ->
-        if (abs(j - i) <= window) return@near
-        val dx = xs[i] - xs[j]; val dz = zs[i] - zs[j]
-        closest = min(closest, sqrt(dx * dx + dz * dz))
+    fun closestLaps(): Double {
+        val grid = buildHash(spacing)
+        var c = Double.MAX_VALUE
+        for (i in xs.indices) near(grid, spacing, xs[i], zs[i]) { j ->
+            if (abs(j - i) <= window) return@near
+            val dx = xs[i] - xs[j]; val dz = zs[i] - zs[j]
+            c = min(c, sqrt(dx * dx + dz * dz))
+        }
+        return if (c == Double.MAX_VALUE) spacing else c
     }
-    if (closest == Double.MAX_VALUE) closest = spacing
+    fun crossingCount(): Int {
+        val grid = buildHash(spacing)
+        val n = xs.size
+        var c = 0
+        for (i in 0 until n - 1) near(grid, spacing, xs[i], zs[i]) { j ->
+            if (j <= i + 1 || j >= n - 1) return@near
+            if (segmentsCross(xs[i], zs[i], xs[i + 1], zs[i + 1], xs[j], zs[j], xs[j + 1], zs[j + 1])) c++
+        }
+        return c
+    }
+
+    // Finishing: Taubin smoothing (a shrinking step then a slightly larger growing one), which takes
+    // out kinks a few points long without shrinking the laps. Done in batches; a batch that crosses,
+    // brings laps closer than they were, or puts a point within a quarter spacing of a wall is undone,
+    // and finishing stops there.
+    if (finish > 0) {
+        val startClosest = closestLaps()
+        val startCrossings = crossingCount()
+        var passes = 0
+        while (passes < finish) {
+            val keepX = ArrayList(xs); val keepZ = ArrayList(zs)
+            repeat(min(10, finish - passes)) {
+                for (lambda in doubleArrayOf(0.5, -0.53)) {
+                    val nx = DoubleArray(xs.size) { xs[it] }; val nz = DoubleArray(zs.size) { zs[it] }
+                    for (i in 2 until xs.size - 2) {
+                        nx[i] = xs[i] + lambda * ((xs[i - 1] + xs[i + 1]) / 2 - xs[i])
+                        nz[i] = zs[i] + lambda * ((zs[i - 1] + zs[i + 1]) / 2 - zs[i])
+                    }
+                    for (i in xs.indices) { xs[i] = nx[i]; zs[i] = nz[i] }
+                }
+            }
+            val wallOk = xs.indices.all { it < 2 || it >= xs.size - 2 || wallAt(xs[it], zs[it]) > 0.25 * spacing }
+            if (crossingCount() > startCrossings || closestLaps() < min(startClosest, 0.8 * spacing) || !wallOk) {
+                xs.clear(); xs.addAll(keepX); zs.clear(); zs.addAll(keepZ)
+                break
+            }
+            passes += 10
+        }
+        resample()
+    }
+
+    val n = xs.size
+    val closest = closestLaps()
     var tightest = Double.MAX_VALUE
     // Radius of the circle through points a fifth of a spacing either side.
     val k = 2
@@ -257,11 +321,7 @@ fun relaxPath(
         val area2 = abs((bx - ax) * (cz - az) - (cx - ax) * (bz - az))
         if (area2 > 1e-14) tightest = min(tightest, ab * bc * ca / (2 * area2))
     }
-    var crossings = 0
-    for (i in 0 until n - 1) near(grid, spacing, xs[i], zs[i]) { j ->
-        if (j <= i + 1 || j >= n - 1) return@near
-        if (segmentsCross(xs[i], zs[i], xs[i + 1], zs[i + 1], xs[j], zs[j], xs[j + 1], zs[j + 1])) crossings++
-    }
+    val crossings = crossingCount()
     var length = 0.0
     for (i in 1 until n) length += sqrt((xs[i] - xs[i - 1]).let { it * it } + (zs[i] - zs[i - 1]).let { it * it })
     val split = arm.indexOfFirst { it == 1 }.let { if (it < 0) n else max(0, it - 1) }

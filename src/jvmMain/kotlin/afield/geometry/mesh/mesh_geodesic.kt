@@ -641,15 +641,23 @@ class WindingAngle internal constructor(
     val angle: DoubleArray,
     val distance: DoubleArray,
     val centre: Int,
+    /** Where the cut meets the edge: the two ends of a [fieldSpiral] or [fieldDoubleSpiral] start here. */
+    val port: Vec3,
 )
 
 /**
  * The [WindingAngle] of this mesh about the vertex where [distance] (usually
  * [geodesicDistanceFromBoundary]) is largest. The cut follows steepest descent of [distance] from
  * there to the edge, and triangles within [hole] of the largest distance are left out (see the
- * class). Expects a welded mesh with one boundary loop.
+ * class). [port], if given, is a point on (or near) the edge where the cut should come out: the
+ * spiral's two ends start there. A cut aimed past an inside corner comes out where it first meets the
+ * edge. Expects a welded mesh with one boundary loop.
  */
-fun TriMesh.windingAngle(distance: DoubleArray, hole: Double = 0.08 * (distance.maxOrNull() ?: 0.0)): WindingAngle {
+fun TriMesh.windingAngle(
+    distance: DoubleArray,
+    hole: Double = 0.08 * (distance.maxOrNull() ?: 0.0),
+    port: Vec3? = null,
+): WindingAngle {
     require(distance.size == vertexCount) { "windingAngle needs one distance per vertex" }
     val n = vertexCount
     // An angle has no value at the point it winds about, and asked to be harmonic right up to that
@@ -673,12 +681,31 @@ fun TriMesh.windingAngle(distance: DoubleArray, hole: Double = 0.08 * (distance.
     require(onBoundary.any { it }) { "windingAngle needs a surface with an edge" }
 
     val centre = distance.indices.maxBy { distance[it] }
-    val cut = arrayListOf(centre)
-    while (!onBoundary[cut.last()]) {
-        val here = cut.last()
-        val next = nb[here].minBy { distance[it] }
-        require(distance[next] < distance[here]) { "distance has a pit at vertex $here; the cut cannot reach the edge" }
-        cut += next
+    // The cut runs downhill from the centre: on [distance] to the nearest edge, or, given a [port],
+    // on the geodesic distance from the edge vertex nearest it, so the cut (and with it where a
+    // spiral's ends meet the edge) lands at the port.
+    fun descend(f: DoubleArray): List<Int>? {
+        val path = arrayListOf(centre)
+        while (!onBoundary[path.last()]) {
+            val here = path.last()
+            val next = nb[here].minBy { f[it] }
+            if (f[next] >= f[here]) return null
+            path += next
+        }
+        return path
+    }
+    val cut = if (port == null) {
+        descend(distance) ?: error("distance has a pit; the cut cannot reach the edge")
+    } else {
+        val target = (0 until n).filter { onBoundary[it] }.minBy { i ->
+            val dx = x(i) - port.x; val dy = y(i) - port.y; val dz = z(i) - port.z
+            dx * dx + dy * dy + dz * dz
+        }
+        val toPort = geodesicDistance(target)
+        // Downhill on the distance to the port alone hugs any inside corner on the way and stops at
+        // the first edge vertex it touches; taking off half the distance to the nearest wall keeps
+        // it in the open until it reaches the port. Plain distance to the port if that finds a pit.
+        descend(DoubleArray(n) { toPort[it] - 0.5 * distance[it] }) ?: descend(toPort) ?: error("the cut cannot reach the edge")
     }
     val onCut = HashMap<Int, Int>()
     cut.forEachIndexed { i, v -> onCut[v] = i }
@@ -771,7 +798,7 @@ fun TriMesh.windingAngle(distance: DoubleArray, hole: Double = 0.08 * (distance.
     val angle = DoubleArray(next) { th[originalOf[it], 0] + jump[it] }
     val lo = (0 until next).filter { it >= n || used[it] }.minOf { angle[it] }
     for (i in angle.indices) angle[i] -= lo
-    return WindingAngle(cutMesh, angle, DoubleArray(next) { distance[originalOf[it]] }, centre)
+    return WindingAngle(cutMesh, angle, DoubleArray(next) { distance[originalOf[it]] }, centre, vec(x(cut.last()), y(cut.last()), z(cut.last())))
 }
 
 /**
@@ -789,17 +816,30 @@ fun WindingAngle.fieldSpiral(pitch: Double, phase: Double = 0.5): List<Vec3> {
     // Only whole laps: a lap runs from distance (k + phase - 1) · pitch on one side of the cut to
     // (k + phase) · pitch on the other, so keep those that start inside the walls and end short of the hole.
     val inner = (0 until mesh.triangleCount).maxOf { t -> minOf(distance[mesh.ia(t)], distance[mesh.ib(t)], distance[mesh.ic(t)]) }
-    val out = ArrayList<Vec3>()
+    // Every piece of every whole lap's contour. Usually one piece a lap, but where the cut is not
+    // monotone in distance a contour meets the cut more than once and breaks into pieces.
+    val pieces = ArrayList<List<Vec3>>()
     for (k in lo..hi) {
         if ((k + phase - 1) * pitch < 0.0) continue
         if ((k + phase) * pitch > inner) continue
-        val arc = mesh.isolines(g, k + phase).maxByOrNull { it.size } ?: continue
-        if (arc.size < 2) continue
-        val oriented = if (out.isEmpty()) {
-            // Start at the outer end: the end nearer the edge has the smaller distance.
-            if (fieldAt(arc.first()) <= fieldAt(arc.last())) arc else arc.reversed()
-        } else if (d2(arc.first(), out.last()) <= d2(arc.last(), out.last())) arc else arc.reversed()
-        for (q in oriented) if (out.isEmpty() || d2(out.last(), q) > 1e-14f) out += q
+        pieces += mesh.isolines(g, k + phase).filter { it.size >= 2 }
+    }
+    if (pieces.isEmpty()) return emptyList()
+    // Chain them end to end: where a piece ends on one side of the cut, the angle there is one turn
+    // more than on the other side, so the piece that carries on starts at exactly that point. Start
+    // from the piece end nearest where the cut meets the edge, the port.
+    val tol = (pitch * pitch * 1e-6).toFloat()
+    val used = BooleanArray(pieces.size)
+    val first = pieces.indices.minBy { i -> minOf(d2(pieces[i].first(), port), d2(pieces[i].last(), port)) }
+    used[first] = true
+    val out = ArrayList<Vec3>()
+    out += pieces[first].let { if (d2(it.first(), port) <= d2(it.last(), port)) it else it.reversed() }
+    while (true) {
+        val end = out.last()
+        val next = pieces.indices.firstOrNull { !used[it] && (d2(pieces[it].first(), end) < tol || d2(pieces[it].last(), end) < tol) } ?: break
+        used[next] = true
+        val piece = if (d2(pieces[next].first(), end) < tol) pieces[next] else pieces[next].reversed()
+        for (q in piece) if (d2(out.last(), q) > 1e-14f) out += q
     }
     return out
 }
