@@ -202,6 +202,9 @@ private fun updatePersistentThreeOutput(contentRoot: HTMLElement, htmlString: St
     return true
 }
 
+/** How far, in screen pixels, a press on a `lines(...)` drawing moves before it pans rather than clicks. */
+private const val PAN_START_PX = 3.0
+
 private fun ensureLinesOutputView(contentRoot: HTMLElement): dynamic {
     val existing = contentRoot.asDynamic().__afieldLinesView
     if (existing != null) {
@@ -365,7 +368,11 @@ private fun ensureLinesOutputView(contentRoot: HTMLElement): dynamic {
         val wasPanning = view.panPointerId != null
         view.panPointerId = null
         viewport.style.cursor = "grab"
-        if (wasPanning && view.panMoved == true) reportView()
+        if (wasPanning && view.panMoved == true) {
+            // The click that ends a pan is not a click on whatever the pointer happens to be over.
+            view.suppressClick = true
+            reportView()
+        }
         view.panMoved = false
     }
 
@@ -472,13 +479,15 @@ private fun ensureLinesOutputView(contentRoot: HTMLElement): dynamic {
             event.stopPropagation()
             null
         } else {
+        // A press only becomes a pan once it moves. Capturing the pointer at once would send the click
+        // that a still press makes to the viewport instead of to the clickable line under it.
         view.panPointerId = event.pointerId
         view.panMoved = false
+        view.suppressClick = false
+        view.panStartX = event.clientX
+        view.panStartY = event.clientY
         view.panLastX = event.clientX
         view.panLastY = event.clientY
-        view.manual = true
-        viewport.style.cursor = "grabbing"
-        viewport.setPointerCapture(event.pointerId)
         event.preventDefault()
         null
         }
@@ -511,14 +520,25 @@ private fun ensureLinesOutputView(contentRoot: HTMLElement): dynamic {
                 viewport.style.cursor = when (h?.kind as? String) { "x" -> "ew-resize"; "y" -> "ns-resize"; "xy" -> "move"; else -> "crosshair" }
             }
             null
+        } else if (event.buttons.toInt() == 0) {
+            // Released somewhere we did not hear about (outside the viewport, before the pan was captured).
+            endPan()
+            null
+        } else if (view.panMoved != true && kotlin.math.hypot(event.clientX - (view.panStartX as Double), event.clientY - (view.panStartY as Double)) < PAN_START_PX) {
+            null
         } else {
+            if (view.panMoved != true) {
+                view.panMoved = true
+                view.manual = true
+                viewport.style.cursor = "grabbing"
+                runCatching { viewport.setPointerCapture(event.pointerId) }
+            }
             val dx = event.clientX - (view.panLastX as Double)
             val dy = event.clientY - (view.panLastY as Double)
             view.panLastX = event.clientX
             view.panLastY = event.clientY
             view.tx = (view.tx as Double) + dx
             view.ty = (view.ty as Double) + dy
-            if (dx != 0.0 || dy != 0.0) view.panMoved = true
             updateTransform()
             null
         }
@@ -540,6 +560,14 @@ private fun ensureLinesOutputView(contentRoot: HTMLElement): dynamic {
         endPan()
         null
     }
+
+    viewport.addEventListener("click", { event ->
+        if (view.suppressClick == true) {
+            view.suppressClick = false
+            event.stopPropagation()
+            event.preventDefault()
+        }
+    }, true)
 
     viewport.ondblclick = {
         val wasManual = view.manual as Boolean
