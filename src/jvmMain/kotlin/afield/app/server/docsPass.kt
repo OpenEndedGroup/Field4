@@ -130,11 +130,18 @@ internal fun docsPassArguments(request: DocsPassAction): List<String>? {
             listOf("pass", "revise", "--jobs", request.jobs.toString(), "--agent", request.agent) +
                 tags.flatMap { listOf("--tag", it) } + request.pages.flatMap { listOf("--page", it) }
         }
+        // The notes the last guard failure reopened, and only those; their briefs carry its output.
+        "revise-again" -> {
+            if (request.jobs !in 1..12 || request.agent !in setOf("claude", "codex")) return null
+            listOf("pass", "revise", "--reopened", "--jobs", request.jobs.toString(), "--agent", request.agent)
+        }
         "stop" -> listOf("pass", "stop")
         "import-drafts" -> listOf("import-drafts")
         "stop-now" -> listOf("pass", "stop", "--now")
         "rebuild" -> if (request.mode in setOf("never", "incremental", "strict")) listOf("pass", "rebuild", "--mode", request.mode) else null
         "commit" -> listOf("pass", "commit")
+        // The guards the pass's diff can trip, on their own; `land` runs them too before it enqueues.
+        "check" -> listOf("pass", "check")
         "land" -> listOf("pass", "land")
         "finish" -> listOf("pass", "finish") + if (request.abandon) listOf("--abandon") else emptyList()
         // `--` before the positional values, so a text that begins with a dash stays text.

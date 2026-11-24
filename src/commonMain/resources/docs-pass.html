@@ -168,10 +168,12 @@
         <div class="row" id="built-links"></div>
         <div class="row">
             <button id="commit" type="button" class="primary">Commit the worktree</button>
-            <button id="land" type="button" class="primary">Enqueue for landing</button>
+            <button id="check" type="button">Check</button>
+            <button id="land" type="button" class="primary">Check and enqueue for landing</button>
         </div>
+        <div id="guard-state"></div>
         <div id="landing-state"></div>
-        <p class="muted">Commit takes seconds: the hooks only report which checks it affects. <em>Enqueue for landing</em> hands the branch to the landing queue (<code>tools/land.py</code>) and returns. The lander merges <code>main</code> in, regenerates the generated files, runs the full checks once and fast-forwards <code>main</code>, or bounces the branch with its reason, shown here. Nothing is pushed.</p>
+        <p class="muted">Commit takes seconds: the hooks only report which checks it affects. <em>Check</em> runs the guards the pass's diff can trip (<code>tools/land.py precheck</code> in the worktree, a few minutes). <em>Check and enqueue</em> runs them first and enqueues only when they pass; the landing queue (<code>tools/land.py</code>) then merges <code>main</code> in, regenerates the generated files, runs the full checks once and fast-forwards <code>main</code>, or bounces the branch with its reason. A failure, here or in a bounce, goes back to the notes whose edit changed the file it names: they reopen with the guard's output, and <em>Revise again</em> sends just those pages back to their agents, which fix the edit or hand the guard off. A page handed off leaves the pass, so the rest can land. Nothing is pushed.</p>
     </section>
 
 </main>
@@ -241,7 +243,12 @@
         if (q.state === "pending") {
             node.innerHTML = `<p class="state-running">Queued as <code>${esc(q.id)}</code>${q.landingNow ? ": landing now" : wt.landerRunning ? ": waiting for the lander" : ": no lander is running yet"}.</p>`;
         } else if (q.state === "bounced") {
-            node.innerHTML = `<div class="notice bad">Bounced (<code>${esc(q.id)}</code>): ${esc(q.reason)}<br><span class="muted">log: <code>${esc(q.log)}</code>. Fix it in the pass worktree, commit, and enqueue again.</span></div>`;
+            const guard = view.status && view.status.pass && view.status.pass.guard;
+            const taken = guard && guard.landId === q.id;
+            const next = taken && (guard.reopened || []).length ? "It went back to the notes behind it (below)."
+                : taken ? "It names no edit a note in this pass made: fix it in the pass worktree, commit, and enqueue again."
+                : "The branch has moved on since; enqueue again to check the new commit.";
+            node.innerHTML = `<div class="notice bad">Bounced (<code>${esc(q.id)}</code>): ${esc(q.reason)}<br><span class="muted">log: <code>${esc(q.log)}</code>. ${esc(next)}</span></div>`;
         } else {
             node.innerHTML = `<p class="state-done">Landed on main as <code>${esc((q.landedAs || "").slice(0, 10))}</code>.</p>`;
         }
@@ -261,6 +268,37 @@
         ].filter(Boolean);
         $("pass-summary").innerHTML = `<p>${bits.join(" · ")}</p>`;
         renderLanding(wt);
+        renderGuard(status);
+    };
+    // The last guard verdict on the pass: passed, failed (with the notes it reopened and Revise
+    // again), or revised (their agents have answered; commit, then check again).
+    const renderGuard = (status) => {
+        const node = $("guard-state"), pass = status.pass, guard = pass && pass.guard, wt = status.worktree || {};
+        if (!guard || wt.landed) { node.innerHTML = ""; return; }
+        const where = guard.source === "lander" ? "the lander" : "the check before landing";
+        const at = guard.atEpochMs ? new Date(guard.atEpochMs).toLocaleString() : "";
+        const stale = guard.head && wt.head && guard.head !== wt.head ? ` <span class="muted">(on <code>${esc(guard.head.slice(0, 10))}</code>; the branch has moved on since)</span>` : "";
+        if (guard.state === "passed") {
+            node.innerHTML = `<p class="state-done">The guards passed on <code>${esc(guard.head.slice(0, 10))}</code> (${esc(at)}).${stale}</p>`;
+            return;
+        }
+        const notes = (status.guardNotes || []).map(n => `<li><code>${esc(n.id.slice(0, 8))}</code> <span class="state-${esc(n.state)}">${esc(n.state)}</span> · ${esc(n.page)} · <code>${esc((n.files || []).join(", "))}</code><br><span class="muted">${esc(n.note)}</span></li>`).join("");
+        const discarded = (guard.discarded || []).length ? `<p>Dropped from the pass, its agent having handed the guard off: <code>${esc(guard.discarded.join(", "))}</code>. Commit, then check again.</p>` : "";
+        if (guard.state === "revised") {
+            node.innerHTML = `<div class="notice">Revised after ${esc(guard.label || "a guard failure")}: every reopened note has an answer.${stale}${discarded}<ul>${notes}</ul><p class="muted">Commit the worktree, then <em>Check and enqueue</em> again.</p></div>`;
+            return;
+        }
+        const open = (status.guardNotes || []).filter(n => n.state === "open").length;
+        const what = (guard.reopened || []).length
+            ? `<p>Reopened ${guard.reopened.length} note(s) whose edit changed <code>${esc((guard.files || []).join(", "))}</code>, each with the guard's output in its thread.</p><ul>${notes}</ul>`
+              + `<div class="row"><button id="revise-again" type="button" class="primary"${open ? "" : " disabled"}>Revise again (${open} note(s))</button></div>`
+            : (guard.files || []).length ? `<p>It names <code>${esc(guard.files.join(", "))}</code>, but no note this pass resolved changed them: fix it in the worktree, commit, and check again.</p>`
+            : `<p>It names no file this pass changed: read the log, fix it in the worktree, commit, and check again.</p>`;
+        node.innerHTML = `<div class="notice bad">${esc(where)} failed: ${esc(guard.label || guard.reason || "")} (${esc(at)}).${stale}${what}${discarded}`
+            + `<details><summary>output</summary><pre class="log">${esc(guard.excerpt || guard.tail || "")}</pre></details>`
+            + `<span class="muted">log: <code>${esc(guard.log || "")}</code></span></div>`;
+        const button = $("revise-again");
+        if (button) button.onclick = () => act("revise-again", { agent: $("agent").value, jobs: Number($("jobs").value) || 4 });
     };
 
     const renderCounts = (status) => {
@@ -451,6 +489,8 @@
         set("commit", !!pass && wt.exists && wt.uncommitted > 0 && !busy && !draining);
         const queued = wt && wt.landing && wt.landing.state === "pending" && wt.landing.sha === wt.head;
         set("land", !!pass && wt.exists && wt.ahead > 0 && wt.uncommitted === 0 && !wt.landed && !queued && !busy && !draining);
+        set("check", !!pass && wt.exists && (wt.ahead > 0 || wt.uncommitted > 0) && !wt.landed && !busy && !draining);
+        if ($("revise-again") && (busy || draining)) $("revise-again").disabled = true;
         set("cancel-job", busy);
         document.querySelectorAll('#changes button[data-act="discard"]').forEach(b => { b.disabled = busy || draining; });
         document.querySelectorAll('#handoffs [data-act="start-session"]').forEach(b => { if (busy) b.disabled = true; });
@@ -485,7 +525,8 @@
     $("stop-now").onclick = async () => await confirmed("Terminate the running agents now? What they already recorded is kept; their pages' other notes stay open.") && act("stop-now");
     $("rebuild").onclick = () => act("rebuild", { mode: $("mode").value });
     $("commit").onclick = async () => await confirmed("Commit everything in the worktree? The message lists every note resolved in this pass.") && act("commit");
-    $("land").onclick = async () => await confirmed("Hand the pass branch to the landing queue? The lander merges main in, checks it and fast-forwards main, or bounces it with a reason. Nothing is pushed.") && act("land");
+    $("check").onclick = () => act("check");
+    $("land").onclick = async () => await confirmed("Check the pass branch, and hand it to the landing queue if the guards pass? The lander merges main in, checks it and fast-forwards main, or bounces it with a reason. Nothing is pushed.") && act("land");
     $("toggle-log").onclick = () => { const d = $("job-detail"); d.hidden = !d.hidden; $("toggle-log").textContent = d.hidden ? "log" : "hide log"; };
     $("cancel-job").onclick = async () => await confirmed("Kill the running job and everything it started?") && act("cancel-job");
 
