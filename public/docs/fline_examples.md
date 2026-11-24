@@ -4572,7 +4572,7 @@ lines(curve, head, middle, w = 420.0, h = 260.0, fitToSize = true)
 | `fun FLine.tightBounds2D(): Rect` | Bounds of what is drawn, hugging the curves. `fast2DBounds()` encloses the control points instead. |
 | `fun FLine.area2D(): Float` | Signed area, exact on curves. Each subpath adds its own; a counter wound the other way subtracts. |
 | `fun FLine.isClockwise2D(): Boolean` | Whether the line winds clockwise on screen, with y pointing down. |
-| `fun FLine.contains2D(point: Vec2, rule: FLineFillRule = FLineFillRule.NonZero): Boolean` | Point-in-shape that follows the curves, with `FLineFillRule.NonZero` or `FLineFillRule.EvenOdd`. Every subpath counts as closed. |
+| `fun FLine.contains2D(point: Vec2, rule: FLineFillRule = <the line's fillRule, else NON_ZERO>): Boolean` | Point-in-shape that follows the curves, under `FLineFillRule.NON_ZERO` or `EVEN_ODD`. With no `rule` it uses the line's own `fillRule`, as every renderer does ([Overlaps and fill rules](afield_four_graphics.md#overlaps-and-fill-rules)). Every subpath counts as closed. |
 | `fun FLine.windingNumber2D(point: Vec2): Int` | The winding number about `point`, following the curves; non-zero is inside. |
 
 </div>
