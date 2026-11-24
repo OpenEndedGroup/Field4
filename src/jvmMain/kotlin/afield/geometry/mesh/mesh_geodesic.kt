@@ -368,10 +368,12 @@ fun spiralFromRings(rings: List<List<Vec3>>): List<Vec3> {
         val total = lengths.last().coerceAtLeast(1e-12)
         for (i in ring.indices) {
             val p = ring[i]
-            if (next == null) { out += p; continue }
+            if (next == null) { if (out.isEmpty() || d2(out.last(), p) > 1e-14f) out += p; continue }
             val q = next[nearest(next, p)]
             val s = (lengths[i] / total).toFloat()
-            out += vec(p.x + s * (q.x - p.x), p.y + s * (q.y - p.y), p.z + s * (q.z - p.z))
+            val blended = vec(p.x + s * (q.x - p.x), p.y + s * (q.y - p.y), p.z + s * (q.z - p.z))
+            // Where one lap ends and the next begins the point repeats; a zero-length segment draws nothing useful.
+            if (out.isEmpty() || d2(out.last(), blended) > 1e-14f) out += blended
         }
         at = out.last()
     }
