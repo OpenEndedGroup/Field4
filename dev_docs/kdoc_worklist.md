@@ -2,7 +2,7 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 25901 of 43221 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 25903 of 43223 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
 **2089 undocumented entry points** (types, top-level functions and values) and 14462 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
@@ -21,7 +21,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Visualizers.kt](../src/jvmMain/kotlin/afield/audio/synth/Visualizers.kt) | Synthesis | sound_paths, visualizers, explainer_sound | 37 | 11 | 5% |
 | [netprograms.kt](../src/jvmMain/kotlin/afield/data/graph/netprograms.kt) | Data | interaction_nets_examples | 33 | 11 | 38% |
 | [outputs.kt](../src/jvmMain/kotlin/afield/ui/output/outputs.kt) | Visualization | visualizers, stereo_video, box_output | 32 | 55 | 41% |
-| [Boxes.kt](../src/jvmMain/kotlin/afield/document/graph/Boxes.kt) | Workspace | ai4_tools, keybindings, keyframer_examples | 24 | 40 | 32% |
+| [Boxes.kt](../src/jvmMain/kotlin/afield/document/graph/Boxes.kt) | Workspace | ai4_tools, keybindings, keyframer_examples | 24 | 40 | 33% |
 | [wfc.kt](../src/jvmMain/kotlin/afield/simulation/automata/wfc.kt) | Data | wfc_examples | 20 | 67 | 29% |
 | [FabricateScene.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/FabricateScene.kt) | Renderers | fabricate_renderer, geometry_from_disk | 19 | 114 | 5% |
 | [FieldGraphTools.kt](../src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt) | AI4 | ai4_tools, ai4_experiments, text_frames | 18 | 96 | 19% |
@@ -744,7 +744,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [RectSLPattern.kt](../src/jvmMain/kotlin/afield/lang/rectsl/RectSLPattern.kt) | Languages | — | 0 | 11 | 52% |
 | [SolidAgreement.kt](../src/jvmMain/kotlin/afield/lang/solidsl/SolidAgreement.kt) | Graphics | — | 0 | 11 | 60% |
 | [TimestralSession.kt](../src/jvmMain/kotlin/afield/math/temporal/TimestralSession.kt) | Math | — | 0 | 11 | 42% |
-| [SnippetSites.kt](../src/jvmMain/kotlin/afield/runtime/bytecode/SnippetSites.kt) | Workspace | — | 0 | 11 | 58% |
+| [SnippetSites.kt](../src/jvmMain/kotlin/afield/runtime/bytecode/SnippetSites.kt) | Workspace | — | 0 | 11 | 60% |
 | [NotationScene.kt](../src/jvmMain/kotlin/afield/ui/notation/NotationScene.kt) | Visualization | — | 0 | 11 | 45% |
 | [AiSessionTree.kt](../src/jvmMain/kotlin/afield/ai/conversation/AiSessionTree.kt) | AI4 | — | 0 | 10 | 62% |
 | [TurnSuspension.kt](../src/jvmMain/kotlin/afield/ai/conversation/TurnSuspension.kt) | AI4 | — | 0 | 10 | 52% |
