@@ -2,6 +2,8 @@
 
 package afield.graphics.scene
 
+import afield.document.workspace.loaderFile
+import afield.runtime.completion.CompletesPath
 import afield.graphics.render.before
 import afield.graphics.render.parameters
 
@@ -638,5 +640,5 @@ object CompressedSplatPly {
  * [CompressedSplatPly] for the format and [CompressedSplatPly.readCompressedSplatPly] for the
  * parameters.
  */
-fun readCompressedSplatPly(path: String, includeSphericalHarmonics: Boolean = false): PlyFloatTable =
-    CompressedSplatPly.readCompressedSplatPly(path, includeSphericalHarmonics)
+fun readCompressedSplatPly(@CompletesPath("*.ply") path: String, includeSphericalHarmonics: Boolean = false): PlyFloatTable =
+    CompressedSplatPly.readCompressedSplatPly(loaderFile(path).path, includeSphericalHarmonics)

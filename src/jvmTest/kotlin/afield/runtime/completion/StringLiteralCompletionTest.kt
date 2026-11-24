@@ -13,9 +13,11 @@ import afield.runtime.kotlin.KotlinVariableInfo
 import java.lang.reflect.Proxy
 import java.nio.file.Files
 import kotlin.reflect.full.memberFunctions
+import kotlin.reflect.jvm.kotlinFunction
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -233,6 +235,14 @@ class StringLiteralCompletionTest {
     }
 
     @Test
+    fun `explicit type arguments sit between the callee and its parenthesis`() {
+        val call = callAt("val r = fromContextWithNameOrNull<Map<String, List<Int>>>(\"|")!!
+        assertEquals("fromContextWithNameOrNull" to 0, call.callee to call.index)
+        assertEquals("box" to "get", callAt("box.get<Renderer?> (\"|")!!.let { it.receiver to it.callee })
+        assertNull(callAt("if (a > (\"|"), "a comparison is not a type argument list")
+    }
+
+    @Test
     fun `an annotated property completes the strings that index it`() {
         val box = boxWithVariables("foo" to StringLiteralCompletionFixtures.Shelf(), "crate" to StringLiteralCompletionFixtures.Crate(mapOf()))
         try {
@@ -277,5 +287,93 @@ class StringLiteralCompletionTest {
         }
         val index = callAt("tools[\"|")!!
         assertEquals(PaintToolNames::class, assertIs<CompletesWith>(StringLiteralCompletion.annotationIn(functions.filter { it.isOperator }, index)).provider)
+    }
+
+    /** Functions named [name] in the file facade [facade], found as completion finds a top-level function. */
+    private fun facadeFunctions(facade: String, name: String) =
+        Class.forName(facade).declaredMethods.filter { it.name == name }.mapNotNull { it.kotlinFunction }.asSequence()
+
+    private fun providerOf(functions: Sequence<kotlin.reflect.KFunction<*>>, source: String): kotlin.reflect.KClass<*> {
+        val call = assertNotNull(callAt(source), "no call site in $source")
+        return assertIs<CompletesWith>(StringLiteralCompletion.annotationIn(functions.filter { it.name == call.callee }, call), source).provider
+    }
+
+    @Test
+    fun `an unqualified call is the box's own member, so display completes its channels`() {
+        val box = boxWithVariables()
+        try {
+            box.output.retainedAreas.put("plot", "<div></div>")
+            box.output.retainedAreas.put("table", "<div></div>")
+            assertEquals(listOf("plot"), box.rows("display(\"pl|\", h)"), "declared on HasOutput, which Box delegates")
+            assertEquals(listOf("plot", "table", "output"), box.rows("display(\"|"))
+            assertEquals(listOf("output"), box.rows("display(channel = \"ou|"))
+        } finally {
+            needsResync.removeAll { (b, _) -> b === box }
+        }
+        val outputs = facadeFunctions("afield.ui.output.OutputsKt", "displayOpen") +
+            facadeFunctions("afield.ui.output.OutputsKt", "displayClose") + facadeFunctions("afield.ui.output.OutputsKt", "displayClear")
+        assertEquals(OutputChannels::class, providerOf(outputs, "displayOpen(\"|"))
+    }
+
+    @Test
+    fun `box names, context variables and document lookups name their providers`() {
+        assertEquals(BoxNames::class, providerOf(facadeFunctions("afield.document.graph.Stdlib_graphKt", "named"), "named(\"|"))
+        assertEquals(ContextVariableNames::class, providerOf(facadeFunctions("afield.document.context.Mesh_contextKt", "fromContextWithNameOrNull"), "fromContextWithNameOrNull<Renderer>(\"|"))
+        assertEquals(afield.document.workspace.FallbackFileNames::class, providerOf(afield.document.workspace.FileManager::class.memberFunctions.asSequence(), "FileManager.removeFile(\"|"))
+        assertEquals(NamedDirectoryNames::class, providerOf(afield.document.workspace.FileManager::class.memberFunctions.asSequence(), "FileManager.remove(\"|"))
+        assertEquals(afield.ui.notation.MarkLabels::class, providerOf(afield.ui.notation.Notation::class.memberFunctions.asSequence(), "notation.named(\"|"))
+        assertEquals(afield.simulation.kratos.SimulationFieldNames::class, providerOf(afield.simulation.kratos.SimulationResult::class.memberFunctions.asSequence(), "result.sample(\"|"))
+    }
+
+    @Test
+    fun `context variable names come from parents, nearest generation first, never the box itself`() {
+        val grandparent = boxWithVariables("palette" to 1, "shared" to 2)
+        val parent = boxWithVariables("shared" to 3, "mesh" to 4)
+        val child = boxWithVariables("own" to 5)
+        try {
+            parent.parents.add(grandparent)
+            child.parents.add(parent)
+            val names = ContextVariableNames.candidates(StringCompletionContext(child, "", "fromContextWithNameOrNull", "name"))
+            assertEquals(listOf("shared", "mesh", "palette"), names)
+        } finally {
+            needsResync.removeAll { (b, _) -> b === grandparent || b === parent || b === child }
+        }
+    }
+
+    @Test
+    fun `a receiver that is an object completes from it`() {
+        val box = boxWithVariables()
+        try {
+            val rows = box.rows("KeyTypeLibrary.named(\"bounce|")!!
+            assertTrue(rows.isNotEmpty() && rows.all { "bounce" in it.lowercase() }, rows.toString())
+        } finally {
+            needsResync.removeAll { (b, _) -> b === box }
+        }
+    }
+
+    @Test
+    fun `file loaders declare the files they read`() {
+        fun maskOf(facade: String, name: String, source: String) =
+            assertIs<CompletesPath>(StringLiteralCompletion.annotationIn(facadeFunctions(facade, name), callAt(source)!!))
+        assertEquals("*.{png,jpg,jpeg,gif,bmp,tif,tiff}", maskOf("afield.media.image.ImagingKt", "imgFromFile", "imgFromFile(\"|").mask)
+        assertEquals("*.npy", maskOf("afield.lang.python.NumpyKt", "npy", "npy(\"|").mask)
+        assertTrue(maskOf("afield.audio.synth.DirtSamplesKt", "dirt", "dirt(\"|").chooseDirectory)
+        val bvh = afield.io.mocap.Bvh.Companion::class.memberFunctions.asSequence()
+        assertEquals("*.bvh", assertIs<CompletesPath>(StringLiteralCompletion.annotationIn(bvh, callAt("Bvh.read(\"|")!!)).mask)
+    }
+
+    @Test
+    fun `loaderFile keeps what loaders always opened and otherwise needs a session`() {
+        val absolute = Files.createTempFile("loader", ".ply").toFile()
+        try {
+            assertEquals(absolute, afield.document.workspace.loaderFile(absolute.path))
+            assertEquals(java.io.File(System.getProperty("user.home"), "x.ply"), afield.document.workspace.loaderFile("~/x.ply"))
+            // build.gradle.kts is in the working directory of a test run, so it is read there, as before.
+            assertEquals(java.io.File("build.gradle.kts"), afield.document.workspace.loaderFile("build.gradle.kts"))
+            // With no session in scope, a name in no directory stays the plain relative path.
+            assertEquals(java.io.File("no-such-dir/x.ply"), afield.document.workspace.loaderFile("no-such-dir/x.ply"))
+        } finally {
+            absolute.delete()
+        }
     }
 }

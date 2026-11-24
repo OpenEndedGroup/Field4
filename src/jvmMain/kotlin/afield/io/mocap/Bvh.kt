@@ -2,6 +2,8 @@
 
 package afield.io.mocap
 
+import afield.document.workspace.loaderFile
+import afield.runtime.completion.CompletesPath
 import afield.geometry.mesh.TriMesh
 import afield.geometry.mesh.tubeMesh
 import afield.geometry.path.FLine
@@ -190,7 +192,7 @@ class Bvh internal constructor(
         }
 
         /** Reads a BVH file by path. */
-        fun read(path: String): Bvh = read(File(path))
+        fun read(@CompletesPath("*.bvh") path: String): Bvh = read(loaderFile(path))
 
         /** Parses BVH text. */
         fun parse(text: String, name: String = ""): Bvh {

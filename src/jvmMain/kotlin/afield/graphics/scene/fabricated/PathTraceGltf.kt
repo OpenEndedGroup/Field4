@@ -1,5 +1,7 @@
 package afield.graphics.scene.fabricated
 
+import afield.document.workspace.loaderFile
+import afield.runtime.completion.CompletesPath
 import afield.graphics.scene.GltfSkinning
 import afield.graphics.scene.GltfSupport
 import afield.math.linalg.Matrix4f
@@ -66,10 +68,15 @@ data class PathTraceGltfImport(val triangleCount: Int, val materialIds: Map<Stri
  * [material] can replace or amend imported PBR parameters, for example to choose solid glass.
  * An import failure leaves this scene unchanged.
  */
-fun PathTraceScene.importGltf(path: String, transform: Matrix4f = Matrix4f(),
+fun PathTraceScene.importGltf(@CompletesPath("*.{gltf,glb}") path: String, transform: Matrix4f = Matrix4f(),
     material: (name: String, value: PathTraceMaterial) -> PathTraceMaterial = { _, value -> value },
     warning: (String) -> Unit = { println("glTF: $it") },
-    pose: GltfSkinPose? = null): PathTraceGltfImport {
+    pose: GltfSkinPose? = null): PathTraceGltfImport = importResolvedGltf(loaderFile(path).path, transform, material, warning, pose)
+
+private fun PathTraceScene.importResolvedGltf(path: String, transform: Matrix4f,
+    material: (name: String, value: PathTraceMaterial) -> PathTraceMaterial,
+    warning: (String) -> Unit,
+    pose: GltfSkinPose?): PathTraceGltfImport {
     require(Path.of(path).fileName.toString().substringAfterLast('.').lowercase() in setOf("gltf", "glb")) {
         "Expected a glTF 2.0 .gltf or .glb file"
     }

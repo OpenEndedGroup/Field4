@@ -1,5 +1,6 @@
 package afield.ui.slides
 
+import afield.runtime.completion.CompletesPath
 import afield.app.protocol.AudienceContent
 import afield.app.server.ReadOnlyDocuments
 import afield.app.server.documents
@@ -119,7 +120,7 @@ class PresentationSlideFiles(private val documentDirectory: File) {
 }
 
 /** Insert editable Markdown slides at this point in the talk. Refresh reloads existing slide bodies from disk. */
-fun SlideShowBuilder.slides(path: String) = slides(path.file)
+fun SlideShowBuilder.slides(@CompletesPath("*.md") path: String) = slides(path.file)
 
 /** Load a specific slide file; relative media still resolves in the presentation document's files directory. */
 fun SlideShowBuilder.slides(file: File) {

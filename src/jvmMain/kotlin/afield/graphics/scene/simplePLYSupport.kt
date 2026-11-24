@@ -2,6 +2,8 @@
 
 package afield.graphics.scene
 
+import afield.document.workspace.loaderFile
+import afield.runtime.completion.CompletesPath
 import afield.graphics.render.before
 import afield.graphics.render.main
 
@@ -595,8 +597,8 @@ object PlySupport {
     // PLY loading
     // ------------------------------------------------------------------------
 
-    fun loadPly(path: String): PlyModel {
-        val file = File(path)
+    fun loadPly(@CompletesPath("*.ply") path: String): PlyModel {
+        val file = loaderFile(path)
         if (!file.exists()) {
             error("PLY file not found: $path")
         }

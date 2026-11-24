@@ -1,5 +1,8 @@
 package afield.ui.notation
 
+import afield.runtime.completion.StringCompletionContext
+import afield.runtime.completion.StringCompletions
+import afield.runtime.completion.CompletesWith
 import afield.data.table.div
 import afield.data.table.minus
 import afield.data.table.plus
@@ -84,6 +87,12 @@ import kotlin.math.pow
  * The box is the implicit receiver, so this is just `notation`. See `dev_docs/NOTATION.md`.
  */
 val Box.notation: Notation get() = Notation(this)
+
+/** Completion for `notation.named("…")`: the labels of the marks in the drawing layer. */
+internal object MarkLabels : StringCompletions {
+    override fun candidates(context: StringCompletionContext): List<String> =
+        ((context.receiver as? Notation) ?: context.box.notation).marks.mapNotNull { it.label?.trim()?.takeIf(String::isNotEmpty) }.distinct()
+}
 
 /** Something a mark can be referred to by: a [Mark] read from the scene, or a [MarkRef] just built. */
 interface MarkHandle {
@@ -274,9 +283,9 @@ class Notation internal constructor(private val box: Box) {
     operator fun get(id: String): Mark? = scene[id]?.takeIf { !it.isDeletedElement() }?.let { Mark(it, this) }
 
     /** The first mark labelled [name] — a code-given name, its own text, or the text bound to it. */
-    fun named(name: String): Mark? = marks.firstOrNull { it.label?.trim().equals(name.trim(), ignoreCase = true) }
+    fun named(@CompletesWith(MarkLabels::class) name: String): Mark? = marks.firstOrNull { it.label?.trim().equals(name.trim(), ignoreCase = true) }
 
-    fun allNamed(name: String): List<Mark> = marks.filter { it.label?.trim().equals(name.trim(), ignoreCase = true) }
+    fun allNamed(@CompletesWith(MarkLabels::class) name: String): List<Mark> = marks.filter { it.label?.trim().equals(name.trim(), ignoreCase = true) }
 
     /** Marks whose centre lies on [box]. */
     fun over(box: Box): List<Mark> = marks.filter { m -> m.center.let { box.frame.containsPoint(it.x.toDouble(), it.y.toDouble()) } }

@@ -1,6 +1,9 @@
 @file:afield.runtime.completion.CompletionCategory("Simulation")
 package afield.simulation.kratos
 
+import afield.runtime.completion.StringCompletionContext
+import afield.runtime.completion.StringCompletions
+import afield.runtime.completion.CompletesWith
 import afield.geometry.path.FLine
 import afield.geometry.path.polylineFrom
 import afield.geometry.mesh.TriMesh
@@ -38,6 +41,12 @@ import kotlin.math.sqrt
  * sampling is `null` everywhere and [sliceMesh] refuses outright. [boundaryMesh] and [deformedMesh]
  * are the views to draw there.
  */
+
+/** Completion for `result.named("…")` and `result.sample("…", …)`: the fields this result carries. */
+internal object SimulationFieldNames : StringCompletions {
+    override fun candidates(context: StringCompletionContext): List<String> =
+        (context.receiver as? SimulationResult)?.fieldNames.orEmpty()
+}
 
 /**
  * The arrays decoded from one result frame, and the sample and mesh views built over them.
@@ -99,11 +108,11 @@ class SimulationResult internal constructor(
             ?: error("This result carries no scalar field to draw: $fieldNames")
 
     /** Raw values for [name], `components` per node. Throws naming what is present. */
-    fun named(name: String): DoubleArray = nodal[name]
+    fun named(@CompletesWith(SimulationFieldNames::class) name: String): DoubleArray = nodal[name]
         ?: error("No field '$name' in this result; it carries $fieldNames")
 
     /** How many numbers each node has for [name]. */
-    fun componentsOf(name: String): Int = components[name]
+    fun componentsOf(@CompletesWith(SimulationFieldNames::class) name: String): Int = components[name]
         ?: error("No field '$name' in this result; it carries $fieldNames")
 
     /** Nodal temperature, for `thermal.stationary`. */
@@ -131,7 +140,7 @@ class SimulationResult internal constructor(
     fun sample(x: Double, y: Double, z: Double): Double? = sample(primaryField, x, y, z)
 
     /** A named scalar field at a point, or `null` outside the domain or the solved region. */
-    fun sample(name: String, x: Double, y: Double, z: Double): Double? {
+    fun sample(@CompletesWith(SimulationFieldNames::class) name: String, x: Double, y: Double, z: Double): Double? {
         require(componentsOf(name) == 1) { "$name has ${componentsOf(name)} components; use sampleVector" }
         val values = named(name)
         return weights(x, y, z)?.let { (ids, w) ->

@@ -1,5 +1,7 @@
 package afield.media.video
 
+import afield.document.workspace.loaderFile
+import afield.runtime.completion.CompletesPath
 import afield.media.image.Img
 import afield.tools.docs.FFMPEG
 import java.io.DataInputStream
@@ -70,9 +72,9 @@ fun videoFrames(
 }
 
 /** The (width, height) frames come out at for [width] (0 = native), via ffprobe beside [FFMPEG]. */
-fun videoSize(path: String, width: Int = 0): Pair<Int, Int> {
+fun videoSize(@CompletesPath("*.{mp4,mov,m4v,mkv,webm,avi}") path: String, width: Int = 0): Pair<Int, Int> {
     val probe = File(FFMPEG).resolveSibling("ffprobe").takeIf { it.canExecute() }?.path ?: "ffprobe"
-    val out = ProcessBuilder(probe, "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height", "-of", "csv=p=0", path)
+    val out = ProcessBuilder(probe, "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height", "-of", "csv=p=0", loaderFile(path).path)
         .redirectErrorStream(true).start().let { p -> p.inputStream.bufferedReader().readText().also { p.waitFor() } }
     val (nw, nh) = out.trim().lines().first().split(",").map { it.trim().toInt() }
     if (width <= 0) return nw to nh

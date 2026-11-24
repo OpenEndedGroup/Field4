@@ -1,6 +1,8 @@
 @file:afield.runtime.completion.CompletionCategory("Audio")
 package afield.audio.synth
 
+import afield.document.workspace.loaderFile
+import afield.runtime.completion.CompletesPath
 import afield.data.query.graph.LiveGraphEdge
 import afield.data.query.graph.LiveGraphInspectable
 import afield.document.graph.Box
@@ -40,8 +42,8 @@ var Box.dirtSamples by Inheritance<DirtSampleLibrary>()
 /**
  * Loads or reuses a shared Dirt sample library and stores it on the current root box.
  */
-fun dirt(path: String, preload: Boolean = true): DirtSampleLibrary {
-    val library = DirtSampleLibrary.shared(path, preload = preload)
+fun dirt(@CompletesPath(chooseDirectory = true) path: String, preload: Boolean = true): DirtSampleLibrary {
+    val library = DirtSampleLibrary.shared(loaderFile(path).path, preload = preload)
     Box.context.get()?.root?.dirtSamples = library
     return library
 }

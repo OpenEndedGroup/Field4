@@ -1,6 +1,8 @@
 package afield.document.context
 
 import afield.document.graph.Box
+import afield.runtime.completion.CompletesWith
+import afield.runtime.completion.ContextVariableNames
 import afield.document.context.ContextResolution
 import afield.graphics.vulkan.Renderer
 import afield.graphics.vulkan.buffers.MissingRefException
@@ -89,7 +91,7 @@ inline fun <reified A> fromContext(defaultValue: A? = null, includeLocalVariable
  *     val agent_context_value = fromContextWithNameOrNull<String>("agent_context_value")
  */
 inline fun <reified A> fromContextWithNameOrNull(
-    name: String,
+    @CompletesWith(ContextVariableNames::class) name: String,
     defaultValue: A? = null,
     includeLocalVariables: Boolean = false,
 ): A? {
