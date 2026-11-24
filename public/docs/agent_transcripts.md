@@ -173,6 +173,8 @@ the non-zero and the even-odd rule, set as the FLine's own `fillRule`; a second 
 opaque and counts the pixels that differ from Gezira's coverage. See
 [Overlapping regions and the fill rule](paint_canvas.md#overlapping-regions-and-the-fill-rule).
 
+![Two blue paintings of two overlapping squares: under non-zero the overlap is painted solid, under even-odd it is left white](assets/paint_canvas/fill_rule.png)
+
 ```diffstatic {data-lang=text}
 macro write paint_fill_rule --file dev_docs/agents/transcripts/paint_fill_rule.yaml
 macro run paint_fill_rule
