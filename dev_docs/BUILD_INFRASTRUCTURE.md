@@ -231,6 +231,16 @@ when a path selects a lander guard but not its precheck check. Demo paths select
 which the lander does not run) and `python-tools` (where `test_demo_build_scripts.py`'s
 `CORPUS` lives).
 
+Docs Markdown selects the `citationGates` page contracts the lander runs on every docs edit
+(`docs-contracts`: `DocsFenceTreatmentTest`, `PersonalBoundaryTest`,
+`ImpossibilityClaimContractTest`), and a docs page or an edited or deleted `src/` file selects
+`CitationContractTest` (`citation-contract`). A published page outside `reference/` also runs
+`tools/docs_voice/check_anchors.py`, `check_links.py` and `tools/test_docs_keycaps.py`
+(`docs-links`). These came from replaying the 40 most recent `Lander fixup` commits on 2026-11-24:
+the selector picked the failing guard for 27 of the 41 failures they name before, and 40 after.
+The fixups for unformatted transcript YAML, `checkBoxIdioms` and a missing transcript index entry
+were already selected; those branches had not been prechecked.
+
 **Track record.** 256 `Land` commits on `main` (232 first-parent), all but one since the queue
 went in on 2026-10-03. The queue directory holds 238 landed and 67 bounced items. Median landing
 time is 9.2 minutes (p90 34 minutes); 144 items landed in a batch of one and 24 in a batch of
