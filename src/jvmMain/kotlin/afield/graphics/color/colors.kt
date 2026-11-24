@@ -759,3 +759,173 @@ fun paletteForBackground(
         )
     }
 }
+
+/**
+ * WCAG 2 contrast ratio between two sRGB colours, from 1 (identical luminance) to 21 (black on
+ * white). Alpha is ignored. 3 is the large-text threshold, 4.5 body text, 7 the strict one.
+ */
+fun wcagContrast(a: Vec4, b: Vec4): Float = contrastRatio(a, b)
+
+/** WCAG relative luminance of an sRGB colour, 0 for black and 1 for white. Alpha is ignored. */
+fun wcagLuminance(color: Vec4): Float = relativeLuminanceSrgb(color)
+
+/**
+ * A colour from OKLCH: perceived lightness [l] in 0..1, chroma [c] (about 0..0.37 inside sRGB) and
+ * hue [h] in degrees (or as a fraction of a turn, as elsewhere here). Out-of-gamut values are
+ * clipped per channel, which is what a browser drawing `oklch(...)` on an sRGB screen does.
+ */
+fun oklch(l: Number, c: Number, h: Number, a: Number = 1f): Vec4 {
+    val hr = hue01(h) * 2f * PI_F
+    val cf = max(0f, n(c))
+    return linearToVec4(oklabToLinearSrgb(Oklab(clamp01(n(l)), cf * cos(hr), cf * sin(hr))), clamp01(n(a)))
+}
+
+private data class Lch(val l: Float, val c: Float, val hDeg: Float)
+
+private fun toLch(color: Vec4): Lch {
+    val lab = linearSrgbToOklab(
+        LinearRgb(srgbTransferInv(clamp01(color.x)), srgbTransferInv(clamp01(color.y)), srgbTransferInv(clamp01(color.z)))
+    )
+    val c = sqrt(lab.a * lab.a + lab.b * lab.b)
+    var h = atan2(lab.b, lab.a) * 180f / PI_F
+    if (h < 0f) h += 360f
+    return Lch(lab.l, c, h)
+}
+
+private fun lchLinear(l: Float, c: Float, hDeg: Float): LinearRgb {
+    val hr = hDeg * PI_F / 180f
+    return oklabToLinearSrgb(Oklab(l, c * cos(hr), c * sin(hr)))
+}
+
+private fun inGamut(rgb: LinearRgb): Boolean {
+    val e = 1e-5f
+    return rgb.r >= -e && rgb.r <= 1f + e && rgb.g >= -e && rgb.g <= 1f + e && rgb.b >= -e && rgb.b <= 1f + e
+}
+
+/** OKLCH at lightness [l] and hue [hDeg] with the chroma lowered (never raised) until it fits sRGB. */
+private fun gamutMappedLch(l: Float, c: Float, hDeg: Float, alpha: Float): Vec4 {
+    if (inGamut(lchLinear(l, c, hDeg))) return linearToVec4(lchLinear(l, c, hDeg), alpha)
+    var lo = 0f
+    var hi = c
+    repeat(24) {
+        val mid = (lo + hi) * 0.5f
+        if (inGamut(lchLinear(l, mid, hDeg))) lo = mid else hi = mid
+    }
+    return linearToVec4(lchLinear(l, lo, hDeg), alpha)
+}
+
+/** Step names of a [contrastScale], 100 (closest to the background) to 1000 (furthest). */
+val contrastScaleSteps: List<Int> = (1..10).map { it * 100 }
+
+/** Per-step WCAG contrast targets against white, from TaishoDS's one-colour palette method. */
+val contrastTargetsLight: List<Float> = listOf(1.08f, 1.22f, 1.5f, 2.1f, 3.6f, 6f, 8.5f, 12f, 16f, 19f)
+
+/**
+ * Per-step contrast targets against a near-black background. Not light mode flipped: the low steps
+ * keep the same small separations from the ground, but the mid steps sit a little higher (dark
+ * grounds compress perceived contrast) and the top is capped below the ~19.8 that `#0a0a0a`
+ * allows against white. The 500/600 boundary (√(3.8·5.5) ≈ 4.57) stays above 4.5, so whatever
+ * lands on 600 is text-safe.
+ */
+val contrastTargetsDark: List<Float> = listOf(1.08f, 1.25f, 1.6f, 2.3f, 3.8f, 5.5f, 8f, 11f, 14.5f, 17.5f)
+
+/**
+ * A ten-step colour ramp built by [contrastScale].
+ *
+ * [colors] and [contrasts] run from step 100 to step 1000; [seedStep] is the step that holds the
+ * seed colour unchanged. [textOn] gives, per step, whichever of [darkText] and [lightText] reads
+ * better on that step's colour.
+ */
+data class ContrastScale(
+    val seed: Vec4,
+    val background: Vec4,
+    val dark: Boolean,
+    val targets: List<Float>,
+    val colors: List<Vec4>,
+    val contrasts: List<Float>,
+    val seedStep: Int,
+    val textOn: List<Vec4>,
+) {
+    /** The colour at a step name (100, 200, ... 1000). */
+    operator fun get(step: Int): Vec4 {
+        val i = contrastScaleSteps.indexOf(step)
+        require(i >= 0) { "step must be one of $contrastScaleSteps, got $step" }
+        return colors[i]
+    }
+
+    /** WCAG contrast of a step against [background]. */
+    fun contrastAt(step: Int): Float = contrasts[contrastScaleSteps.indexOf(step).also { require(it >= 0) { "bad step $step" } }]
+}
+
+/**
+ * A ten-step accessible ramp from one colour, each step at a set WCAG contrast against [background].
+ *
+ * After TaishoDS's method (taisho.design, MIT). The seed's own contrast against the background picks
+ * its step — the step whose target is nearest on a log scale — and the seed sits there unchanged.
+ * Every other step keeps the seed's OKLCH hue and searches OKLCH lightness until its contrast hits
+ * that step's target; chroma is capped at the seed's, eased off toward both ends of the ramp, and
+ * lowered further where sRGB cannot show it. Yellows (OKLCH hue roughly 65°–125°) rotate toward
+ * orange as they darken and toward lemon as they lighten, as hand-made yellow ramps do; otherwise
+ * dark yellow is olive.
+ *
+ * [targets] defaults to [contrastTargetsLight] on a light background and [contrastTargetsDark] on a
+ * dark one (luminance below 0.18). Steps 600 and up clear 4.5:1 against the background, so they are
+ * usable as text; 100–300 are surfaces and borders.
+ *
+ * This is the forward version of what [paletteForBackground] does after the fact: that function
+ * starts from fixed lightness and repairs entries that fail, this one places every step on the
+ * contrast it should have.
+ */
+fun contrastScale(
+    seed: Vec4,
+    background: Vec4 = Vec4(1f, 1f, 1f, 1f),
+    targets: List<Number>? = null,
+    darkText: Vec4 = Vec4(0.04f, 0.04f, 0.04f, 1f),
+    lightText: Vec4 = Vec4(1f, 1f, 1f, 1f),
+): ContrastScale {
+    val bgY = relativeLuminanceSrgb(background)
+    val dark = bgY < 0.18f
+    val t = targets?.map { max(1f, n(it)) } ?: if (dark) contrastTargetsDark else contrastTargetsLight
+    require(t.size == 10) { "targets must have 10 entries (steps 100..1000), got ${t.size}" }
+
+    val alpha = clamp01(seed.w)
+    val seedLch = toLch(seed)
+    val seedContrast = contrastRatio(seed, background)
+    val seedIndex = t.indices.minByOrNull { abs(kotlin.math.ln(seedContrast / t[it])) }!!
+
+    val yellowWeight = clamp01(1f - abs(seedLch.hDeg - 95f) / 30f) * clamp01(seedLch.c / 0.06f)
+
+    fun stepColor(i: Int): Vec4 {
+        if (i == seedIndex) return seed
+        val target = t[i]
+        // luminance we want: further from the background by `target`
+        val yTarget = if (dark) target * (bgY + 0.05f) - 0.05f else (bgY + 0.05f) / target - 0.05f
+        val ease = 1f - 0.6f * (abs(i - 4.5f) / 4.5f).pow(2f)
+        val c = seedLch.c * ease
+        fun at(l: Float): Vec4 {
+            val h = seedLch.hDeg + yellowWeight * 70f * (l - seedLch.l)
+            return gamutMappedLch(l, c, (h + 360f) % 360f, alpha)
+        }
+        if (yTarget <= 0f) return at(0f)
+        if (yTarget >= 1f) return at(1f)
+        var lo = 0f
+        var hi = 1f
+        repeat(30) {
+            val mid = (lo + hi) * 0.5f
+            if (relativeLuminanceSrgb(at(mid)) < yTarget) lo = mid else hi = mid
+        }
+        return at((lo + hi) * 0.5f)
+    }
+
+    val colors = t.indices.map { stepColor(it) }
+    return ContrastScale(
+        seed = seed,
+        background = background,
+        dark = dark,
+        targets = t,
+        colors = colors,
+        contrasts = colors.map { contrastRatio(it, background) },
+        seedStep = contrastScaleSteps[seedIndex],
+        textOn = colors.map { if (contrastRatio(it, darkText) >= contrastRatio(it, lightText)) darkText else lightText },
+    )
+}
