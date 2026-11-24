@@ -18,10 +18,11 @@ its output, or use **Kill** in the header to end it.
 Pass `command` to run something other than your shell. The first word is found on your `PATH` and
 in the usual install places (`~/.local/bin`, `/opt/homebrew/bin`, `/usr/local/bin`), so it works
 in a Field started from the Dock as well. Give each terminal its own channel name and a box can
-show several. This one runs `top`:
+show several. This one runs [`btop`](https://github.com/aristocratos/btop), a system monitor
+(`brew install btop`; `top` works the same way if you do not have it):
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/terminal/top.png" capture="box" wait="4" padding="16" timeout="180" embed=true name="terminal-top" w="560" h="200" alt="A Field box with an open output panel titled 'top' holding a black terminal running top: the summary lines of processes, load and memory at the top, then a table of processes sorted by CPU use."}
-terminal("top", command = ["top", "-o", "cpu"], height = 360)
+```diffstatic_runner {data-lang=kotlin screenshot="assets/terminal/btop.png" capture="box" wait="4" padding="16" timeout="180" embed=true name="terminal-btop" w="560" h="200" alt="A Field box with an open output panel titled 'btop' holding a terminal running btop: boxed panes of per-core CPU graphs, memory and disk use, network traffic, and a table of processes sorted by CPU use."}
+terminal("btop", command = ["btop"], height = 420)
 ```
 
 A second call with another channel name gives the box a second terminal:
@@ -41,7 +42,7 @@ the document has none yet. `width` and `height` are the panel's size in pixels.
 
 ## Typing into it from code
 
-`terminal()` returns a `FieldTerminal`. Its `send(line)` types a line and a return, and
+`terminal()` returns a [`FieldTerminal`](reference/visualization.md#terminaloutput-kt-fieldterminal). Its `send(line)` types a line and a return, and
 `write(text)` types text as it is:
 
 ```diffstatic {data-lang=kotlin}
@@ -107,5 +108,6 @@ started.
     At most four terminals run at once across Field, including any that Field's own pages have
     opened. A fifth `terminal()` throws; kill one first.
 
-See also: [Box Output](box_output.md) for channels and panels, and
+Every parameter of `terminal()` and every member of `FieldTerminal` is in the reference, under
+[terminalOutput.kt](reference/visualization.md#terminaloutput-kt). See also: [Box Output](box_output.md) for channels and panels, and
 [Output Panel Sizing](output_panel_sizing.md) for how a panel takes its size.

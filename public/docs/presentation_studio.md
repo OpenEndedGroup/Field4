@@ -31,18 +31,17 @@ The presenter has a scrollable outline, with collapsible sections and numbered s
 
 ```diffstatic {data-lang=kotlin}
 presentation(title = "A lesson about motion") {
-        section("Opening") {
-            step("The question") { audienceMarkdown("# What makes things move?") }
-        }
-        section("Experiments") {
-            section("Waves") {
-                step("Predict") { audienceMarkdown("# What happens at twice the frequency?") }
-                step("Try it") { audienceDocument("wave-study") }
-            }
-            step("Discuss") { audienceMarkdown("# What changed?") }
-        }
+    section("Opening") {
+        step("The question") { audienceMarkdown("# What makes things move?") }
     }
-    .present()
+    section("Experiments") {
+        section("Waves") {
+            step("Predict") { audienceMarkdown("# What happens at twice the frequency?") }
+            step("Try it") { audienceDocument("wave-study") }
+        }
+        step("Discuss") { audienceMarkdown("# What changed?") }
+    }
+}.present()
 ```
 
 `audienceDocument("wave-study")` puts the live Field document named `wave-study` on the audience display; [Bring the working material on screen](#bring-the-working-material-on-screen) covers its macros and guides.
@@ -77,26 +76,25 @@ Run this in a box to open a two-step talk:
 import kotlinx.html.*
 
 presentation(title = "A lesson about motion") {
-        step("Welcome") {
-            audience {
-                h1 { +"Working with motion" }
-                p { +"Change the code while the audience watches." }
-            }
-            markdownNote("Begin with the question. [[next]]")
+    step("Welcome") {
+        audience {
+            h1 { +"Working with motion" }
+            p { +"Change the code while the audience watches." }
         }
-        step("Try it") {
-            audience {
-                h1 { +"What changes?" }
-                ul {
-                    for (word in ["Position", "Speed", "Direction"]) {
-                        li { +word }
-                    }
+        markdownNote("Begin with the question. [[next]]")
+    }
+    step("Try it") {
+        audience {
+            h1 { +"What changes?" }
+            ul {
+                for (word in ["Position", "Speed", "Direction"]) {
+                    li { +word }
                 }
             }
-            markdownNote("Ask for a prediction. [[back]] [[finish]]")
         }
+        markdownNote("Ask for a prediction. [[back]] [[finish]]")
     }
-    .present()
+}.present()
 ```
 
 The audience has a black background, Iosevka type and a 1920 × 1080 layout scaled to fit its window. Standard HTML tags and CSS control the layout. The `columns` and `muted` classes provide a simple starting layout. Audience fragments support HTML and CSS; use a webpage step for a full page with scripts. Use `audienceMarkdown("# Heading\nSome text")` for a Markdown slide, or `audienceHtml(fragment)` for existing HTML.
@@ -174,7 +172,7 @@ Image layouts and credits use them too. Images keep their original colours.
 
 ### Lecture: images, banners and airy lists
 
-**Lecture** follows a quiet teaching-slide layout: an ink-blue background, warm Iosevka lettering,
+**Lecture** follows a quiet teaching-slide layout, one that will be familiar to anybody who has sat in Marc's class over the last decade: an ink-blue background, warm Iosevka lettering,
 a fine inset frame and small, right-aligned image credits. It is one [editable CSS file](assets/presentation_studio/lecture.css).
 Use `stylesheet("themes/lecture.css")` on a slide, or copy it into **presentation.css** for a whole talk.
 The standard `fullScreenImage` and `imageBeside` helpers pick up the image layouts automatically.
@@ -202,63 +200,62 @@ your own. Each image is referenced from `files/`, so it can be shared by many sl
 import kotlinx.html.*
 
 presentation(title = "Lecture layouts", transitionMs = 450) {
-        step("A large image") {
-            audience {
-                stylesheet("themes/lecture.css")
-                fullScreenImage(
-                    "examples/lecture-comparison.svg",
-                    alt = "Two editable line studies: a regular field and a field with interruptions",
-                    citation = "Field · editable SVG line studies · examples/lecture-comparison.svg",
-                )
+    step("A large image") {
+        audience {
+            stylesheet("themes/lecture.css")
+            fullScreenImage(
+                "examples/lecture-comparison.svg",
+                alt = "Two editable line studies: a regular field and a field with interruptions",
+                citation = "Field · editable SVG line studies · examples/lecture-comparison.svg",
+            )
+        }
+    }
+    step("A figure and some text") {
+        audience {
+            stylesheet("themes/lecture.css")
+            imageBeside(
+                "examples/lecture-lines.svg",
+                alt = "A square field of short diagonal lines, with a few intentional gaps",
+                citation = "Field · editable line study · examples/lecture-lines.svg",
+            ) {
+                h2 { +"A rule with room for interruption" }
+                p { +"A small omission changes the rhythm of the whole field." }
+                p(classes = "muted") { +"Make a prediction. Change the rule. Look again." }
             }
         }
-        step("A figure and some text") {
-            audience {
-                stylesheet("themes/lecture.css")
-                imageBeside(
-                    "examples/lecture-lines.svg",
-                    alt = "A square field of short diagonal lines, with a few intentional gaps",
-                    citation = "Field · editable line study · examples/lecture-lines.svg",
-                ) {
-                    h2 { +"A rule with room for interruption" }
-                    p { +"A small omission changes the rhythm of the whole field." }
-                    p(classes = "muted") { +"Make a prediction. Change the rule. Look again." }
-                }
+    }
+    step("Mapping") {
+        audience {
+            stylesheet("themes/lecture.css")
+            div(classes = "lecture-banner") {
+                h1 { +"Mapping" }
+                p(classes = "lecture-tagline") { +"New physics" }
             }
         }
-        step("Mapping") {
-            audience {
-                stylesheet("themes/lecture.css")
-                div(classes = "lecture-banner") {
-                    h1 { +"Mapping" }
-                    p(classes = "lecture-tagline") { +"New physics" }
-                }
-            }
-        }
-        step("Media art and design") {
-            audience {
-                stylesheet("themes/lecture.css")
-                div(classes = "lecture-list") {
-                    h1 { +"Media art and design = everything else" }
-                    ul {
-                        for (topic in
-                            [
-                                "Net art",
-                                "Installation art",
-                                "VFX",
-                                "Experimental film",
-                                "Computer games",
-                                "Odd music",
-                                "Emerging and dying technologies",
-                            ]) {
-                            li { +topic }
-                        }
+    }
+    step("Media art and design") {
+        audience {
+            stylesheet("themes/lecture.css")
+            div(classes = "lecture-list") {
+                h1 { +"Media art and design = everything else" }
+                ul {
+                    for (topic in
+                        [
+                            "Net art",
+                            "Installation art",
+                            "VFX",
+                            "Experimental film",
+                            "Computer games",
+                            "Odd music",
+                            "Emerging and dying technologies",
+                        ]) {
+                        li { +topic }
                     }
                 }
             }
         }
     }
-    .present()
+}.present()
 ```
 
 ### Explicit fades and layered builds
@@ -306,8 +303,7 @@ presentation {
             fadeIn { h1 { +"What would you change?" } }
         }
     }
-}
-    .present()
+}.present()
 ```
 
 The image remains one shared file. `durationMs` accepts 0–10000 and the optional `delayMs`
@@ -341,9 +337,8 @@ The file can also be edited as JSON in Field. To start a content-only talk aroun
 
 ```diffstatic {data-lang=kotlin}
 presentation(title = "Our lesson") {
-        slides("talk.slides.json")
-    }
-    .present()
+    slides("talk.slides.json")
+}.present()
 ```
 
 ## Reveal, experiment and reset
@@ -354,17 +349,16 @@ replace the audience content, select code, and declare an `onEnter` action:
 
 ```diffstatic {data-lang=kotlin}
 presentation(title = "A prediction") {
-        step("What changes?", id = "prediction") {
-            audienceMarkdown("# Twice the frequency?\nMake a prediction.")
-            cue("Explain") {
-                audienceMarkdown("# Half the wavelength.\nAssume the propagation speed stays constant.")
-            }
-            cue("Try it") {
-                audienceDocument("wave-study", interactiveGuide = false)
-            }
+    step("What changes?", id = "prediction") {
+        audienceMarkdown("# Twice the frequency?\nMake a prediction.")
+        cue("Explain") {
+            audienceMarkdown("# Half the wavelength.\nAssume the propagation speed stays constant.")
+        }
+        cue("Try it") {
+            audienceDocument("wave-study", interactiveGuide = false)
         }
     }
-    .present()
+}.present()
 ```
 
 A cue action runs once on forward entry in this built talk. Back, Refresh and revisiting that cue do
@@ -386,8 +380,7 @@ presentation {
             // Run the experiment's setup here if it needs to recreate its outputs.
         }
     }
-}
-    .present()
+}.present()
 ```
 
 `LessonCheckpoint` captures only the named boxes' local `code` text by default; pass
@@ -409,20 +402,19 @@ A step can show a webpage, YouTube player or existing Field document instead of 
 
 ```diffstatic {data-lang=kotlin}
 presentation(title = "Working examples", transitionMs = 450) {
-        step("Website") {
-            audienceWebpage("https://example.org/")
-            markdownNote("Interact with the page directly. [[next]]")
-        }
-        step("Video") {
-            audienceYouTube("M7lc1UVf-VE")
-            markdownNote("Replace this with a video for the lesson. [[back]] [[next]]")
-        }
-        step("Live document") {
-            audienceDocument("my-example", macro = "reset-example")
-            markdownNote("Run the saved macro when ready. [[back]] [[finish]]")
-        }
+    step("Website") {
+        audienceWebpage("https://example.org/")
+        markdownNote("Interact with the page directly. [[next]]")
     }
-    .present()
+    step("Video") {
+        audienceYouTube("M7lc1UVf-VE")
+        markdownNote("Replace this with a video for the lesson. [[back]] [[next]]")
+    }
+    step("Live document") {
+        audienceDocument("my-example", macro = "reset-example")
+        markdownNote("Run the saved macro when ready. [[back]] [[finish]]")
+    }
+}.present()
 ```
 
 Replace `my-example` with a document that exists in the running workspace, and `reset-example` with a saved macro in that document. Field checks that the document exists before opening it. A typo cannot silently create a new document.
@@ -519,22 +511,21 @@ a cue can move it, here gliding up an octave over a second and a half:
 
 ```diffstatic {data-lang=kotlin}
 presentation(title = "A sine wave and its pitch") {
-        step("Twice as often", id = "octave") {
-            audience {
-                figureBeside("sine") {
-                    +"""
-                        ## Twice as often
+    step("Twice as often", id = "octave") {
+        audience {
+            figureBeside("sine") {
+                +"""
+                    ## Twice as often
 
-                        220 Hz is the A below middle C. Doubling the frequency fits
-                        twice as many swings in, and we hear the same note an octave up.""".md
-                }
+                    220 Hz is the A below middle C. Doubling the frequency fits
+                    twice as many swings in, and we hear the same note an octave up.""".md
             }
-            control("sine", "frequency", 220.0)
-            control("sine", "sound", false)
-            cue("Up an octave") { control("sine", "frequency", 440.0, glideMs = 1500) }
         }
+        control("sine", "frequency", 220.0)
+        control("sine", "sound", false)
+        cue("Up an octave") { control("sine", "frequency", 440.0, glideMs = 1500) }
     }
-    .present()
+}.present()
 ```
 
 ![The audience window at "How often it repeats": prose on the left, and on the right the live sine figure with its frequency slider at 220 Hz and an unticked sound checkbox.](assets/presentation_studio/figure-slide.png)
@@ -624,10 +615,8 @@ To have a deck arrange itself whenever its Presentation box runs, call `arrangeB
 
 ```diffstatic {data-lang=kotlin}
 presentation(title = "Lights and Shadows") {
-        step("Opening", id = "opening") { audience { figureBeside("opening_scene") { +"# Lights and Shadows".md } } }
-    }
-    .arrangeBoxes()
-    .present()
+    step("Opening", id = "opening") { audience { figureBeside("opening_scene") { +"# Lights and Shadows".md } } }
+}.arrangeBoxes().present()
 ```
 
 A figure has panels only once it has run, so arranging first runs each figure box that has shown

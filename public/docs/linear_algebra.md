@@ -118,6 +118,11 @@ The right-hand `source.zw` is an ordinary read swizzle producing a `vec2`; the
 left-hand `target.xy` receives it. Repeated-index swizzles like `v.xx` have no
 unambiguous target, so they stay read-only: there is no `var` for them.
 
+To write numbers rather than another swizzle, build the vector with `vec`, which takes any mix
+of `Int`, `Float` and `Double`: `target.xy = vec(1, 2.5)`. A bare collection literal such as
+`target.xy = [1, 2]` does not compile, because the swizzle's value is the read-only `Vector2fc`,
+and only the mutable `Vector2f` knows how to be built from `[...]`.
+
 ## Arithmetic: `+ - * /`
 
 The vectors carry the usual operators. Between two vectors of the same arity they
@@ -1030,6 +1035,9 @@ the [generated vector API reference](linear_algebra_api.md).
 - [A camera move is a screw motion](keyframer_examples.md#a-camera-move-is-a-screw-motion-not-a-straight-line)
   interpolates `DualQuat` camera poses, and [A twisted limb, weighed and traced](chain_skinned_volume.md)
   measures what dual quaternion skinning keeps that linear blending loses.
+- [Complex arithmetic and rotation weights](stacksl_cheatsheet.md#complex-arithmetic-and-rotation-weights)
+  in StackSL types complex values by how they turn when the input turns: squaring a weight-1
+  number gives weight 2, the `ε² = -1` multiplication above seen as a type system.
 - [Values over time: interpolants & keyframes](interpolants_examples.md) eases quaternions towards a target alongside the rest of Field's values.
 - Open [`spinny_algebras/metadata.edn`](assets/spinny_algebras/metadata.edn) to drag `ε²` and `j²`
   yourself; the source of `Quat`'s operators is `src/jvmMain/kotlin/afield/math/linalg/linalg.kt`.

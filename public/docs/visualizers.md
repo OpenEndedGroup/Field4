@@ -130,8 +130,10 @@ display("spiral", spiral.h)
 ```
 
 The header reads `FLine (141 nodes)`, then `M=1 L=140 C=0 · b=130×124 ·
-len=1.19e+03`, then the run-compressed signature `M(Lx41) … (Lx22)`, and finally
-the thumbnail. The thumbnail is normalised into its box and only rendered for
+len=1.19e+03`, then the signature `M(Lx41) … (Lx22)`, and finally
+the thumbnail. The signature has one letter per node; past 80 nodes only the
+first 42 and last 22 letters are kept, and then any run of more than six equal
+letters is shortened to `(Lxn)`, which is why one run of 140 `L`s shows as two. The thumbnail is normalised into its box and only rendered for
 paths under a complexity budget, so pasting a huge path into a value view never
 becomes a rendering hazard.
 
@@ -2030,10 +2032,13 @@ var radius = 3.0
 controlGroup("size") {
     slider("radius", min = 0.0, max = 10.0, initialValue = radius, unit = mm) { radius = it }
     slider("acceleration", min = 0.0, max = 20.0, unit = "m/s2") {}
+    slider("bogomips", min = 0.0, max = 1.0, unit = "mmHg*furlong/erg") {}
 }
 ```
 
-The readouts show `mm` and `m/s²`. Values, steps and callbacks are numeric in the given unit; this
+The readouts show `mm`, `m/s²` and `mmHg·furlong/erg`. A string unit is any label you like: `*`
+becomes `·` and digits become superscripts. KotUniL's units are SI, so a millimetre of mercury, a
+furlong or an erg can only be written as a string. Values, steps and callbacks are numeric in the given unit; this
 is a display label and does not convert them. `unit` also works on `Box.slider`, `SliderConfig` and
 the numeric `syncToProperty` slider. A slider without a unit keeps its existing display.
 
@@ -2487,11 +2492,11 @@ check(after.trim('"').toDouble() > 0.8) { "the sweep did not move size: $after" 
 
 `presetBar(keys)` adds a preset bar over a [`KeyframeScope`](keyframer_examples.md): a preset is a keyframer key. Declare the values as delegated locals (`var size by keys.slider(0.4, 0.1..1.0)`) and add them to the group with `keys.controls()`, as in [One value shared by a local, a control and a key](keyframer_examples.md#one-value-shared-by-a-local-a-control-and-a-key). Here two keys, `calm` and `storm`, are saved the first time the box runs, so there is something to morph between straight away:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-preset-bar.png" capture="box" open-outputs="true" wait="2.0" w="700" embed=true name="controls-preset-bar" alt="A control group: a size slider at 0.40, an offset pad, a blue tint colour picker, a ring checkbox, then a row with a preset name field reading storm and store and recall buttons, a row of calm and storm buttons, a preset morph slider at 0, a rec size button and a MIDI learn button. Below it a dark square holding a blue circle"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-preset-bar.png" capture="box" open-outputs="true" wait="2.0" w="700" embed=true name="controls-preset-bar" alt="A control group: a size slider at 0.40, an offset pad, a blue tint colour picker, a ring checkbox, then a row with a preset name field reading storm and store and recall buttons, a row of calm and storm buttons, a preset morph slider at 0, a rec size button and a MIDI learn button. Below it a dark square holding a blue circle up and to the right of centre"}
 :::static
 val keys = KeyframeScope()
 var size by keys.slider(0.4, 0.1..1.0)
-var offset by keys.vec2(Vector2f(0f, 0f))
+var offset by keys.vec2(Vector2f(0.5f, 0.4f))
 var tint by keys.color(Vector4f(0.2f, 0.6f, 1f, 1f))
 var ring by keys.checkbox(false)
 
