@@ -152,6 +152,20 @@ macro run fline_fill_rule
 
 [Open →](offline.html?file=assets/agent_transcripts/fline_fill_rule/metadata.edn)
 
+### paint_fill_rule
+
+**Paint areas follow the fill rule.** Two overlapping squares are worked with `PaintCanvas.work` under
+the non-zero and the even-odd rule, set as the FLine's own `fillRule`; a second box glazes them
+opaque and counts the pixels that differ from Gezira's coverage. See
+[Overlapping regions and the fill rule](paint_canvas.md#overlapping-regions-and-the-fill-rule).
+
+```diffstatic {data-lang=text}
+macro write paint_fill_rule --file dev_docs/agents/transcripts/paint_fill_rule.yaml
+macro run paint_fill_rule
+```
+
+[Open →](offline.html?file=assets/agent_transcripts/paint_fill_rule/metadata.edn)
+
 ### nile_gezira_svg
 
 **SVG into Gezira, and the tiger.** `GeziraSvg` reads SVG path data, shapes, nested transforms and
