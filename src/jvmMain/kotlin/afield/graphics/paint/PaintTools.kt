@@ -2,6 +2,9 @@
 package afield.graphics.paint
 
 import afield.math.linalg.Vec4
+import afield.runtime.completion.CompletesWith
+import afield.runtime.completion.StringCompletionContext
+import afield.runtime.completion.StringCompletions
 import java.lang.foreign.MemorySegment
 import kotlin.math.pow
 
@@ -601,6 +604,10 @@ data class Tube(
     val drying: Double,
 )
 
+internal object TubeNames : StringCompletions {
+    override fun candidates(context: StringCompletionContext): List<String> = Tubes.names
+}
+
 /** The crate's tube paints, and paint-like colour mixing. */
 object Tubes {
     private val table: Pair<List<Tube>, List<String>> by lazy {
@@ -620,7 +627,7 @@ object Tubes {
     val names: List<String> get() = all.map { it.name }
 
     /** The tube called [name]. */
-    operator fun get(name: String): Tube = all.firstOrNull { it.name == name }
+    operator fun get(@CompletesWith(TubeNames::class) name: String): Tube = all.firstOrNull { it.name == name }
         ?: throw NoSuchElementException("no tube named \"$name\"; there are: ${names.joinToString()}")
 
     /** The masstone of a pile mixed from [tubes] (name to parts by volume), as paint mixes. */

@@ -228,7 +228,8 @@ val chips = rows.flatMapIndexed { row, ramp ->
 lines(chips, channel = "Yellow into blue", w = 698.0, h = 193.0)
 ```
 
-Open `Tubes.names` and swap in a stronger blue or a less opaque yellow. To turn a point on
+Use completion inside either quoted argument of `tubeColorRamp` to swap in a stronger blue
+or a less opaque yellow. `Tubes.names` lists the full catalogue. To turn a point on
 the bottom row into a brush load, pass the same parts to `brush.load(mapOf(yellow to
 (1.0 - t), blue to t))`. The strip shows the mixture’s masstone, the colour of a thick
 application. See what thickness, solvent and the ground do to a stroke. [Paint canvas](paint_canvas.md)

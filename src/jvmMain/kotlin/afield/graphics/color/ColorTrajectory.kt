@@ -2,8 +2,10 @@
 
 package afield.graphics.color
 
+import afield.graphics.paint.TubeNames
 import afield.graphics.paint.Tubes
 import afield.math.linalg.Vec4
+import afield.runtime.completion.CompletesWith
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.roundToInt
@@ -138,7 +140,10 @@ fun spectralColorRamp(first: Vec4, second: Vec4): ColorTrajectory {
 }
 
 /** Mix two named paint tubes using the same volume fractions and tinting strengths as a brush load. */
-fun tubeColorRamp(first: String, second: String): ColorTrajectory {
+fun tubeColorRamp(
+    @CompletesWith(TubeNames::class) first: String,
+    @CompletesWith(TubeNames::class) second: String
+): ColorTrajectory {
     val a = Vec4(Tubes[first].color)
     val b = Vec4(Tubes[second].color)
     return ColorTrajectory { t ->
