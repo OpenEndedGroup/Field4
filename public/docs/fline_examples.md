@@ -700,7 +700,7 @@ enough to put on hundreds of shapes.
 
 These five bars shuffle whenever you click one:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/keyed_morph.png" wait="1.0" capture="box" open-outputs="true" w="1200" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/keyed_morph.png" wait="1.0" capture="box" open-outputs="true" w="1200" embed=true alt="Five blue bars named alpha, beta, gamma, delta and epsilon, each name written in white near the top of its bar"}
 var order = ["alpha", "beta", "gamma", "delta", "epsilon"]
 
 fun draw() {

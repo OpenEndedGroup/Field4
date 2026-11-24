@@ -13,7 +13,7 @@ carrying a key, so each change morphs from the old picture to the new one instea
 You build a tree with `treemapTree`, giving branches with `branch` and sized leaves with `leaf`, and hand it
 to `treemap`:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/treemaps/first.png" wait="1.0" capture="box" open-outputs="true" w="1200" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/treemaps/first.png" wait="1.0" capture="box" open-outputs="true" w="1200" embed=true alt="A treemap of a monthly budget: a large pink home branch dominated by rent, a green food branch, a blue getting-about branch, and books and savings as single cells, each labelled with its name and amount"}
 val budget = treemapTree("month") {
     branch("home") {
         leaf("rent", 1450.0)
@@ -54,7 +54,7 @@ You rarely build a tree by hand. Four functions turn something you already have 
 
 Here is Field's own source code, by size:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/treemaps/source_tree.png" wait="1.5" capture="box" open-outputs="true" w="1200" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/treemaps/source_tree.png" wait="1.5" capture="box" open-outputs="true" w="1200" embed=true alt="Field's source tree as a treemap, one hue per top-level package (graphics, audio, lang, examples, geometry and more), with sub-packages as labelled headers and files as small unlabelled cells"}
 import java.io.File
 
 val source = treemapTreeOfFiles(File("src/jvmMain/kotlin/afield"))
@@ -87,7 +87,7 @@ The block after `treemap(...)` sets properties before the first draw. `onSelect`
 to the selection, and `infoChannel` names a channel where the hovered cell (or else the last selected one)
 is described:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/treemaps/zoomed_and_selected.png" wait="1.5" capture="box" open-outputs="true" w="1200" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/treemaps/zoomed_and_selected.png" wait="1.5" capture="box" open-outputs="true" w="1200" embed=true alt="The graphics package zoomed to fill the treemap, with breadcrumbs reading afield then graphics, the render and text branches outlined in yellow as selected, and an about panel below describing text: its value, its share of graphics, and its children and leaves"}
 import java.io.File
 
 val source = treemapTreeOfFiles(File("src/jvmMain/kotlin/afield"))
@@ -139,7 +139,7 @@ Labels are dark or light, whichever reads better on the fill.
 This colours each source file by the length of its longest line, read from the file each node keeps in
 `data`:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/treemaps/by_value.png" wait="1.5" capture="box" open-outputs="true" w="1200" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/treemaps/by_value.png" wait="1.5" capture="box" open-outputs="true" w="1200" embed=true alt="The graphics package with every file coloured through the magma colormap by its longest line, most files dark purple and a few bright orange and pale yellow cells standing out, branches in grey"}
 import java.io.File
 
 val source = treemapTreeOfFiles(File("src/jvmMain/kotlin/afield/graphics"))
@@ -164,7 +164,7 @@ To animate a treemap from a `loop { }`, set `transition = 0.0` and call `show()`
 then follow your values exactly. `TreemapTiling.Resquarify()` with `sort = false` keeps the cells in place
 as their values change, so they grow and shrink rather than swapping places:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/treemaps/animated.png" wait="2.0" capture="box" open-outputs="true" w="1200" embed=true}
+```diffstatic_runner {data-lang=kotlin video="assets/treemaps/animated.mp4" capture="box" open-outputs="true" execution="launch" wait="1.0" duration="6" fps="20" timeout="240" w="1200" embed=true name="treemap-animated" alt="Five coloured groups of six cells each, the cells swelling and shrinking smoothly in place as their values follow sine waves, their labels updating as they go"}
 val tree = treemapTree("signals") {
     repeat(5) { b -> branch("group $b") { repeat(6) { leaf("s$it", 1.0) } } }
 }
