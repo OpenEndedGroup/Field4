@@ -458,12 +458,6 @@ fun doubleSpiralArms(rings: List<List<Vec3>>): Pair<List<Vec3>, List<Vec3>> {
 }
 
 /**
- * The bend joining the end of [path] to the start of [onward]: a cubic Bezier that leaves along the
- * direction [path] arrives in and reaches [onward] already heading the way it leaves. When the two
- * arms lie side by side running opposite ways this is a U; when the return starts straight ahead
- * it is a smooth turn rather than a hook back on itself.
- */
-/**
  * Back [supply] off along itself while [onwardStart] lies ahead of its end, by up to about the gap
  * between them, so the bend that follows turns rather than dipping under to come back up.
  */
@@ -483,6 +477,12 @@ private fun backOff(supply: MutableList<Vec3>, onwardStart: Vec3) {
     }
 }
 
+/**
+ * The bend joining the end of [path] to the start of [onward]: a cubic Bezier that leaves along the
+ * direction [path] arrives in and reaches [onward] already heading the way it leaves. When the two
+ * arms lie side by side running opposite ways this is a U; when the return starts straight ahead
+ * it is a smooth turn rather than a hook back on itself.
+ */
 private fun link(path: List<Vec3>, onward: List<Vec3>, steps: Int = 16): List<Vec3> {
     val a = path.last(); val b = onward.first()
     val gap = sqrt(d2(a, b).toDouble()).toFloat()
