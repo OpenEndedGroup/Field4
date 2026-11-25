@@ -1664,60 +1664,48 @@ const waitFor = async (predicate, timeoutMs = 5000) => {
   }
   return predicate();
 };
-const toastBottoms = () => [...document.querySelectorAll(".field-toast")]
-  .filter((node) => !node.classList.contains("field-toast-exit"))
-  .map((node) => Number.parseFloat(getComputedStyle(node).bottom || node.style.bottom || "0") || 0);
+const toasts = () => [...document.querySelectorAll(".field-toast")]
+  .filter((node) => !node.classList.contains("field-toast-exit"));
+const overlaps = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
 try {
   [...document.querySelectorAll(".bubble, .field-toast")].forEach((node) => node.remove());
   if (typeof window.notify !== "function") return { ok: false, reason: "notify missing", errors };
-
-  for (let i = 0; i < 5; i++) {
-    window.notify(`toast ${i}`, `toast-${i}`);
-  }
-  await waitFor(() => toastBottoms().length >= 5, 2000);
-  await delay(300);
-  window.notify("toast 5", "toast-5");
-  await waitFor(() => toastBottoms().length >= 5, 2000);
+  const launcher = document.createElement("button");
+  launcher.id = "ui-regression-guide-launcher";
+  launcher.style.cssText = "position:fixed;left:10px;bottom:10px;width:130px;height:30px";
+  const originalLauncher = document.getElementById("document-guide-launcher");
+  const oldId = originalLauncher && originalLauncher.id;
+  if (originalLauncher) originalLauncher.id = "ui-regression-original-launcher";
+  launcher.id = "document-guide-launcher";
+  document.body.appendChild(launcher);
+  for (let i = 0; i < 5; i++) window.notify(`toast ${i}`, `toast-${i}`);
   await delay(350);
-
-  const bottoms = toastBottoms().sort((a, b) => a - b);
-  const first = bottoms[0] ?? 0;
-  const deltas = bottoms.slice(1).map((value, index) => value - bottoms[index]);
-  const loading = document.createElement("div");
-  loading.id = "ui-regression-loading-evidence";
-  loading.className = "field-startup-progress";
-  loading.innerHTML = '<div class="field-startup-progress-title">Loading document</div><div class="field-startup-progress-detail"></div><div class="field-startup-progress-track"><div class="field-startup-progress-bar"></div></div>';
-  document.body.appendChild(loading);
-  const loadingStyle = getComputedStyle(loading);
-  const result = {
-    count: bottoms.length,
-    bottoms,
-    first,
-    deltas,
-    loadingLeft: Number.parseFloat(loadingStyle.left || "0") || 0,
-    loadingBottom: Number.parseFloat(loadingStyle.bottom || "0") || 0,
-    errors,
-  };
-  result.ok = result.count >= 4 &&
-    Math.abs(first - 10) <= 1.5 &&
-    result.deltas.every((delta) => delta >= 6) &&
-    Math.abs(result.loadingLeft - 10) <= 1.5 &&
-    Math.abs(result.loadingBottom - 10) <= 1.5 &&
-    result.errors.length === 0;
-  if (result.ok) {
-    [...document.querySelectorAll(".field-toast")].forEach((node) => node.remove());
-    loading.remove();
-    for (let i = 0; i < 4; i++) window.notify(`toast evidence ${i}`, `toast-evidence-${i}`);
-    await delay(100);
-    const captureToasts = [...document.querySelectorAll(".field-toast")];
-    result.captureToastCount = captureToasts.length;
-    result.captureVisibleToastCount = captureToasts.filter((node) => {
-      const rect = node.getBoundingClientRect();
-      const style = getComputedStyle(node);
-      return rect.width > 0 && rect.height > 0 && Number.parseFloat(style.opacity || "0") > 0.5;
-    }).length;
-    result.ok = result.ok && result.captureToastCount >= 4 && result.captureVisibleToastCount >= 4;
-  }
+  const live = toasts();
+  const rects = live.map(node => node.getBoundingClientRect());
+  const guide = launcher.getBoundingClientRect();
+  const horizontal = rects.length === 4 && rects.every(rect => Math.abs(rect.bottom - rects[0].bottom) < 2) &&
+    rects.every((rect, i) => i === 0 || rect.left >= rects[i - 1].right + 3);
+  const clearsGuide = rects.every(rect => !overlaps(rect, guide));
+  const editor = document.createElement("div");
+  editor.className = "monaco-editor-container";
+  editor.style.cssText = `position:fixed;left:${rects[0].left}px;top:${rects[0].top}px;width:${rects[0].width}px;height:${rects[0].height}px;min-width:0`;
+  document.body.appendChild(editor);
+  const aboveToast = document.elementFromPoint(rects[0].left + 5, rects[0].top + 5) === editor;
+  editor.remove();
+  // Force a wrap without changing the browser window, then verify every toast remains visible.
+  live.forEach(node => { node.style.width = `${Math.max(100, window.innerWidth * 0.45)}px`; node.style.maxWidth = "none"; });
+  window.restackNotifyBubbles();
+  const wrapped = live.map(node => node.getBoundingClientRect());
+  const wrapOk = wrapped.some(rect => rect.bottom < wrapped[0].bottom - 2) &&
+    wrapped.every((rect, i) => rect.left >= 0 && rect.right <= window.innerWidth && !overlaps(rect, guide) &&
+      wrapped.every((other, j) => i === j || !overlaps(rect, other)));
+  live.forEach(node => { node.style.width = ""; node.style.maxWidth = ""; });
+  launcher.remove();
+  if (originalLauncher) originalLauncher.id = oldId;
+  window.restackNotifyBubbles();
+  await delay(100);
+  const result = { count: live.length, horizontal, clearsGuide, aboveToast, wrapOk, errors };
+  result.ok = horizontal && clearsGuide && aboveToast && wrapOk && errors.length === 0;
   return result;
 } finally {
   window.removeEventListener("error", onError);
@@ -4770,7 +4758,7 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
         ),
         UiRegression(
             id="toast-restack",
-            description="Notification toasts restack to the bottom-left after older toasts expire.",
+            description="Notification toasts flow horizontally, wrap, and clear the guide launcher.",
             commands=[
                 "sleep 0.5",
                 shell_join(["page-eval", "--body", "--file", str(files["toast_restack_js"]), "--timeout", pw_timeout]),
