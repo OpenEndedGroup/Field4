@@ -2393,6 +2393,58 @@ display("main", """<table style="font:14px sans-serif;border-collapse:collapse" 
     cycles, so woven geometry keeps a small residue.
 
 
+#### Meshes and curves on them
+
+`mesh(triMesh)` adds every triangle of a `TriMesh` as a face, so anything that makes one (a Manifold
+solid's `toTriMesh()`, `heightfieldMesh`, `torusMesh`, a lattice) draws as ordered vector lines,
+ready to plot or save as SVG. Faces take the mesh's vertex colours, which is how `colouredBy(...)`
+shows a field; `color = ...` overrides them. A closed mesh hides the triangles facing away; pass
+`solid = false` for an open sheet such as a relief.
+
+`polyline(points)` draws a 3D curve, a `List<Vec3>`, as round-capped strokes, one per segment.
+Isolines and toolpaths lie on the surface they came from, so each stroke is lifted toward the eye
+by `lift` (its width, unless you say otherwise) for the depth test: it draws over the face it lies
+on and is still hidden by faces in front. Below, the spiral toolpath from
+[the carving section of the mesh page](mesh_examples.md#distance-along-the-surface-and-carving-toolpaths)
+on its relief, and the geodesic rings of a torus measured from a point on its outer rim; the rings
+that run over the top of the tube into the hole go out of sight behind it.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/vector_scene_meshes.png" embed=true}
+:::static
+// The carved boss from the mesh page, with its geodesic spiral toolpath.
+val relief =
+    heightfieldMesh(80, 80, 2.0, 2.0) { x, z ->
+        val r = kotlin.math.sqrt(x * x + z * z)
+        0.5f * kotlin.math.exp(-r * r * 2.2f) + 0.05f * kotlin.math.cos(r * 14f) * kotlin.math.exp(-r * 1.5f)
+    }
+val fromEdge = relief.geodesicDistanceFromBoundary()
+val spiral = spiralFromRings(relief.evenIsolines(fromEdge, 0.06).map { level -> level.maxBy { it.size } })
+val carved = vectorScene {
+    mesh(relief, color = vec(0.86, 0.84, 0.8, 1.0), solid = false)
+    polyline(spiral, width = 0.01, color = vec(0.9, 0.3, 0.15, 1.0))
+}
+
+// A ring, measured along its surface from one point: the far rings pass behind the tube.
+val ring = torusMesh(96, 40, 1.0, 0.4)
+val fromPoint = ring.geodesicDistance(ring.nearestVertex(1.4, 0, 0))
+val rings = ring.evenIsolines(fromPoint, 0.12).flatten()
+val ringed = vectorScene {
+    mesh(ring.colouredBy(fromPoint))
+    for (r in rings) polyline(r, width = 0.012, color = vec(1.0, 1.0, 1.0, 1.0))
+}
+
+val t0 = System.nanoTime()
+val left = carved.render(yaw = 0.45, pitch = -0.75, scale = 150.0, shading = Shading.FLAT)
+val right = ringed.render(yaw = 0.3, pitch = -0.6, scale = 120.0).map { it + vec(380.0, 0.0) }
+println("${relief.triangleCount + ring.triangleCount} triangles, ${left.size + right.size} FLines, ordered in ${(System.nanoTime() - t0) / 1_000_000} ms")
+lines(left + right, w = 680.0, h = 300.0, fitToSize = true)
+```
+
+Ordering compares only faces whose outlines overlap on screen, found through a grid, so it grows
+with the number of faces rather than its square: about 90 ms for 18,000 visible triangles, and the
+figure above, 26,000 shapes, renders in about 0.6 s.
+
+
 ## Sampling and traversal
 
 Sample a path to get points you can use for animation, particle emission, evenly spaced markers

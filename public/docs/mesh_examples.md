@@ -730,6 +730,11 @@ The rings start square, following the tablet's edge, and become round as they cl
 is what a finishing tool should do. Spacing is in surface units, so it is the stepover of the cut
 whatever the slope.
 
+To print or plot the toolpath on its stone rather than view it in WebGL, draw both into a
+[`vectorScene`](fline_examples.md#meshes-and-curves-on-them): `mesh(relief)` and
+`polyline(spiral)` come back as `FLine`s in depth order, with the stone hiding the path where it
+passes out of sight.
+
 A spiral ends in the middle, which is no use when both ends of the path have to come back to the
 edge, as underfloor-heating pipe does: it leaves the manifold, covers the floor and returns.
 `doubleSpiralFromRings` lays it as a counterflow double spiral (`doubleSpiralArms` gives the two

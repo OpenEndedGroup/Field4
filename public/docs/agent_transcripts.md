@@ -141,7 +141,9 @@ macro run nile_gezira_kernels
 
 **Depth-ordered 3D vector scenes.** A lighthouse built with `vectorScene { }` from cylinders, cones,
 boxes and hemispheres, drawn from four angles, turned with a camera slider, shaded flat, soft and as
-plotter outlines, and a table of how many pixels a centroid sort and the pairwise order get wrong.
+plotter outlines, a table of how many pixels a centroid sort and the pairwise order get wrong, and
+`mesh(...)` and `polyline(...)` drawing a geodesic spiral toolpath on a relief and rings on a torus,
+with the ordering time at three mesh sizes.
 See [Depth-ordered 3D vector scenes](fline_examples.md#depth-ordered-3d-vector-scenes-vectorscene).
 
 ```diffstatic {data-lang=text}
