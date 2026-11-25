@@ -5396,26 +5396,30 @@
     },
     "assets/agent_transcripts/solidsl_gallery/metadata.edn": {
       "captureDigest": "dae71325c6de8386066240231aac1762db1b9a954d32608e4f55a847371d2fb6",
-      "capturedAt": "2026-11-22T16:24:06.918Z",
-      "channels": 3,
+      "capturedAt": "2026-11-25T07:03:22.376Z",
+      "channels": 5,
       "file": "assets/web_publications/solidsl_gallery/document/metadata.edn",
       "files": {
-        "assets/web_publications/solidsl_gallery/document/metadata.edn": "9b5d53fcf399f14ff74cabda670163de7f279a49a192f1816104470a4ba1dd61",
-        "assets/web_publications/solidsl_gallery/document/outputs.json": "66ec3e6dfe10c3535a1c465e6f781bfbd63d4da5281dafa1b848ddfb8da748ab",
-        "assets/web_publications/solidsl_gallery/outputs/0.html": "39c71b2df2fb888e52ceb22ac9492da1c7445ae201f4d5a81974136cb8532d5c",
-        "assets/web_publications/solidsl_gallery/outputs/1.html": "1532a3f1bc56877f49a4ee6de26028d3ecb679e66392ef1f172c00cea0837037",
-        "assets/web_publications/solidsl_gallery/outputs/2.html": "fcd64bf566d205eb9eb2f3832f6ed71e0bd8d3047217f03ba37239342205804e"
+        "assets/web_publications/solidsl_gallery/document/metadata.edn": "21a7b1250b9f78db8a110ecb789cf84dfe54cc32748697b08fe2159218f52632",
+        "assets/web_publications/solidsl_gallery/document/outputs.json": "3600a50a10303d725557859ef4b16cc0182c4bb2b458c09759c129fcdd553a6d",
+        "assets/web_publications/solidsl_gallery/outputs/0.html": "9b4934eb377cae819e8138254acf04e368214ecdc54994fb3fbe90e9647705f5",
+        "assets/web_publications/solidsl_gallery/outputs/1.html": "d26556357a6bd425fcfce41c627e93258cff02037e1ede71994092f38eb0f144",
+        "assets/web_publications/solidsl_gallery/outputs/2.html": "869b19d851c7f026532fb89cfe437df0453a4fdc16ad721ba83f1278fbd8f86a",
+        "assets/web_publications/solidsl_gallery/outputs/3.html": "62c01b9b9c541b97cd4cede5ee442199994628f1bf2e131d3131ce15e243b774",
+        "assets/web_publications/solidsl_gallery/outputs/4.html": "6daaebe4999f2e2849ce430ffe096a9673dbbcc12aa5549c5f091b581c86c8ff"
       },
       "kinds": [
+        "svg",
         "three"
       ],
       "outputs": "assets/web_publications/solidsl_gallery/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/solidsl_gallery.yaml": "c395acb4b98bc03b319382fce950505ca6bd664db7611f90035568be0165761e",
+        "dev_docs/agents/transcripts/solidsl_gallery.yaml": "975d9247901f99dc54090a32e72e90158c54c32dba4244bb55f2dde1a4b86c38",
         "public/docs/assets/agent_transcripts/solidsl_gallery/cross_check_code_.kt": "8132550ecc3726f62e8e150ed3223cb003acf43a57d9a6649f9346ef5425acce",
         "public/docs/assets/agent_transcripts/solidsl_gallery/glsl_backend_code_.kt": "55fbd4d0850acfd4710ce4bdae0501b31cb2648f74cbb37c3f8390a0cecd3e4a",
         "public/docs/assets/agent_transcripts/solidsl_gallery/guides/solid_notation.md": "92fa8d6194636aea07639219933820367b5f844513507c479c75f0ff42ff1e6b",
-        "public/docs/assets/agent_transcripts/solidsl_gallery/metadata.edn": "33baa265c5a939e78bff9c1748dc6ccbdad3ecc752c9c415899246deac1c1161",
+        "public/docs/assets/agent_transcripts/solidsl_gallery/koch_folds_code_.kt": "0bd14e4f84238f64b09187b4b3ddfd1e2fc167ef9bd07a7b66433e368647d18e",
+        "public/docs/assets/agent_transcripts/solidsl_gallery/metadata.edn": "473fd48d808055337ddf5af355a8a4c4e350447e463a5dc00a8d77633640827a",
         "public/docs/assets/agent_transcripts/solidsl_gallery/refusals_code_.kt": "285c4ee14731f6a751581e6303a5ed885d8e5d5761e2c8bea9ffaae009ae9f35"
       }
     },
