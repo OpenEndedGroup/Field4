@@ -139,7 +139,7 @@ class CsoundLanguageTest {
     }
 
     @Test fun aLiveChannelNoteReadsThePlayingCsound() {
-        if (!CsoundLibrary.isAvailable) return println("SKIPPED: ${CsoundLibrary.describe()}")
+        org.junit.Assume.assumeTrue("native library not available: ${CsoundLibrary.describe()}", CsoundLibrary.isAvailable)
         val doc = CsdDocument.parse(csd)
         CsoundInstance(doc.orchestra.body, doc.score!!.body).use { cs ->
             cs.setChannel("cutoff", 900)
@@ -151,7 +151,7 @@ class CsoundLanguageTest {
     @Test fun theCommittedVocabularyIsWhatLibcsoundListsToday() {
         val committed = CsoundVocabulary.committed
         assertTrue(committed.opcodes.size > 1000, "csound-vocabulary.json is missing or truncated: ${committed.opcodes.size}")
-        if (!CsoundLibrary.isAvailable) return println("SKIPPED vocabulary drift: ${CsoundLibrary.describe()}")
+        org.junit.Assume.assumeTrue("native library not available: ${CsoundLibrary.describe()}", CsoundLibrary.isAvailable)
         // Keyed on the library's list: names and signatures must be exactly what libcsound says today.
         val generated = CsoundVocabulary.generate()
         assertEquals(generated.csoundVersion, committed.csoundVersion)

@@ -8,7 +8,7 @@ import kotlin.test.Test
 class TetgenPageIntroTest {
 
     @Test fun theOpeningSnippet() {
-        if (!TetgenLibrary.isAvailable || !ManifoldLibrary.isAvailable) return
+        org.junit.Assume.assumeTrue("native library not available: ${TetgenLibrary.describe()} ${ManifoldLibrary.describe()}", TetgenLibrary.isAvailable && ManifoldLibrary.isAvailable)
         Solid.scope {
             val part = Solid.cube(80.0, 40.0, 15.0) + Solid.cube(15.0, 40.0, 70.0)
             val mesh = Tetgen.tetrahedralize(part.toTriMesh(), targetEdgeLength = 5.0)

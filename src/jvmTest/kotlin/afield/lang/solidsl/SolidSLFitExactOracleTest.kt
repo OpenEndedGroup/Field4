@@ -70,10 +70,7 @@ class SolidSLFitExactOracleTest {
 
     @Test
     fun `Manifold agrees that the fitted solid is the target`() {
-        if (!ManifoldLibrary.isAvailable) {
-            println("SolidSLFitExactOracleTest: skipping — ${ManifoldLibrary.describe()}")
-            return
-        }
+        org.junit.Assume.assumeTrue("SolidSLFitExactOracleTest: skipping — ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         val template = plateTemplate()
 
         // PREMISE, asserted before the oracle is trusted: this subject really does lower exactly.
@@ -176,10 +173,7 @@ class SolidSLFitExactOracleTest {
      */
     @Test
     fun `Manifold rejects a fit that cannot be right`() {
-        if (!ManifoldLibrary.isAvailable) {
-            println("SolidSLFitExactOracleTest: skipping — ${ManifoldLibrary.describe()}")
-            return
-        }
+        org.junit.Assume.assumeTrue("SolidSLFitExactOracleTest: skipping — ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         val template = plateTemplate()
         val target = template.withValues(truth)
 

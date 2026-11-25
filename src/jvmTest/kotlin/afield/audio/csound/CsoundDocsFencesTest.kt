@@ -53,10 +53,7 @@ class CsoundDocsFencesTest {
     }
 
     @Test fun everyCsoundFencePlaysOrFailsAsDeclared() {
-        if (!CsoundLibrary.isAvailable) {
-            println("SKIPPED Csound docs fences: ${CsoundLibrary.describe()}")
-            return
-        }
+        org.junit.Assume.assumeTrue("SKIPPED Csound docs fences: ${CsoundLibrary.describe()}", CsoundLibrary.isAvailable)
         val problems = ArrayList<String>()
         for (fence in fences()) {
             val doc = CsdDocument.parse(fence.body)

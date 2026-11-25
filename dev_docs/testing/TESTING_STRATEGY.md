@@ -385,9 +385,11 @@ Manifold, openNURBS, Morse-Smale, principal curves, polyvector, Syphon, LuaJIT, 
 SKIPPED when the library is missing, never pass. Use a JUnit assumption: a file-local
 `assumeAvailable()` over the file's `available()` check, or a shared helper such as
 `requirePaintLibrary()` in `afield/graphics/paint/PaintTestSupport.kt`. The old
-`if (!available()) return` counted every such test as a pass on a machine without the library;
-`afield.tools.testing.NativeGatedTestsSkipLoudlyTest` now fails on it anywhere in `jvmTest` or
-`jvmFastTest`. The skip count is in the Gradle summary and in each `TEST-*.xml` (`<skipped>`).
+`if (!available()) return` (and `if (!X.isAvailable) return`, or the block form
+`{ println(...); return }`) counted every such test as a pass on a machine without the library.
+`tools/check_native_gated_tests.py` fails on any of these in `jvmTest` or `jvmFastTest`; its suite
+`tools/test_check_native_gated_tests.py` runs in `checkPythonTools`, which the lander and precheck
+select for any change to a JVM test source. The skip count is in the Gradle summary and in each `TEST-*.xml` (`<skipped>`).
 
 No landing runs `jvmTest`, so a skip alone still lets a red through. For paint, the gap is closed:
 `./gradlew checkPaintTests` builds `native/field-paint` (needs cargo), runs `afield.graphics.paint.*`

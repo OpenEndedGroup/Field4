@@ -18,7 +18,7 @@ class MillingTest {
 
     @Test
     fun `a convex part comes back unchanged`() {
-        if (!ManifoldLibrary.isAvailable) return
+        org.junit.Assume.assumeTrue("native library not available: ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         val box = Solid.cube(2.0, 1.0, 3.0)
         val milled = box.ballMilled(0.25)
         assertEquals(box.volume, milled.volume, 1e-9, "a ball reaches every point outside a convex part")
@@ -26,7 +26,7 @@ class MillingTest {
 
     @Test
     fun `beyond shows nothing on a sloping convex part`() {
-        if (!ManifoldLibrary.isAvailable) return
+        org.junit.Assume.assumeTrue("native library not available: ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         // Re-derived sloping faces land a few epsilon off the originals. A plain difference keeps
         // those zero-thickness sheets; beyond must not.
         val slab = Solid.cube(3.0, 0.1, 2.0).rotated(23.0, 0.0, 11.5)
@@ -37,7 +37,7 @@ class MillingTest {
 
     @Test
     fun `faceted holes stay open`() {
-        if (!ManifoldLibrary.isAvailable) return
+        org.junit.Assume.assumeTrue("native library not available: ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         // The shallow creases between a hole's facets are concave too. Whatever the closing does
         // there, the hole itself must stay open from end to end.
         val plate = Solid.cube(60.0, 40.0, 8.0, center = true)
@@ -53,7 +53,7 @@ class MillingTest {
 
     @Test
     fun `a sloping stepped part keeps its fillets`() {
-        if (!ManifoldLibrary.isAvailable) return
+        org.junit.Assume.assumeTrue("native library not available: ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         // Like a roof panel: a thin slab with a two-step rebate, tilted, so every face is re-derived
         // off-axis. Its two inside edges must still come back filleted, by a quarter-round each.
         val r = 0.0125
@@ -68,7 +68,7 @@ class MillingTest {
 
     @Test
     fun `point reflection keeps the tool a positive volume`() {
-        if (!ManifoldLibrary.isAvailable) return
+        org.junit.Assume.assumeTrue("native library not available: ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         val offCentre = Solid.cube(1.0, 2.0, 3.0)
         val reflected = offCentre.scaled(-1.0, -1.0, -1.0)
         assertEquals(6.0, reflected.volume, 1e-12)
@@ -77,7 +77,7 @@ class MillingTest {
 
     @Test
     fun `an inside corner gains exactly a fillet's worth of material`() {
-        if (!ManifoldLibrary.isAvailable) return
+        org.junit.Assume.assumeTrue("native library not available: ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         // An L extruded 1 deep: one concave right-angle edge of length 1.
         val l = Solid.union(Solid.cube(2.0, 1.0, 1.0), Solid.cube(1.0, 2.0, 1.0))
         val r = 0.25
@@ -91,7 +91,7 @@ class MillingTest {
 
     @Test
     fun `a slot narrower than the ball fills, and a wide one only rounds its floor`() {
-        if (!ManifoldLibrary.isAvailable) return
+        org.junit.Assume.assumeTrue("native library not available: ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         val block = Solid.cube(3.0, 1.0, 1.0)
         val narrow = Solid.cube(0.3, 0.6, 2.0).translated(0.6, 0.4, -0.5)
         val wide = Solid.cube(1.0, 0.6, 2.0).translated(1.6, 0.4, -0.5)
@@ -104,7 +104,7 @@ class MillingTest {
 
     @Test
     fun `a 3-axis setup cannot reach under an overhang that a free ball can`() {
-        if (!ManifoldLibrary.isAvailable) return
+        org.junit.Assume.assumeTrue("native library not available: ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         // A base, a post, and a roof over a cavity that opens to the side.
         val base = Solid.cube(3.0, 0.4, 2.0)
         val post = Solid.cube(0.5, 1.0, 2.0).translated(0.0, 0.4, 0.0)
@@ -122,7 +122,7 @@ class MillingTest {
 
     @Test
     fun `turning the part over opens a pocket on its underside`() {
-        if (!ManifoldLibrary.isAvailable) return
+        org.junit.Assume.assumeTrue("native library not available: ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         val plate = Solid.cube(3.0, 1.0, 2.0)
         val top = Solid.cube(1.0, 0.5, 1.0).translated(0.5, 0.5, 0.5)
         val under = Solid.cube(1.0, 0.5, 1.0).translated(1.5, 0.0, 0.5)

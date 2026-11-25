@@ -4,10 +4,7 @@ import kotlin.test.*
 
 class SampleSlicesTest {
     @Test fun samplesMidpointsAndClosesEveryNativeSection() {
-        if (!ManifoldLibrary.isAvailable) {
-            println("SKIPPED sampleSlices native test: ${ManifoldLibrary.describe()}")
-            return
-        }
+        org.junit.Assume.assumeTrue("SKIPPED sampleSlices native test: ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         Solid.cube(2.0, 3.0, 4.0).use { solid ->
             val sections = mutableListOf<Section>()
             val sampled = solid.sampleSlices(4) { z, section ->

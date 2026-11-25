@@ -75,7 +75,7 @@ class PolyvectorRequiredGraphTest {
 
     @Test
     fun tracingAnLWithItsRequiredGraphKeepsIt() {
-        if (!PolyvectorLibrary.isAvailable) { println("SKIPPED: ${PolyvectorLibrary.describe()}"); return }
+        org.junit.Assume.assumeTrue("SKIPPED: ${PolyvectorLibrary.describe()}", PolyvectorLibrary.isAvailable)
         val w = 64; val h = 64
         val ink = FloatArray(w * h) { i ->
             val x = i % w + 0.5; val y = i / w + 0.5

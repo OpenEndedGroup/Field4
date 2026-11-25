@@ -133,10 +133,7 @@ class Life3dSolidTest {
 
     @Test
     fun `the negative genus is one minus the component count`() {
-        if (!ManifoldLibrary.isAvailable) {
-            println("Life3dSolidTest: skipping the Manifold half — ${ManifoldLibrary.describe()}")
-            return
-        }
+        org.junit.Assume.assumeTrue("Life3dSolidTest: skipping the Manifold half — ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         val volume = pageVolume()
         val field = volume.asDensityField(smoothRadius = 0, iso = 0.5)
         Solid.scope {
@@ -161,10 +158,7 @@ class Life3dSolidTest {
 
     @Test
     fun `the level set returns the same mesh every time`() {
-        if (!ManifoldLibrary.isAvailable) {
-            println("Life3dSolidTest: skipping the Manifold half — ${ManifoldLibrary.describe()}")
-            return
-        }
+        org.junit.Assume.assumeTrue("Life3dSolidTest: skipping the Manifold half — ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         val volume = pageVolume()
         val field = volume.asDensityField(smoothRadius = 0, iso = 0.5)
         val bounds = volume.marchBounds()
@@ -184,10 +178,7 @@ class Life3dSolidTest {
     /** The page's third claim: both the count and the volume move with the sampling spacing. */
     @Test
     fun `the cluster count and the volume both depend on the spacing`() {
-        if (!ManifoldLibrary.isAvailable) {
-            println("Life3dSolidTest: skipping the Manifold half — ${ManifoldLibrary.describe()}")
-            return
-        }
+        org.junit.Assume.assumeTrue("Life3dSolidTest: skipping the Manifold half — ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         val volume = pageVolume()
         val field = volume.asDensityField(smoothRadius = 0, iso = 0.5)
         val bounds = volume.marchBounds()

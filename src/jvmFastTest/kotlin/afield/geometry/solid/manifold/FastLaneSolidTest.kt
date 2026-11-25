@@ -18,10 +18,7 @@ class FastLaneSolidTest {
 
     @Test
     fun `a window cut from a wall removes exactly the window`() {
-        if (!ManifoldLibrary.isAvailable) {
-            println("FastLaneSolidTest: skipping the Manifold case — ${ManifoldLibrary.describe()}")
-            return
-        }
+        org.junit.Assume.assumeTrue("FastLaneSolidTest: skipping the Manifold case — ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         // A 4 x 0.2 x 3 wall with a 1 x 1.2 opening at sill height 0.9. The cutter overshoots the wall's
         // thickness so the difference is a clean through-hole rather than a coplanar sliver.
         Solid.cube(4.0, 0.2, 3.0).use { wall ->

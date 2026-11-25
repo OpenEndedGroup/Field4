@@ -402,7 +402,13 @@ def _python_tool_input(path: str) -> bool:
         or (_under(path, "tools") and path.endswith(".py"))
         or _under(path, "tools/refactor-engine")
         or path in {"build.gradle.kts", "pyproject.toml", "uv.lock"}
+        or _jvm_test_source(path)
     )
+
+
+def _jvm_test_source(path: str) -> bool:
+    # check_native_gated_tests.py scans these; no landing runs jvmTest, so its suite is the gate.
+    return (_under(path, "src/jvmTest/kotlin") or _under(path, "src/jvmFastTest/kotlin")) and path.endswith(".kt")
 
 
 # The corpus inputs of `_python_tool_input` that are not Python code, each with the strings that
@@ -418,6 +424,7 @@ _PYTHON_CORPUS_SCOPES: tuple[tuple[PathPredicate, tuple[str, ...]], ...] = (
     (lambda path: path in _scraped_completion_docs()
      or path in {"tools/completion-corpus/scraped.tsv", "tools/completion-corpus/name-fixtures.tsv"},
      ("completion-corpus", "scrape_completion_corpus")),
+    (_jvm_test_source, ("check_native_gated_tests",)),
 )
 
 

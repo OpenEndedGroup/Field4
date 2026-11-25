@@ -16,7 +16,7 @@ class FaceInsetTest {
 
     @Test
     fun `a panel keeps its thickness and loses its edges`() {
-        if (!ManifoldLibrary.isAvailable) return
+        org.junit.Assume.assumeTrue("native library not available: ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         val panel = Solid.cube(4.0, 0.1, 3.0)
         val inset = panel.insetFaces(d, except = [vec(0, 1, 0)])
         assertEquals((4.0 - 2 * d) * 0.1 * (3.0 - 2 * d), inset.volume, 1e-12)
@@ -27,7 +27,7 @@ class FaceInsetTest {
 
     @Test
     fun `with nothing kept every face moves`() {
-        if (!ManifoldLibrary.isAvailable) return
+        org.junit.Assume.assumeTrue("native library not available: ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         val box = Solid.cube(2.0, 1.0, 3.0)
         assertEquals((2 - 2 * d) * (1 - 2 * d) * (3 - 2 * d), box.insetFaces(d, except = []).volume, 1e-12)
     }
@@ -40,7 +40,7 @@ class FaceInsetTest {
 
     @Test
     fun `a prism's side faces move exactly as a mitered 2D offset of its outline`() {
-        if (!ManifoldLibrary.isAvailable) return
+        org.junit.Assume.assumeTrue("native library not available: ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         val section = Section.ofPolygon(outline)
         val prism = section.extruded(0.5)
         val inset = prism.insetFaces(d, except = [vec(0, 0, 1)])
@@ -57,7 +57,7 @@ class FaceInsetTest {
 
     @Test
     fun `a tilted prism gives the same answer when its axis is kept`() {
-        if (!ManifoldLibrary.isAvailable) return
+        org.junit.Assume.assumeTrue("native library not available: ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         val prism = Section.ofPolygon(outline).extruded(0.5)
         val flat = prism.insetFaces(d, except = [vec(0, 0, 1)])
         val inset = prism.rotated(9.09, 0.0, 9.09).insetFaces(d, except = [tiltedZ()])
@@ -66,7 +66,7 @@ class FaceInsetTest {
 
     @Test
     fun `two boxes that touched end up twice the inset apart`() {
-        if (!ManifoldLibrary.isAvailable) return
+        org.junit.Assume.assumeTrue("native library not available: ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         val up = [vec(0, 1, 0)]
         val a = Solid.cube(1.0, 0.1, 1.0).insetFaces(d, except = up)
         val b = Solid.cube(1.0, 0.1, 1.0).translated(1.0, 0.0, 0.0).insetFaces(d, except = up)
@@ -75,7 +75,7 @@ class FaceInsetTest {
 
     @Test
     fun `a lap joint keeps bearing on its step and opens at its risers`() {
-        if (!ManifoldLibrary.isAvailable) return
+        org.junit.Assume.assumeTrue("native library not available: ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         // a's lower tongue runs under b's upper tongue, between x = 1.5 and x = 2.
         val a = Solid.cube(2.0, 0.1, 1.0) - Solid.cube(0.5, 0.05, 1.0).translated(1.5, 0.05, 0.0)
         val b = Solid.cube(2.0, 0.1, 1.0).translated(1.5, 0.0, 0.0) - Solid.cube(0.5, 0.05, 1.0).translated(1.5, 0.0, 0.0)
@@ -97,7 +97,7 @@ class FaceInsetTest {
 
     @Test
     fun `pieces that only touched along an edge come apart cleanly`() {
-        if (!ManifoldLibrary.isAvailable) return
+        org.junit.Assume.assumeTrue("native library not available: ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         // One solid, two cubes meeting along a single edge: any gap at all has to separate them,
         // and the cut must not leave a zero-thickness film where they met.
         val pair = Solid.union(Solid.cube(1.0, 1.0, 1.0), Solid.cube(1.0, 1.0, 1.0).translated(1.0, 0.0, 1.0))
@@ -109,7 +109,7 @@ class FaceInsetTest {
 
     @Test
     fun `kept planes keep only the faces in them, not every parallel face`() {
-        if (!ManifoldLibrary.isAvailable) return
+        org.junit.Assume.assumeTrue("native library not available: ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         // An L in x-y run along z: bottom at y = 0, top at y = 0.1 over x < 1, a step at y = 0.05 over x > 1.
         val stepped = Solid.cube(2.0, 0.1, 1.0) - Solid.cube(1.0, 0.05, 1.0).translated(1.0, 0.05, 0.0)
         val parallel = stepped.insetFaces(d, except = [vec(0, 1, 0)])
@@ -126,7 +126,7 @@ class FaceInsetTest {
 
     @Test
     fun `a kept plane holds its face whichever way its normal points`() {
-        if (!ManifoldLibrary.isAvailable) return
+        org.junit.Assume.assumeTrue("native library not available: ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         val cube = Solid.cube(1.0, 1.0, 1.0)
         // The cube's top faces up; the plane is given facing down. Its bottom is parallel, and moves.
         val inset = cube.insetFaces(d, exceptOn = [FacePlane(vec(0, 1, 0), vec(0, -1, 0))])
@@ -137,7 +137,7 @@ class FaceInsetTest {
 
     @Test
     fun `a crack inside a solid stays closed`() {
-        if (!ManifoldLibrary.isAvailable) return
+        org.junit.Assume.assumeTrue("native library not available: ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         // Two halves of one panel that meet only up to rounding, as cells computed separately do: the
         // union keeps both faces at x = 1, back to back, with its own material either side. (A
         // compose of exactly touching halves merges them, so it would not test this.)
@@ -153,7 +153,7 @@ class FaceInsetTest {
 
     @Test
     fun `a face that is a crack over only part of it moves only where it is outside`() {
-        if (!ManifoldLibrary.isAvailable) return
+        org.junit.Assume.assumeTrue("native library not available: ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         // An L of panel, from two cells that meet up to rounding at x = 1: the long cell's +x face is
         // a crack for z < 1, against the short cell, and the outside of the L's inner corner beyond.
         val long = Solid.cube(1.0, 0.1, 2.0)
@@ -206,7 +206,7 @@ class FaceInsetTest {
 
     @Test
     fun `a pyramid's apex opens into a ridge where its sides stop meeting at one point`() {
-        if (!ManifoldLibrary.isAvailable) return
+        org.junit.Assume.assumeTrue("native library not available: ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         // One side, or two opposite ones, moved: the four planes no longer meet at one point, and the
         // apex becomes an edge. Two adjacent sides, or all four, still meet at one and the apex moves.
         // A least-squares apex left 296.07 and 258.80 where these give 277.66 and 223.39.
@@ -226,7 +226,7 @@ class FaceInsetTest {
 
     @Test
     fun `a pyramid-shaped pit grows exactly when one of its walls moves`() {
-        if (!ManifoldLibrary.isAvailable) return
+        org.junit.Assume.assumeTrue("native library not available: ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         // A block with a pit whose walls meet at a point (0, 0, 2) below its top: the material there
         // is the outside of a convex cone. Moving one wall back opens the pit's bottom into an edge.
         val block = Solid.cube(20.0, 20.0, 20.0, center = true)
