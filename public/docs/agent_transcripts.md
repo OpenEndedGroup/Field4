@@ -4203,17 +4203,18 @@ re-run it to change the creatures.
 
 [Open →](offline.html?file=assets/agent_transcripts/bonded_organisms/metadata.edn)
 
-### hopfield_sudoku
+### discrete_energy
 
-[A learned energy that solves Sudoku](energy_puzzles.md), after Hoover, Blayney and Whittington
-([arXiv 2611.17309](https://arxiv.org/abs/2611.17309)), as five boxes. The renderer box opens the
-window. The training box fits a 9×9 Hopfield–Tank energy to 400 solved grids with
-`HopfieldSudoku` and draws its couplings, in which rows, columns and boxes appear. The descent
-box runs the mean-field descent in a Vulkan compute shader, one step per frame, and redraws the
-board as it settles. The check box compares the GPU beliefs after 40 steps with the CPU
-reference. The CPU box charts solve rate and descent steps against the number of blanks.
+[Discrete optimisation by energy descent](discrete_energy.md) with `DiscreteEnergy`, after Hoover,
+Blayney and Whittington ([arXiv 2611.17309](https://arxiv.org/abs/2611.17309)). The renderer box
+opens the window. The Sudoku box states the puzzle with `allDifferent` and draws its same-digit
+cost image. The descent box runs mean-field descent of that energy in a Vulkan compute shader, one
+step per frame, then finishes the board with Gibbs sweeps. The check box compares 40 GPU steps
+with 40 CPU steps. The learned box fits the same energy to solved grids, and its image matches the
+stated one. Three more boxes each state a problem in a few lines and animate it as it settles:
+N-queens, colouring a nearest-neighbour graph, and a travelling-salesman tour.
 
-[Open →](offline.html?file=assets/agent_transcripts/hopfield_sudoku/metadata.edn)
+[Open →](offline.html?file=assets/agent_transcripts/discrete_energy/metadata.edn)
 
 ### satellites
 
