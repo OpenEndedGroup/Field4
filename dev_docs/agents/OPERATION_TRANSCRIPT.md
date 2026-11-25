@@ -559,6 +559,7 @@ can inspect and adapt them. The backdoor `macro`/`transcript` command surface:
 | `macro save-selection <name> --indices 3,4,5` | save chosen transcript entries as a macro |
 | `macro run <name> --as-copy --offset-x 0 --offset-y 300` | replay as a copy: fresh uids for the boxes it creates, frames shifted |
 | `macro step <name> --step 0` | replay operation 0 alone (0-based) |
+| `macro run-content --file <path> [--label <title>]` | run YAML without saving it, as a `field-macro` block in a guide or note does |
 | `macro rename <name> --new-name <other>` | rename a saved macro (its `name:` line follows) |
 | `macro delete <name>` | delete a saved macro (moved to the scope's `.deleted/`) |
 

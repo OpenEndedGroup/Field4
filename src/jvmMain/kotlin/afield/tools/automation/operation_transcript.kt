@@ -648,6 +648,59 @@ object OperationTranscript {
             initializeCreatedBoxes = initializeCreatedBoxes,
             replay = replay,
         )
+        return runCoalesced(documentPath, key, cleanName) {
+            // Read inside the run, so a macro edited since the request is replayed as it is now.
+            if (!file.exists()) {
+                MacroRunResult(false, "No macro named '$cleanName'.", cleanName, normalizedDirection, normalizedTargets, 0, 0)
+            } else {
+                runMacroOperations(
+                    cleanName, loadMacroOperations(file), normalizedTargets, normalizedDirection,
+                    strict, initializeCreatedBoxes, replay
+                )
+            }
+        }
+    }
+
+    /**
+     * Runs macro YAML that is saved nowhere: a `field-macro` block in a guide or a box note. The
+     * replay is [runMacro]'s (selection mapping, launch verdicts, as-copy and step), and [label]
+     * names the run in its messages. A second request for the same text while one is running joins
+     * it instead of replaying twice.
+     */
+    fun runMacroContent(
+        documentPath: String,
+        content: String,
+        label: String = "",
+        targetBoxes: List<String> = emptyList(),
+        replay: MacroReplayOptions = MacroReplayOptions(),
+        initializeCreatedBoxes: Boolean = true,
+    ): MacroRunResult {
+        val cleanName = sanitizeMacroName(label).ifBlank { "inline" }
+        val normalizedTargets = targetBoxes.filter { it.isNotBlank() }
+        val operations = runCatching { parseMacroOperations(content) }.getOrElse {
+            return MacroRunResult(
+                false, "Macro '$cleanName' is not valid YAML: ${it.message?.lineSequence()?.firstOrNull() ?: it}",
+                cleanName, "do", normalizedTargets, 0, 0
+            )
+        }
+        if (operations.isEmpty()) {
+            return MacroRunResult(false, "Macro '$cleanName' has no operations.", cleanName, "do", normalizedTargets, 0, 0)
+        }
+        val digest = java.security.MessageDigest.getInstance("SHA-256").digest(content.toByteArray())
+        val key = MacroRunKey(
+            file = "inline:" + digest.joinToString("") { "%02x".format(it) },
+            targets = normalizedTargets,
+            direction = "do",
+            strict = false,
+            initializeCreatedBoxes = initializeCreatedBoxes,
+            replay = replay,
+        )
+        return runCoalesced(documentPath, key, cleanName) {
+            runMacroOperations(cleanName, operations, normalizedTargets, "do", false, initializeCreatedBoxes, replay)
+        }
+    }
+
+    private fun runCoalesced(documentPath: String, key: MacroRunKey, cleanName: String, run: () -> MacroRunResult): MacroRunResult {
         // Box code calling this (a box that replays a macro) runs on a thread with no session
         // bound; the document's own session is the one the macro's operations act on.
         val bound = runCatching { thisSessionInfo.get() }.getOrNull()
@@ -657,46 +710,22 @@ object OperationTranscript {
         if (session != null) thisSessionInfo.set(session)
         try {
             return activeMacroRuns.run(key) {
-                afield.app.diagnostics.LatencySpans.time("transcript.run", detail = cleanName) {
-                    runMacroOnce(
-                        documentPath = documentPath,
-                        name = cleanName,
-                        targetBoxes = normalizedTargets,
-                        direction = normalizedDirection,
-                        strict = strict,
-                        scope = scope,
-                        projectName = projectName,
-                        initializeCreatedBoxes = initializeCreatedBoxes,
-                        replay = replay,
-                    )
-                }
+                afield.app.diagnostics.LatencySpans.time("transcript.run", detail = cleanName) { run() }
             }
         } finally {
             if (session != null) thisSessionInfo.remove()
         }
     }
 
-    private fun runMacroOnce(
-        documentPath: String,
-        name: String,
+    private fun runMacroOperations(
+        cleanName: String,
+        loaded: List<LinkedHashMap<String, Any?>>,
         targetBoxes: List<String>,
         direction: String,
         strict: Boolean,
-        scope: String,
-        projectName: String,
         initializeCreatedBoxes: Boolean,
         replay: MacroReplayOptions = MacroReplayOptions(),
     ): MacroRunResult {
-        val cleanName = sanitizeMacroName(name)
-        val location = macroLocation(documentPath, scope, projectName)
-        if (location == null) {
-            return MacroRunResult(false, "No project macro scope is available for this document.", cleanName, direction, targetBoxes, 0, 0)
-        }
-        val file = macroFile(location, cleanName)
-        if (!file.exists()) {
-            return MacroRunResult(false, "No macro named '$cleanName'.", cleanName, direction, targetBoxes, 0, 0)
-        }
-        val loaded = loadMacroOperations(file)
         val relocated = if (replay.asCopy || replay.offsetX != 0.0 || replay.offsetY != 0.0) {
             relocateOperations(loaded, replay.asCopy, replay.offsetX, replay.offsetY)
         } else loaded
@@ -1824,8 +1853,11 @@ object OperationTranscript {
         return out
     }
 
-    private fun loadMacroOperations(file: File): List<LinkedHashMap<String, Any?>> {
-        val loaded = Yaml().load<Any?>(file.readText())
+    private fun loadMacroOperations(file: File): List<LinkedHashMap<String, Any?>> = parseMacroOperations(file.readText())
+
+    /** A macro's operations: a bare list, or the `operations:` (or `ops:`) of a mapping. */
+    internal fun parseMacroOperations(text: String): List<LinkedHashMap<String, Any?>> {
+        val loaded = Yaml().load<Any?>(text)
         val rawOps = when (loaded) {
             is List<*> -> loaded
             is Map<*, *> -> (loaded["operations"] as? List<*>) ?: (loaded["ops"] as? List<*>) ?: emptyList<Any?>()

@@ -2880,6 +2880,28 @@ class Server {
                             setupVerified = run.setupVerified
                         )
                     }
+                    // A `field-macro` block in a guide or box note: the YAML travels with the request.
+                    "run-content" -> {
+                        val run = OperationTranscript.runMacroContent(
+                            documentPath = documentPath,
+                            content = request.content,
+                            label = request.label.ifBlank { request.name },
+                            targetBoxes = request.selection
+                        )
+                        OperationTranscript.MacroResult(
+                            success = run.success,
+                            message = run.message,
+                            name = run.name,
+                            operationCount = run.applied,
+                            scope = request.scope,
+                            direction = run.direction,
+                            applied = run.applied,
+                            skipped = run.skipped,
+                            errors = run.errors,
+                            output = run.output,
+                            setupVerified = run.setupVerified
+                        )
+                    }
                     "undo" -> {
                         val run = OperationTranscript.runMacro(
                             documentPath = documentPath,

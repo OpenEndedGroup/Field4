@@ -15,7 +15,10 @@ await wait(() => get('document-guide-launcher')?.hidden, 'Empty document should 
 await wait(() => !document.querySelector('.field-startup-progress:not(.field-startup-progress-done)'),
     'Startup progress did not clear');
 window.notify('Toast shown before the Notes launcher', 'guide-launcher-test');
-const toast = document.querySelector('.bubble');
+// This test's own toast: the first `.bubble` is whatever setup left on screen, and the oldest
+// toast is the first evicted once more than four are live.
+const toast = [...document.querySelectorAll('.bubble')].find(b => b.cat === 'guide-launcher-test');
+if (!toast) throw new Error('The test toast was not shown');
 const toastBottom = parseFloat(toast.style.bottom);
 write('# Just a box note');
 await wait(() => get('document-guide-launcher')?.matches(':not([hidden])') &&
