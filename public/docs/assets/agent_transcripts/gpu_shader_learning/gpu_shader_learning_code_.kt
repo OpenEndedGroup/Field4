@@ -74,8 +74,7 @@ frames {
                     "Fullscreen module; camera, textures and other controls fixed; normalized time varies",
                 )
                 println("FROZEN MODEL SAVED: $directory — load weights.f16 and weights.json with LearnedShader.")
-            }
-                .onFailure { println("Save failed: ${it.message}") }
+            }.onFailure { println("Save failed: ${it.message}") }
         }
         phase++
         frame()

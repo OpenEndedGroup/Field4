@@ -19,13 +19,12 @@ val spellings = [
 
 val cell: (String, MarfFieldClock) -> String = { spec, clock ->
     runCatching {
-            bank
-                .read(pat(spec).nums(), fields = clock, name = "l")
-                .stagesIn(PatArc(PatQ.ZERO, PatQ.of(8)))
-                .take(8)
-                .joinToString("") { s -> s.address.toInt().toString() }
-        }
-        .fold({ seq -> "`$seq`" }, { _ -> "_refused_" })
+        bank
+            .read(pat(spec).nums(), fields = clock, name = "l")
+            .stagesIn(PatArc(PatQ.ZERO, PatQ.of(8)))
+            .take(8)
+            .joinToString("") { s -> s.address.toInt().toString() }
+    }.fold({ seq -> "`$seq`" }, { _ -> "_refused_" })
 }
 
 val table = StringBuilder()
@@ -45,8 +44,7 @@ val stagesDistinct = spellings.mapNotNull { spec ->
             .stagesIn(PatArc(PatQ.ZERO, PatQ.of(8)))
             .take(8)
             .map { s -> s.address }
-    }
-        .getOrNull()
+    }.getOrNull()
 }
 val stepsDistinct = spellings.mapNotNull { spec ->
     runCatching {
@@ -55,8 +53,7 @@ val stepsDistinct = spellings.mapNotNull { spec ->
             .stagesIn(PatArc(PatQ.ZERO, PatQ.of(8)))
             .take(8)
             .map { s -> s.address }
-    }
-        .getOrNull()
+    }.getOrNull()
 }
 table.append("\n")
 table.append("`STAGES` now accepts ${stagesDistinct.size} of the ten and reads ")

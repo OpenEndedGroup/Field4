@@ -35,7 +35,7 @@ start(renderer::run)
 <!-- field-box id="ggt_tiger" index="1" -->
 
 ```edn [field-box id="ggt_tiger" role="properties"]
-{"id" "ggt_tiger" "index" 1 "name" "tiger on the gpu" "parents" ["root" "ggt_renderer"] "children" ["ggt_draw"] "properties" {"children" #{#afield/box "ggt_draw"} "parents" #{#afield/box "root" #afield/box "ggt_renderer"} "name" "tiger on the gpu" "_tombstone" false "frame" #afield/rect [40.0 200.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ggt_tiger_code_.kt" "lines" 35 "characters" 1170 "sha256" "670239a36c94c7a671f04312943da909f547a8b8d43fd76bf4e0f188570ee89a"}]}
+{"id" "ggt_tiger" "index" 1 "name" "tiger on the gpu" "parents" ["root" "ggt_renderer"] "children" ["ggt_draw"] "properties" {"children" #{#afield/box "ggt_draw"} "parents" #{#afield/box "root" #afield/box "ggt_renderer"} "name" "tiger on the gpu" "_tombstone" false "frame" #afield/rect [40.0 200.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ggt_tiger_code_.kt" "lines" 34 "characters" 1165 "sha256" "6c4c2145476ea018e081bf9f9f8cc95cc1a9118a5c2a1caa8f2a1a9ac253531b"}]}
 ```
 
 ```kotlin [field-property box="ggt_tiger" name="code" path="ggt_tiger_code_.kt"]
@@ -72,8 +72,7 @@ loop {
         last = now
     }
     frame()
-}
-    .end { probe.close() }
+}.end { probe.close() }
 ```
 
 ## 3. gpu beside cpu

@@ -3,8 +3,7 @@ import afield.simulation.flow.*
 fun grid() = defaultBuffer {
     size = 14400.vec4s
     zeroInit()
-}
-    .buffer
+}.buffer
 propDown<FrameBufferGroup>(flowA)
 flowA = grid()
 propDown<FrameBufferGroup>(flowB)
@@ -21,32 +20,27 @@ propDown<FrameBufferGroup>(particleA)
 particleA = defaultBuffer {
     size = 32000.vec4s
     zeroInit()
-}
-        .buffer
+}.buffer
 propDown<FrameBufferGroup>(particleB)
 particleB = defaultBuffer {
     size = 32000.vec4s
     zeroInit()
-}
-        .buffer
+}.buffer
 propDown<FrameBufferGroup>(tileHeaders)
 tileHeaders = defaultBuffer {
     perFrame = true
     size = 25.vec4s
-}
-        .buffer
+}.buffer
 propDown<FrameBufferGroup>(cameraHistory)
 cameraHistory = defaultBuffer {
     perFrame = true
     size = 17.vec4s
-}
-        .buffer
+}.buffer
 propDown<FrameBufferGroup>(itemHistory)
 itemHistory = defaultBuffer {
     perFrame = true
     size = 3.vec4s
-}
-        .buffer
+}.buffer
 propDown<SimulationReset>(resetFlow)
 resetFlow = SimulationReset()
 propDown<EffectiveParameter>(force)

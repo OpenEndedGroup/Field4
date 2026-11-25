@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="ground_crawler" index="0" -->
 
 ```edn [field-box id="ground_crawler" role="properties"]
-{"id" "ground_crawler" "index" 0 "name" "the same evolution, on the ground" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the same evolution, on the ground" "_tombstone" false "frame" #afield/rect [1500.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ground_crawler_code_.kt" "lines" 93 "characters" 3305 "sha256" "29aafb8e7e930f8979ebcfb5f545ef16381963796e8c478d19bf7222758d0a5f"}]}
+{"id" "ground_crawler" "index" 0 "name" "the same evolution, on the ground" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the same evolution, on the ground" "_tombstone" false "frame" #afield/rect [1500.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ground_crawler_code_.kt" "lines" 92 "characters" 3296 "sha256" "00ebaa1f76ca03455bd63bfabcf6195c945980644692bc24989b02e6811b380b"}]}
 ```
 
 ```kotlin [field-property box="ground_crawler" name="code" path="ground_crawler_code_.kt"]
@@ -96,8 +96,7 @@ loop {
     val floor = fline {
         moveTo(c.x - 5f, 0f)
         lineTo(c.x + 5f, 0f)
-    }
-        .apply { color = vec(0.5, 0.45, 0.4, 1.0) }
+    }.apply { color = vec(0.5, 0.45, 0.4, 1.0) }
     showPlane(
         [floor] + crawler.frameLines(i, alignNetMotionToPositiveX = false),
         title = "crawler — $status",

@@ -18,8 +18,7 @@ var tempStorage = buffer {
     addressable()
     hosted()
     dest()
-}
-    .buffer
+}.buffer
 
 var downsweep = computeModuleHere(
     parameters {},

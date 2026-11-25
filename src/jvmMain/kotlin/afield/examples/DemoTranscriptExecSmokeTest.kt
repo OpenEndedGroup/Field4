@@ -28,7 +28,7 @@ id: examples.demo-transcript.exec
 runner: jvm-main
 entrypoint: afield.examples.DemoTranscriptExecSmokeTest
 tags: [smoke, agents, transcript, docs, verification]
-timeoutSec: 1200
+timeoutSec: 2400
 expect:
   exitCode: 0
   stdoutContains:
@@ -55,6 +55,14 @@ expect:
  * lines in ~300s before, and only 93 in 600s after. A full green sweep then measured **570s** — under
  * the old cap, but by 5%, which is precisely the margin the paragraph above says will flake on a
  * slower machine. Hence 1200: ~2x the measurement, same rule as before.
+ *
+ * 1200 ran out on 2026-11-25 with the sweep at `typography_worked_example`, a few transcripts from
+ * the end; on its own that transcript passes in 25s. A full sweep then measured **1268s** (202
+ * executed, 188 compiled, 7 Kotlin/JS) at a load average of 27-48 from other sessions. Only 543s of
+ * it is `evaluate=` time, led by `completion_rank_at_scale` at 121s; the rest is compilation spread
+ * across the corpus, so there is nothing single to trim. Hence 2400: ~2x the measurement. The
+ * overrun had also been hiding two real reds behind it (explainer_sound's editable drawings, broken
+ * by a parameter reorder in `Box.lines`), which is the cost of a cap that is too tight.
  *
  * If it times out again, **measure before trimming**. `AFIELD_DEMO_TRANSCRIPT_VERBOSE=1` echoes what
  * the boxes printed, and the `evaluate=<n>s` lines in the run's stdout attribute the time to the

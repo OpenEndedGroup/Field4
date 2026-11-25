@@ -948,7 +948,7 @@ prop<ReadingExample>(exampleFive) = ReadingExample(
 <!-- field-box id="text1_elastic" index="9" -->
 
 ```edn [field-box id="text1_elastic" role="properties"]
-{"id" "text1_elastic" "index" 9 "name" "18 · Elastic sentences" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "18 · Elastic sentences" "_tombstone" false "frame" #afield/rect [1990.0 660.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_elastic_code_.kt" "lines" 176 "characters" 7028 "sha256" "6fa7f99cb9fc47649391c1e9eefc9c2c23613e934cf8e2d55596e664ea50c267"}]}
+{"id" "text1_elastic" "index" 9 "name" "18 · Elastic sentences" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "18 · Elastic sentences" "_tombstone" false "frame" #afield/rect [1990.0 660.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_elastic_code_.kt" "lines" 175 "characters" 7003 "sha256" "132198e4ba9ea350e248d236de4497d522f6bdd0c7a600714a9029d6e7e35228"}]}
 ```
 
 ```kotlin [field-property box="text1_elastic" name="code" path="text1_elastic_code_.kt"]
@@ -990,10 +990,9 @@ val graph = readingDiagram {
     val readings = [door, eyes, hands, nonexistence, sipping, taut]
     val frames = readings.associateWith { run ->
         textFrame("${run.id}-frame", run, standoff = .025f, mode = DiagramTextFrameMode.LINE_UNION) {
-                width = .0008f
-                color = vec(1f, 1f, 1f, .22f)
-            }
-            .also { readingFrames.add(it) }
+            width = .0008f
+            color = vec(1f, 1f, 1f, .22f)
+        }.also { readingFrames.add(it) }
     }
     val thread = connection(
         "door-thread",
@@ -2528,7 +2527,7 @@ void main() {
 <!-- field-box id="text1_drawing" index="23" -->
 
 ```edn [field-box id="text1_drawing" role="properties"]
-{"id" "text1_drawing" "index" 23 "name" "12 · Drawing / score playback" "parents" ["root" "text1_poem" "text1_score" "text1_stroke" "text1_point" "text1_text" "text1_blur" "text1_blur_medium_v" "text1_blur_broad_h" "text1_blur_broad_v" "text1_composite"] "children" ["text1_body" "text1_navigation"] "properties" {"children" #{#afield/box "text1_body" #afield/box "text1_navigation"} "parents" #{#afield/box "root" #afield/box "text1_poem" #afield/box "text1_score" #afield/box "text1_stroke" #afield/box "text1_point" #afield/box "text1_text" #afield/box "text1_blur" #afield/box "text1_blur_medium_v" #afield/box "text1_blur_broad_h" #afield/box "text1_blur_broad_v" #afield/box "text1_composite"} "name" "12 · Drawing / score playback" "_tombstone" false "frame" #afield/rect [3690.0 0.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_drawing_code_.kt" "lines" 89 "characters" 4257 "sha256" "8657496875d695e7ee65a4c39a48ee22e24d299c1ece995532b5e720d789e316"}]}
+{"id" "text1_drawing" "index" 23 "name" "12 · Drawing / score playback" "parents" ["root" "text1_poem" "text1_score" "text1_stroke" "text1_point" "text1_text" "text1_blur" "text1_blur_medium_v" "text1_blur_broad_h" "text1_blur_broad_v" "text1_composite"] "children" ["text1_body" "text1_navigation"] "properties" {"children" #{#afield/box "text1_body" #afield/box "text1_navigation"} "parents" #{#afield/box "root" #afield/box "text1_poem" #afield/box "text1_score" #afield/box "text1_stroke" #afield/box "text1_point" #afield/box "text1_text" #afield/box "text1_blur" #afield/box "text1_blur_medium_v" #afield/box "text1_blur_broad_h" #afield/box "text1_blur_broad_v" #afield/box "text1_composite"} "name" "12 · Drawing / score playback" "_tombstone" false "frame" #afield/rect [3690.0 0.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_drawing_code_.kt" "lines" 88 "characters" 4252 "sha256" "da69dd89750c6f35caa85a26d6f995d9c3257cb8c66332d3e366ff5fc2cf98e7"}]}
 ```
 
 ```kotlin [field-property box="text1_drawing" name="code" path="text1_drawing_code_.kt"]
@@ -2619,8 +2618,7 @@ loop {
         )
     }
     frame()
-}
-    .end { ownedDrawing.close() }
+}.end { ownedDrawing.close() }
 ```
 
 ## 25. 21 · Body interaction / diagnostics

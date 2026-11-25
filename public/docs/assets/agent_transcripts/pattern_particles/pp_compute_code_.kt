@@ -11,8 +11,7 @@ renderer += "pattern-particles" to particles
 var seeds = defaultBuffer {
     size = N.vec4s
     writeOnce()
-}
-    .buffer
+}.buffer
 var positions = defaultBuffer { size = N.vec4s }.buffer
 // Inherited by the draw box below, which reads these positions as its vertex data.
 prop<FrameBufferGroup>(outputPositions) = positions

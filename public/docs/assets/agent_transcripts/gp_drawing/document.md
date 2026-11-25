@@ -80,7 +80,7 @@ Six pins around a loop. Drag any pin's control below and the loop redraws: the o
 and six blue draws, all closed, all passing near every pin. Edit `start` to keep a shape.
 
 ```edn [field-box id="gp_loop" role="properties"]
-{"id" "gp_loop" "index" 1 "name" "1 - A closed loop through six pins" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - A closed loop through six pins" "_tombstone" false "frame" #afield/rect [60.0 40.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gp_loop_code_.kt" "lines" 68 "characters" 2403 "sha256" "f0e6dabe8d11a6733a2c9d5b9e0f29ef0a0b9f450b8990ec3cd2915ab483e5c9"}]}
+{"id" "gp_loop" "index" 1 "name" "1 - A closed loop through six pins" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - A closed loop through six pins" "_tombstone" false "frame" #afield/rect [60.0 40.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gp_loop_code_.kt" "lines" 66 "characters" 2357 "sha256" "c7c1dfd0c56a9964103070bb90c853a325443ee1197f2c7c83e9e68ed95f6f4f"}]}
 ```
 
 ```kotlin [field-property box="gp_loop" name="code" path="gp_loop_code_.kt"]
@@ -140,16 +140,14 @@ fun redraw() {
 controlGroup("pins", columns = 3) {
     pins.indices.forEach { i ->
         vec2Control("pin ${i + 1}", Vector2f(pins[i].x, pins[i].y), xRange = -1.5 to 1.5, yRange = -1.3 to 1.3) { v ->
-                pins[i] = vec(v.x, v.y, 0)
-                redraw()
-            }
-            .set(Vector2f(pins[i].x, pins[i].y))
+            pins[i] = vec(v.x, v.y, 0)
+            redraw()
+        }.set(Vector2f(pins[i].x, pins[i].y))
     }
     slider("length scale", min = 0.1, max = 1.5, initialValue = lengthScale) {
-            lengthScale = it
-            redraw()
-        }
-        .set(lengthScale)
+        lengthScale = it
+        redraw()
+    }.set(lengthScale)
 }
 redraw()
 ```
@@ -167,7 +165,7 @@ Four measurements and a smoothness assumption: five draws (blue), the mean (oran
 functions; a noisier third measurement lets the draws pass further from it.
 
 ```edn [field-box id="gp_conditioning" role="properties"]
-{"id" "gp_conditioning" "index" 2 "name" "2 - Four measurements, two sliders" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Four measurements, two sliders" "_tombstone" false "frame" #afield/rect [2200.0 40.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gp_conditioning_code_.kt" "lines" 66 "characters" 2172 "sha256" "bcdcd6211a08233e3a341967eb5ef5be2a6b292d8ba5eb9fb00e31dd8d0c587d"}]}
+{"id" "gp_conditioning" "index" 2 "name" "2 - Four measurements, two sliders" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Four measurements, two sliders" "_tombstone" false "frame" #afield/rect [2200.0 40.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gp_conditioning_code_.kt" "lines" 64 "characters" 2130 "sha256" "6e55f17e5e4fdba5af62f50212bc85259a3f16c2d4bb988d5d748730801b773a"}]}
 ```
 
 ```kotlin [field-property box="gp_conditioning" name="code" path="gp_conditioning_code_.kt"]
@@ -226,15 +224,13 @@ fun redraw() {
 // running the box puts the sliders back at the values above
 controlGroup("controls") {
     slider("length scale", min = 0.1, max = 1.5, initialValue = lengthScale) {
-            lengthScale = it
-            redraw()
-        }
-        .set(lengthScale)
+        lengthScale = it
+        redraw()
+    }.set(lengthScale)
     slider("noise of the third measurement", min = 0.01, max = 0.8, initialValue = thirdNoise) {
-            thirdNoise = it
-            redraw()
-        }
-        .set(thirdNoise)
+        thirdNoise = it
+        redraw()
+    }.set(thirdNoise)
 }
 redraw()
 ```

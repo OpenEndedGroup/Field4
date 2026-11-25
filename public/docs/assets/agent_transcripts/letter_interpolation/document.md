@@ -119,7 +119,7 @@ println(
 <!-- field-box id="li_sweep" index="2" -->
 
 ```edn [field-box id="li_sweep" role="properties"]
-{"id" "li_sweep" "index" 2 "name" "the middle" "parents" ["root" "li_fields"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "li_fields"} "name" "the middle" "_tombstone" false "frame" #afield/rect [740.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "li_sweep_code_.kt" "lines" 37 "characters" 1492 "sha256" "913ab051aca9946f46c156e2de2895648dd66d7d213147a8f86829e9588cd4db"}]}
+{"id" "li_sweep" "index" 2 "name" "the middle" "parents" ["root" "li_fields"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "li_fields"} "name" "the middle" "_tombstone" false "frame" #afield/rect [740.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "li_sweep_code_.kt" "lines" 36 "characters" 1443 "sha256" "890c0cac2809f645866b52a9624bf0c0b4b2c564e479c259c717879a262bef5f"}]}
 ```
 
 ```kotlin [field-property box="li_sweep" name="code" path="li_sweep_code_.kt"]
@@ -127,17 +127,16 @@ prop<afield.simulation.particles.ShaderNeuralParticles>(particles)
 
 once.particles {
     ShaderNeuralParticles(fieldA, renderer) {
-            particleCount = 200_000
-            stepsPerCycle = 150
-            /*
-            Low, on purpose. A high dwell shows the *distribution* a field settles on,
-            which is the right choice for reading a word and the wrong one here: the
-            interesting thing is a shape that is continuously becoming another, so the
-            stream between the shapes has to stay visible.
-            */
-            dwellCycles = 1.2f
-        }
-        .also { it.installInto() }
+        particleCount = 200_000
+        stepsPerCycle = 150
+        /*
+        Low, on purpose. A high dwell shows the *distribution* a field settles on,
+        which is the right choice for reading a word and the wrong one here: the
+        interesting thing is a shape that is continuously becoming another, so the
+        stream between the shapes has to stay visible.
+        */
+        dwellCycles = 1.2f
+    }.also { it.installInto() }
 }
 
 particles.settings.intensity = 1.1f

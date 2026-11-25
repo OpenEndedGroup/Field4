@@ -246,8 +246,7 @@ operations:
                       val fdLink = File("/proc/self/fd/$rejectedFd").toPath()
                       fun fdTarget(): String? = runCatching {
                           java.nio.file.Files.readSymbolicLink(fdLink).toString()
-                      }
-                          .getOrNull()
+                      }.getOrNull()
                       val exportedTarget = fdTarget()
                       require(exportedTarget != null) { "the exported dma-buf fd $rejectedFd is not open" }
                       val rejectedResult = surface.offerFrame(

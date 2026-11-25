@@ -40,10 +40,9 @@ run {
         val start = System.nanoTime()
         val design = runCatching {
             solidCraft("block") {
-                    extrude(sketch { rectangle(0.0, 0.0, a, b) }, "$c")
-                    fillet("$r", *edges)
-                }
-                .open()
+                extrude(sketch { rectangle(0.0, 0.0, a, b) }, "$c")
+                fillet("$r", *edges)
+            }.open()
         }
         val millis = (System.nanoTime() - start) / 1_000_000
         val part = design.getOrNull()

@@ -39,7 +39,7 @@ start(renderer::run)
 <!-- field-box id="path_traced_reconstruction" index="1" -->
 
 ```edn [field-box id="path_traced_reconstruction" role="properties"]
-{"id" "path_traced_reconstruction" "index" 1 "name" "path traced reconstruction" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "path traced reconstruction" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_traced_reconstruction_code_.kt" "lines" 61 "characters" 2628 "sha256" "d0c6a91d64e5ef3900fac1387684e29a4bd2189bcd6145b4bec9994a8033e154"}]}
+{"id" "path_traced_reconstruction" "index" 1 "name" "path traced reconstruction" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "path traced reconstruction" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_traced_reconstruction_code_.kt" "lines" 60 "characters" 2623 "sha256" "c3e35afab4a5d8372bfc349e0ccf9e5b5f6b6b0d25849de04197546aa3195904"}]}
 ```
 
 ```kotlin [field-property box="path_traced_reconstruction" name="code" path="path_traced_reconstruction_code_.kt"]
@@ -102,7 +102,6 @@ frames {
         }
         frame()
     }
-}
-    .end { ownedLab.close() }
+}.end { ownedLab.close() }
 ```
 

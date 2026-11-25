@@ -115,5 +115,4 @@ frames {
         }
         frame()
     }
-}
-    .end { ownedLab.close() }
+}.end { ownedLab.close() }

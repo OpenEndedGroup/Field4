@@ -155,8 +155,7 @@ var level = 0.0
 val series = 3000 {
     level += rnd.nextGaussian() * 0.1
     level
-}
-    .toMutableList()
+}.toMutableList()
 for (at in [500, 1400, 2500]) for (k in 0 until 60) series[at + k] += 2 * sin(2 * PI * k / 60)
 
 // Half, once and twice the wiggle's length, each with its top motif shaded.
@@ -200,8 +199,7 @@ var level = 0.0
 val series = 3000 {
     level += rnd.nextGaussian() * 0.1
     level
-}
-    .toMutableList()
+}.toMutableList()
 for (at in [500, 1400, 2500]) for (k in 0 until 60) series[at + k] += 2 * sin(2 * PI * k / 60)
 
 // b is a's walk with a square step added at 1900 that a never makes.

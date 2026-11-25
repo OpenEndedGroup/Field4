@@ -54,15 +54,13 @@ fun redraw() {
 controlGroup("pins", columns = 3) {
     pins.indices.forEach { i ->
         vec2Control("pin ${i + 1}", Vector2f(pins[i].x, pins[i].y), xRange = -1.5 to 1.5, yRange = -1.3 to 1.3) { v ->
-                pins[i] = vec(v.x, v.y, 0)
-                redraw()
-            }
-            .set(Vector2f(pins[i].x, pins[i].y))
+            pins[i] = vec(v.x, v.y, 0)
+            redraw()
+        }.set(Vector2f(pins[i].x, pins[i].y))
     }
     slider("length scale", min = 0.1, max = 1.5, initialValue = lengthScale) {
-            lengthScale = it
-            redraw()
-        }
-        .set(lengthScale)
+        lengthScale = it
+        redraw()
+    }.set(lengthScale)
 }
 redraw()

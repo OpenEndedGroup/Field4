@@ -150,5 +150,4 @@ frames {
         }
         frame()
     }
-}
-    .end { plumbing.close() }
+}.end { plumbing.close() }

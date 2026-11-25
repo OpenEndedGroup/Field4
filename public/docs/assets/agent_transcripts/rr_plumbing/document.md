@@ -38,7 +38,7 @@ start(renderer::run)
 <!-- field-box id="rr_plumbing" index="1" -->
 
 ```edn [field-box id="rr_plumbing" role="properties"]
-{"id" "rr_plumbing" "index" 1 "name" "rr plumbing" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "rr plumbing" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rr_plumbing_code_.kt" "lines" 154 "characters" 5886 "sha256" "34c938b59e06a0887de1e66cd7f0d42977eadd90293e0ef68a8d0ba7aede6e07"} {"name" "vertex" "language" "glsl" "path" "rr_plumbing_vertex_.glsl" "lines" 5 "characters" 119 "sha256" "f5f928935456f7b96462d2257491aa9db6746aea0bb37e84df323e8399a26dc9"} {"name" "fragment" "language" "glsl" "path" "rr_plumbing_fragment_.glsl" "lines" 35 "characters" 1459 "sha256" "fc8dfabf4148c7534aac7bf9bbb2a95c879201c90c3c4a316fe90352106611aa"}]}
+{"id" "rr_plumbing" "index" 1 "name" "rr plumbing" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "rr plumbing" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rr_plumbing_code_.kt" "lines" 153 "characters" 5881 "sha256" "8f3af957dc88c08881e7d9fee90800722b757df75bc357d5ec4fecd8b76f40a8"} {"name" "vertex" "language" "glsl" "path" "rr_plumbing_vertex_.glsl" "lines" 5 "characters" 119 "sha256" "f5f928935456f7b96462d2257491aa9db6746aea0bb37e84df323e8399a26dc9"} {"name" "fragment" "language" "glsl" "path" "rr_plumbing_fragment_.glsl" "lines" 35 "characters" 1459 "sha256" "fc8dfabf4148c7534aac7bf9bbb2a95c879201c90c3c4a316fe90352106611aa"}]}
 ```
 
 ```kotlin [field-property box="rr_plumbing" name="code" path="rr_plumbing_code_.kt"]
@@ -194,8 +194,7 @@ frames {
         }
         frame()
     }
-}
-    .end { plumbing.close() }
+}.end { plumbing.close() }
 ```
 
 ```glsl [field-property box="rr_plumbing" name="vertex" path="rr_plumbing_vertex_.glsl"]

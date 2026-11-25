@@ -54,11 +54,9 @@ run {
     start = System.nanoTime()
     val together = runCatching {
         solidCraft("plate") {
-                plate()
-                chamfer(size, *picks(edges))
-            }
-            .open()
-            .close()
+            plate()
+            chamfer(size, *picks(edges))
+        }.open().close()
     }
     val togetherTime = millis(start)
     val why = together.exceptionOrNull()?.message?.substringBefore("\n")?.substringAfterLast(": ")
@@ -67,11 +65,10 @@ run {
     start = System.nanoTime()
     val chamfered =
         solidCraft("plate") {
-                plate()
-                chamfer(size, *picks(convex))
-                chamfer(size, *picks(concave))
-            }
-            .open()
+            plate()
+            chamfer(size, *picks(convex))
+            chamfer(size, *picks(concave))
+        }.open()
     val chamferTime = millis(start)
     val after = chamfered.mesh().toTriMesh().weld()
     val faces = chamfered.summary().getJSONArray("bodies").getJSONObject(0).getInt("faces")

@@ -36,10 +36,9 @@ val graph = readingDiagram {
     val readings = [door, eyes, hands, nonexistence, sipping, taut]
     val frames = readings.associateWith { run ->
         textFrame("${run.id}-frame", run, standoff = .025f, mode = DiagramTextFrameMode.LINE_UNION) {
-                width = .0008f
-                color = vec(1f, 1f, 1f, .22f)
-            }
-            .also { readingFrames.add(it) }
+            width = .0008f
+            color = vec(1f, 1f, 1f, .22f)
+        }.also { readingFrames.add(it) }
     }
     val thread = connection(
         "door-thread",

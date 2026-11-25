@@ -544,8 +544,7 @@ operations:
             renderer.windows.forEach { it.pollEvents() }
             renderer.render()
             frame()
-        }
-            .end { stereo.beforeScene.remove("body-one-tracking", updateTracking) }
+        }.end { stereo.beforeScene.remove("body-one-tracking", updateTracking) }
 - connect:
     parent: body1_context
     child: body1_drawing

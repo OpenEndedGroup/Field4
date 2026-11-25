@@ -40,8 +40,7 @@ renderer += "petri-sparks" to module
 var bursts = defaultBuffer {
     perFrame = true
     size = slots.vec4s
-}
-    .buffer
+}.buffer
 
 var charge = 0.0
 val tokens = DoubleArray(3)

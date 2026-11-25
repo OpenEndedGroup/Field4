@@ -21,5 +21,4 @@ loop {
         }
         threeLines(lines, channel = "curves", height = 520)
     }
-}
-    .end { curves.forEach { it.close() } }
+}.end { curves.forEach { it.close() } }

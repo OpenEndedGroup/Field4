@@ -216,7 +216,7 @@ A frame becomes a score: eight beats across, MIDI 72 at the top to 60 at the bot
 The notes are drawn inside the frame block, so they belong to the frame and move with it.
 
 ```edn [field-box id="ne_score" role="properties"]
-{"id" "ne_score" "index" 4 "name" "score" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "score" "_tombstone" false "frame" #afield/rect [620.0 80.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ne_score_code_.kt" "lines" 17 "characters" 927 "sha256" "ce54d4bca5e0757a382085aa760a420bed2988e1bcfbd0ace96391f6cfddf089"}]}
+{"id" "ne_score" "index" 4 "name" "score" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "score" "_tombstone" false "frame" #afield/rect [620.0 80.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ne_score_code_.kt" "lines" 16 "characters" 894 "sha256" "a0778ca671803d32b6fc54839bcc1316a7a71f39a7926d3ade1336e469f00027"}]}
 ```
 
 ```kotlin [field-property box="ne_score" name="code" path="ne_score_code_.kt"]
@@ -224,13 +224,12 @@ The notes are drawn inside the frame block, so they belong to the frame and move
 // The notes are drawn inside the frame block, so they belong to the frame and move with it.
 val frame =
     notation("sheet") {
-            frame("score", 560, 180, 480, 240) {
-                rect(620, 220, 120, 30, name = "C5", fill = "#1971c2")
-                rect(740, 300, 180, 30, name = "E4", fill = "#2f9e44")
-                stroke([vec(600, 400), vec(1000, 200)], name = "gliss", stroke = "#e03131")
-            }
+        frame("score", 560, 180, 480, 240) {
+            rect(620, 220, 120, 30, name = "C5", fill = "#1971c2")
+            rect(740, 300, 180, 30, name = "E4", fill = "#2f9e44")
+            stroke([vec(600, 400), vec(1000, 200)], name = "gliss", stroke = "#e03131")
         }
-        .first()
+    }.first()
 val s = notation.space(frame, x = 0.0..8.0, y = 72.0..60.0)
 println("in the score: " + s.marks.map { it.label })
 s.events.forEach { println("  $it") }

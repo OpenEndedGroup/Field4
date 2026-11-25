@@ -115,5 +115,4 @@ frames {
         if (animate) time += 1f / 30f
         frame()
     }
-}
-    .end { ownedSession.close() }
+}.end { ownedSession.close() }

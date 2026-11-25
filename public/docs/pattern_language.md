@@ -792,8 +792,7 @@ val lines = buildList {
     add(
         "played   " + crossing.eventSequence(0).take(3).toList().joinToString("  ") { "${it.value}[${it.arc}]" },
     )
-}
-    .joinToString("\n")
+}.joinToString("\n")
 println(lines)
 display("<pre>" + lines + "</pre>")
 ```

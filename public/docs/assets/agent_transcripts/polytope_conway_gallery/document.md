@@ -247,7 +247,7 @@ Take the cube's coordinates away. The topology is untouched, and every combinato
 question about the dual is still decidable.
 
 ```edn [field-box id="polytope_abstract_dual" role="properties"]
-{"id" "polytope_abstract_dual" "index" 3 "name" "2 — a dual with no coordinates" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — a dual with no coordinates" "_tombstone" false "frame" #afield/rect [1120.0 80.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_abstract_dual_code_.kt" "lines" 43 "characters" 2298 "sha256" "86b8b66538e6ebd3fe1359a3b840a9205dc74d18d40d6131bbd66fab961c182f"}]}
+{"id" "polytope_abstract_dual" "index" 3 "name" "2 — a dual with no coordinates" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — a dual with no coordinates" "_tombstone" false "frame" #afield/rect [1120.0 80.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_abstract_dual_code_.kt" "lines" 41 "characters" 2288 "sha256" "3fae8bbbf3581457c3b8a0a8ce24145cb7d8bc9838c2b20fed7d21f16030f7f9"}]}
 ```
 
 ```kotlin [field-property box="polytope_abstract_dual" name="code" path="polytope_abstract_dual_code_.kt"]
@@ -260,12 +260,10 @@ val abstract = abstractCube.transform(ConwayOperator.DUAL).polyhedron
 // These are real caught exceptions; nothing here paraphrases an error message.
 val flineRefusal = runCatching {
     abstract.toFaceFLines()
-}
-    .fold({ "no exception — unexpected" }, { "${it::class.simpleName}: ${it.message}" })
+}.fold({ "no exception — unexpected" }, { "${it::class.simpleName}: ${it.message}" })
 val triangleRefusal = runCatching {
     abstract.triangulate()
-}
-    .fold({ "no exception — unexpected" }, { "${it::class.simpleName}: ${it.message}" })
+}.fold({ "no exception — unexpected" }, { "${it::class.simpleName}: ${it.message}" })
 
 /*
 ***** CHANGE THIS ***** Try a realization policy that supplies coordinates.

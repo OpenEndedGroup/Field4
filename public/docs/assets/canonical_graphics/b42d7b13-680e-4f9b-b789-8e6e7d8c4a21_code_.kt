@@ -25,8 +25,7 @@ val vertices = [
 // A buffer sized from the schema stride, filled with the vertices in the schema's byte layout.
 val vertexData = defaultBuffer {
     size = (vertices.size * vertexSchema.strideBytes).bytes
-}
-    .buffer
+}.buffer
 
 vertexData.mapAndWrite_bytes {
     vertexSchema.writeArray(vertices, this)

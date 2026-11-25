@@ -16,8 +16,7 @@ renderer += module
 var vertexData = defaultBuffer {
     perFrame = true
     size = 3.vec4s
-}
-    .buffer
+}.buffer
 
 // `m.vertexData` is reflected from the `vertexData` buffer reference in the vertex shader's push constants
 m.vertexData = { vertexData }

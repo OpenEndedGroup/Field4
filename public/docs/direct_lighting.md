@@ -98,8 +98,7 @@ frames {
         t += 1.0 / 60.0
         frame()
     }
-}
-    .end { study.close() }
+}.end { study.close() }
 ```
 
 Stopping the box closes its study. Re-running the box replaces the study: a new [`DirectLightingDemo`](reference/graphics.md#directlightingdemo-kt-directlightingdemo) closes the one the same box made before.

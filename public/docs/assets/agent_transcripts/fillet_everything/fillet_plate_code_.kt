@@ -50,10 +50,9 @@ run {
     start = System.nanoTime()
     val rounded =
         solidCraft("plate") {
-                plate()
-                fillet(radius, *edges.map { it.pick }.toTypedArray())
-            }
-            .open()
+            plate()
+            fillet(radius, *edges.map { it.pick }.toTypedArray())
+        }.open()
     val filletTime = millis(start)
     val after = rounded.mesh(tolerance = 0.02).toTriMesh().weld()
     val faces = rounded.summary().getJSONArray("bodies").getJSONObject(0).getInt("faces")

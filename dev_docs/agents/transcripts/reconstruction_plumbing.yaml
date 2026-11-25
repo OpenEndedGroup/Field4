@@ -189,8 +189,7 @@ operations:
                 }
                 frame()
             }
-        }
-            .end { plumbing.close() }
+        }.end { plumbing.close() }
       vertex: |
         #version 460
         layout(push_constant) uniform Scene {
@@ -452,7 +451,6 @@ operations:
               }
               frame()
           }
-      }
-          .end { plumbing.close() }
+      }.end { plumbing.close() }
 - wait:
     frames: 12

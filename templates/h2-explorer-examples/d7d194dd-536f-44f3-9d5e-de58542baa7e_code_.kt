@@ -12,8 +12,7 @@ val boom = runCatching {
     } catch (t: Throwable) {
         throw IllegalStateException("the outer failure", t)
     }
-}
-        .exceptionOrNull()!!
+}.exceptionOrNull()!!
 
 display("error", boom.h2)
 displayOpen("error")

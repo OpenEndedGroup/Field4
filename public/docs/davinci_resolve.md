@@ -110,8 +110,7 @@ link.enabled = true
 loop {
     link.offer(movie.timestamp) // uploaded source-video seconds; do not multiply by playback speed
     frame()
-}
-    .end { link.close() }
+}.end { link.close() }
 ```
 
 Offer `null` while no movie frame is available. `link.status` reports the latest target and

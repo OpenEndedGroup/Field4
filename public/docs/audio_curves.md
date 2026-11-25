@@ -345,8 +345,7 @@ loop {
         shown = frame.timeSeconds
         threeLines(frame.flines(scale, bands = 16, centered = true) + room, channel = "curve", height = 560)
     }
-}
-    .end { curve.close() }
+}.end { curve.close() }
 ```
 
 Launch the box so its `loop` keeps drawing until you stop it. Press play, or drag across the

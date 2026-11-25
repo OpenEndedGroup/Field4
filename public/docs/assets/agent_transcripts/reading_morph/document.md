@@ -135,7 +135,7 @@ sumPlayer.wind = 0f
 <!-- field-box id="pick_drawing" index="2" -->
 
 ```edn [field-box id="pick_drawing" role="properties"]
-{"id" "pick_drawing" "index" 2 "name" "3 · Drawing" "parents" ["root" "morph_scene"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "morph_scene"} "name" "3 · Drawing" "_tombstone" false "frame" #afield/rect [40.0 800.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pick_drawing_code_.kt" "lines" 11 "characters" 308 "sha256" "c6cb19c73cb51210510725b26ee6bfc6b44668f353895db10fea43a025af3e1b"}]}
+{"id" "pick_drawing" "index" 2 "name" "3 · Drawing" "parents" ["root" "morph_scene"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "morph_scene"} "name" "3 · Drawing" "_tombstone" false "frame" #afield/rect [40.0 800.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pick_drawing_code_.kt" "lines" 10 "characters" 303 "sha256" "612fcf55ae73cb48d05d6b9e3f5ac0941d7fe0570d4301eb0108bcf83955049a"}]}
 ```
 
 ```kotlin [field-property box="pick_drawing" name="code" path="pick_drawing_code_.kt"]
@@ -148,7 +148,6 @@ loop {
     renderer.windows.forEach { it.pollEvents() }
     renderer.render()
     frame()
-}
-    .end { ownedDrawing.close() }
+}.end { ownedDrawing.close() }
 ```
 

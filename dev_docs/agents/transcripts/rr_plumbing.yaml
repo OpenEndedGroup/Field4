@@ -216,8 +216,7 @@ operations:
                 }
                 frame()
             }
-        }
-            .end { plumbing.close() }
+        }.end { plumbing.close() }
       vertex: |
         #version 460
         void main() {
@@ -421,7 +420,6 @@ operations:
               }
               frame()
           }
-      }
-          .end { plumbing.close() }
+      }.end { plumbing.close() }
 - wait:
     frames: 12

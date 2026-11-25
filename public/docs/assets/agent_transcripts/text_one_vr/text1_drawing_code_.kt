@@ -85,5 +85,4 @@ loop {
         )
     }
     frame()
-}
-    .end { ownedDrawing.close() }
+}.end { ownedDrawing.close() }

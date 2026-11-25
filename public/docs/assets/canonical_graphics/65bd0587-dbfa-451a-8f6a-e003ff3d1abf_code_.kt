@@ -33,8 +33,7 @@ A buffer for the vertex positions.
 var vertexData = defaultBuffer {
     perFrame = true
     size = 3.vec4s
-}
-    .buffer
+}.buffer
 
 // Hand the buffer to the mesh. `m.vertexData` exists, with the right type, because Field reflected the
 // shader and found the `vertexData` pointer in its push constants.

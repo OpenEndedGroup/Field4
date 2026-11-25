@@ -34,7 +34,7 @@ start(renderer::run)
 <!-- field-box id="gs_sim" index="1" -->
 
 ```edn [field-box id="gs_sim" role="properties"]
-{"id" "gs_sim" "index" 1 "name" "simulate" "parents" ["root" "gs_renderer"] "children" ["gs_draw"] "properties" {"children" #{#afield/box "gs_draw"} "parents" #{#afield/box "root" #afield/box "gs_renderer"} "name" "simulate" "_tombstone" false "frame" #afield/rect [340.0 40.0 300.0 100.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "gs_sim_compute_.glsl" "lines" 58 "characters" 1856 "sha256" "0a4d10ae493ee9e931ba3192ec6988cd7fd89ed350fd5863486ab9e6b0acbd01"} {"name" "code" "language" "kotlin" "path" "gs_sim_code_.kt" "lines" 128 "characters" 5071 "sha256" "b1f1694632c9c4111828ef2782272b50679de27ae984fa6a799104f2766ad1fe"}]}
+{"id" "gs_sim" "index" 1 "name" "simulate" "parents" ["root" "gs_renderer"] "children" ["gs_draw"] "properties" {"children" #{#afield/box "gs_draw"} "parents" #{#afield/box "root" #afield/box "gs_renderer"} "name" "simulate" "_tombstone" false "frame" #afield/rect [340.0 40.0 300.0 100.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "gs_sim_compute_.glsl" "lines" 58 "characters" 1856 "sha256" "0a4d10ae493ee9e931ba3192ec6988cd7fd89ed350fd5863486ab9e6b0acbd01"} {"name" "code" "language" "kotlin" "path" "gs_sim_code_.kt" "lines" 126 "characters" 5061 "sha256" "28db5e254602d3911b576617148611a28294f8468a09691cc9efadbe5fadd3e0"}]}
 ```
 
 ```glsl [field-property box="gs_sim" name="compute" path="gs_sim_compute_.glsl"]
@@ -119,14 +119,12 @@ var stateB = defaultBuffer { size = (N * 2).vec4s }.buffer
 var anchors = defaultBuffer {
     size = N.vec4s
     writeOnce()
-}
-    .buffer
+}.buffer
 // Heat is zeroInit(): never uploaded at all. The device zeroes it and the shader owns it.
 var heat = defaultBuffer {
     size = N.vec4s
     zeroInit()
-}
-    .buffer
+}.buffer
 
 // One list of home positions, used for the anchors and for both halves of the state, so the
 // simulation starts exactly at rest rather than nearly at rest.

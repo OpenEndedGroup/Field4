@@ -177,7 +177,7 @@ N(E) for a radius-8 Penrose patch: every state (grey), and states weighted by th
 the patch's inner 60% (orange). Left, the whole spectrum; right, E from -0.5 to 0.5.
 
 ```edn [field-box id="ps_idos" role="properties"]
-{"id" "ps_idos" "index" 3 "name" "3 - integrated density of states" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - integrated density of states" "_tombstone" false "frame" #afield/rect [60.0 760.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ps_idos_code_.kt" "lines" 47 "characters" 1922 "sha256" "0073ed6f1d0bfc9826634886f3d163be726adce39f8c8673947f5b25b9cba023"}]}
+{"id" "ps_idos" "index" 3 "name" "3 - integrated density of states" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - integrated density of states" "_tombstone" false "frame" #afield/rect [60.0 760.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ps_idos_code_.kt" "lines" 46 "characters" 1913 "sha256" "fe25912f4776c1716ce2eb7af8d403c62b0f5419a84f53cd5210e630b176eaf7"}]}
 ```
 
 ```kotlin [field-property box="ps_idos" name="code" path="ps_idos_code_.kt"]
@@ -205,8 +205,7 @@ fun panel(from: Double, to: Double, dx: Double): List<FLine> {
         lineTo(300.0, 0.0)
         moveTo(zeroX, 0.0)
         lineTo(zeroX, 10.0)
-    }
-        .apply { color = vec(1.0, 1.0, 1.0, 0.7) }
+    }.apply { color = vec(1.0, 1.0, 1.0, 0.7) }
     return [all, weighted, axis].map { it.transform { v -> Vec3(v.x + dx.toFloat(), v.y, 0f) } }
 }
 lines(

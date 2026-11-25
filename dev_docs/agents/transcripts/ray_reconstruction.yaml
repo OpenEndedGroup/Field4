@@ -98,8 +98,7 @@ operations:
                 }
                 frame()
             }
-        }
-            .end { lab.close() }
+        }.end { lab.close() }
 - connect:
     parent: agent_graphics_context
     child: ray_reconstruction
@@ -141,7 +140,6 @@ operations:
               }
               frame()
           }
-      }
-          .end { lab.close() }
+      }.end { lab.close() }
 - wait:
     frames: 12

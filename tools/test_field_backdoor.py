@@ -1994,6 +1994,13 @@ class FilmTimelineBackdoorTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_a_progress_reply_is_heard_and_never_taken_for_the_reply(self) -> None:
         heard: list[dict] = []
+        # The idle window is measured on time.monotonic(); this clock moves only when a message is
+        # delivered, 0.05 s per step, so a loaded event loop that stalls between steps cannot age the
+        # window. (Real 50 ms sleeps against a 0.12 s window failed the lander twice on 2026-11-25 at
+        # load ~40.) The real gap is deliberately LONGER than the window, so every step goes through
+        # the wait's timeout and is kept alive only by the idle check on this clock; a stall just
+        # lengthens the gap and takes the same path.
+        clock = [0.0]
 
         async def send(name, payload=None, *, reply_to=None, reply_context=None):
             async def deliver():
@@ -2002,7 +2009,8 @@ class FilmTimelineBackdoorTests(unittest.IsolatedAsyncioTestCase):
                     {"name": reply_to, "originalName": "agent-progress", "payload": {"phase": "filming", "done": 2, "total": 2}},
                     {"name": reply_to, "originalName": "agent-film-page", "payload": {"ok": True}},
                 ):
-                    await asyncio.sleep(0.05)
+                    clock[0] += 0.05  # the gap has elapsed by the time the wait looks
+                    await asyncio.sleep(0.15)
                     self.client._apply_event(self.client._build_event(message))
                     async with self.client.condition:
                         self.client.condition.notify_all()
@@ -2010,8 +2018,12 @@ class FilmTimelineBackdoorTests(unittest.IsolatedAsyncioTestCase):
             return "uid"
 
         self.client.send_message = send  # type: ignore[method-assign]
-        # Each step arrives well inside the idle timeout, though the whole takes longer than it.
-        event = await self.client.call_for_single_reply("agent-film-page", {}, timeout=5.0, idle_timeout=0.12, on_progress=heard.append)
+        # Each step arrives well inside the idle timeout, though the whole (0.15 s) takes longer than it.
+        with mock.patch("tools.field_backdoor.time", mock.Mock(monotonic=lambda: clock[0])):
+            event = await self.client.call_for_single_reply(
+                "agent-film-page", {}, timeout=5.0, idle_timeout=0.12, on_progress=heard.append,
+            )
+        self.assertAlmostEqual(clock[0], 0.15)
         self.assertEqual(event["payload"], {"ok": True})
         self.assertEqual([p["done"] for p in heard], [1, 2])
         self.assertEqual(self.client.last_progress["done"], 2)

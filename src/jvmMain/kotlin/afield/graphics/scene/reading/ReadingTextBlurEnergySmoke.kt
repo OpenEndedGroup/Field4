@@ -33,6 +33,13 @@ expect:
 */
 /** Measures actual cached Gaussian energy and the production text draw before final grading. */
 object ReadingTextBlurEnergySmoke {
+
+    /** Largest gap between alpha and light (half of red plus blue) over [image]'s RGBA pixels. */
+    private fun worstNeutral(image: FloatArray): Float =
+        (image.indices step 4).maxOf { abs(image[it + 3] - .5f * (image[it] + image[it + 2])) / maxOf(1f, abs(image[it])) }
+
+    /** With no palette every pixel is at the neutral position, so alpha is light; float16 readback rounds. */
+    private fun neutral(image: FloatArray) = worstNeutral(image) < 4e-3f
     @JvmStatic fun main(args: Array<String>) {
         Options.enableVR = false
         Options.enableHDR = false
@@ -88,8 +95,12 @@ object ReadingTextBlurEnergySmoke {
             drawing.textBlurConfig.appearance.y = 1.8f
             val contrast = scene()
             check(energy(contrast) < energy(linear) * .8) { "Contrast did not trim blurred tails" }
-            check(contrast.indices.filter { it % 4 == 1 || it % 4 == 3 }.all { contrast[it] == linear[it] }) {
-                "Text appearance changed green control data or coverage"
+            check(contrast.indices.filter { it % 4 == 1 }.all { contrast[it] == linear[it] }) {
+                "Text appearance changed green control data"
+            }
+            // Alpha is light times palette position (DiagramPalette, e6f19d4f0d); with no palette it follows light.
+            check(neutral(linear) && neutral(contrast)) {
+                "Text appearance broke the palette position: ${maxOf(worstNeutral(linear), worstNeutral(contrast))}"
             }
             drawing.textBlurConfig.appearance.x = 2f
             val boosted = scene()
@@ -97,7 +108,7 @@ object ReadingTextBlurEnergySmoke {
             drawing.textBlurConfig.appearance.set(1f, 1f, 0f, 0f)
             val restored = scene()
             check(restored.contentEquals(linear)) { "Neutral appearance did not restore the original blur" }
-            println("Reading text blur energy PASSED: normalized cache, gain, contrast, unchanged green/alpha, exact neutral reset")
+            println("Reading text blur energy PASSED: normalized cache, gain, contrast, unchanged green, alpha at the neutral palette position, exact neutral reset")
         } finally {
             drawing.close()
             repeat(40) { frame() }
