@@ -1552,6 +1552,18 @@ function disclosureInterface(container) {
                 return { width: st.width || DEFAULT_W, height: st.height || DEFAULT_H };
         }
 
+        /**
+         * Whether content auto-size owns this panel's height: an open panel nobody has dragged and
+         * whose mode is not `fixed`. Any height written onto such a panel from outside lasts only
+         * until the next auto-size pass, which puts `st.height` back.
+         */
+        function sizesToContent(id) {
+                const d = disclosures.get(id);
+                if (!usesContentAutoSize(d)) return false;
+                const st = states.get(id);
+                return !!st && !!st.open && !st.userSized;
+        }
+
         /** Sizes the panel as if the user had dragged it there (so auto-size leaves it alone). */
         function setSize(id, width, height) {
                 const d = disclosures.get(id);
@@ -1604,12 +1616,23 @@ function disclosureInterface(container) {
                 return {release, valid: () => parent.isConnected && disclosures.get(id) === d && d.cw.parentNode === host};
         }
 
-        const api = { borrowContent, upsertDisclosure, setContent, toggle, open, close, remove, closeAll, solo, isOpen, ids, getSize, setSize };
+        const api = { borrowContent, upsertDisclosure, setContent, toggle, open, close, remove, closeAll, solo, isOpen, ids, getSize, setSize, sizesToContent };
         container.__disclosureAPI = api;
         return api;
 }
 
 window.disclosureInterface = disclosureInterface;
+
+// The screenshot preparation in Main.kt asks this before it gives a panel a height of its own. A
+// panel auto-size owns is already its content's height, and any other height is undone by the next
+// pass, so a clip measured over it ends in a band of empty canvas under every panel below it.
+window.fieldSizerOwnsPanelHeight = (content) => {
+        const wrap = content?.parentElement;
+        const id = wrap?.__disclosureId;
+        if (typeof id !== "string") return false;
+        const api = wrap.parentElement?.__disclosureAPI;
+        return !!api && api.sizesToContent(id);
+};
 window.aiChatMarkdownToHtml = aiChatMarkdownToHtml;
 window.aiChatHistoryToHtml = aiChatHistoryToHtml;
 

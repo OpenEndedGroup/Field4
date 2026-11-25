@@ -1780,16 +1780,20 @@ private fun fitOutputDisclosuresForScreenshot(outputArea: HTMLElement) {
     outputArea.querySelectorAll(".disclosure-content").asList()
         .mapNotNull { it as? HTMLElement }
         .forEach { content ->
+            // A panel the live sizer fits to its content is already the height the reader sees, and
+            // the sizer puts that height back on its next pass. Flooring it here (120 px for a short
+            // markdown card) lasted only for the measurement: every panel below was then measured
+            // too low, and a figure of two one-line cards ended in 93 px of empty canvas.
+            if (sizerOwnsPanelHeight(content)) return@forEach
             content.style.maxHeight = "none"
             content.style.setProperty("overflow", "visible")
             // A panel whose frames all state their height is sized by the panel sizer exactly as the
             // reader sees it in Field; flooring or padding it here would make the figure disagree.
             val frames = content.querySelectorAll("iframe").asList().mapNotNull { it as? HTMLElement }
             if (frames.isNotEmpty() && frames.all(::declaresIframeHeight)) return@forEach
-            // Likewise a panel of Field controls (`controlGroup`, `slider`, ...), which the panel sizer
-            // fits to its controls exactly. The floor below made it 260 px for the measurement alone; the
-            // sizer shrank it back before the picture was taken, so each panel under it was measured
-            // about 200 px too low and the capture ended in a band of empty canvas.
+            // Likewise a panel of Field controls (`controlGroup`, `slider`, ...), even one the sizer
+            // does not own: its controls state their own size, and the 260 px floor below only ever
+            // added empty canvas under them.
             if (isControlsOnlyPanel(content)) return@forEach
             val scrollHeight = (content.scrollHeight as? Number)?.toDouble() ?: 0.0
             val childHeights = content.children.asList()
@@ -1833,6 +1837,15 @@ private fun fitOutputDisclosuresForScreenshot(outputArea: HTMLElement) {
                 .coerceAtMost(maxDisclosureHeight)
             content.style.height = "${targetHeight}px"
         }
+}
+
+/**
+ * Whether `outputareas2.js`'s content auto-size owns [content]'s height (`window.fieldSizerOwnsPanelHeight`):
+ * the sizer's own answer, so the screenshot preparation never floors a panel the sizer will shrink back.
+ */
+private fun sizerOwnsPanelHeight(content: HTMLElement): Boolean {
+    val test = window.asDynamic().fieldSizerOwnsPanelHeight ?: return false
+    return test(content) == true
 }
 
 /** Whether [content] shows only Field controls: a `.control-group` and no frame, canvas, picture or drawing. */
