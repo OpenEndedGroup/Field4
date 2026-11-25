@@ -52,7 +52,7 @@ class SolidFrames(
     private val targets = LinkedHashMap<Pair<Int, Int>, RenderToTexture>()
     private val builtFrom = HashMap<Pair<Int, Int>, String>()
     private var targetsFor: Renderer? = null
-    @Volatile private var viewPush = floatArrayOf(0f, 0f, 2.2f, 0f)
+    @Volatile private var viewPush = floatArrayOf(0f, 0f, 1.6f, 0f)
     @Volatile private var framePush = floatArrayOf(1f, 1f, 0f, 0f)
 
     override fun render(input: String, width: Int, height: Int, seconds: List<Double>, each: (index: Int, raster: CpuRaster) -> Unit) =

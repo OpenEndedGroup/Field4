@@ -1,0 +1,10 @@
+{
+  "id" : "r6-d388f69503ce",
+  "parent" : "r5-37c90a35fb08",
+  "description" : "Confine the mouth cut to the final chamber, preserving the earlier turns intact",
+  "created" : "2026-11-25T07:08:07.860Z",
+  "sourceHash" : "d388f69503ceb835bd96a3db4494ece5dae4c1bc01115791aeeba69dfae42e44",
+  "facts" : {
+    "knobs" : 102
+  }
+}

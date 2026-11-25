@@ -85,7 +85,7 @@ failed check, with the compiler's message, and nothing is published. `background
 - **Observe is the turntable**: a frame at t seconds is the camera at yaw 35 + 30t degrees, pitch 24,
   so seconds 0, 3, 6, 9 are four sides. Every accepted edit previews like that against its parent.
 - **OrbitSolidStudy points the camera**: yaw 0 looks from −y (the front), 90 from +x, 180 from behind;
-  pitch 90 looks straight down, negative from below; distance 2.2 frames the whole solid, 1.3 is a
+  pitch 90 looks straight down, negative from below; distance 1.6 frames the whole solid, 1.15 is a
   close-up of the part nearest the camera. `section` `x`, `y` or `z` cuts it open through the centre
   on the camera's side — the way to see a shell's wall, a bore, or what is inside a lattice. Look from
   above, below and in section before claiming a part is hollow, centred, or symmetric.

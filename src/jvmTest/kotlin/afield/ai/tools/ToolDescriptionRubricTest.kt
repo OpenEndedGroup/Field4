@@ -178,6 +178,7 @@ class ToolDescriptionRubricTest {
             { afield.lang.stacksl.study.installStackSLStudyTools() },
             { afield.lang.stacksl.study.installStackAutoStudyTools() },
             { afield.lang.rectsl.study.installRectSLStudyTools() },
+            { afield.lang.solidsl.study.installSolidStudyTools() },
             { afield.ui.output.installLineNoteTools() },
             { afield.math.functions.installFunctionStudyTools() },
             { afield.document.context.installContextWhyTools() },

@@ -180,7 +180,9 @@ class SolidStudy internal constructor(val box: Box) : LiveStudy {
     override fun observe(q: StudyRequest.Observe) = frames.observe(q)
     override fun compare(q: StudyRequest.Compare) = frames.compare(q)
     override fun sweep(q: StudyRequest.Sweep) = frames.sweep(q)
-    override fun tryVariants(q: StudyRequest.TryVariants) = frames.tryVariants(q)
+    override fun tryVariants(q: StudyRequest.TryVariants) =
+        frames.tryVariants(if ((q as? StudyRequest.Sized)?.size?.takeIf { it > 0 } != null) q else StudyCall.TryVariants(
+            q.variants.map { StudyCall.Variant(it.label, it.source, it.edits, it.note) }, q.seconds, size = 320))
     override fun adoptVariant(q: StudyRequest.Adopt) = published(frames.adoptVariant(q))
     override fun restore(q: StudyRequest.Restore) = published(frames.restore(q))
 
@@ -260,13 +262,13 @@ class SolidStudy internal constructor(val box: Box) : LiveStudy {
 
 // ---- The tools -------------------------------------------------------------------------------
 
-@JsonClassDescription("Read how to work on a SolidSL study: the vocabulary, the coordinate convention (z up), how frames and views are drawn, idioms that keep the Kotlin readable, the shade() GLSL contract, traps. Call it once, before your first edit in a conversation.")
+@JsonClassDescription("Returns how to work on a SolidSL study: the vocabulary, the coordinate convention (z up, `cylinder` along z), how frames and views are drawn, idioms that keep the Kotlin readable, the shade() GLSL contract, and traps such as an unbounded `gyroid`. Call it once, before your first edit in a conversation (use it before editing); it cannot fail.")
 data class SolidStudyGuide(@JsonPropertyDescription("Ignored; reserved") val search: String = "")
 
-@JsonClassDescription("Read this SolidSL study: the checked Kotlin, whether the editor holds an unchecked human edit (dirty; then liveSource is what is in the box), revision history, knobs (typed numbers, by index), held variants, and personAt — the line the person's editor cursor is on. Inspect once before editing and reuse liveSourceHash.")
+@JsonClassDescription("Returns this SolidSL study: the checked Kotlin, whether the editor holds an unchecked human edit (dirty; then liveSource is what is in the box), revision history, knobs (typed numbers, by index), held variants, and personAt — the line the person's editor cursor is on. Use it once before editing and reuse liveSourceHash; an unknown revision such as `r99` fails.")
 data class InspectSolidStudy(override val revision: String = "current") : StudyRequest.Inspect
 
-@JsonClassDescription("Replace the whole Kotlin. It is compiled (the last expression must be a SolidExpr or solid.shaded(glsl)), its shader built on the GPU, then activated as a new revision with turntable preview frames against the parent. Needs expectedRevision and expectedSourceHash from Inspect; a stale guard or a failed compile changes nothing. Prefer PatchSolidStudy for local edits.")
+@JsonClassDescription("Replace the whole Kotlin and report the new revision with turntable preview frames against the parent. It is compiled (the last expression must be a SolidExpr or solid.shaded(glsl), e.g. `sphere(1.0) - cylinder(3.0, 0.4)`), its shader built on the GPU, then activated. Needs expectedRevision and expectedSourceHash from Inspect; a stale guard, a compile error or a shader the GPU refuses fails and changes nothing. Prefer PatchSolidStudy for local edits.")
 data class EditSolidStudy(
     override val expectedRevision: String,
     override val expectedSourceHash: String,
@@ -277,45 +279,47 @@ data class EditSolidStudy(
     override val previewSeconds: List<Double> = emptyList(),
 ) : StudyRequest.Edit, StudyRequest.Preview
 
-@JsonClassDescription("Preferred for local edits: exact, unique, non-overlapping text replacements in the live Kotlin, checked and activated like EditSolidStudy.")
+@JsonClassDescription("Use this for local edits instead of EditSolidStudy: exact, unique, non-overlapping text replacements in the live Kotlin, each {before, after} such as {\"before\": \"0.25\", \"after\": \"0.3\"}. Returns the new revision and a preview; a `before` that does not occur exactly once fails, as do the edit's guards and checks.")
 data class PatchSolidStudy(override val expectedRevision: String, override val expectedSourceHash: String,
     override val edits: List<StudySourceEdit>, override val description: String, override val previewSeconds: List<Double> = emptyList()) : StudyRequest.Patch, StudyRequest.Preview
 
 /** One knob to set, by its index in the live source's knob list. */
 data class SolidNumberEdit(override val knob: Int, override val value: Double) : afield.study.ui.NumberEdit
 
-@JsonClassDescription("Set typed numbers (knobs, by index from Inspect) to new values, rewritten in place, then checked and activated like an edit.")
+@JsonClassDescription("Use this when only numbers change: set typed numbers (knobs, by index from Inspect, e.g. {\"knob\": 3, \"value\": 0.12}) to new values, rewritten in place, then checked and activated like an edit. Returns the new revision and a preview; an unknown knob index fails.")
 data class SetSolidNumbers(override val expectedRevision: String, override val expectedSourceHash: String,
     override val numbers: List<SolidNumberEdit>, override val description: String, override val previewSeconds: List<Double> = emptyList()) : StudyRequest.SetNumbers, StudyRequest.Preview
 
-@JsonClassDescription("See a revision on the turntable: t seconds is the camera at yaw 35 + 30t degrees, pitch 24, so 0, 3, 6, 9 walk round it. Sent as an image with luma, detail and palette per frame. compareTo adds that revision's frames and a difference map. For chosen angles, close-ups or a cut, use OrbitSolidStudy.")
+@JsonClassDescription("Returns frames of a revision on the turntable as an image, with luma, detail and palette per frame: t seconds is the camera at yaw 35 + 30t degrees, pitch 24, so seconds `[0, 3, 6, 9]` walk round it. compareTo adds that revision's frames and a difference map. Use OrbitSolidStudy instead of this for chosen angles, close-ups or a cut. An unknown revision fails.")
 data class ObserveSolidStudy(override val revision: String = "current", override val seconds: List<Double> = emptyList(),
     @JsonPropertyDescription("Pixels along the longer side, 16..512; 0 chooses") override val size: Int = 0,
     override val compareTo: String = "") : StudyRequest.Observe, StudyRequest.Sized
 
-@JsonClassDescription("Point the camera yourself: draw a revision from 1..9 views, each {yawDegrees, pitchDegrees, distance, section, sectionOffset}. yaw 0 looks from -y (the front), 90 from +x; pitch 90 looks straight down, negative from below; distance is in bounding radii (2.2 frames the whole solid, 1.3 is a close-up). section x, y or z cuts the solid open through its centre (moved by sectionOffset) on the camera's side, to see walls and insides. Returns the image and how much of each frame the solid fills.")
+@JsonClassDescription("Point the camera yourself: returns a sheet of a revision from 1..9 views, each {yawDegrees, pitchDegrees, distance, section, sectionOffset}, e.g. {\"yawDegrees\": 0, \"pitchDegrees\": 90} for straight down. yaw 0 looks from -y (the front), 90 from +x; pitch 90 looks straight down, negative from below; distance is in bounding radii (1.6 frames the whole solid, 1.15 is a close-up). section x, y or z cuts the solid open through its centre (moved by sectionOffset) on the camera's side. Use it before claiming a part is hollow, centred or symmetric. Also reports how much of each frame the solid fills; more than 9 views, or a distance below 1.05, fails.")
 data class OrbitSolidStudy(val revision: String = "current", val views: List<SolidView> = listOf(SolidView()),
     @JsonPropertyDescription("Pixels across each view, 96..1024; 0 chooses 640 for one view and 320 for several") val size: Int = 0)
 
-@JsonClassDescription("Describe a revision's solid without drawing it: bounds, how many nodes the tree has (and after the simplifier), the GLSL statement count and safe march step, field notes (nodes that are not true distances, which slow the march), whether it has its own shading, and with exact = true whether Manifold's exact path builds it.")
+@JsonClassDescription("Reports a revision's solid without drawing it: bounds, how many nodes the tree has (and after the simplifier), the GLSL statement count and safe march step, field notes (nodes that are not true distances, which slow the march), whether it has its own shading, and with `exact = true` whether Manifold's exact path builds it or refuses (e.g. a smooth blend has no exact form). Use it before promising a printable mesh, or when the picture shows holes or smearing.")
 data class DescribeSolidStudy(val revision: String = "current", val exact: Boolean = false)
 
-@JsonClassDescription("Draw one knob at 2..9 values side by side at one turntable time, without publishing. Use it to choose a value before SetSolidNumbers.")
+@JsonClassDescription("Use this before SetSolidNumbers to choose a value: returns one knob drawn at 2..9 values side by side at one turntable time, e.g. values `[0.05, 0.1, 0.2]`, without publishing. An unknown knob fails; a value that breaks the compile shows as an error tile.")
 data class SweepSolidNumber(override val revision: String = "current", override val knob: Int, override val values: List<Double>, override val seconds: Double = 0.0) :
     StudyRequest.Sweep, StudyRequest.Revisioned, StudyRequest.At
 
-@JsonClassDescription("Speculate: compile and draw 1..8 candidate sources beside the current one without publishing. Each is {label, source} or {label, edits}, with a note. They are held for AdoptSolidVariant.")
-data class TrySolidVariants(override val variants: List<StudyCall.Variant>, override val seconds: List<Double> = emptyList()) : StudyRequest.TryVariants
+@JsonClassDescription("Use this when it is a matter of taste: compile and draw 1..8 candidate sources beside the current one without publishing, and return the sheet. Each is {label, source} or {label, edits}, with a note, e.g. {\"label\": \"ribs\", \"edits\": [...]}; size sets the tile width. They are held for AdoptSolidVariant; a candidate that does not compile fails and is reported as refused.")
+data class TrySolidVariants(override val variants: List<StudyCall.Variant>, override val seconds: List<Double> = emptyList(),
+    @JsonPropertyDescription("Pixels across each tile, 16..512; 0 chooses 320, large enough to judge openings and surface detail") override val size: Int = 0) :
+    StudyRequest.TryVariants, StudyRequest.Sized
 
-@JsonClassDescription("Publish a held variant by label as a new revision (guards as for an edit).")
+@JsonClassDescription("Use this after TrySolidVariants: publish a held variant by label, e.g. `ribs`, as a new revision and return it with a preview. An unknown label or a stale guard fails.")
 data class AdoptSolidVariant(override val expectedRevision: String, override val expectedSourceHash: String, override val label: String, override val description: String = "") :
     StudyRequest.Adopt
 
-@JsonClassDescription("Make an earlier revision current again, as a new revision; history is only appended to.")
+@JsonClassDescription("Use this to go back: make an earlier revision, e.g. `r3`, current again as a new revision (history is only appended to), and return it. An unknown revision or a stale guard fails.")
 data class RestoreSolidRevision(override val expectedRevision: String, override val expectedSourceHash: String, override val revision: String, override val description: String = "") :
     StudyRequest.Restore
 
-@JsonClassDescription("Check what an edit preserved, on the turntable: before | after | difference per time; mode rgb or luma. allowedRegion [u0,v0,u1,v1] (0..1 of the frame, y up) is where change may happen.")
+@JsonClassDescription("Use this after an edit to check what it preserved: returns before | after | difference per turntable time; mode `rgb` or `luma`. allowedRegion [u0,v0,u1,v1] (0..1 of the frame, y up) is where change may happen; an unknown mode or revision fails.")
 data class CompareSolidStudy(override val beforeRevision: String, override val afterRevision: String = "current", override val seconds: List<Double> = emptyList(),
     override val mode: String = "rgb", override val allowedRegion: List<Double> = emptyList()) : StudyRequest.Compare
 

@@ -3,6 +3,8 @@
 SolidSL is a way to write down a 3D part (a bracket, a knob, a bored block) once, and then turn
 that description into whatever you need next: a triangle mesh to look at or print, an exact
 solid that is safe to cut holes from, or a shader that draws it live on the GPU.
+[Talking a solid into existence](solid_conversation.md) builds one in AI4 chat, from a sphere to a
+glowing bronze lamp.
 
 You write the part as ordinary Kotlin: `cuboid(4, 2.6, 0.7) - cylinder(3.0, 0.42)` is a block
 with a hole through it. That expression does not compute any geometry yet. It builds a small tree
@@ -999,3 +1001,9 @@ which needs no Manifold at all. Open it and run its three boxes:
   output.
 - **what refuses, and the one that does not** — every parameterisation refusal with its reason, then
   a swallowed child dying under a hard `Union` and living under a smooth one.
+
+## Where to go next
+
+- [Talking a solid into existence](solid_conversation.md): a SolidSL study in AI4 chat, which the
+  model edits, turns, cuts open and shades in GLSL of its own.
+- [Studies](studies.md): the operations a study shares with the function, shader and scene studies.

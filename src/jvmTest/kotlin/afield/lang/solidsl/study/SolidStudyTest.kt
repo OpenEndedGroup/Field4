@@ -24,8 +24,8 @@ class SolidStudyTest {
     fun cpuTracerFramesTheSolid() {
         val scene = SolidScene(sphere(1.0))
         val far = covered(scene, SolidView())
-        val near = covered(scene, SolidView(distance = 1.3))
-        assertTrue(far in 0.08..0.3, "coverage at 2.2 bounding radii was $far")
+        val near = covered(scene, SolidView(distance = 1.15))
+        assertTrue(far in 0.15..0.4, "coverage at 1.6 bounding radii was $far")
         assertTrue(near > far, "a close-up covers more: $near vs $far")
     }
 

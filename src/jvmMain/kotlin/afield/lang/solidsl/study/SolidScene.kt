@@ -48,7 +48,7 @@ fun SolidExpr.shaded(shade: String, background: Int = 0x14161c): SolidScene = So
 data class SolidView(
     val yawDegrees: Double = 35.0,
     val pitchDegrees: Double = 24.0,
-    val distance: Double = 2.2,
+    val distance: Double = 1.6,
     val section: String = "",
     val sectionOffset: Double = 0.0,
     val seconds: Double = 0.0,
