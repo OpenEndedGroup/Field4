@@ -578,6 +578,7 @@ To see it all at once, open the [map of the docs](../docs_map.md): every page, a
 - *autodiff* — [Function](function.md#autodiff-fn-kt) · [Math](math.md#autodiff-kt)
 - [control](graphics.md#modelling-kt)
 - [distribution](math.md#conditioning-kt)
+- [energy](math.md#discreteenergy-kt)
 - [estimation](math.md#pf-kt)
 - *functions* — [Function](function.md#fninterval-kt) · [Math](math.md#densedoubleops-kt)
 - [gp](math.md#gaussianprocess-kt)
@@ -689,7 +690,7 @@ To see it all at once, open the [map of the docs](../docs_map.md): every page, a
 
 ## Reference pages
 
-**43508 public symbols across 1929 source files**, 26096 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**43560 public symbols across 1930 source files**, 26140 of them (60%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -700,7 +701,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Lighting](lighting.md) | 8 | 216 | 208 (96%) | Light sources, fixtures and control protocols for working with physical and rendered lighting. |
 | [Networking](networking.md) | 22 | 539 | 323 (59%) | OSC messages, discovery and query interfaces for connecting Field to other applications and devices. |
 | [Video](video.md) | 14 | 195 | 194 (99%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
-| [Math](math.md) | 60 | 2524 | 1904 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
+| [Math](math.md) | 61 | 2576 | 1948 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 27 | 1231 | 570 (46%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
 | [Graphics](graphics.md) | 462 | 11160 | 7124 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 48 | 911 | 515 (56%) | Turning a scene into pixels on a Vulkan device. |
@@ -1119,6 +1120,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>statistics/<wbr></small> [dirichlet.kt](math.md#dirichlet-kt) | Math | 11 | 0 | 2D multiplicatively weighted Voronoi (Apollonius) diagrams. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [DirtRender.kt](audio.md#dirtrender-kt) | Audio | 15 | 15 | Offline rendering of a pattern through the **real** Dirt sample library. | [How to make sound in Field](../sound_paths.md), [Signal examples: time and frequency](../spectral_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [DirtSamples.kt](audio.md#dirtsamples-kt) | Audio | 63 | 4 | The TidalCycles Dirt-Samples collection loaded, indexed, and played from Field. | [Boolean network music examples](../boolean_network_music_examples.md), [A Petri net that throws sparks](../chain_petri_sparks.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>energy/<wbr></small> [DiscreteEnergy.kt](math.md#discreteenergy-kt) | Math | 52 | 44 |  | [Discrete optimisation by energy descent](../discrete_energy.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>distribution/<wbr></small> [Dist.kt](math.md#dist-kt) | Math | 93 | 48 |  | [Distributions: values that are probability distributions](../distributions.md), [Kotlin in the head (running Kotlin in a browser or Vision Pro)](../kotlin_in_the_head.md), [Building geometry in the headset](../vision_geometry.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>distribution/<wbr></small> [DistGlsl.kt](math.md#distglsl-kt) | Math | 25 | 17 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>distribution/<wbr></small> [DistLive.kt](math.md#distlive-kt) | Math | 14 | 12 |  |  |
