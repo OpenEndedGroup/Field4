@@ -10087,7 +10087,7 @@ One curve piece's contribution to the pixel `(x, y)` it lies in.
 
 [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">RowEdge</span><span class="p">(</span><span class="k">val</span> <span class="n">row</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">x0</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">y0</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">x1</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">y1</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">dir</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/graphics/nile/Gezira/#L90)
 
-A line piece inside pixel row `row`, top end `(x0, y0)` and bottom end `(x1, y1)` with `y0 < y1`. `dir` is `+1` where the outline runs down (y increasing) and `-1` where it runs up.
+A line piece inside pixel row `row`, top end `(x0, y0)` and bottom end `(x1, y1)` with `y0 < y1`. [`dir`](math.md#linalg-kt--dir) is `+1` where the outline runs down (y increasing) and `-1` where it runs up.
 
 | Declaration | Summary |
 | --- | --- |
@@ -10725,7 +10725,7 @@ One stroke of a [`PaintStrokes`](graphics.md#paintstrokes-kt-paintstrokes), as d
 
 [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PinnedNote</span><span class="p">(</span><span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/graphics/paint/PaintStrokes/#L92)
 
-A note pinned on the picture at ([`x`](math.md#linalg-kt--x), `y`), canvas units: the human's steering channel.
+A note pinned on the picture at (`x`, `y`), canvas units: the human's steering channel.
 
 ### PaintStrokes { #paintstrokes-kt-paintstrokes }
 
@@ -17610,7 +17610,7 @@ Real widths from an AWT font, so the layout measures words with the same font th
 
 [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Placement</span><span class="p">(</span><span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/graphics/text/sentences/Layout/#L61)
 
-Where a word sits: [`x`](math.md#linalg-kt--x) is its left edge, `y` its text baseline.
+Where a word sits: `x` is its left edge, `y` its text baseline.
 
 ### NodeX { #layout-kt-nodex }
 

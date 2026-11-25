@@ -331,7 +331,8 @@ handwriting model, or a phrase, for the drawing model.
 
 There are two models. `PenGpt.hand` has 6 million parameters and knows 1,192 hands. `PenGpt.sketch`
 has 54 million and draws what a phrase describes. Both run in Kotlin. Both also continue what they
-are shown, as the pen above does: a few words in one hand, or a drawing you started.
+are shown, as the pen above does: a few words in one hand, or a drawing you started. A third,
+smaller drawing model, trained on Field's own corpora, [ships with Field](#every-corpus-in-one-model).
 
 !!! note "The weights download the first time you use them"
     PenGPT's weights are not part of Field. The first call to `PenGpt.hand` downloads 6 MB from
@@ -576,6 +577,76 @@ field a step at a time, for as long as you let it, and answers the ink around it
 PenGPT composes a whole page of columns at once, more evenly and closer to the generator, but it
 loses the fine tremor to its grid and its smoothing, and a page is as much as fits in its context.
 
+### Every corpus in one model
+
+`PenGpt.corpora` is a third PenGPT, much smaller than `sketch` and trained from scratch, on the
+nine corpora that Field's LSTM pens learned from in [Teaching a pen](teaching_a_pen.md) and
+[A pen that sees](a_pen_that_sees.md). Each corpus is both a source and a label, so the label
+names the manner, and `draw("plants")` draws a plant. It has 9 million parameters, ships with
+Field, so nothing is downloaded, and draws in under a second. Here it draws each of its nine
+twice: lettering, harmonographs and plants on the first row, Truchet tiles, flocking trails and the
+two-handed script on the second, Michaux fields, cracks and echoes on the third:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/learned_pen/pengpt_corpora.png" timeout="240" embed=true alt="Three rows of small white drawings, two of each of nine kinds. First row: two nonsense words of plotter lettering, two looping harmonograph figures, two branching plants. Second row: two Truchet tilings of arcs, two scatters of flocking trails, two zigzags of script. Third row: two double columns of wavering lines; two networks of cracks inside rounded outlines, each with long cracks running far outside it; and two sets of parallel lines echoing round loops"}
+:::static
+import afield.ai.learning.pen.*
+
+watchdog = 120 // eighteen drawings take about fifteen seconds
+val corpora = PenGpt.corpora
+val names = ["hershey", "harmonograph", "plants", "truchet", "boids", "mixed", "michaux", "cracks", "echoes"]
+val rows = names.chunked(3).map { three ->
+    val pairs = three.flatMap { name ->
+        (0 until 2).map { k -> [corpora.draw(name, temperature = 0.8, seed = k.toLong(), size = 76.0)] }
+    }
+    sideBySide(pairs, gap = 12.0)
+}
+lines(stacked(rows, gap = 26.0), w = 520.0, h = 330.0, fitToSize = true)
+```
+
+The cracks are the weakest of the nine. The model draws an outline and a network of cracks inside
+it, but often lets a crack run on far past the outline, which the generator never does.
+
+Because each corpus is a vector the model is told, `style` can mix two of them. Between Michaux and
+plants the drawing mostly switches from one to the other, but halfway between them it makes
+something in neither corpus: one sheaf of Michaux lines standing up like a stem. Here are five steps
+from Michaux to plants, with one seed:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/learned_pen/pengpt_blend.png" timeout="240" embed=true alt="Five drawings in a row: two columns of wavering parallel lines; two columns again, one of them bent; a single tall sheaf of fine lines rising from one point and sweeping out to the right; and two branching plants"}
+:::static
+import afield.ai.learning.pen.*
+
+val corpora = PenGpt.corpora
+val blend = [0.0, 0.25, 0.5, 0.75, 1.0].map { t ->
+    val style = corpora.style("michaux" to 1 - t, "plants" to t)
+    [corpora.draw(PenGptPrompt(style = style), temperature = 0.8, seed = 1, size = 90.0)]
+}
+lines(sideBySide(blend, gap = 16.0), w = 520.0, h = 130.0, fitToSize = true)
+```
+
+The model was trained on a GPU with PenGPT's own code. `PenGptCorpora` writes 6,000 drawings from
+each generator with `writeCorpus`, labelled with its name, and keeps those that fit the 768-token
+context: every drawing but 21% of the Michaux fields and 1% of the harmonographs, 52,851 in all.
+`tools/pengpt_field_corpora.py convert` turns each corpus into PenGPT's stroke format, PenGPT's
+trainer learns 1,024 merges from them and trains the model with the recipe of its own small
+drawing model, and `export` packs it for Field:
+
+```diffstatic {data-lang=bash}
+uv run --project . --group backdoor python tools/field_backdoor.py --json \
+    --command "run-jvm-main afield.ai.learning.pen.PenGptCorpora --arg $PWD/corpora --timeout 1500"
+python tools/pengpt_field_corpora.py convert --repo ~/pengpt --out field corpora/*.jsonl
+python ~/pengpt/pengpt.py train --preset quickdraw --dataset field/boids.sketch.parquet,... \
+    --vocab 'field/*.sketch.parquet' --tokens field/tokens.json \
+    --n_layer 8 --n_embd 256 --n_head 4 --batch_tokens 32768 --steps 36000 --out_dir out/corpora
+python tools/pengpt_field_corpora.py export --repo ~/pengpt --checkpoint out/corpora/best.pt \
+    --out pengpt-corpora.npz
+```
+
+On one RTX 4090 the 36,000 steps took 22 minutes, and the held-out loss ended at 1.87 nats per
+token. By corpus it runs from 0.93 for the Truchet tiles and 1.03 for the lettering, the most
+regular, to 3.11 for the flocking trails, the least predictable. The merges are this model's own, so
+these numbers do not compare with the Michaux fine-tune's. The model is 17 MB in float16, kept in
+Git LFS.
+
 ## Training your own pen
 
 The pen knows handwriting because it watched handwriting. Show it something else and it will
@@ -608,8 +679,10 @@ model running in Python, or a rule you wrote.
 | [`afield/ai/learning/pen/penviz.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/ai/learning/pen/penviz.kt) | `ellipses`, `closeUp`, `coloredByCell`, `liveliestCells`, `widthByLift`, `futuresDensity`, `sideBySide`, `stacked` |
 | [`python/fieldpen/`](https://github.com/OpenEndedGroup/Field4/tree/main/python/fieldpen) | the PyTorch model, training, data preparation, export and the browser lab |
 | `src/jvmMain/resources/afield/pen/distill-b64.json` | the Distill article's published weights, shared by Kotlin and Python |
-| [`afield/ai/learning/pen/pengpt.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/ai/learning/pen/pengpt.kt) | `PenGpt` (`hand`, `sketch`, `named`, `write`, `writeLike`, `draw`, `continueDrawing`, `strokes`, `encode`, `decode`, `generate`, `writeCorpus`), `PenGptPrompt`, `PenGptSampling` |
+| [`afield/ai/learning/pen/pengpt.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/ai/learning/pen/pengpt.kt) | `PenGpt` (`hand`, `sketch`, `corpora`, `named`, `bundled`, `style`, `write`, `writeLike`, `draw`, `continueDrawing`, `strokes`, `encode`, `decode`, `generate`, `writeCorpus`), `PenGptPrompt`, `PenGptSampling` |
 | [`tools/pengpt_fit_style.py`](https://github.com/OpenEndedGroup/Field4/blob/main/tools/pengpt_fit_style.py) | fits PenGPT to a corpus from `writeCorpus`: a source vector, the context, or every weight |
+| [`tools/pengpt_field_corpora.py`](https://github.com/OpenEndedGroup/Field4/blob/main/tools/pengpt_field_corpora.py) | converts corpora from `writeCorpus` to PenGPT's stroke files for training, and packs a trained model for `PenGpt.load` |
+| `src/jvmMain/resources/afield/pen/models/pengpt-corpora.npz` | `PenGpt.corpora`, in Git LFS |
 | [`afield/ai/learning/pen/siglip.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/ai/learning/pen/siglip.kt) | `SiglipText`, the SigLIP 2 text encoder that turns a phrase into what `PenGpt.sketch` is told |
 
 The Kotlin forward pass is checked against PyTorch's to four decimal places (`PenModelTest`), and
