@@ -524,10 +524,16 @@ object NumpyIO {
      *
      * Every member is decompressed and held in memory at once.
      */
-    fun readNpz(file: File): LinkedHashMap<String, NpyArray> {
+    fun readNpz(file: File): LinkedHashMap<String, NpyArray> = file.inputStream().use { readNpz(it, file.absolutePath) }
+
+    /**
+     * Reads a `.npz` archive from [input], such as a classpath resource, as the [File] overload does;
+     * [sourceName] names it in errors.
+     */
+    fun readNpz(input: InputStream, sourceName: String): LinkedHashMap<String, NpyArray> {
         val out = linkedMapOf<String, NpyArray>()
 
-        ZipInputStream(file.inputStream().buffered()).use { zip ->
+        ZipInputStream(input.buffered()).use { zip ->
             while (true) {
                 val entry = zip.nextEntry ?: break
                 if (entry.isDirectory) continue
@@ -536,16 +542,16 @@ object NumpyIO {
                 val key = entry.name.substring(0, entry.name.length - 4)
                 val entryBytes = zip.readBytes()
                 val entryArray = ByteArrayInputStream(entryBytes).use { entryInput ->
-                    readNpy(entryInput, "${file.absolutePath}!/${entry.name}")
+                    readNpy(entryInput, "$sourceName!/${entry.name}")
                 }
 
                 require(out.put(key, entryArray) == null) {
-                    "Duplicate entry '$key' in ${file.absolutePath}"
+                    "Duplicate entry '$key' in $sourceName"
                 }
             }
         }
 
-        require(out.isNotEmpty()) { "No .npy entries found in ${file.absolutePath}" }
+        require(out.isNotEmpty()) { "No .npy entries found in $sourceName" }
         return LinkedHashMap(out)
     }
 

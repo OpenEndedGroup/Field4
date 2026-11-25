@@ -368,6 +368,10 @@ lines(sideBySide(drawings.take(6).map { [it] }, gap = 20.0), w = 520.0, h = 140.
 `"spirals".file` is a folder inside the document, so the corpus travels with it. Then train it
 with the commands under [Training on a corpus](#training-on-a-corpus).
 
+These corpora also trained a PenGPT drawing model, one for all of them, that draws whole drawings
+on request: `PenGpt.corpora.draw("plants")` draws a plant
+([Every corpus in one model](learned_pen.md#every-corpus-in-one-model)).
+
 ## Source files
 
 | file | what is in it |

@@ -31,6 +31,8 @@ libs/kotlin-compiler-embeddable-2.5.255-SNAPSHOT.jar filter=lfs diff=lfs merge=l
 # Kotlin/JS stdlib klib for the Kotlin->JS RemoteJS spike (must match the compiler fork version)
 libs/kotlin-stdlib-js-2.5.255-SNAPSHOT.klib filter=lfs diff=lfs merge=lfs -text
 libs/dataframe-plugin.jar filter=lfs diff=lfs merge=lfs -text
+# PenGPT models that ship with Field (PenGpt.bundled): float16 weights, tens of megabytes each
+src/jvmMain/resources/afield/pen/models/pengpt-*.npz filter=lfs diff=lfs merge=lfs -text
 
 # jextract output for the Steam Audio bindings: 77 files of FFM accessors, regenerated rather
 # than edited. Keep them out of the language stats and collapsed in diffs and reviews.
