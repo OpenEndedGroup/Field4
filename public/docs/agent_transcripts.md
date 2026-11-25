@@ -4205,6 +4205,19 @@ re-run it to change the creatures.
 
 [Open →](offline.html?file=assets/agent_transcripts/bonded_organisms/metadata.edn)
 
+### discrete_energy
+
+[Discrete optimisation by energy descent](discrete_energy.md) with `DiscreteEnergy`, after Hoover,
+Blayney and Whittington ([arXiv 2611.17309](https://arxiv.org/abs/2611.17309)). The renderer box
+opens the window. The Sudoku box states the puzzle with `allDifferent` and draws its same-digit
+cost image. The descent box runs mean-field descent of that energy in a Vulkan compute shader, one
+step per frame, then finishes the board with Gibbs sweeps. The check box compares 40 GPU steps
+with 40 CPU steps. The learned box fits the same energy to solved grids, and its image matches the
+stated one. Three more boxes each state a problem in a few lines and animate it as it settles:
+N-queens, colouring a nearest-neighbour graph, and a travelling-salesman tour.
+
+[Open →](offline.html?file=assets/agent_transcripts/discrete_energy/metadata.edn)
+
 ### satellites
 
 **SGP4 passes and the whole satellite catalogue on the GPU.** Four boxes: a week of passes over
