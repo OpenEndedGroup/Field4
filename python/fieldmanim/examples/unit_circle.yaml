@@ -1,0 +1,140 @@
+name: fieldmanim_unit_circle
+description: 'fieldmanim in Field: a Python box bakes a Manim scene (a point on a unit circle tracing
+  a sine wave) into PathFrames; one Kotlin box loops it on Field''s clock, another steps it a beat at
+  a time from a slider, as a talk''s control() and cues do.'
+operations:
+- create:
+    box: manim_python_root
+    name: python
+    frame:
+      x: 40.0
+      y: 200.0
+      w: 200.0
+      h: 60.0
+    properties:
+      mainLanguage: python
+- create:
+    box: manim_scene
+    name: unit circle scene
+    frame:
+      x: 40.0
+      y: 300.0
+      w: 300.0
+      h: 100.0
+    properties:
+      code: |
+        from manim import *
+        import fieldmanim
+
+        class UnitCircle(Scene):
+            def construct(self):
+                circle = Circle(radius=1.5, color=BLUE).shift(LEFT * 4)
+                axis = Line(LEFT * 1.5, RIGHT * 4.6, color=GREY)
+                theta = ValueTracker(0)
+
+                def tip():
+                    return circle.point_at_angle(theta.get_value())
+
+                def wave_end():
+                    t = theta.get_value()
+                    return np.array([-1.5 + 0.9 * t, 1.5 * np.sin(t), 0])
+
+                radius = always_redraw(lambda: Line(circle.get_center(), tip()))
+                dot = always_redraw(lambda: Dot(tip(), color=YELLOW))
+                reach = always_redraw(lambda: DashedLine(tip(), wave_end(), color=GREY))
+                wave = always_redraw(lambda: ParametricFunction(
+                    lambda t: np.array([-1.5 + 0.9 * t, 1.5 * np.sin(t), 0]),
+                    t_range=[0, max(theta.get_value(), 1e-3)], color=YELLOW))
+
+                self.play(Create(circle), Create(axis))
+                self.play(FadeIn(radius, dot))
+                self.add(reach, wave)
+                self.play(theta.animate.set_value(TAU), run_time=4, rate_func=linear)
+                self.play(Write(Text("sin θ", font_size=40).next_to(axis, RIGHT)))
+                self.wait()
+
+        scene = fieldmanim.bake(UnitCircle, "unit_circle")
+        scene
+- connect:
+    parent: manim_python_root
+    child: manim_scene
+- wait:
+    seconds: 2
+- execute:
+    box: manim_scene
+    property: code
+    type: fragment
+    code: |
+      from manim import *
+      import fieldmanim
+
+      class UnitCircle(Scene):
+          def construct(self):
+              circle = Circle(radius=1.5, color=BLUE).shift(LEFT * 4)
+              axis = Line(LEFT * 1.5, RIGHT * 4.6, color=GREY)
+              theta = ValueTracker(0)
+
+              def tip():
+                  return circle.point_at_angle(theta.get_value())
+
+              def wave_end():
+                  t = theta.get_value()
+                  return np.array([-1.5 + 0.9 * t, 1.5 * np.sin(t), 0])
+
+              radius = always_redraw(lambda: Line(circle.get_center(), tip()))
+              dot = always_redraw(lambda: Dot(tip(), color=YELLOW))
+              reach = always_redraw(lambda: DashedLine(tip(), wave_end(), color=GREY))
+              wave = always_redraw(lambda: ParametricFunction(
+                  lambda t: np.array([-1.5 + 0.9 * t, 1.5 * np.sin(t), 0]),
+                  t_range=[0, max(theta.get_value(), 1e-3)], color=YELLOW))
+
+              self.play(Create(circle), Create(axis))
+              self.play(FadeIn(radius, dot))
+              self.add(reach, wave)
+              self.play(theta.animate.set_value(TAU), run_time=4, rate_func=linear)
+              self.play(Write(Text("sin θ", font_size=40).next_to(axis, RIGHT)))
+              self.wait()
+
+      scene = fieldmanim.bake(UnitCircle, "unit_circle")
+      scene
+- wait:
+    seconds: 1
+- create:
+    box: manim_loop
+    name: unit circle loop
+    frame:
+      x: 1200.0
+      y: 300.0
+      w: 300.0
+      h: 100.0
+    properties:
+      code: |
+        val scene = NumpyShared.pathFrames("unit_circle")
+        val t0 = AnimationClock.nowSeconds()
+
+        loop {
+            scene.draw(thisBox, AnimationClock.nowSeconds() - t0, loop = true)
+        }
+- create:
+    box: manim_figure
+    name: unit circle figure
+    frame:
+      x: 2400.0
+      y: 300.0
+      w: 300.0
+      h: 100.0
+    properties:
+      code: |
+        val scene = NumpyShared.pathFrames("unit_circle")
+        val play = scene.player()
+
+        controlGroup {
+            slider("beat", 0.0, scene.beats.size.toDouble(), step = 1.0, initialValue = 0.0) { play.toBeat(it.toInt()) }
+        }
+
+        loop {
+            play.draw(thisBox)
+        }
+- launch:
+    box: manim_figure
+    property: code

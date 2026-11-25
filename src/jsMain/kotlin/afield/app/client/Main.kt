@@ -1786,6 +1786,11 @@ private fun fitOutputDisclosuresForScreenshot(outputArea: HTMLElement) {
             // reader sees it in Field; flooring or padding it here would make the figure disagree.
             val frames = content.querySelectorAll("iframe").asList().mapNotNull { it as? HTMLElement }
             if (frames.isNotEmpty() && frames.all(::declaresIframeHeight)) return@forEach
+            // Likewise a panel of Field controls (`controlGroup`, `slider`, ...), which the panel sizer
+            // fits to its controls exactly. The floor below made it 260 px for the measurement alone; the
+            // sizer shrank it back before the picture was taken, so each panel under it was measured
+            // about 200 px too low and the capture ended in a band of empty canvas.
+            if (isControlsOnlyPanel(content)) return@forEach
             val scrollHeight = (content.scrollHeight as? Number)?.toDouble() ?: 0.0
             val childHeights = content.children.asList()
                 .mapNotNull { child ->
@@ -1829,6 +1834,11 @@ private fun fitOutputDisclosuresForScreenshot(outputArea: HTMLElement) {
             content.style.height = "${targetHeight}px"
         }
 }
+
+/** Whether [content] shows only Field controls: a `.control-group` and no frame, canvas, picture or drawing. */
+private fun isControlsOnlyPanel(content: HTMLElement): Boolean =
+    content.querySelector(".control-group") != null &&
+        content.querySelector("iframe, canvas, img, video, .afield-lines-output-shell") == null
 
 /** The tallest declared pixel height, when every element in [content] is an iframe that declares one. */
 private fun declaredIframeHeightOrNull(content: HTMLElement): Double? {
