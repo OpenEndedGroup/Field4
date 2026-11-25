@@ -33,7 +33,9 @@ futures, so the box does not wait for the page:
 
 ```diffstatic {data-lang=kotlin}
 val page = web("en.wikipedia.org/wiki/Iframe")
-page.waitFor("document.querySelector('h1')").thenCompose { page.evaluate("document.title") }
+page
+    .waitFor("document.querySelector('h1')")
+    .thenCompose { page.evaluate("document.title") }
     .thenAccept { title -> println("title: $title") }
 ```
 
