@@ -204,4 +204,16 @@ class ReadingPickingTest {
         assertEquals(1, right.first)
         assertEquals(500.0, right.second, 1e-6)
     }
+
+    /** A Close is an edge back to the start of its subpath, so a closed outline can be picked on its last side. */
+    @Test
+    fun flatteningAClosedOutlineKeepsItsClosingEdge() {
+        val square = FLine().moveTo(0f, 0f).lineTo(1f, 0f).lineTo(1f, 1f).lineTo(0f, 1f).close()
+            .lineTo(0f, -1f)
+        val contours = flatten(square)
+        assertEquals(2, contours.size, "the closed square, then the tail drawn from its start")
+        assertEquals(listOf(Vector3f(0f, 0f, 0f), Vector3f(1f, 0f, 0f), Vector3f(1f, 1f, 0f), Vector3f(0f, 1f, 0f),
+            Vector3f(0f, 0f, 0f)), contours[0])
+        assertEquals(listOf(Vector3f(0f, 0f, 0f), Vector3f(0f, -1f, 0f)), contours[1])
+    }
 }

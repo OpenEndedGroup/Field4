@@ -589,6 +589,8 @@ class InteriorCloseNodeTest {
                     "FLine.endPointOf, which resolves a Close to the start of its subpath.",
             "PenVizTest.kt" to
                 "counts LineTo nodes to prove every pen mark is drawn once; it never reads a node endpoint.",
+            "StringArtTest.kt" to
+                "counts MoveTo and LineTo nodes to prove the string is one unbroken path; it never reads a node endpoint.",
             "FLineExactBooleanTest.kt" to
                 "counts CubicTo nodes to prove exact booleans retain curves; it never reads a node endpoint.",
             "FLineExactOffsetTest.kt" to

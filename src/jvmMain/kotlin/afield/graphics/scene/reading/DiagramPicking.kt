@@ -256,6 +256,12 @@ internal fun flatten(line: FLine): List<List<Vector3f>> {
                     .fma(s * s * s, node.to)
             }
         }
+        // A Close draws the edge back to the subpath's start, and anything after it continues from there.
+        is FLine.Close -> current?.takeIf { it.size >= 2 }?.let { c ->
+            val start = Vector3f(c.first())
+            c += Vector3f(start)
+            current = mutableListOf(start).also { contours += it }
+        }
         else -> {}
     }
     return contours.filter { it.size >= 2 }

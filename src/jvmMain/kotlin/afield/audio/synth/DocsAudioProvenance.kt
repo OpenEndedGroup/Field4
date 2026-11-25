@@ -102,6 +102,14 @@ object DocsAudioProvenance {
          */
         STEAM_AUDIO_HRTF("the dough wasm engine through Steam Audio's HRTF — binaural, head-tracked"),
 
+        /**
+         * A pinned Dirt-Samples one-shot through Steam Audio's direct path — distance, occlusion and
+         * frequency-dependent transmission against scene geometry — then its HRTF, with a still
+         * listener. No pattern and no dough. `SteamAudioScreenStudy`, steam_audio_scene.md. Like
+         * [STEAM_AUDIO_HRTF] it needs libphonon, and is skipped, not passed, where that does not load.
+         */
+        STEAM_AUDIO_DIRECT("a Dirt-Samples one-shot through Steam Audio's occlusion, transmission and HRTF — binaural, still listener"),
+
         /** A Faust program compiled at runtime and rendered offline. See [SoundPathMap]. */
         FAUST("a Faust program compiled at runtime and rendered with no audio device"),
 
@@ -199,6 +207,8 @@ object DocsAudioProvenance {
         "afield.audio.synth.PatSpatialHeadTrackedDocs" to Origin.STEAM_AUDIO_HRTF,
         // The page's two placed patterns through patSpatial and Steam Audio, with a still listener.
         "afield.audio.synth.PatSpatialPlacementDocs" to Origin.STEAM_AUDIO_HRTF,
+        // steam_audio_scene.md's clear and screened takes of one hi-hat through a wooden screen.
+        "afield.examples.steamaudio.SteamAudioScreenStudy" to Origin.STEAM_AUDIO_DIRECT,
         // Boolean-network note streams played through the pinned Dirt-Samples subset, strictly:
         // no token falls back, so the family is the pure one. See boolean_network_music_examples.md.
         "afield.audio.synth.BooleanNetworkSoundDocs" to Origin.DIRT_SAMPLES,
@@ -452,7 +462,7 @@ object DocsAudioProvenance {
             )
         }
 
-        if (origin == Origin.STEAM_AUDIO_HRTF && !SteamAudioNatives.isAvailable) {
+        if ((origin == Origin.STEAM_AUDIO_HRTF || origin == Origin.STEAM_AUDIO_DIRECT) && !SteamAudioNatives.isAvailable) {
             return Finding(
                 published, origin, Double.NaN, Double.NaN, committed.frames, channels,
                 sampleRateOf(committedFile), peak, rms, skipped = SteamAudioNatives.describe(),
