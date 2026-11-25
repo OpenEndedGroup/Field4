@@ -216,8 +216,13 @@ class Datalog {
      * records: a premise must have been derived *strictly earlier* than its conclusion, so
      * a proof can never lean on the thing it is proving, and the recursion always terminates. A goal
      * with variables is answered about the first matching fact.
+     *
+     * [depth] bounds how many rule steps are expanded below the goal. A derived premise past it is
+     * shown with the round it appeared in and left unexpanded, which is what makes a proof through a
+     * long simulated sequence (a scan over every instruction, say) answerable: the unbounded search
+     * re-proves every earlier step and runs out of [MAX_PROOF_STEPS] before it reaches the goal.
      */
-    fun why(goal: String): DlDerivation? {
+    fun why(goal: String, depth: Int = Int.MAX_VALUE): DlDerivation? {
         val literals = DatalogParser.parseGoal(goal)
         val atom = literals.singleOrNull() as? DlAtom
             ?: throw DlException("'#why' takes a single positive atom, e.g. '#why path(a, d)'")
@@ -240,11 +245,15 @@ class Datalog {
             relation.lookup(pattern, mask).minWithOrNull { a, b -> compareRows(a, b) } ?: return null
         }
         if (!relation.contains(target)) return null
+        proofDepthLeft = depth
         return derive(atom.pred, target, solution, IntArray(1) { MAX_PROOF_STEPS })
     }
 
     private fun factText(pred: String, row: DlRow): String =
         if (row.isEmpty()) pred else pred + "(" + row.joinToString(", ") { dlSourceFormat(it) } + ")"
+
+    /** Rule steps [derive] may still expand; set by [why], restored on the way back up. */
+    private var proofDepthLeft = Int.MAX_VALUE
 
     private fun derive(pred: String, row: DlRow, solution: DlSolution, budget: IntArray): DlDerivation? {
         val relation = solution[pred] ?: return null
@@ -252,7 +261,24 @@ class Datalog {
         val text = factText(pred, row)
         val round = relation.roundOf(row)
         if (round == 0) return DlDerivation(text, null, emptyList())
+        if (proofDepthLeft <= 0) return DlDerivation(text, null, emptyList(), note = "derived in round $round")
         if (budget[0]-- <= 0) return DlDerivation(text, null, emptyList(), note = "proof search truncated")
+        proofDepthLeft--
+        try {
+            return deriveByRules(pred, row, text, round, solution, budget)
+        } finally {
+            proofDepthLeft++
+        }
+    }
+
+    private fun deriveByRules(
+        pred: String,
+        row: DlRow,
+        text: String,
+        round: Int,
+        solution: DlSolution,
+        budget: IntArray,
+    ): DlDerivation {
 
         for (rule in ruleList) {
             if (rule.head.pred != pred || rule.head.arity != row.size) continue
@@ -272,7 +298,8 @@ class Datalog {
             val premises = satisfy(rule.body, bindings, solution, round, budget) ?: continue
             return DlDerivation(text, rule, premises)
         }
-        return DlDerivation(text, null, emptyList(), note = "derived in round $round; no proof reconstructed")
+        val note = if (budget[0] <= 0) "proof search truncated" else "derived in round $round; no proof reconstructed"
+        return DlDerivation(text, null, emptyList(), note = note)
     }
 
     /**
