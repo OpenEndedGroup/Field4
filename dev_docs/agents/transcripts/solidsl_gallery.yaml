@@ -325,8 +325,8 @@ operations:
       properties:
         "autorun": false
         "code": |
-          import afield.lang.solidsl.*
           import afield.geometry.path.generateIsoContours
+          import afield.lang.solidsl.*
 
           /*
           ---- the Koch snowflake as a fold stack -----------------------------------------------
@@ -342,7 +342,9 @@ operations:
                           moveTo(c[0].x * 100, -c[0].y * 100)
                           c.drop(1).forEach { lineTo(it.x * 100, -it.y * 100) }
                           thickness = if (iso == 0.0) 2.0 else 1.0
-                          color = if (iso < 0) vec(0.95, 0.55, 0.3, 1.0) else if (iso == 0.0) vec(1, 1, 1, 1) else vec(0.4, 0.7, 1.0, 1.0)
+                          color =
+                              if (iso < 0) vec(0.95, 0.55, 0.3, 1.0)
+                              else if (iso == 0.0) vec(1, 1, 1, 1) else vec(0.4, 0.7, 1.0, 1.0)
                       }
                   }
               }
@@ -351,8 +353,10 @@ operations:
           fun show(level: Int) {
               val fold = kochSnowflake(level)
               val naive = kochSnowflakeNaive(level)
-              println("level $level: fold ${fold.profileNodeCount()} nodes, ${fold.toGlsl2().length} GLSL chars; " +
-                  "naive ${naive.profileNodeCount()} nodes")
+              println(
+                  "level $level: fold ${fold.profileNodeCount()} nodes, ${fold.toGlsl2().length} GLSL chars; " +
+                      "naive ${naive.profileNodeCount()} nodes",
+              )
               lines(*isolines(level).toTypedArray(), w = 420.0, h = 420.0, fitToSize = true)
           }
 

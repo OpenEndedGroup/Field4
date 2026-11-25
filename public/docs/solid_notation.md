@@ -394,8 +394,8 @@ misses sit on the medial axis and on the fold seams. That is why the isolines be
 spaced, from the hexagram up to level 4, on the CPU through `toField2()` and marching squares:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/koch_isolines.png" wait="4.0" capture="box" open-outputs="true" padding="20" alt="Four Koch snowflakes in a row, levels 1 to 4, from a six-pointed star to a finely crinkled snowflake. Each outline is drawn in white with two orange isolines inside and three blue isolines outside, evenly spaced, the outer ones rounding off into a smooth hexagon"}
-import afield.lang.solidsl.*
 import afield.geometry.path.generateIsoContours
+import afield.lang.solidsl.*
 
 // One snowflake per level, its field marched at a few distances inside and out.
 fun isolines(level: Int, dx: Double): List<FLine> {
@@ -406,7 +406,9 @@ fun isolines(level: Int, dx: Double): List<FLine> {
                 moveTo(c[0].x * 100 + dx, -c[0].y * 100)
                 c.drop(1).forEach { lineTo(it.x * 100 + dx, -it.y * 100) }
                 thickness = if (iso == 0.0) 2.0 else 1.0
-                color = if (iso < 0) vec(0.95, 0.55, 0.3, 1.0) else if (iso == 0.0) vec(1, 1, 1, 1) else vec(0.4, 0.7, 1.0, 1.0)
+                color =
+                    if (iso < 0) vec(0.95, 0.55, 0.3, 1.0)
+                    else if (iso == 0.0) vec(1, 1, 1, 1) else vec(0.4, 0.7, 1.0, 1.0)
             }
         }
     }
@@ -420,7 +422,7 @@ Read back by the interpreter the GLSL tests use, it returns exactly the numbers 
 every level, and shaderc compiles it. On the GPU it is a fragment shader on a fullscreen triangle,
 here at level 5:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/koch_gpu.png" alt="A level-5 Koch snowflake filling a native render window: orange inside, blue outside, the outline in white, and evenly spaced isoline bands following the crinkled edge inside and rounding off outside" wait="4" timeout="120" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="koch-gpu"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/koch_gpu.png" alt="A level-5 Koch snowflake filling a native render window: orange inside, blue outside, the outline in white, and evenly spaced isoline bands following the crinkled edge inside and rounding off outside" wait="4" timeout="120" capture="native-window" native-wait-frames="4" trim-native=true max-width=1600 graphics-context=true embed=true name="koch-gpu"}
 import afield.lang.solidsl.*
 
 // The fold stack lowers to one straight-line GLSL function.
@@ -429,7 +431,8 @@ val sdKoch = kochSnowflake(5).toGlsl2("sdKoch")
 val shader = Module(
     parameters(renderer) {
         vertex = SOLID_RAYMARCH_VERTEX
-        fragment = """
+        fragment =
+            """
             #version 450
             layout(location = 0) out vec4 fragColor;
             layout(push_constant) uniform Params { vec2 uResolution; } params;
@@ -445,8 +448,7 @@ val shader = Module(
                 vec3 c = base * (0.25 + 0.35 * exp(-3.0 * abs(d))) + line * 0.6 * base;
                 c = mix(c, vec3(1.0), 1.0 - smoothstep(0.0, 1.5 * fwidth(d), abs(d)));
                 fragColor = vec4(c, 1.0);
-            }
-        """.trimIndent()
+            }""".trimIndent()
         depthTest = false
     },
 ).pointer()
