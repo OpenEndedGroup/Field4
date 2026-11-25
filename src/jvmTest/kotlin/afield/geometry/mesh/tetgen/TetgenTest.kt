@@ -16,10 +16,6 @@ import kotlin.test.assertTrue
 class TetgenTest {
 
     /** The wrapper, or null with a reason. Optional like Manifold and Ceres. */
-    /** Reports the test SKIPPED, not passed, when the native library is missing. */
-    private fun assumeAvailable() =
-        org.junit.Assume.assumeTrue("${javaClass.simpleName}: native library not available", available())
-
     private fun available(): Boolean {
         if (!TetgenLibrary.isAvailable) {
             println("SKIPPED TetGen tests: ${TetgenLibrary.describe()}")
@@ -31,6 +27,10 @@ class TetgenTest {
         }
         return true
     }
+
+    /** Reports the test SKIPPED, not passed, when the native library is missing. */
+    private fun assumeAvailable() =
+        org.junit.Assume.assumeTrue("${javaClass.simpleName}: native library not available", available())
 
     @Test fun missingLibraryIsReportedNotThrownAtClassLoad() {
         // Touching the object must not link anything; that is what makes this optional.

@@ -20,11 +20,7 @@ import kotlin.test.assertTrue
  */
 class Rhino3dmTest {
 
-    /** Optional like TetGen: without the wrapper the tests say so and pass. */
-    /** Reports the test SKIPPED, not passed, when the native library is missing. */
-    private fun assumeAvailable() =
-        org.junit.Assume.assumeTrue("${javaClass.simpleName}: native library not available", available())
-
+    /** Optional like TetGen: without the wrapper the tests are reported SKIPPED. */
     private fun available(): Boolean {
         if (!Rhino3dm.isAvailable) {
             println("SKIPPED .3dm tests: ${Rhino3dm.describe()}")
@@ -32,6 +28,10 @@ class Rhino3dmTest {
         }
         return true
     }
+
+    /** Reports the test SKIPPED, not passed, when the native library is missing. */
+    private fun assumeAvailable() =
+        org.junit.Assume.assumeTrue("${javaClass.simpleName}: native library not available", available())
 
     private fun sample(): RhinoModel {
         val dir = Files.createTempDirectory("rhino3dm-test").toFile()
