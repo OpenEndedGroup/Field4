@@ -1078,7 +1078,7 @@ what a torus is.
   src="offline.html?file=assets/solidsl_gallery/metadata.edn"
   loading="lazy"></iframe>
 
-The [`solidsl_gallery`](agent_transcripts.md#solidsl_gallery) starting point has three boxes. Open it and run them:
+The [`solidsl_gallery`](agent_transcripts.md#solidsl_gallery) starting point has four boxes. Open it and run them:
 
 **One shape, two evaluations** puts one part through both lowerings and shows the meshes side by side.
 Change `boreRadius` or drop `quality` to 24 and watch the agreement degrade to the faceting floor.
@@ -1097,7 +1097,10 @@ smallest-subtree level set beside what the naive one would have cost.
 // dev_docs/agents/transcripts/solidsl_gallery.yaml creates and runs the three gallery boxes.
 ```
 
-All three need nothing but Field; the second needs no Manifold at all. The first and third print a
+**Folds: the Koch snowflake in O(N)** draws the [fold snowflake](#folds-the-koch-snowflake-in-on)'s
+isolines and prints its size beside the naive union's; the slider moves it between levels 1 and 6.
+
+All four need nothing but Field; the second needs no Manifold at all. The first and third print a
 clear "install Manifold" message and fall back to the field lowering when it is absent.
 
 For fitting there is a second starting point, [`solidsl_inverse`](agent_transcripts.md#solidsl_inverse),
