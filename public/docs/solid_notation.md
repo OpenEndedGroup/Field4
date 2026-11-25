@@ -395,7 +395,7 @@ true Euclidean distance, too. Its gradient has length 1 to within 1e-3 at 99.99%
 misses sit on the medial axis and on the fold seams. That is why the isolines below are evenly
 spaced, from the hexagram up to level 4, on the CPU through `toField2()` and marching squares:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/koch_isolines.png" wait="4.0" capture="box" open-outputs="true" padding="20" alt="Four Koch snowflakes in a row, levels 1 to 4, from a six-pointed star to a finely crinkled snowflake. Each outline is drawn in white with two orange isolines inside and three blue isolines outside, evenly spaced, the outer ones rounding off into a smooth hexagon"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/koch_isolines.png" wait="4.0" capture="box" open-outputs="true" padding="20" embed=true alt="Four Koch snowflakes in a row, levels 1 to 4, from a six-pointed star to a finely crinkled snowflake. Each outline is drawn in white with two orange isolines inside and three blue isolines outside, evenly spaced, the outer ones rounding off into a smooth hexagon"}
 import afield.geometry.path.generateIsoContours
 import afield.lang.solidsl.*
 

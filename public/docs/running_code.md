@@ -477,7 +477,11 @@ assign; use `@exported` to share a declaration you have already written.
 
 ## Shared Kotlin types
 
-Use `sharedTypes(...)` when independently compiled boxes need the same class. A data class
+A shared Kotlin declarations box gives every box in the document the same class. The
+[connecting boxes tour](tour_connecting_boxes.md#share-a-type-between-boxes) builds a `Flower`,
+passes it through `prop<Flower>` and reads its fields in a child.
+
+You can also use `sharedTypes(...)` when independently compiled boxes need the same class. A data class
 declared in one box's script is otherwise local to that script's compilation. In [Shared
 types](agent_transcripts.md#shared_types_demo), run the declaration box first, then the boxes
 that construct and destructure `shared.Particle`. The last pair passes a typed instance

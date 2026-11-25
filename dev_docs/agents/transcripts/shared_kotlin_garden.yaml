@@ -1,0 +1,39 @@
+name: shared_kotlin_garden
+description: >
+  A shared Flower data class, a garden settings box that publishes a Flower with prop,
+  and a connected view that reads its fields. Run the declaration box first, then the
+  settings and view boxes.
+docs:
+  - page: "tour_connecting_boxes.md#share-a-type-between-boxes"
+    why: "Declare a shared data class and pass an instance through a parent property."
+operations:
+  - create:
+      box: garden_types
+      name: Garden types
+      frame: { x: 40.0, y: 40.0, w: 260.0, h: 90.0 }
+      properties:
+        box_kind: shared-kotlin
+        code: |
+          data class Flower(val petals: Int, val color: String)
+  - create:
+      box: garden_settings
+      name: Garden settings
+      frame: { x: 370.0, y: 40.0, w: 260.0, h: 90.0 }
+      properties:
+        code: |
+          prop<Flower>(flower) = Flower(petals = 5, color = "pink")
+  - create:
+      box: garden_view
+      name: Garden view
+      frame: { x: 370.0, y: 210.0, w: 260.0, h: 90.0 }
+      properties:
+        code: |
+          check(flower.petals == 5 && flower.color == "pink")
+          markdown("A ${flower.color} flower with ${flower.petals} petals")
+  - connect: { parent: garden_settings, child: garden_view }
+  - execute: { box: garden_types, property: code, type: fragment }
+  - wait: pending
+  - execute: { box: garden_settings, property: code, type: fragment }
+  - wait: pending
+  - execute: { box: garden_view, property: code, type: fragment }
+  - wait: pending

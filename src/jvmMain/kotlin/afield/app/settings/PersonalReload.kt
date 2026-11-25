@@ -126,8 +126,8 @@ fun reloadPersonal(): PersonalReloadReport {
 }
 
 private fun reloadPersonalLayer(): PersonalReloadReport {
-    val examined = documents.values.flatMap { it.boxes.values }
-        .filter { !it.getPropertyRaw("_tombstone").isTrue() }
+    val examined = documents.values.flatMap { it.boxes.values + it.root }
+        .distinct().filter { !it.getPropertyRaw("_tombstone").isTrue() }
 
     val retiredGeneration = PersonalLayer.advance()
     if (retiredGeneration == null) {
@@ -146,8 +146,12 @@ private fun reloadPersonalLayer(): PersonalReloadReport {
         Thread.currentThread().contextClassLoader = PersonalLayer.current
     }
 
-    val reset = mutableListOf<Pair<Box, String>>()
+    // Document declaration loaders have the personal layer as an ancestor. Rebase them before
+    // scanning so new box engines never mix the two generations.
+    val reset = documents.values.distinct().flatMap { it.documentTypes.rebaseAfterPersonalReload() }.toMutableList()
+    val alreadyReset = reset.mapTo(mutableSetOf()) { it.first }
     for (box in examined) {
+        if (box in alreadyReset) continue
         val reason = runCatching { scanForStaleClasses(box) }.getOrElse {
             lprintln("error,personal", "scan failed for box ${box.id}: $it")
             null

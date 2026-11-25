@@ -33,3 +33,7 @@ For mechanics and exceptions, see [Box code revision pass](BOX_CODE_REVISION_PAS
 [agent guide](../../AGENTS.md).
 
 - **Legends over a `three { }` scene are `markdown("""…""", corner = …)`, not `overlay("<div style=…>")`.** The panel is already styled in the viewer's font, folds to its heading, and takes `{bad:…}`-style roles; never set a `font-family`.
+
+For a type that several Kotlin boxes use, prefer a shared Kotlin declarations box. Its code is
+ordinary declarations, and `prop<T>` or `@exported` can then pass typed instances between boxes.
+See [Connecting boxes](../../public/docs/tour_connecting_boxes.md#share-a-type-between-boxes).
