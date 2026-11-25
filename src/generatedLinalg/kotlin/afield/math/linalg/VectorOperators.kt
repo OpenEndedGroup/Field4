@@ -23,6 +23,9 @@ operator fun Vector2f.invoke(block: Vector2f.() -> Unit): Vector2f {
 /** Returns a copy rescaled to length [l], keeping direction. */
 infix fun Vector2f.len(l: Number): Vector2f = this { normalize().mul(l.toFloat()) }
 
+/** `2 * v`: the number on the left, so the arithmetic reads the way it does on paper. New vector; operands untouched. */
+operator fun Number.times(v: Vector2fc): Vector2f = v.mul(toFloat(), Vector2f())
+
 // Vector3f operators
 /** In-place assignment: `a %= b` copies b's components into a. */
 operator fun Vector3f.remAssign(other: Vector3fc) { set(other) }
@@ -40,6 +43,9 @@ operator fun Vector3f.invoke(block: Vector3f.() -> Unit): Vector3f {
 /** Returns a copy rescaled to length [l], keeping direction. */
 infix fun Vector3f.len(l: Number): Vector3f = this { normalize().mul(l.toFloat()) }
 
+/** `2 * v`: the number on the left, so the arithmetic reads the way it does on paper. New vector; operands untouched. */
+operator fun Number.times(v: Vector3fc): Vector3f = v.mul(toFloat(), Vector3f())
+
 // Vector4f operators
 /** In-place assignment: `a %= b` copies b's components into a. */
 operator fun Vector4f.remAssign(other: Vector4fc) { set(other) }
@@ -56,6 +62,177 @@ operator fun Vector4f.invoke(block: Vector4f.() -> Unit): Vector4f {
 
 /** Returns a copy rescaled to length [l], keeping direction. */
 infix fun Vector4f.len(l: Number): Vector4f = this { normalize().mul(l.toFloat()) }
+
+/** `2 * v`: the number on the left, so the arithmetic reads the way it does on paper. New vector; operands untouched. */
+operator fun Number.times(v: Vector4fc): Vector4f = v.mul(toFloat(), Vector4f())
+
+// Vector2d operators
+/** In-place assignment: `a %= b` copies b's components into a. */
+operator fun Vector2d.remAssign(other: Vector2dc) { set(other) }
+
+/** Returns a copy with the named components replaced; the rest keep this vector's values. */
+operator fun Vector2d.invoke(x: Double = this.x, y: Double = this.y): Vector2d = Vector2d(x, y)
+
+/** Returns a copy after applying [block] to it, leaving this vector untouched: `v { normalize() }`. */
+operator fun Vector2d.invoke(block: Vector2d.() -> Unit): Vector2d {
+    val copy = Vector2d(this)
+    copy.block()
+    return copy
+}
+
+/** Returns a copy rescaled to length [l], keeping direction. */
+infix fun Vector2d.len(l: Number): Vector2d = this { normalize().mul(l.toDouble()) }
+
+/** `2 * v`: the number on the left, so the arithmetic reads the way it does on paper. New vector; operands untouched. */
+operator fun Number.times(v: Vector2dc): Vector2d = v.mul(toDouble(), Vector2d())
+
+// Vector3d operators
+/** In-place assignment: `a %= b` copies b's components into a. */
+operator fun Vector3d.remAssign(other: Vector3dc) { set(other) }
+
+/** Returns a copy with the named components replaced; the rest keep this vector's values. */
+operator fun Vector3d.invoke(x: Double = this.x, y: Double = this.y, z: Double = this.z): Vector3d = Vector3d(x, y, z)
+
+/** Returns a copy after applying [block] to it, leaving this vector untouched: `v { normalize() }`. */
+operator fun Vector3d.invoke(block: Vector3d.() -> Unit): Vector3d {
+    val copy = Vector3d(this)
+    copy.block()
+    return copy
+}
+
+/** Returns a copy rescaled to length [l], keeping direction. */
+infix fun Vector3d.len(l: Number): Vector3d = this { normalize().mul(l.toDouble()) }
+
+/** `2 * v`: the number on the left, so the arithmetic reads the way it does on paper. New vector; operands untouched. */
+operator fun Number.times(v: Vector3dc): Vector3d = v.mul(toDouble(), Vector3d())
+
+// Vector4d operators
+/** In-place assignment: `a %= b` copies b's components into a. */
+operator fun Vector4d.remAssign(other: Vector4dc) { set(other) }
+
+/** Returns a copy with the named components replaced; the rest keep this vector's values. */
+operator fun Vector4d.invoke(x: Double = this.x, y: Double = this.y, z: Double = this.z, w: Double = this.w): Vector4d = Vector4d(x, y, z, w)
+
+/** Returns a copy after applying [block] to it, leaving this vector untouched: `v { normalize() }`. */
+operator fun Vector4d.invoke(block: Vector4d.() -> Unit): Vector4d {
+    val copy = Vector4d(this)
+    copy.block()
+    return copy
+}
+
+/** Returns a copy rescaled to length [l], keeping direction. */
+infix fun Vector4d.len(l: Number): Vector4d = this { normalize().mul(l.toDouble()) }
+
+/** `2 * v`: the number on the left, so the arithmetic reads the way it does on paper. New vector; operands untouched. */
+operator fun Number.times(v: Vector4dc): Vector4d = v.mul(toDouble(), Vector4d())
+
+// Vector2f geometry shorthands
+/** The squared length, `lengthSquared()`: cheap enough for comparisons such as `(p - c).sq < r * r`. */
+val Vector2fc.sq: Float get() = lengthSquared()
+/** The distance between two points, the same as `a.distance(b)`. */
+infix fun Vector2fc.dist(b: Vector2fc): Float = distance(b)
+/** True when every component is within 1e-5f of [b]'s: the comparison to use where `==` (exact) is too strict. */
+infix fun Vector2fc.near(b: Vector2fc): Boolean = near(b, 1e-5f)
+/** True when every component is within [tolerance] of [b]'s. */
+fun Vector2fc.near(b: Vector2fc, tolerance: Number): Boolean = tolerance.toFloat().let { t -> kotlin.math.abs(x() - b.x()) <= t && kotlin.math.abs(y() - b.y()) <= t }
+/** The 2D cross product, the scalar `a.x * b.y - a.y * b.x`: positive when [b] is anticlockwise of this vector. */
+infix fun Vector2fc.x(b: Vector2fc): Float = x() * b.y() - y() * b.x()
+/** The unsigned angle between two vectors in radians, 0..π, through `atan2(|a × b|, a · b)` so it stays accurate near 0 and π. */
+infix fun Vector2fc.angleTo(b: Vector2fc): Float = kotlin.math.atan2(kotlin.math.abs(this x b), dot(b))
+/** The angle that turns this vector's direction onto [b]'s, in radians, −π..π; positive is anticlockwise. */
+infix fun Vector2fc.signedAngleTo(b: Vector2fc): Float = kotlin.math.atan2(this x b, dot(b))
+/** The direction of this vector as an angle from +x, `atan2(y, x)`, in radians, −π..π. */
+val Vector2fc.angle: Float get() = kotlin.math.atan2(y(), x())
+/** This vector turned a quarter turn anticlockwise, `(-y, x)`. */
+val Vector2fc.perp: Vector2f get() = Vector2f(-y(), x())
+/** This vector turned [angle] radians anticlockwise about the origin. */
+infix fun Vector2fc.rot(angle: Number): Vector2f = angle.toFloat().let { a -> val c = kotlin.math.cos(a); val sn = kotlin.math.sin(a); Vector2f(x() * c - y() * sn, x() * sn + y() * c) }
+
+/** The first half of `v about c rot θ`; finish it with [rot]. */
+class Vector2fPivot internal constructor(private val point: Vector2fc, private val centre: Vector2fc) {
+    /** Returns the point turned [angle] radians anticlockwise about the centre. */
+    infix fun rot(angle: Number): Vector2f = ((point - centre) rot angle).add(centre)
+}
+/** Starts `v about c rot θ`: turn this point about [centre]. */
+infix fun Vector2fc.about(centre: Vector2fc): Vector2fPivot = Vector2fPivot(this, centre)
+
+// Vector3f geometry shorthands
+/** The squared length, `lengthSquared()`: cheap enough for comparisons such as `(p - c).sq < r * r`. */
+val Vector3fc.sq: Float get() = lengthSquared()
+/** The distance between two points, the same as `a.distance(b)`. */
+infix fun Vector3fc.dist(b: Vector3fc): Float = distance(b)
+/** True when every component is within 1e-5f of [b]'s: the comparison to use where `==` (exact) is too strict. */
+infix fun Vector3fc.near(b: Vector3fc): Boolean = near(b, 1e-5f)
+/** True when every component is within [tolerance] of [b]'s. */
+fun Vector3fc.near(b: Vector3fc, tolerance: Number): Boolean = tolerance.toFloat().let { t -> kotlin.math.abs(x() - b.x()) <= t && kotlin.math.abs(y() - b.y()) <= t && kotlin.math.abs(z() - b.z()) <= t }
+/** The cross product `a x b`: perpendicular to both, right-handed, length `|a||b| sin θ`. A new vector; neither operand changes. */
+infix fun Vector3fc.x(b: Vector3fc): Vector3f = cross(b, Vector3f())
+/** The unsigned angle between two vectors in radians, 0..π, through `atan2(|a × b|, a · b)` so it stays accurate near 0 and π. */
+infix fun Vector3fc.angleTo(b: Vector3fc): Float = kotlin.math.atan2((this x b).length(), dot(b))
+
+// Vector4f geometry shorthands
+/** The squared length, `lengthSquared()`: cheap enough for comparisons such as `(p - c).sq < r * r`. */
+val Vector4fc.sq: Float get() = lengthSquared()
+/** The distance between two points, the same as `a.distance(b)`. */
+infix fun Vector4fc.dist(b: Vector4fc): Float = distance(b)
+/** True when every component is within 1e-5f of [b]'s: the comparison to use where `==` (exact) is too strict. */
+infix fun Vector4fc.near(b: Vector4fc): Boolean = near(b, 1e-5f)
+/** True when every component is within [tolerance] of [b]'s. */
+fun Vector4fc.near(b: Vector4fc, tolerance: Number): Boolean = tolerance.toFloat().let { t -> kotlin.math.abs(x() - b.x()) <= t && kotlin.math.abs(y() - b.y()) <= t && kotlin.math.abs(z() - b.z()) <= t && kotlin.math.abs(w() - b.w()) <= t }
+
+// Vector2d geometry shorthands
+/** The squared length, `lengthSquared()`: cheap enough for comparisons such as `(p - c).sq < r * r`. */
+val Vector2dc.sq: Double get() = lengthSquared()
+/** The distance between two points, the same as `a.distance(b)`. */
+infix fun Vector2dc.dist(b: Vector2dc): Double = distance(b)
+/** True when every component is within 1e-9 of [b]'s: the comparison to use where `==` (exact) is too strict. */
+infix fun Vector2dc.near(b: Vector2dc): Boolean = near(b, 1e-9)
+/** True when every component is within [tolerance] of [b]'s. */
+fun Vector2dc.near(b: Vector2dc, tolerance: Number): Boolean = tolerance.toDouble().let { t -> kotlin.math.abs(x() - b.x()) <= t && kotlin.math.abs(y() - b.y()) <= t }
+/** The 2D cross product, the scalar `a.x * b.y - a.y * b.x`: positive when [b] is anticlockwise of this vector. */
+infix fun Vector2dc.x(b: Vector2dc): Double = x() * b.y() - y() * b.x()
+/** The unsigned angle between two vectors in radians, 0..π, through `atan2(|a × b|, a · b)` so it stays accurate near 0 and π. */
+infix fun Vector2dc.angleTo(b: Vector2dc): Double = kotlin.math.atan2(kotlin.math.abs(this x b), dot(b))
+/** The angle that turns this vector's direction onto [b]'s, in radians, −π..π; positive is anticlockwise. */
+infix fun Vector2dc.signedAngleTo(b: Vector2dc): Double = kotlin.math.atan2(this x b, dot(b))
+/** The direction of this vector as an angle from +x, `atan2(y, x)`, in radians, −π..π. */
+val Vector2dc.angle: Double get() = kotlin.math.atan2(y(), x())
+/** This vector turned a quarter turn anticlockwise, `(-y, x)`. */
+val Vector2dc.perp: Vector2d get() = Vector2d(-y(), x())
+/** This vector turned [angle] radians anticlockwise about the origin. */
+infix fun Vector2dc.rot(angle: Number): Vector2d = angle.toDouble().let { a -> val c = kotlin.math.cos(a); val sn = kotlin.math.sin(a); Vector2d(x() * c - y() * sn, x() * sn + y() * c) }
+
+/** The first half of `v about c rot θ`; finish it with [rot]. */
+class Vector2dPivot internal constructor(private val point: Vector2dc, private val centre: Vector2dc) {
+    /** Returns the point turned [angle] radians anticlockwise about the centre. */
+    infix fun rot(angle: Number): Vector2d = ((point - centre) rot angle).add(centre)
+}
+/** Starts `v about c rot θ`: turn this point about [centre]. */
+infix fun Vector2dc.about(centre: Vector2dc): Vector2dPivot = Vector2dPivot(this, centre)
+
+// Vector3d geometry shorthands
+/** The squared length, `lengthSquared()`: cheap enough for comparisons such as `(p - c).sq < r * r`. */
+val Vector3dc.sq: Double get() = lengthSquared()
+/** The distance between two points, the same as `a.distance(b)`. */
+infix fun Vector3dc.dist(b: Vector3dc): Double = distance(b)
+/** True when every component is within 1e-9 of [b]'s: the comparison to use where `==` (exact) is too strict. */
+infix fun Vector3dc.near(b: Vector3dc): Boolean = near(b, 1e-9)
+/** True when every component is within [tolerance] of [b]'s. */
+fun Vector3dc.near(b: Vector3dc, tolerance: Number): Boolean = tolerance.toDouble().let { t -> kotlin.math.abs(x() - b.x()) <= t && kotlin.math.abs(y() - b.y()) <= t && kotlin.math.abs(z() - b.z()) <= t }
+/** The cross product `a x b`: perpendicular to both, right-handed, length `|a||b| sin θ`. A new vector; neither operand changes. */
+infix fun Vector3dc.x(b: Vector3dc): Vector3d = cross(b, Vector3d())
+/** The unsigned angle between two vectors in radians, 0..π, through `atan2(|a × b|, a · b)` so it stays accurate near 0 and π. */
+infix fun Vector3dc.angleTo(b: Vector3dc): Double = kotlin.math.atan2((this x b).length(), dot(b))
+
+// Vector4d geometry shorthands
+/** The squared length, `lengthSquared()`: cheap enough for comparisons such as `(p - c).sq < r * r`. */
+val Vector4dc.sq: Double get() = lengthSquared()
+/** The distance between two points, the same as `a.distance(b)`. */
+infix fun Vector4dc.dist(b: Vector4dc): Double = distance(b)
+/** True when every component is within 1e-9 of [b]'s: the comparison to use where `==` (exact) is too strict. */
+infix fun Vector4dc.near(b: Vector4dc): Boolean = near(b, 1e-9)
+/** True when every component is within [tolerance] of [b]'s. */
+fun Vector4dc.near(b: Vector4dc, tolerance: Number): Boolean = tolerance.toDouble().let { t -> kotlin.math.abs(x() - b.x()) <= t && kotlin.math.abs(y() - b.y()) <= t && kotlin.math.abs(z() - b.z()) <= t && kotlin.math.abs(w() - b.w()) <= t }
 
 // Vector2f shorthands
 /** A normalized copy of this vector, the shorthand for `normalized()`. Zero stays zero. */

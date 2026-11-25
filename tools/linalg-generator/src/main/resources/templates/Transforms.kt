@@ -14,7 +14,7 @@ interface Quaternionfc {
 
     fun transform(value: Vector3f): Vector3f = transform(value, value)
     /** Measures quaternion agreement; unit quaternions q and -q describe the same rotation. */
-    fun dot(other: Quaternionfc): Float = dotQuaternion(this, other)
+    infix fun dot(other: Quaternionfc): Float = dotQuaternion(this, other)
     operator fun times(value: Vector3fc): Vector3f = transform(value, Vector3f())
 }
 

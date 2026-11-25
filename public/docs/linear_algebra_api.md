@@ -14,7 +14,14 @@ Vectors are written with ordinary arithmetic, and a handful of shorthands cover 
 | --- | --- |
 | `a + b`, `a - b` | Component-by-component sum and difference. A number on the right applies to every component: `a + 1`. |
 | `a * b`, `a * 2`, `a / 2` | Component-by-component product, scaling by a number, dividing by a number. |
+| `2 * a` | A number on the left scales too. |
 | `-a` | The vector pointing the other way. |
+| `a dot b` | The dot product. Infix calls bind more loosely than arithmetic, so write `(p - c) dot n`. |
+| `a x b` | The cross product: in 3D a new vector perpendicular to both, right-handed; in 2D the number `a.x * b.y - a.y * b.x`, positive when `b` is anticlockwise of `a`. |
+| `a dist b` | The distance between two points. |
+| `v.sq` | The squared length, cheap enough for comparisons: `if ((p - c).sq < r * r)`. |
+| `a near b`<br>`a.near(b, 0.01)` | True when every component is within 1e-5 (float) or 1e-9 (double), or within the tolerance you give. Use it where `==`, which compares exactly, is too strict. |
+| `a angleTo b` | The angle between two 2D or 3D vectors in radians, 0..π. It stays accurate near 0 and π, where `acos` of the dot product does not. |
 | `a.length` | The vector's length, the same as `a.length()`. |
 | `a.n` | A unit-length copy pointing the same way, the same as `a.normalized()`. Zero stays zero. |
 | `v len 10` | A copy rescaled to length 10, keeping direction. |
@@ -23,11 +30,31 @@ Vectors are written with ordinary arithmetic, and a handful of shorthands cover 
 | `v(y = 2f)` | A copy with the named components replaced; unnamed components keep this vector's values. |
 | `v { normalize() }` | A copy after applying the block to it, leaving `v` untouched. |
 | `a %= b` | In-place assignment: copies b's components into a. |
+| `Vec3.X`, `Vec3.Y`, `Vec3.Z`, `Vec3.ZERO`, `Vec3.ONE` | The axes, zero and all-ones, on every vector type's companion (`Vec2.X`, `Vector4d.W`, …). They are read-only, so the shared axis cannot be normalized or scaled by accident. |
 | `v.normalized()` / `v.normalized(dest)` | Unit direction as a new value / into reusable storage. Optional epsilon sets the zero threshold. Finite inputs only. |
 
 </div>
 
-`length`, `n`, `lerp … to` and `step … to` exist on the float and double heap vectors and on the frame-arena and segment forms. In a frame arena they allocate their result in the arena; on a segment view they return a heap vector, because a view has nowhere of its own to put one. The arithmetic operators are heap forms, float and double; `len`, `v(...)`, `v { }` and `%=` are float heap forms.
+`length`, `n`, `lerp … to` and `step … to` exist on the float and double heap vectors and on the frame-arena and segment forms. In a frame arena they allocate their result in the arena; on a segment view they return a heap vector, because a view has nowhere of its own to put one. The arithmetic operators and everything else in the table are heap forms, float and double.
+
+### Angles and the plane
+
+Angles are written as values. Each of these is radians as a `Float`, the unit every rotation method takes, so `q.rotateX(90.deg)` and `quat(45.deg, Vec3.Y)` need no conversion.
+
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Operator | Meaning |
+| --- | --- |
+| `90.deg`, `0.25.turns`, `1.5.rad` | Degrees, whole turns and radians, as radians. Being a `Float`, the angle has float precision (about 1e-7) even inside a double calculation; write `PI / 2` where that matters. |
+| `TAU` | One full turn, 2π, as a `Double`. |
+| `30.deg.dir` | The unit `Vec2` at that angle from +x, `(cos, sin)`. |
+| `v.angle` | The direction of a 2D vector as an angle from +x, in −π..π. `30.deg.dir.angle` is `30.deg` again. |
+| `a signedAngleTo b` | The 2D angle that turns `a`'s direction onto `b`'s, in −π..π; positive is anticlockwise. |
+| `v.perp` | The 2D vector turned a quarter turn anticlockwise, `(-y, x)`: the normal of a segment, the tangent of a circle. |
+| `v rot 30.deg` | The 2D vector turned about the origin. |
+| `p about c rot 30.deg` | The point `p` turned about the point `c`. |
+
+</div>
 
 ## One algebra, three storage forms
 
@@ -342,11 +369,19 @@ Every float heap vector (`Vector2f`, `Vector3f`, `Vector4f`) carries the modeled
 | `z.exp()` | e^z = e^re · (cos im + i sin im). `Complexd(0, t).exp()` walks the unit circle as `t` grows. |
 | `z.ln()` | The principal natural logarithm ln\|z\| + i·arg z, so its imaginary part is in −π..π. |
 | `z.pow(p)` | The principal power z^p for a real `p`, through `exp` and `ln`. Zero to any power is zero. |
+| `z.pow(w)`, `z.sqrt()` | The principal power for a complex `w` (`Complexd.I.pow(Complexd.I)` is e^(−π/2)), and the principal square root, whose real part is never negative. |
+| `z.sin()`, `z.cos()` | The complex sine and cosine. Applied to every point of a grid they are conformal maps: they bend the grid but keep its corners square. |
+| `2 + 3.im` | `.im` makes a number imaginary, so this is the `Complexd` 2 + 3i. (`.i` is taken: it means `toInt()`.) |
+| `r cis theta`<br>`1 cis 30.deg` | `Complexd.polar(r, theta)` under its textbook name, r(cos θ + i sin θ). |
+| `z.n`, `z.sq` | A copy of length 1 pointing the same way (zero stays zero), and \|z\|², the same names the vectors use. |
+| `z rot theta` | `z` turned `theta` radians anticlockwise, the same word as `v rot theta` on a `Vec2`. |
+| `p * z`, `z * p` | The 2D point `p` multiplied as a complex number, turned by `z.arg` and scaled by `z.abs`, as a new vector: `vec(1, 0) * (2 cis 90.deg)` is (0, 2). `Complexf` takes a `Vector2f`, `Complexd` a `Vector2d`. |
 | `z.toVector()`<br>`v.toComplex()` | To and from the 2D vector (re, im): `Complexf` with `Vector2f`, `Complexd` with `Vector2d`. |
+| `z near w`<br>`z.near(w, 0.01)` | True when both parts are within 1e-5 (float) or 1e-9 (double), or the tolerance you give. |
 
 </div>
 
-`==` compares the parts exactly, bit for bit, so compare the results of a calculation with a tolerance on `(z - w).abs` instead.
+`==` compares the parts exactly, bit for bit, so compare the results of a calculation with `near` instead.
 
 ## Hypercomplex numbers
 
@@ -359,12 +394,13 @@ Every float heap vector (`Vector2f`, `Vector3f`, `Vector4f`) carries the modeled
 | `Hypercomplexd(a, b, eps2)` | The number a + bε with ε² = `eps2`. |
 | `Hypercomplexd.complex(a, b)`<br>`Hypercomplexd.dual(a, b)`<br>`Hypercomplexd.split(a, b)` | The same with ε² = −1, 0 and +1. |
 | `z + w`, `z - w`, `z * w`, `z / w` | Arithmetic that multiplies out the brackets: (a + bε)(c + dε) = ac + bd·ε² + (ad + bc)ε. Both numbers must have the same ε²; mixing two algebras throws `IllegalArgumentException`. Division goes through the conjugate, so a divisor whose `norm` is zero (a pure ε dual number, or a split-complex number with a = ±b) gives non-finite parts. |
-| `z + 1`, `z * 2`, `z / 2`, `-z` | A plain number counts as a real number. It goes on the right: `z * 2`, not `2 * z`. |
+| `z + 1`, `2 * z`, `1 / z`, `-z` | A plain number on either side counts as a real number, with the other number's ε², so `1 / x` on a dual number is the reciprocal and its derivative. |
 | `z.a`, `z.b`, `z.epsilon2` | The two parts and the ε² the number was made with. |
 | `z.conj` | The conjugate a − bε. |
 | `z.norm` | z · conj z = a² − ε²b²: the squared length for complex numbers, a² for dual numbers, and a² − b² for split-complex numbers, where it can be negative. There is no square root taken. |
 | `z.exp()` | e^z in each algebra: a rotation (cos, sin) when ε² < 0, e^a(1 + bε) when ε² = 0, and a hyperbolic rotation (cosh, sinh) when ε² > 0. |
 | `z.toVector()` | The 2D vector (a, b). |
+| `z near w`<br>`z.near(w, 0.01)` | True when both parts are within the tolerance and the two have the same ε². |
 
 </div>
 
@@ -387,14 +423,21 @@ A dual number differentiates whatever you compute with it. Start from `val x = H
 | `q * r` | The Hamilton product as a new quaternion. For rotations this is "`r`, then `q`": `(q * r) * p` equals `q * (r * p)`. |
 | `q * 2`, `q + r`, `q - r` | Component-by-component scaling, sum and difference, as a new quaternion. The results are not rotations until normalized; they are there for blending and for power series such as `exp`, which need only `*` and `+`. |
 | `q %= r` | Overwrites `q` with `r`'s components in place, so anything already holding `q` (a uniform, a mesh property) sees the new rotation. |
-| `q.dot(r)` | The four-component dot product. For unit quaternions, ±1 means the same orientation; a negative value means `q` and `r` are on opposite sides of the sphere, which `slerp` and `nlerp` correct for. |
+| `90.deg about Vec3.Y` | The same as `quat(90.deg, Vec3.Y)`, read aloud. |
+| `facing(direction, up)`<br>`facing(target - eye)` | The orientation whose `forward` is `direction` and whose `up` leans towards `up` (+y by default): what a camera or a creature pointing along `direction` needs. Use this rather than `lookAlong`, which turns `direction` onto +z. |
+| `v rot q` | `q * v` spelled the way the 2D `v rot theta` is. |
+| `q.inv`, `q.conj` | The inverse rotation and the conjugate, as new quaternions; for a unit quaternion they are equal. `invert()` and `conjugate()` do the same in place. |
+| `q.axis`, `q.angle` | The unit axis the rotation turns about and how far, in radians, 0..2π. With no rotation there is no axis, and `axis` is +z. |
+| `q.forward`, `q.up`, `q.right` | The rotated −z, +y and +x, as new vectors: where a camera with this orientation looks, its up and its right. Field's camera looks down −z. |
+| `q near r`<br>`q.near(r, 0.01)` | True when the two are the same rotation to within the tolerance (1e-5 by default). `q` and `-q` are the same rotation, so either sign matches. |
+| `q dot r` | The four-component dot product. For unit quaternions, ±1 means the same orientation; a negative value means `q` and `r` are on opposite sides of the sphere, which `slerp` and `nlerp` correct for. |
 | `q.transform(v)`<br>`q.transform(v, dest)` | Rotates `v` in place, or into `dest`, without allocating. |
 
 </div>
 
 ### Methods that change the quaternion
 
-These take `Float` angles and fractions, so write `rotateX((PI / 2).toFloat())` or `slerp(other, 0.5f)`; `quat(...)` takes any number.
+These take `Float` angles and fractions, so write `rotateX(90.deg)` or `slerp(other, 0.5f)`; `quat(...)` takes any number.
 
 <div class="field-reference" data-code-lang="kotlin" markdown>
 
