@@ -228,7 +228,7 @@ operations:
                   val (_, breaks) = VectorScene.pairwiseOrder(faces)
                   val ms = (System.nanoTime() - t0) / 1e6
                   val (wrong, covered) = scene.wrongOrderShare(0.3, -0.6, DepthOrder.PAIRWISE, 200, 200)
-                  "<tr><td>${ball.triangleCount + ring.triangleCount}</td><td>${faces.size}</td><td>${"%.0f".format(ms)} ms</td><td>$breaks</td><td>${"%.3f".format(100.0 * wrong / covered)}%</td></tr>"
+                  "<tr><td>${ball.triangleCount + ring.triangleCount}</td><td>${faces.size}</td><td>${ms.f0} ms</td><td>$breaks</td><td>${(100.0 * wrong / covered).f3}%</td></tr>"
               }
           display(
               "main",
