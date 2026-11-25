@@ -30,8 +30,7 @@ import afield.math.linalg.Vector4f
  * #### Every instance copies before it writes
  *
  * This matters more here than the arithmetic does. In `afield.math.linalg`, `add(other)`,
- * `mul(scalar)`, `sub(other)` and `normalize()` are **in-place members** that return the receiver,
- * and `/` resolves to the mutating member operator rather than to the allocating extension. A stage
+ * `mul(scalar)`, `sub(other)` and `normalize()` are **in-place members** that return the receiver. A stage
  * target lives in a bank and is read once per stage for as long as the reader runs, so a single
  * in-place write would corrupt the material rather than produce a wrong frame:
  *

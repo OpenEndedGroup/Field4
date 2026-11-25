@@ -97,6 +97,47 @@ class GeneratedLinalgTest {
         }
     }
 
+    /**
+     * `/` returns a new vector and leaves both operands alone, like `+`, `-` and `*`; `div(...)`
+     * written as a method still divides in place. Until the member `div` stopped being an
+     * operator, `v / 2f` and `a / b` overwrote `v` and `a` while `v / 2` did not.
+     */
+    @Test
+    fun divisionOperatorLeavesItsOperandsAlone() {
+        val a2 = Vector2f(6f, 8f)
+        val b2 = Vector2f(2f, 4f)
+        assertVectorEquals(Vector2f(3f, 4f), a2 / 2f)
+        assertVectorEquals(Vector2f(3f, 2f), a2 / b2)
+        assertVectorEquals(Vector2f(3f, 4f), a2 / 2)
+        assertVectorEquals(Vector2f(6f, 8f), a2)
+        assertVectorEquals(Vector2f(2f, 4f), b2)
+
+        val a3 = Vector3f(6f, 8f, 10f)
+        assertNotSame(a3, a3 / 2f)
+        assertVectorEquals(Vector3f(3f, 2f, 5f), a3 / Vector3f(2f, 4f, 2f))
+        assertVectorEquals(Vector3f(6f, 8f, 10f), a3)
+
+        val a4 = Vector4d(6.0, 8.0, 10.0, 12.0)
+        assertEquals(Vector4d(3.0, 4.0, 5.0, 6.0), a4 / 2.0)
+        assertEquals(Vector4d(3.0, 2.0, 5.0, 4.0), a4 / Vector4d(2.0, 4.0, 2.0, 3.0))
+        assertEquals(Vector4d(6.0, 8.0, 10.0, 12.0), a4)
+
+        val h = Vector8h(2f, 4f, 6f, 8f, 10f, 12f, 14f, 16f)
+        assertEquals(1f, (h / 2f).x())
+        assertEquals(1f, (h / Vector8h(2f, 2f, 2f, 2f, 2f, 2f, 2f, 2f)).x())
+        assertEquals(2f, h.x())
+
+        var v = Vector2f(6f, 8f)
+        val before = v
+        v /= 2f
+        assertVectorEquals(Vector2f(3f, 4f), v)
+        assertEquals(Vector2f(6f, 8f), before, "/= rebinds the variable rather than writing through it")
+
+        val m = Vector3f(6f, 8f, 10f)
+        assertSame(m, m.div(2f))
+        assertVectorEquals(Vector3f(3f, 4f, 5f), m)
+    }
+
     @Test
     fun liveCodingConstructorsAcceptKotlinNumbersAndTypedCollectionLiterals() {
         val v2: Vec2 = [1, 2.5]

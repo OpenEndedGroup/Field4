@@ -38,6 +38,7 @@ import afield.math.linalg.arg
 import afield.math.linalg.bar
 import afield.math.linalg.remAssign
 import afield.math.linalg.set
+import afield.math.linalg.div
 import afield.math.linalg.times
 import afield.math.linalg.www
 import afield.math.units.div

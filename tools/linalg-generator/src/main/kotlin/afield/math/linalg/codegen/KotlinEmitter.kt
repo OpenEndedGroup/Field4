@@ -874,7 +874,8 @@ class KotlinEmitter(
                 }
                 add("this")
             }.joinToString(", ")
-            val modifier = if (operation.name == "div") "operator " else ""
+            // None of these is an operator: `a / b` must leave `a` alone like every other operator, so
+            // `/` resolves to the CompatTypes extensions, which return a new vector.
             emitKDoc(
                 documentationFor(operation, includeDestination = false).copy(
                     details = operation.documentation.details + "This overload writes the result back into this vector.",
@@ -882,7 +883,7 @@ class KotlinEmitter(
                 ),
                 "    ",
             )
-            appendLine("    ${modifier}fun ${operation.name}($parameters): ${type.heapName} = ${operation.name}($arguments)")
+            appendLine("    fun ${operation.name}($parameters): ${type.heapName} = ${operation.name}($arguments)")
         }
         appendLine()
         appendLine("    public override fun clone(): ${type.heapName} = ${type.heapName}(this)")
