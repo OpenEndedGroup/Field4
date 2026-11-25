@@ -262,6 +262,13 @@ Arrowheads turn about their line to face the reader, so a head stays an arrow wh
 round it in a headset. They turn gradually, with `arrowFacingHalfLife` seconds (default `.6`,
 `0` turns at once); `arrowFacesReader = false` keeps a path's heads in the diagram's XY plane.
 
+To move a particle with the score, `drive(p) { t -> Vector3f(...) }` gives it a rest position for each score
+second. A free particle springs after that rest, so what hangs on it lags and swings; a pinned one follows it
+exactly, and seeking the score moves it too. Path shapes and anchors can read the score as well: a frame's
+`time` is the score second it samples, and `anchor { ... }` makes an anchor computed from the frame, for a
+label that follows geometry no particle holds. `rope(id, a, b)` is a `link` that is also drawn, as a straight
+line between the two particles, so things that belong together pull on each other visibly.
+
 Build the scene with [`ReadingDiagram`](reference/graphics.md#diagramdsl-kt-readingdiagram).
 [`ReadingDiagramPlayer.prepare`](reference/graphics.md#readingdiagramplayer-kt--readingdiagramplayer-companion--prepare) prepares its native text once;
 [`textFrame`](reference/graphics.md#diagramtextframe-kt--textframe) fits a surround to a run, and

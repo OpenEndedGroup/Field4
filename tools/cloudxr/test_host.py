@@ -94,6 +94,38 @@ class Lifecycle(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(host.session, 'test-session')
 
 
+class Shutdown(unittest.IsolatedAsyncioTestCase):
+    async def test_an_established_session_does_not_hold_the_server_open(self):
+        class Runtime:
+            started = False
+            def token(self, value): pass
+            def start(self): self.started = True
+            def stop(self): self.started = False
+
+        identity = SimpleNamespace(server='test-server', digest='0' * 64, token=lambda client: 'test-token')
+        host = Host(Runtime(), identity, SimpleNamespace(field_unit=None, field_port=9492))
+        server = await asyncio.start_server(host.connection, '127.0.0.1', 0)
+        reader, writer = await asyncio.open_connection('127.0.0.1', server.sockets[0].getsockname()[1])
+        for message in [dict(Event='RequestConnection', ProtocolVersion='1',
+                             StreamingProvider='com.nvidia.CloudXR', StreamingProviderVersion='6',
+                             ClientID='test-device', SessionID='test-session'),
+                        dict(Event='SessionStatusDidChange', SessionID='test-session', Status='WAITING'),
+                        dict(Event='SessionStatusDidChange', SessionID='test-session', Status='CONNECTED')]:
+            payload = json.dumps(message).encode()
+            writer.write(struct.pack('<I', len(payload)) + payload)
+        await writer.drain()
+        for _ in range(100):
+            if host.status == 'CONNECTED':
+                break
+            await asyncio.sleep(.02)
+        self.assertEqual(host.status, 'CONNECTED')
+        server.close()
+        host.close_connections()
+        await asyncio.wait_for(server.wait_closed(), timeout=3)
+        self.assertFalse(host.writers)
+        writer.close()
+
+
 class ManagedFieldOwnership(unittest.TestCase):
     def test_foreign_port_owner_is_never_signalled(self):
         replies = [SimpleNamespace(returncode=0, stdout='/user.slice/field.service'),

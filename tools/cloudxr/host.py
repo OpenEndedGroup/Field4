@@ -189,8 +189,21 @@ class Host:
         self.qr = None
         self.status = 'Waiting for a Vision Pro'
         self.launch_process = None
+        self.writers = set()
+
+    def close_connections(self):
+        """End every management connection, so each handler returns and the server can close."""
+        for writer in list(self.writers):
+            writer.close()
 
     async def connection(self, reader, writer):
+        self.writers.add(writer)
+        try:
+            await self.session_connection(reader, writer)
+        finally:
+            self.writers.discard(writer)
+
+    async def session_connection(self, reader, writer):
         try:
             await asyncio.wait_for(self.connection_lock.acquire(), timeout=5)
         except TimeoutError:
@@ -356,6 +369,11 @@ async def serve(args):
                 poller.result()
             poller.cancel()
             waiter.cancel()
+            # Leaving this block awaits Server.wait_closed(), which since Python 3.12 waits for every open
+            # connection, and an established session reads with no timeout. Close them, or a stop hangs until
+            # systemd SIGKILLs the host before it stops Field, which then keeps its port and OpenXR session.
+            server.close()
+            host.close_connections()
     finally:
         if publisher:
             publisher.terminate()

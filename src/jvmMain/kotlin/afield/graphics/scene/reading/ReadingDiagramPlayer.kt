@@ -12,7 +12,11 @@ import kotlin.math.*
  * One immutable-in-time evaluation of anchors. Paths are cached and cycles fail with a useful name.
  */
 class DiagramFrame
-internal constructor(private val player: ReadingDiagramPlayer, private val time: Double) {
+internal constructor(
+    private val player: ReadingDiagramPlayer,
+    /** Score seconds this frame samples, so a path shape or anchor can move with the score. */
+    val time: Double,
+) {
     internal val diagramPlayer: ReadingDiagramPlayer get() = player
     internal val diagram: ReadingDiagram get() = player.diagram
     private val poses = HashMap<String, DiagramPose>()
@@ -323,7 +327,17 @@ class ReadingDiagramPlayer(
         return DiagramFrame(this, time)
     }
 
+    /** Driven particles take their rest from the score: [ReadingDiagramBuilder.drive]. */
+    private fun applyDrives(time: Double) {
+        for (p in diagram.particles) p.drive?.let { at ->
+            val r = at(time)
+            require(r.isFinite()) { "Drive for '${p.id}' gave $r at $time" }
+            p.rest.set(r)
+        }
+    }
+
     fun resetPositions() {
+        applyDrives(playback.sampleTime)
         for ((i, p) in diagram.particles.withIndex()) {
             state.x[i] = p.rest.x
             state.y[i] = p.rest.y
@@ -361,6 +375,7 @@ class ReadingDiagramPlayer(
         playback.advance(elapsedSeconds)
         arrowDt = min(elapsedSeconds, .1).toFloat()
         accumulator += min(elapsedSeconds, .1)
+        applyDrives(playback.sampleTime)
         updateConstraints()
         var steps = 0
         while (accumulator >= fixedStep && steps++ < 12) {
