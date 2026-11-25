@@ -1,8 +1,8 @@
 # Proposal: a fuller operator surface for live-coding linear algebra
 
-Status: Tier 1 implemented (2026-11-25, branch `claude/linalg-tier1`; tests in
-`LiveCodingShorthandsTest`, rows on `linear_algebra_api.md`). Tiers 2 and 3 are proposals. Written
-against `main` at `7a1baebf87`, after `Complexf/d` and `Hypercomplexf/d` landed.
+Status: Tiers 1 and 2 implemented (2026-11-25; tests in `LiveCodingShorthandsTest` and
+`LiveCodingMotionTest`, rows on `linear_algebra_api.md`). Tier 3 is a proposal. Written against
+`main` at `7a1baebf87`, after `Complexf/d` and `Hypercomplexf/d` landed.
 
 The aim is the feel of the existing `a lerp 0.5 to b`, `v len 10`, `v.n` and `a x b`: geometry that
 reads as a sentence, typed while a picture is running, with no allocation surprises and no new
@@ -139,6 +139,24 @@ letter, and the Kotlin stdlib does not define it.
 | `Number.minus/plus/times/div` for `Hypercomplex` | `2 * z` and `1 - z` for hypercomplex numbers. | `Complex` has them; `Hypercomplex` takes numbers only on the right today. |
 
 ## Tier 2: interpolation, shaping and motion
+
+Implemented, with four changes from the table below:
+
+- `v.floor()`, `v.fract()`, `v.abs()` and `v.sign()` are functions, not properties. As extension
+  properties they captured a bare `abs(x)` written inside the vector classes, or inside a box's
+  `v { }` block: the implicit receiver supplied `this.abs`, and the vector's own `invoke` then took
+  `x`. A zero-argument function is not applicable to `abs(x)`, so the call falls through to
+  `kotlin.math.abs` as before.
+- `damp` reads a new `AnimationClock.frameDt`, measured on `nowSeconds()` at the start of each
+  runloop tick, so it is wall time live and exact `1 / fps` steps during a frame-synchronous
+  capture; it is clamped to 0..0.25 s. The explicit form is `a.damp(k, dt) to b`, a plain call,
+  rather than a pair. The runloop form is hand-written in `linalg.kt` because the generator's
+  configurable packages cannot name the host clock.
+- Easing curves are `(Double) -> Double`, so a lambda can use `kotlin.math` without conversions.
+  `Ease` holds `linear`, `smooth`, `smoother`, `inQuad`, `outQuad`, `inOutQuad`, `inCubic`,
+  `outCubic`, `inOutCubic`, `inOutSine` and `outBack`.
+- `then` exists on `Quat`, `DualQuat`, `Complex` and `Matrix4f`; the other matrices get it with
+  their operators in Tier 3. `lerp … to` is added for complex numbers alongside `slerp … to`.
 
 These are the moves that make a running sketch feel alive. They all extend the existing
 `a lerp t to b` builder shape.
