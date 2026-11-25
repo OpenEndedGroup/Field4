@@ -225,6 +225,9 @@ lines(
 )
 ```
 
+PenGPT's drawing model, fine-tuned on the same generator's drawings, composes a whole page of
+these columns at once ([Teaching it a manner](learned_pen.md#teaching-it-a-manner)).
+
 ## Drawing with it
 
 A sensing pen can see ink it did not draw. `PenLine(..., surroundings = lines)` shows it lines
