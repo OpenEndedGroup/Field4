@@ -3324,7 +3324,7 @@ in `linalg_spatial.kt`, convex hulls in `linalg_mesh.kt`.
 
 `src/jvmMain/kotlin/afield/math/linalg/linalg.kt` — [read the source](source/jvmMain/afield/math/linalg/linalg/)
 
-**Used in:** [Linear algebra in Field](../linear_algebra.md), [Lights and Shadows](../explainer_lights.md), [FLine examples (Field graphics)](../fline_examples.md)
+**Used in:** [Generated vector API reference](../linear_algebra_api.md), [Linear algebra in Field](../linear_algebra.md), [Lights and Shadows](../explainer_lights.md)
 
 ### Top-level functions { #linalg-kt-functions }
 

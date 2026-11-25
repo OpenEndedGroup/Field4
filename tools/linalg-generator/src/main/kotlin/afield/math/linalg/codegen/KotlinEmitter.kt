@@ -432,7 +432,7 @@ class KotlinEmitter(
         appendLine("<!-- generator-version: 1; model-version: field-f32-v1 -->")
         appendLine("# Generated vector API reference")
         appendLine()
-        appendLine("This page is generated from the typed algebra model that emits Field's heap, frame-arena, and `MemorySegment` vector implementations. For intuition and worked examples, start with [Linear algebra in Field](linear_algebra.md).")
+        appendLine("This page is generated from the typed algebra model that emits Field's heap, frame-arena, and `MemorySegment` vector implementations, and also covers the number types that rotate: complex, hypercomplex and quaternion. For intuition and worked examples, start with [Linear algebra in Field](linear_algebra.md).")
         appendLine()
         appendLine("## Ergonomic operators")
         appendLine()
@@ -529,15 +529,15 @@ class KotlinEmitter(
         appendLine("- A read swizzle returns a same-scalar `VectorKfc` of the swizzle's own arity (`v.xy` is a `Vector2fc`, `v.xyz` a `Vector3fc`).")
         appendLine("- When a swizzle's indices are all distinct it also has a writable `var` on the mutable type, so GLSL-style assignment works: `v.xy = other.zw`. Repeated-index swizzles (`v.xx`) have no unambiguous target and stay read-only.")
         appendLine()
-        appendLine("## Rotations and matrices")
+        emitNumberAlgebrasMarkdown()
+        appendLine("## Matrices")
         appendLine()
-        appendLine("Alongside the vectors, the library provides rotation and matrix types whose core equations are generated from the same transform model and which interoperate with the heap vectors.")
+        appendLine("Alongside the vectors, the library provides matrix types whose core equations are generated from the same transform model and which interoperate with the heap vectors and with `Quaternionf`.")
         appendLine()
         appendLine("<div data-code-lang=\"kotlin\" markdown>")
         appendLine()
         appendLine("| Type | Purpose | Key operations |")
         appendLine("| --- | --- | --- |")
-        appendLine("| `Quaternionf` | Represents a 3D rotation. Compose rotations with `mul` or interpolate orientations with `slerp` and `nlerp`. | `setAngleAxis`, `rotateX/Y/Z`, `mul`, `invert`, `conjugate`, `normalize`, `slerp`, `nlerp`, `rotationTo`, `lookAlong`, `transform(Vector3f)` |")
         appendLine("| `Matrix3f` | Represents a linear transform in three dimensions. Use the inverse transpose of a position transform's linear part to transform surface normals. | `rotation`, `scale`, `mul`, `invert`, `transpose`, `determinant`, `transform(Vector3f)` |")
         appendLine("| `Matrix3d` | Provides a double-precision 3×3 transform for numerically sensitive calculations. Its extra precision is useful when single-precision rounding is significant. | `mul`, `invert`, `transpose`, `determinant` |")
         appendLine("| `Matrix4f` | Represents affine and projective transforms, including cameras. Distinguish positions from directions so translation is applied only where intended. | `translate`, `scale`, `rotate`, `mul`, `invert`, `transpose`, `perspective`, `ortho`, `frustum`, `lookAt`, `transformPosition`, `transformDirection` |")
@@ -553,6 +553,107 @@ class KotlinEmitter(
         appendLine("| Vec4 | `PACKED_16`, `ALIGNED_16` |")
         appendLine()
         appendLine("A layout name describes both array stride and required base alignment. A segment view never owns the memory and never performs Vulkan synchronization.")
+    }
+
+    /**
+     * The reference sections for the number types that rotate: the generated complex and
+     * hypercomplex numbers ([emitComplex]) and the template quaternions, with the hand-written
+     * operators that `afield.math.linalg` adds to them.
+     */
+    private fun StringBuilder.emitNumberAlgebrasMarkdown() {
+        fun table(vararg rows: Pair<String, String>) {
+            appendLine("<div class=\"field-reference\" data-code-lang=\"kotlin\" markdown>")
+            appendLine()
+            appendLine("| Operation and example | Meaning |")
+            appendLine("| --- | --- |")
+            rows.forEach { (code, meaning) -> appendLine("| $code | $meaning |") }
+            appendLine()
+            appendLine("</div>")
+            appendLine()
+        }
+        appendLine("## Complex numbers")
+        appendLine()
+        appendLine("`Complexf` (32-bit) and `Complexd` (64-bit) are the complex numbers re + im·i. Unlike the vectors they are immutable: every operation returns a new value, so a complex expression reads the way it does on paper. Multiplying by a complex number of length 1 rotates in the plane, which makes them the shortest way to turn 2D points: `Complexd.polar(1, angle) * z` is `z` turned by `angle` radians.")
+        appendLine()
+        table(
+            "`Complexd(re, im)`<br>`Complexd(2)`" to "A complex number from any two numbers. The imaginary part defaults to 0, so `Complexd(2)` is the real number 2.",
+            "`val z: Complexd = [1, 2]`" to "The collection literal for 1 + 2i. It takes exactly two values.",
+            "`Complexd.polar(r, theta)`" to "The number of length `r` at angle `theta` radians from the positive real axis.",
+            "`Complexd.I`, `Complexd.ONE`, `Complexd.ZERO`" to "i, 1 and 0.",
+            "`z + w`, `z - w`, `z * w`, `z / w`" to "Complex arithmetic. A product multiplies the lengths and adds the angles. Dividing by zero gives non-finite parts.",
+            "`z + 1`, `2 * z`, `1 / z`, `-z`" to "A plain number on either side counts as a real number, so `1 / z` is the reciprocal.",
+            "`z.re`, `z.im`" to "The real and imaginary parts.",
+            "`z.conj`" to "The conjugate re − im·i, the reflection across the real axis.",
+            "`z.abs`, `z.arg`" to "The length \\|z\\| and the angle from the positive real axis in radians, in −π..π.",
+            "`z.exp()`" to "e^z = e^re · (cos im + i sin im). `Complexd(0, t).exp()` walks the unit circle as `t` grows.",
+            "`z.ln()`" to "The principal natural logarithm ln\\|z\\| + i·arg z, so its imaginary part is in −π..π.",
+            "`z.pow(p)`" to "The principal power z^p for a real `p`, through `exp` and `ln`. Zero to any power is zero.",
+            "`z.toVector()`<br>`v.toComplex()`" to "To and from the 2D vector (re, im): `Complexf` with `Vector2f`, `Complexd` with `Vector2d`.",
+        )
+        appendLine("`==` compares the parts exactly, bit for bit, so compare the results of a calculation with a tolerance on `(z - w).abs` instead.")
+        appendLine()
+        appendLine("## Hypercomplex numbers")
+        appendLine()
+        appendLine("`Hypercomplexf` and `Hypercomplexd` are the numbers a + b·ε where you choose what ε² is. Three choices give the three algebras of the plane: ε² = −1 is the complex numbers (multiplying rotates), ε² = 0 the dual numbers (a + bε carries a value `a` and its derivative `b`), and ε² = +1 the split-complex numbers (multiplying squeezes along the diagonals, a hyperbolic rotation). Any other value is a rescaled copy of one of the three. [Spinny algebras](linear_algebra.md#spinny-algebras-complex-dual-and-quaternion-numbers) draws what each one does to a grid.")
+        appendLine()
+        table(
+            "`Hypercomplexd(a, b, eps2)`" to "The number a + bε with ε² = `eps2`.",
+            "`Hypercomplexd.complex(a, b)`<br>`Hypercomplexd.dual(a, b)`<br>`Hypercomplexd.split(a, b)`" to "The same with ε² = −1, 0 and +1.",
+            "`z + w`, `z - w`, `z * w`, `z / w`" to "Arithmetic that multiplies out the brackets: (a + bε)(c + dε) = ac + bd·ε² + (ad + bc)ε. Both numbers must have the same ε²; mixing two algebras throws `IllegalArgumentException`. Division goes through the conjugate, so a divisor whose `norm` is zero (a pure ε dual number, or a split-complex number with a = ±b) gives non-finite parts.",
+            "`z + 1`, `z * 2`, `z / 2`, `-z`" to "A plain number counts as a real number. It goes on the right: `z * 2`, not `2 * z`.",
+            "`z.a`, `z.b`, `z.epsilon2`" to "The two parts and the ε² the number was made with.",
+            "`z.conj`" to "The conjugate a − bε.",
+            "`z.norm`" to "z · conj z = a² − ε²b²: the squared length for complex numbers, a² for dual numbers, and a² − b² for split-complex numbers, where it can be negative. There is no square root taken.",
+            "`z.exp()`" to "e^z in each algebra: a rotation (cos, sin) when ε² < 0, e^a(1 + bε) when ε² = 0, and a hyperbolic rotation (cosh, sinh) when ε² > 0.",
+            "`z.toVector()`" to "The 2D vector (a, b).",
+        )
+        appendLine("A dual number differentiates whatever you compute with it. Start from `val x = Hypercomplexd.dual(3, 1)`, the value 3 moving at speed 1; then `x * x * x + x * 2` has `a` = 33, the value of x³ + 2x at 3, and `b` = 29, its derivative there. For derivatives of functions that use `sin`, `sqrt` and the rest of `kotlin.math`, use `taylor2` in `afield.math.autodiff`, which carries the second derivative as well.")
+        appendLine()
+        appendLine("## Quaternions")
+        appendLine()
+        appendLine("`Quaternionf`, which box code can also write `Quat`, is Field's 3D rotation: four floats `x`, `y`, `z` and `w`, where `w` is the real part and a new `Quaternionf()` is the identity, no rotation. Angles are in radians. It works two ways. The operators return a new value and leave their operands alone, which suits expressions. The methods change the quaternion they are called on and return it, so chained calls build one rotation step by step; copy first with `Quat(q)` when the original must survive.")
+        appendLine()
+        appendLine("### Making and using rotations")
+        appendLine()
+        table(
+            "`quat(angle, axis)`<br>`quat(PI / 2)`" to "A rotation of `angle` radians about `axis`, which defaults to +z, the axis that turns things in the screen plane. The axis does not need to be unit length. `quat()` is the identity.",
+            "`Quaternionf(x, y, z, w)`<br>`Quaternionf(q)`" to "A quaternion from its four components, or a copy of another.",
+            "`q * p`, `p * q`" to "The 3D point `p` rotated by `q`, as a new vector. Both orders mean the same thing.",
+            "`p2 * q`" to "A 2D point rotated as (x, y, 0), keeping the x and y of the result. Only a rotation about z keeps the point in the plane; any other axis gives its shadow on the plane.",
+            "`q * r`" to "The Hamilton product as a new quaternion. For rotations this is \"`r`, then `q`\": `(q * r) * p` equals `q * (r * p)`.",
+            "`q * 2`, `q + r`, `q - r`" to "Component-by-component scaling, sum and difference, as a new quaternion. The results are not rotations until normalized; they are there for blending and for power series such as `exp`, which need only `*` and `+`.",
+            "`q %= r`" to "Overwrites `q` with `r`'s components in place, so anything already holding `q` (a uniform, a mesh property) sees the new rotation.",
+            "`q.dot(r)`" to "The four-component dot product. For unit quaternions, ±1 means the same orientation; a negative value means `q` and `r` are on opposite sides of the sphere, which `slerp` and `nlerp` correct for.",
+            "`q.transform(v)`<br>`q.transform(v, dest)`" to "Rotates `v` in place, or into `dest`, without allocating.",
+        )
+        appendLine("### Methods that change the quaternion")
+        appendLine()
+        appendLine("These take `Float` angles and fractions, so write `rotateX((PI / 2).toFloat())` or `slerp(other, 0.5f)`; `quat(...)` takes any number.")
+        appendLine()
+        table(
+            "`setAngleAxis(angle, x, y, z)`<br>`fromAxisAngleRad(axis, angle)`" to "Replaces the rotation with `angle` radians about the axis.",
+            "`rotateX(angle)`, `rotateY(angle)`, `rotateZ(angle)`<br>`rotateXYZ(ax, ay, az)`" to "Turns further about an axis of the rotation's own frame: `q.rotateX(a)` is `q * quat(a, vec(1, 0, 0))`. `rotateXYZ` applies the three in that order.",
+            "`rotationTo(from, to)`<br>`rotateTo(from, to)`" to "The shortest rotation that turns direction `from` onto `to`; `rotationTo` replaces the rotation, and `q.rotateTo(from, to)` makes `q` into `q * Quaternionf().rotationTo(from, to)`.",
+            "`lookAlong(direction, up)`" to "Replaces the rotation with the one that turns `direction` onto +z, with `up` turned towards +y. Its inverse, `Quat(q).invert()`, turns +z onto `direction`.",
+            "`mul(r)`, `premul(l)`<br>`mul(r, dest)`" to "In-place Hamilton product: `q.mul(r)` makes `q` into `q * r`, `q.premul(l)` makes it `l * q`, and `mul(r, dest)` writes the product into `dest`.",
+            "`slerp(other, 0.5f)`<br>`nlerp(other, 0.5f)`" to "Moves the rotation the given fraction of the way to `other`, the short way round. `slerp` turns at a constant rate; `nlerp` blends the components and normalizes, which is cheaper and close for small steps.",
+            "`normalize()`, `conjugate()`, `invert()`" to "Rescales to unit length, negates `x`, `y` and `z`, or replaces the rotation with its inverse. For a unit quaternion the conjugate is the inverse rotation.",
+            "`identity()`, `set(x, y, z, w)`, `set(other)`" to "Resets to no rotation, or copies components in.",
+            "`setFromNormalized(m)`" to "The rotation held by the rotation matrix `m` (a `Matrix3fc` with unit, orthogonal columns). The other way is `Matrix3f().rotation(q)` or `Matrix4f().rotation(q)`.",
+        )
+        appendLine("### Rigid transforms: dual quaternions")
+        appendLine()
+        appendLine("`DualQuaternionf`, which box code can also write `DualQuat`, is a rotation and a translation together: a quaternion whose four components are dual numbers. The rotation sits in `real` and the translation in `dual`. Points are rotated first and then moved.")
+        appendLine()
+        table(
+            "`dualquat(rotation, translation)`<br>`dualquat(quat(PI / 2), vec(10, 0, 0))`" to "A rigid transform. Both arguments default to nothing, so `dualquat()` is the identity.",
+            "`p * t`, `t * p`" to "The 3D point `p` rotated and then moved by `t`, as a new vector. Do not use it on a direction such as a normal; rotate that by `t.getRotation()` instead.",
+            "`t * u`" to "The composed transform, \"`u`, then `t`\", as a new value.",
+            "`t.sclerp(u, 0.5f)`" to "The screw motion the given fraction of the way from `t` to `u`: rotation and translation together along a helix, the path a camera between two keys takes. `nlerp` is the cheaper blend.",
+            "`t.pow(0.5f)`" to "The transform applied the given number of times, which need not be whole: `pow(0.5f)` goes half way.",
+            "`t.getRotation()`, `t.getTranslation()`<br>`t.toMatrix()`" to "The parts, or the equivalent `Matrix4f`.",
+            "`t.inverted()`, `-t`, `t %= u`" to "A new inverse, a new negated copy (the same transform), and overwriting `t` in place.",
+        )
     }
 
     private fun StringBuilder.emitSegmentType(type: VectorType) {
