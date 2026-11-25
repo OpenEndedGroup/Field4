@@ -231,6 +231,43 @@ class HopfieldSudoku(val boxSize: Int = 3) {
         return s / (solutions.size * cells)
     }
 
+    /**
+     * Beliefs after exactly `steps` mean-field Euler steps from the zero state, the CPU reference the
+     * GPU descent is compared against.
+     */
+    fun beliefsAfter(puzzle: IntArray, steps: Int, eta: Float = 0.5f, beta: Float = 1f): FloatArray {
+        val (v, p, clamped) = start(puzzle, null)
+        val h = FloatArray(units)
+        repeat(steps) { field(p, h); eulerStep(v, p, h, clamped, eta, beta) }
+        return p
+    }
+
+    /**
+     * The state buffer the GPU descent in the `hopfield_sudoku` demo transcript reads and writes, as floats: four unused header floats, then beliefs
+     * A and B (`units` each, ping-ponged by step parity), the neuron state `v` (`units`), the
+     * biases (`units`) and a clue mask (`cells`).
+     */
+    fun gpuState(puzzle: IntArray): FloatArray {
+        val (v, p, clamped) = start(puzzle, null)
+        val out = FloatArray(4 + 4 * units + cells)
+        p.copyInto(out, 4); p.copyInto(out, 4 + units); v.copyInto(out, 4 + 2 * units); bias.copyInto(out, 4 + 3 * units)
+        for (c in 0 until cells) out[4 + 4 * units + c] = if (clamped[c]) 1f else 0f
+        return out
+    }
+
+    /** Number of floats in [gpuState]. */
+    val gpuStateFloats get() = 4 + 4 * units + cells
+
+    /** The beliefs after `step` GPU steps, from a [gpuState] buffer read back from the GPU. */
+    fun gpuBeliefs(state: FloatArray, step: Int): FloatArray {
+        val at = 4 + (step % 2) * units
+        return state.copyOfRange(at, at + units)
+    }
+
+    /** Decodes beliefs into a grid of 1-based digits, keeping the clues of `puzzle`. */
+    fun decode(puzzle: IntArray, p: FloatArray) =
+        IntArray(cells) { c -> if (puzzle[c] > 0) puzzle[c] else (0 until n).maxBy { p[c * n + it] } + 1 }
+
     /** True when `grid` is a valid Sudoku that keeps every clue of `puzzle`. */
     fun isSolution(puzzle: IntArray, grid: IntArray): Boolean {
         for (c in 0 until cells) if (puzzle[c] > 0 && puzzle[c] != grid[c]) return false
