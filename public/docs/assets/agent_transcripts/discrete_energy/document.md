@@ -424,7 +424,7 @@ A tour of 10 cities as a permutation: variable k is the city visited k-th, all d
 consecutive stops cost their distance. Annealed Gibbs, one sweep per frame; city 0 starts the tour.
 
 ```edn [field-box id="tsp_box" role="properties"]
-{"id" "tsp_box" "index" 6 "name" "travelling salesman" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "travelling salesman" "_tombstone" false "frame" #afield/rect [1100.0 1000.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tsp_box_code_.kt" "lines" 48 "characters" 1728 "sha256" "f326b069a5ab9d7476635f99118950675aab3a080f1a1d12e21f17b993858938"}]}
+{"id" "tsp_box" "index" 6 "name" "travelling salesman" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "travelling salesman" "_tombstone" false "frame" #afield/rect [1100.0 1000.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tsp_box_code_.kt" "lines" 48 "characters" 1716 "sha256" "34cf9ac875836c0781f1a72c6d762412a6ad871aa80be039376dfa3aa4e11ad6"}]}
 ```
 
 ```kotlin [field-property box="tsp_box" name="code" path="tsp_box_code_.kt"]
@@ -465,7 +465,7 @@ fun draw() {
     val visits = s.assignment.toSet().size
     display(
         "tour",
-        "sweep ${gibbs.sweep}: $visits of $n cities visited, length ${"%.0f".format((0 until n).sumOf { city[s.assignment[it]].distance(city[s.assignment[(it + 1) % n]]).toDouble() })}",
+        "sweep ${gibbs.sweep}: $visits of $n cities visited, length ${(0 until n).sumOf { city[s.assignment[it]].distance(city[s.assignment[(it + 1) % n]]).toDouble() }.f0}",
     )
 }
 frames {

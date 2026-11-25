@@ -35,7 +35,7 @@ fun draw() {
     val visits = s.assignment.toSet().size
     display(
         "tour",
-        "sweep ${gibbs.sweep}: $visits of $n cities visited, length ${"%.0f".format((0 until n).sumOf { city[s.assignment[it]].distance(city[s.assignment[(it + 1) % n]]).toDouble() })}",
+        "sweep ${gibbs.sweep}: $visits of $n cities visited, length ${(0 until n).sumOf { city[s.assignment[it]].distance(city[s.assignment[(it + 1) % n]]).toDouble() }.f0}",
     )
 }
 frames {

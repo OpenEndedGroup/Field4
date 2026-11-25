@@ -159,7 +159,7 @@ val stops = fline {
     color = vec(1.0, 0.85, 0.3, 1.0)
 }
 lines(path, stops, w = 440.0, h = 340.0, fitToSize = true)
-display("runs", "tour lengths: " + runs.map { "%.0f".format(length(it)) }.sorted().joinToString(", "))
+display("runs", "tour lengths: " + runs.map { length(it) }.sorted().joinToString(", ") { it.f0 })
 ```
 
 Single-variable moves are a poor fit for permutations. Changing one stop breaks `allDifferent`

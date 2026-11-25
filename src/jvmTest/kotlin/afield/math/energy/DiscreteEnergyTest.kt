@@ -188,5 +188,9 @@ class DiscreteEnergyTest {
         val back = EnergyState(m)
         m.readGpuBeliefs(buf, 0, back)
         assertTrue(back.p.contentEquals(s.p) && back.assignment.contentEquals(s.assignment))
+        // one-hot beliefs from a discrete assignment
+        back.assignment[0] = 1
+        back.beliefsFromAssignment()
+        assertTrue(back.p[m.unit(0, 1)] == 1f && back.p[m.unit(0, 0)] == 0f)
     }
 }
