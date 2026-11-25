@@ -350,6 +350,23 @@ open class Matrix4f() : Matrix4fc {
         ))
     }
     override fun toString():String="[$m00 $m10 $m20 $m30; $m01 $m11 $m21 $m31; $m02 $m12 $m22 $m32; $m03 $m13 $m23 $m33]"
+    // Builders for one-step matrices, which compose in reading order with `then`:
+    // `Mat4.scale(2) then Mat4.rotate(q) then Mat4.translate(v)` scales, then rotates, then moves.
+    // Each returns a new matrix. (A KDoc block cannot attach to a companion object.)
+    companion object {
+        /** A translation by [v]. */
+        fun translate(v: Vector3fc): Matrix4f = Matrix4f().translation(v)
+        /** A translation by ([x], [y], [z]). */
+        fun translate(x: Number, y: Number, z: Number): Matrix4f = Matrix4f().translation(x.toFloat(), y.toFloat(), z.toFloat())
+        /** The rotation [q]. */
+        fun rotate(q: Quaternionfc): Matrix4f = Matrix4f().rotation(q)
+        /** A rotation of [angle] radians about [axis]. */
+        fun rotate(angle: Number, axis: Vector3fc): Matrix4f = Matrix4f().rotate(angle.toFloat(), axis)
+        /** A uniform scale by [s]. */
+        fun scale(s: Number): Matrix4f = s.toFloat().let { Matrix4f().scaling(it, it, it) }
+        /** A scale by each component of [v]. */
+        fun scale(v: Vector3fc): Matrix4f = Matrix4f().scaling(v.x(), v.y(), v.z())
+    }
 }
 
 /**

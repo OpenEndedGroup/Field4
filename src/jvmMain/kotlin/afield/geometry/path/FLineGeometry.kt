@@ -339,6 +339,31 @@ fun List<Vec3>.rot(angle: Number, axis: Vec3, about: ListAnchor): List<Vec3> = r
 @JvmName("rotateVec3ListShortAxisAboutFraction")
 fun List<Vec3>.rot(angle: Number, axis: Vec3, about: FractionAlongAnchor): List<Vec3> = rot(angle, axis, anchor(about))
 
+// Rotations broadcast over a whole list, as new lists. `points.rot(θ)` above turns about the
+// points' own centre; these turn about the origin (`* q`, `* z`) or about a point you name.
+
+/** `points * q`: every point rotated by [q] about the origin, as a new list. */
+@JvmName("timesVec3ListQuat")
+operator fun List<Vec3>.times(q: Quaternionfc): List<Vec3> = map { q.transform(it, Vec3()) }
+
+/** `points * q` for planar points: each `(x, y, 0)` rotated by [q], keeping x and y, as `p * q` does for one point. */
+@JvmName("timesVec2ListQuat")
+operator fun List<Vec2>.times(q: Quaternionfc): List<Vec2> = map { p -> q.transform(Vec3(p.x, p.y, 0f), Vec3()).let { Vec2(it.x, it.y) } }
+
+/** `points * z`: every point multiplied as a complex number, turned by `z.arg` and scaled by `z.abs` about the origin. */
+@JvmName("timesVec2ListComplex")
+operator fun List<Vec2>.times(z: Complexf): List<Vec2> = map { z * it }
+
+/** The first half of `points about c rot θ`; finish it with [rot]. */
+class Vec2ListPivot internal constructor(private val points: List<Vec2>, private val centre: Vector2fc) {
+    /** Every point turned [angle] radians anticlockwise about the centre, as a new list. */
+    infix fun rot(angle: Number): List<Vec2> = points.map { it about centre rot angle }
+}
+
+/** Starts `points about c rot θ`: turn every point about [centre]. */
+@JvmName("aboutVec2List")
+infix fun List<Vec2>.about(centre: Vector2fc): Vec2ListPivot = Vec2ListPivot(this, centre)
+
 @JvmName("scaleVec2ListScalarShort")
 fun List<Vec2>.scale(scale: Number, center: Vec2Anchor = Anchors2.center): List<Vec2> {
     val about = center(this)
