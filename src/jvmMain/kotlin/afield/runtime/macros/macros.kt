@@ -666,6 +666,14 @@ object MacroRegistry {
     class MacroExpansionProblem(msg: String) : Exception(msg)
 
     val callRewrite = mutableMapOf<String, (Box, String, List<String>) -> Insert?>()
+
+    /**
+     * Macros that rewrite only a bare call. A bare `println(x)` prints to the box's output, but
+     * `out.println(x)` (a `PrintWriter`), `System.out.println(x)` and `kotlin.io.println(x)` are calls
+     * on their receiver and must compile as written: rewriting them gave `out._printlnHere(…)`, which
+     * does not resolve.
+     */
+    val bareCallOnly = setOf("print", "println", "_print", "_println")
     val callRewriteWithContext = mutableMapOf<String, (Box, String, List<String>, ContainingFunction?) -> Insert?>()
 
     fun rewrite(box: Box, identifier: String, arguments: List<String>, containingFunction: ContainingFunction? = null): Insert? {

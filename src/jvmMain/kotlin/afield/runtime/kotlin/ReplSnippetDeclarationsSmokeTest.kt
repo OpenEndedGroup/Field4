@@ -416,6 +416,27 @@ object ReplSnippetDeclarationsSmokeTest {
             expected = "Unit"
         )
 
+        println("-- a qualified println is its receiver's, not the box's --")
+        // Found 2026-11-25. The println macro rewrote every call named println, so the selector of
+        // `kotlin.io.println(x)` became `kotlin.io._printlnHere(__line__+1, x)`: "Unresolved reference
+        // '_printlnHere'". The same broke `out.println(x)` on a PrintWriter (animation_time_model.md)
+        // and `System.out.println(x)`. Only a bare call is rewritten now (MacroRegistry.bareCallOnly).
+        case(
+            "Q1 kotlin.io.println inside a class", null,
+            "class C { fun g() { kotlin.io.println(\"from C\") } }\nC().g()\n\"qualified-done\"",
+            expected = "qualified-done"
+        )
+        case(
+            "Q2 println on a PrintWriter", null,
+            "val sw = java.io.StringWriter()\nval out = java.io.PrintWriter(sw)\nout.println(7)\nout.flush()\n\"writer=\" + sw.toString().trim()",
+            expected = "writer=7"
+        )
+        case(
+            "Q3 System.out.println", null,
+            "System.out.println(\"to stdout\")\n\"system-done\"",
+            expected = "system-done"
+        )
+
         println("-- destructuring with an underscore at snippet top level --")
         // Found 2026-09-28. A top-level `_` entry became a snippet-class property named
         // `<unused var>`, and loading the class failed with `ClassFormatError: Illegal method name
