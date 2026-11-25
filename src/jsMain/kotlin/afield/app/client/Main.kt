@@ -1780,6 +1780,11 @@ private fun fitOutputDisclosuresForScreenshot(outputArea: HTMLElement) {
     outputArea.querySelectorAll(".disclosure-content").asList()
         .mapNotNull { it as? HTMLElement }
         .forEach { content ->
+            // A panel the live sizer fits to its content is already the height the reader sees, and
+            // the sizer puts that height back on its next pass. Flooring it here (120 px for a short
+            // markdown card) lasted only for the measurement: every panel below was then measured
+            // too low, and a figure of two short cards ended in ~300 px of empty canvas.
+            if (sizerOwnsPanelHeight(content)) return@forEach
             content.style.maxHeight = "none"
             content.style.setProperty("overflow", "visible")
             // A panel whose frames all state their height is sized by the panel sizer exactly as the
@@ -1828,6 +1833,15 @@ private fun fitOutputDisclosuresForScreenshot(outputArea: HTMLElement) {
                 .coerceAtMost(maxDisclosureHeight)
             content.style.height = "${targetHeight}px"
         }
+}
+
+/**
+ * Whether `outputareas2.js`'s content auto-size owns [content]'s height (`window.fieldSizerOwnsPanelHeight`):
+ * the sizer's own answer, so the screenshot preparation never floors a panel the sizer will shrink back.
+ */
+private fun sizerOwnsPanelHeight(content: HTMLElement): Boolean {
+    val test = window.asDynamic().fieldSizerOwnsPanelHeight ?: return false
+    return test(content) == true
 }
 
 /** The tallest declared pixel height, when every element in [content] is an iframe that declares one. */
