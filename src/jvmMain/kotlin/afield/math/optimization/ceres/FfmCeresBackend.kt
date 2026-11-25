@@ -13,6 +13,8 @@
 
 package afield.math.optimization.ceres
 
+import afield.runtime.NativeArea
+import afield.runtime.NativeCapability
 import java.lang.foreign.Arena
 import java.lang.foreign.FunctionDescriptor
 import java.lang.foreign.Linker
@@ -444,7 +446,18 @@ private const val ABI_V3 = "ken_ceres_jvm_abi_v3"
  * `AFIELD_CERES_LIBRARY` override it — that is also how you point at the faster, Homebrew-linked
  * `buildCeresNative` build while iterating on the wrapper.
  */
-object CeresNativeLibrary {
+object CeresNativeLibrary : NativeCapability {
+    override val name = "ceres"
+    override val title = "Ceres solver"
+    override val area = NativeArea.OPTIMIZATION
+    override val docsPage = "ceres.md"
+    override val buildTask = "buildCeresRedistributable"
+    override val install: Map<String, List<String>> = mapOf(
+        "macos" to listOf("# Builds pinned Ceres and Eigen from source; takes several minutes", "xcode-select --install", "brew install cmake", "./gradlew buildCeresRedistributable"),
+        "linux" to listOf("# Builds pinned Ceres and Eigen from source; takes several minutes", "sudo apt install build-essential cmake    # or dnf / pacman equivalents", "./gradlew buildCeresRedistributable"),
+        "windows" to listOf("# Builds pinned Ceres and Eigen from source; takes several minutes", "winget install -e --id Kitware.CMake    # and Visual Studio C++ Build Tools", ".\\gradlew buildCeresRedistributable"),
+    )
+
     private val isWindows: Boolean
         get() = System.getProperty("os.name").lowercase().contains("win")
 
@@ -476,4 +489,14 @@ object CeresNativeLibrary {
     /** What to tell someone whose [defaultPath] is not there, in the shell they are actually in. */
     val HOW_TO_BUILD: String
         get() = if (isWindows) "gradlew.bat buildCeresRedistributable" else "./gradlew buildCeresRedistributable"
+
+    /** Whether [defaultPath] is there to load. Does not load it. */
+    override val isAvailable: Boolean get() = java.nio.file.Files.isRegularFile(defaultPath)
+    override val location: String? get() = if (isAvailable) defaultPath.toAbsolutePath().toString() else null
+
+    /** One line for a box or the welcome page: where the wrapper is, or how to build it. */
+    override fun describe(): String =
+        if (isAvailable) "Ceres wrapper at ${defaultPath.toAbsolutePath()}"
+        else "Ceres wrapper not built. Build it with `$HOW_TO_BUILD` (needs cmake, a C++ compiler and the network " +
+            "once; takes minutes), or point -Dafield.ceres.library / AFIELD_CERES_LIBRARY at one."
 }

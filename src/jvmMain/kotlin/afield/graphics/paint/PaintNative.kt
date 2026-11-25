@@ -6,6 +6,8 @@ package afield.graphics.paint
  * the internal FFM layer under [PaintCanvas] calls into it.
  */
 
+import afield.runtime.NativeArea
+import afield.runtime.NativeCapability
 import java.lang.foreign.Arena
 import java.lang.foreign.FunctionDescriptor
 import java.lang.foreign.Linker
@@ -27,7 +29,18 @@ import kotlin.io.path.exists
  * so pointing it at a missing file really leaves the library unavailable (the negative control for
  * `checkPaintTests`) rather than falling through to the build.
  */
-object PaintLibrary {
+object PaintLibrary : NativeCapability {
+    override val name = "paint"
+    override val title = "Oil-paint simulation"
+    override val area = NativeArea.GRAPHICS
+    override val docsPage = "paint_canvas.md"
+    override val buildTask = "buildPaintNative"
+    override val install: Map<String, List<String>> = mapOf(
+        "macos" to listOf("xcode-select --install", "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh    # Rust 1.85 or newer", "./gradlew buildPaintNative"),
+        "linux" to listOf("sudo apt install build-essential", "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh    # Rust 1.85 or newer", "./gradlew buildPaintNative"),
+        "windows" to listOf("winget install -e --id Rustlang.Rustup    # and Visual Studio C++ Build Tools", ".\\gradlew buildPaintNative"),
+    )
+
     private val os = System.getProperty("os.name").lowercase()
 
     val fileName: String
@@ -48,11 +61,12 @@ object PaintLibrary {
     /** Not cached: building it during a live session is picked up by the next box run. */
     val resolvedPath: Path? get() = searchedPaths.firstOrNull { it.exists() }
 
-    val isAvailable: Boolean get() = resolvedPath != null
+    override val isAvailable: Boolean get() = resolvedPath != null
+    override val location: String? get() = resolvedPath?.toString()
 
     const val HOW_TO_BUILD = "Build it with `./gradlew buildPaintNative` (needs cargo, and the network once)."
 
-    fun describe(): String = resolvedPath?.let { "paint wrapper at $it (engine ${PaintNative.engine()})" }
+    override fun describe(): String = resolvedPath?.let { "paint wrapper at $it (engine ${PaintNative.engine()})" }
         ?: "paint wrapper not built. $HOW_TO_BUILD"
 }
 

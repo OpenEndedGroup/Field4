@@ -3929,7 +3929,7 @@ sketch with a T-junction, a crossing and a wave, builds its field once, and re-t
 the pruning slider moves, drawing the field's streamlines under the curves. The second vectorizes
 the edges of a photograph on a worker thread, which takes about a minute. The third turns the
 vectorized sketch into geometry and treats it as such: parallel outlines, normals and a wave. Needs the optional native
-library and its OpenCV, Boost and Eigen packages: the welcome page's **Geometry extensions** panel
+library and its OpenCV, Boost and Eigen packages: the welcome page's **Optional native libraries** panel
 says how, or run `./gradlew buildPolyvectorNative`.
 
 [Open →](offline.html?file=assets/agent_transcripts/polyvector_explorer/metadata.edn)

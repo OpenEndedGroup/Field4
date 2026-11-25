@@ -1,6 +1,8 @@
 @file:afield.runtime.completion.CompletionCategory("Internal")
 package afield.io.syphon
 
+import afield.runtime.NativeArea
+import afield.runtime.NativeCapability
 import java.lang.foreign.Arena
 import java.lang.foreign.FunctionDescriptor
 import java.lang.foreign.Linker
@@ -25,7 +27,18 @@ import kotlin.io.path.exists
  */
 
 /** Locates `libfield_syphon.dylib` and reports whether it is available. */
-object SyphonLibrary {
+object SyphonLibrary : NativeCapability {
+    override val name = "syphon"
+    override val title = "Syphon video sharing"
+    override val area = NativeArea.GRAPHICS
+    override val docsPage = "syphon.md"
+    override val buildTask = "buildSyphonNative"
+    override val install: Map<String, List<String>> = mapOf(
+        "macos" to listOf("# Needs Xcode, from the App Store", "./gradlew buildSyphonNative"),
+        "linux" to emptyList(),
+        "windows" to emptyList(),
+    )
+
     private val os = System.getProperty("os.name").lowercase()
 
     val isMac: Boolean get() = os.contains("mac") || os.contains("darwin")
@@ -43,14 +56,15 @@ object SyphonLibrary {
     /** Not cached: building it during a live session is picked up by the next box run. */
     val resolvedPath: Path? get() = if (!isMac) null else searchedPaths.firstOrNull { it.exists() }
 
-    val isAvailable: Boolean get() = resolvedPath != null
+    override val isAvailable: Boolean get() = resolvedPath != null
+    override val location: String? get() = resolvedPath?.toString()
 
     /** The cross-process test peer built next to the library (`field_syphon_probe`). */
     val probePath: Path? get() = resolvedPath?.resolveSibling("field_syphon_probe")?.takeIf { it.exists() }
 
     const val HOW_TO_BUILD = "Build it with `./gradlew buildSyphonNative` (macOS; needs Xcode, and the network once)."
 
-    fun describe(): String = when {
+    override fun describe(): String = when {
         !isMac -> "Syphon is macOS-only."
         else -> resolvedPath?.let { "Syphon bridge at $it (ABI ${SyphonNative.version()})" }
             ?: "Syphon bridge not built. $HOW_TO_BUILD"

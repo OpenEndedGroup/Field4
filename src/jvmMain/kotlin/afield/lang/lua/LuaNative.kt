@@ -1,5 +1,7 @@
 package afield.lang.lua
 
+import afield.runtime.NativeArea
+import afield.runtime.NativeCapability
 import java.lang.foreign.Arena
 import java.lang.foreign.FunctionDescriptor
 import java.lang.foreign.Linker
@@ -37,7 +39,18 @@ import kotlin.io.path.exists
  * Any library exporting the Lua 5.1 C API would load, but the language is written against LuaJIT 2.1
  * and says so: [LuaState.version] reports `jit.version`, and the tests assert it.
  */
-object LuaLibrary {
+object LuaLibrary : NativeCapability {
+    override val name = "lua"
+    override val title = "LuaJIT boxes"
+    override val area = NativeArea.LANGUAGES
+    override val docsPage = "lua.md"
+    override val buildTask = ""
+    override val install: Map<String, List<String>> = mapOf(
+        "macos" to listOf("brew install luajit"),
+        "linux" to listOf("sudo apt install libluajit-5.1-2    # or your distribution's luajit package"),
+        "windows" to listOf("# Put a LuaJIT lua51.dll somewhere and set AFIELD_LUA_LIBRARY to its path"),
+    )
+
 
     private val os: String get() = System.getProperty("os.name").lowercase()
 
@@ -67,7 +80,8 @@ object LuaLibrary {
     val resolvedPath: Path? get() = searchedPaths.firstOrNull { it.exists() }
 
     /** True when a LuaJIT is where [searchedPaths] looks. */
-    val isAvailable: Boolean get() = resolvedPath != null
+    override val isAvailable: Boolean get() = resolvedPath != null
+    override val location: String? get() = resolvedPath?.toString()
 
     /** The one instruction a missing library needs. */
     val HOW_TO_INSTALL: String
@@ -78,7 +92,7 @@ object LuaLibrary {
         } + ", or point -Dafield.lua.library / AFIELD_LUA_LIBRARY at a LuaJIT library."
 
     /** One line for a box or a test to print. */
-    fun describe(): String = resolvedPath?.let { "LuaJIT at $it" } ?: "LuaJIT not found. $HOW_TO_INSTALL"
+    override fun describe(): String = resolvedPath?.let { "LuaJIT at $it" } ?: "LuaJIT not found. $HOW_TO_INSTALL"
 }
 
 /**

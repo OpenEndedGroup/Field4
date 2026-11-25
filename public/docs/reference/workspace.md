@@ -4,7 +4,7 @@
 
 The box's own surroundings: properties, persistence, and the handful of names every box already has in scope.
 
-264 source file(s), 3668 public symbol(s), 1561 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+265 source file(s), 3703 public symbol(s), 1577 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1298,7 +1298,7 @@ options such as `--workspace` and `--document` are read here as [`home`](workspa
 | <a id="server-kt--parselayerslist"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">parseLayersList</span><span class="p">(</span><span class="n">layersString</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/app/server/Server/#L835) |  |
 | <a id="server-kt--scheduleautorunboxes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">SessionInformation</span><span class="p">.</span><span class="nf">scheduleAutorunBoxes</span><span class="p">(</span><span class="n">delayMs</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">500L</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/Server/#L845) |  |
 | <a id="server-kt--autorunboxes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">SessionInformation</span><span class="p">.</span><span class="nf">autorunBoxes</span><span class="p">(</span><span class="n">targetBoxes</span><span class="p">:</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">Box</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">delayMs</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">500L</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/Server/#L856) |  |
-| <a id="server-kt--languagenameforproperty"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">languageNameForProperty</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">property</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/app/server/Server/#L6456) |  |
+| <a id="server-kt--languagenameforproperty"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">languageNameForProperty</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">property</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/app/server/Server/#L6463) |  |
 
 ### Top-level values { #server-kt-values }
 
@@ -1425,8 +1425,8 @@ Tracks per-session back pressure for output messages. When the frontend is slow 
 | <a id="server-kt--server-companion--ai-thread"></a>[<code class="highlight"><span class="k">var</span> <span class="n">ai&#95;thread</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="k">by</span> <span class="nf">PersistentString</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/Server/#L2576) |  |
 | <a id="server-kt--server-companion--args"></a>[<code class="highlight"><span class="k">var</span> <span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/app/server/Server/#L2578) |  |
 | <a id="server-kt--server-companion--server"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">server</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/Server/#L2686) |  |
-| <a id="server-kt--server-companion--stop"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">stop</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">entrypoint</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;server.stop&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/Server/#L6371) | Stop `box` — the stop button, `stop-box`/`stop-all`, a transcript's stop, and the stop pass of `retireBoxes`. When this returns, "stopped" means: |
-| <a id="server-kt--server-companion--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/Server/#L6388) |  |
+| <a id="server-kt--server-companion--stop"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">stop</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">entrypoint</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;server.stop&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/Server/#L6378) | Stop `box` — the stop button, `stop-box`/`stop-all`, a transcript's stop, and the stop pass of `retireBoxes`. When this returns, "stopped" means: |
+| <a id="server-kt--server-companion--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/Server/#L6395) |  |
 
 ## StopWatch.kt { #stopwatch-kt }
 
@@ -5511,6 +5511,92 @@ One language a box can give its children: an id, a palette label, and the hooks 
 | <a id="mainlanguageregistry-kt--mainlanguageruntime--runtimeclass"></a><code class="highlight"><span class="k">val</span> <span class="n">runtimeClass</span><span class="p">:</span> <span class="nc">KClass</span><span class="p">&lt;</span><span class="k">out</span> <span class="nc">BoxExecution</span><span class="p">&gt;</span></code> |  |
 | <a id="mainlanguageregistry-kt--mainlanguageruntime--setlegacyroot"></a><code class="highlight"><span class="k">val</span> <span class="n">setLegacyRoot</span><span class="p">:</span> <span class="p">(</span><span class="nc">Box</span><span class="p">,</span> <span class="nc">Boolean</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code> |  |
 | <a id="mainlanguageregistry-kt--mainlanguageruntime--applytopology"></a><code class="highlight"><span class="k">val</span> <span class="n">applyTopology</span><span class="p">:</span> <span class="p">(</span><span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">Box</span><span class="p">&gt;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code> |  |
+
+## NativeLibraries.kt { #nativelibraries-kt }
+
+Every optional native library Field knows how to use, whether each is installed, and what the
+welcome page says about the ones that are not.
+
+Field builds and runs without any of them. Each library's own locator object (`ManifoldLibrary`,
+`CsoundLibrary`, `MorseSmaleLibrary`, ...) implements [`NativeCapability`](workspace.md#nativelibraries-kt-nativecapability): where it looks, whether
+the file is there, the Gradle task that builds it, and the shell commands that install its
+prerequisites on macOS, Linux and Windows. [`NativeLibraries`](workspace.md#nativelibraries-kt-nativelibraries) registers one per library and answers
+without loading any of them, so asking never fails.
+
+[`NativeLibraries.status`](workspace.md#nativelibraries-kt--nativelibraries--status) reports every library as a [`NativeLibraryStatus`](workspace.md#nativelibraries-kt-nativelibrarystatus), which
+`GET /api/native-libraries-status` serves to the welcome page's Optional native libraries panel,
+grouped by [`NativeCapability.area`](workspace.md#nativelibraries-kt--nativecapability--area). Building that report loads none of them.
+`tools/test_native_capability_registry.py` fails when a source file reads an
+`afield.<name>.library` property for a library that is not registered here.
+
+`src/jvmMain/kotlin/afield/runtime/NativeLibraries.kt` — [read the source](source/jvmMain/afield/runtime/NativeLibraries/)
+
+### NativeCapability { #nativelibraries-kt-nativecapability }
+
+[<code class="highlight"><span class="k">interface</span> <span class="nc">NativeCapability</span></code>](source/jvmMain/afield/runtime/NativeLibraries/#L29)
+
+One optional native library, as [`NativeLibraries`](workspace.md#nativelibraries-kt-nativelibraries) sees it.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="nativelibraries-kt--nativecapability--name"></a>[<code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/runtime/NativeLibraries/#L31) | The registry key, e.g. `manifold`. |
+| <a id="nativelibraries-kt--nativecapability--title"></a>[<code class="highlight"><span class="k">val</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/runtime/NativeLibraries/#L34) | A short human title, for the welcome page. |
+| <a id="nativelibraries-kt--nativecapability--area"></a>[<code class="highlight"><span class="k">val</span> <span class="n">area</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/runtime/NativeLibraries/#L37) | The welcome page's group heading, one of the [`NativeArea`](workspace.md#nativelibraries-kt-nativearea) constants. |
+| <a id="nativelibraries-kt--nativecapability--isavailable"></a>[<code class="highlight"><span class="k">val</span> <span class="n">isAvailable</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/runtime/NativeLibraries/#L39) |  |
+| <a id="nativelibraries-kt--nativecapability--location"></a>[<code class="highlight"><span class="k">val</span> <span class="n">location</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code>](source/jvmMain/afield/runtime/NativeLibraries/#L42) | Where it was found, as a path, without loading it; `null` when [`isAvailable`](workspace.md#nativelibraries-kt--nativecapability--isavailable) is false. |
+| <a id="nativelibraries-kt--nativecapability--describe"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">describe</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/runtime/NativeLibraries/#L45) | One line: where the library was found, or why not and how to get it. |
+| <a id="nativelibraries-kt--nativecapability--docspage"></a>[<code class="highlight"><span class="k">val</span> <span class="n">docsPage</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/runtime/NativeLibraries/#L48) | The docs page, relative to the docs root (e.g. `manifold.md`). |
+| <a id="nativelibraries-kt--nativecapability--buildtask"></a>[<code class="highlight"><span class="k">val</span> <span class="n">buildTask</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/runtime/NativeLibraries/#L51) | The Gradle task that builds or fetches it, or an empty string when it is installed by a package manager. |
+| <a id="nativelibraries-kt--nativecapability--install"></a>[<code class="highlight"><span class="k">val</span> <span class="n">install</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">&gt;</span></code>](source/jvmMain/afield/runtime/NativeLibraries/#L58) | Shell commands that install its prerequisites and build it, per OS (`macos`, `linux`, `windows`). A line starting `#` is advice rather than a command. An empty list for an OS means the library is not available there yet. |
+
+### NativeArea { #nativelibraries-kt-nativearea }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">NativeArea</span></code>](source/jvmMain/afield/runtime/NativeLibraries/#L62)
+
+The group headings of the welcome page's Optional native libraries panel, in display order.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="nativelibraries-kt--nativearea--geometry"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">GEOMETRY</span></code>](source/jvmMain/afield/runtime/NativeLibraries/#L63) |  |
+| <a id="nativelibraries-kt--nativearea--solids"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SOLIDS</span></code>](source/jvmMain/afield/runtime/NativeLibraries/#L64) |  |
+| <a id="nativelibraries-kt--nativearea--optimization"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">OPTIMIZATION</span></code>](source/jvmMain/afield/runtime/NativeLibraries/#L65) |  |
+| <a id="nativelibraries-kt--nativearea--audio"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">AUDIO</span></code>](source/jvmMain/afield/runtime/NativeLibraries/#L66) |  |
+| <a id="nativelibraries-kt--nativearea--graphics"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">GRAPHICS</span></code>](source/jvmMain/afield/runtime/NativeLibraries/#L67) |  |
+| <a id="nativelibraries-kt--nativearea--languages"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">LANGUAGES</span></code>](source/jvmMain/afield/runtime/NativeLibraries/#L68) |  |
+| <a id="nativelibraries-kt--nativearea--order"></a>[<code class="highlight"><span class="k">val</span> <span class="n">order</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/runtime/NativeLibraries/#L70) |  |
+
+### NativeLibraryStatus { #nativelibraries-kt-nativelibrarystatus }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">NativeLibraryStatus</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">area</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">available</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">description</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">docsPage</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">buildTask</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">install</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/NativeLibraries/#L75)
+
+One library's state, as `GET /api/native-libraries-status` reports it to the welcome page.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="nativelibraries-kt--nativelibrarystatus--name"></a><code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="nativelibraries-kt--nativelibrarystatus--title"></a><code class="highlight"><span class="k">val</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="nativelibraries-kt--nativelibrarystatus--area"></a><code class="highlight"><span class="k">val</span> <span class="n">area</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="nativelibraries-kt--nativelibrarystatus--available"></a><code class="highlight"><span class="k">val</span> <span class="n">available</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <a id="nativelibraries-kt--nativelibrarystatus--description"></a><code class="highlight"><span class="k">val</span> <span class="n">description</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="nativelibraries-kt--nativelibrarystatus--docspage"></a><code class="highlight"><span class="k">val</span> <span class="n">docsPage</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="nativelibraries-kt--nativelibrarystatus--buildtask"></a><code class="highlight"><span class="k">val</span> <span class="n">buildTask</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="nativelibraries-kt--nativelibrarystatus--install"></a><code class="highlight"><span class="k">val</span> <span class="n">install</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">&gt;</span></code> |  |
+
+### NativeLibraries { #nativelibraries-kt-nativelibraries }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">NativeLibraries</span></code>](source/jvmMain/afield/runtime/NativeLibraries/#L97)
+
+Which of Field's optional native libraries are installed.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="nativelibraries-kt--nativelibraries--register"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">register</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">capability</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">NativeCapability</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/NativeLibraries/#L121) | Registers a library; the factory is evaluated only when asked. |
+| <a id="nativelibraries-kt--nativelibraries--names"></a>[<code class="highlight"><span class="k">val</span> <span class="n">names</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/runtime/NativeLibraries/#L126) | Library names Field knows about, installed or not. |
+| <a id="nativelibraries-kt--nativelibraries--capability"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">capability</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">NativeCapability</span><span class="o">?</span></code>](source/jvmMain/afield/runtime/NativeLibraries/#L129) | The library registered as `name`, or `null`. |
+| <a id="nativelibraries-kt--nativelibraries--available"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">available</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/runtime/NativeLibraries/#L131) |  |
+| <a id="nativelibraries-kt--nativelibraries--describe"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">describe</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/runtime/NativeLibraries/#L133) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">describe</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/runtime/NativeLibraries/#L138) |  |
+| <a id="nativelibraries-kt--nativelibraries--status"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">status</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">NativeLibraryStatus</span><span class="p">&gt;</span></code>](source/jvmMain/afield/runtime/NativeLibraries/#L141) | Every library's state, for the welcome page, in [`NativeArea.order`](workspace.md#nativelibraries-kt--nativearea--order). Never throws. |
 
 ## BoxBytecode.kt { #boxbytecode-kt }
 
