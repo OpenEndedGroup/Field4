@@ -120,6 +120,16 @@ fun SolidExpr.toGlsl(functionName: String = "sdSolid"): GlslSolid {
     )
 }
 
+/** [Profile.toGlsl2]'s body: `float name(vec2 p)`, one statement per emitted assignment. */
+internal fun profileGlsl(p: Profile, functionName: String): String {
+    val w = GlslWriter()
+    w.line("float $functionName(vec2 p) {")
+    val d = emitProfile(p, w.assign("x", "p.x"), w.assign("y", "p.y"), w)
+    w.line("    return $d;")
+    w.line("}")
+    return w.text()
+}
+
 /**
  * The vertex shader that goes with [toRaymarchFragment]: one triangle covering the target, its
  * positions taken from `gl_VertexIndex`, so it needs no vertex buffers and suits `fullscreenTriangle`.
@@ -506,6 +516,18 @@ private fun emitProfile(p: Profile, x: String, y: String, w: GlslWriter): String
             p.child,
             w.assign("u", "${glslFloat(cos(a))} * $x - ${glslFloat(sin(a))} * $y"),
             w.assign("v", "${glslFloat(sin(a))} * $x + ${glslFloat(cos(a))} * $y"),
+            w,
+        )
+    }
+
+    is Profile.Fold -> {
+        val a = Math.toRadians(p.degrees)
+        val nx = glslFloat(-sin(a)); val ny = glslFloat(cos(a))
+        val k = w.assign("t", "2.0 * max($x * $nx + $y * $ny, 0.0)")
+        emitProfile(
+            p.child,
+            w.assign("u", "$x - $k * $nx"),
+            w.assign("v", "$y - $k * $ny"),
             w,
         )
     }

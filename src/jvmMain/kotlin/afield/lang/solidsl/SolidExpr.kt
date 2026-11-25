@@ -309,6 +309,19 @@ sealed interface Profile {
 
     data class Scale(val child: Profile, val x: Double, val y: Double) : Profile
 
+    /**
+     * A reflect-and-union fold across the line through the origin at [degrees] (counter-clockwise
+     * from +x): a point on the line's left side is reflected to the right before [child] is asked,
+     * `p - 2 max(p·n, 0) n` with `n = (-sin a, cos a)`.
+     *
+     * The region is the child's right half unioned with its mirror image, at the cost of **one**
+     * evaluation of the child. That is why a stack of folds is how a kaleidoscopic fractal stays
+     * O(1) per level: six copies at the vertices of a hexagon are four folds and one copy, not six
+     * children of a [Union]. When the child's right half is a true distance field of its own region
+     * the folded field is exact too (Alexa Schor's construction, after Matt Keeter's snowflake post).
+     */
+    data class Fold(val child: Profile, val degrees: Double) : Profile
+
     data class Union(val children: List<Profile>) : Profile
 
     data class Intersect(val children: List<Profile>) : Profile
@@ -509,6 +522,16 @@ fun Profile.translated(x: Number, y: Number): Profile =
 /** Rotated about the origin, **in degrees**, counter-clockwise. */
 fun Profile.turned(degrees: Number): Profile = Profile.Rotate(this, degrees.toDouble())
 
+/** This region folded across the line through the origin at [degrees] — see [Profile.Fold]. */
+fun Profile.folded(degrees: Number): Profile = Profile.Fold(this, degrees.toDouble())
+
+/**
+ * This region folded into the 30° wedge between 60° and 90° by four [Profile.Fold]s, so that its
+ * part in the wedge `60° ≤ θ ≤ 120°` is repeated six times with the symmetry of a hexagon (D6).
+ * One child evaluation stands in for twelve mirror images.
+ */
+fun Profile.hexFolded(): Profile = folded(90.0).folded(240.0).folded(180.0).folded(90.0)
+
 fun Profile.sized(factor: Number): Profile = Profile.Scale(this, factor.toDouble(), factor.toDouble())
 
 fun Profile.sized(x: Number, y: Number): Profile = Profile.Scale(this, x.toDouble(), y.toDouble())
@@ -633,6 +656,12 @@ fun Profile.bounds(): Rect2? = when (this) {
             min(b.minX * x, b.maxX * x), min(b.minY * y, b.maxY * y),
             max(b.minX * x, b.maxX * x), max(b.minY * y, b.maxY * y),
         )
+    }
+    is Profile.Fold -> child.bounds()?.let { b ->
+        val a = Math.toRadians(2 * degrees); val c = cos(a); val s = sin(a)
+        val xs = listOf(b.minX, b.maxX); val ys = listOf(b.minY, b.maxY)
+        val pts = xs.flatMap { px -> ys.map { py -> P2(c * px + s * py, s * px - c * py) } }
+        b.union(Rect2(pts.minOf { it.x }, pts.minOf { it.y }, pts.maxOf { it.x }, pts.maxOf { it.y }))
     }
     is Profile.Union -> {
         val bs = children.map { it.bounds() }

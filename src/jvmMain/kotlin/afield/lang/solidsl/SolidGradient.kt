@@ -701,6 +701,10 @@ private fun visitProfileGradient(p: Profile, out: MutableList<String>) {
                 "[0, 1], so a vertex coordinate gets 0 from samples nearest a different edge"
         is Profile.Offset -> { out += "Profile.Offset: −delta is exact in value and derivative"; visitProfileGradient(p.child, out) }
         is Profile.Translate -> visitProfileGradient(p.child, out)
+        is Profile.Fold -> {
+            out += "Profile.Fold: max(p·n, 0) kinks on the fold line, where the two images meet; degrees carry π/180"
+            visitProfileGradient(p.child, out)
+        }
         is Profile.Rotate -> {
             out += "Profile.Rotate: degrees again, so ∂/∂degrees carries π/180 — see Rotate's note"
             visitProfileGradient(p.child, out)
@@ -957,6 +961,16 @@ fun Profile.toADField2(numerics: SolidNumerics, prefix: String = ""): ADField2 {
             val a = num("degrees", degrees) * (-Math.PI / 180.0)
             val c = cos(a); val s = sin(a)
             ADField2 { px, py -> f.at(c * px - s * py, s * px + c * py) }
+        }
+
+        is Profile.Fold -> {
+            val f = child.toADField2(numerics, kids)
+            val a = num("degrees", degrees) * (Math.PI / 180.0)
+            val nx = -sin(a); val ny = cos(a)
+            ADField2 { px, py ->
+                val k = max(px * nx + py * ny, px * 0.0) * 2.0
+                f.at(px - k * nx, py - k * ny)
+            }
         }
 
         is Profile.Scale -> {
@@ -1245,6 +1259,7 @@ internal fun Profile.nodeName(): String = when (this) {
     is Profile.Offset -> "Offset"
     is Profile.Translate -> "Translate"
     is Profile.Rotate -> "Rotate"
+    is Profile.Fold -> "Fold"
     is Profile.Scale -> "Scale"
     is Profile.Union -> "Union"
     is Profile.Intersect -> "Intersect"
@@ -1359,6 +1374,10 @@ private fun rewriteProfileNumbers(p: Profile, prefix: String, r: NumberRewrite):
             x = n("x", p.x), y = n("y", p.y),
         )
         is Profile.Rotate -> p.copy(
+            child = rewriteProfileNumbers(p.child, kids, r),
+            degrees = n("degrees", p.degrees),
+        )
+        is Profile.Fold -> p.copy(
             child = rewriteProfileNumbers(p.child, kids, r),
             degrees = n("degrees", p.degrees),
         )
