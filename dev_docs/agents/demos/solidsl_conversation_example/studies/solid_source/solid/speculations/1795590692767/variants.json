@@ -1,0 +1,11 @@
+{
+  "against" : "r8-2a247bea1ef2",
+  "liveSourceHash" : "2a247bea1ef250ba3754344c8c0e55ba29cce40c0425639b25877570d04d9a36",
+  "adopted" : "chosen-grown-ribs",
+  "variants" : [ {
+    "label" : "chosen-grown-ribs",
+    "note" : "Selected after side-by-side comparison: ribbed openings follow growth and suggest bands of light.",
+    "file" : "chosen-grown-ribs.kt"
+  } ],
+  "as" : "r9-04388c69ce35"
+}

@@ -166,6 +166,7 @@ class DocsGatesWiringTest {
             "runDocsPanelCodeLinksSmokeTest" to "covered as examples.docs-panel-code-links.smoke in the catalog",
             "smokeCeres" to "needs the Ceres redistributable built first; run it with buildCeresRedistributable",
             "smokeManifold" to "needs a system Manifold (brew install manifold)",
+            "checkPaintTests" to "a landing guard over paint diffs (land.py guard and precheck select it); it builds the Rust paint native, minutes cold",
             "fastTest" to "the local fast lane: it compiles personal and extension fastTest roots, which a landing must not depend on",
             "smokeSolidCraft" to "needs the Rust toolchain to build the optional SolidCraft bridge first (buildSolidCraftNative)",
             "fieldAudioAnalysisTest" to "opt-in; installs librosa and Basic Pitch over the network",

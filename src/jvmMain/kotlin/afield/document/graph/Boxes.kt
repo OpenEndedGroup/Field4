@@ -2121,6 +2121,7 @@ import afield.math.autodiff.*
 import afield.math.control.*
 import afield.math.estimation.*
 import afield.math.functions.*
+import afield.math.energy.*
 import afield.math.gp.*
 import afield.math.linalg.*
 import afield.math.linalg.Quat

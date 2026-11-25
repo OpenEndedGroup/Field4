@@ -723,6 +723,9 @@ object DemoTranscriptExecSmokeTest {
         "satellites",
         // alife_examples.md section 13: bonded-particle organisms on GPU compute. Opens a Window, so compile-only.
         "bonded_organisms",
+        // discrete_energy.md: DiscreteEnergy problems, with the mean-field descent on GPU compute. Opens a Window, so
+        // compile-only; DiscreteEnergyTest covers the solvers, the learner and the held-out solve rates.
+        "discrete_energy",
         // The pilot explainer deck (2026-11-09): its deck box opens Electron audience windows and
         // its figure box returns an audio patch for the audio device. PresentationFiguresTest
         // covers the figure engine without either.

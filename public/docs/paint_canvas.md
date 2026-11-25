@@ -248,7 +248,7 @@ display("main", canvas.png())
 ### Overlapping regions and the fill rule
 
 A region whose rings overlap, or cross themselves, is filled by its `fillRule`, the same attribute
-every FLine filler in Field reads (see [the fill rule](afield_four_graphics.md)). With
+every FLine filler in Field reads (see [Overlaps and fill rules](afield_four_graphics.md#overlaps-and-fill-rules)). With
 `FillRule.NON_ZERO` the overlap is painted too; with `FillRule.EVEN_ODD`, or no rule set at all, it
 is left bare, as a hole. `work`, `stipple`, `glaze`, `hatch` and `erase` all follow it.
 
@@ -259,7 +259,7 @@ right.
 :::static
 import afield.graphics.nile.*
 
-val canvas = PaintCanvas(900, aspect = 2.0, sizeMm = 300.0)
+val canvas = PaintCanvas(800, aspect = 2.0, sizeMm = 300.0)
 
 fun squares(dx: Double, rule: FillRule) = FLine()
     .rect(dx + 60.0, 60.0, 220.0, 220.0)

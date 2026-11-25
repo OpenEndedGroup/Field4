@@ -141,7 +141,9 @@ macro run nile_gezira_kernels
 
 **Depth-ordered 3D vector scenes.** A lighthouse built with `vectorScene { }` from cylinders, cones,
 boxes and hemispheres, drawn from four angles, turned with a camera slider, shaded flat, soft and as
-plotter outlines, and a table of how many pixels a centroid sort and the pairwise order get wrong.
+plotter outlines, a table of how many pixels a centroid sort and the pairwise order get wrong, and
+`mesh(...)` and `polyline(...)` drawing a geodesic spiral toolpath on a relief and rings on a torus,
+with the ordering time at three mesh sizes.
 See [Depth-ordered 3D vector scenes](fline_examples.md#depth-ordered-3d-vector-scenes-vectorscene).
 
 ```diffstatic {data-lang=text}
@@ -4202,6 +4204,21 @@ and compares every cell with the CPU reference stepped 600 times. Edit a genome 
 re-run it to change the creatures.
 
 [Open →](offline.html?file=assets/agent_transcripts/bonded_organisms/metadata.edn)
+
+### discrete_energy
+
+[Discrete optimisation by energy descent](discrete_energy.md) with `DiscreteEnergy`, after Hoover,
+Blayney and Whittington ([arXiv 2611.17309](https://arxiv.org/abs/2611.17309)). The renderer box
+opens the window. The Sudoku box states the puzzle with `allDifferent` and draws its same-digit
+cost image. The descent box runs mean-field descent of that energy in a Vulkan compute shader, one
+step per frame, then finishes the board with Gibbs sweeps. The check box compares 40 GPU steps
+with 40 CPU steps. The learned box fits the same energy to solved grids, and its image matches the
+stated one. Three more boxes each state a problem in a few lines and animate it as it settles:
+N-queens, colouring a nearest-neighbour graph, and a travelling-salesman tour.
+
+![A 12 by 12 chequerboard with twelve gold queens, one in each row and column, none sharing a diagonal; above it the caption 0 attacks](assets/discrete_energy/queens.png)
+
+[Open →](offline.html?file=assets/agent_transcripts/discrete_energy/metadata.edn)
 
 ### satellites
 

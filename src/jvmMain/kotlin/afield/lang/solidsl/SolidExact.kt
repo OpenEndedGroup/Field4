@@ -418,12 +418,28 @@ private fun buildExactSection(p: Profile, q: SolidQuality): Section = when (p) {
     is Profile.Rotate -> buildExactSection(p.child, q).rotated(p.degrees)
     is Profile.Scale -> buildExactSection(p.child, q).scaled(p.x, p.y)
 
+    // The kept half is the child clipped to the right of the fold line; the region is that half and
+    // its mirror image. The half-plane is a large rectangle turned onto the line.
+    is Profile.Fold -> {
+        val half = Section.intersection(
+            listOf(
+                buildExactSection(p.child, q),
+                Section.square(FOLD_HALF_PLANE, FOLD_HALF_PLANE, center = true)
+                    .translated(0.0, -FOLD_HALF_PLANE / 2).rotated(p.degrees),
+            ),
+        )
+        Section.union(listOf(half, half.rotated(-p.degrees).scaled(1.0, -1.0).rotated(p.degrees)))
+    }
+
     is Profile.Union -> Section.union(p.children.map { buildExactSection(it, q) })
     is Profile.Intersect -> Section.intersection(p.children.map { buildExactSection(it, q) })
     is Profile.Difference -> Section.difference(p.children.map { buildExactSection(it, q) })
 
     Profile.Empty -> Section.empty()
 }
+
+/** The side of the square that stands in for a half-plane in a [Profile.Fold]'s exact lowering. */
+private const val FOLD_HALF_PLANE = 1.0e4
 
 /** Twice the signed area of a closed contour — positive for counter-clockwise. */
 internal fun signedArea(points: List<P2>): Double = signedArea2D(points.size, { points[it].x }, { points[it].y })

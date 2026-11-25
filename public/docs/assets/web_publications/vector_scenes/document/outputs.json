@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-24T08:51:16.661Z",
+  "capturedAt": "2026-11-25T07:16:03.413Z",
   "documentName": "vector_scenes",
   "outputs": [
     {
@@ -60,6 +60,28 @@
       "width": 480,
       "height": 150,
       "path": "outputs/4.html"
+    },
+    {
+      "uid": "vs_meshes",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/5.html"
+    },
+    {
+      "uid": "vs_mesh_timing",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 480,
+      "height": 136,
+      "path": "outputs/6.html"
     }
   ]
 }

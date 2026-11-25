@@ -184,6 +184,10 @@ class AgentDemoRegistrationTest {
             // shaders, and (2026-09-29) its starter, both in UNVERIFIED for the same reason.
             "stackauto_conversation",
             "stackauto_conversation_polytope",
+            // Landed 2026-11-25: the SolidSL conversation ("Talking a solid into existence"), its
+            // starter and one recorded session, in UNVERIFIED for the same reason.
+            "solidsl_conversation",
+            "solidsl_conversation_example",
         )
 
         /**
@@ -226,6 +230,14 @@ class AgentDemoRegistrationTest {
          * and left for a person.
          */
         val UNVERIFIED = mapOf(
+            "solidsl_conversation" to
+                "The SolidSL counterpart of rectsl_conversation, kept out of the transcript registry for the " +
+                "same reason (an AI4 conversation needs a provider key). Its root holds no code (the " +
+                "language root opens the window) and its study's Kotlin is compiled by the study when the " +
+                "document opens (afield.lang.solidsl.study, covered by SolidStudyTest).",
+            "solidsl_conversation_example" to
+                "A recorded session beside the solidsl_conversation starter, with the starter's codeless root " +
+                "(tools/solidsl_conversation_documents.py --check holds them equal); same reason.",
             "function_conversation" to
                 "Kept out of the transcript registry by decision (Marc, 2026-09-26): the demo is an " +
                 "AI4 conversation and needs a provider key to use, so it ships as the zip download on " +

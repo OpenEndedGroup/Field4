@@ -3,6 +3,8 @@
 SolidSL is a way to write down a 3D part (a bracket, a knob, a bored block) once, and then turn
 that description into whatever you need next: a triangle mesh to look at or print, an exact
 solid that is safe to cut holes from, or a shader that draws it live on the GPU.
+[Talking a solid into existence](solid_conversation.md) builds one in AI4 chat, from a sphere to a
+glowing bronze lamp.
 
 You write the part as ordinary Kotlin: `cuboid(4, 2.6, 0.7) - cylinder(3.0, 0.42)` is a block
 with a hole through it. That expression does not compute any geometry yet. It builds a small tree
@@ -63,6 +65,7 @@ in the package reads a tree built from these.
 | `Profile.circle(0.5)` / `Profile.rect(1.0, 0.5)` | Builds a two-dimensional circular or rectangular profile. Extrude or revolve it to create a solid. |
 | `Profile.star(5, 1.0, 0.4)` / `Profile.polygon(points)` | Builds a star from alternating radii or a polygon from supplied points. The profile can then enter the same sweep and Boolean operations. |
 | `profile.offset(0.1)` | Offsets the profile boundary before a sweep. Use a profile offset when the two-dimensional cross-section is what should grow. |
+| `profile.folded(60.0)` / `profile.hexFolded()` | Folds the plane across a line through the origin at the given angle, so the profile's right half and its mirror image cost one evaluation; `hexFolded` is four folds giving the six-fold symmetry of a hexagon. See [folds](#folds-the-koch-snowflake-in-on). |
 | `profile.translated(1.0, 0.0).turned(30.0)` | Moves and rotates the profile in its plane. Rotation is in degrees. |
 | `profile.sized(2.0)` | Scales a profile before extrusion or revolution. This changes the cross-section rather than the later solid’s height. |
 | `profile.extruded(2.0, twistDegrees = 45.0)` | Sweeps the profile through the given height with optional twist in degrees. The result is a three-dimensional expression. |
@@ -349,6 +352,118 @@ Read `GlslSolid.stepScale` before you trace with it. Sphere tracing is only safe
 lower bound on the true distance, and several nodes break that: `Intersect` and `Difference` are
 pointwise maxima, and a twisted `Extrude` shears space. The emitter reports `1.0`, `0.7` or `0.4` with
 the offending node named; multiply your march step by it.
+
+## Folds: the Koch snowflake in O(N) {#folds-the-koch-snowflake-in-on}
+
+A fold reflects one side of a line onto the other before the shape underneath is asked for its
+distance: `p - 2 max(p·n, 0) n`. What comes out is that shape's half on the kept side unioned with its
+mirror image, for the price of a single evaluation. `profile.folded(degrees)` folds across the line
+through the origin at that angle, and `hexFolded()` stacks four folds so that whatever sits in the
+wedge around +y repeats six times round a hexagon.
+
+The Koch snowflake shows what this buys. Every level is the hexagram plus six copies of the level
+before, shrunk to a third and put at the hexagon's corners. Write the six copies as a union and the
+expression grows six-fold per level. Fold the plane and keep a single copy, and each level adds the same
+eight nodes:
+
+```diffstatic {data-lang=kotlin}
+var shape: Profile = hexagram()
+repeat(level - 1) {
+    shape = (hexagram() + shape.sized(1.0 / 3.0).translated(0.0, 2.0 / 3.0)).hexFolded()
+}
+```
+
+`kochSnowflake(level)` is that loop, and `kochSnowflakeNaive(level)` is the six-copy union, kept so
+the two can be compared. The method is Matt Keeter's
+[Koch snowflake as a signed distance field](https://mattkeeter.com/blog/2026-11-23-snowflake), and the
+fold version of his "hexify" step is Alexa Schor's, from
+[Into the Portal](https://alexaschor.com/into-the-portal/).
+
+| level | fold: nodes | fold: GLSL characters | naive: nodes | naive: GLSL characters |
+| --- | --- | --- | --- | --- |
+| 1 | 1 | 8,110 | 1 | 8,110 |
+| 2 | 9 | 17,530 | 20 | 60,246 |
+| 3 | 17 | 26,906 | 134 | 389,440 |
+| 4 | 25 | 36,282 | 818 | 2,450,600 |
+| 5 | 33 | 45,658 | 4,922 | — |
+
+Most of each fold level's 9.4 thousand characters is the hexagram's twelve edges, unrolled.
+
+The two versions describe the same region: at 20,000 random points per level they agree on inside
+and outside everywhere, and outside the shape their distances agree to 1e-15. The folded field is a
+true Euclidean distance, too. Its gradient has length 1 to within 1e-3 at 99.99% of samples, and the
+misses sit on the medial axis and on the fold seams. That is why the isolines below are evenly
+spaced, from the hexagram up to level 4, on the CPU through `toField2()` and marching squares:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/koch_isolines.png" wait="4.0" capture="box" open-outputs="true" padding="20" alt="Four Koch snowflakes in a row, levels 1 to 4, from a six-pointed star to a finely crinkled snowflake. Each outline is drawn in white with two orange isolines inside and three blue isolines outside, evenly spaced, the outer ones rounding off into a smooth hexagon"}
+import afield.geometry.path.generateIsoContours
+import afield.lang.solidsl.*
+
+// One snowflake per level, its field marched at a few distances inside and out.
+fun isolines(level: Int, dx: Double): List<FLine> {
+    val d = kochSnowflake(level).toField2()
+    return [-0.12, -0.06, 0.0, 0.06, 0.12, 0.18].flatMap { iso ->
+        generateIsoContours({ x, y -> d.at(x, y) }, -1.4, 1.4, -1.4, 1.4, 280, 280, iso).map { c ->
+            fline {
+                moveTo(c[0].x * 100 + dx, -c[0].y * 100)
+                c.drop(1).forEach { lineTo(it.x * 100 + dx, -it.y * 100) }
+                thickness = if (iso == 0.0) 2.0 else 1.0
+                color =
+                    if (iso < 0) vec(0.95, 0.55, 0.3, 1.0)
+                    else if (iso == 0.0) vec(1, 1, 1, 1) else vec(0.4, 0.7, 1.0, 1.0)
+            }
+        }
+    }
+}
+
+lines(*(1..4).flatMap { isolines(it, (it - 1) * 300.0) }.toTypedArray(), w = 1100.0, h = 300.0, fitToSize = true)
+```
+
+`profile.toGlsl2("sdKoch")` emits the same expression as a GLSL function `float sdKoch(vec2 p)`.
+Read back by the interpreter the GLSL tests use, it returns exactly the numbers `toField2()` does at
+every level, and shaderc compiles it. On the GPU it is a fragment shader on a fullscreen triangle,
+here at level 5:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/koch_gpu.png" alt="A level-5 Koch snowflake filling a native render window: orange inside, blue outside, the outline in white, and evenly spaced isoline bands following the crinkled edge inside and rounding off outside" wait="4" timeout="120" capture="native-window" native-wait-frames="4" trim-native=true max-width=1600 graphics-context=true embed=true name="koch-gpu"}
+import afield.lang.solidsl.*
+
+// The fold stack lowers to one straight-line GLSL function.
+val sdKoch = kochSnowflake(5).toGlsl2("sdKoch")
+
+val shader = Module(
+    parameters(renderer) {
+        vertex = SOLID_RAYMARCH_VERTEX
+        fragment =
+            """
+            #version 450
+            layout(location = 0) out vec4 fragColor;
+            layout(push_constant) uniform Params { vec2 uResolution; } params;
+            $sdKoch
+            void main() {
+                vec2 p = (gl_FragCoord.xy * 2.0 - params.uResolution) / params.uResolution.y * 1.25;
+                p.y = -p.y;
+                float d = sdKoch(p);
+                vec3 base = d < 0.0 ? vec3(0.95, 0.55, 0.3) : vec3(0.4, 0.7, 1.0);
+                // an isoline every 0.04
+                float band = abs(fract(d / 0.04 + 0.5) - 0.5) * 0.04;
+                float line = 1.0 - smoothstep(0.0, 1.5 * fwidth(d), band);
+                vec3 c = base * (0.25 + 0.35 * exp(-3.0 * abs(d))) + line * 0.6 * base;
+                c = mix(c, vec3(1.0), 1.0 - smoothstep(0.0, 1.5 * fwidth(d), abs(d)));
+                fragColor = vec4(c, 1.0);
+            }""".trimIndent()
+        depthTest = false
+    },
+).pointer()
+
+val quad = fullscreenTriangle(shader)
+shader += "quad" to quad
+quad.push.bind("uResolution") { vec(window.width.toFloat(), window.height.toFloat()) }
+renderer += "koch" to shader
+```
+
+Keeter's post also builds the snowflake by domain repetition, cutting triangles out of three rotated
+families of bars with `mod`. It costs O(1) per level as well, but its gradient wanders away from 1.
+`Profile` has no `mod`, so that version is not here, and the fold is the one to use.
 
 ## The simplifier
 
@@ -967,7 +1082,7 @@ what a torus is.
   src="offline.html?file=assets/solidsl_gallery/metadata.edn"
   loading="lazy"></iframe>
 
-The [`solidsl_gallery`](agent_transcripts.md#solidsl_gallery) starting point has three boxes. Open it and run them:
+The [`solidsl_gallery`](agent_transcripts.md#solidsl_gallery) starting point has four boxes. Open it and run them:
 
 **One shape, two evaluations** puts one part through both lowerings and shows the meshes side by side.
 Change `boreRadius` or drop `quality` to 24 and watch the agreement degrade to the faceting floor.
@@ -986,7 +1101,10 @@ smallest-subtree level set beside what the naive one would have cost.
 // dev_docs/agents/transcripts/solidsl_gallery.yaml creates and runs the three gallery boxes.
 ```
 
-All three need nothing but Field; the second needs no Manifold at all. The first and third print a
+**Folds: the Koch snowflake in O(N)** draws the [fold snowflake](#folds-the-koch-snowflake-in-on)'s
+isolines and prints its size beside the naive union's; the slider moves it between levels 1 and 6.
+
+All four need nothing but Field; the second needs no Manifold at all. The first and third print a
 clear "install Manifold" message and fall back to the field lowering when it is absent.
 
 For fitting there is a second starting point, [`solidsl_inverse`](agent_transcripts.md#solidsl_inverse),
@@ -999,3 +1117,9 @@ which needs no Manifold at all. Open it and run its three boxes:
   output.
 - **what refuses, and the one that does not** — every parameterisation refusal with its reason, then
   a swallowed child dying under a hard `Union` and living under a smooth one.
+
+## Where to go next
+
+- [Talking a solid into existence](solid_conversation.md): a SolidSL study in AI4 chat, which the
+  model edits, turns, cuts open and shades in GLSL of its own.
+- [Studies](studies.md): the operations a study shares with the function, shader and scene studies.

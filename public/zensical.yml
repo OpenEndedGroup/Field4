@@ -206,6 +206,7 @@ nav:
       - Functions Domains: functions_domains.md
       - Gaussian Processes: gaussian_processes.md
       - "GP Optimisation and Preference": gaussian_process_optimization.md
+      - Discrete Optimisation by Energy Descent: discrete_energy.md
       - Differentiating Functions: autodiff_examples.md
       - Proving a Function's Range: fn_intervals.md
       # Beside the GP pages: a value that is a whole distribution, sampled and queried with its
@@ -518,6 +519,7 @@ nav:
     - Talking a Function into Existence: function_conversation.md
     - Talking a Shader into Existence: stacksl_conversation.md
     - Talking a RectSL Scene into Existence: rectsl_conversation.md
+    - Talking a Solid into Existence: solid_conversation.md
     - Talking to the StackSL in Your Shader: stackauto_conversation.md
     - AI4 Paints: ai4_painting.md
     # After the four conversations rather than before them: those pages show a study being worked on,

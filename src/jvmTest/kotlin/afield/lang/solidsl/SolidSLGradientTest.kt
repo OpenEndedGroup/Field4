@@ -573,6 +573,7 @@ class SolidSLGradientTest {
         is Profile.Offset -> names(p.child)
         is Profile.Translate -> names(p.child)
         is Profile.Rotate -> names(p.child)
+        is Profile.Fold -> names(p.child)
         is Profile.Scale -> names(p.child)
         is Profile.Union -> p.children.flatMap { names(it) }
         is Profile.Intersect -> p.children.flatMap { names(it) }

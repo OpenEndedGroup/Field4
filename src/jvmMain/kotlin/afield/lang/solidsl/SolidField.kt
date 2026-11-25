@@ -164,6 +164,7 @@ private fun visitProfile(p: Profile, out: MutableList<String>) {
         }
         is Profile.Translate -> visitProfile(p.child, out)
         is Profile.Rotate -> visitProfile(p.child, out)
+        is Profile.Fold -> visitProfile(p.child, out)
         is Profile.Scale -> {
             if (p.x != p.y) out += "Profile.Scale(${p.x}, ${p.y}) is non-uniform, so the 2D field under-estimates"
             visitProfile(p.child, out)
@@ -399,6 +400,16 @@ fun Profile.toField2(): Field2 = when (this) {
         val a = Math.toRadians(-degrees)
         val c = cos(a); val s = sin(a)
         Field2 { px, py -> f.at(c * px - s * py, s * px + c * py) }
+    }
+
+    is Profile.Fold -> {
+        val f = child.toField2()
+        val a = Math.toRadians(degrees)
+        val nx = -sin(a); val ny = cos(a)
+        Field2 { px, py ->
+            val k = 2 * max(px * nx + py * ny, 0.0)
+            f.at(px - k * nx, py - k * ny)
+        }
     }
 
     is Profile.Scale -> {

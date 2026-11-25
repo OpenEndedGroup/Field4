@@ -357,18 +357,18 @@ the internal FFM layer under [`PaintCanvas`](graphics.md#paintcanvas-kt-paintcan
 
 ### PaintLibrary { #paintnative-kt-paintlibrary }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">PaintLibrary</span></code>](source/jvmMain/afield/graphics/paint/PaintNative/#L28)
+[<code class="highlight"><span class="k">object</span> <span class="nc">PaintLibrary</span></code>](source/jvmMain/afield/graphics/paint/PaintNative/#L30)
 
-Where `native/field-paint` is. Searched in order: `-Dafield.paint.library`, `AFIELD_PAINT_LIBRARY`, then `build/field-paint/release` in the working directory.
+Where `native/field-paint` is: `-Dafield.paint.library`, else `AFIELD_PAINT_LIBRARY`, else `build/field-paint/release` in the working directory. An explicit path is the only one searched, so pointing it at a missing file really leaves the library unavailable (the negative control for `checkPaintTests`) rather than falling through to the build.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="paintnative-kt--paintlibrary--filename"></a>[<code class="highlight"><span class="k">val</span> <span class="n">fileName</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/graphics/paint/PaintNative/#L31) |  |
-| <a id="paintnative-kt--paintlibrary--searchedpaths"></a>[<code class="highlight"><span class="k">val</span> <span class="n">searchedPaths</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Path</span><span class="p">&gt;</span></code>](source/jvmMain/afield/graphics/paint/PaintNative/#L38) |  |
-| <a id="paintnative-kt--paintlibrary--resolvedpath"></a>[<code class="highlight"><span class="k">val</span> <span class="n">resolvedPath</span><span class="p">:</span> <span class="nc">Path</span><span class="o">?</span></code>](source/jvmMain/afield/graphics/paint/PaintNative/#L47) | Not cached: building it during a live session is picked up by the next box run. |
-| <a id="paintnative-kt--paintlibrary--isavailable"></a>[<code class="highlight"><span class="k">val</span> <span class="n">isAvailable</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/graphics/paint/PaintNative/#L49) |  |
-| <a id="paintnative-kt--paintlibrary--how-to-build"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">HOW&#95;TO&#95;BUILD</span></code>](source/jvmMain/afield/graphics/paint/PaintNative/#L51) |  |
-| <a id="paintnative-kt--paintlibrary--describe"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">describe</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/graphics/paint/PaintNative/#L53) |  |
+| <a id="paintnative-kt--paintlibrary--filename"></a>[<code class="highlight"><span class="k">val</span> <span class="n">fileName</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/graphics/paint/PaintNative/#L33) |  |
+| <a id="paintnative-kt--paintlibrary--searchedpaths"></a>[<code class="highlight"><span class="k">val</span> <span class="n">searchedPaths</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Path</span><span class="p">&gt;</span></code>](source/jvmMain/afield/graphics/paint/PaintNative/#L40) |  |
+| <a id="paintnative-kt--paintlibrary--resolvedpath"></a>[<code class="highlight"><span class="k">val</span> <span class="n">resolvedPath</span><span class="p">:</span> <span class="nc">Path</span><span class="o">?</span></code>](source/jvmMain/afield/graphics/paint/PaintNative/#L49) | Not cached: building it during a live session is picked up by the next box run. |
+| <a id="paintnative-kt--paintlibrary--isavailable"></a>[<code class="highlight"><span class="k">val</span> <span class="n">isAvailable</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/graphics/paint/PaintNative/#L51) |  |
+| <a id="paintnative-kt--paintlibrary--how-to-build"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">HOW&#95;TO&#95;BUILD</span></code>](source/jvmMain/afield/graphics/paint/PaintNative/#L53) |  |
+| <a id="paintnative-kt--paintlibrary--describe"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">describe</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/graphics/paint/PaintNative/#L55) |  |
 
 ## OpenDlssNrDiagnostics.kt { #opendlssnrdiagnostics-kt }
 

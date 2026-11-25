@@ -1,0 +1,10 @@
+{
+  "id" : "r10-e0c73da9410e",
+  "parent" : "r9-04388c69ce35",
+  "description" : "Add a warm internal diffuser and interior lighting, leaving the exterior dark patinated bronze",
+  "created" : "2026-11-25T07:12:46.076942Z",
+  "sourceHash" : "e0c73da9410efa1fb79cd0e04c381175d90e31caf6823c8df5ace47c1460f093",
+  "facts" : {
+    "knobs" : 239
+  }
+}
