@@ -1,0 +1,107 @@
+#version 460
+#extension GL_EXT_buffer_reference : require
+layout(local_size_x=8, local_size_y=8) in;
+layout(buffer_reference, std430, buffer_reference_align=8) readonly buffer PeriodicSamples { vec2 values[]; };
+layout(buffer_reference, std430, buffer_reference_align=16) writeonly buffer FilmFrame { vec4 pixels[]; };
+layout(push_constant) uniform View {
+    PeriodicSamples field;
+    FilmFrame image;
+    vec4 eye;
+    vec4 forward;
+    vec4 right;
+    vec4 up;
+    vec4 controls; // Blend, viewing radius, width, height.
+    vec4 slope; // Axis slope bounds and spatial period.
+} shot;
+
+const int size = GRID_SIZE;
+
+float vertexValue(ivec3 p) {
+    ivec3 grid = p & (size - 1);
+    int i = (grid.z * size + grid.y) * size + grid.x;
+    vec2 value = shot.field.values[i];
+    return mix(value.x, value.y, shot.controls.x);
+}
+
+float field(vec3 world) {
+    vec3 grid = fract(world / shot.slope.w + 0.5) * size;
+    ivec3 low = ivec3(floor(grid));
+    vec3 t = fract(grid);
+    float a = mix(vertexValue(low), vertexValue(low + ivec3(1, 0, 0)), t.x);
+    float b = mix(vertexValue(low + ivec3(0, 1, 0)), vertexValue(low + ivec3(1, 1, 0)), t.x);
+    float c = mix(vertexValue(low + ivec3(0, 0, 1)), vertexValue(low + ivec3(1, 0, 1)), t.x);
+    float d = mix(vertexValue(low + ivec3(0, 1, 1)), vertexValue(low + ivec3(1, 1, 1)), t.x);
+    return mix(mix(a, b, t.y), mix(c, d, t.y), t.z);
+}
+
+vec3 normalAt(vec3 world) {
+    const float h = 0.024;
+    vec3 x = vec3(h, 0.0, 0.0), y = x.zxy, z = x.yzx;
+    return normalize(vec3(field(world + x) - field(world - x),
+                          field(world + y) - field(world - y),
+                          field(world + z) - field(world - z)));
+}
+
+bool hitSurface(vec3 ro, vec3 rd, out vec3 p, out float travel) {
+    vec3 boxA = (-shot.controls.y - ro) / rd;
+    vec3 boxB = (shot.controls.y - ro) / rd;
+    vec3 low = min(boxA, boxB), high = max(boxA, boxB);
+    travel = max(0.0, max(low.x, max(low.y, low.z)));
+    float end = min(high.x, min(high.y, high.z));
+    float bound = max(dot(abs(rd), shot.slope.xyz), 0.001);
+    float last = 0.0;
+    float previous = travel;
+    for (int i = 0; i < 260 && travel <= end; ++i) {
+        p = ro + rd * travel;
+        float value = field(p);
+        if (abs(value) < 0.00055) return true;
+        if (i > 0 && value * last < 0.0) {
+            for (int j = 0; j < 7; ++j) {
+                float mid = (previous + travel) * 0.5;
+                if (field(ro + rd * mid) * last > 0.0) previous = mid;
+                else travel = mid;
+            }
+            p = ro + rd * travel;
+            return true;
+        }
+        last = value;
+        previous = travel;
+        travel += max(0.0005, 0.97 * abs(value) / bound);
+    }
+    return false;
+}
+
+vec3 shade(vec3 p, vec3 ray, float travel) {
+    vec3 n = normalAt(p);
+    if (dot(n, ray) > 0.0) n = -n;
+    vec3 key = normalize(vec3(-0.45, 0.76, 0.46));
+    vec3 rim = normalize(vec3(0.82, 0.34, -0.51));
+    float diffuse = max(dot(key, n), 0.0);
+    float backlight = max(dot(rim, n), 0.0);
+    float glint = pow(max(dot(normalize(key - ray), n), 0.0), 36.0);
+    float fresnel = pow(1.0 - max(dot(-ray, n), 0.0), 3.0);
+    float band = 0.5 + 0.5 * sin(7.6 * p.z + 7.1 * p.y + 3.0 * sin(4.0 * p.x));
+    vec3 bronze = mix(vec3(0.18, 0.42, 0.48), vec3(0.72, 0.38, 0.16), smoothstep(0.18, 0.82, band));
+    vec3 color = bronze * (0.14 + 0.78 * diffuse) + vec3(0.12, 0.22, 0.28) * backlight
+        + vec3(0.91, 0.87, 0.74) * glint * 0.76 + vec3(0.08, 0.17, 0.21) * fresnel;
+    float outer = max(abs(p.x), max(abs(p.y), abs(p.z)));
+    float fade = 1.0 - smoothstep(0.81 * shot.controls.y, shot.controls.y, outer);
+    float fog = exp(-0.055 * max(travel - length(shot.eye.xyz) + shot.controls.y, 0.0));
+    return mix(vec3(0.004, 0.006, 0.008), color, fade * fog);
+}
+
+void main() {
+    ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 dims = ivec2(shot.controls.zw);
+    if (any(greaterThanEqual(pixel, dims))) return;
+    vec3 rgb = vec3(0.0);
+    const vec2 offsets[4] = vec2[4](vec2(0.375, 0.125), vec2(0.875, 0.375), vec2(0.125, 0.625), vec2(0.625, 0.875));
+    for (int i = 0; i < 4; ++i) {
+        vec2 ndc = 2.0 * (vec2(pixel) + offsets[i]) / vec2(dims) - 1.0;
+        vec3 rd = normalize(shot.forward.xyz + ndc.x * shot.right.xyz - ndc.y * shot.up.xyz);
+        vec3 p;
+        float travel;
+        rgb += hitSurface(shot.eye.xyz, rd, p, travel) ? shade(p, rd, travel) : vec3(0.004, 0.006, 0.008);
+    }
+    shot.image.pixels[pixel.y * dims.x + pixel.x] = vec4(rgb * 0.25, 1.0);
+}
