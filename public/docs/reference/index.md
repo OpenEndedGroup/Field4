@@ -690,7 +690,7 @@ To see it all at once, open the [map of the docs](../docs_map.md): every page, a
 
 ## Reference pages
 
-**43750 public symbols across 1934 source files**, 26210 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**43755 public symbols across 1934 source files**, 26215 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -717,7 +717,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Patterns](patterns.md) | 40 | 1332 | 729 (54%) | Musical time, as a value. |
 | [Audio](audio.md) | 101 | 2687 | 1437 (53%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 22 | 592 | 592 (100%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
-| [Languages](languages.md) | 135 | 3407 | 1729 (50%) | Field's small languages, from the host side. |
+| [Languages](languages.md) | 135 | 3412 | 1734 (50%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 267 | 3716 | 1587 (42%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [AI4](ai4.md) | 104 | 2309 | 866 (37%) | AI4 is the agent that lives inside Field: the chat panel on every box, the document chat, editor completion, and headless agent tasks. |
 | [Machine learning](machine-learning.md) | 26 | 727 | 444 (61%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
@@ -1905,7 +1905,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [PatFunctions.kt](patterns.md#patfunctions-kt) | Patterns | 48 | 6 | Bridge from `pat(...)` into scalar functions (`Functions.Fn`). |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>spatial/<wbr>steamaudio/<wbr></small> [PathEffect.kt](audio.md#patheffect-kt) | Audio | 28 | 22 | Rendering sound that reaches the listener around obstacles along baked probe paths. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr></small> [PathFlattener.kt](graphics.md#pathflattener-kt) | Graphics | 12 | 2 | Converts between arc length along an `FLine` and its node parameter, by flattening its curves to a tolerance. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>python/<wbr></small> [PathFrames.kt](languages.md#pathframes-kt) | Languages | 25 | 23 | Baked animations of styled cubic Bézier paths, written by a Python box and drawn by Field. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>python/<wbr></small> [PathFrames.kt](languages.md#pathframes-kt) | Languages | 30 | 28 | Baked animations of styled cubic Bézier paths, written by a Python box and drawn by Field. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>steamaudio/<wbr></small> [PathingDemo.kt](examples.md#pathingdemo-kt) | Examples | 1 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>query/<wbr>graph/<wbr></small> [PathMacro.kt](data.md#pathmacro-kt) | Data | 10 | 4 | A *compile-checked* path expression — the string-free counterpart to `graphPaths`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>query/<wbr>graph/<wbr></small> [PathOperator.kt](data.md#pathoperator-kt) | Data | 8 | 8 | The `/` operator queries an object graph by path: `rig / "**\/freq"` is shorthand for `graphPaths`. |  |
