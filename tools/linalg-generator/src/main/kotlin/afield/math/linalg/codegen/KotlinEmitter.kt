@@ -140,6 +140,11 @@ class KotlinEmitter(
         }
         ergonomicTypes.forEach { type ->
             appendLine()
+            appendLine("// ${type.heapName} destructuring and constant-lane swizzles")
+            emitStructureShorthands(type)
+        }
+        ergonomicTypes.forEach { type ->
+            appendLine()
             appendLine("// ${type.heapName} shorthands")
             emitShorthands(
                 indent = "", receiver = type.readName, result = type.heapName, scalar = type.scalar,
@@ -237,6 +242,44 @@ class KotlinEmitter(
             appendLine("}")
             appendLine("/** Starts `a slerp t to b`: the point [t] of the way round the arc from this vector's direction to `b`'s. */")
             appendLine("infix fun $r.slerp(t: Number): ${h}Slerp = ${h}Slerp(this, t.$conv())")
+        }
+    }
+
+    /**
+     * Emits the Tier 3 structure spellings for one heap vector type: destructuring
+     * (`val (x, y) = v`) and the GLSL-style swizzles with constant lanes that lift a vector into the
+     * next dimension or flatten it onto a plane: `xy0`, `xy1`, `x0y` in 2D; `xyz0`, `xyz1`, `xy0`,
+     * `x0z` in 3D. Each returns a new vector.
+     */
+    private fun StringBuilder.emitStructureShorthands(type: VectorType) {
+        val r = type.readName
+        val s = type.scalar.kotlinType
+        val z = type.scalar.zero
+        val one = type.scalar.one
+        fun heap(dimension: Int) = "Vector$dimension${type.scalar.typeSuffix}"
+        type.components.forEachIndexed { index, component ->
+            appendLine("/** Destructuring: `val (${type.components.joinToString { it.sourceName }}) = v` reads component ${index + 1}, ${component.sourceName}. */")
+            appendLine("operator fun $r.component${index + 1}(): $s = ${component.sourceName}()")
+        }
+        when (type.dimension) {
+            2 -> {
+                appendLine("/** This 2D vector lifted into 3D with z = 0, `(x, y, 0)`. */")
+                appendLine("val $r.xy0: ${heap(3)} get() = ${heap(3)}(x(), y(), $z)")
+                appendLine("/** This 2D vector with z = 1, `(x, y, 1)`: a point in homogeneous 2D coordinates. */")
+                appendLine("val $r.xy1: ${heap(3)} get() = ${heap(3)}(x(), y(), $one)")
+                appendLine("/** This 2D vector laid onto the ground plane, `(x, 0, y)`: its y becomes depth. */")
+                appendLine("val $r.x0y: ${heap(3)} get() = ${heap(3)}(x(), $z, y())")
+            }
+            3 -> {
+                appendLine("/** This 3D vector with w = 0, `(x, y, z, 0)`: a direction in homogeneous coordinates, which translation leaves alone. */")
+                appendLine("val $r.xyz0: ${heap(4)} get() = ${heap(4)}(x(), y(), z(), $z)")
+                appendLine("/** This 3D vector with w = 1, `(x, y, z, 1)`: a point in homogeneous coordinates. */")
+                appendLine("val $r.xyz1: ${heap(4)} get() = ${heap(4)}(x(), y(), z(), $one)")
+                appendLine("/** This 3D vector flattened onto the xy plane, `(x, y, 0)`. */")
+                appendLine("val $r.xy0: ${heap(3)} get() = ${heap(3)}(x(), y(), $z)")
+                appendLine("/** This 3D vector flattened onto the ground plane, `(x, 0, z)`. */")
+                appendLine("val $r.x0z: ${heap(3)} get() = ${heap(3)}(x(), $z, z())")
+            }
         }
     }
 
@@ -723,6 +766,27 @@ class KotlinEmitter(
         appendLine()
         appendLine("</div>")
         appendLine()
+        appendLine("### Structure, lists and randomness")
+        appendLine()
+        appendLine("<div class=\"field-reference\" data-code-lang=\"kotlin\" markdown>")
+        appendLine()
+        appendLine("| Operator | Meaning |")
+        appendLine("| --- | --- |")
+        appendLine("| `val (x, y, z) = v` | Destructuring, on every float and double vector; also `for ((x, y) in points)`. |")
+        appendLine("| `p.xy0`, `p.xy1`, `p.x0y` | A 2D vector lifted into 3D: with z = 0, with z = 1 (homogeneous), or laid onto the ground plane as (x, 0, y). |")
+        appendLine("| `v.xyz0`, `v.xyz1`, `v.xy0`, `v.x0z` | A 3D vector as a homogeneous direction (w = 0) or point (w = 1), or flattened onto the xy or ground plane. |")
+        appendLine("| `(0 until 10) x (0 until 8)` | The grid of integer points as a list of `Vec2`, row by row. |")
+        appendLine("| `points * q`, `points * z` | Every point of a `List<Vec3>` or `List<Vec2>` rotated by a quaternion, or every `Vec2` multiplied by a `Complexf`, about the origin, as a new list. `points.rot(30.deg)` turns about the points' own centre. |")
+        appendLine("| `points about c rot 30.deg` | Every point of a `List<Vec2>` turned about `c`. |")
+        appendLine("| `points.closest(p)` | The point nearest `p`, for `Vec2` and `Vec3` lists. It throws on an empty list. `points.center()` is the mean, and `points.aabbBounds()` the bounding box. |")
+        appendLine("| `points.sortedAround(c)` | The `Vec2` points in order of angle about `c` (their own centre by default), anticlockwise from +x: a scattered ring becomes a polygon you can draw without crossings. |")
+        appendLine("| `Vec3.onSphere(r)`, `Vec3.inBall(r)`<br>`Vec2.onCircle(r)`, `Vec2.inDisc(r)` | A random point uniformly on the sphere, in the ball, on the circle or in the disc of radius `r` (default 1), from the box's generator, so a re-run repeats them and `setRandomSeed` changes them. |")
+        appendLine("| `p jitter 0.1` | The point moved by up to 0.1 in each component, uniformly, from the same generator. |")
+        appendLine("| `t.remap(0.0..1.0, -1.0..1.0)` | A number mapped linearly from one range to another, without clamping. |")
+        appendLine("| `x.fract()`, `x.clamp01()`, `t.smoothstep()` | The scalar shaping helpers, as `Double`s: the fractional part in 0..1, clamping to 0..1, and the smoothstep ease. |")
+        appendLine()
+        appendLine("</div>")
+        appendLine()
         appendLine("## One algebra, three storage forms")
         appendLine()
         appendLine("<div data-code-lang=\"kotlin\" markdown>")
@@ -805,6 +869,19 @@ class KotlinEmitter(
         appendLine("| `Matrix3f` | Represents a linear transform in three dimensions. Use the inverse transpose of a position transform's linear part to transform surface normals. | `rotation`, `scale`, `mul`, `invert`, `transpose`, `determinant`, `transform(Vector3f)` |")
         appendLine("| `Matrix3d` | Provides a double-precision 3×3 transform for numerically sensitive calculations. Its extra precision is useful when single-precision rounding is significant. | `mul`, `invert`, `transpose`, `determinant` |")
         appendLine("| `Matrix4f` | Represents affine and projective transforms, including cameras. Distinguish positions from directions so translation is applied only where intended. | `translate`, `scale`, `rotate`, `mul`, `invert`, `transpose`, `perspective`, `ortho`, `frustum`, `lookAt`, `transformPosition`, `transformDirection` |")
+        appendLine()
+        appendLine("</div>")
+        appendLine()
+        appendLine("Every matrix also has the expression forms, which return new values:")
+        appendLine()
+        appendLine("<div class=\"field-reference\" data-code-lang=\"kotlin\" markdown>")
+        appendLine()
+        appendLine("| Operator | Meaning |")
+        appendLine("| --- | --- |")
+        appendLine("| `m * v` | The vector transformed by the matrix: `Matrix2f` and `Vec2`, `Matrix3f` and `Vec3`, `Matrix4f` and `Vec4`, and the double-precision pairs. `Matrix4f * Vec3` and `Matrix4d * Vector3d` treat the vector as a point, so translation applies. |")
+        appendLine("| `m * n` | The matrix product: `(m * n) * v` is `m * (n * v)`. |")
+        appendLine("| `m then n` | \"`m`, then `n`\": `n * m`, so a chain applies in the order it is written. |")
+        appendLine("| `Mat4.translate(v)`, `Mat4.rotate(q)`, `Mat4.rotate(angle, axis)`, `Mat4.scale(2)`, `Mat4.scale(v)` | One-step `Matrix4f`s to chain with `then`: `Mat4.scale(2) then Mat4.rotate(q) then Mat4.translate(v)` scales, then rotates, then moves. `Mat4` is `Matrix4f`. |")
         appendLine()
         appendLine("</div>")
         appendLine()

@@ -1,8 +1,9 @@
 # Proposal: a fuller operator surface for live-coding linear algebra
 
-Status: Tiers 1 and 2 implemented (2026-11-25; tests in `LiveCodingShorthandsTest` and
-`LiveCodingMotionTest`, rows on `linear_algebra_api.md`). Tier 3 is a proposal. Written against
-`main` at `7a1baebf87`, after `Complexf/d` and `Hypercomplexf/d` landed.
+Status: all three tiers implemented (2026-11-25; tests in `LiveCodingShorthandsTest`,
+`LiveCodingMotionTest` and `LiveCodingStructureTest`, rows on `linear_algebra_api.md`). Each tier
+section says where the result differs from its table. Written against `main` at `7a1baebf87`, after
+`Complexf/d` and `Hypercomplexf/d` landed.
 
 The aim is the feel of the existing `a lerp 0.5 to b`, `v len 10`, `v.n` and `a x b`: geometry that
 reads as a sentence, typed while a picture is running, with no allocation surprises and no new
@@ -178,6 +179,24 @@ These are the moves that make a running sketch feel alive. They all extend the e
 | `v reflect n`, `v proj b`, `v rej b` | Reflection in the plane with normal `n`, projection onto `b`, the part of `v` perpendicular to `b`. | |
 
 ## Tier 3: vectors as ranges, sequences and fields
+
+Implemented, with these changes from the table below:
+
+- The scalar helpers are functions, `x.fract()`, `x.clamp01()`, `t.smoothstep()`, matching the
+  vector `v.fract()` of Tier 2, and `t.remap(a..b, c..d)` takes `ClosedRange<Double>`.
+- `(0 until 10) x (0 until 8)` is a `List<Vec2>`, row by row, not a sequence. There is no
+  top-level `grid(w, h)`: a word that common would collide with users' own `val grid`.
+- There is no infix `points rot θ`. `points.rot(θ)` already exists and turns about the points' own
+  centre; a one-argument infix overload would have been more specific and silently changed those
+  calls to turn about the origin. `points * q`, `points * z` (complex) and `points about c rot θ`
+  are the new forms.
+- `centroid` and `bounds` already exist as `points.center()` and `points.aabbBounds()`; only
+  `closest` and `sortedAround` are new.
+- Random vectors gained `Vec2.onCircle(r)` and `Vec3.inBall(r)` beside `onSphere` and `inDisc`.
+- The constant-lane swizzles are `xy0`, `xy1`, `x0y` on 2D vectors and `xyz0`, `xyz1`, `xy0`,
+  `x0z` on 3D ones, not every combination.
+- The matrix builders live on a new `Matrix4f` companion, so `Mat4.translate(v)` (with the new
+  `typealias Mat4 = Matrix4f`) is a qualified name rather than a top-level `translate`.
 
 These change how whole drawings are written, so they need more design care, and a quick vote before
 they are built.

@@ -590,3 +590,85 @@ infix fun Vector2dc.damp(k: Number): Vector2dLerp = damp(k, afield.runtime.lifec
 infix fun Vector3dc.damp(k: Number): Vector3dLerp = damp(k, afield.runtime.lifecycle.AnimationClock.frameDt)
 /** `a damp k to b` for [Vector4dc]; see the [Vector2fc] form. */
 infix fun Vector4dc.damp(k: Number): Vector4dLerp = damp(k, afield.runtime.lifecycle.AnimationClock.frameDt)
+
+// ---------------------------------------------------------------------------------------------
+// Matrices: the operators Matrix4fc already has, on the other matrices, and `then` for each.
+
+/**
+ * Field's 4x4 matrix alias, backed by [Matrix4f]. `Mat4.translate(v)`, `Mat4.rotate(q)` and
+ * `Mat4.scale(2)` build one-step matrices that compose in reading order with `then`.
+ */
+typealias Mat4 = Matrix4f
+
+/** `m * v`: the 2D vector transformed by this matrix, as a new vector. */
+operator fun Matrix2fc.times(v: Vector2fc): Vector2f = Vector2f(m00() * v.x() + m10() * v.y(), m01() * v.x() + m11() * v.y())
+/** `m * v` in double precision. */
+operator fun Matrix2dc.times(v: Vector2dc): Vector2d = Vector2d(m00() * v.x() + m10() * v.y(), m01() * v.x() + m11() * v.y())
+/** `m * v`: the 3D vector transformed by this matrix, as a new vector. */
+operator fun Matrix3fc.times(v: Vector3fc): Vector3f = transform(v, Vector3f())
+/** `m * v` in double precision. */
+operator fun Matrix3dc.times(v: Vector3dc): Vector3d = Vector3d(
+    m00() * v.x() + m10() * v.y() + m20() * v.z(),
+    m01() * v.x() + m11() * v.y() + m21() * v.z(),
+    m02() * v.x() + m12() * v.y() + m22() * v.z(),
+)
+/** `m * v`: the 4D vector transformed by this matrix, as a new vector. */
+operator fun Matrix4dc.times(v: Vector4dc): Vector4d = Vector4d(
+    m00() * v.x() + m10() * v.y() + m20() * v.z() + m30() * v.w(),
+    m01() * v.x() + m11() * v.y() + m21() * v.z() + m31() * v.w(),
+    m02() * v.x() + m12() * v.y() + m22() * v.z() + m32() * v.w(),
+    m03() * v.x() + m13() * v.y() + m23() * v.z() + m33() * v.w(),
+)
+/** `m * p`: the 3D point transformed by this matrix (w = 1, so translation applies), as a new vector, like `Matrix4fc * Vector3fc`. */
+operator fun Matrix4dc.times(p: Vector3dc): Vector3d = Vector3d(
+    m00() * p.x() + m10() * p.y() + m20() * p.z() + m30(),
+    m01() * p.x() + m11() * p.y() + m21() * p.z() + m31(),
+    m02() * p.x() + m12() * p.y() + m22() * p.z() + m32(),
+)
+
+/** `m * n`: the matrix product, as a new matrix; `(m * n) * v` is `m * (n * v)`. */
+operator fun Matrix2fc.times(n: Matrix2fc): Matrix2f = Matrix2f(this).mul(n)
+/** `m * n` in double precision. */
+operator fun Matrix2dc.times(n: Matrix2dc): Matrix2d = Matrix2d(this).mul(n)
+/** `m * n`: the matrix product, as a new matrix. */
+operator fun Matrix3fc.times(n: Matrix3fc): Matrix3f = Matrix3f(this).mul(n)
+/** `m * n` in double precision. */
+operator fun Matrix3dc.times(n: Matrix3dc): Matrix3d = Matrix3d(this).mul(n)
+/** `m * n`: the matrix product, as a new matrix. */
+operator fun Matrix4dc.times(n: Matrix4dc): Matrix4d = Matrix4d(this).mul(n)
+
+/** "This matrix, then [n]": `n * this`, applied in the order written. */
+infix fun Matrix2fc.then(n: Matrix2fc): Matrix2f = n * this
+/** "This matrix, then [n]" in double precision. */
+infix fun Matrix2dc.then(n: Matrix2dc): Matrix2d = n * this
+/** "This matrix, then [n]": `n * this`, applied in the order written. */
+infix fun Matrix3fc.then(n: Matrix3fc): Matrix3f = n * this
+/** "This matrix, then [n]" in double precision. */
+infix fun Matrix3dc.then(n: Matrix3dc): Matrix3d = n * this
+/** "This matrix, then [n]" in double precision. */
+infix fun Matrix4dc.then(n: Matrix4dc): Matrix4d = n * this
+
+// ---------------------------------------------------------------------------------------------
+// Scalar shaping and integer grids.
+
+/**
+ * This number mapped linearly from the range [from] onto [to]: `t.remap(0.0..1.0, -1.0..1.0)`.
+ * It is not clamped, so values outside [from] land outside [to]; a reversed range flips the map.
+ */
+fun Number.remap(from: ClosedRange<Double>, to: ClosedRange<Double>): Double =
+    to.start + (toDouble() - from.start) / (from.endInclusive - from.start) * (to.endInclusive - to.start)
+
+/** The fractional part `x - floor(x)`, in 0..1 also for negative numbers, GLSL's `fract`. */
+fun Number.fract(): Double = toDouble().let { it - kotlin.math.floor(it) }
+
+/** This number clamped to 0..1. */
+fun Number.clamp01(): Double = toDouble().coerceIn(0.0, 1.0)
+
+/** Smoothstep of this number, `t²(3 − 2t)` after clamping to 0..1: an ease in and out. */
+fun Number.smoothstep(): Double = clamp01().let { it * it * (3 - 2 * it) }
+
+/**
+ * The grid of integer points, `(0 until 10) x (0 until 8)`, as a list of [Vec2]: x from this range
+ * and y from [ys], with x varying fastest, so the points come row by row.
+ */
+infix fun IntRange.x(ys: IntRange): List<Vec2> = ys.flatMap { y -> map { x -> Vector2f(x.toFloat(), y.toFloat()) } }

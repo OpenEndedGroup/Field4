@@ -566,6 +566,82 @@ infix fun Vector4dc.proj(b: Vector4dc): Vector4d = b.lengthSquared().let { l -> 
 /** The rejection from [b]: the part of this vector perpendicular to [b], `v - (v proj b)`. */
 infix fun Vector4dc.rej(b: Vector4dc): Vector4d = Vector4d(this).sub(this proj b)
 
+// Vector2f destructuring and constant-lane swizzles
+/** Destructuring: `val (x, y) = v` reads component 1, x. */
+operator fun Vector2fc.component1(): Float = x()
+/** Destructuring: `val (x, y) = v` reads component 2, y. */
+operator fun Vector2fc.component2(): Float = y()
+/** This 2D vector lifted into 3D with z = 0, `(x, y, 0)`. */
+val Vector2fc.xy0: Vector3f get() = Vector3f(x(), y(), 0.0f)
+/** This 2D vector with z = 1, `(x, y, 1)`: a point in homogeneous 2D coordinates. */
+val Vector2fc.xy1: Vector3f get() = Vector3f(x(), y(), 1.0f)
+/** This 2D vector laid onto the ground plane, `(x, 0, y)`: its y becomes depth. */
+val Vector2fc.x0y: Vector3f get() = Vector3f(x(), 0.0f, y())
+
+// Vector3f destructuring and constant-lane swizzles
+/** Destructuring: `val (x, y, z) = v` reads component 1, x. */
+operator fun Vector3fc.component1(): Float = x()
+/** Destructuring: `val (x, y, z) = v` reads component 2, y. */
+operator fun Vector3fc.component2(): Float = y()
+/** Destructuring: `val (x, y, z) = v` reads component 3, z. */
+operator fun Vector3fc.component3(): Float = z()
+/** This 3D vector with w = 0, `(x, y, z, 0)`: a direction in homogeneous coordinates, which translation leaves alone. */
+val Vector3fc.xyz0: Vector4f get() = Vector4f(x(), y(), z(), 0.0f)
+/** This 3D vector with w = 1, `(x, y, z, 1)`: a point in homogeneous coordinates. */
+val Vector3fc.xyz1: Vector4f get() = Vector4f(x(), y(), z(), 1.0f)
+/** This 3D vector flattened onto the xy plane, `(x, y, 0)`. */
+val Vector3fc.xy0: Vector3f get() = Vector3f(x(), y(), 0.0f)
+/** This 3D vector flattened onto the ground plane, `(x, 0, z)`. */
+val Vector3fc.x0z: Vector3f get() = Vector3f(x(), 0.0f, z())
+
+// Vector4f destructuring and constant-lane swizzles
+/** Destructuring: `val (x, y, z, w) = v` reads component 1, x. */
+operator fun Vector4fc.component1(): Float = x()
+/** Destructuring: `val (x, y, z, w) = v` reads component 2, y. */
+operator fun Vector4fc.component2(): Float = y()
+/** Destructuring: `val (x, y, z, w) = v` reads component 3, z. */
+operator fun Vector4fc.component3(): Float = z()
+/** Destructuring: `val (x, y, z, w) = v` reads component 4, w. */
+operator fun Vector4fc.component4(): Float = w()
+
+// Vector2d destructuring and constant-lane swizzles
+/** Destructuring: `val (x, y) = v` reads component 1, x. */
+operator fun Vector2dc.component1(): Double = x()
+/** Destructuring: `val (x, y) = v` reads component 2, y. */
+operator fun Vector2dc.component2(): Double = y()
+/** This 2D vector lifted into 3D with z = 0, `(x, y, 0)`. */
+val Vector2dc.xy0: Vector3d get() = Vector3d(x(), y(), 0.0)
+/** This 2D vector with z = 1, `(x, y, 1)`: a point in homogeneous 2D coordinates. */
+val Vector2dc.xy1: Vector3d get() = Vector3d(x(), y(), 1.0)
+/** This 2D vector laid onto the ground plane, `(x, 0, y)`: its y becomes depth. */
+val Vector2dc.x0y: Vector3d get() = Vector3d(x(), 0.0, y())
+
+// Vector3d destructuring and constant-lane swizzles
+/** Destructuring: `val (x, y, z) = v` reads component 1, x. */
+operator fun Vector3dc.component1(): Double = x()
+/** Destructuring: `val (x, y, z) = v` reads component 2, y. */
+operator fun Vector3dc.component2(): Double = y()
+/** Destructuring: `val (x, y, z) = v` reads component 3, z. */
+operator fun Vector3dc.component3(): Double = z()
+/** This 3D vector with w = 0, `(x, y, z, 0)`: a direction in homogeneous coordinates, which translation leaves alone. */
+val Vector3dc.xyz0: Vector4d get() = Vector4d(x(), y(), z(), 0.0)
+/** This 3D vector with w = 1, `(x, y, z, 1)`: a point in homogeneous coordinates. */
+val Vector3dc.xyz1: Vector4d get() = Vector4d(x(), y(), z(), 1.0)
+/** This 3D vector flattened onto the xy plane, `(x, y, 0)`. */
+val Vector3dc.xy0: Vector3d get() = Vector3d(x(), y(), 0.0)
+/** This 3D vector flattened onto the ground plane, `(x, 0, z)`. */
+val Vector3dc.x0z: Vector3d get() = Vector3d(x(), 0.0, z())
+
+// Vector4d destructuring and constant-lane swizzles
+/** Destructuring: `val (x, y, z, w) = v` reads component 1, x. */
+operator fun Vector4dc.component1(): Double = x()
+/** Destructuring: `val (x, y, z, w) = v` reads component 2, y. */
+operator fun Vector4dc.component2(): Double = y()
+/** Destructuring: `val (x, y, z, w) = v` reads component 3, z. */
+operator fun Vector4dc.component3(): Double = z()
+/** Destructuring: `val (x, y, z, w) = v` reads component 4, w. */
+operator fun Vector4dc.component4(): Double = w()
+
 // Vector2f shorthands
 /** A normalized copy of this vector, the shorthand for `normalized()`. Zero stays zero. */
 val Vector2fc.n: Vector2f get() = Vector2f(this).also { val l = it.length(); if (l != 0.0f) it.mul(1.0f / l) }

@@ -78,6 +78,27 @@ The `lerp … to` sentence has variants for the moves that make a running sketch
 
 </div>
 
+### Structure, lists and randomness
+
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Operator | Meaning |
+| --- | --- |
+| `val (x, y, z) = v` | Destructuring, on every float and double vector; also `for ((x, y) in points)`. |
+| `p.xy0`, `p.xy1`, `p.x0y` | A 2D vector lifted into 3D: with z = 0, with z = 1 (homogeneous), or laid onto the ground plane as (x, 0, y). |
+| `v.xyz0`, `v.xyz1`, `v.xy0`, `v.x0z` | A 3D vector as a homogeneous direction (w = 0) or point (w = 1), or flattened onto the xy or ground plane. |
+| `(0 until 10) x (0 until 8)` | The grid of integer points as a list of `Vec2`, row by row. |
+| `points * q`, `points * z` | Every point of a `List<Vec3>` or `List<Vec2>` rotated by a quaternion, or every `Vec2` multiplied by a `Complexf`, about the origin, as a new list. `points.rot(30.deg)` turns about the points' own centre. |
+| `points about c rot 30.deg` | Every point of a `List<Vec2>` turned about `c`. |
+| `points.closest(p)` | The point nearest `p`, for `Vec2` and `Vec3` lists. It throws on an empty list. `points.center()` is the mean, and `points.aabbBounds()` the bounding box. |
+| `points.sortedAround(c)` | The `Vec2` points in order of angle about `c` (their own centre by default), anticlockwise from +x: a scattered ring becomes a polygon you can draw without crossings. |
+| `Vec3.onSphere(r)`, `Vec3.inBall(r)`<br>`Vec2.onCircle(r)`, `Vec2.inDisc(r)` | A random point uniformly on the sphere, in the ball, on the circle or in the disc of radius `r` (default 1), from the box's generator, so a re-run repeats them and `setRandomSeed` changes them. |
+| `p jitter 0.1` | The point moved by up to 0.1 in each component, uniformly, from the same generator. |
+| `t.remap(0.0..1.0, -1.0..1.0)` | A number mapped linearly from one range to another, without clamping. |
+| `x.fract()`, `x.clamp01()`, `t.smoothstep()` | The scalar shaping helpers, as `Double`s: the fractional part in 0..1, clamping to 0..1, and the smoothstep ease. |
+
+</div>
+
 ## One algebra, three storage forms
 
 <div data-code-lang="kotlin" markdown>
@@ -512,6 +533,19 @@ Alongside the vectors, the library provides matrix types whose core equations ar
 | `Matrix3f` | Represents a linear transform in three dimensions. Use the inverse transpose of a position transform's linear part to transform surface normals. | `rotation`, `scale`, `mul`, `invert`, `transpose`, `determinant`, `transform(Vector3f)` |
 | `Matrix3d` | Provides a double-precision 3×3 transform for numerically sensitive calculations. Its extra precision is useful when single-precision rounding is significant. | `mul`, `invert`, `transpose`, `determinant` |
 | `Matrix4f` | Represents affine and projective transforms, including cameras. Distinguish positions from directions so translation is applied only where intended. | `translate`, `scale`, `rotate`, `mul`, `invert`, `transpose`, `perspective`, `ortho`, `frustum`, `lookAt`, `transformPosition`, `transformDirection` |
+
+</div>
+
+Every matrix also has the expression forms, which return new values:
+
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Operator | Meaning |
+| --- | --- |
+| `m * v` | The vector transformed by the matrix: `Matrix2f` and `Vec2`, `Matrix3f` and `Vec3`, `Matrix4f` and `Vec4`, and the double-precision pairs. `Matrix4f * Vec3` and `Matrix4d * Vector3d` treat the vector as a point, so translation applies. |
+| `m * n` | The matrix product: `(m * n) * v` is `m * (n * v)`. |
+| `m then n` | "`m`, then `n`": `n * m`, so a chain applies in the order it is written. |
+| `Mat4.translate(v)`, `Mat4.rotate(q)`, `Mat4.rotate(angle, axis)`, `Mat4.scale(2)`, `Mat4.scale(v)` | One-step `Matrix4f`s to chain with `then`: `Mat4.scale(2) then Mat4.rotate(q) then Mat4.translate(v)` scales, then rotates, then moves. `Mat4` is `Matrix4f`. |
 
 </div>
 
