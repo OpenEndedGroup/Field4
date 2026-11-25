@@ -4,6 +4,7 @@ import afield.document.graph.Box
 import afield.document.workspace.NamedDirectoryNames
 import afield.graphics.paint.PaintToolNames
 import afield.graphics.paint.PaintToolbox
+import afield.graphics.paint.requirePaintLibrary
 import afield.document.graph.needsResync
 import afield.geometry.rhino.RhinoLayerPaths
 import afield.geometry.rhino.RhinoModel
@@ -12,6 +13,7 @@ import afield.runtime.kotlin.KotlinScriptEngine
 import afield.runtime.kotlin.KotlinVariableInfo
 import java.lang.reflect.Proxy
 import java.nio.file.Files
+import java.nio.file.Path
 import kotlin.reflect.full.memberFunctions
 import kotlin.reflect.jvm.kotlinFunction
 import kotlin.test.Test
@@ -267,6 +269,28 @@ class StringLiteralCompletionTest {
             assertEquals(emptyList<String>(), box.rows("studio.computed[\"|"))
             assertNull(StringLiteralCompletionFixtures.ToolNames.lastReceiver)
         } finally {
+            needsResync.removeAll { (b, _) -> b === box }
+        }
+    }
+
+    @Test
+    fun `paint lookup and ramp calls complete from the corresponding native catalogue`() {
+        requirePaintLibrary()
+        val box = boxWithVariables()
+        val root = Path.of("").toAbsolutePath()
+        val source = root.resolve("src/jvmMain/kotlin/afield/graphics/color")
+        val previousIndex = KotlinSourceIndex.latestIndex
+        try {
+            KotlinSourceIndex.latestIndex = KotlinSourceIndexDb(
+                root = root.toString(), apiKeyHash = null, updatedAtEpochMs = 0,
+                files = emptyList(), definitions = KotlinSourceIndex.scanDefinitions(listOf(source), root)
+            )
+            assertTrue("ultramarine blue" in box.rows("Tubes[\"ultram|").orEmpty())
+            assertEquals(listOf("ultramarine"), box.rows("Watercolors[\"ultram|"))
+            assertTrue("cadmium yellow" in box.rows("tubeColorRamp(\"cadmium y|").orEmpty())
+            assertTrue("ultramarine blue" in box.rows("tubeColorRamp(\"cadmium yellow\", second = \"ultram|").orEmpty())
+        } finally {
+            KotlinSourceIndex.latestIndex = previousIndex
             needsResync.removeAll { (b, _) -> b === box }
         }
     }

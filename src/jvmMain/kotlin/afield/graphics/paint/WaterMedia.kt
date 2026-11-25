@@ -2,6 +2,9 @@
 package afield.graphics.paint
 
 import afield.math.linalg.Vec4
+import afield.runtime.completion.CompletesWith
+import afield.runtime.completion.StringCompletionContext
+import afield.runtime.completion.StringCompletions
 import java.lang.foreign.MemorySegment
 
 /**
@@ -94,13 +97,17 @@ data class WaterPigment(
     }
 }
 
+internal object WatercolorNames : StringCompletions {
+    override fun candidates(context: StringCompletionContext): List<String> = Watercolors.names
+}
+
 /** Watercolour pigments, by their common names; estimates of each one's physics. */
 object Watercolors {
     /** The names [get] knows. */
     val names: List<String> by lazy { PaintNative.aqPigmentNames() }
 
     /** The pigment called [name]. */
-    operator fun get(name: String): WaterPigment = PaintNative.aqPigment(name)?.let { WaterPigment.fromParams(name, it) }
+    operator fun get(@CompletesWith(WatercolorNames::class) name: String): WaterPigment = PaintNative.aqPigment(name)?.let { WaterPigment.fromParams(name, it) }
         ?: throw NoSuchElementException("no watercolour pigment \"$name\"; there are: ${names.joinToString()}")
 
     /** PB29: coarse and dense, it settles fast, and lifts readily. */

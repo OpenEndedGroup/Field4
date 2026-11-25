@@ -65,13 +65,19 @@ class DiagramGeometry(val tolerance: Float = .0003f) {
      * MoveTo starts a new strip; Close is resolved per contour. Node colour/width override line
      * ink.
      */
-    fun stroke(line: FLine, ink: DiagramInk = DiagramInk(), widthScale: Float = 1f) {
+    fun stroke(
+        line: FLine,
+        ink: DiagramInk = DiagramInk(),
+        widthScale: Float = 1f,
+        arrowSide: ((index: Int, tip: Vector3f, axis: Vector3f) -> Vector3f?)? = null,
+    ) {
         require(widthScale.isFinite() && widthScale >= 0)
         require(tolerance.isFinite() && tolerance > 0)
         if (ink.drawTo <= ink.drawFrom) return
         val baseColor = (line.properties["color"] as? Vector4f) ?: ink.color
         val baseWidth = (line.properties["thickness"] as? Number)?.toFloat() ?: ink.width
         var contour = ArrayList<Vertex>()
+        var arrows = 0
         fun vertex(node: FLine.Node, p: Vector3f) =
             Vertex(
                 Vector3f(p),
@@ -82,7 +88,8 @@ class DiagramGeometry(val tolerance: Float = .0003f) {
                     ),
             )
         fun finish(closed: Boolean = false) {
-            emit(contour, ink, closed)
+            if (emit(contour, ink, closed, arrowSide?.let { f -> { tip: Vector3f, axis: Vector3f -> f(arrows, tip, axis) } }))
+                arrows++
             contour = ArrayList()
         }
         for (node in line.nodes) when (node) {
@@ -167,7 +174,16 @@ class DiagramGeometry(val tolerance: Float = .0003f) {
         }
     }
 
-    private fun emit(input: List<Vertex>, ink: DiagramInk, closed: Boolean) {
+    /**
+     * Returns whether an arrowhead was drawn. [arrowSide] gives the barbs' sideways direction
+     * (perpendicular to the tangent [axis]); null, or a null answer, keeps the barbs in the XY plane.
+     */
+    private fun emit(
+        input: List<Vertex>,
+        ink: DiagramInk,
+        closed: Boolean,
+        arrowSide: ((tip: Vector3f, axis: Vector3f) -> Vector3f?)? = null,
+    ): Boolean {
         val v = ArrayList<Vertex>()
         for (p in input) {
             require(p.p.x.isFinite() && p.p.y.isFinite() && p.p.z.isFinite()) {
@@ -175,7 +191,7 @@ class DiagramGeometry(val tolerance: Float = .0003f) {
             }
             if (v.isEmpty() || v.last().p.distanceSquared(p.p) > 1e-16f) v.add(p)
         }
-        if (v.size < 2) return
+        if (v.size < 2) return false
         val lengths = FloatArray(v.size)
         for (i in 1 until v.size) lengths[i] = lengths[i - 1] + v[i].p.distance(v[i - 1].p)
         val total = lengths.last()
@@ -199,7 +215,9 @@ class DiagramGeometry(val tolerance: Float = .0003f) {
             val t = ((tipAt - lengths[i - 1]) / (lengths[i] - lengths[i - 1])).coerceIn(0f, 1f)
             val tip = Vector3f(v[i - 1].p).lerp(v[i].p, t)
             val axis = Vector3f(v[i].p).sub(v[i - 1].p).normalize()
-            var side = Vector3f(-axis.y, axis.x, 0f)
+            var side = arrowSide?.invoke(Vector3f(tip), Vector3f(axis))?.takeIf { it.isFinite() && it.lengthSquared() > 1e-8f }
+                ?.let { Vector3f(it).normalize() }
+                ?: Vector3f(-axis.y, axis.x, 0f)
             if (side.lengthSquared() < 1e-8f) side = Vector3f(1f, 0f, 0f) else side.normalize()
             val arrowInk = ink.copy(drawFrom = 0f, drawTo = 1f, dashPeriod = 0f, arrow = 0f)
             for (sign in listOf(-1f, 1f)) {
@@ -213,7 +231,9 @@ class DiagramGeometry(val tolerance: Float = .0003f) {
                     false,
                 )
             }
+            return true
         }
+        return false
     }
 
     /**

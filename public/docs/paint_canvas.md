@@ -325,8 +325,9 @@ display("main", canvas.png())
 Instead of a colour, a brush can be loaded from the crate's catalogue of historical tube paints,
 mixed by parts: `brush.load(mapOf("lead white" to 3.0, "vermilion" to 1.0))`. The tubes mix the way
 paint does, weighted by how strongly each pigment tints, and the pile keeps their hiding, stiffness
-and drying rate. `Tubes.names` lists the catalogue, `Tubes["smalt"]` describes one tube,
-`Tubes.mix(...)` gives the colour of a mixture without painting it, and `Tubes.mixSpectral(...)`
+and drying rate. `Tubes.names` lists the catalogue. Look up a tube with `Tubes["smalt"]`.
+Field suggests tube names inside the quotes. `Tubes.mix(...)` gives the colour of a mixture
+without painting it, and `Tubes.mixSpectral(...)`
 mixes any colours as pigments rather than as light. For a swatch strip that uses the same
 mixing rules, see [Mix paint with the same endpoints](colors_examples.md#mix-paint-with-the-same-endpoints).
 

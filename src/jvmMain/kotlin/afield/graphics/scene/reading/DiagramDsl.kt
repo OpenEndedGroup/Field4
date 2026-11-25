@@ -35,6 +35,7 @@ class DiagramParticle
 internal constructor(id: String, owner: Any, val rest: Vector3f, val pinned: Boolean) :
     DiagramItem(id, owner) {
     val anchor = DiagramAnchor(owner) { it.particle(this) }
+    internal var drive: ((Double) -> Vector3f)? = null
 }
 
 class DiagramText
@@ -314,6 +315,20 @@ internal constructor(id: String, owner: Any, internal val make: DiagramFrame.() 
             ink = ink.copy(arrow = value)
         }
 
+    /**
+     * Arrowheads turn about the line so that their barbs face the reader, rather than staying in
+     * the diagram's XY plane where a reader walking round sees them edge-on. They turn with this
+     * half-life in seconds; zero turns them at once.
+     */
+    var arrowFacingHalfLife = .6f
+        set(value) {
+            require(value.isFinite() && value >= 0)
+            field = value
+        }
+
+    /** False keeps this path's arrowheads in the diagram's XY plane. */
+    var arrowFacesReader = true
+
     fun dashed(period: Float = .03f, duty: Float = .55f, phase: Float = 0f) {
         require(period.isFinite() && period > 0 && duty in 0f..1f && phase.isFinite())
         ink = ink.copy(dashPeriod = period, dashDuty = duty, dashPhase = phase)
@@ -425,6 +440,35 @@ class ReadingDiagramBuilder internal constructor() {
         check(at)
         require(value.isNotBlank()) { "A text run must contain visible text" }
         return DiagramText(id, owner, value, at).apply(block).also { texts.add(it) }
+    }
+
+    /**
+     * Move [p] with the score: its rest becomes [at] (score seconds -> diagram metres), evaluated once per
+     * update. A free particle springs after it, so whatever hangs on it lags and swings; a pinned one follows it
+     * exactly. Seeking the score moves it too. Links to it keep their rest-to-rest length, so they stretch with it.
+     */
+    fun drive(p: DiagramParticle, at: (Double) -> Vector3f) {
+        check(p.anchor)
+        require(p.drive == null) { "Particle '${p.id}' is already driven" }
+        p.drive = at
+    }
+
+    /** An anchor computed each frame, for a label that follows geometry no particle or span holds. */
+    fun anchor(resolve: DiagramFrame.() -> Vector3f) = DiagramAnchor(owner) { it.resolve() }
+
+    /**
+     * A taut rope: a [link] that is also drawn, as a straight line between the two particles. Use it where two
+     * things belong together, so that moving one visibly pulls the other.
+     */
+    fun rope(
+        id: String,
+        a: DiagramParticle,
+        b: DiagramParticle,
+        strength: Float = 1f,
+        block: DiagramPath.() -> Unit = {},
+    ): DiagramPath {
+        link(a, b, strength)
+        return line(id, a.anchor, b.anchor, block)
     }
 
     /** A reciprocal distance constraint; drawing is separate, so invisible links are easy. */

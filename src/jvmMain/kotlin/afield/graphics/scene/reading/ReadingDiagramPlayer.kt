@@ -12,7 +12,11 @@ import kotlin.math.*
  * One immutable-in-time evaluation of anchors. Paths are cached and cycles fail with a useful name.
  */
 class DiagramFrame
-internal constructor(private val player: ReadingDiagramPlayer, private val time: Double) {
+internal constructor(
+    private val player: ReadingDiagramPlayer,
+    /** Score seconds this frame samples, so a path shape or anchor can move with the score. */
+    val time: Double,
+) {
     internal val diagramPlayer: ReadingDiagramPlayer get() = player
     internal val diagram: ReadingDiagram get() = player.diagram
     private val poses = HashMap<String, DiagramPose>()
@@ -196,6 +200,9 @@ class ReadingDiagramPlayer(
         private set
 
     private val readerPosition = Vector3f(0f, 0f, 2.35f)
+    private var readerKnown = false
+    private val arrowSides = HashMap<DiagramPath, MutableList<Vector3f>>()
+    private var arrowDt = 0f
     private val textFacing = HashMap<DiagramText, Quaternionf>()
     override val frostSurfaces: List<ReadingFrostSurface>
         get() {
@@ -211,6 +218,7 @@ class ReadingDiagramPlayer(
     override fun setReaderPosition(position: Vector3f) {
         require(position.isFinite())
         readerPosition.set(position)
+        readerKnown = true
     }
 
     internal fun textOrientation(run: DiagramText, frame: DiagramFrame): Quaternionf {
@@ -319,7 +327,17 @@ class ReadingDiagramPlayer(
         return DiagramFrame(this, time)
     }
 
+    /** Driven particles take their rest from the score: [ReadingDiagramBuilder.drive]. */
+    private fun applyDrives(time: Double) {
+        for (p in diagram.particles) p.drive?.let { at ->
+            val r = at(time)
+            require(r.isFinite()) { "Drive for '${p.id}' gave $r at $time" }
+            p.rest.set(r)
+        }
+    }
+
     fun resetPositions() {
+        applyDrives(playback.sampleTime)
         for ((i, p) in diagram.particles.withIndex()) {
             state.x[i] = p.rest.x
             state.y[i] = p.rest.y
@@ -355,7 +373,9 @@ class ReadingDiagramPlayer(
             "A new topology needs a new player; replace just the score to rescore this graph"
         }
         playback.advance(elapsedSeconds)
+        arrowDt = min(elapsedSeconds, .1).toFloat()
         accumulator += min(elapsedSeconds, .1)
+        applyDrives(playback.sampleTime)
         updateConstraints()
         var steps = 0
         while (accumulator >= fixedStep && steps++ < 12) {
@@ -444,6 +464,7 @@ class ReadingDiagramPlayer(
                     drawTo = minOf(path.ink.drawTo, p.reveal),
                 ),
                 widthScale = strokeWidthScale,
+                arrowSide = if (readerKnown && path.arrowFacesReader && path.ink.arrow > 0) { i, tip, axis -> arrowSide(path, i, tip, axis) } else null,
             )
         }
         if (showDots)
@@ -459,6 +480,27 @@ class ReadingDiagramPlayer(
                         ),
                     )
             }
+    }
+
+    /**
+     * The barb direction for arrowhead [index] of [path]: perpendicular to the tangent and to the
+     * reader, so the head faces the reader, turned there gradually from where it was last frame.
+     */
+    private fun arrowSide(path: DiagramPath, index: Int, tip: Vector3f, axis: Vector3f): Vector3f? {
+        val target = Vector3f(axis).cross(Vector3f(readerPosition).sub(tip))
+        if (target.lengthSquared() < 1e-12f) return null
+        target.normalize()
+        val sides = arrowSides.getOrPut(path) { ArrayList() }
+        while (sides.size <= index) sides.add(Vector3f(-axis.y, axis.x, 0f))
+        val side = sides[index]
+        // Either sign is the same head; turn the short way.
+        if (side.dot(target) < 0) target.negate()
+        val life = path.arrowFacingHalfLife
+        val amount = if (life <= 0f) 1f else 1f - exp(-arrowDt * ln(2f) / life)
+        side.lerp(target, amount)
+        side.fma(-side.dot(axis), axis)
+        if (side.lengthSquared() < 1e-12f) side.set(target) else side.normalize()
+        return Vector3f(side)
     }
 
     /** Fresh anchor evaluation for inspectors and CPU tests; it does not advance either clock. */
