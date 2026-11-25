@@ -4251,6 +4251,7 @@ class Server {
             var port = preferredPort
             // Desktop use stays local. Remote shells (including visionOS) opt into LAN binding.
             val httpsHost = fieldServerBindHost()
+            val lanDiscovery = FieldLanDiscovery()
             lprintln("info,startup", "HTTPS bind: $httpsHost:$preferredPort")
             val keystorePath =
                 System.getenv("AFIELD_KEYSTORE_PATH") ?: File(app, "config/field4-local.p12").absolutePath
@@ -4383,6 +4384,7 @@ class Server {
                     install(AutoHeadResponse)
 
                     routing {
+                        lanDiscovery.installRoutes(this)
                         PatchyWebStorage.routes(this)
                         get("/health") {
                             call.respondText("ok", ContentType.Text.Plain)
@@ -6330,6 +6332,11 @@ class Server {
 
             globalServerPort = port
             globalLoopbackHttpPort = loopbackHttpPortFor(port)
+            runCatching { lanDiscovery.advertise(httpsHost, port) }
+                .onSuccess { advert ->
+                    if (advert != null) ourServer.monitor.subscribe(ApplicationStopping) { advert.close() }
+                }
+                .onFailure { lprintln("warning,server", "Field LAN discovery could not advertise: ${it.message}") }
             lprintln("info,startup", "server listening on https://localhost:$port")
             val initialURL = desktopStartupDocumentName()
                 ?.let { "https://localhost:${port}/index.html?file=${URLEncoder.encode(it, "UTF-8")}" }
