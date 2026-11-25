@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 26140 of 43560 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 26156 of 43588 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2103 undocumented entry points** (types, top-level functions and values) and 14546 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2103 undocumented entry points** (types, top-level functions and values) and 14558 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -163,6 +163,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [PingPongRenderToTexture.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/targets/PingPongRenderToTexture.kt) | Graphics | afield_four_graphics | 0 | 21 | 48% |
 | [PatSynth.kt](../src/jvmMain/kotlin/afield/audio/synth/PatSynth.kt) | Patterns | chain_pattern_particles | 0 | 20 | 52% |
 | [SentenceDiagram.kt](../src/jvmMain/kotlin/afield/graphics/text/sentences/SentenceDiagram.kt) | Graphics | sentence_diagrams | 0 | 20 | 58% |
+| [DiscreteEnergy.kt](../src/jvmMain/kotlin/afield/math/energy/DiscreteEnergy.kt) | Math | discrete_energy | 0 | 20 | 74% |
 | [alife_grains.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_grains.kt) | ALife | alife_examples | 0 | 20 | 73% |
 | [CameraOptics.kt](../src/jvmMain/kotlin/afield/simulation/optics/CameraOptics.kt) | Simulation | explainer_cameras | 0 | 20 | 72% |
 | [Orca.kt](../src/jvmMain/kotlin/afield/audio/synth/Orca.kt) | Patterns | orca | 0 | 19 | 67% |
@@ -234,7 +235,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [HeadTrackedSpatial.kt](../src/jvmMain/kotlin/afield/audio/synth/HeadTrackedSpatial.kt) | Patterns | pat_spatial | 0 | 8 | 68% |
 | [Patch.kt](../src/jvmMain/kotlin/afield/io/dmx/Patch.kt) | Lighting | dmx_lighting, chain_scene_to_light | 0 | 8 | 84% |
 | [RectSLSdfLook.kt](../src/jvmMain/kotlin/afield/lang/rectsl/RectSLSdfLook.kt) | Languages | rectsl_cheatsheet, rectsl_examples | 0 | 8 | 75% |
-| [DiscreteEnergy.kt](../src/jvmMain/kotlin/afield/math/energy/DiscreteEnergy.kt) | Math | discrete_energy | 0 | 8 | 84% |
 | [OpticalFlowOperation.kt](../src/jvmMain/kotlin/afield/media/vision/OpticalFlowOperation.kt) | Imaging | optical_flow | 0 | 8 | 55% |
 | [StringLiteralCompletion.kt](../src/jvmMain/kotlin/afield/runtime/completion/StringLiteralCompletion.kt) | Workspace | files_and_paths | 0 | 8 | 46% |
 | [alife_weight_cube.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_weight_cube.kt) | Simulation | braitenberg_vehicles, agent_transcripts | 0 | 8 | 73% |
@@ -479,7 +479,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [FLine.kt](../src/jvmMain/kotlin/afield/geometry/path/FLine.kt) | Graphics | — | 1 | 22 | 72% |
 | [docsPass.kt](../src/jvmMain/kotlin/afield/app/server/docsPass.kt) | Workspace | — | 1 | 21 | 18% |
 | [ReadingScene.kt](../src/jvmMain/kotlin/afield/graphics/scene/reading/ReadingScene.kt) | Graphics | — | 1 | 21 | 31% |
-| [operation_transcript.kt](../src/jvmMain/kotlin/afield/tools/automation/operation_transcript.kt) | Workspace | — | 1 | 21 | 31% |
+| [operation_transcript.kt](../src/jvmMain/kotlin/afield/tools/automation/operation_transcript.kt) | Workspace | — | 1 | 21 | 33% |
 | [OscillatorBankArrays.kt](../src/jvmMain/kotlin/afield/audio/engine/OscillatorBankArrays.kt) | Audio | — | 1 | 18 | 5% |
 | [DiagramConnection.kt](../src/jvmMain/kotlin/afield/graphics/scene/reading/DiagramConnection.kt) | Graphics | — | 1 | 18 | 24% |
 | [Geometry.kt](../src/jvmMain/kotlin/afield/graphics/text/sentences/Geometry.kt) | Graphics | — | 1 | 18 | 29% |
