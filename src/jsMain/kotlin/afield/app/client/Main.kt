@@ -8433,8 +8433,8 @@ fun <E> MutableSet<E>.copy() = HashSet<E>(this)
 private const val GO_JOBS_BADGE_DELAY_MS = 250
 
 /**
- * The "semi-launched" badge: a striped inset over the box's upper-right quadrant, holding the number
- * of its `go { }` blocks still running ([GoJobs]). Stopping the box cancels them.
+ * The "semi-launched" badge: a small striped square in the box's upper-right corner, holding the
+ * number of its `go { }` blocks still running ([GoJobs]). Stopping the box cancels them.
  */
 private fun setGoJobsBadge(uid: String, count: Int, strands: List<String>) {
     val box = document.body!!.getElementsByClassName("box").asList()
