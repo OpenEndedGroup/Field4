@@ -285,7 +285,7 @@ Its height sibling `fitOutputDisclosuresForScreenshot` sets panel heights too, b
 the live sizer does not own. It asks `window.fieldSizerOwnsPanelHeight`, the sizer's own answer: an
 open panel in `content` mode that nobody has dragged is already its content's height, and the next
 auto-size pass would put that height back whatever the prep wrote. It also leaves alone a panel
-whose frames all state their own height. What is left (a `fixed` panel, a dragged one) gets the
+whose frames all state their own height, and a panel that holds only controls. What is left (a `fixed` panel, a dragged one) gets the
 floor: 260 px for a panel holding an input, button or SVG, 120 px otherwise, and 36 px over the
 height it measures.
 

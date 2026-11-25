@@ -3,6 +3,8 @@
 package afield.audio.analysis.loris
 
 import afield.audio.engine.WavFloatArrayLoader
+import afield.runtime.NativeArea
+import afield.runtime.NativeCapability
 import java.io.*
 import java.nio.file.*
 import java.security.MessageDigest
@@ -140,16 +142,28 @@ data class LorisResult(val model: LorisModel, val samples: FloatArray, val prove
 }
 
 /** Lazy optional executable discovery; ordinary Field startup/build/tests never require Loris. */
-object LorisNative {
+object LorisNative : NativeCapability {
+    override val name = "loris"
+    override val title = "Loris sound analysis"
+    override val area = NativeArea.AUDIO
+    override val docsPage = "loris.md"
+    override val buildTask = "buildLorisNative"
+    override val install: Map<String, List<String>> = mapOf(
+        "macos" to listOf("xcode-select --install", "brew install cmake", "./gradlew buildLorisNative"),
+        "linux" to listOf("sudo apt install build-essential cmake    # or dnf / pacman equivalents", "./gradlew buildLorisNative"),
+        "windows" to listOf("winget install -e --id Kitware.CMake    # and Visual Studio C++ Build Tools", ".\\gradlew buildLorisNative"),
+    )
+
     const val REVISION = "eccd42ac847b08769643b0d0c36442ef0fd27f38"
-    private val name get() = if (System.getProperty("os.name").lowercase().contains("win")) "field_loris.exe" else "field_loris"
+    private val executableName get() = if (System.getProperty("os.name").lowercase().contains("win")) "field_loris.exe" else "field_loris"
     val executable: Path? get() = listOfNotNull(
         System.getProperty("afield.loris.executable")?.let(Path::of),
         System.getenv("AFIELD_LORIS_EXECUTABLE")?.let(Path::of),
-        Path.of("build/field-loris/build", name), Path.of("build/field-loris/build/Release", name),
+        Path.of("build/field-loris/build", executableName), Path.of("build/field-loris/build/Release", executableName),
     ).firstOrNull { Files.isRegularFile(it) }
-    val isAvailable: Boolean get() = executable != null
-    fun describe(): String = executable?.let { "Loris at ${it.toAbsolutePath()}" }
+    override val isAvailable: Boolean get() = executable != null
+    override val location: String? get() = executable?.toAbsolutePath()?.toString()
+    override fun describe(): String = executable?.let { "Loris at ${it.toAbsolutePath()}" }
         ?: "Loris is optional. Build with ./gradlew buildLorisNative or python tools/build_loris_native.py; set AFIELD_LORIS_EXECUTABLE to override."
 }
 

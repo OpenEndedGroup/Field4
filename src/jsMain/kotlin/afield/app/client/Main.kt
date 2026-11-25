@@ -1783,7 +1783,7 @@ private fun fitOutputDisclosuresForScreenshot(outputArea: HTMLElement) {
             // A panel the live sizer fits to its content is already the height the reader sees, and
             // the sizer puts that height back on its next pass. Flooring it here (120 px for a short
             // markdown card) lasted only for the measurement: every panel below was then measured
-            // too low, and a figure of two short cards ended in ~300 px of empty canvas.
+            // too low, and a figure of two one-line cards ended in 93 px of empty canvas.
             if (sizerOwnsPanelHeight(content)) return@forEach
             content.style.maxHeight = "none"
             content.style.setProperty("overflow", "visible")
@@ -1791,6 +1791,10 @@ private fun fitOutputDisclosuresForScreenshot(outputArea: HTMLElement) {
             // reader sees it in Field; flooring or padding it here would make the figure disagree.
             val frames = content.querySelectorAll("iframe").asList().mapNotNull { it as? HTMLElement }
             if (frames.isNotEmpty() && frames.all(::declaresIframeHeight)) return@forEach
+            // Likewise a panel of Field controls (`controlGroup`, `slider`, ...), even one the sizer
+            // does not own: its controls state their own size, and the 260 px floor below only ever
+            // added empty canvas under them.
+            if (isControlsOnlyPanel(content)) return@forEach
             val scrollHeight = (content.scrollHeight as? Number)?.toDouble() ?: 0.0
             val childHeights = content.children.asList()
                 .mapNotNull { child ->
@@ -1843,6 +1847,11 @@ private fun sizerOwnsPanelHeight(content: HTMLElement): Boolean {
     val test = window.asDynamic().fieldSizerOwnsPanelHeight ?: return false
     return test(content) == true
 }
+
+/** Whether [content] shows only Field controls: a `.control-group` and no frame, canvas, picture or drawing. */
+private fun isControlsOnlyPanel(content: HTMLElement): Boolean =
+    content.querySelector(".control-group") != null &&
+        content.querySelector("iframe, canvas, img, video, .afield-lines-output-shell") == null
 
 /** The tallest declared pixel height, when every element in [content] is an iframe that declares one. */
 private fun declaredIframeHeightOrNull(content: HTMLElement): Double? {

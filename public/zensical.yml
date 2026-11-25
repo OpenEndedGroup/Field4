@@ -192,6 +192,9 @@ nav:
     - Interactive Guides: interactive_guides.md
   - Presenting & Teaching:
     - Presenting with Field: presentation_studio.md
+    # Here rather than under Python: a baked Manim scene is mostly a figure for a talk, stepped one
+    # animation per cue. python.md links it for the reader who arrives from the Python side.
+    - Manim Scenes: manim.md
   - Drawing From Data:
     - Overview: drawing_from_data.md
     # After the overview, ahead of the groups: it is the small vocabulary underneath movement,

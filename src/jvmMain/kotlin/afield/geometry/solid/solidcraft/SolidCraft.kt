@@ -3,6 +3,8 @@
 package afield.geometry.solid.solidcraft
 
 import afield.geometry.mesh.TriMesh
+import afield.runtime.NativeArea
+import afield.runtime.NativeCapability
 import org.json.JSONObject
 import java.lang.foreign.Arena
 import java.lang.foreign.FunctionDescriptor
@@ -27,7 +29,18 @@ import java.nio.file.Path
  */
 
 /** Optional SolidCraft B-rep/document engine. Its model remains in Rust; Field copies display meshes. */
-object SolidCraftLibrary {
+object SolidCraftLibrary : NativeCapability {
+    override val name = "solidcraft"
+    override val title = "SolidCraft parametric CAD"
+    override val area = NativeArea.SOLIDS
+    override val docsPage = "solidcraft.md"
+    override val buildTask = "buildSolidCraftNative"
+    override val install: Map<String, List<String>> = mapOf(
+        "macos" to listOf("xcode-select --install", "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh    # Rust 1.95 or newer", "./gradlew buildSolidCraftNative"),
+        "linux" to listOf("sudo apt install build-essential git python3", "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh    # Rust 1.95 or newer", "./gradlew buildSolidCraftNative"),
+        "windows" to listOf("winget install -e --id Rustlang.Rustup    # and Visual Studio C++ Build Tools", "winget install -e --id Git.Git", ".\\gradlew buildSolidCraftNative"),
+    )
+
     private val fileName: String get() = when {
         System.getProperty("os.name").contains("win", ignoreCase = true) -> "field_solidcraft_jvm.dll"
         System.getProperty("os.name").contains("mac", ignoreCase = true) -> "libfield_solidcraft_jvm.dylib"
@@ -41,8 +54,9 @@ object SolidCraftLibrary {
     ).map(Path::of)
 
     val resolvedPath: Path? get() = searchedPaths.firstOrNull { Files.isRegularFile(it) }
-    val isAvailable: Boolean get() = resolvedPath != null
-    fun describe(): String = resolvedPath?.let { "SolidCraft bridge at $it" }
+    override val isAvailable: Boolean get() = resolvedPath != null
+    override val location: String? get() = resolvedPath?.toString()
+    override fun describe(): String = resolvedPath?.let { "SolidCraft bridge at $it" }
         ?: "SolidCraft bridge unavailable. Run ./gradlew buildSolidCraftNative or set AFIELD_SOLIDCRAFT_LIBRARY."
 }
 

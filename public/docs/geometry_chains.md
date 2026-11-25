@@ -12,7 +12,7 @@ chains them three ways.
 
 !!! note "Needs the libraries"
     These examples need the Morse–Smale, principal-curve and polyvector libraries. The welcome page's
-    **Geometry extensions** panel says which are built and how to build the rest.
+    **Optional native libraries** panel says which are built and how to build the rest.
 
 ## Ridges to a forest
 
