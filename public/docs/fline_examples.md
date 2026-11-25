@@ -4123,8 +4123,7 @@ val rough = fline {
         if (i == 0) moveTo(60 + r * Math.cos(a), 60 + r * Math.sin(a))
         else lineTo(60 + r * Math.cos(a), 60 + r * Math.sin(a))
     }
-}
-    .apply { color = vec(1.0, 1.0, 1.0, 0.8) }
+}.apply { color = vec(1.0, 1.0, 1.0, 0.8) }
 
 val (centre, radius, error) = rough.fitCircle(samples = 80)
 val fitted = FLine().circle(centre.x.toDouble(), centre.y.toDouble(), radius.toDouble()).apply {
