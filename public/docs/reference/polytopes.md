@@ -1974,7 +1974,7 @@ signature instead.
 
 `src/jvmMain/kotlin/afield/geometry/polytope/Transforms.kt` — [read the source](source/jvmMain/afield/geometry/polytope/Transforms/)
 
-**Used in:** [Polytopes: topology first, coordinates later](../polytope_examples.md)
+**Used in:** [Polytopes: topology first, coordinates later](../polytope_examples.md), [Generated vector API reference](../linear_algebra_api.md), [Spectral Geometry](../spectral_geometry.md)
 
 ### Top-level functions { #transforms-kt-functions }
 

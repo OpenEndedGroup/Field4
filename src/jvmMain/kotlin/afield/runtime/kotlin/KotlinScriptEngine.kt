@@ -835,7 +835,8 @@ fun createKotlinScriptEngine(
     properties: Map<String, Any?> = emptyMap(),
     implicitReceivers: List<KotlinType> = emptyList(),
     classLoader: ClassLoader? = null,
-    filePrefix: String = "EVAL_"
+    filePrefix: String = "EVAL_",
+    publishesToDocument: Boolean = false,
 ): KotlinScriptEngine {
     val backend = KotlinEngineConfig.activeBackend
     lprintln(
@@ -844,6 +845,6 @@ fun createKotlinScriptEngine(
     )
     return when (backend) {
         KotlinEngineConfig.Backend.K1 -> KotlinInterface(propertyClasses, properties, implicitReceivers, classLoader, filePrefix)
-        KotlinEngineConfig.Backend.K2 -> KotlinInterface2(propertyClasses, properties, implicitReceivers, classLoader, filePrefix)
+        KotlinEngineConfig.Backend.K2 -> KotlinInterface2(propertyClasses, properties, implicitReceivers, classLoader, filePrefix, publishesToDocument)
     }
 }

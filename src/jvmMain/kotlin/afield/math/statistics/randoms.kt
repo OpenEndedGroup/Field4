@@ -367,3 +367,35 @@ fun Vector4f.noise(d: Number) : Vector4f {
     this.w += (rng.nextFloat() - 0.5f) * scale
     return this
 }
+
+// Random vectors with the distributions sketches usually want, drawn from the box's generator, so
+// a re-run reproduces them and [setRandomSeed] changes them.
+
+/** A random point uniformly on the sphere of [radius] about the origin (three normals, normalized), as a new `Vec3`. */
+fun Vector3f.Companion.onSphere(radius: Number = 1): Vector3f {
+    var x: Double; var y: Double; var z: Double; var l: Double
+    do { x = randomGaussian(); y = randomGaussian(); z = randomGaussian(); l = kotlin.math.sqrt(x * x + y * y + z * z) } while (l < 1e-12)
+    val s = radius.toDouble() / l
+    return Vector3f((x * s).toFloat(), (y * s).toFloat(), (z * s).toFloat())
+}
+
+/** A random point uniformly inside the ball of [radius] about the origin, as a new `Vec3`. */
+fun Vector3f.Companion.inBall(radius: Number = 1): Vector3f =
+    onSphere(radius.toDouble() * kotlin.math.cbrt(random()))
+
+/** A random point uniformly on the circle of [radius] about the origin, as a new `Vec2`. */
+fun Vector2f.Companion.onCircle(radius: Number = 1): Vector2f =
+    (random() * 2 * kotlin.math.PI).let { a -> Vector2f((radius.toDouble() * kotlin.math.cos(a)).toFloat(), (radius.toDouble() * kotlin.math.sin(a)).toFloat()) }
+
+/** A random point uniformly inside the disc of [radius] about the origin (not bunched at the centre), as a new `Vec2`. */
+fun Vector2f.Companion.inDisc(radius: Number = 1): Vector2f = onCircle(radius.toDouble() * kotlin.math.sqrt(random()))
+
+/** This point moved by up to [amount] in each component, uniformly, as a new vector: `p jitter 0.1`. */
+infix fun afield.math.linalg.Vector2fc.jitter(amount: Number): Vector2f = amount.toDouble().let { a ->
+    Vector2f((x() + a * (2 * random() - 1)).toFloat(), (y() + a * (2 * random() - 1)).toFloat())
+}
+
+/** This point moved by up to [amount] in each component, uniformly, as a new vector. */
+infix fun afield.math.linalg.Vector3fc.jitter(amount: Number): Vector3f = amount.toDouble().let { a ->
+    Vector3f((x() + a * (2 * random() - 1)).toFloat(), (y() + a * (2 * random() - 1)).toFloat(), (z() + a * (2 * random() - 1)).toFloat())
+}

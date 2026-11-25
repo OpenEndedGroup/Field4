@@ -285,11 +285,6 @@ object DemoTranscriptExecSmokeTest {
         // Two sheets whose assertions are solved by Ceres on open; replaying them runs the real solve.
         "spreadsheet_constraints",
         "two_box_context",
-        // Compiles a data class onto the shared classloader and uses it from three other boxes, one
-        // of them through @rootExported. Slower than its neighbours — box 1 shells out to
-        // K2JVMCompiler and then recycles the other boxes' engines — but it is pure compute, and the
-        // second run of box 1 is what holds the two engine-recycling regressions down.
-        "shared_types_demo",
         "shared_kotlin_garden", // Document-scoped class, passed through a parent's prop.
         // Kotlin DataFrame's compiler plugin. All FOUR boxes are executed. This comment used to say
         // three were, with the fourth created and deliberately not executed because it documented a

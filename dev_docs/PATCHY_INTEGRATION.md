@@ -8,8 +8,13 @@ The user-facing instructions and examples are in [Patchy from Kotlin](../public/
 `Box.patchyWeb()` in `src/jvmMain/kotlin/afield/app/server/PatchyWeb.kt` opens a Field output containing
 `/patchy-field.html`, which embeds the optional WebAssembly site from `/patchy/`. The site is
 served only when `AFIELD_PATCHY_WEB_ROOT` names a build directory or the installed
-`~/.field4/patchy-web/site` exists. Field supplies the cross-origin isolation headers required
-by threaded Qt/WebAssembly. A normal Field build does not build or download Patchy.
+`~/.field4/patchy-web/site` exists. Threaded Qt/WebAssembly needs `SharedArrayBuffer`, which
+Field's Electron app turns on directly (`enable-features=SharedArrayBuffer` in
+`electron/main.js`). The server sends the COOP/COEP headers that isolate a page only with
+`AFIELD_CROSS_ORIGIN_ISOLATION=1`, for Patchy in an external browser: they apply to every Field
+page and block every cross-origin iframe in its output areas, so an installed Patchy never turns
+them on by itself. Under them `electron/framing-relief.cjs` still lets output iframes show other
+sites. A normal Field build does not build or download Patchy.
 
 `patchy_field.js` bridges the output iframe to Field's `outputRequests` binding and passes
 JSON-RPC messages to Patchy's iframe with same-origin `postMessage`. The matching native

@@ -237,7 +237,7 @@ interface Vector2fc {
      * @param other the vector to compare
      * @return the sum of the products of corresponding components
      */
-    fun dot(other: Vector2fc): Float = ((x() * other.x()) + (y() * other.y()))
+    infix fun dot(other: Vector2fc): Float = ((x() * other.x()) + (y() * other.y()))
 
     /**
      * Returns the squared length of this vector.
@@ -405,7 +405,7 @@ open class Vector2f() : Vector2fc, Cloneable {
      * @param other the component-wise divisor
      * @return this vector
      */
-    operator fun div(other: Vector2fc): Vector2f = div(other, this)
+    fun div(other: Vector2fc): Vector2f = div(other, this)
     /**
      * Adds a scalar to each component.
      *
@@ -439,7 +439,7 @@ open class Vector2f() : Vector2fc, Cloneable {
      * @param scalar the divisor
      * @return this vector
      */
-    operator fun div(scalar: Float): Vector2f = div(scalar, this)
+    fun div(scalar: Float): Vector2f = div(scalar, this)
     /**
      * Reverses the vector by negating every component.
      *
@@ -541,6 +541,16 @@ open class Vector2f() : Vector2fc, Cloneable {
             require(components.size == 2) { "Vector2f literal requires 2 components, got ${components.size}" }
             return Vector2f(components[0].toFloat(), components[1].toFloat())
         }
+
+        // Typed read-only, so nobody can normalize() the shared axis out from under everyone else.
+        /** The unit vector along +x. */
+        @JvmField val X: Vector2fc = Vector2f(1.0f, 0.0f)
+        /** The unit vector along +y. */
+        @JvmField val Y: Vector2fc = Vector2f(0.0f, 1.0f)
+        /** Every component zero. */
+        @JvmField val ZERO: Vector2fc = Vector2f(0.0f, 0.0f)
+        /** Every component one. */
+        @JvmField val ONE: Vector2fc = Vector2f(1.0f, 1.0f)
     }
 }
 
@@ -788,7 +798,7 @@ interface Vector3fc {
      * @param other the vector to compare
      * @return the sum of the products of corresponding components
      */
-    fun dot(other: Vector3fc): Float = (((x() * other.x()) + (y() * other.y())) + (z() * other.z()))
+    infix fun dot(other: Vector3fc): Float = (((x() * other.x()) + (y() * other.y())) + (z() * other.z()))
 
     /**
      * Returns the squared length of this vector.
@@ -981,7 +991,7 @@ open class Vector3f() : Vector3fc, Cloneable {
      * @param other the component-wise divisor
      * @return this vector
      */
-    operator fun div(other: Vector3fc): Vector3f = div(other, this)
+    fun div(other: Vector3fc): Vector3f = div(other, this)
     /**
      * Adds a scalar to each component.
      *
@@ -1015,7 +1025,7 @@ open class Vector3f() : Vector3fc, Cloneable {
      * @param scalar the divisor
      * @return this vector
      */
-    operator fun div(scalar: Float): Vector3f = div(scalar, this)
+    fun div(scalar: Float): Vector3f = div(scalar, this)
     /**
      * Reverses the vector by negating every component.
      *
@@ -1128,6 +1138,18 @@ open class Vector3f() : Vector3fc, Cloneable {
             require(components.size == 3) { "Vector3f literal requires 3 components, got ${components.size}" }
             return Vector3f(components[0].toFloat(), components[1].toFloat(), components[2].toFloat())
         }
+
+        // Typed read-only, so nobody can normalize() the shared axis out from under everyone else.
+        /** The unit vector along +x. */
+        @JvmField val X: Vector3fc = Vector3f(1.0f, 0.0f, 0.0f)
+        /** The unit vector along +y. */
+        @JvmField val Y: Vector3fc = Vector3f(0.0f, 1.0f, 0.0f)
+        /** The unit vector along +z. */
+        @JvmField val Z: Vector3fc = Vector3f(0.0f, 0.0f, 1.0f)
+        /** Every component zero. */
+        @JvmField val ZERO: Vector3fc = Vector3f(0.0f, 0.0f, 0.0f)
+        /** Every component one. */
+        @JvmField val ONE: Vector3fc = Vector3f(1.0f, 1.0f, 1.0f)
     }
 }
 
@@ -1393,7 +1415,7 @@ interface Vector4fc {
      * @param other the vector to compare
      * @return the sum of the products of corresponding components
      */
-    fun dot(other: Vector4fc): Float = ((((x() * other.x()) + (y() * other.y())) + (z() * other.z())) + (w() * other.w()))
+    infix fun dot(other: Vector4fc): Float = ((((x() * other.x()) + (y() * other.y())) + (z() * other.z())) + (w() * other.w()))
 
     /**
      * Returns the squared length of this vector.
@@ -1581,7 +1603,7 @@ open class Vector4f() : Vector4fc, Cloneable {
      * @param other the component-wise divisor
      * @return this vector
      */
-    operator fun div(other: Vector4fc): Vector4f = div(other, this)
+    fun div(other: Vector4fc): Vector4f = div(other, this)
     /**
      * Adds a scalar to each component.
      *
@@ -1615,7 +1637,7 @@ open class Vector4f() : Vector4fc, Cloneable {
      * @param scalar the divisor
      * @return this vector
      */
-    operator fun div(scalar: Float): Vector4f = div(scalar, this)
+    fun div(scalar: Float): Vector4f = div(scalar, this)
     /**
      * Reverses the vector by negating every component.
      *
@@ -1719,6 +1741,20 @@ open class Vector4f() : Vector4fc, Cloneable {
             require(components.size == 4) { "Vector4f literal requires 4 components, got ${components.size}" }
             return Vector4f(components[0].toFloat(), components[1].toFloat(), components[2].toFloat(), components[3].toFloat())
         }
+
+        // Typed read-only, so nobody can normalize() the shared axis out from under everyone else.
+        /** The unit vector along +x. */
+        @JvmField val X: Vector4fc = Vector4f(1.0f, 0.0f, 0.0f, 0.0f)
+        /** The unit vector along +y. */
+        @JvmField val Y: Vector4fc = Vector4f(0.0f, 1.0f, 0.0f, 0.0f)
+        /** The unit vector along +z. */
+        @JvmField val Z: Vector4fc = Vector4f(0.0f, 0.0f, 1.0f, 0.0f)
+        /** The unit vector along +w. */
+        @JvmField val W: Vector4fc = Vector4f(0.0f, 0.0f, 0.0f, 1.0f)
+        /** Every component zero. */
+        @JvmField val ZERO: Vector4fc = Vector4f(0.0f, 0.0f, 0.0f, 0.0f)
+        /** Every component one. */
+        @JvmField val ONE: Vector4fc = Vector4f(1.0f, 1.0f, 1.0f, 1.0f)
     }
 }
 
@@ -1948,7 +1984,7 @@ interface Vector2dc {
      * @param other the vector to compare
      * @return the sum of the products of corresponding components
      */
-    fun dot(other: Vector2dc): Double = ((x() * other.x()) + (y() * other.y()))
+    infix fun dot(other: Vector2dc): Double = ((x() * other.x()) + (y() * other.y()))
 
     /**
      * Returns the squared length of this vector.
@@ -2116,7 +2152,7 @@ open class Vector2d() : Vector2dc, Cloneable {
      * @param other the component-wise divisor
      * @return this vector
      */
-    operator fun div(other: Vector2dc): Vector2d = div(other, this)
+    fun div(other: Vector2dc): Vector2d = div(other, this)
     /**
      * Adds a scalar to each component.
      *
@@ -2150,7 +2186,7 @@ open class Vector2d() : Vector2dc, Cloneable {
      * @param scalar the divisor
      * @return this vector
      */
-    operator fun div(scalar: Double): Vector2d = div(scalar, this)
+    fun div(scalar: Double): Vector2d = div(scalar, this)
     /**
      * Reverses the vector by negating every component.
      *
@@ -2252,6 +2288,16 @@ open class Vector2d() : Vector2dc, Cloneable {
             require(components.size == 2) { "Vector2d literal requires 2 components, got ${components.size}" }
             return Vector2d(components[0].toDouble(), components[1].toDouble())
         }
+
+        // Typed read-only, so nobody can normalize() the shared axis out from under everyone else.
+        /** The unit vector along +x. */
+        @JvmField val X: Vector2dc = Vector2d(1.0, 0.0)
+        /** The unit vector along +y. */
+        @JvmField val Y: Vector2dc = Vector2d(0.0, 1.0)
+        /** Every component zero. */
+        @JvmField val ZERO: Vector2dc = Vector2d(0.0, 0.0)
+        /** Every component one. */
+        @JvmField val ONE: Vector2dc = Vector2d(1.0, 1.0)
     }
 }
 
@@ -2499,7 +2545,7 @@ interface Vector3dc {
      * @param other the vector to compare
      * @return the sum of the products of corresponding components
      */
-    fun dot(other: Vector3dc): Double = (((x() * other.x()) + (y() * other.y())) + (z() * other.z()))
+    infix fun dot(other: Vector3dc): Double = (((x() * other.x()) + (y() * other.y())) + (z() * other.z()))
 
     /**
      * Returns the squared length of this vector.
@@ -2692,7 +2738,7 @@ open class Vector3d() : Vector3dc, Cloneable {
      * @param other the component-wise divisor
      * @return this vector
      */
-    operator fun div(other: Vector3dc): Vector3d = div(other, this)
+    fun div(other: Vector3dc): Vector3d = div(other, this)
     /**
      * Adds a scalar to each component.
      *
@@ -2726,7 +2772,7 @@ open class Vector3d() : Vector3dc, Cloneable {
      * @param scalar the divisor
      * @return this vector
      */
-    operator fun div(scalar: Double): Vector3d = div(scalar, this)
+    fun div(scalar: Double): Vector3d = div(scalar, this)
     /**
      * Reverses the vector by negating every component.
      *
@@ -2839,6 +2885,18 @@ open class Vector3d() : Vector3dc, Cloneable {
             require(components.size == 3) { "Vector3d literal requires 3 components, got ${components.size}" }
             return Vector3d(components[0].toDouble(), components[1].toDouble(), components[2].toDouble())
         }
+
+        // Typed read-only, so nobody can normalize() the shared axis out from under everyone else.
+        /** The unit vector along +x. */
+        @JvmField val X: Vector3dc = Vector3d(1.0, 0.0, 0.0)
+        /** The unit vector along +y. */
+        @JvmField val Y: Vector3dc = Vector3d(0.0, 1.0, 0.0)
+        /** The unit vector along +z. */
+        @JvmField val Z: Vector3dc = Vector3d(0.0, 0.0, 1.0)
+        /** Every component zero. */
+        @JvmField val ZERO: Vector3dc = Vector3d(0.0, 0.0, 0.0)
+        /** Every component one. */
+        @JvmField val ONE: Vector3dc = Vector3d(1.0, 1.0, 1.0)
     }
 }
 
@@ -3104,7 +3162,7 @@ interface Vector4dc {
      * @param other the vector to compare
      * @return the sum of the products of corresponding components
      */
-    fun dot(other: Vector4dc): Double = ((((x() * other.x()) + (y() * other.y())) + (z() * other.z())) + (w() * other.w()))
+    infix fun dot(other: Vector4dc): Double = ((((x() * other.x()) + (y() * other.y())) + (z() * other.z())) + (w() * other.w()))
 
     /**
      * Returns the squared length of this vector.
@@ -3292,7 +3350,7 @@ open class Vector4d() : Vector4dc, Cloneable {
      * @param other the component-wise divisor
      * @return this vector
      */
-    operator fun div(other: Vector4dc): Vector4d = div(other, this)
+    fun div(other: Vector4dc): Vector4d = div(other, this)
     /**
      * Adds a scalar to each component.
      *
@@ -3326,7 +3384,7 @@ open class Vector4d() : Vector4dc, Cloneable {
      * @param scalar the divisor
      * @return this vector
      */
-    operator fun div(scalar: Double): Vector4d = div(scalar, this)
+    fun div(scalar: Double): Vector4d = div(scalar, this)
     /**
      * Reverses the vector by negating every component.
      *
@@ -3430,6 +3488,20 @@ open class Vector4d() : Vector4dc, Cloneable {
             require(components.size == 4) { "Vector4d literal requires 4 components, got ${components.size}" }
             return Vector4d(components[0].toDouble(), components[1].toDouble(), components[2].toDouble(), components[3].toDouble())
         }
+
+        // Typed read-only, so nobody can normalize() the shared axis out from under everyone else.
+        /** The unit vector along +x. */
+        @JvmField val X: Vector4dc = Vector4d(1.0, 0.0, 0.0, 0.0)
+        /** The unit vector along +y. */
+        @JvmField val Y: Vector4dc = Vector4d(0.0, 1.0, 0.0, 0.0)
+        /** The unit vector along +z. */
+        @JvmField val Z: Vector4dc = Vector4d(0.0, 0.0, 1.0, 0.0)
+        /** The unit vector along +w. */
+        @JvmField val W: Vector4dc = Vector4d(0.0, 0.0, 0.0, 1.0)
+        /** Every component zero. */
+        @JvmField val ZERO: Vector4dc = Vector4d(0.0, 0.0, 0.0, 0.0)
+        /** Every component one. */
+        @JvmField val ONE: Vector4dc = Vector4d(1.0, 1.0, 1.0, 1.0)
     }
 }
 
@@ -3767,7 +3839,7 @@ interface Vector8hc {
      * @param other the vector to compare
      * @return the sum of the products of corresponding components
      */
-    fun dot(other: Vector8hc): Float = ((((((((x() * other.x()) + (y() * other.y())) + (z() * other.z())) + (w() * other.w())) + (a() * other.a())) + (b() * other.b())) + (c() * other.c())) + (d() * other.d()))
+    infix fun dot(other: Vector8hc): Float = ((((((((x() * other.x()) + (y() * other.y())) + (z() * other.z())) + (w() * other.w())) + (a() * other.a())) + (b() * other.b())) + (c() * other.c())) + (d() * other.d()))
 
     /**
      * Returns the squared length of this vector.
@@ -3989,7 +4061,7 @@ open class Vector8h() : Vector8hc, Cloneable {
      * @param other the component-wise divisor
      * @return this vector
      */
-    operator fun div(other: Vector8hc): Vector8h = div(other, this)
+    fun div(other: Vector8hc): Vector8h = div(other, this)
     /**
      * Adds a scalar to each component.
      *
@@ -4023,7 +4095,7 @@ open class Vector8h() : Vector8hc, Cloneable {
      * @param scalar the divisor
      * @return this vector
      */
-    operator fun div(scalar: Float): Vector8h = div(scalar, this)
+    fun div(scalar: Float): Vector8h = div(scalar, this)
     /**
      * Reverses the vector by negating every component.
      *

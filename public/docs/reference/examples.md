@@ -4,7 +4,7 @@
 
 Runnable examples, galleries and verification programs. Read these for usage patterns; their entry points are not a promise of a reusable box API.
 
-240 source file(s), 761 public symbol(s), 333 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+243 source file(s), 767 public symbol(s), 335 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -323,7 +323,7 @@ Verification-integrity harness: executes / compiles the box bodies of *every* sh
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L1230) |  |
+| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L1225) |  |
 
 ## DocsPanelCodeLinksSmokeTest.kt { #docspanelcodelinkssmoketest-kt }
 
@@ -2232,6 +2232,46 @@ Real analytic coverage, alpha and immutable atlas replacement on the GPU.
 | Declaration | Summary |
 | --- | --- |
 | <a id="slugrendersmoke-kt--slugrendersmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/SlugRenderSmoke/#L43) |  |
+
+## SpectralBunnyFilm.kt { #spectralbunnyfilm-kt }
+
+`src/jvmMain/kotlin/afield/examples/four/SpectralBunnyFilm.kt` — [read the source](source/jvmMain/afield/examples/four/SpectralBunnyFilm/)
+
+### SpectralBunnyFilm { #spectralbunnyfilm-kt-spectralbunnyfilm }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">SpectralBunnyFilm</span></code>](source/jvmMain/afield/examples/four/SpectralBunnyFilm/#L37)
+
+Offline capture for the drawing-machine film in the spectral geometry guide.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="spectralbunnyfilm-kt--spectralbunnyfilm--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/SpectralBunnyFilm/#L39) |  |
+
+## SpectralBunnyLattice.kt { #spectralbunnylattice-kt }
+
+`src/jvmMain/kotlin/afield/examples/four/SpectralBunnyLattice.kt` — [read the source](source/jvmMain/afield/examples/four/SpectralBunnyLattice/)
+
+### SpectralBunnyLattice { #spectralbunnylattice-kt-spectralbunnylattice }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">SpectralBunnyLattice</span></code>](source/jvmMain/afield/examples/four/SpectralBunnyLattice/#L27)
+
+Offline capture of the periodic zero set in the spectral geometry guide.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="spectralbunnylattice-kt--spectralbunnylattice--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/SpectralBunnyLattice/#L32) |  |
+
+## SpectralGeometryGpuSmoke.kt { #spectralgeometrygpusmoke-kt }
+
+`src/jvmMain/kotlin/afield/examples/four/SpectralGeometryGpuSmoke.kt` — [read the source](source/jvmMain/afield/examples/four/SpectralGeometryGpuSmoke/)
+
+### SpectralGeometryGpuSmoke { #spectralgeometrygpusmoke-kt-spectralgeometrygpusmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">SpectralGeometryGpuSmoke</span></code>](source/jvmMain/afield/examples/four/SpectralGeometryGpuSmoke/#L36)
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="spectralgeometrygpusmoke-kt--spectralgeometrygpusmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/SpectralGeometryGpuSmoke/#L38) |  |
 
 ## StereoPackingSmokeTest.kt { #stereopackingsmoketest-kt }
 

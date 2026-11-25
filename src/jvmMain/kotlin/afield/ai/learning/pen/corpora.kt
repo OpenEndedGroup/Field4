@@ -715,6 +715,60 @@ object PenCorpora {
 }
 
 /**
+ * Writes the corpora [PenGpt.corpora] was trained on, one `<name>.jsonl` per corpus in a folder:
+ * `run-jvm-main afield.ai.learning.pen.PenGptCorpora --arg <folder>`. `tools/pengpt_field_corpora.py`
+ * turns them into PenGPT's stroke files for training. They are the generators of [PenCorpora], with
+ * the lettering cut to a word or two, so that letters stay several grid cells tall once a drawing is
+ * scaled to the drawing model's frame.
+ */
+object PenGptCorpora {
+    /** Every corpus by name: the drawing it makes for a seed. */
+    val makers: Map<String, (Long) -> FLine> = linkedMapOf(
+        "hershey" to { s -> PenDrawings.hershey(s, HersheyFont.names[(s % HersheyFont.names.size).toInt()], words = 2) },
+        "harmonograph" to { s -> PenDrawings.harmonograph(s) },
+        "plants" to { s -> PenDrawings.plant(s) },
+        "truchet" to { s -> PenDrawings.truchet(s) },
+        "boids" to { s -> PenDrawings.boids(s) },
+        "mixed" to { s -> PenDrawings.twoHands(s, words = 1) },
+        "michaux" to { s -> PenDrawings.michaux(s) },
+        "cracks" to { s -> PenDrawings.cracks(s) },
+        "echoes" to { s -> PenDrawings.echoes(s) },
+    )
+
+    /**
+     * Write [per] drawings of each corpus into [folder], labelled with its name, keeping those that
+     * fit [model]'s context. Returns how many of each were kept.
+     */
+    fun write(folder: File, per: Int = 6000, model: PenGpt = PenGpt.sketch, only: Set<String> = emptySet()): Map<String, Int> {
+        folder.mkdirs()
+        val kept = linkedMapOf<String, Int>()
+        for ((name, make) in makers) {
+            if (only.isNotEmpty() && name !in only) continue
+            var n = 0
+            File(folder, "$name.jsonl").bufferedWriter().use { out ->
+                // a chunk at a time, so that a large corpus is never all in memory
+                for (chunk in (0L until per.toLong()).chunked(500)) {
+                    val fits = chunk.parallelStream().map { make(it) }.toList()
+                        .filter { model.encode(model.inFrame(it)).size <= model.contextLength - 2 }
+                    val part = File(folder, "$name.part.jsonl")
+                    n += model.writeCorpus(part, fits, label = name).size
+                    part.bufferedReader().use { it.copyTo(out) }
+                    part.delete()
+                }
+            }
+            kept[name] = n
+        }
+        return kept
+    }
+
+    @JvmStatic
+    fun main(args: Array<String>) {
+        val folder = File(args.firstOrNull() ?: "build/pengpt-corpora")
+        for ((name, n) in write(folder, only = args.drop(1).toSet())) println("$name: $n drawings -> $folder/$name.jsonl")
+    }
+}
+
+/**
  * How much of [line] runs alongside ink it drew earlier: the share of its points (resampled the way
  * a pen reads a line) with an earlier point, more than [recent] points back, within [within]
  * drawing units. Hatching scores high; a single wandering line scores near zero.

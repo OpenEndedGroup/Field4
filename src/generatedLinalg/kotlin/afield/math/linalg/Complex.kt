@@ -35,11 +35,37 @@ class Complexf(@JvmField val re: Float, @JvmField val im: Float) {
     /** The angle from the positive real axis, in radians, in −π..π. */
     val arg: Float get() = atan2(im, re)
     /** e to the power of this number: e^re · (cos im + i sin im). */
-    fun exp(): Complexf = kotlin.math.exp(re).let { Complexf(it * cos(im), it * sin(im)) }
+    fun exp(): Complexf = kotlin.math.exp(re).let { Complexf(it * kotlin.math.cos(im), it * kotlin.math.sin(im)) }
     /** The principal natural logarithm: ln|z| + i·arg z. */
     fun ln(): Complexf = Complexf(kotlin.math.ln(abs), arg)
     /** The principal power z^p, through exp and ln. Zero to any power is zero. */
     fun pow(p: Number): Complexf = if (re == 0.0f && im == 0.0f) this else (ln() * p).exp()
+    /** The principal power z^w for a complex exponent, through exp and ln. Zero to any power is zero. */
+    fun pow(w: Complexf): Complexf = if (re == 0.0f && im == 0.0f) this else (ln() * w).exp()
+    /** The principal square root: half the angle, the square root of the magnitude. Its real part is never negative. */
+    fun sqrt(): Complexf = Complexf.polar(kotlin.math.sqrt(abs), arg / 2)
+    /** The complex sine, sin re · cosh im + i cos re · sinh im. On a grid of points it is a conformal map. */
+    fun sin(): Complexf = Complexf(kotlin.math.sin(re) * kotlin.math.cosh(im), kotlin.math.cos(re) * kotlin.math.sinh(im))
+    /** The complex cosine, cos re · cosh im − i sin re · sinh im. */
+    fun cos(): Complexf = Complexf(kotlin.math.cos(re) * kotlin.math.cosh(im), -kotlin.math.sin(re) * kotlin.math.sinh(im))
+    /** A unit-magnitude copy pointing the same way, like a vector's `n`. Zero stays zero. */
+    val n: Complexf get() = abs.let { if (it == 0.0f) this else Complexf(re / it, im / it) }
+    /** The squared magnitude |z|², without the square root. */
+    val sq: Float get() = re * re + im * im
+    /** This number turned [theta] radians anticlockwise: multiplication by `polar(1, theta)`. */
+    infix fun rot(theta: Number): Complexf = this * polar(1, theta)
+    /** The point [p] multiplied as a complex number: turned by [arg] and scaled by [abs]. A new vector. */
+    operator fun times(p: Vector2fc): Vector2f = Vector2f(re * p.x() - im * p.y(), re * p.y() + im * p.x())
+    /** True when both parts are within 1e-5f of [o]'s: the comparison to use where `==` (bit-for-bit) is too strict. */
+    infix fun near(o: Complexf): Boolean = near(o, 1e-5f)
+    /** True when both parts are within [tolerance] of [o]'s. */
+    fun near(o: Complexf, tolerance: Number): Boolean = tolerance.toFloat().let { t -> kotlin.math.abs(re - o.re) <= t && kotlin.math.abs(im - o.im) <= t }
+    /** "This, then [o]": the composed turn-and-scale, `o * this`. Complex multiplication commutes, so it is also `this * o`; the name is for symmetry with quaternions. */
+    infix fun then(o: Complexf): Complexf = o * this
+    /** Starts `z lerp t to w`, the straight line between two complex numbers. */
+    infix fun lerp(t: Number): ComplexfLerp = ComplexfLerp(this, t.toFloat())
+    /** Starts `z slerp t to w`, the arc: the angle turns the short way at a constant rate and the magnitude moves linearly. */
+    infix fun slerp(t: Number): ComplexfSlerp = ComplexfSlerp(this, t.toFloat())
     /** This number as the 2D vector (re, im). */
     fun toVector(): Vector2f = Vector2f(re, im)
 
@@ -68,6 +94,23 @@ operator fun Number.plus(z: Complexf): Complexf = z + this
 operator fun Number.times(z: Complexf): Complexf = z * this
 operator fun Number.minus(z: Complexf): Complexf = -z + this
 operator fun Number.div(z: Complexf): Complexf = Complexf(this, 0) / z
+/** The point multiplied as a complex number: turned by `z.arg` and scaled by `z.abs`, the planar counterpart of `p * q`. A new vector. */
+operator fun Vector2fc.times(z: Complexf): Vector2f = z * this
+
+/** The first half of `z lerp t to w`; finish it with [to]. */
+class ComplexfLerp internal constructor(private val from: Complexf, private val t: Float) {
+    /** The number [t] of the way from the left-hand one to [b] in a straight line. */
+    infix fun to(b: Complexf): Complexf = Complexf(from.re + (b.re - from.re) * t, from.im + (b.im - from.im) * t)
+}
+/** The first half of `z slerp t to w`; finish it with [to]. */
+class ComplexfSlerp internal constructor(private val from: Complexf, private val t: Float) {
+    /** The number [t] of the way round the arc from the left-hand one to [b]: angle the short way, magnitude linearly. */
+    infix fun to(b: Complexf): Complexf {
+        var d = b.arg - from.arg
+        if (d > kotlin.math.PI) d -= (2 * kotlin.math.PI).toFloat() else if (d < -kotlin.math.PI) d += (2 * kotlin.math.PI).toFloat()
+        return Complexf.polar(from.abs + (b.abs - from.abs) * t, from.arg + d * t)
+    }
+}
 
 /**
  * An immutable two-component number [a] + [b]·ε whose unit squares to [epsilon2].
@@ -108,6 +151,10 @@ class Hypercomplexf(@JvmField val a: Float, @JvmField val b: Float, @JvmField va
             else -> sqrt(epsilon2).let { k -> Hypercomplexf(e * cosh(k * b), e * sinh(k * b) / k, epsilon2) }
         }
     }
+    /** True when both parts are within 1e-5f of [o]'s and the two share ε². */
+    infix fun near(o: Hypercomplexf): Boolean = near(o, 1e-5f)
+    /** True when both parts are within [tolerance] of [o]'s and the two share ε². */
+    fun near(o: Hypercomplexf, tolerance: Number): Boolean = tolerance.toFloat().let { t -> epsilon2 == o.epsilon2 && kotlin.math.abs(a - o.a) <= t && kotlin.math.abs(b - o.b) <= t }
     /** This number as the 2D vector (a, b). */
     fun toVector(): Vector2f = Vector2f(a, b)
 
@@ -124,6 +171,10 @@ class Hypercomplexf(@JvmField val a: Float, @JvmField val b: Float, @JvmField va
         fun split(a: Number, b: Number): Hypercomplexf = Hypercomplexf(a, b, 1)
     }
 }
+operator fun Number.plus(z: Hypercomplexf): Hypercomplexf = z + this
+operator fun Number.times(z: Hypercomplexf): Hypercomplexf = z * this
+operator fun Number.minus(z: Hypercomplexf): Hypercomplexf = -z + this
+operator fun Number.div(z: Hypercomplexf): Hypercomplexf = Hypercomplexf(this, 0, z.epsilon2) / z
 
 /**
  * An immutable complex number [re] + [im]·i in 64-bit precision.
@@ -155,11 +206,37 @@ class Complexd(@JvmField val re: Double, @JvmField val im: Double) {
     /** The angle from the positive real axis, in radians, in −π..π. */
     val arg: Double get() = atan2(im, re)
     /** e to the power of this number: e^re · (cos im + i sin im). */
-    fun exp(): Complexd = kotlin.math.exp(re).let { Complexd(it * cos(im), it * sin(im)) }
+    fun exp(): Complexd = kotlin.math.exp(re).let { Complexd(it * kotlin.math.cos(im), it * kotlin.math.sin(im)) }
     /** The principal natural logarithm: ln|z| + i·arg z. */
     fun ln(): Complexd = Complexd(kotlin.math.ln(abs), arg)
     /** The principal power z^p, through exp and ln. Zero to any power is zero. */
     fun pow(p: Number): Complexd = if (re == 0.0 && im == 0.0) this else (ln() * p).exp()
+    /** The principal power z^w for a complex exponent, through exp and ln. Zero to any power is zero. */
+    fun pow(w: Complexd): Complexd = if (re == 0.0 && im == 0.0) this else (ln() * w).exp()
+    /** The principal square root: half the angle, the square root of the magnitude. Its real part is never negative. */
+    fun sqrt(): Complexd = Complexd.polar(kotlin.math.sqrt(abs), arg / 2)
+    /** The complex sine, sin re · cosh im + i cos re · sinh im. On a grid of points it is a conformal map. */
+    fun sin(): Complexd = Complexd(kotlin.math.sin(re) * kotlin.math.cosh(im), kotlin.math.cos(re) * kotlin.math.sinh(im))
+    /** The complex cosine, cos re · cosh im − i sin re · sinh im. */
+    fun cos(): Complexd = Complexd(kotlin.math.cos(re) * kotlin.math.cosh(im), -kotlin.math.sin(re) * kotlin.math.sinh(im))
+    /** A unit-magnitude copy pointing the same way, like a vector's `n`. Zero stays zero. */
+    val n: Complexd get() = abs.let { if (it == 0.0) this else Complexd(re / it, im / it) }
+    /** The squared magnitude |z|², without the square root. */
+    val sq: Double get() = re * re + im * im
+    /** This number turned [theta] radians anticlockwise: multiplication by `polar(1, theta)`. */
+    infix fun rot(theta: Number): Complexd = this * polar(1, theta)
+    /** The point [p] multiplied as a complex number: turned by [arg] and scaled by [abs]. A new vector. */
+    operator fun times(p: Vector2dc): Vector2d = Vector2d(re * p.x() - im * p.y(), re * p.y() + im * p.x())
+    /** True when both parts are within 1e-9 of [o]'s: the comparison to use where `==` (bit-for-bit) is too strict. */
+    infix fun near(o: Complexd): Boolean = near(o, 1e-9)
+    /** True when both parts are within [tolerance] of [o]'s. */
+    fun near(o: Complexd, tolerance: Number): Boolean = tolerance.toDouble().let { t -> kotlin.math.abs(re - o.re) <= t && kotlin.math.abs(im - o.im) <= t }
+    /** "This, then [o]": the composed turn-and-scale, `o * this`. Complex multiplication commutes, so it is also `this * o`; the name is for symmetry with quaternions. */
+    infix fun then(o: Complexd): Complexd = o * this
+    /** Starts `z lerp t to w`, the straight line between two complex numbers. */
+    infix fun lerp(t: Number): ComplexdLerp = ComplexdLerp(this, t.toDouble())
+    /** Starts `z slerp t to w`, the arc: the angle turns the short way at a constant rate and the magnitude moves linearly. */
+    infix fun slerp(t: Number): ComplexdSlerp = ComplexdSlerp(this, t.toDouble())
     /** This number as the 2D vector (re, im). */
     fun toVector(): Vector2d = Vector2d(re, im)
 
@@ -188,6 +265,23 @@ operator fun Number.plus(z: Complexd): Complexd = z + this
 operator fun Number.times(z: Complexd): Complexd = z * this
 operator fun Number.minus(z: Complexd): Complexd = -z + this
 operator fun Number.div(z: Complexd): Complexd = Complexd(this, 0) / z
+/** The point multiplied as a complex number: turned by `z.arg` and scaled by `z.abs`, the planar counterpart of `p * q`. A new vector. */
+operator fun Vector2dc.times(z: Complexd): Vector2d = z * this
+
+/** The first half of `z lerp t to w`; finish it with [to]. */
+class ComplexdLerp internal constructor(private val from: Complexd, private val t: Double) {
+    /** The number [t] of the way from the left-hand one to [b] in a straight line. */
+    infix fun to(b: Complexd): Complexd = Complexd(from.re + (b.re - from.re) * t, from.im + (b.im - from.im) * t)
+}
+/** The first half of `z slerp t to w`; finish it with [to]. */
+class ComplexdSlerp internal constructor(private val from: Complexd, private val t: Double) {
+    /** The number [t] of the way round the arc from the left-hand one to [b]: angle the short way, magnitude linearly. */
+    infix fun to(b: Complexd): Complexd {
+        var d = b.arg - from.arg
+        if (d > kotlin.math.PI) d -= (2 * kotlin.math.PI).toDouble() else if (d < -kotlin.math.PI) d += (2 * kotlin.math.PI).toDouble()
+        return Complexd.polar(from.abs + (b.abs - from.abs) * t, from.arg + d * t)
+    }
+}
 
 /**
  * An immutable two-component number [a] + [b]·ε whose unit squares to [epsilon2].
@@ -228,6 +322,10 @@ class Hypercomplexd(@JvmField val a: Double, @JvmField val b: Double, @JvmField 
             else -> sqrt(epsilon2).let { k -> Hypercomplexd(e * cosh(k * b), e * sinh(k * b) / k, epsilon2) }
         }
     }
+    /** True when both parts are within 1e-9 of [o]'s and the two share ε². */
+    infix fun near(o: Hypercomplexd): Boolean = near(o, 1e-9)
+    /** True when both parts are within [tolerance] of [o]'s and the two share ε². */
+    fun near(o: Hypercomplexd, tolerance: Number): Boolean = tolerance.toDouble().let { t -> epsilon2 == o.epsilon2 && kotlin.math.abs(a - o.a) <= t && kotlin.math.abs(b - o.b) <= t }
     /** This number as the 2D vector (a, b). */
     fun toVector(): Vector2d = Vector2d(a, b)
 
@@ -244,3 +342,12 @@ class Hypercomplexd(@JvmField val a: Double, @JvmField val b: Double, @JvmField 
         fun split(a: Number, b: Number): Hypercomplexd = Hypercomplexd(a, b, 1)
     }
 }
+operator fun Number.plus(z: Hypercomplexd): Hypercomplexd = z + this
+operator fun Number.times(z: Hypercomplexd): Hypercomplexd = z * this
+operator fun Number.minus(z: Hypercomplexd): Hypercomplexd = -z + this
+operator fun Number.div(z: Hypercomplexd): Hypercomplexd = Hypercomplexd(this, 0, z.epsilon2) / z
+
+/** [this] times i, in double precision, so `2 + 3.im` is the complex number 2 + 3i. (`.i` is taken: it is `toInt()`.) */
+val Number.im: Complexd get() = Complexd(0.0, toDouble())
+/** The complex number with magnitude [this] at angle [theta] radians, `r cis θ` = r(cos θ + i sin θ): `1 cis 30.deg`. */
+infix fun Number.cis(theta: Number): Complexd = Complexd.polar(this, theta)

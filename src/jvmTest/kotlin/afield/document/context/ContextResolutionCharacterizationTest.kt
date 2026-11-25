@@ -642,6 +642,30 @@ class ContextResolutionCharacterizationTest {
         assertTrue(newLine in report.text.untagged(), report.text)
         assertTrue(exportLine !in report.text, report.text)
     }
+
+    /**
+     * 2026-11-25: the same, for a copy persisted WITH its supplier's tag, which since 2026-09-29 is
+     * every copy. The copy and the supplier's own line had the same rank, the box's own came first,
+     * and the stale copy won. Found with `@rootExported` of a shared Kotlin box's class, whose type
+     * text names a new snippet class on every run of that box, so the exporter's second run conflicted
+     * with every copy of its first and children cast the new value to the old class.
+     */
+    @Test
+    fun aTaggedOwnCopyLosesToItsSuppliersCurrentLine() {
+        val s = session("pre-tagged-copy")
+        val parent = boxIn(s, "parent")
+        val child = boxIn(s, "child")
+        parent.connect(child)
+        val newLine = "val Box._x by InheritanceFromContext<kotlin.String>() /**/"
+        parent.setPropertyRaw("preamble", newLine)
+        child.setPropertyRaw("preamble", withPreambleSupplierTag(exportLine, "parent"))
+
+        val report = gatherPreambleUpwardsReport(child)
+        assertTrue(newLine in report.text.untagged(), report.text)
+        assertTrue(exportLine !in report.text.untagged(), report.text)
+        // A superseded copy of the supplier's own line is not reported as a conflict.
+        assertTrue(report.conflicts.isEmpty(), report.conflicts.toString())
+    }
 }
 
 private val fixtureDescriptor: Any? = null

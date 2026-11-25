@@ -23,6 +23,9 @@ operator fun Vector2f.invoke(block: Vector2f.() -> Unit): Vector2f {
 /** Returns a copy rescaled to length [l], keeping direction. */
 infix fun Vector2f.len(l: Number): Vector2f = this { normalize().mul(l.toFloat()) }
 
+/** `2 * v`: the number on the left, so the arithmetic reads the way it does on paper. New vector; operands untouched. */
+operator fun Number.times(v: Vector2fc): Vector2f = v.mul(toFloat(), Vector2f())
+
 // Vector3f operators
 /** In-place assignment: `a %= b` copies b's components into a. */
 operator fun Vector3f.remAssign(other: Vector3fc) { set(other) }
@@ -40,6 +43,9 @@ operator fun Vector3f.invoke(block: Vector3f.() -> Unit): Vector3f {
 /** Returns a copy rescaled to length [l], keeping direction. */
 infix fun Vector3f.len(l: Number): Vector3f = this { normalize().mul(l.toFloat()) }
 
+/** `2 * v`: the number on the left, so the arithmetic reads the way it does on paper. New vector; operands untouched. */
+operator fun Number.times(v: Vector3fc): Vector3f = v.mul(toFloat(), Vector3f())
+
 // Vector4f operators
 /** In-place assignment: `a %= b` copies b's components into a. */
 operator fun Vector4f.remAssign(other: Vector4fc) { set(other) }
@@ -56,6 +62,585 @@ operator fun Vector4f.invoke(block: Vector4f.() -> Unit): Vector4f {
 
 /** Returns a copy rescaled to length [l], keeping direction. */
 infix fun Vector4f.len(l: Number): Vector4f = this { normalize().mul(l.toFloat()) }
+
+/** `2 * v`: the number on the left, so the arithmetic reads the way it does on paper. New vector; operands untouched. */
+operator fun Number.times(v: Vector4fc): Vector4f = v.mul(toFloat(), Vector4f())
+
+// Vector2d operators
+/** In-place assignment: `a %= b` copies b's components into a. */
+operator fun Vector2d.remAssign(other: Vector2dc) { set(other) }
+
+/** Returns a copy with the named components replaced; the rest keep this vector's values. */
+operator fun Vector2d.invoke(x: Double = this.x, y: Double = this.y): Vector2d = Vector2d(x, y)
+
+/** Returns a copy after applying [block] to it, leaving this vector untouched: `v { normalize() }`. */
+operator fun Vector2d.invoke(block: Vector2d.() -> Unit): Vector2d {
+    val copy = Vector2d(this)
+    copy.block()
+    return copy
+}
+
+/** Returns a copy rescaled to length [l], keeping direction. */
+infix fun Vector2d.len(l: Number): Vector2d = this { normalize().mul(l.toDouble()) }
+
+/** `2 * v`: the number on the left, so the arithmetic reads the way it does on paper. New vector; operands untouched. */
+operator fun Number.times(v: Vector2dc): Vector2d = v.mul(toDouble(), Vector2d())
+
+// Vector3d operators
+/** In-place assignment: `a %= b` copies b's components into a. */
+operator fun Vector3d.remAssign(other: Vector3dc) { set(other) }
+
+/** Returns a copy with the named components replaced; the rest keep this vector's values. */
+operator fun Vector3d.invoke(x: Double = this.x, y: Double = this.y, z: Double = this.z): Vector3d = Vector3d(x, y, z)
+
+/** Returns a copy after applying [block] to it, leaving this vector untouched: `v { normalize() }`. */
+operator fun Vector3d.invoke(block: Vector3d.() -> Unit): Vector3d {
+    val copy = Vector3d(this)
+    copy.block()
+    return copy
+}
+
+/** Returns a copy rescaled to length [l], keeping direction. */
+infix fun Vector3d.len(l: Number): Vector3d = this { normalize().mul(l.toDouble()) }
+
+/** `2 * v`: the number on the left, so the arithmetic reads the way it does on paper. New vector; operands untouched. */
+operator fun Number.times(v: Vector3dc): Vector3d = v.mul(toDouble(), Vector3d())
+
+// Vector4d operators
+/** In-place assignment: `a %= b` copies b's components into a. */
+operator fun Vector4d.remAssign(other: Vector4dc) { set(other) }
+
+/** Returns a copy with the named components replaced; the rest keep this vector's values. */
+operator fun Vector4d.invoke(x: Double = this.x, y: Double = this.y, z: Double = this.z, w: Double = this.w): Vector4d = Vector4d(x, y, z, w)
+
+/** Returns a copy after applying [block] to it, leaving this vector untouched: `v { normalize() }`. */
+operator fun Vector4d.invoke(block: Vector4d.() -> Unit): Vector4d {
+    val copy = Vector4d(this)
+    copy.block()
+    return copy
+}
+
+/** Returns a copy rescaled to length [l], keeping direction. */
+infix fun Vector4d.len(l: Number): Vector4d = this { normalize().mul(l.toDouble()) }
+
+/** `2 * v`: the number on the left, so the arithmetic reads the way it does on paper. New vector; operands untouched. */
+operator fun Number.times(v: Vector4dc): Vector4d = v.mul(toDouble(), Vector4d())
+
+// Vector2f geometry shorthands
+/** The squared length, `lengthSquared()`: cheap enough for comparisons such as `(p - c).sq < r * r`. */
+val Vector2fc.sq: Float get() = lengthSquared()
+/** The distance between two points, the same as `a.distance(b)`. */
+infix fun Vector2fc.dist(b: Vector2fc): Float = distance(b)
+/** True when every component is within 1e-5f of [b]'s: the comparison to use where `==` (exact) is too strict. */
+infix fun Vector2fc.near(b: Vector2fc): Boolean = near(b, 1e-5f)
+/** True when every component is within [tolerance] of [b]'s. */
+fun Vector2fc.near(b: Vector2fc, tolerance: Number): Boolean = tolerance.toFloat().let { t -> kotlin.math.abs(x() - b.x()) <= t && kotlin.math.abs(y() - b.y()) <= t }
+/** The 2D cross product, the scalar `a.x * b.y - a.y * b.x`: positive when [b] is anticlockwise of this vector. */
+infix fun Vector2fc.x(b: Vector2fc): Float = x() * b.y() - y() * b.x()
+/** The unsigned angle between two vectors in radians, 0..π, through `atan2(|a × b|, a · b)` so it stays accurate near 0 and π. */
+infix fun Vector2fc.angleTo(b: Vector2fc): Float = kotlin.math.atan2(kotlin.math.abs(this x b), dot(b))
+/** The angle that turns this vector's direction onto [b]'s, in radians, −π..π; positive is anticlockwise. */
+infix fun Vector2fc.signedAngleTo(b: Vector2fc): Float = kotlin.math.atan2(this x b, dot(b))
+/** The direction of this vector as an angle from +x, `atan2(y, x)`, in radians, −π..π. */
+val Vector2fc.angle: Float get() = kotlin.math.atan2(y(), x())
+/** This vector turned a quarter turn anticlockwise, `(-y, x)`. */
+val Vector2fc.perp: Vector2f get() = Vector2f(-y(), x())
+/** This vector turned [angle] radians anticlockwise about the origin. */
+infix fun Vector2fc.rot(angle: Number): Vector2f = angle.toFloat().let { a -> val c = kotlin.math.cos(a); val sn = kotlin.math.sin(a); Vector2f(x() * c - y() * sn, x() * sn + y() * c) }
+
+/** The first half of `v about c rot θ`; finish it with [rot]. */
+class Vector2fPivot internal constructor(private val point: Vector2fc, private val centre: Vector2fc) {
+    /** Returns the point turned [angle] radians anticlockwise about the centre. */
+    infix fun rot(angle: Number): Vector2f = ((point - centre) rot angle).add(centre)
+}
+/** Starts `v about c rot θ`: turn this point about [centre]. */
+infix fun Vector2fc.about(centre: Vector2fc): Vector2fPivot = Vector2fPivot(this, centre)
+
+// Vector3f geometry shorthands
+/** The squared length, `lengthSquared()`: cheap enough for comparisons such as `(p - c).sq < r * r`. */
+val Vector3fc.sq: Float get() = lengthSquared()
+/** The distance between two points, the same as `a.distance(b)`. */
+infix fun Vector3fc.dist(b: Vector3fc): Float = distance(b)
+/** True when every component is within 1e-5f of [b]'s: the comparison to use where `==` (exact) is too strict. */
+infix fun Vector3fc.near(b: Vector3fc): Boolean = near(b, 1e-5f)
+/** True when every component is within [tolerance] of [b]'s. */
+fun Vector3fc.near(b: Vector3fc, tolerance: Number): Boolean = tolerance.toFloat().let { t -> kotlin.math.abs(x() - b.x()) <= t && kotlin.math.abs(y() - b.y()) <= t && kotlin.math.abs(z() - b.z()) <= t }
+/** The cross product `a x b`: perpendicular to both, right-handed, length `|a||b| sin θ`. A new vector; neither operand changes. */
+infix fun Vector3fc.x(b: Vector3fc): Vector3f = cross(b, Vector3f())
+/** The unsigned angle between two vectors in radians, 0..π, through `atan2(|a × b|, a · b)` so it stays accurate near 0 and π. */
+infix fun Vector3fc.angleTo(b: Vector3fc): Float = kotlin.math.atan2((this x b).length(), dot(b))
+
+// Vector4f geometry shorthands
+/** The squared length, `lengthSquared()`: cheap enough for comparisons such as `(p - c).sq < r * r`. */
+val Vector4fc.sq: Float get() = lengthSquared()
+/** The distance between two points, the same as `a.distance(b)`. */
+infix fun Vector4fc.dist(b: Vector4fc): Float = distance(b)
+/** True when every component is within 1e-5f of [b]'s: the comparison to use where `==` (exact) is too strict. */
+infix fun Vector4fc.near(b: Vector4fc): Boolean = near(b, 1e-5f)
+/** True when every component is within [tolerance] of [b]'s. */
+fun Vector4fc.near(b: Vector4fc, tolerance: Number): Boolean = tolerance.toFloat().let { t -> kotlin.math.abs(x() - b.x()) <= t && kotlin.math.abs(y() - b.y()) <= t && kotlin.math.abs(z() - b.z()) <= t && kotlin.math.abs(w() - b.w()) <= t }
+
+// Vector2d geometry shorthands
+/** The squared length, `lengthSquared()`: cheap enough for comparisons such as `(p - c).sq < r * r`. */
+val Vector2dc.sq: Double get() = lengthSquared()
+/** The distance between two points, the same as `a.distance(b)`. */
+infix fun Vector2dc.dist(b: Vector2dc): Double = distance(b)
+/** True when every component is within 1e-9 of [b]'s: the comparison to use where `==` (exact) is too strict. */
+infix fun Vector2dc.near(b: Vector2dc): Boolean = near(b, 1e-9)
+/** True when every component is within [tolerance] of [b]'s. */
+fun Vector2dc.near(b: Vector2dc, tolerance: Number): Boolean = tolerance.toDouble().let { t -> kotlin.math.abs(x() - b.x()) <= t && kotlin.math.abs(y() - b.y()) <= t }
+/** The 2D cross product, the scalar `a.x * b.y - a.y * b.x`: positive when [b] is anticlockwise of this vector. */
+infix fun Vector2dc.x(b: Vector2dc): Double = x() * b.y() - y() * b.x()
+/** The unsigned angle between two vectors in radians, 0..π, through `atan2(|a × b|, a · b)` so it stays accurate near 0 and π. */
+infix fun Vector2dc.angleTo(b: Vector2dc): Double = kotlin.math.atan2(kotlin.math.abs(this x b), dot(b))
+/** The angle that turns this vector's direction onto [b]'s, in radians, −π..π; positive is anticlockwise. */
+infix fun Vector2dc.signedAngleTo(b: Vector2dc): Double = kotlin.math.atan2(this x b, dot(b))
+/** The direction of this vector as an angle from +x, `atan2(y, x)`, in radians, −π..π. */
+val Vector2dc.angle: Double get() = kotlin.math.atan2(y(), x())
+/** This vector turned a quarter turn anticlockwise, `(-y, x)`. */
+val Vector2dc.perp: Vector2d get() = Vector2d(-y(), x())
+/** This vector turned [angle] radians anticlockwise about the origin. */
+infix fun Vector2dc.rot(angle: Number): Vector2d = angle.toDouble().let { a -> val c = kotlin.math.cos(a); val sn = kotlin.math.sin(a); Vector2d(x() * c - y() * sn, x() * sn + y() * c) }
+
+/** The first half of `v about c rot θ`; finish it with [rot]. */
+class Vector2dPivot internal constructor(private val point: Vector2dc, private val centre: Vector2dc) {
+    /** Returns the point turned [angle] radians anticlockwise about the centre. */
+    infix fun rot(angle: Number): Vector2d = ((point - centre) rot angle).add(centre)
+}
+/** Starts `v about c rot θ`: turn this point about [centre]. */
+infix fun Vector2dc.about(centre: Vector2dc): Vector2dPivot = Vector2dPivot(this, centre)
+
+// Vector3d geometry shorthands
+/** The squared length, `lengthSquared()`: cheap enough for comparisons such as `(p - c).sq < r * r`. */
+val Vector3dc.sq: Double get() = lengthSquared()
+/** The distance between two points, the same as `a.distance(b)`. */
+infix fun Vector3dc.dist(b: Vector3dc): Double = distance(b)
+/** True when every component is within 1e-9 of [b]'s: the comparison to use where `==` (exact) is too strict. */
+infix fun Vector3dc.near(b: Vector3dc): Boolean = near(b, 1e-9)
+/** True when every component is within [tolerance] of [b]'s. */
+fun Vector3dc.near(b: Vector3dc, tolerance: Number): Boolean = tolerance.toDouble().let { t -> kotlin.math.abs(x() - b.x()) <= t && kotlin.math.abs(y() - b.y()) <= t && kotlin.math.abs(z() - b.z()) <= t }
+/** The cross product `a x b`: perpendicular to both, right-handed, length `|a||b| sin θ`. A new vector; neither operand changes. */
+infix fun Vector3dc.x(b: Vector3dc): Vector3d = cross(b, Vector3d())
+/** The unsigned angle between two vectors in radians, 0..π, through `atan2(|a × b|, a · b)` so it stays accurate near 0 and π. */
+infix fun Vector3dc.angleTo(b: Vector3dc): Double = kotlin.math.atan2((this x b).length(), dot(b))
+
+// Vector4d geometry shorthands
+/** The squared length, `lengthSquared()`: cheap enough for comparisons such as `(p - c).sq < r * r`. */
+val Vector4dc.sq: Double get() = lengthSquared()
+/** The distance between two points, the same as `a.distance(b)`. */
+infix fun Vector4dc.dist(b: Vector4dc): Double = distance(b)
+/** True when every component is within 1e-9 of [b]'s: the comparison to use where `==` (exact) is too strict. */
+infix fun Vector4dc.near(b: Vector4dc): Boolean = near(b, 1e-9)
+/** True when every component is within [tolerance] of [b]'s. */
+fun Vector4dc.near(b: Vector4dc, tolerance: Number): Boolean = tolerance.toDouble().let { t -> kotlin.math.abs(x() - b.x()) <= t && kotlin.math.abs(y() - b.y()) <= t && kotlin.math.abs(z() - b.z()) <= t && kotlin.math.abs(w() - b.w()) <= t }
+
+// Vector2f motion and shaping shorthands
+/** The midpoint of two points. */
+infix fun Vector2fc.mid(b: Vector2fc): Vector2f = Vector2f(this).add(b).mul(0.5f)
+/** The unit direction from this point to [b], `(b - a).n`. Coincident points give zero. */
+infix fun Vector2fc.towards(b: Vector2fc): Vector2f = (b - this).n
+/** Starts `a smooth t to b`: `lerp` with [t] passed through smoothstep, so the move eases in and out. [t] is clamped to 0..1. */
+infix fun Vector2fc.smooth(t: Number): Vector2fLerp = Vector2fLerp(this, t.toDouble().coerceIn(0.0, 1.0).let { it * it * (3 - 2 * it) }.toFloat())
+/** Starts `a ease (t to curve) to b`: `lerp` with [t] passed through any easing curve, such as one from [Ease]. */
+infix fun Vector2fc.ease(t: Pair<Number, (Double) -> Double>): Vector2fLerp = Vector2fLerp(this, t.second(t.first.toDouble()).toFloat())
+/**
+ * Starts `a.damp(k, dt) to b`: moves `1 − e^(−k·dt)` of the gap for a time step of [dt] seconds,
+ * so repeated calls close the same fraction per second whatever the step. `a damp k to b` uses
+ * the runloop's frame time for [dt].
+ */
+fun Vector2fc.damp(k: Number, dt: Number): Vector2fLerp = Vector2fLerp(this, (1.0 - kotlin.math.exp(-k.toDouble() * dt.toDouble())).toFloat())
+/** At most [max] long, keeping direction; a shorter vector is copied unchanged. */
+infix fun Vector2fc.limit(max: Number): Vector2f = max.toFloat().let { m -> val l = length(); if (l > m && l > 0) Vector2f(this).mul(m / l) else Vector2f(this) }
+/** Each component rounded to the nearest multiple of [step]. */
+infix fun Vector2fc.snap(step: Number): Vector2f = step.toFloat().let { st -> Vector2f(kotlin.math.round(x() / st) * st, kotlin.math.round(y() / st) * st) }
+/** Each component rounded to the nearest multiple of the matching component of [grid]. */
+infix fun Vector2fc.snap(grid: Vector2fc): Vector2f = Vector2f(kotlin.math.round(x() / grid.x()) * grid.x(), kotlin.math.round(y() / grid.y()) * grid.y())
+/** Each component rounded down, GLSL's `floor`. */
+fun Vector2fc.floor(): Vector2f = Vector2f(kotlin.math.floor(x()), kotlin.math.floor(y()))
+/** Each component's fractional part `x - floor(x)`, GLSL's `fract`: always in 0..1, also for negative components. */
+fun Vector2fc.fract(): Vector2f = Vector2f((x() - kotlin.math.floor(x())), (y() - kotlin.math.floor(y())))
+/** Each component's absolute value, as a new vector. `absolute()` does the same in place. */
+fun Vector2fc.abs(): Vector2f = Vector2f(kotlin.math.abs(x()), kotlin.math.abs(y()))
+/** Each component's sign, −1, 0 or 1, GLSL's `sign`. */
+fun Vector2fc.sign(): Vector2f = Vector2f(kotlin.math.sign(x()), kotlin.math.sign(y()))
+/** The largest component. */
+val Vector2fc.maxComponent: Float get() = maxOf(x(), y())
+/** The smallest component. */
+val Vector2fc.minComponent: Float get() = minOf(x(), y())
+/** The sum of the components. */
+val Vector2fc.sum: Float get() = x() + y()
+/** This vector reflected in the plane (or line) with normal [n], which need not be unit length: `v - 2(v·n̂)n̂`. */
+infix fun Vector2fc.reflect(n: Vector2fc): Vector2f = n.n.let { u -> Vector2f(this).sub(u * (2 * dot(u))) }
+/** The projection of this vector onto [b]: the part that points along [b]. Zero when [b] is zero. */
+infix fun Vector2fc.proj(b: Vector2fc): Vector2f = b.lengthSquared().let { l -> if (l == 0.0f) Vector2f() else b * (dot(b) / l) }
+/** The rejection from [b]: the part of this vector perpendicular to [b], `v - (v proj b)`. */
+infix fun Vector2fc.rej(b: Vector2fc): Vector2f = Vector2f(this).sub(this proj b)
+
+/** The first half of `a slerp t to b`; finish it with [to]. */
+class Vector2fSlerp internal constructor(private val from: Vector2fc, private val t: Float) {
+    /**
+     * Returns the vector [t] of the way from the left-hand one to [b] along the arc between their
+     * directions, turning at a constant rate, with the length interpolated linearly. Either
+     * vector being zero gives the straight-line `lerp`.
+     */
+    infix fun to(b: Vector2fc): Vector2f {
+        val la = from.length(); val lb = b.length()
+        if (la == 0.0f || lb == 0.0f) return from lerp t to b
+        val ua = from.n; val ub = b.n
+        val l = la + (lb - la) * t
+        return (ua rot ((ua signedAngleTo ub) * t)).mul(l)
+    }
+}
+/** Starts `a slerp t to b`: the point [t] of the way round the arc from this vector's direction to `b`'s. */
+infix fun Vector2fc.slerp(t: Number): Vector2fSlerp = Vector2fSlerp(this, t.toFloat())
+
+// Vector3f motion and shaping shorthands
+/** The midpoint of two points. */
+infix fun Vector3fc.mid(b: Vector3fc): Vector3f = Vector3f(this).add(b).mul(0.5f)
+/** The unit direction from this point to [b], `(b - a).n`. Coincident points give zero. */
+infix fun Vector3fc.towards(b: Vector3fc): Vector3f = (b - this).n
+/** Starts `a smooth t to b`: `lerp` with [t] passed through smoothstep, so the move eases in and out. [t] is clamped to 0..1. */
+infix fun Vector3fc.smooth(t: Number): Vector3fLerp = Vector3fLerp(this, t.toDouble().coerceIn(0.0, 1.0).let { it * it * (3 - 2 * it) }.toFloat())
+/** Starts `a ease (t to curve) to b`: `lerp` with [t] passed through any easing curve, such as one from [Ease]. */
+infix fun Vector3fc.ease(t: Pair<Number, (Double) -> Double>): Vector3fLerp = Vector3fLerp(this, t.second(t.first.toDouble()).toFloat())
+/**
+ * Starts `a.damp(k, dt) to b`: moves `1 − e^(−k·dt)` of the gap for a time step of [dt] seconds,
+ * so repeated calls close the same fraction per second whatever the step. `a damp k to b` uses
+ * the runloop's frame time for [dt].
+ */
+fun Vector3fc.damp(k: Number, dt: Number): Vector3fLerp = Vector3fLerp(this, (1.0 - kotlin.math.exp(-k.toDouble() * dt.toDouble())).toFloat())
+/** At most [max] long, keeping direction; a shorter vector is copied unchanged. */
+infix fun Vector3fc.limit(max: Number): Vector3f = max.toFloat().let { m -> val l = length(); if (l > m && l > 0) Vector3f(this).mul(m / l) else Vector3f(this) }
+/** Each component rounded to the nearest multiple of [step]. */
+infix fun Vector3fc.snap(step: Number): Vector3f = step.toFloat().let { st -> Vector3f(kotlin.math.round(x() / st) * st, kotlin.math.round(y() / st) * st, kotlin.math.round(z() / st) * st) }
+/** Each component rounded to the nearest multiple of the matching component of [grid]. */
+infix fun Vector3fc.snap(grid: Vector3fc): Vector3f = Vector3f(kotlin.math.round(x() / grid.x()) * grid.x(), kotlin.math.round(y() / grid.y()) * grid.y(), kotlin.math.round(z() / grid.z()) * grid.z())
+/** Each component rounded down, GLSL's `floor`. */
+fun Vector3fc.floor(): Vector3f = Vector3f(kotlin.math.floor(x()), kotlin.math.floor(y()), kotlin.math.floor(z()))
+/** Each component's fractional part `x - floor(x)`, GLSL's `fract`: always in 0..1, also for negative components. */
+fun Vector3fc.fract(): Vector3f = Vector3f((x() - kotlin.math.floor(x())), (y() - kotlin.math.floor(y())), (z() - kotlin.math.floor(z())))
+/** Each component's absolute value, as a new vector. `absolute()` does the same in place. */
+fun Vector3fc.abs(): Vector3f = Vector3f(kotlin.math.abs(x()), kotlin.math.abs(y()), kotlin.math.abs(z()))
+/** Each component's sign, −1, 0 or 1, GLSL's `sign`. */
+fun Vector3fc.sign(): Vector3f = Vector3f(kotlin.math.sign(x()), kotlin.math.sign(y()), kotlin.math.sign(z()))
+/** The largest component. */
+val Vector3fc.maxComponent: Float get() = maxOf(maxOf(x(), y()), z())
+/** The smallest component. */
+val Vector3fc.minComponent: Float get() = minOf(minOf(x(), y()), z())
+/** The sum of the components. */
+val Vector3fc.sum: Float get() = x() + y() + z()
+/** This vector reflected in the plane (or line) with normal [n], which need not be unit length: `v - 2(v·n̂)n̂`. */
+infix fun Vector3fc.reflect(n: Vector3fc): Vector3f = n.n.let { u -> Vector3f(this).sub(u * (2 * dot(u))) }
+/** The projection of this vector onto [b]: the part that points along [b]. Zero when [b] is zero. */
+infix fun Vector3fc.proj(b: Vector3fc): Vector3f = b.lengthSquared().let { l -> if (l == 0.0f) Vector3f() else b * (dot(b) / l) }
+/** The rejection from [b]: the part of this vector perpendicular to [b], `v - (v proj b)`. */
+infix fun Vector3fc.rej(b: Vector3fc): Vector3f = Vector3f(this).sub(this proj b)
+
+/** The first half of `a slerp t to b`; finish it with [to]. */
+class Vector3fSlerp internal constructor(private val from: Vector3fc, private val t: Float) {
+    /**
+     * Returns the vector [t] of the way from the left-hand one to [b] along the arc between their
+     * directions, turning at a constant rate, with the length interpolated linearly. Either
+     * vector being zero gives the straight-line `lerp`.
+     */
+    infix fun to(b: Vector3fc): Vector3f {
+        val la = from.length(); val lb = b.length()
+        if (la == 0.0f || lb == 0.0f) return from lerp t to b
+        val ua = from.n; val ub = b.n
+        val l = la + (lb - la) * t
+        var axis = ua x ub
+        if (axis.lengthSquared() < 1e-12) axis = ua x (if (kotlin.math.abs(ua.x) < 0.9) Vector3f.X else Vector3f.Z)
+        axis = axis.n
+        val a = (ua angleTo ub) * t
+        return (ua * kotlin.math.cos(a)).add((axis x ua) * kotlin.math.sin(a)).mul(l)
+    }
+}
+/** Starts `a slerp t to b`: the point [t] of the way round the arc from this vector's direction to `b`'s. */
+infix fun Vector3fc.slerp(t: Number): Vector3fSlerp = Vector3fSlerp(this, t.toFloat())
+
+// Vector4f motion and shaping shorthands
+/** The midpoint of two points. */
+infix fun Vector4fc.mid(b: Vector4fc): Vector4f = Vector4f(this).add(b).mul(0.5f)
+/** The unit direction from this point to [b], `(b - a).n`. Coincident points give zero. */
+infix fun Vector4fc.towards(b: Vector4fc): Vector4f = (b - this).n
+/** Starts `a smooth t to b`: `lerp` with [t] passed through smoothstep, so the move eases in and out. [t] is clamped to 0..1. */
+infix fun Vector4fc.smooth(t: Number): Vector4fLerp = Vector4fLerp(this, t.toDouble().coerceIn(0.0, 1.0).let { it * it * (3 - 2 * it) }.toFloat())
+/** Starts `a ease (t to curve) to b`: `lerp` with [t] passed through any easing curve, such as one from [Ease]. */
+infix fun Vector4fc.ease(t: Pair<Number, (Double) -> Double>): Vector4fLerp = Vector4fLerp(this, t.second(t.first.toDouble()).toFloat())
+/**
+ * Starts `a.damp(k, dt) to b`: moves `1 − e^(−k·dt)` of the gap for a time step of [dt] seconds,
+ * so repeated calls close the same fraction per second whatever the step. `a damp k to b` uses
+ * the runloop's frame time for [dt].
+ */
+fun Vector4fc.damp(k: Number, dt: Number): Vector4fLerp = Vector4fLerp(this, (1.0 - kotlin.math.exp(-k.toDouble() * dt.toDouble())).toFloat())
+/** At most [max] long, keeping direction; a shorter vector is copied unchanged. */
+infix fun Vector4fc.limit(max: Number): Vector4f = max.toFloat().let { m -> val l = length(); if (l > m && l > 0) Vector4f(this).mul(m / l) else Vector4f(this) }
+/** Each component rounded to the nearest multiple of [step]. */
+infix fun Vector4fc.snap(step: Number): Vector4f = step.toFloat().let { st -> Vector4f(kotlin.math.round(x() / st) * st, kotlin.math.round(y() / st) * st, kotlin.math.round(z() / st) * st, kotlin.math.round(w() / st) * st) }
+/** Each component rounded to the nearest multiple of the matching component of [grid]. */
+infix fun Vector4fc.snap(grid: Vector4fc): Vector4f = Vector4f(kotlin.math.round(x() / grid.x()) * grid.x(), kotlin.math.round(y() / grid.y()) * grid.y(), kotlin.math.round(z() / grid.z()) * grid.z(), kotlin.math.round(w() / grid.w()) * grid.w())
+/** Each component rounded down, GLSL's `floor`. */
+fun Vector4fc.floor(): Vector4f = Vector4f(kotlin.math.floor(x()), kotlin.math.floor(y()), kotlin.math.floor(z()), kotlin.math.floor(w()))
+/** Each component's fractional part `x - floor(x)`, GLSL's `fract`: always in 0..1, also for negative components. */
+fun Vector4fc.fract(): Vector4f = Vector4f((x() - kotlin.math.floor(x())), (y() - kotlin.math.floor(y())), (z() - kotlin.math.floor(z())), (w() - kotlin.math.floor(w())))
+/** Each component's absolute value, as a new vector. `absolute()` does the same in place. */
+fun Vector4fc.abs(): Vector4f = Vector4f(kotlin.math.abs(x()), kotlin.math.abs(y()), kotlin.math.abs(z()), kotlin.math.abs(w()))
+/** Each component's sign, −1, 0 or 1, GLSL's `sign`. */
+fun Vector4fc.sign(): Vector4f = Vector4f(kotlin.math.sign(x()), kotlin.math.sign(y()), kotlin.math.sign(z()), kotlin.math.sign(w()))
+/** The largest component. */
+val Vector4fc.maxComponent: Float get() = maxOf(maxOf(maxOf(x(), y()), z()), w())
+/** The smallest component. */
+val Vector4fc.minComponent: Float get() = minOf(minOf(minOf(x(), y()), z()), w())
+/** The sum of the components. */
+val Vector4fc.sum: Float get() = x() + y() + z() + w()
+/** This vector reflected in the plane (or line) with normal [n], which need not be unit length: `v - 2(v·n̂)n̂`. */
+infix fun Vector4fc.reflect(n: Vector4fc): Vector4f = n.n.let { u -> Vector4f(this).sub(u * (2 * dot(u))) }
+/** The projection of this vector onto [b]: the part that points along [b]. Zero when [b] is zero. */
+infix fun Vector4fc.proj(b: Vector4fc): Vector4f = b.lengthSquared().let { l -> if (l == 0.0f) Vector4f() else b * (dot(b) / l) }
+/** The rejection from [b]: the part of this vector perpendicular to [b], `v - (v proj b)`. */
+infix fun Vector4fc.rej(b: Vector4fc): Vector4f = Vector4f(this).sub(this proj b)
+
+// Vector2d motion and shaping shorthands
+/** The midpoint of two points. */
+infix fun Vector2dc.mid(b: Vector2dc): Vector2d = Vector2d(this).add(b).mul(0.5)
+/** The unit direction from this point to [b], `(b - a).n`. Coincident points give zero. */
+infix fun Vector2dc.towards(b: Vector2dc): Vector2d = (b - this).n
+/** Starts `a smooth t to b`: `lerp` with [t] passed through smoothstep, so the move eases in and out. [t] is clamped to 0..1. */
+infix fun Vector2dc.smooth(t: Number): Vector2dLerp = Vector2dLerp(this, t.toDouble().coerceIn(0.0, 1.0).let { it * it * (3 - 2 * it) }.toDouble())
+/** Starts `a ease (t to curve) to b`: `lerp` with [t] passed through any easing curve, such as one from [Ease]. */
+infix fun Vector2dc.ease(t: Pair<Number, (Double) -> Double>): Vector2dLerp = Vector2dLerp(this, t.second(t.first.toDouble()).toDouble())
+/**
+ * Starts `a.damp(k, dt) to b`: moves `1 − e^(−k·dt)` of the gap for a time step of [dt] seconds,
+ * so repeated calls close the same fraction per second whatever the step. `a damp k to b` uses
+ * the runloop's frame time for [dt].
+ */
+fun Vector2dc.damp(k: Number, dt: Number): Vector2dLerp = Vector2dLerp(this, (1.0 - kotlin.math.exp(-k.toDouble() * dt.toDouble())).toDouble())
+/** At most [max] long, keeping direction; a shorter vector is copied unchanged. */
+infix fun Vector2dc.limit(max: Number): Vector2d = max.toDouble().let { m -> val l = length(); if (l > m && l > 0) Vector2d(this).mul(m / l) else Vector2d(this) }
+/** Each component rounded to the nearest multiple of [step]. */
+infix fun Vector2dc.snap(step: Number): Vector2d = step.toDouble().let { st -> Vector2d(kotlin.math.round(x() / st) * st, kotlin.math.round(y() / st) * st) }
+/** Each component rounded to the nearest multiple of the matching component of [grid]. */
+infix fun Vector2dc.snap(grid: Vector2dc): Vector2d = Vector2d(kotlin.math.round(x() / grid.x()) * grid.x(), kotlin.math.round(y() / grid.y()) * grid.y())
+/** Each component rounded down, GLSL's `floor`. */
+fun Vector2dc.floor(): Vector2d = Vector2d(kotlin.math.floor(x()), kotlin.math.floor(y()))
+/** Each component's fractional part `x - floor(x)`, GLSL's `fract`: always in 0..1, also for negative components. */
+fun Vector2dc.fract(): Vector2d = Vector2d((x() - kotlin.math.floor(x())), (y() - kotlin.math.floor(y())))
+/** Each component's absolute value, as a new vector. `absolute()` does the same in place. */
+fun Vector2dc.abs(): Vector2d = Vector2d(kotlin.math.abs(x()), kotlin.math.abs(y()))
+/** Each component's sign, −1, 0 or 1, GLSL's `sign`. */
+fun Vector2dc.sign(): Vector2d = Vector2d(kotlin.math.sign(x()), kotlin.math.sign(y()))
+/** The largest component. */
+val Vector2dc.maxComponent: Double get() = maxOf(x(), y())
+/** The smallest component. */
+val Vector2dc.minComponent: Double get() = minOf(x(), y())
+/** The sum of the components. */
+val Vector2dc.sum: Double get() = x() + y()
+/** This vector reflected in the plane (or line) with normal [n], which need not be unit length: `v - 2(v·n̂)n̂`. */
+infix fun Vector2dc.reflect(n: Vector2dc): Vector2d = n.n.let { u -> Vector2d(this).sub(u * (2 * dot(u))) }
+/** The projection of this vector onto [b]: the part that points along [b]. Zero when [b] is zero. */
+infix fun Vector2dc.proj(b: Vector2dc): Vector2d = b.lengthSquared().let { l -> if (l == 0.0) Vector2d() else b * (dot(b) / l) }
+/** The rejection from [b]: the part of this vector perpendicular to [b], `v - (v proj b)`. */
+infix fun Vector2dc.rej(b: Vector2dc): Vector2d = Vector2d(this).sub(this proj b)
+
+/** The first half of `a slerp t to b`; finish it with [to]. */
+class Vector2dSlerp internal constructor(private val from: Vector2dc, private val t: Double) {
+    /**
+     * Returns the vector [t] of the way from the left-hand one to [b] along the arc between their
+     * directions, turning at a constant rate, with the length interpolated linearly. Either
+     * vector being zero gives the straight-line `lerp`.
+     */
+    infix fun to(b: Vector2dc): Vector2d {
+        val la = from.length(); val lb = b.length()
+        if (la == 0.0 || lb == 0.0) return from lerp t to b
+        val ua = from.n; val ub = b.n
+        val l = la + (lb - la) * t
+        return (ua rot ((ua signedAngleTo ub) * t)).mul(l)
+    }
+}
+/** Starts `a slerp t to b`: the point [t] of the way round the arc from this vector's direction to `b`'s. */
+infix fun Vector2dc.slerp(t: Number): Vector2dSlerp = Vector2dSlerp(this, t.toDouble())
+
+// Vector3d motion and shaping shorthands
+/** The midpoint of two points. */
+infix fun Vector3dc.mid(b: Vector3dc): Vector3d = Vector3d(this).add(b).mul(0.5)
+/** The unit direction from this point to [b], `(b - a).n`. Coincident points give zero. */
+infix fun Vector3dc.towards(b: Vector3dc): Vector3d = (b - this).n
+/** Starts `a smooth t to b`: `lerp` with [t] passed through smoothstep, so the move eases in and out. [t] is clamped to 0..1. */
+infix fun Vector3dc.smooth(t: Number): Vector3dLerp = Vector3dLerp(this, t.toDouble().coerceIn(0.0, 1.0).let { it * it * (3 - 2 * it) }.toDouble())
+/** Starts `a ease (t to curve) to b`: `lerp` with [t] passed through any easing curve, such as one from [Ease]. */
+infix fun Vector3dc.ease(t: Pair<Number, (Double) -> Double>): Vector3dLerp = Vector3dLerp(this, t.second(t.first.toDouble()).toDouble())
+/**
+ * Starts `a.damp(k, dt) to b`: moves `1 − e^(−k·dt)` of the gap for a time step of [dt] seconds,
+ * so repeated calls close the same fraction per second whatever the step. `a damp k to b` uses
+ * the runloop's frame time for [dt].
+ */
+fun Vector3dc.damp(k: Number, dt: Number): Vector3dLerp = Vector3dLerp(this, (1.0 - kotlin.math.exp(-k.toDouble() * dt.toDouble())).toDouble())
+/** At most [max] long, keeping direction; a shorter vector is copied unchanged. */
+infix fun Vector3dc.limit(max: Number): Vector3d = max.toDouble().let { m -> val l = length(); if (l > m && l > 0) Vector3d(this).mul(m / l) else Vector3d(this) }
+/** Each component rounded to the nearest multiple of [step]. */
+infix fun Vector3dc.snap(step: Number): Vector3d = step.toDouble().let { st -> Vector3d(kotlin.math.round(x() / st) * st, kotlin.math.round(y() / st) * st, kotlin.math.round(z() / st) * st) }
+/** Each component rounded to the nearest multiple of the matching component of [grid]. */
+infix fun Vector3dc.snap(grid: Vector3dc): Vector3d = Vector3d(kotlin.math.round(x() / grid.x()) * grid.x(), kotlin.math.round(y() / grid.y()) * grid.y(), kotlin.math.round(z() / grid.z()) * grid.z())
+/** Each component rounded down, GLSL's `floor`. */
+fun Vector3dc.floor(): Vector3d = Vector3d(kotlin.math.floor(x()), kotlin.math.floor(y()), kotlin.math.floor(z()))
+/** Each component's fractional part `x - floor(x)`, GLSL's `fract`: always in 0..1, also for negative components. */
+fun Vector3dc.fract(): Vector3d = Vector3d((x() - kotlin.math.floor(x())), (y() - kotlin.math.floor(y())), (z() - kotlin.math.floor(z())))
+/** Each component's absolute value, as a new vector. `absolute()` does the same in place. */
+fun Vector3dc.abs(): Vector3d = Vector3d(kotlin.math.abs(x()), kotlin.math.abs(y()), kotlin.math.abs(z()))
+/** Each component's sign, −1, 0 or 1, GLSL's `sign`. */
+fun Vector3dc.sign(): Vector3d = Vector3d(kotlin.math.sign(x()), kotlin.math.sign(y()), kotlin.math.sign(z()))
+/** The largest component. */
+val Vector3dc.maxComponent: Double get() = maxOf(maxOf(x(), y()), z())
+/** The smallest component. */
+val Vector3dc.minComponent: Double get() = minOf(minOf(x(), y()), z())
+/** The sum of the components. */
+val Vector3dc.sum: Double get() = x() + y() + z()
+/** This vector reflected in the plane (or line) with normal [n], which need not be unit length: `v - 2(v·n̂)n̂`. */
+infix fun Vector3dc.reflect(n: Vector3dc): Vector3d = n.n.let { u -> Vector3d(this).sub(u * (2 * dot(u))) }
+/** The projection of this vector onto [b]: the part that points along [b]. Zero when [b] is zero. */
+infix fun Vector3dc.proj(b: Vector3dc): Vector3d = b.lengthSquared().let { l -> if (l == 0.0) Vector3d() else b * (dot(b) / l) }
+/** The rejection from [b]: the part of this vector perpendicular to [b], `v - (v proj b)`. */
+infix fun Vector3dc.rej(b: Vector3dc): Vector3d = Vector3d(this).sub(this proj b)
+
+/** The first half of `a slerp t to b`; finish it with [to]. */
+class Vector3dSlerp internal constructor(private val from: Vector3dc, private val t: Double) {
+    /**
+     * Returns the vector [t] of the way from the left-hand one to [b] along the arc between their
+     * directions, turning at a constant rate, with the length interpolated linearly. Either
+     * vector being zero gives the straight-line `lerp`.
+     */
+    infix fun to(b: Vector3dc): Vector3d {
+        val la = from.length(); val lb = b.length()
+        if (la == 0.0 || lb == 0.0) return from lerp t to b
+        val ua = from.n; val ub = b.n
+        val l = la + (lb - la) * t
+        var axis = ua x ub
+        if (axis.lengthSquared() < 1e-12) axis = ua x (if (kotlin.math.abs(ua.x) < 0.9) Vector3d.X else Vector3d.Z)
+        axis = axis.n
+        val a = (ua angleTo ub) * t
+        return (ua * kotlin.math.cos(a)).add((axis x ua) * kotlin.math.sin(a)).mul(l)
+    }
+}
+/** Starts `a slerp t to b`: the point [t] of the way round the arc from this vector's direction to `b`'s. */
+infix fun Vector3dc.slerp(t: Number): Vector3dSlerp = Vector3dSlerp(this, t.toDouble())
+
+// Vector4d motion and shaping shorthands
+/** The midpoint of two points. */
+infix fun Vector4dc.mid(b: Vector4dc): Vector4d = Vector4d(this).add(b).mul(0.5)
+/** The unit direction from this point to [b], `(b - a).n`. Coincident points give zero. */
+infix fun Vector4dc.towards(b: Vector4dc): Vector4d = (b - this).n
+/** Starts `a smooth t to b`: `lerp` with [t] passed through smoothstep, so the move eases in and out. [t] is clamped to 0..1. */
+infix fun Vector4dc.smooth(t: Number): Vector4dLerp = Vector4dLerp(this, t.toDouble().coerceIn(0.0, 1.0).let { it * it * (3 - 2 * it) }.toDouble())
+/** Starts `a ease (t to curve) to b`: `lerp` with [t] passed through any easing curve, such as one from [Ease]. */
+infix fun Vector4dc.ease(t: Pair<Number, (Double) -> Double>): Vector4dLerp = Vector4dLerp(this, t.second(t.first.toDouble()).toDouble())
+/**
+ * Starts `a.damp(k, dt) to b`: moves `1 − e^(−k·dt)` of the gap for a time step of [dt] seconds,
+ * so repeated calls close the same fraction per second whatever the step. `a damp k to b` uses
+ * the runloop's frame time for [dt].
+ */
+fun Vector4dc.damp(k: Number, dt: Number): Vector4dLerp = Vector4dLerp(this, (1.0 - kotlin.math.exp(-k.toDouble() * dt.toDouble())).toDouble())
+/** At most [max] long, keeping direction; a shorter vector is copied unchanged. */
+infix fun Vector4dc.limit(max: Number): Vector4d = max.toDouble().let { m -> val l = length(); if (l > m && l > 0) Vector4d(this).mul(m / l) else Vector4d(this) }
+/** Each component rounded to the nearest multiple of [step]. */
+infix fun Vector4dc.snap(step: Number): Vector4d = step.toDouble().let { st -> Vector4d(kotlin.math.round(x() / st) * st, kotlin.math.round(y() / st) * st, kotlin.math.round(z() / st) * st, kotlin.math.round(w() / st) * st) }
+/** Each component rounded to the nearest multiple of the matching component of [grid]. */
+infix fun Vector4dc.snap(grid: Vector4dc): Vector4d = Vector4d(kotlin.math.round(x() / grid.x()) * grid.x(), kotlin.math.round(y() / grid.y()) * grid.y(), kotlin.math.round(z() / grid.z()) * grid.z(), kotlin.math.round(w() / grid.w()) * grid.w())
+/** Each component rounded down, GLSL's `floor`. */
+fun Vector4dc.floor(): Vector4d = Vector4d(kotlin.math.floor(x()), kotlin.math.floor(y()), kotlin.math.floor(z()), kotlin.math.floor(w()))
+/** Each component's fractional part `x - floor(x)`, GLSL's `fract`: always in 0..1, also for negative components. */
+fun Vector4dc.fract(): Vector4d = Vector4d((x() - kotlin.math.floor(x())), (y() - kotlin.math.floor(y())), (z() - kotlin.math.floor(z())), (w() - kotlin.math.floor(w())))
+/** Each component's absolute value, as a new vector. `absolute()` does the same in place. */
+fun Vector4dc.abs(): Vector4d = Vector4d(kotlin.math.abs(x()), kotlin.math.abs(y()), kotlin.math.abs(z()), kotlin.math.abs(w()))
+/** Each component's sign, −1, 0 or 1, GLSL's `sign`. */
+fun Vector4dc.sign(): Vector4d = Vector4d(kotlin.math.sign(x()), kotlin.math.sign(y()), kotlin.math.sign(z()), kotlin.math.sign(w()))
+/** The largest component. */
+val Vector4dc.maxComponent: Double get() = maxOf(maxOf(maxOf(x(), y()), z()), w())
+/** The smallest component. */
+val Vector4dc.minComponent: Double get() = minOf(minOf(minOf(x(), y()), z()), w())
+/** The sum of the components. */
+val Vector4dc.sum: Double get() = x() + y() + z() + w()
+/** This vector reflected in the plane (or line) with normal [n], which need not be unit length: `v - 2(v·n̂)n̂`. */
+infix fun Vector4dc.reflect(n: Vector4dc): Vector4d = n.n.let { u -> Vector4d(this).sub(u * (2 * dot(u))) }
+/** The projection of this vector onto [b]: the part that points along [b]. Zero when [b] is zero. */
+infix fun Vector4dc.proj(b: Vector4dc): Vector4d = b.lengthSquared().let { l -> if (l == 0.0) Vector4d() else b * (dot(b) / l) }
+/** The rejection from [b]: the part of this vector perpendicular to [b], `v - (v proj b)`. */
+infix fun Vector4dc.rej(b: Vector4dc): Vector4d = Vector4d(this).sub(this proj b)
+
+// Vector2f destructuring and constant-lane swizzles
+/** Destructuring: `val (x, y) = v` reads component 1, x. */
+operator fun Vector2fc.component1(): Float = x()
+/** Destructuring: `val (x, y) = v` reads component 2, y. */
+operator fun Vector2fc.component2(): Float = y()
+/** This 2D vector lifted into 3D with z = 0, `(x, y, 0)`. */
+val Vector2fc.xy0: Vector3f get() = Vector3f(x(), y(), 0.0f)
+/** This 2D vector with z = 1, `(x, y, 1)`: a point in homogeneous 2D coordinates. */
+val Vector2fc.xy1: Vector3f get() = Vector3f(x(), y(), 1.0f)
+/** This 2D vector laid onto the ground plane, `(x, 0, y)`: its y becomes depth. */
+val Vector2fc.x0y: Vector3f get() = Vector3f(x(), 0.0f, y())
+
+// Vector3f destructuring and constant-lane swizzles
+/** Destructuring: `val (x, y, z) = v` reads component 1, x. */
+operator fun Vector3fc.component1(): Float = x()
+/** Destructuring: `val (x, y, z) = v` reads component 2, y. */
+operator fun Vector3fc.component2(): Float = y()
+/** Destructuring: `val (x, y, z) = v` reads component 3, z. */
+operator fun Vector3fc.component3(): Float = z()
+/** This 3D vector with w = 0, `(x, y, z, 0)`: a direction in homogeneous coordinates, which translation leaves alone. */
+val Vector3fc.xyz0: Vector4f get() = Vector4f(x(), y(), z(), 0.0f)
+/** This 3D vector with w = 1, `(x, y, z, 1)`: a point in homogeneous coordinates. */
+val Vector3fc.xyz1: Vector4f get() = Vector4f(x(), y(), z(), 1.0f)
+/** This 3D vector flattened onto the xy plane, `(x, y, 0)`. */
+val Vector3fc.xy0: Vector3f get() = Vector3f(x(), y(), 0.0f)
+/** This 3D vector flattened onto the ground plane, `(x, 0, z)`. */
+val Vector3fc.x0z: Vector3f get() = Vector3f(x(), 0.0f, z())
+
+// Vector4f destructuring and constant-lane swizzles
+/** Destructuring: `val (x, y, z, w) = v` reads component 1, x. */
+operator fun Vector4fc.component1(): Float = x()
+/** Destructuring: `val (x, y, z, w) = v` reads component 2, y. */
+operator fun Vector4fc.component2(): Float = y()
+/** Destructuring: `val (x, y, z, w) = v` reads component 3, z. */
+operator fun Vector4fc.component3(): Float = z()
+/** Destructuring: `val (x, y, z, w) = v` reads component 4, w. */
+operator fun Vector4fc.component4(): Float = w()
+
+// Vector2d destructuring and constant-lane swizzles
+/** Destructuring: `val (x, y) = v` reads component 1, x. */
+operator fun Vector2dc.component1(): Double = x()
+/** Destructuring: `val (x, y) = v` reads component 2, y. */
+operator fun Vector2dc.component2(): Double = y()
+/** This 2D vector lifted into 3D with z = 0, `(x, y, 0)`. */
+val Vector2dc.xy0: Vector3d get() = Vector3d(x(), y(), 0.0)
+/** This 2D vector with z = 1, `(x, y, 1)`: a point in homogeneous 2D coordinates. */
+val Vector2dc.xy1: Vector3d get() = Vector3d(x(), y(), 1.0)
+/** This 2D vector laid onto the ground plane, `(x, 0, y)`: its y becomes depth. */
+val Vector2dc.x0y: Vector3d get() = Vector3d(x(), 0.0, y())
+
+// Vector3d destructuring and constant-lane swizzles
+/** Destructuring: `val (x, y, z) = v` reads component 1, x. */
+operator fun Vector3dc.component1(): Double = x()
+/** Destructuring: `val (x, y, z) = v` reads component 2, y. */
+operator fun Vector3dc.component2(): Double = y()
+/** Destructuring: `val (x, y, z) = v` reads component 3, z. */
+operator fun Vector3dc.component3(): Double = z()
+/** This 3D vector with w = 0, `(x, y, z, 0)`: a direction in homogeneous coordinates, which translation leaves alone. */
+val Vector3dc.xyz0: Vector4d get() = Vector4d(x(), y(), z(), 0.0)
+/** This 3D vector with w = 1, `(x, y, z, 1)`: a point in homogeneous coordinates. */
+val Vector3dc.xyz1: Vector4d get() = Vector4d(x(), y(), z(), 1.0)
+/** This 3D vector flattened onto the xy plane, `(x, y, 0)`. */
+val Vector3dc.xy0: Vector3d get() = Vector3d(x(), y(), 0.0)
+/** This 3D vector flattened onto the ground plane, `(x, 0, z)`. */
+val Vector3dc.x0z: Vector3d get() = Vector3d(x(), 0.0, z())
+
+// Vector4d destructuring and constant-lane swizzles
+/** Destructuring: `val (x, y, z, w) = v` reads component 1, x. */
+operator fun Vector4dc.component1(): Double = x()
+/** Destructuring: `val (x, y, z, w) = v` reads component 2, y. */
+operator fun Vector4dc.component2(): Double = y()
+/** Destructuring: `val (x, y, z, w) = v` reads component 3, z. */
+operator fun Vector4dc.component3(): Double = z()
+/** Destructuring: `val (x, y, z, w) = v` reads component 4, w. */
+operator fun Vector4dc.component4(): Double = w()
 
 // Vector2f shorthands
 /** A normalized copy of this vector, the shorthand for `normalized()`. Zero stays zero. */

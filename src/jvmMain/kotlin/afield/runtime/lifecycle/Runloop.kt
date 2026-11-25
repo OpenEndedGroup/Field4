@@ -94,6 +94,26 @@ object AnimationClock {
 
     fun isFrameIndexed(): Boolean = fixed.get() != null
 
+    @Volatile private var lastTickSeconds = Double.NaN
+
+    /**
+     * Seconds between the starts of the last two runloop ticks, measured on [nowSeconds], so it is
+     * wall time live and exact `1 / fps` steps (with zeros between them) during a frame-synchronous
+     * capture. This is the `dt` that `pos damp 6 to target` uses. Clamped to 0..0.25 s, so a pause, a
+     * stall or the clock switching between live and capture time cannot fling a follower; before the
+     * first tick it is 1/60.
+     */
+    @Volatile var frameDt: Double = 1.0 / 60.0
+        private set
+
+    /** Called by [Runloop] at the start of every tick to measure [frameDt]. */
+    internal fun tick() {
+        val now = nowSeconds()
+        val last = lastTickSeconds
+        lastTickSeconds = now
+        if (!last.isNaN()) frameDt = (now - last).coerceIn(0.0, 0.25)
+    }
+
     internal fun beginFrameIndexed(fps: Int): FrameToken {
         val state = FrameState(
             startSeconds = 0.0,
@@ -193,6 +213,7 @@ class Runloop {
         BoxInterrupt.Watchdog.start()
         while (true) {
             val frameStartNs = System.nanoTime()
+            AnimationClock.tick()
             CPUSpan.time("runloop_pre") { preRun.update() }
             CPUSpan.time("runloop_main") { main.frame() }
             CPUSpan.time("runloop_post") { postRun.update() }

@@ -18,9 +18,7 @@ import afield.document.graph.box
 import afield.document.history.HistoryMetrics
 import afield.document.properties.PropertyDependencies
 import afield.runtime.execution.plus
-import afield.runtime.kotlin.SharedTypes
 import afield.runtime.kotlin.cache
-import afield.runtime.kotlin.sharedTypes
 import afield.runtime.lifecycle.early
 import afield.runtime.lifecycle.loop
 import afield.runtime.lifecycle.plus
@@ -231,9 +229,6 @@ class DocumentDirectoryWriterLedgerTest {
             "src/jvmMain/kotlin/afield/document/workspace/FileManager.kt" to GATED,
             // BoxStudies.directory: a read-only box's study works in a scratch copy outside the document.
             "src/jvmMain/kotlin/afield/study/source/SourceStudy.kt" to GATED,
-
-            // Read-only documents publish compiled types into temporary storage.
-            "src/jvmMain/kotlin/afield/runtime/kotlin/SharedTypes.kt" to GATED,
 
             // ---- ungated, and out of scope with a reason ----
             "src/jvmMain/kotlin/afield/document/workspace/WorkspaceProjectScope.kt" to exempt(

@@ -704,3 +704,24 @@ class Cuboid(val x: Float, val y: Float, val z: Float, val w: Float, val h: Floa
         }
     }
 }
+
+/**
+ * The point in this collection nearest to [p]. **Throws** `NoSuchElementException` on an empty
+ * collection, as `minBy` does. One pass, no index; for many queries against the same points build
+ * a spatial index instead.
+ */
+@JvmName("closestVec2")
+fun Collection<Vec2>.closest(p: afield.math.linalg.Vector2fc): Vec2 = minBy { it.distanceSquared(p) }
+
+/** The point in this collection nearest to [p]. **Throws** on an empty collection; see the [Vec2] form. */
+@JvmName("closestVec3")
+fun Collection<Vec3>.closest(p: afield.math.linalg.Vector3fc): Vec3 = minBy { it.distanceSquared(p) }
+
+/**
+ * These points ordered by angle about [c], anticlockwise from +x (angles −π..π): the order that
+ * turns a scattered ring of points into a polygon you can draw without crossings. Defaults to the
+ * points' own [center].
+ */
+@JvmName("sortedAroundVec2")
+fun Collection<Vec2>.sortedAround(c: afield.math.linalg.Vector2fc = center()): List<Vec2> =
+    sortedBy { kotlin.math.atan2((it.y - c.y()).toDouble(), (it.x - c.x()).toDouble()) }

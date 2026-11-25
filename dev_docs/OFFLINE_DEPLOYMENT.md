@@ -10,7 +10,7 @@ Build the standalone distribution with:
 ./tools/build-offline-docs.sh
 ```
 
-This synchronizes the canonical resources and the `hello_display` and `shared_types_demo`
+This synchronizes the canonical resources and the `hello_display` and `shared_kotlin_garden`
 transcript-generated documents into `dist/offline-viewer/`. Both transcripts are registered for
 execution by `DemoTranscriptExecSmokeTest`; the bundle reuses their generated documents. The same
 Python synchronizer is used by the documentation build, so fixes belong in the

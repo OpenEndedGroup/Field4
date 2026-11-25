@@ -99,9 +99,11 @@ class KotlinEmitter(
     fun emitVectorOperators(): String = buildString {
         appendHeader(packages.extensions, "@file:${packages.completionAnnotation}(\"Math\")")
         appendLine("import ${packages.linalg}.*")
-        swizzleTypes.forEach { type ->
+        ergonomicTypes.forEach { type ->
             val heap = type.heapName
             val components = type.components
+            val s = type.scalar.kotlinType
+            val conv = type.scalar.numberConversion
             appendLine()
             appendLine("// $heap operators")
             appendLine("/** In-place assignment: `a %= b` copies b's components into a. */")
@@ -109,7 +111,7 @@ class KotlinEmitter(
             appendLine()
             appendLine("/** Returns a copy with the named components replaced; the rest keep this vector's values. */")
             appendLine(
-                "operator fun $heap.invoke(${components.joinToString { "${it.sourceName}: Float = this.${it.sourceName}" }}): $heap = " +
+                "operator fun $heap.invoke(${components.joinToString { "${it.sourceName}: $s = this.${it.sourceName}" }}): $heap = " +
                     "$heap(${components.joinToString { it.sourceName }})"
             )
             appendLine()
@@ -121,7 +123,25 @@ class KotlinEmitter(
             appendLine("}")
             appendLine()
             appendLine("/** Returns a copy rescaled to length [l], keeping direction. */")
-            appendLine("infix fun $heap.len(l: Number): $heap = this { normalize().mul(l.toFloat()) }")
+            appendLine("infix fun $heap.len(l: Number): $heap = this { normalize().mul(l.$conv()) }")
+            appendLine()
+            appendLine("/** `2 * v`: the number on the left, so the arithmetic reads the way it does on paper. New vector; operands untouched. */")
+            appendLine("operator fun Number.times(v: ${type.readName}): $heap = v.mul($conv(), $heap())")
+        }
+        ergonomicTypes.forEach { type ->
+            appendLine()
+            appendLine("// ${type.heapName} geometry shorthands")
+            emitGeometryShorthands(type)
+        }
+        ergonomicTypes.forEach { type ->
+            appendLine()
+            appendLine("// ${type.heapName} motion and shaping shorthands")
+            emitMotionShorthands(type)
+        }
+        ergonomicTypes.forEach { type ->
+            appendLine()
+            appendLine("// ${type.heapName} destructuring and constant-lane swizzles")
+            emitStructureShorthands(type)
         }
         ergonomicTypes.forEach { type ->
             appendLine()
@@ -137,6 +157,188 @@ class KotlinEmitter(
     /** Heap vectors (float and double, dims 2..4) that get the `.n`/`.length`/`lerp … to`/`step … to` surface. */
     private val ergonomicTypes: List<VectorType>
         get() = model.heapVectors.filter { it.scalar != ScalarKind.HALF && it.dimension in 2..4 }
+
+    /**
+     * Emits the Tier 2 spellings for one heap vector type: `a mid b`, `a towards b`, the `lerp`
+     * variants `smooth`, `ease` and `damp` (each returns the existing `…Lerp` pending value, so `to b`
+     * finishes them), `slerp … to` in 2D and 3D, `limit`, `snap`, the GLSL-style component fields
+     * `floor`, `fract`, `abs`, `sign`, the scalars `maxComponent`, `minComponent`, `sum`, and
+     * `reflect`, `proj`, `rej`. Every one returns a new value.
+     */
+    private fun StringBuilder.emitMotionShorthands(type: VectorType) {
+        val r = type.readName
+        val h = type.heapName
+        val s = type.scalar.kotlinType
+        val conv = type.scalar.numberConversion
+        val names = type.components.map { it.sourceName }
+        fun each(f: (String) -> String) = "$h(${names.joinToString { f(it) }})"
+        fun fold(op: String) = names.drop(1).fold("${names[0]}()") { acc, n -> "$op($acc, $n())" }
+        appendLine("/** The midpoint of two points. */")
+        appendLine("infix fun $r.mid(b: $r): $h = $h(this).add(b).mul(0.5${if (type.scalar == ScalarKind.FLOAT) "f" else ""})")
+        appendLine("/** The unit direction from this point to [b], `(b - a).n`. Coincident points give zero. */")
+        appendLine("infix fun $r.towards(b: $r): $h = (b - this).n")
+        appendLine("/** Starts `a smooth t to b`: `lerp` with [t] passed through smoothstep, so the move eases in and out. [t] is clamped to 0..1. */")
+        appendLine("infix fun $r.smooth(t: Number): ${h}Lerp = ${h}Lerp(this, t.toDouble().coerceIn(0.0, 1.0).let { it * it * (3 - 2 * it) }.$conv())")
+        appendLine("/** Starts `a ease (t to curve) to b`: `lerp` with [t] passed through any easing curve, such as one from [Ease]. */")
+        appendLine("infix fun $r.ease(t: Pair<Number, (Double) -> Double>): ${h}Lerp = ${h}Lerp(this, t.second(t.first.toDouble()).$conv())")
+        // The runloop form `a damp k to b` is hand-written in linalg.kt, because it reads the host's frame
+        // clock, which the generator's configurable packages do not name.
+        appendLine("/**")
+        appendLine(" * Starts `a.damp(k, dt) to b`: moves `1 − e^(−k·dt)` of the gap for a time step of [dt] seconds,")
+        appendLine(" * so repeated calls close the same fraction per second whatever the step. `a damp k to b` uses")
+        appendLine(" * the runloop's frame time for [dt].")
+        appendLine(" */")
+        appendLine("fun $r.damp(k: Number, dt: Number): ${h}Lerp = ${h}Lerp(this, (1.0 - kotlin.math.exp(-k.toDouble() * dt.toDouble())).$conv())")
+        appendLine("/** At most [max] long, keeping direction; a shorter vector is copied unchanged. */")
+        appendLine("infix fun $r.limit(max: Number): $h = max.$conv().let { m -> val l = length(); if (l > m && l > 0) $h(this).mul(m / l) else $h(this) }")
+        appendLine("/** Each component rounded to the nearest multiple of [step]. */")
+        appendLine("infix fun $r.snap(step: Number): $h = step.$conv().let { st -> ${each { "kotlin.math.round($it() / st) * st" }} }")
+        appendLine("/** Each component rounded to the nearest multiple of the matching component of [grid]. */")
+        appendLine("infix fun $r.snap(grid: $r): $h = ${each { "kotlin.math.round($it() / grid.$it()) * grid.$it()" }}")
+        appendLine("/** Each component rounded down, GLSL's `floor`. */")
+        appendLine("fun $r.floor(): $h = ${each { "kotlin.math.floor($it())" }}")
+        appendLine("/** Each component's fractional part `x - floor(x)`, GLSL's `fract`: always in 0..1, also for negative components. */")
+        appendLine("fun $r.fract(): $h = ${each { "($it() - kotlin.math.floor($it()))" }}")
+        appendLine("/** Each component's absolute value, as a new vector. `absolute()` does the same in place. */")
+        appendLine("fun $r.abs(): $h = ${each { "kotlin.math.abs($it())" }}")
+        appendLine("/** Each component's sign, −1, 0 or 1, GLSL's `sign`. */")
+        appendLine("fun $r.sign(): $h = ${each { "kotlin.math.sign($it())" }}")
+        appendLine("/** The largest component. */")
+        appendLine("val $r.maxComponent: $s get() = ${fold("maxOf")}")
+        appendLine("/** The smallest component. */")
+        appendLine("val $r.minComponent: $s get() = ${fold("minOf")}")
+        appendLine("/** The sum of the components. */")
+        appendLine("val $r.sum: $s get() = ${names.joinToString(" + ") { "$it()" }}")
+        appendLine("/** This vector reflected in the plane (or line) with normal [n], which need not be unit length: `v - 2(v·n̂)n̂`. */")
+        appendLine("infix fun $r.reflect(n: $r): $h = n.n.let { u -> $h(this).sub(u * (2 * dot(u))) }")
+        appendLine("/** The projection of this vector onto [b]: the part that points along [b]. Zero when [b] is zero. */")
+        appendLine("infix fun $r.proj(b: $r): $h = b.lengthSquared().let { l -> if (l == ${type.scalar.zero}) $h() else b * (dot(b) / l) }")
+        appendLine("/** The rejection from [b]: the part of this vector perpendicular to [b], `v - (v proj b)`. */")
+        appendLine("infix fun $r.rej(b: $r): $h = $h(this).sub(this proj b)")
+        if (type.dimension in 2..3) {
+            appendLine()
+            appendLine("/** The first half of `a slerp t to b`; finish it with [to]. */")
+            appendLine("class ${h}Slerp internal constructor(private val from: $r, private val t: $s) {")
+            appendLine("    /**")
+            appendLine("     * Returns the vector [t] of the way from the left-hand one to [b] along the arc between their")
+            appendLine("     * directions, turning at a constant rate, with the length interpolated linearly. Either")
+            appendLine("     * vector being zero gives the straight-line `lerp`.")
+            appendLine("     */")
+            appendLine("    infix fun to(b: $r): $h {")
+            appendLine("        val la = from.length(); val lb = b.length()")
+            appendLine("        if (la == ${type.scalar.zero} || lb == ${type.scalar.zero}) return from lerp t to b")
+            appendLine("        val ua = from.n; val ub = b.n")
+            appendLine("        val l = la + (lb - la) * t")
+            if (type.dimension == 2) {
+                appendLine("        return (ua rot ((ua signedAngleTo ub) * t)).mul(l)")
+            } else {
+                appendLine("        var axis = ua x ub")
+                appendLine("        if (axis.lengthSquared() < 1e-12) axis = ua x (if (kotlin.math.abs(ua.x) < 0.9) $h.X else $h.Z)")
+                appendLine("        axis = axis.n")
+                appendLine("        val a = (ua angleTo ub) * t")
+                appendLine("        return (ua * kotlin.math.cos(a)).add((axis x ua) * kotlin.math.sin(a)).mul(l)")
+            }
+            appendLine("    }")
+            appendLine("}")
+            appendLine("/** Starts `a slerp t to b`: the point [t] of the way round the arc from this vector's direction to `b`'s. */")
+            appendLine("infix fun $r.slerp(t: Number): ${h}Slerp = ${h}Slerp(this, t.$conv())")
+        }
+    }
+
+    /**
+     * Emits the Tier 3 structure spellings for one heap vector type: destructuring
+     * (`val (x, y) = v`) and the GLSL-style swizzles with constant lanes that lift a vector into the
+     * next dimension or flatten it onto a plane: `xy0`, `xy1`, `x0y` in 2D; `xyz0`, `xyz1`, `xy0`,
+     * `x0z` in 3D. Each returns a new vector.
+     */
+    private fun StringBuilder.emitStructureShorthands(type: VectorType) {
+        val r = type.readName
+        val s = type.scalar.kotlinType
+        val z = type.scalar.zero
+        val one = type.scalar.one
+        fun heap(dimension: Int) = "Vector$dimension${type.scalar.typeSuffix}"
+        type.components.forEachIndexed { index, component ->
+            appendLine("/** Destructuring: `val (${type.components.joinToString { it.sourceName }}) = v` reads component ${index + 1}, ${component.sourceName}. */")
+            appendLine("operator fun $r.component${index + 1}(): $s = ${component.sourceName}()")
+        }
+        when (type.dimension) {
+            2 -> {
+                appendLine("/** This 2D vector lifted into 3D with z = 0, `(x, y, 0)`. */")
+                appendLine("val $r.xy0: ${heap(3)} get() = ${heap(3)}(x(), y(), $z)")
+                appendLine("/** This 2D vector with z = 1, `(x, y, 1)`: a point in homogeneous 2D coordinates. */")
+                appendLine("val $r.xy1: ${heap(3)} get() = ${heap(3)}(x(), y(), $one)")
+                appendLine("/** This 2D vector laid onto the ground plane, `(x, 0, y)`: its y becomes depth. */")
+                appendLine("val $r.x0y: ${heap(3)} get() = ${heap(3)}(x(), $z, y())")
+            }
+            3 -> {
+                appendLine("/** This 3D vector with w = 0, `(x, y, z, 0)`: a direction in homogeneous coordinates, which translation leaves alone. */")
+                appendLine("val $r.xyz0: ${heap(4)} get() = ${heap(4)}(x(), y(), z(), $z)")
+                appendLine("/** This 3D vector with w = 1, `(x, y, z, 1)`: a point in homogeneous coordinates. */")
+                appendLine("val $r.xyz1: ${heap(4)} get() = ${heap(4)}(x(), y(), z(), $one)")
+                appendLine("/** This 3D vector flattened onto the xy plane, `(x, y, 0)`. */")
+                appendLine("val $r.xy0: ${heap(3)} get() = ${heap(3)}(x(), y(), $z)")
+                appendLine("/** This 3D vector flattened onto the ground plane, `(x, 0, z)`. */")
+                appendLine("val $r.x0z: ${heap(3)} get() = ${heap(3)}(x(), $z, z())")
+            }
+        }
+    }
+
+    /** The default `near` tolerance: about a hundred ulps at 1 for float, a few million for double. */
+    private fun nearTolerance(scalar: ScalarKind): String = if (scalar == ScalarKind.DOUBLE) "1e-9" else "1e-5f"
+
+    /**
+     * Emits the Tier 1 geometry spellings for one heap vector type: `v.sq`, `a dist b`, `a near b`,
+     * and in 2D and 3D `a angleTo b` and the `x` cross product; in 2D also `v.angle`, `v.perp`,
+     * `v rot θ`, `a signedAngleTo b` and `v about c rot θ`. Every one returns a new value.
+     *
+     * Each infix declaration stays on one line with one parameter, because completion's
+     * `InfixCompletion` finds operand types by scanning for exactly that shape.
+     */
+    private fun StringBuilder.emitGeometryShorthands(type: VectorType) {
+        val r = type.readName
+        val h = type.heapName
+        val s = type.scalar.kotlinType
+        val conv = type.scalar.numberConversion
+        val names = type.components.map { it.sourceName }
+        appendLine("/** The squared length, `lengthSquared()`: cheap enough for comparisons such as `(p - c).sq < r * r`. */")
+        appendLine("val $r.sq: $s get() = lengthSquared()")
+        appendLine("/** The distance between two points, the same as `a.distance(b)`. */")
+        appendLine("infix fun $r.dist(b: $r): $s = distance(b)")
+        appendLine("/** True when every component is within ${nearTolerance(type.scalar)} of [b]'s: the comparison to use where `==` (exact) is too strict. */")
+        appendLine("infix fun $r.near(b: $r): Boolean = near(b, ${nearTolerance(type.scalar)})")
+        appendLine("/** True when every component is within [tolerance] of [b]'s. */")
+        appendLine("fun $r.near(b: $r, tolerance: Number): Boolean = tolerance.$conv().let { t -> ${names.joinToString(" && ") { "kotlin.math.abs($it() - b.$it()) <= t" }} }")
+        when (type.dimension) {
+            2 -> {
+                appendLine("/** The 2D cross product, the scalar `a.x * b.y - a.y * b.x`: positive when [b] is anticlockwise of this vector. */")
+                appendLine("infix fun $r.x(b: $r): $s = x() * b.y() - y() * b.x()")
+                appendLine("/** The unsigned angle between two vectors in radians, 0..π, through `atan2(|a × b|, a · b)` so it stays accurate near 0 and π. */")
+                appendLine("infix fun $r.angleTo(b: $r): $s = kotlin.math.atan2(kotlin.math.abs(this x b), dot(b))")
+                appendLine("/** The angle that turns this vector's direction onto [b]'s, in radians, −π..π; positive is anticlockwise. */")
+                appendLine("infix fun $r.signedAngleTo(b: $r): $s = kotlin.math.atan2(this x b, dot(b))")
+                appendLine("/** The direction of this vector as an angle from +x, `atan2(y, x)`, in radians, −π..π. */")
+                appendLine("val $r.angle: $s get() = kotlin.math.atan2(y(), x())")
+                appendLine("/** This vector turned a quarter turn anticlockwise, `(-y, x)`. */")
+                appendLine("val $r.perp: $h get() = $h(-y(), x())")
+                appendLine("/** This vector turned [angle] radians anticlockwise about the origin. */")
+                appendLine("infix fun $r.rot(angle: Number): $h = angle.$conv().let { a -> val c = kotlin.math.cos(a); val sn = kotlin.math.sin(a); $h(x() * c - y() * sn, x() * sn + y() * c) }")
+                appendLine()
+                appendLine("/** The first half of `v about c rot θ`; finish it with [rot]. */")
+                appendLine("class ${h}Pivot internal constructor(private val point: $r, private val centre: $r) {")
+                appendLine("    /** Returns the point turned [angle] radians anticlockwise about the centre. */")
+                appendLine("    infix fun rot(angle: Number): $h = ((point - centre) rot angle).add(centre)")
+                appendLine("}")
+                appendLine("/** Starts `v about c rot θ`: turn this point about [centre]. */")
+                appendLine("infix fun $r.about(centre: $r): ${h}Pivot = ${h}Pivot(this, centre)")
+            }
+            3 -> {
+                appendLine("/** The cross product `a x b`: perpendicular to both, right-handed, length `|a||b| sin θ`. A new vector; neither operand changes. */")
+                appendLine("infix fun $r.x(b: $r): $h = cross(b, $h())")
+                appendLine("/** The unsigned angle between two vectors in radians, 0..π, through `atan2(|a × b|, a · b)` so it stays accurate near 0 and π. */")
+                appendLine("infix fun $r.angleTo(b: $r): $s = kotlin.math.atan2((this x b).length(), dot(b))")
+            }
+        }
+    }
 
     /**
      * Emits the live-coding shorthands `v.n`, `v.length`, `a lerp t to b` and `a step d to b`.
@@ -242,11 +444,37 @@ class KotlinEmitter(
             appendLine("    /** The angle from the positive real axis, in radians, in −π..π. */")
             appendLine("    val arg: $s get() = atan2(im, re)")
             appendLine("    /** e to the power of this number: e^re · (cos im + i sin im). */")
-            appendLine("    fun exp(): $c = kotlin.math.exp(re).let { $c(it * cos(im), it * sin(im)) }")
+            appendLine("    fun exp(): $c = kotlin.math.exp(re).let { $c(it * kotlin.math.cos(im), it * kotlin.math.sin(im)) }")
             appendLine("    /** The principal natural logarithm: ln|z| + i·arg z. */")
             appendLine("    fun ln(): $c = $c(kotlin.math.ln(abs), arg)")
             appendLine("    /** The principal power z^p, through exp and ln. Zero to any power is zero. */")
             appendLine("    fun pow(p: Number): $c = if (re == $z && im == $z) this else (ln() * p).exp()")
+            appendLine("    /** The principal power z^w for a complex exponent, through exp and ln. Zero to any power is zero. */")
+            appendLine("    fun pow(w: $c): $c = if (re == $z && im == $z) this else (ln() * w).exp()")
+            appendLine("    /** The principal square root: half the angle, the square root of the magnitude. Its real part is never negative. */")
+            appendLine("    fun sqrt(): $c = $c.polar(kotlin.math.sqrt(abs), arg / 2)")
+            appendLine("    /** The complex sine, sin re · cosh im + i cos re · sinh im. On a grid of points it is a conformal map. */")
+            appendLine("    fun sin(): $c = $c(kotlin.math.sin(re) * kotlin.math.cosh(im), kotlin.math.cos(re) * kotlin.math.sinh(im))")
+            appendLine("    /** The complex cosine, cos re · cosh im − i sin re · sinh im. */")
+            appendLine("    fun cos(): $c = $c(kotlin.math.cos(re) * kotlin.math.cosh(im), -kotlin.math.sin(re) * kotlin.math.sinh(im))")
+            appendLine("    /** A unit-magnitude copy pointing the same way, like a vector's `n`. Zero stays zero. */")
+            appendLine("    val n: $c get() = abs.let { if (it == $z) this else $c(re / it, im / it) }")
+            appendLine("    /** The squared magnitude |z|², without the square root. */")
+            appendLine("    val sq: $s get() = re * re + im * im")
+            appendLine("    /** This number turned [theta] radians anticlockwise: multiplication by `polar(1, theta)`. */")
+            appendLine("    infix fun rot(theta: Number): $c = this * polar(1, theta)")
+            appendLine("    /** The point [p] multiplied as a complex number: turned by [arg] and scaled by [abs]. A new vector. */")
+            appendLine("    operator fun times(p: $vc): $v = $v(re * p.x() - im * p.y(), re * p.y() + im * p.x())")
+            appendLine("    /** True when both parts are within ${nearTolerance(scalar)} of [o]'s: the comparison to use where `==` (bit-for-bit) is too strict. */")
+            appendLine("    infix fun near(o: $c): Boolean = near(o, ${nearTolerance(scalar)})")
+            appendLine("    /** True when both parts are within [tolerance] of [o]'s. */")
+            appendLine("    fun near(o: $c, tolerance: Number): Boolean = tolerance.$conv().let { t -> kotlin.math.abs(re - o.re) <= t && kotlin.math.abs(im - o.im) <= t }")
+            appendLine("    /** \"This, then [o]\": the composed turn-and-scale, `o * this`. Complex multiplication commutes, so it is also `this * o`; the name is for symmetry with quaternions. */")
+            appendLine("    infix fun then(o: $c): $c = o * this")
+            appendLine("    /** Starts `z lerp t to w`, the straight line between two complex numbers. */")
+            appendLine("    infix fun lerp(t: Number): ${c}Lerp = ${c}Lerp(this, t.$conv())")
+            appendLine("    /** Starts `z slerp t to w`, the arc: the angle turns the short way at a constant rate and the magnitude moves linearly. */")
+            appendLine("    infix fun slerp(t: Number): ${c}Slerp = ${c}Slerp(this, t.$conv())")
             appendLine("    /** This number as the 2D vector (re, im). */")
             appendLine("    fun toVector(): $v = $v(re, im)")
             appendLine()
@@ -275,6 +503,23 @@ class KotlinEmitter(
             appendLine("operator fun Number.times(z: $c): $c = z * this")
             appendLine("operator fun Number.minus(z: $c): $c = -z + this")
             appendLine("operator fun Number.div(z: $c): $c = $c(this, 0) / z")
+            appendLine("/** The point multiplied as a complex number: turned by `z.arg` and scaled by `z.abs`, the planar counterpart of `p * q`. A new vector. */")
+            appendLine("operator fun $vc.times(z: $c): $v = z * this")
+            appendLine()
+            appendLine("/** The first half of `z lerp t to w`; finish it with [to]. */")
+            appendLine("class ${c}Lerp internal constructor(private val from: $c, private val t: $s) {")
+            appendLine("    /** The number [t] of the way from the left-hand one to [b] in a straight line. */")
+            appendLine("    infix fun to(b: $c): $c = $c(from.re + (b.re - from.re) * t, from.im + (b.im - from.im) * t)")
+            appendLine("}")
+            appendLine("/** The first half of `z slerp t to w`; finish it with [to]. */")
+            appendLine("class ${c}Slerp internal constructor(private val from: $c, private val t: $s) {")
+            appendLine("    /** The number [t] of the way round the arc from the left-hand one to [b]: angle the short way, magnitude linearly. */")
+            appendLine("    infix fun to(b: $c): $c {")
+            appendLine("        var d = b.arg - from.arg")
+            appendLine("        if (d > kotlin.math.PI) d -= (2 * kotlin.math.PI).$conv() else if (d < -kotlin.math.PI) d += (2 * kotlin.math.PI).$conv()")
+            appendLine("        return $c.polar(from.abs + (b.abs - from.abs) * t, from.arg + d * t)")
+            appendLine("    }")
+            appendLine("}")
             appendLine()
             appendLine("/**")
             appendLine(" * An immutable two-component number [a] + [b]·ε whose unit squares to [epsilon2].")
@@ -315,6 +560,10 @@ class KotlinEmitter(
             appendLine("            else -> sqrt(epsilon2).let { k -> $h(e * cosh(k * b), e * sinh(k * b) / k, epsilon2) }")
             appendLine("        }")
             appendLine("    }")
+            appendLine("    /** True when both parts are within ${nearTolerance(scalar)} of [o]'s and the two share ε². */")
+            appendLine("    infix fun near(o: $h): Boolean = near(o, ${nearTolerance(scalar)})")
+            appendLine("    /** True when both parts are within [tolerance] of [o]'s and the two share ε². */")
+            appendLine("    fun near(o: $h, tolerance: Number): Boolean = tolerance.$conv().let { t -> epsilon2 == o.epsilon2 && kotlin.math.abs(a - o.a) <= t && kotlin.math.abs(b - o.b) <= t }")
             appendLine("    /** This number as the 2D vector (a, b). */")
             appendLine("    fun toVector(): $v = $v(a, b)")
             appendLine()
@@ -331,7 +580,16 @@ class KotlinEmitter(
             appendLine("        fun split(a: Number, b: Number): $h = $h(a, b, 1)")
             appendLine("    }")
             appendLine("}")
+            appendLine("operator fun Number.plus(z: $h): $h = z + this")
+            appendLine("operator fun Number.times(z: $h): $h = z * this")
+            appendLine("operator fun Number.minus(z: $h): $h = -z + this")
+            appendLine("operator fun Number.div(z: $h): $h = $h(this, 0, z.epsilon2) / z")
         }
+        appendLine()
+        appendLine("/** [this] times i, in double precision, so `2 + 3.im` is the complex number 2 + 3i. (`.i` is taken: it is `toInt()`.) */")
+        appendLine("val Number.im: Complexd get() = Complexd(0.0, toDouble())")
+        appendLine("/** The complex number with magnitude [this] at angle [theta] radians, `r cis θ` = r(cos θ + i sin θ): `1 cis 30.deg`. */")
+        appendLine("infix fun Number.cis(theta: Number): Complexd = Complexd.polar(this, theta)")
     }
 
     /** Every length-[arity] sequence of [components] (Cartesian power), in lexicographic order. */
@@ -432,7 +690,7 @@ class KotlinEmitter(
         appendLine("<!-- generator-version: 1; model-version: field-f32-v1 -->")
         appendLine("# Generated vector API reference")
         appendLine()
-        appendLine("This page is generated from the typed algebra model that emits Field's heap, frame-arena, and `MemorySegment` vector implementations. For intuition and worked examples, start with [Linear algebra in Field](linear_algebra.md).")
+        appendLine("This page is generated from the typed algebra model that emits Field's heap, frame-arena, and `MemorySegment` vector implementations, and also covers the number types that rotate: complex, hypercomplex and quaternion. For intuition and worked examples, start with [Linear algebra in Field](linear_algebra.md).")
         appendLine()
         appendLine("## Ergonomic operators")
         appendLine()
@@ -444,7 +702,14 @@ class KotlinEmitter(
         appendLine("| --- | --- |")
         appendLine("| `a + b`, `a - b` | Component-by-component sum and difference. A number on the right applies to every component: `a + 1`. |")
         appendLine("| `a * b`, `a * 2`, `a / 2` | Component-by-component product, scaling by a number, dividing by a number. |")
+        appendLine("| `2 * a` | A number on the left scales too. |")
         appendLine("| `-a` | The vector pointing the other way. |")
+        appendLine("| `a dot b` | The dot product. Infix calls bind more loosely than arithmetic, so write `(p - c) dot n`. |")
+        appendLine("| `a x b` | The cross product: in 3D a new vector perpendicular to both, right-handed; in 2D the number `a.x * b.y - a.y * b.x`, positive when `b` is anticlockwise of `a`. |")
+        appendLine("| `a dist b` | The distance between two points. |")
+        appendLine("| `v.sq` | The squared length, cheap enough for comparisons: `if ((p - c).sq < r * r)`. |")
+        appendLine("| `a near b`<br>`a.near(b, 0.01)` | True when every component is within 1e-5 (float) or 1e-9 (double), or within the tolerance you give. Use it where `==`, which compares exactly, is too strict. |")
+        appendLine("| `a angleTo b` | The angle between two 2D or 3D vectors in radians, 0..π. It stays accurate near 0 and π, where `acos` of the dot product does not. |")
         appendLine("| `a.length` | The vector's length, the same as `a.length()`. |")
         appendLine("| `a.n` | A unit-length copy pointing the same way, the same as `a.normalized()`. Zero stays zero. |")
         appendLine("| `v len 10` | A copy rescaled to length 10, keeping direction. |")
@@ -453,11 +718,74 @@ class KotlinEmitter(
         appendLine("| `v(y = 2f)` | A copy with the named components replaced; unnamed components keep this vector's values. |")
         appendLine("| `v { normalize() }` | A copy after applying the block to it, leaving `v` untouched. |")
         appendLine("| `a %= b` | In-place assignment: copies b's components into a. |")
+        appendLine("| `Vec3.X`, `Vec3.Y`, `Vec3.Z`, `Vec3.ZERO`, `Vec3.ONE` | The axes, zero and all-ones, on every vector type's companion (`Vec2.X`, `Vector4d.W`, …). They are read-only, so the shared axis cannot be normalized or scaled by accident. |")
         appendLine("| `v.normalized()` / `v.normalized(dest)` | Unit direction as a new value / into reusable storage. Optional epsilon sets the zero threshold. Finite inputs only. |")
         appendLine()
         appendLine("</div>")
         appendLine()
-        appendLine("`length`, `n`, `lerp … to` and `step … to` exist on the float and double heap vectors and on the frame-arena and segment forms. In a frame arena they allocate their result in the arena; on a segment view they return a heap vector, because a view has nowhere of its own to put one. The arithmetic operators are heap forms, float and double; `len`, `v(...)`, `v { }` and `%=` are float heap forms.")
+        appendLine("`length`, `n`, `lerp … to` and `step … to` exist on the float and double heap vectors and on the frame-arena and segment forms. In a frame arena they allocate their result in the arena; on a segment view they return a heap vector, because a view has nowhere of its own to put one. The arithmetic operators and everything else in the table are heap forms, float and double.")
+        appendLine()
+        appendLine("### Angles and the plane")
+        appendLine()
+        appendLine("Angles are written as values. Each of these is radians as a `Float`, the unit every rotation method takes, so `q.rotateX(90.deg)` and `quat(45.deg, Vec3.Y)` need no conversion.")
+        appendLine()
+        appendLine("<div class=\"field-reference\" data-code-lang=\"kotlin\" markdown>")
+        appendLine()
+        appendLine("| Operator | Meaning |")
+        appendLine("| --- | --- |")
+        appendLine("| `90.deg`, `0.25.turns`, `1.5.rad` | Degrees, whole turns and radians, as radians. Being a `Float`, the angle has float precision (about 1e-7) even inside a double calculation; write `PI / 2` where that matters. |")
+        appendLine("| `TAU` | One full turn, 2π, as a `Double`. |")
+        appendLine("| `30.deg.dir` | The unit `Vec2` at that angle from +x, `(cos, sin)`. |")
+        appendLine("| `v.angle` | The direction of a 2D vector as an angle from +x, in −π..π. `30.deg.dir.angle` is `30.deg` again. |")
+        appendLine("| `a signedAngleTo b` | The 2D angle that turns `a`'s direction onto `b`'s, in −π..π; positive is anticlockwise. |")
+        appendLine("| `v.perp` | The 2D vector turned a quarter turn anticlockwise, `(-y, x)`: the normal of a segment, the tangent of a circle. |")
+        appendLine("| `v rot 30.deg` | The 2D vector turned about the origin. |")
+        appendLine("| `p about c rot 30.deg` | The point `p` turned about the point `c`. |")
+        appendLine()
+        appendLine("</div>")
+        appendLine()
+        appendLine("### Motion and shaping")
+        appendLine()
+        appendLine("The `lerp … to` sentence has variants for the moves that make a running sketch feel alive. Each is finished by `to b`.")
+        appendLine()
+        appendLine("<div class=\"field-reference\" data-code-lang=\"kotlin\" markdown>")
+        appendLine()
+        appendLine("| Operator | Meaning |")
+        appendLine("| --- | --- |")
+        appendLine("| `a mid b` | The midpoint. |")
+        appendLine("| `a towards b` | The unit direction from `a` to `b`, `(b - a).n`. |")
+        appendLine("| `a smooth t to b` | `lerp` with `t` through smoothstep, easing in and out; `t` is clamped to 0..1. |")
+        appendLine("| `a ease (t to Ease.outBack) to b` | `lerp` with `t` through any easing curve: one from `Ease` (`linear`, `smooth`, `smoother`, `inQuad`, `outQuad`, `inOutQuad`, `inCubic`, `outCubic`, `inOutCubic`, `inOutSine`, `outBack`) or your own `{ t: Double -> … }`. |")
+        appendLine("| `pos = pos damp 6 to target` | Follows `target`, closing `1 − e^(−6·dt)` of the gap each frame, with `dt` the runloop's frame time, so it moves at the same pace at any frame rate. Larger numbers follow more tightly. Outside the runloop, give `dt` yourself: `pos.damp(6, dt) to target`. |")
+        appendLine("| `a slerp t to b` | In 2D and 3D, the vector `t` of the way round the arc from `a`'s direction to `b`'s, turning at a constant rate, with the length moving linearly. |")
+        appendLine("| `v limit 5` | At most 5 long, keeping direction. |")
+        appendLine("| `v snap 10`<br>`v snap vec(10, 5)` | Each component rounded to the nearest multiple of 10, or of the matching spacing. |")
+        appendLine("| `v.floor()`, `v.fract()`, `v.abs()`, `v.sign()` | Component by component, with GLSL's names (functions, not properties, so a bare `abs(x)` inside a `v { }` block still means `kotlin.math.abs`), so a shader written in a box and its Kotlin twin agree. `fract` is `x - floor(x)`, in 0..1 even for negative components. |")
+        appendLine("| `v.maxComponent`, `v.minComponent`, `v.sum` | The largest component, the smallest and their sum. |")
+        appendLine("| `v reflect n`<br>`v proj b`<br>`v rej b` | `v` reflected in the plane (or, in 2D, the line) with normal `n`; the part of `v` along `b`; the part perpendicular to `b`. |")
+        appendLine()
+        appendLine("</div>")
+        appendLine()
+        appendLine("### Structure, lists and randomness")
+        appendLine()
+        appendLine("<div class=\"field-reference\" data-code-lang=\"kotlin\" markdown>")
+        appendLine()
+        appendLine("| Operator | Meaning |")
+        appendLine("| --- | --- |")
+        appendLine("| `val (x, y, z) = v` | Destructuring, on every float and double vector; also `for ((x, y) in points)`. |")
+        appendLine("| `p.xy0`, `p.xy1`, `p.x0y` | A 2D vector lifted into 3D: with z = 0, with z = 1 (homogeneous), or laid onto the ground plane as (x, 0, y). |")
+        appendLine("| `v.xyz0`, `v.xyz1`, `v.xy0`, `v.x0z` | A 3D vector as a homogeneous direction (w = 0) or point (w = 1), or flattened onto the xy or ground plane. |")
+        appendLine("| `(0 until 10) x (0 until 8)` | The grid of integer points as a list of `Vec2`, row by row. |")
+        appendLine("| `points * q`, `points * z` | Every point of a `List<Vec3>` or `List<Vec2>` rotated by a quaternion, or every `Vec2` multiplied by a `Complexf`, about the origin, as a new list. `points.rot(30.deg)` turns about the points' own centre. |")
+        appendLine("| `points about c rot 30.deg` | Every point of a `List<Vec2>` turned about `c`. |")
+        appendLine("| `points.closest(p)` | The point nearest `p`, for `Vec2` and `Vec3` lists. It throws on an empty list. `points.center()` is the mean, and `points.aabbBounds()` the bounding box. |")
+        appendLine("| `points.sortedAround(c)` | The `Vec2` points in order of angle about `c` (their own centre by default), anticlockwise from +x: a scattered ring becomes a polygon you can draw without crossings. |")
+        appendLine("| `Vec3.onSphere(r)`, `Vec3.inBall(r)`<br>`Vec2.onCircle(r)`, `Vec2.inDisc(r)` | A random point uniformly on the sphere, in the ball, on the circle or in the disc of radius `r` (default 1), from the box's generator, so a re-run repeats them and `setRandomSeed` changes them. |")
+        appendLine("| `p jitter 0.1` | The point moved by up to 0.1 in each component, uniformly, from the same generator. |")
+        appendLine("| `t.remap(0.0..1.0, -1.0..1.0)` | A number mapped linearly from one range to another, without clamping. |")
+        appendLine("| `x.fract()`, `x.clamp01()`, `t.smoothstep()` | The scalar shaping helpers, as `Double`s: the fractional part in 0..1, clamping to 0..1, and the smoothstep ease. |")
+        appendLine()
+        appendLine("</div>")
         appendLine()
         appendLine("## One algebra, three storage forms")
         appendLine()
@@ -529,18 +857,31 @@ class KotlinEmitter(
         appendLine("- A read swizzle returns a same-scalar `VectorKfc` of the swizzle's own arity (`v.xy` is a `Vector2fc`, `v.xyz` a `Vector3fc`).")
         appendLine("- When a swizzle's indices are all distinct it also has a writable `var` on the mutable type, so GLSL-style assignment works: `v.xy = other.zw`. Repeated-index swizzles (`v.xx`) have no unambiguous target and stay read-only.")
         appendLine()
-        appendLine("## Rotations and matrices")
+        emitNumberAlgebrasMarkdown()
+        appendLine("## Matrices")
         appendLine()
-        appendLine("Alongside the vectors, the library provides rotation and matrix types whose core equations are generated from the same transform model and which interoperate with the heap vectors.")
+        appendLine("Alongside the vectors, the library provides matrix types whose core equations are generated from the same transform model and which interoperate with the heap vectors and with `Quaternionf`.")
         appendLine()
         appendLine("<div data-code-lang=\"kotlin\" markdown>")
         appendLine()
         appendLine("| Type | Purpose | Key operations |")
         appendLine("| --- | --- | --- |")
-        appendLine("| `Quaternionf` | Represents a 3D rotation. Compose rotations with `mul` or interpolate orientations with `slerp` and `nlerp`. | `setAngleAxis`, `rotateX/Y/Z`, `mul`, `invert`, `conjugate`, `normalize`, `slerp`, `nlerp`, `rotationTo`, `lookAlong`, `transform(Vector3f)` |")
         appendLine("| `Matrix3f` | Represents a linear transform in three dimensions. Use the inverse transpose of a position transform's linear part to transform surface normals. | `rotation`, `scale`, `mul`, `invert`, `transpose`, `determinant`, `transform(Vector3f)` |")
         appendLine("| `Matrix3d` | Provides a double-precision 3×3 transform for numerically sensitive calculations. Its extra precision is useful when single-precision rounding is significant. | `mul`, `invert`, `transpose`, `determinant` |")
         appendLine("| `Matrix4f` | Represents affine and projective transforms, including cameras. Distinguish positions from directions so translation is applied only where intended. | `translate`, `scale`, `rotate`, `mul`, `invert`, `transpose`, `perspective`, `ortho`, `frustum`, `lookAt`, `transformPosition`, `transformDirection` |")
+        appendLine()
+        appendLine("</div>")
+        appendLine()
+        appendLine("Every matrix also has the expression forms, which return new values:")
+        appendLine()
+        appendLine("<div class=\"field-reference\" data-code-lang=\"kotlin\" markdown>")
+        appendLine()
+        appendLine("| Operator | Meaning |")
+        appendLine("| --- | --- |")
+        appendLine("| `m * v` | The vector transformed by the matrix: `Matrix2f` and `Vec2`, `Matrix3f` and `Vec3`, `Matrix4f` and `Vec4`, and the double-precision pairs. `Matrix4f * Vec3` and `Matrix4d * Vector3d` treat the vector as a point, so translation applies. |")
+        appendLine("| `m * n` | The matrix product: `(m * n) * v` is `m * (n * v)`. |")
+        appendLine("| `m then n` | \"`m`, then `n`\": `n * m`, so a chain applies in the order it is written. |")
+        appendLine("| `Mat4.translate(v)`, `Mat4.rotate(q)`, `Mat4.rotate(angle, axis)`, `Mat4.scale(2)`, `Mat4.scale(v)` | One-step `Matrix4f`s to chain with `then`: `Mat4.scale(2) then Mat4.rotate(q) then Mat4.translate(v)` scales, then rotates, then moves. `Mat4` is `Matrix4f`. |")
         appendLine()
         appendLine("</div>")
         appendLine()
@@ -553,6 +894,129 @@ class KotlinEmitter(
         appendLine("| Vec4 | `PACKED_16`, `ALIGNED_16` |")
         appendLine()
         appendLine("A layout name describes both array stride and required base alignment. A segment view never owns the memory and never performs Vulkan synchronization.")
+    }
+
+    /**
+     * The reference sections for the number types that rotate: the generated complex and
+     * hypercomplex numbers ([emitComplex]) and the template quaternions, with the hand-written
+     * operators that `afield.math.linalg` adds to them.
+     */
+    private fun StringBuilder.emitNumberAlgebrasMarkdown() {
+        fun table(vararg rows: Pair<String, String>) {
+            appendLine("<div class=\"field-reference\" data-code-lang=\"kotlin\" markdown>")
+            appendLine()
+            appendLine("| Operation and example | Meaning |")
+            appendLine("| --- | --- |")
+            rows.forEach { (code, meaning) -> appendLine("| $code | $meaning |") }
+            appendLine()
+            appendLine("</div>")
+            appendLine()
+        }
+        appendLine("## Complex numbers")
+        appendLine()
+        appendLine("`Complexf` (32-bit) and `Complexd` (64-bit) are the complex numbers re + im·i. Unlike the vectors they are immutable: every operation returns a new value, so a complex expression reads the way it does on paper. Multiplying by a complex number of length 1 rotates in the plane, which makes them the shortest way to turn 2D points: `Complexd.polar(1, angle) * z` is `z` turned by `angle` radians.")
+        appendLine()
+        table(
+            "`Complexd(re, im)`<br>`Complexd(2)`" to "A complex number from any two numbers. The imaginary part defaults to 0, so `Complexd(2)` is the real number 2.",
+            "`val z: Complexd = [1, 2]`" to "The collection literal for 1 + 2i. It takes exactly two values.",
+            "`Complexd.polar(r, theta)`" to "The number of length `r` at angle `theta` radians from the positive real axis.",
+            "`Complexd.I`, `Complexd.ONE`, `Complexd.ZERO`" to "i, 1 and 0.",
+            "`z + w`, `z - w`, `z * w`, `z / w`" to "Complex arithmetic. A product multiplies the lengths and adds the angles. Dividing by zero gives non-finite parts.",
+            "`z + 1`, `2 * z`, `1 / z`, `-z`" to "A plain number on either side counts as a real number, so `1 / z` is the reciprocal.",
+            "`z.re`, `z.im`" to "The real and imaginary parts.",
+            "`z.conj`" to "The conjugate re − im·i, the reflection across the real axis.",
+            "`z.abs`, `z.arg`" to "The length \\|z\\| and the angle from the positive real axis in radians, in −π..π.",
+            "`z.exp()`" to "e^z = e^re · (cos im + i sin im). `Complexd(0, t).exp()` walks the unit circle as `t` grows.",
+            "`z.ln()`" to "The principal natural logarithm ln\\|z\\| + i·arg z, so its imaginary part is in −π..π.",
+            "`z.pow(p)`" to "The principal power z^p for a real `p`, through `exp` and `ln`. Zero to any power is zero.",
+            "`z.pow(w)`, `z.sqrt()`" to "The principal power for a complex `w` (`Complexd.I.pow(Complexd.I)` is e^(−π/2)), and the principal square root, whose real part is never negative.",
+            "`z.sin()`, `z.cos()`" to "The complex sine and cosine. Applied to every point of a grid they are conformal maps: they bend the grid but keep its corners square.",
+            "`2 + 3.im`" to "`.im` makes a number imaginary, so this is the `Complexd` 2 + 3i. (`.i` is taken: it means `toInt()`.)",
+            "`r cis theta`<br>`1 cis 30.deg`" to "`Complexd.polar(r, theta)` under its textbook name, r(cos θ + i sin θ).",
+            "`z.n`, `z.sq`" to "A copy of length 1 pointing the same way (zero stays zero), and \\|z\\|², the same names the vectors use.",
+            "`z rot theta`" to "`z` turned `theta` radians anticlockwise, the same word as `v rot theta` on a `Vec2`.",
+            "`p * z`, `z * p`" to "The 2D point `p` multiplied as a complex number, turned by `z.arg` and scaled by `z.abs`, as a new vector: `vec(1, 0) * (2 cis 90.deg)` is (0, 2). `Complexf` takes a `Vector2f`, `Complexd` a `Vector2d`.",
+            "`z.toVector()`<br>`v.toComplex()`" to "To and from the 2D vector (re, im): `Complexf` with `Vector2f`, `Complexd` with `Vector2d`.",
+            "`z near w`<br>`z.near(w, 0.01)`" to "True when both parts are within 1e-5 (float) or 1e-9 (double), or the tolerance you give.",
+            "`z lerp t to w`<br>`z slerp t to w`" to "The straight line between two complex numbers, and the arc: the angle turns the short way at a constant rate while the magnitude moves linearly.",
+            "`z then w`" to "\"`z`, then `w`\": `w * z`. Complex multiplication does not care about order, so this is the same as `z * w`; the word is there to match quaternions.",
+        )
+        appendLine("`==` compares the parts exactly, bit for bit, so compare the results of a calculation with `near` instead.")
+        appendLine()
+        appendLine("## Hypercomplex numbers")
+        appendLine()
+        appendLine("`Hypercomplexf` and `Hypercomplexd` are the numbers a + b·ε where you choose what ε² is. Three choices give the three algebras of the plane: ε² = −1 is the complex numbers (multiplying rotates), ε² = 0 the dual numbers (a + bε carries a value `a` and its derivative `b`), and ε² = +1 the split-complex numbers (multiplying squeezes along the diagonals, a hyperbolic rotation). Any other value is a rescaled copy of one of the three. [Spinny algebras](linear_algebra.md#spinny-algebras-complex-dual-and-quaternion-numbers) draws what each one does to a grid.")
+        appendLine()
+        table(
+            "`Hypercomplexd(a, b, eps2)`" to "The number a + bε with ε² = `eps2`.",
+            "`Hypercomplexd.complex(a, b)`<br>`Hypercomplexd.dual(a, b)`<br>`Hypercomplexd.split(a, b)`" to "The same with ε² = −1, 0 and +1.",
+            "`z + w`, `z - w`, `z * w`, `z / w`" to "Arithmetic that multiplies out the brackets: (a + bε)(c + dε) = ac + bd·ε² + (ad + bc)ε. Both numbers must have the same ε²; mixing two algebras throws `IllegalArgumentException`. Division goes through the conjugate, so a divisor whose `norm` is zero (a pure ε dual number, or a split-complex number with a = ±b) gives non-finite parts.",
+            "`z + 1`, `2 * z`, `1 / z`, `-z`" to "A plain number on either side counts as a real number, with the other number's ε², so `1 / x` on a dual number is the reciprocal and its derivative.",
+            "`z.a`, `z.b`, `z.epsilon2`" to "The two parts and the ε² the number was made with.",
+            "`z.conj`" to "The conjugate a − bε.",
+            "`z.norm`" to "z · conj z = a² − ε²b²: the squared length for complex numbers, a² for dual numbers, and a² − b² for split-complex numbers, where it can be negative. There is no square root taken.",
+            "`z.exp()`" to "e^z in each algebra: a rotation (cos, sin) when ε² < 0, e^a(1 + bε) when ε² = 0, and a hyperbolic rotation (cosh, sinh) when ε² > 0.",
+            "`z.toVector()`" to "The 2D vector (a, b).",
+            "`z near w`<br>`z.near(w, 0.01)`" to "True when both parts are within the tolerance and the two have the same ε².",
+        )
+        appendLine("A dual number differentiates whatever you compute with it. Start from `val x = Hypercomplexd.dual(3, 1)`, the value 3 moving at speed 1; then `x * x * x + x * 2` has `a` = 33, the value of x³ + 2x at 3, and `b` = 29, its derivative there. For derivatives of functions that use `sin`, `sqrt` and the rest of `kotlin.math`, use `taylor2` in `afield.math.autodiff`, which carries the second derivative as well.")
+        appendLine()
+        appendLine("## Quaternions")
+        appendLine()
+        appendLine("`Quaternionf`, which box code can also write `Quat`, is Field's 3D rotation: four floats `x`, `y`, `z` and `w`, where `w` is the real part and a new `Quaternionf()` is the identity, no rotation. Angles are in radians. It works two ways. The operators return a new value and leave their operands alone, which suits expressions. The methods change the quaternion they are called on and return it, so chained calls build one rotation step by step; copy first with `Quat(q)` when the original must survive.")
+        appendLine()
+        appendLine("### Making and using rotations")
+        appendLine()
+        table(
+            "`quat(angle, axis)`<br>`quat(PI / 2)`" to "A rotation of `angle` radians about `axis`, which defaults to +z, the axis that turns things in the screen plane. The axis does not need to be unit length. `quat()` is the identity.",
+            "`Quaternionf(x, y, z, w)`<br>`Quaternionf(q)`" to "A quaternion from its four components, or a copy of another.",
+            "`q * p`, `p * q`" to "The 3D point `p` rotated by `q`, as a new vector. Both orders mean the same thing.",
+            "`p2 * q`" to "A 2D point rotated as (x, y, 0), keeping the x and y of the result. Only a rotation about z keeps the point in the plane; any other axis gives its shadow on the plane.",
+            "`q * r`" to "The Hamilton product as a new quaternion. For rotations this is \"`r`, then `q`\": `(q * r) * p` equals `q * (r * p)`.",
+            "`q * 2`, `q + r`, `q - r`" to "Component-by-component scaling, sum and difference, as a new quaternion. The results are not rotations until normalized; they are there for blending and for power series such as `exp`, which need only `*` and `+`.",
+            "`q %= r`" to "Overwrites `q` with `r`'s components in place, so anything already holding `q` (a uniform, a mesh property) sees the new rotation.",
+            "`90.deg about Vec3.Y`" to "The same as `quat(90.deg, Vec3.Y)`, read aloud.",
+            "`facing(direction, up)`<br>`facing(target - eye)`" to "The orientation whose `forward` is `direction` and whose `up` leans towards `up` (+y by default): what a camera or a creature pointing along `direction` needs. Use this rather than `lookAlong`, which turns `direction` onto +z.",
+            "`v rot q`" to "`q * v` spelled the way the 2D `v rot theta` is.",
+            "`q.inv`, `q.conj`" to "The inverse rotation and the conjugate, as new quaternions; for a unit quaternion they are equal. `invert()` and `conjugate()` do the same in place.",
+            "`q.axis`, `q.angle`" to "The unit axis the rotation turns about and how far, in radians, 0..2π. With no rotation there is no axis, and `axis` is +z.",
+            "`q.forward`, `q.up`, `q.right`" to "The rotated −z, +y and +x, as new vectors: where a camera with this orientation looks, its up and its right. Field's camera looks down −z.",
+            "`q near r`<br>`q.near(r, 0.01)`" to "True when the two are the same rotation to within the tolerance (1e-5 by default). `q` and `-q` are the same rotation, so either sign matches.",
+            "`q then r`" to "\"`q`, then `r`\", as a new quaternion: `r * q`. A chain `a then b then c` applies in the order it is written, where `*` reads right to left.",
+            "`q slerp t to r`" to "The rotation `t` of the way from `q` to `r` at a constant rate, the short way round, as a new value. The `slerp` method does the same in place.",
+            "`q.pow(t)`<br>`q.ln()`, `q.exp()`" to "The rotation `t` times over (`q.pow(0.5)` is half the turn, `q.pow(-1)` the inverse), and the quaternion logarithm and exponential it is built from, as new values.",
+            "`q dot r`" to "The four-component dot product. For unit quaternions, ±1 means the same orientation; a negative value means `q` and `r` are on opposite sides of the sphere, which `slerp` and `nlerp` correct for.",
+            "`q.transform(v)`<br>`q.transform(v, dest)`" to "Rotates `v` in place, or into `dest`, without allocating.",
+        )
+        appendLine("### Methods that change the quaternion")
+        appendLine()
+        appendLine("These take `Float` angles and fractions, so write `rotateX(90.deg)` or `slerp(other, 0.5f)`; `quat(...)` takes any number.")
+        appendLine()
+        table(
+            "`setAngleAxis(angle, x, y, z)`<br>`fromAxisAngleRad(axis, angle)`" to "Replaces the rotation with `angle` radians about the axis.",
+            "`rotateX(angle)`, `rotateY(angle)`, `rotateZ(angle)`<br>`rotateXYZ(ax, ay, az)`" to "Turns further about an axis of the rotation's own frame: `q.rotateX(a)` is `q * quat(a, vec(1, 0, 0))`. `rotateXYZ` applies the three in that order.",
+            "`rotationTo(from, to)`<br>`rotateTo(from, to)`" to "The shortest rotation that turns direction `from` onto `to`; `rotationTo` replaces the rotation, and `q.rotateTo(from, to)` makes `q` into `q * Quaternionf().rotationTo(from, to)`.",
+            "`lookAlong(direction, up)`" to "Replaces the rotation with the one that turns `direction` onto +z, with `up` turned towards +y. Its inverse, `Quat(q).invert()`, turns +z onto `direction`.",
+            "`mul(r)`, `premul(l)`<br>`mul(r, dest)`" to "In-place Hamilton product: `q.mul(r)` makes `q` into `q * r`, `q.premul(l)` makes it `l * q`, and `mul(r, dest)` writes the product into `dest`.",
+            "`slerp(other, 0.5f)`<br>`nlerp(other, 0.5f)`" to "Moves the rotation the given fraction of the way to `other`, the short way round. `slerp` turns at a constant rate; `nlerp` blends the components and normalizes, which is cheaper and close for small steps.",
+            "`normalize()`, `conjugate()`, `invert()`" to "Rescales to unit length, negates `x`, `y` and `z`, or replaces the rotation with its inverse. For a unit quaternion the conjugate is the inverse rotation.",
+            "`identity()`, `set(x, y, z, w)`, `set(other)`" to "Resets to no rotation, or copies components in.",
+            "`setFromNormalized(m)`" to "The rotation held by the rotation matrix `m` (a `Matrix3fc` with unit, orthogonal columns). The other way is `Matrix3f().rotation(q)` or `Matrix4f().rotation(q)`.",
+        )
+        appendLine("### Rigid transforms: dual quaternions")
+        appendLine()
+        appendLine("`DualQuaternionf`, which box code can also write `DualQuat`, is a rotation and a translation together: a quaternion whose four components are dual numbers. The rotation sits in `real` and the translation in `dual`. Points are rotated first and then moved.")
+        appendLine()
+        table(
+            "`dualquat(rotation, translation)`<br>`dualquat(quat(PI / 2), vec(10, 0, 0))`" to "A rigid transform. Both arguments default to nothing, so `dualquat()` is the identity.",
+            "`p * t`, `t * p`" to "The 3D point `p` rotated and then moved by `t`, as a new vector. Do not use it on a direction such as a normal; rotate that by `t.getRotation()` instead.",
+            "`t * u`" to "The composed transform, \"`u`, then `t`\", as a new value.",
+            "`t.sclerp(u, 0.5f)`" to "The screw motion the given fraction of the way from `t` to `u`: rotation and translation together along a helix, the path a camera between two keys takes. `nlerp` is the cheaper blend.",
+            "`t.pow(0.5f)`" to "The transform applied the given number of times, which need not be whole: `pow(0.5f)` goes half way.",
+            "`t.getRotation()`, `t.getTranslation()`<br>`t.toMatrix()`" to "The parts, or the equivalent `Matrix4f`.",
+            "`t then u`" to "\"`t`, then `u`\", as a new transform: `u * t`. `Matrix4f` has `then` too.",
+            "`t.inverted()`, `-t`, `t %= u`" to "A new inverse, a new negated copy (the same transform), and overwriting `t` in place.",
+        )
     }
 
     private fun StringBuilder.emitSegmentType(type: VectorType) {
@@ -787,8 +1251,12 @@ class KotlinEmitter(
                 appendLine("        return dest.set(${operation.componentExpressions.indices.joinToString { "r$it" }})")
                 appendLine("    }")
             }
-            is OperationResult.Scalar ->
-                appendLine("    fun ${operation.name}($parameters): ${type.scalar.kotlinType} = ${renderHeap(result.expression)}")
+            // `dot` is infix on the member itself: an infix call never falls back past an applicable
+            // non-infix member to an extension, so `a dot b` can only come from here.
+            is OperationResult.Scalar -> {
+                val modifier = if (operation.name == "dot") "infix " else ""
+                appendLine("    ${modifier}fun ${operation.name}($parameters): ${type.scalar.kotlinType} = ${renderHeap(result.expression)}")
+            }
         }
     }
 
@@ -874,7 +1342,8 @@ class KotlinEmitter(
                 }
                 add("this")
             }.joinToString(", ")
-            val modifier = if (operation.name == "div") "operator " else ""
+            // None of these is an operator: `a / b` must leave `a` alone like every other operator, so
+            // `/` resolves to the CompatTypes extensions, which return a new vector.
             emitKDoc(
                 documentationFor(operation, includeDestination = false).copy(
                     details = operation.documentation.details + "This overload writes the result back into this vector.",
@@ -882,7 +1351,7 @@ class KotlinEmitter(
                 ),
                 "    ",
             )
-            appendLine("    ${modifier}fun ${operation.name}($parameters): ${type.heapName} = ${operation.name}($arguments)")
+            appendLine("    fun ${operation.name}($parameters): ${type.heapName} = ${operation.name}($arguments)")
         }
         appendLine()
         appendLine("    public override fun clone(): ${type.heapName} = ${type.heapName}(this)")
@@ -909,6 +1378,21 @@ class KotlinEmitter(
         appendLine("            require(components.size == ${type.dimension}) { \"${type.heapName} literal requires ${type.dimension} components, got \${components.size}\" }")
         appendLine("            return ${type.heapName}(${type.components.indices.joinToString { "components[$it].${type.scalar.numberConversion}()" }})")
         appendLine("        }")
+        if (type in ergonomicTypes) {
+            val z = type.scalar.zero
+            val one = type.scalar.one
+            appendLine()
+            appendLine("        // Typed read-only, so nobody can normalize() the shared axis out from under everyone else.")
+            type.components.forEachIndexed { index, component ->
+                val axis = type.components.indices.joinToString { if (it == index) one else z }
+                appendLine("        /** The unit vector along +${component.sourceName}. */")
+                appendLine("        @JvmField val ${component.sourceName.uppercase()}: ${type.readName} = ${type.heapName}($axis)")
+            }
+            appendLine("        /** Every component zero. */")
+            appendLine("        @JvmField val ZERO: ${type.readName} = ${type.heapName}(${type.components.joinToString { z }})")
+            appendLine("        /** Every component one. */")
+            appendLine("        @JvmField val ONE: ${type.readName} = ${type.heapName}(${type.components.joinToString { one }})")
+        }
         appendLine("    }")
         appendLine("}")
     }

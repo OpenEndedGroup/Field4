@@ -69,8 +69,9 @@ import java.util.zip.ZipInputStream
  * Fortran-ordered data is remapped to C order unless you ask for [NpyLinearOrder.STORAGE].
  *
  * Read-only and pure JVM: there is no writer and no ndarray arithmetic. Format versions 1–3 are
- * accepted; bool, signed/unsigned int, half/float/double and complex64/128 decode, and any other
- * dtype kind ([NpyKind.OTHER]) throws. Element and byte counts must fit in an `Int`.
+ * accepted; bool, signed/unsigned int, half/float/double and complex64/128 decode, fixed-width
+ * unicode strings (`<U12`) read through [NpyArray.asStrings], and any other dtype kind
+ * ([NpyKind.OTHER]) throws. Element and byte counts must fit in an `Int`.
  */
 
 /**
@@ -116,6 +117,9 @@ enum class NpyKind {
     UNSIGNED_INT,
     FLOAT,
     COMPLEX,
+
+    /** NumPy's fixed-width unicode, `<U12`: UTF-32 code points, NUL-padded. Read with [NpyArray.asStrings]. */
+    STRING,
     OTHER
 }
 
@@ -132,9 +136,9 @@ data class NpyDType(
     val kind: NpyKind,
     val itemSize: Int
 ) {
-    /** Whether this dtype is one the reader can convert at all — anything but [NpyKind.OTHER]. */
+    /** Whether this dtype converts to numbers: anything but [NpyKind.STRING] and [NpyKind.OTHER]. */
     val isNumeric: Boolean
-        get() = kind != NpyKind.OTHER
+        get() = kind != NpyKind.OTHER && kind != NpyKind.STRING
 }
 
 /**
@@ -203,6 +207,27 @@ class NpyArray internal constructor(
 
     /** A copy of the undecoded payload, exactly as it sat in the file. For handing to your own decoder. */
     fun copyBytes(): ByteArray = rawBytes.copyOf()
+
+    /**
+     * The elements of a unicode array (`<U12`), in C order, each with its NUL padding removed. A 0-d
+     * array, which is how `np.savez` stores a single string, gives a list of one.
+     */
+    fun asStrings(order: NpyLinearOrder = NpyLinearOrder.C): List<String> {
+        require(dtype.kind == NpyKind.STRING) { "dtype=${dtype.descriptor} is not a unicode string array" }
+        val bb = dataBuffer()
+        val chars = dtype.itemSize / 4
+        val storage = Array(elementCount) { i ->
+            val out = StringBuilder()
+            for (c in 0 until chars) {
+                val cp = bb.getInt(i * dtype.itemSize + c * 4)
+                if (cp == 0) break
+                out.appendCodePoint(cp)
+            }
+            out.toString()
+        }
+        return if (order == NpyLinearOrder.STORAGE || !needsCOrderRemap) storage.toList()
+        else List(elementCount) { storage[cToStorageIndices[it]] }
+    }
 
     /**
      * The flat offset of an element from its per-dimension indices, in **storage** order.
@@ -392,6 +417,7 @@ class NpyArray internal constructor(
             NpyKind.UNSIGNED_INT -> readUnsignedIntAsULong(bb, offset, dtype.itemSize).toDouble()
             NpyKind.FLOAT -> readFloating(bb, offset, dtype.itemSize)
             NpyKind.COMPLEX -> throw IllegalArgumentException("dtype=${dtype.descriptor} is complex; use asComplexDoublePairs()")
+            NpyKind.STRING -> throw IllegalArgumentException("dtype=${dtype.descriptor} is a string; use asStrings()")
             NpyKind.OTHER -> throw IllegalArgumentException("Unsupported dtype kind=${dtype.kind} (${dtype.descriptor})")
         }
     }
@@ -498,10 +524,16 @@ object NumpyIO {
      *
      * Every member is decompressed and held in memory at once.
      */
-    fun readNpz(file: File): LinkedHashMap<String, NpyArray> {
+    fun readNpz(file: File): LinkedHashMap<String, NpyArray> = file.inputStream().use { readNpz(it, file.absolutePath) }
+
+    /**
+     * Reads a `.npz` archive from [input], such as a classpath resource, as the [File] overload does;
+     * [sourceName] names it in errors.
+     */
+    fun readNpz(input: InputStream, sourceName: String): LinkedHashMap<String, NpyArray> {
         val out = linkedMapOf<String, NpyArray>()
 
-        ZipInputStream(file.inputStream().buffered()).use { zip ->
+        ZipInputStream(input.buffered()).use { zip ->
             while (true) {
                 val entry = zip.nextEntry ?: break
                 if (entry.isDirectory) continue
@@ -510,16 +542,16 @@ object NumpyIO {
                 val key = entry.name.substring(0, entry.name.length - 4)
                 val entryBytes = zip.readBytes()
                 val entryArray = ByteArrayInputStream(entryBytes).use { entryInput ->
-                    readNpy(entryInput, "${file.absolutePath}!/${entry.name}")
+                    readNpy(entryInput, "$sourceName!/${entry.name}")
                 }
 
                 require(out.put(key, entryArray) == null) {
-                    "Duplicate entry '$key' in ${file.absolutePath}"
+                    "Duplicate entry '$key' in $sourceName"
                 }
             }
         }
 
-        require(out.isNotEmpty()) { "No .npy entries found in ${file.absolutePath}" }
+        require(out.isNotEmpty()) { "No .npy entries found in $sourceName" }
         return LinkedHashMap(out)
     }
 
@@ -586,8 +618,10 @@ object NumpyIO {
         require(body.length >= 2) { "Invalid dtype descriptor '$text' in $sourceName" }
 
         val kindCode = body[0]
-        val itemSize = body.substring(1).toIntOrNull()
+        val declared = body.substring(1).toIntOrNull()
             ?: throw IllegalArgumentException("Invalid dtype item size in descriptor '$text' for $sourceName")
+        // `<U12` counts characters, four bytes each; every other kind counts bytes
+        val itemSize = if (kindCode == 'U') declared * 4 else declared
         require(itemSize > 0) { "dtype item size must be > 0 in descriptor '$text' for $sourceName" }
 
         val byteOrder = when (endianChar) {
@@ -604,6 +638,7 @@ object NumpyIO {
             'u' -> NpyKind.UNSIGNED_INT
             'f' -> NpyKind.FLOAT
             'c' -> NpyKind.COMPLEX
+            'U' -> NpyKind.STRING
             else -> NpyKind.OTHER
         }
 

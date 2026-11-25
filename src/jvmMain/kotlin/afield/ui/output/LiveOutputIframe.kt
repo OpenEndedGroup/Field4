@@ -10,6 +10,7 @@ import afield.data.table.rem
 import afield.data.table.times
 import afield.document.workspace.metadata
 import afield.runtime.execution.plus
+import afield.runtime.execution.go
 import afield.runtime.lifecycle.plus
 import afield.runtime.lifecycle.rem
 import afield.runtime.lifecycle.then
@@ -32,11 +33,18 @@ import afield.media.video.*
 import afield.ui.output.templates.filter
 import io.ktor.websocket.WebSocketSession
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 import java.util.UUID
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.future.await
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.job
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
@@ -80,6 +88,102 @@ fun Box.outputIframe(boxName: String, channel: String): LiveOutputIframe {
     return outputIframe(box, channel)
 }
 
+/**
+ * A web page in this box's output area, with a bar above it: back, forward, and an address you can
+ * type into. Returns the page's [LiveOutputIframe], so `web("https://github.com").devTools()` opens
+ * DevTools on it, and the AI4 tools from `exposeOutputIframeTools` can drive it.
+ *
+ * Field's Electron window shows sites that refuse to be framed and keeps their logins; another
+ * browser shows only the sites that allow framing. Back and forward step through the pages this bar
+ * has seen, and the address follows links you click inside the page.
+ *
+ * ```kotlin
+ * web("https://en.wikipedia.org/wiki/Iframe")
+ * web("github.com", channel = "github", height = 800)
+ * ```
+ *
+ * @param url the first page; a bare host such as `github.com` gets `https://`
+ * @param channel output-area channel, and its disclosure title
+ * @param width page width in CSS pixels
+ * @param height page height in CSS pixels, not counting the bar
+ */
+fun Box.web(url: String, channel: String = "web", width: Int = 1000, height: Int = 640): LiveOutputIframe {
+    require(width in 200..4000 && height in 100..4000) { "web: width must be 200..4000 and height 100..4000" }
+    display(channel, webPanel(webAddress(url), width, height))
+    displayOpen(channel)
+    return outputIframe(channel)
+}
+
+/** What the address bar does to typed text: keep a scheme it has, otherwise add `https://`. */
+internal fun webAddress(text: String): String {
+    val trimmed = text.trim()
+    require(trimmed.isNotEmpty()) { "web: the address cannot be empty" }
+    return if (Regex("^[a-zA-Z][a-zA-Z0-9+.-]*:").containsMatchIn(trimmed)) trimmed else "https://$trimmed"
+}
+
+/**
+ * The bar and the page as output HTML; `fieldWeb.js` in the Field page runs the bar. The iframe is
+ * named from the start: Electron finds a frame by the name it had when it first navigated, and a
+ * framed site's address soon stops matching `src`, so a name given later would never be found.
+ */
+internal fun webPanel(url: String, width: Int, height: Int): String {
+    val attribute = url.replace("&", "&amp;").replace("\"", "&quot;").replace("<", "&lt;")
+    val name = "field-live-iframe-web-" + UUID.randomUUID()
+    return """<div class="field-web">""" +
+        """<div class="field-web-bar">""" +
+        """<button type="button" data-field-web="back" title="Back" disabled>&#8249;</button>""" +
+        """<button type="button" data-field-web="forward" title="Forward" disabled>&#8250;</button>""" +
+        """<input class="field-web-url" type="text" spellcheck="false" autocomplete="off" value="$attribute" aria-label="Address">""" +
+        """</div>""" +
+        """<iframe class="field-web-page" name="$name" data-field-live-name="$name" src="$attribute" data-afield-autosize="off" """ +
+        """style="width:${width}px;height:${height}px"></iframe></div>"""
+}
+
+/** The running [watchIframe] for each box and name, so a box run again replaces its watch. */
+private val iframeWatches = ConcurrentHashMap<Pair<String, String>, Job>()
+
+/**
+ * Evaluate [expression] in [page] every [everyMillis] and call [onChange] whenever its value
+ * changes, starting with its first value.
+ *
+ * One watch per box and [name]: running the box again replaces it, and stopping the box ends it,
+ * so a box can register its watch on every run. [onChange] runs on Field's runloop and may suspend,
+ * for instance to `await` another [LiveOutputIframe.evaluate]. An expression that gives `null` or
+ * `undefined` means "not yet", and so does a page that is reloading or not visible in Field's
+ * window: the next look tries again.
+ *
+ * ```kotlin
+ * watchIframe(page, "document.title") { title -> println("now: $title") }
+ * ```
+ */
+fun Box.watchIframe(
+    page: LiveOutputIframe, expression: String, name: String = "watch", everyMillis: Long = 250,
+    onChange: suspend (JsonElement) -> Unit,
+) {
+    require(everyMillis in 20..60_000) { "watchIframe: everyMillis must be 20..60000" }
+    val key = id to name
+    go {
+        val job = coroutineContext.job
+        iframeWatches.put(key, job)?.takeIf { it !== job }?.cancel()
+        job.invokeOnCompletion { iframeWatches.remove(key, job) }
+        var last: JsonElement? = null
+        while (isActive) {
+            val value = try {
+                page.evaluate(expression, timeoutMillis = 5_000).await()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                null
+            }
+            if (value != null && value !is JsonNull && value != last) {
+                last = value
+                onChange(value)
+            }
+            delay(everyMillis)
+        }
+    }
+}
+
 /** Commands run against the visible Electron tab. Futures keep the Field runloop unblocked. */
 class LiveOutputIframe internal constructor(
     private val document: SessionInformation,
@@ -113,6 +217,19 @@ class LiveOutputIframe internal constructor(
         LiveOutputIframeBridge.send(document, target, "screenshot", timeoutMillis = timeoutMillis)
             .thenApply { (it.value as? JsonPrimitive)?.contentOrNull
                 ?: throw IllegalStateException("Electron returned no iframe image") }
+
+    /**
+     * Open DevTools on this iframe in the live Electron tab and complete with the frame's URL.
+     *
+     * DevTools for the Field tab opens in its own window with this `<iframe>` selected in Elements.
+     * Expand it for the framed page's `#document`, whatever site it is on; to run code in the page,
+     * pick its site in the Console's context menu (it starts at `top`, the Field page). Calling it
+     * again brings the window back and selects the iframe again. An output area off the canvas is
+     * panned into view first, as [screenshot] does.
+     */
+    fun devTools(timeoutMillis: Long = 10_000): CompletableFuture<String> =
+        LiveOutputIframeBridge.send(document, target, "devtools", timeoutMillis = timeoutMillis)
+            .thenApply { (it.value as? JsonPrimitive)?.contentOrNull ?: it.frameUrl }
 
     /** Current DOM source and document metadata, or matching elements for a CSS selector. */
     fun inspect(selector: String = "", timeoutMillis: Long = 10_000): CompletableFuture<JsonElement> {
@@ -173,8 +290,10 @@ class LiveOutputIframe internal constructor(
         require(timeoutMillis in 1..120_000) { "timeoutMillis must be between 1 and 120000" }
         require(pollMillis in 1..1000) { "pollMillis must be between 1 and 1000" }
         require(condition.isNotBlank()) { "Iframe wait condition cannot be empty" }
-        val source = JsonPrimitive(condition).toString()
-        val javascript = """(() => { try { return Boolean((0, eval)($source)); }
+        // The condition is written into the script, not passed through eval: a page whose
+        // Content-Security-Policy forbids eval (GitHub's) would refuse every poll.
+        val javascript = """(() => { try { return Boolean(($condition
+            )); }
             catch (error) { if (error instanceof ReferenceError || error instanceof TypeError) return false; throw error; }
         })()"""
         val done = CompletableFuture<Unit>()

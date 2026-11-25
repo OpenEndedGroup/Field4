@@ -58,8 +58,9 @@ import kotlin.reflect.KVisibility
  * `List<Double>` stays `List<Double>`, and a list of a box-local class becomes
  * `kotlin.collections.List<*>`. [ExportedTypeNamesSmokeTest] covers these cases.
  *
- * User types declared in one box cannot pass these tests; sharing them needs a compilation unit on
- * the base classloader, which [SharedTypes] is about.
+ * User types declared in an ordinary box cannot pass these tests. A shared Kotlin box's classes can:
+ * the document's [DocumentClassLoader], which is every engine's base loader there, defines them, and
+ * their class files reach every compile in the document (see [SHARED_KOTLIN_BOX]).
  */
 
 /** Type-name rendering for `@exported`; [render] is the entry point. */

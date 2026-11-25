@@ -168,13 +168,13 @@ class ServerSurfaceLedgerTest {
     /**
      * The guard vocabulary of `docsAnnotations.kt`, decomposed into the question each asks.
      *
-     * Identical to [FieldApiCorsExposureTest]'s map on purpose: "loopback" must mean the same
-     * thing in the read ledger as in the write ledger, or comparing the two tables teaches a
-     * reader something false.
+     * Shared guards use the same labels as [FieldApiCorsExposureTest]. The discovery guard
+     * applies to a read-only route.
      */
     private val guardAtoms = mapOf(
         "refuseUnlessSameSiteDocsClient" to listOf("loopback", "same-site"),
         "refuseUnlessLocalDocsClient" to listOf("loopback"),
+        "refuseRemoteFieldDiscovery" to listOf("loopback", "same-site"),
         "patchySameSite" to listOf("same-site"),
     )
     private val guardOrder = listOf("loopback", "same-site")

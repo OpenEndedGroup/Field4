@@ -126,6 +126,11 @@ class in it and run the box:
 data class Flower(val petals: Int, val color: String)
 ```
 
+The box now has an accent-coloured frame and says **shared Kotlin** under its name. It is an
+ordinary Kotlin box: it has the same imports as any other box, so a class you move into it from
+another box compiles as it did there, and its errors show in its editor. When it runs, its output
+lists the classes it shared.
+
 Now every Kotlin box in this document can use `Flower`. In **Garden settings**, publish one:
 
 ```diffstatic {data-lang=kotlin}
@@ -142,7 +147,12 @@ markdown("A ${flower.color} flower with ${flower.petals} petals")
 Run the declaration box, then Garden settings, then Garden view. You can [open the three-box
 example](agent_transcripts.md#shared_kotlin_garden) and change it. After editing the class, run its
 box again, then rerun the boxes that make and use its values. Field marks those boxes for you.
-The declarations travel with the document and are ready again when you reopen it.
+Opening the document runs its shared boxes first, so their classes are ready before anything else
+runs.
+
+Classes, interfaces, objects and enums are shared. A top-level `fun` or `val` in a shared box stays
+in that box, and its run lists any it found. To share a function, put it in an `object`, or make it
+a member of the class.
 
 ## Why it matters
 

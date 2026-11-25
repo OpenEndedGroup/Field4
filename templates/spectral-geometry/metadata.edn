@@ -1,0 +1,25 @@
+{"version" 2
+ "boxes"
+ [{"id" "root"
+   "properties" {"name" "Spectral Geometry"
+                 "children" #{#afield/box "ellipses" #afield/box "waves" #afield/box "fit" #afield/box "manifold"}}}
+  {"id" "ellipses"
+   "properties" {"name" "Ellipse chain"
+                 "frame" #afield/rect [65.0 90.0 255.0 82.0]
+                 "parents" #{#afield/box "root"}
+                 "code" #afield/file "ellipses_code_.kt"}}
+  {"id" "waves"
+   "properties" {"name" "Plane-wave instrument"
+                 "frame" #afield/rect [1310.0 90.0 255.0 82.0]
+                 "parents" #{#afield/box "root"}
+                 "code" #afield/file "waves_code_.kt"}}
+  {"id" "fit"
+   "properties" {"name" "Discover plane waves"
+                 "frame" #afield/rect [65.0 1060.0 255.0 82.0]
+                 "parents" #{#afield/box "root"}
+                 "code" #afield/file "fit_code_.kt"}}
+  {"id" "manifold"
+   "properties" {"name" "Manifold harmonics"
+                 "frame" #afield/rect [1310.0 1060.0 255.0 82.0]
+                 "parents" #{#afield/box "root"}
+                 "code" #afield/file "manifold_code_.kt"}}]}

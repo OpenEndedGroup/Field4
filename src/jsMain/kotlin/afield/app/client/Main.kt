@@ -5738,6 +5738,30 @@ private fun applyFileProxyPresentation(box: HTMLElement) {
     path.title = pathText
 }
 
+/**
+ * A shared Kotlin box (`box_kind` "shared-kotlin", whose classes every box in the document can use)
+ * says so on the sheet: a tinted frame and a "shared Kotlin" line under its title. Called whenever
+ * `box_kind` arrives or is cleared.
+ */
+private fun applySharedKotlinPresentation(box: HTMLElement) {
+    val shared = box.unsafeCast<dynamic>().box_kind == "shared-kotlin"
+    box.classList.toggle("shared-kotlin", shared)
+    val titleStack = box.querySelector(".box-title-stack") as? HTMLElement
+        ?: (box.querySelector(".doubleClickToEdit")?.parentElement as? HTMLElement)
+        ?: return
+    val existing = titleStack.querySelector(".shared-kotlin-tag") as? HTMLElement
+    if (!shared) {
+        existing?.remove()
+        return
+    }
+    if (existing != null) return
+    val tag = document.createElement("div") as HTMLElement
+    tag.classList.add("shared-kotlin-tag")
+    tag.textContent = "shared Kotlin"
+    tag.title = "Every Kotlin box in this document can use the classes this box declares"
+    titleStack.appendChild(tag)
+}
+
 private fun fileProxyPathTailStart(path: String): Int {
     val last = path.trimEnd('/').lastIndexOf('/')
     if (last <= 0) return 0
@@ -6785,6 +6809,7 @@ suspend fun main() {
             val sync = window.asDynamic().syncTextFrame
             if (sync != null) sync(found, set.property)
         }
+        if (set.property == "box_kind") applySharedKotlinPresentation(found.unsafeCast<HTMLElement>())
         if (set.property == "name") {
             found.getElementsByClassName("doubleClickToEdit").asList().firstOrNull()?.innerHTML = ""
             applyAi4AutoNameStyle(found.unsafeCast<HTMLElement>(), found.asDynamic().ai4_auto_name == true)
@@ -7098,6 +7123,7 @@ suspend fun main() {
             val sync = window.asDynamic().syncTextFrame
             if (sync != null) sync(found, set.property)
         }
+        if (set.property == "box_kind") applySharedKotlinPresentation(found.unsafeCast<HTMLElement>())
         refreshDocumentGuideLauncherFor(set.property)
         if (set.property in monacoRemoteTextProperties) {
             notifyPotentialEditedPropertyHasBeenRemoteUpdated(u, set.property, set.value)
@@ -8407,8 +8433,8 @@ fun <E> MutableSet<E>.copy() = HashSet<E>(this)
 private const val GO_JOBS_BADGE_DELAY_MS = 250
 
 /**
- * The "semi-launched" badge: a striped inset over the box's upper-right quadrant, holding the number
- * of its `go { }` blocks still running ([GoJobs]). Stopping the box cancels them.
+ * The "semi-launched" badge: a small striped square in the box's upper-right corner, holding the
+ * number of its `go { }` blocks still running ([GoJobs]). Stopping the box cancels them.
  */
 private fun setGoJobsBadge(uid: String, count: Int, strands: List<String>) {
     val box = document.body!!.getElementsByClassName("box").asList()

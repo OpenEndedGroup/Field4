@@ -72,7 +72,7 @@ inline fun <reified A> fromContext(defaultValue: A? = null, includeLocalVariable
     val found = ContextResolution.walk(
         f,
         ContextResolution.Query.byType(A::class.java) {
-            if (it != null && (it is A || it.javaClass.name == A::class.java.name) && f.isInsideInitialized())
+            if (it != null && f.isInsideInitialized() && (it is A || f.inside.documentTypes.sameDeclaration(it.javaClass, A::class.java)))
                 f.inside.documentTypes.requireCurrent(it, f)
             it is A
         },

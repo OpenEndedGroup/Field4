@@ -76,13 +76,13 @@ Typed columns do not survive a compile boundary. Declare `val df = dataFrameOf("
     `ReturnTypeBasedReceiverInjector` that supplies the receiver at `:27`, and `probeAcrossSnippets` at
     `:147`, which is what prints the `<empty compile time schema>` result at `:161`.
 
-A `@DataSchema interface` shared between boxes with [`sharedTypes(...)`](reference/index.md) does not help either: you can cast the frame to that type, but `people.age` still does not resolve. Use `typed()` in the box that needs the columns.
+A `@DataSchema interface` declared in a [shared Kotlin box](tour_connecting_boxes.md#share-a-type-between-boxes) does not help either: you can cast the frame to that type, but `people.age` still does not resolve. Use `typed()` in the box that needs the columns.
 
 ??? aside "Why a shared `@DataSchema` gets no accessors"
     The accessors come from `TopLevelExtensionsGenerator`, which asks K2's predicate-based provider
     for everything annotated `@DataSchema`, and that provider indexes source declarations only. A
-    `@DataSchema` compiled into a directory on the classpath, which is what `sharedTypes` produces,
-    is invisible to it.
+    `@DataSchema` that reaches a box as compiled classes, which is how a shared Kotlin box's classes
+    reach every other box, is invisible to it.
 
     Kotlin DataFrame also ships `ImportedSchemasGenerator` plus `ImportedSchemasService`, gated on
     the plugin's `schemasPath` option pointing at a directory of schema JSON from a build-time
@@ -303,6 +303,6 @@ The DataFrame runtime is pinned to `1.0.0-Beta4`, the version the plugin was bui
 ## Known limits
 
 - A frame's inferred type does not carry from one execution to the next. Use `typed()`.
-- A `@DataSchema` shared with `sharedTypes` gives you the type but no column accessors. Use `typed()` in the box that needs the columns.
+- A `@DataSchema` declared in a shared Kotlin box gives you the type but no column accessors. Use `typed()` in the box that needs the columns.
 - Column groups and frame columns come back from `typed()` as `Any?`.
 - The plugin uses a compiler extension point that the Kotlin compiler documents as unstable, so a Kotlin upgrade can break it.

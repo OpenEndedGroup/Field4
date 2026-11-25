@@ -94,14 +94,20 @@ fun installLiveOutputIframeClient() {
         }
         // The name identifies this exact DOM iframe to Electron's WebFrameMain tree, even when
         // two output areas load the same URL. It changes no URL and survives a cross-origin page.
-        val frameName = "field-live-iframe-${command.id}"
-        frame.name = frameName
+        // An iframe named when it was written (`Box.web`'s `data-field-live-name`) keeps that name:
+        // Electron reads the name a frame had when it navigated, so renaming it now would not reach
+        // Electron, and after a link clicked inside the page its URL no longer matches `src` either.
+        val fixedName = frame.getAttribute("data-field-live-name")?.takeIf { it.startsWith("field-live-iframe-") }
+        val frameName = fixedName ?: "field-live-iframe-${command.id}"
+        if (fixedName == null) frame.name = frameName
         val request = JSON.parse<dynamic>(Json.encodeToString(command))
         request.frameName = frameName
+        if (fixedName != null) request.id = fixedName.removePrefix("field-live-iframe-")
         request.frameUrl = frame.src
-        if (command.operation == "screenshot") {
-            // An output area panned off the canvas has no pixels to capture. Bring it into view the
-            // way a reader would, by panning the canvas so it is centred, then measure again.
+        if (command.operation == "screenshot" || command.operation == "devtools") {
+            // An output area panned off the canvas has no pixels to capture, and DevTools inspects
+            // the frame at a point on screen. Bring it into view the way a reader would, by panning
+            // the canvas so it is centred, then measure again.
             frame.getBoundingClientRect().let { r ->
                 val offscreen = r.right <= 0.0 || r.bottom <= 0.0 ||
                     r.left >= window.innerWidth.toDouble() || r.top >= window.innerHeight.toDouble()

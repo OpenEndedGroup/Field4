@@ -166,8 +166,8 @@ holds only a stub prompt pointing at `main`'s copy, so change a routine by landi
 - A docs screenshot showing the red Field error marker, or empty/incorrect output, is a real
   failure: get the compiler/runtime error from the backdoor or runner and fix the snippet or the
   runtime. If probes stop reaching `is-running` after a timeout, restart the managed Field JVM.
-- Captures marked `capture-profile="linux-nvidia"` or `"macos-electron"` are retained except
-  where they can be regenerated; a missing retained asset fails the build
+- Captures marked `capture-profile="linux-nvidia"`, `"macos-electron"` or `"electron"` are
+  retained except where they can be regenerated; a missing retained asset fails the build
   ([long form](dev_docs/agents/AGENTS_DETAIL.md#the-docstest-loop)).
 - **A capture exercises the real code, or it does not exist.** Never fake, synthesize, hardcode,
   mock, or hand-edit a capture — no CPU stand-in for a GPU render, no hand-written string for a

@@ -39,15 +39,38 @@ class ElectronCaptureBrowser private constructor(
     fun fieldPage(serverPort: Int, timeoutMs: Long = 30_000): Page {
         val origin = "https://localhost:$serverPort/"
         val deadline = System.currentTimeMillis() + timeoutMs
+        val started = System.currentTimeMillis()
         while (System.currentTimeMillis() < deadline) {
-            browser.contexts().flatMap { it.pages() }
-                .firstOrNull { runCatching { it.url() }.getOrDefault("").startsWith(origin) }
-                ?.let { return it }
+            val pages = browser.contexts().flatMap { it.pages() }
+            pages.firstOrNull { runCatching { it.url() }.getOrDefault("").startsWith(origin) }?.let { return it }
+            // Playwright can keep a tab it attached to mid-navigation at the URL "" for good (Field's
+            // page navigates more than once as it starts), so the tab above is never found. Ask
+            // each such page where it really is, and reload the Field tab: the reload is a
+            // navigation Playwright sees, and the page it returns is tracked from then on.
+            if (System.currentTimeMillis() - started > 2_000) {
+                pages.filter { runCatching { it.url() }.getOrDefault("").isEmpty() }
+                    .firstOrNull { cdpLocation(it)?.startsWith(origin) == true }
+                    ?.let { page -> page.reload(); return page }
+            }
             Thread.sleep(200)
         }
         val seen = browser.contexts().flatMap { it.pages() }.map { runCatching { it.url() }.getOrDefault("?") }
         error("Electron (CDP port $cdpPort) showed no Field tab on $origin within ${timeoutMs}ms; pages: $seen")
     }
+
+    /** [page]'s own `location.href`, asked over a CDP session of its own rather than Playwright's frame state. */
+    private fun cdpLocation(page: Page): String? = runCatching {
+        val session = page.context().newCDPSession(page)
+        try {
+            val params = com.google.gson.JsonObject().apply {
+                addProperty("expression", "location.href")
+                addProperty("returnByValue", true)
+            }
+            session.send("Runtime.evaluate", params).getAsJsonObject("result")?.get("value")?.asString
+        } finally {
+            runCatching { session.detach() }
+        }
+    }.getOrNull()
 
     override fun close() {
         runCatching { browser.close() }
@@ -96,11 +119,38 @@ class ElectronCaptureBrowser private constructor(
                 }
                 Thread.sleep(200)
             }
+            // Attach once CDP lists the Field tab at its address. CDP is up about 200 ms after
+            // launch, before the tab navigates, and a tab Playwright attaches to then can keep the
+            // URL "" ([fieldPage] recovers one that does). Each launch used to wait out its 30 s
+            // and be relaunched, and a capture got through only when an attempt attached late.
+            val origin = originOf(appUrl)
+            while (!cdpListsPage(cdpPort, origin)) {
+                check(process.isAlive) { "Electron exited (${process.exitValue()}) before its Field tab loaded; see ${log.absolutePath}" }
+                if (System.currentTimeMillis() > deadline) {
+                    process.destroyForcibly()
+                    error("Electron (CDP port $cdpPort) listed no page on $origin within ${timeoutMs}ms; see ${log.absolutePath}")
+                }
+                Thread.sleep(200)
+            }
             val browser = playwright.chromium().connectOverCDP("http://127.0.0.1:$cdpPort")
             return ElectronCaptureBrowser(process, browser, cdpPort).also { capture ->
                 Runtime.getRuntime().addShutdownHook(Thread { capture.close() })
             }
         }
+
+        private fun originOf(url: String): String = URI(url).let { "${it.scheme}://${it.authority}/" }
+
+        /** Whether CDP's target list has a page whose URL starts with [origin]. */
+        private fun cdpListsPage(port: Int, origin: String): Boolean = runCatching {
+            val connection = URI("http://127.0.0.1:$port/json/list").toURL().openConnection() as HttpURLConnection
+            connection.connectTimeout = 500
+            connection.readTimeout = 500
+            val targets = com.google.gson.JsonParser.parseString(connection.inputStream.bufferedReader().readText()).asJsonArray
+            targets.any { target ->
+                val obj = target.asJsonObject
+                obj.get("type")?.asString == "page" && obj.get("url")?.asString.orEmpty().startsWith(origin)
+            }
+        }.getOrDefault(false)
 
         private fun cdpReady(port: Int): Boolean = runCatching {
             val connection = URI("http://127.0.0.1:$port/json/version").toURL().openConnection() as HttpURLConnection
