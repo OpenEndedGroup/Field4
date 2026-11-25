@@ -56,6 +56,28 @@ Angles are written as values. Each of these is radians as a `Float`, the unit ev
 
 </div>
 
+### Motion and shaping
+
+The `lerp … to` sentence has variants for the moves that make a running sketch feel alive. Each is finished by `to b`.
+
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Operator | Meaning |
+| --- | --- |
+| `a mid b` | The midpoint. |
+| `a towards b` | The unit direction from `a` to `b`, `(b - a).n`. |
+| `a smooth t to b` | `lerp` with `t` through smoothstep, easing in and out; `t` is clamped to 0..1. |
+| `a ease (t to Ease.outBack) to b` | `lerp` with `t` through any easing curve: one from `Ease` (`linear`, `smooth`, `smoother`, `inQuad`, `outQuad`, `inOutQuad`, `inCubic`, `outCubic`, `inOutCubic`, `inOutSine`, `outBack`) or your own `{ t: Double -> … }`. |
+| `pos = pos damp 6 to target` | Follows `target`, closing `1 − e^(−6·dt)` of the gap each frame, with `dt` the runloop's frame time, so it moves at the same pace at any frame rate. Larger numbers follow more tightly. Outside the runloop, give `dt` yourself: `pos.damp(6, dt) to target`. |
+| `a slerp t to b` | In 2D and 3D, the vector `t` of the way round the arc from `a`'s direction to `b`'s, turning at a constant rate, with the length moving linearly. |
+| `v limit 5` | At most 5 long, keeping direction. |
+| `v snap 10`<br>`v snap vec(10, 5)` | Each component rounded to the nearest multiple of 10, or of the matching spacing. |
+| `v.floor()`, `v.fract()`, `v.abs()`, `v.sign()` | Component by component, with GLSL's names (functions, not properties, so a bare `abs(x)` inside a `v { }` block still means `kotlin.math.abs`), so a shader written in a box and its Kotlin twin agree. `fract` is `x - floor(x)`, in 0..1 even for negative components. |
+| `v.maxComponent`, `v.minComponent`, `v.sum` | The largest component, the smallest and their sum. |
+| `v reflect n`<br>`v proj b`<br>`v rej b` | `v` reflected in the plane (or, in 2D, the line) with normal `n`; the part of `v` along `b`; the part perpendicular to `b`. |
+
+</div>
+
 ## One algebra, three storage forms
 
 <div data-code-lang="kotlin" markdown>
@@ -378,6 +400,8 @@ Every float heap vector (`Vector2f`, `Vector3f`, `Vector4f`) carries the modeled
 | `p * z`, `z * p` | The 2D point `p` multiplied as a complex number, turned by `z.arg` and scaled by `z.abs`, as a new vector: `vec(1, 0) * (2 cis 90.deg)` is (0, 2). `Complexf` takes a `Vector2f`, `Complexd` a `Vector2d`. |
 | `z.toVector()`<br>`v.toComplex()` | To and from the 2D vector (re, im): `Complexf` with `Vector2f`, `Complexd` with `Vector2d`. |
 | `z near w`<br>`z.near(w, 0.01)` | True when both parts are within 1e-5 (float) or 1e-9 (double), or the tolerance you give. |
+| `z lerp t to w`<br>`z slerp t to w` | The straight line between two complex numbers, and the arc: the angle turns the short way at a constant rate while the magnitude moves linearly. |
+| `z then w` | "`z`, then `w`": `w * z`. Complex multiplication does not care about order, so this is the same as `z * w`; the word is there to match quaternions. |
 
 </div>
 
@@ -430,6 +454,9 @@ A dual number differentiates whatever you compute with it. Start from `val x = H
 | `q.axis`, `q.angle` | The unit axis the rotation turns about and how far, in radians, 0..2π. With no rotation there is no axis, and `axis` is +z. |
 | `q.forward`, `q.up`, `q.right` | The rotated −z, +y and +x, as new vectors: where a camera with this orientation looks, its up and its right. Field's camera looks down −z. |
 | `q near r`<br>`q.near(r, 0.01)` | True when the two are the same rotation to within the tolerance (1e-5 by default). `q` and `-q` are the same rotation, so either sign matches. |
+| `q then r` | "`q`, then `r`", as a new quaternion: `r * q`. A chain `a then b then c` applies in the order it is written, where `*` reads right to left. |
+| `q slerp t to r` | The rotation `t` of the way from `q` to `r` at a constant rate, the short way round, as a new value. The `slerp` method does the same in place. |
+| `q.pow(t)`<br>`q.ln()`, `q.exp()` | The rotation `t` times over (`q.pow(0.5)` is half the turn, `q.pow(-1)` the inverse), and the quaternion logarithm and exponential it is built from, as new values. |
 | `q dot r` | The four-component dot product. For unit quaternions, ±1 means the same orientation; a negative value means `q` and `r` are on opposite sides of the sphere, which `slerp` and `nlerp` correct for. |
 | `q.transform(v)`<br>`q.transform(v, dest)` | Rotates `v` in place, or into `dest`, without allocating. |
 
@@ -469,6 +496,7 @@ These take `Float` angles and fractions, so write `rotateX(90.deg)` or `slerp(ot
 | `t.sclerp(u, 0.5f)` | The screw motion the given fraction of the way from `t` to `u`: rotation and translation together along a helix, the path a camera between two keys takes. `nlerp` is the cheaper blend. |
 | `t.pow(0.5f)` | The transform applied the given number of times, which need not be whole: `pow(0.5f)` goes half way. |
 | `t.getRotation()`, `t.getTranslation()`<br>`t.toMatrix()` | The parts, or the equivalent `Matrix4f`. |
+| `t then u` | "`t`, then `u`", as a new transform: `u * t`. `Matrix4f` has `then` too. |
 | `t.inverted()`, `-t`, `t %= u` | A new inverse, a new negated copy (the same transform), and overwriting `t` in place. |
 
 </div>

@@ -484,3 +484,109 @@ fun Quaternionfc.near(r: Quaternionfc, tolerance: Number): Boolean {
         kotlin.math.abs(z() - sign * r.z()) <= t && kotlin.math.abs(w() - sign * r.w()) <= t
     return close(1f) || close(-1f)
 }
+
+// ---------------------------------------------------------------------------------------------
+// Composition read in the order it happens, quaternion interpolation and powers.
+
+/**
+ * "This rotation, then [r]", as a new [Quat]: `r * this`.
+ *
+ * The Hamilton product reads right to left (`q * r` is r first), which is the most common ordering
+ * bug in rotation code; `a then b then c` is applied in the order it is written.
+ */
+infix fun Quaternionfc.then(r: Quaternionfc): Quat = Quaternionf(r).mul(this)
+
+/** "This transform, then [u]", as a new [DualQuat]: `u * this`, applied in the order written. */
+infix fun DualQuaternionf.then(u: DualQuaternionf): DualQuaternionf = u * this
+
+/** "This matrix, then [m]", as a new [Matrix4f]: `m * this`, so `a then b` transforms by `a` first. */
+infix fun Matrix4fc.then(m: Matrix4fc): Matrix4f = m * this
+
+/** The first half of `q slerp t to r`; finish it with [to]. */
+class QuatSlerp internal constructor(private val from: Quaternionfc, private val t: Float) {
+    /** The rotation [t] of the way from the left-hand one to [r], turning at a constant rate the short way round. A new [Quat]. */
+    infix fun to(r: Quaternionfc): Quat = Quaternionf(from).slerp(r, t)
+}
+
+/** Starts `q slerp t to r`: the rotation [t] of the way to `r`. Unlike the `slerp` method it leaves `q` alone. */
+infix fun Quaternionfc.slerp(t: Number): QuatSlerp = QuatSlerp(this, t.toFloat())
+
+/**
+ * The quaternion logarithm, as a new [Quat]: `(axis · θ/2, ln |q|)` for a rotation of θ about axis.
+ * For a unit quaternion the real part is zero and the rest is half the rotation vector.
+ */
+fun Quaternionfc.ln(): Quat {
+    val vl = kotlin.math.sqrt(x() * x() + y() * y() + z() * z())
+    val n = kotlin.math.sqrt(vl * vl + w() * w())
+    val k = if (vl < 1e-12f) 0f else kotlin.math.atan2(vl, w()) / vl
+    return Quaternionf(x() * k, y() * k, z() * k, kotlin.math.ln(n))
+}
+
+/** The quaternion exponential, as a new [Quat]: `e^w (cos |v| + v̂ sin |v|)`, the inverse of [ln]. */
+fun Quaternionfc.exp(): Quat {
+    val vl = kotlin.math.sqrt(x() * x() + y() * y() + z() * z())
+    val e = kotlin.math.exp(w())
+    val k = if (vl < 1e-12f) e else e * kotlin.math.sin(vl) / vl
+    return Quaternionf(x() * k, y() * k, z() * k, e * kotlin.math.cos(vl))
+}
+
+/**
+ * This rotation [t] times over, as a new [Quat]: `q.pow(0.5)` is half the turn about the same axis,
+ * `q.pow(2)` twice it, `q.pow(-1)` the inverse. Computed as `(ln q · t).exp()`.
+ */
+fun Quaternionfc.pow(t: Number): Quat = (ln() * t).exp()
+
+// ---------------------------------------------------------------------------------------------
+// Easing curves for `a ease (t to curve) to b`.
+
+/**
+ * Easing curves: functions from 0..1 to 0..1 that start at 0 and end at 1, for
+ * `a ease (t to Ease.inOutCubic) to b` or anywhere else a shaped `t` is wanted (`Ease.outBack(t)`).
+ * Any `(Double) -> Double` works in their place.
+ */
+object Ease {
+    /** No easing: `t` itself. */
+    val linear: (Double) -> Double = { it }
+    /** Smoothstep, `t²(3 − 2t)`: eases in and out with zero speed at both ends. The curve `smooth` uses. */
+    val smooth: (Double) -> Double = { it * it * (3 - 2 * it) }
+    /** Smootherstep, `t³(6t² − 15t + 10)`: like [smooth] but with zero acceleration at the ends too. */
+    val smoother: (Double) -> Double = { it * it * it * (it * (it * 6 - 15) + 10) }
+    /** Starts slowly, `t²`. */
+    val inQuad: (Double) -> Double = { it * it }
+    /** Ends slowly, `1 − (1 − t)²`. */
+    val outQuad: (Double) -> Double = { 1 - (1 - it) * (1 - it) }
+    /** Slow at both ends, quadratic. */
+    val inOutQuad: (Double) -> Double = { if (it < 0.5) 2 * it * it else 1 - 2 * (1 - it) * (1 - it) }
+    /** Starts slowly, `t³`. */
+    val inCubic: (Double) -> Double = { it * it * it }
+    /** Ends slowly, `1 − (1 − t)³`. */
+    val outCubic: (Double) -> Double = { 1 - (1 - it) * (1 - it) * (1 - it) }
+    /** Slow at both ends, cubic. */
+    val inOutCubic: (Double) -> Double = { if (it < 0.5) 4 * it * it * it else 1 - 4 * (1 - it) * (1 - it) * (1 - it) }
+    /** Slow at both ends along half a cosine, `(1 − cos πt) / 2`. */
+    val inOutSine: (Double) -> Double = { (1 - kotlin.math.cos(kotlin.math.PI * it)) / 2 }
+    /** Overshoots the end by about 10% and settles back, the "back" ease. */
+    val outBack: (Double) -> Double = { val c = 1.70158; val u = it - 1; 1 + (c + 1) * u * u * u + c * u * u }
+}
+
+// ---------------------------------------------------------------------------------------------
+// `a damp k to b`: the frame-rate-independent follow, reading the runloop's frame time. The
+// explicit-step form `a.damp(k, dt)` is generated beside the other `lerp` variants.
+
+/**
+ * Starts `a damp k to b`, the frame-rate-independent follow: each frame moves `1 − e^(−k·dt)` of the
+ * gap, with dt the runloop's frame time ([afield.runtime.lifecycle.AnimationClock.frameDt]), so
+ * `pos = pos damp 6 to target` closes the same fraction per second at any frame rate, and frame by
+ * frame during a capture. Larger [k] follows more tightly.
+ */
+infix fun Vector2fc.damp(k: Number): Vector2fLerp = damp(k, afield.runtime.lifecycle.AnimationClock.frameDt)
+/** `a damp k to b` for [Vector3fc]; see the [Vector2fc] form. */
+infix fun Vector3fc.damp(k: Number): Vector3fLerp = damp(k, afield.runtime.lifecycle.AnimationClock.frameDt)
+/** `a damp k to b` for [Vector4fc]; see the [Vector2fc] form. */
+infix fun Vector4fc.damp(k: Number): Vector4fLerp = damp(k, afield.runtime.lifecycle.AnimationClock.frameDt)
+/** `a damp k to b` for [Vector2dc]; see the [Vector2fc] form. */
+infix fun Vector2dc.damp(k: Number): Vector2dLerp = damp(k, afield.runtime.lifecycle.AnimationClock.frameDt)
+/** `a damp k to b` for [Vector3dc]; see the [Vector2fc] form. */
+infix fun Vector3dc.damp(k: Number): Vector3dLerp = damp(k, afield.runtime.lifecycle.AnimationClock.frameDt)
+/** `a damp k to b` for [Vector4dc]; see the [Vector2fc] form. */
+infix fun Vector4dc.damp(k: Number): Vector4dLerp = damp(k, afield.runtime.lifecycle.AnimationClock.frameDt)

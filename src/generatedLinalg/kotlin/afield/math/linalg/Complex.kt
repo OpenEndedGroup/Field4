@@ -60,6 +60,12 @@ class Complexf(@JvmField val re: Float, @JvmField val im: Float) {
     infix fun near(o: Complexf): Boolean = near(o, 1e-5f)
     /** True when both parts are within [tolerance] of [o]'s. */
     fun near(o: Complexf, tolerance: Number): Boolean = tolerance.toFloat().let { t -> kotlin.math.abs(re - o.re) <= t && kotlin.math.abs(im - o.im) <= t }
+    /** "This, then [o]": the composed turn-and-scale, `o * this`. Complex multiplication commutes, so it is also `this * o`; the name is for symmetry with quaternions. */
+    infix fun then(o: Complexf): Complexf = o * this
+    /** Starts `z lerp t to w`, the straight line between two complex numbers. */
+    infix fun lerp(t: Number): ComplexfLerp = ComplexfLerp(this, t.toFloat())
+    /** Starts `z slerp t to w`, the arc: the angle turns the short way at a constant rate and the magnitude moves linearly. */
+    infix fun slerp(t: Number): ComplexfSlerp = ComplexfSlerp(this, t.toFloat())
     /** This number as the 2D vector (re, im). */
     fun toVector(): Vector2f = Vector2f(re, im)
 
@@ -90,6 +96,21 @@ operator fun Number.minus(z: Complexf): Complexf = -z + this
 operator fun Number.div(z: Complexf): Complexf = Complexf(this, 0) / z
 /** The point multiplied as a complex number: turned by `z.arg` and scaled by `z.abs`, the planar counterpart of `p * q`. A new vector. */
 operator fun Vector2fc.times(z: Complexf): Vector2f = z * this
+
+/** The first half of `z lerp t to w`; finish it with [to]. */
+class ComplexfLerp internal constructor(private val from: Complexf, private val t: Float) {
+    /** The number [t] of the way from the left-hand one to [b] in a straight line. */
+    infix fun to(b: Complexf): Complexf = Complexf(from.re + (b.re - from.re) * t, from.im + (b.im - from.im) * t)
+}
+/** The first half of `z slerp t to w`; finish it with [to]. */
+class ComplexfSlerp internal constructor(private val from: Complexf, private val t: Float) {
+    /** The number [t] of the way round the arc from the left-hand one to [b]: angle the short way, magnitude linearly. */
+    infix fun to(b: Complexf): Complexf {
+        var d = b.arg - from.arg
+        if (d > kotlin.math.PI) d -= (2 * kotlin.math.PI).toFloat() else if (d < -kotlin.math.PI) d += (2 * kotlin.math.PI).toFloat()
+        return Complexf.polar(from.abs + (b.abs - from.abs) * t, from.arg + d * t)
+    }
+}
 
 /**
  * An immutable two-component number [a] + [b]·ε whose unit squares to [epsilon2].
@@ -210,6 +231,12 @@ class Complexd(@JvmField val re: Double, @JvmField val im: Double) {
     infix fun near(o: Complexd): Boolean = near(o, 1e-9)
     /** True when both parts are within [tolerance] of [o]'s. */
     fun near(o: Complexd, tolerance: Number): Boolean = tolerance.toDouble().let { t -> kotlin.math.abs(re - o.re) <= t && kotlin.math.abs(im - o.im) <= t }
+    /** "This, then [o]": the composed turn-and-scale, `o * this`. Complex multiplication commutes, so it is also `this * o`; the name is for symmetry with quaternions. */
+    infix fun then(o: Complexd): Complexd = o * this
+    /** Starts `z lerp t to w`, the straight line between two complex numbers. */
+    infix fun lerp(t: Number): ComplexdLerp = ComplexdLerp(this, t.toDouble())
+    /** Starts `z slerp t to w`, the arc: the angle turns the short way at a constant rate and the magnitude moves linearly. */
+    infix fun slerp(t: Number): ComplexdSlerp = ComplexdSlerp(this, t.toDouble())
     /** This number as the 2D vector (re, im). */
     fun toVector(): Vector2d = Vector2d(re, im)
 
@@ -240,6 +267,21 @@ operator fun Number.minus(z: Complexd): Complexd = -z + this
 operator fun Number.div(z: Complexd): Complexd = Complexd(this, 0) / z
 /** The point multiplied as a complex number: turned by `z.arg` and scaled by `z.abs`, the planar counterpart of `p * q`. A new vector. */
 operator fun Vector2dc.times(z: Complexd): Vector2d = z * this
+
+/** The first half of `z lerp t to w`; finish it with [to]. */
+class ComplexdLerp internal constructor(private val from: Complexd, private val t: Double) {
+    /** The number [t] of the way from the left-hand one to [b] in a straight line. */
+    infix fun to(b: Complexd): Complexd = Complexd(from.re + (b.re - from.re) * t, from.im + (b.im - from.im) * t)
+}
+/** The first half of `z slerp t to w`; finish it with [to]. */
+class ComplexdSlerp internal constructor(private val from: Complexd, private val t: Double) {
+    /** The number [t] of the way round the arc from the left-hand one to [b]: angle the short way, magnitude linearly. */
+    infix fun to(b: Complexd): Complexd {
+        var d = b.arg - from.arg
+        if (d > kotlin.math.PI) d -= (2 * kotlin.math.PI).toDouble() else if (d < -kotlin.math.PI) d += (2 * kotlin.math.PI).toDouble()
+        return Complexd.polar(from.abs + (b.abs - from.abs) * t, from.arg + d * t)
+    }
+}
 
 /**
  * An immutable two-component number [a] + [b]·ε whose unit squares to [epsilon2].

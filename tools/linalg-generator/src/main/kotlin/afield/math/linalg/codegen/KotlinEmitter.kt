@@ -135,6 +135,11 @@ class KotlinEmitter(
         }
         ergonomicTypes.forEach { type ->
             appendLine()
+            appendLine("// ${type.heapName} motion and shaping shorthands")
+            emitMotionShorthands(type)
+        }
+        ergonomicTypes.forEach { type ->
+            appendLine()
             appendLine("// ${type.heapName} shorthands")
             emitShorthands(
                 indent = "", receiver = type.readName, result = type.heapName, scalar = type.scalar,
@@ -147,6 +152,93 @@ class KotlinEmitter(
     /** Heap vectors (float and double, dims 2..4) that get the `.n`/`.length`/`lerp … to`/`step … to` surface. */
     private val ergonomicTypes: List<VectorType>
         get() = model.heapVectors.filter { it.scalar != ScalarKind.HALF && it.dimension in 2..4 }
+
+    /**
+     * Emits the Tier 2 spellings for one heap vector type: `a mid b`, `a towards b`, the `lerp`
+     * variants `smooth`, `ease` and `damp` (each returns the existing `…Lerp` pending value, so `to b`
+     * finishes them), `slerp … to` in 2D and 3D, `limit`, `snap`, the GLSL-style component fields
+     * `floor`, `fract`, `abs`, `sign`, the scalars `maxComponent`, `minComponent`, `sum`, and
+     * `reflect`, `proj`, `rej`. Every one returns a new value.
+     */
+    private fun StringBuilder.emitMotionShorthands(type: VectorType) {
+        val r = type.readName
+        val h = type.heapName
+        val s = type.scalar.kotlinType
+        val conv = type.scalar.numberConversion
+        val names = type.components.map { it.sourceName }
+        fun each(f: (String) -> String) = "$h(${names.joinToString { f(it) }})"
+        fun fold(op: String) = names.drop(1).fold("${names[0]}()") { acc, n -> "$op($acc, $n())" }
+        appendLine("/** The midpoint of two points. */")
+        appendLine("infix fun $r.mid(b: $r): $h = $h(this).add(b).mul(0.5${if (type.scalar == ScalarKind.FLOAT) "f" else ""})")
+        appendLine("/** The unit direction from this point to [b], `(b - a).n`. Coincident points give zero. */")
+        appendLine("infix fun $r.towards(b: $r): $h = (b - this).n")
+        appendLine("/** Starts `a smooth t to b`: `lerp` with [t] passed through smoothstep, so the move eases in and out. [t] is clamped to 0..1. */")
+        appendLine("infix fun $r.smooth(t: Number): ${h}Lerp = ${h}Lerp(this, t.toDouble().coerceIn(0.0, 1.0).let { it * it * (3 - 2 * it) }.$conv())")
+        appendLine("/** Starts `a ease (t to curve) to b`: `lerp` with [t] passed through any easing curve, such as one from [Ease]. */")
+        appendLine("infix fun $r.ease(t: Pair<Number, (Double) -> Double>): ${h}Lerp = ${h}Lerp(this, t.second(t.first.toDouble()).$conv())")
+        // The runloop form `a damp k to b` is hand-written in linalg.kt, because it reads the host's frame
+        // clock, which the generator's configurable packages do not name.
+        appendLine("/**")
+        appendLine(" * Starts `a.damp(k, dt) to b`: moves `1 − e^(−k·dt)` of the gap for a time step of [dt] seconds,")
+        appendLine(" * so repeated calls close the same fraction per second whatever the step. `a damp k to b` uses")
+        appendLine(" * the runloop's frame time for [dt].")
+        appendLine(" */")
+        appendLine("fun $r.damp(k: Number, dt: Number): ${h}Lerp = ${h}Lerp(this, (1.0 - kotlin.math.exp(-k.toDouble() * dt.toDouble())).$conv())")
+        appendLine("/** At most [max] long, keeping direction; a shorter vector is copied unchanged. */")
+        appendLine("infix fun $r.limit(max: Number): $h = max.$conv().let { m -> val l = length(); if (l > m && l > 0) $h(this).mul(m / l) else $h(this) }")
+        appendLine("/** Each component rounded to the nearest multiple of [step]. */")
+        appendLine("infix fun $r.snap(step: Number): $h = step.$conv().let { st -> ${each { "kotlin.math.round($it() / st) * st" }} }")
+        appendLine("/** Each component rounded to the nearest multiple of the matching component of [grid]. */")
+        appendLine("infix fun $r.snap(grid: $r): $h = ${each { "kotlin.math.round($it() / grid.$it()) * grid.$it()" }}")
+        appendLine("/** Each component rounded down, GLSL's `floor`. */")
+        appendLine("fun $r.floor(): $h = ${each { "kotlin.math.floor($it())" }}")
+        appendLine("/** Each component's fractional part `x - floor(x)`, GLSL's `fract`: always in 0..1, also for negative components. */")
+        appendLine("fun $r.fract(): $h = ${each { "($it() - kotlin.math.floor($it()))" }}")
+        appendLine("/** Each component's absolute value, as a new vector. `absolute()` does the same in place. */")
+        appendLine("fun $r.abs(): $h = ${each { "kotlin.math.abs($it())" }}")
+        appendLine("/** Each component's sign, −1, 0 or 1, GLSL's `sign`. */")
+        appendLine("fun $r.sign(): $h = ${each { "kotlin.math.sign($it())" }}")
+        appendLine("/** The largest component. */")
+        appendLine("val $r.maxComponent: $s get() = ${fold("maxOf")}")
+        appendLine("/** The smallest component. */")
+        appendLine("val $r.minComponent: $s get() = ${fold("minOf")}")
+        appendLine("/** The sum of the components. */")
+        appendLine("val $r.sum: $s get() = ${names.joinToString(" + ") { "$it()" }}")
+        appendLine("/** This vector reflected in the plane (or line) with normal [n], which need not be unit length: `v - 2(v·n̂)n̂`. */")
+        appendLine("infix fun $r.reflect(n: $r): $h = n.n.let { u -> $h(this).sub(u * (2 * dot(u))) }")
+        appendLine("/** The projection of this vector onto [b]: the part that points along [b]. Zero when [b] is zero. */")
+        appendLine("infix fun $r.proj(b: $r): $h = b.lengthSquared().let { l -> if (l == ${type.scalar.zero}) $h() else b * (dot(b) / l) }")
+        appendLine("/** The rejection from [b]: the part of this vector perpendicular to [b], `v - (v proj b)`. */")
+        appendLine("infix fun $r.rej(b: $r): $h = $h(this).sub(this proj b)")
+        if (type.dimension in 2..3) {
+            appendLine()
+            appendLine("/** The first half of `a slerp t to b`; finish it with [to]. */")
+            appendLine("class ${h}Slerp internal constructor(private val from: $r, private val t: $s) {")
+            appendLine("    /**")
+            appendLine("     * Returns the vector [t] of the way from the left-hand one to [b] along the arc between their")
+            appendLine("     * directions, turning at a constant rate, with the length interpolated linearly. Either")
+            appendLine("     * vector being zero gives the straight-line `lerp`.")
+            appendLine("     */")
+            appendLine("    infix fun to(b: $r): $h {")
+            appendLine("        val la = from.length(); val lb = b.length()")
+            appendLine("        if (la == ${type.scalar.zero} || lb == ${type.scalar.zero}) return from lerp t to b")
+            appendLine("        val ua = from.n; val ub = b.n")
+            appendLine("        val l = la + (lb - la) * t")
+            if (type.dimension == 2) {
+                appendLine("        return (ua rot ((ua signedAngleTo ub) * t)).mul(l)")
+            } else {
+                appendLine("        var axis = ua x ub")
+                appendLine("        if (axis.lengthSquared() < 1e-12) axis = ua x (if (kotlin.math.abs(ua.x) < 0.9) $h.X else $h.Z)")
+                appendLine("        axis = axis.n")
+                appendLine("        val a = (ua angleTo ub) * t")
+                appendLine("        return (ua * kotlin.math.cos(a)).add((axis x ua) * kotlin.math.sin(a)).mul(l)")
+            }
+            appendLine("    }")
+            appendLine("}")
+            appendLine("/** Starts `a slerp t to b`: the point [t] of the way round the arc from this vector's direction to `b`'s. */")
+            appendLine("infix fun $r.slerp(t: Number): ${h}Slerp = ${h}Slerp(this, t.$conv())")
+        }
+    }
 
     /** The default `near` tolerance: about a hundred ulps at 1 for float, a few million for double. */
     private fun nearTolerance(scalar: ScalarKind): String = if (scalar == ScalarKind.DOUBLE) "1e-9" else "1e-5f"
@@ -334,6 +426,12 @@ class KotlinEmitter(
             appendLine("    infix fun near(o: $c): Boolean = near(o, ${nearTolerance(scalar)})")
             appendLine("    /** True when both parts are within [tolerance] of [o]'s. */")
             appendLine("    fun near(o: $c, tolerance: Number): Boolean = tolerance.$conv().let { t -> kotlin.math.abs(re - o.re) <= t && kotlin.math.abs(im - o.im) <= t }")
+            appendLine("    /** \"This, then [o]\": the composed turn-and-scale, `o * this`. Complex multiplication commutes, so it is also `this * o`; the name is for symmetry with quaternions. */")
+            appendLine("    infix fun then(o: $c): $c = o * this")
+            appendLine("    /** Starts `z lerp t to w`, the straight line between two complex numbers. */")
+            appendLine("    infix fun lerp(t: Number): ${c}Lerp = ${c}Lerp(this, t.$conv())")
+            appendLine("    /** Starts `z slerp t to w`, the arc: the angle turns the short way at a constant rate and the magnitude moves linearly. */")
+            appendLine("    infix fun slerp(t: Number): ${c}Slerp = ${c}Slerp(this, t.$conv())")
             appendLine("    /** This number as the 2D vector (re, im). */")
             appendLine("    fun toVector(): $v = $v(re, im)")
             appendLine()
@@ -364,6 +462,21 @@ class KotlinEmitter(
             appendLine("operator fun Number.div(z: $c): $c = $c(this, 0) / z")
             appendLine("/** The point multiplied as a complex number: turned by `z.arg` and scaled by `z.abs`, the planar counterpart of `p * q`. A new vector. */")
             appendLine("operator fun $vc.times(z: $c): $v = z * this")
+            appendLine()
+            appendLine("/** The first half of `z lerp t to w`; finish it with [to]. */")
+            appendLine("class ${c}Lerp internal constructor(private val from: $c, private val t: $s) {")
+            appendLine("    /** The number [t] of the way from the left-hand one to [b] in a straight line. */")
+            appendLine("    infix fun to(b: $c): $c = $c(from.re + (b.re - from.re) * t, from.im + (b.im - from.im) * t)")
+            appendLine("}")
+            appendLine("/** The first half of `z slerp t to w`; finish it with [to]. */")
+            appendLine("class ${c}Slerp internal constructor(private val from: $c, private val t: $s) {")
+            appendLine("    /** The number [t] of the way round the arc from the left-hand one to [b]: angle the short way, magnitude linearly. */")
+            appendLine("    infix fun to(b: $c): $c {")
+            appendLine("        var d = b.arg - from.arg")
+            appendLine("        if (d > kotlin.math.PI) d -= (2 * kotlin.math.PI).$conv() else if (d < -kotlin.math.PI) d += (2 * kotlin.math.PI).$conv()")
+            appendLine("        return $c.polar(from.abs + (b.abs - from.abs) * t, from.arg + d * t)")
+            appendLine("    }")
+            appendLine("}")
             appendLine()
             appendLine("/**")
             appendLine(" * An immutable two-component number [a] + [b]·ε whose unit squares to [epsilon2].")
@@ -588,6 +701,28 @@ class KotlinEmitter(
         appendLine()
         appendLine("</div>")
         appendLine()
+        appendLine("### Motion and shaping")
+        appendLine()
+        appendLine("The `lerp … to` sentence has variants for the moves that make a running sketch feel alive. Each is finished by `to b`.")
+        appendLine()
+        appendLine("<div class=\"field-reference\" data-code-lang=\"kotlin\" markdown>")
+        appendLine()
+        appendLine("| Operator | Meaning |")
+        appendLine("| --- | --- |")
+        appendLine("| `a mid b` | The midpoint. |")
+        appendLine("| `a towards b` | The unit direction from `a` to `b`, `(b - a).n`. |")
+        appendLine("| `a smooth t to b` | `lerp` with `t` through smoothstep, easing in and out; `t` is clamped to 0..1. |")
+        appendLine("| `a ease (t to Ease.outBack) to b` | `lerp` with `t` through any easing curve: one from `Ease` (`linear`, `smooth`, `smoother`, `inQuad`, `outQuad`, `inOutQuad`, `inCubic`, `outCubic`, `inOutCubic`, `inOutSine`, `outBack`) or your own `{ t: Double -> … }`. |")
+        appendLine("| `pos = pos damp 6 to target` | Follows `target`, closing `1 − e^(−6·dt)` of the gap each frame, with `dt` the runloop's frame time, so it moves at the same pace at any frame rate. Larger numbers follow more tightly. Outside the runloop, give `dt` yourself: `pos.damp(6, dt) to target`. |")
+        appendLine("| `a slerp t to b` | In 2D and 3D, the vector `t` of the way round the arc from `a`'s direction to `b`'s, turning at a constant rate, with the length moving linearly. |")
+        appendLine("| `v limit 5` | At most 5 long, keeping direction. |")
+        appendLine("| `v snap 10`<br>`v snap vec(10, 5)` | Each component rounded to the nearest multiple of 10, or of the matching spacing. |")
+        appendLine("| `v.floor()`, `v.fract()`, `v.abs()`, `v.sign()` | Component by component, with GLSL's names (functions, not properties, so a bare `abs(x)` inside a `v { }` block still means `kotlin.math.abs`), so a shader written in a box and its Kotlin twin agree. `fract` is `x - floor(x)`, in 0..1 even for negative components. |")
+        appendLine("| `v.maxComponent`, `v.minComponent`, `v.sum` | The largest component, the smallest and their sum. |")
+        appendLine("| `v reflect n`<br>`v proj b`<br>`v rej b` | `v` reflected in the plane (or, in 2D, the line) with normal `n`; the part of `v` along `b`; the part perpendicular to `b`. |")
+        appendLine()
+        appendLine("</div>")
+        appendLine()
         appendLine("## One algebra, three storage forms")
         appendLine()
         appendLine("<div data-code-lang=\"kotlin\" markdown>")
@@ -726,6 +861,8 @@ class KotlinEmitter(
             "`p * z`, `z * p`" to "The 2D point `p` multiplied as a complex number, turned by `z.arg` and scaled by `z.abs`, as a new vector: `vec(1, 0) * (2 cis 90.deg)` is (0, 2). `Complexf` takes a `Vector2f`, `Complexd` a `Vector2d`.",
             "`z.toVector()`<br>`v.toComplex()`" to "To and from the 2D vector (re, im): `Complexf` with `Vector2f`, `Complexd` with `Vector2d`.",
             "`z near w`<br>`z.near(w, 0.01)`" to "True when both parts are within 1e-5 (float) or 1e-9 (double), or the tolerance you give.",
+            "`z lerp t to w`<br>`z slerp t to w`" to "The straight line between two complex numbers, and the arc: the angle turns the short way at a constant rate while the magnitude moves linearly.",
+            "`z then w`" to "\"`z`, then `w`\": `w * z`. Complex multiplication does not care about order, so this is the same as `z * w`; the word is there to match quaternions.",
         )
         appendLine("`==` compares the parts exactly, bit for bit, so compare the results of a calculation with `near` instead.")
         appendLine()
@@ -768,6 +905,9 @@ class KotlinEmitter(
             "`q.axis`, `q.angle`" to "The unit axis the rotation turns about and how far, in radians, 0..2π. With no rotation there is no axis, and `axis` is +z.",
             "`q.forward`, `q.up`, `q.right`" to "The rotated −z, +y and +x, as new vectors: where a camera with this orientation looks, its up and its right. Field's camera looks down −z.",
             "`q near r`<br>`q.near(r, 0.01)`" to "True when the two are the same rotation to within the tolerance (1e-5 by default). `q` and `-q` are the same rotation, so either sign matches.",
+            "`q then r`" to "\"`q`, then `r`\", as a new quaternion: `r * q`. A chain `a then b then c` applies in the order it is written, where `*` reads right to left.",
+            "`q slerp t to r`" to "The rotation `t` of the way from `q` to `r` at a constant rate, the short way round, as a new value. The `slerp` method does the same in place.",
+            "`q.pow(t)`<br>`q.ln()`, `q.exp()`" to "The rotation `t` times over (`q.pow(0.5)` is half the turn, `q.pow(-1)` the inverse), and the quaternion logarithm and exponential it is built from, as new values.",
             "`q dot r`" to "The four-component dot product. For unit quaternions, ±1 means the same orientation; a negative value means `q` and `r` are on opposite sides of the sphere, which `slerp` and `nlerp` correct for.",
             "`q.transform(v)`<br>`q.transform(v, dest)`" to "Rotates `v` in place, or into `dest`, without allocating.",
         )
@@ -797,6 +937,7 @@ class KotlinEmitter(
             "`t.sclerp(u, 0.5f)`" to "The screw motion the given fraction of the way from `t` to `u`: rotation and translation together along a helix, the path a camera between two keys takes. `nlerp` is the cheaper blend.",
             "`t.pow(0.5f)`" to "The transform applied the given number of times, which need not be whole: `pow(0.5f)` goes half way.",
             "`t.getRotation()`, `t.getTranslation()`<br>`t.toMatrix()`" to "The parts, or the equivalent `Matrix4f`.",
+            "`t then u`" to "\"`t`, then `u`\", as a new transform: `u * t`. `Matrix4f` has `then` too.",
             "`t.inverted()`, `-t`, `t %= u`" to "A new inverse, a new negated copy (the same transform), and overwriting `t` in place.",
         )
     }
