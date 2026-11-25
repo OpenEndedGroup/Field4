@@ -9,28 +9,31 @@ layout(push_constant) uniform FrostBlurPush {
 vec2 encode(vec2 value,float gamma) {
     return pow(max(value,vec2(0)),vec2(gamma));
 }
+// One texel in blur space: red and blue encoded, and alpha (light times palette position u, see
+// DiagramPalette) re-weighted by the same encoded light, so the blurred alpha over the blurred
+// encoded light is the light-weighted position again once main() decodes. Green passes through.
+vec4 encodeTexel(vec4 t,float gamma) {
+    float light=.5*(t.r+t.b);
+    float u=abs(light)>1e-6?t.a/light:1.0;
+    vec2 rb=encode(t.rb,gamma);
+    return vec4(rb.x,t.g,rb.y,u*.5*(rb.x+rb.y));
+}
 vec4 sampleInBlurSpace(vec2 q,float gamma) {
     vec4 linear=texture(source,vec3(q,gl_ViewIndex));
     if(gamma==1)return linear;
-    // Alpha is light times palette position u: carry u weighted by encoded light, so the blurred
-    // ratio is a position again once main() decodes (see DiagramPalette).
-    float lightHere=max(.5*(linear.r+linear.b),1e-6);
-    linear.a*=pow(lightHere,gamma-1);
     vec2 size=vec2(textureSize(source,0).xy),p=q*size-.5;
     // Encoding must precede bilinear filtering, including the first half-size reduction.
     // The vertical pass normally lands at exact texel centres and needs no extra fetches.
-    if(all(lessThan(abs(p-round(p)),vec2(.0001)))) {
-        linear.rb=encode(linear.rb,gamma);
-        return linear;
-    }
+    if(all(lessThan(abs(p-round(p)),vec2(.0001))))return encodeTexel(linear,gamma);
     ivec2 origin=ivec2(floor(p)),limit=ivec2(size)-1;
     vec2 f=fract(p);
-    vec2 a=encode(texelFetch(source,ivec3(clamp(origin,ivec2(0),limit),gl_ViewIndex),0).rb,gamma);
-    vec2 b=encode(texelFetch(source,ivec3(clamp(origin+ivec2(1,0),ivec2(0),limit),gl_ViewIndex),0).rb,gamma);
-    vec2 c=encode(texelFetch(source,ivec3(clamp(origin+ivec2(0,1),ivec2(0),limit),gl_ViewIndex),0).rb,gamma);
-    vec2 d=encode(texelFetch(source,ivec3(clamp(origin+ivec2(1,1),ivec2(0),limit),gl_ViewIndex),0).rb,gamma);
-    linear.rb=mix(mix(a,b,f.x),mix(c,d,f.x),f.y);
-    return linear;
+    vec4 a=encodeTexel(texelFetch(source,ivec3(clamp(origin,ivec2(0),limit),gl_ViewIndex),0),gamma);
+    vec4 b=encodeTexel(texelFetch(source,ivec3(clamp(origin+ivec2(1,0),ivec2(0),limit),gl_ViewIndex),0),gamma);
+    vec4 c=encodeTexel(texelFetch(source,ivec3(clamp(origin+ivec2(0,1),ivec2(0),limit),gl_ViewIndex),0),gamma);
+    vec4 d=encodeTexel(texelFetch(source,ivec3(clamp(origin+ivec2(1,1),ivec2(0),limit),gl_ViewIndex),0),gamma);
+    vec4 filtered=mix(mix(a,b,f.x),mix(c,d,f.x),f.y);
+    filtered.g=linear.g; // control data: the hardware filter, exactly as before
+    return filtered;
 }
 void main() {
     float sigma=max(pc.stepSigma.z,.001),total=0;

@@ -420,8 +420,7 @@ val crawler = CreatureEvolution.evolve(config).best
 val floor = fline {
     moveTo(-6f, 0f)
     lineTo(6f, 0f)
-}
-    .apply { color = vec(0.5, 0.45, 0.4, 1.0) }
+}.apply { color = vec(0.5, 0.45, 0.4, 1.0) }
 
 showPlaneGrid(
     "start" to [floor] + crawler.frameLines(0, alignNetMotionToPositiveX = false),

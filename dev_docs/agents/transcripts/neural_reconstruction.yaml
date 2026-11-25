@@ -184,8 +184,7 @@ operations:
                 }
                 frame()
             }
-        }
-            .end { ownedLab.close() }
+        }.end { ownedLab.close() }
       vertex: |
         #version 460
         layout(push_constant) uniform Scene {
@@ -439,7 +438,6 @@ operations:
               }
               frame()
           }
-      }
-          .end { ownedLab.close() }
+      }.end { ownedLab.close() }
 - wait:
     frames: 12

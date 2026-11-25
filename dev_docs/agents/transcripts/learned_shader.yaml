@@ -116,8 +116,7 @@ operations:
                 ownedLab.time = kotlin.math.sin(time).toFloat()
                 frame()
             }
-        }
-            .end { ownedLab.close() }
+        }.end { ownedLab.close() }
 - connect:
     parent: agent_graphics_context
     child: learned_shader
@@ -178,8 +177,7 @@ operations:
               ownedLab.time = kotlin.math.sin(time).toFloat()
               frame()
           }
-      }
-          .end { ownedLab.close() }
+      }.end { ownedLab.close() }
 - wait:
     frames: 12
 - create:

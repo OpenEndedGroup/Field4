@@ -21,6 +21,5 @@ val composite = fline {
     lineTo(1.2, 1 - 9.77 / 16)
     lineTo(1.2, 1 - 1.0 / 16)
     lineTo(3.0, 1 - 1.0 / 16)
-}
-    .apply { color = vec(0.6, 0.6, 0.6, 1.0) }
+}.apply { color = vec(0.6, 0.6, 0.6, 1.0) }
 lines(profiles + composite, w = 520.0, h = 180.0, fitToSize = true)

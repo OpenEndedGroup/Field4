@@ -12,9 +12,7 @@ val sdkReady =
     lab.visibility.available &&
         runCatching {
             lab.lighting.enableRtxdi(RtxdiProgram.load(), restir).getOrThrow()
-        }
-            .onFailure { println("Optional RTXDI unavailable: ${it.message}") }
-            .isSuccess
+        }.onFailure { println("Optional RTXDI unavailable: ${it.message}") }.isSuccess
 var useRtxdi = sdkReady
 var reference = false
 var temporal = true

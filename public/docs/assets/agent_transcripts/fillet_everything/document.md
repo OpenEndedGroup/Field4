@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="fillet_plate" index="0" -->
 
 ```edn [field-box id="fillet_plate" role="properties"]
-{"id" "fillet_plate" "index" 0 "name" "The plate one chamfer cannot take" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The plate one chamfer cannot take" "_tombstone" false "frame" #afield/rect [1080.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fillet_plate_code_.kt" "lines" 74 "characters" 2745 "sha256" "ff4fd7c94143bd83ed8383196499616d31adb1dfbf32585df0be4d9f81a28730"}]}
+{"id" "fillet_plate" "index" 0 "name" "The plate one chamfer cannot take" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The plate one chamfer cannot take" "_tombstone" false "frame" #afield/rect [1080.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fillet_plate_code_.kt" "lines" 73 "characters" 2720 "sha256" "d018244e70d57d94ce1ef1fe23f853f40de242e1e8c88309599385c80a63e172"}]}
 ```
 
 ```kotlin [field-property box="fillet_plate" name="code" path="fillet_plate_code_.kt"]
@@ -67,10 +67,9 @@ run {
     start = System.nanoTime()
     val rounded =
         solidCraft("plate") {
-                plate()
-                fillet(radius, *edges.map { it.pick }.toTypedArray())
-            }
-            .open()
+            plate()
+            fillet(radius, *edges.map { it.pick }.toTypedArray())
+        }.open()
     val filletTime = millis(start)
     val after = rounded.mesh(tolerance = 0.02).toTriMesh().weld()
     val faces = rounded.summary().getJSONArray("bodies").getJSONObject(0).getInt("faces")
@@ -96,7 +95,7 @@ run {
 <!-- field-box id="fillet_block" index="1" -->
 
 ```edn [field-box id="fillet_block" role="properties"]
-{"id" "fillet_block" "index" 1 "name" "Every edge of a block, checked" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Every edge of a block, checked" "_tombstone" false "frame" #afield/rect [80.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fillet_block_code_.kt" "lines" 77 "characters" 2968 "sha256" "af78d6cc35d602a33589f1ed5f66db19a029e1a1edeaf0371ed4dd771df32860"}]}
+{"id" "fillet_block" "index" 1 "name" "Every edge of a block, checked" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Every edge of a block, checked" "_tombstone" false "frame" #afield/rect [80.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fillet_block_code_.kt" "lines" 76 "characters" 2939 "sha256" "d98d52a90830061f726b8ac9ad0d911c21dc7e75545f5f878818740a5f4d63a8"}]}
 ```
 
 ```kotlin [field-property box="fillet_block" name="code" path="fillet_block_code_.kt"]
@@ -142,10 +141,9 @@ run {
         val start = System.nanoTime()
         val design = runCatching {
             solidCraft("block") {
-                    extrude(sketch { rectangle(0.0, 0.0, a, b) }, "$c")
-                    fillet("$r", *edges)
-                }
-                .open()
+                extrude(sketch { rectangle(0.0, 0.0, a, b) }, "$c")
+                fillet("$r", *edges)
+            }.open()
         }
         val millis = (System.nanoTime() - start) / 1_000_000
         val part = design.getOrNull()

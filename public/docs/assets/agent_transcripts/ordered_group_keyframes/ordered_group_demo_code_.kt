@@ -2,9 +2,8 @@
 prop<Double>(ruleOffset) = 0.1
 val group =
     OrderedKeyframeGroup({ 5 }, sourceBoxId = thisBox.id) { resolved ->
-            println("Applied: " + resolved.values("cooling"))
-        }
-        .lane("cooling", 0.0) { it in 0.0..1.0 }
+        println("Applied: " + resolved.values("cooling"))
+    }.lane("cooling", 0.0) { it in 0.0..1.0 }
 val a = group.capture()
 val cooling = sourceBlock { screenNo: Int ->
     val ramp = 0.04 * screenNo
@@ -44,8 +43,7 @@ check(
 val previous = group.capture()
 val failure = runCatching {
     group["cooling"] = sourceBlock { screenNo: Int -> if (screenNo == 4) Double.NaN else .2 }
-}
-        .exceptionOrNull()!!
+}.exceptionOrNull()!!
 check(failure.message!!.contains("index 4"))
 check(group.capture().values == previous.values)
 markdown(

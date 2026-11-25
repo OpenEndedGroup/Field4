@@ -39,7 +39,7 @@ start(renderer::run)
 <!-- field-box id="computed_ray_geometry" index="1" -->
 
 ```edn [field-box id="computed_ray_geometry" role="properties"]
-{"id" "computed_ray_geometry" "index" 1 "name" "computed ray geometry" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "computed ray geometry" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "computed_ray_geometry_code_.kt" "lines" 32 "characters" 1228 "sha256" "1017ae814be70b284470445692329c35f83c58be672ca9da2ba13ac9cd38c69e"} {"name" "compute" "language" "glsl" "path" "computed_ray_geometry_compute_.glsl" "lines" 57 "characters" 2115 "sha256" "2623e5af6cc1174f5b57cb53add15849c260b0c63a10c8e09178999c523c2350"}]}
+{"id" "computed_ray_geometry" "index" 1 "name" "computed ray geometry" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "computed ray geometry" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "computed_ray_geometry_code_.kt" "lines" 31 "characters" 1223 "sha256" "0db9097ec61636848f41384cae022c333407b5440ac868adf2b8c8584eb268ce"} {"name" "compute" "language" "glsl" "path" "computed_ray_geometry_compute_.glsl" "lines" 57 "characters" 2115 "sha256" "2623e5af6cc1174f5b57cb53add15849c260b0c63a10c8e09178999c523c2350"}]}
 ```
 
 ```kotlin [field-property box="computed_ray_geometry" name="code" path="computed_ray_geometry_code_.kt"]
@@ -73,8 +73,7 @@ frames {
         ownedLab.view = view
         frame()
     }
-}
-    .end { ownedLab.close() }
+}.end { ownedLab.close() }
 ```
 
 ```glsl [field-property box="computed_ray_geometry" name="compute" path="computed_ray_geometry_compute_.glsl"]

@@ -7,11 +7,10 @@ compiled into it, so rebuilding on every run would leak a module per keystroke.
 */
 once.particles {
     ShaderNeuralParticles(neuralExport, renderer) {
-            particleCount = 300_000
-            stepsPerCycle = 150
-            dwellCycles = 3f
-        }
-        .also { it.installInto() }
+        particleCount = 300_000
+        stepsPerCycle = 150
+        dwellCycles = 3f
+    }.also { it.installInto() }
 }
 
 /*

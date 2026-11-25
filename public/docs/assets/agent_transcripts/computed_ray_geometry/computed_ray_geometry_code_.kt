@@ -28,5 +28,4 @@ frames {
         ownedLab.view = view
         frame()
     }
-}
-    .end { ownedLab.close() }
+}.end { ownedLab.close() }

@@ -26,13 +26,11 @@ renderer += "module" to module
 val N = 100000
 var inData = defaultBuffer {
     size = N.vec4s
-}
-    .buffer
+}.buffer
 
 var outData = defaultBuffer {
     size = N.vec4s
-}
-    .buffer
+}.buffer
 
 // `m.inData`, `m.outData`, `m.something` and `m.count` match the push-constant members the compute shader
 // declares. Each is a lambda, evaluated again every time the shader is dispatched.

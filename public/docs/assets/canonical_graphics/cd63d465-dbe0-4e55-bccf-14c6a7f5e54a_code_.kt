@@ -19,8 +19,7 @@ var sourceBuffer = buffer {
     addressable()
     hosted()
     dest()
-}
-    .buffer
+}.buffer
 
 // 200 keys in descending order: 2000, 1999, ... 1801
 sourceBuffer.write {

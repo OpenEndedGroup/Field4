@@ -103,8 +103,7 @@ val values = [
 
 val particleBuffer = defaultBuffer {
     size = (values.size * particle.strideBytes).bytes
-}
-    .buffer
+}.buffer
 
 particleBuffer.mapAndWrite_bytes {
     particle.writeArray(values, this)

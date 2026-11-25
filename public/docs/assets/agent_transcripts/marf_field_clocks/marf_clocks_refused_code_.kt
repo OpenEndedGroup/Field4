@@ -11,13 +11,12 @@ val bank = marfValues(0, 1, 2, 3, 4)
 
 val readOut: (String, MarfFieldClock) -> String = { spec, clock ->
     runCatching {
-            bank
-                .read(pat(spec).nums(), fields = clock, name = "addr")
-                .stagesIn(PatArc(PatQ.ZERO, PatQ.of(8)))
-                .take(8)
-                .joinToString(" ") { s -> s.address.toInt().toString() }
-        }
-        .fold({ seq -> "reads as `$seq`" }, { e -> "**REFUSED** — ${e.message}" })
+        bank
+            .read(pat(spec).nums(), fields = clock, name = "addr")
+            .stagesIn(PatArc(PatQ.ZERO, PatQ.of(8)))
+            .take(8)
+            .joinToString(" ") { s -> s.address.toInt().toString() }
+    }.fold({ seq -> "reads as `$seq`" }, { e -> "**REFUSED** — ${e.message}" })
 }
 
 val spellings = ["<0 3> 1", "1 <0 3>", "<0 3>*2", "<0 3>, 1", "<0 3>"]

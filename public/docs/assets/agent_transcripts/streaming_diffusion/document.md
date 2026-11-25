@@ -37,7 +37,7 @@ start(renderer::run)
 <!-- field-box id="diffusion_curves" index="1" -->
 
 ```edn [field-box id="diffusion_curves" role="properties"]
-{"id" "diffusion_curves" "index" 1 "name" "3 · spinning curves" "parents" ["root" "diffusion_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "diffusion_renderer"} "name" "3 · spinning curves" "_tombstone" false "frame" #afield/rect [440.0 160.0 360.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "diffusion_curves_code_.kt" "lines" 106 "characters" 4701 "sha256" "83f010f1c46611e2994db0b32458e4df1537fec2a8526ab199a7437b00d2f407"}]}
+{"id" "diffusion_curves" "index" 1 "name" "3 · spinning curves" "parents" ["root" "diffusion_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "diffusion_renderer"} "name" "3 · spinning curves" "_tombstone" false "frame" #afield/rect [440.0 160.0 360.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "diffusion_curves_code_.kt" "lines" 105 "characters" 4692 "sha256" "d39d65bb0aa3ca467f51cb8c48c3b2905b00193115ae87388f90fc77069109fa"}]}
 ```
 
 ```kotlin [field-property box="diffusion_curves" name="code" path="diffusion_curves_code_.kt"]
@@ -144,8 +144,7 @@ if (!support.available) {
                 print("Active TAEHV TensorRT; shown=${demo.view.presentedFrames}")
             frame()
         }
-    }
-        .end { demo.close() }
+    }.end { demo.close() }
 }
 ```
 

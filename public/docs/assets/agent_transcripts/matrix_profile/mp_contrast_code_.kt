@@ -6,8 +6,7 @@ fun example(withStep: Boolean) = 600 { i ->
     rnd.nextGaussian() * 0.3 +
         (if (i in 100 until 140) 3 * sin(2 * PI * (i - 100) / 40) else 0.0) +
         (if (withStep && i in 400 until 440) (if (i < 420) 3.0 else -3.0) else 0.0)
-}
-    .toDoubleArray()
+}.toDoubleArray()
 
 val cp = contrastProfile([example(true), example(true)], [example(false), example(false)], m = 40)
 val platos = cp.platos(2)

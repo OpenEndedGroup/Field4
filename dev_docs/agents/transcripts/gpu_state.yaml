@@ -140,14 +140,12 @@ operations:
           var anchors = defaultBuffer {
               size = N.vec4s
               writeOnce()
-          }
-              .buffer
+          }.buffer
           // Heat is zeroInit(): never uploaded at all. The device zeroes it and the shader owns it.
           var heat = defaultBuffer {
               size = N.vec4s
               zeroInit()
-          }
-              .buffer
+          }.buffer
 
           // One list of home positions, used for the anchors and for both halves of the state, so the
           // simulation starts exactly at rest rather than nearly at rest.

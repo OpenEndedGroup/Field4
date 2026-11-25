@@ -101,6 +101,5 @@ if (!support.available) {
                 print("Active TAEHV TensorRT; shown=${demo.view.presentedFrames}")
             frame()
         }
-    }
-        .end { demo.close() }
+    }.end { demo.close() }
 }

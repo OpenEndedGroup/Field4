@@ -284,5 +284,4 @@ loop {
     renderer.windows.forEach { it.pollEvents() }
     renderer.render()
     frame()
-}
-    .end { stereo.beforeScene.remove("body-one-tracking", updateTracking) }
+}.end { stereo.beforeScene.remove("body-one-tracking", updateTracking) }

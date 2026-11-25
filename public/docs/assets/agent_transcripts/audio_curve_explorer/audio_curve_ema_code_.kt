@@ -14,5 +14,4 @@ loop {
         shown = frame.timeSeconds
         threeLines(frame.flines(scale, bands = 16), channel = "curve", height = 560)
     }
-}
-    .end { curve.close() }
+}.end { curve.close() }

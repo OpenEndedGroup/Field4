@@ -38,7 +38,7 @@ start(renderer::run)
 <!-- field-box id="learned_from_module" index="1" -->
 
 ```edn [field-box id="learned_from_module" role="properties"]
-{"id" "learned_from_module" "index" 1 "name" "learn from this module" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "learn from this module" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "learned_from_module_code_.kt" "lines" 86 "characters" 3406 "sha256" "7662a1dd1452201b02ea79b00750c33c8f248db5cdf2b67b2013437682cbbf4b"} {"name" "vertex" "language" "glsl" "path" "learned_from_module_vertex_.glsl" "lines" 5 "characters" 118 "sha256" "2c4898fc058df3cf38956a49514876c2d2a6f58ae15647ab35962039df25c828"} {"name" "fragment" "language" "glsl" "path" "learned_from_module_fragment_.glsl" "lines" 18 "characters" 690 "sha256" "cb2424db2082218243876ffaa2f8d764aceb600141e527320ee3fbb1afefba4d"}]}
+{"id" "learned_from_module" "index" 1 "name" "learn from this module" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "learn from this module" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "learned_from_module_code_.kt" "lines" 84 "characters" 3368 "sha256" "30d6a1fdf5d7cd578b070958eacd85500736098baea306ba75a9e266a02fbfe4"} {"name" "vertex" "language" "glsl" "path" "learned_from_module_vertex_.glsl" "lines" 5 "characters" 118 "sha256" "2c4898fc058df3cf38956a49514876c2d2a6f58ae15647ab35962039df25c828"} {"name" "fragment" "language" "glsl" "path" "learned_from_module_fragment_.glsl" "lines" 18 "characters" 690 "sha256" "cb2424db2082218243876ffaa2f8d764aceb600141e527320ee3fbb1afefba4d"}]}
 ```
 
 ```kotlin [field-property box="learned_from_module" name="code" path="learned_from_module_code_.kt"]
@@ -97,8 +97,7 @@ frames {
                     trainingJob = ShaderTraining.trainAsync(dataset, File(run, "model"), steps)
                     reported = false
                     println("Captured actual GPU RGB. Training log: ${trainingJob!!.log}")
-                }
-                    .onFailure { println("Capture failed: ${it.message}") }
+                }.onFailure { println("Capture failed: ${it.message}") }
             }
         }
         val activeJob = trainingJob
@@ -109,8 +108,7 @@ frames {
                 ownedLab.load(model)
                 println("LEARNED MODULE READY: $model — choose view 1 or 2; weights.json records held-out error.")
                 File("build/shader-learning/latest-model.txt").writeText(model.absolutePath)
-            }
-                .onFailure { println("Keeping the working view: ${it.message}") }
+            }.onFailure { println("Keeping the working view: ${it.message}") }
         }
         ownedLab.view = requestedView
         if (animate) phase += .01

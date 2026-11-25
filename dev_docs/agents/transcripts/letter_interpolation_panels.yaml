@@ -144,16 +144,15 @@ operations:
           once.panels {
               STOPS.mapIndexed { i, _ ->
                   ShaderNeuralParticles(fieldA, renderer) {
-                          name = "panel$i"
-                          particleCount = 150_000
-                          stepsPerCycle = 150
-                          // Higher than the sweeping scene's: a still wants the arrived distribution
-                          // crisp rather than the stream between shapes.
-                          dwellCycles = 3f
-                          viewScale = 4.6f
-                          viewCenter = Vector2f((1 - i) * 5.2f, 0f)
-                      }
-                      .also { it.installInto() }
+                      name = "panel$i"
+                      particleCount = 150_000
+                      stepsPerCycle = 150
+                      // Higher than the sweeping scene's: a still wants the arrived distribution
+                      // crisp rather than the stream between shapes.
+                      dwellCycles = 3f
+                      viewScale = 4.6f
+                      viewCenter = Vector2f((1 - i) * 5.2f, 0f)
+                  }.also { it.installInto() }
               }
           }
 

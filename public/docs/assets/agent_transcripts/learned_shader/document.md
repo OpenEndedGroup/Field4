@@ -38,7 +38,7 @@ start(renderer::run)
 <!-- field-box id="learned_shader" index="1" -->
 
 ```edn [field-box id="learned_shader" role="properties"]
-{"id" "learned_shader" "index" 1 "name" "learned shader" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "learned shader" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "learned_shader_code_.kt" "lines" 53 "characters" 1915 "sha256" "f4a1cbde258272b07fca4f62aac4cafd93b32783a187548957da055f749e8405"}]}
+{"id" "learned_shader" "index" 1 "name" "learned shader" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "learned shader" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "learned_shader_code_.kt" "lines" 52 "characters" 1910 "sha256" "90b66fcb61d829270f16d20d3e7e0a7ea587cf230568f22773b36b4112639d43"}]}
 ```
 
 ```kotlin [field-property box="learned_shader" name="code" path="learned_shader_code_.kt"]
@@ -93,8 +93,7 @@ frames {
         ownedLab.time = kotlin.math.sin(time).toFloat()
         frame()
     }
-}
-    .end { ownedLab.close() }
+}.end { ownedLab.close() }
 ```
 
 ## 3. editable learned material

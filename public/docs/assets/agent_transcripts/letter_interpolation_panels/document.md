@@ -119,7 +119,7 @@ println(
 <!-- field-box id="li_panels" index="2" -->
 
 ```edn [field-box id="li_panels" role="properties"]
-{"id" "li_panels" "index" 2 "name" "three pinned panels" "parents" ["root" "li_fields"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "li_fields"} "name" "three pinned panels" "_tombstone" false "frame" #afield/rect [740.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "li_panels_code_.kt" "lines" 40 "characters" 1613 "sha256" "238f2716d49541cb5135d601497785724903484ef3823ec8589c63ed8ee0bf4a"}]}
+{"id" "li_panels" "index" 2 "name" "three pinned panels" "parents" ["root" "li_fields"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "li_fields"} "name" "three pinned panels" "_tombstone" false "frame" #afield/rect [740.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "li_panels_code_.kt" "lines" 39 "characters" 1564 "sha256" "418a0124b6f550799286a4d802b168b74600a30310172d329c0b648b2eec7843"}]}
 ```
 
 ```kotlin [field-property box="li_panels" name="code" path="li_panels_code_.kt"]
@@ -140,16 +140,15 @@ moves that panel to the right of the screen.
 once.panels {
     STOPS.mapIndexed { i, _ ->
         ShaderNeuralParticles(fieldA, renderer) {
-                name = "panel$i"
-                particleCount = 150_000
-                stepsPerCycle = 150
-                // Higher than the sweeping scene's: a still wants the arrived distribution
-                // crisp rather than the stream between shapes.
-                dwellCycles = 3f
-                viewScale = 4.6f
-                viewCenter = Vector2f((1 - i) * 5.2f, 0f)
-            }
-            .also { it.installInto() }
+            name = "panel$i"
+            particleCount = 150_000
+            stepsPerCycle = 150
+            // Higher than the sweeping scene's: a still wants the arrived distribution
+            // crisp rather than the stream between shapes.
+            dwellCycles = 3f
+            viewScale = 4.6f
+            viewCenter = Vector2f((1 - i) * 5.2f, 0f)
+        }.also { it.installInto() }
     }
 }
 

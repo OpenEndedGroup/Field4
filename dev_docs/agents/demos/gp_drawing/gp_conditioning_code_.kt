@@ -53,14 +53,12 @@ fun redraw() {
 // running the box puts the sliders back at the values above
 controlGroup("controls") {
     slider("length scale", min = 0.1, max = 1.5, initialValue = lengthScale) {
-            lengthScale = it
-            redraw()
-        }
-        .set(lengthScale)
+        lengthScale = it
+        redraw()
+    }.set(lengthScale)
     slider("noise of the third measurement", min = 0.01, max = 0.8, initialValue = thirdNoise) {
-            thirdNoise = it
-            redraw()
-        }
-        .set(thirdNoise)
+        thirdNoise = it
+        redraw()
+    }.set(thirdNoise)
 }
 redraw()

@@ -182,8 +182,7 @@ operations:
                 if (animate) time += 1f / 30f
                 frame()
             }
-        }
-            .end { ownedSession.close() }
+        }.end { ownedSession.close() }
       vertex: |
         #version 460
         layout(location=0) out vec2 uv;
@@ -350,8 +349,7 @@ operations:
               if (animate) time += 1f / 30f
               frame()
           }
-      }
-          .end { ownedSession.close() }
+      }.end { ownedSession.close() }
 - create:
     box: flow_texture
     name: flow_texture
