@@ -1238,28 +1238,29 @@
     },
     "assets/agent_transcripts/contrast_scale_demo/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "capturedAt": "2026-11-24T08:52:17.797Z",
-      "channels": 4,
+      "capturedAt": "2026-11-25T06:55:58.228Z",
+      "channels": 5,
       "file": "assets/web_publications/contrast_scale_demo/document/metadata.edn",
       "files": {
-        "assets/web_publications/contrast_scale_demo/document/metadata.edn": "3fddba9072e34c40e3593dfea14189e7f46428b302bb13e47b58f7d26b52462f",
-        "assets/web_publications/contrast_scale_demo/document/outputs.json": "136585d23e198c5a2821d36a5eb10d097f688f9b72daf265ae5be54ca7e5ce8a",
-        "assets/web_publications/contrast_scale_demo/outputs/0.html": "6c3e5770b7b6579b7b33464cfc268478a6a80e44eae0ee1c3bd430020f258b6e",
-        "assets/web_publications/contrast_scale_demo/outputs/1.html": "623fcb88af25270f6be7288d81d0b0b4933f97366d2164f35a815ffcfc28b959",
-        "assets/web_publications/contrast_scale_demo/outputs/2.html": "c3a1a4ee776b7177efaddfc05eea3ce3ecc9555684e7c287ae3608e4caad547c",
-        "assets/web_publications/contrast_scale_demo/outputs/3.html": "176d08d32de5228c25cc02fcceedca4f869727ffc934b04a7f1ae1bcea6ad950"
+        "assets/web_publications/contrast_scale_demo/document/metadata.edn": "18aeacaa5dbf59272b58a34ce85b3433cd4934fc8717887e3a7f82ac9e534731",
+        "assets/web_publications/contrast_scale_demo/document/outputs.json": "aad887220fcc4f346ad4f89b8c1943566d3b11ee3418a98875090aa14736d40f",
+        "assets/web_publications/contrast_scale_demo/outputs/0.html": "ffb3e16a243a5da451380a0908328dec46210f62bc2950d0a31734a26712e13c",
+        "assets/web_publications/contrast_scale_demo/outputs/1.html": "5323621ccae3a5bc19f39b0f52c2c6110926466bbf94197e901f13e9625001f5",
+        "assets/web_publications/contrast_scale_demo/outputs/2.html": "61424b3efc5013158c6454450fea28abd8d053f3e50aa89840d87b93e163c152",
+        "assets/web_publications/contrast_scale_demo/outputs/3.html": "ef3024ed3637a681cc9e75669bb42739fc451446cec73a3bc4f3fab53148aaa9",
+        "assets/web_publications/contrast_scale_demo/outputs/4.html": "345685639667480ed9b7078bb387e1e17a26a2ff82d29529312a142d656a5a7c"
       },
       "kinds": [
         "svg"
       ],
       "outputs": "assets/web_publications/contrast_scale_demo/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/contrast_scale_demo.yaml": "749cfacaa34f07452976a93a2077b5852359569c24c66af11a547c711f02e4ff",
+        "dev_docs/agents/transcripts/contrast_scale_demo.yaml": "6d21947cb929611c3b098d653b21a5656c058d6eb57f9c8c5ebcf584be4b8841",
         "public/docs/assets/agent_transcripts/contrast_scale_demo/contrast_bands_code_.kt": "41ed952c6b2b4812f9e117b6e53ea8c8634bbe8363ae32f5e4f19691773396e1",
-        "public/docs/assets/agent_transcripts/contrast_scale_demo/contrast_picker_code_.kt": "b0aefcdcbe49937da1823d0e3edfa8b8fa500c31e6a9da697563fae2272c661f",
+        "public/docs/assets/agent_transcripts/contrast_scale_demo/contrast_picker_code_.kt": "d8595502a4e16404babf2112ae12d416134d3b31adf276028b8e3a17afcb0c2c",
         "public/docs/assets/agent_transcripts/contrast_scale_demo/contrast_swatches_code_.kt": "5152bfa3ffe26320d52854925457799d823ef398ca5d935f32e9a247c71af06c",
         "public/docs/assets/agent_transcripts/contrast_scale_demo/guides/colors_examples-one-colour-ten-steps-contrastscale.md": "a9d5004d76ade444e0319e39afb1b53296c5a49f11917234e6986488e7da1033",
-        "public/docs/assets/agent_transcripts/contrast_scale_demo/metadata.edn": "4c971bb7c2af887aafcbc789bb060abbe9fd897501edbff32e0739142a771db8"
+        "public/docs/assets/agent_transcripts/contrast_scale_demo/metadata.edn": "4347fef6177a10f16115fd6a6289d2e62347e059e921ec6c0c186d66ce49b509"
       }
     },
     "assets/agent_transcripts/control_surface_laws/metadata.edn": {

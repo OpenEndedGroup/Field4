@@ -135,7 +135,7 @@ internal fun reconcileLinesStage(view: dynamic, stageGroup: Element, sourceSvg: 
     val old = HashMap<String, Element>()
     var child = stageRoot.firstElementChild
     while (child != null) {
-        child.getAttribute("data-fline-key")?.let { old[it] = child!! }
+        child.getAttribute("data-fline-key")?.let { old[it] = child }
         child = child.nextElementSibling
     }
 

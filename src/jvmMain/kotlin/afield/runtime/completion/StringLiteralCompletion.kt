@@ -144,7 +144,7 @@ object StringLiteralCompletion {
         val receiver = call?.let { runCatching { receiverOf(box, code, it) }.getOrNull() }
         val annotation = call?.let { runCatching { parameterAnnotation(box, code, it, receiver) }.getOrNull() }
         return when {
-            annotation is CompletesWith && box != null -> choices(box, annotation, call!!, receiver?.value, literal, position)
+            annotation is CompletesWith && box != null -> choices(box, annotation, call, receiver?.value, literal, position)
             annotation is CompletesPath -> paths(pathSpec(box, annotation), literal, position, strict = true)
             else -> if (looksLikePath(typed)) paths(pathSpec(box, null), literal, position, strict = false) else null
         }

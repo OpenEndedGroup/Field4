@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-24T08:52:17.797Z",
+  "capturedAt": "2026-11-25T06:55:58.228Z",
   "documentName": "contrast_scale_demo",
   "outputs": [
     {
@@ -30,10 +30,22 @@
       "channel": "controls",
       "open": true,
       "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 473,
+      "height": 85,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "contrast_picker",
+      "channel": "background",
+      "open": true,
+      "warnings": [],
       "kinds": [],
       "width": 200,
       "height": 54,
-      "path": "outputs/2.html"
+      "path": "outputs/3.html"
     },
     {
       "uid": "contrast_picker",
@@ -43,7 +55,7 @@
       "kinds": [],
       "width": 469,
       "height": 92,
-      "path": "outputs/3.html"
+      "path": "outputs/4.html"
     }
   ]
 }

@@ -151,6 +151,7 @@ mutation; it is a different one.
 | `GET /signal-viewer/{id}` | `signalViewer.kt` | none |
 | `GET /project/{...}` | `Server.kt` | none |
 | `GET /three-buffers` | `Server.kt` | none |
+| `GET /treemap` | `Server.kt` | none |
 | `GET /treemap-buffers` | `Server.kt` | none |
 | `GET /three-review` | `Server.kt` | loopback + same-site |
 | `GET /three-review-image` | `Server.kt` | loopback + same-site |
@@ -243,7 +244,6 @@ the mutating census **BUILD SUCCESSFUL** on `d7d8dccc2`.
 | `ANY /lazy-value-fragment` | `Server.kt` | none |
 | `ANY /logs` | `Server.kt` | none |
 | `ANY /threejs` | `Server.kt` | none |
-| `ANY /treemap` | `Server.kt` | none |
 | `ANY /tree` | `Server.kt` | none |
 | `ANY /vision` | `Server.kt` | none |
 | `ANY /welcome` | `Server.kt` | none |

@@ -21,7 +21,7 @@ colorPicker("seed", Vector4f(seed.x, seed.y, seed.z, 1f)) { c ->
     seed = vec(c.x, c.y, c.z, 1.0)
     redraw()
 }
-checkbox("dark background", dark) { on ->
+checkbox("dark background", dark, channel = "background") { on ->
     dark = on
     redraw()
 }

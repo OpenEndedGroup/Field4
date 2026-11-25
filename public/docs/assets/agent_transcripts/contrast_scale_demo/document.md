@@ -101,7 +101,7 @@ display("contrast-scale", "<div style='display:flex;gap:12px'>${panel(white)}${p
 <!-- field-box id="contrast_picker" index="2" -->
 
 ```edn [field-box id="contrast_picker" role="properties"]
-{"id" "contrast_picker" "index" 2 "name" "pick a seed, see its scale" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "pick a seed, see its scale" "_tombstone" false "frame" #afield/rect [80.0 220.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "contrast_picker_code_.kt" "lines" 28 "characters" 1126 "sha256" "b0aefcdcbe49937da1823d0e3edfa8b8fa500c31e6a9da697563fae2272c661f"}]}
+{"id" "contrast_picker" "index" 2 "name" "pick a seed, see its scale" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "pick a seed, see its scale" "_tombstone" false "frame" #afield/rect [80.0 220.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "contrast_picker_code_.kt" "lines" 28 "characters" 1150 "sha256" "d8595502a4e16404babf2112ae12d416134d3b31adf276028b8e3a17afcb0c2c"}]}
 ```
 
 ```kotlin [field-property box="contrast_picker" name="code" path="contrast_picker_code_.kt"]
@@ -128,7 +128,7 @@ colorPicker("seed", Vector4f(seed.x, seed.y, seed.z, 1f)) { c ->
     seed = vec(c.x, c.y, c.z, 1.0)
     redraw()
 }
-checkbox("dark background", dark) { on ->
+checkbox("dark background", dark, channel = "background") { on ->
     dark = on
     redraw()
 }

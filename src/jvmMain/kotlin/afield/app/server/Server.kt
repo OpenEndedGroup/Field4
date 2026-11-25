@@ -6006,7 +6006,7 @@ class Server {
                             }
                         }
                         route("/treemap") {
-                            handle {
+                            get {
                                 val originalContent =
                                     File("./src/commonMain/resources/treemap_viewer.html").readText(Charsets.UTF_8)
                                 call.respondText(filter(originalContent), ContentType.Text.Html)

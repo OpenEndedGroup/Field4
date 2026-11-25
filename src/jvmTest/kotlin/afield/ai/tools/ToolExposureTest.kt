@@ -223,7 +223,8 @@ class ToolMetaPinTest {
     @Test
     fun theGraphToolsThatChangeTheDocumentSaySo() {
         val mutating = metas.filterKeys { it in afield.ai.agent.fieldGraphToolNames }.filterValues { it.mutates }.keys
-        assertEquals(setOf("ConnectBoxesRequest", "DeleteBoxRequest", "DisconnectBoxesRequest", "NewBoxRequest",
-            "PatchBoxTextRequest", "SetBoxPropertyRequest"), mutating)
+        assertEquals(setOf("ConnectBoxesRequest", "CreateTextNoteRequest", "DeleteBoxRequest", "DisconnectBoxesRequest", "NewBoxRequest",
+            "PatchBoxTextRequest", "SetBoxPropertyRequest", "SuggestTextEditsRequest", "TrackTextPassageRequest",
+            "TranscludeTextPassageRequest"), mutating)
     }
 }

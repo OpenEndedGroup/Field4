@@ -68,6 +68,7 @@ class DocsAudioProvenanceGuardTest {
             Origin.FM1_SIM to 9,
             Origin.DOUGH_WASM to 2,
             Origin.STEAM_AUDIO_HRTF to 3,
+            Origin.STEAM_AUDIO_DIRECT to 2,
             Origin.SONIC_PI to 1,
             Origin.MODAL_SYNTHESIS to 29,
             Origin.ADDITIVE_GRAINS to 3,
@@ -132,10 +133,14 @@ class DocsAudioProvenanceGuardTest {
         val findings = DocsAudioProvenance.scan().map { DocsAudioProvenance.audit(it, scratch) }
         findings.forEach {
             assertTrue(it.frames > 0, "${it.published.id}: no frames")
-            assertTrue(it.peak > 0.02, "${it.published.id}: effectively silent (peak ${it.peak})")
-            assertTrue(it.rms > 0.002, "${it.published.id}: RMS too low to be sound (${it.rms})")
+            if (it.published.id !in QUIET_BY_DESIGN) {
+                assertTrue(it.peak > 0.02, "${it.published.id}: effectively silent (peak ${it.peak})")
+                assertTrue(it.rms > 0.002, "${it.published.id}: RMS too low to be sound (${it.rms})")
+            }
             assertTrue(it.rms < it.peak, "${it.published.id}: RMS >= peak, which is impossible")
         }
+        val stale = QUIET_BY_DESIGN.keys - findings.map { it.published.id }.toSet()
+        assertTrue(stale.isEmpty(), "quiet-by-design exemptions for clips that are no longer published: $stale")
     }
 
     /**
@@ -210,6 +215,19 @@ class DocsAudioProvenanceGuardTest {
     }
 
     companion object {
+        /**
+         * Clips whose quietness is what the page is showing, exempt from the audibility floors (not
+         * from the frame and RMS-below-peak checks). Each entry says why, and an entry for a clip that
+         * is no longer published fails the test.
+         */
+        val QUIET_BY_DESIGN: Map<String, String> = mapOf(
+            "assets/steam_audio_scene/screen.wav" to
+                "the hi-hat heard through Steam Audio's WOOD screen (transmission 0.070/0.014/0.005 per " +
+                    "band), at the same gain as clear.wav so the loss is the comparison: about 33x below the " +
+                    "clear take's peak, which would clip at any gain that lifts this one over the floors. " +
+                    "Audible on headphones (checked by ear 2026-11-25).",
+        )
+
         /**
          * How many `audio="…"` fences the docs publish.
          *
@@ -337,7 +355,11 @@ class DocsAudioProvenanceGuardTest {
          * `spectral_examples.md` added four (2026-11-19), [Origin.NEURAL_SPEECH]: [SpeechSoundDocs] renders
          * the hello sentence in both voices, the voice mixed with its word pattern on Dirt one-shots, and
          * the sung contour, all through `speak(...)` on the tiny-voca model.
+         *
+         * `steam_audio_scene.md` added two (2026-11-22, counted 2026-11-25 when this guard caught them),
+         * [Origin.STEAM_AUDIO_DIRECT]: `SteamAudioScreenStudy` renders one pinned hi-hat with a wooden
+         * screen clear of, and across, the direct path.
          */
-        const val EXPECTED_FENCE_COUNT = 166
+        const val EXPECTED_FENCE_COUNT = 168
     }
 }

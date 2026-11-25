@@ -494,7 +494,6 @@ object Gezira {
                 }
 
                 is FLine.Close -> close()
-                else -> {}
             }
         }
         close()
@@ -558,8 +557,6 @@ object Gezira {
                     cy = sy
                     finish()
                 }
-
-                else -> {}
             }
         }
         finish()
