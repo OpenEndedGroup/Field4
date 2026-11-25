@@ -820,19 +820,6 @@ child reads the fields. See [Connecting boxes](tour_connecting_boxes.md#share-a-
 
 [Open →](offline.html?file=assets/agent_transcripts/shared_kotlin_garden/metadata.edn)
 
-### shared_types_demo
-
-A `data class` every box can name. Box 1 calls `sharedTypes(...)` to compile
-`shared.Particle` as ordinary Kotlin onto the shared classloader; box 2 shows the metadata survived
-(`Particle(x=3.0, y=4.0, mass=2.0)`, `copy(mass = 10.0)`, destructuring); box 3 `@rootExported` a
-value and box 4 reads `momentum = 11.661903789690601` off it. That last number is what `sharedTypes`
-buys: a class declared *inside* a box is nested in that box's snippet loader and crosses `@exported`
-as `Any?`, so `.momentum` would not resolve. Box 1 runs twice, so the file covers a recycled engine
-as well as a fresh one: the publisher takes its classpath snapshot after publishing, and a recycled
-engine re-runs its preamble.
-
-[Open →](offline.html?file=assets/agent_transcripts/shared_types_demo/metadata.edn)
-
 ### dataframe_typed_columns
 
 Kotlin DataFrame's compiler plugin, which types a DataFrame by the

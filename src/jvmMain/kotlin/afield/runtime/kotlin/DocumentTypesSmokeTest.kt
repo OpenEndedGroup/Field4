@@ -10,6 +10,7 @@ import java.nio.file.Files
 import kotlin.script.experimental.api.KotlinType
 import kotlin.script.experimental.api.ResultValue
 import kotlin.script.experimental.api.ScriptDiagnostic
+import kotlin.reflect.full.createType
 
 /*
 FIELD_TEST
@@ -95,12 +96,26 @@ object DocumentTypesSmokeTest {
         check(made.javaClass.classLoader === types.loader)
         check(ok(a, user, userKi, "Banana(Vector3f(1f, 2f, 3f)).component1().y").toString() == "2.0")
 
+        // It crosses @exported with its real type: ExportedTypeNames names it, and the name compiles elsewhere.
+        val rendered = ExportedTypeNames.render(made.javaClass.kotlin.createType(), userKi.classLoader)
+        check(rendered != ExportedTypeNames.OPAQUE && rendered.endsWith(".Banana")) { "rendered as $rendered" }
+        check(ok(a, user, userKi, "val typed: $rendered = Banana(Vector3f(5f, 0f, 0f))\ntyped.x.x").toString() == "5.0")
+
         // Changing the class: the same warm consumer engine sees the new one, and is told to re-run.
         user.needsRerun = null
         ok(a, shared, sharedKi, "data class Banana(val x: Vector3f) { val doubled get() = x.x * 2 }")
         check(checkNotNull(types.afterSuccessfulRun(shared)).ok)
         check(user.needsRerun != null) { "the box using Banana was not marked" }
         check(ok(a, user, userKi, "Banana(Vector3f(3f, 0f, 0f)).doubled").toString() == "6.0")
+
+        // An earlier run's class still compiles by name in a brand-new engine, the shared box's own
+        // included: @rootExported writes that name into the root preamble every box inherits.
+        val freshUser = engine(a, box(a, "fresh_view", shared = false))
+        ok(a, user, freshUser, "val older: $rendered? = null\n1")
+        val freshShared = engine(a, shared)
+        ok(a, shared, freshShared, "val older: $rendered? = null\n1")
+        freshUser.dispose()
+        freshShared.dispose()
 
         // An old value is reported as old, by name, instead of failing a cast.
         val newer = checkNotNull(ok(a, user, userKi, "Banana(Vector3f(1f, 0f, 0f))"))

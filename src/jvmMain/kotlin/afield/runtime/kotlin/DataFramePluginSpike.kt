@@ -59,11 +59,11 @@ expect:
  * - a refined operation: `add("c") { a + b }`, a schema that changes, with the new column named
  *   only in the returned type;
  * - across snippets: the same two statements split across two evaluations of one engine, the
- *   boundary a box rerun has (boxes have separate engines, see [SharedTypes]). The receiver
+ *   boundary a box rerun has (boxes have separate engines, see [SHARED_KOTLIN_BOX]). The receiver
  *   injection only looks inside callable and code-fragment containers and a REPL snippet is
  *   neither, so the injected receiver is expected not to survive; the schema state rides on the FIR
  *   declaration itself, which is the mechanism that could carry it anyway;
- * - a shared `@DataSchema` interface, and one declared in a snippet.
+ * - a `@DataSchema` interface declared in a shared Kotlin box, and one declared in a snippet.
  *
  * Upstream's REPL work targets the Jupyter kernel, where cross-cell persistence comes from runtime
  * codegen of real top-level `@DataSchema` interfaces and the plugin's top-level generator is
@@ -189,9 +189,9 @@ object DataFramePluginSpike {
      *
      * The cause is `TopLevelExtensionsGenerator`, which finds schemas with
      * `session.predicateBasedProvider.getSymbolsByPredicate(annotated(DataSchema))`. K2's
-     * predicate-based provider indexes **source** declarations only, so a `@DataSchema` compiled into
-     * a directory on the classpath — which is exactly what [SharedTypes] produces — is invisible to
-     * it. Adding `import shared.*` does not help; the generated callables were never created.
+     * predicate-based provider indexes **source** declarations only, so a `@DataSchema` that reaches a
+     * box as compiled classes, which is how a shared Kotlin box's classes reach every other box, is
+     * invisible to it. Importing the schema does not help; the generated callables were never created.
      *
      * That is also why upstream ships a second, separate mechanism for schemas that arrive from
      * outside the module: `ImportedSchemasGenerator` + `ImportedSchemasService`, gated on the
@@ -200,16 +200,31 @@ object DataFramePluginSpike {
      * not reachable by declaring the schema and hoping.
      */
     private fun probeSharedDataSchema() {
-        if (KotlinInterface2.sharedClassLoader == null) {
-            KotlinInterface2.sharedClassLoader = java.net.URLClassLoader(
-                arrayOf(), Thread.currentThread().contextClassLoader
-            )
+        // A document with one shared Kotlin box declaring the schema, as a person would write it.
+        val root = afield.document.graph.Box("root-dataframe-spike")
+        val session = afield.app.server.SessionInformation(
+            java.nio.file.Files.createTempDirectory("dataframe-spike").toString(), "dataframe-spike", root = root
+        )
+        root.inside = session
+        session.boxes[root.id] = root
+        val types = session.documentTypes
+        fun box(id: String, shared: Boolean) = afield.document.graph.Box(id).also {
+            it.inside = session
+            if (shared) it.setPropertyRaw("box_kind", SHARED_KOTLIN_BOX, doResync = false)
+            session.boxes[id] = it
         }
-        val workspace = java.nio.file.Files.createTempDirectory("dataframe-spike").toFile()
-        val published = SharedTypes.publish(
-            """
-            package shared
+        fun engine(box: afield.document.graph.Box, shared: Boolean) = KotlinInterface2(
+            classLoader = types.loader,
+            filePrefix = if (shared) types.publisherPrefix(box) else box.id,
+            publishesToDocument = shared,
+        ).also { it.associatedBox = box }
 
+        val schemaBox = box("dataframe_schema", shared = true)
+        val schemaKi = engine(schemaBox, shared = true)
+        types.beforeRun(schemaBox)
+        val declared = eval(
+            schemaKi,
+            """
             import org.jetbrains.kotlinx.dataframe.annotations.DataSchema
 
             @DataSchema
@@ -217,28 +232,26 @@ object DataFramePluginSpike {
                 val name: String
                 val age: Int
             }
-            """,
-            workspace, except = null, refreshOthers = false
+            """.trimIndent()
         )
-        require(published.ok) { "publishing the @DataSchema failed: ${published.log}" }
-        println("  probe D setup: published ${published.classFiles}")
+        val published = checkNotNull(types.afterSuccessfulRun(schemaBox))
+        require(published.ok) { "sharing the @DataSchema failed: ${published.message} (declaring it gave $declared)" }
+        println("  probe D setup: ${published.message}")
 
-        val ki = KotlinInterface2(filePrefix = "dataframe-spike-schema")
+        val ki = engine(box("dataframe_reader", shared = false), shared = false)
         val first = eval(
             ki,
             """
             $IMPORTS
-            import shared.*
-            val people = dataFrameOf("name", "age")("Alice", 15, "Bob", 30).cast<shared.Person>()
+            val people = dataFrameOf("name", "age")("Alice", 15, "Bob", 30).cast<Person>()
             """.trimIndent()
         )
         println("  probe D setup (snippet 1 declares a cast df): $first")
-        // The generated accessors are top-level callables in the SCHEMA's package
-        // (TopLevelExtensionsGenerator uses the schema's own CallableId packageName), so the
-        // consuming snippet has to import that package — being able to name the type is not enough.
-        val second = eval(ki, "import shared.*\npeople.age.values().sum()")
+        val second = eval(ki, "people.age.values().sum()")
         sharedSchemaSurvives = second.contains("45")
         println("  probe D (snippet 2 reads people.age): survived=$sharedSchemaSurvives outcome=$second")
+        ki.dispose()
+        schemaKi.dispose()
     }
 
     /**
@@ -294,7 +307,7 @@ object DataFramePluginSpike {
         )
         println(
             if (sharedSchemaSurvives) {
-                "VERDICT (schema route): a @DataSchema interface published through SharedTypes DOES " +
+                "VERDICT (schema route): a @DataSchema interface declared in a shared Kotlin box DOES " +
                     "survive the snippet boundary — name the schema and typed columns persist, which is " +
                     "the usable shape of this feature in Field."
             } else {

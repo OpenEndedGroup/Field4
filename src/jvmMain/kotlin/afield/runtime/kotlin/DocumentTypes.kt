@@ -122,6 +122,14 @@ class DocumentTypes(private val session: SessionInformation) {
 
     @Volatile private var publications: Map<String, Publication> = emptyMap()
 
+    // The class folder of every run ever published in this document, retired ones included. An
+    // earlier run's class can still be named after its box re-runs: `@rootExported` writes
+    // `val Box._x by InheritanceFromContext<…__code__1.Banana>()` into the root preamble every box
+    // inherits, the shared box's own included, and that line has to keep compiling until the box
+    // that exported it runs again. The classes are still in [loader]; [requireCurrent] then says
+    // which box to re-run.
+    private val everyRoot = java.util.concurrent.CopyOnWriteArrayList<File>()
+
     /** Changes whenever what a compile in this document sees changes; part of every rerun-cache key. */
     @Volatile var stamp = 0
         private set
@@ -209,6 +217,7 @@ class DocumentTypes(private val session: SessionInformation) {
             previous?.imports?.forEach { retiredSnippets += it.substringBeforeLast('.') }
             retiredSnippets -= publication.imports.map { it.substringBeforeLast('.') }.toSet()
             publications = publications + (box.id to publication)
+            everyRoot.addIfAbsent(root)
             stamp++
         }
         val marked = if (previous != null) markUsers(box, previous.names + publication.names) else 0
@@ -267,16 +276,17 @@ class DocumentTypes(private val session: SessionInformation) {
     }.getOrDefault(emptyList())
 
     /**
-     * What a compile for [forBox] is given: every other shared box's folder and imports. Waits, off the
-     * runloop, for the shared boxes this document is restoring after it opened; a shared box's own
-     * engine never waits, since the restore is waiting for it.
+     * What a compile for [forBox] is given: the imports of every other shared box, and the class
+     * folder of every run published here, earlier ones and its own included (see [everyRoot]). Waits,
+     * off the runloop, for the shared boxes this document is restoring after it opened; a shared
+     * box's own engine never waits, since the restore is waiting for it.
      */
     fun compileView(forBox: Box?, publishing: Boolean): CompileView {
         if (!publishing && !initial.isCompleted && !Runloop.isMainThread) {
             runBlocking { withTimeoutOrNull(120_000) { initial.await() } }
         }
         val visible = publications.values.filter { it.boxId != forBox?.id }
-        return CompileView(visible.map { it.root }, visible.flatMap { it.imports })
+        return CompileView(everyRoot.toList(), visible.flatMap { it.imports })
     }
 
     /**
@@ -326,6 +336,7 @@ class DocumentTypes(private val session: SessionInformation) {
         }
         engineFiles.clear()
         runSnippets.clear()
+        everyRoot.clear()
         val reset = mutableListOf<Pair<Box, String>>()
         (session.boxes.values + session.root).distinct().forEach { box ->
             val hadEngine = box.liveKi != null

@@ -14,7 +14,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 COMMON_RESOURCES = REPO_ROOT / "src" / "commonMain" / "resources"
 JS_RESOURCES = REPO_ROOT / "src" / "jsMain" / "resources"
 EXAMPLE_DOCUMENTS = REPO_ROOT / "public" / "docs" / "assets" / "agent_transcripts"
-BUNDLED_EXAMPLES = ("hello_display", "shared_types_demo")
+BUNDLED_EXAMPLES = ("hello_display", "shared_kotlin_garden")
 
 OFFLINE_FILES = (
     "offline.html",
