@@ -1992,6 +1992,12 @@ private fun extractSelectionOrScope(editor: dynamic): Triple<String, Int, Boolea
 @JsExport
 fun monacoRunExecuteFragment(editor: dynamic) {
     val w = js("window")
+    // A declaration box is one Kotlin compilation unit: execute the whole editor, even when
+    // the ordinary fragment shortcut is used in the middle of a class.
+    if (w.currentSelectedCode[0].box_kind == "shared-kotlin") {
+        monacoRunExecuteAll(editor)
+        return
+    }
     val (code, belowLine, singleLine) = extractSelectionOrScope(editor)
     val uid = w.currentSelectedCode[0].uid as String
     val property = w.currentSelectedProperty as? String ?: "code"

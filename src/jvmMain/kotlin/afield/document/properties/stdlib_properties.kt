@@ -277,7 +277,10 @@ class Inheritance<T>(val defaultValue: T? = null) {
      */
     operator fun getValue(f: Box, property: KProperty<*>): T {
         val (found, num) = inheritedPropertyWalk(f, property.name)
-        if (found != null) return found as T
+        if (found != null) {
+            if (f.isInsideInitialized()) f.inside.documentTypes.requireCurrent(found, f)
+            return found as T
+        }
         if (defaultValue != null) return defaultValue as T
         if (!property.returnType.isMarkedNullable) {
             throw MissingInheritedPropertyException(missingInheritedPropertyMessage(f, property.name, num))
@@ -331,7 +334,10 @@ class InheritanceFromContext<T>(val defaultValue: T? = null) {
             ContextResolution.Policy.INHERITANCE_FROM_CONTEXT,
             ContextResolution.Mechanism.INHERITANCE_FROM_CONTEXT,
         )
-        if (found != null) return found.value as T
+        if (found != null) {
+            if (f.isInsideInitialized()) f.inside.documentTypes.requireCurrent(found.value, f)
+            return found.value as T
+        }
 
         if (defaultValue != null) return defaultValue as T
         if (!property.returnType.isMarkedNullable) {

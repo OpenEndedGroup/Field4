@@ -116,6 +116,34 @@ markdown("A flower with $petals petals: " + "✿".repeat(petals))
 Swatch reran because it had read `petals` from Palette and the value changed. A box beneath
 Palette that never reads `petals` is left alone.
 
+## Share a type between boxes
+
+As a document grows, a value can carry several related settings. Make a box named **Garden types**,
+select it, and choose **Make shared Kotlin declarations box** from the command palette. Write this
+class in it and run the box:
+
+```diffstatic {data-lang=kotlin}
+data class Flower(val petals: Int, val color: String)
+```
+
+Now every Kotlin box in this document can use `Flower`. In **Garden settings**, publish one:
+
+```diffstatic {data-lang=kotlin}
+prop<Flower>(flower) = Flower(petals = 5, color = "pink")
+```
+
+Connect **Garden view** beneath Garden settings. It reads the same `Flower`, including its fields:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/tour_connecting_boxes/shared-flower.png" capture="box" open-outputs="true" wait="1.5" timeout="180" embed=true name="tour-connect-shared-flower" macro-file="../../dev_docs/agents/transcripts/shared_kotlin_garden.yaml" capture-box="garden_view" w="560" h="80" alt="Garden view's output: A pink flower with 5 petals"}
+check(flower.petals == 5 && flower.color == "pink")
+markdown("A ${flower.color} flower with ${flower.petals} petals")
+```
+
+Run the declaration box, then Garden settings, then Garden view. You can [open the three-box
+example](agent_transcripts.md#shared_kotlin_garden) and change it. After editing the class, run its
+box again, then rerun the boxes that make and use its values. Field marks those boxes for you.
+The declarations travel with the document and are ready again when you reopen it.
+
 ## Why it matters
 
 The value a parent publishes can be anything Kotlin can hold: a number, a list, a function, a

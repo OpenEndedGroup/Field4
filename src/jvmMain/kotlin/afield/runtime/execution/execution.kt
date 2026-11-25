@@ -2718,6 +2718,28 @@ class KotlinExecution : BoxExecution {
         ReactiveRuns.awaitNotBlocked(box)
         box.needsRerun = null
         val trace = ExecutionTrace(box, property, sourceText, requestId, executionMode, reply)
+        if (property == "code" && box.getPropertyRaw("box_kind") == afield.runtime.kotlin.SHARED_KOTLIN_BOX) {
+            var success = false
+            var reason = ""
+            try {
+                val result = if (box.isInsideInitialized()) box.inside.documentTypes.publish(box, sourceText, accepted)
+                    else afield.runtime.kotlin.DocumentTypes.Result(false, "Shared declarations need a document")
+                success = result.ok
+                reason = if (result.ok) "" else result.message
+                dispatchExecutionOutput(box, trace.reply, Output(uid = box.id, line = ln,
+                    kind = if (result.ok) "normal" else "error", property = property,
+                    html = escapeForHtml(result.message), frame = Runloop.runLoop.frame.toInt()), originSession = originSession)
+            } catch (t: Throwable) {
+                reason = t.message ?: t.javaClass.name
+                if (t !is CancellationException) {
+                    dispatchExecutionOutput(box, trace.reply, Output(uid = box.id, line = ln, kind = "error",
+                        property = property, html = escapeForHtml(reason), frame = Runloop.runLoop.frame.toInt()), originSession = originSession)
+                } else throw t
+            } finally {
+                try { finishedHandler() } finally { trace.finish(success && accepted(), reason) }
+            }
+            return
+        }
         var executionSucceeded = false
         // What this execution registers belongs to [runScope] — the launch's, or execute-all's — and a
         // fragment adds to the box's current whole-box run. See RunScope.

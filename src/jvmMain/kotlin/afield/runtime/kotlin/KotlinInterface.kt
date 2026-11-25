@@ -137,11 +137,11 @@ class KotlinInterface(
         if (classLoader == null) classLoader = Thread.currentThread().contextClassLoader
 
         if (sharedClassLoader == null) {
-            sharedClassLoader = URLClassLoader(arrayOf(), classLoader)
+            sharedClassLoader = URLClassLoader(arrayOf(), if (classLoader is DocumentClassLoader) classLoader!!.parent else classLoader)
 
         }
 
-        classLoader = sharedClassLoader
+        classLoader = classLoader?.takeIf { it is DocumentClassLoader } ?: sharedClassLoader
         MavenClasspathManager.attachResolvedTo(classLoader)
 
         val myHostConfiguration = defaultJvmScriptingHostConfiguration.with {

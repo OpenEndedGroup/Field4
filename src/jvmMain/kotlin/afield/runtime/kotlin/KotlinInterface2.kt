@@ -226,15 +226,9 @@ class KotlinInterface2(
         assert(properties.keys.containsAll(propertyClasses.keys))
         if (classLoader == null) classLoader = Thread.currentThread().contextClassLoader
 
-        if (sharedClassLoader == null) {
-            // Parent through [PersonalLayer] so src/personal is visible to box code even though it
-            // isn't on the app -cp. Both sides come along for free: execution by ordinary parent
-            // delegation, and compilation because dependenciesFromClassloader(wholeClasspath) below
-            // walks this chain and picks up the layer's URLs. A no-op when there is no personal code.
-            sharedClassLoader = URLClassLoader(arrayOf(), PersonalLayer.wrap(classLoader!!))
-        }
-
-        classLoader = sharedClassLoader
+        // An explicitly supplied document loader must remain the engine's base loader. Its parent
+        // is the process-wide loader, so ordinary dependencies still have one shared identity.
+        classLoader = classLoader?.takeIf { it is DocumentClassLoader } ?: sharedBaseLoader(classLoader!!)
         MavenClasspathManager.attachResolvedTo(classLoader)
 
         val myHostConfiguration = defaultJvmScriptingHostConfiguration.with {
@@ -304,7 +298,7 @@ class KotlinInterface2(
             context.compilationConfiguration.with {
                 try {
                     it.forEach {
-                        val target = (classLoader!! as URLClassLoader)
+                        val target = ((classLoader as? DocumentClassLoader)?.parent ?: classLoader) as URLClassLoader
                         lprintln("warning,kotlin", "sketchy url classloader front running ${it}")
                         val m = URLClassLoader::class.java.getDeclaredMethod("addURL", URL::class.java)
                         m.isAccessible = true
@@ -3295,7 +3289,12 @@ class KotlinInterface2(
             }
         }
 
+        @Volatile
         var sharedClassLoader: ClassLoader? = null
+
+        @Synchronized
+        internal fun sharedBaseLoader(parent: ClassLoader): ClassLoader =
+            sharedClassLoader ?: URLClassLoader(arrayOf(), PersonalLayer.wrap(parent)).also { sharedClassLoader = it }
 
         /**
          * Every `-Xplugin=` argument this JVM's K2 compilation states get.

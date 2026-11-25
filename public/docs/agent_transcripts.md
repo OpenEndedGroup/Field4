@@ -813,6 +813,13 @@ the two still boxes, launches the morph for 90 frames, and stops it.
 
 [Open →](offline.html?file=assets/agent_transcripts/point_matching/metadata.edn)
 
+### shared_kotlin_garden
+
+A declaration box defines `Flower`; Garden settings publishes one through `prop<Flower>` and its
+child reads the fields. See [Connecting boxes](tour_connecting_boxes.md#share-a-type-between-boxes).
+
+[Open →](offline.html?file=assets/agent_transcripts/shared_kotlin_garden/metadata.edn)
+
 ### shared_types_demo
 
 A `data class` every box can name. Box 1 calls `sharedTypes(...)` to compile
