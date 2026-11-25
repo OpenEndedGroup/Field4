@@ -484,7 +484,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
      * schedule. When the preamble check wins that race it compares the gathered preamble against a
      * cache that still lists every line, computes an empty `extra`, and executes nothing — so a
      * brand-new engine never receives the declarations. Measured on 2026-08-20 via
-     * `afield.runtime.kotlin.SharedTypes`: a box whose engine had just been recycled failed with
+     * the since-removed `SharedTypes` publisher: a box whose engine had just been recycled failed with
      * `Unresolved reference '_particle'`, with no preamble execution logged between the rebuild and
      * the compile. Clearing here, synchronously with the disposal, makes the ordering irrelevant —
      * and covers every recycling caller, [reloadPersonal] included, not just the one that found it.

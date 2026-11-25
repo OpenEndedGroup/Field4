@@ -46,8 +46,9 @@ Each copy gets new uids but keeps its box names, so a template keeps working whe
 - its boxes find each other through connections (a parent's `prop`, read by the child beneath
   it), not by name. `box("Rates")` finds whichever `Rates` it reaches first, and with two copies
   that may be the other copy's.
-- it writes nothing document-wide. `rootProp`, `@rootExported` and `sharedTypes` are shared by
-  every box, so a second copy overwrites the first.
+- it writes nothing document-wide. `rootProp` and `@rootExported` are shared by every box, so a
+  second copy overwrites the first. A second copy of a shared Kotlin box refuses to share its
+  classes, since the first copy already shares those names.
 - it opens no fixed port or service name that a second copy would collide with.
 - whatever it registers under a name — a module on a renderer, an AI tool, an OSCQuery path —
   carries the box's id, as in `renderer += "sky_" + id.take(8) to sky`. Two copies have the same

@@ -68,7 +68,7 @@ object BoxCodeCompileGuard {
                 // Same routing as the smoke test. Compile-only is wrong for the other classes: a
                 // KOTLINJS transcript's code is Kotlin/JS against the browser API (onStart, THREE,
                 // Tone), and an EXECUTE transcript may read types or values an earlier box defines
-                // only when evaluated (shared_types_demo, the DataFrame plugin's generated schema).
+                // only when evaluated (shared_kotlin_garden, the DataFrame plugin's generated schema).
                 when (name) {
                     in COMPILE_ONLY_HERE -> DemoTranscriptExecSmokeTest.runCompileOnlyDemo(yaml, name, failures)
                     in DemoTranscriptExecSmokeTest.COMPILE_ONLY -> DemoTranscriptExecSmokeTest.runCompileOnlyDemo(yaml, name, failures)

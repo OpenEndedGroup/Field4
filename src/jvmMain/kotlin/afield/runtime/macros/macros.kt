@@ -269,7 +269,12 @@ class GatheredPreamble(val text: String, val stale: List<String>, val conflicts:
  * one from the nearest supplier — this box's own `from:self` lines first, then by the supplier's
  * generation, then untagged lines of this box (whose origin is unknown, and which are usually a copy
  * persisted from an ancestor before the tags). That matches the value `afield.document.context.ContextResolution`
- * picks; the old REPL shadowing order picked the *farthest*.
+ * picks; the old REPL shadowing order picked the *farthest*. Within one supplier, the line in that
+ * supplier's own preamble beats a copy persisted elsewhere under its tag: when an exporter's type
+ * changes (a shared Kotlin box's class is a new snippet class on every run, so `@rootExported` of
+ * one changes its type text each time), the copy is the old declaration, and keeping it compiled the
+ * child against a class the value no longer has. That copy is dropped without a conflict report, since
+ * one supplier has changed its mind rather than two disagreeing.
  */
 fun gatherPreambleUpwardsReport(startingAt: Box): GatheredPreamble {
     // BFS over parents, in the order searchUpwards visits them
@@ -296,7 +301,9 @@ fun gatherPreambleUpwardsReport(startingAt: Box): GatheredPreamble {
     // preamble, the order flipped on every launch: the K1 completion delegate, fingerprinted on that
     // text, was rebuilt on every edit.
     val imports = mutableListOf<String>()
-    val entries = mutableListOf<Pair<String, Int>>() // inheritable line to its supplier rank, in text order
+    // Inheritable line to its supplier rank, in text order. A rank is twice the supplier's depth, plus
+    // one for a copy of its line persisted in some other box, so the supplier's own current line wins.
+    val entries = mutableListOf<Pair<String, Int>>()
     for ((box, d) in depthOf) {
         val preamble = box.getPropertyRaw("preamble") as String? ?: continue
         val isFirstBox = d == 0
@@ -317,11 +324,11 @@ fun gatherPreambleUpwardsReport(startingAt: Box): GatheredPreamble {
             when {
                 tag == null -> {
                     out = if (isFirstBox) line else withPreambleSupplierTag(line, box.id)
-                    rank = if (isFirstBox) Int.MAX_VALUE else d
+                    rank = if (isFirstBox) Int.MAX_VALUE else 2 * d
                 }
                 tag == PREAMBLE_SELF_SUPPLIER -> {
                     out = if (isFirstBox) line else withPreambleSupplierTag(line, box.id)
-                    rank = d
+                    rank = 2 * d
                 }
                 tag !in depthById -> {
                     stale += line
@@ -329,7 +336,7 @@ fun gatherPreambleUpwardsReport(startingAt: Box): GatheredPreamble {
                 }
                 else -> {
                     out = line
-                    rank = depthById.getValue(tag)
+                    rank = 2 * depthById.getValue(tag) + (if (tag == box.id) 0 else 1)
                 }
             }
             entries += out to rank
@@ -351,7 +358,7 @@ fun gatherPreambleUpwardsReport(startingAt: Box): GatheredPreamble {
             val name = declaredExtensionName(line) ?: continue
             if (!declared.add(name)) continue
             val tagged = withPreambleSupplierTag(line, box.id)
-            entries += tagged to d
+            entries += tagged to 2 * d
             total = total + "\n" + tagged
         }
     }
@@ -367,11 +374,15 @@ fun gatherPreambleUpwardsReport(startingAt: Box): GatheredPreamble {
         val winnerText = normalizeDeclaration(winner.first)
         val lost = lines.filter { normalizeDeclaration(it.first) != winnerText }
         lost.forEach { losers += it.first }
+        // A copy of the winning supplier's own earlier line is superseded, not a conflict: say nothing.
+        val winnerSupplier = preambleSupplierTag(winner.first)
+        val others = lost.filter { winnerSupplier == null || preambleSupplierTag(it.first) != winnerSupplier }
+        if (others.isEmpty()) return@forEach
         conflicts += PreambleConflict(
             name,
             winner.first,
-            preambleSupplierTag(winner.first),
-            lost.map { it.first to preambleSupplierTag(it.first) },
+            winnerSupplier,
+            others.map { it.first to preambleSupplierTag(it.first) },
         )
     }
     if (losers.isNotEmpty()) {

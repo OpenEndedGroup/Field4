@@ -83,7 +83,7 @@ Kotlin is worse than no spike:
 | A | does refinement fire here at all? `df.a` in the same snippet | `DataFramePluginSpike.kt:111#private fun probeWithinOneSnippet` |
 | C | `add("c") { a + b }` — a schema that *changes* | `DataFramePluginSpike.kt:129#private fun probeRefinedOperation` |
 | B | **the measurement**: `val df` in snippet 1, `df.a` in snippet 2 | `DataFramePluginSpike.kt:147#private fun probeAcrossSnippets` |
-| D | a `@DataSchema` published through `SharedTypes` | `DataFramePluginSpike.kt:176#private fun probeSharedDataSchema` |
+| D | a `@DataSchema` declared in a shared Kotlin box | `DataFramePluginSpike.kt:176#private fun probeSharedDataSchema` |
 | E1/E2 | a `@DataSchema` declared **in a snippet**, used in that snippet and in a later one | `DataFramePluginSpike.kt:232#private fun probeSnippetDeclaredSchema` |
 
 Invariant 1 refuses to run if no `-Xplugin=…dataframe-plugin.jar` reached the compiler
@@ -96,8 +96,8 @@ Invariant 1 refuses to run if no `-Xplugin=…dataframe-plugin.jar` reached the 
 **Probe D is the interesting negative.** The type crosses; the accessors do not. The cause is
 `TopLevelExtensionsGenerator`, which discovers schemas via
 `session.predicateBasedProvider.getSymbolsByPredicate(annotated(DataSchema))`, and K2's
-predicate-based provider indexes **source declarations only** — so a `@DataSchema` compiled into a
-directory, which is exactly what `SharedTypes` produces, is invisible to it. An `import` cannot help
+predicate-based provider indexes **source declarations only** — so a `@DataSchema` that reaches a box
+as compiled classes, which is how a shared Kotlin box's classes reach every other box, is invisible to it. An `import` cannot help
 because the callables were never created:
 `DataFramePluginSpike.kt:165#getSymbolsByPredicate(annotated(DataSchema))`.
 
@@ -143,8 +143,8 @@ Three design choices, all of which are about surviving a live-coding loop rather
    what makes a re-run with a *changed* column set rewrite the declaration instead of accumulating a
    second one — `DataFrameSchemas.kt:100#val marker = "interface $name {"`.
 
-Redeclaring is safe here where it is not for `SharedTypes`: nothing is loaded into a classloader, so a
-shape change is ordinary REPL shadowing rather than an unrepeatable event
+Redeclaring is safe here: nothing is loaded into a document-wide classloader, so a
+shape change is ordinary REPL shadowing
 (`DataFrameSchemas.kt:41#ordinary REPL shadowing`).
 
 Degradations, both logged rather than silent: a column group or frame column would need a nested

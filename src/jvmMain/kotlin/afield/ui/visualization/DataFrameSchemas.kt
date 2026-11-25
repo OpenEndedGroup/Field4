@@ -9,7 +9,6 @@ import afield.data.table.times
 import afield.document.graph.nested
 import afield.runtime.execution.plus
 import afield.runtime.kotlin.DataFramePluginSpike
-import afield.runtime.kotlin.SharedTypes
 import afield.runtime.lifecycle.plus
 import afield.runtime.lifecycle.rem
 import afield.runtime.lifecycle.then
@@ -65,8 +64,8 @@ import org.jetbrains.kotlinx.dataframe.DataFrame
  *    interface fits on one line. Omitting the inheritance marker keeps the schema in this box rather
  *    than pushing it onto every child.
  *  - **Replace by name.** Re-running with a changed shape rewrites the declaration, which the
- *    preamble diff then re-executes. Unlike [SharedTypes], nothing here is loaded into a
- *    classloader, so redeclaring is ordinary REPL shadowing rather than an unrepeatable event.
+ *    preamble diff then re-executes. Nothing here is loaded into a document-wide classloader, so
+ *    redeclaring is ordinary REPL shadowing.
  *
  * Flat value columns get their real element type. A column group or frame column would need a nested
  * interface to type properly, so it is declared as `Any?` — you still get the column, just not its
