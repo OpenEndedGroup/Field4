@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 26238 of 43785 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 26252 of 43802 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2103 undocumented entry points** (types, top-level functions and values) and 14671 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2103 undocumented entry points** (types, top-level functions and values) and 14674 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -351,7 +351,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [dir.kt](../src/jvmMain/kotlin/afield/document/workspace/dir.kt) | Workspace | — | 71 | 320 | 5% |
 | [AI4.kt](../src/jvmMain/kotlin/afield/ai/compat/AI4.kt) | AI4 | — | 55 | 0 | 14% |
 | [PolynomialTreeFitting.kt](../src/jvmMain/kotlin/afield/geometry/path/PolynomialTreeFitting.kt) | Graphics | — | 32 | 156 | 2% |
-| [Server.kt](../src/jvmMain/kotlin/afield/app/server/Server.kt) | Workspace | — | 28 | 37 | 30% |
+| [Server.kt](../src/jvmMain/kotlin/afield/app/server/Server.kt) | Workspace | — | 28 | 37 | 31% |
 | [OpenAiCredentials.kt](../src/jvmMain/kotlin/afield/ai/models/OpenAiCredentials.kt) | AI4 | — | 27 | 31 | 4% |
 | [AbletonSet.kt](../src/jvmMain/kotlin/afield/audio/synth/AbletonSet.kt) | Audio | — | 26 | 172 | 0% |
 | [LanguageSpecs.kt](../src/jvmMain/kotlin/afield/runtime/languages/LanguageSpecs.kt) | Workspace | — | 26 | 3 | 14% |
@@ -1056,6 +1056,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [CompletionCorpus.kt](../src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpus.kt) | Workspace | — | 0 | 2 | 88% |
 | [CompiledSnippetTest.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/CompiledSnippetTest.kt) | Workspace | — | 0 | 2 | 33% |
 | [DataFramePluginSpike.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/DataFramePluginSpike.kt) | Workspace | — | 0 | 2 | 33% |
+| [DocumentTypes.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/DocumentTypes.kt) | Workspace | — | 0 | 2 | 77% |
 | [Kotlin24SyntaxSmokeTest.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/Kotlin24SyntaxSmokeTest.kt) | Workspace | — | 0 | 2 | 33% |
 | [ReplBootstrapGateTest.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/ReplBootstrapGateTest.kt) | Workspace | — | 0 | 2 | 33% |
 | [SharedTypesClasspathSpike.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/SharedTypesClasspathSpike.kt) | Workspace | — | 0 | 2 | 33% |
@@ -1289,6 +1290,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [CompletionInteractionLogger.kt](../src/jvmMain/kotlin/afield/runtime/completion/CompletionInteractionLogger.kt) | Workspace | — | 0 | 1 | 50% |
 | [CompletionLoweringProbe.kt](../src/jvmMain/kotlin/afield/runtime/completion/CompletionLoweringProbe.kt) | Workspace | — | 0 | 1 | 50% |
 | [DataFramePluginCostProbe.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/DataFramePluginCostProbe.kt) | Workspace | — | 0 | 1 | 50% |
+| [DocumentTypesSmokeTest.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/DocumentTypesSmokeTest.kt) | Workspace | — | 0 | 1 | 50% |
 | [FieldKtParser.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/FieldKtParser.kt) | Workspace | — | 0 | 1 | 66% |
 | [KotlinEngineDisposalSmokeTest.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/KotlinEngineDisposalSmokeTest.kt) | Workspace | — | 0 | 1 | 50% |
 | [KotlinEngineReleaseSmokeTest.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/KotlinEngineReleaseSmokeTest.kt) | Workspace | — | 0 | 1 | 50% |
