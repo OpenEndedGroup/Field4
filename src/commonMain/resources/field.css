@@ -4707,14 +4707,14 @@ body::-webkit-scrollbar {
     display: flex;
 }
 
-/* A box with `go { }` blocks still running: the launch stripe, inset 3px inside the upper-right
-   quadrant at half its size, holding the count (setGoJobsBadge in Main.kt). */
+/* A box with `go { }` blocks still running: a square of the launch stripe, inset 3px in the
+   upper-right corner whatever the box's size, holding the count (setGoJobsBadge in Main.kt). */
 .box > .go-jobs-badge {
     position: absolute !important;
     top: 3px;
     right: 3px;
-    width: calc(25% - 3px);
-    height: calc(25% - 3px);
+    width: 30px;
+    height: 30px;
     border-top-right-radius: 6px;
     box-sizing: border-box;
     display: flex;
@@ -4728,10 +4728,16 @@ body::-webkit-scrollbar {
     animation: running-stripe-drift 100s linear infinite;
 }
 
-/* The count inverts the stripe under it. */
+/* The count sits on a blurred, darkened patch of the stripe, like a running box's name
+   (.box.running .doubleClickToEdit). */
 .box > .go-jobs-badge > span {
+    padding: 1px 5px;
+    border-radius: 4px;
+    line-height: 14px;
     color: white;
-    mix-blend-mode: difference;
+    background-color: rgba(var(--field-black-rgb), 0.35);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
 }
 
 .box > .selection-order-badge {
