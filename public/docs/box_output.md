@@ -194,7 +194,7 @@ outside the snapshot. A channel that cannot be captured is listed with its reaso
 publication panel and in the published document. Cross-origin frames and live audio/video need
 their own exported media.
 
-## See also
+## Where to go next
 
 - [Visualizers & Controls](visualizers.md): what to display, from `.h` to sliders.
 - [Output Panel Sizing](output_panel_sizing.md): how a panel decides its width and height.
@@ -203,6 +203,7 @@ their own exported media.
 - [Graphics in an Output Area](four_in_output_areas.md): Vulkan rendering inside a panel.
 - [A Terminal in a Box](terminal.md): your shell, or any program, running in a panel you can type
   into.
+- [A Web Page in a Box](web.md): a web page in a panel, with back, forward and an address bar.
 - [Where Field's Output Goes](logging.md): output that is not a box's own, from the server and its
   logs.
 

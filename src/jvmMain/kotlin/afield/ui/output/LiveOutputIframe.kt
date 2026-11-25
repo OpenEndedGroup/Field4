@@ -80,6 +80,57 @@ fun Box.outputIframe(boxName: String, channel: String): LiveOutputIframe {
     return outputIframe(box, channel)
 }
 
+/**
+ * A web page in this box's output area, with a bar above it: back, forward, and an address you can
+ * type into. Returns the page's [LiveOutputIframe], so `web("https://github.com").devTools()` opens
+ * DevTools on it, and the AI4 tools from `exposeOutputIframeTools` can drive it.
+ *
+ * Field's Electron window shows sites that refuse to be framed and keeps their logins; another
+ * browser shows only the sites that allow framing. Back and forward step through the pages this bar
+ * has seen, and the address follows links you click inside the page.
+ *
+ * ```kotlin
+ * web("https://en.wikipedia.org/wiki/Iframe")
+ * web("github.com", channel = "github", height = 800)
+ * ```
+ *
+ * @param url the first page; a bare host such as `github.com` gets `https://`
+ * @param channel output-area channel, and its disclosure title
+ * @param width page width in CSS pixels
+ * @param height page height in CSS pixels, not counting the bar
+ */
+fun Box.web(url: String, channel: String = "web", width: Int = 1000, height: Int = 640): LiveOutputIframe {
+    require(width in 200..4000 && height in 100..4000) { "web: width must be 200..4000 and height 100..4000" }
+    display(channel, webPanel(webAddress(url), width, height))
+    displayOpen(channel)
+    return outputIframe(channel)
+}
+
+/** What the address bar does to typed text: keep a scheme it has, otherwise add `https://`. */
+internal fun webAddress(text: String): String {
+    val trimmed = text.trim()
+    require(trimmed.isNotEmpty()) { "web: the address cannot be empty" }
+    return if (Regex("^[a-zA-Z][a-zA-Z0-9+.-]*:").containsMatchIn(trimmed)) trimmed else "https://$trimmed"
+}
+
+/**
+ * The bar and the page as output HTML; `fieldWeb.js` in the Field page runs the bar. The iframe is
+ * named from the start: Electron finds a frame by the name it had when it first navigated, and a
+ * framed site's address soon stops matching `src`, so a name given later would never be found.
+ */
+internal fun webPanel(url: String, width: Int, height: Int): String {
+    val attribute = url.replace("&", "&amp;").replace("\"", "&quot;").replace("<", "&lt;")
+    val name = "field-live-iframe-web-" + UUID.randomUUID()
+    return """<div class="field-web" style="width:${width}px">""" +
+        """<div class="field-web-bar">""" +
+        """<button type="button" data-field-web="back" title="Back" disabled>&#8249;</button>""" +
+        """<button type="button" data-field-web="forward" title="Forward" disabled>&#8250;</button>""" +
+        """<input class="field-web-url" type="text" spellcheck="false" autocomplete="off" value="$attribute" aria-label="Address">""" +
+        """</div>""" +
+        """<iframe class="field-web-page" name="$name" data-field-live-name="$name" src="$attribute" data-afield-autosize="off" """ +
+        """style="width:${width}px;height:${height}px"></iframe></div>"""
+}
+
 /** Commands run against the visible Electron tab. Futures keep the Field runloop unblocked. */
 class LiveOutputIframe internal constructor(
     private val document: SessionInformation,
@@ -113,6 +164,19 @@ class LiveOutputIframe internal constructor(
         LiveOutputIframeBridge.send(document, target, "screenshot", timeoutMillis = timeoutMillis)
             .thenApply { (it.value as? JsonPrimitive)?.contentOrNull
                 ?: throw IllegalStateException("Electron returned no iframe image") }
+
+    /**
+     * Open DevTools on this iframe in the live Electron tab and complete with the frame's URL.
+     *
+     * DevTools for the Field tab opens in its own window with this `<iframe>` selected in Elements.
+     * Expand it for the framed page's `#document`, whatever site it is on; to run code in the page,
+     * pick its site in the Console's context menu (it starts at `top`, the Field page). Calling it
+     * again brings the window back and selects the iframe again. An output area off the canvas is
+     * panned into view first, as [screenshot] does.
+     */
+    fun devTools(timeoutMillis: Long = 10_000): CompletableFuture<String> =
+        LiveOutputIframeBridge.send(document, target, "devtools", timeoutMillis = timeoutMillis)
+            .thenApply { (it.value as? JsonPrimitive)?.contentOrNull ?: it.frameUrl }
 
     /** Current DOM source and document metadata, or matching elements for a CSS selector. */
     fun inspect(selector: String = "", timeoutMillis: Long = 10_000): CompletableFuture<JsonElement> {
@@ -173,8 +237,10 @@ class LiveOutputIframe internal constructor(
         require(timeoutMillis in 1..120_000) { "timeoutMillis must be between 1 and 120000" }
         require(pollMillis in 1..1000) { "pollMillis must be between 1 and 1000" }
         require(condition.isNotBlank()) { "Iframe wait condition cannot be empty" }
-        val source = JsonPrimitive(condition).toString()
-        val javascript = """(() => { try { return Boolean((0, eval)($source)); }
+        // The condition is written into the script, not passed through eval: a page whose
+        // Content-Security-Policy forbids eval (GitHub's) would refuse every poll.
+        val javascript = """(() => { try { return Boolean(($condition
+            )); }
             catch (error) { if (error instanceof ReferenceError || error instanceof TypeError) return false; throw error; }
         })()"""
         val done = CompletableFuture<Unit>()

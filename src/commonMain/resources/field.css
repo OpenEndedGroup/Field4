@@ -595,6 +595,50 @@ body.canvas-pan-latched .outputArea * {
     height: 100% !important;
 }
 
+/* The bar above a `Box.web(...)` page (fieldWeb.js), drawn like the terminal's header row. */
+.field-web {
+    display: flex;
+    flex-direction: column;
+    background: #000;
+}
+.field-web-bar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 6px 12px;
+    border-bottom: 1px solid #222;
+    background: #000;
+    color: #ddd;
+    font: 12px "Iosevka Web", monospace;
+}
+.field-web-bar button {
+    font: inherit;
+    color: #ddd;
+    background: #111;
+    border: 1px solid #333;
+    border-radius: 5px;
+    padding: 3px 10px;
+    cursor: pointer;
+}
+.field-web-bar button:disabled {
+    color: #555;
+    cursor: default;
+}
+.field-web-url {
+    flex: 1;
+    min-width: 0;
+    font: inherit;
+    color: #ddd;
+    background: #111;
+    border: 1px solid #333;
+    border-radius: 5px;
+    padding: 3px 8px;
+    outline: none;
+}
+.field-web-url:focus {
+    border-color: #48c9ff;
+}
+
 .disclosure-content.ai-chat-content {
     overflow: hidden;
     padding: 0;

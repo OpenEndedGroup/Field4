@@ -1984,10 +1984,20 @@ function createMainWindow() {
     const timeoutMillis = Math.max(1, Math.min(Number(request.timeoutMillis) || 10000, 120000));
     const work = async () => {
       if (request.operation === "evaluate") {
-        const source = JSON.stringify(String(request.javascript || ""));
-        const result = await frame.executeJavaScript(
-          `Promise.resolve((0, eval)(${source})).then(value => JSON.stringify({ value }))`);
-        return { value: JSON.parse(result).value, frameUrl: frame.url };
+        const javascript = String(request.javascript || "");
+        const source = JSON.stringify(javascript);
+        try {
+          const result = await frame.executeJavaScript(
+            `Promise.resolve((0, eval)(${source})).then(value => JSON.stringify({ value }))`);
+          return { value: JSON.parse(result).value, frameUrl: frame.url };
+        } catch (error) {
+          // A page whose Content-Security-Policy forbids eval (GitHub's does) refuses the wrapper.
+          // executeJavaScript itself is not bound by the page's policy and returns the script's
+          // last value, so run the script as it is; the value comes back by structured clone.
+          if (!/EvalError|unsafe-eval/.test(String(error?.message || error))) throw error;
+          const value = await frame.executeJavaScript(javascript);
+          return { value: value === undefined ? undefined : JSON.parse(JSON.stringify(value)), frameUrl: frame.url };
+        }
       }
       if (request.operation === "screenshot") {
         const rect = request.captureRect;
@@ -2007,6 +2017,24 @@ function createMainWindow() {
           : image;
         const jpeg = bounded.toJPEG(85);
         return { value: `data:image/jpeg;base64,${jpeg.toString("base64")}`, frameUrl: frame.url };
+      }
+      if (request.operation === "devtools") {
+        // DevTools for the tab, with this frame's <iframe> selected: Chromium resolves a point over
+        // an out-of-process frame to its owner element. Its #document, and its entry in Console's
+        // context menu, are the framed site. Detached, so the Field canvas keeps its size.
+        // inspectElement takes the point in the tab's zoomed pixels.
+        const rect = request.captureRect;
+        if (!rect || ![rect.x, rect.y, rect.width, rect.height].every(Number.isFinite) ||
+            rect.width <= 0 || rect.height <= 0) {
+          throw new Error("The iframe has no visible area to inspect");
+        }
+        const zoom = contents.getZoomFactor() || 1;
+        const x = Math.round((rect.x + rect.width / 2) * zoom);
+        const y = Math.round((rect.y + rect.height / 2) * zoom);
+        if (!contents.isDevToolsOpened()) contents.openDevTools({ mode: "detach", activate: true });
+        contents.inspectElement(x, y);
+        contents.devToolsWebContents?.focus();
+        return { value: frame.url, frameUrl: frame.url };
       }
       if (request.operation === "cdp") {
         const debug = contents.debugger;
