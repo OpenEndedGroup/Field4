@@ -29,7 +29,11 @@ let retryAfter = 0;
 let storageMessage = '';
 
 function show(message) { status.textContent = message; status.hidden = !message; }
-function updateStatus() { show(storageMessage || (!crossOriginIsolated ? 'Patchy needs Field cross-origin isolation' : '')); }
+// Threaded WebAssembly needs SharedArrayBuffer, not isolation as such: Field's Electron window
+// provides it on an ordinary page; another browser has it only with AFIELD_CROSS_ORIGIN_ISOLATION=1.
+const sharedMemory = typeof SharedArrayBuffer === 'function';
+const NO_SHARED_MEMORY = 'Patchy needs SharedArrayBuffer: open it in Field\'s window, or start Field with AFIELD_CROSS_ORIGIN_ISOLATION=1';
+function updateStatus() { show(storageMessage || (!sharedMemory ? NO_SHARED_MEMORY : '')); }
 
 function internalCall(method, params = {}) {
   return new Promise((resolve, reject) => {
@@ -185,7 +189,7 @@ frame.addEventListener('load', () => {
   rpcReady = false;
   commandInFlight = false;
   commandQueue.length = 0;
-  if (!ready && !crossOriginIsolated) show('Patchy needs Field cross-origin isolation');
+  if (!ready && !sharedMemory) show(NO_SHARED_MEMORY);
 });
 if (!binding) show('Missing Field output binding');
 else { poll(); setInterval(poll, 150); if (autosave) setInterval(saveIfChanged, 1000); }

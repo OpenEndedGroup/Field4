@@ -135,3 +135,7 @@ next launch and serves it from `/patchy/`. The task is not part of Field's norma
 
 To use a separately built site while developing, set `AFIELD_PATCHY_WEB_ROOT` to its directory
 before starting Field. It must contain `patchy.html`, `patchy.js`, `patchy.wasm`, and `patchy.data`.
+
+Patchy runs in Field's own window as installed. To open it in another browser, start Field with
+`AFIELD_CROSS_ORIGIN_ISOLATION=1`: threaded WebAssembly needs those isolation headers outside
+Field's window, and while they are on, other sites framed in an output area may not load there.

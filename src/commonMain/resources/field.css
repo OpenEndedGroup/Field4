@@ -571,12 +571,28 @@ body.canvas-pan-latched .outputArea * {
 }
 
 .disclosure-content iframe {
-    width: 100% !important;
-    height: 100% !important;
     border: 0;
     display: block;
     resize: none !important;
     box-sizing: border-box;
+}
+
+/* An iframe that is the panel's content fills the panel; the panel sizer adopts the size it
+   declares. */
+.disclosure-content > iframe {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* An iframe inside a box's own HTML keeps a size that HTML gives it, inline or as an attribute,
+   and fills its container only in a dimension it leaves unset. Filling regardless turned
+   `<div><iframe style="height:420px">` into Chromium's 150px default, since 100% of an
+   auto-height container is no height at all. ("max-height" in the style also counts as set.) */
+.disclosure-content * iframe:not([width]):not([style*="width"]) {
+    width: 100% !important;
+}
+.disclosure-content * iframe:not([height]):not([style*="height"]) {
+    height: 100% !important;
 }
 
 .disclosure-content.ai-chat-content {
