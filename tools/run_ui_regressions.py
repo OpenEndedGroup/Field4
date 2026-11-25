@@ -5105,6 +5105,7 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             commands=[
                 "new-box --name GuideTarget --alias guide_target --x 300 --y 100",
                 shell_join(["set", "@last", "code", "// Movement recipe\nval pace = 2.0\nprintln(pace)"]),
+                "new-box --name InlineNotes --x 300 --y 300",
                 "new-box --name GuideFixture --x 40 --y 100",
                 shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/document-guide-notes-only.js"), "--timeout", pw_timeout]),
                 shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/document-guide.kt"), "--timeout", timeout_text]),

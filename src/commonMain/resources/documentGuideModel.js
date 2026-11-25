@@ -104,3 +104,29 @@ export function macroGuideLink(name, scope = "document", project = "") {
     if (scope === "project" && project) params.set("project", project);
     return `field://macro/${encodeURIComponent(name)}?${params}`;
 }
+
+/** The fence languages a guide or note renders as a playable macro (`markdownView.js`). */
+export const macroFenceLanguages = new Set(["field-macro", "field-transcript"]);
+
+/**
+ * What a collapsed `field-macro` block says about its YAML: the top-level `title:` (else `name:`)
+ * and how many operations it lists, counted as the items of the shallowest `- verb:` list. This is
+ * a reading for the label, not a parse; the server parses the YAML when it runs.
+ */
+export function describeMacroYaml(text) {
+    const lines = String(text || "").split(/\r?\n/);
+    const top = {};
+    for (const line of lines) {
+        const match = /^(title|name):[ \t]*(.*?)[ \t]*$/.exec(line);
+        if (!match || top[match[1]] !== undefined) continue;
+        top[match[1]] = match[2].replace(/[ \t]+#.*$/, "").replace(/^(["'])(.*)\1$/, "$2");
+    }
+    let indent = Infinity, operations = 0;
+    for (const line of lines) {
+        const match = /^([ \t]*)-[ \t]+[A-Za-z][\w-]*[ \t]*:/.exec(line);
+        if (!match) continue;
+        if (match[1].length < indent) { indent = match[1].length; operations = 1; }
+        else if (match[1].length === indent) operations++;
+    }
+    return {title: top.title || top.name || "", operations};
+}

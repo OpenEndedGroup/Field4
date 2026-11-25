@@ -378,7 +378,9 @@ The document guide is a reader for a document's own Markdown files and notes, be
 canvas. Click **Guides** in the bottom left, or **Notes** if the document only has box notes. You can
 also use **Show Document Guide** in the command palette. A box's `notes` property
 is listed under **Box notes**. Select a note to bring its box into view, or choose **Open box**
-to edit the note on the box. Here the guide is reading the notes on `sketch`.
+to edit the note on the box. Notes and guide pages can also run macros, from a link or a folded
+block of YAML ([Macros in guides and notes](automating_field.md#macros-in-guides-and-notes)). Here
+the guide is reading the notes on `sketch`.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x600" clip-selector="#document-guide" screenshot="assets/tour_interface/document-guide.png" transcript="../../dev_docs/agents/transcripts/docs_capture/tour_interface_document.yaml" document="docs-tour-interface-document-guide" fresh-document=true hide-toasts=true padding="8" wait="0" timeout="150" embed=true hidden=true name="tour-interface-document-guide" alt="The Document Guide reading the box notes of sketch: the list on the left with sketch under Box notes, and the notes themselves, a heading Ring sketch, a sentence and two bullet points, on the right."}
 ui.eval("window.showDocumentGuide(); return true")

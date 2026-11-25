@@ -42,6 +42,29 @@ export async function activateFieldLink(href, anchor) {
     }
 }
 
+/**
+ * Runs the YAML of a `field-macro` block (`markdownView.js`) through the same server replay as a
+ * saved macro, on the current selection. Nothing is saved; a second press while the same text is
+ * running is refused here, as for links.
+ */
+window.runInlineFieldMacro = async (yaml, label, button) => {
+    const key = JSON.stringify(['inline', yaml]);
+    if (runningMacros.has(key)) { report(`Macro “${label}” is already running`); return false; }
+    runningMacros.add(key);
+    button?.setAttribute('aria-busy', 'true');
+    try {
+        if (typeof window.macroPaletteRunContent !== 'function') throw new Error('Macro runner is not ready');
+        await window.macroPaletteRunContent(yaml, label);
+        return true;
+    } catch (error) {
+        report(error?.message || `Could not run macro “${label}”`);
+        return false;
+    } finally {
+        runningMacros.delete(key);
+        button?.removeAttribute('aria-busy');
+    }
+};
+
 document.addEventListener('click', event => {
     const anchor = event.target?.closest?.('a[href]');
     const href = anchor?.getAttribute('href') || '';

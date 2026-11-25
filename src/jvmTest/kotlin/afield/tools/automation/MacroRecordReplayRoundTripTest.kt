@@ -131,6 +131,28 @@ class MacroRecordReplayRoundTripTest {
         assertEquals(expected, projection(fresh), "replayed document\n$yaml")
     }
 
+    /** A `field-macro` block in a guide or note runs its YAML as text: same replay, nothing saved. */
+    @Test
+    fun inlineMacroTextReplaysWithoutBeingSaved() {
+        val (source, yaml) = recordSession()
+        val expected = projection(source)
+
+        val fresh = document("inline")
+        thisSessionInfo.set(fresh)
+        val run = OperationTranscript.runMacroContent(fresh.filename, yaml, label = "Rebuild it", initializeCreatedBoxes = false)
+        assertTrue(run.success, run.message + " " + run.errors)
+        assertEquals("Rebuild-it", run.name)
+        assertEquals(expected, projection(fresh), "inline replay\n$yaml")
+        assertEquals(emptyList(), OperationTranscript.listMacros(fresh.filename).macros, "an inline run saves no macro")
+
+        val broken = OperationTranscript.runMacroContent(fresh.filename, "operations: [ {create: ", label = "broken")
+        assertFalse(broken.success)
+        assertTrue("not valid YAML" in broken.message, broken.message)
+        val empty = OperationTranscript.runMacroContent(fresh.filename, "name: nothing\n", label = "empty")
+        assertFalse(empty.success)
+        assertTrue("no operations" in empty.message, empty.message)
+    }
+
     @Test
     fun aRecordingReadsAsSemanticOperations() {
         val (_, yaml) = recordSession()

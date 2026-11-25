@@ -1,0 +1,34 @@
+name: note_macro_setup
+description: >
+  Setup for the "Macros in guides and notes" figures on automating_field.md: one box, sketch,
+  whose notes carry a field-macro block that builds and launches a Greeter box below it. The
+  capture opens the notes reader and presses the block's play button (or unfolds it).
+operations:
+  - create:
+      box: note_sketch
+      name: sketch
+      frame: { x: 60.0, y: 60.0, w: 160.0, h: 60.0 }
+      properties:
+        code: |
+          val r = 80.0
+        notes: |
+          # Ring sketch
+
+          Press ▶ to build the greeter below this box. Click the line to read its YAML first.
+
+          ```field-macro
+          title: Build the greeter
+          operations:
+            - create:
+                box: greeter
+                name: Greeter
+                frame: { x: 60.0, y: 180.0, w: 160.0, h: 60.0 }
+                properties:
+                  code: |
+                    println("hello from a note")
+            - launch:
+                box: greeter
+                property: code
+          ```
+
+          The ring radius lives in `r`; everything else follows from it.

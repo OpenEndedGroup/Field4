@@ -62,9 +62,42 @@ try {
     check(!(await activateFieldLink('field://macro/nonexistent_markdown_macro')),'missing macro must fail');
     check(!(await activateFieldLink('field://box/nonexistent_markdown_box')),'missing box must fail');
     check(result(proxy)==='workspace:2','failed actions changed state');
+    // A `field-macro` block: folded to its title, run only by its own play button.
+    const marked=prefix=>[...document.querySelectorAll('.box')].map(b=>String(b.notes||'')).filter(n=>n.startsWith(prefix));
+    await window.showDocumentGuide('README.md');
+    const guideReader=document.getElementById('guide-reader');
+    await wait(()=>guideReader.querySelector('.field-macro-block'),'inline macro block in guide');
+    const block=guideReader.querySelector('.field-macro-block');
+    check(block.tagName==='DETAILS'&&!block.open,'an inline macro starts folded');
+    check(block.querySelector('.field-macro-title')?.textContent==='Count from the guide','inline macro titled by its title:');
+    check(block.querySelector('.field-macro-meta')?.textContent==='1 operation','inline macro counts its operations');
+    check(block.querySelector('code')?.textContent.includes('inline_guide_count'),'the YAML stays inside the fold');
+    check(!marked('guide-inline:').length,'rendering an inline macro must not run it');
+    const play=block.querySelector('.field-macro-play');
+    play.click();
+    play.click(); // A second press while it runs must not replay it.
+    await wait(()=>marked('guide-inline:').length===1,'inline macro from guide');
+    await wait(()=>!play.hasAttribute('aria-busy'),'inline macro completed');
+    await delay(150);
+    check(JSON.stringify(marked('guide-inline:'))==='["guide-inline:1"]',`duplicate inline run: ${marked('guide-inline:')}`);
+    check(!guideReader.querySelector('.field-macro-block').open,'play must not unfold the block');
+    guideReader.querySelector('.field-macro-block > summary').click();
+    check(guideReader.querySelector('.field-macro-block').open,'the summary unfolds the YAML');
+
+    const inlineNotes=box('InlineNotes');
+    window.navigateToBoxProperty(inlineNotes.uid,'notes',null,null);
+    await wait(()=>window.currentSelectedProperty==='notes'&&window.currentSelectedCode?.[0]?.uid===inlineNotes.uid,'open inline notes');
+    window.toggleNotesMarkdownPreview(window.globalEditor,'preview');
+    const notesBlock=()=>document.querySelector('.afield-notes-preview-body .field-macro-block');
+    await wait(notesBlock,'inline macro block in notes');
+    check(notesBlock().querySelector('.field-macro-title').textContent==='notes_inline_count','a block without title: uses name:');
+    check(notesBlock().querySelector('.field-macro-meta').textContent==='2 operations','two operations in the notes block');
+    notesBlock().querySelector('.field-macro-play').click();
+    await wait(()=>inlineNotes.notes==='notes-inline:1','inline macro from notes changes real box state');
+
     // Leave a useful reader/code composition, using the real navigation action.
     await window.showDocumentGuide('README.md');
     clickLink(document.getElementById('guide-reader'),'field://box/');
     await delay(600);
-    return {ok:true,surfaces:['notes','chat','guide','file-preview'],macroResult:result(proxy),centerError:Math.abs(rect.left+rect.width/2-expectedX)};
+    return {ok:true,surfaces:['notes','chat','guide','file-preview','inline-guide','inline-notes'],macroResult:result(proxy),centerError:Math.abs(rect.left+rect.width/2-expectedX)};
 } catch(error) {return {ok:false,reason:String(error)};}

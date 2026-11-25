@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { classifyGuideLink as link, boxGuideLink, macroGuideLink, headingSlug, guideAssetUrl, notePath, noteUid, noteFilePath, docsPageUrl, stripFrontMatter } from '../src/commonMain/resources/documentGuideModel.js';
+import { classifyGuideLink as link, boxGuideLink, macroGuideLink, headingSlug, guideAssetUrl, notePath, noteUid, noteFilePath, docsPageUrl, stripFrontMatter, describeMacroYaml } from '../src/commonMain/resources/documentGuideModel.js';
 test('relative files and fragments retain the originating guide directory', () => {
     assert.deepEqual(link('../Camera.md#moving-camera','docs/Enemy.md'),{kind:'guide',path:'Camera.md',hash:'moving-camera'});
     assert.deepEqual(link('#moving-camera','docs/Enemy.md'),{kind:'guide',path:'docs/Enemy.md',hash:'moving-camera'});
@@ -61,4 +61,24 @@ test('field-docs links and docs redirects open a page of the Field documentation
     assert.equal(docsPageUrl(''),'/field-docs/');
     assert.equal(stripFrontMatter('---\ndocs: x/\n---\n# Title\n'),'# Title\n');
     assert.equal(stripFrontMatter('# No front matter\n---\n'),'# No front matter\n---\n');
+});
+
+test('a folded field-macro block names its macro and counts only top-level operations', () => {
+    const yaml = [
+        'name: launch_demo   # saved name',
+        'title: "Launch the renderer"',
+        'operations:',
+        '  - create:',
+        '      box: r',
+        '      name: Not the title',
+        '      properties:',
+        '        code: |',
+        '          - looks: like an item',
+        '          name: still code',
+        '  - connect: { parent: r, child: c }',
+        '  - launch: { box: r }',
+    ].join('\n');
+    assert.deepEqual(describeMacroYaml(yaml), {title: 'Launch the renderer', operations: 3});
+    assert.deepEqual(describeMacroYaml("name: 'only a name'\n- execute: {box: b}"), {title: 'only a name', operations: 1});
+    assert.deepEqual(describeMacroYaml(''), {title: '', operations: 0});
 });

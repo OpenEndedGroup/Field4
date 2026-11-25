@@ -1,3 +1,22 @@
 a[href^="field://macro/"]::before { content:"▶ "; font-size:.8em; }
 a[href^="field://macro/"][aria-busy="true"] { opacity:.5; cursor:progress; }
 a[href^="field://"] { cursor:pointer; }
+
+/* A `field-macro` block in a guide or note: folded to one line with a play button (markdownView.js).
+   Unfolded, the YAML is one surface flush under the summary: the readers' own framing of a code
+   block (margin, a bordered <pre> with padding) is undone here, so `details.` outranks it. */
+details.field-macro-block { margin:.6em 0; border:1px solid rgba(127,127,127,.28); border-radius:6px; overflow:hidden; }
+.field-macro-block > summary { display:flex; align-items:center; gap:.55em; padding:.3em .55em; cursor:pointer; list-style:none; }
+.field-macro-block > summary::-webkit-details-marker { display:none; }
+.field-macro-block > summary::after { content:"▸"; opacity:.5; }
+.field-macro-block[open] > summary::after { content:"▾"; }
+.field-macro-play { flex:none; display:inline-flex; align-items:center; justify-content:center; width:1.55em; height:1.55em;
+    padding:0; border:1.5px solid currentColor; border-radius:50%; background:transparent; color:inherit; cursor:pointer; opacity:.85; }
+.field-macro-play svg { width:100%; height:100%; }
+.field-macro-play:hover { opacity:1; }
+.field-macro-play[aria-busy="true"] { opacity:.4; cursor:progress; }
+.field-macro-title { font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.field-macro-meta { flex:none; margin-left:auto; opacity:.6; font-size:.85em; }
+details.field-macro-block > .ai-chat-code-block { margin:0; border-top:1px solid rgba(127,127,127,.2); }
+details.field-macro-block > .ai-chat-code-block > pre { margin:0; padding:0; border:0; border-radius:0; background:transparent; }
+details.field-macro-block > .ai-chat-code-block > pre > code { display:block; padding:.8em 1em; border-radius:0; }
