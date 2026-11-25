@@ -228,7 +228,7 @@ triangle from four rough points, drawn by a `Searching` hand.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/areas.png" alt="three areas side by side on white. Left: a rectangle filled with short, dense diagonal strokes of blue paint, its lower half solid blue with small flecks of white showing between strokes, its upper half crossed by long horizontal strokes of pale straw yellow that have dragged through the wet blue and mixed into a greyish green, with ragged stroke ends overrunning the region's right edge. Middle: a rectangle of thousands of small red-orange dots, dense in the middle and thinning to scattered single dots at a soft edge. Right: a triangle drawn in thin dark brown-black brush lines, made of several separate strokes that overlap slightly, leave small gaps, and fade out at their ends; the base is a dashed run of short strokes" wait="15" capture="box" open-outputs="true" padding="20" requires="paint" name="areas" embed=true}
 :::static
-val canvas = PaintCanvas(600, aspect = 2.0, sizeMm = 300.0)
+val canvas = PaintCanvas(900, aspect = 2.0, sizeMm = 300.0)
 
 canvas.work(FLine().rect(40.0, 60.0, 280.0, 380.0), rgb(0.2, 0.4, 0.6), Handling.Body, angle = 0.5)
 canvas.work(FLine().rect(40.0, 60.0, 280.0, 180.0), rgb(0.85, 0.75, 0.5), Handling.Broad, angle = 0.0)
@@ -259,7 +259,7 @@ right.
 :::static
 import afield.graphics.nile.*
 
-val canvas = PaintCanvas(600, aspect = 2.0, sizeMm = 300.0)
+val canvas = PaintCanvas(800, aspect = 2.0, sizeMm = 300.0)
 
 fun squares(dx: Double, rule: FillRule) = FLine()
     .rect(dx + 60.0, 60.0, 220.0, 220.0)
