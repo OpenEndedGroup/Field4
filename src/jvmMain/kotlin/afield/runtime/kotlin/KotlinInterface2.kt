@@ -2943,6 +2943,8 @@ class KotlinInterface2(
                                 when (it) {
                                     is KtNameReferenceExpression -> {
                                         if (it.text in skipMacros) return@forEach
+                                        // `out.println(x)` and `kotlin.io.println(x)` are the receiver's own call; only a bare one is the box's.
+                                        if (it.text in MacroRegistry.bareCallOnly && (expression.parent as? KtQualifiedExpression)?.selectorExpression === expression) return@forEach
 
                                         lprintln(
                                             "debug,kotlin",
