@@ -145,7 +145,13 @@ class KotlinInterface2(
     val properties: Map<String, Any?> = emptyMap(),
     override val implicitReceivers: List<KotlinType> = emptyList(),
     override var classLoader: ClassLoader? = null,
-    val filePrefix: String = "EVAL_"
+    val filePrefix: String = "EVAL_",
+    /**
+     * A shared Kotlin box's engine: every snippet it compiles is handed to the document's
+     * [DocumentClassLoader] before it runs, so the document has one copy of its classes. See
+     * [SHARED_KOTLIN_BOX].
+     */
+    val publishesToDocument: Boolean = false,
 ) : KotlinScriptEngine {
 
     override val compilationDispatcher get() = Dispatchers.Default
@@ -229,7 +235,8 @@ class KotlinInterface2(
         // An explicitly supplied document loader must remain the engine's base loader. Its parent
         // is the process-wide loader, so ordinary dependencies still have one shared identity.
         classLoader = classLoader?.takeIf { it is DocumentClassLoader } ?: sharedBaseLoader(classLoader!!)
-        MavenClasspathManager.attachResolvedTo(classLoader)
+        // Jars join the process-wide loader, never a document's, so each keeps one identity.
+        MavenClasspathManager.attachResolvedTo((classLoader as? DocumentClassLoader)?.parent ?: classLoader)
 
         val myHostConfiguration = defaultJvmScriptingHostConfiguration.with {
             jvm {
@@ -267,6 +274,7 @@ class KotlinInterface2(
 
             refineConfiguration {
                 onAnnotations(DependsOn::class, Repository::class, handler = ::configureMavenDepsOnAnnotations)
+                beforeCompiling(handler = ::configureSharedKotlinBoxes)
             }
         }
 
@@ -318,6 +326,30 @@ class KotlinInterface2(
         }
     }
 
+    /**
+     * Give this compile the classes the document's shared Kotlin boxes publish: their class-file
+     * folders and an import for each class. Refinement runs for every snippet, and that matters
+     * twice over: a folder added here reaches an engine that has already compiled (its classpath is
+     * otherwise fixed when it is created), and imports from one snippet do not carry to the next.
+     * See [SHARED_KOTLIN_BOX].
+     */
+    private fun configureSharedKotlinBoxes(context: ScriptConfigurationRefinementContext): ResultWithDiagnostics<ScriptCompilationConfiguration> {
+        val types = (classLoader as? DocumentClassLoader)?.types ?: return context.compilationConfiguration.asSuccess()
+        val view = types.compileView(associatedBox as? Box, publishesToDocument)
+        if (view.roots.isEmpty() && view.imports.isEmpty()) return context.compilationConfiguration.asSuccess()
+        return context.compilationConfiguration.with {
+            dependencies.append(JvmDependency(view.roots))
+            defaultImports.append(view.imports)
+        }.asSuccess()
+    }
+
+    /** Before [script] runs in a shared Kotlin box's engine: let the document's loader define its classes. */
+    private fun registerWithDocument(script: CompiledScript) {
+        if (!publishesToDocument) return
+        val types = (classLoader as? DocumentClassLoader)?.types ?: return
+        types.registerSnippet(filePrefix, (associatedBox as? Box)?.id, sourceProperty, script)
+    }
+
     var id = 0
 
     /** Compile once, re-evaluate on rerun; see [RerunCompileCache] for what it refuses and why. */
@@ -361,8 +393,11 @@ class KotlinInterface2(
      * [compileSnippet]'s prepared snippets, always compile.
      */
     private suspend fun compileOrReuse(s: String, implicits: List<Any>): ResultWithDiagnostics<LinkedSnippet<CompiledScript>> {
-        if (!KotlinEngineConfig.rerunCompileCache || !rerunCache.cacheable(s)) return compile(s)
-        val key = sourceProperty + "\u0000" + implicits.joinToString(",") { it.javaClass.name } + "\u0000" + s
+        // A shared box's snippet classes are defined once, by the document's loader, so its runs always compile.
+        if (publishesToDocument || !KotlinEngineConfig.rerunCompileCache || !rerunCache.cacheable(s)) return compile(s)
+        // What the document's shared boxes publish is part of what this source compiles to.
+        val shared = (classLoader as? DocumentClassLoader)?.types?.stamp ?: 0
+        val key = sourceProperty + "\u0000" + implicits.joinToString(",") { it.javaClass.name } + "\u0000" + shared + "\u0000" + s
         return compileMutex.withLock {
             usingCompilationState(onDisposed = { compileAfterDisposal(s) }) {
                 var reuse = rerunCache.lookup(key)
@@ -599,6 +634,7 @@ class KotlinInterface2(
                 }
 
                 afield.runtime.bytecode.BoxBytecode.instrument(e.get(), snippetOrigin(e.get(), associatedBox as? Box))
+                registerWithDocument(e.get())
                 // A run boundary for per-function cost: reconciles frames an exception left open.
                 val cost = afield.runtime.bytecode.BoxCost.begin()
                 r = try { evaluator.eval(e, evalConfig) } finally { afield.runtime.bytecode.BoxCost.end(cost, (associatedBox as? Box)?.id) }
@@ -664,6 +700,7 @@ class KotlinInterface2(
 
                 val costBox = (implicits.firstOrNull { it is Box } as? Box) ?: associatedBox as? Box
                 afield.runtime.bytecode.BoxBytecode.instrument(e.get(), snippetOrigin(e.get(), costBox))
+                registerWithDocument(e.get())
                 // A run boundary for per-function cost: reconciles frames an exception left open.
                 val cost = afield.runtime.bytecode.BoxCost.begin()
                 r = try { evaluator.eval(e, evalConfig) } finally { afield.runtime.bytecode.BoxCost.end(cost, costBox?.id) }

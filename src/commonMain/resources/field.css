@@ -4519,6 +4519,23 @@ body::-webkit-scrollbar {
     pointer-events: none;
 }
 
+/* A shared Kotlin box: every box in the document can use its classes. The frame is the accent
+   colour (the frame takes `color`, see .box::before), and a line under the title names it. */
+.box.shared-kotlin::before {
+    color: rgba(var(--field-accent-rgb), 0.55);
+}
+
+.shared-kotlin-tag {
+    margin-top: -4px;
+    padding: 0 5px 5px;
+    color: rgba(var(--field-accent-rgb), 0.95);
+    font-family: var(--field-font-code);
+    font-size: 10px;
+    line-height: 1.2;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
 .file-proxy-path-head {
     flex: 0 1 auto;
     min-width: 0;

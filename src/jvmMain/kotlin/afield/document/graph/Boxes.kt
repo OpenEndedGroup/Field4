@@ -1914,15 +1914,9 @@ internal fun Box.hasSomethingToStop(): Boolean =
 internal fun retireBoxes(boxes: Collection<Box>, entrypoint: String) {
     stopBoxes(boxes, entrypoint)
     boxes.forEach { it.disposeKi() }
-    if (entrypoint != "session-cleanup") {
-        val sessions = boxes.filter { it.isInsideInitialized() && it.getPropertyRaw("box_kind") == afield.runtime.kotlin.SHARED_KOTLIN_BOX }
-            .map { it.inside }.distinct()
-        if (sessions.isNotEmpty()) inMain {
-            sessions.forEach { session ->
-                val result = session.documentTypes.publish()
-                if (!result.ok) lprintln("error,ki", "shared Kotlin declarations: ${result.message}")
-            }
-        }
+    // A retired shared Kotlin box withdraws its classes; boxes that use them are told to re-run.
+    if (entrypoint != "session-cleanup") boxes.forEach { box ->
+        if (box.isInsideInitialized() && box.getPropertyRaw("box_kind") == afield.runtime.kotlin.SHARED_KOTLIN_BOX) box.inside.documentTypes.withdraw(box)
     }
 }
 
@@ -2274,6 +2268,22 @@ private fun importsOnly(preamble: String): Boolean = preamble.lines().all {
     line.isEmpty() || line.startsWith("import ") || line.startsWith("//")
 }
 
+/**
+ * A new engine for [box], on its document's loader. A shared Kotlin box's engine publishes its
+ * classes to the document and gets a prefix of its own, so no two of its engines' snippet classes
+ * share a name (see [afield.runtime.kotlin.SHARED_KOTLIN_BOX]).
+ */
+private fun createBoxEngine(box: Box): KotlinScriptEngine {
+    val types = if (box.isInsideInitialized()) box.inside.documentTypes else null
+    val shared = types != null && types.isShared(box)
+    return createKotlinScriptEngine(
+        implicitReceivers = listOf(KotlinType(Box::class)),
+        classLoader = types?.loader,
+        filePrefix = if (shared) types!!.publisherPrefix(box) else box.id,
+        publishesToDocument = shared,
+    )
+}
+
 private fun buildKI(box: Box, reason: String, superseded: () -> Boolean, spare: Boolean): KotlinScriptEngine {
 
     // force resync of actions per box
@@ -2287,7 +2297,7 @@ private fun buildKI(box: Box, reason: String, superseded: () -> Boolean, spare: 
             "request #$startupId async reason=$reason box=${box.kotlinStartupLabel()} caller=$requestedFrom"
         )
         val ki = LatencySpans.time("engine.create", box = box.id, detail = "async") {
-            createKotlinScriptEngine(implicitReceivers = listOf(KotlinType(Box::class)), classLoader = if (box.isInsideInitialized()) box.inside.documentTypes.loader else null, filePrefix = box.id)
+            createBoxEngine(box)
         }
         ki.associatedBox = box  // Set the box reference for @exported support
         // Close the engine's readiness gate now (synchronously, before returning `ki`) so any
@@ -2395,7 +2405,7 @@ suspend fun makeKIHere(box: Box, reason: String = "makeKIHere call"): KotlinScri
         "request #$startupId sync reason=$reason box=${box.kotlinStartupLabel()} caller=$requestedFrom"
     )
     val ki = LatencySpans.time("engine.create", box = box.id, detail = "sync") {
-        createKotlinScriptEngine(implicitReceivers = listOf(KotlinType(Box::class)), classLoader = if (box.isInsideInitialized()) box.inside.documentTypes.loader else null, filePrefix = box.id)
+        createBoxEngine(box)
     }
     ki.associatedBox = box  // Set the box reference for @exported support
     val si = thisSessionInfo.get()
