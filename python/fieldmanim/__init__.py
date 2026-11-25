@@ -116,8 +116,18 @@ def tag(mobject, name: str):
     Every path the mobject draws is recorded with the name, so a Kotlin box can ask for that part
     of the scene alone (``scene.units(t, "orbit")``) or where it is (``scene.center("orbit", t)``).
     A tag on a submobject wins over its parent's. Returns ``mobject``, so it can wrap a constructor.
+
+    The name is written onto every member of the family now, not looked up through the scene later,
+    because animations such as ``LaggedStart(*[Create(c) for c in group])`` add the members to the
+    scene on their own, outside the group. A member that already has a tag keeps it, and tagging a
+    member afterwards overrides the group's name for that member.
     """
-    mobject.field_tag = str(name)
+    name = str(name)
+    mobject.field_tag = name
+    mobject._field_tag_own = True
+    for member in mobject.get_family()[1:]:
+        if not getattr(member, "_field_tag_own", False):
+            member.field_tag = name
     return mobject
 
 
@@ -262,7 +272,7 @@ class _Recorder(CairoRenderer):
 
         def walk(mob, inherited: int) -> None:
             own = getattr(mob, "field_tag", None)
-            if own is not None:
+            if own is not None and (getattr(mob, "_field_tag_own", False) or inherited < 0):
                 if own not in self._tag_index:
                     self._tag_index[own] = len(self.tags)
                     self.tags.append(own)
