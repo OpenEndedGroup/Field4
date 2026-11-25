@@ -1304,6 +1304,29 @@ internal fun beginExecutionErrorScope(box: Box) {
     boxesWithRunErrors.remove(box.id)
 }
 
+/**
+ * After a shared Kotlin box's code ran without error, share its classes and say so on [line]; a
+ * refused share (a name another shared box already shares) is an error and fails the run. True for
+ * every other box, which has nothing to share.
+ */
+internal fun shareClasses(
+    types: afield.runtime.kotlin.DocumentTypes?,
+    box: Box,
+    reply: ((Message) -> Unit)?,
+    originSession: WebSocketSession?,
+    line: Int,
+    property: String,
+): Boolean {
+    val result = types?.afterSuccessfulRun(box) ?: return true
+    dispatchExecutionOutput(
+        box, reply,
+        Output(uid = box.id, line = line, kind = if (result.ok) "normal" else "error", property = property,
+            html = escapeForHtml(result.message), frame = Runloop.runLoop.frame.toInt()),
+        originSession = originSession
+    )
+    return result.ok
+}
+
 internal fun dispatchExecutionOutput(
     box: Box,
     reply: ((Message) -> Unit)?,
@@ -1670,8 +1693,10 @@ class KotlinExecution : BoxExecution {
             }
 
             var reactiveStarted = false
+            val sharedTypes = if (request.exec.property == "code" && box.isInsideInitialized() && box.inside.documentTypes.isShared(box)) box.inside.documentTypes else null
             try {
                 if (!box.isLaunchEpochCurrent(request.launchEpoch)) return
+                sharedTypes?.beforeRun(box)
 
                 // As executeInBox does: propUp pulls and propDown cascades need to know this box is
                 // running, and in what order boxes last ran.
@@ -1850,7 +1875,8 @@ class KotlinExecution : BoxExecution {
                                 launchEpoch = request.launchEpoch,
                             )
                         }
-                        executionSucceeded = true
+                        executionSucceeded = shareClasses(sharedTypes, box, trace.reply, request.originSession,
+                            request.exec.line + request.normalizedCode.lines().size, request.exec.property)
                     } else {
                         lprintln("error,execution", "batch launch finished with errors")
                     }
@@ -1870,6 +1896,7 @@ class KotlinExecution : BoxExecution {
                 }
                 }
             } finally {
+                sharedTypes?.runFinished(box, executionSucceeded)
                 box.runScopes.supersede(request.runScope)
                 clearPendingOnce()
                 trace.finish(executionSucceeded && box.isLaunchEpochCurrent(request.launchEpoch))
@@ -2718,28 +2745,9 @@ class KotlinExecution : BoxExecution {
         ReactiveRuns.awaitNotBlocked(box)
         box.needsRerun = null
         val trace = ExecutionTrace(box, property, sourceText, requestId, executionMode, reply)
-        if (property == "code" && box.getPropertyRaw("box_kind") == afield.runtime.kotlin.SHARED_KOTLIN_BOX) {
-            var success = false
-            var reason = ""
-            try {
-                val result = if (box.isInsideInitialized()) box.inside.documentTypes.publish(box, sourceText, accepted)
-                    else afield.runtime.kotlin.DocumentTypes.Result(false, "Shared declarations need a document")
-                success = result.ok
-                reason = if (result.ok) "" else result.message
-                dispatchExecutionOutput(box, trace.reply, Output(uid = box.id, line = ln,
-                    kind = if (result.ok) "normal" else "error", property = property,
-                    html = escapeForHtml(result.message), frame = Runloop.runLoop.frame.toInt()), originSession = originSession)
-            } catch (t: Throwable) {
-                reason = t.message ?: t.javaClass.name
-                if (t !is CancellationException) {
-                    dispatchExecutionOutput(box, trace.reply, Output(uid = box.id, line = ln, kind = "error",
-                        property = property, html = escapeForHtml(reason), frame = Runloop.runLoop.frame.toInt()), originSession = originSession)
-                } else throw t
-            } finally {
-                try { finishedHandler() } finally { trace.finish(success && accepted(), reason) }
-            }
-            return
-        }
+        // A shared Kotlin box runs like any other; see [afield.runtime.kotlin.SHARED_KOTLIN_BOX].
+        val sharedTypes = if (property == "code" && box.isInsideInitialized() && box.inside.documentTypes.isShared(box)) box.inside.documentTypes else null
+        sharedTypes?.beforeRun(box)
         var executionSucceeded = false
         // What this execution registers belongs to [runScope] — the launch's, or execute-all's — and a
         // fragment adds to the box's current whole-box run. See RunScope.
@@ -3065,7 +3073,7 @@ class KotlinExecution : BoxExecution {
                         }
 
                     }
-                    executionSucceeded = true
+                    executionSucceeded = shareClasses(sharedTypes, box, trace.reply, originSession, ln + dur, property)
                     // What its declarations came to, for the editor's line notes.
                     afield.runtime.kotlin.KotlinLineNotes.record(box, property, sourceText, ln)
                 } else {
@@ -3091,6 +3099,7 @@ class KotlinExecution : BoxExecution {
                 )
             } finally {
                 finishTelemetry("execute-finished")
+                sharedTypes?.runFinished(box, executionSucceeded)
                 try { finishedHandler() } finally {
                     try { trace.finish(executionSucceeded && accepted()) } finally {
                         ReactiveRuns.runFinished(box, executionSucceeded && accepted(), executionMode)
