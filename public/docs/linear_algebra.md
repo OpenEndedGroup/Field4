@@ -47,6 +47,10 @@ val up: Vec3 = [0, 1, 0]
 val white: Vec4 = [1, 1, 1, 1]
 ```
 
+The axes and the two constant vectors are named on each type: `Vec3.X`, `Vec3.Y`, `Vec3.Z`,
+`Vec3.ZERO` and `Vec3.ONE`, and likewise `Vec2.X`, `Vec4.W`, `Vector3d.Y` and the rest. They are
+read-only, so no one can normalize the shared `Y` axis by accident.
+
 The examples below use `vec(...)` because it also establishes the type when there
 is no declaration annotation. In a Field box the linalg imports arrive with the
 standard preamble, so you rarely type them yourself; a plain Kotlin file wants:
@@ -139,9 +143,10 @@ a * b // vec2(2, 3)   — component-wise (Hadamard) product
 
 ![Component-wise and scalar arithmetic on vec2 values](assets/vector_algebra/algebra.png)
 
-`a * b` is the *component-wise* product. The dot and cross products keep their
-named forms (`a.dot(b)`, and `a x b` for the 3D cross, below). Division by a
-scalar (`a / 2`) and unary minus (`-a`) round out the set.
+`a * b` is the *component-wise* product; the dot and cross products are written
+`a dot b` and `a x b` (below). Division (`a / 2`, `a / b`), unary minus (`-a`) and a
+number on the left (`2 * a`) round out the set, on the double-precision vectors as
+well as the float ones.
 
 ## Copy operators: `invoke` and `len`
 
@@ -210,6 +215,19 @@ velocity { normalize() } // vec3(0.6, 0.8, 0) — same direction, unit length
 velocity len 4 // vec3(2.4, 3.2, 0) — direction kept, length 4
 ```
 
+Shorter spellings cover the everyday cases. `v.n` is a unit copy, and unlike
+`normalize()` it leaves zero as zero. `v.sq` is the squared length, `a dist b` the
+distance between two points, and `v limit 5` caps the length without changing the
+direction:
+
+```diffstatic {data-lang=kotlin}
+:::static
+velocity.n // vec3(0.6, 0.8, 0)
+velocity.sq // 100.0
+vec(0, 0) dist vec(3, 4) // 5.0
+velocity limit 5 // vec3(3, 4, 0); a vector already shorter comes back unchanged
+```
+
 The zero vector has no direction, so normalizing it produces non-finite
 components; guard it when zero is possible. Use the squared forms for
 comparisons; they skip the square root while preserving ordering:
@@ -249,17 +267,22 @@ opposed:
 ```diffstatic {data-lang=kotlin}
 :::static
 val forward = vec(0, 0, -1)
-forward.dot(vec(0, 0, -1)) //  1.0  — identical direction
-forward.dot(vec(1, 0, 0)) //  0.0  — perpendicular
-vec(1, 2, 3).dot(vec(4, 5, 6)) // 32.0 — 1·4 + 2·5 + 3·6
+forward dot vec(0, 0, -1) //  1.0  — identical direction
+forward dot vec(1, 0, 0) //  0.0  — perpendicular
+vec(1, 2, 3) dot vec(4, 5, 6) // 32.0 — 1·4 + 2·5 + 3·6
 ```
+
+`a dot b` is the same as `a.dot(b)`. Like every infix call it binds more loosely
+than arithmetic, so bracket a difference: `(p - c) dot n`. For the angle itself,
+`a angleTo b` gives it in radians, 0 to π, and stays accurate for nearly parallel
+vectors, where `acos` of the dot product loses its digits.
 
 A classic lighting term asks how much a surface normal agrees with the direction
 toward a light, clamped so a light behind the surface contributes nothing:
 
 ```diffstatic {data-lang=kotlin}
 :::static
-val brightness = normal.dot(directionToLight).coerceAtLeast(0f)
+val brightness = (normal dot directionToLight).coerceAtLeast(0f)
 ```
 
 ## Cross product: “which way is perpendicular?”
@@ -280,13 +303,65 @@ That is the standard way to find a triangle's surface normal:
 
 ```diffstatic {data-lang=kotlin}
 :::static
-val normal = ((b - a) x (c - a)) { normalize() }
+val normal = ((b - a) x (c - a)).n
+```
+
+`x` takes any read-only vector, so a swizzle works directly (`v.xyz x w`), and the
+double-precision vectors have it too. On 2D vectors it returns a number,
+`a.x * b.y - a.y * b.x`, which is positive when `b` lies anticlockwise of `a`. That
+is the test for which side of a line a point is on:
+
+```diffstatic {data-lang=kotlin}
+:::static
+val side = (b - a) x (p - a) // > 0: p is to the left of the line from a to b
+```
+
+## Angles and turning in the plane
+
+Angles in Field are radians. Write them as values instead of converting by hand:
+`90.deg`, `0.25.turns` and `1.5.rad` are each radians as a `Float`, the type the
+rotation methods take, and `TAU` is one full turn. A 2D direction and its angle
+convert both ways with `.dir` and `.angle`, and `rot` turns a vector:
+
+```diffstatic {data-lang=kotlin}
+:::static
+val heading = 30.deg.dir // vec2(0.866, 0.5), unit length
+heading.angle // 0.5236, the same as 30.deg
+vec(1, 0).perp // vec2(0, 1): a quarter turn anticlockwise
+vec(1, 0) rot 90.deg // ≈ vec2(0, 1)
+vec(2, 1) about vec(1, 1) rot 90.deg // ≈ vec2(1, 2): turned about the point (1, 1)
+vec(0, 1) signedAngleTo vec(1, 0) // -1.5708: a quarter turn clockwise
+```
+
+`.perp` is the normal of a segment and the tangent of a circle, the two moves 2D
+drawing makes most. `about … rot` reads like `lerp … to`: `about` names the pivot
+and `rot` finishes the sentence.
+
+A `Float` angle is accurate to about 1e-7, which is why the results above are
+only nearly `(0, 1)`. `==` compares exactly, so compare results like these with
+`near`, which allows 1e-5 per component (1e-9 for doubles), or with a tolerance
+of your own:
+
+```diffstatic {data-lang=kotlin}
+:::static
+(vec(1, 0) rot 90.deg) == vec(0, 1) // false: x is -4.4e-8
+(vec(1, 0) rot 90.deg) near vec(0, 1) // true
+(vec(1, 0) rot 90.deg).near(vec(0, 1), 1e-3) // true, within 0.001
 ```
 
 ## Interpolation: `lerp` and `fma`
 
 `lerp` traces a straight line from one vector to another — `t = 0` is the start,
-`t = 1` the end, values outside extrapolate:
+`t = 1` the end, values outside extrapolate. In an expression it reads as a sentence,
+`a lerp t to b`, and returns a new vector:
+
+```diffstatic {data-lang=kotlin}
+:::static
+vec(0, 0, 0) lerp 0.5 to vec(100, 40, 0) // vec3(50, 20, 0) — halfway
+```
+
+The method form writes into a destination you supply, which suits a loop that
+should not allocate:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -309,6 +384,46 @@ the whole step without a temporary vector:
 position.fma(deltaSeconds, velocity) // position += velocity * deltaSeconds
 ```
 
+### Easing, following and arcs
+
+The `lerp … to` sentence has variants for the moves that make a running sketch
+feel alive. Each takes the same `to b` at the end:
+
+```diffstatic {data-lang=kotlin}
+:::static
+val a = vec(0, 0)
+val b = vec(100, 40)
+a mid b // vec2(50, 20)
+a towards b // the unit direction from a to b
+a step 10 to b // 10 units from a towards b
+a smooth 0.25 to b // lerp with t through smoothstep: eases in and out
+a ease (0.25 to Ease.outBack) to b // any curve from Ease, or your own { t: Double -> ... }
+```
+
+For anything that chases a moving target, `damp` is the line to reach for. Each
+frame it closes `1 − e^(−k·dt)` of the gap, with `dt` the runloop's frame time, so
+the follow has the same pace at 30 and at 120 frames a second, and it steps frame
+by frame during a video capture. Larger numbers follow more tightly; outside the
+runloop, give the step yourself with `pos.damp(6, dt) to target`:
+
+```diffstatic {data-lang=kotlin}
+:::static
+var pos = vec(0, 0)
+// once per frame:
+pos = pos damp 6 to target
+```
+
+`slerp` goes along the arc instead of the chord, turning at a constant rate, so a
+unit direction stays unit length all the way:
+
+```diffstatic {data-lang=kotlin}
+:::static
+vec(1, 0) slerp 0.5 to vec(0, 1) // vec2(0.707, 0.707), length 1
+vec(1, 0) lerp 0.5 to vec(0, 1) // vec2(0.5, 0.5), length 0.707
+```
+
+### Mutating methods and destinations
+
 Operations either mutate the receiver or write into an explicit destination.
 Mutating methods return the receiver; destination methods return the destination,
 so both chain naturally:
@@ -318,6 +433,77 @@ so both chain naturally:
 val normal = vec(0, 0, 0)
 edgeA.cross(edgeB, normal) // no result allocation; returns normal
 normal.normalize()
+```
+
+## Shaping components
+
+Component-by-component helpers use GLSL's names, so a shader written in a box and
+its Kotlin twin agree. Each returns a new vector:
+
+```diffstatic {data-lang=kotlin}
+:::static
+vec(12, 4) snap 10 // vec2(10, 0): the nearest multiples of 10
+vec(-1.25, 1.75).fract() // vec2(0.75, 0.75): x - floor(x), in 0..1
+vec(-1.5, 2.5).floor() // vec2(-2, 2)
+vec(-3, 2).abs() // vec2(3, 2); sign() gives the signs
+vec(3, 4).maxComponent // 4.0; also minComponent and sum
+vec(1, -1) reflect vec(0, 1) // vec2(1, 1): bounced off a floor
+vec(3, 4) proj vec(1, 0) // vec2(3, 0): the part along x
+vec(3, 4) rej vec(1, 0) // vec2(0, 4): the part across it
+```
+
+The same shaping exists for single numbers, as `Double`s:
+
+```diffstatic {data-lang=kotlin}
+:::static
+0.25.remap(0.0..1.0, -1.0..1.0) // -0.5, not clamped
+(-1.25).fract() // 0.75
+7.clamp01() // 1.0
+0.25.smoothstep() // 0.15625
+```
+
+## Structure: destructuring, lifting, grids and random points
+
+A vector destructures into its components, and a few swizzles fill a lane with a
+constant, which is how a 2D point becomes a 3D one and a 3D point becomes the
+homogeneous `vec4` a 4×4 matrix expects:
+
+```diffstatic {data-lang=kotlin}
+:::static
+val (x, y, z) = vec(1, 2, 3)
+for ((px, py) in points) println("$px, $py")
+vec(1, 2).xy0 // vec3(1, 2, 0)
+vec(1, 2).x0y // vec3(1, 0, 2): laid onto the ground plane
+vec(1, 2, 3).xyz1 // vec4(1, 2, 3, 1): a point; xyz0 is a direction
+vec(1, 2, 3).x0z // vec3(1, 0, 3): flattened onto the ground plane
+```
+
+`x` between two integer ranges makes a grid, and random points come with the
+distributions sketches usually want. They draw from the box's generator, so a
+re-run repeats them and `setRandomSeed` changes them:
+
+```diffstatic {data-lang=kotlin}
+:::static
+(0 until 10) x (0 until 8) // 80 Vec2 grid points, row by row
+Vec3.onSphere() // uniform on the unit sphere; Vec3.inBall(r) fills it
+Vec2.inDisc(5) // uniform in a disc of radius 5, not bunched at the centre
+p jitter 0.1 // p moved by up to 0.1 in each component
+```
+
+Normalizing a random point of a cube is not uniform on the sphere (it bunches
+towards the cube's corners), which is why `onSphere` exists.
+
+A whole list of points turns at once, and answers the two questions drawing code
+asks most:
+
+```diffstatic {data-lang=kotlin}
+:::static
+val ring = (0 until 12).map { (it * 30).deg.dir * 50 }
+ring * (90.deg about Vec3.Z) // every point turned about the origin
+ring about vec(50, 0) rot 30.deg // every point turned about (50, 0)
+ring.rot(30.deg) // turned about the ring's own centre
+ring.closest(vec(60, 10)) // the point nearest (60, 10)
+ring.shuffled().sortedAround() // back in order of angle about their centre
 ```
 
 ## Matrices: transforms & precision
@@ -384,9 +570,9 @@ overload). The same names (`mul`, `determinant`, `invert`, `transpose`,
 
 ### A 3×3 linear map
 
-`Matrix3d` carries the same surface one size up. Its `set(...)` takes nine values,
-row by row for readability, and the visualizer prints the determinant in the
-header:
+`Matrix3d` carries the same surface one size up. Its `set(...)` takes nine values
+column by column, like the 2×2 constructor, so the first three are the first
+column, and the visualizer prints the determinant in the header:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -430,6 +616,18 @@ The header reports `t=(10, 18, 28)`, **not** `(5, 6, 7)`. Because the `translate
 runs *after* the `scale`, it moves in the already-scaled frame, so each component
 is multiplied by its axis scale: `(5·2, 6·3, 7·4)`. The determinant stays `24`,
 because a pure translation preserves volume.
+
+For composition in the order you read it, use the expression forms. `m * n` and
+`m * v` return new values on every matrix type, and `m then n` is `n * m`, so a
+chain applies left to right. `Mat4`, Field's name for `Matrix4f`, has one-step
+builders for exactly this:
+
+```diffstatic {data-lang=kotlin}
+:::static
+val place = Mat4.scale(2) then Mat4.rotate(90.deg about Vec3.Z) then Mat4.translate(vec(10, 0, 0))
+place * vec(1, 0, 0) // vec3(10, 2, 0): scaled to (2, 0, 0), turned to (0, 2, 0), then moved
+m3 * Vector3d(1.0, 0.0, 0.0) // a new Vector3d; m3 is untouched
+```
 
 ### Where precision stops: the f32 bridge
 
@@ -542,6 +740,21 @@ The only choice left is what `ε²` is. Up to rescaling there are three answers:
 Field has all three as one type, `Hypercomplexd(a, b, eps2)` (and `Hypercomplexf`), whose `*`
 expands the brackets with the `ε²` you give it; `Complexd` and `Complexf` are the complex numbers on
 their own, with `conj`, `abs`, `arg`, `exp` and `Complexd.polar(r, angle)`.
+
+In box code the complex numbers share the planar vocabulary of the vectors:
+
+```diffstatic {data-lang=kotlin}
+:::static
+val z = 2 + 3.im // Complexd(2, 3)
+val w = 1 cis 30.deg // length 1 at 30°, the same as Complexd.polar(1, 30.deg)
+z * w // z turned 30°
+z rot 30.deg // the same, said the 2D way
+vec(1, 0) * Complexf.polar(2, 90.deg) // ≈ vec2(0, 2): a point turned and scaled
+z.sqrt() // the principal square root; sin(), cos() and pow(w) too
+z slerp 0.5 to w // along the arc: the angle the short way, the length linearly
+```
+
+`Complexf` pairs with the float vectors and `Complexd` with the double ones.
 
 Multiplying by a fixed number `w` is a linear map of the plane, so the clearest way to see an
 algebra is to multiply a whole grid by one `w` and draw where it lands. Here `w = 0.9 + 0.5ε` in
@@ -988,6 +1201,28 @@ quaternions are spinny in every direction, the shortest path between two orienta
 circle, and `Quat.slerp` walks along it at constant speed with no gimbal lock. A rotation matrix
 has no such path: blending two matrices shrinks and skews in between.
 
+In box code a rotation is written much as a 2D turn is:
+
+```diffstatic {data-lang=kotlin}
+:::static
+val q = 90.deg about Vec3.Y // quat(90.deg, Vec3.Y), read aloud
+val r = 30.deg about Vec3.X
+vec(1, 0, 0) rot q // the same as q * vec(1, 0, 0)
+q then r // q first, then r: r * q
+Quat() slerp 0.5 to q // half way, at a constant rate; q is untouched
+q.pow(0.5) // half the turn about the same axis
+q.axis // Vec3.Y, and q.angle is 1.5708
+q.inv // the inverse rotation
+facing(target - eye) // the orientation that looks along target - eye
+```
+
+`q then r` exists because `*` reads right to left: `q * r` applies `r` first, the
+most common ordering bug in rotation code. `q.forward` is the rotated −z, where a
+camera with that orientation looks (Field's camera looks down −z), with `q.up` and
+`q.right` the rotated +y and +x, so `facing(d).forward` is `d.n`. `facing` is what
+`lookAlong` is usually reached for, without its convention of turning the direction
+onto +z.
+
 `DualQuat` combines the last two ideas: a quaternion whose coefficients are dual numbers. The
 quaternion half rotates; the `ε` half, whose square is 0, carries translation. Interpolating one
 (`DualQuaternionf.sclerp`) is a screw motion, which is how Field moves a camera between keys
@@ -1015,9 +1250,11 @@ and blending several is dual quaternion skinning, which keeps a twisted limb fro
 
 For vectors: name components in any order to read them, assign through
 distinct-index names to write them, use `+ - * /` for arithmetic, `invoke` and
-`len` to copy, and `%=` to overwrite. The same rules hold across `vec2`, `vec3`,
-and `vec4`. Swizzles and the `invoke`/`len`/`%=` operators exist on the float
-vectors; arithmetic also works on the double and half-precision vectors.
+`len` to copy, and `%=` to overwrite. The rest reads as sentences that return new
+values: `a dot b`, `a x b`, `a lerp t to b` and its variants, `v rot θ`, `a near b`.
+The same rules hold across `vec2`, `vec3`, and `vec4`. Swizzles exist on the float
+vectors; the operators and sentences also work on the double vectors, and
+arithmetic on the half-precision ones.
 
 For matrices, pick the precision by need: the `…f` family for anything that ends
 up on screen (cameras, rotations, per-frame transforms), the `…d` family when
