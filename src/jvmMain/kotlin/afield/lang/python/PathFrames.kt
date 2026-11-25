@@ -14,6 +14,7 @@ import afield.graphics.render.color
 import afield.graphics.render.filled
 import afield.graphics.render.stroked
 import afield.graphics.render.thickness
+import afield.math.linalg.Vector3f
 import afield.math.linalg.vec
 import afield.runtime.lifecycle.AnimationClock
 import afield.ui.visualization.LinesFraming
@@ -47,6 +48,11 @@ private const val REDRAW_SECONDS = 0.5
  *
  * Each `play()` or `wait()` in the scene is a [Beat]. A [player] steps through them, which is how a
  * slide's cues play a scene one animation at a time.
+ *
+ * Parts of a scene named with `fieldmanim.tag(mobject, "name")` can be asked for by name: [units]
+ * draws one part alone and [center] says where it is, so Kotlin can attach things of its own (a
+ * label, a physics particle) to a moving part. A scene baked with `depth=True` keeps each point's z,
+ * and [units] returns it: the scene in its own coordinates, y up, for placing in 3D.
  */
 class PathFrames internal constructor(val name: String) {
     private val lock = Any()
@@ -84,6 +90,12 @@ class PathFrames internal constructor(val name: String) {
     /** One `play()` or `wait()` of the scene, in order, with when it starts and ends in seconds. */
     data class Beat(val index: Int, val name: String, val start: Double, val end: Double)
 
+    /** The names given with `fieldmanim.tag`, in the order the scene first showed them. */
+    val tags: List<String> get() = baked.tagNames
+
+    /** Whether the scene was baked with `depth=True`, so [units] carries each point's z. */
+    val hasDepth: Boolean get() = baked.dims == 3
+
     /** The scene's `play()` and `wait()` calls, in order. Empty for a scene that only adds things. */
     val beats: List<Beat> get() = baked.beats
 
@@ -110,6 +122,9 @@ class PathFrames internal constructor(val name: String) {
      * @param frameSnapshots per frame, the snapshot it shows
      * @param beatStarts per beat (a `play()` or `wait()`), the frame it starts on
      * @param beatNames the beats' names, one per line
+     * @param pathTags per drawn path, the index into [tagNames] of its tag, or -1; empty for none
+     * @param tagNames the tags' names, one per line
+     * @param dims 2 when [points] are `x, y` pairs, 3 when they are `x, y, z` triples
      */
     @JvmOverloads
     fun publish(
@@ -125,11 +140,15 @@ class PathFrames internal constructor(val name: String) {
         frameSnapshots: IntArray,
         beatStarts: IntArray = IntArray(0),
         beatNames: String = "",
+        pathTags: IntArray = IntArray(0),
+        tagNames: String = "",
+        dims: Int = 2,
     ) {
-        val b = Baked(fps, unitWidth, unitHeight, background, points, subpaths, styles, pathSubpaths, snapshotPaths, frameSnapshots, beatStarts, beatNames)
+        val b = Baked(fps, unitWidth, unitHeight, background, points, subpaths, styles, pathSubpaths, snapshotPaths, frameSnapshots, beatStarts, beatNames, pathTags, tagNames, dims)
         synchronized(lock) {
             baked = b
             cache.clear()
+            unitCache.clear()
             version++
         }
     }
@@ -165,6 +184,60 @@ class PathFrames internal constructor(val name: String) {
         var i = floor(seconds * fps).toInt()
         if (loop) i = Math.floorMod(i, n)
         return frame(i, width, height, background)
+    }
+
+    /** The frame index showing at [seconds], as [at] chooses it, or -1 for an empty animation. */
+    private fun frameAt(seconds: Double, loop: Boolean): Int {
+        val n = frameCount
+        if (n == 0) return -1
+        val i = floor(seconds * fps).toInt()
+        return if (loop) Math.floorMod(i, n) else i.coerceIn(0, n - 1)
+    }
+
+    /**
+     * The frame at [seconds] in the scene's own units: x right and y up from the centre of the frame,
+     * z toward the viewer (zero unless baked with `depth=True`), stroke widths in the same units. Only
+     * the paths tagged [tag] when one is given; no background. Cached and shared: don't mutate it.
+     */
+    @JvmOverloads
+    fun units(seconds: Double, tag: String? = null, loop: Boolean = false): List<FLine> {
+        val b = baked
+        val i = frameAt(seconds, loop)
+        if (i < 0) return emptyList()
+        val tagIndex = if (tag == null) -2 else b.tagNames.indexOf(tag).also { if (it < 0) return emptyList() }
+        val snapshot = b.frameSnapshots[i]
+        val key = UnitKey(snapshot, tagIndex)
+        synchronized(lock) {
+            if (b === baked) unitCache[key]?.let { return it }
+        }
+        val built = b.buildUnits(snapshot, tagIndex)
+        synchronized(lock) {
+            if (b === baked) unitCache[key] = built
+        }
+        return built
+    }
+
+    /**
+     * The centre of the bounding box of every control point tagged [tag] at [seconds], in the units
+     * of [units], or `null` when nothing with that tag is on screen then.
+     */
+    @JvmOverloads
+    fun center(tag: String, seconds: Double, loop: Boolean = false): Vector3f? {
+        val b = baked
+        val i = frameAt(seconds, loop)
+        val t = b.tagNames.indexOf(tag)
+        if (i < 0 || t < 0) return null
+        return b.center(b.frameSnapshots[i], t)
+    }
+
+    /** Whether anything tagged [tag] is on screen at [seconds]. */
+    @JvmOverloads
+    fun visible(tag: String, seconds: Double, loop: Boolean = false) = center(tag, seconds, loop) != null
+
+    private data class UnitKey(val snapshot: Int, val tag: Int)
+
+    private val unitCache = object : LinkedHashMap<UnitKey, List<FLine>>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<UnitKey, List<FLine>>?) = size > 512
     }
 
     /**
@@ -213,8 +286,12 @@ class PathFrames internal constructor(val name: String) {
         val frameSnapshots: IntArray,
         beatStarts: IntArray,
         beatNames: String,
+        val pathTags: IntArray = IntArray(0),
+        tagNames: String = "",
+        val dims: Int = 2,
     ) {
         val beats: List<Beat>
+        val tagNames: List<String> = if (tagNames.isEmpty()) emptyList() else tagNames.split('\n')
 
         /** Index of each subpath's first point, each path's first subpath and each snapshot's first path. */
         val subpathPointStart: IntArray
@@ -224,7 +301,8 @@ class PathFrames internal constructor(val name: String) {
         init {
             require(fps > 0 || frameSnapshots.isEmpty()) { "fps must be positive, not $fps" }
             require(background.size == 4) { "background is RGBA, 4 floats, not ${background.size}" }
-            require(points.size % 2 == 0) { "points are x, y pairs; got ${points.size} floats" }
+            require(dims == 2 || dims == 3) { "points have 2 or 3 coordinates, not $dims" }
+            require(points.size % dims == 0) { "points are $dims-coordinate tuples; got ${points.size} floats" }
             require(subpaths.size % 2 == 0) { "subpaths are (pointCount, closed) pairs; got ${subpaths.size} ints" }
             val nSub = subpaths.size / 2
             require(styles.size == pathSubpaths.size * STYLE) {
@@ -234,7 +312,11 @@ class PathFrames internal constructor(val name: String) {
             pathSubpathStart = prefix(pathSubpaths)
             snapshotPathStart = prefix(snapshotPaths)
             val totalPoints = if (nSub == 0) 0 else subpathPointStart[nSub - 1] + subpaths[2 * (nSub - 1)]
-            require(totalPoints == points.size / 2) { "subpaths account for $totalPoints points, but ${points.size / 2} were given" }
+            require(totalPoints == points.size / dims) { "subpaths account for $totalPoints points, but ${points.size / dims} were given" }
+            require(pathTags.isEmpty() || pathTags.size == pathSubpaths.size) {
+                "pathTags has ${pathTags.size} entries for ${pathSubpaths.size} paths"
+            }
+            for (t in pathTags) require(t in -1 until this.tagNames.size) { "path tag $t, but ${this.tagNames.size} tag names" }
             for (i in 0 until nSub) {
                 val n = subpaths[2 * i]
                 require(n >= 1 && (n - 1) % 3 == 0) { "subpath $i has $n points; a subpath is a start point and 3 per cubic" }
@@ -275,8 +357,8 @@ class PathFrames internal constructor(val name: String) {
                 for (s in firstSub until firstSub + pathSubpaths[p]) {
                     var k = subpathPointStart[s]
                     val n = subpaths[2 * s]
-                    fun x(i: Int) = (points[2 * i] + unitWidth / 2) * sx
-                    fun y(i: Int) = (unitHeight / 2 - points[2 * i + 1]) * sy
+                    fun x(i: Int) = (points[dims * i] + unitWidth / 2) * sx
+                    fun y(i: Int) = (unitHeight / 2 - points[dims * i + 1]) * sy
                     f.moveTo(x(k), y(k))
                     repeat((n - 1) / 3) {
                         f.cubicTo(x(k + 1), y(k + 1), 0, x(k + 2), y(k + 2), 0, x(k + 3), y(k + 3), 0)
@@ -295,6 +377,63 @@ class PathFrames internal constructor(val name: String) {
                 out += f
             }
             return out
+        }
+
+        fun tagOf(path: Int) = if (pathTags.isEmpty()) -1 else pathTags[path]
+
+        /** [tag] -2 for every path, else only paths with that tag index. */
+        fun buildUnits(snapshot: Int, tag: Int): List<FLine> {
+            val out = ArrayList<FLine>()
+            val firstPath = snapshotPathStart[snapshot]
+            for (p in firstPath until firstPath + snapshotPaths[snapshot]) {
+                if (tag != -2 && tagOf(p) != tag) continue
+                val f = FLine()
+                val firstSub = pathSubpathStart[p]
+                for (s in firstSub until firstSub + pathSubpaths[p]) {
+                    var k = subpathPointStart[s]
+                    val n = subpaths[2 * s]
+                    fun c(i: Int, axis: Int) = if (axis < dims) points[dims * i + axis].toDouble() else 0.0
+                    f.moveTo(c(k, 0), c(k, 1), c(k, 2))
+                    repeat((n - 1) / 3) {
+                        f.cubicTo(c(k + 1, 0), c(k + 1, 1), c(k + 1, 2), c(k + 2, 0), c(k + 2, 1), c(k + 2, 2), c(k + 3, 0), c(k + 3, 1), c(k + 3, 2))
+                        k += 3
+                    }
+                    if (subpaths[2 * s + 1] != 0) f.close()
+                }
+                val st = STYLE * p
+                f.color = vec(styles[st], styles[st + 1], styles[st + 2], styles[st + 3])
+                if (styles[st + 5] != 0f) {
+                    f.filled = true
+                    f.stroked = false
+                } else {
+                    f.thickness = styles[st + 4] * MANIM_LINE_WIDTH
+                }
+                out += f
+            }
+            return out
+        }
+
+        fun center(snapshot: Int, tag: Int): Vector3f? {
+            val lo = FloatArray(3) { Float.MAX_VALUE }
+            val hi = FloatArray(3) { -Float.MAX_VALUE }
+            var any = false
+            val firstPath = snapshotPathStart[snapshot]
+            for (p in firstPath until firstPath + snapshotPaths[snapshot]) {
+                if (tagOf(p) != tag) continue
+                val firstSub = pathSubpathStart[p]
+                for (s in firstSub until firstSub + pathSubpaths[p]) {
+                    val k0 = subpathPointStart[s]
+                    for (i in k0 until k0 + subpaths[2 * s]) {
+                        for (a in 0 until 3) {
+                            val v = if (a < dims) points[dims * i + a] else 0f
+                            if (v < lo[a]) lo[a] = v
+                            if (v > hi[a]) hi[a] = v
+                        }
+                        any = true
+                    }
+                }
+            }
+            return if (any) Vector3f((lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2) else null
         }
 
         companion object {
