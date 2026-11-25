@@ -281,7 +281,8 @@ content rather than to whatever width the box was dragged to. It works in the op
 from everything above: it measures the panels and then grows
 `box.style.width` to fit them (`src/jsMain/kotlin/afield/app/client/Main.kt:1652#if (desiredWidth > currentWidth + 2.0)`).
 Its height sibling `fitOutputDisclosuresForScreenshot` sets panel heights too, but leaves alone a
-panel whose frames all state their own height.
+panel whose frames all state their own height, and a panel that holds only controls, which the
+panel sizer already fits to them.
 
 With a fill frame, that would loop: the panel grows to the box, the prep pass grows the box to the
 panel, and the auto-size passes grow the panel to the new box, bounded only by the window-width

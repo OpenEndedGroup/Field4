@@ -3793,7 +3793,7 @@ YouTube id, and a fractional rect has to sit inside the audience window.
 
 `src/jvmMain/kotlin/afield/ui/slides/Presentation.kt` — [read the source](source/jvmMain/afield/ui/slides/Presentation/)
 
-**Used in:** [Presenting with Field](../presentation_studio.md)
+**Used in:** [Presenting with Field](../presentation_studio.md), [Manim Scenes](../manim.md)
 
 ### Top-level functions { #presentation-kt-functions }
 
@@ -3886,7 +3886,7 @@ export to the public site needs: prose, then each figure captured at those value
 
 `src/jvmMain/kotlin/afield/ui/slides/PresentationFigures.kt` — [read the source](source/jvmMain/afield/ui/slides/PresentationFigures/)
 
-**Used in:** [Presenting with Field](../presentation_studio.md)
+**Used in:** [Manim Scenes](../manim.md), [Presenting with Field](../presentation_studio.md)
 
 ### Top-level functions { #presentationfigures-kt-functions }
 

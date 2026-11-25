@@ -2,8 +2,8 @@
  * Shared memory between Python boxes and Kotlin boxes: images and line sets that numpy writes in
  * place and Kotlin reads without copying through a serializer.
  *
- * [NumpyShared] hands out named [SharedImage] and [SharedLines] buffers; the `fieldcv` package in
- * `python/` is the Python side. `NumpySharedTest` covers the publish/consume handoff.
+ * [NumpyShared] hands out named [SharedImage] and [SharedLines] buffers, and [PathFrames]
+ * animations; the `fieldcv` and `fieldmanim` packages in `python/` are the Python side. `NumpySharedTest` covers the publish/consume handoff.
  */
 
 package afield.lang.python
@@ -56,6 +56,7 @@ import java.util.concurrent.ConcurrentHashMap
 object NumpyShared {
     private val images = ConcurrentHashMap<String, SharedImage>()
     private val lines = ConcurrentHashMap<String, SharedLines>()
+    private val pathFrames = ConcurrentHashMap<String, PathFrames>()
 
     /**
      * The shared image called [name], creating it at [height] x [width] if it does not exist or has a
@@ -82,6 +83,13 @@ object NumpyShared {
     fun lines(name: String): SharedLines = lines.computeIfAbsent(name) { SharedLines(it) }
 
     /**
+     * The baked path animation called [name], created empty on first use; `fieldmanim.bake` fills it
+     * from a Manim scene. See [PathFrames].
+     */
+    @JvmStatic
+    fun pathFrames(name: String): PathFrames = pathFrames.computeIfAbsent(name) { PathFrames(it) }
+
+    /**
      * Draw [lines] into [box]'s output on [channel] as SVG, scaled from normalized coordinates to
      * [width] x [height] pixels. This is a preview in the box itself; the renderer path is
      * [SharedLines.lines].
@@ -94,7 +102,7 @@ object NumpyShared {
 
     /** Every shared buffer by name, for the status panel and for debugging. */
     @JvmStatic
-    fun names(): List<String> = (images.keys.map { "image:$it" } + lines.keys.map { "lines:$it" }).sorted()
+    fun names(): List<String> = (images.keys.map { "image:$it" } + lines.keys.map { "lines:$it" } + pathFrames.keys.map { "paths:$it" }).sorted()
 }
 
 private fun direct(bytes: Int): ByteBuffer = ByteBuffer.allocateDirect(bytes).order(ByteOrder.nativeOrder())

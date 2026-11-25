@@ -596,6 +596,9 @@ For worked examples, see three talks built this way: [Sound](explainer_sound.md)
 [Cameras and Lenses](explainer_cameras.md) and [Lights and Shadows](explainer_lights.md). Each page
 walks through the talk figure by figure.
 
+A figure can also be a [Manim](manim.md) scene, baked in a Python box and stepped one animation per
+cue: see [One beat at a time](manim.md#one-beat-at-a-time).
+
 !!! note "Figures need the Electron app"
     A figure is a separate live view laid over its slot on the audience display, so it appears in
     Field's Electron app only. Fades and reveals apply to the prose around it; the figure itself
