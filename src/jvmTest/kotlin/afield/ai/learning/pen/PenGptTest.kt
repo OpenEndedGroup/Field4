@@ -119,6 +119,32 @@ class PenGptTest {
     }
 
     @Test
+    fun aStyleMixedFromOneWriterIsThatWriter() {
+        val alone = tiny.generate(PenGptPrompt("ab", "ann"))
+        assertContentEquals(alone, tiny.generate(PenGptPrompt("ab", style = tiny.style("ann" to 1.0))))
+        assertNotEquals(alone.toList(), tiny.generate(PenGptPrompt("ab", style = tiny.style("ann" to 0.5, "bo" to 0.5))).toList())
+    }
+
+    @Test
+    fun theBundledCorporaModelDrawsWhatItIsToldTo() {
+        val m = PenGpt.corpora
+        // told labels, as handwriting is, but a drawing model: its meta says so
+        assertEquals(1, m.format)
+        assertEquals(false, m.writesText)
+        assertEquals(listOf("", "boids", "cracks", "echoes", "harmonograph", "hershey", "michaux", "mixed", "plants", "truchet"), m.writers)
+        fun aspect(d: FLine): Double {
+            val p = d.pieces().flatMap { resampleForPen(it, 1.0) }
+            return (p.maxOf { it.x } - p.minOf { it.x }).toDouble() / (p.maxOf { it.y } - p.minOf { it.y })
+        }
+        // a Truchet tiling is a grid of arcs nine cells wide and five high; a Michaux field is columns
+        // of lines longer than the columns are wide
+        val truchet = (0L until 3L).map { aspect(m.draw("truchet", temperature = 0.8, seed = it)) }
+        val michaux = (0L until 3L).map { aspect(m.draw("michaux", temperature = 0.8, seed = it)) }
+        assertTrue(truchet.all { it > 1.4 }, "truchet width / height $truchet")
+        assertTrue(michaux.average() < 1.2, "michaux width / height $michaux")
+    }
+
+    @Test
     fun aNamedModelThatIsNotThereSaysWhereItLooked() {
         val e = assertFailsWith<IllegalArgumentException> { PenGpt.named("no-such-pengpt-model") }
         assertTrue(File(PenGpt.folder, "no-such-pengpt-model.npz").path in e.message!!, e.message)

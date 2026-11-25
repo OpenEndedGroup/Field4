@@ -61,7 +61,8 @@ import kotlin.math.tanh
  * phrase vector (drawing).
  *
  * @param text for the handwriting model, the words to write, separated by spaces, at most 50 bytes. For
- *   the drawing model, a phrase to draw, which [SiglipText] turns into a vector the first time it is used.
+ *   the drawing model, a phrase to draw, which [SiglipText] turns into a vector the first time it is used;
+ *   for a drawing model trained on labels (format 1), one of those labels.
  * @param writer a writer (handwriting) or source (drawing) by name, from [PenGpt.writers]. `""` is the
  *   model's "anyone".
  * @param vector a SigLIP 2 vector to draw, instead of [text]; `null` uses [text].
@@ -109,11 +110,17 @@ data class PenGptSampling(
  */
 class PenGpt private constructor(arrays: Map<String, NpyArray>) {
 
-    /** Model-file format: 1 is told text bytes (handwriting), 2 is told a phrase vector (drawing). */
+    /** Model-file format: 1 is told text bytes (handwriting, or labels to draw), 2 is told a phrase vector (drawing). */
     val format: Int
 
-    /** True for a model told text to write, false for one told a phrase vector to draw. */
-    val writesText: Boolean get() = format == 1
+    /**
+     * True for a model that writes words (handwriting), false for one that draws. A model file says
+     * which with `"kind"` in its meta; one that does not is a handwriting model when told text bytes.
+     */
+    val writesText: Boolean
+
+    /** True when the model is told text bytes (format 1) rather than a vector (format 2). */
+    internal val toldText: Boolean get() = format == 1
 
     /**
      * The writers (handwriting) or sources (drawing) this model knows, by name. The first, `""`, is
@@ -186,6 +193,7 @@ class PenGpt private constructor(arrays: Map<String, NpyArray>) {
         fun bool(name: String) = meta[name]?.jsonPrimitive?.boolean ?: false
         format = int("format", 1)
         require(format <= 2) { "PenGPT model format $format is newer than this reader (2)" }
+        writesText = meta["kind"]?.jsonPrimitive?.content?.let { it == "hand" } ?: (format == 1)
         nLayer = int("n_layer"); nHead = int("n_head"); bands = int("bands")
         contextLength = min(int("max_seq_length"), int("block_size"))
         grid = double("grid"); maxTextLength = int("max_text_length")
@@ -336,6 +344,23 @@ class PenGpt private constructor(arrays: Map<String, NpyArray>) {
     /** The cross-attention keys and values for one prompt, per layer. */
     internal class Context(val rows: Int, val keys: List<FloatArray>, val values: List<FloatArray>)
 
+    /**
+     * A writer or source vector mixed from the ones the model knows, each by name with its weight:
+     * `style("michaux" to 0.5, "plants" to 0.5)`. Pass it as [PenGptPrompt.style] to write or draw in
+     * a manner between them.
+     */
+    fun style(vararg mix: Pair<String, Double>): FloatArray {
+        require(mix.isNotEmpty()) { "style needs at least one writer or source" }
+        val out = FloatArray(writerEmb.cols)
+        for ((name, weight) in mix) {
+            val i = writers.indexOf(name)
+            require(i >= 0) { "no writer or source called '$name'; see writers" }
+            val row = writerEmb.row(i)
+            for (c in out.indices) out[c] += (weight * row[c]).toFloat()
+        }
+        return out
+    }
+
     private fun styleVector(prompt: PenGptPrompt): FloatArray = prompt.style?.copyOf() ?: run {
         val i = writers.indexOf(prompt.writer)
         require(i >= 0) { "no writer or source called '${prompt.writer}'; see writers" }
@@ -358,7 +383,7 @@ class PenGpt private constructor(arrays: Map<String, NpyArray>) {
         val rows = ArrayList<FloatArray>()
         rows += rms(styleVector(prompt))
         val hs = hints(prompt)
-        if (!writesText) {
+        if (!toldText) {
             val learned = prompt.context
             if (learned != null) {
                 for (r in learned) { require(r.size == width) { "a context row has ${r.size} numbers; this model is $width wide" }; rows += rms(r) }
@@ -555,9 +580,10 @@ class PenGpt private constructor(arrays: Map<String, NpyArray>) {
 
     /** A fresh sequence told [prompt]: the BOS token read, nothing else. */
     internal fun start(prompt: PenGptPrompt, sampling: PenGptSampling): State {
-        val told = if (writesText || prompt.context != null) null else vectorOf(prompt)
+        val told = if (toldText || prompt.context != null) null else vectorOf(prompt)
         val main = context(prompt, told)
-        val guided = !writesText && (told != null || prompt.context != null) && guidanceOf(sampling) != 1.0
+        val prompted = if (toldText) prompt.text.isNotEmpty() else told != null || prompt.context != null
+        val guided = !writesText && prompted && guidanceOf(sampling) != 1.0
         val contexts = if (guided) listOf(main, context(prompt.copy(text = "", vector = null, context = null), null)) else listOf(main)
         return State(contexts).also { it.push(bos) }
     }
@@ -937,6 +963,30 @@ class PenGpt private constructor(arrays: Map<String, NpyArray>) {
         }
 
         private val namedModels = java.util.concurrent.ConcurrentHashMap<String, PenGpt>()
+
+        /**
+         * One small drawing model (9 million parameters) trained on the corpora Field's synthetic pens
+         * learned from, each as a source of its own and a label: `"hershey"`, `"harmonograph"`,
+         * `"plants"`, `"truchet"`, `"boids"`, `"mixed"`, `"michaux"`, `"cracks"` and `"echoes"`. It
+         * ships with Field, so it needs no download.
+         */
+        val corpora: PenGpt by lazy { bundled("corpora") }
+
+        /**
+         * A PenGPT model that ships with Field, from `afield/pen/models/pengpt-<name>.npz` on the
+         * classpath (stored in Git LFS), loaded once.
+         */
+        fun bundled(name: String): PenGpt = bundledModels.getOrPut(name) {
+            val path = "/afield/pen/models/pengpt-$name.npz"
+            val bytes = PenGpt::class.java.getResourceAsStream(path)?.use { it.readBytes() }
+                ?: error("no bundled PenGPT model called \"$name\" ($path)")
+            check(!String(bytes, 0, minOf(bytes.size, 40), Charsets.US_ASCII).startsWith("version https://git-lfs")) {
+                "$path is a Git LFS pointer, not the model: run `git lfs pull` in the checkout"
+            }
+            PenGpt(NumpyIO.readNpz(bytes.inputStream(), path))
+        }
+
+        private val bundledModels = java.util.concurrent.ConcurrentHashMap<String, PenGpt>()
     }
 }
 
