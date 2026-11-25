@@ -15360,7 +15360,7 @@ Measures actual cached Gaussian energy and the production text draw before final
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="readingtextblurenergysmoke-kt--readingtextblurenergysmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/graphics/scene/reading/ReadingTextBlurEnergySmoke/#L36) |  |
+| <a id="readingtextblurenergysmoke-kt--readingtextblurenergysmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/graphics/scene/reading/ReadingTextBlurEnergySmoke/#L43) |  |
 
 ## ReadingWalk.kt { #readingwalk-kt }
 
