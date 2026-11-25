@@ -4331,8 +4331,12 @@ class Server {
                     // file, where a test can install the real thing instead of a copy.
                     installFieldApiCors()
 
-                    // Patchy's threaded WebAssembly build needs an isolated top-level Field page.
-                    // Enable this only for a Field instance serving a local Patchy build.
+                    // Patchy's threaded WebAssembly build needs SharedArrayBuffer. Field's Electron
+                    // app turns that on directly (electron/main.js), so the headers that isolate a
+                    // page are opt-in: AFIELD_CROSS_ORIGIN_ISOLATION=1, for Patchy in an external
+                    // browser. They apply to every Field page and block every cross-origin iframe
+                    // in every output area, so a Patchy install alone never turns them on.
+                    val crossOriginIsolation = System.getenv("AFIELD_CROSS_ORIGIN_ISOLATION") == "1"
                     val patchyInstalledSite = File(System.getProperty("user.home"), ".field4/patchy-web/site")
                     val patchyWebRoot = System.getenv("AFIELD_PATCHY_WEB_ROOT")?.takeIf { it.isNotBlank() }
                         ?.let { File(it).canonicalFile }
@@ -4341,6 +4345,8 @@ class Server {
                         require(File(patchyWebRoot, "patchy.html").isFile) {
                             "AFIELD_PATCHY_WEB_ROOT must contain patchy.html"
                         }
+                    }
+                    if (crossOriginIsolation) {
                         intercept(ApplicationCallPipeline.Setup) {
                             call.response.header("Cross-Origin-Opener-Policy", "same-origin")
                             call.response.header("Cross-Origin-Embedder-Policy", "require-corp")

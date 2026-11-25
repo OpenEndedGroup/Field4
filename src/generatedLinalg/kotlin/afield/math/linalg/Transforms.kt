@@ -355,11 +355,9 @@ open class Matrix4f() : Matrix4fc {
         ))
     }
     override fun toString():String="[$m00 $m10 $m20 $m30; $m01 $m11 $m21 $m31; $m02 $m12 $m22 $m32; $m03 $m13 $m23 $m33]"
-    /**
-     * Builders for one-step matrices, which compose in reading order with `then`:
-     * `Mat4.scale(2) then Mat4.rotate(q) then Mat4.translate(v)` scales, then rotates, then moves.
-     * Each returns a new matrix.
-     */
+    // Builders for one-step matrices, which compose in reading order with `then`:
+    // `Mat4.scale(2) then Mat4.rotate(q) then Mat4.translate(v)` scales, then rotates, then moves.
+    // Each returns a new matrix. (A KDoc block cannot attach to a companion object.)
     companion object {
         /** A translation by [v]. */
         fun translate(v: Vector3fc): Matrix4f = Matrix4f().translation(v)

@@ -193,6 +193,22 @@ function appendChromiumSwitchIfMissing(name, value) {
   }
 }
 
+// Chromium keeps one --enable-features list; add to it rather than replacing what is there.
+function enableChromiumFeature(feature) {
+  const current = app.commandLine.hasSwitch("enable-features")
+    ? app.commandLine.getSwitchValue("enable-features").split(",").filter(Boolean)
+    : [];
+  if (!current.includes(feature)) {
+    app.commandLine.appendSwitch("enable-features", [...current, feature].join(","));
+  }
+}
+
+// SharedArrayBuffer for every Field page, without cross-origin isolation. Threaded WebAssembly
+// (Patchy's Qt build) needs it, and the only other way to get it is COOP/COEP headers on the
+// whole Field page, which block every cross-origin iframe in every output area. Pages in an
+// external browser still need AFIELD_CROSS_ORIGIN_ISOLATION=1 on the server for it.
+enableChromiumFeature("SharedArrayBuffer");
+
 function installChromiumGpuSwitches() {
   if (process.env.FIELD_ELECTRON_SOFTWARE_GPU === "1") {
     console.log("[electron,gpu] software GPU mode requested by FIELD_ELECTRON_SOFTWARE_GPU=1");
@@ -205,7 +221,7 @@ function installChromiumGpuSwitches() {
   // The desktop must work on mixed GPUs and ordinary drivers. Let Chromium select its backend.
   // The offscreen browser-texture producer configures its own accelerated switches separately.
   if (!shouldUseAngleVulkan()) return;
-  appendChromiumSwitchIfMissing("enable-features", "Vulkan");
+  enableChromiumFeature("Vulkan");
   appendChromiumSwitchIfMissing("use-angle", "vulkan");
 }
 
