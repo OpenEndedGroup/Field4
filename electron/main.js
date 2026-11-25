@@ -2177,6 +2177,12 @@ app.whenReady().then(() => {
   require("./presentation").install();
   require("./rtt-view-host").install();
   require("./aaaframe-sign-in").install();
+  // Output-area iframes show sites that refuse framing (X-Frame-Options, CSP frame-ancestors).
+  require("./framing-relief.cjs").installFramingRelief(
+    require("electron").session.defaultSession,
+    process.env.APP_URL || "https://localhost:9092/welcome",
+    diagnosticLog,
+  );
   createMainWindow();
   if (process.env.FIELD_PRESENTATION_PROJECT) {
     require("./presentation").openPresentation(process.env.FIELD_PRESENTATION_PROJECT)
