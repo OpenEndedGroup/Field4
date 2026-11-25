@@ -901,6 +901,9 @@ CAPTURE_PROFILE_PLATFORMS = {
     # Output that needs a macOS-only native library and nothing else: Syphon's shared surfaces.
     "macos-native": "darwin",
     "patchy-web": "",  # optional WebAssembly site; available on any host when explicitly selected
+    # Model weights fitted on the author's machine and not published (PenGPT fine-tuned on Michaux):
+    # any host that has them, when explicitly selected; elsewhere the committed capture is retained.
+    "local-weights": "",
 }
 
 
