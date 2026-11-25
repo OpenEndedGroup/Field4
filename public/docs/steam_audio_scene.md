@@ -9,13 +9,13 @@ right. In the second take, listen for the loss of level and the softer high end.
 
 ### Clear path
 
-```diffstatic_runner {data-lang=kotlin audio="assets/steam_audio_scene/clear.wav" audio-spec="clear" audio-renderer="afield.examples.steamaudio.SteamAudioScreenStudy" requires="steam-audio,dirt-samples" embed=true hidden=true name="steam-audio-screen-clear"}
+```diffstatic_runner {data-lang=kotlin audio="assets/steam_audio_scene/clear.wav" audio-spec="clear" audio-renderer="afield.examples.steamaudio.SteamAudioScreenStudy" capture-profile="macos-electron" requires="steam-audio,dirt-samples" embed=true hidden=true name="steam-audio-screen-clear"}
 // The pinned Dirt-Samples hi-hat, rendered with the screen out of the direct path.
 ```
 
 ### Screen across the path
 
-```diffstatic_runner {data-lang=kotlin audio="assets/steam_audio_scene/screen.wav" audio-spec="screen" audio-renderer="afield.examples.steamaudio.SteamAudioScreenStudy" requires="steam-audio,dirt-samples" embed=true hidden=true name="steam-audio-screen-blocked"}
+```diffstatic_runner {data-lang=kotlin audio="assets/steam_audio_scene/screen.wav" audio-spec="screen" audio-renderer="afield.examples.steamaudio.SteamAudioScreenStudy" capture-profile="macos-electron" requires="steam-audio,dirt-samples" embed=true hidden=true name="steam-audio-screen-blocked"}
 // The same hi-hat and render level, with the direct path through wood.
 ```
 

@@ -66,8 +66,7 @@ object TranscriptMount {
             else -> emptyList<Any?>()
         }
         return raw.mapNotNull { op ->
-            @Suppress("UNCHECKED_CAST")
-            (op as? Map<*, *>)?.entries?.associate { it.key.toString() to it.value } as Map<String, Any?>?
+            (op as? Map<*, *>)?.entries?.associate { it.key.toString() to it.value }
         }
     }
 

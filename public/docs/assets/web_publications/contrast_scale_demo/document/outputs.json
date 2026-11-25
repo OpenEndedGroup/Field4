@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-25T06:55:58.228Z",
+  "documentName": "contrast_scale_demo",
+  "outputs": [
+    {
+      "uid": "contrast_bands",
+      "channel": "contrast-bands",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "contrast_swatches",
+      "channel": "contrast-scale",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 1166,
+      "height": 265,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "contrast_picker",
+      "channel": "controls",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 473,
+      "height": 85,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "contrast_picker",
+      "channel": "background",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 200,
+      "height": 54,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "contrast_picker",
+      "channel": "scale",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 469,
+      "height": 92,
+      "path": "outputs/4.html"
+    }
+  ]
+}

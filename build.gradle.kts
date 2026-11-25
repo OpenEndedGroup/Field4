@@ -1745,6 +1745,38 @@ val checkExpectedTestFailures = tasks.register<Exec>("checkExpectedTestFailures"
     )
 }
 
+// The paint tests against a freshly built native/field-paint, refusing a skip. In plain jvmTest a
+// machine without build/field-paint reports all of them SKIPPED (requirePaintLibrary()), and no
+// landing runs jvmTest at all, so a red paint test once sat on main unnoticed. The landing guard
+// selects this task for a diff under native/field-paint or afield/graphics/paint
+// (tools/check_staged_generated_artifacts.py), so a paint change is exercised before it lands.
+// Needs cargo; dev_docs/testing/TESTING_STRATEGY.md "Native-gated tests".
+tasks.register<org.gradle.api.tasks.testing.Test>("checkPaintTests") {
+    group = "verification"
+    description = "Builds the paint native and runs afield.graphics.paint.* with no skips allowed."
+    dependsOn("jvmTestClasses", buildPaintNative)
+    testClassesDirs = jvmTestTask.get().testClassesDirs
+    classpath = jvmTestTask.get().classpath
+    filter { includeTestsMatching("afield.graphics.paint.*") }
+    workingDir = rootDir
+    outputs.upToDateWhen { false }
+    val skipped = mutableListOf<String>()
+    addTestListener(object : org.gradle.api.tasks.testing.TestListener {
+        override fun beforeSuite(suite: org.gradle.api.tasks.testing.TestDescriptor) {}
+        override fun afterSuite(suite: org.gradle.api.tasks.testing.TestDescriptor, result: org.gradle.api.tasks.testing.TestResult) {}
+        override fun beforeTest(test: org.gradle.api.tasks.testing.TestDescriptor) {}
+        override fun afterTest(test: org.gradle.api.tasks.testing.TestDescriptor, result: org.gradle.api.tasks.testing.TestResult) {
+            if (result.resultType == org.gradle.api.tasks.testing.TestResult.ResultType.SKIPPED) skipped += "${test.className}.${test.name}"
+        }
+    })
+    doLast {
+        if (skipped.isNotEmpty()) throw GradleException(
+            "checkPaintTests: ${skipped.size} paint test(s) skipped although buildPaintNative ran; " +
+                "PaintLibrary did not load build/field-paint/release:\n" + skipped.joinToString("\n")
+        )
+    }
+}
+
 tasks.register<org.gradle.api.tasks.testing.Test>("jvmMeasurements") {
     group = "verification"
     description = "Runs opt-in JVM measurement fixtures excluded from the deterministic check task."

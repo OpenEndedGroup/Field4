@@ -50,8 +50,13 @@ GUIDE = textwrap.dedent("""\
 
 class TempRepo:
     def __init__(self) -> None:
+        # One level down, so that worktrees the code under test puts beside the checkout (a pass's,
+        # a handoff session's `handoffs-<batch>-<minute>`) land in this test's own directory rather
+        # than the shared system temp dir, where two runs in the same minute collided (the lander's
+        # and an agent's, 2026-11-24).
         self._dir = TemporaryDirectory()
-        self.root = Path(self._dir.name)
+        self.root = Path(self._dir.name) / "repo"
+        self.root.mkdir()
         self.git("init", "-q", "-b", "main")
         self.git("config", "user.email", "t@example.com")
         self.git("config", "user.name", "Test")
@@ -535,7 +540,11 @@ class PassTest(unittest.TestCase):
         self.store_path.write_text(json.dumps({"version": 1, "annotations": [
             {"id": "11111111-a", "pageUrl": PAGE, "note": "reword", "anchor": {"exact": "then continue to the next step"}},
             {"id": "33333333-c", "pageUrl": other, "note": "fine?", "anchor": {"exact": "A second page"}}]}))
-        self.worktree = Path(self.repo._dir.name + "-wt")
+        self.worktree = self.repo.root.parent / "pass-wt"
+        # `pass land` checks before it enqueues; never with the real precheck in a throwaway repo.
+        guard = mock.patch.dict(os.environ, {dn.GUARD_ENV: f"{sys.executable} -c pass"})
+        guard.start()
+        self.addCleanup(guard.stop)
 
     def tearDown(self) -> None:
         subprocess.run(["rm", "-rf", str(self.worktree)], check=False)
@@ -720,6 +729,201 @@ class PassTest(unittest.TestCase):
         self.assertTrue(all(dn.note_state(n) == "open" for n in notes))
         stopped = [e for n in notes for e in n.get("thread", []) if e.get("kind") == "run"]
         self.assertTrue(any("stopped before recording an outcome" in e["text"] for e in stopped))
+
+
+class GuardLoopTest(unittest.TestCase):
+    """A guard failure goes back through the notes that made the edit (pass docs-pass/20261124-1903:
+    two notes on presentation_studio.md fought ktfmt, and the lander's bounce on checkBoxCodeFormat
+    left the human to hand-start a fixer with no link to them)."""
+
+    def setUp(self) -> None:
+        self.repo = TempRepo()
+        self.repo.write("public/docs/guide.md", GUIDE)
+        self.repo.write("public/docs/other.md", "# Other\n\nA second page with a sentence.\n")
+        self.repo.write(".gitignore", ".field-backdoor/\nstore.json*\n__pycache__/\n")
+        self.repo.write("agent.py", GUARDED_AGENT)
+        self.repo.write("guard.py", FAKE_GUARD)
+        for tool in ("land.py", "field_agent.py"):
+            self.repo.write(f"tools/{tool}", (Path(__file__).resolve().parent / tool).read_text())
+        self.repo.commit("docs")
+        self.store_path = self.repo.root / "store.json"
+        self.store_path.write_text(json.dumps({"version": 1, "annotations": [
+            {"id": "11111111-a", "pageUrl": PAGE, "note": "write }.present()", "anchor": {"exact": "then continue to the next step"}},
+            {"id": "33333333-c", "pageUrl": "https://openendedgroup.com/field4/other/", "note": "fine?",
+             "anchor": {"exact": "A second page"}}]}))
+        self.worktree = self.repo.root.parent / "pass-wt"
+        guard = mock.patch.dict(os.environ, {dn.GUARD_ENV: f"{sys.executable} {{root}}/guard.py"})
+        guard.start()
+        self.addCleanup(guard.stop)
+        self.agent = f"{sys.executable} {self.worktree / 'agent.py'} {{prompt_file}}"
+
+    def tearDown(self) -> None:
+        subprocess.run(["rm", "-rf", str(self.worktree)], check=False)
+        self.repo.close()
+
+    def cli(self, *args: str) -> int:
+        with mock.patch("builtins.print"):
+            return dn.main(["--store", str(self.store_path), "--repo", str(self.repo.root), *args])
+
+    def notes(self) -> dict:
+        return {n["id"]: n for n in json.loads(self.store_path.read_text())["annotations"]}
+
+    def status(self) -> dict:
+        return dn.pass_status(dn.Git(self.repo.root), dn.Store(self.store_path))
+
+    def queue(self) -> Path:
+        return Path(self.repo.git("rev-parse", "--path-format=absolute", "--git-common-dir").strip()) / "field-land-queue"
+
+    def drained_and_committed(self) -> None:
+        self.assertEqual(self.cli("pass", "create", "--path", str(self.worktree)), 0)
+        self.assertEqual(self.cli("pass", "revise", "--jobs", "2", "--agent-command", self.agent), 0)
+        self.assertTrue(all(dn.is_resolved(n) for n in self.notes().values()))
+        self.assertEqual(self.cli("pass", "commit"), 0)
+
+    def test_failure_reopens_its_notes_a_redrain_hands_off_and_the_rest_lands(self) -> None:
+        self.drained_and_committed()
+
+        # 1. The check before landing fails on guide.md, and nothing is enqueued.
+        with mock.patch.object(dn, "ensure_lander", return_value=True) as lander:
+            self.assertEqual(self.cli("pass", "land"), 1)
+        lander.assert_not_called()
+        self.assertFalse(list((self.queue() / "pending").glob("*.json")) if (self.queue() / "pending").is_dir() else [])
+        status = self.status()
+        guard = status["pass"]["guard"]
+        self.assertEqual((guard["state"], guard["source"], guard["files"]), ("failed", "precheck", ["public/docs/guide.md"]))
+        self.assertEqual(guard["reopened"], ["11111111-a"])
+        self.assertEqual([n["id"] for n in status["guardNotes"]], ["11111111-a"])
+
+        # 2. Only the note whose edit changed guide.md is back, with the guard's words in its thread.
+        notes = self.notes()
+        self.assertEqual(dn.note_state(notes["11111111-a"]), "open")
+        self.assertTrue(dn.is_resolved(notes["33333333-c"]), "other.md passed; its note stays resolved")
+        comment = notes["11111111-a"]["thread"][-1]
+        self.assertEqual((comment["kind"], comment["author"]), ("comment", dn.GUARD_AUTHOR))
+        self.assertIn("would format public/docs/guide.md", comment["text"])
+        self.assertEqual(comment["changedFiles"], ["public/docs/guide.md"])
+
+        # 3. Revise again drains that page only, and its brief carries the output.
+        self.assertEqual(self.cli("pass", "revise", "--reopened", "--agent-command", self.agent), 0)
+        progress = dn.latest_progress(self.worktree)
+        self.assertEqual([p["key"] for p in progress["partitions"]], ["public/docs/guide.md"])
+        prompt = next((self.worktree / ".field-backdoor/docs-notes/runs" / progress["runId"]).glob("*.prompt.md")).read_text()
+        self.assertIn("## A guard failed on this page's edit", prompt)
+        self.assertIn("would format public/docs/guide.md", prompt)
+        self.assertNotIn("33333333-c", prompt)
+
+        # 4. Its agent handed the guard off: the page's change leaves the pass, the note waits.
+        notes = self.notes()
+        handoff = next(n for n in notes.values() if n.get("kind") == "handoff")
+        self.assertEqual(handoff["handoff"]["batch"], "code")
+        self.assertEqual(dn.note_state(notes["11111111-a"]), "blocked")
+        self.assertEqual(dn.blocked_by(notes["11111111-a"]), handoff["id"])
+        guard = dn.load_pass(self.repo.root)["guard"]
+        self.assertEqual((guard["state"], guard["discarded"]), ("revised", ["public/docs/guide.md"]))
+        self.assertEqual((self.worktree / "public/docs/guide.md").read_text(), GUIDE)
+
+        # 5. The rest of the pass checks clean and is enqueued.
+        self.assertEqual(self.cli("pass", "commit"), 0)
+        with mock.patch.object(dn, "ensure_lander", return_value=True) as lander:
+            self.assertEqual(self.cli("pass", "land"), 0)
+        lander.assert_called_once()
+        self.assertEqual(self.status()["worktree"]["landing"]["state"], "pending")
+        self.assertEqual(dn.load_pass(self.repo.root)["guard"]["state"], "passed")
+        changed = {f["path"] for f in self.status()["worktree"]["changed"]}
+        self.assertIn("public/docs/other.md", changed)
+        self.assertNotIn("public/docs/guide.md", changed)
+        self.assertTrue(any(p.startswith("dev_docs/handoffs/") for p in changed), "the handoff document lands")
+
+    def test_a_fixed_edit_resolves_again_and_stays_in_the_pass(self) -> None:
+        self.drained_and_committed()
+        self.assertEqual(self.cli("pass", "check"), 1)
+        with mock.patch.dict(os.environ, {"GUARDED_AGENT_FIX": "1"}):
+            self.assertEqual(self.cli("pass", "revise", "--reopened", "--agent-command", self.agent), 0)
+        notes = self.notes()
+        self.assertTrue(dn.is_resolved(notes["11111111-a"]))
+        self.assertEqual(notes["11111111-a"]["resolution"], "kept the wording, fixed the shape")
+        guard = dn.load_pass(self.repo.root)["guard"]
+        self.assertEqual((guard["state"], guard.get("discarded")), ("revised", []))
+        self.assertIn("go on", (self.worktree / "public/docs/guide.md").read_text())
+        self.assertEqual(self.cli("pass", "commit"), 0)
+        self.assertEqual(self.cli("pass", "check"), 0)
+
+    def test_a_bounce_goes_back_to_its_notes_once(self) -> None:
+        self.drained_and_committed()
+        with mock.patch.dict(os.environ, {dn.GUARD_ENV: f"{sys.executable} -c pass"}), \
+                mock.patch.object(dn, "ensure_lander", return_value=True):
+            self.assertEqual(self.cli("pass", "land"), 0)
+        pending = next((self.queue() / "pending").glob("*.json"))
+        log = self.repo.root.parent / (self.repo.root.name + "-lander.log")
+        self.addCleanup(lambda: log.unlink(missing_ok=True))
+        log.write_text("> Task :checkBoxCodeFormat FAILED\nwould format /lander/wt/public/docs/guide.md\n")
+        item = json.loads(pending.read_text()) | {"reason": "checkBoxCodeFormat failed", "log": str(log)}
+        pending.unlink()
+        (self.queue() / "bounced").mkdir(exist_ok=True)
+        (self.queue() / "bounced" / pending.name).write_text(json.dumps(item))
+
+        guard = self.status()["pass"]["guard"]
+        self.assertEqual((guard["source"], guard["landId"], guard["reopened"]), ("lander", item["id"], ["11111111-a"]))
+        self.assertEqual(guard["tasks"], ["checkBoxCodeFormat"])
+        self.status()  # looking again takes nothing twice
+        thread = self.notes()["11111111-a"]["thread"]
+        self.assertEqual(sum(1 for e in thread if e.get("author") == dn.GUARD_AUTHOR and e["kind"] == "comment"), 1)
+        self.assertIn("the lander bounced the pass", thread[-1]["text"])
+
+    def test_paths_in_guard_output(self) -> None:
+        output = textwrap.dedent("""\
+            would format public/docs/guide.md
+            e: file:///Users/x/wt/src/jvmMain/kotlin/afield/A.kt:12:5 unresolved reference
+            public/docs/other.md.bak and public/docs/other.mdx are other files
+            """)
+        mine = ["public/docs/guide.md", "src/jvmMain/kotlin/afield/A.kt", "public/docs/other.md", "public/docs/tour.md"]
+        self.assertEqual(dn.guard_files(output, mine), ["public/docs/guide.md", "src/jvmMain/kotlin/afield/A.kt"])
+        excerpt = dn.guard_excerpt("noise\n" * 50 + "> Task :checkBoxCodeFormat FAILED\n", [])
+        self.assertEqual(excerpt, "> Task :checkBoxCodeFormat FAILED")
+
+
+# The stand-in agent for the guard loop: a first drain edits each page (guide.md in a shape the fake
+# guard refuses) and resolves; a drain whose brief reports a guard failure hands it off with
+# --batch code, or, with GUARDED_AGENT_FIX set, fixes the shape and resolves again.
+GUARDED_AGENT = textwrap.dedent("""\
+    import os, re, subprocess, sys
+    prompt = open(sys.argv[1], encoding="utf-8").read()
+    cli = re.search(r"^  (.+?) resolve <note-id>", prompt, re.M).group(1)
+    path = re.findall(r"^  - (\\S+)$", prompt, re.M)[0]
+    ids = re.findall(r"^### note (\\S+)", prompt, re.M)
+    text = open(path, encoding="utf-8").read()
+    if "## A guard failed on this page's edit" in prompt:
+        if os.environ.get("GUARDED_AGENT_FIX"):
+            open(path, "w", encoding="utf-8").write(text.replace("BAD SHAPE", "go on"))
+            for note_id in ids:
+                subprocess.run(cli + f" resolve {note_id} 'kept the wording, fixed the shape'", shell=True, check=True)
+            sys.exit(0)
+        draft_dir = re.search(r"Write tool under (\\S+)/ ", prompt).group(1)
+        os.makedirs(draft_dir, exist_ok=True)
+        draft = os.path.join(draft_dir, "formatter.md")
+        open(draft, "w", encoding="utf-8").write("The formatter insists on the shape the note asks against.\\n")
+        notes = " ".join(f"--note {i}" for i in ids)
+        subprocess.run(cli + f" handoff 'Teach the formatter the note shape' --scope project --batch code "
+                       f"--body-file {draft} {notes}", shell=True, check=True)
+        sys.exit(0)
+    marker = "BAD SHAPE" if path.endswith("guide.md") else "fine"
+    open(path, "w", encoding="utf-8").write(text.replace("continue to the next step", marker).replace("A second page", marker))
+    for note_id in ids:
+        subprocess.run(cli + f" resolve {note_id} 'edited'", shell=True, check=True)
+    """)
+
+# The stand-in guard: refuses any docs page holding "BAD SHAPE", the way checkBoxCodeFormat names a
+# page whose fences it would reformat.
+FAKE_GUARD = textwrap.dedent("""\
+    import pathlib, sys
+    bad = sorted(str(p) for p in pathlib.Path("public/docs").glob("*.md") if "BAD SHAPE" in p.read_text())
+    print("precheck: running checkBoxCodeFormat")
+    for page in bad:
+        print(f"would format {page}")
+    if bad:
+        print("> Task :checkBoxCodeFormat FAILED")
+        sys.exit(1)
+    """)
 
 
 LIMITED_AGENT = textwrap.dedent("""\
@@ -1078,6 +1282,70 @@ class OutcomesFileTest(unittest.TestCase):
             self.assertIn("memory", [e["kind"] for e in note["thread"]])
         finally:
             repo.close()
+
+
+HANDOFF_FILE_AGENT = textwrap.dedent("""\
+    import json, os, re, sys
+    prompt = open(sys.argv[1], encoding="utf-8").read()
+    path = re.search(r"Write tool to\\n(\\S+) as a JSON list", prompt).group(1)
+    drafts = re.search(r"Write the handoff document with your Write tool under (\\S+)/ \\(no title", prompt).group(1)
+    ids = re.findall(r"^### note (\\S+)", prompt, re.M)
+    os.makedirs(drafts, exist_ok=True)
+    open(os.path.join(drafts, "big.md"), "w").write("Why: this needs Field itself to change.\\n")
+    open("stray.md", "w").write("Not under the draft directory.\\n")
+    json.dump([{"op": "handoff", "title": "Teach Field the thing", "bodyFile": os.path.join(drafts, "big.md"),
+                "notes": [ids[0][:8]], "scope": "project", "batch": "code"},
+               {"op": "handoff", "title": "Teach Field the thing", "bodyFile": os.path.join(drafts, "big.md"),
+                "notes": [ids[0][:8]]},
+               {"op": "handoff", "title": "Read anything", "bodyFile": "stray.md", "notes": [ids[1][:8]]},
+               {"op": "handoff", "title": "Not my note", "bodyFile": os.path.join(drafts, "big.md"),
+                "notes": ["not-a-note-of-mine"]}], open(path, "w"))
+    """)
+
+
+class OutcomesFileHandoffTest(unittest.TestCase):
+    """A handoff an agent could not file because its command was refused (the 2026-11-24 drain)."""
+
+    def test_a_refused_handoff_written_to_the_file_is_filed_like_the_command(self) -> None:
+        repo = TempRepo()
+        try:
+            repo.write("public/docs/guide.md", GUIDE)
+            repo.write(".gitignore", ".field-backdoor/\nstore.json*\nstray.md\n")
+            repo.write("agent.py", HANDOFF_FILE_AGENT)
+            repo.commit("docs")
+            store = repo.root / "store.json"
+            store.write_text(json.dumps({"version": 1, "annotations": [
+                {"id": "11111111-a", "pageUrl": PAGE, "note": "needs Field to change", "anchor": {"exact": "says hello"}},
+                {"id": "22222222-b", "pageUrl": PAGE, "note": "typo", "anchor": {"exact": "Install the thing"}}]}))
+            with mock.patch("builtins.print"):
+                code = dn.main(["--store", str(store), "--repo", str(repo.root), "revise", "--jobs", "1",
+                                "--agent-command", f"{sys.executable} {repo.root / 'agent.py'} {{prompt_file}}"])
+            self.assertEqual(code, 0)
+            notes = {n["id"]: n for n in json.loads(store.read_text())["annotations"]}
+            handoffs = [n for n in notes.values() if n.get("kind") == "handoff"]
+            self.assertEqual([h["note"] for h in handoffs], ["Teach Field the thing"], "filed once, the rest dropped")
+            info = handoffs[0]["handoff"]
+            self.assertEqual((info["scope"], info["batch"], info["fromNotes"]), ("project", "code", ["11111111-a"]))
+            self.assertEqual(info["page"], "guide.md")
+            document = (repo.root / info["path"]).read_text()
+            self.assertTrue(document.startswith("# Teach Field the thing\n"))
+            self.assertIn("Why: this needs Field itself to change.", document)
+            self.assertIn("says hello", document, "the note and its quote travel with it")
+            self.assertEqual(dn.note_state(notes["11111111-a"]), "blocked", "the handed-off note waits on it")
+            entry = next(e for e in handoffs[0]["thread"] if e["kind"] == "handoff")
+            self.assertEqual(entry["author"], "agent:custom")
+            # A draft outside the partition's handoff directory is not read.
+            self.assertEqual(dn.note_state(notes["22222222-b"]), "open")
+        finally:
+            repo.close()
+
+    def test_the_claude_allowlist_also_takes_the_short_repo_form(self) -> None:
+        root = Path("/tmp/some checkout")
+        cli = f"/py /x/docs_notes.py --repo {dn.shlex.quote(str(root))}"
+        argv = dn._claude_argv("prompt", root, None, cli)
+        allowed = argv[argv.index("--allowedTools") + 1]
+        self.assertIn(f"Bash({cli}:*)", allowed)
+        self.assertIn("Bash(/py /x/docs_notes.py --repo .:*)", allowed)
 
 
 KOTLIN = textwrap.dedent("""\

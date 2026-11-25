@@ -1415,12 +1415,40 @@ def render_note(note: dict[str, Any], git: Git | None, *, context: int = 3) -> s
     if source.get("previousExcerpt"):
         out.append("Before its last edit these lines read:\n" + indent(source["previousExcerpt"]))
     thread = [e for e in note.get("thread", []) if e.get("kind") != "run"]
+    guard = open_guard_failure(note)
     if thread:
         out.append("Thread:")
         for entry in thread:
-            out.append(f"  - {fmt_time(entry.get('atEpochMs'))} {entry.get('kind')} by {entry.get('author')}: "
-                       f"{entry.get('text', '').strip()}")
+            text = entry.get("text", "").strip()
+            if entry is guard:  # quoted once, under "A guard failed on this page's edit"
+                text = text.split("\n", 1)[0] + " (its output is quoted above)"
+            out.append(f"  - {fmt_time(entry.get('atEpochMs'))} {entry.get('kind')} by {entry.get('author')}: {text}")
     return "\n".join(out)
+
+
+def open_guard_failure(note: dict[str, Any]) -> dict[str, Any] | None:
+    """The guard's comment that reopened this note, while nothing has resolved it since."""
+    if is_resolved(note):
+        return None
+    for entry in reversed(note.get("thread", [])):
+        if entry.get("kind") == "resolution":
+            return None
+        if entry.get("kind") == "comment" and entry.get("author") == GUARD_AUTHOR:
+            return entry
+    return None
+
+
+GUARD_BRIEF = """These notes were resolved earlier in this pass, and the guard that runs before landing then failed
+on the file their edit changed: {ids}. Their edit is still in {files}. Read the output below, then
+for each note do one of two things:
+- fix the edit so the guard passes, keeping what the note asked for, and resolve the note again
+  saying what you changed; or
+- when the guard is what is wrong (it insists on exactly what the human's note asked against), file
+  a handoff with --batch code naming these notes: what the note asks, what the guard demands, the
+  output, and the tool's source (file:line). Record nothing else for them. The harness then drops
+  this page's change from the pass, so the rest of the pass can land, and the notes wait on the
+  handoff.
+Never answer the failure by quietly undoing what the human asked for."""
 
 
 def indent(text: str, prefix: str = "    ") -> str:
@@ -1434,6 +1462,13 @@ def render_brief(partition: Partition, all_notes: list[dict[str, Any]], git: Git
     for gen in partition.generated:
         out.append(f"Generated: {gen.get('generator')} from {gen.get('from')}; regenerate with "
                    f"`{gen.get('regenerate')}`. Edit the KDoc/Kotlin it comes from, never the generated Markdown.")
+    guarded = [(n, e) for n in partition.notes for e in [open_guard_failure(n)] if e]
+    if guarded:
+        files = sorted({f for _n, e in guarded for f in e.get("changedFiles") or []})
+        out.append("\n## A guard failed on this page's edit\n")
+        out.append(GUARD_BRIEF.format(ids=", ".join(n["id"][:8] for n, _e in guarded), files=", ".join(files) or "the file"))
+        for text in dict.fromkeys(e.get("text", "").strip() for _n, e in guarded):
+            out.append("\n" + indent(text))
     out.append(f"\n## Open notes ({len(partition.notes)})\n")
     out.extend(render_note(n, git) + "\n" for n in partition.notes)
     memories = page_memories(all_notes, partition.pages, partition.files)
@@ -1681,8 +1716,8 @@ Several agents are working in this checkout at once, one per page. You own exact
 
 {owned}
 
-Edit nothing else. Do not commit, stash, reset, or run the docs build or Gradle: the harness that
-started you commits and verifies after every agent has finished. Read {root}/AGENTS.md (section 8,
+Edit nothing else. Do not commit, stash, reset, or run the docs build or Gradle (one exception,
+below): the harness that started you commits and verifies after every agent has finished. Read {root}/AGENTS.md (section 8,
 "Docs authoring") and {root}/dev_docs/agents/DOCS_WRITING_RULES.md before writing prose. The rules
 file is what the human's earlier notes asked for, page after page; a note on your page is often one
 of them broken again, and the rest apply to whatever you write while fixing it.
@@ -1697,6 +1732,15 @@ How to work:
 - Text inside a code fence is executed and captured by the docs runner; edit a fence only if the
   note is about that code, and keep it runnable.
 - A generated page ("DO NOT EDIT") is fixed in the Kotlin/KDoc it is generated from.
+
+A guard failure on your file is an outcome to fix or hand off, never a reason to reformat around the
+human's note. When the brief says a guard failed on this page's edit, either make the edit pass it
+or, when the guard is what is wrong, file a handoff (--batch code) that says why. Do not claim what a
+tool does or does not produce without running it. For checkBoxCodeFormat, run
+`./gradlew formatBoxCode --args="<file>"` (the one Gradle command you may run) and read
+`git diff -- <file>` to see what the formatter wants; if that is the shape the human's note asked
+you to remove, the formatter is wrong (src/jvmMain/kotlin/afield/runtime/kotlin/formatter.kt), and
+the handoff is against it.
 
 KDoc drafts: a note shown as "Draft KDoc for `name`" is not from the human. A fast model wrote it
 for a declaration with no KDoc, from the declaration's source alone, and nobody has checked it.
@@ -1713,6 +1757,12 @@ Record an outcome for EVERY note, with this command (it writes to your run journ
   {cli} question <note-id> "the specific thing you need the human to decide"
   {cli} memory <note-id> "something the next agent on this page should know"
   {cli} memory --page {page_url} "a page-wide fact worth remembering" [--line N]
+
+Run every `{cli} ...` command exactly as printed here: the whole interpreter and script path and
+`--repo` argument first, one command per Bash call. Do not `cd` first, do not chain commands with
+`&&` or `;`, do not put the paths in shell variables, and do not shorten `--repo` to `.`. The
+permission check matches that literal prefix, and any other form asks for an approval nobody is
+there to give.
 
 Some notes ask for more than an edit to your files. File a HANDOFF for those instead of doing
 them — a later, interactive pass with a human works through handoffs one at a time:
@@ -1751,14 +1801,19 @@ on that handoff, and it returns to the queue when the handoff closes:
 
   {cli} wait <note-id> <handoff-id> ["what the page needs once it is done"]
 
-If running that command is refused (a permission prompt nobody is there to answer), do not stop
-and do not leave the outcome only in your reply: write it with your Write tool to
+If running any of these commands is refused (a permission prompt nobody is there to answer), do
+not stop and do not leave the outcome only in your reply: write it with your Write tool to
 {outcomes_file} as a JSON list, and the harness records it exactly as if the command had run:
 
   [{{"op": "resolve", "id": "<note-id>", "text": "what you changed", "memory": "optional"}},
    {{"op": "question", "id": "<note-id>", "text": "what the human must decide"}},
    {{"op": "memory", "id": "<note-id>", "text": "..."}},
-   {{"op": "wait", "id": "<note-id>", "handoff": "<handoff-id>", "text": "optional"}}]
+   {{"op": "wait", "id": "<note-id>", "handoff": "<handoff-id>", "text": "optional"}},
+   {{"op": "handoff", "title": "short imperative title", "bodyFile": "{draft_dir}/<name>.md",
+     "notes": ["<note-id>"], "scope": "project", "batch": "code", "blocking": false, "pages": []}}]
+
+A refused handoff goes in that file as a handoff, never as a question about the handoff: the
+harness files its draft exactly as the command would have.
 
 Resolve only what you actually fixed. Ask a question rather than guessing when a note is
 ambiguous or asks for a decision that is the human's. Leave a memory when you learned something
@@ -1786,8 +1841,13 @@ def find_executable(name: str) -> str:
 
 
 def _claude_argv(prompt: str, root: Path, partition: Partition, cli: str) -> list[str]:
-    allowed = ["Read", "Edit", "Write", "Glob", "Grep", f"Bash({cli}:*)", "Bash(git diff:*)", "Bash(git log:*)",
-               "Bash(git blame:*)", "Bash(git show:*)", "Bash(git grep:*)", "Bash(rg:*)", "Bash(grep:*)"]
+    # The agent runs in *root*, so `--repo .` is the same command; agents shorten it to that often
+    # enough (the 2026-11-24 drain) that refusing it only sends outcomes the long way round.
+    short = cli.replace(f"--repo {shlex.quote(str(root))}", "--repo .")
+    commands = [f"Bash({cli}:*)"] + ([f"Bash({short}:*)"] if short != cli else [])
+    allowed = ["Read", "Edit", "Write", "Glob", "Grep", *commands, "Bash(git diff:*)", "Bash(git log:*)",
+               "Bash(git blame:*)", "Bash(git show:*)", "Bash(git grep:*)", "Bash(rg:*)", "Bash(grep:*)",
+               "Bash(./gradlew formatBoxCode:*)"]
     return [find_executable("claude"), "-p", prompt, "--permission-mode", "acceptEdits", "--allowedTools", ",".join(allowed)]
 
 
@@ -1798,8 +1858,8 @@ def _codex_argv(prompt: str, root: Path, partition: Partition, cli: str) -> list
 FIELD_AGENT_NOTE = """Field's own agent (AI4) is doing this revision. You have no shell, so every `{cli} ...` command
 below is unavailable: work through the repo tools, and record EVERY outcome by writing the JSON
 outcomes file described below with RepoWriteFileRequest (one file, all outcomes, written once at
-the end; overwrite=true if you rewrite it). You cannot file a handoff: record a question instead,
-saying it needs one. You may write only the files you own, that outcomes file, and drafts under
+the end; overwrite=true if you rewrite it). File a handoff the same way: write its draft under the
+handoff directory, then add a "handoff" entry naming that draft to the outcomes file. You may write only the files you own, that outcomes file, and drafts under
 the handoff directory.
 
 """
@@ -2047,7 +2107,10 @@ def run_partition(partition: Partition, *, agent: AgentSpec, run_dir: Path, stor
     changed = [f for f in partition.files if file_digest(git.root / f) != before[f]]
     ids = {n["id"] for n in partition.notes}
     ops, rejected = [], []
-    for op in read_journal(journal) + read_outcomes_file(outcomes_file, partition, agent.name, ids):
+    journaled = read_journal(journal)
+    filed = {str(op.get("title", "")).strip().casefold() for op in journaled if op.get("op") == "handoff"}
+    for op in journaled + read_outcomes_file(outcomes_file, partition, agent.name, ids, git=git, draft_dir=draft_dir,
+                                             filed_titles=filed):
         if op.get("op") == "handoff" and set(op.get("notes", [])) <= ids:
             ops.append(op)
             if op.get("path") and op["path"] not in changed:
@@ -2067,14 +2130,21 @@ def untouched_notes(result: RunResult) -> list[dict[str, Any]]:
     return [n for n in result.partition.notes if n["id"] not in touched]
 
 
-def read_outcomes_file(path: Path, partition: "Partition", agent_name: str, ids: set[str]) -> list[dict[str, Any]]:
+def read_outcomes_file(path: Path, partition: "Partition", agent_name: str, ids: set[str], *,
+                       git: Git | None = None, draft_dir: Path | None = None,
+                       filed_titles: set[str] = frozenset()) -> list[dict[str, Any]]:
     """Outcomes an agent wrote to a file because its notes command was refused.
 
     The first real drain on 2026-10-01 lost three outcomes that way: each agent printed the exact
     `resolve` command it wanted to run, the permission check asked for an approval nobody could give,
-    and the note stayed open. Only resolve, question, memory and comment are accepted here (a handoff
-    needs a document the command writes), and every id must be one of this partition's notes,
-    matched by prefix as the command would. Anything else is dropped, not guessed at.
+    and the note stayed open. Accepted here: resolve, question, memory, comment and wait, every id
+    one of this partition's notes, matched by prefix as the command would; and a handoff whose draft
+    is under this partition's *draft_dir*, filed here exactly as the `handoff` command files one.
+    Anything else is dropped, not guessed at.
+
+    Handoffs came later: the drain of 2026-11-24 had nine refused (`--repo .`, `cd … &&`, shell
+    variables: none match the allowlist's literal prefix), and with no way to file them each agent
+    asked the human a question instead, pointing at a draft nothing would ever read.
     """
     if not path.is_file():
         return []
@@ -2084,6 +2154,13 @@ def read_outcomes_file(path: Path, partition: "Partition", agent_name: str, ids:
         return []
     ops = []
     for entry in entries if isinstance(entries, list) else []:
+        if isinstance(entry, dict) and entry.get("op") == "handoff":
+            op = _outcome_handoff(entry, partition, agent_name, ids, git=git, draft_dir=draft_dir,
+                                  filed_titles=filed_titles)
+            if op:
+                filed_titles = {*filed_titles, op["title"].casefold()}
+                ops.append(op)
+            continue
         if not isinstance(entry, dict) or entry.get("op") not in ("resolve", "question", "memory", "comment", "wait"):
             continue
         wanted = str(entry.get("id", ""))
@@ -2100,6 +2177,49 @@ def read_outcomes_file(path: Path, partition: "Partition", agent_name: str, ids:
             op["memory"] = str(entry["memory"]).strip()
         ops.append(op)
     return ops
+
+
+def _outcome_handoff(entry: dict[str, Any], partition: "Partition", agent_name: str, ids: set[str], *,
+                     git: Git | None, draft_dir: Path | None, filed_titles: set[str]) -> dict[str, Any] | None:
+    """File the handoff an outcomes-file entry describes, or None when it is not a valid one.
+
+    `{"op": "handoff", "title": ..., "bodyFile": <draft under draft_dir>, "notes": [ids], "scope": ...,
+    "blocking": ..., "batch": ..., "pages": [...]}`. The draft must already be under this partition's
+    handoff directory (the only place the agent was told to write one), and every note must be the
+    partition's. A title already filed through the command in this run is not filed twice.
+    """
+    title = str(entry.get("title", "")).strip()
+    if git is None or draft_dir is None or not title or title.casefold() in filed_titles:
+        return None
+    body_spec = str(entry.get("bodyFile") or entry.get("body_file") or entry.get("body-file") or "").strip()
+    if not body_spec:
+        return None
+    body_path = Path(body_spec) if Path(body_spec).is_absolute() else git.root / body_spec
+    try:
+        body_path = body_path.resolve()
+        if not body_path.is_relative_to(draft_dir.resolve()) or not body_path.is_file():
+            return None
+        body = body_path.read_text(encoding="utf-8")
+    except OSError:
+        return None
+    wanted = entry.get("notes") or ([entry["id"]] if entry.get("id") else [])
+    from_notes = []
+    for spec in wanted if isinstance(wanted, list) else [wanted]:
+        spec = str(spec)
+        match = [n for n in partition.notes if spec and n["id"] in ids and (n["id"] == spec or n["id"].startswith(spec))]
+        if len(match) != 1:
+            return None
+        from_notes.append(match[0])
+    if not from_notes or not body.strip():
+        return None
+    scope = entry.get("scope") if entry.get("scope") in HANDOFF_SCOPES else "project"
+    batch = entry.get("batch") if entry.get("batch") in BATCH_KEYS else None
+    pages = [str(p) for p in entry.get("pages", []) if str(p).strip()] if isinstance(entry.get("pages"), list) else []
+    author = f"agent:{agent_name}"
+    op = file_handoff_document(git, title=title, body=body, scope=scope, blocking=bool(entry.get("blocking")),
+                               batch=batch, from_notes=from_notes, page_url=partition.notes[0].get("pageUrl", ""),
+                               page_specs=pages, author=author)
+    return {**op, "author": author, "atEpochMs": now_ms(), "via": "outcomes file"}
 
 
 def apply_run(store: Store, result: RunResult, run_id: str, agent_name: str) -> None:
@@ -2169,6 +2289,9 @@ def revise(args: argparse.Namespace, store: Store, git: Git, control: RunControl
             and not is_resolved(n) and (n.get("handoff") or {}).get("state", "open") in ("open", "taken")]
     held_pages = {(h.get("handoff") or {}).get("page") or h.get("pageUrl", "") for h in held} | {h.get("pageUrl", "") for h in held}
     queue = [n for n in notes if in_queue(n, args.tag) and _matches_page(n, args.page)]
+    wanted_ids = list(getattr(args, "id", None) or [])
+    if wanted_ids:
+        queue = [n for n in queue if any(n["id"] == w or n["id"].startswith(w) for w in wanted_ids)]
     waiting = [n for n in queue if _page_key(n) in held_pages or n.get("pageUrl") in held_pages]
     queue = [n for n in queue if n not in waiting]
     if waiting:
@@ -2401,23 +2524,37 @@ def cmd_handoff(args: argparse.Namespace, store: Store, git: Git) -> int:
         page_url = from_notes[0].get("pageUrl", "")
     else:
         raise SystemExit("say which page this comes from: --from-page, or --note")
+    op = file_handoff_document(git, title=args.title, body=body, scope=args.scope, blocking=args.blocking,
+                               batch=args.batch, from_notes=from_notes, page_url=page_url, page_specs=args.page,
+                               author=current_author())
+    result = record(store, op)
+    print(f"handoff {op['handoffId'][:8]} written to {op['path']}" + (" (journaled)" if "journaled" in result else ""))
+    if args.blocking and in_run:
+        print("This handoff blocks the page. Stop now: record nothing further and end your turn.")
+    return 0
+
+
+def file_handoff_document(git: Git, *, title: str, body: str, scope: str, blocking: bool, batch: str | None,
+                          from_notes: list[dict[str, Any]], page_url: str, page_specs: Iterable[str],
+                          author: str) -> dict[str, Any]:
+    """Write a handoff's document into the checkout and return the op that records it.
+
+    Shared by the `handoff` command and a handoff an agent left in its outcomes file because the
+    command was refused, so the two file exactly the same thing.
+    """
     page = resolve_page_source(page_url, git).relative
     source_pages = {_page_key(n) for n in from_notes}
     if from_notes and page not in source_pages:
         page = next(iter(source_pages))
     handoff_id = str(uuid.uuid4())
-    pages = [resolve_page_source(page_url_for(p, git), git).relative or p for p in args.page]
-    path = write_handoff_document(git.root, handoff_id=handoff_id, title=args.title.strip(), body=body,
-                                  scope=args.scope, blocking=args.blocking, page_url=page_url, pages=pages,
-                                  notes=from_notes, author=current_author())
-    result = record(store, {"op": "handoff", "handoffId": handoff_id, "title": args.title.strip(), "path": path,
-                            "scope": args.scope, "blocking": args.blocking, "notes": [n["id"] for n in from_notes],
-                            **({"batch": args.batch} if args.batch else {}),
-                            "pages": pages, "page": page, "pageUrl": page_url})
-    print(f"handoff {handoff_id[:8]} written to {path}" + (" (journaled)" if "journaled" in result else ""))
-    if args.blocking and in_run:
-        print("This handoff blocks the page. Stop now: record nothing further and end your turn.")
-    return 0
+    pages = [resolve_page_source(page_url_for(p, git), git).relative or p for p in page_specs]
+    path = write_handoff_document(git.root, handoff_id=handoff_id, title=title.strip(), body=body,
+                                  scope=scope, blocking=blocking, page_url=page_url, pages=pages,
+                                  notes=from_notes, author=author)
+    return {"op": "handoff", "handoffId": handoff_id, "title": title.strip(), "path": path,
+            "scope": scope, "blocking": blocking, "notes": [n["id"] for n in from_notes],
+            **({"batch": batch} if batch else {}),
+            "pages": pages, "page": page, "pageUrl": page_url}
 
 
 def page_url_for(spec: str, git: Git) -> str:
@@ -2581,6 +2718,12 @@ def thread_summary(entry: dict[str, Any]) -> dict[str, Any]:
 
 
 def pass_status(git: Git, store: Store) -> dict[str, Any]:
+    state = load_pass(git.root)
+    landing = None
+    if state and Path(state["worktree"]).is_dir():
+        landing = land_status(git, branch=state["branch"])
+        # A bounce goes back to the notes behind it the first time the page (or anyone) looks.
+        absorb_bounce(git, store, state, landing)
     notes = store.notes()
     counts: dict[str, int] = {}
     for note in notes:
@@ -2623,6 +2766,11 @@ def pass_status(git: Git, store: Store) -> dict[str, Any]:
                               "primaryBranch": git.run("branch", "--show-current", check=False).strip(),
                               "pass": load_pass(git.root), "agent": field_agent.configured_agent()}
     state = result["pass"]
+    guard = (state or {}).get("guard") or {}
+    by_id = {n["id"]: n for n in notes}
+    result["guardNotes"] = [{"id": i, "note": by_id[i].get("note", ""), "page": _page_key(by_id[i]), "state": note_state(by_id[i]),
+                             "files": (guard.get("byNote") or {}).get(i, [])}
+                            for i in guard.get("reopened") or [] if i in by_id]
     if state and Path(state["worktree"]).is_dir():
         wt = Git(Path(state["worktree"]))
         base = state["base"]
@@ -2633,7 +2781,7 @@ def pass_status(git: Git, store: Store) -> dict[str, Any]:
             "landed": subprocess.run(["git", "merge-base", "--is-ancestor", "HEAD", base], cwd=wt.root).returncode == 0
                       and wt.head() != state["baseCommit"],
             # The landing queue's view: queued, landing now, landed, or bounced with its reason.
-            "landing": land_status(git, branch=state["branch"]),
+            "landing": landing,
             "landerRunning": lander_running(git),
             "changed": changed_files(wt, pass_fork_point(wt, state)),
             "uncommitted": len([p for p in wt.status_paths() if not p.startswith(".field-backdoor/")]),
@@ -2714,6 +2862,12 @@ def pass_revise(args: argparse.Namespace, git: Git, store: Store) -> int:
     state_dir = notes_state_dir(wt.root)
     state_dir.mkdir(parents=True, exist_ok=True)
     before = (state_dir / "latest-run").read_text().strip() if (state_dir / "latest-run").is_file() else ""
+    if getattr(args, "reopened", False):
+        # *Revise again*: only what the last guard failure reopened, whose briefs carry its output.
+        ids = list((state.get("guard") or {}).get("reopened") or [])
+        if not ids:
+            raise SystemExit("No note was reopened by a guard failure; there is nothing to revise again.")
+        args.id = ids
     # Uncommitted edits in the pass's own worktree are the pass's work so far, not someone else's.
     args.allow_dirty = True
     detach_from_launcher()
@@ -2725,6 +2879,7 @@ def pass_revise(args: argparse.Namespace, git: Git, store: Store) -> int:
             current = load_pass(git.root) or state
             current.setdefault("runs", []).append(after)
             save_pass(git.root, current)
+            settle_guard(git, store)
 
 
 def detach_from_launcher() -> None:
@@ -2838,6 +2993,239 @@ def pass_commit(git: Git, store: Store) -> int:
     return 0
 
 
+# ---------------------------------------------------------------------------- the guard, before landing
+#
+# The lander runs the full guard and bounces a branch that fails it. Until 2026-11-24 that bounce was
+# the pass's first sight of any guard, and the page could only say "fix it in the pass worktree":
+# in practice, hand-start an agent that knew nothing of the notes behind the edit (pass
+# docs-pass/20261124-1903 bounced on checkBoxCodeFormat after an agent rewrote ten fences against
+# the formatter). Now `pass land` first runs the guards the pass's diff can trip (`land.py
+# precheck`), and a failure there or in a bounce goes back to the notes whose resolutions changed
+# the files it names. They reopen with the guard's output, *Revise again* drains just them, and
+# their agent fixes the edit or hands the guard off, in which case the page's change leaves the pass
+# so the rest can land.
+
+GUARD_ENV = "DOCS_NOTES_GUARD_COMMAND"
+GUARD_AUTHOR = "harness:guard"
+GUARD_EXCERPT_LIMIT = 4000
+_GUARD_VERDICT = re.compile(r"FAILED|\bRED\b|[Ee]rror:|^e: ")
+_FAILED_TASK = re.compile(r"> Task :(\S+) FAILED")
+
+
+def guard_command(root: Path, template: str | None = None) -> list[str]:
+    """The guard a pass runs before landing: *template* (`--guard-command`), else $DOCS_NOTES_GUARD_COMMAND,
+    with `{root}` standing for the pass worktree; else `uv run python tools/land.py precheck` there."""
+    template = (template or os.environ.get(GUARD_ENV, "")).strip()
+    if template:
+        return [part.replace("{root}", str(root)) for part in shlex.split(template)]
+    return uv_command() + ["run", "--project", str(root), "python", "tools/land.py", "precheck"]
+
+
+def run_guard(command: list[str], cwd: Path, log_path: Path) -> tuple[int, str]:
+    """Run *command* in *cwd*, echoing its output live (the page's job log) and into *log_path*."""
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    print("$ " + " ".join(shlex.quote(c) for c in command), flush=True)
+    chunks: list[str] = []
+    with open(log_path, "w", encoding="utf-8") as log:
+        try:
+            process = subprocess.Popen(command, cwd=cwd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                                       stderr=subprocess.STDOUT, text=True, errors="replace")
+        except OSError as error:
+            text = f"could not start the guard: {error}\n"
+            log.write(text)
+            print(text, end="", flush=True)
+            return 127, text
+        assert process.stdout is not None
+        with process.stdout:
+            for line in process.stdout:
+                chunks.append(line)
+                log.write(line)
+                with contextlib.suppress(OSError, ValueError):
+                    print(line, end="", flush=True)
+        code = process.wait()
+    return code, "".join(chunks)
+
+
+def _path_pattern(path: str) -> re.Pattern[str]:
+    # A repo path on its own or at the end of an absolute one (`file:///…/src/X.kt:12`), but not a
+    # longer name that starts with it (`guide.md.bak`, `guide.mdx`).
+    return re.compile(r"(?<![\w.-])" + re.escape(path) + r"(?![\w/-]|\.\w)")
+
+
+def guard_files(output: str, candidates: Iterable[str]) -> list[str]:
+    """The *candidates* (the pass's own changed files) that a guard's output names:
+    `would format public/docs/presentation_studio.md`, `e: file:///…/afield/X.kt:12:5 …`."""
+    return sorted(p for p in set(candidates) if p and _path_pattern(p).search(output))
+
+
+def failed_tasks(output: str) -> list[str]:
+    return list(dict.fromkeys(_FAILED_TASK.findall(output)))
+
+
+def guard_excerpt(output: str, files: Iterable[str], limit: int = GUARD_EXCERPT_LIMIT) -> str:
+    """What to quote to a note: each line naming one of *files* and the three after it, and the
+    verdict lines (FAILED, RED, errors); the output's tail when none of those is there."""
+    lines = output.splitlines()
+    patterns = [_path_pattern(f) for f in files]
+    keep: set[int] = set()
+    for i, line in enumerate(lines):
+        if any(p.search(line) for p in patterns):
+            keep.update(range(i, min(len(lines), i + 4)))
+        elif _GUARD_VERDICT.search(line):
+            keep.add(i)
+    if not keep:
+        keep = set(range(max(0, len(lines) - 30), len(lines)))
+    out: list[str] = []
+    last = -2
+    for i in sorted(keep):
+        if out and i != last + 1:
+            out.append("…")
+        out.append(lines[i].rstrip())
+        last = i
+    text = "\n".join(out)
+    return text if len(text) <= limit else text[:limit] + "\n… (cut; the whole output is in the log)"
+
+
+def reopen_for_guard(notes: list[dict[str, Any]], runs: set[str], files: list[str], *, label: str, excerpt: str,
+                     log: str) -> dict[str, list[str]]:
+    """Reopen every note this pass resolved whose resolution changed one of *files*, with a
+    `comment` from the harness quoting the guard. Returns each reopened note's guarded files."""
+    reopened: dict[str, list[str]] = {}
+    for note in notes:
+        if note.get("kind") not in REQUEST_KINDS or not is_resolved(note):
+            continue
+        last = next((e for e in reversed(note.get("thread", [])) if e.get("kind") == "resolution"), None)
+        if not last or last.get("runId") not in runs:
+            continue
+        hit = [f for f in files if f in (last.get("changedFiles") or [])]
+        if not hit:
+            continue
+        apply_op(notes, {"op": "reopen", "id": note["id"], "author": GUARD_AUTHOR, "changedFiles": hit,
+                         "text": f"{label} failed on {', '.join(hit)}, which this note's edit changed"})
+        add_entry(note, "comment", f"{label} failed on {', '.join(hit)}:\n\n{excerpt}" + (f"\n\n(log: {log})" if log else ""),
+                  GUARD_AUTHOR, changedFiles=hit)
+        reopened[note["id"]] = hit
+    return reopened
+
+
+def apply_guard_result(git: Git, store: Store, state: dict[str, Any], *, source: str, code: int, output: str,
+                       log: str, command: str, land_id: str = "", reason: str = "") -> dict[str, Any] | None:
+    """Record a guard's verdict on the pass (`guard` in its state) and, when it failed, reopen the
+    notes behind the files it names. A bounce (*land_id*) is taken once; None when it already was."""
+    wt = Git(Path(state["worktree"]))
+    record: dict[str, Any] = {"state": "passed" if code == 0 else "failed", "source": source, "atEpochMs": now_ms(),
+                              "head": wt.head(), "baseHead": wt.run("rev-parse", state["base"], check=False).strip(),
+                              "command": command, "exitCode": code, "log": log, "tasks": failed_tasks(output)}
+    if land_id:
+        record["landId"] = land_id
+    if reason:
+        record["reason"] = reason
+    files: list[str] = []
+    label = excerpt = ""
+    if code != 0:
+        mine = [f["path"] for f in changed_files(wt, pass_fork_point(wt, state))]
+        files = guard_files(output.replace(str(wt.root) + "/", ""), mine)
+        what = ", ".join(record["tasks"]) or ("land.py precheck" if source == "precheck" else "the lander's guard")
+        label = f"{what} ({'before landing' if source == 'precheck' else 'the lander bounced the pass'})"
+        excerpt = guard_excerpt(output, files)
+        record.update(files=files, label=label, excerpt=excerpt, tail="\n".join(output.splitlines()[-40:]))
+    runs = set(state.get("runs", []))
+
+    # The bounce check, the reopen and the pass state are one step under the store's lock, so two
+    # `pass status` calls racing on the same bounce cannot both take it.
+    def change(notes: list[dict[str, Any]]) -> dict[str, Any] | None:
+        current = load_pass(git.root) or state
+        if land_id and (current.get("guard") or {}).get("landId") == land_id:
+            return None
+        by_note = reopen_for_guard(notes, runs, files, label=label, excerpt=excerpt, log=log) if files else {}
+        record.update(reopened=list(by_note), byNote=by_note)
+        current["guard"] = record
+        save_pass(git.root, current)
+        return record
+
+    return store.mutate(change)
+
+
+def report_guard(record: dict[str, Any] | None, worktree: str) -> None:
+    if not record:
+        return
+    if record["state"] == "passed":
+        print(f"guard passed on {record['head'][:10]}", flush=True)
+        return
+    print(f"guard failed: {record.get('label', '')}", flush=True)
+    if record.get("reopened"):
+        print(f"reopened {len(record['reopened'])} note(s) whose edit changed {', '.join(record['files'])}: "
+              + ", ".join(i[:8] for i in record["reopened"]) + ". Revise again (`pass revise --reopened`) drains just them.",
+              flush=True)
+    elif record.get("files"):
+        print(f"it names {', '.join(record['files'])}, but no note this pass resolved changed them; fix it by hand in {worktree}",
+              flush=True)
+    else:
+        print(f"it names no file this pass changed; read the log ({record.get('log')}) and fix it in {worktree}", flush=True)
+
+
+def pass_check(git: Git, store: Store, template: str | None = None) -> int:
+    """Run the guards the pass's diff can trip, in its worktree; a failure reopens its notes."""
+    state = require_pass(git.root)
+    wt = Git(Path(state["worktree"]))
+    progress = latest_progress(wt.root)
+    if progress and progress.get("alive"):
+        raise SystemExit("Agents are still running in the pass; stop or wait for them before checking.")
+    command = guard_command(wt.root, template)
+    log = wt.root / ".field-backdoor" / "docs-pass" / f"guard-{time.strftime('%Y%m%d-%H%M%S')}.log"
+    print(f"checking {state['branch']} with the guards its diff can trip …", flush=True)
+    code, output = run_guard(command, wt.root, log)
+    record = apply_guard_result(git, store, state, source="precheck", code=code, output=output, log=str(log),
+                                command=" ".join(shlex.quote(c) for c in command))
+    report_guard(record, str(wt.root))
+    return 0 if code == 0 else 1
+
+
+def absorb_bounce(git: Git, store: Store, state: dict[str, Any], landing: dict[str, Any] | None) -> dict[str, Any] | None:
+    """A bounce from the lander goes back to its notes, once, as a failed `pass check` does.
+
+    Only while the branch is still the commit that bounced: once it has moved on, the bounce is history.
+    """
+    if not landing or landing.get("state") != "bounced" or not landing.get("id"):
+        return None
+    if (state.get("guard") or {}).get("landId") == landing["id"]:
+        return None
+    wt = Git(Path(state["worktree"]))
+    if landing.get("sha") and landing["sha"] != wt.head():
+        return None
+    output = str(landing.get("reason", "")) + "\n"
+    if landing.get("log"):
+        log = Path(landing["log"])
+        for path in (log, log.with_suffix(".failures.txt")):
+            with contextlib.suppress(OSError):
+                output += path.read_text(encoding="utf-8", errors="replace") + "\n"
+    return apply_guard_result(git, store, state, source="lander", code=1, output=output, log=str(landing.get("log", "")),
+                              command="tools/land.py run", land_id=landing["id"], reason=str(landing.get("reason", "")))
+
+
+def settle_guard(git: Git, store: Store) -> list[str]:
+    """After a drain: a page whose agent handed its guard failure off has its change dropped from
+    the pass (`pass_discard`), so the rest can land; its notes wait on the handoff. Returns the
+    files discarded."""
+    state = load_pass(git.root)
+    guard = (state or {}).get("guard") or {}
+    if guard.get("state") != "failed" or not guard.get("reopened"):
+        return []
+    notes = {n["id"]: n for n in store.notes()}
+    by_note = guard.get("byNote") or {}
+    discard = sorted({f for i in guard["reopened"] if i in notes and blocked_by(notes[i]) for f in by_note.get(i, [])})
+    for path in discard:
+        print(f"{path}: its agent handed the guard failure off; dropping the page's change from the pass", flush=True)
+        pass_discard(git, store, path)
+    notes = {n["id"]: n for n in store.notes()}
+    left = [i for i in guard["reopened"] if i in notes and in_queue(notes[i])]
+    current = load_pass(git.root) or {}
+    current["guard"] = {**guard, "state": "failed" if left else "revised", "reopened": left or guard["reopened"],
+                        "discarded": sorted({*guard.get("discarded", []), *discard}), "revisedAtEpochMs": now_ms()}
+    save_pass(git.root, current)
+    return discard
+
+
 # ---------------------------------------------------------------------------- the landing queue
 #
 # Only tools/land.py's lander writes main (a reference-transaction hook refuses everyone else). A pass
@@ -2922,15 +3310,25 @@ def land_enqueue(git: Git, worktree: Path, branch: str, note: str, by: str) -> d
     return land_status(git, item_id=queued.group(1))
 
 
-def pass_land(git: Git) -> int:
-    """Enqueue the pass branch for the lander. The lander merges main in, regenerates, checks and
-    fast-forwards main; `pass status` reports landed or the bounce and its reason."""
+def pass_land(git: Git, store: Store, guard_template: str | None = None, check: bool = True) -> int:
+    """Check the pass branch, then enqueue it for the lander. The guards its diff can trip run
+    first (`pass_check`), and a failure stops here with its notes reopened. The lander merges main
+    in, regenerates, checks and fast-forwards main; `pass status` reports landed or the bounce."""
     state = require_pass(git.root)
     wt = Git(Path(state["worktree"]))
     if [p for p in wt.status_paths() if not p.startswith(".field-backdoor/")]:
         raise SystemExit("The worktree has uncommitted changes; commit them first.")
     if wt.head() == state["baseCommit"]:
         raise SystemExit("The pass has no commits to land; commit first.")
+    if check:
+        guard = state.get("guard") or {}
+        if guard.get("state") == "passed" and guard.get("head") == wt.head() \
+                and guard.get("baseHead") == wt.run("rev-parse", state["base"], check=False).strip():
+            print(f"the guards passed on {wt.head()[:10]} against this {state['base']} already", flush=True)
+        elif pass_check(git, store, guard_template) != 0:
+            print("not enqueued: the guard failed (above)", flush=True)
+            return 1
+        state = require_pass(git.root)  # the check saved its verdict
     item = land_enqueue(git, wt.root, state["branch"], f"docs revision pass {state['branch']}", "docs revision pass")
     if item:
         state["landing"] = item["id"]
@@ -3062,8 +3460,10 @@ def run_pass(args: argparse.Namespace, store: Store, git: Git) -> int:
         return pass_rebuild(git, args.mode, args.all)
     if action == "commit":
         return pass_commit(git, store)
+    if action == "check":
+        return pass_check(git, store, args.guard_command)
     if action == "land":
-        return pass_land(git)
+        return pass_land(git, store, args.guard_command, check=not args.no_check)
     if action == "finish":
         return pass_finish(git, args.abandon)
     return 2
@@ -3413,6 +3813,7 @@ def add_revise_arguments(p: argparse.ArgumentParser) -> None:
     p.add_argument("--jobs", "-j", type=int, default=4)
     p.add_argument("--tag", action="append", default=[])
     p.add_argument("--page", action="append", default=[])
+    p.add_argument("--id", action="append", default=[], help="only these notes (an id or its prefix; repeatable)")
     p.add_argument("--max-pages", type=int, default=0)
     p.add_argument("--timeout", type=int, default=1800, help="seconds per agent")
     p.add_argument("--commit", action="store_true", help="one commit per page after every agent has finished")
@@ -3531,6 +3932,7 @@ def build_parser() -> argparse.ArgumentParser:
     q.add_argument("id")
     q = pass_sub.add_parser("revise", help="drain the queue in the pass's worktree")
     add_revise_arguments(q)
+    q.add_argument("--reopened", action="store_true", help="only the notes the last guard failure reopened")
     q = pass_sub.add_parser("stop", help="stop the pass's revise: after the current pages, or --now")
     q.add_argument("--now", action="store_true")
     q = pass_sub.add_parser("rebuild", help="build the docs in the worktree")
@@ -3538,7 +3940,13 @@ def build_parser() -> argparse.ArgumentParser:
                    help="FIELD_DOCS_RUNNER_MODE; `never` builds HTML without re-running any capture")
     q.add_argument("--all", action="store_true", help="run captures on every page, not only changed ones")
     pass_sub.add_parser("commit", help="commit the worktree, with the resolved notes in the message")
-    pass_sub.add_parser("land", help="enqueue the pass branch for the lander (tools/land.py), which puts it on main")
+    guard_help = (f"the guard to run in the pass worktree ({{root}} is its path; default ${GUARD_ENV}, "
+                  "else `uv run python tools/land.py precheck`)")
+    q = pass_sub.add_parser("check", help="run the guards the pass's diff can trip; a failure reopens the notes behind it")
+    q.add_argument("--guard-command", help=guard_help)
+    q = pass_sub.add_parser("land", help="check, then enqueue the pass branch for the lander (tools/land.py), which puts it on main")
+    q.add_argument("--guard-command", help=guard_help)
+    q.add_argument("--no-check", action="store_true", help="enqueue without running the guard first")
     q = pass_sub.add_parser("finish", help="remove the worktree and branch once landed")
     q.add_argument("--abandon", action="store_true", help="remove them even though they never landed")
     return parser

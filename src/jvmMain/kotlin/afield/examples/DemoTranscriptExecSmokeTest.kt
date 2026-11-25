@@ -97,6 +97,8 @@ object DemoTranscriptExecSmokeTest {
 
     /** Pure-compute demos that are safe to run to completion headless. */
     internal val EXECUTE = setOf(
+        // fline_examples.md, Depth-ordered 3D vector scenes: vectorScene projection and ordering; pure CPU.
+        "vector_scenes",
         "adaptive_distribution_feedback",
         "fieldml_reactive_bridge",
         "shader_study_region_checks",
@@ -420,6 +422,8 @@ object DemoTranscriptExecSmokeTest {
         "statistics_examples",
         // Two pure-CPU FLine boxes; showPlaneGrid is drawToSVG -> display, so no AWT and no GPU.
         "arclength_spacing_demo",
+        // Three pure-CPU colour boxes (colors_examples.md contrastScale): display HTML and lines -> drawToSVG.
+        "contrast_scale_demo",
         // Two more of the same shape: the interior-Close demo reverses, subdivides and dashes
         // closed contours and reports the numbers, all through showPlaneGrid.
         "close_node_demo",
@@ -653,6 +657,9 @@ object DemoTranscriptExecSmokeTest {
         // scribble aiTool that paints on it. No model is called; without the paint library the Studio
         // says so and stops, like paint_canvas.
         "ai4_paint_studio",
+        // paint_canvas.md, Overlapping regions and the fill rule: regions worked and glazed under each fill rule,
+        // checked against Gezira; pure CPU, and without the paint library the boxes say so and stop.
+        "paint_fill_rule",
         // One pure-CPU box that keeps a StackSLEvolution on itself and registers an agentExtension over
         // it (evolve_* tools, context, commands, the population as branch state). Executing it renders
         // only the target: the search, LPIPS and the watchmaker start at the first evolve_step, which
@@ -672,6 +679,9 @@ object DemoTranscriptExecSmokeTest {
         // CPU only; the Manifold halves print an install message and fall back when it is absent.
         "solidsl_gallery",
         "mesh_repair_demo",
+        // mesh_examples.md#distance-along-the-surface-and-carving-toolpaths: heat geodesics, isolines,
+        // a spiral toolpath and roughing passes; pure CPU, three { } output.
+        "geodesic_carving",
         // sorting_networks_examples.md's four fences as boxes, pure CPU. Only the two drawing boxes are
         // launched: the two annealing boxes search for 70 and 90 seconds, and the docs runner executes
         // them for the page's captures.
@@ -713,6 +723,9 @@ object DemoTranscriptExecSmokeTest {
         "satellites",
         // alife_examples.md section 13: bonded-particle organisms on GPU compute. Opens a Window, so compile-only.
         "bonded_organisms",
+        // discrete_energy.md: DiscreteEnergy problems, with the mean-field descent on GPU compute. Opens a Window, so
+        // compile-only; DiscreteEnergyTest covers the solvers, the learner and the held-out solve rates.
+        "discrete_energy",
         // The pilot explainer deck (2026-11-09): its deck box opens Electron audience windows and
         // its figure box returns an audio patch for the audio device. PresentationFiguresTest
         // covers the figure engine without either.

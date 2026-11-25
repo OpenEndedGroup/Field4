@@ -4,6 +4,8 @@
 package afield.document.graph
 
 import afield.data.collections.alphas
+import afield.runtime.completion.BoxNames
+import afield.runtime.completion.CompletesWith
 import afield.data.collections.get
 import afield.data.collections.invoke
 import afield.data.collections.r
@@ -112,7 +114,7 @@ fun Set<Box>.named(s: String, ignoreDeleted: Boolean = true) =
  * matches you get an arbitrary one; **throws** `NoSuchElementException` with none. Deleted
  * (`_tombstone`) boxes are skipped unless you ask for them.
  */
-fun Box.named(s: String, ignoreDeleted: Boolean = true) =
+fun Box.named(@CompletesWith(BoxNames::class) s: String, ignoreDeleted: Boolean = true) =
     this.root.children.first { it.name == s && (!ignoreDeleted || !it.getPropertyRaw("_tombstone").isTrue()) }
 
 /**

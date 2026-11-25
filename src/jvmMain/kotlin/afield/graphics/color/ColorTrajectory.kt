@@ -8,6 +8,8 @@ import afield.math.linalg.Vec4
 import afield.runtime.completion.CompletesWith
 import kotlin.math.abs
 import kotlin.math.floor
+import kotlin.math.ln
+import kotlin.math.pow
 import kotlin.math.roundToInt
 
 /** Which direction an OKLCH interpolation takes around the hue circle. */
@@ -278,4 +280,84 @@ fun contrastPalette(
         }
         closest
     }
+}
+
+/** Step names of a [contrastScale], 100 (closest to the background) to 1000 (furthest). */
+val contrastScaleSteps: List<Int> = (1..10).map { it * 100 }
+
+/** Per-step WCAG contrast targets against white, from TaishoDS's one-colour palette method. */
+val contrastTargetsLight: List<Double> = listOf(1.08, 1.22, 1.5, 2.1, 3.6, 6.0, 8.5, 12.0, 16.0, 19.0)
+
+/**
+ * Per-step contrast targets against a near-black background. Not light mode flipped: the low steps
+ * keep the same small separations from the ground, but the mid steps sit a little higher (dark
+ * grounds compress perceived contrast) and the top is capped below the ~19.8 that `#0a0a0a`
+ * allows against white. The 500/600 boundary (√(3.8·5.5) ≈ 4.57) stays above 4.5, so whatever
+ * lands on 600 is text-safe.
+ */
+val contrastTargetsDark: List<Double> = listOf(1.08, 1.25, 1.6, 2.3, 3.8, 5.5, 8.0, 11.0, 14.5, 17.5)
+
+/**
+ * A ten-step ramp built by [contrastScale]: one [ContrastSwatch] per step, 100 to 1000.
+ * [seedStep] is the step that holds the seed colour unchanged.
+ */
+data class ContrastScale(val background: Vec4, val swatches: List<ContrastSwatch>, val seedStep: Int) {
+    /** The step colours, 100 to 1000. */
+    val colors: List<Vec4> get() = swatches.map { it.color }
+
+    /** Near-black or white per step, whichever has more contrast on that step's colour. */
+    val textOn: List<Vec4>
+        get() = colors.map { c ->
+            val opaque = Vec4(c.x, c.y, c.z, 1f)
+            if (wcagContrast(scaleDarkText, opaque) >= wcagContrast(scaleLightText, opaque)) scaleDarkText else scaleLightText
+        }
+
+    /** The swatch at a step name (100, 200, ... 1000). */
+    operator fun get(step: Int): ContrastSwatch {
+        val i = contrastScaleSteps.indexOf(step)
+        require(i >= 0) { "step must be one of $contrastScaleSteps, got $step" }
+        return swatches[i]
+    }
+}
+
+private val scaleDarkText = Vec4(0.04f, 0.04f, 0.04f, 1f)
+private val scaleLightText = Vec4(1f, 1f, 1f, 1f)
+
+/**
+ * A ten-step accessible ramp from one [seed] colour, each step at a set WCAG contrast against an
+ * opaque [background]. After TaishoDS's method (taisho.design, MIT).
+ *
+ * Where [contrastPalette] takes a trajectory and any targets, this takes one colour and returns a
+ * fixed ten-step scale with the seed on it unchanged. The seed's own contrast picks its step (the
+ * target nearest on a log scale). Every other step runs [contrastPalette] along an OKLCH lightness
+ * trajectory through the seed's hue, moving away from the background; chroma is capped at the
+ * seed's, eased off toward both ends of the ramp, and reduced where sRGB cannot show it. Yellows
+ * (OKLCH hue about 65°–125°) rotate toward orange as they darken and toward lemon as they lighten;
+ * otherwise dark yellow is olive.
+ *
+ * [targets] defaults to [contrastTargetsLight] on a light background and [contrastTargetsDark] on a
+ * dark one. Steps 600 and up clear 4.5:1, so they are usable as text; 100–300 are surfaces and borders.
+ */
+fun contrastScale(seed: Vec4, background: Vec4 = Vec4(1f, 1f, 1f, 1f), targets: List<Double>? = null): ContrastScale {
+    val dark = wcagContrast(Vec4(1f, 1f, 1f, 1f), background) > wcagContrast(Vec4(0f, 0f, 0f, 1f), background)
+    val t = targets ?: if (dark) contrastTargetsDark else contrastTargetsLight
+    require(t.size == 10) { "targets must have 10 entries (steps 100..1000), got ${t.size}" }
+
+    val lch = colorCoordinates(seed, ColorSpace.OKLCH)
+    val seedContrast = wcagContrast(seed, background)
+    val seedIndex = t.indices.minBy { abs(ln(seedContrast / t[it])) }
+    val yellowWeight = (1.0 - abs(lch.z - 95.0) / 30.0).coerceIn(0.0, 1.0) * (lch.y / 0.06).coerceIn(0.0, 1.0)
+    // Parameter 0 is lightness at the background's end, 1 the far end.
+    fun lightness(p: Double) = if (dark) p else 1.0 - p
+
+    val swatches = t.mapIndexed { i, target ->
+        if (i == seedIndex) return@mapIndexed ContrastSwatch(target, seedContrast, if (dark) lch.x else 1.0 - lch.x, seed)
+        val chroma = lch.y * (1.0 - 0.6 * (abs(i - 4.5) / 4.5).pow(2))
+        val trajectory = ColorTrajectory { p ->
+            val l = lightness(p)
+            oklch(l, chroma, wrapDegrees(lch.z + yellowWeight * 70.0 * (l - lch.x)), seed.w)
+        }
+        contrastPalette(trajectory, background, listOf(target)).single()
+    }
+    return ContrastScale(background, swatches, contrastScaleSteps[seedIndex])
 }

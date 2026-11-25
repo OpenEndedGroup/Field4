@@ -50,6 +50,14 @@ cv = [
     # helper) when any landmarker is created, CPU delegate or not; inside Field that kills the JVM.
     "mediapipe>=0.10.14,<1.0",
 ]
+manim = [
+    # Optional Manim Community scenes in Python boxes (`python/fieldmanim`): manim computes the
+    # animation, Field draws its Bézier paths. Nothing is rendered by Cairo or encoded to video.
+    # Install with `uv sync --inexact --compile-bytecode --group manim` into the venv Field's JEP
+    # is bound to. `Text` needs nothing more; `MathTex` / `Tex` need a LaTeX install on PATH.
+    "numpy>=1.26",
+    "manim>=0.19",
+]
 pen = [
     # Optional training, fine-tuning and the browser lab for the learned pen (`python/fieldpen`).
     # Continuing an FLine needs none of it: `afield.ai.learning.pen` runs the model in Kotlin.

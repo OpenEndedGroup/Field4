@@ -439,10 +439,7 @@ class ThreeSectionCapTest {
      */
     @Test
     fun `cap areas agree with Manifold's cross-sections`() {
-        if (!ManifoldLibrary.isAvailable) {
-            println("ThreeSectionCapTest: skipping the Manifold comparison — ${ManifoldLibrary.describe()}")
-            return
-        }
+        org.junit.Assume.assumeTrue("ThreeSectionCapTest: skipping the Manifold comparison — ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         listOf(
             Triple("icosphere", icosphereMesh(3, 100.0), 55.0),
             // Lying flat, cut through as two separate tube discs; standing, cut as an annulus.

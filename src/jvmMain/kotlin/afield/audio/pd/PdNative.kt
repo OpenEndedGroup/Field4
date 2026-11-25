@@ -1,6 +1,8 @@
 @file:afield.runtime.completion.CompletionCategory("Synthesis")
 package afield.audio.pd
 
+import afield.runtime.NativeArea
+import afield.runtime.NativeCapability
 import java.lang.foreign.Arena
 import java.lang.foreign.FunctionDescriptor
 import java.lang.foreign.Linker
@@ -38,7 +40,18 @@ import kotlin.io.path.exists
  * It must be the *multi-instance* build (`PD_MULTI=ON`, hence `libpd-multi`): [PdInstance] gives
  * every patch owner its own Pd, and a single-instance libpd would silently share one between them.
  */
-object PdLibrary {
+object PdLibrary : NativeCapability {
+    override val name = "libpd"
+    override val title = "Pure Data (libpd)"
+    override val area = NativeArea.AUDIO
+    override val docsPage = "pure_data.md"
+    override val buildTask = "buildLibpdNative"
+    override val install: Map<String, List<String>> = mapOf(
+        "macos" to listOf("xcode-select --install", "brew install cmake", "./gradlew buildLibpdNative"),
+        "linux" to listOf("sudo apt install build-essential cmake git    # or dnf / pacman equivalents", "./gradlew buildLibpdNative"),
+        "windows" to listOf("winget install -e --id Kitware.CMake    # and Visual Studio C++ Build Tools", "winget install -e --id Git.Git", ".\\gradlew buildLibpdNative"),
+    )
+
 
     private val os: String get() = System.getProperty("os.name").lowercase()
 
@@ -64,7 +77,8 @@ object PdLibrary {
     val resolvedPath: Path? get() = searchedPaths.firstOrNull { it.exists() }
 
     /** True when a libpd is where [searchedPaths] looks. */
-    val isAvailable: Boolean get() = resolvedPath != null
+    override val isAvailable: Boolean get() = resolvedPath != null
+    override val location: String? get() = resolvedPath?.toString()
 
     /** The one instruction a missing library needs. */
     val HOW_TO_BUILD: String
@@ -72,7 +86,7 @@ object PdLibrary {
             "(needs cmake, git and the network once), or point -Dafield.pd.library at a $fileName you built."
 
     /** One line for a box or a test to print. */
-    fun describe(): String = resolvedPath?.let { "libpd at $it" }
+    override fun describe(): String = resolvedPath?.let { "libpd at $it" }
         ?: "libpd not built. $HOW_TO_BUILD"
 }
 

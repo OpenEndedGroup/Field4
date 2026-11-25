@@ -1002,6 +1002,26 @@ private fun macroPaletteRun(name: String, scope: String, projectName: String = "
         }
     }
 
+/** Runs macro YAML that is saved nowhere (a `field-macro` block in a guide or note) on the current selection. */
+private fun macroPaletteRunContent(content: String, label: String = ""): Promise<dynamic> =
+    Promise { resolve, reject ->
+        sendMacroTranscriptCommand(
+            MacroTranscriptCommandRequest(
+                command = "run-content",
+                label = label,
+                content = content,
+                selection = getSelectedIds()
+            ),
+            announce = true
+        ) { response ->
+            if (response.success) {
+                resolve(JSON.parse<dynamic>(Json.encodeToString(MacroTranscriptCommandResponse.serializer(), response)))
+            } else {
+                reject(Throwable(response.message))
+            }
+        }
+    }
+
 /**
  * The Macro Recorder, built on [FieldPanel] like the bookmarks and layers panels: the shell (title,
  * status, close, Escape, keys kept off the canvas) is FieldPanel's, and `.macro-recorder-*` CSS
@@ -2801,6 +2821,7 @@ fun registerBuiltinCommands() {
     w.showDocumentHistory = ::showDocumentHistory
     w.macroPaletteList = ::macroPaletteList
     w.macroPaletteRun = ::macroPaletteRun
+    w.macroPaletteRunContent = ::macroPaletteRunContent
 
     allActions.builtin = eval(
         """

@@ -33,6 +33,10 @@ import kotlin.test.assertTrue
  */
 class TetgenPageProbeTest {
 
+    /** Reports the test SKIPPED, not passed, when the native library is missing. */
+    private fun assumeAvailable() =
+        org.junit.Assume.assumeTrue("${javaClass.simpleName}: native library not available", available())
+
     private fun available(): Boolean = TetgenLibrary.isAvailable && ManifoldLibrary.isAvailable
 
     /**
@@ -44,7 +48,7 @@ class TetgenPageProbeTest {
      */
     @Test
     fun theBracketsVolumeErrorIsTheBridgeAndNotTheMesher() {
-        if (!available()) return
+        assumeAvailable()
         Solid.scope {
             val part = (Solid.cube(80.0, 40.0, 15.0) + Solid.cube(15.0, 40.0, 70.0)) -
                 Solid.union(listOf(
@@ -85,7 +89,7 @@ class TetgenPageProbeTest {
      */
     @Test
     fun eightMalformedSurfacesSplitFourAndFour() {
-        if (!available()) return
+        assumeAvailable()
         val refused = mutableMapOf<String, String>()
         val accepted = mutableMapOf<String, Double>()
         fun probe(name: String, mesh: TriMesh) {
@@ -167,7 +171,7 @@ class TetgenPageProbeTest {
      */
     @Test
     fun marchingCubesIsFirstOrderOnABoxAndSecondOrderOnASphere() {
-        if (!available()) return
+        assumeAvailable()
         val bounds = afield.geometry.mesh.boundsOf(
             afield.math.linalg.vec(-1.6, -2.1, -2.6), afield.math.linalg.vec(1.6, 2.1, 2.6))
 
@@ -226,7 +230,7 @@ class TetgenPageProbeTest {
     }
 
     @Test fun doesTheOrderTheSolidWasBuiltInChangeTheMesh() {
-        if (!available()) return
+        assumeAvailable()
         // Two constructions of the SAME solid, differing only in the order the operands are
         // created. If Manifold's output vertex order depends on that, TetGen sees a different
         // (equally valid) input and refines it differently — which would explain a docs capture
@@ -271,7 +275,7 @@ class TetgenPageProbeTest {
      */
     @Test
     fun tetGenGivesTheSameMeshEveryTimeFromOneSurface() {
-        if (!available()) return
+        assumeAvailable()
         Solid.scope {
             val part = (Solid.cube(80.0, 40.0, 15.0) + Solid.cube(15.0, 40.0, 70.0)) -
                 Solid.union(listOf(
@@ -314,7 +318,7 @@ class TetgenPageProbeTest {
     }
 
     @Test fun howMuchDoesTheQualitySwitchActuallyBuy() {
-        if (!available()) return
+        assumeAvailable()
         // The dev-doc claim is that -q1.2 removes the last poor element "for no measurable cost".
         // On the page's bracket it does not, so this prints the whole picture including wall time.
         Solid.scope {

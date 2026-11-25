@@ -56,7 +56,7 @@ class LineHeatPassTest {
 
     /** An origin for box [uid] whose source and current code are this file, so box lines are file lines. */
     private fun origin(uid: String, text: String? = BoxBytecodeTestSupport.testSource(path), code: () -> String? = { text }) =
-        SnippetOrigin(uid, "code", "'heat' ($uid)", text, shapes.classLoader, code)
+        SnippetOrigin(uid, "code", "'heat' ($uid)", text, shapes.classLoader, currentCode = code)
 
     private fun freshBox() = "line-heat-test-${System.nanoTime()}-${serial++}"
 

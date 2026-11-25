@@ -1,6 +1,6 @@
 #!/bin/zsh -l
 # Scheduled worktree reap. Runs main's copies of tools/preview_server.py (stops registered preview
-# servers older than 16 h) and tools/reap_merged_worktrees.py: the standard reap, then
+# servers and demo Fields older than 16 h) and tools/reap_merged_worktrees.py: the standard reap, then
 # --clean-builds on trees idle for 3 h or more. The reaper's own guards (live cwd, dirty, ignored
 # work, .reaper-keep, protected branches) apply unchanged.
 #

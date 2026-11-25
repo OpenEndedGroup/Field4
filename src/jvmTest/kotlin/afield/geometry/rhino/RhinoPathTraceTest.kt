@@ -10,11 +10,11 @@ import kotlin.test.assertTrue
 /** [PathTraceScene.rhino] on the Save Small fixture: the scene holds what [RhinoModel.mesh] holds, kept apart by object. */
 class RhinoPathTraceTest {
 
-    private fun saveSmall(): RhinoModel? {
-        if (!Rhino3dm.isAvailable || !OpenNurbsBrepNative.isAvailable) {
-            println("SKIPPED Rhino path-trace tests: ${Rhino3dm.describe()}")
-            return null
-        }
+    private fun saveSmall(): RhinoModel {
+        org.junit.Assume.assumeTrue(
+            "native library not available: ${Rhino3dm.describe()}",
+            Rhino3dm.isAvailable && OpenNurbsBrepNative.isAvailable,
+        )
         val dir = Files.createTempDirectory("rhino-path-trace-test").toFile()
         try {
             return Rhino3dm.load(Rhino3dm.writeNurbsSample(File(dir, "save_small.3dm")))
@@ -24,7 +24,7 @@ class RhinoPathTraceTest {
     }
 
     @Test fun objectAndTriangleCountsMatchTheMergedMesh() {
-        val model = saveSmall() ?: return
+        val model = saveSmall()
         val merged = model.mesh()
         val scene = PathTraceScene()
         val added = scene.rhino(model)
@@ -38,7 +38,7 @@ class RhinoPathTraceTest {
     }
 
     @Test fun zUpTurnsRhinoZIntoSceneY() {
-        val model = saveSmall() ?: return
+        val model = saveSmall()
         val merged = model.mesh()
         var zMin = Float.MAX_VALUE; var zMax = -Float.MAX_VALUE
         for (v in 0 until merged.vertexCount) {

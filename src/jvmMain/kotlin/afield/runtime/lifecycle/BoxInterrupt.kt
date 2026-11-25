@@ -9,6 +9,7 @@ import afield.runtime.bytecode.SnippetOrigin
 import org.jetbrains.org.objectweb.asm.Label
 import org.jetbrains.org.objectweb.asm.MethodVisitor
 import org.jetbrains.org.objectweb.asm.Opcodes
+import afield.document.graph.watchdog
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicReference
@@ -37,7 +38,8 @@ import java.util.concurrent.atomic.AtomicReference
  *
  * An interrupt is requested by the "Interrupt Running Box" command (`interrupt-box`, dispatched on
  * the websocket's coroutine rather than the blocked Runloop), by the agent harness's RunBox timeout,
- * or by the [Watchdog] after the Runloop has made no frame for [Watchdog.interruptAfterMs]. The
+ * or by the [Watchdog] after the Runloop has made no frame for [Watchdog.interruptAfterMs], or for
+ * the running box's own `watchdog` seconds when it sets one (`afield.document.graph.watchdog`). The
  * watchdog also reports the stall, naming the box from the Runloop thread's stack (snippet class
  * names are recorded against their box when instrumented, because [RunScope.current] is
  * thread-local and cannot be read from another thread).
@@ -58,8 +60,14 @@ object BoxInterrupt {
 
     private val pending = AtomicReference<Request?>(null)
 
-    /** Box labels by snippet class internal name (`Line_12_jsr223/...`), for naming a stall's culprit. */
-    private val classOwners = ConcurrentHashMap<String, String>()
+    /** A snippet class's box: its label for reports, and the box itself, weakly, for its `watchdog`. */
+    private class Owner(val label: String, box: afield.document.graph.Box?) {
+        private val ref = box?.let { java.lang.ref.WeakReference(it) }
+        val box: afield.document.graph.Box? get() = ref?.get()
+    }
+
+    /** Owners by snippet class internal name (`Line_12_jsr223/...`), for naming a stall's culprit. */
+    private val classOwners = ConcurrentHashMap<String, Owner>()
 
     /** Listeners told about every interrupt that actually fired (the UI and tests). */
     val onInterrupted = CopyOnWriteArrayList<(BoxInterruptedError) -> Unit>()
@@ -110,7 +118,7 @@ object BoxInterrupt {
         // Wake a sleep/wait/park that box code is blocked in, so its next back-edge polls. Only then:
         // an interrupt flag left on the Runloop thread outside box code would break its idle park.
         val stack = t.stackTrace
-        val boxDepth = stack.indexOfFirst { classOwners.containsKey(it.className.replace('.', '/')) }
+        val boxDepth = stack.indexOfFirst { ownerOf(it) != null }
         if (boxDepth >= 0 && stack.take(boxDepth).any { it.isBlockingWait() }) t.interrupt()
         return true
     }
@@ -128,13 +136,23 @@ object BoxInterrupt {
         if (frame != r.frameAtRequest) pending.compareAndSet(r, null)
     }
 
+    private fun ownerOf(e: StackTraceElement): Owner? = classOwners[e.className.replace('.', '/')]
+
     /** Box label that owns the innermost snippet frame in [stack], or null. */
-    fun culprit(stack: Array<StackTraceElement>): String? {
-        for (e in stack) {
-            val owner = classOwners[e.className.replace('.', '/')]
-            if (owner != null) return owner
-        }
-        return null
+    fun culprit(stack: Array<StackTraceElement>): String? = stack.firstNotNullOfOrNull(::ownerOf)?.label
+
+    /**
+     * How long, in ms, the Runloop may stall in [stack] before the [Watchdog] interrupts it, and the
+     * box that decided it: the outermost snippet frame's box (the run the Runloop entered first) when
+     * it sets `watchdog`, else [Watchdog.interruptAfterMs]. 0 means never. Null when no box code is on
+     * the stack, since only box code polls.
+     */
+    internal fun allowanceFor(stack: Array<StackTraceElement>): Pair<Long, String?>? {
+        val outer = stack.lastOrNull { ownerOf(it) != null }?.let(::ownerOf) ?: return null
+        val seconds = outer.box?.let { runCatching { it.watchdog }.getOrNull() }?.toDouble()
+            ?: return Watchdog.interruptAfterMs to null
+        val ms = if (seconds.isNaN() || seconds <= 0 || seconds.isInfinite()) 0L else (seconds * 1000).toLong().coerceAtLeast(1)
+        return ms to outer.label
     }
 
     /**
@@ -164,7 +182,7 @@ object BoxInterrupt {
             PollingMethodVisitor(next, pollAtEntry = !m.isInitializer)
 
         override fun classRewritten(cls: ClassScope) {
-            classOwners[cls.className] = cls.origin.label
+            classOwners[cls.className] = Owner(cls.origin.label, cls.origin.owner)
         }
     }
 
@@ -207,14 +225,16 @@ object BoxInterrupt {
 
     /**
      * Notices that [Runloop.frame] has stopped advancing. After [reportAfterMs] it logs the stall
-     * once, with the culprit box and the Runloop thread's stack; after [interruptAfterMs] (0 = never)
-     * it [request]s an interrupt. Runs on its own daemon thread; never touches Runloop state beyond
-     * reading the frame counter and the thread's stack.
+     * once, with the culprit box and the Runloop thread's stack; after [interruptAfterMs] (0 = never),
+     * or the stalled box's own `watchdog` seconds when it sets them, it [request]s an interrupt. Runs
+     * on its own daemon thread; never touches Runloop state beyond reading the frame counter, the
+     * thread's stack, and the stalled box's `watchdog` property.
      */
     object Watchdog {
         @Volatile var reportAfterMs: Long = setting("AFIELD_RUNLOOP_WATCHDOG_REPORT_MS", "afield.runloop.watchdog.reportMs")?.toLongOrNull() ?: 1500L
         @Volatile var interruptAfterMs: Long = setting("AFIELD_RUNLOOP_WATCHDOG_INTERRUPT_MS", "afield.runloop.watchdog.interruptMs")?.toLongOrNull() ?: 30_000L
         @Volatile var pollMs: Long = 100L
+        private const val LOOK_EVERY_MS = 1000L
 
         /** Told about each stall report: (culprit box label or null, milliseconds stalled, stack). */
         val onStall = CopyOnWriteArrayList<(String?, Long, Array<StackTraceElement>) -> Unit>()
@@ -249,13 +269,17 @@ object BoxInterrupt {
             var since = System.nanoTime()
             var reported = false
             var interrupted = false
+            // The stalled run's allowance, read from the stack at most every [LOOK_EVERY_MS] of a stall:
+            // a box allowed minutes should not have its thread's stack walked ten times a second.
+            var allowance: Pair<Long, String?>? = null
+            var nextLookMs = 0L
             while (true) {
                 try { Thread.sleep(pollMs) } catch (_: InterruptedException) { return }
                 val f = Runloop.runLoop.frame
                 val now = System.nanoTime()
                 if (f != lastFrame) {
                     if (reported) lprintln("info,runloop,watchdog", "Runloop moving again after ${(now - since) / 1_000_000} ms")
-                    lastFrame = f; since = now; reported = false; interrupted = false
+                    lastFrame = f; since = now; reported = false; interrupted = false; allowance = null; nextLookMs = 0
                     withdrawIfFrameAdvanced(f)
                     continue
                 }
@@ -270,12 +294,20 @@ object BoxInterrupt {
                     lprintln("warn,runloop,watchdog", report(stalledMs, main, stack, who))
                     onStall.forEach { runCatching { it(who, stalledMs, stack) } }
                 }
-                if (BoxInstrumentation.watchdogInterrupts && !interrupted && interruptAfterMs > 0 && stalledMs >= interruptAfterMs) {
-                    val who = culprit(main.stackTrace)
-                    // Only box code polls, so only ask when box code is on the stack.
-                    if (who != null) {
+                if (BoxInstrumentation.watchdogInterrupts && !interrupted) {
+                    if (stalledMs >= nextLookMs) {
+                        allowance = allowanceFor(main.stackTrace)
+                        nextLookMs = stalledMs + LOOK_EVERY_MS
+                    }
+                    // Only box code polls, so only ask when box code is on the stack (allowance != null).
+                    val (limitMs, setBy) = allowance ?: continue
+                    if (limitMs > 0 && stalledMs >= limitMs) {
+                        val stack = main.stackTrace
+                        val who = culprit(stack) ?: continue
                         interrupted = true
-                        request("Runloop stalled ${stalledMs} ms in $who (watchdog)", main)
+                        val why = if (setBy != null) "$setBy sets watchdog = ${limitMs / 1000.0} s"
+                            else "set watchdog = <seconds> in the box to allow longer, or 0 for never"
+                        request("Runloop stalled ${stalledMs} ms in $who (watchdog); $why", main)
                     }
                 }
             }

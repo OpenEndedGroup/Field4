@@ -10,6 +10,8 @@ import afield.graphics.render.filled
 import afield.math.linalg.Vec3
 import afield.math.linalg.Vec4
 import afield.math.linalg.vec
+import afield.runtime.NativeArea
+import afield.runtime.NativeCapability
 import afield.runtime.completion.CompletesPath
 import afield.runtime.completion.CompletesWith
 import afield.runtime.completion.StringCompletionContext
@@ -493,7 +495,18 @@ class RhinoModel internal constructor(
 }
 
 /** Where the wrapper library is looked for, in order; the same arrangement as TetGen's. */
-object OpenNurbsLibrary {
+object OpenNurbsLibrary : NativeCapability {
+    override val name = "opennurbs"
+    override val title = "Rhino .3dm files (openNURBS)"
+    override val area = NativeArea.SOLIDS
+    override val docsPage = "rhino_files.md"
+    override val buildTask = "buildOpenNurbsNative"
+    override val install: Map<String, List<String>> = mapOf(
+        "macos" to listOf("xcode-select --install", "brew install cmake", "./gradlew buildOpenNurbsNative"),
+        "linux" to listOf("sudo apt install build-essential cmake    # or dnf / pacman equivalents", "./gradlew buildOpenNurbsNative"),
+        "windows" to listOf("winget install -e --id Kitware.CMake    # and Visual Studio C++ Build Tools", ".\\gradlew buildOpenNurbsNative"),
+    )
+
 
     private val isWindows: Boolean get() = System.getProperty("os.name").lowercase().contains("win")
     private val isMac: Boolean
@@ -521,7 +534,8 @@ object OpenNurbsLibrary {
     val resolvedPath: Path? get() = searchedPaths.firstOrNull { it.exists() }
 
     /** Whether the library is there to load. */
-    val isAvailable: Boolean get() = resolvedPath != null
+    override val isAvailable: Boolean get() = resolvedPath != null
+    override val location: String? get() = resolvedPath?.toString()
 
     /** How to get the library, for an error message. */
     val HOW_TO_BUILD: String
@@ -529,7 +543,7 @@ object OpenNurbsLibrary {
             "or point -Dafield.opennurbs.library at a $fileName you built."
 
     /** One line for a box or a test to print. */
-    fun describe(): String = resolvedPath?.let { "openNURBS wrapper at $it (${OpenNurbsNative.version()})" }
+    override fun describe(): String = resolvedPath?.let { "openNURBS wrapper at $it (${OpenNurbsNative.version()})" }
         ?: "openNURBS wrapper not built. $HOW_TO_BUILD"
 }
 

@@ -24,6 +24,7 @@ no error or log message, so the symptoms below help you find which measurement t
 | a panel opens at 200px and never grows, with a small frame in the corner of it | your iframe declares a percentage width, and something suppressed the other measurement source | [no measurement source at all](#a-frame-with-nothing-to-report) |
 | a panel is short by the height of whatever sits above its frame | a frame's own height is being read as the whole content height | [height is measured from the content edge](#height-is-measured-from-the-content-edge) |
 | a docs figure is far wider than its box, or its right-hand column is cropped off | the screenshot-prep pass and the auto-sizer are chasing each other | [the screenshot pass is a second sizer](#the-screenshot-pass-is-a-second-sizer) |
+| a docs figure of several panels ends in a band of empty canvas | the screenshot prep gave a panel a height the sizer then took back | [the screenshot pass is a second sizer](#the-screenshot-pass-is-a-second-sizer) |
 | a panel stays taller than what it shows, with empty space below | something in it stretches to the panel's height instead of having one | [a panel follows its content back down](#a-panel-follows-its-content-back-down) |
 | a panel stops at most of the window's height and scrolls | auto-size never goes past 80% of the window | [a panel follows its content back down](#a-panel-follows-its-content-back-down) |
 | a panel ignores the size the content asked for | somebody dragged that panel once | [a dragged panel stops listening](#a-dragged-panel-stops-listening) |
@@ -280,8 +281,19 @@ docs runner or the screenshot API is about to photograph a box, so that a figure
 content rather than to whatever width the box was dragged to. It works in the opposite direction
 from everything above: it measures the panels and then grows
 `box.style.width` to fit them (`src/jsMain/kotlin/afield/app/client/Main.kt:1652#if (desiredWidth > currentWidth + 2.0)`).
-Its height sibling `fitOutputDisclosuresForScreenshot` sets panel heights too, but leaves alone a
-panel whose frames all state their own height.
+Its height sibling `fitOutputDisclosuresForScreenshot` sets panel heights too, but only on panels
+the live sizer does not own. It asks `window.fieldSizerOwnsPanelHeight`, the sizer's own answer: an
+open panel in `content` mode that nobody has dragged is already its content's height, and the next
+auto-size pass would put that height back whatever the prep wrote. It also leaves alone a panel
+whose frames all state their own height, and a panel that holds only controls. What is left (a `fixed` panel, a dragged one) gets the
+floor: 260 px for a panel holding an input, button or SVG, 120 px otherwise, and 36 px over the
+height it measures.
+
+The floor used to apply to every panel. The clip was measured over the floored layout, and the
+sizer then shrank each panel back before the picture was taken, so every panel below a floored one
+had been measured too low. A box of two one-line `markdown(...)` cards was clipped 225 CSS px tall
+for 132 px of content, and the extra 93 px were empty canvas under the second card. A box with one
+panel never showed it, because nothing sits below its only panel.
 
 With a fill frame, that would loop: the panel grows to the box, the prep pass grows the box to the
 panel, and the auto-size passes grow the panel to the new box, bounded only by the window-width

@@ -17,6 +17,10 @@ import kotlin.test.assertTrue
  */
 class CsoundDataPlaneTest {
 
+    /** Reports the test SKIPPED, not passed, when the native library is missing. */
+    private fun assumeAvailable() =
+        org.junit.Assume.assumeTrue("${javaClass.simpleName}: native library not available", available())
+
     private fun available(): Boolean {
         if (!CsoundLibrary.isAvailable) {
             println("SKIPPED Csound data-plane tests: ${CsoundLibrary.describe()}")
@@ -44,7 +48,7 @@ class CsoundDataPlaneTest {
     private fun rms(x: FloatArray, from: Int = 0) = sqrt((from until x.size).sumOf { x[it].toDouble() * x[it] } / (x.size - from))
 
     @Test fun aFieldSineGoesThroughACsoundFilterAndComesBackAttenuated() {
-        if (!available()) return
+        assumeAvailable()
         val orc = """
             instr Filter
               ain   chnget "in"
@@ -85,7 +89,7 @@ class CsoundDataPlaneTest {
     }
 
     @Test fun renderSignalsOfflineAdvancesSharedGraphsTogether() {
-        if (!available()) return
+        assumeAvailable()
         CsoundInstance("instr Thru\n ain chnget \"in\"\n chnset ain * 0.5, \"half\"\nendin", "i \"Thru\" 0 z").use { cs ->
             val node = cs.node(audioIn = mapOf("in" to SineOsc(Param(500f))))
             val (dry, half) = afield.audio.synth.renderSignalsOffline(0.1, SineOsc(Param(500f)), node.audioOut("half"))
@@ -94,7 +98,7 @@ class CsoundDataPlaneTest {
     }
 
     @Test fun outsComeBackAsFieldSignals() {
-        if (!available()) return
+        assumeAvailable()
         val orc = """
             instr Tone
               asig poscil 0.3, 600
@@ -111,7 +115,7 @@ class CsoundDataPlaneTest {
     }
 
     @Test fun aTableRoundTripsAndTheOrchestraReadsWhatKotlinWrote() {
-        if (!available()) return
+        assumeAvailable()
         val orc = """
             giWave ftgen 1, 0, 1024, 10, 1
             instr Probe
@@ -133,7 +137,7 @@ class CsoundDataPlaneTest {
     }
 
     @Test fun controlAndStringChannelsGoBothWays() {
-        if (!available()) return
+        assumeAvailable()
         val orc = """
             instr Echo
               kx    chnget "x"
@@ -153,7 +157,7 @@ class CsoundDataPlaneTest {
     }
 
     @Test fun outvalueCallsBackAndInvalueReadsWhatKotlinSet() {
-        if (!available()) return
+        assumeAvailable()
         val orc = """
             instr Report
               kgain invalue "gain"
@@ -182,7 +186,7 @@ class CsoundDataPlaneTest {
     }
 
     @Test fun midiNotesReachTheOrchestra() {
-        if (!available()) return
+        assumeAvailable()
         val orc = """
             massign 0, "Synth"
             instr Synth
@@ -202,7 +206,7 @@ class CsoundDataPlaneTest {
     }
 
     @Test fun compileNowRedefinesAnInstrumentAndReportsItsErrorsOnTheirLines() {
-        if (!available()) return
+        assumeAvailable()
         CsoundInstance("instr 1\n a1 poscil 0.2, 440\n outs a1, a1\nendin", "i 1 0 z").use { cs ->
             val ok = cs.compileNow("instr 1\n a1 poscil 0.2, 880\n outs a1, a1\nendin")
             assertTrue(ok.ok, "${ok.printed}")
@@ -218,7 +222,7 @@ class CsoundDataPlaneTest {
     }
 
     @Test fun chnKHintsAreReadFromCsoundItself() {
-        if (!available()) return
+        assumeAvailable()
         CsoundInstance("chn_k \"cutoff\", 1, 3, 1200, 200, 6000\ninstr 1\nendin", "f 0 z").use { cs ->
             assertEquals(CsoundInstance.ControlHints(3, 1200.0, 200.0, 6000.0), cs.hints("cutoff"))
             assertEquals(null, cs.hints("nothing"))

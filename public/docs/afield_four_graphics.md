@@ -122,8 +122,7 @@ renderer += module
 var vertexData = defaultBuffer {
     perFrame = true
     size = 9.vec4s
-}
-    .buffer
+}.buffer
 
 m.vertexData = { vertexData }
 
@@ -1358,8 +1357,7 @@ renderer += module
 var vertexData = defaultBuffer {
     perFrame = true
     size = 3.vec4s
-}
-    .buffer
+}.buffer
 
 m.vertexData = { vertexData }
 
@@ -1518,8 +1516,7 @@ var sourceBuffer = buffer {
     addressable()
     hosted()
     dest()
-}
-    .buffer
+}.buffer
 
 sourceBuffer.write {
     200 {
@@ -1556,8 +1553,7 @@ renderer += module
 var vertexData = defaultBuffer {
     perFrame = true
     size = 3.vec4s
-}
-    .buffer
+}.buffer
 
 m.vertexData = { vertexData }
 
@@ -2311,10 +2307,15 @@ The rule is one type across Field, `FLineFillRule`; Gezira's `FillRule` and typo
 `TextFillRule` are other names for it. An FLine carries its own as the `fillRule` attribute, non-zero
 unless set, and every filler reads it: Field's SVG and Skia line renderers, Gezira, `contains2D`,
 Java2D shapes (and so the boolean operations), `BufferCanvas.fill`, and `FLine.tessellate`, which
-the Vulkan and three.js fills are made of. The triangulator only knows nesting, so `tessellate` first
+the Vulkan and three.js fills are made of, and the paint areas of `PaintCanvas` (`work`, `stipple`,
+`glaze`, `hatch`, `erase`; [Overlapping regions and the fill rule](paint_canvas.md#overlapping-regions-and-the-fill-rule)).
+Paint and `tessellate` differ only when no rule is set: they then fill even-odd, as they always did. The triangulator only knows nesting, so `tessellate` first
 resolves a line with a rule set into contours that do not overlap. Manifold's `FillRule` adds
 `POSITIVE` and `NEGATIVE`, which only a solid boolean needs; `Section.ofFLines(lines, rule = line.fillRule)`
-takes Field's.
+takes Field's. Text contours rely on the non-zero rule for their counters
+([The winding convention](typography_examples.md#the-winding-convention-and-the-control-arm)), and
+[2D sections and offsets](manifold.md#2d-sections-and-offsets) and [An outline filled into a buffer](visualizers.md#an-outline-filled-into-a-buffer)
+show the rule in Manifold and in a GPU buffer.
 
 ```diffstatic {data-lang=kotlin}
 star.filled = true
@@ -2326,7 +2327,8 @@ star.fillRule = FillRule.EVEN_ODD
 ```
 
 `FillRuleConsumersTest` fills the nested squares and two overlapping squares under both rules
-through each of these and checks the contested region against Gezira's coverage.
+through each of these and checks the contested region against Gezira's coverage;
+`PaintFillRuleTest` holds the paint areas to the same coverage.
 
 A new stage is one more kernel. Gezira's TransformBeziers, a rotation here, goes in front of the
 rasteriser with `then`:

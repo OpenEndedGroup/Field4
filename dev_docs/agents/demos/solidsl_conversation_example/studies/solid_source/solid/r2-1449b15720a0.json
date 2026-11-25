@@ -1,0 +1,10 @@
+{
+  "id" : "r2-1449b15720a0",
+  "parent" : "r1-ce04e5eb0af3",
+  "description" : "A cast, nautilus-inspired lamp with a hollow spiral-pierced shade and a flared weighted foot",
+  "created" : "2026-11-25T07:04:51.022881Z",
+  "sourceHash" : "1449b15720a0abfb0c6c9ce889b58bfe67563cef9ada62a9a30f93c6f2a69ad9",
+  "facts" : {
+    "knobs" : 93
+  }
+}

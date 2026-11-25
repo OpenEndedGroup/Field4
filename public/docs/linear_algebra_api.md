@@ -4,6 +4,31 @@
 
 This page is generated from the typed algebra model that emits Field's heap, frame-arena, and `MemorySegment` vector implementations. For intuition and worked examples, start with [Linear algebra in Field](linear_algebra.md).
 
+## Ergonomic operators
+
+Vectors are written with ordinary arithmetic, and a handful of shorthands cover the moves live code makes most. Everything here returns a new vector and leaves its operands alone.
+
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Operator | Meaning |
+| --- | --- |
+| `a + b`, `a - b` | Component-by-component sum and difference. A number on the right applies to every component: `a + 1`. |
+| `a * b`, `a * 2`, `a / 2` | Component-by-component product, scaling by a number, dividing by a number. |
+| `-a` | The vector pointing the other way. |
+| `a.length` | The vector's length, the same as `a.length()`. |
+| `a.n` | A unit-length copy pointing the same way, the same as `a.normalized()`. Zero stays zero. |
+| `v len 10` | A copy rescaled to length 10, keeping direction. |
+| `a lerp 0.5 to b` | The point halfway from `a` to `b`; 0 gives `a`, 1 gives `b`, and values outside 0..1 extend the line. |
+| `a step 10 to b` | The point 10 units from `a` in the direction of `b`. It does not stop at `b`, so a step longer than the gap goes past it; if `a` and `b` coincide the result is `a`. |
+| `v(y = 2f)` | A copy with the named components replaced; unnamed components keep this vector's values. |
+| `v { normalize() }` | A copy after applying the block to it, leaving `v` untouched. |
+| `a %= b` | In-place assignment: copies b's components into a. |
+| `v.normalized()` / `v.normalized(dest)` | Unit direction as a new value / into reusable storage. Optional epsilon sets the zero threshold. Finite inputs only. |
+
+</div>
+
+`length`, `n`, `lerp … to` and `step … to` exist on the float and double heap vectors and on the frame-arena and segment forms. In a frame arena they allocate their result in the arena; on a segment view they return a heap vector, because a view has nowhere of its own to put one. The arithmetic operators are heap forms, float and double; `len`, `v(...)`, `v { }` and `%=` are float heap forms.
+
 ## One algebra, three storage forms
 
 <div data-code-lang="kotlin" markdown>
@@ -46,7 +71,7 @@ In a Field code box, ordinary heap values use `vec(x, y)`. In a typed context, `
 | `max(other: Vector2fc)`<br>`value.max(other)` | Selects the larger value independently in each component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
 | `min(scalar: Float)`<br>`value.min(scalar)` | Caps every component at a scalar upper bound. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
 | `max(scalar: Float)`<br>`value.max(scalar)` | Raises every component to a scalar lower bound. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
-| `lerp(other: Vector2fc, t: Float)`<br>`value.lerp(other, 0.5f)` | Linearly interpolates from this vector toward another. At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `lerp(other: Vector2fc, t: Float)`<br>`value.lerp(other, 0.5f)` | Linearly interpolates from this vector toward another. At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them. In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
 | `fma(scalar: Float, other: Vector2fc)`<br>`value.fma(0.1f, direction)` | Computes this + other * scalar component by component. This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
 | `dot(other: Vector2fc)`<br>`value.dot(other)` | Measures how strongly two vectors point in the same direction. Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them. |
 | `lengthSquared()`<br>`value.lengthSquared()` | Returns the squared length of this vector. Use this for comparisons when you do not need the actual distance; it avoids a square root. |
@@ -84,7 +109,7 @@ In a Field code box, ordinary heap values use `vec(x, y, z)`. In a typed context
 | `max(other: Vector3fc)`<br>`value.max(other)` | Selects the larger value independently in each component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
 | `min(scalar: Float)`<br>`value.min(scalar)` | Caps every component at a scalar upper bound. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
 | `max(scalar: Float)`<br>`value.max(scalar)` | Raises every component to a scalar lower bound. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
-| `lerp(other: Vector3fc, t: Float)`<br>`value.lerp(other, 0.5f)` | Linearly interpolates from this vector toward another. At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `lerp(other: Vector3fc, t: Float)`<br>`value.lerp(other, 0.5f)` | Linearly interpolates from this vector toward another. At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them. In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
 | `fma(scalar: Float, other: Vector3fc)`<br>`value.fma(0.1f, direction)` | Computes this + other * scalar component by component. This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
 | `dot(other: Vector3fc)`<br>`value.dot(other)` | Measures how strongly two vectors point in the same direction. Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them. |
 | `lengthSquared()`<br>`value.lengthSquared()` | Returns the squared length of this vector. Use this for comparisons when you do not need the actual distance; it avoids a square root. |
@@ -123,7 +148,7 @@ In a Field code box, ordinary heap values use `vec(x, y, z, w)`. In a typed cont
 | `max(other: Vector4fc)`<br>`value.max(other)` | Selects the larger value independently in each component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
 | `min(scalar: Float)`<br>`value.min(scalar)` | Caps every component at a scalar upper bound. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
 | `max(scalar: Float)`<br>`value.max(scalar)` | Raises every component to a scalar lower bound. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
-| `lerp(other: Vector4fc, t: Float)`<br>`value.lerp(other, 0.5f)` | Linearly interpolates from this vector toward another. At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `lerp(other: Vector4fc, t: Float)`<br>`value.lerp(other, 0.5f)` | Linearly interpolates from this vector toward another. At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them. In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
 | `fma(scalar: Float, other: Vector4fc)`<br>`value.fma(0.1f, direction)` | Computes this + other * scalar component by component. This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
 | `dot(other: Vector4fc)`<br>`value.dot(other)` | Measures how strongly two vectors point in the same direction. Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them. |
 | `lengthSquared()`<br>`value.lengthSquared()` | Returns the squared length of this vector. Use this for comparisons when you do not need the actual distance; it avoids a square root. |
@@ -161,7 +186,7 @@ The double-precision, heap-only sibling of `Vector2f`; the arena, segment, and b
 | `max(other: Vector2dc)`<br>`value.max(other)` | Selects the larger value independently in each component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
 | `min(scalar: Double)`<br>`value.min(scalar)` | Caps every component at a scalar upper bound. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
 | `max(scalar: Double)`<br>`value.max(scalar)` | Raises every component to a scalar lower bound. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
-| `lerp(other: Vector2dc, t: Double)`<br>`value.lerp(other, 0.5)` | Linearly interpolates from this vector toward another. At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `lerp(other: Vector2dc, t: Double)`<br>`value.lerp(other, 0.5)` | Linearly interpolates from this vector toward another. At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them. In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
 | `fma(scalar: Double, other: Vector2dc)`<br>`value.fma(0.1, direction)` | Computes this + other * scalar component by component. This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
 | `dot(other: Vector2dc)`<br>`value.dot(other)` | Measures how strongly two vectors point in the same direction. Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them. |
 | `lengthSquared()`<br>`value.lengthSquared()` | Returns the squared length of this vector. Use this for comparisons when you do not need the actual distance; it avoids a square root. |
@@ -199,7 +224,7 @@ The double-precision, heap-only sibling of `Vector3f`; the arena, segment, and b
 | `max(other: Vector3dc)`<br>`value.max(other)` | Selects the larger value independently in each component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
 | `min(scalar: Double)`<br>`value.min(scalar)` | Caps every component at a scalar upper bound. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
 | `max(scalar: Double)`<br>`value.max(scalar)` | Raises every component to a scalar lower bound. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
-| `lerp(other: Vector3dc, t: Double)`<br>`value.lerp(other, 0.5)` | Linearly interpolates from this vector toward another. At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `lerp(other: Vector3dc, t: Double)`<br>`value.lerp(other, 0.5)` | Linearly interpolates from this vector toward another. At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them. In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
 | `fma(scalar: Double, other: Vector3dc)`<br>`value.fma(0.1, direction)` | Computes this + other * scalar component by component. This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
 | `dot(other: Vector3dc)`<br>`value.dot(other)` | Measures how strongly two vectors point in the same direction. Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them. |
 | `lengthSquared()`<br>`value.lengthSquared()` | Returns the squared length of this vector. Use this for comparisons when you do not need the actual distance; it avoids a square root. |
@@ -238,7 +263,7 @@ The double-precision, heap-only sibling of `Vector4f`; the arena, segment, and b
 | `max(other: Vector4dc)`<br>`value.max(other)` | Selects the larger value independently in each component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
 | `min(scalar: Double)`<br>`value.min(scalar)` | Caps every component at a scalar upper bound. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
 | `max(scalar: Double)`<br>`value.max(scalar)` | Raises every component to a scalar lower bound. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
-| `lerp(other: Vector4dc, t: Double)`<br>`value.lerp(other, 0.5)` | Linearly interpolates from this vector toward another. At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `lerp(other: Vector4dc, t: Double)`<br>`value.lerp(other, 0.5)` | Linearly interpolates from this vector toward another. At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them. In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
 | `fma(scalar: Double, other: Vector4dc)`<br>`value.fma(0.1, direction)` | Computes this + other * scalar component by component. This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
 | `dot(other: Vector4dc)`<br>`value.dot(other)` | Measures how strongly two vectors point in the same direction. Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them. |
 | `lengthSquared()`<br>`value.lengthSquared()` | Returns the squared length of this vector. Use this for comparisons when you do not need the actual distance; it avoids a square root. |
@@ -276,7 +301,7 @@ The half-precision (IEEE-754 binary16), heap-only vector. Its eight lanes pack i
 | `max(other: Vector8hc)`<br>`value.max(other)` | Selects the larger value independently in each component. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
 | `min(scalar: Float)`<br>`value.min(scalar)` | Caps every component at a scalar upper bound. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
 | `max(scalar: Float)`<br>`value.max(scalar)` | Raises every component to a scalar lower bound. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
-| `lerp(other: Vector8hc, t: Float)`<br>`value.lerp(other, 0.5f)` | Linearly interpolates from this vector toward another. At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
+| `lerp(other: Vector8hc, t: Float)`<br>`value.lerp(other, 0.5f)` | Linearly interpolates from this vector toward another. At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them. In live code the infix form `a lerp t to b` returns the same point as a new vector, leaving both operands alone. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
 | `fma(scalar: Float, other: Vector8hc)`<br>`value.fma(0.1f, direction)` | Computes this + other * scalar component by component. This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration. Overloads without dest update this vector; pass a distinct destination to preserve the receiver. |
 | `dot(other: Vector8hc)`<br>`value.dot(other)` | Measures how strongly two vectors point in the same direction. Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them. |
 | `lengthSquared()`<br>`value.lengthSquared()` | Returns the squared length of this vector. Use this for comparisons when you do not need the actual distance; it avoids a square root. |
@@ -296,22 +321,6 @@ Every float heap vector (`Vector2f`, `Vector3f`, `Vector4f`) carries the modeled
 - Components can be spelled two ways: positional `x`/`y`/`z`/`w` or color `r`/`g`/`b`/`a`. The two are never mixed within one swizzle.
 - A read swizzle returns a same-scalar `VectorKfc` of the swizzle's own arity (`v.xy` is a `Vector2fc`, `v.xyz` a `Vector3fc`).
 - When a swizzle's indices are all distinct it also has a writable `var` on the mutable type, so GLSL-style assignment works: `v.xy = other.zw`. Repeated-index swizzles (`v.xx`) have no unambiguous target and stay read-only.
-
-## Ergonomic operators
-
-The float heap vectors also carry a small generated operator surface for live coding:
-
-<div class="field-reference" data-code-lang="kotlin" markdown>
-
-| Operator | Meaning |
-| --- | --- |
-| `v(y = 2f)` | Returns a copy with the named components replaced; unnamed components keep this vector's values. |
-| `v.normalized()` / `v.normalized(dest)` | Unit direction as a new value / into reusable storage. Zero remains zero; optional epsilon sets the zero threshold. Finite inputs only. |
-| `v { normalize() }` | Returns a copy after applying the block to it, leaving this vector untouched. |
-| `a %= b` | In-place assignment: copies b's components into a. |
-| `v len 10` | Returns a copy rescaled to the given length, keeping direction. |
-
-</div>
 
 ## Rotations and matrices
 

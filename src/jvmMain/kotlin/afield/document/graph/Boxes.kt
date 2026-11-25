@@ -187,6 +187,34 @@ var Box.autorun: Boolean
     }
 
 /**
+ * How long, in seconds, this box's code may hold the Runloop before the runaway-box watchdog
+ * interrupts it. Null, the default, leaves Field's own delay (30 s unless
+ * `AFIELD_RUNLOOP_WATCHDOG_INTERRUPT_MS` says otherwise); `0`, anything below it, or infinity means
+ * this box is never interrupted automatically (**Interrupt Running Box** still works). Saved with
+ * the document, so a long search keeps its allowance after a restart.
+ *
+ * ```
+ * watchdog = 300    // this box's search may take five minutes
+ * watchdog = 0      // never interrupt it automatically
+ * watchdog = null   // back to Field's default
+ * ```
+ *
+ * It counts for the box whose code the Runloop entered first: a box that calls a function exported
+ * by another box keeps its own allowance. It changes nothing when box instrumentation is not
+ * `watchdog` (the welcome page's Runtime panel), since then nothing is interrupted automatically.
+ * Read leniently, like [autorun]: text that spells a number (the backdoor's `set`) counts as it.
+ */
+var Box.watchdog: Number?
+    get() = when (val raw = getPropertyRaw("watchdog")) {
+        is Number -> raw
+        is String -> raw.trim().toDoubleOrNull()
+        else -> null
+    }
+    set(value) {
+        if (value == null) removePropertyRaw("watchdog") else setPropertyRaw("watchdog", value.toDouble())
+    }
+
+/**
  * [raw] as a yes/no: a Boolean as itself, a string by what it spells (`true`, `yes`, `on`, `1`, any
  * case), a number when it is not zero. Anything else, and null, is false.
  */
@@ -891,6 +919,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "panes",
             "slideShow",
             "autorun",
+            // Per-box runaway-watchdog allowance in seconds (Box.watchdog, afield/runtime/lifecycle/BoxInterrupt.kt).
+            "watchdog",
             "layers",
             "layerFrames",
             "_controlGroupValues",
@@ -2091,6 +2121,7 @@ import afield.math.autodiff.*
 import afield.math.control.*
 import afield.math.estimation.*
 import afield.math.functions.*
+import afield.math.energy.*
 import afield.math.gp.*
 import afield.math.linalg.*
 import afield.math.linalg.Quat
@@ -2134,6 +2165,7 @@ import afield.ui.output.*
 import afield.ui.output.templates.*
 import afield.ui.slides.*
 import afield.ui.visualization.*
+import afield.ui.visualization.treemap.*
 import kotlin.math.*
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.yield

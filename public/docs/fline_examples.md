@@ -690,6 +690,63 @@ part. `Box.inspect(lines)` is that pattern packaged: it renders exactly what `li
 names whatever you click. The [`fline_hit_records`](agent_transcripts.md#fline_hit_records) starting
 point is a wall of panels to try it on.
 
+### Keyed lines that morph: `key`, `caption` and `transition`
+
+Give a line a `key` and it keeps its identity from one `lines(...)` display to the next, wherever it sits
+in the list. Pass `transition` (in seconds) and the viewer morphs each keyed line from where it was to
+where it is now. Points and colours glide, and so do captions. A key that is new fades in, and a key that
+has gone fades out. A `caption` is a `LineCaption`: text drawn with the line, in its coordinates, cheap
+enough to put on hundreds of shapes.
+
+These five bars shuffle whenever you click one:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/keyed_morph.png" wait="1.0" capture="box" open-outputs="true" w="1200" embed=true alt="Five blue bars named alpha, beta, gamma, delta and epsilon, each name written in white near the top of its bar"}
+var order = ["alpha", "beta", "gamma", "delta", "epsilon"]
+
+fun draw() {
+    val bars = order.mapIndexed { i, name ->
+        val x = 20.0 + i * 110.0
+        val height = 60.0 + name.length * 28.0
+        fline {
+            moveTo(x, 300.0)
+            lineTo(x + 90.0, 300.0)
+            lineTo(x + 90.0, 300.0 - height)
+            lineTo(x, 300.0 - height)
+            close()
+            filled = true
+            color = vec(0.35, 0.68, 0.92, 0.85)
+            hoverColor = vec(0.55, 0.82, 1.0, 1.0)
+            key = name
+            caption = LineCaption(
+                name,
+                x + 45.0,
+                310.0 - height,
+                size = 14.0,
+                color = vec(1.0, 1.0, 1.0, 1.0),
+                anchor = "middle",
+            )
+            onClick = { _ ->
+                order = order.shuffled()
+                draw()
+            }
+        }
+    }
+    lines(bars, channel = "morph", w = 600.0, h = 340.0, transition = 0.6)
+}
+
+draw()
+```
+
+An update that arrives mid-morph starts from wherever the drawing is at that moment. So a `loop { }` can
+redraw every frame with a short `transition`, or with none.
+
+A few more properties go with these. `tooltip` gives a line a browser tooltip. `onHover` is called when the
+pointer enters or leaves the line. On a figure with thousands of clickable shapes, `pickDetail = false`
+sends only where a click landed, its `key` and its `lineIndex`, not which segment was hit, which keeps the
+drawing small. `lines(..., onView = { view -> ... })` hears where the user has panned and zoomed to, in the
+lines' own coordinates, so a drawing can add detail where it is being looked at. The
+[treemap](treemaps.md) is built from all of these.
+
 ## Styling: `color`, `stroked`, `filled`, `pointed`
 
 `FLine` geometry (where the points are) is separate from `FLine` styling (how it’s drawn). You’ll use these properties constantly:
@@ -2197,6 +2254,196 @@ val persp = rotated.byPerspectiveProjecting(cameraPos = vec(210f, 130f, -320f)).
 
 lines(ortho, persp, w = 420.0, h = 260.0, fitToSize = true)
 ```
+
+### Depth-ordered 3D vector scenes: `vectorScene { }`
+
+Projecting lines is enough for wireframes. For solid little objects (a tower, a house, rocks) the
+faces have to be drawn in the right order, back to front, so nearer faces cover farther ones.
+`vectorScene { }` builds a scene from round primitives (`dot`, `line`, `ellipse`, `rect`, `box`,
+`cylinder`, `cone`, `hemisphere`) placed with `group({ translate(...); rotateY(...) }) { ... }`, and
+`render(yaw, pitch)` returns filled `FLine`s already in drawing order. Y is up; `cylinder` and
+`cone` stand on the origin and rise along +Y.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/vector_scene_lighthouse.png" embed=true}
+:::static
+val white = vec(0.94, 0.93, 0.89, 1.0)
+val red = vec(0.82, 0.22, 0.2, 1.0)
+val lighthouse = vectorScene {
+    segments(20)
+    group({ translate(0.0, -6.0, 0.0) }) { box(260.0, 12.0, 200.0, vec(0.35, 0.55, 0.4, 1.0)) }
+    cylinder(34.0, 70.0, white, topRadius = 30.0)
+    group({ translate(0.0, 70.0, 0.0) }) { cylinder(30.0, 60.0, red, topRadius = 26.0) }
+    group({ translate(0.0, 130.0, 0.0) }) { cylinder(26.0, 50.0, white, topRadius = 22.0) }
+    group({ translate(0.0, 180.0, 0.0) }) { cylinder(30.0, 6.0, vec(0.25, 0.25, 0.28, 1.0)) }
+    group({ translate(0.0, 186.0, 0.0) }) { cylinder(18.0, 22.0, vec(1.0, 0.85, 0.35, 1.0)) }
+    group({ translate(0.0, 208.0, 0.0) }) { cone(24.0, 26.0, red) }
+    group({ translate(80.0, 25.0, 30.0) }) { box(70.0, 50.0, 50.0, white, top = red) }
+    group({ translate(-70.0, 0.0, 50.0) }) { hemisphere(22.0, vec(0.55, 0.52, 0.5, 1.0)) }
+    group({ translate(-40.0, 0.0, 75.0) }) { hemisphere(14.0, vec(0.5, 0.48, 0.47, 1.0)) }
+}
+
+// four quarter turns, side by side
+val views = (0 until 4).flatMap { k ->
+    lighthouse.render(yaw = 0.4 + k * Math.PI / 2, pitch = -0.35).map { it + vec(k * 330.0, 0.0) }
+}
+lines(views, w = 720.0, h = 220.0, fitToSize = true)
+```
+
+Turn the camera with a slider and the keeper's house passes behind the tower:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/vector_scene_turn.png" embed=true}
+:::static
+val white = vec(0.94, 0.93, 0.89, 1.0)
+val red = vec(0.82, 0.22, 0.2, 1.0)
+val scene = vectorScene {
+    cylinder(30.0, 200.0, white)
+    group({ translate(0.0, 200.0, 0.0) }) { cone(36.0, 40.0, red) }
+    group({ translate(90.0, 20.0, 0.0) }) { box(60.0, 40.0, 40.0, vec(0.4, 0.6, 0.85, 1.0), top = red) }
+    group({ translate(-80.0, 0.0, 20.0) }) { hemisphere(24.0, vec(0.55, 0.52, 0.5, 1.0)) }
+}
+
+var yaw = 1.2
+fun draw() = lines(scene.render(yaw = yaw, pitch = -0.25), w = 420.0, h = 300.0, fitToSize = true)
+
+slider("camera", min = 0.0, max = 6.28, step = 0.01, initialValue = yaw, channel = "camera") {
+    yaw = it
+    draw()
+}
+draw()
+```
+
+`shading` picks the lighting: `Shading.FLAT` darkens faces turned from the light, `Shading.SOFT`
+(the default) keeps them readable, and `Shading.NONE` uses the colours as given. `outline` adds a
+stroke around every face, which is what a plotter wants.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/vector_scene_shading.png" embed=true}
+:::static
+val model = vectorScene {
+    segments(28)
+    hemisphere(50.0, vec(0.95, 0.75, 0.3, 1.0))
+    group({ translate(0.0, -60.0, 0.0) }) { cylinder(50.0, 60.0, vec(0.3, 0.6, 0.9, 1.0)) }
+    group({ translate(0.0, 50.0, 0.0) }) { cone(14.0, 30.0, vec(0.85, 0.25, 0.25, 1.0)) }
+}
+val flat = model.render(yaw = 0.5, pitch = -0.3, shading = Shading.FLAT)
+val soft = model.render(yaw = 0.5, pitch = -0.3, shading = Shading.SOFT).map { it + vec(160.0, 0.0) }
+val plotted = model.render(yaw = 0.5, pitch = -0.3, shading = Shading.NONE, outline = vec(0.1, 0.1, 0.1, 1.0))
+    .map { it + vec(320.0, 0.0) }
+lines(flat + soft + plotted, w = 600.0, h = 220.0, fitToSize = true)
+```
+
+#### Why the order is the hard part
+
+Sorting faces by the depth of their centres (`order = DepthOrder.CENTROID`) is quick, and it goes
+wrong whenever a big face's centre is nearer than a small face it should sit behind or in front of,
+like a long floor and the house standing on it. The default, `DepthOrder.PAIRWISE`, looks only at
+pairs of faces whose outlines overlap on screen, compares their depths at the middle of that
+overlap, and draws in an order that respects every such comparison. When the comparisons go round
+in a circle (three sticks woven over one another) it draws the farthest remaining face next.
+
+`wrongOrderShare(yaw, pitch, mode)` counts the covered pixels where an order shows a different face
+from a per-pixel depth test. Averaged over eight camera turns of the scenes above:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/vector_scene_benchmark.png" embed=true}
+:::static
+val white = vec(0.94, 0.93, 0.89, 1.0)
+val red = vec(0.82, 0.22, 0.2, 1.0)
+val scenes = mapOf(
+    "lighthouse" to vectorScene {
+        segments(20)
+        group({ translate(0.0, -6.0, 0.0) }) { box(260.0, 12.0, 200.0, vec(0.35, 0.55, 0.4, 1.0)) }
+        cylinder(34.0, 180.0, white, topRadius = 22.0)
+        group({ translate(0.0, 180.0, 0.0) }) { cone(24.0, 26.0, red) }
+        group({ translate(80.0, 25.0, 30.0) }) { box(70.0, 50.0, 50.0, white, top = red) }
+        group({ translate(-70.0, 0.0, 50.0) }) { hemisphere(22.0, vec(0.55, 0.52, 0.5, 1.0)) }
+    },
+    "village" to vectorScene {
+        segments(16)
+        group({ translate(0.0, -4.0, 0.0) }) { box(400.0, 8.0, 400.0, vec(0.4, 0.6, 0.4, 1.0)) }
+        for (i in 0 until 4) for (j in 0 until 4) group({ translate(i * 90.0 - 135.0, 20.0, j * 90.0 - 135.0); rotateY(i * 0.7 + j) }) {
+            box(50.0, 40.0, 36.0, white, top = red)
+            group({ translate(30.0, -20.0, 30.0) }) { cylinder(6.0, 50.0, vec(0.5, 0.35, 0.2, 1.0)) }
+        }
+    },
+    "sticks" to vectorScene {
+        for (k in 0 until 12) group({ rotateY(k * 0.52); rotateZ(0.3) }) {
+            line(-120.0, k * 6.0, -30.0, 120.0, k * 6.0, 30.0, width = 12.0, color = vec(0.3 + k * 0.05, 0.5, 0.8, 1.0))
+        }
+    },
+)
+fun pct(s: VectorScene, mode: DepthOrder): String {
+    var wrong = 0; var covered = 0
+    for (k in 0 until 8) {
+        val (w, c) = s.wrongOrderShare(yaw = k * Math.PI / 4, pitch = -0.35, mode = mode, w = 200, h = 200)
+        wrong += w; covered += c
+    }
+    return "%.2f%%".format(100.0 * wrong / covered)
+}
+val rows = scenes.entries.joinToString("") { (name, s) ->
+    "<tr><td>$name</td><td>${pct(s, DepthOrder.CENTROID)}</td><td>${pct(s, DepthOrder.PAIRWISE)}</td></tr>"
+}
+display("main", """<table style="font:14px sans-serif;border-collapse:collapse" cellpadding="6">
+<tr><th align="left">scene</th><th>centroid sort</th><th>pairwise</th></tr>$rows</table>""")
+```
+
+??? aside "Where this comes from"
+    The primitives and the pairwise order follow Zpup (https://github.com/rxolve/zpup, MIT, by
+    rxolve), which in turn builds on Zdog by Dave DeSandro. Zpup reports about 3–4% wrong pixels
+    for Zdog's centroid sort and about 0.4% for its pairwise order; the table above is measured on
+    our own scenes with our own per-pixel reference, so the numbers differ. Faces are not split at
+    cycles, so woven geometry keeps a small residue.
+
+
+#### Meshes and curves on them
+
+`mesh(triMesh)` adds every triangle of a `TriMesh` as a face, so anything that makes one (a Manifold
+solid's `toTriMesh()`, `heightfieldMesh`, `torusMesh`, a lattice) draws as ordered vector lines,
+ready to plot or save as SVG. Faces take the mesh's vertex colours, which is how `colouredBy(...)`
+shows a field; `color = ...` overrides them. A closed mesh hides the triangles facing away; pass
+`solid = false` for an open sheet such as a relief.
+
+`polyline(points)` draws a 3D curve, a `List<Vec3>`, as round-capped strokes, one per segment.
+Isolines and toolpaths lie on the surface they came from, so each stroke is lifted toward the eye
+by `lift` (its width, unless you say otherwise) for the depth test: it draws over the face it lies
+on and is still hidden by faces in front. Below, the spiral toolpath from
+[the carving section of the mesh page](mesh_examples.md#distance-along-the-surface-and-carving-toolpaths)
+on its relief, and the geodesic rings of a torus measured from a point on its outer rim; the rings
+that run over the top of the tube into the hole go out of sight behind it.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/vector_scene_meshes.png" embed=true}
+:::static
+// The carved boss from the mesh page, with its geodesic spiral toolpath.
+val relief =
+    heightfieldMesh(80, 80, 2.0, 2.0) { x, z ->
+        val r = kotlin.math.sqrt(x * x + z * z)
+        0.5f * kotlin.math.exp(-r * r * 2.2f) + 0.05f * kotlin.math.cos(r * 14f) * kotlin.math.exp(-r * 1.5f)
+    }
+val fromEdge = relief.geodesicDistanceFromBoundary()
+val spiral = spiralFromRings(relief.evenIsolines(fromEdge, 0.06).map { level -> level.maxBy { it.size } })
+val carved = vectorScene {
+    mesh(relief, color = vec(0.86, 0.84, 0.8, 1.0), solid = false)
+    polyline(spiral, width = 0.01, color = vec(0.9, 0.3, 0.15, 1.0))
+}
+
+// A ring, measured along its surface from one point: the far rings pass behind the tube.
+val ring = torusMesh(96, 40, 1.0, 0.4)
+val fromPoint = ring.geodesicDistance(ring.nearestVertex(1.4, 0, 0))
+val rings = ring.evenIsolines(fromPoint, 0.12).flatten()
+val ringed = vectorScene {
+    mesh(ring.colouredBy(fromPoint))
+    for (r in rings) polyline(r, width = 0.012, color = vec(1.0, 1.0, 1.0, 1.0))
+}
+
+val t0 = System.nanoTime()
+val left = carved.render(yaw = 0.45, pitch = -0.75, scale = 150.0, shading = Shading.FLAT)
+val right = ringed.render(yaw = 0.3, pitch = -0.6, scale = 120.0).map { it + vec(380.0, 0.0) }
+println("${relief.triangleCount + ring.triangleCount} triangles, ${left.size + right.size} FLines, ordered in ${(System.nanoTime() - t0) / 1_000_000} ms")
+lines(left + right, w = 680.0, h = 300.0, fitToSize = true)
+```
+
+Ordering compares only faces whose outlines overlap on screen, found through a grid, so it grows
+with the number of faces rather than its square: about 90 ms for 18,000 visible triangles, and the
+figure above, 26,000 shapes, renders in about 0.6 s.
+
 
 ## Sampling and traversal
 
@@ -3876,8 +4123,7 @@ val rough = fline {
         if (i == 0) moveTo(60 + r * Math.cos(a), 60 + r * Math.sin(a))
         else lineTo(60 + r * Math.cos(a), 60 + r * Math.sin(a))
     }
-}
-    .apply { color = vec(1.0, 1.0, 1.0, 0.8) }
+}.apply { color = vec(1.0, 1.0, 1.0, 0.8) }
 
 val (centre, radius, error) = rough.fitCircle(samples = 80)
 val fitted = FLine().circle(centre.x.toDouble(), centre.y.toDouble(), radius.toDouble()).apply {
@@ -4572,7 +4818,7 @@ lines(curve, head, middle, w = 420.0, h = 260.0, fitToSize = true)
 | `fun FLine.tightBounds2D(): Rect` | Bounds of what is drawn, hugging the curves. `fast2DBounds()` encloses the control points instead. |
 | `fun FLine.area2D(): Float` | Signed area, exact on curves. Each subpath adds its own; a counter wound the other way subtracts. |
 | `fun FLine.isClockwise2D(): Boolean` | Whether the line winds clockwise on screen, with y pointing down. |
-| `fun FLine.contains2D(point: Vec2, rule: FLineFillRule = FLineFillRule.NonZero): Boolean` | Point-in-shape that follows the curves, with `FLineFillRule.NonZero` or `FLineFillRule.EvenOdd`. Every subpath counts as closed. |
+| `fun FLine.contains2D(point: Vec2, rule: FLineFillRule = <the line's fillRule, else NON_ZERO>): Boolean` | Point-in-shape that follows the curves, under `FLineFillRule.NON_ZERO` or `EVEN_ODD`. With no `rule` it uses the line's own `fillRule`, as every renderer does ([Overlaps and fill rules](afield_four_graphics.md#overlaps-and-fill-rules)). Every subpath counts as closed. |
 | `fun FLine.windingNumber2D(point: Vec2): Int` | The winding number about `point`, following the curves; non-zero is inside. |
 
 </div>

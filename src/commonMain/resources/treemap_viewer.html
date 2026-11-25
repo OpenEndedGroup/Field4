@@ -1,0 +1,762 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Treemap</title>
+<!--
+  The viewer for Field's treemaps (afield/ui/visualization/treemap). Each frame arrives as a small JSON
+  description over the websocket and one binary response from /treemap-buffers (TreemapView.kt has the format);
+  arrays whose content hash it already holds are reused, so a change of selection fetches one small array.
+  Cells are WebGL instanced rectangles that interpolate between the previous frame and this one on the GPU, matched
+  by stable node id: that is the morph. Labels are drawn on a 2D canvas over them, at a constant size on screen,
+  wherever they fit. Clicks, hovers and camera moves go back over the socket, naming a cell by its index in the
+  frame being shown.
+-->
+<style>
+  :root { color-scheme: dark; --ink: #e9ebee; --dim: #9aa1ab; --chip: #1c1f25; --chip-on: #e9e3d3; }
+  html, body { margin: 0; height: 100%; background: #121417; color: var(--ink); overflow: hidden;
+    font: 13px/1.3 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  #root { display: flex; flex-direction: column; height: 100%; }
+  #chrome { flex: none; padding: 6px 8px 4px; display: flex; flex-direction: column; gap: 5px; }
+  .row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; min-height: 0; }
+  .row:empty { display: none; }
+  .label { color: var(--dim); margin-right: 2px; }
+  button { font: inherit; color: var(--ink); background: var(--chip); border: 1px solid #2a2e36; border-radius: 3px;
+    padding: 2px 8px; cursor: pointer; }
+  button:hover { border-color: #4a505c; }
+  button.on { background: var(--chip-on); color: #121417; border-color: var(--chip-on); }
+  #crumbs button { padding: 1px 7px; }
+  #crumbs .sep { color: var(--dim); }
+  #crumbs .value { color: var(--dim); margin-left: 4px; }
+  .entry { display: inline-flex; align-items: center; gap: 5px; margin-right: 10px; white-space: nowrap; }
+  .swatch { width: 11px; height: 11px; border-radius: 2px; flex: none; }
+  .share { color: var(--dim); }
+  #stage { position: relative; flex: 1 1 auto; min-height: 0; cursor: default; touch-action: none; }
+  #stage.panning { cursor: grabbing; }
+  #stage canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+  #labels { pointer-events: none; }
+  #tip { position: absolute; pointer-events: none; display: none; background: rgba(12,13,16,.94); color: var(--ink);
+    border: 1px solid #2f343d; border-radius: 4px; padding: 5px 8px; max-width: 420px; white-space: pre-wrap;
+    font-size: 12px; z-index: 2; }
+  #hint { flex: none; color: var(--dim); font-size: 11.5px; padding: 3px 8px 5px; }
+  #status { position: absolute; left: 10px; top: 10px; color: var(--dim); }
+</style>
+</head>
+<body>
+<div id="root">
+  <div id="chrome">
+    <div class="row" id="crumbs"></div>
+    <div class="row" id="colorings"></div>
+    <div class="row" id="legend"></div>
+  </div>
+  <div id="stage">
+    <canvas id="gl"></canvas>
+    <canvas id="labels"></canvas>
+    <div id="tip"></div>
+    <div id="status">waiting for the treemap…</div>
+  </div>
+  <div id="hint">Scroll to zoom, drag to move. Click to select (Shift adds, Cmd toggles), double-click to zoom in, Alt-click or a breadcrumb to zoom out.</div>
+</div>
+<script>
+'use strict';
+const params = new URLSearchParams(location.search);
+const uid = (params.get('uid') || '').trim();
+const CHANNEL = '__treemap__';
+const stage = document.getElementById('stage');
+const glCanvas = document.getElementById('gl');
+const labelCanvas = document.getElementById('labels');
+const tip = document.getElementById('tip');
+const statusEl = document.getElementById('status');
+
+/** For tests and benches: what the last frame cost, and a few probes into what is on screen. */
+const stats = { frames: 0, cells: 0, fetchedBytes: 0, reusedBuffers: 0, fetchMs: 0, applyMs: 0, generation: null,
+  drawnFrames: 0, frameMs: [], labels: 0 };
+window.fieldTreemap = { stats };
+
+// ---- socket ---------------------------------------------------------------------------------------------------
+
+const ws = { socket: null, timer: null };
+function wsUrl() {
+  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${protocol}//${location.host}${params.get('wsPath') || '/ws'}`;
+}
+function send(payload) {
+  if (!ws.socket || ws.socket.readyState !== WebSocket.OPEN) return;
+  ws.socket.send(JSON.stringify({ channel: CHANNEL, debug_uid: uid, ...payload }));
+}
+function connect() {
+  const socket = new WebSocket(wsUrl());
+  ws.socket = socket;
+  socket.addEventListener('open', () => send({ type: 'hello' }));
+  socket.addEventListener('message', (event) => {
+    let message;
+    try { message = JSON.parse(event.data); } catch (_) { return; }
+    if (message && message.type === 'treemap/frame' && message.uid === uid) receive(message);
+  });
+  socket.addEventListener('close', () => {
+    if (!ws.timer) ws.timer = setTimeout(() => { ws.timer = null; connect(); }, 1200);
+  });
+  socket.addEventListener('error', () => socket.close());
+}
+
+// ---- frames: description + buffers -------------------------------------------------------------------------------
+
+const inbox = { queue: [], busy: false };
+/** The arrays of the frame on screen, by content hash, for the next frame to reuse. */
+let held = new Map();
+const CTORS = { Float32Array, Uint8Array, Uint32Array, Int32Array, Uint16Array, Int16Array, Int8Array, Float64Array };
+
+function receive(message) {
+  // Only the newest description matters; one already queued behind it is superseded.
+  inbox.queue.length = 0;
+  inbox.queue.push(message);
+  pump();
+}
+
+async function pump() {
+  if (inbox.busy) return;
+  inbox.busy = true;
+  try {
+    while (inbox.queue.length) {
+      const message = inbox.queue.shift();
+      const arrays = await fetchArrays(message);
+      if (!arrays) continue;
+      if (inbox.queue.length) continue;  // a newer frame arrived while fetching: skip straight to it
+      const began = performance.now();
+      apply(message, arrays);
+      stats.applyMs = performance.now() - began;
+    }
+  } finally { inbox.busy = false; }
+}
+
+async function fetchArrays(message) {
+  const entries = message.buffers.entries;
+  const reuse = new Map();
+  const missing = [];
+  entries.forEach((entry, i) => {
+    const kept = entry.hash && held.get(entry.hash);
+    if (kept && kept.length === entry.count && kept.constructor.name === entry.type) reuse.set(i, kept); else missing.push(i);
+  });
+  let buffer = new ArrayBuffer(0);
+  const began = performance.now();
+  if (missing.length) {
+    const query = new URLSearchParams({ uid, generation: message.buffers.generation });
+    const url = `/treemap-buffers?${query}` + (reuse.size ? `&only=${missing.join(',')}` : '');
+    const response = await fetch(url);
+    if (response.status === 404) return null;  // superseded; the frame that replaced it is on its way
+    if (!response.ok) { statusEl.textContent = `treemap buffers: HTTP ${response.status}`; return null; }
+    buffer = await response.arrayBuffer();
+  }
+  stats.fetchMs = performance.now() - began;
+  stats.fetchedBytes = buffer.byteLength;
+  stats.reusedBuffers = reuse.size;
+  const out = {};
+  let position = 0;
+  entries.forEach((entry, i) => {
+    let array = reuse.get(i);
+    if (!array) {
+      const Ctor = CTORS[entry.type];
+      // A full response is laid out at the description's offsets; an `only=` one packs the buffers it holds.
+      const offset = reuse.size ? (position = Math.ceil(position / 8) * 8) : entry.offset;
+      array = new Ctor(buffer, offset, entry.count);
+      position = offset + entry.count * Ctor.BYTES_PER_ELEMENT;
+    }
+    out[message.arrays[i]] = array;
+  });
+  const next = new Map();
+  entries.forEach((entry, i) => { if (entry.hash) next.set(entry.hash, out[message.arrays[i]]); });
+  held = next;
+  return out;
+}
+
+// ---- state -----------------------------------------------------------------------------------------------------
+
+let frame = null;        // the description on screen
+let cells = null;        // its arrays
+let names = [];          // decoded labels, filled lazily
+let instances = null;    // what the GPU draws: from/to rects and colours, leaving cells first
+let morph = { start: 0, duration: 0 };
+const camera = { scale: 1, tx: 0, ty: 0, manual: false, anim: null };
+let hovered = -1;
+const decoder = new TextDecoder();
+
+function ease(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
+function morphT(now = performance.now()) {
+  if (morph.duration <= 0) return 1;
+  return ease(Math.min(1, (now - morph.start) / morph.duration));
+}
+
+function labelOf(i) {
+  let s = names[i];
+  if (s === undefined) {
+    s = decoder.decode(cells.names.subarray(cells.nameOffsets[i], cells.nameOffsets[i + 1]));
+    names[i] = s;
+  }
+  return s;
+}
+function nameOf(i) { const s = labelOf(i); const tab = s.indexOf('\t'); return tab < 0 ? s : s.slice(0, tab); }
+function valueTextOf(i) { const s = labelOf(i); const tab = s.indexOf('\t'); return tab < 0 ? '' : s.slice(tab + 1); }
+
+/** Build the next GPU instance arrays: every cell of [arrays], morphing from where it is now, and the departing cells. */
+function apply(message, arrays) {
+  const n = message.count;
+  const t = morphT();
+  const prev = instances;
+  // Where each previous cell is right now, by node id: a frame mid-morph continues from there.
+  const prevIndex = new Map();
+  if (prev) for (let j = prev.leaving; j < prev.count; j++) prevIndex.set(prev.ids[j - prev.leaving], j);
+  const nowRect = (j, out, k) => {
+    for (let c = 0; c < 4; c++) out[k + c] = prev.rect0[4 * j + c] + (prev.rect1[4 * j + c] - prev.rect0[4 * j + c]) * t;
+  };
+  const nowColor = (j, out, k) => {
+    for (let c = 0; c < 4; c++) out[k + c] = Math.round(prev.col0[4 * j + c] + (prev.col1[4 * j + c] - prev.col0[4 * j + c]) * t);
+  };
+  const animate = prev && message.transition > 0;
+  const seen = new Set();
+  for (let i = 0; i < n; i++) seen.add(arrays.ids[i]);
+  const departing = [];
+  if (animate) for (let j = prev.leaving; j < prev.count; j++) if (!seen.has(prev.ids[j - prev.leaving])) departing.push(j);
+  const leaving = departing.length;
+  const count = leaving + n;
+  const next = {
+    count, leaving, ids: arrays.ids,
+    rect0: new Float32Array(4 * count), rect1: new Float32Array(4 * count),
+    col0: new Uint8Array(4 * count), col1: new Uint8Array(4 * count), flags: new Uint8Array(count),
+  };
+  departing.forEach((j, k) => {
+    nowRect(j, next.rect0, 4 * k); next.rect1.set(next.rect0.subarray(4 * k, 4 * k + 4), 4 * k);
+    nowColor(j, next.col0, 4 * k); next.col1.set(next.col0.subarray(4 * k, 4 * k + 3), 4 * k); next.col1[4 * k + 3] = 0;
+    next.flags[k] = prev.flags[j] & ~2;
+  });
+  for (let i = 0; i < n; i++) {
+    const k = leaving + i;
+    next.rect1.set(arrays.rects.subarray(4 * i, 4 * i + 4), 4 * k);
+    next.col1.set(arrays.colors.subarray(4 * i, 4 * i + 4), 4 * k);
+    next.flags[k] = arrays.flags[i];
+    const j = animate ? prevIndex.get(arrays.ids[i]) : undefined;
+    if (j !== undefined) { nowRect(j, next.rect0, 4 * k); nowColor(j, next.col0, 4 * k); continue; }
+    if (animate) {
+      // New detail grows out of its parent's previous place, and fades in.
+      const p = arrays.parents[i];
+      if (p >= 0) next.rect0.set(next.rect0.subarray(4 * (leaving + p), 4 * (leaving + p) + 4), 4 * k);
+      else next.rect0.set(next.rect1.subarray(4 * k, 4 * k + 4), 4 * k);
+      next.col0.set(next.col1.subarray(4 * k, 4 * k + 3), 4 * k); next.col0[4 * k + 3] = 0;
+    } else {
+      next.rect0.set(next.rect1.subarray(4 * k, 4 * k + 4), 4 * k);
+      next.col0.set(next.col1.subarray(4 * k, 4 * k + 4), 4 * k);
+    }
+  }
+  const firstFrame = !frame;
+  frame = message; cells = arrays; names = new Array(n); instances = next;
+  morph = { start: performance.now(), duration: animate ? message.transition * 1000 : 0 };
+  hovered = -1;
+  upload();
+  renderChrome();
+  if (firstFrame || message.refit || !camera.manual) fit(message.refit && !firstFrame ? message.transition : 0);
+  maybeReportFit();
+  stats.frames++; stats.cells = n; stats.generation = message.buffers.generation;
+  statusEl.style.display = 'none';
+  wake();
+}
+
+// ---- GL ----------------------------------------------------------------------------------------------------------
+
+const gl = glCanvas.getContext('webgl2', { antialias: false, premultipliedAlpha: true, alpha: true });
+if (!gl) statusEl.textContent = 'This treemap needs WebGL 2.';
+const VERT = `#version 300 es
+in vec2 corner; in vec4 rect0; in vec4 rect1; in vec4 col0; in vec4 col1; in float flags;
+uniform float t; uniform vec3 view; uniform vec2 viewport; uniform float hovered;
+out vec4 vColor; out vec2 vLocal; out vec2 vSize; flat out int vFlags; flat out float vHover;
+void main() {
+  vec4 r = mix(rect0, rect1, t);
+  vec2 p0 = r.xy * view.x + view.yz;
+  vec2 p1 = r.zw * view.x + view.yz;
+  vec2 size = max(p1 - p0, vec2(0.0));
+  // A cell under a pixel still covers one, so a dense map has no holes.
+  vec2 grow = max(vec2(0.0), vec2(0.75) - size) * 0.5;
+  vec2 p = p0 - grow + corner * (size + 2.0 * grow);
+  gl_Position = vec4(p.x / viewport.x * 2.0 - 1.0, 1.0 - p.y / viewport.y * 2.0, 0.0, 1.0);
+  vColor = mix(col0, col1, t);
+  vLocal = corner * size; vSize = size; vFlags = int(flags);
+  vHover = float(gl_InstanceID) == hovered ? 1.0 : 0.0;
+}`;
+const FRAG = `#version 300 es
+precision highp float;
+in vec4 vColor; in vec2 vLocal; in vec2 vSize; flat in int vFlags; flat in float vHover;
+uniform vec4 selColor;
+out vec4 outColor;
+void main() {
+  vec4 c = vColor;
+  float edge = min(min(vLocal.x, vSize.x - vLocal.x), min(vLocal.y, vSize.y - vLocal.y));
+  bool open = (vFlags & 1) != 0;
+  bool selected = (vFlags & 2) != 0;
+  float border = open ? 1.0 : 0.6;
+  if (vSize.x > 4.0 && vSize.y > 4.0 && edge < border) c.rgb *= 0.55;
+  if (vHover > 0.5 && !open) c.rgb = mix(c.rgb, vec3(1.0), 0.2);
+  if (selected && edge < 2.0 && vSize.x > 3.0) c = vec4(selColor.rgb, c.a);
+  outColor = vec4(c.rgb * c.a, c.a);
+}`;
+let program = null, vao = null, buffers = {}, uniforms = {};
+function compile(type, source) {
+  const shader = gl.createShader(type);
+  gl.shaderSource(shader, source); gl.compileShader(shader);
+  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader));
+  return shader;
+}
+function setupGl() {
+  if (!gl) return;
+  program = gl.createProgram();
+  gl.attachShader(program, compile(gl.VERTEX_SHADER, VERT));
+  gl.attachShader(program, compile(gl.FRAGMENT_SHADER, FRAG));
+  gl.linkProgram(program);
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+  vao = gl.createVertexArray();
+  gl.bindVertexArray(vao);
+  const corner = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, corner);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), gl.STATIC_DRAW);
+  const at = (name) => gl.getAttribLocation(program, name);
+  gl.enableVertexAttribArray(at('corner'));
+  gl.vertexAttribPointer(at('corner'), 2, gl.FLOAT, false, 0, 0);
+  const instanced = (name, size, type, normalized) => {
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    const loc = at(name);
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, size, type, normalized, 0, 0);
+    gl.vertexAttribDivisor(loc, 1);
+    buffers[name] = buffer;
+  };
+  instanced('rect0', 4, gl.FLOAT, false); instanced('rect1', 4, gl.FLOAT, false);
+  instanced('col0', 4, gl.UNSIGNED_BYTE, true); instanced('col1', 4, gl.UNSIGNED_BYTE, true);
+  instanced('flags', 1, gl.UNSIGNED_BYTE, false);
+  gl.bindVertexArray(null);
+  for (const name of ['t', 'view', 'viewport', 'hovered', 'selColor']) uniforms[name] = gl.getUniformLocation(program, name);
+}
+function upload() {
+  if (!gl || !instances) return;
+  const put = (name, data) => { gl.bindBuffer(gl.ARRAY_BUFFER, buffers[name]); gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW); };
+  put('rect0', instances.rect0); put('rect1', instances.rect1);
+  put('col0', instances.col0); put('col1', instances.col1); put('flags', instances.flags);
+}
+
+// ---- camera ------------------------------------------------------------------------------------------------------
+
+function stageSize() { return { w: Math.max(1, stage.clientWidth), h: Math.max(1, stage.clientHeight) }; }
+function fitView() {
+  const { w, h } = stageSize();
+  const scale = Math.min(w / frame.width, h / frame.height);
+  return { scale, tx: (w - frame.width * scale) / 2, ty: (h - frame.height * scale) / 2 };
+}
+/** Fit the drawing to the stage, over [seconds] when it is the camera following a zoom. */
+function fit(seconds) {
+  if (!frame) return;
+  const target = fitView();
+  camera.manual = false;
+  if (seconds > 0) camera.anim = { from: { ...camera }, to: target, start: performance.now(), duration: seconds * 1000 };
+  else { Object.assign(camera, target); camera.anim = null; }
+  wake();
+}
+function stepCamera(now) {
+  const a = camera.anim;
+  if (!a) return false;
+  const t = ease(Math.min(1, (now - a.start) / a.duration));
+  // Zoom moves in log scale, so the motion reads as steady.
+  camera.scale = Math.exp(Math.log(a.from.scale) + (Math.log(a.to.scale) - Math.log(a.from.scale)) * t);
+  camera.tx = a.from.tx + (a.to.tx - a.from.tx) * t;
+  camera.ty = a.from.ty + (a.to.ty - a.from.ty) * t;
+  if (t >= 1) camera.anim = null;
+  return true;
+}
+let viewTimer = null;
+function reportViewAt(scale) {
+  const { w, h } = stageSize();
+  send({ type: 'view', x: 0, y: 0, w: w / scale, h: h / scale, scale, manual: false });
+}
+let fitTimer = null;
+/**
+ * Tell the server the scale the fitted drawing is really shown at, so its padding, headers and detail are in true
+ * screen pixels. Only once the stage has a size: a scale measured before layout is near zero and opens nothing.
+ */
+function maybeReportFit() {
+  if (!frame || camera.manual) return;
+  const { w, h } = stageSize();
+  if (w < 40 || h < 40) return;
+  const scale = fitView().scale;
+  if (Math.abs(Math.log(scale / frame.ppu)) <= 0.05) return;
+  clearTimeout(fitTimer);
+  fitTimer = setTimeout(() => reportViewAt(scale), 120);
+}
+function reportView() {
+  clearTimeout(viewTimer);
+  viewTimer = setTimeout(() => {
+    const { w, h } = stageSize();
+    send({ type: 'view', x: -camera.tx / camera.scale, y: -camera.ty / camera.scale, w: w / camera.scale, h: h / camera.scale,
+      scale: camera.scale, manual: camera.manual });
+  }, 160);
+}
+
+// ---- picking -----------------------------------------------------------------------------------------------------
+
+function toWorld(clientX, clientY) {
+  const r = stage.getBoundingClientRect();
+  return [(clientX - r.left - camera.tx) / camera.scale, (clientY - r.top - camera.ty) / camera.scale];
+}
+/** The topmost cell of the frame on screen under ([x], [y]) in layout coordinates, or -1. */
+function pickAt(x, y) {
+  if (!instances) return -1;
+  const t = morphT();
+  const r0 = instances.rect0, r1 = instances.rect1;
+  for (let k = instances.count - 1; k >= instances.leaving; k--) {
+    const b = 4 * k;
+    const x0 = r0[b] + (r1[b] - r0[b]) * t;
+    if (x < x0) continue;
+    const x1 = r0[b + 2] + (r1[b + 2] - r0[b + 2]) * t;
+    if (x > x1) continue;
+    const y0 = r0[b + 1] + (r1[b + 1] - r0[b + 1]) * t;
+    if (y < y0) continue;
+    const y1 = r0[b + 3] + (r1[b + 3] - r0[b + 3]) * t;
+    if (y > y1) continue;
+    return k - instances.leaving;
+  }
+  return -1;
+}
+window.fieldTreemap.pickAt = (clientX, clientY) => pickAt(...toWorld(clientX, clientY));
+/** A cell's rectangle on screen, in client coordinates, for tests that click it. */
+window.fieldTreemap.cellRect = (i) => {
+  const r = stage.getBoundingClientRect(), b = 4 * (instances.leaving + i), q = instances.rect1;
+  return { x: r.left + q[b] * camera.scale + camera.tx, y: r.top + q[b + 1] * camera.scale + camera.ty,
+    w: (q[b + 2] - q[b]) * camera.scale, h: (q[b + 3] - q[b + 1]) * camera.scale };
+};
+window.fieldTreemap.find = (name) => { for (let i = 0; i < (frame ? frame.count : 0); i++) if (nameOf(i) === name) return i; return -1; };
+window.fieldTreemap.name = (i) => nameOf(i);
+window.fieldTreemap.flags = (i) => cells.flags[i];
+window.fieldTreemap.camera = camera;
+window.fieldTreemap.state = () => ({ t: morphT(), duration: morph.duration, since: performance.now() - morph.start,
+  leaving: instances ? instances.leaving : 0, count: instances ? instances.count : 0, awake });
+
+// ---- pointer -----------------------------------------------------------------------------------------------------
+
+const pointer = { down: null, moved: false, suppressClick: false, last: null };
+const PAN_START_PX = 3;
+stage.addEventListener('pointerdown', (event) => {
+  if (event.button !== 0) return;
+  pointer.down = { x: event.clientX, y: event.clientY, id: event.pointerId, tx: camera.tx, ty: camera.ty };
+  pointer.moved = false;
+  pointer.suppressClick = false;
+});
+stage.addEventListener('pointermove', (event) => {
+  const d = pointer.down;
+  if (d && event.pointerId === d.id && (event.buttons & 1)) {
+    const dx = event.clientX - d.x, dy = event.clientY - d.y;
+    if (!pointer.moved && Math.hypot(dx, dy) < PAN_START_PX) return;
+    if (!pointer.moved) {
+      // Only now does the press become a pan; capturing at once would take the click from the cell under it.
+      pointer.moved = true;
+      stage.classList.add('panning');
+      try { stage.setPointerCapture(event.pointerId); } catch (_) {}
+      hideTip();
+    }
+    camera.tx = d.tx + dx; camera.ty = d.ty + dy; camera.manual = true; camera.anim = null;
+    wake();
+    return;
+  }
+  pointer.last = { x: event.clientX, y: event.clientY };
+  if (!hoverQueued) { hoverQueued = true; requestAnimationFrame(updateHover); }
+});
+const endPress = (event) => {
+  if (pointer.down && pointer.moved) { pointer.suppressClick = true; reportView(); }
+  pointer.down = null; pointer.moved = false;
+  stage.classList.remove('panning');
+};
+stage.addEventListener('pointerup', endPress);
+stage.addEventListener('pointercancel', endPress);
+stage.addEventListener('pointerleave', () => { pointer.last = null; setHover(-1); hideTip(); });
+stage.addEventListener('click', (event) => {
+  if (pointer.suppressClick) { pointer.suppressClick = false; return; }
+  if (!frame) return;
+  const [x, y] = toWorld(event.clientX, event.clientY);
+  const index = pickAt(x, y);
+  // A double click on the background only refits the camera; on a cell it zooms, which the server does.
+  if (index < 0 && event.detail >= 2) { fit(0.35); reportView(); return; }
+  send({ type: 'click', generation: frame.buffers.generation, index, x, y, shift: event.shiftKey, alt: event.altKey,
+    meta: event.metaKey || event.ctrlKey, clickCount: event.detail || 1 });
+});
+stage.addEventListener('wheel', (event) => {
+  event.preventDefault();
+  if (!frame) return;
+  const r = stage.getBoundingClientRect();
+  const px = event.clientX - r.left, py = event.clientY - r.top;
+  const fitScale = fitView().scale;
+  const factor = Math.exp(-event.deltaY * (event.deltaMode === 1 ? 0.05 : 0.0016));
+  const next = Math.min(fitScale * 4000, Math.max(fitScale * 0.5, camera.scale * factor));
+  const wx = (px - camera.tx) / camera.scale, wy = (py - camera.ty) / camera.scale;
+  camera.scale = next; camera.tx = px - wx * next; camera.ty = py - wy * next;
+  camera.manual = true; camera.anim = null;
+  hideTip();
+  wake(); reportView();
+}, { passive: false });
+
+let hoverQueued = false;
+function updateHover() {
+  hoverQueued = false;
+  if (!pointer.last || !frame || pointer.down) return;
+  const [x, y] = toWorld(pointer.last.x, pointer.last.y);
+  const index = pickAt(x, y);
+  setHover(index);
+  if (index >= 0) showTip(index, pointer.last); else hideTip();
+}
+function setHover(index) {
+  if (index === hovered) return;
+  hovered = index;
+  if (frame) send({ type: 'hover', generation: frame.buffers.generation, index });
+  wake();
+}
+function showTip(i, at) {
+  const path = [];
+  for (let k = i; k >= 0; k = cells.parents[k]) path.push(nameOf(k));
+  const parent = cells.parents[i];
+  const share = parent >= 0 && cells.values[parent] > 0 ? `  (${percent(cells.values[i] / cells.values[parent])} of ${nameOf(parent)})` : '';
+  const crumbs = frame.crumbs.slice(0, -1).map((c) => c.name);
+  tip.textContent = [...crumbs, ...path.reverse()].join(' › ') + '\n' + (valueTextOf(i) || formatNumber(cells.values[i])) + share;
+  const r = stage.getBoundingClientRect();
+  tip.style.display = 'block';
+  const left = Math.min(at.x - r.left + 14, r.width - tip.offsetWidth - 4);
+  const top = at.y - r.top + 16 + tip.offsetHeight > r.height ? at.y - r.top - tip.offsetHeight - 10 : at.y - r.top + 16;
+  tip.style.left = `${Math.max(4, left)}px`; tip.style.top = `${Math.max(4, top)}px`;
+}
+function hideTip() { tip.style.display = 'none'; }
+function percent(f) { return f >= 0.1 ? `${Math.round(f * 100)}%` : `${(f * 100).toFixed(1)}%`; }
+function formatNumber(v) {
+  const a = Math.abs(v);
+  const f = (x, s) => (x >= 100 ? x.toFixed(0) : x >= 10 ? x.toFixed(1) : x.toFixed(2)).replace(/\.0+$|(\.\d*?)0+$/, '$1') + s;
+  return a >= 1e9 ? f(v / 1e9, 'G') : a >= 1e6 ? f(v / 1e6, 'M') : a >= 1e3 ? f(v / 1e3, 'k') : f(v, '');
+}
+
+// ---- chrome: breadcrumbs, colourings, legend -------------------------------------------------------------------------
+
+function el(tag, attrs, ...children) {
+  const node = document.createElement(tag);
+  Object.assign(node, attrs || {});
+  children.forEach((c) => node.append(c));
+  return node;
+}
+const css = (rgba) => `rgba(${rgba[0]},${rgba[1]},${rgba[2]},${(rgba[3] / 255).toFixed(3)})`;
+function renderChrome() {
+  if (document.body.style.fontFamily !== frame.font) document.body.style.fontFamily = frame.font;
+  if (frame.hint) document.getElementById('hint').textContent = frame.hint;
+  const crumbs = document.getElementById('crumbs');
+  crumbs.replaceChildren();
+  frame.crumbs.forEach((c, i) => {
+    if (i) crumbs.append(el('span', { className: 'sep', textContent: '›' }));
+    const last = i === frame.crumbs.length - 1;
+    const button = el('button', { className: last ? 'on' : '', title: last ? '' : `Zoom out to ${c.name}` }, c.name);
+    if (last) button.append(el('span', { className: 'value', textContent: formatNumber(c.value) }));
+    button.addEventListener('click', () => { if (!last) send({ type: 'crumb', id: c.id }); });
+    crumbs.append(button);
+  });
+  const colorings = document.getElementById('colorings');
+  colorings.replaceChildren();
+  if (frame.colorings.length > 1) {
+    colorings.append(el('span', { className: 'label', textContent: 'Colour by' }));
+    frame.colorings.forEach((name) => {
+      const button = el('button', { className: name === frame.coloring ? 'on' : '' }, name);
+      button.addEventListener('click', () => send({ type: 'coloring', name }));
+      colorings.append(button);
+    });
+  }
+  const legend = document.getElementById('legend');
+  legend.replaceChildren();
+  if (frame.legendTitle) legend.append(el('span', { className: 'label', textContent: frame.legendTitle }));
+  frame.legend.forEach((row) => legend.append(el('span', { className: 'entry' },
+    el('span', { className: 'swatch', style: `background:${css(row.rgba)}` }), row.label,
+    ...(row.share == null ? [] : [el('span', { className: 'share', textContent: shareText(row.share) })]))));
+  resize();
+}
+function shareText(f) {
+  // Never round a part up to the whole: 99.6% stays 99.6%.
+  if (f >= 0.1) return Math.round(f * 100) === 100 && f < 1 ? `${(Math.floor(f * 1000) / 10).toFixed(1)}%` : `${Math.round(f * 100)}%`;
+  return f >= 0.001 ? `${(f * 100).toFixed(1)}%` : '<0.1%';
+}
+
+// ---- drawing -----------------------------------------------------------------------------------------------------
+
+let dpr = 1;
+function resize() {
+  const { w, h } = stageSize();
+  dpr = window.devicePixelRatio || 1;
+  for (const canvas of [glCanvas, labelCanvas]) {
+    const pw = Math.round(w * dpr), ph = Math.round(h * dpr);
+    if (canvas.width !== pw || canvas.height !== ph) { canvas.width = pw; canvas.height = ph; }
+  }
+  if (frame && !camera.manual && !camera.anim) Object.assign(camera, fitView());
+  maybeReportFit();
+  wake();
+}
+new ResizeObserver(resize).observe(stage);
+
+let awake = false, lastDraw = 0;
+function wake() { if (!awake) { awake = true; requestAnimationFrame(draw); } }
+function draw(now) {
+  awake = false;
+  if (lastDraw) { stats.frameMs.push(now - lastDraw); if (stats.frameMs.length > 600) stats.frameMs.shift(); }
+  lastDraw = now;
+  const cameraMoving = stepCamera(now);
+  const t = morphT(now);
+  const { w, h } = stageSize();
+  if (gl && instances) {
+    gl.viewport(0, 0, glCanvas.width, glCanvas.height);
+    const bg = frame.background;
+    gl.clearColor(bg[0] / 255, bg[1] / 255, bg[2] / 255, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    gl.useProgram(program);
+    gl.bindVertexArray(vao);
+    gl.uniform1f(uniforms.t, t);
+    gl.uniform3f(uniforms.view, camera.scale, camera.tx, camera.ty);
+    gl.uniform2f(uniforms.viewport, w, h);
+    gl.uniform1f(uniforms.hovered, hovered < 0 ? -1 : hovered + instances.leaving);
+    const s = frame.selectionRgba;
+    gl.uniform4f(uniforms.selColor, s[0] / 255, s[1] / 255, s[2] / 255, 1);
+    gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, instances.count);
+    gl.bindVertexArray(null);
+  }
+  drawLabels(t, w, h);
+  stats.drawnFrames++;
+  if (t < 1 || cameraMoving) wake(); else lastDraw = 0;
+}
+
+const widths = new Map();
+function textWidth(ctx, text, bold) {
+  const key = (bold ? 'b' : 'r') + text;
+  let v = widths.get(key);
+  if (v === undefined) { v = ctx.measureText(text).width; if (widths.size > 50000) widths.clear(); widths.set(key, v); }
+  return v;
+}
+function inkFor(k) {
+  const c = instances.col1, b = 4 * k;
+  const lum = (0.2126 * c[b] + 0.7152 * c[b + 1] + 0.0722 * c[b + 2]) / 255;
+  return lum > 0.6 ? 'rgba(14,16,19,0.92)' : 'rgba(244,246,248,0.94)';
+}
+function drawLabels(t, w, h) {
+  const ctx = labelCanvas.getContext('2d');
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, labelCanvas.width, labelCanvas.height);
+  if (!instances || !frame) return;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const size = frame.labelSize;
+  const regular = `${size}px ${frame.font}`;
+  const bold = `600 ${size}px ${frame.font}`;
+  const badges = frame.branchLabels === 'badge';
+  const placed = [];
+  const ops = [];
+  ctx.textBaseline = 'top';
+  const r0 = instances.rect0, r1 = instances.rect1, leaving = instances.leaving;
+  // The server laid out headers in screen pixels at the zoom it last heard about ([frame.ppu]); this is them now.
+  const header = frame.headerHeight / frame.ppu * camera.scale;
+  let drawn = 0;
+  for (let i = 0; i < frame.count; i++) {
+    const k = leaving + i, b = 4 * k;
+    const x0 = (r0[b] + (r1[b] - r0[b]) * t) * camera.scale + camera.tx;
+    const y0 = (r0[b + 1] + (r1[b + 1] - r0[b + 1]) * t) * camera.scale + camera.ty;
+    const x1 = (r0[b + 2] + (r1[b + 2] - r0[b + 2]) * t) * camera.scale + camera.tx;
+    const y1 = (r0[b + 3] + (r1[b + 3] - r0[b + 3]) * t) * camera.scale + camera.ty;
+    if (x1 < 0 || y1 < 0 || x0 > w || y0 > h) continue;
+    const flags = cells.flags[i];
+    const open = (flags & 1) !== 0;
+    // The focus is named by the breadcrumbs; a badge on it would only cover its first child's.
+    if (open && badges) { if (i > 0 && x1 - x0 > 60 && y1 - y0 > size * 3) placed.push(i); continue; }
+    if (!open && x1 - x0 < frame.leafLabelMinWidth) continue;
+    if (open && (!(flags & 4) || header < size + 3)) continue;
+    // Labels keep to the part of their cell that is on screen, so a zoomed-in branch is still named.
+    const vx0 = Math.max(x0, 0), vx1 = Math.min(x1, w);
+    const vy0 = open ? y0 : Math.max(y0, 0), vy1 = Math.min(y1, h);
+    if (open && (y0 + header < 0)) continue;
+    const sw = vx1 - vx0, sh = vy1 - vy0;
+    if (sw < 26 || sh < size + 4) continue;
+    const isBold = open;
+    ctx.font = isBold ? bold : regular;
+    const name = nameOf(i), value = valueTextOf(i);
+    const room = sw - 8;
+    let text = value ? `${name}  ${value}` : name;
+    if (textWidth(ctx, text, isBold) > room) {
+      text = name;
+      if (textWidth(ctx, text, isBold) > room) {
+        let lo = 1, hi = name.length - 1, best = '';
+        while (lo <= hi) {
+          const mid = (lo + hi) >> 1, candidate = name.slice(0, mid) + '…';
+          if (ctx.measureText(candidate).width <= room) { best = candidate; lo = mid + 1; } else hi = mid - 1;
+        }
+        if (best.length < 3) continue;
+        text = best;
+      }
+    }
+    // Fade a label in over the few pixels above where it first fits, so labels arriving with a zoom do not pop.
+    const slack = Math.min(room - textWidth(ctx, text, isBold), sh - size - 4);
+    ctx.globalAlpha = Math.max(0.35, Math.min(1, 0.35 + slack / 12)) * (instances.col1[4 * k + 3] / 255) *
+      (t < 1 && instances.col0[4 * k + 3] === 0 ? t : 1);
+    ops.push([text, vx0 + 4, vy0 + (open ? Math.max(2, (header - size) / 2) : 3), ctx.globalAlpha, inkFor(k), isBold,
+      textWidth(ctx, text, isBold)]);
+  }
+  // Badges are placed first, and a cell label they would cover is left out.
+  const taken = badges ? placeBadges(ctx, placed, t, w, h, size) : [];
+  for (const [text, x, y, alpha, ink, isBold, tw] of ops) {
+    if (taken.some((q) => x < q[2] && x + tw > q[0] && y < q[3] && y + size > q[1])) continue;
+    ctx.font = isBold ? bold : regular;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = ink;
+    ctx.fillText(text, x, y);
+    drawn++;
+  }
+  ctx.globalAlpha = 1;
+  for (const q of taken) {
+    ctx.font = q[5];
+    ctx.fillStyle = 'rgba(12,12,13,0.86)';
+    ctx.fillRect(q[0], q[1], q[2] - q[0], q[3] - q[1]);
+    ctx.fillStyle = 'rgba(240,236,226,0.96)';
+    ctx.fillText(q[4], q[0] + 4, q[1] + 3);
+  }
+  stats.labels = drawn + taken.length;
+}
+
+/**
+ * Where branch names go as dark badges over their cells, parents first: [x0, y0, x1, y1, text, font] each. A badge
+ * that would cover one already placed is left out, so a zoom reveals the deeper names as there becomes room for them.
+ */
+function placeBadges(ctx, order, t, w, h, size) {
+  const r0 = instances.rect0, r1 = instances.rect1, leaving = instances.leaving;
+  const taken = [];
+  let drawn = 0;
+  for (const i of order) {
+    if (drawn > 400) break;
+    const b = 4 * (leaving + i);
+    const x0 = (r0[b] + (r1[b] - r0[b]) * t) * camera.scale + camera.tx;
+    const y0 = (r0[b + 1] + (r1[b + 1] - r0[b + 1]) * t) * camera.scale + camera.ty;
+    const x1 = (r0[b + 2] + (r1[b + 2] - r0[b + 2]) * t) * camera.scale + camera.tx;
+    const vx0 = Math.max(x0, 0), vy0 = Math.max(y0, 0);
+    const top = cells.depth[i] <= 1;
+    const fontSize = top ? size * 1.18 : size;
+    ctx.font = `${top ? '600 ' : ''}${fontSize}px ${frame.font}`;
+    const name = nameOf(i);
+    const room = Math.min(x1, w) - vx0 - 10;
+    let text = name;
+    if (ctx.measureText(text).width > room) continue;
+    const bw = ctx.measureText(text).width + 8, bh = fontSize + 6;
+    const bx = vx0 + 2, by = vy0 + 2;
+    if (by > h || bx > w) continue;
+    if (taken.some((q) => bx < q[2] && bx + bw > q[0] && by < q[3] && by + bh > q[1])) continue;
+    taken.push([bx, by, bx + bw, by + bh, text, ctx.font]);
+    drawn++;
+  }
+  return taken;
+}
+
+window.addEventListener('keydown', (event) => { if (event.key === 'Escape') send({ type: 'zoom-out' }); });
+
+try { setupGl(); } catch (error) { statusEl.textContent = 'Treemap: ' + error.message; }
+resize();
+if (uid) connect(); else statusEl.textContent = 'No treemap named in the address.';
+</script>
+</body>
+</html>

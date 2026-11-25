@@ -16,7 +16,7 @@ class GenerationPackagesTest {
         val packages = GenerationPackages.read(alternate.byteInputStream())
         val emitter = KotlinEmitter(FieldAlgebraModel.build(), packages = packages)
         val files = generatedSources(packages, emitter)
-        assertEquals(9, files.size)
+        assertEquals(10, files.size)
         files.forEach { (path, text) ->
             val declaration = text.lineSequence().single { it.startsWith("package ") }.removePrefix("package ")
             assertEquals(java.nio.file.Path.of(declaration.replace('.', '/')), path.parent)

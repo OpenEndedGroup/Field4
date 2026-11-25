@@ -32,7 +32,7 @@ class PdBoxApiTest {
     }
 
     @Test fun pdControlsMakesNothingForAPatchWithNoGuiObjects() {
-        if (!PdLibrary.isAvailable) return println("SKIPPED: ${PdLibrary.describe()}")
+        org.junit.Assume.assumeTrue("native library not available: ${PdLibrary.describe()}", PdLibrary.isAvailable)
         val pd = PdInstance()
         val patch = pd.openPatchText("#X obj 20 20 osc~ 220;\n#X obj 20 60 dac~;\n#X connect 0 0 1 0;")
         PdLaunch(pd, patch, 1f, null).use { launch ->

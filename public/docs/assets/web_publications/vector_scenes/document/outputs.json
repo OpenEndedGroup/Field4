@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-25T07:16:03.413Z",
+  "documentName": "vector_scenes",
+  "outputs": [
+    {
+      "uid": "vs_lighthouse",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "vs_turn",
+      "channel": "camera",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 473,
+      "height": 54,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "vs_turn",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "vs_benchmark",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 250,
+      "height": 120,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "vs_shading",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "vs_meshes",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/5.html"
+    },
+    {
+      "uid": "vs_mesh_timing",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 480,
+      "height": 136,
+      "path": "outputs/6.html"
+    }
+  ]
+}

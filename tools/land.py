@@ -1531,8 +1531,9 @@ FIXUP_MAX_LINES = 60
 FIXUP_DENIED_PATHS = re.compile(
     r"^(dev_docs/testing/expected_\w+\.json|tools/(land|merge_regen|install_git_hooks)\.py|tools/check_[^/]+\.py"
     r"|\.githooks/|githooks/|build\.gradle\.kts|settings\.gradle\.kts|gradle/)")
-# ...and so is switching a test off.
-FIXUP_DENIED_ADDED = re.compile(r"@Ignore|@Disabled|pytest\.mark\.skip|unittest\.skip|\bxit\(|\bxdescribe\(")
+# ...and so is switching a test off, including by an assumption that reports it skipped.
+FIXUP_DENIED_ADDED = re.compile(r"@Ignore|@Disabled|pytest\.mark\.skip|unittest\.skip|\bxit\(|\bxdescribe\("
+                                r"|\bassume(True|False|That|NotNull)\(|\bassumeAvailable\(|\brequirePaintLibrary\(")
 FIXER_VERDICT = "FIXER-VERDICT:"
 
 FIXER_PROMPT = """You are the landing queue's fixer for the Field repository. The lander merged the

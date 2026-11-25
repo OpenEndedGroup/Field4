@@ -582,7 +582,9 @@ class KotlinInterface2(
             label = (associatedBox as? Box)?.let { "'${it.name}' (${it.id})" } ?: "box code",
             sourceText = afield.runtime.bytecode.BoxBytecode.sourceOf(script),
             classLoader = classLoader,
-        ) { weak?.get()?.properties?.get(property) as? String }
+            currentCode = { weak?.get()?.properties?.get(property) as? String },
+            owner = associatedBox as? Box,
+        )
     }
 
     suspend fun evaluate(

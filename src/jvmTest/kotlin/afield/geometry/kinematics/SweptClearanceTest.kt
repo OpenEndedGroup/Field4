@@ -137,7 +137,7 @@ class SweptClearanceTest {
     }
 
     @Test fun manifoldSolidsGoInAndAgreeWithMinGap() {
-        if (!ManifoldLibrary.isAvailable) return println("skipped: libmanifoldc is not installed")
+        org.junit.Assume.assumeTrue("native library not available: ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         Solid.scope {
             val door = Solid.cube(w, th, h)
             val box = Solid.cube(100.0, 100.0, h).translated(c.x, c.y, 0.0)
@@ -183,7 +183,7 @@ class SweptClearanceTest {
 
 class SweptVolumeTest {
     @Test fun aSwingingSlabsSweptVolumeContainsTheSweepAndConverges() {
-        if (!ManifoldLibrary.isAvailable) return println("skipped: libmanifoldc is not installed")
+        org.junit.Assume.assumeTrue("native library not available: ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         val w = 1000.0; val t = 20.0; val h = 100.0
         val swing = RigidMotion.rotation(Vector3d(), Vector3d(0.0, 0.0, 1.0), 0.0, 90.0)
         // The plan area swept by [0,w]x[0,t] turning 90° about the origin, by integrating the angle covered at
@@ -209,7 +209,7 @@ class SweptVolumeTest {
     }
 
     @Test fun aSlidingBlockSweepsExactly() {
-        if (!ManifoldLibrary.isAvailable) return println("skipped: libmanifoldc is not installed")
+        org.junit.Assume.assumeTrue("native library not available: ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         Solid.scope {
             val block = Solid.cube(10.0, 20.0, 30.0)
             val swept = sweptVolume(block, RigidMotion.slide(Vector3d(1.0, 1.0, 0.0), 0.0, sqrt(2.0) * 5.0), maxStep = 100.0)
@@ -220,7 +220,7 @@ class SweptVolumeTest {
     }
 
     @Test fun aNotchedPartSlidingPastAPostInItsNotchKeepsTheNotch() {
-        if (!ManifoldLibrary.isAvailable) return println("skipped: libmanifoldc is not installed")
+        org.junit.Assume.assumeTrue("native library not available: ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         Solid.scope {
             // A 100-long block with a 10-wide slot down its length, sliding along the slot over a post in it.
             val part = Solid.cube(100.0, 30.0, 20.0) - Solid.cube(120.0, 10.0, 12.0).translated(-10.0, 10.0, 10.0)
@@ -237,7 +237,7 @@ class SweptVolumeTest {
     }
 
     @Test fun minkowskiClearancePassesUnderTheGapAndFailsOverItWhereTheSlabComesClose() {
-        if (!ManifoldLibrary.isAvailable) return println("skipped: libmanifoldc is not installed")
+        org.junit.Assume.assumeTrue("native library not available: ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         val w = 1000.0; val t = 20.0; val h = 100.0; val d = 1100.0
         val r = hypot(w, t)
         val swing = RigidMotion.rotation(Vector3d(), Vector3d(0.0, 0.0, 1.0), 0.0, 90.0)

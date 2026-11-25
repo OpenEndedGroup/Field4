@@ -202,6 +202,9 @@ private fun updatePersistentThreeOutput(contentRoot: HTMLElement, htmlString: St
     return true
 }
 
+/** How far, in screen pixels, a press on a `lines(...)` drawing moves before it pans rather than clicks. */
+private const val PAN_START_PX = 3.0
+
 private fun ensureLinesOutputView(contentRoot: HTMLElement): dynamic {
     val existing = contentRoot.asDynamic().__afieldLinesView
     if (existing != null) {
@@ -342,9 +345,35 @@ private fun ensureLinesOutputView(contentRoot: HTMLElement): dynamic {
         updateTransform()
     }
 
+    // A drawing with onView hears where the user has panned or zoomed to, once they pause, in SVG coordinates.
+    fun reportView() {
+        val id = view.viewId as? String ?: return
+        (view.viewTimer as? Int)?.let { window.clearTimeout(it) }
+        view.viewTimer = window.setTimeout({
+            view.viewTimer = null
+            val scale = view.scale as Double
+            send(Message("lines-view").payload(LinesView(
+                id,
+                x = -(view.tx as Double) / scale,
+                y = -(view.ty as Double) / scale,
+                w = (view.viewportWidth as Double) / scale,
+                h = (view.viewportHeight as Double) / scale,
+                scale = scale,
+                manual = view.manual as Boolean,
+            )))
+        }, 120)
+    }
+
     fun endPan() {
+        val wasPanning = view.panPointerId != null
         view.panPointerId = null
         viewport.style.cursor = "grab"
+        if (wasPanning && view.panMoved == true) {
+            // The click that ends a pan is not a click on whatever the pointer happens to be over.
+            view.suppressClick = true
+            reportView()
+        }
+        view.panMoved = false
     }
 
     viewport.onwheel = { event ->
@@ -365,6 +394,7 @@ private fun ensureLinesOutputView(contentRoot: HTMLElement): dynamic {
             view.ty = py - worldY * nextScale
             view.manual = true
             updateTransform()
+            reportView()
         }
         null
     }
@@ -449,12 +479,15 @@ private fun ensureLinesOutputView(contentRoot: HTMLElement): dynamic {
             event.stopPropagation()
             null
         } else {
+        // A press only becomes a pan once it moves. Capturing the pointer at once would send the click
+        // that a still press makes to the viewport instead of to the clickable line under it.
         view.panPointerId = event.pointerId
+        view.panMoved = false
+        view.suppressClick = false
+        view.panStartX = event.clientX
+        view.panStartY = event.clientY
         view.panLastX = event.clientX
         view.panLastY = event.clientY
-        view.manual = true
-        viewport.style.cursor = "grabbing"
-        viewport.setPointerCapture(event.pointerId)
         event.preventDefault()
         null
         }
@@ -487,7 +520,19 @@ private fun ensureLinesOutputView(contentRoot: HTMLElement): dynamic {
                 viewport.style.cursor = when (h?.kind as? String) { "x" -> "ew-resize"; "y" -> "ns-resize"; "xy" -> "move"; else -> "crosshair" }
             }
             null
+        } else if (event.buttons.toInt() == 0) {
+            // Released somewhere we did not hear about (outside the viewport, before the pan was captured).
+            endPan()
+            null
+        } else if (view.panMoved != true && kotlin.math.hypot(event.clientX - (view.panStartX as Double), event.clientY - (view.panStartY as Double)) < PAN_START_PX) {
+            null
         } else {
+            if (view.panMoved != true) {
+                view.panMoved = true
+                view.manual = true
+                viewport.style.cursor = "grabbing"
+                runCatching { viewport.setPointerCapture(event.pointerId) }
+            }
             val dx = event.clientX - (view.panLastX as Double)
             val dy = event.clientY - (view.panLastY as Double)
             view.panLastX = event.clientX
@@ -516,9 +561,19 @@ private fun ensureLinesOutputView(contentRoot: HTMLElement): dynamic {
         null
     }
 
+    viewport.addEventListener("click", { event ->
+        if (view.suppressClick == true) {
+            view.suppressClick = false
+            event.stopPropagation()
+            event.preventDefault()
+        }
+    }, true)
+
     viewport.ondblclick = {
+        val wasManual = view.manual as Boolean
         view.manual = false
         fitToContent()
+        if (wasManual) reportView()
         null
     }
 
@@ -699,16 +754,9 @@ private fun updatePersistentLinesOutput(contentRoot: HTMLElement, htmlString: St
     applyLinesFigureChrome(contentRoot, view, parseLinesFigureChrome(wrapper))
     val stageGroup = view.stageGroup as Element
 
-    while (stageGroup.firstChild != null) {
-        stageGroup.removeChild(stageGroup.firstChild!!)
-    }
-    val sourceChildren = sourceSvg.childNodes
-    for (index in 0 until sourceChildren.length) {
-        val child = sourceChildren.item(index) ?: continue
-        val cloned = child.cloneNode(true)
-        (cloned as? Element)?.let { applyNonScalingStroke(it) }
-        stageGroup.appendChild(cloned)
-    }
+    // Keyed lines (`FLine.key`) are updated in place, and morph over `transition` seconds when the display asks.
+    val transition = wrapper.getAttribute("data-afield-transition")?.toDoubleOrNull()?.takeIf { it.isFinite() && it > 0.0 } ?: 0.0
+    reconcileLinesStage(view, stageGroup, sourceSvg, transition) { applyNonScalingStroke(it) }
 
     val wrapperBounds = usableLinesBounds(parseLinesWrapperBounds(wrapper))
     val sourceViewBox = usableLinesBounds(parseSvgViewBox(sourceSvg.getAttribute("viewBox")))
@@ -736,6 +784,7 @@ private fun updatePersistentLinesOutput(contentRoot: HTMLElement, htmlString: St
     view.sourceHeight = sourceHeight
     view.contentBounds = contentBounds
     view.dragId = wrapper.getAttribute("data-afield-drag")?.takeIf { it.isNotBlank() }
+    view.viewId = wrapper.getAttribute("data-afield-view")?.takeIf { it.isNotBlank() }
     view.handles = wrapper.getAttribute("data-afield-handles")?.takeIf { it.isNotBlank() }
         ?.let { runCatching { JSON.parse<dynamic>(it) }.getOrNull() } ?: js("[]")
     installFieldLines(view)

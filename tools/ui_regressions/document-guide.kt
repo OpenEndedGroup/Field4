@@ -13,6 +13,19 @@ File(guideRoot, "README.md").writeText("""
 
 [Run the demonstration](field://macro/guide_link_demo?scope=document)
 
+```field-macro
+title: Count from the guide
+operations:
+  - execute:
+      box: $guideUid
+      property: code
+      type: fragment
+      code: |
+        val count = (thisBox.getPropertyRaw("inline_guide_count") as? Number)?.toInt() ?: 0
+        thisBox.setPropertyRaw("inline_guide_count", count + 1)
+        thisBox.setPropertyRaw("notes", "guide-inline:" + (count + 1))
+```
+
 ## Try an edit
 
 Open the source and change the pace. The guide stays beside the box.
@@ -49,6 +62,25 @@ thisBox.setPropertyRaw("notes", """
 [Open the fragment](field://box/$guideUid?property=fragment&line=3)
 
 [Run from notes](field://macro/guide_link_demo?scope=document)
+""".trimIndent())
+// The links test rewrites the notes of both boxes above; this one keeps its inline macro block.
+val inlineNotes = inside.boxes.values.first { it.name == "InlineNotes" }
+inlineNotes.setPropertyRaw("notes", """
+# An inline macro in a note
+
+```field-macro
+name: notes_inline_count
+operations:
+  - execute:
+      box: ${inlineNotes.id}
+      property: code
+      type: fragment
+      code: |
+        val count = (thisBox.getPropertyRaw("inline_notes_count") as? Number)?.toInt() ?: 0
+        thisBox.setPropertyRaw("inline_notes_count", count + 1)
+        thisBox.setPropertyRaw("notes", "notes-inline:" + (count + 1))
+  - wait: { seconds: 0 }
+```
 """.trimIndent())
 display("ai-chat", "<<ai>>\n[Open the fragment from chat](field://box/$guideUid?property=fragment&line=3)\n\n[Run from chat](field://macro/guide_link_demo?scope=document)")
 for ((macroName, scope) in listOf("guide_link_demo" to "document", "guide_link_scope_demo" to "workspace")) {

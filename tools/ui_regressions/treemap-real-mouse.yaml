@@ -1,0 +1,28 @@
+name: treemap_real_mouse
+operations:
+  - drive:
+      script: |
+        fun js(body: String) = ui.eval(body).toString().trim('"')
+        fun waitFor(test: () -> Boolean): Boolean { repeat(100) { if (test()) return true; ui.pause(50) }; return test() }
+        val viewer = "const f=[...document.querySelectorAll('iframe')].find(f=>f.src.includes('/treemap?'));const w=f.contentWindow;const T=w.fieldTreemap;"
+        check(waitFor { js("$viewer return !!(T && T.stats.frames > 0);") == "true" }) { "The treemap viewer never drew a frame" }
+        fun centre(name: String): List<Double> = js("$viewer const fr=f.getBoundingClientRect();const r=T.cellRect(T.find('$name'));return (fr.left+r.x+r.w/2)+','+(fr.top+r.y+r.h/2);").split(',').map { it.toDouble() }
+        fun state() = js("return document.getElementById('treemap-real-mouse-state')?.textContent ?? '';")
+        // 1. A still press and release on a cell selects it.
+        val a1 = centre("a1")
+        ui.moveMouse(a1[0], a1[1])
+        ui.mouseDown()
+        ui.mouseUp()
+        check(waitFor { state() == "root/a/a1" }) { "A real click on a treemap cell did not select it: '" + state() + "'" }
+        check(waitFor { js("$viewer return (T.flags(T.find('a1')) & 2) !== 0;") == "true" }) { "The viewer did not show the selection" }
+        // 2. A press that moves pans the camera, and its release selects nothing.
+        val before = js("$viewer return T.camera.tx;").toDouble()
+        val c = centre("c")
+        ui.moveMouse(c[0], c[1])
+        ui.mouseDown()
+        repeat(6) { ui.moveMouse(c[0] - 12.0 * (it + 1), c[1]) }
+        ui.mouseUp()
+        ui.pause(400)
+        check(js("$viewer return T.camera.tx;").toDouble() < before - 30) { "A drag did not pan the treemap" }
+        check(state() == "root/a/a1") { "The release that ended a pan selected a cell: '" + state() + "'" }
+        ui.eval("window.__treemapRealMouse = {ok: true, selected: document.getElementById('treemap-real-mouse-state').textContent}; return true;")

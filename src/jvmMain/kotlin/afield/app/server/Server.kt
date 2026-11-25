@@ -14,6 +14,8 @@ import afield.animation.keyframes.Handle
 import afield.app.diagnostics.named
 import afield.app.protocol.AgentOpenDocument
 import afield.app.protocol.LinesDrag
+import afield.app.protocol.LinesView
+import afield.app.protocol.FLineHoverEvent
 import afield.data.table.cell
 import afield.data.table.div
 import afield.data.table.minus
@@ -2878,6 +2880,28 @@ class Server {
                             setupVerified = run.setupVerified
                         )
                     }
+                    // A `field-macro` block in a guide or box note: the YAML travels with the request.
+                    "run-content" -> {
+                        val run = OperationTranscript.runMacroContent(
+                            documentPath = documentPath,
+                            content = request.content,
+                            label = request.label.ifBlank { request.name },
+                            targetBoxes = request.selection
+                        )
+                        OperationTranscript.MacroResult(
+                            success = run.success,
+                            message = run.message,
+                            name = run.name,
+                            operationCount = run.applied,
+                            scope = request.scope,
+                            direction = run.direction,
+                            applied = run.applied,
+                            skipped = run.skipped,
+                            errors = run.errors,
+                            output = run.output,
+                            setupVerified = run.setupVerified
+                        )
+                    }
                     "undo" -> {
                         val run = OperationTranscript.runMacro(
                             documentPath = documentPath,
@@ -3830,6 +3854,27 @@ class Server {
                 val drag = Json.decodeFromJsonElement<LinesDrag>(message.payload!!)
                 // In order per drawing, off this thread; a queued move is replaced by a newer one.
                 afield.ui.visualization.receiveLinesDrag(drag)
+                Handled.yes
+            })
+
+            handlers["lines-view"] = mutableSetOf({ message, _ ->
+                // Latest wins per drawing, off this thread: only where a pan or zoom ended up matters.
+                afield.ui.visualization.receiveLinesView(Json.decodeFromJsonElement<LinesView>(message.payload!!))
+                Handled.yes
+            })
+
+            handlers["fline-hover"] = mutableSetOf({ message, _ ->
+                val hover = Json.decodeFromJsonElement<FLineHoverEvent>(message.payload!!)
+                val callback = afield.ui.output.getFLineHoverCallback(hover.callbackId)
+                if (callback != null) {
+                    GlobalScope.launch {
+                        try {
+                            callback(afield.graphics.render.FLineHover(hover.entered, hover.key, hover.label, hover.lineIndex))
+                        } catch (e: Exception) {
+                            lprintln("error,fline", "Error in FLine hover callback: ${e.message}")
+                        }
+                    }
+                }
                 Handled.yes
             })
 
@@ -4981,9 +5026,16 @@ class Server {
                             call.respond(withContext(Dispatchers.IO) { afield.graphics.vulkan.util.VulkanProbe.status(refresh) })
                         }
 
-                        // The optional native geometry libraries (Morse–Smale, principal curves,
-                        // polyvector): present or not, and how to install each, for the welcome page.
-                        // Library objects only look for files, so this loads no native code.
+                        // Every optional native library (Ceres, Manifold, Csound, the geometry
+                        // modules, ...): present or not, and how to install each, for the welcome
+                        // page. Library objects only look for files, so this loads no native code.
+                        get("/api/native-libraries-status") {
+                            if (call.refuseUnlessSameSiteDocsClient(afield.app.server.docsAccessPolicy)) return@get
+                            call.respond(withContext(Dispatchers.IO) { afield.runtime.NativeLibraries.status() })
+                        }
+
+                        // The geometry slice of the above, in the shape the welcome page read before
+                        // it listed every library.
                         get("/api/native-geometry-status") {
                             if (call.refuseUnlessSameSiteDocsClient(afield.app.server.docsAccessPolicy)) return@get
                             call.respond(withContext(Dispatchers.IO) { afield.geometry.network.NativeGeometry.status() })
@@ -5766,6 +5818,7 @@ class Server {
                                 detachDocumentSession(ts)
                                 leaveSelectionContexts(ts)
                                 afield.graphics.three.detachThreeSession(ts)
+                                afield.ui.visualization.treemap.detachTreemapSession(ts)
                                 afield.graphics.visionos.detachVisionMetalGlobalListener(ts)
                                 afield.graphics.visionos.VisionPoseStream.detach(ts)
                                 // Clean up back pressure state for this session.
@@ -5886,6 +5939,23 @@ class Server {
                                 }
                             }
                         }
+                        route("/treemap-buffers") {
+                            get {
+                                // A treemap frame's arrays (TreemapView.kt), encoded as `/three-buffers` encodes
+                                // geometry, with the same `only=` subsets for a viewer reusing arrays it holds.
+                                val uid = call.request.queryParameters["uid"] ?: ""
+                                val generation = call.request.queryParameters["generation"] ?: ""
+                                val only = call.request.queryParameters["only"]?.split(',')?.mapNotNull { it.trim().toIntOrNull() }
+                                val all = afield.ui.visualization.treemap.treemapBuffers(uid, generation)
+                                val buffers = if (only == null) all else all?.subset(only)
+                                if (buffers == null) call.respond(HttpStatusCode.NotFound, "No current frame for that treemap and generation")
+                                else {
+                                    call.response.header(HttpHeaders.CacheControl, "private, max-age=3600, immutable")
+                                    call.respondOutputStream(ContentType.parse(afield.graphics.three.THREE_BUFFERS_CONTENT_TYPE),
+                                        HttpStatusCode.OK, buffers.bytes) { buffers.writeTo(this) }
+                                }
+                            }
+                        }
                         route("/three-gltfpack") {
                             post {
                                 // The three viewer's Export GLB, compressed by Field's optional gltfpack
@@ -5962,6 +6032,13 @@ class Server {
                                     File("./src/commonMain/resources/threejs_viewer.html").readText(Charsets.UTF_8)
                                 val modifiedContent = filter(originalContent)
                                 call.respondText(modifiedContent, ContentType.Text.Html)
+                            }
+                        }
+                        route("/treemap") {
+                            get {
+                                val originalContent =
+                                    File("./src/commonMain/resources/treemap_viewer.html").readText(Charsets.UTF_8)
+                                call.respondText(filter(originalContent), ContentType.Text.Html)
                             }
                         }
                         route("/history") {

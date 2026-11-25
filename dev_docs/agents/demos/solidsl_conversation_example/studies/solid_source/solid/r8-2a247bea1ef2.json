@@ -1,0 +1,10 @@
+{
+  "id" : "r8-2a247bea1ef2",
+  "parent" : "r7-d53362fb0f24",
+  "description" : "Temporary three-up review: lace left, bold ports centre, ribbed slots right",
+  "created" : "2026-11-25T07:11:01.371450Z",
+  "sourceHash" : "2a247bea1ef250ba3754344c8c0e55ba29cce40c0425639b25877570d04d9a36",
+  "facts" : {
+    "knobs" : 222
+  }
+}

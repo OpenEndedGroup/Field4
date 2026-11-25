@@ -137,6 +137,22 @@ macro run nile_gezira_kernels
 
 [Open →](offline.html?file=assets/agent_transcripts/nile_gezira_kernels/metadata.edn)
 
+### vector_scenes
+
+**Depth-ordered 3D vector scenes.** A lighthouse built with `vectorScene { }` from cylinders, cones,
+boxes and hemispheres, drawn from four angles, turned with a camera slider, shaded flat, soft and as
+plotter outlines, a table of how many pixels a centroid sort and the pairwise order get wrong, and
+`mesh(...)` and `polyline(...)` drawing a geodesic spiral toolpath on a relief and rings on a torus,
+with the ordering time at three mesh sizes.
+See [Depth-ordered 3D vector scenes](fline_examples.md#depth-ordered-3d-vector-scenes-vectorscene).
+
+```diffstatic {data-lang=text}
+macro write vector_scenes --file dev_docs/agents/transcripts/vector_scenes.yaml
+macro run vector_scenes
+```
+
+[Open →](offline.html?file=assets/agent_transcripts/vector_scenes/metadata.edn)
+
 ### fline_fill_rule
 
 **One fill rule, every renderer.** A pentagram and two nested squares, wound the same way, filled
@@ -151,6 +167,22 @@ macro run fline_fill_rule
 ```
 
 [Open →](offline.html?file=assets/agent_transcripts/fline_fill_rule/metadata.edn)
+
+### paint_fill_rule
+
+**Paint areas follow the fill rule.** Two overlapping squares are worked with `PaintCanvas.work` under
+the non-zero and the even-odd rule, set as the FLine's own `fillRule`; a second box glazes them
+opaque and counts the pixels that differ from Gezira's coverage. See
+[Overlapping regions and the fill rule](paint_canvas.md#overlapping-regions-and-the-fill-rule).
+
+![Two blue paintings of two overlapping squares: under non-zero the overlap is painted solid, under even-odd it is left white](assets/paint_canvas/fill_rule.png)
+
+```diffstatic {data-lang=text}
+macro write paint_fill_rule --file dev_docs/agents/transcripts/paint_fill_rule.yaml
+macro run paint_fill_rule
+```
+
+[Open →](offline.html?file=assets/agent_transcripts/paint_fill_rule/metadata.edn)
 
 ### nile_gezira_svg
 
@@ -1736,6 +1768,19 @@ middle of the chord and re-run to watch the two columns converge.
 
 [Open →](offline.html?file=assets/agent_transcripts/arclength_spacing_demo/metadata.edn)
 
+### contrast_scale_demo
+
+**Accessible ten-step ramps from one colour**, the companion to
+[One colour, ten steps](colors_examples.md#one-colour-ten-steps-contrastscale). *contrastScale on white
+and near-black* builds scales for four seeds on both grounds and labels every swatch with its WCAG
+contrast; *pick a seed* rebuilds the scale from a colour picker, with a dark-background checkbox;
+*ramps as area fills* colours stacked bands from two scales. Drag the picker toward yellow and watch
+the dark end turn amber instead of olive.
+
+![Four ten-step ramps on white and on near-black, each swatch labelled with its step and contrast](assets/colors_examples/contrast_scale_light_dark.png)
+
+[Open →](offline.html?file=assets/agent_transcripts/contrast_scale_demo/metadata.edn)
+
 ### debruijn_tilings_demo
 
 Quasiperiodic rhombus tilings from de Bruijn multigrids, the companion to
@@ -2516,6 +2561,16 @@ holes in a sphere and shows the diagnosis card; the other repairs it, prints wha
 the result. Both build their mesh in the box, so they need no files and no network.
 
 [Open →](offline.html?file=assets/agent_transcripts/mesh_repair_demo/metadata.edn)
+
+### geodesic_carving
+
+**Carving toolpaths from distance along a surface.** The three boxes from
+[Distance along the surface, and carving toolpaths](mesh_examples.md#distance-along-the-surface-and-carving-toolpaths):
+heat-method geodesic distance against straight-line distance on a folded sheet, iso-geodesic rings
+on a relief joined into one spiral toolpath, and roughing passes around a modelled part. Pure CPU;
+every mesh is built in the box.
+
+[Open →](offline.html?file=assets/agent_transcripts/geodesic_carving/metadata.edn)
 
 ### sorting_networks
 
@@ -3874,7 +3929,7 @@ sketch with a T-junction, a crossing and a wave, builds its field once, and re-t
 the pruning slider moves, drawing the field's streamlines under the curves. The second vectorizes
 the edges of a photograph on a worker thread, which takes about a minute. The third turns the
 vectorized sketch into geometry and treats it as such: parallel outlines, normals and a wave. Needs the optional native
-library and its OpenCV, Boost and Eigen packages: the welcome page's **Geometry extensions** panel
+library and its OpenCV, Boost and Eigen packages: the welcome page's **Optional native libraries** panel
 says how, or run `./gradlew buildPolyvectorNative`.
 
 [Open →](offline.html?file=assets/agent_transcripts/polyvector_explorer/metadata.edn)
@@ -4149,6 +4204,21 @@ and compares every cell with the CPU reference stepped 600 times. Edit a genome 
 re-run it to change the creatures.
 
 [Open →](offline.html?file=assets/agent_transcripts/bonded_organisms/metadata.edn)
+
+### discrete_energy
+
+[Discrete optimisation by energy descent](discrete_energy.md) with `DiscreteEnergy`, after Hoover,
+Blayney and Whittington ([arXiv 2611.17309](https://arxiv.org/abs/2611.17309)). The renderer box
+opens the window. The Sudoku box states the puzzle with `allDifferent` and draws its same-digit
+cost image. The descent box runs mean-field descent of that energy in a Vulkan compute shader, one
+step per frame, then finishes the board with Gibbs sweeps. The check box compares 40 GPU steps
+with 40 CPU steps. The learned box fits the same energy to solved grids, and its image matches the
+stated one. Three more boxes each state a problem in a few lines and animate it as it settles:
+N-queens, colouring a nearest-neighbour graph, and a travelling-salesman tour.
+
+![A 12 by 12 chequerboard with twelve gold queens, one in each row and column, none sharing a diagonal; above it the caption 0 attacks](assets/discrete_energy/queens.png)
+
+[Open →](offline.html?file=assets/agent_transcripts/discrete_energy/metadata.edn)
 
 ### satellites
 

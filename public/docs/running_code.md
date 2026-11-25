@@ -577,7 +577,22 @@ also stops runaway recursion, and a `catch (e: Exception)` inside the loop does 
 It cannot reach into a library call that never returns on its own. A `Thread.sleep` or a wait
 inside the loop is woken, though.
 
-Two environment variables change the timings: `AFIELD_RUNLOOP_WATCHDOG_INTERRUPT_MS` sets the
+### Giving one box longer
+
+A box that is meant to hold the main loop for a while, such as a search or a simulation that takes
+minutes to settle, can say how long it may run before Field interrupts it. Set `watchdog` to a
+number of seconds anywhere in the box's code:
+
+```diffstatic {data-lang=kotlin}
+watchdog = 300 // this search may take five minutes
+```
+
+`watchdog = 0` means this box is never interrupted automatically; **Interrupt Running Box** still
+works. `watchdog = null` goes back to Field's thirty seconds. The value is saved with the document,
+so it still holds after a restart. It belongs to the box whose code started the run: a function
+exported by another box, called from this one, runs under this box's allowance. When the watchdog does interrupt a box, the error says which allowance it used.
+
+Two environment variables change the timings for every box: `AFIELD_RUNLOOP_WATCHDOG_INTERRUPT_MS` sets the
 delay before the automatic interrupt (`0` turns it off and leaves only the command), and
 `AFIELD_RUNLOOP_WATCHDOG_REPORT_MS` sets the delay before the report.
 

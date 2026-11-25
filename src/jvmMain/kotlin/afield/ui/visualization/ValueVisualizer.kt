@@ -194,7 +194,6 @@ object ValueVisualizer {
     private const val BYTE_EXPANSION_CHUNK = 16
     private const val FLINE_THUMBNAIL_WIDTH = 136
     private const val FLINE_THUMBNAIL_HEIGHT = 84
-    private const val FLINE_SIGNATURE_FULL_MAX_NODES = 80
     private const val FLINE_SIGNATURE_PREVIEW_MAX_NODES = 900
     private const val FLINE_THUMBNAIL_MAX_COMPLEXITY = 350
     private const val FLINE_LENGTH_MAX_COMPLEXITY = 1200
@@ -576,24 +575,40 @@ object ValueVisualizer {
         val height: Double get() = (maxY - minY).toDouble()
     }
 
-    private fun compressSignatureRuns(sig: String): String = buildString {
+    /** Splits a one-letter-per-node signature into tokens, a run of more than six one letter becoming `(Lx140)`. */
+    private fun signatureTokens(sig: String): List<String> = buildList {
         var i = 0
         while (i < sig.length) {
             val ch = sig[i]
-            if (ch in "MLCZ") {
-                var run = 1
-                while (i + run < sig.length && sig[i + run] == ch) run++
-                if (run > 6) {
-                    append("(${ch}x$run)")
-                } else {
-                    repeat(run) { append(ch) }
-                }
-                i += run
-            } else {
-                append(ch)
-                i++
-            }
+            var run = 1
+            while (i + run < sig.length && sig[i + run] == ch) run++
+            if (run > 6) add("(${ch}x$run)") else repeat(run) { add(ch.toString()) }
+            i += run
         }
+    }
+
+    /**
+     * The signature as shown: run-length encoded first, so one long run reads `M(Lx140)` rather than
+     * being cut in two, then elided by whole tokens to about [FLINE_SIGNATURE_HEAD] rendered
+     * characters at the front and [FLINE_SIGNATURE_TAIL] at the back.
+     */
+    internal fun shownFLineSignature(sig: String): String {
+        val tokens = signatureTokens(sig)
+        if (tokens.sumOf { it.length } <= FLINE_SIGNATURE_HEAD + FLINE_SIGNATURE_TAIL) return tokens.joinToString("")
+        var headCount = 0
+        var headChars = 0
+        while (headCount < tokens.size && (headCount == 0 || headChars + tokens[headCount].length <= FLINE_SIGNATURE_HEAD)) {
+            headChars += tokens[headCount].length
+            headCount++
+        }
+        var tailStart = tokens.size
+        var tailChars = 0
+        while (tailStart > headCount && (tailStart == tokens.size || tailChars + tokens[tailStart - 1].length <= FLINE_SIGNATURE_TAIL)) {
+            tailChars += tokens[tailStart - 1].length
+            tailStart--
+        }
+        if (tailStart == headCount) return tokens.joinToString("")
+        return tokens.subList(0, headCount).joinToString("") + " … " + tokens.subList(tailStart, tokens.size).joinToString("")
     }
 
     private fun formatFLine(line: FLine): String {
@@ -635,16 +650,7 @@ object ValueVisualizer {
             }
         } else null
 
-        val shownSignature = signature?.let {
-            val raw = if (nodeCount <= FLINE_SIGNATURE_FULL_MAX_NODES) {
-                it
-            } else {
-                val head = it.take(FLINE_SIGNATURE_HEAD)
-                val tail = it.takeLast(FLINE_SIGNATURE_TAIL)
-                "$head … $tail"
-            }
-            compressSignatureRuns(raw)
-        }
+        val shownSignature = signature?.let(::shownFLineSignature)
 
         val length = if (showLength) runCatching { line.cursor(0.5f).lengthD().toDouble() }.getOrNull() else null
         val bounds = computeFLineBounds(line)

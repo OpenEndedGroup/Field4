@@ -1,5 +1,8 @@
 package afield.animation.keyframes
 
+import afield.runtime.completion.StringCompletionContext
+import afield.runtime.completion.StringCompletions
+import afield.runtime.completion.CompletesWith
 import afield.animation.interpolation.interpolant
 import afield.app.diagnostics.named
 import afield.data.table.div
@@ -60,6 +63,11 @@ class KeyTypeEntry internal constructor(
     val shape: KeySegment.() -> Double,
 )
 
+/** Completion for `KeyTypeLibrary.named("…")`: every type the library holds. */
+internal object KeyTypeNames : StringCompletions {
+    override fun candidates(context: StringCompletionContext): List<String> = KeyTypeLibrary.entries.map { it.name }
+}
+
 object KeyTypeLibrary {
 
     /** Every type in the library, built once: the easings first, then splines, shapes and noise. */
@@ -68,7 +76,7 @@ object KeyTypeLibrary {
     private val byName: Map<String, KeyTypeEntry> by lazy { entries.associateBy { it.name } }
 
     /** The entry a key of type [name] uses, or null if no library type is called that. */
-    fun named(name: String): KeyTypeEntry? = byName[name]
+    fun named(@CompletesWith(KeyTypeNames::class) name: String): KeyTypeEntry? = byName[name]
 
     private fun build(): List<KeyTypeEntry> = buildList {
         // ── Ease: Penner's family, as a fraction of the way from v0 to v1 ──────────────────

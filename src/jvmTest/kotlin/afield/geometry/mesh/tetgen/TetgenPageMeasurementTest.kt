@@ -54,10 +54,7 @@ class TetgenPageMeasurementTest {
      */
     @Test
     fun printWhatTenNodeElementsCost() {
-        if (!available()) {
-            println("SKIPPED: ${TetgenLibrary.describe()} / ${ManifoldLibrary.describe()}")
-            return
-        }
+        org.junit.Assume.assumeTrue("SKIPPED: ${TetgenLibrary.describe()} / ${ManifoldLibrary.describe()}", available())
         bracket().use { part ->
             val surface = part.toTriMesh()
             for (edge in listOf(5.0, 3.0)) {
@@ -85,10 +82,7 @@ class TetgenPageMeasurementTest {
     }
 
     @Test fun printEveryNumberThePageQuotes() {
-        if (!available()) {
-            println("SKIPPED: ${TetgenLibrary.describe()} / ${ManifoldLibrary.describe()}")
-            return
-        }
+        org.junit.Assume.assumeTrue("SKIPPED: ${TetgenLibrary.describe()} / ${ManifoldLibrary.describe()}", available())
         println("=== version ===")
         println(TetgenLibrary.describe())
 

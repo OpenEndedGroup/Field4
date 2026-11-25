@@ -123,6 +123,215 @@ class KotlinEmitter(
             appendLine("/** Returns a copy rescaled to length [l], keeping direction. */")
             appendLine("infix fun $heap.len(l: Number): $heap = this { normalize().mul(l.toFloat()) }")
         }
+        ergonomicTypes.forEach { type ->
+            appendLine()
+            appendLine("// ${type.heapName} shorthands")
+            emitShorthands(
+                indent = "", receiver = type.readName, result = type.heapName, scalar = type.scalar,
+                prefix = type.heapName, inner = false,
+                load = { "${type.heapName}($it)" }, length = { "$it.length()" },
+            )
+        }
+    }
+
+    /** Heap vectors (float and double, dims 2..4) that get the `.n`/`.length`/`lerp … to`/`step … to` surface. */
+    private val ergonomicTypes: List<VectorType>
+        get() = model.heapVectors.filter { it.scalar != ScalarKind.HALF && it.dimension in 2..4 }
+
+    /**
+     * Emits the live-coding shorthands `v.n`, `v.length`, `a lerp t to b` and `a step d to b`.
+     *
+     * `lerp`/`step` return a small pending value whose member `to` finishes the expression; a member
+     * always beats the stdlib's generic `Pair` `to`. [receiver] is the vector type, [result] the type
+     * the expressions return, [load] turns a [receiver]
+     * expression into a fresh mutable [result], and [prefix] names the pending classes.
+     */
+    private fun StringBuilder.emitShorthands(
+        indent: String,
+        receiver: String,
+        result: String,
+        scalar: ScalarKind,
+        prefix: String,
+        inner: Boolean,
+        load: (String) -> String,
+        length: (String) -> String,
+    ) {
+        val s = scalar.kotlinType
+        val classModifier = if (inner) "inner class" else "class"
+        appendLine("$indent/** A normalized copy of this vector, the shorthand for `normalized()`. Zero stays zero. */")
+        appendLine("${indent}val $receiver.n: $result get() = ${load("this")}.also { val l = ${length("it")}; if (l != ${scalar.zero}) it.mul(${scalar.one} / l) }")
+        appendLine("$indent/** This vector's Euclidean length, the property form of `length()`. */")
+        appendLine("${indent}val $receiver.length: $s get() = length()")
+        appendLine()
+        appendLine("$indent/** The first half of `a lerp t to b`; finish it with [to]. */")
+        appendLine("$indent$classModifier ${prefix}Lerp internal constructor(private val from: $receiver, private val t: $s) {")
+        appendLine("$indent    /** Returns a new vector [t] of the way from the left-hand vector to [b]: 0 gives it, 1 gives [b]. */")
+        appendLine("$indent    infix fun to(b: $receiver): $result {")
+        appendLine("$indent        val a = ${load("from")}")
+        appendLine("$indent        val d = ${load("b")}")
+        appendLine("$indent        return d.sub(a).mul(t).add(a)")
+        appendLine("$indent    }")
+        appendLine("$indent}")
+        appendLine()
+        appendLine("$indent/** The first half of `a step d to b`; finish it with [to]. */")
+        appendLine("$indent$classModifier ${prefix}Step internal constructor(private val from: $receiver, private val distance: $s) {")
+        appendLine("$indent    /**")
+        appendLine("$indent     * Returns a new vector [distance] units from the left-hand vector in the direction of [b].")
+        appendLine("$indent     * It does not stop at [b]: a distance longer than the gap overshoots. When the two")
+        appendLine("$indent     * vectors coincide there is no direction, so the result is a copy of the left-hand one.")
+        appendLine("$indent     */")
+        appendLine("$indent    infix fun to(b: $receiver): $result {")
+        appendLine("$indent        val a = ${load("from")}")
+        appendLine("$indent        val d = ${load("b")}.sub(a)")
+        appendLine("$indent        val l = ${length("d")}")
+        appendLine("$indent        if (l != ${scalar.zero}) d.mul(distance / l)")
+        appendLine("$indent        return d.add(a)")
+        appendLine("$indent    }")
+        appendLine("$indent}")
+        appendLine()
+        appendLine("$indent/** Starts `a lerp t to b`: the point [t] of the way from this vector to `b`. */")
+        appendLine("${indent}infix fun $receiver.lerp(t: Number): ${prefix}Lerp = ${prefix}Lerp(this, t.${scalar.numberConversion}())")
+        appendLine("$indent/** Starts `a step d to b`: move [distance] units from this vector toward `b`. */")
+        appendLine("${indent}infix fun $receiver.step(distance: Number): ${prefix}Step = ${prefix}Step(this, distance.${scalar.numberConversion}())")
+    }
+
+    /**
+     * Emits immutable `Complexf`/`Complexd` (a + bi) and `Hypercomplexf`/`Hypercomplexd` (a + bε with a
+     * runtime ε²: −1 complex, 0 dual, +1 split-complex), the two-component siblings of `Quaternionf`.
+     */
+    fun emitComplex(): String = buildString {
+        appendHeader(packages.linalg)
+        appendLine("import kotlin.math.*")
+        listOf(ScalarKind.FLOAT, ScalarKind.DOUBLE).forEach { scalar ->
+            val s = scalar.kotlinType
+            val c = "Complex${scalar.typeSuffix}"
+            val h = "Hypercomplex${scalar.typeSuffix}"
+            val v = "Vector2${scalar.typeSuffix}"
+            val vc = "${v}c"
+            val conv = scalar.numberConversion
+            val z = scalar.zero
+            val one = scalar.one
+            appendLine()
+            appendLine("/**")
+            appendLine(" * An immutable complex number [re] + [im]·i in ${scalar.bits}-bit precision.")
+            appendLine(" *")
+            appendLine(" * Multiplying by a unit complex number rotates in the plane: `Complex${scalar.typeSuffix}.polar(1, angle) * c`.")
+            appendLine(" * Every operation returns a new value. Convert to and from `$v` with `toVector()` and `toComplex()`.")
+            appendLine(" */")
+            appendLine("class $c(@JvmField val re: $s, @JvmField val im: $s) {")
+            appendLine("    constructor(re: Number, im: Number = 0) : this(re.$conv(), im.$conv())")
+            appendLine()
+            appendLine("    operator fun plus(o: $c): $c = $c(re + o.re, im + o.im)")
+            appendLine("    operator fun minus(o: $c): $c = $c(re - o.re, im - o.im)")
+            appendLine("    operator fun times(o: $c): $c = $c(re * o.re - im * o.im, re * o.im + im * o.re)")
+            appendLine("    /** Divides by [o]; dividing by zero gives non-finite components. */")
+            appendLine("    operator fun div(o: $c): $c {")
+            appendLine("        val d = o.re * o.re + o.im * o.im")
+            appendLine("        return $c((re * o.re + im * o.im) / d, (im * o.re - re * o.im) / d)")
+            appendLine("    }")
+            appendLine("    operator fun plus(x: Number): $c = $c(re + x.$conv(), im)")
+            appendLine("    operator fun minus(x: Number): $c = $c(re - x.$conv(), im)")
+            appendLine("    operator fun times(x: Number): $c = x.$conv().let { $c(re * it, im * it) }")
+            appendLine("    operator fun div(x: Number): $c = x.$conv().let { $c(re / it, im / it) }")
+            appendLine("    operator fun unaryMinus(): $c = $c(-re, -im)")
+            appendLine()
+            appendLine("    /** The complex conjugate, re − im·i. */")
+            appendLine("    val conj: $c get() = $c(re, -im)")
+            appendLine("    /** The magnitude |z|. */")
+            appendLine("    val abs: $s get() = hypot(re, im)")
+            appendLine("    /** The angle from the positive real axis, in radians, in −π..π. */")
+            appendLine("    val arg: $s get() = atan2(im, re)")
+            appendLine("    /** e to the power of this number: e^re · (cos im + i sin im). */")
+            appendLine("    fun exp(): $c = kotlin.math.exp(re).let { $c(it * cos(im), it * sin(im)) }")
+            appendLine("    /** The principal natural logarithm: ln|z| + i·arg z. */")
+            appendLine("    fun ln(): $c = $c(kotlin.math.ln(abs), arg)")
+            appendLine("    /** The principal power z^p, through exp and ln. Zero to any power is zero. */")
+            appendLine("    fun pow(p: Number): $c = if (re == $z && im == $z) this else (ln() * p).exp()")
+            appendLine("    /** This number as the 2D vector (re, im). */")
+            appendLine("    fun toVector(): $v = $v(re, im)")
+            appendLine()
+            appendLine("    override fun equals(other: Any?): Boolean = other is $c && re.toBits() == other.re.toBits() && im.toBits() == other.im.toBits()")
+            appendLine("    override fun hashCode(): Int = 31 * re.hashCode() + im.hashCode()")
+            appendLine("    override fun toString(): String = if (im < $z) \"(\$re - \${-im}i)\" else \"(\$re + \${im}i)\"")
+            appendLine()
+            appendLine("    companion object {")
+            appendLine("        /** The imaginary unit. */")
+            appendLine("        @JvmField val I: $c = $c($z, $one)")
+            appendLine("        @JvmField val ONE: $c = $c($one, $z)")
+            appendLine("        @JvmField val ZERO: $c = $c($z, $z)")
+            appendLine("        /** The number with magnitude [r] at angle [theta] radians. */")
+            appendLine("        fun polar(r: Number, theta: Number): $c = $c(r.$conv() * cos(theta.$conv()), r.$conv() * sin(theta.$conv()))")
+            appendLine("        /** Collection-literal constructor: `val z: $c = [1, 2]` is 1 + 2i. */")
+            appendLine("        operator fun of(vararg parts: Number): $c {")
+            appendLine("            require(parts.size == 2) { \"$c literal takes [re, im], got \${parts.size} values\" }")
+            appendLine("            return $c(parts[0], parts[1])")
+            appendLine("        }")
+            appendLine("    }")
+            appendLine("}")
+            appendLine()
+            appendLine("/** The vector (x, y) as the complex number x + yi. */")
+            appendLine("fun $vc.toComplex(): $c = $c(x(), y())")
+            appendLine("operator fun Number.plus(z: $c): $c = z + this")
+            appendLine("operator fun Number.times(z: $c): $c = z * this")
+            appendLine("operator fun Number.minus(z: $c): $c = -z + this")
+            appendLine("operator fun Number.div(z: $c): $c = $c(this, 0) / z")
+            appendLine()
+            appendLine("/**")
+            appendLine(" * An immutable two-component number [a] + [b]·ε whose unit squares to [epsilon2].")
+            appendLine(" *")
+            appendLine(" * One type covers the three planar algebras: ε² = −1 is the complex numbers (rotation),")
+            appendLine(" * ε² = 0 the dual numbers (a + bε carries a value and its derivative), ε² = +1 the")
+            appendLine(" * split-complex numbers (hyperbolic rotation, a Lorentz boost). Operands must share ε².")
+            appendLine(" */")
+            appendLine("class $h(@JvmField val a: $s, @JvmField val b: $s, @JvmField val epsilon2: $s) {")
+            appendLine("    constructor(a: Number, b: Number, epsilon2: Number) : this(a.$conv(), b.$conv(), epsilon2.$conv())")
+            appendLine()
+            appendLine("    private fun same(o: $h) = require(o.epsilon2 == epsilon2) { \"cannot combine ε² = \$epsilon2 with ε² = \${o.epsilon2}\" }")
+            appendLine("    operator fun plus(o: $h): $h { same(o); return $h(a + o.a, b + o.b, epsilon2) }")
+            appendLine("    operator fun minus(o: $h): $h { same(o); return $h(a - o.a, b - o.b, epsilon2) }")
+            appendLine("    /** (a + bε)(c + dε) = ac + bd·ε² + (ad + bc)ε. */")
+            appendLine("    operator fun times(o: $h): $h { same(o); return $h(a * o.a + b * o.b * epsilon2, a * o.b + b * o.a, epsilon2) }")
+            appendLine("    /** Divides by [o] through its conjugate; a zero [norm] (a light-like or pure-ε divisor) gives non-finite components. */")
+            appendLine("    operator fun div(o: $h): $h { same(o); val n = o.norm; return $h((a * o.a - b * o.b * epsilon2) / n, (b * o.a - a * o.b) / n, epsilon2) }")
+            appendLine("    operator fun plus(x: Number): $h = $h(a + x.$conv(), b, epsilon2)")
+            appendLine("    operator fun minus(x: Number): $h = $h(a - x.$conv(), b, epsilon2)")
+            appendLine("    operator fun times(x: Number): $h = x.$conv().let { $h(a * it, b * it, epsilon2) }")
+            appendLine("    operator fun div(x: Number): $h = x.$conv().let { $h(a / it, b / it, epsilon2) }")
+            appendLine("    operator fun unaryMinus(): $h = $h(-a, -b, epsilon2)")
+            appendLine()
+            appendLine("    /** The conjugate a − bε. */")
+            appendLine("    val conj: $h get() = $h(a, -b, epsilon2)")
+            appendLine("    /** The quadratic norm z·conj(z) = a² − ε²b² (|z|² for complex, a² for dual, a² − b² for split). */")
+            appendLine("    val norm: $s get() = a * a - epsilon2 * b * b")
+            appendLine("    /**")
+            appendLine("     * e to the power of this number. With k² = −ε², e^(a + bε) is e^a·(cos kb + ε sin(kb)/k) when ε² < 0,")
+            appendLine("     * e^a·(1 + bε) when ε² = 0, and e^a·(cosh kb + ε sinh(kb)/k) with k = √ε² when ε² > 0.")
+            appendLine("     */")
+            appendLine("    fun exp(): $h {")
+            appendLine("        val e = kotlin.math.exp(a)")
+            appendLine("        return when {")
+            appendLine("            epsilon2 < $z -> sqrt(-epsilon2).let { k -> $h(e * cos(k * b), e * sin(k * b) / k, epsilon2) }")
+            appendLine("            epsilon2 == $z -> $h(e, e * b, epsilon2)")
+            appendLine("            else -> sqrt(epsilon2).let { k -> $h(e * cosh(k * b), e * sinh(k * b) / k, epsilon2) }")
+            appendLine("        }")
+            appendLine("    }")
+            appendLine("    /** This number as the 2D vector (a, b). */")
+            appendLine("    fun toVector(): $v = $v(a, b)")
+            appendLine()
+            appendLine("    override fun equals(other: Any?): Boolean = other is $h && a.toBits() == other.a.toBits() && b.toBits() == other.b.toBits() && epsilon2.toBits() == other.epsilon2.toBits()")
+            appendLine("    override fun hashCode(): Int = (31 * a.hashCode() + b.hashCode()) * 31 + epsilon2.hashCode()")
+            appendLine("    override fun toString(): String = \"(\$a + \${b}ε, ε² = \$epsilon2)\"")
+            appendLine()
+            appendLine("    companion object {")
+            appendLine("        /** A complex number a + bi (ε² = −1). */")
+            appendLine("        fun complex(a: Number, b: Number): $h = $h(a, b, -1)")
+            appendLine("        /** A dual number a + bε (ε² = 0): a value [a] and its derivative [b]. */")
+            appendLine("        fun dual(a: Number, b: Number): $h = $h(a, b, 0)")
+            appendLine("        /** A split-complex number a + bj (j² = +1). */")
+            appendLine("        fun split(a: Number, b: Number): $h = $h(a, b, 1)")
+            appendLine("    }")
+            appendLine("}")
+        }
     }
 
     /** Every length-[arity] sequence of [components] (Cartesian power), in lexicographic order. */
@@ -225,6 +434,31 @@ class KotlinEmitter(
         appendLine()
         appendLine("This page is generated from the typed algebra model that emits Field's heap, frame-arena, and `MemorySegment` vector implementations. For intuition and worked examples, start with [Linear algebra in Field](linear_algebra.md).")
         appendLine()
+        appendLine("## Ergonomic operators")
+        appendLine()
+        appendLine("Vectors are written with ordinary arithmetic, and a handful of shorthands cover the moves live code makes most. Everything here returns a new vector and leaves its operands alone.")
+        appendLine()
+        appendLine("<div class=\"field-reference\" data-code-lang=\"kotlin\" markdown>")
+        appendLine()
+        appendLine("| Operator | Meaning |")
+        appendLine("| --- | --- |")
+        appendLine("| `a + b`, `a - b` | Component-by-component sum and difference. A number on the right applies to every component: `a + 1`. |")
+        appendLine("| `a * b`, `a * 2`, `a / 2` | Component-by-component product, scaling by a number, dividing by a number. |")
+        appendLine("| `-a` | The vector pointing the other way. |")
+        appendLine("| `a.length` | The vector's length, the same as `a.length()`. |")
+        appendLine("| `a.n` | A unit-length copy pointing the same way, the same as `a.normalized()`. Zero stays zero. |")
+        appendLine("| `v len 10` | A copy rescaled to length 10, keeping direction. |")
+        appendLine("| `a lerp 0.5 to b` | The point halfway from `a` to `b`; 0 gives `a`, 1 gives `b`, and values outside 0..1 extend the line. |")
+        appendLine("| `a step 10 to b` | The point 10 units from `a` in the direction of `b`. It does not stop at `b`, so a step longer than the gap goes past it; if `a` and `b` coincide the result is `a`. |")
+        appendLine("| `v(y = 2f)` | A copy with the named components replaced; unnamed components keep this vector's values. |")
+        appendLine("| `v { normalize() }` | A copy after applying the block to it, leaving `v` untouched. |")
+        appendLine("| `a %= b` | In-place assignment: copies b's components into a. |")
+        appendLine("| `v.normalized()` / `v.normalized(dest)` | Unit direction as a new value / into reusable storage. Optional epsilon sets the zero threshold. Finite inputs only. |")
+        appendLine()
+        appendLine("</div>")
+        appendLine()
+        appendLine("`length`, `n`, `lerp … to` and `step … to` exist on the float and double heap vectors and on the frame-arena and segment forms. In a frame arena they allocate their result in the arena; on a segment view they return a heap vector, because a view has nowhere of its own to put one. The arithmetic operators are heap forms, float and double; `len`, `v(...)`, `v { }` and `%=` are float heap forms.")
+        appendLine()
         appendLine("## One algebra, three storage forms")
         appendLine()
         appendLine("<div data-code-lang=\"kotlin\" markdown>")
@@ -294,22 +528,6 @@ class KotlinEmitter(
         appendLine("- Components can be spelled two ways: positional `x`/`y`/`z`/`w` or color `r`/`g`/`b`/`a`. The two are never mixed within one swizzle.")
         appendLine("- A read swizzle returns a same-scalar `VectorKfc` of the swizzle's own arity (`v.xy` is a `Vector2fc`, `v.xyz` a `Vector3fc`).")
         appendLine("- When a swizzle's indices are all distinct it also has a writable `var` on the mutable type, so GLSL-style assignment works: `v.xy = other.zw`. Repeated-index swizzles (`v.xx`) have no unambiguous target and stay read-only.")
-        appendLine()
-        appendLine("## Ergonomic operators")
-        appendLine()
-        appendLine("The float heap vectors also carry a small generated operator surface for live coding:")
-        appendLine()
-        appendLine("<div class=\"field-reference\" data-code-lang=\"kotlin\" markdown>")
-        appendLine()
-        appendLine("| Operator | Meaning |")
-        appendLine("| --- | --- |")
-        appendLine("| `v(y = 2f)` | Returns a copy with the named components replaced; unnamed components keep this vector's values. |")
-        appendLine("| `v.normalized()` / `v.normalized(dest)` | Unit direction as a new value / into reusable storage. Zero remains zero; optional epsilon sets the zero threshold. Finite inputs only. |")
-        appendLine("| `v { normalize() }` | Returns a copy after applying the block to it, leaving this vector untouched. |")
-        appendLine("| `a %= b` | In-place assignment: copies b's components into a. |")
-        appendLine("| `v len 10` | Returns a copy rescaled to the given length, keeping direction. |")
-        appendLine()
-        appendLine("</div>")
         appendLine()
         appendLine("## Rotations and matrices")
         appendLine()
@@ -427,6 +645,12 @@ class KotlinEmitter(
         emitKDoc(ApiDocumentation("Reports whether every component is finite."), "    ")
         appendLine("    fun $handleName.isFinite(): Boolean = ${type.components.joinToString(" && ") { "${it.sourceName}.isFinite()" }}")
         appendLine()
+        emitShorthands(
+            indent = "    ", receiver = handleName, result = type.heapName, scalar = type.scalar,
+            prefix = handleName, inner = true,
+            load = { "$it.copyTo(${type.heapName}())" }, length = { "$it.length()" },
+        )
+        appendLine()
         appendLine("    private fun read(token: Long, component: Int): Float =")
         appendLine("        segment.get(ValueLayout.JAVA_FLOAT, offset(token) + component * Float.SIZE_BYTES)")
         appendLine("    private fun write(token: Long, component: Int, value: Float) =")
@@ -531,6 +755,14 @@ class KotlinEmitter(
             appendLine("        buffer.${type.scalar.bufferPut}(index + ${index * type.scalar.byteSize}, ${type.scalar.toStorage("${component.sourceName}()")})")
         }
         appendLine("        return buffer")
+        appendLine("    }")
+        appendLine()
+        appendLine("    companion object {")
+        appendLine("        /**")
+        appendLine("         * Collection-literal constructor for a read-only target, so `v.xy = [1, 2]` and")
+        appendLine("         * `val p: ${type.readName} = [${type.components.indices.joinToString()}]` compile. The value is a new ${type.heapName}.")
+        appendLine("         */")
+        appendLine("        operator fun of(vararg components: Number): ${type.readName} = ${type.heapName}.of(*components)")
         appendLine("    }")
         appendLine("}")
     }
@@ -725,6 +957,12 @@ class KotlinEmitter(
         }
         emitKDoc(ApiDocumentation("Reports whether every component is finite."), "    ")
         appendLine("    fun ${type.arenaName}.isFinite(): Boolean = ${type.components.joinToString(" && ") { "${it.sourceName}.isFinite()" }}")
+        appendLine()
+        emitShorthands(
+            indent = "    ", receiver = type.arenaName!!, result = type.arenaName, scalar = type.scalar,
+            prefix = type.arenaName, inner = true,
+            load = { v -> "${type.factoryName}(${type.components.joinToString { "$v.${it.sourceName}" }})" }, length = { "$it.length()" },
+        )
     }
 
     private fun StringBuilder.emitArenaOperation(type: VectorType, operation: Operation, kind: String) {

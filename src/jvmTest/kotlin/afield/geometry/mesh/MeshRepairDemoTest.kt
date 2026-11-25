@@ -85,7 +85,7 @@ class MeshRepairDemoTest {
 
     @Test
     fun theDemoRepairsAndTheCutIsTheNumberInTheCaption() {
-        if (!ManifoldLibrary.isAvailable) { println("MeshRepairDemoTest: no Manifold, skipping"); return }
+        org.junit.Assume.assumeTrue("MeshRepairDemoTest: no Manifold, skipping", ManifoldLibrary.isAvailable)
         val broken = demoMesh()
         assertTrue(!broken.isValidSolid(), "the demo's premise is that this mesh is refused")
 

@@ -113,7 +113,7 @@ types, see [Linear Algebra](linear_algebra.md).
 For an [`FLine`](fline_examples.md), Field shows the node counts, bounding box, length and a
 compressed path signature, followed by a small SVG drawing of the path:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-fline-spiral.png" alt="an output channel named spiral headed FLine (141 nodes), then M=1 L=140 C=0, bounds 130x124 and length 1.19e+03, the signature M(Lx41) … (Lx22), and a thumbnail of a five-turn spiral" wait="1.0" capture="box" open-outputs="true" w="640" h="200" embed=true name="fline-spiral"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-fline-spiral.png" alt="an output channel named spiral headed FLine (141 nodes), then M=1 L=140 C=0, bounds 130x124 and length 1.19e+03, the signature M(Lx140), and a thumbnail of a five-turn spiral" wait="1.0" capture="box" open-outputs="true" w="640" h="200" embed=true name="fline-spiral"}
 :::static
 val spiral = FLine()
 val steps = 140
@@ -130,8 +130,10 @@ display("spiral", spiral.h)
 ```
 
 The header reads `FLine (141 nodes)`, then `M=1 L=140 C=0 · b=130×124 ·
-len=1.19e+03`, then the run-compressed signature `M(Lx41) … (Lx22)`, and finally
-the thumbnail. The thumbnail is normalised into its box and only rendered for
+len=1.19e+03`, then the signature `M(Lx140)`, and finally
+the thumbnail. The signature has one letter per node, and a run of more than six
+equal letters is written `(Lxn)`. A long, mixed path keeps about 40 characters
+from its start and 20 from its end, with `…` between. The thumbnail is normalised into its box and only rendered for
 paths under a complexity budget, so pasting a huge path into a value view never
 becomes a rendering hazard.
 
@@ -1478,11 +1480,14 @@ mask.mapAndWrite {
 
 The outlines are in the coordinates `sample` uses (`x0`, `y0` and `cell` default to one unit per
 element), every subpath is closed, and curves stay curves. Several outlines filled together are one
-shape, so `FillRule` decides what their overlaps are. Under `NON_ZERO`, overlapping outlines are
+shape, so `FillRule` decides what their overlaps are; leave it out and `fill` uses the first line's own
+`fillRule`, else `NON_ZERO`. Under `NON_ZERO`, overlapping outlines are
 their union and an outline inside another is a hole only if it runs the other way round. Under
 `EVEN_ODD`, every overlap and every inner loop is a hole. The coverage is the exact area of each cell
 inside the outline under that rule, from the winding rasteriser in
-[Rasterising with stream kernels](afield_four_graphics.md#stream-kernels).
+[Rasterising with stream kernels](afield_four_graphics.md#stream-kernels). `FillRule` is Field's one
+fill-rule type, `FLineFillRule`, which the renderers and `contains2D` read too
+([Overlaps and fill rules](afield_four_graphics.md#overlaps-and-fill-rules)).
 
 In this example a buffer holds two floats per cell, the shapes filled under `NON_ZERO` in the first
 and under `EVEN_ODD` in the second: a pentagram drawn as one outline that crosses itself, two
@@ -1697,7 +1702,20 @@ The rows are the same edges [`graphPaths`](graph_query.md) walks, so every row h
 val age = scene.graphPath("particle/age")?.get()
 ```
 
-Type a pattern containing `/`, `*` or `|` into the filter and it runs `graphPaths` on the whole value instead of filtering one level: `**/tag` lists every `tag` at any depth, labelled by path. Choose one (Enter, or double-click) and the tree or columns open to it. Plain text still just filters the rows in view.
+Type a pattern containing `/`, `*`, `|` or `::` into the filter and it runs `graphPaths` on the whole value instead of filtering one level: `**/tag` lists every `tag` at any depth, labelled by path. Choose one (Enter, or double-click) and the tree or columns open to it. Plain text still just filters the rows in view.
+
+A segment can also test the type of the value it reaches. `::FLine` after a segment keeps only the slots holding an `FLine` (or a subclass), so `**::FLine` finds every line at any depth however it is stored, `strokes/*::FLine` only the lines directly in `strokes`, and `*::Vec3` the `Vec3`s one level down. A name and a type in one segment must both hold, and `|` still separates whole alternatives: `**::FLine | **::Vec3`. The same patterns work in the filter box, and `graphLenses<FLine>()` gives typed handles to the same slots:
+
+```diffstatic {data-lang=kotlin}
+:::static
+val drawing = linkedMapOf(
+    "outline" to fline { rect(0, 0, 100, 50) },
+    "strokes" to [fline { moveTo(0, 0); lineTo(10, 10) }, "a label"],
+    "layers" to [linkedMapOf("hatch" to fline { moveTo(0, 10); lineTo(10, 0) })],
+)
+drawing.graphPaths("**::FLine").paths() // [outline, strokes/0, layers/0/hatch]
+drawing.graphLenses<FLine>().size // 3
+```
 
 This recording types `**/name` into the filter of a tree over a small scene of groups and layers. Every `name` at any depth is listed by its path; the arrow keys pick `groups/1/layers/1/name`, and Enter opens the tree down to it.
 
@@ -2027,10 +2045,13 @@ var radius = 3.0
 controlGroup("size") {
     slider("radius", min = 0.0, max = 10.0, initialValue = radius, unit = mm) { radius = it }
     slider("acceleration", min = 0.0, max = 20.0, unit = "m/s2") {}
+    slider("bogomips", min = 0.0, max = 1.0, unit = "mmHg*furlong/erg") {}
 }
 ```
 
-The readouts show `mm` and `m/s²`. Values, steps and callbacks are numeric in the given unit; this
+The readouts show `mm`, `m/s²` and `mmHg·furlong/erg`. A string unit is any label you like: `*`
+becomes `·` and digits become superscripts. KotUniL's units are SI, so a millimetre of mercury, a
+furlong or an erg can only be written as a string. Values, steps and callbacks are numeric in the given unit; this
 is a display label and does not convert them. `unit` also works on `Box.slider`, `SliderConfig` and
 the numeric `syncToProperty` slider. A slider without a unit keeps its existing display.
 
@@ -2484,11 +2505,11 @@ check(after.trim('"').toDouble() > 0.8) { "the sweep did not move size: $after" 
 
 `presetBar(keys)` adds a preset bar over a [`KeyframeScope`](keyframer_examples.md): a preset is a keyframer key. Declare the values as delegated locals (`var size by keys.slider(0.4, 0.1..1.0)`) and add them to the group with `keys.controls()`, as in [One value shared by a local, a control and a key](keyframer_examples.md#one-value-shared-by-a-local-a-control-and-a-key). Here two keys, `calm` and `storm`, are saved the first time the box runs, so there is something to morph between straight away:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-preset-bar.png" capture="box" open-outputs="true" wait="2.0" w="700" embed=true name="controls-preset-bar" alt="A control group: a size slider at 0.40, an offset pad, a blue tint colour picker, a ring checkbox, then a row with a preset name field reading storm and store and recall buttons, a row of calm and storm buttons, a preset morph slider at 0, a rec size button and a MIDI learn button. Below it a dark square holding a blue circle"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-preset-bar.png" capture="box" open-outputs="true" wait="2.0" w="700" embed=true name="controls-preset-bar" alt="A control group: a size slider at 0.40, an offset pad, a blue tint colour picker, a ring checkbox, then a row with a preset name field reading storm and store and recall buttons, a row of calm and storm buttons, a preset morph slider at 0, a rec size button and a MIDI learn button. Below it a dark square holding a blue circle up and to the right of centre"}
 :::static
 val keys = KeyframeScope()
 var size by keys.slider(0.4, 0.1..1.0)
-var offset by keys.vec2(Vector2f(0f, 0f))
+var offset by keys.vec2(Vector2f(0.5f, 0.4f))
 var tint by keys.color(Vector4f(0.2f, 0.6f, 1f, 1f))
 var ring by keys.checkbox(false)
 

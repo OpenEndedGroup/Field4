@@ -20,7 +20,7 @@ import kotlin.test.assertTrue
  */
 class Rhino3dmTest {
 
-    /** Optional like TetGen: without the wrapper the tests say so and pass. */
+    /** Optional like TetGen: without the wrapper the tests are reported SKIPPED. */
     private fun available(): Boolean {
         if (!Rhino3dm.isAvailable) {
             println("SKIPPED .3dm tests: ${Rhino3dm.describe()}")
@@ -28,6 +28,10 @@ class Rhino3dmTest {
         }
         return true
     }
+
+    /** Reports the test SKIPPED, not passed, when the native library is missing. */
+    private fun assumeAvailable() =
+        org.junit.Assume.assumeTrue("${javaClass.simpleName}: native library not available", available())
 
     private fun sample(): RhinoModel {
         val dir = Files.createTempDirectory("rhino3dm-test").toFile()
@@ -48,7 +52,7 @@ class Rhino3dmTest {
     }
 
     @Test fun layersKeepTheirTreeColourAndVisibility() {
-        if (!available()) return
+        assumeAvailable()
         val model = sample()
         assertEquals("millimeters", model.unitName)
         assertEquals(0.001, model.metersPerUnit, 1e-12)
@@ -64,7 +68,7 @@ class Rhino3dmTest {
     }
 
     @Test fun meshesSplitQuadsAndBrepsUseTheirRenderMeshes() {
-        if (!available()) return
+        assumeAvailable()
         val model = sample()
         val plate = model.named("plate") as RhinoMesh
         assertEquals(5, plate.mesh.vertexCount)
@@ -79,7 +83,7 @@ class Rhino3dmTest {
     }
 
     @Test fun aBrepWithoutARenderMeshIsSkippedButKeepsItsWireframe() {
-        if (!available()) return
+        assumeAvailable()
         val bare = sample().named("bare box") as RhinoSkipped
         assertEquals("ON_Brep", bare.type)
         assertTrue("render mesh" in bare.reason, bare.reason)
@@ -88,7 +92,7 @@ class Rhino3dmTest {
     }
 
     @Test fun curvesAreExactWhereTheyCanBeAndCloseWhereTheyShould() {
-        if (!available()) return
+        assumeAvailable()
         val model = sample()
         val square = model.named("square") as RhinoCurve
         assertTrue(square.closed)
@@ -111,7 +115,7 @@ class Rhino3dmTest {
     }
 
     @Test fun textComesWithItsPlaneAndHeight() {
-        if (!available()) return
+        assumeAvailable()
         val text = sample().named("greeting") as RhinoText
         assertEquals("Hello Field", text.text)
         assertEquals(2.5, text.height, 1e-9)
@@ -126,7 +130,7 @@ class Rhino3dmTest {
     }
 
     @Test fun pointsAndHatches() {
-        if (!available()) return
+        assumeAvailable()
         val model = sample()
         val marker = model.named("marker") as RhinoPoints
         assertEquals(listOf(1f, 2f, 3f), marker.points.single().let { listOf(it.x, it.y, it.z) })
@@ -136,7 +140,7 @@ class Rhino3dmTest {
     }
 
     @Test fun blockInstancesAreFlattenedAndMoved() {
-        if (!available()) return
+        assumeAvailable()
         val model = sample()
         val skins = model.meshes.filter { it.block == "Fin" }
         assertEquals(2, skins.size, "two instances of a block holding one mesh")
@@ -147,14 +151,14 @@ class Rhino3dmTest {
     }
 
     @Test fun summaryNamesWhatWasSkipped() {
-        if (!available()) return
+        assumeAvailable()
         val summary = sample().toString()
         assertTrue("sample.3dm" in summary, summary)
         assertTrue("skipped 1 × ON_Brep" in summary, summary)
     }
 
     @Test fun aFileThatIsNot3dmIsRefusedWithAReason() {
-        if (!available()) return
+        assumeAvailable()
         val file = Files.createTempFile("not-rhino", ".3dm").toFile()
         try {
             file.writeText("solid nothing\nendsolid\n")

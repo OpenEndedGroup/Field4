@@ -24,11 +24,15 @@ class AllocationReportTest {
         return true
     }
 
+    /** Reports the test SKIPPED, not passed, when the native library is missing. */
+    private fun assumeAvailable() =
+        org.junit.Assume.assumeTrue("${javaClass.simpleName}: native library not available", available())
+
     private val settings = AudioSettings(samplingRate = 48_000, frameSize = 512)
 
     @Test
     fun reportAllocationFootprints() {
-        if (!available()) return
+        assumeAvailable()
         val rows = mutableListOf<Triple<String, Long, Long>>()
 
         fun measure(what: String, body: (SteamAudioContext) -> Unit) {

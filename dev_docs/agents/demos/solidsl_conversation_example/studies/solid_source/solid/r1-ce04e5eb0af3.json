@@ -1,0 +1,10 @@
+{
+  "id" : "r1-ce04e5eb0af3",
+  "parent" : null,
+  "description" : "the starting solid",
+  "created" : "2026-11-25T07:03:58.330966Z",
+  "sourceHash" : "ce04e5eb0af3ca737be7eb72d14dbdb8d7e038973817980d1a50d031e64ac8b1",
+  "facts" : {
+    "knobs" : 1
+  }
+}

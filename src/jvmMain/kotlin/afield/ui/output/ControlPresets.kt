@@ -386,7 +386,7 @@ private val activeRecordings = ConcurrentHashMap<String, ControlRecording>()
 
 internal const val controlMidiProperty = "_controlMidi"
 
-/** A hardware controller [cc] on MIDI [midiChannel] (0-based) bound to the control with control key [key]. */
+/** A hardware controller [cc] on MIDI [midiChannel] (0-based) bound to the control with control key `key`. */
 data class MidiBinding(val key: String, val midiChannel: Int, val cc: Int)
 
 /**

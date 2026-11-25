@@ -16,6 +16,10 @@ import kotlin.test.assertTrue
  */
 class SyphonTest {
 
+    /** Reports the test SKIPPED, not passed, when the native library is missing. */
+    private fun assumeAvailable() =
+        org.junit.Assume.assumeTrue("${javaClass.simpleName}: native library not available", available())
+
     private fun available(): Boolean {
         val ok = SyphonLibrary.isAvailable && SyphonLibrary.probePath != null
         if (!ok) println("SKIPPED Syphon tests: ${SyphonLibrary.describe()}")
@@ -58,7 +62,7 @@ class SyphonTest {
     }
 
     @Test fun fieldPublishesAndAnotherProcessReceivesTheExactPixels() {
-        if (!available()) return
+        assumeAvailable()
         val name = "FieldSyphonTest-${ProcessHandle.current().pid()}-send"
         // The receiver starts listening first: this JVM's main run loop is not ours to pump in a
         // test, so the server's announcement at creation is what the probe hears.
@@ -87,7 +91,7 @@ class SyphonTest {
     }
 
     @Test fun anotherProcessPublishesAndFieldReceivesTheExactPixels() {
-        if (!available()) return
+        assumeAvailable()
         val name = "FieldSyphonTest-${ProcessHandle.current().pid()}-recv"
         val w = 80
         val h = 60
@@ -126,7 +130,7 @@ class SyphonTest {
     }
 
     @Test fun serversListsBothEnds() {
-        if (!available()) return
+        assumeAvailable()
         val name = "FieldSyphonTest-${ProcessHandle.current().pid()}-list"
         SyphonServer(name).use {
             val listed = probe("list", "3000")

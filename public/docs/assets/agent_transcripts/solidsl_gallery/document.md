@@ -3,15 +3,65 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["contents" "frame" "name" "code" "code_language" "box_kind" "textFrame" "textRunAnchor" "textRunSources" "textFrameReview" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "parentHint" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_panel" "ai4_continuation" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "ai4_garden" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["contents" "frame" "name" "code" "code_language" "box_kind" "textFrame" "textRunAnchor" "textRunSources" "textFrameReview" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "parentHint" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "watchdog" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_panel" "ai4_continuation" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "ai4_garden" "fileManagerAccessHistory" "kitRole"]}
 ```
 
-## 1. Solid notation — refusals, and the hybrid build
+## 1. Solid notation — folds: the Koch snowflake in O(N)
 
-<!-- field-box id="refusals" index="0" -->
+<!-- field-box id="koch_folds" index="0" -->
+
+```edn [field-box id="koch_folds" role="properties"]
+{"id" "koch_folds" "index" 0 "name" "Solid notation — folds: the Koch snowflake in O(N)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Solid notation — folds: the Koch snowflake in O(N)" "_tombstone" false "frame" #afield/rect [2900.0 80.0 380.0 50.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "koch_folds_code_.kt" "lines" 39 "characters" 1558 "sha256" "0bd14e4f84238f64b09187b4b3ddfd1e2fc167ef9bd07a7b66433e368647d18e"}]}
+```
+
+```kotlin [field-property box="koch_folds" name="code" path="koch_folds_code_.kt"]
+import afield.geometry.path.generateIsoContours
+import afield.lang.solidsl.*
+
+/*
+---- the Koch snowflake as a fold stack -----------------------------------------------
+After Matt Keeter's snowflake SDF and Alexa Schor's fold version of his hexify step. Each
+level is four folds around one third-size copy, so the expression grows by a constant
+per level where six explicit copies grow it six-fold.
+*/
+fun isolines(level: Int): List<FLine> {
+    val d = kochSnowflake(level).toField2()
+    return [-0.12, -0.06, 0.0, 0.06, 0.12, 0.18].flatMap { iso ->
+        generateIsoContours({ x, y -> d.at(x, y) }, -1.4, 1.4, -1.4, 1.4, 280, 280, iso).map { c ->
+            fline {
+                moveTo(c[0].x * 100, -c[0].y * 100)
+                c.drop(1).forEach { lineTo(it.x * 100, -it.y * 100) }
+                thickness = if (iso == 0.0) 2.0 else 1.0
+                color =
+                    if (iso < 0) vec(0.95, 0.55, 0.3, 1.0)
+                    else if (iso == 0.0) vec(1, 1, 1, 1) else vec(0.4, 0.7, 1.0, 1.0)
+            }
+        }
+    }
+}
+
+fun show(level: Int) {
+    val fold = kochSnowflake(level)
+    val naive = kochSnowflakeNaive(level)
+    println(
+        "level $level: fold ${fold.profileNodeCount()} nodes, ${fold.toGlsl2().length} GLSL chars; " +
+            "naive ${naive.profileNodeCount()} nodes",
+    )
+    lines(*isolines(level).toTypedArray(), w = 420.0, h = 420.0, fitToSize = true)
+}
+
+show(4)
+controlGroup("Koch snowflake") {
+    slider("level", min = 1.0, max = 6.0, initialValue = 4.0) { show(it.toInt().coerceIn(1, 6)) }
+}
+```
+
+## 2. Solid notation — refusals, and the hybrid build
+
+<!-- field-box id="refusals" index="1" -->
 
 ```edn [field-box id="refusals" role="properties"]
-{"id" "refusals" "index" 0 "name" "Solid notation — refusals, and the hybrid build" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Solid notation — refusals, and the hybrid build" "_tombstone" false "frame" #afield/rect [1960.0 80.0 380.0 50.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "refusals_code_.kt" "lines" 103 "characters" 4542 "sha256" "285c4ee14731f6a751581e6303a5ed885d8e5d5761e2c8bea9ffaae009ae9f35"}]}
+{"id" "refusals" "index" 1 "name" "Solid notation — refusals, and the hybrid build" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Solid notation — refusals, and the hybrid build" "_tombstone" false "frame" #afield/rect [1960.0 80.0 380.0 50.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "refusals_code_.kt" "lines" 103 "characters" 4542 "sha256" "285c4ee14731f6a751581e6303a5ed885d8e5d5761e2c8bea9ffaae009ae9f35"}]}
 ```
 
 ```kotlin [field-property box="refusals" name="code" path="refusals_code_.kt"]
@@ -120,12 +170,12 @@ run {
 }
 ```
 
-## 2. Solid notation — one shape, two evaluations
+## 3. Solid notation — one shape, two evaluations
 
-<!-- field-box id="cross_check" index="1" -->
+<!-- field-box id="cross_check" index="2" -->
 
 ```edn [field-box id="cross_check" role="properties"]
-{"id" "cross_check" "index" 1 "name" "Solid notation — one shape, two evaluations" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Solid notation — one shape, two evaluations" "_tombstone" false "frame" #afield/rect [80.0 80.0 380.0 50.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cross_check_code_.kt" "lines" 128 "characters" 6497 "sha256" "8132550ecc3726f62e8e150ed3223cb003acf43a57d9a6649f9346ef5425acce"}]}
+{"id" "cross_check" "index" 2 "name" "Solid notation — one shape, two evaluations" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Solid notation — one shape, two evaluations" "_tombstone" false "frame" #afield/rect [80.0 80.0 380.0 50.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cross_check_code_.kt" "lines" 128 "characters" 6497 "sha256" "8132550ecc3726f62e8e150ed3223cb003acf43a57d9a6649f9346ef5425acce"}]}
 ```
 
 ```kotlin [field-property box="cross_check" name="code" path="cross_check_code_.kt"]
@@ -259,12 +309,12 @@ run {
 }
 ```
 
-## 3. Solid notation — the same source as a GLSL raymarcher
+## 4. Solid notation — the same source as a GLSL raymarcher
 
-<!-- field-box id="glsl_backend" index="2" -->
+<!-- field-box id="glsl_backend" index="3" -->
 
 ```edn [field-box id="glsl_backend" role="properties"]
-{"id" "glsl_backend" "index" 2 "name" "Solid notation — the same source as a GLSL raymarcher" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Solid notation — the same source as a GLSL raymarcher" "_tombstone" false "frame" #afield/rect [1020.0 80.0 380.0 50.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "glsl_backend_code_.kt" "lines" 62 "characters" 2701 "sha256" "55fbd4d0850acfd4710ce4bdae0501b31cb2648f74cbb37c3f8390a0cecd3e4a"}]}
+{"id" "glsl_backend" "index" 3 "name" "Solid notation — the same source as a GLSL raymarcher" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Solid notation — the same source as a GLSL raymarcher" "_tombstone" false "frame" #afield/rect [1020.0 80.0 380.0 50.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "glsl_backend_code_.kt" "lines" 62 "characters" 2701 "sha256" "55fbd4d0850acfd4710ce4bdae0501b31cb2648f74cbb37c3f8390a0cecd3e4a"}]}
 ```
 
 ```kotlin [field-property box="glsl_backend" name="code" path="glsl_backend_code_.kt"]

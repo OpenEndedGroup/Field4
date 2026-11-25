@@ -19,6 +19,7 @@ internal fun generatedSources(packages: GenerationPackages, emitter: KotlinEmitt
     packages.sourcePath(packages.arena, "ArenaVectors.kt") to emitter.emitArenaVectors(),
     packages.sourcePath(packages.storage, "SegmentVectors.kt") to emitter.emitSegmentVectors(),
     packages.sourcePath(packages.bulk, "BulkVectors.kt") to emitter.emitBulkVectors(),
+    packages.sourcePath(packages.linalg, "Complex.kt") to emitter.emitComplex(),
     packages.sourcePath(packages.linalg, "TransformSemantics.kt") to emitter.emitTransformSemantics(),
     packages.sourcePath(packages.linalg, "Transforms.kt") to generatedTemplate("Transforms.kt", packages),
     packages.sourcePath(packages.linalg, "CompatTypes.kt") to generatedTemplate("CompatTypes.kt", packages),

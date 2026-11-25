@@ -346,8 +346,8 @@
     }
 
     // ---------------------------------------------------------------- query (graphPaths)
-    // Text with / * or | is a graphPaths() pattern, run from the root; anything else filters rows.
-    const isQuery = (q) => /[\/*|]/.test(q);
+    // Text with / * | or a ::Type test is a graphPaths() pattern, run from the root; anything else filters rows.
+    const isQuery = (q) => /[\/*|]|::/.test(q);
     let queryTimer = null, querySeq = 0;
     function showResults(on){
         resultsEl.hidden = !on; treeEl.hidden = on;

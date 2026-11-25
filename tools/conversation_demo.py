@@ -91,6 +91,8 @@ STUDIES = {
     "function": Study("function_source", "code", "InspectFunctionStudy", "EditFunctionStudy"),
     "stacksl": Study("stacksl_source", "stackSL", "InspectStackSLStudy", "EditStackSLStudy", "stacksl_window", ".stacksl-study"),
     "rectsl": Study("rectsl_source", "rectSL", "InspectRectSLStudy", "EditRectSLStudy", "rectsl_window", ".rectsl-study"),
+    # Kotlin that returns a solid; the window root opens its window when the document opens.
+    "solidsl": Study("solid_source", "code", "InspectSolidStudy", "EditSolidStudy", "solidsl_window"),
     # StackSL inside a box's own shaders: two slots of one polytope box, one conversation each.
     "stackauto-explode": Study("polytope_source", "code", "InspectStackAutoSlot", "EditStackAutoSlot", "polytope_renderer",
                                ".stack-auto-card", slot="explode", renderer_box="polytope_renderer"),

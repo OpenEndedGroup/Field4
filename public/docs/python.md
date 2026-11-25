@@ -346,4 +346,5 @@ interpreter whose `jep` is a different release, and says which two versions it f
 ## See also
 
 For worked uses of Python in a document, see [Imaging and computer vision](imaging_examples.md),
-[DaVinci Resolve](davinci_resolve.md#from-a-python-box), and [a terminal in a box](terminal.md).
+[DaVinci Resolve](davinci_resolve.md#from-a-python-box), [Manim scenes](manim.md), and
+[a terminal in a box](terminal.md).

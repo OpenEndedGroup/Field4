@@ -16,6 +16,8 @@
 
 package afield.graphics.render
 
+import afield.document.workspace.loaderFile
+import afield.runtime.completion.CompletesPath
 import afield.data.collections.get
 import afield.data.collections.invoke
 import afield.data.collections.m
@@ -100,7 +102,7 @@ class MegaTextureSpec {
     val config = MegaTextureConfig()
 
     /** Add a directory of images, by path. */
-    fun folder(path: String) = folder(Path.of(path))
+    fun folder(@CompletesPath(chooseDirectory = true) path: String) = folder(loaderFile(path).toPath())
 
     /** Add a directory of images. */
     fun folder(path: Path): MegaTextureSpec {

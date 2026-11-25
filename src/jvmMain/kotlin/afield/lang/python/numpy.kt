@@ -3,6 +3,8 @@
 
 package afield.lang.python
 
+import afield.document.workspace.loaderFile
+import afield.runtime.completion.CompletesPath
 import afield.data.collections.invoke
 import afield.data.collections.s
 import afield.data.collections.times
@@ -469,7 +471,7 @@ object NumpyIO {
     private val shapeRegex = Regex("""['"]shape['"]\s*:\s*\(([^)]*)\)""")
 
     /** Reads one `.npy` from a path. The path is used verbatim — it does **not** go through [FileManager]. */
-    fun readNpy(path: String): NpyArray = readNpy(File(path))
+    fun readNpy(@CompletesPath("*.npy") path: String): NpyArray = readNpy(loaderFile(path))
 
     /**
      * Reads one `.npy` file into an [NpyArray].
@@ -485,7 +487,7 @@ object NumpyIO {
     }
 
     /** Reads a `.npz` archive from a path, keyed by member name with the `.npy` suffix removed. */
-    fun readNpz(path: String): LinkedHashMap<String, NpyArray> = readNpz(File(path))
+    fun readNpz(@CompletesPath("*.npz") path: String): LinkedHashMap<String, NpyArray> = readNpz(loaderFile(path))
 
     /**
      * Reads every `.npy` member of a `.npz` archive, keyed by member name **without** the `.npy` suffix, in the
@@ -640,7 +642,7 @@ object NumpyIO {
  * relative to the JVM's working directory rather than the document. Use `"data.npy".file` if you want Field's
  * resolution.
  */
-fun npy(path: String): NpyArray = NumpyIO.readNpy(path)
+fun npy(@CompletesPath("*.npy") path: String): NpyArray = NumpyIO.readNpy(path)
 
 /** Reads a `.npy` from a `File` — the overload to pair with `"data.npy".file`. */
 fun npy(file: File): NpyArray = NumpyIO.readNpy(file)
@@ -651,7 +653,7 @@ fun npy(file: File): NpyArray = NumpyIO.readNpy(file)
  * Keys have the `.npy` suffix stripped, so `np.savez(f, xs=..., ys=...)` gives you `"xs"` and `"ys"`. Same
  * working-directory caveat as [npy].
  */
-fun npz(path: String): LinkedHashMap<String, NpyArray> = NumpyIO.readNpz(path)
+fun npz(@CompletesPath("*.npz") path: String): LinkedHashMap<String, NpyArray> = NumpyIO.readNpz(path)
 
 /** Reads a `.npz` archive from a `File`, keyed by member name with `.npy` stripped. */
 fun npz(file: File): LinkedHashMap<String, NpyArray> = NumpyIO.readNpz(file)

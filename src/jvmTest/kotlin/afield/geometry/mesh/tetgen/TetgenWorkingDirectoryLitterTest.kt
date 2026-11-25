@@ -32,10 +32,7 @@ class TetgenWorkingDirectoryLitterTest {
     }
 
     @Test fun aSelfIntersectingSurfaceLeavesTheWorkingDirectoryClean() {
-        if (!TetgenLibrary.isAvailable || !ManifoldLibrary.isAvailable) {
-            println("SKIPPED: ${TetgenLibrary.describe()}")
-            return
-        }
+        org.junit.Assume.assumeTrue("SKIPPED: ${TetgenLibrary.describe()}", TetgenLibrary.isAvailable && ManifoldLibrary.isAvailable)
         val here = File(".").absoluteFile.parentFile
         litter.forEach { File(here, it).delete() }
 

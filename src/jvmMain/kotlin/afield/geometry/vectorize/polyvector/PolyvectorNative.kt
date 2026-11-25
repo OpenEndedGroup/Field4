@@ -5,7 +5,7 @@
  * this OS, the paths it is looked for in, whether one of them exists, and the Gradle task and
  * per-OS shell commands that build it. Its Windows list is empty, which is how a
  * [NativeGeometryCapability] says the build does not cover that OS yet, so the welcome page's
- * Geometry extensions panel offers no install route there. The path is resolved afresh on every
+ * Optional native libraries panel offers no install route there. The path is resolved afresh on every
  * read, so a library built during a live session is picked up by the next box run.
  *
  * The other half, internal to the package, binds the C ABI declared in
@@ -92,6 +92,7 @@ object PolyvectorLibrary : NativeGeometryCapability {
     val resolvedPath: Path? get() = searchedPaths.firstOrNull { it.exists() }
 
     override val isAvailable: Boolean get() = resolvedPath != null
+    override val location: String? get() = resolvedPath?.toString()
 
     val HOW_TO_BUILD: String
         get() = "Build it with `./gradlew buildPolyvectorNative` (needs cmake, a C++17 compiler, OpenCV, " +

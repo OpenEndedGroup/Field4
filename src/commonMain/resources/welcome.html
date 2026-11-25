@@ -842,6 +842,34 @@
             white-space: nowrap;
         }
 
+        .native-area-heading {
+            grid-column: 1 / -1;
+            margin-top: 6px;
+            color: var(--field-text);
+            font-weight: 600;
+        }
+
+        .native-advice {
+            margin: 4px 0;
+            color: var(--field-text-soft);
+            font-size: 11px;
+            overflow-wrap: anywhere;
+        }
+
+        /* Nested in an open panel, so the panel's own "details[open] summary" marker would match. */
+        .changelog-panel .native-library-guide > summary {
+            padding: 6px 0;
+            font-size: 12px;
+        }
+
+        .changelog-panel .native-library-guide:not([open]) > summary::after {
+            content: "+";
+        }
+
+        .changelog-panel .native-library-guide[open] > summary::after {
+            content: "-";
+        }
+
         .runtime-info-value {
             min-width: 0;
             color: var(--field-text);
@@ -2248,24 +2276,24 @@
                         </div>
                     </div>
                 </details>
-                <details id="geometry-extensions-details">
+                <details id="native-libraries-details">
                     <summary>
-                        <span>Geometry extensions</span>
-                        <span id="geometry-extensions-summary" class="changelog-count">checking</span>
+                        <span>Optional native libraries</span>
+                        <span id="native-libraries-summary" class="changelog-count">checking</span>
                     </summary>
                     <div class="vulkan-body">
-                        <p>Optional native libraries that turn images and point clouds into geometry. Field runs without them; each is built once, here in this checkout.</p>
-                        <div id="geometry-extensions-grid" class="runtime-info-grid"></div>
+                        <p>Native libraries behind geometry, solids, the Ceres solver, Csound, Pure Data, Steam Audio, oil paint, Syphon and Lua boxes. Field runs without any of them; each is installed once, here in this checkout.</p>
+                        <div id="native-libraries-grid" class="runtime-info-grid"></div>
                         <div class="vulkan-actions">
-                            <button id="geometry-extensions-recheck" type="button">Check again</button>
-                            <span id="geometry-extensions-status" aria-live="polite"></span>
+                            <button id="native-libraries-recheck" type="button">Check again</button>
+                            <span id="native-libraries-status" aria-live="polite"></span>
                         </div>
                         <div class="segmented-control vulkan-os-tabs" role="tablist" aria-label="Operating system">
-                            <button class="segmented-button" type="button" data-geometry-os="macos">macOS</button>
-                            <button class="segmented-button" type="button" data-geometry-os="windows">Windows</button>
-                            <button class="segmented-button" type="button" data-geometry-os="linux">Linux</button>
+                            <button class="segmented-button" type="button" data-native-os="macos">macOS</button>
+                            <button class="segmented-button" type="button" data-native-os="windows">Windows</button>
+                            <button class="segmented-button" type="button" data-native-os="linux">Linux</button>
                         </div>
-                        <div id="geometry-extensions-guide"></div>
+                        <div id="native-libraries-guide"></div>
                         <p>Or run <code>./field.sh --setup</code> and pick them from the list of optional features; it installs the packages and builds them for you.</p>
                     </div>
                 </details>
@@ -3777,55 +3805,69 @@
         if (scroll) requestAnimationFrame(() => details.scrollIntoView({ behavior: "smooth", block: "start" }));
     }
 
-    // The optional native geometry libraries: availability from /api/native-geometry-status, and
-    // per-OS install steps that the library objects themselves declare (NativeGeometryCapability).
-    function renderGeometryExtensions() {
-        const list = state.geometryExtensions;
-        const summary = document.getElementById("geometry-extensions-summary");
-        const grid = document.getElementById("geometry-extensions-grid");
-        const guide = document.getElementById("geometry-extensions-guide");
+    // The optional native libraries: availability from /api/native-libraries-status, grouped by
+    // area, and per-OS install steps that the library objects themselves declare (NativeCapability).
+    // An install line starting "#" is advice, shown as text rather than as a command to copy.
+    function renderNativeLibraries() {
+        const list = state.nativeLibraries;
+        const summary = document.getElementById("native-libraries-summary");
+        const grid = document.getElementById("native-libraries-grid");
+        const guide = document.getElementById("native-libraries-guide");
         if (!grid || !guide) return;
         if (!list) {
             if (summary) summary.textContent = "checking";
             return;
         }
         const present = list.filter((m) => m.available).length;
-        if (summary) summary.textContent = `${present} of ${list.length} built`;
-        grid.innerHTML = list.map((m) =>
-            `<div class="runtime-info-label"><a href="/field-docs/${escapeHtml(m.docsPage.replace(/\.md$/, ""))}/" target="_blank" rel="noopener">${escapeHtml(m.title)}</a></div>` +
-            `<div class="runtime-info-value">${m.available ? "built" : `<span class="vulkan-missing">not built</span>`} · <code>${escapeHtml(m.description)}</code></div>`
-        ).join("");
-        const os = state.geometryOs || guessVulkanOs();
-        document.querySelectorAll("[data-geometry-os]").forEach((b) => b.classList.toggle("active", b.dataset.geometryOs === os));
+        if (summary) summary.textContent = `${present} of ${list.length} installed`;
+        let area = null;
+        grid.innerHTML = list.map((m) => {
+            const heading = m.area !== area ? `<div class="native-area-heading">${escapeHtml(m.area)}</div>` : "";
+            area = m.area;
+            const docs = `/field-docs/${escapeHtml(m.docsPage.replace(/\.md$/, ""))}/`;
+            const status = m.available
+                ? `installed · <code>${escapeHtml(m.description)}</code>`
+                : `<span class="vulkan-missing">not installed</span>`;
+            return heading +
+                `<div class="runtime-info-label"><a href="${docs}" target="_blank" rel="noopener">${escapeHtml(m.title)}</a></div>` +
+                `<div class="runtime-info-value">${status}</div>`;
+        }).join("");
+        const os = state.nativeOs || guessVulkanOs();
+        document.querySelectorAll("[data-native-os]").forEach((b) => b.classList.toggle("active", b.dataset.nativeOs === os));
         guide.innerHTML = list.filter((m) => !m.available).map((m) => {
             const steps = m.install[os] || [];
             const body = steps.length
-                ? steps.map((c) => `<pre class="vulkan-cmd" title="click to copy">${escapeHtml(c)}</pre>`).join("")
-                : `<p>Not yet buildable on this platform.</p>`;
-            return `<p><b>${escapeHtml(m.title)}</b></p>${body}`;
-        }).join("") || "<p>All of them are built.</p>";
+                ? steps.map((c) => c.startsWith("#")
+                    ? `<p class="native-advice">${escapeHtml(c.replace(/^#\s*/, ""))}</p>`
+                    : `<pre class="vulkan-cmd" title="click to copy">${escapeHtml(c)}</pre>`).join("")
+                : `<p>Not available on this platform yet.</p>`;
+            return `<details class="native-library-guide"><summary>${escapeHtml(m.title)}</summary>` +
+                `<p class="native-advice">${escapeHtml(m.description)}</p>${body}</details>`;
+        }).join("") || "<p>All of them are installed.</p>";
         guide.querySelectorAll(".vulkan-cmd").forEach((pre) =>
             pre.addEventListener("click", () => navigator.clipboard?.writeText(pre.textContent || "")));
     }
 
-    async function loadGeometryExtensions(refresh = false) {
-        const statusNode = document.getElementById("geometry-extensions-status");
+    async function loadNativeLibraries(refresh = false) {
+        const statusNode = document.getElementById("native-libraries-status");
         try {
-            const response = await fetch("/api/native-geometry-status", { cache: "no-store" });
+            const response = await fetch("/api/native-libraries-status", { cache: "no-store" });
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            state.geometryExtensions = await response.json();
+            state.nativeLibraries = await response.json();
             if (statusNode) statusNode.textContent = refresh ? "checked" : "";
         } catch (error) {
-            console.error("Failed to load geometry extension status", error);
-            if (statusNode) statusNode.textContent = "Could not ask the server about the geometry extensions.";
+            console.error("Failed to load native library status", error);
+            if (statusNode) statusNode.textContent = "Could not ask the server about the native libraries.";
         }
-        renderGeometryExtensions();
+        renderNativeLibraries();
     }
 
-    function installGeometryExtensionHandlers() {
-        document.getElementById("geometry-extensions-recheck")?.addEventListener("click", () => loadGeometryExtensions(true));
-        document.querySelectorAll("[data-geometry-os]").forEach((button) =>
-            button.addEventListener("click", () => { state.geometryOs = button.dataset.geometryOs; renderGeometryExtensions(); }));
+    function installNativeLibraryHandlers() {
+        document.getElementById("native-libraries-recheck")?.addEventListener("click", () => loadNativeLibraries(true));
+        document.querySelectorAll("[data-native-os]").forEach((button) =>
+            button.addEventListener("click", () => { state.nativeOs = button.dataset.nativeOs; renderNativeLibraries(); }));
+        // /welcome#native opens the panel, so an error about a missing library can link straight to it.
+        if (location.hash === "#native" || location.hash === "#native-libraries-details") openWelcomePanel("native-libraries-details", true);
     }
 
     function renderPythonSettings() {
@@ -7208,8 +7250,8 @@
     installHandlers();
     installVulkanHandlers();
     loadVulkanStatus();
-    installGeometryExtensionHandlers();
-    loadGeometryExtensions();
+    installNativeLibraryHandlers();
+    loadNativeLibraries();
     // Stream documents in for an immediate first paint, then fetch the full payload (settings,
     // projects, tags) which reconciles state against a now-warm server-side cache.
     streamWelcomeDocs().finally(() => loadWelcomeDocs());

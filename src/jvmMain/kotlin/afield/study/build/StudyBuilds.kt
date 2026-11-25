@@ -156,7 +156,7 @@ data class StudyBuildNotice(val message: String, val kind: StudyBuildNoticeKind 
 }
 
 /**
- * A view of a result: [box] (a uid or unique name) shows it once [show] has drawn it, and [caption] says what to look
+ * A view of a result: [box] (a uid or unique name) shows it once [show] has drawn it, and `caption` says what to look
  * for. When a chat that awaited the build resumes (`afield.ai.agent.StudyBuildAwaits`), Field runs [show], captures
  * the box's output and attaches the picture to the resumed message, so the agent sees the result as well as reading
  * its facts and notes. [show] runs off the Runloop and only displays; it must not change the design or the record.

@@ -655,6 +655,9 @@ object SoundPathMap {
                 // The binaural output itself; needs libphonon (./gradlew fetchSteamAudioNatives).
                 "src/jvmMain/kotlin/afield/audio/synth/PatSpatialHeadTrackedDocs.kt" to "pat-spatial",
                 "src/jvmMain/kotlin/afield/audio/synth/PatSpatialPlacementDocs.kt" to "pat-spatial",
+                // steam_audio_scene.md's screen study: a Dirt one-shot through Steam Audio's direct
+                // path and HRTF. Listed on the pat-spatial row of sound_paths.md with that page.
+                "src/jvmMain/kotlin/afield/examples/steamaudio/SteamAudioScreenStudy.kt" to "pat-spatial",
                 "src/jvmMain/kotlin/afield/audio/modal/EigendrumDocs.kt" to "modal-drum",
                 "src/jvmMain/kotlin/afield/audio/modal/PenroseSpectraDocs.kt" to "modal-drum",
                 // Landed 11-09..11-13 without a declaration; caught by this marker on 11-13.
@@ -690,6 +693,9 @@ object SoundPathMap {
                 "src/jvmMain/kotlin/afield/audio/synth/Piano.kt" to "signal-graph",
                 // GrainAudio.wav(), the same: bytes for display(...), no tag of its own.
                 "src/jvmMain/kotlin/afield/simulation/agents/alife_grains.kt" to "grains",
+                // SteamAudioScreenStudy.Take.wav(): bytes for displayAudioBytes(...) and the docs
+                // fence, no tag of its own.
+                "src/jvmMain/kotlin/afield/examples/steamaudio/SteamAudioScreenStudy.kt" to "pat-spatial",
             ),
         ),
         Marker(

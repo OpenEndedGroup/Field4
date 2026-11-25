@@ -4808,8 +4808,8 @@ async def dispatch_command(
         timeout = args.timeout or client.default_timeout
         if args.content is not None and args.file is not None:
             raise BackdoorError(f"{args.command} accepts --content or --file, not both")
-        if args.macro_command in {"write"} and args.content is None and args.file is None:
-            raise BackdoorError(f"{args.command} write requires --content or --file")
+        if args.macro_command in {"write", "run-content"} and args.content is None and args.file is None:
+            raise BackdoorError(f"{args.command} {args.macro_command} requires --content or --file")
         content = args.content or ""
         if args.file:
             content = client.read_text_source(args.file, command_line=command_line)

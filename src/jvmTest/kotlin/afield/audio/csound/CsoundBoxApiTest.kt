@@ -17,6 +17,10 @@ import kotlin.test.assertTrue
  */
 class CsoundBoxApiTest {
 
+    /** Reports the test SKIPPED, not passed, when the native library is missing. */
+    private fun assumeAvailable() =
+        org.junit.Assume.assumeTrue("${javaClass.simpleName}: native library not available", available())
+
     private fun available(): Boolean {
         if (!CsoundLibrary.isAvailable) {
             println("SKIPPED: ${CsoundLibrary.describe()}")
@@ -26,7 +30,7 @@ class CsoundBoxApiTest {
     }
 
     @Test fun csoundOfflineRendersAndReturnsTheSamples() {
-        if (!available()) return
+        assumeAvailable()
         val box = Box("csound-api-test-offline")
         val (left, right) = box.csoundOffline("""
             instr 1
@@ -40,7 +44,7 @@ class CsoundBoxApiTest {
     }
 
     @Test fun csoundControlsMakesOneSliderPerInputChannelAndSetsItsDefault() {
-        if (!available()) return
+        assumeAvailable()
         val box = Box("csound-api-test-controls")
         val launch: CsoundLaunch = box.csound("""
             chn_k "pitch", 1, 2, 110, 55, 440
@@ -59,7 +63,7 @@ class CsoundBoxApiTest {
     }
 
     @Test fun aCompileErrorThrowsWithItsLine() {
-        if (!available()) return
+        assumeAvailable()
         val e = assertFailsWith<CsoundCompileError> {
             Box("csound-api-test-error").csoundOffline("instr 1\n a1 oscilx 0.2, 440\nendin", "i1 0 1")
         }

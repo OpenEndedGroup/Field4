@@ -8,6 +8,8 @@ package afield.audio.engine
  * The engine follows a listener position and orientation, can enable HRTF where OpenAL Soft offers it, and can render to a loopback device at a fixed sample rate instead of the output device.
  */
 
+import afield.document.workspace.loaderFile
+import afield.runtime.completion.CompletesPath
 import afield.graphics.vulkan.targets.OpenXRHmdTarget
 import afield.graphics.vulkan.targets.SideBySideStereoTarget
 import afield.graphics.texture.video.AudioDecoder
@@ -432,12 +434,12 @@ class SimpleSpatialAudioEngine(
      *
      * If name is provided (or defaults to path) and the buffer already exists, the existing buffer is returned.
      */
-    fun loadWav(path: String, forceMono: Boolean = true, name: String? = null): SoundBuffer {
+    fun loadWav(@CompletesPath("*.wav") path: String, forceMono: Boolean = true, name: String? = null): SoundBuffer {
         requireInitialized()
         val key = name ?: path
         bufferByName[key]?.let { return it }
 
-        val data = WavLoader.load(path, forceMono)
+        val data = WavLoader.load(loaderFile(path).path, forceMono)
 
         val buffer = alGenBuffers()
         if (buffer == 0) {

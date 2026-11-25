@@ -1,0 +1,10 @@
+{
+  "id" : "r5-37c90a35fb08",
+  "parent" : "r4-1ee495ec2496",
+  "description" : "Balance the coil blends so the camera bounds follow the shell rather than accumulated empty padding",
+  "created" : "2026-11-25T07:07:43.413344Z",
+  "sourceHash" : "37c90a35fb081e4019057d9e6ed9a69c2f36a166d615cecd953661187d2a8974",
+  "facts" : {
+    "knobs" : 99
+  }
+}

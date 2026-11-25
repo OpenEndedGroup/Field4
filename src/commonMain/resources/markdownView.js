@@ -1,6 +1,6 @@
 import { aiChatMarkdownToHtml, textFrameMarkdownToHtml } from "./afield.mjs";
 import { typesetAiChatMath } from "./aiChatMath.js";
-import { classifyGuideLink, docsPageUrl, guideAssetUrl, headingSlug } from "./documentGuideModel.js";
+import { classifyGuideLink, describeMacroYaml, docsPageUrl, guideAssetUrl, headingSlug, macroFenceLanguages } from "./documentGuideModel.js";
 
 export const safeMarkdownUrl = (url, allowImageData = false) => {
         const raw = String(url || "").trim()
@@ -73,7 +73,9 @@ const normalizeCodeFenceLanguage = (language) => {
                 js: "javascript",
                 ts: "typescript",
                 sh: "bash",
-                shell: "bash"
+                shell: "bash",
+                "field-macro": "yaml",
+                "field-transcript": "yaml"
         }
         return aliases[raw] || raw
 }
@@ -218,6 +220,46 @@ const highlightNotesMarkdown = (root) => {
         })
 }
 
+/**
+ * A `field-macro` fence is an operation transcript the reader can run. Transcripts run long, so the
+ * block is folded to one line: a play button, the YAML's title and its operation count. The fenced
+ * block itself moves inside the fold unchanged, keeping its copy button and the `<code>` element
+ * an editable reader maps source positions through. `fieldLinks.js` runs it.
+ */
+const mountMacroBlocks = (root) => {
+        root.querySelectorAll(".ai-chat-code-block").forEach((block) => {
+                if (!macroFenceLanguages.has(String(block.dataset.lang || "").toLowerCase())) return
+                const yaml = block.querySelector("pre code")?.textContent || ""
+                const {title, operations} = describeMacroYaml(yaml)
+                const label = title || "Macro"
+                const details = document.createElement("details")
+                details.className = "field-macro-block"
+                const summary = document.createElement("summary")
+                const play = document.createElement("button")
+                play.type = "button"
+                play.className = "field-macro-play"
+                // A drawn triangle, sized to the circle: the ▶ glyph renders as large as the text around it.
+                play.innerHTML = `<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M6.2 4.6v6.8l5.3-3.4z" fill="currentColor"/></svg>`
+                play.title = `Run “${label}” · current selection`
+                play.setAttribute("aria-label", `Run macro “${label}”`)
+                const name = document.createElement("span")
+                name.className = "field-macro-title"
+                name.textContent = label
+                const meta = document.createElement("span")
+                meta.className = "field-macro-meta"
+                meta.textContent = operations === 1 ? "1 operation" : `${operations} operations`
+                summary.append(play, name, meta)
+                block.replaceWith(details)
+                details.append(summary, block)
+                play.addEventListener("click", (event) => {
+                        // The button sits in the summary; running must not also unfold the block.
+                        event.preventDefault()
+                        event.stopPropagation()
+                        if (typeof window.runInlineFieldMacro === "function") void window.runInlineFieldMacro(yaml, label, play)
+                        else window.notify?.("The macro runner is not available here", "markdown")
+                })
+        })
+}
 
 /** The shared reader for box notes, Markdown proxies and the document guide panel. */
 export function renderFieldMarkdown(root, markdown, options = {}) {
@@ -229,6 +271,7 @@ export function renderFieldMarkdown(root, markdown, options = {}) {
         else img.remove();
     });
     highlightNotesMarkdown(root);
+    mountMacroBlocks(root);
     typesetAiChatMath(root);
     const used = new Map();
     const headings = [...root.querySelectorAll('h1,h2,h3,h4,h5,h6')].map(node => {

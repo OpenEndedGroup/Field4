@@ -118,6 +118,86 @@ val ops = ui.eval("return document.querySelector('#macro-recorder-panel [data-ro
 check("- move:" in ops) { "the recorded macro has no move: " + ops }
 ```
 
+## Macros in guides and notes
+
+A document's guide pages and its box notes can run macros, so a reader presses play instead
+of following steps by hand. A macro started from a page runs on the current selection, the same
+as **Run** in the Macro Recorder, and nothing runs until someone presses play.
+
+To run a saved macro, link to it. **Copy link** in the Macro Recorder copies a Markdown link to
+the open macro, and the link shows a ▶ in front of its text:
+
+```diffstatic {data-lang=markdown}
+[Run the setup](field://macro/setup?scope=document)
+```
+
+To keep the macro in the page itself, write its YAML in a `field-macro` fence. The page folds the
+block to one line: a play button, the macro's `title:` (or its `name:`), and how many operations
+it has, so a long transcript takes no more room than a heading. Click the line to read the YAML;
+press ▶ to run it. The YAML runs from the page and is not saved as a macro.
+
+````diffstatic {data-lang=markdown}
+```field-macro
+title: Build the greeter
+operations:
+  - create:
+      box: greeter
+      name: Greeter
+      frame: { x: 60.0, y: 180.0, w: 160.0, h: 60.0 }
+      properties:
+        code: |
+          println("hello from a note")
+  - launch:
+      box: greeter
+      property: code
+```
+````
+
+Here that block is in the notes of a box called `sketch`. The notes reader shows it folded, and
+pressing ▶ has just built and launched Greeter below it:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x460" clip="0,0,1100,460" screenshot="assets/automating_field/note-macro-ran.png" transcript="assets/transcripts/note_macro_setup.yaml" document="docs-automating-note-macro" fresh-document=true hide-toasts=true padding="8" wait="0" timeout="150" embed=true hidden=true name="note-macro-ran" alt="The notes of the box sketch open beside the canvas: a heading Ring sketch, a sentence, and the folded macro block, a play button with Build the greeter and 2 operations. On the canvas, sketch and the Greeter box the macro has just created."}
+ui.eval("window.navigateToBoxProperty('note_sketch', 'notes', null, null); return true")
+ui.pause(800)
+ui.eval("window.toggleNotesMarkdownPreview(window.globalEditor, 'preview'); return true")
+ui.waitForSelector(".afield-notes-preview-body .field-macro-block", 15000.0)
+// Press the block's own play button, the way a reader would.
+ui.clickSelector(".afield-notes-preview-body .field-macro-play")
+var built = false
+repeat(100) {
+    if (!built) {
+        ui.pause(150)
+        built =
+            ui.eval("return [...document.querySelectorAll('.box')].some(b => b.name === 'Greeter')").toString() ==
+                "true"
+    }
+}
+check(built) { "pressing play did not build Greeter" }
+ui.pause(600)
+val state =
+    ui.eval(
+            "const p = document.querySelector('.afield-notes-preview'); const r = p?.getBoundingClientRect(); return JSON.stringify({w: r?.width || 0, property: window.currentSelectedProperty, selected: (window.selectedList || []).map(b => b.name)})",
+        )
+        .toString()
+check("\"w\":0" !in state) { "the notes reader closed after the run: " + state }
+```
+
+Click the line and the YAML unfolds under it:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x700" clip-selector=".afield-notes-preview" screenshot="assets/automating_field/note-macro-open.png" transcript="assets/transcripts/note_macro_setup.yaml" document="docs-automating-note-macro-open" fresh-document=true hide-toasts=true padding="8" wait="0" timeout="150" embed=true hidden=true name="note-macro-open" alt="The same notes with the macro block unfolded: under the line Build the greeter, 2 operations, the YAML with its create and launch operations."}
+ui.eval("window.navigateToBoxProperty('note_sketch', 'notes', null, null); return true")
+ui.pause(800)
+ui.eval("window.toggleNotesMarkdownPreview(window.globalEditor, 'preview'); return true")
+ui.waitForSelector(".afield-notes-preview-body .field-macro-block", 15000.0)
+ui.clickSelector(".afield-notes-preview-body .field-macro-block > summary")
+check(
+    ui.eval("return document.querySelector('.afield-notes-preview-body .field-macro-block').open").toString() == "true",
+) {
+    "the summary did not unfold the block"
+}
+ui.pause(400)
+```
+
 ## Driving Field from a script or agent
 
 The backdoor (`tools/field_backdoor.py` in the Field repository) attaches to a running

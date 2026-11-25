@@ -80,10 +80,7 @@ class SkinnedVolumeTest {
         assertTrue(rest.isWatertight(), "capped: no boundary edges")
         assertEquals(0, rest.genus(), "Field's mesh topology: a sphere")
         assertEquals(CappedTwistFixture.REST_VOLUME, rest.signedVolume(), 1e-5, "outward wound, and 0.75 × 4")
-        if (!ManifoldLibrary.isAvailable) {
-            println("SkinnedVolumeTest: Manifold half skipped — ${ManifoldLibrary.describe()}")
-            return
-        }
+        org.junit.Assume.assumeTrue("SkinnedVolumeTest: Manifold half skipped — ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         val m = measure(rest)
         assertEquals(0, m.genus)
         assertEquals(CappedTwistFixture.REST_VOLUME, m.manifold, 1e-5)

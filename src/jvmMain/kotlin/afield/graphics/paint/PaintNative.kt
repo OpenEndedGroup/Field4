@@ -6,6 +6,8 @@ package afield.graphics.paint
  * the internal FFM layer under [PaintCanvas] calls into it.
  */
 
+import afield.runtime.NativeArea
+import afield.runtime.NativeCapability
 import java.lang.foreign.Arena
 import java.lang.foreign.FunctionDescriptor
 import java.lang.foreign.Linker
@@ -22,10 +24,23 @@ import java.nio.file.Path
 import kotlin.io.path.exists
 
 /**
- * Where `native/field-paint` is. Searched in order: `-Dafield.paint.library`,
- * `AFIELD_PAINT_LIBRARY`, then `build/field-paint/release` in the working directory.
+ * Where `native/field-paint` is: `-Dafield.paint.library`, else `AFIELD_PAINT_LIBRARY`, else
+ * `build/field-paint/release` in the working directory. An explicit path is the only one searched,
+ * so pointing it at a missing file really leaves the library unavailable (the negative control for
+ * `checkPaintTests`) rather than falling through to the build.
  */
-object PaintLibrary {
+object PaintLibrary : NativeCapability {
+    override val name = "paint"
+    override val title = "Oil-paint simulation"
+    override val area = NativeArea.GRAPHICS
+    override val docsPage = "paint_canvas.md"
+    override val buildTask = "buildPaintNative"
+    override val install: Map<String, List<String>> = mapOf(
+        "macos" to listOf("xcode-select --install", "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh    # Rust 1.85 or newer", "./gradlew buildPaintNative"),
+        "linux" to listOf("sudo apt install build-essential", "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh    # Rust 1.85 or newer", "./gradlew buildPaintNative"),
+        "windows" to listOf("winget install -e --id Rustlang.Rustup    # and Visual Studio C++ Build Tools", ".\\gradlew buildPaintNative"),
+    )
+
     private val os = System.getProperty("os.name").lowercase()
 
     val fileName: String
@@ -36,21 +51,22 @@ object PaintLibrary {
         }
 
     val searchedPaths: List<Path>
-        get() = listOfNotNull(
-            System.getProperty("afield.paint.library")?.takeIf { it.isNotBlank() },
-            System.getenv("AFIELD_PAINT_LIBRARY")?.takeIf { it.isNotBlank() },
-        ).map(Path::of) +
-            // listOf, not a bare `+ Path`: Path is Iterable<Path>, so that appends its name components.
-            listOf(Path.of("build", "field-paint", "release", fileName).toAbsolutePath())
+        get() {
+            val explicit = System.getProperty("afield.paint.library")?.takeIf { it.isNotBlank() }
+                ?: System.getenv("AFIELD_PAINT_LIBRARY")?.takeIf { it.isNotBlank() }
+            // listOf, not a bare Path: Path is Iterable<Path>, so callers adding one would append its name components.
+            return listOf(explicit?.let(Path::of) ?: Path.of("build", "field-paint", "release", fileName).toAbsolutePath())
+        }
 
     /** Not cached: building it during a live session is picked up by the next box run. */
     val resolvedPath: Path? get() = searchedPaths.firstOrNull { it.exists() }
 
-    val isAvailable: Boolean get() = resolvedPath != null
+    override val isAvailable: Boolean get() = resolvedPath != null
+    override val location: String? get() = resolvedPath?.toString()
 
     const val HOW_TO_BUILD = "Build it with `./gradlew buildPaintNative` (needs cargo, and the network once)."
 
-    fun describe(): String = resolvedPath?.let { "paint wrapper at $it (engine ${PaintNative.engine()})" }
+    override fun describe(): String = resolvedPath?.let { "paint wrapper at $it (engine ${PaintNative.engine()})" }
         ?: "paint wrapper not built. $HOW_TO_BUILD"
 }
 

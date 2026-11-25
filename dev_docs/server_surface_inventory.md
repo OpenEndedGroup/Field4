@@ -129,6 +129,7 @@ mutation; it is a different one.
 | `GET /api/terminal` | `terminal.kt` | loopback + same-site |
 | `GET /api/webrtc-config` | `WebRTCRoutes.kt` | none |
 | `GET /api/vulkan-status` | `Server.kt` | loopback + same-site |
+| `GET /api/native-libraries-status` | `Server.kt` | loopback + same-site |
 | `GET /api/native-geometry-status` | `Server.kt` | loopback + same-site |
 | `GET /api/welcome-changelog` | `Server.kt` | none |
 | `GET /api/welcome-docs` | `Server.kt` | none |
@@ -151,6 +152,8 @@ mutation; it is a different one.
 | `GET /signal-viewer/{id}` | `signalViewer.kt` | none |
 | `GET /project/{...}` | `Server.kt` | none |
 | `GET /three-buffers` | `Server.kt` | none |
+| `GET /treemap` | `Server.kt` | none |
+| `GET /treemap-buffers` | `Server.kt` | none |
 | `GET /three-review` | `Server.kt` | loopback + same-site |
 | `GET /three-review-image` | `Server.kt` | loopback + same-site |
 
@@ -313,7 +316,7 @@ the file, and the reach is described per file below in prose that a human checke
 
 | declaring file | commands |
 | --- | --- |
-| `Server.kt` | 60 |
+| `Server.kt` | 62 |
 | `agent_backdoor.kt` | 28 |
 | `history.kt` | 14 |
 | `executing.kt` | 10 |
@@ -466,6 +469,7 @@ reach to a client that `agent-eval` and `launch-all` already let run arbitrary c
 | `electron-rtt-release` | `ElectronRTTView.kt` |
 | `electron-rtt-subscribe` | `ElectronRTTView.kt` |
 | `lines-drag` | `Server.kt` |
+| `lines-view` | `Server.kt` |
 | `presentation-shown` | `Server.kt` |
 | `webrtc-aaaframe-signed-in` | `WebRTC.kt` |
 | `webrtc-publishers-pick` | `WebRTC.kt` |
@@ -480,6 +484,7 @@ reach to a client that `agent-eval` and `launch-all` already let run arbitrary c
 | `file-complete` | `FileChooser.kt` |
 | `file-upload-update` | `Server.kt` |
 | `fline-click` | `Server.kt` |
+| `fline-hover` | `Server.kt` |
 | `fline-edit-add-line` | `Server.kt` |
 | `fline-edit-append-line` | `Server.kt` |
 | `fline-edit-begin-line` | `Server.kt` |
@@ -582,6 +587,7 @@ census from **105 to 105** — the fix that mattered was adding the table below,
 | `rawHandlers["__logs__"]` | `logstream.kt` |
 | `rawHandlers["__spreadsheet__"]` | `spreadsheet.kt` |
 | `rawHandlers["__threejs__"]` | `ThreeJsViewer.kt` |
+| `rawHandlers["__treemap__"]` | `TreemapView.kt` |
 | `rawHandlers["__visionmetal__"]` | `VisionMetal.kt` |
 | `rawHandlers["__visionpose__"]` | `VisionPose.kt` |
 | `rawHandlers["remote"]` | `RemoteJS.kt` |
