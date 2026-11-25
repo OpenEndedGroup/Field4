@@ -151,11 +151,11 @@ class Hypercomplexf(@JvmField val a: Float, @JvmField val b: Float, @JvmField va
             else -> sqrt(epsilon2).let { k -> Hypercomplexf(e * cosh(k * b), e * sinh(k * b) / k, epsilon2) }
         }
     }
-    /** This number as the 2D vector (a, b). */
     /** True when both parts are within 1e-5f of [o]'s and the two share ε². */
     infix fun near(o: Hypercomplexf): Boolean = near(o, 1e-5f)
     /** True when both parts are within [tolerance] of [o]'s and the two share ε². */
     fun near(o: Hypercomplexf, tolerance: Number): Boolean = tolerance.toFloat().let { t -> epsilon2 == o.epsilon2 && kotlin.math.abs(a - o.a) <= t && kotlin.math.abs(b - o.b) <= t }
+    /** This number as the 2D vector (a, b). */
     fun toVector(): Vector2f = Vector2f(a, b)
 
     override fun equals(other: Any?): Boolean = other is Hypercomplexf && a.toBits() == other.a.toBits() && b.toBits() == other.b.toBits() && epsilon2.toBits() == other.epsilon2.toBits()
@@ -322,11 +322,11 @@ class Hypercomplexd(@JvmField val a: Double, @JvmField val b: Double, @JvmField 
             else -> sqrt(epsilon2).let { k -> Hypercomplexd(e * cosh(k * b), e * sinh(k * b) / k, epsilon2) }
         }
     }
-    /** This number as the 2D vector (a, b). */
     /** True when both parts are within 1e-9 of [o]'s and the two share ε². */
     infix fun near(o: Hypercomplexd): Boolean = near(o, 1e-9)
     /** True when both parts are within [tolerance] of [o]'s and the two share ε². */
     fun near(o: Hypercomplexd, tolerance: Number): Boolean = tolerance.toDouble().let { t -> epsilon2 == o.epsilon2 && kotlin.math.abs(a - o.a) <= t && kotlin.math.abs(b - o.b) <= t }
+    /** This number as the 2D vector (a, b). */
     fun toVector(): Vector2d = Vector2d(a, b)
 
     override fun equals(other: Any?): Boolean = other is Hypercomplexd && a.toBits() == other.a.toBits() && b.toBits() == other.b.toBits() && epsilon2.toBits() == other.epsilon2.toBits()

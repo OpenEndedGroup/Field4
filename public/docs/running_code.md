@@ -479,7 +479,10 @@ assign; use `@exported` to share a declaration you have already written.
 
 A shared Kotlin declarations box gives every box in the document the same class. The
 [connecting boxes tour](tour_connecting_boxes.md#share-a-type-between-boxes) builds a `Flower`,
-passes it through `prop<Flower>` and reads its fields in a child.
+passes it through `prop<Flower>` and reads its fields in a child. The shared box compiles like any
+other box, with the same imports and error reporting; its classes reach the other boxes'
+compiles, and the classes those boxes load are the shared box's own, so a value keeps its type
+wherever it goes.
 
 You can also use `sharedTypes(...)` when independently compiled boxes need the same class. A data class
 declared in one box's script is otherwise local to that script's compilation. In [Shared

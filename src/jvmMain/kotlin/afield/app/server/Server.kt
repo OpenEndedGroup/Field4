@@ -867,6 +867,8 @@ fun SessionInformation.autorunBoxes(targetBoxes: Collection<Box>, delayMs: Long 
             delay(100)
             attempts++
         }
+        // Autorun code may use a shared Kotlin box's classes, which exist once that box has run.
+        documentTypes.awaitRestored()
 
         // Each box is judged on its own: one box whose autorun cannot be read must not end autorun
         // for the rest of the document, which is what a ClassCastException here used to do.
