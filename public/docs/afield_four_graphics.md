@@ -2311,7 +2311,9 @@ The rule is one type across Field, `FLineFillRule`; Gezira's `FillRule` and typo
 `TextFillRule` are other names for it. An FLine carries its own as the `fillRule` attribute, non-zero
 unless set, and every filler reads it: Field's SVG and Skia line renderers, Gezira, `contains2D`,
 Java2D shapes (and so the boolean operations), `BufferCanvas.fill`, and `FLine.tessellate`, which
-the Vulkan and three.js fills are made of. The triangulator only knows nesting, so `tessellate` first
+the Vulkan and three.js fills are made of, and the paint areas of `PaintCanvas` (`work`, `stipple`,
+`glaze`, `hatch`, `erase`; [Overlapping regions and the fill rule](paint_canvas.md#overlapping-regions-and-the-fill-rule)).
+Paint and `tessellate` differ only when no rule is set: they then fill even-odd, as they always did. The triangulator only knows nesting, so `tessellate` first
 resolves a line with a rule set into contours that do not overlap. Manifold's `FillRule` adds
 `POSITIVE` and `NEGATIVE`, which only a solid boolean needs; `Section.ofFLines(lines, rule = line.fillRule)`
 takes Field's. Text contours rely on the non-zero rule for their counters
@@ -2329,7 +2331,8 @@ star.fillRule = FillRule.EVEN_ODD
 ```
 
 `FillRuleConsumersTest` fills the nested squares and two overlapping squares under both rules
-through each of these and checks the contested region against Gezira's coverage.
+through each of these and checks the contested region against Gezira's coverage;
+`PaintFillRuleTest` holds the paint areas to the same coverage.
 
 A new stage is one more kernel. Gezira's TransformBeziers, a rotation here, goes in front of the
 rasteriser with `then`:
