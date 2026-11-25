@@ -101,16 +101,18 @@ operations:
           m.z = 1
 
           fun board(p: FloatArray, step: Int): String {
-              val cells = (0 until model.cells).joinToString("") { c ->
-                  val d = (0 until model.n).maxBy { p[c * model.n + it] }
-                  val a = p[c * model.n + d]
-                  val clue = puzzle[c] > 0
-                  val edge = (if (c % 9 == 2 || c % 9 == 5) "border-right:2px solid #888;" else "") +
-                      (if (c / 9 == 2 || c / 9 == 5) "border-bottom:2px solid #888;" else "")
-                  val colour = if (clue) "#fff" else "#7fd4ff"
-                  "<div style='$edge;display:flex;align-items:center;justify-content:center;" +
-                      "color:$colour;opacity:${if (clue) 1.0 else 0.25 + 0.75 * a};font-weight:${if (clue) 700 else 400}'>${d + 1}</div>"
-              }
+              val cells =
+                  (0 until model.cells).joinToString("") { c ->
+                      val d = (0 until model.n).maxBy { p[c * model.n + it] }
+                      val a = p[c * model.n + d]
+                      val clue = puzzle[c] > 0
+                      val edge =
+                          (if (c % 9 == 2 || c % 9 == 5) "border-right:2px solid #888;" else "") +
+                              (if (c / 9 == 2 || c / 9 == 5) "border-bottom:2px solid #888;" else "")
+                      val colour = if (clue) "#fff" else "#7fd4ff"
+                      "<div style='$edge;display:flex;align-items:center;justify-content:center;" +
+                          "color:$colour;opacity:${if (clue) 1.0 else 0.25 + 0.75 * a};font-weight:${if (clue) 700 else 400}'>${d + 1}</div>"
+                  }
               return "<div style='font:15px monospace;color:#ccc'>step $step</div>" +
                   "<div style='display:grid;grid-template-columns:repeat(9,24px);grid-auto-rows:24px;" +
                   "font:16px monospace;border:2px solid #888;width:max-content'>$cells</div>"
@@ -129,7 +131,9 @@ operations:
                   if (step > 2 && moved < 1e-4f && reported < 0) {
                       reported = step
                       val grid = model.decode(puzzle, p)
-                      println("settled after about $step steps; ${grid.indices.count { grid[it] != solution[it] }} cells differ from the solution, valid = ${model.isSolution(puzzle, grid)}")
+                      println(
+                          "settled after about $step steps; ${grid.indices.count { grid[it] != solution[it] }} cells differ from the solution, valid = ${model.isSolution(puzzle, grid)}",
+                      )
                       display("board", board(p, step))
                   }
                   previous = p
@@ -141,8 +145,12 @@ operations:
           #extension GL_EXT_buffer_reference : require
           layout(local_size_x = 64) in;
 
-          layout(std430, buffer_reference) buffer Weights { float w[]; };
-          layout(std430, buffer_reference) buffer State { float s[]; };
+          layout(std430, buffer_reference) buffer Weights {
+              float w[];
+          };
+          layout(std430, buffer_reference) buffer State {
+              float s[];
+          };
 
           layout(push_constant) uniform dat {
               Weights weights; // units × units couplings, row-major
