@@ -197,6 +197,3 @@ internal fun morphCut(text: String, spans: List<DiagramKeyedSpan>, side: String)
 }
 
 private fun afield.math.linalg.Vector4f.copyAlpha(a: Float) = afield.math.linalg.Vector4f(x, y, z, a)
-
-private fun Vector3f.lerp(other: Vector3f, t: Float) =
-    Vector3f(x + (other.x - x) * t, y + (other.y - y) * t, z + (other.z - z) * t)
