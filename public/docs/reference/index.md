@@ -690,7 +690,7 @@ To see it all at once, open the [map of the docs](../docs_map.md): every page, a
 
 ## Reference pages
 
-**43826 public symbols across 1936 source files**, 26273 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**43839 public symbols across 1936 source files**, 26286 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -701,7 +701,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Lighting](lighting.md) | 8 | 216 | 208 (96%) | Light sources, fixtures and control protocols for working with physical and rendered lighting. |
 | [Networking](networking.md) | 22 | 539 | 323 (59%) | OSC messages, discovery and query interfaces for connecting Field to other applications and devices. |
 | [Video](video.md) | 14 | 195 | 194 (99%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
-| [Math](math.md) | 61 | 2603 | 1963 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
+| [Math](math.md) | 61 | 2616 | 1976 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 27 | 1233 | 572 (46%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
 | [Graphics](graphics.md) | 462 | 11178 | 7126 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 48 | 911 | 515 (56%) | Turning a scene into pixels on a Vulkan device. |
@@ -1611,7 +1611,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>lifecycle/<wbr></small> [LifecycleLedger.kt](workspace.md#lifecycleledger-kt) | Workspace | 29 | 14 | The ledger of everything a box has registered with a longer-lived subsystem, and the handles that release it. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>lighting/<wbr></small> [Lighting.kt](graphics.md#lighting-kt) | Graphics | 39 | 26 |  | [Lights and Shadows](../explainer_lights.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr>lighting/<wbr></small> [LightingGpuTimer.kt](graphics.md#lightinggputimer-kt) | Graphics | 0 | 0 | How long a lighting pass took on the GPU, timed per swapchain image. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>linalg/<wbr></small> [linalg.kt](math.md#linalg-kt) | Math | 41 | 41 | The short names for Field's vector and rotation types (`Vec2`, `Vec3`, `Vec4`, `Quat`, `DualQuat`) and the `vec`, `quat` and `dualquat` constructors that build them. | [Generated vector API reference](../linear_algebra_api.md), [Linear algebra in Field](../linear_algebra.md), [Lights and Shadows](../explainer_lights.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>linalg/<wbr></small> [linalg.kt](math.md#linalg-kt) | Math | 54 | 54 | The short names for Field's vector and rotation types (`Vec2`, `Vec3`, `Vec4`, `Quat`, `DualQuat`) and the `vec`, `quat` and `dualquat` constructors that build them. | [Generated vector API reference](../linear_algebra_api.md), [Linear algebra in Field](../linear_algebra.md), [Sound](../explainer_sound.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>mesh/<wbr></small> [linalg_mesh.kt](math.md#linalg-mesh-kt) | Math | 1 | 1 | The 3D convex hull of a list of `Vec3`, computed with the QuickHull3D library. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>spatial/<wbr></small> [linalg_spatial.kt](math.md#linalg-spatial-kt) | Math | 49 | 40 | What a collection of points adds up to: centroids, outlier-resistant centres, and the bounding boxes that enclose them. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [LinalgMicrobench.kt](examples.md#linalgmicrobench-kt) | Examples | 2 | 0 |  |  |

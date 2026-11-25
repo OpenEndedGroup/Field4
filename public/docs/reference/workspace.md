@@ -1548,7 +1548,7 @@ the browser's inspector page talks to.
 
 [<code class="highlight"><span class="k">interface</span> <span class="nc">Browsable</span> <span class="p">:</span> <span class="nc">LiveGraphInspectable</span></code>](source/jvmMain/afield/app/server/browsing/#L51)
 
-Anything you want to expose in the inspector implements this. A `dir` is also this object's [`LiveGraphInspectable`](data.md#graphquery-kt-livegraphinspectable) edges, so `graphPaths(...)` reaches the same children the inspector lists.
+Anything you want to expose in the inspector implements this. A [`dir`](math.md#linalg-kt--dir) is also this object's [`LiveGraphInspectable`](data.md#graphquery-kt-livegraphinspectable) edges, so `graphPaths(...)` reaches the same children the inspector lists.
 
 | Declaration | Summary |
 | --- | --- |
