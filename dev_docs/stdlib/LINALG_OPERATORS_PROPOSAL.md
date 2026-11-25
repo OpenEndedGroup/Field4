@@ -37,16 +37,16 @@ So that nothing below duplicates it (survey of `src/` on 2026-11-25):
 - **`then`** already means "this, then that" on `FLineSampler`, `Fn`, `FnTransform`, `FloatFilter`,
   `Stage` and RectSL's `Transform2d`, which is the precedent for using it for rotations below.
 
-### A bug to fix first: `/` mutates
+### Fixed first: `/` used to mutate
 
-The generated mutable vectors declare `operator fun div(other)` and `operator fun div(scalar:
-Float)` as **members that write into the receiver** (`= div(other, this)`). Members beat the
-non-mutating `CompatTypes` extensions, so `v / 2f` and `a / b` change `v` and `a`, while `v / 2`
-(an `Int`, which only the `Number` extension accepts) does not. Every other arithmetic operator
-returns a new value. The generator should drop `operator` from the member `div` overloads (keeping
-them as in-place methods, as `add`/`mul` are) so the expression form always resolves to the
-extension. This is a behaviour change for any box that relied on `v / 2f` mutating, so it wants a
-grep of `src/` and the demo corpus for `/ <float literal>` on vectors before it lands.
+The generated mutable vectors declared their in-place `div(other)` and `div(scalar: Float)`
+members as operators, so `v / 2f` and `a / b` wrote into `v` and `a`, while `v / 2` (an `Int`,
+which only the `Number` extension accepts) did not. Those members are now ordinary methods:
+`v.div(2f)` still divides in place, and `/` always reaches the `CompatTypes` extensions, which
+return a new vector (`GeneratedLinalgTest.divisionOperatorLeavesItsOperandsAlone`). A compile with
+the member operators deprecated found no caller in `src/` that relied on the mutation. Library code
+that imports operators by name now needs `import afield.math.linalg.div`; box code star-imports
+the package and needs nothing.
 
 ## Rules every addition follows
 
@@ -111,7 +111,8 @@ letter, and the Kotlin stdlib does not define it.
 | --- | --- | --- |
 | `q.inv`, `q.conj` | New inverse and conjugate. | `invert()`/`conjugate()` mutate; these do not. |
 | `q.axis`, `q.angle` | The axis (unit `Vec3`) and angle (radians, 0..2π) of the rotation. | |
-| `q.forward`, `q.up`, `q.right` | The rotated −z, +y and +x: where a camera with this orientation looks. | Saves `q * vec(0, 0, -1)` in every camera box. Settle the sign against Field's camera first: `Quaternionf.lookAlong` follows JOML and turns `direction` onto **+z**, so with forward as −z, `lookAlong(d, up).inv.forward` comes out as −`d`. Check which convention Field's camera code uses before choosing. |
+| `q.forward`, `q.up`, `q.right` | The rotated −z, +y and +x: where a camera with this orientation looks. | Saves `q * vec(0, 0, -1)` in every camera box. Decided: −z, because Field's camera (`Camera.modelView` → `Matrix4f.lookAtField`) is a right-handed look-at whose eye looks down −z. `Quaternionf.lookAlong` stays as JOML has it (it turns `direction` onto **+z**, and existing code relies on that); boxes reach for `facing` below instead. |
+| `facing(dir, up)` | The orientation whose `forward` is `dir` and whose `up` leans towards `up`. | Equal to `lookAlong(d, up).inv * (180.deg about Vec3.Y)`: the half turn takes −z to +z and leaves +y alone, so `facing(d, up).forward == d.n`. Top-level, on rule 6's terms: a word, not a letter. |
 | `90.deg about Vec3.Y` | A quaternion: the angle about the axis. | Same as `quat(PI / 2, vec(0, 1, 0))`, read aloud. |
 | `Vec3.X`, `Vec3.Y`, `Vec3.Z`, `Vec3.ZERO`, `Vec3.ONE` (and `Vec2.*`) | Read-only (`Vector3fc`) constants on the companions. | Read-only so nobody can `normalize()` the shared `Y` axis. |
 
@@ -182,7 +183,7 @@ they are built.
 
 ## Suggested first landing
 
-The `/` fix on its own branch first, since it changes behaviour. Then Tier 1 in two branches. The first, in the generator: `.deg/.turns/.rad`, `.dir`, `.angle`,
+The `/` fix has landed on its own branch. Tier 1 goes next, in two branches. The first, in the generator: `.deg/.turns/.rad`, `.dir`, `.angle`,
 `angleTo`, `dot`, `dist`, `.sq`, `near`, `.perp`, `rot`, `about … rot`, the `Vec2`/`Vec3d`/`Vector3fc`
 cross forms, and the complex additions (`.im`, `cis`, `z.n`, `rot`, `v * z`, `sqrt`, `sin`, `cos`,
 `Number` on the left of `Hypercomplex`), each with a row in `linear_algebra_api.md`'s generated

@@ -405,7 +405,7 @@ open class Vector2f() : Vector2fc, Cloneable {
      * @param other the component-wise divisor
      * @return this vector
      */
-    operator fun div(other: Vector2fc): Vector2f = div(other, this)
+    fun div(other: Vector2fc): Vector2f = div(other, this)
     /**
      * Adds a scalar to each component.
      *
@@ -439,7 +439,7 @@ open class Vector2f() : Vector2fc, Cloneable {
      * @param scalar the divisor
      * @return this vector
      */
-    operator fun div(scalar: Float): Vector2f = div(scalar, this)
+    fun div(scalar: Float): Vector2f = div(scalar, this)
     /**
      * Reverses the vector by negating every component.
      *
@@ -981,7 +981,7 @@ open class Vector3f() : Vector3fc, Cloneable {
      * @param other the component-wise divisor
      * @return this vector
      */
-    operator fun div(other: Vector3fc): Vector3f = div(other, this)
+    fun div(other: Vector3fc): Vector3f = div(other, this)
     /**
      * Adds a scalar to each component.
      *
@@ -1015,7 +1015,7 @@ open class Vector3f() : Vector3fc, Cloneable {
      * @param scalar the divisor
      * @return this vector
      */
-    operator fun div(scalar: Float): Vector3f = div(scalar, this)
+    fun div(scalar: Float): Vector3f = div(scalar, this)
     /**
      * Reverses the vector by negating every component.
      *
@@ -1581,7 +1581,7 @@ open class Vector4f() : Vector4fc, Cloneable {
      * @param other the component-wise divisor
      * @return this vector
      */
-    operator fun div(other: Vector4fc): Vector4f = div(other, this)
+    fun div(other: Vector4fc): Vector4f = div(other, this)
     /**
      * Adds a scalar to each component.
      *
@@ -1615,7 +1615,7 @@ open class Vector4f() : Vector4fc, Cloneable {
      * @param scalar the divisor
      * @return this vector
      */
-    operator fun div(scalar: Float): Vector4f = div(scalar, this)
+    fun div(scalar: Float): Vector4f = div(scalar, this)
     /**
      * Reverses the vector by negating every component.
      *
@@ -2116,7 +2116,7 @@ open class Vector2d() : Vector2dc, Cloneable {
      * @param other the component-wise divisor
      * @return this vector
      */
-    operator fun div(other: Vector2dc): Vector2d = div(other, this)
+    fun div(other: Vector2dc): Vector2d = div(other, this)
     /**
      * Adds a scalar to each component.
      *
@@ -2150,7 +2150,7 @@ open class Vector2d() : Vector2dc, Cloneable {
      * @param scalar the divisor
      * @return this vector
      */
-    operator fun div(scalar: Double): Vector2d = div(scalar, this)
+    fun div(scalar: Double): Vector2d = div(scalar, this)
     /**
      * Reverses the vector by negating every component.
      *
@@ -2692,7 +2692,7 @@ open class Vector3d() : Vector3dc, Cloneable {
      * @param other the component-wise divisor
      * @return this vector
      */
-    operator fun div(other: Vector3dc): Vector3d = div(other, this)
+    fun div(other: Vector3dc): Vector3d = div(other, this)
     /**
      * Adds a scalar to each component.
      *
@@ -2726,7 +2726,7 @@ open class Vector3d() : Vector3dc, Cloneable {
      * @param scalar the divisor
      * @return this vector
      */
-    operator fun div(scalar: Double): Vector3d = div(scalar, this)
+    fun div(scalar: Double): Vector3d = div(scalar, this)
     /**
      * Reverses the vector by negating every component.
      *
@@ -3292,7 +3292,7 @@ open class Vector4d() : Vector4dc, Cloneable {
      * @param other the component-wise divisor
      * @return this vector
      */
-    operator fun div(other: Vector4dc): Vector4d = div(other, this)
+    fun div(other: Vector4dc): Vector4d = div(other, this)
     /**
      * Adds a scalar to each component.
      *
@@ -3326,7 +3326,7 @@ open class Vector4d() : Vector4dc, Cloneable {
      * @param scalar the divisor
      * @return this vector
      */
-    operator fun div(scalar: Double): Vector4d = div(scalar, this)
+    fun div(scalar: Double): Vector4d = div(scalar, this)
     /**
      * Reverses the vector by negating every component.
      *
@@ -3989,7 +3989,7 @@ open class Vector8h() : Vector8hc, Cloneable {
      * @param other the component-wise divisor
      * @return this vector
      */
-    operator fun div(other: Vector8hc): Vector8h = div(other, this)
+    fun div(other: Vector8hc): Vector8h = div(other, this)
     /**
      * Adds a scalar to each component.
      *
@@ -4023,7 +4023,7 @@ open class Vector8h() : Vector8hc, Cloneable {
      * @param scalar the divisor
      * @return this vector
      */
-    operator fun div(scalar: Float): Vector8h = div(scalar, this)
+    fun div(scalar: Float): Vector8h = div(scalar, this)
     /**
      * Reverses the vector by negating every component.
      *

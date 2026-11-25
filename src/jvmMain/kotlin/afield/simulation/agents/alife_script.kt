@@ -214,9 +214,9 @@ data class ScriptEvent(
  * Must return a finite vector. A drive that throws, or returns a NaN, is reported as a behaviour
  * failure for that agent and contributes nothing; it does not take the run down.
  *
- * **Do not use `/` on a vector you were handed.** `Vector2d.div` is the one operator on the generated
- * linalg types that writes its result back into the receiver, so `delta / delta.length()` silently
- * mutates `delta`. Build a fresh `Vector2d(x, y)` from doubles, as every drive here does.
+ * **Do not call the in-place methods on a vector you were handed.** `add`, `mul`, `div` and
+ * `normalize` write their result back into the receiver, so `delta.normalize()` silently changes
+ * `delta`. The operators (`+`, `*`, `/`) return new vectors and are safe.
  */
 fun interface ScriptDrive {
     /** The desired velocity for [self], in world units per second. */
@@ -323,8 +323,8 @@ fun interface ScriptTarget {
  * what it is currently doing.
  *
  * State is kept as plain doubles rather than [Vector2d]s. Partly that is `BoidFlock`'s convention and
- * partly it is that the mutating `Vector2d.div` makes a stored vector a liability — a caller who
- * writes `agent.position / 2.0` would move the agent. [position] and [velocity] hand out fresh copies.
+ * partly it is that the in-place `Vector2d` methods make a stored vector a liability — a caller
+ * who writes `agent.position.mul(0.5)` would move the agent. [position] and [velocity] hand out fresh copies.
  *
  * Create these with [ScriptWorld.spawn]; the constructor is internal because an agent that is not in
  * a world has nothing to step it.
