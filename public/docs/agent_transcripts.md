@@ -4203,6 +4203,18 @@ re-run it to change the creatures.
 
 [Open →](offline.html?file=assets/agent_transcripts/bonded_organisms/metadata.edn)
 
+### hopfield_sudoku
+
+[A learned energy that solves Sudoku](energy_puzzles.md), after Hoover, Blayney and Whittington
+([arXiv 2611.17309](https://arxiv.org/abs/2611.17309)), as five boxes. The renderer box opens the
+window. The training box fits a 9×9 Hopfield–Tank energy to 400 solved grids with
+`HopfieldSudoku` and draws its couplings, in which rows, columns and boxes appear. The descent
+box runs the mean-field descent in a Vulkan compute shader, one step per frame, and redraws the
+board as it settles. The check box compares the GPU beliefs after 40 steps with the CPU
+reference. The CPU box charts solve rate and descent steps against the number of blanks.
+
+[Open →](offline.html?file=assets/agent_transcripts/hopfield_sudoku/metadata.edn)
+
 ### satellites
 
 **SGP4 passes and the whole satellite catalogue on the GPU.** Four boxes: a week of passes over
