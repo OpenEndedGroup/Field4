@@ -6394,19 +6394,19 @@
     },
     "assets/agent_transcripts/vector_scenes/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "capturedAt": "2026-11-25T06:59:58.208Z",
+      "capturedAt": "2026-11-25T07:16:03.413Z",
       "channels": 7,
       "file": "assets/web_publications/vector_scenes/document/metadata.edn",
       "files": {
         "assets/web_publications/vector_scenes/document/metadata.edn": "6ed40d789ce111e2447e8e61cb34129fa00493a662d5c3ddfe0827b2e2f53b7b",
-        "assets/web_publications/vector_scenes/document/outputs.json": "c710f866dfbb6d106b90529553cc96698f274a755803ddb580160bedc9bbd412",
-        "assets/web_publications/vector_scenes/outputs/0.html": "4dd006aac96cf1c4ca651c00326640f0595add555e672f95fcd6894dd600e7d1",
-        "assets/web_publications/vector_scenes/outputs/1.html": "75032344c694d77d84a1a3434e273addfefbce403084ab6ed346fb922be41f76",
-        "assets/web_publications/vector_scenes/outputs/2.html": "3604536be791f5adf448174a1c9f0b3f3f915accc1d0a74b08689fc33ce1046b",
-        "assets/web_publications/vector_scenes/outputs/3.html": "694b38f8752e4fdc2b7bd77d57a92e10246c322f0ddee2fbff34034c61e6936b",
-        "assets/web_publications/vector_scenes/outputs/4.html": "b9f379e6f9dcb39f2dde7b155cb30b914b9d1e56764d7e685ee37bf5773b41ef",
-        "assets/web_publications/vector_scenes/outputs/5.html": "d8bd141ab370e6688c8e1386e5fb798df3916444919de1c8f34ac52ee765a741",
-        "assets/web_publications/vector_scenes/outputs/6.html": "e42cdd9a5e77ed0a51edd9f604b6e296374345aaa45b7113a0db13c747661370"
+        "assets/web_publications/vector_scenes/document/outputs.json": "ac9ff682ed8dac1ee1c7fbd55a2d7131693bdf1301ab2ee8411fb18964e96d74",
+        "assets/web_publications/vector_scenes/outputs/0.html": "f91e64c919f08a81fd40d2c6a27d2a3744dde633b6b524e082a17332f33515e5",
+        "assets/web_publications/vector_scenes/outputs/1.html": "9e927a87f56d28edd8e61b5042640019732e05f1bf9b74020784e1f3db4ee545",
+        "assets/web_publications/vector_scenes/outputs/2.html": "6979c9f51d2e17e42a720decfae1e95264ebd8b6a6a696ee92b4064437a50645",
+        "assets/web_publications/vector_scenes/outputs/3.html": "30f8254b71b0dec47891729b4679c5f3163d68883ca481adb96061def3c268c0",
+        "assets/web_publications/vector_scenes/outputs/4.html": "e26acc96fc36f519f8fad28f1694b4543139b1d6f1f0fb0293dc0278322e6343",
+        "assets/web_publications/vector_scenes/outputs/5.html": "2a47a8b9becf0f9ad4951b4812c9823595b9ac298ce33812bc090c22e9240a7d",
+        "assets/web_publications/vector_scenes/outputs/6.html": "4f96a343a201601b616c8e8fee2dba7b722f78e49ba77e1e27af3f17e9ec9290"
       },
       "kinds": [
         "svg"
@@ -6415,9 +6415,11 @@
       "sources": {
         "dev_docs/agents/transcripts/vector_scenes.yaml": "4da46261ef48e40c77ad3563bacdc53b5747431c2d5de60ce4d0ed0d358da9e6",
         "public/docs/assets/agent_transcripts/vector_scenes/guides/fline_examples.md": "99910bd669c3d69d6cecba40dbd281eab30a0e3c334ec490bfccea2a79a45024",
-        "public/docs/assets/agent_transcripts/vector_scenes/metadata.edn": "b5a540dabe01f32c0c11a6649c7a96d06db03dd9baee152845a5dc2d155d4f3c",
+        "public/docs/assets/agent_transcripts/vector_scenes/metadata.edn": "c7b058b89a3c92cf83adfc132f4c6bef3a9efecb8cfd98a8a5d7e11413f43ec2",
         "public/docs/assets/agent_transcripts/vector_scenes/vs_benchmark_code_.kt": "5a2745395e1920ca6d9ce4d71fa1c173064dea476f0afec532e189c3d5118974",
         "public/docs/assets/agent_transcripts/vector_scenes/vs_lighthouse_code_.kt": "a6cd1c7a04427fba2c2201e52f2c5f62b9ffd78f8b6300d825b60b5ac08b0add",
+        "public/docs/assets/agent_transcripts/vector_scenes/vs_mesh_timing_code_.kt": "a1d9af7072e8ef5f3e30ac209119c05a6b3f5a2e9a94b48f49183f332cf57a01",
+        "public/docs/assets/agent_transcripts/vector_scenes/vs_meshes_code_.kt": "cb868382408abe3abc5602aaeb6528d7890d3bc7f1c21b40ba470f233c47945b",
         "public/docs/assets/agent_transcripts/vector_scenes/vs_shading_code_.kt": "9005952b60f9faf8815b2bc3a6dce9a42824b542ea433d98127c5657d105911e",
         "public/docs/assets/agent_transcripts/vector_scenes/vs_turn_code_.kt": "81493557ca881f561d98a9eb2a693ac672a4f4803f38eb45240e44412a94d795"
       }

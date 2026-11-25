@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["contents" "frame" "name" "code" "code_language" "box_kind" "textFrame" "textRunAnchor" "textRunSources" "textFrameReview" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "parentHint" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "watchdog" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_panel" "ai4_continuation" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "ai4_garden" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 6 "persistentProperties" ["contents" "frame" "name" "code" "code_language" "box_kind" "textFrame" "textRunAnchor" "textRunSources" "textFrameReview" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "parentHint" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "watchdog" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_panel" "ai4_continuation" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "ai4_garden" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. lighthouse from four angles
@@ -165,5 +165,89 @@ val plotted = model.render(yaw = 0.5, pitch = -0.3, shading = Shading.NONE, outl
     it + vec(320.0, 0.0)
 }
 lines(flat + soft + plotted, w = 600.0, h = 220.0, fitToSize = true)
+```
+
+## 5. meshes and curves on them
+
+<!-- field-box id="vs_meshes" index="4" -->
+
+### Narrative
+
+From `code`
+
+The carved boss from the mesh page, with its geodesic spiral toolpath.
+
+```edn [field-box id="vs_meshes" role="properties"]
+{"id" "vs_meshes" "index" 4 "name" "meshes and curves on them" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "meshes and curves on them" "_tombstone" false "frame" #afield/rect [40.0 180.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "vs_meshes_code_.kt" "lines" 29 "characters" 1463 "sha256" "cb868382408abe3abc5602aaeb6528d7890d3bc7f1c21b40ba470f233c47945b"}]}
+```
+
+```kotlin [field-property box="vs_meshes" name="code" path="vs_meshes_code_.kt"]
+// The carved boss from the mesh page, with its geodesic spiral toolpath.
+val relief =
+    heightfieldMesh(28, 28, 2.0, 2.0) { x, z ->
+        val r = kotlin.math.sqrt(x * x + z * z)
+        0.5f * kotlin.math.exp(-r * r * 2.2f) + 0.05f * kotlin.math.cos(r * 14f) * kotlin.math.exp(-r * 1.5f)
+    }
+val fromEdge = relief.geodesicDistanceFromBoundary()
+val spiral = spiralFromRings(relief.evenIsolines(fromEdge, 0.08).map { level -> level.maxBy { it.size } })
+val carved = vectorScene {
+    mesh(relief, color = vec(0.86, 0.84, 0.8, 1.0), solid = false)
+    polyline(spiral, width = 0.01, color = vec(0.9, 0.3, 0.15, 1.0))
+}
+
+// A ring, measured along its surface from one point: the far rings pass behind the tube.
+val ring = torusMesh(36, 14, 1.0, 0.4)
+val fromPoint = ring.geodesicDistance(ring.nearestVertex(1.4, 0, 0))
+val rings = ring.evenIsolines(fromPoint, 0.12).flatten()
+val ringed = vectorScene {
+    mesh(ring.colouredBy(fromPoint))
+    for (r in rings) polyline(r, width = 0.012, color = vec(1.0, 1.0, 1.0, 1.0))
+}
+
+val t0 = System.nanoTime()
+val left = carved.render(yaw = 0.45, pitch = -0.75, scale = 150.0, shading = Shading.FLAT)
+val right = ringed.render(yaw = 0.3, pitch = -0.6, scale = 120.0).map { it + vec(380.0, 0.0) }
+println(
+    "${relief.triangleCount + ring.triangleCount} triangles, ${left.size + right.size} FLines, ordered in ${(System.nanoTime() - t0) / 1_000_000} ms",
+)
+lines(left + right, w = 680.0, h = 300.0, fitToSize = true)
+```
+
+## 6. ordering time against mesh size
+
+<!-- field-box id="vs_mesh_timing" index="5" -->
+
+### Narrative
+
+From `code`
+
+How long the pairwise order takes as the mesh grows: a sphere and a torus at three resolutions.
+
+```edn [field-box id="vs_mesh_timing" role="properties"]
+{"id" "vs_mesh_timing" "index" 5 "name" "ordering time against mesh size" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "ordering time against mesh size" "_tombstone" false "frame" #afield/rect [400.0 180.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "vs_mesh_timing_code_.kt" "lines" 21 "characters" 1086 "sha256" "a1d9af7072e8ef5f3e30ac209119c05a6b3f5a2e9a94b48f49183f332cf57a01"}]}
+```
+
+```kotlin [field-property box="vs_mesh_timing" name="code" path="vs_mesh_timing_code_.kt"]
+// How long the pairwise order takes as the mesh grows: a sphere and a torus at three resolutions.
+val rows =
+    (3..5).joinToString("") { sub ->
+        val ball = icosphereMesh(subdivisions = sub, radius = 100.0)
+        val ring = torusMesh(4 shl sub, 2 shl sub, 160.0, 40.0)
+        val scene = vectorScene {
+            mesh(ball)
+            mesh(ring)
+        }
+        val faces = scene.project(yaw = 0.3, pitch = -0.6)
+        val t0 = System.nanoTime()
+        val (_, breaks) = VectorScene.pairwiseOrder(faces)
+        val ms = (System.nanoTime() - t0) / 1e6
+        val (wrong, covered) = scene.wrongOrderShare(0.3, -0.6, DepthOrder.PAIRWISE, 200, 200)
+        "<tr><td>${ball.triangleCount + ring.triangleCount}</td><td>${faces.size}</td><td>${ms.f0} ms</td><td>$breaks</td><td>${(100.0 * wrong / covered).f3}%</td></tr>"
+    }
+display(
+    "main",
+    """<table style="font:14px sans-serif;border-collapse:collapse" cellpadding="6">
+<tr><th>triangles</th><th>facing the camera</th><th>pairwise order</th><th>cycle breaks</th><th>wrong pixels</th></tr>$rows</table>""",
+)
 ```
 
