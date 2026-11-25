@@ -122,8 +122,7 @@ renderer += module
 var vertexData = defaultBuffer {
     perFrame = true
     size = 9.vec4s
-}
-    .buffer
+}.buffer
 
 m.vertexData = { vertexData }
 
@@ -1358,8 +1357,7 @@ renderer += module
 var vertexData = defaultBuffer {
     perFrame = true
     size = 3.vec4s
-}
-    .buffer
+}.buffer
 
 m.vertexData = { vertexData }
 
@@ -1518,8 +1516,7 @@ var sourceBuffer = buffer {
     addressable()
     hosted()
     dest()
-}
-    .buffer
+}.buffer
 
 sourceBuffer.write {
     200 {
@@ -1556,8 +1553,7 @@ renderer += module
 var vertexData = defaultBuffer {
     perFrame = true
     size = 3.vec4s
-}
-    .buffer
+}.buffer
 
 m.vertexData = { vertexData }
 
