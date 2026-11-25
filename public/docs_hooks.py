@@ -891,13 +891,17 @@ class RunnerOptions:
 # A profile names the host a capture needs. On any other host, or unless FIELD_DOCS_CAPTURE_PROFILES
 # names it, the committed capture is kept. `macos-electron` captures from this checkout's Field
 # Electron app instead of the capture Chromium (`playwright-open --electron`), for output that only
-# exists there, such as the RTT view's shared-texture frames. `macos-native` is an ordinary capture
-# that needs a macOS-only native library (Syphon).
+# exists there, such as the RTT view's shared-texture frames. `electron` is the same capture for
+# output that needs Electron and nothing platform-specific (a `web()` page: framing relief and the
+# frame bridge are Electron's own), so a Linux host regenerates it too. `macos-native` is an
+# ordinary capture that needs a macOS-only native library (Syphon).
 CAPTURE_PROFILE_PLATFORMS = {
     "linux-nvidia": "linux",
     "linux-wivrn-live": "linux",  # connected headset and an already-running body_one document
 
     "macos-electron": "darwin",
+    # Any host ElectronCaptureBrowser can start this checkout's Electron on, when explicitly selected.
+    "electron": ("darwin", "linux"),
     # Output that needs a macOS-only native library and nothing else: Syphon's shared surfaces.
     "macos-native": "darwin",
     "patchy-web": "",  # optional WebAssembly site; available on any host when explicitly selected
@@ -5714,7 +5718,7 @@ def build_backdoor_command(
     if document:
         command.extend(["--document", document])
     backdoor_commands: list[str] = []
-    if options.capture_profile == "macos-electron":
+    if options.capture_profile in {"macos-electron", "electron"}:
         # Before anything renders: the capture page has to be the Electron tab when output DOM appears.
         backdoor_commands.append("playwright-open --electron")
 

@@ -93,6 +93,27 @@ class HardwareDocsGatingTest(unittest.TestCase):
         with patch.object(docs_hooks.sys,'platform','darwin'),patch.dict(os.environ,{'FIELD_DOCS_CAPTURE_PROFILES':''}):
             self.assertFalse(docs_hooks.capture_profile_enabled('macos-electron'))
 
+    def test_electron_profile_runs_on_macos_and_linux_when_requested(self):
+        with patch.dict(os.environ,{'FIELD_DOCS_CAPTURE_PROFILES':'electron'}):
+            for host in ('darwin','linux'):
+                with self.subTest(host=host), patch.object(docs_hooks.sys,'platform',host):
+                    self.assertTrue(docs_hooks.capture_profile_enabled('electron'))
+            with patch.object(docs_hooks.sys,'platform','win32'):
+                self.assertFalse(docs_hooks.capture_profile_enabled('electron'))
+        with patch.object(docs_hooks.sys,'platform','linux'),patch.dict(os.environ,{'FIELD_DOCS_CAPTURE_PROFILES':''}):
+            self.assertFalse(docs_hooks.capture_profile_enabled('electron'))
+
+    def test_electron_profile_captures_through_electron(self):
+        page = ROOT / 'public/docs/web.md'
+        options = docs_hooks.parse_runner_options(
+            runner_name='diffstatic_runner',
+            open_line='```diffstatic_runner {capture="box" capture-profile="electron" screenshot="assets/web/test.png"}',
+            page_path=page, line_number=1, block_index=1,
+        )
+        invocation = docs_hooks.build_backdoor_command(repo_root=ROOT, page_path=page,
+            block_index=1, screenshot_path=ROOT/'build/web-test.png', options=options, code='web("example.com")')
+        self.assertIn('playwright-open --electron', invocation.backdoor_commands)
+
     def test_optional_patchy_capture_needs_request_on_every_host(self):
         for host in ('darwin', 'linux', 'win32'):
             with self.subTest(host=host), patch.object(docs_hooks.sys, 'platform', host):

@@ -117,6 +117,9 @@ hand-merging generated files.
   Electron app (the RTT view): with `FIELD_DOCS_CAPTURE_PROFILES=macos-electron` on macOS the
   runner captures through this checkout's Electron over CDP (`playwright-open --electron`);
   everywhere else the committed capture is retained.
+- `capture-profile="electron"` is the same capture for output that needs Electron but nothing
+  macOS-only (a `web()` page, whose framing relief and frame bridge are Electron's): it is
+  regenerated on macOS or Linux with `FIELD_DOCS_CAPTURE_PROFILES=electron`.
 - **A capture exercises the real code, or it does not exist.** Never fake, synthesize, hardcode,
   mock, or hand-edit a capture — no CPU stand-in for a GPU render, no hand-written string for a
   computed value, no scripted placeholder for a live panel. If the real capture will not come
