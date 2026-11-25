@@ -690,7 +690,7 @@ To see it all at once, open the [map of the docs](../docs_map.md): every page, a
 
 ## Reference pages
 
-**43810 public symbols across 1936 source files**, 26259 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**43826 public symbols across 1936 source files**, 26273 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -718,7 +718,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Audio](audio.md) | 101 | 2687 | 1437 (53%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 22 | 592 | 592 (100%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 135 | 3412 | 1734 (50%) | Field's small languages, from the host side. |
-| [Workspace](workspace.md) | 267 | 3716 | 1587 (42%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
+| [Workspace](workspace.md) | 267 | 3732 | 1601 (42%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [AI4](ai4.md) | 104 | 2309 | 866 (37%) | AI4 is the agent that lives inside Field: the chat panel on every box, the document chat, editor completion, and headless agent tasks. |
 | [Machine learning](machine-learning.md) | 28 | 780 | 486 (62%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Animation](animation.md) | 10 | 186 | 43 (23%) |  |
@@ -1150,7 +1150,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>tools/<wbr></small> [DocumentSourceTools.kt](ai4.md#documentsourcetools-kt) | AI4 | 20 | 20 | The AI4 tools that read and patch the live source of a box, navigate the editor to it, and export a snapshot of part of the graph. | [AI4's built-in tools](../ai4_tools.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>ai/<wbr></small> [DocumentStudySmokeTest.kt](examples.md#documentstudysmoketest-kt) | Examples · internal | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [DocumentToTranscript.kt](examples.md#documenttotranscript-kt) | Examples | 5 | 4 |  |  |
-| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [DocumentTypes.kt](workspace.md#documenttypes-kt) | Workspace · internal | 9 | 7 |  |  |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [DocumentTypes.kt](workspace.md#documenttypes-kt) | Workspace · internal | 24 | 20 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [DocumentTypesSmokeTest.kt](workspace.md#documenttypessmoketest-kt) | Workspace · internal | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [Dough.kt](synthesis.md#dough-kt) | Synthesis | 34 | 29 | dough itself, run as WebAssembly inside GraalVM, and the two wrappers that hand its output to Field's audio engine. | [How to make sound in Field](../sound_paths.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [DoughDsp.kt](synthesis.md#doughdsp-kt) | Synthesis | 57 | 40 | Native Kotlin ports of low-level DSP from dough, carrying dough's AGPL-3.0 terms. | [DoughDSP: hear the primitives](../dough_dsp_sound.md) |
@@ -1556,7 +1556,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [KotlinEngineDisposalSmokeTest.kt](workspace.md#kotlinenginedisposalsmoketest-kt) | Workspace · internal | 2 | 1 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [KotlinEngineReleaseSmokeTest.kt](workspace.md#kotlinenginereleasesmoketest-kt) | Workspace · internal | 2 | 1 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [KotlinInterface.kt](workspace.md#kotlininterface-kt) | Workspace · internal | 40 | 4 | The older K1 implementation of `KotlinScriptEngine`, built on the K1 REPL compiler. |  |
-| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [KotlinInterface2.kt](workspace.md#kotlininterface2-kt) | Workspace · internal | 52 | 12 | The K2 implementation of `KotlinScriptEngine`: the engine that compiles and runs a box's Kotlin. |  |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [KotlinInterface2.kt](workspace.md#kotlininterface2-kt) | Workspace · internal | 53 | 13 | The K2 implementation of `KotlinScriptEngine`: the engine that compiles and runs a box's Kotlin. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [KotlinInTheHeadEvidence.kt](examples.md#kotlinintheheadevidence-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>remotejs/<wbr></small> [KotlinJs.kt](languages.md#kotlinjs-kt) | Languages | 12 | 0 | SPIKE — a "Kotlin in the head" main language. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>remotejs/<wbr></small> [KotlinJsBinding.kt](languages.md#kotlinjsbinding-kt) | Languages | 85 | 24 | One source of truth for a Kotlin/JS façade surface. |  |

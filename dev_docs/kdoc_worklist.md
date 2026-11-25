@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 26259 of 43810 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 26273 of 43826 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2103 undocumented entry points** (types, top-level functions and values) and 14675 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2103 undocumented entry points** (types, top-level functions and values) and 14677 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -474,7 +474,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [boxImports.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/boxImports.kt) | Workspace | — | 2 | 2 | 71% |
 | [PetriEditorExtension.kt](../src/jvmMain/kotlin/afield/simulation/petri/PetriEditorExtension.kt) | Simulation | — | 2 | 2 | 33% |
 | [Server_protocol.kt](../src/jvmMain/kotlin/afield/app/protocol/Server_protocol.kt) | Workspace | — | 2 | 0 | 0% |
-| [KotlinInterface2.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/KotlinInterface2.kt) | Workspace | — | 1 | 39 | 23% |
+| [KotlinInterface2.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/KotlinInterface2.kt) | Workspace | — | 1 | 39 | 24% |
 | [KotlinInterface.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/KotlinInterface.kt) | Workspace | — | 1 | 35 | 10% |
 | [textures.kt](../src/jvmMain/kotlin/afield/graphics/texture/textures.kt) | Graphics | — | 1 | 24 | 44% |
 | [FLine.kt](../src/jvmMain/kotlin/afield/geometry/path/FLine.kt) | Graphics | — | 1 | 22 | 72% |
@@ -916,6 +916,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [numpy.kt](../src/jvmMain/kotlin/afield/lang/python/numpy.kt) | Data | — | 0 | 4 | 87% |
 | [StackSLStudyViewer.kt](../src/jvmMain/kotlin/afield/lang/stacksl/study/StackSLStudyViewer.kt) | Languages | — | 0 | 4 | 50% |
 | [LineHeat.kt](../src/jvmMain/kotlin/afield/runtime/bytecode/LineHeat.kt) | Workspace | — | 0 | 4 | 80% |
+| [DocumentTypes.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/DocumentTypes.kt) | Workspace | — | 0 | 4 | 83% |
 | [SimulationReset.kt](../src/jvmMain/kotlin/afield/runtime/lifecycle/SimulationReset.kt) | Workspace | — | 0 | 4 | 42% |
 | [SimulationResult.kt](../src/jvmMain/kotlin/afield/simulation/kratos/SimulationResult.kt) | Simulation | — | 0 | 4 | 87% |
 | [AgentTranscriptLayoutGuard.kt](../src/jvmMain/kotlin/afield/tools/docs/AgentTranscriptLayoutGuard.kt) | Workspace | — | 0 | 4 | 33% |
@@ -1056,7 +1057,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [CompletionCorpus.kt](../src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpus.kt) | Workspace | — | 0 | 2 | 88% |
 | [CompiledSnippetTest.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/CompiledSnippetTest.kt) | Workspace | — | 0 | 2 | 33% |
 | [DataFramePluginSpike.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/DataFramePluginSpike.kt) | Workspace | — | 0 | 2 | 33% |
-| [DocumentTypes.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/DocumentTypes.kt) | Workspace | — | 0 | 2 | 77% |
 | [Kotlin24SyntaxSmokeTest.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/Kotlin24SyntaxSmokeTest.kt) | Workspace | — | 0 | 2 | 33% |
 | [ReplBootstrapGateTest.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/ReplBootstrapGateTest.kt) | Workspace | — | 0 | 2 | 33% |
 | [SharedTypesClasspathSpike.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/SharedTypesClasspathSpike.kt) | Workspace | — | 0 | 2 | 33% |
