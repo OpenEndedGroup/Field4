@@ -35,6 +35,10 @@ class ReflectionHandednessTest {
         frameSize = PROBE_FRAME_SIZE,
     )
 
+    /** Reports the test SKIPPED, not passed, when the native library is missing. */
+    private fun assumeAvailable() =
+        org.junit.Assume.assumeTrue("${javaClass.simpleName}: native library not available", available())
+
     private fun available(): Boolean {
         if (!SteamAudioNatives.isAvailable) {
             println("SKIPPED reflected-field handedness: ${SteamAudioNatives.describe()}")
@@ -59,14 +63,14 @@ class ReflectionHandednessTest {
 
     @Test
     fun aStaticReflectorOnTheRightIsHeardOnTheRight() {
-        if (!available()) return
+        assumeAvailable()
         val ild = ildFor(instanced = false, placeAt = 4f)
         assertTrue(ild > 2.0, "reflector 4 m to the right, expected the right ear, got ${fmt(ild)} dB")
     }
 
     @Test
     fun aStaticReflectorOnTheLeftIsHeardOnTheLeft() {
-        if (!available()) return
+        assumeAvailable()
         val ild = ildFor(instanced = false, placeAt = -4f)
         assertTrue(ild < -2.0, "reflector 4 m to the left, expected the left ear, got ${fmt(ild)} dB")
     }
@@ -80,7 +84,7 @@ class ReflectionHandednessTest {
      */
     @Test
     fun anInstancedReflectorAgreesWithAStaticOne() {
-        if (!available()) return
+        assumeAvailable()
         val right = ildFor(instanced = true, placeAt = 4f)
         val left = ildFor(instanced = true, placeAt = -4f)
         assertTrue(right > 2.0, "instanced reflector on the right, got ${fmt(right)} dB")
@@ -95,7 +99,7 @@ class ReflectionHandednessTest {
      */
     @Test
     fun sweepingAReflectorSweepsTheEarBalance() {
-        if (!available()) return
+        assumeAvailable()
         val positions = listOf(-6f, -3f, 0f, 3f, 6f)
         val measured = Arena.ofShared().use { arena ->
             SteamAudioContext().use { context ->

@@ -22,9 +22,13 @@ class SmokeTest {
         return true
     }
 
+    /** Reports the test SKIPPED, not passed, when the native library is missing. */
+    private fun assumeAvailable() =
+        org.junit.Assume.assumeTrue("${javaClass.simpleName}: native library not available", available())
+
     @Test
     fun versionMatchesVendoredSdk() {
-        if (!available()) return
+        assumeAvailable()
         SteamAudio.load()
         assertEquals(4, SteamAudio.VERSION_MAJOR)
         assertEquals(8, SteamAudio.VERSION_MINOR)
@@ -33,7 +37,7 @@ class SmokeTest {
 
     @Test
     fun bandCountIsThree() {
-        if (!available()) return
+        assumeAvailable()
         SteamAudio.load()
         // The shipped binaries are built without IPL_ENABLE_OCTAVE_BANDS. Every per-band array
         // in the API is this long, so a change here would silently corrupt material and
@@ -43,7 +47,7 @@ class SmokeTest {
 
     @Test
     fun createAndReleaseContext() {
-        if (!available()) return
+        assumeAvailable()
         SteamAudioContext().use { context ->
             assertTrue(!context.isClosed)
         }
@@ -51,7 +55,7 @@ class SmokeTest {
 
     @Test
     fun contextIsClosedAfterUse() {
-        if (!available()) return
+        assumeAvailable()
         val context = SteamAudioContext()
         context.close()
         assertTrue(context.isClosed)

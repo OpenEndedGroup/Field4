@@ -14,6 +14,10 @@ import kotlin.test.assertTrue
 /** [Rhino3dm.save] checked by reading every file back with [Rhino3dm.load]. */
 class Rhino3dmWriterTest {
 
+    /** Reports the test SKIPPED, not passed, when the native library is missing. */
+    private fun assumeAvailable() =
+        org.junit.Assume.assumeTrue("${javaClass.simpleName}: native library not available", available())
+
     private fun available(): Boolean {
         if (!Rhino3dm.isAvailable) {
             println("SKIPPED .3dm writer tests: ${Rhino3dm.describe()}")
@@ -85,7 +89,7 @@ class Rhino3dmWriterTest {
     }
 
     @Test fun layersComeBackWithTheirTreeColourAndVisibility() {
-        if (!available()) return
+        assumeAvailable()
         val model = inTemp { Rhino3dm.load(write(File(it, "out.3dm"))) }
         assertEquals("", model.log.trim(), "openNURBS log")
         assertEquals("inches", model.unitName)
@@ -99,7 +103,7 @@ class Rhino3dmWriterTest {
     }
 
     @Test fun everyObjectComesBack() {
-        if (!available()) return
+        assumeAvailable()
         val model = inTemp { Rhino3dm.load(write(File(it, "out.3dm"))) }
         assertEquals(1, model.meshes.size)
         assertEquals(4, model.curves.size)  // mixed, two zigzag subpaths, wiggle
@@ -124,7 +128,7 @@ class Rhino3dmWriterTest {
     }
 
     @Test fun curvesComeBackWithIdenticalControlPoints() {
-        if (!available()) return
+        assumeAvailable()
         val model = inTemp { Rhino3dm.load(write(File(it, "out.3dm"))) }
 
         val mixed = model.curves.single { it.name == "mixed" }
@@ -149,7 +153,7 @@ class Rhino3dmWriterTest {
     }
 
     @Test fun aReadModelWritesBackIntact() {
-        if (!available()) return
+        assumeAvailable()
         inTemp { dir ->
             val sample = Rhino3dm.load(Rhino3dm.writeSample(File(dir, "sample.3dm")))
             val again = Rhino3dm.load(sample.save(File(dir, "again.3dm")))
@@ -171,7 +175,7 @@ class Rhino3dmWriterTest {
     }
 
     @Test fun badInputIsRefused() {
-        if (!available()) return
+        assumeAvailable()
         inTemp { dir ->
             assertFailsWith<IllegalArgumentException> { Rhino3dm.save(File(dir, "x.3dm"), units = "furlongs") {} }
             assertFailsWith<IllegalArgumentException> {

@@ -16,6 +16,10 @@ import kotlin.test.assertTrue
 class TetgenTest {
 
     /** The wrapper, or null with a reason. Optional like Manifold and Ceres. */
+    /** Reports the test SKIPPED, not passed, when the native library is missing. */
+    private fun assumeAvailable() =
+        org.junit.Assume.assumeTrue("${javaClass.simpleName}: native library not available", available())
+
     private fun available(): Boolean {
         if (!TetgenLibrary.isAvailable) {
             println("SKIPPED TetGen tests: ${TetgenLibrary.describe()}")
@@ -36,7 +40,7 @@ class TetgenTest {
     }
 
     @Test fun aCubeMeshesToItsExactVolume() {
-        if (!available()) return
+        assumeAvailable()
         // Manifold's cube is exactly 12 triangles with exact corners, and its volume is exact, so
         // this is the sharp-edge claim measured rather than asserted: a mesher that rounded the
         // edges could not land within machine epsilon of 2*3*4.
@@ -51,7 +55,7 @@ class TetgenTest {
     }
 
     @Test fun aBooleanBodyMatchesManifoldsOwnVolume() {
-        if (!available()) return
+        assumeAvailable()
         val body = SimulationGroup("body", SimulationBoolean.UNION, listOf(
             SimulationBox("slab", SimulationBounds(-.62, -.24, -.24, .18, .24, .24)),
             SimulationSphere("head", .34, 0.0, 0.0, .30, segments = 48)))
@@ -67,7 +71,7 @@ class TetgenTest {
     }
 
     @Test fun aFatalSurfaceIsRefusedWithoutTakingTheProcessDown() {
-        if (!available()) return
+        assumeAvailable()
         // The two inputs that reach TetGen's own fatal handler: built with TETLIBRARY it throws an
         // int there, and field_tetgen.cpp must catch it, because a C++ exception unwinding through
         // the FFM frames aborts the VM rather than raising here. (An open surface does not test
@@ -102,7 +106,7 @@ class TetgenTest {
     }
 
         @Test fun nonsensicalOptionsAreRefusedBeforeTetGenSeesThem() {
-        if (!available()) return
+        assumeAvailable()
         val cube = SimulationBox("c", SimulationBounds(0.0, 0.0, 0.0, 1.0, 1.0, 1.0)).surface()
         assertFails { Tetgen.tetrahedralize(cube, quality = 0.5) }
         assertFails { Tetgen.tetrahedralize(cube, targetEdgeLength = 0.0) }
@@ -136,7 +140,7 @@ class TetgenTest {
      */
     @Test
     fun quadraticMidsideNodesAreWhereKratosExpectsThem() {
-        if (!available()) return
+        assumeAvailable()
         val body = SimulationGroup("body", SimulationBoolean.UNION, listOf(
             SimulationBox("slab", SimulationBounds(-.62, -.24, -.24, .18, .24, .24)),
             SimulationSphere("head", .34, 0.0, 0.0, .30, segments = 32)))
@@ -166,7 +170,7 @@ class TetgenTest {
     }
 
     @Test fun quadraticRefinesTheInterpolationAndNotTheShape() {
-        if (!available()) return
+        assumeAvailable()
         val cube = SimulationBox("c", SimulationBounds(0.0, 0.0, 0.0, 2.0, 3.0, 4.0))
         val linear = Tetgen.tetrahedralize(cube.surface(), targetEdgeLength = 0.5)
         val quadratic = Tetgen.tetrahedralize(cube.surface(), targetEdgeLength = 0.5, order = 2)
@@ -199,7 +203,7 @@ class TetgenTest {
      */
     @Test
     fun midsideNodesAreSharedSoTheMeshStaysConforming() {
-        if (!available()) return
+        assumeAvailable()
         val cube = SimulationBox("c", SimulationBounds(0.0, 0.0, 0.0, 1.0, 1.0, 1.0))
         val linear = Tetgen.tetrahedralize(cube.surface(), targetEdgeLength = 0.34)
         val quadratic = linear.quadratic()

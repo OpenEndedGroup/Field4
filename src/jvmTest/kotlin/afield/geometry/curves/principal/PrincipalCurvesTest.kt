@@ -15,6 +15,10 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class PrincipalCurvesTest {
+    /** Reports the test SKIPPED, not passed, when the native library is missing. */
+    private fun assumeAvailable() =
+        org.junit.Assume.assumeTrue("${javaClass.simpleName}: native library not available", available())
+
     private fun available(): Boolean {
         if (!PrincipalCurvesLibrary.isAvailable) println("SKIPPED principal curves tests: ${PrincipalCurvesLibrary.describe()}")
         return PrincipalCurvesLibrary.isAvailable
@@ -41,7 +45,7 @@ class PrincipalCurvesTest {
 
     @Test
     fun treeDecomposesIntoThreeCurvesAtOneJunction() {
-        if (!available()) return
+        assumeAvailable()
         PrincipalCurves.fit(yShape(), nodes = 22, allowBranching = true).use { f ->
             val net = f.network
             assertEquals(3, net.curves.size, "curves of a Y")
@@ -54,7 +58,7 @@ class PrincipalCurvesTest {
 
     @Test
     fun drawingHelpersProduceLines() {
-        if (!available()) return
+        assumeAvailable()
         PrincipalCurves.fit(yShape(), nodes = 22, allowBranching = true).use { f ->
             assertTrue(f.widthFLines().isNotEmpty(), "width bands")
             assertTrue(f.pointsFLine(pointSize = 1.5).nodes.isNotEmpty(), "input points")
@@ -63,7 +67,7 @@ class PrincipalCurvesTest {
 
     @Test
     fun curvesOnlyNeverBranch() {
-        if (!available()) return
+        assumeAvailable()
         PrincipalCurves.fit(yShape(), nodes = 22).use { f ->
             assertTrue(f.network.nodes.channels.getValue("degree").data.all { it <= 2.0 })
         }
@@ -71,7 +75,7 @@ class PrincipalCurvesTest {
 
     @Test
     fun parametersReachTheSolver() {
-        if (!available()) return
+        assumeAvailable()
         // A line with a band of outliers above it: only trimming keeps the curve on the line, so a
         // trimming radius that arrives as garbage would show here.
         val pts = cloud(3600) { i -> if (i < 3000) r.nextDouble() * 100 to g(0.5) else r.nextDouble() * 100 to 40 + r.nextDouble() * 20 }
@@ -95,7 +99,7 @@ class PrincipalCurvesTest {
 
     @Test
     fun loopIsOneClosedCurve() {
-        if (!available()) return
+        assumeAvailable()
         val ring = cloud(3000) { val a = r.nextDouble() * 2 * PI; 50 * cos(a) + g(1.0) to 50 * sin(a) + g(1.0) }
         val circle = FLine().also { f -> for (i in 0..5) { val a = i * PI / 3; if (i == 0) f.moveTo(30 * cos(a), 30 * sin(a)) else f.lineTo(30 * cos(a), 30 * sin(a)) }; f.close() }
         PrincipalCurves.create(ring).use { f ->
@@ -111,7 +115,7 @@ class PrincipalCurvesTest {
 
     @Test
     fun drawnStrokesKeepACrossingAsACrossing() {
-        if (!available()) return
+        assumeAvailable()
         val pts = cloud(6000) { i -> val t = r.nextDouble() * 100 - 50; if (i % 2 == 0) t + g(0.5) to t + g(0.5) else t + g(0.5) to -t + g(0.5) }
         val strokes = listOf(FLine().moveTo(-45, -45).lineTo(45, 45), FLine().moveTo(-45, 45).lineTo(45, -45))
         PrincipalCurves.fit(pts, nodes = 24, from = strokes).use { f ->
@@ -123,7 +127,7 @@ class PrincipalCurvesTest {
 
     @Test
     fun widthMatchesAUniformBand() {
-        if (!available()) return
+        assumeAvailable()
         val band = cloud(6000) { r.nextDouble() * 200 to (r.nextDouble() * 12 - 6) }
         PrincipalCurves.create(band).use { f ->
             f.initComponents(1, 12); f.fit()
@@ -137,7 +141,7 @@ class PrincipalCurvesTest {
 
     @Test
     fun movedNodeStaysPinned() {
-        if (!available()) return
+        assumeAvailable()
         val pts = cloud(2000) { r.nextDouble() * 100 to g(1.0) }
         PrincipalCurves.fit(pts, nodes = 10).use { f ->
             f.moveNode(0, 10.0, 30.0)
@@ -151,7 +155,7 @@ class PrincipalCurvesTest {
 
     @Test
     fun threeDimensionalTubeHasAnisotropicCovariance() {
-        if (!available()) return
+        assumeAvailable()
         val pts = DoubleArray(8000 * 3).also { a -> for (i in 0 until 8000) { a[3 * i] = r.nextDouble() * 200; a[3 * i + 1] = g(3.0); a[3 * i + 2] = g(1.0) } }
         PrincipalCurves.create(pts, dimension = 3).use { f ->
             f.initComponents(1, 10); f.fit()
@@ -167,7 +171,7 @@ class PrincipalCurvesTest {
 
     @Test
     fun refineFollowsMovingPoints() {
-        if (!available()) return
+        assumeAvailable()
         fun line(y: Double) = cloud(2000) { r.nextDouble() * 100 to y + g(0.5) }
         PrincipalCurves.fit(line(0.0), nodes = 12).use { f ->
             val k = f.nodeCount
@@ -180,7 +184,7 @@ class PrincipalCurvesTest {
 
     @Test
     fun errorsAndLifecycle() {
-        if (!available()) return
+        assumeAvailable()
         assertFailsWith<IllegalArgumentException> { PrincipalCurves.create(doubleArrayOf(0.0, Double.NaN, 1.0, 1.0)) }
         val f = PrincipalCurves.create(cloud(100) { it.toDouble() to 0.0 })
         assertTrue(assertFailsWith<IllegalArgumentException> { f.fit() }.message!!.contains("initialise"))
@@ -192,7 +196,7 @@ class PrincipalCurvesTest {
 
     @Test
     fun fitAsyncCompletes() {
-        if (!available()) return
+        assumeAvailable()
         PrincipalCurves.fitAsync(yShape(), nodes = 12).get(60, TimeUnit.SECONDS).use { assertEquals(12, it.nodeCount) }
     }
 }

@@ -11,10 +11,14 @@ import kotlin.test.assertTrue
 /**
  * libcsound through FFM, measured from the samples.
  *
- * Optional like libpd: without a built Csound every test but the first prints a SKIPPED line and
- * returns. Build it with `python3 tools/build_csound_native.py`.
+ * Optional like libpd: without a built Csound every test but the first is reported SKIPPED (a
+ * JUnit assumption). Build it with `python3 tools/build_csound_native.py`.
  */
 class CsoundTest {
+
+    /** Reports the test SKIPPED, not passed, when the native library is missing. */
+    private fun assumeAvailable() =
+        org.junit.Assume.assumeTrue("${javaClass.simpleName}: native library not available", available())
 
     private fun available(): Boolean {
         if (!CsoundLibrary.isAvailable) {
@@ -40,7 +44,7 @@ class CsoundTest {
     }
 
     @Test fun aSineRendersAtItsFrequencyAndAmplitude() {
-        if (!available()) return
+        assumeAvailable()
         CsoundInstance(sine, "i1 0 1", sampleRate = 48_000).use { cs ->
             assertTrue(cs.version >= 6180, "version ${cs.version}")
             val (left, right) = cs.renderOffline()
@@ -57,7 +61,7 @@ class CsoundTest {
 
     // Csound 6 leaves a chn_k channel at 0 whatever its idflt; Field writes the default, or a cutoff read from it is 0 Hz.
     @Test fun aChnKChannelStartsAtItsDeclaredDefault() {
-        if (!available()) return
+        assumeAvailable()
         val orc = """
             chn_k "cutoff", 1, 3, 2400, 200, 8000
             chn_k "plain", 1
@@ -80,7 +84,7 @@ class CsoundTest {
     // The defaults come from Csound's channel list, so a chn_k the regex could not see (a string
     // variable for the name) still gets its default, and a commented-out one does not.
     @Test fun channelDefaultsComeFromCsoundsChannelList() {
-        if (!available()) return
+        assumeAvailable()
         val orc = """
             Sname = "gain"
             chn_k Sname, 1, 2, 0.5, 0, 1
@@ -107,7 +111,7 @@ class CsoundTest {
     }
 
     @Test fun oddSizedRendersJoinUpExactly() {
-        if (!available()) return
+        assumeAvailable()
         val whole = CsoundInstance(sine, "i1 0 1").use { cs -> FloatArray(300).also { cs.render(it, FloatArray(300), 300) } }
         val pieces = CsoundInstance(sine, "i1 0 1").use { cs ->
             val out = FloatArray(300)
@@ -124,7 +128,7 @@ class CsoundTest {
     }
 
     @Test fun aControlChannelSetsTheFrequencyAndChnsetReportsBack() {
-        if (!available()) return
+        assumeAvailable()
         val orc = """
             instr 1
               kf chnget "freq"
@@ -145,7 +149,7 @@ class CsoundTest {
     }
 
     @Test fun liveEventsAndInstrumentsArriveAtTheNextBlock() {
-        if (!available()) return
+        assumeAvailable()
         CsoundInstance(sine, "f0 10").use { cs ->
             val (silent, _) = cs.renderOffline(0.25)
             assertEquals(0f, silent.maxOf { abs(it) })
@@ -157,7 +161,7 @@ class CsoundTest {
     }
 
     @Test fun printedLinesReachTheCallback() {
-        if (!available()) return
+        assumeAvailable()
         val lines = ArrayList<String>()
         CsoundInstance("instr 1\n prints \"hello from csound\\n\"\nendin", "i1 0 0.1").use { cs ->
             cs.onMessage { lines += it }
@@ -167,7 +171,7 @@ class CsoundTest {
     }
 
     @Test fun aSyntaxErrorIsPlacedOnItsLine() {
-        if (!available()) return
+        assumeAvailable()
         val orc = "instr 1\n  a1 oscili 0.2, 440\n  a2 = a1 +* 2\n  outs a1, a1\nendin"
         val e = assertFailsWith<CsoundCompileError> { CsoundInstance(orc, "i1 0 1") }
         println(e.printed.joinToString("\n"))
@@ -175,7 +179,7 @@ class CsoundTest {
     }
 
     @Test fun anUnknownOpcodeIsPlacedOnItsLine() {
-        if (!available()) return
+        assumeAvailable()
         val orc = "instr 1\n  a1 oscilx 0.2, 440\n  outs a1, a1\nendin"
         val e = assertFailsWith<CsoundCompileError> { CsoundInstance(orc, "i1 0 1") }
         println(e.printed.joinToString("\n"))
@@ -183,7 +187,7 @@ class CsoundTest {
     }
 
     @Test fun aLeadingBlankLineStillCounts() {
-        if (!available()) return
+        assumeAvailable()
         // A box writes `csound("""` and starts the orchestra on the next line; Csound's line numbers
         // must be lines of the string as written.
         val e = assertFailsWith<CsoundCompileError> { CsoundInstance("\n  instr 1\n    a1 oscilx 0.2, 440\n  endin\n", "i1 0 1") }
@@ -191,7 +195,7 @@ class CsoundTest {
     }
 
     @Test fun renderToWavWritesAStereoFile() {
-        if (!available()) return
+        assumeAvailable()
         val dir = kotlin.io.path.createTempDirectory("csound-wav").toFile()
         try {
             val f = CsoundInstance(sine, "i1 0 0.5").use { it.renderToWav(File(dir, "sine.wav")) }
@@ -204,7 +208,7 @@ class CsoundTest {
     }
 
     @Test fun anOpenScoreKeepsTakingEvents() {
-        if (!available()) return
+        assumeAvailable()
         CsoundInstance(sine.replace("440", "p4"), "f0 z").use { cs ->
             cs.renderOffline(3.0)
             assertTrue(!cs.finished, "f0 z holds the score open")
@@ -282,7 +286,7 @@ class CsoundTest {
     }
 
     @Test fun printedLinesStillReachTheCallbackButTheScoreEndDoesNot() {
-        if (!available()) return
+        assumeAvailable()
         val lines = ArrayList<String>()
         CsoundInstance("instr 1\n prints \"hello\\n\"\nendin", "i1 0 0.1").use { cs ->
             cs.onMessage { lines += it }

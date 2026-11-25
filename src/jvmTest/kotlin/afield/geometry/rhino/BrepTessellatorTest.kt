@@ -20,6 +20,10 @@ import kotlin.test.assertTrue
  */
 class BrepTessellatorTest {
 
+    /** Reports the test SKIPPED, not passed, when the native library is missing. */
+    private fun assumeAvailable() =
+        org.junit.Assume.assumeTrue("${javaClass.simpleName}: native library not available", available())
+
     private fun available(): Boolean {
         if (!Rhino3dm.isAvailable || !OpenNurbsBrepNative.isAvailable) {
             println("SKIPPED Brep tessellation tests: ${Rhino3dm.describe()}")
@@ -65,7 +69,7 @@ class BrepTessellatorTest {
     }
 
     @Test fun saveSmallBrepsComeBackAsMeshes() {
-        if (!available()) return
+        assumeAvailable()
         val model = sample()
         assertTrue(model.skipped.isEmpty(), model.toString())
         assertEquals(7, model.meshes.size, model.toString())
@@ -78,7 +82,7 @@ class BrepTessellatorTest {
     }
 
     @Test fun sphereIsOnTheSurfaceWithTheRightAreaAndFacingOut() {
-        if (!available()) return
+        assumeAvailable()
         val m = sample().mesh("sphere").mesh
         var worst = 0.0
         for (v in 0 until m.vertexCount) {
@@ -99,7 +103,7 @@ class BrepTessellatorTest {
     }
 
     @Test fun cappedCylinderIsClosedWithTheRightArea() {
-        if (!available()) return
+        assumeAvailable()
         val m = sample().mesh("capped cylinder").mesh
         for (v in 0 until m.vertexCount) {
             val dx = m.positions[3 * v] - 30.0; val dy = m.positions[3 * v + 1] - 20.0; val z = m.positions[3 * v + 2]
@@ -115,7 +119,7 @@ class BrepTessellatorTest {
     }
 
     @Test fun planarFaceKeepsItsHole() {
-        if (!available()) return
+        assumeAvailable()
         val m = sample().mesh("plate with hole").mesh
         val a = area(m); val exact = 400 - PI * 25
         assertTrue(abs(a - exact) / exact < 0.005, "plate area $a vs $exact")
@@ -127,7 +131,7 @@ class BrepTessellatorTest {
     }
 
     @Test fun evaluatedBoxMatchesTheSavedOne() {
-        if (!available()) return
+        assumeAvailable()
         val model = sample(RhinoBrepMeshing.EVALUATE)
         val saved = sample().mesh("box, saved mesh").mesh
         val evaluated = model.mesh("box, saved mesh")
@@ -138,7 +142,7 @@ class BrepTessellatorTest {
     }
 
     @Test fun creasedSubDBoxLimitsToTheBoxItself() {
-        if (!available()) return
+        assumeAvailable()
         val o = sample().mesh("creased SubD")
         assertEquals(3, o.subdLevel)
         val m = o.mesh
@@ -152,7 +156,7 @@ class BrepTessellatorTest {
     }
 
     @Test fun smoothSubDConvergesInsideItsCage() {
-        if (!available()) return
+        assumeAvailable()
         val levels = (1..4).map { sample(subdLevel = it).mesh("smooth SubD").mesh }
         val areas = levels.map(::area)
         println("smooth SubD areas by level: $areas, volumes ${levels.map(::volume)}, triangles ${levels.map { it.triangleCount }}")
@@ -180,7 +184,7 @@ class BrepTessellatorTest {
     }
 
     @Test fun closedBrepsFromTheFileMeshClosed() {
-        if (!available()) return
+        assumeAvailable()
         val model = sample(RhinoBrepMeshing.EVALUATE)
         for (name in listOf("sphere", "capped cylinder", "box, no mesh", "box, saved mesh")) {
             val m = model.mesh(name).mesh
@@ -218,7 +222,7 @@ class BrepTessellatorTest {
     }
 
     @Test fun differentlyPacedTrimsOfOneEdgeStitchClosed() {
-        if (!available()) return
+        assumeAvailable()
         val dir = Files.createTempDirectory("rhino3dm-paced").toFile()
         try {
             val file = Rhino3dm.save(File(dir, "paced.3dm")) {
@@ -255,7 +259,7 @@ class BrepTessellatorTest {
     }
 
     @Test fun builderWrittenSurfacesAndBrepsReadBackExactly() {
-        if (!available()) return
+        assumeAvailable()
         val dir = Files.createTempDirectory("rhino3dm-brep-roundtrip").toFile()
         try {
             // A bicubic patch with an interior knot and one rational point: nothing a constructor makes.
@@ -301,7 +305,7 @@ class BrepTessellatorTest {
     }
 
     @Test fun aBrepWithBrokenKnotsIsRefusedWithAReason() {
-        if (!available()) return
+        assumeAvailable()
         val dir = Files.createTempDirectory("rhino3dm-brep-bad").toFile()
         try {
             val flat = NurbsSurface(

@@ -101,6 +101,10 @@ class FeatureTrackingTest {
         assertTrue(FeatureTracker.colourOf(3).w == 1f)
     }
 
+    /** Reports the test SKIPPED, not passed, when the native library is missing. */
+    private fun assumeAvailable() =
+        org.junit.Assume.assumeTrue("${javaClass.simpleName}: native library not available", available())
+
     private fun available(): Boolean {
         if (!MorseSmaleLibrary.isAvailable) println("SKIPPED tracking-with-Morse–Smale tests: ${MorseSmaleLibrary.describe()}")
         return MorseSmaleLibrary.isAvailable
@@ -115,7 +119,7 @@ class FeatureTrackingTest {
 
     @Test
     fun aDriftingHillKeepsOneTrack() {
-        if (!available()) return
+        assumeAvailable()
         val t = FeatureTracker(MatchingWeights(maxDistance = 8.0))
         for (frame in 0 until 30) {
             val r = MorseSmale.compute(hills(120, 80, doubleArrayOf(20.0 + 2.5 * frame, 40.0, 8.0, 1.0)), 0.05)
@@ -128,7 +132,7 @@ class FeatureTrackingTest {
 
     @Test
     fun twoHillsThatMergeLeaveOneSurvivor() {
-        if (!available()) return
+        assumeAvailable()
         val t = FeatureTracker(MatchingWeights(maxDistance = 8.0))
         for (frame in 0 until 25) {
             val d = 30.0 - frame * 1.2
@@ -142,7 +146,7 @@ class FeatureTrackingTest {
 
     @Test
     fun scaleSpaceKeepsTheLargeBlobLonger() {
-        if (!available()) return
+        assumeAvailable()
         val img = hills(160, 100, doubleArrayOf(50.0, 50.0, 20.0, 1.0), doubleArrayOf(120.0, 50.0, 3.0, 1.0))
         val s = ScaleSpace.track(img, listOf(0.0, 2.0, 4.0, 8.0, 16.0), persistence = 0.02, types = setOf(CriticalType.MAXIMUM))
         val big = s.tracker.tracks.first { it.samples.first().second.x < 80 }

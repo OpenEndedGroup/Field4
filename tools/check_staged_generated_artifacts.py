@@ -481,6 +481,13 @@ def _publication_input(path: str) -> bool:
                         'src/jvmMain/kotlin/afield/document/workspace/WebPublication.kt'})
 
 
+def _paint_input(path: str) -> bool:
+    """Whether a change can move the paint JVM tests: the native crate or the Kotlin on either side."""
+    return (_under(path, "native/field-paint")
+            or _under(path, "src/jvmMain/kotlin/afield/graphics/paint")
+            or _under(path, "src/jvmTest/kotlin/afield/graphics/paint"))
+
+
 GUARDS = (
     Guard(
         "checkCodebaseReference",
@@ -511,6 +518,9 @@ GUARDS = (
     Guard("checkBoxIdioms", "box-code idioms", _box_code_input),
     Guard("checkBoxCodeFormat", "box code and docs fences formatted", _formatted_box_code),
     Guard("checkBoxCodeCompiles", "box code compiles", _compiled_transcript),
+    # jvmTest is in no landing, and without build/field-paint every paint test skips; this one builds
+    # the native and refuses a skip, so a paint change is exercised before it lands.
+    Guard("checkPaintTests", "paint JVM tests against the built paint native", _paint_input),
     Guard(
         "citationGates",
         "citation and documentation contracts",
