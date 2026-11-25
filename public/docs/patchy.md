@@ -139,3 +139,21 @@ before starting Field. It must contain `patchy.html`, `patchy.js`, `patchy.wasm`
 Patchy runs in Field's own window as installed. To open it in another browser, start Field with
 `AFIELD_CROSS_ORIGIN_ISOLATION=1`: threaded WebAssembly needs those isolation headers outside
 Field's window, and while they are on, other sites framed in an output area may not load there.
+
+## Where to go next
+
+- [Output Pages that Call the Box](output_requests.md): the binding `patchy_field.js` uses to pass
+  Patchy's messages to the box.
+- [A Web Page in a Box](web.md): another output-area page, and the reason Field's window no longer
+  isolates its pages for Patchy.
+- Source: [`PatchyWeb.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/app/server/PatchyWeb.kt)
+  and [`patchy_field.js`](https://github.com/OpenEndedGroup/Field4/blob/main/src/commonMain/resources/patchy_field.js).
+
+Open questions:
+
+- **Patchy in another browser without isolating Field.** Outside Field's window, threaded
+  WebAssembly still needs `AFIELD_CROSS_ORIGIN_ISOLATION=1`, which isolates every Field page.
+  Isolating only Patchy's own page would need it opened as a page of its own, not inside a Field
+  document.
+- **Patchy's own Save.** Saving into the Field document goes through Field's bridge; Patchy's own
+  **Save** and **Save As** menu items still download a file.
