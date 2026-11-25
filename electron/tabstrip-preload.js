@@ -17,6 +17,12 @@ contextBridge.exposeInMainWorld('fieldTabs', {
   openWelcomeTab() {
     ipcRenderer.send('field4-tabs-open-welcome');
   },
+  openRemoteTab(address) {
+    return ipcRenderer.invoke('field4-tabs-open-remote', address);
+  },
+  discoverRemoteFields() {
+    return ipcRenderer.invoke('field4-tabs-discover-remote');
+  },
   revealTabs() {
     ipcRenderer.send('field4-tabs-reveal');
   },

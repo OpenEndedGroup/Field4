@@ -1,5 +1,7 @@
 const fs = require("node:fs");
 const { useAngleVulkan } = require("./gpu-policy.cjs");
+const { remoteFieldUrl, isRemoteFieldUrl, configureRemoteSession } = require("./remote-field.cjs");
+const { discoverRemoteFields } = require("./field-discovery.cjs");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 const {
@@ -9,6 +11,7 @@ const {
   WebContentsView,
   ipcMain,
   screen,
+  session,
   systemPreferences,
   dialog,
 } = require("electron");
@@ -185,7 +188,6 @@ if (process.platform === "win32") {
   app.setAppUserModelId(APP_USER_MODEL_ID);
 }
 process.title = APP_NAME;
-app.commandLine.appendSwitch("ignore-certificate-errors");
 
 function appendChromiumSwitchIfMissing(name, value) {
   if (!app.commandLine.hasSwitch(name)) {
@@ -564,6 +566,74 @@ function createTabStripMarkup() {
       min-width: 12px;
     }
 
+    #remote-open, #remote-form {
+      -webkit-app-region: no-drag;
+    }
+
+    #remote-open {
+      flex: 0 0 auto;
+    }
+
+    #remote-form {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      width: 100%;
+    }
+
+    #remote-form[hidden], #tabstrip.connecting > :not(#remote-form) {
+      display: none;
+    }
+
+    #remote-address, #remote-servers {
+      min-width: 0;
+      height: 26px;
+      padding: 0 8px;
+      border: 1px solid var(--tab-separator);
+      border-radius: 4px;
+      background: var(--tab-bg);
+      color: var(--text);
+    }
+
+    #remote-address {
+      flex: 1;
+    }
+
+    #remote-server-picker {
+      position: relative;
+      min-width: 0;
+      max-width: 40%;
+    }
+
+    #remote-servers {
+      display: block;
+      max-width: 100%;
+      padding-inline-end: 28px;
+      appearance: none;
+      outline: none;
+    }
+
+    #remote-servers:focus-visible {
+      background: var(--tab-hover-bg);
+    }
+
+    #remote-server-picker::after {
+      content: "";
+      position: absolute;
+      inset-inline-end: 11px;
+      top: 50%;
+      width: 6px;
+      height: 6px;
+      border-right: 1px solid currentColor;
+      border-bottom: 1px solid currentColor;
+      transform: translateY(-70%) rotate(45deg);
+      pointer-events: none;
+    }
+
+    #remote-server-picker:has(select:disabled)::after {
+      opacity: 0.3;
+    }
+
     /* Back/forward and find-in-page for the active page tab (Documentation and other utility pages).
        A document tab shows only the find bar, as its box search, while that is open. */
     #page-tools {
@@ -655,6 +725,16 @@ function createTabStripMarkup() {
   <div id="tabstrip">
     <div id="tabs"></div>
     <button id="tab-add" class="tab-add" type="button" aria-label="Open welcome tab">+</button>
+    <button id="remote-open" class="tool-button" type="button" aria-label="Open remote Field">Remote…</button>
+    <form id="remote-form" hidden>
+      <div id="remote-server-picker">
+        <select id="remote-servers" aria-label="Discovered Fields" disabled></select>
+      </div>
+      <button id="remote-refresh" class="tool-button" type="button" aria-label="Refresh discovered Fields" title="Refresh discovered Fields">↻</button>
+      <input id="remote-address" type="url" aria-label="Remote Field URL" placeholder="https://field-host:9092" required spellcheck="false" autocomplete="off">
+      <button class="tool-button" type="submit">Connect</button>
+      <button id="remote-cancel" class="tool-button" type="button">Cancel</button>
+    </form>
     <div class="tab-spacer"></div>
     <div id="page-tools" hidden>
       <div id="find" hidden>
@@ -673,6 +753,12 @@ function createTabStripMarkup() {
   <script>
     const tabsNode = document.getElementById('tabs');
     const addButton = document.getElementById('tab-add');
+    const remoteButton = document.getElementById('remote-open');
+    const remoteForm = document.getElementById('remote-form');
+    const remoteAddress = document.getElementById('remote-address');
+    const remoteServers = document.getElementById('remote-servers');
+    const remoteRefresh = document.getElementById('remote-refresh');
+    const tabStrip = document.getElementById('tabstrip');
     const pageTools = document.getElementById('page-tools');
     const navNode = document.getElementById('nav');
     const backButton = document.getElementById('nav-back');
@@ -682,6 +768,7 @@ function createTabStripMarkup() {
     const findCount = document.getElementById('find-count');
     let welcomeOpen = false;
     let findTabId = null;
+    let remoteSearch = 0;
 
     // The find bar is static DOM (render() rebuilds only #tabs), so typing in it never loses the caret.
     function renderPageTools(page) {
@@ -750,7 +837,7 @@ function createTabStripMarkup() {
           .replace(/'/g, '&#39;');
         const activeClass = (tab.active ? ' active' : '') + (tab.utility ? ' utility' : '');
         return \`
-          <button type="button" class="tab\${activeClass}" data-tab-id="\${tab.id}" aria-pressed="\${tab.active ? 'true' : 'false'}">
+          <button type="button" class="tab\${activeClass}" data-tab-id="\${tab.id}" title="\${title}" aria-pressed="\${tab.active ? 'true' : 'false'}">
             <span class="tab-label">\${title}</span>
             <span class="tab-close" data-tab-close="\${tab.id}" aria-label="Close \${title}">&times;</span>
           </button>
@@ -778,8 +865,64 @@ function createTabStripMarkup() {
       if (welcomeOpen) return;
       window.fieldTabs.openWelcomeTab();
     });
+    function closeRemoteForm() {
+      remoteSearch++;
+      remoteForm.hidden = true;
+      tabStrip.classList.remove('connecting');
+    }
+    function cancelRemoteForm() {
+      closeRemoteForm();
+      remoteButton.focus();
+    }
+    async function findRemoteFields() {
+      const search = ++remoteSearch;
+      remoteServers.disabled = remoteRefresh.disabled = true;
+      remoteServers.replaceChildren(new Option('Finding Fields…', ''));
+      const fields = await window.fieldTabs.discoverRemoteFields().catch(() => []);
+      if (search !== remoteSearch) return;
+      remoteRefresh.disabled = false;
+      remoteServers.disabled = !fields.length;
+      const prompt = new Option(fields.length ? 'Discovered Fields' : 'No Fields found', '', true, true);
+      prompt.disabled = true;
+      prompt.hidden = fields.length > 0;
+      remoteServers.replaceChildren(prompt);
+      for (const field of fields) {
+        const host = new URL(field.url).host;
+        remoteServers.add(new Option(field.name + ' · ' + host + ' (' + field.source + ')', field.url));
+      }
+    }
+    remoteButton.addEventListener('click', () => {
+      tabStrip.classList.add('connecting');
+      remoteForm.hidden = false;
+      remoteAddress.focus();
+      remoteAddress.select();
+      findRemoteFields();
+    });
+    remoteRefresh.addEventListener('click', findRemoteFields);
+    remoteServers.addEventListener('change', () => {
+      if (!remoteServers.value) return;
+      remoteAddress.value = remoteServers.value;
+      remoteAddress.setCustomValidity('');
+    });
+    remoteAddress.addEventListener('input', () => remoteAddress.setCustomValidity(''));
+    document.getElementById('remote-cancel').addEventListener('click', cancelRemoteForm);
+    remoteForm.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') cancelRemoteForm();
+    });
+    remoteForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const error = await window.fieldTabs.openRemoteTab(remoteAddress.value);
+      if (error) {
+        remoteAddress.setCustomValidity(error);
+        remoteAddress.reportValidity();
+      } else {
+        closeRemoteForm();
+      }
+    });
     document.body.addEventListener('mouseenter', () => window.fieldTabs.revealTabs());
-    document.body.addEventListener('mouseleave', () => window.fieldTabs.hideTabs());
+    document.body.addEventListener('mouseleave', () => {
+      if (remoteForm.hidden) window.fieldTabs.hideTabs();
+    });
     window.fieldTabs.onState(render);
     window.fieldTabs.ready();
   </script>
@@ -1108,7 +1251,9 @@ function createMainWindow() {
   });
 
   let nextTabId = 0;
+  let nextRemoteSessionId = 0;
   const tabs = [];
+  const remoteSessions = new Map();
   let activeTabId = null;
   let tabStripRevealedInFullScreen = false;
 
@@ -1161,15 +1306,44 @@ function createMainWindow() {
 
   const activeTab = () => tabs.find((tab) => tab.id === activeTabId) || null;
 
-  const existingTabForDocument = (targetUrl, exceptTabId = null) => {
+  const existingTabForDocument = (targetUrl, remoteOrigin, exceptTabId = null) => {
     const key = documentKeyFromUrl(targetUrl);
     if (!key) return null;
     reapDeadTabs();
     return (
       tabs.find(
-        (tab) => tab.id !== exceptTabId && documentKeyFromUrl(tab.url) === key,
+        (tab) => tab.id !== exceptTabId && tab.remoteOrigin === remoteOrigin && documentKeyFromUrl(tab.url) === key,
       ) || null
     );
+  };
+
+  const tabTitle = (url, remoteOrigin) => {
+    const title = filenameFromUrl(url);
+    return remoteOrigin ? `${title} · ${new URL(remoteOrigin).host}` : title;
+  };
+
+  const remoteSession = (origin) => {
+    if (!remoteSessions.has(origin)) {
+      const isolatedSession = session.fromPartition(`field-remote:${win.id}:${++nextRemoteSessionId}`);
+      configureRemoteSession(isolatedSession, origin, async (fingerprint) => {
+        if (win.isDestroyed() || !tabs.some(tab => tab.remoteOrigin === origin && tab.connecting)) return false;
+        const choice = await dialog.showMessageBox(win, {
+          type: "warning",
+          title: "Remote Field certificate",
+          message: `Trust the self-signed certificate for ${origin}?`,
+          detail: `Compare this SHA-256 fingerprint with the certificate on the Field computer.\n\n${fingerprint}`,
+          buttons: ["Cancel", "Trust for This Session"],
+          defaultId: 0,
+          cancelId: 0,
+        });
+        if (choice.response === 1) return true;
+        // Chromium caches certificate decisions. A fresh partition lets the user try again.
+        remoteSessions.delete(origin);
+        return false;
+      });
+      remoteSessions.set(origin, isolatedSession);
+    }
+    return remoteSessions.get(origin);
   };
 
   // A page tab (Documentation, Welcome, history, logs, ...) gets find-in-page in the tab strip, and
@@ -1227,7 +1401,7 @@ function createMainWindow() {
         id: tab.id,
         title: tab.title,
         active: tab.id === activeTabId,
-        welcome: isWelcomeUrl(tab.url),
+        welcome: !tab.remoteOrigin && isWelcomeUrl(tab.url),
         utility: isUtilityUrl(tab.url),
       })),
       activeTabId,
@@ -1237,7 +1411,7 @@ function createMainWindow() {
 
   const syncWindowTitle = () => {
     const tab = activeTab();
-    win.setTitle(titleForUrl(tab ? tab.url : welcomeUrl));
+    win.setTitle(tab ? `${APP_NAME} — ${tab.title}` : titleForUrl(welcomeUrl));
   };
 
   const isTabStripVisible = () =>
@@ -1349,7 +1523,7 @@ function createMainWindow() {
       url: contentsUrl(tab),
     });
 
-    if (tabs.length === 1) {
+    if (tabs.length === 1 && !tab.remoteOrigin) {
       if (!isWelcomeUrl(tab.url)) {
         tab.url = welcomeUrl;
         tab.title = filenameFromUrl(welcomeUrl);
@@ -1379,16 +1553,16 @@ function createMainWindow() {
     if (replacement) {
       activateTab(replacement.id);
     } else {
-      sendTabState();
-      syncWindowTitle();
+      openTab(welcomeUrl);
     }
   };
 
   const openTab = (
     targetUrl,
-    { activate = true, baseUrl = initialUrl } = {},
+    { activate = true, baseUrl = initialUrl, remoteOrigin = null } = {},
   ) => {
     const normalizedUrl = normalizeUrl(targetUrl, baseUrl);
+    if (remoteOrigin && !isRemoteFieldUrl(normalizedUrl, remoteOrigin)) return null;
     diagnosticLog("tab-open-requested", {
       windowId: win.id,
       targetUrl: String(targetUrl || ""),
@@ -1397,7 +1571,8 @@ function createMainWindow() {
       activate,
       activeTabId,
     });
-    const existing = existingTabForDocument(normalizedUrl);
+    const existing = existingTabForDocument(normalizedUrl, remoteOrigin) ||
+      (remoteOrigin && tabs.find(tab => tab.remoteOrigin === remoteOrigin && tab.url === normalizedUrl && liveContents(tab)));
     if (existing) {
       diagnosticLog("tab-open-reused", {
         windowId: win.id,
@@ -1412,13 +1587,16 @@ function createMainWindow() {
     const tab = {
       id: `tab-${++nextTabId}`,
       url: normalizedUrl,
-      title: filenameFromUrl(normalizedUrl),
+      title: tabTitle(normalizedUrl, remoteOrigin),
+      remoteOrigin,
+      connecting: !!remoteOrigin,
       devtoolsOpened: false,
       view: new WebContentsView({
         webPreferences: {
-          preload: FIELD_PRELOAD,
           contextIsolation: true,
-          sandbox: false,
+          ...(remoteOrigin
+            ? { session: remoteSession(remoteOrigin), sandbox: true }
+            : { preload: FIELD_PRELOAD, sandbox: false }),
           defaultFontFamily: FIELD_DEFAULT_FONT_FAMILY,
         },
       }),
@@ -1436,7 +1614,7 @@ function createMainWindow() {
 
     const updateTitle = (url = contentsUrl(tab)) => {
       tab.url = url || tab.url;
-      tab.title = filenameFromUrl(tab.url);
+      tab.title = tabTitle(tab.url, remoteOrigin);
       setViewBackground(tab.view, colorForUrl(tab.url));
       if (tab.id === activeTabId) {
         syncWindowTitle();
@@ -1452,14 +1630,26 @@ function createMainWindow() {
         currentUrl: contentsUrl(tab),
         targetUrl: url,
       });
-      openTab(url, { activate: true, baseUrl: tab.url });
+      openTab(url, { activate: true, baseUrl: tab.url, remoteOrigin });
       return { action: "deny" };
     });
 
-    tab.view.webContents.on("will-navigate", (event, url) => {
+    let blockedRemoteRedirect = false;
+    tab.view.webContents.on("will-redirect", (event) => {
+      if (remoteOrigin && event.isMainFrame && !isRemoteFieldUrl(event.url, remoteOrigin)) {
+        blockedRemoteRedirect = tab.connecting;
+        event.preventDefault();
+      }
+    });
+
+    tab.view.webContents.on("will-navigate", (event) => {
       const currentUrl = contentsUrl(tab);
-      const target = normalizeUrl(url, currentUrl || initialUrl);
-      const existing = existingTabForDocument(target, tab.id);
+      const target = normalizeUrl(event.url, currentUrl || initialUrl);
+      if (remoteOrigin && !isRemoteFieldUrl(target, remoteOrigin)) {
+        event.preventDefault();
+        return;
+      }
+      const existing = existingTabForDocument(target, remoteOrigin, tab.id);
       if (existing) {
         diagnosticLog("tab-will-navigate", {
           windowId: win.id,
@@ -1484,7 +1674,7 @@ function createMainWindow() {
           decision: "open-new-tab",
         });
         event.preventDefault();
-        openTab(target, { activate: true, baseUrl: currentUrl || initialUrl });
+        openTab(target, { activate: true, baseUrl: currentUrl || initialUrl, remoteOrigin });
         return;
       }
       diagnosticLog("tab-will-navigate", {
@@ -1532,6 +1722,7 @@ function createMainWindow() {
     });
 
     tab.view.webContents.on("did-navigate", (_event, url) => {
+      tab.connecting = false;
       diagnosticLog("tab-did-navigate", tabDetails({ targetUrl: url }));
       // A new page: the find bar stays open with its query, but the old counts no longer apply.
       // A reloaded document has lost its box highlights, so its box search closes.
@@ -1644,11 +1835,27 @@ function createMainWindow() {
     diagnosticLog("tab-load-url-called", tabDetails({ targetUrl: normalizedUrl }));
     tab.view.webContents.loadURL(normalizedUrl).then(
       () => diagnosticLog("tab-load-url-resolved", tabDetails()),
-      (error) =>
+      (error) => {
         diagnosticLog(
           "tab-load-url-rejected",
           tabDetails({ error: diagnosticError(error) }),
-        ),
+        );
+        tab.connecting = false;
+        const contents = liveContents(tab);
+        if (!remoteOrigin || !contents || win.isDestroyed()) return;
+        if (error.code === "ERR_ABORTED" && !blockedRemoteRedirect) return;
+        const certificateCanceled = contents.session !== remoteSessions.get(remoteOrigin);
+        closeTab(tab.id);
+        if (certificateCanceled) return;
+        dialog.showMessageBox(win, {
+          type: "error",
+          title: "Remote Field connection failed",
+          message: `Could not open ${remoteOrigin}`,
+          detail: blockedRemoteRedirect
+            ? "The server redirected to a different origin. Enter its final Field URL."
+            : String(error.code || error.message),
+        }).catch(() => {});
+      },
     );
     return tab;
   };
@@ -1834,13 +2041,31 @@ function createMainWindow() {
   const onTabActivate = onlyFromStrip((tabId) => activateTab(tabId));
   const onTabClose = onlyFromStrip((tabId) => closeTab(tabId));
   const onOpenWelcomeTab = onlyFromStrip(() => {
-    const existing = tabs.find((tab) => isWelcomeUrl(tab.url));
+    const existing = tabs.find((tab) => !tab.remoteOrigin && isWelcomeUrl(tab.url));
     if (existing) {
       activateTab(existing.id);
       return;
     }
     openTab(welcomeUrl, { activate: true });
   });
+  const onOpenRemoteTab = (event, address) => {
+    if (event.sender !== tabStripView.webContents) return;
+    let url;
+    try {
+      url = remoteFieldUrl(address);
+    } catch (_) {
+      return "Enter an HTTP or HTTPS Field URL without credentials.";
+    }
+    if (url.pathname === "/" && !url.search && !url.hash) url.pathname = "/welcome";
+    openTab(url.href, { remoteOrigin: url.origin });
+  };
+  let discoveryRequest = null;
+  const onDiscoverRemoteFields = (event) => {
+    if (event.sender !== tabStripView.webContents) return [];
+    discoveryRequest ??= discoverRemoteFields(initialUrl, (url, options) => session.defaultSession.fetch(url, options))
+      .finally(() => { discoveryRequest = null; });
+    return discoveryRequest;
+  };
   const onRevealTabs = onlyFromChrome(() => revealTabs());
   const onHideTabs = onlyFromChrome(() => hideTabs());
   const afterStripCommand = (tab) => {
@@ -2034,6 +2259,8 @@ function createMainWindow() {
   ipcMain.on("field4-tabs-activate", onTabActivate);
   ipcMain.on("field4-tabs-close", onTabClose);
   ipcMain.on("field4-tabs-open-welcome", onOpenWelcomeTab);
+  ipcMain.handle("field4-tabs-open-remote", onOpenRemoteTab);
+  ipcMain.handle("field4-tabs-discover-remote", onDiscoverRemoteFields);
   ipcMain.on("field4-tabs-reveal", onRevealTabs);
   ipcMain.on("field4-tabs-hide", onHideTabs);
   ipcMain.on("field4-tabs-navigate", onStripNavigate);
@@ -2073,6 +2300,8 @@ function createMainWindow() {
     ipcMain.removeListener("field4-tabs-activate", onTabActivate);
     ipcMain.removeListener("field4-tabs-close", onTabClose);
     ipcMain.removeListener("field4-tabs-open-welcome", onOpenWelcomeTab);
+    ipcMain.removeHandler("field4-tabs-open-remote");
+    ipcMain.removeHandler("field4-tabs-discover-remote");
     ipcMain.removeListener("field4-tabs-reveal", onRevealTabs);
     ipcMain.removeListener("field4-tabs-hide", onHideTabs);
     ipcMain.removeListener("field4-tabs-navigate", onStripNavigate);
@@ -2092,14 +2321,14 @@ function createMainWindow() {
 
   const isFieldTab = (tab) => {
     try {
-      if (!tab) return false;
+      if (!tab || tab.remoteOrigin) return false;
       const url = new URL(contentsUrl(tab));
       return url.origin === new URL(initialUrl).origin && url.pathname.endsWith('/index.html');
     } catch (_) { return false; }
   };
   const presentationFieldTab = () => (isFieldTab(activeTab()) ? activeTab() : tabs.find(isFieldTab));
   const isFieldServerTab = tab => {
-    try { return tab && new URL(contentsUrl(tab)).origin === new URL(initialUrl).origin; }
+    try { return tab && !tab.remoteOrigin && new URL(contentsUrl(tab)).origin === new URL(initialUrl).origin; }
     catch (_) { return false; }
   };
   const presentationServerTab = () => presentationFieldTab() ||
@@ -2190,12 +2419,18 @@ app.whenReady().then(() => {
   }
   installDockIcon();
   installAppMenu();
+  // The desktop server uses a self-signed development certificate. Remote tabs have their
+  // own sessions and use Chromium verification or a certificate the user explicitly trusts.
+  const loopbackHosts = new Set(["localhost", "127.0.0.1", "::1"]);
+  session.defaultSession.setCertificateVerifyProc(({ hostname }, callback) => {
+    callback(loopbackHosts.has(hostname) ? 0 : -3);
+  });
   require("./presentation").install();
   require("./rtt-view-host").install();
   require("./aaaframe-sign-in").install();
   // Output-area iframes show sites that refuse framing (X-Frame-Options, CSP frame-ancestors).
   require("./framing-relief.cjs").installFramingRelief(
-    require("electron").session.defaultSession,
+    session.defaultSession,
     process.env.APP_URL || "https://localhost:9092/welcome",
     diagnosticLog,
   );

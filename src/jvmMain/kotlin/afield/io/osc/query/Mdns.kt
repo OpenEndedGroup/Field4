@@ -50,9 +50,10 @@ object Mdns {
         val address: String get() = addresses.firstOrNull() ?: host
     }
 
-    private class Registration(val instance: String, val type: String, val port: Int) {
+    private class Registration(val instance: String, val type: String, val port: Int, val addresses: List<String>?) {
         val serviceName get() = "$type.local"
         val instanceName get() = "$instance.$type.local"
+        val target get() = if (addresses == null) hostName else "${hostName.removeSuffix(".local")}-$port.local"
     }
 
     private val registrations = CopyOnWriteArrayList<Registration>()
@@ -63,11 +64,18 @@ object Mdns {
      * Advertise [instance] as a [type] service (`_oscjson._tcp`, `_osc._udp`) on [port] until the
      * returned handle is closed, which sends a goodbye.
      */
-    fun advertise(instance: String, type: String, port: Int): Closeable {
-        val reg = Registration(instance, type, port)
-        registrations += reg
+    fun advertise(instance: String, type: String, port: Int): Closeable = advertise(instance, type, port, addresses = null)
+
+    internal fun advertise(instance: String, type: String, port: Int, addresses: List<String>?): Closeable {
+        val reg = Registration(instance, type, port, addresses)
         val s = ensureResponder()
-        announce(s, reg, TTL)
+        registrations += reg
+        try {
+            announce(s, reg, TTL)
+        } catch (e: Exception) {
+            registrations.remove(reg)
+            throw e
+        }
         Thread({ try { Thread.sleep(1000); if (reg in registrations) announce(s, reg, TTL) } catch (_: Exception) {} }, "mdns-reannounce").apply { isDaemon = true; start() }
         return Closeable {
             if (registrations.remove(reg)) try { announce(s, reg, 0) } catch (_: Exception) {}
@@ -75,17 +83,33 @@ object Mdns {
     }
 
     /** Services of [type] currently answering, collected for [timeoutMs]. */
-    fun browse(type: String = "_oscjson._tcp", timeoutMs: Long = 1500): List<Service> {
+    fun browse(type: String = "_oscjson._tcp", timeoutMs: Long = 1500): List<Service> =
+        browse(type, timeoutMs, preferReplyAddress = false)
+
+    internal fun browse(type: String, timeoutMs: Long, preferReplyAddress: Boolean): List<Service> {
         val service = "$type.local"
         val found = LinkedHashMap<String, Service>()
-        DatagramSocket(0).use { s ->
+        val socket = if (preferReplyAddress) MulticastSocket(0) else DatagramSocket(0)
+        socket.use { s ->
             val query = Message(id = 0x4f51, flags = 0).apply { questions += Question(service, TYPE_PTR) }.encode()
-            for (i in 0 until 2) s.send(DatagramPacket(query, query.size, GROUP, PORT))
+            val packet = DatagramPacket(query, query.size, GROUP, PORT)
+            if (s is MulticastSocket) {
+                val sent = multicastInterfaces().count { nif ->
+                    runCatching {
+                        s.networkInterface = nif
+                        s.send(packet)
+                    }.isSuccess
+                }
+                if (sent == 0) s.send(packet)
+            } else {
+                repeat(2) { s.send(packet) }
+            }
             val end = System.currentTimeMillis() + timeoutMs
             val buf = ByteArray(9000)
             val ptrs = HashSet<String>()
             val srv = HashMap<String, Pair<String, Int>>()
             val addrs = HashMap<String, MutableList<String>>()
+            val replies = HashMap<String, String>()
             while (true) {
                 val left = end - System.currentTimeMillis()
                 if (left <= 0) break
@@ -94,14 +118,21 @@ object Mdns {
                 try { s.receive(p) } catch (_: SocketTimeoutException) { break }
                 val m = try { Message.decode(p.data.copyOf(p.length)) } catch (_: Exception) { continue }
                 for (r in m.records) when (r.type) {
-                    TYPE_PTR -> if (r.name.equals(service, true) && r.ttl > 0) ptrs += r.target!!
+                    TYPE_PTR -> if (r.name.equals(service, true) && r.ttl > 0) {
+                        val instance = r.target!!
+                        ptrs += instance
+                        if (preferReplyAddress) replies[instance] = p.address.hostAddress
+                    }
                     TYPE_SRV -> srv[r.name.lowercase()] = r.target!! to r.port
                     TYPE_A -> addrs.getOrPut(r.name.lowercase()) { mutableListOf() }.let { l -> r.address?.let { if (it !in l) l += it } }
                 }
                 for (ptr in ptrs) {
                     val (host, port) = srv[ptr.lowercase()] ?: continue
                     val instance = ptr.removeSuffix(".$service")
-                    found[ptr.lowercase()] = Service(instance, type, host, port, addrs[host.lowercase()].orEmpty())
+                    val addresses = addrs[host.lowercase()].orEmpty()
+                    val reply = replies[ptr]
+                    val ordered = if (reply in addresses) listOfNotNull(reply) + addresses.filterNot { it == reply } else addresses
+                    found[ptr.lowercase()] = Service(instance, type, host, port, ordered)
                 }
             }
         }
@@ -169,15 +200,15 @@ object Mdns {
                 instanceRecords(reg, ttl, into)
             }
             q.name.equals(reg.instanceName, true) -> instanceRecords(reg, ttl, into)
-            q.name.equals(hostName, true) && (q.type == TYPE_A || any) ->
-                for (a in localAddresses()) into.records += Record.a(hostName, a, ttl)
+            q.name.equals(reg.target, true) && (q.type == TYPE_A || any) ->
+                for (a in reg.addresses ?: localAddresses()) into.records += Record.a(reg.target, a, ttl)
         }
     }
 
     private fun instanceRecords(reg: Registration, ttl: Int, into: Message) {
-        into.records += Record.srv(reg.instanceName, hostName, reg.port, ttl)
+        into.records += Record.srv(reg.instanceName, reg.target, reg.port, ttl)
         into.records += Record.txt(reg.instanceName, listOf("txtvers=1"), ttl)
-        for (a in localAddresses()) into.records += Record.a(hostName, a, ttl)
+        for (a in reg.addresses ?: localAddresses()) into.records += Record.a(reg.target, a, ttl)
     }
 
     private fun announce(s: MulticastSocket, reg: Registration, ttl: Int) {

@@ -11,8 +11,8 @@ code-execution environment. The defaults are intended for a desktop application 
   `/controllers/ws` command channels. Foreign browser origins and DNS-rebinding browser requests
   are refused. The origin check recognises localhost, literal IP addresses and exact DNS
   authorities explicitly registered by the local user.
-- The local development HTTPS certificate is self-signed. Electron trusts it; a normal browser
-  may ask for a local exception.
+- The local development HTTPS certificate is self-signed. The local Electron session accepts it
+  on loopback. A normal browser may ask for a local exception.
 - A loopback-only HTTP mirror is available for local automation, at `PORT + 10000` by default.
   Set `AFIELD_HTTP_PORT=off` to disable it.
 
@@ -43,6 +43,38 @@ loopback default. Field is not an authenticated remote development service.
 
 The server prints its HTTPS bind address and browser-origin policy at startup. `PORT` changes
 the default HTTPS port, 9092. Remote clients must use the appropriate address and port.
+
+### Open a remote Field tab in Electron
+
+Click **Remote…** in the Field desktop tab strip and paste the other computer's Field URL.
+An address such as `https://192.168.1.42:9092` opens that server's Welcome page. Paste a document
+URL such as `https://192.168.1.42:9092/index.html?file=Sketchbook` to go straight to a document.
+The tab shows the server address beside its title. Edits, code execution and saves go to that
+computer. Remote tabs use browser behavior for features that need the desktop shell's local
+integrations.
+
+**Remote…** looks for Fields when you open it. Select one from **Discovered Fields**, then click
+**Connect**. Use the refresh button to look again, or paste an address directly.
+
+- **LAN** uses Bonjour over IPv4. Reachable Field servers announce their actual HTTPS port after
+  startup when bound to the network. Both computers need the discovery feature, and their local
+  network must pass multicast traffic.
+- **Tailscale** uses the local Tailscale client's list of online peers. It checks direct Field
+  access on HTTPS port `9092` and Tailscale Serve on `443` and `8443`. Paste the URL for other
+  ports or proxies. Tailscale access rules still determine which instances you can reach.
+
+For Field's self-signed development certificate, compare the SHA-256 fingerprint shown by
+Electron with the fingerprint from the keystore on the Field computer. For the default keystore,
+run this from the server checkout and enter its keystore password (`changeit` by default).
+
+```diffstatic {data-lang=bash}
+keytool -list -v -keystore config/field4-local.p12 -alias field4
+```
+
+Choose **Trust for This Session** if the fingerprints match. For a server behind a proxy with
+a trusted certificate, use its HTTPS URL. An SSH tunnel to Field's loopback HTTP mirror can
+also be opened using its local URL, such as `http://localhost:19093` for a tunnel that forwards
+local port 19093 to port 19092 on the Field computer.
 
 ## Browser integrations and deliberate exceptions
 

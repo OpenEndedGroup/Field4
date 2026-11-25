@@ -69,7 +69,7 @@ default**. That inversion is the single most useful sentence on either page.
 
 ## HTTP read routes
 
-55 routes, 42 of them with no route-specific guard. `guard` is computed from the handler
+56 routes, 42 of them with no route-specific guard. `guard` is computed from the handler
 body by the docs-route vocabulary the mutating census also uses
 (`docsAnnotations.kt:739#fun ApplicationCall.refuseUnlessSameSiteDocsClient`,
 `docsAnnotations.kt:723#fun ApplicationCall.refuseUnlessLocalDocsClient`); there is no `install(Authentication)`
@@ -124,6 +124,7 @@ mutation; it is a different one.
 | `GET /api/semantic-search/status` | `Server.kt` | none |
 | `GET /api/source` | `Server.kt` | none |
 | `GET /api/refactor-pass` | `refactorPass.kt` | loopback + same-site |
+| `GET /api/remote-field/lan` | `FieldLanDiscovery.kt` | loopback + same-site |
 | `GET /api/routines` | `routinesPage.kt` | loopback + same-site |
 | `GET /api/routines/adopt` | `routinesPage.kt` | loopback + same-site |
 | `GET /api/terminal` | `terminal.kt` | loopback + same-site |
