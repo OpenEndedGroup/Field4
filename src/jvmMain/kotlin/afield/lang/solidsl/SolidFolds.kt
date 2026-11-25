@@ -36,7 +36,7 @@ fun kochSnowflake(level: Int): Profile {
     require(level >= 1) { "the Koch snowflake starts at level 1 (the hexagram), got $level" }
     var shape: Profile = hexagram()
     repeat(level - 1) {
-        shape = Profile.Union(listOf(hexagram(), shape.sized(1.0 / 3.0).translated(0.0, 2.0 / 3.0))).hexFolded()
+        shape = (hexagram() + shape.sized(1.0 / 3.0).translated(0.0, 2.0 / 3.0)).hexFolded()
     }
     return shape
 }
