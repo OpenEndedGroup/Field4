@@ -167,7 +167,9 @@ var built = false
 repeat(100) {
     if (!built) {
         ui.pause(150)
-        built = ui.eval("return [...document.querySelectorAll('.box')].some(b => b.name === 'Greeter')").toString() == "true"
+        built =
+            ui.eval("return [...document.querySelectorAll('.box')].some(b => b.name === 'Greeter')").toString() ==
+                "true"
     }
 }
 check(built) { "pressing play did not build Greeter" }
@@ -188,7 +190,9 @@ ui.pause(800)
 ui.eval("window.toggleNotesMarkdownPreview(window.globalEditor, 'preview'); return true")
 ui.waitForSelector(".afield-notes-preview-body .field-macro-block", 15000.0)
 ui.clickSelector(".afield-notes-preview-body .field-macro-block > summary")
-check(ui.eval("return document.querySelector('.afield-notes-preview-body .field-macro-block').open").toString() == "true") {
+check(
+    ui.eval("return document.querySelector('.afield-notes-preview-body .field-macro-block').open").toString() == "true",
+) {
     "the summary did not unfold the block"
 }
 ui.pause(400)
