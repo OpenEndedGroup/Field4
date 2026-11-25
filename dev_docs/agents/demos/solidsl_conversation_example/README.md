@@ -22,3 +22,7 @@ lamp, and the recorded chat is in the study box's AI4 chat.
 - `studies/solid_source/solid/` — every checked revision (`r<n>-<hash>.kt` plus its facts) and the
   variant batches (`speculations/`).
 - `prompts/` — the requests, as sent.
+
+`solid_source_code_.kt` was laid out by `formatBoxCode` after recording (the docs guard requires
+it), so it differs from revision r10 in whitespace only, and Inspect reports the reopened box as
+`dirty`. Running the box, or the next accepted edit, checks it in.

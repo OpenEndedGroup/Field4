@@ -125,21 +125,23 @@ val growth = 0.28
 val coreRadius = 0.15
 val wallHalf = 0.045
 val samples = 64
-val coilParts = List(samples) { i ->
-    val t = sweep * i / (samples - 1.0)
-    val r = coreRadius * exp(growth * t)
-    val a = t - sweep
-    val chamberRadius = 0.05 + 0.42 * r
-    sphere(chamberRadius).at(r * cos(a), r * sin(a), 0.0)
-}
+val coilParts =
+    List(samples) { i ->
+        val t = sweep * i / (samples - 1.0)
+        val r = coreRadius * exp(growth * t)
+        val a = t - sweep
+        val chamberRadius = 0.05 + 0.42 * r
+        sphere(chamberRadius).at(r * cos(a), r * sin(a), 0.0)
+    }
 // Blend overlapping round sections, then offset that same field on both sides.
 // Shelled(half) gives a nominal full wall of 0.09 throughout the growing chamber.
 val envelope = run {
     var layer = coilParts
     while (layer.size > 1) {
-        layer = layer.chunked(2).map { pair ->
-            if (pair.size == 1) pair[0] else smoothUnion(pair[0], pair[1], 0.075)
-        }
+        layer =
+            layer.chunked(2).map { pair ->
+                if (pair.size == 1) pair[0] else smoothUnion(pair[0], pair[1], 0.075)
+            }
     }
     layer.single()
 }

@@ -8,21 +8,23 @@ val growth = 0.28
 val coreRadius = 0.15
 val wallHalf = 0.045
 val samples = 64
-val coilParts = List(samples) { i ->
-    val t = sweep * i / (samples - 1.0)
-    val r = coreRadius * exp(growth * t)
-    val a = t - sweep
-    val chamberRadius = 0.05 + 0.42 * r
-    sphere(chamberRadius).at(r * cos(a), r * sin(a), 0.0)
-}
+val coilParts =
+    List(samples) { i ->
+        val t = sweep * i / (samples - 1.0)
+        val r = coreRadius * exp(growth * t)
+        val a = t - sweep
+        val chamberRadius = 0.05 + 0.42 * r
+        sphere(chamberRadius).at(r * cos(a), r * sin(a), 0.0)
+    }
 // Blend overlapping round sections, then offset that same field on both sides.
 // Shelled(half) gives a nominal full wall of 0.09 throughout the growing chamber.
 val envelope = run {
     var layer = coilParts
     while (layer.size > 1) {
-        layer = layer.chunked(2).map { pair ->
-            if (pair.size == 1) pair[0] else smoothUnion(pair[0], pair[1], 0.075)
-        }
+        layer =
+            layer.chunked(2).map { pair ->
+                if (pair.size == 1) pair[0] else smoothUnion(pair[0], pair[1], 0.075)
+            }
     }
     layer.single()
 }
@@ -31,21 +33,26 @@ val wall = envelope.shelled(wallHalf)
 // Slice off the terminal cap perpendicular to the growth line: a real open mouth.
 val endRadius = coreRadius * exp(growth * sweep)
 val tangentAngle = atan2(1.0, growth)
-val mouth = cuboid(3.0, 3.0, 3.0)
-    .turned(0.0, 0.0, tangentAngle * 180.0 / PI)
-    .at(endRadius + cos(tangentAngle) * 1.43, sin(tangentAngle) * 1.43, 0.0) and
-    sphere(0.82).at(endRadius, 0.0, 0.0)
+val mouth =
+    cuboid(3.0, 3.0, 3.0)
+        .turned(0.0, 0.0, tangentAngle * 180.0 / PI)
+        .at(endRadius + cos(tangentAngle) * 1.43, sin(tangentAngle) * 1.43, 0.0) and
+        sphere(0.82).at(endRadius, 0.0, 0.0)
 
 // Growing transverse slots leave cast ribs over a continuous shell back.
-val apertures = unionOf(List(19) { i ->
-    val u = i / 18.0
-    val t = 0.75 + (sweep - 1.45) * u
-    val r = coreRadius * exp(growth * t)
-    val a = t - sweep
-    val c = 0.05 + 0.42 * r
-    sphere(1.0).sized(c * 0.90, r * 0.18, c * 0.60 + 0.10)
-        .turned(0.0, 0.0, a * 180.0 / PI).at(r*cos(a), r*sin(a), c*0.65)
-})
+val apertures = unionOf(
+    List(19) { i ->
+        val u = i / 18.0
+        val t = 0.75 + (sweep - 1.45) * u
+        val r = coreRadius * exp(growth * t)
+        val a = t - sweep
+        val c = 0.05 + 0.42 * r
+        sphere(1.0)
+            .sized(c * 0.90, r * 0.18, c * 0.60 + 0.10)
+            .turned(0.0, 0.0, a * 180.0 / PI)
+            .at(r * cos(a), r * sin(a), c * 0.65)
+    },
+)
 val localShade = wall - mouth - apertures
 // Tilt the coiling plane so it can be read both from the front and from above.
 val shade = localShade.turned(62.0, 0.0, 0.0).at(0.0, 0.0, 3.25)
@@ -64,7 +71,8 @@ val diffuser = sphere(0.13).at(0.64, -0.435, 2.432)
 val litLamp = lamp + diffuser
 
 // Patina follows geometric shelter and concavity; exposed ridges wear back to bronze.
-litLamp.shaded("""
+litLamp.shaded(
+    """
 float patinaHash(vec3 p) {
     return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453);
 }
@@ -138,4 +146,6 @@ vec3 shade(vec3 p, vec3 n, vec3 rd, float t) {
     float reveal = ridge*(1.0-smoothstep(0.0,0.60,inward))*smoothstep(1.8,2.1,p.z);
     return outer + cavity*(0.80+0.20*bloom) + warm*reveal*0.28;
 }
-""", background = 0x20262B)
+""",
+    background = 0x20262B,
+)
