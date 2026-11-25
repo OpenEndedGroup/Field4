@@ -2,7 +2,7 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 26170 of 43705 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 26194 of 43731 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
 **2103 undocumented entry points** (types, top-level functions and values) and 14661 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
@@ -329,7 +329,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [alife_continuous.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_continuous.kt) | ALife | alife_examples, agent_transcripts, topology_tracking | 0 | 2 | 91% |
 | [alife_networks.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_networks.kt) | ALife | alife_examples | 0 | 2 | 90% |
 | [terminalOutput.kt](../src/jvmMain/kotlin/afield/ui/output/terminalOutput.kt) | Visualization | terminal | 0 | 2 | 80% |
-| [PresentationFigures.kt](../src/jvmMain/kotlin/afield/ui/slides/PresentationFigures.kt) | Visualization | presentation_studio | 0 | 2 | 66% |
+| [PresentationFigures.kt](../src/jvmMain/kotlin/afield/ui/slides/PresentationFigures.kt) | Visualization | manim, presentation_studio | 0 | 2 | 66% |
 | [corpora.kt](../src/jvmMain/kotlin/afield/ai/learning/pen/corpora.kt) | Machine learning | teaching_a_pen, a_pen_that_sees | 0 | 1 | 96% |
 | [FnSignal.kt](../src/jvmMain/kotlin/afield/audio/synth/FnSignal.kt) | Synthesis | chain_fn_sound_roundtrip | 0 | 1 | 66% |
 | [NotationPatterns.kt](../src/jvmMain/kotlin/afield/audio/synth/NotationPatterns.kt) | Patterns | chain_drawn_score, chain_drawn_morph, chain_tracked_body | 0 | 1 | 71% |
@@ -884,7 +884,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [StereoVideoPlacement.kt](../src/jvmMain/kotlin/afield/graphics/scene/video/StereoVideoPlacement.kt) | Graphics | — | 0 | 5 | 44% |
 | [Mdns.kt](../src/jvmMain/kotlin/afield/io/osc/query/Mdns.kt) | Networking | — | 0 | 5 | 44% |
 | [MorphoGraal.kt](../src/jvmMain/kotlin/afield/lang/morpho/MorphoGraal.kt) | Languages | — | 0 | 5 | 70% |
-| [NumpyShared.kt](../src/jvmMain/kotlin/afield/lang/python/NumpyShared.kt) | Languages | — | 0 | 5 | 70% |
+| [NumpyShared.kt](../src/jvmMain/kotlin/afield/lang/python/NumpyShared.kt) | Languages | — | 0 | 5 | 72% |
 | [PhaseNoise.kt](../src/jvmMain/kotlin/afield/lang/stacksl/PhaseNoise.kt) | Languages | — | 0 | 5 | 66% |
 | [StackSLLpipsLoss.kt](../src/jvmMain/kotlin/afield/lang/stacksl/cpu/StackSLLpipsLoss.kt) | Languages | — | 0 | 5 | 66% |
 | [WiVRnBrowserInput.kt](../src/jvmMain/kotlin/afield/media/browser/WiVRnBrowserInput.kt) | Imaging | — | 0 | 5 | 44% |
