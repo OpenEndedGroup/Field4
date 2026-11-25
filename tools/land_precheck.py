@@ -49,6 +49,7 @@ from check_staged_generated_artifacts import (  # noqa: E402
     _box_code_input,
     _compiled_transcript,
     _formatted_box_code,
+    _paint_input,
     _demo_input,
     _doc_asset_budget_input,
     _publication_input,
@@ -359,6 +360,14 @@ CHECKS: tuple[Check, ...] = (
         lambda c: [p for p in c.paths if _python_tool_input(p)],
         python=("tools/run_python_tests.py",),
         lander_guards=("checkPythonTools",),
+    ),
+    Check(
+        "paint-tests",
+        "checkPaintTests (a paint change that turned a paint JVM test red; without the built native "
+        "every paint test only skips)",
+        lambda c: [p for p in c.paths if _paint_input(p)],
+        gradle=("checkPaintTests",),
+        lander_guards=("checkPaintTests",),
     ),
 )
 

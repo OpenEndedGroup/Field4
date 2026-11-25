@@ -41,10 +41,7 @@ class SolidSLRenderProofTest {
 
     @Test
     fun `both lowerings render as the same lit solid`() {
-        if (!ManifoldLibrary.isAvailable) {
-            println("SolidSLRenderProofTest: skipping — ${ManifoldLibrary.describe()}")
-            return
-        }
+        org.junit.Assume.assumeTrue("SolidSLRenderProofTest: skipping — ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         val dir = proofDir("solidsl")
         val q = SolidQuality(segments = 192, edgeLengthFraction = 1.0 / 110.0)
 

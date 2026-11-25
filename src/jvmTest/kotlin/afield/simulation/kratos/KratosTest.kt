@@ -128,7 +128,7 @@ class KratosTest {
     }
 
     @Test fun anOffAxisCylinderLandsWhereItsEndpointsSay() {
-        if (!ManifoldLibrary.isAvailable) { println("SKIPPED: ${ManifoldLibrary.describe()}"); return }
+        org.junit.Assume.assumeTrue("SKIPPED: ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         // The affine basis is the only part of the cylinder that can be silently wrong: a bad one
         // still produces a closed solid, of the right volume, in the wrong place.
         val radius = 0.2
@@ -205,7 +205,7 @@ class KratosTest {
 
     @Test fun manifoldAndPrimitiveEvaluatorsAgree() {
         val config = configured() ?: return
-        if (!ManifoldLibrary.isAvailable) { println("SKIPPED: ${ManifoldLibrary.describe()}"); return }
+        org.junit.Assume.assumeTrue("SKIPPED: ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         KratosSession.openAsync(SimulationBounds(-1.0,-1.0,-1.0,1.0,1.0,1.0),8,config).get(15,TimeUnit.SECONDS).use { session ->
             val body = KratosDemo.body()
             val analytic = session.solveAsync(body).get(10,TimeUnit.SECONDS)!!

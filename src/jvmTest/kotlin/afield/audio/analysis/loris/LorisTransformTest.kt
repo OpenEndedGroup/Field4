@@ -56,7 +56,7 @@ class LorisTransformTest {
     }
 
     private fun withClient(body: (LorisClient) -> Unit) {
-        if (!LorisNative.isAvailable) { println("Loris transform native test: not built; no download"); return }
+        org.junit.Assume.assumeTrue("Loris transform native test: not built; no download", LorisNative.isAvailable)
         val folder: Path = Files.createTempDirectory("field-loris-transform-")
         try { body(LorisClient(folder)) }
         finally { Files.walk(folder).use { it.sorted(Comparator.reverseOrder()).forEach(Files::deleteIfExists) } }

@@ -402,7 +402,13 @@ def _python_tool_input(path: str) -> bool:
         or (_under(path, "tools") and path.endswith(".py"))
         or _under(path, "tools/refactor-engine")
         or path in {"build.gradle.kts", "pyproject.toml", "uv.lock"}
+        or _jvm_test_source(path)
     )
+
+
+def _jvm_test_source(path: str) -> bool:
+    # check_native_gated_tests.py scans these; no landing runs jvmTest, so its suite is the gate.
+    return (_under(path, "src/jvmTest/kotlin") or _under(path, "src/jvmFastTest/kotlin")) and path.endswith(".kt")
 
 
 # The corpus inputs of `_python_tool_input` that are not Python code, each with the strings that
@@ -418,6 +424,7 @@ _PYTHON_CORPUS_SCOPES: tuple[tuple[PathPredicate, tuple[str, ...]], ...] = (
     (lambda path: path in _scraped_completion_docs()
      or path in {"tools/completion-corpus/scraped.tsv", "tools/completion-corpus/name-fixtures.tsv"},
      ("completion-corpus", "scrape_completion_corpus")),
+    (_jvm_test_source, ("check_native_gated_tests",)),
 )
 
 
@@ -481,6 +488,13 @@ def _publication_input(path: str) -> bool:
                         'src/jvmMain/kotlin/afield/document/workspace/WebPublication.kt'})
 
 
+def _paint_input(path: str) -> bool:
+    """Whether a change can move the paint JVM tests: the native crate or the Kotlin on either side."""
+    return (_under(path, "native/field-paint")
+            or _under(path, "src/jvmMain/kotlin/afield/graphics/paint")
+            or _under(path, "src/jvmTest/kotlin/afield/graphics/paint"))
+
+
 GUARDS = (
     Guard(
         "checkCodebaseReference",
@@ -511,6 +525,9 @@ GUARDS = (
     Guard("checkBoxIdioms", "box-code idioms", _box_code_input),
     Guard("checkBoxCodeFormat", "box code and docs fences formatted", _formatted_box_code),
     Guard("checkBoxCodeCompiles", "box code compiles", _compiled_transcript),
+    # jvmTest is in no landing, and without build/field-paint every paint test skips; this one builds
+    # the native and refuses a skip, so a paint change is exercised before it lands.
+    Guard("checkPaintTests", "paint JVM tests against the built paint native", _paint_input),
     Guard(
         "citationGates",
         "citation and documentation contracts",

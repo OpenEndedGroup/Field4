@@ -22,6 +22,10 @@ import kotlin.test.assertTrue
  */
 class TetMeshViewsTest {
 
+    /** Reports the test SKIPPED, not passed, when the native library is missing. */
+    private fun assumeAvailable() =
+        org.junit.Assume.assumeTrue("${javaClass.simpleName}: native library not available", available())
+
     private fun available(): Boolean {
         if (!TetgenLibrary.isAvailable) {
             println("SKIPPED TetGen view tests: ${TetgenLibrary.describe()}")
@@ -140,7 +144,7 @@ class TetMeshViewsTest {
     }
 
     @Test fun aMeshedCubeKeepsItsVolumeThroughEveryView() {
-        if (!available()) return
+        assumeAvailable()
         val cube = SimulationBox("c", SimulationBounds(0.0, 0.0, 0.0, 2.0, 3.0, 4.0))
         val mesh = Tetgen.tetrahedralize(cube.surface(), targetEdgeLength = 0.6)
 
@@ -175,7 +179,7 @@ class TetMeshViewsTest {
      */
     @Test
     fun theOrderTheSolidWasBuiltInChangesTheMeshButNotTheBody() {
-        if (!available()) return
+        assumeAvailable()
         fun bolts() = listOf(12.0, 28.0).map {
             afield.geometry.solid.manifold.Solid.cylinder(40.0, 5.0, segments = 48).translated(55.0, it, -5.0)
         }
@@ -258,7 +262,7 @@ class TetMeshViewsTest {
     }
 
     @Test fun theRequestedQualityBoundIsHonouredByAlmostEveryElement() {
-        if (!available()) return
+        assumeAvailable()
         val cube = SimulationBox("c", SimulationBounds(0.0, 0.0, 0.0, 2.0, 3.0, 4.0))
         val mesh = Tetgen.tetrahedralize(cube.surface(), quality = 1.2, targetEdgeLength = 0.5)
         val ratios = mesh.radiusEdgeRatios()

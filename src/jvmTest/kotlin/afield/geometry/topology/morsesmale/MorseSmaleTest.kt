@@ -14,6 +14,10 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class MorseSmaleTest {
+    /** Reports the test SKIPPED, not passed, when the native library is missing. */
+    private fun assumeAvailable() =
+        org.junit.Assume.assumeTrue("${javaClass.simpleName}: native library not available", available())
+
     private fun available(): Boolean {
         if (!MorseSmaleLibrary.isAvailable) println("SKIPPED Morse–Smale tests: ${MorseSmaleLibrary.describe()}")
         return MorseSmaleLibrary.isAvailable
@@ -48,7 +52,7 @@ class MorseSmaleTest {
 
     @Test
     fun gaussianHillHasOneMaximum() {
-        if (!available()) return
+        assumeAvailable()
         val r = MorseSmale.compute(field(65, 65) { x, y -> exp(-4 * (x * x + y * y)) }, 65, 65)
         assertEquals(1, r.count(CriticalType.MAXIMUM))
         val peak = r.criticalPoints.single { it.type == CriticalType.MAXIMUM }
@@ -57,7 +61,7 @@ class MorseSmaleTest {
 
     @Test
     fun eggCrateSaddleConnectsToBothHillsAndBothPits() {
-        if (!available()) return
+        assumeAvailable()
         val r = MorseSmale.compute(field(81, 81) { x, y -> sin(PI * x) * sin(PI * y) + 1e-3 * x }, 81, 81)
         val centre = r.criticalPoints.single {
             it.type == CriticalType.SADDLE && kotlin.math.abs(it.x - 40) <= 1 && kotlin.math.abs(it.y - 40) <= 1
@@ -70,7 +74,7 @@ class MorseSmaleTest {
 
     @Test
     fun networkTopologyIsConsistent() {
-        if (!available()) return
+        assumeAvailable()
         MorseSmale.build(noise(48, 40, 3), 48, 40).use { c ->
             for (t in listOf(0.0, 0.05, 0.2, Double.POSITIVE_INFINITY)) {
                 val r = c.simplify(t)
@@ -95,7 +99,7 @@ class MorseSmaleTest {
 
     @Test
     fun simplificationIsMonotoneAndMatchesTheHierarchy() {
-        if (!available()) return
+        assumeAvailable()
         MorseSmale.build(noise(64, 64, 11), 64, 64).use { c ->
             var previous = Int.MAX_VALUE
             c.survivalCurve().forEach { (t, expected) ->
@@ -113,7 +117,7 @@ class MorseSmaleTest {
 
     @Test
     fun persistencePairsCoverEveryCriticalPointOnce() {
-        if (!available()) return
+        assumeAvailable()
         MorseSmale.build(noise(40, 30, 5), 40, 30).use { c ->
             val cells = c.persistencePairs.flatMap { listOfNotNull(it.birth, it.death) }
             assertEquals(cells.size, cells.toSet().size)
@@ -124,7 +128,7 @@ class MorseSmaleTest {
 
     @Test
     fun identitiesAreStableAcrossThresholds() {
-        if (!available()) return
+        assumeAvailable()
         MorseSmale.build(field(64, 64) { x, y -> sin(3 * x) * sin(2 * y) + 0.02 * sin(37 * x * y) }, 64, 64).use { c ->
             val fine = c.simplify(0.0)
             val coarse = c.simplify(0.05)
@@ -138,7 +142,7 @@ class MorseSmaleTest {
 
     @Test
     fun imgChannelIsReadInPlaceWithStrides() {
-        if (!available()) return
+        assumeAvailable()
         val one = field(32, 24) { x, y -> kotlin.math.cos(3 * x) * kotlin.math.cos(2 * y) }
         val rgb = FloatArray(32 * 24 * 3) { if (it % 3 == 1) one[it / 3] else 7f }
         val a = MorseSmale.compute(one, 32, 24)
@@ -148,7 +152,7 @@ class MorseSmaleTest {
 
     @Test
     fun fLinesKeepProvenance() {
-        if (!available()) return
+        assumeAvailable()
         val r = MorseSmale.compute(noise(32, 32, 9), 32, 32, persistence = 0.2)
         val lines = r.toFLines(smooth = true)
         assertEquals(r.network.curves.size, lines.size)
@@ -159,7 +163,7 @@ class MorseSmaleTest {
 
     @Test
     fun errorsAreReportedNotSwallowed() {
-        if (!available()) return
+        assumeAvailable()
         val bad = FloatArray(9).also { it[4] = Float.NaN }
         assertTrue(assertFailsWith<IllegalArgumentException> { MorseSmale.build(bad, 3, 3) }.message!!.contains("NaN"))
         assertFailsWith<IllegalArgumentException> { MorseSmale.build(FloatArray(4), 1, 4) }
@@ -168,7 +172,7 @@ class MorseSmaleTest {
 
     @Test
     fun lifecycleCloseIsIdempotentAndUseAfterCloseFails() {
-        if (!available()) return
+        assumeAvailable()
         val c = MorseSmale.build(noise(16, 16, 1), 16, 16)
         c.simplify(0.1)
         c.close()
@@ -182,7 +186,7 @@ class MorseSmaleTest {
 
     @Test
     fun computeAsyncCompletesOffThread() {
-        if (!available()) return
+        assumeAvailable()
         val caller = Thread.currentThread()
         val f = java.util.concurrent.CompletableFuture.supplyAsync { Thread.currentThread() }
         f.get(5, TimeUnit.SECONDS)

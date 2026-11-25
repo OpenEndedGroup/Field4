@@ -21,10 +21,7 @@ class TetgenSolidPrecisionTest {
 
     @Test
     fun theSolidRouteKeepsManifoldsVolume() {
-        if (!TetgenLibrary.isAvailable || !ManifoldLibrary.isAvailable) {
-            println("SKIPPED: ${TetgenLibrary.describe()} / ${ManifoldLibrary.describe()}")
-            return
-        }
+        org.junit.Assume.assumeTrue("SKIPPED: ${TetgenLibrary.describe()} / ${ManifoldLibrary.describe()}", TetgenLibrary.isAvailable && ManifoldLibrary.isAvailable)
         bracket().use { part ->
             val exact = part.volume
             val surface = part.toTriMesh()

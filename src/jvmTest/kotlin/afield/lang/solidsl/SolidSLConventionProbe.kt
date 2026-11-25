@@ -24,10 +24,7 @@ class SolidSLConventionProbe {
 
     @Test
     fun `report what Manifold's conventions actually are`() {
-        if (!ManifoldLibrary.isAvailable) {
-            println("SolidSLConventionProbe: skipping — ${ManifoldLibrary.describe()}")
-            return
-        }
+        org.junit.Assume.assumeTrue("SolidSLConventionProbe: skipping — ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         println("Manifold: ${ManifoldLibrary.describe()}")
         println("default circular segments for r=1: ${Solid.circularSegments(1.0)}")
 
@@ -114,7 +111,7 @@ class SolidSLConventionProbe {
      */
     @Test
     fun `Section revolved turns about Z, and the KDoc that says Y is wrong`() {
-        if (!ManifoldLibrary.isAvailable) return
+        org.junit.Assume.assumeTrue("native library not available: ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         // Lifted clear of the y = 0 plane on purpose. With its base on the axis plane, the two probe
         // points below land exactly ON a face of the solid under one of the two readings, and
         // `contains` at a boundary is a coin toss rather than an answer.
@@ -190,7 +187,7 @@ class SolidSLConventionProbe {
 
     @Test
     fun `which axis does Section revolve actually turn about`() {
-        if (!ManifoldLibrary.isAvailable) return
+        org.junit.Assume.assumeTrue("native library not available: ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         val profile = Profile.rect(0.6, 0.6).translated(1.2, 0.0)
         profile.exactSection().use { s ->
             println("section bounds ${s.bounds}, area ${s.area}")

@@ -12,7 +12,7 @@ import kotlin.test.assertTrue
 /** Runs the examples on `public/docs/swept_clearance.md` and holds the numbers the page quotes. */
 class SweptClearanceDocsTest {
     @Test fun thePagesNumbersAreWhatTheCodeComputes() {
-        if (!ManifoldLibrary.isAvailable) return println("skipped: libmanifoldc is not installed")
+        org.junit.Assume.assumeTrue("native library not available: ${ManifoldLibrary.describe()}", ManifoldLibrary.isAvailable)
         val swing = RigidMotion.rotation(Vector3d(0.0, 0.0, 0.0), Vector3d(0.0, 0.0, 1.0), 0.0, 90.0)
         assertEquals(91, swing.stepsBy(1.0).size)
         assertEquals("""{"type":"rotation","point":[0.0,0.0,0.0],"axis":[0.0,0.0,1.0],"from":0.0,"to":90.0}""", swing.toJson())

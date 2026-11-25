@@ -41,6 +41,10 @@ class LeakTest {
         return true
     }
 
+    /** Reports the test SKIPPED, not passed, when the native library is missing. */
+    private fun assumeAvailable() =
+        org.junit.Assume.assumeTrue("${javaClass.simpleName}: native library not available", available())
+
     /** Iterations per steady-state check. Enough that a per-object leak is unmistakable. */
     private val iterations = 40
 
@@ -91,7 +95,7 @@ class LeakTest {
 
     @Test
     fun theAllocatorIsActuallyBeingUsed() {
-        if (!available()) return
+        assumeAvailable()
         val allocator = CountingAllocator()
         SteamAudioContext(allocator = allocator).use {
             assertTrue(
@@ -112,7 +116,7 @@ class LeakTest {
 
     @Test
     fun hrtfDoesNotLeak() {
-        if (!available()) return
+        assumeAvailable()
         withCountedContext { context, allocator ->
             assertNoLeak("Hrtf", allocator) {
                 Hrtf.default(context, settings).close()
@@ -122,7 +126,7 @@ class LeakTest {
 
     @Test
     fun binauralEffectDoesNotLeak() {
-        if (!available()) return
+        assumeAvailable()
         withCountedContext { context, allocator ->
             Hrtf.default(context, settings).use { hrtf ->
                 assertNoLeak("BinauralEffect", allocator) {
@@ -134,7 +138,7 @@ class LeakTest {
 
     @Test
     fun directEffectDoesNotLeak() {
-        if (!available()) return
+        assumeAvailable()
         withCountedContext { context, allocator ->
             assertNoLeak("DirectEffect", allocator) {
                 DirectEffect(context, settings).close()
@@ -144,7 +148,7 @@ class LeakTest {
 
     @Test
     fun reflectionEffectDoesNotLeak() {
-        if (!available()) return
+        assumeAvailable()
         withCountedContext { context, allocator ->
             assertNoLeak("ReflectionEffect", allocator) {
                 ReflectionEffect(
@@ -159,7 +163,7 @@ class LeakTest {
 
     @Test
     fun ambisonicsEffectsDoNotLeak() {
-        if (!available()) return
+        assumeAvailable()
         withCountedContext { context, allocator ->
             Hrtf.default(context, settings).use { hrtf ->
                 assertNoLeak("AmbisonicsDecodeEffect", allocator) {
@@ -177,7 +181,7 @@ class LeakTest {
 
     @Test
     fun pathEffectDoesNotLeak() {
-        if (!available()) return
+        assumeAvailable()
         withCountedContext { context, allocator ->
             Hrtf.default(context, settings).use { hrtf ->
                 assertNoLeak("PathEffect", allocator) {
@@ -189,7 +193,7 @@ class LeakTest {
 
     @Test
     fun sceneAndMeshesDoNotLeak() {
-        if (!available()) return
+        assumeAvailable()
         withCountedContext { context, allocator ->
             val world = World2D()
             val walls = WallSet(
@@ -214,7 +218,7 @@ class LeakTest {
 
     @Test
     fun instancedMeshDoesNotLeak() {
-        if (!available()) return
+        assumeAvailable()
         withCountedContext { context, allocator ->
             val world = World2D()
             Scene(context).use { scene ->
@@ -245,7 +249,7 @@ class LeakTest {
 
     @Test
     fun simulatorAndSourcesDoNotLeak() {
-        if (!available()) return
+        assumeAvailable()
         withCountedContext { context, allocator ->
             Scene(context).use { scene ->
                 scene.commit()
@@ -276,7 +280,7 @@ class LeakTest {
 
     @Test
     fun sourcesCreatedAndDestroyedRepeatedlyDoNotLeak() {
-        if (!available()) return
+        assumeAvailable()
         // The realistic pattern for a game: one long-lived simulator, sources coming and going
         // as entities spawn and die. This is where a leak would actually bite.
         withCountedContext { context, allocator ->
@@ -310,7 +314,7 @@ class LeakTest {
 
     @Test
     fun energyFieldAndImpulseResponseDoNotLeak() {
-        if (!available()) return
+        assumeAvailable()
         withCountedContext { context, allocator ->
             assertNoLeak("EnergyField", allocator) {
                 EnergyField(context, duration = 0.5f, order = 1).close()
@@ -323,7 +327,7 @@ class LeakTest {
 
     @Test
     fun probesDoNotLeak() {
-        if (!available()) return
+        assumeAvailable()
         withCountedContext { context, allocator ->
             assertNoLeak("ProbeArray", allocator) {
                 ProbeArray(context).close()
@@ -339,7 +343,7 @@ class LeakTest {
 
     @Test
     fun serializedObjectDoesNotLeak() {
-        if (!available()) return
+        assumeAvailable()
         withCountedContext { context, allocator ->
             assertNoLeak("SerializedObject", allocator) {
                 SerializedObject(context).close()
@@ -353,7 +357,7 @@ class LeakTest {
 
     @Test
     fun retainRequiresAMatchingClose() {
-        if (!available()) return
+        assumeAvailable()
         withCountedContext { context, allocator ->
             assertNoLeak("Hrtf retain/close pairs", allocator) {
                 Hrtf.default(context, settings).use { first ->
@@ -367,7 +371,7 @@ class LeakTest {
 
     @Test
     fun retainKeepsTheObjectAliveAfterTheOriginalCloses() {
-        if (!available()) return
+        assumeAvailable()
         withCountedContext { context, _ ->
             val original = Hrtf.default(context, settings)
             val retained = original.retain()
@@ -394,7 +398,7 @@ class LeakTest {
 
     @Test
     fun doubleCloseIsSafeAndDecrementsOnlyOnce() {
-        if (!available()) return
+        assumeAvailable()
         withCountedContext { context, allocator ->
             assertNoLeak("double close", allocator) {
                 val hrtf = Hrtf.default(context, settings)
@@ -407,7 +411,7 @@ class LeakTest {
 
     @Test
     fun useAfterCloseThrowsRatherThanCrashing() {
-        if (!available()) return
+        assumeAvailable()
         withCountedContext { context, _ ->
             val hrtf = Hrtf.default(context, settings)
             hrtf.close()
@@ -423,7 +427,7 @@ class LeakTest {
 
     @Test
     fun audioBufferLifetimeFollowsItsArena() {
-        if (!available()) return
+        assumeAvailable()
         // AudioBuffer is arena-backed rather than reference-counted, so there is nothing to
         // leak -- but confirm the arena really does reclaim it.
         val allocator = CountingAllocator()

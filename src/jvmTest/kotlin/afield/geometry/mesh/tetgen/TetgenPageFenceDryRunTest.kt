@@ -25,6 +25,10 @@ import kotlin.test.assertTrue
  */
 class TetgenPageFenceDryRunTest {
 
+    /** Reports the test SKIPPED, not passed, when the native library is missing. */
+    private fun assumeAvailable() =
+        org.junit.Assume.assumeTrue("${javaClass.simpleName}: native library not available", available())
+
     private fun available(): Boolean = TetgenLibrary.isAvailable && ManifoldLibrary.isAvailable
 
     private fun bracket(): Solid = Solid.scope {
@@ -39,7 +43,7 @@ class TetgenPageFenceDryRunTest {
     }
 
     @Test fun theCutawayFence() {
-        if (!available()) return
+        assumeAvailable()
         val part = bracket()
         val surface = part.toTriMesh()
         val mesh = Tetgen.tetrahedralize(surface, targetEdgeLength = 5.0)
@@ -76,7 +80,7 @@ class TetgenPageFenceDryRunTest {
     }
 
     @Test fun theQualityFence() {
-        if (!available()) return
+        assumeAvailable()
         val part = bracket()
         val surface = part.toTriMesh()
         val mesh = Tetgen.tetrahedralize(surface, targetEdgeLength = 3.0)
@@ -127,7 +131,7 @@ class TetgenPageFenceDryRunTest {
     }
 
     @Test fun theSharpEdgeFence() {
-        if (!available()) return
+        assumeAvailable()
         fun boxDistance(x: Double, y: Double, z: Double): Double {
             val dx = abs(x) - 1.0; val dy = abs(y) - 1.5; val dz = abs(z) - 2.0
             val out = sqrt(max(dx, 0.0) * max(dx, 0.0) + max(dy, 0.0) * max(dy, 0.0) + max(dz, 0.0) * max(dz, 0.0))

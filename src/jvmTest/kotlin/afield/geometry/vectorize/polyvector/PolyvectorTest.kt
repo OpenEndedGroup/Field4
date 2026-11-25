@@ -14,6 +14,10 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class PolyvectorTest {
+    /** Reports the test SKIPPED, not passed, when the native library is missing. */
+    private fun assumeAvailable() =
+        org.junit.Assume.assumeTrue("${javaClass.simpleName}: native library not available", available())
+
     private fun available(): Boolean {
         if (!PolyvectorLibrary.isAvailable) println("SKIPPED polyvector tests: ${PolyvectorLibrary.describe()}")
         return PolyvectorLibrary.isAvailable
@@ -56,7 +60,7 @@ class PolyvectorTest {
 
     @Test
     fun fieldHoldsTwoUnitDirectionsOnTheInkOnly() {
-        if (!available()) return
+        assumeAvailable()
         Polyvector.fitField(strokes(140, 140, doubleArrayOf(20.0, 20.0, 120.0, 120.0, 3.0), doubleArrayOf(20.0, 120.0, 120.0, 20.0, 3.0)), 140, 140).use { f ->
             var inked = 0
             for (i in 0 until 140 * 140) {
@@ -74,7 +78,7 @@ class PolyvectorTest {
 
     @Test
     fun crossingAndTee() {
-        if (!available()) return
+        assumeAvailable()
         val x = Polyvector.fitField(strokes(140, 140, doubleArrayOf(20.0, 20.0, 120.0, 120.0, 3.0), doubleArrayOf(20.0, 120.0, 120.0, 20.0, 3.0)), 140, 140).trace()
         assertTrue(total(x) in 250.0..320.0, "X: ${total(x)}")
         assertTrue(x.coverage() > 0.9, "X coverage ${x.coverage()}")
@@ -84,7 +88,7 @@ class PolyvectorTest {
 
     @Test
     fun retracingReusesTheField() {
-        if (!available()) return
+        assumeAvailable()
         Polyvector.fitField(strokes(140, 120, doubleArrayOf(20.0, 30.0, 120.0, 30.0, 3.0), doubleArrayOf(70.0, 30.0, 70.0, 100.0, 3.0)), 140, 120).use { f ->
             val a = f.trace()
             val b = f.trace(TraceParameters(smooth = false))
@@ -96,7 +100,7 @@ class PolyvectorTest {
 
     @Test
     fun aRealDrawing() {
-        if (!available()) return
+        assumeAvailable()
         val sample = File("build/field-polyvector/upstream").walkTopDown().firstOrNull { it.name == "penguin.png" }
         if (sample == null) { println("SKIPPED real drawing: build/field-polyvector/upstream has no samples"); return }
         val d = Polyvector.vectorize(imgFromFile(sample.path, 3))
@@ -110,7 +114,7 @@ class PolyvectorTest {
 
     @Test
     fun networkJoinsOnlyCoincidentEnds() {
-        if (!available()) return
+        assumeAvailable()
         val d = Polyvector.fitField(strokes(160, 100, doubleArrayOf(15.0, 20.0, 60.0, 80.0, 5.0), doubleArrayOf(100.0, 20.0, 145.0, 80.0, 5.0)), 160, 100).trace()
         val net = d.network()
         assertEquals(2, d.field.componentCount)
@@ -119,7 +123,7 @@ class PolyvectorTest {
 
     @Test
     fun errorsAndLifecycle() {
-        if (!available()) return
+        assumeAvailable()
         assertTrue(assertFailsWith<IllegalArgumentException> { Polyvector.fitField(FloatArray(64 * 64), 64, 64) }.message!!.contains("no ink"))
         assertFailsWith<IllegalArgumentException> { Polyvector.fitField(FloatArray(10), 64, 64) }
         assertFailsWith<IllegalArgumentException> { Polyvector.fitField(FloatArray(64 * 64) { 1f }, 64, 64, FrameFieldParameters(inkThreshold = 2.0)) }
@@ -131,7 +135,7 @@ class PolyvectorTest {
     /** Every member the polyvector docs page names, called once. */
     @Test
     fun documentedSurface() {
-        if (!available()) return
+        assumeAvailable()
         val ink = strokes(140, 140, doubleArrayOf(20.0, 20.0, 120.0, 120.0, 3.0), doubleArrayOf(20.0, 120.0, 120.0, 20.0, 3.0))
         val drawing = Img(140, 140, 3, FloatArray(140 * 140 * 3) { 1f - ink[it / 3] })
         val field = Polyvector.fitField(Polyvector.inkOf(drawing), FrameFieldParameters())
@@ -155,7 +159,7 @@ class PolyvectorTest {
 
     @Test
     fun imgEvidenceAndInk() {
-        if (!available()) return
+        assumeAvailable()
         val ink = strokes(100, 60, doubleArrayOf(10.0, 30.0, 90.0, 30.0, 5.0))
         val drawing = Img(100, 60, 3, FloatArray(100 * 60 * 3) { 1f - ink[it / 3] })
         val evidence = Polyvector.inkOf(drawing)

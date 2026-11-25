@@ -111,7 +111,7 @@ class LorisTest {
     /** No download/build in normal tests. Build explicitly to activate these real native checks. */
     @Test
     fun optionalNativeToneReconstructsCachesAndTransforms() {
-        if (!LorisNative.isAvailable) { println("Loris optional native test: not built; no download"); return }
+        org.junit.Assume.assumeTrue("Loris optional native test: not built; no download", LorisNative.isAvailable)
         val folder = Files.createTempDirectory("field-loris-test-")
         try {
             val client = LorisClient(folder)

@@ -66,7 +66,7 @@ class PdPatchGraphTest {
     }
 
     @Test fun aMessageLineReachesTheReceiver() {
-        if (!PdLibrary.isAvailable) return println("SKIPPED: ${PdLibrary.describe()}")
+        org.junit.Assume.assumeTrue("native library not available: ${PdLibrary.describe()}", PdLibrary.isAvailable)
         PdInstance().use { pd ->
             pd.openPatchText("#X obj 20 20 r v;\n#X obj 20 60 s back;\n#X connect 0 0 1 0;")
             val got = ArrayList<PdInstance.Message>()

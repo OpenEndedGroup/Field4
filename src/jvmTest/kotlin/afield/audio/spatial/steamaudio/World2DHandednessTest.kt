@@ -38,6 +38,10 @@ class World2DHandednessTest {
         return true
     }
 
+    /** Reports the test SKIPPED, not passed, when the native library is missing. */
+    private fun assumeAvailable() =
+        org.junit.Assume.assumeTrue("${javaClass.simpleName}: native library not available", available())
+
     private val world = World2D(floorDepth = -2f, ceilingDepth = 2f, earDepth = 0f)
     private val settings = AudioSettings(samplingRate = 48_000, frameSize = 1024)
 
@@ -104,7 +108,7 @@ class World2DHandednessTest {
 
     @Test
     fun sourceToTheEastOfANorthFacingListenerIsHeardOnTheRight() {
-        if (!available()) return
+        assumeAvailable()
         val (ild, itd) = measure(sourceX = 5f, sourceY = 0f, facingX = 0f, facingY = 1f)
         assertTrue(ild > 6.0, "expected the right ear louder by >6 dB, got ${"%.1f".format(ild)} dB")
         assertTrue(itd > 0, "expected the right ear to lead, got an ITD of $itd samples")
@@ -112,7 +116,7 @@ class World2DHandednessTest {
 
     @Test
     fun sourceToTheWestOfANorthFacingListenerIsHeardOnTheLeft() {
-        if (!available()) return
+        assumeAvailable()
         val (ild, itd) = measure(sourceX = -5f, sourceY = 0f, facingX = 0f, facingY = 1f)
         assertTrue(ild < -6.0, "expected the left ear louder by >6 dB, got ${"%.1f".format(ild)} dB")
         assertTrue(itd < 0, "expected the left ear to lead, got an ITD of $itd samples")
@@ -120,7 +124,7 @@ class World2DHandednessTest {
 
     @Test
     fun turningTheListenerSwapsTheEars() {
-        if (!available()) return
+        assumeAvailable()
         // Same source, listener facing the opposite way: the source must swap sides.
         val facingNorth = measure(sourceX = 5f, sourceY = 0f, facingX = 0f, facingY = 1f)
         val facingSouth = measure(sourceX = 5f, sourceY = 0f, facingX = 0f, facingY = -1f)
@@ -133,7 +137,7 @@ class World2DHandednessTest {
 
     @Test
     fun sourceDirectlyAheadOrBehindIsCentred() {
-        if (!available()) return
+        assumeAvailable()
         val ahead = measure(sourceX = 0f, sourceY = 5f, facingX = 0f, facingY = 1f)
         val behind = measure(sourceX = 0f, sourceY = -5f, facingX = 0f, facingY = 1f)
         assertTrue(
@@ -152,7 +156,7 @@ class World2DHandednessTest {
 
     @Test
     fun ildFollowsAzimuthAroundTheFullCircle() {
-        if (!available()) return
+        assumeAvailable()
         // Walk a source around the listener in the 2D plane and check the ear balance tracks
         // the azimuth: positive on the listener's right half, negative on the left.
         val listenerFacing = 0f to 1f   // north

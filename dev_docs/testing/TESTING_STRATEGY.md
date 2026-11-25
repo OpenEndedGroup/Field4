@@ -378,6 +378,26 @@ of both `check` and `docsGates`. They are excluded from broad `jvmTest` so they 
 once, with their real Markdown, JavaScript, and build-script inputs declared;
 therefore a docs-only edit cannot inherit a stale JVM-test result.
 
+### Native-gated tests
+
+A JVM test that needs an optional native library (paint, libpd, Csound, Steam Audio, TetGen,
+Manifold, openNURBS, Morse-Smale, principal curves, polyvector, Syphon, LuaJIT, ...) must say
+SKIPPED when the library is missing, never pass. Use a JUnit assumption: a file-local
+`assumeAvailable()` over the file's `available()` check, or a shared helper such as
+`requirePaintLibrary()` in `afield/graphics/paint/PaintTestSupport.kt`. The old
+`if (!available()) return` (and `if (!X.isAvailable) return`, or the block form
+`{ println(...); return }`) counted every such test as a pass on a machine without the library.
+`tools/check_native_gated_tests.py` fails on any of these in `jvmTest` or `jvmFastTest`; its suite
+`tools/test_check_native_gated_tests.py` runs in `checkPythonTools`, which the lander and precheck
+select for any change to a JVM test source. The skip count is in the Gradle summary and in each `TEST-*.xml` (`<skipped>`).
+
+No landing runs `jvmTest`, so a skip alone still lets a red through. For paint, the gap is closed:
+`./gradlew checkPaintTests` builds `native/field-paint` (needs cargo), runs `afield.graphics.paint.*`
+and fails if any test skipped. Both `tools/land.py precheck` and the lander select it for a diff
+under `native/field-paint` or `afield/graphics/paint`. The lander's fixer may not add an
+assumption, for the same reason it may not add `@Ignore`. The other native families have no such
+guard yet: before enqueueing a change to one, build its native and run its tests locally.
+
 ### Tests must not write into the working tree
 
 A test renders into a temp directory and inspects it there. `proofDir()` and

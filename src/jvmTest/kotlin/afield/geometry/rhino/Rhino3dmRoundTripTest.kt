@@ -93,7 +93,7 @@ class Rhino3dmRoundTripTest {
         assertTrue(abs(actual - expected) <= rel * abs(expected), "$what: expected $expected within ${rel * 100}%, got $actual")
 
     @Test fun writtenSceneReadsBackMeasured() {
-        if (!Rhino3dm.isAvailable) { println("SKIPPED round trip: ${Rhino3dm.describe()}"); return }
+        org.junit.Assume.assumeTrue("SKIPPED round trip: ${Rhino3dm.describe()}", Rhino3dm.isAvailable)
         val dir = Files.createTempDirectory("rhino-roundtrip").toFile()
         try {
             val model = Rhino3dm.load(write(File(dir, "roundtrip.3dm")), meshing = RhinoBrepMeshing.EVALUATE)

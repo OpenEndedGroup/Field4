@@ -9,10 +9,14 @@ import kotlin.test.assertTrue
 /**
  * libpd through FFM, measured from the samples.
  *
- * Optional like TetGen and Manifold: without `build/field-libpd` every test but the first prints a
- * SKIPPED line and returns. Build it with `python3 tools/build_libpd_native.py`.
+ * Optional like TetGen and Manifold: without `build/field-libpd` every test but the first is reported
+ * SKIPPED (a JUnit assumption). Build it with `python3 tools/build_libpd_native.py`.
  */
 class PdTest {
+
+    /** Reports the test SKIPPED, not passed, when the native library is missing. */
+    private fun assumeAvailable() =
+        org.junit.Assume.assumeTrue("${javaClass.simpleName}: native library not available", available())
 
     private fun available(): Boolean {
         if (!PdLibrary.isAvailable) {
@@ -39,7 +43,7 @@ class PdTest {
     }
 
     @Test fun anOscillatorRendersAtItsFrequencyAndAmplitude() {
-        if (!available()) return
+        assumeAvailable()
         PdInstance(sampleRate = 48_000).use { pd ->
             pd.openPatchText(sine, "sine")
             val (left, right) = pd.renderOffline(1.0)
@@ -57,7 +61,7 @@ class PdTest {
     }
 
     @Test fun oddSizedRendersJoinUpExactly() {
-        if (!available()) return
+        assumeAvailable()
         val whole = PdInstance().use { pd ->
             pd.openPatchText(sine)
             FloatArray(300).also { pd.render(it, FloatArray(300), 300) }
@@ -78,7 +82,7 @@ class PdTest {
     }
 
     @Test fun aMessageMakesTheRoundTrip() {
-        if (!available()) return
+        assumeAvailable()
         PdInstance().use { pd ->
             pd.openPatchText("""
                 #X obj 20 20 r in;
@@ -102,7 +106,7 @@ class PdTest {
     }
 
     @Test fun symbolsListsAndPrintCome_back() {
-        if (!available()) return
+        assumeAvailable()
         PdInstance().use { pd ->
             pd.openPatchText("""
                 #X obj 20 20 r words;
@@ -126,7 +130,7 @@ class PdTest {
     }
 
     @Test fun arraysWriteAndReadBack() {
-        if (!available()) return
+        assumeAvailable()
         PdInstance().use { pd ->
             pd.openPatchText("#X obj 20 20 table tab 8;")
             assertEquals(8, pd.arraySize("tab"))
@@ -140,7 +144,7 @@ class PdTest {
     }
 
     @Test fun aPatchReadsAnArrayThatFieldWrote() {
-        if (!available()) return
+        assumeAvailable()
         // Field writes a wavetable; [tabread4~]-free [tabplay~] plays it back into the dac~.
         PdInstance().use { pd ->
             pd.openPatchText("""
@@ -162,7 +166,7 @@ class PdTest {
     }
 
     @Test fun twoInstancesDoNotHearEachOther() {
-        if (!available()) return
+        assumeAvailable()
         val relay = "#X obj 20 20 r in;\n#X obj 20 60 s out;\n#X connect 0 0 1 0;"
         PdInstance().use { a ->
             PdInstance().use { b ->
@@ -182,7 +186,7 @@ class PdTest {
     }
 
     @Test fun anObjectPdCannotCreateIsPlacedOnItsLine() {
-        if (!available()) return
+        assumeAvailable()
         PdInstance().use { pd ->
             val text = "#N canvas 0 0 400 300 12;\n#X obj 20 20 osc 440;\n#X obj 20 60 dac~;\n#X connect 0 0 1 0;\n"
             val patch = pd.openPatchText(text)
@@ -204,7 +208,7 @@ class PdTest {
         assertEquals(afield.audio.synth.PdGuiControl("hsl", "freq", "Frequency", 100.0, 1000.0, 100.0), controls[0])
         assertEquals("tgl", controls[1].kind)
         assertEquals(1.0, controls[1].max)
-        if (!available()) return
+        assumeAvailable()
         PdInstance().use { pd ->
             pd.openPatchText(text)
             val out = ArrayList<Float>()
@@ -220,7 +224,7 @@ class PdTest {
     }
 
     @Test fun aPatchRendersToAWavWithoutAnAudioDevice() {
-        if (!available()) return
+        assumeAvailable()
         val file = kotlin.io.path.createTempFile("field-pd-", ".wav").toFile()
         try {
             afield.audio.synth.renderPdWav(file, sine, 0.5)
@@ -234,7 +238,7 @@ class PdTest {
     }
 
     @Test fun aPatchWithAnAdcIsAnEffectOnWhatFeedsIt() {
-        if (!available()) return
+        assumeAvailable()
         PdInstance(inputs = 2).use { pd ->
             pd.openPatchText("""
                 #X obj 20 20 adc~;
@@ -261,7 +265,7 @@ class PdTest {
     }
 
     @Test fun midiGoesInThroughNoteinAndOutThroughNoteout() {
-        if (!available()) return
+        assumeAvailable()
         PdInstance().use { pd ->
             pd.openPatchText("""
                 #X obj 20 20 notein;
@@ -291,7 +295,7 @@ class PdTest {
     }
 
     @Test fun sendsFromManyThreadsWhileAnotherRendersAllArriveInPerThreadOrder() {
-        if (!available()) return
+        assumeAvailable()
         // The discipline under load: four senders, one rendering thread standing in for the audio
         // thread, and receives polled on this one. Nothing may be lost, crash, or be reordered
         // within one sender.

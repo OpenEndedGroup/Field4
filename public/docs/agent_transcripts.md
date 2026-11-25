@@ -4216,6 +4216,8 @@ with 40 CPU steps. The learned box fits the same energy to solved grids, and its
 stated one. Three more boxes each state a problem in a few lines and animate it as it settles:
 N-queens, colouring a nearest-neighbour graph, and a travelling-salesman tour.
 
+![A 12 by 12 chequerboard with twelve gold queens, one in each row and column, none sharing a diagonal; above it the caption 0 attacks](assets/discrete_energy/queens.png)
+
 [Open →](offline.html?file=assets/agent_transcripts/discrete_energy/metadata.edn)
 
 ### satellites

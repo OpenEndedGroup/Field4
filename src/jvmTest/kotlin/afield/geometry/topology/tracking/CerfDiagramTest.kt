@@ -11,6 +11,10 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class CerfDiagramTest {
+    /** Reports the test SKIPPED, not passed, when the native library is missing. */
+    private fun assumeAvailable() =
+        org.junit.Assume.assumeTrue("${javaClass.simpleName}: native library not available", available())
+
     private fun available(): Boolean {
         if (!MorseSmaleLibrary.isAvailable) println("SKIPPED Cerf diagram tests: ${MorseSmaleLibrary.describe()}")
         return MorseSmaleLibrary.isAvailable
@@ -44,7 +48,7 @@ class CerfDiagramTest {
 
     @Test
     fun aRisingFlankHillIsBornAsASaddleMaximumPairAndCancels() {
-        if (!available()) return
+        assumeAvailable()
         val cerf = run(1.0)
         val births = cerf.events(CerfEventType.BIRTH)
         val deaths = cerf.events(CerfEventType.DEATH)
@@ -65,7 +69,7 @@ class CerfDiagramTest {
 
     @Test
     fun theNegatedFieldGivesAMinimumSaddlePair() {
-        if (!available()) return
+        assumeAvailable()
         val cerf = run(-1.0)
         val births = cerf.events(CerfEventType.BIRTH)
         assertEquals(1, births.size, "${cerf.events}")

@@ -8,10 +8,7 @@ import kotlin.test.*
 
 class LorisAsyncCancellationTest {
     @Test fun cancellingAnAnalysisTerminatesItsActualNativeChild() {
-        if (!LorisNative.isAvailable) {
-            println("SKIPPED Loris process cancellation: ${LorisNative.describe()}")
-            return
-        }
+        org.junit.Assume.assumeTrue("SKIPPED Loris process cancellation: ${LorisNative.describe()}", LorisNative.isAvailable)
         val cache = Files.createTempDirectory("loris-cancellation").toAbsolutePath()
         val samples = FloatArray(3_000_000) { i -> (0.2 * sin(i * 0.027)).toFloat() }
         var publications = 0
