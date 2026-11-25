@@ -53,7 +53,7 @@ from manim import MarkupText, PMobject, Scene, Text, VMobject, config, tempconfi
 from manim.mobject.types.image_mobject import AbstractImageMobject
 from manim.renderer.cairo_renderer import CairoRenderer
 
-__all__ = ["bake", "Baked", "use_font", "FONT"]
+__all__ = ["bake", "Baked", "tag", "use_font", "FONT"]
 
 #: Where Manim keeps what it writes for ``Text`` and ``MathTex`` (SVG and TeX caches). Manim's own
 #: default is ``./media``, which inside Field is the checkout or wherever Field was started.
@@ -110,6 +110,27 @@ if _register_field_font():
     use_font(FONT)
 
 
+def tag(mobject, name: str):
+    """Name ``mobject`` (and everything inside it) for Field: ``tag(Circle(), "orbit")``.
+
+    Every path the mobject draws is recorded with the name, so a Kotlin box can ask for that part
+    of the scene alone (``scene.units(t, "orbit")``) or where it is (``scene.center("orbit", t)``).
+    A tag on a submobject wins over its parent's. Returns ``mobject``, so it can wrap a constructor.
+
+    The name is written onto every member of the family now, not looked up through the scene later,
+    because animations such as ``LaggedStart(*[Create(c) for c in group])`` add the members to the
+    scene on their own, outside the group. A member that already has a tag keeps it, and tagging a
+    member afterwards overrides the group's name for that member.
+    """
+    name = str(name)
+    mobject.field_tag = name
+    mobject._field_tag_own = True
+    for member in mobject.get_family()[1:]:
+        if not getattr(member, "_field_tag_own", False):
+            member.field_tag = name
+    return mobject
+
+
 @dataclass
 class Baked:
     """What :func:`bake` published: the name a Kotlin box asks for, and how much of it there is."""
@@ -121,6 +142,8 @@ class Baked:
     paths: int
     beats: list[str] = field(default_factory=list)
     skipped: dict[str, int] = field(default_factory=dict)
+    tags: list[str] = field(default_factory=list)
+    depth: bool = False
 
     @property
     def duration(self) -> float:
@@ -142,8 +165,10 @@ class Baked:
 
     def __repr__(self) -> str:
         skipped = f", skipped {self.skipped}" if self.skipped else ""
+        tags = f", tags {self.tags}" if self.tags else ""
+        depth = ", with depth" if self.depth else ""
         return (f"<Baked {self.name!r}: {self.duration:.2f} s, {self.frames} frames at {self.fps:g} fps, "
-                f"{len(self.beats)} beats ({', '.join(self.beats)}){skipped}>")
+                f"{len(self.beats)} beats ({', '.join(self.beats)}){tags}{depth}{skipped}>")
 
 
 class _NoFiles:
@@ -154,19 +179,21 @@ class _NoFiles:
 
 
 class _Snapshot:
-    __slots__ = ("points", "subpaths", "styles", "path_subpaths")
+    __slots__ = ("points", "subpaths", "styles", "path_subpaths", "path_tags")
 
-    def __init__(self, points, subpaths, styles, path_subpaths):
+    def __init__(self, points, subpaths, styles, path_subpaths, path_tags):
         self.points = points
         self.subpaths = subpaths
         self.styles = styles
         self.path_subpaths = path_subpaths
+        self.path_tags = path_tags
 
     def same_as(self, other: "_Snapshot | None") -> bool:
         return (other is not None
                 and np.array_equal(self.path_subpaths, other.path_subpaths)
                 and np.array_equal(self.subpaths, other.subpaths)
                 and np.array_equal(self.styles, other.styles)
+                and np.array_equal(self.path_tags, other.path_tags)
                 and np.array_equal(self.points, other.points))
 
 
@@ -186,9 +213,12 @@ class _Recorder(CairoRenderer):
     file and caching bookkeeping, which a recording has no use for.
     """
 
-    def __init__(self, fps: float):
+    def __init__(self, fps: float, depth: bool = False):
         super().__init__(skip_animations=False)
         self.fps = fps
+        self.depth = depth
+        self.tags: list[str] = []
+        self._tag_index: dict[str, int] = {}
         self.snapshots: list[_Snapshot] = []
         self.frame_snapshots: list[int] = []
         self.skipped: dict[str, set[int]] = {}
@@ -236,12 +266,35 @@ class _Recorder(CairoRenderer):
     def scene_finished(self, scene) -> None:
         pass
 
+    def _tags_by_id(self) -> dict[int, int]:
+        """Each mobject's tag index, inherited from the nearest tagged ancestor; untagged ones are absent."""
+        out: dict[int, int] = {}
+
+        def walk(mob, inherited: int) -> None:
+            own = getattr(mob, "field_tag", None)
+            if own is not None and (getattr(mob, "_field_tag_own", False) or inherited < 0):
+                if own not in self._tag_index:
+                    self._tag_index[own] = len(self.tags)
+                    self.tags.append(own)
+                inherited = self._tag_index[own]
+            if inherited >= 0:
+                out[id(mob)] = inherited
+            for sub in mob.submobjects:
+                walk(sub, inherited)
+
+        for mob in self.scene.mobjects:
+            walk(mob, -1)
+        return out
+
     def _snapshot(self) -> _Snapshot:
         camera = self.camera
         points: list[np.ndarray] = []
         subpaths: list[tuple[int, int]] = []
         styles: list[tuple[float, ...]] = []
         path_subpaths: list[int] = []
+        path_tags: list[int] = []
+        tags = self._tags_by_id()
+        dims = 3 if self.depth else 2
 
         for mob in camera.get_mobjects_to_display(self.scene.mobjects):
             if not isinstance(mob, VMobject):
@@ -249,7 +302,9 @@ class _Recorder(CairoRenderer):
                 if isinstance(mob, (PMobject, AbstractImageMobject)):
                     self.skipped.setdefault(type(mob).__name__, set()).add(id(mob))
                 continue
-            pts = camera.transform_points_pre_display(mob, mob.points)
+            # With depth, the scene's own 3D coordinates; Field's camera is the one that looks at them.
+            pts = mob.points if self.depth else camera.transform_points_pre_display(mob, mob.points)
+            mob_tag = tags.get(id(mob), -1)
             if len(pts) == 0:
                 continue
             geometry = []
@@ -258,10 +313,10 @@ class _Recorder(CairoRenderer):
                 k = (end - start) // 4
                 if k == 0:
                     continue
-                seg = pts[start:start + 4 * k, :2]
+                seg = pts[start:start + 4 * k, :dims]
                 # Manim stores each cubic as (anchor, handle, handle, anchor); Field wants a start
                 # point and then (handle, handle, anchor) per cubic.
-                flat = np.concatenate([seg[:1], seg.reshape(k, 4, 2)[:, 1:, :].reshape(-1, 2)])
+                flat = np.concatenate([seg[:1], seg.reshape(k, 4, dims)[:, 1:, :].reshape(-1, dims)])
                 closed = bool(mob.consider_points_equals_2d(pts[start], pts[end - 1]))
                 geometry.append((flat, closed))
             if not geometry:
@@ -272,6 +327,7 @@ class _Recorder(CairoRenderer):
                 subpaths.extend((len(g), int(c)) for g, c in geometry)
                 styles.append((*map(float, rgba[:4]), float(width), 1.0 if filled else 0.0))
                 path_subpaths.append(len(geometry))
+                path_tags.append(mob_tag)
 
             # The same order as Camera.display_vectorized: background stroke, fill, stroke.
             bg_width = mob.get_stroke_width(background=True)
@@ -289,10 +345,11 @@ class _Recorder(CairoRenderer):
                     emit(rgba, width, False)
 
         return _Snapshot(
-            np.concatenate(points).astype(np.float32) if points else np.zeros((0, 2), np.float32),
+            np.concatenate(points).astype(np.float32) if points else np.zeros((0, dims), np.float32),
             np.asarray(subpaths, np.int32).reshape(-1, 2),
             np.asarray(styles, np.float32).reshape(-1, 6),
             np.asarray(path_subpaths, np.int32),
+            np.asarray(path_tags, np.int32),
         )
 
 
@@ -305,13 +362,17 @@ def _scene_class(scene) -> type[Scene]:
     raise TypeError(f"bake() wants a Scene subclass or a function of the scene, not {scene!r}")
 
 
-def bake(scene, name: str | None = None, fps: float = 30, **manim_config) -> Baked:
+def bake(scene, name: str | None = None, fps: float = 30, depth: bool = False, **manim_config) -> Baked:
     """Play ``scene`` without rendering it and publish every frame's paths to Field as ``name``.
 
     ``scene`` is a ``Scene`` subclass, or a function that takes the scene and does what
     ``construct`` would (``def intro(s): s.play(Create(Circle()))``). ``name`` defaults to the
     scene's class or function name. Any other keyword is a Manim config option for this bake
     (``background_color=WHITE``, ``frame_width=10``).
+
+    Mobjects named with :func:`tag` are recorded under that name. ``depth=True`` keeps every
+    point's z, in the scene's own coordinates and without Manim's camera, for a box that places the
+    scene in 3D (``scene.units(t)``); the 2D drawing (``at``, ``draw``) is unchanged by it.
 
     A Kotlin box reads the result with ``NumpyShared.pathFrames(name)``; baking again under the
     same name replaces it, and a box drawing it picks up the new one on its next frame.
@@ -321,7 +382,7 @@ def bake(scene, name: str | None = None, fps: float = 30, **manim_config) -> Bak
     options = {"frame_rate": fps, "disable_caching": True, "progress_bar": "none",
                "write_to_movie": False, "save_last_frame": False, **manim_config}
     with tempconfig(options):
-        recorder = _Recorder(float(config.frame_rate))
+        recorder = _Recorder(float(config.frame_rate), depth=depth)
         instance = cls(renderer=recorder)
         instance.setup()
         instance.construct()
@@ -337,6 +398,8 @@ def bake(scene, name: str | None = None, fps: float = 30, **manim_config) -> Bak
     subpaths = np.concatenate([s.subpaths for s in snaps]).astype(np.int32)
     styles = np.concatenate([s.styles for s in snaps]).astype(np.float32)
     path_subpaths = np.concatenate([s.path_subpaths for s in snaps]).astype(np.int32)
+    path_tags = np.concatenate([s.path_tags for s in snaps]).astype(np.int32)
+    tag_names = "\n".join(t.replace("\n", " ") for t in recorder.tags)
     snapshot_paths = np.asarray([len(s.path_subpaths) for s in snaps], np.int32)
     frame_snapshots = np.asarray(recorder.frame_snapshots, np.int32)
     beat_starts = np.asarray([start for start, _ in recorder.beats], np.int32)
@@ -349,7 +412,9 @@ def bake(scene, name: str | None = None, fps: float = 30, **manim_config) -> Bak
         points.ravel(), subpaths.ravel(), styles.ravel(),
         path_subpaths, snapshot_paths, frame_snapshots,
         beat_starts, beat_names,
+        path_tags, tag_names, 3 if depth else 2,
     )
     return Baked(name, recorder.fps, len(frame_snapshots), len(snaps), int(snapshot_paths.max(initial=0)),
                  [name for _, name in recorder.beats],
-                 {kind: len(ids) for kind, ids in recorder.skipped.items()})
+                 {kind: len(ids) for kind, ids in recorder.skipped.items()},
+                 list(recorder.tags), depth)

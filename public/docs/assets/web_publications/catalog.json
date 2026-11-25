@@ -5270,6 +5270,27 @@
         "public/docs/assets/agent_transcripts_gallery/shadertrinket_flat_rings.png"
       ]
     },
+    "assets/agent_transcripts/shared_kotlin_garden/metadata.edn": {
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-25T13:33:34.031Z",
+      "channels": 1,
+      "file": "assets/web_publications/shared_kotlin_garden/document/metadata.edn",
+      "files": {
+        "assets/web_publications/shared_kotlin_garden/document/metadata.edn": "bbf1544ca1b1928c52cc1bf22c3d386a87954207a7a13c9f6fa567237b7f1316",
+        "assets/web_publications/shared_kotlin_garden/document/outputs.json": "eee9a0f41164fc8c122b80e01eaf358c6981075cde7057dbb52150640e6eb2c3",
+        "assets/web_publications/shared_kotlin_garden/outputs/0.html": "f129b75b25c1cf70efdd19fc984b08aabe65bff36e1cb670ba129bc0f9cc5f9d"
+      },
+      "kinds": [],
+      "outputs": "assets/web_publications/shared_kotlin_garden/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/shared_kotlin_garden.yaml": "9af473fb3a9716db03d447186def4df9b8a7f05018abccb9831c6941a8f58a7c",
+        "public/docs/assets/agent_transcripts/shared_kotlin_garden/garden_settings_code_.kt": "8156e642dfc8608190ab6d63ade2db0acafe7478a3f5978170197670880a35f7",
+        "public/docs/assets/agent_transcripts/shared_kotlin_garden/garden_types_code_.kt": "2f5af0df9e1aa5e0410a967067cf8c09c45b5de248d3a48f4f47b18d4b0e7f49",
+        "public/docs/assets/agent_transcripts/shared_kotlin_garden/garden_view_code_.kt": "9e4260791716caed1a9592e82b273688a19e79c4d516b4591100493dbfabc1cb",
+        "public/docs/assets/agent_transcripts/shared_kotlin_garden/guides/tour_connecting_boxes-share-a-type-between-boxes.md": "1c684854eb6ebf41685af606dee78bf8bd9223c1af2cacfe19fce2171119e85d",
+        "public/docs/assets/agent_transcripts/shared_kotlin_garden/metadata.edn": "2a5a808ddb195528df845b50626e4b0387be833f9dc527504f6828d04fc84529"
+      }
+    },
     "assets/agent_transcripts/simdverlet_world/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
       "capturedAt": "2026-11-18T15:58:59.998Z",

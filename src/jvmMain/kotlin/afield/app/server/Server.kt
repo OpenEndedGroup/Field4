@@ -628,6 +628,9 @@ class SessionInformation(
      */
     val readOnly: Boolean = ReadOnlyDocuments.global
 ) {
+    /** Shared Kotlin declarations and their classloader belong to this document session. */
+    val documentTypes = afield.runtime.kotlin.DocumentTypes(this)
+
     /** The latest `viewport` a browser reported for this document; see [Box.viewport]. */
     @Volatile
     var viewport: Rect? = null

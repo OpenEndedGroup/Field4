@@ -566,6 +566,11 @@ internal fun attachDocumentSession(
             // drain a full code/editor-state sync.
             queueStartupPriorityDocumentResync(info, startupBoxes)
 
+            // A document's declarations must be available before any box engine snapshots its
+            // compile classpath. Failed declarations remain editable; running their box shows errors.
+            val declarations = kotlinx.coroutines.runBlocking { info.documentTypes.publish() }
+            if (!declarations.ok) lprintln("error,ki", "shared Kotlin declarations: ${declarations.message}")
+
             // Phase 3: Queue KotlinInterface creation for every box. Accessing
             // box.ki starts stdlib import work asynchronously; the box only
             // becomes truly online when that import clears box.offline.

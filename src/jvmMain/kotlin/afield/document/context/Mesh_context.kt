@@ -71,7 +71,11 @@ inline fun <reified A> fromContext(defaultValue: A? = null, includeLocalVariable
     }
     val found = ContextResolution.walk(
         f,
-        ContextResolution.Query.byType(A::class.java) { it is A },
+        ContextResolution.Query.byType(A::class.java) {
+            if (it != null && (it is A || it.javaClass.name == A::class.java.name) && f.isInsideInitialized())
+                f.inside.documentTypes.requireCurrent(it, f)
+            it is A
+        },
         ContextResolution.Policy.fromContext(includeLocalVariables),
         ContextResolution.Mechanism.FROM_CONTEXT,
     )
@@ -98,7 +102,10 @@ inline fun <reified A> fromContextWithNameOrNull(
     val f = Box.context.get()
     if (f == null) return defaultValue
 
-    val accept: (Any?) -> Boolean = { it != null && it::class.isSubclassOf(A::class) }
+    val accept: (Any?) -> Boolean = {
+        if (it != null && f.isInsideInitialized()) f.inside.documentTypes.requireCurrent(it, f)
+        it != null && it::class.isSubclassOf(A::class)
+    }
     val found = ContextResolution.walk(
         f,
         ContextResolution.Query(name, listOf(name), accept, { accept(it.value) }),

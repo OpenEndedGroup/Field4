@@ -154,6 +154,34 @@ comes up and stops it when the talk moves on.
 [Live figures beside prose](presentation_studio.md#live-figures-beside-prose) has the rest of how
 figures, controls and cues work.
 
+## Parts by name, and depth
+
+To draw or follow one part of a scene from Kotlin, name it in Python with `fieldmanim.tag`. It
+returns the mobject, so it can wrap the constructor, and everything inside a tagged group carries
+the group's name unless a part has a tag of its own:
+
+```diffstatic {data-lang=python}
+cells = fieldmanim.tag(VGroup(*[Square(0.3) for _ in range(18)]).arrange(RIGHT, buff=0), "copies")
+rod = fieldmanim.tag(Line(LEFT, RIGHT, color=YELLOW).shift(DOWN * 2), "rod")
+...
+self.play(Transform(cells, fives), rod.animate.shift(OUT * 2 + RIGHT * 3), run_time=2)
+
+fieldmanim.bake(Recut, "recut", depth=True)
+```
+
+A tag survives a `Transform`: the paths `cells` becomes are still `copies`. In Kotlin,
+`scene.tags` lists the names, `scene.center("rod", t)` is where that part is at `t` (the centre
+of its bounding box, or `null` when it is not on screen) and `scene.visible("rod", t)` says
+whether it is there at all.
+
+`scene.units(t)` is the frame in the scene's own coordinates rather than on a canvas: x right
+and y up from the centre of the frame, in Manim's units, with stroke widths in the same units.
+`scene.units(t, "rod")` is the tagged part alone. With `depth=True`, `bake` keeps every point's
+z as well, in the scene's coordinates and without Manim's camera, so the lines can be placed in
+a 3D scene and looked at by Field's camera. Here the rod's centre goes from `(-1, -2, 0)` to
+`(3, -2, 2)` as it moves out. Without `depth`, z is zero. Either way, `at` and `draw` draw the
+same 2D picture.
+
 ## What gets drawn
 
 A bake records what Manim's own renderer would have painted on every frame: each shape's

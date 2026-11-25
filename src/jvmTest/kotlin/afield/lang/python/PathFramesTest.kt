@@ -120,4 +120,43 @@ class PathFramesTest {
         assertTrue("5 points" in e.message!!, e.message)
         assertTrue(frames.at(0.0).isEmpty(), "a refused publish leaves the old animation in place")
     }
+
+    @Test
+    fun taggedPartsAreAskedForByNameInTheScenesOwnUnits() {
+        val frames = NumpyShared.pathFrames(unique("tagged"))
+        // One frame, two open lines in x, y, z: "rod" from (0, 0, 1) to (2, 0, 1), and an untagged one.
+        val rod = floatArrayOf(0f, 0f, 1f, 0f, 0f, 1f, 2f, 0f, 1f, 2f, 0f, 1f)
+        val other = floatArrayOf(-1f, -1f, 0f, -1f, -1f, 0f, -1f, 1f, 0f, -1f, 1f, 0f)
+        frames.publish(
+            fps = 10.0, unitWidth = 4.0, unitHeight = 2.0,
+            background = floatArrayOf(0f, 0f, 0f, 0f),
+            points = rod + other,
+            subpaths = intArrayOf(4, 0, 4, 0),
+            styles = floatArrayOf(1f, 1f, 1f, 1f, 4f, 0f, 1f, 1f, 1f, 1f, 4f, 0f),
+            pathSubpaths = intArrayOf(1, 1),
+            snapshotPaths = intArrayOf(2),
+            frameSnapshots = intArrayOf(0),
+            pathTags = intArrayOf(0, -1),
+            tagNames = "rod",
+            dims = 3,
+        )
+        assertEquals(listOf("rod"), frames.tags)
+        assertTrue(frames.hasDepth)
+        assertEquals(2, frames.units(0.0).size)
+        val only = frames.units(0.0, "rod").single()
+        assertEquals(1.0, only.nodes.last().to.z.toDouble(), 1e-6, "z is kept")
+        assertEquals(.04, only.thickness!!.toDouble(), 1e-6, "stroke width in units")
+        val c = frames.center("rod", 0.0)!!
+        assertEquals(1f, c.x, 1e-6f); assertEquals(0f, c.y, 1e-6f); assertEquals(1f, c.z, 1e-6f)
+        assertEquals(null, frames.center("missing", 0.0))
+        assertTrue(frames.units(0.0, "missing").isEmpty())
+        // The 2D canvas drawing reads x, y from the triples just as from pairs.
+        val drawn = frames.at(0.0, 400.0, 200.0, background = false)
+        assertEquals(2, drawn.size)
+        assertEquals(400.0, drawn[0].nodes.last().to.x.toDouble(), 1e-6)
+        assertFailsWith<IllegalArgumentException> {
+            frames.publish(10.0, 4.0, 2.0, floatArrayOf(0f, 0f, 0f, 0f), rod, intArrayOf(4, 0), floatArrayOf(1f, 1f, 1f, 1f, 4f, 0f),
+                intArrayOf(1), intArrayOf(1), intArrayOf(0), IntArray(0), "", intArrayOf(3), "rod", 3)
+        }
+    }
 }

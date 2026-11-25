@@ -1914,6 +1914,16 @@ internal fun Box.hasSomethingToStop(): Boolean =
 internal fun retireBoxes(boxes: Collection<Box>, entrypoint: String) {
     stopBoxes(boxes, entrypoint)
     boxes.forEach { it.disposeKi() }
+    if (entrypoint != "session-cleanup") {
+        val sessions = boxes.filter { it.isInsideInitialized() && it.getPropertyRaw("box_kind") == afield.runtime.kotlin.SHARED_KOTLIN_BOX }
+            .map { it.inside }.distinct()
+        if (sessions.isNotEmpty()) inMain {
+            sessions.forEach { session ->
+                val result = session.documentTypes.publish()
+                if (!result.ok) lprintln("error,ki", "shared Kotlin declarations: ${result.message}")
+            }
+        }
+    }
 }
 
 /**
@@ -2277,7 +2287,7 @@ private fun buildKI(box: Box, reason: String, superseded: () -> Boolean, spare: 
             "request #$startupId async reason=$reason box=${box.kotlinStartupLabel()} caller=$requestedFrom"
         )
         val ki = LatencySpans.time("engine.create", box = box.id, detail = "async") {
-            createKotlinScriptEngine(implicitReceivers = listOf(KotlinType(Box::class)), filePrefix = box.id)
+            createKotlinScriptEngine(implicitReceivers = listOf(KotlinType(Box::class)), classLoader = if (box.isInsideInitialized()) box.inside.documentTypes.loader else null, filePrefix = box.id)
         }
         ki.associatedBox = box  // Set the box reference for @exported support
         // Close the engine's readiness gate now (synchronously, before returning `ki`) so any
@@ -2385,7 +2395,7 @@ suspend fun makeKIHere(box: Box, reason: String = "makeKIHere call"): KotlinScri
         "request #$startupId sync reason=$reason box=${box.kotlinStartupLabel()} caller=$requestedFrom"
     )
     val ki = LatencySpans.time("engine.create", box = box.id, detail = "sync") {
-        createKotlinScriptEngine(implicitReceivers = listOf(KotlinType(Box::class)), filePrefix = box.id)
+        createKotlinScriptEngine(implicitReceivers = listOf(KotlinType(Box::class)), classLoader = if (box.isInsideInitialized()) box.inside.documentTypes.loader else null, filePrefix = box.id)
     }
     ki.associatedBox = box  // Set the box reference for @exported support
     val si = thisSessionInfo.get()

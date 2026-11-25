@@ -290,6 +290,7 @@ object DemoTranscriptExecSmokeTest {
         // K2JVMCompiler and then recycles the other boxes' engines — but it is pure compute, and the
         // second run of box 1 is what holds the two engine-recycling regressions down.
         "shared_types_demo",
+        "shared_kotlin_garden", // Document-scoped class, passed through a parent's prop.
         // Kotlin DataFrame's compiler plugin. All FOUR boxes are executed. This comment used to say
         // three were, with the fourth created and deliberately not executed because it documented a
         // compile error on purpose — which was true of `dataframe_boundary`, the box d7d8dccc2

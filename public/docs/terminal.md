@@ -22,7 +22,7 @@ show several. This one runs [`btop`](https://github.com/aristocratos/btop), a sy
 (`brew install btop`; `top` works the same way if you do not have it):
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/terminal/btop.png" capture="box" wait="4" padding="16" timeout="180" embed=true name="terminal-btop" w="560" h="200" alt="A Field box with an open output panel titled 'btop' holding a terminal running btop: boxed panes of per-core CPU graphs, memory and disk use, network traffic, and a table of processes sorted by CPU use."}
-terminal("btop", command = ["btop"], height = 420)
+terminal("btop", command = ["btop"], height = 600)
 ```
 
 A second call with another channel name gives the box a second terminal:
