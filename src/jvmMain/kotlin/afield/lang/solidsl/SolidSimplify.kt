@@ -244,6 +244,8 @@ private fun simplifyProfileOnce(p: Profile): Profile = when (p) {
         }
     }
 
+    is Profile.Fold -> p.copy(child = simplifyProfileOnce(p.child))
+
     is Profile.Scale -> {
         val c = simplifyProfileOnce(p.child)
         when {

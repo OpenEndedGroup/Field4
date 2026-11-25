@@ -430,6 +430,7 @@ class SolidSLIndependenceTest {
         is Profile.Rect, is Profile.Polygon, Profile.Empty -> 0.0
         is Profile.Translate -> profileSagitta(p.child, scale)
         is Profile.Rotate -> profileSagitta(p.child, scale)
+        is Profile.Fold -> profileSagitta(p.child, scale)
         is Profile.Scale -> profileSagitta(p.child, scale * maxOf(abs(p.x), abs(p.y)))
         is Profile.Union -> p.children.maxOf { profileSagitta(it, scale) }
         is Profile.Intersect -> p.children.maxOf { profileSagitta(it, scale) }
