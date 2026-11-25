@@ -1,0 +1,46 @@
+#version 450
+#extension GL_EXT_buffer_reference : require
+
+layout(local_size_x = 64) in;
+layout(std430, buffer_reference) readonly buffer ScalarRows { float values[]; };
+layout(std430, buffer_reference) readonly buffer Coefficients { vec4 values[]; };
+layout(std430, buffer_reference) writeonly buffer Results { vec4 values[]; };
+
+layout(push_constant) uniform Spectrum {
+    ScalarRows basis;
+    ScalarRows queries;
+    Coefficients coefficients;
+    Results results;
+    uint sampleCount;
+    uint modeCount;
+    uint dimensions;
+    uint channelGroups;
+} pc;
+
+void main() {
+    uint index = gl_GlobalInvocationID.x
+               + gl_GlobalInvocationID.y * gl_NumWorkGroups.x * gl_WorkGroupSize.x;
+    if (index >= pc.sampleCount * pc.channelGroups) return;
+    uint sampleIndex = index % pc.sampleCount;
+    uint group = index / pc.sampleCount;
+    uint coefficientStart = group * (1 + 2 * pc.modeCount);
+    vec4 result = pc.coefficients.values[coefficientStart];
+    for (uint mode = 0; mode < pc.modeCount; ++mode) {
+        vec2 value;
+        if (pc.dimensions == 0) {
+            // Cached manifold basis, mode-major. Adjacent threads read adjacent vertices.
+            value = vec2(pc.basis.values[mode * pc.sampleCount + sampleIndex], 0.0);
+        } else {
+            // One lattice mode or wavevector per row. Queries contain radians or world positions.
+            float angle = 0.0;
+            for (uint axis = 0; axis < pc.dimensions; ++axis) {
+                angle += pc.basis.values[mode * pc.dimensions + axis]
+                       * pc.queries.values[sampleIndex * pc.dimensions + axis];
+            }
+            value = vec2(cos(angle), sin(angle));
+        }
+        uint row = coefficientStart + 1 + 2 * mode;
+        result += pc.coefficients.values[row] * value.x + pc.coefficients.values[row + 1] * value.y;
+    }
+    pc.results.values[index] = result;
+}

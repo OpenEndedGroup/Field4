@@ -276,6 +276,7 @@ nav:
     - Geometry & Solids:
       - Drawing on iPad: drawing_on.md
       - Meshes & 3D Geometry: mesh_examples.md
+      - Spectral Geometry: spectral_geometry.md
       - Solids & Booleans (Manifold): manifold.md
       - Shapes from Constraints (Ceres): ceres.md
       - Moving Parts and Clearance: swept_clearance.md
