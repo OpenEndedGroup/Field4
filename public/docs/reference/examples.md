@@ -317,13 +317,13 @@ Regression test for cross-box context inheritance via `fromContextWithNameOrNull
 
 ### DemoTranscriptExecSmokeTest { #demotranscriptexecsmoketest-kt-demotranscriptexecsmoketest }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">DemoTranscriptExecSmokeTest</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L96)
+[<code class="highlight"><span class="k">object</span> <span class="nc">DemoTranscriptExecSmokeTest</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L104)
 
 Verification-integrity harness: executes / compiles the box bodies of *every* shipped demo transcript under `dev_docs/agents/transcripts/` and asserts they carry no diagnostics.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L1222) |  |
+| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L1230) |  |
 
 ## DocsPanelCodeLinksSmokeTest.kt { #docspanelcodelinkssmoketest-kt }
 
@@ -2071,7 +2071,7 @@ Production shaders/RTTs on the real GPU: replacement identity, foreground isolat
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="readingfrostsmoke-kt--readingfrostsmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ReadingFrostSmoke/#L39) |  |
+| <a id="readingfrostsmoke-kt--readingfrostsmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ReadingFrostSmoke/#L46) |  |
 
 ## RendererCleanupSmoke.kt { #renderercleanupsmoke-kt }
 
