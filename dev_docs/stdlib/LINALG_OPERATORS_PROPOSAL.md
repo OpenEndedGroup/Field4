@@ -1,7 +1,8 @@
 # Proposal: a fuller operator surface for live-coding linear algebra
 
-Status: proposal, 2026-11-25. Nothing here is implemented. It is written against `main` at
-`7a1baebf87`, after `Complexf/d` and `Hypercomplexf/d` landed.
+Status: Tier 1 implemented (2026-11-25, branch `claude/linalg-tier1`; tests in
+`LiveCodingShorthandsTest`, rows on `linear_algebra_api.md`). Tiers 2 and 3 are proposals. Written
+against `main` at `7a1baebf87`, after `Complexf/d` and `Hypercomplexf/d` landed.
 
 The aim is the feel of the existing `a lerp 0.5 to b`, `v len 10`, `v.n` and `a x b`: geometry that
 reads as a sentence, typed while a picture is running, with no allocation surprises and no new
@@ -73,6 +74,11 @@ the package and needs nothing.
    `%=` is the in-place spelling today, and it stays the only one.
 
 ## Tier 1: small, unambiguous, used constantly
+
+Implemented as described, with one consequence worth knowing: `.deg`, `.turns` and `.rad` return
+`Float`, so an angle written with them carries float precision (about 1e-7) into a double
+calculation. `(1 cis 90.deg) near Complexd.I` is false at the double tolerance of 1e-9;
+`1 cis PI / 2` is true.
 
 ### Angles as values
 

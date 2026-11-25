@@ -72,16 +72,19 @@ import kotlin.math.min
  * a translation to give a rigid transform. `v3` lifts a 2D vector into 3D with `z = 0` and `v2`
  * drops the z again, for the float and the double types alike.
  *
- * The rest of the file is the arithmetic the generated types do not cover: scalar times vector,
- * vector times quaternion, vector times dual quaternion, the `x` infix cross product, `isNaN` for
- * the 2D and 3D vectors, and `%=` for [Quat] and [DualQuat]. `median(index)` reads a single
- * component's median across a collection of vectors and returns that one `Float`.
+ * The rest of the file is what the generated types do not cover: vector times quaternion, vector
+ * times dual quaternion, `isNaN` for the 2D and 3D vectors, `%=` for [Quat] and [DualQuat], angles
+ * as values (`90.deg`, `0.25.turns`, `30.deg.dir`, [TAU]), and the quaternion fields (`q.inv`,
+ * `q.axis`, `q.angle`, `q.forward`, [facing], `90.deg about Vec3.Y`, `v rot q`, `q near r`).
+ * `median(index)` reads a single component's median across a collection of vectors and returns that
+ * one `Float`.
  *
- * These types are mutable and most operations write into the receiver, so copy first
- * (`Vec3(existing)`) when the original still matters. Swizzles and the per-vector `invoke`, `%=` and
- * `len` operators are absent here because `tools/linalg-generator` emits them for every float vector
- * into `Swizzles.kt` and `VectorOperators.kt`; `%=` for [Quat] and [DualQuat] is written out here
- * because no generator covers those two.
+ * These types are mutable and most methods write into the receiver, so copy first
+ * (`Vec3(existing)`) when the original still matters; the operators and infix calls return new
+ * values. Swizzles (float vectors), and `2 * v`, the `x` cross product, `dot`, `dist`, `near`,
+ * `rot`, `about` and the per-vector `invoke`, `%=` and `len` (float and double), are absent here
+ * because `tools/linalg-generator` emits them into `Swizzles.kt` and `VectorOperators.kt`; `%=` for [Quat]
+ * and [DualQuat] is written out here because no generator covers those two.
  *
  * Point-cloud geometry built on these types lives elsewhere: centroids, medians and bounding boxes
  * in `linalg_spatial.kt`, convex hulls in `linalg_mesh.kt`.
@@ -282,15 +285,8 @@ operator fun DualQuat.remAssign(a: DualQuat) {
     this.set(a)
 }
 
-/**
- * Cross product as an infix operator: `a x b`, a vector perpendicular to both, right-handed.
- *
- * Returns a **new** vector and leaves both operands alone, unlike the `cross` method it wraps, which
- * writes into its receiver. Length is `|a||b|sin θ`, so normalize if you wanted just the direction, and
- * it collapses to zero for parallel inputs.
- */
-infix fun Vector3f.x(b: Vector3f) = Vector3f(this).cross(b)
-
+// The infix cross product `a x b` is generated for Vector3fc/Vector3dc (and the scalar 2D form for
+// Vector2fc/Vector2dc) into VectorOperators.kt, so a read-only operand such as `v.xyz x w` works.
 
 // `v * 2` for a Vec3 is NOT declared here. The generated `Vector3fc.times(scalar: Number)` in
 // afield.math.linalg.CompatTypes covers it, with the same body, and a second copy in this package
@@ -299,14 +295,8 @@ infix fun Vector3f.x(b: Vector3f) = Vector3f(this).cross(b)
 // the same-package declaration win and compiled, which is why it went unnoticed. Vec2 and Vec4 have
 // only the generated declaration and always worked.
 
-/** `2 * v` — scalar on the left, so the arithmetic reads the way it does on paper. New [Vec3]. */
-operator fun Number.times(s: Vector3fc): Vector3f = s.mul(this.toFloat(), Vector3f())
-
-/** `2 * v` with the scalar on the left, for [Vec2]. New vector; operands untouched. */
-operator fun Number.times(s: Vector2fc): Vector2f = s.mul(this.toFloat(), Vector2f())
-
-/** `2 * v` with the scalar on the left, for [Vec4]. New vector; operands untouched. */
-operator fun Number.times(s: Vector4fc): Vector4f = s.mul(this.toFloat(), Vector4f())
+// `2 * v` (a number on the left) is generated for every float and double vector into
+// VectorOperators.kt; a copy here would be the same overload ambiguity as `v * 2` above.
 
 /** True if any component of this 3D double vector is `NaN` — the check `==` cannot do for you. */
 fun Vector3dc.isNaN() = this.x().isNaN() || this.y().isNaN() || this.z().isNaN()
@@ -378,8 +368,8 @@ operator fun Quaternionfc.minus(r: Quaternionfc): Quat =
  * merely scaled axis can never produce a non-rotation. The one case to avoid is a zero-length axis:
  * that divides by zero and every component comes back `NaN`.
  */
-fun quat(angle: Number = 0.0, axis: Vector3f = vec(0, 0, 1)) =
-    Quaternionf().setAngleAxis(angle.toFloat(), axis.x, axis.y, axis.z)
+fun quat(angle: Number = 0.0, axis: Vector3fc = Vector3f.Z) =
+    Quaternionf().setAngleAxis(angle.toFloat(), axis.x(), axis.y(), axis.z())
 
 /**
  * A rigid transform from a rotation and a translation — the everyday [DualQuat] constructor.
@@ -402,3 +392,95 @@ fun dualquat(
 fun dualquat(real: Quaternionfc, dual: Quaternionfc) =
     DualQuaternionf(real, dual).normalize()
 
+
+// ---------------------------------------------------------------------------------------------
+// Angles as values. Each returns radians as a Float, the unit every rotation method takes, so
+// `q.rotateX(90.deg)` and `quat(45.deg, Vec3.Y)` need no conversion.
+
+/** One full turn in radians, 2π. */
+const val TAU: Double = 2.0 * kotlin.math.PI
+
+/** This many degrees, in radians: `90.deg` is π/2. */
+val Number.deg: Float get() = (toDouble() * kotlin.math.PI / 180.0).toFloat()
+
+/** This many whole turns, in radians: `0.25.turns` is a quarter turn, π/2. */
+val Number.turns: Float get() = (toDouble() * TAU).toFloat()
+
+/** This many radians, as a Float: the spelling that says so, `1.5.rad`. */
+val Number.rad: Float get() = toFloat()
+
+/** The unit [Vec2] at this angle in radians from +x, `(cos, sin)`: `30.deg.dir`. The inverse of `v.angle`. */
+val Number.dir: Vec2 get() = toDouble().let { Vector2f(kotlin.math.cos(it).toFloat(), kotlin.math.sin(it).toFloat()) }
+
+// ---------------------------------------------------------------------------------------------
+// Quaternion fields. All return new values; `invert()`, `conjugate()` and the other methods are the
+// in-place layer.
+
+/** The inverse rotation, as a new [Quat]: `q.inv * q` is the identity. `invert()` does the same in place. */
+val Quaternionfc.inv: Quat get() = Quaternionf(this).invert()
+
+/** The conjugate (−x, −y, −z, w), as a new [Quat]; for a unit quaternion it is the inverse. */
+val Quaternionfc.conj: Quat get() = Quaternionf(this).conjugate()
+
+/**
+ * The axis this rotation turns about, as a new unit [Vec3]. With no rotation at all there is no
+ * axis, and this is +z, the same default `quat()` uses.
+ */
+val Quaternionfc.axis: Vec3 get() {
+    val q = Quaternionf(this).normalize()
+    val s = kotlin.math.sqrt(kotlin.math.max(0f, 1f - q.w * q.w))
+    return if (s < 1e-6f) Vector3f(0f, 0f, 1f) else Vector3f(q.x / s, q.y / s, q.z / s)
+}
+
+/** How far this rotation turns about [axis], in radians, 0..2π. */
+val Quaternionfc.angle: Float get() = Quaternionf(this).normalize().let { 2f * kotlin.math.acos(it.w.coerceIn(-1f, 1f)) }
+
+/**
+ * Where a camera with this orientation looks: the rotated −z, as a new [Vec3].
+ *
+ * −z because Field's camera is a right-handed look-at whose eye looks down −z. Build an orientation
+ * from a direction with [facing].
+ */
+val Quaternionfc.forward: Vec3 get() = transform(Vector3f(0f, 0f, -1f), Vector3f())
+
+/** The rotated +y, as a new [Vec3]: a camera's up with this orientation. */
+val Quaternionfc.up: Vec3 get() = transform(Vector3f(0f, 1f, 0f), Vector3f())
+
+/** The rotated +x, as a new [Vec3]: a camera's right with this orientation. */
+val Quaternionfc.right: Vec3 get() = transform(Vector3f(1f, 0f, 0f), Vector3f())
+
+/**
+ * The orientation whose [forward] is [direction] and whose [up] leans towards [up], as a new [Quat].
+ *
+ * `facing(d).forward` is `d.n`. This is what `lookAlong` is usually reached for, without its JOML
+ * convention of turning the direction onto +z. When [direction] is parallel to [up] there is no
+ * sideways, so +x (or +z, if [direction] is along x) stands in for [up].
+ */
+fun facing(direction: Vector3fc, up: Vector3fc = Vector3f.Y): Quat {
+    val f = direction.n
+    var r = f x up
+    if (r.lengthSquared() < 1e-12f) r = f x (if (kotlin.math.abs(f.x) < 0.9f) Vector3f.X else Vector3f.Z)
+    r.normalize()
+    val u = r x f
+    return Quaternionf().setFromNormalized(Matrix3f().set(r.x, r.y, r.z, u.x, u.y, u.z, -f.x, -f.y, -f.z))
+}
+
+/** A rotation of this many radians about [axis], read aloud: `90.deg about Vec3.Y` is `quat(90.deg, Vec3.Y)`. */
+infix fun Number.about(axis: Vector3fc): Quat = quat(this, axis)
+
+/** This vector turned by [q], as a new [Vec3]: the same as `q * v`, spelled the way the 2D `v rot θ` is. */
+infix fun Vector3fc.rot(q: Quaternionfc): Vector3f = q.transform(this, Vector3f())
+
+/**
+ * True when the two describe the same rotation within 1e-5 per component. `q` and `−q` are the
+ * same rotation, so either sign matches; `==` compares the four numbers exactly.
+ */
+infix fun Quaternionfc.near(r: Quaternionfc): Boolean = near(r, 1e-5f)
+
+/** True when the two describe the same rotation within [tolerance] per component, either sign. */
+fun Quaternionfc.near(r: Quaternionfc, tolerance: Number): Boolean {
+    val t = tolerance.toFloat()
+    fun close(sign: Float) = kotlin.math.abs(x() - sign * r.x()) <= t && kotlin.math.abs(y() - sign * r.y()) <= t &&
+        kotlin.math.abs(z() - sign * r.z()) <= t && kotlin.math.abs(w() - sign * r.w()) <= t
+    return close(1f) || close(-1f)
+}
