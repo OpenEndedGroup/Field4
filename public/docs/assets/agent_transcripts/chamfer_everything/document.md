@@ -180,7 +180,7 @@ run {
 <!-- field-box id="chamfer_one_part" index="1" -->
 
 ```edn [field-box id="chamfer_one_part" role="properties"]
-{"id" "chamfer_one_part" "index" 1 "name" "Chamfer everything on one part" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Chamfer everything on one part" "_tombstone" false "frame" #afield/rect [80.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chamfer_one_part_code_.kt" "lines" 97 "characters" 3566 "sha256" "984d78526b94c412deda2ff5a878253ae357f8e52e3685b028b68d38c4b70e68"}]}
+{"id" "chamfer_one_part" "index" 1 "name" "Chamfer everything on one part" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Chamfer everything on one part" "_tombstone" false "frame" #afield/rect [80.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chamfer_one_part_code_.kt" "lines" 94 "characters" 3499 "sha256" "7ca765cec04a3c26acd7f70aef1eeadb10d9e14bc944cf82c786baafc749269f"}]}
 ```
 
 ```kotlin [field-property box="chamfer_one_part" name="code" path="chamfer_one_part_code_.kt"]
@@ -240,11 +240,9 @@ run {
     start = System.nanoTime()
     val together = runCatching {
         solidCraft("plate") {
-                plate()
-                chamfer(size, *picks(edges))
-            }
-            .open()
-            .close()
+            plate()
+            chamfer(size, *picks(edges))
+        }.open().close()
     }
     val togetherTime = millis(start)
     val why = together.exceptionOrNull()?.message?.substringBefore("\n")?.substringAfterLast(": ")
@@ -253,11 +251,10 @@ run {
     start = System.nanoTime()
     val chamfered =
         solidCraft("plate") {
-                plate()
-                chamfer(size, *picks(convex))
-                chamfer(size, *picks(concave))
-            }
-            .open()
+            plate()
+            chamfer(size, *picks(convex))
+            chamfer(size, *picks(concave))
+        }.open()
     val chamferTime = millis(start)
     val after = chamfered.mesh().toTriMesh().weld()
     val faces = chamfered.summary().getJSONArray("bodies").getJSONObject(0).getInt("faces")

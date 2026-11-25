@@ -119,8 +119,7 @@ operations:
                             trainingJob = ShaderTraining.trainAsync(dataset, File(run, "model"), steps)
                             reported = false
                             println("Captured actual GPU RGB. Training log: ${trainingJob!!.log}")
-                        }
-                            .onFailure { println("Capture failed: ${it.message}") }
+                        }.onFailure { println("Capture failed: ${it.message}") }
                     }
                 }
                 val activeJob = trainingJob
@@ -131,8 +130,7 @@ operations:
                         ownedLab.load(model)
                         println("LEARNED MODULE READY: $model — choose view 1 or 2; weights.json records held-out error.")
                         File("build/shader-learning/latest-model.txt").writeText(model.absolutePath)
-                    }
-                        .onFailure { println("Keeping the working view: ${it.message}") }
+                    }.onFailure { println("Keeping the working view: ${it.message}") }
                 }
                 ownedLab.view = requestedView
                 if (animate) phase += .01
@@ -239,8 +237,7 @@ operations:
                           trainingJob = ShaderTraining.trainAsync(dataset, File(run, "model"), steps)
                           reported = false
                           println("Captured actual GPU RGB. Training log: ${trainingJob!!.log}")
-                      }
-                          .onFailure { println("Capture failed: ${it.message}") }
+                      }.onFailure { println("Capture failed: ${it.message}") }
                   }
               }
               val activeJob = trainingJob
@@ -251,8 +248,7 @@ operations:
                       ownedLab.load(model)
                       println("LEARNED MODULE READY: $model — choose view 1 or 2; weights.json records held-out error.")
                       File("build/shader-learning/latest-model.txt").writeText(model.absolutePath)
-                  }
-                      .onFailure { println("Keeping the working view: ${it.message}") }
+                  }.onFailure { println("Keeping the working view: ${it.message}") }
               }
               ownedLab.view = requestedView
               if (animate) phase += .01

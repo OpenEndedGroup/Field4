@@ -17,7 +17,7 @@ From `code`
 An inherited property stays dynamic after source-only rehydration.
 
 ```edn [field-box id="ordered_group_demo" role="properties"]
-{"id" "ordered_group_demo" "index" 0 "name" "Ordered group keyframes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Ordered group keyframes" "_tombstone" false "frame" #afield/rect [40.0 40.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ordered_group_demo_code_.kt" "lines" 58 "characters" 2382 "sha256" "24807ca3767280a67d06dfc2fe0fd0006b4152b4c4851b9e387d0514043d157c"}]}
+{"id" "ordered_group_demo" "index" 0 "name" "Ordered group keyframes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Ordered group keyframes" "_tombstone" false "frame" #afield/rect [40.0 40.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ordered_group_demo_code_.kt" "lines" 56 "characters" 2356 "sha256" "ed73a9051f31202a5fc8e76ef2f501239ce8d0b0dad01ce18d9c25c659dd99a3"}]}
 ```
 
 ```kotlin [field-property box="ordered_group_demo" name="code" path="ordered_group_demo_code_.kt"]
@@ -25,9 +25,8 @@ An inherited property stays dynamic after source-only rehydration.
 prop<Double>(ruleOffset) = 0.1
 val group =
     OrderedKeyframeGroup({ 5 }, sourceBoxId = thisBox.id) { resolved ->
-            println("Applied: " + resolved.values("cooling"))
-        }
-        .lane("cooling", 0.0) { it in 0.0..1.0 }
+        println("Applied: " + resolved.values("cooling"))
+    }.lane("cooling", 0.0) { it in 0.0..1.0 }
 val a = group.capture()
 val cooling = sourceBlock { screenNo: Int ->
     val ramp = 0.04 * screenNo
@@ -67,8 +66,7 @@ check(
 val previous = group.capture()
 val failure = runCatching {
     group["cooling"] = sourceBlock { screenNo: Int -> if (screenNo == 4) Double.NaN else .2 }
-}
-        .exceptionOrNull()!!
+}.exceptionOrNull()!!
 check(failure.message!!.contains("index 4"))
 check(group.capture().values == previous.values)
 markdown(

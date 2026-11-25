@@ -31,5 +31,4 @@ loop {
         last = now
     }
     frame()
-}
-    .end { probe.close() }
+}.end { probe.close() }

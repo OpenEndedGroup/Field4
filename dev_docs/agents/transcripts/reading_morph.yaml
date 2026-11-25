@@ -130,8 +130,7 @@ operations:
             renderer.windows.forEach { it.pollEvents() }
             renderer.render()
             frame()
-        }
-            .end { ownedDrawing.close() }
+        }.end { ownedDrawing.close() }
 - connect: { parent: pick_context, child: morph_scene }
 - connect: { parent: morph_scene, child: pick_drawing }
 - launch: { box: pick_context }

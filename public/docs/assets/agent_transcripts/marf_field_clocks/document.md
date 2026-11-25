@@ -20,7 +20,7 @@ steps in a cycle had one of them latched and the rest discarded — with no exce
 no warning and no log line. Four of these five are now refused where you type them.
 
 ```edn [field-box id="marf_clocks_refused" role="properties"]
-{"id" "marf_clocks_refused" "index" 0 "name" "marf clocks — refused" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "marf clocks — refused" "_tombstone" false "frame" #afield/rect [60.0 60.0 430.0 140.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "marf_clocks_refused_code_.kt" "lines" 38 "characters" 1548 "sha256" "3c5aff1eca949fc62742ec34a836bb1ccce52ab552b6690ddaab02911adcdd98"}]}
+{"id" "marf_clocks_refused" "index" 0 "name" "marf clocks — refused" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "marf clocks — refused" "_tombstone" false "frame" #afield/rect [60.0 60.0 430.0 140.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "marf_clocks_refused_code_.kt" "lines" 37 "characters" 1515 "sha256" "0737466af41566dd9b853289dce70a9061500eb9ebd8c425ae84bfae413b4779"}]}
 ```
 
 ```kotlin [field-property box="marf_clocks_refused" name="code" path="marf_clocks_refused_code_.kt"]
@@ -37,13 +37,12 @@ val bank = marfValues(0, 1, 2, 3, 4)
 
 val readOut: (String, MarfFieldClock) -> String = { spec, clock ->
     runCatching {
-            bank
-                .read(pat(spec).nums(), fields = clock, name = "addr")
-                .stagesIn(PatArc(PatQ.ZERO, PatQ.of(8)))
-                .take(8)
-                .joinToString(" ") { s -> s.address.toInt().toString() }
-        }
-        .fold({ seq -> "reads as `$seq`" }, { e -> "**REFUSED** — ${e.message}" })
+        bank
+            .read(pat(spec).nums(), fields = clock, name = "addr")
+            .stagesIn(PatArc(PatQ.ZERO, PatQ.of(8)))
+            .take(8)
+            .joinToString(" ") { s -> s.address.toInt().toString() }
+    }.fold({ seq -> "reads as `$seq`" }, { e -> "**REFUSED** — ${e.message}" })
 }
 
 val spellings = ["<0 3> 1", "1 <0 3>", "<0 3>*2", "<0 3>, 1", "<0 3>"]
@@ -191,7 +190,7 @@ Compare ten spellings under all three clocks. Read STAGES to see which
 spellings produce the same sequence.
 
 ```edn [field-box id="marf_clocks_ledger" role="properties"]
-{"id" "marf_clocks_ledger" "index" 2 "name" "marf clocks — the night's ten" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "marf clocks — the night's ten" "_tombstone" false "frame" #afield/rect [900.0 820.0 430.0 140.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "marf_clocks_ledger_code_.kt" "lines" 71 "characters" 2437 "sha256" "32ff36e3f288a2e118aa5e597fdafabbd2564214b199412f4d73ea38e7385e33"}]}
+{"id" "marf_clocks_ledger" "index" 2 "name" "marf clocks — the night's ten" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "marf clocks — the night's ten" "_tombstone" false "frame" #afield/rect [900.0 820.0 430.0 140.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "marf_clocks_ledger_code_.kt" "lines" 68 "characters" 2386 "sha256" "389c75ca4ccfb44af24b683f9b497261691d86c602e623f26beadbd680cb9937"}]}
 ```
 
 ```kotlin [field-property box="marf_clocks_ledger" name="code" path="marf_clocks_ledger_code_.kt"]
@@ -216,13 +215,12 @@ val spellings = [
 
 val cell: (String, MarfFieldClock) -> String = { spec, clock ->
     runCatching {
-            bank
-                .read(pat(spec).nums(), fields = clock, name = "l")
-                .stagesIn(PatArc(PatQ.ZERO, PatQ.of(8)))
-                .take(8)
-                .joinToString("") { s -> s.address.toInt().toString() }
-        }
-        .fold({ seq -> "`$seq`" }, { _ -> "_refused_" })
+        bank
+            .read(pat(spec).nums(), fields = clock, name = "l")
+            .stagesIn(PatArc(PatQ.ZERO, PatQ.of(8)))
+            .take(8)
+            .joinToString("") { s -> s.address.toInt().toString() }
+    }.fold({ seq -> "`$seq`" }, { _ -> "_refused_" })
 }
 
 val table = StringBuilder()
@@ -242,8 +240,7 @@ val stagesDistinct = spellings.mapNotNull { spec ->
             .stagesIn(PatArc(PatQ.ZERO, PatQ.of(8)))
             .take(8)
             .map { s -> s.address }
-    }
-        .getOrNull()
+    }.getOrNull()
 }
 val stepsDistinct = spellings.mapNotNull { spec ->
     runCatching {
@@ -252,8 +249,7 @@ val stepsDistinct = spellings.mapNotNull { spec ->
             .stagesIn(PatArc(PatQ.ZERO, PatQ.of(8)))
             .take(8)
             .map { s -> s.address }
-    }
-        .getOrNull()
+    }.getOrNull()
 }
 table.append("\n")
 table.append("`STAGES` now accepts ${stagesDistinct.size} of the ten and reads ")

@@ -96,8 +96,7 @@ operations:
                 ownedLab.view = view
                 frame()
             }
-        }
-            .end { ownedLab.close() }
+        }.end { ownedLab.close() }
       compute: |
         #version 460
         #extension GL_EXT_buffer_reference : require
@@ -196,7 +195,6 @@ operations:
               ownedLab.view = view
               frame()
           }
-      }
-          .end { ownedLab.close() }
+      }.end { ownedLab.close() }
 - wait:
     frames: 12

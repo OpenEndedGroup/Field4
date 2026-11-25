@@ -22,8 +22,7 @@ fun panel(from: Double, to: Double, dx: Double): List<FLine> {
         lineTo(300.0, 0.0)
         moveTo(zeroX, 0.0)
         lineTo(zeroX, 10.0)
-    }
-        .apply { color = vec(1.0, 1.0, 1.0, 0.7) }
+    }.apply { color = vec(1.0, 1.0, 1.0, 0.7) }
     return [all, weighted, axis].map { it.transform { v -> Vec3(v.x + dx.toFloat(), v.y, 0f) } }
 }
 lines(

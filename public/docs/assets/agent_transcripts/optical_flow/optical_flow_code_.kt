@@ -49,5 +49,4 @@ frames {
         time += ownedLab.pairStep
         frame()
     }
-}
-    .end { ownedLab.close() }
+}.end { ownedLab.close() }

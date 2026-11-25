@@ -2,17 +2,16 @@ prop<afield.simulation.particles.ShaderNeuralParticles>(particles)
 
 once.particles {
     ShaderNeuralParticles(fieldA, renderer) {
-            particleCount = 200_000
-            stepsPerCycle = 150
-            /*
-            Low, on purpose. A high dwell shows the *distribution* a field settles on,
-            which is the right choice for reading a word and the wrong one here: the
-            interesting thing is a shape that is continuously becoming another, so the
-            stream between the shapes has to stay visible.
-            */
-            dwellCycles = 1.2f
-        }
-        .also { it.installInto() }
+        particleCount = 200_000
+        stepsPerCycle = 150
+        /*
+        Low, on purpose. A high dwell shows the *distribution* a field settles on,
+        which is the right choice for reading a word and the wrong one here: the
+        interesting thing is a shape that is continuously becoming another, so the
+        stream between the shapes has to stay visible.
+        */
+        dwellCycles = 1.2f
+    }.also { it.installInto() }
 }
 
 particles.settings.intensity = 1.1f

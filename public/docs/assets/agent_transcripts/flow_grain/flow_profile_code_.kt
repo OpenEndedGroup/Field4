@@ -8,9 +8,8 @@ val travel = requireNotNull(fromContextWithNameOrNull<java.util.concurrent.atomi
 val settings =
     ["force", "grainCell", "strokeTime", "flowWidth"].map { parameterName ->
         requireNotNull(fromContextWithNameOrNull<afield.ui.controls.EffectiveParameter>(parameterName)) {
-                "Run Resources first: missing parameter $parameterName"
-            }
-            .snapshot()
+            "Run Resources first: missing parameter $parameterName"
+        }.snapshot()
     }
 
 // Compare a deterministic 180-frame path with identical settings after a reset.

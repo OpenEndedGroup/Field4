@@ -49,5 +49,4 @@ frames {
         ownedLab.time = kotlin.math.sin(time).toFloat()
         frame()
     }
-}
-    .end { ownedLab.close() }
+}.end { ownedLab.close() }

@@ -30,8 +30,7 @@ out +=
         lineTo(440.0, 400.0)
         lineTo(0.0, 400.0)
         lineTo(0.0, 0.0)
-    }
-        .apply { color = vec(0.4, 0.4, 0.4, 1.0) }
+    }.apply { color = vec(0.4, 0.4, 0.4, 1.0) }
 out +=
     fline {
         moveTo(0.593 * 400, 0.0)

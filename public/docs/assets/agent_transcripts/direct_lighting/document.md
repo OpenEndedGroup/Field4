@@ -38,7 +38,7 @@ start(renderer::run)
 <!-- field-box id="direct_light_lab" index="1" -->
 
 ```edn [field-box id="direct_light_lab" role="properties"]
-{"id" "direct_light_lab" "index" 1 "name" "direct lighting" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "direct lighting" "_tombstone" false "frame" #afield/rect [400.0 160.0 340.0 90.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "direct_light_lab_code_.kt" "lines" 111 "characters" 4478 "sha256" "901e4547c85d328f85e6bc6bdd2d2e0cee3c561a8ab4a6b52146445d4fbf3264"}]}
+{"id" "direct_light_lab" "index" 1 "name" "direct lighting" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "direct lighting" "_tombstone" false "frame" #afield/rect [400.0 160.0 340.0 90.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "direct_light_lab_code_.kt" "lines" 109 "characters" 4452 "sha256" "07ffdfc95e2cbe11b81821a937a857f9be881bd099764a9bc7906ca147d57ef0"}]}
 ```
 
 ```kotlin [field-property box="direct_light_lab" name="code" path="direct_light_lab_code_.kt"]
@@ -56,9 +56,7 @@ val sdkReady =
     lab.visibility.available &&
         runCatching {
             lab.lighting.enableRtxdi(RtxdiProgram.load(), restir).getOrThrow()
-        }
-            .onFailure { println("Optional RTXDI unavailable: ${it.message}") }
-            .isSuccess
+        }.onFailure { println("Optional RTXDI unavailable: ${it.message}") }.isSuccess
 var useRtxdi = sdkReady
 var reference = false
 var temporal = true

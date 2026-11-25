@@ -84,8 +84,7 @@ operations:
             renderer.windows.forEach { it.pollEvents() }
             renderer.render()
             frame()
-        }
-            .end { ownedDrawing.close() }
+        }.end { ownedDrawing.close() }
 - create:
     box: pick_pointing
     name: 4 · Pointing

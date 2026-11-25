@@ -45,8 +45,7 @@ operations:
                   shown = frame.timeSeconds
                   threeLines(frame.flines(scale, bands = 16, centered = true) + room, channel = "curve", height = 560)
               }
-          }
-              .end { curve.close() }
+          }.end { curve.close() }
   - create:
       box: audio_curve_music
       name: 2 · stereo music, one curve per channel
@@ -76,8 +75,7 @@ operations:
                   }
                   threeLines(lines, channel = "curves", height = 520)
               }
-          }
-              .end { curves.forEach { it.close() } }
+          }.end { curves.forEach { it.close() } }
   - create:
       box: audio_curve_dense
       name: 3 · finer hop, longer memory
@@ -102,8 +100,7 @@ operations:
                   shown = frame.timeSeconds
                   threeLines(frame.flines(scale, depth = 300.0, bands = 16), channel = "curve", height = 560)
               }
-          }
-              .end { curve.close() }
+          }.end { curve.close() }
   - create:
       box: audio_curve_ema
       name: 4 · averages from one hop to 20 s instead of a window
@@ -126,8 +123,7 @@ operations:
                   shown = frame.timeSeconds
                   threeLines(frame.flines(scale, bands = 16), channel = "curve", height = 560)
               }
-          }
-              .end { curve.close() }
+          }.end { curve.close() }
   - create:
       box: audio_curve_maps
       name: 5 · the sounds heard so far, remembered on a sheet and a lattice

@@ -115,8 +115,7 @@ operations:
                 time += ownedLab.pairStep
                 frame()
             }
-        }
-            .end { ownedLab.close() }
+        }.end { ownedLab.close() }
 - connect:
     parent: agent_graphics_context
     child: optical_flow
@@ -177,7 +176,6 @@ operations:
               time += ownedLab.pairStep
               frame()
           }
-      }
-          .end { ownedLab.close() }
+      }.end { ownedLab.close() }
 - wait:
     frames: 12

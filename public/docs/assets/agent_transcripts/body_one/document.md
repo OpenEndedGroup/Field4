@@ -259,7 +259,7 @@ void main() {
 <!-- field-box id="body1_tracking" index="2" -->
 
 ```edn [field-box id="body1_tracking" role="properties"]
-{"id" "body1_tracking" "index" 2 "name" "3 · Tracking / body queries" "parents" ["root" "body1_drawing"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "body1_drawing"} "name" "3 · Tracking / body queries" "_tombstone" false "frame" #afield/rect [1200.0 0.0 500.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "body1_tracking_code_.kt" "lines" 288 "characters" 12556 "sha256" "7b769b71abf5920c15d986d6f7ab2fb1293cd924425f93fa31871eb4667f5703"}]}
+{"id" "body1_tracking" "index" 2 "name" "3 · Tracking / body queries" "parents" ["root" "body1_drawing"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "body1_drawing"} "name" "3 · Tracking / body queries" "_tombstone" false "frame" #afield/rect [1200.0 0.0 500.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "body1_tracking_code_.kt" "lines" 287 "characters" 12551 "sha256" "cfde3cae49527f04b914aa3a3a28af9d09529d53ab6c346a082c81bf84fd0c7c"}]}
 ```
 
 ```kotlin [field-property box="body1_tracking" name="code" path="body1_tracking_code_.kt"]
@@ -549,7 +549,6 @@ loop {
     renderer.windows.forEach { it.pollEvents() }
     renderer.render()
     frame()
-}
-    .end { stereo.beforeScene.remove("body-one-tracking", updateTracking) }
+}.end { stereo.beforeScene.remove("body-one-tracking", updateTracking) }
 ```
 

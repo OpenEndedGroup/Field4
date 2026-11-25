@@ -25,8 +25,7 @@ renderer += module
 var vertexData = defaultBuffer {
     perFrame = true
     size = 3.vec4s
-}
-    .buffer
+}.buffer
 
 /*
 `size = 3.vec4s` is only a starting size: the buffer grows when a write needs more room, as the loop below

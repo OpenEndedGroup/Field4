@@ -94,14 +94,12 @@ var stateB = defaultBuffer { size = (N * 2).vec4s }.buffer
 var anchors = defaultBuffer {
     size = N.vec4s
     writeOnce()
-}
-    .buffer
+}.buffer
 // Heat is zeroInit(): never uploaded at all. The device zeroes it and the shader owns it.
 var heat = defaultBuffer {
     size = N.vec4s
     zeroInit()
-}
-    .buffer
+}.buffer
 ```
 
 `(N * 2).vec4s` is the sizing idiom, and it reads as the layout it describes: two `vec4`s per

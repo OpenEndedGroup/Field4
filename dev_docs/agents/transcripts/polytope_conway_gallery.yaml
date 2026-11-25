@@ -71,12 +71,10 @@ operations:
           // These are real caught exceptions; nothing here paraphrases an error message.
           val flineRefusal = runCatching {
               abstract.toFaceFLines()
-          }
-              .fold({ "no exception — unexpected" }, { "${it::class.simpleName}: ${it.message}" })
+          }.fold({ "no exception — unexpected" }, { "${it::class.simpleName}: ${it.message}" })
           val triangleRefusal = runCatching {
               abstract.triangulate()
-          }
-              .fold({ "no exception — unexpected" }, { "${it::class.simpleName}: ${it.message}" })
+          }.fold({ "no exception — unexpected" }, { "${it::class.simpleName}: ${it.message}" })
 
           /*
           ***** CHANGE THIS ***** Try a realization policy that supplies coordinates.

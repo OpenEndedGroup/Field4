@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="hd_shapes" index="0" -->
 
 ```edn [field-box id="hd_shapes" role="properties"]
-{"id" "hd_shapes" "index" 0 "name" "4 - shape alone cannot reach the octave" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - shape alone cannot reach the octave" "_tombstone" false "frame" #afield/rect [60.0 780.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "hd_shapes_code_.kt" "lines" 50 "characters" 1830 "sha256" "f6007bc24cbe8cb4d5c44f9a37e46afc1a62611d38b65c3395e1cbd0a4cbcf39"}]}
+{"id" "hd_shapes" "index" 0 "name" "4 - shape alone cannot reach the octave" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - shape alone cannot reach the octave" "_tombstone" false "frame" #afield/rect [60.0 780.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "hd_shapes_code_.kt" "lines" 49 "characters" 1821 "sha256" "b17ed2cbcf6e3907aa81c9f63365aea981987fcda32ed5b594d670f3aced792f"}]}
 ```
 
 ```kotlin [field-property box="hd_shapes" name="code" path="hd_shapes_code_.kt"]
@@ -47,8 +47,7 @@ out +=
         lineTo(440.0, 400.0)
         lineTo(0.0, 400.0)
         lineTo(0.0, 0.0)
-    }
-        .apply { color = vec(0.4, 0.4, 0.4, 1.0) }
+    }.apply { color = vec(0.4, 0.4, 0.4, 1.0) }
 out +=
     fline {
         moveTo(0.593 * 400, 0.0)
@@ -207,7 +206,7 @@ lines(out, w = 520.0, h = 110.0, fitToSize = true)
 <!-- field-box id="hd_syahi" index="4" -->
 
 ```edn [field-box id="hd_syahi" role="properties"]
-{"id" "hd_syahi" "index" 4 "name" "5 - fitting a layered syahi" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 - fitting a layered syahi" "_tombstone" false "frame" #afield/rect [740.0 780.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "hd_syahi_code_.kt" "lines" 26 "characters" 1186 "sha256" "da83bbfa7a94717d9e344c49407db83e8f8c0f96eae7f8ce0dfce6d626dbbe10"}]}
+{"id" "hd_syahi" "index" 4 "name" "5 - fitting a layered syahi" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 - fitting a layered syahi" "_tombstone" false "frame" #afield/rect [740.0 780.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "hd_syahi_code_.kt" "lines" 25 "characters" 1181 "sha256" "49af887f9ee1275328bca115a8f73cee9ca1c86f19f0b848dacd4950df6ab506"}]}
 ```
 
 ```kotlin [field-property box="hd_syahi" name="code" path="hd_syahi_code_.kt"]
@@ -234,8 +233,7 @@ val composite = fline {
     lineTo(1.2, 1 - 9.77 / 16)
     lineTo(1.2, 1 - 1.0 / 16)
     lineTo(3.0, 1 - 1.0 / 16)
-}
-    .apply { color = vec(0.6, 0.6, 0.6, 1.0) }
+}.apply { color = vec(0.6, 0.6, 0.6, 1.0) }
 lines(profiles + composite, w = 520.0, h = 180.0, fitToSize = true)
 ```
 

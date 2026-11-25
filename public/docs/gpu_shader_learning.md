@@ -68,9 +68,8 @@ source += "teacher" to teacher
 
 val lab =
     GpuShaderLearningView(renderer, source) { normalizedTime ->
-            mesh.push["state"] = vec(source.width, source.height, normalizedTime, 0)
-        }
-        .install()
+        mesh.push["state"] = vec(source.width, source.height, normalizedTime, 0)
+    }.install()
 lab.parameter = .25f
 lab.iterationsPerFrame = 8
 ```

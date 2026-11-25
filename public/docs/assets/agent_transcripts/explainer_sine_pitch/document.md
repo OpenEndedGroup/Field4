@@ -55,7 +55,7 @@ audio(SineOsc(pitch), gain = loudness)
 <!-- field-box id="esp_deck" index="1" -->
 
 ```edn [field-box id="esp_deck" role="properties"]
-{"id" "esp_deck" "index" 1 "name" "deck" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "deck" "_tombstone" false "frame" #afield/rect [60.0 140.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "esp_deck_code_.kt" "lines" 66 "characters" 2727 "sha256" "13858913082cb736e37eb2f15c677ddcb5c055a16131d8ac934d09acf071945e"}]}
+{"id" "esp_deck" "index" 1 "name" "deck" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "deck" "_tombstone" false "frame" #afield/rect [60.0 140.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "esp_deck_code_.kt" "lines" 65 "characters" 2562 "sha256" "86f8ab5fa04cc8345b48e7f8c9113297d3527a3f944c98f236110603c7fef95e"}]}
 ```
 
 ```kotlin [field-property box="esp_deck" name="code" path="esp_deck_code_.kt"]
@@ -64,66 +64,65 @@ import kotlinx.html.*
 // Four slides: prose, a live figure and its slider, a cue that moves the slider, and
 // the same figure heard. "sine" is the box that draws and plays the wave.
 presentation(title = "A sine wave and its pitch") {
-        step("A sine wave and its pitch", id = "opening") {
-            audience {
-                +"""
+    step("A sine wave and its pitch", id = "opening") {
+        audience {
+            +"""
                 # A sine wave and its pitch
 
                 A sound is air pushed back and forth against your ear. The smoothest
                 push is a sine wave: one even swing, repeated.
 
                 How often the swing repeats is what you hear as pitch.""".md
-                p(classes = "muted") {
-                    +"After “Sound” by Bartosz Ciechanowski, ciechanow.ski/sound. Words and figures made in Field."
-                }
+            p(classes = "muted") {
+                +"After “Sound” by Bartosz Ciechanowski, ciechanow.ski/sound. Words and figures made in Field."
             }
-            markdownNote("The question: what makes one note higher than another? [[next]]")
         }
-        step("How often it repeats", id = "wave") {
-            audience {
-                figureBeside("sine") {
-                    +"""
+        markdownNote("The question: what makes one note higher than another? [[next]]")
+    }
+    step("How often it repeats", id = "wave") {
+        audience {
+            figureBeside("sine") {
+                +"""
                     ## How often it repeats
 
                     The line is twenty milliseconds of the wave. Drag **frequency**:
                     as the number rises, more swings fit into the same time.
 
                     Frequency counts swings per second, in hertz.""".md
-                }
             }
-            control("sine", "frequency", 220.0)
-            control("sine", "sound", false)
-            markdownNote("Let someone drag the slider. [[back]] [[next]]")
         }
-        step("Twice as often", id = "octave") {
-            audience {
-                figureBeside("sine") {
-                    +"""
+        control("sine", "frequency", 220.0)
+        control("sine", "sound", false)
+        markdownNote("Let someone drag the slider. [[back]] [[next]]")
+    }
+    step("Twice as often", id = "octave") {
+        audience {
+            figureBeside("sine") {
+                +"""
                     ## Twice as often
 
                     220 Hz is the A below middle C. Doubling the frequency fits
                     twice as many swings in, and we hear the same note an octave up.""".md
-                }
             }
-            control("sine", "frequency", 220.0)
-            control("sine", "sound", false)
-            cue("Up an octave") { control("sine", "frequency", 440.0, glideMs = 1500) }
-            markdownNote("Next glides the slider from 220 to 440 Hz. [[back]] [[next]]")
         }
-        step("Hear it", id = "listen") {
-            audience {
-                figureBeside("sine") {
-                    +"""
+        control("sine", "frequency", 220.0)
+        control("sine", "sound", false)
+        cue("Up an octave") { control("sine", "frequency", 440.0, glideMs = 1500) }
+        markdownNote("Next glides the slider from 220 to 440 Hz. [[back]] [[next]]")
+    }
+    step("Hear it", id = "listen") {
+        audience {
+            figureBeside("sine") {
+                +"""
                     ## Hear it
 
                     Tick **sound**, then drag **frequency**. The wave you see is the
                     tone you hear: one box draws it and plays it.""".md
-                }
             }
-            cue("Sound on") { control("sine", "sound", true) }
-            markdownNote("Next turns the sound on; leaving the talk stops it. [[back]] [[finish]]")
         }
+        cue("Sound on") { control("sine", "sound", true) }
+        markdownNote("Next turns the sound on; leaving the talk stops it. [[back]] [[finish]]")
     }
-    .present()
+}.present()
 ```
 

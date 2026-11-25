@@ -84,7 +84,7 @@ println("trained on ${pairing.size} pairs: loss ${"%.4g".format(field.loss(200))
 <!-- field-box id="np_particles" index="2" -->
 
 ```edn [field-box id="np_particles" role="properties"]
-{"id" "np_particles" "index" 2 "name" "neural particles" "parents" ["root" "np_field"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "np_field"} "name" "neural particles" "_tombstone" false "frame" #afield/rect [740.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "np_particles_code_.kt" "lines" 35 "characters" 1415 "sha256" "cd76385e99290aa1f3a710cf416e154cbe4a02a27822e0068a5d88660f86a9dd"}]}
+{"id" "np_particles" "index" 2 "name" "neural particles" "parents" ["root" "np_field"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "np_field"} "name" "neural particles" "_tombstone" false "frame" #afield/rect [740.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "np_particles_code_.kt" "lines" 34 "characters" 1390 "sha256" "ed9f37829040196c2ca808b8dfc4bca2fa5eff80ec3b70a7ee2159f290c96d2c"}]}
 ```
 
 ```kotlin [field-property box="np_particles" name="code" path="np_particles_code_.kt"]
@@ -97,11 +97,10 @@ compiled into it, so rebuilding on every run would leak a module per keystroke.
 */
 once.particles {
     ShaderNeuralParticles(neuralExport, renderer) {
-            particleCount = 300_000
-            stepsPerCycle = 150
-            dwellCycles = 3f
-        }
-        .also { it.installInto() }
+        particleCount = 300_000
+        stepsPerCycle = 150
+        dwellCycles = 3f
+    }.also { it.installInto() }
 }
 
 /*

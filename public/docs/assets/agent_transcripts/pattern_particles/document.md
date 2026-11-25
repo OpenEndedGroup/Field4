@@ -87,7 +87,7 @@ frames {
 <!-- field-box id="pp_compute" index="2" -->
 
 ```edn [field-box id="pp_compute" role="properties"]
-{"id" "pp_compute" "index" 2 "name" "four bands into four push constants" "parents" ["root" "pp_audio"] "children" ["pp_draw"] "properties" {"children" #{#afield/box "pp_draw"} "parents" #{#afield/box "root" #afield/box "pp_audio"} "name" "four bands into four push constants" "_tombstone" false "frame" #afield/rect [260.0 120.0 240.0 50.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "pp_compute_compute_.glsl" "lines" 53 "characters" 1760 "sha256" "c7c2433f6d573147bfb67cd9b0abc11e49a2a38289d4414701aedd0f5af0b9af"} {"name" "code" "language" "kotlin" "path" "pp_compute_code_.kt" "lines" 49 "characters" 1617 "sha256" "a74044d3669216ce0687f87bddca379e1ddf0c0cddd916b5c18535215d13fd68"}]}
+{"id" "pp_compute" "index" 2 "name" "four bands into four push constants" "parents" ["root" "pp_audio"] "children" ["pp_draw"] "properties" {"children" #{#afield/box "pp_draw"} "parents" #{#afield/box "root" #afield/box "pp_audio"} "name" "four bands into four push constants" "_tombstone" false "frame" #afield/rect [260.0 120.0 240.0 50.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "pp_compute_compute_.glsl" "lines" 53 "characters" 1760 "sha256" "c7c2433f6d573147bfb67cd9b0abc11e49a2a38289d4414701aedd0f5af0b9af"} {"name" "code" "language" "kotlin" "path" "pp_compute_code_.kt" "lines" 48 "characters" 1612 "sha256" "0b4ad79d772481a4192c58c5651a8a361924e9c81eba1013b6ba8bc70a115221"}]}
 ```
 
 ```glsl [field-property box="pp_compute" name="compute" path="pp_compute_compute_.glsl"]
@@ -160,8 +160,7 @@ renderer += "pattern-particles" to particles
 var seeds = defaultBuffer {
     size = N.vec4s
     writeOnce()
-}
-    .buffer
+}.buffer
 var positions = defaultBuffer { size = N.vec4s }.buffer
 // Inherited by the draw box below, which reads these positions as its vertex data.
 prop<FrameBufferGroup>(outputPositions) = positions

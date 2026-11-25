@@ -3392,8 +3392,7 @@ Exposes the timeline graph as a named `Fn`.
 ```diffstatic {data-lang=kotlin}
 val f = timelineGraph {
     sin(2.0).place()
-}
-    .asFn("main")
+}.asFn("main")
 ```
 
 **Creative**

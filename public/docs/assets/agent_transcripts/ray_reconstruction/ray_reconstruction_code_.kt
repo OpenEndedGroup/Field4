@@ -30,5 +30,4 @@ frames {
         }
         frame()
     }
-}
-    .end { lab.close() }
+}.end { lab.close() }

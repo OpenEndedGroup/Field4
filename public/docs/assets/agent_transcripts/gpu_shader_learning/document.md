@@ -39,7 +39,7 @@ start(renderer::run)
 <!-- field-box id="gpu_shader_learning" index="1" -->
 
 ```edn [field-box id="gpu_shader_learning" role="properties"]
-{"id" "gpu_shader_learning" "index" 1 "name" "gpu shader learning" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "gpu shader learning" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpu_shader_learning_code_.kt" "lines" 92 "characters" 3259 "sha256" "026bd1bef602f5ba5cf2af85334e0ddb7299432625556cf122559b91a60a86e8"} {"name" "vertex" "language" "glsl" "path" "gpu_shader_learning_vertex_.glsl" "lines" 5 "characters" 118 "sha256" "2c4898fc058df3cf38956a49514876c2d2a6f58ae15647ab35962039df25c828"} {"name" "fragment" "language" "glsl" "path" "gpu_shader_learning_fragment_.glsl" "lines" 18 "characters" 690 "sha256" "cb2424db2082218243876ffaa2f8d764aceb600141e527320ee3fbb1afefba4d"}]}
+{"id" "gpu_shader_learning" "index" 1 "name" "gpu shader learning" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "gpu shader learning" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpu_shader_learning_code_.kt" "lines" 91 "characters" 3242 "sha256" "aefff1144c3b07e9c2984a9d7c98bd68c6387581c469c34bf7966af37cb79190"} {"name" "vertex" "language" "glsl" "path" "gpu_shader_learning_vertex_.glsl" "lines" 5 "characters" 118 "sha256" "2c4898fc058df3cf38956a49514876c2d2a6f58ae15647ab35962039df25c828"} {"name" "fragment" "language" "glsl" "path" "gpu_shader_learning_fragment_.glsl" "lines" 18 "characters" 690 "sha256" "cb2424db2082218243876ffaa2f8d764aceb600141e527320ee3fbb1afefba4d"}]}
 ```
 
 ```kotlin [field-property box="gpu_shader_learning" name="code" path="gpu_shader_learning_code_.kt"]
@@ -119,8 +119,7 @@ frames {
                     "Fullscreen module; camera, textures and other controls fixed; normalized time varies",
                 )
                 println("FROZEN MODEL SAVED: $directory — load weights.f16 and weights.json with LearnedShader.")
-            }
-                .onFailure { println("Save failed: ${it.message}") }
+            }.onFailure { println("Save failed: ${it.message}") }
         }
         phase++
         frame()

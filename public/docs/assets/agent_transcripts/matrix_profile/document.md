@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="mp_contrast" index="0" -->
 
 ```edn [field-box id="mp_contrast" role="properties"]
-{"id" "mp_contrast" "index" 0 "name" "4 - contrast profile" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - contrast profile" "_tombstone" false "frame" #afield/rect [60.0 2160.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mp_contrast_code_.kt" "lines" 26 "characters" 947 "sha256" "2a2997464dbce2efc50ad9e9281a1a88aeaa1fc4ac6b50366173d4935ea4abcb"}]}
+{"id" "mp_contrast" "index" 0 "name" "4 - contrast profile" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - contrast profile" "_tombstone" false "frame" #afield/rect [60.0 2160.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mp_contrast_code_.kt" "lines" 25 "characters" 942 "sha256" "7e7f09e8284b4de3ac0dc2823411fe2df7269a6f9e968688eec04cc1f59de4f6"}]}
 ```
 
 ```kotlin [field-property box="mp_contrast" name="code" path="mp_contrast_code_.kt"]
@@ -23,8 +23,7 @@ fun example(withStep: Boolean) = 600 { i ->
     rnd.nextGaussian() * 0.3 +
         (if (i in 100 until 140) 3 * sin(2 * PI * (i - 100) / 40) else 0.0) +
         (if (withStep && i in 400 until 440) (if (i < 420) 3.0 else -3.0) else 0.0)
-}
-    .toDoubleArray()
+}.toDoubleArray()
 
 val cp = contrastProfile([example(true), example(true)], [example(false), example(false)], m = 40)
 val platos = cp.platos(2)
@@ -48,7 +47,7 @@ showSignals(
 <!-- field-box id="mp_motifs" index="1" -->
 
 ```edn [field-box id="mp_motifs" role="properties"]
-{"id" "mp_motifs" "index" 1 "name" "1 - motifs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - motifs" "_tombstone" false "frame" #afield/rect [60.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mp_motifs_code_.kt" "lines" 26 "characters" 759 "sha256" "d532d4c8e038c62894d816ef7707c7703000366e5c0e7f580870919299e9ba20"}]}
+{"id" "mp_motifs" "index" 1 "name" "1 - motifs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - motifs" "_tombstone" false "frame" #afield/rect [60.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mp_motifs_code_.kt" "lines" 25 "characters" 754 "sha256" "23ee6eb365564cf6e965b2dd9e6289d898875ab59a28f645b179db44ef89e49a"}]}
 ```
 
 ```kotlin [field-property box="mp_motifs" name="code" path="mp_motifs_code_.kt"]
@@ -60,8 +59,7 @@ var level = 0.0
 val series = 3000 {
     level += rnd.nextGaussian() * 0.1
     level
-}
-    .toMutableList()
+}.toMutableList()
 for (at in [500, 1400, 2500]) for (k in 0 until 60) series[at + k] += 2 * sin(2 * PI * k / 60)
 
 val mp = matrixProfile(series, m = 60)

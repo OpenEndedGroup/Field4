@@ -11,8 +11,7 @@ var positions = buffer {
     addressable()
     storage()
     hosted()
-}
-    .buffer
+}.buffer
 
 m.ref = { positions }
 

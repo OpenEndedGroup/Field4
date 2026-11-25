@@ -127,8 +127,7 @@ operations:
                 }
                 frame()
             }
-        }
-            .end { ownedLab.close() }
+        }.end { ownedLab.close() }
 - connect:
     parent: agent_graphics_context
     child: path_traced_reconstruction
@@ -197,7 +196,6 @@ operations:
               }
               frame()
           }
-      }
-          .end { ownedLab.close() }
+      }.end { ownedLab.close() }
 - wait:
     frames: 12

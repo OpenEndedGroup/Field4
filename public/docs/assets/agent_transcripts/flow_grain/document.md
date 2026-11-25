@@ -33,7 +33,7 @@ start(renderer::run)
 <!-- field-box id="flow_resources" index="1" -->
 
 ```edn [field-box id="flow_resources" role="properties"]
-{"id" "flow_resources" "index" 1 "name" "2. Resident tiles and resources" "parents" ["root" "flow_renderer"] "children" ["flow_inputs" "flow_helpers" "flow_advect" "flow_divergence" "flow_pressure" "flow_project" "flow_particles" "flow_grain" "flow_resolve" "flow_strokes" "flow_controls" "flow_reset" "flow_profile"] "properties" {"children" #{#afield/box "flow_inputs" #afield/box "flow_helpers" #afield/box "flow_advect" #afield/box "flow_divergence" #afield/box "flow_pressure" #afield/box "flow_project" #afield/box "flow_particles" #afield/box "flow_grain" #afield/box "flow_resolve" #afield/box "flow_strokes" #afield/box "flow_controls" #afield/box "flow_reset" #afield/box "flow_profile"} "parents" #{#afield/box "root" #afield/box "flow_renderer"} "name" "2. Resident tiles and resources" "_tombstone" false "frame" #afield/rect [80.0 230.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_resources_code_.kt" "lines" 96 "characters" 3341 "sha256" "9cdbee28bfa2d3a3989e6572a0cd93323ae242f947c19bb6e40b743032eb7766"}]}
+{"id" "flow_resources" "index" 1 "name" "2. Resident tiles and resources" "parents" ["root" "flow_renderer"] "children" ["flow_inputs" "flow_helpers" "flow_advect" "flow_divergence" "flow_pressure" "flow_project" "flow_particles" "flow_grain" "flow_resolve" "flow_strokes" "flow_controls" "flow_reset" "flow_profile"] "properties" {"children" #{#afield/box "flow_inputs" #afield/box "flow_helpers" #afield/box "flow_advect" #afield/box "flow_divergence" #afield/box "flow_pressure" #afield/box "flow_project" #afield/box "flow_particles" #afield/box "flow_grain" #afield/box "flow_resolve" #afield/box "flow_strokes" #afield/box "flow_controls" #afield/box "flow_reset" #afield/box "flow_profile"} "parents" #{#afield/box "root" #afield/box "flow_renderer"} "name" "2. Resident tiles and resources" "_tombstone" false "frame" #afield/rect [80.0 230.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_resources_code_.kt" "lines" 90 "characters" 3291 "sha256" "1f36a6740486755aeace6b3c91f9b29a0648efc6d38c1a64b2752b222ff45be3"}]}
 ```
 
 ```kotlin [field-property box="flow_resources" name="code" path="flow_resources_code_.kt"]
@@ -42,8 +42,7 @@ import afield.simulation.flow.*
 fun grid() = defaultBuffer {
     size = 14400.vec4s
     zeroInit()
-}
-    .buffer
+}.buffer
 propDown<FrameBufferGroup>(flowA)
 flowA = grid()
 propDown<FrameBufferGroup>(flowB)
@@ -60,32 +59,27 @@ propDown<FrameBufferGroup>(particleA)
 particleA = defaultBuffer {
     size = 32000.vec4s
     zeroInit()
-}
-        .buffer
+}.buffer
 propDown<FrameBufferGroup>(particleB)
 particleB = defaultBuffer {
     size = 32000.vec4s
     zeroInit()
-}
-        .buffer
+}.buffer
 propDown<FrameBufferGroup>(tileHeaders)
 tileHeaders = defaultBuffer {
     perFrame = true
     size = 25.vec4s
-}
-        .buffer
+}.buffer
 propDown<FrameBufferGroup>(cameraHistory)
 cameraHistory = defaultBuffer {
     perFrame = true
     size = 17.vec4s
-}
-        .buffer
+}.buffer
 propDown<FrameBufferGroup>(itemHistory)
 itemHistory = defaultBuffer {
     perFrame = true
     size = 3.vec4s
-}
-        .buffer
+}.buffer
 propDown<SimulationReset>(resetFlow)
 resetFlow = SimulationReset()
 propDown<EffectiveParameter>(force)
@@ -692,7 +686,7 @@ From `code`
 Dependencies are explicit graph exports; resources stay in their parent box.
 
 ```edn [field-box id="flow_profile" role="properties"]
-{"id" "flow_profile" "index" 10 "name" "Profile — 180 rendered frames" "parents" ["root" "flow_resources"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "flow_resources"} "name" "Profile — 180 rendered frames" "_tombstone" false "frame" #afield/rect [940.0 380.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_profile_code_.kt" "lines" 50 "characters" 2623 "sha256" "adffe7cd26a32a6fd66d23cbf9ecad7140a49d95114aeb10c4d8e00447998e59"}]}
+{"id" "flow_profile" "index" 10 "name" "Profile — 180 rendered frames" "parents" ["root" "flow_resources"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "flow_resources"} "name" "Profile — 180 rendered frames" "_tombstone" false "frame" #afield/rect [940.0 380.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_profile_code_.kt" "lines" 49 "characters" 2602 "sha256" "762edb90a4d4a766102e98f1764d10e92ad8c6bee30f6abc955c3cb79e8f1be9"}]}
 ```
 
 ```kotlin [field-property box="flow_profile" name="code" path="flow_profile_code_.kt"]
@@ -706,9 +700,8 @@ val travel = requireNotNull(fromContextWithNameOrNull<java.util.concurrent.atomi
 val settings =
     ["force", "grainCell", "strokeTime", "flowWidth"].map { parameterName ->
         requireNotNull(fromContextWithNameOrNull<afield.ui.controls.EffectiveParameter>(parameterName)) {
-                "Run Resources first: missing parameter $parameterName"
-            }
-            .snapshot()
+            "Run Resources first: missing parameter $parameterName"
+        }.snapshot()
     }
 
 // Compare a deterministic 180-frame path with identical settings after a reset.

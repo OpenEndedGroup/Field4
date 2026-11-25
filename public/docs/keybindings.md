@@ -229,9 +229,7 @@ them describing this scratch file.
 Thread {
     Thread.sleep(2500)
     afield.app.settings.UserKeybindingsManager.watchFile(null)
-}
-    .also { it.isDaemon = true }
-    .start()
+}.also { it.isDaemon = true }.start()
 ```
 
 The ++question++ card is the quickest way to see your current shortcuts for the twenty or so commands

@@ -79,8 +79,7 @@ loop {
     val floor = fline {
         moveTo(c.x - 5f, 0f)
         lineTo(c.x + 5f, 0f)
-    }
-        .apply { color = vec(0.5, 0.45, 0.4, 1.0) }
+    }.apply { color = vec(0.5, 0.45, 0.4, 1.0) }
     showPlane(
         [floor] + crawler.frameLines(i, alignNetMotionToPositiveX = false),
         title = "crawler — $status",

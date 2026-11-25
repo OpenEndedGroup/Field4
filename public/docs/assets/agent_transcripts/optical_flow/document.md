@@ -38,7 +38,7 @@ start(renderer::run)
 <!-- field-box id="optical_flow" index="1" -->
 
 ```edn [field-box id="optical_flow" role="properties"]
-{"id" "optical_flow" "index" 1 "name" "optical flow" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "optical flow" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "optical_flow_code_.kt" "lines" 53 "characters" 1918 "sha256" "0aedc1dca9c02f813d5e0251fbea5efb9a1dc1b29ee3e4de9cfb1555ffcdcfd6"}]}
+{"id" "optical_flow" "index" 1 "name" "optical flow" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "optical flow" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "optical_flow_code_.kt" "lines" 52 "characters" 1913 "sha256" "ce5759cd8ca53fb538729743b32a6f907f9e0da0e0e3f1585a5fd14204c34b9c"}]}
 ```
 
 ```kotlin [field-property box="optical_flow" name="code" path="optical_flow_code_.kt"]
@@ -93,7 +93,6 @@ frames {
         time += ownedLab.pairStep
         frame()
     }
-}
-    .end { ownedLab.close() }
+}.end { ownedLab.close() }
 ```
 

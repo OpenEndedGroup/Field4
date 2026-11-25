@@ -4,8 +4,7 @@ var positions = buffer {
     size = splatNum.vec4s
     addressable()
     hosted()
-}
-    .buffer
+}.buffer
 
 positions.mapAndWrite {
     this.put(splatPos)
@@ -15,16 +14,14 @@ var dists = buffer {
     size = splatNum.ints
     addressable()
     hosted()
-}
-    .buffer
+}.buffer
 
 var indices = buffer {
     size = splatNum.ints
     storage()
     addressable()
     hosted()
-}
-    .buffer
+}.buffer
 
 var indirectBuffer = buffer {
     size = 8.ints
@@ -32,8 +29,7 @@ var indirectBuffer = buffer {
     addressable()
     hosted()
     dest()
-}
-    .buffer
+}.buffer
 
 prop<VulkanBuffer>(splatPositions) = positions
 prop<VulkanBuffer>(splatDistances) = dists

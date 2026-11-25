@@ -7,5 +7,4 @@ loop {
     renderer.windows.forEach { it.pollEvents() }
     renderer.render()
     frame()
-}
-    .end { ownedDrawing.close() }
+}.end { ownedDrawing.close() }

@@ -38,7 +38,7 @@ start(renderer::run)
 <!-- field-box id="neural_reconstruction" index="1" -->
 
 ```edn [field-box id="neural_reconstruction" role="properties"]
-{"id" "neural_reconstruction" "index" 1 "name" "neural reconstruction" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "neural reconstruction" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "neural_reconstruction_code_.kt" "lines" 119 "characters" 4380 "sha256" "7fc0713bf9fe613db03b45580b91c3f785a4fb3b715638b91815a633c1e31962"} {"name" "vertex" "language" "glsl" "path" "neural_reconstruction_vertex_.glsl" "lines" 74 "characters" 3104 "sha256" "f8a0170eee872ff2345d1a7b997aca7e64e59ec99b10417924f8c539d938fb15"} {"name" "fragment" "language" "glsl" "path" "neural_reconstruction_fragment_.glsl" "lines" 51 "characters" 2264 "sha256" "68b3587e130c556bd773908cf0e4efaefc4e3738b7fda72d8afc5007ecc2dbc4"}]}
+{"id" "neural_reconstruction" "index" 1 "name" "neural reconstruction" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "neural reconstruction" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "neural_reconstruction_code_.kt" "lines" 118 "characters" 4375 "sha256" "4a23644d78a5eef1aa072e6a9936446c8ec6bdec55b8f01bb7ee3f593c618fe2"} {"name" "vertex" "language" "glsl" "path" "neural_reconstruction_vertex_.glsl" "lines" 74 "characters" 3104 "sha256" "f8a0170eee872ff2345d1a7b997aca7e64e59ec99b10417924f8c539d938fb15"} {"name" "fragment" "language" "glsl" "path" "neural_reconstruction_fragment_.glsl" "lines" 51 "characters" 2264 "sha256" "68b3587e130c556bd773908cf0e4efaefc4e3738b7fda72d8afc5007ecc2dbc4"}]}
 ```
 
 ```kotlin [field-property box="neural_reconstruction" name="code" path="neural_reconstruction_code_.kt"]
@@ -159,8 +159,7 @@ frames {
         }
         frame()
     }
-}
-    .end { ownedLab.close() }
+}.end { ownedLab.close() }
 ```
 
 ```glsl [field-property box="neural_reconstruction" name="vertex" path="neural_reconstruction_vertex_.glsl"]
