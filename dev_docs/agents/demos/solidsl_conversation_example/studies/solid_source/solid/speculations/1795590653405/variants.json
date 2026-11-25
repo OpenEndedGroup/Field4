@@ -1,0 +1,11 @@
+{
+  "against" : "r7-d53362fb0f24",
+  "liveSourceHash" : "d53362fb0f247a5a9052169732b68aee82a95e4eda599648b811cdcf6dac3ffb",
+  "adopted" : "side-by-side",
+  "variants" : [ {
+    "label" : "side-by-side",
+    "note" : "Left lace; middle bold ports; right grown ribs. Comparison only.",
+    "file" : "side-by-side.kt"
+  } ],
+  "as" : "r8-2a247bea1ef2"
+}

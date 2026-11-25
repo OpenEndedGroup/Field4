@@ -1,0 +1,10 @@
+{
+  "id" : "r9-04388c69ce35",
+  "parent" : "r8-2a247bea1ef2",
+  "description" : "Choose growing ribbed slots for the lamp after comparing lace, ports and ribs",
+  "created" : "2026-11-25T07:11:34.359046Z",
+  "sourceHash" : "04388c69ce35c440a7540c0262e10cc9ce1e8324df8b83b6f2098b5c569ccaac",
+  "facts" : {
+    "knobs" : 184
+  }
+}

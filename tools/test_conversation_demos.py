@@ -82,6 +82,10 @@ class ConversationDemoTest(unittest.TestCase):
         result = self.run_check([sys.executable, "tools/rectsl_conversation_documents.py", "--check"])
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
 
+    def test_solidsl_documents_agree_with_their_sources(self):
+        result = self.run_check([sys.executable, "tools/solidsl_conversation_documents.py", "--check"])
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
     def test_the_rectsl_page_matches_its_recorded_sessions(self):
         result = self.docs_python("tools/package_rectsl_conversation.py")
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)

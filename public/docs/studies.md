@@ -5,7 +5,7 @@ be a StackSL program, a RectSL scene, or three numbers in a box property. Each a
 becomes a checked revision, and you can see pictures of the result as you work.
 
 You can work on a study with AI4: try the conversations about [a function](function_conversation.md),
-[a shader](stacksl_conversation.md), [a scene](rectsl_conversation.md), or
+[a shader](stacksl_conversation.md), [a scene](rectsl_conversation.md), [a solid](solid_conversation.md), or
 [the StackSL in your shader](stackauto_conversation.md). Here we'll look at the operations those
 studies share, and how to turn a box in your own document into a study.
 

@@ -1,0 +1,18 @@
+{
+  "against" : "r7-d53362fb0f24",
+  "liveSourceHash" : "d53362fb0f247a5a9052169732b68aee82a95e4eda599648b811cdcf6dac3ffb",
+  "adopted" : null,
+  "variants" : [ {
+    "label" : "delicate-lace",
+    "note" : "Two staggered trails of small growing pores; a fine, jewel-like skin.",
+    "file" : "delicate-lace.kt"
+  }, {
+    "label" : "bold-ports",
+    "note" : "Eight generous growing ports; quiet, weighty and sculptural.",
+    "file" : "bold-ports.kt"
+  }, {
+    "label" : "grown-ribs",
+    "note" : "Broad transverse slots leave slender ribs over the hollow coil, with a continuous back.",
+    "file" : "grown-ribs.kt"
+  } ]
+}
