@@ -31,6 +31,10 @@ are three solvers, and each also has a `step` for a box that wants to draw every
 - `GreedyMoves` makes the single change that lowers the energy most, until none does.
 - `GibbsAnnealing` resamples each variable in turn from its local energies at a temperature that
   falls sweep by sweep, so it can climb out of the dead ends the other two stop in.
+- `MetropolisAnnealing` anneals too, but proposes moves from a list of *move sets*.
+  `GreedyMoves` takes the same list. `ChangeOneValue` is the default. `SwapValues(group)` and
+  `ReverseSegment(group)` change several variables at once and keep a group a permutation, which
+  a tour or an ordering needs.
 
 Colouring a graph is the shortest example. Forty points are each joined to their three nearest
 neighbours, and every edge costs 1 if its two ends share a colour. The box runs mean-field descent
@@ -121,10 +125,13 @@ display(
 
 The travelling salesman needs costs that are not just 0 or 1. Variable `k` is the city visited
 `k`-th: all different, as before, with the distance between consecutive stops as the pairwise
-cost. The `allDifferent` weight has to outweigh any distance, or the cheapest "tour" visits one
-city ten times.
+cost. Single-value moves suit a permutation badly: changing one stop breaks `allDifferent` until a
+second stop changes too. So this box searches with moves that keep it a permutation.
+`SwapValues` exchanges two stops, and `ReverseSegment` reverses a run of them, which is the 2-opt
+move that uncrosses two edges. `MetropolisAnnealing` and `GreedyMoves` both take a list of such
+move sets.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/discrete_energy/tour.png" wait="1.5" capture="box" open-outputs="true" padding="20" embed=true name="energy-tour" alt="Ten gold squares joined by a blue closed tour that crosses itself once on the left; below, the lengths of eight annealing runs, from 1179 to 1450"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/discrete_energy/tour.png" wait="1.5" capture="box" open-outputs="true" padding="20" embed=true name="energy-tour" alt="Ten gold squares joined by a blue closed tour that does not cross itself; below, the lengths of eight annealing runs, all the same"}
 :::static
 val rnd = kotlin.random.Random(3)
 val n = 10
@@ -132,17 +139,20 @@ val city = List(n) { vec(rnd.nextDouble() * 400, rnd.nextDouble() * 300) }
 fun d(x: Int, y: Int) = city[x].distance(city[y]).toDouble()
 
 val tour = DiscreteEnergy(n, n)
-tour.allDifferent((0 until n).toList(), weight = 1000.0)
+val stops = (0 until n).toList()
+tour.allDifferent(stops, weight = 1000.0)
 for (k in 0 until n) tour.pairCost(k, (k + 1) % n) { x, y -> d(x, y) }
 tour.fix(0, 0) // start in city 0
 
-// eight annealing runs, keeping the shortest tour that visits every city
+// moves that keep the stops a permutation: exchange two, or reverse a run (2-opt)
+val moves = [SwapValues(stops), ReverseSegment(stops)]
 val runs = (0 until 8).map { seed ->
-    val s = EnergyState(tour).reset(kotlin.random.Random(seed))
-    GibbsAnnealing(tour, sweeps = 400, startTemperature = 500.0, endTemperature = 5.0, seed = seed.toLong()).settle(s)
-    GreedyMoves(tour).settle(s)
+    val s = EnergyState(tour)
+    for (k in 0 until n) s.assignment[k] = k // any permutation to start from
+    MetropolisAnnealing(tour, moves, sweeps = 300, startTemperature = 200.0, endTemperature = 2.0, seed = seed.toLong()).settle(s)
+    GreedyMoves(tour, moves).settle(s)
     s.assignment.copyOf()
-}.filter { it.toSet().size == n }
+}
 fun length(t: IntArray) = (0 until n).sumOf { d(t[it], t[(it + 1) % n]) }
 val best = runs.minBy { length(it) }
 
@@ -152,20 +162,19 @@ val path = fline {
     color = vec(0.35, 0.75, 1.0, 1.0)
     thickness = 2.0
 }
-val stops = fline {
+val dots = fline {
     for (c in city) { moveTo(c.x - 4, c.y - 4); lineTo(c.x + 4, c.y - 4); lineTo(c.x + 4, c.y + 4); lineTo(c.x - 4, c.y + 4); close() }
     filled = true
     stroked = false
     color = vec(1.0, 0.85, 0.3, 1.0)
 }
-lines(path, stops, w = 440.0, h = 340.0, fitToSize = true)
+lines(path, dots, w = 440.0, h = 340.0, fitToSize = true)
 display("runs", "tour lengths: " + runs.map { length(it) }.sorted().joinToString(", ") { it.f0 })
 ```
 
-Single-variable moves are a poor fit for permutations. Changing one stop breaks `allDifferent`
-until a second stop changes too, so the runs vary widely in length, and even the best of these
-eight crosses itself. Over ten runs on ten cities, the best tour in `DiscreteEnergyTest` was
-9.5% longer than the brute-force optimum. Swap moves would do better, but they are not built yet.
+With single-value moves, the best of eight runs was 1179 and the tour crossed itself. With swaps
+and reversals, on `DiscreteEnergyTest`'s ten cities, every one of ten runs finds the brute-force
+optimum and none crosses itself; single-value moves on the same cities came out 20% longer.
 
 ## Sudoku, stated
 
@@ -174,7 +183,7 @@ clues fixed. That is the whole statement. This box settles a well-known 30-clue 
 descent first, one step per frame, then Gibbs sweeps on the board it leaves. Each free cell shows
 its strongest digit in blue, brighter as its belief sharpens:
 
-```diffstatic_runner {data-lang=kotlin video="assets/discrete_energy/sudoku.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="240" embed=true name="energy-sudoku-video" alt="A Sudoku board whose blank cells start as dim, uncertain digits, sharpen over about sixty descent steps with a few clashes left, then flicker through Gibbs sweeps until the caption reads energy 0"}
+```diffstatic_runner {data-lang=kotlin video="assets/discrete_energy/sudoku.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="240" embed=true name="energy-sudoku-video" alt="A Sudoku board whose blank cells start as dim, uncertain digits, sharpen over the descent steps with clashes left, then flicker through Gibbs sweeps until the caption reads energy 0; above it a line chart of the energy, falling steeply during the descent, then jagged and drifting down to zero through the sweeps"}
 :::static
 val clues = "530070000600195000098000060800060003400803001700020006060000280000419005000080079"
 val sudoku = DiscreteEnergy(81, 9)
@@ -198,15 +207,27 @@ fun board(caption: String) = "<div style='font:14px monospace;color:#ccc'>$capti
 
 val descent = MeanFieldDescent(sudoku)
 val gibbs = GibbsAnnealing(sudoku, sweeps = 5000, startTemperature = 0.6, endTemperature = 0.15, seed = 0)
+
+// the energy at every drawn frame, plotted above the board
+val trace = mutableListOf<Double>()
+fun show(caption: String) {
+    trace += s.energy
+    val chart = Chart(title = "energy (broken constraints)", xLabel = "frame: descent steps, then every 25 Gibbs sweeps", yLabel = "energy")
+        .line("energy", trace.indices.map { it.toDouble() }, trace)
+    // the chart as FLines in a fixed-size panel, drawn first so the video frames it from the first step
+    lines(*chart.toFLines().toTypedArray(), channel = "energy", w = 460.0, h = 260.0, fitToSize = true)
+    display("board", board(caption))
+}
+
 frames {
     var step = 0
-    while (descent.step(s) > 1e-4f) { step++; display("board", board("descent step $step, energy ${s.energy.toInt()}")); frame() }
+    while (descent.step(s) > 1e-4f) { step++; show("descent step $step, energy ${s.energy.toInt()}"); frame() }
     GreedyMoves(sudoku).settle(s)
     while (s.energy > 0 && gibbs.step(s)) {
-        if (gibbs.sweep % 25 == 0) { s.beliefsFromAssignment(); display("board", board("Gibbs sweep ${gibbs.sweep}, energy ${s.energy.toInt()}")); frame() }
+        if (gibbs.sweep % 25 == 0) { s.beliefsFromAssignment(); show("Gibbs sweep ${gibbs.sweep}, energy ${s.energy.toInt()}"); frame() }
     }
     s.beliefsFromAssignment()
-    display("board", board("solved: energy ${s.energy.toInt()}"))
+    show("solved: energy ${s.energy.toInt()}")
 }
 ```
 
@@ -225,10 +246,11 @@ on every example teaches what the digits do, not which digit is which, and the L
 couplings that no example supports at zero.
 
 `sameValueImage` draws, for every pair of variables, how much more it costs them to take the same
-value than different ones. Above is the stated energy; below, the one learned from 400 grids,
-which takes about 10 seconds:
+value than different ones. Above is the stated energy; below, the one learned from 3,000 grids
+over 10 epochs, which takes about 7 seconds. The box then solves the 30-clue puzzle with the
+learned energy and counts the stated constraints its board breaks:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/discrete_energy/learned.png" wait="1.5" capture="box" open-outputs="true" padding="20" timeout="120" embed=true name="energy-learned" alt="Two 81 by 81 heatmaps, one above the other. Above, the stated energy: three bright 27-cell bands on the diagonal, each patterned with 9-cell row squares and 3-by-3 box blocks, and thin diagonal stripes nine cells apart on a black ground. Below, the learned energy: the same bands, blocks and stripes in the same places, on a purple ground"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/discrete_energy/learned.png" wait="1.5" capture="box" open-outputs="true" padding="20" timeout="120" embed=true name="energy-learned" alt="Two 81 by 81 heatmaps, one above the other. Above, the stated energy: three bright 27-cell bands on the diagonal, each patterned with 9-cell row squares and 3-by-3 box blocks, and thin diagonal stripes nine cells apart on a black ground. Below, the learned energy: the same bands, blocks and stripes in the same places, on a near-black ground; under it, a line saying the board solved with the learned energy breaks 0 stated constraints"}
 :::static
 val stated = DiscreteEnergy(81, 9)
 for (k in 0 until 9) {
@@ -252,7 +274,7 @@ fun solvedGrid(): IntArray {
     fill(0)
     return g
 }
-val grids = List(400) { solvedGrid() }
+val grids = List(3000) { solvedGrid() }
 
 val learned = DiscreteEnergy(81, 9)
 val learner = PseudolikelihoodLearner(learned, rate = 0.2f, l1 = 1e-4f, augment = { g, r ->
@@ -263,15 +285,41 @@ repeat(10) { learner.epoch(grids) }
 
 showHeatmap(stated.sameValueImage(), colormap = "magma", smooth = false, flipY = false, width = 324, channel = "stated")
 showHeatmap(learned.sameValueImage(), colormap = "magma", smooth = false, flipY = false, width = 324, channel = "learned")
+
+// solve the 30-clue puzzle with the learned energy, stopping at its training solutions' energy
+val clues = "530070000600195000098000060800060003400803001700020006060000280000419005000080079"
+clues.forEachIndexed { cell, ch -> if (ch != '0') learned.fix(cell, ch - '1') }
+val target = grids.maxOf { learned.energy(it) } + 1e-3
+val scale = learned.constraintScale() // the learned constraints' strength sets the temperatures
+val s = EnergyState(learned)
+MeanFieldDescent(learned).settle(s)
+GreedyMoves(learned).settle(s)
+for (attempt in 0 until 3) if (s.energy > target) {
+    GibbsAnnealing(learned, 5000, 0.6 * scale, 0.15 * scale, seed = attempt.toLong()).settle(s)
+    GreedyMoves(learned).settle(s)
+}
+display("learned solve", "constraint scale ${scale.f2}; the learned energy's board breaks ${stated.energy(s.assignment).toInt()} stated constraints")
 ```
 
 Cells are numbered row by row. The bright 9 × 9 squares on the diagonal are cells in the same row;
 the patterned 27-cell bands around them are cells in the same three rows, whose bright blocks
 share a box; the stripes nine cells apart are cells in the same column. Nobody told the learner
-about rows, columns or boxes. On 1,000 grids and 20 epochs, the learned image correlates with the
-stated one at 0.989 over all cell pairs. That learned energy solves 46 of 80 held-out puzzles where
-the stated one solves 65. It stops once its energy is as low as its training solutions', and its
-lead is lost on the harder puzzles: 5 of 20 at 50 and at 60 blanks.
+about rows, columns or boxes. The learned image correlates with the stated one at 0.989 over all
+cell pairs.
+
+On held-out puzzles, `DiscreteEnergyTest` solves 55 of 80 with this learned energy and 74 of 80
+with the stated one. The learned energy matches at 30 blanks (20 of 20 each), and the gap opens
+at 50 and 60 blanks (12 and 6 of 20, against 17 and 17). Two causes, measured separately:
+
+- **Too few examples.** Trained on 400 grids, the learned energy is sometimes simply wrong: an
+  invalid board scored lower than the true solution in 4 of 20 hard puzzles. From 1,000 grids up,
+  that never happened.
+- **A rougher landscape.** With enough data, every remaining failure is the search stopping above
+  the true solution's energy. The learned energy keeps small couplings between unrelated cells, so
+  valid grids no longer all share one energy (their energies spread over about 6 units), and
+  annealing has more false valleys to fall into. Setting the temperatures from
+  `constraintScale()`, the learned constraints' typical strength, rather than from the largest
+  coupling, helps a little; more data helps most.
 
 ## On the GPU
 

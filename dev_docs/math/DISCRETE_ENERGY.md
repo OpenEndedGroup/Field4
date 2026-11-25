@@ -3,7 +3,8 @@
 After Hoover, Blayney and Whittington, "Classical Energies Learn to Reason 1,000× Faster than Looped
 Models", arXiv 2611.17309 (CC-BY).
 - Code: `src/jvmMain/kotlin/afield/math/energy/DiscreteEnergy.kt` (`DiscreteEnergy`, `EnergyState`,
-  `MeanFieldDescent`, `GreedyMoves`, `GibbsAnnealing`, `PseudolikelihoodLearner`).
+  `MeanFieldDescent`, `GreedyMoves`, `GibbsAnnealing`, `MetropolisAnnealing`, `PseudolikelihoodLearner`;
+  move sets `ChangeOneValue`, `SwapValues`, `ReverseSegment`).
 - Test: `DiscreteEnergyTest`.
 - Page: `public/docs/discrete_energy.md`.
 - Demo: `dev_docs/agents/transcripts/discrete_energy.yaml`.
@@ -28,12 +29,21 @@ Models", arXiv 2611.17309 (CC-BY).
 - My first attempt used a contrastive rule against the solver's fixed point, which is not the paper's. It is replaced.
 
 ## Numbers (DiscreteEnergyTest, CPU)
-- Sudoku, stated, on 20 puzzles per row (2 chains, 2000 sweeps, temperature 1.0 → 0.1): 20, 20, 14 and 11 of 20 at
-  30/40/50/60 blanks (65/80).
-- Sudoku, learned from 1000 grids over 20 epochs (55 s): 20, 16, 5 and 5 of 20 (46/80).
+- Sudoku, stated, on 20 puzzles per row (2 chains, 2000 sweeps, temperature 1.0 → 0.1 × constraintScale): 20, 20, 17
+  and 17 of 20 at 30/40/50/60 blanks (74/80).
+- Sudoku, learned from 3000 grids over 10 epochs (8.8 s; L1 applied every 32 examples, about 12× faster than per
+  example): 20, 17, 12 and 6 of 20 (55/80).
+- Diagnosis at 50 blanks, 20 puzzles, splitting failures into "energy wrong" (an invalid board at or below the true
+  solution's energy) and "search short":
+  - 400 grids: 4 wrong and 11 short.
+  - 1000 grids: 0–1 wrong.
+  - 3000 grids: 0 wrong and 2–4 short, with 16–18 solved against the stated energy's 18–20.
+  - L1 at 3e-4 underfits (loss 0.18); at 1e-5 it overfits for search.
 - Learned-vs-stated same-value image correlation: 0.989.
 - N-queens: 10/10 solved for n = 8 and n = 12.
 - Graph colouring (40 points, 3-nearest-neighbour graph, 74 edges): 4 colours reach 0 conflicts; 3 colours leave 3.
-- TSP, 10 cities: 10/10 runs give valid tours; the best is 2.95 against a brute-force optimum of 2.69 (+9.5%).
-  Single-variable moves are weak on permutations.
+- TSP, 10 cities, brute-force optimum 2.695:
+  - Single-value moves: best of 10 runs 3.24 (+20%).
+  - SwapValues and ReverseSegment (2-opt) with MetropolisAnnealing then GreedyMoves: 10/10 runs at the optimum, with
+    0 crossings.
 - GPU/CPU parity: 1.04e-7 largest belief difference after 40 steps, same board.

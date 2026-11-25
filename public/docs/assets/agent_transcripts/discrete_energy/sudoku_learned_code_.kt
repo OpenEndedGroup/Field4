@@ -1,5 +1,5 @@
 /*
-The same 81 × 9 energy with nothing stated: its costs are learned from 400 solved grids by
+The same 81 × 9 energy with nothing stated: its costs are learned from 3000 solved grids by
 pseudolikelihood, relabelling the digits at random each time. Its same-digit image should match
 the stated one, and it should solve the same puzzle.
 */
@@ -23,7 +23,7 @@ fun solvedGrid(): IntArray {
     fill(0)
     return g
 }
-val grids = List(400) { solvedGrid() }
+val grids = List(3000) { solvedGrid() }
 
 val learned = DiscreteEnergy(81, 9)
 val learner = PseudolikelihoodLearner(
@@ -54,7 +54,7 @@ for (c in 0 until 81) if (sudokuEnergy.fixed[c] >= 0) learned.fix(c, sudokuEnerg
 val s = EnergyState(learned)
 val steps = MeanFieldDescent(learned).settle(s)
 GreedyMoves(learned).settle(s)
-val scale = learned.pairwise.maxOf { kotlin.math.abs(it) }.toDouble()
+val scale = learned.constraintScale() // the learned constraints' strength sets the temperatures
 for (attempt in 0 until 3) if (s.energy > target) {
     GibbsAnnealing(learned, 5000, 0.6 * scale, 0.15 * scale, seed = attempt.toLong()).settle(s)
     GreedyMoves(learned).settle(s)

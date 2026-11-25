@@ -45,7 +45,7 @@ class DiscreteEnergyTest {
         val r = Random(seed)
         var best: EnergyState? = null
         var steps = 0
-        val scale = m.pairwise.maxOf { abs(it) }.toDouble()
+        val scale = m.constraintScale()
         for (c in 0 until chains) {
             val s = EnergyState(m).reset(if (c == 0) null else r)
             steps += MeanFieldDescent(m).settle(s)
@@ -86,13 +86,13 @@ class DiscreteEnergyTest {
 
         val learned = DiscreteEnergy(81, 9)
         val r = Random(1)
-        val grids = List(1000) { solvedGrid(r) }
+        val grids = List(3000) { solvedGrid(r) }
         val learner = PseudolikelihoodLearner(learned, rate = 0.2f, l1 = 1e-4f, augment = { g, rr ->
             val perm = (0 until 9).shuffled(rr)
             IntArray(81) { perm[g[it]] }
         })
         val t0 = System.nanoTime()
-        repeat(20) { learner.epoch(grids) }
+        repeat(10) { learner.epoch(grids) }
         println("ENERGY sudoku learned train=${(System.nanoTime() - t0) / 1_000_000}ms loss=${learner.loss(grids)}")
         val target = grids.maxOf { learned.energy(it) } + 1e-3
         val lr = rate(learned, rules, target, "learned")
@@ -153,19 +153,21 @@ class DiscreteEnergyTest {
         val c = List(n) { r.nextDouble() to r.nextDouble() }
         fun d(i: Int, j: Int) = hypot(c[i].first - c[j].first, c[i].second - c[j].second)
         val t = DiscreteEnergy(n, n)
-        t.allDifferent((0 until n).toList(), weight = 2.0)
+        val stops = (0 until n).toList()
+        t.allDifferent(stops, weight = 2.0)
         for (k in 0 until n) t.pairCost(k, (k + 1) % n) { x, y -> d(x, y) }
         t.fix(0, 0)
         fun length(tour: IntArray) = (0 until n).sumOf { d(tour[it], tour[(it + 1) % n]) }
-        var best = Double.MAX_VALUE
-        var valid = 0
-        repeat(10) { seed ->
-            val s = EnergyState(t).reset(Random(seed))
-            MeanFieldDescent(t).settle(s)
-            GreedyMoves(t).settle(s)
-            GibbsAnnealing(t, 400, 1.0, 0.01, seed.toLong()).settle(s)
-            GreedyMoves(t).settle(s)
-            if (s.assignment.toSet().size == n) { valid++; best = minOf(best, length(s.assignment)) }
+        fun crossings(tour: IntArray): Int {
+            fun ccw(a: Pair<Double, Double>, b: Pair<Double, Double>, q: Pair<Double, Double>) =
+                (b.first - a.first) * (q.second - a.second) - (b.second - a.second) * (q.first - a.first)
+            var k = 0
+            for (i in 0 until n) for (j in i + 2 until n) {
+                if (i == 0 && j == n - 1) continue
+                val p1 = c[tour[i]]; val p2 = c[tour[(i + 1) % n]]; val p3 = c[tour[j]]; val p4 = c[tour[(j + 1) % n]]
+                if (ccw(p1, p2, p3) * ccw(p1, p2, p4) < 0 && ccw(p3, p4, p1) * ccw(p3, p4, p2) < 0) k++
+            }
+            return k
         }
         var opt = Double.MAX_VALUE
         fun perm(prefix: IntArray, left: List<Int>) {
@@ -173,8 +175,30 @@ class DiscreteEnergyTest {
             for (x in left) perm(prefix + x, left - x)
         }
         perm(intArrayOf(0), (1 until n).toList())
-        println("ENERGY tsp n=$n validTours=$valid/10 best=$best optimum=$opt")
-        assertTrue(valid > 0)
+
+        // single-variable moves: Gibbs, then greedy value changes
+        val single = (0 until 10).map { seed ->
+            val s = EnergyState(t).reset(Random(seed))
+            GibbsAnnealing(t, 400, 1.0, 0.01, seed.toLong()).settle(s)
+            GreedyMoves(t).settle(s)
+            s.assignment.copyOf()
+        }.filter { it.toSet().size == n }
+        // permutation moves: start from any permutation, anneal with swaps and 2-opt reversals, then greedy
+        val perms = listOf(SwapValues(stops), ReverseSegment(stops))
+        val permuted = (0 until 10).map { seed ->
+            val s = EnergyState(t)
+            for (k in 0 until n) s.assignment[k] = k
+            MetropolisAnnealing(t, perms, sweeps = 300, startTemperature = 0.5, endTemperature = 0.005, seed = seed.toLong()).settle(s)
+            GreedyMoves(t, perms).settle(s)
+            s.assignment.copyOf()
+        }
+        assertTrue(permuted.all { it.toSet().size == n }, "permutation moves keep a permutation")
+        val sb = single.minBy { length(it) }; val pb = permuted.minBy { length(it) }
+        println("ENERGY tsp n=$n optimum=$opt")
+        println("ENERGY tsp single-value moves: valid=${single.size}/10 best=${length(sb)} (+${((length(sb) / opt - 1) * 100).toInt()}%) crossings=${crossings(sb)}")
+        println("ENERGY tsp swap+2-opt moves: best=${length(pb)} (+${((length(pb) / opt - 1) * 100).toInt()}%) crossings=${crossings(pb)} " +
+            "atOptimum=${permuted.count { length(it) < opt + 1e-9 }}/10 mean=${permuted.map { length(it) }.average()}")
+        assertTrue(length(pb) <= length(sb) + 1e-9 && crossings(pb) == 0)
     }
 
     @Test

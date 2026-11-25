@@ -336,17 +336,17 @@ frames {
 
 From `code`
 
-The same 81 × 9 energy with nothing stated: its costs are learned from 400 solved grids by
+The same 81 × 9 energy with nothing stated: its costs are learned from 3000 solved grids by
 pseudolikelihood, relabelling the digits at random each time. Its same-digit image should match
 the stated one, and it should solve the same puzzle.
 
 ```edn [field-box id="sudoku_learned" role="properties"]
-{"id" "sudoku_learned" "index" 5 "name" "Sudoku, learned" "parents" ["root" "sudoku_rules"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "sudoku_rules"} "name" "Sudoku, learned" "_tombstone" false "frame" #afield/rect [1200.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sudoku_learned_code_.kt" "lines" 65 "characters" 2306 "sha256" "b6881e6a79f1666ff0ab1095289c8f2a054dcf40e76f770215a99b86417a86cd"}]}
+{"id" "sudoku_learned" "index" 5 "name" "Sudoku, learned" "parents" ["root" "sudoku_rules"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "sudoku_rules"} "name" "Sudoku, learned" "_tombstone" false "frame" #afield/rect [1200.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sudoku_learned_code_.kt" "lines" 65 "characters" 2335 "sha256" "3f16b046a0a37585aae581518574a15d26b6fd32a89a5cfbec878be44710e5aa"}]}
 ```
 
 ```kotlin [field-property box="sudoku_learned" name="code" path="sudoku_learned_code_.kt"]
 /*
-The same 81 × 9 energy with nothing stated: its costs are learned from 400 solved grids by
+The same 81 × 9 energy with nothing stated: its costs are learned from 3000 solved grids by
 pseudolikelihood, relabelling the digits at random each time. Its same-digit image should match
 the stated one, and it should solve the same puzzle.
 */
@@ -370,7 +370,7 @@ fun solvedGrid(): IntArray {
     fill(0)
     return g
 }
-val grids = List(400) { solvedGrid() }
+val grids = List(3000) { solvedGrid() }
 
 val learned = DiscreteEnergy(81, 9)
 val learner = PseudolikelihoodLearner(
@@ -401,7 +401,7 @@ for (c in 0 until 81) if (sudokuEnergy.fixed[c] >= 0) learned.fix(c, sudokuEnerg
 val s = EnergyState(learned)
 val steps = MeanFieldDescent(learned).settle(s)
 GreedyMoves(learned).settle(s)
-val scale = learned.pairwise.maxOf { kotlin.math.abs(it) }.toDouble()
+val scale = learned.constraintScale() // the learned constraints' strength sets the temperatures
 for (attempt in 0 until 3) if (s.energy > target) {
     GibbsAnnealing(learned, 5000, 0.6 * scale, 0.15 * scale, seed = attempt.toLong()).settle(s)
     GreedyMoves(learned).settle(s)
@@ -421,27 +421,33 @@ display("learned solve", sudokuBoard(s, "solved by the learned energy"))
 From `code`
 
 A tour of 10 cities as a permutation: variable k is the city visited k-th, all different, and
-consecutive stops cost their distance. Annealed Gibbs, one sweep per frame; city 0 starts the tour.
+consecutive stops cost their distance. Simulated annealing with moves that keep it a permutation
+(swap two stops, or reverse a run: 2-opt), one sweep per frame; city 0 starts the tour.
 
 ```edn [field-box id="tsp_box" role="properties"]
-{"id" "tsp_box" "index" 6 "name" "travelling salesman" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "travelling salesman" "_tombstone" false "frame" #afield/rect [1100.0 1000.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tsp_box_code_.kt" "lines" 48 "characters" 1716 "sha256" "34cf9ac875836c0781f1a72c6d762412a6ad871aa80be039376dfa3aa4e11ad6"}]}
+{"id" "tsp_box" "index" 6 "name" "travelling salesman" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "travelling salesman" "_tombstone" false "frame" #afield/rect [1100.0 1000.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tsp_box_code_.kt" "lines" 52 "characters" 1834 "sha256" "6255f2fff97006a1d9ea7260379c95f7fb96fa08441f1308f68dfa45e627eeca"}]}
 ```
 
 ```kotlin [field-property box="tsp_box" name="code" path="tsp_box_code_.kt"]
 /*
 A tour of 10 cities as a permutation: variable k is the city visited k-th, all different, and
-consecutive stops cost their distance. Annealed Gibbs, one sweep per frame; city 0 starts the tour.
+consecutive stops cost their distance. Simulated annealing with moves that keep it a permutation
+(swap two stops, or reverse a run: 2-opt), one sweep per frame; city 0 starts the tour.
 */
 val rnd = kotlin.random.Random(3)
 val n = 10
 val city = List(n) { vec(rnd.nextDouble() * 400, rnd.nextDouble() * 300) }
+fun d(x: Int, y: Int) = city[x].distance(city[y]).toDouble()
 val tour = DiscreteEnergy(n, n)
-tour.allDifferent((0 until n).toList(), weight = 2.0 * 500)
-for (k in 0 until n) tour.pairCost(k, (k + 1) % n) { x, y -> city[x].distance(city[y]).toDouble() }
+val stops = (0 until n).toList()
+tour.allDifferent(stops, weight = 1000.0)
+for (k in 0 until n) tour.pairCost(k, (k + 1) % n) { x, y -> d(x, y) }
 tour.fix(0, 0)
 
-val s = EnergyState(tour).reset(rnd)
-val gibbs = GibbsAnnealing(tour, sweeps = 400, startTemperature = 500.0, endTemperature = 5.0, seed = 3)
+val moves = [SwapValues(stops), ReverseSegment(stops)]
+val s = EnergyState(tour)
+for (k in 0 until n) s.assignment[k] = k
+val annealing = MetropolisAnnealing(tour, moves, sweeps = 300, startTemperature = 200.0, endTemperature = 2.0, seed = 3)
 fun draw() {
     val path = fline {
         moveTo(city[s.assignment[0]].x, city[s.assignment[0]].y)
@@ -449,7 +455,7 @@ fun draw() {
         color = vec(0.35, 0.75, 1.0, 1.0)
         thickness = 2.0
     }
-    val stops = fline {
+    val dots = fline {
         for (c in city) {
             moveTo(c.x - 4, c.y - 4)
             lineTo(c.x + 4, c.y - 4)
@@ -461,19 +467,18 @@ fun draw() {
         stroked = false
         color = vec(1.0, 0.85, 0.3, 1.0)
     }
-    lines(path, stops, w = 440.0, h = 340.0, fitToSize = true)
-    val visits = s.assignment.toSet().size
+    lines(path, dots, w = 440.0, h = 340.0, fitToSize = true)
     display(
         "tour",
-        "sweep ${gibbs.sweep}: $visits of $n cities visited, length ${(0 until n).sumOf { city[s.assignment[it]].distance(city[s.assignment[(it + 1) % n]]).toDouble() }.f0}",
+        "sweep ${annealing.sweep}: length ${(0 until n).sumOf { d(s.assignment[it], s.assignment[(it + 1) % n]) }.f0}",
     )
 }
 frames {
-    while (gibbs.step(s)) {
-        if (gibbs.sweep % 4 == 0) draw()
+    while (annealing.step(s)) {
+        draw()
         frame()
     }
-    GreedyMoves(tour).settle(s)
+    GreedyMoves(tour, moves).settle(s)
     draw()
 }
 ```

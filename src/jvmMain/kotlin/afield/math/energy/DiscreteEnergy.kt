@@ -18,7 +18,9 @@ import kotlin.random.Random
  * State a problem with the builders ([allDifferent], [notEqual], [equal], [prefer], [forbid],
  * [pairCost], [fix]), or learn the costs from example solutions with
  * [PseudolikelihoodLearner]. Then settle an [EnergyState] with [MeanFieldDescent],
- * [GreedyMoves] or [GibbsAnnealing], one step at a time if a box is drawing it.
+ * [GreedyMoves], [GibbsAnnealing] or [MetropolisAnnealing], one step at a time if a box is drawing it;
+ * [GreedyMoves] and [MetropolisAnnealing] take [MoveSet]s, such as [SwapValues] and [ReverseSegment] for
+ * permutations.
  *
  * After Hoover, Blayney and Whittington, "Classical Energies Learn to Reason 1,000× Faster than
  * Looped Models" (arXiv 2611.17309, CC-BY), which learns such energies for Sudoku and mazes.
@@ -113,6 +115,33 @@ class DiscreteEnergy(val domains: IntArray) {
     }
 
     /**
+     * Change in energy if `move` were applied to `assignment`: only the terms touching the moved
+     * variables are evaluated, so it costs about `moved × variables`.
+     */
+    fun moveDelta(assignment: IntArray, move: Move): Double {
+        fun part(): Double {
+            var e = 0.0
+            val vs = move.variables
+            for ((k, v) in vs.withIndex()) {
+                val i = unit(v, assignment[v])
+                e += unary[i]
+                for (b in 0 until variables) {
+                    val inMove = vs.indexOf(b)
+                    if (inMove < 0) e += pairwise[i * units + unit(b, assignment[b])]
+                    else if (inMove > k) e += pairwise[i * units + unit(b, assignment[b])]
+                }
+            }
+            return e
+        }
+        val before = part()
+        val old = IntArray(move.variables.size) { assignment[move.variables[it]] }
+        for ((k, v) in move.variables.withIndex()) assignment[v] = move.values[k]
+        val after = part()
+        for ((k, v) in move.variables.withIndex()) assignment[v] = old[k]
+        return after - before
+    }
+
+    /**
      * For variables `a` and `b` with the same domain: the mean cost of their taking the same value
      * minus the mean cost of different values. Positive means "these two should differ".
      */
@@ -125,6 +154,21 @@ class DiscreteEnergy(val domains: IntArray) {
             if (x == y) same += w else diff += w
         }
         return same / n - (if (n > 1) diff / (n * (n - 1)) else 0.0)
+    }
+
+    /**
+     * A typical constraint strength: the median [sameValueCost] over the `perVariable` strongest
+     * partners of each variable. About 1 for an energy stated with weight-1 builders; a learned
+     * energy's, which differs, sets the temperatures an annealer should use.
+     */
+    fun constraintScale(perVariable: Int = 20): Double {
+        val top = ArrayList<Double>()
+        for (a in 0 until variables) {
+            val row = (0 until variables).filter { it != a }.map { sameValueCost(a, it) }.sortedDescending()
+            top += row.take(perVariable)
+        }
+        top.sort()
+        return top[top.size / 2].coerceAtLeast(1e-9)
     }
 
     /** [sameValueCost] for every pair of variables, as rows for `showHeatmap`. */
@@ -259,22 +303,99 @@ class MeanFieldDescent(val model: DiscreteEnergy, var eta: Float = 0.5f, var bet
     }
 }
 
-/** Greedy single-variable moves: each [step] makes the one change that lowers the energy most. */
-class GreedyMoves(val model: DiscreteEnergy) {
+/**
+ * A move: new values for some variables at once. [GreedyMoves] and [MetropolisAnnealing] take
+ * their candidates from one or more [MoveSet]s.
+ */
+class Move(val variables: IntArray, val values: IntArray)
+
+/**
+ * A family of moves from an assignment. [ChangeOneValue] is the default; [SwapValues] and
+ * [ReverseSegment] keep a group of variables a permutation, which a tour or an ordering needs.
+ */
+interface MoveSet {
+    /** Every move from `assignment`, skipping variables fixed in `model`. */
+    fun all(model: DiscreteEnergy, assignment: IntArray): Sequence<Move>
+
+    /** One move chosen at random, or null when there is none. */
+    fun random(model: DiscreteEnergy, assignment: IntArray, random: Random): Move?
+}
+
+/** Change one free variable to another of its values. */
+object ChangeOneValue : MoveSet {
+    override fun all(model: DiscreteEnergy, assignment: IntArray) = sequence {
+        for (v in 0 until model.variables) if (model.fixed[v] < 0)
+            for (x in 0 until model.domains[v]) if (x != assignment[v]) yield(Move(intArrayOf(v), intArrayOf(x)))
+    }
+
+    override fun random(model: DiscreteEnergy, assignment: IntArray, random: Random): Move? {
+        val free = (0 until model.variables).filter { model.fixed[it] < 0 && model.domains[it] > 1 }
+        if (free.isEmpty()) return null
+        val v = free[random.nextInt(free.size)]
+        var x = random.nextInt(model.domains[v] - 1)
+        if (x >= assignment[v]) x++
+        return Move(intArrayOf(v), intArrayOf(x))
+    }
+}
+
+/** Exchange the values of two free variables of `group`: a permutation stays a permutation. */
+class SwapValues(val group: List<Int>) : MoveSet {
+    override fun all(model: DiscreteEnergy, assignment: IntArray) = sequence {
+        val g = group.filter { model.fixed[it] < 0 }
+        for (i in g.indices) for (j in i + 1 until g.size) if (assignment[g[i]] != assignment[g[j]])
+            yield(Move(intArrayOf(g[i], g[j]), intArrayOf(assignment[g[j]], assignment[g[i]])))
+    }
+
+    override fun random(model: DiscreteEnergy, assignment: IntArray, random: Random): Move? {
+        val g = group.filter { model.fixed[it] < 0 }
+        if (g.size < 2) return null
+        val i = random.nextInt(g.size)
+        var j = random.nextInt(g.size - 1)
+        if (j >= i) j++
+        return Move(intArrayOf(g[i], g[j]), intArrayOf(assignment[g[j]], assignment[g[i]]))
+    }
+}
+
+/**
+ * Reverse the values along a run `group[i..j]` of free variables: for a tour, whose variables are
+ * its stops in order, this is the 2-opt move that uncrosses two edges.
+ */
+class ReverseSegment(val group: List<Int>) : MoveSet {
+    private fun move(model: DiscreteEnergy, a: IntArray, i: Int, j: Int): Move? {
+        val run = group.subList(i, j + 1)
+        if (run.any { model.fixed[it] >= 0 }) return null
+        return Move(run.toIntArray(), IntArray(run.size) { a[run[run.size - 1 - it]] })
+    }
+
+    override fun all(model: DiscreteEnergy, assignment: IntArray) = sequence {
+        for (i in group.indices) for (j in i + 1 until group.size) move(model, assignment, i, j)?.let { yield(it) }
+    }
+
+    override fun random(model: DiscreteEnergy, assignment: IntArray, random: Random): Move? {
+        if (group.size < 2) return null
+        repeat(20) {
+            val i = random.nextInt(group.size); val j = random.nextInt(group.size)
+            if (i != j) move(model, assignment, minOf(i, j), maxOf(i, j))?.let { return it }
+        }
+        return null
+    }
+}
+
+/**
+ * Greedy descent over `moves` (one value at a time by default): each [step] makes the single move
+ * that lowers the energy most.
+ */
+class GreedyMoves(val model: DiscreteEnergy, val moves: List<MoveSet> = listOf(ChangeOneValue)) {
     /** Makes the best improving move; returns false when no move lowers the energy. */
     fun step(state: EnergyState): Boolean {
-        var bestGain = 1e-9; var bv = -1; var bx = 0
+        var bestGain = 1e-9; var best: Move? = null
         val a = state.assignment
-        for (v in 0 until model.variables) {
-            if (model.fixed[v] >= 0) continue
-            val cur = model.localEnergy(a, v, a[v])
-            for (x in 0 until model.domains[v]) if (x != a[v]) {
-                val gain = cur - model.localEnergy(a, v, x)
-                if (gain > bestGain) { bestGain = gain; bv = v; bx = x }
-            }
+        for (set in moves) for (m in set.all(model, a)) {
+            val gain = -model.moveDelta(a, m)
+            if (gain > bestGain) { bestGain = gain; best = m }
         }
-        if (bv < 0) return false
-        a[bv] = bx
+        val m = best ?: return false
+        for ((k, v) in m.variables.withIndex()) a[v] = m.values[k]
         return true
     }
 
@@ -284,6 +405,61 @@ class GreedyMoves(val model: DiscreteEnergy) {
         while (m < maxMoves && step(state)) m++
         state.beliefsFromAssignment()
         return m
+    }
+}
+
+/**
+ * Simulated annealing over `moves`: each [step] is one sweep of `proposalsPerSweep` random moves,
+ * each accepted with probability `min(1, exp(-Δ/T))`, with `T` falling geometrically from
+ * [startTemperature] to [endTemperature] over [sweeps] sweeps. Use it where a single-variable
+ * Gibbs sweep cannot move, such as a permutation with [SwapValues] and [ReverseSegment].
+ */
+class MetropolisAnnealing(
+    val model: DiscreteEnergy,
+    val moves: List<MoveSet>,
+    val sweeps: Int = 300,
+    val startTemperature: Double = 1.0,
+    val endTemperature: Double = 0.02,
+    val proposalsPerSweep: Int = model.variables,
+    seed: Long = 0,
+) {
+    private val random = Random(seed)
+
+    /** Sweeps taken so far. */
+    var sweep = 0
+        private set
+
+    /** Moves accepted so far. */
+    var accepted = 0
+        private set
+
+    /** The temperature of the next sweep. */
+    val temperature get() = startTemperature * Math.pow(endTemperature / startTemperature, sweep / (sweeps - 1.0).coerceAtLeast(1.0))
+
+    /** One sweep; returns false once [sweeps] sweeps have been taken. */
+    fun step(state: EnergyState): Boolean {
+        if (sweep >= sweeps) return false
+        val t = temperature
+        val a = state.assignment
+        repeat(proposalsPerSweep) {
+            val m = moves[random.nextInt(moves.size)].random(model, a, random) ?: return@repeat
+            val d = model.moveDelta(a, m)
+            if (d <= 0 || random.nextDouble() < exp(-d / t)) {
+                for ((k, v) in m.variables.withIndex()) a[v] = m.values[k]
+                accepted++
+            }
+        }
+        sweep++
+        return true
+    }
+
+    /** Runs the remaining sweeps; leaves `state` at the lowest-energy assignment seen and returns its energy. */
+    fun settle(state: EnergyState): Double {
+        var best = state.assignment.copyOf(); var bestE = state.energy
+        while (step(state)) { val e = state.energy; if (e < bestE) { bestE = e; best = state.assignment.copyOf() } }
+        best.copyInto(state.assignment)
+        state.beliefsFromAssignment()
+        return bestE
     }
 }
 
@@ -347,7 +523,8 @@ class GibbsAnnealing(
  * example solutions by pseudolikelihood, never running a solver: for each variable of an
  * example, the conditional over its values with every other variable held at the example is
  * `softmax(-local energy)`, and each update moves the costs by `q - y` to make the example's
- * value more likely. An L1 step of [l1] after each example keeps unused couplings at zero.
+ * value more likely. An L1 step of [l1] per example (applied every [shrinkEvery] examples, which
+ * is most of the speed) keeps unused couplings at zero.
  *
  * @param augment optional symmetry applied to each example before it is used (Sudoku relabels
  *   its digits, so the model learns what the digits do rather than which is which).
@@ -383,11 +560,22 @@ class PseudolikelihoodLearner(
                     }
                 }
             }
-            if (l1 > 0) for (i in m.pairwise.indices) {
-                val w = m.pairwise[i]
-                m.pairwise[i] = if (w > l1) w - l1 else if (w < -l1) w + l1 else 0f
-            }
+            if (++sinceShrink >= shrinkEvery) shrink()
         }
+        shrink()
+    }
+
+    private var sinceShrink = 0
+
+    /** Examples between L1 steps; each step shrinks by `l1` times the examples since the last. */
+    var shrinkEvery = 32
+
+    private fun shrink() {
+        if (l1 <= 0 || sinceShrink == 0) return
+        val k = l1 * sinceShrink
+        val w = model.pairwise
+        for (i in w.indices) { val x = w[i]; w[i] = if (x > k) x - k else if (x < -k) x + k else 0f }
+        sinceShrink = 0
     }
 
     /** Mean negative log pseudolikelihood per variable of `examples`. */
