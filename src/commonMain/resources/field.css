@@ -5612,7 +5612,8 @@ kbd {
     position: fixed;
     left: 10px;
     bottom: 10px;
-    z-index: 10030;
+    /* Keep notifications behind the editor (z-index 19). */
+    z-index: 18;
     box-sizing: border-box;
     width: fit-content;
     max-width: min(420px, calc(100vw - 20px));

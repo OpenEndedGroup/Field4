@@ -28,7 +28,8 @@ function formatNotifyAgo(ms) {
 
 function updateNotifyTimeAgo(root = document) {
         const nodes = root.querySelectorAll(".notify-timeago");
-        if (!nodes || nodes.length === 0) return;
+        if (!nodes || nodes.length === 0) return false;
+        let changed = false;
         const now = Date.now();
         nodes.forEach((node) => {
                 const raw = node.getAttribute("data-time");
@@ -38,14 +39,19 @@ function updateNotifyTimeAgo(root = document) {
                 const date = new Date(ts);
                 const time = date.toLocaleTimeString([], { hour12: false });
                 const ago = formatNotifyAgo(now - ts);
-                node.textContent = `${time} (${ago} ago)`;
+                const text = `${time} (${ago} ago)`;
+                if (node.textContent !== text) {
+                        node.textContent = text;
+                        changed = true;
+                }
         });
+        return changed;
 }
 
 function ensureNotifyTimeAgoTimer() {
         if (window.notifyTimeAgoTimer) return;
         window.notifyTimeAgoTimer = setInterval(() => {
-                updateNotifyTimeAgo(document);
+                if (updateNotifyTimeAgo(document)) restackNotifyBubbles();
         }, 1000);
 }
 
@@ -63,29 +69,45 @@ function stopNotifySpinnersForCategory(cat, exceptNode) {
 }
 
 function restackNotifyBubbles() {
-        const bubbles = Array.from(document.getElementsByClassName("bubble"));
-        if (bubbles.length === 0) return;
-        let base = 10;
+        const live = Array.from(document.getElementsByClassName("bubble"))
+                .filter((node) => document.body.contains(node));
+        if (live.length === 0) return;
+        const gap = 4;
+        let bottom = 10;
         const startup = document.querySelector(".field-startup-progress:not(.field-startup-progress-done)");
-        if (startup) {
-                base += startup.getBoundingClientRect().height + 4;
-        }
-        // The document-guide launcher (documentGuide.js) is a fixed button in this same
-        // bottom-left corner; stack above it rather than hiding it.
+        if (startup) bottom += startup.getBoundingClientRect().height + gap;
+
+        // Fixed-position margins include the native shell's rounded-corner inset.
+        const style = getComputedStyle(live[0]);
+        const marginLeft = parseFloat(style.marginLeft) || 0;
+        const marginBottom = parseFloat(style.marginBottom) || 0;
+        const right = window.innerWidth - 10 - marginLeft;
         const launcher = document.getElementById("document-guide-launcher");
-        if (launcher && launcher.getClientRects().length > 0) {
-                base = Math.max(base, window.innerHeight - launcher.getBoundingClientRect().top + 4);
-        }
-        // Measure every bubble before moving any of them: the toasts are position:fixed, so
-        // their heights do not depend on `bottom`, and interleaving the read with the write
-        // forces one layout per bubble.
-        const live = bubbles.filter((node) => document.body.contains(node));
-        const heights = live.map((node) => node.getBoundingClientRect().height);
+        const launcherRect = launcher && launcher.getClientRects().length > 0
+                ? launcher.getBoundingClientRect() : null;
+        const sizes = live.map((node) => node.getBoundingClientRect());
+        let left = 10 + marginLeft;
+        let rowHeight = 0;
         live.forEach((node, i) => {
-                node.style.bottom = `${base}px`;
-                base += heights[i] + 4;
+                const size = sizes[i];
+                // Reserve the launcher only on rows that actually intersect it.
+                const rowTop = window.innerHeight - bottom - marginBottom - size.height;
+                const rowBottom = window.innerHeight - bottom - marginBottom;
+                const overlapsLauncher = launcherRect && rowBottom > launcherRect.top && rowTop < launcherRect.bottom;
+                if (overlapsLauncher) left = Math.max(left, launcherRect.right + gap);
+                if (left + size.width > right && left > 10 + marginLeft) {
+                        bottom += Math.max(rowHeight, overlapsLauncher ? rowBottom - launcherRect.top : 0) + gap;
+                        left = 10 + marginLeft;
+                        rowHeight = 0;
+                }
+                node.style.left = `${left - marginLeft}px`;
+                node.style.bottom = `${bottom}px`;
+                left += size.width + gap;
+                rowHeight = Math.max(rowHeight, size.height);
         });
 }
+
+window.addEventListener("resize", restackNotifyBubbles);
 
 var notify = (text, cat = "") => {
         const htmlText = text
