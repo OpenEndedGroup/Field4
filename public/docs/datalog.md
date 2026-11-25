@@ -682,6 +682,631 @@ whether it is in the model and which rules read its relation. A rule edited sinc
 reported as not in the model, and no directive is ever run for a note — see
 [Line notes](language_extensions.md#line-notes).
 
+## Allocating registers
+
+A compiler's register allocator is a good stress test for Datalog. Half of it, liveness, is the
+kind of fixpoint the language was made for. The other half, linear scan, is a loop that makes one
+decision per instruction, and Datalog has no loops. Max Bernstein and Yannis Smaragdakis wrote both
+halves in Soufflé ([Linear scan register allocation in
+Datalog](https://bernsteinbear.com/blog/lsra-datalog/)); this section rewrites their program for
+Field's engine and draws what each half derives.
+
+The input is the example from Wimmer and Franz's 2010 paper, as the post encodes it: seventeen
+instructions numbered so that every use comes before the definition it reads, a loop from
+instruction 12 back to 3, and two registers for seven variables. Instructions are facts. The rules
+find the basic blocks, run liveness backwards over the flow, and turn each variable's live
+instructions into one interval:
+
+<!--
+FIELD_TEST
+id: docs.datalog.lsra_intervals
+runner: backdoor-box
+tags: [docs, datalog, fline]
+timeoutSec: 120
+waitSec: 2.0
+expect:
+  outputContains:
+    - "4 blocks, 7 intervals"
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/datalog/lsra_intervals.png" alt="a Gantt chart of the seven variables r10 to r16 against instructions 0 to 16, over four shaded bands labelled B1 to B4 for the basic blocks, with an orange arc labelled 12 to 3 for the loop's back edge from the end of B3 to the start of B2. Each variable is a yellow bar from where it is defined to its last use, dotted at every instruction where it is live on entry; r10 runs from 0 to 14 and r12 from 3 to 14, with r12's dots missing from 9 to 12" wait="2" capture="box" open-outputs="true" embed=true name="datalog-lsra-intervals" w="760" h="380"}
+:::static
+val d = Datalog()
+d.add(
+    """
+    #datalog
+    % the Wimmer 2010 example: uses and defs per instruction, then control flow
+    var_def(0, r10). var_def(1, r11). var_def(3, r12). var_def(4, r13).
+    var_def(9, r14). var_def(11, r15). var_def(15, r16).
+    var_use(2, r11). var_use(5, r13). var_use(8, r12). var_use(8, r13). var_use(10, r13).
+    var_use(12, r14). var_use(12, r15). var_use(14, r10). var_use(14, r12). var_use(16, r16).
+    jump(2, 3). jumpi(6, 7, 13). jump(12, 3). ret(16).
+    last_insn(16).
+
+    % instructions, the flow between them, and basic blocks
+    insn(0).
+    insn(N) :- insn(M), last_insn(L), M < L, N = M + 1.
+    branch(I) :- jump(I, _).   branch(I) :- jumpi(I, _, _).   branch(I) :- ret(I).
+    flow(I, J) :- jump(I, J).
+    flow(I, J) :- jumpi(I, J, _).
+    flow(I, J) :- jumpi(I, _, J).
+    flow(I, J) :- insn(I), !branch(I), J = I + 1, insn(J).
+    head(0).
+    head(J) :- branch(I), flow(I, J).
+    head(J) :- branch(I), J = I + 1, insn(J).
+    block(H, H) :- head(H).
+    block(H, J) :- block(H, I), !branch(I), flow(I, J), !head(J).
+    block_edge(A, B) :- block(A, I), branch(I), flow(I, B).
+
+    % liveness, backwards over the flow
+    live_in(I, V) :- var_use(I, V).
+    live_in(I, V) :- live_out(I, V), !var_def(I, V).
+    live_out(I, V) :- flow(I, J), live_in(J, V).
+
+    % one interval per variable, once liveness has settled
+    var(V) :- var_def(_, V).
+    interval(V, S, E) :- var(V), S = min I : { live_out(I, V) }, E = max I : { live_in(I, V) }.
+
+    % two registers, each starting with a placeholder that is always the first to go
+    reg(0). reg(1). next_reg(0, 1). last_reg(1).
+    empty(0, none0). empty(1, none1).
+    span(V, S, E) :- interval(V, S, E).
+    span(N, -1, 1000) :- empty(_, N).
+    evict(A, B, A) :- span(A, _, EA), span(B, _, EB), EA > EB.
+    evict(A, B, B) :- span(A, _, EA), span(B, _, EB), EA < EB.
+    evict(A, B, A) :- span(A, SA, E), span(B, SB, E), SA > SB.
+    evict(A, B, B) :- span(A, SA, E), span(B, SB, E), SA < SB.
+    evict(A, B, A) :- span(A, S, E), span(B, S, E), A <= B.
+    evict(A, B, B) :- span(A, S, E), span(B, S, E), A > B.
+
+    % the scan: before(I, R, V) holds R's contents as instruction I starts
+    after(-1, R, N) :- empty(R, N).
+    before(I, R, V) :- insn(I), P = I - 1, after(P, R, V), span(V, _, E), E >= I.
+    before(I, R, N) :- insn(I), P = I - 1, after(P, R, V), interval(V, _, E), E < I, empty(R, N).
+    defines(I, D) :- var_def(I, D), interval(D, _, _).
+    has_def(I) :- defines(I, _).
+    % forall registers: fold the best victim along the register order
+    victim_upto(I, 0, W) :- defines(I, D), before(I, 0, V), evict(D, V, W).
+    victim_upto(I, R, W) :- victim_upto(I, P, B), next_reg(P, R), before(I, R, V), evict(B, V, W).
+    victim(I, W) :- victim_upto(I, R, W), last_reg(R).
+    after(I, R, V) :- before(I, R, V), !has_def(I).
+    after(I, R, V) :- before(I, R, V), victim(I, W), V != W.
+    after(I, R, D) :- before(I, R, W), victim(I, W), defines(I, D).
+
+    % a register belongs to a variable only if it holds it for the whole interval
+    held(V, R, I) :- after(I, R, V), interval(V, _, _).
+    lost(V, R) :- held(V, R, _), interval(V, S, E), insn(I), I >= S, I <= E, !held(V, R, I).
+    reg_of(V, R) :- held(V, R, _), !lost(V, R).
+    allocated(V) :- reg_of(V, _).
+    spilled(V) :- interval(V, _, _), !allocated(V).
+""",
+)
+
+// drawing: instructions across, one row per variable
+val vars = d.query("interval(V, S, E)").column("V").map { it.toString() }.sorted()
+fun span(v: String): Pair<Int, Int> {
+    val row = d.query("interval($v, S, E)").rows.single()
+    return (row[0] as Long).toInt() to (row[1] as Long).toInt()
+}
+fun x(i: Int) = 80.0 + 36.0 * i
+fun y(k: Int) = 50.0 + 34.0 * k
+val muted = vec(0.72, 0.78, 0.86, 1.0)
+fun box(x0: Double, y0: Double, x1: Double, y1: Double, c: Vec4) = fline {
+    moveTo(x0, y0)
+    lineTo(x1, y0)
+    lineTo(x1, y1)
+    lineTo(x0, y1)
+    close()
+    filled = true
+    stroked = false
+    color = c
+}
+fun outline(x0: Double, y0: Double, x1: Double, y1: Double, c: Vec4) = fline {
+    moveTo(x0, y0)
+    lineTo(x1, y0)
+    lineTo(x1, y1)
+    lineTo(x0, y1)
+    close()
+    color = c
+    thickness = 1.5
+}
+fun label(s: String, px: Double, py: Double, size: Double, c: Vec4): List<FLine> {
+    val layout = layoutText(s, typeface("Monospaced", size))
+    return layout.toFLines(color = c, thickness = 0.0, filled = true, stroked = false).map {
+        line ->
+        line.transform { q -> vec(q.x + px, q.y + py, q.z) }
+    }
+}
+fun axes(): List<FLine> =
+    vars.indices.flatMap { label(vars[it], 20.0, y(it) + 5.0, 14.0, muted) } +
+        (0..16).flatMap { label("$it", x(it) - 7.0, y(vars.size - 1) + 34.0, 12.0, muted) }
+val heads = d.query("head(H)").column("H").map { (it as Long).toInt() }.sorted()
+val blockOf = d.query("block(H, I)").rows.associate { (it[1] as Long).toInt() to (it[0] as Long).toInt() }
+val out = mutableListOf<FLine>()
+// one shaded band per basic block, named at the top
+heads.forEachIndexed { k, h ->
+    val last = blockOf.filter { it.value == h }.keys.max()
+    out += box(x(h) - 16.0, 26.0, x(last) + 16.0, y(vars.size - 1) + 14.0, vec(0.5, 0.6, 0.8, if (k % 2 == 0) 0.10 else 0.18))
+    out += label("B${k + 1}", (x(h) + x(last)) / 2 - 8.0, 20.0, 15.0, muted)
+}
+// the loop's back edge, 12 -> 3, as an arc over the top
+out += fline {
+    moveTo(x(12), 0.0)
+    cubicTo(x0 = x(12), y0 = -30.0, x1 = x(3), y1 = -30.0, x = x(3), y = 0.0)
+    color = vec(0.98, 0.55, 0.35, 0.9)
+    thickness = 1.5
+}
+out += label("12 to 3", (x(3) + x(12)) / 2 - 24.0, -26.0, 13.0, vec(0.98, 0.55, 0.35, 1.0))
+// each interval as a bar, with a dot where the variable is live on entry
+vars.forEachIndexed { k, v ->
+    val (s, e) = span(v)
+    out += box(x(s) - 4.0, y(k) - 7.0, x(e) + 4.0, y(k) + 7.0, vec(0.98, 0.86, 0.30, 0.85))
+    d.query("live_in(I, $v)").column("I").forEach {
+        out += box(x((it as Long).toInt()) - 2.5, y(k) - 2.5, x(it.toInt()) + 2.5, y(k) + 2.5, vec(0.15, 0.15, 0.2, 1.0))
+    }
+}
+out += axes()
+println("${heads.size} blocks, ${vars.size} intervals")
+lines(out, w = 720.0, h = 340.0, fitToSize = true)
+```
+
+Liveness is three rules. A variable is live on entry to an instruction that uses it, or live on
+exit from one that does not define it; it is live on exit if it is live on entry to any successor.
+Those are mutually recursive, and the engine runs them until nothing changes. Then `min` and `max`
+read off the interval, which is only allowed because liveness is finished by the time the
+aggregate looks at it. The dots are `live_in`. `r10` is live all the way round the loop, because
+instruction 14, after the loop, still reads it. `r12` is not live from 9 to 12, but its interval
+covers them anyway: an interval is one span per variable, and the holes are what linear scan gives
+up for its speed.
+
+### The answer arrives a round at a time
+
+The fixpoint is not one step. Each round adds the facts that follow from the last round's, so
+liveness walks backwards from each use one instruction per round, and round the loop again for the
+variables that cross it. The engine records the round each fact first appeared in, and colouring
+`live_in` by it shows the walk:
+
+<!--
+FIELD_TEST
+id: docs.datalog.lsra_rounds
+runner: backdoor-box
+tags: [docs, datalog, fline]
+timeoutSec: 120
+waitSec: 2.0
+expect:
+  outputContains:
+    - "liveness settled by round"
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/datalog/lsra_rounds.png" alt="the same grid of variables against instructions, with a cell wherever a variable is live on entry, coloured by the fixpoint round it appeared in: white at the uses, yellow just above them, fading through grey to deep blue. The bluest cells are r10 at instructions 7 to 10, inside the loop body" wait="2" capture="box" open-outputs="true" embed=true name="datalog-lsra-rounds" w="760" h="360"}
+:::static
+:::fold the register allocator from above
+val d = Datalog()
+d.add(
+    """
+    #datalog
+    % the Wimmer 2010 example: uses and defs per instruction, then control flow
+    var_def(0, r10). var_def(1, r11). var_def(3, r12). var_def(4, r13).
+    var_def(9, r14). var_def(11, r15). var_def(15, r16).
+    var_use(2, r11). var_use(5, r13). var_use(8, r12). var_use(8, r13). var_use(10, r13).
+    var_use(12, r14). var_use(12, r15). var_use(14, r10). var_use(14, r12). var_use(16, r16).
+    jump(2, 3). jumpi(6, 7, 13). jump(12, 3). ret(16).
+    last_insn(16).
+
+    % instructions, the flow between them, and basic blocks
+    insn(0).
+    insn(N) :- insn(M), last_insn(L), M < L, N = M + 1.
+    branch(I) :- jump(I, _).   branch(I) :- jumpi(I, _, _).   branch(I) :- ret(I).
+    flow(I, J) :- jump(I, J).
+    flow(I, J) :- jumpi(I, J, _).
+    flow(I, J) :- jumpi(I, _, J).
+    flow(I, J) :- insn(I), !branch(I), J = I + 1, insn(J).
+    head(0).
+    head(J) :- branch(I), flow(I, J).
+    head(J) :- branch(I), J = I + 1, insn(J).
+    block(H, H) :- head(H).
+    block(H, J) :- block(H, I), !branch(I), flow(I, J), !head(J).
+    block_edge(A, B) :- block(A, I), branch(I), flow(I, B).
+
+    % liveness, backwards over the flow
+    live_in(I, V) :- var_use(I, V).
+    live_in(I, V) :- live_out(I, V), !var_def(I, V).
+    live_out(I, V) :- flow(I, J), live_in(J, V).
+
+    % one interval per variable, once liveness has settled
+    var(V) :- var_def(_, V).
+    interval(V, S, E) :- var(V), S = min I : { live_out(I, V) }, E = max I : { live_in(I, V) }.
+
+    % two registers, each starting with a placeholder that is always the first to go
+    reg(0). reg(1). next_reg(0, 1). last_reg(1).
+    empty(0, none0). empty(1, none1).
+    span(V, S, E) :- interval(V, S, E).
+    span(N, -1, 1000) :- empty(_, N).
+    evict(A, B, A) :- span(A, _, EA), span(B, _, EB), EA > EB.
+    evict(A, B, B) :- span(A, _, EA), span(B, _, EB), EA < EB.
+    evict(A, B, A) :- span(A, SA, E), span(B, SB, E), SA > SB.
+    evict(A, B, B) :- span(A, SA, E), span(B, SB, E), SA < SB.
+    evict(A, B, A) :- span(A, S, E), span(B, S, E), A <= B.
+    evict(A, B, B) :- span(A, S, E), span(B, S, E), A > B.
+
+    % the scan: before(I, R, V) holds R's contents as instruction I starts
+    after(-1, R, N) :- empty(R, N).
+    before(I, R, V) :- insn(I), P = I - 1, after(P, R, V), span(V, _, E), E >= I.
+    before(I, R, N) :- insn(I), P = I - 1, after(P, R, V), interval(V, _, E), E < I, empty(R, N).
+    defines(I, D) :- var_def(I, D), interval(D, _, _).
+    has_def(I) :- defines(I, _).
+    % forall registers: fold the best victim along the register order
+    victim_upto(I, 0, W) :- defines(I, D), before(I, 0, V), evict(D, V, W).
+    victim_upto(I, R, W) :- victim_upto(I, P, B), next_reg(P, R), before(I, R, V), evict(B, V, W).
+    victim(I, W) :- victim_upto(I, R, W), last_reg(R).
+    after(I, R, V) :- before(I, R, V), !has_def(I).
+    after(I, R, V) :- before(I, R, V), victim(I, W), V != W.
+    after(I, R, D) :- before(I, R, W), victim(I, W), defines(I, D).
+
+    % a register belongs to a variable only if it holds it for the whole interval
+    held(V, R, I) :- after(I, R, V), interval(V, _, _).
+    lost(V, R) :- held(V, R, _), interval(V, S, E), insn(I), I >= S, I <= E, !held(V, R, I).
+    reg_of(V, R) :- held(V, R, _), !lost(V, R).
+    allocated(V) :- reg_of(V, _).
+    spilled(V) :- interval(V, _, _), !allocated(V).
+""",
+)
+
+// drawing: instructions across, one row per variable
+val vars = d.query("interval(V, S, E)").column("V").map { it.toString() }.sorted()
+fun span(v: String): Pair<Int, Int> {
+    val row = d.query("interval($v, S, E)").rows.single()
+    return (row[0] as Long).toInt() to (row[1] as Long).toInt()
+}
+fun x(i: Int) = 80.0 + 36.0 * i
+fun y(k: Int) = 50.0 + 34.0 * k
+val muted = vec(0.72, 0.78, 0.86, 1.0)
+fun box(x0: Double, y0: Double, x1: Double, y1: Double, c: Vec4) = fline {
+    moveTo(x0, y0)
+    lineTo(x1, y0)
+    lineTo(x1, y1)
+    lineTo(x0, y1)
+    close()
+    filled = true
+    stroked = false
+    color = c
+}
+fun outline(x0: Double, y0: Double, x1: Double, y1: Double, c: Vec4) = fline {
+    moveTo(x0, y0)
+    lineTo(x1, y0)
+    lineTo(x1, y1)
+    lineTo(x0, y1)
+    close()
+    color = c
+    thickness = 1.5
+}
+fun label(s: String, px: Double, py: Double, size: Double, c: Vec4): List<FLine> {
+    val layout = layoutText(s, typeface("Monospaced", size))
+    return layout.toFLines(color = c, thickness = 0.0, filled = true, stroked = false).map {
+        line ->
+        line.transform { q -> vec(q.x + px, q.y + py, q.z) }
+    }
+}
+fun axes(): List<FLine> =
+    vars.indices.flatMap { label(vars[it], 20.0, y(it) + 5.0, 14.0, muted) } +
+        (0..16).flatMap { label("$it", x(it) - 7.0, y(vars.size - 1) + 34.0, 12.0, muted) }
+:::endfold
+val liveIn = d.solve()["live_in"]!!
+val uses = d.query("var_use(I, V)").rows.toSet()
+val rounds = liveIn.rows().filter { it !in uses }.map { liveIn.roundOf(it) }
+val first = rounds.min()
+val last = rounds.max()
+val out = mutableListOf<FLine>()
+for (row in liveIn.rows()) {
+    val i = (row[0] as Long).toInt()
+    val k = vars.indexOf(row[1].toString())
+    // a use is white; the rest go from yellow, the first rounds, to deep blue, the last
+    val t = if (row in uses) -1.0 else (liveIn.roundOf(row) - first).toDouble() / (last - first)
+    val c = if (t < 0) vec(1.0, 1.0, 1.0, 1.0) else vec(0.98 - 0.8 * t, 0.86 - 0.5 * t, 0.30 + 0.6 * t, 1.0)
+    out += box(x(i) - 15.0, y(k) - 10.0, x(i) + 15.0, y(k) + 10.0, c)
+}
+out += axes()
+println("liveness settled by round $last; a use is a white cell, blue cells arrived last")
+lines(out, w = 720.0, h = 300.0, fitToSize = true)
+```
+
+White cells are the uses. Yellow ones arrived in the first rounds, a step or two above a use; the
+deep blue ones, `r10` at the start of the loop body, came last, after liveness had walked back from
+14 to the loop test at 6, up to the loop head at 3, and round the back edge from 12. Nothing in the program says "iterate until stable" or "visit blocks in reverse
+post-order". That is Datalog at its best.
+
+### Linear scan, one instruction at a time
+
+Linear scan is where it strains. The algorithm walks the instructions in order with a set of
+registers. At each instruction, a register whose interval has ended is freed. At each definition
+the new interval needs a register: take a free one, and if there is none, spill whichever interval,
+the new one included, ends last.
+
+The program writes the walk as a relation indexed by instruction. `before(I, R, V)` is what
+register `R` holds as instruction `I` starts, `after(I, R, V)` what it holds when it ends, and the
+rules carry one into the next. An empty register holds a placeholder (`none0`, `none1`) whose span
+makes it the first thing evicted, so "take a free one" and "spill the one ending last" are the same
+choice, as they are in the post. `evict(A, B, W)` says which of two candidates goes; ends are
+compared first, and a later start breaks a tie.
+
+The choice needs "the worst over all registers". That is an aggregate, `max`, and Field's engine
+refuses it here: `before` depends on `after`, which depends on the choice, so the aggregate would
+sit inside a recursive cycle. The engine names the cycle and stops rather than guess at an order.
+The post meets the same wall in Soufflé and uses what it calls its most advanced pattern: walk the
+registers in a fixed order and carry the best candidate so far. `victim_upto(I, R, W)` is the
+winner among the new variable and registers 0 to `R`; at the last register it is the winner over
+all of them. A `forall` becomes a fold, and it only works because registers have an order to walk.
+
+The last step needs a real `forall` too: a variable keeps its register only if the register holds
+it at every instruction of its interval. That one is outside the recursion, so stratified negation
+can say it directly: the variable `lost` the register if some instruction in its interval finds it
+elsewhere.
+
+<!--
+FIELD_TEST
+id: docs.datalog.lsra_allocation
+runner: backdoor-box
+tags: [docs, datalog, fline]
+timeoutSec: 120
+waitSec: 2.0
+expect:
+  outputContains:
+    - "spilled: r10, r12"
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/datalog/lsra_allocation.png" alt="the intervals again, now coloured by register: r11, r13 and r15 blue for register 1, r14 and r16 yellow for register 0, each labelled reg 0 or reg 1 at its right end. r10 and r12 are hollow red outlines labelled spill, with a thick red tick on r12 at instruction 4 and on r10 at instruction 9, where each lost its register" wait="2" capture="box" open-outputs="true" embed=true name="datalog-lsra-allocation" w="760" h="380"}
+:::static
+:::fold the register allocator from above
+val d = Datalog()
+d.add(
+    """
+    #datalog
+    % the Wimmer 2010 example: uses and defs per instruction, then control flow
+    var_def(0, r10). var_def(1, r11). var_def(3, r12). var_def(4, r13).
+    var_def(9, r14). var_def(11, r15). var_def(15, r16).
+    var_use(2, r11). var_use(5, r13). var_use(8, r12). var_use(8, r13). var_use(10, r13).
+    var_use(12, r14). var_use(12, r15). var_use(14, r10). var_use(14, r12). var_use(16, r16).
+    jump(2, 3). jumpi(6, 7, 13). jump(12, 3). ret(16).
+    last_insn(16).
+
+    % instructions, the flow between them, and basic blocks
+    insn(0).
+    insn(N) :- insn(M), last_insn(L), M < L, N = M + 1.
+    branch(I) :- jump(I, _).   branch(I) :- jumpi(I, _, _).   branch(I) :- ret(I).
+    flow(I, J) :- jump(I, J).
+    flow(I, J) :- jumpi(I, J, _).
+    flow(I, J) :- jumpi(I, _, J).
+    flow(I, J) :- insn(I), !branch(I), J = I + 1, insn(J).
+    head(0).
+    head(J) :- branch(I), flow(I, J).
+    head(J) :- branch(I), J = I + 1, insn(J).
+    block(H, H) :- head(H).
+    block(H, J) :- block(H, I), !branch(I), flow(I, J), !head(J).
+    block_edge(A, B) :- block(A, I), branch(I), flow(I, B).
+
+    % liveness, backwards over the flow
+    live_in(I, V) :- var_use(I, V).
+    live_in(I, V) :- live_out(I, V), !var_def(I, V).
+    live_out(I, V) :- flow(I, J), live_in(J, V).
+
+    % one interval per variable, once liveness has settled
+    var(V) :- var_def(_, V).
+    interval(V, S, E) :- var(V), S = min I : { live_out(I, V) }, E = max I : { live_in(I, V) }.
+
+    % two registers, each starting with a placeholder that is always the first to go
+    reg(0). reg(1). next_reg(0, 1). last_reg(1).
+    empty(0, none0). empty(1, none1).
+    span(V, S, E) :- interval(V, S, E).
+    span(N, -1, 1000) :- empty(_, N).
+    evict(A, B, A) :- span(A, _, EA), span(B, _, EB), EA > EB.
+    evict(A, B, B) :- span(A, _, EA), span(B, _, EB), EA < EB.
+    evict(A, B, A) :- span(A, SA, E), span(B, SB, E), SA > SB.
+    evict(A, B, B) :- span(A, SA, E), span(B, SB, E), SA < SB.
+    evict(A, B, A) :- span(A, S, E), span(B, S, E), A <= B.
+    evict(A, B, B) :- span(A, S, E), span(B, S, E), A > B.
+
+    % the scan: before(I, R, V) holds R's contents as instruction I starts
+    after(-1, R, N) :- empty(R, N).
+    before(I, R, V) :- insn(I), P = I - 1, after(P, R, V), span(V, _, E), E >= I.
+    before(I, R, N) :- insn(I), P = I - 1, after(P, R, V), interval(V, _, E), E < I, empty(R, N).
+    defines(I, D) :- var_def(I, D), interval(D, _, _).
+    has_def(I) :- defines(I, _).
+    % forall registers: fold the best victim along the register order
+    victim_upto(I, 0, W) :- defines(I, D), before(I, 0, V), evict(D, V, W).
+    victim_upto(I, R, W) :- victim_upto(I, P, B), next_reg(P, R), before(I, R, V), evict(B, V, W).
+    victim(I, W) :- victim_upto(I, R, W), last_reg(R).
+    after(I, R, V) :- before(I, R, V), !has_def(I).
+    after(I, R, V) :- before(I, R, V), victim(I, W), V != W.
+    after(I, R, D) :- before(I, R, W), victim(I, W), defines(I, D).
+
+    % a register belongs to a variable only if it holds it for the whole interval
+    held(V, R, I) :- after(I, R, V), interval(V, _, _).
+    lost(V, R) :- held(V, R, _), interval(V, S, E), insn(I), I >= S, I <= E, !held(V, R, I).
+    reg_of(V, R) :- held(V, R, _), !lost(V, R).
+    allocated(V) :- reg_of(V, _).
+    spilled(V) :- interval(V, _, _), !allocated(V).
+""",
+)
+
+// drawing: instructions across, one row per variable
+val vars = d.query("interval(V, S, E)").column("V").map { it.toString() }.sorted()
+fun span(v: String): Pair<Int, Int> {
+    val row = d.query("interval($v, S, E)").rows.single()
+    return (row[0] as Long).toInt() to (row[1] as Long).toInt()
+}
+fun x(i: Int) = 80.0 + 36.0 * i
+fun y(k: Int) = 50.0 + 34.0 * k
+val muted = vec(0.72, 0.78, 0.86, 1.0)
+fun box(x0: Double, y0: Double, x1: Double, y1: Double, c: Vec4) = fline {
+    moveTo(x0, y0)
+    lineTo(x1, y0)
+    lineTo(x1, y1)
+    lineTo(x0, y1)
+    close()
+    filled = true
+    stroked = false
+    color = c
+}
+fun outline(x0: Double, y0: Double, x1: Double, y1: Double, c: Vec4) = fline {
+    moveTo(x0, y0)
+    lineTo(x1, y0)
+    lineTo(x1, y1)
+    lineTo(x0, y1)
+    close()
+    color = c
+    thickness = 1.5
+}
+fun label(s: String, px: Double, py: Double, size: Double, c: Vec4): List<FLine> {
+    val layout = layoutText(s, typeface("Monospaced", size))
+    return layout.toFLines(color = c, thickness = 0.0, filled = true, stroked = false).map {
+        line ->
+        line.transform { q -> vec(q.x + px, q.y + py, q.z) }
+    }
+}
+fun axes(): List<FLine> =
+    vars.indices.flatMap { label(vars[it], 20.0, y(it) + 5.0, 14.0, muted) } +
+        (0..16).flatMap { label("$it", x(it) - 7.0, y(vars.size - 1) + 34.0, 12.0, muted) }
+:::endfold
+val regColour = [vec(0.98, 0.86, 0.30, 0.9), vec(0.45, 0.70, 0.98, 0.9)]
+val regOf = d.query("reg_of(V, R)").rows.associate { it[0].toString() to (it[1] as Long).toInt() }
+val out = mutableListOf<FLine>()
+vars.forEachIndexed { k, v ->
+    val (s, e) = span(v)
+    val r = regOf[v]
+    out += if (r != null) {
+        box(x(s) - 4.0, y(k) - 7.0, x(e) + 4.0, y(k) + 7.0, regColour[r])
+    } else {
+        outline(x(s) - 4.0, y(k) - 7.0, x(e) + 4.0, y(k) + 7.0, vec(0.9, 0.35, 0.35, 1.0))
+    }
+    out += label(if (r != null) "reg $r" else "spill", x(e) + 12.0, y(k) + 5.0, 13.0, muted)
+}
+// where each spill was decided: the definition that found both registers taken
+d.query("victim(I, W), interval(W, S, E)").rows.forEach {
+    val i = (it[0] as Long).toInt()
+    val k = vars.indexOf(it[1].toString())
+    out += fline {
+        moveTo(x(i), y(k) - 12.0)
+        lineTo(x(i), y(k) + 12.0)
+        color = vec(0.9, 0.35, 0.35, 1.0)
+        thickness = 3.0
+    }
+}
+out += axes()
+println("spilled: " + d.query("spilled(V)").column("V").map { it.toString() }.sorted().joinToString(", "))
+lines(out, w = 720.0, h = 320.0, fitToSize = true)
+```
+
+Two registers, seven intervals, two spills. At instruction 4, `r13` is defined while `r10` and `r12`
+hold both registers; `r13` ends at 10, `r10` and `r12` both at 14, so
+the tie goes to the later start and `r12` is spilled. At 9 the same thing happens to `r10` when `r14` arrives. Everything else fits
+around them. The allocation is the one an ordinary imperative linear scan gives on these intervals,
+which `DatalogLinearScanTest` checks along with the intervals themselves.
+
+### Why `r12` was spilled
+
+A decision made near round 90 of a fixpoint is a long proof: every scan state before it is a premise
+of the next. `why` takes a `depth` that expands that many rule steps and shows the premises below
+with the round they arrived in, which is the readable part of the answer:
+
+<!--
+FIELD_TEST
+id: docs.datalog.lsra_why
+runner: backdoor-box
+tags: [docs, datalog, tohtml]
+timeoutSec: 120
+waitSec: 2.0
+expect:
+  outputContains:
+    - "victim(4, r12)"
+    - "evict(r10, r12, r12)"
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/datalog/lsra_why.png" alt="a derivation tree headed why victim(4, r12): victim from victim_upto(4, 1, r12), which comes from victim_upto(4, 0, r10), the fact next_reg(0, 1), before(4, 1, r12) and evict(r10, r12, r12), the last resting on span(r10, 0, 14) and span(r12, 3, 14). Deeper premises such as before(4, 0, r10) and after(3, 1, r12) are shown unexpanded with the round they were derived in" wait="2" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="datalog-lsra-why" w="900" h="420"}
+:::static
+:::fold the register allocator from above
+val d = Datalog()
+d.add(
+    """
+    #datalog
+    % the Wimmer 2010 example: uses and defs per instruction, then control flow
+    var_def(0, r10). var_def(1, r11). var_def(3, r12). var_def(4, r13).
+    var_def(9, r14). var_def(11, r15). var_def(15, r16).
+    var_use(2, r11). var_use(5, r13). var_use(8, r12). var_use(8, r13). var_use(10, r13).
+    var_use(12, r14). var_use(12, r15). var_use(14, r10). var_use(14, r12). var_use(16, r16).
+    jump(2, 3). jumpi(6, 7, 13). jump(12, 3). ret(16).
+    last_insn(16).
+
+    % instructions, the flow between them, and basic blocks
+    insn(0).
+    insn(N) :- insn(M), last_insn(L), M < L, N = M + 1.
+    branch(I) :- jump(I, _).   branch(I) :- jumpi(I, _, _).   branch(I) :- ret(I).
+    flow(I, J) :- jump(I, J).
+    flow(I, J) :- jumpi(I, J, _).
+    flow(I, J) :- jumpi(I, _, J).
+    flow(I, J) :- insn(I), !branch(I), J = I + 1, insn(J).
+    head(0).
+    head(J) :- branch(I), flow(I, J).
+    head(J) :- branch(I), J = I + 1, insn(J).
+    block(H, H) :- head(H).
+    block(H, J) :- block(H, I), !branch(I), flow(I, J), !head(J).
+    block_edge(A, B) :- block(A, I), branch(I), flow(I, B).
+
+    % liveness, backwards over the flow
+    live_in(I, V) :- var_use(I, V).
+    live_in(I, V) :- live_out(I, V), !var_def(I, V).
+    live_out(I, V) :- flow(I, J), live_in(J, V).
+
+    % one interval per variable, once liveness has settled
+    var(V) :- var_def(_, V).
+    interval(V, S, E) :- var(V), S = min I : { live_out(I, V) }, E = max I : { live_in(I, V) }.
+
+    % two registers, each starting with a placeholder that is always the first to go
+    reg(0). reg(1). next_reg(0, 1). last_reg(1).
+    empty(0, none0). empty(1, none1).
+    span(V, S, E) :- interval(V, S, E).
+    span(N, -1, 1000) :- empty(_, N).
+    evict(A, B, A) :- span(A, _, EA), span(B, _, EB), EA > EB.
+    evict(A, B, B) :- span(A, _, EA), span(B, _, EB), EA < EB.
+    evict(A, B, A) :- span(A, SA, E), span(B, SB, E), SA > SB.
+    evict(A, B, B) :- span(A, SA, E), span(B, SB, E), SA < SB.
+    evict(A, B, A) :- span(A, S, E), span(B, S, E), A <= B.
+    evict(A, B, B) :- span(A, S, E), span(B, S, E), A > B.
+
+    % the scan: before(I, R, V) holds R's contents as instruction I starts
+    after(-1, R, N) :- empty(R, N).
+    before(I, R, V) :- insn(I), P = I - 1, after(P, R, V), span(V, _, E), E >= I.
+    before(I, R, N) :- insn(I), P = I - 1, after(P, R, V), interval(V, _, E), E < I, empty(R, N).
+    defines(I, D) :- var_def(I, D), interval(D, _, _).
+    has_def(I) :- defines(I, _).
+    % forall registers: fold the best victim along the register order
+    victim_upto(I, 0, W) :- defines(I, D), before(I, 0, V), evict(D, V, W).
+    victim_upto(I, R, W) :- victim_upto(I, P, B), next_reg(P, R), before(I, R, V), evict(B, V, W).
+    victim(I, W) :- victim_upto(I, R, W), last_reg(R).
+    after(I, R, V) :- before(I, R, V), !has_def(I).
+    after(I, R, V) :- before(I, R, V), victim(I, W), V != W.
+    after(I, R, D) :- before(I, R, W), victim(I, W), defines(I, D).
+
+    % a register belongs to a variable only if it holds it for the whole interval
+    held(V, R, I) :- after(I, R, V), interval(V, _, _).
+    lost(V, R) :- held(V, R, _), interval(V, S, E), insn(I), I >= S, I <= E, !held(V, R, I).
+    reg_of(V, R) :- held(V, R, _), !lost(V, R).
+    allocated(V) :- reg_of(V, _).
+    spilled(V) :- interval(V, _, _), !allocated(V).
+""",
+)
+:::endfold
+display("main", d.why("victim(4, r12)", depth = 3))
+```
+
+Read it from the top. The victim at instruction 4 is the winner at the last register. That winner
+came from folding register 1 into the winner over register 0, which was `r10` against the new
+`r13`. Register 1 held `r12` as instruction 4 started, and `evict(r10, r12, r12)` decided between
+the two: the same end, and `r12` started later. The fold is the `forall`, and the proof shows it
+working one register at a time.
+
+What the exercise shows about Datalog: liveness and intervals are shorter than they would be in
+Kotlin, and say what they mean. The scan is longer, and it is a simulation of a loop written as
+relations over time, with a fold for `forall` and placeholders for empty registers. It works, the
+proofs are real, and the cost is that every one of the seventeen states is a set of facts. The post
+lists the obvious next steps, skipping instructions where nothing happens and comparing candidates
+on demand.
+
 ## Reference
 
 **Syntax.** `%` and `//` start a line comment, `/* */` a block. A clause ends with `.`. A variable
@@ -704,7 +1329,8 @@ for that group; `count` and `sum` give 0. The target has to be a variable nothin
 "the maximum, and who earned it" is two rules rather than one.
 
 **Explaining.** `why(goal)` returns a derivation tree, through aggregates and negation as well as
-rules, or null when the fact is not in the model. `whyNot(goal)` returns the narrowing walk instead.
+rules, or null when the fact is not in the model. `why(goal, depth = n)` expands n rule steps and
+shows deeper premises with the round they were derived in. `whyNot(goal)` returns the narrowing walk instead.
 Both implement `ToHTML`, so `display(…)` of either from a Kotlin box draws an indented table; the
 `#why` and `#whynot` directives inside a Datalog box print `render()`'s plain text instead.
 

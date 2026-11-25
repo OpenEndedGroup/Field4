@@ -2,7 +2,7 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 26086 of 43498 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 26096 of 43508 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
 **2103 undocumented entry points** (types, top-level functions and values) and 14538 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
@@ -55,7 +55,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [logger.kt](../src/jvmMain/kotlin/afield/app/diagnostics/logging/logger.kt) | Workspace | logging | 7 | 0 | 22% |
 | [LorisTransforms.kt](../src/jvmMain/kotlin/afield/audio/analysis/loris/LorisTransforms.kt) | Audio | loris, audio_ai_corpus_microscope, audio_ai_gesture_board | 7 | 0 | 55% |
 | [Model.kt](../src/jvmMain/kotlin/afield/simulation/physics/pressure/Model.kt) | Simulation | pressure_membranes | 6 | 26 | 17% |
-| [SolidExpr.kt](../src/jvmMain/kotlin/afield/lang/solidsl/SolidExpr.kt) | Graphics | solid_notation, solid_conversation, debruijn_tilings | 6 | 14 | 76% |
+| [SolidExpr.kt](../src/jvmMain/kotlin/afield/lang/solidsl/SolidExpr.kt) | Graphics | solid_notation, solid_conversation, debruijn_tilings | 6 | 14 | 77% |
 | [Phased.kt](../src/jvmMain/kotlin/afield/runtime/lifecycle/Phased.kt) | Workspace | animation_time_model | 6 | 13 | 45% |
 | [ComputeMesh.kt](../src/jvmMain/kotlin/afield/graphics/render/ComputeMesh.kt) | Graphics | growing_nca | 6 | 10 | 36% |
 | [visualizers.kt](../src/jvmMain/kotlin/afield/ui/visualization/visualizers.kt) | Visualization | visualizers, mobile_controllers | 6 | 5 | 69% |
@@ -285,7 +285,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [FieldAudioEngine.kt](../src/jvmMain/kotlin/afield/audio/synth/FieldAudioEngine.kt) | Synthesis | sound_paths | 0 | 4 | 74% |
 | [PianoPreparation.kt](../src/jvmMain/kotlin/afield/audio/synth/PianoPreparation.kt) | Synthesis | sound | 0 | 4 | 80% |
 | [SubharmonicSoundDocs.kt](../src/jvmMain/kotlin/afield/audio/synth/SubharmonicSoundDocs.kt) | Synthesis | subharmonic_sound | 0 | 4 | 86% |
-| [mesh_geodesic.kt](../src/jvmMain/kotlin/afield/geometry/mesh/mesh_geodesic.kt) | Graphics | mesh_examples | 0 | 4 | 85% |
+| [mesh_geodesic.kt](../src/jvmMain/kotlin/afield/geometry/mesh/mesh_geodesic.kt) | Graphics | mesh_examples, fline_examples | 0 | 4 | 85% |
 | [FLineSampling.kt](../src/jvmMain/kotlin/afield/geometry/path/FLineSampling.kt) | Graphics | fline_examples | 0 | 4 | 71% |
 | [StringArt.kt](../src/jvmMain/kotlin/afield/geometry/path/StringArt.kt) | Graphics | fline_examples | 0 | 4 | 58% |
 | [Gezira.kt](../src/jvmMain/kotlin/afield/graphics/nile/Gezira.kt) | Graphics | afield_four_graphics | 0 | 4 | 90% |
