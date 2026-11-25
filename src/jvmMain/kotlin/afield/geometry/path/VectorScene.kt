@@ -1,13 +1,16 @@
 package afield.geometry.path
 
+import afield.geometry.mesh.TriMesh
 import afield.graphics.render.color
 import afield.graphics.render.filled
 import afield.graphics.render.stroked
 import afield.graphics.render.thickness
+import afield.math.linalg.Vec3
 import afield.math.linalg.Vec4
 import afield.math.linalg.vec
 import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
@@ -18,7 +21,8 @@ import kotlin.math.sqrt
  * Small 3D vector scenes drawn as flat `FLine`s, in the manner of Zdog and Zpup.
  *
  * A scene is a tree of round-capped primitives (`dot`, `line`, `ellipse`, `rect`, `box`,
- * `cylinder`, `cone`, `hemisphere`) under `group { }` transforms. [VectorScene.render] turns the
+ * `cylinder`, `cone`, `hemisphere`), whole triangle meshes (`mesh`) and 3D strokes (`polyline`)
+ * under `group { }` transforms. [VectorScene.render] turns the
  * camera, projects every face orthographically (or with a simple perspective), shades it flat or
  * "soft", and returns filled `FLine`s in painter's order, ready for `lines(...)`, the drawing layer
  * or a plotter path.
@@ -28,7 +32,9 @@ import kotlin.math.sqrt
  * faces whose screen footprints overlap, it clips one footprint against the other, compares their
  * depths at the centre of the overlap, and records "draw this one first". A topological sort of
  * those constraints gives the order; when the constraints form a cycle, the farthest remaining face
- * (by centroid) is drawn next, which breaks the cycle without splitting faces.
+ * (by centroid) is drawn next, which breaks the cycle without splitting faces. Candidate pairs come
+ * from a uniform screen grid, so a mesh of tens of thousands of triangles orders in about a second
+ * rather than comparing every pair.
  * [VectorScene.wrongOrderShare] measures how many covered pixels each order gets wrong against a
  * per-pixel depth reference.
  *
@@ -54,6 +60,8 @@ class VectorScene internal constructor(internal val facets: List<Facet>) {
         val radius: Double,
         /** true when this face belongs to a closed solid and may be culled when facing away */
         val solid: Boolean,
+        /** depth lift toward the viewer in scene units, so a stroke lying on a surface is drawn over it */
+        val bias: Double = 0.0,
     )
 
     /** One projected face: screen footprint (convex, counter-clockwise) plus depth data. */
@@ -95,7 +103,7 @@ class VectorScene internal constructor(internal val facets: List<Facet>) {
         }
         val out = ArrayList<Projected>()
         for (f in facets) {
-            val c = f.points.map(::cam)
+            val c = f.points.map(::cam).let { cs -> if (f.bias == 0.0) cs else cs.map { doubleArrayOf(it[0], it[1], it[2] - f.bias * scale) } }
             val n = if (c.size >= 3) faceNormal(f.points) else null
             // normal in camera terms: z of the rotated normal (toward the viewer when positive)
             val nz = if (n == null) 1.0 else rot(n)[2]
@@ -167,12 +175,22 @@ class VectorScene internal constructor(internal val facets: List<Facet>) {
         val rank = HashMap<Projected, Int>().apply { ordered.forEachIndexed { i, p -> put(p, i) } }
         val x0 = faces.minOf { it.minX }; val x1 = faces.maxOf { it.maxX }
         val y0 = faces.minOf { it.minY }; val y1 = faces.maxOf { it.maxY }
+        // bucket faces by the pixel tiles their bounds cover, so large meshes stay tractable
+        val tile = 8
+        val tw = (w + tile - 1) / tile; val th = (h + tile - 1) / tile
+        val buckets = Array(tw * th) { ArrayList<Projected>() }
+        val sx = w / max(1e-12, x1 - x0); val sy = h / max(1e-12, y1 - y0)
+        for (p in faces) {
+            val i0 = (((p.minX - x0) * sx).toInt() / tile).coerceIn(0, tw - 1); val i1 = (((p.maxX - x0) * sx).toInt() / tile).coerceIn(0, tw - 1)
+            val j0 = (((p.minY - y0) * sy).toInt() / tile).coerceIn(0, th - 1); val j1 = (((p.maxY - y0) * sy).toInt() / tile).coerceIn(0, th - 1)
+            for (jj in j0..j1) for (ii in i0..i1) buckets[jj * tw + ii] += p
+        }
         var wrong = 0; var covered = 0
         for (j in 0 until h) for (i in 0 until w) {
             val x = x0 + (i + 0.5) / w * (x1 - x0); val y = y0 + (j + 0.5) / h * (y1 - y0)
             var near: Projected? = null; var nearD = Double.MAX_VALUE
             var top: Projected? = null; var topR = -1
-            for (p in faces) {
+            for (p in buckets[(j / tile) * tw + i / tile]) {
                 if (x < p.minX || x > p.maxX || y < p.minY || y > p.maxY) continue
                 if (!inside(p.footprint, x, y)) continue
                 val d = p.depthAt(x, y)
@@ -196,9 +214,26 @@ class VectorScene internal constructor(internal val facets: List<Facet>) {
             val n = faces.size
             val after = Array(n) { ArrayList<Int>() }
             val indeg = IntArray(n)
-            for (a in 0 until n) for (b in a + 1 until n) {
+            if (n == 0) return emptyList<Projected>() to 0
+            // a uniform grid over the screen bounds, about one face per cell; each overlapping pair
+            // is examined once, in the cell holding the low corner of the two bounds' intersection
+            val gx0 = faces.minOf { it.minX }; val gy0 = faces.minOf { it.minY }
+            val gw = max(1e-9, faces.maxOf { it.maxX } - gx0); val gh = max(1e-9, faces.maxOf { it.maxY } - gy0)
+            val g = max(1, min(512, ceil(sqrt(n.toDouble())).toInt()))
+            fun cx(x: Double) = ((x - gx0) / gw * g).toInt().coerceIn(0, g - 1)
+            fun cy(y: Double) = ((y - gy0) / gh * g).toInt().coerceIn(0, g - 1)
+            val cells = Array(g * g) { IntArrayList() }
+            for (i in 0 until n) {
+                val p = faces[i]
+                for (yy in cy(p.minY)..cy(p.maxY)) for (xx in cx(p.minX)..cx(p.maxX)) cells[yy * g + xx].add(i)
+            }
+            for (cell in cells.indices) {
+                val members = cells[cell]
+                for (ia in 0 until members.size) for (ib in ia + 1 until members.size) {
+                val a = members[ia]; val b = members[ib]
                 val p = faces[a]; val q = faces[b]
                 if (p.maxX <= q.minX || q.maxX <= p.minX || p.maxY <= q.minY || q.maxY <= p.minY) continue
+                if (cy(max(p.minY, q.minY)) * g + cx(max(p.minX, q.minX)) != cell) continue
                 val ov = clipConvex(p.footprint, q.footprint) ?: continue
                 val ar = abs(area(ov))
                 if (ar < 1e-4 * min(abs(area(p.footprint)), abs(area(q.footprint))) + 1e-9) continue
@@ -207,18 +242,27 @@ class VectorScene internal constructor(internal val facets: List<Facet>) {
                 if (abs(dp - dq) < 1e-9) continue
                 // the farther face is drawn first
                 if (dp > dq) { after[a] += b; indeg[b]++ } else { after[b] += a; indeg[a]++ }
+                }
             }
             val done = BooleanArray(n)
             val out = ArrayList<Projected>(n)
             var breaks = 0
             // candidates kept farthest-first so independent faces fall back to centroid order
             val byDepth = (0 until n).sortedByDescending { faces[it].centroidDepth }
+            val rank = IntArray(n).also { r -> byDepth.forEachIndexed { k, i -> r[i] = k } }
+            val ready = java.util.PriorityQueue<Int>(compareBy { rank[it] })
+            for (i in 0 until n) if (indeg[i] == 0) ready += i
+            var next = 0
             while (out.size < n) {
-                var pick = byDepth.firstOrNull { !done[it] && indeg[it] == 0 }
-                if (pick == null) { pick = byDepth.first { !done[it] }; breaks++ }
+                var pick = -1
+                while (ready.isNotEmpty()) { val c = ready.poll(); if (!done[c]) { pick = c; break } }
+                if (pick < 0) {
+                    while (done[byDepth[next]]) next++
+                    pick = byDepth[next]; breaks++
+                }
                 done[pick] = true
                 out += faces[pick]
-                for (b in after[pick]) indeg[b]--
+                for (b in after[pick]) if (--indeg[b] == 0 && !done[b]) ready += b
             }
             return out to breaks
         }
@@ -323,6 +367,48 @@ class VectorSceneBuilder internal constructor(private val m: DoubleArray, privat
         face(grid[0], base, true)
     }
 
+    /**
+     * Every triangle of [mesh] as a flat face. Colour comes from the mesh's vertex colours (the mean
+     * of the three corners, so `colouredBy(...)` bands survive) unless [color] is given; a mesh with
+     * neither is drawn light grey. [solid] culls triangles facing away, which is right for a closed
+     * mesh wound counter-clockwise seen from outside; pass `false` for an open sheet seen from both
+     * sides.
+     */
+    fun mesh(mesh: TriMesh, color: Vec4? = null, solid: Boolean = true) {
+        val cols = mesh.colors
+        val p = mesh.positions
+        for (t in 0 until mesh.triangleCount) {
+            val i = mesh.indices[3 * t]; val j = mesh.indices[3 * t + 1]; val k = mesh.indices[3 * t + 2]
+            val c = color ?: if (cols == null) vec(0.85, 0.85, 0.85, 1.0) else vec(
+                (cols[3 * i] + cols[3 * j] + cols[3 * k]) / 3.0,
+                (cols[3 * i + 1] + cols[3 * j + 1] + cols[3 * k + 1]) / 3.0,
+                (cols[3 * i + 2] + cols[3 * j + 2] + cols[3 * k + 2]) / 3.0, 1.0,
+            )
+            sink += VectorScene.Facet(
+                listOf(tx(p[3 * i].toDouble(), p[3 * i + 1].toDouble(), p[3 * i + 2].toDouble()),
+                    tx(p[3 * j].toDouble(), p[3 * j + 1].toDouble(), p[3 * j + 2].toDouble()),
+                    tx(p[3 * k].toDouble(), p[3 * k + 1].toDouble(), p[3 * k + 2].toDouble())),
+                c, 0.0, solid,
+            )
+        }
+    }
+
+    /**
+     * A round-capped 3D stroke through [points], one segment per facet so faces in front of part of
+     * it hide just that part. [lift] moves it toward the viewer for the depth test only, so a curve
+     * lying on a surface (an isoline, a toolpath) is drawn over that surface rather than fighting it;
+     * keep it small next to the distance between the surface and anything that should hide the curve.
+     */
+    fun polyline(points: List<Vec3>, width: Double = 2.0, color: Vec4, lift: Double = width) {
+        for (s in 0 until points.size - 1) {
+            val a = points[s]; val b = points[s + 1]
+            sink += VectorScene.Facet(
+                listOf(tx(a.x.toDouble(), a.y.toDouble(), a.z.toDouble()), tx(b.x.toDouble(), b.y.toDouble(), b.z.toDouble())),
+                color, width / 2, false, lift,
+            )
+        }
+    }
+
     private fun face(local: List<DoubleArray>, color: Vec4, solid: Boolean) {
         sink += VectorScene.Facet(local.map { tx(it[0], it[1], it[2]) }, color, 0.0, solid)
     }
@@ -352,6 +438,14 @@ fun vectorScene(body: VectorSceneBuilder.() -> Unit): VectorScene {
 }
 
 // ---- geometry helpers ----
+
+/** A growable int list without boxing, for the pairwise grid. */
+private class IntArrayList {
+    var data = IntArray(4)
+    var size = 0
+    fun add(v: Int) { if (size == data.size) data = data.copyOf(size * 2); data[size++] = v }
+    operator fun get(i: Int) = data[i]
+}
 
 private fun identity() = doubleArrayOf(1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0)
 
