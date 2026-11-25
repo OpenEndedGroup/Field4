@@ -3,8 +3,8 @@
 <!-- capture-sources: src/jvmMain/kotlin/afield/geometry/spectral/ public/docs/assets/spectral_geometry/bun_zipper.ply -->
 
 Open **spectral-geometry** from **Templates** on the Field welcome screen. Launch **Ellipse chain**,
-**Plane-wave instrument**, **Discover plane waves**, or **Manifold harmonics** with Alt+Up
-(Option+Up on macOS). The boxes put the spectrum or its effect next to the geometry, so changing
+**Plane-wave instrument**, **Discover plane waves**, or **Manifold harmonics** with ++alt+arrow-up++
+(use Option for Alt on macOS). The boxes put the spectrum or its effect next to the geometry, so changing
 a coefficient gives you something to look at.
 
 | Box | What to try |
