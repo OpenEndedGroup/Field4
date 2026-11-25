@@ -35,6 +35,13 @@ expect:
 */
 /** Production shaders/RTTs on the real GPU: replacement identity, foreground isolation and pool churn. */
 object ReadingFrostSmoke {
+
+    /** Largest gap between alpha and light (half of red plus blue) over [image]'s RGBA pixels. */
+    private fun worstNeutral(image: FloatArray): Float =
+        (image.indices step 4).maxOf { abs(image[it + 3] - .5f * (image[it] + image[it + 2])) / maxOf(1f, abs(image[it])) }
+
+    /** With no palette every pixel is at the neutral position, so alpha is light; float16 readback rounds. */
+    private fun neutral(image: FloatArray) = worstNeutral(image) < 4e-3f
     @JvmStatic
     fun main(args: Array<String>) {
         Options.enableVR = false
@@ -132,8 +139,9 @@ object ReadingFrostSmoke {
             check(frosted.indices.count { abs(frosted[it] - plain[it]) > .01f } > 200) {
                 "Frost did not change the image"
             }
-            // Alpha is geometry coverage, untouched by the signed correction.
-            check((3 until plain.size step 4).all { plain[it] == frosted[it] })
+            // Alpha is light times palette position (DiagramPalette, e6f19d4f0d). This fixture has no
+            // palette, so every pixel sits at the neutral position and alpha must follow light.
+            check(neutral(plain) && neutral(frosted)) { "Frost broke the palette position: ${worstNeutral(frosted)}" }
             foreground = false
             val frostNoForeground = read()
             panel.frost.enabled = false
@@ -151,9 +159,10 @@ object ReadingFrostSmoke {
             check(localFloor.indices.count { abs(localFloor[it] - frostNoForeground[it]) > .03f } > 200) {
                 "Black-level floor did not lift the panel"
             }
-            check(localFloor.indices.filter { it % 4 == 1 || it % 4 == 3 }.all { localFloor[it] == frostNoForeground[it] }) {
-                "Floor changed green control data or alpha coverage"
+            check(localFloor.indices.filter { it % 4 == 1 }.all { localFloor[it] == frostNoForeground[it] }) {
+                "Floor changed green control data"
             }
+            check(neutral(localFloor)) { "Floor broke the palette position: ${worstNeutral(localFloor)}" }
             panel.frost.blackLevel = 0f
             drawing.compositor.sharp.modules.filterKeys { it.startsWith("reading-frost-") }.values.forEach {
                 it.current.liveUniformStructures.getValue("FrostTone").bind("globalBlackLevel") { .3f }
@@ -170,8 +179,11 @@ object ReadingFrostSmoke {
             check(brightGamma.indices.count { it % 4 == 0 && brightGamma[it] - darkGamma[it] > .01f } > 100) {
                 "Blur-space gamma did not change the filtered image"
             }
-            check(brightGamma.indices.filter { it % 4 == 1 || it % 4 == 3 }.all { brightGamma[it] == darkGamma[it] }) {
-                "Blur gamma changed green control data or alpha"
+            check(brightGamma.indices.filter { it % 4 == 1 }.all { brightGamma[it] == darkGamma[it] }) {
+                "Blur gamma changed green control data"
+            }
+            check(neutral(brightGamma) && neutral(darkGamma)) {
+                "Blur gamma broke the palette position: ${maxOf(worstNeutral(brightGamma), worstNeutral(darkGamma))}"
             }
             check(brightGamma.all { it.isFinite() } && darkGamma.all { it.isFinite() })
             drawing.frost.blurGamma = 1f
