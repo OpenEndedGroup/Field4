@@ -834,7 +834,10 @@ ${prepDeadlinesJs(prepTimeoutMs, "box", "\"\"")}
           const iframeBlocker = (iframe) => {
             try {
               const doc = iframe.contentDocument;
-              if (!doc || doc.readyState !== "complete") return "iframe document is still loading";
+              // Chromium gives a cross-origin frame's contentDocument as null rather than throwing
+              // the SecurityError handled below; a same-origin frame always has a document.
+              if (!doc) return null;
+              if (doc.readyState !== "complete") return "iframe document is still loading";
               // A loaded document can still be waiting for geometry, tool imports or async mount.
               const viewer = iframe.contentWindow.FieldViewer?.captureStatus?.();
               if (viewer?.error) return viewer.error;
@@ -1210,7 +1213,10 @@ ${prepDeadlinesJs(prepTimeoutMs, "window", "null")}
           const iframeBlocker = (iframe) => {
             try {
               const doc = iframe.contentDocument;
-              if (!doc || doc.readyState !== "complete") return "iframe document is still loading";
+              // Chromium gives a cross-origin frame's contentDocument as null rather than throwing
+              // the SecurityError handled below; a same-origin frame always has a document.
+              if (!doc) return null;
+              if (doc.readyState !== "complete") return "iframe document is still loading";
               // A loaded document can still be waiting for geometry, tool imports or async mount.
               const viewer = iframe.contentWindow.FieldViewer?.captureStatus?.();
               if (viewer?.error) return viewer.error;
