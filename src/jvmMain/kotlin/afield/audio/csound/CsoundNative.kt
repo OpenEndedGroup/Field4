@@ -5,6 +5,8 @@ package afield.audio.csound
  */
 
 
+import afield.runtime.NativeArea
+import afield.runtime.NativeCapability
 import java.lang.foreign.Arena
 import java.lang.foreign.FunctionDescriptor
 import java.lang.foreign.Linker
@@ -37,7 +39,18 @@ import kotlin.io.path.exists
  *
  * It must be a double-precision Csound (`MYFLT` = `double`), which every official release is.
  */
-object CsoundLibrary {
+object CsoundLibrary : NativeCapability {
+    override val name = "csound"
+    override val title = "Csound"
+    override val area = NativeArea.AUDIO
+    override val docsPage = "csound.md"
+    override val buildTask = "buildCsoundNative"
+    override val install: Map<String, List<String>> = mapOf(
+        "macos" to listOf("xcode-select --install", "brew install cmake flex bison libsndfile pkg-config", "./gradlew buildCsoundNative"),
+        "linux" to listOf("sudo apt install build-essential cmake flex bison libsndfile1-dev pkg-config", "./gradlew buildCsoundNative"),
+        "windows" to listOf("# Install 64-bit Csound 6 from csound.com; Field finds C:\\Program Files\\Csound6_x64\\bin\\csound64.dll"),
+    )
+
 
     private val os: String get() = System.getProperty("os.name").lowercase()
     private val mac: Boolean get() = os.contains("mac") || os.contains("darwin")
@@ -62,7 +75,8 @@ object CsoundLibrary {
     val resolvedPath: Path? get() = searchedPaths.firstOrNull { it.exists() }
 
     /** True when a libcsound is where [searchedPaths] looks. */
-    val isAvailable: Boolean get() = resolvedPath != null
+    override val isAvailable: Boolean get() = resolvedPath != null
+    override val location: String? get() = resolvedPath?.toString()
 
     /** The one instruction a missing library needs. */
     val HOW_TO_BUILD: String
@@ -71,7 +85,7 @@ object CsoundLibrary {
             "AFIELD_CSOUND_LIBRARY at a libcsound you have."
 
     /** One line for a box or a test to print. */
-    fun describe(): String = resolvedPath?.let { "Csound at $it" } ?: "Csound not built. $HOW_TO_BUILD"
+    override fun describe(): String = resolvedPath?.let { "Csound at $it" } ?: "Csound not built. $HOW_TO_BUILD"
 }
 
 /**

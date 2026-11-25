@@ -129,6 +129,7 @@ mutation; it is a different one.
 | `GET /api/terminal` | `terminal.kt` | loopback + same-site |
 | `GET /api/webrtc-config` | `WebRTCRoutes.kt` | none |
 | `GET /api/vulkan-status` | `Server.kt` | loopback + same-site |
+| `GET /api/native-libraries-status` | `Server.kt` | loopback + same-site |
 | `GET /api/native-geometry-status` | `Server.kt` | loopback + same-site |
 | `GET /api/welcome-changelog` | `Server.kt` | none |
 | `GET /api/welcome-docs` | `Server.kt` | none |

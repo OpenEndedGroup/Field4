@@ -82,7 +82,7 @@ curve, in pixel coordinates.
     in order to run. It needs OpenCV, Boost and Eigen: `brew install opencv boost eigen` on macOS,
     `sudo apt install libopencv-dev libboost-dev libeigen3-dev` on Debian and Ubuntu. Then build it
     once with `./gradlew buildPolyvectorNative`, which downloads the authors' code at a fixed
-    version. The welcome page's **Geometry extensions** panel shows whether it is built and how to
+    version. The welcome page's **Optional native libraries** panel shows whether it is built and how to
     build it on your system, and `./field.sh --setup` can install the packages and build it for you.
     Windows is not supported yet.
 

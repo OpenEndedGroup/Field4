@@ -2,6 +2,8 @@
 
 package afield.geometry.solid.manifold
 
+import afield.runtime.NativeArea
+import afield.runtime.NativeCapability
 import java.lang.foreign.Arena
 import java.lang.foreign.FunctionDescriptor
 import java.lang.foreign.Linker
@@ -774,7 +776,18 @@ internal object ManifoldNative {
  *     common Linux multiarch directories
  *  4. the plain library name, which lets the dynamic loader search `DYLD_/LD_LIBRARY_PATH`
  */
-object ManifoldLibrary {
+object ManifoldLibrary : NativeCapability {
+    override val name = "manifold"
+    override val title = "Manifold solids"
+    override val area = NativeArea.SOLIDS
+    override val docsPage = "manifold.md"
+    override val buildTask = ""
+    override val install: Map<String, List<String>> = mapOf(
+        "macos" to listOf("brew install manifold"),
+        "linux" to listOf("sudo apt install libmanifold-dev    # Arch: sudo pacman -S manifold"),
+        "windows" to listOf("# Build Manifold with -DMANIFOLD_CBIND=ON, then set AFIELD_MANIFOLD_LIBRARY to its manifoldc.dll"),
+    )
+
 
     private val isWindows: Boolean
         get() = System.getProperty("os.name").lowercase().contains("win")
@@ -816,8 +829,10 @@ object ManifoldLibrary {
         get() = searchedPaths.firstOrNull { it.exists() }
 
     /** `true` when [Solid] and [Section] will work. Cheap enough to branch on in a box. */
-    val isAvailable: Boolean
+    override val isAvailable: Boolean
         get() = resolvedPath != null
+
+    override val location: String? get() = resolvedPath?.toString()
 
     /**
      * The upstream version, read off the `.dylib`/`.so` filename that the SO-versioned symlink
@@ -844,7 +859,7 @@ object ManifoldLibrary {
         }
 
     /** One line for a box or a smoke test to print: what was found, or why not. */
-    fun describe(): String = resolvedPath?.let {
+    override fun describe(): String = resolvedPath?.let {
         "Manifold ${reportedVersion ?: "(version unknown)"} at $it"
     } ?: "Manifold not installed. $HOW_TO_INSTALL"
 }

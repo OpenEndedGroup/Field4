@@ -4,6 +4,7 @@ package afield.geometry.mesh.tetgen
 import afield.geometry.mesh.TriMesh
 import afield.geometry.mesh.diagnose
 import afield.geometry.mesh.volume
+import afield.geometry.network.NativeGeometryCapability
 import kotlin.math.abs
 import kotlin.math.max
 import java.lang.foreign.Arena
@@ -296,7 +297,17 @@ class TetgenException(message: String) : RuntimeException(message)
  * Unlike Manifold there is no package manager to suggest: TetGen has no Homebrew formula and no
  * distribution package worth linking, which is why `tools/build_tetgen_native.py` exists.
  */
-object TetgenLibrary {
+object TetgenLibrary : NativeGeometryCapability {
+    override val name = "tetgen"
+    override val title = "Tetrahedral meshing (TetGen)"
+    override val docsPage = "tetgen.md"
+    override val buildTask = "buildTetgenNative"
+    override val install: Map<String, List<String>> = mapOf(
+        "macos" to listOf("xcode-select --install", "brew install cmake", "./gradlew buildTetgenNative"),
+        "linux" to listOf("sudo apt install build-essential cmake    # or dnf / pacman equivalents", "./gradlew buildTetgenNative"),
+        "windows" to listOf("winget install -e --id Kitware.CMake    # and Visual Studio C++ Build Tools", ".\\gradlew buildTetgenNative"),
+    )
+
 
     private val isWindows: Boolean get() = System.getProperty("os.name").lowercase().contains("win")
     private val isMac: Boolean
@@ -322,14 +333,15 @@ object TetgenLibrary {
     /** Not cached: building it during a live session should be picked up by the next box run. */
     val resolvedPath: Path? get() = searchedPaths.firstOrNull { it.exists() }
 
-    val isAvailable: Boolean get() = resolvedPath != null
+    override val isAvailable: Boolean get() = resolvedPath != null
+    override val location: String? get() = resolvedPath?.toString()
 
     val HOW_TO_BUILD: String
         get() = "Build it with `python3 tools/build_tetgen_native.py` (needs cmake and the network " +
             "once), or point -Dafield.tetgen.library at a $fileName you built."
 
     /** One line for a box or a smoke test to print. */
-    fun describe(): String = resolvedPath?.let { "TetGen wrapper at $it (${TetgenNative.version()})" }
+    override fun describe(): String = resolvedPath?.let { "TetGen wrapper at $it (${TetgenNative.version()})" }
         ?: "TetGen wrapper not built. $HOW_TO_BUILD"
 }
 

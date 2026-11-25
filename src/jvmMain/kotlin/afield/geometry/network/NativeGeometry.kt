@@ -1,52 +1,36 @@
+/**
+ * Which of Field's optional native geometry libraries are installed.
+ *
+ * Morse–Smale complexes, principal curves, polyvector vectorization and TetGen meshing each need a
+ * native library that Field does not build by default. Each module's library object is a
+ * [NativeGeometryCapability], a [NativeCapability] in the [NativeArea.GEOMETRY] area, registered with
+ * [NativeLibraries] beside Field's other optional native libraries. [NativeGeometry] is the geometry
+ * slice of that registry: [NativeGeometry.available] and [NativeGeometry.describe] answer without
+ * loading any of them, so asking never fails. Field runs without any of them, and calling into one
+ * that is absent throws an error naming the Gradle task that builds it.
+ *
+ * [NativeGeometry.status] reports every geometry module as a [NativeGeometryStatus], which
+ * `GET /api/native-geometry-status` still serves; the welcome page reads every library from
+ * `GET /api/native-libraries-status` instead.
+ */
+
 package afield.geometry.network
 
+import afield.runtime.NativeArea
+import afield.runtime.NativeCapability
+import afield.runtime.NativeLibraries
 import kotlinx.serialization.Serializable
 
 /**
- * Which of Field's optional native geometry libraries are installed, and what the welcome page
- * says about the rest.
- *
- * Morse–Smale complexes, principal curves and polyvector vectorization each need a native library
- * that Field does not build by default. [NativeGeometry] holds one [NativeGeometryCapability] per
- * module, registered by that module's own library object, and answers [NativeGeometry.available]
- * and [NativeGeometry.describe] without loading any of them, so asking never fails. Field runs
- * without any of them, and calling into one that is absent throws an error naming the Gradle task
- * that builds it.
- *
- * [NativeGeometry.status] reports every module as a [NativeGeometryStatus], which
- * `GET /api/native-geometry-status` serves to the welcome page's Geometry extensions panel:
- * whether the library loaded, its docs page, its build task, and the shell commands that install
- * its prerequisites on macOS, Linux and Windows.
+ * One optional native geometry library: a [NativeCapability] whose [area] is [NativeArea.GEOMETRY].
+ * Implementations must answer [isAvailable] without loading the library's symbols, so asking never
+ * fails.
  */
-
-/**
- * One optional native geometry library, as [NativeGeometry] sees it. Implementations must answer
- * without loading the library's symbols, so asking never fails.
- */
-interface NativeGeometryCapability {
-    val name: String
-    val isAvailable: Boolean
-
-    /** One line: where the library was found, or why not and how to build it. */
-    fun describe(): String
-
-    /** A short human title, for the welcome page. */
-    val title: String
-
-    /** The docs page, relative to the docs root (e.g. `morse_smale.md`). */
-    val docsPage: String
-
-    /** The Gradle task that builds it. */
-    val buildTask: String
-
-    /**
-     * Shell commands that install its prerequisites and build it, per OS (`macos`, `linux`,
-     * `windows`). An empty list for an OS means the build does not support it yet.
-     */
-    val install: Map<String, List<String>>
+interface NativeGeometryCapability : NativeCapability {
+    override val area: String get() = NativeArea.GEOMETRY
 }
 
-/** One library's state, as `GET /api/native-geometry-status` reports it to the welcome page. */
+/** One library's state, as `GET /api/native-geometry-status` reports it. */
 @Serializable
 data class NativeGeometryStatus(
     val name: String,
@@ -70,34 +54,25 @@ data class NativeGeometryStatus(
  * of them; calling an absent one throws an error that says how to build it.
  */
 object NativeGeometry {
-    private val modules = linkedMapOf<String, () -> NativeGeometryCapability>()
-
-    init {
-        // Each entry names a module's library object, which only knows where its file would be;
-        // nothing is loaded until a module is used.
-        register("morseSmale") { afield.geometry.topology.morsesmale.MorseSmaleLibrary }
-        register("principalCurves") { afield.geometry.curves.principal.PrincipalCurvesLibrary }
-        register("polyvector") { afield.geometry.vectorize.polyvector.PolyvectorLibrary }
-    }
-
-    /** Called by each module's library object; the factory is evaluated only when asked. */
+    /** Registers a geometry module with [NativeLibraries]; the factory is evaluated only when asked. */
     fun register(name: String, capability: () -> NativeGeometryCapability) {
-        modules[name] = capability
+        NativeLibraries.register(name, capability)
     }
 
     /** Module names Field knows about, installed or not. */
-    val names: Set<String> get() = modules.keys
+    val names: Set<String>
+        get() = NativeLibraries.names.filterTo(linkedSetOf()) { NativeLibraries.capability(it) is NativeGeometryCapability }
 
-    fun available(name: String): Boolean = modules[name]?.invoke()?.isAvailable ?: false
+    fun available(name: String): Boolean = name in names && NativeLibraries.available(name)
 
     fun describe(name: String): String =
-        modules[name]?.invoke()?.describe() ?: "$name: not a native geometry module (known: ${names.joinToString()})"
+        if (name in names) NativeLibraries.describe(name)
+        else "$name: not a native geometry module (known: ${names.joinToString()})"
 
     fun describe(): String = names.joinToString("\n") { describe(it) }
 
-    /** Every module's state, for the welcome page. Never throws: a broken library describes itself. */
-    fun status(): List<NativeGeometryStatus> = modules.values.map { factory ->
-        val c = factory()
-        NativeGeometryStatus(c.name, c.title, c.isAvailable, c.describe(), c.docsPage, c.buildTask, c.install)
+    /** Every module's state. Never throws: a broken library describes itself. */
+    fun status(): List<NativeGeometryStatus> = NativeLibraries.status().filter { it.name in names }.map {
+        NativeGeometryStatus(it.name, it.title, it.available, it.description, it.docsPage, it.buildTask, it.install)
     }
 }

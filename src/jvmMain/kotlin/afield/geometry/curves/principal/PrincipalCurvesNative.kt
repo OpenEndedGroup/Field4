@@ -3,8 +3,8 @@
  *
  * [PrincipalCurvesLibrary] is the half that answers without loading anything: the library's file
  * name on this OS, the paths it is looked for in, whether one of them exists, and the Gradle task
- * and per-OS shell commands that build it. `NativeGeometry` registers it as a
- * [NativeGeometryCapability], so the welcome page's Geometry extensions panel can report on the
+ * and per-OS shell commands that build it. `NativeLibraries` registers it as a
+ * [NativeGeometryCapability], so the welcome page's Optional native libraries panel can report on the
  * library whether or not it is installed. The path is resolved afresh on every read, so a library
  * built during a live session is picked up by the next box run.
  *
@@ -81,6 +81,7 @@ object PrincipalCurvesLibrary : NativeGeometryCapability {
     val resolvedPath: Path? get() = searchedPaths.firstOrNull { it.exists() }
 
     override val isAvailable: Boolean get() = resolvedPath != null
+    override val location: String? get() = resolvedPath?.toString()
 
     val HOW_TO_BUILD: String
         get() = "Build it with `./gradlew buildPrincipalCurvesNative` (needs cmake and a C++17 compiler, no other " +

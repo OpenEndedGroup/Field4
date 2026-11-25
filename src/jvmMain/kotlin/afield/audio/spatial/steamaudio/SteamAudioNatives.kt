@@ -4,6 +4,8 @@ package afield.audio.spatial.steamaudio
  * Locates and loads the Steam Audio shared library, through [SteamAudioNatives].
  */
 
+import afield.runtime.NativeArea
+import afield.runtime.NativeCapability
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
@@ -56,7 +58,17 @@ import java.util.concurrent.atomic.AtomicReference
  *
  * Everything on the plain classpath works too, and is the common case.
  */
-public object SteamAudioNatives {
+public object SteamAudioNatives : NativeCapability {
+    override val name = "steamAudio"
+    override val title = "Steam Audio"
+    override val area = NativeArea.AUDIO
+    override val docsPage = "steam_audio_scene.md"
+    override val buildTask = "fetchSteamAudioNatives"
+    override val install: Map<String, List<String>> = mapOf(
+        "macos" to listOf("./gradlew fetchSteamAudioNatives"),
+        "linux" to listOf("./gradlew fetchSteamAudioNatives    # x86-64 only"),
+        "windows" to listOf(".\\gradlew fetchSteamAudioNatives"),
+    )
 
     /** Identifies a supported platform and where its libraries live. */
     public enum class Platform(
@@ -159,10 +171,18 @@ public object SteamAudioNatives {
         }
 
     /** True when [load] can find the library. Does not load it. */
-    public val isAvailable: Boolean get() = unavailableReason == null
+    public override val isAvailable: Boolean get() = unavailableReason == null
+
+    /** Where [load] would take the library from, without loading it; `null` when it is unavailable. */
+    public override val location: String?
+        get() = when {
+            !isAvailable -> null
+            loaded.get() != null -> loaded.get().toString()
+            else -> System.getProperty(PROPERTY_FILE) ?: System.getProperty(PROPERTY_PATH) ?: "the classpath ($RESOURCE_ROOT)"
+        }
 
     /** One line for a box or a smoke test to print. */
-    public fun describe(): String {
+    public override fun describe(): String {
         loaded.get()?.let { return "Steam Audio loaded from $it" }
         unavailableReason?.let { return "Steam Audio unavailable: $it. $HOW_TO_FETCH" }
         return "Steam Audio available, not yet loaded"

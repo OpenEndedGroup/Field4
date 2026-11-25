@@ -51,7 +51,7 @@ the merge and the later split.
 
 !!! note "Needs the Morse–Smale library"
     The examples compute Morse–Smale complexes, which need the optional library: see the welcome
-    page's **Geometry extensions** panel. The tracker itself is plain Kotlin and works on features
+    page's **Optional native libraries** panel. The tracker itself is plain Kotlin and works on features
     from anywhere.
 
 ## How features are matched
