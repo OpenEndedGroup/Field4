@@ -42,4 +42,26 @@ class HopfieldSudokuTest {
         println("HOPFIELD 9x9 overall=$rate")
         assertTrue(rate > 0.5, "9x9 held-out solve rate $rate")
     }
+
+    @Test
+    fun gpuStateLayoutAndLearnedConstraintImage() {
+        val h = HopfieldSudoku(2)
+        val r = Random(3)
+        h.train(List(200) { h.generate(r, 0).second }, epochs = 10, lr = 0.05f, l1 = 1e-5f)
+        val (puzzle, _) = h.generate(r, 6)
+        // step 0 of the GPU layout holds the same beliefs as zero CPU steps
+        val state = h.gpuState(puzzle)
+        assertTrue(state.size == h.gpuStateFloats)
+        assertTrue(h.gpuBeliefs(state, 0).contentEquals(h.beliefsAfter(puzzle, 0)))
+        // the descent settles to a board that keeps the clues
+        val p = h.beliefsAfter(puzzle, 60)
+        val grid = h.decode(puzzle, p)
+        assertTrue(puzzle.indices.all { puzzle[it] == 0 || grid[it] == puzzle[it] })
+        // same-row pairs cost more for equal digits than pairs that share no row, column or box
+        val cost = h.sameDigitCost()
+        val sameRow = cost[0 * h.cells + 3]
+        val unrelated = cost[0 * h.cells + 15]
+        println("HOPFIELD sameDigitCost sameRow=$sameRow unrelated=$unrelated")
+        assertTrue(sameRow > unrelated + 0.1f, "same row $sameRow vs unrelated $unrelated")
+    }
 }
