@@ -2,7 +2,7 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 26356 of 43997 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 26393 of 44034 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
 **2107 undocumented entry points** (types, top-level functions and values) and 14761 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
@@ -14,7 +14,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | --- | --- | --- | --- | --- | --- |
 | [RectSL.kt](../src/jvmMain/kotlin/afield/lang/rectsl/RectSL.kt) | Languages | rectsl_inverse_animation, rectsl_examples, rectsl_cheatsheet | 104 | 411 | 8% |
 | [spreadsheet.kt](../src/jvmMain/kotlin/afield/data/table/spreadsheet.kt) | Data | spreadsheets | 62 | 91 | 8% |
-| [FLineGeometry.kt](../src/jvmMain/kotlin/afield/geometry/path/FLineGeometry.kt) | Graphics | fline_examples, polyvector, spatial_geometry_examples | 58 | 41 | 45% |
+| [FLineGeometry.kt](../src/jvmMain/kotlin/afield/geometry/path/FLineGeometry.kt) | Graphics | fline_examples, polyvector, spatial_geometry_examples | 58 | 41 | 46% |
 | [synth.kt](../src/jvmMain/kotlin/afield/audio/synth/synth.kt) | Synthesis | explainer_sound, pure_data, sound_paths | 52 | 0 | 27% |
 | [Tools.kt](../src/jvmMain/kotlin/afield/ai/tools/Tools.kt) | AI4 | ai4_tools | 51 | 201 | 32% |
 | [TidalPatterns.kt](../src/jvmMain/kotlin/afield/audio/synth/TidalPatterns.kt) | Patterns | pattern_language, marf, petri_nets | 43 | 82 | 21% |
@@ -231,6 +231,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [PatSoundDocs.kt](../src/jvmMain/kotlin/afield/audio/synth/PatSoundDocs.kt) | Patterns | distributions, chain_drawn_score, sound | 0 | 9 | 70% |
 | [DeBruijnTiling.kt](../src/jvmMain/kotlin/afield/geometry/path/DeBruijnTiling.kt) | Graphics | debruijn_tilings | 0 | 9 | 70% |
 | [FieldAdapters.kt](../src/jvmMain/kotlin/afield/geometry/polytope/FieldAdapters.kt) | Polytopes | polytope_examples, chain_polytope_render, agent_transcripts | 0 | 9 | 71% |
+| [linalg_spatial.kt](../src/jvmMain/kotlin/afield/geometry/spatial/linalg_spatial.kt) | Math | linear_algebra_api, linear_algebra | 0 | 9 | 82% |
 | [StandardDrawing.kt](../src/jvmMain/kotlin/afield/graphics/render/StandardDrawing.kt) | Graphics | fline_examples, visualizers, spatial_geometry_examples | 0 | 9 | 86% |
 | [SolidExact.kt](../src/jvmMain/kotlin/afield/lang/solidsl/SolidExact.kt) | Graphics | solid_notation | 0 | 9 | 68% |
 | [SimulationClock.kt](../src/jvmMain/kotlin/afield/runtime/lifecycle/SimulationClock.kt) | Workspace | profiling_timeline | 0 | 9 | 43% |
@@ -785,7 +786,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [ModalDrum.kt](../src/jvmMain/kotlin/afield/audio/modal/ModalDrum.kt) | Audio | — | 0 | 9 | 43% |
 | [PdInstance.kt](../src/jvmMain/kotlin/afield/audio/pd/PdInstance.kt) | Synthesis | — | 0 | 9 | 76% |
 | [PropertyBag.kt](../src/jvmMain/kotlin/afield/document/properties/PropertyBag.kt) | Workspace | — | 0 | 9 | 25% |
-| [linalg_spatial.kt](../src/jvmMain/kotlin/afield/geometry/spatial/linalg_spatial.kt) | Math | — | 0 | 9 | 81% |
 | [GeziraGpuScene.kt](../src/jvmMain/kotlin/afield/graphics/nile/GeziraGpuScene.kt) | Graphics | — | 0 | 9 | 66% |
 | [PaintStrokes.kt](../src/jvmMain/kotlin/afield/graphics/paint/PaintStrokes.kt) | Graphics | — | 0 | 9 | 76% |
 | [DiagramTextFrustum.kt](../src/jvmMain/kotlin/afield/graphics/scene/reading/DiagramTextFrustum.kt) | Graphics | — | 0 | 9 | 30% |

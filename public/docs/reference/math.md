@@ -379,7 +379,7 @@ geometry.
 
 `src/jvmMain/kotlin/afield/geometry/spatial/linalg_spatial.kt` — [read the source](source/jvmMain/afield/geometry/spatial/linalg_spatial/)
 
-**Used in:** [Generated vector API reference](../linear_algebra_api.md)
+**Used in:** [Generated vector API reference](../linear_algebra_api.md), [Linear algebra in Field](../linear_algebra.md)
 
 ### Top-level functions { #linalg-spatial-kt-functions }
 
@@ -4083,7 +4083,7 @@ extension that fills the gap left by `kotlin.random.Random`, which has no Gaussi
 
 `src/jvmMain/kotlin/afield/math/statistics/randoms.kt` — [read the source](source/jvmMain/afield/math/statistics/randoms/)
 
-**Used in:** [Generated vector API reference](../linear_algebra_api.md), [Flow Matching](../flow_matching.md), [Chaining the geometry extensions](../geometry_chains.md)
+**Used in:** [Generated vector API reference](../linear_algebra_api.md), [Linear algebra in Field](../linear_algebra.md), [Flow Matching](../flow_matching.md)
 
 ### Top-level functions { #randoms-kt-functions }
 
