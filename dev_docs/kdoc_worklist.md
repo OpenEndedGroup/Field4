@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 26364 of 44010 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 26356 of 43997 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2108 undocumented entry points** (types, top-level functions and values) and 14765 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2107 undocumented entry points** (types, top-level functions and values) and 14761 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -25,7 +25,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [wfc.kt](../src/jvmMain/kotlin/afield/simulation/automata/wfc.kt) | Data | wfc_examples | 20 | 67 | 29% |
 | [FabricateScene.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/FabricateScene.kt) | Renderers | fabricate_renderer, geometry_from_disk | 19 | 114 | 5% |
 | [FieldGraphTools.kt](../src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt) | AI4 | ai4_tools, ai4_experiments, text_frames | 18 | 96 | 19% |
-| [KotlinScriptEngine.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/KotlinScriptEngine.kt) | Workspace | changelog, running_code, agent_transcripts | 18 | 42 | 25% |
+| [KotlinScriptEngine.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/KotlinScriptEngine.kt) | Workspace | changelog, running_code | 18 | 42 | 25% |
 | [RemoteJS.kt](../src/jvmMain/kotlin/afield/lang/remotejs/RemoteJS.kt) | Languages | lua | 18 | 8 | 7% |
 | [dynamic_graph_systems.kt](../src/jvmMain/kotlin/afield/data/graph/dynamic_graph_systems.kt) | Data | dynamic_graph_systems_examples | 16 | 109 | 20% |
 | [RectSLStudyTools.kt](../src/jvmMain/kotlin/afield/lang/rectsl/study/RectSLStudyTools.kt) | Languages | rectsl_conversation | 14 | 17 | 21% |
@@ -562,7 +562,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [FourVisualizers.kt](../src/jvmMain/kotlin/afield/graphics/render/FourVisualizers.kt) | Graphics | — | 1 | 2 | 50% |
 | [Surface.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/device/Surface.kt) | Graphics | — | 1 | 2 | 0% |
 | [PatternRewriteSmokeTest.kt](../src/jvmMain/kotlin/afield/math/functions/PatternRewriteSmokeTest.kt) | Math | — | 1 | 2 | 0% |
-| [SharedTypesSmokeTest.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/SharedTypesSmokeTest.kt) | Workspace | — | 1 | 2 | 0% |
 | [WitherSmokeTest.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/WitherSmokeTest.kt) | Workspace | — | 1 | 2 | 0% |
 | [DataFrameVisualizerSmokeTest.kt](../src/jvmMain/kotlin/afield/ui/visualization/DataFrameVisualizerSmokeTest.kt) | Visualization | — | 1 | 2 | 0% |
 | [Ai4CompletionDoc.kt](../src/jvmMain/kotlin/afield/ai/completion/Ai4CompletionDoc.kt) | AI4 | — | 1 | 1 | 77% |
@@ -1068,7 +1067,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [DataFramePluginSpike.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/DataFramePluginSpike.kt) | Workspace | — | 0 | 2 | 33% |
 | [Kotlin24SyntaxSmokeTest.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/Kotlin24SyntaxSmokeTest.kt) | Workspace | — | 0 | 2 | 33% |
 | [ReplBootstrapGateTest.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/ReplBootstrapGateTest.kt) | Workspace | — | 0 | 2 | 33% |
-| [SharedTypesClasspathSpike.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/SharedTypesClasspathSpike.kt) | Workspace | — | 0 | 2 | 33% |
 | [util_lifecycle.kt](../src/jvmMain/kotlin/afield/runtime/lifecycle/util_lifecycle.kt) | Workspace | — | 0 | 2 | 77% |
 | [PetriSmokeTest.kt](../src/jvmMain/kotlin/afield/simulation/petri/PetriSmokeTest.kt) | Simulation | — | 0 | 2 | 33% |
 | [StudyReport.kt](../src/jvmMain/kotlin/afield/study/evidence/StudyReport.kt) | Workspace | — | 0 | 2 | 33% |
@@ -1449,4 +1447,4 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `DirtSampleLibrary` | class | `src/jvmMain/kotlin/afield/audio/synth/DirtSamples.kt:218` |
 | `DirtSamplePlayer` | class | `src/jvmMain/kotlin/afield/audio/synth/DirtSamples.kt:356` |
 
-…and **1988 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
+…and **1987 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.

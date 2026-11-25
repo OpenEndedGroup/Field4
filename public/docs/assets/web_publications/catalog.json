@@ -7425,21 +7425,6 @@
         "public/docs/assets/agent_transcripts/rhino_save_small/rhino_save_small_measure_code_.kt": "794063d793cd69195edc5d445510a69644e499d69fddeefca2e15628639bba75"
       }
     },
-    "assets/agent_transcripts/shared_types_demo/metadata.edn": {
-      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "channels": 0,
-      "reason": "No output-area channels; the code remains available.",
-      "sources": {
-        "dev_docs/agents/transcripts/shared_types_demo.yaml": "149ee32cf06b3cb174c74f91dc85376fa6cacab321fff3f60663ac0e6d4e8718",
-        "public/docs/assets/agent_transcripts/shared_types_demo/guides/reference-workspace.md": "d28c26b083273fc456a045d863d3eb5779ac916c6b4238a5cafea539675a2ae4",
-        "public/docs/assets/agent_transcripts/shared_types_demo/guides/running_code-shared-kotlin-types.md": "00023e6eb15924b8a373f7d4f864db1a208f847a641f6a2452f70c7c3029f0a1",
-        "public/docs/assets/agent_transcripts/shared_types_demo/metadata.edn": "b4e8f640683bbba82bdd03add5e92480c3fa16f327ecae81766c840f37e84e3b",
-        "public/docs/assets/agent_transcripts/shared_types_demo/shared_types_declare_code_.kt": "cbdf548c8323d9f349c9762c60fdf3854c7f41281968137711fad8c00d8194ab",
-        "public/docs/assets/agent_transcripts/shared_types_demo/shared_types_export_code_.kt": "9a22fdffaa22d6ac95a206bcb1b2f033fde02ff86a98a2e25bd3e121744947de",
-        "public/docs/assets/agent_transcripts/shared_types_demo/shared_types_receive_code_.kt": "6e5c9eb136bc383a03943be48dc2c46c36aa12424193189d859f8b3ab29a4111",
-        "public/docs/assets/agent_transcripts/shared_types_demo/shared_types_use_code_.kt": "933e2966a3d1bc618ae34e1b47390b7a0c332d98d61f0e3b27807f8e262b1326"
-      }
-    },
     "assets/agent_transcripts/slideshow_guide/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
       "channels": 0,
