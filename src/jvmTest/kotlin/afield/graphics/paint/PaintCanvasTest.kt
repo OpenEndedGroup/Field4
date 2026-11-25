@@ -42,7 +42,12 @@ class PaintCanvasTest {
 
     @Test fun missingLibraryIsReportedNotThrownAtClassLoad() {
         assertTrue(PaintLibrary.fileName.contains("field_paint_jvm"))
-        assertTrue(PaintLibrary.searchedPaths.last().endsWith(java.nio.file.Path.of("build", "field-paint", "release", PaintLibrary.fileName)))
+        val explicit = System.getProperty("afield.paint.library")?.takeIf { it.isNotBlank() }
+            ?: System.getenv("AFIELD_PAINT_LIBRARY")?.takeIf { it.isNotBlank() }
+        // An explicit path is the only one searched, so a missing one leaves the library unavailable.
+        val expected = explicit?.let { java.nio.file.Path.of(it) }
+            ?: java.nio.file.Path.of("build", "field-paint", "release", PaintLibrary.fileName).toAbsolutePath()
+        assertTrue(PaintLibrary.searchedPaths == listOf(expected), "searched ${PaintLibrary.searchedPaths}, expected [$expected]")
         assertTrue(PaintLibrary.describe().isNotEmpty())
     }
 
