@@ -377,7 +377,7 @@ while the sheet is still falling, so they are not the sag at rest. Measure the s
 scene rather than interpolating these.
 
 The second half of each caption adds the curvature force, and it does not give you strain headroom.
-At 100 it tightens the floppiest rung a little and makes every other rung worse. The curvature pass
+At 100 it makes every rung a little worse, a few percent at the stiff end. The curvature pass
 adds into the same `ax/ay/az` the springs do, so at these strengths it is one more load on the sheet
 rather than a stiffener.
 

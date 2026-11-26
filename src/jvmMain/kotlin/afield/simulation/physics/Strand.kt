@@ -41,9 +41,14 @@ import kotlin.math.sqrt
  * strength that holds a rope straight is above it: turned up far enough such a force thrashes
  * instead of stiffening. A projection has no stiffness, so it has no ceiling. The projection
  * itself is the standard mass-weighted one — `C = b - (a+c)/2`, corrections `Δb = +w_b·d/S`,
- * `Δa = Δc = -w·d/2S` with `S = w_b + (w_a + w_c)/4` — applied to `x` *and* `px` together so it
- * injects no velocity and can add no energy, and swept in **three colours** so that overlapping
- * stencils do not stack their corrections on top of each other. `bendStiffness` is clamped to
+ * `Δa = Δc = -w·d/2S` with `S = w_b + (w_a + w_c)/4` — applied to `x` alone, so the integrator
+ * turns each correction into the velocity change that removes the motion into the fold, which can
+ * only take energy out, and swept in **three colours** so that overlapping stencils do not stack
+ * their corrections on top of each other. It used to move `px` with `x` as well, which leaves the
+ * velocity alone and so looks safe, but it stretched the distance springs for free: a thrown rope
+ * at `bendStiffness = 0.5` peaked 8% above the energy it started with (`StrandTest.bendingNeverAddsEnergy`).
+ * The price of the honest version is that bending is inelastic: a stiff rope swings itself still
+ * much sooner than a limp one. `bendStiffness` is clamped to
  * `0..1`, and `Strand.MAX_BEND_CORRECTION` is what `1` maps onto: the stiffest correction this
  * integrator holds, rather than a full one.
  *
@@ -219,8 +224,8 @@ class Strand private constructor(
 
     /**
      * The bending projection, exposed for callers who would rather drive it than leave it
-     * registered. Moves `x` and `px` together for every interior node, so it injects no velocity;
-     * touches only interior nodes, so a 2-node strand gets nothing from it.
+     * registered. Moves `x` only, so the correction becomes an inelastic velocity change (the file
+     * overview has why); touches only interior nodes, so a 2-node strand gets nothing from it.
      *
      * @param strength how much of the correction to apply, `0..1`. Values above 1 overshoot and
      *   are clamped, because a projection that overshoots is a force with extra steps.
@@ -237,9 +242,6 @@ class Strand private constructor(
         val x = state.x
         val y = state.y
         val z = state.z
-        val px = state.px
-        val py = state.py
-        val pz = state.pz
         val invMass = state.invMass
 
         // Three colours, not one sweep. Consecutive stencils overlap -- the one at i moves i-1, i
@@ -269,21 +271,18 @@ class Strand private constructor(
             // Mass-weighted and momentum-conserving: the middle node moves toward the chord, the
             // two ends move half as far the other way, each scaled by its own inverse mass, so a
             // pinned neighbour (w = 0) simply does not move and takes the whole correction into
-            // the free node. `px` moves with `x`, so no Verlet velocity is created.
+            // the free node. Only `x` moves, so the Verlet velocity loses the part that bent the rope.
             if (wb != 0f) {
                 val bx = wb * sx; val by = wb * sy; val bz = wb * sz
                 x[i] += bx; y[i] += by; z[i] += bz
-                px[i] += bx; py[i] += by; pz[i] += bz
             }
             if (wa != 0f) {
                 val ax = -0.5f * wa * sx; val ay = -0.5f * wa * sy; val az = -0.5f * wa * sz
                 x[i - 1] += ax; y[i - 1] += ay; z[i - 1] += az
-                px[i - 1] += ax; py[i - 1] += ay; pz[i - 1] += az
             }
             if (wc != 0f) {
                 val cx = -0.5f * wc * sx; val cy = -0.5f * wc * sy; val cz = -0.5f * wc * sz
                 x[i + 1] += cx; y[i + 1] += cy; z[i + 1] += cz
-                px[i + 1] += cx; py[i + 1] += cy; pz[i + 1] += cz
             }
             i += 3
         }

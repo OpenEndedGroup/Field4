@@ -423,4 +423,39 @@ class StrandTest {
         assertFalse("${rope.name}.bend" in sim.positionProjections, "and the projection unregistered")
         for (n in 0 until 6) assertTrue(slotsOf(sim.constraints4!!, rope[n]).all { it == -1 })
     }
+
+    /**
+     * The bend projection can only take energy out. A straight rope thrown with random velocities
+     * in empty space, with no gravity and no damping, starts with all its energy as motion; at no
+     * later frame may its kinetic energy exceed that. When the projection moved previous positions
+     * along with positions, it stretched the springs for free and the rope peaked 8% above its
+     * start at `bendStiffness = 0.5`.
+     */
+    @Test
+    fun bendingNeverAddsEnergy() {
+        for (bend in listOf(0.5f, 1f)) {
+            val sim = SimdVerlet(SimdVerlet.State3.empty())
+            val dt = 1f / 60f
+            val rope = sim.addStrand(count = 30, spacing = 0.2f, stiffness = 60f, bendStiffness = bend, restLengthFromLayout = true)
+            val st = sim.state
+            val random = java.util.Random(7)
+            for (i in rope.base until rope.end) {
+                st.px[i] = st.x[i] - (random.nextFloat() - 0.5f) * 2f * dt
+                st.py[i] = st.y[i] - (random.nextFloat() - 0.5f) * 2f * dt
+                st.pz[i] = st.z[i] - (random.nextFloat() - 0.5f) * 2f * dt
+            }
+            fun kinetic(): Double = (rope.base until rope.end).sumOf { i ->
+                val vx = (st.x[i] - st.px[i]) / dt; val vy = (st.y[i] - st.py[i]) / dt; val vz = (st.z[i] - st.pz[i]) / dt
+                0.5 * (vx * vx + vy * vy + vz * vz).toDouble()
+            }
+            val start = kinetic()
+            var most = start
+            repeat(600) {
+                rope.step(dt, 1f, 0f, 8)
+                most = maxOf(most, kinetic())
+            }
+            assertFalse(sim.diverged)
+            assertTrue(most <= start * 1.01, "bend $bend: kinetic energy rose from $start to $most")
+        }
+    }
 }

@@ -1,6 +1,7 @@
 package afield.simulation.physics
 
 import afield.math.linalg.vec
+import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -294,8 +295,26 @@ class SimdVerletTearingTest {
         val state = sim.state
         SimdVerlet.zero3(state)
         cloth.accumulateCurvature(state)
-        assertEquals(0f, state.ax[a], 0f, "a suppressed node accumulates nothing")
-        assertEquals(0f, state.ay[a], 0f, "a suppressed node accumulates nothing")
+        // A suppressed node has no stencil of its own, but its intact neighbours' stencils still
+        // push back on it. So compare against the same sheet with nothing suppressed: at a, the
+        // torn cloth must lack exactly a's own pull and the quarter-reaction b's pull put on it.
+        val reference = SimdVerlet(SimdVerlet.State3.empty())
+        val whole = reference.addCloth(width = 9, height = 7, stiffness = 8f, curvatureStrength = 40f,
+            position = { c, r -> cloth.position(c, r) }, pinned = { _, _ -> false })
+        val rs = reference.state
+        SimdVerlet.zero3(rs)
+        whole.accumulateCurvature(rs)
+        fun pull(axis: FloatArray, col: Int, row: Int) =
+            ((axis[whole[col - 1, row]] + axis[whole[col + 1, row]] + axis[whole[col, row - 1]] + axis[whole[col, row + 1]]) * 0.25f -
+                axis[whole[col, row]]) * 40f
+        val ra = whole[4, 3]
+        for ((name, axis, force, torn) in listOf(
+            Quad("x", rs.x, rs.ax, state.ax), Quad("y", rs.y, rs.ay, state.ay), Quad("z", rs.z, rs.az, state.az)
+        )) {
+            val expected = force[ra] - pull(axis, 4, 3) + 0.25f * pull(axis, 5, 3)
+            assertEquals(expected, torn[a], 1e-3f, "$name: a suppressed node loses its own pull and b's reaction, nothing else")
+        }
+        assertTrue(abs(pull(rs.y, 4, 3)) + abs(pull(rs.z, 4, 3)) + abs(pull(rs.x, 4, 3)) > 1e-3f, "premise: a's stencil had something to remove")
         val liveInterior = cloth[2, 2]
         assertNotEquals(
             0f, state.ax[liveInterior] + state.ay[liveInterior] + state.az[liveInterior],
@@ -428,3 +447,5 @@ class SimdVerletTearingTest {
         assertTrue(rows[0].contacts > 50, "a shredded one must land on them, ${rows[0].contacts} contacts")
     }
 }
+
+private data class Quad(val name: String, val axis: FloatArray, val force: FloatArray, val torn: FloatArray)

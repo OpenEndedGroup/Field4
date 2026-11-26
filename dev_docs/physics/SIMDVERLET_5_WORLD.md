@@ -256,8 +256,11 @@ cantilever against bend strength:
 Three significant figures of nothing up to 2000, then the explicit integrator loses it — the
 *flails* entries hold the tip up at 112 and 124 degrees of joint angle, which is thrashing rather
 than stiffness. **The same trap as a penalty collider, arriving by a second road**, and fixed the
-same way: a mass-weighted position projection, `x` and `px` moved together so no velocity is
-injected, swept in three colours so overlapping stencils do not stack their corrections.
+same way: a mass-weighted position projection, swept in three colours so overlapping stencils do
+not stack their corrections. (It first moved `x` and `px` together, so that no velocity was
+injected; that turned out to stretch the distance springs for free, and a thrown rope gained up to
+8% energy. Since 2026-11-26 it moves `x` only, which makes bending inelastic:
+`StrandTest.bendingNeverAddsEnergy`.)
 
 Then the second negative result: **a cantilever is the wrong test for bending**. A rope hanging
 under gravity is already straight, so a curvature constraint has nothing to correct, and even the
@@ -352,9 +355,13 @@ world on top of it, and the way to find out is to build the wrong versions on pu
    all of it resting on it. Free particles rather than a cloth, deliberately — at any interesting
    speed a cloth's own springs would be the thing that failed first.
 3. **Tearing without dropping the curvature stencil.** Both panels break the same eight edges.
-   Without `Cloth.enableTearing`'s hook, **24 cloth nodes are still inside the hole the ball swept**
-   and the picture shows a cross of mesh filling the amber circle; with it, **0**, and a clean open
-   hole. Every one of those numbers is asserted.
+   Without `Cloth.enableTearing`'s hook the stale stencils pull the two lips of every broken edge
+   back together, to **0.18** apart on average, less than one grid spacing: the rip has healed
+   shut. With it they stay **0.39** apart. Both numbers are asserted. (Until 2026-11-26 this read
+   "24 nodes inside the hole against 0, a clean open hole". That clean hole was an artifact: the
+   curvature force then had no reaction on its neighbours, and it held the torn flaps out of the
+   plane. With the reaction, the slit in a sheet this stiff flattens back over the hole either
+   way, and the lip gap is what tells the two apart.)
 
 Two bugs no test would have caught:
 
