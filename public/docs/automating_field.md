@@ -121,8 +121,9 @@ check("- move:" in ops) { "the recorded macro has no move: " + ops }
 ## Macros in guides and notes
 
 A document's guide pages and its box notes can run macros, so a reader presses play instead
-of following steps by hand. A macro started from a page runs on the current selection, the same
-as **Run** in the Macro Recorder, and nothing runs until someone presses play.
+of following steps by hand. By default, a macro started from a page uses the current selection,
+just like **Run** in the Macro Recorder. Add `selection: fixed` at the top level of a saved
+macro or an inline block to run it once using its authored box IDs, even with several boxes selected.
 
 To run a saved macro, link to it. **Copy link** in the Macro Recorder copies a Markdown link to
 the open macro, and the link shows a ▶ in front of its text:
