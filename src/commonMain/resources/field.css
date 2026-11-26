@@ -735,7 +735,7 @@ body.canvas-pan-latched .outputArea * {
    browser's default monospace, and a query result rendered in Courier beside an Iosevka editor is
    the tell. An element selector, so any rule that sets a family deliberately still wins. */
 pre,
-pre code {
+code {
     font-family: var(--field-font-code), var(--field-font-code-fallback);
 }
 
