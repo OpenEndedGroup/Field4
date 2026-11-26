@@ -33,10 +33,11 @@ world.rules("filaments") {
         fun stroke(ends: List<Vec3>, opacity: Double = 1.0): FLine {
             return world.inspectOnClick(filament, spatialStroke(ends, ink, width = 2.0, opacity = opacity)) { why ->
                 val phase = if (why.matchLive == true) "Matched" else "Fading"
-                val inputs = why.inputs.joinToString { input ->
-                    val status = if (input.live) "live" else "retracted"
-                    "${input.kind} #${input.id} ($status)"
-                }
+                val inputs =
+                    why.inputs.joinToString { input ->
+                        val status = if (input.live) "live" else "retracted"
+                        "${input.kind} #${input.id} ($status)"
+                    }
                 markdown(
                     "Why this filament?",
                     "**$phase** · ${why.ageSeconds.f2} s old\n\n**${why.origin.process}** · $inputs\n\n${why.origin.condition}",

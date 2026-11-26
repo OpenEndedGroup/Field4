@@ -394,7 +394,7 @@ loop {
 <!-- field-box id="sr_filament" index="2" -->
 
 ```edn [field-box id="sr_filament" role="properties"]
-{"id" "sr_filament" "index" 2 "name" "1 · One filament" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · One filament" "_tombstone" false "frame" #afield/rect [65.0 285.0 290.0 78.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sr_filament_code_.kt" "lines" 77 "characters" 2681 "sha256" "5b589253eb4186e8fbd286268c28b4595e345520d8d8d105fa37177d7df4ff3b"}]}
+{"id" "sr_filament" "index" 2 "name" "1 · One filament" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · One filament" "_tombstone" false "frame" #afield/rect [65.0 285.0 290.0 78.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sr_filament_code_.kt" "lines" 78 "characters" 2713 "sha256" "080abf46264c1ff0706f28ba05f8f49f7031d9b1671d83aad1655819675fdc12"}]}
 ```
 
 ```kotlin [field-property box="sr_filament" name="code" path="sr_filament_code_.kt"]
@@ -433,10 +433,11 @@ world.rules("filaments") {
         fun stroke(ends: List<Vec3>, opacity: Double = 1.0): FLine {
             return world.inspectOnClick(filament, spatialStroke(ends, ink, width = 2.0, opacity = opacity)) { why ->
                 val phase = if (why.matchLive == true) "Matched" else "Fading"
-                val inputs = why.inputs.joinToString { input ->
-                    val status = if (input.live) "live" else "retracted"
-                    "${input.kind} #${input.id} ($status)"
-                }
+                val inputs =
+                    why.inputs.joinToString { input ->
+                        val status = if (input.live) "live" else "retracted"
+                        "${input.kind} #${input.id} ($status)"
+                    }
                 markdown(
                     "Why this filament?",
                     "**$phase** · ${why.ageSeconds.f2} s old\n\n**${why.origin.process}** · $inputs\n\n${why.origin.condition}",
