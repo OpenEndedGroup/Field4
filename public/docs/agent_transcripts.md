@@ -1922,6 +1922,17 @@ tip growth removed. Every box is pure CPU; no `Window`, no `Renderer`.
 
 [Open →](offline.html?file=assets/agent_transcripts/dynamic_graph_systems_examples/metadata.edn)
 
+### spatial_rules_tour
+
+Run **Start here · run the tour** to visit three [spatial rule studies](spatial_rules.md).
+Two tips leave a fading filament. Three moving stations weave cubic stitches, link their knots,
+and fit ellipses connected by a tapered minimum spanning tree. The final box moves 1,000 points in
+a breathing torus whose threads appear and fade as their 3D neighbourhoods change.
+
+<video controls muted loop playsinline preload="metadata" src="assets/spatial_rules/loom.mp4" style="max-width:100%;height:auto" aria-label="The live spatial loom, with curved cyan stitches, gold knot links and violet echoes fading as their input tips come and go. Pale fitted ellipses and tree ribbons link the clusters."></video>
+
+[Open →](offline.html?file=assets/agent_transcripts/spatial_rules_tour/metadata.edn)
+
 ### autodiff_worked_example
 
 Field's **automatic-differentiation layer** as five independent

@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-25T23:50:55.564Z",
+  "documentName": "spatial_rules_tour",
+  "outputs": [
+    {
+      "uid": "sr_loom",
+      "channel": "loom",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 681,
+      "height": 100,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "sr_torus",
+      "channel": "torus",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 631,
+      "height": 456,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "sr_torus",
+      "channel": "Counts",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 222,
+      "height": 40,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "sr_filament",
+      "channel": "filament",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 478,
+      "height": 104,
+      "path": "outputs/3.html"
+    }
+  ]
+}

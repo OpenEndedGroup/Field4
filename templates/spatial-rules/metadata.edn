@@ -1,0 +1,16 @@
+{"version" 2
+ "boxes"
+ [{"id" "root"
+   "properties" {"name" "Spatial Rules"
+                 "documentation" "Launch either box. Two tips make a filament, or two moving rows weave stitches, cross-links and echoes. Click a knot in the Weave output to see where it came from."
+                 "children" #{#afield/box "filament" #afield/box "weave"}}}
+  {"id" "filament"
+   "properties" {"name" "One filament"
+                 "frame" #afield/rect [70.0 95.0 250.0 78.0]
+                 "parents" #{#afield/box "root"}
+                 "code" #afield/file "filament_code_.kt"}}
+  {"id" "weave"
+   "properties" {"name" "Stitches, weave and echoes"
+                 "frame" #afield/rect [850.0 95.0 280.0 78.0]
+                 "parents" #{#afield/box "root"}
+                 "code" #afield/file "weave_code_.kt"}}]}

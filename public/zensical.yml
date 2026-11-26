@@ -372,6 +372,7 @@ nav:
     - Evolving Creatures: evolving_creatures.md
     - Neighbors & Graphs Examples: graph_connectivity_examples.md
     - Graphs That Change While You Watch: dynamic_graph_systems_examples.md
+    - Spatial Rules: spatial_rules.md
   - Small Languages:
     # Out of Reference, which is generated and this page is not. First here, ahead of Datalog,
     # because the two are a pair read in this order: this page addresses slots of a live object
