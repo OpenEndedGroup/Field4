@@ -2187,6 +2187,15 @@ private class UnionFind(size: Int) {
     }
 }
 
+/**
+ * The minimum spanning forest of [pointCount] points joined by weighted [edges], by Kruskal's
+ * algorithm: the lightest edges that join every connected group without a cycle. The weights are
+ * yours to choose, so a caller can make some edges cheaper than their length, to keep edges it
+ * already has, for example.
+ */
+fun minimumSpanningForest(pointCount: Int, edges: List<GraphEdge>): List<GraphEdge> =
+    kruskalSpanningForest(pointCount, edges)
+
 private fun kruskalSpanningForest(pointCount: Int, edges: List<GraphEdge>): List<GraphEdge> {
     if (pointCount <= 1 || edges.isEmpty()) return emptyList()
 
