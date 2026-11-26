@@ -44,8 +44,8 @@ export async function activateFieldLink(href, anchor) {
 
 /**
  * Runs the YAML of a `field-macro` block (`markdownView.js`) through the same server replay as a
- * saved macro, on the current selection. Nothing is saved; a second press while the same text is
- * running is refused here, as for links.
+ * saved macro, using its YAML selection policy. A second press while the same text is running
+ * is refused here, as it is for links.
  */
 window.runInlineFieldMacro = async (yaml, label, button) => {
     const key = JSON.stringify(['inline', yaml]);
@@ -79,7 +79,7 @@ document.addEventListener('mouseover', event => {
     const anchor = event.target?.closest?.('a[href^="field://macro/"]');
     if (!anchor) return;
     const link = classifyGuideLink(anchor.getAttribute('href'));
-    if (link.kind === 'macro') anchor.title = `Run macro “${link.name}” · ${link.scope}${link.project ? `: ${link.project}` : ''} · current selection`;
+    if (link.kind === 'macro') anchor.title = `Run macro “${link.name}” · ${link.scope}${link.project ? `: ${link.project}` : ''}`;
 });
 
 window.copyMarkdownMacroLink = async (name, scope = 'document', project = '') => {

@@ -1002,7 +1002,7 @@ private fun macroPaletteRun(name: String, scope: String, projectName: String = "
         }
     }
 
-/** Runs macro YAML that is saved nowhere (a `field-macro` block in a guide or note) on the current selection. */
+/** Runs unsaved macro YAML from a guide or note. The server applies its selection policy. */
 private fun macroPaletteRunContent(content: String, label: String = ""): Promise<dynamic> =
     Promise { resolve, reject ->
         sendMacroTranscriptCommand(
