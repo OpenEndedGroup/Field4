@@ -7285,6 +7285,11 @@ html.field-theme-transition::view-transition-new(root) {
     font-weight: var(--fp-title-weight, 500);
 }
 .output-fullscreen-body { flex: 1 1 auto; min-height: 0; }
+/* Field's iframes are absolutely positioned, so a 100% one measured itself against the whole
+   overlay and ran past the right and bottom edges; the content area is its box. An iframe panel
+   fills edge to edge here as it does on the canvas. */
+.output-fullscreen-body, .output-fullscreen .marking-output-content { position: relative; }
+.output-fullscreen .marking-output-content:has(iframe) { padding: 0 !important; }
 
 .markingWidgetPanel .control-group { width: 100%; max-width: 100%; --field-slider-label-width: 84px; }
 .markingWidgetPanel .field-text-input { min-width: 0; }
