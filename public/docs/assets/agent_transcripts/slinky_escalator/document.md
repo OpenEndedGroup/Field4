@@ -11,41 +11,44 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="slinky_walk" index="0" -->
 
 ```edn [field-box id="slinky_walk" role="properties"]
-{"id" "slinky_walk" "index" 0 "name" "a slinky walking down stairs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a slinky walking down stairs" "_tombstone" false "frame" #afield/rect [80.0 80.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "slinky_walk_code_.kt" "lines" 59 "characters" 2134 "sha256" "ea37d8b9a37e87122c1eb6e9edda8d3d1df819b92afd5340d3612741dfa7071b"}]}
+{"id" "slinky_walk" "index" 0 "name" "a slinky walking down stairs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a slinky walking down stairs" "_tombstone" false "frame" #afield/rect [80.0 80.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "slinky_walk_code_.kt" "lines" 62 "characters" 2265 "sha256" "922ef10147a246ccc3a0007e571e385f842e4ea6028a227a3f78e486de025d90"}]}
 ```
 
 ```kotlin [field-property box="slinky_walk" name="code" path="slinky_walk_code_.kt"]
 import afield.simulation.physics.*
 
 // Lengths are in coil diameters. The slow-motion factor changes only how fast the picture runs.
-var run = 1.5f
-var rise = 1.1f
+var treadDepth = 1.5f
+var stepRise = 1.1
 var stiffness = 32000f
 var stepPeriod = 0f
 var slowMotion = 5
 
-fun start() = SlinkyOnStairs(run = run, rise = rise, stiffness = stiffness, stepPeriod = stepPeriod)
+fun start() =
+    SlinkyOnStairs(run = treadDepth, rise = stepRise.toFloat(), stiffness = stiffness, stepPeriod = stepPeriod)
 var scene = start()
 
 controlGroup("slinky") {
-    slider("tread depth", min = 1.2, max = 2.6, step = 0.05, initialValue = 1.5) {
-        run = it.toFloat()
+    slider("tread depth", min = 1.2, max = 2.6, step = 0.05, initialValue = treadDepth.toDouble()) {
+        treadDepth = it.toFloat()
         scene = start()
     }
-    slider("step rise", min = 0.6, max = 3.0, step = 0.05, initialValue = 1.1) {
-        rise = it.toFloat()
+    slider("step rise", min = 0.6, max = 3.0, step = 0.05, initialValue = stepRise.toDouble()) {
+        stepRise = it
         scene = start()
     }
-    slider("spring constant", min = 8000.0, max = 48000.0, step = 1000.0, initialValue = 32000.0) {
+    slider("spring constant", min = 8000.0, max = 48000.0, step = 1000.0, initialValue = stiffness.toDouble()) {
         stiffness = it.toFloat()
         scene = start()
     }
     // The escalator: 0 is still stairs; about 0.09 matches the default walk.
-    slider("seconds per step", min = 0.0, max = 0.3, step = 0.005, initialValue = 0.0) {
+    slider("seconds per step", min = 0.0, max = 0.3, step = 0.005, initialValue = stepPeriod.toDouble()) {
         stepPeriod = it.toFloat()
         scene = start()
     }
-    slider("slow motion", min = 1.0, max = 10.0, step = 1.0, initialValue = 5.0) { slowMotion = it.toInt() }
+    slider("slow motion", min = 1.0, max = 10.0, step = 1.0, initialValue = slowMotion.toDouble()) {
+        slowMotion = it.toInt()
+    }
     button("start again") { down -> if (down) scene = start() }
 }
 

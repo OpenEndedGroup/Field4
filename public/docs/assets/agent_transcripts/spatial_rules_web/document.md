@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="srw_web" index="0" -->
 
 ```edn [field-box id="srw_web" role="properties"]
-{"id" "srw_web" "index" 0 "name" "A web, one rule at a time" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A web, one rule at a time" "_tombstone" false "frame" #afield/rect [60.0 60.0 290.0 78.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "srw_web_code_.kt" "lines" 107 "characters" 3747 "sha256" "6e124b0382d54ecf215735d6cf93100dc244a8ca665c0c4e6a292f6d5148ac08"}]}
+{"id" "srw_web" "index" 0 "name" "A web, one rule at a time" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A web, one rule at a time" "_tombstone" false "frame" #afield/rect [60.0 60.0 290.0 78.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "srw_web_code_.kt" "lines" 108 "characters" 3831 "sha256" "1b8f1527dcf625e0a9ad625756ab1c07a6ca6779b20c3f0997e8698770c91518"}]}
 ```
 
 ```kotlin [field-property box="srw_web" name="code" path="srw_web_code_.kt"]
@@ -63,7 +63,8 @@ world.rules("beads") {
     onEnter("bead a bond", edges("bond")) { bond ->
         val beads = mutableListOf<SpatialPoint>()
         whileLive {
-            val wanted = (bond.length / 22).toInt()
+            val beadSpacing = 22 // Drawing units per bead along the bond.
+            val wanted = (bond.length / beadSpacing).toInt()
             if (beads.size < wanted && age > 0.2 * beads.size) {
                 beads += point("bead", bond.at(0.5), mapOf("bond" to bond.id))
             }

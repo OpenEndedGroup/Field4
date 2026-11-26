@@ -626,7 +626,7 @@ shafts appear. How the medium is tested is in `dev_docs/PARTICIPATING_MEDIA.md`.
 ## Subsurface scattering from a colour and a radius
 
 Skin, wax, marble and milk look soft because light goes in at one point, scatters about under
-the surface and comes out somewhere else. `PathTraceMaterial.subsurface` gives a solid that
+the surface and comes out somewhere else. [`PathTraceMaterial.subsurface`](reference/renderers.md#pathtracescene-kt--pathtracematerial-companion--subsurface) gives a solid that
 behaves like this. It is solid glass whose inside scatters light as well as absorbing it, and a
 path that refracts in takes a random walk through it until it reaches the surface again and
 refracts out. You describe it the way an artist would, by the colour the surface should end up
@@ -658,7 +658,7 @@ asked for can be measured. `HalfSpaceAlbedo` runs random walks into a flat, infi
 of the material under even light from the sky. It counts how many collisions each walk had
 before it got out, which gives the reflected colour for every single-scattering albedo from one
 set of walks. `AlbedoRemap.REFERENCE` inverts that table, and the second chart plots what each
-fit actually reflects minus what it was asked for:
+fit actually reflects minus what it was asked for. The reference describes [`PathTraceMaterial`](reference/renderers.md#pathtracescene-kt-pathtracematerial), [`AlbedoRemap`](reference/renderers.md#subsurfaceremap-kt-albedoremap), [`singleScatterAlbedo`](reference/renderers.md#subsurfaceremap-kt--albedoremap--singlescatteralbedo), [`HalfSpaceAlbedo`](reference/renderers.md#subsurfaceremap-kt-halfspacealbedo), [`reflectance`](reference/renderers.md#subsurfaceremap-kt--halfspacealbedo--reflectance).
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/path_tracing/subsurface_remap_curves.png" capture="box" open-outputs="true" embed=true timeout="300" padding="12" name="path-tracing-subsurface-curves" alt="Two line charts. The first shows the single-scattering albedo each remap asks for against the requested colour: NONE is the diagonal, and the other three rise steeply towards one. The second shows reflected minus requested: VAN_DE_HULST and REFERENCE stay on zero, and EXP_CUBIC falls away below zero above about 0.78"}
 import afield.graphics.scene.fabricated.*
