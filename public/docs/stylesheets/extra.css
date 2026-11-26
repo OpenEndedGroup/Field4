@@ -1863,6 +1863,57 @@ html .md-typeset details.aside > :last-child {
     }
 }
 
+/* Keep figure media on the reading measure and move its caption into the
+   same gutter as an aside when there is room. */
+.md-typeset figure.field-captioned-figure {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    max-width: none;
+    margin: 1.35em 0;
+}
+
+.md-typeset .field-captioned-figure > p {
+    margin: 0;
+}
+
+.md-typeset .field-captioned-figure :is(img, video) {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    margin: 0;
+    padding: 0;
+}
+
+.md-typeset .field-captioned-figure > figcaption {
+    max-width: none;
+    margin: 0.6rem 0 0;
+    color: var(--mono-text-faint);
+    font-size: 0.6rem;
+    font-style: normal;
+    line-height: 1.5;
+    text-align: left;
+}
+
+@media screen and (min-width: 82em) {
+    .md-typeset figure.field-captioned-figure {
+        grid-template-columns: minmax(0, 1fr) 0;
+        align-items: start;
+    }
+
+    .md-typeset .field-captioned-figure > figcaption {
+        justify-self: start;
+        width: clamp(
+            10.5rem,
+            calc((100vw - var(--field-reading-width)) / 2 - var(--field-aside-gap) - 1.2rem),
+            15rem
+        );
+        margin: 0 0 0 var(--field-aside-gap);
+        font-size: 0.58rem;
+    }
+}
+
 /* Printed, an aside comes back into the flow — a margin float against a paper
    width nobody chose is worse than a block. Whether its body prints is the
    browser's call, as for any `<details>`; the title always does. */

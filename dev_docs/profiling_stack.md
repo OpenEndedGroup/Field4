@@ -180,6 +180,19 @@ fill/compute limiter claims therefore require a separate supported vendor captur
 `RttGpuTelemetrySmoke` validates real nested RTT queries, invocation results and teardown
 with Vulkan validation enabled.
 
+### Sparse compute-module GPU telemetry
+
+Set `renderer.profileComputeModules = true` to sample live compute modules recorded on the
+renderer’s compute list, including modules called from compute before/after hooks. Read
+`renderer.gpuComputeModuleSamples` for the last completed timestamp span and sampled frame
+by module name. Sampling is off by default and normally takes one timestamp pair per
+active module every 60 renderer frames. The compute fence is retired through the existing
+frame-slot lifecycle. A recording that fails before submission leaves the prior sample intact.
+
+Each span includes the module’s hooks, resource setup and dispatches. A nested module may also
+have a separate row. Treat these as elapsed spans since modules can overlap or contain each
+other. Compute passes recorded on the graphics path belong to the RTT timing context.
+
 ### The two that can be confused
 
 `CoroutineProfileSpan` and `CPUSpan.Snapshot` are both "a span with percentiles" and they

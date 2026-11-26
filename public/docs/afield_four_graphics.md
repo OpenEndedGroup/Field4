@@ -1469,6 +1469,10 @@ mergeable moment sums. The [Morton quadtree](agent_transcripts.md#four_morton_qu
 the same reduction from sorted points. Compare the centroid and covariance ellipse of a tile
 in each document to see what carries across the two representations.
 
+[Stroke Studio](stroke_studio.md) uses a raster summary alongside edge and velocity fields
+to grow world-space marks. Its buffer views follow the drawing from the lit scene through
+signed paint and the final composite.
+
 The [texture wall transcript](agent_transcripts.md#mega_texture_wall) uses feedback in the
 opposite direction. The shader estimates the mip level it needs on screen, and the CPU uses
 that demand to decide which tiles to load. Connect the wall to a renderer and point it at

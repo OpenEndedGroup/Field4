@@ -1,0 +1,85 @@
+#version 460
+#extension GL_EXT_mesh_shader : require
+// STROKES
+layout(binding=0) uniform sampler2D litLayer;
+layout(binding=1) uniform sampler2D velocityLayer;
+layout(binding=2) uniform sampler2D worldLayer;
+layout(binding=3) uniform sampler2D previousLayer;
+// RIBBON_PUSH
+// CAMERA
+// DRAW_STACKSL
+// ENVELOPE
+layout(local_size_x=32) in;
+layout(triangles, max_vertices=18, max_primitives=16) out;
+layout(location=0) out vec2 brushUV[];
+layout(location=1) out vec4 deposit[];
+layout(location=2) flat out vec3 info[];
+layout(location=3) flat out float bristleSeed[];
+
+void writeRibbonVertex(int index, int count, int phase, uint vertex) {
+    int knot = int(vertex / 2u);
+    int corner = int(vertex & 1u);
+    float side = float(corner & 1) * 2.0 - 1.0;
+    vec3 a = pc.strokes.data[index].point[max(0, knot-1)].xyz;
+    vec3 b = pc.strokes.data[index].point[min(knot+1, count-1)].xyz;
+    vec3 center = pc.strokes.data[index].point[knot].xyz;
+    vec3 crosswise = normalize(cross(b - a, pc.camera.xyz - center));
+    vec4 pigment = pc.strokes.data[index].pigment;
+    float u = float(knot) / float(count-1);
+    float taper = mix(0.38, 1.0, pow(max(0.0, sin(3.14159265 * u)), 0.48));
+    float seed = fract(float(index) * 0.6180339);
+    float directed = pc.strokes.data[index].shape.y;
+    float shoulder = 1.0 + pc.style.x * directed *
+        smoothstep(0.72, 1.0, seed) * (0.55 + 0.45 * sin(8.0 * u + seed * 4.0));
+    // Scale the whole ribbon around the middle of its ordered world-space knots.
+    int mid = count / 2;
+    vec3 pivot = 0.5 * (pc.strokes.data[index].point[(count-1)/2].xyz
+                        + pc.strokes.data[index].point[mid].xyz);
+    float age = pc.strokes.data[index].timing.x;
+    vec4 strokeInput = vec4(u, age, seed, directed);
+    vec4 localStyle = brushStyleFn(strokeInput);
+    vec4 surfaceStyle = brushSurfaceFn(vec4(worldPixel(center) / pc.scene.zw, u, age));
+    if (any(isnan(localStyle)) || any(isinf(localStyle))) localStyle = vec4(1, 1, 1, 0);
+    if (any(isnan(surfaceStyle)) || any(isinf(surfaceStyle))) surfaceStyle = vec4(1, 1, 1, 0);
+    vec3 worldOffset = brushOffsetFn(strokeInput).xyz;
+    if (any(isnan(worldOffset)) || any(isinf(worldOffset))) worldOffset = vec3(0);
+    vec3 scatter = vec3(cos(seed * 81.7), sin(seed * 57.3), cos(seed * 11.1));
+    worldOffset = clamp(worldOffset, vec3(-1), vec3(1)) + normalize(scatter) * pc.drawStyle.z;
+    float halfWidth = pigment.w * pc.drawStyle.x * clamp(localStyle.x * surfaceStyle.x, 0.0, 8.0);
+    float scale = pc.style.y * clamp(localStyle.z * surfaceStyle.z, 0.05, 5.0);
+    float sideways = clamp(localStyle.w + surfaceStyle.w, -10.0, 10.0);
+    vec3 edge = center + crosswise * halfWidth * (side * taper * shoulder + sideways);
+    gl_MeshVerticesEXT[vertex].gl_Position = worldClip(pivot + scale * (edge - pivot) + worldOffset);
+    brushUV[vertex] = vec2(u, side);
+    float weight = pc.drawStyle.y * clamp(localStyle.y * surfaceStyle.y, 0.0, 8.0);
+    float attack = max(0.015, intBitsToFloat(pc.strokes.data[index].state.z));
+    float releaseSeconds = pc.strokes.data[index].timing.y;
+    vec2 life = strokeEnvelope(age, attack, releaseSeconds, pc.strokes.data[index].reference.w);
+    float reveal = life.x;
+    float opacity = life.y;
+    if (phase == FADING) {
+        float duration = max(0.015, intBitsToFloat(pc.strokes.data[index].state.y));
+        float gainAtInterruption = intBitsToFloat(pc.strokes.data[index].state.w);
+        opacity = gainAtInterruption * smoothstep(0.0, duration, pc.strokes.data[index].timing.z);
+        reveal = pc.strokes.data[index].shape.x;
+    }
+    deposit[vertex] = vec4(pigment.rgb, 1.0) * opacity * weight;
+    info[vertex] = vec3(reveal, float(phase), pc.strokes.data[index].shape.z);
+    bristleSeed[vertex] = seed;
+}
+
+void main() {
+    int index = int(activeRibbons.ids[gl_WorkGroupID.x]);
+    int count = int(pc.strokes.data[index].shape.w);
+    int phase = pc.strokes.data[index].state.x;
+    uint vertices = uint(count) * 2u;
+    uint segments = uint(count - 1);
+    SetMeshOutputsEXT(vertices, segments * 2u);
+    uint lane = gl_LocalInvocationIndex;
+    if (lane < vertices) writeRibbonVertex(index, count, phase, lane);
+    if (lane < segments) {
+        uint a = lane * 2u;
+        gl_PrimitiveTriangleIndicesEXT[a] = uvec3(a, a + 1u, a + 2u);
+        gl_PrimitiveTriangleIndicesEXT[a + 1u] = uvec3(a + 2u, a + 1u, a + 3u);
+    }
+}

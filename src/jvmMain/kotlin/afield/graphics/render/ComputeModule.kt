@@ -516,6 +516,7 @@ class ComputeModule(val parameters: Parameters) : Renderable {
                 val cmd = command.vkCommandBuffer
                 val frameIndex = parameters.renderer.currentImage
                 val profiler = parameters.renderer.getProfiler()
+                val timing = parameters.renderer.beginComputeModuleTiming(command, parameters.name)
                 val fieldProbe = parameters.fieldProbe?.takeIf { FIELD_PROBE_BUFFER_NAME in uniforms }
                 val fieldStats = parameters.fieldStats
                     ?.takeIf { it.producer && FIELD_STATS_PARTIAL_BUFFER_NAME in uniforms }
@@ -582,6 +583,7 @@ class ComputeModule(val parameters: Parameters) : Renderable {
                     perfScope?.let { marks.perfIndex = it.index }
                     parameters.renderer.registerModuleMarks(frameIndex, marks)
                 }
+                timing?.let { parameters.renderer.endComputeModuleTiming(command, it) }
             } finally {
                 command.endLabel()
             }

@@ -45,6 +45,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
 import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
 import java.util.concurrent.atomic.AtomicInteger
@@ -319,6 +320,41 @@ class Renderer(
     private val computeRecordingContext = ThreadLocal<Pair<Int, Int>?>()
     private val computeSubmissionCallbacks = mutableMapOf<Pair<Int, Int>, MutableList<(Fence) -> Future<*>?>>()
     private val computePostSubmitTasks = mutableMapOf<Pair<Int, Int>, MutableList<Future<*>>>()
+
+    /** Sparse GPU timestamps for live compute modules. Whole-frame profiling is controlled separately. */
+    @Volatile
+    var profileComputeModules = false
+
+    private val computeModuleProbes = ConcurrentHashMap<String, GpuPassProbe>()
+    private val recordedComputeProbes = ConcurrentHashMap<Pair<Int, Int>, MutableSet<GpuPassProbe>>()
+    private val submittedComputeProbes = ConcurrentHashMap<Fence, Set<GpuPassProbe>>()
+
+    /** Latest completed samples, keyed by compute module name. */
+    val gpuComputeModuleSamples: Map<String, GpuPassProbe.Snapshot>
+        get() = computeModuleProbes.mapNotNull { (name, probe) -> probe.snapshot?.let { name to it } }.toMap()
+
+    internal fun beginComputeModuleTiming(command: CommandBuffer, name: String): GpuPassProbe? {
+        if (!profileComputeModules || computeRecordingContext.get() == null) return null
+        val probe = computeModuleProbes.computeIfAbsent(name) { GpuPassProbe(this, "compute/$it") }
+        return synchronized(probe) { probe.takeIf { it.begin(command) } }
+    }
+
+    internal fun endComputeModuleTiming(command: CommandBuffer, probe: GpuPassProbe) {
+        val slot = checkNotNull(computeRecordingContext.get())
+        probe.writeEnd(command)
+        recordedComputeProbes.computeIfAbsent(slot) { ConcurrentHashMap.newKeySet() }.add(probe)
+    }
+
+    private fun submitComputeModuleTimings(slot: Pair<Int, Int>, fence: Fence) {
+        val probes = recordedComputeProbes.remove(slot) ?: return
+        probes.forEach { synchronized(it) { it.markComputeSubmitted() } }
+        submittedComputeProbes[fence] = probes
+    }
+
+    private fun retireComputeModuleTimings(fence: Fence) {
+        submittedComputeProbes.remove(fence)?.forEach { synchronized(it) { it.readCompletedCompute() } }
+    }
+
 
     /**
      * Releases to run once the frames now in flight have retired (see [render]). Synchronized:
@@ -1436,6 +1472,8 @@ class Renderer(
                                         graphQueue
                                     )
                                 }
+                                if (recordedComputeProbes.isNotEmpty())
+                                    submitComputeModuleTimings(ctxIndex to imageIndex, ctx.computeFences[imageIndex])
                                 drainComputeSubmissionCallbacks(ctxIndex, imageIndex, ctx.computeFences[imageIndex])
                                 computeSubmittedThisFrame = true
                             }
@@ -1529,7 +1567,10 @@ class Renderer(
         frameId: Long
     ) {
         CPUSpan.time("record_cs[$ctxIndex]") {
-            ctx.computeFences[imageIndex].fenceWait()
+            val fence = ctx.computeFences[imageIndex]
+            fence.fenceWait()
+            if (submittedComputeProbes.isNotEmpty()) retireComputeModuleTimings(fence)
+            if (recordedComputeProbes.isNotEmpty()) recordedComputeProbes.remove(ctxIndex to imageIndex)
             awaitComputePostSubmitTasks(ctxIndex, imageIndex)
 
             val computeElements = mutableListOf<Pair<String, (CommandBuffer) -> Unit>>()
@@ -2013,7 +2054,10 @@ class Renderer(
         context.commandBuffers.forEach { it.cleanup() }
         context.computeCommandBuffers.forEach { it.cleanup() }
         context.fences.forEach { it.cleanup() }
-        context.computeFences.forEach { it.cleanup() }
+        context.computeFences.forEach {
+            retireComputeModuleTimings(it)
+            it.cleanup()
+        }
         context.computeFinishedSemaphores.forEach { it.cleanup() }
         cleanupSecondaryMap(context.computeSecondary)
         cleanupSecondaryMap(context.graphicsSecondary)

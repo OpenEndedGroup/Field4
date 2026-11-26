@@ -1,0 +1,81 @@
+name: stroke_studio_capture
+description: Runs the packaged Stroke Studio and selects a native render-target view for capture.
+internal: true
+operations:
+- launch: {box: 49374667-342d-4719-a9b2-f1670a3c7237}
+- await: {}
+- launch: {box: 12a8511d-32fd-4006-a3fb-67fe7fc7f3c6}
+- await: {}
+- wait: {seconds: 1}
+- launch: {box: b73038e3-c18d-4577-ac89-689138bfc259}
+- await: {}
+- create:
+    box: stroke_capture_scene
+    name: Scene targets
+    frame: {x: 40, y: 325, w: 200, h: 48}
+    properties:
+      code: |
+        strokeSettings.updateAndGet { it.copy(view = 7) }
+- create:
+    box: stroke_capture_feedback
+    name: Feedback targets
+    frame: {x: 300, y: 325, w: 200, h: 48}
+    properties:
+      code: |
+        strokeSettings.updateAndGet { it.copy(view = 8) }
+- create:
+    box: stroke_capture_summary
+    name: Quadtree planes
+    frame: {x: 560, y: 325, w: 200, h: 48}
+    properties:
+      code: |
+        strokeSettings.updateAndGet { it.copy(view = 9) }
+- create:
+    box: stroke_capture_composite
+    name: Composite targets
+    frame: {x: 40, y: 405, w: 200, h: 48}
+    properties:
+      code: |
+        strokeSettings.updateAndGet { it.copy(view = 10) }
+- create:
+    box: stroke_capture_poster
+    name: Painted canvas
+    frame: {x: 300, y: 405, w: 200, h: 48}
+    properties:
+      code: |
+        strokeSettings.updateAndGet { it.copy(view = 0) }
+- create:
+    box: stroke_capture_film
+    name: Paint emergence
+    frame: {x: 560, y: 405, w: 200, h: 48}
+    properties:
+      code: |
+        import afield.document.context.fromContextWithNameOrNull
+        import java.util.concurrent.atomic.AtomicReference
+        import kotlin.math.atan2
+        import kotlin.math.floor
+
+        val nudge = checkNotNull(fromContextWithNameOrNull<AtomicReference<Float>>("orbitNudge"))
+        val initial = checkNotNull(strokeFrame.get())
+        nudge.set(0.10f - atan2(initial.camera.x, initial.camera.z))
+        strokeSettings.updateAndGet { it.copy(view = 0, rate = 0f, orbitSpeed = 0f, sceneSpeed = 8f) }
+        strokeClear.set(true)
+
+        frames {
+            val period = (2.0 * Math.PI / 0.67).toFloat()
+            val phase = 1.2f
+            val desired = (floor((initial.time - phase) / period) + 1f) * period + phase
+            while ((strokeFrame.get()?.time ?: 0f) < desired) frame()
+            strokeSettings.updateAndGet { it.copy(sceneSpeed = 0f) }
+            val releaseAt = System.nanoTime() + 1_000_000_000L
+            while (System.nanoTime() < releaseAt) frame()
+            strokeSettings.updateAndGet {
+                it.copy(rate = StrokeSettings().rate, sceneSpeed = 0.16f, orbitSpeed = 0.012f)
+            }
+        }
+- connect: {parent: b73038e3-c18d-4577-ac89-689138bfc259, child: stroke_capture_scene}
+- connect: {parent: b73038e3-c18d-4577-ac89-689138bfc259, child: stroke_capture_feedback}
+- connect: {parent: b73038e3-c18d-4577-ac89-689138bfc259, child: stroke_capture_summary}
+- connect: {parent: b73038e3-c18d-4577-ac89-689138bfc259, child: stroke_capture_composite}
+- connect: {parent: b73038e3-c18d-4577-ac89-689138bfc259, child: stroke_capture_poster}
+- connect: {parent: b73038e3-c18d-4577-ac89-689138bfc259, child: stroke_capture_film}
