@@ -1,10 +1,9 @@
 # Manim Scenes
 
-*[Manim](https://www.manim.community/) is the Python library behind 3Blue1Brown's mathematical
-animations: you describe a scene as shapes, text and the animations between them. In Field a Python
-box plays a Manim scene without rendering it and keeps the shapes of every frame. Kotlin boxes then
-draw any moment of it as [FLines](fline_examples.md): looped on Field's clock, scrubbed from a
-slider, or stepped one animation at a time from the slides of a [talk](presentation_studio.md).*
+Bring a [Manim](https://www.manim.community/) scene into Field and draw it as
+[FLines](fline_examples.md). A Python box plays the scene without rendering it and keeps the shapes
+of every frame. Kotlin boxes can then loop it on Field's clock, scrub it from a slider, or step
+through its animations from the slides of a [talk](presentation_studio.md).
 
 ## A scene in a Python box
 

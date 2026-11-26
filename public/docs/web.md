@@ -22,8 +22,8 @@ In Field's own window, a page can be any site. Sites that refuse to be shown ins
 login needs, which a page inside another page normally loses. Opened in another browser, a Field
 document shows only the sites that allow framing.
 
-Back and forward step through the pages this bar has seen. They are the panel's own: the rest of
-Field, and its other pages, are not part of them.
+Back and forward step through this panel's history, leaving the rest of Field and its other pages
+where they are.
 
 ## Working with the page from code
 

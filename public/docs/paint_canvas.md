@@ -821,7 +821,7 @@ colour along with it.
 
 ### Notes the agent reads
 
-A note pinned on the picture is how a person points at something. `pin(x, y, text)` puts one
+Pin a note on the picture to point out something you want to change. `pin(x, y, text)` puts it
 there, and `near(x, y)` gives the addresses of the strokes under it, nearest first; `describe()`
 starts with each note and those addresses. Here the note asks for more moss on Sprout's
 right flank. [AI4 paints](ai4_painting.md#editing-strokes-by-address) gives the AI chat tools that

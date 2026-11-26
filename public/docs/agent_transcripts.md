@@ -5,8 +5,8 @@
 These are documents built from a blank canvas by agents working in Field. Open one to see the
 result, try it in Field, or take it apart and make it your own.
 
-Each begins as an **operation transcript**: a YAML macro that makes the boxes, writes the code and
-connects the graph. The transcripts are also examples for agents to copy and adapt when
+Each document begins as an **operation transcript**: a YAML macro that makes the boxes, writes
+the code and connects them. You and your agents can copy and adapt these transcripts when
 [automating Field](automating_field.md).
 
 These are the same scenes offered as **Starting points** on the [welcome screen](history_overview.md):
@@ -18,8 +18,8 @@ graphics-topology rule (a renderer with nothing to draw, and a draw box with no 
 that needs a gesture, a headset or a service is still offered: you click once, or point it at a
 device you own.
 
-Every transcript in `dev_docs/agents/transcripts/` has an entry below. Each entry says what the
-scene builds and which numbers it prints.
+Each entry below describes a transcript in `dev_docs/agents/transcripts/`, what it builds and
+what it prints.
 
 **Open →** shows a document beside its entry. Open another to replace it, or use the viewer's
 arrow to open a separate tab. Documents with captured outputs show their results immediately;

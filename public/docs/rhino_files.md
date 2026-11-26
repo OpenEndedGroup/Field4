@@ -24,8 +24,8 @@ plane at its own height, so a label written on a wall stays on the wall as you o
 
 ## A sample with one of everything
 
-The example below has no file to read, so it asks the reader to write a sample first: nested
-layers, a mesh, two Breps, five kinds of curve, text, a point, a hatch and a block placed twice.
+This example writes a sample file first, with nested layers, a mesh, two Breps, five kinds of
+curve, text, a point, a hatch and a block placed twice.
 With a file of your own, the `Rhino3dm.load` line is all you need.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/rhino_files/sample.png" wait="10.0" capture="box" open-outputs="true" padding="20" requires="opennurbs" name="sample"}

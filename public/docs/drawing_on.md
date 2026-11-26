@@ -107,9 +107,9 @@ pad.onEvent { event ->
 :::endfold
 ```
 
-The marker uses the last measured drawing-space point from `stroke.samples`. It is an example
-response, rather than a replay of the human drawing. The complete original event stream,
-including subsequent corrections, is retained in the archive. Change the callback to feed your
+The marker uses the last measured drawing-space point from `stroke.samples`. This response is just
+a crosshair; the human drawing and the complete event stream, including subsequent corrections,
+are kept in the archive. Change the callback to feed your
 own geometry or interpretation process.
 
 A target belongs to its owning box. Re-running that box replaces its callback; another box needs
