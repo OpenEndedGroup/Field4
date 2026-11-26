@@ -77,19 +77,115 @@ class BeltramiTest {
         assertEquals(0.5 * kotlin.math.ln(2.0), t.distance, 1e-6)
     }
 
-    /** A star mesh covers its outline, every triangle counter-clockwise, and a shape compared with itself is at distance zero. */
-    @Test
-    fun aShapeIsAtDistanceZeroFromItself() {
-        val r = { a: Double -> 1.0 + 0.3 * cos(2 * a) }
-        val mesh = PlanarMesh.star(r, rings = 8, sectors = 48)
-        assertEquals(PI * (1 + 0.3 * 0.3 / 2), mesh.areas.sum(), 0.03)
-        val outline = 400
-        val tx = DoubleArray(outline) { r(2 * PI * it / outline) * cos(2 * PI * it / outline) }
-        val ty = DoubleArray(outline) { r(2 * PI * it / outline) * sin(2 * PI * it / outline) }
-        val b = mesh.boundary
-        val landmarks = intArrayOf(b[0], b[b.size / 4], b[b.size / 2], b[3 * b.size / 4])
-        val fixed = boundaryCorrespondence(mesh, landmarks, tx, ty, intArrayOf(0, outline / 4, outline / 2, 3 * outline / 4))
-        val t = teichmullerMap(mesh, fixed)
-        assertTrue(abs(t.distance) < 0.02, "distance ${t.distance}")
+    private fun heart(t: Double): Double {
+        val a = 0.75 * (1 - 0.15 * sin(t))
+        val b = 0.9
+        val oval = a * b / kotlin.math.sqrt((b * cos(t)) * (b * cos(t)) + (a * sin(t)) * (a * sin(t)))
+        return oval * (1 + 0.2 * Math.pow(kotlin.math.max(0.0, sin(t)), 8.0)) * (1 - 0.45 * kotlin.math.exp(-Math.pow((t - 1.5 * PI) / 0.22, 2.0)))
     }
+
+    private fun outline(r: (Double) -> Double, n: Int = 400) =
+        DoubleArray(n) { r(2 * PI * it / n) * cos(2 * PI * it / n) } to DoubleArray(n) { r(2 * PI * it / n) * sin(2 * PI * it / n) }
+
+    /** The outline mesher gives a heart-shaped leaf, notch and all, triangles with no angle under 20°. */
+    @Test
+    fun anOutlineMeshHasNoThinTriangles() {
+        val (x, y) = outline(::heart)
+        val mesh = PlanarMesh.outline(x, y, 0.06)
+        var smallest = PI
+        for (t in 0 until mesh.triangleCount) for (k in 0..2) {
+            val a = mesh.triangles[3 * t + k]
+            val b = mesh.triangles[3 * t + (k + 1) % 3]
+            val c = mesh.triangles[3 * t + (k + 2) % 3]
+            val ux = mesh.x[b] - mesh.x[a]
+            val uy = mesh.y[b] - mesh.y[a]
+            val vx = mesh.x[c] - mesh.x[a]
+            val vy = mesh.y[c] - mesh.y[a]
+            smallest = kotlin.math.min(smallest, kotlin.math.acos((ux * vx + uy * vy) / (hypot(ux, uy) * hypot(vx, vy))))
+        }
+        assertTrue(smallest > 20 * PI / 180, "smallest angle ${smallest * 180 / PI}°")
+        // The mesh fills the outline: its area matches the polygon's.
+        val polygon = 0.5 * x.indices.sumOf { x[it] * y[(it + 1) % x.size] - x[(it + 1) % x.size] * y[it] }
+        assertEquals(polygon, mesh.areas.sum(), 0.01 * polygon)
+    }
+
+    private fun ellipse(t: Double) = 0.5 / kotlin.math.sqrt(cos(t) * cos(t) + 0.25 * sin(t) * sin(t))
+
+    private fun quad(r: (Double) -> Double, h: Double = 0.06): Pair<PlanarMesh, IntArray> {
+        val (x, y) = outline(r)
+        val mesh = PlanarMesh.outline(x, y, h)
+        return mesh to IntArray(4) { mesh.nearest(x[100 * it], y[100 * it]) }
+    }
+
+    /** A square with its corners marked has modulus 1, measured either way. */
+    @Test
+    fun aSquareHasModulusOne() {
+        val n = 16
+        val mesh = PlanarMesh.grid(n)
+        val corners = intArrayOf(0, n, (n + 1) * (n + 1) - 1, n * (n + 1))
+        val r = RectangleMap(mesh, corners)
+        assertEquals(1.0, r.modulus, 1e-9)
+        assertEquals(1.0, r.dualModulus, 1e-9)
+    }
+
+    /** An ellipse with its landmarks off the axes, and a circle with four evenly spaced ones: a real distance. */
+    private fun lopsidedPair(): List<Any> {
+        val (sx, sy) = outline(::ellipse)
+        val a = PlanarMesh.outline(sx, sy, 0.05)
+        val la = intArrayOf(0, 60, 200, 300).map { a.nearest(sx[it], sy[it]) }.toIntArray()
+        val (tx, ty) = outline({ 1.0 })
+        val b = PlanarMesh.outline(tx, ty, 0.08)
+        val lb = intArrayOf(0, 100, 200, 300).map { b.nearest(tx[it], ty[it]) }.toIntArray()
+        return listOf(a, la, b, lb, tx, ty)
+    }
+
+    /** The map through rectangles has |μ| = tanh(d) over most of the shape, and turns nothing over. */
+    @Test
+    fun theQuadrilateralMapHasUniformDistortion() {
+        val (a, la, b, lb) = lopsidedPair()
+        val (map, exact) = quadrilateralTeichmullerMap(a as PlanarMesh, la as IntArray, b as PlanarMesh, lb as IntArray)
+        val k = kotlin.math.tanh(exact)
+        assertTrue(exact > 0.03, "exact $exact")
+        assertEquals(0, map.flipped)
+        assertEquals(k, map.medianModulus, 0.04)
+        assertTrue(map.areaNear(k, 0.1) > 0.75, "area near k: ${map.areaNear(k, 0.1)}")
+    }
+
+    /**
+     * Two mirror-symmetric leaves with tip, base and two pairs of margin landmarks: the map has
+     * |μ| = tanh(d) over most of the leaf, turns nothing over, and holding the whole outline at an
+     * arc-length guess gives a larger distance.
+     */
+    @Test
+    fun mirrorLeavesHaveUniformDistortionAndALowerDistance() {
+        val c = MirrorShapeComparison(::ellipse, ::heart)
+        val k = kotlin.math.tanh(c.distance)
+        assertTrue(c.distance > 0.05, "distance ${c.distance}")
+        assertEquals(0, c.map.flipped)
+        assertEquals(k, c.map.medianModulus, 0.04)
+        assertTrue(c.map.areaNear(k, 0.05) > 0.9, "area near k: ${c.map.areaNear(k, 0.05)}")
+        // The same leaves with every outline vertex held at an arc-length guess.
+        val (sx, sy) = outline(::ellipse)
+        val (tx, ty) = outline(::heart)
+        val mesh = PlanarMesh.outline(sx, sy, 0.05)
+        val marks = intArrayOf(0, 100, 200, 300)
+        val held = teichmullerMap(mesh, boundaryCorrespondence(mesh, marks.map { mesh.nearestBoundary(sx[it], sy[it]) }.toIntArray(), tx, ty, marks))
+        assertTrue(held.distance > c.distance, "held ${held.distance} vs ${c.distance}")
+    }
+
+    /** A leaf compared with itself is at distance zero, and so is a leaf twice the size. */
+    @Test
+    fun aLeafIsAtDistanceZeroFromItselfAtAnySize() {
+        assertEquals(0.0, MirrorShapeComparison(::heart, ::heart).distance, 1e-9)
+        assertEquals(0.0, MirrorShapeComparison(::heart, { 2 * heart(it) }).distance, 0.01)
+    }
+
+    /** Growing a shape is conformal: a leaf and the same leaf twice the size are at distance zero. */
+    @Test
+    fun sizeCostsNothing() {
+        val (a, la) = quad(::heart)
+        val (b, lb) = quad({ 2 * heart(it) }, 0.12)
+        assertEquals(0.0, quadrilateralTeichmullerMap(a, la, b, lb).second, 0.01)
+    }
+
 }

@@ -32,6 +32,13 @@
  *     val t = teichmullerMap(mesh, fixed)
  *     println("K = ${t.dilatation}, distance ${t.distance}")
  *
+ * When the outline may slide between landmarks, four landmarks make a region a conformal
+ * quadrilateral, which [RectangleMap] sends onto a rectangle; the Teichmüller map between two such
+ * regions is a stretch between their rectangles, and the distance is exact
+ * ([quadrilateralTeichmullerMap]). [MirrorShapeComparison] uses this for mirror-symmetric shapes
+ * such as leaves, with tip, base and two pairs of margin landmarks. [PlanarMesh.outline] meshes any
+ * simple outline.
+ *
  * Coordinates are plain `DoubleArray`s (`x`, `y`, `u`, `v`), and `μ` is stored as interleaved real
  * and imaginary parts, one pair per triangle. [MeshPicture] draws a mesh and its `|μ|` into ARGB
  * pixels for a box output.
@@ -88,6 +95,47 @@ class PlanarMesh(val x: DoubleArray, val y: DoubleArray, val triangles: IntArray
         return best
     }
 
+    /**
+     * A copy with each interior vertex moved, [passes] times, to the mean of its neighbours, which
+     * evens out thin triangles. A move that would turn a triangle over is skipped.
+     */
+    fun smoothed(passes: Int = 8): PlanarMesh {
+        val nx = x.copyOf()
+        val ny = y.copyOf()
+        val onBoundary = BooleanArray(vertexCount).also { b -> boundary.forEach { b[it] = true } }
+        val neighbours = Array(vertexCount) { HashSet<Int>() }
+        val incident = Array(vertexCount) { ArrayList<Int>() }
+        for (t in 0 until triangleCount) for (k in 0..2) {
+            val a = triangles[3 * t + k]
+            neighbours[a].add(triangles[3 * t + (k + 1) % 3])
+            neighbours[a].add(triangles[3 * t + (k + 2) % 3])
+            incident[a].add(t)
+        }
+        fun positive(t: Int): Boolean {
+            val a = triangles[3 * t]
+            val b = triangles[3 * t + 1]
+            val c = triangles[3 * t + 2]
+            return (nx[b] - nx[a]) * (ny[c] - ny[a]) - (nx[c] - nx[a]) * (ny[b] - ny[a]) > 0
+        }
+        repeat(passes) {
+            for (i in 0 until vertexCount) {
+                if (onBoundary[i] || neighbours[i].isEmpty()) continue
+                val ox = nx[i]
+                val oy = ny[i]
+                nx[i] = neighbours[i].sumOf { nx[it] } / neighbours[i].size
+                ny[i] = neighbours[i].sumOf { ny[it] } / neighbours[i].size
+                if (incident[i].any { !positive(it) }) {
+                    nx[i] = ox
+                    ny[i] = oy
+                }
+            }
+        }
+        return PlanarMesh(nx, ny, triangles, boundary)
+    }
+
+    /** The boundary vertex closest to `(px, py)`. */
+    fun nearestBoundary(px: Double, py: Double): Int = boundary.minBy { (x[it] - px) * (x[it] - px) + (y[it] - py) * (y[it] - py) }
+
     /** Constraints that hold every boundary vertex where it is. */
     fun boundaryIdentity(): Map<Int, DoubleArray> = boundary.associateWith { doubleArrayOf(x[it], y[it]) }
 
@@ -114,65 +162,40 @@ class PlanarMesh(val x: DoubleArray, val y: DoubleArray, val triangles: IntArray
         }
 
         /**
-         * A star-shaped region: every point of its outline is seen from `(cx, cy)`, at distance
-         * `radius(θ)` in direction `θ`. The mesh is [rings] rings of vertices, the outer one with
-         * [sectors] vertices and inner ones with proportionally fewer, so the triangles stay close to
-         * equilateral.
+         * The inside of any simple closed outline, given as polygon vertices [outlineX], [outlineY]
+         * (either direction; the closing edge is implied), triangulated with spacing about [h].
+         * The outline is first resampled evenly at spacing about [h]. This uses the drum-head mesher `afield.audio.modal.drumMesh`: the outline is cut into
+         * edges of length about [h], the inside is filled with a triangular lattice, and the
+         * points are Delaunay-triangulated. [smoothing] passes of [smoothed] then even out the
+         * triangles next to the outline. [boundary] runs counter-clockwise round the outline,
+         * starting at the first outline vertex.
          */
-        fun star(radius: (Double) -> Double, rings: Int = 12, sectors: Int = 64, cx: Double = 0.0, cy: Double = 0.0): PlanarMesh {
-            val xs = arrayListOf(cx)
-            val ys = arrayListOf(cy)
-            val ringStart = IntArray(rings + 1)
-            val ringCount = IntArray(rings + 1)
-            ringCount[0] = 1
-            for (k in 1..rings) {
-                val count = max(6, (sectors.toDouble() * k / rings).roundToInt())
-                ringStart[k] = xs.size
-                ringCount[k] = count
-                repeat(count) { s ->
-                    val theta = 2 * PI * s / count
-                    val r = radius(theta) * k / rings
-                    xs.add(cx + r * cos(theta))
-                    ys.add(cy + r * sin(theta))
-                }
+        fun outline(outlineX: DoubleArray, outlineY: DoubleArray, h: Double, smoothing: Int = 8): PlanarMesh {
+            val n = outlineX.size
+            val signed = (0 until n).sumOf { outlineX[it] * outlineY[(it + 1) % n] - outlineX[(it + 1) % n] * outlineY[it] }
+            val order = if (signed >= 0) (0 until n).toList() else listOf(0) + (n - 1 downTo 1)
+            // Resample the outline evenly at spacing about h, so the boundary is as fine as the inside.
+            val arc = DoubleArray(n + 1)
+            for (k in 1..n) {
+                val p = order[k - 1]
+                val q = order[k % n]
+                arc[k] = arc[k - 1] + hypot(outlineX[q] - outlineX[p], outlineY[q] - outlineY[p])
             }
-            val tris = ArrayList<Int>()
-            // The fan round the centre.
-            for (s in 0 until ringCount[1]) tris.addAll(listOf(0, ringStart[1] + s, ringStart[1] + (s + 1) % ringCount[1]))
-            // Each pair of rings, joined by walking both by angle.
-            for (k in 1 until rings) {
-                val a0 = ringStart[k]
-                val na = ringCount[k]
-                val b0 = ringStart[k + 1]
-                val nb = ringCount[k + 1]
-                var i = 0
-                var j = 0
-                while (i < na || j < nb) {
-                    val nextA = (i + 1).toDouble() / na
-                    val nextB = (j + 1).toDouble() / nb
-                    if (j >= nb || (i < na && nextA < nextB)) {
-                        tris.addAll(listOf(a0 + i % na, b0 + j % nb, a0 + (i + 1) % na))
-                        i++
-                    } else {
-                        tris.addAll(listOf(a0 + i % na, b0 + j % nb, b0 + (j + 1) % nb))
-                        j++
-                    }
-                }
+            val count = max(8, (arc[n] / h).roundToInt())
+            val xy = DoubleArray(2 * count)
+            var seg = 0
+            for (k in 0 until count) {
+                val want = arc[n] * k / count
+                while (seg < n - 1 && arc[seg + 1] < want) seg++
+                val f = ((want - arc[seg]) / (arc[seg + 1] - arc[seg]).coerceAtLeast(1e-300)).coerceIn(0.0, 1.0)
+                val p = order[seg]
+                val q = order[(seg + 1) % n]
+                xy[2 * k] = outlineX[p] + f * (outlineX[q] - outlineX[p])
+                xy[2 * k + 1] = outlineY[p] + f * (outlineY[q] - outlineY[p])
             }
-            val xa = xs.toDoubleArray()
-            val ya = ys.toDoubleArray()
-            val t = tris.toIntArray()
-            // Make every triangle counter-clockwise.
-            for (f in 0 until t.size / 3) {
-                val a = t[3 * f]
-                val b = t[3 * f + 1]
-                val c = t[3 * f + 2]
-                if ((xa[b] - xa[a]) * (ya[c] - ya[a]) - (xa[c] - xa[a]) * (ya[b] - ya[a]) < 0) {
-                    t[3 * f + 1] = c
-                    t[3 * f + 2] = b
-                }
-            }
-            return PlanarMesh(xa, ya, t, IntArray(ringCount[rings]) { ringStart[rings] + it })
+            val drum = afield.audio.modal.drumMesh(xy, h)
+            val loop = (0 until drum.nodeCount).filter { drum.boundary[it] }.toIntArray()
+            return PlanarMesh(drum.x, drum.y, drum.tris, loop).smoothed(passes = smoothing)
         }
     }
 }
@@ -279,6 +302,29 @@ class LinearBeltramiSolver(val mesh: PlanarMesh) {
      * `(u, v)`. Moduli are clamped to [maxModulus] so the equation stays elliptic.
      */
     fun solve(mu: DoubleArray, fixed: Map<Int, DoubleArray>, start: Pair<DoubleArray, DoubleArray>? = null, maxModulus: Double = 0.95): Pair<DoubleArray, DoubleArray> {
+        assemble(mu, maxModulus)
+        val isFixed = BooleanArray(mesh.vertexCount)
+        fixed.keys.forEach { isFixed[it] = true }
+        val u = start?.first?.copyOf() ?: mesh.x.copyOf()
+        val v = start?.second?.copyOf() ?: mesh.y.copyOf()
+        for ((i, p) in fixed) {
+            u[i] = p[0]
+            v[i] = p[1]
+        }
+        conjugateGradient(u, isFixed)
+        conjugateGradient(v, isFixed)
+        return u to v
+    }
+
+    /** The energy `xᵀ K x` of [x] under the system last assembled; for `μ = 0`, the Dirichlet energy. */
+    fun energy(x: DoubleArray): Double {
+        val kx = DoubleArray(x.size)
+        multiply(x, kx)
+        return x.indices.sumOf { x[it] * kx[it] }
+    }
+
+    /** Assembles the system for Beltrami coefficient [mu], moduli clamped to [maxModulus]. [solve] does this itself. */
+    fun assemble(mu: DoubleArray, maxModulus: Double = 0.95) {
         values.fill(0.0)
         val g = DoubleArray(6)
         for (t in 0 until mesh.triangleCount) {
@@ -303,17 +349,6 @@ class LinearBeltramiSolver(val mesh: PlanarMesh) {
                 values[slots[9 * t + 3 * p + q]] += area * (gx * (a11 * hx + a12 * hy) + gy * (a12 * hx + a22 * hy))
             }
         }
-        val isFixed = BooleanArray(mesh.vertexCount)
-        fixed.keys.forEach { isFixed[it] = true }
-        val u = start?.first?.copyOf() ?: mesh.x.copyOf()
-        val v = start?.second?.copyOf() ?: mesh.y.copyOf()
-        for ((i, p) in fixed) {
-            u[i] = p[0]
-            v[i] = p[1]
-        }
-        conjugateGradient(u, isFixed)
-        conjugateGradient(v, isFixed)
-        return u to v
     }
 
     private fun multiply(x: DoubleArray, out: DoubleArray) {
@@ -369,6 +404,17 @@ class QuasiConformalMap(val mesh: PlanarMesh, val u: DoubleArray, val v: DoubleA
 
     /** The area-weighted mean of `|μ|`. */
     val meanModulus = moduli.indices.sumOf { moduli[it] * mesh.areas[it] } / mesh.areas.sum()
+
+    /** The area-weighted median of `|μ|`: half the region distorts less, half more. */
+    val medianModulus: Double = run {
+        val order = moduli.indices.sortedBy { moduli[it] }
+        val half = mesh.areas.sum() / 2
+        var acc = 0.0
+        order.firstOrNull { acc += mesh.areas[it]; acc >= half }?.let { moduli[it] } ?: 0.0
+    }
+
+    /** The fraction of the region's area where `|μ|` is within [tolerance] of [k]. */
+    fun areaNear(k: Double, tolerance: Double) = moduli.indices.filter { abs(moduli[it] - k) <= tolerance }.sumOf { mesh.areas[it] } / mesh.areas.sum()
 
     /** The largest `|μ|`. */
     val maxModulus = moduli.max()
@@ -507,6 +553,188 @@ fun boundaryCorrespondence(mesh: PlanarMesh, landmarks: IntArray, targetX: Doubl
         }
     }
     return out
+}
+
+/**
+ * The conformal map of a region with four marked boundary points onto a rectangle `[0, 1] × [0, modulus]`,
+ * the marked points going to the corners.
+ *
+ * A region bounded by one outline with four marked points (a conformal quadrilateral) can be
+ * mapped conformally onto exactly one shape of rectangle; the ratio of its sides is the region's
+ * conformal modulus. Here `x` is the harmonic function that is 0 on the side from landmark 3 to
+ * landmark 0 and 1 on the side from landmark 1 to landmark 2, free (zero normal derivative) on the
+ * other two sides, and the modulus is its Dirichlet energy. `y` is the companion harmonic function
+ * for the other pair of sides, scaled by the modulus.
+ *
+ * @param landmarks four boundary vertices, counter-clockwise.
+ */
+class RectangleMap(val mesh: PlanarMesh, val landmarks: IntArray, solver: LinearBeltramiSolver = LinearBeltramiSolver(mesh)) {
+    /** Where each vertex lands across the rectangle, 0 to 1. */
+    val x: DoubleArray
+
+    /** Where each vertex lands up the rectangle, 0 to [modulus]. */
+    val y: DoubleArray
+
+    /** The rectangle's height over its width: the conformal modulus of the marked region. */
+    val modulus: Double
+
+    /** The modulus measured the other way, as the reciprocal energy of the companion function; equal to [modulus] up to discretisation. */
+    val dualModulus: Double
+
+    init {
+        require(landmarks.size == 4) { "a quadrilateral needs four landmarks" }
+        val zero = DoubleArray(2 * mesh.triangleCount)
+        val sides = landmarks.indices.map { side(it) }
+        fun harmonic(low: IntArray, high: IntArray): DoubleArray {
+            val fixed = HashMap<Int, DoubleArray>()
+            low.forEach { fixed[it] = doubleArrayOf(0.0, 0.0) }
+            high.forEach { fixed[it] = doubleArrayOf(1.0, 0.0) }
+            return solver.solve(zero, fixed, DoubleArray(mesh.vertexCount) { 0.5 } to DoubleArray(mesh.vertexCount)).first
+        }
+        val u = harmonic(sides[3], sides[1])
+        solver.assemble(zero)
+        modulus = solver.energy(u)
+        var w = harmonic(sides[0], sides[2])
+        dualModulus = 1 / solver.energy(w)
+        x = u
+        // Pick the direction of y that keeps the map orientation-preserving.
+        val t = (0 until mesh.triangleCount).maxBy { mesh.areas[it] }
+        val (a, b, c) = Triple(mesh.triangles[3 * t], mesh.triangles[3 * t + 1], mesh.triangles[3 * t + 2])
+        val det = (u[b] - u[a]) * (w[c] - w[a]) - (u[c] - u[a]) * (w[b] - w[a])
+        if (det < 0) w = DoubleArray(w.size) { 1 - w[it] }
+        y = DoubleArray(w.size) { modulus * w[it] }
+    }
+
+    /** The boundary vertices from landmark [k] to landmark k + 1, both included. */
+    private fun side(k: Int): IntArray {
+        val b = mesh.boundary
+        val n = b.size
+        val s0 = b.indexOf(landmarks[k])
+        val s1 = b.indexOf(landmarks[(k + 1) % 4])
+        require(s0 >= 0 && s1 >= 0) { "landmarks must be boundary vertices" }
+        val count = ((s1 - s0) % n + n) % n
+        return IntArray(count + 1) { b[(s0 + it) % n] }
+    }
+}
+
+/**
+ * The Teichmüller map between two regions with four matched landmarks, the outline free to slide
+ * between them, and the Teichmüller distance it gives.
+ *
+ * Each region goes conformally onto its rectangle ([RectangleMap]); between two rectangles with
+ * corners matched, the map of least distortion is the affine stretch of one height onto the other
+ * (Grötzsch). So the Teichmüller map is: region A onto its rectangle, stretch, back from B's
+ * rectangle onto B. Its `|μ|` is the same everywhere, `|H_B − H_A| / (H_B + H_A)`, and the
+ * Teichmüller distance is `½ |log(H_B / H_A)|` exactly; [QuasiConformalMap.distance] measured from the
+ * mesh map agrees with it up to discretisation.
+ *
+ * @return the map on [a]'s mesh, and the exact distance from the two moduli.
+ */
+fun quadrilateralTeichmullerMap(a: PlanarMesh, aLandmarks: IntArray, b: PlanarMesh, bLandmarks: IntArray): Pair<QuasiConformalMap, Double> {
+    val ra = RectangleMap(a, aLandmarks)
+    val rb = RectangleMap(b, bLandmarks)
+    val stretch = rb.modulus / ra.modulus
+    val u = DoubleArray(a.vertexCount)
+    val v = DoubleArray(a.vertexCount)
+    val t = b.triangles
+    for (i in 0 until a.vertexCount) {
+        val px = ra.x[i]
+        val py = ra.y[i] * stretch
+        // Find the triangle of B's rectangle picture holding the point (or the nearest one).
+        var best = 0
+        var bestScore = -Double.MAX_VALUE
+        var bw = doubleArrayOf(1.0, 0.0, 0.0)
+        for (f in 0 until b.triangleCount) {
+            val i0 = t[3 * f]
+            val i1 = t[3 * f + 1]
+            val i2 = t[3 * f + 2]
+            val area = (rb.x[i1] - rb.x[i0]) * (rb.y[i2] - rb.y[i0]) - (rb.x[i2] - rb.x[i0]) * (rb.y[i1] - rb.y[i0])
+            if (abs(area) < 1e-300) continue
+            val w0 = ((rb.x[i1] - px) * (rb.y[i2] - py) - (rb.x[i2] - px) * (rb.y[i1] - py)) / area
+            val w1 = ((rb.x[i2] - px) * (rb.y[i0] - py) - (rb.x[i0] - px) * (rb.y[i2] - py)) / area
+            val w2 = 1 - w0 - w1
+            val score = minOf(w0, w1, w2)
+            if (score > bestScore) {
+                bestScore = score
+                best = f
+                bw = doubleArrayOf(w0, w1, w2)
+                if (score >= 0) break
+            }
+        }
+        if (bestScore < 0) {
+            // Just outside: clamp to the triangle.
+            for (k in 0..2) bw[k] = max(0.0, bw[k])
+            val s = bw.sum()
+            for (k in 0..2) bw[k] /= s
+        }
+        u[i] = (0..2).sumOf { bw[it] * b.x[t[3 * best + it]] }
+        v[i] = (0..2).sumOf { bw[it] * b.y[t[3 * best + it]] }
+    }
+    return QuasiConformalMap(a, u, v, beltrami(a, u, v), 0) to 0.5 * abs(ln(stretch))
+}
+
+/**
+ * The Teichmüller map between two shapes that are mirror-symmetric about the y axis, matching the tip
+ * (top), the base (bottom) and two pairs of mirrored landmarks on the margin, the outline free to
+ * slide between landmarks; and the Teichmüller distance between them.
+ *
+ * Each outline is the curve `radius(θ)` round the origin, symmetric under `θ ↦ π − θ`. The margin
+ * landmarks are the outline points at fractions [heights] of the way from base to tip. Because the
+ * extremal map is unique, it is mirror-symmetric too and carries the midrib to the midrib, so it is
+ * the extremal map of the right halves, doubled. A right half with base, both landmarks and tip
+ * marked is a quadrilateral, so its Teichmüller map and the exact distance come from
+ * [quadrilateralTeichmullerMap]. Leaves of this kind are what Choi and Mahadevan (2018) compare.
+ *
+ * @param h the mesh spacing.
+ */
+class MirrorShapeComparison(radiusA: (Double) -> Double, radiusB: (Double) -> Double, val heights: List<Double> = [1.0 / 3, 2.0 / 3], h: Double = 0.05) {
+    /** The mesh of shape A's right half. */
+    val half: PlanarMesh
+
+    /** The landmarks of [half]: base, the two margin landmarks, tip. */
+    val landmarks: IntArray
+
+    /** The Teichmüller map from A's right half onto B's. */
+    val map: QuasiConformalMap
+
+    /** The Teichmüller distance between the shapes, `½ |log(H_B / H_A)|` of the half quadrilaterals. */
+    val distance: Double
+
+    /** Where B's landmarks are: base, the two margin landmarks, tip, as `(x, y)` pairs. */
+    val targetLandmarks: List<DoubleArray>
+
+    init {
+        require(heights.size == 2) { "two margin landmarks a side make each half a quadrilateral" }
+        val (meshA, marksA) = halfShape(radiusA, h)
+        val (meshB, marksB) = halfShape(radiusB, h)
+        half = meshA
+        landmarks = marksA
+        val (m, d) = quadrilateralTeichmullerMap(meshA, marksA, meshB, marksB)
+        map = m
+        distance = d
+        targetLandmarks = marksB.map { doubleArrayOf(meshB.x[it], meshB.y[it]) }
+    }
+
+    /** The right half of a shape (x ≥ 0) meshed, with its base, margin landmarks and tip. */
+    private fun halfShape(radius: (Double) -> Double, h: Double): Pair<PlanarMesh, IntArray> {
+        val samples = 600
+        // The margin from base (θ = −π/2) up to tip (θ = π/2), then the midrib straight back down.
+        val margin = (0..samples).map { k ->
+            val t = -PI / 2 + PI * k / samples
+            doubleArrayOf(radius(t) * cos(t), radius(t) * sin(t))
+        }
+        val base = margin.first()
+        val tip = margin.last()
+        val rib = (1 until samples / 4).map { k -> doubleArrayOf(0.0, tip[1] + (base[1] - tip[1]) * k / (samples / 4)) }
+        val outline = margin + rib
+        val mesh = PlanarMesh.outline(DoubleArray(outline.size) { outline[it][0] }, DoubleArray(outline.size) { outline[it][1] }, h)
+        fun marginAt(f: Double): DoubleArray {
+            val y = base[1] + f * (tip[1] - base[1])
+            return margin.minBy { abs(it[1] - y) + (if (it[0] < 0) 10.0 else 0.0) }
+        }
+        val marks = listOf(base, marginAt(heights[0]), marginAt(heights[1]), tip).map { mesh.nearestBoundary(it[0], it[1]) }
+        return mesh to marks.toIntArray()
+    }
 }
 
 /**
