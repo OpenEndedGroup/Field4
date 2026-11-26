@@ -6,9 +6,4 @@ rewrite { x: Ident ->
 }
 val answer = rev(hello)
 println("rev(hello) = " + answer)
-display(
-    "main",
-    "<div style='font:16px monospace;padding:8px'>rev(hello) = <b>" +
-        answer +
-        "</b>, a string built at compile time from the identifier's text</div>",
-)
+markdown("main", "`rev(hello)` = **$answer**, a string built at compile time from the identifier's text.")

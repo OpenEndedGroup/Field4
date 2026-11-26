@@ -64,16 +64,22 @@ for (j in 0 until pseudo.ny step 2) for (i in 0 until pseudo.nx step 2) {
     val x = pseudo.x(i)
     val y = pseudo.y(j)
     val e = (abs(pseudo[i, j] - truth(x, y)) / 0.1).coerceIn(0.0, 1.0)
-    drawn += fline { circle(x * scale, -y * scale, 1.0 + 4.0 * e) }.apply {
-        filled = true
-        color = vec(0.35 + 0.65 * e, 0.4 - 0.2 * e, 0.5 - 0.4 * e, 0.4 + 0.6 * e)
-    }
+    drawn +=
+        fline { circle(x * scale, -y * scale, 1.0 + 4.0 * e) }
+            .apply {
+                filled = true
+                color = vec(0.35 + 0.65 * e, 0.4 - 0.2 * e, 0.5 - 0.4 * e, 0.4 + 0.6 * e)
+            }
 }
-for (shape in [big, small]) drawn += shape.transform { vec(it.x * scale, -it.y * scale, 0.0) }.apply { color = vec(1.0, 1.0, 1.0, 0.35) }
-drawn += traced.transform { vec(it.x * scale, -it.y * scale, 0.0) }.apply {
-    thickness = 2.5
-    color = vec(1.0, 0.67, 0.0, 1.0)
-}
+for (shape in [big, small]) drawn +=
+    shape.transform { vec(it.x * scale, -it.y * scale, 0.0) }.apply { color = vec(1.0, 1.0, 1.0, 0.35) }
+drawn +=
+    traced
+        .transform { vec(it.x * scale, -it.y * scale, 0.0) }
+        .apply {
+            thickness = 2.5
+            color = vec(1.0, 0.67, 0.0, 1.0)
+        }
 lines(drawn, channel = "error", w = 640.0, h = 430.0, fitToSize = true)
 :::endfold
 markdown("readout", table)
@@ -129,21 +135,26 @@ val truth = traced.signedDistance2D()
 :::endfold
 // Offset contours read off each grid, and how far each lands from the distance it was asked for.
 val offsets = [-0.2, -0.1, 0.1, 0.2, 0.3]
-fun offset(grid: SdfGrid2D, d: Double) = generateIsoContours({ x, y -> grid.bilinear(x, y) }, -1.5, 1.5, -1.0, 1.0, 300, 200, d)
-fun worst(contours: List<List<Vec2>>, d: Double) = contours.flatten().maxOf { abs(truth(it.x.toDouble(), it.y.toDouble()) - d) }
+fun offset(grid: SdfGrid2D, d: Double) =
+    generateIsoContours({ x, y -> grid.bilinear(x, y) }, -1.5, 1.5, -1.0, 1.0, 300, 200, d)
+fun worst(contours: List<List<Vec2>>, d: Double) =
+    contours.flatten().maxOf { abs(truth(it.x.toDouble(), it.y.toDouble()) - d) }
 val table = buildString {
     appendLine("| offset | worst miss, blend | worst miss, repaired |")
     appendLine("|---|---|---|")
-    for (d in offsets) appendLine("| %.2f | %.4f | %.4f |".format(d, worst(offset(pseudo, d), d), worst(offset(fixed, d), d)))
+    for (d in offsets) appendLine(
+        "| %.2f | %.4f | %.4f |".format(d, worst(offset(pseudo, d), d), worst(offset(fixed, d), d)),
+    )
 }
 :::fold draw the offsets from both grids over the outline
 val scale = 150.0
 val drawn = ArrayList<FLine>()
 fun draw(contours: List<List<Vec2>>, tint: Vec4, width: Double) {
-    for (c in contours) drawn += polylineFrom(c.map { vec(it.x * scale, -it.y * scale) }, closed = true).apply {
-        thickness = width
-        color = tint
-    }
+    for (c in contours) drawn +=
+        polylineFrom(c.map { vec(it.x * scale, -it.y * scale) }, closed = true).apply {
+            thickness = width
+            color = tint
+        }
 }
 draw(offset(fixed, 0.0), vec(1.0, 0.67, 0.0, 1.0), 2.5)
 for (d in offsets) {
@@ -205,7 +216,8 @@ val truth = traced.signedDistance2D()
 // Inset rings every 0.04, as a pocketing toolpath would step in, read off each grid.
 val step = 0.04
 val depths = (1..14).map { -step * it }
-fun rings(grid: SdfGrid2D, d: Double) = generateIsoContours({ x, y -> grid.bilinear(x, y) }, -1.5, 1.5, -1.0, 1.0, 300, 200, d)
+fun rings(grid: SdfGrid2D, d: Double) =
+    generateIsoContours({ x, y -> grid.bilinear(x, y) }, -1.5, 1.5, -1.0, 1.0, 300, 200, d)
 val table = buildString {
     appendLine("| grid | depths | rings | depths split in two | worst miss | worst miss, in steps |")
     appendLine("|---|---|---|---|---|---|")
@@ -228,14 +240,16 @@ val drawn = ArrayList<FLine>()
 for ((panel, grid) in [pseudo, fixed].withIndex()) {
     val dx = panel * 3.2
     val tint = if (panel == 0) vec(1.0, 0.3, 0.25, 1.0) else vec(0.5, 0.8, 1.0, 1.0)
-    for (c in rings(grid, 0.0)) drawn += polylineFrom(c.map { vec((it.x + dx) * scale, -it.y * scale) }, closed = true).apply {
-        thickness = 2.5
-        color = vec(1.0, 0.67, 0.0, 1.0)
-    }
-    for (d in depths) for (c in rings(grid, d)) drawn += polylineFrom(c.map { vec((it.x + dx) * scale, -it.y * scale) }, closed = true).apply {
-        thickness = 1.5
-        color = tint
-    }
+    for (c in rings(grid, 0.0)) drawn +=
+        polylineFrom(c.map { vec((it.x + dx) * scale, -it.y * scale) }, closed = true).apply {
+            thickness = 2.5
+            color = vec(1.0, 0.67, 0.0, 1.0)
+        }
+    for (d in depths) for (c in rings(grid, d)) drawn +=
+        polylineFrom(c.map { vec((it.x + dx) * scale, -it.y * scale) }, closed = true).apply {
+            thickness = 1.5
+            color = tint
+        }
 }
 lines(drawn, channel = "insets", w = 660.0, h = 240.0, fitToSize = true)
 :::endfold

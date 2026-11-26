@@ -3,9 +3,9 @@ run {
         markdown(PaintLibrary.describe())
         return@run
     }
-    val sheet = fromContext<PaintStrokes>()
+    val sheet = paintSheet
     // one key per frame: how far the leaves sway and the legs step; every frame is the same records, moved
-    val keys = listOf(0.0, 30.0, 0.0, -30.0)
+    val keys = [0.0, 30.0, 0.0, -30.0]
     val frames = keys.map { k ->
         val f = sheet.copy()
         f.apply(

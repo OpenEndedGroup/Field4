@@ -11,12 +11,10 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="chamfer_ladder" index="0" -->
 
 ```edn [field-box id="chamfer_ladder" role="properties"]
-{"id" "chamfer_ladder" "index" 0 "name" "Which parts take it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Which parts take it" "_tombstone" false "frame" #afield/rect [1080.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chamfer_ladder_code_.kt" "lines" 158 "characters" 6654 "sha256" "19003d1d2bbb479a837d4ced85e685a5d6c539b096e9174c40d428a73cc9ddb7"}]}
+{"id" "chamfer_ladder" "index" 0 "name" "Which parts take it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Which parts take it" "_tombstone" false "frame" #afield/rect [1080.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chamfer_ladder_code_.kt" "lines" 156 "characters" 6567 "sha256" "807a8eb3db7a2627f7b05039dc88d497111b59ced56b7f9ceef775603f4c38bb"}]}
 ```
 
 ```kotlin [field-property box="chamfer_ladder" name="code" path="chamfer_ladder_code_.kt"]
-import afield.geometry.mesh.TriMesh
-import afield.geometry.mesh.weld
 import afield.geometry.solid.solidcraft.SolidCraftBuilder
 import afield.geometry.solid.solidcraft.SolidCraftEdge
 import afield.geometry.solid.solidcraft.SolidCraftLibrary
@@ -36,7 +34,7 @@ class Part(val name: String, val build: SolidCraftBuilder.() -> Unit)
 
 fun SolidCraftBuilder.block() = extrude(sketch { rectangle(0.0, 0.0, 40.0, 30.0) }, "10")
 
-val parts = listOf(
+val parts = [
     Part("block") { block() },
     Part("block with a hole") {
         block()
@@ -46,14 +44,14 @@ val parts = listOf(
         val r = 10.0
         val hexagon =
             (0 until 6).flatMap { k ->
-                listOf(r * kotlin.math.cos(k * Math.PI / 3), r * kotlin.math.sin(k * Math.PI / 3))
+                [r * kotlin.math.cos(k * Math.PI / 3), r * kotlin.math.sin(k * Math.PI / 3)]
             }
         extrude(sketch { polygon(*hexagon.toDoubleArray()) }, "8")
         extrude(sketch { circle(0.0, 0.0, 5.0) }, "40", SolidCraftOperation.CUT, symmetric = true)
     },
     Part("pyramid") {
         loft(
-            listOf(sketch { rectangle(-10.0, -10.0, 10.0, 10.0) }),
+            [sketch { rectangle(-10.0, -10.0, 10.0, 10.0) }],
             apex = sketch(offsetPlane("XY", "20")) { point(0.0, 0.0) },
         )
     },
@@ -73,7 +71,7 @@ val parts = listOf(
         extrude(sketch { circle(25.0, 0.0, 3.0) }, "40", SolidCraftOperation.CUT, symmetric = true)
         extrude(sketch("YZ") { circle(0.0, 18.0, 3.0) }, "40", SolidCraftOperation.CUT, symmetric = true)
     },
-) +
+] +
         (1..4).map { n ->
             Part("plate, $n × $n bosses") {
                 extrude(sketch { rectangle(0.0, 0.0, 10.0 * n + 10, 10.0 * n + 10) }, "4")
@@ -180,11 +178,10 @@ run {
 <!-- field-box id="chamfer_one_part" index="1" -->
 
 ```edn [field-box id="chamfer_one_part" role="properties"]
-{"id" "chamfer_one_part" "index" 1 "name" "Chamfer everything on one part" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Chamfer everything on one part" "_tombstone" false "frame" #afield/rect [80.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chamfer_one_part_code_.kt" "lines" 94 "characters" 3499 "sha256" "7ca765cec04a3c26acd7f70aef1eeadb10d9e14bc944cf82c786baafc749269f"}]}
+{"id" "chamfer_one_part" "index" 1 "name" "Chamfer everything on one part" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Chamfer everything on one part" "_tombstone" false "frame" #afield/rect [80.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chamfer_one_part_code_.kt" "lines" 93 "characters" 3466 "sha256" "5bfacb6012e81397ffa7c4ec820ed85419826186250b58f3cbbb71939ed9a449"}]}
 ```
 
 ```kotlin [field-property box="chamfer_one_part" name="code" path="chamfer_one_part_code_.kt"]
-import afield.geometry.mesh.weld
 import afield.geometry.solid.solidcraft.SolidCraftBuilder
 import afield.geometry.solid.solidcraft.SolidCraftEdge
 import afield.geometry.solid.solidcraft.SolidCraftLibrary

@@ -11,11 +11,10 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="fillet_plate" index="0" -->
 
 ```edn [field-box id="fillet_plate" role="properties"]
-{"id" "fillet_plate" "index" 0 "name" "The plate one chamfer cannot take" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The plate one chamfer cannot take" "_tombstone" false "frame" #afield/rect [1080.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fillet_plate_code_.kt" "lines" 73 "characters" 2720 "sha256" "d018244e70d57d94ce1ef1fe23f853f40de242e1e8c88309599385c80a63e172"}]}
+{"id" "fillet_plate" "index" 0 "name" "The plate one chamfer cannot take" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The plate one chamfer cannot take" "_tombstone" false "frame" #afield/rect [1080.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fillet_plate_code_.kt" "lines" 72 "characters" 2687 "sha256" "95ffac8efe0e0ae37378e0e97d3aab0cd8e9c87ddf62b69787779683c97015eb"}]}
 ```
 
 ```kotlin [field-property box="fillet_plate" name="code" path="fillet_plate_code_.kt"]
-import afield.geometry.mesh.weld
 import afield.geometry.solid.solidcraft.SolidCraftBuilder
 import afield.geometry.solid.solidcraft.SolidCraftLibrary
 import afield.geometry.solid.solidcraft.SolidCraftOperation
@@ -95,15 +94,12 @@ run {
 <!-- field-box id="fillet_block" index="1" -->
 
 ```edn [field-box id="fillet_block" role="properties"]
-{"id" "fillet_block" "index" 1 "name" "Every edge of a block, checked" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Every edge of a block, checked" "_tombstone" false "frame" #afield/rect [80.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fillet_block_code_.kt" "lines" 76 "characters" 2939 "sha256" "d98d52a90830061f726b8ac9ad0d911c21dc7e75545f5f878818740a5f4d63a8"}]}
+{"id" "fillet_block" "index" 1 "name" "Every edge of a block, checked" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Every edge of a block, checked" "_tombstone" false "frame" #afield/rect [80.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fillet_block_code_.kt" "lines" 73 "characters" 2842 "sha256" "1f4e5ea3fb70cfb4f96db7782285be71a65ec1f34bf7c778da55e85d95e40888"}]}
 ```
 
 ```kotlin [field-property box="fillet_block" name="code" path="fillet_block_code_.kt"]
-import afield.geometry.mesh.TriMesh
-import afield.geometry.mesh.weld
 import afield.geometry.solid.solidcraft.SolidCraftLibrary
 import afield.geometry.solid.solidcraft.solidCraft
-import kotlin.math.PI
 
 /*
 A 40 × 30 × 10 block with every edge rounded. Where three rounds meet, the rolling ball leaves
@@ -111,7 +107,7 @@ an eighth of a sphere, so the whole part has a closed-form volume to check Solid
 At r = 5, half the block's depth, the rounds on its top and bottom meet.
 */
 val (a, b, c) = Triple(40.0, 30.0, 10.0)
-val radii = listOf(1.0, 2.0, 4.0, 5.0) // mm
+val radii = [1.0, 2.0, 4.0, 5.0] // mm
 
 fun roundedBlock(r: Double): Double {
     val (x, y, z) = Triple(a - 2 * r, b - 2 * r, c - 2 * r)
@@ -182,12 +178,10 @@ run {
 <!-- field-box id="fillet_ladder" index="2" -->
 
 ```edn [field-box id="fillet_ladder" role="properties"]
-{"id" "fillet_ladder" "index" 2 "name" "How round can it go" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "How round can it go" "_tombstone" false "frame" #afield/rect [2080.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fillet_ladder_code_.kt" "lines" 157 "characters" 6545 "sha256" "c0696ef2e7a5bd3e9c612b541a13d63a37cd08762656a515f12f32eba68f0faf"}]}
+{"id" "fillet_ladder" "index" 2 "name" "How round can it go" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "How round can it go" "_tombstone" false "frame" #afield/rect [2080.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fillet_ladder_code_.kt" "lines" 155 "characters" 6458 "sha256" "bb5e1b8d838ff768eaf73b52e8fd4a3290a2e9de752a308ee69c5e67e6a09118"}]}
 ```
 
 ```kotlin [field-property box="fillet_ladder" name="code" path="fillet_ladder_code_.kt"]
-import afield.geometry.mesh.TriMesh
-import afield.geometry.mesh.weld
 import afield.geometry.solid.solidcraft.SolidCraftBuilder
 import afield.geometry.solid.solidcraft.SolidCraftLibrary
 import afield.geometry.solid.solidcraft.SolidCraftOperation
@@ -208,7 +202,7 @@ class Part(val name: String, val build: SolidCraftBuilder.() -> Unit)
 
 fun SolidCraftBuilder.block() = extrude(sketch { rectangle(0.0, 0.0, 40.0, 30.0) }, "10")
 
-val parts = listOf(
+val parts = [
     Part("block") { block() },
     Part("block with a hole") {
         block()
@@ -218,14 +212,14 @@ val parts = listOf(
         val r = 10.0
         val hexagon =
             (0 until 6).flatMap { k ->
-                listOf(r * kotlin.math.cos(k * Math.PI / 3), r * kotlin.math.sin(k * Math.PI / 3))
+                [r * kotlin.math.cos(k * Math.PI / 3), r * kotlin.math.sin(k * Math.PI / 3)]
             }
         extrude(sketch { polygon(*hexagon.toDoubleArray()) }, "8")
         extrude(sketch { circle(0.0, 0.0, 5.0) }, "40", SolidCraftOperation.CUT, symmetric = true)
     },
     Part("pyramid") {
         loft(
-            listOf(sketch { rectangle(-10.0, -10.0, 10.0, 10.0) }),
+            [sketch { rectangle(-10.0, -10.0, 10.0, 10.0) }],
             apex = sketch(offsetPlane("XY", "20")) { point(0.0, 0.0) },
         )
     },
@@ -245,7 +239,7 @@ val parts = listOf(
         extrude(sketch { circle(25.0, 0.0, 3.0) }, "40", SolidCraftOperation.CUT, symmetric = true)
         extrude(sketch("YZ") { circle(0.0, 18.0, 3.0) }, "40", SolidCraftOperation.CUT, symmetric = true)
     },
-) +
+] +
         (1..4).map { n ->
             Part("plate, $n × $n bosses") {
                 extrude(sketch { rectangle(0.0, 0.0, 10.0 * n + 10, 10.0 * n + 10) }, "4")

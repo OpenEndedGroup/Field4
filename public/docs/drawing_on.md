@@ -59,22 +59,19 @@ The folded callback receives committed input and adds a crosshair when a Pencil 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/drawing_on/plan.png" capture="box" open-outputs="true" wait="3" padding="16" name="drawing-on-plan" embed=true alt="A translucent white rectangular room plan in Field’s dark output area"}
 :::static
 :::fold imports
-import afield.geometry.path.FLine
-import afield.graphics.render.color
 import afield.io.drawingon.drawingOn
-import afield.math.linalg.vec
-import afield.ui.visualization.lines
 import kotlinx.serialization.json.*
+
 :::endfold
 
 val pad = drawingOn("ipad")
 val roomWidth = 400.0
-val plan = FLine().moveTo(120, 160).lineTo(120 + roomWidth, 160)
-    .lineTo(120 + roomWidth, 460).lineTo(120, 460).lineTo(120, 160)
+val plan =
+    FLine().moveTo(120, 160).lineTo(120 + roomWidth, 160).lineTo(120 + roomWidth, 460).lineTo(120, 460).lineTo(120, 160)
 plan.color = vec(1.0, 1.0, 1.0, 0.45)
 
 fun showPlan(extra: List<FLine> = emptyList()) {
-    val drawing = listOf(plan) + extra
+    val drawing = [plan] + extra
     pad.publish(drawing, title = "Studio plan")
     lines(drawing, w = 640.0, h = 520.0)
 }
@@ -95,8 +92,7 @@ pad.onEvent { event ->
             val point = endpoints.remove(stroke)
             if (point != null && event.data["cancelled"]?.jsonPrimitive?.booleanOrNull != true) {
                 val (x, y) = point
-                val marker = FLine().moveTo(x - 12, y).lineTo(x + 12, y)
-                    .moveTo(x, y - 12).lineTo(x, y + 12)
+                val marker = FLine().moveTo(x - 12, y).lineTo(x + 12, y).moveTo(x, y - 12).lineTo(x, y + 12)
                 marker.color = vec(1.0, 1.0, 1.0, 0.8)
                 showPlan([marker])
                 println("Pencil endpoint ($x, $y) at ${event.time}s")
@@ -153,6 +149,7 @@ the original recording. All geometry returned below is ordinary `FLine` data.
 :::static
 :::fold imports
 import afield.io.drawingon.readDrawingOn
+
 :::endfold
 
 val recording = readDrawingOn("/path/to/capture.ndjson")
@@ -290,33 +287,30 @@ and the gap before the wall resumes stays open. The lightly wavering arch become
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/drawing_on/network.png" capture="box" open-outputs="true" wait="3" padding="12" name="drawing-on-network" embed=true alt="Raw pen strokes on the left and fitted graph on the right, showing a shared T-junction, a wall gap and an arch"}
 :::static
 :::fold imports
-import afield.geometry.path.FLine
-import afield.graphics.render.color
-import afield.graphics.render.thickness
 import afield.io.drawingon.DrawingOnNetworkStroke
 import afield.io.drawingon.fitDrawingOnNetwork
-import afield.math.linalg.vec
-import afield.ui.visualization.LinesFraming
-import afield.ui.visualization.lines
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.sin
+
 :::endfold
 
 fun stroke(id: String, vararg xy: Pair<Int, Int>) =
     DrawingOnNetworkStroke(id, "plan", "freehand", xy.map { (x, y) -> vec(x, y, 0) })
 
-val strokes = listOf(
+val strokes = [
     stroke("wall", 10 to 50, 40 to 51, 80 to 50, 120 to 50),
     stroke("overstroke", 120 to 51, 80 to 50, 40 to 50, 10 to 51),
     stroke("partition", 53 to 12, 53 to 47),
     stroke("after door", 147 to 51, 175 to 50, 215 to 51),
-    DrawingOnNetworkStroke("arch", "plan", "freehand", (0..40).map { i ->
-        val a = i * PI / 40
-        val r = 32 + 0.6 * sin(a * 13)
-        vec(115 + r * cos(a), 112 - r * sin(a), 0)
-    })
-)
+    DrawingOnNetworkStroke(
+        "arch",
+        "plan",
+        "freehand",
+        (0..40).map { i ->
+            val a = i * PI / 40
+            val r = 32 + 0.6 * sin(a * 13)
+            vec(115 + r * cos(a), 112 - r * sin(a), 0)
+        },
+    ),
+]
 val graph = fitDrawingOnNetwork(strokes)
 val raw = strokes.map { stroke ->
     FLine().moveTo(stroke.points.first()).apply {
@@ -325,12 +319,15 @@ val raw = strokes.map { stroke ->
         thickness = 1.5
     }
 }
-val fitted = graph.toFLines(showNodes = true).map { path ->
-    path.transform { it.add(vec(245, 0, 0)) }.apply {
-        color = vec(0.3, 0.85, 1.0, 0.95)
-        thickness = 2.0
+val fitted =
+    graph.toFLines(showNodes = true).map { path ->
+        path
+            .transform { it.add(vec(245, 0, 0)) }
+            .apply {
+                color = vec(0.3, 0.85, 1.0, 0.95)
+                thickness = 2.0
+            }
     }
-}
 lines(raw + fitted, w = 600.0, h = 180.0, fitToSize = true, framing = LinesFraming.Fit)
 ```
 
@@ -394,3 +391,7 @@ for options, output fields and limitations.
 
 See also [Drawing with FLines](fline_examples.md), [Geometry review](geometry_review.md), and
 [geometry in the headset](vision_geometry.md).
+
+## API reference
+
+- Reading and querying the recording: [`DrawingOnCapture`](reference/networking.md#drawingoncapture-kt-drawingoncapture), [`readDrawingOn`](reference/networking.md#drawingoncapture-kt--readdrawingon), [`DrawingOnCapture.drawingSince`](reference/networking.md#drawingoncapture-kt--drawingoncapture--drawingsince), [`DrawingOnCapture.networkAt`](reference/networking.md#drawingoncapture-kt--drawingoncapture--networkat).

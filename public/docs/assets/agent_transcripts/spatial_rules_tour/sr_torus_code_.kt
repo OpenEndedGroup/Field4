@@ -1,14 +1,4 @@
 import afield.data.graph.SpatialLifetime.MATCH
-import afield.data.graph.SpatialRuleWorld
-import afield.data.graph.spatialStroke
-import afield.geometry.path.FLine
-import afield.graphics.render.color
-import afield.graphics.render.thickness
-import afield.runtime.lifecycle.AnimationClock
-import afield.ui.visualization.LinesFraming
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.sin
 
 val rings = 50
 val samples = 20

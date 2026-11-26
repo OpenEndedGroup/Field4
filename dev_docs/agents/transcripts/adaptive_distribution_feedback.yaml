@@ -12,11 +12,6 @@ operations:
       frame: { x: 70.0, y: 80.0, w: 415.0, h: 100.0 }
       properties:
         code: |
-          import afield.math.control.AdaptiveDistributionController
-          import afield.math.control.ControllerConfig
-          import afield.math.control.UniformQuantileFeatureExtractor
-          import kotlin.math.sqrt
-
           val delay = 3
           val changeAt = 180
           val steps = 480
@@ -27,7 +22,7 @@ operations:
 
           fun runStudy(biasAfterChange: Double) {
               val config = ControllerConfig(
-                  parameterNames = listOf("offset", "span correction"),
+                  parameterNames = ["offset", "span correction"],
                   paramMin = doubleArrayOf(-0.35, -0.5),
                   paramMax = doubleArrayOf(0.35, 0.5),
                   initialParams = doubleArrayOf(0.0, 0.0),
@@ -75,7 +70,7 @@ operations:
                   "Loop" to feedbackError,
                   x = ticks,
                   xTitle = "Observation",
-                  marks = listOf("Step" to changeAt),
+                  marks = ["Step" to changeAt],
                   width = 600,
                   height = 255,
                   title = "Quantile error (RMS)",
@@ -86,7 +81,7 @@ operations:
                   "Span correction" to spanCorrection,
                   x = ticks,
                   xTitle = "Observation",
-                  marks = listOf("Step" to changeAt),
+                  marks = ["Step" to changeAt],
                   width = 600,
                   height = 255,
                   title = "Applied controls",

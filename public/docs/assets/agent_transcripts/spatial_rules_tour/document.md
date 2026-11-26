@@ -11,31 +11,13 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="sr_loom" index="0" -->
 
 ```edn [field-box id="sr_loom" role="properties"]
-{"id" "sr_loom" "index" 0 "name" "2 · Loom with memory" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · Loom with memory" "_tombstone" false "frame" #afield/rect [650.0 285.0 290.0 78.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sr_loom_code_.kt" "lines" 287 "characters" 11279 "sha256" "fccece212ff3b5b0be4238a7d7fc2c4c963a9e97f82f38986bb88f319b9664eb"}]}
+{"id" "sr_loom" "index" 0 "name" "2 · Loom with memory" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · Loom with memory" "_tombstone" false "frame" #afield/rect [650.0 285.0 290.0 78.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sr_loom_code_.kt" "lines" 269 "characters" 10657 "sha256" "60da5985d2c09d0afad91fb975a700e0a335b36a742b5d4b15c82dfde5f9edaa"}]}
 ```
 
 ```kotlin [field-property box="sr_loom" name="code" path="sr_loom_code_.kt"]
 import afield.data.graph.SpatialLifetime.MATCH
-import afield.data.graph.SpatialPoint
-import afield.data.graph.SpatialRuleWorld
 import afield.data.graph.inspectOnClick
-import afield.data.graph.spatialDot
-import afield.data.graph.spatialStroke
-import afield.data.graph.vec3MinimumSpanningTree
-import afield.geometry.path.FLine
-import afield.graphics.render.color
-import afield.graphics.render.filled
-import afield.graphics.render.stroked
-import afield.graphics.render.thickness
-import afield.runtime.lifecycle.AnimationClock
-import afield.ui.visualization.LinesFraming
 import java.util.concurrent.atomic.AtomicLong
-import kotlin.math.PI
-import kotlin.math.atan2
-import kotlin.math.cos
-import kotlin.math.hypot
-import kotlin.math.sin
-import kotlin.math.sqrt
 
 val world = SpatialRuleWorld()
 val stitchInk = vec(0.27, 0.77, 0.93, 0.74)
@@ -309,21 +291,11 @@ loop {
 <!-- field-box id="sr_torus" index="1" -->
 
 ```edn [field-box id="sr_torus" role="properties"]
-{"id" "sr_torus" "index" 1 "name" "3 · A thousand moving points" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · A thousand moving points" "_tombstone" false "frame" #afield/rect [1630.0 285.0 290.0 78.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sr_torus_code_.kt" "lines" 115 "characters" 3867 "sha256" "76a65e72c1ee65123ea61d603288c4dcb465a0b6076b09f72652d3f138812c5f"}]}
+{"id" "sr_torus" "index" 1 "name" "3 · A thousand moving points" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · A thousand moving points" "_tombstone" false "frame" #afield/rect [1630.0 285.0 290.0 78.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sr_torus_code_.kt" "lines" 105 "characters" 3517 "sha256" "0c1bbd6a977d42828dbb4b630d1b0ab60263f9bd607e6cd2c471135788038412"}]}
 ```
 
 ```kotlin [field-property box="sr_torus" name="code" path="sr_torus_code_.kt"]
 import afield.data.graph.SpatialLifetime.MATCH
-import afield.data.graph.SpatialRuleWorld
-import afield.data.graph.spatialStroke
-import afield.geometry.path.FLine
-import afield.graphics.render.color
-import afield.graphics.render.thickness
-import afield.runtime.lifecycle.AnimationClock
-import afield.ui.visualization.LinesFraming
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.sin
 
 val rings = 50
 val samples = 20
@@ -435,16 +407,11 @@ loop {
 <!-- field-box id="sr_filament" index="2" -->
 
 ```edn [field-box id="sr_filament" role="properties"]
-{"id" "sr_filament" "index" 2 "name" "1 · One filament" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · One filament" "_tombstone" false "frame" #afield/rect [65.0 285.0 290.0 78.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sr_filament_code_.kt" "lines" 67 "characters" 2070 "sha256" "686f8c5093ff5c94463dc7c78235ec7e78c7ffcb72aed450f8d76613e2a4d633"}]}
+{"id" "sr_filament" "index" 2 "name" "1 · One filament" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · One filament" "_tombstone" false "frame" #afield/rect [65.0 285.0 290.0 78.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sr_filament_code_.kt" "lines" 62 "characters" 1862 "sha256" "a24adb692544e4937671b5c97cb1c81d2c5dc627b55328f94702d36c7234345d"}]}
 ```
 
 ```kotlin [field-property box="sr_filament" name="code" path="sr_filament_code_.kt"]
 import afield.data.graph.SpatialLifetime.MATCH
-import afield.data.graph.SpatialRuleWorld
-import afield.data.graph.spatialDot
-import afield.data.graph.spatialStroke
-import afield.runtime.lifecycle.AnimationClock
-import afield.ui.visualization.LinesFraming
 
 val world = SpatialRuleWorld()
 val ink = Vec4(0.8f, 0.92f, 1f, 1f)

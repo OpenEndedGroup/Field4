@@ -1,6 +1,7 @@
 package afield.data.graph
 
 import afield.geometry.path.FLine
+import afield.graphics.render.FLineIntersection
 import afield.graphics.render.label
 import afield.graphics.render.onClick
 import afield.math.linalg.Vec3
@@ -11,6 +12,32 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class SpatialRuleWorldTest {
+    @Test
+    fun inspectionClickRetainsTheDrawnSnapshotAndIgnoresAnotherFactsLabel() {
+        SpatialRuleWorld().use { world ->
+            lateinit var tip: SpatialPoint
+            world.source("tip") {
+                tip = point("tip", Vec3())
+                while (true) nextFrame()
+            }
+            world.step(0.0)
+            world.step(1.0) // Commit the source's newly published fact.
+            val drawn = assertNotNull(world.explain(tip))
+            var received: SpatialExplanation? = null
+            val line = world.inspectOnClick(tip, FLine()) { received = it }
+            val click = assertNotNull(line.onClick)
+            click(FLineIntersection(-1, Vec3(), label = "another-fact"))
+            assertEquals(null, received)
+            world.step(3.0)
+            click(FLineIntersection(-1, Vec3(), label = line.label))
+            val explanation = assertNotNull(received)
+            assertEquals(tip.id, explanation.id)
+            assertEquals("tip", explanation.kind)
+            assertEquals(drawn, explanation)
+            assertTrue(assertNotNull(world.explain(tip)).ageSeconds > explanation.ageSeconds)
+        }
+    }
+
     @Test
     fun matchRetractionKeepsDrawingAndCanOverlapReentry() {
         SpatialRuleWorld().use { world ->

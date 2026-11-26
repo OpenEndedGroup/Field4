@@ -1,0 +1,11 @@
+{
+  "spans": 607,
+  "uniqueBodies": 515,
+  "formattedBodies": 11,
+  "changedPaths": [
+    "templates/gpu-particles/tpl_particles_draw_vertex_.glsl"
+  ],
+  "skips": [],
+  "tokenLiteralsFoldsAndFragmentMarkersVerified": true,
+  "formatter": "Actual Field editor imports, ktfmt and GLSL formatting"
+}

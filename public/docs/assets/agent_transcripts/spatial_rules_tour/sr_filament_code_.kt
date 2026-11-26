@@ -1,9 +1,4 @@
 import afield.data.graph.SpatialLifetime.MATCH
-import afield.data.graph.SpatialRuleWorld
-import afield.data.graph.spatialDot
-import afield.data.graph.spatialStroke
-import afield.runtime.lifecycle.AnimationClock
-import afield.ui.visualization.LinesFraming
 
 val world = SpatialRuleWorld()
 val ink = Vec4(0.8f, 0.92f, 1f, 1f)

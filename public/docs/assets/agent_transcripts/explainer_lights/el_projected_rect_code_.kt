@@ -23,7 +23,7 @@ fun draw(distance: Double) {
     for (t in 0 until shadow.triangleCount) omega += shadow.triangleArea(t)
     // From the eye through each corner of the patch to the panel's corner.
     val corners =
-        listOf(-0.4 to -0.4, 0.4 to -0.4, 0.4 to 0.4, -0.4 to 0.4).map { (x, y) ->
+        [-0.4 to -0.4, 0.4 to -0.4, 0.4 to 0.4, -0.4 to 0.4].map { (x, y) ->
             fline {
                 moveTo(0.0, 0.0, 0.0)
                 lineTo(x, y, -distance)

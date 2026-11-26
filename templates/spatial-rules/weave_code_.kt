@@ -1,13 +1,6 @@
 import afield.data.graph.SpatialLifetime.MATCH
-import afield.data.graph.SpatialRuleWorld
 import afield.data.graph.inspectOnClick
-import afield.data.graph.spatialDot
-import afield.data.graph.spatialStroke
-import afield.runtime.lifecycle.AnimationClock
-import afield.ui.visualization.LinesFraming
 import java.util.concurrent.atomic.AtomicLong
-import kotlin.math.cos
-import kotlin.math.sin
 
 val world = SpatialRuleWorld(parallelSearch = true)
 val stitchInk = Vec4(0.35f, 0.75f, 0.91f, 0.70f)
@@ -62,7 +55,7 @@ world.rules("weaving") {
     ) { (a, b) ->
         val stitch = edge("stitch", a, b, lifetime = MATCH)
         val knot = point("knot", midpoint(a.pos, b.pos), lifetime = MATCH)
-        var path = listOf(a.pos, knot.pos, b.pos)
+        var path = [a.pos, knot.pos, b.pos]
         val born = now
 
         while (match.live) {
@@ -71,7 +64,7 @@ world.rules("weaving") {
             val middle = midpoint(start, end).add(vec(0, 12 * sin((now - born) * 4), 0))
             move(knot, middle)
             set(stitch, "length", start.distance(end))
-            path = listOf(start, middle, end)
+            path = [start, middle, end]
             draw(spatialStroke(path, stitchInk, width = 1.4))
             nextFrame()
         }
@@ -86,7 +79,7 @@ world.rules("weaving") {
     onEnter("weave neighboring knots", knots.pairsWithin(59.0, leave = 69.0)) { (a, b) ->
         edge("weave", a, b, lifetime = MATCH)
         while (match.live) {
-            draw(spatialStroke(listOf(a.pos, b.pos), weaveInk, width = 1.1))
+            draw(spatialStroke([a.pos, b.pos], weaveInk, width = 1.1))
             nextFrame()
         }
     }
@@ -100,7 +93,7 @@ world.rules("weaving") {
             val a = stitch.from.pos
             val b = stitch.to.pos
             val middle = midpoint(a, b).add(vec(22 * sin((now - born) * 5), -20, 0))
-            draw(spatialStroke(listOf(a, middle, b), echoInk, width = 1.0))
+            draw(spatialStroke([a, middle, b], echoInk, width = 1.0))
             nextFrame()
         }
     }

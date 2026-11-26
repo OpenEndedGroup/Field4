@@ -38,13 +38,13 @@ operations:
           val pieces = t.get<Bezier>("DecomposeBeziers")
           val samples = t.get<EdgeSample>("EdgeSamples")
           val spans = t.get<Span>("CombineEdgeSamples")
-          lines(listOf(Gezira.grid(16, 12, s)) + Gezira.pieces(pieces, s) + Gezira.cuts(pieces, s), channel = "1 pieces")
+          lines([Gezira.grid(16, 12, s)] + Gezira.pieces(pieces, s) + Gezira.cuts(pieces, s), channel = "1 pieces")
           lines(
-              listOf(Gezira.grid(16, 12, s)) + Gezira.outline(shape, s) + Gezira.samples(samples, s),
+              [Gezira.grid(16, 12, s)] + Gezira.outline(shape, s) + Gezira.samples(samples, s),
               channel = "2 edge samples",
           )
           lines(
-              listOf(Gezira.grid(16, 12, s)) + Gezira.pixels(Gezira.coverage(spans, 16, 12), 16, s) + Gezira.spans(spans, s),
+              [Gezira.grid(16, 12, s)] + Gezira.pixels(Gezira.coverage(spans, 16, 12), 16, s) + Gezira.spans(spans, s),
               channel = "3 spans",
           )
   - execute:
@@ -154,7 +154,7 @@ operations:
           val px = 24.0
           val spans = t.get<Span>("CombineEdgeSamples")
           lines(
-              listOf(Gezira.grid(16, 16, px)) +
+              [Gezira.grid(16, 16, px)] +
                   Gezira.pixels(Gezira.coverage(spans, 16, 16), 16, px) +
                   Gezira.pieces(t.get("DecomposeBeziers"), px),
               channel = "rotated",
@@ -175,10 +175,10 @@ operations:
           import afield.graphics.nile.*
 
           // An open wave of two cubics, stroked 2 pixels wide, on a 48 x 24 grid.
-          val wave = listOf(
+          val wave = [
               Bezier(doubleArrayOf(3.0, 12.0, 10.0, 0.0, 17.0, 24.0, 24.0, 12.0)),
               Bezier(doubleArrayOf(24.0, 12.0, 31.0, 0.0, 38.0, 24.0, 45.0, 12.0)),
-          )
+          ]
           val t = (GeziraStroke.strokeBezierPath(2.0) then Gezira.rasterizer).trace(wave)
           println(t)
 
@@ -186,7 +186,7 @@ operations:
           val outline = t.get<Bezier>("StrokeBezierPath")
           val spans = t.get<Span>("WindingSpans")
           lines(
-              listOf(Gezira.grid(48, 24, s)) +
+              [Gezira.grid(48, 24, s)] +
                   Gezira.pixels(Gezira.coverage(spans, 48, 24), 48, s) +
                   Gezira.pieces(outline, s) +
                   Gezira.cuts(outline, s),

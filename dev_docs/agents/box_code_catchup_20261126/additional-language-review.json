@@ -1,0 +1,8 @@
+{
+  "languages": [
+    "fnrewrite",
+    "datalog"
+  ],
+  "changedBodies": 0,
+  "result": "No changed bodies beyond the frozen inventory; other non-Kotlin languages reviewed without Kotlin formatting."
+}

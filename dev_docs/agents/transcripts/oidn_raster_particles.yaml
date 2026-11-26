@@ -26,7 +26,6 @@ operations:
       frame: { x: 320.0, y: 180.0, w: 340.0, h: 120.0 }
       properties:
         code: |
-          import afield.graphics.vulkan.targets.RenderToTexture
           import org.lwjgl.vulkan.VK10.VK_FORMAT_R32G32B32A32_SFLOAT
 
           // A 640 x 360 float target, drawn every frame.

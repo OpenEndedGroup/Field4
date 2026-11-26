@@ -2006,7 +2006,13 @@ fun squircleRectFrom(
 fun squircleGauge(n: Double): Double
 fun squircleExponent(gauge: Double): Double
 fun squircleCurvatureProfile(style: SquircleStyle, gauge: Double, samplesPerPiece: Int = 200): List<Vec2>
-fun FLine.superellipseDeviation(n: Double, center: Vec2 = vec(0, 0), rx: Double = 1.0, ry: Double = rx, samples: Int = 2000): Double
+fun FLine.superellipseDeviation(
+    n: Double,
+    center: Vec2 = vec(0, 0),
+    rx: Double = 1.0,
+    ry: Double = rx,
+    samples: Int = 2000,
+): Double
 ```
 
 Every style takes the same number, the **gauge**: on a squircle of radius 1, the point halfway round each corner sits at `(gauge, gauge)`. A circle has gauge 0.707 and a square has gauge 1. The best-known squircle, the superellipse `|x|^n + |y|^n = 1`, has gauge `0.5^(1/n)`; `squircleGauge(n)` and `squircleExponent(gauge)` convert between the two. With one gauge, all the styles pass through the same midpoint and differ only in how they get there. The constructions and the comparison follow the Linebender wiki's [survey of squircles](https://linebender.org/wiki/curves/squircle/).
@@ -2041,18 +2047,20 @@ val drawn = ArrayList<FLine>()
 for ((i, style) in styles.withIndex()) {
     val left = 20.0 + i * 130
 
-    drawn += squircleFrom(vec(left + 55, 70), 50.0, gauge = gauge, style = style).apply {
-        thickness = 3.0
-        color = colors[i]
-    }
+    drawn +=
+        squircleFrom(vec(left + 55, 70), 50.0, gauge = gauge, style = style).apply {
+            thickness = 3.0
+            color = colors[i]
+        }
 
     // curvature against distance round one corner: 110 wide, 25 per unit of curvature
     val profile = squircleCurvatureProfile(style, gauge)
     val length = profile.last().x
-    drawn += polylineFrom(profile.map { vec(left + it.x / length * 110, 230 - it.y * 25) }).apply {
-        thickness = 2.0
-        color = colors[i]
-    }
+    drawn +=
+        polylineFrom(profile.map { vec(left + it.x / length * 110, 230 - it.y * 25) }).apply {
+            thickness = 2.0
+            color = colors[i]
+        }
     drawn += polylineFrom([vec(left, 230), vec(left + 110, 230)]).apply { color = vec(1.0, 1.0, 1.0, 0.3) }
 }
 
@@ -2081,12 +2089,13 @@ fun deviationPlot(style: SquircleStyle, y0: Double): FLine {
     val shape = squircleFrom(vec(0, 0), 1.0, gauge = squircleGauge(n), style = style)
     val cursor = shape.cursor()
     val total = cursor.lengthD()
-    val points = (0..800).map { i ->
-        cursor.setD(total * i / 800)
-        val p = cursor.position()
-        val r = Math.pow(Math.pow(Math.abs(p.x.toDouble()), n) + Math.pow(Math.abs(p.y.toDouble()), n), 1 / n)
-        vec(20 + i * 0.75, y0 - (r - 1) * 10000)
-    }
+    val points =
+        (0..800).map { i ->
+            cursor.setD(total * i / 800)
+            val p = cursor.position()
+            val r = Math.pow(Math.pow(Math.abs(p.x.toDouble()), n) + Math.pow(Math.abs(p.y.toDouble()), n), 1 / n)
+            vec(20 + i * 0.75, y0 - (r - 1) * 10000)
+        }
     return polylineFrom(points)
 }
 
@@ -2121,10 +2130,11 @@ for ((i, style) in [SquircleStyle.Figma, SquircleStyle.Clothoid].withIndex()) {
         color = tint
     }
     drawn += corners.curvatureComb(scale = 500.0, samples = 300).apply { color = vec(tint.x, tint.y, tint.z, 0.5) }
-    drawn += squircleRectFrom(x, 20.0, 200.0, 120.0, radius = 50.0, gauge = Math.sqrt(0.5)).apply {
-        thickness = 1.0
-        color = vec(1.0, 1.0, 1.0, 0.7)
-    }
+    drawn +=
+        squircleRectFrom(x, 20.0, 200.0, 120.0, radius = 50.0, gauge = Math.sqrt(0.5)).apply {
+            thickness = 1.0
+            color = vec(1.0, 1.0, 1.0, 0.7)
+        }
     drawn += corners
 }
 
@@ -2283,9 +2293,10 @@ val lighthouse = vectorScene {
 }
 
 // four quarter turns, side by side
-val views = (0 until 4).flatMap { k ->
-    lighthouse.render(yaw = 0.4 + k * Math.PI / 2, pitch = -0.35).map { it + vec(k * 330.0, 0.0) }
-}
+val views =
+    (0 until 4).flatMap { k ->
+        lighthouse.render(yaw = 0.4 + k * Math.PI / 2, pitch = -0.35).map { it + vec(k * 330.0, 0.0) }
+    }
 lines(views, w = 720.0, h = 220.0, fitToSize = true)
 ```
 
@@ -2326,8 +2337,9 @@ val model = vectorScene {
 }
 val flat = model.render(yaw = 0.5, pitch = -0.3, shading = Shading.FLAT)
 val soft = model.render(yaw = 0.5, pitch = -0.3, shading = Shading.SOFT).map { it + vec(160.0, 0.0) }
-val plotted = model.render(yaw = 0.5, pitch = -0.3, shading = Shading.NONE, outline = vec(0.1, 0.1, 0.1, 1.0))
-    .map { it + vec(320.0, 0.0) }
+val plotted = model.render(yaw = 0.5, pitch = -0.3, shading = Shading.NONE, outline = vec(0.1, 0.1, 0.1, 1.0)).map {
+    it + vec(320.0, 0.0)
+}
 lines(flat + soft + plotted, w = 600.0, h = 220.0, fitToSize = true)
 ```
 
@@ -2348,41 +2360,69 @@ from a per-pixel depth test. Averaged over eight camera turns of the scenes abov
 val white = vec(0.94, 0.93, 0.89, 1.0)
 val red = vec(0.82, 0.22, 0.2, 1.0)
 val scenes = mapOf(
-    "lighthouse" to vectorScene {
-        segments(20)
-        group({ translate(0.0, -6.0, 0.0) }) { box(260.0, 12.0, 200.0, vec(0.35, 0.55, 0.4, 1.0)) }
-        cylinder(34.0, 180.0, white, topRadius = 22.0)
-        group({ translate(0.0, 180.0, 0.0) }) { cone(24.0, 26.0, red) }
-        group({ translate(80.0, 25.0, 30.0) }) { box(70.0, 50.0, 50.0, white, top = red) }
-        group({ translate(-70.0, 0.0, 50.0) }) { hemisphere(22.0, vec(0.55, 0.52, 0.5, 1.0)) }
-    },
-    "village" to vectorScene {
-        segments(16)
-        group({ translate(0.0, -4.0, 0.0) }) { box(400.0, 8.0, 400.0, vec(0.4, 0.6, 0.4, 1.0)) }
-        for (i in 0 until 4) for (j in 0 until 4) group({ translate(i * 90.0 - 135.0, 20.0, j * 90.0 - 135.0); rotateY(i * 0.7 + j) }) {
-            box(50.0, 40.0, 36.0, white, top = red)
-            group({ translate(30.0, -20.0, 30.0) }) { cylinder(6.0, 50.0, vec(0.5, 0.35, 0.2, 1.0)) }
-        }
-    },
-    "sticks" to vectorScene {
-        for (k in 0 until 12) group({ rotateY(k * 0.52); rotateZ(0.3) }) {
-            line(-120.0, k * 6.0, -30.0, 120.0, k * 6.0, 30.0, width = 12.0, color = vec(0.3 + k * 0.05, 0.5, 0.8, 1.0))
-        }
-    },
+    "lighthouse" to
+        vectorScene {
+            segments(20)
+            group({ translate(0.0, -6.0, 0.0) }) { box(260.0, 12.0, 200.0, vec(0.35, 0.55, 0.4, 1.0)) }
+            cylinder(34.0, 180.0, white, topRadius = 22.0)
+            group({ translate(0.0, 180.0, 0.0) }) { cone(24.0, 26.0, red) }
+            group({ translate(80.0, 25.0, 30.0) }) { box(70.0, 50.0, 50.0, white, top = red) }
+            group({ translate(-70.0, 0.0, 50.0) }) { hemisphere(22.0, vec(0.55, 0.52, 0.5, 1.0)) }
+        },
+    "village" to
+        vectorScene {
+            segments(16)
+            group({ translate(0.0, -4.0, 0.0) }) { box(400.0, 8.0, 400.0, vec(0.4, 0.6, 0.4, 1.0)) }
+            for (i in 0 until 4) for (j in 0 until 4) group(
+                {
+                    translate(i * 90.0 - 135.0, 20.0, j * 90.0 - 135.0)
+                    rotateY(i * 0.7 + j)
+                },
+            ) {
+                box(50.0, 40.0, 36.0, white, top = red)
+                group({ translate(30.0, -20.0, 30.0) }) { cylinder(6.0, 50.0, vec(0.5, 0.35, 0.2, 1.0)) }
+            }
+        },
+    "sticks" to
+        vectorScene {
+            for (k in 0 until 12) group(
+                {
+                    rotateY(k * 0.52)
+                    rotateZ(0.3)
+                },
+            ) {
+                line(
+                    -120.0,
+                    k * 6.0,
+                    -30.0,
+                    120.0,
+                    k * 6.0,
+                    30.0,
+                    width = 12.0,
+                    color = vec(0.3 + k * 0.05, 0.5, 0.8, 1.0),
+                )
+            }
+        },
 )
 fun pct(s: VectorScene, mode: DepthOrder): String {
-    var wrong = 0; var covered = 0
+    var wrong = 0
+    var covered = 0
     for (k in 0 until 8) {
         val (w, c) = s.wrongOrderShare(yaw = k * Math.PI / 4, pitch = -0.35, mode = mode, w = 200, h = 200)
-        wrong += w; covered += c
+        wrong += w
+        covered += c
     }
     return "%.2f%%".format(100.0 * wrong / covered)
 }
-val rows = scenes.entries.joinToString("") { (name, s) ->
-    "<tr><td>$name</td><td>${pct(s, DepthOrder.CENTROID)}</td><td>${pct(s, DepthOrder.PAIRWISE)}</td></tr>"
-}
-display("main", """<table style="font:14px sans-serif;border-collapse:collapse" cellpadding="6">
-<tr><th align="left">scene</th><th>centroid sort</th><th>pairwise</th></tr>$rows</table>""")
+val rows =
+    scenes.entries.joinToString("") { (name, s) ->
+        "<tr><td>$name</td><td>${pct(s, DepthOrder.CENTROID)}</td><td>${pct(s, DepthOrder.PAIRWISE)}</td></tr>"
+    }
+display(
+    "main",
+    """<table style="font:14px sans-serif;border-collapse:collapse" cellpadding="6">
+<tr><th align="left">scene</th><th>centroid sort</th><th>pairwise</th></tr>$rows</table>""",
+)
 ```
 
 ??? aside "Where this comes from"
@@ -2436,7 +2476,9 @@ val ringed = vectorScene {
 val t0 = System.nanoTime()
 val left = carved.render(yaw = 0.45, pitch = -0.75, scale = 150.0, shading = Shading.FLAT)
 val right = ringed.render(yaw = 0.3, pitch = -0.6, scale = 120.0).map { it + vec(380.0, 0.0) }
-println("${relief.triangleCount + ring.triangleCount} triangles, ${left.size + right.size} FLines, ordered in ${(System.nanoTime() - t0) / 1_000_000} ms")
+println(
+    "${relief.triangleCount + ring.triangleCount} triangles, ${left.size + right.size} FLines, ordered in ${(System.nanoTime() - t0) / 1_000_000} ms",
+)
 lines(left + right, w = 680.0, h = 300.0, fitToSize = true)
 ```
 

@@ -7,7 +7,7 @@ val graph = readingDiagram {
     val bottom = point("bottom", 0, -.12, pinned = true)
     val sum = text("sum", "1 + 3 + 5 + 7 = 4 × 4", top)
     sum.all.annotate("the whole identity")
-    for (odd in listOf("1", "3", "5", "7")) sum.word(odd).annotate("the odd number " + odd)
+    for (odd in ["1", "3", "5", "7"]) sum.word(odd).annotate("the odd number " + odd)
     sum.span("4 × 4").annotate("the square it makes")
     val gloss = text("gloss", "odd numbers wrap a square", bottom)
     gloss.word("odd").annotate("each term is 2i + 1")

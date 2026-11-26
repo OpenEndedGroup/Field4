@@ -34,12 +34,11 @@ start(renderer::run)
 <!-- field-box id="fcg_fill" index="1" -->
 
 ```edn [field-box id="fcg_fill" role="properties"]
-{"id" "fcg_fill" "index" 1 "name" "fill FLines into the mask buffer" "parents" ["root" "fcg_renderer"] "children" ["fcg_draw"] "properties" {"children" #{#afield/box "fcg_draw"} "parents" #{#afield/box "root" #afield/box "fcg_renderer"} "name" "fill FLines into the mask buffer" "_tombstone" false "frame" #afield/rect [40.0 200.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fcg_fill_code_.kt" "lines" 100 "characters" 3547 "sha256" "c09bf9fd1fe7cbc781ccc2fb711282d7cd6373d68e8dd1b366ac5f9075591f3e"}]}
+{"id" "fcg_fill" "index" 1 "name" "fill FLines into the mask buffer" "parents" ["root" "fcg_renderer"] "children" ["fcg_draw"] "properties" {"children" #{#afield/box "fcg_draw"} "parents" #{#afield/box "root" #afield/box "fcg_renderer"} "name" "fill FLines into the mask buffer" "_tombstone" false "frame" #afield/rect [40.0 200.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fcg_fill_code_.kt" "lines" 99 "characters" 3519 "sha256" "d08d5a6c5120772b53ebd2c3444f71805f96f049913cf1bc21f33498ffa4e11f"}]}
 ```
 
 ```kotlin [field-property box="fcg_fill" name="code" path="fcg_fill_code_.kt"]
 import afield.graphics.nile.FillRule
-import afield.media.image.*
 
 val W = 160
 val H = 100

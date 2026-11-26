@@ -602,7 +602,9 @@ fun spectrogramDb(shaper: SignalProcessor): Array<DoubleArray> {
     val spec = stft(samples, fftSize = 2048, hopSize = 512, window = WindowType.HANN, sampleRate = 48_000.0)
     val mags = spec.magnitudes()
     val peak = spec.maxMagnitude()
-    return Array(spec.numFrames) { f -> DoubleArray(spec.numBins) { b -> 20.0 * log10((mags[f][b] / peak).coerceAtLeast(1e-5)) } }
+    return Array(spec.numFrames) { f ->
+        DoubleArray(spec.numBins) { b -> 20.0 * log10((mags[f][b] / peak).coerceAtLeast(1e-5)) }
+    }
 }
 
 showHeatmap(
@@ -636,9 +638,11 @@ at both orders. Every peak that is not a multiple of 4.1 kHz is an alias:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/tpt_filters/adaa_spectrum.png" wait="2.0" capture="box" open-outputs="true" padding="20"}
 :::static
-// dB relative to the fundamental, floored at −120. The first 0.1 s is dropped: a shaper's
-// history starts at zero, which a running sine never has, and that first sample would show as a
-// flat floor under every bin.
+/*
+dB relative to the fundamental, floored at −120. The first 0.1 s is dropped: a shaper's
+history starts at zero, which a running sine never has, and that first sample would show as a
+flat floor under every bin.
+*/
 fun spectrumDb(shaper: SignalProcessor): List<Double> {
     val out = renderSignalsOffline(1.1, SineOsc(4100.p) / shaper)[0]
     val db = fft(out.copyOfRange(4800, out.size), 48_000.0).magnitudeDbOneSided(floorDb = -200.0)
@@ -1448,3 +1452,7 @@ and [Continuing a gesture](temporal_memory.md).
 
 - Filter implementations: [`Korg35`](reference/synthesis.md#filters-kt-korg35), [`TptOnePole`](reference/synthesis.md#filters-kt-tptonepole), [`TiltEQ`](reference/synthesis.md#filters-kt-tilteq), [`AdaaShaper`](reference/synthesis.md#filters-kt-adaashaper), [`ZdfLadder`](reference/synthesis.md#filters-kt-zdfladder), [`ZdfSvf`](reference/synthesis.md#filters-kt-zdfsvf), [`Smoother`](reference/synthesis.md#filters-kt-smoother).
 - Prediction and resynthesis: [`Lpc`](reference/audio.md#lpc-kt-lpc), [`Lpc.analyze`](reference/audio.md#lpc-kt--lpc--analyze), [`LpcVocoder`](reference/audio.md#lpc-kt-lpcvocoder).
+
+- Signal and filter implementations: [`SineOsc`](reference/synthesis.md#oscillators-kt-sineosc), [`Waveshaper`](reference/synthesis.md#effects-kt-waveshaper), [`Waveshaper.tanh`](reference/synthesis.md#effects-kt--waveshaper-companion--tanh), [`SamplesSignal`](reference/synthesis.md#subharmonic-kt-samplessignal).
+
+- Speech, samples and resynthesis: [`Speech`](reference/synthesis.md#speech-kt-speech), [`speak`](reference/synthesis.md#speech-kt--speak), [`Speech.resampled`](reference/synthesis.md#speech-kt--speech--resampled), [`Speech.pattern`](reference/synthesis.md#speech-kt--speech--pattern), [`Speech.sungOn`](reference/synthesis.md#speech-kt--speech--sungon), [`DirtRender`](reference/audio.md#dirtrender-kt-dirtrender), [`DirtRender.requirePinnedLibrary`](reference/audio.md#dirtrender-kt--dirtrender--requirepinnedlibrary).

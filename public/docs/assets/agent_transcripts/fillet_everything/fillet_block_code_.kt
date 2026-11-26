@@ -1,8 +1,5 @@
-import afield.geometry.mesh.TriMesh
-import afield.geometry.mesh.weld
 import afield.geometry.solid.solidcraft.SolidCraftLibrary
 import afield.geometry.solid.solidcraft.solidCraft
-import kotlin.math.PI
 
 /*
 A 40 × 30 × 10 block with every edge rounded. Where three rounds meet, the rolling ball leaves
@@ -10,7 +7,7 @@ an eighth of a sphere, so the whole part has a closed-form volume to check Solid
 At r = 5, half the block's depth, the rounds on its top and bottom meet.
 */
 val (a, b, c) = Triple(40.0, 30.0, 10.0)
-val radii = listOf(1.0, 2.0, 4.0, 5.0) // mm
+val radii = [1.0, 2.0, 4.0, 5.0] // mm
 
 fun roundedBlock(r: Double): Double {
     val (x, y, z) = Triple(a - 2 * r, b - 2 * r, c - 2 * r)

@@ -29,7 +29,8 @@ loop {
     frames++
     if (!finished && frames >= 45 * (steps + 1)) {
         val detail = reducer.stepDetailed(net)
-        if (detail == null) finished = true else {
+        if (detail == null) finished = true
+        else {
             steps++
             lastRule = detail.ruleName
         }
@@ -46,11 +47,7 @@ loop {
     display("net", net.toPngBytes(540, 540, view))
 
     val answer = if (finished) " · reads back as ${LambdaTerms.format(LambdaTerms.readback(compiled))}" else ""
-    display(
-        "stats",
-        "<div style='font-family:monospace;font-size:14px'>$term · step $steps · $lastRule · " +
-            "${net.nodes.size} agents$answer</div>",
-    )
+    markdown("stats", "`$term` · step $steps · $lastRule · ${net.nodes.size} agents$answer")
     frame()
 }
 ```
@@ -413,10 +410,9 @@ loop {
     display("net", net.toPngBytes(540, 540, view, label = NetPrograms::label))
 
     val answer = NetPrograms.resultOf(net)?.let { " · solutions = $it" } ?: ""
-    display(
+    markdown(
         "stats",
-        "<div style='font-family:monospace;font-size:14px'>round $round · $lastFired firing · " +
-            "$interactions interactions · ${net.nodes.size} agents · widest $widest$answer</div>",
+        "round $round · $lastFired firing · $interactions interactions · ${net.nodes.size} agents · widest $widest$answer",
     )
     frame()
 }
@@ -451,8 +447,9 @@ net.relax(60)
 val before = stage("main, as compiled", net.toFLines(), net.summaryHtml("main, as compiled", maxNodes = 0))
 repeat(rounds / 2) { reducer.stepFrontier(net) }
 net.relax(60)
-val middle = stage("after ${rounds / 2} rounds", net.toFLines(), net.summaryHtml("after ${rounds / 2} rounds", maxNodes = 0))
-while (reducer.stepFrontier(net).isNotEmpty()) { }
+val middle =
+    stage("after ${rounds / 2} rounds", net.toFLines(), net.summaryHtml("after ${rounds / 2} rounds", maxNodes = 0))
+while (reducer.stepFrontier(net).isNotEmpty()) {}
 net.relax(20)
 val after = stage("after $rounds rounds", net.toFLines(), net.summaryHtml("after $rounds rounds", maxNodes = 0))
 
@@ -466,8 +463,10 @@ showInteractionStages(
     graphicTitle = "sum(3): compiled, halfway, answer",
 )
 
-println("sum(3) = ${NetPrograms.resultOf(net)} in $rounds rounds; templates: " +
-    compiled.templates.joinToString { "${it.name} ${it.size}" })
+println(
+    "sum(3) = ${NetPrograms.resultOf(net)} in $rounds rounds; templates: " +
+        compiled.templates.joinToString { "${it.name} ${it.size}" },
+)
 ```
 
 ## A small gallery of programs
@@ -505,11 +504,27 @@ val unshared = netProgram {
 
 // The same functions by ordinary recursion, counting calls.
 var calls = 0
-fun sumK(k: Int): Long { calls++; return if (k == 0) 0 else k + sumK(k - 1) }
-fun fibK(k: Int): Long { calls++; return if (k < 2) k.toLong() else fibK(k - 1) + fibK(k - 2) }
-fun powK(k: Int): Long { calls++; return if (k == 0) 1 else powK(k - 1).let { it + it } }
-fun pow2K(k: Int): Long { calls++; return if (k == 0) 1 else pow2K(k - 1) + pow2K(k - 1) }
-fun counted(f: () -> Long): Pair<Long, Int> { calls = 0; val v = f(); return v to calls }
+fun sumK(k: Int): Long {
+    calls++
+    return if (k == 0) 0 else k + sumK(k - 1)
+}
+fun fibK(k: Int): Long {
+    calls++
+    return if (k < 2) k.toLong() else fibK(k - 1) + fibK(k - 2)
+}
+fun powK(k: Int): Long {
+    calls++
+    return if (k == 0) 1 else powK(k - 1).let { it + it }
+}
+fun pow2K(k: Int): Long {
+    calls++
+    return if (k == 0) 1 else pow2K(k - 1) + pow2K(k - 1)
+}
+fun counted(f: () -> Long): Pair<Long, Int> {
+    calls = 0
+    val v = f()
+    return v to calls
+}
 
 val rows = [
     Triple("sum 40", sum, counted { sumK(40) }),
@@ -535,10 +550,14 @@ val table = StringBuilder("| program | answer | reactions | rounds | widest roun
 table.append("| --- | --- | --- | --- | --- | --- | --- |\n")
 rows.zip(runs).forEach { (row, named) ->
     val run = named.second
-    table.append("| ${row.first} | ${run.value} | ${run.interactions} | ${run.rounds} | ${run.widest} | ${run.peakAgents} | ${row.third.second} |\n")
-    println("${row.first}: value=${run.value} reference=${row.third.first} interactions=${run.interactions} " +
-        "rounds=${run.rounds} widest=${run.widest} peak=${run.peakAgents} calls=${row.third.second} " +
-        "stuck=${run.stuck} rules=${run.ruleCounts}")
+    table.append(
+        "| ${row.first} | ${run.value} | ${run.interactions} | ${run.rounds} | ${run.widest} | ${run.peakAgents} | ${row.third.second} |\n",
+    )
+    println(
+        "${row.first}: value=${run.value} reference=${row.third.first} interactions=${run.interactions} " +
+            "rounds=${run.rounds} widest=${run.widest} peak=${run.peakAgents} calls=${row.third.second} " +
+            "stuck=${run.stuck} rules=${run.ruleCounts}",
+    )
 }
 markdown("table", table.toString())
 ```
@@ -645,3 +664,7 @@ Field, open the [interaction_nets_lambda](agent_transcripts.md#interaction_nets_
   [`normalise`](reference/visualization.md#lambdaterms-kt--lambdaterms--normalise),
   [`parse`](reference/visualization.md#lambdaterms-kt--lambdaterms--parse),
   [`referenceNormalOrder`](reference/visualization.md#lambdaterms-kt--lambdaterms--referencenormalorder).
+
+## API reference
+
+- Compiling and reducing nets: [`LambdaTerms.readback`](reference/visualization.md#lambdaterms-kt--lambdaterms--readback), [`Reducer`](reference/visualization.md#interactionnets-kt-reducer), [`Reducer.stepDetailed`](reference/visualization.md#interactionnets-kt--reducer--stepdetailed), [`NetPrograms.compile`](reference/data.md#netprograms-kt--netprograms--compile), [`NetPrograms.run`](reference/data.md#netprograms-kt--netprograms--run-2).

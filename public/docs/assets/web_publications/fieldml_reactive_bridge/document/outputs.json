@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-22T18:51:11.961Z",
+  "capturedAt": "2026-11-26T11:45:16.250Z",
   "documentName": "fieldml_reactive_bridge",
   "outputs": [
     {
@@ -8,10 +8,22 @@
       "channel": "values",
       "open": true,
       "warnings": [],
-      "kinds": [],
-      "width": 328,
-      "height": 98,
+      "kinds": [
+        "svg"
+      ],
+      "width": 336,
+      "height": 61,
       "path": "outputs/0.html"
+    },
+    {
+      "uid": "exposure_meters",
+      "channel": "readout",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 227,
+      "height": 40,
+      "path": "outputs/1.html"
     },
     {
       "uid": "exposure_slider",
@@ -23,7 +35,7 @@
       ],
       "width": 473,
       "height": 54,
-      "path": "outputs/1.html"
+      "path": "outputs/2.html"
     }
   ]
 }

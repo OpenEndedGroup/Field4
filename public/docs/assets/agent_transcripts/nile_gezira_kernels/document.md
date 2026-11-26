@@ -11,17 +11,17 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="gezira_stroke" index="0" -->
 
 ```edn [field-box id="gezira_stroke" role="properties"]
-{"id" "gezira_stroke" "index" 0 "name" "stroke kernel" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "stroke kernel" "_tombstone" false "frame" #afield/rect [40.0 1200.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gezira_stroke_code_.kt" "lines" 20 "characters" 673 "sha256" "3f11422b933f787491d7c2c4a9426eb0be1bb6a6f53ac829c5cf8b62625665a8"}]}
+{"id" "gezira_stroke" "index" 0 "name" "stroke kernel" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "stroke kernel" "_tombstone" false "frame" #afield/rect [40.0 1200.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gezira_stroke_code_.kt" "lines" 20 "characters" 661 "sha256" "ad7668620c81d4524d65f6b328ac219263691bbbbd9af7582ef6244d8f917e63"}]}
 ```
 
 ```kotlin [field-property box="gezira_stroke" name="code" path="gezira_stroke_code_.kt"]
 import afield.graphics.nile.*
 
 // An open wave of two cubics, stroked 2 pixels wide, on a 48 x 24 grid.
-val wave = listOf(
+val wave = [
     Bezier(doubleArrayOf(3.0, 12.0, 10.0, 0.0, 17.0, 24.0, 24.0, 12.0)),
     Bezier(doubleArrayOf(24.0, 12.0, 31.0, 0.0, 38.0, 24.0, 45.0, 12.0)),
-)
+]
 val t = (GeziraStroke.strokeBezierPath(2.0) then Gezira.rasterizer).trace(wave)
 println(t)
 
@@ -29,7 +29,7 @@ val s = 16.0
 val outline = t.get<Bezier>("StrokeBezierPath")
 val spans = t.get<Span>("WindingSpans")
 lines(
-    listOf(Gezira.grid(48, 24, s)) +
+    [Gezira.grid(48, 24, s)] +
         Gezira.pixels(Gezira.coverage(spans, 48, 24), 48, s) +
         Gezira.pieces(outline, s) +
         Gezira.cuts(outline, s),
@@ -94,7 +94,7 @@ lines(Gezira.pixels(skia, 360, 2.0), channel = "skia")
 <!-- field-box id="gezira_new_kernel" index="3" -->
 
 ```edn [field-box id="gezira_new_kernel" role="properties"]
-{"id" "gezira_new_kernel" "index" 3 "name" "a new kernel" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a new kernel" "_tombstone" false "frame" #afield/rect [1480.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gezira_new_kernel_code_.kt" "lines" 28 "characters" 1023 "sha256" "e7db74051659f363febb15b8c5db88dbdfcf09606aaf93437d067a837cc3c91c"}]}
+{"id" "gezira_new_kernel" "index" 3 "name" "a new kernel" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a new kernel" "_tombstone" false "frame" #afield/rect [1480.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gezira_new_kernel_code_.kt" "lines" 28 "characters" 1017 "sha256" "0a856541d24269c3208851bc7d78ab41fd5534b3f4fa38a2760ad44fee4e6b93"}]}
 ```
 
 ```kotlin [field-property box="gezira_new_kernel" name="code" path="gezira_new_kernel_code_.kt"]
@@ -121,7 +121,7 @@ println(t)
 val px = 24.0
 val spans = t.get<Span>("CombineEdgeSamples")
 lines(
-    listOf(Gezira.grid(16, 16, px)) +
+    [Gezira.grid(16, 16, px)] +
         Gezira.pixels(Gezira.coverage(spans, 16, 16), 16, px) +
         Gezira.pieces(t.get("DecomposeBeziers"), px),
     channel = "rotated",
@@ -133,7 +133,7 @@ lines(
 <!-- field-box id="gezira_streams" index="4" -->
 
 ```edn [field-box id="gezira_streams" role="properties"]
-{"id" "gezira_streams" "index" 4 "name" "gezira streams" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "gezira streams" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gezira_streams_code_.kt" "lines" 26 "characters" 929 "sha256" "6c1fb68b10a2b2170397b7561884690acc4beb4dc4e0f3ff7f2fdca9cb83ad9a"}]}
+{"id" "gezira_streams" "index" 4 "name" "gezira streams" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "gezira streams" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gezira_streams_code_.kt" "lines" 26 "characters" 911 "sha256" "df99c2a9851299248213344b1534c9c829f6980c87af853b2dc01fc2ddffa6f0"}]}
 ```
 
 ```kotlin [field-property box="gezira_streams" name="code" path="gezira_streams_code_.kt"]
@@ -154,13 +154,13 @@ val s = 32.0
 val pieces = t.get<Bezier>("DecomposeBeziers")
 val samples = t.get<EdgeSample>("EdgeSamples")
 val spans = t.get<Span>("CombineEdgeSamples")
-lines(listOf(Gezira.grid(16, 12, s)) + Gezira.pieces(pieces, s) + Gezira.cuts(pieces, s), channel = "1 pieces")
+lines([Gezira.grid(16, 12, s)] + Gezira.pieces(pieces, s) + Gezira.cuts(pieces, s), channel = "1 pieces")
 lines(
-    listOf(Gezira.grid(16, 12, s)) + Gezira.outline(shape, s) + Gezira.samples(samples, s),
+    [Gezira.grid(16, 12, s)] + Gezira.outline(shape, s) + Gezira.samples(samples, s),
     channel = "2 edge samples",
 )
 lines(
-    listOf(Gezira.grid(16, 12, s)) + Gezira.pixels(Gezira.coverage(spans, 16, 12), 16, s) + Gezira.spans(spans, s),
+    [Gezira.grid(16, 12, s)] + Gezira.pixels(Gezira.coverage(spans, 16, 12), 16, s) + Gezira.spans(spans, s),
     channel = "3 spans",
 )
 ```

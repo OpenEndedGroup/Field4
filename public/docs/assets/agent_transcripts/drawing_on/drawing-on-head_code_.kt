@@ -8,7 +8,7 @@ val plan =
 plan.color = vec(1.0, 1.0, 1.0, 0.45)
 
 fun showPlan(extra: List<FLine> = emptyList()) {
-    val drawing = listOf(plan) + extra
+    val drawing = [plan] + extra
     pad.publish(drawing, title = "Studio plan")
     lines(drawing, w = 640.0, h = 520.0)
 }
@@ -30,7 +30,7 @@ pad.onEvent { event ->
                 val (x, y) = point
                 val marker = FLine().moveTo(x - 12, y).lineTo(x + 12, y).moveTo(x, y - 12).lineTo(x, y + 12)
                 marker.color = vec(1.0, 1.0, 1.0, 0.8)
-                showPlan(listOf(marker))
+                showPlan([marker])
                 println("Pencil endpoint ($x, $y) at ${event.time}s")
             }
         }

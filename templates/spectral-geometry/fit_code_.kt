@@ -54,8 +54,7 @@ go {
         ) { fitted ->
             display("progress", "Refined ${fitted.waves.size} / $budget plane waves")
         }
-        listOf("Cartesian FFT" to fft, "Fixed shells" to fixed, "Adaptive discovery" to adaptive).map {
-            (name, field) ->
+        ["Cartesian FFT" to fft, "Fixed shells" to fixed, "Adaptive discovery" to adaptive].map { (name, field) ->
             val rms = sqrt(
                 heldOut
                     .map { sample ->

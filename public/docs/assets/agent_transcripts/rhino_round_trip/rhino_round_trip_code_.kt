@@ -1,6 +1,4 @@
-import afield.geometry.mesh.TriMesh
 import afield.geometry.rhino.*
-import kotlin.math.*
 
 // Write one of each kind of object to a .3dm, read it back, and measure what survived against
 // the exact shapes; without the openNURBS wrapper, say how to build it

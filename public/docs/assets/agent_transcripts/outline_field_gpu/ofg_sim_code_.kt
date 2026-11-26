@@ -1,6 +1,3 @@
-import afield.geometry.mesh.signedDistance2D
-import afield.media.image.*
-
 var simModule = computeModuleHere {}
 var sim = ComputeMesh()
 simModule += "step" to sim
@@ -21,9 +18,9 @@ val drawn = mutableListOf<FLine>()
 var pendingWalls = false
 
 // FLines -> exact signed distance -> one float per cell in the mapped wall buffer.
-var field = listOf(ring, bar).signedDistance2D()
+var field = [ring, bar].signedDistance2D()
 fun uploadWalls() {
-    field = (listOf(ring, bar) + drawn).signedDistance2D()
+    field = ([ring, bar] + drawn).signedDistance2D()
     wall.mapAndWrite { bufferCanvas(this, width = W, height = H).sample(field, x0 = 0.0, y0 = 0.0, cell = 1.0) }
 }
 uploadWalls()

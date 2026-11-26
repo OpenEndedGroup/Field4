@@ -46,13 +46,17 @@ lines(
 
 <!-- field-box id="geodesic-vs-euclidean" index="1" -->
 
+### Narrative
+
+From `code`
+
+A sheet with a deep fold down the middle: the far wall is close through the air and far along the stone.
+
 ```edn [field-box id="geodesic-vs-euclidean" role="properties"]
-{"id" "geodesic-vs-euclidean" "index" 1 "name" "Geodesic vs straight-line distance on a folded sheet" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Geodesic vs straight-line distance on a folded sheet" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "geodesic-vs-euclidean_code_.kt" "lines" 35 "characters" 1471 "sha256" "15609ef8db7e2407d596a7ad464420cb08832dbd5e70f3952c07a0db155869ed"}]}
+{"id" "geodesic-vs-euclidean" "index" 1 "name" "Geodesic vs straight-line distance on a folded sheet" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Geodesic vs straight-line distance on a folded sheet" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "geodesic-vs-euclidean_code_.kt" "lines" 32 "characters" 1411 "sha256" "5cc4f39c7fbf1bf5dd42ff9a006e9497884fa7b2df5dcfbeb623642900a1159f"}]}
 ```
 
 ```kotlin [field-property box="geodesic-vs-euclidean" name="code" path="geodesic-vs-euclidean_code_.kt"]
-import afield.graphics.three.ThreeCameraSpec
-
 // A sheet with a deep fold down the middle: the far wall is close through the air and far along the stone.
 val shell = heightfieldMesh(90, 60, 3.0, 2.0) { x, _ -> -1.1f * kotlin.math.exp(-(x * x) / 0.12f) }
 val source = shell.nearestVertex(-0.9, 0, 0)
@@ -73,8 +77,7 @@ val top = alongSurface.max()
 val view = ThreeCameraSpec(yawDegrees = 20.0, pitchDegrees = 40.0)
 three(height = 360) {
     columns(2)
-    for ((i, panelled) in
-        listOf("straight-line distance" to straight, "geodesic distance" to alongSurface).withIndex()) {
+    for ((i, panelled) in ["straight-line distance" to straight, "geodesic distance" to alongSurface].withIndex()) {
         val (title, d) = panelled
         panel(title = title, camera = view)
         mesh(shell.colouredBy(d, 0.0, top), wireframe = false, cullBackFaces = false)
@@ -92,13 +95,17 @@ three(height = 360) {
 
 <!-- field-box id="roughing-passes" index="2" -->
 
+### Narrative
+
+From `code`
+
+A part modelled as a field: a ball fused to a bar, with a fillet.
+
 ```edn [field-box id="roughing-passes" role="properties"]
-{"id" "roughing-passes" "index" 2 "name" "Isoplanar roughing passes coloured by depth" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Isoplanar roughing passes coloured by depth" "_tombstone" false "frame" #afield/rect [1020.0 60.0 420.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "roughing-passes_code_.kt" "lines" 26 "characters" 1010 "sha256" "e392b4634090c8a0196ffbc6988e71f007d3a68c23a2ab425800fcc9ec8eb197"}]}
+{"id" "roughing-passes" "index" 2 "name" "Isoplanar roughing passes coloured by depth" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Isoplanar roughing passes coloured by depth" "_tombstone" false "frame" #afield/rect [1020.0 60.0 420.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "roughing-passes_code_.kt" "lines" 24 "characters" 964 "sha256" "602b7f3832f8bccdeee69c95aa662cbe86c5bb3fd698eab34d46a30c4421912c"}]}
 ```
 
 ```kotlin [field-property box="roughing-passes" name="code" path="roughing-passes_code_.kt"]
-import afield.graphics.three.ThreeCameraSpec
-
 // A part modelled as a field: a ball fused to a bar, with a fillet.
 val part = marchingCubes(
     sdfSmoothUnion(sdfSphere(0.7), sdfBox(vec(2.0, 0.35, 0.6)), k = 0.25),
@@ -290,13 +297,17 @@ lines(shown, w = 1000.0, h = 400.0, fitToSize = true)
 
 <!-- field-box id="geodesic-spiral" index="6" -->
 
+### Narrative
+
+From `code`
+
+A carved boss: a dome with a ripple, on a square tablet.
+
 ```edn [field-box id="geodesic-spiral" role="properties"]
-{"id" "geodesic-spiral" "index" 6 "name" "Iso-geodesic rings joined into a spiral toolpath" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Iso-geodesic rings joined into a spiral toolpath" "_tombstone" false "frame" #afield/rect [540.0 60.0 420.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "geodesic-spiral_code_.kt" "lines" 25 "characters" 1228 "sha256" "3758671033cc2477e7e5622737cc14dcd535cd83ff3ee25e3e7db2785646ade1"}]}
+{"id" "geodesic-spiral" "index" 6 "name" "Iso-geodesic rings joined into a spiral toolpath" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Iso-geodesic rings joined into a spiral toolpath" "_tombstone" false "frame" #afield/rect [540.0 60.0 420.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "geodesic-spiral_code_.kt" "lines" 23 "characters" 1182 "sha256" "603479175894d87ad91b2f0ad4118af99bd313778f7c3a5da91183a2dd790afe"}]}
 ```
 
 ```kotlin [field-property box="geodesic-spiral" name="code" path="geodesic-spiral_code_.kt"]
-import afield.graphics.three.ThreeCameraSpec
-
 // A carved boss: a dome with a ripple, on a square tablet.
 val relief =
     heightfieldMesh(80, 80, 2.0, 2.0) { x, z ->

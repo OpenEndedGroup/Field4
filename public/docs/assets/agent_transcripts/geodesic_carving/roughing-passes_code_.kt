@@ -1,5 +1,3 @@
-import afield.graphics.three.ThreeCameraSpec
-
 // A part modelled as a field: a ball fused to a bar, with a fillet.
 val part = marchingCubes(
     sdfSmoothUnion(sdfSphere(0.7), sdfBox(vec(2.0, 0.35, 0.6)), k = 0.25),

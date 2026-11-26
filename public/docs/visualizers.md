@@ -1255,8 +1255,6 @@ and a filled column. The reaction grows each edit into pattern:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-buffer-paint.png" alt="six square greyscale frames of a Gray-Scott simulation, each captioned with the step and the edit just made. A thin painted V-shaped stroke and a small seed ring; the stroke grown into a band and a cloned ring at the lower left; the centre square blurred into a soft-edged block; the lower band smeared sideways by a motion blur; a black column filled through the labyrinth; and the final state, labyrinth everywhere except where the fill was" wait="1.0" capture="box" open-outputs="true" w="1100" h="200" embed=true name="buffer-paint"}
 :::static
-import afield.media.image.*
-
 val n = 160
 val u = FloatArray(n * n) { 1f }
 val v = FloatArray(n * n)
@@ -1284,12 +1282,15 @@ fun step(feed: Float = 0.037f, kill: Float = 0.06f) {
 }
 
 val edits = mapOf(
-    150 to ("stroke" to { canvas.stroke([15.0 to 20.0, 60.0 to 35.0, 140.0 to 18.0], radius = 3.0, value = floatArrayOf(0.5f)) }),
+    150 to
+        ("stroke" to
+            {
+                canvas.stroke([15.0 to 20.0, 60.0 to 35.0, 140.0 to 18.0], radius = 3.0, value = floatArrayOf(0.5f))
+            }),
     500 to ("clone" to { canvas.clone(CellRect(60, 60, 40, 40), 8, 112) }),
     850 to ("blur" to { canvas.blur(CellRect(60, 60, 40, 40), sigma = 4.0) }),
     1200 to ("motion blur" to { canvas.motionBlur(CellRect(0, 105, n, 50), length = 31) }),
     1550 to ("fill" to { canvas.fill(CellRect(104, 30, 12, 120), 0f) }),
-
 )
 
 // After each edit, keep a snapshot, viewed through a canvas of its own.
@@ -1309,7 +1310,10 @@ for (s in 1..2400) {
 }
 keep("step 2400")
 
-display("edits", "<div style='display:grid;grid-template-columns:repeat(3,auto);gap:8px'>" + shots.joinToString("") + "</div>")
+display(
+    "edits",
+    "<div style='display:grid;grid-template-columns:repeat(3,auto);gap:8px'>" + shots.joinToString("") + "</div>",
+)
 ```
 
 The same storage can be viewed two ways. A delay line is one long row: viewed as rows of 210
@@ -1319,14 +1323,13 @@ moving-average low-pass, which more than halves that pluck's RMS level:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-buffer-paint-ring.png" alt="a delay line drawn as rows of 210 samples on a grey zero, three decaying plucks as bands of light and dark stripes, the second visibly softer after a motion blur and a fourth, fainter pluck pasted after the third; the caption names the signed map; below it the RMS of the blurred and pasted regions before and after" wait="1.0" capture="box" open-outputs="true" w="900" h="200" embed=true name="buffer-paint-ring"}
 :::static
-import afield.media.image.*
-
 val rate = 44100
 val ring = FloatArray(rate / 2) // half a second of delay
 
 for (k in 0 until 3) {
     val start = k * 5000
-    for (i in 0 until 4000) ring[start + i] = (0.8 * exp(-i / 1500.0) * sin(i * 2 * PI * 220.0 * (k + 1) / rate)).toFloat()
+    for (i in 0 until 4000) ring[start + i] =
+        (0.8 * exp(-i / 1500.0) * sin(i * 2 * PI * 220.0 * (k + 1) / rate)).toFloat()
 }
 val before = ring.copyOf()
 
@@ -1429,7 +1432,7 @@ val ring = FLine().circle(96.0, 120.0, 70.0)
 val bar = FLine().rect(150.0, 150.0, 90.0, 60.0)
 var wall = defaultBuffer { size = (W * H).floats }.buffer
 
-val field = listOf(ring, bar).signedDistance2D()
+val field = [ring, bar].signedDistance2D()
 wall.mapAndWrite { bufferCanvas(this, width = W, height = H).sample(field, x0 = 0.0, y0 = 0.0, cell = 1.0) }
 ```
 
@@ -1710,8 +1713,24 @@ A segment can also test the type of the value it reaches. `::FLine` after a segm
 :::static
 val drawing = linkedMapOf(
     "outline" to fline { rect(0, 0, 100, 50) },
-    "strokes" to [fline { moveTo(0, 0); lineTo(10, 10) }, "a label"],
-    "layers" to [linkedMapOf("hatch" to fline { moveTo(0, 10); lineTo(10, 0) })],
+    "strokes" to
+        [
+            fline {
+                moveTo(0, 0)
+                lineTo(10, 10)
+            },
+            "a label",
+        ],
+    "layers" to
+        [
+            linkedMapOf(
+                "hatch" to
+                    fline {
+                        moveTo(0, 10)
+                        lineTo(10, 0)
+                    },
+            ),
+        ],
 )
 drawing.graphPaths("**::FLine").paths() // [outline, strokes/0, layers/0/hatch]
 drawing.graphLenses<FLine>().size // 3

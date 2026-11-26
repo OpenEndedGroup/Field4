@@ -11,13 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="rhino_ribbons" index="0" -->
 
 ```edn [field-box id="rhino_ribbons" role="properties"]
-{"id" "rhino_ribbons" "index" 0 "name" "1 - ribbons saved to a .3dm" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - ribbons saved to a .3dm" "_tombstone" false "frame" #afield/rect [80.0 80.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rhino_ribbons_code_.kt" "lines" 68 "characters" 2711 "sha256" "b8ff3916f71af78700f7777670b5f42771197d4eed8ea4730cb0633945680d28"}]}
+{"id" "rhino_ribbons" "index" 0 "name" "1 - ribbons saved to a .3dm" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - ribbons saved to a .3dm" "_tombstone" false "frame" #afield/rect [80.0 80.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rhino_ribbons_code_.kt" "lines" 66 "characters" 2654 "sha256" "c13bca5ebfed9f3dd1317b4cd5a5d90f9b93d856097412854f838e418bb8eaa4"}]}
 ```
 
 ```kotlin [field-property box="rhino_ribbons" name="code" path="rhino_ribbons_code_.kt"]
-import afield.geometry.mesh.TriMesh
 import afield.geometry.rhino.*
-import kotlin.math.*
 
 val dir = java.nio.file.Files.createTempDirectory("rhino-save").toFile()
 val ribbons = 14

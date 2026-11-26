@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-19T20:52:57.759Z",
+  "capturedAt": "2026-11-26T11:49:08.224Z",
   "documentName": "buffer_paint",
   "outputs": [
     {
@@ -21,7 +21,7 @@
         "Live media omitted"
       ],
       "kinds": [],
-      "width": 308,
+      "width": 312,
       "height": 188,
       "path": "outputs/1.html"
     }

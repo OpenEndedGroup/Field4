@@ -73,7 +73,7 @@ controlGroup {
 <!-- field-box id="el_hemisphere" index="1" -->
 
 ```edn [field-box id="el_hemisphere" role="properties"]
-{"id" "el_hemisphere" "index" 1 "name" "hemisphere" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "hemisphere" "_tombstone" false "frame" #afield/rect [480.0 280.0 160.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "el_hemisphere_code_.kt" "lines" 57 "characters" 2632 "sha256" "ec87b58f59d100a5d235b7eed5ea175d421623b1963397784307fd0299560eba"}]}
+{"id" "el_hemisphere" "index" 1 "name" "hemisphere" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "hemisphere" "_tombstone" false "frame" #afield/rect [480.0 280.0 160.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "el_hemisphere_code_.kt" "lines" 57 "characters" 2626 "sha256" "dee5a6a97f34b5ff9822c371e722cede8fa3e7c68fe94187a529f20e1923c982"}]}
 ```
 
 ```kotlin [field-property box="el_hemisphere" name="code" path="el_hemisphere_code_.kt"]
@@ -108,7 +108,7 @@ fun draw(across: Double) {
     val radiance = lamp.power / (PI * side * side)
     val e = irradianceAt(vec(0.0, 0.0, 0.0), vec(0.0, 1.0, 0.0), lamp).x
     val sight =
-        listOf(-0.5 to -0.5, 0.5 to -0.5, 0.5 to 0.5, -0.5 to 0.5).map { (x, z) ->
+        [-0.5 to -0.5, 0.5 to -0.5, 0.5 to 0.5, -0.5 to 0.5].map { (x, z) ->
             fline {
                 moveTo(0.0, 0.0, 0.0)
                 lineTo(across + x, 1.2, z)
@@ -833,7 +833,7 @@ A square panel 0.8 m across and its shadow on a sphere of radius one around the 
 that shadow is the panel's solid angle; move the panel away and it shrinks as the square.
 
 ```edn [field-box id="el_projected_rect" role="properties"]
-{"id" "el_projected_rect" "index" 8 "name" "projected_rect" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "projected_rect" "_tombstone" false "frame" #afield/rect [300.0 280.0 160.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "el_projected_rect_code_.kt" "lines" 50 "characters" 2213 "sha256" "e2cc0957a0d758b83ec92d8778fb6d976b50fd9fe1361430876cd4f80f3a38e6"}]}
+{"id" "el_projected_rect" "index" 8 "name" "projected_rect" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "projected_rect" "_tombstone" false "frame" #afield/rect [300.0 280.0 160.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "el_projected_rect_code_.kt" "lines" 50 "characters" 2207 "sha256" "958c794640d5fbe2fe53f552c184210d3e0d448c04489dc69264edc969b7409e"}]}
 ```
 
 ```kotlin [field-property box="el_projected_rect" name="code" path="el_projected_rect_code_.kt"]
@@ -862,7 +862,7 @@ fun draw(distance: Double) {
     for (t in 0 until shadow.triangleCount) omega += shadow.triangleArea(t)
     // From the eye through each corner of the patch to the panel's corner.
     val corners =
-        listOf(-0.4 to -0.4, 0.4 to -0.4, 0.4 to 0.4, -0.4 to 0.4).map { (x, y) ->
+        [-0.4 to -0.4, 0.4 to -0.4, 0.4 to 0.4, -0.4 to 0.4].map { (x, y) ->
             fline {
                 moveTo(0.0, 0.0, 0.0)
                 lineTo(x, y, -distance)

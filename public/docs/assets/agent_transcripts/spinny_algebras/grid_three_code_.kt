@@ -5,10 +5,10 @@ fun gridTimes(a: Double, b: Double, eps2: Double, ox: Double, tint: Vec4): List<
     val s = 40.0
     val grid =
         (-3..3).flatMap { k ->
-            listOf(
+            [
                 (0..60).map { vec(k / 3.0, -1 + it / 30.0) }, // a vertical line of the grid
                 (0..60).map { vec(-1 + it / 30.0, k / 3.0) }, // a horizontal one
-            )
+            ]
         }
     fun draw(pts: List<Vec2>, col: Vec4, t: Double) = fline {
         pts.forEachIndexed { i, p ->

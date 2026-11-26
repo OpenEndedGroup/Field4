@@ -1,5 +1,4 @@
 import afield.graphics.nile.*
-import afield.graphics.vulkan.util.GpuProbe
 
 val N = 900
 val doc = GeziraSvg.parse(GeziraSvg.tiger())

@@ -2170,8 +2170,8 @@ fat pixels. The left half calls `tcWindow` at each fat pixel's centre and the ri
 
 ```diffstatic {data-lang=glsl}
 float cover = exact
-    ? tcWindowCoverage(a, b, d, sigma, cell, cell + 1.0)
-    : tcWindow(a, b, d, sigma, cell + 0.5);
+? tcWindowCoverage(a, b, d, sigma, cell, cell + 1.0)
+: tcWindow(a, b, d, sigma, cell + 0.5);
 c = mix(c, C[i].rgb, clamp(cover * C[i].a, 0.0, 1.0));
 ```
 
@@ -2647,3 +2647,5 @@ measures RectSL's differentiable raster against exact area.
   [`addControls`](reference/alife.md#alife-lbm-kt--shaderlatticeboltzmannsystem--addcontrols),
   [`controlsParameters`](reference/alife.md#alife-lbm-kt--shaderlatticeboltzmannsystem--controlsparameters),
   [`installInto`](reference/alife.md#alife-lbm-kt--shaderlatticeboltzmannsystem--installinto).
+
+- Rasterization implementations: [`TriangleSplat`](reference/graphics.md#trianglecoverage-kt-trianglesplat), [`TriangleSplat.render`](reference/graphics.md#trianglecoverage-kt--trianglesplat--render), [`Gezira`](reference/graphics.md#gezira-kt-gezira), [`Gezira.rasterize`](reference/graphics.md#gezira-kt--gezira--rasterize), [`GeziraStroke`](reference/graphics.md#gezirapaint-kt-gezirastroke), [`GeziraStroke.strokeBezierPath`](reference/graphics.md#gezirapaint-kt--gezirastroke--strokebezierpath), [`GeziraComposite`](reference/graphics.md#gezirapaint-kt-geziracomposite), [`GeziraComposite.texture`](reference/graphics.md#gezirapaint-kt--geziracomposite--texture), [`GeziraFLine`](reference/graphics.md#gezirafline-kt-gezirafline), [`GeziraFLine.render`](reference/graphics.md#gezirafline-kt--gezirafline--render-2), [`GeziraSvg`](reference/graphics.md#gezirasvg-kt-gezirasvg), [`GeziraSvg.parse`](reference/graphics.md#gezirasvg-kt--gezirasvg--parse), [`GeziraSvg.render`](reference/graphics.md#gezirasvg-kt--gezirasvg--render), [`GeziraGpu`](reference/graphics.md#geziragpu-kt-geziragpu), [`GeziraGpu.dispatch`](reference/graphics.md#geziragpu-kt--geziragpu--dispatch), [`GeziraGpuScene`](reference/graphics.md#geziragpuscene-kt-geziragpuscene), [`GeziraGpuScene.of`](reference/graphics.md#geziragpuscene-kt--geziragpuscene-companion--of), [`Gezira.beziers`](reference/graphics.md#gezira-kt--gezira--beziers), [`GeziraGpu.stage`](reference/graphics.md#geziragpu-kt--geziragpu--stage), [`GpuProbe`](reference/graphics.md#gpuprobe-kt-gpuprobe), [`GeziraGpuScene.paths`](reference/graphics.md#geziragpuscene-kt--geziragpuscene-companion--paths).

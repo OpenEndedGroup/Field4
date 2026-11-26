@@ -11,15 +11,10 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="feedback" index="0" -->
 
 ```edn [field-box id="feedback" role="properties"]
-{"id" "feedback" "index" 0 "name" "Calibrate a distribution with feedback" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Calibrate a distribution with feedback" "_tombstone" false "frame" #afield/rect [70.0 80.0 415.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "feedback_code_.kt" "lines" 97 "characters" 3634 "sha256" "c228eb33a2a9e31fdde0e0f44f6f4326a49b88ba578ecca65517933e729a2c26"}]}
+{"id" "feedback" "index" 0 "name" "Calibrate a distribution with feedback" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Calibrate a distribution with feedback" "_tombstone" false "frame" #afield/rect [70.0 80.0 415.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "feedback_code_.kt" "lines" 92 "characters" 3430 "sha256" "fbe512c5e59e53b1606ce64d146015c2508dfef385ef2fbcb4bd44249ad74365"}]}
 ```
 
 ```kotlin [field-property box="feedback" name="code" path="feedback_code_.kt"]
-import afield.math.control.AdaptiveDistributionController
-import afield.math.control.ControllerConfig
-import afield.math.control.UniformQuantileFeatureExtractor
-import kotlin.math.sqrt
-
 val delay = 3
 val changeAt = 180
 val steps = 480
@@ -30,7 +25,7 @@ fun quantileRms(errors: DoubleArray) = sqrt(errors.sumOf { it * it } / errors.si
 
 fun runStudy(biasAfterChange: Double) {
     val config = ControllerConfig(
-        parameterNames = listOf("offset", "span correction"),
+        parameterNames = ["offset", "span correction"],
         paramMin = doubleArrayOf(-0.35, -0.5),
         paramMax = doubleArrayOf(0.35, 0.5),
         initialParams = doubleArrayOf(0.0, 0.0),
@@ -78,7 +73,7 @@ fun runStudy(biasAfterChange: Double) {
         "Loop" to feedbackError,
         x = ticks,
         xTitle = "Observation",
-        marks = listOf("Step" to changeAt),
+        marks = ["Step" to changeAt],
         width = 600,
         height = 255,
         title = "Quantile error (RMS)",
@@ -89,7 +84,7 @@ fun runStudy(biasAfterChange: Double) {
         "Span correction" to spanCorrection,
         x = ticks,
         xTitle = "Observation",
-        marks = listOf("Step" to changeAt),
+        marks = ["Step" to changeAt],
         width = 600,
         height = 255,
         title = "Applied controls",

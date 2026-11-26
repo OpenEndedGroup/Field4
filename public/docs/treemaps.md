@@ -383,3 +383,7 @@ so a few thousand cells drawn with `lines(...)` still morph from one display to 
 - [Looking at Data](tour_data.md) shows the other ways to see values in a box.
 - The generated reference lists every treemap function under
   [Visualization](reference/visualization.md).
+
+## API reference
+
+- Color and layout policies: [`TreemapColors`](reference/visualization.md#treemap-kt-treemapcolors), [`TreemapColors.byBranch`](reference/visualization.md#treemap-kt--treemapcolors-companion--bybranch), [`TreemapColors.byCategory`](reference/visualization.md#treemap-kt--treemapcolors-companion--bycategory), [`TreemapColors.byValue`](reference/visualization.md#treemap-kt--treemapcolors-companion--byvalue), [`TreemapTiling`](reference/visualization.md#treemaplayout-kt-treemaptiling), [`TreemapTiling.Resquarify`](reference/visualization.md#treemaplayout-kt--treemaptiling--resquarify).

@@ -758,3 +758,5 @@ Implementation and parameter details for the helpers used above:
 - [`KelloggConfig`](reference/graphics.md#kellogg-kt-kelloggconfig)
 - [`Java2DMetrics`](reference/graphics.md#layout-kt-java2dmetrics)
 - [`Typefaces.named`](reference/graphics.md#typography-kt--typefaces--named)
+
+- Preparing the reading diagram: [`ReadingDiagramPlayer`](reference/graphics.md#readingdiagramplayer-kt-readingdiagramplayer), [`DiagramKeyedSpan`](reference/graphics.md#diagramtextmorph-kt-diagramkeyedspan).

@@ -21,7 +21,7 @@ fun drawRamps() {
         colorRamp(stops, ColorSpace.SRGB),
         colorRamp(stops, ColorSpace.LINEAR_SRGB),
         colorRamp(stops, ColorSpace.OKLAB),
-        colorRamp(stops, ColorSpace.OKLCH, HuePath.LONGER)
+        colorRamp(stops, ColorSpace.OKLCH, HuePath.LONGER),
     ]
 
     :::fold Draw the strips and position markers
@@ -34,12 +34,13 @@ fun drawRamps() {
                 stroked = false
                 color = swatch
             }
-        } + fline {
-            circle(21.0 + position * 710.0, y + 40.0, 4.0)
-            filled = true
-            stroked = false
-            color = ramp(position)
-        }
+        } +
+            fline {
+                circle(21.0 + position * 710.0, y + 40.0, 4.0)
+                filled = true
+                stroked = false
+                color = ramp(position)
+            }
     }
     lines(drawing, channel = "Interpolation", w = 752.0, h = 213.0)
     :::endfold
@@ -86,12 +87,15 @@ val swatches = path.byPerceptualDistance().sample(12)
 val slice = buildList {
     for (j in -19..19) for (i in -30..30) {
         val p = point(i * 0.009, j * 0.009)
-        if (p.isInSrgb()) add(fline {
-            rect(224.0 + i * 8.0, 164.0 - j * 8.0, 8.3, 8.3)
-            filled = true
-            stroked = false
-            color = p.toSrgb()
-        })
+        if (p.isInSrgb())
+            add(
+                fline {
+                    rect(224.0 + i * 8.0, 164.0 - j * 8.0, 8.3, 8.3)
+                    filled = true
+                    stroked = false
+                    color = p.toSrgb()
+                },
+            )
     }
 }
 val markers = swatches.map { swatch ->
@@ -136,10 +140,11 @@ var chroma = 0.77
 
 fun drawPalette() {
     val ground = oklch(groundLightness, 0.025, 265)
-    val rows = listOf(28.0, 157.0, 270.0).map { hue ->
-        val path = colorHelix(groundLightness, 0.93, hue, turns = -0.13, chromaFraction = chroma)
-        contrastPalette(path, ground, targets)
-    }
+    val rows =
+        [28.0, 157.0, 270.0].map { hue ->
+            val path = colorHelix(groundLightness, 0.93, hue, turns = -0.13, chromaFraction = chroma)
+            contrastPalette(path, ground, targets)
+        }
 
     :::fold Draw on the actual ground and mark misses
     val paper = fline {
@@ -158,22 +163,33 @@ fun drawPalette() {
                 stroked = false
                 color = swatch.color
             }
-            if (swatch.reached) listOf(tile) else listOf(tile, fline {
-                circle(x + 113, y + 24, 5.0)
-                filled = false
-                stroked = true
-                color = colorHex("#f3efea")
-            })
+            val tileAndMarker: List<FLine> =
+                if (swatch.reached) [tile]
+                else
+                    [
+                        tile,
+                        fline {
+                            circle(x + 113, y + 24, 5.0)
+                            filled = false
+                            stroked = true
+                            color = colorHex("#f3efea")
+                        },
+                    ]
+            tileAndMarker
         }
     }
-    lines(listOf(paper) + swatches, channel = "Contrast on ground", w = 682.0, h = 226.0)
+    lines([paper] + swatches, channel = "Contrast on ground", w = 682.0, h = 226.0)
     :::endfold
-    markdown("Ratios", rows.joinToString("\n\n") { row ->
-        row.joinToString(" · ") { swatch ->
-            val actual = "%.2f".format(java.util.Locale.ROOT, swatch.achieved)
-            "${swatch.target} → $actual" + if (swatch.reached) "" else " (miss)"
-        }
-    }, open = false)
+    markdown(
+        "Ratios",
+        rows.joinToString("\n\n") { row ->
+            row.joinToString(" · ") { swatch ->
+                val actual = "%.2f".format(java.util.Locale.ROOT, swatch.achieved)
+                "${swatch.target} → $actual" + if (swatch.reached) "" else " (miss)"
+            }
+        },
+        open = false,
+    )
 }
 
 drawPalette()
@@ -211,16 +227,20 @@ val nearBlack = colorHex("#0a0a0a")
 fun css(c: Vec4) = "rgb(${(c.x * 255).roundToInt()},${(c.y * 255).roundToInt()},${(c.z * 255).roundToInt()})"
 
 fun panel(background: Vec4): String {
-    val rows = seeds.joinToString("") { seed ->
-        val scale = contrastScale(seed, background)
-        val cells = scale.colors.indices.joinToString("") { i ->
-            val step = contrastScaleSteps[i]
-            val ring = if (step == scale.seedStep) "outline:2px solid ${css(scale.textOn[i])};outline-offset:-4px;" else ""
-            "<div style='width:52px;height:52px;background:${css(scale.colors[i])};color:${css(scale.textOn[i])};$ring" +
-                "font:600 11px system-ui;padding:5px;box-sizing:border-box'>$step<br>${scale.swatches[i].achieved.f1}</div>"
+    val rows =
+        seeds.joinToString("") { seed ->
+            val scale = contrastScale(seed, background)
+            val cells =
+                scale.colors.indices.joinToString("") { i ->
+                    val step = contrastScaleSteps[i]
+                    val ring =
+                        if (step == scale.seedStep) "outline:2px solid ${css(scale.textOn[i])};outline-offset:-4px;"
+                        else ""
+                    "<div style='width:52px;height:52px;background:${css(scale.colors[i])};color:${css(scale.textOn[i])};$ring" +
+                        "font:600 11px system-ui;padding:5px;box-sizing:border-box'>$step<br>${scale.swatches[i].achieved.f1}</div>"
+                }
+            "<div style='display:flex;gap:3px;margin:5px 0'>$cells</div>"
         }
-        "<div style='display:flex;gap:3px;margin:5px 0'>$cells</div>"
-    }
     return "<div style='background:${css(background)};padding:12px'>$rows</div>"
 }
 
@@ -241,35 +261,45 @@ val white = vec(1.0, 1.0, 1.0, 1.0)
 val blues = contrastScale(colorHex("#3b82f6"), white)
 val ambers = contrastScale(colorHex("#eab308"), white)
 
-fun bands(scale: ContrastScale, x0: Double, phase: Double): List<FLine> = (0 until 6).map { k ->
-    val top = { x: Double -> 260.0 - k * 34.0 - 26.0 * sin(x * 0.018 + phase + k * 0.5) }
-    fline {
-        moveTo(x0, 300.0)
-        for (i in 0..100) {
-            val x = x0 + i * 5.0
-            lineTo(x, top(x))
+fun bands(scale: ContrastScale, x0: Double, phase: Double): List<FLine> =
+    (0 until 6)
+        .map { k ->
+            val top = { x: Double -> 260.0 - k * 34.0 - 26.0 * sin(x * 0.018 + phase + k * 0.5) }
+            fline {
+                moveTo(x0, 300.0)
+                for (i in 0..100) {
+                    val x = x0 + i * 5.0
+                    lineTo(x, top(x))
+                }
+                lineTo(x0 + 500.0, 300.0)
+                lineTo(x0, 300.0)
+                filled = true
+                color = scale.colors[k]
+            }
         }
-        lineTo(x0 + 500.0, 300.0)
-        lineTo(x0, 300.0)
-        filled = true
-        color = scale.colors[k]
-    }
-}.reversed()
+        .reversed()
 
-fun edges(scale: ContrastScale, x0: Double, phase: Double): List<FLine> = (0 until 6).map { k ->
-    fline {
-        for (i in 0..100) {
-            val x = x0 + i * 5.0
-            val y = 260.0 - k * 34.0 - 26.0 * sin(x * 0.018 + phase + k * 0.5)
-            if (i == 0) moveTo(x, y) else lineTo(x, y)
+fun edges(scale: ContrastScale, x0: Double, phase: Double): List<FLine> =
+    (0 until 6).map { k ->
+        fline {
+            for (i in 0..100) {
+                val x = x0 + i * 5.0
+                val y = 260.0 - k * 34.0 - 26.0 * sin(x * 0.018 + phase + k * 0.5)
+                if (i == 0) moveTo(x, y) else lineTo(x, y)
+            }
+            stroked = true
+            color = scale.colors[k + 4]
+            thickness = 1.5
         }
-        stroked = true
-        color = scale.colors[k + 4]
-        thickness = 1.5
     }
-}
 
-lines(bands(blues, 20.0, 0.0) + edges(blues, 20.0, 0.0) + bands(ambers, 560.0, 1.3) + edges(ambers, 560.0, 1.3), channel = "contrast-bands", w = 1080.0, h = 320.0, fitToSize = true)
+lines(
+    bands(blues, 20.0, 0.0) + edges(blues, 20.0, 0.0) + bands(ambers, 560.0, 1.3) + edges(ambers, 560.0, 1.3),
+    channel = "contrast-bands",
+    w = 1080.0,
+    h = 320.0,
+    fitToSize = true,
+)
 ```
 
 ![Two stacked area plots, one filled from the blue scale and one from the yellow scale](assets/colors_examples/contrast_scale_bands.png)
@@ -296,7 +326,7 @@ val last = Tubes[blue].color
 val rows: List<ColorTrajectory> = [
     colorRamp([first, last]),
     spectralColorRamp(first, last),
-    tubeColorRamp(yellow, blue)
+    tubeColorRamp(yellow, blue),
 ]
 
 val chips = rows.flatMapIndexed { row, ramp ->
@@ -343,9 +373,13 @@ fun showGrounds() {
     val left = if (neutral) grey else colorHex("#25345d")
     val right = if (neutral) grey else colorHex("#f8b177")
     lines(
-        square(110.0, 10.0, 220.0, left), square(340.0, 10.0, 220.0, right),
-        square(184.0, 84.0, 72.0, patch), square(414.0, 84.0, 72.0, patch),
-        channel = "One colour, two grounds", w = 670.0, h = 240.0
+        square(110.0, 10.0, 220.0, left),
+        square(340.0, 10.0, 220.0, right),
+        square(184.0, 84.0, 72.0, patch),
+        square(414.0, 84.0, 72.0, patch),
+        channel = "One colour, two grounds",
+        w = 670.0,
+        h = 240.0,
     )
 }
 
@@ -462,7 +496,7 @@ val ground = fline {
 }
 val rings = palette.mapIndexed { i, c -> ring(80.0 + i * 38.0, i * 0.21, c) }
 
-lines(listOf(ground) + rings, channel = "colors-rings", w = 760.0, h = 420.0, fitToSize = true)
+lines([ground] + rings, channel = "colors-rings", w = 760.0, h = 420.0, fitToSize = true)
 ```
 
 `paletteForBackground(...)` starts from the same evenly spaced okhsl ring as `hueSetOkhsl`, then for any entry whose WCAG contrast against the background falls short of `minContrast` it walks that entry's lightness until it clears the bar; a dark background is searched lighter first. Here it gets `minContrast = 3.5`, a little above the WCAG large-text threshold of 3, and all seven colors go on nested rings where a weak one would be easy to spot.
@@ -478,3 +512,7 @@ that can drive the palette, see [FLine examples](fline_examples.md) and
 See the [trajectory API](reference/graphics.md#colortrajectory-kt),
 [coordinate conversions](reference/graphics.md#colorcoordinates-kt), and
 [original color constructors](reference/graphics.md#colors-kt).
+
+## API reference
+
+- Contrast searches and returned swatches: [`ContrastScale`](reference/graphics.md#colortrajectory-kt-contrastscale), [`contrastScale`](reference/graphics.md#colortrajectory-kt--contrastscale), [`ContrastSwatch`](reference/graphics.md#colortrajectory-kt-contrastswatch), [`contrastPalette`](reference/graphics.md#colortrajectory-kt--contrastpalette), [`colorHelix`](reference/graphics.md#colortrajectory-kt--colorhelix).

@@ -6,24 +6,24 @@ val torus = EpicycleGeometry.torus(1.15, 0.38)
 val torusMesh = torus.sampleSurface(48, 24).withVertexNormals()
 val generative = EpicycleGeometry.random(
     2,
-    listOf(
+    [
         intArrayOf(1, 0),
         intArrayOf(0, 1),
         intArrayOf(1, 1),
         intArrayOf(2, -1),
         intArrayOf(3, 2),
-    ),
+    ],
     seed = 19,
     decay = 0.85,
 )
 val volume = EpicycleGeometry(
     3,
     vec(0, 0, 0),
-    listOf(
+    [
         EllipseHarmonic(intArrayOf(1, 0, 0), vec(0.9, 0, 0), vec(0, 0.15, 0)),
         EllipseHarmonic(intArrayOf(0, 1, 0), vec(0, 0.75, 0), vec(0, 0, 0.15)),
         EllipseHarmonic(intArrayOf(0, 0, 1), vec(0, 0, 0.70), vec(0.15, 0, 0)),
-    ),
+    ],
 )
 var rational = false
 var preset = 0
@@ -46,13 +46,13 @@ var previousSetting: List<Any> = emptyList()
 val trail = ArrayDeque<Vec3>()
 frames {
     while (true) {
-        val original = listOf(torus, generative, volume)[preset]
+        val original = [torus, generative, volume][preset]
         val geometry = original.withSpectrum(
             original.spectrum.reweight { mode, _ ->
                 if (mode == link) gain else 1.0
             },
         )
-        val setting = listOf(preset, rational, link, gain, linkRate)
+        val setting = [preset, rational, link, gain, linkRate]
         if (setting != previousSetting) {
             trail.clear()
             time = 0.0

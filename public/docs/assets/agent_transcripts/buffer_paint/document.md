@@ -11,12 +11,10 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="buffer_paint_gray_scott" index="0" -->
 
 ```edn [field-box id="buffer_paint_gray_scott" role="properties"]
-{"id" "buffer_paint_gray_scott" "index" 0 "name" "Buffer paint — editing a running reaction-diffusion" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Buffer paint — editing a running reaction-diffusion" "_tombstone" false "frame" #afield/rect [80.0 80.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "buffer_paint_gray_scott_code_.kt" "lines" 80 "characters" 2934 "sha256" "19fa4a6d342f5bb06a5ca7089ec0397707240080c7475a8fa71462589a6db698"}]}
+{"id" "buffer_paint_gray_scott" "index" 0 "name" "Buffer paint — editing a running reaction-diffusion" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Buffer paint — editing a running reaction-diffusion" "_tombstone" false "frame" #afield/rect [80.0 80.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "buffer_paint_gray_scott_code_.kt" "lines" 78 "characters" 2899 "sha256" "2a21ee17fa7c44af69d6560aa2eee1587271b0cb60ef5422ccd7bb1f7b8617ce"}]}
 ```
 
 ```kotlin [field-property box="buffer_paint_gray_scott" name="code" path="buffer_paint_gray_scott_code_.kt"]
-import afield.media.image.*
-
 val n = 160
 val u = FloatArray(n * n) { 1f }
 val v = FloatArray(n * n)
@@ -58,7 +56,7 @@ val edits = mapOf(
         ("stroke" to
             {
                 canvas.stroke(
-                    listOf(15.0 to 20.0, 60.0 to 35.0, 140.0 to 18.0),
+                    [15.0 to 20.0, 60.0 to 35.0, 140.0 to 18.0],
                     radius = 3.0,
                     value = floatArrayOf(0.5f),
                 )
@@ -102,16 +100,14 @@ frames {
 <!-- field-box id="buffer_paint_delay_line" index="1" -->
 
 ```edn [field-box id="buffer_paint_delay_line" role="properties"]
-{"id" "buffer_paint_delay_line" "index" 1 "name" "Buffer paint — paste and motion-blur in a delay line" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Buffer paint — paste and motion-blur in a delay line" "_tombstone" false "frame" #afield/rect [900.0 80.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "buffer_paint_delay_line_code_.kt" "lines" 51 "characters" 2260 "sha256" "e4afac46eb00cfda709868f58b386cbbd37facd12f30c10667471345dc336954"}]}
+{"id" "buffer_paint_delay_line" "index" 1 "name" "Buffer paint — paste and motion-blur in a delay line" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Buffer paint — paste and motion-blur in a delay line" "_tombstone" false "frame" #afield/rect [900.0 80.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "buffer_paint_delay_line_code_.kt" "lines" 49 "characters" 2211 "sha256" "648b0305bb17ec2496882bf4c816bed11d0d336cb509b21e3a5a905c9c55c40e"}]}
 ```
 
 ```kotlin [field-property box="buffer_paint_delay_line" name="code" path="buffer_paint_delay_line_code_.kt"]
-import afield.media.image.*
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.Base64
-import kotlin.math.*
 
 val rate = 44100
 val ring = FloatArray(rate / 2) // a half-second delay line

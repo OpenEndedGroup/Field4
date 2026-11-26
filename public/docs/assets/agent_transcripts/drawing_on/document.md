@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="drawing-on-head" index="0" -->
 
 ```edn [field-box id="drawing-on-head" role="properties"]
-{"id" "drawing-on-head" "index" 0 "name" "iPad drawing head" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "iPad drawing head" "_tombstone" false "frame" #afield/rect [520.0 40.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "drawing-on-head_code_.kt" "lines" 38 "characters" 1581 "sha256" "33077654b8d5557ed6347facf8a31c2e25d60e6a1fed640f67f34b2de026c385"}]}
+{"id" "drawing-on-head" "index" 0 "name" "iPad drawing head" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "iPad drawing head" "_tombstone" false "frame" #afield/rect [520.0 40.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "drawing-on-head_code_.kt" "lines" 38 "characters" 1569 "sha256" "dd3299c4e2c3fc48548d1653279af914f7cb6f0d1ee3175a46ffb2209cf7926a"}]}
 ```
 
 ```kotlin [field-property box="drawing-on-head" name="code" path="drawing-on-head_code_.kt"]
@@ -25,7 +25,7 @@ val plan =
 plan.color = vec(1.0, 1.0, 1.0, 0.45)
 
 fun showPlan(extra: List<FLine> = emptyList()) {
-    val drawing = listOf(plan) + extra
+    val drawing = [plan] + extra
     pad.publish(drawing, title = "Studio plan")
     lines(drawing, w = 640.0, h = 520.0)
 }
@@ -47,7 +47,7 @@ pad.onEvent { event ->
                 val (x, y) = point
                 val marker = FLine().moveTo(x - 12, y).lineTo(x + 12, y).moveTo(x, y - 12).lineTo(x, y + 12)
                 marker.color = vec(1.0, 1.0, 1.0, 0.8)
-                showPlan(listOf(marker))
+                showPlan([marker])
                 println("Pencil endpoint ($x, $y) at ${event.time}s")
             }
         }

@@ -1,0 +1,18 @@
+{
+  "restored": [
+    {
+      "path": "dev_docs/agents/transcripts/spatial_rules_tour.yaml",
+      "property": "code"
+    },
+    {
+      "path": "public/docs/spatial_rules.md",
+      "property": null
+    },
+    {
+      "path": "templates/spatial-rules/weave_code_.kt",
+      "property": null
+    }
+  ],
+  "reason": "Keep the explicit inspectOnClick extension imports. The retry established that newer main had also accidentally removed its implementation while retaining its docs and callers; the helper is restored beside the new spatial API.",
+  "regressionTest": "SpatialRuleWorldTest.inspectionClickRetainsTheDrawnSnapshotAndIgnoresAnotherFactsLabel passed: a click retains the drawn explanation and rejects a different fact label."
+}

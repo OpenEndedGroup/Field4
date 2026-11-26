@@ -1,0 +1,3808 @@
+{
+  "bodies": [
+    {
+      "index": 0,
+      "path": "dev_docs/agents/demos/braitenberg_weight_cube/cube_many_code_.kt",
+      "sha256": "24b3b992a9db43cdebea405a8b2e75fb1c72db454d943b11d483fcb1c63a03a0",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 1,
+      "path": "dev_docs/agents/demos/braitenberg_weight_cube/cube_path_code_.kt",
+      "sha256": "5ac28f5165c29546a4d06e844f7cd804a3246ccadab1c21b7d38eaaef1f7cd3c",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 2,
+      "path": "dev_docs/agents/demos/braitenberg_weight_cube/cube_rewards_code_.kt",
+      "sha256": "45b2f4c1d531b218303fc515b4236da90970a92ab4d11b08d9307a6f6aa2dc69",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 3,
+      "path": "dev_docs/agents/demos/buffer_paint/buffer_paint_delay_line_code_.kt",
+      "sha256": "e4afac46eb00cfda709868f58b386cbbd37facd12f30c10667471345dc336954",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 4,
+      "path": "dev_docs/agents/demos/buffer_paint/buffer_paint_gray_scott_code_.kt",
+      "sha256": "19fa4a6d342f5bb06a5ca7089ec0397707240080c7475a8fa71462589a6db698",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 5,
+      "path": "dev_docs/agents/demos/gp_drawing/gp_conditioning_code_.kt",
+      "sha256": "6e55f17e5e4fdba5af62f50212bc85259a3f16c2d4bb988d5d748730801b773a",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 6,
+      "path": "dev_docs/agents/demos/gp_drawing/gp_loop_code_.kt",
+      "sha256": "c7c1dfd0c56a9964103070bb90c853a325443ee1197f2c7c83e9e68ed95f6f4f",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 7,
+      "path": "dev_docs/agents/demos/solidsl_conversation/solid_source_code_.kt",
+      "sha256": "ce04e5eb0af3ca737be7eb72d14dbdb8d7e038973817980d1a50d031e64ac8b1",
+      "status": "language review"
+    },
+    {
+      "index": 8,
+      "path": "dev_docs/agents/demos/solidsl_conversation_example/solid_source_code_.kt",
+      "sha256": "ce210767786a373baeb26268ec91ebb4c7f10a157209a16a39365807d7a30899",
+      "status": "language review"
+    },
+    {
+      "index": 9,
+      "path": "dev_docs/agents/demos/solidsl_conversation_example/studies/solid_source/solid/speculations/1795590604571/bold-ports.kt",
+      "sha256": "1a4c61d88a3e6098083437b8fa4f2aac4b8a10762aef5e911907e52907a58d51",
+      "status": "preserved provenance"
+    },
+    {
+      "index": 10,
+      "path": "dev_docs/agents/demos/solidsl_conversation_example/studies/solid_source/solid/speculations/1795590604571/delicate-lace.kt",
+      "sha256": "f075669052edf1c3641dd9b0dc86a15d567c6134625ec7867521e021a15bd260",
+      "status": "preserved provenance"
+    },
+    {
+      "index": 11,
+      "path": "dev_docs/agents/demos/solidsl_conversation_example/studies/solid_source/solid/speculations/1795590604571/grown-ribs.kt",
+      "sha256": "960b594af5803e2a4a44c3158bf762c57536743770732f6a50d11be89501861d",
+      "status": "preserved provenance"
+    },
+    {
+      "index": 12,
+      "path": "dev_docs/agents/demos/solidsl_conversation_example/studies/solid_source/solid/speculations/1795590653405/side-by-side.kt",
+      "sha256": "2a247bea1ef250ba3754344c8c0e55ba29cce40c0425639b25877570d04d9a36",
+      "status": "preserved provenance"
+    },
+    {
+      "index": 13,
+      "path": "dev_docs/agents/demos/solidsl_conversation_example/studies/solid_source/solid/speculations/1795590692767/chosen-grown-ribs.kt",
+      "sha256": "04388c69ce35c440a7540c0262e10cc9ce1e8324df8b83b6f2098b5c569ccaac",
+      "status": "preserved provenance"
+    },
+    {
+      "index": 14,
+      "path": "dev_docs/agents/demos/speech/analyse_code_.kt",
+      "sha256": "e099c7691ba85bf6eadd62bcbb82ff35f3b95650c3b66331e0cbb16a02cf3ede",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 15,
+      "path": "dev_docs/agents/demos/speech/build.yaml",
+      "sha256": "43465eb97cc48b3b28a22187541d628a3397cbe55e27d08f77a76868ad0d28eb",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 16,
+      "path": "dev_docs/agents/demos/speech/build.yaml",
+      "sha256": "35f77e81adda170e868aa423ae69d1fa2b93aa98fb0349eb2ca08c8ba78211c5",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 17,
+      "path": "dev_docs/agents/demos/speech/build.yaml",
+      "sha256": "5276f83beef2d27b450e2a71b633ded84b860744c55919eb68176cca2c92d544",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 18,
+      "path": "dev_docs/agents/demos/speech/build.yaml",
+      "sha256": "6c1d02f47b108034efc89567d2234b7839f35e9d2faf64617c1b5f1e6dc46e79",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 19,
+      "path": "dev_docs/agents/demos/speech/build.yaml",
+      "sha256": "e099c7691ba85bf6eadd62bcbb82ff35f3b95650c3b66331e0cbb16a02cf3ede",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 20,
+      "path": "dev_docs/agents/demos/speech/document.md",
+      "sha256": "e099c7691ba85bf6eadd62bcbb82ff35f3b95650c3b66331e0cbb16a02cf3ede",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 21,
+      "path": "dev_docs/agents/demos/speech/document.md",
+      "sha256": "43465eb97cc48b3b28a22187541d628a3397cbe55e27d08f77a76868ad0d28eb",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 22,
+      "path": "dev_docs/agents/demos/speech/document.md",
+      "sha256": "35f77e81adda170e868aa423ae69d1fa2b93aa98fb0349eb2ca08c8ba78211c5",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 23,
+      "path": "dev_docs/agents/demos/speech/document.md",
+      "sha256": "6c1d02f47b108034efc89567d2234b7839f35e9d2faf64617c1b5f1e6dc46e79",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 24,
+      "path": "dev_docs/agents/demos/speech/document.md",
+      "sha256": "5276f83beef2d27b450e2a71b633ded84b860744c55919eb68176cca2c92d544",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 25,
+      "path": "dev_docs/agents/demos/speech/speak_code_.kt",
+      "sha256": "43465eb97cc48b3b28a22187541d628a3397cbe55e27d08f77a76868ad0d28eb",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 26,
+      "path": "dev_docs/agents/demos/speech/sung_code_.kt",
+      "sha256": "6c1d02f47b108034efc89567d2234b7839f35e9d2faf64617c1b5f1e6dc46e79",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 27,
+      "path": "dev_docs/agents/demos/speech/word_timing_code_.kt",
+      "sha256": "35f77e81adda170e868aa423ae69d1fa2b93aa98fb0349eb2ca08c8ba78211c5",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 28,
+      "path": "dev_docs/agents/demos/speech/words_play_drums_code_.kt",
+      "sha256": "5276f83beef2d27b450e2a71b633ded84b860744c55919eb68176cca2c92d544",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 29,
+      "path": "dev_docs/agents/demos/squircles/build.yaml",
+      "sha256": "0bf3dda069167fd5d794c11b289074026f8d45446a0a82e7fe508f754882c702",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 30,
+      "path": "dev_docs/agents/demos/squircles/build.yaml",
+      "sha256": "9373895d92ed49fe11c6a821ed783697c594f01b5197f9509ece16007125391f",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 31,
+      "path": "dev_docs/agents/demos/squircles/document.md",
+      "sha256": "0bf3dda069167fd5d794c11b289074026f8d45446a0a82e7fe508f754882c702",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 32,
+      "path": "dev_docs/agents/demos/squircles/document.md",
+      "sha256": "9373895d92ed49fe11c6a821ed783697c594f01b5197f9509ece16007125391f",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 33,
+      "path": "dev_docs/agents/demos/squircles/squircle_morph_code_.kt",
+      "sha256": "0bf3dda069167fd5d794c11b289074026f8d45446a0a82e7fe508f754882c702",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 34,
+      "path": "dev_docs/agents/demos/squircles/squircle_rect_code_.kt",
+      "sha256": "9373895d92ed49fe11c6a821ed783697c594f01b5197f9509ece16007125391f",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 35,
+      "path": "dev_docs/agents/demos/three_handles/build.yaml",
+      "sha256": "973eadc37eb3232864971d7b670d9d06cee914eb30a4fc58be7773a4e424856a",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 36,
+      "path": "dev_docs/agents/demos/three_handles/build.yaml",
+      "sha256": "54c223bd8c631deff5ed180d4cf1ff1a81d2f01b016a203d63b9f6691f48dd70",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 37,
+      "path": "dev_docs/agents/demos/three_handles/curve_code_.kt",
+      "sha256": "973eadc37eb3232864971d7b670d9d06cee914eb30a4fc58be7773a4e424856a",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 38,
+      "path": "dev_docs/agents/demos/three_handles/slab_code_.kt",
+      "sha256": "54c223bd8c631deff5ed180d4cf1ff1a81d2f01b016a203d63b9f6691f48dd70",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 39,
+      "path": "dev_docs/agents/transcripts/adaptive_distribution_feedback.yaml",
+      "sha256": "c228eb33a2a9e31fdde0e0f44f6f4326a49b88ba578ecca65517933e729a2c26",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 40,
+      "path": "dev_docs/agents/transcripts/addressable_paint_strokes.yaml",
+      "sha256": "6c85ad3b387301357ae6d4a22a0a127e5210e0155adcd4693363da007414d308",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 41,
+      "path": "dev_docs/agents/transcripts/addressable_paint_strokes.yaml",
+      "sha256": "62e940abf75c9e2925edf0c92e4ba82f294ca215b365c35a757dedcd1b66ab8b",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 42,
+      "path": "dev_docs/agents/transcripts/addressable_paint_strokes.yaml",
+      "sha256": "99b40640cae56e38e66d4431bafa209ceb5f8ceb4090b759780b7614cf771872",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 43,
+      "path": "dev_docs/agents/transcripts/addressable_paint_strokes.yaml",
+      "sha256": "ec6f9bd1dbcb613b596977d93b95cfee5502c3de68bc9231c53baab7953d0058",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 44,
+      "path": "dev_docs/agents/transcripts/ai4_paint_studio.yaml",
+      "sha256": "7cf208f0127b584feef7afa59a5354195371e7062a9c77a4f336da11cac8f6cd",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 45,
+      "path": "dev_docs/agents/transcripts/audio_curve_explorer.yaml",
+      "sha256": "c4e1be77dd5f658b80c5e3a8ca3154d5984c27a56accaf6829fd666cd0ea3845",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 46,
+      "path": "dev_docs/agents/transcripts/audio_curve_explorer.yaml",
+      "sha256": "3791e95eeb424fb02753a43f7d9bfd9f2d952a959edc13db706de288d944e052",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 47,
+      "path": "dev_docs/agents/transcripts/audio_curve_explorer.yaml",
+      "sha256": "adf11d72c73f313df0c38dc6c6b9f01ce322180565920de886a1ff02625c8556",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 48,
+      "path": "dev_docs/agents/transcripts/audio_curve_explorer.yaml",
+      "sha256": "0dcc6a73201d2e621e2c4fdc2001861ef3d82a790c873b5ec73ae4d287f5bba0",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 49,
+      "path": "dev_docs/agents/transcripts/body_one.yaml",
+      "sha256": "cfde3cae49527f04b914aa3a3a28af9d09529d53ab6c346a082c81bf84fd0c7c",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 50,
+      "path": "dev_docs/agents/transcripts/braitenberg_weight_cube.yaml",
+      "sha256": "5ac28f5165c29546a4d06e844f7cd804a3246ccadab1c21b7d38eaaef1f7cd3c",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 51,
+      "path": "dev_docs/agents/transcripts/braitenberg_weight_cube.yaml",
+      "sha256": "24b3b992a9db43cdebea405a8b2e75fb1c72db454d943b11d483fcb1c63a03a0",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 52,
+      "path": "dev_docs/agents/transcripts/braitenberg_weight_cube.yaml",
+      "sha256": "45b2f4c1d531b218303fc515b4236da90970a92ab4d11b08d9307a6f6aa2dc69",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 53,
+      "path": "dev_docs/agents/transcripts/buffer_paint.yaml",
+      "sha256": "19fa4a6d342f5bb06a5ca7089ec0397707240080c7475a8fa71462589a6db698",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 54,
+      "path": "dev_docs/agents/transcripts/buffer_paint.yaml",
+      "sha256": "e4afac46eb00cfda709868f58b386cbbd37facd12f30c10667471345dc336954",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 55,
+      "path": "dev_docs/agents/transcripts/buffer_paint_gpu.yaml",
+      "sha256": "4c83f494b0aca0e17c76bf11d825d1ef8383df8b43bf86a7bce1eba1e0d6ea5a",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 56,
+      "path": "dev_docs/agents/transcripts/buffer_paint_gpu.yaml",
+      "sha256": "e324a6cb0095446f1193cd39fd233b95320b8eeb2ef6d91cf8ae7118fa4eeb2b",
+      "status": "shader review"
+    },
+    {
+      "index": 57,
+      "path": "dev_docs/agents/transcripts/buffer_paint_gpu.yaml",
+      "sha256": "9081b463c259bd70eef6ce364ac5c1d163f67df4ae72d75837e0c8a29f2d15e6",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 58,
+      "path": "dev_docs/agents/transcripts/buffer_paint_gpu.yaml",
+      "sha256": "fa8b34a0fd5d23cb8b092ff1b8d0f95ceb03612f45fa7b06e485ed11da365bcc",
+      "status": "shader review"
+    },
+    {
+      "index": 59,
+      "path": "dev_docs/agents/transcripts/buffer_paint_gpu.yaml",
+      "sha256": "a7cec652eee65401135a20f3364389443d5ea5ab222b15a689d79c8049d782af",
+      "status": "shader review"
+    },
+    {
+      "index": 60,
+      "path": "dev_docs/agents/transcripts/buffer_paint_gpu.yaml",
+      "sha256": "3a140b1cf701ac87dc071bce55d3d514d1194e95f6165de7b185e8228bd1a25a",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 61,
+      "path": "dev_docs/agents/transcripts/chamfer_everything.yaml",
+      "sha256": "7ca765cec04a3c26acd7f70aef1eeadb10d9e14bc944cf82c786baafc749269f",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 62,
+      "path": "dev_docs/agents/transcripts/chamfer_everything.yaml",
+      "sha256": "19003d1d2bbb479a837d4ced85e685a5d6c539b096e9174c40d428a73cc9ddb7",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 63,
+      "path": "dev_docs/agents/transcripts/computed_ray_geometry.yaml",
+      "sha256": "0db9097ec61636848f41384cae022c333407b5440ac868adf2b8c8584eb268ce",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 64,
+      "path": "dev_docs/agents/transcripts/computed_ray_geometry.yaml",
+      "sha256": "0db9097ec61636848f41384cae022c333407b5440ac868adf2b8c8584eb268ce",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 65,
+      "path": "dev_docs/agents/transcripts/contrast_scale_demo.yaml",
+      "sha256": "5152bfa3ffe26320d52854925457799d823ef398ca5d935f32e9a247c71af06c",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 66,
+      "path": "dev_docs/agents/transcripts/contrast_scale_demo.yaml",
+      "sha256": "d8595502a4e16404babf2112ae12d416134d3b31adf276028b8e3a17afcb0c2c",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 67,
+      "path": "dev_docs/agents/transcripts/contrast_scale_demo.yaml",
+      "sha256": "41ed952c6b2b4812f9e117b6e53ea8c8634bbe8363ae32f5e4f19691773396e1",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 68,
+      "path": "dev_docs/agents/transcripts/direct_lighting.yaml",
+      "sha256": "07ffdfc95e2cbe11b81821a937a857f9be881bd099764a9bc7906ca147d57ef0",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 69,
+      "path": "dev_docs/agents/transcripts/discrete_energy.yaml",
+      "sha256": "62e3e24b1e9ba11bc26f77276b39cbf40e1a8867bd10ca97362f0ab468dba546",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 70,
+      "path": "dev_docs/agents/transcripts/discrete_energy.yaml",
+      "sha256": "0893b76628748b1fe4f68ba030214773fe5680f8dcb5060aa7953795961f4419",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 71,
+      "path": "dev_docs/agents/transcripts/discrete_energy.yaml",
+      "sha256": "c2359267910f71084ba6e0b830235bc2550ac8f22b283e7f10fcfa93e33e817d",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 72,
+      "path": "dev_docs/agents/transcripts/discrete_energy.yaml",
+      "sha256": "5e638635a8ba9d70e4ba87e4cc9d67b9a97ad60bb9726a02f8df5106c3059a42",
+      "status": "shader review"
+    },
+    {
+      "index": 73,
+      "path": "dev_docs/agents/transcripts/discrete_energy.yaml",
+      "sha256": "bc259d0f48517f9d5bec44426d75f73fe5e131546075e5c936bcd705840138c8",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 74,
+      "path": "dev_docs/agents/transcripts/discrete_energy.yaml",
+      "sha256": "3f16b046a0a37585aae581518574a15d26b6fd32a89a5cfbec878be44710e5aa",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 75,
+      "path": "dev_docs/agents/transcripts/discrete_energy.yaml",
+      "sha256": "b04d5a2025e19eec22fdb679490c8d8969701d75bdedaf0f027b2dab1d7cea87",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 76,
+      "path": "dev_docs/agents/transcripts/discrete_energy.yaml",
+      "sha256": "5149b9b1e448b77f0a0a210366607d4a0e31c97b7ead1401fa0ad381762d43b2",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 77,
+      "path": "dev_docs/agents/transcripts/discrete_energy.yaml",
+      "sha256": "6255f2fff97006a1d9ea7260379c95f7fb96fa08441f1308f68dfa45e627eeca",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 78,
+      "path": "dev_docs/agents/transcripts/docs_capture/ceres_two_vanishing_points.yaml",
+      "sha256": "99196d47b03aba85a4e833fa4e1251ffe491efc334fbba27014418a00c27c2d3",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 79,
+      "path": "dev_docs/agents/transcripts/docs_capture/text_frames.yaml",
+      "sha256": "1b88dd35dfef01c347e34b5ce284313beecfad646857f3e1d9fa4c47348ed296",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 80,
+      "path": "dev_docs/agents/transcripts/docs_capture/text_frames.yaml",
+      "sha256": "8d6c361a631cb1b5717601bd9f305c596c9a586a5f2dd0f7deb857c418faf651",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 81,
+      "path": "dev_docs/agents/transcripts/drawing_on.yaml",
+      "sha256": "40c16c65894e0e8f2258c7ef051ae6f1616a88d5d07dc99fc5c54d6e686ceb2b",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 82,
+      "path": "dev_docs/agents/transcripts/drawing_on.yaml",
+      "sha256": "33077654b8d5557ed6347facf8a31c2e25d60e6a1fed640f67f34b2de026c385",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 83,
+      "path": "dev_docs/agents/transcripts/evolving_water_bugs.yaml",
+      "sha256": "00ebaa1f76ca03455bd63bfabcf6195c945980644692bc24989b02e6811b380b",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 84,
+      "path": "dev_docs/agents/transcripts/exact_triangle_coverage.yaml",
+      "sha256": "65aa5748b962feb545725802bfbe7504ecc635ca8db2da3e135c8bf4c0c2ccdb",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 85,
+      "path": "dev_docs/agents/transcripts/exact_triangle_coverage.yaml",
+      "sha256": "e90393b044932ad7e022f5505bec768466f0d819aaa553c877bfe061d981c6d2",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 86,
+      "path": "dev_docs/agents/transcripts/exact_triangle_coverage.yaml",
+      "sha256": "e90393b044932ad7e022f5505bec768466f0d819aaa553c877bfe061d981c6d2",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 87,
+      "path": "dev_docs/agents/transcripts/exact_triangle_coverage.yaml",
+      "sha256": "78bb89fd0612e2775244426493e3ade790eea8b4c59e38a4e3b6a22a05ec1e8d",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 88,
+      "path": "dev_docs/agents/transcripts/exact_triangle_coverage.yaml",
+      "sha256": "8f3504d8801a4398f2518ca9de09a3f9f4b72e4eb43044567049caf473214b5a",
+      "status": "shader review"
+    },
+    {
+      "index": 89,
+      "path": "dev_docs/agents/transcripts/exact_triangle_coverage.yaml",
+      "sha256": "d6be772c7435b4b7d72cfea6e6764e241dc85a4cff1cc876567b58223188b80f",
+      "status": "shader review"
+    },
+    {
+      "index": 90,
+      "path": "dev_docs/agents/transcripts/explainer_cameras.yaml",
+      "sha256": "08153a498d40d52b33e63d9b1cb9ed91ce5683e0e07a7d7ddbf247abaeb75657",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 91,
+      "path": "dev_docs/agents/transcripts/explainer_lights.yaml",
+      "sha256": "e2cc0957a0d758b83ec92d8778fb6d976b50fd9fe1361430876cd4f80f3a38e6",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 92,
+      "path": "dev_docs/agents/transcripts/explainer_lights.yaml",
+      "sha256": "ec87b58f59d100a5d235b7eed5ea175d421623b1963397784307fd0299560eba",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 93,
+      "path": "dev_docs/agents/transcripts/explainer_lights.yaml",
+      "sha256": "b4af96f928c2567b7eee1ae3b99830b66fa544d8aa11fcb8c5ff5d82eb4b1449",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 94,
+      "path": "dev_docs/agents/transcripts/explainer_sine_pitch.yaml",
+      "sha256": "86f8ab5fa04cc8345b48e7f8c9113297d3527a3f944c98f236110603c7fef95e",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 95,
+      "path": "dev_docs/agents/transcripts/explainer_sound.yaml",
+      "sha256": "e65b06eccb05523e7c8465188d4b64214c82dde2e65fd25df90a0710de00c38c",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 96,
+      "path": "dev_docs/agents/transcripts/external_browser_surface_linux_smoke.yaml",
+      "sha256": "c64398e04f59510e50af283f9aec9001e46f737c3fcac714fa99ec7223931095",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 97,
+      "path": "dev_docs/agents/transcripts/fieldml_reactive_bridge.yaml",
+      "sha256": "b0bc333e0a45f5a81872d61c8bd131bb2add986b43434cbc8f0a250c51b7b18d",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 98,
+      "path": "dev_docs/agents/transcripts/fieldml_reactive_bridge.yaml",
+      "sha256": "3e9b3cdeb4b4605affc234595071504fa7b515cf04b3b115e5f16821f18faef7",
+      "status": "language review"
+    },
+    {
+      "index": 99,
+      "path": "dev_docs/agents/transcripts/fieldml_reactive_bridge.yaml",
+      "sha256": "8d9ef40de507a7c7738531b07f68dcb2aa53e5d766386934ff60dc64a9b41724",
+      "status": "language review"
+    },
+    {
+      "index": 100,
+      "path": "dev_docs/agents/transcripts/fillet_everything.yaml",
+      "sha256": "d98d52a90830061f726b8ac9ad0d911c21dc7e75545f5f878818740a5f4d63a8",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 101,
+      "path": "dev_docs/agents/transcripts/fillet_everything.yaml",
+      "sha256": "d018244e70d57d94ce1ef1fe23f853f40de242e1e8c88309599385c80a63e172",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 102,
+      "path": "dev_docs/agents/transcripts/fillet_everything.yaml",
+      "sha256": "c0696ef2e7a5bd3e9c612b541a13d63a37cd08762656a515f12f32eba68f0faf",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 103,
+      "path": "dev_docs/agents/transcripts/fline_coverage_gpu.yaml",
+      "sha256": "cfa7203341f4bb122f4e84d60d37840c2a7fbd98aaa372bf585fe03970361346",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 104,
+      "path": "dev_docs/agents/transcripts/fline_coverage_gpu.yaml",
+      "sha256": "c09bf9fd1fe7cbc781ccc2fb711282d7cd6373d68e8dd1b366ac5f9075591f3e",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 105,
+      "path": "dev_docs/agents/transcripts/fline_coverage_gpu.yaml",
+      "sha256": "fa8b34a0fd5d23cb8b092ff1b8d0f95ceb03612f45fa7b06e485ed11da365bcc",
+      "status": "shader review"
+    },
+    {
+      "index": 106,
+      "path": "dev_docs/agents/transcripts/fline_coverage_gpu.yaml",
+      "sha256": "2a34ef530a8ee46b910970d6d6fcc7223a03a3b5efea28b3c08811b3b3460562",
+      "status": "shader review"
+    },
+    {
+      "index": 107,
+      "path": "dev_docs/agents/transcripts/fline_coverage_gpu.yaml",
+      "sha256": "9eb686573dd002db7a6e54087bbb570d01a95e082a5887fb4a32008aa4aa616f",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 108,
+      "path": "dev_docs/agents/transcripts/fline_fill_rule.yaml",
+      "sha256": "34b79c44cf324e95c270269e38e5f6ce5b400b865d9a45131ef808132b38ee6b",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 109,
+      "path": "dev_docs/agents/transcripts/flow_grain.yaml",
+      "sha256": "1f36a6740486755aeace6b3c91f9b29a0648efc6d38c1a64b2752b222ff45be3",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 110,
+      "path": "dev_docs/agents/transcripts/flow_grain.yaml",
+      "sha256": "762edb90a4d4a766102e98f1764d10e92ad8c6bee30f6abc955c3cb79e8f1be9",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 111,
+      "path": "dev_docs/agents/transcripts/geodesic_carving.yaml",
+      "sha256": "15609ef8db7e2407d596a7ad464420cb08832dbd5e70f3952c07a0db155869ed",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 112,
+      "path": "dev_docs/agents/transcripts/geodesic_carving.yaml",
+      "sha256": "3758671033cc2477e7e5622737cc14dcd535cd83ff3ee25e3e7db2785646ade1",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 113,
+      "path": "dev_docs/agents/transcripts/geodesic_carving.yaml",
+      "sha256": "e392b4634090c8a0196ffbc6988e71f007d3a68c23a2ab425800fcc9ec8eb197",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 114,
+      "path": "dev_docs/agents/transcripts/geodesic_carving.yaml",
+      "sha256": "737ca840e117f92b386f46c87b6dcf59b680ea35025e3a0d338f618df6d811c2",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 115,
+      "path": "dev_docs/agents/transcripts/geodesic_carving.yaml",
+      "sha256": "7c9dd29d4075083fa246958ed2595be2f7b5cf62cb3fe561e1763c936b2862a9",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 116,
+      "path": "dev_docs/agents/transcripts/geodesic_carving.yaml",
+      "sha256": "383ffb00cf9edc3341a75f1383585594bc29eacd6dd57758ee52622baa9cc0cb",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 117,
+      "path": "dev_docs/agents/transcripts/geodesic_carving.yaml",
+      "sha256": "3cc2456c932d4ea0156e282fcd449678d92554f69a86641d35b901dfb72e0f9c",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 118,
+      "path": "dev_docs/agents/transcripts/gezira_gpu_tiger.yaml",
+      "sha256": "1638203dd7db11ca924a66126b565b5cf06924f260d6ea90a7d8b989d6730297",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 119,
+      "path": "dev_docs/agents/transcripts/gezira_gpu_tiger.yaml",
+      "sha256": "6c4c2145476ea018e081bf9f9f8cc95cc1a9118a5c2a1caa8f2a1a9ac253531b",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 120,
+      "path": "dev_docs/agents/transcripts/gezira_gpu_tiger.yaml",
+      "sha256": "fa8b34a0fd5d23cb8b092ff1b8d0f95ceb03612f45fa7b06e485ed11da365bcc",
+      "status": "shader review"
+    },
+    {
+      "index": 121,
+      "path": "dev_docs/agents/transcripts/gezira_gpu_tiger.yaml",
+      "sha256": "e41394c64ec8e7c8ca7917af2078674b7b6fcdad241037d2d8ada26c3bbf3e8e",
+      "status": "shader review"
+    },
+    {
+      "index": 122,
+      "path": "dev_docs/agents/transcripts/gezira_gpu_tiger.yaml",
+      "sha256": "0ced633297fc1d878edf192183418adfa8a211162c83feb64f943b0578b187fb",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 123,
+      "path": "dev_docs/agents/transcripts/gezira_gpu_tiger.yaml",
+      "sha256": "da63e8953d3c6fdd2420334c5a3e5c4aa4965e107940a922fca9b435cb17c646",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 124,
+      "path": "dev_docs/agents/transcripts/gezira_gpu_winding.yaml",
+      "sha256": "0f6e8d909d38bf842d87e19fd6332cfbd2bdc2a20bd205df5efb0bc4f86fb89d",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 125,
+      "path": "dev_docs/agents/transcripts/gezira_gpu_winding.yaml",
+      "sha256": "a6701924d1818b9341cae9e696c63a4babc2fa3bfd2cfa8620ccb44311ec4dea",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 126,
+      "path": "dev_docs/agents/transcripts/gp_drawing.yaml",
+      "sha256": "c7c1dfd0c56a9964103070bb90c853a325443ee1197f2c7c83e9e68ed95f6f4f",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 127,
+      "path": "dev_docs/agents/transcripts/gp_drawing.yaml",
+      "sha256": "6e55f17e5e4fdba5af62f50212bc85259a3f16c2d4bb988d5d748730801b773a",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 128,
+      "path": "dev_docs/agents/transcripts/gpu_shader_learning.yaml",
+      "sha256": "aefff1144c3b07e9c2984a9d7c98bd68c6387581c469c34bf7966af37cb79190",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 129,
+      "path": "dev_docs/agents/transcripts/gpu_shader_learning.yaml",
+      "sha256": "aefff1144c3b07e9c2984a9d7c98bd68c6387581c469c34bf7966af37cb79190",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 130,
+      "path": "dev_docs/agents/transcripts/gpu_state.yaml",
+      "sha256": "28db5e254602d3911b576617148611a28294f8468a09691cc9efadbe5fadd3e0",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 131,
+      "path": "dev_docs/agents/transcripts/harmonic_drum.yaml",
+      "sha256": "b17ed2cbcf6e3907aa81c9f63365aea981987fcda32ed5b594d670f3aced792f",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 132,
+      "path": "dev_docs/agents/transcripts/harmonic_drum.yaml",
+      "sha256": "49af887f9ee1275328bca115a8f73cee9ca1c86f19f0b848dacd4950df6ab506",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 133,
+      "path": "dev_docs/agents/transcripts/learned_from_module.yaml",
+      "sha256": "30d6a1fdf5d7cd578b070958eacd85500736098baea306ba75a9e266a02fbfe4",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 134,
+      "path": "dev_docs/agents/transcripts/learned_from_module.yaml",
+      "sha256": "30d6a1fdf5d7cd578b070958eacd85500736098baea306ba75a9e266a02fbfe4",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 135,
+      "path": "dev_docs/agents/transcripts/learned_shader.yaml",
+      "sha256": "90b66fcb61d829270f16d20d3e7e0a7ea587cf230568f22773b36b4112639d43",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 136,
+      "path": "dev_docs/agents/transcripts/learned_shader.yaml",
+      "sha256": "90b66fcb61d829270f16d20d3e7e0a7ea587cf230568f22773b36b4112639d43",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 137,
+      "path": "dev_docs/agents/transcripts/letter_interpolation.yaml",
+      "sha256": "890c0cac2809f645866b52a9624bf0c0b4b2c564e479c259c717879a262bef5f",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 138,
+      "path": "dev_docs/agents/transcripts/letter_interpolation_panels.yaml",
+      "sha256": "418a0124b6f550799286a4d802b168b74600a30310172d329c0b648b2eec7843",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 139,
+      "path": "dev_docs/agents/transcripts/marf_field_clocks.yaml",
+      "sha256": "0737466af41566dd9b853289dce70a9061500eb9ebd8c425ae84bfae413b4779",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 140,
+      "path": "dev_docs/agents/transcripts/marf_field_clocks.yaml",
+      "sha256": "389c75ca4ccfb44af24b683f9b497261691d86c602e623f26beadbd680cb9937",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 141,
+      "path": "dev_docs/agents/transcripts/matrix_profile.yaml",
+      "sha256": "23ee6eb365564cf6e965b2dd9e6289d898875ab59a28f645b179db44ef89e49a",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 142,
+      "path": "dev_docs/agents/transcripts/matrix_profile.yaml",
+      "sha256": "7e7f09e8284b4de3ac0dc2823411fe2df7269a6f9e968688eec04cc1f59de4f6",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 143,
+      "path": "dev_docs/agents/transcripts/mqtt_datalog_routing.yaml",
+      "sha256": "875f87e3f9e2654841d46b28ba1c3e15c52d0c6319e31fc364df5e731388d61a",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 144,
+      "path": "dev_docs/agents/transcripts/mqtt_datalog_routing.yaml",
+      "sha256": "791634b1037cf6df5c86740303aa32a96ac32f4958db4c6df6fcaa6910d0a548",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 145,
+      "path": "dev_docs/agents/transcripts/neural_particles.yaml",
+      "sha256": "ed9f37829040196c2ca808b8dfc4bca2fa5eff80ec3b70a7ee2159f290c96d2c",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 146,
+      "path": "dev_docs/agents/transcripts/neural_reconstruction.yaml",
+      "sha256": "4a23644d78a5eef1aa072e6a9936446c8ec6bdec55b8f01bb7ee3f593c618fe2",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 147,
+      "path": "dev_docs/agents/transcripts/neural_reconstruction.yaml",
+      "sha256": "4a23644d78a5eef1aa072e6a9936446c8ec6bdec55b8f01bb7ee3f593c618fe2",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 148,
+      "path": "dev_docs/agents/transcripts/nile_gezira_kernels.yaml",
+      "sha256": "6c1fb68b10a2b2170397b7561884690acc4beb4dc4e0f3ff7f2fdca9cb83ad9a",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 149,
+      "path": "dev_docs/agents/transcripts/nile_gezira_kernels.yaml",
+      "sha256": "933143c87311f82c3f97ef330db1ace4676158dd8ab7b842295a0d5fa998aae1",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 150,
+      "path": "dev_docs/agents/transcripts/nile_gezira_kernels.yaml",
+      "sha256": "73afdf37c4e5e0d59d6ac1903899aba2cdabc5a35ab1c218061461e2014a65ae",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 151,
+      "path": "dev_docs/agents/transcripts/nile_gezira_kernels.yaml",
+      "sha256": "e7db74051659f363febb15b8c5db88dbdfcf09606aaf93437d067a837cc3c91c",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 152,
+      "path": "dev_docs/agents/transcripts/nile_gezira_kernels.yaml",
+      "sha256": "3f11422b933f787491d7c2c4a9426eb0be1bb6a6f53ac829c5cf8b62625665a8",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 153,
+      "path": "dev_docs/agents/transcripts/nile_gezira_kernels.yaml",
+      "sha256": "70fcf9ab683a2e09909567d4e9ec1a991e9bd73f9cf9877388772dfff33a588f",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 154,
+      "path": "dev_docs/agents/transcripts/nile_gezira_kernels.yaml",
+      "sha256": "fd5afb1e82db2f7f5c273abbbd000641e2bba928dbabd127e5c6cc85aa259a97",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 155,
+      "path": "dev_docs/agents/transcripts/nile_gezira_svg.yaml",
+      "sha256": "239942722bafcaf859c66bccd7aca855daec88ed0e328883064e1d9a3420a985",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 156,
+      "path": "dev_docs/agents/transcripts/nile_gezira_svg.yaml",
+      "sha256": "11efe3184818d03a3cf0d1d24025a058c0451fe63a5c3dc2ce337d8f33aeb041",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 157,
+      "path": "dev_docs/agents/transcripts/nile_gezira_svg.yaml",
+      "sha256": "1b05167ff4040ed02de28932aa8d4d224e599e54c8acaeba0a2844fe5d33bafa",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 158,
+      "path": "dev_docs/agents/transcripts/nile_gezira_svg.yaml",
+      "sha256": "f9162f44dde0450735143ee6c5633b6df1cb327db078f0044ebe362ff8aa31ea",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 159,
+      "path": "dev_docs/agents/transcripts/nonlinear_filters.yaml",
+      "sha256": "bbd28d3bbb4777c6c554af9d3b7d0fca192598b50a8d9606e1738ff7a20323f0",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 160,
+      "path": "dev_docs/agents/transcripts/nonlinear_filters.yaml",
+      "sha256": "9efbc8252df028302cde60560b4c77f5e878d815620c9b46bc4a5b5027733dd9",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 161,
+      "path": "dev_docs/agents/transcripts/nonlinear_filters.yaml",
+      "sha256": "4532ceeab80fa8ee4a810f1edd683223001cb295902a1edf0d3f4f49735d6dee",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 162,
+      "path": "dev_docs/agents/transcripts/norns_demo.yaml",
+      "sha256": "0c5c3b05d0033b63699db8214037fa6effb0f36d7367653fff0b359394b927ab",
+      "status": "language review"
+    },
+    {
+      "index": 163,
+      "path": "dev_docs/agents/transcripts/norns_demo.yaml",
+      "sha256": "08d48062e7dc32d68d0cca3d4bbc58ac760dea29e0afdc6a2b8e77e174c326f5",
+      "status": "language review"
+    },
+    {
+      "index": 164,
+      "path": "dev_docs/agents/transcripts/norns_demo.yaml",
+      "sha256": "5c95f1aa006122129d9ccba2a75dc87b921cbf95be6544e6ebdb5f097061d066",
+      "status": "language review"
+    },
+    {
+      "index": 165,
+      "path": "dev_docs/agents/transcripts/norns_demo.yaml",
+      "sha256": "e914526afcc1f8e890b618dfa868862d086e7e66eb6bfea36d648cd99f47011e",
+      "status": "language review"
+    },
+    {
+      "index": 166,
+      "path": "dev_docs/agents/transcripts/norns_demo.yaml",
+      "sha256": "8d203c72027251f5a92d79aee5f30393540585ac7fe5e6aa8dd0e013da2fdc83",
+      "status": "language review"
+    },
+    {
+      "index": 167,
+      "path": "dev_docs/agents/transcripts/norns_demo.yaml",
+      "sha256": "4eecde164abe3693bb83e6a2f0390e4597e17640b048a2cc55d8c65182bb94bb",
+      "status": "language review"
+    },
+    {
+      "index": 168,
+      "path": "dev_docs/agents/transcripts/norns_demo.yaml",
+      "sha256": "096384740c0be46482425746b3d33018fd9328c636211e5a576e6822af4c6a16",
+      "status": "language review"
+    },
+    {
+      "index": 169,
+      "path": "dev_docs/agents/transcripts/notation_elements.yaml",
+      "sha256": "a0778ca671803d32b6fc54839bcc1316a7a71f39a7926d3ade1336e469f00027",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 170,
+      "path": "dev_docs/agents/transcripts/oidn_raster_particles.yaml",
+      "sha256": "954b939420738d833e0236eeb0770cdb908b6d56604f2936b5772bdb925250f5",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 171,
+      "path": "dev_docs/agents/transcripts/oidn_raster_particles.yaml",
+      "sha256": "480a3f76a89ba613ef650d15669c38758258c23edb6fcf0582238050f61b7c21",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 172,
+      "path": "dev_docs/agents/transcripts/oidn_raster_particles.yaml",
+      "sha256": "ff999718819f4e4cd489a49bda7e46fb6cd5c7bc0d1ef1494dafecfb07c67d28",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 173,
+      "path": "dev_docs/agents/transcripts/optical_flow.yaml",
+      "sha256": "ce5759cd8ca53fb538729743b32a6f907f9e0da0e0e3f1585a5fd14204c34b9c",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 174,
+      "path": "dev_docs/agents/transcripts/optical_flow.yaml",
+      "sha256": "ce5759cd8ca53fb538729743b32a6f907f9e0da0e0e3f1585a5fd14204c34b9c",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 175,
+      "path": "dev_docs/agents/transcripts/optical_flow_pingpong.yaml",
+      "sha256": "43734dfe52c48969f9b89650eafd691b808c4fe706b66b082d32657fd603d5ce",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 176,
+      "path": "dev_docs/agents/transcripts/optical_flow_pingpong.yaml",
+      "sha256": "43734dfe52c48969f9b89650eafd691b808c4fe706b66b082d32657fd603d5ce",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 177,
+      "path": "dev_docs/agents/transcripts/ordered_group_keyframes.yaml",
+      "sha256": "ed73a9051f31202a5fc8e76ef2f501239ce8d0b0dad01ce18d9c25c659dd99a3",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 178,
+      "path": "dev_docs/agents/transcripts/outline_field_gpu.yaml",
+      "sha256": "4a712802a51931a985e5dba51855d833b354a088b51743d76f5afff53653f516",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 179,
+      "path": "dev_docs/agents/transcripts/outline_field_gpu.yaml",
+      "sha256": "aa1dc3b2f3bfaee1665918b055cc1c59dcb3fc4d893849a5a7ed26375c36feb5",
+      "status": "shader review"
+    },
+    {
+      "index": 180,
+      "path": "dev_docs/agents/transcripts/outline_field_gpu.yaml",
+      "sha256": "4ce2131eb3c8c841f8557e49cd3f22e74b12eb5168a67670fbae6f40e79c11dd",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 181,
+      "path": "dev_docs/agents/transcripts/outline_field_gpu.yaml",
+      "sha256": "fa8b34a0fd5d23cb8b092ff1b8d0f95ceb03612f45fa7b06e485ed11da365bcc",
+      "status": "shader review"
+    },
+    {
+      "index": 182,
+      "path": "dev_docs/agents/transcripts/outline_field_gpu.yaml",
+      "sha256": "2186d8f3eda7d2c076e3988487a370ec054774ecf6ca6da02a24fd0b884327a8",
+      "status": "shader review"
+    },
+    {
+      "index": 183,
+      "path": "dev_docs/agents/transcripts/outline_field_gpu.yaml",
+      "sha256": "6a5f0c16e40dfd97c2232424a5a7ae2573a8290bab6b65dbadfad2cf01da3c99",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 184,
+      "path": "dev_docs/agents/transcripts/outline_field_gpu.yaml",
+      "sha256": "75e05381287b4ff0469209287547c79d526762f4133863ccca4bc7e7c450e709",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 185,
+      "path": "dev_docs/agents/transcripts/paint_fill_rule.yaml",
+      "sha256": "3fde29112394800b5b75d476a82a43ee0c51e42b80d7136e16f31dbde21398fd",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 186,
+      "path": "dev_docs/agents/transcripts/paint_fill_rule.yaml",
+      "sha256": "e13f169a2db2f2e5953c1488bd31d113eb3a76152dd58d6b8a018b829543696d",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 187,
+      "path": "dev_docs/agents/transcripts/path_traced_reconstruction.yaml",
+      "sha256": "c3e35afab4a5d8372bfc349e0ccf9e5b5f6b6b0d25849de04197546aa3195904",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 188,
+      "path": "dev_docs/agents/transcripts/path_traced_reconstruction.yaml",
+      "sha256": "c3e35afab4a5d8372bfc349e0ccf9e5b5f6b6b0d25849de04197546aa3195904",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 189,
+      "path": "dev_docs/agents/transcripts/pattern_particles.yaml",
+      "sha256": "0b4ad79d772481a4192c58c5651a8a361924e9c81eba1013b6ba8bc70a115221",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 190,
+      "path": "dev_docs/agents/transcripts/pattern_rewrite_worked_example.yaml",
+      "sha256": "b3f56be11a04581668bfd70bebc14ed174f42e63c7116c75cf028178f967e40f",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 191,
+      "path": "dev_docs/agents/transcripts/pattern_rewrite_worked_example.yaml",
+      "sha256": "b3f56be11a04581668bfd70bebc14ed174f42e63c7116c75cf028178f967e40f",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 192,
+      "path": "dev_docs/agents/transcripts/penrose_spectra.yaml",
+      "sha256": "fe25912f4776c1716ce2eb7af8d403c62b0f5419a84f53cd5210e630b176eaf7",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 193,
+      "path": "dev_docs/agents/transcripts/petri_sparks.yaml",
+      "sha256": "883247d1cd31f7673eeb81c3e363475417807bc6bc9cfa04d558922f2b1dfbc5",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 194,
+      "path": "dev_docs/agents/transcripts/planar_queries.yaml",
+      "sha256": "c87995023d6ff9971a37756ca88a799b38ee5a076b94e2803b3dca6b7990ebdd",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 195,
+      "path": "dev_docs/agents/transcripts/planar_queries.yaml",
+      "sha256": "bc9ed9da2a41c447d7d62c16c12137325ec58ac7fb5cced51b639f440a3e1921",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 196,
+      "path": "dev_docs/agents/transcripts/polytope_conway_gallery.yaml",
+      "sha256": "3fae8bbbf3581457c3b8a0a8ce24145cb7d8bc9838c2b20fed7d21f16030f7f9",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 197,
+      "path": "dev_docs/agents/transcripts/polytope_pick_lineage.yaml",
+      "sha256": "4ed38275374e6ebc2150d8edd8aa34b03245fcb20b0b8e3b7a9812b1d1b37ec8",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 198,
+      "path": "dev_docs/agents/transcripts/ray_reconstruction.yaml",
+      "sha256": "655ebbd4bf26db1325c9bdeae7b344740646067219f962b5164004dfdc41ecd7",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 199,
+      "path": "dev_docs/agents/transcripts/ray_reconstruction.yaml",
+      "sha256": "655ebbd4bf26db1325c9bdeae7b344740646067219f962b5164004dfdc41ecd7",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 200,
+      "path": "dev_docs/agents/transcripts/reading_morph.yaml",
+      "sha256": "5da29bfc9e480bcf38102ea2ebdfbaef4a5a635f2663da39acd1ae04423d6e4e",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 201,
+      "path": "dev_docs/agents/transcripts/reading_morph.yaml",
+      "sha256": "2055d982325cad7498599d664fc74d965647932c35c97d485f47a07b91635019",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 202,
+      "path": "dev_docs/agents/transcripts/reading_morph.yaml",
+      "sha256": "612fcf55ae73cb48d05d6b9e3f5ac0941d7fe0570d4301eb0108bcf83955049a",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 203,
+      "path": "dev_docs/agents/transcripts/reading_pointing.yaml",
+      "sha256": "65449670291ceeff7c8df8281a0f0d42797670d7de3aec28c5a85a85611e9010",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 204,
+      "path": "dev_docs/agents/transcripts/reading_pointing.yaml",
+      "sha256": "9b922b011552a93b885a8877d30218584af10ffe3518fb4f815aa289cb945ca7",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 205,
+      "path": "dev_docs/agents/transcripts/reading_pointing.yaml",
+      "sha256": "612fcf55ae73cb48d05d6b9e3f5ac0941d7fe0570d4301eb0108bcf83955049a",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 206,
+      "path": "dev_docs/agents/transcripts/reading_pointing.yaml",
+      "sha256": "cf9e7f21ce2d76277ae12b7a742215201fcd2c38f16d6bad00f7f25eabaef610",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 207,
+      "path": "dev_docs/agents/transcripts/reconstruction_plumbing.yaml",
+      "sha256": "2a5226dcceb148f72c0059b634c5e7e9694743c6b16afa4f4fa65d4795b9c55f",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 208,
+      "path": "dev_docs/agents/transcripts/reconstruction_plumbing.yaml",
+      "sha256": "2a5226dcceb148f72c0059b634c5e7e9694743c6b16afa4f4fa65d4795b9c55f",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 209,
+      "path": "dev_docs/agents/transcripts/rhino_path_trace.yaml",
+      "sha256": "6cc4c9ecd83835a261dd6fcb979dc60223259f35724a98d21cd16ae88b047777",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 210,
+      "path": "dev_docs/agents/transcripts/rhino_path_trace.yaml",
+      "sha256": "a4ec59021b1031e8e97ad820c9e28910e7487690b4c3050d9088760a14d4f613",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 211,
+      "path": "dev_docs/agents/transcripts/rhino_round_trip.yaml",
+      "sha256": "122b2a6d623d550328e69a81ca9599b6852a7c959d49fbde43916dba431e4995",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 212,
+      "path": "dev_docs/agents/transcripts/rhino_round_trip.yaml",
+      "sha256": "122b2a6d623d550328e69a81ca9599b6852a7c959d49fbde43916dba431e4995",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 213,
+      "path": "dev_docs/agents/transcripts/rhino_save.yaml",
+      "sha256": "b8ff3916f71af78700f7777670b5f42771197d4eed8ea4730cb0633945680d28",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 214,
+      "path": "dev_docs/agents/transcripts/rhino_save.yaml",
+      "sha256": "2e13bcc3b693f91dfee98dda7305da77f95b09ee97b1f64e708955d3d203b84f",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 215,
+      "path": "dev_docs/agents/transcripts/rhino_save_small.yaml",
+      "sha256": "61b3de6d3808297a5f2b0f1b078d4d19372623cecfbb219a5c8bd96d884919f3",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 216,
+      "path": "dev_docs/agents/transcripts/rhino_save_small.yaml",
+      "sha256": "794063d793cd69195edc5d445510a69644e499d69fddeefca2e15628639bba75",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 217,
+      "path": "dev_docs/agents/transcripts/rhino_save_small.yaml",
+      "sha256": "61b3de6d3808297a5f2b0f1b078d4d19372623cecfbb219a5c8bd96d884919f3",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 218,
+      "path": "dev_docs/agents/transcripts/rhino_save_small.yaml",
+      "sha256": "794063d793cd69195edc5d445510a69644e499d69fddeefca2e15628639bba75",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 219,
+      "path": "dev_docs/agents/transcripts/rr_plumbing.yaml",
+      "sha256": "8f3af957dc88c08881e7d9fee90800722b757df75bc357d5ec4fecd8b76f40a8",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 220,
+      "path": "dev_docs/agents/transcripts/rr_plumbing.yaml",
+      "sha256": "8f3af957dc88c08881e7d9fee90800722b757df75bc357d5ec4fecd8b76f40a8",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 221,
+      "path": "dev_docs/agents/transcripts/sdf_global_consistency.yaml",
+      "sha256": "bd9134ba2cb616cd56983645aab4752cc58a94b29bd8d05eda4975d2564f4a5f",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 222,
+      "path": "dev_docs/agents/transcripts/sdf_global_consistency.yaml",
+      "sha256": "3a82ecaa484a80ff26387b9afd565c8c4e80f94426b66e3d4e6b8c17b26ce101",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 223,
+      "path": "dev_docs/agents/transcripts/shader_study_region_checks.yaml",
+      "sha256": "b47583dc50f12b922690e4492b7ab70e972db33cbafc4207cefd7e64e92854d1",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 224,
+      "path": "dev_docs/agents/transcripts/shader_study_region_checks.yaml",
+      "sha256": "5b91ca2f7aec15cf3d8f46fb1ba2a0fa53db62a67b7a3031d109b922cc9669a0",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 225,
+      "path": "dev_docs/agents/transcripts/shared_kotlin_garden.yaml",
+      "sha256": "2f5af0df9e1aa5e0410a967067cf8c09c45b5de248d3a48f4f47b18d4b0e7f49",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 226,
+      "path": "dev_docs/agents/transcripts/shared_kotlin_garden.yaml",
+      "sha256": "8156e642dfc8608190ab6d63ade2db0acafe7478a3f5978170197670880a35f7",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 227,
+      "path": "dev_docs/agents/transcripts/shared_kotlin_garden.yaml",
+      "sha256": "9e4260791716caed1a9592e82b273688a19e79c4d516b4591100493dbfabc1cb",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 228,
+      "path": "dev_docs/agents/transcripts/solidsl_gallery.yaml",
+      "sha256": "285c4ee14731f6a751581e6303a5ed885d8e5d5761e2c8bea9ffaae009ae9f35",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 229,
+      "path": "dev_docs/agents/transcripts/solidsl_gallery.yaml",
+      "sha256": "8132550ecc3726f62e8e150ed3223cb003acf43a57d9a6649f9346ef5425acce",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 230,
+      "path": "dev_docs/agents/transcripts/solidsl_gallery.yaml",
+      "sha256": "0bd14e4f84238f64b09187b4b3ddfd1e2fc167ef9bd07a7b66433e368647d18e",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 231,
+      "path": "dev_docs/agents/transcripts/spatial_rules_tour.yaml",
+      "sha256": "ea30a197582de0db5f9f800a3530b68ecd75222f92b146d222282ecc3989930a",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 232,
+      "path": "dev_docs/agents/transcripts/spatial_rules_tour.yaml",
+      "sha256": "686f8c5093ff5c94463dc7c78235ec7e78c7ffcb72aed450f8d76613e2a4d633",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 233,
+      "path": "dev_docs/agents/transcripts/spatial_rules_tour.yaml",
+      "sha256": "fccece212ff3b5b0be4238a7d7fc2c4c963a9e97f82f38986bb88f319b9664eb",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 234,
+      "path": "dev_docs/agents/transcripts/spatial_rules_tour.yaml",
+      "sha256": "76a65e72c1ee65123ea61d603288c4dcb465a0b6076b09f72652d3f138812c5f",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 235,
+      "path": "dev_docs/agents/transcripts/speech.yaml",
+      "sha256": "43465eb97cc48b3b28a22187541d628a3397cbe55e27d08f77a76868ad0d28eb",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 236,
+      "path": "dev_docs/agents/transcripts/speech.yaml",
+      "sha256": "35f77e81adda170e868aa423ae69d1fa2b93aa98fb0349eb2ca08c8ba78211c5",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 237,
+      "path": "dev_docs/agents/transcripts/speech.yaml",
+      "sha256": "5276f83beef2d27b450e2a71b633ded84b860744c55919eb68176cca2c92d544",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 238,
+      "path": "dev_docs/agents/transcripts/speech.yaml",
+      "sha256": "6c1d02f47b108034efc89567d2234b7839f35e9d2faf64617c1b5f1e6dc46e79",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 239,
+      "path": "dev_docs/agents/transcripts/speech.yaml",
+      "sha256": "e099c7691ba85bf6eadd62bcbb82ff35f3b95650c3b66331e0cbb16a02cf3ede",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 240,
+      "path": "dev_docs/agents/transcripts/spinny_algebras.yaml",
+      "sha256": "88a827a25f0bd4c24eb1dbcd9e66b0b64035567582488fb30cda313bb0367e06",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 241,
+      "path": "dev_docs/agents/transcripts/spinny_algebras.yaml",
+      "sha256": "972fdfcd92593dbf03e8f28c8e22c43ecc27133960fd769603257cc88923dcf6",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 242,
+      "path": "dev_docs/agents/transcripts/spinny_algebras.yaml",
+      "sha256": "910c0355db3ad95e6d2ef679540e69e98b1d76be2035bba295266c024c401dde",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 243,
+      "path": "dev_docs/agents/transcripts/spinny_algebras.yaml",
+      "sha256": "b4cc7d7f1df4efe9877ea519d57b4851b20751d6472dff77ff66c0521ed59704",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 244,
+      "path": "dev_docs/agents/transcripts/spinny_algebras.yaml",
+      "sha256": "49f6121ed14c2ecf1619f1cc3e0c6e710f556da378efa9f22f9a891cd9c697fc",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 245,
+      "path": "dev_docs/agents/transcripts/spinny_algebras.yaml",
+      "sha256": "f108dc091ae977d26cf4849fbcc723289b2594826e2ec9944901dc9be6c908c8",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 246,
+      "path": "dev_docs/agents/transcripts/splat_tiles.yaml",
+      "sha256": "28032d354ef67b679ae0003c8cdf245e6e1ca36806dd3f559172f5906a872d01",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 247,
+      "path": "dev_docs/agents/transcripts/splat_tiles.yaml",
+      "sha256": "05d798d8515e43e2c37714a9ad88530c76a2aa72a9008c9a199fa239ee942780",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 248,
+      "path": "dev_docs/agents/transcripts/splat_tiles.yaml",
+      "sha256": "1c9f520a57a5576bd2fe666cd1d915e881653a4f0517cff08f35c35a3befb2a0",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 249,
+      "path": "dev_docs/agents/transcripts/squircles.yaml",
+      "sha256": "0bf3dda069167fd5d794c11b289074026f8d45446a0a82e7fe508f754882c702",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 250,
+      "path": "dev_docs/agents/transcripts/squircles.yaml",
+      "sha256": "9373895d92ed49fe11c6a821ed783697c594f01b5197f9509ece16007125391f",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 251,
+      "path": "dev_docs/agents/transcripts/stacksl_partial_eval.yaml",
+      "sha256": "99154a7c1eaa2efd647a915bede99bb034d543ed4368bc3f53fd0d501393719a",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 252,
+      "path": "dev_docs/agents/transcripts/stacksl_partial_eval.yaml",
+      "sha256": "7903e9f9cded9c21d1668a5b429e935b64408e1f69e65a181fa40f7e75d372bf",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 253,
+      "path": "dev_docs/agents/transcripts/steamaudio_screen_study.yaml",
+      "sha256": "8d96fd272ce2986d1b4a9f3e54f9ece97f9d4ccde3f054383f026264d699b408",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 254,
+      "path": "dev_docs/agents/transcripts/streaming_diffusion.yaml",
+      "sha256": "d39d65bb0aa3ca467f51cb8c48c3b2905b00193115ae87388f90fc77069109fa",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 255,
+      "path": "dev_docs/agents/transcripts/text_one_vr.yaml",
+      "sha256": "132198e4ba9ea350e248d236de4497d522f6bdd0c7a600714a9029d6e7e35228",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 256,
+      "path": "dev_docs/agents/transcripts/text_one_vr.yaml",
+      "sha256": "da69dd89750c6f35caa85a26d6f995d9c3257cb8c66332d3e366ff5fc2cf98e7",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 257,
+      "path": "dev_docs/agents/transcripts/three_handles.yaml",
+      "sha256": "973eadc37eb3232864971d7b670d9d06cee914eb30a4fc58be7773a4e424856a",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 258,
+      "path": "dev_docs/agents/transcripts/three_handles.yaml",
+      "sha256": "54c223bd8c631deff5ed180d4cf1ff1a81d2f01b016a203d63b9f6691f48dd70",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 259,
+      "path": "dev_docs/agents/transcripts/vector_scenes.yaml",
+      "sha256": "a6cd1c7a04427fba2c2201e52f2c5f62b9ffd78f8b6300d825b60b5ac08b0add",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 260,
+      "path": "dev_docs/agents/transcripts/vector_scenes.yaml",
+      "sha256": "81493557ca881f561d98a9eb2a693ac672a4f4803f38eb45240e44412a94d795",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 261,
+      "path": "dev_docs/agents/transcripts/vector_scenes.yaml",
+      "sha256": "9005952b60f9faf8815b2bc3a6dce9a42824b542ea433d98127c5657d105911e",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 262,
+      "path": "dev_docs/agents/transcripts/vector_scenes.yaml",
+      "sha256": "5a2745395e1920ca6d9ce4d71fa1c173064dea476f0afec532e189c3d5118974",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 263,
+      "path": "dev_docs/agents/transcripts/vector_scenes.yaml",
+      "sha256": "cb868382408abe3abc5602aaeb6528d7890d3bc7f1c21b40ba470f233c47945b",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 264,
+      "path": "dev_docs/agents/transcripts/vector_scenes.yaml",
+      "sha256": "a1d9af7072e8ef5f3e30ac209119c05a6b3f5a2e9a94b48f49183f332cf57a01",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 265,
+      "path": "dev_docs/agents/transcripts/virtual_shadow_maps.yaml",
+      "sha256": "e90393b044932ad7e022f5505bec768466f0d819aaa553c877bfe061d981c6d2",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 266,
+      "path": "dev_docs/agents/transcripts/virtual_shadow_maps.yaml",
+      "sha256": "e90393b044932ad7e022f5505bec768466f0d819aaa553c877bfe061d981c6d2",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 267,
+      "path": "dev_docs/agents/transcripts/virtual_shadow_maps.yaml",
+      "sha256": "ba7d8b0109204688e962fd6031e54c56321df38a360ff6cb0c44f0018f7401ab",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 268,
+      "path": "public/docs/afield_four_graphics.md",
+      "sha256": "cb9b070347809ef2b5ebdb4bf29dabc5a26bb703c36754e49be51c9c8a681406",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 269,
+      "path": "public/docs/afield_four_graphics.md",
+      "sha256": "0ad7e2ef2615b56ad3e71b6c926a12d4cfaba3761b0f7a9760c684e26ca05263",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 270,
+      "path": "public/docs/afield_four_graphics.md",
+      "sha256": "91b4b8cc27b9f401fbbe8b8ca497fdf51016d12243d8b22b73dea1ddfe955299",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 271,
+      "path": "public/docs/afield_four_graphics.md",
+      "sha256": "e430b9038c7b377fb5d6f32b842cbc0f9fd6b585bf185da6e27b62f377c5306a",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 272,
+      "path": "public/docs/afield_four_graphics.md",
+      "sha256": "491f4c289d6a1ab3662c31d4d9651a5c3cd52ebd44f4a8fa1131e01114405701",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 273,
+      "path": "public/docs/afield_four_graphics.md",
+      "sha256": "2de81f6d9a0e3bfc758b2816b39b9494e8049206412126125ce3775cff8aeeb1",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 274,
+      "path": "public/docs/afield_four_graphics.md",
+      "sha256": "6848ca3eef900a8a20c55d80edaee23b0b09129441eda1d9da8074fc1b0c35f1",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 275,
+      "path": "public/docs/afield_four_graphics.md",
+      "sha256": "b201a190fed116d9e6b27ac9ba8ffe65f26b071cc1bb511b969a704ee83ee319",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 276,
+      "path": "public/docs/afield_four_graphics.md",
+      "sha256": "1e634d752a53c7fab7ddc94aca1fad3ac716dc7ca6f979e415c57b4a353c6b56",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 277,
+      "path": "public/docs/afield_four_graphics.md",
+      "sha256": "8a6175d39015dca39aae99a49f73ddd32209e6f621c2d9bffbd3bed0539a43f5",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 278,
+      "path": "public/docs/afield_four_graphics.md",
+      "sha256": "6de5c0261433e7a5bec0b993abf5d92c84de310bdf418fe6c9017372a93be6fd",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 279,
+      "path": "public/docs/afield_four_graphics.md",
+      "sha256": "669832cd0d6d088483e6f7f190e7368d44cc725573ebb14d6b55595664aa100e",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 280,
+      "path": "public/docs/afield_four_graphics.md",
+      "sha256": "82439a40a2f515f0b35545644311322f7740aff244556548691ed93a9f838193",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 281,
+      "path": "public/docs/afield_four_graphics.md",
+      "sha256": "7426cd3eee26f76a35334838490f55fa5d47c7db119603c0b5119b0aa7b7ae93",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 282,
+      "path": "public/docs/afield_four_graphics.md",
+      "sha256": "ac63f43f0e3ecb264e26f38c4950b02d05048ce631b6ecb6d0b63a079b76af0b",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 283,
+      "path": "public/docs/afield_four_graphics.md",
+      "sha256": "1004abbf04daf7d0b1af84334aa3dc0c9028c35c91a4bea2e48c593d7068e8dc",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 284,
+      "path": "public/docs/afield_four_graphics.md",
+      "sha256": "7fa46eaba563d99f42b063c5794b01c11f0482fe0a0c9c6d415e003aef4beeea",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 285,
+      "path": "public/docs/afield_four_graphics.md",
+      "sha256": "2703e54c099c7fa95917fd620716a33c0aed09269dba0212ffe9665e694276b5",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 286,
+      "path": "public/docs/afield_four_graphics.md",
+      "sha256": "f75e17cf2465e867ba14137a450acd4a0f90067414e148ac6a6a15884cc4015c",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 287,
+      "path": "public/docs/afield_four_graphics.md",
+      "sha256": "9f64e4e7973d51f1bac26669ac296191536fc2c3fa6a2a4afbd40d5a4421e013",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 288,
+      "path": "public/docs/afield_four_graphics.md",
+      "sha256": "2a102d80a5e5f534e8ef9afd971d60807e869801bbf9387ec95887a3858cb7d6",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 289,
+      "path": "public/docs/afield_four_graphics.md",
+      "sha256": "42d7741a464e4e62fbeb24b887eb79c2a9e0cf84a9038aa9b44aa2e47df69818",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 290,
+      "path": "public/docs/afield_four_graphics.md",
+      "sha256": "fe6ff9d6644f4c85660736d5dab3046d06ee6b753e471410f36abf5979df73c1",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 291,
+      "path": "public/docs/afield_four_graphics.md",
+      "sha256": "62623b5c5e2f00dd9ed0df73e3050178e81077b55f2590437399dc6de54bebad",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 292,
+      "path": "public/docs/afield_four_graphics.md",
+      "sha256": "56087dce9eea674b6aa27b35062439c414028e5bdd85b2345f9f71581b01cca2",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 293,
+      "path": "public/docs/afield_four_graphics.md",
+      "sha256": "c11d0fb760dc0667666b71c890d2fa5f292eb122b9cdbdd97406dda26d00898a",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 294,
+      "path": "public/docs/afield_four_graphics.md",
+      "sha256": "b53ddbc0a91ce3d2f8dc0fa3b22f15445dbf9a99949fea2740bffd2e2e761f05",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 295,
+      "path": "public/docs/afield_four_graphics.md",
+      "sha256": "19cbff348ae37925ff6c11255f2b7d48171486039f1147b6430fd19a3a09e36a",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 296,
+      "path": "public/docs/afield_four_graphics.md",
+      "sha256": "59d966e8dadb8ecd9edf57e976465423415624d08dba9d437148e683aa5dd881",
+      "status": "shader review"
+    },
+    {
+      "index": 297,
+      "path": "public/docs/afield_four_graphics.md",
+      "sha256": "a8d693c31fe4a6a2603651607c2f9321681193a43170bd0d5e71307aee06afc5",
+      "status": "shader review"
+    },
+    {
+      "index": 298,
+      "path": "public/docs/agent_transcripts.md",
+      "sha256": "2fb43e6f92dc13bacef849b9315ba400f765c8eddccfa14f2598222e8395efe1",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 299,
+      "path": "public/docs/ai4_painting.md",
+      "sha256": "dde38ce66c2450d48982a3aad0e37b913529697644470eea75b880b2b409c424",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 300,
+      "path": "public/docs/audio_curves.md",
+      "sha256": "c4e1be77dd5f658b80c5e3a8ca3154d5984c27a56accaf6829fd666cd0ea3845",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 301,
+      "path": "public/docs/automating_field.md",
+      "sha256": "2473699845292771f07850f11d59ff1725891994760f46ad9c15e08a1bc81608",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 302,
+      "path": "public/docs/automating_field.md",
+      "sha256": "e849dd3935acc0e383fd0788daa311a75b418330f616194b92ecf5b1f6e9088f",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 303,
+      "path": "public/docs/braitenberg_vehicles.md",
+      "sha256": "5ac28f5165c29546a4d06e844f7cd804a3246ccadab1c21b7d38eaaef1f7cd3c",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 304,
+      "path": "public/docs/braitenberg_vehicles.md",
+      "sha256": "24b3b992a9db43cdebea405a8b2e75fb1c72db454d943b11d483fcb1c63a03a0",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 305,
+      "path": "public/docs/braitenberg_vehicles.md",
+      "sha256": "45b2f4c1d531b218303fc515b4236da90970a92ab4d11b08d9307a6f6aa2dc69",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 306,
+      "path": "public/docs/ceres.md",
+      "sha256": "f54ade835860697e1b0bdb3e896abb83b28cf1ec4b3ea8b5ef42cbc74d207edb",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 307,
+      "path": "public/docs/ceres.md",
+      "sha256": "244dc7b83934564a13ea67d3242af39e9924b04bd2aa67a0523b423853b48994",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 308,
+      "path": "public/docs/ceres.md",
+      "sha256": "9e39a761b4e6ea0c0b1c9aaef1d06ad59ee1c97390d43d7311330052fa7c56fb",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 309,
+      "path": "public/docs/ceres.md",
+      "sha256": "99196d47b03aba85a4e833fa4e1251ffe491efc334fbba27014418a00c27c2d3",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 310,
+      "path": "public/docs/ceres.md",
+      "sha256": "b165e82fcb2aaba4e84aa536dbefbcfa9d3d205999b17f5bad68bac552da804c",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 311,
+      "path": "public/docs/chain_polytope_render.md",
+      "sha256": "54c2abb9fcd9a75d83a17cbe0c4c80ec8bd461c0119cab524ff6091849564d9e",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 312,
+      "path": "public/docs/chain_polytope_render.md",
+      "sha256": "2fe5e1367e389aea2bfb5406761c100fff751d5587be68610764a0b028b47de5",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 313,
+      "path": "public/docs/chain_rhino_render.md",
+      "sha256": "3a96af5c68d2ca3e4d19ebf8e8c65f8bf464335c145d70a78ebe4c1829b90ed9",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 314,
+      "path": "public/docs/chain_rhino_render.md",
+      "sha256": "ad66c168cca2eaa7e6b5e117c51d94d3dcd3573397c7fa574f42c8a65136de12",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 315,
+      "path": "public/docs/chain_rhino_render.md",
+      "sha256": "6bc7a870deb646b688877a723cbd4cccf6ab86a5c9c5a5aec957e606e655aba2",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 316,
+      "path": "public/docs/chain_rhino_render.md",
+      "sha256": "77a93f2a3ee33ac5069a73b500c4e1c6f1417933bc679bb6da352afd1da861ca",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 317,
+      "path": "public/docs/chain_squircle_offsets.md",
+      "sha256": "1766c9de25d8061ec5feb7d9f157bf6ca6e0de7dfffa2d741fe2eaa3c684c41d",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 318,
+      "path": "public/docs/chain_squircle_offsets.md",
+      "sha256": "c0d394e4f968204363f5e9e968738b1ac1e06ce1dcb6113183ecaa7a12bd898e",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 319,
+      "path": "public/docs/chain_squircle_offsets.md",
+      "sha256": "2fabf412338752c6dd8000f00fc0410552e9301d96629ba28924f2a6f5fb5d1a",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 320,
+      "path": "public/docs/chain_tiger_paint.md",
+      "sha256": "580f22d77fb7b2ae9ef461eda3d56cbb3a1e12fdfaf99149870c96a1ea5e9693",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 321,
+      "path": "public/docs/chain_tiger_paint.md",
+      "sha256": "984ef15a77c93a6bb38bca9c25d312e23422c0a8fbae4e48e01b749006b8decc",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 322,
+      "path": "public/docs/chain_tiger_paint.md",
+      "sha256": "81798df205b987370a6c9e1688baec6d1c7886569b296b3270439bb47b4b22e5",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 323,
+      "path": "public/docs/chain_tiger_paint.md",
+      "sha256": "499c1d07c33035d0ee3c8a61c8ceb496ea116087c599821873c6b2b10809ccb6",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 324,
+      "path": "public/docs/chain_tiger_paint.md",
+      "sha256": "fe958510345e278c930fb72ab0326e18d1ba321fc6401344e6d4ec3b68c1bb3c",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 325,
+      "path": "public/docs/chain_tiger_paint.md",
+      "sha256": "b78240a3ebb41cc41bfb92559ef32619b6cd663618f69901a25f4ec04583b755",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 326,
+      "path": "public/docs/colors_examples.md",
+      "sha256": "633a925a6a72d072e29f646b5d494afe82262daacdb8381e8373043150d6f938",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 327,
+      "path": "public/docs/colors_examples.md",
+      "sha256": "bc271c93a8ce0f6e53ef5e24150b3a829edeb5edb36dabbac5883a313c2643fe",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 328,
+      "path": "public/docs/colors_examples.md",
+      "sha256": "9f10623d519e96bec006027369011cdf59ab407eadc5f2929b6f612fb0ab4c14",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 329,
+      "path": "public/docs/colors_examples.md",
+      "sha256": "b1e45e846d689cc5a77e628613199e94b9e010489999da9a2a9c65c970ba966a",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 330,
+      "path": "public/docs/colors_examples.md",
+      "sha256": "0dd2b4241f24f69c66bb8ceb67f4bddd018592816f19e8e57900699a5d8790ac",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 331,
+      "path": "public/docs/colors_examples.md",
+      "sha256": "23a6853ed11cd00fe3d378a229bcf0a8b3a2699ef5985dae3223acf49e554aa5",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 332,
+      "path": "public/docs/colors_examples.md",
+      "sha256": "9f84c562d9c1483e805e8514fd2872a4772b4a5a2c6636de6bd1e81c606d44b8",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 333,
+      "path": "public/docs/colors_examples.md",
+      "sha256": "2fc8a6d1183d2112967d8bc9ac47a2ce326f049358e76407d0963bc898ee875f",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 334,
+      "path": "public/docs/datalog.md",
+      "sha256": "a5d6209daf17e9e736bd605098c94d1a51f1ee91ec9ad3324160909577a035f2",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 335,
+      "path": "public/docs/datalog.md",
+      "sha256": "94964439f5a607b14aec78b4ea9280beaf7d1f459818f4f87cd6c6b1205a548d",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 336,
+      "path": "public/docs/datalog.md",
+      "sha256": "4b6b1fab4202e87faf8a0d29408aed1e7d8a0d40ef04a832e1ede043bda694b2",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 337,
+      "path": "public/docs/datalog.md",
+      "sha256": "48c6e9ba29804d3b57b8bc673af4a9b1ddb7e221f6ba9f762b9f27b03b9f6d8c",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 338,
+      "path": "public/docs/datalog.md",
+      "sha256": "8750d4a234b77e8edc41b790f2b58a567584052d32179a7f1e48df5476392372",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 339,
+      "path": "public/docs/davinci_resolve.md",
+      "sha256": "e663abb74d2ceb8772ce333fc16c592fd9ceb25f6a5bdef0aa9c627c2415dbe8",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 340,
+      "path": "public/docs/debruijn_tilings.md",
+      "sha256": "fe25912f4776c1716ce2eb7af8d403c62b0f5419a84f53cd5210e630b176eaf7",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 341,
+      "path": "public/docs/direct_lighting.md",
+      "sha256": "707e41a5069e0aac2a484cde22b61ed060a8d71bd0bba9aa0d8c1ee64a39f8b0",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 342,
+      "path": "public/docs/discrete_energy.md",
+      "sha256": "17a51222a223dd0815c2ee13e8342da0dbfffc9969ce639eefa7e76447687759",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 343,
+      "path": "public/docs/discrete_energy.md",
+      "sha256": "185bad2bebe47457980c696ba5d93559d4b788ea64b58c6bb2e846d4667c80a8",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 344,
+      "path": "public/docs/discrete_energy.md",
+      "sha256": "fe388138f1c2d0db23c771180105a3cf7652395fba61131a8cb4aeadfa7d7c43",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 345,
+      "path": "public/docs/discrete_energy.md",
+      "sha256": "e4ddb3e373c2fff9ba8cd3e18e0bde6d37c3d8470cf567124e60ee442bf261ec",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 346,
+      "path": "public/docs/discrete_energy.md",
+      "sha256": "7375782cfd0ca84acfe228fb95902d5c1206e95b5a5eeefee8f29548853b1feb",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 347,
+      "path": "public/docs/drawing_on.md",
+      "sha256": "ddce691cf59853a59848484122516f97c23a5099be53a7c2e61a80be6c493b09",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 348,
+      "path": "public/docs/drawing_on.md",
+      "sha256": "8aabe442b308141c40336e3f714c09a125ced4218f1e007e08754399d8d3b3b0",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 349,
+      "path": "public/docs/drawing_on.md",
+      "sha256": "ae4e9f5f422d6ee557b6427b7b8e8618ca3679e014033d4ebc88d6df55ccc09b",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 350,
+      "path": "public/docs/drawing_on.md",
+      "sha256": "55212e09519d269b0676ec91b22dbe58a25b81e8c58f3dcc5a0c0fe1bfa66b6b",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 351,
+      "path": "public/docs/drawing_on.md",
+      "sha256": "8b656147db98ed310ecacfb265a2299360b35520406ba7777be06eef86a88b91",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 352,
+      "path": "public/docs/drawing_on.md",
+      "sha256": "7f1a55d5bf8384fffe7d6f135bb5d8de69d02caddcf192fc50aa7c41a464800c",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 353,
+      "path": "public/docs/eigendrum.md",
+      "sha256": "b17ed2cbcf6e3907aa81c9f63365aea981987fcda32ed5b594d670f3aced792f",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 354,
+      "path": "public/docs/eigendrum.md",
+      "sha256": "49af887f9ee1275328bca115a8f73cee9ca1c86f19f0b848dacd4950df6ab506",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 355,
+      "path": "public/docs/evolving_creatures.md",
+      "sha256": "3f7091d8a07e2a3fba7c15edb972261c21aa644ae729269675bde8706201511a",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 356,
+      "path": "public/docs/explainer_lights.md",
+      "sha256": "e2cc0957a0d758b83ec92d8778fb6d976b50fd9fe1361430876cd4f80f3a38e6",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 357,
+      "path": "public/docs/explainer_lights.md",
+      "sha256": "ebacf2e86e7bc46406b1920091adfba1ab64e61c55f6d01e51c12244f0d5fea2",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 358,
+      "path": "public/docs/fabricate_renderer.md",
+      "sha256": "88354d3eca500b2e178f72b5d381ccadacefb3902d8bec6b35e7e9d45a429b3c",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 359,
+      "path": "public/docs/field_probes.md",
+      "sha256": "bdcd4bee59d4fe6f648b21e672be0f692beb29fdf2aad7135793f9b2a1940fcb",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 360,
+      "path": "public/docs/field_probes.md",
+      "sha256": "fa5ddb4b969094bf6032fd7fbbcb48495560d896582e40772b5614c1e290ae1b",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 361,
+      "path": "public/docs/files_and_paths.md",
+      "sha256": "7eb718efb6031f47d83846382c5833984c86c364dedfd8317d5087f939867db2",
+      "status": "signature fragment"
+    },
+    {
+      "index": 362,
+      "path": "public/docs/files_and_paths.md",
+      "sha256": "7840f058fa27732e3fb0eb02ac311da7b6d085e121d9046cafb861717984d29b",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 363,
+      "path": "public/docs/files_and_paths.md",
+      "sha256": "1781d5e1dd429aa7af2a4eed09d087a31ee0d100a2f8aae642fcb7539282f8e1",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 364,
+      "path": "public/docs/fline_examples.md",
+      "sha256": "0effdd59f03c3a2e807db0946596483cc24831e3c834abbfe97199477d40bef2",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 365,
+      "path": "public/docs/fline_examples.md",
+      "sha256": "36618843e6048a3bb08f9ed8b3b91c628c476b80a03e6835da3e2de178c9c49f",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 366,
+      "path": "public/docs/fline_examples.md",
+      "sha256": "b32d19649100a2f23d213c4128ced64c5148f7d605aa4a67d92a260b2ba3d9e4",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 367,
+      "path": "public/docs/fline_examples.md",
+      "sha256": "bbea3ea3b613a4004380c74d189c7803c3de730936803b0055e220fb40f53f19",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 368,
+      "path": "public/docs/fline_examples.md",
+      "sha256": "4b6ef7ef26b88484a5dc47d66cdb10c3288322761cbc639502d81183589e7450",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 369,
+      "path": "public/docs/fline_examples.md",
+      "sha256": "ac13f716e3a78ceac8f56ee8212d0279354a07407382d2696a5171fd300a937e",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 370,
+      "path": "public/docs/fline_examples.md",
+      "sha256": "81493557ca881f561d98a9eb2a693ac672a4f4803f38eb45240e44412a94d795",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 371,
+      "path": "public/docs/fline_examples.md",
+      "sha256": "e9b36bd388ee48da8061475097ba32f40ef34eb78ca3f3fd8e279cbcd36d8167",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 372,
+      "path": "public/docs/fline_examples.md",
+      "sha256": "77cbeb6042b0fc1c524dd8e75980d904e6b79f99b6b931d588189c8a7cf9bd21",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 373,
+      "path": "public/docs/fline_examples.md",
+      "sha256": "847ae9503c3fdf7c086ebcb8f7fa43cf1f18f6b6824ae15f121f4ecc49cc9fe4",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 374,
+      "path": "public/docs/fline_examples.md",
+      "sha256": "f06151e9443662bb78a90972715079d331599737765b95c6cbd40fa6f2c43d95",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 375,
+      "path": "public/docs/fline_examples.md",
+      "sha256": "a5bf2f532953a01bb50c17d8f1935d624aef33eddd0075ad0794ddb602d3f862",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 376,
+      "path": "public/docs/fline_examples.md",
+      "sha256": "5c4c37081e57ecff819cb3dabc386252dcecf0dea7d763a19835fa686ce8cdc8",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 377,
+      "path": "public/docs/fline_examples.md",
+      "sha256": "e882521dbb81aebdf1089189979c614879cd5dfecdc9c4cc69cd33d792095435",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 378,
+      "path": "public/docs/fline_examples.md",
+      "sha256": "9eb95644ebb470c42c1b33e646d394140e0850d7fb32f63f2117858a096f3901",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 379,
+      "path": "public/docs/fline_examples.md",
+      "sha256": "ed57503d397189818fda8ff34d38bb1ab5ba054e609e1b3cbed97b4582a420cd",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 380,
+      "path": "public/docs/fline_examples.md",
+      "sha256": "c87995023d6ff9971a37756ca88a799b38ee5a076b94e2803b3dca6b7990ebdd",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 381,
+      "path": "public/docs/functions_examples.md",
+      "sha256": "78d9c05c8234073fd1dc1d12fca3eb8ecea10a860b7220b1d6c49b0026dda8b1",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 382,
+      "path": "public/docs/geometry_from_disk.md",
+      "sha256": "9c72352b6f053e51bf8d32c599bad7a58da28d5341c4407a7a70cb64df0411dc",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 383,
+      "path": "public/docs/geometry_from_disk.md",
+      "sha256": "7623e32d2776315130cc36371da653d96f5cda3c87a86af6f93510ee6dd0e17a",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 384,
+      "path": "public/docs/gpu_schema.md",
+      "sha256": "e1007fa769e163dddcb33fe40776e19c93b0e2ed5e02f6681cb8aecc8ba6d4f5",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 385,
+      "path": "public/docs/gpu_shader_learning.md",
+      "sha256": "4eb4f29c425f46b8f74887098c7665627bd966b449a13eded3f98981c4a1621c",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 386,
+      "path": "public/docs/gpu_state.md",
+      "sha256": "c527a2495ed31a208e8f39f5b57ad6c985b349ff3dbe694af19748a692e49fad",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 387,
+      "path": "public/docs/graph_connectivity_examples.md",
+      "sha256": "980c3d35cf32ab777a7cf5a02dda2ae200fb5211ec830a2b773923e83a5353bf",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 388,
+      "path": "public/docs/interaction_nets_examples.md",
+      "sha256": "31a98659bf908ffea572ce2739c45d112664ec48d5f91dd2bfec3d631e11b21e",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 389,
+      "path": "public/docs/interaction_nets_examples.md",
+      "sha256": "a66c9352c683a239618e6d28057704d1f31990b56b74f10808d92c09bfeabaec",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 390,
+      "path": "public/docs/interaction_nets_examples.md",
+      "sha256": "aaa88b21d34fadff98fa72f0e4a3ec9a6b23cda6c3fe412f5fd06161c58789ce",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 391,
+      "path": "public/docs/interaction_nets_examples.md",
+      "sha256": "ad503364e5610c0f3256375263c516cb1f624637af4fa2f96ee13f44ea231323",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 392,
+      "path": "public/docs/keybindings.md",
+      "sha256": "a4eb6c7fe235be309c2f018f3dde38ad40eb09b2a4b988cf7ae7afcdd9e09f78",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 393,
+      "path": "public/docs/learned_pen.md",
+      "sha256": "5678947c5b2b9f11db691dc7041b47f2873f7723c1b6bedb2a72974fdb610b27",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 394,
+      "path": "public/docs/learned_pen.md",
+      "sha256": "cfe7f838ad9f88373100873232f19fae66a5f72c5407760635d00c5306143f8f",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 395,
+      "path": "public/docs/learned_pen.md",
+      "sha256": "4a319cfe819ded004bf7055bf7a80f015346dbb9bb0b19aed13e47ba94557edd",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 396,
+      "path": "public/docs/learned_pen.md",
+      "sha256": "792cb73e978fd3f828c402b4715768bcf265a150bacc0d654b0ac12e1c950f1d",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 397,
+      "path": "public/docs/learned_pen.md",
+      "sha256": "90ebff07dfa13fa6a416e721e551fc623d918499532bb8636b803e95059e33bf",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 398,
+      "path": "public/docs/learned_pen.md",
+      "sha256": "f3ec2136270b956ce04b6487163750e452875fcfc87d05c2037555bb454b7725",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 399,
+      "path": "public/docs/learned_pen.md",
+      "sha256": "1f25f0483c21805479ee5178fcd158dc73c73fae33e4c9ddd43dff0674fcde3c",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 400,
+      "path": "public/docs/learned_pen.md",
+      "sha256": "dff447a1c639b78660a2030b343eef1bb2293a89773f958f8d4309220c0c2262",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 401,
+      "path": "public/docs/learned_pen.md",
+      "sha256": "ab7c7187d0597bcc3ce5f638665c4bcaa83ee94c7661e18abf0f1b24fc050b1c",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 402,
+      "path": "public/docs/learned_pen.md",
+      "sha256": "ab1ec24308b747adb70b52971667dbaf61b3ff7dcb9489864ba35c61957145ef",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 403,
+      "path": "public/docs/learned_pen.md",
+      "sha256": "3e088bd9f7dada5b3eff52c566738884bb8e2f17153706f9df8c45fe00d40360",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 404,
+      "path": "public/docs/learned_pen.md",
+      "sha256": "21d942c41e6e3ddaeb426589d8b0574d9a9f63f320fea00b3aa688f65592000c",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 405,
+      "path": "public/docs/linear_algebra.md",
+      "sha256": "a307c09d84dccdde1612ae26fc62c585b037c240a0133068c340445e7e913428",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 406,
+      "path": "public/docs/linear_algebra.md",
+      "sha256": "13e82df713e5477c911ec9c194971300e7c58449e503615d9f260b1de1ea01bb",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 407,
+      "path": "public/docs/linear_algebra.md",
+      "sha256": "2356dedbe2a84dcf0dede191c13264600dfa994c61b6964c0416d3bd993a4f79",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 408,
+      "path": "public/docs/linear_algebra.md",
+      "sha256": "9052830b9c6f1c63c9cbc4d086c0ae87217579e0d3552006356c41ec9b150c7e",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 409,
+      "path": "public/docs/linear_algebra.md",
+      "sha256": "c558183a9de7b81aef3f94453bcde4c84e5a7afcb0e129b4ef74f5cc3d2aa8c5",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 410,
+      "path": "public/docs/linear_algebra.md",
+      "sha256": "f8a4a0177425c252eee524106d19a9a372c3fb4ff4d2fd82c709b7d9f63bc0df",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 411,
+      "path": "public/docs/linear_algebra.md",
+      "sha256": "7440df313c928b61c701a060154f7488a404d58fc185b1ba17994ed3cb9e84ec",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 412,
+      "path": "public/docs/linear_algebra.md",
+      "sha256": "b7cd9e9e4a95dc8899d3efafe3e9c5e26abe06f0583566ded949e4e1b9ee7d04",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 413,
+      "path": "public/docs/linear_algebra.md",
+      "sha256": "69ee223461c427049aff196c6c0b1f3aa2822760342ffc3687b637f6aefb2981",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 414,
+      "path": "public/docs/linear_algebra.md",
+      "sha256": "c0ccd8370673b5298d7536dbf365a2511d73fc30247e34d9c7e59991bd4cc91f",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 415,
+      "path": "public/docs/linear_algebra.md",
+      "sha256": "f0f5041c8a8194a7b50807f9705605c90d83c46f84f2601b14172544d3a64470",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 416,
+      "path": "public/docs/linear_algebra.md",
+      "sha256": "2fbbda0d771186b1a261820fb824a9a40f27e2f496bc2ca56e691120bbd0e06c",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 417,
+      "path": "public/docs/linear_algebra.md",
+      "sha256": "109ba376159863a3e9e444d27f29cea6e776b0d7b39dca7d039b3676ac59e7ea",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 418,
+      "path": "public/docs/linear_algebra.md",
+      "sha256": "5f6b658feaaecac8d3987b9261bbaed2e3e310cbffb1c84d7ec2733ce201e529",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 419,
+      "path": "public/docs/linear_algebra.md",
+      "sha256": "b8f1f16f50daadc0740deffed14516ec2608dcbc14a40a30de9ec65f0340bc73",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 420,
+      "path": "public/docs/linear_algebra.md",
+      "sha256": "09ce9d246edde515e64af91968d443f12dca4e732459d44a1ac5f0f5cae24525",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 421,
+      "path": "public/docs/linear_algebra.md",
+      "sha256": "17ce0308bf2cb0699e1ad84d7874eafff7e0fff39cbd72beb71824510994b8ae",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 422,
+      "path": "public/docs/linear_algebra.md",
+      "sha256": "9f8426058aad5d5812386d4ecacc46262b8835058a9475aa728c8fbd41a8b68e",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 423,
+      "path": "public/docs/linear_algebra.md",
+      "sha256": "fe68a156f5e2b2ff7aa514507ea5eb6eeae465bcfa93a2f57019ca7bf24dd63a",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 424,
+      "path": "public/docs/linear_algebra.md",
+      "sha256": "d3ad0cc86992ec610aa85bbe2a540104d1925159f91a7a12a503ebfec8462d5f",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 425,
+      "path": "public/docs/linear_algebra.md",
+      "sha256": "97c4e0b5811b844609b82657c4d1b0b1bdd12c56296303c5b211d236a253d2b8",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 426,
+      "path": "public/docs/linear_algebra.md",
+      "sha256": "2c29dbac7f9814a3f96770d025e89323cdd73c87bb99d6f51d7112ab3d5b80d7",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 427,
+      "path": "public/docs/lua.md",
+      "sha256": "0b2d614e7236cf12a3b0012ccfc8c09cd126e2ba8add821ca96a27418ddd2f76",
+      "status": "language review"
+    },
+    {
+      "index": 428,
+      "path": "public/docs/manifold.md",
+      "sha256": "595b6d92b80e97ce1151dfd1ca56a26cb668f1a4db1344d6b8746ca581f1d1c0",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 429,
+      "path": "public/docs/manim.md",
+      "sha256": "6ae246428740e0f76ac625910e7641b098e1d4ac5a484fd3a33f4026854a27a8",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 430,
+      "path": "public/docs/manim.md",
+      "sha256": "5e08bb0bf966fb48f340c247f2d99882bc417416d5bf814088841f1ae1a4ff3f",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 431,
+      "path": "public/docs/manim.md",
+      "sha256": "2a6ff122d9e2159fb86e1c7ef673b029b4b4f589ca570f667ca52a81f8664cb3",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 432,
+      "path": "public/docs/manim.md",
+      "sha256": "b7613f8d725745a446c5bcf0ce751ebe00f3894b721a9fcb774e31af9b053761",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 433,
+      "path": "public/docs/manim.md",
+      "sha256": "2d173ff069b86e5674133a65e24ddaeeb9b58654f7dfb0d1f4035fb593532e5d",
+      "status": "language review"
+    },
+    {
+      "index": 434,
+      "path": "public/docs/manim.md",
+      "sha256": "6731729a2e8131ec8198ddd0410ce31e6c6c559d3145747469df44a087745995",
+      "status": "language review"
+    },
+    {
+      "index": 435,
+      "path": "public/docs/marking_menus.md",
+      "sha256": "5acad8531115de27e8b694872a576218302ecf65d14be1ca556203dcd296830c",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 436,
+      "path": "public/docs/marking_menus.md",
+      "sha256": "865fff3fa530c442206a0f87ecd81e5a1be72958476c146891964b384aa4e0a5",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 437,
+      "path": "public/docs/marking_menus.md",
+      "sha256": "14a88991b9179dd81960b5f4d8b2c9bfa0f15214aee8f733bebf7cbb8bccc44f",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 438,
+      "path": "public/docs/marking_menus.md",
+      "sha256": "a44735b405d550604917ce84df701050bcbb8a67af8552e46e56f398d3c9326f",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 439,
+      "path": "public/docs/marking_menus.md",
+      "sha256": "a209dd8a923a5939e8521946d57cd9a890c3ffc8da96843418f097e86455dada",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 440,
+      "path": "public/docs/matrix_profile.md",
+      "sha256": "72c01baa799f2100ec60bfcffc12706687f57822399efe37f926fd866ee228f5",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 441,
+      "path": "public/docs/matrix_profile.md",
+      "sha256": "7f9ecd54d2191d83ab66e851ac71afb5bf9df66cc4438ab64007257bd9b7ddd9",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 442,
+      "path": "public/docs/mesh_examples.md",
+      "sha256": "3ad1369effdd4b214aee82304f76cdbe594b10f47dcb09251b3f217901671f69",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 443,
+      "path": "public/docs/mesh_examples.md",
+      "sha256": "15609ef8db7e2407d596a7ad464420cb08832dbd5e70f3952c07a0db155869ed",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 444,
+      "path": "public/docs/mesh_examples.md",
+      "sha256": "3758671033cc2477e7e5622737cc14dcd535cd83ff3ee25e3e7db2785646ade1",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 445,
+      "path": "public/docs/mesh_examples.md",
+      "sha256": "737ca840e117f92b386f46c87b6dcf59b680ea35025e3a0d338f618df6d811c2",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 446,
+      "path": "public/docs/mesh_examples.md",
+      "sha256": "7c9dd29d4075083fa246958ed2595be2f7b5cf62cb3fe561e1763c936b2862a9",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 447,
+      "path": "public/docs/mesh_examples.md",
+      "sha256": "383ffb00cf9edc3341a75f1383585594bc29eacd6dd57758ee52622baa9cc0cb",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 448,
+      "path": "public/docs/mesh_examples.md",
+      "sha256": "3cc2456c932d4ea0156e282fcd449678d92554f69a86641d35b901dfb72e0f9c",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 449,
+      "path": "public/docs/mesh_examples.md",
+      "sha256": "e392b4634090c8a0196ffbc6988e71f007d3a68c23a2ab425800fcc9ec8eb197",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 450,
+      "path": "public/docs/mqtt.md",
+      "sha256": "0a2af1cca6c5a72215d461e2d16df8136776aa24fa0b31febc3e10f92bddfaec",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 451,
+      "path": "public/docs/optimal_transport.md",
+      "sha256": "5cb1925823f3cba44fddb06fa630b1dcf7ad5afdd9464769c4718bc87285810f",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 452,
+      "path": "public/docs/paint_canvas.md",
+      "sha256": "9ce1143cded0fb445c1715d9c8cb7e2ce3b7acee084f4f35ad38d132e65d810d",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 453,
+      "path": "public/docs/paint_canvas.md",
+      "sha256": "1eb410b82bd7bb6b92b9ed9656a461bbbc372c74fa1b0d5b670e5758438859b0",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 454,
+      "path": "public/docs/paint_canvas.md",
+      "sha256": "d0fcf562735cd4e08d7b54bed8385809253f03dfd1a07ab0d2ad58ba01250914",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 455,
+      "path": "public/docs/paint_canvas.md",
+      "sha256": "0cbecfe74dea9c2b13bc7eb130034d2551a30f4a54869b27c1ac34243433991f",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 456,
+      "path": "public/docs/paint_canvas.md",
+      "sha256": "c0814e8a702fe73742ab9663c35da75a0ee04b796975f6dd766a1a340f56500e",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 457,
+      "path": "public/docs/paint_canvas.md",
+      "sha256": "4532616cd097f2c4ccbc9fe84e1fd17a4ae2b02186b7a87c5fd6e44704e13bbb",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 458,
+      "path": "public/docs/path_tracing.md",
+      "sha256": "ff999718819f4e4cd489a49bda7e46fb6cd5c7bc0d1ef1494dafecfb07c67d28",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 459,
+      "path": "public/docs/pattern_language.md",
+      "sha256": "2fdd4454fd61c844cf1e078101e78f16f1698385ee908630be8734273485ae08",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 460,
+      "path": "public/docs/presentation_studio.md",
+      "sha256": "a5f99a9f6b803a6ad6b366ef14f52f743ef91752c522b3b73c7e41b2094d0c18",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 461,
+      "path": "public/docs/presentation_studio.md",
+      "sha256": "06875de84af1ccb27e43f968ed4b144cb65aec8940781d3c7b0ac2cec800cbf1",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 462,
+      "path": "public/docs/presentation_studio.md",
+      "sha256": "8ffcc087caaad525e0da43a854bcde7122b75be4996e3f59f14a0a4a09d279c4",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 463,
+      "path": "public/docs/presentation_studio.md",
+      "sha256": "b458dcf59ab5e32e0a11d6b9c454396398f803e9199bd770568495cf56f08301",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 464,
+      "path": "public/docs/presentation_studio.md",
+      "sha256": "81ac5d78c8d077209a396a43f189a0b13a6cab737bea80963818fcf1cdb62ca9",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 465,
+      "path": "public/docs/presentation_studio.md",
+      "sha256": "d2239400f421a14e29082d7c5e0aff05a71917da8e0131abef9326587518c7af",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 466,
+      "path": "public/docs/presentation_studio.md",
+      "sha256": "2e466bc1747c84d148001a79a743dcb32e874b891b377ea9a3a0af1a837ef9c3",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 467,
+      "path": "public/docs/presentation_studio.md",
+      "sha256": "e8c8ad3f2d7bdb6bc0629d2b43cd88f7e62c4e4d00ce6806f4a7e5d627742f0b",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 468,
+      "path": "public/docs/presentation_studio.md",
+      "sha256": "99fe365b08c746bd5516f55fb818707314534b708e4aa5c347a6963b4d3e5cd6",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 469,
+      "path": "public/docs/presentation_studio.md",
+      "sha256": "aeaed900631b8b60b2233d93e72cb0ee7ae7fe3a3ddcaaca33491963bcfc2d8f",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 470,
+      "path": "public/docs/profiling_timeline.md",
+      "sha256": "44a68692cf2da393fa5bacc7d9c1c43568f0d90208607c0b74bd8efc77b657a0",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 471,
+      "path": "public/docs/profiling_timeline.md",
+      "sha256": "d25bee88cdb9a1ae402bc17a5a79970dc1e0627616f57ee6c690a83feab75885",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 472,
+      "path": "public/docs/reactive_properties.md",
+      "sha256": "24aecb4878ae17d87640d3bacc92f57afcbf26baf0becd131bd1e9b75c48ecb3",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 473,
+      "path": "public/docs/reactive_properties.md",
+      "sha256": "e14567b3d35ab454c70e960a5f2aa77b582e1104f58cc5da1e08deb97842f38c",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 474,
+      "path": "public/docs/rectsl_conversation.md",
+      "sha256": "26f9f997ae318654d80511d6d1d4b74fea67a326f118413c854ea3ccef8b09c9",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 475,
+      "path": "public/docs/rectsl_conversation.md",
+      "sha256": "ccafa2aa069a3db43c07df054c7fc06398b798d472a7b9c215537df5b7e5ab6e",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 476,
+      "path": "public/docs/rhino_files.md",
+      "sha256": "ed8842622066dbcdb6ca8bf349f4fa7a64eeb7350b5b584312117e2ab850a551",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 477,
+      "path": "public/docs/rhino_files.md",
+      "sha256": "c9657de9dd89de7442c7f62556f22425b5136296ee8e1ad0fbb8ff1965b3a0fa",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 478,
+      "path": "public/docs/rhino_files.md",
+      "sha256": "535d3267bf45debfb8fea69239642da28a3a361169d3e88e6726f4a710f1b5f9",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 479,
+      "path": "public/docs/rhino_files.md",
+      "sha256": "ba5254dacd183e5eabe537ce1ab8165306cd9687f70179fc778e37ca9128c4a6",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 480,
+      "path": "public/docs/rhino_files.md",
+      "sha256": "c0e39a19ae100ddb794b8f498a0918d53bf0b2b08c57be050fdb80382235782a",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 481,
+      "path": "public/docs/rhino_files.md",
+      "sha256": "be09bf9cbb037bc0506f4591e0385b4eaf8e78cf8d4a00649a99a565d7f0e542",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 482,
+      "path": "public/docs/running_code.md",
+      "sha256": "200f5781d44cb55856fcf437d605d5d160d720c1eb173dd81b9680dff4b89182",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 483,
+      "path": "public/docs/running_code.md",
+      "sha256": "a202d7fe6429a1be71e8a1ad02d10d13c9703124f3bd6920163539e23f6ff2df",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 484,
+      "path": "public/docs/running_code.md",
+      "sha256": "cc228c6925a6624063c342593fe670b25040f9026a4cb79d0e46694ca20cd875",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 485,
+      "path": "public/docs/sentence_diagrams.md",
+      "sha256": "1255dd829aa9f0c437f7e4b10235b289b8867e605ae8b947fa4b730bd539987f",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 486,
+      "path": "public/docs/sentence_diagrams.md",
+      "sha256": "551739154ac7977ea55894043776646c7cb11df3a35a8a0cf1df1811012b01f6",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 487,
+      "path": "public/docs/solid_conversation.md",
+      "sha256": "ce04e5eb0af3ca737be7eb72d14dbdb8d7e038973817980d1a50d031e64ac8b1",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 488,
+      "path": "public/docs/solid_conversation.md",
+      "sha256": "3de86e020c3da25aa585253227d7d13a1076a44c1768cc343fb49421b8d4c6a9",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 489,
+      "path": "public/docs/solid_conversation.md",
+      "sha256": "879a9817794b63a302b9c58ff59df9252f7d04aa210a10076e26fd2b3d45e06a",
+      "status": "shader review"
+    },
+    {
+      "index": 490,
+      "path": "public/docs/solid_conversation.md",
+      "sha256": "cd8e4cda0f8718cacd257e675a85db7cb2613364547aa7d3ea90dd34e8bced10",
+      "status": "shader review"
+    },
+    {
+      "index": 491,
+      "path": "public/docs/solid_notation.md",
+      "sha256": "9007685bbb5a13889a12d992b65d1c6b8a39e21a4a48e56b3493b938fe1255b9",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 492,
+      "path": "public/docs/solid_notation.md",
+      "sha256": "fb0120908238d2b37e7142936bddd4b410abc7e6c7cab053361e893c787402c6",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 493,
+      "path": "public/docs/solid_notation.md",
+      "sha256": "506ebd7fc52a6b673e9e7c025eb684e26e0d63f1ff7a8eb24f2bba360c7acf0b",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 494,
+      "path": "public/docs/solid_notation.md",
+      "sha256": "ada45fea132fa18364575fee1138096774651671f0e1c19066bd4b3c193fb59c",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 495,
+      "path": "public/docs/solid_notation.md",
+      "sha256": "45570e45f7b8d95f22f47c2d34d1e7b6e07ffa68101a455e559bfdbc5a8f7655",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 496,
+      "path": "public/docs/solid_notation.md",
+      "sha256": "45570e45f7b8d95f22f47c2d34d1e7b6e07ffa68101a455e559bfdbc5a8f7655",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 497,
+      "path": "public/docs/solidcraft.md",
+      "sha256": "6dab3b87c90c6b03fd487b24e46d453ce04a40652ef0cef119553a5706c28e66",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 498,
+      "path": "public/docs/solidcraft.md",
+      "sha256": "323474b6a51c1de07b592e54b42a2a75de7ac3f0b7e88687bab0319b9125a720",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 499,
+      "path": "public/docs/solidcraft.md",
+      "sha256": "a402caa8f1051630c7fba2a15b82a71b76f41135ec3e1c4ce5c8fc0d616701fa",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 500,
+      "path": "public/docs/solidcraft.md",
+      "sha256": "574fdb487c2bd63d824e6a8a9f1f55a8b210d7d363bf71da310fe03d3a931c7d",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 501,
+      "path": "public/docs/solidcraft.md",
+      "sha256": "772cf9c7e42b6c3df865267d62012b30bc50594652c8c383428a52b03d7b0709",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 502,
+      "path": "public/docs/solidcraft.md",
+      "sha256": "3ceb6ee376c028b4b86d4ef8227044bceaebd2b16ecd060e685067e566b9c5ac",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 503,
+      "path": "public/docs/sound_paths.md",
+      "sha256": "e28f455c664e0445aa0ce47903ca9c5d2c58c329eb60ff7984079b74d7f5ebc3",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 504,
+      "path": "public/docs/sound_paths.md",
+      "sha256": "99ed503c3fc1dd6a1ef417a7e06e5773c36a91ed207e627d29740120442e4446",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 505,
+      "path": "public/docs/sound_paths.md",
+      "sha256": "3c097ee98466c146ab324dff3ef40ef41e54d7bd8c6a86628897e7f2a8ff2931",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 506,
+      "path": "public/docs/spatial_rules.md",
+      "sha256": "686f8c5093ff5c94463dc7c78235ec7e78c7ffcb72aed450f8d76613e2a4d633",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 507,
+      "path": "public/docs/spatial_rules.md",
+      "sha256": "fccece212ff3b5b0be4238a7d7fc2c4c963a9e97f82f38986bb88f319b9664eb",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 508,
+      "path": "public/docs/spatial_rules.md",
+      "sha256": "76a65e72c1ee65123ea61d603288c4dcb465a0b6076b09f72652d3f138812c5f",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 509,
+      "path": "public/docs/spectral_examples.md",
+      "sha256": "c27749ffbf5a963c57383bd9187b72d08d3a7f5c2bb074dcb5f44a5e6aa65525",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 510,
+      "path": "public/docs/spectral_examples.md",
+      "sha256": "2856d9a8a4ff1f234a7a74b0e6e8ba93accb8231ca04b244eb8f61bfcd8b8966",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 511,
+      "path": "public/docs/spectral_examples.md",
+      "sha256": "6f688d6af253900581cda1c0db7313589a0f9632b1600b4391bc86de792e2e45",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 512,
+      "path": "public/docs/spectral_examples.md",
+      "sha256": "cec12ff0a1e3a7c511fc06abc479b7a3b6d2d2b3db26be87a919c782893a2ccd",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 513,
+      "path": "public/docs/spectral_examples.md",
+      "sha256": "5945051213af9b4d50b1ded31235a05c36807b5297b6b91b7f13e292006adfce",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 514,
+      "path": "public/docs/spectral_examples.md",
+      "sha256": "57ebff3b75f3d6affa8bf8783de09649f09b61a5fc6ae2dd7c8f2facb48ed61c",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 515,
+      "path": "public/docs/spectral_examples.md",
+      "sha256": "385af39c250c55753750dc8e4595299e1640bd6b1489433745cee7c86c501002",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 516,
+      "path": "public/docs/spectral_examples.md",
+      "sha256": "828be1c0ec4e68e713af27e1ab5625fb67edc433639a5dc77096253f0d14f5c0",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 517,
+      "path": "public/docs/spectral_examples.md",
+      "sha256": "11d576d52baa538999d0e971d249b31d2d99e3b02a9052bd4936cad40849d53c",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 518,
+      "path": "public/docs/spectral_examples.md",
+      "sha256": "909270d6299c9703afeca56efd60d7bd33f4630fb48b95f39a7fb75b706e90fb",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 519,
+      "path": "public/docs/spectral_examples.md",
+      "sha256": "035a8c3eb905a42220642dcc350ac6a4b399bce9a9e9bfc0e64e8ae24eee2f61",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 520,
+      "path": "public/docs/spectral_examples.md",
+      "sha256": "0ed339cb3899148eb84fdf3d9b38957105eae2521a977d93c9717c258a9f9639",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 521,
+      "path": "public/docs/spectral_examples.md",
+      "sha256": "43465eb97cc48b3b28a22187541d628a3397cbe55e27d08f77a76868ad0d28eb",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 522,
+      "path": "public/docs/spectral_examples.md",
+      "sha256": "f94b14baf3ef2eac643b7d53e1e45c5688d4c2b5dea80d1d6a8cb6fb547a463b",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 523,
+      "path": "public/docs/spectral_examples.md",
+      "sha256": "7da845b512a9b5ee97fc708a5dd4951c24100222d03b4aec813d0d20029b11c2",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 524,
+      "path": "public/docs/spectral_examples.md",
+      "sha256": "35f77e81adda170e868aa423ae69d1fa2b93aa98fb0349eb2ca08c8ba78211c5",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 525,
+      "path": "public/docs/spectral_examples.md",
+      "sha256": "5276f83beef2d27b450e2a71b633ded84b860744c55919eb68176cca2c92d544",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 526,
+      "path": "public/docs/spectral_examples.md",
+      "sha256": "f0c863570217b5811049e8b4b915354c136d44a61195100c6e6666fadf45d14a",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 527,
+      "path": "public/docs/spectral_examples.md",
+      "sha256": "6c1d02f47b108034efc89567d2234b7839f35e9d2faf64617c1b5f1e6dc46e79",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 528,
+      "path": "public/docs/spectral_examples.md",
+      "sha256": "768bcf03b4ab608fce04a503d1f9dc0730b7c2d626d20c7487ee820de40d2dc2",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 529,
+      "path": "public/docs/spectral_examples.md",
+      "sha256": "e099c7691ba85bf6eadd62bcbb82ff35f3b95650c3b66331e0cbb16a02cf3ede",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 530,
+      "path": "public/docs/spectral_geometry.md",
+      "sha256": "e2050785ca90c56f456730b842bc3aa0a4bbfc0afad68ed87a7f010b2cf3d9d8",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 531,
+      "path": "public/docs/spectral_geometry.md",
+      "sha256": "060e936aeb51e55f10550c43e007d37572e3fb12d18ebbe720f788cd8e86426a",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 532,
+      "path": "public/docs/spectral_geometry.md",
+      "sha256": "9810a9b16635ce3b7cb526459dcb1f0210a6c723f88a56d31c2352ac354bb8ce",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 533,
+      "path": "public/docs/spectral_geometry.md",
+      "sha256": "7b67b0a90643a4ff6eb35386259c820ef969144b9e55eded6a180d02469caf13",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 534,
+      "path": "public/docs/spectral_geometry.md",
+      "sha256": "3348abc454f9a76dceb35ec875ebf724c95caaf3c45c9371e4b5c8f4af3a4851",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 535,
+      "path": "public/docs/stacksl_cheatsheet.md",
+      "sha256": "54f394a684f3a4a7a0fb726ba003288194b61e88c135e58ea6fbe2f7ee3881d1",
+      "status": "language review"
+    },
+    {
+      "index": 536,
+      "path": "public/docs/stacksl_cheatsheet.md",
+      "sha256": "e0a2d9e63436ccca7b15e55a41cf7ee91ab914145c8089a200560ebc74149e82",
+      "status": "language review"
+    },
+    {
+      "index": 537,
+      "path": "public/docs/stacksl_conversation.md",
+      "sha256": "26f9f997ae318654d80511d6d1d4b74fea67a326f118413c854ea3ccef8b09c9",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 538,
+      "path": "public/docs/stacksl_conversation.md",
+      "sha256": "16c26cb30e7437eefe7056ae41bab9432fef103aa750ccee7189624eb7cb570e",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 539,
+      "path": "public/docs/stacksl_examples.md",
+      "sha256": "9146ae0787c733bde76e24bb3b40467e96c497696e9824c3d1b0af84dc24d79b",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 540,
+      "path": "public/docs/stacksl_examples.md",
+      "sha256": "aa635d402a935bb95535111e08469fa605ec58973c3edcbb5e142bbda4a82d27",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 541,
+      "path": "public/docs/steam_audio_scene.md",
+      "sha256": "7fa29c3b0a47478286c7e386537e61b49eb5a8c8c85934654444872af9e79919",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 542,
+      "path": "public/docs/steam_audio_scene.md",
+      "sha256": "6d13389cd4b0c8ca4a2407025ab4444a0c23a2d8fb29b439e876a1692ae80415",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 543,
+      "path": "public/docs/steam_audio_scene.md",
+      "sha256": "a51d8a8e2b688746e4dce63860137e8228d84c4354112104bb9525ac265a4bc4",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 544,
+      "path": "public/docs/steam_audio_scene.md",
+      "sha256": "9bec059a98d95bc1d27d5b56ad532ed985c334cf736f095f8aeebaa96a618015",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 545,
+      "path": "public/docs/steam_audio_scene.md",
+      "sha256": "1b03e572790b94915bd80ed298e8abf60e3b2d8dcb05f6d0509fce8df13da2b3",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 546,
+      "path": "public/docs/stipple_transport.md",
+      "sha256": "5245c3fe3b2f58013647c82f18791cda1a4f5ccdee9dd60f52a4da9ed4eca71e",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 547,
+      "path": "public/docs/templates.md",
+      "sha256": "f1347671ec076453dcc0c578345230b98aa802722374a3b055b2457b2aa4917a",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 548,
+      "path": "public/docs/terminal.md",
+      "sha256": "228b1e323789d002d02ec104769ae5b3e229705905391b9ecdd6f96241d5e0dd",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 549,
+      "path": "public/docs/text_frames.md",
+      "sha256": "fd37c021cd0f5b450c0accb199467b5d0ddaf90a4ffd2b804c50964d8cfb3825",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 550,
+      "path": "public/docs/text_frames.md",
+      "sha256": "da67e81adf882f0b2d0175006e36acd52dd1fb81e35afcd87ca0e971dd2f7f13",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 551,
+      "path": "public/docs/text_frames.md",
+      "sha256": "f045e65ce1ca2f64e7a2314b8d10c9ac074f264ea8da27ef39c74027424727bb",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 552,
+      "path": "public/docs/text_frames.md",
+      "sha256": "72ca27a1e40c7f3ec67798b0fd9edafd7a060ed83aed9ad198856505c282b32b",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 553,
+      "path": "public/docs/three_output.md",
+      "sha256": "f044d71d8202f0f3661855968d057a9e8afd588d063d9327e195945cc299d02e",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 554,
+      "path": "public/docs/three_output.md",
+      "sha256": "20f56f3f6e4407672b1e25a34995d814c6f198b8f03ebab85fd69eea6715a919",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 555,
+      "path": "public/docs/three_output.md",
+      "sha256": "e959b7e2467f172492d6d71b9c1bd8426f79f64a156bd9cc0a7e1f03c0cd28ec",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 556,
+      "path": "public/docs/tour_connecting_boxes.md",
+      "sha256": "2f5af0df9e1aa5e0410a967067cf8c09c45b5de248d3a48f4f47b18d4b0e7f49",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 557,
+      "path": "public/docs/tour_connecting_boxes.md",
+      "sha256": "8156e642dfc8608190ab6d63ade2db0acafe7478a3f5978170197670880a35f7",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 558,
+      "path": "public/docs/tour_connecting_boxes.md",
+      "sha256": "9e4260791716caed1a9592e82b273688a19e79c4d516b4591100493dbfabc1cb",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 559,
+      "path": "public/docs/treemaps.md",
+      "sha256": "b4fdd4dcd7219ad1cd3f0f2a36b09346374447ba00e0706ad3059e1635a4b6ab",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 560,
+      "path": "public/docs/treemaps.md",
+      "sha256": "1e18cb5055e2d8b02bad6af990a986673a5ada54adabe123a1e32fa284a92592",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 561,
+      "path": "public/docs/treemaps.md",
+      "sha256": "4919d854661a77389d6f7274940cf43d78c4a226800b0c6728dc947ebd0e45cb",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 562,
+      "path": "public/docs/treemaps.md",
+      "sha256": "a0d4ac3127dfcf550b3492dda5cfa55390046eb4cf82d380e92947d89c180fb0",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 563,
+      "path": "public/docs/treemaps.md",
+      "sha256": "b6b855d4bdb5aebe60afd89b87de9a07831ccd0d65484833579680f324dae38d",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 564,
+      "path": "public/docs/treemaps.md",
+      "sha256": "ee2536e89f428fd409b1a6b3cf80366ea5f498e0738b3e8b8e6c6a70d22d349c",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 565,
+      "path": "public/docs/treemaps.md",
+      "sha256": "52dcc19e6333d8702c7a011141826a9333cebabbd3891ea199e59ada6e712dbb",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 566,
+      "path": "public/docs/treemaps.md",
+      "sha256": "9276c9c7cb5b2981b9cd1d0c9c252ca8d24dcb74f56ecea8f6305f07bd8c8456",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 567,
+      "path": "public/docs/treemaps.md",
+      "sha256": "8c7783112fb25f3f7bde0fd480552d1991aca2f80826b8584fd4792495885c18",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 568,
+      "path": "public/docs/visualizers.md",
+      "sha256": "d3552683097185932b011b9e6255850b9001a3e2d386bbe18559ddbd135583ef",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 569,
+      "path": "public/docs/visualizers.md",
+      "sha256": "96246590b72915ba742ed5c0e45330cd173c208f965d9ad9d84a611a2a95f840",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 570,
+      "path": "public/docs/visualizers.md",
+      "sha256": "4728d07cc7f80246105f68e17b0ad2d7086850c862f2eee5ecf7d17e52e6d5df",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 571,
+      "path": "public/docs/visualizers.md",
+      "sha256": "1a339590542879efd8d6d63262aa55257183f1a4c3c6fccd6ccebe52ec4d200f",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 572,
+      "path": "public/docs/visualizers.md",
+      "sha256": "664b0ed02f963ea4640e99ffc644b187bea7d0a30f1b481b086560dc6170ed91",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 573,
+      "path": "public/docs/visualizers.md",
+      "sha256": "75a685fafbe67e7885081461e9487b135129f6fe6f8cfbab70eaf06a05698408",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 574,
+      "path": "public/docs/visualizers.md",
+      "sha256": "39be5df5caec261db2673db66841071383f5bfca139a4844fcf93f0e7e9fef98",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 575,
+      "path": "public/docs/visualizers.md",
+      "sha256": "3a8b785d712d000dc8722fe189c89912a8109c55358c53fce59d33d26912ef2d",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 576,
+      "path": "public/docs/visualizers.md",
+      "sha256": "d03d3bc48ba053f04f6f51f07d70528c61ce2ae7b370a6780ce2d1da23ff9279",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 577,
+      "path": "public/docs/visualizers.md",
+      "sha256": "3f2c8af4221e2918c0403721856817326b2b9d672661017eadc66e102fdee5ec",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 578,
+      "path": "public/docs/visualizers.md",
+      "sha256": "d9952d9a211f0bda9f510b46ed19ec6b6d2cae09960508c615b131e296edd69f",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 579,
+      "path": "public/docs/visualizers.md",
+      "sha256": "924d195f70d1abef6d4e8c8a38d1fb32614de009356e524177099390adc19bc3",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 580,
+      "path": "public/docs/visualizers.md",
+      "sha256": "fa8e1f1675fb4e200223a79b5223f6e57bd57a46adf3526c6dc33e95242e3eb0",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 581,
+      "path": "public/docs/web.md",
+      "sha256": "27c02f48526ca48a34d398a06acc474a19ac7e76001320aa568d4257b00dcfa8",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 582,
+      "path": "public/docs/web.md",
+      "sha256": "aacd4adce9003fe6a5091483492bd27feaada854acdfb5398e12be66c076f888",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 583,
+      "path": "public/docs/web.md",
+      "sha256": "e91115617ac78ea1b4b10ff8d2ab0edec98952aae4b5f02eea68499aa5ed1974",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 584,
+      "path": "public/docs/web.md",
+      "sha256": "58b1b7ab7a6d639c99b3c33962b173d9e92efebded74edfbe5298e64959fd11b",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 585,
+      "path": "public/docs/web.md",
+      "sha256": "77bad8c06dbb2a8e09a76bb2e27293c6a4d5fb85fcfc24a5656533144efcbfef",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 586,
+      "path": "public/docs/web.md",
+      "sha256": "4be496ad1b1bf3c4abd7a2677abd010a30e9374658515d4c7a2f9265f3b4144b",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 587,
+      "path": "public/docs/web.md",
+      "sha256": "188054f01c4dccab6704a220a89b88284ce23611e7ee39e3506acf6adc91f475",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 588,
+      "path": "templates/clojure-cell/tpl_clojure_cell_code_.kt",
+      "sha256": "13c069b784365ea9b8719f6138e6d974c9e7c96952d0dfe0f561209470cbdece",
+      "status": "language review"
+    },
+    {
+      "index": 589,
+      "path": "templates/clojure-cell/tpl_clojure_root_code_.kt",
+      "sha256": "0b22fba1f181db6557dbb3223e43abc544a4782e72bbb484bfe38ee3628ebd9b",
+      "status": "language review"
+    },
+    {
+      "index": 590,
+      "path": "templates/control-surface/tpl_surface_code_.kt",
+      "sha256": "8ccbebad1493e99681113098ef0ef2d838fe07eb0e94fc570ed78d9b3206fa9e",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 591,
+      "path": "templates/csound-instrument/tpl_csound_pluck_code_.kt",
+      "sha256": "ca86f877fe993fd918e90c5ffd4c0fcc454cb51de17c60cfee159db1aa0c9984",
+      "status": "language review"
+    },
+    {
+      "index": 592,
+      "path": "templates/csound-instrument/tpl_csound_root_code_.kt",
+      "sha256": "e3dcbb6135ff871f799cd00213e2ac6493d7d19cb7c6f185699e36683f1da2d6",
+      "status": "language review"
+    },
+    {
+      "index": 593,
+      "path": "templates/drawing-listener/tpl_listen_code_.kt",
+      "sha256": "286c5930586b4e497568fb84aa0d1f0f0d6ffa3a762507ebd931bfde79ca17b6",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 594,
+      "path": "templates/gpu-particles/tpl_particles_compute_code_.kt",
+      "sha256": "38ef045edf9cb29bfe0fcb073889eaf2a2578138569b1069cfecce9eda8f59e1",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 595,
+      "path": "templates/gpu-particles/tpl_particles_compute_compute_.glsl",
+      "sha256": "675b64f2bf12d0baee11fd831dcc19a507d435b9abdc5168dab0433bb365cfb2",
+      "status": "shader review"
+    },
+    {
+      "index": 596,
+      "path": "templates/gpu-particles/tpl_particles_draw_code_.kt",
+      "sha256": "839f156a43ff854f4773be2f53e81b956ab5b2d8696f095db7377cd70019c831",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 597,
+      "path": "templates/gpu-particles/tpl_particles_draw_fragment_.glsl",
+      "sha256": "9e86a6be3af842dff963afd8a23b8b6e13c772311d1f9917277424e1b997e018",
+      "status": "shader review"
+    },
+    {
+      "index": 598,
+      "path": "templates/gpu-particles/tpl_particles_draw_vertex_.glsl",
+      "sha256": "86f1fd149f8e9232c1e50b5e1fcf74354c4d625a7b79064f4823171dd71f9289",
+      "status": "shader review"
+    },
+    {
+      "index": 599,
+      "path": "templates/h2-explorer-examples/d7d194dd-536f-44f3-9d5e-de58542baa7e_code_.kt",
+      "sha256": "bf4b5aed0dba91bd412cccfb6e9f435b3432be4633bff0dd46e776730828a873",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 600,
+      "path": "templates/keyframe-lane/tpl_lane_code_.kt",
+      "sha256": "ea21a4c38a2a8c864ba25134af5f8c3c7803a1987050e22fb2771eea147f8f8a",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 601,
+      "path": "templates/lua-cell/tpl_lua_cell_code_.kt",
+      "sha256": "db848bc9103a759fc1437810c3396ff75dfee411f94d2263797e622dfc47d873",
+      "status": "language review"
+    },
+    {
+      "index": 602,
+      "path": "templates/lua-cell/tpl_lua_root_code_.kt",
+      "sha256": "87dd21041221d516a8855cb2e18e031fada495012a7b7f3131622e5263bc00fc",
+      "status": "language review"
+    },
+    {
+      "index": 603,
+      "path": "templates/midi-learn/tpl_midi_code_.kt",
+      "sha256": "4f6c62290a2ffd5dce47f7e03695232b9743d0b3407f8fd16b42e0a04fab446d",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 604,
+      "path": "templates/mqtt-listener/tpl_mqtt_code_.kt",
+      "sha256": "3a9a3ceda562ac63c436f2148fb2e87a31b45ecd9852a3bbe159d4a10fe789fa",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 605,
+      "path": "templates/orca/tpl_orca_code_.kt",
+      "sha256": "11eae02fc7134462eddd45ffa9ece4fd18d93c8aa9b1c2342b8ff1c5bf7fc1ec",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 606,
+      "path": "templates/oscquery-controls/tpl_oscq_code_.kt",
+      "sha256": "09d2cf218a7ca64f14a85c1564204bc4771994b44affa6c602d19fcd96f810b3",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 607,
+      "path": "templates/parameter-parent/tpl_param_child_code_.kt",
+      "sha256": "89a0d3960a1ccdb2e460310b25c6f0d87fde911116bb92d35a2f6bbac60df4fa",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 608,
+      "path": "templates/parameter-parent/tpl_param_parent_code_.kt",
+      "sha256": "05a811d425d8ac846218439c272c2ff84bf2f5938391881e314bb509767dffaa",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 609,
+      "path": "templates/pd-patch/tpl_pd_drone_code_.kt",
+      "sha256": "e492da4069167df5dee141d01aeaf611c96a338a2fb3d615e1ad56a7b2e531dc",
+      "status": "language review"
+    },
+    {
+      "index": 610,
+      "path": "templates/pd-patch/tpl_pd_root_code_.kt",
+      "sha256": "1a6fb1c5688834238a5646eb198dad3448a4e0ce91f318abc273158f78f8ca39",
+      "status": "language review"
+    },
+    {
+      "index": 611,
+      "path": "templates/presentation/present_talk_code_.kt",
+      "sha256": "a945e4e606da834e183a6c84c55d1800e41f3b0c499da49a977af3b632225a16",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 612,
+      "path": "templates/python-cell/tpl_python_cell_code_.kt",
+      "sha256": "0227ca8ea4cf48aa185c3159c2262857cb4b926cbf2fc1b6c61a4e359805011b",
+      "status": "language review"
+    },
+    {
+      "index": 613,
+      "path": "templates/python-cell/tpl_python_root_code_.kt",
+      "sha256": "2088fb6dc72b287e815ccd0e1d6d6f368a47c8bc710ab22f2f0f0ea781449c10",
+      "status": "language review"
+    },
+    {
+      "index": 614,
+      "path": "templates/rates-and-sheet/tpl_rates_code_.kt",
+      "sha256": "f5ce7333e5c9062f2c2272e2e9f9390c5b3c42314c0e88162c202e20189fa6b2",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 615,
+      "path": "templates/rates-and-sheet/tpl_sheet_code_.kt",
+      "sha256": "279d33615a73983d59d5e73166573a644921d6089ecd7c0cc9800fc345a2ddfc",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 616,
+      "path": "templates/record-and-explore/tpl_profile_code_.kt",
+      "sha256": "f9d660218502ff6cc41c811f09d47826dc103cd75c7ae4604d6d688777a8f367",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 617,
+      "path": "templates/rectsl-playground/tpl_rectsl_code_.kt",
+      "sha256": "0afe27b04b30568d017706b3ff14de120e14b1543303367c42b4e47e4c6f1afc",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 618,
+      "path": "templates/renderer/tpl_renderer_code_.kt",
+      "sha256": "0eb631e5b89ad196ca83d4bde31b150e395d98901bb61a9587bc59cfba16e1cb",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 619,
+      "path": "templates/shadertoy-pass/tpl_shadertoy_code_.kt",
+      "sha256": "81117ba23eebab295ce70f6ce1accb155f1290b23add426283feab6fe67b10f4",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 620,
+      "path": "templates/shadertoy-pass/tpl_shadertoy_fragment_.glsl",
+      "sha256": "73a9828983eb860ffe4725c87827b2075783de646e287c025a4e7bfe9917008d",
+      "status": "shader review"
+    },
+    {
+      "index": 621,
+      "path": "templates/sky/tpl_sky_code_.kt",
+      "sha256": "3fb840b9c9d7d3edf0560cbedaa10b2816a70be2f33dfa4334edf1776e806aa0",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 622,
+      "path": "templates/sky/tpl_sky_fragment_.glsl",
+      "sha256": "51659107c092514d5bf555612f6ac274452cf796eb2fb1efa8fa6f69c35ed25b",
+      "status": "shader review"
+    },
+    {
+      "index": 623,
+      "path": "templates/sky/tpl_sky_vertex_.glsl",
+      "sha256": "9b806ad783ee67caf60737cebcd12364bda87318e5a64c45b93f710355c9ef40",
+      "status": "shader review"
+    },
+    {
+      "index": 624,
+      "path": "templates/spatial-rules/filament_code_.kt",
+      "sha256": "1a12c7dc6858121eceee37806820e402324429d588271f02b7dbd385dd2c9ff3",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 625,
+      "path": "templates/spatial-rules/weave_code_.kt",
+      "sha256": "121919ccd0603888349bb98be9ba3238e7ba88833140934106006d10bc88d5ac",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 626,
+      "path": "templates/spectral-geometry/ellipses_code_.kt",
+      "sha256": "efcbcd7e2d8c5ad4d0b1d7810f34b10b189f2608a023a661ed926c64d25acae0",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 627,
+      "path": "templates/spectral-geometry/fit_code_.kt",
+      "sha256": "494b7c919987408df8a16f6d2f5568582856bcea5343bb46de556c6c69582208",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 628,
+      "path": "templates/spectral-geometry/manifold_code_.kt",
+      "sha256": "7cdfe9f9e221371eef5432e03784ce7af867aaa1d81ea03065921b4544ad2b72",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 629,
+      "path": "templates/spectral-geometry/waves_code_.kt",
+      "sha256": "03a47845fb92b3b2f66a0bfe2d192a66c2993ecb1b2ae29472f9b505e279fd8e",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 630,
+      "path": "templates/tour/tpl_tour_code_.kt",
+      "sha256": "e097a9d192d24b361f98e1e837b7b55d201db68e1bd6010bebc0464be0ccc92e",
+      "status": "readability and idiom review"
+    },
+    {
+      "index": 631,
+      "path": "templates/watch/tpl_watch_code_.kt",
+      "sha256": "4a6cf0262526fa606c7b2f42c21dcf3036e74e90647d7b0e0b66b9449b65cf87",
+      "status": "readability and idiom review"
+    }
+  ],
+  "contextExceptions": {
+    "named lifecycle lookups": "Optional previous run-owned clients/sessions must be closed before replacing the inherited property; retain nullable named lookup.",
+    "flow_grain": "Validated graph exports captured before coroutine work; parameters selected dynamically by name.",
+    "HTML/SVG": "Retain color swatch layouts, interactive boards, editable buffer DOM views, presentation HTML DSL and SVG parser input. Plain textual readouts use Markdown."
+  },
+  "reviewCategories": {
+    "readability and idiom review": "Formatting/imports, literal/comment preservation, collection literals, context and output idioms; retained algorithms and native/resource ownership. Curated helper references and targeted real behavior/captures are recorded separately.",
+    "language review": "Respect actual execution language; source-language adjudications in language-review.json. No Kotlin formatter on foreign language bodies.",
+    "preserved provenance": "Recorded speculative study; byte identity checked, no formatting or rewriting.",
+    "shader review": "Reviewed layout, units, coordinate spaces and comments; actual GLSL formatter. Complete stages compile before/after; partial fragments stay in their teaching context.",
+    "signature fragment": "Deliberately abbreviated signature, not an executable box; annotation API is the lesson."
+  }
+}

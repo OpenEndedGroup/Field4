@@ -314,19 +314,20 @@ println("cell ${slots.cellSize.f1}, empty slots ${slots.neighbors.count { it < 0
 
 fun at(i: Int) = vec(xyz[i * 3], xyz[i * 3 + 1], xyz[i * 3 + 2])
 
-val edges = (0 until 8).map { octant ->
-    fline {
-        for (i in 0 until slots.count) {
-            val j = slots.neighbors[i * 8 + octant]
-            if (j >= 0) {
-                moveTo(at(i))
-                lineTo(at(j))
+val edges =
+    (0 until 8).map { octant ->
+        fline {
+            for (i in 0 until slots.count) {
+                val j = slots.neighbors[i * 8 + octant]
+                if (j >= 0) {
+                    moveTo(at(i))
+                    lineTo(at(j))
+                }
             }
+            color = okhsl(octant * 45.0, 0.8, 0.65, 0.7)
+            thickness = 1.2
         }
-        color = okhsl(octant * 45.0, 0.8, 0.65, 0.7)
-        thickness = 1.2
     }
-}
 val cloud = fline {
     for (i in 0 until slots.count) moveTo(at(i))
     pointed = true

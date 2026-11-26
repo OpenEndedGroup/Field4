@@ -38,7 +38,7 @@ start(renderer::run)
 <!-- field-box id="ray_reconstruction" index="1" -->
 
 ```edn [field-box id="ray_reconstruction" role="properties"]
-{"id" "ray_reconstruction" "index" 1 "name" "ray reconstruction" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "ray reconstruction" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ray_reconstruction_code_.kt" "lines" 33 "characters" 1142 "sha256" "655ebbd4bf26db1325c9bdeae7b344740646067219f962b5164004dfdc41ecd7"}]}
+{"id" "ray_reconstruction" "index" 1 "name" "ray reconstruction" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "ray reconstruction" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ray_reconstruction_code_.kt" "lines" 33 "characters" 1143 "sha256" "2f46e1809b93709245cef89d63cd360b7779ea33be42aada0e1abbe41b18bff0"}]}
 ```
 
 ```kotlin [field-property box="ray_reconstruction" name="code" path="ray_reconstruction_code_.kt"]

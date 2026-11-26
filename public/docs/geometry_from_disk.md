@@ -420,10 +420,6 @@ Tiles are not equally expensive. The box below counts the splats in each tile of
 draws the counts as a heat map, one cell per tile, on a log scale:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/geometry_from_disk/splat_tiles_heat.png" wait="9.0" capture="box" open-outputs="true" padding="20"}
-import afield.graphics.render.SplatRaster
-import afield.graphics.render.SplatTiles
-import afield.math.linalg.Vector3f
-
 val count = 40_000
 val cloud = SplatTiles.clusteredCloud(count)
 val view = SplatRaster.View.lookAt(
@@ -964,3 +960,7 @@ Field's drawing. Developer notes: [`dev_docs/MESH_GEOMETRY.md`](https://github.c
 For how the splat rasterizer on this page relates to Field's other ways of computing pixel
 coverage (the CPU mesh rasterizer, exact triangle coverage, stream kernels and Slug paths), see
 [Which one to use](afield_four_graphics.md#which-coverage-to-use).
+
+## API reference
+
+- Binning and drawing splats: [`SplatTiles`](reference/graphics.md#splattiles-kt-splattiles), [`SplatTiles.clusteredCloud`](reference/graphics.md#splattiles-kt--splattiles--clusteredcloud), [`SplatTiles.bin`](reference/graphics.md#splattiles-kt--splattiles--bin), [`SplatTiles.render`](reference/graphics.md#splattiles-kt--splattiles--render), [`SplatTiles.compare`](reference/graphics.md#splattiles-kt--splattiles--compare).

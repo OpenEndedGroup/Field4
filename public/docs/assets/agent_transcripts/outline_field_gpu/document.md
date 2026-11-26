@@ -34,7 +34,7 @@ start(renderer::run)
 <!-- field-box id="ofg_sim" index="1" -->
 
 ```edn [field-box id="ofg_sim" role="properties"]
-{"id" "ofg_sim" "index" 1 "name" "Gray-Scott inside a drawn outline" "parents" ["root" "ofg_renderer"] "children" ["ofg_draw" "ofg_star"] "properties" {"children" #{#afield/box "ofg_draw" #afield/box "ofg_star"} "parents" #{#afield/box "root" #afield/box "ofg_renderer"} "name" "Gray-Scott inside a drawn outline" "_tombstone" false "frame" #afield/rect [40.0 200.0 340.0 100.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "ofg_sim_compute_.glsl" "lines" 48 "characters" 1596 "sha256" "aa1dc3b2f3bfaee1665918b055cc1c59dcb3fc4d893849a5a7ed26375c36feb5"} {"name" "code" "language" "kotlin" "path" "ofg_sim_code_.kt" "lines" 116 "characters" 3857 "sha256" "4ce2131eb3c8c841f8557e49cd3f22e74b12eb5168a67670fbae6f40e79c11dd"}]}
+{"id" "ofg_sim" "index" 1 "name" "Gray-Scott inside a drawn outline" "parents" ["root" "ofg_renderer"] "children" ["ofg_draw" "ofg_star"] "properties" {"children" #{#afield/box "ofg_draw" #afield/box "ofg_star"} "parents" #{#afield/box "root" #afield/box "ofg_renderer"} "name" "Gray-Scott inside a drawn outline" "_tombstone" false "frame" #afield/rect [40.0 200.0 340.0 100.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "ofg_sim_compute_.glsl" "lines" 48 "characters" 1596 "sha256" "aa1dc3b2f3bfaee1665918b055cc1c59dcb3fc4d893849a5a7ed26375c36feb5"} {"name" "code" "language" "kotlin" "path" "ofg_sim_code_.kt" "lines" 113 "characters" 3771 "sha256" "d1296ac35dfcd2474cb9b910cb89ea48655d2ee4754ecd2ce40e503ce09f5148"}]}
 ```
 
 ```glsl [field-property box="ofg_sim" name="compute" path="ofg_sim_compute_.glsl"]
@@ -89,9 +89,6 @@ void main() {
 ```
 
 ```kotlin [field-property box="ofg_sim" name="code" path="ofg_sim_code_.kt"]
-import afield.geometry.mesh.signedDistance2D
-import afield.media.image.*
-
 var simModule = computeModuleHere {}
 var sim = ComputeMesh()
 simModule += "step" to sim
@@ -112,9 +109,9 @@ val drawn = mutableListOf<FLine>()
 var pendingWalls = false
 
 // FLines -> exact signed distance -> one float per cell in the mapped wall buffer.
-var field = listOf(ring, bar).signedDistance2D()
+var field = [ring, bar].signedDistance2D()
 fun uploadWalls() {
-    field = (listOf(ring, bar) + drawn).signedDistance2D()
+    field = ([ring, bar] + drawn).signedDistance2D()
     wall.mapAndWrite { bufferCanvas(this, width = W, height = H).sample(field, x0 = 0.0, y0 = 0.0, cell = 1.0) }
 }
 uploadWalls()

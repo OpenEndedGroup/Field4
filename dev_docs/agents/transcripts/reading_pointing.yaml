@@ -50,7 +50,7 @@ operations:
             val bottom = point("bottom", 0, -.12, pinned = true)
             val sum = text("sum", "1 + 3 + 5 + 7 = 4 × 4", top)
             sum.all.annotate("the whole identity")
-            for (odd in listOf("1", "3", "5", "7")) sum.word(odd).annotate("the odd number " + odd)
+            for (odd in ["1", "3", "5", "7"]) sum.word(odd).annotate("the odd number " + odd)
             sum.span("4 × 4").annotate("the square it makes")
             val gloss = text("gloss", "odd numbers wrap a square", bottom)
             gloss.word("odd").annotate("each term is 2i + 1")
@@ -91,9 +91,7 @@ operations:
     frame: { x: 640.0, y: 800.0, w: 300.0, h: 100.0 }
     properties:
       code: |
-        import afield.graphics.interaction.*
         import afield.graphics.scene.reading.*
-        import afield.graphics.vulkan.util.WindowPointer
 
         // Point at the reading space: the mouse over the desktop mirror, or the right controller in a headset.
         // The hovered item stays bright and everything else dims; a click prints what was clicked.

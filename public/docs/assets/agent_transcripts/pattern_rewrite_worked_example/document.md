@@ -80,7 +80,7 @@ println("neg(10) = " + neg(10))
 <!-- field-box id="rw_unquote" index="4" -->
 
 ```edn [field-box id="rw_unquote" role="properties"]
-{"id" "rw_unquote" "index" 4 "name" "Procedural unquote" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Procedural unquote" "_tombstone" false "frame" #afield/rect [60.0 620.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rw_unquote_code_.kt" "lines" 14 "characters" 375 "sha256" "b3f56be11a04581668bfd70bebc14ed174f42e63c7116c75cf028178f967e40f"}]}
+{"id" "rw_unquote" "index" 4 "name" "Procedural unquote" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Procedural unquote" "_tombstone" false "frame" #afield/rect [60.0 620.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rw_unquote_code_.kt" "lines" 9 "characters" 291 "sha256" "0e6880fe282d8d4bb9b50878dfad6798b93677a6dfd587825d851af2a39dc690"}]}
 ```
 
 ```kotlin [field-property box="rw_unquote" name="code" path="rw_unquote_code_.kt"]
@@ -92,12 +92,7 @@ rewrite { x: Ident ->
 }
 val answer = rev(hello)
 println("rev(hello) = " + answer)
-display(
-    "main",
-    "<div style='font:16px monospace;padding:8px'>rev(hello) = <b>" +
-        answer +
-        "</b>, a string built at compile time from the identifier's text</div>",
-)
+markdown("main", "`rev(hello)` = **$answer**, a string built at compile time from the identifier's text.")
 ```
 
 ## 6. Precedence Guard

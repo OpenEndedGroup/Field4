@@ -926,7 +926,11 @@ fun draw(k: Double, phase: Double) {
     val span = halfSpan(k)
     val tau = span * (2 * phase - 1) // the dot's parameter: one trip from -span to +span per phase
     val grid = gridLines.map { pts ->
-        polyline(pts.map { p -> (w * Hypercomplexd(p.x, p.y, k)).toVector().let { q -> vec(gridX + s * q.x, -s * q.y) } }, tint(k, 0.9), 1.4)
+        polyline(
+            pts.map { p -> (w * Hypercomplexd(p.x, p.y, k)).toVector().let { q -> vec(gridX + s * q.x, -s * q.y) } },
+            tint(k, 0.9),
+            1.4,
+        )
     }
     val curve =
         (0..240)

@@ -17,7 +17,7 @@ fun draw(eps2: Double) {
     val w = vec(0.9, 0.5)
     val grid =
         (-3..3).flatMap { k ->
-            listOf((0..60).map { vec(k / 3.0, -1 + it / 30.0) }, (0..60).map { vec(-1 + it / 30.0, k / 3.0) })
+            [(0..60).map { vec(k / 3.0, -1 + it / 30.0) }, (0..60).map { vec(-1 + it / 30.0, k / 3.0) }]
         }
     val mapped = grid.map { pts ->
         fline {
@@ -38,7 +38,7 @@ fun draw(eps2: Double) {
         color = vec(1.0, 0.8, 0.3, 1.0)
         thickness = 2.5
     }
-    val axes = listOf(
+    val axes = [
         fline {
             moveTo(260 - 3 * s, 0)
             lineTo(260 + 4 * s, 0)
@@ -49,7 +49,7 @@ fun draw(eps2: Double) {
             lineTo(260, 3 * s)
             color = vec(1, 1, 1, 0.25)
         },
-    )
+    ]
     lines(*(mapped + axes + curve).toTypedArray(), w = 620.0, h = 300.0, fitToSize = true)
 }
 

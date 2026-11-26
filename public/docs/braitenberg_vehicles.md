@@ -761,3 +761,5 @@ Implementation and parameter details for the helpers used above:
 - Population search and its random baseline:
   [`PopulationSearch`](reference/search.md#populationsearch-kt-populationsearch) —
   [`random`](reference/search.md#populationsearch-kt--populationsearch--random).
+
+- Learning and drawing the weight cube: [`WeightCubeLearner.train`](reference/simulation.md#alife-weight-cube-kt--weightcubelearner--train), [`WeightCubeLearner.measure`](reference/simulation.md#alife-weight-cube-kt--weightcubelearner--measure), [`CubeView.path`](reference/simulation.md#alife-weight-cube-kt--cubeview--path).

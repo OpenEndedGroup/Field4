@@ -75,9 +75,10 @@ dir.deleteRecursively()
 val added = PathTraceScene().rhino(model, scale = 0.05f)
 
 :::fold lay the numbers out
-val rows = added.materials.entries.joinToString("\n") { (o, slot) ->
-    "| ${o.name} | ${o.type.removePrefix("ON_")} | ${(o as RhinoMesh).mesh.triangleCount} | $slot |"
-}
+val rows =
+    added.materials.entries.joinToString("\n") { (o, slot) ->
+        "| ${o.name} | ${o.type.removePrefix("ON_")} | ${(o as RhinoMesh).mesh.triangleCount} | $slot |"
+    }
 markdown(
     "readout",
     """
@@ -105,3 +106,7 @@ Unit
   and convergence.
 * [A Polytope, Cut Open and Traced](chain_polytope_render.md) ends at the same tracer, with a
   material chosen per triangle instead of per object.
+
+## API reference
+
+- Loading and rendering the model: [`Rhino3dm`](reference/graphics.md#rhino3dm-kt-rhino3dm), [`Rhino3dm.load`](reference/graphics.md#rhino3dm-kt--rhino3dm--load), [`PathTraceScene`](reference/renderers.md#pathtracescene-kt-pathtracescene), [`PathTraceScene.rhino`](reference/graphics.md#rhinopathtrace-kt--rhino), [`PathTraceMaterial`](reference/renderers.md#pathtracescene-kt-pathtracematerial), [`PathTraceMaterial.thinGlass`](reference/renderers.md#pathtracescene-kt--pathtracematerial-companion--thinglass), [`Rhino3dm.writeNurbsSample`](reference/graphics.md#rhino3dm-kt--rhino3dm--writenurbssample), [`PathTraceMaterial.plastic`](reference/renderers.md#pathtracescene-kt--pathtracematerial-companion--plastic).

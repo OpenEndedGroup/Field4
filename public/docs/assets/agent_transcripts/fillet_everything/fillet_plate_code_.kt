@@ -1,4 +1,3 @@
-import afield.geometry.mesh.weld
 import afield.geometry.solid.solidcraft.SolidCraftBuilder
 import afield.geometry.solid.solidcraft.SolidCraftLibrary
 import afield.geometry.solid.solidcraft.SolidCraftOperation

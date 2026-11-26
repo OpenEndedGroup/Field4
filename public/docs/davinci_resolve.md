@@ -181,3 +181,5 @@ Use [SMPTE timecode](smpte_timecode.md) to follow a shared clock and
 Implementation and parameter details for the helpers used above:
 
 - [`ResolvePlayheadLink.close`](reference/networking.md#resolveplayheadlink-kt--resolveplayheadlink--close)
+
+- Following the playhead: [`Resolve`](reference/networking.md#resolve-kt-resolve).

@@ -1,5 +1,3 @@
-import afield.geometry.mesh.TriMesh
-import afield.geometry.mesh.weld
 import afield.geometry.solid.solidcraft.SolidCraftBuilder
 import afield.geometry.solid.solidcraft.SolidCraftLibrary
 import afield.geometry.solid.solidcraft.SolidCraftOperation
@@ -20,7 +18,7 @@ class Part(val name: String, val build: SolidCraftBuilder.() -> Unit)
 
 fun SolidCraftBuilder.block() = extrude(sketch { rectangle(0.0, 0.0, 40.0, 30.0) }, "10")
 
-val parts = listOf(
+val parts = [
     Part("block") { block() },
     Part("block with a hole") {
         block()
@@ -30,14 +28,14 @@ val parts = listOf(
         val r = 10.0
         val hexagon =
             (0 until 6).flatMap { k ->
-                listOf(r * kotlin.math.cos(k * Math.PI / 3), r * kotlin.math.sin(k * Math.PI / 3))
+                [r * kotlin.math.cos(k * Math.PI / 3), r * kotlin.math.sin(k * Math.PI / 3)]
             }
         extrude(sketch { polygon(*hexagon.toDoubleArray()) }, "8")
         extrude(sketch { circle(0.0, 0.0, 5.0) }, "40", SolidCraftOperation.CUT, symmetric = true)
     },
     Part("pyramid") {
         loft(
-            listOf(sketch { rectangle(-10.0, -10.0, 10.0, 10.0) }),
+            [sketch { rectangle(-10.0, -10.0, 10.0, 10.0) }],
             apex = sketch(offsetPlane("XY", "20")) { point(0.0, 0.0) },
         )
     },
@@ -57,7 +55,7 @@ val parts = listOf(
         extrude(sketch { circle(25.0, 0.0, 3.0) }, "40", SolidCraftOperation.CUT, symmetric = true)
         extrude(sketch("YZ") { circle(0.0, 18.0, 3.0) }, "40", SolidCraftOperation.CUT, symmetric = true)
     },
-) +
+] +
         (1..4).map { n ->
             Part("plate, $n × $n bosses") {
                 extrude(sketch { rectangle(0.0, 0.0, 10.0 * n + 10, 10.0 * n + 10) }, "4")

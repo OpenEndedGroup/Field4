@@ -227,3 +227,7 @@ Eight 256-sample updates measured **0.188 ms median / 0.200 ms p95** in the reco
 These measurements include sample gathering, gradient clearing, differentiation, optimizer dispatches and their synchronization. They exclude the teacher render and full-resolution evaluation, which remain separate work. Float16 accumulation is not bitwise deterministic; the seed fixes initialization and sampled coordinates, not atomic summation order.
 
 This training path needs no NVIDIA SDK or Python worker beyond Field's optional Slang setup; the shader uses Slang's built-in differentiation rather than RTXNS. On a GPU without training support, use [offline capture and training](learned_shader.md#train-on-your-own-modulehere-shader) instead.
+
+## API reference
+
+- The live learning view: [`GpuShaderLearningView`](reference/graphics.md#gpushaderlearningview-kt-gpushaderlearningview), [`RenderToTexture`](reference/graphics.md#rendertotexture-kt-rendertotexture).

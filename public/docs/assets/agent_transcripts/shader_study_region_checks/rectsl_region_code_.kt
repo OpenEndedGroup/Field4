@@ -1,5 +1,4 @@
 import afield.lang.rectsl.study.RectSLStudy
-import afield.study.source.SourceStudy
 import kotlin.io.path.createTempDirectory
 
 val scene =
@@ -24,8 +23,8 @@ val moonFill = "0xabbceb"
 val sunFill = "0xeab962"
 val localEdit = scene.replace(moonFill, "0x93e5bb")
 val spillEdit = localEdit.replace(sunFill, "0xdb756f")
-val allowed = listOf(2.5, -2.5, 6.5, 0.5) // x0, y0, x1, y1 in metres
-val times = listOf(0.0, 2.0, 3.5)
+val allowed = [2.5, -2.5, 6.5, 0.5] // x0, y0, x1, y1 in metres
+val times = [0.0, 2.0, 3.5]
 
 val folder = createTempDirectory("rectsl-region-").toFile()
 try {

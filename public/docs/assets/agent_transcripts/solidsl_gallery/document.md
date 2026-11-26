@@ -11,11 +11,10 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="koch_folds" index="0" -->
 
 ```edn [field-box id="koch_folds" role="properties"]
-{"id" "koch_folds" "index" 0 "name" "Solid notation — folds: the Koch snowflake in O(N)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Solid notation — folds: the Koch snowflake in O(N)" "_tombstone" false "frame" #afield/rect [2900.0 80.0 380.0 50.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "koch_folds_code_.kt" "lines" 39 "characters" 1558 "sha256" "0bd14e4f84238f64b09187b4b3ddfd1e2fc167ef9bd07a7b66433e368647d18e"}]}
+{"id" "koch_folds" "index" 0 "name" "Solid notation — folds: the Koch snowflake in O(N)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Solid notation — folds: the Koch snowflake in O(N)" "_tombstone" false "frame" #afield/rect [2900.0 80.0 380.0 50.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "koch_folds_code_.kt" "lines" 38 "characters" 1510 "sha256" "506f95fc011aa18c29a62366f370a2c38bc3638d353f09f4b42cc04fbd26212a"}]}
 ```
 
 ```kotlin [field-property box="koch_folds" name="code" path="koch_folds_code_.kt"]
-import afield.geometry.path.generateIsoContours
 import afield.lang.solidsl.*
 
 /*

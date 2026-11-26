@@ -29,7 +29,7 @@ fun draw(across: Double) {
     val radiance = lamp.power / (PI * side * side)
     val e = irradianceAt(vec(0.0, 0.0, 0.0), vec(0.0, 1.0, 0.0), lamp).x
     val sight =
-        listOf(-0.5 to -0.5, 0.5 to -0.5, 0.5 to 0.5, -0.5 to 0.5).map { (x, z) ->
+        [-0.5 to -0.5, 0.5 to -0.5, 0.5 to 0.5, -0.5 to 0.5].map { (x, z) ->
             fline {
                 moveTo(0.0, 0.0, 0.0)
                 lineTo(across + x, 1.2, z)

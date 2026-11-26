@@ -1,0 +1,121 @@
+{
+  "stages": [
+    {
+      "path": "dev_docs/agents/transcripts/buffer_paint_gpu.yaml",
+      "property": "compute",
+      "sha256": "e324a6cb0095446f1193cd39fd233b95320b8eeb2ef6d91cf8ae7118fa4eeb2b"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/buffer_paint_gpu.yaml",
+      "property": "vertex",
+      "sha256": "fa8b34a0fd5d23cb8b092ff1b8d0f95ceb03612f45fa7b06e485ed11da365bcc"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/buffer_paint_gpu.yaml",
+      "property": "fragment",
+      "sha256": "a7cec652eee65401135a20f3364389443d5ea5ab222b15a689d79c8049d782af"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/discrete_energy.yaml",
+      "property": "compute",
+      "sha256": "5e638635a8ba9d70e4ba87e4cc9d67b9a97ad60bb9726a02f8df5106c3059a42"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/exact_triangle_coverage.yaml",
+      "property": "vertex",
+      "sha256": "8f3504d8801a4398f2518ca9de09a3f9f4b72e4eb43044567049caf473214b5a"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/exact_triangle_coverage.yaml",
+      "property": "fragment",
+      "sha256": "d6be772c7435b4b7d72cfea6e6764e241dc85a4cff1cc876567b58223188b80f"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/fline_coverage_gpu.yaml",
+      "property": "vertex",
+      "sha256": "fa8b34a0fd5d23cb8b092ff1b8d0f95ceb03612f45fa7b06e485ed11da365bcc"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/fline_coverage_gpu.yaml",
+      "property": "fragment",
+      "sha256": "2a34ef530a8ee46b910970d6d6fcc7223a03a3b5efea28b3c08811b3b3460562"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/gezira_gpu_tiger.yaml",
+      "property": "vertex",
+      "sha256": "fa8b34a0fd5d23cb8b092ff1b8d0f95ceb03612f45fa7b06e485ed11da365bcc"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/gezira_gpu_tiger.yaml",
+      "property": "fragment",
+      "sha256": "e41394c64ec8e7c8ca7917af2078674b7b6fcdad241037d2d8ada26c3bbf3e8e"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/outline_field_gpu.yaml",
+      "property": "compute",
+      "sha256": "aa1dc3b2f3bfaee1665918b055cc1c59dcb3fc4d893849a5a7ed26375c36feb5"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/outline_field_gpu.yaml",
+      "property": "vertex",
+      "sha256": "fa8b34a0fd5d23cb8b092ff1b8d0f95ceb03612f45fa7b06e485ed11da365bcc"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/outline_field_gpu.yaml",
+      "property": "fragment",
+      "sha256": "2186d8f3eda7d2c076e3988487a370ec054774ecf6ca6da02a24fd0b884327a8"
+    },
+    {
+      "path": "public/docs/afield_four_graphics.md",
+      "property": null,
+      "sha256": "59d966e8dadb8ecd9edf57e976465423415624d08dba9d437148e683aa5dd881"
+    },
+    {
+      "path": "public/docs/afield_four_graphics.md",
+      "property": null,
+      "sha256": "d2687c48a52b4878c7cabcafbc5d3a2f680cd29e93b46975d6ea318d6711796e"
+    },
+    {
+      "path": "public/docs/solid_conversation.md",
+      "property": null,
+      "sha256": "879a9817794b63a302b9c58ff59df9252f7d04aa210a10076e26fd2b3d45e06a"
+    },
+    {
+      "path": "public/docs/solid_conversation.md",
+      "property": null,
+      "sha256": "3763f57eef40d50d614bf6a4f0ec5bec565be521937cc5acd7020cdd25f18fbc"
+    },
+    {
+      "path": "templates/gpu-particles/tpl_particles_compute_compute_.glsl",
+      "property": null,
+      "sha256": "4151046557491791279bea9e8748b69635df6d93b91b644278374818ca429c7a"
+    },
+    {
+      "path": "templates/gpu-particles/tpl_particles_draw_fragment_.glsl",
+      "property": null,
+      "sha256": "5c79bc37d4acb362024b3297e130f615c308cd241fc18e515f5ac924b939ea31"
+    },
+    {
+      "path": "templates/gpu-particles/tpl_particles_draw_vertex_.glsl",
+      "property": null,
+      "sha256": "cd732f960f19b58f1ec27d7e7caa5c323a40d373cfa12def6b82d04119e805fb"
+    },
+    {
+      "path": "templates/shadertoy-pass/tpl_shadertoy_fragment_.glsl",
+      "property": null,
+      "sha256": "73a9828983eb860ffe4725c87827b2075783de646e287c025a4e7bfe9917008d"
+    },
+    {
+      "path": "templates/sky/tpl_sky_fragment_.glsl",
+      "property": null,
+      "sha256": "51659107c092514d5bf555612f6ac274452cf796eb2fb1efa8fa6f69c35ed25b"
+    },
+    {
+      "path": "templates/sky/tpl_sky_vertex_.glsl",
+      "property": null,
+      "sha256": "9b806ad783ee67caf60737cebcd12364bda87318e5a64c45b93f710355c9ef40"
+    }
+  ],
+  "tokensUnchanged": true,
+  "method": "Final source, including manual spacing of dense particle-template GLSL, matches all frozen GLSL tokens exactly; the 18 complete original/current stages compiled in behavior-verification.json."
+}

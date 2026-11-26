@@ -23,8 +23,8 @@ void main() {
     float phaseZ = pc.something * seed.z;
     float phaseW = pc.something * seed.w;
     vec2 moved = vec2(
-        seed.x * cos(phaseZ) + seed.y * sin(phaseW),
-        -seed.x * sin(phaseW) + seed.y * cos(phaseZ * 0.03)
+    seed.x * cos(phaseZ) + seed.y * sin(phaseW),
+    -seed.x * sin(phaseW) + seed.y * cos(phaseZ * 0.03)
     );
     pc.outData.a[idx] = vec4(moved, seed.zw);
 }

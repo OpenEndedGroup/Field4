@@ -656,3 +656,7 @@ npm ci
 Open Field with that folder as its workspace, then choose **Presentation → Open Motion Canvas Project…** and select it. **Attach source files to Field** adds editable links to its scenes and `presentation.json`. Linked TSX uses the project's TypeScript configuration and installed libraries for completion and diagnostics. Running `npm run check` inside the talk checks the scenes.
 
 `src/project.ts` orders Motion Canvas scenes, and `beginSlide('name')` supplies cue names. `presentation.json` attaches live content to those cues. See the [Motion Canvas starter](https://github.com/OpenEndedGroup/Field4/tree/main/tools/presentation/example) for that project format. Its webpages, YouTube and live Field documents use the same Electron host as Kotlin presentations.
+
+## API reference
+
+- Restoring the live experiment: [`LessonCheckpoint`](reference/visualization.md#lessoncheckpoint-kt-lessoncheckpoint), [`LessonCheckpoint.capture`](reference/visualization.md#lessoncheckpoint-kt--lessoncheckpoint-companion--capture), [`LessonCheckpoint.restore`](reference/visualization.md#lessoncheckpoint-kt--lessoncheckpoint--restore).

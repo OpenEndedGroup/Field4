@@ -1,5 +1,4 @@
 import afield.graphics.nile.FillRule
-import afield.media.image.*
 
 val W = 160
 val H = 100

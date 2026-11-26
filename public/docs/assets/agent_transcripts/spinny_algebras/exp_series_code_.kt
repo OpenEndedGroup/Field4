@@ -25,8 +25,8 @@ fun curve(eps2: Double, terms: Int, col: Vec4, ox: Double, width: Double = 1.5) 
 }
 
 val axes =
-    listOf(0.0, 480.0).flatMap { ox ->
-        listOf(
+    [0.0, 480.0].flatMap { ox ->
+        [
             fline {
                 moveTo(ox - 3 * s, 0)
                 lineTo(ox + 4 * s, 0)
@@ -37,13 +37,13 @@ val axes =
                 lineTo(ox, 3 * s)
                 color = vec(1, 1, 1, 0.25)
             },
-        )
+        ]
     }
 
 // Left: the three named algebras, with the series cut off after 3, 5 and 30 terms.
 val named =
-    listOf(-1.0 to vec(0.35, 0.8, 1.0), 0.0 to vec(0.95, 0.85, 0.3), 1.0 to vec(1.0, 0.45, 0.55)).flatMap { (k, c) ->
-        listOf(3 to 0.25, 5 to 0.5, 30 to 1.0).map { (n, a) ->
+    [-1.0 to vec(0.35, 0.8, 1.0), 0.0 to vec(0.95, 0.85, 0.3), 1.0 to vec(1.0, 0.45, 0.55)].flatMap { (k, c) ->
+        [3 to 0.25, 5 to 0.5, 30 to 1.0].map { (n, a) ->
             curve(k, n, vec(c.x, c.y, c.z, a), 0.0, if (n == 30) 2.0 else 1.0)
         }
     }

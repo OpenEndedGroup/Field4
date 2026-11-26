@@ -15,12 +15,12 @@ val s = 32.0
 val pieces = t.get<Bezier>("DecomposeBeziers")
 val samples = t.get<EdgeSample>("EdgeSamples")
 val spans = t.get<Span>("CombineEdgeSamples")
-lines(listOf(Gezira.grid(16, 12, s)) + Gezira.pieces(pieces, s) + Gezira.cuts(pieces, s), channel = "1 pieces")
+lines([Gezira.grid(16, 12, s)] + Gezira.pieces(pieces, s) + Gezira.cuts(pieces, s), channel = "1 pieces")
 lines(
-    listOf(Gezira.grid(16, 12, s)) + Gezira.outline(shape, s) + Gezira.samples(samples, s),
+    [Gezira.grid(16, 12, s)] + Gezira.outline(shape, s) + Gezira.samples(samples, s),
     channel = "2 edge samples",
 )
 lines(
-    listOf(Gezira.grid(16, 12, s)) + Gezira.pixels(Gezira.coverage(spans, 16, 12), 16, s) + Gezira.spans(spans, s),
+    [Gezira.grid(16, 12, s)] + Gezira.pixels(Gezira.coverage(spans, 16, 12), 16, s) + Gezira.spans(spans, s),
     channel = "3 spans",
 )

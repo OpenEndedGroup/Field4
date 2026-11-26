@@ -28,10 +28,10 @@ lines(outlines, channel = "flines")
 <!-- field-box id="gezira_svg_tiger" index="1" -->
 
 ```edn [field-box id="gezira_svg_tiger" role="properties"]
-{"id" "gezira_svg_tiger" "index" 1 "name" "tiger beside skia" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "tiger beside skia" "_tombstone" false "frame" #afield/rect [760.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gezira_svg_tiger_code_.kt" "lines" 30 "characters" 1205 "sha256" "11efe3184818d03a3cf0d1d24025a058c0451fe63a5c3dc2ce337d8f33aeb041"}]}
+{"id" "gezira_svg_tiger" "index" 1 "name" "tiger beside skia" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "tiger beside skia" "_tombstone" false "frame" #afield/rect [760.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gezira_svg_tiger_code_.kt" "lines" 30 "characters" 1158 "sha256" "a9b2b87d78cdce00e98d2c9902471c92f5c86c688a8a364f3e1bd9a25c916cde"}]}
 ```
 
-```kotlin [field-property box="gezira_svg_tiger" name="code" path="gezira_svg_tiger_code_.kt"]
+````kotlin [field-property box="gezira_svg_tiger" name="code" path="gezira_svg_tiger_code_.kt"]
 import afield.graphics.nile.*
 
 // The Ghostscript tiger through Gezira's kernels, then through Skia's SVG renderer.
@@ -42,19 +42,19 @@ val r = GeziraSvg.render(doc, n, n)
 val skia = GeziraSvg.skia(text, n, n)
 val diff = GeziraSvg.difference(r.canvas.rgba, skia, 10.0)
 val (worst, mean) = r.canvas.error(skia)
-val readout = listOf(
+val readout = [
     "%d SVG elements, %d segments, read into %d FLines".format(doc.elements, doc.segments, doc.lines.size),
     r.toString(),
     "Gezira vs Skia per channel: max |diff| %.3f, mean %.4f".format(worst, mean),
-).joinToString("\n")
+].joinToString("\n")
 println(readout)
-display("readout", "<pre style='margin:0; white-space:pre-wrap'>$readout</pre>")
+markdown("readout", "```text\n$readout\n```")
 
 // Three panels side by side: Gezira, Skia, and the difference times ten (white where they agree).
 val gap = 12
 val w = 3 * n + 2 * gap
 val sheet = FloatArray(4 * w * n)
-for ((k, img) in listOf(r.canvas.rgba, skia, diff).withIndex()) {
+for ((k, img) in [r.canvas.rgba, skia, diff].withIndex()) {
     for (y in 0 until n) for (x in 0 until n) {
         val s = 4 * (y * n + x)
         val d = 4 * (y * w + k * (n + gap) + x)
@@ -62,7 +62,7 @@ for ((k, img) in listOf(r.canvas.rgba, skia, diff).withIndex()) {
     }
 }
 display("gezira | skia | difference x10", GeziraSvg.png(sheet, w, n))
-```
+````
 
 ## 3. flines through gezira
 

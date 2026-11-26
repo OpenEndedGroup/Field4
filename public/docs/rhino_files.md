@@ -97,9 +97,7 @@ saves them on two layers, and reads the file straight back to draw what Rhino wi
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/rhino_files/ribbons.png" wait="10.0" capture="box" open-outputs="true" padding="20" requires="opennurbs" name="ribbons"}
 :::static
-import afield.geometry.mesh.TriMesh
 import afield.geometry.rhino.*
-import kotlin.math.*
 
 val dir = java.nio.file.Files.createTempDirectory("rhino-save").toFile()
 val ribbons = 14
@@ -136,13 +134,25 @@ val file = Rhino3dm.save(java.io.File(dir, "ribbons.3dm"), units = "millimeters"
             val dx = w * cos(twist(a, t)) * cos(a + t)
             val dy = w * cos(twist(a, t)) * sin(a + t)
             val dz = w * sin(twist(a, t))
-            floatArrayOf(c.x + dx.toFloat(), c.y + dy.toFloat(), c.z + dz.toFloat(), c.x - dx.toFloat(), c.y - dy.toFloat(), c.z - dz.toFloat())
-                .copyInto(positions, s * 6)
+            floatArrayOf(
+                c.x + dx.toFloat(),
+                c.y + dy.toFloat(),
+                c.z + dz.toFloat(),
+                c.x - dx.toFloat(),
+                c.y - dy.toFloat(),
+                c.z - dz.toFloat(),
+            ).copyInto(positions, s * 6)
         }
         val triangles = IntArray(steps * 6)
-        for (s in 0 until steps) intArrayOf(2 * s, 2 * s + 1, 2 * s + 2, 2 * s + 1, 2 * s + 3, 2 * s + 2).copyInto(triangles, s * 6)
+        for (s in 0 until steps) intArrayOf(2 * s, 2 * s + 1, 2 * s + 2, 2 * s + 1, 2 * s + 3, 2 * s + 2)
+            .copyInto(triangles, s * 6)
         val hue = i.toDouble() / ribbons
-        mesh(TriMesh(positions, triangles), layer = "Ribbons", name = "ribbon $i", color = vec(0.9, 0.3 + 0.5 * hue, 0.2, 1.0))
+        mesh(
+            TriMesh(positions, triangles),
+            layer = "Ribbons",
+            name = "ribbon $i",
+            color = vec(0.9, 0.3 + 0.5 * hue, 0.2, 1.0),
+        )
     }
     text("$ribbons ribbons", vec(-30.0, -70.0, 0.0), height = 6.0, layer = "Notes")
 }
@@ -266,9 +276,7 @@ against the exact figure:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/rhino_files/round_trip.png" wait="12.0" capture="box" open-outputs="true" padding="20" timeout="120" requires="opennurbs" name="round_trip"}
 :::static
-import afield.geometry.mesh.TriMesh
 import afield.geometry.rhino.*
-import kotlin.math.*
 
 fun square(x: Double, y: Double, size: Double) =
     FLine().moveTo(x, y, 0.0).lineTo(x + size, y, 0.0).lineTo(x + size, y + size, 0.0).lineTo(x, y + size, 0.0).close()
@@ -289,7 +297,11 @@ val file = Rhino3dm.save(java.io.File(dir, "roundtrip.3dm"), units = "millimeter
     brep(RhinoBreps.sphere(vec(0.0, 0.0, 0.0), 10.0), layer = "Solids", name = "sphere")
     brep(RhinoBreps.cylinder(vec(30.0, 0.0, -10.0), 5.0, 20.0), layer = "Solids", name = "cylinder")
     brep(RhinoBreps.box(vec(-30.0, -5.0, -5.0), vec(-20.0, 5.0, 5.0)), layer = "Solids", name = "box")
-    brep(RhinoBreps.plate(vec(0.0, -30.0, 0.0), 20.0, [Triple(0.0, -30.0, 5.0)]), layer = "Solids::Trimmed", name = "plate with hole")
+    brep(
+        RhinoBreps.plate(vec(0.0, -30.0, 0.0), 20.0, [Triple(0.0, -30.0, 5.0)]),
+        layer = "Solids::Trimmed",
+        name = "plate with hole",
+    )
     val (points, faces, creases) = RhinoBreps.subdBox(vec(25.0, -35.0, -5.0), vec(35.0, -25.0, 5.0), 2, false)
     subd(points, faces, creases, layer = "SubD", name = "subd box")
     mesh(quad, layer = "Flat", name = "coloured quad")
@@ -297,48 +309,69 @@ val file = Rhino3dm.save(java.io.File(dir, "roundtrip.3dm"), units = "millimeter
     val withHole = square(-35.0, 20.0, 10.0)
     withHole.nodes.addAll(square(-32.0, 23.0, 4.0).nodes)
     hatch(withHole, layer = "Flat", name = "hatch")
-    block("fin") { mesh(TriMesh(floatArrayOf(0f, 0f, 0f, 4f, 0f, 0f, 0f, 0f, 6f), intArrayOf(0, 1, 2)), layer = "Flat", name = "fin skin") }
+    block("fin") {
+        mesh(
+            TriMesh(floatArrayOf(0f, 0f, 0f, 4f, 0f, 0f, 0f, 0f, 6f), intArrayOf(0, 1, 2)),
+            layer = "Flat",
+            name = "fin skin",
+        )
+    }
     instance("fin", vec(50.0, 20.0, 0.0), layer = "Flat", name = "fin A")
     instance("fin", vec(56.0, 20.0, 0.0), layer = "Flat", name = "fin B")
 }
 val model = Rhino3dm.load(file, meshing = RhinoBrepMeshing.EVALUATE)
 
 :::fold measure it, draw it, clean up
-fun area(m: TriMesh) = (0 until m.triangleCount).sumOf { t ->
-    val (a, b, c) = (0..2).map { k -> m.indices[3 * t + k].let { vec(m.positions[3 * it], m.positions[3 * it + 1], m.positions[3 * it + 2]) } }
-    ((b - a) x (c - a)).length / 2.0
-}
-fun volume(m: TriMesh) = (0 until m.triangleCount).sumOf { t ->
-    val (a, b, c) = (0..2).map { k -> m.indices[3 * t + k].let { vec(m.positions[3 * it], m.positions[3 * it + 1], m.positions[3 * it + 2]) } }
-    (a dot (b x c)) / 6.0
-}
+fun area(m: TriMesh) =
+    (0 until m.triangleCount).sumOf { t ->
+        val (a, b, c) =
+            (0..2).map { k ->
+                m.indices[3 * t + k].let { vec(m.positions[3 * it], m.positions[3 * it + 1], m.positions[3 * it + 2]) }
+            }
+        ((b - a) x (c - a)).length / 2.0
+    }
+fun volume(m: TriMesh) =
+    (0 until m.triangleCount).sumOf { t ->
+        val (a, b, c) =
+            (0..2).map { k ->
+                m.indices[3 * t + k].let { vec(m.positions[3 * it], m.positions[3 * it + 1], m.positions[3 * it + 2]) }
+            }
+        (a dot (b x c)) / 6.0
+    }
 fun openEdges(m: TriMesh): Int {
     val id = HashMap<Triple<Float, Float, Float>, Int>()
-    val ids = IntArray(m.vertexCount) { id.getOrPut(Triple(m.positions[3 * it], m.positions[3 * it + 1], m.positions[3 * it + 2])) { id.size } }
+    val ids = IntArray(m.vertexCount) {
+        id.getOrPut(Triple(m.positions[3 * it], m.positions[3 * it + 1], m.positions[3 * it + 2])) { id.size }
+    }
     val count = HashMap<Pair<Int, Int>, Int>()
     for (t in 0 until m.triangleCount) for (e in 0..2) {
-        val a = ids[m.indices[3 * t + e]]; val b = ids[m.indices[3 * t + (e + 1) % 3]]
+        val a = ids[m.indices[3 * t + e]]
+        val b = ids[m.indices[3 * t + (e + 1) % 3]]
         count.merge(minOf(a, b) to maxOf(a, b), 1, Int::plus)
     }
     return count.values.count { it == 1 }
 }
 val exact = mapOf(
-    "sphere" to (400 * PI to 4000 * PI / 3), "cylinder" to (250 * PI to 500 * PI),
-    "box" to (600.0 to 1000.0), "plate with hole" to (400 - 25 * PI to null),
+    "sphere" to (400 * PI to 4000 * PI / 3),
+    "cylinder" to (250 * PI to 500 * PI),
+    "box" to (600.0 to 1000.0),
+    "plate with hole" to (400 - 25 * PI to null),
 )
 fun f(x: Double) = x.f1
-val rows = model.objects.joinToString("\n") { o ->
-    when (o) {
-        is RhinoMesh -> {
-            val m = o.mesh
-            val (a, v) = exact[o.name] ?: (null to null)
-            val vol = if (openEdges(m) == 0) f(volume(m)) + (v?.let { " of " + f(it) } ?: "") else "open"
-            "| ${o.name} | ${o.layer?.path} | ${m.triangleCount} | ${f(area(m))}${a?.let { " of " + f(it) } ?: ""} | $vol | ${openEdges(m)} |"
+val rows =
+    model.objects.joinToString("\n") { o ->
+        when (o) {
+            is RhinoMesh -> {
+                val m = o.mesh
+                val (a, v) = exact[o.name] ?: (null to null)
+                val vol = if (openEdges(m) == 0) f(volume(m)) + (v?.let { " of " + f(it) } ?: "") else "open"
+                "| ${o.name} | ${o.layer?.path} | ${m.triangleCount} | ${f(area(m))}${a?.let { " of " + f(it) } ?: ""} | $vol | ${openEdges(m)} |"
+            }
+            is RhinoCurve ->
+                "| ${o.name} | ${o.layer?.path} | ${if (o.isHatch) "hatch" else "curve"}, ${o.line.nodes.size} nodes | | | |"
+            else -> "| ${o.name} | ${o.layer?.path} | ${o.type} | | | |"
         }
-        is RhinoCurve -> "| ${o.name} | ${o.layer?.path} | ${if (o.isHatch) "hatch" else "curve"}, ${o.line.nodes.size} nodes | | | |"
-        else -> "| ${o.name} | ${o.layer?.path} | ${o.type} | | | |"
     }
-}
 val back = model.meshes.single { it.name == "coloured quad" }.mesh.colors
 val sent = quad.colors!!
 markdown(
@@ -397,3 +430,7 @@ first set Field up. `Rhino3dm.describe()` says whether Field found it.
 - [Solids & Booleans (Manifold)](manifold.md): a `RhinoMesh.mesh` is a `TriMesh`, so `toSolid()`
   checks it and, if it is closed and manifold, turns it into a solid you can boolean.
 - [Graphics reference](reference/graphics.md): `Rhino3dm`, `RhinoModel` and the object classes.
+
+## API reference
+
+- Reading and writing models: [`Rhino3dm`](reference/graphics.md#rhino3dm-kt-rhino3dm), [`Rhino3dm.load`](reference/graphics.md#rhino3dm-kt--rhino3dm--load), [`Rhino3dm.save`](reference/graphics.md#rhinowriter-kt--save), [`Rhino3dm.writeSample`](reference/graphics.md#rhino3dm-kt--rhino3dm--writesample), [`Rhino3dm.writeNurbsSample`](reference/graphics.md#rhino3dm-kt--rhino3dm--writenurbssample), [`RhinoBreps`](reference/graphics.md#rhinowriter-kt-rhinobreps), [`RhinoBreps.box`](reference/graphics.md#rhinowriter-kt--rhinobreps--box), [`RhinoBreps.subdBox`](reference/graphics.md#rhinowriter-kt--rhinobreps--subdbox).

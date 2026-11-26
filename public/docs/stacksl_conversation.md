@@ -203,7 +203,8 @@ comparison to read the difference image alongside the two renders.
 
 ```diffstatic {data-lang=kotlin}
 val report = study.compare(
-    baseline, revision,
+    baseline,
+    revision,
     seconds = [0.0],
     region = [0.5, 0.0, 1.0, 1.0], // u0, v0, u1, v1
     size = 128,

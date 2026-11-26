@@ -245,3 +245,7 @@ scene skips them, and `degenerateCount` says how many.
   simulation at the front instead of a polytope.
 * [A polytope, canonicalised, and sliced into layers](chain_ceres_manifold_contours.md) starts from
   the same polytopes and cuts the solid into layers instead of tracing it.
+
+## API reference
+
+- Triangulated selection: [`PickParts`](reference/graphics.md#pointing-pick-kt-pickparts), [`PickParts.fromTriangulated`](reference/graphics.md#pointing-pick-kt--pickparts-companion--fromtriangulated), [`ElementId`](reference/polytopes.md#topology-kt-elementid).

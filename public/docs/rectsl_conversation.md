@@ -219,7 +219,8 @@ same checked original at 0, 2 and 3.5 seconds.
 
 ```diffstatic {data-lang=kotlin}
 val report = study.compare(
-    baseline, revision,
+    baseline,
+    revision,
     seconds = [0.0, 2.0, 3.5],
     region = [2.5, -2.5, 6.5, 0.5], // x0, y0, x1, y1 in wall units
     size = 192,

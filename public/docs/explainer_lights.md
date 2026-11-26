@@ -510,7 +510,7 @@ fun draw(distance: Double) {
     for (t in 0 until shadow.triangleCount) omega += shadow.triangleArea(t)
     // From the eye through each corner of the patch to the panel's corner.
     val corners =
-        listOf(-0.4 to -0.4, 0.4 to -0.4, 0.4 to 0.4, -0.4 to 0.4).map { (x, y) ->
+        [-0.4 to -0.4, 0.4 to -0.4, 0.4 to 0.4, -0.4 to 0.4].map { (x, y) ->
             fline {
                 moveTo(0.0, 0.0, 0.0)
                 lineTo(x, y, -distance)
@@ -583,7 +583,7 @@ fun draw(across: Double) {
     val radiance = lamp.power / (PI * side * side)
     val e = irradianceAt(vec(0.0, 0.0, 0.0), vec(0.0, 1.0, 0.0), lamp).x
     val sight =
-        listOf(-0.5 to -0.5, 0.5 to -0.5, 0.5 to 0.5, -0.5 to 0.5).map { (x, z) ->
+        [-0.5 to -0.5, 0.5 to -0.5, 0.5 to 0.5, -0.5 to 0.5].map { (x, z) ->
             fline {
                 moveTo(0.0, 0.0, 0.0)
                 lineTo(across + x, 1.2, z)

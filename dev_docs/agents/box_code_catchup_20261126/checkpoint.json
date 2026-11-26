@@ -1,0 +1,31 @@
+{
+  "state": "merge guards and built-site audit passed; landing precheck retry",
+  "scope": "scope.json",
+  "reviewed": [],
+  "next": "Review changed bodies, apply clarity/helper edits and actual formatting, verify affected behavior and run land precheck.",
+  "previousLanding": "be4dd4c67ffeacec0bbdd8b5652d88634a8acdcc",
+  "branch": "codex/docs-code-catchup-nov26",
+  "reviewedAreas": [
+    "All 23 GLSL spans including partial snippets; interfaces generally already document layout and units.",
+    "Typed paint-sheet dependency, plain HTML readouts, collection-literal candidates.",
+    "Delegated helper census: 62 short public examples; curated class/member references also cover longer algorithm examples."
+  ],
+  "remaining": [
+    "Final merge guards and landing precheck.",
+    "Enqueue and verify local main."
+  ],
+  "formatting": "607 Kotlin/GLSL spans covered after correcting language metadata; no skips. Final 23 GLSL token streams match the frozen source exactly, including manual whitespace on dense particle shaders.",
+  "revisions": "91 collection literals in 50 bodies; typed inherited paint sheet; Markdown result/readout channels.",
+  "references": "152 class/member/function targets verified, including explicit implementation links for speech, audio curves, color searches and Drawing On.",
+  "behavior": "8 before/after CPU equivalence pairs passed with default and edited inputs; 18 complete GLSL stages compile before/after.",
+  "nativePaint": "Matching checkout native library built successfully.",
+  "paint": "Passed all four connected authored boxes, before/after, for seeds 3 and 4; PNG hashes match in both pairs.",
+  "captures": "7 actual recaptures passed and inspected: 2 videos and 5 screenshots.",
+  "publicationResume": "Fixed publication_merge.unify to retain completed working captures with matching sources and output hashes; 10 regression tests passed, including section transitions.",
+  "site": "Built-site gate passed for the catch-up before the next spatial-rules merge: all 4916 distinct local refs resolved, with the single registered 404 theme fragment exception.",
+  "mainReconciliation": "Preserved the new spatial tutorial and both test sets. Main independently restored inspectOnClick, so the merged tree keeps its single implementation.",
+  "nextHandoff": "4ef4d21c, committed in 98eaaebe63; recommends gpt-6.2-sol.",
+  "mergeGuard": "1967 Python tests passed, 28 skipped. The full merged-tree guard passed at e2791b1a7c.",
+  "precheckRepair": "Precheck now reconciles publication bundles on its trial merge, as the lander does. Without this, the catalog omitted the unrelated Slinky publication from newer main.",
+  "lateScope": "Companion branch codex/docs-code-catchup-nov26-late reviews 37 new bodies through f003826253, including Spatial Rules and Slinky."
+}

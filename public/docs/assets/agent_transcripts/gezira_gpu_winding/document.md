@@ -34,12 +34,11 @@ start(renderer::run)
 <!-- field-box id="ggw_raster" index="1" -->
 
 ```edn [field-box id="ggw_raster" role="properties"]
-{"id" "ggw_raster" "index" 1 "name" "gezira on the gpu" "parents" ["root" "ggw_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "ggw_renderer"} "name" "gezira on the gpu" "_tombstone" false "frame" #afield/rect [40.0 200.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ggw_raster_code_.kt" "lines" 49 "characters" 1872 "sha256" "a6701924d1818b9341cae9e696c63a4babc2fa3bfd2cfa8620ccb44311ec4dea"}]}
+{"id" "ggw_raster" "index" 1 "name" "gezira on the gpu" "parents" ["root" "ggw_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "ggw_renderer"} "name" "gezira on the gpu" "_tombstone" false "frame" #afield/rect [40.0 200.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ggw_raster_code_.kt" "lines" 48 "characters" 1828 "sha256" "fb1922df85bb76710b23234174ce5f46f5c9487d16b77d1919c4c539b36852d3"}]}
 ```
 
 ```kotlin [field-property box="ggw_raster" name="code" path="ggw_raster_code_.kt"]
 import afield.graphics.nile.*
-import afield.graphics.vulkan.util.GpuProbe
 
 val W = 120
 val H = 48

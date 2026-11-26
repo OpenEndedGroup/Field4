@@ -257,8 +257,6 @@ This box sums a small noise image: `image()` calls `row()` for each row, and `ro
 
 ```diffstatic {data-lang=kotlin}
 :::static
-import kotlin.math.sin
-
 // A small noise image: image() calls row() for each row, row() calls noise() for each pixel.
 fun noise(x: Double): Double {
     var sum = 0.0

@@ -34,7 +34,7 @@ start(renderer::run)
 <!-- field-box id="bpg_sim" index="1" -->
 
 ```edn [field-box id="bpg_sim" role="properties"]
-{"id" "bpg_sim" "index" 1 "name" "Gray-Scott on the GPU, paintable" "parents" ["root" "bpg_renderer"] "children" ["bpg_draw"] "properties" {"children" #{#afield/box "bpg_draw"} "parents" #{#afield/box "root" #afield/box "bpg_renderer"} "name" "Gray-Scott on the GPU, paintable" "_tombstone" false "frame" #afield/rect [40.0 200.0 340.0 100.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "bpg_sim_compute_.glsl" "lines" 34 "characters" 1128 "sha256" "e324a6cb0095446f1193cd39fd233b95320b8eeb2ef6d91cf8ae7118fa4eeb2b"} {"name" "code" "language" "kotlin" "path" "bpg_sim_code_.kt" "lines" 158 "characters" 5980 "sha256" "9081b463c259bd70eef6ce364ac5c1d163f67df4ae72d75837e0c8a29f2d15e6"}]}
+{"id" "bpg_sim" "index" 1 "name" "Gray-Scott on the GPU, paintable" "parents" ["root" "bpg_renderer"] "children" ["bpg_draw"] "properties" {"children" #{#afield/box "bpg_draw"} "parents" #{#afield/box "root" #afield/box "bpg_renderer"} "name" "Gray-Scott on the GPU, paintable" "_tombstone" false "frame" #afield/rect [40.0 200.0 340.0 100.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "bpg_sim_compute_.glsl" "lines" 34 "characters" 1128 "sha256" "e324a6cb0095446f1193cd39fd233b95320b8eeb2ef6d91cf8ae7118fa4eeb2b"} {"name" "code" "language" "kotlin" "path" "bpg_sim_code_.kt" "lines" 156 "characters" 5951 "sha256" "ffa6b06097c1a7c75114edc8d7c2d5e2e46c3c8250b93480e557a6f41ba68f46"}]}
 ```
 
 ```glsl [field-property box="bpg_sim" name="compute" path="bpg_sim_compute_.glsl"]
@@ -75,8 +75,6 @@ void main() {
 ```
 
 ```kotlin [field-property box="bpg_sim" name="code" path="bpg_sim_code_.kt"]
-import afield.media.image.*
-
 var simModule = computeModuleHere {}
 var sim = ComputeMesh()
 simModule += "step" to sim

@@ -11,13 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="rhino_round_trip" index="0" -->
 
 ```edn [field-box id="rhino_round_trip" role="properties"]
-{"id" "rhino_round_trip" "index" 0 "name" "write, read back, measure" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "write, read back, measure" "_tombstone" false "frame" #afield/rect [40.0 40.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rhino_round_trip_code_.kt" "lines" 129 "characters" 5797 "sha256" "122b2a6d623d550328e69a81ca9599b6852a7c959d49fbde43916dba431e4995"}]}
+{"id" "rhino_round_trip" "index" 0 "name" "write, read back, measure" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "write, read back, measure" "_tombstone" false "frame" #afield/rect [40.0 40.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rhino_round_trip_code_.kt" "lines" 127 "characters" 5740 "sha256" "30bc044adc8197350111e885e4b5269410578838142243528796a40e5896eaea"}]}
 ```
 
 ```kotlin [field-property box="rhino_round_trip" name="code" path="rhino_round_trip_code_.kt"]
-import afield.geometry.mesh.TriMesh
 import afield.geometry.rhino.*
-import kotlin.math.*
 
 // Write one of each kind of object to a .3dm, read it back, and measure what survived against
 // the exact shapes; without the openNURBS wrapper, say how to build it

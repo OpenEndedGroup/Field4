@@ -11,12 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="rectsl_region" index="0" -->
 
 ```edn [field-box id="rectsl_region" role="properties"]
-{"id" "rectsl_region" "index" 0 "name" "RectSL: protect the rest of the wall" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "RectSL: protect the rest of the wall" "_tombstone" false "frame" #afield/rect [70.0 80.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_region_code_.kt" "lines" 53 "characters" 1692 "sha256" "b47583dc50f12b922690e4492b7ab70e972db33cbafc4207cefd7e64e92854d1"}]}
+{"id" "rectsl_region" "index" 0 "name" "RectSL: protect the rest of the wall" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "RectSL: protect the rest of the wall" "_tombstone" false "frame" #afield/rect [70.0 80.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_region_code_.kt" "lines" 52 "characters" 1641 "sha256" "f02fe5c6908a98ae1295fa74e3538f8cc1a57d45c824822a8029fa628f0f4259"}]}
 ```
 
 ```kotlin [field-property box="rectsl_region" name="code" path="rectsl_region_code_.kt"]
 import afield.lang.rectsl.study.RectSLStudy
-import afield.study.source.SourceStudy
 import kotlin.io.path.createTempDirectory
 
 val scene =
@@ -41,8 +40,8 @@ val moonFill = "0xabbceb"
 val sunFill = "0xeab962"
 val localEdit = scene.replace(moonFill, "0x93e5bb")
 val spillEdit = localEdit.replace(sunFill, "0xdb756f")
-val allowed = listOf(2.5, -2.5, 6.5, 0.5) // x0, y0, x1, y1 in metres
-val times = listOf(0.0, 2.0, 3.5)
+val allowed = [2.5, -2.5, 6.5, 0.5] // x0, y0, x1, y1 in metres
+val times = [0.0, 2.0, 3.5]
 
 val folder = createTempDirectory("rectsl-region-").toFile()
 try {
@@ -75,19 +74,18 @@ try {
 <!-- field-box id="stacksl_region" index="1" -->
 
 ```edn [field-box id="stacksl_region" role="properties"]
-{"id" "stacksl_region" "index" 1 "name" "StackSL: protect the left half" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "StackSL: protect the left half" "_tombstone" false "frame" #afield/rect [980.0 80.0 385.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stacksl_region_code_.kt" "lines" 34 "characters" 1387 "sha256" "5b91ca2f7aec15cf3d8f46fb1ba2a0fa53db62a67b7a3031d109b922cc9669a0"}]}
+{"id" "stacksl_region" "index" 1 "name" "StackSL: protect the left half" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "StackSL: protect the left half" "_tombstone" false "frame" #afield/rect [980.0 80.0 385.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stacksl_region_code_.kt" "lines" 33 "characters" 1336 "sha256" "e49d4c9a5a094d1621ba4d3ffdba574ee3230ec0966fd098f5d3ccf5a1d2ba65"}]}
 ```
 
 ```kotlin [field-property box="stacksl_region" name="code" path="stacksl_region_code_.kt"]
 import afield.lang.stacksl.study.StackSLStudy
-import afield.study.source.SourceStudy
 import kotlin.io.path.createTempDirectory
 
 val program = "uv saturate"
 val localEdit = "$program\nwhite 0.5 uv x step mix"
 val spillEdit = "$program\nwhite 0.35 uv x step mix"
-val allowed = listOf(0.5, 0.0, 1.0, 1.0) // x0, y0, x1, y1 in UV space
-val times = listOf(0.0)
+val allowed = [0.5, 0.0, 1.0, 1.0] // x0, y0, x1, y1 in UV space
+val times = [0.0]
 
 val folder = createTempDirectory("stacksl-region-").toFile()
 try {
