@@ -6,6 +6,93 @@ fixes and wording changes, open **Changelog** on the Welcome screen.
 
 ## November 2026
 
+<!-- changelog: abaccaa2a1..7badedb0a2 -->
+### A web page in a box, and spectral geometry
+
+*25 November 2026*
+
+- **A web page in a box**: `web(url)` opens a page with back, forward and an address bar; you can
+  run JavaScript in it and read the page back as FLines. Output-area iframes now show sites that
+  refuse framing. [A Web Page in a Box](web.md),
+  [Running JavaScript in the page](web.md#running-javascript-in-the-page).
+- **Spectral geometry**: manifold harmonics tools, templates and Stanford Bunny studies.
+  [Spectral Geometry](spectral_geometry.md).
+- **More live-coding spellings** for structure, lists, randomness and matrices, taught on the
+  [Linear algebra in Field](linear_algebra.md) guide.
+- Electron opens and discovers remote Field servers, and notifications sit in a row beneath the
+  editor.
+
+<!-- changelog: 7a1baebf87..41ba30ce0b -->
+### PenGPT in Kotlin, and new spellings for vectors
+
+*25 November 2026*
+
+- **PenGPT** is ported to Kotlin, ships trained on Field's own corpora, and can be fine-tuned on
+  a manner such as Michaux's. [Writing words: PenGPT](learned_pen.md#writing-words-pengpt).
+- **Vectors, quaternions and complex numbers** gain shorter live-coding spellings for
+  interpolation, motion and shaping, and `/` on a vector now returns a new vector instead of
+  overwriting the receiver. [Ergonomic operators](linear_algebra_api.md#ergonomic-operators),
+  [Complex numbers](linear_algebra_api.md#complex-numbers).
+- **Shared Kotlin declarations**: boxes in a document can share declarations.
+  [Share a type between boxes](tour_connecting_boxes.md#share-a-type-between-boxes).
+
+<!-- changelog: 7223e9b4ce..5db37a9dbe -->
+### Manim scenes in Field
+
+*25 November 2026*
+
+- **Manim**: Python bakes a Manim scene and Field draws it and steps through it, with parts you
+  can tag and find again. [Manim Scenes](manim.md).
+- **Inline macros** in guides and box notes run from a folded block.
+  [Macros in guides and notes](automating_field.md#macros-in-guides-and-notes).
+- **Reading diagrams** drive particles from the score, turn arrowheads toward the reader and
+  take a playback rate. [Sentence diagrams](sentence_diagrams.md).
+- The welcome page lists every optional native library, and paint names complete from the
+  native catalogues. Puzzle solving by energy descent gains permutation moves.
+
+<!-- changelog: 480aac510f..7fc2a3baff -->
+### Puzzles solved by energy, and a solid talked into existence
+
+*24–25 November 2026*
+
+- **Discrete optimisation by energy descent**, a general layer, with Sudoku stated by hand and
+  learned as a Hopfield energy that runs on the GPU.
+  [Discrete optimisation by energy descent](discrete_energy.md).
+- **Talking a solid into existence**: a recorded AI4 session shaping a cast bronze lamp in a
+  SolidSL study. [Talking a solid into existence](solid_conversation.md).
+- **Folds and the Koch snowflake** in SolidSL.
+  [Folds](solid_notation.md#folds-the-koch-snowflake-in-on).
+- **Register allocation in Datalog**, and `why(goal, depth)` bounds proof expansion.
+  [Allocating registers](datalog.md#allocating-registers).
+- Vector scenes take meshes and curves on them.
+
+<!-- changelog: fa8dc590fd..0c57b60d27 -->
+### Treemaps
+
+*24 November 2026*
+
+- **Treemaps** made of keyed, morphing FLines, built from paths and drawn with WebGL up to a
+  hundred thousand cells. [Treemaps](treemaps.md).
+- **A runaway-watchdog allowance per box**: `watchdog = <seconds>`.
+  [Running code in a box](running_code.md).
+- Real clicks reach clickable lines in the lines viewer, and pans no longer click.
+
+<!-- changelog: fc08a6d9e0..caa9623638 -->
+### Vector scenes, carving toolpaths and contrast ramps
+
+*24 November 2026*
+
+- **Depth-ordered 3D vector scenes** drawn as FLines with `vectorScene { }`.
+  [Vector scenes](fline_examples.md#depth-ordered-3d-vector-scenes-vectorscene).
+- **Distance along a surface**: heat-method geodesics, isolines, double spirals for underfloor
+  heating, and roughing toolpaths.
+  [Distance along the surface, and carving toolpaths](mesh_examples.md#distance-along-the-surface-and-carving-toolpaths).
+- **contrastScale**: ten-step ramps at target WCAG contrast from one colour.
+  [One colour, ten steps](colors_examples.md#one-colour-ten-steps-contrastscale).
+- Paint areas honour the FLine fill rule, reading diagrams morph text by key and take colour
+  from a palette, and string completion reaches box names, channels and loaders.
+  [Overlapping regions and the fill rule](paint_canvas.md#overlapping-regions-and-the-fill-rule).
+
 <!-- changelog: fb56378d36..ab6c622710 -->
 ### One fill rule everywhere, and the whole tiger on the GPU
 
