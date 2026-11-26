@@ -1039,7 +1039,7 @@ The first three pieces use the same rules as the tutorial, but write their loops
 `while (match.live) { ...; nextFrame() }` is what `whileLive` does, a `while` loop against `now`
 is `during`, and the box's own `loop { }` around `world.step` is `play`. Read them side by side
 with the tutorial steps they echo. The fourth, a set of ropes, uses the helpers and adds a little
-physics. The fifth follows a minimum spanning tree that it computes itself.
+physics. The fifth keeps a minimum spanning tree, which it computes itself, over seeds that come and go.
 
 Open **spatial_rules_tour** under **Starting Points** on Field’s welcome screen or from the
 [agent transcript gallery](agent_transcripts.md#spatial_rules_tour). Run **Start here · run the tour**
@@ -1723,23 +1723,29 @@ play(
 
 ### A tree that keeps its branches
 
-Forty seeds drift, and green branches join them in a minimum spanning tree: the shortest set of
-branches that connects every seed. The tree is recomputed every frame, but a branch that stays in
-it keeps its process, so only the branches that change grow in or fade out.
+Seeds drift across the drawing, and none of them stays long. Forty places each hold one seed at
+a time: it stays for six to twelve seconds, fades, and a moment later a new one appears somewhere
+else. Green branches join whichever seeds are there in a minimum spanning tree, the shortest set
+of branches that connects every seed. The tree is recomputed every frame, but a branch that stays
+in it keeps its process, so only the branches that change grow in or fade out. A new seed grows a
+branch to its nearest part of the tree. When a seed goes, its branches fade, and new ones grow to
+join the pieces it held together.
 
 No built-in pattern describes a spanning tree, so the rule computes one. `pairs { }` makes a
 pattern from any calculation that returns pairs of points. It reads this frame's facts, here
 every pair an ordinary `pairsWithin` pattern matches as `matches(near)`, and returns the tree's
 branches. `minimumSpanningForest` finds the tree from weighted candidates. A pair that was in last
-frame's tree is the same match this frame, so its process carries on. A new pair starts a process,
-and a pair that has dropped out ends its match, so its branch fades.
+frame's tree is the same match this frame, so its process carries on. A new pair starts a process.
+A pair that has dropped out of the tree, or lost one of its seeds, ends its match, so its branch
+fades. Nothing in the rule handles arrivals or departures: they are just the facts changing
+under the same calculation.
 
 `previous` is what the pattern returned last frame. Weighting a standing branch at `keep` times
 its length makes the tree hold its shape until a change gains it more than that, the same idea as
 `leave` in [step 3](#3-join-close-let-go-far), written as part of the calculation. The counter
-shows how many branches have grown so far.
+shows how many seeds are there and how many branches have grown so far.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/spatial_rules/tree.png" capture="box" execution="launch" wait="12" open-outputs="true" w="940" h="540" timeout="240" embed=true name="spatial-tree" alt="Forty pale seeds joined by green branches into one spanning tree across a wide drawing, a few branches part-grown or fading, with a Tree panel counting the branches standing and grown so far."}
+```diffstatic_runner {data-lang=kotlin video="assets/spatial_rules/tree.mp4" capture="box" execution="launch" wait-output="true" open-outputs="true" duration="20" fps="20" w="940" h="540" timeout="300" embed=true name="spatial-tree" alt="Pale seeds appear one after another across a wide drawing and green branches grow between them into one spanning tree. Later, seeds fade out here and there, their branches fade with them, and new branches grow to rejoin the tree. A Tree panel counts the seeds, the branches standing and the branches grown so far."}
 val world = SpatialRuleWorld()
 val w = 900.0
 val h = 400.0
@@ -1756,14 +1762,28 @@ fun wander(i: Int, t: Double) = vec(
 
 fun toward(a: Vec3, b: Vec3, t: Double) = vec(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, 0)
 
-world.source("drifting seeds") {
-    val seeds = 40 { i -> point("seed", wander(i, 0.0)) }
+var here = 0
+
+// Forty places each hold one seed at a time. A seed stays six to twelve seconds, fades, and
+// a second or two later a new one appears somewhere else.
+for (place in 0 until 40) world.source("seeds $place") {
+    wait(0.15 * place)
+    var round = 0
     while (true) {
-        for ((i, seed) in seeds.withIndex()) {
-            move(seed, wander(i, age))
-            draw(spatialDot(seed.pos, 3.0, ink))
+        val i = place + 40 * round
+        val seed = point("seed", wander(i, now))
+        here++
+        val born = now
+        during(6.0 + 6.0 * (i * 0.618 % 1.0)) {
+            move(seed, wander(i, now))
+            draw(spatialDot(seed.pos, 3.0, ink, opacity = min(1.0, (now - born) / 0.5)))
         }
-        nextFrame()
+        val last = seed.pos
+        retract(seed)
+        here--
+        during(0.6) { t -> draw(spatialDot(last, 3.0, ink, opacity = 1 - t)) }
+        wait(0.4 + i * 0.382 % 1.0)
+        round++
     }
 }
 
@@ -1794,13 +1814,14 @@ world.rules("tree") {
     }
 }
 
-play(world, w = w, h = h, after = { markdown("Tree", "$standing branches standing, $grown grown so far") })
+play(world, w = w, h = h, after = { markdown("Tree", "$here seeds, $standing branches standing, $grown grown so far") })
 ```
 
 With `keep = 1.0`, the tree is the plain minimum spanning tree every frame. Run it for the same
-time and the count of branches grown climbs much faster, as near-equal branches trade places.
+twenty seconds as the film and the count of branches grown climbs much faster, as near-equal
+branches trade places.
 
-```diff_runner {data-lang=kotlin screenshot="assets/spatial_rules/tree_no_keep.png" capture="box" execution="launch" wait="12" open-outputs="true" w="940" h="540" timeout="240" embed=true name="spatial-tree-no-keep" alt="The same spanning tree of drifting seeds, with a higher count of branches grown in the Tree panel."}
+```diff_runner {data-lang=kotlin screenshot="assets/spatial_rules/tree_no_keep.png" capture="box" execution="launch" wait="20" open-outputs="true" w="940" h="540" timeout="240" embed=true name="spatial-tree-no-keep" alt="The same spanning tree of drifting seeds, with a higher count of branches grown in the Tree panel."}
 :::after
 val world = SpatialRuleWorld()
 val w = 900.0
@@ -1818,14 +1839,28 @@ fun wander(i: Int, t: Double) = vec(
 
 fun toward(a: Vec3, b: Vec3, t: Double) = vec(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, 0)
 
-world.source("drifting seeds") {
-    val seeds = 40 { i -> point("seed", wander(i, 0.0)) }
+var here = 0
+
+// Forty places each hold one seed at a time. A seed stays six to twelve seconds, fades, and
+// a second or two later a new one appears somewhere else.
+for (place in 0 until 40) world.source("seeds $place") {
+    wait(0.15 * place)
+    var round = 0
     while (true) {
-        for ((i, seed) in seeds.withIndex()) {
-            move(seed, wander(i, age))
-            draw(spatialDot(seed.pos, 3.0, ink))
+        val i = place + 40 * round
+        val seed = point("seed", wander(i, now))
+        here++
+        val born = now
+        during(6.0 + 6.0 * (i * 0.618 % 1.0)) {
+            move(seed, wander(i, now))
+            draw(spatialDot(seed.pos, 3.0, ink, opacity = min(1.0, (now - born) / 0.5)))
         }
-        nextFrame()
+        val last = seed.pos
+        retract(seed)
+        here--
+        during(0.6) { t -> draw(spatialDot(last, 3.0, ink, opacity = 1 - t)) }
+        wait(0.4 + i * 0.382 % 1.0)
+        round++
     }
 }
 
@@ -1855,7 +1890,7 @@ world.rules("tree") {
     }
 }
 
-play(world, w = w, h = h, after = { markdown("Tree", "$standing branches standing, $grown grown so far") })
+play(world, w = w, h = h, after = { markdown("Tree", "$here seeds, $standing branches standing, $grown grown so far") })
 ```
 
 ## Publishing and matching
