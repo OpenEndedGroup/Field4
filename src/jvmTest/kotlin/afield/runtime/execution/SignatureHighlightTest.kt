@@ -26,6 +26,14 @@ class SignatureHighlightTest {
     }
 
     @Test
+    fun aDeclarationKeepsItsKeywordAndBoldsTheName() {
+        val decl = highlightKotlinSignatureHtml("val b: Banana2")
+        assertContains(decl, "color:#c39ad8;'>val<")
+        assertContains(decl, "font-weight:600;'>b<")
+        assertContains(decl, "color:#d9b97a;'>Banana2<")
+    }
+
+    @Test
     fun aBareTypeSuffixHasNoName() {
         val type = highlightKotlinSignatureHtml("ThreeGeometryViewState", nameFirst = false)
         assertContains(type, "color:#d9b97a;'>ThreeGeometryViewState<")

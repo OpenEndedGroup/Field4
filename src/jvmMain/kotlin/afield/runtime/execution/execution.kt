@@ -701,7 +701,7 @@ private fun buildRuntimeVariableSymbolContextHtml(
     return buildString {
         append("<div style='display:inline-block; max-width: 620px;'>")
         append("<div style='color:#ddd; overflow-wrap:anywhere;'><code>")
-        append(escapeNotifyHtml(declaration))
+        append(highlightKotlinSignatureHtml(declaration))
         append("</code></div>")
         append(renderVariableLocationSection(label = locationLabel, container = location, value = info.value))
         append("</div>")
@@ -779,7 +779,9 @@ private fun buildSymbolContextHtml(
     return "<div style='display:inline-block; max-width: 620px;'>$body$badge</div>"
 }
 
-private val signatureModifierWords = setOf("vararg", "suspend", "crossinline", "noinline", "out", "in", "reified")
+private val signatureModifierWords = setOf(
+    "vararg", "suspend", "crossinline", "noinline", "out", "in", "reified", "val", "var", "fun", "const", "lateinit",
+)
 
 /**
  * A completion signature such as `threeLines(lines: Collection<FLine>, height: Int) : T` as HTML,
@@ -806,8 +808,8 @@ internal fun highlightKotlinSignatureHtml(signature: String, nameFirst: Boolean 
                 val followedByColon = k < signature.length && signature[k] == ':'
                 out.append(
                     when {
-                        !nameSeen && depth == 0 -> { nameSeen = true; span("color:#f2f2f5; font-weight:600;", word) }
                         word in signatureModifierWords -> span("color:#c39ad8;", word)
+                        !nameSeen && depth == 0 -> { nameSeen = true; span("color:#f2f2f5; font-weight:600;", word) }
                         depth > 0 && followedByColon && (lastSignificant == '(' || lastSignificant == ',') ->
                             span("color:#9fc4e0; font-style:italic;", word)
                         word[0].isUpperCase() -> span("color:#d9b97a;", word)
