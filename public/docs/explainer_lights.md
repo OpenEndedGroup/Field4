@@ -182,7 +182,7 @@ metre falls as the cosine of the angle from the surface's normal: half at 60°, 
 val rays = 12
 
 fun draw(degrees: Double) {
-    val a = degrees * PI / 180
+    val a = degrees.deg
     val across = sin(a)
     val down = cos(a)
     var landed = 0
@@ -217,7 +217,7 @@ fun draw(degrees: Double) {
     // The cosine of the angle, with this angle marked.
     val curve = fline {
         moveTo(40.0, 20.0)
-        for (d in 1..90) lineTo(40.0 + d * 6.4, 20.0 + 120 * (1 - cos(d * PI / 180)))
+        for (d in 1..90) lineTo(40.0 + d * 6.4, 20.0 + 120 * (1 - cos(d.deg)))
         thickness = 2.0
         color = vec(0.4, 0.9, 1.0, 1.0)
     }
@@ -416,7 +416,7 @@ var radius = 90.0
 var degrees = 60.0
 
 fun draw() {
-    val a = degrees * PI / 180
+    val a = degrees.deg
     val cx = 160.0
     val cy = 150.0
     val drawn = mutableListOf<FLine>()
@@ -505,7 +505,7 @@ val circles = [
 fun draw(distance: Double) {
     val panel = planeMesh(12, 12, 0.8, 0.8).translated(0.0, 0.0, -distance)
     // Every point of the panel pushed onto the unit sphere, along its line to the eye.
-    val shadow = panel.transformed { p -> p.normalize().mul(1.004f) }
+    val shadow = panel.transformed { p -> p.n * 1.004f }
     var omega = 0.0
     for (t in 0 until shadow.triangleCount) omega += shadow.triangleArea(t)
     // From the eye through each corner of the patch to the panel's corner.
@@ -574,7 +574,7 @@ val side = 1.0
 fun draw(across: Double) {
     val lamp = RectLight(vec(across, 1.2, 0.0), width = side, height = side, power = 20.0)
     val outline = planeMesh(12, 12, side, side).transformed { p -> vec(p.x + across, 1.2, p.y) }
-    val onDome = outline.transformed { p -> p.normalize().mul(1.004f) }
+    val onDome = outline.transformed { p -> p.n * 1.004f }
     val flat = onDome.transformed { p -> vec(p.x, 0.004, p.z) }
     var covered = 0.0
     for (t in 0 until flat.triangleCount) covered += flat.triangleArea(t)
@@ -627,7 +627,7 @@ up for the inverse-square law exactly. What stays the same is called radiance.
 // An eye looking at a wide lamp, from the side. One cell of the eye takes in a fixed cone of
 // directions; move the lamp away and the cone covers more of it.
 fun draw(distance: Double) {
-    val half = 5 * PI / 180
+    val half = 5.deg
     val x = 60 + distance * 130
     val reach = (x - 60) * tan(half)
     val drawn = mutableListOf<FLine>()
@@ -683,7 +683,7 @@ direction.
 val rays = 41
 
 fun draw(degrees: Double) {
-    val v = degrees * PI / 180
+    val v = degrees.deg
     val drawn = mutableListOf<FLine>()
     // Rays whose sines are evenly spaced: their density falls off as the cosine.
     for (i in 0 until rays) {
@@ -759,7 +759,7 @@ var roughness = 0.0
 var angle = 40.0
 
 fun draw() {
-    val a = angle * PI / 180
+    val a = angle.deg
     val drawn = mutableListOf<FLine>()
     drawn += fline {
         moveTo(20.0, 240.0)
@@ -769,7 +769,7 @@ fun draw() {
     for (i in 0 until rays) {
         val x = 220 + 200.0 * i / (rays - 1)
         // Each facet's tilt, spread evenly (golden-ratio steps) over ± roughness × 50°.
-        val tilt = roughness * 50 * PI / 180 * (2 * ((i * 0.618034) % 1.0) - 1)
+        val tilt = (roughness * 50).deg * (2 * ((i * 0.618034) % 1.0) - 1)
         // Travelling down and to the right; y grows downward in this drawing.
         val dx = sin(a)
         val dy = cos(a)
@@ -846,7 +846,7 @@ var altitude = 50.0
 var probe = 1.15
 
 fun draw() {
-    val a = altitude * PI / 180
+    val a = altitude.deg
     val lamp = SphereLight(vec(-1.4 * cos(a), 1.4 * sin(a), 0.0), radius = size, power = 40.0, samples = 160)
     // From one point on the floor: a line to every bit of the lamp it faces, cyan where it is clear.
     val point = vec(probe, 0.0, 0.0)
@@ -984,7 +984,7 @@ fun draw() {
         Triple(blue, 330.0, vec(0.0, 0.0, 1.0)),
     ).filter { it.first }
         .map { (_, degrees, colour) ->
-            val a = degrees * PI / 180
+            val a = degrees.deg
             SphereLight(
                 vec(spread * cos(a), 1.2, spread * sin(a)),
                 radius = 0.04,

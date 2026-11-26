@@ -306,11 +306,11 @@ val model = Rhino3dm.load(file, meshing = RhinoBrepMeshing.EVALUATE)
 :::fold measure it, draw it, clean up
 fun area(m: TriMesh) = (0 until m.triangleCount).sumOf { t ->
     val (a, b, c) = (0..2).map { k -> m.indices[3 * t + k].let { vec(m.positions[3 * it], m.positions[3 * it + 1], m.positions[3 * it + 2]) } }
-    Vec3(b).sub(a).cross(Vec3(c).sub(a)).length() / 2.0
+    ((b - a) x (c - a)).length / 2.0
 }
 fun volume(m: TriMesh) = (0 until m.triangleCount).sumOf { t ->
     val (a, b, c) = (0..2).map { k -> m.indices[3 * t + k].let { vec(m.positions[3 * it], m.positions[3 * it + 1], m.positions[3 * it + 2]) } }
-    Vec3(a).dot(Vec3(b).cross(c)) / 6.0
+    (a dot (b x c)) / 6.0
 }
 fun openEdges(m: TriMesh): Int {
     val id = HashMap<Triple<Float, Float, Float>, Int>()

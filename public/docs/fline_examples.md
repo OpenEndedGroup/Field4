@@ -2559,10 +2559,10 @@ while (d <= total) {
     dots.add(dot(p, vec(1.0, 0.4, 0.3, 1.0)))
 
     val t = c.tangent()
-    if (t != null && t.lengthSquared() > 1e-9) {
-        val dir = Vec3(t).normalize()
-        val a = Vec3(p).sub(Vec3(dir).mul(12f))
-        val b = Vec3(p).add(Vec3(dir).mul(12f))
+    if (t != null && t.sq > 1e-9) {
+        val dir = t.n
+        val a = p - dir * 12f
+        val b = p + dir * 12f
         ticks.add(
             fline {
                 moveTo(a)
@@ -3299,8 +3299,8 @@ val turns = [vec(0.0, 0.0), vec(160.0, 0.0), vec(0.0, 140.0), vec(160.0, 140.0)]
 val path =
     turns
         .zipWithNext { a, b ->
-            val n = (a.distance(b) / 1.5).toInt()
-            (0 until n).map { j -> a + (b - a) * (j.toDouble() / n) }
+            val n = ((a dist b) / 1.5).toInt()
+            (0 until n).map { j -> a lerp j.toDouble() / n to b }
         }
         .flatten() + turns.last()
 val raw = path.mapIndexed { i, p -> vec(p.x, p.y, 9.0 * (0.95 - 0.5 * i / path.size).pow(1.75)) }
