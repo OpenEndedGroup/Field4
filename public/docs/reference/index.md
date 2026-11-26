@@ -390,7 +390,7 @@ To see it all at once, open the [map of the docs](../docs_map.md): every page, a
 
 ### data
 
-- [collections](workspace.md#stdlib-collections-kt)
+- *collections* — [Data](data.md#atomic-kt) · [Workspace](workspace.md#stdlib-collections-kt)
 - [formats](data.md#jsonparsing-kt)
 - *graph* — [Data](data.md#dynamic-graph-field-kt) · [Graphics](graphics.md#fline-graph-connectivity-kt) · [Visualization](visualization.md#interactionnets-kt)
 - query
@@ -691,7 +691,7 @@ To see it all at once, open the [map of the docs](../docs_map.md): every page, a
 
 ## Reference pages
 
-**44167 public symbols across 1950 source files**, 26465 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**44185 public symbols across 1951 source files**, 26476 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -703,8 +703,8 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Networking](networking.md) | 22 | 539 | 323 (59%) | OSC messages, discovery and query interfaces for connecting Field to other applications and devices. |
 | [Video](video.md) | 14 | 195 | 194 (99%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 61 | 2674 | 2034 (76%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
-| [Data](data.md) | 29 | 1345 | 623 (46%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 472 | 11319 | 7178 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Data](data.md) | 30 | 1364 | 634 (46%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
+| [Graphics](graphics.md) | 472 | 11318 | 7178 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 49 | 930 | 534 (57%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 596 | 440 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 787 | 530 (67%) | Nonlinear least squares, aimed at geometry. |
@@ -843,6 +843,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>lifecycle/<wbr></small> [AsyncOperation.kt](execution.md#asyncoperation-kt) | Execution | 8 | 8 | A future-backed operation whose callbacks stop firing once the box run that started it ends. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>sky/<wbr></small> [Atmosphere.kt](graphics.md#atmosphere-kt) | Graphics | 25 | 25 |  | [Field 4 Graphics](../afield_four_graphics.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [AtmosphereGpuParitySmoke.kt](examples.md#atmospheregpuparitysmoke-kt) | Examples | 2 | 1 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>collections/<wbr></small> [atomic.kt](data.md#atomic-kt) | Data | 16 | 6 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>device/<wbr></small> [Attachment.kt](graphics.md#attachment-kt) | Graphics | 5 | 0 | An image plus image view sized and formatted to be used as a framebuffer attachment. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>tools/<wbr></small> [AttachmentExcerpt.kt](ai4.md#attachmentexcerpt-kt) | AI4 | 0 | 0 | Reading a long attachment one window at a time, under the guards every attachment shares. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>polytope/<wbr></small> [Attributes.kt](polytopes.md#attributes-kt) | Polytopes | 9 | 8 | Untyped per-element data, carried alongside the topology and propagated through transforms. |  |
@@ -1290,7 +1291,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>persistence/<wbr></small> [FileWatchManager.kt](workspace.md#filewatchmanager-kt) | Workspace · internal | 5 | 5 | Reloads an open document's properties when their sidecar files are edited outside Field. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>tools/<wbr>docs/<wbr></small> [filmTimeline.kt](workspace.md#filmtimeline-kt) | Workspace · internal | 30 | 11 | A film's timeline: keys at film time, read from a JSON file, that `film-page --timeline` plays frame by frame. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [Filters.kt](synthesis.md#filters-kt) | Synthesis | 102 | 32 | The filters, and the one saturator that keeps them company. | [Signal examples: time and frequency](../spectral_examples.md), [Agent transcript gallery](../agent_transcripts.md), [Subharmonic Synthesis: an Octave Below](../subharmonic_sound.md) |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr></small> [FLine.kt](graphics.md#fline-kt) | Graphics | 108 | 78 | `FLine` is Field's drawn path: a list of move, line and cubic segments with per-node and per-line properties, built with `moveTo` / `lineTo` / `cubicTo` and drawn by `Box.lines(...)`. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr></small> [FLine.kt](graphics.md#fline-kt) | Graphics | 107 | 78 | `FLine` is Field's drawn path: a list of move, line and cubic segments with per-node and per-line properties, built with `moveTo` / `lineTo` / `cubicTo` and drawn by `Box.lines(...)`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>graph/<wbr></small> [fline_graph_connectivity.kt](graphics.md#fline-graph-connectivity-kt) | Graphics | 13 | 5 | Bridge from drawn geometry to the graph algorithms: turns one or more `FLine`s into a welded point graph. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>visualization/<wbr></small> [FLineEditableSvg.kt](visualization.md#flineeditablesvg-kt) | Visualization | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr></small> [FLineEditing.kt](graphics.md#flineediting-kt) | Graphics | 3 | 0 | The server side of an editable `Box.lines(..., editable = true)` drawing: an edit session per widget that applies the browser's point drags and new strokes to the live `FLine`s. |  |
@@ -2340,8 +2341,8 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [SpareEngines.kt](workspace.md#spareengines-kt) | Workspace · internal | 5 | 4 | A box's next Kotlin engine, built while the box is idle. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [SpareEnginesSmokeTest.kt](workspace.md#spareenginessmoketest-kt) | Workspace · internal | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>spatial/<wbr></small> [spatial_field.kt](graphics.md#spatial-field-kt) | Graphics | 10 | 10 | The bridges out of Field's plane-geometry results and into the things Field already draws. | [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md), [Linear programs as curves](../lp_curves.md), [Penrose and Other Quasiperiodic Tilings](../debruijn_tilings.md) |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>graph/<wbr></small> [spatial_rule_drawing.kt](data.md#spatial-rule-drawing-kt) | Data | 7 | 7 |  | [Spatial rules](../spatial_rules.md) |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>graph/<wbr></small> [spatial_rules.kt](data.md#spatial-rules-kt) | Data | 102 | 41 |  | [Spatial rules](../spatial_rules.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>graph/<wbr></small> [spatial_rule_drawing.kt](data.md#spatial-rule-drawing-kt) | Data | 10 | 10 |  | [Spatial rules](../spatial_rules.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>graph/<wbr></small> [spatial_rules.kt](data.md#spatial-rules-kt) | Data | 102 | 43 |  | [Spatial rules](../spatial_rules.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>engine/<wbr></small> [SpatialAudioLoopbackSmoke.kt](audio.md#spatialaudioloopbacksmoke-kt) | Audio | 2 | 1 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [spatialink.kt](workspace.md#spatialink-kt) | Workspace · internal | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>io/<wbr>spatialink/<wbr></small> [SpatialInk.kt](networking.md#spatialink-kt) | Networking | 5 | 4 |  |  |

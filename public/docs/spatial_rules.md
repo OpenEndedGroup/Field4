@@ -5,7 +5,7 @@ process can draw, publish points for another rule to find, and suspend with `nex
 local variables carry over between frames. When the pattern breaks, the process can finish the
 drawing on its own time.
 
-This page starts with a tutorial that builds one piece a rule at a time. After it come five
+This page starts with a tutorial that builds one piece a rule at a time. After it come six
 finished pieces, three of which write out by hand what the tutorial's helpers do, and a summary
 of the API.
 
@@ -1033,13 +1033,14 @@ Each rule reads what the rules above it publish:
 | `membranes` | each triangle of bonds | | the fill |
 | `highlight` (a source) | | | a glow under each traced fact |
 
-## Five finished pieces
+## Six finished pieces
 
 The first three pieces use the same rules as the tutorial, but write their loops out by hand.
 `while (match.live) { ...; nextFrame() }` is what `whileLive` does, a `while` loop against `now`
 is `during`, and the box's own `loop { }` around `world.step` is `play`. Read them side by side
 with the tutorial steps they echo. The fourth, a set of ropes, uses the helpers and adds a little
 physics. The fifth keeps a minimum spanning tree, which it computes itself, over seeds that come and go.
+The sixth pins shapes between moving points, and runs its rules on several threads at once.
 
 Open **spatial_rules_tour** under **Starting Points** on Field’s welcome screen or from the
 [agent transcript gallery](agent_transcripts.md#spatial_rules_tour). Run **Start here · run the tour**
@@ -1588,6 +1589,11 @@ anchor's `alive` turns false. Like the beads in [step 6](#6-when-a-bond-breaks-l
 a rope outlives its match, falling for two seconds and fading. Try a `slack` of 1.05 for ropes
 pulled nearly tight.
 
+Each rope's physics touches only its own particles, so the rule passes `parallel = true` and the
+ropes advance at the same time on several threads. What they draw comes out in the same order
+every run; [Run processes in parallel](#run-processes-in-parallel) says what a parallel process
+may and may not share.
+
 ```diffstatic_runner {data-lang=kotlin video="assets/spatial_rules/rope.mp4" capture="box" execution="launch" wait-output="true" open-outputs="true" duration="12" fps="20" w="940" h="540" timeout="300" embed=true name="spatial-rope-film" alt="Pale ropes hang in arcs between swaying amber anchors along the top of a wide drawing, crossing one another. Anchors arrive one at a time before each rope appears, then vanish one by one, so each rope slumps into longer arcs, dangles from its last anchor and falls away. A Ropes panel counts the ropes and the anchors holding them."}
 import kotlin.random.Random
 
@@ -1636,7 +1642,147 @@ ends follow their anchors, and repeated passes pull every segment back to its le
 pull across each pair of segments resists bending, which is what makes the rope stiff.
 */
 world.rules("ropes") {
-    onEnter("hang a rope", links("rope")) { rope ->
+    onEnter("hang a rope", links("rope"), parallel = true) { rope ->
+        val n = 48
+        val pins = rope.ends.indices.map { it * (n - 1) / (rope.ends.size - 1) }
+        val start = rope.ends.map { it.pos }
+        // Start each span already hanging, as a parabola about as long as the rope it holds.
+        val x = DoubleArray(n)
+        val y = DoubleArray(n)
+        for (i in 0 until n) {
+            val along = i.toDouble() * (start.size - 1) / (n - 1)
+            val k = min(along.toInt(), start.size - 2)
+            val f = along - k
+            val span = start[k].distance(start[k + 1]).toDouble()
+            x[i] = start[k].x + (start[k + 1].x - start[k].x) * f
+            y[i] = start[k].y + (start[k + 1].y - start[k].y) * f + 4 * f * (1 - f) * span * sqrt(3 * (slack - 1) / 8)
+        }
+        val px = x.copyOf()
+        val py = y.copyOf()
+        val segment = slack * start.zipWithNext { a, b -> a.distance(b).toDouble() }.sum() / (n - 1)
+        val pinned = BooleanArray(n)
+
+        fun pull(i: Int, j: Int, length: Double, stiffness: Double) {
+            val dx = x[j] - x[i]
+            val dy = y[j] - y[i]
+            val d = max(hypot(dx, dy), 1e-6)
+            val wi = if (pinned[i]) 0.0 else 1.0
+            val wj = if (pinned[j]) 0.0 else 1.0
+            if (wi + wj == 0.0) return
+            val k = stiffness * (d - length) / d / (wi + wj)
+            x[i] += wi * k * dx
+            y[i] += wi * k * dy
+            x[j] -= wj * k * dx
+            y[j] -= wj * k * dy
+        }
+
+        var last = now
+        fun simulate() {
+            val dt = (now - last).coerceIn(0.0, 0.05)
+            last = now
+            pinned.fill(false)
+            for ((end, i) in rope.ends.zip(pins)) if (end.alive) {
+                pinned[i] = true
+                x[i] = end.pos.x.toDouble()
+                y[i] = end.pos.y.toDouble()
+                px[i] = x[i]
+                py[i] = y[i]
+            }
+            for (i in 0 until n) if (!pinned[i]) {
+                val vx = (x[i] - px[i]) * 0.995
+                val vy = (y[i] - py[i]) * 0.995
+                px[i] = x[i]
+                py[i] = y[i]
+                x[i] += vx
+                y[i] += vy + 900 * dt * dt
+            }
+            repeat(40) {
+                for (i in 0 until n - 1) pull(i, i + 1, segment, 1.0)
+                for (i in 0 until n - 2) pull(i, i + 2, 2 * segment, 0.08)
+            }
+        }
+
+        fun shape() = n { vec(x[it], y[it], 0) }
+
+        whileLive {
+            simulate()
+            draw(spatialStroke(shape(), ropeInk, width = 2.0))
+        }
+        // The last anchor has let go: the rope falls free and fades.
+        during(2.0) { t ->
+            simulate()
+            draw(spatialStroke(shape(), ropeInk, width = 2.0, opacity = 1 - t))
+        }
+    }
+}
+
+play(
+    world,
+    w = 900.0,
+    h = 400.0,
+    after = {
+        val ropes = world.links("rope")
+        markdown("Ropes", "${ropes.size} ropes holding ${ropes.sumOf { it.attached.size }} anchors")
+    },
+)
+```
+
+With twenty-four places packed along the top instead of four, the ropes overlap into a curtain
+that is always partly hung and partly falling. This is where running in parallel starts to pay.
+In a test of the same physics on a laptop with eight fast cores, four ropes took 0.4 ms a frame
+one after another and 0.3 ms in parallel; 32 ropes took 3.1 ms and 0.6 ms; 128 took 12 ms and
+2.5 ms.
+
+```diff_runner {data-lang=kotlin video="assets/spatial_rules/rope_curtain.mp4" capture="box" execution="launch" wait-output="true" open-outputs="true" duration="12" fps="20" w="940" h="540" timeout="300" embed=true name="spatial-rope-curtain" alt="Dozens of pale ropes hang in overlapping arcs from amber anchors packed along the top of a wide drawing, some slumping as anchors let go and some falling away, while new anchors arrive. A Ropes panel counts the ropes and the anchors holding them."}
+:::after
+import kotlin.random.Random
+
+val world = SpatialRuleWorld()
+val slack = 1.3
+val anchorInk = vec(1.0, 0.75, 0.4, 1.0)
+val ropeInk = vec(0.85, 0.9, 1.0, 1.0)
+
+/*
+Twenty-four places along the top hang ropes, out of step with one another. In each, three or four
+anchors arrive one at a time and the rope is hung once they are all there. Then they let go one
+by one, in an order that changes every time, and a second later the next anchors start to arrive.
+*/
+for (slot in 0 until 24) world.source("anchors $slot") {
+    wait(0.35 * slot)
+    var round = 0
+    while (true) {
+        val count = 3 + (slot + round) % 2
+        val left = 30.0 + 26 * slot
+        val homes = count { k -> vec(left + k * 240.0 / (count - 1), 50 + 20 * sin(2.0 * k + round), 0) }
+        val held = linkedMapOf<SpatialPoint, Vec3>()
+        fun sway() {
+            for ((anchor, home) in held) {
+                move(anchor, home + vec(20 * sin(0.8 * age + slot), 6 * sin(1.3 * age + home.x / 50), 0))
+                draw(spatialDot(anchor.pos, 4.0, anchorInk))
+            }
+        }
+        for (home in homes) {
+            held[point("anchor", home)] = home
+            during(0.4) { sway() }
+        }
+        link("rope", held.keys.toList())
+        for (anchor in held.keys.shuffled(Random(10 * slot + round))) {
+            during(1.2 + 0.8 * ((slot + round) % 3)) { sway() }
+            held -= anchor
+            retract(anchor)
+        }
+        wait(1.0)
+        round++
+    }
+}
+
+/*
+A rope is a chain of particles. Each frame gravity pulls them, the particles at the rope's live
+ends follow their anchors, and repeated passes pull every segment back to its length. A weaker
+pull across each pair of segments resists bending, which is what makes the rope stiff.
+*/
+world.rules("ropes") {
+    onEnter("hang a rope", links("rope"), parallel = true) { rope ->
         val n = 48
         val pins = rope.ends.indices.map { it * (n - 1) / (rope.ends.size - 1) }
         val start = rope.ends.map { it.pos }
@@ -1893,6 +2039,86 @@ world.rules("tree") {
 play(world, w = w, h = h, after = { markdown("Tree", "$here seeds, $standing branches standing, $grown grown so far") })
 ```
 
+### Shapes pinned between points
+
+Fourteen posts lean and slide along the ground. Each is an edge from a foot to a head, drawn as a
+spindle pinned between the two: `spatialSkin(shape, edge, width)` turns, moves and stretches the
+shape so its bounds run from one end of the edge to the other, and makes it `width` across,
+here breathing in and out. When two feet come within 80 units of each other, a woven panel is
+pinned between the two posts by its four corners, `spatialSkin(shape, corners)`, so it shears and
+twists as the posts lean. A foot carries its head in its data, which is how the panel finds its
+top corners.
+
+Every post and every panel is a copy of its shape, worked out point by point each frame, so both
+rules pass `parallel = true`. The panel counter is shared by all the panel processes, which may
+now run at the same moment, so it is `0.atomic`: `panels += 1` and `panels -= 1` are each one
+indivisible step, where `+= 1` on a plain `var` could lose a count.
+
+```diffstatic_runner {data-lang=kotlin video="assets/spatial_rules/skins.mp4" capture="box" execution="launch" wait-output="true" open-outputs="true" duration="8" fps="15" w="940" h="540" timeout="300" embed=true name="spatial-skins" alt="Pale spindle-shaped posts lean and slide along the bottom of a wide drawing. Amber woven panels appear between neighbouring posts when their feet come close, shearing and twisting as the posts lean, and fade away as the feet part. A Fence panel counts the panels."}
+val world = SpatialRuleWorld()
+val ink = vec(0.85, 0.9, 1.0, 1.0)
+val weave = vec(1.0, 0.75, 0.4, 1.0)
+
+// The shapes are drawn once, in their own coordinates. Only their bounds matter to a skin.
+val spindle = FLine().apply {
+    moveTo(0, 0)
+    cubicTo(0.3, -0.1, 0.7, -0.1, 1, 0)
+    cubicTo(0.7, 0.1, 0.3, 0.1, 0, 0)
+    color = ink
+    filled = true
+    stroked = false
+}
+val panel = FLine().apply {
+    for (i in 0..4) {
+        moveTo(i / 4.0, 0)
+        lineTo(i / 4.0, 1)
+    }
+    for (j in 0..3) {
+        moveTo(0, j / 3.0)
+        lineTo(1, j / 3.0)
+    }
+    color = weave
+}
+
+fun zigzag(u: Double) = asin(sin(u)) * 2 / PI
+
+world.source("posts") {
+    val posts = 14 { i ->
+        val head = point("head", vec(60 + 60 * i, 120, 0))
+        val foot = point("foot", vec(60 + 60 * i, 330, 0), data = mapOf("head" to head))
+        edge("post", foot, head)
+        foot to head
+    }
+    while (true) {
+        for ((i, post) in posts.withIndex()) {
+            val (foot, head) = post
+            val x = 450 + 400 * zigzag((0.1 + 0.03 * (i % 4)) * age + 1.7 * i)
+            move(foot, vec(x, 330 + 15 * sin(0.4 * age + i), 0))
+            move(head, vec(x + 60 * sin(0.6 * age + 2.1 * i), 110 + 40 * sin(0.5 * age + 1.3 * i), 0))
+        }
+        nextFrame()
+    }
+}
+
+val panels = 0.atomic
+
+world.rules("fence") {
+    onEnter("stand a post", edges("post"), parallel = true) { post ->
+        whileLive { draw(spatialSkin(spindle, post, width = 14 + 5 * sin(3 * age))) }
+    }
+    onEnter("weave a panel", points("foot").pairsWithin(80.0, leave = 100.0), parallel = true) { (a, b) ->
+        panels += 1
+        // The corners go round the shape's bounds: its two feet first, then the heads above them.
+        fun corners() = [a.pos, b.pos, (b["head"] as SpatialPoint).pos, (a["head"] as SpatialPoint).pos]
+        whileLive { draw(spatialSkin(panel, corners(), opacity = min(1.0, age / 0.5))) }
+        panels -= 1
+        during(0.5) { t -> draw(spatialSkin(panel, corners(), opacity = 1 - t)) }
+    }
+}
+
+play(world, w = 900.0, h = 400.0, after = { markdown("Fence", "$panels panels") })
+```
+
 ## Publishing and matching
 
 Create a `SpatialRuleWorld` once, install one or more named `source` and `rules` blocks, then
@@ -1935,6 +2161,8 @@ or remove one with `retract(fact)`. Passing `null` to `set` removes the key. Rea
   `points`, `edges`, `links` and `matches(pattern)` read the frame, and `previous` is what the
   calculation returned last frame. A value whose facts were bound last frame keeps its process; see
   [the tree](#a-tree-that-keeps-its-branches).
+- `onEnter(name, pattern, parallel = true)` advances that rule's processes at the same time on
+  several threads; see [Run processes in parallel](#run-processes-in-parallel).
 - `whileLive { }` runs its block once a frame while the match holds; `whileLive()` just waits
   for the match to end. `during(seconds) { progress -> }` runs its block once a frame for that
   long, with `progress` going from 0 toward 1. `wait(seconds)` lets time pass.
@@ -1950,7 +2178,10 @@ positions, so a rule can compare directions of motion without its source publish
 An edge has a `length`, a position `at(t)` a fraction of the way from `from` to `to`, and the
 `other(end)`. A point has `distance(other)`. To draw them, `spatialStroke` takes a list of
 positions or an edge, `spatialFill` a list of positions or a triangle, and `spatialDot` a
-position; each takes a colour and an `opacity`.
+position; each takes a colour and an `opacity`. `spatialSkin(shape, from, to, width)`, or
+`spatialSkin(shape, edge, width)`, returns a copy of an FLine pinned between two points, and
+`spatialSkin(shape, corners)` one pinned between four; see
+[shapes pinned between points](#shapes-pinned-between-points).
 
 To find out why something is there, `world.nearest(at, within)` returns the live point or edge
 closest to a position, `world.lineage(fact)` returns the fact and every live fact it was made
@@ -1968,7 +2199,7 @@ directions (their velocities point apart, so the dot product is negative), and t
 flip made once for that pair. Make the direction test stricter with
 `a.velocity.dot(b.velocity) < -0.8 * a.velocity.length() * b.velocity.length()`.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/spatial_rules/opposed.png" capture="box" execution="launch" wait="6" open-outputs="true" w="640" h="300" timeout="240" embed=true name="spatial-opposed" alt="Grey near-vertical lines drifting sideways, with red strokes joining the middles of some nearby pairs that move in opposite directions."}
+```diffstatic_runner {data-lang=kotlin video="assets/spatial_rules/opposed.mp4" capture="box" execution="launch" wait-output="true" open-outputs="true" duration="12" fps="20" w="640" h="300" timeout="240" embed=true name="spatial-opposed" alt="Grey near-vertical lines drift sideways, some one way and some the other, leaning as they go. When two upright lines moving in opposite directions pass close by, a red stroke joins their middles for some pairs and not others, and lets go as they part or tip over."}
 import afield.data.graph.SpatialLifetime.MATCH
 
 val world = SpatialRuleWorld()
@@ -2015,15 +2246,36 @@ across rules with the same spatial pattern. Stable match identities preserve cor
 through the rebuild.
 
 `SpatialRuleWorld(parallelSearch = true)` distributes radius queries for clouds with at least
-256 left-side points across the JVM’s common fork-join pool. Index construction, Kotlin
-predicates, process updates, and drawing submission run on the caller’s thread. This keeps
-publication and drawing order stable. A custom `SpatialIndexFactory` can supply another
+256 left-side points across the JVM’s common fork-join pool. Index construction and Kotlin
+predicates run on the caller’s thread. A custom `SpatialIndexFactory` can supply another
 read-only neighbor index. An index used with parallel search must support concurrent queries
 and return each neighbor at most once in deterministic order.
 
 Cost depends on how many matches exist as well as how many points there are. A thousand
 widely distributed points can have a few hundred active pairs. A thousand points all inside
 one another’s radius can produce 499,500 unordered pairs, each eligible to start a process.
+
+### Run processes in parallel
+
+A rule's processes normally advance one after another on the thread that steps the world. With
+`onEnter(name, pattern, parallel = true)`, that rule's processes advance at the same time on the
+JVM’s common fork-join pool, after the other processes have had their turn. Use it when each
+process does real work every frame, such as the physics of [a rope](#ropes-that-go-slack) or a
+[shape pinned between points](#shapes-pinned-between-points); for a process that draws one
+stroke, sharing out the work costs more than it saves.
+
+A parallel process reads the world as it was committed at the start of the step, and what it
+publishes, moves, sets, retracts and draws is held back and applied afterwards in the same order
+the processes would have run in one at a time. So a run with `parallel = true` publishes the same
+facts, with the same IDs, and draws the same lines in the same order, as one without. The one
+difference a process can see is that a fact it has just published reads `id` 0 until the step
+ends.
+
+What the engine cannot order is the box's own variables. Processes that share a counter or a
+total may now change it at the same moment, and `standing++` on a plain `var` can then lose a
+count. Make it `val standing = 0.atomic` and write `standing += 1`, or `var standing = 0.atomic`
+to keep `standing++`; `0.0.atomic` does the same for a total. `"$standing"` prints the value and
+`standing.value` reads it. Anything else the processes share should only be read.
 
 ## Where to go next
 
