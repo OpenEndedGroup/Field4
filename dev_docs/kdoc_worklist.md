@@ -21,7 +21,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Visualizers.kt](../src/jvmMain/kotlin/afield/audio/synth/Visualizers.kt) | Synthesis | sound_paths, visualizers, explainer_sound | 37 | 11 | 5% |
 | [netprograms.kt](../src/jvmMain/kotlin/afield/data/graph/netprograms.kt) | Data | interaction_nets_examples | 33 | 11 | 38% |
 | [outputs.kt](../src/jvmMain/kotlin/afield/ui/output/outputs.kt) | Visualization | visualizers, stereo_video, box_output | 32 | 55 | 41% |
-| [Boxes.kt](../src/jvmMain/kotlin/afield/document/graph/Boxes.kt) | Workspace | ai4_tools, keybindings, keyframer_examples | 24 | 40 | 33% |
+| [Boxes.kt](../src/jvmMain/kotlin/afield/document/graph/Boxes.kt) | Workspace | ai4_tools, changelog, keybindings | 24 | 40 | 33% |
 | [wfc.kt](../src/jvmMain/kotlin/afield/simulation/automata/wfc.kt) | Data | wfc_examples | 20 | 67 | 29% |
 | [FabricateScene.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/FabricateScene.kt) | Renderers | fabricate_renderer, geometry_from_disk | 19 | 114 | 5% |
 | [FieldGraphTools.kt](../src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt) | AI4 | ai4_tools, ai4_experiments, text_frames | 18 | 96 | 19% |
