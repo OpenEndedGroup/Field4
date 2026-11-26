@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-23T20:36:17.026Z",
+  "capturedAt": "2026-11-26T11:48:59.679Z",
   "documentName": "pattern_rewrite_worked_example",
   "outputs": [
     {
@@ -9,8 +9,8 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 449,
-      "height": 60,
+      "width": 441,
+      "height": 40,
       "path": "outputs/0.html"
     }
   ]

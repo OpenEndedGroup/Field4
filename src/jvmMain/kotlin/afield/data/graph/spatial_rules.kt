@@ -56,6 +56,9 @@ class SpatialPoint internal constructor(
     internal var position: Vec3,
 ) : SpatialFact(id, kind, origin, data) {
     val pos: Vec3 get() = Vec3(position)
+
+    /** The distance between the two committed positions. */
+    fun distance(other: SpatialPoint): Double = position.distance(other.position).toDouble()
 }
 
 /** Each edge has its own identity. Endpoint order is preserved, including for parallel edges. */
@@ -66,7 +69,25 @@ class SpatialEdge internal constructor(
     data: Map<String, Any>,
     val from: SpatialPoint,
     val to: SpatialPoint,
-) : SpatialFact(id, kind, origin, data)
+) : SpatialFact(id, kind, origin, data) {
+    /** The distance between the endpoints' committed positions. */
+    val length: Double get() = from.distance(to)
+
+    /** The position a fraction [t] of the way from [from] to [to]. */
+    fun at(t: Double): Vec3 {
+        val a = from.position
+        val b = to.position
+        val f = t.toFloat()
+        return Vec3(a.x + (b.x - a.x) * f, a.y + (b.y - a.y) * f, a.z + (b.z - a.z) * f)
+    }
+
+    /** The endpoint that is not [end]. */
+    fun other(end: SpatialPoint): SpatialPoint = when {
+        end === from -> to
+        end === to -> from
+        else -> throw IllegalArgumentException("Point ${end.id} is not an endpoint of edge $id")
+    }
+}
 
 internal data class SpatialBinding<T>(val ids: List<Long>, val value: T)
 
@@ -77,6 +98,75 @@ class SpatialPattern<T> internal constructor(
     fun where(predicate: (T) -> Boolean): SpatialPattern<T> {
         val upstream = this
         return SpatialPattern { matches(upstream).filter { predicate(it.value) } }
+    }
+}
+
+/**
+ * Three points joined pairwise by edges. The points are in ID order, and [ab] joins [a] to [b],
+ * whichever way the edge itself points.
+ */
+data class SpatialTriangle(
+    val a: SpatialPoint,
+    val b: SpatialPoint,
+    val c: SpatialPoint,
+    val ab: SpatialEdge,
+    val bc: SpatialEdge,
+    val ca: SpatialEdge,
+) {
+    val points: List<SpatialPoint> get() = listOf(a, b, c)
+    val edges: List<SpatialEdge> get() = listOf(ab, bc, ca)
+
+    /** The mean of the three committed positions. */
+    val centroid: Vec3 get() {
+        val p = a.position
+        val q = b.position
+        val r = c.position
+        return Vec3((p.x + q.x + r.x) / 3f, (p.y + q.y + r.y) / 3f, (p.z + q.z + r.z) / 3f)
+    }
+}
+
+/**
+ * Each triangle the matched edges close, once, ignoring edge direction. Where parallel edges join
+ * the same two points, the one with the lowest ID stands for the pair. The binding is the three
+ * edges, so a triangle that loses an edge and regains it is a new match.
+ */
+fun SpatialPattern<SpatialEdge>.triangles(): SpatialPattern<SpatialTriangle> {
+    val upstream = this
+    return SpatialPattern {
+        val joining = HashMap<Long, HashMap<Long, SpatialEdge>>()
+        for ((_, edge) in matches(upstream)) {
+            val u = edge.from
+            val v = edge.to
+            if (u === v) continue
+            for ((x, y) in listOf(u to v, v to u)) {
+                val row = joining.getOrPut(x.id, ::HashMap)
+                val held = row[y.id]
+                if (held == null || edge.id < held.id) row[y.id] = edge
+            }
+        }
+        val pointsById = HashMap<Long, SpatialPoint>()
+        for ((_, edge) in matches(upstream)) {
+            pointsById[edge.from.id] = edge.from
+            pointsById[edge.to.id] = edge.to
+        }
+        buildList {
+            for (a in joining.keys.sorted()) {
+                val fromA = joining.getValue(a)
+                val higher = fromA.keys.filter { it > a }.sorted()
+                for ((i, b) in higher.withIndex()) {
+                    val fromB = joining[b] ?: continue
+                    for (c in higher.subList(i + 1, higher.size)) {
+                        val bc = fromB[c] ?: continue
+                        val ab = fromA.getValue(b)
+                        val ca = fromA.getValue(c)
+                        val triangle = SpatialTriangle(
+                            pointsById.getValue(a), pointsById.getValue(b), pointsById.getValue(c), ab, bc, ca,
+                        )
+                        add(SpatialBinding(listOf(ab.id, bc.id, ca.id).sorted(), triangle))
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -250,15 +340,51 @@ class SpatialProcess internal constructor(
     internal var continuation: Continuation<Unit>? = null
     internal var stopping = false
 
+    internal var startedAt = Double.NaN
+
     val now: Double get() = world.now
     val frame: Long get() = world.frame
     val match: SpatialMatch get() = checkNotNull(activation) { "A source has no match" }
+
+    /** Seconds since this process first ran. */
+    val age: Double get() = if (startedAt.isNaN()) 0.0 else world.now - startedAt
 
     /** Suspend until the world has committed and matched the next frame. */
     suspend fun nextFrame(): Unit = suspendCoroutineUninterceptedOrReturn {
         checkRunning()
         continuation = it
         COROUTINE_SUSPENDED
+    }
+
+    /** Run [body] once a frame for as long as the match holds. */
+    suspend inline fun whileLive(body: () -> Unit) {
+        while (match.live) {
+            body()
+            nextFrame()
+        }
+    }
+
+    /** Wait for the match to end, keeping this process's publications in place until then. */
+    suspend fun whileLive() {
+        while (match.live) nextFrame()
+    }
+
+    /**
+     * Run [body] once a frame for [seconds], passing the fraction of that time already gone,
+     * from 0 toward 1. Use it for a fade after the match ends, or for a growth phase.
+     */
+    suspend inline fun during(seconds: Double, body: (progress: Double) -> Unit) {
+        val start = now
+        while (now - start < seconds) {
+            body(((now - start) / seconds).coerceIn(0.0, 1.0))
+            nextFrame()
+        }
+    }
+
+    /** Let [seconds] pass. Publications stay as they are. */
+    suspend fun wait(seconds: Double) {
+        val start = now
+        while (now - start < seconds) nextFrame()
     }
 
     fun point(
@@ -395,6 +521,51 @@ class SpatialRuleWorld(
         )
     }
 
+    /** The live fact with this [id], if there is one. */
+    fun fact(id: Long): SpatialFact? = facts[id]?.takeIf { it.alive }
+
+    /** [explain] for the live fact with this [id], if there is one. */
+    fun explain(id: Long): SpatialExplanation? = fact(id)?.let(::explain)
+
+    /**
+     * The live point or edge closest to [at], within [within] units, or null. An edge's distance
+     * is to the nearest place along it. [kinds], when given, limits the search to those kinds.
+     */
+    fun nearest(at: Vec3, within: Double, kinds: Set<String>? = null): SpatialFact? {
+        var best: SpatialFact? = null
+        var bestDistance = within
+        for (fact in facts.values) {
+            if (!fact.alive || (kinds != null && fact.kind !in kinds)) continue
+            val distance = when (fact) {
+                is SpatialPoint -> fact.position.distance(at).toDouble()
+                is SpatialEdge -> segmentDistance(at, fact.from.position, fact.to.position)
+            }
+            if (distance <= bestDistance) {
+                best = fact
+                bestDistance = distance
+            }
+        }
+        return best
+    }
+
+    /**
+     * [fact] and every live fact it was made from, nearest first: a web strand, the beads it
+     * joins, the bonds that made those beads, and the seeds those bonds join. Each fact appears
+     * once. A source's publications end the walk, as do inputs that have since been retracted.
+     */
+    fun lineage(fact: SpatialFact): List<SpatialFact> {
+        val seen = HashSet<Long>()
+        val queue = ArrayDeque(listOf(fact.id))
+        return buildList {
+            while (queue.isNotEmpty()) {
+                val next = fact(queue.removeFirst()) ?: continue
+                if (!seen.add(next.id)) continue
+                add(next)
+                queue.addAll(next.origin.inputs)
+            }
+        }
+    }
+
     /** Install or replace a named source, leaving the other producers running. */
     fun source(name: String, body: suspend SpatialProcess.() -> Unit) = exclusive {
         stopGroup(name)
@@ -436,6 +607,7 @@ class SpatialRuleWorld(
             process.releasePublications(all = false)
             val continuation = checkNotNull(process.continuation)
             process.continuation = null
+            if (process.startedAt.isNaN()) process.startedAt = now
             running = process
             try {
                 continuation.resume(Unit)
@@ -574,6 +746,19 @@ class SpatialRuleWorld(
             busy = false
         }
     }
+}
+
+private fun segmentDistance(p: Vec3, a: Vec3, b: Vec3): Double {
+    val abx = (b.x - a.x).toDouble()
+    val aby = (b.y - a.y).toDouble()
+    val abz = (b.z - a.z).toDouble()
+    val lengthSquared = abx * abx + aby * aby + abz * abz
+    val t = if (lengthSquared == 0.0) 0.0 else
+        (((p.x - a.x) * abx + (p.y - a.y) * aby + (p.z - a.z) * abz) / lengthSquared).coerceIn(0.0, 1.0)
+    val dx = a.x + abx * t - p.x
+    val dy = a.y + aby * t - p.y
+    val dz = a.z + abz * t - p.z
+    return kotlin.math.sqrt(dx * dx + dy * dy + dz * dz)
 }
 
 private fun requireFinite(position: Vec3) {

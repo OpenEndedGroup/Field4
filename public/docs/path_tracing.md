@@ -623,6 +623,121 @@ The [path_tracing_medium](agent_transcripts.md#path_tracing_medium) starting poi
 slatted strip light over a hazed room, cycling `mediumDensity` so you can watch the
 shafts appear. How the medium is tested is in `dev_docs/PARTICIPATING_MEDIA.md`.
 
+## Subsurface scattering from a colour and a radius
+
+Skin, wax, marble and milk look soft because light goes in at one point, scatters about under
+the surface and comes out somewhere else. `PathTraceMaterial.subsurface` gives a solid that
+behaves like this. It is solid glass whose inside scatters light as well as absorbing it, and a
+path that refracts in takes a random walk through it until it reaches the surface again and
+refracts out. You describe it the way an artist would, by the colour the surface should end up
+and how far each channel travels under it:
+
+```diffstatic {data-lang=kotlin}
+import afield.graphics.scene.fabricated.*
+
+val skin = Vector3f(0.75f, 0.45f, 0.33f) // linear colour the surface should look
+val radius = Vector3f(0.36f, 0.14f, 0.08f) // world units; red travels furthest
+val m = scene.material(PathTraceMaterial.subsurface(skin, radius, AlbedoRemap.VAN_DE_HULST))
+scene.sphere(Vector3f(0f, 0.95f, 0f), 0.95f, m, 64, 32)
+```
+
+The colour is not the number the walk uses. At each collision the walk keeps a fraction of the
+light, the *single-scattering* albedo. Light that comes back out has usually collided many
+times, so a surface whose collisions each keep 75% comes out much darker than 75%. The `remap`
+argument decides how the colour you asked for becomes the single-scattering albedo. Here is one
+skin colour and one radius through every remap, with a plain diffuse ball of the same colour on
+the left for comparison. Left to right after it: `NONE`, `VAN_DE_HULST`, `EXP_CUBIC`, `REFERENCE`.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/path_tracing/subsurface_remaps.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="subsurface study converged" embed=true hidden=true timeout="900" name="path-tracing-subsurface" max-width=1600 alt="Five spheres on a grey floor under a Venice sunset: a diffuse pink reference ball, then four subsurface spheres of the same requested skin colour. The NONE sphere is a dark brownish red; the other three are pale, translucent and close to the reference colour" macro-file="../../dev_docs/agents/transcripts/path_tracing_subsurface.yaml" capture-box="pt_sss_row"}
+// Built and launched from dev_docs/agents/transcripts/path_tracing_subsurface.yaml.
+```
+
+`NONE` uses the colour as the single-scattering albedo, and the sphere comes out a dark, saturated
+brown. The other three each bring the colour back up. How closely each one hits the colour you
+asked for can be measured. `HalfSpaceAlbedo` runs random walks into a flat, infinitely deep slab
+of the material under even light from the sky. It counts how many collisions each walk had
+before it got out, which gives the reflected colour for every single-scattering albedo from one
+set of walks. `AlbedoRemap.REFERENCE` inverts that table, and the second chart plots what each
+fit actually reflects minus what it was asked for:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/path_tracing/subsurface_remap_curves.png" capture="box" open-outputs="true" embed=true timeout="300" padding="12" name="path-tracing-subsurface-curves" alt="Two line charts. The first shows the single-scattering albedo each remap asks for against the requested colour: NONE is the diagonal, and the other three rise steeply towards one. The second shows reflected minus requested: VAN_DE_HULST and REFERENCE stay on zero, and EXP_CUBIC falls away below zero above about 0.78"}
+import afield.graphics.scene.fabricated.*
+
+// The colour asked for, A, from dark to pale.
+val asked = (1..99).map { it / 100.0 }
+val fits = AlbedoRemap.entries
+
+// What each fit hands the random walk as its single-scattering albedo.
+val remapChart = Chart(
+    title = "single-scattering albedo each fit asks for",
+    xLabel = "requested colour A",
+    yLabel = "single-scattering albedo",
+)
+fits.forEach { fit -> remapChart.line(fit.name, asked, asked.map { fit.singleScatterAlbedo(it) }) }
+
+// What a half-space with that albedo really reflects, minus what was asked for.
+val reference = HalfSpaceAlbedo.standard
+val errorChart =
+    Chart(title = "reflected minus requested, half-space Monte Carlo", xLabel = "requested colour A", yLabel = "error")
+fits
+    .filter { it != AlbedoRemap.NONE }
+    .forEach { fit ->
+        errorChart.line(fit.name, asked, asked.map { reference.reflectance(fit.singleScatterAlbedo(it)) - it })
+    }
+errorChart.rule(0.0)
+
+display("remap", remapChart)
+display("error", errorChart)
+```
+
+| Remap | Single-scattering albedo from colour A |
+| --- | --- |
+| `NONE` | A itself. |
+| `VAN_DE_HULST` | The closed-form inversion of van de Hulst's slab albedo from Chiang, Kutz and Burley, *Practical and Controllable Subsurface Scattering for Production Path Tracing* (SIGGRAPH 2016 talk), which Blender's Cycles also uses. In the slab test it lands within 0.006 of the colour at every A from 0.05 to 0.9. |
+| `EXP_CUBIC` | `1 - exp(-5.09406 A + 2.61188 A² - 4.31805 A³)`, an exponential–cubic fit that circulates with Disney's normalized-diffusion work. It agrees within 0.005 up to A ≈ 0.78. Above that it asks for too little scattering, so a pale colour renders darker than asked: 0.874 at A = 0.905. |
+| `REFERENCE` | Field's own numerical inverse of the slab table. It is exact for that setup, and it takes about a second to build on first use. |
+
+The radius sets the extinction. `NONE` reads it as the mean free path, \( \sigma_t = 1/d \).
+The others divide by Chiang et al.'s scale, \( \sigma_t = 1/(d\,(1.9 - A + 3.5(A-0.8)^2)) \),
+so that the radius is roughly how far the colour visibly spreads, whatever the colour is. If you
+already have coefficients, `PathTraceMaterial.subsurface(SubsurfaceCoefficients(absorption, scattering))`
+takes them directly, and `subsurfaceCoefficients(color, radius, remap)` shows what a colour turns into.
+
+The remaps are measured in one setup: a flat slab, light from the whole sky, no refraction at
+the surface. A sphere with an index of 1.4 is not that, so expect the rendered colour to be close
+to the requested one, not equal to it.
+
+??? aside "Where this comes from"
+    The comparison follows Maximilian Tarpini's article [SSS and The Tricky Play of Albedo
+    Remapping](https://www.linkedin.com/pulse/sss-tricky-play-albedo-remapping-maximilian-tarpini-avhff/).
+    Field uses only the published formulas and makes its own figures. `SubsurfaceRemapTest`
+    (`./gradlew fastTest`) checks the Monte Carlo against the exact single-scattering term,
+    \( \tfrac12 - \int_0^1 \mu^2 \ln(1 + 1/\mu)\,d\mu \approx 0.2046 \), and each fit against an
+    independent table. Other fits the article discusses, such as PxrSurface's and per-channel
+    tweaks, are not here, because their formulas could not be checked against a published source.
+
+How the walk behaves in the tracer:
+
+- **The walk is one bounce.** All the collisions inside the solid, however many, spend one of
+  `maxBounces`; crossing the surface in and out spends one each, as with glass. A walk is cut
+  off after 1024 collisions.
+- **Extinction is per channel.** Each step samples its distance from one colour channel and
+  weights the result by all three, so red can travel further than blue without bias. The cost
+  is the occasional bright red speck from a long red walk; `indirectClamp = 1f` (see
+  [Reducing bright specks](#reducing-bright-specks)) removes them, as the demo does.
+- **Light is not sampled from inside.** A walk gathers light only after it comes out, so a small
+  lamp lights a subsurface object more noisily than an environment does.
+- **It is solid glass in every other way.** The mesh must be closed and outward-wound, `ior`
+  and `roughness` describe the surface, and `anisotropy` is the Henyey–Greenstein `g` of the
+  walk, as in [Writing your own phase function](#writing-your-own-phase-function).
+
+`tracer.setMaterial(index, material)` swaps one material on a running tracer and restarts
+accumulation, without rebuilding the scene. It can change anything except emission,
+transmission and alpha mode. The
+[path_tracing_subsurface](agent_transcripts.md#path_tracing_subsurface) starting point is the
+row above with a `radius` slider and a `remap` slider that re-renders the right-hand sphere
+through any fit.
+
 ## Neural multiple scattering in a raymarched cloud
 
 A raymarched cloud is cheap to light with *single* scattering: at each step, add the sun dimmed by
@@ -844,6 +959,7 @@ struct Material {
     ivec4 maps; // texture offsets: base colour, metallic/roughness, emission, normal
     vec4 coverage; // x: alpha; y: cutoff; z: mode (0 opaque, 1 mask, 2 blend); w: double-sided (0/1)
     vec4 textureParams; // x: normal-map scale; yzw: reserved
+    vec4 scattering; // rgb: interior scattering coefficient (subsurface); w: its anisotropy g
 };
 ```
 

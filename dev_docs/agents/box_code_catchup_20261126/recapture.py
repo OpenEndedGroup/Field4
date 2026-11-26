@@ -12,7 +12,7 @@ def main():
     os.environ['FIELD_DOCS_RUNNER_PORT']='9787'
     os.environ.setdefault('AFIELD_PAINT_LIBRARY',str(S.ROOT/'build/field-paint/release/libfield_paint_jvm.dylib'))
     state=H.RunnerState(Config(docs_dir=str(S.ROOT/'public/docs'),site_dir=str(S.ROOT/'build/docs-catchup-preview'),use_directory_urls=True))
-    selected={'interaction_nets_examples.md':{'interaction-lambda-reduction-video','interaction-five-queens-video'}, 'agent_transcripts.md':{'gallery-pattern-rewrite-unquote'}, 'afield_four_graphics.md':{'gezira-svg-tiger'}, 'paint_canvas.md':{'strokes_edited'}, 'reactive_properties.md':{'fieldml-reactive-bridge'}}
+    selected={'interaction_nets_examples.md':{'interaction-lambda-reduction-video','interaction-five-queens-video'}, 'agent_transcripts.md':{'gallery-pattern-rewrite-unquote'}, 'afield_four_graphics.md':{'gezira-svg-tiger'}, 'paint_canvas.md':{'strokes_edited'}, 'reactive_properties.md':{'fieldml-reactive-bridge'}, 'explainer_lights.md':{'explainer-lights-hemisphere'}}
     receipt=S.HERE/'capture-verification.json';records=json.loads(receipt.read_text())['captures'] if receipt.exists() else []
     done={(r['page'],r['name']):r.get('sourceFingerprint') for r in records if r['status']=='passed'}
     try:

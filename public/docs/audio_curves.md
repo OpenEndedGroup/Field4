@@ -689,3 +689,5 @@ and returns its spectra, distance table and curves before and after alignment.
 Implementation and parameter details for the helpers used above:
 
 - [`AudioCurveFrame`](reference/audio.md#audiocurvefile-kt-audiocurveframe)
+
+- Analysis and mapped files: [`audioCurves`](reference/audio.md#audiocurves-kt--audiocurves), [`AudioCurveFile`](reference/audio.md#audiocurvefile-kt-audiocurvefile), [`AudioCurveFile.close`](reference/audio.md#audiocurvefile-kt--audiocurvefile--close).

@@ -1,5 +1,5 @@
 {
-  "state": "focused verification and recaptures passed; reconciling main",
+  "state": "merge guard repairs verified; final rerun pending",
   "scope": "scope.json",
   "reviewed": [],
   "next": "Review changed bodies, apply clarity/helper edits and actual formatting, verify affected behavior and run land precheck.",
@@ -11,15 +11,15 @@
     "Delegated helper census: 62 short public examples; curated class/member references also cover longer algorithm examples."
   ],
   "remaining": [
-    "Merge newer main through tools/merge_regen.py, resolving source conflicts while preserving new teaching material.",
-    "Refresh source publications through the merge regenerator.",
-    "Full site/link gate, final precheck and enqueue."
+    "Complete merge_regen --continue after mirror and formatting repairs.",
+    "Full built-site link gate, final precheck and enqueue."
   ],
   "formatting": "607 Kotlin/GLSL spans covered after correcting language metadata; no skips. Final 23 GLSL token streams match the frozen source exactly, including manual whitespace on dense particle shaders.",
   "revisions": "91 collection literals in 50 bodies; typed inherited paint sheet; Markdown result/readout channels.",
-  "references": "121 curated class/member links verified against actual generated anchors.",
+  "references": "152 class/member/function targets verified, including explicit implementation links for speech, audio curves, color searches and Drawing On.",
   "behavior": "8 before/after CPU equivalence pairs passed with default and edited inputs; 18 complete GLSL stages compile before/after.",
   "nativePaint": "Matching checkout native library built successfully.",
   "paint": "Passed all four connected authored boxes, before/after, for seeds 3 and 4; PNG hashes match in both pairs.",
-  "captures": "All 6 normal runner recaptures passed and inspected: two videos and four PNGs."
+  "captures": "7 actual recaptures passed and inspected: 2 videos and 5 screenshots.",
+  "publicationResume": "Fixed publication_merge.unify to retain completed working captures with matching sources and output hashes; 10 regression tests passed, including section transitions."
 }

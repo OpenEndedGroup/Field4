@@ -552,7 +552,6 @@ light the point gets. The flattening is the cosine factor again.
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/hemisphere.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-hemisphere" alt="A three-dimensional view of a white lamp panel over a grey floor, its outline projected onto a hemisphere around a floor point in orange and then flattened onto the disc below in cyan, a readout of 18.1% of the disc, and a lamp position slider"}
 :::fold imports
 import afield.graphics.lighting.*
-
 :::endfold
 
 /*

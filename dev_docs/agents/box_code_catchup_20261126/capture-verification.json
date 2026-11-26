@@ -47,6 +47,14 @@
       "screenshot": "assets/reactive_properties/fieldml-bridge.png",
       "video": null,
       "sourceFingerprint": "921f4f127756f0236c70cda1f868ea14e194d368d84833c33ef3141b66311111"
+    },
+    {
+      "page": "explainer_lights.md",
+      "name": "explainer-lights-hemisphere",
+      "status": "passed",
+      "screenshot": "assets/explainer_lights/hemisphere.png",
+      "video": null,
+      "sourceFingerprint": "6baacb0ebc730c3eaaaa2529fdf4ecd4903618134a07db8d4210b7963a15d875"
     }
   ],
   "method": "Normal RunnerState capture_with_environment and transactional publication; actual authored fence and transcript."

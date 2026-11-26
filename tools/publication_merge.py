@@ -83,20 +83,57 @@ def _fresh(repo: Path, entry: dict | None) -> bool:
     return True
 
 
+def _fresh_capture(repo: Path, entry: dict | None) -> bool:
+    """A completed working-tree refresh: matching sources and an intact output bundle."""
+    if not entry or not entry.get("sources") or not _fresh(repo, entry):
+        return False
+    files = entry.get("files") or {}
+    if entry.get("file") and not files:
+        return False
+    return all((repo / "public/docs" / name).is_file()
+               and hashlib.sha256((repo / "public/docs" / name).read_bytes()).hexdigest() == expected
+               for name, expected in files.items())
+
+
 def unify(repo: Path, ours: str = "HEAD", theirs: str = "MERGE_HEAD") -> list[str]:
-    """Rewrite the merged publications so each is wholly one side's. Returns the names taken from
-    their side. Does nothing (returns []) when neither side touched the publications."""
+    """Keep complete publication bundles, including fresh captures made during an earlier attempt.
+    Returns names taken from their side; does nothing if their publications did not change."""
     base = _git(repo, "merge-base", ours, theirs).stdout.strip()
     changed = _git(repo, "diff", "--name-only", base, theirs, "--", ROOT_REL).stdout.strip()
     if not changed:
         return []  # git already took ours for every publication file
     cats = {side: _catalog(repo, rev) for side, rev in (("base", base), ("ours", ours), ("theirs", theirs))}
+    working_path = repo / CATALOG_REL
+    try:
+        working = json.loads(working_path.read_text()) if working_path.is_file() else {}
+    except json.JSONDecodeError:
+        working = {}  # The branch catalogs still repair an incomplete text merge.
+    refreshed = {}
+    for section in SECTIONS:
+        for source, entry in working.get(section, {}).items():
+            branches = tuple(cats[side].get(section, {}).get(source) for side in ("ours", "theirs"))
+            if entry not in branches and _fresh_capture(repo, entry):
+                refreshed[source] = (section, entry)
     result = json.loads(json.dumps(cats["ours"]))
     taken: list[str] = []
     for section in SECTIONS:
-        sources = set().union(*(c.get(section, {}) for c in cats.values()))
+        sources = set().union(*(c.get(section, {}) for c in [*cats.values(), working]))
         for source in sorted(sources):
             b, o, t = (cats[s].get(section, {}).get(source) for s in ("base", "ours", "theirs"))
+            # --continue may follow a partial publication refresh. Preserve each complete new
+            # capture rather than replacing it with a branch's older bundle and recapturing it.
+            if source in refreshed:
+                captured_section, local = refreshed[source]
+                if captured_section == section:
+                    result.setdefault(section, {})[source] = local
+                else:
+                    result.get(section, {}).pop(source, None)
+                deferral = working.get(DEFERRED, {}).get(source)
+                if deferral is None:
+                    result.get(DEFERRED, {}).pop(source, None)
+                else:
+                    result.setdefault(DEFERRED, {})[source] = deferral
+                continue
             # Only theirs changed it, or both did and only theirs was captured from what the
             # merged tree now holds (a branch that merges main after main recaptured).
             take_theirs = t != b and (o == b or (t is not None and _fresh(repo, t) and not _fresh(repo, o)))

@@ -186,6 +186,73 @@ class UnifyAfterMerge(unittest.TestCase):
         self.assertEqual(publication_merge.unify(r.root), [])
         self.assertEqual((r.root / PUB / "catalog.json").read_text(), before)
 
+    def test_continue_preserves_a_completed_working_capture(self):
+        r = self.repo
+        git(r.root, "switch", "-q", "-c", "topic")
+        r.publish("a", "a-topic")
+        r.commit("topic recaptures a")
+        git(r.root, "switch", "-q", "main")
+        r.publish("b", "b-main")
+        r.commit("main recaptures b")
+        self.merge("topic")
+        publication_merge.unify(r.root)
+        r.publish("a", "a-refreshed", "merged a source")
+        publication_merge.unify(r.root)
+        self.assertEqual(r.capture("a"), "a-refreshed")
+        self.assertEqual(r.capture("b"), "b-main")
+        self.assertEqual(r.inconsistent(), [])
+
+    def test_continue_rejects_a_working_capture_with_mixed_outputs(self):
+        r = self.repo
+        git(r.root, "switch", "-q", "-c", "topic")
+        r.publish("a", "a-topic")
+        r.commit("topic recaptures a")
+        git(r.root, "switch", "-q", "main")
+        r.publish("b", "b-main")
+        r.commit("main recaptures b")
+        self.merge("topic")
+        publication_merge.unify(r.root)
+        r.publish("a", "a-refreshed")
+        r.write(f"{PUB}/a/outputs/0.html", "some other capture")
+        publication_merge.unify(r.root)
+        self.assertEqual(r.capture("a"), "a-topic")
+        self.assertEqual(r.inconsistent(), [])
+
+    def test_continue_rejects_a_working_capture_after_its_source_changes(self):
+        r = self.repo
+        git(r.root, "switch", "-q", "-c", "topic")
+        r.publish("a", "a-topic")
+        r.commit("topic recaptures a")
+        git(r.root, "switch", "-q", "main")
+        r.publish("b", "b-main")
+        r.commit("main recaptures b")
+        self.merge("topic")
+        publication_merge.unify(r.root)
+        r.publish("a", "a-refreshed")
+        r.write("public/docs/assets/agent_transcripts/a/metadata.edn", "a changed again")
+        publication_merge.unify(r.root)
+        self.assertEqual(r.capture("a"), "a-topic")
+        self.assertEqual(r.inconsistent(), [])
+
+    def test_continue_preserves_a_refresh_that_now_has_no_output(self):
+        r = self.repo
+        git(r.root, "switch", "-q", "-c", "topic")
+        r.publish("a", "a-topic")
+        r.commit("topic recaptures a")
+        git(r.root, "switch", "-q", "main")
+        r.publish("b", "b-main")
+        r.commit("main recaptures b")
+        self.merge("topic")
+        publication_merge.unify(r.root)
+        catalog = r.catalog()
+        source = "assets/agent_transcripts/a/metadata.edn"
+        entry = catalog["documents"].pop(source)
+        catalog["emptyDocuments"] = {source: {"sources": entry["sources"], "capturedAt": "no output"}}
+        r.write(f"{PUB}/catalog.json", json.dumps(catalog))
+        publication_merge.unify(r.root)
+        self.assertNotIn(source, r.catalog()["documents"])
+        self.assertEqual(r.catalog()["emptyDocuments"][source]["capturedAt"], "no output")
+
 
 if __name__ == "__main__":
     unittest.main()

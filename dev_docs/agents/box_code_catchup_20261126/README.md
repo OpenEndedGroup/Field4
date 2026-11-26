@@ -7,3 +7,7 @@ The inventory filters authored text files before decoding and includes Lua, Post
 `run.py` reuses the actual editor import/ktfmt/GLSL formatter and reference checker. `revise.py` applies only reviewed changes in frozen source spans. `link_details.py` resolves curated class/member links against generated reference anchors.
 
 See `checkpoint.json` for current verification and remaining work.
+
+After formatting, sync the explainer mirrors with `tools/explainer_pages.py sync` and refresh `tools/scrape_completion_corpus.py` before final checks. The full guard exposed both dependencies here.
+
+Main reconciliation also exposed a removed `SpatialRuleWorld.inspectOnClick` implementation still used by its docs: restored beside the new spatial API and tested with real callback events. `tools/publication_merge.py` now preserves completed working captures on `--continue` when their source and output hashes agree (10 regression tests).

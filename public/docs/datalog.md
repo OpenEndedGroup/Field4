@@ -684,10 +684,10 @@ reported as not in the model, and no directive is ever run for a note — see
 
 ## Allocating registers
 
-A compiler's register allocator is a good stress test for Datalog. Half of it, liveness, is the
-kind of fixpoint the language was made for. The other half, linear scan, is a loop that makes one
-decision per instruction, and Datalog has no loops. Max Bernstein and Yannis Smaragdakis wrote both
-halves in Soufflé ([Linear scan register allocation in
+Let's use Datalog to allocate a compiler's registers. First we find where each variable is live,
+a fixpoint the language is well suited to. Then we allocate registers with a linear scan, making
+one decision per instruction. That's harder: Datalog has no loops. Max Bernstein and Yannis
+Smaragdakis wrote both halves in Soufflé ([Linear scan register allocation in
 Datalog](https://bernsteinbear.com/blog/lsra-datalog/)); this section rewrites their program for
 Field's engine and draws what each half derives.
 

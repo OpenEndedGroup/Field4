@@ -1278,6 +1278,85 @@ goes *up* slightly. The stray now belongs to a real cluster, its squared distanc
 is the outlier argument from the start of this section. Revival gives you `k` useful clusters, not
 a lower error.
 
+**Balance.** Revival also decides how evenly the points spread over the clusters, and a lower error
+does not reward that. When the centroids index a vector search (an inverted file that scans every
+vector in the few clusters nearest a query) a large cluster is paid for on every query that lands
+in it. `result.imbalance` measures this as `k * sum(size²) / n²`: 1 when every cluster holds `n / k`
+points, and the factor by which such an index scans more vectors than a balanced one would.
+`largestCluster` and `meanClusterSize` give the two ends. Leonardo Kuffo
+([SuperEMeans](https://www.lkuffo.com/superemeans/)) found e-means at the default threshold of 0.1
+scanning 20% more vectors than Lloyd on 768-dimensional Cohere embeddings, and 6% more at 0.3. Here
+are 20 000 vectors in 128 dimensions from 40 overlapping blobs of falling weight, cut into 200
+clusters, with each run's cluster sizes sorted from largest to smallest:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/spatial_geometry_examples/kmeans_balance.png" wait="3.0" capture="box" open-outputs="true" w="1140" h="470" padding="14"}
+// 40 blobs in 128 dimensions, weights 1, 1/2, 1/3, ..., with noise as wide as the blobs are apart.
+val rng = java.util.Random(21)
+val d = 128
+val blobs = List(40) { DoubleArray(d) { rng.nextGaussian() } }
+val weights = List(40) { 1.0 / (1 + it) }
+val vectors = List(20_000) {
+    var r = rng.nextDouble() * weights.sum()
+    var b = 0
+    while (b < 39 && r > weights[b]) {
+        r -= weights[b]
+        b++
+    }
+    DoubleArray(d) { j -> blobs[b][j] + rng.nextGaussian() }
+}
+val k = 200
+val lloyd = vectorKMeans(vectors, k, KMeansOptions(KMeansAlgorithm.LLOYD, epochs = 10, randomSeed = 2L))
+val tenth = vectorKMeans(vectors, k, KMeansOptions(epochs = 5, randomSeed = 2L, reviveThreshold = 0.1))
+val third = vectorKMeans(vectors, k, KMeansOptions(epochs = 5, randomSeed = 2L, reviveThreshold = 0.3))
+
+// Sorted cluster sizes as bars, on one scale for all three; the grey line is the mean, n / k.
+val top = maxOf(lloyd.largestCluster, tenth.largestCluster, third.largestCluster).toDouble()
+fun bars(r: KMeansResult<DoubleArray>, color: Vec4): List<FLine> {
+    val sizes = r.clusterSizes.sortedDescending()
+    val w = 10.0 / k
+    val drawn = sizes.mapIndexed { i, size ->
+        Rect(i * w, 10.0 - size / top * 10.0, w * 0.8, size / top * 10.0)
+            .toFLine(color = color, filled = true, stroked = false)
+    }
+    val y = 10.0 - r.meanClusterSize / top * 10.0
+    val mean = polylineFrom([vec(0.0, y), vec(10.0, y)], 0, closed = false).also {
+        it.color = vec(0.75, 0.78, 0.82, 0.9)
+        it.thickness = 1.5
+    }
+    return drawn + mean
+}
+fun title(name: String, r: KMeansResult<DoubleArray>) =
+    "$name\nimbalance %.3f, largest ${r.largestCluster}, MSE %.2f".format(r.imbalance, r.mse)
+
+showPlaneGrid(
+    title("Lloyd, 10 epochs", lloyd) to bars(lloyd, vec(1.0, 0.62, 0.30, 0.95)),
+    title("e-means, revival 0.1 (default)", tenth) to bars(tenth, vec(0.45, 0.80, 1.0, 0.95)),
+    title("e-means, revival 0.3", third) to bars(third, vec(0.55, 0.90, 0.60, 0.95)),
+    columns = 3,
+    cellWidth = 340,
+    cellHeight = 340,
+    window = Rect(-0.4, -0.4, 10.8, 10.8),
+)
+```
+
+![Three bar charts of the 200 cluster sizes sorted from largest to smallest, for Lloyd, e-means at revival 0.1 and e-means at revival 0.3, each with a grey line at the mean size of 100](assets/spatial_geometry_examples/kmeans_balance.png)
+
+On this data the post's result is reversed. e-means at the default threshold is *more* balanced
+than Lloyd (imbalance 1.21 against 1.33), at a slightly lower error. Lloyd's sizes fall in a long
+straight slope, while e-means has a few heavy clusters and a flat middle. Raising the threshold to 0.3
+trims those heavy clusters to 1.16, at no cost in error. Over three seeds of a 40 000-point version,
+0.3 lowered imbalance by 3% in 128 dimensions and by 1% in 16, with the same error. In 2 dimensions it raised
+the error by a fifth. With revival off, the 128-dimensional runs were badly lopsided (2.9): revival is
+what keeps e-means balanced at all. The default stays at 0.1 because it is what Faiss ships and
+it gains little here. If you build a search index from the centroids, try `reviveThreshold = 0.3` and
+compare `imbalance`.
+
+**Many dimensions.** For vectors of 32 or more dimensions, assigning a point to its nearest
+centroid stops adding up a distance once the running sum is already larger than the nearest one so
+far. Every term is positive, so the skipped centroid could not have won, and the result is
+identical to the full scan. On 20 000 vectors of 1024 dimensions and 100 clusters this made Lloyd
+2.3 times faster and e-means 1.2 times faster.
+
 **Restarts.** k-means stops in whatever local minimum its seeds lead to. The usual one is two blobs
 sharing a centroid while another blob is cut in two, and more epochs never fix it. `runs = 4` clusters
 four times from fresh seeds and keeps the result with the lowest inertia. Each run costs a whole

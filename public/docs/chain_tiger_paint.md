@@ -243,7 +243,7 @@ plans and paints strokes that cover the region the way a painter blocks in an ar
 round brush as wide as its `thickness`, converted from view-box units to the canvas's 1000-unit
 width, and is dragged along the line with `stroke`.
 
-The three canvases differ in two things:
+Compare the three canvases:
 
 - **One brush for every fill.** `work` with `Handling.Body` and its own brush, whatever the size of
   the region.

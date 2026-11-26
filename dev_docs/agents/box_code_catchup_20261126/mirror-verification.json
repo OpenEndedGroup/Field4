@@ -1,0 +1,6 @@
+{
+  "completionCorpus": "Regenerated 22 fixtures with tools/scrape_completion_corpus.py.",
+  "explainers": "tools/explainer_pages.py sync changed one blank line in the hemisphere mirror; actual figure recaptured and inspected.",
+  "tests": "16 completion/explainer tests passed.",
+  "formatting": "Actual formatter --check passed for the three spatial files and explainer_lights.md."
+}

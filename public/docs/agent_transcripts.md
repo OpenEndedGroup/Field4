@@ -5,8 +5,8 @@
 These are documents built from a blank canvas by agents working in Field. Open one to see the
 result, try it in Field, or take it apart and make it your own.
 
-Each begins as an **operation transcript**: a YAML macro that makes the boxes, writes the code and
-connects the graph. The transcripts are also examples for agents to copy and adapt when
+Each document begins as an **operation transcript**: a YAML macro that makes the boxes, writes
+the code and connects them. You and your agents can copy and adapt these transcripts when
 [automating Field](automating_field.md).
 
 These are the same scenes offered as **Starting points** on the [welcome screen](history_overview.md):
@@ -18,8 +18,8 @@ graphics-topology rule (a renderer with nothing to draw, and a draw box with no 
 that needs a gesture, a headset or a service is still offered: you click once, or point it at a
 device you own.
 
-Every transcript in `dev_docs/agents/transcripts/` has an entry below. Each entry says what the
-scene builds and which numbers it prints.
+Each entry below describes a transcript in `dev_docs/agents/transcripts/`, what it builds and
+what it prints.
 
 **Open →** shows a document beside its entry. Open another to replace it, or use the viewer's
 arrow to open a separate tab. Documents with captured outputs show their results immediately;
@@ -5340,6 +5340,17 @@ that changes between passes is the medium. `dev_docs/PARTICIPATING_MEDIA.md` is 
 ![A slatted ceiling light casts visible shafts through haze over a sphere](assets/path_tracing/medium_shafts.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/path_tracing_medium/metadata.edn)
+
+### path_tracing_subsurface
+
+**One skin colour through four albedo remaps.** A renderer, a row of spheres path traced with
+random-walk subsurface scattering, and a box of sliders. Every sphere asks for the same colour and
+radius and differs only in how the colour becomes a single-scattering albedo; a diffuse ball of the
+requested colour sits on the left. Drag `radius` to send the light further under the surface, and
+`remap` to re-render the right-hand sphere through another fit. The page section is
+[Subsurface scattering from a colour and a radius](path_tracing.md#subsurface-scattering-from-a-colour-and-a-radius).
+
+[Open →](offline.html?file=assets/agent_transcripts/path_tracing_subsurface/metadata.edn)
 
 ### neural_clouds
 

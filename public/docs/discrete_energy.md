@@ -23,7 +23,7 @@ costs:
 | `fix(v, x)` | clamps `v` to `x`; solvers leave it alone |
 
 Then make an `EnergyState`, the beliefs and assignment the solvers work on, and settle it. There
-are three solvers, and each also has a `step` for a box that wants to draw every step:
+are four solvers, each with a `step` you can use to draw its progress:
 
 - `MeanFieldDescent` treats each variable as a soft belief over its values and moves all of them
   downhill together. It is the Hopfield–Tank network, and it stops by itself when the beliefs stop

@@ -1454,3 +1454,5 @@ and [Continuing a gesture](temporal_memory.md).
 - Prediction and resynthesis: [`Lpc`](reference/audio.md#lpc-kt-lpc), [`Lpc.analyze`](reference/audio.md#lpc-kt--lpc--analyze), [`LpcVocoder`](reference/audio.md#lpc-kt-lpcvocoder).
 
 - Signal and filter implementations: [`SineOsc`](reference/synthesis.md#oscillators-kt-sineosc), [`Waveshaper`](reference/synthesis.md#effects-kt-waveshaper), [`Waveshaper.tanh`](reference/synthesis.md#effects-kt--waveshaper-companion--tanh), [`SamplesSignal`](reference/synthesis.md#subharmonic-kt-samplessignal).
+
+- Speech, samples and resynthesis: [`Speech`](reference/synthesis.md#speech-kt-speech), [`speak`](reference/synthesis.md#speech-kt--speak), [`Speech.resampled`](reference/synthesis.md#speech-kt--speech--resampled), [`Speech.pattern`](reference/synthesis.md#speech-kt--speech--pattern), [`Speech.sungOn`](reference/synthesis.md#speech-kt--speech--sungon), [`DirtRender`](reference/audio.md#dirtrender-kt-dirtrender), [`DirtRender.requirePinnedLibrary`](reference/audio.md#dirtrender-kt--dirtrender--requirepinnedlibrary).

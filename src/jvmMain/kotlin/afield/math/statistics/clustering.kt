@@ -600,6 +600,30 @@ data class KMeansResult<T>(
     val mse: Double
         get() = inertia / labels.size
 
+    /** How many samples the fullest cluster holds. */
+    val largestCluster: Int
+        get() = clusterSizes.maxOrNull() ?: 0
+
+    /** Samples per cluster on average, `n / k`: what every cluster would hold if they were balanced. */
+    val meanClusterSize: Double
+        get() = labels.size.toDouble() / k
+
+    /**
+     * How unbalanced the clusters are, as the Faiss imbalance factor `k * sum(size^2) / n^2`: 1 when
+     * every cluster holds `n / k` samples, larger as a few clusters grow. It is the scan cost of an
+     * inverted-file index built on these centroids. A query that lands in a cluster with the same
+     * probability as a sample does scans `imbalance * n / k` vectors per probed cluster on average,
+     * so 1.2 means 20% more vectors scanned than a balanced clustering for the same number of probes.
+     * A lower [inertia] does not imply a lower imbalance, and e-means usually ends higher than Lloyd.
+     */
+    val imbalance: Double
+        get() {
+            val n = labels.size.toDouble()
+            var sumSquares = 0.0
+            for (size in clusterSizes) sumSquares += size.toDouble() * size
+            return k * sumSquares / (n * n)
+        }
+
     /** This result as a [ClusterLayer], so it can be stacked and drawn beside other cuts. */
     fun asLayer(name: String = "${options.algorithm.name.lowercase()}(k=$k)"): ClusterLayer =
         ClusterLayer(name, labels)
@@ -2419,12 +2443,54 @@ private fun squaredL2(a: DoubleArray, b: DoubleArray): Double {
     return s
 }
 
+/**
+ * Above this dimension the assignment step prunes partial distances: see [squaredL2Within]. Below it
+ * the check every [PARTIAL_DISTANCE_BLOCK] coordinates costs more than it skips.
+ */
+private const val PARTIAL_DISTANCE_MIN_D = 32
+
+/** Coordinates summed between two checks of the partial distance against the best so far. */
+private const val PARTIAL_DISTANCE_BLOCK = 16
+
+/**
+ * Whether the k-means assignment step stops summing a distance once it exceeds the nearest
+ * centroid found so far. It changes no result, only the time; tests and benchmarks turn it off to
+ * compare against the full scan.
+ */
+internal var kMeansPartialDistancePruning: Boolean = true
+
+/**
+ * Squared L2 distance from [a] to [b], abandoned early: the coordinates are summed in blocks, and
+ * once the partial sum reaches [bound] the rest is skipped and that partial sum is returned. Every
+ * term is non-negative, so the partial sum bounds the full one from below and a centroid that is
+ * abandoned could not have been nearer. When the sum stays under [bound] it runs over every
+ * coordinate in the same order as [squaredL2], so it returns exactly the same value, bit for bit,
+ * and the assignment is identical to the full scan. This is progressive dimension pruning
+ * (as in SuperKMeans and ADSampling) in its exact form, without the random rotation.
+ */
+private fun squaredL2Within(a: DoubleArray, b: DoubleArray, bound: Double): Double {
+    var s = 0.0
+    val d = a.size
+    var j = 0
+    while (j < d) {
+        val end = min(j + PARTIAL_DISTANCE_BLOCK, d)
+        while (j < end) {
+            val t = a[j] - b[j]
+            s += t * t
+            j++
+        }
+        if (s >= bound) return s
+    }
+    return s
+}
+
 /** Nearest centroid of [row] by squared L2; writes the squared distance into [out] at [slot]. */
 private fun nearestL2(row: DoubleArray, centroids: Array<DoubleArray>, out: DoubleArray, slot: Int): Int {
     var best = 0
     var bestD = Double.POSITIVE_INFINITY
+    val prune = kMeansPartialDistancePruning && row.size >= PARTIAL_DISTANCE_MIN_D
     for (c in centroids.indices) {
-        val d = squaredL2(row, centroids[c])
+        val d = if (prune) squaredL2Within(row, centroids[c], bestD) else squaredL2(row, centroids[c])
         if (d < bestD) {
             bestD = d
             best = c

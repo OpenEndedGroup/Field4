@@ -53,6 +53,15 @@
       "after": "a8761bea571271c2e5e947c8c270ee848f41ab88abe815a4f76373e414f05b24",
       "byteIdentical": false,
       "visuallyInspected": true
+    },
+    {
+      "page": "explainer_lights.md",
+      "name": "explainer-lights-hemisphere",
+      "artifact": "assets/explainer_lights/hemisphere.png",
+      "before": "d4bd209a6545ca08b382070015014931a5f0bf150a8b257cc29b0072dee7a143",
+      "after": "d4bd209a6545ca08b382070015014931a5f0bf150a8b257cc29b0072dee7a143",
+      "byteIdentical": true,
+      "visuallyInspected": true
     }
   ],
   "review": "All screenshots inspected; both movies inspected at beginning, middle and end. FieldML is rendered as a compact static FLine SVG, avoiding the interactive viewer canvas padding."

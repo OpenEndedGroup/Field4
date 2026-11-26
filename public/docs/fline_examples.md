@@ -740,7 +740,7 @@ draw()
 An update that arrives mid-morph starts from wherever the drawing is at that moment. So a `loop { }` can
 redraw every frame with a short `transition`, or with none.
 
-A few more properties go with these. `tooltip` gives a line a browser tooltip. `onHover` is called when the
+You can make these lines respond to the pointer, too. `tooltip` gives a line a browser tooltip. `onHover` is called when the
 pointer enters or leaves the line. On a figure with thousands of clickable shapes, `pickDetail = false`
 sends only where a click landed, its `key` and its `lineIndex`, not which segment was hit, which keeps the
 drawing small. `lines(..., onView = { view -> ... })` hears where the user has panned and zoomed to, in the

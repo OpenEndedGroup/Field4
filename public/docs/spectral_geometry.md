@@ -2,10 +2,11 @@
 
 <!-- capture-sources: src/jvmMain/kotlin/afield/geometry/spectral/ public/docs/assets/spectral_geometry/bun_zipper.ply -->
 
-Open **spectral-geometry** from **Templates** on the Field welcome screen. Launch **Ellipse chain**,
-**Plane-wave instrument**, **Discover plane waves**, or **Manifold harmonics** with ++alt+arrow-up++
-(use Option for Alt on macOS). The boxes put the spectrum or its effect next to the geometry, so changing
-a coefficient gives you something to look at.
+Build shapes from oscillations, fit surfaces with plane waves, and take a mesh apart into its
+lowest modes. Open **spectral-geometry** from **Templates** on the Field welcome screen, then
+launch **Ellipse chain**, **Plane-wave instrument**, **Discover plane waves**, or
+**Manifold harmonics** with ++alt+arrow-up++ (Option for Alt on macOS). Change a coefficient
+and watch what it does to the geometry.
 
 | Box | What to try |
 | --- | --- |

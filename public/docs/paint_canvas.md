@@ -894,7 +894,7 @@ colour along with it.
 
 ### Notes the agent reads
 
-A note pinned on the picture is how a person points at something. `pin(x, y, text)` puts one
+Pin a note on the picture to point out something you want to change. `pin(x, y, text)` puts it
 there, and `near(x, y)` gives the addresses of the strokes under it, nearest first; `describe()`
 starts with each note and those addresses. Here the note asks for more moss on Sprout's
 right flank. [AI4 paints](ai4_painting.md#editing-strokes-by-address) gives the AI chat tools that
@@ -1173,4 +1173,4 @@ its pressure; in [AI4 paints](ai4_painting.md), the AI chat paints on this canva
 beside a line you draw, ready to be laid down here in pencil. For more on the
 building blocks, see [Drawing with FLines](fline_examples.md) and [Colors](colors_examples.md).
 
-- Addressable stroke records: [`PaintStrokes`](reference/graphics.md#paintstrokes-kt-paintstrokes), [`PaintStrokes.add`](reference/graphics.md#paintstrokes-kt--paintstrokes--add), [`PaintStrokes.apply`](reference/graphics.md#paintstrokes-kt--paintstrokes--apply), [`PaintStrokes.render`](reference/graphics.md#paintstrokes-kt--paintstrokes--render), [`PaintStrokes.pin`](reference/graphics.md#paintstrokes-kt--paintstrokes--pin).
+- Addressable stroke records: [`PaintStrokes`](reference/graphics.md#paintstrokes-kt-paintstrokes), [`PaintStrokes.add`](reference/graphics.md#paintstrokes-kt--paintstrokes--add), [`PaintStrokes.apply`](reference/graphics.md#paintstrokes-kt--paintstrokes--apply), [`PaintStrokes.render`](reference/graphics.md#paintstrokes-kt--paintstrokes--render), [`PaintStrokes.pin`](reference/graphics.md#paintstrokes-kt--paintstrokes--pin), [`PaintCanvas.work`](reference/graphics.md#paintcanvas-kt--paintcanvas--work).

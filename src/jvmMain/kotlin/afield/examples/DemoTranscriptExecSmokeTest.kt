@@ -877,6 +877,7 @@ object DemoTranscriptExecSmokeTest {
         "path_tracing_materials",
         "path_tracing_camera",
         "path_tracing_glass",
+        "path_tracing_subsurface",
         "path_tracing_gltf",
         "path_tracing_hidden_environment",
         // path_tracing.md#denoising-any-image: a raster render into a float target, denoised on the GPU.

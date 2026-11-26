@@ -216,7 +216,7 @@ Those ratios describe each swatch against the ground. Use `deltaEOK` to compare 
 
 `contrastPalette` takes a trajectory and any list of targets. `contrastScale` is the recipe for the common case, after [TaishoDS's one-colour palette method](https://taisho.design/en/blog/accessible-color-palette-from-one-color) (MIT): you give it one colour and a background, and it returns a fixed ten-step scale (100 to 1000) of `ContrastSwatch`es, each step at a set WCAG contrast against that background, with your colour on it exactly. On white the targets are 1.08, 1.22, 1.5, 2.1, 3.6, 6, 8.5, 12, 16 and 19. Your colour goes on the step whose target is closest to its own contrast and stays there unchanged. Every other step runs `contrastPalette` along an OKLCH lightness trajectory through your colour's hue, with the chroma eased off toward both ends. Yellows are the one exception: they turn toward orange as they darken, so the dark end comes out amber instead of olive.
 
-The box below builds a scale for Tailwind's `#3b82f6` blue and three other colours, once on white and once on near-black. Each swatch is labelled with its step and its measured contrast, in the text colour the scale picks for it, and an inset outline marks the colour you passed in.
+Compare scales for Tailwind's `#3b82f6` blue and three other colours, each on white and on near-black. The labels show the step and its measured contrast, using the text colour the scale picks. An inset outline marks the colour you passed in.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/colors_examples/contrast_scale_light_dark.png" wait="1.0" capture="box" open-outputs="true"}
 :::static
@@ -306,7 +306,7 @@ lines(
 
 The yellow bands go from pale lemon to amber and do not turn olive.
 
-For categorical series, use `paletteForBackground` below, which gives *different hues* at one lightness and repairs only the ones that fail. For one colour used for a surface, a border, text and its hover state, use `contrastScale`: step 700 of a blue scale and step 700 of a red one stand out from the ground by the same amount.
+For a chart with distinct categories, try `paletteForBackground` below: it gives you different hues at one lightness and adjusts the ones that fail. For a family of colours for surfaces, borders, text and hover states, use `contrastScale`: step 700 of a blue scale and step 700 of a red one stand out from the ground by the same amount.
 
 Two differences from TaishoDS: the dark-mode targets here are Field's own (the post does not publish its numbers), and v0.17's "contrast zone" shift is not implemented, the rule that moves a seed near 4.5:1 until text on it also passes. Here a seed is never moved. Steps 600 and up still clear 4.5:1 against the background, because the boundary between 500 and 600 sits above 4.5 in both modes. Over all 4,096 colours of a 16-level sRGB grid, on white and on `#0a0a0a`, the lowest text-step contrast is 4.57:1 (the same after rounding to 8 bits), and every one of the 8,192 scales gets steadily further from the background, step by step.
 
@@ -512,3 +512,7 @@ that can drive the palette, see [FLine examples](fline_examples.md) and
 See the [trajectory API](reference/graphics.md#colortrajectory-kt),
 [coordinate conversions](reference/graphics.md#colorcoordinates-kt), and
 [original color constructors](reference/graphics.md#colors-kt).
+
+## API reference
+
+- Contrast searches and returned swatches: [`ContrastScale`](reference/graphics.md#colortrajectory-kt-contrastscale), [`contrastScale`](reference/graphics.md#colortrajectory-kt--contrastscale), [`ContrastSwatch`](reference/graphics.md#colortrajectory-kt-contrastswatch), [`contrastPalette`](reference/graphics.md#colortrajectory-kt--contrastpalette), [`colorHelix`](reference/graphics.md#colortrajectory-kt--colorhelix).

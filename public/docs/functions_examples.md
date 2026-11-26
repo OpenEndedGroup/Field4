@@ -4351,3 +4351,7 @@ Finally, rewrite rules run during graph copy, bottom-up through children before 
     The convergence video is a launched box whose `loop` runs one truncated `fitGradient` per frame.
 
 *The public declarations used on this page are listed, with their KDoc, in the codebase reference: [`Functions.kt`](reference/math.md#functions-kt). Start from [what's already in the box](reference/index.md).*
+
+## API reference
+
+- Building and sampling timeline graphs: [`TimelineGraph`](reference/math.md#functions-kt--functions--timelinegraph), [`timelineGraph`](reference/math.md#functions-kt--functions--timelinegraph-2), [`TimelineGraph.asFn`](reference/source/jvmMain/afield/math/functions/Functions/#L4079).

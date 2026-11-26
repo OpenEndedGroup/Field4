@@ -604,8 +604,162 @@
       "path": "public/docs/interaction_nets_examples.md",
       "symbol": "NetPrograms.run",
       "target": "reference/data.md#netprograms-kt--netprograms--run-2"
+    },
+    {
+      "path": "public/docs/afield_four_graphics.md",
+      "symbol": "Gezira.beziers",
+      "target": "reference/graphics.md#gezira-kt--gezira--beziers"
+    },
+    {
+      "path": "public/docs/afield_four_graphics.md",
+      "symbol": "GeziraGpu.stage",
+      "target": "reference/graphics.md#geziragpu-kt--geziragpu--stage"
+    },
+    {
+      "path": "public/docs/afield_four_graphics.md",
+      "symbol": "GpuProbe",
+      "target": "reference/graphics.md#gpuprobe-kt-gpuprobe"
+    },
+    {
+      "path": "public/docs/afield_four_graphics.md",
+      "symbol": "GeziraGpuScene.paths",
+      "target": "reference/graphics.md#geziragpuscene-kt--geziragpuscene-companion--paths"
+    },
+    {
+      "path": "public/docs/audio_curves.md",
+      "symbol": "audioCurves",
+      "target": "reference/audio.md#audiocurves-kt--audiocurves"
+    },
+    {
+      "path": "public/docs/audio_curves.md",
+      "symbol": "AudioCurveFile",
+      "target": "reference/audio.md#audiocurvefile-kt-audiocurvefile"
+    },
+    {
+      "path": "public/docs/audio_curves.md",
+      "symbol": "AudioCurveFile.close",
+      "target": "reference/audio.md#audiocurvefile-kt--audiocurvefile--close"
+    },
+    {
+      "path": "public/docs/drawing_on.md",
+      "symbol": "DrawingOnCapture",
+      "target": "reference/networking.md#drawingoncapture-kt-drawingoncapture"
+    },
+    {
+      "path": "public/docs/drawing_on.md",
+      "symbol": "readDrawingOn",
+      "target": "reference/networking.md#drawingoncapture-kt--readdrawingon"
+    },
+    {
+      "path": "public/docs/drawing_on.md",
+      "symbol": "DrawingOnCapture.drawingSince",
+      "target": "reference/networking.md#drawingoncapture-kt--drawingoncapture--drawingsince"
+    },
+    {
+      "path": "public/docs/drawing_on.md",
+      "symbol": "DrawingOnCapture.networkAt",
+      "target": "reference/networking.md#drawingoncapture-kt--drawingoncapture--networkat"
+    },
+    {
+      "path": "public/docs/colors_examples.md",
+      "symbol": "ContrastScale",
+      "target": "reference/graphics.md#colortrajectory-kt-contrastscale"
+    },
+    {
+      "path": "public/docs/colors_examples.md",
+      "symbol": "contrastScale",
+      "target": "reference/graphics.md#colortrajectory-kt--contrastscale"
+    },
+    {
+      "path": "public/docs/colors_examples.md",
+      "symbol": "ContrastSwatch",
+      "target": "reference/graphics.md#colortrajectory-kt-contrastswatch"
+    },
+    {
+      "path": "public/docs/colors_examples.md",
+      "symbol": "contrastPalette",
+      "target": "reference/graphics.md#colortrajectory-kt--contrastpalette"
+    },
+    {
+      "path": "public/docs/colors_examples.md",
+      "symbol": "colorHelix",
+      "target": "reference/graphics.md#colortrajectory-kt--colorhelix"
+    },
+    {
+      "path": "public/docs/functions_examples.md",
+      "symbol": "TimelineGraph",
+      "target": "reference/math.md#functions-kt--functions--timelinegraph"
+    },
+    {
+      "path": "public/docs/functions_examples.md",
+      "symbol": "timelineGraph",
+      "target": "reference/math.md#functions-kt--functions--timelinegraph-2"
+    },
+    {
+      "path": "public/docs/functions_examples.md",
+      "symbol": "TimelineGraph.asFn",
+      "target": "reference/source/jvmMain/afield/math/functions/Functions/#L4079"
+    },
+    {
+      "path": "public/docs/chain_rhino_render.md",
+      "symbol": "Rhino3dm.writeNurbsSample",
+      "target": "reference/graphics.md#rhino3dm-kt--rhino3dm--writenurbssample"
+    },
+    {
+      "path": "public/docs/chain_rhino_render.md",
+      "symbol": "PathTraceMaterial.plastic",
+      "target": "reference/renderers.md#pathtracescene-kt--pathtracematerial-companion--plastic"
+    },
+    {
+      "path": "public/docs/paint_canvas.md",
+      "symbol": "PaintCanvas.work",
+      "target": "reference/graphics.md#paintcanvas-kt--paintcanvas--work"
+    },
+    {
+      "path": "public/docs/spectral_examples.md",
+      "symbol": "Speech",
+      "target": "reference/synthesis.md#speech-kt-speech"
+    },
+    {
+      "path": "public/docs/spectral_examples.md",
+      "symbol": "speak",
+      "target": "reference/synthesis.md#speech-kt--speak"
+    },
+    {
+      "path": "public/docs/spectral_examples.md",
+      "symbol": "Speech.resampled",
+      "target": "reference/synthesis.md#speech-kt--speech--resampled"
+    },
+    {
+      "path": "public/docs/spectral_examples.md",
+      "symbol": "Speech.pattern",
+      "target": "reference/synthesis.md#speech-kt--speech--pattern"
+    },
+    {
+      "path": "public/docs/spectral_examples.md",
+      "symbol": "Speech.sungOn",
+      "target": "reference/synthesis.md#speech-kt--speech--sungon"
+    },
+    {
+      "path": "public/docs/spectral_examples.md",
+      "symbol": "DirtRender",
+      "target": "reference/audio.md#dirtrender-kt-dirtrender"
+    },
+    {
+      "path": "public/docs/spectral_examples.md",
+      "symbol": "DirtRender.requirePinnedLibrary",
+      "target": "reference/audio.md#dirtrender-kt--dirtrender--requirepinnedlibrary"
+    },
+    {
+      "path": "public/docs/treemaps.md",
+      "symbol": "TreemapTiling.Resquarify",
+      "target": "reference/visualization.md#treemaplayout-kt--treemaptiling--resquarify"
+    },
+    {
+      "path": "public/docs/spatial_rules.md",
+      "symbol": "inspectOnClick",
+      "target": "reference/data.md#spatial-rule-drawing-kt--inspectonclick"
     }
   ],
-  "policy": "Explicit curated class/member pairs for retained algorithms, simulators and resource APIs; every anchor resolved from generated reference.",
-  "verified": true
+  "policy": "Explicit curated class/member pairs for retained algorithms, simulators and resource APIs; every anchor resolved from generated reference."
 }

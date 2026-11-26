@@ -41,8 +41,14 @@ if __name__ == '__main__':
         receipt = json.loads((HERE / 'reference-verification.json').read_text())
         for row in receipt['links']:
             target, anchor = row['target'].split('#')
-            text = (ROOT / 'public/docs' / target).read_text()
-            assert f'id="{anchor}"' in text or re.search(r'\{\s*#' + re.escape(anchor) + r'\s*\}', text), row
+            if target.startswith('reference/source/'):
+                source = target.removeprefix('reference/source/').strip('/').split('/')
+                path = ROOT / 'src' / source[0] / 'kotlin' / ('/'.join(source[1:]) + '.kt')
+                line = int(anchor.removeprefix('L'))
+                assert 'fun asFn(' in path.read_text().splitlines()[line - 1], row
+            else:
+                text = (ROOT / 'public/docs' / target).read_text()
+                assert f'id="{anchor}"' in text or re.search(r'\{\s*#' + re.escape(anchor) + r'\s*\}', text), row
             assert row['target'] in (ROOT / row['path']).read_text(), row
         print(len(receipt['links']), 'reference anchors verified')
     else:

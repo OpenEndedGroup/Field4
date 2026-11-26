@@ -1,4 +1,5 @@
 import afield.data.graph.SpatialLifetime.MATCH
+import afield.data.graph.inspectOnClick
 import java.util.concurrent.atomic.AtomicLong
 
 val world = SpatialRuleWorld(parallelSearch = true)

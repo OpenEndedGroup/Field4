@@ -11,11 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="sr_loom" index="0" -->
 
 ```edn [field-box id="sr_loom" role="properties"]
-{"id" "sr_loom" "index" 0 "name" "2 · Loom with memory" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · Loom with memory" "_tombstone" false "frame" #afield/rect [650.0 285.0 290.0 78.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sr_loom_code_.kt" "lines" 268 "characters" 10617 "sha256" "dbfac0c55fde289e2e6f40e31b38067888980eecf13e6154aa556660096d14db"}]}
+{"id" "sr_loom" "index" 0 "name" "2 · Loom with memory" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · Loom with memory" "_tombstone" false "frame" #afield/rect [650.0 285.0 290.0 78.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sr_loom_code_.kt" "lines" 269 "characters" 10657 "sha256" "60da5985d2c09d0afad91fb975a700e0a335b36a742b5d4b15c82dfde5f9edaa"}]}
 ```
 
 ```kotlin [field-property box="sr_loom" name="code" path="sr_loom_code_.kt"]
 import afield.data.graph.SpatialLifetime.MATCH
+import afield.data.graph.inspectOnClick
 import java.util.concurrent.atomic.AtomicLong
 
 val world = SpatialRuleWorld()

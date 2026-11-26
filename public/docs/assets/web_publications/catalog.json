@@ -40,16 +40,16 @@
     },
     "assets/agent_transcripts/adaptive_distribution_feedback/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "capturedAt": "2026-11-22T18:51:01.337Z",
+      "capturedAt": "2026-11-26T11:45:12.512Z",
       "channels": 4,
       "file": "assets/web_publications/adaptive_distribution_feedback/document/metadata.edn",
       "files": {
-        "assets/web_publications/adaptive_distribution_feedback/document/metadata.edn": "117fc1085df48f81525bf740c6025d35f0dcf0c47cef48f02697b6f770937b7f",
-        "assets/web_publications/adaptive_distribution_feedback/document/outputs.json": "de37b66f79e0861fc8f86286feb8d7a81afd7a3204f3b19a9326b8d841a24d7a",
-        "assets/web_publications/adaptive_distribution_feedback/outputs/0.html": "26b6ae8d5f27579508a1cc973cadb84dcd86ab1c9577a44a6244668a12ae0c74",
-        "assets/web_publications/adaptive_distribution_feedback/outputs/1.html": "e6eb3faaa5cdc3160704a15e97682177d1e794ca78c8b755bb6c00f8106e39fe",
-        "assets/web_publications/adaptive_distribution_feedback/outputs/2.html": "53cf9f004b3a2e0f2fea42b58327316b25f4424d61ea5f4028429053f7b82d29",
-        "assets/web_publications/adaptive_distribution_feedback/outputs/3.html": "49586a9313409eb6a98acacdbd9f94ba493f8f7345e61961383fd8b342b044e8"
+        "assets/web_publications/adaptive_distribution_feedback/document/metadata.edn": "04c91d11aa2d74f414a1e300211120b1f2163172fa8c4cca0a6e9530338262bb",
+        "assets/web_publications/adaptive_distribution_feedback/document/outputs.json": "7eae77bd247371aa0e0e99af1778782fbab65768da56a5c9c35fb2576807a14e",
+        "assets/web_publications/adaptive_distribution_feedback/outputs/0.html": "2218b137d03898251111c4e584edd23dd3f473117f35fedc00dc2984371e6f61",
+        "assets/web_publications/adaptive_distribution_feedback/outputs/1.html": "e9b7393bae49e0497f9c2dd36e751ca60321d8f1678c6cbea0e814f0cfa5dc92",
+        "assets/web_publications/adaptive_distribution_feedback/outputs/2.html": "f707a95df9921f8f535f35087eba3425fe32682a12741335740ead3d6f40aa2a",
+        "assets/web_publications/adaptive_distribution_feedback/outputs/3.html": "40537a3b85ba0a104f675eedd655f8af8b7bb127e57557be2ed9132a112589c3"
       },
       "kinds": [
         "plotly",
@@ -57,35 +57,36 @@
       ],
       "outputs": "assets/web_publications/adaptive_distribution_feedback/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/adaptive_distribution_feedback.yaml": "b3c125d14e26882ef2f7f78e1d527591bc8b134b072c3c4d610beea7bb819459",
-        "public/docs/assets/agent_transcripts/adaptive_distribution_feedback/feedback_code_.kt": "c228eb33a2a9e31fdde0e0f44f6f4326a49b88ba578ecca65517933e729a2c26",
+        "dev_docs/agents/transcripts/adaptive_distribution_feedback.yaml": "7bd01df4e89a9f55614f9d49b8a2d2fecaffea5d63c1979a1eab0653f611b0c2",
+        "public/docs/assets/agent_transcripts/adaptive_distribution_feedback/feedback_code_.kt": "fbe512c5e59e53b1606ce64d146015c2508dfef385ef2fbcb4bd44249ad74365",
         "public/docs/assets/agent_transcripts/adaptive_distribution_feedback/guides/field_probes-close-the-loop-on-a-distribution.md": "7d7d213706824e385cad227c3bfe6f173b4a3d3a8e1fe166f9fc1e07c89cb772",
-        "public/docs/assets/agent_transcripts/adaptive_distribution_feedback/metadata.edn": "43aa53447fb1f42e98812a151e0949316c857dbb1bcb1e40bf5a66044ec4f991"
+        "public/docs/assets/agent_transcripts/adaptive_distribution_feedback/metadata.edn": "acc4269122a2a6317428df8990042935dfec7916dfa9656f789bde8e20523253"
       }
     },
     "assets/agent_transcripts/addressable_paint_strokes/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "capturedAt": "2026-11-23T12:18:05.720Z",
-      "channels": 4,
+      "capturedAt": "2026-11-26T11:49:36.142Z",
+      "channels": 5,
       "file": "assets/web_publications/addressable_paint_strokes/document/metadata.edn",
       "files": {
-        "assets/web_publications/addressable_paint_strokes/document/metadata.edn": "82b3226d47ee80b53a12bb201309d4ba639e82f93749a97ed28eac4825e5aab1",
-        "assets/web_publications/addressable_paint_strokes/document/outputs.json": "62df3433978d24fe6f7a05050820ad810d68ebfc0079815693ae48891dc23292",
-        "assets/web_publications/addressable_paint_strokes/outputs/0.html": "9ed6bb9534b76c53e0304f5fc720369b5a960b558e682358999530b08c8f2f37",
-        "assets/web_publications/addressable_paint_strokes/outputs/1.html": "9ed6bb9534b76c53e0304f5fc720369b5a960b558e682358999530b08c8f2f37",
-        "assets/web_publications/addressable_paint_strokes/outputs/2.html": "9ed6bb9534b76c53e0304f5fc720369b5a960b558e682358999530b08c8f2f37",
-        "assets/web_publications/addressable_paint_strokes/outputs/3.html": "9ed6bb9534b76c53e0304f5fc720369b5a960b558e682358999530b08c8f2f37"
+        "assets/web_publications/addressable_paint_strokes/document/metadata.edn": "069f35063fd8f33a34050d21a047c9d5769760d9047e904761405b18c1389de1",
+        "assets/web_publications/addressable_paint_strokes/document/outputs.json": "95138ebb6619166d7111784093289be16ba38d2905291e5e32038b626aa7fb7d",
+        "assets/web_publications/addressable_paint_strokes/outputs/0.html": "38a69b7ac57188ece9a596e9da79f2e6766be0ce7949133204f593816eebc9a6",
+        "assets/web_publications/addressable_paint_strokes/outputs/1.html": "95e86cdb5fb8fe76d5cae21044fe763177e54a1ef57ff25950aaf1e61cdf5451",
+        "assets/web_publications/addressable_paint_strokes/outputs/2.html": "7309e9d14f23f6418808707ed687a21dd85b28c308d5b1a78fb59beaf14152e4",
+        "assets/web_publications/addressable_paint_strokes/outputs/3.html": "896e1c305c7a17d2a0c1487aeb46fccbc100a1e8c522a8beea33ea5e228727a9",
+        "assets/web_publications/addressable_paint_strokes/outputs/4.html": "705b486508d242523a1c7e630b68def1c500652d265481606a671f0f5b54b1db"
       },
       "kinds": [],
       "outputs": "assets/web_publications/addressable_paint_strokes/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/addressable_paint_strokes.yaml": "502b7c51c6d84b578cc6057daa620bd35f7d419e151f334c8786aa0f01b5ef0c",
+        "dev_docs/agents/transcripts/addressable_paint_strokes.yaml": "fe58747665d6d178a78ce0c9ba8558d16374e82ca771d1f430d4c85f1e9f6868",
         "public/docs/assets/agent_transcripts/addressable_paint_strokes/guides/paint_canvas-strokes-kept-as-data.md": "07032c71ec7fec6b5eb796fd6881b2b6b992bcfb1b84d1f7b31ca3087d806e3a",
-        "public/docs/assets/agent_transcripts/addressable_paint_strokes/metadata.edn": "8f43985c2adec303c69b0247bea04a6fd410a3d77d34a33643e5babefdccb69f",
-        "public/docs/assets/agent_transcripts/addressable_paint_strokes/paint_strokes_creature_code_.kt": "6c85ad3b387301357ae6d4a22a0a127e5210e0155adcd4693363da007414d308",
-        "public/docs/assets/agent_transcripts/addressable_paint_strokes/paint_strokes_edit_code_.kt": "62e940abf75c9e2925edf0c92e4ba82f294ca215b365c35a757dedcd1b66ab8b",
-        "public/docs/assets/agent_transcripts/addressable_paint_strokes/paint_strokes_note_code_.kt": "99b40640cae56e38e66d4431bafa209ceb5f8ceb4090b759780b7614cf771872",
-        "public/docs/assets/agent_transcripts/addressable_paint_strokes/paint_strokes_sway_code_.kt": "ec6f9bd1dbcb613b596977d93b95cfee5502c3de68bc9231c53baab7953d0058"
+        "public/docs/assets/agent_transcripts/addressable_paint_strokes/metadata.edn": "0009fc7223d38c568702cfd922303691f2c60d492977b4ed5dde9a4690d1a124",
+        "public/docs/assets/agent_transcripts/addressable_paint_strokes/paint_strokes_creature_code_.kt": "15216e47aea21bb1bac150a649748ec4a22da1b3503665fb374cc3457b99a94c",
+        "public/docs/assets/agent_transcripts/addressable_paint_strokes/paint_strokes_edit_code_.kt": "9988aec1d213d0e6611eac79a62b9771ceeb4ff82a914c350deeac1f6d99a8ee",
+        "public/docs/assets/agent_transcripts/addressable_paint_strokes/paint_strokes_note_code_.kt": "387fb9572d0c7acc3915e97b63967bc79ff0af6ac467a1ed7ca8ebac841f6ac4",
+        "public/docs/assets/agent_transcripts/addressable_paint_strokes/paint_strokes_sway_code_.kt": "186c1da59222acda1a68fae78d33b7740d8b91dc4c42c92bd09e6237168aa025"
       }
     },
     "assets/agent_transcripts/agent_eval_corpus/metadata.edn": {
@@ -880,33 +881,33 @@
     },
     "assets/agent_transcripts/buffer_paint/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "capturedAt": "2026-11-19T20:52:57.759Z",
+      "capturedAt": "2026-11-26T11:49:08.224Z",
       "channels": 2,
       "file": "assets/web_publications/buffer_paint/document/metadata.edn",
       "files": {
-        "assets/web_publications/buffer_paint/document/metadata.edn": "b521e9aa3dec1cffef24b8152051dbc89d838bd51d73bf02056f3726d5dd63f0",
-        "assets/web_publications/buffer_paint/document/outputs.json": "5931c977c39315777e6f67b7fe788c6c01b02602eccd14345eb3eddbb26012d2",
-        "assets/web_publications/buffer_paint/outputs/0.html": "b9fc7f84532f917162d6b95c511fc787e06c8d54240f1152a7ae05c0c2a02335",
-        "assets/web_publications/buffer_paint/outputs/1.html": "751706a73264a912bcef7365e26b01cde9a25542d41d538a180a0582019154c3"
+        "assets/web_publications/buffer_paint/document/metadata.edn": "d3eb86ac0efe29849f179cd6c923c79e6bcd926e3b718a1adcf5b6abc5d62f17",
+        "assets/web_publications/buffer_paint/document/outputs.json": "f1024749e89591b74168d631b78af6bfcceb8b87af51d1eda42ef5684020f3c1",
+        "assets/web_publications/buffer_paint/outputs/0.html": "eaa7132a0a615be765cafd731167f6043f6254ab6b7122d5c8c127a6ff92889d",
+        "assets/web_publications/buffer_paint/outputs/1.html": "6b1eb8973742cb2dea3afc8e15cdec530b862ec77e3771d8955fb774c9e1e4e0"
       },
       "kinds": [],
       "outputs": "assets/web_publications/buffer_paint/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/buffer_paint.yaml": "73d3552d59e05e47c690de924bfe56e74847986864f030116b05760cafd86848",
-        "public/docs/assets/agent_transcripts/buffer_paint/buffer_paint_delay_line_code_.kt": "e4afac46eb00cfda709868f58b386cbbd37facd12f30c10667471345dc336954",
-        "public/docs/assets/agent_transcripts/buffer_paint/buffer_paint_gray_scott_code_.kt": "19fa4a6d342f5bb06a5ca7089ec0397707240080c7475a8fa71462589a6db698",
+        "dev_docs/agents/transcripts/buffer_paint.yaml": "b528d2574abbcdf85c16f7592b81cd1104767c1c6c009006ecc14c683c1852d9",
+        "public/docs/assets/agent_transcripts/buffer_paint/buffer_paint_delay_line_code_.kt": "648b0305bb17ec2496882bf4c816bed11d0d336cb509b21e3a5a905c9c55c40e",
+        "public/docs/assets/agent_transcripts/buffer_paint/buffer_paint_gray_scott_code_.kt": "2a21ee17fa7c44af69d6560aa2eee1587271b0cb60ef5422ccd7bb1f7b8617ce",
         "public/docs/assets/agent_transcripts/buffer_paint/guides/visualizers.md": "901ee016cb59db68da4c7f6d8e84f3a8c0b4523f72087d55078a51d5d8a5a078",
-        "public/docs/assets/agent_transcripts/buffer_paint/metadata.edn": "8fc54287d4520ee749fd2c77f8e3d33a05a7d7e4a25f6715289e13686e52c460"
+        "public/docs/assets/agent_transcripts/buffer_paint/metadata.edn": "cddbde7f206db78f03194c3ea01bfa0092b861a6b2b54f03f0824b25b1ff1694"
       }
     },
     "assets/agent_transcripts/buffer_paint_gpu/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "capturedAt": "2026-11-19T20:53:05.322Z",
+      "capturedAt": "2026-11-26T11:50:03.387Z",
       "channels": 1,
       "file": "assets/web_publications/buffer_paint_gpu/document/metadata.edn",
       "files": {
-        "assets/web_publications/buffer_paint_gpu/document/metadata.edn": "996cf5aa5771e7b05021cc86b2b649058383ab6ac04037d994d1ced45350dcc4",
-        "assets/web_publications/buffer_paint_gpu/document/outputs.json": "069b2fa4e7c715f30e7d88513b6b1938bad65b70df56cfb636b31fd1f49311f5",
+        "assets/web_publications/buffer_paint_gpu/document/metadata.edn": "900ab4be68653b3abd782fd957ebe5a015062287314501d109db5980b2d9539c",
+        "assets/web_publications/buffer_paint_gpu/document/outputs.json": "e856831744706d4ac6603600c3815bc7073355e5f200cfa2bdb62fb065247b46",
         "assets/web_publications/buffer_paint_gpu/outputs/0.html": "ee1883a4d9dda9237714bc12c65562ca225b0855dd681156f96d4a536181430a"
       },
       "kinds": [
@@ -914,15 +915,15 @@
       ],
       "outputs": "assets/web_publications/buffer_paint_gpu/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/buffer_paint_gpu.yaml": "0e836ff24e640013162f1a856093effbb30b32ae1d444e94236a90aa392176ec",
+        "dev_docs/agents/transcripts/buffer_paint_gpu.yaml": "01480cf17842ab8883137bb38174069f41e7a766f8a020b35615b31339c035e7",
         "public/docs/assets/agent_transcripts/buffer_paint_gpu/bpg_draw_code_.kt": "3a140b1cf701ac87dc071bce55d3d514d1194e95f6165de7b185e8228bd1a25a",
         "public/docs/assets/agent_transcripts/buffer_paint_gpu/bpg_draw_fragment_.glsl": "a7cec652eee65401135a20f3364389443d5ea5ab222b15a689d79c8049d782af",
         "public/docs/assets/agent_transcripts/buffer_paint_gpu/bpg_draw_vertex_.glsl": "fa8b34a0fd5d23cb8b092ff1b8d0f95ceb03612f45fa7b06e485ed11da365bcc",
         "public/docs/assets/agent_transcripts/buffer_paint_gpu/bpg_renderer_code_.kt": "4c83f494b0aca0e17c76bf11d825d1ef8383df8b43bf86a7bce1eba1e0d6ea5a",
-        "public/docs/assets/agent_transcripts/buffer_paint_gpu/bpg_sim_code_.kt": "9081b463c259bd70eef6ce364ac5c1d163f67df4ae72d75837e0c8a29f2d15e6",
+        "public/docs/assets/agent_transcripts/buffer_paint_gpu/bpg_sim_code_.kt": "ffa6b06097c1a7c75114edc8d7c2d5e2e46c3c8250b93480e557a6f41ba68f46",
         "public/docs/assets/agent_transcripts/buffer_paint_gpu/bpg_sim_compute_.glsl": "e324a6cb0095446f1193cd39fd233b95320b8eeb2ef6d91cf8ae7118fa4eeb2b",
         "public/docs/assets/agent_transcripts/buffer_paint_gpu/guides/visualizers.md": "cfb3a7c3f8c7c9a84add7fd5ed8f9cd6f467497eca1e99cf736d35b688225201",
-        "public/docs/assets/agent_transcripts/buffer_paint_gpu/metadata.edn": "ab767377cba801255607f55698efc40f6cf81e55527802887dec0295b8fba9b2",
+        "public/docs/assets/agent_transcripts/buffer_paint_gpu/metadata.edn": "b26886a6e6dceb99fb2242d155d01dde403c2cff965aed0518f00898d3b45144",
         "public/docs/assets/visualizers-buffer-paint-gpu.png": "83a4a09a3e2f7979dc51d054eca54bed09831d651ea7b15a4b1420068b7b5cd6",
         "public/docs/visualizers.md#capture-box=bpg_renderer": "caf3d9b7225095cc1863c5eb9314c9251ef8e2f1001e0a78578de22230fb903d"
       },
@@ -1020,23 +1021,23 @@
     },
     "assets/agent_transcripts/chamfer_everything/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "capturedAt": "2026-11-25T12:05:24.630Z",
+      "capturedAt": "2026-11-26T11:49:25.785Z",
       "channels": 2,
       "file": "assets/web_publications/chamfer_everything/document/metadata.edn",
       "files": {
-        "assets/web_publications/chamfer_everything/document/metadata.edn": "26e8030c0032e04aa4451cf6eaf14ad1e22b11656fb9b9615c8a5fd4bb8aae54",
-        "assets/web_publications/chamfer_everything/document/outputs.json": "632a786ea55faa6b42114b6116df6a2a9dc02ad5244331ce8e45128a8eeb1078",
-        "assets/web_publications/chamfer_everything/outputs/0.html": "bf21257ad25fd276f7988b83cc83df6bc2ddbd04ca3ad96694748e59981fbcce",
-        "assets/web_publications/chamfer_everything/outputs/1.html": "bf21257ad25fd276f7988b83cc83df6bc2ddbd04ca3ad96694748e59981fbcce"
+        "assets/web_publications/chamfer_everything/document/metadata.edn": "c916c6562770100d6d684c4a4b77ca24246ffe89ee73d9dc8ed3568fbfe20fa3",
+        "assets/web_publications/chamfer_everything/document/outputs.json": "3b45e6482dec2fdcdcd4fd99cc8890a5bb8bacee46a736549a4396f525342ac9",
+        "assets/web_publications/chamfer_everything/outputs/0.html": "2a2e12e630ff4ceb0c60ecf76f51471f3981fb509526b70a992d5f25480eebd1",
+        "assets/web_publications/chamfer_everything/outputs/1.html": "2a2e12e630ff4ceb0c60ecf76f51471f3981fb509526b70a992d5f25480eebd1"
       },
       "kinds": [],
       "outputs": "assets/web_publications/chamfer_everything/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/chamfer_everything.yaml": "c04c26b12c2f87275f60d1045edb4ae1c197c00d593a725b6b93b5a8a0b3cc94",
-        "public/docs/assets/agent_transcripts/chamfer_everything/chamfer_ladder_code_.kt": "19003d1d2bbb479a837d4ced85e685a5d6c539b096e9174c40d428a73cc9ddb7",
-        "public/docs/assets/agent_transcripts/chamfer_everything/chamfer_one_part_code_.kt": "7ca765cec04a3c26acd7f70aef1eeadb10d9e14bc944cf82c786baafc749269f",
+        "dev_docs/agents/transcripts/chamfer_everything.yaml": "a9222bf91aa12d1b848136b4536fbab0325159525a9c7590024a8fb79d47560b",
+        "public/docs/assets/agent_transcripts/chamfer_everything/chamfer_ladder_code_.kt": "807a8eb3db7a2627f7b05039dc88d497111b59ced56b7f9ceef775603f4c38bb",
+        "public/docs/assets/agent_transcripts/chamfer_everything/chamfer_one_part_code_.kt": "5bfacb6012e81397ffa7c4ec820ed85419826186250b58f3cbbb71939ed9a449",
         "public/docs/assets/agent_transcripts/chamfer_everything/guides/solidcraft.md": "555c400207defb4c76d5e0588414bc965271c6c0c08af0c0990a177d1bd4ae90",
-        "public/docs/assets/agent_transcripts/chamfer_everything/metadata.edn": "61b8c6718413f5d3c9a5345d305c00027cc6dc0a2fd4dfae53fb2fbe4f216923"
+        "public/docs/assets/agent_transcripts/chamfer_everything/metadata.edn": "24b61639f2e4847b795a029b27b0471adda3ea9d492cfa91abdd31be28e26a62"
       }
     },
     "assets/agent_transcripts/chart_clip/metadata.edn": {
@@ -1488,25 +1489,25 @@
     },
     "assets/agent_transcripts/drawing_on/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "capturedAt": "2026-11-18T14:55:23.998Z",
+      "capturedAt": "2026-11-26T11:48:56.379Z",
       "channels": 2,
       "file": "assets/web_publications/drawing_on/document/metadata.edn",
       "files": {
-        "assets/web_publications/drawing_on/document/metadata.edn": "58b74287bb8dde7eb9bda24540adb42380d3118538310ea868351b983ab8b096",
-        "assets/web_publications/drawing_on/document/outputs.json": "2fe3957f81bd1555c9e409097fb0ac7aebf413e143daf78de1d09b9bbc9a00bd",
-        "assets/web_publications/drawing_on/outputs/0.html": "0d557e6f529b087b22301bd5b31a512fc20a965d444216f70af15df0f754d2f6",
-        "assets/web_publications/drawing_on/outputs/1.html": "597760e0139d8bc372b20343dca8d7be48d6e5356af7fb998868abe3751f569d"
+        "assets/web_publications/drawing_on/document/metadata.edn": "b29d993c63fbb5663310dfe3176d77cb93e716d7c306356a1a15d2da3e771fad",
+        "assets/web_publications/drawing_on/document/outputs.json": "4ed76d728f8075fc0172e3261791de5001efab0aa85c3b171df0b653d39a6f1e",
+        "assets/web_publications/drawing_on/outputs/0.html": "4e931de4e0c5944af1fae0518776a7a640cdc4bd5cc81334d29d1adfc59b3e41",
+        "assets/web_publications/drawing_on/outputs/1.html": "f2cca7aa0d23100ff558292596e1470c83c120fdad7127db8ec5a4d374b3223b"
       },
       "kinds": [
         "svg"
       ],
       "outputs": "assets/web_publications/drawing_on/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/drawing_on.yaml": "186af46cbe29c2a0e886900975e62342b06704622d29d4103f6d95810dc323d6",
+        "dev_docs/agents/transcripts/drawing_on.yaml": "94986351ff60561ff8291efe3f9fd187dce3c4f28232f5d58d621644702b8fde",
         "public/docs/assets/agent_transcripts/drawing_on/drawing-on-guide_code_.kt": "40c16c65894e0e8f2258c7ef051ae6f1616a88d5d07dc99fc5c54d6e686ceb2b",
-        "public/docs/assets/agent_transcripts/drawing_on/drawing-on-head_code_.kt": "33077654b8d5557ed6347facf8a31c2e25d60e6a1fed640f67f34b2de026c385",
+        "public/docs/assets/agent_transcripts/drawing_on/drawing-on-head_code_.kt": "dd3299c4e2c3fc48548d1653279af914f7cb6f0d1ee3175a46ffb2209cf7926a",
         "public/docs/assets/agent_transcripts/drawing_on/guides/drawing_on.md": "c1d349407ed52ac3f9676fe8bb51e8acf00a55da1be82d0273e9a5fbc3557fc0",
-        "public/docs/assets/agent_transcripts/drawing_on/metadata.edn": "99b985938ae99cbe99edfd521b14396a3a04c70194e6099ce2dee24365c6ea57"
+        "public/docs/assets/agent_transcripts/drawing_on/metadata.edn": "4f7c89aabb98e02fd5277e9642451ce9dd3ac513ef6827f2b3ff30b28345d9e8"
       }
     },
     "assets/agent_transcripts/drawn_morph/metadata.edn": {
@@ -1676,12 +1677,12 @@
     },
     "assets/agent_transcripts/exact_triangle_coverage/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "capturedAt": "2026-11-19T13:21:41.538Z",
+      "capturedAt": "2026-11-26T11:50:01.611Z",
       "channels": 1,
       "file": "assets/web_publications/exact_triangle_coverage/document/metadata.edn",
       "files": {
-        "assets/web_publications/exact_triangle_coverage/document/metadata.edn": "35bfa4987016be565a5e18e5c86875d3b6ec35f261eba9d06c7f5d9e52b949f0",
-        "assets/web_publications/exact_triangle_coverage/document/outputs.json": "49f299e1153fd8ea0a8f8ec74ecba2b0f15cab67b7a262de046dccb96f43b2a5",
+        "assets/web_publications/exact_triangle_coverage/document/metadata.edn": "d0f160e14c32a05cbe1c51a8904778c74537087aa3aa75607b9bb21f3f1e585e",
+        "assets/web_publications/exact_triangle_coverage/document/outputs.json": "d834eb47047412e7e5a4428a3c68cddaa37912375cf309819c34f0cea9f8b919",
         "assets/web_publications/exact_triangle_coverage/outputs/0.html": "04b577b2ecd8b6a094d0384c238c171cef03d97d42a8c475bf6243c4d975ea0b"
       },
       "kinds": [
@@ -1689,16 +1690,16 @@
       ],
       "outputs": "assets/web_publications/exact_triangle_coverage/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/exact_triangle_coverage.yaml": "8f981e529846b6b10cace2f4f331da2aa68b0e69268e27f4ede5c50fc5be774a",
+        "dev_docs/agents/transcripts/exact_triangle_coverage.yaml": "5bef233858034f51ec655e09b4c4385e46d142a20c1daaccca28f82b1121b6c0",
         "public/docs/afield_four_graphics.md#capture-box=coverage_gpu": "f93f362b8a6b3fab8fac7115750be9e9ab6204a37b10a7b5e821e0b7a3638faa",
         "public/docs/assets/afield_four_graphics/exact-coverage-gpu.png": "1e415ce4a833ab93a0303ca3d9b9480dbc07ffa0a0ab28d4803ab2509aabf7d7",
         "public/docs/assets/agent_transcripts/exact_triangle_coverage/agent_graphics_context_code_.kt": "e90393b044932ad7e022f5505bec768466f0d819aaa553c877bfe061d981c6d2",
-        "public/docs/assets/agent_transcripts/exact_triangle_coverage/coverage_cpu_code_.kt": "65aa5748b962feb545725802bfbe7504ecc635ca8db2da3e135c8bf4c0c2ccdb",
+        "public/docs/assets/agent_transcripts/exact_triangle_coverage/coverage_cpu_code_.kt": "f7f9cad9d0ae039c2ea5067d7d504e67b379f880693516ffcc4b1b89dcc7271e",
         "public/docs/assets/agent_transcripts/exact_triangle_coverage/coverage_gpu_code_.kt": "78bb89fd0612e2775244426493e3ade790eea8b4c59e38a4e3b6a22a05ec1e8d",
         "public/docs/assets/agent_transcripts/exact_triangle_coverage/coverage_gpu_fragment_.glsl": "d6be772c7435b4b7d72cfea6e6764e241dc85a4cff1cc876567b58223188b80f",
         "public/docs/assets/agent_transcripts/exact_triangle_coverage/coverage_gpu_vertex_.glsl": "8f3504d8801a4398f2518ca9de09a3f9f4b72e4eb43044567049caf473214b5a",
         "public/docs/assets/agent_transcripts/exact_triangle_coverage/guides/afield_four_graphics.md": "a652ead3f6638773e66a1e5702dfeb1209e4df98a2b1f127aea1f835bb5f6342",
-        "public/docs/assets/agent_transcripts/exact_triangle_coverage/metadata.edn": "c7fed40a1c0184419fa088a7226d91835522f4ac3fcc9108217693a15872998a"
+        "public/docs/assets/agent_transcripts/exact_triangle_coverage/metadata.edn": "7e5ce656b06ce9b543a192d4e6859d109852710a43af7c2949156e437f32231f"
       },
       "supplementalSources": [
         "public/docs/afield_four_graphics.md#capture-box=coverage_gpu",
@@ -1865,60 +1866,61 @@
     },
     "assets/agent_transcripts/fieldml_reactive_bridge/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "capturedAt": "2026-11-22T18:51:11.961Z",
-      "channels": 2,
+      "capturedAt": "2026-11-26T11:45:16.250Z",
+      "channels": 3,
       "file": "assets/web_publications/fieldml_reactive_bridge/document/metadata.edn",
       "files": {
-        "assets/web_publications/fieldml_reactive_bridge/document/metadata.edn": "71e0775d069012283ee54fee1c9f63f5dee3cb4dc1dfcef490d07f90e431ad82",
-        "assets/web_publications/fieldml_reactive_bridge/document/outputs.json": "12d99e5a69db8001abdc83cfd72e3542481c3a5cb1669d675ce9b03f4af26387",
-        "assets/web_publications/fieldml_reactive_bridge/outputs/0.html": "2c5c46e6b9efd0acb34daa075715cdcbe0eb9708ab26bb18f0210e2e5fe28a88",
-        "assets/web_publications/fieldml_reactive_bridge/outputs/1.html": "67224c995f288bf4e3dca3245472a224f5d6242fdce01f35d9fe4a8353263b4a"
+        "assets/web_publications/fieldml_reactive_bridge/document/metadata.edn": "29a31886ef372e0d7150899b152b505f5c0832da3c96cef0ebe5c8e63ba91c82",
+        "assets/web_publications/fieldml_reactive_bridge/document/outputs.json": "91f5ad0712ede2c62b8e6d87643b4ef4f295717981f8586e787675597c0fd74b",
+        "assets/web_publications/fieldml_reactive_bridge/outputs/0.html": "6d555f65cf1e351c570e7d99d2c05b213b8333d74f22ebdf5b7b59e91d175f5e",
+        "assets/web_publications/fieldml_reactive_bridge/outputs/1.html": "e410778eaffb839500a39f8c9ab6036d57c7b357912030745ceb4ab423e44597",
+        "assets/web_publications/fieldml_reactive_bridge/outputs/2.html": "ad1e70829a19cbf1f7a501f7435411dd9b99d75b12bc5e5f29bb2e2ea42f225f"
       },
       "kinds": [
         "svg"
       ],
       "outputs": "assets/web_publications/fieldml_reactive_bridge/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/fieldml_reactive_bridge.yaml": "ae12bb0c0ba452cc043c667e975e76c0f85bd9d59e82c4dba3af6543b88c0d0e",
-        "public/docs/assets/agent_transcripts/fieldml_reactive_bridge/exposure_meters_code_.kt": "8d9ef40de507a7c7738531b07f68dcb2aa53e5d766386934ff60dc64a9b41724",
+        "dev_docs/agents/transcripts/fieldml_reactive_bridge.yaml": "6a5af54cef015999167ef8f5febcfc24fd090a6977fbabaefd0f2e49e5722c8b",
+        "public/docs/assets/agent_transcripts/fieldml_reactive_bridge/exposure_meters_code_.kt": "c67b22875f30a32845fcc0230c3c17ee52a1654ea33c3a72edda38ca7768be3f",
         "public/docs/assets/agent_transcripts/fieldml_reactive_bridge/exposure_rule_code_.kt": "3e9b3cdeb4b4605affc234595071504fa7b515cf04b3b115e5f16821f18faef7",
         "public/docs/assets/agent_transcripts/fieldml_reactive_bridge/exposure_slider_code_.kt": "b0bc333e0a45f5a81872d61c8bd131bb2add986b43434cbc8f0a250c51b7b18d",
         "public/docs/assets/agent_transcripts/fieldml_reactive_bridge/guides/fieldml_host_bridge-source-macros.md": "a5e5ef4e2d8a7bd58623dbf2f0b61c4909bdc5f1e5aeaa61bb6a8e57c1204466",
         "public/docs/assets/agent_transcripts/fieldml_reactive_bridge/guides/reactive_properties-run-a-rule-in-fieldml.md": "68c5adceba0da2fbeb7309a8e5f4eef0d7ca9d1994ac6174b4a001cf37054f7f",
-        "public/docs/assets/agent_transcripts/fieldml_reactive_bridge/metadata.edn": "f84384adc6051c46575bb717ab7ec5a9529db6d5498e5ff83d829f97c2c8ea89"
+        "public/docs/assets/agent_transcripts/fieldml_reactive_bridge/metadata.edn": "8b03bbd76b7b1a71cdbd6de61cd6d831c6366559ca3fb54d3dfff0a268ae78b2"
       }
     },
     "assets/agent_transcripts/fillet_everything/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "capturedAt": "2026-11-25T12:05:26.816Z",
+      "capturedAt": "2026-11-26T11:49:28.992Z",
       "channels": 3,
       "file": "assets/web_publications/fillet_everything/document/metadata.edn",
       "files": {
-        "assets/web_publications/fillet_everything/document/metadata.edn": "e0835bb71e00b8633781a0d07504cadf25f0ad304896b1666ec398558e04225d",
-        "assets/web_publications/fillet_everything/document/outputs.json": "7c4cb4bf4e86735a0f6322f483182d4cae1b9f4d765193ed9fcddb09a2960db8",
-        "assets/web_publications/fillet_everything/outputs/0.html": "f7d0e9932d0a0fc9a0b4020b55a40764cfa8c26f184fceacbf72998d28a1f292",
-        "assets/web_publications/fillet_everything/outputs/1.html": "f7d0e9932d0a0fc9a0b4020b55a40764cfa8c26f184fceacbf72998d28a1f292",
-        "assets/web_publications/fillet_everything/outputs/2.html": "f7d0e9932d0a0fc9a0b4020b55a40764cfa8c26f184fceacbf72998d28a1f292"
+        "assets/web_publications/fillet_everything/document/metadata.edn": "8b2eb920f1c13fe0db0f7200489400cc910e3b40668c0a03d86000687e76de56",
+        "assets/web_publications/fillet_everything/document/outputs.json": "a924c958458d85bfdeb18bf51b2ada200f1ffa839702a7299dd214132d3fdb5b",
+        "assets/web_publications/fillet_everything/outputs/0.html": "d5eeda6f96d88a1d4c39861a31e8ca9b9e6b6fbd26482b487474b2a22b609540",
+        "assets/web_publications/fillet_everything/outputs/1.html": "d5eeda6f96d88a1d4c39861a31e8ca9b9e6b6fbd26482b487474b2a22b609540",
+        "assets/web_publications/fillet_everything/outputs/2.html": "d5eeda6f96d88a1d4c39861a31e8ca9b9e6b6fbd26482b487474b2a22b609540"
       },
       "kinds": [],
       "outputs": "assets/web_publications/fillet_everything/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/fillet_everything.yaml": "dd39570c1432295ff70d8e08f05ba0c40e8a6ad5bbab4fc9ddb75f596b48a48a",
-        "public/docs/assets/agent_transcripts/fillet_everything/fillet_block_code_.kt": "d98d52a90830061f726b8ac9ad0d911c21dc7e75545f5f878818740a5f4d63a8",
-        "public/docs/assets/agent_transcripts/fillet_everything/fillet_ladder_code_.kt": "c0696ef2e7a5bd3e9c612b541a13d63a37cd08762656a515f12f32eba68f0faf",
-        "public/docs/assets/agent_transcripts/fillet_everything/fillet_plate_code_.kt": "d018244e70d57d94ce1ef1fe23f853f40de242e1e8c88309599385c80a63e172",
+        "dev_docs/agents/transcripts/fillet_everything.yaml": "fb0211feea9a8e412d1d66d69267cb0b3643e259700fdcce500e517a21692ce8",
+        "public/docs/assets/agent_transcripts/fillet_everything/fillet_block_code_.kt": "1f4e5ea3fb70cfb4f96db7782285be71a65ec1f34bf7c778da55e85d95e40888",
+        "public/docs/assets/agent_transcripts/fillet_everything/fillet_ladder_code_.kt": "bb5e1b8d838ff768eaf73b52e8fd4a3290a2e9de752a308ee69c5e67e6a09118",
+        "public/docs/assets/agent_transcripts/fillet_everything/fillet_plate_code_.kt": "95ffac8efe0e0ae37378e0e97d3aab0cd8e9c87ddf62b69787779683c97015eb",
         "public/docs/assets/agent_transcripts/fillet_everything/guides/solidcraft.md": "fe93dcd5fa071eaaafc1c4aa2c21e61a948a5dc930ae7a88afc4fd9c2a71764d",
-        "public/docs/assets/agent_transcripts/fillet_everything/metadata.edn": "30d120c7edfff7c12e402a756394d919eb24a066fc97f09322709cf5f84d843c"
+        "public/docs/assets/agent_transcripts/fillet_everything/metadata.edn": "1be9933104e707472b397f8b58a2dacd58b8bcb2d9856539cdd03fe247579d07"
       }
     },
     "assets/agent_transcripts/fline_coverage_gpu/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "capturedAt": "2026-11-21T15:44:40.736Z",
+      "capturedAt": "2026-11-26T11:50:06.942Z",
       "channels": 1,
       "file": "assets/web_publications/fline_coverage_gpu/document/metadata.edn",
       "files": {
-        "assets/web_publications/fline_coverage_gpu/document/metadata.edn": "d4d9c222c523ee49a63a4703fdb2698cce79b4e8dabcbbf53f70c4a9bd792347",
-        "assets/web_publications/fline_coverage_gpu/document/outputs.json": "eb952ca426de7ddb9be309a0bba0050e064e4dba34c9984e886a680ce2375f6a",
+        "assets/web_publications/fline_coverage_gpu/document/metadata.edn": "c2aa81f8c3de815527886343360e0e512310bb9741cbd995b6c8efd09b859c3c",
+        "assets/web_publications/fline_coverage_gpu/document/outputs.json": "629edb8a3a76f2a642cd3d6522a789af62982b956ecf5a61a280d404a924c249",
         "assets/web_publications/fline_coverage_gpu/outputs/0.html": "178bd40bf48549c3269f91974e08d8c41ac88c343be044d7e05d8f5ee24c251f"
       },
       "kinds": [
@@ -1926,15 +1928,15 @@
       ],
       "outputs": "assets/web_publications/fline_coverage_gpu/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/fline_coverage_gpu.yaml": "7181b233a69c9b65259c97f99d6dad88e16a0d80d5c5390958722c0d1e1150e2",
+        "dev_docs/agents/transcripts/fline_coverage_gpu.yaml": "fa00b35871bdb62a3316d7b6b017d34dc5b23ec67d98a289f97fa7c8c34de784",
         "public/docs/assets/agent_transcripts/fline_coverage_gpu/fcg_draw_code_.kt": "9eb686573dd002db7a6e54087bbb570d01a95e082a5887fb4a32008aa4aa616f",
         "public/docs/assets/agent_transcripts/fline_coverage_gpu/fcg_draw_fragment_.glsl": "2a34ef530a8ee46b910970d6d6fcc7223a03a3b5efea28b3c08811b3b3460562",
         "public/docs/assets/agent_transcripts/fline_coverage_gpu/fcg_draw_vertex_.glsl": "fa8b34a0fd5d23cb8b092ff1b8d0f95ceb03612f45fa7b06e485ed11da365bcc",
-        "public/docs/assets/agent_transcripts/fline_coverage_gpu/fcg_fill_code_.kt": "c09bf9fd1fe7cbc781ccc2fb711282d7cd6373d68e8dd1b366ac5f9075591f3e",
+        "public/docs/assets/agent_transcripts/fline_coverage_gpu/fcg_fill_code_.kt": "d08d5a6c5120772b53ebd2c3444f71805f96f049913cf1bc21f33498ffa4e11f",
         "public/docs/assets/agent_transcripts/fline_coverage_gpu/fcg_renderer_code_.kt": "cfa7203341f4bb122f4e84d60d37840c2a7fbd98aaa372bf585fe03970361346",
         "public/docs/assets/agent_transcripts/fline_coverage_gpu/guides/afield_four_graphics.md": "4723d0c3bc306cd5f288f641fdf641d33efcdb6dad282f877a7395d8603b9742",
         "public/docs/assets/agent_transcripts/fline_coverage_gpu/guides/visualizers.md": "8dfe93aa11371670e7bc9ca47fadf07f2e925c8e32bbaab0926fd20d0e920f2d",
-        "public/docs/assets/agent_transcripts/fline_coverage_gpu/metadata.edn": "fc5956a501dc93865e53f630e7787a876c67192a29c9241d6ba7e20ed2d4d2c9",
+        "public/docs/assets/agent_transcripts/fline_coverage_gpu/metadata.edn": "2622de0a7f948f8af8d06222108fd28a17c26809e877eab79b145fc12c4981f6",
         "public/docs/assets/visualizers-fline-coverage-gpu.png": "0c5fb56755ccd8cd07791867eee46096a847c953f669efa94f0f6275424017b7",
         "public/docs/visualizers.md#capture-box=fcg_renderer": "59f8119fe5606f2380a40e5a298ba7845038bf2ed0cab64eb9b2b26f61d7b0e5"
       },
@@ -2242,19 +2244,19 @@
     },
     "assets/agent_transcripts/geodesic_carving/metadata.edn": {
       "captureDigest": "dae71325c6de8386066240231aac1762db1b9a954d32608e4f55a847371d2fb6",
-      "capturedAt": "2026-11-24T14:47:51.455Z",
+      "capturedAt": "2026-11-26T11:49:59.061Z",
       "channels": 7,
       "file": "assets/web_publications/geodesic_carving/document/metadata.edn",
       "files": {
-        "assets/web_publications/geodesic_carving/document/metadata.edn": "4d73c13258e373dfaa9eeaa311631ecb5535543426e1821eea23419033c1adf4",
-        "assets/web_publications/geodesic_carving/document/outputs.json": "7a495de61296d00f3a3481ec54d365fdc58447f60e9147e3b70a93229b5e542d",
-        "assets/web_publications/geodesic_carving/outputs/0.html": "ff438648f22b0f5d77461774460819257c1ccccfcabe468554bf60e3096257e7",
-        "assets/web_publications/geodesic_carving/outputs/1.html": "1a2f8bd1e3124c5b7255c707a52701af1d03517e0bcb9ed235420489f8e66f73",
-        "assets/web_publications/geodesic_carving/outputs/2.html": "9cf4e9a3844d01dac28f89fa2af18adbef2b5efb2a5d9e5c1a18382f0a134368",
-        "assets/web_publications/geodesic_carving/outputs/3.html": "e728067ce90e50a37920a93b0be0b89c9f3ac667be29686fd96bc2691125b2d8",
-        "assets/web_publications/geodesic_carving/outputs/4.html": "17b7ecb1caf3ffc46be4974bbb62000f0c33d7f8d781d92c115c40665c8b937b",
-        "assets/web_publications/geodesic_carving/outputs/5.html": "d00df84227c210378c5480b1f9873f7c85397b2e4bcac000309223674400c5fc",
-        "assets/web_publications/geodesic_carving/outputs/6.html": "d938a2257e9c5ba6ec589d0b9ff2c56624ed166803ff3c49be44492236f3cc49"
+        "assets/web_publications/geodesic_carving/document/metadata.edn": "fb27c48be8b0ecb66836cc11ac61d04c92bd18a089fa2f184a029e34a8ccb66a",
+        "assets/web_publications/geodesic_carving/document/outputs.json": "911269d1a3d31a5b29b6eab6c499515f4a86339a970d6e59b71ec94693e34b70",
+        "assets/web_publications/geodesic_carving/outputs/0.html": "d2be5cdc57d327555293c21aab8baa1d00cacca65ee31395da23984de311910f",
+        "assets/web_publications/geodesic_carving/outputs/1.html": "44fe7259a3c0e12e092286fd3c77acc1bc299128f5262f8ad383c94c0d19962f",
+        "assets/web_publications/geodesic_carving/outputs/2.html": "d029307cbcdf20d116f8676c3f85595abd633db7f8f2781b30de42929191ed40",
+        "assets/web_publications/geodesic_carving/outputs/3.html": "e4fb60327ec3c4b350663a7a7230620763bf1d8e37d54859f4bd4c508d67d499",
+        "assets/web_publications/geodesic_carving/outputs/4.html": "1e58c887bba7ea3d9c6cab01a78e72073b69000aaed607471ef53779f25a7e55",
+        "assets/web_publications/geodesic_carving/outputs/5.html": "b3ae151d8c774756ca298b14c1bd336e446c1018332821d590a0b62dbb086f74",
+        "assets/web_publications/geodesic_carving/outputs/6.html": "16363fe7dc699ad5db232724cd1ae83b02934b4a16dd952b760da1e91eac697d"
       },
       "kinds": [
         "svg",
@@ -2262,16 +2264,16 @@
       ],
       "outputs": "assets/web_publications/geodesic_carving/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/geodesic_carving.yaml": "7f6bead38a5c0ab171c02c3c84dbbad7afb289056fff6792f7b0e06792bf082c",
+        "dev_docs/agents/transcripts/geodesic_carving.yaml": "9f06ce24cec8cd761abc6ee51505f52054e591a708b074e612d9c5c10836b6c5",
         "public/docs/assets/agent_transcripts/geodesic_carving/double-spiral-room_code_.kt": "7c9dd29d4075083fa246958ed2595be2f7b5cf62cb3fe561e1763c936b2862a9",
         "public/docs/assets/agent_transcripts/geodesic_carving/double-spiral_code_.kt": "737ca840e117f92b386f46c87b6dcf59b680ea35025e3a0d338f618df6d811c2",
-        "public/docs/assets/agent_transcripts/geodesic_carving/geodesic-spiral_code_.kt": "3758671033cc2477e7e5622737cc14dcd535cd83ff3ee25e3e7db2785646ade1",
-        "public/docs/assets/agent_transcripts/geodesic_carving/geodesic-vs-euclidean_code_.kt": "15609ef8db7e2407d596a7ad464420cb08832dbd5e70f3952c07a0db155869ed",
+        "public/docs/assets/agent_transcripts/geodesic_carving/geodesic-spiral_code_.kt": "603479175894d87ad91b2f0ad4118af99bd313778f7c3a5da91183a2dd790afe",
+        "public/docs/assets/agent_transcripts/geodesic_carving/geodesic-vs-euclidean_code_.kt": "5cc4f39c7fbf1bf5dd42ff9a006e9497884fa7b2df5dcfbeb623642900a1159f",
         "public/docs/assets/agent_transcripts/geodesic_carving/guides/mesh_examples.md": "4f008f9a9b8715a9cc07445c90fc5e41852f5ebb42c8a256a91e44409dacef07",
-        "public/docs/assets/agent_transcripts/geodesic_carving/metadata.edn": "a2ecb95e19ad4b50b31fd047de28d31fd21241d394c61bbb086c40b8f7f496b4",
+        "public/docs/assets/agent_transcripts/geodesic_carving/metadata.edn": "03832e3cfd37af91b0ef0b77c1e40e88d8fc42b35ac6100607683f7489eb7ae2",
         "public/docs/assets/agent_transcripts/geodesic_carving/port-sweep_code_.kt": "3cc2456c932d4ea0156e282fcd449678d92554f69a86641d35b901dfb72e0f9c",
         "public/docs/assets/agent_transcripts/geodesic_carving/relaxed-spiral_code_.kt": "383ffb00cf9edc3341a75f1383585594bc29eacd6dd57758ee52622baa9cc0cb",
-        "public/docs/assets/agent_transcripts/geodesic_carving/roughing-passes_code_.kt": "e392b4634090c8a0196ffbc6988e71f007d3a68c23a2ab425800fcc9ec8eb197"
+        "public/docs/assets/agent_transcripts/geodesic_carving/roughing-passes_code_.kt": "602b7f3832f8bccdeee69c95aa662cbe86c5bb3fd698eab34d46a30c4421912c"
       }
     },
     "assets/agent_transcripts/geometry_from_disk/metadata.edn": {
@@ -3244,23 +3246,23 @@
     },
     "assets/agent_transcripts/marf_field_clocks/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "capturedAt": "2026-11-25T12:04:18.397Z",
+      "capturedAt": "2026-11-26T11:48:53.993Z",
       "channels": 4,
       "file": "assets/web_publications/marf_field_clocks/document/metadata.edn",
       "files": {
-        "assets/web_publications/marf_field_clocks/document/metadata.edn": "c1d92e64a7e2568830f0e7386beea2a26347733fb00e4d2f612c0fdbf60d3731",
-        "assets/web_publications/marf_field_clocks/document/outputs.json": "71ef34e632534238037e76bba702d4c512d4cf5109754e1a1aa4201040c13ee4",
-        "assets/web_publications/marf_field_clocks/outputs/0.html": "46e22ae0fd88a8c713ffbc4508805180be7b7138ec593925d751cbfc8b46a4d5",
-        "assets/web_publications/marf_field_clocks/outputs/1.html": "3865aa440a3d0dac84a9ef32efd0bba8b94eb6a136d898b69f0a53e319d82f8b",
-        "assets/web_publications/marf_field_clocks/outputs/2.html": "159db04093342f91453866e7e697d60a2b93c01f16523ef91f046fa3cac7a0c1",
-        "assets/web_publications/marf_field_clocks/outputs/3.html": "35ef876932a69aa4cd29544fee525fdcdca8cc44d511ed39122d4ee494a4f23c"
+        "assets/web_publications/marf_field_clocks/document/metadata.edn": "3b4a24029e831fa34c05d467b126719304de4d125b7bbe3d48be5064d3075fbd",
+        "assets/web_publications/marf_field_clocks/document/outputs.json": "4d5433d7a9b9aca6122028a448378d252d4ce665ee8e189cdbdf84469fea5e4d",
+        "assets/web_publications/marf_field_clocks/outputs/0.html": "c2248661dfee641ca7ce4fbf308a603f2b0d9526ce836653042ecf9e4d551eec",
+        "assets/web_publications/marf_field_clocks/outputs/1.html": "ee523c831c870742a8dd30f63d17999e4768977be04468c1412c60d2467f8d48",
+        "assets/web_publications/marf_field_clocks/outputs/2.html": "8c352451611e507124a9a4e628cfb86235e5bb9910e44e60d512494566eabff2",
+        "assets/web_publications/marf_field_clocks/outputs/3.html": "592bd290bff6701b81002a65fa2b1c0fb616a8276352b7612f2dd4189e24cb9c"
       },
       "kinds": [
         "svg"
       ],
       "outputs": "assets/web_publications/marf_field_clocks/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/marf_field_clocks.yaml": "0739f84b72857a00303f86c7b3955f9b144bfc3cdf95eb2bd61e793842de1199",
+        "dev_docs/agents/transcripts/marf_field_clocks.yaml": "78f8aa68ddf13dc3f85c46bf46fec42133569a0d8d93b993fe2a6d64c695e526",
         "public/docs/assets/agent_transcripts/marf_field_clocks/guides/marf-which-clock-the-fields-are-read-in.md": "1754319afd0634667dc966ae3b15b7901f582474216ebb1e67cc3d81fdaca27f",
         "public/docs/assets/agent_transcripts/marf_field_clocks/marf_clocks_ledger_code_.kt": "389c75ca4ccfb44af24b683f9b497261691d86c602e623f26beadbd680cb9937",
         "public/docs/assets/agent_transcripts/marf_field_clocks/marf_clocks_refused_code_.kt": "0737466af41566dd9b853289dce70a9061500eb9ebd8c425ae84bfae413b4779",
@@ -3507,71 +3509,71 @@
     },
     "assets/agent_transcripts/nile_gezira_kernels/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "capturedAt": "2026-11-21T15:44:37.569Z",
+      "capturedAt": "2026-11-26T11:46:57.193Z",
       "channels": 14,
       "file": "assets/web_publications/nile_gezira_kernels/document/metadata.edn",
       "files": {
-        "assets/web_publications/nile_gezira_kernels/document/metadata.edn": "0f587a1461216a56bdbb40924459682f2e379ca2edb9736f47f0e5d86833fbd8",
-        "assets/web_publications/nile_gezira_kernels/document/outputs.json": "76d35e027c7e0a524457ea88fad4a667ea77c486cf099165fdc5ea8ba556a72c",
-        "assets/web_publications/nile_gezira_kernels/outputs/0.html": "82251f148e1bb4fecb9fc8ae3703731f62d2e89d48f63d557d801dbbbd2b5d76",
-        "assets/web_publications/nile_gezira_kernels/outputs/1.html": "97ffa7bcf65e8f6c1eae742b544975baec9fd3458a845af50f10ca50dc9a36ee",
-        "assets/web_publications/nile_gezira_kernels/outputs/10.html": "1d74438125aae944f11cfb701be27fde52894bca43bd46f69c693e7f60dd2d6a",
-        "assets/web_publications/nile_gezira_kernels/outputs/11.html": "8ca1e5b63895b901ce11d3f5a709e80444cf043357851d7a302c3a156aab57e4",
-        "assets/web_publications/nile_gezira_kernels/outputs/12.html": "4724de8e5e86ba3c25edc507c7c5d9b09c304a5c982218937f06985569e6e786",
-        "assets/web_publications/nile_gezira_kernels/outputs/13.html": "8c2005253accb617a31d761c374950e2c6589765a9ad143e5b5ad5c37ad843b9",
-        "assets/web_publications/nile_gezira_kernels/outputs/2.html": "cfb643b4c4315eb48f35e359bebf4dcbffed7ec141ac352411d3aaaf55aed677",
-        "assets/web_publications/nile_gezira_kernels/outputs/3.html": "87f02fbe27fd89ed2e33ef7d82ba627eda5a6c316c7722b9a3a0be39e6dffc91",
-        "assets/web_publications/nile_gezira_kernels/outputs/4.html": "057b3e335b3e1c0a74e3c25ccb5c30c92bb877a0856a42884676be8aa1955b52",
-        "assets/web_publications/nile_gezira_kernels/outputs/5.html": "091436e758741a4497d03a7bcab3138e255fd148a457f7a17f27b4cab311fb0c",
-        "assets/web_publications/nile_gezira_kernels/outputs/6.html": "cc386abbf36c98d52455ffac5997353f0a1715140b5067af1a461310809c35d2",
-        "assets/web_publications/nile_gezira_kernels/outputs/7.html": "56bfadffff566a85c0ef3f06f7e06399e069c1a8b0926676313da7a6f9dda15e",
-        "assets/web_publications/nile_gezira_kernels/outputs/8.html": "e0e91ee9b8aa9250dc91084aa5af357566ff612f9623d18c2972c82037046eef",
-        "assets/web_publications/nile_gezira_kernels/outputs/9.html": "734efd79b4a82b65abba6d13eb86e771e3531cb8d1340927e5e7d3ca0ce961a4"
+        "assets/web_publications/nile_gezira_kernels/document/metadata.edn": "150ea276d34de7b94cf6a3c9e5ed0b048669869026bea5b5a44c28530b7f3435",
+        "assets/web_publications/nile_gezira_kernels/document/outputs.json": "b9fe3509204655e329aee7da0938abd2483eef8c5cbce529f44bfe66a5cf85cd",
+        "assets/web_publications/nile_gezira_kernels/outputs/0.html": "2680bc7a85179edf53719d1102ae433222a7dd3e200826d90a727e30a9b845ab",
+        "assets/web_publications/nile_gezira_kernels/outputs/1.html": "c243aef78825c9f7be82b0e2cf81b1ceaf5d027b76538d4c2b9cd6b58f5f04c6",
+        "assets/web_publications/nile_gezira_kernels/outputs/10.html": "d03699d9abfc3037e802b6806ecc098f13bba494467ca2a7d4fb8d018a6ce654",
+        "assets/web_publications/nile_gezira_kernels/outputs/11.html": "5ea30bc73279c9ce90f9104fde6d04c89684a1813e9c2d7d9c56065aed6fca2f",
+        "assets/web_publications/nile_gezira_kernels/outputs/12.html": "8cbe2be3f5fa3d98a1bbe6ff6924442ad04046b7965a6b662d20c4a2a6439c72",
+        "assets/web_publications/nile_gezira_kernels/outputs/13.html": "48554f1b0db4c80bba9f2d466e4c905d6dd39fe6e6753b2e25802de9cb387f47",
+        "assets/web_publications/nile_gezira_kernels/outputs/2.html": "5003924ef381fe5bfd7aeae358fc0b4e195206cf0ef54d12c0789bfbd873a1dd",
+        "assets/web_publications/nile_gezira_kernels/outputs/3.html": "22316b48fced888e4bc59266ab561e4a268a268041df68061f143902c778ec06",
+        "assets/web_publications/nile_gezira_kernels/outputs/4.html": "65bf4414d16b4755c3822eed0be5177ad01ad13dca61905afc15c36a15d7fb3d",
+        "assets/web_publications/nile_gezira_kernels/outputs/5.html": "b228e8f7635927c83b2b72fd81c20f2040e2cde48dbd8f249b3a5d19c6565828",
+        "assets/web_publications/nile_gezira_kernels/outputs/6.html": "5fcc47c802a3268c8cd5d48a7b2467add480705fea505662c9ac40210dd37f50",
+        "assets/web_publications/nile_gezira_kernels/outputs/7.html": "0cbc2fa359d7e59faa1055b3787235a029b310cd6d9bcde10823ae929d1085fe",
+        "assets/web_publications/nile_gezira_kernels/outputs/8.html": "0f8848fe061fc203b2e3d8d6ef0b03aaec18d07c678cb4bcd87979851c64c51c",
+        "assets/web_publications/nile_gezira_kernels/outputs/9.html": "6d9c1b0f26718ec960f6291b4de9b777aed980653ee76db968b48af4325911b1"
       },
       "kinds": [
         "svg"
       ],
       "outputs": "assets/web_publications/nile_gezira_kernels/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/nile_gezira_kernels.yaml": "974e36c6e221787c1056ea8db7154c212467e13c5fb5cc3b2e9b9000c8129278",
+        "dev_docs/agents/transcripts/nile_gezira_kernels.yaml": "51b0396538c4290d1f7cea05250cf85f2da2f32931cae37c3083f25110f24718",
         "public/docs/assets/agent_transcripts/nile_gezira_kernels/gezira_composite_code_.kt": "70fcf9ab683a2e09909567d4e9ec1a991e9bd73f9cf9877388772dfff33a588f",
         "public/docs/assets/agent_transcripts/nile_gezira_kernels/gezira_fill_rules_code_.kt": "73afdf37c4e5e0d59d6ac1903899aba2cdabc5a35ab1c218061461e2014a65ae",
-        "public/docs/assets/agent_transcripts/nile_gezira_kernels/gezira_new_kernel_code_.kt": "e7db74051659f363febb15b8c5db88dbdfcf09606aaf93437d067a837cc3c91c",
-        "public/docs/assets/agent_transcripts/nile_gezira_kernels/gezira_streams_code_.kt": "6c1fb68b10a2b2170397b7561884690acc4beb4dc4e0f3ff7f2fdca9cb83ad9a",
-        "public/docs/assets/agent_transcripts/nile_gezira_kernels/gezira_stroke_code_.kt": "3f11422b933f787491d7c2c4a9426eb0be1bb6a6f53ac829c5cf8b62625665a8",
+        "public/docs/assets/agent_transcripts/nile_gezira_kernels/gezira_new_kernel_code_.kt": "0a856541d24269c3208851bc7d78ab41fd5534b3f4fa38a2760ad44fee4e6b93",
+        "public/docs/assets/agent_transcripts/nile_gezira_kernels/gezira_streams_code_.kt": "df99c2a9851299248213344b1534c9c829f6980c87af853b2dc01fc2ddffa6f0",
+        "public/docs/assets/agent_transcripts/nile_gezira_kernels/gezira_stroke_code_.kt": "ad7668620c81d4524d65f6b328ac219263691bbbbd9af7582ef6244d8f917e63",
         "public/docs/assets/agent_transcripts/nile_gezira_kernels/gezira_text_code_.kt": "fd5afb1e82db2f7f5c273abbbd000641e2bba928dbabd127e5c6cc85aa259a97",
         "public/docs/assets/agent_transcripts/nile_gezira_kernels/gezira_vs_skia_code_.kt": "933143c87311f82c3f97ef330db1ace4676158dd8ab7b842295a0d5fa998aae1",
         "public/docs/assets/agent_transcripts/nile_gezira_kernels/guides/afield_four_graphics.md": "c28459c8e53de6c13fcf80bae66ab20d1dce7920250f5d0db154899090047b3f",
-        "public/docs/assets/agent_transcripts/nile_gezira_kernels/metadata.edn": "0501a568b7316fc7187436f581e867470fa0d53d49a064f98cb0fcaeea6013f8"
+        "public/docs/assets/agent_transcripts/nile_gezira_kernels/metadata.edn": "ee85c418b81b26ed1684b93f0d4ba0014ad777afa879bc3d57b60ab4a92ac790"
       }
     },
     "assets/agent_transcripts/nile_gezira_svg/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "capturedAt": "2026-11-22T16:10:13.755Z",
+      "capturedAt": "2026-11-26T11:47:04.238Z",
       "channels": 6,
       "file": "assets/web_publications/nile_gezira_svg/document/metadata.edn",
       "files": {
-        "assets/web_publications/nile_gezira_svg/document/metadata.edn": "0ae4fa044dedc29c7ef3f5aa5d98a236c31f0c0e039800d780129ffd1e9eea44",
-        "assets/web_publications/nile_gezira_svg/document/outputs.json": "96be8e96c57affb198957011c0ee26a3cb6c5c8ffeb141aa2f861bbacbb286a9",
-        "assets/web_publications/nile_gezira_svg/outputs/0.html": "da81574193703c7b3b648940c5afef3d78eb866cae4a9fd348118f5dda16843c",
-        "assets/web_publications/nile_gezira_svg/outputs/1.html": "c09f295ea753470549e12f0e42d5c6b347f816c92c08c9ccd9e941d1c5738387",
-        "assets/web_publications/nile_gezira_svg/outputs/2.html": "6091b65d57c2f9016cfe1c17967deef91c7d28b9861141e363bbedb63a7580d6",
-        "assets/web_publications/nile_gezira_svg/outputs/3.html": "ee4c3c31d59ab6883595815190fb37328d1f1bc606acfb3076ea820f292b47c5",
-        "assets/web_publications/nile_gezira_svg/outputs/4.html": "384bbe5f0bf519222851bbf679c11c3f5bde61ab7976cd0e2b9fd51bc7d4ef08",
-        "assets/web_publications/nile_gezira_svg/outputs/5.html": "5c80fa6aa543d5949d6fa1f2dfa1fc4d5edbf00c6ac97ca2f72028491634da74"
+        "assets/web_publications/nile_gezira_svg/document/metadata.edn": "9c7ec4aa41cdfe39b0bf6e92f4a983c094ef78c0e1f97ead48fc2c47f40009da",
+        "assets/web_publications/nile_gezira_svg/document/outputs.json": "19d8dc05d09006ba616b5336b900661792328c0289842164463c1bf835c8f12c",
+        "assets/web_publications/nile_gezira_svg/outputs/0.html": "1b8fc0fca3bcc28fc8f4ec5ce8d4cc2d85b90165e81e66eb5b6d883b3e6bbefc",
+        "assets/web_publications/nile_gezira_svg/outputs/1.html": "6c86181a11ab34b61738124a891f9dcbae4f8f3275ee18591422554d4bd33a90",
+        "assets/web_publications/nile_gezira_svg/outputs/2.html": "eec252d75ddd375a9159f988bbb576db485653e125c0b6bdb4221bbf9d82b4a9",
+        "assets/web_publications/nile_gezira_svg/outputs/3.html": "4020a5663ac1c5b7ff7add9da3414566db30345b2cf059fe4f99e8ecac8a48eb",
+        "assets/web_publications/nile_gezira_svg/outputs/4.html": "e1ce19b20216e0cd24dea60bdc84b195ebb59197cd4a96accc0d8dd02654b92a",
+        "assets/web_publications/nile_gezira_svg/outputs/5.html": "e676664e9f63df8ee13054299797fab98d8cd80bd48a869f03f5ae780d668d32"
       },
       "kinds": [
         "svg"
       ],
       "outputs": "assets/web_publications/nile_gezira_svg/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/nile_gezira_svg.yaml": "ff652f40e09ff6e263b3fb94ce894dd0a463b7f732cccf37c9666bcb6af4192e",
+        "dev_docs/agents/transcripts/nile_gezira_svg.yaml": "bc02ea3efeef947fdbc28c7c40ef107cc3e4ae632f15d7829ecbf9f3db7dbb1f",
         "public/docs/assets/agent_transcripts/nile_gezira_svg/gezira_fline_paint_code_.kt": "f9162f44dde0450735143ee6c5633b6df1cb327db078f0044ebe362ff8aa31ea",
         "public/docs/assets/agent_transcripts/nile_gezira_svg/gezira_svg_flines_code_.kt": "1b05167ff4040ed02de28932aa8d4d224e599e54c8acaeba0a2844fe5d33bafa",
         "public/docs/assets/agent_transcripts/nile_gezira_svg/gezira_svg_reader_code_.kt": "239942722bafcaf859c66bccd7aca855daec88ed0e328883064e1d9a3420a985",
-        "public/docs/assets/agent_transcripts/nile_gezira_svg/gezira_svg_tiger_code_.kt": "11efe3184818d03a3cf0d1d24025a058c0451fe63a5c3dc2ce337d8f33aeb041",
+        "public/docs/assets/agent_transcripts/nile_gezira_svg/gezira_svg_tiger_code_.kt": "a9b2b87d78cdce00e98d2c9902471c92f5c86c688a8a364f3e1bd9a25c916cde",
         "public/docs/assets/agent_transcripts/nile_gezira_svg/guides/afield_four_graphics.md": "1afa3e640352bf61832b58ae95830df6eb117a9ed72d5312192b848649df0b00",
-        "public/docs/assets/agent_transcripts/nile_gezira_svg/metadata.edn": "351088319b2e6d71a9bac9b06f0e559b4f889c5458aff2e74f2400278b50037f"
+        "public/docs/assets/agent_transcripts/nile_gezira_svg/metadata.edn": "2550dd4468ff5805ffcbd35fa9f233b7b7d309c983224fb4c99256db2bc1d2dd"
       }
     },
     "assets/agent_transcripts/noiselang_distributions/metadata.edn": {
@@ -3808,12 +3810,12 @@
     },
     "assets/agent_transcripts/outline_field_gpu/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "capturedAt": "2026-11-20T12:25:04.017Z",
+      "capturedAt": "2026-11-26T11:50:05.283Z",
       "channels": 1,
       "file": "assets/web_publications/outline_field_gpu/document/metadata.edn",
       "files": {
-        "assets/web_publications/outline_field_gpu/document/metadata.edn": "506e833005520a11c5a2e7b8584033f80d64257ba24fb76a39692954e24ec3fc",
-        "assets/web_publications/outline_field_gpu/document/outputs.json": "11738e27ce074c7b3fe44ea410bf9b65170c18470b61c4df277e8377dc1f5ac8",
+        "assets/web_publications/outline_field_gpu/document/metadata.edn": "8299746c33b23d3a0c3a5a3449fc74c17761a1139f193af48c417429a185ffa3",
+        "assets/web_publications/outline_field_gpu/document/outputs.json": "84b84e17bfe57b90cc5d599c9e4dde66d9cd7be16ca98e6296319b4beb8811a6",
         "assets/web_publications/outline_field_gpu/outputs/0.html": "51388aaaf1716d3ee7332db62e6f02d199d04a3aa21705fe0d7cccda5c067725"
       },
       "kinds": [
@@ -3821,14 +3823,14 @@
       ],
       "outputs": "assets/web_publications/outline_field_gpu/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/outline_field_gpu.yaml": "b393ce8ae02552b8a06bc88d7b51905440856d753827e8f4a85c496d7e3a7fe9",
+        "dev_docs/agents/transcripts/outline_field_gpu.yaml": "269bdeaf59d0e1ace5de5b84ed2aade8e9ce304d1409aa88831436e935332f88",
         "public/docs/assets/agent_transcripts/outline_field_gpu/guides/visualizers.md": "05189bc72b892710c27cadc62016ded0214790d2b5828277084614583a1d34f1",
-        "public/docs/assets/agent_transcripts/outline_field_gpu/metadata.edn": "58b8aff71a09ff14e61605a6573aef5c0496191a3d34aa34bd893824d4dbfe6c",
+        "public/docs/assets/agent_transcripts/outline_field_gpu/metadata.edn": "1f9a48c2e449a31a54835116ed74ea9caaf924402b3f6a28787da8c782566128",
         "public/docs/assets/agent_transcripts/outline_field_gpu/ofg_draw_code_.kt": "6a5f0c16e40dfd97c2232424a5a7ae2573a8290bab6b65dbadfad2cf01da3c99",
         "public/docs/assets/agent_transcripts/outline_field_gpu/ofg_draw_fragment_.glsl": "2186d8f3eda7d2c076e3988487a370ec054774ecf6ca6da02a24fd0b884327a8",
         "public/docs/assets/agent_transcripts/outline_field_gpu/ofg_draw_vertex_.glsl": "fa8b34a0fd5d23cb8b092ff1b8d0f95ceb03612f45fa7b06e485ed11da365bcc",
         "public/docs/assets/agent_transcripts/outline_field_gpu/ofg_renderer_code_.kt": "4a712802a51931a985e5dba51855d833b354a088b51743d76f5afff53653f516",
-        "public/docs/assets/agent_transcripts/outline_field_gpu/ofg_sim_code_.kt": "4ce2131eb3c8c841f8557e49cd3f22e74b12eb5168a67670fbae6f40e79c11dd",
+        "public/docs/assets/agent_transcripts/outline_field_gpu/ofg_sim_code_.kt": "d1296ac35dfcd2474cb9b910cb89ea48655d2ee4754ecd2ce40e503ce09f5148",
         "public/docs/assets/agent_transcripts/outline_field_gpu/ofg_sim_compute_.glsl": "aa1dc3b2f3bfaee1665918b055cc1c59dcb3fc4d893849a5a7ed26375c36feb5",
         "public/docs/assets/agent_transcripts/outline_field_gpu/ofg_star_code_.kt": "75e05381287b4ff0469209287547c79d526762f4133863ccca4bc7e7c450e709",
         "public/docs/assets/visualizers-outline-field-gpu.png": "fa0a3681db683c81d18260f9ef570c4c21769416dc96727b8042f3399e7289bf",
@@ -4192,6 +4194,35 @@
         "public/docs/path_tracing.md#capture-box=path_trace_materials"
       ]
     },
+    "assets/agent_transcripts/path_tracing_subsurface/metadata.edn": {
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-26T09:27:45.513Z",
+      "channels": 1,
+      "file": "assets/web_publications/path_tracing_subsurface/document/metadata.edn",
+      "files": {
+        "assets/web_publications/path_tracing_subsurface/document/metadata.edn": "24a2325084b15cefb4313b10d466b77d7a25f26d13d54d41f1b364576d2ed852",
+        "assets/web_publications/path_tracing_subsurface/document/outputs.json": "23b5c8500caf9eac131586273901d600d58d1f314b7c8ac4d97a42f9c4d64d64",
+        "assets/web_publications/path_tracing_subsurface/outputs/0.html": "0f96029dfaf0d1c7320610390e89c89296e6c800e7870357f0e675da278d7a34"
+      },
+      "kinds": [
+        "native-image"
+      ],
+      "outputs": "assets/web_publications/path_tracing_subsurface/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/path_tracing_subsurface.yaml": "3e58dc364db7338fdf6681b47abb48278e43f9e66d01230d21d3fe04bb4f0a5d",
+        "public/docs/assets/agent_transcripts/path_tracing_subsurface/guides/path_tracing-subsurface-scattering-from-a-colour-and-a-radius.md": "28d8a4020227739bf63210c6fc9f315cb186efb7aacb9a679620202a0480aed8",
+        "public/docs/assets/agent_transcripts/path_tracing_subsurface/metadata.edn": "b80b12d91a44c4db2b9e1f7e139241bc50584134f475b445dc2fda61b4060865",
+        "public/docs/assets/agent_transcripts/path_tracing_subsurface/pt_sss_controls_code_.kt": "c2cf2a46b92b4fcc739231b0e8b1029bbe439bcc4d8df63d5ad0cf7cd2e850cd",
+        "public/docs/assets/agent_transcripts/path_tracing_subsurface/pt_sss_renderer_code_.kt": "6b0f7454b816542c03e877e6f38f3f42f62087760fcfd61b1713352fa3c0e756",
+        "public/docs/assets/agent_transcripts/path_tracing_subsurface/pt_sss_row_code_.kt": "eda8efe2b14e1b4146d690fb1c02caf23fe3ed21bd27bdc66927dd1fb716a7a6",
+        "public/docs/assets/path_tracing/subsurface_remaps.png": "0efe6686bf91af3f691d1a70fe89d31ab9de37e382b4502b384bfe8c2d5511a3",
+        "public/docs/path_tracing.md#capture-box=pt_sss_row": "2938eaae607be86873240d2e191a379f7594e658346bddd2af83d1254050b2f7"
+      },
+      "supplementalSources": [
+        "public/docs/assets/path_tracing/subsurface_remaps.png",
+        "public/docs/path_tracing.md#capture-box=pt_sss_row"
+      ]
+    },
     "assets/agent_transcripts/pattern_condense/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
       "capturedAt": "2026-11-18T15:45:10.179Z",
@@ -4301,26 +4332,26 @@
     },
     "assets/agent_transcripts/pattern_rewrite_worked_example/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "capturedAt": "2026-11-23T20:36:17.026Z",
+      "capturedAt": "2026-11-26T11:48:59.679Z",
       "channels": 1,
       "file": "assets/web_publications/pattern_rewrite_worked_example/document/metadata.edn",
       "files": {
-        "assets/web_publications/pattern_rewrite_worked_example/document/metadata.edn": "57f56c04674ab892b3a963fa7a946d20d510656c81eec6af0755bed13933101c",
-        "assets/web_publications/pattern_rewrite_worked_example/document/outputs.json": "2907da06d0451585eab5d76ecdca99c5ff8af4783895c252c330f43ec7a57b22",
-        "assets/web_publications/pattern_rewrite_worked_example/outputs/0.html": "ab45ce4a3b6c7076742751c042817106bfed40a9a72c7ef799f0ec979aebff04"
+        "assets/web_publications/pattern_rewrite_worked_example/document/metadata.edn": "e4198d12c405b3c8ec77972a82336efd24bcc98773d32b4521d73a57930d0564",
+        "assets/web_publications/pattern_rewrite_worked_example/document/outputs.json": "8e91e776f4b741544a25bcb7d0664f5aa2696d6a6030e6487813ed37ae86df8b",
+        "assets/web_publications/pattern_rewrite_worked_example/outputs/0.html": "cc036e5bc10ad37fa2b91edbe7432d4e557b1250b8a384a091d89ba55793c778"
       },
       "kinds": [],
       "outputs": "assets/web_publications/pattern_rewrite_worked_example/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/pattern_rewrite_worked_example.yaml": "05f636905530b8446600984cb558d4bf29e0bdb10e6a8fcd8b75bde77decc668",
+        "dev_docs/agents/transcripts/pattern_rewrite_worked_example.yaml": "5e0dcd455ba7871271365467edcae9260215e8bc59db478a1395eba3b375fa3e",
         "public/docs/assets/agent_transcripts/pattern_rewrite_worked_example/guides/pattern_rewrite.md": "b273f9f5f083ff9620af9135b4ea64a0198577b2bb83f655c6fbf0f54d6a27ab",
-        "public/docs/assets/agent_transcripts/pattern_rewrite_worked_example/metadata.edn": "f30d91a590118b62386814bfe2c1b56bc12f6bddbbb2fe33d920e3d1826320af",
+        "public/docs/assets/agent_transcripts/pattern_rewrite_worked_example/metadata.edn": "9c3cc938e92b5db9080f6ea72e4469095489af5bdaaea03bb566cde2c3b609ec",
         "public/docs/assets/agent_transcripts/pattern_rewrite_worked_example/rw_ambient_child_code_.kt": "6e2940ee1d61fdadcae881ec49da83a44d424a9b1e0b24e5348af016aaefac15",
         "public/docs/assets/agent_transcripts/pattern_rewrite_worked_example/rw_ambient_parent_code_.kt": "b3a0b378b93fb0b03268de40c5192cd88131f398b75fcabb31a8a3e76078f377",
         "public/docs/assets/agent_transcripts/pattern_rewrite_worked_example/rw_negation_code_.kt": "8a8366d74105b9cdb5de0be405ff3d51aa45fc0eae9501062b8769b9390d7db2",
         "public/docs/assets/agent_transcripts/pattern_rewrite_worked_example/rw_precedence_code_.kt": "d1980a6daa59ef6c6b387c794cb9f6d690c2e05fea19efac3321b059d045c895",
         "public/docs/assets/agent_transcripts/pattern_rewrite_worked_example/rw_terminate_code_.kt": "6490e6d54092af4275b2df580f8b9f860ef2d95a3c2807d042e24ea1427c06f9",
-        "public/docs/assets/agent_transcripts/pattern_rewrite_worked_example/rw_unquote_code_.kt": "b3f56be11a04581668bfd70bebc14ed174f42e63c7116c75cf028178f967e40f",
+        "public/docs/assets/agent_transcripts/pattern_rewrite_worked_example/rw_unquote_code_.kt": "0e6880fe282d8d4bb9b50878dfad6798b93677a6dfd587825d851af2a39dc690",
         "public/docs/assets/agent_transcripts/pattern_rewrite_worked_example/rw_variadic_code_.kt": "962480b2e6bd21cc7c8c8305093e222a1547b623b84c8c00c4b024b0e2d0d5c7"
       }
     },
@@ -4942,25 +4973,25 @@
     },
     "assets/agent_transcripts/polytope_pick_lineage/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "capturedAt": "2026-11-22T18:51:34.270Z",
+      "capturedAt": "2026-11-26T11:45:26.103Z",
       "channels": 3,
       "file": "assets/web_publications/polytope_pick_lineage/document/metadata.edn",
       "files": {
-        "assets/web_publications/polytope_pick_lineage/document/metadata.edn": "c6a3968c6629f9e09a668d4a67e87966120e04e08da8ac1bdcb7b72b608a79e4",
-        "assets/web_publications/polytope_pick_lineage/document/outputs.json": "e0e1c9b056c705aa0c62cc00135db6593f5f77534f9b12dd9089fb093363a194",
-        "assets/web_publications/polytope_pick_lineage/outputs/0.html": "368eae6c5ed2727d7f61373a863c29a64d1ea71a886307769832f8a7712fe05d",
-        "assets/web_publications/polytope_pick_lineage/outputs/1.html": "519e74494fc2a03f3b6a17a7d5350396b97b20af06121c960b4e9696cb70f3a9",
-        "assets/web_publications/polytope_pick_lineage/outputs/2.html": "591d4652765b0ad364f7a0f6ce951061d3b26c12a9faee6ff89373e6101a54ec"
+        "assets/web_publications/polytope_pick_lineage/document/metadata.edn": "1826ea749b602c1ebf113fbc894017aabd21dd3a17ace63a8dc89498732bad4a",
+        "assets/web_publications/polytope_pick_lineage/document/outputs.json": "cfa95e8025d4d4c16e66bf39c6edfe749150f775d3aca5f7d699268835baa1e2",
+        "assets/web_publications/polytope_pick_lineage/outputs/0.html": "aa24875f6cb6825e645817f27dbae11e45b72e70eab3e997396cb7d2bfd19148",
+        "assets/web_publications/polytope_pick_lineage/outputs/1.html": "75752974c83e33e51c10bba4bf786f3a691e7963dd14b50b52198d9f95f8491f",
+        "assets/web_publications/polytope_pick_lineage/outputs/2.html": "1ee9a95dda4695cf66825c9c910acecb253095c9bd3f82930ca142cbfef088d5"
       },
       "kinds": [
         "svg"
       ],
       "outputs": "assets/web_publications/polytope_pick_lineage/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/polytope_pick_lineage.yaml": "11020ad8404562ceca3a620987e746440ebdafa64bceb2b2a67c761758f99452",
+        "dev_docs/agents/transcripts/polytope_pick_lineage.yaml": "8ea7c6962738531ab8a6ecb854788468fba3b3251cbc720f8977c56fa4ffb443",
         "public/docs/assets/agent_transcripts/polytope_pick_lineage/guides/chain_polytope_render-point-at-a-face-and-find-its-source.md": "543eb4b5e25ae9b00b30b7aa0130e391135fb6d7dd74f4c664c45a06704fc9a0",
-        "public/docs/assets/agent_transcripts/polytope_pick_lineage/metadata.edn": "603f842bb74ceebeb9246e91dd3b4edb1cb3febd689a348f1303af60b2267f31",
-        "public/docs/assets/agent_transcripts/polytope_pick_lineage/polytope_pick_code_.kt": "4ed38275374e6ebc2150d8edd8aa34b03245fcb20b0b8e3b7a9812b1d1b37ec8"
+        "public/docs/assets/agent_transcripts/polytope_pick_lineage/metadata.edn": "6f96ccce825e836f490697596e1551ce354122a55206f1c3d89db519cecfdb2f",
+        "public/docs/assets/agent_transcripts/polytope_pick_lineage/polytope_pick_code_.kt": "98524f76cadb593b71f5be3b423136bfdb79b62506c8effa36fc31e48def9987"
       }
     },
     "assets/agent_transcripts/popup_prior_inspect/metadata.edn": {
@@ -5118,21 +5149,21 @@
     },
     "assets/agent_transcripts/sdf_global_consistency/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "capturedAt": "2026-11-19T10:22:05.561Z",
+      "capturedAt": "2026-11-26T11:47:18.661Z",
       "channels": 2,
       "file": "assets/web_publications/sdf_global_consistency/document/metadata.edn",
       "files": {
-        "assets/web_publications/sdf_global_consistency/document/metadata.edn": "6cdbeb1ca9247e0488b696975771f01d9929479d9e371c28bc0c3be545943d28",
-        "assets/web_publications/sdf_global_consistency/document/outputs.json": "cd804eebea6d6ea439d2b87034a1b00f6738824b60d055e7ddb4000807e91486",
-        "assets/web_publications/sdf_global_consistency/outputs/0.html": "cb38f274934b00dd89c262295f78d1775bd0afa50469f90b4d366c73bb87d71a",
-        "assets/web_publications/sdf_global_consistency/outputs/1.html": "08c11a886eeba325e20b1c7af8a532cbf5f1fa456c9a2cb277594166f6b5d1de"
+        "assets/web_publications/sdf_global_consistency/document/metadata.edn": "77e7a1a045873498381ef7d3ee48b9f8ddd5fc476e57dfafba2cfa48646aed99",
+        "assets/web_publications/sdf_global_consistency/document/outputs.json": "b71b9da94ca314cd49c38c102b549d895bf3c0848207571475d91d55f148c371",
+        "assets/web_publications/sdf_global_consistency/outputs/0.html": "5b664b479990636632bedc7b2b58639bda901dd0bb4ab2829381523636855c60",
+        "assets/web_publications/sdf_global_consistency/outputs/1.html": "ea16750f20a5bbb70947afd987c2d48ab6ca0f6e398631265ee5127d35e268ef"
       },
       "kinds": [
         "svg"
       ],
       "outputs": "assets/web_publications/sdf_global_consistency/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/sdf_global_consistency.yaml": "b51a3bdd050287912d6ab3fbf2f2124773de98a39688ba4fb8308d5c614d0125",
+        "dev_docs/agents/transcripts/sdf_global_consistency.yaml": "73e5319ea8645aedffdfa87e738a1b5aac3326d1bb1594d99d8f7c7e748b6da5",
         "public/docs/assets/agent_transcripts/sdf_global_consistency/guides/mesh_examples.md": "dd504fe38759e312fb64afe5cb6d9e9829dec8098a0a0909f1bd12e93b8d5e1c",
         "public/docs/assets/agent_transcripts/sdf_global_consistency/metadata.edn": "9d2bf3af9e34ccfac81f5dfb90c0753c206f93db9ce15285da49709096cf9742",
         "public/docs/assets/agent_transcripts/sdf_global_consistency/sdf_circles_code_.kt": "bd9134ba2cb616cd56983645aab4752cc58a94b29bd8d05eda4975d2564f4a5f",
@@ -5197,26 +5228,26 @@
     },
     "assets/agent_transcripts/shader_study_region_checks/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "capturedAt": "2026-11-22T18:51:27.762Z",
+      "capturedAt": "2026-11-26T11:45:23.129Z",
       "channels": 4,
       "file": "assets/web_publications/shader_study_region_checks/document/metadata.edn",
       "files": {
-        "assets/web_publications/shader_study_region_checks/document/metadata.edn": "7ac10b0e97f4e3d94b9d319326c946558f31b259dad6abc311f15b861e73f9b4",
-        "assets/web_publications/shader_study_region_checks/document/outputs.json": "eeceb4e21a60221c9bee5bbf2e9444750c446a38030439520cf8027730a384dd",
-        "assets/web_publications/shader_study_region_checks/outputs/0.html": "101419c29b280028de0adb8231a0ce4ee5f3c1c214f44fb7a04450c178e97bf6",
-        "assets/web_publications/shader_study_region_checks/outputs/1.html": "3cba86cc7ae3a4174f43c01cd47f800c888523df7f2844d4b67e8f4c0342dda6",
-        "assets/web_publications/shader_study_region_checks/outputs/2.html": "9b1df421b31b892884a79b353319079366cd9d2feaa32a5129dee8f40e026f4b",
-        "assets/web_publications/shader_study_region_checks/outputs/3.html": "573b5f13e14eef1234480b3ae668aec087a999a9f877a64bfde36afd5bba521b"
+        "assets/web_publications/shader_study_region_checks/document/metadata.edn": "064be66f3c9682f84c44089a169003f79d42df8c577c707002d3460c62bd5557",
+        "assets/web_publications/shader_study_region_checks/document/outputs.json": "34f08002cefcc3fe0c51bf07dddf8049a40d9580fa52cf2ea8879c4bff18d030",
+        "assets/web_publications/shader_study_region_checks/outputs/0.html": "53aa3ed3e9b7f0dc27372a57ef3c64b8d07238c7e416191871d5bac1af6aeb84",
+        "assets/web_publications/shader_study_region_checks/outputs/1.html": "af95adfe1b136f0600f3353d9c5c146218bc20b7586c1ff8eb3a031a007fe13d",
+        "assets/web_publications/shader_study_region_checks/outputs/2.html": "05f169fc44030d24de83aca3fd5d998009571e2d6f20edde302bd4bdb5e1d707",
+        "assets/web_publications/shader_study_region_checks/outputs/3.html": "3f5e3f2934a0344bd02bec9285d81d85db1ad996e2273b9a2cbc54a696463eb0"
       },
       "kinds": [],
       "outputs": "assets/web_publications/shader_study_region_checks/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/shader_study_region_checks.yaml": "2c17e6f09cee28a5946918ba126e1ff87bdb3118204e5693b452dc822a3aaeb2",
+        "dev_docs/agents/transcripts/shader_study_region_checks.yaml": "30d10135484c1a1e4d9d046f5ea8bddd168b02e4c15e1ff80134fa19d54744ac",
         "public/docs/assets/agent_transcripts/shader_study_region_checks/guides/rectsl_conversation-check-a-local-edit-from-kotlin.md": "a79374c6213d0a37a9dd2f168d3f808b582d9a21086d3813815406a6fa58cc1f",
         "public/docs/assets/agent_transcripts/shader_study_region_checks/guides/stacksl_conversation-check-a-local-edit-from-kotlin.md": "92777920955cf0283796fb1b10f7e5550967bb9d46a3607e65bf8f9497e8a44c",
-        "public/docs/assets/agent_transcripts/shader_study_region_checks/metadata.edn": "9b9139b4f6023e758f38ea00b679a3f63ef17f842bf506e7c5f2aafe38fd4cde",
-        "public/docs/assets/agent_transcripts/shader_study_region_checks/rectsl_region_code_.kt": "b47583dc50f12b922690e4492b7ab70e972db33cbafc4207cefd7e64e92854d1",
-        "public/docs/assets/agent_transcripts/shader_study_region_checks/stacksl_region_code_.kt": "5b91ca2f7aec15cf3d8f46fb1ba2a0fa53db62a67b7a3031d109b922cc9669a0"
+        "public/docs/assets/agent_transcripts/shader_study_region_checks/metadata.edn": "42ea916e577741f74fb093d70ca03f89e5fcbfd2a1d0299b521df2c3a2f3f9f8",
+        "public/docs/assets/agent_transcripts/shader_study_region_checks/rectsl_region_code_.kt": "f02fe5c6908a98ae1295fa74e3538f8cc1a57d45c824822a8029fa628f0f4259",
+        "public/docs/assets/agent_transcripts/shader_study_region_checks/stacksl_region_code_.kt": "e49d4c9a5a094d1621ba4d3ffdba574ee3230ec0966fd098f5d3ccf5a1d2ba65"
       }
     },
     "assets/agent_transcripts/shadertrinket/metadata.edn": {
@@ -5418,17 +5449,17 @@
     },
     "assets/agent_transcripts/solidsl_gallery/metadata.edn": {
       "captureDigest": "dae71325c6de8386066240231aac1762db1b9a954d32608e4f55a847371d2fb6",
-      "capturedAt": "2026-11-25T07:03:22.376Z",
+      "capturedAt": "2026-11-26T11:49:42.717Z",
       "channels": 5,
       "file": "assets/web_publications/solidsl_gallery/document/metadata.edn",
       "files": {
-        "assets/web_publications/solidsl_gallery/document/metadata.edn": "21a7b1250b9f78db8a110ecb789cf84dfe54cc32748697b08fe2159218f52632",
-        "assets/web_publications/solidsl_gallery/document/outputs.json": "3600a50a10303d725557859ef4b16cc0182c4bb2b458c09759c129fcdd553a6d",
-        "assets/web_publications/solidsl_gallery/outputs/0.html": "9b4934eb377cae819e8138254acf04e368214ecdc54994fb3fbe90e9647705f5",
-        "assets/web_publications/solidsl_gallery/outputs/1.html": "d26556357a6bd425fcfce41c627e93258cff02037e1ede71994092f38eb0f144",
-        "assets/web_publications/solidsl_gallery/outputs/2.html": "869b19d851c7f026532fb89cfe437df0453a4fdc16ad721ba83f1278fbd8f86a",
-        "assets/web_publications/solidsl_gallery/outputs/3.html": "62c01b9b9c541b97cd4cede5ee442199994628f1bf2e131d3131ce15e243b774",
-        "assets/web_publications/solidsl_gallery/outputs/4.html": "6daaebe4999f2e2849ce430ffe096a9673dbbcc12aa5549c5f091b581c86c8ff"
+        "assets/web_publications/solidsl_gallery/document/metadata.edn": "0780f33420ee38b656b3430d664b5ec7a8e12fa7f72770bb05e4c4b6aad411b9",
+        "assets/web_publications/solidsl_gallery/document/outputs.json": "87693d1a6db891364056b88047fe65dc04f12654269f376ab178b33a3deb340e",
+        "assets/web_publications/solidsl_gallery/outputs/0.html": "f3bdfa7e81f78158eb35ba76d69d3d83208b309456a2593260a71b9436e67a02",
+        "assets/web_publications/solidsl_gallery/outputs/1.html": "123d30d32d5301670536d184d1d520299bb7a50f8203a75c6d9d7b3a6fabf2da",
+        "assets/web_publications/solidsl_gallery/outputs/2.html": "a08b2f8e3d209b952921205e65265285b3c76d9a72be5d4c473008f89df59a15",
+        "assets/web_publications/solidsl_gallery/outputs/3.html": "a39c100380b53943e5f3b89d7f39686be4334ad65cfea7b88707e9e24004b05b",
+        "assets/web_publications/solidsl_gallery/outputs/4.html": "9ff4e45c6c0eefaf9c268cea89e8fbe32d8a859742159f2aeca7172287d1fbe7"
       },
       "kinds": [
         "svg",
@@ -5436,12 +5467,12 @@
       ],
       "outputs": "assets/web_publications/solidsl_gallery/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/solidsl_gallery.yaml": "975d9247901f99dc54090a32e72e90158c54c32dba4244bb55f2dde1a4b86c38",
+        "dev_docs/agents/transcripts/solidsl_gallery.yaml": "e185e1fe30fee9ca5c8beabc7e8168f55a5d69339c21c9aea03065dcc39233de",
         "public/docs/assets/agent_transcripts/solidsl_gallery/cross_check_code_.kt": "8132550ecc3726f62e8e150ed3223cb003acf43a57d9a6649f9346ef5425acce",
         "public/docs/assets/agent_transcripts/solidsl_gallery/glsl_backend_code_.kt": "55fbd4d0850acfd4710ce4bdae0501b31cb2648f74cbb37c3f8390a0cecd3e4a",
         "public/docs/assets/agent_transcripts/solidsl_gallery/guides/solid_notation.md": "92fa8d6194636aea07639219933820367b5f844513507c479c75f0ff42ff1e6b",
-        "public/docs/assets/agent_transcripts/solidsl_gallery/koch_folds_code_.kt": "0bd14e4f84238f64b09187b4b3ddfd1e2fc167ef9bd07a7b66433e368647d18e",
-        "public/docs/assets/agent_transcripts/solidsl_gallery/metadata.edn": "473fd48d808055337ddf5af355a8a4c4e350447e463a5dc00a8d77633640827a",
+        "public/docs/assets/agent_transcripts/solidsl_gallery/koch_folds_code_.kt": "506f95fc011aa18c29a62366f370a2c38bc3638d353f09f4b42cc04fbd26212a",
+        "public/docs/assets/agent_transcripts/solidsl_gallery/metadata.edn": "0fb1cfafb8d144431f419c0b25921b4fd5604397b5867496e7558ea110dc2389",
         "public/docs/assets/agent_transcripts/solidsl_gallery/refusals_code_.kt": "285c4ee14731f6a751581e6303a5ed885d8e5d5761e2c8bea9ffaae009ae9f35"
       }
     },
@@ -5607,28 +5638,28 @@
     },
     "assets/agent_transcripts/spatial_rules_tour/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "capturedAt": "2026-11-26T06:17:57.706Z",
+      "capturedAt": "2026-11-26T12:33:15.915Z",
       "channels": 4,
       "file": "assets/web_publications/spatial_rules_tour/document/metadata.edn",
       "files": {
-        "assets/web_publications/spatial_rules_tour/document/metadata.edn": "da4201f76e56b0c34ea3c2c8edee5778fad6d750d5b7a10d04262af9ae4ee17d",
-        "assets/web_publications/spatial_rules_tour/document/outputs.json": "fcf1cb96c8866de3d54a4ab0f8b083c5b05affd921c5d83a2901efe89e224ece",
-        "assets/web_publications/spatial_rules_tour/outputs/0.html": "2ed16eb29e4c67dfa474edc9c8724886435a0d31df3dbb1acf46d29d05157958",
-        "assets/web_publications/spatial_rules_tour/outputs/1.html": "e7bc89aa5bf240ae269e04fe72a8d7c26bf36fc775372beb2d8cfaabbbd78a90",
-        "assets/web_publications/spatial_rules_tour/outputs/2.html": "ac86697b69f1fff174b2d2ddcf5b399c8fda61a67492803a273ac3507412c233",
-        "assets/web_publications/spatial_rules_tour/outputs/3.html": "4ac162d889118bf38fe8d5f058f52b3ae012ea7854c8fd6d0d8fa66278292375"
+        "assets/web_publications/spatial_rules_tour/document/metadata.edn": "1ac2b5cceeb1aedf2c88b04beae0a298b7826f7b21b4237f301d68670adb5a6d",
+        "assets/web_publications/spatial_rules_tour/document/outputs.json": "b5dbd68a29e81b504fe84df690a3de3c3297f029c5ed6ad3e0008093dd570f65",
+        "assets/web_publications/spatial_rules_tour/outputs/0.html": "5001f07c6bc6421620d489946154c75aa0dbfda4f2220e6e53a79f109122327b",
+        "assets/web_publications/spatial_rules_tour/outputs/1.html": "c1433195a5dc5bc2e3e43238cebfb08b129db74270606e77a8e9650b5eeb9d55",
+        "assets/web_publications/spatial_rules_tour/outputs/2.html": "32c09f6b238280088c5ee0ca23d5f3165af4e6470c6e3f3f3c2ee8b2fc899438",
+        "assets/web_publications/spatial_rules_tour/outputs/3.html": "38683a3705df52e1fa426e1a97c3d49139d86404d55138b47283b8aef6ac9ba9"
       },
       "kinds": [
         "svg"
       ],
       "outputs": "assets/web_publications/spatial_rules_tour/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/spatial_rules_tour.yaml": "82063a1cd14e370363c1a3802ff5b59b767f1bceeff3b4cc8df467565f1fd7cf",
+        "dev_docs/agents/transcripts/spatial_rules_tour.yaml": "54c24e203155fccc280b005f5de3242e432b6a373a0f48182ce022f22f360426",
         "public/docs/assets/agent_transcripts/spatial_rules_tour/guides/spatial_rules.md": "ae738cf7e5dd7f084b228ef8a2615ae3f7bc94a4d599e4c942bdf276cce5cc2a",
-        "public/docs/assets/agent_transcripts/spatial_rules_tour/metadata.edn": "36755203999f244d5c05ef301d11284fd714009e5802d12f2f556952bc7b7e61",
-        "public/docs/assets/agent_transcripts/spatial_rules_tour/sr_filament_code_.kt": "686f8c5093ff5c94463dc7c78235ec7e78c7ffcb72aed450f8d76613e2a4d633",
-        "public/docs/assets/agent_transcripts/spatial_rules_tour/sr_loom_code_.kt": "fccece212ff3b5b0be4238a7d7fc2c4c963a9e97f82f38986bb88f319b9664eb",
-        "public/docs/assets/agent_transcripts/spatial_rules_tour/sr_torus_code_.kt": "76a65e72c1ee65123ea61d603288c4dcb465a0b6076b09f72652d3f138812c5f",
+        "public/docs/assets/agent_transcripts/spatial_rules_tour/metadata.edn": "79d9e004bb1e3ff594db16ff8dcc54cf75266dd91f565c3b0916e28d67e67b3d",
+        "public/docs/assets/agent_transcripts/spatial_rules_tour/sr_filament_code_.kt": "a24adb692544e4937671b5c97cb1c81d2c5dc627b55328f94702d36c7234345d",
+        "public/docs/assets/agent_transcripts/spatial_rules_tour/sr_loom_code_.kt": "60da5985d2c09d0afad91fb975a700e0a335b36a742b5d4b15c82dfde5f9edaa",
+        "public/docs/assets/agent_transcripts/spatial_rules_tour/sr_torus_code_.kt": "0c1bbd6a977d42828dbb4b630d1b0ab60263f9bd607e6cd2c471135788038412",
         "public/docs/assets/agent_transcripts/spatial_rules_tour/sr_tour_code_.kt": "ea30a197582de0db5f9f800a3530b68ecd75222f92b146d222282ecc3989930a"
       }
     },
@@ -5703,34 +5734,34 @@
     },
     "assets/agent_transcripts/spinny_algebras/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "capturedAt": "2026-11-18T16:04:47.869Z",
+      "capturedAt": "2026-11-26T11:48:46.368Z",
       "channels": 8,
       "file": "assets/web_publications/spinny_algebras/document/metadata.edn",
       "files": {
-        "assets/web_publications/spinny_algebras/document/metadata.edn": "367eace83b287ac1be52adf757914b6e311d4567c4e6762abe2255a62f3bcb1b",
-        "assets/web_publications/spinny_algebras/document/outputs.json": "b0fd793ab5dd3603eac0bc27737c494d22b02f9044a2978b2600e8f7969f2034",
-        "assets/web_publications/spinny_algebras/outputs/0.html": "386cd88934996bd2426f9ab0f75a1a1eb098fc5087780ed49be639a7aea287da",
-        "assets/web_publications/spinny_algebras/outputs/1.html": "9cc8e843a9e0fbbed7618cc853a0d7ca255dbe83e76e63e2cd61e18085314793",
-        "assets/web_publications/spinny_algebras/outputs/2.html": "33c2e8cfaf2c894ce59ebfe679908591d0d2f208639cf34430e35a8cf2ddeb16",
-        "assets/web_publications/spinny_algebras/outputs/3.html": "16c2db009873bbc4fb32ff826e7398cddff39d6f8de4108e9a895666aff0a59d",
-        "assets/web_publications/spinny_algebras/outputs/4.html": "8d5157e3504f435d541bdb0119ca5e7d844bc70348a647254bfab7c3771ffa51",
-        "assets/web_publications/spinny_algebras/outputs/5.html": "2ead9d4b8dc141fa677542b5243916a0bafa1f3bd3376d62d5e826a8f20e2703",
-        "assets/web_publications/spinny_algebras/outputs/6.html": "7849e3ba7b30031ba9fde109e188108ff5b1ee43bb977f9b9b3e2459ba9c07f3",
-        "assets/web_publications/spinny_algebras/outputs/7.html": "b14d7fe6d6ab944961104393436b0cad0f30fb129da8c7d620712469bf06223b"
+        "assets/web_publications/spinny_algebras/document/metadata.edn": "f1b52c4fd29a3a10cdc31130ed1dbcc3c9407e4a0e09925bb8b83ca5837d1f5c",
+        "assets/web_publications/spinny_algebras/document/outputs.json": "3f4d99c1b43796a091d155ad5f9d5486ea8b97e98f9370a48ef1531b6fbaf18f",
+        "assets/web_publications/spinny_algebras/outputs/0.html": "81265854105076613606515f130b4e2b3d26403b8252c994ca45126f77f5b574",
+        "assets/web_publications/spinny_algebras/outputs/1.html": "1ebfc4bc9f9b4032c436dac3863e3f1098acc0739f418f6885a2a8461c70d84f",
+        "assets/web_publications/spinny_algebras/outputs/2.html": "207c8994a5d31bf68f4df9663d870b4206a89696e0fe88d5806d764b54f5597e",
+        "assets/web_publications/spinny_algebras/outputs/3.html": "67b061b00f9b762480d3393cc997fb8251e2018180675b8f67c688efee47c11c",
+        "assets/web_publications/spinny_algebras/outputs/4.html": "44c2359c1e6ac1c78a535b17343bde7fe2559adc9100695b63f07726ddf0940c",
+        "assets/web_publications/spinny_algebras/outputs/5.html": "e23da0b33ce596a97ae460244227479bb24902d84bf7a5f2b69a4689cf6130c6",
+        "assets/web_publications/spinny_algebras/outputs/6.html": "326728b8d14d094521016c64add53343f1b30f00095610ffdc4820d5fe316352",
+        "assets/web_publications/spinny_algebras/outputs/7.html": "1e1b9698f0c4211ef8e1f6db645c5ec025821219de26c08a55677bbd473e8f10"
       },
       "kinds": [
         "svg"
       ],
       "outputs": "assets/web_publications/spinny_algebras/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/spinny_algebras.yaml": "3af18bfe23e94fc2670f130b34b6c868ffb00251af185b6f9ddd12abc7e86a3d",
-        "public/docs/assets/agent_transcripts/spinny_algebras/eps_slider_code_.kt": "88a827a25f0bd4c24eb1dbcd9e66b0b64035567582488fb30cda313bb0367e06",
-        "public/docs/assets/agent_transcripts/spinny_algebras/exp_series_code_.kt": "b4cc7d7f1df4efe9877ea519d57b4851b20751d6472dff77ff66c0521ed59704",
-        "public/docs/assets/agent_transcripts/spinny_algebras/grid_three_code_.kt": "910c0355db3ad95e6d2ef679540e69e98b1d76be2035bba295266c024c401dde",
+        "dev_docs/agents/transcripts/spinny_algebras.yaml": "33321b782e098d664d72c72fe8a2216bb58b796e660148061adf5c53e3c9c22e",
+        "public/docs/assets/agent_transcripts/spinny_algebras/eps_slider_code_.kt": "f281c13372bf8588cf9c4894445322907603bd69a4546d9bd80c266b5a9ea1ec",
+        "public/docs/assets/agent_transcripts/spinny_algebras/exp_series_code_.kt": "4d878637d235a91cea0197abc6e3bc0c260de92c379b12bbd23a08a580f754d5",
+        "public/docs/assets/agent_transcripts/spinny_algebras/grid_three_code_.kt": "21b0cc95e44106d12137c46eaba956839e9e491a76d10986a4c77d1acf4852db",
         "public/docs/assets/agent_transcripts/spinny_algebras/guides/linear_algebra-spinny-algebras-complex-dual-and-quaternion-numbers.md": "90901202c7f921be68ec1ca0ac9f7fd9d8e97dcd8c48d4b257d4cd5af08a6bc1",
         "public/docs/assets/agent_transcripts/spinny_algebras/kappa_slider_code_.kt": "972fdfcd92593dbf03e8f28c8e22c43ecc27133960fd769603257cc88923dcf6",
         "public/docs/assets/agent_transcripts/spinny_algebras/kappa_three_code_.kt": "f108dc091ae977d26cf4849fbcc723289b2594826e2ec9944901dc9be6c908c8",
-        "public/docs/assets/agent_transcripts/spinny_algebras/metadata.edn": "c9627ef558b8ba8529c2aed88aae6bf1fd5d6ca3541e37a13c2c4568c1f437ce",
+        "public/docs/assets/agent_transcripts/spinny_algebras/metadata.edn": "8897d1a7182e468101985cc8e0613a59d1e4c063639b42e5f868a93671862fa4",
         "public/docs/assets/agent_transcripts/spinny_algebras/quat_vs_bicomplex_code_.kt": "49f6121ed14c2ecf1619f1cc3e0c6e710f556da378efa9f22f9a891cd9c697fc"
       }
     },
@@ -5788,24 +5819,24 @@
     },
     "assets/agent_transcripts/splat_tiles/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "capturedAt": "2026-11-19T13:11:38.894Z",
+      "capturedAt": "2026-11-26T11:47:12.392Z",
       "channels": 2,
       "file": "assets/web_publications/splat_tiles/document/metadata.edn",
       "files": {
-        "assets/web_publications/splat_tiles/document/metadata.edn": "349546ed842c0a1b7ef03a6cbced1f7305e32316e1cc08561e2e27da29d948a9",
-        "assets/web_publications/splat_tiles/document/outputs.json": "66c4126be67ea467a8fa8d9eacad4366c192e560011e495961fa4f8f9a764d2d",
-        "assets/web_publications/splat_tiles/outputs/0.html": "e9af33bc9a784d022c141e23fe4ae566513bacb71988cbae25e11af3f6bcc62d",
-        "assets/web_publications/splat_tiles/outputs/1.html": "e843d9817978472c55e5dad43e8eea387dc27359c5090b8856a0d5d842759e9c"
+        "assets/web_publications/splat_tiles/document/metadata.edn": "95f58cc540c3723543cf40eeab0ad7be63446d09626462b5b6f2de8c2d2a80d1",
+        "assets/web_publications/splat_tiles/document/outputs.json": "3d629acc4d60c4ae252f3d657282ad037df05ab0c2fa0b8996ffd9025835bf92",
+        "assets/web_publications/splat_tiles/outputs/0.html": "606a38c985436b8fe7dfa8cc94bd0269cf1f332f55fb7ff2a7afdb7eae60c6aa",
+        "assets/web_publications/splat_tiles/outputs/1.html": "0b71df9b90b38b842b71ffab4a180e7a6bc64d9a20bd844edf9c7eade347c275"
       },
       "kinds": [],
       "outputs": "assets/web_publications/splat_tiles/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/splat_tiles.yaml": "9992bde1aef03f2ff8f501d8841a9f9ed155c600002eeb60db9b4f03c6e6b41a",
+        "dev_docs/agents/transcripts/splat_tiles.yaml": "8e09d9a77d4fbc53c24a9632f2e804c63bc012267c3036150be617075bd453e4",
         "public/docs/assets/agent_transcripts/splat_tiles/guides/geometry_from_disk.md": "bc8e8ca159d82612b55b204cb2d5c5ec9e424107c2177dd6fca4a31931f747b9",
-        "public/docs/assets/agent_transcripts/splat_tiles/metadata.edn": "25c360cc4fd1c8a1f94fb6700298b59d1b11027176879ef1151424ec4d8a4348",
-        "public/docs/assets/agent_transcripts/splat_tiles/splat_tiles_heat_code_.kt": "05d798d8515e43e2c37714a9ad88530c76a2aa72a9008c9a199fa239ee942780",
-        "public/docs/assets/agent_transcripts/splat_tiles/splat_tiles_image_code_.kt": "28032d354ef67b679ae0003c8cdf245e6e1ca36806dd3f559172f5906a872d01",
-        "public/docs/assets/agent_transcripts/splat_tiles/splat_tiles_timing_code_.kt": "1c9f520a57a5576bd2fe666cd1d915e881653a4f0517cff08f35c35a3befb2a0"
+        "public/docs/assets/agent_transcripts/splat_tiles/metadata.edn": "0a7bb487a045744a23bfcaf294bcee72bb2f8b59b539d593e5efc30d717902ba",
+        "public/docs/assets/agent_transcripts/splat_tiles/splat_tiles_heat_code_.kt": "f9900b8632db6ed934a0684c6e4ccf980e7432c8276d8ce5d6ed10a00b88ce7d",
+        "public/docs/assets/agent_transcripts/splat_tiles/splat_tiles_image_code_.kt": "7ce9a6073826e4f939bc1a66974405098dcec794dc493513dd22f0941db398d5",
+        "public/docs/assets/agent_transcripts/splat_tiles/splat_tiles_timing_code_.kt": "6d48cb000e4c5f2cf99a446c48677cd337788ea938954ae7e0f2a0a9d12b61c4"
       }
     },
     "assets/agent_transcripts/spreadsheet_constraints/metadata.edn": {
@@ -5851,22 +5882,22 @@
     },
     "assets/agent_transcripts/squircles/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "capturedAt": "2026-11-19T07:27:10.166Z",
+      "capturedAt": "2026-11-26T11:49:05.305Z",
       "channels": 3,
       "file": "assets/web_publications/squircles/document/metadata.edn",
       "files": {
-        "assets/web_publications/squircles/document/metadata.edn": "3da59ced08fa7015baf372cebc9fc44625b3a5765ceba9d9ef8b9251b0ea66fb",
-        "assets/web_publications/squircles/document/outputs.json": "74c20e46c15bda4917a4c3967b0335b8877bca506beadd8e669eb8ce612138ee",
-        "assets/web_publications/squircles/outputs/0.html": "76ae044530b58776e76dc97ac6a74a84626ccf99d28c27a1e0b15fdd52aec360",
-        "assets/web_publications/squircles/outputs/1.html": "353b6c75297bf852c59f3ec14ff1b7ce67f7f17b81d223eb697c8725971f9802",
-        "assets/web_publications/squircles/outputs/2.html": "bbab154e7442e56b851432b41145932939129e69b70d7d1f8f244b652d8ca2c6"
+        "assets/web_publications/squircles/document/metadata.edn": "6cc794d95dfcd3dc4f0d94fbff95cf97c9a8001aa864d7b627aee0b0b3f1f2c5",
+        "assets/web_publications/squircles/document/outputs.json": "6a4e1ab95588a0e52cfcd77250a1f1a6921b9c1cd1f35f41a3a36aaa8c980911",
+        "assets/web_publications/squircles/outputs/0.html": "3d382da6101c1b5fd2a8eccdab5a8ac4f35cc55ccdfd0411eb134fcf6421002d",
+        "assets/web_publications/squircles/outputs/1.html": "dc107f8cff0aa8063631ad7f620660f5c70b45e2a0fa5827f492c9633192c69e",
+        "assets/web_publications/squircles/outputs/2.html": "9ac5aae99f2bd378a633311d3174a41980091c5d94faaaf87d33447d8a7852f2"
       },
       "kinds": [
         "svg"
       ],
       "outputs": "assets/web_publications/squircles/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/squircles.yaml": "f54cbd3c84312673f81e0f4be3de2f450eb9c4bd3de0a54e214b10bad97fd1d7",
+        "dev_docs/agents/transcripts/squircles.yaml": "befdea548ef32ecdca8595988743cc7f2d5a8f3e98b8a94614ea403fa3892dd1",
         "public/docs/assets/agent_transcripts/squircles/guides/fline_examples-squircles-squirclefrom-and-squirclerectfrom.md": "53cabea2b47ab48da79cc7604646dcdff297086f556df3e7fe0450e55122d647",
         "public/docs/assets/agent_transcripts/squircles/metadata.edn": "f18885c20000556b5426bf7624ef59fdcb5e92021bb1304f1ea07cbb605be7a6",
         "public/docs/assets/agent_transcripts/squircles/squircle_morph_code_.kt": "0bf3dda069167fd5d794c11b289074026f8d45446a0a82e7fe508f754882c702",
@@ -7435,9 +7466,9 @@
       "channels": 0,
       "reason": "No output-area channels; the code remains available.",
       "sources": {
-        "dev_docs/agents/transcripts/rhino_round_trip.yaml": "015a751ee7f18e65470d48e10c4c4101d84d4eff13207c6119169f75c0be29eb",
-        "public/docs/assets/agent_transcripts/rhino_round_trip/metadata.edn": "a6e8522133e479dcf1f13021c0f1d1f8375169f6b7013ec3f5e661cb52f796f4",
-        "public/docs/assets/agent_transcripts/rhino_round_trip/rhino_round_trip_code_.kt": "122b2a6d623d550328e69a81ca9599b6852a7c959d49fbde43916dba431e4995"
+        "dev_docs/agents/transcripts/rhino_round_trip.yaml": "109eae5b814e0c50429efad269a025ac1ef96d0260948781e32efecb76664bc1",
+        "public/docs/assets/agent_transcripts/rhino_round_trip/metadata.edn": "2eb8245d6c55ce8813c54ddc950f979c1ec4323b1d647e2fe841abaa8de13851",
+        "public/docs/assets/agent_transcripts/rhino_round_trip/rhino_round_trip_code_.kt": "30bc044adc8197350111e885e4b5269410578838142243528796a40e5896eaea"
       }
     },
     "assets/agent_transcripts/rhino_save_small/metadata.edn": {
