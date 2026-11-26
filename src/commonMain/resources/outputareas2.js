@@ -1371,7 +1371,7 @@ function disclosureInterface(container) {
                 }
         }
 
-        // Fill the window with one panel's live content; Escape, the close button or a click on
+        // Fill the window (all of it but the editor, when that is open) with one panel's live content; Escape, the close button or a click on
         // the backdrop's margin hands it back to its output area.
         function fullscreen(id) {
                 document.querySelector(".output-fullscreen")?.__close?.();
@@ -1392,10 +1392,25 @@ function disclosureInterface(container) {
                 for (const name of ["pointerdown", "mousedown", "wheel", "keydown", "keyup", "contextmenu", "dblclick"]) {
                         overlay.addEventListener(name, (e) => e.stopPropagation());
                 }
+                // Leave the editor its space when it is showing; track it as it opens, closes or resizes.
+                const editor = document.querySelector(".monaco-editor-container");
+                const fit = () => {
+                        const r = editor?.getBoundingClientRect();
+                        const css = editor && getComputedStyle(editor);
+                        const shown = r && r.width > 0 && r.height > 0 && css.display !== "none"
+                                && css.visibility !== "hidden" && Number(css.opacity) > 0.05 && r.left > 0;
+                        overlay.style.right = shown ? `${Math.max(12, window.innerWidth - r.left + 12)}px` : "12px";
+                };
+                const editorObserver = new ResizeObserver(fit);
+                if (editor) editorObserver.observe(editor);
+                window.addEventListener("resize", fit);
+                fit();
                 let borrowed;
                 const onKey = (e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); close(); } };
                 const close = () => {
                         window.removeEventListener("keydown", onKey, true);
+                        window.removeEventListener("resize", fit);
+                        editorObserver.disconnect();
                         overlay.__close = null;
                         try { borrowed?.release(); } finally { overlay.remove(); }
                 };
