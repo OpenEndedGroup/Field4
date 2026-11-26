@@ -52,11 +52,12 @@ operations:
           scene.quad(Vector3f(-20f, 0f, -20f), Vector3f(-20f, 0f, 20f), Vector3f(20f, 0f, 20f), Vector3f(20f, 0f, -20f), floor)
           val target = scene.material(PathTraceMaterial(skin.x, skin.y, skin.z, roughness = 0.3f))
           scene.sphere(Vector3f(-4.4f, 0.95f, 0f), 0.95f, target, 64, 32)
-          remapped = AlbedoRemap.entries.mapIndexed { i, remap ->
-              val m = scene.material(PathTraceMaterial.subsurface(skin, radius, remap))
-              scene.sphere(Vector3f(-2.2f + 2.2f * i, 0.95f, 0f), 0.95f, m, 64, 32)
-              m
-          }
+          remapped =
+              AlbedoRemap.entries.mapIndexed { i, remap ->
+                  val m = scene.material(PathTraceMaterial.subsurface(skin, radius, remap))
+                  scene.sphere(Vector3f(-2.2f + 2.2f * i, 0.95f, 0f), 0.95f, m, 64, 32)
+                  m
+              }
           val camera = Camera(renderer).also {
               it.at.set(0f, 2.4f, 10.5f)
               it.target.set(0f, 0.9f, 0f)
