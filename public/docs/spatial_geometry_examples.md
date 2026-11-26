@@ -1295,16 +1295,15 @@ val rng = java.util.Random(21)
 val d = 128
 val blobs = List(40) { DoubleArray(d) { rng.nextGaussian() } }
 val weights = List(40) { 1.0 / (1 + it) }
-val vectors =
-    List(20_000) {
-        var r = rng.nextDouble() * weights.sum()
-        var b = 0
-        while (b < 39 && r > weights[b]) {
-            r -= weights[b]
-            b++
-        }
-        DoubleArray(d) { j -> blobs[b][j] + rng.nextGaussian() }
+val vectors = List(20_000) {
+    var r = rng.nextDouble() * weights.sum()
+    var b = 0
+    while (b < 39 && r > weights[b]) {
+        r -= weights[b]
+        b++
     }
+    DoubleArray(d) { j -> blobs[b][j] + rng.nextGaussian() }
+}
 val k = 200
 val lloyd = vectorKMeans(vectors, k, KMeansOptions(KMeansAlgorithm.LLOYD, epochs = 10, randomSeed = 2L))
 val tenth = vectorKMeans(vectors, k, KMeansOptions(epochs = 5, randomSeed = 2L, reviveThreshold = 0.1))
@@ -1316,7 +1315,8 @@ fun bars(r: KMeansResult<DoubleArray>, color: Vec4): List<FLine> {
     val sizes = r.clusterSizes.sortedDescending()
     val w = 10.0 / k
     val drawn = sizes.mapIndexed { i, size ->
-        Rect(i * w, 10.0 - size / top * 10.0, w * 0.8, size / top * 10.0).toFLine(color = color, filled = true, stroked = false)
+        Rect(i * w, 10.0 - size / top * 10.0, w * 0.8, size / top * 10.0)
+            .toFLine(color = color, filled = true, stroked = false)
     }
     val y = 10.0 - r.meanClusterSize / top * 10.0
     val mean = polylineFrom([vec(0.0, y), vec(10.0, y)], 0, closed = false).also {
