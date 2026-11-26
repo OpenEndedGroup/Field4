@@ -7269,6 +7269,16 @@ html.field-theme-transition::view-transition-new(root) {
     resize: none !important;
 }
 
+.output-fullscreen.markingWidgetPanel {
+    position: fixed;
+    inset: 12px;
+    z-index: 100000;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+}
+.output-fullscreen-body { flex: 1 1 auto; min-height: 0; }
+
 .markingWidgetPanel .control-group { width: 100%; max-width: 100%; --field-slider-label-width: 84px; }
 .markingWidgetPanel .field-text-input { min-width: 0; }
 .markingWidgetPanel .field-meter .field-label { flex: 0 0 84px; white-space: nowrap; }
