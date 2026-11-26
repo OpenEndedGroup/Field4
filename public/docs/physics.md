@@ -858,9 +858,9 @@ loop {
         window = Rect(c.x - 5.0, c.y - 4.0, 10.0, 7.0),
         width = 720,
         height = 504,
-        title = "slinky on an up escalator · ${"%.3f".format(scene.stepPeriod)} s per step",
-        caption = "t = ${"%.1f".format(scene.time)} s · walked ${"%.1f".format(scene.stepsDescended)} steps · " +
-            "escalator ${"%.1f".format(scene.stairsTravelled)} · behind by ${"%.1f".format(behind)}",
+        title = "slinky on an up escalator · ${scene.stepPeriod.f3} s per step",
+        caption = "t = ${scene.time.f1} s · walked ${scene.stepsDescended.f1} steps · " +
+            "escalator ${scene.stairsTravelled.f1} · behind by ${behind.f1}",
     )
 }
 ```
@@ -913,7 +913,7 @@ fun moments(stepPeriod: Float, times: List<Float>): List<Pair<String, List<FLine
     val scene = SlinkyOnStairs(stepPeriod = stepPeriod)
     return times.map { t ->
         while (scene.time < t) scene.step()
-        "${"%.3f".format(stepPeriod)} s per step, t = ${"%.2f".format(t)} s" to scene.lines(halfWidth = 4.5f)
+        "${stepPeriod.f3} s per step, t = ${t.f2} s" to scene.lines(halfWidth = 4.5f)
     }
 }
 
@@ -963,8 +963,8 @@ showChart(
         title = "height of the slinky's centre of mass, matched escalator",
         xLabel = "seconds",
         yLabel = "coil diameters",
-        note = "$walked steps walked in 60 s against ${"%.1f".format(scene.stairsTravelled)} carried up · " +
-            "median step ${"%.3f".format(gaps.sorted()[gaps.size / 2])} s",
+        note = "$walked steps walked in 60 s against ${scene.stairsTravelled.f1} carried up · " +
+            "median step ${gaps.sorted()[gaps.size / 2].f3} s",
     ).line("centre of mass", seconds, height)
 )
 ```

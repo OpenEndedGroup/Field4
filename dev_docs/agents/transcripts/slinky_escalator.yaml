@@ -69,9 +69,10 @@ operations:
                   window = Rect(c.x - 5.0, c.y - 4.0, 10.0, 7.0),
                   width = 720,
                   height = 504,
-                  title = "slinky on an up escalator · ${"%.3f".format(scene.stepPeriod)} s per step",
-                  caption = "t = ${"%.1f".format(scene.time)} s · walked ${"%.1f".format(scene.stepsDescended)} steps · " +
-                      "escalator ${"%.1f".format(scene.stairsTravelled)} · behind by ${"%.1f".format(behind)}",
+                  title = "slinky on an up escalator · ${scene.stepPeriod.f3} s per step",
+                  caption =
+                      "t = ${scene.time.f1} s · walked ${scene.stepsDescended.f1} steps · " +
+                          "escalator ${scene.stairsTravelled.f1} · behind by ${behind.f1}",
               )
           }
   - launch: { box: slinky_walk, property: code }

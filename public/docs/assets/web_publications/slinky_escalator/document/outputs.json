@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-26T08:23:31.692Z",
+  "documentName": "slinky_escalator",
+  "outputs": [
+    {
+      "uid": "slinky_walk",
+      "channel": "escalator",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 536,
+      "height": 198,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "slinky_walk",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 746,
+      "height": 581,
+      "path": "outputs/1.html"
+    }
+  ]
+}
