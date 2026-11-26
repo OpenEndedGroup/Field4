@@ -572,6 +572,9 @@ function createTabStripMarkup() {
 
     #remote-open {
       flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     #remote-form {
@@ -725,7 +728,6 @@ function createTabStripMarkup() {
   <div id="tabstrip">
     <div id="tabs"></div>
     <button id="tab-add" class="tab-add" type="button" aria-label="Open welcome tab">+</button>
-    <button id="remote-open" class="tool-button" type="button" aria-label="Open remote Field">Remote…</button>
     <form id="remote-form" hidden>
       <div id="remote-server-picker">
         <select id="remote-servers" aria-label="Discovered Fields" disabled></select>
@@ -749,6 +751,7 @@ function createTabStripMarkup() {
         <button id="nav-forward" class="tool-button" type="button" title="${NAV_FORWARD_TITLE}" disabled>&rarr;</button>
       </div>
     </div>
+    <button id="remote-open" class="tool-button" type="button" aria-label="Open remote Field" title="Open remote Field…"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><circle cx="8" cy="8" r="6.3"/><ellipse cx="8" cy="8" rx="2.6" ry="6.3"/><path d="M1.9 6h12.2M1.9 10h12.2"/></svg></button>
   </div>
   <script>
     const tabsNode = document.getElementById('tabs');

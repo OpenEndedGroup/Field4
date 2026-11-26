@@ -4595,16 +4595,17 @@ body::-webkit-scrollbar {
     pointer-events: none;
 }
 
-/* A shared Kotlin box: every box in the document can use its classes. The frame is the accent
-   colour (the frame takes `color`, see .box::before), and a line under the title names it. */
+/* A shared Kotlin box: every box in the document can use its classes. The frame is Field
+   yellow, not the accent cyan, which reads as selection (the frame takes `color`, see
+   .box::before); a line under the title names it. */
 .box.shared-kotlin::before {
-    color: rgba(var(--field-accent-rgb), 0.55);
+    color: rgba(var(--field-search-rgb), 0.55);
 }
 
 .shared-kotlin-tag {
     margin-top: -4px;
     padding: 0 5px 5px;
-    color: rgba(var(--field-accent-rgb), 0.95);
+    color: rgba(var(--field-search-rgb), 0.95);
     font-family: var(--field-font-code);
     font-size: 10px;
     line-height: 1.2;
