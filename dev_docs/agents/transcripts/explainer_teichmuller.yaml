@@ -48,7 +48,8 @@ operations:
               return hypot(ux - vy, vx + uy) / hypot(ux + vy, vx - uy)
           }
 
-          fun colour(argb: Int) = vec(((argb shr 16) and 255) / 255.0, ((argb shr 8) and 255) / 255.0, (argb and 255) / 255.0, 1.0)
+          fun colour(argb: Int) =
+              vec(((argb shr 16) and 255) / 255.0, ((argb shr 8) and 255) / 255.0, (argb and 255) / 255.0, 1.0)
           // World coordinates to the 640 × 360 picture, y up.
           fun sx(x: Double) = 300 + 175 * x
           fun sy(y: Double) = 180 - 175 * y
@@ -173,9 +174,11 @@ operations:
           import afield.geometry.conformal.*
           import afield.media.image.util.PngEncoder
 
-          // A square whose edges stay put while one point inside is dragged somewhere else.
-          // Left: the harmonic map (the solver with μ = 0). Right: the Teichmüller map, found by
-          // the quasi-conformal iteration. Colour is |μ| on each triangle.
+          /*
+          A square whose edges stay put while one point inside is dragged somewhere else.
+          Left: the harmonic map (the solver with μ = 0). Right: the Teichmüller map, found by
+          the quasi-conformal iteration. Colour is |μ| on each triangle.
+          */
           val mesh = PlanarMesh.grid(20)
           val solver = LinearBeltramiSolver(mesh)
           val pinned = mesh.nearest(0.3, 0.5)
@@ -189,7 +192,12 @@ operations:
               val picture = MeshPicture(640, 320, -0.05, -0.05, 2.15, 1.05)
               for ((offset, m) in [0.0 to harmonic, 1.1 to teich]) {
                   val shifted = DoubleArray(mesh.vertexCount) { m.u[it] + offset }
-                  picture.mesh(mesh, shifted, m.v, IntArray(mesh.triangleCount) { MeshPicture.distortionColor(m.moduli[it], 0.5) })
+                  picture.mesh(
+                      mesh,
+                      shifted,
+                      m.v,
+                      IntArray(mesh.triangleCount) { MeshPicture.distortionColor(m.moduli[it], 0.5) },
+                  )
                   picture.dot(mesh.x[pinned] + offset, mesh.y[pinned], 3.0, 0xFFFFFFFF.toInt())
                   picture.dot(toX + offset, toY, 5.0, 0xFFFF9933.toInt())
               }
@@ -221,9 +229,11 @@ operations:
           import afield.geometry.conformal.*
           import afield.media.image.util.PngEncoder
 
-          // Two leaf outlines and the Teichmüller map from the first to the second. Six landmarks
-          // match: tip, base, and the margin a third and two thirds of the way up on each side. The
-          // outline between landmarks is free to slide. Colour is |μ| of the map: the distortion field.
+          /*
+          Two leaf outlines and the Teichmüller map from the first to the second. Six landmarks
+          match: tip, base, and the margin a third and two thirds of the way up on each side. The
+          outline between landmarks is free to slide. Colour is |μ| of the map: the distortion field.
+          */
           val names = ["elliptic", "lanceolate", "ovate", "heart-shaped", "round"]
 
           // Each leaf as a distance from its middle in every direction; the tip points up.
@@ -233,8 +243,10 @@ operations:
                   0 -> oval(0.5, 1.0, t)
                   1 -> oval(0.27, 1.0, t) * (1 + 0.15 * max(0.0, sin(t)).pow(6))
                   2 -> oval(0.62 * (1 - 0.22 * sin(t)), 0.95, t)
-                  3 -> oval(0.75 * (1 - 0.15 * sin(t)), 0.9, t) * (1 + 0.2 * max(0.0, sin(t)).pow(8)) *
-                      (1 - 0.45 * exp(-(1 + sin(t)) / 0.024)) // the notch at the base, the same however t wraps
+                  3 ->
+                      oval(0.75 * (1 - 0.15 * sin(t)), 0.9, t) *
+                          (1 + 0.2 * max(0.0, sin(t)).pow(8)) *
+                          (1 - 0.45 * exp(-(1 + sin(t)) / 0.024)) // the notch at the base, the same however t wraps
                   else -> oval(0.85, 0.95, t)
               }
           }
@@ -250,7 +262,13 @@ operations:
               val colours = IntArray(mesh.triangleCount) { MeshPicture.distortionColor(c.map.moduli[it], 0.6) }
               for (side in [1.0, -1.0]) {
                   picture.mesh(mesh, DoubleArray(mesh.vertexCount) { side * mesh.x[it] - 1.1 }, mesh.y, colours, edgeAlpha = 0.25)
-                  picture.mesh(mesh, DoubleArray(mesh.vertexCount) { side * c.map.u[it] + 1.1 }, c.map.v, colours, edgeAlpha = 0.25)
+                  picture.mesh(
+                      mesh,
+                      DoubleArray(mesh.vertexCount) { side * c.map.u[it] + 1.1 },
+                      c.map.v,
+                      colours,
+                      edgeAlpha = 0.25,
+                  )
                   for (k in 0 until 4) {
                       picture.dot(side * mesh.x[c.landmarks[k]] - 1.1, mesh.y[c.landmarks[k]], 4.0, 0xFFFF9933.toInt())
                       picture.dot(side * c.targetLandmarks[k][0] + 1.1, c.targetLandmarks[k][1], 4.0, 0xFFFF9933.toInt())
@@ -293,8 +311,10 @@ operations:
                   0 -> oval(0.5, 1.0, t)
                   1 -> oval(0.27, 1.0, t) * (1 + 0.15 * max(0.0, sin(t)).pow(6))
                   2 -> oval(0.62 * (1 - 0.22 * sin(t)), 0.95, t)
-                  3 -> oval(0.75 * (1 - 0.15 * sin(t)), 0.9, t) * (1 + 0.2 * max(0.0, sin(t)).pow(8)) *
-                      (1 - 0.45 * exp(-(1 + sin(t)) / 0.024)) // the notch at the base, the same however t wraps
+                  3 ->
+                      oval(0.75 * (1 - 0.15 * sin(t)), 0.9, t) *
+                          (1 + 0.2 * max(0.0, sin(t)).pow(8)) *
+                          (1 - 0.45 * exp(-(1 + sin(t)) / 0.024)) // the notch at the base, the same however t wraps
                   else -> oval(0.85, 0.95, t)
               }
           }
@@ -319,7 +339,9 @@ operations:
           }
           display("row", PngEncoder.encode(picture.pixels, 640, 150))
           val table = StringBuilder("| | " + names.joinToString(" | ") + " |\n|---" + "|---".repeat(5) + "|\n")
-          for (a in 0 until 5) table.append("| **${names[a]}** | " + (0 until 5).joinToString(" | ") { if (it == a) "·" else d[a][it].f2 } + " |\n")
+          for (a in 0 until 5) table.append(
+              "| **${names[a]}** | " + (0 until 5).joinToString(" | ") { if (it == a) "·" else d[a][it].f2 } + " |\n",
+          )
           markdown("readout", table.toString())
   - create:
       box: etm_deck
@@ -395,7 +417,9 @@ operations:
                           control("circles", "map", 2.0)
                           control("circles", "amount", 0.8)
                       }
-                      markdownNote("Next stretches; the one after twists the middle, where the ellipses differ from place to place. [[back]] [[next]]")
+                      markdownNote(
+                          "Next stretches; the one after twists the middle, where the ellipses differ from place to place. [[back]] [[next]]",
+                      )
                   }
                   step("The Beltrami coefficient", id = "beltrami") {
                       audience {
@@ -416,7 +440,9 @@ operations:
                       control("ellipse", "angle", 30.0)
                       cue("Grow μ") { control("ellipse", "size", 0.6, glideMs = 1500) }
                       cue("Turn μ") { control("ellipse", "angle", 210.0, glideMs = 2500) }
-                      markdownNote("Next grows |μ| to 0.6 (K = 4); then turning μ by 180° turns the ellipse by 90°. [[back]] [[next]]")
+                      markdownNote(
+                          "Next grows |μ| to 0.6 (K = 4); then turning μ by 180° turns the ellipse by 90°. [[back]] [[next]]",
+                      )
                   }
                   step("A μ at every point", id = "field") {
                       audience {

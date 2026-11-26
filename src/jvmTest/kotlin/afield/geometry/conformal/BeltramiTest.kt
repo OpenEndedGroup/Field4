@@ -181,6 +181,20 @@ class BeltramiTest {
         assertEquals(0.0, MirrorShapeComparison(::heart, { 2 * heart(it) }).distance, 0.03)
     }
 
+    /** The distortion colours run from blue at zero to near-white at the top of the scale, and a mesh paints its pixels with them. */
+    @Test
+    fun distortionColoursPaintAMesh() {
+        val low = MeshPicture.distortionColor(0.0)
+        val high = MeshPicture.distortionColor(0.6, top = 0.6)
+        assertTrue((low and 0xFF) > ((low shr 16) and 0xFF), "zero is blue")
+        assertTrue(((high shr 16) and 0xFF) > 0xF0, "the top is near white")
+        assertEquals(high, MeshPicture.distortionColor(5.0, top = 0.6), "beyond the top stays at the top")
+        val mesh = PlanarMesh.grid(4)
+        val picture = MeshPicture(40, 40, 0.0, 0.0, 1.0, 1.0)
+        picture.mesh(mesh, colors = IntArray(mesh.triangleCount) { low }, edgeAlpha = 0.0)
+        assertEquals(low, picture.pixels[20 * 40 + 20])
+    }
+
     /** Growing a shape is conformal: a leaf and the same leaf twice the size are at distance zero. */
     @Test
     fun sizeCostsNothing() {
