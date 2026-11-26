@@ -262,7 +262,6 @@ internal fun flatten(line: FLine): List<List<Vector3f>> {
             c += Vector3f(start)
             current = mutableListOf(start).also { contours += it }
         }
-        else -> {}
     }
     return contours.filter { it.size >= 2 }
 }

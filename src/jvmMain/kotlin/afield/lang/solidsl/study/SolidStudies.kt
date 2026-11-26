@@ -168,7 +168,7 @@ class SolidStudy internal constructor(val box: Box) : LiveStudy {
         }
     }
 
-    private fun <T : StudyReport> published(r: T): T { refresh(); return r }
+    private fun published(r: StudyReport): StudyReport { refresh(); return r }
 
     override fun inspect(q: StudyRequest.Inspect): StudyReport {
         val r = frames.inspect(q)

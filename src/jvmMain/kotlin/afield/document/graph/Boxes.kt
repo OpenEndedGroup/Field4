@@ -2280,7 +2280,7 @@ private fun createBoxEngine(box: Box): KotlinScriptEngine {
     return createKotlinScriptEngine(
         implicitReceivers = listOf(KotlinType(Box::class)),
         classLoader = types?.loader,
-        filePrefix = if (shared) types!!.publisherPrefix(box) else box.id,
+        filePrefix = if (shared) types.publisherPrefix(box) else box.id,
         publishesToDocument = shared,
     )
 }
