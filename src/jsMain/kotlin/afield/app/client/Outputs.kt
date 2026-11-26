@@ -1797,6 +1797,18 @@ fun addOutput(
             domNode.appendChild(domNodeAnnotation)
             domNodeAnnotation.innerHTML = annotation ?: ""
             domNodeAnnotation.classList.add("output_annotation")
+            // A result whose type was declared in a box links to that box (`typeAnnotationHtml`
+            // on the server); the editor would otherwise take the click as a cursor move.
+            domNodeAnnotation.addEventListener("mousedown", { event ->
+                val link = (event.target as? Element)?.closest("a[data-box-uid]") ?: return@addEventListener
+                event.preventDefault()
+                event.stopPropagation()
+                val uid = link.getAttribute("data-box-uid") ?: return@addEventListener
+                window.asDynamic().navigateToBoxFromLink?.invoke(uid, "code", null, null)
+            })
+            domNodeAnnotation.addEventListener("click", { event ->
+                if ((event.target as? Element)?.closest("a[data-box-uid]") != null) event.preventDefault()
+            })
 
             domNodeInner.onmousedown = { _: dynamic -> }
             domNodeInner.classList.add("inner_output")
