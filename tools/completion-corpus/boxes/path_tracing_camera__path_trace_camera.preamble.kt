@@ -88,8 +88,9 @@ class Material(
     var maps by Structure.FromStructure<afield.math.linalg.Vector4f>()
     var coverage by Structure.FromStructure<afield.math.linalg.Vector4f>()
     var textureParams by Structure.FromStructure<afield.math.linalg.Vector4f>()
+    var scattering by Structure.FromStructure<afield.math.linalg.Vector4f>()
 }
-fun MaterialByteSize(): Long = 112L
+fun MaterialByteSize(): Long = 128L
 fun MaterialLayoutMembers(): List<Introspected.Member> =
     listOf(
         Introspected.Member("base", 0, PrimitiveType.vec4.left(), 0, false),
@@ -99,6 +100,7 @@ fun MaterialLayoutMembers(): List<Introspected.Member> =
         Introspected.Member("maps", 64, PrimitiveType.vec4.left(), 0, false),
         Introspected.Member("coverage", 80, PrimitiveType.vec4.left(), 0, false),
         Introspected.Member("textureParams", 96, PrimitiveType.vec4.left(), 0, false),
+        Introspected.Member("scattering", 112, PrimitiveType.vec4.left(), 0, false),
     )
 fun HasBuffer.asMaterial(): Material =
     asStructure(Material(), MaterialLayoutMembers())
@@ -172,15 +174,12 @@ class Triangles(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    val items: Triangle
-        get() = childStructure("items") { members, baseOffset, pathPrefix, root ->
-            Triangle(members, baseOffset, pathPrefix, root)
-        }
+    var items by Structure.FromStructure<afield.math.linalg.Vector4f>()
 }
-fun TrianglesByteSize(): Long = 208L
+fun TrianglesByteSize(): Long = 16L
 fun TrianglesLayoutMembers(): List<Introspected.Member> =
     listOf(
-        Introspected.Member("items", 0, TriangleLayoutMembers().right(), 240, false),
+        Introspected.Member("items", 0, PrimitiveType.vec4.left(), 16, false),
     )
 fun HasBuffer.asTriangles(): Triangles =
     asStructure(Triangles(), TrianglesLayoutMembers())
@@ -196,15 +195,12 @@ class Nodes(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    val items: Triangle
-        get() = childStructure("items") { members, baseOffset, pathPrefix, root ->
-            Triangle(members, baseOffset, pathPrefix, root)
-        }
+    var items by Structure.FromStructure<afield.math.linalg.Vector4f>()
 }
-fun NodesByteSize(): Long = 208L
+fun NodesByteSize(): Long = 16L
 fun NodesLayoutMembers(): List<Introspected.Member> =
     listOf(
-        Introspected.Member("items", 0, TriangleLayoutMembers().right(), 240, false),
+        Introspected.Member("items", 0, PrimitiveType.vec4.left(), 16, false),
     )
 fun HasBuffer.asNodes(): Nodes =
     asStructure(Nodes(), NodesLayoutMembers())
@@ -220,15 +216,12 @@ class Materials(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    val items: Triangle
-        get() = childStructure("items") { members, baseOffset, pathPrefix, root ->
-            Triangle(members, baseOffset, pathPrefix, root)
-        }
+    var items by Structure.FromStructure<afield.math.linalg.Vector4f>()
 }
-fun MaterialsByteSize(): Long = 208L
+fun MaterialsByteSize(): Long = 16L
 fun MaterialsLayoutMembers(): List<Introspected.Member> =
     listOf(
-        Introspected.Member("items", 0, TriangleLayoutMembers().right(), 240, false),
+        Introspected.Member("items", 0, PrimitiveType.vec4.left(), 16, false),
     )
 fun HasBuffer.asMaterials(): Materials =
     asStructure(Materials(), MaterialsLayoutMembers())
@@ -244,15 +237,12 @@ class Accumulation(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    val items: Triangle
-        get() = childStructure("items") { members, baseOffset, pathPrefix, root ->
-            Triangle(members, baseOffset, pathPrefix, root)
-        }
+    var items by Structure.FromStructure<afield.math.linalg.Vector4f>()
 }
-fun AccumulationByteSize(): Long = 208L
+fun AccumulationByteSize(): Long = 16L
 fun AccumulationLayoutMembers(): List<Introspected.Member> =
     listOf(
-        Introspected.Member("items", 0, TriangleLayoutMembers().right(), 240, false),
+        Introspected.Member("items", 0, PrimitiveType.vec4.left(), 16, false),
     )
 fun HasBuffer.asAccumulation(): Accumulation =
     asStructure(Accumulation(), AccumulationLayoutMembers())
@@ -268,15 +258,12 @@ class Distribution(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    val items: Triangle
-        get() = childStructure("items") { members, baseOffset, pathPrefix, root ->
-            Triangle(members, baseOffset, pathPrefix, root)
-        }
+    var items by Structure.FromStructure<afield.math.linalg.Vector4f>()
 }
-fun DistributionByteSize(): Long = 208L
+fun DistributionByteSize(): Long = 16L
 fun DistributionLayoutMembers(): List<Introspected.Member> =
     listOf(
-        Introspected.Member("items", 0, TriangleLayoutMembers().right(), 240, false),
+        Introspected.Member("items", 0, PrimitiveType.vec4.left(), 16, false),
     )
 fun HasBuffer.asDistribution(): Distribution =
     asStructure(Distribution(), DistributionLayoutMembers())
@@ -292,15 +279,12 @@ class Directions(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    val items: Triangle
-        get() = childStructure("items") { members, baseOffset, pathPrefix, root ->
-            Triangle(members, baseOffset, pathPrefix, root)
-        }
+    var items by Structure.FromStructure<afield.math.linalg.Vector4f>()
 }
-fun DirectionsByteSize(): Long = 208L
+fun DirectionsByteSize(): Long = 16L
 fun DirectionsLayoutMembers(): List<Introspected.Member> =
     listOf(
-        Introspected.Member("items", 0, TriangleLayoutMembers().right(), 240, false),
+        Introspected.Member("items", 0, PrimitiveType.vec4.left(), 16, false),
     )
 fun HasBuffer.asDirections(): Directions =
     asStructure(Directions(), DirectionsLayoutMembers())
@@ -316,15 +300,12 @@ class TextureData(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    val items: Triangle
-        get() = childStructure("items") { members, baseOffset, pathPrefix, root ->
-            Triangle(members, baseOffset, pathPrefix, root)
-        }
+    var items by Structure.FromStructure<afield.math.linalg.Vector4f>()
 }
-fun TextureDataByteSize(): Long = 208L
+fun TextureDataByteSize(): Long = 16L
 fun TextureDataLayoutMembers(): List<Introspected.Member> =
     listOf(
-        Introspected.Member("items", 0, TriangleLayoutMembers().right(), 240, false),
+        Introspected.Member("items", 0, PrimitiveType.vec4.left(), 16, false),
     )
 fun HasBuffer.asTextureData(): TextureData =
     asStructure(TextureData(), TextureDataLayoutMembers())
@@ -340,15 +321,12 @@ class History(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    val items: Triangle
-        get() = childStructure("items") { members, baseOffset, pathPrefix, root ->
-            Triangle(members, baseOffset, pathPrefix, root)
-        }
+    var items by Structure.FromStructure<afield.math.linalg.Vector4f>()
 }
-fun HistoryByteSize(): Long = 208L
+fun HistoryByteSize(): Long = 16L
 fun HistoryLayoutMembers(): List<Introspected.Member> =
     listOf(
-        Introspected.Member("items", 0, TriangleLayoutMembers().right(), 240, false),
+        Introspected.Member("items", 0, PrimitiveType.vec4.left(), 16, false),
     )
 fun HasBuffer.asHistory(): History =
     asStructure(History(), HistoryLayoutMembers())
@@ -364,15 +342,12 @@ class FramePixels(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    val items: Triangle
-        get() = childStructure("items") { members, baseOffset, pathPrefix, root ->
-            Triangle(members, baseOffset, pathPrefix, root)
-        }
+    var items by Structure.FromStructure<afield.math.linalg.Vector4f>()
 }
-fun FramePixelsByteSize(): Long = 208L
+fun FramePixelsByteSize(): Long = 16L
 fun FramePixelsLayoutMembers(): List<Introspected.Member> =
     listOf(
-        Introspected.Member("items", 0, TriangleLayoutMembers().right(), 240, false),
+        Introspected.Member("items", 0, PrimitiveType.vec4.left(), 16, false),
     )
 fun HasBuffer.asFramePixels(): FramePixels =
     asStructure(FramePixels(), FramePixelsLayoutMembers())
