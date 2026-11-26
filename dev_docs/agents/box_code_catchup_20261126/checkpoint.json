@@ -1,0 +1,25 @@
+{
+  "state": "focused verification and recaptures passed; reconciling main",
+  "scope": "scope.json",
+  "reviewed": [],
+  "next": "Review changed bodies, apply clarity/helper edits and actual formatting, verify affected behavior and run land precheck.",
+  "previousLanding": "be4dd4c67ffeacec0bbdd8b5652d88634a8acdcc",
+  "branch": "codex/docs-code-catchup-nov26",
+  "reviewedAreas": [
+    "All 23 GLSL spans including partial snippets; interfaces generally already document layout and units.",
+    "Typed paint-sheet dependency, plain HTML readouts, collection-literal candidates.",
+    "Delegated helper census: 62 short public examples; curated class/member references also cover longer algorithm examples."
+  ],
+  "remaining": [
+    "Merge newer main through tools/merge_regen.py, resolving source conflicts while preserving new teaching material.",
+    "Refresh source publications through the merge regenerator.",
+    "Full site/link gate, final precheck and enqueue."
+  ],
+  "formatting": "607 Kotlin/GLSL spans covered after correcting language metadata; no skips. Final 23 GLSL token streams match the frozen source exactly, including manual whitespace on dense particle shaders.",
+  "revisions": "91 collection literals in 50 bodies; typed inherited paint sheet; Markdown result/readout channels.",
+  "references": "121 curated class/member links verified against actual generated anchors.",
+  "behavior": "8 before/after CPU equivalence pairs passed with default and edited inputs; 18 complete GLSL stages compile before/after.",
+  "nativePaint": "Matching checkout native library built successfully.",
+  "paint": "Passed all four connected authored boxes, before/after, for seeds 3 and 4; PNG hashes match in both pairs.",
+  "captures": "All 6 normal runner recaptures passed and inspected: two videos and four PNGs."
+}

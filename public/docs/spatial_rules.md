@@ -18,11 +18,6 @@ that geometry over 0.7 seconds. Try a two-second fade to see consecutive stitche
 
 ```diffstatic_runner {data-lang=kotlin video="assets/spatial_rules/filament.mp4" capture="box" execution="launch" wait-output="true" open-outputs="true" duration="7" fps="20" w="720" h="330" timeout="180" embed=true name="spatial-filament-film" alt="Two points pull apart and leave a fading line, then disappear while still close and leave another fading line."}
 import afield.data.graph.SpatialLifetime.MATCH
-import afield.data.graph.SpatialRuleWorld
-import afield.data.graph.spatialDot
-import afield.data.graph.spatialStroke
-import afield.runtime.lifecycle.AnimationClock
-import afield.ui.visualization.LinesFraming
 
 val world = SpatialRuleWorld()
 val ink = Vec4(0.8f, 0.92f, 1f, 1f)
@@ -106,26 +101,7 @@ echoes.
 
 ```diffstatic_runner {data-lang=kotlin video="assets/spatial_rules/loom.mp4" capture="box" execution="launch" wait-output="true" open-outputs="true" duration="14" fps="24" w="1050" h="475" timeout="360" embed=true name="spatial-loom-film" alt="Three animated formations of curved cyan stitches, gold knot links and violet echoes. Pale fitted ellipses and tapered tree ribbons stretch between the formations as live tips arrive and disappear and old curves fade."}
 import afield.data.graph.SpatialLifetime.MATCH
-import afield.data.graph.SpatialPoint
-import afield.data.graph.SpatialRuleWorld
-import afield.data.graph.inspectOnClick
-import afield.data.graph.spatialDot
-import afield.data.graph.spatialStroke
-import afield.data.graph.vec3MinimumSpanningTree
-import afield.geometry.path.FLine
-import afield.graphics.render.color
-import afield.graphics.render.filled
-import afield.graphics.render.stroked
-import afield.graphics.render.thickness
-import afield.runtime.lifecycle.AnimationClock
-import afield.ui.visualization.LinesFraming
 import java.util.concurrent.atomic.AtomicLong
-import kotlin.math.PI
-import kotlin.math.atan2
-import kotlin.math.cos
-import kotlin.math.hypot
-import kotlin.math.sin
-import kotlin.math.sqrt
 
 val world = SpatialRuleWorld()
 val stitchInk = vec(0.27, 0.77, 0.93, 0.74)
@@ -407,16 +383,6 @@ marks into one FLine and lets each matching process contribute its own thread.
 
 ```diffstatic_runner {data-lang=kotlin video="assets/spatial_rules/thousand.mp4" capture="box" execution="launch" wait-output="true" open-outputs="true" duration="7" fps="18" w="1020" h="650" timeout="360" embed=true name="spatial-thousand-film" alt="A rotating torus of a thousand pale samples, with waves of dense cyan and amber proximity threads fading in and out as the tube swells. A readout shows the live point and edge counts."}
 import afield.data.graph.SpatialLifetime.MATCH
-import afield.data.graph.SpatialRuleWorld
-import afield.data.graph.spatialStroke
-import afield.geometry.path.FLine
-import afield.graphics.render.color
-import afield.graphics.render.thickness
-import afield.runtime.lifecycle.AnimationClock
-import afield.ui.visualization.LinesFraming
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.sin
 
 val rings = 50
 val samples = 20
@@ -571,3 +537,7 @@ and return each neighbor at most once in deterministic order.
 Cost depends on how many matches exist as well as how many points there are. A thousand
 widely distributed points can have a few hundred active pairs. A thousand points all inside
 one another’s radius can produce 499,500 unordered pairs, each eligible to start a process.
+
+## API reference
+
+- Matching and advancing spatial rules: [`SpatialRuleWorld`](reference/data.md#spatial-rules-kt-spatialruleworld), [`SpatialRuleWorld.source`](reference/data.md#spatial-rules-kt--spatialruleworld--source), [`SpatialRuleWorld.rules`](reference/data.md#spatial-rules-kt--spatialruleworld--rules), [`SpatialRuleWorld.step`](reference/data.md#spatial-rules-kt--spatialruleworld--step).

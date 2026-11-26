@@ -210,3 +210,5 @@ replacement resets reservoir history.
 - The animated lighting study:
   [`DirectLightingDemo`](reference/graphics.md#directlightingdemo-kt-directlightingdemo) —
   [`animate`](reference/graphics.md#directlightingdemo-kt--directlightingdemo--animate).
+
+- The lighting study: [`DirectLightingDemo.close`](reference/graphics.md#directlightingdemo-kt--directlightingdemo--close).

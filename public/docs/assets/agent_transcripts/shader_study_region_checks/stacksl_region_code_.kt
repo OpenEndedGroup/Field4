@@ -1,12 +1,11 @@
 import afield.lang.stacksl.study.StackSLStudy
-import afield.study.source.SourceStudy
 import kotlin.io.path.createTempDirectory
 
 val program = "uv saturate"
 val localEdit = "$program\nwhite 0.5 uv x step mix"
 val spillEdit = "$program\nwhite 0.35 uv x step mix"
-val allowed = listOf(0.5, 0.0, 1.0, 1.0) // x0, y0, x1, y1 in UV space
-val times = listOf(0.0)
+val allowed = [0.5, 0.0, 1.0, 1.0] // x0, y0, x1, y1 in UV space
+val times = [0.0]
 
 val folder = createTempDirectory("stacksl-region-").toFile()
 try {

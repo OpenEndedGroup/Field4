@@ -53,7 +53,6 @@ operations:
           val start = squircleGauge(3.0)
           slider("Gauge", min = 0.708, max = 0.95, initialValue = start) { draw(it) }
           draw(start)
-
   - create:
       box: squircle_rect
       name: 2 - Rounded rectangles with squircle corners
@@ -76,7 +75,6 @@ operations:
           val clothoidComb = clothoid.curvatureComb(scale = 600.0, samples = 400).apply { color = vec(0.5, 0.8, 1.0, 0.45) }
 
           lines(figmaComb, clothoidComb, circular, figma, clothoid, w = 420.0, h = 200.0, fitToSize = true)
-
   - launch: { box: squircle_morph, property: code }
   - launch: { box: squircle_rect, property: code }
   - await: { wait: pending }

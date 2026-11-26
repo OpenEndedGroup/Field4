@@ -1,0 +1,13 @@
+{
+  "provenance": [
+    "dev_docs/agents/demos/solidsl_conversation_example/studies/solid_source/solid/speculations/1795590604571/bold-ports.kt",
+    "dev_docs/agents/demos/solidsl_conversation_example/studies/solid_source/solid/speculations/1795590604571/delicate-lace.kt",
+    "dev_docs/agents/demos/solidsl_conversation_example/studies/solid_source/solid/speculations/1795590604571/grown-ribs.kt",
+    "dev_docs/agents/demos/solidsl_conversation_example/studies/solid_source/solid/speculations/1795590653405/side-by-side.kt",
+    "dev_docs/agents/demos/solidsl_conversation_example/studies/solid_source/solid/speculations/1795590692767/chosen-grown-ribs.kt"
+  ],
+  "signatureFragments": [
+    "public/docs/files_and_paths.md: fun load(@CompletesPath(\"*.3dm\") path: String, ...): RhinoModel"
+  ],
+  "languageMetadata": "file-languages.json persists inventory classification across harness processes; .kt can contain other languages."
+}

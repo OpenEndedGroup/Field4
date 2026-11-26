@@ -1,5 +1,3 @@
-import afield.graphics.three.ThreeCameraSpec
-
 // A sheet with a deep fold down the middle: the far wall is close through the air and far along the stone.
 val shell = heightfieldMesh(90, 60, 3.0, 2.0) { x, _ -> -1.1f * kotlin.math.exp(-(x * x) / 0.12f) }
 val source = shell.nearestVertex(-0.9, 0, 0)
@@ -20,8 +18,7 @@ val top = alongSurface.max()
 val view = ThreeCameraSpec(yawDegrees = 20.0, pitchDegrees = 40.0)
 three(height = 360) {
     columns(2)
-    for ((i, panelled) in
-        listOf("straight-line distance" to straight, "geodesic distance" to alongSurface).withIndex()) {
+    for ((i, panelled) in ["straight-line distance" to straight, "geodesic distance" to alongSurface].withIndex()) {
         val (title, d) = panelled
         panel(title = title, camera = view)
         mesh(shell.colouredBy(d, 0.0, top), wireframe = false, cullBackFaces = false)

@@ -1,4 +1,3 @@
-import afield.geometry.path.generateIsoContours
 import afield.lang.solidsl.*
 
 /*

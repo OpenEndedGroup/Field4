@@ -1,5 +1,3 @@
-import afield.media.image.*
-
 var simModule = computeModuleHere {}
 var sim = ComputeMesh()
 simModule += "step" to sim

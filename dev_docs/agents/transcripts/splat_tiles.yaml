@@ -14,10 +14,6 @@ operations:
       h: 100.0
     properties:
       code: |
-        import afield.graphics.render.SplatRaster
-        import afield.graphics.render.SplatTiles
-        import afield.math.linalg.Vector3f
-
         // A dense core inside a sparse halo, in the renderer's 16-float layout.
         val count = 40_000
         val cloud = SplatTiles.clusteredCloud(count)
@@ -33,7 +29,7 @@ operations:
         val tiled = SplatTiles.render(binning).image.toArgb()
 
         var worst = 0
-        for (i in reference.indices) for (shift in listOf(16, 8, 0)) {
+        for (i in reference.indices) for (shift in [16, 8, 0]) {
             worst = max(worst, abs(((reference[i] shr shift) and 255) - ((tiled[i] shr shift) and 255)))
         }
         println(binning)
@@ -49,10 +45,6 @@ operations:
       h: 100.0
     properties:
       code: |
-        import afield.graphics.render.SplatRaster
-        import afield.graphics.render.SplatTiles
-        import afield.math.linalg.Vector3f
-
         val count = 40_000
         val cloud = SplatTiles.clusteredCloud(count)
         val view = SplatRaster.View.lookAt(
@@ -79,10 +71,6 @@ operations:
       h: 100.0
     properties:
       code: |
-        import afield.graphics.render.SplatRaster
-        import afield.graphics.render.SplatTiles
-        import afield.math.linalg.Vector3f
-
         val count = 200_000
         val cloud = SplatTiles.clusteredCloud(count)
         // A small image is 36 tiles for 10 workers, and the core's tiles hold most of the work:
@@ -95,7 +83,7 @@ operations:
         )
         val binning = SplatTiles.bin(cloud, count, view)
         println(binning)
-        for (cutoff in listOf(1e-4f, 0f)) {
+        for (cutoff in [1e-4f, 0f]) {
             println("transmittance cutoff $cutoff")
             for (row in SplatTiles.compare(binning, repeats = 9, transmittanceCutoff = cutoff)) println("  $row")
         }

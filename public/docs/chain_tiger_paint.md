@@ -23,7 +23,6 @@ reference for everything below, and counts what the painter will be handed:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_tiger_paint/census.png" wait="5" capture="box" open-outputs="true" padding="18" timeout="180" name="chain-tiger-paint-census" embed=true alt="The Ghostscript tiger drawn by the Gezira kernels at 300 pixels on white: an orange and black striped head with green eyes, an open pink mouth with cream fangs, white fur on the chin and whiskers fanning out to the left. Below it, a table: 239 elements read; 304 FLines, 226 fills and 78 strokes; 39 colours; fill areas from 22 to 257828 view-box units squared, median 303; five stroke widths from 0.18 to 3.53; and 0 of 226 fills that change under even-odd."}
 :::static
 import afield.graphics.nile.*
-import kotlin.math.abs
 
 val doc = GeziraSvg.parse(GeziraSvg.tiger())
 val fills = doc.lines.filter { it.filled }
@@ -32,7 +31,8 @@ val areas = fills.map { abs(it.area2D().d) }.sorted()
 
 // Paint regions are even-odd. Rasterise each fill both ways and count the ones that differ.
 val fit = doc.fit(200, 200)
-fun ink(f: FLine) = GeziraFLine.render([f], 200, 200, fit).canvas.rgba.let { px -> (3 until px.size step 4).map { px[it] } }
+fun ink(f: FLine) =
+    GeziraFLine.render([f], 200, 200, fit).canvas.rgba.let { px -> (3 until px.size step 4).map { px[it] } }
 val differ = fills.count { f ->
     val nonZero = ink(f)
     f.fillRule = FillRule.EVEN_ODD
@@ -86,10 +86,8 @@ The first three are oil:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_tiger_paint/gallery_oil.png" scale="1.5" wait="5" capture="box" open-outputs="true" padding="18" timeout="600" wait-output="true" wait-output-channel="styles" wait-output-contains="stippled" requires="paint" name="chain-tiger-paint-gallery-oil" embed=true alt="Three interpretations of the tiger side by side. Left, on a warm brown oil ground: broad smeared blocks of orange, black, white and pink brushstrokes, the stripes and mouth only roughly placed and blurred into each other. Middle, on the same ground: ragged slabs and rings of knifed paint following the edges of the shapes, black arcs over the brow, an orange and red ring round the muzzle, a pink loop for the mouth and grey flakes for the fur. Right, on white: the head built from thousands of small dots, golden yellow and orange on top with black dot clusters for the stripes, a pink patch of dots for the mouth and scattered grey and black dots for the fur below."}
 :::static
 import afield.graphics.nile.*
-import afield.graphics.paint.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runInterruptible
-import kotlin.math.abs
 
 val doc = GeziraSvg.parse(GeziraSvg.tiger())
 val v = doc.viewBox
@@ -118,7 +116,8 @@ fun knifed() = PaintCanvas(420, ground = PaintGround.Oil, view = view, sizeMm = 
 
 // Dabs of an upright brush, bigger in bigger shapes.
 fun dotted() = PaintCanvas(420, view = view, seed = 9).apply {
-    for (l in doc.lines) if (l.filled) stipple(l, l.color, size = (kotlin.math.sqrt(area(l)) / 12).coerceIn(3.0, 12.0), coverage = 0.8)
+    for (l in doc.lines) if (l.filled)
+        stipple(l, l.color, size = (kotlin.math.sqrt(area(l)) / 12).coerceIn(3.0, 12.0), coverage = 0.8)
 }
 
 go {
@@ -141,10 +140,8 @@ The next three leave oil paint behind or attack it afterwards:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_tiger_paint/gallery_mixed.png" scale="1.5" wait="5" capture="box" open-outputs="true" padding="18" timeout="600" wait-output="true" wait-output-channel="styles" wait-output-contains="whiskers" requires="paint" name="chain-tiger-paint-gallery-mixed" embed=true alt="Three more interpretations of the tiger. Left, on white: a line drawing in thin broken strokes, each shape's edge in its own colour, orange and red round the muzzle and brow, black dashes for the stripes, green eyes and a pink outlined mouth, with grey fur lines below. Middle, on cream paper: a watercolour where the head has run together into a dark umber and amber wash with black stripes bleeding through, a deep violet mouth, crisp black stripes on the white lower face, and pale grey fur strokes. Right, on white: an oil tiger close to the original but frayed and torn along every whisker and outline, the paint pushed into ragged tracks and speckled edges, the white fur grey and broken."}
 :::static
 import afield.graphics.nile.*
-import afield.graphics.paint.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runInterruptible
-import kotlin.math.abs
 
 val doc = GeziraSvg.parse(GeziraSvg.tiger())
 val v = doc.viewBox
@@ -183,7 +180,15 @@ fun washed() = PaintCanvas.paper(420, aspect = 1.0, sizeMm = 300.0, seed = 11, v
 fun blown() = PaintCanvas(420, view = view, seed = 12).apply {
     for (l in doc.lines) if (l.filled) {
         val w = (kotlin.math.sqrt(area(l)) / 6).coerceIn(2.0, 24.0)
-        work(l, l.color, if (area(l) < 2000) Handling.Detail else Handling.Body, width = w, clip = true, hiding = 0.95, stiff = 0.2)
+        work(
+            l,
+            l.color,
+            if (area(l) < 2000) Handling.Detail else Handling.Body,
+            width = w,
+            clip = true,
+            hiding = 0.95,
+            stiff = 0.2,
+        )
     }
     for (l in doc.lines) if (l.stroked) blow(l, radius = 10.0, pressure = 1.0, tendril = 12.0)
 }
@@ -203,8 +208,6 @@ tracing, upwards. This video sweeps it from 0 to 6 in tenths over the same shape
 ```diffstatic_runner {data-lang=kotlin video="assets/chain_tiger_paint/looser.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="6.5" fps="10" timeout="600" requires="paint" embed=true name="chain-tiger-paint-looser" alt="The tiger as a coloured line drawing, redrawn several times. At first short broken strokes follow each stripe, the eyes, the muzzle and the mouth closely. Frame by frame the strokes overshoot their corners, double back and wander off the shapes, until the last drawing is a loose scribble of coloured strokes, orange flaring off the back of the head, in which the tiger is still recognisable."}
 :::static
 import afield.graphics.nile.*
-import afield.graphics.paint.*
-import kotlin.math.abs
 
 val doc = GeziraSvg.parse(GeziraSvg.tiger())
 val v = doc.viewBox
@@ -256,11 +259,8 @@ mean difference per colour channel:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_tiger_paint/strategies.png" scale="1.5" wait="5" capture="box" open-outputs="true" padding="18" timeout="420" wait-output="true" wait-output-channel="table" wait-output-contains="strategy" requires="paint" name="chain-tiger-paint-strategies" embed=true alt="Three oil paintings of the tiger side by side on white. Left: the head is a mess of broad horizontal brushstrokes, the black stripes smeared into wide dark patches, the white fur turned grey, and the eyes and mouth blurred, while the thin whiskers are crisp. Middle: the shapes are now in the right places, the stripes, eyes, fangs and mouth recognisable, but the black stripes on the lower face are streaked grey where the white fur paint was worked into them. Right: a clean painting with solid black stripes, white fur, green eyes, cream fangs and a pink mouth, close to the vector original, with brush texture inside each shape. Below, a table of the three strategies with the seconds each took and its mean difference from the kernels' picture, which falls from left to right."}
 :::static
 import afield.graphics.nile.*
-import afield.graphics.paint.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runInterruptible
-import kotlin.math.abs
-import kotlin.math.sqrt
 
 val doc = GeziraSvg.parse(GeziraSvg.tiger())
 val v = doc.viewBox
@@ -307,14 +307,20 @@ fun paint(sized: Boolean, dryEach: Boolean): Pair<PaintCanvas, Double> {
 
 go {
     val runs = runInterruptible(Dispatchers.Default) {
-        [paint(sized = false, dryEach = false), paint(sized = true, dryEach = false), paint(sized = true, dryEach = true)]
+        [
+            paint(sized = false, dryEach = false),
+            paint(sized = true, dryEach = false),
+            paint(sized = true, dryEach = true),
+        ]
     }
     display("main", pngRow(runs.map { it.first }))
     val names = ["one brush for every fill", "brush sized to each fill", "sized, and dried after each FLine"]
     markdown(
         "table",
         "| strategy | seconds | mean difference from the kernels (0–255) |\n|---|---|---|\n" +
-            runs.indices.joinToString("\n") { "| ${names[it]} | %.1f | %.1f |".format(runs[it].second, difference(runs[it].first)) },
+            runs.indices.joinToString("\n") {
+                "| ${names[it]} | %.1f | %.1f |".format(runs[it].second, difference(runs[it].first))
+            },
         width = 560,
     )
 }
@@ -345,7 +351,6 @@ rows of fat dots. On the right it is sharpened before every region with `pencil.
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_tiger_paint/pencil.png" wait="5" capture="box" open-outputs="true" padding="18" timeout="240" wait-output="true" wait-output-channel="worn" wait-output-contains="longest" requires="paint" name="chain-tiger-paint-pencil" embed=true alt="Two pencil drawings of the tiger side by side on white paper. Both have the whiskers, fur and outlines in thin light grey lines and the black stripes hatched in diagonal grey strokes. On the left the hatching in most stripes has thickened into rows of short fat dashes and dots. On the right the hatching is finer, with separate thin diagonal lines in the upper stripes; only the large mouth and the last stripes thicken. Below, a line giving the longest run of the 6B between sharpenings for each drawing, much longer on the left."}
 :::static
 import afield.graphics.nile.*
-import afield.graphics.paint.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runInterruptible
 
@@ -378,7 +383,8 @@ go {
     display("main", pngRow(runs.map { it.first }))
     markdown(
         "worn",
-        "longest run of the 6B between sharpenings: %.0f mm (left), %.0f mm (right)".format(runs[0].second, runs[1].second),
+        "longest run of the 6B between sharpenings: %.0f mm (left), %.0f mm (right)"
+            .format(runs[0].second, runs[1].second),
         width = 560,
     )
 }
@@ -403,3 +409,7 @@ between bands of its hatching, to keep it fine.
   pressure, and shows wet paint mixing on purpose.
 * [Paint settings, swept](paint_sweeps.md) varies the brush and paint controls one at a time.
 * [Watercolour and ink](watercolor.md) paints on the same canvas with water instead of oil.
+
+## API reference
+
+- Reading SVG and painting its paths: [`GeziraSvg`](reference/graphics.md#gezirasvg-kt-gezirasvg), [`GeziraSvg.parse`](reference/graphics.md#gezirasvg-kt--gezirasvg--parse), [`GeziraSvg.render`](reference/graphics.md#gezirasvg-kt--gezirasvg--render), [`PaintCanvas`](reference/graphics.md#paintcanvas-kt-paintcanvas), [`PaintCanvas.work`](reference/graphics.md#paintcanvas-kt--paintcanvas--work).

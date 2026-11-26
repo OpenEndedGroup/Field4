@@ -17,8 +17,6 @@ operations:
       frame: { x: 80.0, y: 80.0, w: 380.0, h: 100.0 }
       properties:
         code: |
-          import afield.media.image.*
-
           val n = 160
           val u = FloatArray(n * n) { 1f }
           val v = FloatArray(n * n)
@@ -60,7 +58,7 @@ operations:
                   ("stroke" to
                       {
                           canvas.stroke(
-                              listOf(15.0 to 20.0, 60.0 to 35.0, 140.0 to 18.0),
+                              [15.0 to 20.0, 60.0 to 35.0, 140.0 to 18.0],
                               radius = 3.0,
                               value = floatArrayOf(0.5f),
                           )
@@ -103,12 +101,10 @@ operations:
       frame: { x: 900.0, y: 80.0, w: 380.0, h: 100.0 }
       properties:
         code: |
-          import afield.media.image.*
           import java.io.ByteArrayOutputStream
           import java.nio.ByteBuffer
           import java.nio.ByteOrder
           import java.util.Base64
-          import kotlin.math.*
 
           val rate = 44100
           val ring = FloatArray(rate / 2) // a half-second delay line

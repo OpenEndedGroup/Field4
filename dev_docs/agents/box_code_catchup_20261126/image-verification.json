@@ -1,0 +1,59 @@
+{
+  "captures": [
+    {
+      "page": "interaction_nets_examples.md",
+      "name": "interaction-lambda-reduction-video",
+      "artifact": "assets/interaction_nets_lambda/lambda_reduction.mp4",
+      "before": "59ca8a98a035c83a1e8770ef347d1fc6b5956dc6232ce06b0aa4346c7d429dc9",
+      "after": "25b9dae1bee05bc6239733b7758dac06734d6d628ec4b5a0499664a631f35d9b",
+      "byteIdentical": false,
+      "visuallyInspected": true
+    },
+    {
+      "page": "interaction_nets_examples.md",
+      "name": "interaction-five-queens-video",
+      "artifact": "assets/interaction_nets_examples/five_queens.mp4",
+      "before": "13271da54bb1482205e97f0e739062f0599d15ecd2f9735eeeded9355d0cc64e",
+      "after": "4bfb9e575eb6dd24ab9656c010379e717eb55b3101f03fe7aaf43a0583a94b0d",
+      "byteIdentical": false,
+      "visuallyInspected": true
+    },
+    {
+      "page": "agent_transcripts.md",
+      "name": "gallery-pattern-rewrite-unquote",
+      "artifact": "assets/agent_transcripts_gallery/pattern_rewrite_unquote.png",
+      "before": "5bc57bdd139b37c3cff15d9cdac018d38beea3211f4f42f5559adb88f8c72f9e",
+      "after": "f58bf802615dbfa4312185afdfd818722d03b6e0bac75df476ee356ea74e82fb",
+      "byteIdentical": false,
+      "visuallyInspected": true
+    },
+    {
+      "page": "afield_four_graphics.md",
+      "name": "gezira-svg-tiger",
+      "artifact": "assets/afield_four_graphics/gezira-svg-tiger.png",
+      "before": "45e46d0ca956b52cfbc9bdbf1421e6c0e61bd1ee99f9ddb5f0b7a43fea3c7233",
+      "after": "488b983c7536548ea3667e3bb99504be1f7e4e62c1510fdb1ae40e92b8ddac27",
+      "byteIdentical": false,
+      "visuallyInspected": true
+    },
+    {
+      "page": "paint_canvas.md",
+      "name": "strokes_edited",
+      "artifact": "assets/paint_canvas/strokes_edited.png",
+      "before": "954987b2fcfd896129b3c9ba258656a9314ba3aff1e86c3913027b66c346bdab",
+      "after": "16eb7ac830b3056c58b2db681611d44f0b75b7d9a0224cbc595db9acbf4dee35",
+      "byteIdentical": false,
+      "visuallyInspected": true
+    },
+    {
+      "page": "reactive_properties.md",
+      "name": "fieldml-reactive-bridge",
+      "artifact": "assets/reactive_properties/fieldml-bridge.png",
+      "before": "3e40c78b546140eb20520ca27e327694842ed59fd166bda6f93483e13775d2b8",
+      "after": "a8761bea571271c2e5e947c8c270ee848f41ab88abe815a4f76373e414f05b24",
+      "byteIdentical": false,
+      "visuallyInspected": true
+    }
+  ],
+  "review": "All screenshots inspected; both movies inspected at beginning, middle and end. FieldML is rendered as a compact static FLine SVG, avoiding the interactive viewer canvas padding."
+}

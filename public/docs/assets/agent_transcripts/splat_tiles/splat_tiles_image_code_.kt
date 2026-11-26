@@ -1,7 +1,3 @@
-import afield.graphics.render.SplatRaster
-import afield.graphics.render.SplatTiles
-import afield.math.linalg.Vector3f
-
 // A dense core inside a sparse halo, in the renderer's 16-float layout.
 val count = 40_000
 val cloud = SplatTiles.clusteredCloud(count)
@@ -17,7 +13,7 @@ val binning = SplatTiles.bin(cloud, count, view)
 val tiled = SplatTiles.render(binning).image.toArgb()
 
 var worst = 0
-for (i in reference.indices) for (shift in listOf(16, 8, 0)) {
+for (i in reference.indices) for (shift in [16, 8, 0]) {
     worst = max(worst, abs(((reference[i] shr shift) and 255) - ((tiled[i] shr shift) and 255)))
 }
 println(binning)

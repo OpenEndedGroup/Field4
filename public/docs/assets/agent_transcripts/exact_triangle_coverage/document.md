@@ -10,13 +10,17 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 
 <!-- field-box id="coverage_cpu" index="0" -->
 
+### Narrative
+
+From `code`
+
+Eight triangles on a 32 x 24 grid, y down, divided into the unit square TriangleSplat uses.
+
 ```edn [field-box id="coverage_cpu" role="properties"]
-{"id" "coverage_cpu" "index" 0 "name" "coverage on the CPU" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "coverage on the CPU" "_tombstone" false "frame" #afield/rect [40.0 200.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "coverage_cpu_code_.kt" "lines" 53 "characters" 2103 "sha256" "65aa5748b962feb545725802bfbe7504ecc635ca8db2da3e135c8bf4c0c2ccdb"}]}
+{"id" "coverage_cpu" "index" 0 "name" "coverage on the CPU" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "coverage on the CPU" "_tombstone" false "frame" #afield/rect [40.0 200.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "coverage_cpu_code_.kt" "lines" 51 "characters" 2064 "sha256" "f7f9cad9d0ae039c2ea5067d7d504e67b379f880693516ffcc4b1b89dcc7271e"}]}
 ```
 
 ```kotlin [field-property box="coverage_cpu" name="code" path="coverage_cpu_code_.kt"]
-import afield.graphics.render.*
-
 // Eight triangles on a 32 x 24 grid, y down, divided into the unit square TriangleSplat uses.
 fun tri(
     ax: Double,
@@ -31,12 +35,12 @@ fun tri(
     a: Double = 1.0,
 ) = CoverageTriangle(ax / 32, ay / 24, bx / 32, by / 24, cx / 32, cy / 24, r, g, b, a)
 
-val scene = listOf(
+val scene = [
     tri(2.0, 20.0, 14.0, 3.0, 20.0, 18.0, 1.0, 0.55, 0.1),
     tri(18.0, 8.0, 31.0, 11.0, 24.0, 22.0, 0.2, 0.8, 0.4, 0.7),
     tri(3.0, 2.0, 30.0, 4.0, 30.0, 4.35, 0.3, 0.6, 1.0),
     tri(6.0, 22.0, 28.0, 21.6, 28.0, 22.0, 1.0, 1.0, 1.0),
-) +
+] +
         (0 until 4).map { i ->
             // Four triangles of 0.08 pixels each, tucked between pixel centres.
             val x = 2.0 + 2.0 * i

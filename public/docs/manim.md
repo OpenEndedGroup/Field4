@@ -236,3 +236,7 @@ Manim is developed by the Manim Community and released under the MIT license.
 - [FLine examples](fline_examples.md): what else to do with the lines a frame is made of.
 - [Computer vision in Python](python_cv.md): the other direction, Python finding shapes in video for
   Kotlin to draw.
+
+## API reference
+
+- Receiving the sampled paths: [`NumpyShared`](reference/languages.md#numpyshared-kt-numpyshared), [`NumpyShared.pathFrames`](reference/languages.md#numpyshared-kt--numpyshared--pathframes).

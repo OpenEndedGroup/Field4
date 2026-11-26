@@ -365,9 +365,10 @@ writing the same three words:
 import afield.ai.learning.pen.*
 
 val hand = PenGpt.hand
-val rows = [1, 150, 300, 640, 900, 1100].flatMapIndexed { row, k ->
-    hand.write("a learned hand", writer = hand.writers[k], at = vec(0.0, row * 55.0, 0.0))
-}
+val rows =
+    [1, 150, 300, 640, 900, 1100].flatMapIndexed { row, k ->
+        hand.write("a learned hand", writer = hand.writers[k], at = vec(0.0, row * 55.0, 0.0))
+    }
 lines(rows, w = 520.0, h = 340.0, fitToSize = true)
 ```
 
@@ -381,9 +382,16 @@ each writer's tidiest hand. Raising it lets the letters loosen. The same writer 
 import afield.ai.learning.pen.*
 
 val hand = PenGpt.hand
-val rows = [0.0, 0.5, 0.9].flatMapIndexed { row, temperature ->
-    hand.write("loosening up", writer = hand.writers[40], temperature = temperature, seed = 2, at = vec(0.0, row * 55.0, 0.0))
-}
+val rows =
+    [0.0, 0.5, 0.9].flatMapIndexed { row, temperature ->
+        hand.write(
+            "loosening up",
+            writer = hand.writers[40],
+            temperature = temperature,
+            seed = 2,
+            at = vec(0.0, row * 55.0, 0.0),
+        )
+    }
 lines(rows, w = 520.0, h = 180.0, fitToSize = true)
 ```
 
@@ -426,9 +434,10 @@ comes out. Each drawing takes one to six seconds.
 import afield.ai.learning.pen.*
 
 val sketch = PenGpt.sketch
-val drawings = ["a cat", "a lighthouse", "a bicycle"].mapIndexed { k, phrase ->
-    sketch.draw(phrase, seed = 1, size = 150.0, at = vec(k * 175.0, 0.0, 0.0))
-}
+val drawings =
+    ["a cat", "a lighthouse", "a bicycle"].mapIndexed { k, phrase ->
+        sketch.draw(phrase, seed = 1, size = 150.0, at = vec(k * 175.0, 0.0, 0.0))
+    }
 lines(drawings, w = 520.0, h = 180.0, fitToSize = true)
 ```
 
@@ -442,9 +451,10 @@ for an amount of drawing. Here is the same house, asked for in 3, 8 and 20 strok
 import afield.ai.learning.pen.*
 
 val sketch = PenGpt.sketch
-val houses = [3, 8, 20].mapIndexed { k, strokes ->
-    sketch.draw("a house", seed = 1, strokes = strokes, size = 150.0, at = vec(k * 175.0, 0.0, 0.0))
-}
+val houses =
+    [3, 8, 20].mapIndexed { k, strokes ->
+        sketch.draw("a house", seed = 1, strokes = strokes, size = 150.0, at = vec(k * 175.0, 0.0, 0.0))
+    }
 lines(houses, w = 520.0, h = 180.0, fitToSize = true)
 ```
 
@@ -563,13 +573,20 @@ import afield.ai.learning.pen.*
 
 watchdog = 120 // a drawing of 600 tokens takes about five seconds
 val michaux = PenGpt.named("sketch-michaux")
-val generated = (0 until 4).map { k ->
-    [PenDrawings.michaux(200_000L + k).apply { color = vec(0.6, 0.6, 0.65, 1.0) }]
-}
-val learned = (0 until 4).map { k ->
-    [michaux.draw(PenGptPrompt(), temperature = 0.8, seed = k.toLong())]
-}
-lines(stacked([sideBySide(generated, gap = 30.0), sideBySide(learned, gap = 30.0)], gap = 40.0), w = 520.0, h = 330.0, fitToSize = true)
+val generated =
+    (0 until 4).map { k ->
+        [PenDrawings.michaux(200_000L + k).apply { color = vec(0.6, 0.6, 0.65, 1.0) }]
+    }
+val learned =
+    (0 until 4).map { k ->
+        [michaux.draw(PenGptPrompt(), temperature = 0.8, seed = k.toLong())]
+    }
+lines(
+    stacked([sideBySide(generated, gap = 30.0), sideBySide(learned, gap = 30.0)], gap = 40.0),
+    w = 520.0,
+    h = 330.0,
+    fitToSize = true,
+)
 ```
 
 The two Michaux pens are different instruments. The [pen that sees](a_pen_that_sees.md) grows one
@@ -594,12 +611,13 @@ import afield.ai.learning.pen.*
 watchdog = 120 // eighteen drawings take about fifteen seconds
 val corpora = PenGpt.corpora
 val names = ["hershey", "harmonograph", "plants", "truchet", "boids", "mixed", "michaux", "cracks", "echoes"]
-val rows = names.chunked(3).map { three ->
-    val pairs = three.flatMap { name ->
-        (0 until 2).map { k -> [corpora.draw(name, temperature = 0.8, seed = k.toLong(), size = 76.0)] }
+val rows =
+    names.chunked(3).map { three ->
+        val pairs = three.flatMap { name ->
+            (0 until 2).map { k -> [corpora.draw(name, temperature = 0.8, seed = k.toLong(), size = 76.0)] }
+        }
+        sideBySide(pairs, gap = 12.0)
     }
-    sideBySide(pairs, gap = 12.0)
-}
 lines(stacked(rows, gap = 26.0), w = 520.0, h = 330.0, fitToSize = true)
 ```
 
@@ -616,10 +634,11 @@ from Michaux to plants, with one seed:
 import afield.ai.learning.pen.*
 
 val corpora = PenGpt.corpora
-val blend = [0.0, 0.25, 0.5, 0.75, 1.0].map { t ->
-    val style = corpora.style("michaux" to 1 - t, "plants" to t)
-    [corpora.draw(PenGptPrompt(style = style), temperature = 0.8, seed = 1, size = 90.0)]
-}
+val blend =
+    [0.0, 0.25, 0.5, 0.75, 1.0].map { t ->
+        val style = corpora.style("michaux" to 1 - t, "plants" to t)
+        [corpora.draw(PenGptPrompt(style = style), temperature = 0.8, seed = 1, size = 90.0)]
+    }
 lines(sideBySide(blend, gap = 16.0), w = 520.0, h = 130.0, fitToSize = true)
 ```
 
@@ -734,3 +753,7 @@ Next builds and open questions:
 - **Mixing the two pens.** The LSTM is sure mid-stroke and PenGPT is sure what the next letter is.
   Handing the stroke to the LSTM and the letter to PenGPT, or averaging their next steps, is
   untried.
+
+## API reference
+
+- Loading and prompting the pen: [`HersheyFont`](reference/machine-learning.md#corpora-kt-hersheyfont), [`HersheyFont.load`](reference/machine-learning.md#corpora-kt--hersheyfont-companion--load), [`PenDrawings`](reference/machine-learning.md#corpora-kt-pendrawings), [`PenDrawings.michaux`](reference/machine-learning.md#corpora-kt--pendrawings--michaux), [`PenGpt`](reference/machine-learning.md#pengpt-kt-pengpt), [`PenGpt.named`](reference/machine-learning.md#pengpt-kt--pengpt-companion--named), [`PenGptPrompt`](reference/machine-learning.md#pengpt-kt-pengptprompt).

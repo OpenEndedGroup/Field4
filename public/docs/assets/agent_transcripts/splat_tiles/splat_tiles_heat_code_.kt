@@ -1,7 +1,3 @@
-import afield.graphics.render.SplatRaster
-import afield.graphics.render.SplatTiles
-import afield.math.linalg.Vector3f
-
 val count = 40_000
 val cloud = SplatTiles.clusteredCloud(count)
 val view = SplatRaster.View.lookAt(

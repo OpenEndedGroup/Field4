@@ -1,6 +1,4 @@
-import afield.graphics.interaction.*
 import afield.graphics.scene.reading.*
-import afield.graphics.vulkan.util.WindowPointer
 
 // Point at the reading space: the mouse over the desktop mirror, or the right controller in a headset.
 // The hovered item stays bright and everything else dims; a click prints what was clicked.

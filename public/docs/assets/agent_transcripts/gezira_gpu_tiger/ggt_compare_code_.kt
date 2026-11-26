@@ -1,5 +1,4 @@
 import afield.graphics.nile.*
-import afield.graphics.vulkan.util.GpuProbe
 
 val n = 300
 val svg = GeziraSvg.tiger()
@@ -40,7 +39,7 @@ frames {
         val gap = 12
         val w = 3 * n + 2 * gap
         val sheet = FloatArray(4 * w * n)
-        for ((k, img) in listOf(gpu, cpu, diff).withIndex()) {
+        for ((k, img) in [gpu, cpu, diff].withIndex()) {
             for (y in 0 until n) for (x in 0 until n) {
                 val s = 4 * (y * n + x)
                 val d = 4 * (y * w + k * (n + gap) + x)

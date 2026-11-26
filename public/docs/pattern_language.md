@@ -794,7 +794,7 @@ val lines = buildList {
     )
 }.joinToString("\n")
 println(lines)
-display("<pre>" + lines + "</pre>")
+markdown("```text\n$lines\n```")
 ```
 
 `hasOnset` is the difference, and `eventSequence`, which every scheduling path uses,

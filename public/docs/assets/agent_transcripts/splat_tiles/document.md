@@ -11,14 +11,10 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="splat_tiles_timing" index="0" -->
 
 ```edn [field-box id="splat_tiles_timing" role="properties"]
-{"id" "splat_tiles_timing" "index" 0 "name" "3 - naive against balanced" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - naive against balanced" "_tombstone" false "frame" #afield/rect [740.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "splat_tiles_timing_code_.kt" "lines" 20 "characters" 738 "sha256" "1c9f520a57a5576bd2fe666cd1d915e881653a4f0517cff08f35c35a3befb2a0"}]}
+{"id" "splat_tiles_timing" "index" 0 "name" "3 - naive against balanced" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - naive against balanced" "_tombstone" false "frame" #afield/rect [740.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "splat_tiles_timing_code_.kt" "lines" 16 "characters" 613 "sha256" "6d48cb000e4c5f2cf99a446c48677cd337788ea938954ae7e0f2a0a9d12b61c4"}]}
 ```
 
 ```kotlin [field-property box="splat_tiles_timing" name="code" path="splat_tiles_timing_code_.kt"]
-import afield.graphics.render.SplatRaster
-import afield.graphics.render.SplatTiles
-import afield.math.linalg.Vector3f
-
 val count = 200_000
 val cloud = SplatTiles.clusteredCloud(count)
 // A small image is 36 tiles for 10 workers, and the core's tiles hold most of the work:
@@ -31,7 +27,7 @@ val view = SplatRaster.View.lookAt(
 )
 val binning = SplatTiles.bin(cloud, count, view)
 println(binning)
-for (cutoff in listOf(1e-4f, 0f)) {
+for (cutoff in [1e-4f, 0f]) {
     println("transmittance cutoff $cutoff")
     for (row in SplatTiles.compare(binning, repeats = 9, transmittanceCutoff = cutoff)) println("  $row")
 }
@@ -42,14 +38,10 @@ for (cutoff in listOf(1e-4f, 0f)) {
 <!-- field-box id="splat_tiles_heat" index="1" -->
 
 ```edn [field-box id="splat_tiles_heat" role="properties"]
-{"id" "splat_tiles_heat" "index" 1 "name" "2 - splats per tile" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - splats per tile" "_tombstone" false "frame" #afield/rect [400.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "splat_tiles_heat_code_.kt" "lines" 20 "characters" 754 "sha256" "05d798d8515e43e2c37714a9ad88530c76a2aa72a9008c9a199fa239ee942780"}]}
+{"id" "splat_tiles_heat" "index" 1 "name" "2 - splats per tile" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - splats per tile" "_tombstone" false "frame" #afield/rect [400.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "splat_tiles_heat_code_.kt" "lines" 16 "characters" 635 "sha256" "f9900b8632db6ed934a0684c6e4ccf980e7432c8276d8ce5d6ed10a00b88ce7d"}]}
 ```
 
 ```kotlin [field-property box="splat_tiles_heat" name="code" path="splat_tiles_heat_code_.kt"]
-import afield.graphics.render.SplatRaster
-import afield.graphics.render.SplatTiles
-import afield.math.linalg.Vector3f
-
 val count = 40_000
 val cloud = SplatTiles.clusteredCloud(count)
 val view = SplatRaster.View.lookAt(
@@ -72,15 +64,17 @@ println(
 
 <!-- field-box id="splat_tiles_image" index="2" -->
 
+### Narrative
+
+From `code`
+
+A dense core inside a sparse halo, in the renderer's 16-float layout.
+
 ```edn [field-box id="splat_tiles_image" role="properties"]
-{"id" "splat_tiles_image" "index" 2 "name" "1 - binned against the reference" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - binned against the reference" "_tombstone" false "frame" #afield/rect [60.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "splat_tiles_image_code_.kt" "lines" 25 "characters" 873 "sha256" "28032d354ef67b679ae0003c8cdf245e6e1ca36806dd3f559172f5906a872d01"}]}
+{"id" "splat_tiles_image" "index" 2 "name" "1 - binned against the reference" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - binned against the reference" "_tombstone" false "frame" #afield/rect [60.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "splat_tiles_image_code_.kt" "lines" 21 "characters" 748 "sha256" "7ce9a6073826e4f939bc1a66974405098dcec794dc493513dd22f0941db398d5"}]}
 ```
 
 ```kotlin [field-property box="splat_tiles_image" name="code" path="splat_tiles_image_code_.kt"]
-import afield.graphics.render.SplatRaster
-import afield.graphics.render.SplatTiles
-import afield.math.linalg.Vector3f
-
 // A dense core inside a sparse halo, in the renderer's 16-float layout.
 val count = 40_000
 val cloud = SplatTiles.clusteredCloud(count)
@@ -96,7 +90,7 @@ val binning = SplatTiles.bin(cloud, count, view)
 val tiled = SplatTiles.render(binning).image.toArgb()
 
 var worst = 0
-for (i in reference.indices) for (shift in listOf(16, 8, 0)) {
+for (i in reference.indices) for (shift in [16, 8, 0]) {
     worst = max(worst, abs(((reference[i] shr shift) and 255) - ((tiled[i] shr shift) and 255)))
 }
 println(binning)

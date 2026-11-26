@@ -1,5 +1,4 @@
 import afield.graphics.nile.*
-import afield.graphics.vulkan.util.GpuProbe
 
 val W = 120
 val H = 48

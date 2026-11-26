@@ -1,0 +1,423 @@
+{
+  "changes": [
+    {
+      "path": "dev_docs/agents/demos/buffer_paint/buffer_paint_gray_scott_code_.kt",
+      "index": 0,
+      "reasons": [
+        "collection literals"
+      ],
+      "collectionLiterals": 1
+    },
+    {
+      "path": "dev_docs/agents/transcripts/adaptive_distribution_feedback.yaml",
+      "index": 0,
+      "reasons": [
+        "collection literals"
+      ],
+      "collectionLiterals": 3
+    },
+    {
+      "path": "dev_docs/agents/transcripts/addressable_paint_strokes.yaml",
+      "index": 0,
+      "reasons": [
+        "collection literals",
+        "named inherited stroke sheet"
+      ],
+      "collectionLiterals": 10
+    },
+    {
+      "path": "dev_docs/agents/transcripts/addressable_paint_strokes.yaml",
+      "index": 1,
+      "reasons": [
+        "collection literals",
+        "named inherited stroke sheet"
+      ],
+      "collectionLiterals": 2
+    },
+    {
+      "path": "dev_docs/agents/transcripts/addressable_paint_strokes.yaml",
+      "index": 2,
+      "reasons": [
+        "named inherited stroke sheet"
+      ],
+      "collectionLiterals": 0
+    },
+    {
+      "path": "dev_docs/agents/transcripts/addressable_paint_strokes.yaml",
+      "index": 3,
+      "reasons": [
+        "collection literals",
+        "named inherited stroke sheet"
+      ],
+      "collectionLiterals": 1
+    },
+    {
+      "path": "dev_docs/agents/transcripts/buffer_paint.yaml",
+      "index": 0,
+      "reasons": [
+        "collection literals"
+      ],
+      "collectionLiterals": 1
+    },
+    {
+      "path": "dev_docs/agents/transcripts/chamfer_everything.yaml",
+      "index": 1,
+      "reasons": [
+        "collection literals"
+      ],
+      "collectionLiterals": 3
+    },
+    {
+      "path": "dev_docs/agents/transcripts/drawing_on.yaml",
+      "index": 1,
+      "reasons": [
+        "collection literals"
+      ],
+      "collectionLiterals": 2
+    },
+    {
+      "path": "dev_docs/agents/transcripts/exact_triangle_coverage.yaml",
+      "index": 0,
+      "reasons": [
+        "collection literals"
+      ],
+      "collectionLiterals": 1
+    },
+    {
+      "path": "dev_docs/agents/transcripts/explainer_lights.yaml",
+      "index": 8,
+      "reasons": [
+        "collection literals"
+      ],
+      "collectionLiterals": 1
+    },
+    {
+      "path": "dev_docs/agents/transcripts/explainer_lights.yaml",
+      "index": 9,
+      "reasons": [
+        "collection literals"
+      ],
+      "collectionLiterals": 1
+    },
+    {
+      "path": "dev_docs/agents/transcripts/fillet_everything.yaml",
+      "index": 0,
+      "reasons": [
+        "collection literals"
+      ],
+      "collectionLiterals": 1
+    },
+    {
+      "path": "dev_docs/agents/transcripts/fillet_everything.yaml",
+      "index": 2,
+      "reasons": [
+        "collection literals"
+      ],
+      "collectionLiterals": 3
+    },
+    {
+      "path": "dev_docs/agents/transcripts/geodesic_carving.yaml",
+      "index": 0,
+      "reasons": [
+        "collection literals"
+      ],
+      "collectionLiterals": 1
+    },
+    {
+      "path": "dev_docs/agents/transcripts/gezira_gpu_tiger.yaml",
+      "index": 5,
+      "reasons": [
+        "collection literals"
+      ],
+      "collectionLiterals": 1
+    },
+    {
+      "path": "dev_docs/agents/transcripts/nile_gezira_kernels.yaml",
+      "index": 0,
+      "reasons": [
+        "collection literals"
+      ],
+      "collectionLiterals": 3
+    },
+    {
+      "path": "dev_docs/agents/transcripts/nile_gezira_kernels.yaml",
+      "index": 3,
+      "reasons": [
+        "collection literals"
+      ],
+      "collectionLiterals": 1
+    },
+    {
+      "path": "dev_docs/agents/transcripts/nile_gezira_kernels.yaml",
+      "index": 4,
+      "reasons": [
+        "collection literals"
+      ],
+      "collectionLiterals": 2
+    },
+    {
+      "path": "dev_docs/agents/transcripts/nile_gezira_svg.yaml",
+      "index": 1,
+      "reasons": [
+        "collection literals",
+        "Markdown comparison readout"
+      ],
+      "collectionLiterals": 2
+    },
+    {
+      "path": "dev_docs/agents/transcripts/outline_field_gpu.yaml",
+      "index": 2,
+      "reasons": [
+        "collection literals"
+      ],
+      "collectionLiterals": 2
+    },
+    {
+      "path": "dev_docs/agents/transcripts/pattern_rewrite_worked_example.yaml",
+      "index": 8,
+      "reasons": [
+        "Markdown result"
+      ],
+      "collectionLiterals": 0
+    },
+    {
+      "path": "dev_docs/agents/transcripts/pattern_rewrite_worked_example.yaml",
+      "index": 9,
+      "reasons": [
+        "Markdown result"
+      ],
+      "collectionLiterals": 0
+    },
+    {
+      "path": "dev_docs/agents/transcripts/reading_pointing.yaml",
+      "index": 1,
+      "reasons": [
+        "collection literals"
+      ],
+      "collectionLiterals": 1
+    },
+    {
+      "path": "dev_docs/agents/transcripts/shader_study_region_checks.yaml",
+      "index": 0,
+      "reasons": [
+        "collection literals"
+      ],
+      "collectionLiterals": 2
+    },
+    {
+      "path": "dev_docs/agents/transcripts/shader_study_region_checks.yaml",
+      "index": 1,
+      "reasons": [
+        "collection literals"
+      ],
+      "collectionLiterals": 2
+    },
+    {
+      "path": "dev_docs/agents/transcripts/spinny_algebras.yaml",
+      "index": 0,
+      "reasons": [
+        "collection literals"
+      ],
+      "collectionLiterals": 2
+    },
+    {
+      "path": "dev_docs/agents/transcripts/spinny_algebras.yaml",
+      "index": 2,
+      "reasons": [
+        "collection literals"
+      ],
+      "collectionLiterals": 1
+    },
+    {
+      "path": "dev_docs/agents/transcripts/spinny_algebras.yaml",
+      "index": 3,
+      "reasons": [
+        "collection literals"
+      ],
+      "collectionLiterals": 4
+    },
+    {
+      "path": "dev_docs/agents/transcripts/splat_tiles.yaml",
+      "index": 0,
+      "reasons": [
+        "collection literals"
+      ],
+      "collectionLiterals": 1
+    },
+    {
+      "path": "dev_docs/agents/transcripts/splat_tiles.yaml",
+      "index": 2,
+      "reasons": [
+        "collection literals"
+      ],
+      "collectionLiterals": 1
+    },
+    {
+      "path": "public/docs/colors_examples.md",
+      "index": 2,
+      "reasons": [
+        "collection literals"
+      ],
+      "collectionLiterals": 4
+    },
+    {
+      "path": "public/docs/colors_examples.md",
+      "index": 8,
+      "reasons": [
+        "collection literals"
+      ],
+      "collectionLiterals": 1
+    },
+    {
+      "path": "public/docs/drawing_on.md",
+      "index": 0,
+      "reasons": [
+        "collection literals"
+      ],
+      "collectionLiterals": 1
+    },
+    {
+      "path": "public/docs/drawing_on.md",
+      "index": 5,
+      "reasons": [
+        "collection literals"
+      ],
+      "collectionLiterals": 1
+    },
+    {
+      "path": "public/docs/explainer_lights.md",
+      "index": 8,
+      "reasons": [
+        "collection literals"
+      ],
+      "collectionLiterals": 1
+    },
+    {
+      "path": "public/docs/explainer_lights.md",
+      "index": 9,
+      "reasons": [
+        "collection literals"
+      ],
+      "collectionLiterals": 1
+    },
+    {
+      "path": "public/docs/interaction_nets_examples.md",
+      "index": 0,
+      "reasons": [
+        "Markdown reaction readout"
+      ],
+      "collectionLiterals": 0
+    },
+    {
+      "path": "public/docs/interaction_nets_examples.md",
+      "index": 6,
+      "reasons": [
+        "Markdown parallel reduction readout"
+      ],
+      "collectionLiterals": 0
+    },
+    {
+      "path": "public/docs/mesh_examples.md",
+      "index": 9,
+      "reasons": [
+        "collection literals"
+      ],
+      "collectionLiterals": 1
+    },
+    {
+      "path": "public/docs/paint_canvas.md",
+      "index": 19,
+      "reasons": [
+        "collection literals"
+      ],
+      "collectionLiterals": 1
+    },
+    {
+      "path": "public/docs/pattern_language.md",
+      "index": 39,
+      "reasons": [
+        "Markdown event readout"
+      ],
+      "collectionLiterals": 0
+    },
+    {
+      "path": "public/docs/spectral_geometry.md",
+      "index": 4,
+      "reasons": [
+        "collection literals"
+      ],
+      "collectionLiterals": 2
+    },
+    {
+      "path": "public/docs/visualizers.md",
+      "index": 40,
+      "reasons": [
+        "collection literals"
+      ],
+      "collectionLiterals": 1
+    },
+    {
+      "path": "templates/spatial-rules/filament_code_.kt",
+      "index": 0,
+      "reasons": [
+        "collection literals"
+      ],
+      "collectionLiterals": 2
+    },
+    {
+      "path": "templates/spatial-rules/weave_code_.kt",
+      "index": 0,
+      "reasons": [
+        "collection literals"
+      ],
+      "collectionLiterals": 4
+    },
+    {
+      "path": "templates/spectral-geometry/ellipses_code_.kt",
+      "index": 0,
+      "reasons": [
+        "collection literals"
+      ],
+      "collectionLiterals": 4
+    },
+    {
+      "path": "templates/spectral-geometry/fit_code_.kt",
+      "index": 0,
+      "reasons": [
+        "collection literals"
+      ],
+      "collectionLiterals": 1
+    },
+    {
+      "path": "templates/spectral-geometry/manifold_code_.kt",
+      "index": 0,
+      "reasons": [
+        "collection literals"
+      ],
+      "collectionLiterals": 2
+    },
+    {
+      "path": "templates/spectral-geometry/waves_code_.kt",
+      "index": 0,
+      "reasons": [
+        "collection literals"
+      ],
+      "collectionLiterals": 8
+    }
+  ],
+  "additionalChanges": [
+    {
+      "path": "dev_docs/agents/transcripts/fieldml_reactive_bridge.yaml",
+      "reasons": [
+        "Replace handmade HTML bars with explicit FLine rectangles and a Markdown numeric readout.",
+        "Source-language adjudication: this result reader is Kotlin, even though it consumes a FieldML box."
+      ]
+    },
+    {
+      "path": "public/docs/colors_examples.md",
+      "reasons": [
+        "A named List<FLine> makes the tile plus optional miss marker explicit and disambiguates flatMapIndexed while retaining collection literals."
+      ]
+    }
+  ]
+}

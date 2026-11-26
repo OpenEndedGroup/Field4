@@ -11,15 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="steam_screen" index="0" -->
 
 ```edn [field-box id="steam_screen" role="properties"]
-{"id" "steam_screen" "index" 0 "name" "A screen between source and listener" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A screen between source and listener" "_tombstone" false "frame" #afield/rect [80.0 80.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "steam_screen_code_.kt" "lines" 66 "characters" 2404 "sha256" "8d96fd272ce2986d1b4a9f3e54f9ece97f9d4ccde3f054383f026264d699b408"}]}
+{"id" "steam_screen" "index" 0 "name" "A screen between source and listener" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A screen between source and listener" "_tombstone" false "frame" #afield/rect [80.0 80.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "steam_screen_code_.kt" "lines" 63 "characters" 2257 "sha256" "47c036c3d70b6bfd6058b244eaf456d026d744f79cfef56de46c3c4ca5042bdf"}]}
 ```
 
 ```kotlin [field-property box="steam_screen" name="code" path="steam_screen_code_.kt"]
 import afield.audio.spatial.steamaudio.Material
 import afield.examples.steamaudio.SteamAudioScreenStudy
-import afield.ui.visualization.AudioVisualizerOptions
-import afield.ui.visualization.LinesFraming
-import afield.ui.visualization.displayAudioBytes
 import java.util.Locale
 
 val scene = SteamAudioScreenStudy

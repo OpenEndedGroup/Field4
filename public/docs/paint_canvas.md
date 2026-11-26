@@ -261,10 +261,8 @@ import afield.graphics.nile.*
 
 val canvas = PaintCanvas(800, aspect = 2.0, sizeMm = 300.0)
 
-fun squares(dx: Double, rule: FillRule) = FLine()
-    .rect(dx + 60.0, 60.0, 220.0, 220.0)
-    .rect(dx + 180.0, 180.0, 220.0, 220.0)
-    .also { it.fillRule = rule }
+fun squares(dx: Double, rule: FillRule) =
+    FLine().rect(dx + 60.0, 60.0, 220.0, 220.0).rect(dx + 180.0, 180.0, 220.0, 220.0).also { it.fillRule = rule }
 
 canvas.work(squares(0.0, FillRule.NON_ZERO), rgb(0.2, 0.4, 0.6), Handling.Body, angle = 0.5, clip = true)
 canvas.work(squares(500.0, FillRule.EVEN_ODD), rgb(0.2, 0.4, 0.6), Handling.Body, angle = 0.5, clip = true)
@@ -681,23 +679,38 @@ This box paints Sprout, a small creature, stroke by stroke. Each `add` returns t
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/strokes_creature.png" alt="a cream canvas with a round green creature in the middle, its body made of eleven horizontal hog-flat strokes in two alternating olive greens, with five dark green filbert leaves sprouting from the top of its head, two pale eyes with dark pupils, a thin brown smiling mouth, a faint pink smudge on its left cheek and two brown legs" wait="20" capture="box" open-outputs="true" padding="20" requires="paint" name="strokes_creature" embed=true}
 :::static
 // points around an ellipse from angle a0 to a1 (radians), as [x0, y0, x1, y1, ...]
-fun arc(cx: Double, cy: Double, rx: Double, ry: Double, a0: Double, a1: Double, n: Int = 24) =
-    (0..n).flatMap { val a = a0 + (a1 - a0) * it / n; [cx + rx * cos(a), cy + ry * sin(a)] }
+fun arc(cx: Double, cy: Double, rx: Double, ry: Double, a0: Double, a1: Double, n: Int = 24) = (0..n).flatMap {
+    val a = a0 + (a1 - a0) * it / n
+    [cx + rx * cos(a), cy + ry * sin(a)]
+}
 
 val sheet = PaintStrokes(700, aspect = 1.4, seed = 3)
 // the body: rows of a hog flat, filling an ellipse
 for (i in -5..5) {
     val y = 400.0 + i * 26
     val w = 190 * sqrt(1 - (i / 6.0).pow(2))
-    sheet.add([500 - w, y, 500 + w, y + 6], color = if (i % 2 == 0) "#8a9a3a" else "#a0a848", brush = BrushKind.HogFlat, width = 34.0, group = "body")
+    sheet.add(
+        [500 - w, y, 500 + w, y + 6],
+        color = if (i % 2 == 0) "#8a9a3a" else "#a0a848",
+        brush = BrushKind.HogFlat,
+        width = 34.0,
+        group = "body",
+    )
 }
 // legs, and leaves sprouting from the head
 sheet.add([430.0, 540.0, 420.0, 640.0], color = "#4a3a20", brush = BrushKind.HogFlat, width = 26.0, group = "legs")
 sheet.add([570.0, 540.0, 585.0, 640.0], color = "#4a3a20", brush = BrushKind.HogFlat, width = 26.0, group = "legs")
 for (a in [-2.3, -1.9, -1.57, -1.25, -0.85]) {
-    val x = 500 + 60 * cos(a); val y = 290 + 30 * sin(a)
-    sheet.add([x, y, x + 60 * cos(a) - 12, y + 60 * sin(a), x + 120 * cos(a), y + 110 * sin(a)],
-        color = "#2f6a2a", brush = BrushKind.Filbert, width = 30.0, pressure = 0.9 to 0.4, group = "leaves")
+    val x = 500 + 60 * cos(a)
+    val y = 290 + 30 * sin(a)
+    sheet.add(
+        [x, y, x + 60 * cos(a) - 12, y + 60 * sin(a), x + 120 * cos(a), y + 110 * sin(a)],
+        color = "#2f6a2a",
+        brush = BrushKind.Filbert,
+        width = 30.0,
+        pressure = 0.9 to 0.4,
+        group = "leaves",
+    )
 }
 // eyes, a smiling mouth and a pink smudge on one cheek
 for (x in [440.0, 560.0]) {
@@ -705,7 +718,14 @@ for (x in [440.0, 560.0]) {
     sheet.add([x, 364.0, x + 8, 365.0], color = "#1a1a1a", width = 16.0, pressure = 1.0 to 1.0, group = "eyes")
 }
 sheet.add(arc(500.0, 420.0, 70.0, 45.0, 0.4, PI - 0.4), color = "#3a1a10", width = 10.0, group = "mouth")
-sheet.add([400.0, 440.0, 410.0, 445.0], color = "#e07080", brush = BrushKind.Badger, width = 50.0, hiding = 0.6, group = "smudge")
+sheet.add(
+    [400.0, 440.0, 410.0, 445.0],
+    color = "#e07080",
+    brush = BrushKind.Badger,
+    width = 50.0,
+    hiding = 0.6,
+    group = "smudge",
+)
 
 display("main", sheet.png())
 println(sheet.describe())
@@ -718,23 +738,38 @@ which is what an agent reads before it edits. Shown as markdown, Sprout's list i
 :::static
 :::fold the creature from the first example
 // points around an ellipse from angle a0 to a1 (radians), as [x0, y0, x1, y1, ...]
-fun arc(cx: Double, cy: Double, rx: Double, ry: Double, a0: Double, a1: Double, n: Int = 24) =
-    (0..n).flatMap { val a = a0 + (a1 - a0) * it / n; [cx + rx * cos(a), cy + ry * sin(a)] }
+fun arc(cx: Double, cy: Double, rx: Double, ry: Double, a0: Double, a1: Double, n: Int = 24) = (0..n).flatMap {
+    val a = a0 + (a1 - a0) * it / n
+    [cx + rx * cos(a), cy + ry * sin(a)]
+}
 
 val sheet = PaintStrokes(700, aspect = 1.4, seed = 3)
 // the body: rows of a hog flat, filling an ellipse
 for (i in -5..5) {
     val y = 400.0 + i * 26
     val w = 190 * sqrt(1 - (i / 6.0).pow(2))
-    sheet.add([500 - w, y, 500 + w, y + 6], color = if (i % 2 == 0) "#8a9a3a" else "#a0a848", brush = BrushKind.HogFlat, width = 34.0, group = "body")
+    sheet.add(
+        [500 - w, y, 500 + w, y + 6],
+        color = if (i % 2 == 0) "#8a9a3a" else "#a0a848",
+        brush = BrushKind.HogFlat,
+        width = 34.0,
+        group = "body",
+    )
 }
 // legs, and leaves sprouting from the head
 sheet.add([430.0, 540.0, 420.0, 640.0], color = "#4a3a20", brush = BrushKind.HogFlat, width = 26.0, group = "legs")
 sheet.add([570.0, 540.0, 585.0, 640.0], color = "#4a3a20", brush = BrushKind.HogFlat, width = 26.0, group = "legs")
 for (a in [-2.3, -1.9, -1.57, -1.25, -0.85]) {
-    val x = 500 + 60 * cos(a); val y = 290 + 30 * sin(a)
-    sheet.add([x, y, x + 60 * cos(a) - 12, y + 60 * sin(a), x + 120 * cos(a), y + 110 * sin(a)],
-        color = "#2f6a2a", brush = BrushKind.Filbert, width = 30.0, pressure = 0.9 to 0.4, group = "leaves")
+    val x = 500 + 60 * cos(a)
+    val y = 290 + 30 * sin(a)
+    sheet.add(
+        [x, y, x + 60 * cos(a) - 12, y + 60 * sin(a), x + 120 * cos(a), y + 110 * sin(a)],
+        color = "#2f6a2a",
+        brush = BrushKind.Filbert,
+        width = 30.0,
+        pressure = 0.9 to 0.4,
+        group = "leaves",
+    )
 }
 // eyes, a smiling mouth and a pink smudge on one cheek
 for (x in [440.0, 560.0]) {
@@ -742,7 +777,14 @@ for (x in [440.0, 560.0]) {
     sheet.add([x, 364.0, x + 8, 365.0], color = "#1a1a1a", width = 16.0, pressure = 1.0 to 1.0, group = "eyes")
 }
 sheet.add(arc(500.0, 420.0, 70.0, 45.0, 0.4, PI - 0.4), color = "#3a1a10", width = 10.0, group = "mouth")
-sheet.add([400.0, 440.0, 410.0, 445.0], color = "#e07080", brush = BrushKind.Badger, width = 50.0, hiding = 0.6, group = "smudge")
+sheet.add(
+    [400.0, 440.0, 410.0, 445.0],
+    color = "#e07080",
+    brush = BrushKind.Badger,
+    width = 50.0,
+    hiding = 0.6,
+    group = "smudge",
+)
 :::endfold
 markdown("```text\n" + sheet.describe() + "```")
 ```
@@ -759,23 +801,38 @@ compare with:
 :::static
 :::fold the creature from the first example
 // points around an ellipse from angle a0 to a1 (radians), as [x0, y0, x1, y1, ...]
-fun arc(cx: Double, cy: Double, rx: Double, ry: Double, a0: Double, a1: Double, n: Int = 24) =
-    (0..n).flatMap { val a = a0 + (a1 - a0) * it / n; [cx + rx * cos(a), cy + ry * sin(a)] }
+fun arc(cx: Double, cy: Double, rx: Double, ry: Double, a0: Double, a1: Double, n: Int = 24) = (0..n).flatMap {
+    val a = a0 + (a1 - a0) * it / n
+    [cx + rx * cos(a), cy + ry * sin(a)]
+}
 
 val sheet = PaintStrokes(700, aspect = 1.4, seed = 3)
 // the body: rows of a hog flat, filling an ellipse
 for (i in -5..5) {
     val y = 400.0 + i * 26
     val w = 190 * sqrt(1 - (i / 6.0).pow(2))
-    sheet.add([500 - w, y, 500 + w, y + 6], color = if (i % 2 == 0) "#8a9a3a" else "#a0a848", brush = BrushKind.HogFlat, width = 34.0, group = "body")
+    sheet.add(
+        [500 - w, y, 500 + w, y + 6],
+        color = if (i % 2 == 0) "#8a9a3a" else "#a0a848",
+        brush = BrushKind.HogFlat,
+        width = 34.0,
+        group = "body",
+    )
 }
 // legs, and leaves sprouting from the head
 sheet.add([430.0, 540.0, 420.0, 640.0], color = "#4a3a20", brush = BrushKind.HogFlat, width = 26.0, group = "legs")
 sheet.add([570.0, 540.0, 585.0, 640.0], color = "#4a3a20", brush = BrushKind.HogFlat, width = 26.0, group = "legs")
 for (a in [-2.3, -1.9, -1.57, -1.25, -0.85]) {
-    val x = 500 + 60 * cos(a); val y = 290 + 30 * sin(a)
-    sheet.add([x, y, x + 60 * cos(a) - 12, y + 60 * sin(a), x + 120 * cos(a), y + 110 * sin(a)],
-        color = "#2f6a2a", brush = BrushKind.Filbert, width = 30.0, pressure = 0.9 to 0.4, group = "leaves")
+    val x = 500 + 60 * cos(a)
+    val y = 290 + 30 * sin(a)
+    sheet.add(
+        [x, y, x + 60 * cos(a) - 12, y + 60 * sin(a), x + 120 * cos(a), y + 110 * sin(a)],
+        color = "#2f6a2a",
+        brush = BrushKind.Filbert,
+        width = 30.0,
+        pressure = 0.9 to 0.4,
+        group = "leaves",
+    )
 }
 // eyes, a smiling mouth and a pink smudge on one cheek
 for (x in [440.0, 560.0]) {
@@ -783,23 +840,39 @@ for (x in [440.0, 560.0]) {
     sheet.add([x, 364.0, x + 8, 365.0], color = "#1a1a1a", width = 16.0, pressure = 1.0 to 1.0, group = "eyes")
 }
 sheet.add(arc(500.0, 420.0, 70.0, 45.0, 0.4, PI - 0.4), color = "#3a1a10", width = 10.0, group = "mouth")
-sheet.add([400.0, 440.0, 410.0, 445.0], color = "#e07080", brush = BrushKind.Badger, width = 50.0, hiding = 0.6, group = "smudge")
+sheet.add(
+    [400.0, 440.0, 410.0, 445.0],
+    color = "#e07080",
+    brush = BrushKind.Badger,
+    width = 50.0,
+    hiding = 0.6,
+    group = "smudge",
+)
 :::endfold
 val edited = sheet.copy()
-edited.apply("""[
+edited.apply(
+    """[
   {"op": "recolor", "at": "@leaves", "color": "#c0602a"},
   {"op": "bend", "at": "@mouth", "dy": -45},
   {"op": "move", "at": "@smudge", "dx": 200}
-]""")
+]""",
+)
 val before = sheet.render()
 val after = edited.render()
 // how much of the picture changed, and how much of that lies outside the edited strokes
-val a = before.render(); val b = after.render()
+val a = before.render()
+val b = after.render()
 val w = before.widthPx
-val touched = edited.select("@leaves, @mouth, @smudge").flatMap { listOf(sheet[it]!!.bounds(), edited[it]!!.bounds()) }
-fun inside(i: Int) = touched.any { r -> val x = (i % w) * 1000.0 / w; val y = (i / w) * 1000.0 / w; x in r[0] - 20..r[2] + 20 && y in r[1] - 20..r[3] + 20 }
+val touched = edited.select("@leaves, @mouth, @smudge").flatMap { [sheet[it]!!.bounds(), edited[it]!!.bounds()] }
+fun inside(i: Int) = touched.any { r ->
+    val x = (i % w) * 1000.0 / w
+    val y = (i / w) * 1000.0 / w
+    x in r[0] - 20..r[2] + 20 && y in r[1] - 20..r[3] + 20
+}
 val changed = a.indices.filter { a[it] != b[it] }
-println("${changed.size} of ${a.size} pixels changed; ${changed.count { !inside(it) }} more than 20 units outside the edited strokes")
+println(
+    "${changed.size} of ${a.size} pixels changed; ${changed.count { !inside(it) }} more than 20 units outside the edited strokes",
+)
 display("main", pngRow([before, after]))
 ```
 
@@ -832,23 +905,38 @@ recolours the strokes under the note and adds a group of fan-brush moss strokes 
 :::static
 :::fold the creature from the first example
 // points around an ellipse from angle a0 to a1 (radians), as [x0, y0, x1, y1, ...]
-fun arc(cx: Double, cy: Double, rx: Double, ry: Double, a0: Double, a1: Double, n: Int = 24) =
-    (0..n).flatMap { val a = a0 + (a1 - a0) * it / n; [cx + rx * cos(a), cy + ry * sin(a)] }
+fun arc(cx: Double, cy: Double, rx: Double, ry: Double, a0: Double, a1: Double, n: Int = 24) = (0..n).flatMap {
+    val a = a0 + (a1 - a0) * it / n
+    [cx + rx * cos(a), cy + ry * sin(a)]
+}
 
 val sheet = PaintStrokes(700, aspect = 1.4, seed = 3)
 // the body: rows of a hog flat, filling an ellipse
 for (i in -5..5) {
     val y = 400.0 + i * 26
     val w = 190 * sqrt(1 - (i / 6.0).pow(2))
-    sheet.add([500 - w, y, 500 + w, y + 6], color = if (i % 2 == 0) "#8a9a3a" else "#a0a848", brush = BrushKind.HogFlat, width = 34.0, group = "body")
+    sheet.add(
+        [500 - w, y, 500 + w, y + 6],
+        color = if (i % 2 == 0) "#8a9a3a" else "#a0a848",
+        brush = BrushKind.HogFlat,
+        width = 34.0,
+        group = "body",
+    )
 }
 // legs, and leaves sprouting from the head
 sheet.add([430.0, 540.0, 420.0, 640.0], color = "#4a3a20", brush = BrushKind.HogFlat, width = 26.0, group = "legs")
 sheet.add([570.0, 540.0, 585.0, 640.0], color = "#4a3a20", brush = BrushKind.HogFlat, width = 26.0, group = "legs")
 for (a in [-2.3, -1.9, -1.57, -1.25, -0.85]) {
-    val x = 500 + 60 * cos(a); val y = 290 + 30 * sin(a)
-    sheet.add([x, y, x + 60 * cos(a) - 12, y + 60 * sin(a), x + 120 * cos(a), y + 110 * sin(a)],
-        color = "#2f6a2a", brush = BrushKind.Filbert, width = 30.0, pressure = 0.9 to 0.4, group = "leaves")
+    val x = 500 + 60 * cos(a)
+    val y = 290 + 30 * sin(a)
+    sheet.add(
+        [x, y, x + 60 * cos(a) - 12, y + 60 * sin(a), x + 120 * cos(a), y + 110 * sin(a)],
+        color = "#2f6a2a",
+        brush = BrushKind.Filbert,
+        width = 30.0,
+        pressure = 0.9 to 0.4,
+        group = "leaves",
+    )
 }
 // eyes, a smiling mouth and a pink smudge on one cheek
 for (x in [440.0, 560.0]) {
@@ -856,7 +944,14 @@ for (x in [440.0, 560.0]) {
     sheet.add([x, 364.0, x + 8, 365.0], color = "#1a1a1a", width = 16.0, pressure = 1.0 to 1.0, group = "eyes")
 }
 sheet.add(arc(500.0, 420.0, 70.0, 45.0, 0.4, PI - 0.4), color = "#3a1a10", width = 10.0, group = "mouth")
-sheet.add([400.0, 440.0, 410.0, 445.0], color = "#e07080", brush = BrushKind.Badger, width = 50.0, hiding = 0.6, group = "smudge")
+sheet.add(
+    [400.0, 440.0, 410.0, 445.0],
+    color = "#e07080",
+    brush = BrushKind.Badger,
+    width = 50.0,
+    hiding = 0.6,
+    group = "smudge",
+)
 :::endfold
 val original = sheet.copy()
 // the human pins a note; the agent reads it with the strokes under it
@@ -865,12 +960,15 @@ println(sheet.describe().lines().first())
 
 // the batch the agent answers with: darken the strokes under the note, and add moss along that flank
 val under = sheet.near(660.0, 430.0, radius = 40.0)
-val moss = (0 until 9).map { k ->
-    val y = 330.0 + k * 22
-    val x = 640.0 + 40 * sqrt(1 - ((y - 420) / 120).pow(2))
-    """{"op": "add", "points": [$x, $y, ${x + 18}, ${y + 6}], "color": "#4a6a28", "brush": "Fan", "width": 28, "group": "moss"}"""
-}
-sheet.apply("""[{"op": "recolor", "at": "${under.joinToString(",")}", "color": "#6a8a30"}, ${moss.joinToString(",")}]""")
+val moss =
+    (0 until 9).map { k ->
+        val y = 330.0 + k * 22
+        val x = 640.0 + 40 * sqrt(1 - ((y - 420) / 120).pow(2))
+        """{"op": "add", "points": [$x, $y, ${x + 18}, ${y + 6}], "color": "#4a6a28", "brush": "Fan", "width": 28, "group": "moss"}"""
+    }
+sheet.apply(
+    """[{"op": "recolor", "at": "${under.joinToString(",")}", "color": "#6a8a30"}, ${moss.joinToString(",")}]""",
+)
 println("recoloured ${under.joinToString(", ")}; added ${sheet.select("@moss").joinToString(", ")}")
 display("main", pngRow([original.render(), sheet.render()]))
 ```
@@ -889,23 +987,38 @@ lifts the legs and bends the mouth:
 :::static
 :::fold the creature from the first example
 // points around an ellipse from angle a0 to a1 (radians), as [x0, y0, x1, y1, ...]
-fun arc(cx: Double, cy: Double, rx: Double, ry: Double, a0: Double, a1: Double, n: Int = 24) =
-    (0..n).flatMap { val a = a0 + (a1 - a0) * it / n; [cx + rx * cos(a), cy + ry * sin(a)] }
+fun arc(cx: Double, cy: Double, rx: Double, ry: Double, a0: Double, a1: Double, n: Int = 24) = (0..n).flatMap {
+    val a = a0 + (a1 - a0) * it / n
+    [cx + rx * cos(a), cy + ry * sin(a)]
+}
 
 val sheet = PaintStrokes(700, aspect = 1.4, seed = 3)
 // the body: rows of a hog flat, filling an ellipse
 for (i in -5..5) {
     val y = 400.0 + i * 26
     val w = 190 * sqrt(1 - (i / 6.0).pow(2))
-    sheet.add([500 - w, y, 500 + w, y + 6], color = if (i % 2 == 0) "#8a9a3a" else "#a0a848", brush = BrushKind.HogFlat, width = 34.0, group = "body")
+    sheet.add(
+        [500 - w, y, 500 + w, y + 6],
+        color = if (i % 2 == 0) "#8a9a3a" else "#a0a848",
+        brush = BrushKind.HogFlat,
+        width = 34.0,
+        group = "body",
+    )
 }
 // legs, and leaves sprouting from the head
 sheet.add([430.0, 540.0, 420.0, 640.0], color = "#4a3a20", brush = BrushKind.HogFlat, width = 26.0, group = "legs")
 sheet.add([570.0, 540.0, 585.0, 640.0], color = "#4a3a20", brush = BrushKind.HogFlat, width = 26.0, group = "legs")
 for (a in [-2.3, -1.9, -1.57, -1.25, -0.85]) {
-    val x = 500 + 60 * cos(a); val y = 290 + 30 * sin(a)
-    sheet.add([x, y, x + 60 * cos(a) - 12, y + 60 * sin(a), x + 120 * cos(a), y + 110 * sin(a)],
-        color = "#2f6a2a", brush = BrushKind.Filbert, width = 30.0, pressure = 0.9 to 0.4, group = "leaves")
+    val x = 500 + 60 * cos(a)
+    val y = 290 + 30 * sin(a)
+    sheet.add(
+        [x, y, x + 60 * cos(a) - 12, y + 60 * sin(a), x + 120 * cos(a), y + 110 * sin(a)],
+        color = "#2f6a2a",
+        brush = BrushKind.Filbert,
+        width = 30.0,
+        pressure = 0.9 to 0.4,
+        group = "leaves",
+    )
 }
 // eyes, a smiling mouth and a pink smudge on one cheek
 for (x in [440.0, 560.0]) {
@@ -913,15 +1026,24 @@ for (x in [440.0, 560.0]) {
     sheet.add([x, 364.0, x + 8, 365.0], color = "#1a1a1a", width = 16.0, pressure = 1.0 to 1.0, group = "eyes")
 }
 sheet.add(arc(500.0, 420.0, 70.0, 45.0, 0.4, PI - 0.4), color = "#3a1a10", width = 10.0, group = "mouth")
-sheet.add([400.0, 440.0, 410.0, 445.0], color = "#e07080", brush = BrushKind.Badger, width = 50.0, hiding = 0.6, group = "smudge")
+sheet.add(
+    [400.0, 440.0, 410.0, 445.0],
+    color = "#e07080",
+    brush = BrushKind.Badger,
+    width = 50.0,
+    hiding = 0.6,
+    group = "smudge",
+)
 :::endfold
 // one key per frame: how far the leaves sway and the legs step; every frame is the same records, moved
 val keys = [0.0, 30.0, 0.0, -30.0]
 val frames = keys.map { k ->
     val f = sheet.copy()
-    f.apply("""[{"op": "move", "at": "@leaves", "dx": $k},
+    f.apply(
+        """[{"op": "move", "at": "@leaves", "dx": $k},
                 {"op": "bend", "at": "@mouth", "dy": ${abs(k) / 2}},
-                {"op": "move", "at": "@legs", "dy": ${-abs(k) / 3}}]""")
+                {"op": "move", "at": "@legs", "dy": ${-abs(k) / 3}}]""",
+    )
     f.render()
 }
 display("main", pngRow(frames))
@@ -1050,3 +1172,5 @@ its pressure; in [AI4 paints](ai4_painting.md), the AI chat paints on this canva
 [A pen that sees](a_pen_that_sees.md) makes strokes of another kind: trembling FLines that hatch
 beside a line you draw, ready to be laid down here in pencil. For more on the
 building blocks, see [Drawing with FLines](fline_examples.md) and [Colors](colors_examples.md).
+
+- Addressable stroke records: [`PaintStrokes`](reference/graphics.md#paintstrokes-kt-paintstrokes), [`PaintStrokes.add`](reference/graphics.md#paintstrokes-kt--paintstrokes--add), [`PaintStrokes.apply`](reference/graphics.md#paintstrokes-kt--paintstrokes--apply), [`PaintStrokes.render`](reference/graphics.md#paintstrokes-kt--paintstrokes--render), [`PaintStrokes.pin`](reference/graphics.md#paintstrokes-kt--paintstrokes--pin).

@@ -21,7 +21,7 @@ println(t)
 val px = 24.0
 val spans = t.get<Span>("CombineEdgeSamples")
 lines(
-    listOf(Gezira.grid(16, 16, px)) +
+    [Gezira.grid(16, 16, px)] +
         Gezira.pixels(Gezira.coverage(spans, 16, 16), 16, px) +
         Gezira.pieces(t.get("DecomposeBeziers"), px),
     channel = "rotated",

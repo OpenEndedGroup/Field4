@@ -1,0 +1,8 @@
+{
+  "inputs": [
+    0.5,
+    0.8
+  ],
+  "passed": true,
+  "method": "Actual Kotlin -> FieldML -> Kotlin graph; assert inherited input, computed opacity and both FLine bar widths for default and edited input."
+}

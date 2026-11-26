@@ -1,6 +1,4 @@
-import afield.geometry.mesh.TriMesh
 import afield.geometry.rhino.*
-import kotlin.math.*
 
 val dir = java.nio.file.Files.createTempDirectory("rhino-save").toFile()
 val ribbons = 14

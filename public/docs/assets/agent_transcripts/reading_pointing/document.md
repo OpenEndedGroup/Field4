@@ -50,7 +50,7 @@ loop { frame() }
 <!-- field-box id="pick_scene" index="1" -->
 
 ```edn [field-box id="pick_scene" role="properties"]
-{"id" "pick_scene" "index" 1 "name" "2 · Annotated diagram" "parents" ["root" "pick_context"] "children" ["pick_drawing"] "properties" {"children" #{#afield/box "pick_drawing"} "parents" #{#afield/box "root" #afield/box "pick_context"} "name" "2 · Annotated diagram" "_tombstone" false "frame" #afield/rect [40.0 420.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pick_scene_code_.kt" "lines" 28 "characters" 1452 "sha256" "9b922b011552a93b885a8877d30218584af10ffe3518fb4f815aa289cb945ca7"}]}
+{"id" "pick_scene" "index" 1 "name" "2 · Annotated diagram" "parents" ["root" "pick_context"] "children" ["pick_drawing"] "properties" {"children" #{#afield/box "pick_drawing"} "parents" #{#afield/box "root" #afield/box "pick_context"} "name" "2 · Annotated diagram" "_tombstone" false "frame" #afield/rect [40.0 420.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pick_scene_code_.kt" "lines" 28 "characters" 1446 "sha256" "acdb54326f86fecfb7aef3280e99f44973a23c745fc5693865da64639b29a413"}]}
 ```
 
 ```kotlin [field-property box="pick_scene" name="code" path="pick_scene_code_.kt"]
@@ -63,7 +63,7 @@ val graph = readingDiagram {
     val bottom = point("bottom", 0, -.12, pinned = true)
     val sum = text("sum", "1 + 3 + 5 + 7 = 4 × 4", top)
     sum.all.annotate("the whole identity")
-    for (odd in listOf("1", "3", "5", "7")) sum.word(odd).annotate("the odd number " + odd)
+    for (odd in ["1", "3", "5", "7"]) sum.word(odd).annotate("the odd number " + odd)
     sum.span("4 × 4").annotate("the square it makes")
     val gloss = text("gloss", "odd numbers wrap a square", bottom)
     gloss.word("odd").annotate("each term is 2i + 1")
@@ -110,13 +110,11 @@ loop {
 <!-- field-box id="pick_pointing" index="3" -->
 
 ```edn [field-box id="pick_pointing" role="properties"]
-{"id" "pick_pointing" "index" 3 "name" "4 · Pointing" "parents" ["root" "pick_drawing"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "pick_drawing"} "name" "4 · Pointing" "_tombstone" false "frame" #afield/rect [640.0 800.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pick_pointing_code_.kt" "lines" 65 "characters" 2774 "sha256" "cf9e7f21ce2d76277ae12b7a742215201fcd2c38f16d6bad00f7f25eabaef610"}]}
+{"id" "pick_pointing" "index" 3 "name" "4 · Pointing" "parents" ["root" "pick_drawing"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "pick_drawing"} "name" "4 · Pointing" "_tombstone" false "frame" #afield/rect [640.0 800.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pick_pointing_code_.kt" "lines" 63 "characters" 2688 "sha256" "e57a022da78e0addeb4e8718b346dfc8e644275237bfd4465c3a0d335364d47b"}]}
 ```
 
 ```kotlin [field-property box="pick_pointing" name="code" path="pick_pointing_code_.kt"]
-import afield.graphics.interaction.*
 import afield.graphics.scene.reading.*
-import afield.graphics.vulkan.util.WindowPointer
 
 // Point at the reading space: the mouse over the desktop mirror, or the right controller in a headset.
 // The hovered item stays bright and everything else dims; a click prints what was clicked.

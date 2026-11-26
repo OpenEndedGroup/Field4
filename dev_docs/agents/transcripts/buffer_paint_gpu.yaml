@@ -72,8 +72,6 @@ operations:
               pc.state.a[p.y * pc.w + p.x] = vec2(u, v);
           }
         code: |
-          import afield.media.image.*
-
           var simModule = computeModuleHere {}
           var sim = ComputeMesh()
           simModule += "step" to sim

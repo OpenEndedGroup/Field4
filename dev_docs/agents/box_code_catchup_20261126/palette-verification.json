@@ -1,0 +1,14 @@
+{
+  "passed": true,
+  "inputs": [
+    {
+      "groundLightness": 0.32,
+      "chroma": 0.77
+    },
+    {
+      "groundLightness": 0.65,
+      "chroma": 0.45
+    }
+  ],
+  "method": "Actual public palette example executed at defaults and changed controls; a named List<FLine> makes the optional miss-marker collection explicit and resolves flatMapIndexed overloads."
+}

@@ -1,4 +1,3 @@
-import afield.graphics.vulkan.targets.RenderToTexture
 import org.lwjgl.vulkan.VK10.VK_FORMAT_R32G32B32A32_SFLOAT
 
 // A 640 x 360 float target, drawn every frame.

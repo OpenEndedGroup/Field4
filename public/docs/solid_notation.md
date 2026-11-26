@@ -396,7 +396,6 @@ misses sit on the medial axis and on the fold seams. That is why the isolines be
 spaced, from the hexagram up to level 4, on the CPU through `toField2()` and marching squares:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/koch_isolines.png" wait="4.0" capture="box" open-outputs="true" padding="20" embed=true alt="Four Koch snowflakes in a row, levels 1 to 4, from a six-pointed star to a finely crinkled snowflake. Each outline is drawn in white with two orange isolines inside and three blue isolines outside, evenly spaced, the outer ones rounding off into a smooth hexagon"}
-import afield.geometry.path.generateIsoContours
 import afield.lang.solidsl.*
 
 // One snowflake per level, its field marched at a few distances inside and out.
@@ -1000,18 +999,16 @@ twentieth of the smallest radius:
 :::static
 import afield.lang.solidsl.*
 
-val template =
-    smoothUnion(
-            smoothUnion(sphere(0.50), sphere(0.35).at(-0.80, 0.0, 0.0), 0.25),
-            sphere(0.42).at(0.80, 0.0, 0.0),
-            0.25,
-        )
-        .parameterize {
-            param("middle", "SmoothUnion/a/SmoothUnion/a/Sphere.radius")
-            param("left", "SmoothUnion/a/SmoothUnion/b/Translate/Sphere.radius")
-            param("right", "SmoothUnion/b/Translate/Sphere.radius")
-        }
-        .orThrow()
+val template = smoothUnion(
+    smoothUnion(sphere(0.50), sphere(0.35).at(-0.80, 0.0, 0.0), 0.25),
+    sphere(0.42).at(0.80, 0.0, 0.0),
+    0.25,
+).parameterize {
+    param("middle", "SmoothUnion/a/SmoothUnion/a/Sphere.radius")
+    param("left", "SmoothUnion/a/SmoothUnion/b/Translate/Sphere.radius")
+    param("right", "SmoothUnion/b/Translate/Sphere.radius")
+}
+    .orThrow()
 
 val truth = doubleArrayOf(0.50, 0.35, 0.42)
 val seed = doubleArrayOf(0.30, 0.56, 0.20)

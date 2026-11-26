@@ -3,28 +3,28 @@ import afield.geometry.spectral.PlaneWaveField
 
 val schwarz = PlaneWaveField(
     0.0,
-    listOf(vec(1, 0, 0), vec(0, 1, 0), vec(0, 0, 1)).map {
+    [vec(1, 0, 0), vec(0, 1, 0), vec(0, 0, 1)].map {
         PlaneWave(it, 1.0, 0.0)
     },
 )
 val gyroid = PlaneWaveField(
     0.0,
-    listOf(
+    [
         vec(1, 1, 0),
         vec(1, -1, 0),
         vec(0, 1, 1),
         vec(0, 1, -1),
         vec(1, 0, 1),
         vec(-1, 0, 1),
-    ).map { PlaneWave(it, 0.0, 0.5) },
+    ].map { PlaneWave(it, 0.0, 0.5) },
 )
 val lobes = PlaneWaveField(
     0.0,
-    listOf(
+    [
         PlaneWave(vec(2, 0, 0), -1.0, 0.0),
         PlaneWave(vec(0, 1, 0), 1.0, 0.0),
         PlaneWave(vec(0, 0, 1), 1.0, 0.0),
-    ),
+    ],
 )
 val singleShell = PlaneWaveField.random(24, seed = 17, radialFrequency = { 2.4 })
 val broad = PlaneWaveField.random(24, seed = 17, radialFrequency = { it.nextDouble(0.8, 5.0) })
@@ -42,7 +42,7 @@ var band = 6.0
 var animate = false
 var showSingle = false
 val bounds = boundsAround(radius = PI)
-val names = listOf("Schwarz P", "Gyroid", "Lobes", "Single shell", "Broadband")
+val names = ["Schwarz P", "Gyroid", "Lobes", "Single shell", "Broadband"]
 controlGroup(columns = 2) {
     slider(
         "Field preset",
@@ -73,7 +73,7 @@ var previous: List<Any> = emptyList()
 var particles = emptyList<Vec3>()
 frames {
     while (true) {
-        val setting = listOf(
+        val setting = [
             preset,
             selected,
             iso,
@@ -86,12 +86,12 @@ frames {
             band,
             animate,
             showSingle,
-        )
+        ]
         if (animate || setting != previous) {
             if (setting != previous) particles = emptyList()
             previous = setting
             val chosen = if (animate) 2 else preset
-            val source = listOf(schwarz, gyroid, lobes, singleShell, broad)[chosen]
+            val source = [schwarz, gyroid, lobes, singleShell, broad][chosen]
             val waveIndex = selected.coerceAtMost(source.waves.lastIndex)
             val turn = quat(rotation, vec(0, 1, 0))
             val waves =
@@ -103,7 +103,7 @@ frames {
                         PlaneWave.polar(k, gain * wave.amplitude, wave.phase + phase)
                     } else wave
                 }
-            val active = if (showSingle) listOf(waves[waveIndex]) else waves
+            val active = if (showSingle) [waves[waveIndex]] else waves
             val field = PlaneWaveField(source.offset, active).lowPass(band).rotate(turn)
             val level = if (animate) 1.0 + 0.32 * kotlin.math.sin(tick) else iso
             val body = field.extractSurface(bounds, resolution = 31, isoValue = level, positiveOutside = false)
@@ -149,7 +149,7 @@ frames {
                 panel(title = names[chosen], caption = "Isosurface · f = ${level.f2}")
                 fitTo(bounds.min, bounds.max, panel = 0)
                 if (!body.isEmpty) mesh(body, wireframe = false, cullBackFaces = false, id = "surface")
-                lines(listOf(dots), id = "surface-particles")
+                lines([dots], id = "surface-particles")
                 panel(
                     title = "Wavevectors",
                     caption = "Wave ${waveIndex + 1} / ${waves.size} · dot size is amplitude",

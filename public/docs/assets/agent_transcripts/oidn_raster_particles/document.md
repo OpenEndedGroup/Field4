@@ -32,11 +32,10 @@ start(renderer::run)
 <!-- field-box id="oidn_raster_particles" index="1" -->
 
 ```edn [field-box id="oidn_raster_particles" role="properties"]
-{"id" "oidn_raster_particles" "index" 1 "name" "particles, stochastic transparency" "parents" ["root" "oidn_raster_renderer"] "children" ["oidn_raster_denoise"] "properties" {"children" #{#afield/box "oidn_raster_denoise"} "parents" #{#afield/box "root" #afield/box "oidn_raster_renderer"} "name" "particles, stochastic transparency" "_tombstone" false "frame" #afield/rect [320.0 180.0 340.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "oidn_raster_particles_code_.kt" "lines" 66 "characters" 2666 "sha256" "480a3f76a89ba613ef650d15669c38758258c23edb6fcf0582238050f61b7c21"}]}
+{"id" "oidn_raster_particles" "index" 1 "name" "particles, stochastic transparency" "parents" ["root" "oidn_raster_renderer"] "children" ["oidn_raster_denoise"] "properties" {"children" #{#afield/box "oidn_raster_denoise"} "parents" #{#afield/box "root" #afield/box "oidn_raster_renderer"} "name" "particles, stochastic transparency" "_tombstone" false "frame" #afield/rect [320.0 180.0 340.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "oidn_raster_particles_code_.kt" "lines" 65 "characters" 2612 "sha256" "603e2d874766dc43059012f4707015b32fcdcb9f983db4c363486c6a51f35ddd"}]}
 ```
 
 ```kotlin [field-property box="oidn_raster_particles" name="code" path="oidn_raster_particles_code_.kt"]
-import afield.graphics.vulkan.targets.RenderToTexture
 import org.lwjgl.vulkan.VK10.VK_FORMAT_R32G32B32A32_SFLOAT
 
 // A 640 x 360 float target, drawn every frame.

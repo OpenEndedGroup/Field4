@@ -1,0 +1,53 @@
+{
+  "captures": [
+    {
+      "page": "interaction_nets_examples.md",
+      "name": "interaction-lambda-reduction-video",
+      "status": "passed",
+      "screenshot": null,
+      "video": "assets/interaction_nets_lambda/lambda_reduction.mp4",
+      "sourceFingerprint": "037e6a46946a8f247f77b3110ee89fc008536e680dbac2ad9683a336c4b767b1"
+    },
+    {
+      "page": "interaction_nets_examples.md",
+      "name": "interaction-five-queens-video",
+      "status": "passed",
+      "screenshot": null,
+      "video": "assets/interaction_nets_examples/five_queens.mp4",
+      "sourceFingerprint": "dd013217cceaea7907063ee8c71c8ef3463ab5399e368a7c66a43867f89d7eed"
+    },
+    {
+      "page": "agent_transcripts.md",
+      "name": "gallery-pattern-rewrite-unquote",
+      "status": "passed",
+      "screenshot": "assets/agent_transcripts_gallery/pattern_rewrite_unquote.png",
+      "video": null,
+      "sourceFingerprint": "46563c982937db6df11c9966b9dd341fcc41e578f8d38c8f3204a8b464faa999"
+    },
+    {
+      "page": "afield_four_graphics.md",
+      "name": "gezira-svg-tiger",
+      "status": "passed",
+      "screenshot": "assets/afield_four_graphics/gezira-svg-tiger.png",
+      "video": null,
+      "sourceFingerprint": "15a826bddc89b3d35b2e760db7bc32f07be1852e004550e759cde847ea5bd7dd"
+    },
+    {
+      "page": "paint_canvas.md",
+      "name": "strokes_edited",
+      "status": "passed",
+      "screenshot": "assets/paint_canvas/strokes_edited.png",
+      "video": null,
+      "sourceFingerprint": "c142dd162f2ea6ab2082bc536a06865c8fe911d53a6c2c14584d4c3787032034"
+    },
+    {
+      "page": "reactive_properties.md",
+      "name": "fieldml-reactive-bridge",
+      "status": "passed",
+      "screenshot": "assets/reactive_properties/fieldml-bridge.png",
+      "video": null,
+      "sourceFingerprint": "921f4f127756f0236c70cda1f868ea14e194d368d84833c33ef3141b66311111"
+    }
+  ],
+  "method": "Normal RunnerState capture_with_environment and transactional publication; actual authored fence and transcript."
+}

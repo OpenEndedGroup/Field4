@@ -50,7 +50,7 @@ var fieldFlow = basis.flow(basis.mode(mode), perpendicular = true)
 var particles = emptyList<afield.geometry.spectral.ManifoldParticle>()
 frames {
     while (true) {
-        val setting = listOf(count, heat, mode, amplitude, animate, flow)
+        val setting = [count, heat, mode, amplitude, animate, flow]
         if (setting != previous || flow || animate) {
             val changed = previous != setting
             previous = setting
@@ -94,7 +94,7 @@ frames {
                 mesh(reconstructed, wireframe = false, id = "reconstructed")
                 panel(title = "Eigenfunction $mode", caption = "λ = ${eigenvalues[mode].f3}")
                 mesh(shaded, wireframe = false, opacity = 0.78, id = "mode")
-                lines(listOf(zero, dots), id = "nodal-lines-and-flow")
+                lines([zero, dots], id = "nodal-lines-and-flow")
             }
             if (changed) displayOpen("main")
             tick += 0.12

@@ -1,9 +1,7 @@
-import afield.media.image.*
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.Base64
-import kotlin.math.*
 
 val rate = 44100
 val ring = FloatArray(rate / 2) // a half-second delay line

@@ -1,0 +1,31 @@
+{
+  "cases": [
+    {
+      "seed": 3,
+      "label": "before",
+      "token": "CATCHUP_NOV26_PAINT_0"
+    },
+    {
+      "seed": 3,
+      "label": "after",
+      "token": "CATCHUP_NOV26_PAINT_1"
+    },
+    {
+      "seed": 4,
+      "label": "before",
+      "token": "CATCHUP_NOV26_PAINT_2"
+    },
+    {
+      "seed": 4,
+      "label": "after",
+      "token": "CATCHUP_NOV26_PAINT_3"
+    }
+  ],
+  "pngHashes": {
+    "CATCHUP_NOV26_PAINT_0": "-980470088",
+    "CATCHUP_NOV26_PAINT_1": "-980470088",
+    "CATCHUP_NOV26_PAINT_2": "2061568884",
+    "CATCHUP_NOV26_PAINT_3": "2061568884"
+  },
+  "method": "All four authored connected boxes execute, including copies/edits, tools registration and sway; compare inherited parent sheet PNG bytes before/after for seeds 3 and 4, using the matching native paint library."
+}

@@ -13,9 +13,7 @@ operations:
       frame: {x: 40.0, y: 40.0, w: 420.0, h: 120.0}
       properties:
         code: |
-          import afield.geometry.mesh.TriMesh
           import afield.geometry.rhino.*
-          import kotlin.math.*
 
           // Write one of each kind of object to a .3dm, read it back, and measure what survived against
           // the exact shapes; without the openNURBS wrapper, say how to build it
@@ -147,9 +145,7 @@ operations:
       property: code
       type: code
       code: |
-        import afield.geometry.mesh.TriMesh
         import afield.geometry.rhino.*
-        import kotlin.math.*
 
         // Write one of each kind of object to a .3dm, read it back, and measure what survived against
         // the exact shapes; without the openNURBS wrapper, say how to build it

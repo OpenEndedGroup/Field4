@@ -46,7 +46,10 @@ larger as its belief sharpens:
 val rnd = kotlin.random.Random(5)
 val pts = List(40) { vec(rnd.nextDouble() * 400, rnd.nextDouble() * 300) }
 val edges = HashSet<Pair<Int, Int>>()
-for (i in pts.indices) pts.indices.filter { it != i }.sortedBy { pts[it].distance(pts[i]) }.take(3)
+for (i in pts.indices) pts.indices
+    .filter { it != i }
+    .sortedBy { pts[it].distance(pts[i]) }
+    .take(3)
     .forEach { edges += minOf(i, it) to maxOf(i, it) }
 
 // the whole problem: 40 variables of 4 values, and no edge may join two of the same
@@ -60,19 +63,26 @@ val gibbs = GibbsAnnealing(colouring, sweeps = 100, startTemperature = 1.0, endT
 val palette = [vec(0.95, 0.4, 0.35, 1.0), vec(0.35, 0.75, 1.0, 1.0), vec(0.98, 0.85, 0.3, 1.0), vec(0.5, 0.9, 0.5, 1.0)]
 fun draw(caption: String) {
     val wires = fline {
-        for ((a, b) in edges) { moveTo(pts[a].x, pts[a].y); lineTo(pts[b].x, pts[b].y) }
+        for ((a, b) in edges) {
+            moveTo(pts[a].x, pts[a].y)
+            lineTo(pts[b].x, pts[b].y)
+        }
         color = vec(0.6, 0.6, 0.6, 0.6)
     }
-    val dots = pts.indices.map { i ->
-        fline {
-            val r = 3.0 + 5.0 * s.p[colouring.unit(i, s.assignment[i])]
-            moveTo(pts[i].x - r, pts[i].y - r); lineTo(pts[i].x + r, pts[i].y - r)
-            lineTo(pts[i].x + r, pts[i].y + r); lineTo(pts[i].x - r, pts[i].y + r); close()
-            filled = true
-            stroked = false
-            color = palette[s.assignment[i]]
+    val dots =
+        pts.indices.map { i ->
+            fline {
+                val r = 3.0 + 5.0 * s.p[colouring.unit(i, s.assignment[i])]
+                moveTo(pts[i].x - r, pts[i].y - r)
+                lineTo(pts[i].x + r, pts[i].y - r)
+                lineTo(pts[i].x + r, pts[i].y + r)
+                lineTo(pts[i].x - r, pts[i].y + r)
+                close()
+                filled = true
+                stroked = false
+                color = palette[s.assignment[i]]
+            }
         }
-    }
     lines(wires, *dots.toTypedArray(), w = 440.0, h = 340.0, fitToSize = true)
     display("conflicts", caption)
 }
@@ -82,8 +92,16 @@ frames {
     draw("start: ${s.energy.toInt()} conflicts")
     repeat(6) { frame() }
     var step = 0
-    while (descent.step(s) > 1e-4f && step < 200) { step++; draw("mean-field step $step: ${s.energy.toInt()} conflicts"); repeat(3) { frame() } }
-    while (gibbs.step(s)) { s.beliefsFromAssignment(); draw("Gibbs sweep ${gibbs.sweep}: ${s.energy.toInt()} conflicts"); frame() }
+    while (descent.step(s) > 1e-4f && step < 200) {
+        step++
+        draw("mean-field step $step: ${s.energy.toInt()} conflicts")
+        repeat(3) { frame() }
+    }
+    while (gibbs.step(s)) {
+        s.beliefsFromAssignment()
+        draw("Gibbs sweep ${gibbs.sweep}: ${s.energy.toInt()} conflicts")
+        frame()
+    }
     draw("${edges.size} edges, ${s.energy.toInt()} conflicts")
 }
 ```
@@ -104,7 +122,9 @@ columns apart.
 val n = 12
 val queens = DiscreteEnergy(n, n)
 queens.allDifferent((0 until n).toList())
-for (a in 0 until n) for (b in a + 1 until n) queens.pairCost(a, b) { x, y -> if (kotlin.math.abs(x - y) == b - a) 1.0 else 0.0 }
+for (a in 0 until n) for (b in a + 1 until n) queens.pairCost(a, b) { x, y ->
+    if (kotlin.math.abs(x - y) == b - a) 1.0 else 0.0
+}
 
 val s = EnergyState(queens).reset(kotlin.random.Random(4))
 MeanFieldDescent(queens).settle(s)
@@ -116,10 +136,13 @@ display(
     "<div style='font:14px monospace;color:#ccc'>${s.energy.toInt()} attacks</div>" +
         "<div style='display:grid;grid-template-columns:repeat($n,22px);grid-auto-rows:22px;width:max-content'>" +
         (0 until n * n).joinToString("") { i ->
-            val r = i / n; val c = i % n
+            val r = i / n
+            val c = i % n
             "<div style='background:${if ((r + c) % 2 == 0) "#333" else "#222"};color:#ffcf6b;text-align:center;font:16px monospace'>" +
-                (if (s.assignment[r] == c) "♛" else "") + "</div>"
-        } + "</div>",
+                (if (s.assignment[r] == c) "♛" else "") +
+                "</div>"
+        } +
+        "</div>",
 )
 ```
 
@@ -146,13 +169,21 @@ tour.fix(0, 0) // start in city 0
 
 // moves that keep the stops a permutation: exchange two, or reverse a run (2-opt)
 val moves = [SwapValues(stops), ReverseSegment(stops)]
-val runs = (0 until 8).map { seed ->
-    val s = EnergyState(tour)
-    for (k in 0 until n) s.assignment[k] = k // any permutation to start from
-    MetropolisAnnealing(tour, moves, sweeps = 300, startTemperature = 200.0, endTemperature = 2.0, seed = seed.toLong()).settle(s)
-    GreedyMoves(tour, moves).settle(s)
-    s.assignment.copyOf()
-}
+val runs =
+    (0 until 8).map { seed ->
+        val s = EnergyState(tour)
+        for (k in 0 until n) s.assignment[k] = k // any permutation to start from
+        MetropolisAnnealing(
+            tour,
+            moves,
+            sweeps = 300,
+            startTemperature = 200.0,
+            endTemperature = 2.0,
+            seed = seed.toLong(),
+        ).settle(s)
+        GreedyMoves(tour, moves).settle(s)
+        s.assignment.copyOf()
+    }
 fun length(t: IntArray) = (0 until n).sumOf { d(t[it], t[(it + 1) % n]) }
 val best = runs.minBy { length(it) }
 
@@ -163,7 +194,13 @@ val path = fline {
     thickness = 2.0
 }
 val dots = fline {
-    for (c in city) { moveTo(c.x - 4, c.y - 4); lineTo(c.x + 4, c.y - 4); lineTo(c.x + 4, c.y + 4); lineTo(c.x - 4, c.y + 4); close() }
+    for (c in city) {
+        moveTo(c.x - 4, c.y - 4)
+        lineTo(c.x + 4, c.y - 4)
+        lineTo(c.x + 4, c.y + 4)
+        lineTo(c.x - 4, c.y + 4)
+        close()
+    }
     filled = true
     stroked = false
     color = vec(1.0, 0.85, 0.3, 1.0)
@@ -195,15 +232,19 @@ for (k in 0 until 9) {
 clues.forEachIndexed { cell, ch -> if (ch != '0') sudoku.fix(cell, ch - '1') }
 
 val s = EnergyState(sudoku)
-fun board(caption: String) = "<div style='font:14px monospace;color:#ccc'>$caption</div>" +
-    "<div style='display:grid;grid-template-columns:repeat(9,24px);grid-auto-rows:24px;font:16px monospace;border:2px solid #888;width:max-content'>" +
-    (0 until 81).joinToString("") { c ->
-        val clue = sudoku.fixed[c] >= 0
-        val belief = s.p[sudoku.unit(c, s.assignment[c])]
-        val edge = (if (c % 9 == 2 || c % 9 == 5) "border-right:2px solid #888;" else "") + (if (c / 9 == 2 || c / 9 == 5) "border-bottom:2px solid #888;" else "")
-        "<div style='${edge}text-align:center;line-height:24px;color:${if (clue) "#fff" else "#7fd4ff"};" +
-            "opacity:${if (clue) 1.0 else 0.25 + 0.75 * belief};font-weight:${if (clue) 700 else 400}'>${s.assignment[c] + 1}</div>"
-    } + "</div>"
+fun board(caption: String) =
+    "<div style='font:14px monospace;color:#ccc'>$caption</div>" +
+        "<div style='display:grid;grid-template-columns:repeat(9,24px);grid-auto-rows:24px;font:16px monospace;border:2px solid #888;width:max-content'>" +
+        (0 until 81).joinToString("") { c ->
+            val clue = sudoku.fixed[c] >= 0
+            val belief = s.p[sudoku.unit(c, s.assignment[c])]
+            val edge =
+                (if (c % 9 == 2 || c % 9 == 5) "border-right:2px solid #888;" else "") +
+                    (if (c / 9 == 2 || c / 9 == 5) "border-bottom:2px solid #888;" else "")
+            "<div style='${edge}text-align:center;line-height:24px;color:${if (clue) "#fff" else "#7fd4ff"};" +
+                "opacity:${if (clue) 1.0 else 0.25 + 0.75 * belief};font-weight:${if (clue) 700 else 400}'>${s.assignment[c] + 1}</div>"
+        } +
+        "</div>"
 
 val descent = MeanFieldDescent(sudoku)
 val gibbs = GibbsAnnealing(sudoku, sweeps = 5000, startTemperature = 0.6, endTemperature = 0.15, seed = 0)
@@ -212,8 +253,11 @@ val gibbs = GibbsAnnealing(sudoku, sweeps = 5000, startTemperature = 0.6, endTem
 val trace = mutableListOf<Double>()
 fun show(caption: String) {
     trace += s.energy
-    val chart = Chart(title = "energy (broken constraints)", xLabel = "frame: descent steps, then every 25 Gibbs sweeps", yLabel = "energy")
-        .line("energy", trace.indices.map { it.toDouble() }, trace)
+    val chart = Chart(
+        title = "energy (broken constraints)",
+        xLabel = "frame: descent steps, then every 25 Gibbs sweeps",
+        yLabel = "energy",
+    ).line("energy", trace.indices.map { it.toDouble() }, trace)
     // the chart as FLines in a fixed-size panel, drawn first so the video frames it from the first step
     lines(*chart.toFLines().toTypedArray(), channel = "energy", w = 460.0, h = 260.0, fitToSize = true)
     display("board", board(caption))
@@ -221,10 +265,18 @@ fun show(caption: String) {
 
 frames {
     var step = 0
-    while (descent.step(s) > 1e-4f) { step++; show("descent step $step, energy ${s.energy.toInt()}"); frame() }
+    while (descent.step(s) > 1e-4f) {
+        step++
+        show("descent step $step, energy ${s.energy.toInt()}")
+        frame()
+    }
     GreedyMoves(sudoku).settle(s)
     while (s.energy > 0 && gibbs.step(s)) {
-        if (gibbs.sweep % 25 == 0) { s.beliefsFromAssignment(); show("Gibbs sweep ${gibbs.sweep}, energy ${s.energy.toInt()}"); frame() }
+        if (gibbs.sweep % 25 == 0) {
+            s.beliefsFromAssignment()
+            show("Gibbs sweep ${gibbs.sweep}, energy ${s.energy.toInt()}")
+            frame()
+        }
     }
     s.beliefsFromAssignment()
     show("solved: energy ${s.energy.toInt()}")
@@ -263,12 +315,17 @@ for (k in 0 until 9) {
 val rnd = kotlin.random.Random(1)
 fun solvedGrid(): IntArray {
     val g = IntArray(81) { -1 }
-    fun ok(c: Int, d: Int) = (0 until 9).none { m ->
-        g[c / 9 * 9 + m] == d || g[m * 9 + c % 9] == d || g[(c / 27 * 3 + m / 3) * 9 + c % 9 / 3 * 3 + m % 3] == d
-    }
+    fun ok(c: Int, d: Int) =
+        (0 until 9).none { m ->
+            g[c / 9 * 9 + m] == d || g[m * 9 + c % 9] == d || g[(c / 27 * 3 + m / 3) * 9 + c % 9 / 3 * 3 + m % 3] == d
+        }
     fun fill(c: Int): Boolean {
         if (c == 81) return true
-        for (d in (0 until 9).shuffled(rnd)) if (ok(c, d)) { g[c] = d; if (fill(c + 1)) return true; g[c] = -1 }
+        for (d in (0 until 9).shuffled(rnd)) if (ok(c, d)) {
+            g[c] = d
+            if (fill(c + 1)) return true
+            g[c] = -1
+        }
         return false
     }
     fill(0)
@@ -277,14 +334,26 @@ fun solvedGrid(): IntArray {
 val grids = List(3000) { solvedGrid() }
 
 val learned = DiscreteEnergy(81, 9)
-val learner = PseudolikelihoodLearner(learned, rate = 0.2f, l1 = 1e-4f, augment = { g, r ->
-    val relabel = (0 until 9).shuffled(r)
-    IntArray(81) { relabel[g[it]] }
-})
+val learner = PseudolikelihoodLearner(
+    learned,
+    rate = 0.2f,
+    l1 = 1e-4f,
+    augment = { g, r ->
+        val relabel = (0 until 9).shuffled(r)
+        IntArray(81) { relabel[g[it]] }
+    },
+)
 repeat(10) { learner.epoch(grids) }
 
 showHeatmap(stated.sameValueImage(), colormap = "magma", smooth = false, flipY = false, width = 324, channel = "stated")
-showHeatmap(learned.sameValueImage(), colormap = "magma", smooth = false, flipY = false, width = 324, channel = "learned")
+showHeatmap(
+    learned.sameValueImage(),
+    colormap = "magma",
+    smooth = false,
+    flipY = false,
+    width = 324,
+    channel = "learned",
+)
 
 // solve the 30-clue puzzle with the learned energy, stopping at its training solutions' energy
 val clues = "530070000600195000098000060800060003400803001700020006060000280000419005000080079"
@@ -298,7 +367,10 @@ for (attempt in 0 until 3) if (s.energy > target) {
     GibbsAnnealing(learned, 5000, 0.6 * scale, 0.15 * scale, seed = attempt.toLong()).settle(s)
     GreedyMoves(learned).settle(s)
 }
-display("learned solve", "constraint scale ${scale.f2}; the learned energy's board breaks ${stated.energy(s.assignment).toInt()} stated constraints")
+display(
+    "learned solve",
+    "constraint scale ${scale.f2}; the learned energy's board breaks ${stated.energy(s.assignment).toInt()} stated constraints",
+)
 ```
 
 Cells are numbered row by row. The bright 9 × 9 squares on the diagonal are cells in the same row;
@@ -341,3 +413,7 @@ board.
   geometric statements hold.
 - [Field 4 graphics](afield_four_graphics.md) explains compute shaders and the renderer topology
   the GPU box uses.
+
+## API reference
+
+- Stating and solving the energy: [`DiscreteEnergy`](reference/math.md#discreteenergy-kt-discreteenergy), [`DiscreteEnergy.allDifferent`](reference/math.md#discreteenergy-kt--discreteenergy--alldifferent), [`DiscreteEnergy.pairCost`](reference/math.md#discreteenergy-kt--discreteenergy--paircost), [`EnergyState`](reference/math.md#discreteenergy-kt-energystate), [`MeanFieldDescent`](reference/math.md#discreteenergy-kt-meanfielddescent), [`MeanFieldDescent.settle`](reference/math.md#discreteenergy-kt--meanfielddescent--settle), [`GreedyMoves`](reference/math.md#discreteenergy-kt-greedymoves), [`GreedyMoves.settle`](reference/math.md#discreteenergy-kt--greedymoves--settle), [`GibbsAnnealing`](reference/math.md#discreteenergy-kt-gibbsannealing), [`GibbsAnnealing.step`](reference/math.md#discreteenergy-kt--gibbsannealing--step), [`PseudolikelihoodLearner`](reference/math.md#discreteenergy-kt-pseudolikelihoodlearner).

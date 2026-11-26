@@ -1,0 +1,611 @@
+{
+  "links": [
+    {
+      "path": "public/docs/afield_four_graphics.md",
+      "symbol": "TriangleSplat",
+      "target": "reference/graphics.md#trianglecoverage-kt-trianglesplat"
+    },
+    {
+      "path": "public/docs/afield_four_graphics.md",
+      "symbol": "TriangleSplat.render",
+      "target": "reference/graphics.md#trianglecoverage-kt--trianglesplat--render"
+    },
+    {
+      "path": "public/docs/afield_four_graphics.md",
+      "symbol": "Gezira",
+      "target": "reference/graphics.md#gezira-kt-gezira"
+    },
+    {
+      "path": "public/docs/afield_four_graphics.md",
+      "symbol": "Gezira.rasterize",
+      "target": "reference/graphics.md#gezira-kt--gezira--rasterize"
+    },
+    {
+      "path": "public/docs/afield_four_graphics.md",
+      "symbol": "GeziraStroke",
+      "target": "reference/graphics.md#gezirapaint-kt-gezirastroke"
+    },
+    {
+      "path": "public/docs/afield_four_graphics.md",
+      "symbol": "GeziraStroke.strokeBezierPath",
+      "target": "reference/graphics.md#gezirapaint-kt--gezirastroke--strokebezierpath"
+    },
+    {
+      "path": "public/docs/afield_four_graphics.md",
+      "symbol": "GeziraComposite",
+      "target": "reference/graphics.md#gezirapaint-kt-geziracomposite"
+    },
+    {
+      "path": "public/docs/afield_four_graphics.md",
+      "symbol": "GeziraComposite.texture",
+      "target": "reference/graphics.md#gezirapaint-kt--geziracomposite--texture"
+    },
+    {
+      "path": "public/docs/afield_four_graphics.md",
+      "symbol": "GeziraFLine",
+      "target": "reference/graphics.md#gezirafline-kt-gezirafline"
+    },
+    {
+      "path": "public/docs/afield_four_graphics.md",
+      "symbol": "GeziraFLine.render",
+      "target": "reference/graphics.md#gezirafline-kt--gezirafline--render-2"
+    },
+    {
+      "path": "public/docs/afield_four_graphics.md",
+      "symbol": "GeziraSvg",
+      "target": "reference/graphics.md#gezirasvg-kt-gezirasvg"
+    },
+    {
+      "path": "public/docs/afield_four_graphics.md",
+      "symbol": "GeziraSvg.parse",
+      "target": "reference/graphics.md#gezirasvg-kt--gezirasvg--parse"
+    },
+    {
+      "path": "public/docs/afield_four_graphics.md",
+      "symbol": "GeziraSvg.render",
+      "target": "reference/graphics.md#gezirasvg-kt--gezirasvg--render"
+    },
+    {
+      "path": "public/docs/afield_four_graphics.md",
+      "symbol": "GeziraGpu",
+      "target": "reference/graphics.md#geziragpu-kt-geziragpu"
+    },
+    {
+      "path": "public/docs/afield_four_graphics.md",
+      "symbol": "GeziraGpu.dispatch",
+      "target": "reference/graphics.md#geziragpu-kt--geziragpu--dispatch"
+    },
+    {
+      "path": "public/docs/afield_four_graphics.md",
+      "symbol": "GeziraGpuScene",
+      "target": "reference/graphics.md#geziragpuscene-kt-geziragpuscene"
+    },
+    {
+      "path": "public/docs/afield_four_graphics.md",
+      "symbol": "GeziraGpuScene.of",
+      "target": "reference/graphics.md#geziragpuscene-kt--geziragpuscene-companion--of"
+    },
+    {
+      "path": "public/docs/chain_polytope_render.md",
+      "symbol": "PickParts",
+      "target": "reference/graphics.md#pointing-pick-kt-pickparts"
+    },
+    {
+      "path": "public/docs/chain_polytope_render.md",
+      "symbol": "PickParts.fromTriangulated",
+      "target": "reference/graphics.md#pointing-pick-kt--pickparts-companion--fromtriangulated"
+    },
+    {
+      "path": "public/docs/chain_polytope_render.md",
+      "symbol": "ElementId",
+      "target": "reference/polytopes.md#topology-kt-elementid"
+    },
+    {
+      "path": "public/docs/braitenberg_vehicles.md",
+      "symbol": "WeightCubeLearner.train",
+      "target": "reference/simulation.md#alife-weight-cube-kt--weightcubelearner--train"
+    },
+    {
+      "path": "public/docs/braitenberg_vehicles.md",
+      "symbol": "WeightCubeLearner.measure",
+      "target": "reference/simulation.md#alife-weight-cube-kt--weightcubelearner--measure"
+    },
+    {
+      "path": "public/docs/braitenberg_vehicles.md",
+      "symbol": "CubeView.path",
+      "target": "reference/simulation.md#alife-weight-cube-kt--cubeview--path"
+    },
+    {
+      "path": "public/docs/chain_rhino_render.md",
+      "symbol": "Rhino3dm",
+      "target": "reference/graphics.md#rhino3dm-kt-rhino3dm"
+    },
+    {
+      "path": "public/docs/chain_rhino_render.md",
+      "symbol": "Rhino3dm.load",
+      "target": "reference/graphics.md#rhino3dm-kt--rhino3dm--load"
+    },
+    {
+      "path": "public/docs/chain_rhino_render.md",
+      "symbol": "PathTraceScene",
+      "target": "reference/renderers.md#pathtracescene-kt-pathtracescene"
+    },
+    {
+      "path": "public/docs/chain_rhino_render.md",
+      "symbol": "PathTraceScene.rhino",
+      "target": "reference/graphics.md#rhinopathtrace-kt--rhino"
+    },
+    {
+      "path": "public/docs/chain_rhino_render.md",
+      "symbol": "PathTraceMaterial",
+      "target": "reference/renderers.md#pathtracescene-kt-pathtracematerial"
+    },
+    {
+      "path": "public/docs/chain_rhino_render.md",
+      "symbol": "PathTraceMaterial.thinGlass",
+      "target": "reference/renderers.md#pathtracescene-kt--pathtracematerial-companion--thinglass"
+    },
+    {
+      "path": "public/docs/datalog.md",
+      "symbol": "Datalog",
+      "target": "reference/languages.md#datalog-kt-datalog"
+    },
+    {
+      "path": "public/docs/datalog.md",
+      "symbol": "Datalog.add",
+      "target": "reference/languages.md#datalog-kt--datalog--add"
+    },
+    {
+      "path": "public/docs/datalog.md",
+      "symbol": "Datalog.why",
+      "target": "reference/languages.md#datalog-kt--datalog--why"
+    },
+    {
+      "path": "public/docs/davinci_resolve.md",
+      "symbol": "Resolve",
+      "target": "reference/networking.md#resolve-kt-resolve"
+    },
+    {
+      "path": "public/docs/direct_lighting.md",
+      "symbol": "DirectLightingDemo.close",
+      "target": "reference/graphics.md#directlightingdemo-kt--directlightingdemo--close"
+    },
+    {
+      "path": "public/docs/discrete_energy.md",
+      "symbol": "DiscreteEnergy",
+      "target": "reference/math.md#discreteenergy-kt-discreteenergy"
+    },
+    {
+      "path": "public/docs/discrete_energy.md",
+      "symbol": "DiscreteEnergy.allDifferent",
+      "target": "reference/math.md#discreteenergy-kt--discreteenergy--alldifferent"
+    },
+    {
+      "path": "public/docs/discrete_energy.md",
+      "symbol": "DiscreteEnergy.pairCost",
+      "target": "reference/math.md#discreteenergy-kt--discreteenergy--paircost"
+    },
+    {
+      "path": "public/docs/discrete_energy.md",
+      "symbol": "EnergyState",
+      "target": "reference/math.md#discreteenergy-kt-energystate"
+    },
+    {
+      "path": "public/docs/discrete_energy.md",
+      "symbol": "MeanFieldDescent",
+      "target": "reference/math.md#discreteenergy-kt-meanfielddescent"
+    },
+    {
+      "path": "public/docs/discrete_energy.md",
+      "symbol": "MeanFieldDescent.settle",
+      "target": "reference/math.md#discreteenergy-kt--meanfielddescent--settle"
+    },
+    {
+      "path": "public/docs/discrete_energy.md",
+      "symbol": "GreedyMoves",
+      "target": "reference/math.md#discreteenergy-kt-greedymoves"
+    },
+    {
+      "path": "public/docs/discrete_energy.md",
+      "symbol": "GreedyMoves.settle",
+      "target": "reference/math.md#discreteenergy-kt--greedymoves--settle"
+    },
+    {
+      "path": "public/docs/discrete_energy.md",
+      "symbol": "GibbsAnnealing",
+      "target": "reference/math.md#discreteenergy-kt-gibbsannealing"
+    },
+    {
+      "path": "public/docs/discrete_energy.md",
+      "symbol": "GibbsAnnealing.step",
+      "target": "reference/math.md#discreteenergy-kt--gibbsannealing--step"
+    },
+    {
+      "path": "public/docs/discrete_energy.md",
+      "symbol": "PseudolikelihoodLearner",
+      "target": "reference/math.md#discreteenergy-kt-pseudolikelihoodlearner"
+    },
+    {
+      "path": "public/docs/geometry_from_disk.md",
+      "symbol": "SplatTiles",
+      "target": "reference/graphics.md#splattiles-kt-splattiles"
+    },
+    {
+      "path": "public/docs/geometry_from_disk.md",
+      "symbol": "SplatTiles.clusteredCloud",
+      "target": "reference/graphics.md#splattiles-kt--splattiles--clusteredcloud"
+    },
+    {
+      "path": "public/docs/geometry_from_disk.md",
+      "symbol": "SplatTiles.bin",
+      "target": "reference/graphics.md#splattiles-kt--splattiles--bin"
+    },
+    {
+      "path": "public/docs/geometry_from_disk.md",
+      "symbol": "SplatTiles.render",
+      "target": "reference/graphics.md#splattiles-kt--splattiles--render"
+    },
+    {
+      "path": "public/docs/geometry_from_disk.md",
+      "symbol": "SplatTiles.compare",
+      "target": "reference/graphics.md#splattiles-kt--splattiles--compare"
+    },
+    {
+      "path": "public/docs/gpu_shader_learning.md",
+      "symbol": "GpuShaderLearningView",
+      "target": "reference/graphics.md#gpushaderlearningview-kt-gpushaderlearningview"
+    },
+    {
+      "path": "public/docs/gpu_shader_learning.md",
+      "symbol": "RenderToTexture",
+      "target": "reference/graphics.md#rendertotexture-kt-rendertotexture"
+    },
+    {
+      "path": "public/docs/learned_pen.md",
+      "symbol": "HersheyFont",
+      "target": "reference/machine-learning.md#corpora-kt-hersheyfont"
+    },
+    {
+      "path": "public/docs/learned_pen.md",
+      "symbol": "HersheyFont.load",
+      "target": "reference/machine-learning.md#corpora-kt--hersheyfont-companion--load"
+    },
+    {
+      "path": "public/docs/learned_pen.md",
+      "symbol": "PenDrawings",
+      "target": "reference/machine-learning.md#corpora-kt-pendrawings"
+    },
+    {
+      "path": "public/docs/learned_pen.md",
+      "symbol": "PenDrawings.michaux",
+      "target": "reference/machine-learning.md#corpora-kt--pendrawings--michaux"
+    },
+    {
+      "path": "public/docs/learned_pen.md",
+      "symbol": "PenGpt",
+      "target": "reference/machine-learning.md#pengpt-kt-pengpt"
+    },
+    {
+      "path": "public/docs/learned_pen.md",
+      "symbol": "PenGpt.named",
+      "target": "reference/machine-learning.md#pengpt-kt--pengpt-companion--named"
+    },
+    {
+      "path": "public/docs/learned_pen.md",
+      "symbol": "PenGptPrompt",
+      "target": "reference/machine-learning.md#pengpt-kt-pengptprompt"
+    },
+    {
+      "path": "public/docs/manim.md",
+      "symbol": "NumpyShared",
+      "target": "reference/languages.md#numpyshared-kt-numpyshared"
+    },
+    {
+      "path": "public/docs/manim.md",
+      "symbol": "NumpyShared.pathFrames",
+      "target": "reference/languages.md#numpyshared-kt--numpyshared--pathframes"
+    },
+    {
+      "path": "public/docs/paint_canvas.md",
+      "symbol": "PaintStrokes",
+      "target": "reference/graphics.md#paintstrokes-kt-paintstrokes"
+    },
+    {
+      "path": "public/docs/paint_canvas.md",
+      "symbol": "PaintStrokes.add",
+      "target": "reference/graphics.md#paintstrokes-kt--paintstrokes--add"
+    },
+    {
+      "path": "public/docs/paint_canvas.md",
+      "symbol": "PaintStrokes.apply",
+      "target": "reference/graphics.md#paintstrokes-kt--paintstrokes--apply"
+    },
+    {
+      "path": "public/docs/paint_canvas.md",
+      "symbol": "PaintStrokes.render",
+      "target": "reference/graphics.md#paintstrokes-kt--paintstrokes--render"
+    },
+    {
+      "path": "public/docs/paint_canvas.md",
+      "symbol": "PaintStrokes.pin",
+      "target": "reference/graphics.md#paintstrokes-kt--paintstrokes--pin"
+    },
+    {
+      "path": "public/docs/ai4_painting.md",
+      "symbol": "PaintStrokes",
+      "target": "reference/graphics.md#paintstrokes-kt-paintstrokes"
+    },
+    {
+      "path": "public/docs/ai4_painting.md",
+      "symbol": "PaintStrokes.add",
+      "target": "reference/graphics.md#paintstrokes-kt--paintstrokes--add"
+    },
+    {
+      "path": "public/docs/chain_tiger_paint.md",
+      "symbol": "GeziraSvg",
+      "target": "reference/graphics.md#gezirasvg-kt-gezirasvg"
+    },
+    {
+      "path": "public/docs/chain_tiger_paint.md",
+      "symbol": "GeziraSvg.parse",
+      "target": "reference/graphics.md#gezirasvg-kt--gezirasvg--parse"
+    },
+    {
+      "path": "public/docs/chain_tiger_paint.md",
+      "symbol": "GeziraSvg.render",
+      "target": "reference/graphics.md#gezirasvg-kt--gezirasvg--render"
+    },
+    {
+      "path": "public/docs/chain_tiger_paint.md",
+      "symbol": "PaintCanvas",
+      "target": "reference/graphics.md#paintcanvas-kt-paintcanvas"
+    },
+    {
+      "path": "public/docs/chain_tiger_paint.md",
+      "symbol": "PaintCanvas.work",
+      "target": "reference/graphics.md#paintcanvas-kt--paintcanvas--work"
+    },
+    {
+      "path": "public/docs/path_tracing.md",
+      "symbol": "OidnImageSource",
+      "target": "reference/internal.md#oidncompute-kt-oidnimagesource"
+    },
+    {
+      "path": "public/docs/path_tracing.md",
+      "symbol": "OidnComputeDenoiser.denoiseImage",
+      "target": "reference/internal.md#oidncompute-kt--oidncomputedenoiser--denoiseimage"
+    },
+    {
+      "path": "public/docs/path_tracing.md",
+      "symbol": "OidnComputeDenoiser.read",
+      "target": "reference/internal.md#oidncompute-kt--oidncomputedenoiser--read"
+    },
+    {
+      "path": "public/docs/presentation_studio.md",
+      "symbol": "LessonCheckpoint",
+      "target": "reference/visualization.md#lessoncheckpoint-kt-lessoncheckpoint"
+    },
+    {
+      "path": "public/docs/presentation_studio.md",
+      "symbol": "LessonCheckpoint.capture",
+      "target": "reference/visualization.md#lessoncheckpoint-kt--lessoncheckpoint-companion--capture"
+    },
+    {
+      "path": "public/docs/presentation_studio.md",
+      "symbol": "LessonCheckpoint.restore",
+      "target": "reference/visualization.md#lessoncheckpoint-kt--lessoncheckpoint--restore"
+    },
+    {
+      "path": "public/docs/rhino_files.md",
+      "symbol": "Rhino3dm",
+      "target": "reference/graphics.md#rhino3dm-kt-rhino3dm"
+    },
+    {
+      "path": "public/docs/rhino_files.md",
+      "symbol": "Rhino3dm.load",
+      "target": "reference/graphics.md#rhino3dm-kt--rhino3dm--load"
+    },
+    {
+      "path": "public/docs/rhino_files.md",
+      "symbol": "Rhino3dm.save",
+      "target": "reference/graphics.md#rhinowriter-kt--save"
+    },
+    {
+      "path": "public/docs/rhino_files.md",
+      "symbol": "Rhino3dm.writeSample",
+      "target": "reference/graphics.md#rhino3dm-kt--rhino3dm--writesample"
+    },
+    {
+      "path": "public/docs/rhino_files.md",
+      "symbol": "Rhino3dm.writeNurbsSample",
+      "target": "reference/graphics.md#rhino3dm-kt--rhino3dm--writenurbssample"
+    },
+    {
+      "path": "public/docs/rhino_files.md",
+      "symbol": "RhinoBreps",
+      "target": "reference/graphics.md#rhinowriter-kt-rhinobreps"
+    },
+    {
+      "path": "public/docs/rhino_files.md",
+      "symbol": "RhinoBreps.box",
+      "target": "reference/graphics.md#rhinowriter-kt--rhinobreps--box"
+    },
+    {
+      "path": "public/docs/rhino_files.md",
+      "symbol": "RhinoBreps.subdBox",
+      "target": "reference/graphics.md#rhinowriter-kt--rhinobreps--subdbox"
+    },
+    {
+      "path": "public/docs/sentence_diagrams.md",
+      "symbol": "ReadingDiagramPlayer",
+      "target": "reference/graphics.md#readingdiagramplayer-kt-readingdiagramplayer"
+    },
+    {
+      "path": "public/docs/sentence_diagrams.md",
+      "symbol": "DiagramKeyedSpan",
+      "target": "reference/graphics.md#diagramtextmorph-kt-diagramkeyedspan"
+    },
+    {
+      "path": "public/docs/sound_paths.md",
+      "symbol": "SineOsc",
+      "target": "reference/synthesis.md#oscillators-kt-sineosc"
+    },
+    {
+      "path": "public/docs/sound_paths.md",
+      "symbol": "SynthContext",
+      "target": "reference/synthesis.md#signal-kt-synthcontext"
+    },
+    {
+      "path": "public/docs/spectral_examples.md",
+      "symbol": "SineOsc",
+      "target": "reference/synthesis.md#oscillators-kt-sineosc"
+    },
+    {
+      "path": "public/docs/spectral_examples.md",
+      "symbol": "Waveshaper",
+      "target": "reference/synthesis.md#effects-kt-waveshaper"
+    },
+    {
+      "path": "public/docs/spectral_examples.md",
+      "symbol": "Waveshaper.tanh",
+      "target": "reference/synthesis.md#effects-kt--waveshaper-companion--tanh"
+    },
+    {
+      "path": "public/docs/spectral_examples.md",
+      "symbol": "SamplesSignal",
+      "target": "reference/synthesis.md#subharmonic-kt-samplessignal"
+    },
+    {
+      "path": "public/docs/spectral_geometry.md",
+      "symbol": "EpicycleGeometry",
+      "target": "reference/graphics.md#epicycles-kt-epicyclegeometry"
+    },
+    {
+      "path": "public/docs/spectral_geometry.md",
+      "symbol": "EpicycleGeometry.torus",
+      "target": "reference/graphics.md#epicycles-kt--epicyclegeometry-companion--torus"
+    },
+    {
+      "path": "public/docs/spectral_geometry.md",
+      "symbol": "EpicycleGeometry.fit",
+      "target": "reference/graphics.md#epicycles-kt--epicyclegeometry-companion--fit"
+    },
+    {
+      "path": "public/docs/spectral_geometry.md",
+      "symbol": "PhaseClock",
+      "target": "reference/graphics.md#epicycles-kt-phaseclock"
+    },
+    {
+      "path": "public/docs/spectral_geometry.md",
+      "symbol": "PhaseClock.phase",
+      "target": "reference/graphics.md#epicycles-kt--phaseclock--phase"
+    },
+    {
+      "path": "public/docs/spectral_geometry.md",
+      "symbol": "CotangentLaplacian",
+      "target": "reference/graphics.md#manifoldharmonics-kt-cotangentlaplacian"
+    },
+    {
+      "path": "public/docs/spectral_geometry.md",
+      "symbol": "CotangentLaplacian.basis",
+      "target": "reference/graphics.md#manifoldharmonics-kt--cotangentlaplacian--basis"
+    },
+    {
+      "path": "public/docs/spectral_geometry.md",
+      "symbol": "PlaneWaveField",
+      "target": "reference/graphics.md#planewaves-kt-planewavefield"
+    },
+    {
+      "path": "public/docs/spectral_geometry.md",
+      "symbol": "PlaneWaveField.fitDirectional",
+      "target": "reference/graphics.md#planewaves-kt--planewavefield-companion--fitdirectional"
+    },
+    {
+      "path": "public/docs/stacksl_examples.md",
+      "symbol": "GlslPartialEvaluator.specialize",
+      "target": "reference/languages.md#glslpartialevaluator-kt--glslpartialevaluator--specialize"
+    },
+    {
+      "path": "public/docs/stacksl_examples.md",
+      "symbol": "StackSLCpu",
+      "target": "reference/languages.md#stackslcpu-kt-stackslcpu"
+    },
+    {
+      "path": "public/docs/stacksl_examples.md",
+      "symbol": "StackSLCpu.renderFragment",
+      "target": "reference/languages.md#stackslcpu-kt--stackslcpu--renderfragment"
+    },
+    {
+      "path": "public/docs/spatial_rules.md",
+      "symbol": "SpatialRuleWorld",
+      "target": "reference/data.md#spatial-rules-kt-spatialruleworld"
+    },
+    {
+      "path": "public/docs/spatial_rules.md",
+      "symbol": "SpatialRuleWorld.source",
+      "target": "reference/data.md#spatial-rules-kt--spatialruleworld--source"
+    },
+    {
+      "path": "public/docs/spatial_rules.md",
+      "symbol": "SpatialRuleWorld.rules",
+      "target": "reference/data.md#spatial-rules-kt--spatialruleworld--rules"
+    },
+    {
+      "path": "public/docs/spatial_rules.md",
+      "symbol": "SpatialRuleWorld.step",
+      "target": "reference/data.md#spatial-rules-kt--spatialruleworld--step"
+    },
+    {
+      "path": "public/docs/treemaps.md",
+      "symbol": "TreemapColors",
+      "target": "reference/visualization.md#treemap-kt-treemapcolors"
+    },
+    {
+      "path": "public/docs/treemaps.md",
+      "symbol": "TreemapColors.byBranch",
+      "target": "reference/visualization.md#treemap-kt--treemapcolors-companion--bybranch"
+    },
+    {
+      "path": "public/docs/treemaps.md",
+      "symbol": "TreemapColors.byCategory",
+      "target": "reference/visualization.md#treemap-kt--treemapcolors-companion--bycategory"
+    },
+    {
+      "path": "public/docs/treemaps.md",
+      "symbol": "TreemapColors.byValue",
+      "target": "reference/visualization.md#treemap-kt--treemapcolors-companion--byvalue"
+    },
+    {
+      "path": "public/docs/treemaps.md",
+      "symbol": "TreemapTiling",
+      "target": "reference/visualization.md#treemaplayout-kt-treemaptiling"
+    },
+    {
+      "path": "public/docs/interaction_nets_examples.md",
+      "symbol": "LambdaTerms.readback",
+      "target": "reference/visualization.md#lambdaterms-kt--lambdaterms--readback"
+    },
+    {
+      "path": "public/docs/interaction_nets_examples.md",
+      "symbol": "Reducer",
+      "target": "reference/visualization.md#interactionnets-kt-reducer"
+    },
+    {
+      "path": "public/docs/interaction_nets_examples.md",
+      "symbol": "Reducer.stepDetailed",
+      "target": "reference/visualization.md#interactionnets-kt--reducer--stepdetailed"
+    },
+    {
+      "path": "public/docs/interaction_nets_examples.md",
+      "symbol": "NetPrograms.compile",
+      "target": "reference/data.md#netprograms-kt--netprograms--compile"
+    },
+    {
+      "path": "public/docs/interaction_nets_examples.md",
+      "symbol": "NetPrograms.run",
+      "target": "reference/data.md#netprograms-kt--netprograms--run-2"
+    }
+  ],
+  "policy": "Explicit curated class/member pairs for retained algorithms, simulators and resource APIs; every anchor resolved from generated reference.",
+  "verified": true
+}

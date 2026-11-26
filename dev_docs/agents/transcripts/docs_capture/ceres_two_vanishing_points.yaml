@@ -7,15 +7,11 @@ operations:
       frame: { x: 80.0, y: 100.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          import afield.graphics.three.ThreeHandleDrag
           import afield.math.optimization.ceres.DragHandle
           import afield.math.optimization.ceres.InteractionPolicy
           import afield.math.optimization.ceres.PointRef
           import afield.math.optimization.ceres.RobustLoss
           import afield.math.optimization.ceres.geometryModel
-          import afield.runtime.lifecycle.ReleasePolicy
-          import afield.runtime.lifecycle.RunScope
-          import kotlin.math.sqrt
 
           /*
           The cube with two vanishing points: its uprights run toward V, its depth edges toward Vz, and its

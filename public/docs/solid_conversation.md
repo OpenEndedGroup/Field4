@@ -161,14 +161,14 @@ sampling `sdScene` around each point. Concave places collect verdigris, and conv
 bronze and take a sharper highlight:
 
 ```diffstatic {data-lang=glsl}
-    // Tangential field samples distinguish concave hollows from convex worn lips.
-    vec3 u = normalize(cross(n, abs(n.z) < 0.9 ? vec3(0,0,1) : vec3(0,1,0)));
-    vec3 v = cross(n,u);
-    float e = 0.045;
-    float bend = (sdScene(p+e*u)+sdScene(p-e*u)+sdScene(p+e*v)+sdScene(p-e*v)
-                  -4.0*sdScene(p))/e;
-    float hollow = smoothstep(0.015, 0.23, -bend);
-    float ridge = smoothstep(0.13, 0.65, bend);
+// Tangential field samples distinguish concave hollows from convex worn lips.
+vec3 u = normalize(cross(n, abs(n.z) < 0.9 ? vec3(0,0,1) : vec3(0,1,0)));
+vec3 v = cross(n,u);
+float e = 0.045;
+float bend = (sdScene(p+e*u)+sdScene(p-e*u)+sdScene(p+e*v)+sdScene(p-e*v)
+-4.0*sdScene(p))/e;
+float hollow = smoothstep(0.015, 0.23, -bend);
+float ridge = smoothstep(0.13, 0.65, bend);
 ```
 
 ![Two close views of the patinated lamp: green verdigris mottled across the shell with warm bronze showing through, the rims of every hole and of the mouth polished to bright copper](assets/solid_conversation/03-patina-orbit.png)

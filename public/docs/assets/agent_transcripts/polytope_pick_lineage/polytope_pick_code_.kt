@@ -1,13 +1,3 @@
-import afield.geometry.mesh.MeshView
-import afield.geometry.polytope.ElementId
-import afield.geometry.polytope.NormalPolicy
-import afield.geometry.polytope.canonicalConway
-import afield.geometry.polytope.triangulate
-import afield.graphics.interaction.PickParts
-import afield.graphics.interaction.pickScene
-import afield.graphics.interaction.rayCamera
-import afield.ui.visualization.showPointer
-
 val chain = canonicalConway("bD")
 fun sceneWith(normals: NormalPolicy) =
     chain.polyhedron.triangulate(normals = normals).let { geometry ->

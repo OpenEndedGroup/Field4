@@ -97,4 +97,3 @@ operations:
             }
         }
         lines(offsets(pseudo, 0.0) + offsets(fixed, 3.2), channel = "offsets", w = 640.0, h = 300.0, fitToSize = true)
-

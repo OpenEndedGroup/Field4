@@ -1,9 +1,4 @@
 import afield.data.graph.SpatialLifetime.MATCH
-import afield.data.graph.SpatialRuleWorld
-import afield.data.graph.spatialDot
-import afield.data.graph.spatialStroke
-import afield.runtime.lifecycle.AnimationClock
-import afield.ui.visualization.LinesFraming
 
 val world = SpatialRuleWorld()
 val ink = Vec4(0.8f, 0.92f, 1f, 1f)
@@ -33,9 +28,9 @@ world.source("moving tips") {
 world.rules("filaments") {
     onEnter("join tips", points("tip").pairsWithin(100.0, leave = 120.0)) { (a, b) ->
         edge("filament", a, b, lifetime = MATCH)
-        var ends = listOf(a.pos, b.pos)
+        var ends = [a.pos, b.pos]
         while (match.live) {
-            ends = listOf(a.pos, b.pos)
+            ends = [a.pos, b.pos]
             draw(spatialStroke(ends, ink, width = 2.0))
             nextFrame()
         }

@@ -179,19 +179,31 @@ fun circles(grid: SdfGrid2D, dx: Double) = buildList {
         val d = grid[i, j]
         val miss = nearest[j * grid.nx + i] - abs(d) // > 0 falls short, < 0 swallows surface
         val c = (abs(miss) / grid.h).coerceIn(0.0, 1.0)
-        add(fline { circle((grid.x(i) + dx) * scale, grid.y(j) * scale, abs(d) * scale) }.apply {
-            color = if (d < 0) vec(0.15 + 0.85 * c, 0.3, 0.7 - 0.5 * c, 0.8) else vec(0.6, 0.6, 0.6, 0.15)
-        })
+        add(
+            fline { circle((grid.x(i) + dx) * scale, grid.y(j) * scale, abs(d) * scale) }
+                .apply {
+                    color = if (d < 0) vec(0.15 + 0.85 * c, 0.3, 0.7 - 0.5 * c, 0.8) else vec(0.6, 0.6, 0.6, 0.15)
+                },
+        )
     }
     val s = grid.surfacePoints()
     for (k in 0 until s.size / 2) {
-        add(fline { circle((s[2 * k] + dx) * scale, s[2 * k + 1] * scale, 2.0) }.apply {
-            filled = true
-            color = vec(1.0, 0.67, 0.0, 1.0)
-        })
+        add(
+            fline { circle((s[2 * k] + dx) * scale, s[2 * k + 1] * scale, 2.0) }
+                .apply {
+                    filled = true
+                    color = vec(1.0, 0.67, 0.0, 1.0)
+                },
+        )
     }
 }
-lines(circles(pseudo, 0.0) + circles(fixed, 2.6), channel = "circles", w = 640.0, h = 260.0, fitToSize = true)
+lines(
+    circles(pseudo, 0.0) + circles(fixed, 2.6),
+    channel = "circles",
+    w = 640.0,
+    h = 260.0,
+    fitToSize = true,
+)
 :::endfold
 ```
 
@@ -648,8 +660,6 @@ the trough walls, and once over the far lip they run parallel to it, because eve
 up out of the same trough.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/mesh_examples/geodesic_vs_euclidean.png" wait="3.0" capture="box" open-outputs="true" padding="20"}
-import afield.graphics.three.ThreeCameraSpec
-
 // A sheet with a deep fold down the middle: the far wall is close through the air and far along the stone.
 val shell = heightfieldMesh(90, 60, 3.0, 2.0) { x, _ -> -1.1f * kotlin.math.exp(-(x * x) / 0.12f) }
 val source = shell.nearestVertex(-0.9, 0, 0)
@@ -670,8 +680,7 @@ val top = alongSurface.max()
 val view = ThreeCameraSpec(yawDegrees = 20.0, pitchDegrees = 40.0)
 three(height = 360) {
     columns(2)
-    for ((i, panelled) in
-        listOf("straight-line distance" to straight, "geodesic distance" to alongSurface).withIndex()) {
+    for ((i, panelled) in ["straight-line distance" to straight, "geodesic distance" to alongSurface].withIndex()) {
         val (title, d) = panelled
         panel(title = title, camera = view)
         mesh(shell.colouredBy(d, 0.0, top), wireframe = false, cullBackFaces = false)
@@ -697,8 +706,6 @@ ended and walks it once while easing, by arc length, onto the next ring, so the 
 and never retraces. Here it is on a relief, the rings measured from its boundary:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/mesh_examples/geodesic_spiral.png" wait="3.0" capture="box" open-outputs="true" padding="20"}
-import afield.graphics.three.ThreeCameraSpec
-
 // A carved boss: a dome with a ripple, on a square tablet.
 val relief =
     heightfieldMesh(80, 80, 2.0, 2.0) { x, z ->
@@ -957,8 +964,6 @@ time, following the part's outline at each height. `roughingPasses(stepDown)` gi
 contours from the top down, as `(height, rings)` pairs:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/mesh_examples/roughing_passes.png" wait="3.0" capture="box" open-outputs="true" padding="20"}
-import afield.graphics.three.ThreeCameraSpec
-
 // A part modelled as a field: a ball fused to a bar, with a fillet.
 val part = marchingCubes(
     sdfSmoothUnion(sdfSphere(0.7), sdfBox(vec(2.0, 0.35, 0.6)), k = 0.25),

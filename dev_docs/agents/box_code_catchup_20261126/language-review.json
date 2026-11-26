@@ -1,0 +1,14 @@
+{
+  "kotlinRoots": [
+    "templates/clojure-cell/tpl_clojure_root_code_.kt",
+    "templates/csound-instrument/tpl_csound_root_code_.kt",
+    "templates/lua-cell/tpl_lua_root_code_.kt",
+    "templates/pd-patch/tpl_pd_root_code_.kt",
+    "templates/python-cell/tpl_python_root_code_.kt"
+  ],
+  "transcriptKotlinOverrides": [
+    "norns_demo: Lua root",
+    "fieldml_reactive_bridge: Kotlin result reader"
+  ],
+  "reason": "A language root sets the language of its direct children; the root itself and a Kotlin reader below a language box remain Kotlin. Sidecar filename extensions do not determine execution language."
+}

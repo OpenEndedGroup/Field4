@@ -1,5 +1,3 @@
-import afield.graphics.render.*
-
 // Eight triangles on a 32 x 24 grid, y down, divided into the unit square TriangleSplat uses.
 fun tri(
     ax: Double,
@@ -14,12 +12,12 @@ fun tri(
     a: Double = 1.0,
 ) = CoverageTriangle(ax / 32, ay / 24, bx / 32, by / 24, cx / 32, cy / 24, r, g, b, a)
 
-val scene = listOf(
+val scene = [
     tri(2.0, 20.0, 14.0, 3.0, 20.0, 18.0, 1.0, 0.55, 0.1),
     tri(18.0, 8.0, 31.0, 11.0, 24.0, 22.0, 0.2, 0.8, 0.4, 0.7),
     tri(3.0, 2.0, 30.0, 4.0, 30.0, 4.35, 0.3, 0.6, 1.0),
     tri(6.0, 22.0, 28.0, 21.6, 28.0, 22.0, 1.0, 1.0, 1.0),
-) +
+] +
         (0 until 4).map { i ->
             // Four triangles of 0.08 pixels each, tucked between pixel centres.
             val x = 2.0 + 2.0 * i

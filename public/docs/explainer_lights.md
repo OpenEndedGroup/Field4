@@ -510,7 +510,7 @@ fun draw(distance: Double) {
     for (t in 0 until shadow.triangleCount) omega += shadow.triangleArea(t)
     // From the eye through each corner of the patch to the panel's corner.
     val corners =
-        listOf(-0.4 to -0.4, 0.4 to -0.4, 0.4 to 0.4, -0.4 to 0.4).map { (x, y) ->
+        [-0.4 to -0.4, 0.4 to -0.4, 0.4 to 0.4, -0.4 to 0.4].map { (x, y) ->
             fline {
                 moveTo(0.0, 0.0, 0.0)
                 lineTo(x, y, -distance)
@@ -552,6 +552,7 @@ light the point gets. The flattening is the cosine factor again.
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_lights/hemisphere.png" execution="launch" wait-output=true wait="2" timeout="240" embed=true name="explainer-lights-hemisphere" alt="A three-dimensional view of a white lamp panel over a grey floor, its outline projected onto a hemisphere around a floor point in orange and then flattened onto the disc below in cyan, a readout of 18.1% of the disc, and a lamp position slider"}
 :::fold imports
 import afield.graphics.lighting.*
+
 :::endfold
 
 /*
@@ -583,7 +584,7 @@ fun draw(across: Double) {
     val radiance = lamp.power / (PI * side * side)
     val e = irradianceAt(vec(0.0, 0.0, 0.0), vec(0.0, 1.0, 0.0), lamp).x
     val sight =
-        listOf(-0.5 to -0.5, 0.5 to -0.5, 0.5 to 0.5, -0.5 to 0.5).map { (x, z) ->
+        [-0.5 to -0.5, 0.5 to -0.5, 0.5 to 0.5, -0.5 to 0.5].map { (x, z) ->
             fline {
                 moveTo(0.0, 0.0, 0.0)
                 lineTo(across + x, 1.2, z)

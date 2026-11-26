@@ -1,5 +1,3 @@
-import afield.graphics.three.ThreeCameraSpec
-
 // A carved boss: a dome with a ripple, on a square tablet.
 val relief =
     heightfieldMesh(80, 80, 2.0, 2.0) { x, z ->

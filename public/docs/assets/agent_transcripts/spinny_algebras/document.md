@@ -163,7 +163,7 @@ From `code`
 Multiply every point of a grid by one fixed number w = a + bε, in three algebras that differ only in ε².
 
 ```edn [field-box id="grid_three" role="properties"]
-{"id" "grid_three" "index" 2 "name" "grid × w in three algebras" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "grid × w in three algebras" "_tombstone" false "frame" #afield/rect [800.0 0.0 260.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "grid_three_code_.kt" "lines" 40 "characters" 1579 "sha256" "910c0355db3ad95e6d2ef679540e69e98b1d76be2035bba295266c024c401dde"}]}
+{"id" "grid_three" "index" 2 "name" "grid × w in three algebras" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "grid × w in three algebras" "_tombstone" false "frame" #afield/rect [800.0 0.0 260.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "grid_three_code_.kt" "lines" 40 "characters" 1573 "sha256" "21b0cc95e44106d12137c46eaba956839e9e491a76d10986a4c77d1acf4852db"}]}
 ```
 
 ```kotlin [field-property box="grid_three" name="code" path="grid_three_code_.kt"]
@@ -174,10 +174,10 @@ fun gridTimes(a: Double, b: Double, eps2: Double, ox: Double, tint: Vec4): List<
     val s = 40.0
     val grid =
         (-3..3).flatMap { k ->
-            listOf(
+            [
                 (0..60).map { vec(k / 3.0, -1 + it / 30.0) }, // a vertical line of the grid
                 (0..60).map { vec(-1 + it / 30.0, k / 3.0) }, // a horizontal one
-            )
+            ]
         }
     fun draw(pts: List<Vec2>, col: Vec4, t: Double) = fline {
         pts.forEachIndexed { i, p ->
@@ -221,7 +221,7 @@ Drag ε² from -1 (complex) through 0 (dual) to +1 (split-complex).
 Left: a grid multiplied by w = 0.9 + 0.5ε. Right: exp(tε) for t from -π to π.
 
 ```edn [field-box id="eps_slider" role="properties"]
-{"id" "eps_slider" "index" 3 "name" "1. ε² slider (complex → dual → split-complex)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1. ε² slider (complex → dual → split-complex)" "_tombstone" false "frame" #afield/rect [0.0 0.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "eps_slider_code_.kt" "lines" 57 "characters" 1852 "sha256" "88a827a25f0bd4c24eb1dbcd9e66b0b64035567582488fb30cda313bb0367e06"}]}
+{"id" "eps_slider" "index" 3 "name" "1. ε² slider (complex → dual → split-complex)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1. ε² slider (complex → dual → split-complex)" "_tombstone" false "frame" #afield/rect [0.0 0.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "eps_slider_code_.kt" "lines" 57 "characters" 1840 "sha256" "f281c13372bf8588cf9c4894445322907603bd69a4546d9bd80c266b5a9ea1ec"}]}
 ```
 
 ```kotlin [field-property box="eps_slider" name="code" path="eps_slider_code_.kt"]
@@ -244,7 +244,7 @@ fun draw(eps2: Double) {
     val w = vec(0.9, 0.5)
     val grid =
         (-3..3).flatMap { k ->
-            listOf((0..60).map { vec(k / 3.0, -1 + it / 30.0) }, (0..60).map { vec(-1 + it / 30.0, k / 3.0) })
+            [(0..60).map { vec(k / 3.0, -1 + it / 30.0) }, (0..60).map { vec(-1 + it / 30.0, k / 3.0) }]
         }
     val mapped = grid.map { pts ->
         fline {
@@ -265,7 +265,7 @@ fun draw(eps2: Double) {
         color = vec(1.0, 0.8, 0.3, 1.0)
         thickness = 2.5
     }
-    val axes = listOf(
+    val axes = [
         fline {
             moveTo(260 - 3 * s, 0)
             lineTo(260 + 4 * s, 0)
@@ -276,7 +276,7 @@ fun draw(eps2: Double) {
             lineTo(260, 3 * s)
             color = vec(1, 1, 1, 0.25)
         },
-    )
+    ]
     lines(*(mapped + axes + curve).toTypedArray(), w = 620.0, h = 300.0, fitToSize = true)
 }
 
@@ -365,7 +365,7 @@ From `code`
 exp(tε) = 1 + tε + (tε)²/2! + ..., summed with nothing but the algebra's own multiplication.
 
 ```edn [field-box id="exp_series" role="properties"]
-{"id" "exp_series" "index" 5 "name" "exp(tε) as ε² moves" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "exp(tε) as ε² moves" "_tombstone" false "frame" #afield/rect [800.0 700.0 260.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "exp_series_code_.kt" "lines" 58 "characters" 1970 "sha256" "b4cc7d7f1df4efe9877ea519d57b4851b20751d6472dff77ff66c0521ed59704"}]}
+{"id" "exp_series" "index" 5 "name" "exp(tε) as ε² moves" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "exp(tε) as ε² moves" "_tombstone" false "frame" #afield/rect [800.0 700.0 260.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "exp_series_code_.kt" "lines" 58 "characters" 1946 "sha256" "4d878637d235a91cea0197abc6e3bc0c260de92c379b12bbd23a08a580f754d5"}]}
 ```
 
 ```kotlin [field-property box="exp_series" name="code" path="exp_series_code_.kt"]
@@ -396,8 +396,8 @@ fun curve(eps2: Double, terms: Int, col: Vec4, ox: Double, width: Double = 1.5) 
 }
 
 val axes =
-    listOf(0.0, 480.0).flatMap { ox ->
-        listOf(
+    [0.0, 480.0].flatMap { ox ->
+        [
             fline {
                 moveTo(ox - 3 * s, 0)
                 lineTo(ox + 4 * s, 0)
@@ -408,13 +408,13 @@ val axes =
                 lineTo(ox, 3 * s)
                 color = vec(1, 1, 1, 0.25)
             },
-        )
+        ]
     }
 
 // Left: the three named algebras, with the series cut off after 3, 5 and 30 terms.
 val named =
-    listOf(-1.0 to vec(0.35, 0.8, 1.0), 0.0 to vec(0.95, 0.85, 0.3), 1.0 to vec(1.0, 0.45, 0.55)).flatMap { (k, c) ->
-        listOf(3 to 0.25, 5 to 0.5, 30 to 1.0).map { (n, a) ->
+    [-1.0 to vec(0.35, 0.8, 1.0), 0.0 to vec(0.95, 0.85, 0.3), 1.0 to vec(1.0, 0.45, 0.55)].flatMap { (k, c) ->
+        [3 to 0.25, 5 to 0.5, 30 to 1.0].map { (n, a) ->
             curve(k, n, vec(c.x, c.y, c.z, a), 0.0, if (n == 30) 2.0 else 1.0)
         }
     }

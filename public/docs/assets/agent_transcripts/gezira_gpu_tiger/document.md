@@ -35,12 +35,11 @@ start(renderer::run)
 <!-- field-box id="ggt_tiger" index="1" -->
 
 ```edn [field-box id="ggt_tiger" role="properties"]
-{"id" "ggt_tiger" "index" 1 "name" "tiger on the gpu" "parents" ["root" "ggt_renderer"] "children" ["ggt_draw"] "properties" {"children" #{#afield/box "ggt_draw"} "parents" #{#afield/box "root" #afield/box "ggt_renderer"} "name" "tiger on the gpu" "_tombstone" false "frame" #afield/rect [40.0 200.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ggt_tiger_code_.kt" "lines" 34 "characters" 1165 "sha256" "6c4c2145476ea018e081bf9f9f8cc95cc1a9118a5c2a1caa8f2a1a9ac253531b"}]}
+{"id" "ggt_tiger" "index" 1 "name" "tiger on the gpu" "parents" ["root" "ggt_renderer"] "children" ["ggt_draw"] "properties" {"children" #{#afield/box "ggt_draw"} "parents" #{#afield/box "root" #afield/box "ggt_renderer"} "name" "tiger on the gpu" "_tombstone" false "frame" #afield/rect [40.0 200.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ggt_tiger_code_.kt" "lines" 33 "characters" 1121 "sha256" "869c004c9e3c4520f7bd488e11294890c736986ac0875d83184a897ffc1635fe"}]}
 ```
 
 ```kotlin [field-property box="ggt_tiger" name="code" path="ggt_tiger_code_.kt"]
 import afield.graphics.nile.*
-import afield.graphics.vulkan.util.GpuProbe
 
 val N = 900
 val doc = GeziraSvg.parse(GeziraSvg.tiger())
@@ -80,12 +79,11 @@ loop {
 <!-- field-box id="ggt_compare" index="2" -->
 
 ```edn [field-box id="ggt_compare" role="properties"]
-{"id" "ggt_compare" "index" 2 "name" "gpu beside cpu" "parents" ["root" "ggt_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "ggt_renderer"} "name" "gpu beside cpu" "_tombstone" false "frame" #afield/rect [460.0 200.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ggt_compare_code_.kt" "lines" 63 "characters" 2533 "sha256" "da63e8953d3c6fdd2420334c5a3e5c4aa4965e107940a922fca9b435cb17c646"}]}
+{"id" "ggt_compare" "index" 2 "name" "gpu beside cpu" "parents" ["root" "ggt_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "ggt_renderer"} "name" "gpu beside cpu" "_tombstone" false "frame" #afield/rect [460.0 200.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ggt_compare_code_.kt" "lines" 62 "characters" 2483 "sha256" "c562eb04c18f1df048071896708251f46686e1f19a6510a596a2ad1eda8ffb88"}]}
 ```
 
 ```kotlin [field-property box="ggt_compare" name="code" path="ggt_compare_code_.kt"]
 import afield.graphics.nile.*
-import afield.graphics.vulkan.util.GpuProbe
 
 val n = 300
 val svg = GeziraSvg.tiger()
@@ -126,7 +124,7 @@ frames {
         val gap = 12
         val w = 3 * n + 2 * gap
         val sheet = FloatArray(4 * w * n)
-        for ((k, img) in listOf(gpu, cpu, diff).withIndex()) {
+        for ((k, img) in [gpu, cpu, diff].withIndex()) {
             for (y in 0 until n) for (x in 0 until n) {
                 val s = 4 * (y * n + x)
                 val d = 4 * (y * w + k * (n + gap) + x)

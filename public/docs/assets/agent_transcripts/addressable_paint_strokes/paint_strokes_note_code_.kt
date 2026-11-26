@@ -3,7 +3,7 @@ run {
         markdown(PaintLibrary.describe())
         return@run
     }
-    val original = fromContext<PaintStrokes>()
+    val original = paintSheet
     // the sheet the AI edits is kept on the box, so re-running the box keeps its edits
     val sheet = thisBox.properties.getOrPut("strokes.sheet") {
         original.copy().also { it.pin(660.0, 430.0, "more moss on this side") }

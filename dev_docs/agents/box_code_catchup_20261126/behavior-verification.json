@@ -1,0 +1,229 @@
+{
+  "cases": [
+    {
+      "source": "dev_docs/agents/transcripts/adaptive_distribution_feedback.yaml",
+      "name": "controller",
+      "variant": false,
+      "label": "before",
+      "token": "CATCHUP_NOV26_CPU_0"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/adaptive_distribution_feedback.yaml",
+      "name": "controller",
+      "variant": false,
+      "label": "after",
+      "token": "CATCHUP_NOV26_CPU_1"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/adaptive_distribution_feedback.yaml",
+      "name": "controller",
+      "variant": true,
+      "label": "before",
+      "token": "CATCHUP_NOV26_CPU_2"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/adaptive_distribution_feedback.yaml",
+      "name": "controller",
+      "variant": true,
+      "label": "after",
+      "token": "CATCHUP_NOV26_CPU_3"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/geodesic_carving.yaml",
+      "name": "geodesic",
+      "variant": false,
+      "label": "before",
+      "token": "CATCHUP_NOV26_CPU_4"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/geodesic_carving.yaml",
+      "name": "geodesic",
+      "variant": false,
+      "label": "after",
+      "token": "CATCHUP_NOV26_CPU_5"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/geodesic_carving.yaml",
+      "name": "geodesic",
+      "variant": true,
+      "label": "before",
+      "token": "CATCHUP_NOV26_CPU_6"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/geodesic_carving.yaml",
+      "name": "geodesic",
+      "variant": true,
+      "label": "after",
+      "token": "CATCHUP_NOV26_CPU_7"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/spinny_algebras.yaml",
+      "name": "algebra",
+      "variant": false,
+      "label": "before",
+      "token": "CATCHUP_NOV26_CPU_8"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/spinny_algebras.yaml",
+      "name": "algebra",
+      "variant": false,
+      "label": "after",
+      "token": "CATCHUP_NOV26_CPU_9"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/spinny_algebras.yaml",
+      "name": "algebra",
+      "variant": true,
+      "label": "before",
+      "token": "CATCHUP_NOV26_CPU_10"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/spinny_algebras.yaml",
+      "name": "algebra",
+      "variant": true,
+      "label": "after",
+      "token": "CATCHUP_NOV26_CPU_11"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/splat_tiles.yaml",
+      "name": "splats",
+      "variant": false,
+      "label": "before",
+      "token": "CATCHUP_NOV26_CPU_12"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/splat_tiles.yaml",
+      "name": "splats",
+      "variant": false,
+      "label": "after",
+      "token": "CATCHUP_NOV26_CPU_13"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/splat_tiles.yaml",
+      "name": "splats",
+      "variant": true,
+      "label": "before",
+      "token": "CATCHUP_NOV26_CPU_14"
+    },
+    {
+      "source": "dev_docs/agents/transcripts/splat_tiles.yaml",
+      "name": "splats",
+      "variant": true,
+      "label": "after",
+      "token": "CATCHUP_NOV26_CPU_15"
+    }
+  ],
+  "results": {
+    "CATCHUP_NOV26_CPU_0": "0.18453184007102943:0.019317061237245678:814848887:-1841772459",
+    "CATCHUP_NOV26_CPU_1": "0.18453184007102943:0.019317061237245678:814848887:-1841772459",
+    "CATCHUP_NOV26_CPU_2": "0.24485097508484624:0.01879548691353668:58294621:-1127960660",
+    "CATCHUP_NOV26_CPU_3": "0.24485097508484624:0.01879548691353668:58294621:-1127960660",
+    "CATCHUP_NOV26_CPU_4": "-54437506:1506046234",
+    "CATCHUP_NOV26_CPU_5": "-54437506:1506046234",
+    "CATCHUP_NOV26_CPU_6": "1330943083:1845203864",
+    "CATCHUP_NOV26_CPU_7": "1330943083:1845203864",
+    "CATCHUP_NOV26_CPU_8": "1413743996",
+    "CATCHUP_NOV26_CPU_9": "1413743996",
+    "CATCHUP_NOV26_CPU_10": "950011788",
+    "CATCHUP_NOV26_CPU_11": "950011788",
+    "CATCHUP_NOV26_CPU_12": "-74200438:30449291:1",
+    "CATCHUP_NOV26_CPU_13": "-74200438:30449291:1",
+    "CATCHUP_NOV26_CPU_14": "-1685441099:-1685441099:0",
+    "CATCHUP_NOV26_CPU_15": "-1685441099:-1685441099:0"
+  },
+  "equivalencePairs": 8,
+  "shaders": [
+    {
+      "path": "dev_docs/agents/transcripts/buffer_paint_gpu.yaml",
+      "property": "compute",
+      "token": "CATCHUP_NOV26_SHADER_0"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/buffer_paint_gpu.yaml",
+      "property": "vertex",
+      "token": "CATCHUP_NOV26_SHADER_1"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/buffer_paint_gpu.yaml",
+      "property": "fragment",
+      "token": "CATCHUP_NOV26_SHADER_2"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/discrete_energy.yaml",
+      "property": "compute",
+      "token": "CATCHUP_NOV26_SHADER_3"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/exact_triangle_coverage.yaml",
+      "property": "vertex",
+      "token": "CATCHUP_NOV26_SHADER_4"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/exact_triangle_coverage.yaml",
+      "property": "fragment",
+      "token": "CATCHUP_NOV26_SHADER_5"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/fline_coverage_gpu.yaml",
+      "property": "vertex",
+      "token": "CATCHUP_NOV26_SHADER_6"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/fline_coverage_gpu.yaml",
+      "property": "fragment",
+      "token": "CATCHUP_NOV26_SHADER_7"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/gezira_gpu_tiger.yaml",
+      "property": "vertex",
+      "token": "CATCHUP_NOV26_SHADER_8"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/gezira_gpu_tiger.yaml",
+      "property": "fragment",
+      "token": "CATCHUP_NOV26_SHADER_9"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/outline_field_gpu.yaml",
+      "property": "compute",
+      "token": "CATCHUP_NOV26_SHADER_10"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/outline_field_gpu.yaml",
+      "property": "vertex",
+      "token": "CATCHUP_NOV26_SHADER_11"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/outline_field_gpu.yaml",
+      "property": "fragment",
+      "token": "CATCHUP_NOV26_SHADER_12"
+    },
+    {
+      "path": "templates/gpu-particles/tpl_particles_compute_compute_.glsl",
+      "property": "compute",
+      "token": "CATCHUP_NOV26_SHADER_13"
+    },
+    {
+      "path": "templates/gpu-particles/tpl_particles_draw_fragment_.glsl",
+      "property": "fragment",
+      "token": "CATCHUP_NOV26_SHADER_14"
+    },
+    {
+      "path": "templates/gpu-particles/tpl_particles_draw_vertex_.glsl",
+      "property": "vertex",
+      "token": "CATCHUP_NOV26_SHADER_15"
+    },
+    {
+      "path": "templates/sky/tpl_sky_fragment_.glsl",
+      "property": "fragment",
+      "token": "CATCHUP_NOV26_SHADER_16"
+    },
+    {
+      "path": "templates/sky/tpl_sky_vertex_.glsl",
+      "property": "vertex",
+      "token": "CATCHUP_NOV26_SHADER_17"
+    }
+  ],
+  "shaderCount": 18,
+  "method": "Exact authored CPU examples before/after, default and edited inputs, real arrays/geometry/raster results; shaderc compilation before/after for every complete frozen GLSL stage. Partial GLSL and Shadertoy template require their enclosing program."
+}

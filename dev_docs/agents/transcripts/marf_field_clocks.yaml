@@ -57,7 +57,6 @@ operations:
           }
 
           markdown("verdict", body.toString())
-
   - execute:
       box: marf_clocks_refused
       property: code
@@ -247,7 +246,6 @@ operations:
           table.append("would not help.\n")
 
           markdown("ledger", table.toString())
-
   - execute:
       box: marf_clocks_ledger
       property: code

@@ -811,8 +811,7 @@ fun outline(x0: Double, y0: Double, x1: Double, y1: Double, c: Vec4) = fline {
 }
 fun label(s: String, px: Double, py: Double, size: Double, c: Vec4): List<FLine> {
     val layout = layoutText(s, typeface("Monospaced", size))
-    return layout.toFLines(color = c, thickness = 0.0, filled = true, stroked = false).map {
-        line ->
+    return layout.toFLines(color = c, thickness = 0.0, filled = true, stroked = false).map { line ->
         line.transform { q -> vec(q.x + px, q.y + py, q.z) }
     }
 }
@@ -825,7 +824,14 @@ val out = mutableListOf<FLine>()
 // one shaded band per basic block, named at the top
 heads.forEachIndexed { k, h ->
     val last = blockOf.filter { it.value == h }.keys.max()
-    out += box(x(h) - 16.0, 26.0, x(last) + 16.0, y(vars.size - 1) + 14.0, vec(0.5, 0.6, 0.8, if (k % 2 == 0) 0.10 else 0.18))
+    out +=
+        box(
+            x(h) - 16.0,
+            26.0,
+            x(last) + 16.0,
+            y(vars.size - 1) + 14.0,
+            vec(0.5, 0.6, 0.8, if (k % 2 == 0) 0.10 else 0.18),
+        )
     out += label("B${k + 1}", (x(h) + x(last)) / 2 - 8.0, 20.0, 15.0, muted)
 }
 // the loop's back edge, 12 -> 3, as an arc over the top
@@ -841,7 +847,8 @@ vars.forEachIndexed { k, v ->
     val (s, e) = span(v)
     out += box(x(s) - 4.0, y(k) - 7.0, x(e) + 4.0, y(k) + 7.0, vec(0.98, 0.86, 0.30, 0.85))
     d.query("live_in(I, $v)").column("I").forEach {
-        out += box(x((it as Long).toInt()) - 2.5, y(k) - 2.5, x(it.toInt()) + 2.5, y(k) + 2.5, vec(0.15, 0.15, 0.2, 1.0))
+        out +=
+            box(x((it as Long).toInt()) - 2.5, y(k) - 2.5, x(it.toInt()) + 2.5, y(k) + 2.5, vec(0.15, 0.15, 0.2, 1.0))
     }
 }
 out += axes()
@@ -980,8 +987,7 @@ fun outline(x0: Double, y0: Double, x1: Double, y1: Double, c: Vec4) = fline {
 }
 fun label(s: String, px: Double, py: Double, size: Double, c: Vec4): List<FLine> {
     val layout = layoutText(s, typeface("Monospaced", size))
-    return layout.toFLines(color = c, thickness = 0.0, filled = true, stroked = false).map {
-        line ->
+    return layout.toFLines(color = c, thickness = 0.0, filled = true, stroked = false).map { line ->
         line.transform { q -> vec(q.x + px, q.y + py, q.z) }
     }
 }
@@ -1155,8 +1161,7 @@ fun outline(x0: Double, y0: Double, x1: Double, y1: Double, c: Vec4) = fline {
 }
 fun label(s: String, px: Double, py: Double, size: Double, c: Vec4): List<FLine> {
     val layout = layoutText(s, typeface("Monospaced", size))
-    return layout.toFLines(color = c, thickness = 0.0, filled = true, stroked = false).map {
-        line ->
+    return layout.toFLines(color = c, thickness = 0.0, filled = true, stroked = false).map { line ->
         line.transform { q -> vec(q.x + px, q.y + py, q.z) }
     }
 }
@@ -1170,11 +1175,12 @@ val out = mutableListOf<FLine>()
 vars.forEachIndexed { k, v ->
     val (s, e) = span(v)
     val r = regOf[v]
-    out += if (r != null) {
-        box(x(s) - 4.0, y(k) - 7.0, x(e) + 4.0, y(k) + 7.0, regColour[r])
-    } else {
-        outline(x(s) - 4.0, y(k) - 7.0, x(e) + 4.0, y(k) + 7.0, vec(0.9, 0.35, 0.35, 1.0))
-    }
+    out +=
+        if (r != null) {
+            box(x(s) - 4.0, y(k) - 7.0, x(e) + 4.0, y(k) + 7.0, regColour[r])
+        } else {
+            outline(x(s) - 4.0, y(k) - 7.0, x(e) + 4.0, y(k) + 7.0, vec(0.9, 0.35, 0.35, 1.0))
+        }
     out += label(if (r != null) "reg $r" else "spill", x(e) + 12.0, y(k) + 5.0, 13.0, muted)
 }
 // where each spill was decided: the definition that found both registers taken
@@ -1346,3 +1352,7 @@ evaluation order.
 For constraints on neighbouring tiles, see [Wave Function Collapse](wfc_examples.md).
 
 See [A Generator, Graded by Datalog](chain_flow_islands.md) for scoring connected regions.
+
+## API reference
+
+- Facts and explanations: [`Datalog`](reference/languages.md#datalog-kt-datalog), [`Datalog.add`](reference/languages.md#datalog-kt--datalog--add), [`Datalog.why`](reference/languages.md#datalog-kt--datalog--why).

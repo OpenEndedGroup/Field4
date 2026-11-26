@@ -1754,3 +1754,5 @@ Implementation and parameter details for the helpers used above:
 - [Denoising a still](#denoising-a-still) cleans up an accumulated image once, on any Vulkan GPU.
 
 - Installing and requesting compute denoising: [`OidnComputeDenoiser`](reference/internal.md#oidncompute-kt-oidncomputedenoiser), [`OidnComputeDenoiser.install`](reference/internal.md#oidncompute-kt--oidncomputedenoiser--install), [`OidnComputeDenoiser.request`](reference/internal.md#oidncompute-kt--oidncomputedenoiser--request).
+
+- Denoising an existing image: [`OidnImageSource`](reference/internal.md#oidncompute-kt-oidnimagesource), [`OidnComputeDenoiser.denoiseImage`](reference/internal.md#oidncompute-kt--oidncomputedenoiser--denoiseimage), [`OidnComputeDenoiser.read`](reference/internal.md#oidncompute-kt--oidncomputedenoiser--read).

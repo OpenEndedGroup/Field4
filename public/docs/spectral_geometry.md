@@ -49,7 +49,6 @@ more of the sharp corners.
 :::static
 import afield.geometry.spectral.EpicycleGeometry
 import afield.geometry.spectral.PhaseClock
-import kotlin.math.PI
 
 val outline = fline {
     moveTo(28, 140)
@@ -65,9 +64,10 @@ val outline = fline {
 val cursor = outline.cursor()
 val perimeter = cursor.lengthD()
 val turn = 2 * PI
-val machine = EpicycleGeometry.fit(intArrayOf(256), maxDegree = 5.0) { phase ->
-    cursor.setD((perimeter * phase[0] / turn).toFloat()).position()
-}
+val machine =
+    EpicycleGeometry.fit(intArrayOf(256), maxDegree = 5.0) { phase ->
+        cursor.setD((perimeter * phase[0] / turn).toFloat()).position()
+    }
 
 val clock = PhaseClock(doubleArrayOf(1.0))
 val points = machine.trace(clock, start = 0.0, step = turn / 384, count = 384)
@@ -90,19 +90,26 @@ clocks carry it around the torus.
 :::static
 import afield.geometry.spectral.EpicycleGeometry
 import afield.geometry.spectral.PhaseClock
-import kotlin.math.sqrt
 
 val machine = EpicycleGeometry.torus(major = 1.12, minor = 0.44)
 val clock = PhaseClock(doubleArrayOf(1.0, sqrt(2.0)), initialPhase = doubleArrayOf(0.62, 1.05))
 val speed = 4.8
 val sweepSeconds = 16.0
 val sampleStep = 0.024
-val track = machine.trace(clock, start = 0.0, step = sampleStep,
-    count = (sweepSeconds * speed / sampleStep).toInt() + 1)
+val track = machine.trace(
+    clock,
+    start = 0.0,
+    step = sampleStep,
+    count = (sweepSeconds * speed / sampleStep).toInt() + 1,
+)
 
 :::fold view, joints, and clock
-val camera = ThreeCameraSpec(yawDegrees = 32.0, pitchDegrees = 35.0,
-    padding = 1.0, upAxis = ThreeUpAxis.Z)
+val camera = ThreeCameraSpec(
+    yawDegrees = 32.0,
+    pitchDegrees = 35.0,
+    padding = 1.0,
+    upAxis = ThreeUpAxis.Z,
+)
 val min = vec(-1.58, -1.58, -0.51)
 val max = vec(1.58, 1.58, 0.51)
 val bearing = icosphereMesh(subdivisions = 1, radius = 0.048)
@@ -111,6 +118,7 @@ val steel = ThreeSurfaceMaterial(color = floatArrayOf(0.68f, 0.68f, 0.68f))
 val bearingMaterial = ThreeSurfaceMaterial(color = floatArrayOf(0.88f, 0.88f, 0.88f))
 val started = AnimationClock.nowSeconds()
 var opened = false
+
 :::endfold
 
 animate {
@@ -148,17 +156,28 @@ animate {
         }
         for ((i, joint) in joints.withIndex()) {
             val isTip = i == joints.lastIndex
-            mesh(if (isTip) tip else bearing, wireframe = false, material = bearingMaterial,
-                unlit = isTip, id = "joint-$i",
-                transform = translation(joint.x.toDouble(), joint.y.toDouble(), joint.z.toDouble()))
+            mesh(
+                if (isTip) tip else bearing,
+                wireframe = false,
+                material = bearingMaterial,
+                unlit = isTip,
+                id = "joint-$i",
+                transform = translation(joint.x.toDouble(), joint.y.toDouble(), joint.z.toDouble()),
+            )
         }
         lines([tail], id = "trailing-tip")
         panel(title = "Accumulated tip path", camera = camera)
         fitTo(min, max, panel = 1)
         lines([history], id = "accumulation")
         val pen = joints.last()
-        mesh(tip, wireframe = false, unlit = true, material = bearingMaterial, id = "pen",
-            transform = translation(pen.x.toDouble(), pen.y.toDouble(), pen.z.toDouble()))
+        mesh(
+            tip,
+            wireframe = false,
+            unlit = true,
+            material = bearingMaterial,
+            id = "pen",
+            transform = translation(pen.x.toDouble(), pen.y.toDouble(), pen.z.toDouble()),
+        )
     }
     if (!opened) {
         displayOpen("main")
@@ -223,8 +242,7 @@ val scan = "public/docs/assets/spectral_geometry/bun_zipper.ply"
 val modeCounts = [12, 36, 96]
 go {
     val (source, reconstructions) = runInterruptible(Dispatchers.Default) {
-        val source = meshFromAnyFile(scan).repaired().normalized(2.0).decimate(2400).repaired()
-            .withVertexNormals()
+        val source = meshFromAnyFile(scan).repaired().normalized(2.0).decimate(2400).repaired().withVertexNormals()
         val basis = CotangentLaplacian(source).basis(modeCounts.last())
         val positions = basis.positions()
         val reference = DoubleArray(source.positions.size) { source.positions[it].toDouble() }
@@ -287,16 +305,14 @@ import afield.graphics.scene.fabricated.PathTraceMaterial
 import afield.graphics.scene.fabricated.PathTraceScene
 import afield.graphics.scene.fabricated.PathTracingRenderer
 import afield.graphics.scene.fabricated.importTriMesh
-import afield.lang.stacksl.StackSLCompileOptions
-import afield.lang.stacksl.compileStackSL
-import kotlin.math.PI
-import kotlin.math.abs
-import kotlin.math.cos
-import kotlin.math.sin
-import kotlin.math.sqrt
 
-val source = meshFromAnyFile("public/docs/assets/spectral_geometry/bun_zipper.ply")
-    .repaired().normalized(2.0).decimate(2400).repaired().withVertexNormals()
+val source =
+    meshFromAnyFile("public/docs/assets/spectral_geometry/bun_zipper.ply")
+        .repaired()
+        .normalized(2.0)
+        .decimate(2400)
+        .repaired()
+        .withVertexNormals()
 val points = List(source.vertexCount, source::position)
 
 val surfaceDrawing = source.fitSurfaceDrawing(targetCount = 72, seed = 11, maxDegree = 172.0)
@@ -332,9 +348,11 @@ for (face in 0 until source.triangleCount) {
 data class Shell(val mesh: TriMesh, val sourceVertices: List<Int>)
 
 fun shellPiece(piece: Int, faces: List<Int>): Shell {
-    val oldIds = faces.flatMap { listOf(source.ia(it), source.ib(it), source.ic(it)) }.distinct()
+    val oldIds = faces.flatMap { [source.ia(it), source.ib(it), source.ic(it)] }.distinct()
     val local = oldIds.withIndex().associate { it.value to it.index }
-    val front = faces.flatMap { listOf(local.getValue(source.ia(it)), local.getValue(source.ib(it)), local.getValue(source.ic(it))) }
+    val front = faces.flatMap {
+        [local.getValue(source.ia(it)), local.getValue(source.ib(it)), local.getValue(source.ic(it))]
+    }
     val count = oldIds.size
     val center = Vec3(seeds[piece])
     val direction = Vec3(center).normalize()
@@ -368,6 +386,7 @@ fun shellPiece(piece: Int, faces: List<Int>): Shell {
     for ((a, b) in seams.values) indices.addAll([b, a, a + count, b, a + count, b + count])
     return Shell(TriMesh(vertices, indices.toIntArray()).withVertexNormals(), oldIds)
 }
+
 :::endfold
 
 val pieces = faceGroups.mapIndexedNotNull { i, group -> if (group.isEmpty()) null else shellPiece(i, group) }
@@ -376,10 +395,14 @@ val bottom = pieces.minOf { it.mesh.bounds().min.y }
 val rightOrigin = vec(1.22f, -bottom + 0.11f, 0f)
 
 :::fold Fit the high-band signal in world space
-val signedRms = sqrt(points.indices.map { vertex ->
-    val value = highSignal[3 * vertex + 2]
-    value * value
-}.average()).coerceAtLeast(1e-8)
+val signedRms = sqrt(
+    points.indices
+        .map { vertex ->
+            val value = highSignal[3 * vertex + 2]
+            value * value
+        }
+        .average(),
+).coerceAtLeast(1e-8)
 
 val phaseSamples = mutableListOf<FieldSample>()
 val reliefSamples = mutableListOf<FieldSample>()
@@ -428,6 +451,7 @@ tracer.exposure = 1.16f
 tracer.indirectClamp = 8f
 tracer.maxBounces = 6
 tracer.samplesPerFrame = 4
+
 :::endfold
 
 // StackSL gets the hit position. Both fields and the glaze run after intersection.
@@ -445,7 +469,8 @@ val stack = compileStackSL(
 )
 check(stack.ok) { stack.diagnostics.joinToString() }
 val integrator = tracer.integratorSource()
-val material = """
+val material =
+    """
     ${stack.glsl}
     Material shadeMaterial(Material material, PathTraceSurface surface) {
         if (surface.materialId == $fragmentMaterial) {
@@ -461,8 +486,11 @@ val material = """
         return material;
     }
 """.trimIndent()
-val replacement = integrator.substringBefore("// MATERIAL_BEGIN") + material +
-    System.lineSeparator() + integrator.substringAfter("// MATERIAL_END")
+val replacement =
+    integrator.substringBefore("// MATERIAL_BEGIN") +
+        material +
+        System.lineSeparator() +
+        integrator.substringAfter("// MATERIAL_END")
 val reloaded = tracer.reloadIntegrator(replacement)
 check(reloaded.ok) { reloaded.errors.joinToString() }
 tracer.blitToScreen()
@@ -532,3 +560,7 @@ For a small spectrum, `field.toStackSL()` emits a program that takes the world p
 in `input.xyz` and returns the scalar field in all four lanes. That form works with
 [StackSL differentiation](stacksl_cheatsheet.md) and bakes in the coefficients. Use the
 buffer evaluator for larger spectra or live coefficient animation.
+
+## API reference
+
+- Spectral geometry implementations: [`EpicycleGeometry`](reference/graphics.md#epicycles-kt-epicyclegeometry), [`EpicycleGeometry.torus`](reference/graphics.md#epicycles-kt--epicyclegeometry-companion--torus), [`EpicycleGeometry.fit`](reference/graphics.md#epicycles-kt--epicyclegeometry-companion--fit), [`PhaseClock`](reference/graphics.md#epicycles-kt-phaseclock), [`PhaseClock.phase`](reference/graphics.md#epicycles-kt--phaseclock--phase), [`CotangentLaplacian`](reference/graphics.md#manifoldharmonics-kt-cotangentlaplacian), [`CotangentLaplacian.basis`](reference/graphics.md#manifoldharmonics-kt--cotangentlaplacian--basis), [`PlaneWaveField`](reference/graphics.md#planewaves-kt-planewavefield), [`PlaneWaveField.fitDirectional`](reference/graphics.md#planewaves-kt--planewavefield-companion--fitdirectional).

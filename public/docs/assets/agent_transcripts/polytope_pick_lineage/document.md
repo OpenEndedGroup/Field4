@@ -11,20 +11,10 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="polytope_pick" index="0" -->
 
 ```edn [field-box id="polytope_pick" role="properties"]
-{"id" "polytope_pick" "index" 0 "name" "Point at a face" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Point at a face" "_tombstone" false "frame" #afield/rect [80.0 80.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_pick_code_.kt" "lines" 59 "characters" 2040 "sha256" "4ed38275374e6ebc2150d8edd8aa34b03245fcb20b0b8e3b7a9812b1d1b37ec8"}]}
+{"id" "polytope_pick" "index" 0 "name" "Point at a face" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Point at a face" "_tombstone" false "frame" #afield/rect [80.0 80.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_pick_code_.kt" "lines" 49 "characters" 1645 "sha256" "98524f76cadb593b71f5be3b423136bfdb79b62506c8effa36fc31e48def9987"}]}
 ```
 
 ```kotlin [field-property box="polytope_pick" name="code" path="polytope_pick_code_.kt"]
-import afield.geometry.mesh.MeshView
-import afield.geometry.polytope.ElementId
-import afield.geometry.polytope.NormalPolicy
-import afield.geometry.polytope.canonicalConway
-import afield.geometry.polytope.triangulate
-import afield.graphics.interaction.PickParts
-import afield.graphics.interaction.pickScene
-import afield.graphics.interaction.rayCamera
-import afield.ui.visualization.showPointer
-
 val chain = canonicalConway("bD")
 fun sceneWith(normals: NormalPolicy) =
     chain.polyhedron.triangulate(normals = normals).let { geometry ->

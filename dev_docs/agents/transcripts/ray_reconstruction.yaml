@@ -65,7 +65,7 @@ operations:
       w: 420.0
       h: 100.0
     properties:
-      code: |-
+      code: |
         import afield.media.reconstruction.*
 
         prop<RayReconstructionDemo>(lab)
@@ -107,7 +107,7 @@ operations:
     property: code
     type: code
     strand: scene
-    code: |-
+    code: |
       import afield.media.reconstruction.*
 
       prop<RayReconstructionDemo>(lab)

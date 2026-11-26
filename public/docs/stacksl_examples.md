@@ -1380,8 +1380,7 @@ val shader =
         return r;
     }
     void main() { outColor = vec4(power(fragUV.x, 5), 0.0, 0.0, 1.0); }
-    """
-        .trimIndent()
+    """.trimIndent()
 
 val residual = GlslPartialEvaluator.specialize(shader)
 markdown("residual", "```glsl\n" + residual.toGlsl() + "```")
@@ -1395,28 +1394,28 @@ which the box checks:
 :::static
 import afield.lang.stacksl.cpu.*
 
-val programs =
-    [
-        "uv saturate",
-        "uv 4.0 * fbm palette saturate",
-        "p 6 kaleido fbm palette saturate",
-        "uv 0.5 0.5 vec2 - length 20 * time - sin 0.5 * 0.5 +",
-    ]
+val programs = [
+    "uv saturate",
+    "uv 4.0 * fbm palette saturate",
+    "p 6 kaleido fbm palette saturate",
+    "uv 0.5 0.5 vec2 - length 20 * time - sin 0.5 * 0.5 +",
+]
 
-val rows =
-    programs.map { program ->
-        val source = StackSLCpu.expandStackAuto(StackSLCpu.stillTemplate(), program)
-        val residual = GlslPartialEvaluator.specialize(source)
-        val interpreted = StackSLCpu.renderFragment(source, 48, 48)
-        val specialized = residual.render(48, 48)
-        val identical = interpreted.rgba.indices.all { interpreted.rgba[it].toRawBits() == specialized.rgba[it].toRawBits() }
-        val top = residual.operationHistogram().take(3).joinToString(", ") { (op, n) -> "`$op` $n" }
-        "| `$program` | ${source.lines().size} | ${residual.operationCount} | $top | ${if (identical) "yes" else "**no**"} |"
-    }
+val rows = programs.map { program ->
+    val source = StackSLCpu.expandStackAuto(StackSLCpu.stillTemplate(), program)
+    val residual = GlslPartialEvaluator.specialize(source)
+    val interpreted = StackSLCpu.renderFragment(source, 48, 48)
+    val specialized = residual.render(48, 48)
+    val identical =
+        interpreted.rgba.indices.all { interpreted.rgba[it].toRawBits() == specialized.rgba[it].toRawBits() }
+    val top = residual.operationHistogram().take(3).joinToString(", ") { (op, n) -> "`$op` $n" }
+    "| `$program` | ${source.lines().size} | ${residual.operationCount} | $top | ${if (identical) "yes" else "**no**"} |"
+}
 
 markdown(
     "programs",
-    "| program | GLSL lines | residual ops | most common | identical |\n|---|---|---|---|---|\n" + rows.joinToString("\n"),
+    "| program | GLSL lines | residual ops | most common | identical |\n|---|---|---|---|---|\n" +
+        rows.joinToString("\n"),
 )
 ```
 
@@ -1557,3 +1556,5 @@ Use [interval analysis](stacksl_intervals.md) to bound the output of a shader, o
 
 - Fitting the numbers in a shader program: [`StackSLFit`](reference/languages.md#stackslfit-kt-stackslfit) —
   [`fit`](reference/languages.md#stackslfit-kt--stackslfit--fit).
+
+- Specializing and running the shader: [`GlslPartialEvaluator.specialize`](reference/languages.md#glslpartialevaluator-kt--glslpartialevaluator--specialize), [`StackSLCpu`](reference/languages.md#stackslcpu-kt-stackslcpu), [`StackSLCpu.renderFragment`](reference/languages.md#stackslcpu-kt--stackslcpu--renderfragment).

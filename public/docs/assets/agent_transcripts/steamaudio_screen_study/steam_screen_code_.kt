@@ -1,8 +1,5 @@
 import afield.audio.spatial.steamaudio.Material
 import afield.examples.steamaudio.SteamAudioScreenStudy
-import afield.ui.visualization.AudioVisualizerOptions
-import afield.ui.visualization.LinesFraming
-import afield.ui.visualization.displayAudioBytes
 import java.util.Locale
 
 val scene = SteamAudioScreenStudy

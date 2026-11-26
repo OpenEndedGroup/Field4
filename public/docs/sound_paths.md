@@ -347,3 +347,7 @@ viewer](offline.html?file=assets/agent_transcripts/sound_path_map/metadata.edn).
 ## See also
 
 Start with [Sound](sound.md) for the short route from a pattern to a part you can hear.
+
+## API reference
+
+- Oscillators and block processing: [`SineOsc`](reference/synthesis.md#oscillators-kt-sineosc), [`SynthContext`](reference/synthesis.md#signal-kt-synthcontext).

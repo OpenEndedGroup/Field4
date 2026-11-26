@@ -78,11 +78,6 @@ operations:
       properties:
         code: |
           import afield.data.graph.SpatialLifetime.MATCH
-          import afield.data.graph.SpatialRuleWorld
-          import afield.data.graph.spatialDot
-          import afield.data.graph.spatialStroke
-          import afield.runtime.lifecycle.AnimationClock
-          import afield.ui.visualization.LinesFraming
 
           val world = SpatialRuleWorld()
           val ink = Vec4(0.8f, 0.92f, 1f, 1f)
@@ -151,26 +146,7 @@ operations:
       properties:
         code: |
           import afield.data.graph.SpatialLifetime.MATCH
-          import afield.data.graph.SpatialPoint
-          import afield.data.graph.SpatialRuleWorld
-          import afield.data.graph.inspectOnClick
-          import afield.data.graph.spatialDot
-          import afield.data.graph.spatialStroke
-          import afield.data.graph.vec3MinimumSpanningTree
-          import afield.geometry.path.FLine
-          import afield.graphics.render.color
-          import afield.graphics.render.filled
-          import afield.graphics.render.stroked
-          import afield.graphics.render.thickness
-          import afield.runtime.lifecycle.AnimationClock
-          import afield.ui.visualization.LinesFraming
           import java.util.concurrent.atomic.AtomicLong
-          import kotlin.math.PI
-          import kotlin.math.atan2
-          import kotlin.math.cos
-          import kotlin.math.hypot
-          import kotlin.math.sin
-          import kotlin.math.sqrt
 
           val world = SpatialRuleWorld()
           val stitchInk = vec(0.27, 0.77, 0.93, 0.74)
@@ -444,16 +420,6 @@ operations:
       properties:
         code: |
           import afield.data.graph.SpatialLifetime.MATCH
-          import afield.data.graph.SpatialRuleWorld
-          import afield.data.graph.spatialStroke
-          import afield.geometry.path.FLine
-          import afield.graphics.render.color
-          import afield.graphics.render.thickness
-          import afield.runtime.lifecycle.AnimationClock
-          import afield.ui.visualization.LinesFraming
-          import kotlin.math.PI
-          import kotlin.math.cos
-          import kotlin.math.sin
 
           val rings = 50
           val samples = 20

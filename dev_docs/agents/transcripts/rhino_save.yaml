@@ -19,9 +19,7 @@ operations:
       frame: { x: 80.0, y: 80.0, w: 320.0, h: 100.0 }
       properties:
         code: |
-          import afield.geometry.mesh.TriMesh
           import afield.geometry.rhino.*
-          import kotlin.math.*
 
           val dir = java.nio.file.Files.createTempDirectory("rhino-save").toFile()
           val ribbons = 14

@@ -47,7 +47,7 @@ setPropDown "mappedOpacity" mapped
 <!-- field-box id="exposure_meters" index="3" -->
 
 ```edn [field-box id="exposure_meters" role="properties"]
-{"id" "exposure_meters" "index" 3 "name" "Compare the values" "parents" ["root" "exposure_rule"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "exposure_rule"} "name" "Compare the values" "_tombstone" false "frame" #afield/rect [60.0 430.0 255.0 85.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "exposure_meters_code_.kt" "lines" 18 "characters" 601 "sha256" "8d9ef40de507a7c7738531b07f68dcb2aa53e5d766386934ff60dc64a9b41724"}]}
+{"id" "exposure_meters" "index" 3 "name" "Compare the values" "parents" ["root" "exposure_rule"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "exposure_rule"} "name" "Compare the values" "_tombstone" false "frame" #afield/rect [60.0 430.0 255.0 85.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "exposure_meters_code_.kt" "lines" 25 "characters" 835 "sha256" "a66d8071d2ed7e2fdbb7911be2f3a223e986069872b20358d112ba318ea4d1a6"}]}
 ```
 
 ```kotlin [field-property box="exposure_meters" name="code" path="exposure_meters_code_.kt"]
@@ -55,18 +55,25 @@ prop<Double>(mappedOpacity)
 
 val measured = lightLevel
 val mapped = mappedOpacity
-val track = 320
-
-fun row(label: String, value: Double, color: String): String {
-    val width = (track * value).toInt()
-    return """
-        <p>$label ${value.f3}</p>
-        <div style="width:${track}px;background:#29303c">
-            <div style="width:${width}px;height:12px;background:$color"></div>
-        </div>""".trimIndent()
-}
-
-display("values", row("Light level", measured, "#c4d5e7") + row("Mapped opacity", mapped, "#8ed2b3"))
+val track = 320.0
+val bars =
+    [measured to colorHex("#c4d5e7"), mapped to colorHex("#8ed2b3")].flatMapIndexed { row, (value, ink) ->
+        val background = fline {
+            rect(0.0, row * 30.0, track, 12.0)
+            filled = true
+            stroked = false
+            color = colorHex("#29303c")
+        }
+        val foreground = fline {
+            rect(0.0, row * 30.0, track * value, 12.0)
+            filled = true
+            stroked = false
+            color = ink
+        }
+        [background, foreground]
+    }
+lines(bars, channel = "values", w = track, h = 50.0)
+markdown("readout", "Light level **${measured.f3}** · mapped opacity **${mapped.f3}**")
 displayOpen("values")
 println("Light ${measured.f3} · opacity ${mapped.f3}")
 ```

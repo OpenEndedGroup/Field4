@@ -1,5 +1,3 @@
-import afield.media.image.*
-
 val n = 160
 val u = FloatArray(n * n) { 1f }
 val v = FloatArray(n * n)
@@ -41,7 +39,7 @@ val edits = mapOf(
         ("stroke" to
             {
                 canvas.stroke(
-                    listOf(15.0 to 20.0, 60.0 to 35.0, 140.0 to 18.0),
+                    [15.0 to 20.0, 60.0 to 35.0, 140.0 to 18.0],
                     radius = 3.0,
                     value = floatArrayOf(0.5f),
                 )
