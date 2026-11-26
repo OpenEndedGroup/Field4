@@ -1774,6 +1774,21 @@ middle of the chord and re-run to watch the two columns converge.
 
 [Open →](offline.html?file=assets/agent_transcripts/arclength_spacing_demo/metadata.edn)
 
+### kirigami_choi
+
+**Kirigami that programs its own shape**, the two boxes of [Kirigami](kirigami.md), after Gary P. T.
+Choi, Levi H. Dudte and L. Mahadevan,
+[Programming shape using kirigami tessellations](https://doi.org/10.1038/s41563-019-0452-y) (Nature
+Materials, 2019). *Rotating squares* opens the classic cut sheet under a slider, placing every square
+by walking its hinges and reporting the gap the walk leaves (about 1e-15). *Inverse design* solves the
+paper's problem of which cut pattern of a square sheet opens into a circle: edge-pair, angle-sum,
+square-outline, boundary and no-overlap constraints over Field's Levenberg-Marquardt, from
+[Choi's inverse-kirigami-design](https://github.com/garyptchoi/inverse-kirigami-design) (Apache-2.0).
+It glues the tiles back into the closed square cut pattern and solves 40 deployment frames with exact
+hinges; launch it to watch the sheet open and close.
+
+[Open →](offline.html?file=assets/agent_transcripts/kirigami_choi/metadata.edn)
+
 ### contrast_scale_demo
 
 **Accessible ten-step ramps from one colour**, the companion to

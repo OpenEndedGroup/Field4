@@ -1,0 +1,99 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-26T21:58:47.007Z",
+  "documentName": "kirigami_choi",
+  "outputs": [
+    {
+      "uid": "kirigami_inverse_circle",
+      "channel": "progress",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 200,
+      "height": 40,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "kirigami_inverse_circle",
+      "channel": "stages",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 894,
+      "height": 287,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "kirigami_inverse_circle",
+      "channel": "controls",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 473,
+      "height": 54,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "kirigami_inverse_circle",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "kirigami_rotating_squares",
+      "channel": "controls",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 473,
+      "height": 54,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "kirigami_rotating_squares",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/5.html"
+    },
+    {
+      "uid": "kirigami_rotating_squares",
+      "channel": "about",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 232,
+      "height": 40,
+      "path": "outputs/6.html"
+    },
+    {
+      "uid": "kirigami_rotating_squares",
+      "channel": "stages",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 834,
+      "height": 272,
+      "path": "outputs/7.html"
+    }
+  ]
+}

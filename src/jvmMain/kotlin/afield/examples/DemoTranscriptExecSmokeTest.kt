@@ -430,6 +430,9 @@ object DemoTranscriptExecSmokeTest {
         "statistics_examples",
         // Two pure-CPU FLine boxes; showPlaneGrid is drawToSVG -> display, so no AWT and no GPU.
         "arclength_spacing_demo",
+        // Two pure-CPU kirigami boxes (Choi, Dudte & Mahadevan 2019): lines / showPlaneGrid, sliders,
+        // L-BFGS + Levenberg-Marquardt. The inverse-design box runs about 30 s. No Window, no Renderer.
+        "kirigami_choi",
         // Three pure-CPU colour boxes (colors_examples.md contrastScale): display HTML and lines -> drawToSVG.
         "contrast_scale_demo",
         // Two more of the same shape: the interior-Close demo reverses, subdivides and dashes
