@@ -5,7 +5,17 @@ begins at the silhouettes. Short marks accumulate into longer runs, paint advanc
 interiors, and ribbons spill past the edges. Every visible mark belongs to a stroke that was
 born, has a shape in world space, and will eventually disappear.
 
-[Download the editable Field document](assets/stroke_studio/stroke_studio.zip). Unzip
+Browse the boxes and shader properties in the offline viewer below.
+
+<iframe
+  src="offline.html?zip=assets/stroke_studio/stroke_studio.zip"
+  title="Stroke Studio document in the offline viewer"
+  style="width:100%; height:560px; border:1px solid #444; border-radius:8px; background:#111;"
+  loading="lazy"
+  allowfullscreen>
+</iframe>
+
+To render the drawing, [download the editable Field document](assets/stroke_studio/stroke_studio.zip). Unzip
 `stroke_studio` into your Field workspace and open it in Field. Run **Stroke types**,
 launch **Stroke renderer**, then launch **Stroke studio**. The document uses a Vulkan device
 with task and mesh shader support. In the render window, **C** clears the strokes, **Space**
@@ -28,7 +38,7 @@ opaque sphere, giving even the clear canvas a world position.
 // Capture the packaged renderer through the Stroke Studio transcript.
 ```
 
-<figure markdown>
+<figure class="field-captioned-figure" markdown>
 ![Four render-target views showing lit balls, two nearly identical position images, and colored motion over the balls.](assets/stroke_studio/scene.png)
 <figcaption>Top left and clockwise. Lit color, current world position, projected velocity, previous world position. The position panels encode XYZ as RGB. In the velocity panel, hue represents heading and brightness represents speed.</figcaption>
 </figure>
@@ -75,7 +85,7 @@ for more on the statistics.
 // Capture the packaged renderer through the Stroke Studio transcript.
 ```
 
-<figure markdown>
+<figure class="field-captioned-figure" markdown>
 ![Four render-target views showing the painted canvas, the mixed edge input, vivid direction lines, and orange and blue color error.](assets/stroke_studio/feedback.png)
 <figcaption>Top left and clockwise. Sharp paint, the mixed analysis image, signed luminance error, and direction strength. Orange marks a deficit and blue marks excess. In the direction panel, hue encodes the unsigned tangent and brightness encodes its strength.</figcaption>
 </figure>
@@ -106,7 +116,7 @@ Each parent pools four children, including the variance between their means.
 // Capture the packaged renderer through the Stroke Studio transcript.
 ```
 
-<figure markdown>
+<figure class="field-captioned-figure" markdown>
 ![Four tiled views of the same scene summarized on a coarse grid, with bright cells around the silhouettes and colored axis marks.](assets/stroke_studio/summary.png)
 <figcaption>Top left and clockwise. Mean luminance, min-to-max range, principal spatial axes, and luminance standard deviation. The axes are reconstructed from the stored spatial moments. Their brightness is weighted by local luminance variation.</figcaption>
 </figure>
@@ -186,7 +196,7 @@ toward blue.
 // Capture the packaged renderer through the Stroke Studio transcript.
 ```
 
-<figure markdown>
+<figure class="field-captioned-figure" markdown>
 ![Four render-target views showing sharp paint, two Gaussian blur strengths, and the final composite.](assets/stroke_studio/composite.png)
 <figcaption>Top left and clockwise. Sharp paint, medium Gaussian, final composite, broad Gaussian. The blur views show the pigment before the final coverage weighting and green reconstruction.</figcaption>
 </figure>
@@ -209,7 +219,7 @@ the signed paint, so these display controls can change the look of the same stro
 // Capture the packaged renderer through the Stroke Studio transcript.
 ```
 
-<figure markdown>
+<figure class="field-captioned-figure" markdown>
 <video src="assets/stroke_studio/emergence.mp4" controls playsinline preload="metadata" width="1280" poster="../assets/stroke_studio/strokes.png" aria-label="Stroke Studio animation. Three moving balls emerge from a dark blue canvas as strokes accumulate and spill beyond their silhouettes.">
 </video>
 <figcaption>From a clear canvas, the silhouettes build into three moving volumes. Watch the thin marks on the dark side and the ribbons that reach past the bright edges.</figcaption>
