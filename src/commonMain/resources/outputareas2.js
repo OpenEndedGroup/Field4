@@ -1362,14 +1362,81 @@ function disclosureInterface(container) {
                         }
                         return;
                 }
-                if (event.altKey) {
-                        for (const [otherId, d] of disclosures.entries()) {
-                                if (d.inline) continue;
-                                d.arr.classList.toggle("remove-mode", otherId === id);
-                        }
-                        return;
-                }
                 clearRemoveIndicators();
+        }
+
+        function openAll() {
+                for (const [id, d] of disclosures.entries()) {
+                        if (!d.inline) open(id);
+                }
+        }
+
+        // Fill the window (all of it but the editor, when that is open) with one panel's live content; Escape, the close button or a click on
+        // the backdrop's margin hands it back to its output area.
+        function fullscreen(id) {
+                document.querySelector(".output-fullscreen")?.__close?.();
+                const d = disclosures.get(id);
+                if (!d || d.inline) return;
+                const overlay = document.createElement("div");
+                overlay.className = "output-fullscreen markingWidgetPanel";
+                const header = document.createElement("header");
+                const title = document.createElement("span");
+                title.textContent = d.hdr.querySelector(".title")?.textContent || id;
+                const done = document.createElement("button");
+                done.className = "field-panel-icon";
+                done.type = "button";
+                done.textContent = "\u00d7";
+                done.title = "Close (Esc)";
+                done.setAttribute("aria-label", "Close");
+                header.append(title, done);
+                const body = document.createElement("div");
+                body.className = "markingWidgetBody output-fullscreen-body";
+                overlay.append(header, body);
+                document.body.appendChild(overlay);
+                for (const name of ["pointerdown", "mousedown", "wheel", "keydown", "keyup", "contextmenu", "dblclick"]) {
+                        overlay.addEventListener(name, (e) => e.stopPropagation());
+                }
+                // Leave the editor its space when it is showing; track it as it opens, closes or resizes.
+                const editor = document.querySelector(".monaco-editor-container");
+                const fit = () => {
+                        const r = editor?.getBoundingClientRect();
+                        const css = editor && getComputedStyle(editor);
+                        const shown = r && r.width > 0 && r.height > 0 && css.display !== "none"
+                                && css.visibility !== "hidden" && Number(css.opacity) > 0.05 && r.left > 0;
+                        overlay.style.right = shown ? `${Math.max(12, window.innerWidth - r.left + 12)}px` : "12px";
+                };
+                const editorObserver = new ResizeObserver(fit);
+                if (editor) editorObserver.observe(editor);
+                window.addEventListener("resize", fit);
+                fit();
+                let borrowed;
+                const onKey = (e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); close(); } };
+                const close = () => {
+                        window.removeEventListener("keydown", onKey, true);
+                        window.removeEventListener("resize", fit);
+                        editorObserver.disconnect();
+                        overlay.__close = null;
+                        try { borrowed?.release(); } finally { overlay.remove(); }
+                };
+                overlay.__close = close;
+                done.addEventListener("click", close);
+                window.addEventListener("keydown", onKey, true);
+                if (!ensureState(id).open) open(id);
+                try { borrowed = borrowContent(id, body); }
+                catch (error) {
+                        body.textContent = error.message;
+                }
+        }
+
+        function showHeaderMenu(id, e) {
+                if (typeof goMarkingMenu !== "function") return;
+                const entry = (text, angle, callback) => ({ text, angle, radius: 1.0, callback });
+                goMarkingMenu(e.clientX, e.clientY, [
+                        entry("Delete", 270, () => remove(id)),
+                        entry("Solo", 90, () => solo(id)),
+                        entry("Open all", 0, () => openAll()),
+                        entry("Fullscreen", 180, () => setTimeout(() => fullscreen(id), 0)),
+                ], e, () => {});
         }
 
         function upsertDisclosure(id, title, content) {
@@ -1409,6 +1476,15 @@ function disclosureInterface(container) {
                                 arr.addEventListener("mouseleave", () => clearRemoveIndicators());
                         }
 
+                        if (!inline) {
+                                hdr.addEventListener("mousedown", (e) => {
+                                        if (e.button !== 0 || !e.altKey || e.shiftKey || e.target.closest("input, label")) return;
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        showHeaderMenu(id, e);
+                                });
+                        }
+
                         hdr.addEventListener("click", (e) => {
                                 if (!e.target.closest("input, label")) {
                                         if (inline) {
@@ -1427,8 +1503,7 @@ function disclosureInterface(container) {
                                                 clearRemoveIndicators();
                                                 e.stopPropagation();
                                         } else if (e.altKey) {
-                                                // Alt+click removes the disclosure
-                                                remove(id);
+                                                // Alt+press opened the header marking menu
                                                 e.stopPropagation();
                                         } else if (e.shiftKey) {
                                                 // Shift+click solos this disclosure
@@ -1616,7 +1691,7 @@ function disclosureInterface(container) {
                 return {release, valid: () => parent.isConnected && disclosures.get(id) === d && d.cw.parentNode === host};
         }
 
-        const api = { borrowContent, upsertDisclosure, setContent, toggle, open, close, remove, closeAll, solo, isOpen, ids, getSize, setSize, sizesToContent };
+        const api = { borrowContent, upsertDisclosure, setContent, toggle, open, openAll, close, remove, closeAll, solo, fullscreen, isOpen, ids, getSize, setSize, sizesToContent };
         container.__disclosureAPI = api;
         return api;
 }
