@@ -263,6 +263,26 @@ const lineNoteImageHtml = (note) => {
   return scale > 1 ? `<img srcset="${note.image} ${scale}x" src="${note.image}" alt="">` : `<img src="${note.image}" alt="">`;
 };
 
+// What a line came to, lightly coloured: `name=` and `name:` italic, types warm, numbers and
+// strings in their own faces, punctuation dim. Lexical only — the value arrives as text.
+const LINE_NOTE_TOKEN = /("(?:[^"\\]|\\.)*")|(-?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?[fFL]?)|([A-Za-z_][A-Za-z0-9_]*)(\s*[=:](?![=:]))?|([()[\]{}<>,.=:?|\-])/g;
+const lineNoteValueHtml = (text) => {
+  let out = "";
+  let last = 0;
+  for (const m of text.matchAll(LINE_NOTE_TOKEN)) {
+    out += escapeHtml(text.slice(last, m.index));
+    last = m.index + m[0].length;
+    const [, str, num, word, label, punct] = m;
+    if (str) out += `<span class="afield-ln-string">${escapeHtml(str)}</span>`;
+    else if (num) out += `<span class="afield-ln-number">${escapeHtml(num)}</span>`;
+    else if (word && label) out += `<span class="afield-ln-label">${escapeHtml(word)}</span><span class="afield-ln-punct">${escapeHtml(label)}</span>`;
+    else if (word && /^[A-Z]/.test(word)) out += `<span class="afield-ln-type">${escapeHtml(word)}</span>`;
+    else if (word) out += escapeHtml(word);
+    else out += `<span class="afield-ln-punct">${escapeHtml(punct)}</span>`;
+  }
+  return out + escapeHtml(text.slice(last));
+};
+
 export const lineNoteHtml = (note) => {
   if (!note) return "";
   const line = `line ${Number(note.line) || ""}`;
@@ -273,7 +293,7 @@ export const lineNoteHtml = (note) => {
       `<figcaption>${line} · ${escapeHtml(note.caption || "")}</figcaption></figure>`;
   }
   const value = segments
-    .map((segment) => (segment && segment.strong ? `<strong>${escapeHtml(segment.text || "")}</strong>` : escapeHtml((segment && segment.text) || "")))
+    .map((segment) => (segment && segment.strong ? `<strong>${lineNoteValueHtml(segment.text || "")}</strong>` : lineNoteValueHtml((segment && segment.text) || "")))
     .join("");
   return `<figure class="afield-line-note">${lineNoteImageHtml(note)}` +
     (value ? `<div class="afield-line-note-value">${value}</div>` : "") +

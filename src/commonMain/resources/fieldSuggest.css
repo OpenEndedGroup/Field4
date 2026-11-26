@@ -784,6 +784,12 @@
   font-weight: 700;
   color: var(--field-line-note-strong);
 }
+/* Tokens in a line note's value (fieldSuggest.js#lineNoteValueHtml). */
+.afield-line-note-value .afield-ln-label { font-style: italic; font-weight: 400; color: #9fc4e0; }
+.afield-line-note-value .afield-ln-type { color: #d9b97a; }
+.afield-line-note-value .afield-ln-number { color: #b5cea8; }
+.afield-line-note-value .afield-ln-string { color: #ce9178; }
+.afield-line-note-value .afield-ln-punct { color: #777; font-weight: 400; }
 .afield-line-note figcaption.afield-line-note-meta {
   margin-top: 2px;
   font-size: 10px;
