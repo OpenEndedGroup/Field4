@@ -262,6 +262,20 @@ h3 {
     }
 }
 
+/* A dense raster figure (the ? cheatsheet) is unreadable at column width, so
+   once the window has margins to spare it widens evenly past both edges of the
+   reading column, staying clear of the left rail. */
+@media screen and (min-width: 82em) {
+    .md-typeset img.field-docs-figure-wide {
+        --field-figure-wide-width: min(50rem, calc(100vw - 30rem));
+        clear: both;
+        width: var(--field-figure-wide-width);
+        max-width: none;
+        padding-left: 0;
+        margin-left: calc((100% - var(--field-figure-wide-width)) / 2);
+    }
+}
+
 .md-typeset img.field-docs-image-zoomable {
     cursor: zoom-in;
 }
