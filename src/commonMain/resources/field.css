@@ -3355,6 +3355,13 @@ accent so it marks the control without boxing it in.
     opacity: 0.8;
 }
 
+.output_annotation a.output_type_box {
+    color: inherit;
+    text-decoration: underline dotted;
+    cursor: pointer;
+    pointer-events: auto;
+}
+
 .output_annotation i {
     font-weight: 10;
     opacity: 1;

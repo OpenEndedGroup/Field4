@@ -303,6 +303,42 @@ private fun simplifyTypeForOutput(type: String?): String {
     return type.replace("kotlin.", "")
 }
 
+/**
+ * A class declared in a box compiles as a nested class of that box's snippet class, so its name
+ * reads `Cd5242f7_c1e1_…_7011f181c7f2__code__1.Banana2` X * box). This matches the snippet prefix so the type can be shown as the declaring box's name.
+ */
+private val snippetClassPrefixRegex = Regex(
+    pattern = """(?<![0-9a-z])([0-9a-f]{8}(?:_[0-9a-f]{4}){3}_[0-9a-f]{12})(?:_shared\d+)?__code__\d+[.$]""",
+    options = setOf(RegexOption.IGNORE_CASE)
+)
+
+/**
+ * The HTML for the type in a result's `resN=` annotation: each class declared in a box of this
+ * document becomes a link to that box (`boxName / Banana2`), and everything else is escaped text.
+ */
+private fun typeAnnotationHtml(box: Box, type: String?): String {
+    val simplified = simplifyTypeForOutput(type)
+    if (simplified.isEmpty()) return ""
+    val boxes = buildList {
+        add(box)
+        if (box.isInsideInitialized()) addAll(box.inside.boxes.values)
+    }
+    val out = StringBuilder()
+    var cursor = 0
+    snippetClassPrefixRegex.findAll(simplified).forEach { match ->
+        val canonical = canonicalSessionBoxId(match.groupValues[1])
+        val target = boxes.firstOrNull { canonicalSessionBoxId(it.id) == canonical } ?: return@forEach
+        out.append(escapeNotifyHtml(simplified.substring(cursor, match.range.first)))
+        val label = target.name.ifBlank { "box ${target.id.take(8)}" }
+        out.append("<a class='output_type_box' href='#box:${escapeNotifyHtml(target.id)}' data-box-uid='${escapeNotifyHtml(target.id)}'>")
+            .append(escapeNotifyHtml(label))
+            .append("</a> / ")
+        cursor = match.range.last + 1
+    }
+    out.append(escapeNotifyHtml(simplified.substring(cursor)))
+    return out.toString()
+}
+
 private fun completionIconLooksLikeValue(icon: String): Boolean {
     val key = icon.lowercase()
     return key in setOf("property", "field", "variable", "value", "constant", "local", "val", "var") ||
@@ -2321,7 +2357,7 @@ class KotlinExecution : BoxExecution {
                             launchPreparedReturnValue(box, null, strand, code, launchEpoch, reply, originSession)
                             return
                         }
-                        val type = simplifyTypeForOutput(returnValue.type)
+                        val type = typeAnnotationHtml(box, returnValue.type)
                         val annotation = "<i>${returnValue.name}=</i>${type}"
                         audioPatch?.inlineSummaryTarget = InlineAudioSummaryTarget(line = line, annotation = annotation)
                         val value = renderReturnValueOutput(returnValue.value)
@@ -3063,7 +3099,7 @@ class KotlinExecution : BoxExecution {
                                         return@forEach
                                     }
                                     val name = returnValue.name
-                                    val type = simplifyTypeForOutput(returnValue.type)
+                                    val type = typeAnnotationHtml(box, returnValue.type)
                                     val annotation = "<i>${name}=</i>${type}"
                                     audioPatch?.inlineSummaryTarget = InlineAudioSummaryTarget(
                                         line = ln + dur,
