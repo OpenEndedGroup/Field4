@@ -110,22 +110,23 @@ object StereoVideoCarouselSmoke {
                     check(abs(pixels[x] - expected) < .001f) { "Screen $screen pixel $x: ${pixels[x]} vs $expected" }
                 }
             }
-            // Two overlapping test triangles carry actual, differently delayed movie pictures.
-            // Sorting must follow the current plane locations, rather than persistent screen indices.
+            // Two overlapping test triangles carry actual, differently delayed movie pictures. Screens add
+            // light (6b4e3725f2): each contributes opacity * its picture and none occludes another, so the
+            // overlap is the opacity-weighted sum, and moving the planes must not change it.
             modules.forEachIndexed { i, module -> module.current.enabled = i < 2 }
             carousel.surfaces[0].apply { placement.center.set(0f, 0f, -2f); opacity = .25f }
             carousel.surfaces[1].placement.center.set(0f, 0f, -4f)
             frame()
             val overlap = readPixels()
-            for (x in 0..1023) check(abs(overlap[x] - (.25f * original[1023 - x] + .75f * original[x])) < .002f) {
-                "Back-to-front blend failed at $x: actual=${overlap[x]}, expected=${.25f * original[1023 - x] + .75f * original[x]}, order=${stereo.layered.modules.keys}, view=${stereo.eyeViewMatrix(0)}"
+            for (x in 0..1023) check(abs(overlap[x] - (.25f * original[1023 - x] + original[x])) < .002f) {
+                "Additive blend failed at $x: actual=${overlap[x]}, expected=${.25f * original[1023 - x] + original[x]}, order=${stereo.layered.modules.keys}, view=${stereo.eyeViewMatrix(0)}"
             }
             carousel.surfaces[0].placement.center.z = -5f
             carousel.surfaces[1].apply { placement.center.z = -1f; opacity = .5f }
             frame()
             val reversed = readPixels()
-            for (x in 0..1023) check(abs(reversed[x] - (.125f * original[1023 - x] + .5f * original[x])) < .002f) {
-                "Moved planes retained their previous painter order at $x"
+            for (x in 0..1023) check(abs(reversed[x] - (.25f * original[1023 - x] + .5f * original[x])) < .002f) {
+                "Moved planes changed the additive sum at $x: actual=${reversed[x]}, expected=${.25f * original[1023 - x] + .5f * original[x]}"
             }
             carousel.surfaces.forEach { it.opacity = 1f }
             carousel.layout()

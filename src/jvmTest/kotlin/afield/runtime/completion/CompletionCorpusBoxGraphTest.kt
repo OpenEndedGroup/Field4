@@ -42,6 +42,21 @@ class CompletionCorpusBoxGraphTest {
         assertTrue("Window" in CompletionCorpus.typesDeclaredWithoutAnImport(unimported), "a real missing import is still reported")
     }
 
+    /** `shared_kotlin_garden`: `Flower` is declared by a shared box, so it is in scope without an import. */
+    @Test
+    fun aTypeFromASharedBoxNeedsNoImport() {
+        val garden = CompletionCorpus.DocRec("garden", File("."), linkedMapOf(
+            "types" to CompletionCorpus.BoxRec("types", listOf("root"),
+                mutableMapOf("code" to "data class Flower(val petals: Int, val color: String)"), shared = true),
+            "plain" to CompletionCorpus.BoxRec("plain", listOf("root"),
+                mutableMapOf("code" to "class Weed")),
+        ))
+        val shared = CompletionCorpus.sharedTypeNames(garden)
+        assertTrue(shared == setOf("Flower"), "only the shared box's declarations count: $shared")
+        val preamble = "var Box.flower by Inheritance<Flower>() /**/\nvar Box.weed by Inheritance<Weed>() /**/"
+        assertTrue(CompletionCorpus.typesDeclaredWithoutAnImport(preamble, shared) == listOf("Weed"))
+    }
+
     @Test
     fun rootPropExpandsAgainstTheRoot() {
         val boxes = CompletionCorpus.boxGraph(doc())

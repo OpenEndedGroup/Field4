@@ -748,6 +748,12 @@ object MeshGallery {
         },
     )
 
+    /** How many distinct directions [mesh]'s triangles face, to two decimals; 1 for a coplanar patch. */
+    private fun facingDirections(mesh: TriMesh): Int = (0 until mesh.triangleCount)
+        .map { mesh.faceNormal(it) }
+        .map { n -> Triple(Math.round(n.x * 100), Math.round(n.y * 100), Math.round(n.z * 100)) }
+        .toSet().size
+
     /** The PNG a `toHTML()` card embeds, decoded — the card's real pixels, not a re-render. */
     private fun decodeCardPng(html: String): BufferedImage {
         val marker = "data:image/png;base64,"
@@ -856,9 +862,12 @@ object MeshGallery {
             val spread = colourSpread(rendered)
             check(painted > 0.04) { "${panel.name} / ${cell.caption} rendered nearly empty (painted=$painted)" }
             // A flat-faced solid legitimately renders in very few colours — a cube from one angle is
-            // three constant face shades plus the background and the wireframe — so this is only a
-            // "did it render as a black rectangle" floor, not a richness check.
-            check(spread > 10) { "${panel.name} / ${cell.caption} rendered flat ($spread distinct colours)" }
+            // three constant face shades plus the background and the wireframe, and an open plane
+            // patch is a single shade with antialiased edges (9 colours) — so this is only a "did it
+            // render as a black rectangle" floor, not a richness check, and it scales with how many
+            // differently facing triangles the mesh has to shade.
+            val floor = if (facingDirections(cell.mesh) <= 1) 3 else 10
+            check(spread > floor) { "${panel.name} / ${cell.caption} rendered flat ($spread distinct colours)" }
             g.color = PANEL_BG
             g.fillRect(x, y, cellW, cellH)
             g.drawImage(rendered, x, y, null)

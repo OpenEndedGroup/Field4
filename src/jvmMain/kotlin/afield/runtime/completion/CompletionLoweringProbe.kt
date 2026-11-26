@@ -48,7 +48,8 @@ id: completion.lowering-invariant.probe
 runner: jvm-main
 entrypoint: afield.runtime.completion.CompletionLoweringProbe
 tags: [probe, kotlin, completion]
-timeoutSec: 1200
+# 40630 questions over 1440 boxes took 1227 s on 2026-11-26 (p50 23 ms), past the old 1200.
+timeoutSec: 2400
 # Provided by the runner; without one this is environment-incomplete, not a pass (it SKIPped and
 # passed until 2026-09-30).
 requiresSidecar: true
@@ -298,10 +299,12 @@ object CompletionLoweringProbe {
         // A bare `recv.` — the hardest and most-typed question, and the one that regresses first when
         // member/extension discovery breaks (this bucket is how "extensions by receiver" was measured).
         Floor("dot/0/blank", minAttempts = 1420, minPercent = 95, observed = 98),
-        Floor("dot/0/keep", minAttempts = 1420, minPercent = 93, observed = 95),
+        // Raised 2026-11-26 (95 -> 98/99) when the sidecar stopped dropping `T.apply`/`also`/`let` on an
+        // edited call (AaCompletion: a bare type-parameter receiver is accepted within its bounds).
+        Floor("dot/0/keep", minAttempts = 1420, minPercent = 95, observed = 98),
         // Two characters typed: prefix filtering plus resolution. A gap to `dot/0` is a discovery problem.
         Floor("dot/2/blank", minAttempts = 1420, minPercent = 95, observed = 98),
-        Floor("dot/2/keep", minAttempts = 1420, minPercent = 93, observed = 95),
+        Floor("dot/2/keep", minAttempts = 1420, minPercent = 95, observed = 99),
         // Name position: scope, the index, and implicit-receiver extensions.
         Floor("name/2/blank", minAttempts = 2040, minPercent = 92, observed = 95),
         Floor("name/2/keep", minAttempts = 1720, minPercent = 92, observed = 96),
@@ -380,6 +383,12 @@ object CompletionLoweringProbe {
                 }
             }
         }
+        // A shared Kotlin box's classes are in scope in every other box of its document (DocumentTypes),
+        // so the sidecar is told their source as declarations. Without it `shared_kotlin_garden`'s
+        // `by Inheritance<Flower>()` stubs cannot resolve Flower, and the injected regions are not clean.
+        val sharedByDoc = CompletionCorpus.documents(dirNames).associate { d -> d.name to d.boxes.values.filter { it.shared } }
+        fun sharedDeclarations(c: CompletionCorpus.Case): String = sharedByDoc[c.doc].orEmpty()
+            .filter { it.id != c.box }.joinToString("\n\n") { it.props["code"].orEmpty() }
         val withPreamble = cases.count { it.preamble.isNotBlank() }
         println("documents $docCount   kotlin boxes ${cases.size}   with a preamble $withPreamble   " +
             "lines ${cases.sumOf { it.code.lines().size }}")
@@ -396,7 +405,8 @@ object CompletionLoweringProbe {
         var loweringFailed = 0
         val injectedRegions = setOf("preamble", "declarations", "stubs", "wrapper")
         for (c in cases) {
-            val r = AaCompletionClient.lower(c.code, c.code.length, c.preamble, receivers, replImports = introImports)
+            val r = AaCompletionClient.lower(c.code, c.code.length, c.preamble, receivers,
+                declarations = sharedDeclarations(c), replImports = introImports)
             if (r == null || !r.success) { loweringFailed++; continue }
             lowered++
             if (c.preamble.isNotBlank() && !r.preambleInjected) {
@@ -497,7 +507,8 @@ object CompletionLoweringProbe {
                 requests++
                 val t0 = System.nanoTime()
                 val outcome = AaCompletionClient.complete(
-                    snippet, cursor, c.preamble, receivers, replImports = introImports,
+                    snippet, cursor, c.preamble, receivers, declarations = sharedDeclarations(c),
+                    replImports = introImports,
                 )
                 times += (System.nanoTime() - t0) / 1_000_000
                 val cands = (outcome.result as? CompletionResult.Success)?.metadata.orEmpty()

@@ -97,6 +97,8 @@ object CompletionCorpus {
         val parents: List<String>,
         val props: MutableMap<String, String> = mutableMapOf(),
         val childLanguage: String? = null,
+        /** True for a `box_kind "shared-kotlin"` box, whose declarations every Kotlin box in the document sees. */
+        val shared: Boolean = false,
     )
 
     data class DocRec(val name: String, val dir: File, val boxes: LinkedHashMap<String, BoxRec>)
@@ -117,6 +119,7 @@ object CompletionCorpus {
     private val FENCE = Regex("""^```(\w*)\s*\[field-(box|property)\s+([^]]*)]\s*$""")
     private val ATTR = Regex("""(\w+)="([^"]*)"""")
     private val PARENTS = Regex(""""parents"\s*\[([^]]*)]""")
+    private val SHARED_BOX_KIND = Regex(""""box_kind"\s+"shared-kotlin"""")
     private val MAIN_LANGUAGE = Regex(""""mainLanguage"\s+"([^"]*)"""")
     private val LEGACY_LANGUAGE_ROOT = Regex(""""(isPythonRoot|isRemoteJSRoot)"\s+true\b""")
 
@@ -153,7 +156,7 @@ object CompletionCorpus {
                         ?.ifEmpty { null }
                         ?: LEGACY_LANGUAGE_ROOT.find(body)?.groupValues?.get(1)
                             ?.let { if (it == "isPythonRoot") "python" else "remotejs" }
-                    boxes[id] = BoxRec(id, parents, childLanguage = childLanguage)
+                    boxes[id] = BoxRec(id, parents, childLanguage = childLanguage, shared = SHARED_BOX_KIND.containsMatchIn(body))
                 }
                 "property" -> {
                     val id = attrs["box"] ?: continue
@@ -212,6 +215,17 @@ object CompletionCorpus {
      * boxes in as Kotlin. Their `import numpy as np` became 5 injected-region errors, and `cv2.‸cvtColor`
      * was scored as a Kotlin package path.
      */
+    private val TOP_LEVEL_TYPE = Regex("""(?m)^\s*(?:(?:data|sealed|enum|value|abstract|open|annotation|inline|fun)\s+)*(?:class|interface|object|typealias)\s+([A-Za-z_]\w*)""")
+
+    /**
+     * The type names [doc]'s shared Kotlin boxes declare. A shared box compiles into the document's one
+     * engine, so its `data class Flower` is in scope in every other box without an import: a preamble's
+     * `by Inheritance<Flower>()` resolves there, and must not be reported as an unimported type.
+     */
+    fun sharedTypeNames(doc: DocRec): Set<String> = doc.boxes.values.filter { it.shared }
+        .flatMap { rec -> TOP_LEVEL_TYPE.findAll(rec.props["code"].orEmpty()).map { it.groupValues[1] } }
+        .toSet()
+
     fun kotlinBoxes(doc: DocRec): List<BoxRec> = doc.boxes.values.filter { rec ->
         (rec.props["code_language"] ?: "kotlin") == "kotlin" && !rec.props["code"].isNullOrBlank() &&
             rec.parents.none { p -> doc.boxes[p]?.childLanguage?.let { it !in KOTLIN_LANGUAGES } == true }
@@ -237,13 +251,14 @@ object CompletionCorpus {
         val out = mutableListOf<Case>()
         for (doc in documents(dirs)) {
             val boxes = boxGraph(doc)
+            val shared = sharedTypeNames(doc)
             for (rec in kotlinBoxes(doc)) {
                 val box = boxes[rec.id]!!
                 val code = rec.props["code"]!!
                 runCatching { ki.applyMacros(box, code, emptySet(), false) }
                     .onFailure { onProblem("${doc.name}/${rec.id}", it) }
                 val gathered = runCatching { normalizePreambleText(gatherPreambleUpwards(box)) }.getOrDefault("")
-                out += Case(doc.name, rec.id, code, withImportsForDeclaredTypes(gathered))
+                out += Case(doc.name, rec.id, code, withImportsForDeclaredTypes(gathered, shared))
             }
         }
         return out
@@ -270,8 +285,8 @@ object CompletionCorpus {
      * so a genuinely ambiguous name still reaches the checker and is still reported rather than
      * papered over with a guess.
      */
-    internal fun withImportsForDeclaredTypes(preamble: String): String {
-        val missing = typesDeclaredWithoutAnImport(preamble)
+    internal fun withImportsForDeclaredTypes(preamble: String, sharedTypes: Set<String> = emptySet()): String {
+        val missing = typesDeclaredWithoutAnImport(preamble, sharedTypes)
         if (missing.isEmpty()) return preamble
         val added = missing.mapNotNull { kotlinImportStatementFor(it) }
         if (added.isEmpty()) return preamble
@@ -297,9 +312,10 @@ object CompletionCorpus {
      * declared in the preamble itself (the `/*supermap*/` and `/*graphics-structure-type*/` forms
      * declare classes inline), or lives in a package the preamble star-imports — the last resolved through
      * [ImportResolution]'s class index rather than guessed, so `import afield.graphics.vulkan.buffers.*` excuses
-     * `FrameBufferGroup` and does not excuse `Window`.
+     * `FrameBufferGroup` and does not excuse `Window`. [sharedTypes] are the names the document's shared
+     * Kotlin boxes declare ([sharedTypeNames]), in scope through the shared engine rather than an import.
      */
-    fun typesDeclaredWithoutAnImport(preamble: String): List<String> {
+    fun typesDeclaredWithoutAnImport(preamble: String, sharedTypes: Set<String> = emptySet()): List<String> {
         val importLines = preamble.lines().map { it.trim() }.filter { it.startsWith("import ") }
             .map { it.removePrefix("import ").trim() }
         val explicit = importLines.filterNot { it.endsWith(".*") }.map { it.substringAfterLast('.') }.toSet()
@@ -315,6 +331,7 @@ object CompletionCorpus {
                 '.' in declared ||
                     isDefaultImportedTypeName(t) ||
                     t in receivers ||
+                    t in sharedTypes ||
                     t in explicit ||
                     Regex("""\bclass\s+$t\b""").containsMatchIn(preamble) ||
                     // Guarded: resolving a star-import means a whole-classpath scan, and a preamble

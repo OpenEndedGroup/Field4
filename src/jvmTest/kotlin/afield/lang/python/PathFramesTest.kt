@@ -145,7 +145,7 @@ class PathFramesTest {
         assertEquals(2, frames.units(0.0).size)
         val only = frames.units(0.0, "rod").single()
         assertEquals(1.0, only.nodes.last().to.z.toDouble(), 1e-6, "z is kept")
-        assertEquals(.04, only.thickness!!.toDouble(), 1e-6, "stroke width in units")
+        assertEquals(.04, only.thickness!!, 1e-6, "stroke width in units")
         val c = frames.center("rod", 0.0)!!
         assertEquals(1f, c.x, 1e-6f); assertEquals(0f, c.y, 1e-6f); assertEquals(1f, c.z, 1e-6f)
         assertEquals(null, frames.center("missing", 0.0))

@@ -152,6 +152,8 @@ object FM1Hooks {
 
     private val CONSTRUCTOR = Regex("""\b(vec[234]|mat[23])\(""")
     private val FLOAT_LITERAL = Regex("""(?<![\w.])(\d+\.\d*(?:[eE][-+]?\d+)?|\.\d+(?:[eE][-+]?\d+)?|\d+[eE][-+]?\d+)(?![\w.])""")
+    /** A `?pc.name` external read, which StackSL lowers to the push-constant block `pc`. */
+    private val PUSH_CONSTANT = Regex("""\bpc\.\w""")
     private val TEXTURE = Regex("""\bsampler2D\b|\btexture(?:Size|Gather|Lod|Offset)?\(""")
 
     /**
@@ -167,7 +169,7 @@ object FM1Hooks {
      * the firmware glue calls. `track` runs the program on each sample of a block in place (the
      * left channel, then the right for the 808's stereo kit); `eval` runs it once, for drawing.
      *
-     * @throws FM1HookException if the program does not compile, or reads a texture
+     * @throws FM1HookException if the program does not compile, reads a texture, or reads a push constant
      */
     fun cpp(stacksl: String, kind: FM1Hook.Kind = FM1Hook.Kind.SAMPLES): String {
         val r = compileStackSL(
@@ -180,6 +182,12 @@ object FM1Hooks {
             throw FM1HookException(
                 "StackSL: this program reads a texture (sample, gather, blur, laplace and the other image words); " +
                     "a hook runs on a stream of samples and has no picture to read"
+            )
+        }
+        if (PUSH_CONSTANT.containsMatchIn(r.glsl)) {
+            throw FM1HookException(
+                "StackSL: this program reads a push constant (?pc.name); " +
+                    "a hook runs inside the firmware, where no renderer sets push constants"
             )
         }
         return buildString {

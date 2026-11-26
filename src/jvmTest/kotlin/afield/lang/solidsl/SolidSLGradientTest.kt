@@ -93,6 +93,7 @@ class SolidSLGradientTest {
         Subject("profileOffset", Profile.rect(0.7, 0.5).offset(0.16).extruded(0.8).at(0.0, 0.0, -0.4)),
         Subject("profileRotate", Profile.rect(0.9, 0.4).turned(27.0).extruded(0.7).at(0.0, 0.0, -0.35)),
         Subject("profileScale", Profile.circle(0.5).sized(1.4, 0.8).extruded(0.7).at(0.0, 0.0, -0.35)),
+        Subject("profileFold", Profile.circle(0.3).translated(0.35, -0.25).folded(30.0).extruded(0.7).at(0.0, 0.0, -0.35)),
         Subject(
             "profileBooleans",
             Profile.difference(

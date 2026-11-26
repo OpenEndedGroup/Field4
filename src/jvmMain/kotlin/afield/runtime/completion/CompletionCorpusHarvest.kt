@@ -193,8 +193,9 @@ object CompletionCorpusHarvest {
         // preamble that declares `by Inheritance<Window>()` and does not import Window describes a
         // context in which Window does not resolve. That is what hand-deleting the import line left
         // behind, and a diff against the harvest cannot say which side of it is right — this can.
+        val sharedByDoc = CompletionCorpus.documents(dirs).associate { it.name to CompletionCorpus.sharedTypeNames(it) }
         val unimported = fixtures.mapNotNull { f ->
-            CompletionCorpus.typesDeclaredWithoutAnImport(f.preamble).takeIf { it.isNotEmpty() }
+            CompletionCorpus.typesDeclaredWithoutAnImport(f.preamble, sharedByDoc[f.doc].orEmpty()).takeIf { it.isNotEmpty() }
                 ?.let { f.label to it }
         }
         unimported.forEach { (label, types) ->

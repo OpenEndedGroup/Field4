@@ -814,8 +814,16 @@ class KotlinInterface2(
                 // `introImports` is the scope every box gets for free. The sidecar analyses the snippet
                 // in another process and cannot see it, so it must be told; before this it fell back to
                 // its own hand-written copy, which had drifted. See the KDoc on `introImports`.
+                // The document's shared Kotlin boxes add to that scope: their class folders and an import
+                // per class, the same view every compile in the document gets (DocumentTypes.compileView),
+                // so `by Inheritance<Flower>()` completes against the Flower a shared box declared.
+                val types = box?.takeIf { it.isInsideInitialized() }?.inside?.documentTypes
+                val shared = types?.let { runCatching { it.compileView(box, it.isShared(box)) }.getOrNull() }
                 AaCompletionClient.complete(
-                    s, cursor, completionPreamble, receiverTypes, replImports = introImports,
+                    s, cursor, completionPreamble, receiverTypes,
+                    classpathRootsOverride = shared?.roots?.takeIf { it.isNotEmpty() }
+                        ?.let { roots -> AaCompletionClient.classpathRoots + roots.map { it.path } },
+                    replImports = introImports + shared?.imports.orEmpty(),
                 )
             }
             val ms = (System.nanoTime() - startNs) / 1_000_000

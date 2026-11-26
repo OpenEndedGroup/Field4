@@ -1,5 +1,6 @@
 package afield.examples.four
 
+import afield.graphics.vulkan.device.vkLayout
 import afield.graphics.texture.image_layout_transition
 import afield.graphics.vulkan.Renderer
 import afield.graphics.vulkan.Target
@@ -92,7 +93,7 @@ object PingPongRestoreSmoke {
                     VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_2_COPY_BIT,
                     VK_ACCESS_2_MEMORY_READ_BIT or VK_ACCESS_2_MEMORY_WRITE_BIT, VK_ACCESS_2_TRANSFER_READ_BIT,
                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, range)
-                vkCmdCopyImageToBuffer(command.vkCommandBuffer, image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                vkCmdCopyImageToBuffer(command.vkCommandBuffer, image, vkLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
                     output.buffer, region(stack, (a * target.frameCount + i) * BYTES.toLong()))
                 image_layout_transition(command.vkCommandBuffer, image,
                     VK_PIPELINE_STAGE_2_COPY_BIT, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
@@ -134,7 +135,7 @@ object PingPongRestoreSmoke {
             fun upload(command: CommandBuffer, image: Long, which: Int) {
                 MemoryStack.stackPush().use { stack ->
                     vkCmdCopyBufferToImage(command.vkCommandBuffer, uploads[which].buffer, image,
-                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, region(stack))
+                        vkLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL), region(stack))
                 }
             }
             for (target in listOf(ordinary, cadenced)) {

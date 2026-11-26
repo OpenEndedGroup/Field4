@@ -5,8 +5,10 @@ import kotlin.random.Random
 Past 7×7 a proof takes minutes (35 on 8×8 needs 337 million search steps), so this box uses
 ruin and recreate: cut a random tail off the best path so far and regrow it with a short
 search, 1000 times. It is not a proof, and where it ends depends on the seed, so each board
-gets four seeds; the best is drawn, against the known optimum, 35 and 47.
+gets four seeds; the best is drawn, against the known optimum, 35 and 47. Eight searches hold
+the Runloop for longer than Field's 30 s default, so the box allows itself three minutes.
 */
+watchdog = 180
 val seeds = 1..4
 val cell = 10.0
 var x = 0.0
