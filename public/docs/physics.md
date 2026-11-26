@@ -799,182 +799,288 @@ that a sheet has begun to vibrate before it becomes visible as motion.
 
 ---
 
-## A slinky on an up escalator
+## A slinky walking down stairs
 
-A slinky can walk down an escalator that is moving up, step after step, and stay where it is. The
-scene below is a [`SlinkyOnStairs`](reference/simulation.md#slinky-kt-slinkyonstairs): a 40-coil
-[`Slinky`](reference/simulation.md#slinky-kt-slinky) standing on a [`StaircaseCollider`](reference/simulation.md#simdverletcolliders-kt-staircasecollider)
-whose treads rise one step every `stepPeriod` seconds. The idea comes from the
-[slinky escalator benchmark](https://morethanamachine.com/posts/slinky-escalator-benchmark/) on More Than a Machine;
-this one is built from the solver on this page. The box gives you sliders for the three numbers
-that matter: the escalator's speed, the step height and the spring constant.
+A slinky set going at the top of a flight walks down it on its own, end over end, on nothing but
+the energy of its fall. The scene below is a [`SlinkyOnStairs`](reference/simulation.md#slinky-kt-slinkyonstairs):
+a 40-coil [`Slinky`](reference/simulation.md#slinky-kt-slinky) standing shut on the top step of a
+[`StaircaseCollider`](reference/simulation.md#simdverletcolliders-kt-staircasecollider). For its
+first 0.6 s a hand lifts the top coil over in an arc and puts it down on the next step, the way
+you would start one. Then it lets go, and the slinky is on its own.
 
-```diffstatic_runner {data-lang=kotlin video="assets/physics/slinky_escalator_walk.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="10" fps="20" timeout="300" w="760" h="720" embed=true name="physics-slinky-walk" alt="a rainbow slinky, drawn side-on as forty coloured coil lines, flips end over end down a flight of grey stairs whose treads are rising toward the upper left; each flip lands it one step lower on the moving stairs, so it stays near the middle of the picture while the caption counts steps walked against steps the escalator has carried up, the two numbers climbing together"}
+The box shows the walk at a fifth of its speed, because at full speed a flip takes about a quarter
+of a second. Slowing it down does not change it: the scene always steps in substeps of 1/600 s,
+so a frame of 1/300 s shown sixty times a second is the same walk, slowed by five. Each slider
+starts the slinky again on the new stairs.
+
+```diffstatic_runner {data-lang=kotlin video="assets/physics/slinky_walk.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="20" fps="24" timeout="300" w="760" h="620" embed=true name="physics-slinky-walk" alt="a rainbow slinky, drawn side-on as forty coloured coil lines on grey stairs, in slow motion: a hand lifts its top coil over in an arc onto the next step down and lets go, and the slinky walks on by itself, its top end falling over the edge and pulling the rest after it while the bottom coils lift, arc over and land past the others, flip after flip, the caption counting flips and steps down"}
 :::static
 import afield.simulation.physics.*
 
-// The three things worth turning: the escalator's speed, as seconds per step; the step height;
-// and the spring constant between neighbouring coils. Lengths are in coil diameters.
-var stepPeriod = 0.575f
-var rise = 1.5f
-var stiffness = 16000f
+// Lengths are in coil diameters. The slow-motion factor changes only how fast the picture runs.
+var run = 1.5f
+var rise = 1.1f
+var stiffness = 32000f
+var slowMotion = 5
 
-fun start() = SlinkyOnStairs(stepPeriod = stepPeriod, rise = rise, stiffness = stiffness)
+fun start() = SlinkyOnStairs(run = run, rise = rise, stiffness = stiffness)
 var scene = start()
 
-controlGroup("escalator") {
-    slider("seconds per step", min = 0.2, max = 1.5, step = 0.005, initialValue = 0.575) {
-        stepPeriod = it.toFloat()
-        scene.stepPeriod = stepPeriod
+controlGroup("slinky") {
+    slider("tread depth", min = 1.2, max = 2.6, step = 0.05, initialValue = 1.5) {
+        run = it.toFloat()
+        scene = start()
     }
-    slider("step rise", min = 0.8, max = 2.5, step = 0.05, initialValue = 1.5) {
+    slider("step rise", min = 0.6, max = 3.0, step = 0.05, initialValue = 1.1) {
         rise = it.toFloat()
-        scene.stairs.rise = rise
+        scene = start()
     }
-    slider("spring constant", min = 4000.0, max = 30000.0, step = 500.0, initialValue = 16000.0) {
+    slider("spring constant", min = 8000.0, max = 48000.0, step = 1000.0, initialValue = 32000.0) {
         stiffness = it.toFloat()
-        scene.slinky.stiffness = stiffness
+        scene = start()
     }
+    slider("slow motion", min = 1.0, max = 10.0, step = 1.0, initialValue = 5.0) { slowMotion = it.toInt() }
     button("start again") { down -> if (down) scene = start() }
 }
 
-// The loop can come round far more often than 60 times a second; the physics keeps to the clock.
-val clock = System.nanoTime()
-var simulated = 0.0
+// One frame of the picture every sixtieth of a second, each a slowMotion-th of a sixtieth of the walk.
+val clock = AnimationClock.nowSeconds()
+var shown = 0.0
 loop {
-    val now = (System.nanoTime() - clock) / 1e9
+    val now = AnimationClock.nowSeconds() - clock
     var catchUp = 0
-    while (simulated < now && catchUp++ < 4) {
-        scene.step()
-        simulated += 1.0 / 60.0
+    while (shown < now && catchUp++ < 4) {
+        scene.step(1f / 60f / slowMotion)
+        shown += 1.0 / 60.0
     }
-    simulated = maxOf(simulated, now - 0.1)
+    shown = maxOf(shown, now - 0.1)
 
-    // Follow the slinky, so a walk that keeps pace stays put and one that loses it drifts off.
     val c = scene.slinky.centroid()
-    val behind = scene.stairsTravelled - scene.stepsDescended
     showPlane(
         scene.lines(),
-        window = Rect(c.x - 5.0, c.y - 4.0, 10.0, 7.0),
+        window = Rect(c.x - 5.0, c.y - 3.5, 10.0, 7.0),
         width = 720,
         height = 504,
-        title = "slinky on an up escalator · ${scene.stepPeriod.f3} s per step",
-        caption = "t = ${scene.time.f1} s · walked ${scene.stepsDescended.f1} steps · " +
-            "escalator ${scene.stairsTravelled.f1} · behind by ${behind.f1}",
+        title = "a slinky walking down stairs · 1/$slowMotion speed",
+        caption = "t = ${scene.time.f2} s · ${scene.flips} flips · ${scene.stepsDescended.f1} steps down",
     )
 }
 ```
 
-At 0.575 s per step the slinky keeps pace. The caption's two counts climb together and the
-"behind" figure stays near zero, which is the walk matching the escalator. Drag the speed slider
-and the walk stops matching.
+The hand's arc tips the stack over the edge. From then on each flip is the same three movements:
+the coils at the top fall over the nosing and stretch the spring down to the next tread, the
+stretched spring pulls the coils left behind up off their step, and they arc over the others and
+land beyond them. On these stairs the slinky soon settles into a stride of two or three steps a
+flip, and keeps it for as long as there are stairs.
+
+### One flip
+
+Eight moments of one flip, a thirtieth of a second apart, from the same walk once it has settled
+into its stride:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/physics/slinky_one_flip.png" wait="3.0" capture="box" open-outputs="true" w="1180" h="560" padding="14" name="physics-slinky-one-flip"}
+:::static
+import afield.simulation.physics.*
+
+// Walk twenty flips into the default scene, then take a picture every two frames.
+val scene = SlinkyOnStairs()
+while (scene.flips < 20) scene.step()
+val moments = (0 until 8).map { k ->
+    if (k > 0) repeat(2) { scene.step() }
+    "t = ${scene.time.f3} s" to scene.lines(halfWidth = 3.5f)
+}
+
+showPlaneGrid(*moments.toTypedArray(), columns = 4, cellWidth = 270, cellHeight = 230)
+```
+
+![Eight panels of the rainbow slinky on grey stairs, a thirtieth of a second apart. In the first it lies stretched from one tread down over the nosing; then its violet end lifts off the upper tread and arcs over, the stack folds into a tight curl over the edge, and in the last panel it lies stretched along the lower treads again with the red end now at the back.](assets/physics/slinky_one_flip.png)
+
+The two ends trade places. The violet coils that were at the back lift off and travel over the
+whole spring, and the flip ends with the slinky stretched out again, further down the flight,
+red end trailing.
 
 ### What the model holds
 
 A slinky seen side-on is a stack of short lines, one per coil, and that is how `Slinky` stores it:
-two particles per coil, one for each rim, in the same `SimdVerlet` as everything else.
+two particles per coil, one for each rim, in the same `SimdVerlet` as everything else on this
+page.
 
 - **Axial stiffness.** Neighbouring rims are joined by two rail springs in `constraints4`, at
   `stiffness`. Their rest length is shorter than the wire is thick (`preload`), so at rest the
   coils press together and it takes a pull to open them, as with the real toy.
-- **Coil–coil contact.** A coil cannot come closer to the next than one wire thickness at either
-  rim, measured along its own normal. A shut stack is therefore stiff in bending: bending it would
-  push one side of a coil through its neighbour. An open stretch bends freely.
-- **Coils stay coils.** Each rung is held at the coil diameter, and neighbouring coils are kept on
-  one axis (`alignment`). Touching coils stop dead against each other, so every landing loses
-  the energy it should.
-- **Moving stairs.** A collider can now have a velocity (`setVelocity`, or `stepPeriod` on a
-  staircase). It then moves itself every frame, and friction works relative to the moving
-  surface, so a tread carries what stands on it.
+- **Coil–coil contact.** A coil cannot come closer to the next than one wire thickness. The
+  contact pushes against the lower coil's face and turns that coil like a lever about the point
+  where it is pushed, so a shut stack is stiff in bending (bending it would push one side of a
+  coil through its neighbour) while an open stretch bends freely. Touching coils stop dead
+  against each other, so every landing loses the energy it should.
+- **Shear.** Crossed diagonal springs between neighbouring coils (`shearStiffness`) keep the coils
+  stacked across the axis rather than sliding off each other like a deck of cards.
+- **Stairs with edges.** The stairs push on each coil along its length, not only at its rims, so
+  a step's nosing cannot slip between two particles and hang the slinky on it.
 
-### Why the air matters
+Everything that walks the slinky comes out of the fall. The springs are real springs, and every
+projection in the coil pass moves particles along its constraint's whole gradient, so it keeps
+momentum and can only take energy out. A slinky stretched open and let go in empty space, with no
+drag, snaps shut and rings down to nothing without ever gaining energy
+(`SlinkyTest.aSnappedSlinkyOnlyLosesEnergy` checks exactly that), and a shut stack stood on a
+floor stays still. The walk is what is left when the
+drop of each step pays for the next flip.
 
-An endless escalator moving at a constant speed is no different from still stairs if you ride
-along with it. Gravity, the spring and the friction against the treads all behave the same way
-in that frame. The only force that can tell the two apart is drag against the still air, and it
-is what ties the walk to the escalator. A slinky that falls behind is carried up through the air,
-and the drag pushes it back down the treads. A slinky that gets ahead is slowed. `SlinkyOnStairs`
-sets the drag with `air`, the fraction of its velocity a coil keeps per second against the air.
-The default, 0.01, is heavy. With much less drag the slinky either stops or speeds up step after
-step until it tumbles, and on still stairs, with the same drag and nothing driving it, it stands
-where it was put.
+### One step at a time, and then it stops
 
-### Too slow, too fast
+On longer treads the stride changes. The walk below is the same slinky with a softer spring, on
+treads 2.1 diameters deep: each flip now lands exactly one step down, the gait a slinky has on a
+real staircase. It is also the gait that runs out. One step's drop only just pays for one flip,
+and after about twenty of them the slinky lands shut on a tread and stays there. This video
+runs at full speed.
 
-The same slinky, given the same start, on an escalator that is too slow (the top row) and one that
-is far too fast (the bottom row):
-
-```diffstatic_runner {data-lang=kotlin screenshot="assets/physics/slinky_failure_modes.png" wait="3.0" capture="box" open-outputs="true" w="1180" h="560" padding="14" name="physics-slinky-failure-modes"}
+```diffstatic_runner {data-lang=kotlin video="assets/physics/slinky_one_step.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="16" fps="24" timeout="300" w="760" h="620" embed=true name="physics-slinky-one-step" alt="the rainbow slinky on stairs with deeper treads, at full speed: each flip lands it exactly one step lower, and after about twenty flips it lands shut on a tread, leaning over, and stays there while the caption stops counting"}
 :::static
 import afield.simulation.physics.*
 
-// The same slinky and the same start, on escalators set too slow and too fast.
-fun moments(stepPeriod: Float, times: List<Float>): List<Pair<String, List<FLine>>> {
-    val scene = SlinkyOnStairs(stepPeriod = stepPeriod)
-    return times.map { t ->
-        while (scene.time < t) scene.step()
-        "${stepPeriod.f3} s per step, t = ${t.f2} s" to scene.lines(halfWidth = 4.5f)
+val scene = SlinkyOnStairs(run = 2.1f, stiffness = 16000f)
+
+val clock = AnimationClock.nowSeconds()
+var shown = 0.0
+loop {
+    val now = AnimationClock.nowSeconds() - clock
+    var catchUp = 0
+    while (shown < now && catchUp++ < 4) {
+        scene.step()
+        shown += 1.0 / 60.0
     }
+    shown = maxOf(shown, now - 0.1)
+
+    val c = scene.slinky.centroid()
+    showPlane(
+        scene.lines(),
+        window = Rect(c.x - 5.0, c.y - 3.5, 10.0, 7.0),
+        width = 720,
+        height = 504,
+        title = "one step a flip · tread 2.1, spring 16000",
+        caption = "t = ${scene.time.f1} s · ${scene.flips} flips · ${scene.stepsDescended.f1} steps down",
+    )
 }
-
-val stall = moments(1.0f, [2.0f, 2.45f, 2.85f, 3.45f])
-val flyOff = moments(0.25f, [0.95f, 1.1f, 2.6f, 2.75f])
-
-showPlaneGrid(*(stall + flyOff).toTypedArray(), columns = 4, cellWidth = 270, cellHeight = 230)
 ```
 
-![Eight panels of the rainbow slinky on grey stairs. The top row, at one second per step, shows it upright on a tread, then tipped, then standing again: it stalls between steps and rides the escalator up. The bottom row, at a quarter second per step, shows it thrown into long stretched arcs that leave the treads entirely.](assets/physics/slinky_failure_modes.png)
+A slinky stopping is part of the toy, and it stops here for the reason it stops on a real
+staircase: each flip loses a little more at its landing than the step gave it, until one flip is
+short of what it takes to lift the far end over. Where it comes to rest is less like the toy. The
+shut stack ends up leaning over at about 45°, its coils slid sideways over each other, which a
+real slinky's wire would not allow: the model's shear springs are softer than a real helix.
 
-At 1 s per step the treads move too slowly to keep the walk going. The slinky stalls, standing on
-a tread between steps until the drag tips it over. At 0.25 s per step the treads rise into it so
-fast that it is flung up into long stretched arcs and comes down several steps away.
+### Down an up escalator
 
-### The gait
+Give the staircase a `stepPeriod` and its treads rise, one step every `stepPeriod` seconds, carrying
+up whatever stands on them. A slinky can walk down an escalator that is moving up, and stay where
+it is. The idea comes from the [slinky escalator benchmark](https://morethanamachine.com/posts/slinky-escalator-benchmark/)
+on More Than a Machine.
 
-A minute of the matched walk, with the height of the slinky's centre of mass plotted against time:
+An escalator moving at a constant speed is no different from still stairs if you ride along with
+it: gravity, the spring and the friction against the treads all behave the same way in that
+frame; only the still air, a light drag, can tell them apart. So the slinky walks down the moving
+treads as it walks down still ones, at its own pace of about ten steps a second, and the
+escalator decides only where that walk ends up. Set the
+treads rising at the slinky's own pace and it stays put. `SlinkyOnStairs` starts the escalator at
+the moment the hand lets go, and gives everything the treads' velocity then, as if the hand had
+been riding the escalator all along.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/physics/slinky_height.png" wait="3.0" capture="box" open-outputs="true" w="1100" h="520" padding="14" name="physics-slinky-height"}
+```diffstatic_runner {data-lang=kotlin video="assets/physics/slinky_escalator.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="20" fps="24" timeout="300" w="760" h="620" embed=true name="physics-slinky-escalator" alt="the rainbow slinky in slow motion on grey stairs whose treads rise toward the upper left; it walks end over end down the moving treads, and the caption shows the steps it has walked and the steps the escalator has carried up climbing together"}
 :::static
 import afield.simulation.physics.*
 
-// A minute of the matched walk, sampled twenty times a second.
-val scene = SlinkyOnStairs()
-val seconds = ArrayList<Double>()
-val height = ArrayList<Double>()
-val landings = ArrayList<Float>()
-var walked = 0
-var frame = 0
-while (scene.time < 60f) {
-    scene.step()
-    if (frame++ % 3 == 0) {
-        seconds += scene.time.toDouble()
-        height += scene.height.toDouble()
+// 0.09 s per step is about the slinky's own pace on these stairs.
+var stepPeriod = 0.09f
+val slowMotion = 5
+
+fun start() = SlinkyOnStairs(stepPeriod = stepPeriod)
+var scene = start()
+
+controlGroup("escalator") {
+    slider("seconds per step", min = 0.06, max = 0.3, step = 0.005, initialValue = 0.09) {
+        stepPeriod = it.toFloat()
+        scene.stepPeriod = stepPeriod
     }
-    // A step is counted when the centre of mass passes the next tread boundary.
-    if (scene.stepsDescended >= walked + 1) {
-        walked++
-        landings += scene.time
-    }
+    button("start again") { down -> if (down) scene = start() }
 }
-val gaps = landings.zipWithNext { a, b -> b - a }
+
+val clock = AnimationClock.nowSeconds()
+var shown = 0.0
+loop {
+    val now = AnimationClock.nowSeconds() - clock
+    var catchUp = 0
+    while (shown < now && catchUp++ < 4) {
+        scene.step(1f / 60f / slowMotion)
+        shown += 1.0 / 60.0
+    }
+    shown = maxOf(shown, now - 0.1)
+
+    // Follow the slinky; the caption says how far the escalator has moved it from its start.
+    val c = scene.slinky.centroid()
+    val behind = scene.stairsTravelled - scene.stepsDescended
+    showPlane(
+        scene.lines(),
+        window = Rect(c.x - 5.0, c.y - 3.5, 10.0, 7.0),
+        width = 720,
+        height = 504,
+        title = "a slinky on an up escalator · ${scene.stepPeriod.f3} s per step · 1/$slowMotion speed",
+        caption = "t = ${scene.time.f2} s · walked ${scene.stepsDescended.f1} steps · " +
+            "escalator ${scene.stairsTravelled.f1} · carried up ${behind.f1}",
+    )
+}
+```
+
+The escalator in the video rises at 0.09 s a step, which is about the slinky's own pace on
+these stairs. The caption's two counts climb together, and the slinky never gets carried more than
+a few steps up from where it was let go.
+
+Thirty seconds on four escalators, plotted as how many steps each slinky has been carried up from
+where it was let go (zero is staying put, below zero is outwalking the escalator):
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/physics/slinky_escalators.png" wait="3.0" capture="box" open-outputs="true" w="1100" h="520" padding="14" name="physics-slinky-escalators"}
+:::static
+import afield.simulation.physics.*
+
+// Steps carried up from the start, sampled ten times a second, for thirty seconds.
+fun carriedUp(scene: SlinkyOnStairs): Pair<List<Double>, List<Double>> {
+    val seconds = ArrayList<Double>()
+    val steps = ArrayList<Double>()
+    var frame = 0
+    while (scene.time < 30f) {
+        scene.step()
+        if (frame++ % 6 == 0) {
+            seconds += scene.time.toDouble()
+            steps += (scene.stairsTravelled - scene.stepsDescended).toDouble()
+        }
+    }
+    return seconds to steps
+}
+
+val (t1, matched) = carriedUp(SlinkyOnStairs(stepPeriod = 0.09f))
+val (t2, slower) = carriedUp(SlinkyOnStairs(stepPeriod = 0.12f))
+val (t3, slowest) = carriedUp(SlinkyOnStairs(stepPeriod = 0.15f))
+val (t4, oneStep) = carriedUp(SlinkyOnStairs(run = 2.1f, stiffness = 16000f, stepPeriod = 0.6f))
 
 showChart(
     Chart(
-        title = "height of the slinky's centre of mass, matched escalator",
+        title = "steps carried up from the start",
         xLabel = "seconds",
-        yLabel = "coil diameters",
-        note = "$walked steps walked in 60 s against ${scene.stairsTravelled.f1} carried up · " +
-            "median step ${gaps.sorted()[gaps.size / 2].f3} s",
-    ).line("centre of mass", seconds, height)
+        yLabel = "steps",
+    )
+        .line("0.09 s per step", t1, matched)
+        .line("0.12 s per step", t2, slower)
+        .line("0.15 s per step", t3, slowest)
+        .line("one step a flip, 0.6 s per step", t4, oneStep)
 )
 ```
 
-![A line chart of the centre of mass's height over sixty seconds. It is a regular sawtooth ripple, one tooth per step, about one coil diameter deep; the ripple stays at the same height for long stretches and jumps up by about one step a few times, where the slinky stumbles and the escalator gains a step on it.](assets/physics/slinky_height.png)
+![A line chart of steps carried up against seconds, over thirty seconds. The blue line, 0.09 s per step, wanders within about ten steps of zero for the whole run. The orange line, 0.12 s per step, climbs to about 35 steps by eleven seconds, then turns and walks back down past zero. The green line, 0.15 s per step, falls steadily to about minus 105: that escalator is too slow, and the slinky outwalks it. The yellow line, the one-step slinky on a 0.6 s escalator, stays at zero for nine seconds and then rises in a straight line as the stopped slinky rides the escalator up.](assets/physics/slinky_escalators.png)
 
-Each tooth of the ripple is one step: the stack rises as it flips over and drops as it lands. A
-flat stretch is the walk keeping pace. Each jump is a stumble, where the escalator gains a step
-before the walk locks on again. The note under the chart gives the step count and the median step
-time, which sits just above the escalator's 0.575 s.
+The slinky walks at its own pace whatever the escalator does. An escalator near that pace holds it
+in place (blue); a slower one lets it walk away down the treads (green); and between the two, the
+slinky's own small changes of stride carry it up for a while and then back down (orange). The
+one-step slinky keeps pace with its slower escalator for nine seconds. Then, as on still stairs,
+it runs out, comes to rest on a tread, and rides the escalator up at exactly the treads' speed.
 
 ## Also in the box
 
@@ -1026,6 +1132,12 @@ inside or around a shape.
   so everything you can do to a line applies to them.
 - [Agent Transcript Gallery](agent_transcripts.md#slinky_escalator) — `slinky_escalator`, the
   walking slinky with its sliders, as an openable document.
+- The slinky is open for more. Stiffer shear, so that a stopped slinky rests square instead of
+  leaning; a one-step gait that keeps going rather than running out (heavier
+  coils, a stiffer shut stack, or stairs whose drop pays for exactly one flip); the slinky in
+  3D, with coils as rings, which needs a shear model that stands without pumping energy; and the
+  same walk in real units against a filmed toy. The sweeps so far are in
+  [`SLINKY_ESCALATOR.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/physics/SLINKY_ESCALATOR.md).
 - [Evolving Creatures](evolving_creatures.md) — bodies of points and springs simulated with
   `SimdVerlet`, which a genetic algorithm breeds to swim on water or crawl along a floor.
 - [Visualizers & Controls](visualizers.md) and [Field's 3D Output](three_output.md) — where

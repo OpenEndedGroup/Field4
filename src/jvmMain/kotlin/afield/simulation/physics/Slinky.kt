@@ -6,8 +6,6 @@ import afield.graphics.render.thickness
 import afield.math.linalg.Vec3
 import afield.math.linalg.Vec4
 import afield.math.linalg.vec
-import kotlin.math.abs
-import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
@@ -35,23 +33,30 @@ import kotlin.math.sqrt
  *   other, and it takes a load to open them. That is a real slinky's *initial tension*, and it is
  *   why a hanging one stays shut at the bottom.
  * - **Coil–coil contact.** A coil cannot get closer to its neighbour than the wire is thick. The
- *   contact is one-sided and measured along the coil's own normal at each rim, so a stack of shut
- *   coils is rigid in bending — bending it would push one side of a coil through the next — while
- *   an open stretch bends freely. Bending stiffness therefore comes from the contact and the
- *   preload together, as it does in the toy. Contact is inelastic and goes in [SimdVerlet.positionProjections]
+ *   contact is one-sided and measured against the lower coil's face, so a stack of shut coils is
+ *   rigid in bending — bending it would push one side of a coil through the next — while an open
+ *   stretch bends freely. Bending stiffness therefore comes from the contact and the preload
+ *   together, as it does in the toy. Contact is inelastic and goes in [SimdVerlet.positionProjections]
  *   with the rest of the coil pass.
- * - **Coils stay coils.** Each coil's rung, `A` to `B`, is held at the [diameter] exactly, and
- *   [alignment] turns every coil a fraction of the way toward square to the local centreline per
- *   pass — the shear stiffness of the helix, which keeps its coils across the axis rather than
- *   along it.
+ * - **Coils stay coils.** Each coil is held at its [diameter] exactly, and crossed diagonal
+ *   springs between neighbouring coils, at [shearStiffness], resist the coils sliding sideways
+ *   over each other: the shear stiffness of the helix, which keeps its coils across the axis
+ *   rather than along it.
  *
  * The coil pass is a projection, not a force, for the same reason as [Strand]'s bending: a rigid
- * rung or a contact as a spring would sit on the `stiffness * iterations` scale with a divergence
- * ceiling in `dt`. Corrections are applied to position *and* previous position (a teleport, so the
- * pass cannot inject velocity) and the approaching part of a contact's relative velocity is then
- * removed. Each correction is clamped to a fraction of the coil diameter per pass, so one bad frame
- * (a coil folded back over its neighbour by a violent start) recovers over a few frames instead of
+ * coil or a contact as a spring would sit on the `stiffness * iterations` scale with a divergence
+ * ceiling in `dt`. Each correction is clamped to a pitch per pass, so one bad frame (a coil
+ * folded back over its neighbour by a violent start) recovers over a few frames instead of
  * exploding.
+ *
+ * #### Energy
+ *
+ * A slinky walks on the energy of its fall and nothing else, so every part of the model is built
+ * to keep energy or lose it, never to make it: the springs are springs, each projection moves
+ * particles along its constraint's whole gradient (so it keeps momentum and angular momentum and
+ * can only take energy out), and the collider corrections are averaged rather than summed. The
+ * contact KDocs below say which shortcuts did the opposite. A slinky thrown in the air with no
+ * drag loses energy every frame and never gains it, and a shut stack stood on a floor stays still.
  *
  * #### Units and steps
  *
@@ -71,34 +76,25 @@ class Slinky internal constructor(
     val coils: Int,
     /** First particle index; coil `c` is particles `base + c * perCoil` up to `base + (c + 1) * perCoil`. */
     val base: Int,
-    /** Coil diameter: the ring is held at this size exactly. */
+    /** Coil diameter: each coil's rung is held at this length exactly. */
     val diameter: Float,
-    /** Wire thickness: the closest two neighbouring coils can come, at each particle. */
+    /** Wire thickness: the closest two neighbouring coils can come, at each rim. */
     val pitch: Float,
     /** Mass of one particle. */
     val mass: Float,
     val constraints: SimdVerlet.DirectedConstraints4,
     val name: String,
-    /**
-     * Particles around each turn. `2` is the side-on model: the coil's two rims as seen edge-on,
-     * in the xy plane. `4`, `6`, `8`, ... make each coil a ring in 3D, lying across the axis with
-     * its first particle on +x and its second a quarter or less of the way round toward +z, so a
-     * coil can carry a real bending moment and lands face to face on the next.
-     */
-    val perCoil: Int = 2,
 ) {
     private val lock = Any()
     private val state get() = sim.state
-    private val ring = perCoil > 2
 
-    init {
-        require(perCoil == 2 || (perCoil >= 4 && perCoil % 2 == 0)) { "perCoil must be 2 or an even number >= 4, got $perCoil" }
-    }
+    /** Particles per coil: its two rims, `A` and `B`. */
+    val perCoil: Int = 2
 
     /** One past this slinky's last particle index. */
     val end: Int get() = base + perCoil * coils
 
-    /** Particle index of [coil]'s particle [k] (`0 until perCoil`; with 2, 0 = rim A and 1 = rim B). */
+    /** Particle index of [coil]'s rim [k]: 0 is rim A, 1 is rim B. */
     operator fun get(coil: Int, k: Int): Int {
         require(coil in 0 until coils) { "coil $coil out of 0 until $coils" }
         require(k in 0 until perCoil) { "k must be in 0 until $perCoil" }
@@ -106,15 +102,6 @@ class Slinky internal constructor(
     }
 
     private fun first(c: Int) = base + perCoil * c
-
-    /**
-     * Fraction of the offset between neighbouring coils' centres, across the axis, taken out per
-     * pass: the helix's shear stiffness. `0f` lets coils slide over each other freely.
-     */
-    var alignment: Float = 0.3f
-        set(value) {
-            field = value.coerceIn(0f, 1f)
-        }
 
     /** Coil passes per substep. More passes make the shut stack stiffer and cost linearly. */
     var passes: Int = 4
@@ -152,7 +139,7 @@ class Slinky internal constructor(
             field = value.coerceIn(0f, 1f)
         }
 
-    /** Rail spring stiffness between neighbouring coils, per particle. Live: rewrites the rail slots. */
+    /** Rail spring stiffness between neighbouring coils, per rim. Live: rewrites the rail slots. */
     var stiffness: Float = 0f
         set(value) {
             field = value
@@ -166,15 +153,34 @@ class Slinky internal constructor(
             wireRails()
         }
 
+    /**
+     * Stiffness of the crossed diagonals between neighbouring coils, per rim: the helix's
+     * resistance to its coils sliding sideways over each other. Each particle is tied to the
+     * opposite particle of the coil above and the coil below, at the length that pair has when
+     * the two coils are shut, so a sideways slide stretches one diagonal and shortens the other
+     * while opening or bending the spring barely changes either. They are springs, so unlike a
+     * projection they conserve energy. Live: rewrites the diagonal slots.
+     */
+    var shearStiffness: Float = 16000f
+        set(value) {
+            field = value
+            wireRails()
+        }
+
     internal fun wireRails() {
         val rest = pitch * (1f - preload)
-        // Split across the particles of a turn, so the spring as a whole has the same constant
-        // whatever perCoil is.
-        val k = stiffness * 2f / perCoil
+        val k = stiffness
+        val ks = shearStiffness
+        val diagonal = sqrt(diameter * diameter + pitch * pitch)
         for (c in 0 until coils) for (j in 0 until perCoil) {
             val i = first(c) + j
+            val opposite = 1 - j
             constraints.setSlot(i, 1, if (c > 0) i - perCoil else -1, if (c > 0) rest else 0f, if (c > 0) k else 0f)
             constraints.setSlot(i, 2, if (c < coils - 1) i + perCoil else -1, if (c < coils - 1) rest else 0f, if (c < coils - 1) k else 0f)
+            val below = c > 0 && ks > 0f
+            val above = c < coils - 1 && ks > 0f
+            constraints.setSlot(i, 0, if (below) first(c - 1) + opposite else -1, if (below) diagonal else 0f, if (below) ks else 0f)
+            constraints.setSlot(i, 3, if (above) first(c + 1) + opposite else -1, if (above) diagonal else 0f, if (above) ks else 0f)
         }
     }
 
@@ -249,12 +255,8 @@ class Slinky internal constructor(
         }
     }
 
-    /** Particle [j]'s offset in its coil's own frame: along the coil's in-plane x, and along z. */
-    private fun ringOffset(j: Int): Pair<Float, Float> {
-        if (!ring) return Pair(if (j == 0) -diameter * 0.5f else diameter * 0.5f, 0f)
-        val t = 2.0 * Math.PI * j / perCoil
-        return Pair((cos(t) * diameter * 0.5).toFloat(), (sin(t) * diameter * 0.5).toFloat())
-    }
+    /** Rim [j]'s offset from its coil's centre along the coil, in the xy plane. */
+    private fun ringOffset(j: Int): Pair<Float, Float> = Pair(if (j == 0) -diameter * 0.5f else diameter * 0.5f, 0f)
 
     /**
      * Steps the whole simulation through one frame of [dt] in [substeps] substeps with this
@@ -289,26 +291,11 @@ class Slinky internal constructor(
     private fun normalOf(c: Int): Boolean {
         val s = state
         val a = first(c)
-        if (!ring) {
-            val ux = s.x[a + 1] - s.x[a]
-            val uy = s.y[a + 1] - s.y[a]
-            val l = sqrt(ux * ux + uy * uy)
-            if (l < 1e-9f) return false
-            normal[0] = uy / l; normal[1] = -ux / l; normal[2] = 0f
-            return true
-        }
-        val h = perCoil / 2
-        val q = perCoil / 4
-        // (p0 - p_half) x (p_quarter - p_threeQuarter): for the rest ring, x × z = -y, toward coil c + 1.
-        val ax = s.x[a] - s.x[a + h]; val ay = s.y[a] - s.y[a + h]; val az = s.z[a] - s.z[a + h]
-        val q1 = a + q; val q3 = a + (q + h) % perCoil
-        val bx = s.x[q1] - s.x[q3]; val by = s.y[q1] - s.y[q3]; val bz = s.z[q1] - s.z[q3]
-        val nx = ay * bz - az * by
-        val ny = az * bx - ax * bz
-        val nz = ax * by - ay * bx
-        val l = sqrt(nx * nx + ny * ny + nz * nz)
-        if (l < 1e-12f) return false
-        normal[0] = nx / l; normal[1] = ny / l; normal[2] = nz / l
+        val ux = s.x[a + 1] - s.x[a]
+        val uy = s.y[a + 1] - s.y[a]
+        val l = sqrt(ux * ux + uy * uy)
+        if (l < 1e-9f) return false
+        normal[0] = uy / l; normal[1] = -ux / l; normal[2] = 0f
         return true
     }
 
@@ -326,63 +313,14 @@ class Slinky internal constructor(
         s.x[j] -= dx * corr * wj; s.y[j] -= dy * corr * wj; s.z[j] -= dz * corr * wj
     }
 
-    /** Separates [i] and [j] by [c] along [normal], mass-weighted, on position only. */
-    private fun push(i: Int, j: Int, c: Float) {
-        val wi = w(i)
-        val wj = w(j)
-        val ws = wi + wj
-        if (ws == 0f) return
-        val fi = wi / ws
-        val fj = wj / ws
-        val s = state
-        val nx = normal[0]; val ny = normal[1]; val nz = normal[2]
-        s.x[i] -= nx * c * fi; s.y[i] -= ny * c * fi; s.z[i] -= nz * c * fi
-        s.x[j] += nx * c * fj; s.y[j] += ny * c * fj; s.z[j] += nz * c * fj
-    }
-
-    private val chord1 by lazy { if (ring) (diameter * sin(Math.PI / perCoil)).toFloat() else diameter }
-    private val chord2 by lazy { if (ring) (diameter * sin(2.0 * Math.PI / perCoil)).toFloat() else diameter }
-
     internal fun project() {
         val s = state
         val limit = pitch
         repeat(max(1, passes)) {
-            // The ring: each coil held at its shape, by its edges, its second neighbours and its
-            // diameters (with 2 particles, just the one rung).
-            for (c in 0 until coils) {
-                val a = first(c)
-                if (!ring) { holdDistance(a, a + 1, diameter); continue }
-                for (j in 0 until perCoil) {
-                    holdDistance(a + j, a + (j + 1) % perCoil, chord1)
-                    holdDistance(a + j, a + (j + 2) % perCoil, chord2)
-                    if (j < perCoil / 2) holdDistance(a + j, a + j + perCoil / 2, diameter)
-                }
-            }
-            // Shear: neighbouring centres stay on one axis. The offset of coil c + 1's centre from
-            // coil c's, across coil c's normal, is taken out, a fraction `alignment` per pass.
-            if (alignment > 0f) for (c in 0 until coils - 1) {
-                if (!normalOf(c)) continue
-                val c0 = centre(c)
-                val c1 = centre(c + 1)
-                var ox = c1.x - c0.x; var oy = c1.y - c0.y; var oz = c1.z - c0.z
-                val along = ox * normal[0] + oy * normal[1] + oz * normal[2]
-                ox -= along * normal[0]; oy -= along * normal[1]; oz -= along * normal[2]
-                val ol = sqrt(ox * ox + oy * oy + oz * oz)
-                if (ol < 1e-9f) continue
-                val amount = min(ol * alignment, limit)
-                shiftCoils(c, ox / ol, oy / ol, oz / ol, amount)
-            }
-            // Contact: particle to particle along the lower coil's normal, at least one pitch apart.
-            for (c in 0 until coils - 1) {
-                if (!normalOf(c)) continue
-                val a = first(c)
-                for (j in 0 until perCoil) {
-                    val i = a + j
-                    val k = i + perCoil
-                    val gap = (s.x[k] - s.x[i]) * normal[0] + (s.y[k] - s.y[i]) * normal[1] + (s.z[k] - s.z[i]) * normal[2]
-                    if (gap < pitch) push(i, k, min(pitch - gap, limit))
-                }
-            }
+            // Each coil's rung held at the diameter.
+            for (c in 0 until coils) holdDistance(first(c), first(c) + 1, diameter)
+            // Contact: each particle of coil c + 1 rests at least one pitch above coil c's face.
+            for (c in 0 until coils - 1) contactOnFace(c, limit)
             restingOn?.let { set ->
                 set.relax(s)
                 relaxEdges(set)
@@ -390,21 +328,55 @@ class Slinky internal constructor(
         }
     }
 
-    /** Moves coil [c] by `+d * amount` and coil c + 1 by `-d * amount`, split by mass. */
-    private fun shiftCoils(c: Int, dx: Float, dy: Float, dz: Float, amount: Float) {
+    /**
+     * The side-on contact between coil [c] and coil c + 1, as a constraint with its whole gradient.
+     *
+     * Rim `k` of coil c + 1 must sit at least [pitch] above coil c's face: `C = (x_k - x_i) · n - pitch >= 0`,
+     * with `x_i` the matching rim of coil c and `n` coil c's normal. That normal turns with coil c's
+     * rung, so the constraint has a gradient at *both* of coil c's rims, not only at `x_i`: pushing
+     * on the face at a point `s = (x_k - x_i) · t` along the rung from `x_i` turns the rung like a
+     * lever. Every gradient lies along `n` and they sum to zero, so the push conserves momentum and
+     * angular momentum and, being a projection, can only take energy out.
+     *
+     * The first version pushed `x_i` and `x_k` apart along `n` and left the rung's turning out. It
+     * did work on the spring at every contact — measured, a free slinky's energy grew twentyfold in
+     * two seconds — and that work, not the physics, was what kept the old gait going. Measuring
+     * the gap as a plain distance instead conserves energy but is blind to direction: the coils of
+     * a shut stack roll round each other's rims and the stack slides flat like a deck of cards.
+     */
+    private fun contactOnFace(c: Int, limit: Float) {
         val s = state
         val a = first(c)
-        val b = a + perCoil
-        var wl = 0f
-        var wu = 0f
-        for (j in 0 until perCoil) { wl += w(a + j); wu += w(b + j) }
-        val ws = wl + wu
-        if (ws == 0f) return
-        val fl = wl / ws * amount
-        val fu = wu / ws * amount
-        for (j in 0 until perCoil) {
-            if (w(a + j) != 0f) { s.x[a + j] += dx * fl; s.y[a + j] += dy * fl; s.z[a + j] += dz * fl }
-            if (w(b + j) != 0f) { s.x[b + j] -= dx * fu; s.y[b + j] -= dy * fu; s.z[b + j] -= dz * fu }
+        val b = a + 1
+        for (side in 0 until 2) {
+            val ux = s.x[b] - s.x[a]
+            val uy = s.y[b] - s.y[a]
+            val len = sqrt(ux * ux + uy * uy)
+            if (len < 1e-9f) return
+            val tx = ux / len
+            val ty = uy / len
+            val nx = ty
+            val ny = -tx
+            val i = a + side
+            val k = i + perCoil
+            val dx = s.x[k] - s.x[i]
+            val dy = s.y[k] - s.y[i]
+            val gap = dx * nx + dy * ny
+            if (gap >= pitch) continue
+            // d(gap)/d(rung) = -(d · t) n / |u|; the rung is u = x_b - x_a.
+            val lever = (dx * tx + dy * ty) / len
+            val gk = 1f
+            val ga = (if (side == 0) -1f else 0f) + lever
+            val gb = (if (side == 1) -1f else 0f) - lever
+            val wa = w(a)
+            val wb = w(b)
+            val wk = w(k)
+            val denom = wa * ga * ga + wb * gb * gb + wk * gk * gk
+            if (denom < 1e-12f) continue
+            val lambda = min(pitch - gap, limit) / denom
+            s.x[a] += nx * lambda * wa * ga; s.y[a] += ny * lambda * wa * ga
+            s.x[b] += nx * lambda * wb * gb; s.y[b] += ny * lambda * wb * gb
+            s.x[k] += nx * lambda * wk * gk; s.y[k] += ny * lambda * wk * gk
         }
     }
 
@@ -425,9 +397,9 @@ class Slinky internal constructor(
         }
     }
 
-    /** Where between neighbouring particles of a coil the colliders also see it (2: along the rung). */
-    private val edgeSamples: FloatArray get() = if (ring) floatArrayOf(0.5f) else floatArrayOf(0.25f, 0.5f, 0.75f)
-    private val edgesPerCoil: Int get() = if (ring) perCoil else 1
+    /** Where along each coil's rung the colliders also see it. */
+    private val edgeSamples = floatArrayOf(0.25f, 0.5f, 0.75f)
+    private val edgesPerCoil = 1
     private val samples: SimdVerlet.State3 by lazy { SimdVerlet.State3.empty(coils * edgesPerCoil * edgeSamples.size, withInvMass = false) }
 
     /**
@@ -447,7 +419,7 @@ class Slinky internal constructor(
         if (q.size != n) q.resize(n)
         fun ends(c: Int, edge: Int): Pair<Int, Int> {
             val a = first(c)
-            return if (ring) Pair(a + edge, a + (edge + 1) % perCoil) else Pair(a, a + 1)
+            return Pair(a, a + 1)
         }
         for (c in 0 until coils) for (edge in 0 until e) for (k in 0 until m) {
             val (i0, i1) = ends(c, edge)
@@ -463,6 +435,14 @@ class Slinky internal constructor(
         val bx = q.x.copyOf(n)
         val by = q.y.copyOf(n)
         set.relax(q)
+        // Every sample that a collider moved votes for a correction at the two particles its edge
+        // runs between, weighted by how near it is to each; a particle takes the weighted *mean* of
+        // its votes. Adding them instead (the least-squares split per sample, summed) moved a rung
+        // lying flat on a tread out by up to 2.6 times its penetration — three samples, each
+        // pushing both ends the whole way — and every landing bounced back up with energy it never had.
+        val cx = corrX
+        val cy = corrY
+        val cw = corrW
         for (c in 0 until coils) for (edge in 0 until e) for (k in 0 until m) {
             val j = (c * e + edge) * m + k
             val dx = q.x[j] - bx[j]
@@ -470,14 +450,28 @@ class Slinky internal constructor(
             if (dx == 0f && dy == 0f) continue
             val (i0, i1) = ends(c, edge)
             val t = ts[k]
-            val wa = if (w(i0) == 0f) 0f else 1f - t
-            val wb = if (w(i1) == 0f) 0f else t
-            val norm = wa * wa + wb * wb
-            if (norm == 0f) continue
-            s.x[i0] += dx * wa / norm; s.y[i0] += dy * wa / norm
-            s.x[i1] += dx * wb / norm; s.y[i1] += dy * wb / norm
+            val wa = 1f - t
+            val wb = t
+            val a = i0 - base
+            val b = i1 - base
+            cx[a] += dx * wa; cy[a] += dy * wa; cw[a] += wa
+            cx[b] += dx * wb; cy[b] += dy * wb; cw[b] += wb
+        }
+        for (p in 0 until perCoil * coils) {
+            val wsum = cw[p]
+            if (wsum == 0f) continue
+            val i = base + p
+            if (w(i) != 0f) {
+                s.x[i] += cx[p] / wsum
+                s.y[i] += cy[p] / wsum
+            }
+            cx[p] = 0f; cy[p] = 0f; cw[p] = 0f
         }
     }
+
+    private val corrX by lazy { FloatArray(perCoil * coils) }
+    private val corrY by lazy { FloatArray(perCoil * coils) }
+    private val corrW by lazy { FloatArray(perCoil * coils) }
 
     /**
      * Coils that touch stop against each other: for every particle pair at contact distance, the
@@ -518,7 +512,7 @@ class Slinky internal constructor(
 
     /**
      * The spring as coloured lines, one per coil, running red to violet from coil 0 — the side
-     * view of a rainbow slinky. A ring is drawn as its outline projected onto the xy plane.
+     * view of a rainbow slinky.
      */
     fun lines(thickness: Double = 2.2, rails: Boolean = true): List<FLine> = synchronized(lock) {
         val out = ArrayList<FLine>(coils + 2)
@@ -537,7 +531,6 @@ class Slinky internal constructor(
             val line = FLine()
             line.moveTo(state.x[a], state.y[a], 0f)
             for (j in 1 until perCoil) line.lineTo(state.x[a + j], state.y[a + j], 0f)
-            if (ring) line.lineTo(state.x[a], state.y[a], 0f)
             line.color = rainbow(c.toFloat() / max(1, coils - 1))
             line.thickness = thickness
             out += line
@@ -572,9 +565,9 @@ class Slinky internal constructor(
          * Appends a shut slinky standing on its coil 0, centred on [x] with coil 0 at height [y]
          * and the stack rising toward -y (the solver's "up", against `gravity`). See [Slinky].
          *
-         * @param stiffness rail spring constant between neighbouring coils, for the whole turn.
+         * @param stiffness rail spring constant between neighbouring rims.
          * @param preload fraction of [pitch] the rails are pre-shortened by.
-         * @param perCoil particles around each turn; see [Slinky.perCoil].
+         * @param shearStiffness the crossed diagonals' spring constant; see [Slinky.shearStiffness].
          * @param constraints constraint set to wire into; defaults to [SimdVerlet.constraints4].
          */
         fun addTo(
@@ -589,17 +582,17 @@ class Slinky internal constructor(
             y: Float = 0f,
             constraints: SimdVerlet.DirectedConstraints4? = sim.constraints4,
             name: String? = null,
-            perCoil: Int = 2,
+            shearStiffness: Float = 16000f,
         ): Slinky {
             require(coils >= 2) { "a slinky needs at least 2 coils, got $coils" }
             require(diameter > 0f && pitch > 0f && mass > 0f) { "diameter, pitch and mass must be > 0" }
             require(mass == 1f || sim.state.invMass != null) { "mass != 1 needs a State3 with an invMass array" }
             val base = sim.size
-            // Total mass is the same whatever perCoil is: each particle carries 2 / perCoil of a rim.
-            val m = mass * 2f / perCoil
+            val perCoil = 2
+            val m = mass
             sim.state.ensureCapacity(base + perCoil * coils)
             val set = (constraints ?: SimdVerlet.DirectedConstraints4.ofCapacity(base + perCoil * coils))
-            val slinky = Slinky(sim, coils, base, diameter, pitch, m, set, name ?: "slinky@$base", perCoil)
+            val slinky = Slinky(sim, coils, base, diameter, pitch, m, set, name ?: "slinky@$base")
             for (c in 0 until coils) {
                 val cy = y - pitch * 0.5f - c * pitch
                 for (j in 0 until perCoil) sim.addParticle(x0 = x, y0 = cy, invMass0 = 1f / m)
@@ -613,6 +606,7 @@ class Slinky internal constructor(
             sim.constraints4 = set
             for (i in base until base + perCoil * coils) set.clearSlots(i)
             slinky.preload = preload
+            slinky.shearStiffness = shearStiffness
             slinky.stiffness = stiffness
             sim.addPositionProjection(slinky.name) { _, _ -> slinky.project() }
             return slinky
@@ -632,114 +626,163 @@ fun SimdVerlet.addSlinky(
     y: Float = 0f,
     constraints: SimdVerlet.DirectedConstraints4? = this.constraints4,
     name: String? = null,
-    perCoil: Int = 2,
-): Slinky = Slinky.addTo(this, coils, diameter, pitch, stiffness, preload, mass, x, y, constraints, name, perCoil)
+    shearStiffness: Float = 16000f,
+): Slinky = Slinky.addTo(this, coils, diameter, pitch, stiffness, preload, mass, x, y, constraints, name, shearStiffness)
 
 /**
  * A [Slinky] on a [StaircaseCollider]: the scene for "walk down the stairs" and, with a
- * [stepPeriod], for "walk down an up escalator, forever".
+ * [stepPeriod], for "walk down an up escalator".
  *
- * The slinky starts shut on step 0 near its edge and is tipped forward over it at [tipSpeed], the
- * flick a person gives one. From then on it is on its own.
+ * The slinky starts shut on step 0 near its edge. For the first [handTime] seconds a hand holds
+ * its top coil and lifts it over in an arc onto the next step down, the way a person starts one;
+ * then it lets go, and from there the slinky is on its own. If the scene has a [stepPeriod], the
+ * escalator starts at that moment.
  *
- * #### Why the air matters
+ *     val scene = SlinkyOnStairs()
+ *     loop { scene.step(); showPlane(scene.lines()) }
  *
- * An endless escalator moving at a constant speed is an inertial frame: ride along with the treads
- * and they are still stairs. Gravity, the spring, the coil contacts and the friction against the
- * treads (computed relative to the moving surface; see [Collider.velocityX]) are all the same in
- * that frame, so *on its own the escalator's speed changes nothing about the walk*. The one force
- * that knows which frame is at rest is drag against the air, [Slinky.velocityKeptPerSecond]. It
- * is what couples the gait to the escalator: a slinky falling behind is carried up through the air
- * and the drag pushes it down the treads, one getting ahead is slowed. With enough of it, the
- * gait locks to the escalator over a range of speeds; with none, the slinky either stops or speeds
- * up step on step until it tumbles, as it would on still stairs. [air] sets it.
+ * #### The walk
+ *
+ * The top coils fall over the edge and pull the rest after them; the bottom coils lift, arc over
+ * and land past the others, and that end is now the top. Each flip spends the drop in height on
+ * the spring, the landing and the air. On these stairs the walk is self-sustaining: the slinky
+ * speeds up into a stride that covers two or three steps a flip, at about ten steps a second, and
+ * keeps that rhythm for a hundred flips or more. With taller steps, longer treads or a weaker
+ * spring it can also lose the rhythm, stand still on a tread, or tumble over the nosing — the
+ * same ways a real slinky fails.
+ *
+ * #### The escalator
+ *
+ * An escalator moving at a constant speed is an inertial frame: ride along with the treads and
+ * they are still stairs. Gravity, the spring, the coil contacts and the friction against the
+ * treads (computed relative to the moving surface; see [Collider.velocityX]) are the same in that
+ * frame, so the escalator is started with every particle given the treads' velocity, and the one
+ * force that tells the two frames apart is drag against the air, [air]. It is weak, so the walk
+ * keeps its own rhythm, and an escalator that is not matched to it either carries the slinky up
+ * or is outrun by it.
  *
  * #### Measuring
  *
- * [stepsDescended] is the score: how many steps down the flight the slinky's centre of mass has
- * gone *relative to the treads*. A slinky that matches the escalator keeps a constant world
- * position while this climbs by one per [stepPeriod]. [height] is the centre of mass's world
- * height, +y up, which is flat-with-a-ripple when the walk matches, rises when the escalator
- * carries a stalled slinky up, and falls when it tumbles away.
- *
- * The defaults are a matched walk, found by sweeping [stepPeriod]: `dev_docs/physics/SLINKY_ESCALATOR.md`
- * has the sweep.
+ * [flips] counts the times the two end coils swap which one is lower by more than half a rise.
+ * [stepsDescended] is how many steps down the flight the slinky's centre of mass has gone
+ * *relative to the treads*; on still stairs that is simply steps walked. [height] is the centre of
+ * mass's world height, +y up.
  *
  * @param run tread depth, in coil diameters.
  * @param rise step height, in coil diameters.
- * @param stepPeriod seconds per step of escalator motion; `0f` is still stairs.
- * @param air the fraction of its world velocity a rim keeps per second; see the note above.
+ * @param stepPeriod seconds per step of escalator motion, from the moment the hand lets go; `0f`
+ *   is still stairs.
+ * @param air the fraction of its world velocity a particle keeps per second.
+ * @param reach how far forward of the stack, in diameters, the hand puts the top coil down.
  */
 class SlinkyOnStairs(
-    run: Float = 2.5f,
-    rise: Float = 1.5f,
-    stepPeriod: Float = 0.575f,
+    run: Float = 1.5f,
+    rise: Float = 1.1f,
+    stepPeriod: Float = 0f,
     coils: Int = 40,
-    stiffness: Float = 16000f,
-    preload: Float = 0.7f,
-    friction: Float = 0.6f,
-    /** The speed the top of the stack is tipped forward at, in diameters per second, to start it. */
-    val tipSpeed: Float = 6f,
-    air: Float = 0.01f,
-    // Particles around each turn; see Slinky.perCoil.
-    perCoil: Int = 2,
+    stiffness: Float = 32000f,
+    preload: Float = 0.5f,
+    shearStiffness: Float = 16000f,
+    friction: Float = 1f,
+    air: Float = 0.9f,
+    /** Seconds the hand takes to lift the top coil over; `0f` lets the stack stand as it is. */
+    val handTime: Float = 0.6f,
+    val reach: Float = 0.5f * run + 0.4f,
+    /** How far above the straight line from start to finish the hand's arc rises, in diameters. */
+    val lift: Float = 1.5f,
 ) {
     val sim = SimdVerlet(SimdVerlet.State3.empty())
     val stairs = StaircaseCollider(run, rise).also {
         it.friction = friction
         it.margin = 0.0125f
-        it.stepPeriod = stepPeriod
     }
     val slinky: Slinky
 
     /**
-     * The stairs' projection pass. Registered *after* the slinky's coil pass, and handed to the
-     * slinky as [Slinky.restingOn], so the stairs have the last word in every pass: the other way
-     * round, the coil contact pushes coil 0 back into the tread a little every substep and the
-     * stack sinks through the step under its own weight.
+     * The stairs' projection pass, also handed to the slinky as [Slinky.restingOn] so the stairs
+     * have the last word after each coil pass; otherwise the coil contact pushes coil 0 back into
+     * the tread a little every pass and the stack sinks through the step under its own weight.
      */
     val colliders: ColliderSet
 
     private val startX: Float = run - 0.65f
+
+    /** The escalator's step period once the hand has let go. */
+    private var escalatorPeriod = stepPeriod
 
     /** Simulated seconds since the start. */
     var time = 0f
         private set
 
     init {
-        slinky = sim.addSlinky(coils = coils, stiffness = stiffness, preload = preload, x = startX, y = -stairs.margin, perCoil = perCoil)
-        slinky.velocityKeptPerSecond = air
+        // The stairs' pass is registered first, so they move before the coil pass projects
+        // against them; the other way round, the coil pass meets the treads where they were a
+        // substep ago, and on an escalator every contact is a third of a coil off.
         colliders = sim.addColliders(stairs)
+        slinky = sim.addSlinky(coils = coils, stiffness = stiffness, preload = preload, x = startX, y = -stairs.margin,
+            shearStiffness = shearStiffness)
+        slinky.velocityKeptPerSecond = air
         slinky.restingOn = colliders
-        if (tipSpeed != 0f) tip()
+        if (handTime > 0f) slinky.hold(coils - 1)
     }
 
-    /** Sets every rim moving as if the stack were turning forward about its +x rim on coil 0. */
-    private fun tip() {
-        val pivotX = startX + slinky.diameter * 0.5f
-        val pivotY = -stairs.margin
-        val omega = tipSpeed / (slinky.coils * slinky.pitch)
-        val h = 1f / (60f * slinky.substeps)
+    private val top get() = slinky.coils - 1
+    private val from by lazy { slinky.centre(top) }
+    private var letGo = false
+
+    /** Where the hand has the top coil's centre and turn at time [t]: an arc over onto the next step. */
+    private fun hand(t: Float): Triple<Float, Float, Float> {
+        val u = (t / handTime).coerceIn(0f, 1f)
+        val e = 0.5f - 0.5f * cos(Math.PI.toFloat() * u)
+        val x = from.x + reach * e
+        val y = from.y + (stairs.rise - slinky.pitch * 0.5f - from.y) * e - lift * sin(Math.PI.toFloat() * u)
+        return Triple(x, y, Math.PI.toFloat() * e)
+    }
+
+    /**
+     * Moves the held top coil one substep of [h] further along the hand's arc. A held particle
+     * still integrates its own velocity, so it is given exactly the velocity that carries it from
+     * where it is to the hand's next position in one substep.
+     */
+    private fun carry(h: Float) {
         val st = sim.state
-        for (i in slinky.base until slinky.end) {
-            // Clockwise on screen with y down: v = omega * (-ry, rx).
-            val rx = st.x[i] - pivotX
-            val ry = st.y[i] - pivotY
-            st.px[i] = st.x[i] + ry * omega * h
-            st.py[i] = st.y[i] - rx * omega * h
+        val n = slinky.perCoil
+        val ox = FloatArray(n) { st.x[slinky[top, it]] }
+        val oy = FloatArray(n) { st.y[slinky[top, it]] }
+        val oz = FloatArray(n) { st.z[slinky[top, it]] }
+        val (x, y, angle) = hand(time + h)
+        slinky.moveHeld(top, x, y, angle)
+        for (k in 0 until n) {
+            val i = slinky[top, k]
+            st.px[i] = 2f * ox[k] - st.x[i]; st.py[i] = 2f * oy[k] - st.y[i]; st.pz[i] = 2f * oz[k] - st.z[i]
+            st.x[i] = ox[k]; st.y[i] = oy[k]; st.z[i] = oz[k]
         }
     }
 
-    /** The escalator's step period; `0f` stops it. Live. */
+    /** Lets go of the top coil and, on an escalator, starts it, giving everything the treads' velocity. */
+    private fun release(h: Float) {
+        letGo = true
+        if (slinky.isHeld(top)) slinky.release(top)
+        if (escalatorPeriod == 0f) return
+        stepPeriod = escalatorPeriod
+        val st = sim.state
+        for (i in slinky.base until slinky.end) {
+            st.px[i] -= stairs.velocityX * h
+            st.py[i] -= stairs.velocityY * h
+        }
+    }
+
+    /** The escalator's step period; `0f` stops it. Live, once the hand has let go. */
     var stepPeriod: Float
-        get() = stairs.stepPeriod
+        get() = if (letGo) stairs.stepPeriod else escalatorPeriod
         set(value) {
+            if (!letGo) { escalatorPeriod = value; return }
             travelled += stairsTravelSteps()
             travelStart = time
             stairs.stepPeriod = value
         }
 
-    /** Fraction of its world velocity a rim keeps per second. Live; see the class KDoc. */
+    /** Fraction of its world velocity a particle keeps per second. Live. */
     var air: Float
         get() = slinky.velocityKeptPerSecond
         set(value) {
@@ -750,7 +793,7 @@ class SlinkyOnStairs(
     private var travelStart = 0f
     private fun stairsTravelSteps(): Float = if (stairs.stepPeriod == 0f) 0f else (time - travelStart) / stairs.stepPeriod
 
-    /** Steps the escalator has carried a tread up since the start. */
+    /** Steps the escalator has carried a tread up since the hand let go. */
     val stairsTravelled: Float get() = travelled + stairsTravelSteps()
 
     /** Steps down the flight, relative to the treads, that the slinky's centre of mass has gone. */
@@ -759,10 +802,44 @@ class SlinkyOnStairs(
     /** World height of the centre of mass, +y up (the negated solver y). */
     val height: Float get() = -slinky.centroid().y
 
-    /** One frame of [dt], in [Slinky.substeps] substeps. */
+    /** End-over-end flips so far; see the class KDoc. */
+    var flips = 0
+        private set
+
+    /** The time of each flip, in simulated seconds. */
+    val flipTimes = ArrayList<Float>()
+
+    private var lowerEnd = 0
+
+    /**
+     * Substeps per simulated second. [step] runs whatever frame it is given as substeps of this
+     * length, and the hand moves per substep, so the motion does not depend on the frame: a frame
+     * of 1/300 s, shown at 60 frames a second, is the same walk as frames of 1/60 s at a fifth of
+     * the speed.
+     */
+    var substepRate = 600f
+
+    /** One frame of [dt], rounded to a whole number of substeps of `1 / substepRate`. */
     fun step(dt: Float = 1f / 60f, gravity: Float = 146f) {
-        slinky.step(dt, gravity = gravity)
-        time += dt
+        val n = max(1, Math.round(dt * substepRate))
+        val h = 1f / substepRate
+        slinky.substeps = 1
+        repeat(n) {
+            if (!letGo) {
+                if (time < handTime) carry(h) else release(h)
+            }
+            slinky.step(h, gravity = gravity)
+            time += h
+        }
+        val y0 = slinky.centre(0).y
+        val yN = slinky.centre(top).y
+        val half = 0.5f * stairs.rise
+        val now = if (y0 > yN + half) 1 else if (yN > y0 + half) -1 else lowerEnd
+        if (lowerEnd != 0 && now != lowerEnd) {
+            flips++
+            flipTimes += time
+        }
+        lowerEnd = now
     }
 
     /**

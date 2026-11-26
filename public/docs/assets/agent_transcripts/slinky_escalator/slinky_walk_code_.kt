@@ -1,53 +1,58 @@
 import afield.simulation.physics.*
 
-// The three things worth turning: the escalator's speed, as seconds per step; the step height;
-// and the spring constant between neighbouring coils. Lengths are in coil diameters.
-var stepPeriod = 0.575f
-var rise = 1.5f
-var stiffness = 16000f
+// Lengths are in coil diameters. The slow-motion factor changes only how fast the picture runs.
+var run = 1.5f
+var rise = 1.1f
+var stiffness = 32000f
+var stepPeriod = 0f
+var slowMotion = 5
 
-fun start() = SlinkyOnStairs(stepPeriod = stepPeriod, rise = rise, stiffness = stiffness)
+fun start() = SlinkyOnStairs(run = run, rise = rise, stiffness = stiffness, stepPeriod = stepPeriod)
 var scene = start()
 
-controlGroup("escalator") {
-    slider("seconds per step", min = 0.2, max = 1.5, step = 0.005, initialValue = 0.575) {
-        stepPeriod = it.toFloat()
-        scene.stepPeriod = stepPeriod
+controlGroup("slinky") {
+    slider("tread depth", min = 1.2, max = 2.6, step = 0.05, initialValue = 1.5) {
+        run = it.toFloat()
+        scene = start()
     }
-    slider("step rise", min = 0.8, max = 2.5, step = 0.05, initialValue = 1.5) {
+    slider("step rise", min = 0.6, max = 3.0, step = 0.05, initialValue = 1.1) {
         rise = it.toFloat()
-        scene.stairs.rise = rise
+        scene = start()
     }
-    slider("spring constant", min = 4000.0, max = 30000.0, step = 500.0, initialValue = 16000.0) {
+    slider("spring constant", min = 8000.0, max = 48000.0, step = 1000.0, initialValue = 32000.0) {
         stiffness = it.toFloat()
-        scene.slinky.stiffness = stiffness
+        scene = start()
     }
+    // The escalator: 0 is still stairs; about 0.09 matches the default walk.
+    slider("seconds per step", min = 0.0, max = 0.3, step = 0.005, initialValue = 0.0) {
+        stepPeriod = it.toFloat()
+        scene = start()
+    }
+    slider("slow motion", min = 1.0, max = 10.0, step = 1.0, initialValue = 5.0) { slowMotion = it.toInt() }
     button("start again") { down -> if (down) scene = start() }
 }
 
-// The loop can come round far more often than 60 times a second; the physics keeps to the clock.
-val clock = System.nanoTime()
-var simulated = 0.0
+// One frame of the picture every sixtieth of a second, each a slowMotion-th of a sixtieth of the walk.
+val clock = AnimationClock.nowSeconds()
+var shown = 0.0
 loop {
-    val now = (System.nanoTime() - clock) / 1e9
+    val now = AnimationClock.nowSeconds() - clock
     var catchUp = 0
-    while (simulated < now && catchUp++ < 4) {
-        scene.step()
-        simulated += 1.0 / 60.0
+    while (shown < now && catchUp++ < 4) {
+        scene.step(1f / 60f / slowMotion)
+        shown += 1.0 / 60.0
     }
-    simulated = maxOf(simulated, now - 0.1)
+    shown = maxOf(shown, now - 0.1)
 
-    // Follow the slinky, so a walk that keeps pace stays put and one that loses it drifts off.
     val c = scene.slinky.centroid()
-    val behind = scene.stairsTravelled - scene.stepsDescended
+    val carried = scene.stairsTravelled - scene.stepsDescended
     showPlane(
         scene.lines(),
-        window = Rect(c.x - 5.0, c.y - 4.0, 10.0, 7.0),
+        window = Rect(c.x - 5.0, c.y - 3.5, 10.0, 7.0),
         width = 720,
         height = 504,
-        title = "slinky on an up escalator · ${scene.stepPeriod.f3} s per step",
-        caption =
-            "t = ${scene.time.f1} s · walked ${scene.stepsDescended.f1} steps · " +
-                "escalator ${scene.stairsTravelled.f1} · behind by ${behind.f1}",
+        title = "a slinky walking down stairs · 1/$slowMotion speed",
+        caption = "t = ${scene.time.f2} s · ${scene.flips} flips · ${scene.stepsDescended.f1} steps down" +
+            (if (scene.stepPeriod > 0f) " · carried up ${carried.f1}" else ""),
     )
 }

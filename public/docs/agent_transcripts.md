@@ -712,12 +712,13 @@ run to completion, so CI launches it, advances 90 runloop frames, and stops it.
 
 ### slinky_escalator
 
-**A slinky walking down an up escalator.** A [`SlinkyOnStairs`](reference/simulation.md#slinky-kt-slinkyonstairs)
-in one `loop { }` box: forty rainbow coils on an endless staircase whose treads rise one step every
-0.575 s, with sliders for the escalator's speed, the step rise and the spring constant, and a
-button to start again. At the default speed the walk keeps pace and the slinky stays where it is;
-slow the escalator and it stalls between steps, speed it up and it is flung off the treads.
-[A slinky on an up escalator](physics.md#a-slinky-on-an-up-escalator) explains the model.
+**A slinky walking down stairs.** A [`SlinkyOnStairs`](reference/simulation.md#slinky-kt-slinkyonstairs)
+in one `loop { }` box: forty rainbow coils that a hand starts over the top step, then walk end
+over end down the flight on their own, shown at a fifth of their speed. Sliders set the tread
+depth, the step rise, the spring constant, an escalator's speed and the slow motion; a button
+starts it again. Set the escalator near 0.09 s per step and the slinky walks down it about as
+fast as it rises.
+[A slinky walking down stairs](physics.md#a-slinky-walking-down-stairs) explains the model.
 
 [Open →](offline.html?file=assets/agent_transcripts/slinky_escalator/metadata.edn)
 
