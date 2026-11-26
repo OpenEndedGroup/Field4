@@ -824,7 +824,6 @@
     highlightPromise = new Promise((resolve, reject) => {
       const script = document.createElement("script");
       script.src = HIGHLIGHT_URL;
-      script.crossOrigin = "anonymous";
       script.referrerPolicy = "no-referrer";
       script.onload = () => {
         registerFieldLanguages();
@@ -883,31 +882,15 @@
       }
       if (endRe.test(line)) {
         if (open) {
-          regions.push({ id: id++, start: open.start, end: out.length, label: open.label, expanded: false });
+          regions.push({ id: id++, start: open.start, end: out.length, label: open.label });
           open = null;
         }
         continue;
       }
       out.push(line);
     }
-    if (open) regions.push({ id: id++, start: open.start, end: out.length, label: open.label, expanded: false });
+    if (open) regions.push({ id: id++, start: open.start, end: out.length, label: open.label });
     return { code: out.join("\n"), regions };
-  }
-
-  function commonPrefixLen(aLines, bLines) {
-    const len = Math.min(aLines.length, bLines.length);
-    let i = 0;
-    while (i < len && aLines[i] === bLines[i]) i += 1;
-    return i;
-  }
-
-  function commonSuffixLen(aLines, bLines, skipPrefix = 0) {
-    const lenA = aLines.length;
-    const lenB = bLines.length;
-    const maxLen = Math.min(lenA, lenB) - skipPrefix;
-    let i = 0;
-    while (i < maxLen && aLines[lenA - 1 - i] === bLines[lenB - 1 - i]) i += 1;
-    return i;
   }
 
   function diffMyers(a, b) {
@@ -984,41 +967,41 @@
     return ops.reverse();
   }
 
-  function diffChars(a, b) {
-    const m = a.length;
-    const n = b.length;
-    const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
-    for (let i = m - 1; i >= 0; i--) {
-      for (let j = n - 1; j >= 0; j--) {
-        dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
-      }
-    }
+  function inlineReplacement(before, after) {
+    const tokens = (line) => line.match(/[\p{L}\p{N}_]+|\s+|[^\s]/gu) || [];
+    const edits = diffMyers(tokens(before), tokens(after));
+    const unchanged = edits.reduce((count, edit) => {
+      return count + (edit.type === "equal" ? edit.line.replace(/\s/g, "").length : 0);
+    }, 0);
+    const length = Math.max(before.replace(/\s/g, "").length, after.replace(/\s/g, "").length);
+    if (unchanged < 4 || unchanged < length * 0.6) return [];
+    return edits.filter((edit) => edit.type !== "delete")
+      .map((edit) => ({ type: edit.type, text: edit.line }));
+  }
 
-    const segs = [];
-    let i = 0;
-    let j = 0;
-    while (i < m || j < n) {
-      if (i < m && j < n && a[i] === b[j]) {
-        segs.push({ type: "eq", text: a[i] });
-        i += 1; j += 1;
-      } else if (j < n && (i === m || dp[i][j + 1] >= dp[i + 1][j])) {
-        segs.push({ type: "ins", text: b[j] });
-        j += 1;
-      } else {
-        segs.push({ type: "del", text: a[i] });
-        i += 1;
+  function matchReplacementLines(deletes, inserts) {
+    const matches = new Map();
+    // Large or ambiguous rewrites read better as line changes.
+    if (deletes.length * inserts.length > 128) return matches;
+    const candidates = [];
+    const oldCounts = new Map();
+    const newCounts = new Map();
+    for (const [oldIndex, before] of deletes.entries()) {
+      for (const [newIndex, after] of inserts.entries()) {
+        const segments = inlineReplacement(before, after);
+        if (!segments.length) continue;
+        candidates.push({ oldIndex, newIndex, segments });
+        oldCounts.set(oldIndex, (oldCounts.get(oldIndex) || 0) + 1);
+        newCounts.set(newIndex, (newCounts.get(newIndex) || 0) + 1);
       }
     }
-
-    const merged = [];
-    for (const s of segs) {
-      if (merged.length && merged[merged.length - 1].type === s.type) {
-        merged[merged.length - 1].text += s.text;
-      } else {
-        merged.push({ ...s });
-      }
+    const unique = candidates.filter(({ oldIndex, newIndex }) =>
+      oldCounts.get(oldIndex) === 1 && newCounts.get(newIndex) === 1);
+    for (const { oldIndex, newIndex, segments } of unique) {
+      if (unique.some((other) => (other.oldIndex - oldIndex) * (other.newIndex - newIndex) < 0)) continue;
+      matches.set(newIndex, segments);
     }
-    return merged;
+    return matches;
   }
 
   function buildSteps(from, to) {
@@ -1028,36 +1011,27 @@
 
     const stepsOut = [];
     let cursor = 0;
+    let sourceIndex = 0;
     for (let i = 0; i < ses.length;) {
       const op = ses[i];
       if (op.type === "equal") {
         cursor += 1;
+        sourceIndex += 1;
         i += 1;
         continue;
       }
 
-      const idx = cursor;
-      const dels = [];
-      const ins = [];
-
-      while (i < ses.length && ses[i].type === "delete") {
-        dels.push(ses[i].line);
-        i += 1;
+      const deletes = [];
+      const inserts = [];
+      while (i < ses.length && ses[i].type !== "equal") {
+        const edit = ses[i++];
+        (edit.type === "delete" ? deletes : inserts).push(edit.line);
       }
-      while (i < ses.length && ses[i].type === "insert") {
-        ins.push(ses[i].line);
-        i += 1;
-      }
-
-      if (dels.length && ins.length) {
-        stepsOut.push({ kind: "replace", index: idx, deletes: dels, inserts: ins });
-        cursor += ins.length;
-      } else if (dels.length) {
-        stepsOut.push({ kind: "delete", index: idx, deletes: dels });
-      } else if (ins.length) {
-        stepsOut.push({ kind: "insert", index: idx, inserts: ins });
-        cursor += ins.length;
-      }
+      const kind = deletes.length ? (inserts.length ? "replace" : "delete") : "insert";
+      const inline = matchReplacementLines(deletes, inserts);
+      stepsOut.push({ kind, index: cursor, sourceIndex, deletes, inserts, inline });
+      sourceIndex += deletes.length;
+      cursor += inserts.length;
     }
 
     return stepsOut;
@@ -1152,13 +1126,13 @@
           const take = Math.min(remainingSeg, remainingText);
           const chunk = text.slice(pos, pos + take);
 
-          if (seg.type === "eq") {
-            parts.push(document.createTextNode(chunk));
-          } else {
+          if (seg.type === "insert") {
             const span = document.createElement("span");
-            span.className = seg.type === "ins" ? "ch-ins" : "ch-del";
+            span.className = "ch-ins";
             span.textContent = chunk;
             parts.push(span);
+          } else {
+            parts.push(document.createTextNode(chunk));
           }
 
           pos += take;
@@ -1197,31 +1171,24 @@
         ? options.startLine
         : 1;
       this.codeStart = options.before || "";
-      this.codeEnd = options.after || options.before || "";
+      this.codeEnd = options.after ?? options.before ?? "";
       // Pull out :::fold/:::endfold regions before anything else counts lines or diffs.
       const foldStart = parseFoldMarkers(this.codeStart);
       const foldEnd = parseFoldMarkers(this.codeEnd);
       this.codeStart = foldStart.code;
       this.codeEnd = foldEnd.code;
-      this.foldRegions = foldStart.regions;
+      this.foldsBefore = foldStart.regions;
+      this.foldsAfter = foldEnd.regions;
+      this.showFullCode = false;
+      this.expandedGaps = new Set();
       this.staticMode = Boolean(options.static) || this.codeStart === this.codeEnd;
-      this.showFinalFirst = options.showFinalFirst !== false; // default: render final state first
-      this.steps = buildSteps(this.codeStart, this.codeEnd);
+      this.steps = this.staticMode ? [] : buildSteps(this.codeStart, this.codeEnd);
       this.markers = new Map();
       this.inlineHighlights = new Map();
-      const startLines = toLines(this.codeStart);
-      const endLines = toLines(this.codeEnd);
-      const hasDiff = this.codeStart !== this.codeEnd;
-      this.prefixLen = hasDiff ? commonPrefixLen(startLines, endLines) : 0;
-      this.suffixLen = hasDiff ? commonSuffixLen(startLines, endLines, this.prefixLen) : 0;
-      this.foldTop = this.prefixLen > 2;
-      this.foldBottom = this.suffixLen > 2;
-      this.stateLines = this.staticMode || !this.showFinalFirst ? [...startLines] : [...endLines];
-      this.currentStep = 0;
-      this.timer = null;
+      this.stateLines = toLines(this.codeStart);
+      this.appliedSteps = 0;
       this.isPlaying = false;
-      this.debug = options.debug || false;
-      if (this.showFinalFirst && !this.staticMode && this.steps.length) {
+      if (options.showFinalFirst !== false && this.steps.length) {
         this.fastForwardToEnd();
       }
       this.buildDom();
@@ -1235,18 +1202,34 @@
       const codeWrap = document.createElement("div");
       codeWrap.className = "code-diff-wrap";
 
-      const actionsBottom = document.createElement("div");
-      actionsBottom.className = "code-diff-actions-bottom";
+      const actions = document.createElement("div");
+      actions.className = this.staticMode ? "code-diff-actions-bottom" : "code-diff-toolbar";
       this.copyBtn = document.createElement("button");
+      this.copyBtn.type = "button";
       this.copyBtn.className = "code-diff-copy";
       this.copyBtn.title = "Copy to clipboard";
       this.copyBtn.setAttribute("aria-label", "Copy code");
-      actionsBottom.appendChild(this.copyBtn);
-      this.playBtn = document.createElement("button");
-      this.playBtn.className = "code-diff-btn play-icon";
-      this.playBtn.textContent = this.showFinalFirst ? "▶" : "▶";
-      this.playBtn.setAttribute("aria-label", "Play diff");
-      actionsBottom.appendChild(this.playBtn);
+
+      if (!this.staticMode) {
+        this.playBtn = document.createElement("button");
+        this.playBtn.type = "button";
+        this.playBtn.className = "code-diff-btn code-diff-play";
+        this.playBtn.title = "Replay changes";
+        this.playBtn.setAttribute("aria-label", this.playBtn.title);
+        this.playBtn.addEventListener("click", () => this.play());
+        actions.appendChild(this.playBtn);
+
+        this.fullCodeBtn = document.createElement("button");
+        this.fullCodeBtn.type = "button";
+        this.fullCodeBtn.className = "code-diff-btn code-diff-full";
+        this.fullCodeBtn.addEventListener("click", () => {
+          this.showFullCode = !this.showFullCode;
+          this.expandedGaps.clear();
+          this.render(this.stateLines);
+        });
+        actions.appendChild(this.fullCodeBtn);
+      }
+      actions.appendChild(this.copyBtn);
 
       const pre = document.createElement("pre");
       pre.className = "code-diff-pre";
@@ -1254,7 +1237,7 @@
       code.className = "hljs";
       pre.appendChild(code);
 
-      codeWrap.appendChild(actionsBottom);
+      codeWrap.appendChild(actions);
       codeWrap.appendChild(pre);
       wrap.appendChild(codeWrap);
       this.container.appendChild(wrap);
@@ -1262,23 +1245,33 @@
       this.codeEl = code;
       this.preEl = pre;
 
-      this.playBtn.addEventListener("click", () => this.play());
       this.copyBtn.addEventListener("click", () => this.copy());
+      this.container.classList.toggle("code-diff-static", this.staticMode);
+    }
 
-      if (this.staticMode || this.steps.length === 0) {
-        this.playBtn.style.display = "none";
-        this.container.classList.add("code-diff-static");
+    contextGaps(lineCount) {
+      if (!this.steps.length) return [];
+      const gaps = [];
+      const context = 3;
+      const lastApplied = this.steps[this.appliedSteps - 1];
+      const offset = lastApplied ? lastApplied.index + lastApplied.inserts.length
+        - lastApplied.sourceIndex - lastApplied.deletes.length : 0;
+      let visibleEnd = 0;
+      for (const [idx, step] of this.steps.entries()) {
+        const applied = idx < this.appliedSteps;
+        const start = applied ? step.index : step.sourceIndex + offset;
+        const count = applied ? step.inserts.length : step.deletes.length;
+        if (start - context - visibleEnd >= 3) gaps.push({ start: visibleEnd, end: start - context });
+        visibleEnd = Math.max(visibleEnd, Math.min(lineCount, start + count + context));
       }
+      if (lineCount - visibleEnd >= 3) gaps.push({ start: visibleEnd, end: lineCount });
+      return gaps;
     }
 
     render(lines, opts = {}) {
       const inserted = new Set(opts.inserted || []);
       const deleting = new Set(opts.deleting || []);
       const closing = new Set(opts.closing || []);
-      const inline = new Map(this.inlineHighlights);
-      if (opts.inline) {
-        for (const [k, v] of opts.inline.entries()) inline.set(k, v);
-      }
       const markers = new Map(this.markers);
       if (opts.markers) {
         for (const [k, v] of opts.markers.entries()) markers.set(k, v);
@@ -1287,12 +1280,9 @@
       const useHl = Boolean(window.hljs);
       const highlightedLines = useHl ? highlightLines(lines, this.language) : null;
 
-      const startIdx = this.foldTop ? this.prefixLen : 0;
-      const endIdx = this.foldBottom ? lines.length - this.suffixLen : lines.length;
-
       const renderLine = (idx) => {
         const line = lines[idx];
-        const segments = inline.get(idx);
+        const segments = this.inlineHighlights.get(idx);
         let content;
 
         if (segments && segments.length) {
@@ -1318,73 +1308,47 @@
         return `<div class="${cls}"><span class="line-no">${lineNo}</span>${markerHtml}<span class="code-text">${content}</span></div>`;
       };
 
-      // Explicit :::fold regions still collapsed, clipped to the visible [startIdx,endIdx) window.
-      const regions = (this.foldRegions || [])
-        .filter((r) => !r.expanded)
-        .map((r) => ({ id: r.id, start: Math.max(r.start, startIdx), end: Math.min(r.end, endIdx), label: r.label }))
-        .filter((r) => r.end > r.start)
-        .sort((a, b) => a.start - b.start);
+      const explicit = this.appliedSteps === this.steps.length ? this.foldsAfter
+        : this.appliedSteps === 0 ? this.foldsBefore : [];
+      const gaps = this.contextGaps(lines.length).filter((gap) =>
+        !explicit.some((r) => r.start < gap.end && r.end > gap.start));
+      const regions = [
+        ...explicit.map((r) => ({ ...r, key: `region:${r.id}` })),
+        ...gaps.map((gap) => ({ ...gap, key: `gap:${gap.start}:${gap.end}` })),
+      ].filter((r) => !this.showFullCode && !this.expandedGaps.has(r.key)).sort((a, b) => a.start - b.start);
 
       const visible = [];
-      let idx = startIdx;
-      let ri = 0;
-      while (idx < endIdx) {
-        while (ri < regions.length && regions[ri].start < idx) ri += 1;
-        if (ri < regions.length && idx === regions[ri].start) {
-          const r = regions[ri];
-          const count = r.end - r.start;
-          const plural = count === 1 ? "" : "s";
-          const labelHtml = r.label
-            ? `${escapeHtml(r.label)} <span class="fold-count">(${count} line${plural})</span>`
-            : `\u2026 ${count} line${plural}`;
-          visible.push(`<div class="code-diff-fold fold-region" data-fold-region="${r.id}"><span class="fold-icon">+</span> ${labelHtml}</div>`);
-          idx = r.end;
-          ri += 1;
-          continue;
-        }
-        visible.push(renderLine(idx));
-        idx += 1;
+      let idx = 0;
+      for (const r of regions) {
+        while (idx < r.start) visible.push(renderLine(idx++));
+        const count = r.end - r.start;
+        const quantity = `${count} line${count === 1 ? "" : "s"}`;
+        const label = r.label ? `${escapeHtml(r.label)} (${quantity})`
+          : r.key.startsWith("gap:") ? `Show ${count} unchanged lines` : `Show ${quantity}`;
+        visible.push(`<button type="button" class="code-diff-fold fold-region" data-fold="${r.key}"><span class="fold-icon" aria-hidden="true">+</span> ${label}</button>`);
+        idx = r.end;
       }
-
-      const wrapped = visible.join("");
-
-      let finalHtml = wrapped;
-
-      if (this.foldTop && startIdx > 0) {
-        const count = startIdx;
-        const fold = `<div class="code-diff-fold fold-top" data-fold="top"><span class="fold-icon">+</span> … ${count} line${count === 1 ? "" : "s"}</div>`;
-        finalHtml = fold + finalHtml;
-      }
-
-      if (this.foldBottom && endIdx < lines.length) {
-        const count = lines.length - endIdx;
-        const fold = `<div class="code-diff-fold fold-bottom" data-fold="bottom"><span class="fold-icon">+</span> … ${count} line${count === 1 ? "" : "s"}</div>`;
-        finalHtml = finalHtml + fold;
-      }
+      while (idx < lines.length) visible.push(renderLine(idx++));
 
       this.codeEl.className = `hljs language-${this.language}`;
-      this.codeEl.innerHTML = finalHtml;
+      this.codeEl.innerHTML = visible.join("");
       this.preEl.classList.toggle("has-markers", hasAnyMarker);
+      if (this.fullCodeBtn) {
+        this.fullCodeBtn.hidden = !gaps.length && !explicit.length && !this.showFullCode;
+        this.fullCodeBtn.title = this.showFullCode ? "Show changes" : "Show full code";
+        this.fullCodeBtn.setAttribute("aria-label", this.fullCodeBtn.title);
+      }
 
-      // Attach fold handlers
-      const folds = this.codeEl.parentElement.querySelectorAll(".code-diff-fold");
-      folds.forEach((el) => {
-        el.addEventListener("click", () => {
-          const dir = el.dataset.fold;
-          if (dir === "top") this.foldTop = false;
-          if (dir === "bottom") this.foldBottom = false;
-          const regionId = el.dataset.foldRegion;
-          if (regionId !== undefined && this.foldRegions) {
-            const region = this.foldRegions.find((r) => String(r.id) === regionId);
-            if (region) region.expanded = true;
-          }
+      this.codeEl.querySelectorAll(".code-diff-fold").forEach((button) => {
+        button.addEventListener("click", () => {
+          this.expandedGaps.add(button.dataset.fold);
           this.render(this.stateLines);
         });
       });
     }
 
     copy() {
-      const text = this.stateLines.join("\n");
+      const text = this.codeEnd;
       const done = () => this.showCopyFeedback();
       const fail = () => this.copyFallback(text, done);
       if (navigator.clipboard?.writeText) {
@@ -1419,42 +1383,19 @@
       setTimeout(() => this.preEl.classList.remove("flash-insert", "flash-delete"), 280);
     }
 
-    reset() {
-      clearTimeout(this.timer);
-      this.stateLines = this.staticMode || !this.showFinalFirst ? toLines(this.codeStart) : toLines(this.codeEnd);
+    play() {
+      if (this.isPlaying || this.staticMode) return;
+      this.stateLines = toLines(this.codeStart);
       this.markers.clear();
       this.inlineHighlights.clear();
-      this.foldTop = this.prefixLen > 2;
-      this.foldBottom = this.suffixLen > 2;
-      if (this.foldRegions) this.foldRegions.forEach((r) => { r.expanded = false; });
-      if (this.showFinalFirst && !this.staticMode && this.steps.length) {
-        this.fastForwardToEnd();
-      }
-      this.render(this.stateLines);
-      this.isPlaying = false;
-      this.playBtn.disabled = false;
-      this.playBtn.textContent = "▶";
-      this.currentStep = 0;
-    }
-
-    play() {
-      if (this.isPlaying) return;
-      if (this.currentStep >= this.steps.length) this.reset();
-      if (this.showFinalFirst && !this.staticMode) {
-        // jump back to start before animating, and pause one frame so the user sees the untouched text
-        clearTimeout(this.timer);
-        this.stateLines = toLines(this.codeStart);
-        this.markers.clear();
-        this.render(this.stateLines);
-        this.currentStep = 0;
-        this.isPlaying = true;
-        this.playBtn.disabled = true;
-        this.timer = setTimeout(() => this.runStep(this.currentStep), 420);
-        return;
-      }
+      this.expandedGaps.clear();
+      this.appliedSteps = 0;
       this.isPlaying = true;
       this.playBtn.disabled = true;
-      this.runStep(this.currentStep);
+      this.playBtn.title = "Replaying changes";
+      this.playBtn.setAttribute("aria-label", this.playBtn.title);
+      this.render(this.stateLines);
+      setTimeout(() => this.runStep(0), 420);
     }
 
     runStep(idx) {
@@ -1469,15 +1410,16 @@
         this.flash("insert");
         this.isPlaying = false;
         this.playBtn.disabled = false;
-        this.playBtn.textContent = "▶";
+        this.playBtn.title = "Replay changes";
+        this.playBtn.setAttribute("aria-label", this.playBtn.title);
         return;
       }
 
       const step = this.steps[idx];
 
       const finish = (delay) => {
-        this.currentStep = idx + 1;
-        this.timer = setTimeout(() => this.runStep(this.currentStep), delay);
+        this.appliedSteps = idx + 1;
+        setTimeout(() => this.runStep(idx + 1), delay);
       };
 
       if (step.kind === "delete") {
@@ -1489,61 +1431,52 @@
         setTimeout(() => {
           this.render(this.stateLines, { closing: delIdx, markers });
           setTimeout(() => {
-            this.stateLines.splice(step.index, step.deletes.length);
-            delIdx.forEach((i) => this.markers.delete(i));
-            this.shiftMarkers(step.index, step.deletes.length, 0);
-            delIdx.forEach((i) => this.inlineHighlights.delete(i));
-            this.shiftInlineHighlights(step.index, step.deletes.length, 0);
-            this.render(this.stateLines);
+            this.applyStep(step);
             finish(360);
+            this.render(this.stateLines);
           }, 240);
         }, 420);
         return;
       }
 
-      if (step.kind === "replace") {
-        const inline = new Map();
-        const overlap = Math.min(step.deletes.length, step.inserts.length);
-        for (let k = 0; k < overlap; k++) {
-          const oldLine = step.deletes[k];
-          const newLine = step.inserts[k];
-          inline.set(step.index + k, diffChars(oldLine, newLine));
-        }
-
-        for (let k = 0; k < step.deletes.length; k++) this.markers.delete(step.index + k);
-
-        this.stateLines.splice(step.index, step.deletes.length, ...step.inserts);
-
-        const insertedLines = [];
-        for (let k = overlap; k < step.inserts.length; k++) {
-          insertedLines.push(step.index + k);
-        }
-
-        this.shiftMarkers(step.index, step.deletes.length, step.inserts.length);
-
-        for (let k = 0; k < step.deletes.length; k++) this.inlineHighlights.delete(step.index + k);
-        this.shiftInlineHighlights(step.index, step.deletes.length, step.inserts.length);
-        for (let k = 0; k < overlap; k++) this.inlineHighlights.set(step.index + k, inline.get(step.index + k));
-
-        for (let k = 0; k < overlap; k++) this.markers.set(step.index + k, "marker-replace");
-        for (const idxIns of insertedLines) this.markers.set(idxIns, "marker-insert");
-
-        this.render(this.stateLines, { inserted: insertedLines, inline });
-        this.flash("insert");
-        finish(520);
-        return;
-      }
-
-      if (step.kind === "insert") {
-        this.stateLines.splice(step.index, 0, ...step.inserts);
-        const anim = step.inserts.map((_, k) => step.index + k);
-        this.shiftMarkers(step.index, 0, step.inserts.length);
-        this.shiftInlineHighlights(step.index, 0, step.inserts.length);
-        anim.forEach((i) => this.markers.set(i, "marker-insert"));
-        this.render(this.stateLines, { inserted: anim });
-        this.flash("insert");
+      const reveal = () => {
+        const inserted = this.applyStep(step);
         finish(480);
+        this.render(this.stateLines, { inserted });
+        this.flash("insert");
+      };
+      if (step.kind === "replace") {
+        const removing = step.deletes.map((_, k) => step.index + k);
+        const markers = new Map(removing.map((row) => [row, "marker-delete"]));
+        this.render(this.stateLines, { deleting: removing, markers });
+        setTimeout(reveal, 420);
+      } else {
+        reveal();
       }
+    }
+
+    applyStep(step) {
+      const { index, deletes, inserts, inline } = step;
+      for (let k = 0; k < deletes.length; k++) {
+        this.markers.delete(index + k);
+        this.inlineHighlights.delete(index + k);
+      }
+      this.stateLines.splice(index, deletes.length, ...inserts);
+      this.shiftMarkers(index, deletes.length, inserts.length);
+      this.shiftInlineHighlights(index, deletes.length, inserts.length);
+      const inserted = [];
+      for (const [k] of inserts.entries()) {
+        const row = index + k;
+        const segments = inline.get(k);
+        if (segments) {
+          this.inlineHighlights.set(row, segments);
+          this.markers.set(row, "marker-replace");
+        } else {
+          this.markers.set(row, "marker-insert");
+          inserted.push(row);
+        }
+      }
+      return inserted;
     }
 
     shiftMarkers(start, removed, added) {
@@ -1575,44 +1508,8 @@
     }
 
     fastForwardToEnd() {
-      this.stateLines = toLines(this.codeStart);
-      this.markers.clear();
-      this.inlineHighlights.clear();
-      for (const step of this.steps) {
-        if (step.kind === "delete") {
-          for (let k = 0; k < step.deletes.length; k++) this.markers.delete(step.index + k);
-          this.stateLines.splice(step.index, step.deletes.length);
-          this.shiftMarkers(step.index, step.deletes.length, 0);
-          for (let k = 0; k < step.deletes.length; k++) this.inlineHighlights.delete(step.index + k);
-          this.shiftInlineHighlights(step.index, step.deletes.length, 0);
-          continue;
-        }
-
-        if (step.kind === "replace") {
-          for (let k = 0; k < step.deletes.length; k++) this.markers.delete(step.index + k);
-          this.stateLines.splice(step.index, step.deletes.length, ...step.inserts);
-          const overlap = Math.min(step.deletes.length, step.inserts.length);
-          const insertedLines = [];
-          for (let k = overlap; k < step.inserts.length; k++) insertedLines.push(step.index + k);
-          this.shiftMarkers(step.index, step.deletes.length, step.inserts.length);
-          for (let k = 0; k < step.deletes.length; k++) this.inlineHighlights.delete(step.index + k);
-          this.shiftInlineHighlights(step.index, step.deletes.length, step.inserts.length);
-          for (let k = 0; k < overlap; k++) {
-            this.inlineHighlights.set(step.index + k, diffChars(step.deletes[k], step.inserts[k]));
-          }
-          for (let k = 0; k < overlap; k++) this.markers.set(step.index + k, "marker-replace");
-          for (const idxIns of insertedLines) this.markers.set(idxIns, "marker-insert");
-          continue;
-        }
-
-        if (step.kind === "insert") {
-          this.stateLines.splice(step.index, 0, ...step.inserts);
-          this.shiftMarkers(step.index, 0, step.inserts.length);
-          this.shiftInlineHighlights(step.index, 0, step.inserts.length);
-          step.inserts.forEach((_, k) => this.markers.set(step.index + k, "marker-insert"));
-        }
-      }
-      // keep currentStep at 0 so play starts from the true beginning
+      for (const step of this.steps) this.applyStep(step);
+      this.appliedSteps = this.steps.length;
     }
   }
 

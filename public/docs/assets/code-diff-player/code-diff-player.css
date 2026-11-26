@@ -18,11 +18,14 @@
   margin-left: -64px;
 }
 
-.code-diff-player.code-diff-static .code-diff-actions-bottom {
-  display: flex;
+.md-typeset .code-diff-player:not(.code-diff-static) .code-diff-pre {
+  margin-top: 0;
 }
-.code-diff-player.code-diff-static .code-diff-actions-bottom .play-icon {
-  display: none;
+
+@media (max-width: 64rem) {
+  .md-typeset .code-diff-player .code-diff-pre {
+    margin-left: 0;
+  }
 }
 
 .code-diff-player > pre[data-state],
@@ -35,7 +38,6 @@
   transform: translateY(-4px);
 }
 
-.code-diff-actions-top,
 .code-diff-actions-bottom {
   font-size: 80%;
   position: absolute;
@@ -45,41 +47,57 @@
   z-index: 2;
 }
 
-.code-diff-btn {
-  border: 1px dashed rgba(255, 255, 255, 0.08);
-  background: linear-gradient(to right, rgba(255,255,255,0.03), rgba(255,255,255,0.0));
-  color: #9aa3b5;
-  padding: 6px 10px;
-  min-height: 32px;
-  border-radius: 8px;
-  font-size: 12.5px;
-  font-weight: 400;
-  font-style: italic;
-  cursor: pointer;
-  font-size: 80%;
-  box-shadow: none;
-  transition: border-color 140ms ease, color 140ms ease, background-color 140ms ease, transform 120ms ease;
-}
-
-.code-diff-btn.play-icon {
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border-radius: 8px;
-  display: inline-flex;
+/* Keep the controls above the first rows of code without adding a toolbar row. */
+.code-diff-toolbar {
+  position: absolute;
+  z-index: 2;
+  top: 6px;
+  right: 6px;
+  display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 0;
-  font-weight: 800;
-  font-size: 14px;
-  font-style: normal !important;
+  gap: 2px;
 }
 
-.code-diff-btn:hover { border-color: rgba(91,208,255,0.4); color: #c8d3e5; }
-.code-diff-btn:active { background: rgba(91, 208, 255, 0.06); transform: translateY(1px); }
-.code-diff-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.code-diff-toolbar .code-diff-copy {
+  width: 28px;
+  height: 28px;
+  opacity: 0.85;
+  transform: none;
+}
 
-.code-diff-actions-top { display: none; }
+.code-diff-toolbar + .code-diff-pre .code-diff-line:nth-child(-n + 2) .code-text {
+  padding-right: 92px;
+}
+
+.code-diff-toolbar + .code-diff-pre .code-diff-fold:nth-child(-n + 2) {
+  max-width: calc(100% - 92px);
+}
+
+.code-diff-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: #aeb8c8;
+  font: 16px/1 system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.code-diff-btn[hidden] { display: none; }
+.code-diff-play::before { content: "▶"; font-size: 12px; }
+.code-diff-full::before { content: "↕"; }
+
+.code-diff-btn:hover,
+.code-diff-btn:focus-visible {
+  border-color: #8995a5;
+  color: #fff;
+}
+
+.code-diff-btn:disabled { opacity: 0.65; cursor: default; }
 
 .code-diff-actions-bottom {
   bottom: -2px;
@@ -88,24 +106,8 @@
   gap: 7px;
 }
 
-.fold-top {
-  margin-bottom: 6px !important;
-  transform: translateY(-4px);
-}
-
-.fold-bottom {
-  margin-top: 12px !important;
-  transform: translateY(4px);
-}
-
-/* Explicit :::fold region pill sitting mid-block between focus lines. */
 .fold-region {
-  margin: 5px 0 5px 0 !important;
-}
-
-.fold-region .fold-count {
-  opacity: 0.7;
-  font-size: 92%;
+  margin: 4px 0 !important;
 }
 
 .code-diff-fold {
@@ -116,7 +118,7 @@
   margin: 0;
   font-size: 13px;
   color: #9aa3b5;
-  background: linear-gradient(to right, rgba(255,255,255,0.03), rgba(255,255,255,0.0));
+  background: transparent;
   cursor: pointer;
   border: 1px dashed rgba(255,255,255,0.08);
   border-radius: 8px;
@@ -129,7 +131,7 @@
   left: 0px;
 }
 
-.code-diff-fold:hover { border-color: rgba(91,208,255,0.4); color: #c8d3e5; }
+.code-diff-fold:hover, .code-diff-fold:focus-visible { border-color: rgba(91,208,255,0.4); color: #c8d3e5; }
 
 .code-diff-fold .fold-icon {
   width: 18px;
@@ -150,7 +152,7 @@
   padding: 0;
   border-radius: 8px;
   border: 1px dashed rgba(255, 255, 255, 0.08);
-  background: linear-gradient(to right, rgba(255,255,255,0.03), rgba(255,255,255,0.0));
+  background: transparent;
   background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="%239aa3b5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/><path d="M9 3h6"/></svg>');
   background-repeat: no-repeat;
   background-position: center;
@@ -271,10 +273,25 @@
   position: absolute;
   left: -10px;
   top: 0;
+  bottom: 0;
   width: 8px;
-  height: 18px;
   border-radius: 4px;
   background: rgba(91, 208, 255, 0.2);
+}
+
+/* Join consecutive markers, including across wrapped lines. A fold breaks the run. */
+.code-diff-line:has(.marker-insert) + .code-diff-line .marker-insert,
+.code-diff-line:has(.marker-delete) + .code-diff-line .marker-delete,
+.code-diff-line:has(.marker-replace) + .code-diff-line .marker-replace {
+  border-start-start-radius: 0;
+  border-start-end-radius: 0;
+}
+
+.code-diff-line:has(+ .code-diff-line .marker-insert) .marker-insert,
+.code-diff-line:has(+ .code-diff-line .marker-delete) .marker-delete,
+.code-diff-line:has(+ .code-diff-line .marker-replace) .marker-replace {
+  border-end-start-radius: 0;
+  border-end-end-radius: 0;
 }
 
 .marker-insert { background: rgba(80, 200, 120, 0.25); }
@@ -286,9 +303,7 @@
 .code-diff-line.closing { animation: code-diff-collapse 240ms ease forwards; transform-origin: top; }
 
 .ch-ins { background: rgba(80, 200, 120, 0.25); }
-.ch-del { background: rgba(255, 90, 95, 0.25); text-decoration: line-through; }
-
-.code-diff-pre.has-markers .code-diff-line.no-marker { opacity: 0.5; }
+.code-diff-pre.has-markers .code-diff-line.no-marker { opacity: 0.8; }
 
 @keyframes code-diff-fade-in {
   from { opacity: 0; transform: translateY(0); }
