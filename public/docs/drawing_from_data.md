@@ -30,6 +30,8 @@ If all you know is how far pairs are apart, start with
 Use [Imaging and Computer Vision](imaging_examples.md) to read and analyse pixels or
 [Depth & CLIP](onnx.md) to estimate depth and compare images. To make a picture from lines,
 start with [Paint and Pencil from FLines](paint_canvas.md) or [Watercolour and Ink](watercolor.md).
+A web page shown in a box is material too: [The page as FLines](web.md#the-page-as-flines) reads
+its layout with a script and draws it as outlines that follow the page as it changes.
 
 ## Geometry and solids
 

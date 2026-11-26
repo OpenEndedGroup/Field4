@@ -1,7 +1,7 @@
 # Map of the docs
 
-Every page on this site, the [agent transcripts](agent_transcripts.md) they open, and the source
-files their code calls, drawn as one graph you can turn around. The map lays itself out as you
+Turn a graph of every page on this site, the [agent transcripts](agent_transcripts.md) they open,
+and the source files their code calls. The map lays itself out as you
 watch: pages settle near the pages they link to, and source files cluster with the others in their
 directory. **flat (2D)** lays it out in the plane instead.
 

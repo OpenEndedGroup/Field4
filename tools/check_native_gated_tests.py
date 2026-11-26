@@ -7,6 +7,11 @@ without the library, which includes the lander. A JUnit assumption (`Assume.assu
 file-local `assumeAvailable()` or a shared helper such as `requirePaintLibrary()`) makes Gradle
 report it SKIPPED instead. This scans `src/jvmTest/kotlin` and `src/jvmFastTest/kotlin`.
 
+The same holds for any other early return that announces itself as a skip -- a missing
+`glslangValidator`, an absent catalog beside the built library, an opt-in environment variable:
+`if (validator == null) { println("SKIPPED ..."); return }` is a pass in Gradle's count. A gate of any
+condition whose block (or one-line `return println(...)`) says "SKIP" before a bare return is flagged.
+
 An early return whose value is not Unit (`return false` inside an `available()` helper) is fine:
 it is the helper, not the test. Gated by `tools/test_check_native_gated_tests.py`, which
 `checkPythonTools` runs for any change to a JVM test source.
@@ -26,6 +31,10 @@ _GATE = r"if\s*\(\s*!.*(?:available\(\)|isAvailable)[^)]*\)\s*"
 ONE_LINE = re.compile(_GATE + r"return\b")
 # Block form: the gate opens a block; a bare return inside it is the same vacuous pass.
 BLOCK_OPEN = re.compile(_GATE + r"\{")
+# Any condition, when the early return says it is a skip.
+ANY_GATE_ONE_LINE = re.compile(r"if\s*\(.*\)\s*return\s+println\(.*skip", re.IGNORECASE)
+ANY_BLOCK_OPEN = re.compile(r"if\s*\(.*\)\s*\{\s*$")
+SAYS_SKIP = re.compile(r"skip", re.IGNORECASE)
 BARE_RETURN = re.compile(r"(?:^|[;{]\s*)return(?:@\w+)?\s*(?:[;}]|$)")
 
 
@@ -39,8 +48,13 @@ def offenders_in(path: Path, text: str) -> list[str]:
         if ONE_LINE.search(line):
             found.append(f"{path}:{i + 1}: {stripped}")
             continue
+        if ANY_GATE_ONE_LINE.search(line):
+            found.append(f"{path}:{i + 1}: {stripped}")
+            continue
         m = BLOCK_OPEN.search(line)
         if not m:
+            if ANY_BLOCK_OPEN.search(line) and _skip_block_returns(lines, i):
+                found.append(f"{path}:{i + 1}: {stripped}")
             continue
         depth = 0
         for j in range(i, min(i + 12, len(lines))):
@@ -52,6 +66,22 @@ def offenders_in(path: Path, text: str) -> list[str]:
             if depth <= 0:
                 break
     return found
+
+
+def _skip_block_returns(lines: list[str], i: int) -> bool:
+    """The block opened on line `i` prints something saying "skip", then returns bare."""
+    said_skip = False
+    depth = 1
+    for j in range(i + 1, min(i + 10, len(lines))):
+        body = lines[j].strip()
+        if depth == 1 and SAYS_SKIP.search(body):
+            said_skip = True
+        if depth == 1 and BARE_RETURN.search(body):
+            return said_skip
+        depth += body.count("{") - body.count("}")
+        if depth <= 0:
+            return False
+    return False
 
 
 def scan(repo: Path) -> list[str]:
@@ -72,7 +102,7 @@ def main(argv: list[str]) -> int:
         return 2
     offenders = scan(repo)
     if offenders:
-        print("A native-gated test returns early, so it PASSES without its library. Use "
+        print("A native-gated (or self-described skipped) test returns early, so it PASSES. Use "
               "org.junit.Assume.assumeTrue(...) (or the file's assumeAvailable()) so it is reported SKIPPED:")
         print("\n".join(offenders))
         return 1

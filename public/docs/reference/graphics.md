@@ -13153,7 +13153,7 @@ than a point sprite), [`seg`](graphics.md#standarddrawing-kt--seg), and [`fitInt
 
 `src/jvmMain/kotlin/afield/graphics/render/StandardDrawing.kt` — [read the source](source/jvmMain/afield/graphics/render/StandardDrawing/)
 
-**Used in:** [FLine examples (Field graphics)](../fline_examples.md), [Visualizers, Displays, and Little Instruments](../visualizers.md), [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md)
+**Used in:** [FLine examples (Field graphics)](../fline_examples.md), [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md), [Visualizers, Displays, and Little Instruments](../visualizers.md)
 
 ### Top-level functions { #standarddrawing-kt-functions }
 

@@ -1,6 +1,6 @@
 # Custom marking menus
 
-A box can give itself a radial menu of live Kotlin callbacks. Run the installing code, then
+Give a box a radial menu whose items run Kotlin. Run the code below, then
 ++shift+alt++-click the box and move towards a label. Release to choose it. Text frames also open
 this menu with ++alt++-click; regular boxes keep their existing ++alt++-click run menu.
 

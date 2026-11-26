@@ -63,7 +63,7 @@ if (!Rhino3dm.isAvailable) {
                         vec(m.positions[3 * it], m.positions[3 * it + 1], m.positions[3 * it + 2])
                     }
                 }
-            Vec3(b).sub(a).cross(Vec3(c).sub(a)).length() / 2.0
+            ((b - a) x (c - a)).length / 2.0
         }
     fun volume(m: TriMesh) =
         (0 until m.triangleCount).sumOf { t ->
@@ -73,7 +73,7 @@ if (!Rhino3dm.isAvailable) {
                         vec(m.positions[3 * it], m.positions[3 * it + 1], m.positions[3 * it + 2])
                     }
                 }
-            Vec3(a).dot(Vec3(b).cross(c)) / 6.0
+            (a dot (b x c)) / 6.0
         }
     fun openEdges(m: TriMesh): Int {
         val id = HashMap<Triple<Float, Float, Float>, Int>()

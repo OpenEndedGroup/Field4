@@ -22,8 +22,8 @@ In Field's own window, a page can be any site. Sites that refuse to be shown ins
 login needs, which a page inside another page normally loses. Opened in another browser, a Field
 document shows only the sites that allow framing.
 
-Back and forward step through the pages this bar has seen. They are the panel's own: the rest of
-Field, and its other pages, are not part of them.
+Back and forward step through this panel's history, leaving the rest of Field and its other pages
+where they are.
 
 ## Working with the page from code
 
@@ -187,6 +187,11 @@ above, and the drawing follows. A box that draws a page another box shows reache
 - [A Terminal in a Box](terminal.md): the same kind of panel for a shell or program; the bar above
   a page is drawn like its header row.
 - [Let AI4 drive a live webpage](ai4_live_iframe.md): the page's calls, given to AI4 as tools.
+- [Three.js scenes](three_output.md#redrawing-a-scene-as-it-changes): the viewer `threeLines`
+  draws into, and how it redraws only what changed.
+- [Connecting an output iframe to its box](output_requests.md): the other direction, for a page
+  you write that asks the box for something.
+- [Drawing from data](drawing_from_data.md): other material to draw from.
 - Source: [`LiveOutputIframe.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/ui/output/LiveOutputIframe.kt)
   (`web()` and the handle), [`fieldWeb.js`](https://github.com/OpenEndedGroup/Field4/blob/main/src/commonMain/resources/fieldWeb.js)
   (the bar), and [`framing-relief.cjs`](https://github.com/OpenEndedGroup/Field4/blob/main/electron/framing-relief.cjs)

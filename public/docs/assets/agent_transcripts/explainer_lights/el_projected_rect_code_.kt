@@ -18,7 +18,7 @@ val circles = [
 fun draw(distance: Double) {
     val panel = planeMesh(12, 12, 0.8, 0.8).translated(0.0, 0.0, -distance)
     // Every point of the panel pushed onto the unit sphere, along its line to the eye.
-    val shadow = panel.transformed { p -> p.normalize().mul(1.004f) }
+    val shadow = panel.transformed { p -> p.n * 1.004f }
     var omega = 0.0
     for (t in 0 until shadow.triangleCount) omega += shadow.triangleArea(t)
     // From the eye through each corner of the patch to the panel's corner.

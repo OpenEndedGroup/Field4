@@ -1088,6 +1088,10 @@ server's `lastUpdate` on the view returned by `three` says how many parts went o
 
 A part is matched to its previous self by its `id`, so give moving parts ids.
 
+A box can redraw from something outside Field the same way. [The page as FLines](web.md#the-page-as-flines)
+calls `threeLines` again whenever a web page in another panel changes, and the viewer keeps your
+orbit, pan and zoom between drawings.
+
 When the box knows a part only moved, it can say so: pass the **same** mesh each redraw with
 `mesh(m, id = "carriage", transform = translation(x, 0.0, 0.0))` (or any column-major 4×4 matrix). The mesh is
 prepared once, nothing about it is hashed or compared again, and the viewer only moves its object. A `TriMesh`

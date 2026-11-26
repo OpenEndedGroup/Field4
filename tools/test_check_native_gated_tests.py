@@ -32,6 +32,19 @@ class Patterns(unittest.TestCase):
         self.assertEqual(len(flagged('if (!X.isAvailable) { println("no; really"); return }')), 1)
         self.assertEqual(len(flagged('if (!X.isAvailable) {\n    println("skip")\n    return\n}')), 1)
 
+    def test_any_gate_that_says_it_skips_is_flagged(self) -> None:
+        self.assertEqual(len(flagged('if (validator == null) {\n    println("SKIPPED: no glslangValidator")\n    return\n}')), 1)
+        self.assertEqual(len(flagged('if (files.isEmpty()) {\n    println(\n        "no files; " +\n            "skipping"\n    )\n    return\n}')), 1)
+        self.assertEqual(len(flagged('if (x == null) return println("Skipped: x")')), 1)
+
+    def test_ordinary_early_returns_pass(self) -> None:
+        for source in (
+            'if (x == null) {\n    println("nothing to do")\n    return\n}',
+            'if (validator == null) throw org.junit.AssumptionViolatedException("SKIPPED: no glslangValidator")',
+            'if (done) {\n    println("skip the rest")\n    return result\n}',
+        ):
+            self.assertEqual(flagged(source), [], source)
+
     def test_assumptions_helpers_and_comments_pass(self) -> None:
         for source in (
             'org.junit.Assume.assumeTrue("missing", ManifoldLibrary.isAvailable)',

@@ -49,10 +49,7 @@ class PdObjectsTest {
 
     @Test fun theBuiltCatalogNamesVanillaObjectsAndTheirAliases() {
         val catalog = PdObjects.catalog()
-        if (catalog.isEmpty()) {
-            println("SKIPPED the built-catalog check: no ${PdObjects.FILE_NAME} beside ${PdLibrary.describe()}")
-            return
-        }
+        if (catalog.isEmpty()) throw org.junit.AssumptionViolatedException("SKIPPED the built-catalog check: no ${PdObjects.FILE_NAME} beside ${PdLibrary.describe()}")
         for (name in listOf("osc~", "phasor~", "lop~", "dac~", "r", "s", "t", "hsl", "metro", "expr~", "tabosc4~", "loadbang"))
             assertTrue(name in catalog, "$name is missing from the catalog of ${catalog.size}")
         assertTrue("canvasmaker" !in catalog, "Pd's internal classes are left out")

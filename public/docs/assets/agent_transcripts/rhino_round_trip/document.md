@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="rhino_round_trip" index="0" -->
 
 ```edn [field-box id="rhino_round_trip" role="properties"]
-{"id" "rhino_round_trip" "index" 0 "name" "write, read back, measure" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "write, read back, measure" "_tombstone" false "frame" #afield/rect [40.0 40.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rhino_round_trip_code_.kt" "lines" 129 "characters" 5830 "sha256" "7073ea93a8bdb1a86b6d2aedea12e3a3b85e99c9f4a44eae93b4e22cb89d57c3"}]}
+{"id" "rhino_round_trip" "index" 0 "name" "write, read back, measure" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "write, read back, measure" "_tombstone" false "frame" #afield/rect [40.0 40.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rhino_round_trip_code_.kt" "lines" 129 "characters" 5797 "sha256" "122b2a6d623d550328e69a81ca9599b6852a7c959d49fbde43916dba431e4995"}]}
 ```
 
 ```kotlin [field-property box="rhino_round_trip" name="code" path="rhino_round_trip_code_.kt"]
@@ -80,7 +80,7 @@ if (!Rhino3dm.isAvailable) {
                         vec(m.positions[3 * it], m.positions[3 * it + 1], m.positions[3 * it + 2])
                     }
                 }
-            Vec3(b).sub(a).cross(Vec3(c).sub(a)).length() / 2.0
+            ((b - a) x (c - a)).length / 2.0
         }
     fun volume(m: TriMesh) =
         (0 until m.triangleCount).sumOf { t ->
@@ -90,7 +90,7 @@ if (!Rhino3dm.isAvailable) {
                         vec(m.positions[3 * it], m.positions[3 * it + 1], m.positions[3 * it + 2])
                     }
                 }
-            Vec3(a).dot(Vec3(b).cross(c)) / 6.0
+            (a dot (b x c)) / 6.0
         }
     fun openEdges(m: TriMesh): Int {
         val id = HashMap<Triple<Float, Float, Float>, Int>()

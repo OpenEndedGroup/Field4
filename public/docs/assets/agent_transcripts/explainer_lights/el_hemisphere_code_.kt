@@ -20,7 +20,7 @@ val side = 1.0
 fun draw(across: Double) {
     val lamp = RectLight(vec(across, 1.2, 0.0), width = side, height = side, power = 20.0)
     val outline = planeMesh(12, 12, side, side).transformed { p -> vec(p.x + across, 1.2, p.y) }
-    val onDome = outline.transformed { p -> p.normalize().mul(1.004f) }
+    val onDome = outline.transformed { p -> p.n * 1.004f }
     val flat = onDome.transformed { p -> vec(p.x, 0.004, p.z) }
     var covered = 0.0
     for (t in 0 until flat.triangleCount) covered += flat.triangleArea(t)

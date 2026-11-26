@@ -206,3 +206,66 @@ under ~17 000 nodes.
 6. **Seeding cost.** Greedy seeding is now most of e-means' time at k = 200. Seeding on a random
    subsample (what Faiss does with `max_points_per_centroid`) or k-means|| would bring it back down.
 7. **The private k-means migrations** (above), each with a before/after.
+
+## Cluster balance, the revival threshold, and partial-distance pruning (2026-11-26)
+
+Nightly, scout card bad092529814: Leonardo Kuffo, "SuperEMeans: Making e-means 3x faster",
+<https://www.lkuffo.com/superemeans/> (read 2026-11-26). The post reports, on Cohere embeddings with
+IVF probing 1% of centroids: Lloyd 112 714 vectors scanned, e-means τ=0.1 135 380 (1.20×), τ=0.3
+119 548 (1.06×) at equal recall; and 2–3× speed from skipping dimensions in the assignment.
+
+Added: `KMeansResult.imbalance` (Faiss imbalance factor k·Σsize²/n², = IVF scan cost relative to a
+balanced clustering when queries follow the data), `largestCluster`, `meanClusterSize`; exact
+early-abandon distances in `nearestL2` for d ≥ 32 (`squaredL2Within`, checked every 16 coordinates).
+
+### Revival threshold vs balance (KMeansBalanceTest.revivalThresholdAndBalanceInManyDimensions)
+
+40 000 vectors, 40 Gaussian blobs with weights 1/(1+i), unit-variance noise equal to the centre
+spread, k = 200, Lloyd 10 epochs vs e-means 5 epochs, greedy k-means++ seeds; mean over seeds 1–3.
+
+| d | run | imbalance | MSE |
+| --- | --- | --- | --- |
+| 2 | Lloyd 10 | 1.285 | 0.03509 |
+| 2 | e-means τ=0 (default at d≤2) | 1.287 | 0.03447 |
+| 2 | e-means τ=0.1 | 1.146 | 0.03657 |
+| 2 | e-means τ=0.3 | 1.061 | 0.04161 |
+| 2 | e-means τ=0.5 | 1.038 | 0.04738 |
+| 16 | Lloyd 10 | 1.058 | 12.695 |
+| 16 | e-means τ=0 | 1.039 | 12.581 |
+| 16 | e-means τ=0.1 | 1.037 | 12.572 |
+| 16 | e-means τ=0.3 | 1.028 | 12.569 |
+| 16 | e-means τ=0.5 | 1.024 | 12.579 |
+| 128 | Lloyd 10 | 1.309 | 123.82 |
+| 128 | e-means τ=0 | 2.923 | 125.36 |
+| 128 | e-means τ=0.1 | 1.162 | 123.39 |
+| 128 | e-means τ=0.3 | 1.132 | 123.37 |
+| 128 | e-means τ=0.5 | 1.094 | 123.42 |
+
+Findings: on this synthetic data the post's headline (e-means less balanced than Lloyd at τ=0.1)
+does **not** reproduce: at d=128 e-means τ=0.1 is *more* balanced than Lloyd (1.16 vs 1.31). Without
+revival (τ=0) e-means at d=128 is badly unbalanced (2.92) — revival is what balances it. Raising τ
+to 0.3 lowers imbalance by 2.6% at d=128 and 0.9% at d=16 with no MSE cost; at d=2 it costs 21%
+MSE, matching Faiss's reason for τ=0 there.
+
+Decision: **default unchanged** (0.1 above d=2, the Faiss reference). The gain on our data is small,
+the post's evidence is a single real dataset, and departing from the reference makes our results
+harder to compare with Faiss. A caller building a search index should try 0.3 and read
+`imbalance`; the docs page says so.
+
+### Partial-distance pruning (KMeansBalanceTest.partialDistancePruningAt1024Dimensions)
+
+20 000 vectors, d = 1024, 50 blobs (noise 0.5), k = 100, best of 3 after a warm-up, one Apple-silicon
+laptop, under a Gradle test JVM (other agents' builds running, so absolute times are noisy).
+
+| run | full scan | pruned | speedup | MSE (identical) |
+| --- | --- | --- | --- | --- |
+| Lloyd, 10 epochs | 42.30 s | 18.65 s | 2.27× | 254.017 |
+| e-means, 5 epochs | 24.21 s | 20.25 s | 1.20× | 253.836 |
+
+Results are bit-identical (asserted: labels, inertia, history, centroids). e-means gains less
+because its time is spread over seeding, the per-batch EMA updates and the exact passes, and in
+early batches the centroids are far from settled so fewer partial sums exceed the best. Not done:
+the random rotation / ADSampling form, which prunes earlier but is approximate.
+
+Run the measurements with `AFIELD_KMEANS_BENCH=1 ./gradlew jvmTest --tests
+'afield.math.statistics.KMeansBalanceTest'` (≈12 min); without it only the correctness tests run.

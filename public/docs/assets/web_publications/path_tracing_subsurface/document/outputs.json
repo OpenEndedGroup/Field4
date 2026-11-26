@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-26T09:17:13.853Z",
+  "documentName": "path_tracing_subsurface",
+  "outputs": [
+    {
+      "uid": "pt_sss_row",
+      "channel": "Vulkan window · still image",
+      "open": true,
+      "path": "outputs/0.html",
+      "width": 4112,
+      "height": 2524,
+      "kinds": [
+        "native-image"
+      ],
+      "warnings": []
+    }
+  ]
+}

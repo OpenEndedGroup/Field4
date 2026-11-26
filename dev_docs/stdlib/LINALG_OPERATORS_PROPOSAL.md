@@ -213,6 +213,35 @@ they are built.
 | `m * v`, `m * m` on `Matrix2f/2d`, `Matrix3f/3d`, `Matrix4d` | The operators `Matrix4fc` already has, on the other matrices. | `linear_algebra.md` teaches `Matrix2d(a).mul(b)` today because there is nothing shorter. |
 | `translate(v) then rotate(q) then scale(2)` | Matrix builders that compose with `then`. | Top-level names `translate`/`rotate`/`scale` are too generic for rule 6; on `Matrix4f.Companion` instead: `Mat4.translate(v)`. |
 
+## In shipped box code (2026-11-26)
+
+A day after landing, `.deg`, `.turns` and `.rad` had no use at all in shipped box code (templates,
+transcripts, docs fences), and the verbose forms were everywhere. Counted with
+`git ls-files` over `templates/`, `dev_docs/agents/transcripts/*.yaml` and `public/docs/*.md`
+(`web.md` excluded), hits of `PI / 180` or `Math.toRadians`: 15 / 32 / 54; of `.normalize()`:
+2 / 20 / 49; of `.distance(`: 1 / 13 / 39.
+
+The first pass moved the pages whose captures are CPU-only: `explainer_lights` (`p.n * 1.004f`, which also stops mutating the vertex `transformed` hands over),
+`fline_examples` (`t.sq`, `t.n`, `p - dir * 12f`, `a dist b`, `a lerp t to b`) and `rhino_files`
+(`((b - a) x (c - a)).length`, `a dot (b x c)`), each with its transcript. The Linear algebra
+guide keeps its in-place and destination examples on purpose.
+
+What real callers showed, not yet acted on:
+
+- `.deg` is a `Float`, and it leaks: `explainer_lights` rewritten with `degrees.deg` failed
+  `checkBoxCodeCompiles` because `min(230 / down, x / across)` then mixes `Float` and `Double`, so
+  that rewrite was reverted. Pages written in `Double` (`explainer_cameras` passes the angle to
+  `Refraction.snellAngle(Double, ...)` and its own `frameExit(Double, ...)`) cannot use it without
+  `.toDouble()`, which reads worse than `angle * PI / 180`. A `Double`-returning spelling would
+  need a second name; overloading `Double.deg` would silently change `90.0.deg` passed to the
+  `Float` rotation methods.
+- There is no radians-to-degrees counterpart for readouts: `explainer_lights` still writes
+  `2 * half * 180 / PI` to print an angle.
+- GPU-captured pages (`keyframe_autosweep`: `Vector3f(-0.5f, -1f, -0.3f).normalize()`, the
+  zero-guarded `Vector3f(it).normalize()` that `it.normalized()` replaces; `satellites`;
+  `chain_petri_sculpture`'s `Vec3(a).add(b).mul(0.5f)` arc, which is `a mid b` and
+  `a lerp t to b`) are the next candidates; they need GPU recaptures.
+
 ## Considered and rejected
 
 | Idea | Why not |

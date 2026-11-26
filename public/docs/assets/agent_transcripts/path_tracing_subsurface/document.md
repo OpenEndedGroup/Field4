@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="pt_sss_renderer" index="0" -->
 
 ```edn [field-box id="pt_sss_renderer" role="properties"]
-{"id" "pt_sss_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["pt_sss_row"] "properties" {"children" #{#afield/box "pt_sss_row"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 320.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_sss_renderer_code_.kt" "lines" 10 "characters" 229 "sha256" "307a3935a2282a21514e8871e26093deb4549a44004b34d3a6229e9c736e9d11"}]}
+{"id" "pt_sss_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["pt_sss_row"] "properties" {"children" #{#afield/box "pt_sss_row"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 320.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_sss_renderer_code_.kt" "lines" 10 "characters" 282 "sha256" "6b0f7454b816542c03e877e6f38f3f42f62087760fcfd61b1713352fa3c0e756"}]}
 ```
 
 ```kotlin [field-property box="pt_sss_renderer" name="code" path="pt_sss_renderer_code_.kt"]
@@ -21,7 +21,7 @@ prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
 once.renderer {
-    window = Window("Field · subsurface scattering")
+    window = Window("Field · subsurface scattering", initialDimensions = Rect(80.0, 80.0, 1280.0, 400.0))
     Renderer(window)
 }
 start(renderer::run)

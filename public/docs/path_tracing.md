@@ -648,7 +648,7 @@ argument decides how the colour you asked for becomes the single-scattering albe
 skin colour and one radius through every remap, with a plain diffuse ball of the same colour on
 the left for comparison. Left to right after it: `NONE`, `VAN_DE_HULST`, `EXP_CUBIC`, `REFERENCE`.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/path_tracing/subsurface_remaps.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="subsurface study converged" embed=true hidden=true timeout="900" name="path-tracing-subsurface" alt="Five spheres on a grey floor under a Venice sunset: a diffuse pink reference ball, then four subsurface spheres of the same requested skin colour. The NONE sphere is a dark brownish red; the other three are pale, translucent and close to the reference colour" macro-file="../../dev_docs/agents/transcripts/path_tracing_subsurface.yaml" capture-box="pt_sss_row"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/path_tracing/subsurface_remaps.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="subsurface study converged" embed=true hidden=true timeout="900" name="path-tracing-subsurface" max-width=1600 alt="Five spheres on a grey floor under a Venice sunset: a diffuse pink reference ball, then four subsurface spheres of the same requested skin colour. The NONE sphere is a dark brownish red; the other three are pale, translucent and close to the reference colour" macro-file="../../dev_docs/agents/transcripts/path_tracing_subsurface.yaml" capture-box="pt_sss_row"}
 // Built and launched from dev_docs/agents/transcripts/path_tracing_subsurface.yaml.
 ```
 
