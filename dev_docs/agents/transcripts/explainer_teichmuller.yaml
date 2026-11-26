@@ -185,7 +185,7 @@ operations:
           fun draw() {
               val fixed = mesh.boundaryIdentity() + (pinned to doubleArrayOf(toX, toY))
               val harmonic = harmonicMap(mesh, fixed, solver)
-              val teich = teichmullerMap(mesh, fixed, solver = solver)
+              val teich = teichmullerMap(mesh, fixed, iterations = 150, solver = solver)
               val picture = MeshPicture(640, 320, -0.05, -0.05, 2.15, 1.05)
               for ((offset, m) in [0.0 to harmonic, 1.1 to teich]) {
                   val shifted = DoubleArray(mesh.vertexCount) { m.u[it] + offset }
@@ -498,8 +498,8 @@ operations:
                       control("landmark", "landmark x", 0.65)
                       control("landmark", "landmark y", 0.6)
                       cue("Further") {
-                          control("landmark", "landmark x", 0.75, glideMs = 2000)
-                          control("landmark", "landmark y", 0.3, glideMs = 2000)
+                          control("landmark", "landmark x", 0.7, glideMs = 2000)
+                          control("landmark", "landmark y", 0.38, glideMs = 2000)
                       }
                       markdownNote("Compare the two readouts. Next drags the landmark further. [[back]] [[next]]")
                   }
