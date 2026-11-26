@@ -4,6 +4,10 @@ A page in a box's output can ask the box's Kotlin code to do something: update a
 example, or return the result of an edit. `outputRequests` connects the page to a callback on the
 box, using JSON over Field's existing WebSocket connection.
 
+This page is for a page you write. To reach into any site from the box instead (run JavaScript
+in it, click, fill, or watch a value change), show it with `web()`; see
+[A Web Page in a Box](web.md#working-with-the-page-from-code).
+
 Register the callback in the source box:
 
 ```diffstatic {data-lang=kotlin}
