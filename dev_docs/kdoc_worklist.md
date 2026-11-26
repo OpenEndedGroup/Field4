@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 26394 of 44035 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 26413 of 44101 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2107 undocumented entry points** (types, top-level functions and values) and 14761 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2114 undocumented entry points** (types, top-level functions and values) and 14801 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -50,6 +50,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [AccelerationStructure.kt](../src/jvmMain/kotlin/afield/graphics/render/AccelerationStructure.kt) | Graphics | ray_tracing_examples, computed_ray_geometry | 8 | 34 | 4% |
 | [macros.kt](../src/jvmMain/kotlin/afield/runtime/macros/macros.kt) | Workspace | running_code | 8 | 20 | 31% |
 | [DirtSamples.kt](../src/jvmMain/kotlin/afield/audio/synth/DirtSamples.kt) | Audio | boolean_network_music_examples, chain_petri_sparks | 7 | 45 | 6% |
+| [spatial_rules.kt](../src/jvmMain/kotlin/afield/data/graph/spatial_rules.kt) | Data | spatial_rules | 7 | 40 | 25% |
 | [RepoCommandJobs.kt](../src/jvmMain/kotlin/afield/ai/tools/RepoCommandJobs.kt) | AI4 | ai4_tools | 7 | 36 | 4% |
 | [simpleGLTFSupport.kt](../src/jvmMain/kotlin/afield/graphics/scene/simpleGLTFSupport.kt) | Graphics | geometry_from_disk, visualizers | 7 | 12 | 13% |
 | [logger.kt](../src/jvmMain/kotlin/afield/app/diagnostics/logging/logger.kt) | Workspace | logging | 7 | 0 | 22% |
@@ -1447,4 +1448,4 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `DirtSampleLibrary` | class | `src/jvmMain/kotlin/afield/audio/synth/DirtSamples.kt:218` |
 | `DirtSamplePlayer` | class | `src/jvmMain/kotlin/afield/audio/synth/DirtSamples.kt:356` |
 
-…and **1987 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
+…and **1994 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.

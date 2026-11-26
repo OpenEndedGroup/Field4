@@ -4,7 +4,7 @@
 
 Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box.
 
-27 source file(s), 1233 public symbol(s), 572 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+29 source file(s), 1299 public symbol(s), 591 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -790,6 +790,193 @@ The agents, the compiler and the rule book for [`NetProgram`](data.md#netprogram
 | <a id="netprograms-kt--netprograms--run-2"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">run</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">NetProgram</span><span class="p">,</span> <span class="n">maxRounds</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">100</span><span class="n">&#95;000</span><span class="p">)</span><span class="p">:</span> <span class="nc">Run</span></code>](source/jvmMain/afield/data/graph/netprograms/#L646) | Reduces `program` to normal form, firing every ready pair each round, without layout. |
 | <a id="netprograms-kt--netprograms--queens"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">queens</span><span class="p">(</span><span class="n">size</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">NetProgram</span></code>](source/jvmMain/afield/data/graph/netprograms/#L669) | N-queens as a [`NetProgram`](data.md#netprograms-kt-netprogram): the number of ways to place [`n`](data.md#netprograms-kt--netprogrambuilder--n) queens on an n×n board. Each row tries every free column, and the two halves of each choice, this column and every later column, are added with an `OP2` so they reduce side by side. Columns and both diagonals are bit masks. |
 | <a id="netprograms-kt--netprograms--queensreference"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">queensReference</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/data/graph/netprograms/#L694) | The same count by ordinary backtracking, to check [`queens`](data.md#netprograms-kt--netprograms--queens) against. |
+
+## spatial_rule_drawing.kt { #spatial-rule-drawing-kt }
+
+`src/jvmMain/kotlin/afield/data/graph/spatial_rule_drawing.kt` — [read the source](source/jvmMain/afield/data/graph/spatial_rule_drawing/)
+
+**Used in:** [Spatial rules](../spatial_rules.md)
+
+### Top-level functions { #spatial-rule-drawing-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="spatial-rule-drawing-kt--spatialstroke"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">spatialStroke</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">opacity</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLine</span></code>](source/jvmMain/afield/data/graph/spatial_rule_drawing/#L16) | A colored path through 3D positions. The eventual drawing surface decides how to project it. |
+| <a id="spatial-rule-drawing-kt--spatialdot"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">spatialDot</span><span class="p">(</span><span class="n">at</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLine</span></code>](source/jvmMain/afield/data/graph/spatial_rule_drawing/#L26) | A filled marker in the XY plane at `at`, including its Z coordinate. |
+| <a id="spatial-rule-drawing-kt--inspectonclick"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">SpatialRuleWorld</span><span class="p">.</span><span class="nf">inspectOnClick</span><span class="p">(</span><span class="n">fact</span><span class="p">:</span> <span class="nc">SpatialFact</span><span class="p">,</span> <span class="n">line</span><span class="p">:</span> <span class="nc">FLine</span><span class="p">,</span> <span class="n">show</span><span class="p">:</span> <span class="p">(</span><span class="nc">SpatialExplanation</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLine</span></code>](source/jvmMain/afield/data/graph/spatial_rule_drawing/#L36) | Explain the published fact when the reader clicks its FLine. |
+
+## spatial_rules.kt { #spatial-rules-kt }
+
+`src/jvmMain/kotlin/afield/data/graph/spatial_rules.kt` — [read the source](source/jvmMain/afield/data/graph/spatial_rules/)
+
+**Used in:** [Spatial rules](../spatial_rules.md)
+
+### SpatialOrigin { #spatial-rules-kt-spatialorigin }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SpatialOrigin</span><span class="p">(</span><span class="k">val</span> <span class="n">process</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">inputs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Long</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">condition</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L17)
+
+The producer and input identities behind a published fact.
+
+### SpatialInput { #spatial-rules-kt-spatialinput }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SpatialInput</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">live</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L19)
+
+### SpatialExplanation { #spatial-rules-kt-spatialexplanation }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SpatialExplanation</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">origin</span><span class="p">:</span> <span class="nc">SpatialOrigin</span><span class="p">,</span> <span class="k">val</span> <span class="n">inputs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">SpatialInput</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">ageSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">lifetime</span><span class="p">:</span> <span class="nc">SpatialLifetime</span><span class="p">,</span> <span class="k">val</span> <span class="n">matchLive</span><span class="p">:</span> <span class="nc">Boolean</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L22)
+
+A value snapshot suitable for retaining in a drawing's click callback.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="spatial-rules-kt--spatialexplanation--id"></a><code class="highlight"><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">Long</span></code> |  |
+| <a id="spatial-rules-kt--spatialexplanation--kind"></a><code class="highlight"><span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="spatial-rules-kt--spatialexplanation--origin"></a><code class="highlight"><span class="k">val</span> <span class="n">origin</span><span class="p">:</span> <span class="nc">SpatialOrigin</span></code> |  |
+| <a id="spatial-rules-kt--spatialexplanation--inputs"></a><code class="highlight"><span class="k">val</span> <span class="n">inputs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">SpatialInput</span><span class="p">&gt;</span></code> |  |
+| <a id="spatial-rules-kt--spatialexplanation--ageseconds"></a><code class="highlight"><span class="k">val</span> <span class="n">ageSeconds</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="spatial-rules-kt--spatialexplanation--lifetime"></a><code class="highlight"><span class="k">val</span> <span class="n">lifetime</span><span class="p">:</span> <span class="nc">SpatialLifetime</span></code> |  |
+| <a id="spatial-rules-kt--spatialexplanation--matchlive"></a><code class="highlight"><span class="k">val</span> <span class="n">matchLive</span><span class="p">:</span> <span class="nc">Boolean</span><span class="o">?</span></code> |  |
+
+### SpatialFact { #spatial-rules-kt-spatialfact }
+
+[<code class="highlight"><span class="k">sealed</span> <span class="k">class</span> <span class="nc">SpatialFact</span> <span class="k">protected</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">origin</span><span class="p">:</span> <span class="nc">SpatialOrigin</span><span class="p">,</span> <span class="k">data</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Any</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L32)
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="spatial-rules-kt--spatialfact--id"></a><code class="highlight"><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">Long</span></code> |  |
+| <a id="spatial-rules-kt--spatialfact--kind"></a><code class="highlight"><span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="spatial-rules-kt--spatialfact--origin"></a><code class="highlight"><span class="k">val</span> <span class="n">origin</span><span class="p">:</span> <span class="nc">SpatialOrigin</span></code> |  |
+| <a id="spatial-rules-kt--spatialfact--alive"></a>[<code class="highlight"><span class="k">var</span> <span class="n">alive</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L42) |  |
+| <a id="spatial-rules-kt--spatialfact--data"></a>[<code class="highlight"><span class="k">var</span> <span class="k">data</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Any</span><span class="p">&gt;</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L45) |  |
+| <a id="spatial-rules-kt--spatialfact--get"></a>[<code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">get</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L48) |  |
+
+### SpatialPoint { #spatial-rules-kt-spatialpoint }
+
+[<code class="highlight"><span class="k">class</span> <span class="nc">SpatialPoint</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="n">id</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">origin</span><span class="p">:</span> <span class="nc">SpatialOrigin</span><span class="p">,</span> <span class="k">data</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Any</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">internal</span> <span class="k">var</span> <span class="n">position</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">)</span> <span class="p">:</span> <span class="nf">SpatialFact</span><span class="p">(</span><span class="n">id</span><span class="p">,</span> <span class="n">kind</span><span class="p">,</span> <span class="n">origin</span><span class="p">,</span> <span class="k">data</span><span class="p">)</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L51)
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="spatial-rules-kt--spatialpoint--pos"></a>[<code class="highlight"><span class="k">val</span> <span class="n">pos</span><span class="p">:</span> <span class="nc">Vec3</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L58) |  |
+
+### SpatialEdge { #spatial-rules-kt-spatialedge }
+
+[<code class="highlight"><span class="k">class</span> <span class="nc">SpatialEdge</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="n">id</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">origin</span><span class="p">:</span> <span class="nc">SpatialOrigin</span><span class="p">,</span> <span class="k">data</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Any</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">from</span><span class="p">:</span> <span class="nc">SpatialPoint</span><span class="p">,</span> <span class="k">val</span> <span class="n">to</span><span class="p">:</span> <span class="nc">SpatialPoint</span><span class="p">)</span> <span class="p">:</span> <span class="nf">SpatialFact</span><span class="p">(</span><span class="n">id</span><span class="p">,</span> <span class="n">kind</span><span class="p">,</span> <span class="n">origin</span><span class="p">,</span> <span class="k">data</span><span class="p">)</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L62)
+
+Each edge has its own identity. Endpoint order is preserved, including for parallel edges.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="spatial-rules-kt--spatialedge--from"></a><code class="highlight"><span class="k">val</span> <span class="n">from</span><span class="p">:</span> <span class="nc">SpatialPoint</span></code> |  |
+| <a id="spatial-rules-kt--spatialedge--to"></a><code class="highlight"><span class="k">val</span> <span class="n">to</span><span class="p">:</span> <span class="nc">SpatialPoint</span></code> |  |
+
+### SpatialPattern { #spatial-rules-kt-spatialpattern }
+
+[<code class="highlight"><span class="k">class</span> <span class="nc">SpatialPattern</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">internal</span> <span class="k">val</span> <span class="n">query</span><span class="p">:</span> <span class="nc">SpatialQueries</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">SpatialBinding</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L74)
+
+A query over the committed facts in one frame. Reuse a pattern to share its evaluation.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="spatial-rules-kt--spatialpattern--where"></a>[<code class="highlight"><span class="k">fun</span> <span class="k">where</span><span class="p">(</span><span class="n">predicate</span><span class="p">:</span> <span class="p">(</span><span class="nc">T</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Boolean</span><span class="p">)</span><span class="p">:</span> <span class="nc">SpatialPattern</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L77) |  |
+
+### SpatialPoints { #spatial-rules-kt-spatialpoints }
+
+[<code class="highlight"><span class="k">class</span> <span class="nc">SpatialPoints</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">internal</span> <span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L83)
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="spatial-rules-kt--spatialpoints--each"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">each</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">SpatialPattern</span><span class="p">&lt;</span><span class="nc">SpatialPoint</span><span class="p">&gt;</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L84) |  |
+| <a id="spatial-rules-kt--spatialpoints--pairswithin"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">pairsWithin</span><span class="p">(</span><span class="n">enter</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">leave</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="n">enter</span><span class="p">)</span><span class="p">:</span> <span class="nc">SpatialPattern</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">SpatialPoint</span><span class="p">,</span> <span class="nc">SpatialPoint</span><span class="p">&gt;</span><span class="p">&gt;</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L89) | Each unordered pair occurs once, with the lower point ID first. |
+| <a id="spatial-rules-kt--spatialpoints--near"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">near</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">SpatialPoints</span><span class="p">,</span> <span class="n">enter</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">leave</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="n">enter</span><span class="p">)</span><span class="p">:</span> <span class="nc">SpatialPattern</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">SpatialPoint</span><span class="p">,</span> <span class="nc">SpatialPoint</span><span class="p">&gt;</span><span class="p">&gt;</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L93) | Bind the left and right roles in order, excluding self-pairs. |
+
+### SpatialNeighborIndex { #spatial-rules-kt-spatialneighborindex }
+
+[<code class="highlight"><span class="k">fun</span> <span class="k">interface</span> <span class="nc">SpatialNeighborIndex</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L114)
+
+A read-only index over the positions supplied to [`SpatialIndexFactory`](data.md#spatial-rules-kt-spatialindexfactory). Distances are squared. Implementations used with parallel search must support concurrent reads.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="spatial-rules-kt--spatialneighborindex--neighbors"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">neighbors</span><span class="p">(</span><span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Neighbor</span><span class="p">&gt;</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L115) |  |
+
+### SpatialIndexFactory { #spatial-rules-kt-spatialindexfactory }
+
+[<code class="highlight"><span class="k">fun</span> <span class="k">interface</span> <span class="nc">SpatialIndexFactory</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L119)
+
+Build an index for a cloud and its largest query radius. Treat the cloud as read-only.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="spatial-rules-kt--spatialindexfactory--build"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">build</span><span class="p">(</span><span class="n">positions</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">SpatialNeighborIndex</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L120) |  |
+
+### SpatialMatch { #spatial-rules-kt-spatialmatch }
+
+[<code class="highlight"><span class="k">class</span> <span class="nc">SpatialMatch</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L191)
+
+Live tracks the rule predicate. The process can keep running after it becomes false.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="spatial-rules-kt--spatialmatch--live"></a>[<code class="highlight"><span class="k">var</span> <span class="n">live</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L192) |  |
+
+### SpatialRuleDsl { #spatial-rules-kt-spatialruledsl }
+
+[<code class="highlight"><span class="k">annotation</span> <span class="k">class</span> <span class="nc">SpatialRuleDsl</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L197)
+
+### SpatialRules { #spatial-rules-kt-spatialrules }
+
+[<code class="highlight"><span class="k">class</span> <span class="nc">SpatialRules</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L200)
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="spatial-rules-kt--spatialrules--points"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">points</span><span class="p">(</span><span class="n">kind</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">SpatialPoints</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L203) |  |
+| <a id="spatial-rules-kt--spatialrules--edges"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">edges</span><span class="p">(</span><span class="n">kind</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">SpatialPattern</span><span class="p">&lt;</span><span class="nc">SpatialEdge</span><span class="p">&gt;</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L205) |  |
+| <a id="spatial-rules-kt--spatialrules--onenter"></a>[<code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nf">onEnter</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">pattern</span><span class="p">:</span> <span class="nc">SpatialPattern</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">condition</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="n">name</span><span class="p">,</span> <span class="n">body</span><span class="p">:</span> <span class="k">suspend</span> <span class="nc">SpatialProcess</span><span class="p">.</span><span class="p">(</span><span class="nc">T</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L209) |  |
+
+### SpatialLifetime { #spatial-rules-kt-spatiallifetime }
+
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">SpatialLifetime</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L240)
+
+Match publications retract when a predicate breaks. Process publications follow the coroutine.
+
+Constants: `MATCH`, `PROCESS`.
+
+### SpatialProcess { #spatial-rules-kt-spatialprocess }
+
+[<code class="highlight"><span class="k">class</span> <span class="nc">SpatialProcess</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">world</span><span class="p">:</span> <span class="nc">SpatialRuleWorld</span><span class="p">,</span> <span class="k">val</span> <span class="n">origin</span><span class="p">:</span> <span class="nc">SpatialOrigin</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">activation</span><span class="p">:</span> <span class="nc">SpatialMatch</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L244)
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="spatial-rules-kt--spatialprocess--origin"></a><code class="highlight"><span class="k">val</span> <span class="n">origin</span><span class="p">:</span> <span class="nc">SpatialOrigin</span></code> |  |
+| <a id="spatial-rules-kt--spatialprocess--now"></a>[<code class="highlight"><span class="k">val</span> <span class="n">now</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L253) |  |
+| <a id="spatial-rules-kt--spatialprocess--frame"></a>[<code class="highlight"><span class="k">val</span> <span class="n">frame</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L254) |  |
+| <a id="spatial-rules-kt--spatialprocess--match"></a>[<code class="highlight"><span class="k">val</span> <span class="n">match</span><span class="p">:</span> <span class="nc">SpatialMatch</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L255) |  |
+| <a id="spatial-rules-kt--spatialprocess--nextframe"></a>[<code class="highlight"><span class="k">suspend</span> <span class="k">fun</span> <span class="nf">nextFrame</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Unit</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L258) | Suspend until the world has committed and matched the next frame. |
+| <a id="spatial-rules-kt--spatialprocess--point"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">point</span><span class="p">(</span><span class="n">kind</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">at</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="k">data</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Any</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">lifetime</span><span class="p">:</span> <span class="nc">SpatialLifetime</span> <span class="o">=</span> <span class="nc">SpatialLifetime</span><span class="p">.</span><span class="nc">PROCESS</span><span class="p">)</span><span class="p">:</span> <span class="nc">SpatialPoint</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L264) |  |
+| <a id="spatial-rules-kt--spatialprocess--edge"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">edge</span><span class="p">(</span><span class="n">kind</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">from</span><span class="p">:</span> <span class="nc">SpatialPoint</span><span class="p">,</span> <span class="n">to</span><span class="p">:</span> <span class="nc">SpatialPoint</span><span class="p">,</span> <span class="k">data</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Any</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">lifetime</span><span class="p">:</span> <span class="nc">SpatialLifetime</span> <span class="o">=</span> <span class="nc">SpatialLifetime</span><span class="p">.</span><span class="nc">PROCESS</span><span class="p">)</span><span class="p">:</span> <span class="nc">SpatialEdge</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L278) |  |
+| <a id="spatial-rules-kt--spatialprocess--move"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">move</span><span class="p">(</span><span class="n">point</span><span class="p">:</span> <span class="nc">SpatialPoint</span><span class="p">,</span> <span class="n">to</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">)</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L294) |  |
+| <a id="spatial-rules-kt--spatialprocess--set"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">set</span><span class="p">(</span><span class="n">fact</span><span class="p">:</span> <span class="nc">SpatialFact</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L300) | Pass null to remove the key. Use immutable values to keep frame snapshots consistent. |
+| <a id="spatial-rules-kt--spatialprocess--retract"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">retract</span><span class="p">(</span><span class="n">fact</span><span class="p">:</span> <span class="nc">SpatialFact</span><span class="p">)</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L305) |  |
+| <a id="spatial-rules-kt--spatialprocess--draw"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">draw</span><span class="p">(</span><span class="n">line</span><span class="p">:</span> <span class="nc">FLine</span><span class="p">)</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L312) | Submit a line for this frame. Submit it again on any later frame that should draw it. |
+
+### SpatialRuleWorld { #spatial-rules-kt-spatialruleworld }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">SpatialRuleWorld</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">parallelSearch</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">indexFactory</span><span class="p">:</span> <span class="nc">SpatialIndexFactory</span> <span class="o">=</span> <span class="n">gridFactory</span><span class="p">)</span> <span class="p">:</span> <span class="nc">AutoCloseable</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L349)
+
+Single-threaded point and multigraph rules on a caller-supplied animation clock. Each step commits publication changes, evaluates the rules, then advances each process once.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="spatial-rules-kt--spatialruleworld--now"></a>[<code class="highlight"><span class="k">var</span> <span class="n">now</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L374) |  |
+| <a id="spatial-rules-kt--spatialruleworld--frame"></a>[<code class="highlight"><span class="k">var</span> <span class="n">frame</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L376) |  |
+| <a id="spatial-rules-kt--spatialruleworld--points"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">points</span><span class="p">(</span><span class="n">kind</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">SpatialPoint</span><span class="p">&gt;</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L379) |  |
+| <a id="spatial-rules-kt--spatialruleworld--edges"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">edges</span><span class="p">(</span><span class="n">kind</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">SpatialEdge</span><span class="p">&gt;</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L380) |  |
+| <a id="spatial-rules-kt--spatialruleworld--explain"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">explain</span><span class="p">(</span><span class="n">fact</span><span class="p">:</span> <span class="nc">SpatialFact</span><span class="p">)</span><span class="p">:</span> <span class="nc">SpatialExplanation</span><span class="o">?</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L382) |  |
+| <a id="spatial-rules-kt--spatialruleworld--source"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">source</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">body</span><span class="p">:</span> <span class="k">suspend</span> <span class="nc">SpatialProcess</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L399) | Install or replace a named source, leaving the other producers running. |
+| <a id="spatial-rules-kt--spatialruleworld--rules"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">rules</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">block</span><span class="p">:</span> <span class="nc">SpatialRules</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L406) | Build a rule group before replacing the previous group with the same name. |
+| <a id="spatial-rules-kt--spatialruleworld--stop"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">stop</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L413) |  |
+| <a id="spatial-rules-kt--spatialruleworld--step"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">step</span><span class="p">(</span><span class="n">seconds</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L418) |  |
+| <a id="spatial-rules-kt--spatialruleworld--close"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/data/graph/spatial_rules/#L450) |  |
 
 ## GraphQuery.kt { #graphquery-kt }
 
