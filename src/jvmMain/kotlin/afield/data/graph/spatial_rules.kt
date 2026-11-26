@@ -1,5 +1,6 @@
 package afield.data.graph
 
+import afield.document.graph.Box
 import afield.geometry.path.FLine
 import afield.math.linalg.Vec3
 import java.util.Collections
@@ -30,11 +31,18 @@ data class SpatialExplanation(
 )
 
 sealed class SpatialFact protected constructor(
-    val id: Long,
+    id: Long,
     val kind: String,
     val origin: SpatialOrigin,
     data: Map<String, Any>,
 ) {
+    /**
+     * This fact's identity in its world. A fact published by a parallel process gets its ID when
+     * the step that published it ends, in the same order every run; until then it reads 0.
+     */
+    var id: Long = id
+        internal set
+
     internal var publishedAt = 0.0
     internal var lifetime = SpatialLifetime.PROCESS
     internal var activation: SpatialMatch? = null
@@ -391,20 +399,29 @@ class SpatialRules internal constructor() {
         links(kind).map { SpatialBinding(listOf(it.id), it) }
     }
 
+    /**
+     * Start [body] once for each new binding of [pattern]. With [parallel], this rule's processes
+     * advance at the same time on several threads, which pays off when each does real work, such
+     * as a rope's physics. What they publish, move, retract and draw still lands in the same
+     * order every run. Variables they share must be safe to change from several threads at once:
+     * use `0.atomic` for a counter.
+     */
     fun <T> onEnter(
         name: String,
         pattern: SpatialPattern<T>,
         condition: String = name,
+        parallel: Boolean = false,
         body: suspend SpatialProcess.(T) -> Unit,
     ) {
         require(name !in rules) { "Duplicate spatial rule: $name" }
-        rules[name] = SpatialRule(pattern, condition, body)
+        rules[name] = SpatialRule(pattern, condition, parallel, body)
     }
 }
 
 internal class SpatialRule<T>(
     private val pattern: SpatialPattern<T>,
     private val condition: String,
+    private val parallel: Boolean,
     private val body: suspend SpatialProcess.(T) -> Unit,
 ) {
     private var live = linkedMapOf<List<Long>, SpatialMatch>()
@@ -413,7 +430,7 @@ internal class SpatialRule<T>(
         val next = linkedMapOf<List<Long>, SpatialMatch>()
         for ((ids, value) in queries.matches(pattern)) {
             next[ids] = live[ids] ?: SpatialMatch().also { match ->
-                world.launch(group, SpatialOrigin(name, Collections.unmodifiableList(ids), condition), match) { body(value) }
+                world.launch(group, SpatialOrigin(name, Collections.unmodifiableList(ids), condition), match, parallel) { body(value) }
             }
         }
         for ((ids, match) in live) if (ids !in next) match.live = false
@@ -430,10 +447,16 @@ class SpatialProcess internal constructor(
     private val world: SpatialRuleWorld,
     val origin: SpatialOrigin,
     private val activation: SpatialMatch?,
+    internal val parallel: Boolean = false,
 ) {
     private val owned = linkedMapOf<SpatialFact, SpatialLifetime>()
     internal var continuation: Continuation<Unit>? = null
     internal var stopping = false
+    internal var active = false
+    internal var finished: Result<Unit>? = null
+
+    /** Lines drawn this step, and, for a parallel process, what it changed, for the world to apply. */
+    internal val outbox = SpatialOutbox()
 
     internal var startedAt = Double.NaN
 
@@ -490,10 +513,7 @@ class SpatialProcess internal constructor(
     ): SpatialPoint {
         checkPublishing(lifetime)
         requireFinite(at)
-        return SpatialPoint(world.nextId(), kind, origin, data, Vec3(at)).also {
-            owned[it] = lifetime
-            world.publish(it, lifetime, activation)
-        }
+        return SpatialPoint(newId(), kind, origin, data, Vec3(at)).also { publish(it, lifetime) }
     }
 
     fun edge(
@@ -504,12 +524,9 @@ class SpatialProcess internal constructor(
         lifetime: SpatialLifetime = SpatialLifetime.PROCESS,
     ): SpatialEdge {
         checkPublishing(lifetime)
-        world.checkEndpoint(from)
-        world.checkEndpoint(to)
-        return SpatialEdge(world.nextId(), kind, origin, data, from, to).also {
-            owned[it] = lifetime
-            world.publish(it, lifetime, activation)
-        }
+        checkEndpoint(from)
+        checkEndpoint(to)
+        return SpatialEdge(newId(), kind, origin, data, from, to).also { publish(it, lifetime) }
     }
 
     /**
@@ -524,34 +541,36 @@ class SpatialProcess internal constructor(
     ): SpatialLink {
         checkPublishing(lifetime)
         require(ends.isNotEmpty()) { "A link needs at least one end" }
-        ends.forEach(world::checkEndpoint)
-        return SpatialLink(world.nextId(), kind, origin, data, ends.toList()).also {
-            owned[it] = lifetime
-            world.publish(it, lifetime, activation)
-        }
+        ends.forEach(::checkEndpoint)
+        return SpatialLink(newId(), kind, origin, data, ends.toList()).also { publish(it, lifetime) }
     }
 
     fun move(point: SpatialPoint, to: Vec3) {
         checkOwned(point)
-        world.move(point, to)
+        if (parallel) {
+            requireFinite(to)
+            outbox.changes.getOrPut(point, ::SpatialPublication).position = Vec3(to)
+        } else {
+            world.move(point, to)
+        }
     }
 
     /** Pass null to remove the key. Use immutable values to keep frame snapshots consistent. */
     fun set(fact: SpatialFact, key: String, value: Any?) {
         checkOwned(fact)
-        world.set(fact, key, value)
+        if (parallel) outbox.changes.getOrPut(fact, ::SpatialPublication).data[key] = value else world.set(fact, key, value)
     }
 
     fun retract(fact: SpatialFact) {
         checkOwned(fact)
         owned.remove(fact)
-        world.retract(fact)
+        if (parallel) outbox.retracted += fact else world.retract(fact)
     }
 
     /** Submit a line for this frame. Submit it again on any later frame that should draw it. */
     fun draw(line: FLine) {
         checkRunning()
-        world.draw(line)
+        outbox.drawing += line
     }
 
     internal fun releasePublications(all: Boolean) {
@@ -567,38 +586,69 @@ class SpatialProcess internal constructor(
         }
     }
 
+    /** A parallel process's facts are numbered when the world applies its outbox. */
+    private fun newId(): Long = if (parallel) 0L else world.nextId()
+
+    private fun publish(fact: SpatialFact, lifetime: SpatialLifetime) {
+        owned[fact] = lifetime
+        if (parallel) {
+            fact.lifetime = lifetime
+            fact.activation = activation
+            outbox.published += fact
+            outbox.publishedSet += fact
+        } else {
+            world.publish(fact, lifetime, activation)
+        }
+    }
+
+    private fun checkEndpoint(point: SpatialPoint) {
+        if (!(parallel && point in outbox.publishedSet)) world.checkEndpoint(point)
+    }
+
     private fun checkPublishing(lifetime: SpatialLifetime) {
         checkRunning()
         if (lifetime == SpatialLifetime.MATCH) check(match.live) { "Match has ended" }
     }
 
     private fun checkRunning() {
-        check(!stopping && world.running === this) { "Spatial process is not running" }
+        check(!stopping && active) { "Spatial process is not running" }
     }
 
     private fun checkOwned(fact: SpatialFact) {
         checkRunning()
-        check(fact in owned && world.contains(fact)) { "Process does not own a live publication" }
+        check(fact in owned && (world.contains(fact) || (parallel && fact in outbox.publishedSet))) {
+            "Process does not own a live publication"
+        }
     }
 }
 
+internal class SpatialPublication {
+    var position: Vec3? = null
+    val data = linkedMapOf<String, Any?>()
+}
+
+internal class SpatialOutbox {
+    val drawing = mutableListOf<FLine>()
+    val published = mutableListOf<SpatialFact>()
+    val publishedSet = hashSetOf<SpatialFact>()
+    val changes = linkedMapOf<SpatialFact, SpatialPublication>()
+    val retracted = mutableListOf<SpatialFact>()
+}
+
 /**
- * Single-threaded point and multigraph rules on a caller-supplied animation clock.
+ * Point and multigraph rules on a caller-supplied animation clock.
  * Each step commits publication changes, evaluates the rules, then advances each process once.
+ * Processes of rules marked `parallel` advance together on several threads; the others advance
+ * one at a time on the caller's thread.
  */
 class SpatialRuleWorld(
     private val parallelSearch: Boolean = false,
     private val indexFactory: SpatialIndexFactory = gridFactory,
 ) : AutoCloseable {
-    private class Publication {
-        var position: Vec3? = null
-        val data = linkedMapOf<String, Any?>()
-    }
-
     private object Stopped : RuntimeException("Spatial process stopped", null, false, false)
     private data class Task(val group: String, val scope: SpatialProcess)
     private val facts = linkedMapOf<Long, SpatialFact>()
-    private val pending = linkedMapOf<SpatialFact, Publication>()
+    private val pending = linkedMapOf<SpatialFact, SpatialPublication>()
     private val removed = linkedSetOf<SpatialFact>()
     private val groups = linkedMapOf<String, SpatialRules>()
     private val tasks = linkedSetOf<Task>()
@@ -606,8 +656,6 @@ class SpatialRuleWorld(
     private var history = emptyMap<SpatialProximity, Set<List<Long>>>()
     private var drawing = mutableListOf<FLine>()
     private var nextIdentity = 0L
-    internal var running: SpatialProcess? = null
-        private set
     private var busy = false
     private var closed = false
 
@@ -686,7 +734,7 @@ class SpatialRuleWorld(
     /** Install or replace a named source, leaving the other producers running. */
     fun source(name: String, body: suspend SpatialProcess.() -> Unit) = exclusive {
         stopGroup(name)
-        launch(name, SpatialOrigin(name, emptyList()), null, body)
+        launch(name, SpatialOrigin(name, emptyList()), null, body = body)
         throwFailures()
     }
 
@@ -721,18 +769,28 @@ class SpatialRuleWorld(
             for ((name, rule) in rules.rules) rule.evaluate(this, group, "$group/$name", queries)
         }
         history = queries.history()
-        drawing = mutableListOf()
-        for ((_, process) in tasks.toList()) {
+        val batch = tasks.toList()
+        for ((_, process) in batch) {
             process.releasePublications(all = false)
-            val continuation = checkNotNull(process.continuation)
-            process.continuation = null
             if (process.startedAt.isNaN()) process.startedAt = now
-            running = process
-            try {
-                continuation.resume(Unit)
-            } finally {
-                running = null
-            }
+        }
+        // Serial processes first, in order, then the parallel ones together. A parallel process
+        // reads only committed state and writes only its own outbox, which is applied in task
+        // order afterwards, so the result does not depend on how the threads were scheduled.
+        for ((_, process) in batch) if (!process.parallel) advance(process)
+        val parallel = batch.map(Task::scope).filter(SpatialProcess::parallel)
+        if (parallel.size == 1) {
+            advance(parallel.single())
+        } else if (parallel.isNotEmpty()) {
+            val box = Box.context.get()
+            parallel.parallelStream().forEach { process -> withBox(box) { advance(process) } }
+        }
+        parallel.forEach(::deliver)
+        drawing = mutableListOf()
+        for (task in batch) {
+            drawing += task.scope.outbox.drawing
+            task.scope.outbox.drawing.clear()
+            if (task.scope.finished != null) finish(task)
         }
         throwFailures()
         drawing.toList()
@@ -758,22 +816,69 @@ class SpatialRuleWorld(
         group: String,
         origin: SpatialOrigin,
         match: SpatialMatch?,
+        parallel: Boolean = false,
         body: suspend SpatialProcess.() -> Unit,
     ) {
-        val scope = SpatialProcess(this, origin, match)
-        val task = Task(group, scope)
-        tasks.add(task)
+        val scope = SpatialProcess(this, origin, match, parallel)
+        tasks.add(Task(group, scope))
         scope.continuation = body.createCoroutine(scope, object : Continuation<Unit> {
             override val context = EmptyCoroutineContext
 
+            // This can run on a worker thread, so it only records the result; [finish] acts on it.
             override fun resumeWith(result: Result<Unit>) {
-                scope.releasePublications(all = true)
-                tasks.remove(task)
-                result.exceptionOrNull()?.takeUnless { it === Stopped }?.let {
-                    failures.add(IllegalStateException("Spatial process ${origin.process}", it))
-                }
+                scope.finished = result
             }
         })
+    }
+
+    private fun advance(process: SpatialProcess) {
+        val continuation = checkNotNull(process.continuation)
+        process.continuation = null
+        process.active = true
+        try {
+            continuation.resume(Unit)
+        } finally {
+            process.active = false
+        }
+    }
+
+    /** Apply what a parallel process published, changed and retracted during the step. */
+    private fun deliver(process: SpatialProcess) {
+        val outbox = process.outbox
+        for (fact in outbox.published) {
+            fact.id = nextId()
+            publish(fact, fact.lifetime, fact.activation)
+        }
+        for ((fact, change) in outbox.changes) {
+            val publication = pending.getOrPut(fact, ::SpatialPublication)
+            change.position?.let { publication.position = it }
+            publication.data.putAll(change.data)
+        }
+        outbox.retracted.forEach(::retract)
+        outbox.published.clear()
+        outbox.publishedSet.clear()
+        outbox.changes.clear()
+        outbox.retracted.clear()
+    }
+
+    private fun finish(task: Task) {
+        val scope = task.scope
+        val result = checkNotNull(scope.finished)
+        scope.releasePublications(all = true)
+        tasks.remove(task)
+        result.exceptionOrNull()?.takeUnless { it === Stopped }?.let {
+            failures.add(IllegalStateException("Spatial process ${scope.origin.process}", it))
+        }
+    }
+
+    private inline fun withBox(box: Box?, block: () -> Unit) {
+        val previous: Box? = Box.context.get()
+        if (box == null) Box.context.remove() else Box.context.set(box)
+        try {
+            block()
+        } finally {
+            if (previous == null) Box.context.remove() else Box.context.set(previous)
+        }
     }
 
     internal fun nextId(): Long = ++nextIdentity
@@ -788,7 +893,7 @@ class SpatialRuleWorld(
         fact.lifetime = lifetime
         fact.activation = activation
         facts[fact.id] = fact
-        pending[fact] = Publication()
+        pending[fact] = SpatialPublication()
     }
 
     internal fun retract(fact: SpatialFact) {
@@ -797,15 +902,11 @@ class SpatialRuleWorld(
 
     internal fun move(point: SpatialPoint, to: Vec3) {
         requireFinite(to)
-        pending.getOrPut(point, ::Publication).position = Vec3(to)
+        pending.getOrPut(point, ::SpatialPublication).position = Vec3(to)
     }
 
     internal fun set(fact: SpatialFact, key: String, value: Any?) {
-        pending.getOrPut(fact, ::Publication).data[key] = value
-    }
-
-    internal fun draw(line: FLine) {
-        drawing.add(line)
+        pending.getOrPut(fact, ::SpatialPublication).data[key] = value
     }
 
     private fun commit(elapsed: Double) {
@@ -854,6 +955,7 @@ class SpatialRuleWorld(
         val continuation = scope.continuation
         scope.continuation = null
         continuation?.resumeWithException(Stopped)
+        if (scope.finished != null) finish(task)
     }
 
     private fun throwFailures() {

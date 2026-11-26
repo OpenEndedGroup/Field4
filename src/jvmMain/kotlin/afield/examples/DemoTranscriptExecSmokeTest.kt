@@ -215,6 +215,10 @@ object DemoTranscriptExecSmokeTest {
         // SimdVerlet worlds stepping in one runloop. Same no-Window, no-Renderer argument as the
         // cloth — CPU physics plus showPlane, Skia SVG -> display.
         "simdverlet_world",
+        // A slinky walking down an up escalator: one `loop { }` box, launched, 90 frames, stopped, on
+        // the cloth's no-Window argument (CPU physics plus showPlane). Its sliders and button are
+        // registered on the way in, so the control path is exercised too.
+        "slinky_escalator",
         // Inertial easing and the movement model built on it, as three `loop { }` boxes that get
         // longer in that order — launched, 90 frames, stopped, on the same no-Window argument as the
         // cloth: `showSignals` and `showPlane` are Plotly/Skia into `display`. The equality the
