@@ -62,3 +62,28 @@ Natural gait period: 0.573-0.583 s per step (median in the docs height figure: 0
 A throwaway `kotlinc` harness against `build/classes/kotlin/jvm/main` (seconds per run, parallel
 grids), not checked in; the durable checks are `SlinkyTest` and the three docs fences, which
 recompute the figures above from the library.
+
+## Does it slink? (follow-up, 2026-11-26)
+
+No, not yet. A flip is counted when the two end coils swap which is lower by more than half a
+rise (JVM harness). With the shipped `air = 0.01`, on still stairs: 0 flips — it stands. So the
+escalator "walk" above is drag-forced, and the "drag is the only coupling" argument on the page
+does not describe a real walker.
+
+Low drag (velocity kept 0.6-1 per second), still stairs, ~830 two-particle configurations, then
+`Slinky.perCoil` (rings of 4, 6, 8 particles; ring rigidity by edges, second neighbours and
+diameters; per-particle face contact; inelastic landing kept; 12 passes, which a ring stack needs
+not to sag). Best run per N as (regular consecutive flips, total flips, steps descended):
+
+| perCoil | regular | flips | steps |
+| --- | --- | --- | --- |
+| 2 | 2 | 9 | 36 |
+| 4 | 3 | 9 | 36 |
+| 6 | 1 | 9 | 36 |
+| 8 | 2 | 14 | 28 |
+
+No N reaches 10 regular flips. Rings stand firmer (a flick of 6 no longer tips them), and with a
+harder flick every N tips, then slides or tumbles (steps 2-4x flips). What N bought: a stack that
+stands under its own weight and a true ring for contact; not a gait. Cost: 40 coils x 8 at 12
+passes is ~3.7 ms per 60 Hz frame (N = 2: ~1.1 ms), live-capable. Open: landing dissipation that
+loses ~M g rise per step, and base pinning.

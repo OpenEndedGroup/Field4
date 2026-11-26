@@ -97,4 +97,25 @@ class SlinkyTest {
         while (scene.time < 10f) scene.step()
         assertTrue(scene.stepsDescended < 2f, "walked ${scene.stepsDescended} steps")
     }
+
+    /** A ring slinky (eight particles a turn) also stands, keeps its rings round, and keeps its mass. */
+    @Test
+    fun aRingSlinkyStands() {
+        val sim = SimdVerlet(SimdVerlet.State3.empty())
+        val slinky = sim.addSlinky(coils = 40, perCoil = 8)
+        slinky.passes = 12
+        val floor = sim.addColliders(PlaneCollider(0f, -1f, 0f, offset = 0f))
+        slinky.restingOn = floor
+        repeat(120) { slinky.step() }
+        assertFalse(slinky.diverged)
+        assertEquals(320, slinky.end - slinky.base)
+        val top = -slinky.centre(39).y
+        assertTrue(top in 0.7f..1.05f, "40 ring coils stand about one diameter tall, got $top")
+        val c = slinky.centre(20)
+        for (k in 0 until 8) {
+            val i = slinky[20, k]
+            val r = kotlin.math.sqrt((sim.state.x[i] - c.x).let { it * it } + (sim.state.y[i] - c.y).let { it * it } + (sim.state.z[i] - c.z).let { it * it })
+            assertEquals(0.5f, r, 0.02f, "particle $k of coil 20 stays on the ring")
+        }
+    }
 }
