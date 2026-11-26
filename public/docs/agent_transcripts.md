@@ -3503,6 +3503,18 @@ in Field's Electron app; the talk starts each figure when its slide comes up.
 
 [Open →](offline.html?file=assets/agent_transcripts/explainer_lights/metadata.edn)
 
+### explainer_teichmuller
+
+**A talk on Teichmüller maps, from scratch.** One box, `deck`, is a presentation that goes from
+conformal maps through quasi-conformal maps and the Beltrami coefficient to Teichmüller maps and the
+Teichmüller distance between shapes, after Gary P. T. Choi and L. Mahadevan's planar morphometrics.
+Five figure boxes compute live with `afield.geometry.conformal`: small circles turning into ellipses,
+one ellipse from a chosen μ, a harmonic map beside a Teichmüller map found by the quasi-conformal
+iteration of Lui, Lam, Yau and Gu, and two leaf figures that compare outlines by distance. Run `deck`
+in Field's Electron app.
+
+[Open →](offline.html?file=assets/agent_transcripts/explainer_teichmuller/metadata.edn)
+
 ### audio_ai_underfit_mancini
 
 Import a held-out excerpt, hash the completed Experiment in Terror

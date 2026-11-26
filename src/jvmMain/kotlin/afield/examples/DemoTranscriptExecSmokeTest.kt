@@ -751,6 +751,7 @@ object DemoTranscriptExecSmokeTest {
         // The Lights and Shadows deck: its deck box opens Electron audience windows. Its figures are
         // CPU lighting in three views; LightingTest checks the physics they are drawn from.
         "explainer_lights",
+        "explainer_teichmuller", // its deck opens Electron presentation windows
         // Box 2 returns a live patSynth launch (an audio-engine registration held while the box runs);
         // the drawing-to-facts path and the live re-solve are covered by DatalogRhythmLiveTest.
         "datalog_rhythm_drawn",

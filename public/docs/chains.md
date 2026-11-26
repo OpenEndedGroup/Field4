@@ -264,7 +264,8 @@ every box in the document does.
 Three talks inspired by Bartosz Ciechanowski's
 [Sound](https://ciechanow.ski/sound/), [Cameras and Lenses](https://ciechanow.ski/cameras-and-lenses/)
 and [Lights and Shadows](https://ciechanow.ski/lights-and-shadows/), rebuilt in our own words and
-figures as Field presentations. Open one to explore the figures, or use the
+figures as Field presentations, and a fourth on Teichmüller maps and comparing shapes, after the work
+of Gary P. T. Choi and his co-authors. Open one to explore the figures, or use the
 [presentation engine](presentation_studio.md#live-figures-beside-prose) to give the talk yourself.
 The slides can move a figure's controls, and the sound examples are ready to play.
 
@@ -284,5 +285,10 @@ The slides can move a figure's controls, and the sound examples are ready to pla
 
     **[Lights and Shadows](explainer_lights.md).** Power, the cosine factor, distance, solid
     angle and radiance, then soft shadows, coloured light and light that bounces.
+
+-   ![The slide "Two leaves": prose on the left, and on the right an elliptic leaf and a heart-shaped leaf meshed in triangles of one even blue, with six orange landmarks on each](assets/explainer_teichmuller/slides/leaves.png)
+
+    **[Teichmüller Maps](explainer_teichmuller.md).** Conformal and quasi-conformal maps, the
+    Beltrami coefficient, the map that distorts least, and a distance between leaf shapes.
 
 </div>
