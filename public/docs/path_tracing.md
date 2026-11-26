@@ -668,15 +668,22 @@ val asked = (1..99).map { it / 100.0 }
 val fits = AlbedoRemap.entries
 
 // What each fit hands the random walk as its single-scattering albedo.
-val remapChart = Chart(title = "single-scattering albedo each fit asks for", xLabel = "requested colour A", yLabel = "single-scattering albedo")
+val remapChart = Chart(
+    title = "single-scattering albedo each fit asks for",
+    xLabel = "requested colour A",
+    yLabel = "single-scattering albedo",
+)
 fits.forEach { fit -> remapChart.line(fit.name, asked, asked.map { fit.singleScatterAlbedo(it) }) }
 
 // What a half-space with that albedo really reflects, minus what was asked for.
 val reference = HalfSpaceAlbedo.standard
-val errorChart = Chart(title = "reflected minus requested, half-space Monte Carlo", xLabel = "requested colour A", yLabel = "error")
-fits.filter { it != AlbedoRemap.NONE }.forEach { fit ->
-    errorChart.line(fit.name, asked, asked.map { reference.reflectance(fit.singleScatterAlbedo(it)) - it })
-}
+val errorChart =
+    Chart(title = "reflected minus requested, half-space Monte Carlo", xLabel = "requested colour A", yLabel = "error")
+fits
+    .filter { it != AlbedoRemap.NONE }
+    .forEach { fit ->
+        errorChart.line(fit.name, asked, asked.map { reference.reflectance(fit.singleScatterAlbedo(it)) - it })
+    }
 errorChart.rule(0.0)
 
 display("remap", remapChart)
