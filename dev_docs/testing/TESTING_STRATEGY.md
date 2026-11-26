@@ -410,7 +410,11 @@ builds the native, runs its package's tests and fails if any still skipped:
 
 Add a library by adding one call; do not copy the task body. The negative control is the same for
 each: with the native absent (`-x build<Lib>Native` in a tree without `build/field-<lib>`, or, for
-paint, `AFIELD_PAINT_LIBRARY=/nonexistent`), the task fails naming every skipped test.
+paint, `AFIELD_PAINT_LIBRARY=/nonexistent`), the task fails naming every skipped test. On 2026-11-26 it
+fired for all nine (paint 65 of 76 skipped, libpd 17/35, Csound 28/41, TetGen 24/36, Loris 5/13,
+polyvector 9/14, Morse-Smale 11/13, principal curves 12/13, openNURBS 28/36); with each native built,
+all nine ran with no skip. Do not skip the build step to save time: a stale openNURBS library from an
+older checkout made 13 tests skip and 14 fail, and a stale paint library failed 5.
 
 Both `tools/land.py precheck` and the lander select `checkPaintTests` for a diff under
 `native/field-paint` or `afield/graphics/paint`. The others are not landing guards yet (their builds
