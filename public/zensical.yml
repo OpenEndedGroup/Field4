@@ -462,6 +462,7 @@ nav:
       # above: nothing on it is about working in a document. It stays inside one subsystem and has
       # no hop checks, which is why it is not under "Long Way Round".
       - Flow Grain and Motion: flow_grain.md
+      - Stroke Studio: stroke_studio.md
       - Puppet Browser: puppet_browser.md
       - Fabricate Renderer: fabricate_renderer.md
       - Direct Lighting: direct_lighting.md

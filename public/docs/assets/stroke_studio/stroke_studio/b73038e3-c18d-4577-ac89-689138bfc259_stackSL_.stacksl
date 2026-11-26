@@ -1,0 +1,67 @@
+# Stroke studio. Each definition consumes one vec4 and returns one vec4.
+# The opening guide lists numbered samplers and the frame in which each is valid.
+
+# IN: (along-line 0..1, age seconds, stable seed 0..1, direction class).
+# OUT: (thickness multiplier, signed pigment weight, scale multiplier, sideways offset in half-widths).
+: brushStyle
+    drop 1 1 1 0 vec4
+;
+
+# IN: (analysis u, analysis v, along-line 0..1, age seconds), top-left UV.
+# OUT: same four lanes as brushStyle. The multipliers multiply; sideways offsets add.
+# Draw samplers 0 lit, 1 velocity, 2 world, 3 previous world.
+: brushSurface
+    drop 1 1 1 0 vec4
+;
+
+# IN: same as brushStyle. OUT: (world dx, world dy, world dz, unused).
+# The vector shifts the drawn ribbon. Stored anchors continue tracking the underlying scene.
+: brushOffset
+    drop 0
+;
+
+# IN: (age seconds, attack seconds, release seconds, surface ID).
+# OUT: (fraction of line drawn, opacity, unused, unused).
+: lifeEnvelope
+    >clock
+    0 <clock .y <clock .x smoothstep
+    0 <clock .y 0.32 * <clock .x smoothstep
+    1 <clock .x <clock .y - <clock .z / saturate - 1.35 pow *
+    0 0 vec4
+;
+
+# IN: (analysis u, analysis v, frame delta seconds, scene time).
+# OUT: (vx, vy, confidence 0..1, optional speed), with xy in analysis pixels/sec.
+# Trace samplers 0 optical velocity, 1 edge tensor, 2 signed feedback, 3 lit.
+: guideVelocity
+    sample0-abs
+;
+
+# IN: (path-mean signed linear RGB residual, normalized direction strength).
+# OUT: (signed linear RGB deposit before Pigment fraction, unused).
+# Uses the same numbered samplers as guideVelocity. Supply absolute UV for those taps.
+: pigmentStyle
+    0 +
+;
+
+# IN: (default mixed analysis linear RGB, downsampled paint coverage).
+# OUT: (analysis RGB, unused). This affects edges and the summary, not the displayed paint.
+# Edge samplers 0 full-resolution paint, 1 lit color, 2 velocity, 3 world.
+: edgeTone
+    0 +
+;
+
+# IN: (signed RGB after blur/reconstruction/light-to-paint, accumulated alpha).
+# OUT: (signed RGB before display gamut, unused).
+# Samplers 0 sharp paint, 1 medium blur, 2 broad blur.
+: compositeTone
+    0 +
+;
+
+
+# IN: (analysis u, analysis v, variance interest 0..1, direction strength).
+# OUT: (birth probability multiplier, thickness multiplier, step length multiplier, unused).
+# Samplers 0 value, 1 extent, 2 moments, 3 edge tensor. Use absolute UV at the cell.
+: regionalStyle
+    drop 1 1 1 0 vec4
+;
