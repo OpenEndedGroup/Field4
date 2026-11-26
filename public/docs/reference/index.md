@@ -691,7 +691,7 @@ To see it all at once, open the [map of the docs](../docs_map.md): every page, a
 
 ## Reference pages
 
-**44035 public symbols across 1947 source files**, 26394 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**44037 public symbols across 1947 source files**, 26396 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -704,7 +704,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Video](video.md) | 14 | 195 | 194 (99%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 61 | 2674 | 2034 (76%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 27 | 1233 | 572 (46%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 472 | 11318 | 7177 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 472 | 11320 | 7179 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 48 | 911 | 515 (56%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 596 | 440 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 787 | 530 (67%) | Nonlinear least squares, aimed at geometry. |
@@ -2142,7 +2142,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [RemoteJSTemplateSmokeTest.kt](examples.md#remotejstemplatesmoketest-kt) | Examples · internal | 2 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>remotejs/<wbr></small> [RemoteLifecycleKotlinJs.kt](languages.md#remotelifecyclekotlinjs-kt) | Languages | 3 | 1 | The `onStart` / `onFrame` / `onStop` / `keepAlive` callbacks that every remote Kotlin/JS head shares. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>ai/<wbr></small> [RenderedAudioAnalysis.kt](audio-ai.md#renderedaudioanalysis-kt) | Audio AI | 31 | 31 | The render-to-analysis pipeline: render Field synthesis to a WAV, upload it once, and fan out durable analysis jobs. | [Render Field music, then analyse it](../audio_render_analysis.md), [Visualizers, Displays, and Little Instruments](../visualizers.md) |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr></small> [Renderer.kt](graphics.md#renderer-kt) | Graphics | 92 | 18 | The Vulkan renderer: one `Renderer` owns the instance, device, queues, command pools and the swapchain of each of its windows, and records, submits and presents a frame per tick. | [Body and hand tracking](../body_tracking.md), [Neural image rendering with OpenDLSS-NR](../open_dlss_nr.md), [Profiling](../profiling_timeline.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr></small> [Renderer.kt](graphics.md#renderer-kt) | Graphics | 94 | 20 | The Vulkan renderer: one `Renderer` owns the instance, device, queues, command pools and the swapchain of each of its windows, and records, submits and presents a frame per tick. | [Body and hand tracking](../body_tracking.md), [Neural image rendering with OpenDLSS-NR](../open_dlss_nr.md), [Profiling](../profiling_timeline.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [rendererBrowsing.kt](workspace.md#rendererbrowsing-kt) | Workspace · internal | 1 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [RendererCleanupSmoke.kt](examples.md#renderercleanupsmoke-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [RendererRecordingRecoverySmoke.kt](examples.md#rendererrecordingrecoverysmoke-kt) | Examples | 2 | 1 |  |  |
