@@ -4,7 +4,7 @@
 
 Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side.
 
-472 source file(s), 11318 public symbol(s), 7178 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+473 source file(s), 11325 public symbol(s), 7180 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -2238,7 +2238,7 @@ A slide of a part along the unit vector [`direction`](graphics.md#rigidmotion-kt
 
 [<code class="highlight"><span class="k">class</span> <span class="nf">MotionStep</span><span class="p">(</span><span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">t</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">pose</span><span class="p">:</span> <span class="nc">Matrix4dc</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/kinematics/RigidMotion/#L296)
 
-One sample of a motion: its [`index`](graphics.md#rigidmotion-kt--motionstep--index), normalised parameter [`t`](graphics.md#rigidmotion-kt--motionstep--t), the motion [`value`](graphics.md#rigidmotion-kt--motionstep--value) there, and the [`pose`](graphics.md#camerapose-kt--pose).
+One sample of a motion: its [`index`](graphics.md#rigidmotion-kt--motionstep--index), normalised parameter [`t`](graphics.md#rigidmotion-kt--motionstep--t), the motion [`value`](graphics.md#rigidmotion-kt--motionstep--value) there, and the `pose`.
 
 | Declaration | Summary |
 | --- | --- |
@@ -5449,6 +5449,25 @@ properties (`onClick` callbacks, `thicken` strokes) are skipped instead.
 | <a id="flineserialization-kt--flineserializer--descriptor"></a>[<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">descriptor</span><span class="p">:</span> <span class="nc">SerialDescriptor</span></code>](source/jvmMain/afield/geometry/path/FLineSerialization/#L37) |  |
 | <a id="flineserialization-kt--flineserializer--serialize"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">serialize</span><span class="p">(</span><span class="n">encoder</span><span class="p">:</span> <span class="nc">Encoder</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">FLine</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/path/FLineSerialization/#L39) |  |
 | <a id="flineserialization-kt--flineserializer--deserialize"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">deserialize</span><span class="p">(</span><span class="n">decoder</span><span class="p">:</span> <span class="nc">Decoder</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLine</span></code>](source/jvmMain/afield/geometry/path/FLineSerialization/#L43) |  |
+
+## FLineSkin.kt { #flineskin-kt }
+
+`src/jvmMain/kotlin/afield/geometry/path/FLineSkin.kt` — [read the source](source/jvmMain/afield/geometry/path/FLineSkin/)
+
+### SkinnedLine { #flineskin-kt-skinnedline }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">SkinnedLine</span><span class="p">(</span><span class="k">val</span> <span class="n">shape</span><span class="p">:</span> <span class="nc">FLine</span><span class="p">,</span> <span class="k">val</span> <span class="n">bindFrom</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="k">val</span> <span class="n">bindTo</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="k">val</span> <span class="n">across</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">lag</span><span class="p">:</span> <span class="p">(</span><span class="n">along</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Double</span> <span class="o">=</span> <span class="p">{</span> <span class="mf">0.0</span> <span class="p">}</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/path/FLineSkin/#L33)
+
+A curve drawn once in a bind pose, between two bind points, and posed each frame between two live points. [`pose`](graphics.md#flineskin-kt--skinnedline--pose) turns the curve so the direction from [`bindFrom`](graphics.md#flineskin-kt--skinnedline--bindfrom) to [`bindTo`](graphics.md#flineskin-kt--skinnedline--bindto) points from the first live point to the second, the shortest rotation between those two directions. It stretches the curve along that direction by exactly what it takes to reach the live points, and moves [`bindFrom`](graphics.md#flineskin-kt--skinnedline--bindfrom) onto the first one.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="flineskin-kt--skinnedline--shape"></a><code class="highlight"><span class="k">val</span> <span class="n">shape</span><span class="p">:</span> <span class="nc">FLine</span></code> |  |
+| <a id="flineskin-kt--skinnedline--bindfrom"></a><code class="highlight"><span class="k">val</span> <span class="n">bindFrom</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
+| <a id="flineskin-kt--skinnedline--bindto"></a><code class="highlight"><span class="k">val</span> <span class="n">bindTo</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
+| <a id="flineskin-kt--skinnedline--across"></a><code class="highlight"><span class="k">val</span> <span class="n">across</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="flineskin-kt--skinnedline--lag"></a><code class="highlight"><span class="k">val</span> <span class="n">lag</span><span class="p">:</span> <span class="p">(</span><span class="n">along</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Double</span></code> |  |
+| <a id="flineskin-kt--skinnedline--pose"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">pose</span><span class="p">(</span><span class="n">from</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="n">to</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="n">now</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLine</span></code>](source/jvmMain/afield/geometry/path/FLineSkin/#L59) | The curve posed between `from` and `to` at time `now`, in seconds, which [`lag`](graphics.md#flineskin-kt--skinnedline--lag) measures against. The result is a new FLine with the shape's style. |
 
 ## FLineThickening.kt { #flinethickening-kt }
 
@@ -24374,8 +24393,6 @@ Rigid camera poses for blending between viewpoints: [`CameraPose`](graphics.md#c
 [`pose`](graphics.md#camerapose-kt--pose) reads one from a camera and [`applyPose`](graphics.md#camerapose-kt--applypose) writes it back. [`sclerpTo`](graphics.md#camerapose-kt--sclerpto) moves a camera toward a target pose by screw interpolation and [`nlerpTo`](graphics.md#camerapose-kt--nlerpto) by normalised linear interpolation.
 
 `src/jvmMain/kotlin/afield/graphics/vulkan/util/CameraPose.kt` — [read the source](source/jvmMain/afield/graphics/vulkan/util/CameraPose/)
-
-**Used in:** [Keyframes: capturing, persisting and replaying live state](../keyframer_examples.md)
 
 ### Top-level functions { #camerapose-kt-functions }
 
