@@ -9,8 +9,9 @@ layout(local_size_x=8,local_size_y=8) in;
 const float PI = 3.141592653589793;
 struct Triangle { vec4 a; vec4 b; vec4 c; vec4 na; vec4 nb; vec4 nc; vec4 uv[6]; vec4 color[3]; };
 struct Node { vec4 lo; vec4 hi; ivec4 data; };
-struct Material { vec4 base; vec4 emission; vec4 optical; vec4 absorption; ivec4 maps; vec4 coverage; vec4 textureParams; };
+struct Material { vec4 base; vec4 emission; vec4 optical; vec4 absorption; ivec4 maps; vec4 coverage; vec4 textureParams; vec4 scattering; };
 // optical: transmission flag, IOR, thin-sheet flag, reserved. absorption: sigma_a or sheet tint.
+// scattering: interior sigma_s RGB per world unit and Henyey-Greenstein g; zero rgb is plain glass.
 layout(buffer_reference,std430,buffer_reference_align=16) readonly buffer Triangles { Triangle items[]; };
 layout(buffer_reference,std430,buffer_reference_align=16) readonly buffer Nodes { Node items[]; };
 layout(buffer_reference,std430,buffer_reference_align=16) readonly buffer Materials { Material items[]; };
@@ -488,6 +489,51 @@ vec4 depthFog(vec4 color,float depth) {
  * one survival rule and one sample dimension rather than a copy per interaction kind.
  * Refraction changes radiance units, not path importance, which is what [etaScale] undoes.
  */
+// ----------------------------------------------------------- random-walk subsurface scattering
+// Inside a solid whose material scatters, a path walks a homogeneous medium with per-channel
+// sigma_a (the solid-glass absorption) and sigma_s until it reaches the boundary. Extinction is
+// chromatic here, unlike the scene medium, so each step picks a channel uniformly and samples its
+// exponential: the one-sample MIS estimator over the three channels (the "hero" scheme of Chiang
+// et al. 2016) divides by the mean of the three channel pdfs, which keeps every channel unbiased.
+// The walk draws from its own hash stream rather than the Sobol dimensions: it can take hundreds
+// of steps, and the per-bounce dimension layout has no room for them.
+const int SSS_MAX_STEPS=1024;
+uint walkState;
+float walkRandom() { walkState=hash(walkState+0x9e3779b9u); return float(walkState>>8)*(1.0/16777216.0); }
+/**
+ * Walk from ro along rd inside the medium (sigmaA, sigmaS, g) until a segment reaches a surface.
+ * On return ro/rd/hit describe that final segment, throughput carries the walk's weight and the
+ * final segment's transmittance, and false means the path was lost (left a hole in an open mesh,
+ * hit the step cap, or was killed by roulette).
+ */
+bool randomWalk(inout vec3 ro,inout vec3 rd,inout Hit hit,inout vec3 throughput,vec3 sigmaA,vec3 sigmaS,float g) {
+    vec3 sigmaT=sigmaA+sigmaS;
+    for (int step=0; step<SSS_MAX_STEPS; step++) {
+        if (hit.triangle<0) return false;
+        float pick=walkRandom()*3.0;
+        float channelT=pick<1.0 ? sigmaT.r : (pick<2.0 ? sigmaT.g : sigmaT.b);
+        float t=channelT>0.0 ? -log(max(1.0-walkRandom(),1e-30))/channelT : 1e30;
+        if (t>=hit.t) {
+            // No collision before the surface: weight T / mean(T) (the pdf of passing it).
+            vec3 transmittance=exp(-sigmaT*hit.t);
+            throughput*=transmittance/max(dot(transmittance,vec3(1.0/3.0)),1e-30);
+            return true;
+        }
+        vec3 transmittance=exp(-sigmaT*t);
+        // A real scattering event: sigma_s T / mean(sigma_t T), the collision pdf averaged over channels.
+        throughput*=sigmaS*transmittance/max(dot(sigmaT*transmittance,vec3(1.0/3.0)),1e-30);
+        float peak=max(throughput.r,max(throughput.g,throughput.b));
+        if (peak<=0.0) return false;
+        if (step>8 && peak<0.5) {
+            if (walkRandom()>=peak*2.0) return false;
+            throughput/=peak*2.0;
+        }
+        ro+=rd*t;
+        rd=normalize(samplePhase(rd,g,vec2(walkRandom(),walkRandom())));
+        hit=intersectScene(ro,rd,false);
+    }
+    return false;
+}
 bool survives(inout vec3 throughput,float etaScale,uint domain,int bounce) {
     if (bounce<2) return true;
     float survive=clamp(max(throughput.r,max(throughput.g,throughput.b))*etaScale,0.05,0.95);
@@ -499,6 +545,9 @@ vec4 tracePath(vec3 ro,vec3 rd,out HistoryPixel guide,out float primaryDepth) {
     primaryDepth=-1.0;
     guide=HistoryPixel(vec4(0),vec4(0,0,0,-1),vec4(0,0,0,-1),vec4(0));
     vec3 radiance=vec3(0),indirect=vec3(0),throughput=vec3(1),sigma=vec3(0);
+    // Interior scattering of the solid the path is in (sigma_s RGB, g); zero outside every SSS solid.
+    vec4 interior=vec4(0);
+    walkState=hash(pixelSeed^hash(sampleIndex*0x85ebca6bu+0x27d4eb2fu));
     // The unoffset previous vertex. An emitter pdf measured from the epsilon-offset ray origin
     // instead would not match the one the emitter arm used, and MIS weights have to sum to one
     // exactly, not nearly.
@@ -507,6 +556,14 @@ vec4 tracePath(vec3 ro,vec3 rd,out HistoryPixel guide,out float primaryDepth) {
     bool previousDelta=true;
     for (int bounce=0; bounce<frame.scene.w; bounce++) {
         Hit hit=intersectScene(ro,rd,false);
+        // Inside a scattering solid, the whole walk to the boundary is this one bounce; what follows
+        // then shades the exit as an ordinary glass crossing. Its transmittance is already applied.
+        bool walked=false;
+        if (max(interior.r,max(interior.g,interior.b))>0.0) {
+            if (!randomWalk(ro,rd,hit,throughput,sigma,interior.rgb,interior.w)) break;
+            walked=true;
+            previousPoint=ro; previousDelta=true;
+        }
         // Hoisted above the interaction: the medium's distance sample decides *which* interaction
         // this bounce is, so its dimensions have to be drawn before either branch is taken.
         uint domain=uint(bounce)*4u+1u;
@@ -518,7 +575,7 @@ vec4 tracePath(vec3 ro,vec3 rd,out HistoryPixel guide,out float primaryDepth) {
         float emitterSelector=sampleDimension((domain+3u)*2u+1u);
         // extra.y is in/out: it is the distance sample first and the lobe selector afterwards.
         // See sampleMediumDistance for why that is exact rather than merely cheap.
-        float scattered=sampleMediumDistance(ro,rd,hit.triangle<0 ? 1e30 : hit.t,extra.y);
+        float scattered=walked ? -1.0 : sampleMediumDistance(ro,rd,hit.triangle<0 ? 1e30 : hit.t,extra.y);
         if (scattered>=0.0) {
             vec3 point=ro+rd*scattered;
             if (bounce==0) primaryDepth=distance(point,frame.origin.xyz);
@@ -605,7 +662,7 @@ vec4 tracePath(vec3 ro,vec3 rd,out HistoryPixel guide,out float primaryDepth) {
         }
         // A first back face also supports a camera placed inside one homogeneous solid.
         if (bounce==0 && glass && !entering && m.optical.z<0.5) sigma=m.absorption.rgb;
-        throughput*=exp(-sigma*hit.t);
+        if (!walked) throughput*=exp(-sigma*hit.t);
         // The other half of the emitter pair: weight this hit against the density the emitter arm
         // would have had for it, so the two strategies compose instead of double-counting. A delta
         // bounce, or an emitter the table cannot see, leaves this at one.
@@ -667,6 +724,7 @@ vec4 tracePath(vec3 ro,vec3 rd,out HistoryPixel guide,out float primaryDepth) {
                     if (delta) throughput/=eta*eta;
                     etaScale*=eta*eta;
                     sigma=entering ? m.absorption.rgb : vec3(0);
+                    interior=entering ? m.scattering : vec4(0);
                 }
             }
             previousDelta=delta;

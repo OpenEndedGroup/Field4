@@ -51,7 +51,11 @@ data class PathTraceMaterial(
     val emissionTexture: Int = -1, val normalTexture: Int = -1,
     val opacity: Float = 1f, val alphaCutoff: Float = 0.5f,
     val alphaMode: AlphaMode = AlphaMode.OPAQUE, val doubleSided: Boolean = true,
-    val normalScale: Float = 1f
+    val normalScale: Float = 1f,
+    /** Interior scattering coefficient per world unit, per channel; nonzero makes solid glass a subsurface medium. */
+    val scatterRed: Float = 0f, val scatterGreen: Float = 0f, val scatterBlue: Float = 0f,
+    /** Henyey–Greenstein g of the interior walk, in (-1, 1). */
+    val scatterAnisotropy: Float = 0f
 ) {
     enum class AlphaMode { OPAQUE, MASK, BLEND }
     init {
@@ -68,9 +72,14 @@ data class PathTraceMaterial(
         }) { "Absorption coefficient must be finite" }
         require(!transmission || metallic == 0f) { "Transmission is dielectric; metallic must be zero" }
         require(!thinWalled || (transmission && roughness == 0f)) { "Thin sheets currently require smooth glass" }
+        require(listOf(scatterRed, scatterGreen, scatterBlue).all { it.isFinite() && it >= 0f })
+        require(scatterAnisotropy.isFinite() && scatterAnisotropy > -1f && scatterAnisotropy < 1f)
+        require(!scatters || (transmission && !thinWalled)) { "Subsurface scattering needs a solid, non-thin dielectric" }
     }
+    /** True when the interior scatters as well as absorbs: a random-walk subsurface material. */
+    val scatters: Boolean get() = scatterRed > 0f || scatterGreen > 0f || scatterBlue > 0f
     companion object {
-        internal const val STRIDE = 112
+        internal const val STRIDE = 128
         /** Colour remaining after attenuationDistance world units inside the solid; roughness zero is ideal glass. */
         fun glass(ior: Float = 1.5f, roughness: Float = 0f,
                   attenuationColor: Vector3f = Vector3f(1f), attenuationDistance: Float = 1f) =
@@ -81,6 +90,30 @@ data class PathTraceMaterial(
         fun thinGlass(ior: Float = 1.5f, tint: Vector3f = Vector3f(1f)) =
             PathTraceMaterial(roughness=0f, transmission=true, ior=ior, thinWalled=true,
                 attenuationRed=tint.x, attenuationGreen=tint.y, attenuationBlue=tint.z)
+
+        /**
+         * A random-walk subsurface material: a dielectric solid whose interior both absorbs and
+         * scatters. [color] is the multiple-scattering albedo, the colour the surface should look,
+         * and [radius] the per-channel scattering distance in world units; [remap] turns the two
+         * into coefficients (see [subsurfaceCoefficients]). Like solid glass it requires a closed,
+         * outward-wound mesh.
+         */
+        fun subsurface(color: Vector3f, radius: Vector3f, remap: AlbedoRemap = AlbedoRemap.VAN_DE_HULST,
+                       ior: Float = 1.4f, roughness: Float = 0.3f, anisotropy: Float = 0f) =
+            subsurface(subsurfaceCoefficients(color, radius, remap), ior, roughness, anisotropy)
+
+        /** A subsurface material from explicit absorption and scattering coefficients per world unit. */
+        fun subsurface(coefficients: SubsurfaceCoefficients, ior: Float = 1.4f, roughness: Float = 0.3f,
+                       anisotropy: Float = 0f): PathTraceMaterial {
+            val a = coefficients.absorption
+            val s = coefficients.scattering
+            // Absorption travels as a colour after a distance; pick the distance that keeps it in (1/e, 1].
+            val distance = 1f / maxOf(a.x, a.y, a.z, 1e-3f)
+            return PathTraceMaterial(roughness = roughness, transmission = true, ior = ior,
+                attenuationRed = exp(-a.x * distance), attenuationGreen = exp(-a.y * distance),
+                attenuationBlue = exp(-a.z * distance), attenuationDistance = distance,
+                scatterRed = s.x, scatterGreen = s.y, scatterBlue = s.z, scatterAnisotropy = anisotropy)
+        }
 
         fun diffuse(r: Float, g: Float, b: Float) = PathTraceMaterial(r, g, b, roughness = 1f)
         fun plastic(r: Float, g: Float, b: Float, roughness: Float = 0.25f) = PathTraceMaterial(r, g, b, roughness = roughness)
@@ -165,7 +198,7 @@ class PathTraceScene {
     }
 
     internal data class Node(val lo: Vector3f, val hi: Vector3f, var first: Int = 0, var count: Int = 0, var escape: Int = 0)
-    internal class Packed(val triangles: List<Triangle>, val nodes: List<Node>, val materials: List<PathTraceMaterial>, val textures: List<PathTraceTexture>) {
+    internal class Packed(val triangles: List<Triangle>, val nodes: List<Node>, val materials: MutableList<PathTraceMaterial>, val textures: List<PathTraceTexture>) {
         private val textureOffsets = textures.runningFold(0) { offset, t -> offset + 2 + t.width * t.height }
         /** Two floats per emissive triangle: cumulative probability and triangle index, as in [PathTraceEnvironment]. */
         val emitterDistribution: FloatArray
@@ -255,6 +288,7 @@ class PathTraceScene {
             }
             out.putFloat(m.opacity).putFloat(m.alphaCutoff).putFloat(m.alphaMode.ordinal.toFloat()).putFloat(if (m.doubleSided) 1f else 0f)
             out.putFloat(m.normalScale); repeat(3) { out.putFloat(0f) }
+            out.putFloat(m.scatterRed).putFloat(m.scatterGreen).putFloat(m.scatterBlue).putFloat(m.scatterAnisotropy)
         } }
     }
     internal fun pack(): Packed {
@@ -274,7 +308,7 @@ class PathTraceScene {
             node.escape = nodes.size
         }
         build(triangles.toList())
-        return Packed(ordered, nodes, materials.toList(), textureData.toList())
+        return Packed(ordered, nodes, materials.toMutableList(), textureData.toList())
     }
 }
 

@@ -425,6 +425,9 @@ class PathTracingRenderer(
         val destination = own(VulkanBuffer(renderer, size,
             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT or VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT or VK_BUFFER_USAGE_TRANSFER_DST_BIT,
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, needsDeviceAddress = true)) { cleanup() }
+        return write(destination, size, writer)
+    }
+    private fun write(destination: VulkanBuffer, size: Long, writer: (ByteBuffer) -> Unit): VulkanBuffer {
         val staging = VulkanBuffer(renderer, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
         val command = CommandBuffer(renderer.commandPool, primary = true, oneTimeSubmit = true)
@@ -442,6 +445,23 @@ class PathTracingRenderer(
             fence.fenceWait()
         } finally { fence.cleanup(); command.cleanup(); staging.cleanup() }
         return destination
+    }
+
+    /**
+     * Replace material [index] on the running tracer and restart accumulation, without rebuilding the
+     * scene: what a slider over a material parameter calls. Emission, transmission and alpha mode
+     * must stay as they were, because the emitter table was built from them.
+     */
+    fun setMaterial(index: Int, material: PathTraceMaterial) {
+        check(!closed)
+        val old = packed.materials[index]
+        require(material.emissionRed == old.emissionRed && material.emissionGreen == old.emissionGreen &&
+            material.emissionBlue == old.emissionBlue && material.emissionTexture == old.emissionTexture &&
+            material.transmission == old.transmission && material.alphaMode == old.alphaMode &&
+            material.doubleSided == old.doubleSided) { "setMaterial cannot change what the emitter table was built from" }
+        packed.materials[index] = material
+        write(sceneBuffers.getValue("materials"), packed.materials.size * PathTraceMaterial.STRIDE.toLong(), packed::writeMaterials)
+        reset("material $index edited")
     }
 
     /** Register compute and RTT passes. Reusing a name retires the previous tracer. */

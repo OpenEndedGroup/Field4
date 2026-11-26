@@ -187,6 +187,7 @@ class DocumentedApiEvaluationTest {
      * and "no cheap evaluator exists" are different sentences.
      */
     private val COMPILE_ONLY_REMAINDER: Map<String, String> = mapOf(
+        "setMaterial" to "path_tracing_subsurface transcript; needs a live PathTracingRenderer on a Vulkan device, so the transcript is COMPILE_ONLY in CI; its slider callbacks call it in a running Field",
         "htmlForImage" to "virtual_shadow_maps transcript; wraps a GPU capture that needs a Vulkan window; the docs.fabricate.virtual-shadows smoke runs the capture it wraps",
         // The editable stereo panel needs an active ImGui context and Vulkan targets. Its canonical
         // transcript is COMPILE_ONLY in CI; verify_vr.py runs the actual controls, ray mapping and
