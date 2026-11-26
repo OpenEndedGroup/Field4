@@ -9,7 +9,7 @@ The cheat-sheet can be accessed by pressing the '?' key. Every shortcut on it is
 the card shows whatever you have bound rather than these defaults — [Keyboard
 Shortcuts](keybindings.md) has the complete list. Right now it looks like this:
 
-![Field's ? cheatsheet card with the default bindings: Basics (N for a new box, select a box for its editor), Search and Help, Run (Opt-0 runs the whole box, Opt-click and Opt-Up launch, Opt-Down stops, Opt-Enter runs the current line), Editor, and Graph](assets/keybindings/cheatsheet.png)
+![Field's ? cheatsheet card with the default bindings: Basics (N for a new box, select a box for its editor), Search and Help, Run (Opt-0 runs the whole box, Opt-click and Opt-Up launch, Opt-Down stops, Opt-Enter runs the current line), Editor, and Graph](assets/keybindings/cheatsheet.png){ .field-docs-figure-wide }
 
 The card holds the keys you need first; [the full list](keybindings.md#the-defaults-in-full) has
 every command and its default shortcut.
