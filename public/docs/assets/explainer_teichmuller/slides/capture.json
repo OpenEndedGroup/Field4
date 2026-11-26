@@ -1,0 +1,86 @@
+{
+ "tool": "tools/presentation/capture-deck.mjs (macOS screencapture -l of this checkout's Electron audience window)",
+ "transcript": "dev_docs/agents/transcripts/explainer_teichmuller.yaml",
+ "transcriptSha256": "ea815ea7dc09a2fcb0c256921631f3bb67afae59e897aaeebf59923155ea39f1",
+ "resized": "sips -Z 960 (the window capture scaled to 960 px wide)",
+ "slides": [
+  {
+   "file": "opening.png",
+   "capture": "01-opening.png",
+   "captureSha256": "1aff30741b4f68f5467f8414cbdf7c5af2ff360bd2a2ef564c4ef7a16a4e4ef0",
+   "sha256": "e4d46c01ae06ad744e76010169be83b320f9597c15c3e8c5678bc498675e8e39"
+  },
+  {
+   "file": "conformal.png",
+   "capture": "03-conformal-cue1.png",
+   "captureSha256": "20348c29ddfc4ebbc7d0af556270bfebde7fdf9e2505a12b69695b13d25e3e57",
+   "sha256": "1c9158e002603783fda65e30dae5be153dc836f853c42aa7d02db5e3cb817153"
+  },
+  {
+   "file": "stretch.png",
+   "capture": "06-stretch-cue2.png",
+   "captureSha256": "73c751fa5caf5ccf35b52513c73a8d9f6ff53247828c9eca29038a67a987034d",
+   "sha256": "38315d06a37eb35f79128a4713047dabc4100a2e8d8bd1bf53cbab2cdb21ac1d"
+  },
+  {
+   "file": "beltrami.png",
+   "capture": "08-beltrami-cue1.png",
+   "captureSha256": "e11a8ae123e55f5ef79c642a666e17278d9426656378fa2d0b53077271e19804",
+   "sha256": "c5ee55955860ccdac710ae6b9303f1f981d1705b8ba10457a075c21eae41f084"
+  },
+  {
+   "file": "field.png",
+   "capture": "10-field.png",
+   "captureSha256": "536e441c3befe3c4b64499d4d30723537ccc0692730a9121f941a4a9467955d2",
+   "sha256": "44d6ab3fbf7661ee1756aa196cb5c7378c496bf9ec20d3dc722973c76aef42db"
+  },
+  {
+   "file": "solver.png",
+   "capture": "12-solver-cue1.png",
+   "captureSha256": "a2c52876e3467802af8ddc5be6a7ce7bab87430f760ef74c79d0311a2a29e238",
+   "sha256": "78bc5eee2ecdeff334ff795be6d32db4bf9cbb2a19a0428c63660b6b133d13eb"
+  },
+  {
+   "file": "harmonic.png",
+   "capture": "13-harmonic.png",
+   "captureSha256": "c79bb9505f1182660e2727fb77fd5e203ea042e87c37daefb4549b8d74b3e005",
+   "sha256": "31d3d6cb66fb0463a209768df98551b4ba953e6e45f39cb0b9a941a4f512426d"
+  },
+  {
+   "file": "teichmuller.png",
+   "capture": "15-teichmuller-cue1.png",
+   "captureSha256": "47469a444f9ec5c5c4e56e4dad95a5cc507ce36fbf466e9df55b606c13772950",
+   "sha256": "fd1f7ecb6dc53f7fbfd9ef4ad1ff3a12aacb886926f172a67ef1d30d18ceb126"
+  },
+  {
+   "file": "distance.png",
+   "capture": "16-distance.png",
+   "captureSha256": "a49f15288ed187c351b69fcdb869014d6002b8f4525c141ba9d01d8ae2e75e98",
+   "sha256": "5e8e5380700b11f4dc89c14fb143a7397d9475964564f90fdf185d4ee19778c4"
+  },
+  {
+   "file": "leaves.png",
+   "capture": "17-leaves.png",
+   "captureSha256": "7bd2986a21c3614eafde3682afc03c9ee34094f4730422ae15db2cc47f71e902",
+   "sha256": "84109a62d92b4460413fe10c38724b638a3187e17afc4a05d68b69061b98eab6"
+  },
+  {
+   "file": "table.png",
+   "capture": "19-table.png",
+   "captureSha256": "ca7c21818d795072a481de038f13e41b7286a4b7c83f6d1c5a99344bc9c438f5",
+   "sha256": "2e07ef4ae69b968a53aff6c168be7ae95847ebd135a9ebec7e5a5841b937814f"
+  },
+  {
+   "file": "caveats.png",
+   "capture": "20-caveats.png",
+   "captureSha256": "8ad1bc9d3a30849b9d722862951f96a60e9b22498094ef1e6cb256f9946b5593",
+   "sha256": "437f24afda2dba493c55fde3017b5bf3b6927f468ac1e4bba20b376cf04e928b"
+  },
+  {
+   "file": "further-reading.png",
+   "capture": "21-further-reading.png",
+   "captureSha256": "bff11063cba772e63129084bba7577eca42a9392cf87e9e2c1e84a0942f0270a",
+   "sha256": "41a2ee90d01c17a28baf374fc1f7f3a54f63c991416de4bd415050756041a133"
+  }
+ ]
+}

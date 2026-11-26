@@ -118,6 +118,7 @@ nav:
       - Sound: explainer_sound.md
       - Cameras and Lenses: explainer_cameras.md
       - Lights and Shadows: explainer_lights.md
+      - Teichmüller Maps: explainer_teichmuller.md
   - Working in a Document:
     # First in the section: panning, zooming, Cmd Cmd-and-hold between boxes and the nine bookmark
     # slots, i.e. how you get around a document before you do anything in it. It absorbed the old
