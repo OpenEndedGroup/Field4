@@ -1,0 +1,20 @@
+#version 460
+#extension GL_EXT_mesh_shader : require
+// STROKES
+// RIBBON_PUSH
+
+layout(local_size_x=32) in;
+shared uint liveCount;
+
+void main() {
+    uint lane = gl_LocalInvocationIndex;
+    uint index = gl_WorkGroupID.x * 32u + lane;
+    if (lane == 0u) liveCount = 0u;
+    barrier();
+    if (pc.strokes.data[index].state.x != EMPTY && pc.strokes.data[index].shape.w >= 2.0) {
+        uint slot = atomicAdd(liveCount, 1u);
+        activeRibbons.ids[slot] = index;
+    }
+    barrier();
+    EmitMeshTasksEXT(liveCount, 1, 1);
+}

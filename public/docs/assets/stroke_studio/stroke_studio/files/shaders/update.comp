@@ -1,0 +1,324 @@
+#version 450
+// STROKES
+layout(local_size_x=64) in;
+layout(binding=0) uniform sampler2D litLayer;
+layout(binding=1) uniform sampler2D worldLayer;
+layout(binding=2) uniform sampler2D previousLayer;
+layout(binding=3) uniform sampler2D directionLayer;
+layout(binding=4) uniform sampler2D paintLayer;
+layout(binding=5) uniform sampler2D velocityLayer;
+layout(binding=6) uniform sampler2D summaryValue;
+layout(binding=7) uniform sampler2D summaryExtent;
+layout(binding=8) uniform sampler2D summaryMoment;
+layout(std430, buffer_reference) readonly buffer Calibration { vec4 bands; };
+layout(push_constant) uniform UpdatePush {
+    vec4 camera;
+    vec4 scene;
+    vec4 clock;    // dt, release seconds, interrupted release seconds, feedback gain
+    vec4 trace; // edge-to-velocity, variance targeting, variance thickness, luma sigma reference
+    vec4 brush;    // birth rate, width, length, paint-front steering
+    StrokeBuffer strokes;
+    Calibration calibration;
+    float minimumResidual;
+    float pigmentFraction;
+    float attackSeconds;
+    float pixelScale;
+    uint serial;
+    int stage;     // 0 track, 1 birth, 2 clear
+} pc;
+// CAMERA
+// CANVAS
+// UPDATE_STACKSL
+// ENVELOPE
+
+uint hash(uint n) {
+    n ^= n >> 16; n *= 0x7feb352du; n ^= n >> 15; n *= 0x846ca68bu;
+    return n ^ (n >> 16);
+}
+float random(inout uint seed) {
+    seed = hash(seed + 0x9e3779b9u);
+    return float(seed >> 8u) * (1.0 / 16777216.0);
+}
+vec2 tangent(vec4 d) {
+    float angle = 0.5 * (dot(d.xy,d.xy) > 1e-10 ? atan(d.y, d.x) : 0.0);
+    return vec2(cos(angle), sin(angle));
+}
+
+// Invert the current-to-previous layer locally. Moving the camera alone produces zero world delta.
+bool follow(vec3 old, float id, out vec3 moved, out vec3 color) {
+    vec2 p = worldPixel(old);
+    for (int i = 0; i < 2; ++i) {
+        if (!onImage(p)) break;
+        vec4 before = texelFetch(previousLayer, ivec2(p), 0);
+        if (before.w != id) break;
+        p += clamp(worldPixel(old) - worldPixel(before.xyz), vec2(-10 * pc.pixelScale), vec2(10 * pc.pixelScale));
+    }
+    float tolerance = max(0.006, 2.3 * pc.pixelScale * pixelFootprint(old));
+    float best = tolerance * tolerance;
+    ivec2 match = ivec2(-1);
+    for (int y = -1; y <= 1; ++y) {
+        for (int x = -1; x <= 1; ++x) {
+            vec2 q = p + vec2(x,y) * (1.5 * pc.pixelScale);
+            if (!onImage(q)) continue;
+            vec4 before = texelFetch(previousLayer, ivec2(q), 0);
+            vec3 error = before.xyz - old;
+            float e = dot(error,error);
+            if (before.w == id && e < best) {
+                best = e;
+                match = ivec2(q);
+            }
+        }
+    }
+    if (match.x < 0) return false;
+    moved = old + texelFetch(worldLayer, match, 0).xyz - texelFetch(previousLayer, match, 0).xyz;
+    color = texelFetch(litLayer, match, 0).rgb;
+    return true;
+}
+
+void track(uint index) {
+    int phase = pc.strokes.data[index].state.x;
+    if (phase == EMPTY) return;
+    Stroke s = pc.strokes.data[index];
+    int count = int(s.shape.w);
+    float age = s.timing.x + pc.clock.x;
+    float drawSeconds = max(0.015, intBitsToFloat(s.state.z));
+    s.timing.x = age;
+    vec3 moved[POINTS], color, centerColor = s.reference.rgb;
+    bool valid = true;
+    for (int i = 0; i < count; ++i) {
+        if (!follow(s.point[i].xyz, s.reference.w, moved[i], color)) {
+            valid = false;
+            break;
+        }
+        if (i == count / 2) centerColor = color;
+        if (i > 0) {
+            float rest = s.point[i].w;
+            float joint = length(moved[i] - moved[i-1]);
+            if (joint > rest * 1.65 + 0.004 || joint < rest * 0.52) {
+                valid = false;
+                break;
+            }
+        }
+    }
+    if (valid) {
+        for (int i = 0; i < count; ++i) s.point[i].xyz = moved[i];
+        s.timing.w = 0;
+    } else s.timing.w += pc.clock.x;
+    if (phase == FADING) {
+        s.timing.z -= pc.clock.x;
+        if (s.timing.z <= 0.0) s.state.x = EMPTY;
+    } else if (age >= drawSeconds + s.timing.y) {
+        s.state.x = EMPTY;
+    } else if (s.timing.w > 0.19 || distance(centerColor, s.reference.rgb) > 0.23) {
+        s.state.x = FADING;
+        vec2 life = strokeEnvelope(age, drawSeconds, s.timing.y, s.reference.w);
+        s.shape.x = life.x;
+        s.timing.z = pc.clock.z;
+        s.state.y = floatBitsToInt(pc.clock.z);
+        s.state.w = floatBitsToInt(life.y);
+    } else if (age >= drawSeconds) s.state.x = TRACKING;
+    pc.strokes.data[index] = s;
+}
+
+bool stepOnSurface(vec2 position, vec4 last, out vec4 world) {
+    if (!onImage(position)) return false;
+    world = texelFetch(worldLayer, ivec2(position), 0);
+    return world.w == last.w && distance(world.xyz, last.xyz) < 24.0 * pc.pixelScale * pixelFootprint(last.xyz);
+}
+
+const ivec2 frontTaps[8] = ivec2[](
+    ivec2(6,0), ivec2(4,4), ivec2(0,6), ivec2(-4,4),
+    ivec2(-6,0), ivec2(-4,-4), ivec2(0,-6), ivec2(4,-4)
+);
+
+// Start against a surface boundary or on the unpainted side of our own active strokes.
+bool frontier(ivec2 center, float surfaceId, float coverage, out vec2 outward, out vec2 paintward) {
+    outward = vec2(0);
+    paintward = vec2(0);
+    bool boundary = false;
+    float neighborInk = 0.0;
+    for (int i = 0; i < 8; ++i) {
+        ivec2 pixel = center + ivec2(round(vec2(frontTaps[i]) * pc.pixelScale));
+        if (!onImage(vec2(pixel))) continue;
+        vec2 direction = vec2(frontTaps[i]) / 6.0;
+        if (texelFetch(worldLayer, pixel, 0).w != surfaceId) {
+            boundary = true;
+            outward += direction;
+            continue;
+        }
+        float ink = clamp(texelFetch(paintLayer, pixel, 0).a, 0.0, 1.0);
+        neighborInk = max(neighborInk, ink);
+        paintward += direction * ink;
+    }
+    return boundary || (neighborInk > 0.16 && neighborInk > min(coverage, 1.0) + 0.10);
+}
+
+vec2 matchHeading(vec2 direction, vec2 reference) {
+    return dot(direction, reference) < 0.0 ? -direction : direction;
+}
+
+vec4 traceVelocity(vec2 pixel) {
+    vec4 flow = guideVelocityFn(vec4(pixel / pc.scene.zw, pc.clock.x, pc.scene.x));
+    if (any(isnan(flow)) || any(isinf(flow)) || length(flow.xy) < 2.0 * pc.pixelScale) return vec4(0);
+    return vec4(flow.xy, clamp(flow.z, 0.0, 1.0), flow.w);
+}
+
+void birth(uint index) {
+    if (pc.strokes.data[index].state.x != EMPTY || pc.pigmentFraction <= 0.0) return;
+    uint seed = hash(index ^ hash(pc.serial));
+    if (random(seed) > min(1.0, pc.clock.x * pc.brush.x)) return;
+    vec2 start = floor(vec2(random(seed), random(seed)) * pc.scene.zw) + 0.5;
+    ivec2 pixel = ivec2(start);
+    vec4 world = texelFetch(worldLayer, pixel, 0);
+    if (world.w <= 1.0) return; // Only paint the balls.
+    vec3 target = texelFetch(litLayer, pixel, 0).rgb;
+    vec4 ink = texelFetch(paintLayer, pixel, 0);
+    vec3 difference = target - canvas - pc.clock.w * ink.rgb;
+    float error = max(abs(difference.r), max(abs(difference.g), abs(difference.b)));
+    bool nearBlack = dot(target, vec3(0.2126, 0.7152, 0.0722)) < 0.012;
+    float threshold = nearBlack ? 0.002 : pc.minimumResidual;
+    if (error < threshold) return;
+
+    vec2 outward, paintward;
+    if (!frontier(pixel, world.w, ink.a, outward, paintward)) return;
+    bool seedCorrection = dot(difference, ink.rgb) < -0.002;
+    if (!seedCorrection && ink.a > 0.34 && random(seed) > 1.0 / (1.0 + 2.0 * ink.a)) return;
+
+    vec4 d = texelFetch(directionLayer, pixel, 0);
+    vec4 bands = pc.calibration.bands;
+    vec3 balance = bands.w > 0.0 ? bands.xyz : vec3(0.16, 0.79, 0.29);
+    float gate = balance.z;
+    float strength = smoothstep(balance.x, max(balance.x + 0.08, balance.y), d.z);
+    bool directed = d.z >= gate;
+    if (length(outward) <= 0.5 &&
+        random(seed) > mix(0.42, 1.0, smoothstep(0.02, max(0.12, gate), d.z))) return;
+    vec2 axis = tangent(d);
+
+    float edgeLength = length(outward);
+    float frontLength = length(paintward);
+    vec2 guide = axis;
+    if (edgeLength > 0.5) {
+        guide = vec2(-outward.y, outward.x) / edgeLength;
+    } else if (frontLength > 0.10) {
+        // Sweep obliquely away from the supporting ink into the next strip of surface.
+        vec2 away = -paintward / frontLength;
+        float side = random(seed) < 0.5 ? -1.0 : 1.0;
+        guide = normalize(0.72 * away + side * vec2(-away.y, away.x));
+    } else if (d.z < 0.06) {
+        return;
+    }
+    float frontWeight = pc.brush.w * mix(0.94, 0.32, strength);
+    axis = normalize(mix(axis, matchHeading(guide, axis), frontWeight));
+    vec4 flow = traceVelocity(start);
+    if (flow.z > 0.0) {
+        // Use the vector's sign for the reveal. Pure velocity follows the vector on each step.
+        if (dot(axis, flow.xy) * pc.clock.x < -0.08 * pc.pixelScale) axis = -axis;
+        vec2 velocityHeading = normalize(flow.xy);
+        if (dot(axis, velocityHeading) < 0.0 && pc.trace.x > 0.0) axis = -axis;
+        axis = normalize(mix(axis, velocityHeading, pc.trace.x * flow.z));
+    }
+
+    ivec2 treeSize = textureSize(summaryValue, 0);
+    ivec2 treeCell = clamp(ivec2(start / pc.scene.zw * vec2(treeSize)), ivec2(0), treeSize - 1);
+    float variance = texelFetch(summaryValue, treeCell, 0).z;
+    float interest = 1.0 - exp(-sqrt(max(variance, 0.0)) / max(pc.trace.w, 1e-6));
+    vec3 region = regionalStyleFn(vec4(start / pc.scene.zw, interest, strength)).xyz;
+    if (any(isnan(region)) || any(isinf(region))) region = vec3(1.0);
+    float birthWeight = mix(1.0, mix(0.16, 1.0, interest), pc.trace.y) * clamp(region.x, 0.0, 1.0);
+    if (birthWeight < 1.0 && random(seed) > birthWeight) return;
+    float interval = mix(4.3, 7.1, strength) * pc.brush.z * pc.pixelScale * clamp(region.z, 0.25, 4.0);
+    const int reach = 4;
+
+    vec4 path[POINTS];
+    path[4] = vec4(world.xyz, 0);
+    ivec2 reached = ivec2(0);
+    // Bidirectional midpoint integration. Each side flips the unoriented tensor tangent as needed.
+    // Trace along the chosen heading first. Store upstream to downstream for the reveal.
+    for (int side = 1; side >= -1; side -= 2) {
+        vec2 position = start;
+        vec2 heading = float(side) * axis;
+        vec4 last = world;
+        for (int j = 1; j <= reach; ++j) {
+            vec2 midpoint = position + heading * (interval * 0.5);
+            if (!onImage(midpoint)) break;
+            vec4 sampleDir = texture(directionLayer, midpoint / pc.scene.zw);
+            float steering = smoothstep(0.035, max(0.10, gate), sampleDir.z);
+            vec2 local = matchHeading(tangent(sampleDir), heading);
+            // Keep following the front through weak gradients and turn with coherent structure.
+            vec2 continuation = normalize(mix(heading, local, steering * (1.0 - 0.42 * frontWeight)));
+            if (pc.trace.x > 0.0) {
+                vec4 v = traceVelocity(midpoint);
+                if (v.z > 0.0) {
+                    vec2 signedHeading = float(side) * normalize(v.xy);
+                    // The backward integration samples the negative vector. A reversal stops a line.
+                    float mixWeight = pc.trace.x * v.z;
+                    if (mixWeight > 0.5 && dot(signedHeading, heading) < -0.12) break;
+                    vec2 blended = mix(continuation, signedHeading, mixWeight);
+                    if (dot(blended, blended) > 1e-6) continuation = normalize(blended);
+                }
+            }
+            heading = continuation;
+            position += heading * interval;
+            vec4 next;
+            if (!stepOnSurface(position, last, next)) break;
+            if (distance(texelFetch(litLayer, ivec2(position), 0).rgb, target) > 0.28) break;
+            path[4 + j*side] = vec4(next.xyz, 0);
+            reached[side > 0 ? 1 : 0] = j;
+            last = next;
+        }
+    }
+    int first = 4 - reached.x, end = 4 + reached.y;
+    int steps = end - first;
+    if (steps < 4) return;
+    float span = distance(worldPixel(path[first].xyz), worldPixel(path[end].xyz));
+    if (span < max(13.0 * pc.pixelScale, steps * interval * 0.53)) return;
+
+    // A single ribbon owns one signed deposit. Sample the residual along the whole path.
+    vec3 pathDifference = vec3(0);
+    vec3 pathPaint = vec3(0);
+    for (int i = first; i <= end; ++i) {
+        ivec2 samplePixel = clamp(ivec2(worldPixel(path[i].xyz)), ivec2(0), ivec2(pc.scene.zw) - 1);
+        pathDifference += texelFetch(litLayer, samplePixel, 0).rgb - canvas;
+        pathPaint += texelFetch(paintLayer, samplePixel, 0).rgb;
+    }
+    pathPaint /= float(steps + 1);
+    pathDifference = pathDifference / float(steps + 1) - pc.clock.w * pathPaint;
+    vec3 absDifference = abs(pathDifference);
+    if (max(absDifference.r, max(absDifference.g, absDifference.b)) < threshold) return;
+    bool correction = dot(pathDifference, pathPaint) < -0.002;
+
+    Stroke s;
+    int n = 0;
+    for (int i = first; i <= end; ++i) {
+        if (i > first && i < end && n > 0) {
+            // Remove a nearly collinear interior knot, preserving endpoints and visible bends.
+            vec3 a = s.point[n-1].xyz, b = path[i+1].xyz;
+            vec3 chord = b - a;
+            float f = clamp(dot(path[i].xyz - a, chord) / max(1e-8, dot(chord,chord)), 0.0, 1.0);
+            if (distance(path[i].xyz, a + f * chord) < 0.24 * pc.pixelScale * pixelFootprint(path[i].xyz)
+                && length(chord) < interval * 2.5 * pixelFootprint(world.xyz)) continue;
+        }
+        float rest = n > 0 ? distance(path[i].xyz, s.point[n-1].xyz) : 0.0;
+        s.point[n++] = vec4(path[i].xyz, rest);
+    }
+    for (int i = n; i < POINTS; ++i) s.point[i] = vec4(0);
+    float width = mix(3.15, 1.55, strength) * pc.pixelScale;
+    width *= exp2(pc.trace.z * (2.0 * interest - 1.0)) * clamp(region.y, 0.05, 8.0);
+    float brushVariation = random(seed);
+    width *= (0.72 + 0.75 * brushVariation + 0.55 * pow(brushVariation, 7.0)) * pixelFootprint(world.xyz);
+    vec3 deposit = pigmentStyleFn(vec4(pathDifference, strength)).rgb;
+    if (any(isnan(deposit)) || any(isinf(deposit))) return;
+    s.pigment = vec4(deposit * pc.pigmentFraction, width);
+    s.reference = vec4(target, world.w);
+    s.timing = vec4(0.0, pc.clock.y * mix(0.72, 1.28, random(seed)), 0.0, 0.0);
+    s.shape = vec4(1.0, directed ? 1.0 : 0.45, correction ? 1.0 : 0.0, float(n));
+    float drawSeconds = pc.attackSeconds * (directed ? 1.2 : 0.76) * mix(0.78, 1.26, random(seed));
+    s.state = ivec4(DRAWING, 0, floatBitsToInt(drawSeconds), 0);
+    pc.strokes.data[index] = s;
+}
+void main() {
+    uint index = gl_GlobalInvocationID.x; // host dispatch is an exact multiple of 64
+    if (pc.stage == 0) track(index);
+    else if (pc.stage == 1) birth(index);
+    else pc.strokes.data[index].state = ivec4(EMPTY);
+}
