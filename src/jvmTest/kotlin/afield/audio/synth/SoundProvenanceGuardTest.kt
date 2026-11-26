@@ -143,13 +143,7 @@ class SoundProvenanceGuardTest {
     fun `the committed audio matches the voice its figure declares`() {
         val fences = fences()
         val present = fences.filter { File(page.parentFile, it.audio).isFile }
-        if (present.isEmpty()) {
-            println(
-                "SoundProvenanceGuardTest: no committed audio under ${assetDir.path} yet — " +
-                    "run a docs build for `sound` to generate it. Skipping the waveform check."
-            )
-            return
-        }
+        if (present.isEmpty()) throw org.junit.AssumptionViolatedException("SoundProvenanceGuardTest: no committed audio under ${assetDir.path} yet — run a docs build for `sound` to generate it. Skipping the waveform check.")
 
         val problems = mutableListOf<String>()
         present.forEach { fence ->

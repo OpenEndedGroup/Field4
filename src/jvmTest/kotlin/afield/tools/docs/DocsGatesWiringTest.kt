@@ -167,6 +167,14 @@ class DocsGatesWiringTest {
             "smokeCeres" to "needs the Ceres redistributable built first; run it with buildCeresRedistributable",
             "smokeManifold" to "needs a system Manifold (brew install manifold)",
             "checkPaintTests" to "a landing guard over paint diffs (land.py guard and precheck select it); it builds the Rust paint native, minutes cold",
+            "checkPdTests" to "builds the libpd native and runs its tests with no skips allowed; needs cmake, run it before changing that family",
+            "checkCsoundTests" to "builds the Csound native and runs its tests with no skips allowed; needs cmake, run it before changing that family",
+            "checkTetgenTests" to "builds the TetGen native and runs its tests with no skips allowed; needs cmake, run it before changing that family",
+            "checkLorisTests" to "builds the Loris native and runs its tests with no skips allowed; needs cmake, run it before changing that family",
+            "checkPolyvectorTests" to "builds the polyvector native and runs its tests with no skips allowed; needs cmake, run it before changing that family",
+            "checkMorseSmaleTests" to "builds the Morse-Smale native and runs its tests with no skips allowed; needs cmake, run it before changing that family",
+            "checkPrincipalCurvesTests" to "builds the principal curves native and runs its tests with no skips allowed; needs cmake, run it before changing that family",
+            "checkOpenNurbsTests" to "builds the openNURBS native and runs its tests with no skips allowed; needs cmake, run it before changing that family",
             "fastTest" to "the local fast lane: it compiles personal and extension fastTest roots, which a landing must not depend on",
             "smokeSolidCraft" to "needs the Rust toolchain to build the optional SolidCraft bridge first (buildSolidCraftNative)",
             "fieldAudioAnalysisTest" to "opt-in; installs librosa and Basic Pitch over the network",
@@ -184,7 +192,13 @@ class DocsGatesWiringTest {
             .findAll(build)
             .filter { it.groupValues[2].contains("group = \"verification\"") }
             .map { it.groupValues[1] }
-            .toSet()
+            .toSet() +
+            // `registerNativeGatedTests("checkPdTests", ...)` registers a verification task
+            // through one shared function, so its name is a call argument, not a register literal.
+            Regex("""(?m)^registerNativeGatedTests\(\s*"([A-Za-z][A-Za-z0-9]*)"""")
+                .findAll(build)
+                .map { it.groupValues[1] }
+                .toSet()
 
         // `finalizedBy` is wiring too: `checkTestTreeWrites` is reached that way from the test
         // task it audits, and treating only `dependsOn` as reachability reported it as an orphan.

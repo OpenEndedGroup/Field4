@@ -504,15 +504,9 @@ class MidiRoundTripTest {
         val out = MidiDevices.hardware().firstOrNull { it.canReceive }
         val inp = MidiDevices.hardware().firstOrNull { it.canTransmit }
 
-        if (out == null || inp == null) {
-            // A clean skip with a stated reason, not a failure and not a silent pass. At 3am on a
-            // machine with nothing plugged in this is the expected path.
-            println(
-                "SKIP: no bidirectional hardware MIDI port on this machine, so a live loopback " +
-                    "cannot be tested. Devices present:\n${MidiDevices.describe()}"
-            )
-            return
-        }
+        // A clean skip with a stated reason, not a failure and not a silent pass. At 3am on a
+        // machine with nothing plugged in this is the expected path.
+        if (out == null || inp == null) throw org.junit.AssumptionViolatedException("SKIP: no bidirectional hardware MIDI port on this machine, so a live loopback cannot be tested. Devices present:\n${MidiDevices.describe()}")
 
         println("live MIDI loopback: sending to \"${out.name}\", listening on \"${inp.name}\"")
 
@@ -542,10 +536,7 @@ class MidiRoundTripTest {
     @Test
     fun `offline WAV rendering either produces audible audio or states why it cannot`() {
         val reason = midiRenderUnavailableReason()
-        if (reason != null) {
-            println("SKIP: offline MIDI rendering unavailable in this JVM. $reason")
-            return
-        }
+        if (reason != null) throw org.junit.AssumptionViolatedException("SKIP: offline MIDI rendering unavailable in this JVM. $reason")
 
         // Two beats at 120 BPM is 1.0 s of notes, plus a 0.5 s tail for the release: 1.5 s total.
         val clip = MidiClip.of(

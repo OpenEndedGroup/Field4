@@ -1745,37 +1745,73 @@ val checkExpectedTestFailures = tasks.register<Exec>("checkExpectedTestFailures"
     )
 }
 
-// The paint tests against a freshly built native/field-paint, refusing a skip. In plain jvmTest a
-// machine without build/field-paint reports all of them SKIPPED (requirePaintLibrary()), and no
-// landing runs jvmTest at all, so a red paint test once sat on main unnoticed. The landing guard
-// selects this task for a diff under native/field-paint or afield/graphics/paint
-// (tools/check_staged_generated_artifacts.py), so a paint change is exercised before it lands.
-// Needs cargo; dev_docs/testing/TESTING_STRATEGY.md "Native-gated tests".
-tasks.register<org.gradle.api.tasks.testing.Test>("checkPaintTests") {
+// Native-gated tests against their freshly built native, refusing a skip. In plain jvmTest a machine
+// without build/field-<lib> reports every such test SKIPPED (a JUnit assumption; the scan in
+// tools/check_native_gated_tests.py keeps it so), and no landing runs jvmTest at all, so a red
+// paint test once sat on main unnoticed. Each check<Lib>Tests builds its library first and fails
+// if any selected test still skipped: where the native IS built, a skip means it did not load.
+// The landing guard selects checkPaintTests for a diff under native/field-paint or
+// afield/graphics/paint (tools/check_staged_generated_artifacts.py); the others are local
+// (they need cmake and, once, the network). dev_docs/testing/TESTING_STRATEGY.md "Native-gated tests".
+fun registerNativeGatedTests(
+    name: String,
+    library: String,
+    buildTask: String,
+    packages: List<String>,
+    excludes: List<String> = emptyList(),
+) = tasks.register<org.gradle.api.tasks.testing.Test>(name) {
     group = "verification"
-    description = "Builds the paint native and runs afield.graphics.paint.* with no skips allowed."
-    dependsOn("jvmTestClasses", buildPaintNative)
+    description = "Builds the $library native and runs ${packages.joinToString()} with no skips allowed."
+    dependsOn("jvmTestClasses", buildTask)
     testClassesDirs = jvmTestTask.get().testClassesDirs
     classpath = jvmTestTask.get().classpath
-    filter { includeTestsMatching("afield.graphics.paint.*") }
+    filter {
+        packages.forEach { includeTestsMatching("$it.*") }
+        excludes.forEach(::excludeTestsMatching)
+    }
+    exclude("**/*Measurements.class")
     workingDir = rootDir
     outputs.upToDateWhen { false }
     val skipped = mutableListOf<String>()
+    var ran = 0
     addTestListener(object : org.gradle.api.tasks.testing.TestListener {
         override fun beforeSuite(suite: org.gradle.api.tasks.testing.TestDescriptor) {}
         override fun afterSuite(suite: org.gradle.api.tasks.testing.TestDescriptor, result: org.gradle.api.tasks.testing.TestResult) {}
         override fun beforeTest(test: org.gradle.api.tasks.testing.TestDescriptor) {}
         override fun afterTest(test: org.gradle.api.tasks.testing.TestDescriptor, result: org.gradle.api.tasks.testing.TestResult) {
+            ran++
             if (result.resultType == org.gradle.api.tasks.testing.TestResult.ResultType.SKIPPED) skipped += "${test.className}.${test.name}"
         }
     })
     doLast {
         if (skipped.isNotEmpty()) throw GradleException(
-            "checkPaintTests: ${skipped.size} paint test(s) skipped although buildPaintNative ran; " +
-                "PaintLibrary did not load build/field-paint/release:\n" + skipped.joinToString("\n")
+            "$name: ${skipped.size} of $ran $library test(s) skipped although its native was built; " +
+                "the library did not load:\n" + skipped.joinToString("\n")
         )
+        logger.lifecycle("$name: $ran $library test(s) ran, none skipped")
     }
 }
+
+registerNativeGatedTests("checkPaintTests", "paint", "buildPaintNative", listOf("afield.graphics.paint"))
+registerNativeGatedTests("checkPdTests", "libpd", "buildLibpdNative", listOf("afield.audio.pd"))
+registerNativeGatedTests("checkCsoundTests", "Csound", "buildCsoundNative", listOf("afield.audio.csound"))
+registerNativeGatedTests("checkTetgenTests", "TetGen", "buildTetgenNative", listOf("afield.geometry.mesh.tetgen"))
+registerNativeGatedTests("checkLorisTests", "Loris", "buildLorisNative", listOf("afield.audio.analysis.loris"))
+registerNativeGatedTests("checkPolyvectorTests", "polyvector", "buildPolyvectorNative", listOf("afield.geometry.vectorize.polyvector"))
+// The benchmarks are opt-in by environment variable, so they skip on purpose.
+registerNativeGatedTests(
+    "checkMorseSmaleTests", "Morse-Smale", "buildMorseSmaleNative",
+    listOf("afield.geometry.topology.morsesmale"), excludes = listOf("*Benchmark"),
+)
+registerNativeGatedTests(
+    "checkPrincipalCurvesTests", "principal curves", "buildPrincipalCurvesNative",
+    listOf("afield.geometry.curves.principal"), excludes = listOf("*Benchmark"),
+)
+// Rhino3dmLocalFilesTest reads the user's own files named by AFIELD_RHINO_3DM_FILES: opt-in.
+registerNativeGatedTests(
+    "checkOpenNurbsTests", "openNURBS", "buildOpenNurbsNative",
+    listOf("afield.geometry.rhino"), excludes = listOf("*Rhino3dmLocalFilesTest"),
+)
 
 tasks.register<org.gradle.api.tasks.testing.Test>("jvmMeasurements") {
     group = "verification"

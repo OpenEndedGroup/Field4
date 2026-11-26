@@ -202,10 +202,7 @@ class PhaseNoiseTest {
             .plus(listOf("/opt/homebrew/bin", "/usr/local/bin"))
             .map { File(it, "glslangValidator") }
             .firstOrNull { it.canExecute() }
-        if (validator == null) {
-            println("SKIPPED: glslangValidator not found; the phase noise GLSL was NOT checked by a shader compiler.")
-            return
-        }
+        if (validator == null) throw org.junit.AssumptionViolatedException("SKIPPED: glslangValidator not found; the phase noise GLSL was NOT checked by a shader compiler.")
         val programs = listOf(
             "input qnoise",
             "input 4 2.1 0.6 qnoise.4",
