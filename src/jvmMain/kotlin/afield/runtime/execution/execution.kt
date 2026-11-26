@@ -772,11 +772,61 @@ private fun buildSymbolContextHtml(
     if (display.isBlank()) return ""
     val type = fallbackDocumentation.lineSequence().firstOrNull()?.trim()?.removePrefix(":")?.trim().orEmpty()
     val typeSuffix = if (type.isNotBlank() && type != display && !display.contains(type))
-        " <span style='color:#888;'>: ${escapeNotifyHtml(type)}</span>" else ""
-    val body = "<span style='color:#ddd;'><code>${escapeNotifyHtml(display)}</code>$typeSuffix</span>"
+        " <code><span style='color:#777;'>:</span> ${highlightKotlinSignatureHtml(type, nameFirst = false)}</code>" else ""
+    val body = "<span style='color:#ddd;'><code>${highlightKotlinSignatureHtml(display)}</code>$typeSuffix</span>"
     val badge = aiGeneratedAtticBadge(box, symbolName)
     if (badge.isEmpty()) return body
     return "<div style='display:inline-block; max-width: 620px;'>$body$badge</div>"
+}
+
+private val signatureModifierWords = setOf("vararg", "suspend", "crossinline", "noinline", "out", "in", "reified")
+
+/**
+ * A completion signature such as `threeLines(lines: Collection<FLine>, height: Int) : T` as HTML,
+ * coloured for the ambient badge: the symbol name bright, parameter names italic, types warm,
+ * punctuation dim. A lexical pass over the display string — completion hands over no structure.
+ * With [nameFirst] false the whole string is a type (the badge's `: Type` suffix).
+ */
+internal fun highlightKotlinSignatureHtml(signature: String, nameFirst: Boolean = true): String {
+    fun span(style: String, text: String) = "<span style='$style'>${escapeNotifyHtml(text)}</span>"
+    val out = StringBuilder()
+    var depth = 0
+    var nameSeen = !nameFirst
+    var lastSignificant = '('
+    var i = 0
+    while (i < signature.length) {
+        val c = signature[i]
+        when {
+            c.isLetter() || c == '_' -> {
+                var j = i
+                while (j < signature.length && (signature[j].isLetterOrDigit() || signature[j] == '_')) j++
+                val word = signature.substring(i, j)
+                var k = j
+                while (k < signature.length && signature[k] == ' ') k++
+                val followedByColon = k < signature.length && signature[k] == ':'
+                out.append(
+                    when {
+                        !nameSeen && depth == 0 -> { nameSeen = true; span("color:#f2f2f5; font-weight:600;", word) }
+                        word in signatureModifierWords -> span("color:#c39ad8;", word)
+                        depth > 0 && followedByColon && (lastSignificant == '(' || lastSignificant == ',') ->
+                            span("color:#9fc4e0; font-style:italic;", word)
+                        word[0].isUpperCase() -> span("color:#d9b97a;", word)
+                        else -> escapeNotifyHtml(word)
+                    }
+                )
+                lastSignificant = 'a'
+                i = j
+                continue
+            }
+            c == '(' -> depth++
+            c == ')' -> depth = (depth - 1).coerceAtLeast(0)
+        }
+        if (c.isLetterOrDigit() || c == ' ') out.append(escapeNotifyHtml(c.toString()))
+        else out.append(span("color:#777;", c.toString()))
+        if (c != ' ') lastSignificant = c
+        i++
+    }
+    return out.toString()
 }
 
 private data class SymbolBounds(val start: Int, val end: Int, val text: String)
