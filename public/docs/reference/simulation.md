@@ -4221,7 +4221,7 @@ carry a JDK Incubator Vector path alongside the scalar one; the rest are scalar.
 
 `src/jvmMain/kotlin/afield/simulation/physics/SimdVerletColliders.kt` — [read the source](source/jvmMain/afield/simulation/physics/SimdVerletColliders/)
 
-**Used in:** [Particles, welded, and traced](../chain_physics_render.md), [Physics: particles, constraints and cloth](../physics.md)
+**Used in:** [Physics: particles, constraints and cloth](../physics.md), [Particles, welded, and traced](../chain_physics_render.md)
 
 ### Top-level functions { #simdverletcolliders-kt-functions }
 
@@ -4866,6 +4866,8 @@ index. Appending after it is fine.
 `Strand.step`, `Strand.lines` and the mutators serialize on this strand's own monitor.
 
 `src/jvmMain/kotlin/afield/simulation/physics/Strand.kt` — [read the source](source/jvmMain/afield/simulation/physics/Strand/)
+
+**Used in:** [Physics: particles, constraints and cloth](../physics.md)
 
 ### Top-level functions { #strand-kt-functions }
 

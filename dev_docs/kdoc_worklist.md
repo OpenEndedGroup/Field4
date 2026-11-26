@@ -129,7 +129,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [FLineInterpolation.kt](../src/jvmMain/kotlin/afield/geometry/path/FLineInterpolation.kt) | Graphics | fline_examples | 0 | 44 | 29% |
 | [Marf.kt](../src/jvmMain/kotlin/afield/audio/synth/Marf.kt) | Patterns | marf | 0 | 41 | 60% |
 | [graph_connectivity.kt](../src/jvmMain/kotlin/afield/data/graph/graph_connectivity.kt) | Graphics | graph_connectivity_examples, spatial_geometry_examples, spatial_rules | 0 | 39 | 62% |
-| [SimdVerletColliders.kt](../src/jvmMain/kotlin/afield/simulation/physics/SimdVerletColliders.kt) | Simulation | chain_physics_render, physics | 0 | 39 | 57% |
+| [SimdVerletColliders.kt](../src/jvmMain/kotlin/afield/simulation/physics/SimdVerletColliders.kt) | Simulation | physics, chain_physics_render | 0 | 39 | 57% |
 | [FunctionGraph.kt](../src/jvmMain/kotlin/afield/math/functions/FunctionGraph.kt) | Function | functions_examples, pattern_language | 0 | 38 | 44% |
 | [DependencyLength.kt](../src/jvmMain/kotlin/afield/graphics/text/sentences/DependencyLength.kt) | Graphics | sentence_diagrams | 0 | 37 | 44% |
 | [alife_tree_growth.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_tree_growth.kt) | Simulation | alife_examples | 0 | 37 | 47% |
