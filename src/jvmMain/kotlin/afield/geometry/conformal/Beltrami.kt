@@ -590,14 +590,14 @@ class MeshPicture(val width: Int, val height: Int, val x0: Double, val y0: Doubl
 
     companion object {
         /**
-         * A colour for a distortion `|μ| = k` on a scale that reaches its top at [top]: dark blue at
+         * A colour for a distortion `|μ| = k` on a scale that reaches its top at [top]: blue at
          * zero, through cyan, to orange and white.
          */
         fun distortionColor(k: Double, top: Double = 0.6): Int {
             val s = (k / top).coerceIn(0.0, 1.0)
             val stops = arrayOf(
-                doubleArrayOf(0.05, 0.08, 0.25),
-                doubleArrayOf(0.15, 0.45, 0.75),
+                doubleArrayOf(0.2, 0.3, 0.85),
+                doubleArrayOf(0.25, 0.6, 0.95),
                 doubleArrayOf(0.4, 0.9, 1.0),
                 doubleArrayOf(1.0, 0.6, 0.2),
                 doubleArrayOf(1.0, 0.95, 0.85),

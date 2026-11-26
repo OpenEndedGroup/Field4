@@ -14,7 +14,7 @@ operations:
   - create:
       box: etm_circles
       name: circles
-      frame: { x: 300.0, y: 140.0, w: 150.0, h: 50.0 }
+      frame: { x: 800.0, y: 140.0, w: 150.0, h: 50.0 }
       properties:
         code: |
           import afield.geometry.conformal.*
@@ -23,7 +23,7 @@ operations:
           // coloured by |μ|: dark blue is still a circle, orange is a long ellipse.
           var which = 0
           var amount = 0.6
-          val names = ["z + a·z²: conformal", "a stretch along x", "a twist near the middle"]
+          val names = ["z + a·z², conformal", "a stretch along x", "a twist near the middle"]
 
           fun map(x: Double, y: Double): DoubleArray = when (which) {
               0 -> doubleArrayOf(x + 0.35 * amount * (x * x - y * y), y + 0.35 * amount * 2 * x * y)
@@ -50,8 +50,8 @@ operations:
 
           fun colour(argb: Int) = vec(((argb shr 16) and 255) / 255.0, ((argb shr 8) and 255) / 255.0, (argb and 255) / 255.0, 1.0)
           // World coordinates to the 640 × 360 picture, y up.
-          fun sx(x: Double) = 320 + 150 * x
-          fun sy(y: Double) = 180 - 150 * y
+          fun sx(x: Double) = 300 + 175 * x
+          fun sy(y: Double) = 180 - 175 * y
 
           fun draw() {
               val drawn = mutableListOf<FLine>()
@@ -101,7 +101,7 @@ operations:
   - create:
       box: etm_ellipse
       name: ellipse
-      frame: { x: 540.0, y: 140.0, w: 150.0, h: 50.0 }
+      frame: { x: 1540.0, y: 140.0, w: 150.0, h: 50.0 }
       properties:
         code: |
           import afield.geometry.conformal.*
@@ -119,18 +119,17 @@ operations:
               fun map(x: Double, y: Double) = doubleArrayOf(x + mr * x + mi * y, y + mi * x - mr * y)
               fun sx(x: Double) = 320 + 110 * x
               fun sy(y: Double) = 180 - 110 * y
-              fun curve(thick: Double, c: Vector4, at: (Double) -> DoubleArray) = fline {
+              fun curve(thick: Double, isGuide: Boolean, at: (Double) -> DoubleArray) = fline {
                   for (s in 0..96) {
                       val p = at(2 * PI * s / 96)
                       if (s == 0) moveTo(sx(p[0]), sy(p[1])) else lineTo(sx(p[0]), sy(p[1]))
                   }
                   thickness = thick
-                  color = c
+                  color = if (isGuide) vec(1.0, 1.0, 1.0, 0.35) else vec(0.4, 0.9, 1.0, 1.0)
               }
-              val guide = vec(1.0, 1.0, 1.0, 0.35)
               val drawn = mutableListOf(
-                  curve(1.5, guide) { doubleArrayOf(cos(it), sin(it)) },
-                  curve(3.0, vec(0.4, 0.9, 1.0, 1.0)) { map(cos(it), sin(it)) },
+                  curve(1.5, true) { doubleArrayOf(cos(it), sin(it)) },
+                  curve(3.0, false) { map(cos(it), sin(it)) },
               )
               // The direction stretched most, and the one squeezed most: half the angle of μ, and a right angle from it.
               val long = map(cos(angle / 2), sin(angle / 2))
@@ -156,11 +155,11 @@ operations:
 
           draw()
           controlGroup {
-              slider("size of μ", 0.0, 0.9, initialValue = size) {
+              slider("size", 0.0, 0.9, initialValue = size) {
                   size = it
                   draw()
               }
-              slider("angle of μ", 0.0, 360.0, step = 1.0, initialValue = degrees) {
+              slider("angle", 0.0, 360.0, step = 1.0, initialValue = degrees) {
                   degrees = it
                   draw()
               }
@@ -168,7 +167,7 @@ operations:
   - create:
       box: etm_landmark
       name: landmark
-      frame: { x: 780.0, y: 140.0, w: 150.0, h: 50.0 }
+      frame: { x: 2280.0, y: 140.0, w: 150.0, h: 50.0 }
       properties:
         code: |
           import afield.geometry.conformal.*
@@ -197,7 +196,7 @@ operations:
               display("maps", PngEncoder.encode(picture.pixels, 640, 320))
               markdown(
                   "readout",
-                  "harmonic, left: |μ| from ${harmonic.minModulus.f2} to **${harmonic.maxModulus.f2}** · " +
+                  "harmonic, left: |μ| from ${harmonic.minModulus.f2} to **${harmonic.maxModulus.f2}**, ${harmonic.flipped} triangles turned over · " +
                       "Teichmüller, right: |μ| from ${teich.minModulus.f2} to **${teich.maxModulus.f2}**, K = ${teich.dilatation.f2} after ${teich.iterations} iterations",
               )
           }
@@ -216,7 +215,7 @@ operations:
   - create:
       box: etm_leaf_compare
       name: leaf_compare
-      frame: { x: 1020.0, y: 140.0, w: 150.0, h: 50.0 }
+      frame: { x: 3020.0, y: 140.0, w: 150.0, h: 50.0 }
       properties:
         code: |
           import afield.geometry.conformal.*
@@ -254,7 +253,7 @@ operations:
               val fixed = boundaryCorrespondence(mesh, marks.toIntArray(), tx, ty, intArrayOf(0, 100, 200, 300))
               val t = teichmullerMap(mesh, fixed)
               val picture = MeshPicture(640, 360, -2.2, -1.24, 2.2, 1.24)
-              val colours = IntArray(mesh.triangleCount) { MeshPicture.distortionColor(t.moduli[it], 0.5) }
+              val colours = IntArray(mesh.triangleCount) { MeshPicture.distortionColor(t.moduli[it], 0.9) }
               picture.mesh(mesh, DoubleArray(mesh.vertexCount) { mesh.x[it] - 1.1 }, mesh.y, colours, edgeAlpha = 0.25)
               picture.mesh(mesh, DoubleArray(mesh.vertexCount) { t.u[it] + 1.1 }, t.v, colours, edgeAlpha = 0.25)
               for (m in marks) {
@@ -282,7 +281,7 @@ operations:
   - create:
       box: etm_leaf_distances
       name: leaf_distances
-      frame: { x: 1260.0, y: 140.0, w: 150.0, h: 50.0 }
+      frame: { x: 3760.0, y: 140.0, w: 150.0, h: 50.0 }
       properties:
         code: |
           import afield.geometry.conformal.*
@@ -420,10 +419,10 @@ operations:
                                   the direction: half of it. μ = 0 is a circle, a conformal map.""".md
                           }
                       }
-                      control("ellipse", "size of μ", 0.0)
-                      control("ellipse", "angle of μ", 30.0)
-                      cue("Grow μ") { control("ellipse", "size of μ", 0.6, glideMs = 1500) }
-                      cue("Turn μ") { control("ellipse", "angle of μ", 210.0, glideMs = 2500) }
+                      control("ellipse", "size", 0.0)
+                      control("ellipse", "angle", 30.0)
+                      cue("Grow μ") { control("ellipse", "size", 0.6, glideMs = 1500) }
+                      cue("Turn μ") { control("ellipse", "angle", 210.0, glideMs = 2500) }
                       markdownNote("Next grows |μ| to 0.6 (K = 4); then turning μ by 180° turns the ellipse by 90°. [[back]] [[next]]")
                   }
                   step("A μ at every point", id = "field") {
@@ -476,8 +475,9 @@ operations:
                                   ## No conformal map exists
 
                                   Fix the edges and move a point, and no map can keep every angle.
-                                  The μ = 0 request gives the harmonic map on the left, and its
-                                  distortion piles up around the dragged point.
+                                  The μ = 0 request gives the harmonic map on the left. Its
+                                  distortion piles up around the dragged point, and where |μ| passes 1
+                                  triangles turn over: the map folds.
 
                                   So ask a better question: of all maps that move the point there,
                                   which has the smallest worst ellipse?""".md
@@ -528,8 +528,8 @@ operations:
                                   shape. Growing or shrinking a shape is conformal, so size is free.""".md
                           }
                       }
-                      control("ellipse", "size of μ", 0.33)
-                      control("ellipse", "angle of μ", 0.0)
+                      control("ellipse", "size", 0.33)
+                      control("ellipse", "angle", 0.0)
                       markdownNote("|μ| = 0.33 means K = 2 and distance ½ log 2 ≈ 0.35. [[back]] [[next]]")
                   }
                   step("Two leaves", id = "leaves") {
