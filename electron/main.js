@@ -600,6 +600,7 @@ function createTabStripMarkup() {
 
     #remote-address {
       flex: 1;
+      outline: none;
     }
 
     #remote-server-picker {
