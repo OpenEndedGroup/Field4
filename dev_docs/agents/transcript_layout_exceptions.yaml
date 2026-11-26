@@ -10,6 +10,7 @@ version: 1
 # completion-header and four-panel-lifecycle cards are 620 x 150 and 560 x 150, so they now fit under it
 # and need no exemption. Their frames did not change — only the ceiling did.
 largeFrames:
+  docs_capture/spatial_rules_trace.yaml#srw_trace: Box dimensions set the width of the drawing and the height that keeps the Why panel in the spatial rules step 10 screenshot.
   docs_capture/text_frames.yaml#writing: The capture subject is a Markdown text frame containing a heading, paragraphs and an image; its page height is part of the reading and editor screenshots.
   docs_capture/keybindings_inspect.yaml#agent_keybindings_inspect: Box dimensions are part of the keybindings-panel screenshot framing.
   docs_capture/remote_ar_kotlin_plane.yaml#agent_remote_ar_plane_head: Box height reserves the documented Remote AR capture composition.

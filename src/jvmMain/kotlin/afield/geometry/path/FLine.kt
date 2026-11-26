@@ -85,7 +85,8 @@ import kotlin.math.sin
  * them) as a group.
  */
 
-var _flineSequenceNumber = 0L
+/** Numbers every [FLine.rev] and [FLine.uid]. Atomic, because lines are made on several threads at once. */
+private val flineSequence = java.util.concurrent.atomic.AtomicLong()
 
 /**
  * Translate all lines in the list by [offset].
@@ -225,8 +226,8 @@ class FLine : HasProperties {
     var nodes = arrayListOf<Node>()
     val properties = mutableMapOf<String, Any?>()
 
-    var rev = ++_flineSequenceNumber
-    val uid = ++_flineSequenceNumber
+    var rev = flineSequence.incrementAndGet()
+    val uid = flineSequence.incrementAndGet()
 
     /**
      * Base class for drawing instructions in an [FLine].

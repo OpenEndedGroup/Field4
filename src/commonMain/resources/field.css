@@ -735,7 +735,7 @@ body.canvas-pan-latched .outputArea * {
    browser's default monospace, and a query result rendered in Courier beside an Iosevka editor is
    the tell. An element selector, so any rule that sets a family deliberately still wins. */
 pre,
-pre code {
+code {
     font-family: var(--field-font-code), var(--field-font-code-fallback);
 }
 
@@ -7268,6 +7268,28 @@ html.field-theme-transition::view-transition-new(root) {
     overflow: auto !important;
     resize: none !important;
 }
+
+.output-fullscreen.markingWidgetPanel {
+    position: fixed;
+    inset: 12px;
+    z-index: 100000;
+    display: flex;
+    flex-direction: column;
+    background: var(--field-surface);
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+}
+.output-fullscreen.markingWidgetPanel > header {
+    padding: var(--fp-pad, 8px);
+    min-height: 28px;
+    font-size: var(--fp-title-size, 11px);
+    font-weight: var(--fp-title-weight, 500);
+}
+.output-fullscreen-body { flex: 1 1 auto; min-height: 0; }
+/* Field's iframes are absolutely positioned, so a 100% one measured itself against the whole
+   overlay and ran past the right and bottom edges; the content area is its box. An iframe panel
+   fills edge to edge here as it does on the canvas. */
+.output-fullscreen-body, .output-fullscreen .marking-output-content { position: relative; }
+.output-fullscreen .marking-output-content:has(iframe) { padding: 0 !important; }
 
 .markingWidgetPanel .control-group { width: 100%; max-width: 100%; --field-slider-label-width: 84px; }
 .markingWidgetPanel .field-text-input { min-width: 0; }

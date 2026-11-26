@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 26455 of 44151 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 26476 of 44185 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2114 undocumented entry points** (types, top-level functions and values) and 14809 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2113 undocumented entry points** (types, top-level functions and values) and 14819 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -49,7 +49,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Geometry.kt](../src/jvmMain/kotlin/afield/math/linalg/Geometry.kt) | Math | linear_algebra | 9 | 0 | 52% |
 | [AccelerationStructure.kt](../src/jvmMain/kotlin/afield/graphics/render/AccelerationStructure.kt) | Graphics | ray_tracing_examples, computed_ray_geometry | 8 | 34 | 4% |
 | [macros.kt](../src/jvmMain/kotlin/afield/runtime/macros/macros.kt) | Workspace | running_code | 8 | 20 | 31% |
-| [spatial_rules.kt](../src/jvmMain/kotlin/afield/data/graph/spatial_rules.kt) | Data | spatial_rules | 7 | 48 | 36% |
+| [spatial_rules.kt](../src/jvmMain/kotlin/afield/data/graph/spatial_rules.kt) | Data | spatial_rules | 7 | 52 | 42% |
 | [DirtSamples.kt](../src/jvmMain/kotlin/afield/audio/synth/DirtSamples.kt) | Audio | boolean_network_music_examples, chain_petri_sparks | 7 | 45 | 6% |
 | [RepoCommandJobs.kt](../src/jvmMain/kotlin/afield/ai/tools/RepoCommandJobs.kt) | AI4 | ai4_tools | 7 | 36 | 4% |
 | [simpleGLTFSupport.kt](../src/jvmMain/kotlin/afield/graphics/scene/simpleGLTFSupport.kt) | Graphics | geometry_from_disk, visualizers | 7 | 12 | 13% |
@@ -128,7 +128,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Core.kt](../src/jvmMain/kotlin/afield/lang/fieldml/core/Core.kt) | Languages | fieldml_stages | 0 | 45 | 40% |
 | [FLineInterpolation.kt](../src/jvmMain/kotlin/afield/geometry/path/FLineInterpolation.kt) | Graphics | fline_examples | 0 | 44 | 29% |
 | [Marf.kt](../src/jvmMain/kotlin/afield/audio/synth/Marf.kt) | Patterns | marf | 0 | 41 | 60% |
-| [graph_connectivity.kt](../src/jvmMain/kotlin/afield/data/graph/graph_connectivity.kt) | Graphics | graph_connectivity_examples, spatial_geometry_examples | 0 | 39 | 61% |
+| [graph_connectivity.kt](../src/jvmMain/kotlin/afield/data/graph/graph_connectivity.kt) | Graphics | graph_connectivity_examples, spatial_geometry_examples, spatial_rules | 0 | 39 | 62% |
 | [FunctionGraph.kt](../src/jvmMain/kotlin/afield/math/functions/FunctionGraph.kt) | Function | functions_examples, pattern_language | 0 | 38 | 44% |
 | [DependencyLength.kt](../src/jvmMain/kotlin/afield/graphics/text/sentences/DependencyLength.kt) | Graphics | sentence_diagrams | 0 | 37 | 44% |
 | [alife_tree_growth.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_tree_growth.kt) | Simulation | alife_examples | 0 | 37 | 47% |
@@ -482,7 +482,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [KotlinInterface2.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/KotlinInterface2.kt) | Workspace | — | 1 | 39 | 24% |
 | [KotlinInterface.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/KotlinInterface.kt) | Workspace | — | 1 | 35 | 10% |
 | [textures.kt](../src/jvmMain/kotlin/afield/graphics/texture/textures.kt) | Graphics | — | 1 | 24 | 44% |
-| [FLine.kt](../src/jvmMain/kotlin/afield/geometry/path/FLine.kt) | Graphics | — | 1 | 22 | 72% |
 | [docsPass.kt](../src/jvmMain/kotlin/afield/app/server/docsPass.kt) | Workspace | — | 1 | 21 | 18% |
 | [ReadingScene.kt](../src/jvmMain/kotlin/afield/graphics/scene/reading/ReadingScene.kt) | Graphics | — | 1 | 21 | 31% |
 | [operation_transcript.kt](../src/jvmMain/kotlin/afield/tools/automation/operation_transcript.kt) | Workspace | — | 1 | 21 | 33% |
@@ -683,6 +682,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [AgentEvalCorpus.kt](../src/jvmMain/kotlin/afield/ai/agent/AgentEvalCorpus.kt) | AI4 | — | 0 | 25 | 41% |
 | [BoidSketch.kt](../src/jvmMain/kotlin/afield/simulation/particles/BoidSketch.kt) | Simulation | — | 0 | 25 | 73% |
 | [ClusterGeometryDemo.kt](../src/jvmMain/kotlin/afield/graphics/render/ClusterGeometryDemo.kt) | Graphics | — | 0 | 23 | 4% |
+| [FLine.kt](../src/jvmMain/kotlin/afield/geometry/path/FLine.kt) | Graphics | — | 0 | 22 | 72% |
 | [MqttClient.kt](../src/jvmMain/kotlin/afield/io/mqtt/MqttClient.kt) | Networking | — | 0 | 22 | 52% |
 | [AmbisonicsEffects.kt](../src/jvmMain/kotlin/afield/audio/spatial/steamaudio/AmbisonicsEffects.kt) | Audio | — | 0 | 21 | 65% |
 | [HeadlessPuppetBrowser.kt](../src/jvmMain/kotlin/afield/media/browser/HeadlessPuppetBrowser.kt) | Imaging | — | 0 | 21 | 22% |
@@ -853,6 +853,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [DoughDspPlotGallery.kt](../src/jvmMain/kotlin/afield/audio/synth/DoughDspPlotGallery.kt) | Audio | — | 0 | 6 | 25% |
 | [FaustDsp.kt](../src/jvmMain/kotlin/afield/audio/synth/FaustDsp.kt) | Synthesis | — | 0 | 6 | 56% |
 | [PatOnsetDetection.kt](../src/jvmMain/kotlin/afield/audio/synth/PatOnsetDetection.kt) | Patterns | — | 0 | 6 | 57% |
+| [atomic.kt](../src/jvmMain/kotlin/afield/data/collections/atomic.kt) | Data | — | 0 | 6 | 37% |
 | [jsonparsing.kt](../src/jvmMain/kotlin/afield/data/formats/jsonparsing.kt) | Data | — | 0 | 6 | 66% |
 | [growing.kt](../src/jvmMain/kotlin/afield/data/graph/growing.kt) | Data | — | 0 | 6 | 57% |
 | [RhinoPathTrace.kt](../src/jvmMain/kotlin/afield/geometry/rhino/RhinoPathTrace.kt) | Graphics | — | 0 | 6 | 40% |
@@ -1448,4 +1449,4 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `DirtSampleLibrary` | class | `src/jvmMain/kotlin/afield/audio/synth/DirtSamples.kt:218` |
 | `DirtSamplePlayer` | class | `src/jvmMain/kotlin/afield/audio/synth/DirtSamples.kt:356` |
 
-…and **1994 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
+…and **1993 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.

@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-26T12:28:47.468Z",
+  "documentName": "spatial_rules_web",
+  "outputs": [
+    {
+      "uid": "srw_web",
+      "channel": "spatial",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 810,
+      "height": 456,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "srw_web",
+      "channel": "Counts",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 200,
+      "height": 40,
+      "path": "outputs/1.html"
+    }
+  ]
+}
