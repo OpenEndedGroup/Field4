@@ -1289,6 +1289,10 @@ scanning 20% more vectors than Lloyd on 768-dimensional Cohere embeddings, and 6
 are 20 000 vectors in 128 dimensions from 40 overlapping blobs of falling weight, cut into 200
 clusters, with each run's cluster sizes sorted from largest to smallest:
 
+
+[`vectorKMeans`](reference/data.md#clustering-kt--vectorkmeans) returns a
+[`KMeansResult`](reference/data.md#clustering-kt-kmeansresult) with the cluster sizes and error used below.
+
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/spatial_geometry_examples/kmeans_balance.png" wait="3.0" capture="box" open-outputs="true" w="1140" h="470" padding="14"}
 // 40 blobs in 128 dimensions, weights 1, 1/2, 1/3, ..., with noise as wide as the blobs are apart.
 val rng = java.util.Random(21)

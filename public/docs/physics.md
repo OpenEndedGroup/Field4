@@ -807,11 +807,13 @@ a 40-coil [`Slinky`](reference/simulation.md#slinky-kt-slinky) standing shut on 
 [`StaircaseCollider`](reference/simulation.md#simdverletcolliders-kt-staircasecollider). For its
 first 0.6 s a hand lifts the top coil over in an arc and puts it down on the next step, the way
 you would start one. Then it lets go, and the slinky is on its own.
+[`step`](reference/simulation.md#slinky-kt--slinkyonstairs--step) advances the simulation, and
+[`lines`](reference/simulation.md#slinky-kt--slinkyonstairs--lines) draws the current coils and stairs.
 
 The box shows the walk at a fifth of its speed, because at full speed a flip takes about a quarter
 of a second. Slowing it down does not change it: the scene always steps in substeps of 1/600 s,
-so a frame of 1/300 s shown sixty times a second is the same walk, slowed by five. Each slider
-starts the slinky again on the new stairs.
+so a frame of 1/300 s shown sixty times a second is the same walk, slowed by five. The stair and spring controls start the slinky again. The slow-motion slider changes playback
+speed without restarting it.
 
 ```diffstatic_runner {data-lang=kotlin video="assets/physics/slinky_walk.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="20" fps="24" timeout="300" w="760" h="620" embed=true name="physics-slinky-walk" alt="a rainbow slinky, drawn side-on as forty coloured coil lines on grey stairs, in slow motion: a hand lifts its top coil over in an arc onto the next step down and lets go, and the slinky walks on by itself, its top end falling over the edge and pulling the rest after it while the bottom coils lift, arc over and land past the others, flip after flip, the caption counting flips and steps down"}
 :::static

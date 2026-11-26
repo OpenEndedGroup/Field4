@@ -1,0 +1,21 @@
+{
+  "captures": [
+    {
+      "page": "spatial_rules.md",
+      "name": "spatial-tutorial-trace",
+      "status": "passed",
+      "screenshot": "assets/spatial_rules/tutorial_trace.png",
+      "video": null,
+      "sourceFingerprint": "99a7e9131cf1567ade4661e30c97760d078540c6a67dd8e5cf9057e5adacdba1"
+    },
+    {
+      "page": "spatial_rules.md",
+      "name": "spatial-tutorial-finale",
+      "status": "passed",
+      "screenshot": null,
+      "video": "assets/spatial_rules/tutorial_finale.mp4",
+      "sourceFingerprint": "709586c21719aa3134470d8630cf0f16d93cfdb48575e5230256ed3a12cae272"
+    }
+  ],
+  "method": "Normal RunnerState capture_with_environment and transactional publication; actual authored fence and transcript."
+}
