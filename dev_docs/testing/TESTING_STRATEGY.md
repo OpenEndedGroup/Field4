@@ -392,7 +392,9 @@ The same goes for any early return that announces itself as a skip, whatever its
 `if (validator == null) throw org.junit.AssumptionViolatedException("...")`, which keeps the smart cast,
 or `Assume.assumeTrue(...)`.
 `tools/check_native_gated_tests.py` fails on any of these, and on a block or one-line
-`return println(...)` that says "sWhere the native **is** built, a skip means it did not load, and that is a failure. One parameterised
+`return println(...)` that says "skip" before a bare return.
+
+Where the native **is** built, a skip means it did not load, and that is a failure. One parameterised
 Gradle function, `registerNativeGatedTests` in `build.gradle.kts`, registers a task per library that
 builds the native, runs its package's tests and fails if any still skipped:
 
@@ -421,12 +423,6 @@ Both `tools/land.py precheck` and the lander select `checkPaintTests` for a diff
 need cmake and, once, the network): before enqueueing a change to one of those families, run its
 task locally. The lander's fixer may not add an assumption, for the same reason it may not add
 `@Ignore`.
-
-raphics.paint.*`
-and fails if any test skipped. Both `tools/land.py precheck` and the lander select it for a diff
-under `native/field-paint` or `afield/graphics/paint`. The lander's fixer may not add an
-assumption, for the same reason it may not add `@Ignore`. The other native families have no such
-guard yet: before enqueueing a change to one, build its native and run its tests locally.
 
 ### Tests must not write into the working tree
 
