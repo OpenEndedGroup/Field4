@@ -5661,6 +5661,28 @@
         "public/docs/assets/agent_transcripts/spatial_rules_tour/sr_tour_code_.kt": "ea30a197582de0db5f9f800a3530b68ecd75222f92b146d222282ecc3989930a"
       }
     },
+    "assets/agent_transcripts/spatial_rules_web/metadata.edn": {
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-26T12:28:47.468Z",
+      "channels": 2,
+      "file": "assets/web_publications/spatial_rules_web/document/metadata.edn",
+      "files": {
+        "assets/web_publications/spatial_rules_web/document/metadata.edn": "881912d81d221095e00afff770892917662f88b242a60ff12435f3833a29b0d4",
+        "assets/web_publications/spatial_rules_web/document/outputs.json": "668d276b4587970a2de986fcc9485ab2e18f23e8ee05fdfeb97ad88fc0beb4e3",
+        "assets/web_publications/spatial_rules_web/outputs/0.html": "8ed658f139427542f034ecaf8330874dc40ece96f6347b9706c89eaaad7881eb",
+        "assets/web_publications/spatial_rules_web/outputs/1.html": "d4cff1d0c7ec68625f563250249d80025a7dfbce6d7781f34168af5f5ab41ea4"
+      },
+      "kinds": [
+        "svg"
+      ],
+      "outputs": "assets/web_publications/spatial_rules_web/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/spatial_rules_web.yaml": "4bf8c9b345d40f17b150bba65fd0c1a394d18ed50ef4a76b73336b7e86e42767",
+        "public/docs/assets/agent_transcripts/spatial_rules_web/guides/spatial_rules.md": "30759271d88369768a84db5bd2d60672b9a97ba8f8ad881e7c2e259118908286",
+        "public/docs/assets/agent_transcripts/spatial_rules_web/metadata.edn": "c73f31738980d587c3053ff8070ada9f41555a658509f33c38b447ff560958d2",
+        "public/docs/assets/agent_transcripts/spatial_rules_web/srw_web_code_.kt": "6e124b0382d54ecf215735d6cf93100dc244a8ca665c0c4e6a292f6d5148ac08"
+      }
+    },
     "assets/agent_transcripts/spectral_examples/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
       "capturedAt": "2026-11-18T16:03:02.836Z",
