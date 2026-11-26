@@ -5605,6 +5605,33 @@
         "public/docs/assets/agent_transcripts/spatial_geometry_examples/spatial_marching_code_.kt": "ff9de544bb090a2621c8317e51c12277fdd97a2711508b283fe822aecf66b9ab"
       }
     },
+    "assets/agent_transcripts/spatial_rules_tour/metadata.edn": {
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-26T06:17:57.706Z",
+      "channels": 4,
+      "file": "assets/web_publications/spatial_rules_tour/document/metadata.edn",
+      "files": {
+        "assets/web_publications/spatial_rules_tour/document/metadata.edn": "da4201f76e56b0c34ea3c2c8edee5778fad6d750d5b7a10d04262af9ae4ee17d",
+        "assets/web_publications/spatial_rules_tour/document/outputs.json": "fcf1cb96c8866de3d54a4ab0f8b083c5b05affd921c5d83a2901efe89e224ece",
+        "assets/web_publications/spatial_rules_tour/outputs/0.html": "2ed16eb29e4c67dfa474edc9c8724886435a0d31df3dbb1acf46d29d05157958",
+        "assets/web_publications/spatial_rules_tour/outputs/1.html": "e7bc89aa5bf240ae269e04fe72a8d7c26bf36fc775372beb2d8cfaabbbd78a90",
+        "assets/web_publications/spatial_rules_tour/outputs/2.html": "ac86697b69f1fff174b2d2ddcf5b399c8fda61a67492803a273ac3507412c233",
+        "assets/web_publications/spatial_rules_tour/outputs/3.html": "4ac162d889118bf38fe8d5f058f52b3ae012ea7854c8fd6d0d8fa66278292375"
+      },
+      "kinds": [
+        "svg"
+      ],
+      "outputs": "assets/web_publications/spatial_rules_tour/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/spatial_rules_tour.yaml": "82063a1cd14e370363c1a3802ff5b59b767f1bceeff3b4cc8df467565f1fd7cf",
+        "public/docs/assets/agent_transcripts/spatial_rules_tour/guides/spatial_rules.md": "ae738cf7e5dd7f084b228ef8a2615ae3f7bc94a4d599e4c942bdf276cce5cc2a",
+        "public/docs/assets/agent_transcripts/spatial_rules_tour/metadata.edn": "36755203999f244d5c05ef301d11284fd714009e5802d12f2f556952bc7b7e61",
+        "public/docs/assets/agent_transcripts/spatial_rules_tour/sr_filament_code_.kt": "686f8c5093ff5c94463dc7c78235ec7e78c7ffcb72aed450f8d76613e2a4d633",
+        "public/docs/assets/agent_transcripts/spatial_rules_tour/sr_loom_code_.kt": "fccece212ff3b5b0be4238a7d7fc2c4c963a9e97f82f38986bb88f319b9664eb",
+        "public/docs/assets/agent_transcripts/spatial_rules_tour/sr_torus_code_.kt": "76a65e72c1ee65123ea61d603288c4dcb465a0b6076b09f72652d3f138812c5f",
+        "public/docs/assets/agent_transcripts/spatial_rules_tour/sr_tour_code_.kt": "ea30a197582de0db5f9f800a3530b68ecd75222f92b146d222282ecc3989930a"
+      }
+    },
     "assets/agent_transcripts/spectral_examples/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
       "capturedAt": "2026-11-18T16:03:02.836Z",
