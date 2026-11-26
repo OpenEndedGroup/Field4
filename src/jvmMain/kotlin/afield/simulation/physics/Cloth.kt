@@ -44,7 +44,9 @@ import kotlin.math.sqrt
  * `step(...)` overload solves nothing and the cloth simply falls apart.
  *
  * **Curvature.** [curvatureStrength] pulls each interior particle toward the mean of its four
- * axis neighbors, which flattens the sheet and takes the sag out of the distance-only solve.
+ * axis neighbors, and pushes each of those neighbours back by a quarter of that pull, which
+ * flattens the sheet and takes the sag out of the distance-only solve. The push-back makes it the
+ * force of a real bending energy, so it sums to zero and a free cloth cannot propel itself.
  * It is one [SimdVerlet.bulkForces] pass over the whole patch, not a force generator per
  * particle, so the cost is a single scalar sweep rather than `width * height` coroutine
  * resumes. The field is live: set it to `0f` to switch the force off for a frame or forever
@@ -203,9 +205,20 @@ class Cloth private constructor(
                 val right = i + 1
                 val below = i - width
                 val above = i + width
-                ax[i] += ((x[left] + x[right] + x[below] + x[above]) * 0.25f - x[i]) * strength
-                ay[i] += ((y[left] + y[right] + y[below] + y[above]) * 0.25f - y[i]) * strength
-                az[i] += ((z[left] + z[right] + z[below] + z[above]) * 0.25f - z[i]) * strength
+                val fx = ((x[left] + x[right] + x[below] + x[above]) * 0.25f - x[i]) * strength
+                val fy = ((y[left] + y[right] + y[below] + y[above]) * 0.25f - y[i]) * strength
+                val fz = ((z[left] + z[right] + z[below] + z[above]) * 0.25f - z[i]) * strength
+                ax[i] += fx; ay[i] += fy; az[i] += fz
+                // The reaction: a quarter of the pull, the other way, on each neighbour. That is
+                // the rest of the gradient of the bending energy `strength / 2 * |x_i - mean|²`;
+                // without it the forces do not sum to zero, and a curved cloth with nothing pinned
+                // pushes itself along (a free bowl at the default strength climbed four units in
+                // four seconds).
+                val qx = fx * 0.25f; val qy = fy * 0.25f; val qz = fz * 0.25f
+                ax[left] -= qx; ay[left] -= qy; az[left] -= qz
+                ax[right] -= qx; ay[right] -= qy; az[right] -= qz
+                ax[below] -= qx; ay[below] -= qy; az[below] -= qz
+                ax[above] -= qx; ay[above] -= qy; az[above] -= qz
                 i++
             }
         }

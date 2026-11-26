@@ -448,7 +448,7 @@ class SimdVerletWorldCaptureTest {
 
         // ---- 3. tearing without dropping the curvature stencil --------------------------------
         val tearView = View(-2.9, -2.9, 5.8, 5.8)
-        val healed = IntArray(2)
+        val lipGap = FloatArray(2)
         val torn = IntArray(2)
         fun punch(dropCurvature: Boolean): Panel {
             val sim = SimdVerlet(SimdVerlet.State3.empty())
@@ -471,17 +471,30 @@ class SimdVerletWorldCaptureTest {
                 ball.centerZ = (-1.6f + f * 0.007f).coerceAtMost(3.6f)
                 cloth.step(dt = 1f / 60f, damping = 0.99f, gravity = 0f, iterations = 16)
             }
-            // How big is the hole, really? Count the cloth nodes inside the radius the ball swept.
-            var inHole = 0
-            for (i in cloth.base until cloth.end) {
-                val d = sqrt(sim.state.x[i] * sim.state.x[i] + sim.state.y[i] * sim.state.y[i])
-                if (d < 0.55f) inHole++
+            // How far apart are the lips? A slit in a sheet with bending stiffness flattens back
+            // into the plane either way; what the stale stencil adds is a force pulling the two
+            // lips of every broken edge back together. So measure the gap across each broken grid
+            // edge: about one spacing (0.2) is a rip that has healed shut.
+            val cs = sim.constraints4!!
+            fun linked(a: Int, b: Int) = cs.n0[a] == b || cs.n1[a] == b || cs.n2[a] == b || cs.n3[a] == b
+            var gap = 0.0
+            var broken = 0
+            for (r in 0 until n) for (c in 0 until n) {
+                val i = cloth[c, r]
+                for (j in listOf(if (c + 1 < n) cloth[c + 1, r] else -1, if (r + 1 < n) cloth[c, r + 1] else -1)) {
+                    if (j < 0 || linked(i, j) || linked(j, i)) continue
+                    val st = sim.state
+                    gap += sqrt(((st.x[i] - st.x[j]) * (st.x[i] - st.x[j]) + (st.y[i] - st.y[j]) * (st.y[i] - st.y[j]) +
+                        (st.z[i] - st.z[j]) * (st.z[i] - st.z[j])).toDouble())
+                    broken++
+                }
             }
+            val meanGap = if (broken > 0) (gap / broken).toFloat() else 0f
             println(
                 "curvature-stencil capture: dropCurvature=$dropCurvature -> ${tear.brokenTotal} edges torn, " +
-                    "$inHole nodes still inside the swept hole"
+                    "lips %.3f apart on average".format(meanGap)
             )
-            healed[if (dropCurvature) 1 else 0] = inHole
+            lipGap[if (dropCurvature) 1 else 0] = meanGap
             torn[if (dropCurvature) 1 else 0] = tear.brokenTotal
             return Panel(
                 sim.debugLines(points = false, thickness = 1.0) +
@@ -505,14 +518,14 @@ class SimdVerletWorldCaptureTest {
             "premise: both tear panels must break the same number of edges, or they are not the same scene"
         )
         assertTrue(torn[0] >= 4, "premise: and there must be a rip to look at, ${torn[0]} edges")
-        assertEquals(
-            0, healed[1],
-            "with the curvature stencil dropped the hole must be empty, ${healed[1]} nodes inside it"
+        assertTrue(
+            lipGap[1] > 0.3f,
+            "with the curvature stencil dropped the rip must stay open, lips ${lipGap[1]} apart"
         )
         assertTrue(
-            healed[0] >= 12,
-            "and without it the sheet must visibly heal across the rip -- that is the whole reason " +
-                "Cloth.enableTearing exists. Only ${healed[0]} nodes were pulled back into the hole"
+            lipGap[0] < 0.25f && lipGap[0] < 0.7f * lipGap[1],
+            "and without it the lips must be pulled back together -- that is the whole reason " +
+                "Cloth.enableTearing exists. They are ${lipGap[0]} apart against ${lipGap[1]}"
         )
 
         // Each pair must be a *different picture*, or the failure mode is not being shown.

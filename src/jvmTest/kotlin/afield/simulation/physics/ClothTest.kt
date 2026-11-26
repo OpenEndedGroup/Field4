@@ -1,6 +1,7 @@
 package afield.simulation.physics
 
 import afield.math.linalg.Vec3
+import afield.math.linalg.vec
 
 import kotlin.math.abs
 import kotlin.test.Test
@@ -168,8 +169,10 @@ class ClothTest {
         assertEquals(0f, state.ax[i], 1e-6f)
         assertEquals(0f, state.ay[i], 1e-6f)
 
-        // Edge nodes and the particles outside the cloth get nothing from the pass.
-        assertEquals(0f, state.az[cloth[0, 1]])
+        // Each axis neighbour is pushed back by a quarter of that pull, so the forces sum to zero;
+        // the corners, which are no node's neighbour, and the particles outside the cloth get nothing.
+        for (n in listOf(cloth[0, 1], cloth[2, 1], cloth[1, 0], cloth[1, 2])) assertEquals(0.25f, state.az[n], 1e-6f)
+        assertEquals(0f, state.az[cloth[0, 0]])
         assertEquals(0f, state.az[0])
     }
 
@@ -362,5 +365,30 @@ class ClothTest {
         assertFailsWith<IllegalArgumentException> { sim.queueRemove(1) }
         assertFailsWith<IllegalArgumentException> { sim.queueRemoveRange(cloth.base + 2, 1) }
         sim.queueRemove(cloth.end)      // above the cloth: fine
+    }
+
+    /**
+     * The curvature force keeps momentum. A cloth curved into a bowl, at rest in empty space with
+     * nothing pinned, no gravity and no damping, must stay where it is. Before the force pushed
+     * back on each node's neighbours, this bowl at the default strength picked up a momentum of
+     * 239 and lifted its centre of mass four units in four seconds.
+     */
+    @Test
+    fun aFreeCurvedClothDoesNotPushItselfAlong() {
+        val sim = SimdVerlet(SimdVerlet.State3.empty())
+        val dt = 1f / 60f
+        val cloth = sim.addCloth(
+            width = 20, height = 10, spacing = 0.5f, stiffness = 60f, curvatureStrength = 20f,
+            position = { col, row -> vec(col * 0.5f, row * 0.5f, 0.08f * ((col - 9.5f) * (col - 9.5f) + 0.5f * (row - 4.5f) * (row - 4.5f))) },
+            restLengthFromLayout = true, pinned = { _, _ -> false },
+        )
+        val st = sim.state
+        fun centreZ() = (cloth.base until cloth.end).sumOf { st.z[it].toDouble() } / cloth.count
+        val z0 = centreZ()
+        repeat(240) { cloth.step(dt, 1f, 0f, 16) }
+        var momentum = 0.0
+        for (i in cloth.base until cloth.end) momentum += (st.z[i] - st.pz[i]) / dt
+        assertEquals(0.0, momentum, 0.5, "net momentum along z")
+        assertEquals(z0, centreZ(), 0.01, "centre of mass height")
     }
 }
