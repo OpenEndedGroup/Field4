@@ -2,6 +2,7 @@ package afield.data.graph
 
 import afield.document.graph.Box
 import afield.geometry.path.FLine
+import afield.geometry.path.SkinnedLine
 import afield.graphics.render.circle
 import afield.graphics.render.color
 import afield.graphics.render.filled
@@ -113,6 +114,13 @@ fun spatialSkin(shape: FLine, corners: List<Vec3>, opacity: Double = 1.0): FLine
         Vec3(blend(a.x, b.x, c.x, d.x), blend(a.y, b.y, c.y, d.y), blend(a.z, b.z, c.z, d.z))
     }.faded(opacity)
 }
+
+/** [SkinnedLine.pose] with its colour's alpha multiplied by [opacity], for a line that fades. */
+fun SkinnedLine.pose(from: Vec3, to: Vec3, now: Double, opacity: Double): FLine = pose(from, to, now).faded(opacity)
+
+/** The skin posed between the committed ends of [edge], from its `from` to its `to`. */
+fun SkinnedLine.pose(edge: SpatialEdge, now: Double, opacity: Double = 1.0): FLine =
+    pose(edge.from.pos, edge.to.pos, now).faded(opacity)
 
 private fun FLine.faded(opacity: Double): FLine = apply {
     if (opacity < 1.0) {

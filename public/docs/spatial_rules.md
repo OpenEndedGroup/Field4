@@ -2042,28 +2042,39 @@ play(world, w = w, h = h, after = { markdown("Tree", "$here seeds, $standing bra
 ### Shapes pinned between points
 
 Fourteen posts lean and slide along the ground. Each is an edge from a foot to a head, drawn as a
-spindle pinned between the two: `spatialSkin(shape, edge, width)` turns, moves and stretches the
-shape so its bounds run from one end of the edge to the other, and makes it `width` across,
-here breathing in and out. When two feet come within 80 units of each other, a woven panel is
-pinned between the two posts by its four corners, `spatialSkin(shape, corners)`, so it shears and
-twists as the posts lean. A foot carries its head in its data, which is how the panel finds its
-top corners.
+spindle skinned onto it. The spindle is drawn once, in a bind pose, lying between two bind
+points, (0, 0) and (200, 0). A `SkinnedLine` made from it poses it between the edge's ends each
+frame: it turns the spindle the shortest way from the bind direction to the edge's, stretches it
+along the edge by whatever it takes to reach both ends, and moves it into place. Across the edge
+it stretches less: with `across = 0.5` its width grows by the square root of its stretch along,
+so a post thins a little as it lengthens and fattens as it shortens.
+
+`lag` makes the posed spindle follow the edge with a delay that varies along it. It is given each
+point's place between the bind points, from 0 to 1, and returns a time in seconds: here none at
+the ends and a third of a second in the middle, so the ends stay pinned to the foot and head
+while the middle trails behind them, and a post bows as it leans. A lagging skin remembers where
+its points were, so each post's process makes its own.
+
+When two feet come within 80 units of each other, a woven panel is pinned between the two posts
+by its four corners with `spatialSkin(shape, corners)`, so it shears and twists as the posts
+lean. A foot carries its head in its data, which is how the panel finds its top corners.
 
 Every post and every panel is a copy of its shape, worked out point by point each frame, so both
 rules pass `parallel = true`. The panel counter is shared by all the panel processes, which may
 now run at the same moment, so it is `0.atomic`: `panels += 1` and `panels -= 1` are each one
 indivisible step, where `+= 1` on a plain `var` could lose a count.
 
-```diffstatic_runner {data-lang=kotlin video="assets/spatial_rules/skins.mp4" capture="box" execution="launch" wait-output="true" open-outputs="true" duration="8" fps="15" w="940" h="540" timeout="300" embed=true name="spatial-skins" alt="Pale spindle-shaped posts lean and slide along the bottom of a wide drawing. Amber woven panels appear between neighbouring posts when their feet come close, shearing and twisting as the posts lean, and fade away as the feet part. A Fence panel counts the panels."}
+```diffstatic_runner {data-lang=kotlin video="assets/spatial_rules/skins.mp4" capture="box" execution="launch" wait-output="true" open-outputs="true" duration="8" fps="15" w="940" h="540" timeout="300" embed=true name="spatial-skins" alt="Pale spindle-shaped posts lean, slide and bow along the bottom of a wide drawing, their middles trailing their ends. Amber woven panels appear between neighbouring posts when their feet come close, shearing and twisting as the posts lean, and fade away as the feet part. A Fence panel counts the panels."}
 val world = SpatialRuleWorld()
 val ink = vec(0.85, 0.9, 1.0, 1.0)
 val weave = vec(1.0, 0.75, 0.4, 1.0)
 
-// The shapes are drawn once, in their own coordinates. Only their bounds matter to a skin.
+// The shapes are drawn once. The spindle lies between its bind points, (0, 0) and (200, 0);
+// a panel's four corners are the corners of its bounds.
 val spindle = FLine().apply {
     moveTo(0, 0)
-    cubicTo(0.3, -0.1, 0.7, -0.1, 1, 0)
-    cubicTo(0.7, 0.1, 0.3, 0.1, 0, 0)
+    cubicTo(60, -14, 140, -14, 200, 0)
+    cubicTo(140, 14, 60, 14, 0, 0)
     color = ink
     filled = true
     stroked = false
@@ -2104,7 +2115,8 @@ val panels = 0.atomic
 
 world.rules("fence") {
     onEnter("stand a post", edges("post"), parallel = true) { post ->
-        whileLive { draw(spatialSkin(spindle, post, width = 14 + 5 * sin(3 * age))) }
+        val skin = SkinnedLine(spindle, vec(0, 0, 0), vec(200, 0, 0), across = 0.5, lag = { s -> 0.35 * sin(PI * s) })
+        whileLive { draw(skin.pose(post, now)) }
     }
     onEnter("weave a panel", points("foot").pairsWithin(80.0, leave = 100.0), parallel = true) { (a, b) ->
         panels += 1
@@ -2180,8 +2192,10 @@ An edge has a `length`, a position `at(t)` a fraction of the way from `from` to 
 positions or an edge, `spatialFill` a list of positions or a triangle, and `spatialDot` a
 position; each takes a colour and an `opacity`. `spatialSkin(shape, from, to, width)`, or
 `spatialSkin(shape, edge, width)`, returns a copy of an FLine pinned between two points, and
-`spatialSkin(shape, corners)` one pinned between four; see
-[shapes pinned between points](#shapes-pinned-between-points).
+`spatialSkin(shape, corners)` one pinned between four. `SkinnedLine(shape, bindFrom, bindTo,
+across, lag)` holds a curve drawn in a bind pose, and `pose(from, to, now)` or `pose(edge, now)`
+turns and stretches it onto live points, scaling it less across than along and letting parts of
+it lag; see [shapes pinned between points](#shapes-pinned-between-points).
 
 To find out why something is there, `world.nearest(at, within)` returns the live point or edge
 closest to a position, `world.lineage(fact)` returns the fact and every live fact it was made
