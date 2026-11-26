@@ -1104,17 +1104,26 @@ private suspend fun ApplicationCall.serveFieldDocs(mirror: DocsMirror) {
     val contentType = upstream.headers().firstValue(HttpHeaders.ContentType).orElse("application/octet-stream")
     if (contentType.lowercase().contains("text/html")) {
         val html = upstream.body().toString(StandardCharsets.UTF_8)
-        val sauce = docsAnnotationsSauce(target, target.resolve(".").toString(), "published")
+        // The base is this page's directory under /field-docs/, not upstream: an upstream base
+        // fetches every font and the search index cross-origin from openendedgroup.com, which
+        // sends no CORS headers, so the fonts fall back and search never loads. Through the
+        // proxy they are same-origin, as they are for the local build.
+        val sauce = docsAnnotationsSauce(target, proxiedDocsPageBase(target), "published")
         respondText(withDocsAnnotationsInjected(html, sauce), ContentType.Text.Html, HttpStatusCode.fromValue(upstream.statusCode()))
     } else {
         respondBytes(upstream.body(), runCatching { ContentType.parse(contentType) }.getOrDefault(ContentType.Application.OctetStream), HttpStatusCode.fromValue(upstream.statusCode()))
     }
 }
 
+/** The `/field-docs/` directory a proxied page at upstream [target] lives in, for its `<base href>`. */
+internal fun proxiedDocsPageBase(target: URI): String =
+    PROXY_ROOT + target.resolve(".").rawPath.removePrefix(DOCS_ROOT).removePrefix("/")
+
 /**
  * Serves one file of the local build, annotated exactly as the proxied copy is.
  *
- * The `<base href>` is the *local* directory rather than the upstream one, which is what
+ * The `<base href>` is the *local* directory rather than the upstream one (the proxied
+ * copy does the same, for the same reason and because upstream sends no CORS headers), which is what
  * keeps the page offline: with an upstream base every stylesheet, script and image on the
  * page is fetched from openendedgroup.com, and a mirror whose assets all come from the
  * internet is not a mirror. Relative links then resolve to `/field-docs/…` on their own,
