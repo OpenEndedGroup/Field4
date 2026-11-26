@@ -1,7 +1,9 @@
 /* Docs webfonts, vendored so the site renders offline (and inside Field's docs pane).
-   Iosevka 7.0.2 from pvinis.github.io/iosevka-webfont (normal width, only the weights the
-   docs CSS asks for); IBM Plex Sans Condensed from Google Fonts, latin + latin-ext subsets.
-   Both are SIL OFL 1.1 — licences sit beside the files in assets/fonts/. */
+   Iosevka Field 34.7.0, normal width, only the weights the docs CSS asks for: the same custom
+   build Field's editor uses (src/jsMain/resources/woff2/, plan in tools/fonts/iosevka-field.toml),
+   with its zero/tilde/brace variants and the TXTR texture feature. IBM Plex Sans Condensed from
+   Google Fonts, latin + latin-ext subsets. Both are SIL OFL 1.1 — licences sit beside the files
+   in assets/fonts/. */
 
 @font-face {
 	font-family: 'Iosevka Web';
@@ -213,4 +215,10 @@
   font-display: swap;
   src: url(../assets/fonts/plex/plex-sans-condensed-700-latin.woff2) format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* TXTR and dlig are opt-in features of the Iosevka Field build; Field's editor turns on the same
+   pair (src/jsMain/resources/iosevka.css). */
+code, pre, kbd, samp {
+	font-feature-settings: "dlig" 1, "TXTR" 1;
 }
