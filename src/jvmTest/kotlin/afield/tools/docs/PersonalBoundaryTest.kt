@@ -503,10 +503,7 @@ class PersonalBoundaryTest {
     @Test
     fun `no private package name collides with a permitted public root`() {
         val personal = File(repoRoot(), PERSONAL_ROOT)
-        if (!personal.isDirectory) {
-            println("PersonalBoundaryTest: no src/personal/ here, collision check skipped (expected off-machine)")
-            return
-        }
+        org.junit.Assume.assumeTrue("PersonalBoundaryTest: no src/personal/ here, collision check skipped (expected off-machine)", personal.isDirectory)
         val declared = personal.walkTopDown()
             .filter { it.isFile && it.extension == "kt" }
             .flatMap { Regex("""^package\s+([A-Za-z0-9_.]+)""", RegexOption.MULTILINE).findAll(it.readText()) }

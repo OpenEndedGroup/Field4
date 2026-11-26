@@ -17,10 +17,7 @@ class PrincipalCurvesBenchmark {
 
     @Test
     fun timings() {
-        if (System.getenv("AFIELD_PRINCIPAL_CURVES_BENCHMARK") != "1" || !PrincipalCurvesLibrary.isAvailable) {
-            println("SKIPPED principal curves benchmark (set AFIELD_PRINCIPAL_CURVES_BENCHMARK=1; ${PrincipalCurvesLibrary.describe()})")
-            return
-        }
+        if (System.getenv("AFIELD_PRINCIPAL_CURVES_BENCHMARK") != "1" || !PrincipalCurvesLibrary.isAvailable) throw org.junit.AssumptionViolatedException("SKIPPED principal curves benchmark (set AFIELD_PRINCIPAL_CURVES_BENCHMARK=1; ${PrincipalCurvesLibrary.describe()})")
         val rows = mutableListOf(
             "| points | dim | graph | grow to | grow (ms) | refine 5 iterations (ms) | node statistics (ms) | network (ms) |",
             "| ---: | ---: | --- | ---: | ---: | ---: | ---: | ---: |",

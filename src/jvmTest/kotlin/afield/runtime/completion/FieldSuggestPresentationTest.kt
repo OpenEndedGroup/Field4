@@ -786,10 +786,7 @@ class FieldSuggestPresentationTest {
     // ------------------------------------------------------------------ running the probe
 
     private fun runProbe(mode: String, categorySpec: String? = null, timeoutSeconds: Long = 180) {
-        if (System.getenv("AFIELD_SKIP_JS_TESTS") == "1") {
-            println("FieldSuggestPresentationTest: skipped by AFIELD_SKIP_JS_TESTS=1")
-            return
-        }
+        if (System.getenv("AFIELD_SKIP_JS_TESTS") == "1") throw org.junit.AssumptionViolatedException("FieldSuggestPresentationTest: skipped by AFIELD_SKIP_JS_TESTS=1")
         val node = NodeTool.resolveNode()
             ?: fail(
                 "the completion-popup cover runs the real fieldSuggest.js under node: " +

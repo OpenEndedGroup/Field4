@@ -19,10 +19,7 @@ class MorseSmaleBenchmark {
 
     @Test
     fun stages() {
-        if (System.getenv("AFIELD_MORSE_SMALE_BENCHMARK") != "1" || !MorseSmaleLibrary.isAvailable) {
-            println("SKIPPED Morse–Smale benchmark (set AFIELD_MORSE_SMALE_BENCHMARK=1; ${MorseSmaleLibrary.describe()})")
-            return
-        }
+        if (System.getenv("AFIELD_MORSE_SMALE_BENCHMARK") != "1" || !MorseSmaleLibrary.isAvailable) throw org.junit.AssumptionViolatedException("SKIPPED Morse–Smale benchmark (set AFIELD_MORSE_SMALE_BENCHMARK=1; ${MorseSmaleLibrary.describe()})")
         val photo = imgFromFile("public/docs/assets/vision/fline-viewer.jpg", 3)
         val rows = mutableListOf(
             "| field | size | preprocess | gradient | separatrices | hierarchy | persistence | simplify (median of 5 thresholds) | network | FLines | critical points | surviving at 1% |",

@@ -106,10 +106,7 @@ class StackSLFeedbackTest {
             .plus(listOf("/opt/homebrew/bin", "/usr/local/bin"))
             .map { File(it, "glslangValidator") }
             .firstOrNull { it.canExecute() }
-        if (validator == null) {
-            println("SKIPPED StackSLFeedbackTest SPIR-V check: glslangValidator not found. The feedback shader was NOT checked by a shader compiler.")
-            return
-        }
+        if (validator == null) throw org.junit.AssumptionViolatedException("SKIPPED StackSLFeedbackTest SPIR-V check: glslangValidator not found. The feedback shader was NOT checked by a shader compiler.")
         val dir = java.nio.file.Files.createTempDirectory("stacksl-feedback").toFile()
         try {
             fun validate(name: String, text: String): Pair<Boolean, String> {

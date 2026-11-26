@@ -811,10 +811,7 @@ class TypographyTest {
             .filter { it.isDirectory }
             .flatMap { it.walkTopDown().maxDepth(3) }
             .firstOrNull { it.isFile && it.extension.lowercase() == "ttf" && it.length() > 20_000 }
-        if (candidate == null) {
-            println("TypographyTest: no system .ttf found; skipping the file-loading check")
-            return
-        }
+        if (candidate == null) throw org.junit.AssumptionViolatedException("TypographyTest: no system .ttf found; skipping the file-loading check")
         val face = Typefaces.fromFile(candidate.absolutePath, 90.0)
         assertEquals(90.0, face.size, 1e-9)
         val layout = layoutText("og", face)

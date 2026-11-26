@@ -78,13 +78,7 @@ class VolumetricNoiseGlslTest {
     @Test
     fun `every volumetric word compiles to SPIR-V`() {
         val validator = findValidator()
-        if (validator == null) {
-            println(
-                "SKIPPED VolumetricNoiseGlslTest: glslangValidator not found on PATH or in " +
-                    "/opt/homebrew/bin. The GLSL this suite emits was NOT checked by a shader compiler."
-            )
-            return
-        }
+        if (validator == null) throw org.junit.AssumptionViolatedException("SKIPPED VolumetricNoiseGlslTest: glslangValidator not found on PATH or in /opt/homebrew/bin. The GLSL this suite emits was NOT checked by a shader compiler.")
         println("validating StackSL output with ${validator.absolutePath}")
 
         val dir = createTempDir()

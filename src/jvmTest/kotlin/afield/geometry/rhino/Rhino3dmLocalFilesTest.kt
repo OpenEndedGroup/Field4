@@ -27,10 +27,7 @@ class Rhino3dmLocalFilesTest {
 
     @Test fun everyNamedFileReadsAndHoldsTogether() {
         val files = files()
-        if (files.isEmpty()) {
-            println("SKIPPED local .3dm files: set AFIELD_RHINO_3DM_FILES to check your own")
-            return
-        }
+        if (files.isEmpty()) throw org.junit.AssumptionViolatedException("SKIPPED local .3dm files: set AFIELD_RHINO_3DM_FILES to check your own")
         if (!Rhino3dm.isAvailable) fail("AFIELD_RHINO_3DM_FILES is set but ${Rhino3dm.describe()}")
         for (file in files) {
             assertTrue(file.isFile, "AFIELD_RHINO_3DM_FILES names $file, which is not a file")
