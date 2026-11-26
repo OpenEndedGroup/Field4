@@ -1,5 +1,5 @@
 {
-  "state": "source and captures verified; final integration",
+  "state": "merge guards and built-site audit passed; landing precheck retry",
   "scope": "scope.json",
   "reviewed": [],
   "next": "Review changed bodies, apply clarity/helper edits and actual formatting, verify affected behavior and run land precheck.",
@@ -24,5 +24,8 @@
   "publicationResume": "Fixed publication_merge.unify to retain completed working captures with matching sources and output hashes; 10 regression tests passed, including section transitions.",
   "site": "Built-site gate passed for the catch-up before the next spatial-rules merge: all 4916 distinct local refs resolved, with the single registered 404 theme fragment exception.",
   "mainReconciliation": "Preserved the new spatial tutorial and both test sets. Main independently restored inspectOnClick, so the merged tree keeps its single implementation.",
-  "nextHandoff": "4ef4d21c, committed in 98eaaebe63; recommends gpt-6.2-sol."
+  "nextHandoff": "4ef4d21c, committed in 98eaaebe63; recommends gpt-6.2-sol.",
+  "mergeGuard": "1967 Python tests passed, 28 skipped. The full merged-tree guard passed at e2791b1a7c.",
+  "precheckRepair": "Precheck now reconciles publication bundles on its trial merge, as the lander does. Without this, the catalog omitted the unrelated Slinky publication from newer main.",
+  "lateScope": "Companion branch codex/docs-code-catchup-nov26-late reviews 37 new bodies through f003826253, including Spatial Rules and Slinky."
 }

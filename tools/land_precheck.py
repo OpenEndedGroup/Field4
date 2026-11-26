@@ -649,6 +649,14 @@ def run(args: argparse.Namespace) -> int:
             return 0
 
         checks = [c for c, _ in selected]
+        if merged and any(c.key == "docs-publications" for c in checks):
+            # The lander merges publication bundles as units. The generated file driver may
+            # otherwise leave a catalog from one side beside a new capture from the other.
+            from publication_merge import unify
+
+            taken = unify(REPO)
+            if taken:
+                _say(f"reconciled {len(taken)} publication bundle(s) from {base} on the trial merge")
         if merged and any(c.key == "python-tools" for c in checks):
             # The lander regenerates this inventory on its merged tree. A trial merge can combine
             # two individually current inventories into a stale one; checking it before refreshing
