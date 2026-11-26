@@ -149,4 +149,130 @@ class SpatialRuleWorldTest {
             assertEquals(original, world.points("tip").map { it.id })
         }
     }
+
+    @Test
+    fun timedPhasesFollowTheCallersClock() {
+        SpatialRuleWorld().use { world ->
+            val seen = mutableListOf<String>()
+            var near = true
+            world.source("pair") {
+                val left = point("tip", Vec3())
+                val right = point("tip", Vec3(1f, 0f, 0f))
+                while (true) {
+                    move(right, Vec3(if (near) 1f else 9f, 0f, 0f))
+                    nextFrame()
+                }
+            }
+            world.rules("phases") {
+                onEnter("link", points("tip").pairsWithin(2.0)) { _ ->
+                    whileLive { seen += "live ${age}" }
+                    during(2.0) { progress -> seen += "fade $progress" }
+                    wait(1.0)
+                    seen += "done ${age}"
+                }
+            }
+            world.step(10.0)
+            world.step(11.0)
+            world.step(12.0)
+            near = false
+            world.step(13.0)
+            world.step(14.0)
+            world.step(15.0)
+            world.step(16.0)
+            world.step(17.0)
+            world.step(18.0)
+            assertEquals(
+                listOf("live 0.0", "live 1.0", "live 2.0", "fade 0.0", "fade 0.5", "done 6.0"),
+                seen,
+            )
+        }
+    }
+
+    @Test
+    fun edgesKnowTheirGeometry() {
+        SpatialRuleWorld().use { world ->
+            lateinit var bond: SpatialEdge
+            lateinit var left: SpatialPoint
+            world.source("bond") {
+                left = point("seed", Vec3())
+                val right = point("seed", Vec3(3f, 4f, 0f))
+                nextFrame()
+                bond = edge("bond", left, right)
+                while (true) nextFrame()
+            }
+            world.step(0.0)
+            world.step(1.0)
+            world.step(2.0)
+            assertEquals(5.0, bond.length, 1e-6)
+            assertEquals(Vec3(1.5f, 2f, 0f), bond.at(0.5))
+            assertEquals(bond.to, bond.other(left))
+            assertEquals(5.0, left.distance(bond.to), 1e-6)
+        }
+    }
+
+    @Test
+    fun trianglesCloseOnceAndEndWithAnEdge() {
+        SpatialRuleWorld().use { world ->
+            var cut = false
+            world.source("triangle") {
+                val a = point("seed", Vec3())
+                val b = point("seed", Vec3(1f, 0f, 0f))
+                val c = point("seed", Vec3(0f, 1f, 0f))
+                val d = point("seed", Vec3(5f, 5f, 0f))
+                nextFrame()
+                edge("bond", a, b)
+                edge("bond", b, a)
+                edge("bond", c, b)
+                val ca = edge("bond", c, a)
+                edge("bond", c, d)
+                while (!cut) nextFrame()
+                retract(ca)
+                while (true) nextFrame()
+            }
+            val starts = mutableListOf<List<Long>>()
+            val ends = mutableListOf<List<Long>>()
+            world.rules("membranes") {
+                onEnter("fill", edges("bond").triangles()) { triangle ->
+                    starts += triangle.points.map { it.id }
+                    assertEquals(triangle.a, triangle.ab.from.takeIf { it === triangle.a } ?: triangle.ab.to)
+                    whileLive()
+                    ends += triangle.points.map { it.id }
+                }
+            }
+            repeat(4) { world.step(it.toDouble()) }
+            assertEquals(listOf(listOf(1L, 2L, 3L)), starts)
+            cut = true
+            repeat(3) { world.step(4.0 + it) }
+            assertEquals(listOf(listOf(1L, 2L, 3L)), ends)
+        }
+    }
+
+    @Test
+    fun lineageWalksBackThroughLiveProducers() {
+        SpatialRuleWorld().use { world ->
+            world.source("seeds") {
+                point("seed", Vec3())
+                point("seed", Vec3(10f, 0f, 0f))
+                while (true) nextFrame()
+            }
+            world.rules("bonds") {
+                onEnter("bond", points("seed").pairsWithin(20.0)) { (a, b) ->
+                    edge("bond", a, b)
+                    whileLive()
+                }
+            }
+            world.rules("beads") {
+                onEnter("bead", edges("bond")) { bond ->
+                    point("bead", bond.at(0.5))
+                    whileLive()
+                }
+            }
+            repeat(5) { world.step(it.toDouble()) }
+            val bead = assertNotNull(world.nearest(Vec3(5f, 1f, 0f), within = 2.0, kinds = setOf("bead")))
+            assertEquals(listOf("bead", "bond", "seed", "seed"), world.lineage(bead).map { it.kind })
+            assertEquals("bond", world.nearest(Vec3(2f, 0.5f, 0f), within = 1.0)?.kind)
+            assertEquals(null, world.nearest(Vec3(2f, 5f, 0f), within = 1.0))
+            assertEquals(bead, world.fact(bead.id))
+        }
+    }
 }

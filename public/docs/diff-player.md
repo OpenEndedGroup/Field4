@@ -135,6 +135,8 @@ Use `screenshot="..."` to choose where the image lands, relative to the current 
 
 For both `diff` and `diff_runner`, if `:::before` is omitted, Field will inherit it from the previous block's effective result: the previous `:::after` for a diff, or the full contents of the previous `diffstatic`.
 
+A fence marked `variant=true` is a side road. It inherits its `:::before` like any other fence, but the fence after it inherits from the code before the variant. A tutorial can show what an alternative does, a different radius or a missing filter, and then carry on from the main line. [Spatial rules](spatial_rules.md#build-a-web-one-rule-at-a-time) does this.
+
 ````text
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/hello-runner.png" wait="1.0" capture="box"}
 :::static
@@ -155,6 +157,7 @@ Runner attributes, by what they decide. Hyphenated names also answer to an under
 - `embed=true` — puts the result below the code block. Without it the capture still runs, but nothing of it reaches the page.
 - `alt="..."` — alt text for the embedded image.
 - `hidden=true` — renders the figure without the fence above it.
+- `variant=true` — the next fence inherits from the code before this one, not from this one.
 
 **What is photographed.**
 

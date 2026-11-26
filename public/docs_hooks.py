@@ -3500,7 +3500,7 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
                 out.append(f'  <source src="{audio_rel}" type="audio/wav">\n')
                 out.append('</audio>\n')
 
-        if not hide_source:
+        if not hide_source and not fence_is_variant(open_line=open_line, fence_name=fence_name):
             previous_code_by_language[language_key] = extract_effective_code(
                 lines=rewritten_body,
                 fence_name=fence_name,
@@ -3743,6 +3743,13 @@ def resolve_continue_on_error(raw: str | None, *, runner_mode: str) -> bool:
     if raw is None or not raw.strip():
         return runner_mode == "incremental"
     return parse_bool(raw, default=runner_mode == "incremental")
+
+
+def fence_is_variant(*, open_line: str, fence_name: str) -> bool:
+    """A `variant=true` fence is a side road: it may inherit its `:::before` like any diff fence,
+    but the fence after it inherits from the code before the variant, not from the variant."""
+    attrs = parse_attrs(open_line.split(fence_name, 1)[1].strip())
+    return parse_bool(first_attr(attrs, "variant"), default=False)
 
 
 def fence_language_key(*, open_line: str, fence_name: str) -> str:
