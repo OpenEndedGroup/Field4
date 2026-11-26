@@ -412,7 +412,10 @@ class VulkanBuffer(
             return
         }
         MemoryStack.stackPush().use { stack ->
-            vkCmdFillBuffer(cmd.vkCommandBuffer, buffer, 0L, allocationSize, 0)
+            // The buffer's own extent, not allocationSize: VMA can hand back a larger allocation than the
+            // buffer it binds (1179712 bytes bound in 1179904 allocated, auto-exposure on KosmicKrisp), and
+            // filling or fencing past the buffer's end is VUID-vkCmdFillBuffer-size-00027 / -01189.
+            vkCmdFillBuffer(cmd.vkCommandBuffer, buffer, 0L, VK_WHOLE_SIZE, 0)
 
             val bufBarrier = VkBufferMemoryBarrier2.calloc(1, stack)
             bufBarrier[0]
@@ -425,7 +428,7 @@ class VulkanBuffer(
                 .dstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
                 .buffer(buffer)
                 .offset(0L)
-                .size(allocationSize)
+                .size(VK_WHOLE_SIZE)
 
             val dep = VkDependencyInfo.calloc(stack)
                 .sType(VK_STRUCTURE_TYPE_DEPENDENCY_INFO)
