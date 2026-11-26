@@ -74,14 +74,14 @@ world.rules("surface links") {
             val t = now - start
             val alpha = ((now - born) / 0.33).coerceIn(0.0, 1.0)
             val width = 0.65 + 0.9 * (1 - start3.distance(end3) / 23.0).coerceIn(0.0, 1.0)
-            draw(spatialStroke(listOf(project(start3, t), project(end3, t)), ink, width, alpha))
+            draw(spatialStroke([project(start3, t), project(end3, t)], ink, width, alpha))
             nextFrame()
         }
         val released = now
         while (now - released < 0.55) {
             val t = now - start
             val alpha = 1 - (now - released) / 0.55
-            draw(spatialStroke(listOf(project(start3, t), project(end3, t)), ink, 0.7, alpha * alpha))
+            draw(spatialStroke([project(start3, t), project(end3, t)], ink, 0.7, alpha * alpha))
             nextFrame()
         }
     }

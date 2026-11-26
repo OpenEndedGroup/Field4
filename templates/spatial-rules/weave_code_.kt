@@ -113,7 +113,7 @@ world.rules("weaving") {
                 world.inspectOnClick(knot, dot) { why ->
                     inspectedKnot.set(why.id)
                     val inputs = why.inputs.joinToString { "${it.kind ?: "input"} #${it.id}" }
-                    val age = "%.2f".format(why.ageSeconds)
+                    val age = why.ageSeconds.f2
                     val status = if (why.matchLive == true) "Match active" else "Match ended"
                     markdown(
                         "Why this knot?",

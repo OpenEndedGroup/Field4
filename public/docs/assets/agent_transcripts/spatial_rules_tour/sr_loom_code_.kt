@@ -155,9 +155,9 @@ world.rules("loom") {
     onEnter("weave neighboring knots", neighbors) { (a, b) ->
         edge("weave", a, b, lifetime = MATCH)
         val born = now
-        var ends = listOf(project(a.pos), project(b.pos))
+        var ends = [project(a.pos), project(b.pos)]
         while (match.live) {
-            ends = listOf(project(a.pos), project(b.pos))
+            ends = [project(a.pos), project(b.pos)]
             draw(spatialStroke(ends, weaveInk, width = 0.9, opacity = rise(now - born, 0.35)))
             nextFrame()
         }
@@ -257,7 +257,7 @@ world.rules("inspect") {
                 world.inspectOnClick(knot, spatialDot(project(knot.pos), radius, knotInk)) { why ->
                     inspected.set(why.id)
                     val inputs = why.inputs.joinToString { "${it.kind ?: "tip"} #${it.id}" }
-                    val age = "%.2f".format(why.ageSeconds)
+                    val age = why.ageSeconds.f2
                     markdown(
                         "Why this knot?",
                         "**Knot #${why.id}** · $age s old\n\n**${why.origin.process}** from $inputs.\n\n${why.origin.condition}",

@@ -1,4 +1,3 @@
-val tour = thisBox
 val filament = inside.boxes.values.first { it.name == "1 · One filament" }
 val loom = inside.boxes.values.first { it.name == "2 · Loom with memory" }
 val torus = inside.boxes.values.first { it.name == "3 · A thousand moving points" }
@@ -14,7 +13,7 @@ val show = slideShow {
 
             [[next:Start with two points →]]""".trimIndent(),
         )
-        selectBox(tour)
+        selectBox(thisBox)
     }
     step("A match ends") {
         markdownNote(

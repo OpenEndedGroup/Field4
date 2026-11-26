@@ -7,7 +7,7 @@ drawing on its own time.
 
 Open **spatial_rules_tour** under **Starting Points** on Field’s welcome screen or from the
 [agent transcript gallery](agent_transcripts.md#spatial_rules_tour). Run **Start here · run the tour**
-to open the canvas guide. Launch each numbered box with Alt+Up, and stop it with Alt+Down.
+to open the canvas guide. Launch each numbered box with ++alt+arrow-up++, and stop it with ++alt+arrow-down++.
 
 ## 1. Follow two points, then fade
 
@@ -52,9 +52,9 @@ world.source("moving tips") {
 world.rules("filaments") {
     onEnter("join tips", points("tip").pairsWithin(100.0, leave = 120.0)) { (a, b) ->
         edge("filament", a, b, lifetime = MATCH)
-        var ends = listOf(a.pos, b.pos)
+        var ends = [a.pos, b.pos]
         while (match.live) {
-            ends = listOf(a.pos, b.pos)
+            ends = [a.pos, b.pos]
             draw(spatialStroke(ends, ink, width = 2.0))
             nextFrame()
         }
@@ -262,9 +262,9 @@ world.rules("loom") {
     onEnter("weave neighboring knots", neighbors) { (a, b) ->
         edge("weave", a, b, lifetime = MATCH)
         val born = now
-        var ends = listOf(project(a.pos), project(b.pos))
+        var ends = [project(a.pos), project(b.pos)]
         while (match.live) {
-            ends = listOf(project(a.pos), project(b.pos))
+            ends = [project(a.pos), project(b.pos)]
             draw(spatialStroke(ends, weaveInk, width = 0.9, opacity = rise(now - born, 0.35)))
             nextFrame()
         }
@@ -364,7 +364,7 @@ world.rules("inspect") {
                 world.inspectOnClick(knot, spatialDot(project(knot.pos), radius, knotInk)) { why ->
                     inspected.set(why.id)
                     val inputs = why.inputs.joinToString { "${it.kind ?: "tip"} #${it.id}" }
-                    val age = "%.2f".format(why.ageSeconds)
+                    val age = why.ageSeconds.f2
                     markdown(
                         "Why this knot?",
                         "**Knot #${why.id}** · $age s old\n\n**${why.origin.process}** from $inputs.\n\n${why.origin.condition}",
@@ -482,14 +482,14 @@ world.rules("surface links") {
             val t = now - start
             val alpha = ((now - born) / 0.33).coerceIn(0.0, 1.0)
             val width = 0.65 + 0.9 * (1 - start3.distance(end3) / 23.0).coerceIn(0.0, 1.0)
-            draw(spatialStroke(listOf(project(start3, t), project(end3, t)), ink, width, alpha))
+            draw(spatialStroke([project(start3, t), project(end3, t)], ink, width, alpha))
             nextFrame()
         }
         val released = now
         while (now - released < 0.55) {
             val t = now - start
             val alpha = 1 - (now - released) / 0.55
-            draw(spatialStroke(listOf(project(start3, t), project(end3, t)), ink, 0.7, alpha * alpha))
+            draw(spatialStroke([project(start3, t), project(end3, t)], ink, 0.7, alpha * alpha))
             nextFrame()
         }
     }

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-25T23:50:55.564Z",
+  "capturedAt": "2026-11-26T06:17:57.706Z",
   "documentName": "spatial_rules_tour",
   "outputs": [
     {
@@ -11,7 +11,7 @@
       "kinds": [
         "svg"
       ],
-      "width": 681,
+      "width": 682,
       "height": 100,
       "path": "outputs/0.html"
     },

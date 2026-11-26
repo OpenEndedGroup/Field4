@@ -747,6 +747,8 @@ whole run from one that arrived a frame ago. A weighted, decaying graph can.
 
 ## See also
 
+- A matched pattern can start a Kotlin process that publishes points and keeps drawing after
+  its inputs disappear. [Spatial rules](spatial_rules.md)
 - [Neighbours and graphs on a point cloud](graph_connectivity_examples.md): `PointGraph`, traversal,
   path covers and drawing graphs as `FLine`s. Snapshots from this page turn into these graphs.
 - [Spatial artificial life](alife_examples.md): local rules making larger structure on grids, fields

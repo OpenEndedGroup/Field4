@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="sr_loom" index="0" -->
 
 ```edn [field-box id="sr_loom" role="properties"]
-{"id" "sr_loom" "index" 0 "name" "2 · Loom with memory" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · Loom with memory" "_tombstone" false "frame" #afield/rect [650.0 285.0 290.0 78.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sr_loom_code_.kt" "lines" 287 "characters" 11303 "sha256" "c5e33023b0d5d4ac27c75844b0913ff09069aaca477667fab01f0f52f97e0427"}]}
+{"id" "sr_loom" "index" 0 "name" "2 · Loom with memory" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · Loom with memory" "_tombstone" false "frame" #afield/rect [650.0 285.0 290.0 78.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sr_loom_code_.kt" "lines" 287 "characters" 11279 "sha256" "fccece212ff3b5b0be4238a7d7fc2c4c963a9e97f82f38986bb88f319b9664eb"}]}
 ```
 
 ```kotlin [field-property box="sr_loom" name="code" path="sr_loom_code_.kt"]
@@ -172,9 +172,9 @@ world.rules("loom") {
     onEnter("weave neighboring knots", neighbors) { (a, b) ->
         edge("weave", a, b, lifetime = MATCH)
         val born = now
-        var ends = listOf(project(a.pos), project(b.pos))
+        var ends = [project(a.pos), project(b.pos)]
         while (match.live) {
-            ends = listOf(project(a.pos), project(b.pos))
+            ends = [project(a.pos), project(b.pos)]
             draw(spatialStroke(ends, weaveInk, width = 0.9, opacity = rise(now - born, 0.35)))
             nextFrame()
         }
@@ -274,7 +274,7 @@ world.rules("inspect") {
                 world.inspectOnClick(knot, spatialDot(project(knot.pos), radius, knotInk)) { why ->
                     inspected.set(why.id)
                     val inputs = why.inputs.joinToString { "${it.kind ?: "tip"} #${it.id}" }
-                    val age = "%.2f".format(why.ageSeconds)
+                    val age = why.ageSeconds.f2
                     markdown(
                         "Why this knot?",
                         "**Knot #${why.id}** · $age s old\n\n**${why.origin.process}** from $inputs.\n\n${why.origin.condition}",
@@ -309,7 +309,7 @@ loop {
 <!-- field-box id="sr_torus" index="1" -->
 
 ```edn [field-box id="sr_torus" role="properties"]
-{"id" "sr_torus" "index" 1 "name" "3 · A thousand moving points" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · A thousand moving points" "_tombstone" false "frame" #afield/rect [1630.0 285.0 290.0 78.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sr_torus_code_.kt" "lines" 115 "characters" 3879 "sha256" "b9fc6d0589de86103d1e6ccc201c0c680c55ac205260a9ad7c02fc629c513704"}]}
+{"id" "sr_torus" "index" 1 "name" "3 · A thousand moving points" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · A thousand moving points" "_tombstone" false "frame" #afield/rect [1630.0 285.0 290.0 78.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sr_torus_code_.kt" "lines" 115 "characters" 3867 "sha256" "76a65e72c1ee65123ea61d603288c4dcb465a0b6076b09f72652d3f138812c5f"}]}
 ```
 
 ```kotlin [field-property box="sr_torus" name="code" path="sr_torus_code_.kt"]
@@ -389,14 +389,14 @@ world.rules("surface links") {
             val t = now - start
             val alpha = ((now - born) / 0.33).coerceIn(0.0, 1.0)
             val width = 0.65 + 0.9 * (1 - start3.distance(end3) / 23.0).coerceIn(0.0, 1.0)
-            draw(spatialStroke(listOf(project(start3, t), project(end3, t)), ink, width, alpha))
+            draw(spatialStroke([project(start3, t), project(end3, t)], ink, width, alpha))
             nextFrame()
         }
         val released = now
         while (now - released < 0.55) {
             val t = now - start
             val alpha = 1 - (now - released) / 0.55
-            draw(spatialStroke(listOf(project(start3, t), project(end3, t)), ink, 0.7, alpha * alpha))
+            draw(spatialStroke([project(start3, t), project(end3, t)], ink, 0.7, alpha * alpha))
             nextFrame()
         }
     }
@@ -435,7 +435,7 @@ loop {
 <!-- field-box id="sr_filament" index="2" -->
 
 ```edn [field-box id="sr_filament" role="properties"]
-{"id" "sr_filament" "index" 2 "name" "1 · One filament" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · One filament" "_tombstone" false "frame" #afield/rect [65.0 285.0 290.0 78.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sr_filament_code_.kt" "lines" 67 "characters" 2082 "sha256" "1a12c7dc6858121eceee37806820e402324429d588271f02b7dbd385dd2c9ff3"}]}
+{"id" "sr_filament" "index" 2 "name" "1 · One filament" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · One filament" "_tombstone" false "frame" #afield/rect [65.0 285.0 290.0 78.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sr_filament_code_.kt" "lines" 67 "characters" 2070 "sha256" "686f8c5093ff5c94463dc7c78235ec7e78c7ffcb72aed450f8d76613e2a4d633"}]}
 ```
 
 ```kotlin [field-property box="sr_filament" name="code" path="sr_filament_code_.kt"]
@@ -474,9 +474,9 @@ world.source("moving tips") {
 world.rules("filaments") {
     onEnter("join tips", points("tip").pairsWithin(100.0, leave = 120.0)) { (a, b) ->
         edge("filament", a, b, lifetime = MATCH)
-        var ends = listOf(a.pos, b.pos)
+        var ends = [a.pos, b.pos]
         while (match.live) {
-            ends = listOf(a.pos, b.pos)
+            ends = [a.pos, b.pos]
             draw(spatialStroke(ends, ink, width = 2.0))
             nextFrame()
         }
@@ -513,11 +513,10 @@ loop {
 <!-- field-box id="sr_tour" index="3" -->
 
 ```edn [field-box id="sr_tour" role="properties"]
-{"id" "sr_tour" "index" 3 "name" "Start here · run the tour" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Start here · run the tour" "_tombstone" false "frame" #afield/rect [65.0 70.0 290.0 78.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sr_tour_code_.kt" "lines" 59 "characters" 2686 "sha256" "a66afa2fe6d1d4fff51f404deaba980fa95d1b67e117ad8247c9e0d09ed270e6"}]}
+{"id" "sr_tour" "index" 3 "name" "Start here · run the tour" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Start here · run the tour" "_tombstone" false "frame" #afield/rect [65.0 70.0 290.0 78.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sr_tour_code_.kt" "lines" 58 "characters" 2670 "sha256" "ea30a197582de0db5f9f800a3530b68ecd75222f92b146d222282ecc3989930a"}]}
 ```
 
 ```kotlin [field-property box="sr_tour" name="code" path="sr_tour_code_.kt"]
-val tour = thisBox
 val filament = inside.boxes.values.first { it.name == "1 · One filament" }
 val loom = inside.boxes.values.first { it.name == "2 · Loom with memory" }
 val torus = inside.boxes.values.first { it.name == "3 · A thousand moving points" }
@@ -533,7 +532,7 @@ val show = slideShow {
 
             [[next:Start with two points →]]""".trimIndent(),
         )
-        selectBox(tour)
+        selectBox(thisBox)
     }
     step("A match ends") {
         markdownNote(

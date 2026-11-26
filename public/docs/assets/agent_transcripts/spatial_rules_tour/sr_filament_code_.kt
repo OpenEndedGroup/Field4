@@ -33,9 +33,9 @@ world.source("moving tips") {
 world.rules("filaments") {
     onEnter("join tips", points("tip").pairsWithin(100.0, leave = 120.0)) { (a, b) ->
         edge("filament", a, b, lifetime = MATCH)
-        var ends = listOf(a.pos, b.pos)
+        var ends = [a.pos, b.pos]
         while (match.live) {
-            ends = listOf(a.pos, b.pos)
+            ends = [a.pos, b.pos]
             draw(spatialStroke(ends, ink, width = 2.0))
             nextFrame()
         }
