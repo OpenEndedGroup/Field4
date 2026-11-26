@@ -221,9 +221,9 @@ operations:
           import afield.geometry.conformal.*
           import afield.media.image.util.PngEncoder
 
-          // Two leaf outlines and the Teichmüller map from the first to the second. Four landmarks
-          // match (tip, base and the two sides); the rest of the outline is spread by arc length.
-          // The colour on both leaves is |μ| of the map: the distortion field.
+          // Two leaf outlines and the Teichmüller map from the first to the second. Six landmarks
+          // match: tip, base, and the margin a third and two thirds of the way up on each side. The
+          // outline between landmarks is free to slide. Colour is |μ| of the map: the distortion field.
           val names = ["elliptic", "lanceolate", "ovate", "heart-shaped", "round"]
 
           // Each leaf as a distance from its middle in every direction; the tip points up.
@@ -234,7 +234,7 @@ operations:
                   1 -> oval(0.27, 1.0, t) * (1 + 0.15 * max(0.0, sin(t)).pow(6))
                   2 -> oval(0.62 * (1 - 0.22 * sin(t)), 0.95, t)
                   3 -> oval(0.75 * (1 - 0.15 * sin(t)), 0.9, t) * (1 + 0.2 * max(0.0, sin(t)).pow(8)) *
-                      (1 - 0.45 * exp(-((t - 1.5 * PI) / 0.22).pow(2)))
+                      (1 - 0.45 * exp(-(1 + sin(t)) / 0.024)) // the notch at the base, the same however t wraps
                   else -> oval(0.85, 0.95, t)
               }
           }
@@ -243,27 +243,24 @@ operations:
           var second = 3
 
           fun draw() {
-              val mesh = PlanarMesh.star(leaf(first), rings = 10, sectors = 64)
-              val r = leaf(second)
-              val tx = DoubleArray(400) { r(2 * PI * it / 400) * cos(2 * PI * it / 400) }
-              val ty = DoubleArray(400) { r(2 * PI * it / 400) * sin(2 * PI * it / 400) }
-              val b = mesh.boundary
-              // Right side, tip, left side, base: counter-clockwise on both outlines.
-              val marks = [b[0], b[16], b[32], b[48]]
-              val fixed = boundaryCorrespondence(mesh, marks.toIntArray(), tx, ty, intArrayOf(0, 100, 200, 300))
-              val t = teichmullerMap(mesh, fixed)
+              // The map is mirror-symmetric, so it is computed on the right halves and drawn twice.
+              val c = MirrorShapeComparison(leaf(first), leaf(second))
+              val mesh = c.half
               val picture = MeshPicture(640, 360, -2.2, -1.24, 2.2, 1.24)
-              val colours = IntArray(mesh.triangleCount) { MeshPicture.distortionColor(t.moduli[it], 0.9) }
-              picture.mesh(mesh, DoubleArray(mesh.vertexCount) { mesh.x[it] - 1.1 }, mesh.y, colours, edgeAlpha = 0.25)
-              picture.mesh(mesh, DoubleArray(mesh.vertexCount) { t.u[it] + 1.1 }, t.v, colours, edgeAlpha = 0.25)
-              for (m in marks) {
-                  picture.dot(mesh.x[m] - 1.1, mesh.y[m], 4.0, 0xFFFF9933.toInt())
-                  picture.dot(t.u[m] + 1.1, t.v[m], 4.0, 0xFFFF9933.toInt())
+              val colours = IntArray(mesh.triangleCount) { MeshPicture.distortionColor(c.map.moduli[it], 0.6) }
+              for (side in [1.0, -1.0]) {
+                  picture.mesh(mesh, DoubleArray(mesh.vertexCount) { side * mesh.x[it] - 1.1 }, mesh.y, colours, edgeAlpha = 0.25)
+                  picture.mesh(mesh, DoubleArray(mesh.vertexCount) { side * c.map.u[it] + 1.1 }, c.map.v, colours, edgeAlpha = 0.25)
+                  for (k in 0 until 4) {
+                      picture.dot(side * mesh.x[c.landmarks[k]] - 1.1, mesh.y[c.landmarks[k]], 4.0, 0xFFFF9933.toInt())
+                      picture.dot(side * c.targetLandmarks[k][0] + 1.1, c.targetLandmarks[k][1], 4.0, 0xFFFF9933.toInt())
+                  }
               }
               display("leaves", PngEncoder.encode(picture.pixels, 640, 360))
               markdown(
                   "readout",
-                  "**${names[first]} → ${names[second]}**: Teichmüller distance **${t.distance.f2}** (K = ${t.dilatation.f2}); |μ| from ${t.minModulus.f2} to ${t.maxModulus.f2}",
+                  "**${names[first]} → ${names[second]}**: Teichmüller distance **${c.distance.f2}** (K = ${exp(2 * c.distance).f2}); " +
+                      "|μ| is ${c.map.medianModulus.f2} over half the leaf, ${c.map.minModulus.f2} to ${c.map.maxModulus.f2} at the extremes",
               )
           }
 
@@ -287,8 +284,8 @@ operations:
           import afield.geometry.conformal.*
           import afield.media.image.util.PngEncoder
 
-          // Every pair of five leaves, compared by Teichmüller distance. A shape scaled up is the
-          // same shape: scaling is conformal, so it costs nothing.
+          // Every pair of five leaves, compared by Teichmüller distance with the same six landmarks.
+          // A shape scaled up is the same shape: scaling is conformal, so it costs nothing.
           val names = ["elliptic", "lanceolate", "ovate", "heart-shaped", "round"]
           fun oval(a: Double, b: Double, t: Double) = a * b / sqrt((b * cos(t)).pow(2) + (a * sin(t)).pow(2))
           fun leaf(kind: Int): (Double) -> Double = { t ->
@@ -297,32 +294,28 @@ operations:
                   1 -> oval(0.27, 1.0, t) * (1 + 0.15 * max(0.0, sin(t)).pow(6))
                   2 -> oval(0.62 * (1 - 0.22 * sin(t)), 0.95, t)
                   3 -> oval(0.75 * (1 - 0.15 * sin(t)), 0.9, t) * (1 + 0.2 * max(0.0, sin(t)).pow(8)) *
-                      (1 - 0.45 * exp(-((t - 1.5 * PI) / 0.22).pow(2)))
+                      (1 - 0.45 * exp(-(1 + sin(t)) / 0.024)) // the notch at the base, the same however t wraps
                   else -> oval(0.85, 0.95, t)
               }
           }
 
-          fun distance(a: Int, b: Int): Double {
-              val mesh = PlanarMesh.star(leaf(a), rings = 8, sectors = 48)
-              val r = leaf(b)
-              val tx = DoubleArray(400) { r(2 * PI * it / 400) * cos(2 * PI * it / 400) }
-              val ty = DoubleArray(400) { r(2 * PI * it / 400) * sin(2 * PI * it / 400) }
-              val m = mesh.boundary
-              val fixed = boundaryCorrespondence(mesh, intArrayOf(m[0], m[12], m[24], m[36]), tx, ty, intArrayOf(0, 100, 200, 300))
-              return teichmullerMap(mesh, fixed).distance
-          }
-
           val d = Array(5) { DoubleArray(5) }
           for (a in 0 until 5) for (b in a + 1 until 5) {
-              d[a][b] = distance(a, b)
+              d[a][b] = MirrorShapeComparison(leaf(a), leaf(b)).distance
               d[b][a] = d[a][b]
           }
 
           // The five leaves in a row, then the table of distances.
           val picture = MeshPicture(640, 150, 0.0, -0.7, 6.0, 0.7)
           for (k in 0 until 5) {
-              val mesh = PlanarMesh.star(leaf(k), rings = 6, sectors = 48)
-              picture.mesh(mesh, DoubleArray(mesh.vertexCount) { 0.6 * mesh.x[it] + 0.6 + 1.2 * k }, DoubleArray(mesh.vertexCount) { 0.6 * mesh.y[it] }, IntArray(mesh.triangleCount) { 0xFF2E8BBF.toInt() }, edgeAlpha = 0.0)
+              val n = 200
+              val r = leaf(k)
+              val mesh = PlanarMesh.outline(
+                  DoubleArray(n) { 0.6 * r(2 * PI * it / n) * cos(2 * PI * it / n) + 0.6 + 1.2 * k },
+                  DoubleArray(n) { 0.6 * r(2 * PI * it / n) * sin(2 * PI * it / n) },
+                  0.04,
+              )
+              picture.mesh(mesh, colors = IntArray(mesh.triangleCount) { 0xFF2E8BBF.toInt() }, edgeAlpha = 0.0)
           }
           display("row", PngEncoder.encode(picture.pixels, 640, 150))
           val table = StringBuilder("| | " + names.joinToString(" | ") + " |\n|---" + "|---".repeat(5) + "|\n")
@@ -539,11 +532,12 @@ operations:
                                   ## Two leaves
 
                                   Choi and Mahadevan compare planar shapes this way: leaves, insect
-                                  wings, the outlines of organs. Mark matching landmarks, find the
-                                  Teichmüller map, read off the distance.
+                                  wings, the outlines of organs. Mark matching landmarks, let the
+                                  outline slide between them, find the Teichmüller map.
 
-                                  The colour is the distortion field: where one leaf must stretch
-                                  to become the other. Choose two leaves.""".md
+                                  Here the landmarks are the tip, the base, and the margin a third and
+                                  two thirds of the way up. The colour is even: the same stretch
+                                  everywhere, only its direction changes. Choose two leaves.""".md
                           }
                       }
                       control("leaf_compare", "first leaf", 0.0)
@@ -572,12 +566,14 @@ operations:
                           +"""
                               ## What this version leaves out
 
-                              - Here the outline between two landmarks is matched by arc length and
-                                held fixed. In the published method the boundary is free to slide
-                                between landmarks, so the map can do better and the true distance
-                                is at most what we show.
-                              - Real outlines come from photographs and are rarely star-shaped from
-                                their middle; a general mesher replaces our rings of vertices.
+                              - Our leaves are mirror-symmetric, and we use it: the best map is then
+                                symmetric too, each half is a four-cornered region, and the map between
+                                two of those goes through rectangles, with an exact distance. Leaves
+                                that are not symmetric need the general sliding-boundary iteration.
+                              - With only four landmarks, tip, base and one pair, every symmetric leaf
+                                is at distance zero from every other: the landmarks decide what the
+                                distance can see.
+                              - Our outlines are formulas; real ones come from photographs.
                               - The same machinery works on point clouds without a mesh (Choi, Liu
                                 and Lui) and, with density instead of angle, gives density-equalizing
                                 maps (Choi and Rycroft).""".md
