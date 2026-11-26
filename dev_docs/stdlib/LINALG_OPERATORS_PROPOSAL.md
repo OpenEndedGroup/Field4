@@ -221,15 +221,16 @@ transcripts, docs fences), and the verbose forms were everywhere. Counted with
 (`web.md` excluded), hits of `PI / 180` or `Math.toRadians`: 15 / 32 / 54; of `.normalize()`:
 2 / 20 / 49; of `.distance(`: 1 / 13 / 39.
 
-The first pass moved the pages whose captures are CPU-only: `explainer_lights` (angles as
-`degrees.deg`, `p.n * 1.004f`, which also stops mutating the vertex `transformed` hands over),
+The first pass moved the pages whose captures are CPU-only: `explainer_lights` (`p.n * 1.004f`, which also stops mutating the vertex `transformed` hands over),
 `fline_examples` (`t.sq`, `t.n`, `p - dir * 12f`, `a dist b`, `a lerp t to b`) and `rhino_files`
 (`((b - a) x (c - a)).length`, `a dot (b x c)`), each with its transcript. The Linear algebra
 guide keeps its in-place and destination examples on purpose.
 
 What real callers showed, not yet acted on:
 
-- `.deg` is a `Float`. Pages written in `Double` (`explainer_cameras` passes the angle to
+- `.deg` is a `Float`, and it leaks: `explainer_lights` rewritten with `degrees.deg` failed
+  `checkBoxCodeCompiles` because `min(230 / down, x / across)` then mixes `Float` and `Double`, so
+  that rewrite was reverted. Pages written in `Double` (`explainer_cameras` passes the angle to
   `Refraction.snellAngle(Double, ...)` and its own `frameExit(Double, ...)`) cannot use it without
   `.toDouble()`, which reads worse than `angle * PI / 180`. A `Double`-returning spelling would
   need a second name; overloading `Double.deg` would silently change `90.0.deg` passed to the
