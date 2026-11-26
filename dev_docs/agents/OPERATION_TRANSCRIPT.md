@@ -615,8 +615,9 @@ canvas messages and checks the copy replay and Step.
   alone.
 - **Step** (`macro step --step N`) replays one operation; the panel keeps the cursor, marks
   stepped operations, and **Reset** starts again.
-- With a selection, the first box the macro *edits* (never one it creates) is remapped to the
-  selected box.
+- By default a macro replays once per selected box, remapping its first existing box reference
+  to that box. Add top-level `selection: fixed` to a saved macro or inline guide block to
+  replay once against the authored targets. Copy mode still relocates boxes created by the macro.
 
 ---
 

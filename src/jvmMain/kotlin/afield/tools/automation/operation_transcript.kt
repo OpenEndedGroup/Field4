@@ -639,7 +639,8 @@ object OperationTranscript {
             return MacroRunResult(false, "No macro named '$cleanName'.", cleanName, direction, targetBoxes, 0, 0)
         }
         val normalizedDirection = if (direction.equals("undo", ignoreCase = true)) "undo" else "do"
-        val normalizedTargets = targetBoxes.filter { it.isNotBlank() }
+        val macro = parseMacro(file.readText())
+        val normalizedTargets = macro.replayTargets(targetBoxes)
         val key = MacroRunKey(
             file = file.canonicalPath,
             targets = normalizedTargets,
@@ -649,15 +650,10 @@ object OperationTranscript {
             replay = replay,
         )
         return runCoalesced(documentPath, key, cleanName) {
-            // Read inside the run, so a macro edited since the request is replayed as it is now.
-            if (!file.exists()) {
-                MacroRunResult(false, "No macro named '$cleanName'.", cleanName, normalizedDirection, normalizedTargets, 0, 0)
-            } else {
-                runMacroOperations(
-                    cleanName, loadMacroOperations(file), normalizedTargets, normalizedDirection,
-                    strict, initializeCreatedBoxes, replay
-                )
-            }
+            runMacroOperations(
+                cleanName, macro.operations, normalizedTargets, normalizedDirection,
+                strict, initializeCreatedBoxes, replay
+            )
         }
     }
 
@@ -676,14 +672,14 @@ object OperationTranscript {
         initializeCreatedBoxes: Boolean = true,
     ): MacroRunResult {
         val cleanName = sanitizeMacroName(label).ifBlank { "inline" }
-        val normalizedTargets = targetBoxes.filter { it.isNotBlank() }
-        val operations = runCatching { parseMacroOperations(content) }.getOrElse {
+        val macro = runCatching { parseMacro(content) }.getOrElse {
             return MacroRunResult(
                 false, "Macro '$cleanName' is not valid YAML: ${it.message?.lineSequence()?.firstOrNull() ?: it}",
-                cleanName, "do", normalizedTargets, 0, 0
+                cleanName, "do", targetBoxes.filter { it.isNotBlank() }, 0, 0
             )
         }
-        if (operations.isEmpty()) {
+        val normalizedTargets = macro.replayTargets(targetBoxes)
+        if (macro.operations.isEmpty()) {
             return MacroRunResult(false, "Macro '$cleanName' has no operations.", cleanName, "do", normalizedTargets, 0, 0)
         }
         val digest = java.security.MessageDigest.getInstance("SHA-256").digest(content.toByteArray())
@@ -696,7 +692,7 @@ object OperationTranscript {
             replay = replay,
         )
         return runCoalesced(documentPath, key, cleanName) {
-            runMacroOperations(cleanName, operations, normalizedTargets, "do", false, initializeCreatedBoxes, replay)
+            runMacroOperations(cleanName, macro.operations, normalizedTargets, "do", false, initializeCreatedBoxes, replay)
         }
     }
 
@@ -1855,15 +1851,28 @@ object OperationTranscript {
 
     private fun loadMacroOperations(file: File): List<LinkedHashMap<String, Any?>> = parseMacroOperations(file.readText())
 
-    /** A macro's operations: a bare list, or the `operations:` (or `ops:`) of a mapping. */
-    internal fun parseMacroOperations(text: String): List<LinkedHashMap<String, Any?>> {
+    internal fun parseMacroOperations(text: String): List<LinkedHashMap<String, Any?>> = parseMacro(text).operations
+
+    private data class ParsedMacro(
+        val operations: List<LinkedHashMap<String, Any?>>,
+        val fixedSelection: Boolean,
+    ) {
+        fun replayTargets(selection: List<String>): List<String> =
+            if (fixedSelection) emptyList() else selection.filter { it.isNotBlank() }
+    }
+
+    /** A macro can be a bare operation list or a mapping with replay options and operations. */
+    private fun parseMacro(text: String): ParsedMacro {
         val loaded = Yaml().load<Any?>(text)
         val rawOps = when (loaded) {
             is List<*> -> loaded
             is Map<*, *> -> (loaded["operations"] as? List<*>) ?: (loaded["ops"] as? List<*>) ?: emptyList<Any?>()
             else -> emptyList()
         }
-        return rawOps.mapNotNull { mapOfStringAny(it) }
+        return ParsedMacro(
+            operations = rawOps.mapNotNull { mapOfStringAny(it) },
+            fixedSelection = (loaded as? Map<*, *>)?.get("selection") == "fixed",
+        )
     }
 
     /**

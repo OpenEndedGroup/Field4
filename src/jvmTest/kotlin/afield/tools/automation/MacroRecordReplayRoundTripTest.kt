@@ -154,6 +154,44 @@ class MacroRecordReplayRoundTripTest {
     }
 
     @Test
+    fun fixedTargetMacrosReplayOnceAgainstAuthoredBoxes() {
+        val session = document("fixed-targets")
+        thisSessionInfo.set(session)
+        val authored = canvasCreate(session, "authored", "Original", Rect(0.0, 0.0, 160.0, 80.0))
+        val first = canvasCreate(session, "selection-a", "Selected A", Rect(0.0, 0.0, 160.0, 80.0))
+        val second = canvasCreate(session, "selection-b", "Selected B", Rect(0.0, 0.0, 160.0, 80.0))
+        val selection = listOf(first.id, second.id)
+        val operations = """
+            operations:
+              - edit: {box: authored, property: name, from: Original, to: Renamed}
+        """.trimIndent()
+        val fixed = "selection: fixed\n$operations"
+
+        val inline = OperationTranscript.runMacroContent(session.filename, fixed, targetBoxes = selection)
+        assertTrue(inline.success, inline.message)
+        assertEquals(1, inline.applied)
+        assertEquals("Renamed", authored.name)
+        assertEquals("Selected A", first.name)
+        assertEquals("Selected B", second.name)
+
+        assertTrue(OperationTranscript.writeMacro(session.filename, "fixed", fixed).success)
+        val undo = OperationTranscript.runMacro(session.filename, "fixed", targetBoxes = selection, direction = "undo")
+        assertTrue(undo.success, undo.message)
+        assertEquals(1, undo.applied)
+        assertEquals("Original", authored.name)
+        val saved = OperationTranscript.runMacro(session.filename, "fixed", targetBoxes = selection)
+        assertTrue(saved.success, saved.message)
+        assertEquals(1, saved.applied)
+        assertEquals("Renamed", authored.name)
+
+        val followsSelection = OperationTranscript.runMacroContent(session.filename, operations, targetBoxes = selection)
+        assertTrue(followsSelection.success, followsSelection.message)
+        assertEquals(2, followsSelection.applied)
+        assertEquals("Renamed", first.name)
+        assertEquals("Renamed", second.name)
+    }
+
+    @Test
     fun aRecordingReadsAsSemanticOperations() {
         val (_, yaml) = recordSession()
         val verbs = Regex("""^  - ([a-z-]+):""", RegexOption.MULTILINE).findAll(yaml).map { it.groupValues[1] }.toList()

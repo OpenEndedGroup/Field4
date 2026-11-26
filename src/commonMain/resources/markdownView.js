@@ -240,7 +240,7 @@ const mountMacroBlocks = (root) => {
                 play.className = "field-macro-play"
                 // A drawn triangle, sized to the circle: the ▶ glyph renders as large as the text around it.
                 play.innerHTML = `<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M6.2 4.6v6.8l5.3-3.4z" fill="currentColor"/></svg>`
-                play.title = `Run “${label}” · current selection`
+                play.title = `Run “${label}”`
                 play.setAttribute("aria-label", `Run macro “${label}”`)
                 const name = document.createElement("span")
                 name.className = "field-macro-title"
