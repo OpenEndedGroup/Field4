@@ -9,7 +9,7 @@ import org.lwjgl.vulkan.VK10.*
 import org.lwjgl.vulkan.VK13.*
 import org.lwjgl.vulkan.EXTMeshShader.*
 
-/** Sparse RTT telemetry: one outstanding sample, polled without VK_QUERY_RESULT_WAIT_BIT. */
+/** Sparse Vulkan telemetry: one outstanding sample, read after submission completion. */
 class GpuPassProbe(private val renderer: Renderer, private val name: String, private val timestampViews: Int = 1) {
     init { require(timestampViews in 1..32) }
     data class Snapshot(val frame: Long, val milliseconds: Double, val invocations: Map<String, Long>)
@@ -47,7 +47,7 @@ class GpuPassProbe(private val renderer: Renderer, private val name: String, pri
                 val info = VkQueryPoolCreateInfo.calloc(stack).`sType$Default`()
                     .queryType(type).queryCount(count).pipelineStatistics(mask)
                 val out = stack.mallocLong(1)
-                check(vkCreateQueryPool(device, info, null, out) == VK_SUCCESS) { "Cannot create RTT query pool" }
+                check(vkCreateQueryPool(device, info, null, out) == VK_SUCCESS) { "Cannot create GPU timing query pool" }
                 return out[0]
             }
             // A timestamp inside multiview rendering reserves one query per enabled view.
@@ -106,17 +106,32 @@ class GpuPassProbe(private val renderer: Renderer, private val name: String, pri
     }
 
     fun end(command: CommandBuffer) {
-        vkCmdWriteTimestamp2(command.vkCommandBuffer, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, timestamps, timestampViews)
+        writeEnd(command)
         pending = true
         completed = false
         renderer.afterCurrentGraphicsFrameComplete { completed = true }
+    }
+
+    // Compute recordings can be dropped before submission. Arm readback only after submission.
+    internal fun writeEnd(command: CommandBuffer) {
+        vkCmdWriteTimestamp2(command.vkCommandBuffer, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, timestamps, timestampViews)
+    }
+
+    internal fun markComputeSubmitted() {
+        pending = true
+        completed = false
+    }
+
+    internal fun readCompletedCompute() {
+        completed = true
+        poll()
     }
 
     private fun poll() = MemoryStack.stackPush().use { stack ->
         val times = stack.mallocLong(timestampViews * 2)
         val status = vkGetQueryPoolResults(device, timestamps, 0, timestampViews * 2, times, 8, VK_QUERY_RESULT_64_BIT)
         if (status == VK_NOT_READY) return@use
-        check(status == VK_SUCCESS) { "RTT timestamp readback failed: $status" }
+        check(status == VK_SUCCESS) { "GPU timestamp readback failed: $status" }
         val values = stack.mallocLong(counters.size.coerceAtLeast(1))
         if (samplingStatistics) {
             val statsStatus = vkGetQueryPoolResults(device, statistics, 0, 1, values, counters.size * 8L, VK_QUERY_RESULT_64_BIT)
@@ -128,6 +143,6 @@ class GpuPassProbe(private val renderer: Renderer, private val name: String, pri
         val counts = if (!samplingStatistics) emptyMap() else counters.mapIndexed { i, c -> c.first to values[i] }.toMap()
         snapshot = Snapshot(sampledFrame, elapsed, counts)
         pending = false
-        lprintln("info,perf", "GPU RTT '$name': ${"%.3f".format(java.util.Locale.ROOT, elapsed)} ms invocations=$counts frame=$sampledFrame")
+        lprintln("info,perf", "GPU pass '$name': ${"%.3f".format(java.util.Locale.ROOT, elapsed)} ms invocations=$counts frame=$sampledFrame")
     }
 }
