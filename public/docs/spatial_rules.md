@@ -320,7 +320,8 @@ world.rules("beads") {
     onEnter("bead a bond", edges("bond")) { bond ->
         val beads = mutableListOf<SpatialPoint>()
         whileLive {
-            val wanted = (bond.length / 22).toInt()
+            val beadSpacing = 22 // Drawing units per bead along the bond.
+            val wanted = (bond.length / beadSpacing).toInt()
             if (beads.size < wanted && age > 0.2 * beads.size) {
                 beads += point("bead", bond.at(0.5), mapOf("bond" to bond.id))
             }
@@ -397,7 +398,8 @@ world.rules("beads") {
     onEnter("bead a bond", edges("bond")) { bond ->
         val beads = mutableListOf<SpatialPoint>()
         whileLive {
-            val wanted = (bond.length / 22).toInt()
+            val beadSpacing = 22 // Drawing units per bead along the bond.
+            val wanted = (bond.length / beadSpacing).toInt()
             if (beads.size < wanted && age > 0.2 * beads.size) {
                 beads += point("bead", bond.at(0.5), mapOf("bond" to bond.id))
             }
@@ -481,7 +483,8 @@ world.rules("beads") {
     onEnter("bead a bond", edges("bond")) { bond ->
         val beads = mutableListOf<SpatialPoint>()
         whileLive {
-            val wanted = (bond.length / 22).toInt()
+            val beadSpacing = 22 // Drawing units per bead along the bond.
+            val wanted = (bond.length / beadSpacing).toInt()
             if (beads.size < wanted && age > 0.2 * beads.size) {
                 beads += point("bead", bond.at(0.5), mapOf("bond" to bond.id))
             }
@@ -567,7 +570,8 @@ world.rules("beads") {
     onEnter("bead a bond", edges("bond")) { bond ->
         val beads = mutableListOf<SpatialPoint>()
         whileLive {
-            val wanted = (bond.length / 22).toInt()
+            val beadSpacing = 22 // Drawing units per bead along the bond.
+            val wanted = (bond.length / beadSpacing).toInt()
             if (beads.size < wanted && age > 0.2 * beads.size) {
                 beads += point("bead", bond.at(0.5), mapOf("bond" to bond.id))
             }
@@ -657,7 +661,8 @@ world.rules("beads") {
     onEnter("bead a bond", edges("bond")) { bond ->
         val beads = mutableListOf<SpatialPoint>()
         whileLive {
-            val wanted = (bond.length / 22).toInt()
+            val beadSpacing = 22 // Drawing units per bead along the bond.
+            val wanted = (bond.length / beadSpacing).toInt()
             if (beads.size < wanted && age > 0.2 * beads.size) {
                 beads += point("bead", bond.at(0.5), mapOf("bond" to bond.id))
             }
@@ -726,7 +731,7 @@ replaces the source of that name, and `world.stop(name)` ends a group or a sourc
 When rules feed rules, it helps to ask where a particular line came from. Every point and edge
 records the process that published it and what that process was matched to.
 `world.nearest(at, within = 12.0)` finds the live point or edge nearest to a position, and
-`world.lineage(fact)` walks back through what made it: a web strand, the two beads it joins, the
+[`world.lineage(fact)`](reference/data.md#spatial-rules-kt--spatialruleworld--lineage) walks back through what made it: a web strand, the two beads it joins, the
 bonds that made those beads, and the seeds at their ends.
 
 `play` passes each press on the drawing to `onPress` in world coordinates. The callback runs
@@ -787,7 +792,8 @@ world.rules("beads") {
     onEnter("bead a bond", edges("bond")) { bond ->
         val beads = mutableListOf<SpatialPoint>()
         whileLive {
-            val wanted = (bond.length / 22).toInt()
+            val beadSpacing = 22 // Drawing units per bead along the bond.
+            val wanted = (bond.length / beadSpacing).toInt()
             if (beads.size < wanted && age > 0.2 * beads.size) {
                 beads += point("bead", bond.at(0.5), mapOf("bond" to bond.id))
             }
@@ -959,7 +965,8 @@ world.rules("beads") {
     onEnter("bead a bond", edges("bond")) { bond ->
         val beads = mutableListOf<SpatialPoint>()
         whileLive {
-            val wanted = (bond.length / 22).toInt()
+            val beadSpacing = 22 // Drawing units per bead along the bond.
+            val wanted = (bond.length / beadSpacing).toInt()
             if (beads.size < wanted && age > 0.2 * beads.size) {
                 beads += point("bead", bond.at(0.5), mapOf("bond" to bond.id))
             }
@@ -2056,7 +2063,7 @@ while the middle trails behind them, and a post bows as it leans. A lagging skin
 its points were, so each post's process makes its own.
 
 When two feet come within 80 units of each other, a woven panel is pinned between the two posts
-by its four corners with `spatialSkin(shape, corners)`, so it shears and twists as the posts
+by its four corners with [`spatialSkin(shape, corners)`](reference/data.md#spatial-rule-drawing-kt--spatialskin), so it shears and twists as the posts
 lean. A foot carries its head in its data, which is how the panel finds its top corners.
 
 Every post and every panel is a copy of its shape, worked out point by point each frame, so both
@@ -2134,7 +2141,7 @@ play(world, w = 900.0, h = 400.0, after = { markdown("Fence", "$panels panels") 
 ## Publishing and matching
 
 Create a `SpatialRuleWorld` once, install one or more named `source` and `rules` blocks, then
-end the box with `play(world)`. `play` steps the world on the animation clock at up to `fps`
+end the box with [`play(world)`](reference/data.md#spatial-rule-drawing-kt--play). `play` steps the world on the animation clock at up to `fps`
 frames a second, draws the result into `channel` at `w` by `h`, calls `after` with each frame's
 lines, passes presses on the drawing to `onPress` between frames, and closes the world when the
 box stops. To draw somewhere else, call `world.step(AnimationClock.nowSeconds())` from your own

@@ -134,6 +134,55 @@ sealed class Collider {
     var vectorized: Boolean = true
 
     /**
+     * The collider's own velocity, in world units per second: a conveyor, a lift, an escalator.
+     * While any component is non-zero the shape is *kinematic*: [ColliderSet] moves it by
+     * `velocity * dt` with [translate] before every projection, and the contact response works in
+     * the surface's frame, so [friction] carries a resting particle along and a rising surface
+     * lifts it rather than merely pushing it out. A collider moved by hand between frames instead
+     * pushes particles out but gives them none of its motion, which is the case these exist for.
+     *
+     * The vector paths assume a still surface, so a moving [PlaneCollider] or [SphereCollider]
+     * takes the scalar one.
+     */
+    var velocityX: Float = 0f
+
+    /** See [velocityX]. */
+    var velocityY: Float = 0f
+
+    /** See [velocityX]. */
+    var velocityZ: Float = 0f
+
+    /** Sets all three components of [velocityX]. */
+    fun setVelocity(vx: Float, vy: Float, vz: Float = 0f) {
+        velocityX = vx
+        velocityY = vy
+        velocityZ = vz
+    }
+
+    /** Whether this collider has a velocity, and so moves itself and drags what it touches. */
+    val moving: Boolean get() = velocityX != 0f || velocityY != 0f || velocityZ != 0f
+
+    /** This frame's surface displacement, `velocity * dt`, set by [advance] and read by the contact response. */
+    protected var frameDx: Float = 0f
+    protected var frameDy: Float = 0f
+    protected var frameDz: Float = 0f
+
+    /** Moves the shape rigidly by `(dx, dy, dz)`. What [advance] calls; usable directly too. */
+    abstract fun translate(dx: Float, dy: Float, dz: Float)
+
+    /**
+     * Moves a [moving] collider by one frame of its velocity and records that displacement for
+     * the contact response. [ColliderSet] calls this once per frame before projecting; call it
+     * yourself only if you drive [projectRange] directly.
+     */
+    fun advance(dt: Float) {
+        frameDx = velocityX * dt
+        frameDy = velocityY * dt
+        frameDz = velocityZ * dt
+        if (moving) translate(frameDx, frameDy, frameDz)
+    }
+
+    /**
      * Number of particles the last [projectRange] found penetrating. Not a physical quantity —
      * it is the "is this collider doing anything at all" readout, and what
      * `SimdVerletCollidersTest` asserts a floor on so that a silently-missing contact fails
@@ -188,16 +237,22 @@ private inline fun applyContactScalar(
     depth: Float,
     friction: Float,
     tangentialDamping: Float,
-    restitution: Float
+    restitution: Float,
+    surfaceDx: Float,
+    surfaceDy: Float,
+    surfaceDz: Float
 ) {
     // The velocity is read BEFORE the push-out. Measuring it after would silently charge the
     // particle for the distance it penetrated -- an object dropped from three units and bounced
     // with restitution 0.9 came back 0.46 rather than 2.4, because the frame's approach
     // displacement had been quietly cut down by the correction before being reflected. Taken
     // before, restitution 1.0 preserves speed exactly, which is what it has to mean.
-    val vx = state.x[i] - state.px[i]
-    val vy = state.y[i] - state.py[i]
-    val vz = state.z[i] - state.pz[i]
+    // Relative to the surface: a moving collider's own displacement this frame comes off first and
+    // goes back on at the end, so friction drags a particle along with a conveyor and a rising
+    // floor lifts what rests on it, instead of both acting as if the surface were standing still.
+    val vx = state.x[i] - state.px[i] - surfaceDx
+    val vy = state.y[i] - state.py[i] - surfaceDy
+    val vz = state.z[i] - state.pz[i] - surfaceDz
 
     val x = state.x[i] + nx * depth
     val y = state.y[i] + ny * depth
@@ -224,9 +279,9 @@ private inline fun applyContactScalar(
         tz *= scale
     }
 
-    state.px[i] = x - (tx + vnNew * nx)
-    state.py[i] = y - (ty + vnNew * ny)
-    state.pz[i] = z - (tz + vnNew * nz)
+    state.px[i] = x - (tx + vnNew * nx + surfaceDx)
+    state.py[i] = y - (ty + vnNew * ny + surfaceDy)
+    state.pz[i] = z - (tz + vnNew * nz + surfaceDz)
 }
 
 /**
@@ -347,6 +402,11 @@ class PlaneCollider(
         normalZ = nz / len
     }
 
+    /** Slides the plane along its normal by the part of `(dx, dy, dz)` that lies on it. */
+    override fun translate(dx: Float, dy: Float, dz: Float) {
+        offset += normalX * dx + normalY * dy + normalZ * dz
+    }
+
     override fun projectRange(state: SimdVerlet.State3, start: Int, endExclusive: Int): Int {
         contacts = 0
         if (!enabled) return 0
@@ -358,7 +418,7 @@ class PlaneCollider(
         val nz = normalZ
         val limit = offset + margin
 
-        if (vectorized) {
+        if (vectorized && !moving) {
             val sp = SP
             val lanes = sp.length()
             val vnx = FloatVector.broadcast(sp, nx)
@@ -388,7 +448,7 @@ class PlaneCollider(
                 val depth = limit - (state.x[i] * nx + state.y[i] * ny + state.z[i] * nz)
                 if (depth > 0f) {
                     contacts++
-                    applyContactScalar(state, i, nx, ny, nz, depth, friction, tangentialDamping, restitution)
+                    applyContactScalar(state, i, nx, ny, nz, depth, friction, tangentialDamping, restitution, frameDx, frameDy, frameDz)
                 }
             }
             i++
@@ -462,6 +522,12 @@ class SphereCollider(
         centerZ = cz
     }
 
+    override fun translate(dx: Float, dy: Float, dz: Float) {
+        centerX += dx
+        centerY += dy
+        centerZ += dz
+    }
+
     override fun projectRange(state: SimdVerlet.State3, start: Int, endExclusive: Int): Int {
         contacts = 0
         if (!enabled) return 0
@@ -476,7 +542,7 @@ class SphereCollider(
         val target = if (inside) radius - margin else radius + margin
         val sign = if (inside) -1f else 1f
 
-        if (vectorized) {
+        if (vectorized && !moving) {
             val sp = SP
             val lanes = sp.length()
             val vcx = FloatVector.broadcast(sp, cx)
@@ -521,12 +587,12 @@ class SphereCollider(
                 if (depth > 0f) {
                     contacts++
                     if (dist < 1e-12f) {
-                        applyContactScalar(state, i, 0f, sign, 0f, depth, friction, tangentialDamping, restitution)
+                        applyContactScalar(state, i, 0f, sign, 0f, depth, friction, tangentialDamping, restitution, frameDx, frameDy, frameDz)
                     } else {
                         val inv = sign / dist
                         applyContactScalar(
                             state, i, dx * inv, dy * inv, dz * inv, depth,
-                            friction, tangentialDamping, restitution
+                            friction, tangentialDamping, restitution, frameDx, frameDy, frameDz
                         )
                     }
                 }
@@ -551,6 +617,11 @@ class CapsuleCollider(
     var radius: Float,
     var inside: Boolean = false
 ) : Collider() {
+
+    override fun translate(dx: Float, dy: Float, dz: Float) {
+        ax += dx; ay += dy; az += dz
+        bx += dx; by += dy; bz += dz
+    }
 
     override fun projectRange(state: SimdVerlet.State3, start: Int, endExclusive: Int): Int {
         contacts = 0
@@ -585,12 +656,12 @@ class CapsuleCollider(
                 if (depth > 0f) {
                     contacts++
                     if (dist < 1e-12f) {
-                        applyContactScalar(state, i, 0f, sign, 0f, depth, friction, tangentialDamping, restitution)
+                        applyContactScalar(state, i, 0f, sign, 0f, depth, friction, tangentialDamping, restitution, frameDx, frameDy, frameDz)
                     } else {
                         val inv = sign / dist
                         applyContactScalar(
                             state, i, dx * inv, dy * inv, dz * inv, depth,
-                            friction, tangentialDamping, restitution
+                            friction, tangentialDamping, restitution, frameDx, frameDy, frameDz
                         )
                     }
                 }
@@ -640,6 +711,11 @@ class BoxCollider(
     var inside: Boolean = true
 ) : Collider() {
 
+    override fun translate(dx: Float, dy: Float, dz: Float) {
+        minX += dx; minY += dy; minZ += dz
+        maxX += dx; maxY += dy; maxZ += dz
+    }
+
     override fun projectRange(state: SimdVerlet.State3, start: Int, endExclusive: Int): Int {
         contacts = 0
         if (!enabled) return 0
@@ -659,19 +735,19 @@ class BoxCollider(
                     // Each wall independently -- a corner is two or three contacts, counted once.
                     var hit = false
                     if (state.x[i] < lox) {
-                        applyContactScalar(state, i, 1f, 0f, 0f, lox - state.x[i], friction, tangentialDamping, restitution); hit = true
+                        applyContactScalar(state, i, 1f, 0f, 0f, lox - state.x[i], friction, tangentialDamping, restitution, frameDx, frameDy, frameDz); hit = true
                     } else if (state.x[i] > hix) {
-                        applyContactScalar(state, i, -1f, 0f, 0f, state.x[i] - hix, friction, tangentialDamping, restitution); hit = true
+                        applyContactScalar(state, i, -1f, 0f, 0f, state.x[i] - hix, friction, tangentialDamping, restitution, frameDx, frameDy, frameDz); hit = true
                     }
                     if (state.y[i] < loy) {
-                        applyContactScalar(state, i, 0f, 1f, 0f, loy - state.y[i], friction, tangentialDamping, restitution); hit = true
+                        applyContactScalar(state, i, 0f, 1f, 0f, loy - state.y[i], friction, tangentialDamping, restitution, frameDx, frameDy, frameDz); hit = true
                     } else if (state.y[i] > hiy) {
-                        applyContactScalar(state, i, 0f, -1f, 0f, state.y[i] - hiy, friction, tangentialDamping, restitution); hit = true
+                        applyContactScalar(state, i, 0f, -1f, 0f, state.y[i] - hiy, friction, tangentialDamping, restitution, frameDx, frameDy, frameDz); hit = true
                     }
                     if (state.z[i] < loz) {
-                        applyContactScalar(state, i, 0f, 0f, 1f, loz - state.z[i], friction, tangentialDamping, restitution); hit = true
+                        applyContactScalar(state, i, 0f, 0f, 1f, loz - state.z[i], friction, tangentialDamping, restitution, frameDx, frameDy, frameDz); hit = true
                     } else if (state.z[i] > hiz) {
-                        applyContactScalar(state, i, 0f, 0f, -1f, state.z[i] - hiz, friction, tangentialDamping, restitution); hit = true
+                        applyContactScalar(state, i, 0f, 0f, -1f, state.z[i] - hiz, friction, tangentialDamping, restitution, frameDx, frameDy, frameDz); hit = true
                     }
                     if (hit) contacts++
                 }
@@ -708,7 +784,7 @@ class BoxCollider(
                     consider(z - loz, 0f, 0f, -1f)
                     consider(hiz - z, 0f, 0f, 1f)
                     contacts++
-                    applyContactScalar(state, i, nx, ny, nz, depth, friction, tangentialDamping, restitution)
+                    applyContactScalar(state, i, nx, ny, nz, depth, friction, tangentialDamping, restitution, frameDx, frameDy, frameDz)
                 }
             }
             i++
@@ -753,6 +829,15 @@ class SdfCollider(
     private val outlineLines: (() -> List<FLine>)? = null
 ) : Collider() {
 
+    /** How far the field has been moved: [sdf] is evaluated at the particle minus this offset. */
+    var offsetX: Float = 0f
+    var offsetY: Float = 0f
+    var offsetZ: Float = 0f
+
+    override fun translate(dx: Float, dy: Float, dz: Float) {
+        offsetX += dx; offsetY += dy; offsetZ += dz
+    }
+
     override fun projectRange(state: SimdVerlet.State3, start: Int, endExclusive: Int): Int {
         contacts = 0
         if (!enabled) return 0
@@ -769,23 +854,26 @@ class SdfCollider(
                     val x = state.x[i]
                     val y = state.y[i]
                     val z = state.z[i]
-                    val d = sdf(x, y, z)
+                    val d = sdf(x - offsetX, y - offsetY, z - offsetZ)
                     val depth = margin - d
                     if (depth > 0f) {
                         if (!counted) {
                             contacts++
                             counted = true
                         }
-                        var gx = sdf(x + e, y, z) - sdf(x - e, y, z)
-                        var gy = sdf(x, y + e, z) - sdf(x, y - e, z)
-                        var gz = sdf(x, y, z + e) - sdf(x, y, z - e)
+                        val ox = x - offsetX
+                        val oy = y - offsetY
+                        val oz = z - offsetZ
+                        var gx = sdf(ox + e, oy, oz) - sdf(ox - e, oy, oz)
+                        var gy = sdf(ox, oy + e, oz) - sdf(ox, oy - e, oz)
+                        var gz = sdf(ox, oy, oz + e) - sdf(ox, oy, oz - e)
                         val gLen = sqrt(gx * gx + gy * gy + gz * gz)
                         if (gLen < 1e-20f) {
                             gx = 0f; gy = 1f; gz = 0f
                         } else {
                             gx /= gLen; gy /= gLen; gz /= gLen
                         }
-                        applyContactScalar(state, i, gx, gy, gz, depth, friction, tangentialDamping, restitution)
+                        applyContactScalar(state, i, gx, gy, gz, depth, friction, tangentialDamping, restitution, frameDx, frameDy, frameDz)
                     }
                 }
             }
@@ -801,6 +889,140 @@ class SdfCollider(
 // ==============================================================================================
 // A set of them, as one registered pass
 // ==============================================================================================
+
+/**
+ * An endless flight of stairs descending toward +x, with the solid below each tread — "below" in
+ * the solver's own sense, +y, which is the direction [SimdVerlet.step]'s `gravity` pulls.
+ *
+ * Step `k` is the column `originX + k * run <= x < originX + (k + 1) * run`; its tread is the
+ * horizontal surface at `y = originY + k * rise` and its riser is the vertical face on the
+ * column's +x side, dropping to the next tread. A particle inside a step leaves by whichever of
+ * the tread or the riser is nearer, the same least-penetration rule as [BoxCollider], so one
+ * collider replaces a row of boxes and has no seams between them. It ignores z.
+ *
+ * Moving it by exactly one step, `(run, rise)`, gives back the same staircase, and [translate]
+ * folds the origin back by whole steps to keep it near zero, so the stairs can run forever
+ * without the origin losing float precision. [escalator] uses that: give the staircase a velocity
+ * of one step per [stepPeriod] seconds *up* the flight, toward -x and -y, and the treads rise
+ * under whatever stands on them while the picture stays a flight of stairs.
+ *
+ * @param run tread depth along x.
+ * @param rise height of one step, along +y.
+ */
+class StaircaseCollider(
+    run: Float,
+    rise: Float,
+    var originX: Float = 0f,
+    var originY: Float = 0f
+) : Collider() {
+
+    /** Tread depth along x. Live; a moving staircase keeps its [stepPeriod]. */
+    var run: Float = run
+        set(value) {
+            require(value > 0f) { "run must be > 0" }
+            field = value
+            stepPeriod = stepPeriod
+        }
+
+    /** Step height along +y. Live; a moving staircase keeps its [stepPeriod]. */
+    var rise: Float = rise
+        set(value) {
+            require(value >= 0f) { "rise must be >= 0" }
+            field = value
+            stepPeriod = stepPeriod
+        }
+
+    init {
+        require(run > 0f) { "run must be > 0" }
+        require(rise >= 0f) { "rise must be >= 0" }
+    }
+
+    /** The x range [outline] draws, in world units; the stairs themselves have no ends. */
+    var drawFromX: Float = -4f
+    var drawToX: Float = 8f
+
+    /**
+     * Seconds for the moving stairs to carry a step up by one step, `0f` for still stairs.
+     * Setting it sets [velocityX] and [velocityY] to `(-run, -rise) / stepPeriod`.
+     */
+    var stepPeriod: Float = 0f
+        set(value) {
+            require(value >= 0f) { "stepPeriod must be >= 0" }
+            field = value
+            if (value == 0f) setVelocity(0f, 0f) else setVelocity(-run / value, -rise / value)
+        }
+
+    /** The speed the treads travel along the incline, world units per second: `hypot(run, rise) / stepPeriod`. */
+    val speed: Float get() = if (stepPeriod == 0f) 0f else sqrt(run * run + rise * rise) / stepPeriod
+
+    /** The step index whose column contains [x]. */
+    fun stepAt(x: Float): Int = kotlin.math.floor((x - originX) / run).toInt()
+
+    /** The tread height of step [k]. */
+    fun treadY(k: Int): Float = originY + k * rise
+
+    override fun translate(dx: Float, dy: Float, dz: Float) {
+        originX += dx
+        originY += dy
+        // Fold back by whole steps along the flight -- geometrically a no-op. Only valid when the
+        // motion is along the flight, which is the escalator case; any other motion just accumulates.
+        if (rise == 0f || abs(dx * rise - dy * run) <= 1e-4f * (abs(dx) + abs(dy)) * (run + rise)) {
+            val k = kotlin.math.floor(originX / run)
+            if (k != 0f) {
+                originX -= k * run
+                originY -= k * rise
+            }
+        }
+    }
+
+    override fun projectRange(state: SimdVerlet.State3, start: Int, endExclusive: Int): Int {
+        contacts = 0
+        if (!enabled) return 0
+        val n = state.size
+        var i = start.coerceIn(0, n)
+        val end = endExclusive.coerceIn(i, n)
+        while (i < end) {
+            if (movable(state, i)) {
+                val x = state.x[i]
+                val y = state.y[i]
+                val k = stepAt(x)
+                val tread = treadY(k) - margin
+                if (y > tread) {
+                    val up = y - tread
+                    // The riser: out to +x, which is only a way out if it lands above the next tread.
+                    val riserX = originX + (k + 1) * run + margin
+                    val sideways = riserX - x
+                    contacts++
+                    if (sideways < up && y <= treadY(k + 1) - margin) {
+                        applyContactScalar(state, i, 1f, 0f, 0f, sideways, friction, tangentialDamping, restitution, frameDx, frameDy, frameDz)
+                    } else {
+                        applyContactScalar(state, i, 0f, -1f, 0f, up, friction, tangentialDamping, restitution, frameDx, frameDy, frameDz)
+                    }
+                }
+            }
+            i++
+        }
+        return contacts
+    }
+
+    /** The stair profile across [drawFromX]..[drawToX]: tread, riser, tread, ... */
+    override fun outline(color: Vec4, thickness: Double): List<FLine> {
+        val line = FLine()
+        val k0 = stepAt(drawFromX)
+        val k1 = stepAt(drawToX)
+        for (k in k0..k1) {
+            val x0 = max(drawFromX, originX + k * run).toDouble()
+            val x1 = min(drawToX, originX + (k + 1) * run).toDouble()
+            val y = treadY(k).toDouble()
+            if (k == k0) line.moveTo(x0, y, 0.0) else line.lineTo(x0, y, 0.0)
+            line.lineTo(x1, y, 0.0)
+            if (k < k1) line.lineTo(x1, treadY(k + 1).toDouble(), 0.0)
+        }
+        line.color = color
+        line.thickness = thickness
+        return listOf(line)
+    }
+}
 
 /**
  * Several [Collider]s applied as a single [SimdVerlet.positionProjections] pass.
@@ -841,8 +1063,23 @@ class ColliderSet internal constructor(
     /** Drops [collider] from the list. Returns whether it was there. */
     fun remove(collider: Collider): Boolean = colliders.remove(collider)
 
-    /** The pass itself, exposed for callers who would rather drive it than leave it registered. */
-    fun project(state: SimdVerlet.State3) {
+    /**
+     * The pass itself, exposed for callers who would rather drive it than leave it registered.
+     * [dt] is the frame's time step, which moves every [Collider.moving] collider by one frame of
+     * its velocity first; the registered pass passes the solver's own. `0f` moves nothing.
+     */
+    fun project(state: SimdVerlet.State3, dt: Float = 0f) {
+        for (collider in colliders) if (collider.enabled) collider.advance(dt)
+        relax(state)
+    }
+
+    /**
+     * The projection again, without moving anything: every collider keeps the surface
+     * displacement its last [project] recorded. For a pass of your own that has to interleave with
+     * the colliders — a stack of coils resting on a floor converges only if the floor gets a word
+     * in between the coil corrections, rather than once at the end.
+     */
+    fun relax(state: SimdVerlet.State3) {
         contacts = 0
         if (colliders.isEmpty()) return
         val r = range
@@ -888,7 +1125,7 @@ fun SimdVerlet.addColliders(
 ): ColliderSet {
     val set = ColliderSet(this, name, range)
     colliders.forEach { set.add(it) }
-    addPositionProjection(name) { state, _ -> set.project(state) }
+    addPositionProjection(name) { state, dt -> set.project(state, dt) }
     return set
 }
 

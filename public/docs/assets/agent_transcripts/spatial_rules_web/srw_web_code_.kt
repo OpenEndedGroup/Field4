@@ -46,7 +46,8 @@ world.rules("beads") {
     onEnter("bead a bond", edges("bond")) { bond ->
         val beads = mutableListOf<SpatialPoint>()
         whileLive {
-            val wanted = (bond.length / 22).toInt()
+            val beadSpacing = 22 // Drawing units per bead along the bond.
+            val wanted = (bond.length / beadSpacing).toInt()
             if (beads.size < wanted && age > 0.2 * beads.size) {
                 beads += point("bead", bond.at(0.5), mapOf("bond" to bond.id))
             }

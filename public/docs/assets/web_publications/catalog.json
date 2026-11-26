@@ -5398,6 +5398,28 @@
         "public/docs/chain_skinned_volume.md#capture-box=skinned_volume_trace"
       ]
     },
+    "assets/agent_transcripts/slinky_escalator/metadata.edn": {
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-26T16:44:17.144Z",
+      "channels": 2,
+      "file": "assets/web_publications/slinky_escalator/document/metadata.edn",
+      "files": {
+        "assets/web_publications/slinky_escalator/document/metadata.edn": "93f839f892b750f68c9826516e9d2486cd72534d0b0299043fe8d2c9d492e1f6",
+        "assets/web_publications/slinky_escalator/document/outputs.json": "e1cd415ead9b6f30c9deb997522c5afac569830c3bbfb50ee2192f8796aed21e",
+        "assets/web_publications/slinky_escalator/outputs/0.html": "d0383d56a158e00cde47511c193f04d163f9e18eb5821b0c9528d00b2b1f6909",
+        "assets/web_publications/slinky_escalator/outputs/1.html": "634771173ebc62d647ccbaa73daa5ccd8e3c293a1221144db1432dd345be21fa"
+      },
+      "kinds": [
+        "svg"
+      ],
+      "outputs": "assets/web_publications/slinky_escalator/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/slinky_escalator.yaml": "ca082663824223617b334d1504d44e53d44a6cf20afd5e119cf22fbbdf4987c8",
+        "public/docs/assets/agent_transcripts/slinky_escalator/guides/physics.md": "6e3ae39f74b5a2f53f0610919641e6ce1d9c255e577c8ef45c27a0d8e137311a",
+        "public/docs/assets/agent_transcripts/slinky_escalator/metadata.edn": "78bc6ecea88d92c8695848631e395a1a91a933342c002405cef57bad11cdc201",
+        "public/docs/assets/agent_transcripts/slinky_escalator/slinky_walk_code_.kt": "922ef10147a246ccc3a0007e571e385f842e4ea6028a227a3f78e486de025d90"
+      }
+    },
     "assets/agent_transcripts/smpte_timecode/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
       "capturedAt": "2026-11-18T15:59:37.899Z",
@@ -5663,24 +5685,24 @@
     },
     "assets/agent_transcripts/spatial_rules_web/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "capturedAt": "2026-11-26T12:28:47.468Z",
+      "capturedAt": "2026-11-26T16:44:31.153Z",
       "channels": 2,
       "file": "assets/web_publications/spatial_rules_web/document/metadata.edn",
       "files": {
-        "assets/web_publications/spatial_rules_web/document/metadata.edn": "881912d81d221095e00afff770892917662f88b242a60ff12435f3833a29b0d4",
-        "assets/web_publications/spatial_rules_web/document/outputs.json": "668d276b4587970a2de986fcc9485ab2e18f23e8ee05fdfeb97ad88fc0beb4e3",
-        "assets/web_publications/spatial_rules_web/outputs/0.html": "8ed658f139427542f034ecaf8330874dc40ece96f6347b9706c89eaaad7881eb",
-        "assets/web_publications/spatial_rules_web/outputs/1.html": "d4cff1d0c7ec68625f563250249d80025a7dfbce6d7781f34168af5f5ab41ea4"
+        "assets/web_publications/spatial_rules_web/document/metadata.edn": "c9e2ad586fd14278b6c4c8302e05833fc76506ba1e3f0a545fa02f720a313ef7",
+        "assets/web_publications/spatial_rules_web/document/outputs.json": "df272df006198e50815b8da0ed058672575a67ba685449c29680e141192f442f",
+        "assets/web_publications/spatial_rules_web/outputs/0.html": "2fc12d70b11b120545869a385c30aa78a97c54d28daebaa477643a6dc233366e",
+        "assets/web_publications/spatial_rules_web/outputs/1.html": "9a26328e63d7b921543ceb9d46d46011ed230fc64cfbd1f13df13e6984028956"
       },
       "kinds": [
         "svg"
       ],
       "outputs": "assets/web_publications/spatial_rules_web/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/spatial_rules_web.yaml": "4bf8c9b345d40f17b150bba65fd0c1a394d18ed50ef4a76b73336b7e86e42767",
+        "dev_docs/agents/transcripts/spatial_rules_web.yaml": "a23c762287fb031952d4b06ef8ca275c040ac36d5b705c0c06ff065dc483a976",
         "public/docs/assets/agent_transcripts/spatial_rules_web/guides/spatial_rules.md": "30759271d88369768a84db5bd2d60672b9a97ba8f8ad881e7c2e259118908286",
-        "public/docs/assets/agent_transcripts/spatial_rules_web/metadata.edn": "c73f31738980d587c3053ff8070ada9f41555a658509f33c38b447ff560958d2",
-        "public/docs/assets/agent_transcripts/spatial_rules_web/srw_web_code_.kt": "6e124b0382d54ecf215735d6cf93100dc244a8ca665c0c4e6a292f6d5148ac08"
+        "public/docs/assets/agent_transcripts/spatial_rules_web/metadata.edn": "7aaa5eb07926c1d86b3ad624ed271f5968dacc3aa960df1a41062555a338cc5c",
+        "public/docs/assets/agent_transcripts/spatial_rules_web/srw_web_code_.kt": "1b8f1527dcf625e0a9ad625756ab1c07a6ca6779b20c3f0997e8698770c91518"
       }
     },
     "assets/agent_transcripts/spectral_examples/metadata.edn": {
