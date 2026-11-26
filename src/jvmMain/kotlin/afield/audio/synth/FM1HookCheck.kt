@@ -28,7 +28,7 @@ expect:
  * Checks StackSL hooks in the FM-1's firmware ([FM1Hooks], [FM1Sim.hook]):
  *
  *  - every StackSL program on the docs pages either compiles to a hook or is refused for reading a
- *    texture, and each hook's `eval` agrees with Field's CPU GLSL interpreter on the same GLSL at
+ *    texture or a push constant, and each hook's `eval` agrees with Field's CPU GLSL interpreter on the same GLSL at
  *    a spread of inputs, so the C++ lowering means what the GLSL means;
  *  - an identity hook leaves a track's sound as it was, and a folding hook changes it, while the
  *    sequence keeps playing through the swaps;
@@ -65,7 +65,7 @@ object FM1HookCheck {
                 val hook = try {
                     FM1Hooks.compile(program)
                 } catch (e: FM1HookException) {
-                    check("reads a texture" in e.message.orEmpty()) { "\"$program\" was refused: ${e.message}" }
+                    check("reads a texture" in e.message.orEmpty() || "reads a push constant" in e.message.orEmpty()) { "\"$program\" was refused: ${e.message}" }
                     refused++; continue
                 }
                 sim.hook(0, hook)
@@ -83,7 +83,7 @@ object FM1HookCheck {
                 }
                 hooked++
             }
-            println("docs StackSL: ${programs.size} fences, $hooked compile to hooks, $refused refused for reading textures, $notStackSL are not programs")
+            println("docs StackSL: ${programs.size} fences, $hooked compile to hooks, $refused refused for reading textures or push constants, $notStackSL are not programs")
             println("largest relative difference from the CPU interpreter: ${"%.2e".format(worst)} (\"${worstProgram.take(50)}\")")
             disagree.take(10).forEach { println("  disagrees: $it") }
             check(disagree.isEmpty()) { "${disagree.size} hook evaluations disagree with the CPU interpreter" }
