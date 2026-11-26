@@ -7435,9 +7435,9 @@
       "channels": 0,
       "reason": "No output-area channels; the code remains available.",
       "sources": {
-        "dev_docs/agents/transcripts/rhino_round_trip.yaml": "c8fcc045bb301df435e509ee81b36d8aab35f4cda24ad260f4e3c2c0cc0332d1",
-        "public/docs/assets/agent_transcripts/rhino_round_trip/metadata.edn": "3ebc59fcdf0336907a4a0325159481e429c833cc53f2d150f82c6d1af0ecd270",
-        "public/docs/assets/agent_transcripts/rhino_round_trip/rhino_round_trip_code_.kt": "7073ea93a8bdb1a86b6d2aedea12e3a3b85e99c9f4a44eae93b4e22cb89d57c3"
+        "dev_docs/agents/transcripts/rhino_round_trip.yaml": "015a751ee7f18e65470d48e10c4c4101d84d4eff13207c6119169f75c0be29eb",
+        "public/docs/assets/agent_transcripts/rhino_round_trip/metadata.edn": "a6e8522133e479dcf1f13021c0f1d1f8375169f6b7013ec3f5e661cb52f796f4",
+        "public/docs/assets/agent_transcripts/rhino_round_trip/rhino_round_trip_code_.kt": "122b2a6d623d550328e69a81ca9599b6852a7c959d49fbde43916dba431e4995"
       }
     },
     "assets/agent_transcripts/rhino_save_small/metadata.edn": {

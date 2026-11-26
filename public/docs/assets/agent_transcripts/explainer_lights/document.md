@@ -73,7 +73,7 @@ controlGroup {
 <!-- field-box id="el_hemisphere" index="1" -->
 
 ```edn [field-box id="el_hemisphere" role="properties"]
-{"id" "el_hemisphere" "index" 1 "name" "hemisphere" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "hemisphere" "_tombstone" false "frame" #afield/rect [480.0 280.0 160.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "el_hemisphere_code_.kt" "lines" 57 "characters" 2645 "sha256" "70516a3f0d62dcf5608b22ca3bf61c0c516bbec392f22e27c6c1bc617eff44c7"}]}
+{"id" "el_hemisphere" "index" 1 "name" "hemisphere" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "hemisphere" "_tombstone" false "frame" #afield/rect [480.0 280.0 160.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "el_hemisphere_code_.kt" "lines" 57 "characters" 2632 "sha256" "ec87b58f59d100a5d235b7eed5ea175d421623b1963397784307fd0299560eba"}]}
 ```
 
 ```kotlin [field-property box="el_hemisphere" name="code" path="el_hemisphere_code_.kt"]
@@ -99,7 +99,7 @@ val side = 1.0
 fun draw(across: Double) {
     val lamp = RectLight(vec(across, 1.2, 0.0), width = side, height = side, power = 20.0)
     val outline = planeMesh(12, 12, side, side).transformed { p -> vec(p.x + across, 1.2, p.y) }
-    val onDome = outline.transformed { p -> p.normalize().mul(1.004f) }
+    val onDome = outline.transformed { p -> p.n * 1.004f }
     val flat = onDome.transformed { p -> vec(p.x, 0.004, p.z) }
     var covered = 0.0
     for (t in 0 until flat.triangleCount) covered += flat.triangleArea(t)
@@ -833,7 +833,7 @@ A square panel 0.8 m across and its shadow on a sphere of radius one around the 
 that shadow is the panel's solid angle; move the panel away and it shrinks as the square.
 
 ```edn [field-box id="el_projected_rect" role="properties"]
-{"id" "el_projected_rect" "index" 8 "name" "projected_rect" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "projected_rect" "_tombstone" false "frame" #afield/rect [300.0 280.0 160.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "el_projected_rect_code_.kt" "lines" 50 "characters" 2226 "sha256" "e549bbebd6aaf46621e466076ab2201c5c16da99f47683cfafc0bc500d8c6f9f"}]}
+{"id" "el_projected_rect" "index" 8 "name" "projected_rect" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "projected_rect" "_tombstone" false "frame" #afield/rect [300.0 280.0 160.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "el_projected_rect_code_.kt" "lines" 50 "characters" 2213 "sha256" "e2cc0957a0d758b83ec92d8778fb6d976b50fd9fe1361430876cd4f80f3a38e6"}]}
 ```
 
 ```kotlin [field-property box="el_projected_rect" name="code" path="el_projected_rect_code_.kt"]
@@ -857,7 +857,7 @@ val circles = [
 fun draw(distance: Double) {
     val panel = planeMesh(12, 12, 0.8, 0.8).translated(0.0, 0.0, -distance)
     // Every point of the panel pushed onto the unit sphere, along its line to the eye.
-    val shadow = panel.transformed { p -> p.normalize().mul(1.004f) }
+    val shadow = panel.transformed { p -> p.n * 1.004f }
     var omega = 0.0
     for (t in 0 until shadow.triangleCount) omega += shadow.triangleArea(t)
     // From the eye through each corner of the patch to the panel's corner.
