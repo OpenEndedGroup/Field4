@@ -1,7 +1,7 @@
 const path = require('node:path');
 const fs = require('node:fs');
 const {pathToFileURL} = require('node:url');
-const {app, BrowserWindow, WebContentsView, dialog, ipcMain, shell} = require('electron');
+const {app, BrowserWindow, WebContentsView, dialog, ipcMain, session: electronSession, shell} = require('electron');
 const {validRect, guestUrl, figureUrl, fieldActions, validateGuideState, guideTarget, sameTarget, linkTarget, linkNavigation} = require('./presentation-cues');
 const {paintTransitionFrame} = require('./presentation-transition');
 
@@ -658,7 +658,19 @@ async function choosePresentation() {
   catch (error) { dialog.showErrorBox('Could not open presentation', String(error)); }
 }
 
+// Figures and Field-document slides load the local Field server, which uses a self-signed
+// development certificate. main.js trusts loopback hosts only on the default session, so each
+// presentation partition gets the same rule; anything else keeps Chromium's verification.
+const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '::1']);
+function trustLoopback(partition) {
+  electronSession.fromPartition(partition).setCertificateVerifyProc(({hostname}, callback) => {
+    callback(LOOPBACK_HOSTS.has(hostname) ? 0 : -3);
+  });
+}
+
 function install() {
+  trustLoopback('persist:field-presentations');
+  trustLoopback('persist:field-presentation-links');
   ipcMain.on('field-presentation-native-state', (event, state) => {
     if (!fieldHost?.isFieldContents(event.sender)) return;
     const source = event.sender;
