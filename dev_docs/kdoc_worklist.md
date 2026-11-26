@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 26413 of 44101 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 26475 of 44180 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2114 undocumented entry points** (types, top-level functions and values) and 14801 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2114 undocumented entry points** (types, top-level functions and values) and 14818 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -129,6 +129,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [FLineInterpolation.kt](../src/jvmMain/kotlin/afield/geometry/path/FLineInterpolation.kt) | Graphics | fline_examples | 0 | 44 | 29% |
 | [Marf.kt](../src/jvmMain/kotlin/afield/audio/synth/Marf.kt) | Patterns | marf | 0 | 41 | 60% |
 | [graph_connectivity.kt](../src/jvmMain/kotlin/afield/data/graph/graph_connectivity.kt) | Graphics | graph_connectivity_examples, spatial_geometry_examples | 0 | 39 | 61% |
+| [SimdVerletColliders.kt](../src/jvmMain/kotlin/afield/simulation/physics/SimdVerletColliders.kt) | Simulation | chain_physics_render, physics | 0 | 39 | 57% |
 | [FunctionGraph.kt](../src/jvmMain/kotlin/afield/math/functions/FunctionGraph.kt) | Function | functions_examples, pattern_language | 0 | 38 | 44% |
 | [DependencyLength.kt](../src/jvmMain/kotlin/afield/graphics/text/sentences/DependencyLength.kt) | Graphics | sentence_diagrams | 0 | 37 | 44% |
 | [alife_tree_growth.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_tree_growth.kt) | Simulation | alife_examples | 0 | 37 | 47% |
@@ -143,7 +144,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [spectral.kt](../src/jvmMain/kotlin/afield/audio/analysis/spectral.kt) | Math | spectral_examples | 0 | 28 | 64% |
 | [PatMuse.kt](../src/jvmMain/kotlin/afield/audio/synth/PatMuse.kt) | Audio | pattern_language | 0 | 28 | 52% |
 | [PathTraceInstrument.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/PathTraceInstrument.kt) | Renderers | path_tracing | 0 | 28 | 43% |
-| [SimdVerletColliders.kt](../src/jvmMain/kotlin/afield/simulation/physics/SimdVerletColliders.kt) | Simulation | chain_physics_render, physics | 0 | 28 | 54% |
 | [Enums.kt](../src/jvmMain/kotlin/afield/audio/spatial/steamaudio/Enums.kt) | Audio | steam_audio_scene | 0 | 27 | 50% |
 | [Subharmonic.kt](../src/jvmMain/kotlin/afield/audio/synth/Subharmonic.kt) | Synthesis | subharmonic_sound | 0 | 27 | 41% |
 | [Topology.kt](../src/jvmMain/kotlin/afield/geometry/polytope/Topology.kt) | Polytopes | polytope_examples | 0 | 27 | 69% |
@@ -272,6 +272,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Trajectory.kt](../src/jvmMain/kotlin/afield/math/oracle/Trajectory.kt) | Math | temporal_memory | 0 | 6 | 78% |
 | [imaging.kt](../src/jvmMain/kotlin/afield/media/image/imaging.kt) | Imaging | imaging_examples, visualizers, alife_examples | 0 | 6 | 91% |
 | [alife_vehicles.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_vehicles.kt) | Simulation | braitenberg_vehicles, agent_transcripts | 0 | 6 | 92% |
+| [Slinky.kt](../src/jvmMain/kotlin/afield/simulation/physics/Slinky.kt) | Simulation | physics | 0 | 6 | 87% |
 | [ControlPresets.kt](../src/jvmMain/kotlin/afield/ui/output/ControlPresets.kt) | Visualization | visualizers | 0 | 6 | 84% |
 | [OnnxRuntime.kt](../src/jvmMain/kotlin/afield/ai/inference/onnx/OnnxRuntime.kt) | Machine learning | onnx | 0 | 5 | 76% |
 | [CsoundBox.kt](../src/jvmMain/kotlin/afield/audio/synth/CsoundBox.kt) | Synthesis | csound | 0 | 5 | 82% |

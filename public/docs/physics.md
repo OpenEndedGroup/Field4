@@ -799,6 +799,183 @@ that a sheet has begun to vibrate before it becomes visible as motion.
 
 ---
 
+## A slinky on an up escalator
+
+A slinky can walk down an escalator that is moving up, step after step, and stay where it is. The
+scene below is a [`SlinkyOnStairs`](reference/simulation.md#slinky-kt-slinkyonstairs): a 40-coil
+[`Slinky`](reference/simulation.md#slinky-kt-slinky) standing on a [`StaircaseCollider`](reference/simulation.md#simdverletcolliders-kt-staircasecollider)
+whose treads rise one step every `stepPeriod` seconds. The idea comes from the
+[slinky escalator benchmark](https://morethanamachine.com/posts/slinky-escalator-benchmark/) on More Than a Machine;
+this one is built from the solver on this page. The box gives you sliders for the three numbers
+that matter: the escalator's speed, the step height and the spring constant.
+
+```diffstatic_runner {data-lang=kotlin video="assets/physics/slinky_escalator_walk.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="10" fps="20" timeout="300" w="760" h="720" embed=true name="physics-slinky-walk" alt="a rainbow slinky, drawn side-on as forty coloured coil lines, flips end over end down a flight of grey stairs whose treads are rising toward the upper left; each flip lands it one step lower on the moving stairs, so it stays near the middle of the picture while the caption counts steps walked against steps the escalator has carried up, the two numbers climbing together"}
+:::static
+import afield.simulation.physics.*
+
+// The three things worth turning: the escalator's speed, as seconds per step; the step height;
+// and the spring constant between neighbouring coils. Lengths are in coil diameters.
+var stepPeriod = 0.575f
+var rise = 1.5f
+var stiffness = 16000f
+
+fun start() = SlinkyOnStairs(stepPeriod = stepPeriod, rise = rise, stiffness = stiffness)
+var scene = start()
+
+controlGroup("escalator") {
+    slider("seconds per step", min = 0.2, max = 1.5, step = 0.005, initialValue = 0.575) {
+        stepPeriod = it.toFloat()
+        scene.stepPeriod = stepPeriod
+    }
+    slider("step rise", min = 0.8, max = 2.5, step = 0.05, initialValue = 1.5) {
+        rise = it.toFloat()
+        scene.stairs.rise = rise
+    }
+    slider("spring constant", min = 4000.0, max = 30000.0, step = 500.0, initialValue = 16000.0) {
+        stiffness = it.toFloat()
+        scene.slinky.stiffness = stiffness
+    }
+    button("start again") { down -> if (down) scene = start() }
+}
+
+// The loop can come round far more often than 60 times a second; the physics keeps to the clock.
+val clock = System.nanoTime()
+var simulated = 0.0
+loop {
+    val now = (System.nanoTime() - clock) / 1e9
+    var catchUp = 0
+    while (simulated < now && catchUp++ < 4) {
+        scene.step()
+        simulated += 1.0 / 60.0
+    }
+    simulated = maxOf(simulated, now - 0.1)
+
+    // Follow the slinky, so a walk that keeps pace stays put and one that loses it drifts off.
+    val c = scene.slinky.centroid()
+    val behind = scene.stairsTravelled - scene.stepsDescended
+    showPlane(
+        scene.lines(),
+        window = Rect(c.x - 5.0, c.y - 4.0, 10.0, 7.0),
+        width = 720,
+        height = 504,
+        title = "slinky on an up escalator · ${"%.3f".format(scene.stepPeriod)} s per step",
+        caption = "t = ${"%.1f".format(scene.time)} s · walked ${"%.1f".format(scene.stepsDescended)} steps · " +
+            "escalator ${"%.1f".format(scene.stairsTravelled)} · behind by ${"%.1f".format(behind)}",
+    )
+}
+```
+
+At 0.575 s per step the slinky keeps pace. The caption's two counts climb together and the
+"behind" figure stays near zero, which is the walk matching the escalator. Drag the speed slider
+and the walk stops matching.
+
+### What the model holds
+
+A slinky seen side-on is a stack of short lines, one per coil, and that is how `Slinky` stores it:
+two particles per coil, one for each rim, in the same `SimdVerlet` as everything else.
+
+- **Axial stiffness.** Neighbouring rims are joined by two rail springs in `constraints4`, at
+  `stiffness`. Their rest length is shorter than the wire is thick (`preload`), so at rest the
+  coils press together and it takes a pull to open them, as with the real toy.
+- **Coil–coil contact.** A coil cannot come closer to the next than one wire thickness at either
+  rim, measured along its own normal. A shut stack is therefore stiff in bending: bending it would
+  push one side of a coil through its neighbour. An open stretch bends freely.
+- **Coils stay coils.** Each rung is held at the coil diameter, and neighbouring coils are kept on
+  one axis (`alignment`). Touching coils stop dead against each other, so every landing loses
+  the energy it should.
+- **Moving stairs.** A collider can now have a velocity (`setVelocity`, or `stepPeriod` on a
+  staircase). It then moves itself every frame, and friction works relative to the moving
+  surface, so a tread carries what stands on it.
+
+### Why the air matters
+
+An endless escalator moving at a constant speed is no different from still stairs if you ride
+along with it. Gravity, the spring and the friction against the treads all behave the same way
+in that frame. The only force that can tell the two apart is drag against the still air, and it
+is what ties the walk to the escalator. A slinky that falls behind is carried up through the air,
+and the drag pushes it back down the treads. A slinky that gets ahead is slowed. `SlinkyOnStairs`
+sets the drag with `air`, the fraction of its velocity a coil keeps per second against the air.
+The default, 0.01, is heavy. With much less drag the slinky either stops or speeds up step after
+step until it tumbles, and on still stairs, with the same drag and nothing driving it, it stands
+where it was put.
+
+### Too slow, too fast
+
+The same slinky, given the same start, on an escalator that is too slow (the top row) and one that
+is far too fast (the bottom row):
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/physics/slinky_failure_modes.png" wait="3.0" capture="box" open-outputs="true" w="1180" h="560" padding="14" name="physics-slinky-failure-modes"}
+:::static
+import afield.simulation.physics.*
+
+// The same slinky and the same start, on escalators set too slow and too fast.
+fun moments(stepPeriod: Float, times: List<Float>): List<Pair<String, List<FLine>>> {
+    val scene = SlinkyOnStairs(stepPeriod = stepPeriod)
+    return times.map { t ->
+        while (scene.time < t) scene.step()
+        "${"%.3f".format(stepPeriod)} s per step, t = ${"%.2f".format(t)} s" to scene.lines(halfWidth = 4.5f)
+    }
+}
+
+val stall = moments(1.0f, [2.0f, 2.45f, 2.85f, 3.45f])
+val flyOff = moments(0.25f, [0.95f, 1.1f, 2.6f, 2.75f])
+
+showPlaneGrid(*(stall + flyOff).toTypedArray(), columns = 4, cellWidth = 270, cellHeight = 230)
+```
+
+![Eight panels of the rainbow slinky on grey stairs. The top row, at one second per step, shows it upright on a tread, then tipped, then standing again: it stalls between steps and rides the escalator up. The bottom row, at a quarter second per step, shows it thrown into long stretched arcs that leave the treads entirely.](assets/physics/slinky_failure_modes.png)
+
+At 1 s per step the treads move too slowly to keep the walk going. The slinky stalls, standing on
+a tread between steps until the drag tips it over. At 0.25 s per step the treads rise into it so
+fast that it is flung up into long stretched arcs and comes down several steps away.
+
+### The gait
+
+A minute of the matched walk, with the height of the slinky's centre of mass plotted against time:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/physics/slinky_height.png" wait="3.0" capture="box" open-outputs="true" w="1100" h="520" padding="14" name="physics-slinky-height"}
+:::static
+import afield.simulation.physics.*
+
+// A minute of the matched walk, sampled twenty times a second.
+val scene = SlinkyOnStairs()
+val seconds = ArrayList<Double>()
+val height = ArrayList<Double>()
+val landings = ArrayList<Float>()
+var walked = 0
+var frame = 0
+while (scene.time < 60f) {
+    scene.step()
+    if (frame++ % 3 == 0) {
+        seconds += scene.time.toDouble()
+        height += scene.height.toDouble()
+    }
+    // A step is counted when the centre of mass passes the next tread boundary.
+    if (scene.stepsDescended >= walked + 1) {
+        walked++
+        landings += scene.time
+    }
+}
+val gaps = landings.zipWithNext { a, b -> b - a }
+
+showChart(
+    Chart(
+        title = "height of the slinky's centre of mass, matched escalator",
+        xLabel = "seconds",
+        yLabel = "coil diameters",
+        note = "$walked steps walked in 60 s against ${"%.1f".format(scene.stairsTravelled)} carried up · " +
+            "median step ${"%.3f".format(gaps.sorted()[gaps.size / 2])} s",
+    ).line("centre of mass", seconds, height)
+)
+```
+
+![A line chart of the centre of mass's height over sixty seconds. It is a regular sawtooth ripple, one tooth per step, about one coil diameter deep; the ripple stays at the same height for long stretches and jumps up by about one step a few times, where the slinky stumbles and the escalator gains a step on it.](assets/physics/slinky_height.png)
+
+Each tooth of the ripple is one step: the stack rises as it flips over and drops as it lands. A
+flat stretch is the walk keeping pace. Each jump is a stumble, where the escalator gains a step
+before the walk locks on again. The note under the chart gives the step count and the median step
+time, which sits just above the escalator's 0.575 s.
+
 ## Also in the box
 
 `afield.simulation.physics` holds more than the particle solver, and the rest is not covered here:
@@ -816,8 +993,8 @@ that a sheet has begun to vibrate before it becomes visible as motion.
   that is the much plainer PID in `SimdVerlet.addPidPositionController`.
 - **`JoltPhysicsWorld`** and **`Dyn4jScene`** — bridges to a full rigid-body engine, in 3D and 2D
   respectively. Different tool, different problem: `SimdVerlet` has no notion of a rigid body. Its
-  colliders project particles out of shapes rather than resolving two-body contacts, so you can
-  move a collider between frames but nothing the cloth touches is pushed back by it.
+  colliders project particles out of shapes rather than resolving two-body contacts. A collider
+  with a velocity carries what it touches, but nothing it touches pushes back on it.
 - **`SimdVerletDyn4jBridge`** — the two of them talking.
 - **`afield.simulation.physics.pressure`** — a closed triangle mesh relaxed as a pressurized
   membrane, with tethers and supports. [Pressure membranes](pressure_membranes.md) covers it.
@@ -847,6 +1024,8 @@ inside or around a shape.
   starting point.
 - [FLine Examples](fline_examples.md) — `debugLines()` and `cloth.lines()` both return `FLine`s,
   so everything you can do to a line applies to them.
+- [Agent Transcript Gallery](agent_transcripts.md#slinky_escalator) — `slinky_escalator`, the
+  walking slinky with its sliders, as an openable document.
 - [Evolving Creatures](evolving_creatures.md) — bodies of points and springs simulated with
   `SimdVerlet`, which a genetic algorithm breeds to swim on water or crawl along a floor.
 - [Visualizers & Controls](visualizers.md) and [Field's 3D Output](three_output.md) — where
