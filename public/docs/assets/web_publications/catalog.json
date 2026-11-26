@@ -4194,13 +4194,13 @@
     },
     "assets/agent_transcripts/path_tracing_subsurface/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "capturedAt": "2026-11-26T09:17:13.853Z",
+      "capturedAt": "2026-11-26T09:27:45.513Z",
       "channels": 1,
       "file": "assets/web_publications/path_tracing_subsurface/document/metadata.edn",
       "files": {
         "assets/web_publications/path_tracing_subsurface/document/metadata.edn": "24a2325084b15cefb4313b10d466b77d7a25f26d13d54d41f1b364576d2ed852",
-        "assets/web_publications/path_tracing_subsurface/document/outputs.json": "1d4942845c4edaa9c50f71c467e2b4d18c4c8d5ba8d5b5d4bd2f3a741f277616",
-        "assets/web_publications/path_tracing_subsurface/outputs/0.html": "fe28c26aae1916b2e5a1035a9ce818935d10bd92da03cceabe67774989352365"
+        "assets/web_publications/path_tracing_subsurface/document/outputs.json": "23b5c8500caf9eac131586273901d600d58d1f314b7c8ac4d97a42f9c4d64d64",
+        "assets/web_publications/path_tracing_subsurface/outputs/0.html": "0f96029dfaf0d1c7320610390e89c89296e6c800e7870357f0e675da278d7a34"
       },
       "kinds": [
         "native-image"
@@ -4213,7 +4213,7 @@
         "public/docs/assets/agent_transcripts/path_tracing_subsurface/pt_sss_controls_code_.kt": "c2cf2a46b92b4fcc739231b0e8b1029bbe439bcc4d8df63d5ad0cf7cd2e850cd",
         "public/docs/assets/agent_transcripts/path_tracing_subsurface/pt_sss_renderer_code_.kt": "6b0f7454b816542c03e877e6f38f3f42f62087760fcfd61b1713352fa3c0e756",
         "public/docs/assets/agent_transcripts/path_tracing_subsurface/pt_sss_row_code_.kt": "eda8efe2b14e1b4146d690fb1c02caf23fe3ed21bd27bdc66927dd1fb716a7a6",
-        "public/docs/assets/path_tracing/subsurface_remaps.png": "77cff5fa0ef55cff0869f13f428a43938507e0c21dbf9090b90e996ac21ff1e8",
+        "public/docs/assets/path_tracing/subsurface_remaps.png": "0efe6686bf91af3f691d1a70fe89d31ab9de37e382b4502b384bfe8c2d5511a3",
         "public/docs/path_tracing.md#capture-box=pt_sss_row": "2938eaae607be86873240d2e191a379f7594e658346bddd2af83d1254050b2f7"
       },
       "supplementalSources": [

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-26T09:17:13.853Z",
+  "capturedAt": "2026-11-26T09:27:45.513Z",
   "documentName": "path_tracing_subsurface",
   "outputs": [
     {
@@ -8,8 +8,8 @@
       "channel": "Vulkan window · still image",
       "open": true,
       "path": "outputs/0.html",
-      "width": 4112,
-      "height": 2524,
+      "width": 1600,
+      "height": 500,
       "kinds": [
         "native-image"
       ],
