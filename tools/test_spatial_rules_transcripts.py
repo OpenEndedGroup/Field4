@@ -1,9 +1,4 @@
-"""The spatial rules tutorial's code lives on its page; two transcripts carry copies of it.
-
-`spatial_rules_web.yaml` is the starting point a reader opens, holding step 11's code, and
-`docs_capture/spatial_rules_trace.yaml` holds step 10's so a hidden capture can press a strand.
-A copy that drifts from its fence would show readers, or photograph, code the page does not show.
-"""
+"""Keep the spatial rules tutorial, tour, and capture boxes in sync with their runnable fences."""
 
 import re
 import unittest
@@ -32,6 +27,19 @@ def box_code(path: Path, box: str) -> str:
 
 
 class SpatialRulesTranscriptTests(unittest.TestCase):
+    def test_the_tour_matches_its_recorded_examples(self):
+        page = PAGE.read_text()
+        tour = TRANSCRIPTS / "spatial_rules_tour.yaml"
+        for film, box in [("filament", "sr_filament"), ("loom", "sr_loom"), ("thousand", "sr_torus")]:
+            with self.subTest(film=film):
+                match = re.search(
+                    rf'^```diffstatic_runner [^\n]*name="spatial-{film}-film"[^\n]*\n(.*?)^```$',
+                    page,
+                    re.M | re.S,
+                )
+                self.assertIsNotNone(match)
+                self.assertEqual(match.group(1).rstrip(), box_code(tour, box))
+
     def test_the_starting_point_is_step_eleven(self):
         self.assertEqual(step_code("### 11. Make it bigger"), box_code(TRANSCRIPTS / "spatial_rules_web.yaml", "srw_web"))
 

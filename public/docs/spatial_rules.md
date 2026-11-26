@@ -1058,13 +1058,16 @@ to open the canvas guide. Launch each numbered box with ++alt+arrow-up++, and st
 **One filament** alternates between pulling its input tips apart and removing them while they
 are still close. The stitch is born within 100 units and stays alive until the tips are more
 than 120 units apart or either disappears. It remembers the last positions it drew and fades
-that geometry over 0.7 seconds. Try a two-second fade to see consecutive stitches overlap.
+that geometry over 0.7 seconds. Click the live or fading line to see what made it, how old it
+is, and which tips and conditions are still live. Try a two-second fade to make the fading
+line easier to pick.
 It is tutorial steps [2](#2-draw-a-line-between-nearby-seeds) to
 [4](#4-let-a-line-end-in-its-own-time) for a single pair, with the tips made and retracted by a
 source rather than wandering forever.
 
 ```diffstatic_runner {data-lang=kotlin video="assets/spatial_rules/filament.mp4" capture="box" execution="launch" wait-output="true" open-outputs="true" duration="7" fps="20" w="720" h="330" timeout="180" embed=true name="spatial-filament-film" alt="Two points pull apart and leave a fading line, then disappear while still close and leave another fading line."}
 import afield.data.graph.SpatialLifetime.MATCH
+import afield.data.graph.inspectOnClick
 
 val world = SpatialRuleWorld()
 val ink = Vec4(0.8f, 0.92f, 1f, 1f)
@@ -1092,18 +1095,32 @@ world.source("moving tips") {
 }
 
 world.rules("filaments") {
-    onEnter("join tips", points("tip").pairsWithin(100.0, leave = 120.0)) { (a, b) ->
-        edge("filament", a, b, lifetime = MATCH)
+    val close = points("tip").pairsWithin(100.0, leave = 120.0)
+    onEnter("join tips", close, condition = "Both tips are present within the 120-unit release distance") { (a, b) ->
+        val filament = edge("filament", a, b, lifetime = MATCH)
+        fun stroke(ends: List<Vec3>, opacity: Double = 1.0): FLine {
+            return world.inspectOnClick(filament, spatialStroke(ends, ink, width = 2.0, opacity = opacity)) { why ->
+                val phase = if (why.matchLive == true) "Matched" else "Fading"
+                val inputs = why.inputs.joinToString { input ->
+                    val status = if (input.live) "live" else "retracted"
+                    "${input.kind} #${input.id} ($status)"
+                }
+                markdown(
+                    "Why this filament?",
+                    "**$phase** · ${why.ageSeconds.f2} s old\n\n**${why.origin.process}** · $inputs\n\n${why.origin.condition}",
+                )
+            }
+        }
         var ends = [a.pos, b.pos]
         while (match.live) {
             ends = [a.pos, b.pos]
-            draw(spatialStroke(ends, ink, width = 2.0))
+            draw(stroke(ends))
             nextFrame()
         }
 
         val released = now
         while (now - released < 0.7) {
-            draw(spatialStroke(ends, ink, width = 2.0, opacity = 1.0 - (now - released) / 0.7))
+            draw(stroke(ends, opacity = 1.0 - (now - released) / 0.7))
             nextFrame()
         }
     }
@@ -1148,7 +1165,8 @@ rule publishes beads, and another rule weaves the knots. Click a gold knot in Fi
 producing rule, source tips, age, and condition, as [step 10](#10-ask-why-a-strand-is-there)
 traces a strand.
 Try changing `departureFade`, or lower the threshold of the taut-stitch rule to see more
-echoes.
+echoes. The tree ribbons use [`byVariableRibboning`](reference/graphics.md#flinethickening-kt--byvariableribboning)
+to give each bowed centreline a width that tapers to zero at either end.
 
 ```diffstatic_runner {data-lang=kotlin video="assets/spatial_rules/loom.mp4" capture="box" execution="launch" wait-output="true" open-outputs="true" duration="14" fps="24" w="1050" h="475" timeout="360" embed=true name="spatial-loom-film" alt="Three animated formations of curved cyan stitches, gold knot links and violet echoes. Pale fitted ellipses and tapered tree ribbons stretch between the formations as live tips arrive and disappear and old curves fade."}
 import afield.data.graph.SpatialLifetime.MATCH
@@ -1183,28 +1201,15 @@ fun bow(a: Vec3, b: Vec3, offset: Double, ink: Vec4, width: Double, opacity: Dou
     }
 }
 
-// A filled ribbon tapers toward both ends and bows toward its centre.
-fun ribbon(a: Vec3, b: Vec3, width: Double, opacity: Double): FLine {
-    val dx = (b.x - a.x).toDouble()
-    val dy = (b.y - a.y).toDouble()
-    val length = hypot(dx, dy).coerceAtLeast(1.0)
-    val normal = vec(-dy / length, dx / length, 0)
-    fun rim(i: Int, side: Double): Vec3 {
-        val t = i / 24.0
-        val swell = sin(PI * t)
-        val offset = swell * (13.0 + side * width)
-        return vec(a.x + dx * t, a.y + dy * t, 0).add(Vec3(normal).mul(offset.toFloat()))
-    }
-    return FLine().apply {
-        moveTo(a)
-        for (i in 1..24) lineTo(rim(i, 1.0))
-        for (i in 23 downTo 1) lineTo(rim(i, -1.0))
-        close()
-        color = vec(treeInk.x, treeInk.y, treeInk.z, treeInk.w * opacity)
-        filled = true
-        stroked = false
-    }
-}
+// Bow the centreline, then give it a width that tapers to zero at both ends.
+fun ribbon(a: Vec3, b: Vec3, width: Double, opacity: Double): FLine =
+    bow(a, b, 17.0, treeInk, 1.0, opacity)
+        .byVariableRibboning(parameterFromLambda { t, _ -> (2.0 * width * sin(PI * t)).toFloat() }, samples = 24)
+        .apply {
+            color = vec(treeInk.x, treeInk.y, treeInk.z, treeInk.w * opacity)
+            filled = true
+            stroked = false
+        }
 
 world.source("shuttles") {
     val start = now
@@ -2126,7 +2131,8 @@ or remove one with `retract(fact)`. Passing `null` to `set` removes the key. Rea
   `points("tip").near(points("anchor"), enter)` binds ordered roles.
 - `edges("bond").triangles()` binds each triangle that edges of that kind close, ignoring
   their direction, as a `SpatialTriangle` with points `a`, `b`, `c` in ID order and edges
-  `ab`, `bc`, `ca`. Losing any of the three edges ends the match.
+  `ab`, `bc`, `ca`. Each side uses the lowest-ID edge of its kind. If that edge goes, the
+  match ends and a parallel edge can start a new one.
 - `links("rope")` binds each link, a fact a process publishes with `link(kind, ends)` to join any
   number of points. A link stays while any end is published; `attached` lists those that are.
 - `edges("stitch")` binds each individual edge. `.where { ... }` filters a pattern using
@@ -2145,8 +2151,10 @@ or remove one with `retract(fact)`. Passing `null` to `set` removes the key. Rea
 - `computed(identity) { previous -> ... }` makes a pattern from any calculation over this frame's
   facts, and `pairs { previous -> ... }` does the same for unordered pairs of points. Inside,
   `points`, `edges`, `links` and `matches(pattern)` read the frame, and `previous` is what the
-  calculation returned last frame. A value whose facts were bound last frame keeps its process; see
-  [the tree](#a-tree-that-keeps-its-branches).
+  calculation returned last frame, with the first value kept for each identity. A value whose
+  facts were bound last frame keeps its process. [The tree](#a-tree-that-keeps-its-branches)
+  uses `onEnter` to capture the entry value, a pair of live point handles. Use `onMatch` and
+  read `binding.value` each frame when the computed value itself changes.
 - `onEnter(name, pattern, parallel = true)` advances that rule's processes at the same time on
   several threads; see [Run processes in parallel](#run-processes-in-parallel).
 - `whileLive { }` runs its block once a frame while the match holds; `whileLive()` just waits
@@ -2171,11 +2179,49 @@ across, lag)` holds a curve drawn in a bind pose, and `pose(from, to, now)` or `
 turns and stretches it onto live points, scaling it less across than along and letting parts of
 it lag; see [shapes pinned between points](#shapes-pinned-between-points).
 
-To find out why something is there, `world.nearest(at, within)` returns the live point or edge
-closest to a position, `world.lineage(fact)` returns the fact and every live fact it was made
-from, nearest first, and `world.explain(fact)` returns a snapshot of one fact's producer, inputs
-and age. `world.fact(id)` looks a live fact up by its ID. `world.inspectOnClick(fact, line)`
-calls back with that snapshot when the reader clicks the line.
+To find out why something is there, `world.nearest(at, within)` returns the live point, edge
+or link closest to a position. `world.lineage(fact)` walks live ancestry, nearest first.
+`world.explain(fact)` gives you the producer, input kinds and IDs, age, and live status of a
+fact you hold. `world.fact(id)` looks up live facts by ID.
+
+Pass your drawing through `world.inspectOnClick(fact, line) { why -> ... }` to pick the
+actual drawn geometry and get its explanation from the frame it was drawn. Keep the fact
+handle through the fade so you can still inspect the drawing after the match and its
+inputs have gone. [One filament](#follow-two-points-then-fade) uses the same callback in
+both phases.
+
+### Follow a computed value
+
+Each seed has a stable identity. Its speed is a new number each frame. This rule holds one
+process per seed and reads the current speed from `binding.value` to set the width of its
+halo. After the match ends, the binding retains the last matched value.
+
+```diffstatic {data-lang=kotlin}
+val world = SpatialRuleWorld()
+val ink = vec(0.65, 0.88, 1.0, 1.0)
+
+world.source("moving seed") {
+    val seed = point("seed", vec(160, 90, 0))
+    while (true) {
+        move(seed, vec(160 + 105 * sin(age * 2), 90, 0))
+        nextFrame()
+    }
+}
+
+world.rules("speed") {
+    val speed = computed<Pair<SpatialPoint, Double>>(identity = { listOf(it.first) }) {
+        points("seed").map { it to it.velocity.length().toDouble() }
+    }
+    onMatch("show speed", speed) { binding ->
+        whileLive {
+            val (seed, unitsPerSecond) = binding.value
+            draw(spatialDot(seed.pos, 3 + 0.06 * unitsPerSecond, ink))
+        }
+    }
+}
+
+play(world, w = 320.0, h = 180.0)
+```
 
 ### Motion, direction and chance
 
@@ -2239,6 +2285,11 @@ predicates run on the caller’s thread. A custom `SpatialIndexFactory` can supp
 read-only neighbor index. An index used with parallel search must support concurrent queries
 and return each neighbor at most once in deterministic order.
 
+When measuring a piece, use `world.step(time) { timing -> ... }` in your loop to see how much
+wall time goes to commits, index construction, matching, process updates, and collecting the
+lines. Index time is part of matching. FLine construction inside a rule is part of its process
+time. The display call after `step` has its own cost.
+
 Cost depends on how many matches exist as well as how many points there are. A thousand
 widely distributed points can have a few hundred active pairs. A thousand points all inside
 one another’s radius can produce 499,500 unordered pairs, each eligible to start a process.
@@ -2252,12 +2303,11 @@ process does real work every frame, such as the physics of [a rope](#ropes-that-
 [shape pinned between points](#shapes-pinned-between-points); for a process that draws one
 stroke, sharing out the work costs more than it saves.
 
-A parallel process reads the world as it was committed at the start of the step, and what it
-publishes, moves, sets, retracts and draws is held back and applied afterwards in the same order
-the processes would have run in one at a time. So a run with `parallel = true` publishes the same
-facts, with the same IDs, and draws the same lines in the same order, as one without. The one
-difference a process can see is that a fact it has just published reads `id` 0 until the step
-ends.
+A parallel process reads committed facts. Its publications, movements, data changes and
+retractions are applied in task order after the serial processes run. A newly published
+parallel fact reads `id` 0 until then. Switching a rule between serial and parallel execution
+can change the publication IDs assigned across rules. Submitted drawings are collected in
+task order.
 
 What the engine cannot order is the box's own variables. Processes that share a counter or a
 total may now change it at the same moment, and `standing++` on a plain `var` can then lose a

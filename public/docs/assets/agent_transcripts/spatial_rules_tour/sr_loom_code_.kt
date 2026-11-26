@@ -30,28 +30,15 @@ fun bow(a: Vec3, b: Vec3, offset: Double, ink: Vec4, width: Double, opacity: Dou
     }
 }
 
-// A filled ribbon tapers toward both ends and bows toward its centre.
-fun ribbon(a: Vec3, b: Vec3, width: Double, opacity: Double): FLine {
-    val dx = (b.x - a.x).toDouble()
-    val dy = (b.y - a.y).toDouble()
-    val length = hypot(dx, dy).coerceAtLeast(1.0)
-    val normal = vec(-dy / length, dx / length, 0)
-    fun rim(i: Int, side: Double): Vec3 {
-        val t = i / 24.0
-        val swell = sin(PI * t)
-        val offset = swell * (13.0 + side * width)
-        return vec(a.x + dx * t, a.y + dy * t, 0).add(Vec3(normal).mul(offset.toFloat()))
-    }
-    return FLine().apply {
-        moveTo(a)
-        for (i in 1..24) lineTo(rim(i, 1.0))
-        for (i in 23 downTo 1) lineTo(rim(i, -1.0))
-        close()
-        color = vec(treeInk.x, treeInk.y, treeInk.z, treeInk.w * opacity)
-        filled = true
-        stroked = false
-    }
-}
+// Bow the centreline, then give it a width that tapers to zero at both ends.
+fun ribbon(a: Vec3, b: Vec3, width: Double, opacity: Double): FLine =
+    bow(a, b, 17.0, treeInk, 1.0, opacity)
+        .byVariableRibboning(parameterFromLambda { t, _ -> (2.0 * width * sin(PI * t)).toFloat() }, samples = 24)
+        .apply {
+            color = vec(treeInk.x, treeInk.y, treeInk.z, treeInk.w * opacity)
+            filled = true
+            stroked = false
+        }
 
 world.source("shuttles") {
     val start = now

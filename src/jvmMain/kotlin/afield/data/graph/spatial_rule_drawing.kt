@@ -166,7 +166,10 @@ fun Box.play(
     }.end { world.close() }
 }
 
-/** Explain the published fact when the reader clicks its FLine. */
+/**
+ * Explain the fact as it was when this line was drawn. During a fade, keep passing the same fact
+ * handle after it retracts to show its producer, original input kinds and current match status.
+ */
 fun SpatialRuleWorld.inspectOnClick(
     fact: SpatialFact,
     line: FLine,
