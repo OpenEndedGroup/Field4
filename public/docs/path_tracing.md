@@ -649,6 +649,7 @@ skin colour and one radius through every remap, with a plain diffuse ball of the
 the left for comparison. Left to right after it: `NONE`, `VAN_DE_HULST`, `EXP_CUBIC`, `REFERENCE`.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/path_tracing/subsurface_remaps.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="subsurface study converged" embed=true hidden=true timeout="900" name="path-tracing-subsurface" alt="Five spheres on a grey floor under a Venice sunset: a diffuse pink reference ball, then four subsurface spheres of the same requested skin colour. The NONE sphere is a dark brownish red; the other three are pale, translucent and close to the reference colour" macro-file="../../dev_docs/agents/transcripts/path_tracing_subsurface.yaml" capture-box="pt_sss_row"}
+// Built and launched from dev_docs/agents/transcripts/path_tracing_subsurface.yaml.
 ```
 
 `NONE` uses the colour as the single-scattering albedo, and the sphere comes out a dark, saturated
@@ -659,7 +660,7 @@ before it got out, which gives the reflected colour for every single-scattering 
 set of walks. `AlbedoRemap.REFERENCE` inverts that table, and the second chart plots what each
 fit actually reflects minus what it was asked for:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/path_tracing/subsurface_remap_curves.png" capture="box" open-outputs="true" embed=true timeout="300" padding="12" name="path-tracing-subsurface-curves" alt="Two line charts. The first shows the single-scattering albedo each remap asks for against the requested colour: NONE is the diagonal, and the other three rise steeply towards one. The second shows reflected minus requested: VAN_DE_HULST and REFERENCE stay on zero, and EXP_CUBIC falls away below zero above about 0.7"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/path_tracing/subsurface_remap_curves.png" capture="box" open-outputs="true" embed=true timeout="300" padding="12" name="path-tracing-subsurface-curves" alt="Two line charts. The first shows the single-scattering albedo each remap asks for against the requested colour: NONE is the diagonal, and the other three rise steeply towards one. The second shows reflected minus requested: VAN_DE_HULST and REFERENCE stay on zero, and EXP_CUBIC falls away below zero above about 0.78"}
 import afield.graphics.scene.fabricated.*
 
 // The colour asked for, A, from dark to pale.
@@ -686,7 +687,7 @@ display("error", errorChart)
 | --- | --- |
 | `NONE` | A itself. |
 | `VAN_DE_HULST` | The closed-form inversion of van de Hulst's slab albedo from Chiang, Kutz and Burley, *Practical and Controllable Subsurface Scattering for Production Path Tracing* (SIGGRAPH 2016 talk), which Blender's Cycles also uses. In the slab test it lands within 0.006 of the colour at every A from 0.05 to 0.9. |
-| `EXP_CUBIC` | `1 - exp(-5.09406 A + 2.61188 A² - 4.31805 A³)`, an exponential–cubic fit that circulates with Disney's normalized-diffusion work. It agrees up to A ≈ 0.7. Above that it asks for too little scattering, so a pale colour renders darker than asked: 0.874 at A = 0.905. |
+| `EXP_CUBIC` | `1 - exp(-5.09406 A + 2.61188 A² - 4.31805 A³)`, an exponential–cubic fit that circulates with Disney's normalized-diffusion work. It agrees within 0.005 up to A ≈ 0.78. Above that it asks for too little scattering, so a pale colour renders darker than asked: 0.874 at A = 0.905. |
 | `REFERENCE` | Field's own numerical inverse of the slab table. It is exact for that setup, and it takes about a second to build on first use. |
 
 The radius sets the extinction. `NONE` reads it as the mean free path, \( \sigma_t = 1/d \).

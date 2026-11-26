@@ -35,7 +35,7 @@ enum class AlbedoRemap {
 
     /**
      * The exponential–cubic fit `1 - exp(-5.09406 A + 2.61188 A² - 4.31805 A³)` that circulates
-     * with Disney's normalized-diffusion work. It agrees with the others up to A ≈ 0.7 and asks
+     * with Disney's normalized-diffusion work. It agrees with the others up to A ≈ 0.78 and asks
      * for too little scattering above that, so pale colours render darker than asked.
      */
     EXP_CUBIC,
