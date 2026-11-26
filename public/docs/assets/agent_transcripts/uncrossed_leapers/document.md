@@ -520,7 +520,7 @@ markdown(
 <!-- field-box id="ul_big" index="6" -->
 
 ```edn [field-box id="ul_big" role="properties"]
-{"id" "ul_big" "index" 6 "name" "2 - 8×8 and 9×9 against the known optimum" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - 8×8 and 9×9 against the known optimum" "_tombstone" false "frame" #afield/rect [760.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ul_big_code_.kt" "lines" 26 "characters" 1066 "sha256" "d2eb1d77bf2237ad0cf8d02eb18d03ba9eb3ad73282a6edac0af645c9cb088b2"}]}
+{"id" "ul_big" "index" 6 "name" "2 - 8×8 and 9×9 against the known optimum" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - 8×8 and 9×9 against the known optimum" "_tombstone" false "frame" #afield/rect [760.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ul_big_code_.kt" "lines" 28 "characters" 1191 "sha256" "21e50bdd99687bb18c8ac8006de05658f162fc46986fca0e169fb1f9e34f5c14"}]}
 ```
 
 ```kotlin [field-property box="ul_big" name="code" path="ul_big_code_.kt"]
@@ -531,8 +531,10 @@ import kotlin.random.Random
 Past 7×7 a proof takes minutes (35 on 8×8 needs 337 million search steps), so this box uses
 ruin and recreate: cut a random tail off the best path so far and regrow it with a short
 search, 1000 times. It is not a proof, and where it ends depends on the seed, so each board
-gets four seeds; the best is drawn, against the known optimum, 35 and 47.
+gets four seeds; the best is drawn, against the known optimum, 35 and 47. Eight searches hold
+the Runloop for longer than Field's 30 s default, so the box allows itself three minutes.
 */
+watchdog = 180
 val seeds = 1..4
 val cell = 10.0
 var x = 0.0

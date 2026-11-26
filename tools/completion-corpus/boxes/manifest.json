@@ -1380,7 +1380,7 @@
   {"doc": "typography_worked_example", "box": "typo_values", "codeSha256": "877c25a5b6081941", "codeLines": 66, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "typography_worked_example", "box": "typo_winding", "codeSha256": "86169a5bb74f72d3", "codeLines": 51, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "uncrossed_leapers", "box": "ul_arcs", "codeSha256": "6203f1134997e90d", "codeLines": 118, "receivers": ["afield.document.graph.Box"], "preamble": "uncrossed_leapers__ul_arcs.preamble.kt"},
-  {"doc": "uncrossed_leapers", "box": "ul_big", "codeSha256": "789290ece756c327", "codeLines": 26, "receivers": ["afield.document.graph.Box"], "preamble": ""},
+  {"doc": "uncrossed_leapers", "box": "ul_big", "codeSha256": "934070dfcc448ec5", "codeLines": 28, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "uncrossed_leapers", "box": "ul_cycles", "codeSha256": "c4624b068dd2f8b8", "codeLines": 23, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "uncrossed_leapers", "box": "ul_draw", "codeSha256": "5b43c08071268e45", "codeLines": 68, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "uncrossed_leapers", "box": "ul_gallery", "codeSha256": "e8610014b03552df", "codeLines": 33, "receivers": ["afield.document.graph.Box"], "preamble": ""},
