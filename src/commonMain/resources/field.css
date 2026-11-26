@@ -7278,6 +7278,12 @@ html.field-theme-transition::view-transition-new(root) {
     background: var(--field-surface);
     box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
 }
+.output-fullscreen.markingWidgetPanel > header {
+    padding: var(--fp-pad, 8px);
+    min-height: 28px;
+    font-size: var(--fp-title-size, 11px);
+    font-weight: var(--fp-title-weight, 500);
+}
 .output-fullscreen-body { flex: 1 1 auto; min-height: 0; }
 
 .markingWidgetPanel .control-group { width: 100%; max-width: 100%; --field-slider-label-width: 84px; }

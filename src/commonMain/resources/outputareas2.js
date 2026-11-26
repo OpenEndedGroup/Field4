@@ -1383,7 +1383,11 @@ function disclosureInterface(container) {
                 const title = document.createElement("span");
                 title.textContent = d.hdr.querySelector(".title")?.textContent || id;
                 const done = document.createElement("button");
-                done.textContent = "Close (Esc)";
+                done.className = "field-panel-icon";
+                done.type = "button";
+                done.textContent = "\u00d7";
+                done.title = "Close (Esc)";
+                done.setAttribute("aria-label", "Close");
                 header.append(title, done);
                 const body = document.createElement("div");
                 body.className = "markingWidgetBody output-fullscreen-body";
