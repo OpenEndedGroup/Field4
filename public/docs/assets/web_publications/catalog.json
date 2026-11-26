@@ -4671,13 +4671,13 @@
     },
     "assets/agent_transcripts/physics_manifold_path_trace/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "capturedAt": "2026-11-18T15:51:07.580Z",
+      "capturedAt": "2026-11-26T17:19:27.888Z",
       "channels": 1,
       "file": "assets/web_publications/physics_manifold_path_trace/document/metadata.edn",
       "files": {
-        "assets/web_publications/physics_manifold_path_trace/document/metadata.edn": "99b6b56bc36110758c5c5d05c3520b79808ce371a75abe68e42d714d5dafb386",
-        "assets/web_publications/physics_manifold_path_trace/document/outputs.json": "a65e86d4086ab9de9ab2ef156f3a31dfcf1fcb47c855824442d2c875560271eb",
-        "assets/web_publications/physics_manifold_path_trace/outputs/0.html": "666a8c2cbcdd43ff6e42c699c56617bd61247aee870ede3191d40036e008b61f"
+        "assets/web_publications/physics_manifold_path_trace/document/metadata.edn": "9579a14a50df435ec6e9d09ea8a8b3a190dc631a7c649119b35cc9bc9a1132cb",
+        "assets/web_publications/physics_manifold_path_trace/document/outputs.json": "3d7e599903ef1d9308ee8e3a7a2ad8e677ed5bd10e673e2326fe0ffed5b13db0",
+        "assets/web_publications/physics_manifold_path_trace/outputs/0.html": "17128c088460c8294b87907fbce5c35787fdf3fbb332e9230c0d370906102849"
       },
       "kinds": [
         "native-image"
@@ -4689,7 +4689,7 @@
         "public/docs/assets/agent_transcripts/physics_manifold_path_trace/guides/chain_physics_render.md": "05ba4d6264d1630af8cd855ae2b8e5b6dd5619fd7adb6ddb80e2326399731bff",
         "public/docs/assets/agent_transcripts/physics_manifold_path_trace/metadata.edn": "cb900dd499884827cae7383ec438431cc43037bbbfb56e0303800952a63e10c6",
         "public/docs/assets/agent_transcripts/physics_manifold_path_trace/physics_manifold_trace_code_.kt": "5166d7728fab9f545fd66b58a0f87834f295c0c79e98dabe6eb8ac9ec00ed0ca",
-        "public/docs/assets/chain_physics_render/drape.png": "c5e259ff71dbdb8daafa36f3cd0fe1f5035a80e0f5777a1a99b79f3fcbbef485",
+        "public/docs/assets/chain_physics_render/drape.png": "7ade0a24648d1074a0bf5c40f1509375b9fd7a0a0f77bbc910bc9a6bafb99818",
         "public/docs/chain_physics_render.md#capture-box=physics_manifold_trace": "2392c4871598502b8171c3652a21a2f1c71a18feec89426af3c1dd1e16b11b74"
       },
       "supplementalSources": [
