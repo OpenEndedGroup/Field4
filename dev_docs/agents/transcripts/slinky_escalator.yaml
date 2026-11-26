@@ -1,0 +1,89 @@
+name: slinky_escalator
+description: >
+  A rainbow slinky walking end over end down a staircase, on nothing but its own fall, with live
+  sliders for the tread depth, the step rise, the spring constant, the escalator's speed (seconds
+  per step, 0 for still stairs) and the slow-motion factor, and a button to start again.
+  One box: a SlinkyOnStairs (a 40-coil Slinky on a StaircaseCollider inside a SimdVerlet), started
+  by a hand that lifts the top coil over onto the next step, stepped by an explicit `loop { }`
+  that keeps the picture to the wall clock, and drawn with showPlane, so it runs headless and in a
+  live Field the same way.
+
+  On the default stairs the walk settles into a stride of two or three steps a flip and keeps it.
+  At 0.09 s per step the escalator rises at about the slinky's own pace and it stays near where it
+  was let go. Inspired by the More Than a Machine slinky escalator benchmark
+  (https://morethanamachine.com/posts/slinky-escalator-benchmark/).
+
+  Replayed end to end in CI: launch, run 90 real runloop frames, stop.
+docs:
+  - page: physics.md
+    why: "The slinky section shows the walk, one flip frame by frame, the one-step gait that runs out, and the escalator."
+operations:
+  - create:
+      box: slinky_walk
+      name: a slinky walking down stairs
+      frame: { x: 80.0, y: 80.0, w: 360.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.simulation.physics.*
+
+          // Lengths are in coil diameters. The slow-motion factor changes only how fast the picture runs.
+          var run = 1.5f
+          var rise = 1.1f
+          var stiffness = 32000f
+          var stepPeriod = 0f
+          var slowMotion = 5
+
+          fun start() = SlinkyOnStairs(run = run, rise = rise, stiffness = stiffness, stepPeriod = stepPeriod)
+          var scene = start()
+
+          controlGroup("slinky") {
+              slider("tread depth", min = 1.2, max = 2.6, step = 0.05, initialValue = 1.5) {
+                  run = it.toFloat()
+                  scene = start()
+              }
+              slider("step rise", min = 0.6, max = 3.0, step = 0.05, initialValue = 1.1) {
+                  rise = it.toFloat()
+                  scene = start()
+              }
+              slider("spring constant", min = 8000.0, max = 48000.0, step = 1000.0, initialValue = 32000.0) {
+                  stiffness = it.toFloat()
+                  scene = start()
+              }
+              // The escalator: 0 is still stairs; about 0.09 matches the default walk.
+              slider("seconds per step", min = 0.0, max = 0.3, step = 0.005, initialValue = 0.0) {
+                  stepPeriod = it.toFloat()
+                  scene = start()
+              }
+              slider("slow motion", min = 1.0, max = 10.0, step = 1.0, initialValue = 5.0) { slowMotion = it.toInt() }
+              button("start again") { down -> if (down) scene = start() }
+          }
+
+          // One frame of the picture every sixtieth of a second, each a slowMotion-th of a sixtieth of the walk.
+          val clock = AnimationClock.nowSeconds()
+          var shown = 0.0
+          loop {
+              val now = AnimationClock.nowSeconds() - clock
+              var catchUp = 0
+              while (shown < now && catchUp++ < 4) {
+                  scene.step(1f / 60f / slowMotion)
+                  shown += 1.0 / 60.0
+              }
+              shown = maxOf(shown, now - 0.1)
+
+              val c = scene.slinky.centroid()
+              val carried = scene.stairsTravelled - scene.stepsDescended
+              showPlane(
+                  scene.lines(),
+                  window = Rect(c.x - 5.0, c.y - 3.5, 10.0, 7.0),
+                  width = 720,
+                  height = 504,
+                  title = "a slinky walking down stairs · 1/$slowMotion speed",
+                  caption =
+                      "t = ${scene.time.f2} s · ${scene.flips} flips · ${scene.stepsDescended.f1} steps down" +
+                          (if (scene.stepPeriod > 0f) " · carried up ${carried.f1}" else ""),
+              )
+          }
+  - launch: { box: slinky_walk, property: code }
+  - await: { wait: pending }
+  - wait: { frames: 90 }
+  - stop: { box: slinky_walk }

@@ -710,6 +710,18 @@ run to completion, so CI launches it, advances 90 runloop frames, and stops it.
 
 [Open →](offline.html?file=assets/agent_transcripts/cloth_simdverlet_start/metadata.edn)
 
+### slinky_escalator
+
+**A slinky walking down stairs.** A [`SlinkyOnStairs`](reference/simulation.md#slinky-kt-slinkyonstairs)
+in one `loop { }` box: forty rainbow coils that a hand starts over the top step, then walk end
+over end down the flight on their own, shown at a fifth of their speed. Sliders set the tread
+depth, the step rise, the spring constant, an escalator's speed and the slow motion; a button
+starts it again. Set the escalator near 0.09 s per step and the slinky walks down it about as
+fast as it rises.
+[A slinky walking down stairs](physics.md#a-slinky-walking-down-stairs) explains the model.
+
+[Open →](offline.html?file=assets/agent_transcripts/slinky_escalator/metadata.edn)
+
 ### simdverlet_world
 
 The world the cloth above hangs in: colliders, tearing and wind, plus a rope
