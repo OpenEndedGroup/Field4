@@ -1,7 +1,7 @@
 ---
 name: weekly-changelog
 title: Weekly What's New
-summary: Writes the week's entries for the public What's New page from main's landings, checks them, and sends them through the landing queue.
+summary: Writes the week's entries for the public What's New page from main's landings, refreshes the lines-of-code graph on the reference index, checks them, and sends them through the landing queue.
 kind: agent
 schedule: 30 21 * * 0
 runtime-hours: 1
@@ -42,19 +42,24 @@ format, the rules `check` enforces, what goes in and what is left out; follow it
    the page itself.
 5. `python3 tools/docs_changelog.py check` must report 0 faults, and
    `python3 -m unittest tools.test_docs_changelog` must pass. Fix and re-run until both are clean.
-6. Commit only `public/docs/changelog.md`, with the message
-   `docs(changelog): What's New through <date of newest landing>`. Never use `--no-verify`; the
+6. Refresh the lines-of-code graph at the top of "What's already in the box"
+   (`public/docs/reference/index.md`): `python3 tools/loc_chart.py --docs`. It walks the whole
+   history (over ten minutes, so run it as a background command) and rewrites `public/docs/assets/loc/loc_hero.html`; the lander
+   regenerates the reference index that inlines it. If it fails, report the error and carry on
+   without it.
+7. Commit only `public/docs/changelog.md` and `public/docs/assets/loc/loc_hero.html`, with the
+   message `docs(changelog): What's New through <date of newest landing>`. Never use `--no-verify`; the
    hooks only report.
-7. Enqueue it: `uv run python tools/land.py enqueue` (from the worktree, on the new branch). Do not
+8. Enqueue it: `uv run python tools/land.py enqueue` (from the worktree, on the new branch). Do not
    push, merge or pass `--push`. Run the `uv run python tools/land.py wait <id>` it prints as a
    background command and wait for its exit (0 landed, 1 bounced). On a bounce, read the reason from
    `tools/land.py mine`. If the fix is in the changelog page, fix it, commit and enqueue once more.
    Otherwise report the reason and stop.
-8. Report how many landings and entries you covered, the date range, the headlines of the new
+9. Report how many landings and entries you covered, the date range, the headlines of the new
    entries, and whether it landed.
 
 Do not spawn sub-agents. Do not run Gradle, `field.sh` or a docs build: the page's dates, commit
 links and pictures are added at docs-build time by `docs_changelog.render`, and you write plain
-Markdown. Do not edit any file other than `public/docs/changelog.md`. Do not invent pictures; if a
+Markdown. Do not edit any file other than `public/docs/changelog.md` and the graph `loc_chart.py --docs` writes. Do not invent pictures; if a
 picture is wrong, use `<!-- changelog-image: none -->` or point it at an existing asset, as the
 guide says. Do not delete worktrees or branches you did not create in this run.
