@@ -5400,24 +5400,24 @@
     },
     "assets/agent_transcripts/slinky_escalator/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "capturedAt": "2026-11-26T08:23:31.692Z",
+      "capturedAt": "2026-11-26T16:20:27.380Z",
       "channels": 2,
       "file": "assets/web_publications/slinky_escalator/document/metadata.edn",
       "files": {
-        "assets/web_publications/slinky_escalator/document/metadata.edn": "fcf59c578393eb41576ebba446f2d268cfada6b0f4b2d0a96e22b9e0a82cac0b",
-        "assets/web_publications/slinky_escalator/document/outputs.json": "2033968f4cada83ee2e3b91543940ea4055822ed9427ee949bb5b0dfacd93aac",
-        "assets/web_publications/slinky_escalator/outputs/0.html": "85a483b80b7bbe01a121b7502d90aaa3cb6fd3c3bf32e26dc575356eda856c57",
-        "assets/web_publications/slinky_escalator/outputs/1.html": "ab58c40cfee6cad2b3bbcdeea5ef28ee342f9caa942402303890b2f5371c8f94"
+        "assets/web_publications/slinky_escalator/document/metadata.edn": "af2f74966908e247919fd3c1a4ac022503104be909b0b81357447e8d8cdcd209",
+        "assets/web_publications/slinky_escalator/document/outputs.json": "224e8dec5a652abb69d9be6a86fbe47a5a16c8ed9a9430e464f9f76a2cbcc4ff",
+        "assets/web_publications/slinky_escalator/outputs/0.html": "978236d0766d185eb69d63f8ddb766dbafac0a57c1885615adf01cf9d4e1bc6f",
+        "assets/web_publications/slinky_escalator/outputs/1.html": "a39a29d065426adc9e02ab65954efb577b1b249f2995b9e8e9a120dcf078c1a6"
       },
       "kinds": [
         "svg"
       ],
       "outputs": "assets/web_publications/slinky_escalator/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/slinky_escalator.yaml": "7eed9c1eb7c439263b85215147b2bdefd21b814bc0da71ed3ec4633ae1ea128a",
-        "public/docs/assets/agent_transcripts/slinky_escalator/guides/physics.md": "c6c6ff287ab6fc8f2d0be48a18ae8c0c671a4d55597f99eb5f5fa882ba9a4948",
-        "public/docs/assets/agent_transcripts/slinky_escalator/metadata.edn": "b1f7416b9898b57650a33d99f9c7a1a6305b6190c776df0fadc240f72db7e53d",
-        "public/docs/assets/agent_transcripts/slinky_escalator/slinky_walk_code_.kt": "3c1f7bcc7f6c56fd7716aa95026d8330c53527c7d19a46be2ce32c4621d9457f"
+        "dev_docs/agents/transcripts/slinky_escalator.yaml": "d462aea25c975adff45469bdb3a5cba6ee6e4952617c1ec2f9328346915dbd07",
+        "public/docs/assets/agent_transcripts/slinky_escalator/guides/physics.md": "6e3ae39f74b5a2f53f0610919641e6ce1d9c255e577c8ef45c27a0d8e137311a",
+        "public/docs/assets/agent_transcripts/slinky_escalator/metadata.edn": "8ace8144dfa4aedee174484f7cd054c7e89ee8e496c23453031b4627dbf62d35",
+        "public/docs/assets/agent_transcripts/slinky_escalator/slinky_walk_code_.kt": "ea37d8b9a37e87122c1eb6e9edda8d3d1df819b92afd5340d3612741dfa7071b"
       }
     },
     "assets/agent_transcripts/smpte_timecode/metadata.edn": {

@@ -1,18 +1,18 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-26T08:23:31.692Z",
+  "capturedAt": "2026-11-26T16:20:27.380Z",
   "documentName": "slinky_escalator",
   "outputs": [
     {
       "uid": "slinky_walk",
-      "channel": "escalator",
+      "channel": "slinky",
       "open": true,
       "warnings": [],
       "kinds": [
         "svg"
       ],
       "width": 536,
-      "height": 198,
+      "height": 298,
       "path": "outputs/0.html"
     },
     {
