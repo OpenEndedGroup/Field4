@@ -45,3 +45,5 @@ The tools come from [`exposeOutputIframeTools`](reference/ai4.md#outputiframeait
 ## See also
 
 For the tools available to AI4 and how to open them, see [AI features](aiFeatures.md).
+[A Web Page in a Box](web.md) shows any site in a box with `web()`, and the same handle, from
+your own code: JavaScript in the page, and the page's layout as FLines.
