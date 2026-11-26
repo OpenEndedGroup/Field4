@@ -329,7 +329,7 @@ operations:
 
           showPlaneGrid(
               "cut pattern (closed)" to drawFrame(frames.first()),
-              "halfway\ntile strain up to ${"%.1f".format(100 * strain)}%" to drawFrame(frames[steps / 2]),
+              "halfway\ntile strain up to ${(100 * strain).f1}%" to drawFrame(frames[steps / 2]),
               "opened, on the target\nconstraint residual ${"%.0e".format(worst)}" to drawFrame(frames.last()) + targetLine(),
               channel = "stages",
               columns = 3,
