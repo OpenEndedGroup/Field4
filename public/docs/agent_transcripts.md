@@ -1933,6 +1933,21 @@ a breathing torus whose threads appear and fade as their 3D neighbourhoods chang
 
 [Open →](offline.html?file=assets/agent_transcripts/spatial_rules_tour/metadata.edn)
 
+### spatial_rules_web
+
+**The finished web from the [spatial rules tutorial](spatial_rules.md#build-a-web-one-rule-at-a-time).**
+Thirty seeds drift across the drawing. Seeds that come close bond, each bond grows a row of
+amber beads, and beads on different bonds spin a blue web between them. When a bond breaks, its
+beads fall, trailing zig-zag curtains of web, and every triangle of bonds fills with a membrane.
+Six rule groups make it, each reading only what another publishes. Press near a strand to light up
+the beads, bond and seeds it came from.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/spatial_rules_web.png" capture="box" open-outputs="true" embed=true hidden=true timeout="300" padding="12" name="gallery-spatial-rules-web" alt="The web after six seconds: drifting seeds joined by bonds full of amber beads, blue lace filling the angles where bonds meet, translucent blue triangles, and beads falling from broken bonds; a Counts panel below." macro-file="../../dev_docs/agents/transcripts/spatial_rules_web.yaml" capture-box="srw_web"}
+// The transcript builds the web, runs it for six seconds and stops it; this is what it drew last.
+```
+
+[Open →](offline.html?file=assets/agent_transcripts/spatial_rules_web/metadata.edn)
+
 ### autodiff_worked_example
 
 Field's **automatic-differentiation layer** as five independent

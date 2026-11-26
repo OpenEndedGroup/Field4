@@ -453,6 +453,8 @@ object DemoTranscriptExecSmokeTest {
         "dynamic_graph_systems_examples",
         // CPU spatial rules, three animated SVG outputs and a canvas slideshow.
         "spatial_rules_tour",
+        // The spatial rules tutorial's finished web: one CPU box with an animated SVG output.
+        "spatial_rules_web",
         // Five independent pure-CPU automatic-differentiation boxes; plot, showSignals and
         // showPlaneGrid all end in display(), so no AWT, no GPU and nothing to launch.
         "autodiff_worked_example",

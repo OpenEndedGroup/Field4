@@ -94,3 +94,18 @@ fun Box.play(
         }
     }.end { world.close() }
 }
+
+/** Explain the published fact when the reader clicks its FLine. */
+fun SpatialRuleWorld.inspectOnClick(
+    fact: SpatialFact,
+    line: FLine,
+    show: (SpatialExplanation) -> Unit,
+): FLine {
+    val snapshot = explain(fact) ?: return line
+    val label = "spatial-fact-${fact.id}"
+    line.label = label
+    line.pickDetail = false
+    // Reuse the output's callback slots. A click from an older frame can arrive after a slot changes hands.
+    line.onClick = { hit -> if (hit.label == label) show(snapshot) }
+    return line
+}

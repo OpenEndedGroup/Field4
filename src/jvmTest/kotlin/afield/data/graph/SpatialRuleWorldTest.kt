@@ -1,6 +1,8 @@
 package afield.data.graph
 
 import afield.geometry.path.FLine
+import afield.graphics.render.label
+import afield.graphics.render.onClick
 import afield.math.linalg.Vec3
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -273,6 +275,159 @@ class SpatialRuleWorldTest {
             assertEquals("bond", world.nearest(Vec3(2f, 0.5f, 0f), within = 1.0)?.kind)
             assertEquals(null, world.nearest(Vec3(2f, 5f, 0f), within = 1.0))
             assertEquals(bead, world.fact(bead.id))
+        }
+    }
+
+    @Test
+    fun aLinkLastsUntilItsLastEndGoes() {
+        SpatialRuleWorld().use { world ->
+            var drop = 0
+            world.source("anchors") {
+                val anchors = List(3) { point("anchor", Vec3(it.toFloat(), 0f, 0f)) }
+                link("rope", anchors)
+                var released = 0
+                for (i in listOf(1, 0, 2)) {
+                    while (drop == released) nextFrame()
+                    released++
+                    retract(anchors[i])
+                }
+                while (true) nextFrame()
+            }
+            val attached = mutableListOf<Int>()
+            var ended = false
+            world.rules("ropes") {
+                onEnter("hang", links("rope")) { rope ->
+                    whileLive { attached += rope.attached.size }
+                    ended = true
+                }
+            }
+            repeat(3) { world.step(it.toDouble()) }
+            assertEquals(3, world.links("rope").single().attached.size)
+            for (step in 1..3) {
+                drop = step
+                repeat(3) { world.step(2.0 + step * 3 + it) }
+            }
+            assertTrue(world.links("rope").isEmpty())
+            assertTrue(ended)
+            assertEquals(listOf(3, 2, 1), attached.distinct())
+        }
+    }
+
+    @Test
+    fun pointsCarryTheirVelocity() {
+        SpatialRuleWorld().use { world ->
+            lateinit var walker: SpatialPoint
+            lateinit var sitter: SpatialPoint
+            world.source("walk") {
+                walker = point("tip", Vec3())
+                sitter = point("tip", Vec3(5f, 0f, 0f))
+                var x = 0f
+                while (true) {
+                    nextFrame()
+                    x += 2f
+                    move(walker, Vec3(x, 0f, 0f))
+                }
+            }
+            world.step(0.0)
+            world.step(0.5)
+            assertEquals(Vec3(), walker.velocity)
+            world.step(1.0)
+            world.step(1.5)
+            assertEquals(Vec3(4f, 0f, 0f), walker.velocity)
+            assertEquals(Vec3(), sitter.velocity)
+        }
+    }
+
+    @Test
+    fun chanceDecidesOncePerBinding() {
+        SpatialRuleWorld().use { world ->
+            var apart = false
+            world.source("cloud") {
+                val tips = List(40) { point("tip", Vec3(it * 0.02f, 0f, 0f)) }
+                while (true) {
+                    tips.forEachIndexed { i, tip -> move(tip, Vec3(i * if (apart) 10f else 0.02f, 0f, 0f)) }
+                    nextFrame()
+                }
+            }
+            val kept = mutableListOf<Set<List<Long>>>()
+            world.rules("coin") {
+                val heads = points("tip").pairsWithin(1.0).chance(0.5)
+                onEnter("count", heads) { _ -> whileLive() }
+            }
+            fun matched(): Set<List<Long>> {
+                val now = mutableSetOf<List<Long>>()
+                world.rules("probe") {
+                    onEnter("probe", points("tip").pairsWithin(1.0).chance(0.5)) { (a, b) -> now += listOf(a.id, b.id) }
+                }
+                world.step(world.now + 1)
+                world.step(world.now + 1)
+                return now
+            }
+            world.step(0.0)
+            world.step(1.0)
+            kept += matched()
+            apart = true
+            world.step(world.now + 1)
+            apart = false
+            world.step(world.now + 1)
+            kept += matched()
+            assertTrue(kept[0].size in 300..480, "about half of 780 pairs, got ${kept[0].size}")
+            assertEquals(kept[0], kept[1])
+        }
+    }
+
+    @Test
+    fun aComputedTreeKeepsTheProcessesOfEdgesItKeeps() {
+        SpatialRuleWorld().use { world ->
+            var spread = 1f
+            world.source("seeds") {
+                val seeds = List(4) { point("seed", Vec3(it.toFloat(), 0f, 0f)) }
+                while (true) {
+                    seeds.forEachIndexed { i, s -> move(s, Vec3(if (i == 3) 3f * spread else i.toFloat(), 0f, 0f)) }
+                    nextFrame()
+                }
+            }
+            val started = mutableListOf<List<Long>>()
+            val ended = mutableListOf<List<Long>>()
+            world.rules("tree") {
+                val tree = pairs { _ ->
+                    val seeds = points("seed")
+                    val candidates = buildList {
+                        for (i in seeds.indices) for (j in i + 1 until seeds.size) add(GraphEdge(i, j, seeds[i].distance(seeds[j])))
+                    }
+                    minimumSpanningForest(seeds.size, candidates).map { seeds[it.i] to seeds[it.j] }
+                }
+                onEnter("branch", tree) { (a, b) ->
+                    started += listOf(a.id, b.id)
+                    whileLive()
+                    ended += listOf(a.id, b.id)
+                }
+            }
+            repeat(3) { world.step(it.toDouble()) }
+            assertEquals(listOf(listOf(1L, 2L), listOf(2L, 3L), listOf(3L, 4L)), started.sortedBy { it[0] })
+            spread = -1f
+            repeat(3) { world.step(3.0 + it) }
+            assertEquals(listOf(listOf(3L, 4L)), ended)
+            assertEquals(listOf(1L, 4L), started.last())
+            assertEquals(4, started.size)
+        }
+    }
+
+    @Test
+    fun aClickedLineExplainsItsFact() {
+        SpatialRuleWorld().use { world ->
+            lateinit var tip: SpatialPoint
+            world.source("tips") {
+                tip = point("tip", Vec3())
+                while (true) nextFrame()
+            }
+            world.step(0.0)
+            world.step(1.0)
+            var shown: SpatialExplanation? = null
+            val line = world.inspectOnClick(tip, FLine()) { shown = it }
+            assertEquals("spatial-fact-${tip.id}", line.label)
+            assertNotNull(line.onClick)
+            assertEquals(null, shown)
         }
     }
 }
