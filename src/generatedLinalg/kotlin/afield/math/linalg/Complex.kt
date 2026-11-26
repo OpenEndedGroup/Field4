@@ -278,7 +278,7 @@ class ComplexdSlerp internal constructor(private val from: Complexd, private val
     /** The number [t] of the way round the arc from the left-hand one to [b]: angle the short way, magnitude linearly. */
     infix fun to(b: Complexd): Complexd {
         var d = b.arg - from.arg
-        if (d > kotlin.math.PI) d -= (2 * kotlin.math.PI).toDouble() else if (d < -kotlin.math.PI) d += (2 * kotlin.math.PI).toDouble()
+        if (d > kotlin.math.PI) d -= (2 * kotlin.math.PI) else if (d < -kotlin.math.PI) d += (2 * kotlin.math.PI)
         return Complexd.polar(from.abs + (b.abs - from.abs) * t, from.arg + d * t)
     }
 }

@@ -178,9 +178,9 @@ class KotlinEmitter(
         appendLine("/** The unit direction from this point to [b], `(b - a).n`. Coincident points give zero. */")
         appendLine("infix fun $r.towards(b: $r): $h = (b - this).n")
         appendLine("/** Starts `a smooth t to b`: `lerp` with [t] passed through smoothstep, so the move eases in and out. [t] is clamped to 0..1. */")
-        appendLine("infix fun $r.smooth(t: Number): ${h}Lerp = ${h}Lerp(this, t.toDouble().coerceIn(0.0, 1.0).let { it * it * (3 - 2 * it) }.$conv())")
+        appendLine("infix fun $r.smooth(t: Number): ${h}Lerp = ${h}Lerp(this, t.toDouble().coerceIn(0.0, 1.0).let { it * it * (3 - 2 * it) }${fromDouble(conv)})")
         appendLine("/** Starts `a ease (t to curve) to b`: `lerp` with [t] passed through any easing curve, such as one from [Ease]. */")
-        appendLine("infix fun $r.ease(t: Pair<Number, (Double) -> Double>): ${h}Lerp = ${h}Lerp(this, t.second(t.first.toDouble()).$conv())")
+        appendLine("infix fun $r.ease(t: Pair<Number, (Double) -> Double>): ${h}Lerp = ${h}Lerp(this, t.second(t.first.toDouble())${fromDouble(conv)})")
         // The runloop form `a damp k to b` is hand-written in linalg.kt, because it reads the host's frame
         // clock, which the generator's configurable packages do not name.
         appendLine("/**")
@@ -188,7 +188,7 @@ class KotlinEmitter(
         appendLine(" * so repeated calls close the same fraction per second whatever the step. `a damp k to b` uses")
         appendLine(" * the runloop's frame time for [dt].")
         appendLine(" */")
-        appendLine("fun $r.damp(k: Number, dt: Number): ${h}Lerp = ${h}Lerp(this, (1.0 - kotlin.math.exp(-k.toDouble() * dt.toDouble())).$conv())")
+        appendLine("fun $r.damp(k: Number, dt: Number): ${h}Lerp = ${h}Lerp(this, (1.0 - kotlin.math.exp(-k.toDouble() * dt.toDouble()))${fromDouble(conv)})")
         appendLine("/** At most [max] long, keeping direction; a shorter vector is copied unchanged. */")
         appendLine("infix fun $r.limit(max: Number): $h = max.$conv().let { m -> val l = length(); if (l > m && l > 0) $h(this).mul(m / l) else $h(this) }")
         appendLine("/** Each component rounded to the nearest multiple of [step]. */")
@@ -516,7 +516,7 @@ class KotlinEmitter(
             appendLine("    /** The number [t] of the way round the arc from the left-hand one to [b]: angle the short way, magnitude linearly. */")
             appendLine("    infix fun to(b: $c): $c {")
             appendLine("        var d = b.arg - from.arg")
-            appendLine("        if (d > kotlin.math.PI) d -= (2 * kotlin.math.PI).$conv() else if (d < -kotlin.math.PI) d += (2 * kotlin.math.PI).$conv()")
+            appendLine("        if (d > kotlin.math.PI) d -= (2 * kotlin.math.PI)${fromDouble(conv)} else if (d < -kotlin.math.PI) d += (2 * kotlin.math.PI)${fromDouble(conv)}")
             appendLine("        return $c.polar(from.abs + (b.abs - from.abs) * t, from.arg + d * t)")
             appendLine("    }")
             appendLine("}")
@@ -1850,3 +1850,6 @@ class KotlinEmitter(
         return operation.documentation.copy(parameters = operation.documentation.parameters.filterKeys { it in names })
     }
 }
+
+/** The call that turns a `Double` expression into the scalar whose conversion is [conv]; nothing when it already is one. */
+private fun fromDouble(conv: String): String = if (conv == "toDouble") "" else ".$conv()"

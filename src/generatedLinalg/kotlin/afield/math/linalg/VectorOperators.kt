@@ -406,15 +406,15 @@ infix fun Vector2dc.mid(b: Vector2dc): Vector2d = Vector2d(this).add(b).mul(0.5)
 /** The unit direction from this point to [b], `(b - a).n`. Coincident points give zero. */
 infix fun Vector2dc.towards(b: Vector2dc): Vector2d = (b - this).n
 /** Starts `a smooth t to b`: `lerp` with [t] passed through smoothstep, so the move eases in and out. [t] is clamped to 0..1. */
-infix fun Vector2dc.smooth(t: Number): Vector2dLerp = Vector2dLerp(this, t.toDouble().coerceIn(0.0, 1.0).let { it * it * (3 - 2 * it) }.toDouble())
+infix fun Vector2dc.smooth(t: Number): Vector2dLerp = Vector2dLerp(this, t.toDouble().coerceIn(0.0, 1.0).let { it * it * (3 - 2 * it) })
 /** Starts `a ease (t to curve) to b`: `lerp` with [t] passed through any easing curve, such as one from [Ease]. */
-infix fun Vector2dc.ease(t: Pair<Number, (Double) -> Double>): Vector2dLerp = Vector2dLerp(this, t.second(t.first.toDouble()).toDouble())
+infix fun Vector2dc.ease(t: Pair<Number, (Double) -> Double>): Vector2dLerp = Vector2dLerp(this, t.second(t.first.toDouble()))
 /**
  * Starts `a.damp(k, dt) to b`: moves `1 − e^(−k·dt)` of the gap for a time step of [dt] seconds,
  * so repeated calls close the same fraction per second whatever the step. `a damp k to b` uses
  * the runloop's frame time for [dt].
  */
-fun Vector2dc.damp(k: Number, dt: Number): Vector2dLerp = Vector2dLerp(this, (1.0 - kotlin.math.exp(-k.toDouble() * dt.toDouble())).toDouble())
+fun Vector2dc.damp(k: Number, dt: Number): Vector2dLerp = Vector2dLerp(this, (1.0 - kotlin.math.exp(-k.toDouble() * dt.toDouble())))
 /** At most [max] long, keeping direction; a shorter vector is copied unchanged. */
 infix fun Vector2dc.limit(max: Number): Vector2d = max.toDouble().let { m -> val l = length(); if (l > m && l > 0) Vector2d(this).mul(m / l) else Vector2d(this) }
 /** Each component rounded to the nearest multiple of [step]. */
@@ -466,15 +466,15 @@ infix fun Vector3dc.mid(b: Vector3dc): Vector3d = Vector3d(this).add(b).mul(0.5)
 /** The unit direction from this point to [b], `(b - a).n`. Coincident points give zero. */
 infix fun Vector3dc.towards(b: Vector3dc): Vector3d = (b - this).n
 /** Starts `a smooth t to b`: `lerp` with [t] passed through smoothstep, so the move eases in and out. [t] is clamped to 0..1. */
-infix fun Vector3dc.smooth(t: Number): Vector3dLerp = Vector3dLerp(this, t.toDouble().coerceIn(0.0, 1.0).let { it * it * (3 - 2 * it) }.toDouble())
+infix fun Vector3dc.smooth(t: Number): Vector3dLerp = Vector3dLerp(this, t.toDouble().coerceIn(0.0, 1.0).let { it * it * (3 - 2 * it) })
 /** Starts `a ease (t to curve) to b`: `lerp` with [t] passed through any easing curve, such as one from [Ease]. */
-infix fun Vector3dc.ease(t: Pair<Number, (Double) -> Double>): Vector3dLerp = Vector3dLerp(this, t.second(t.first.toDouble()).toDouble())
+infix fun Vector3dc.ease(t: Pair<Number, (Double) -> Double>): Vector3dLerp = Vector3dLerp(this, t.second(t.first.toDouble()))
 /**
  * Starts `a.damp(k, dt) to b`: moves `1 − e^(−k·dt)` of the gap for a time step of [dt] seconds,
  * so repeated calls close the same fraction per second whatever the step. `a damp k to b` uses
  * the runloop's frame time for [dt].
  */
-fun Vector3dc.damp(k: Number, dt: Number): Vector3dLerp = Vector3dLerp(this, (1.0 - kotlin.math.exp(-k.toDouble() * dt.toDouble())).toDouble())
+fun Vector3dc.damp(k: Number, dt: Number): Vector3dLerp = Vector3dLerp(this, (1.0 - kotlin.math.exp(-k.toDouble() * dt.toDouble())))
 /** At most [max] long, keeping direction; a shorter vector is copied unchanged. */
 infix fun Vector3dc.limit(max: Number): Vector3d = max.toDouble().let { m -> val l = length(); if (l > m && l > 0) Vector3d(this).mul(m / l) else Vector3d(this) }
 /** Each component rounded to the nearest multiple of [step]. */
@@ -530,15 +530,15 @@ infix fun Vector4dc.mid(b: Vector4dc): Vector4d = Vector4d(this).add(b).mul(0.5)
 /** The unit direction from this point to [b], `(b - a).n`. Coincident points give zero. */
 infix fun Vector4dc.towards(b: Vector4dc): Vector4d = (b - this).n
 /** Starts `a smooth t to b`: `lerp` with [t] passed through smoothstep, so the move eases in and out. [t] is clamped to 0..1. */
-infix fun Vector4dc.smooth(t: Number): Vector4dLerp = Vector4dLerp(this, t.toDouble().coerceIn(0.0, 1.0).let { it * it * (3 - 2 * it) }.toDouble())
+infix fun Vector4dc.smooth(t: Number): Vector4dLerp = Vector4dLerp(this, t.toDouble().coerceIn(0.0, 1.0).let { it * it * (3 - 2 * it) })
 /** Starts `a ease (t to curve) to b`: `lerp` with [t] passed through any easing curve, such as one from [Ease]. */
-infix fun Vector4dc.ease(t: Pair<Number, (Double) -> Double>): Vector4dLerp = Vector4dLerp(this, t.second(t.first.toDouble()).toDouble())
+infix fun Vector4dc.ease(t: Pair<Number, (Double) -> Double>): Vector4dLerp = Vector4dLerp(this, t.second(t.first.toDouble()))
 /**
  * Starts `a.damp(k, dt) to b`: moves `1 − e^(−k·dt)` of the gap for a time step of [dt] seconds,
  * so repeated calls close the same fraction per second whatever the step. `a damp k to b` uses
  * the runloop's frame time for [dt].
  */
-fun Vector4dc.damp(k: Number, dt: Number): Vector4dLerp = Vector4dLerp(this, (1.0 - kotlin.math.exp(-k.toDouble() * dt.toDouble())).toDouble())
+fun Vector4dc.damp(k: Number, dt: Number): Vector4dLerp = Vector4dLerp(this, (1.0 - kotlin.math.exp(-k.toDouble() * dt.toDouble())))
 /** At most [max] long, keeping direction; a shorter vector is copied unchanged. */
 infix fun Vector4dc.limit(max: Number): Vector4d = max.toDouble().let { m -> val l = length(); if (l > m && l > 0) Vector4d(this).mul(m / l) else Vector4d(this) }
 /** Each component rounded to the nearest multiple of [step]. */
