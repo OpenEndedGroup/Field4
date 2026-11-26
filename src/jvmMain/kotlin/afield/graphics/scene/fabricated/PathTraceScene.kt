@@ -198,7 +198,7 @@ class PathTraceScene {
     }
 
     internal data class Node(val lo: Vector3f, val hi: Vector3f, var first: Int = 0, var count: Int = 0, var escape: Int = 0)
-    internal class Packed(val triangles: List<Triangle>, val nodes: List<Node>, val materials: List<PathTraceMaterial>, val textures: List<PathTraceTexture>) {
+    internal class Packed(val triangles: List<Triangle>, val nodes: List<Node>, val materials: MutableList<PathTraceMaterial>, val textures: List<PathTraceTexture>) {
         private val textureOffsets = textures.runningFold(0) { offset, t -> offset + 2 + t.width * t.height }
         /** Two floats per emissive triangle: cumulative probability and triangle index, as in [PathTraceEnvironment]. */
         val emitterDistribution: FloatArray
@@ -308,7 +308,7 @@ class PathTraceScene {
             node.escape = nodes.size
         }
         build(triangles.toList())
-        return Packed(ordered, nodes, materials.toList(), textureData.toList())
+        return Packed(ordered, nodes, materials.toMutableList(), textureData.toList())
     }
 }
 

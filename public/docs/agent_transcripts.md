@@ -5341,6 +5341,17 @@ that changes between passes is the medium. `dev_docs/PARTICIPATING_MEDIA.md` is 
 
 [Open →](offline.html?file=assets/agent_transcripts/path_tracing_medium/metadata.edn)
 
+### path_tracing_subsurface
+
+**One skin colour through four albedo remaps.** A renderer, a row of spheres path traced with
+random-walk subsurface scattering, and a box of sliders. Every sphere asks for the same colour and
+radius and differs only in how the colour becomes a single-scattering albedo; a diffuse ball of the
+requested colour sits on the left. Drag `radius` to send the light further under the surface, and
+`remap` to re-render the right-hand sphere through another fit. The page section is
+[Subsurface scattering from a colour and a radius](path_tracing.md#subsurface-scattering-from-a-colour-and-a-radius).
+
+[Open →](offline.html?file=assets/agent_transcripts/path_tracing_subsurface/metadata.edn)
+
 ### neural_clouds
 
 A raymarched cloud lit by a small network instead of an ambient term, after Charles Grassi's

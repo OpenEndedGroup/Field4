@@ -1,0 +1,122 @@
+name: path_tracing_subsurface
+description: |
+  **One skin colour through four albedo remaps.** A renderer, a row of spheres path traced with
+  random-walk subsurface scattering, and a box of sliders. Every sphere asks for the same colour
+  and radius; they differ only in how that colour is turned into a single-scattering albedo. The
+  left-hand sphere is an opaque diffuse ball of the requested colour, for reference.
+
+  Drag `radius` to make the light travel further under the surface, or pick another colour, and
+  watch which remaps keep the colour you asked for. `remap` re-renders the right-hand sphere through
+  the chosen fit.
+docs:
+  - page: path_tracing.md#subsurface-scattering-from-a-colour-and-a-radius
+    why: "Explains the subsurface material and the remaps compared here."
+operations:
+  - create:
+      box: pt_sss_renderer
+      name: path tracing renderer
+      frame: { x: 40.0, y: 40.0, w: 320.0, h: 110.0 }
+      properties:
+        code: |
+          import afield.graphics.vulkan.util.Options
+
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+          Options.enableHDR = false
+          once.renderer {
+              window = Window("Field · subsurface scattering")
+              Renderer(window)
+          }
+          start(renderer::run)
+  - create:
+      box: pt_sss_row
+      name: subsurface remaps
+      frame: { x: 320.0, y: 180.0, w: 380.0, h: 130.0 }
+      properties:
+        code: |
+          import afield.graphics.scene.fabricated.*
+          import afield.graphics.vulkan.util.Camera
+
+          prop<PathTracingRenderer>(tracer)
+          prop<Vector3f>(skin)
+          prop<Vector3f>(radius)
+          prop<List<Int>>(remapped)
+
+          // Linear-light skin colour: what the surface should look like after all the scattering.
+          skin = Vector3f(0.75f, 0.45f, 0.33f)
+          // How far each channel travels under the surface, in world units; red goes furthest.
+          radius = Vector3f(0.36f, 0.14f, 0.08f)
+
+          val scene = PathTraceScene()
+          val floor = scene.material(PathTraceMaterial.diffuse(0.18f, 0.18f, 0.18f))
+          scene.quad(Vector3f(-20f, 0f, -20f), Vector3f(-20f, 0f, 20f), Vector3f(20f, 0f, 20f), Vector3f(20f, 0f, -20f), floor)
+          val target = scene.material(PathTraceMaterial(skin.x, skin.y, skin.z, roughness = 0.3f))
+          scene.sphere(Vector3f(-4.4f, 0.95f, 0f), 0.95f, target, 64, 32)
+          remapped = AlbedoRemap.entries.mapIndexed { i, remap ->
+              val m = scene.material(PathTraceMaterial.subsurface(skin, radius, remap))
+              scene.sphere(Vector3f(-2.2f + 2.2f * i, 0.95f, 0f), 0.95f, m, 64, 32)
+              m
+          }
+          val camera = Camera(renderer).also {
+              it.at.set(0f, 2.4f, 10.5f)
+              it.target.set(0f, 0.9f, 0f)
+              it.p.fov = 0.6
+          }
+          tracer = PathTracingRenderer(
+              renderer,
+              scene,
+              PathTraceEnvironment.fromFile("public/docs/assets/fabricate_demo/venice_sunset_1k.exr"),
+              width = 1280,
+              height = 400,
+              camera = camera,
+              name = "subsurface-remaps",
+          ).install()
+          tracer.maxBounces = 10
+          tracer.samplesPerFrame = 2
+          tracer.exposure = 1.4f
+          // Long red walks occasionally return with a large weight; clamp them as specks, not energy.
+          tracer.indirectClamp = 1f
+          tracer.blitToScreen()
+          println("left to right: diffuse target, ${AlbedoRemap.entries.joinToString()}")
+          frames {
+              while (tracer.samples < 1024) frame()
+              println("subsurface study converged: ${tracer.samples} samples")
+          }
+  - create:
+      box: pt_sss_controls
+      name: subsurface controls
+      frame: { x: 320.0, y: 340.0, w: 380.0, h: 130.0 }
+      properties:
+        code: |
+          import afield.graphics.scene.fabricated.*
+
+          var scale = 1.0
+          var choice = AlbedoRemap.REFERENCE
+          // Rewrite the four remapped spheres in place; the scene and its BVH stay as they are.
+          fun apply() {
+              val r = Vector3f(radius).mul(scale.toFloat())
+              AlbedoRemap.entries.forEachIndexed { i, remap ->
+                  val use = if (i == AlbedoRemap.entries.lastIndex) choice else remap
+                  tracer.setMaterial(remapped[i], PathTraceMaterial.subsurface(skin, r, use))
+              }
+              println("radius x $scale, right-hand sphere through $choice")
+          }
+          controlGroup("subsurface") {
+              slider("radius", min = 0.1, max = 4.0, step = 0.05, initialValue = 1.0, law = ControlLaw.LOGARITHMIC) {
+                  scale = it
+                  apply()
+              }
+              slider("remap", min = 0.0, max = 3.0, step = 1.0, initialValue = 3.0) {
+                  choice = AlbedoRemap.entries[it.toInt()]
+                  apply()
+              }
+          }
+  - connect: { parent: pt_sss_renderer, child: pt_sss_row }
+  - connect: { parent: pt_sss_row, child: pt_sss_controls }
+  - launch: { box: pt_sss_renderer, property: code, strand: renderer }
+  - await: { wait: pending }
+  - wait: { frames: 3 }
+  - launch: { box: pt_sss_row, property: code }
+  - await: { wait: pending }
+  - execute: { box: pt_sss_controls, property: code }
+  - await: {}
