@@ -667,6 +667,240 @@ showPlaneGrid(
 
 ---
 
+## `Strand`
+
+A rope is a cloth with one dimension. `sim.addStrand(count, spacing, stiffness)` appends a chain
+of `count` particles to a simulation, which may already hold a cloth or anything else, and returns
+a handle that speaks node indices: `rope[node]` is a particle index, and `position`, `pin`,
+`teleport` and `lines()` all take a node. The rope shares the simulation's one constraint set, and
+`rope.step(...)` steps the whole simulation, just as `cloth.step(...)` does.
+
+Here are three ropes of 24 nodes, each pinned at its left end, held level and let go, played at a
+quarter of real speed. They are identical except for `bendStiffness`:
+
+```diffstatic_runner {data-lang=kotlin video="assets/physics/strand_swing.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="12" fps="24" timeout="300" w="1140" h="420" embed=true name="physics-strand-swing" alt="Three ropes side by side, each pinned at its left end, held level and then released in slow motion. Each falls as a bend running down its length, swings under the pin and up the far side, and whips back into a U; the rope with bendStiffness 0 comes back kinked at its tip, the ropes at 0.5 and 1 keep a smooth curve."}
+:::static
+import afield.simulation.physics.*
+
+// Three ropes, the same but for bendStiffness, each pinned at its left end and held level.
+val bends = [0f, 0.5f, 1f]
+val ropes = bends.map { bend ->
+    SimdVerlet(SimdVerlet.State3.empty())
+        .addStrand(count = 24, spacing = 0.1f, stiffness = 150f, bendStiffness = bend)
+        .also { it.pin(0) }
+}
+
+// Hold them level for a moment, then let go and play the fall at a quarter of real speed:
+// fixed 1/60 s steps, as many as the slowed clock asks for.
+val hold = 1.5
+val slowMotion = 4.0
+val clock = AnimationClock.nowSeconds()
+var simulated = 0.0
+loop {
+    val now = (AnimationClock.nowSeconds() - clock - hold).coerceAtLeast(0.0) / slowMotion
+    var catchUp = 0
+    while (simulated < now && catchUp++ < 4) {
+        ropes.forEach { it.step(dt = 1f / 60f, damping = 0.998f, gravity = 9.8f, iterations = 16) }
+        simulated += 1.0 / 60.0
+    }
+    simulated = maxOf(simulated, now - 0.1)
+
+    showPlaneGrid(
+        *ropes
+            .mapIndexed { n, rope ->
+                "bendStiffness = ${bends[n]}\nt = ${simulated.f2} s · mean joint angle ${rope.meanKinkDegrees().f1}°" to
+                    rope.lines().onEach { it.thickness = 2.5 }
+            }
+            .toTypedArray(),
+        columns = 3,
+        cellWidth = 340,
+        cellHeight = 230,
+        window = Rect(-2.6, -0.9, 5.2, 3.5),
+    )
+}
+```
+
+For most of the fall the three are hard to tell apart: a falling rope is barely bent, and a bend
+that is not there has nothing to resist. The difference comes when the swing carries the rope up
+past the pin and its free end whips back on itself. The limp rope comes back kinked, its mean joint
+over 25°, while the stiffer two keep one smooth curve, under 10°.
+
+### How tightly a rope folds
+
+`bendStiffness`, from `0` to `1`, straightens the rope by moving each interior node toward the
+midpoint of its two neighbours. It is the one-dimensional case of the cloth's
+[curvature](#curvature), but it is a position projection rather than a force: a force strong enough
+to hold a rope straight would sit past the `stiffness × iterations` ceiling and make the rope
+thrash. A projection has no stiffness, so it has no ceiling. It moves positions only, so each
+correction takes out the motion that went into the fold and never gives it back: a stiff rope
+resists bending, but it does not spring back from a bend the way a steel wire would.
+
+What it controls is how tightly the rope can fold. A rope hanging under its own weight is already
+straight, so to see it the rope has to be in compression. Here are four ropes 7.9 long, identical
+but for `bendStiffness`, dropped end-first onto a floor and seen from above once they have landed.
+Each has to fold to find room on the floor:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/physics/strand_fold.png" wait="5.0" capture="box" open-outputs="true" w="900" h="980" padding="14" name="physics-strand-fold"}
+:::static
+import afield.simulation.physics.*
+import kotlin.math.*
+
+// The same 80-node rope at four bend stiffnesses, hung straight up above a floor and let fall.
+val bends = [0f, 0.2f, 0.5f, 1f]
+val ropes = bends.map { bend ->
+    val sim = SimdVerlet(SimdVerlet.State3.empty())
+    val rope = sim.addStrand(
+        count = 80,
+        spacing = 0.1f,
+        stiffness = 150f,
+        bendStiffness = bend,
+        // A rope that is very nearly straight: the floor finds the small kinks and folds them.
+        position = { n -> vec(0.01f * sin(n * 1.7f), 1f - 0.1f * n, 0.01f * cos(n * 2.3f)) },
+    )
+    // The floor is at y = 1 (y grows down). Colliders added after the rope run after its bending
+    // pass, so the floor has the last word.
+    sim.addColliders(PlaneCollider(0f, -1f, 0f, offset = -1f).also { it.friction = 0.6f })
+    rope
+}
+
+repeat(600) { ropes.forEach { it.step(dt = 1f / 60f, damping = 0.99f, gravity = 9.8f, iterations = 16) } }
+
+:::fold the sharpest joint, and the view from above
+fun sharpest(rope: Strand): Double = (1 until rope.count - 1).maxOf { n ->
+    val a = rope.position(n - 1)
+    val b = rope.position(n)
+    val c = rope.position(n + 1)
+    val u = vec(b.x - a.x, b.y - a.y, b.z - a.z)
+    val v = vec(c.x - b.x, c.y - b.y, c.z - b.z)
+    Math.toDegrees(acos(((u dot v) / (u.length() * v.length())).coerceIn(-1f, 1f)).toDouble())
+}
+
+// Looking down on the floor: x across, z up the page.
+fun fromAbove(rope: Strand) = FLine().also {
+    for (n in 0 until rope.count) {
+        val p = rope.position(n)
+        if (n == 0) it.moveTo(p.x, p.z) else it.lineTo(p.x, p.z)
+    }
+    it.thickness = 2.0
+}
+:::endfold
+showPlaneGrid(
+    *ropes
+        .mapIndexed { n, rope ->
+            "bendStiffness = ${bends[n]}\nmean joint angle ${rope.meanKinkDegrees().f1}° · sharpest ${sharpest(rope).f1}°" to
+                listOf(fromAbove(rope))
+        }
+        .toTypedArray(),
+    columns = 2,
+    cellWidth = 400,
+    cellHeight = 400,
+    window = Rect(-1.0, -1.0, 2.0, 2.0),
+)
+```
+
+![Four ropes seen from above after falling onto a floor. With bendStiffness 0 the rope lies in a starburst of straight segments folded back on themselves; at 0.2 it is a tight ball, at 0.5 a cluster of small loops, and at 1 a few wide coils.](assets/physics/strand_fold.png)
+
+With no bending at all, nothing stops a joint folding flat, and the limp rope lands as a starburst
+of segments laid back along each other, its mean joint near 143°. A little `bendStiffness` is
+enough to stop that: at `0.2` the rope gathers into a tight ball, and from there each step up opens
+the loops wider and lowers both the mean joint and the sharpest one.
+
+For the same reason, `bendStiffness` does almost nothing to a rope held out level from one end, a
+cantilever: the three-node stencil cannot supply the moment at the root that holding it out needs.
+For a rod, add distance constraints across the gaps, from each node to the node two along.
+
+### Tying a rope to things
+
+A rope node spends constraint slot 0 on the node after it and slot 1 on the node before, so slots 2
+and 3 are free on every node of every rope. `rope.attachTo(particle, node)` spends one of them, and
+one on the other side, on an ordinary distance constraint. The other side can be a cloth corner,
+which has two slots free, or a cloth edge, which has one, or another rope, or any particle with a
+slot to spare. A cloth's interior nodes have all four slots spent on their neighbours, and
+`attachTo` throws there and names the particle rather than leaving the rope quietly untied. The
+rest length defaults to the distance at the moment of tying, so tying does not yank.
+
+Because the knot is an ordinary constraint, everything else in the simulation already understands
+it: the solver pulls the cloth through it, the colliders push it out of the world, and
+[`Tearing`](#also-in-the-box) can break it like any other edge. Here a weighted rope, tied to the
+bottom corner of a hanging sheet, is let go level and swings:
+
+```diffstatic_runner {data-lang=kotlin video="assets/physics/strand_tied.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="12" fps="24" timeout="300" w="760" h="720" embed=true name="physics-strand-tied" alt="A hanging sheet, pinned at three points along its top edge, with an orange rope tied to its free bottom-right corner. The rope swings down from level and back, dragging the corner after it, and comes to rest hanging straight down from a corner pulled out into a long tail."}
+:::static
+import afield.simulation.physics.*
+
+val sim = SimdVerlet(SimdVerlet.State3.empty())
+val sheet = sim.addCloth(
+    width = 13,
+    height = 10,
+    spacing = 0.25f,
+    stiffness = 60f,
+    pinned = { col, row -> row == 0 && col <= 8 && col % 4 == 0 }, // the right of the top edge is free
+)
+
+// A rope laid out level from the sheet's bottom-right corner, tied to it, with a weight on its end.
+val corner = sheet.position(12, 9)
+val rope = sim.addStrand(
+    count = 14,
+    spacing = 0.15f,
+    stiffness = 150f,
+    bendStiffness = 0.3f,
+    position = { n -> vec(corner.x + 0.15f * (n + 1), corner.y, 0f) },
+)
+rope.attachTo(sheet[12, 9], node = 0)
+sim.state.invMass!![rope[13]] = 1f / 4f // a mass of 4 on the end
+
+val clock = AnimationClock.nowSeconds()
+var shown = 0.0
+loop {
+    val now = AnimationClock.nowSeconds() - clock
+    var catchUp = 0
+    while (shown < now && catchUp++ < 4) {
+        // One simulation: stepping the rope steps the sheet too.
+        rope.step(dt = 1f / 60f, damping = 0.995f, gravity = 3f, iterations = 16)
+        shown += 1.0 / 60.0
+    }
+    shown = maxOf(shown, now - 0.1)
+
+    // The rope drawn from the corner it is tied to, so the knot shows.
+    val tied = FLine().moveTo(sheet.position(12, 9))
+    for (n in 0 until rope.count) tied.lineTo(rope.position(n))
+    tied.color = vec(1.0, 0.55, 0.2, 1.0)
+    tied.thickness = 2.5
+
+    showPlane(
+        sheet.lines().onEach { it.color = vec(0.74, 0.82, 0.94, 0.8) } + tied,
+        window = Rect(-0.5, -0.5, 6.0, 5.4),
+        width = 720,
+        height = 648,
+        title = "a weighted rope tied to a sheet's corner",
+        caption = "t = ${shown.f1} s",
+    )
+}
+```
+
+The rope swings down from level and back under the sheet, and the sheet follows it: the free side
+folds in, the knot pulls the corner after the weight, and once the swinging dies away the rope
+hangs straight from a corner drawn out into a long tail. A weight of 4 on one corner is more than a
+sheet of this `stiffness` can carry without stretching, which is what a loose-knit sheet would do
+too.
+
+The [`simdverlet_world`](agent_transcripts.md#simdverlet_world) document ties a rope into a sheet
+with tearing, wind and colliders all running, and the knot is among the edges that tear.
+
+### How long a rope can be
+
+A rope needs more of the solver than a cloth does. In a cloth the load spreads across a pinned
+row; in a rope every segment carries everything below it, so the top segment of an `n`-node rope
+hanging from one end stretches by about `(n − 1)·g / (stiffness · iterations · spacing)` of its
+length. At `dt = 1/60` and `stiffness × iterations = 1600`, a 16-node rope of spacing 0.12 under
+`g = 9.8` stretches its top segment by about 70%, a 32-node one by about 150%, and a 64-node one by
+over 300%. Turning `stiffness × iterations` up helps in proportion, but only to the solver's
+stability ceiling: at 3600 the 64-node rope no longer settles. For a long rope that stays near its
+length, use fewer, longer segments. For a given rope length the stretch falls with the square of
+the spacing.
+
+---
+
 ## The debug view draws what the solver holds
 
 `SimdVerlet.debugLines()` returns `FLine`s: one segment per live distance constraint, a dot per
@@ -1089,8 +1323,8 @@ it runs out, comes to rest on a tread, and rides the escalator up at exactly the
 `afield.simulation.physics` holds more than the particle solver, and the rest is not covered here:
 
 - **The world layer** — `Collider`/`ColliderSet` (sphere, plane, box, capsule and a general signed
-  distance function), `Tearing`, `Wind`, and `Strand`, a rope that can be knotted to a cloth. These
-  are what let a sheet drape, come apart and fly. A collider is a **post-solve position projection**
+  distance function), `Tearing` and `Wind`, which let a sheet drape, come apart and fly, and which
+  act on a [`Strand`](#strand) just as they do on a cloth. A collider is a **post-solve position projection**
   rather than a force, and that choice falls straight out of the equivalence above: a penalty force
   runs once against springs that are acting at `stiffness × iterations`, so it either fails to hold
   or explodes.
@@ -1155,4 +1389,6 @@ inside or around a shape.
 
 - Constructing cloth, strands and collision constraints:
   [`SimdVerlet`](reference/simulation.md#simdverlet-kt-simdverlet) —
-  [`addCloth`](reference/simulation.md#cloth-kt--addcloth).
+  [`addCloth`](reference/simulation.md#cloth-kt--addcloth) —
+  [`addStrand`](reference/simulation.md#strand-kt--addstrand) and
+  [`Strand`](reference/simulation.md#strand-kt-strand).
