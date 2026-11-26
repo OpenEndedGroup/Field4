@@ -5,11 +5,970 @@ process can draw, publish points for another rule to find, and suspend with `nex
 local variables carry over between frames. When the pattern breaks, the process can finish the
 drawing on its own time.
 
+This page starts with a tutorial that builds one piece a rule at a time. After it come three
+finished pieces, and a summary of the API.
+
+## Build a web, one rule at a time
+
+This tutorial grows one piece from a handful of moving points. Each step adds a rule, or changes
+one, and shows the code as an edit to the step before. By the end, seeds drift across the
+drawing, nearby seeds bond, each bond grows beads, beads on different bonds spin a web, broken
+bonds drop their beads, and triangles of bonds fill in. No rule draws the whole picture: each one
+reads what another has published.
+
+Put each step's code in one box and launch it with ++alt+arrow-up++. Stop it with
+++alt+arrow-down++ before launching the next. Every step starts the seeds in the same places, so
+each video below shows the same drift with one more layer on it.
+
+### 1. Seeds that wander
+
+Everything starts from a `SpatialRuleWorld`. A *source* is a process that publishes points, here
+fourteen of kind `"seed"`, and moves them. Its body is ordinary Kotlin that runs until it reaches
+`nextFrame()`, waits there for the next frame, and carries on with its local variables intact.
+`age` is how many seconds the process has been running.
+
+`wander` sends each seed across the drawing at its own pace and turns it back at the edges.
+`tremble` adds a small, fast shake on top, the kind of noise tracked or simulated points usually
+have; step 3 shows why that matters. `draw` submits an FLine for the current frame only, so the
+source draws each seed again every frame. `play(world, w = w, h = h)` steps the world on Field's
+animation clock and draws what it returns into an output panel, with world coordinates running
+from (0, 0) to (`w`, `h`). Stopping the box closes the world.
+
+```diffstatic_runner {data-lang=kotlin video="assets/spatial_rules/tutorial_seeds.mp4" capture="box" execution="launch" wait-output="true" open-outputs="true" duration="6" fps="20" w="640" h="420" timeout="300" embed=true name="spatial-tutorial-seeds" alt="Fourteen pale dots drift across a dark rectangle, each at its own speed, turning back at the edges."}
+val world = SpatialRuleWorld()
+val w = 600.0
+val h = 360.0
+val ink = vec(0.85, 0.9, 1.0, 1.0)
+
+// Each seed crosses the drawing at its own pace and turns back at the edges.
+fun zigzag(u: Double) = asin(sin(u)) * 2 / PI
+
+fun wander(i: Int, t: Double) = vec(
+    w / 2 + 0.45 * w * zigzag((0.06 + 0.12 * (i * 0.618 % 1.0)) * t + 5.2 * i),
+    h / 2 + 0.45 * h * zigzag((0.06 + 0.12 * (i * 0.382 % 1.0)) * t + 2.4 * i),
+    0,
+)
+
+fun tremble(i: Int, t: Double) = vec(2.5 * sin(19 * t + i), 2.5 * cos(23 * t + 2 * i), 0)
+
+world.source("drifting seeds") {
+    val seeds = 14 { i -> point("seed", wander(i, 0.0)) }
+    while (true) {
+        for ((i, seed) in seeds.withIndex()) {
+            move(seed, wander(i, age) + tremble(i, age))
+            draw(spatialDot(seed.pos, 3.0, ink))
+        }
+        nextFrame()
+    }
+}
+
+play(world, w = w, h = h)
+```
+
+### 2. Draw a line between nearby seeds
+
+A rule group watches what the sources publish. `points("seed").pairsWithin(110.0)` matches every
+pair of seeds closer than 110 units, and `onEnter` starts a process for each pair at the frame it
+first matches. Inside, `match.live` stays true while the pair is still a match. `whileLive { }`
+runs its block once a frame until it is not, so this process draws a line between the pair's
+current positions for as long as they stay close.
+
+```diff_runner {data-lang=kotlin video="assets/spatial_rules/tutorial_links.mp4" capture="box" execution="launch" wait-output="true" open-outputs="true" duration="6" fps="20" w="640" h="420" timeout="300" embed=true name="spatial-tutorial-links" alt="Drifting dots with straight lines joining every pair that comes close; lines appear and vanish as the dots move."}
+:::after
+val world = SpatialRuleWorld()
+val w = 600.0
+val h = 360.0
+val ink = vec(0.85, 0.9, 1.0, 1.0)
+
+// Each seed crosses the drawing at its own pace and turns back at the edges.
+fun zigzag(u: Double) = asin(sin(u)) * 2 / PI
+
+fun wander(i: Int, t: Double) = vec(
+    w / 2 + 0.45 * w * zigzag((0.06 + 0.12 * (i * 0.618 % 1.0)) * t + 5.2 * i),
+    h / 2 + 0.45 * h * zigzag((0.06 + 0.12 * (i * 0.382 % 1.0)) * t + 2.4 * i),
+    0,
+)
+
+fun tremble(i: Int, t: Double) = vec(2.5 * sin(19 * t + i), 2.5 * cos(23 * t + 2 * i), 0)
+
+world.source("drifting seeds") {
+    val seeds = 14 { i -> point("seed", wander(i, 0.0)) }
+    while (true) {
+        for ((i, seed) in seeds.withIndex()) {
+            move(seed, wander(i, age) + tremble(i, age))
+            draw(spatialDot(seed.pos, 3.0, ink))
+        }
+        nextFrame()
+    }
+}
+
+world.rules("bonds") {
+    onEnter("bond nearby seeds", points("seed").pairsWithin(110.0)) { (a, b) ->
+        whileLive { draw(spatialStroke([a.pos, b.pos], ink)) }
+    }
+}
+
+play(world, w = w, h = h)
+```
+
+### 3. Join close, let go far
+
+With a single distance, a pair that drifts slowly past 110 units, trembling, crosses back and
+forth several times and starts a new process each time. A second distance stops that: with
+`leave = 130.0`, a pair joins within 110 units but stays joined until it is more than 130 apart.
+A counter makes the difference visible. It is an ordinary `var`, because the world runs its
+processes one at a time on Field's animation loop. `play`'s `after` callback runs once each frame
+has been drawn, so it can show the count beneath the drawing.
+
+```diff_runner {data-lang=kotlin screenshot="assets/spatial_rules/tutorial_leave.png" capture="box" execution="launch" wait="12" open-outputs="true" w="640" h="420" timeout="240" embed=true name="spatial-tutorial-leave" alt="The drifting seeds joined by lines, with a Counts panel beneath reporting how many bonds have been made so far."}
+:::after
+val world = SpatialRuleWorld()
+val w = 600.0
+val h = 360.0
+val ink = vec(0.85, 0.9, 1.0, 1.0)
+
+// Each seed crosses the drawing at its own pace and turns back at the edges.
+fun zigzag(u: Double) = asin(sin(u)) * 2 / PI
+
+fun wander(i: Int, t: Double) = vec(
+    w / 2 + 0.45 * w * zigzag((0.06 + 0.12 * (i * 0.618 % 1.0)) * t + 5.2 * i),
+    h / 2 + 0.45 * h * zigzag((0.06 + 0.12 * (i * 0.382 % 1.0)) * t + 2.4 * i),
+    0,
+)
+
+fun tremble(i: Int, t: Double) = vec(2.5 * sin(19 * t + i), 2.5 * cos(23 * t + 2 * i), 0)
+
+world.source("drifting seeds") {
+    val seeds = 14 { i -> point("seed", wander(i, 0.0)) }
+    while (true) {
+        for ((i, seed) in seeds.withIndex()) {
+            move(seed, wander(i, age) + tremble(i, age))
+            draw(spatialDot(seed.pos, 3.0, ink))
+        }
+        nextFrame()
+    }
+}
+
+var bondsMade = 0
+
+world.rules("bonds") {
+    onEnter("bond nearby seeds", points("seed").pairsWithin(110.0, leave = 130.0)) { (a, b) ->
+        bondsMade++
+        whileLive { draw(spatialStroke([a.pos, b.pos], ink)) }
+    }
+}
+
+play(world, w = w, h = h, after = { markdown("Counts", "$bondsMade bonds made") })
+```
+
+Here is the same rule with `leave` taken out again. Run each for the same time and compare the
+counts: the extra bonds are pairs that came and went on either side of 110 units. Fewer lines
+stand at any moment, too, since each now ends at 110 rather than at 130.
+
+```diff_runner {data-lang=kotlin screenshot="assets/spatial_rules/tutorial_no_leave.png" capture="box" execution="launch" wait="12" open-outputs="true" w="640" h="420" timeout="240" embed=true name="spatial-tutorial-no-leave" variant=true alt="The same drawing with fewer lines standing, and a higher count of bonds made."}
+:::after
+val world = SpatialRuleWorld()
+val w = 600.0
+val h = 360.0
+val ink = vec(0.85, 0.9, 1.0, 1.0)
+
+// Each seed crosses the drawing at its own pace and turns back at the edges.
+fun zigzag(u: Double) = asin(sin(u)) * 2 / PI
+
+fun wander(i: Int, t: Double) = vec(
+    w / 2 + 0.45 * w * zigzag((0.06 + 0.12 * (i * 0.618 % 1.0)) * t + 5.2 * i),
+    h / 2 + 0.45 * h * zigzag((0.06 + 0.12 * (i * 0.382 % 1.0)) * t + 2.4 * i),
+    0,
+)
+
+fun tremble(i: Int, t: Double) = vec(2.5 * sin(19 * t + i), 2.5 * cos(23 * t + 2 * i), 0)
+
+world.source("drifting seeds") {
+    val seeds = 14 { i -> point("seed", wander(i, 0.0)) }
+    while (true) {
+        for ((i, seed) in seeds.withIndex()) {
+            move(seed, wander(i, age) + tremble(i, age))
+            draw(spatialDot(seed.pos, 3.0, ink))
+        }
+        nextFrame()
+    }
+}
+
+var bondsMade = 0
+
+world.rules("bonds") {
+    onEnter("bond nearby seeds", points("seed").pairsWithin(110.0)) { (a, b) ->
+        bondsMade++
+        whileLive { draw(spatialStroke([a.pos, b.pos], ink)) }
+    }
+}
+
+play(world, w = w, h = h, after = { markdown("Counts", "$bondsMade bonds made") })
+```
+
+### 4. Let a line end in its own time
+
+A process does not have to end with its match. The code after `whileLive` runs once the pair has
+separated. `during(0.8) { t -> }` runs its block once a frame for 0.8 seconds, with `t` going from
+0 toward 1, so the line fades out instead of vanishing. Its ends are still the live seeds, so a
+fading line keeps stretching as they pull apart. Try `during(3.0)` to see old links pile up.
+
+```diff_runner {data-lang=kotlin video="assets/spatial_rules/tutorial_fade.mp4" capture="box" execution="launch" wait-output="true" open-outputs="true" duration="6" fps="20" w="640" h="420" timeout="300" embed=true name="spatial-tutorial-fade" alt="Lines between drifting dots; when two dots part, their line stretches and fades out instead of disappearing."}
+:::after
+val world = SpatialRuleWorld()
+val w = 600.0
+val h = 360.0
+val ink = vec(0.85, 0.9, 1.0, 1.0)
+
+// Each seed crosses the drawing at its own pace and turns back at the edges.
+fun zigzag(u: Double) = asin(sin(u)) * 2 / PI
+
+fun wander(i: Int, t: Double) = vec(
+    w / 2 + 0.45 * w * zigzag((0.06 + 0.12 * (i * 0.618 % 1.0)) * t + 5.2 * i),
+    h / 2 + 0.45 * h * zigzag((0.06 + 0.12 * (i * 0.382 % 1.0)) * t + 2.4 * i),
+    0,
+)
+
+fun tremble(i: Int, t: Double) = vec(2.5 * sin(19 * t + i), 2.5 * cos(23 * t + 2 * i), 0)
+
+world.source("drifting seeds") {
+    val seeds = 14 { i -> point("seed", wander(i, 0.0)) }
+    while (true) {
+        for ((i, seed) in seeds.withIndex()) {
+            move(seed, wander(i, age) + tremble(i, age))
+            draw(spatialDot(seed.pos, 3.0, ink))
+        }
+        nextFrame()
+    }
+}
+
+var bondsMade = 0
+
+world.rules("bonds") {
+    onEnter("bond nearby seeds", points("seed").pairsWithin(110.0, leave = 130.0)) { (a, b) ->
+        bondsMade++
+        whileLive { draw(spatialStroke([a.pos, b.pos], ink)) }
+        during(0.8) { t -> draw(spatialStroke([a.pos, b.pos], ink, opacity = 1 - t)) }
+    }
+}
+
+play(world, w = w, h = h, after = { markdown("Counts", "$bondsMade bonds made") })
+```
+
+### 5. Publish the bond, and bead it
+
+So far the lines are only drawn, and no other rule can see them. `edge("bond", a, b)` publishes
+each one as an edge, and a second rule group, `"beads"`, matches `edges("bond")`: one process per
+bond. That process publishes points of its own. It adds a bead every 0.2 seconds until the bond
+carries one for each 22 units of its length, and each frame it slides the beads to evenly spaced
+places along the bond with `bond.at(fraction)`. When the bond gets shorter, it retracts beads from
+the end. Each bead records the bond that made it in its data, `mapOf("bond" to bond.id)`, which a
+later step reads.
+
+Rules see what was published by the end of the previous frame, so each layer runs a frame behind
+the one it reads. An edge, like a point, lasts until the process that published it returns.
+
+```diff_runner {data-lang=kotlin video="assets/spatial_rules/tutorial_beads.mp4" capture="box" execution="launch" wait-output="true" open-outputs="true" duration="8" fps="20" w="640" h="420" timeout="300" embed=true name="spatial-tutorial-beads" alt="Each line between drifting dots fills with small amber beads, added one at a time and kept evenly spaced as the line stretches and shrinks."}
+:::after
+val world = SpatialRuleWorld()
+val w = 600.0
+val h = 360.0
+val ink = vec(0.85, 0.9, 1.0, 1.0)
+val beadInk = vec(1.0, 0.72, 0.35, 1.0)
+
+// Each seed crosses the drawing at its own pace and turns back at the edges.
+fun zigzag(u: Double) = asin(sin(u)) * 2 / PI
+
+fun wander(i: Int, t: Double) = vec(
+    w / 2 + 0.45 * w * zigzag((0.06 + 0.12 * (i * 0.618 % 1.0)) * t + 5.2 * i),
+    h / 2 + 0.45 * h * zigzag((0.06 + 0.12 * (i * 0.382 % 1.0)) * t + 2.4 * i),
+    0,
+)
+
+fun tremble(i: Int, t: Double) = vec(2.5 * sin(19 * t + i), 2.5 * cos(23 * t + 2 * i), 0)
+
+world.source("drifting seeds") {
+    val seeds = 14 { i -> point("seed", wander(i, 0.0)) }
+    while (true) {
+        for ((i, seed) in seeds.withIndex()) {
+            move(seed, wander(i, age) + tremble(i, age))
+            draw(spatialDot(seed.pos, 3.0, ink))
+        }
+        nextFrame()
+    }
+}
+
+var bondsMade = 0
+
+world.rules("bonds") {
+    onEnter("bond nearby seeds", points("seed").pairsWithin(110.0, leave = 130.0)) { (a, b) ->
+        bondsMade++
+        val bond = edge("bond", a, b)
+        whileLive { draw(spatialStroke(bond, ink)) }
+        during(0.8) { t -> draw(spatialStroke(bond, ink, opacity = 1 - t)) }
+    }
+}
+
+world.rules("beads") {
+    onEnter("bead a bond", edges("bond")) { bond ->
+        val beads = mutableListOf<SpatialPoint>()
+        whileLive {
+            val wanted = (bond.length / 22).toInt()
+            if (beads.size < wanted && age > 0.2 * beads.size) {
+                beads += point("bead", bond.at(0.5), mapOf("bond" to bond.id))
+            }
+            while (beads.size > wanted) retract(beads.removeLast())
+            for ((i, bead) in beads.withIndex()) {
+                move(bead, bond.at((i + 1.0) / (beads.size + 1)))
+                draw(spatialDot(bead.pos, 1.8, beadInk))
+            }
+        }
+    }
+}
+
+play(world, w = w, h = h, after = { markdown("Counts", "$bondsMade bonds made") })
+```
+
+### 6. When a bond breaks, let its beads fall
+
+When a bond breaks, its bead process sees `match.live` turn false. If it returned there, its beads
+would be retracted at once. Instead, `during(1.5)` moves each bead down from where it was, faster
+and faster, and fades it out. The beads are still published while they fall, so other rules can
+still find them.
+
+That needs one more change. By default the bond lasts as long as the process that published it,
+and that process spends 0.8 seconds fading its line. The beads would ride the fading line and fall
+only once it had gone. `lifetime = MATCH` retracts the bond the moment its seeds part, while the
+line goes on fading. `MATCH` comes from `SpatialLifetime`, imported at the top.
+
+```diff_runner {data-lang=kotlin video="assets/spatial_rules/tutorial_fall.mp4" capture="box" execution="launch" wait-output="true" open-outputs="true" duration="8" fps="20" w="640" h="420" timeout="300" embed=true name="spatial-tutorial-fall" alt="Beaded lines between drifting dots; when a line breaks, its amber beads drop away downward and fade."}
+:::after
+import afield.data.graph.SpatialLifetime.MATCH
+
+val world = SpatialRuleWorld()
+val w = 600.0
+val h = 360.0
+val ink = vec(0.85, 0.9, 1.0, 1.0)
+val beadInk = vec(1.0, 0.72, 0.35, 1.0)
+
+// Each seed crosses the drawing at its own pace and turns back at the edges.
+fun zigzag(u: Double) = asin(sin(u)) * 2 / PI
+
+fun wander(i: Int, t: Double) = vec(
+    w / 2 + 0.45 * w * zigzag((0.06 + 0.12 * (i * 0.618 % 1.0)) * t + 5.2 * i),
+    h / 2 + 0.45 * h * zigzag((0.06 + 0.12 * (i * 0.382 % 1.0)) * t + 2.4 * i),
+    0,
+)
+
+fun tremble(i: Int, t: Double) = vec(2.5 * sin(19 * t + i), 2.5 * cos(23 * t + 2 * i), 0)
+
+world.source("drifting seeds") {
+    val seeds = 14 { i -> point("seed", wander(i, 0.0)) }
+    while (true) {
+        for ((i, seed) in seeds.withIndex()) {
+            move(seed, wander(i, age) + tremble(i, age))
+            draw(spatialDot(seed.pos, 3.0, ink))
+        }
+        nextFrame()
+    }
+}
+
+var bondsMade = 0
+
+world.rules("bonds") {
+    onEnter("bond nearby seeds", points("seed").pairsWithin(110.0, leave = 130.0)) { (a, b) ->
+        bondsMade++
+        val bond = edge("bond", a, b, lifetime = MATCH)
+        whileLive { draw(spatialStroke(bond, ink)) }
+        during(0.8) { t -> draw(spatialStroke(bond, ink, opacity = 1 - t)) }
+    }
+}
+
+world.rules("beads") {
+    onEnter("bead a bond", edges("bond")) { bond ->
+        val beads = mutableListOf<SpatialPoint>()
+        whileLive {
+            val wanted = (bond.length / 22).toInt()
+            if (beads.size < wanted && age > 0.2 * beads.size) {
+                beads += point("bead", bond.at(0.5), mapOf("bond" to bond.id))
+            }
+            while (beads.size > wanted) retract(beads.removeLast())
+            for ((i, bead) in beads.withIndex()) {
+                move(bead, bond.at((i + 1.0) / (beads.size + 1)))
+                draw(spatialDot(bead.pos, 1.8, beadInk))
+            }
+        }
+        val from = beads.map { it.pos }
+        during(1.5) { t ->
+            for ((i, bead) in beads.withIndex()) {
+                move(bead, from[i] + vec(0, 120 * t * t, 0))
+                draw(spatialDot(bead.pos, 1.8, beadInk, opacity = 1 - t))
+            }
+        }
+    }
+}
+
+play(world, w = w, h = h, after = { markdown("Counts", "$bondsMade bonds made") })
+```
+
+### 7. A web between the beads
+
+Beads are points like any other, so a rule can look for pairs of them. Beads from different bonds
+that come within 24 units get a web strand, held until they are 32 apart. `.where { (a, b) -> ... }`
+filters the pairs with ordinary Kotlin, here reading the bond each bead was published with. Near a
+seed, where several bonds meet, their beads are close together and the web fills the angle between
+them. Two bonds that break at about the same time drop their beads together, and the falling beads
+trail a zig-zag curtain of strands. No rule mentions curtains: they come from the web rule reading
+the falling beads.
+
+The counter now also reports how many web strands stand at that moment.
+
+```diff_runner {data-lang=kotlin video="assets/spatial_rules/tutorial_web.mp4" capture="box" execution="launch" wait-output="true" open-outputs="true" duration="8" fps="20" w="640" h="420" timeout="300" embed=true name="spatial-tutorial-web" alt="Beaded lines between drifting seeds, with fine blue strands joining beads of neighbouring lines; when lines break, falling beads trail zig-zag strands."}
+:::after
+import afield.data.graph.SpatialLifetime.MATCH
+
+val world = SpatialRuleWorld()
+val w = 600.0
+val h = 360.0
+val ink = vec(0.85, 0.9, 1.0, 1.0)
+val beadInk = vec(1.0, 0.72, 0.35, 1.0)
+val webInk = vec(0.45, 0.8, 1.0, 0.8)
+
+// Each seed crosses the drawing at its own pace and turns back at the edges.
+fun zigzag(u: Double) = asin(sin(u)) * 2 / PI
+
+fun wander(i: Int, t: Double) = vec(
+    w / 2 + 0.45 * w * zigzag((0.06 + 0.12 * (i * 0.618 % 1.0)) * t + 5.2 * i),
+    h / 2 + 0.45 * h * zigzag((0.06 + 0.12 * (i * 0.382 % 1.0)) * t + 2.4 * i),
+    0,
+)
+
+fun tremble(i: Int, t: Double) = vec(2.5 * sin(19 * t + i), 2.5 * cos(23 * t + 2 * i), 0)
+
+world.source("drifting seeds") {
+    val seeds = 14 { i -> point("seed", wander(i, 0.0)) }
+    while (true) {
+        for ((i, seed) in seeds.withIndex()) {
+            move(seed, wander(i, age) + tremble(i, age))
+            draw(spatialDot(seed.pos, 3.0, ink))
+        }
+        nextFrame()
+    }
+}
+
+var bondsMade = 0
+
+world.rules("bonds") {
+    onEnter("bond nearby seeds", points("seed").pairsWithin(110.0, leave = 130.0)) { (a, b) ->
+        bondsMade++
+        val bond = edge("bond", a, b, lifetime = MATCH)
+        whileLive { draw(spatialStroke(bond, ink)) }
+        during(0.8) { t -> draw(spatialStroke(bond, ink, opacity = 1 - t)) }
+    }
+}
+
+world.rules("beads") {
+    onEnter("bead a bond", edges("bond")) { bond ->
+        val beads = mutableListOf<SpatialPoint>()
+        whileLive {
+            val wanted = (bond.length / 22).toInt()
+            if (beads.size < wanted && age > 0.2 * beads.size) {
+                beads += point("bead", bond.at(0.5), mapOf("bond" to bond.id))
+            }
+            while (beads.size > wanted) retract(beads.removeLast())
+            for ((i, bead) in beads.withIndex()) {
+                move(bead, bond.at((i + 1.0) / (beads.size + 1)))
+                draw(spatialDot(bead.pos, 1.8, beadInk))
+            }
+        }
+        val from = beads.map { it.pos }
+        during(1.5) { t ->
+            for ((i, bead) in beads.withIndex()) {
+                move(bead, from[i] + vec(0, 120 * t * t, 0))
+                draw(spatialDot(bead.pos, 1.8, beadInk, opacity = 1 - t))
+            }
+        }
+    }
+}
+
+world.rules("web") {
+    val across = points("bead").pairsWithin(24.0, leave = 32.0).where { (a, b) -> a["bond"] != b["bond"] }
+    onEnter("web across bonds", across) { (a, b) ->
+        edge("web", a, b, lifetime = MATCH)
+        whileLive { draw(spatialStroke([a.pos, b.pos], webInk, width = 0.8)) }
+        during(0.4) { t -> draw(spatialStroke([a.pos, b.pos], webInk, 0.8, 1 - t)) }
+    }
+}
+
+play(world, w = w, h = h, after = {
+    markdown("Counts", "$bondsMade bonds made, ${world.edges("web").size} web strands now")
+})
+```
+
+Without the `where`, a bead's nearest neighbours are the beads beside it on its own bond, so
+strands also run along every bond, doubling the line they sit on, and the count of standing
+strands climbs.
+
+```diff_runner {data-lang=kotlin screenshot="assets/spatial_rules/tutorial_web_unfiltered.png" capture="box" execution="launch" wait="12" open-outputs="true" w="640" h="420" timeout="240" embed=true name="spatial-tutorial-web-unfiltered" variant=true alt="The web with blue strands also running along each bonded line, and a much higher count of web strands in the panel beneath."}
+:::after
+import afield.data.graph.SpatialLifetime.MATCH
+
+val world = SpatialRuleWorld()
+val w = 600.0
+val h = 360.0
+val ink = vec(0.85, 0.9, 1.0, 1.0)
+val beadInk = vec(1.0, 0.72, 0.35, 1.0)
+val webInk = vec(0.45, 0.8, 1.0, 0.8)
+
+// Each seed crosses the drawing at its own pace and turns back at the edges.
+fun zigzag(u: Double) = asin(sin(u)) * 2 / PI
+
+fun wander(i: Int, t: Double) = vec(
+    w / 2 + 0.45 * w * zigzag((0.06 + 0.12 * (i * 0.618 % 1.0)) * t + 5.2 * i),
+    h / 2 + 0.45 * h * zigzag((0.06 + 0.12 * (i * 0.382 % 1.0)) * t + 2.4 * i),
+    0,
+)
+
+fun tremble(i: Int, t: Double) = vec(2.5 * sin(19 * t + i), 2.5 * cos(23 * t + 2 * i), 0)
+
+world.source("drifting seeds") {
+    val seeds = 14 { i -> point("seed", wander(i, 0.0)) }
+    while (true) {
+        for ((i, seed) in seeds.withIndex()) {
+            move(seed, wander(i, age) + tremble(i, age))
+            draw(spatialDot(seed.pos, 3.0, ink))
+        }
+        nextFrame()
+    }
+}
+
+var bondsMade = 0
+
+world.rules("bonds") {
+    onEnter("bond nearby seeds", points("seed").pairsWithin(110.0, leave = 130.0)) { (a, b) ->
+        bondsMade++
+        val bond = edge("bond", a, b, lifetime = MATCH)
+        whileLive { draw(spatialStroke(bond, ink)) }
+        during(0.8) { t -> draw(spatialStroke(bond, ink, opacity = 1 - t)) }
+    }
+}
+
+world.rules("beads") {
+    onEnter("bead a bond", edges("bond")) { bond ->
+        val beads = mutableListOf<SpatialPoint>()
+        whileLive {
+            val wanted = (bond.length / 22).toInt()
+            if (beads.size < wanted && age > 0.2 * beads.size) {
+                beads += point("bead", bond.at(0.5), mapOf("bond" to bond.id))
+            }
+            while (beads.size > wanted) retract(beads.removeLast())
+            for ((i, bead) in beads.withIndex()) {
+                move(bead, bond.at((i + 1.0) / (beads.size + 1)))
+                draw(spatialDot(bead.pos, 1.8, beadInk))
+            }
+        }
+        val from = beads.map { it.pos }
+        during(1.5) { t ->
+            for ((i, bead) in beads.withIndex()) {
+                move(bead, from[i] + vec(0, 120 * t * t, 0))
+                draw(spatialDot(bead.pos, 1.8, beadInk, opacity = 1 - t))
+            }
+        }
+    }
+}
+
+world.rules("web") {
+    val across = points("bead").pairsWithin(24.0, leave = 32.0)
+    onEnter("web across bonds", across) { (a, b) ->
+        edge("web", a, b, lifetime = MATCH)
+        whileLive { draw(spatialStroke([a.pos, b.pos], webInk, width = 0.8)) }
+        during(0.4) { t -> draw(spatialStroke([a.pos, b.pos], webInk, 0.8, 1 - t)) }
+    }
+}
+
+play(world, w = w, h = h, after = {
+    markdown("Counts", "$bondsMade bonds made, ${world.edges("web").size} web strands now")
+})
+```
+
+### 8. Membranes over triangles
+
+`edges("bond").triangles()` matches every three seeds that are bonded pairwise, once per
+triangle, and gives the process the three points and the three bonds. This process fills the
+triangle while it holds and fades it out afterwards. The fill rises over its first half second,
+using the process's `age`.
+
+```diff_runner {data-lang=kotlin video="assets/spatial_rules/tutorial_membranes.mp4" capture="box" execution="launch" wait-output="true" open-outputs="true" duration="8" fps="20" w="640" h="420" timeout="300" embed=true name="spatial-tutorial-membranes" alt="Triangles of bonded seeds fill with a translucent blue membrane that fades in, holds while the triangle lasts, and fades out when one of its bonds breaks."}
+:::after
+import afield.data.graph.SpatialLifetime.MATCH
+
+val world = SpatialRuleWorld()
+val w = 600.0
+val h = 360.0
+val ink = vec(0.85, 0.9, 1.0, 1.0)
+val beadInk = vec(1.0, 0.72, 0.35, 1.0)
+val webInk = vec(0.45, 0.8, 1.0, 0.8)
+val skin = vec(0.35, 0.55, 0.9, 0.22)
+
+// Each seed crosses the drawing at its own pace and turns back at the edges.
+fun zigzag(u: Double) = asin(sin(u)) * 2 / PI
+
+fun wander(i: Int, t: Double) = vec(
+    w / 2 + 0.45 * w * zigzag((0.06 + 0.12 * (i * 0.618 % 1.0)) * t + 5.2 * i),
+    h / 2 + 0.45 * h * zigzag((0.06 + 0.12 * (i * 0.382 % 1.0)) * t + 2.4 * i),
+    0,
+)
+
+fun tremble(i: Int, t: Double) = vec(2.5 * sin(19 * t + i), 2.5 * cos(23 * t + 2 * i), 0)
+
+world.source("drifting seeds") {
+    val seeds = 14 { i -> point("seed", wander(i, 0.0)) }
+    while (true) {
+        for ((i, seed) in seeds.withIndex()) {
+            move(seed, wander(i, age) + tremble(i, age))
+            draw(spatialDot(seed.pos, 3.0, ink))
+        }
+        nextFrame()
+    }
+}
+
+var bondsMade = 0
+
+world.rules("bonds") {
+    onEnter("bond nearby seeds", points("seed").pairsWithin(110.0, leave = 130.0)) { (a, b) ->
+        bondsMade++
+        val bond = edge("bond", a, b, lifetime = MATCH)
+        whileLive { draw(spatialStroke(bond, ink)) }
+        during(0.8) { t -> draw(spatialStroke(bond, ink, opacity = 1 - t)) }
+    }
+}
+
+world.rules("beads") {
+    onEnter("bead a bond", edges("bond")) { bond ->
+        val beads = mutableListOf<SpatialPoint>()
+        whileLive {
+            val wanted = (bond.length / 22).toInt()
+            if (beads.size < wanted && age > 0.2 * beads.size) {
+                beads += point("bead", bond.at(0.5), mapOf("bond" to bond.id))
+            }
+            while (beads.size > wanted) retract(beads.removeLast())
+            for ((i, bead) in beads.withIndex()) {
+                move(bead, bond.at((i + 1.0) / (beads.size + 1)))
+                draw(spatialDot(bead.pos, 1.8, beadInk))
+            }
+        }
+        val from = beads.map { it.pos }
+        during(1.5) { t ->
+            for ((i, bead) in beads.withIndex()) {
+                move(bead, from[i] + vec(0, 120 * t * t, 0))
+                draw(spatialDot(bead.pos, 1.8, beadInk, opacity = 1 - t))
+            }
+        }
+    }
+}
+
+world.rules("web") {
+    val across = points("bead").pairsWithin(24.0, leave = 32.0).where { (a, b) -> a["bond"] != b["bond"] }
+    onEnter("web across bonds", across) { (a, b) ->
+        edge("web", a, b, lifetime = MATCH)
+        whileLive { draw(spatialStroke([a.pos, b.pos], webInk, width = 0.8)) }
+        during(0.4) { t -> draw(spatialStroke([a.pos, b.pos], webInk, 0.8, 1 - t)) }
+    }
+}
+
+world.rules("membranes") {
+    onEnter("fill a triangle", edges("bond").triangles()) { triangle ->
+        whileLive { draw(spatialFill(triangle, skin, opacity = min(1.0, age / 0.5))) }
+        during(0.5) { t -> draw(spatialFill(triangle, skin, opacity = 1 - t)) }
+    }
+}
+
+play(world, w = w, h = h, after = {
+    markdown("Counts", "$bondsMade bonds made, ${world.edges("web").size} web strands now")
+})
+```
+
+### 9. Change one rule while the others run
+
+Installing a rule group under a name that is already in use replaces only that group. Its
+processes stop, what they published is retracted, and the new rules start matching on the next
+frame. The seeds, bonds, beads and membranes carry on. While the box is running, edit the web
+block to give it a wider reach and a red ink, select the whole `world.rules("web") { ... }`
+block, and press ++alt+enter++ to run just the selection:
+
+```diffstatic {data-lang=kotlin variant=true}
+world.rules("web") {
+    val across = points("bead").pairsWithin(40.0, leave = 50.0).where { (a, b) -> a["bond"] != b["bond"] }
+    onEnter("web across bonds", across) { (a, b) ->
+        edge("web", a, b, lifetime = MATCH)
+        whileLive { draw(spatialStroke([a.pos, b.pos], vec(1.0, 0.35, 0.3, 0.9), width = 0.8)) }
+        during(0.4) { t -> draw(spatialStroke([a.pos, b.pos], vec(1.0, 0.35, 0.3, 0.9), 0.8, 1 - t)) }
+    }
+}
+```
+
+The web turns red and denser from the next frame, and nothing else in the drawing restarts. Run
+the original block again to put it back. Sources work the same way: `world.source(name) { }`
+replaces the source of that name, and `world.stop(name)` ends a group or a source.
+
+### 10. Ask why a strand is there
+
+When rules feed rules, it helps to ask where a particular line came from. Every point and edge
+records the process that published it and what that process was matched to.
+`world.nearest(at, within = 12.0)` finds the live point or edge nearest to a position, and
+`world.lineage(fact)` walks back through what made it: a web strand, the two beads it joins, the
+bonds that made those beads, and the seeds at their ends.
+
+`play` passes each press on the drawing to `onPress` in world coordinates. The callback runs
+between frames, so it can read the world and set `traced`, which a small `"highlight"` source
+draws a glow under. Press near a strand, and the Why panel lists the strand, its beads, their
+bonds and their seeds, each with the rule that made it. A strand between falling beads traces
+back only to the beads, because their bonds have already been retracted.
+
+```diff {data-lang=kotlin}
+:::after
+import afield.data.graph.SpatialLifetime.MATCH
+
+val world = SpatialRuleWorld()
+val w = 600.0
+val h = 360.0
+val ink = vec(0.85, 0.9, 1.0, 1.0)
+val beadInk = vec(1.0, 0.72, 0.35, 1.0)
+val webInk = vec(0.45, 0.8, 1.0, 0.8)
+val skin = vec(0.35, 0.55, 0.9, 0.22)
+val glow = vec(1.0, 0.9, 0.4, 0.6)
+
+// Each seed crosses the drawing at its own pace and turns back at the edges.
+fun zigzag(u: Double) = asin(sin(u)) * 2 / PI
+
+fun wander(i: Int, t: Double) = vec(
+    w / 2 + 0.45 * w * zigzag((0.06 + 0.12 * (i * 0.618 % 1.0)) * t + 5.2 * i),
+    h / 2 + 0.45 * h * zigzag((0.06 + 0.12 * (i * 0.382 % 1.0)) * t + 2.4 * i),
+    0,
+)
+
+fun tremble(i: Int, t: Double) = vec(2.5 * sin(19 * t + i), 2.5 * cos(23 * t + 2 * i), 0)
+
+world.source("drifting seeds") {
+    val seeds = 14 { i -> point("seed", wander(i, 0.0)) }
+    while (true) {
+        for ((i, seed) in seeds.withIndex()) {
+            move(seed, wander(i, age) + tremble(i, age))
+            draw(spatialDot(seed.pos, 3.0, ink))
+        }
+        nextFrame()
+    }
+}
+
+var bondsMade = 0
+
+world.rules("bonds") {
+    onEnter("bond nearby seeds", points("seed").pairsWithin(110.0, leave = 130.0)) { (a, b) ->
+        bondsMade++
+        val bond = edge("bond", a, b, lifetime = MATCH)
+        whileLive { draw(spatialStroke(bond, ink)) }
+        during(0.8) { t -> draw(spatialStroke(bond, ink, opacity = 1 - t)) }
+    }
+}
+
+world.rules("beads") {
+    onEnter("bead a bond", edges("bond")) { bond ->
+        val beads = mutableListOf<SpatialPoint>()
+        whileLive {
+            val wanted = (bond.length / 22).toInt()
+            if (beads.size < wanted && age > 0.2 * beads.size) {
+                beads += point("bead", bond.at(0.5), mapOf("bond" to bond.id))
+            }
+            while (beads.size > wanted) retract(beads.removeLast())
+            for ((i, bead) in beads.withIndex()) {
+                move(bead, bond.at((i + 1.0) / (beads.size + 1)))
+                draw(spatialDot(bead.pos, 1.8, beadInk))
+            }
+        }
+        val from = beads.map { it.pos }
+        during(1.5) { t ->
+            for ((i, bead) in beads.withIndex()) {
+                move(bead, from[i] + vec(0, 120 * t * t, 0))
+                draw(spatialDot(bead.pos, 1.8, beadInk, opacity = 1 - t))
+            }
+        }
+    }
+}
+
+world.rules("web") {
+    val across = points("bead").pairsWithin(24.0, leave = 32.0).where { (a, b) -> a["bond"] != b["bond"] }
+    onEnter("web across bonds", across) { (a, b) ->
+        edge("web", a, b, lifetime = MATCH)
+        whileLive { draw(spatialStroke([a.pos, b.pos], webInk, width = 0.8)) }
+        during(0.4) { t -> draw(spatialStroke([a.pos, b.pos], webInk, 0.8, 1 - t)) }
+    }
+}
+
+world.rules("membranes") {
+    onEnter("fill a triangle", edges("bond").triangles()) { triangle ->
+        whileLive { draw(spatialFill(triangle, skin, opacity = min(1.0, age / 0.5))) }
+        during(0.5) { t -> draw(spatialFill(triangle, skin, opacity = 1 - t)) }
+    }
+}
+
+var traced = emptyList<SpatialFact>()
+
+world.source("highlight") {
+    while (true) {
+        for (fact in traced.filter { it.alive }) when (fact) {
+            is SpatialPoint -> draw(spatialDot(fact.pos, 6.0, glow))
+            is SpatialEdge -> draw(spatialStroke(fact, glow, width = 5.0))
+        }
+        nextFrame()
+    }
+}
+
+play(
+    world,
+    w = w,
+    h = h,
+    after = { markdown("Counts", "$bondsMade bonds made, ${world.edges("web").size} web strands now") },
+    onPress = { at ->
+        traced = world.nearest(at, within = 12.0)?.let(world::lineage).orEmpty()
+        markdown("Why", traced.joinToString("\n") { "- **${it.kind} #${it.id}** by *${it.origin.process}*" })
+    },
+)
+```
+
+### 11. Make it bigger
+
+The same rules, with thirty seeds on a 900 by 500 drawing.
+
+```diff_runner {data-lang=kotlin video="assets/spatial_rules/tutorial_finale.mp4" capture="box" execution="launch" wait-output="true" open-outputs="true" duration="10" fps="20" w="940" h="600" timeout="300" embed=true name="spatial-tutorial-finale" alt="Thirty drifting seeds in a wide drawing: bonded lines full of amber beads, blue lace webs filling the angles where lines meet, translucent triangles, and curtains of falling beads."}
+:::after
+import afield.data.graph.SpatialLifetime.MATCH
+
+val world = SpatialRuleWorld()
+val w = 900.0
+val h = 500.0
+val ink = vec(0.85, 0.9, 1.0, 1.0)
+val beadInk = vec(1.0, 0.72, 0.35, 1.0)
+val webInk = vec(0.45, 0.8, 1.0, 0.8)
+val skin = vec(0.35, 0.55, 0.9, 0.22)
+val glow = vec(1.0, 0.9, 0.4, 0.6)
+
+// Each seed crosses the drawing at its own pace and turns back at the edges.
+fun zigzag(u: Double) = asin(sin(u)) * 2 / PI
+
+fun wander(i: Int, t: Double) = vec(
+    w / 2 + 0.45 * w * zigzag((0.06 + 0.12 * (i * 0.618 % 1.0)) * t + 5.2 * i),
+    h / 2 + 0.45 * h * zigzag((0.06 + 0.12 * (i * 0.382 % 1.0)) * t + 2.4 * i),
+    0,
+)
+
+fun tremble(i: Int, t: Double) = vec(2.5 * sin(19 * t + i), 2.5 * cos(23 * t + 2 * i), 0)
+
+world.source("drifting seeds") {
+    val seeds = 30 { i -> point("seed", wander(i, 0.0)) }
+    while (true) {
+        for ((i, seed) in seeds.withIndex()) {
+            move(seed, wander(i, age) + tremble(i, age))
+            draw(spatialDot(seed.pos, 3.0, ink))
+        }
+        nextFrame()
+    }
+}
+
+var bondsMade = 0
+
+world.rules("bonds") {
+    onEnter("bond nearby seeds", points("seed").pairsWithin(110.0, leave = 130.0)) { (a, b) ->
+        bondsMade++
+        val bond = edge("bond", a, b, lifetime = MATCH)
+        whileLive { draw(spatialStroke(bond, ink)) }
+        during(0.8) { t -> draw(spatialStroke(bond, ink, opacity = 1 - t)) }
+    }
+}
+
+world.rules("beads") {
+    onEnter("bead a bond", edges("bond")) { bond ->
+        val beads = mutableListOf<SpatialPoint>()
+        whileLive {
+            val wanted = (bond.length / 22).toInt()
+            if (beads.size < wanted && age > 0.2 * beads.size) {
+                beads += point("bead", bond.at(0.5), mapOf("bond" to bond.id))
+            }
+            while (beads.size > wanted) retract(beads.removeLast())
+            for ((i, bead) in beads.withIndex()) {
+                move(bead, bond.at((i + 1.0) / (beads.size + 1)))
+                draw(spatialDot(bead.pos, 1.8, beadInk))
+            }
+        }
+        val from = beads.map { it.pos }
+        during(1.5) { t ->
+            for ((i, bead) in beads.withIndex()) {
+                move(bead, from[i] + vec(0, 120 * t * t, 0))
+                draw(spatialDot(bead.pos, 1.8, beadInk, opacity = 1 - t))
+            }
+        }
+    }
+}
+
+world.rules("web") {
+    val across = points("bead").pairsWithin(24.0, leave = 32.0).where { (a, b) -> a["bond"] != b["bond"] }
+    onEnter("web across bonds", across) { (a, b) ->
+        edge("web", a, b, lifetime = MATCH)
+        whileLive { draw(spatialStroke([a.pos, b.pos], webInk, width = 0.8)) }
+        during(0.4) { t -> draw(spatialStroke([a.pos, b.pos], webInk, 0.8, 1 - t)) }
+    }
+}
+
+world.rules("membranes") {
+    onEnter("fill a triangle", edges("bond").triangles()) { triangle ->
+        whileLive { draw(spatialFill(triangle, skin, opacity = min(1.0, age / 0.5))) }
+        during(0.5) { t -> draw(spatialFill(triangle, skin, opacity = 1 - t)) }
+    }
+}
+
+var traced = emptyList<SpatialFact>()
+
+world.source("highlight") {
+    while (true) {
+        for (fact in traced.filter { it.alive }) when (fact) {
+            is SpatialPoint -> draw(spatialDot(fact.pos, 6.0, glow))
+            is SpatialEdge -> draw(spatialStroke(fact, glow, width = 5.0))
+        }
+        nextFrame()
+    }
+}
+
+play(
+    world,
+    w = w,
+    h = h,
+    after = { markdown("Counts", "$bondsMade bonds made, ${world.edges("web").size} web strands now") },
+    onPress = { at ->
+        traced = world.nearest(at, within = 12.0)?.let(world::lineage).orEmpty()
+        markdown("Why", traced.joinToString("\n") { "- **${it.kind} #${it.id}** by *${it.origin.process}*" })
+    },
+)
+```
+
+### What the web is made of
+
+Each rule reads what the rules above it publish:
+
+| Group | Matches | Publishes | Draws |
+| --- | --- | --- | --- |
+| `drifting seeds` (a source) | | `seed` points | the seeds |
+| `bonds` | pairs of seeds within 110, held to 130 | a `bond` edge, until the pair parts | the bond, then its fade |
+| `beads` | each `bond` | `bead` points, kept while they fall | the beads |
+| `web` | pairs of beads from different bonds within 24, held to 32 | a `web` edge, until the pair parts | the strand, then its fade |
+| `membranes` | each triangle of bonds | | the fill |
+| `highlight` (a source) | | | a glow under each traced fact |
+
+## Three finished pieces
+
 Open **spatial_rules_tour** under **Starting Points** on Field’s welcome screen or from the
 [agent transcript gallery](agent_transcripts.md#spatial_rules_tour). Run **Start here · run the tour**
 to open the canvas guide. Launch each numbered box with ++alt+arrow-up++, and stop it with ++alt+arrow-down++.
 
-## 1. Follow two points, then fade
+### Follow two points, then fade
 
 **One filament** alternates between pulling its input tips apart and removing them while they
 are still close. The stitch is born within 100 units and stays alive until the tips are more
@@ -86,7 +1045,7 @@ loop {
 }.end { world.close() }
 ```
 
-## 2. A loom with memory
+### A loom with memory
 
 Three groups of tips move independently in 3D. Each group’s two rows enter and leave in
 staggered waves. The picture is a projection of the points, and the proximity tests use all
@@ -394,7 +1353,7 @@ loop {
 }.end { world.close() }
 ```
 
-## 3. A thousand moving points
+### A thousand moving points
 
 Start with fifty rings of twenty points each. A traveling wave swells and contracts the tube
 so that some samples come within 19 units of one another while others drift beyond 23.
@@ -526,9 +1485,13 @@ loop {
 ## Publishing and matching
 
 Create a `SpatialRuleWorld` once, install one or more named `source` and `rules` blocks, then
-call `world.step(AnimationClock.nowSeconds())` from the box’s `loop`. Inside a process,
-`now` is that step’s time in seconds. Pass the returned FLines to
-`lines` or another drawing surface. Call `world.close()` from the loop’s `.end { }`.
+end the box with `play(world)`. `play` steps the world on the animation clock at up to `fps`
+frames a second, draws the result into `channel` at `w` by `h`, calls `after` with each frame's
+lines, passes presses on the drawing to `onPress` between frames, and closes the world when the
+box stops. To draw somewhere else, call `world.step(AnimationClock.nowSeconds())` from your own
+`loop`, pass the returned FLines to `lines` or another drawing surface, and call `world.close()`
+from the loop’s `.end { }`. Inside a process, `now` is that step’s time in seconds and `age` is
+the time since the process started.
 
 A source can publish `point("tip", at, data = mapOf("row" to 0))` and then move it with
 `move(tip, to)`. The owner can revise any of its publications with `set(fact, key, value)`
@@ -538,6 +1501,9 @@ or remove one with `retract(fact)`. Passing `null` to `set` removes the key. Rea
 
 - `points("tip").each()` binds individual points. `pairsWithin` binds unordered pairs once.
   `points("tip").near(points("anchor"), enter)` binds ordered roles.
+- `edges("bond").triangles()` binds each triangle that edges of that kind close, ignoring
+  their direction, as a `SpatialTriangle` with points `a`, `b`, `c` in ID order and edges
+  `ab`, `bc`, `ca`. Losing any of the three edges ends the match.
 - `edges("stitch")` binds each individual edge. `.where { ... }` filters a pattern using
   Kotlin, including arbitrary data from its bound points or edges. Keep predicates free of
   side effects. Share a pattern value when several rules need the same result.
@@ -548,11 +1514,25 @@ or remove one with `retract(fact)`. Passing `null` to `set` removes the key. Rea
   when a publication should retract after the match ends, even while its drawing fades.
   An edge also retracts if either endpoint is gone. Check `point.alive` for a process that
   should follow an endpoint past the end of a proximity match.
+- `whileLive { }` runs its block once a frame while the match holds; `whileLive()` just waits
+  for the match to end. `during(seconds) { progress -> }` runs its block once a frame for that
+  long, with `progress` going from 0 toward 1. `wait(seconds)` lets time pass.
 - Each step commits the previous step’s publications, evaluates rules, and advances each
   process once. Downstream rules see changes on the following step. An FLine submitted with
   `draw` belongs to the current frame. Submit it again to keep it visible.
 - Reinstall a named rule group to restart it while other sources and groups carry on.
   `stop(name)` ends that group immediately and queues retraction of its publications.
+
+An edge has a `length`, a position `at(t)` a fraction of the way from `from` to `to`, and the
+`other(end)`. A point has `distance(other)`. To draw them, `spatialStroke` takes a list of
+positions or an edge, `spatialFill` a list of positions or a triangle, and `spatialDot` a
+position; each takes a colour and an `opacity`.
+
+To find out why something is there, `world.nearest(at, within)` returns the live point or edge
+closest to a position, `world.lineage(fact)` returns the fact and every live fact it was made
+from, nearest first, and `world.explain(fact)` returns a snapshot of one fact's producer, inputs
+and age. `world.fact(id)` looks a live fact up by its ID. `world.inspectOnClick(fact, line)`
+calls back with that snapshot when the reader clicks the line.
 
 ## Scaling up
 
@@ -571,3 +1551,14 @@ and return each neighbor at most once in deterministic order.
 Cost depends on how many matches exist as well as how many points there are. A thousand
 widely distributed points can have a few hundred active pairs. A thousand points all inside
 one another’s radius can produce 499,500 unordered pairs, each eligible to start a process.
+
+## Where to go next
+
+- [Graphs that change while you watch](dynamic_graph_systems_examples.md): points that connect
+  to their neighbours, with edges that strengthen and fade, built directly on a spatial hash.
+- [Frames and the animation loop](animation_time_model.md): the clock `play` steps the world on,
+  and why animation written against it looks the same live and in a captured video.
+- [Querying object graphs](graph_query.md): finding values by pattern in objects you already
+  have, rather than in published points.
+- The [spatial_rules_tour](agent_transcripts.md#spatial_rules_tour) starting point holds the
+  three finished pieces as a runnable document.
