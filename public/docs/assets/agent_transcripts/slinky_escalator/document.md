@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="slinky_walk" index="0" -->
 
 ```edn [field-box id="slinky_walk" role="properties"]
-{"id" "slinky_walk" "index" 0 "name" "a slinky walking down stairs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a slinky walking down stairs" "_tombstone" false "frame" #afield/rect [80.0 80.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "slinky_walk_code_.kt" "lines" 58 "characters" 2118 "sha256" "11ab136f98bfa41010c1ea3eac64a41cb5cf901870674e309045f1ad453de0ce"}]}
+{"id" "slinky_walk" "index" 0 "name" "a slinky walking down stairs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a slinky walking down stairs" "_tombstone" false "frame" #afield/rect [80.0 80.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "slinky_walk_code_.kt" "lines" 59 "characters" 2134 "sha256" "ea37d8b9a37e87122c1eb6e9edda8d3d1df819b92afd5340d3612741dfa7071b"}]}
 ```
 
 ```kotlin [field-property box="slinky_walk" name="code" path="slinky_walk_code_.kt"]
@@ -69,8 +69,9 @@ loop {
         width = 720,
         height = 504,
         title = "a slinky walking down stairs · 1/$slowMotion speed",
-        caption = "t = ${scene.time.f2} s · ${scene.flips} flips · ${scene.stepsDescended.f1} steps down" +
-            (if (scene.stepPeriod > 0f) " · carried up ${carried.f1}" else ""),
+        caption =
+            "t = ${scene.time.f2} s · ${scene.flips} flips · ${scene.stepsDescended.f1} steps down" +
+                (if (scene.stepPeriod > 0f) " · carried up ${carried.f1}" else ""),
     )
 }
 ```

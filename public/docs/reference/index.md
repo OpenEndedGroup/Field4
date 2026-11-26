@@ -691,7 +691,7 @@ To see it all at once, open the [map of the docs](../docs_map.md): every page, a
 
 ## Reference pages
 
-**44182 public symbols across 1950 source files**, 26477 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**44187 public symbols across 1950 source files**, 26481 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -708,7 +708,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Renderers](renderers.md) | 48 | 911 | 515 (56%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 596 | 440 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 787 | 530 (67%) | Nonlinear least squares, aimed at geometry. |
-| [Simulation](simulation.md) | 58 | 1956 | 1169 (59%) | Making a shape behave. |
+| [Simulation](simulation.md) | 58 | 1961 | 1173 (59%) | Making a shape behave. |
 | [Imaging](imaging.md) | 56 | 976 | 532 (54%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
 | [ALife](alife.md) | 24 | 1381 | 1252 (90%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 16 | 632 | 424 (67%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
@@ -2280,7 +2280,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>tests/<wbr></small> [SliderTest.kt](examples.md#slidertest-kt) | Examples | 4 | 0 | Test file demonstrating the slider functionality. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>slides/<wbr></small> [SlideShow.kt](visualization.md#slideshow-kt) | Visualization | 76 | 38 | SlideShow - A DSL for creating guided tours through Field documents | [Interactive Guides](../interactive_guides.md), [Presenting with Field](../presentation_studio.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [slideshow_example.kt](examples.md#slideshow-example-kt) | Examples | 7 | 7 | Example slideshows demonstrating the slideshow DSL | [Interactive Guides](../interactive_guides.md) |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>physics/<wbr></small> [Slinky.kt](simulation.md#slinky-kt) | Simulation | 51 | 45 |  | [Physics: particles, constraints and cloth](../physics.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>physics/<wbr></small> [Slinky.kt](simulation.md#slinky-kt) | Simulation | 56 | 49 |  | [Physics: particles, constraints and cloth](../physics.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>text/<wbr>slug/<wbr></small> [SlugBuffer.kt](graphics.md#slugbuffer-kt) | Graphics | 10 | 4 | The GPU side of Slug filled-path rendering: `SlugBuffer` holds one `SlugPath`'s atlas words in a Vulkan storage buffer that a slug shader reads. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>text/<wbr>slug/<wbr></small> [SlugPath.kt](graphics.md#slugpath-kt) | Graphics | 5 | 3 | Compiles a filled, flat `FLine` into Slughorn atlas data (`SlugPath`) by running the native `field-slug` helper, built with `./gradlew buildSlugNative`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [SlugRenderSmoke.kt](examples.md#slugrendersmoke-kt) | Examples | 2 | 1 |  |  |

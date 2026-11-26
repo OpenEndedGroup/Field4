@@ -52,7 +52,8 @@ loop {
         width = 720,
         height = 504,
         title = "a slinky walking down stairs · 1/$slowMotion speed",
-        caption = "t = ${scene.time.f2} s · ${scene.flips} flips · ${scene.stepsDescended.f1} steps down" +
-            (if (scene.stepPeriod > 0f) " · carried up ${carried.f1}" else ""),
+        caption =
+            "t = ${scene.time.f2} s · ${scene.flips} flips · ${scene.stepsDescended.f1} steps down" +
+                (if (scene.stepPeriod > 0f) " · carried up ${carried.f1}" else ""),
     )
 }
