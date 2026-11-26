@@ -2167,6 +2167,13 @@ class AaCompleter(
                     val rt = ext.receiverParameter?.returnType ?: return@filter false
                     if (runCatching { type.isSubtypeOf(rt) }.getOrDefault(false)) return@filter true
                     if (!hasFreeReceiverParameter(rt)) return@filter false
+                    // A bare type-parameter receiver (`T.apply`, `T.also`, `T.let`) takes any receiver within
+                    // T's bounds. Without this, whenever the checker above gave no verdict (an edited call
+                    // already resolved in place, `line.ap‸ply { … }`), every scope function was dropped:
+                    // 2026-11-26 measured 446 such misses, dot/keep recall 92% against a 93% floor.
+                    if (rt is KaTypeParameterType) return@filter runCatching {
+                        rt.symbol.upperBounds.all { ub -> hasFreeReceiverParameter(ub) || type.isSubtypeOf(ub) }
+                    }.getOrDefault(false)
                     val cid = (rt as? KaClassType)?.classId ?: return@filter false
                     runCatching { type.isSubtypeOf(cid) }.getOrDefault(false)
                 }.mapNotNull { asCandidate(it, AaCandidate.Kind.EXTENSION, typeStr, proximityOf(it, ownId, superIds)) }
