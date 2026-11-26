@@ -387,12 +387,38 @@ SKIPPED when the library is missing, never pass. Use a JUnit assumption: a file-
 `requirePaintLibrary()` in `afield/graphics/paint/PaintTestSupport.kt`. The old
 `if (!available()) return` (and `if (!X.isAvailable) return`, or the block form
 `{ println(...); return }`) counted every such test as a pass on a machine without the library.
-`tools/check_native_gated_tests.py` fails on any of these in `jvmTest` or `jvmFastTest`; its suite
-`tools/test_check_native_gated_tests.py` runs in `checkPythonTools`, which the lander and precheck
-select for any change to a JVM test source. The skip count is in the Gradle summary and in each `TEST-*.xml` (`<skipped>`).
+The same goes for any early return that announces itself as a skip, whatever its condition (no
+`glslangValidator`, no MIDI port, an opt-in environment variable): write
+`if (validator == null) throw org.junit.AssumptionViolatedException("...")`, which keeps the smart cast,
+or `Assume.assumeTrue(...)`.
+`tools/check_native_gated_tests.py` fails on any of these, and on a block or one-line
+`return println(...)` that says "sWhere the native **is** built, a skip means it did not load, and that is a failure. One parameterised
+Gradle function, `registerNativeGatedTests` in `build.gradle.kts`, registers a task per library that
+builds the native, runs its package's tests and fails if any still skipped:
 
-No landing runs `jvmTest`, so a skip alone still lets a red through. For paint, the gap is closed:
-`./gradlew checkPaintTests` builds `native/field-paint` (needs cargo), runs `afield.graphics.paint.*`
+| Task | Builds | Runs |
+| --- | --- | --- |
+| `checkPaintTests` | `buildPaintNative` (cargo) | `afield.graphics.paint.*` |
+| `checkPdTests` | `buildLibpdNative` | `afield.audio.pd.*` |
+| `checkCsoundTests` | `buildCsoundNative` | `afield.audio.csound.*` |
+| `checkTetgenTests` | `buildTetgenNative` | `afield.geometry.mesh.tetgen.*` |
+| `checkLorisTests` | `buildLorisNative` | `afield.audio.analysis.loris.*` |
+| `checkPolyvectorTests` | `buildPolyvectorNative` | `afield.geometry.vectorize.polyvector.*` |
+| `checkMorseSmaleTests` | `buildMorseSmaleNative` | `afield.geometry.topology.morsesmale.*` (not `*Benchmark`, opt-in) |
+| `checkPrincipalCurvesTests` | `buildPrincipalCurvesNative` | `afield.geometry.curves.principal.*` (not `*Benchmark`) |
+| `checkOpenNurbsTests` | `buildOpenNurbsNative` | `afield.geometry.rhino.*` (not `Rhino3dmLocalFilesTest`, opt-in) |
+
+Add a library by adding one call; do not copy the task body. The negative control is the same for
+each: with the native absent (`-x build<Lib>Native` in a tree without `build/field-<lib>`, or, for
+paint, `AFIELD_PAINT_LIBRARY=/nonexistent`), the task fails naming every skipped test.
+
+Both `tools/land.py precheck` and the lander select `checkPaintTests` for a diff under
+`native/field-paint` or `afield/graphics/paint`. The others are not landing guards yet (their builds
+need cmake and, once, the network): before enqueueing a change to one of those families, run its
+task locally. The lander's fixer may not add an assumption, for the same reason it may not add
+`@Ignore`.
+
+raphics.paint.*`
 and fails if any test skipped. Both `tools/land.py precheck` and the lander select it for a diff
 under `native/field-paint` or `afield/graphics/paint`. The lander's fixer may not add an
 assumption, for the same reason it may not add `@Ignore`. The other native families have no such
