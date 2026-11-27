@@ -258,6 +258,96 @@ and that window starts before the strike.
     between steps can hide most of a glissando's strikes. A detached voice, with true silence
     between notes, is found every time.
 
+## Playheads along strokes
+
+The score above is read by one playhead sweeping left to right. Another way to play a drawing
+gives every stroke its own playhead, which travels along the stroke itself. This follows
+[anima](https://llllllll.co/t/anima/75862), a norns and Grid sequencer that grew out of Crim's
+Animator. Each stroke is a track, and its playhead has its own pass time, direction, step clock,
+probability and ratchet. The tracks change only when two playheads *meet*. Here that means both
+pass the same crossing of their strokes within a beat of each other. At a meeting, each of the two
+applies its own action: `wave` transposes up a fourth, `rise` doubles or halves its rate, and `arc`
+turns round. Two LFOs per track can move gain, note length or probability between meetings, and
+each can be frozen. `rise`'s length LFO freezes at beat 16.
+
+`threeStrokes()` draws three crossing strokes named `wave`, `rise` and `arc`. The box reads them
+back from `notation.strokes`, runs 32 beats and marks every meeting on the drawing:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_drawn_score/playheads.png" capture="window" embed=true open-outputs="false" clip="0,0,1080,470" w="180" h="50" wait="3.0" timeout="90" name="chain-drawn-score-playheads" alt="A frame labelled 'anima' holding three crossing strokes, a blue wave, a red rising line and a green arc, with an orange circle at each place two playheads met"}
+notation { threeStrokes() }
+val strokes = notation.strokes.filter { it.name != null }.associate { it.name!! to it.points }
+val tracks = StrokePlayheadsDocs.tracks(strokes) // the three tracks and their settings
+val run = StrokePlayheads(tracks, MeetingRule.Crossing(windowBeats = 1.0), seed = 4).run(beats = 32.0)
+notation("meetings") {
+    stroke = "#f08c00"
+    for (m in run.meetings) ellipse(m.where.x - 14.0, m.where.y - 14.0, 28.0, 28.0)
+}
+
+:::fold the meetings
+markdown(
+    "meetings",
+    (run.meetings.map { "beat %.2f: %s meets %s".format(it.beat, it.a, it.b) } +
+            "${run.notes.size} notes, ${run.meetings.size} meetings")
+        .joinToString("  \n"),
+)
+:::endfold
+```
+
+The notes are `TimedNote`s, so they play through `patTimed` and the same detached voice as the
+score above. The piano roll shows the three tracks, and the yellow lines are the meetings:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_drawn_score/playheads-roll.png" wait="3" capture="box" open-outputs="true" w="1180" h="460" padding="18" timeout="90" name="chain-drawn-score-playheads-roll" embed=true alt="Three piano rolls over 32 beats, one per track: the wave's steps jumping up a fourth at each meeting, the rising line's steps closing up and opening out as its rate changes, and the arc's paired ratchet strikes"}
+notation { threeStrokes() }
+val run = StrokePlayheadsDocs.run(StrokePlayheadsDocs.readStrokes(this))
+val rolls = ["wave", "rise", "arc"].map { name ->
+    name to patTimed(run.notes.filter { it.track == name }.map { TimedNote(it.start, it.end, it.note, it.gain) }, beats = 32.0)
+}
+showPatRollOf(*rolls.toTypedArray(), title = "three playheads", subtitle = "${run.meetings.size} meetings", cycles = 1, pitched = true)
+```
+
+All three, 32 beats at 120 beats a minute:
+
+```diffstatic_runner {data-lang=kotlin audio="assets/chain_drawn_score/stroke-playheads.wav" audio-spec="stroke-playheads" audio-renderer="afield.audio.synth.StrokePlayheadsDocs" embed=true hidden=true name="chain-drawn-score-playheads-audio"}
+// Offline-rendered by StrokePlayheadsDocs.renderWav("stroke-playheads").
+```
+
+To check that the changes really come only at meetings, the box below renders each track on its
+own. It finds the onsets and pitches with the same detectors as above, without being told the
+notes. For `wave` it takes each heard pitch minus the step's untransposed pitch, which gives the
+transposition the audio actually played. That trace changes only at the yellow meeting lines:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_drawn_score/playheads-heard.png" wait="8" capture="box" open-outputs="true" w="1180" h="300" padding="18" timeout="120" name="chain-drawn-score-playheads-heard" embed=true alt="A step trace of the wave's heard transposition in semitones against beats, which changes only at the yellow vertical lines marking meetings, above a table of onsets and pitches found for each track"}
+notation { threeStrokes() }
+val run = StrokePlayheadsDocs.run(StrokePlayheadsDocs.readStrokes(this))
+val heard = StrokePlayheadsDocs.listen(run)
+val wave = heard.first { it.track == "wave" }
+val shift = StrokePlayheadsDocs.heardTranspositions(run, wave)
+val beats = run.notes.filter { it.track == "wave" }.map { it.start }
+notation.clear()
+
+:::fold plot it, and the table
+showSignals(
+    "heard transposition" to shift,
+    x = beats,
+    marks = run.meetings.map { "%s/%s".format(it.a, it.b) to it.beat },
+    title = "wave: transposition heard, meetings marked",
+    xTitle = "beats",
+    yTitle = "semitones",
+    channel = "heard",
+)
+markdown(
+    "measured",
+    "| track | notes | onsets found | within 30 ms | pitched |\n|---|---|---|---|---|\n" +
+        heard.joinToString("\n") { "| ${it.track} | ${it.scheduled} | ${it.onsetsDetected} | ${it.matchedOnsets} | ${it.pitched} |" },
+    width = 1000,
+)
+:::endfold
+```
+
+`restroke(name, points)` replaces a track's stroke and keeps its playhead at the same fraction of
+the way along, so you can redraw a stroke while the sequence runs and it carries on from where it was.
+The crossings are recomputed, and the meetings follow the new drawing.
+
 ## Drawing your own
 
 Open [drawn_score](agent_transcripts.md#drawn_score) from the welcome screen's starting points: `score`, `read`, `play`,

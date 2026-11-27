@@ -576,6 +576,18 @@ audio an offline buffer. See [A Drawn Score, Heard](chain_drawn_score.md).
 
 [Open →](offline.html?file=assets/agent_transcripts/drawn_score/metadata.edn)
 
+### stroke_playheads
+
+Playheads along drawn strokes, after anima, as four boxes. `strokes` draws three crossing strokes
+named wave, rise and arc; `meet` reads them back as tracks with `StrokePlayheads`, runs 32 beats and
+circles every place two playheads met at a crossing; `play` shows a piano roll per track and renders
+the notes into an audio player; `listen back` renders each track alone, finds its onsets and pitches,
+and plots the wave's heard transposition against the meetings. Redraw a stroke with ++alt+d++, keep
+its name, and run the boxes after `strokes` again. See
+[Playheads along strokes](chain_drawn_score.md#playheads-along-strokes).
+
+[Open →](offline.html?file=assets/agent_transcripts/stroke_playheads/metadata.edn)
+
 ### chain_tracked_body
 
 In [A Tracked Body, Measured and Heard](chain_tracked_body.md), two boxes turn a pose recording
