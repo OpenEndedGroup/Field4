@@ -348,11 +348,13 @@ stop it, so it works on GitHub as well as on Wikipedia.
 
 Kotlin works too. Make the `web(...)` box a [Kotlin → head](kotlin_in_the_head.md) root
 instead, and the Kotlin boxes under it are compiled to Javascript and run in the page the same
-way. The page's DOM is reached through `js(...)`:
+way, with the browser's API typed, as `kotlinx.browser` and `org.w3c.dom`:
 
 ```diffstatic {data-lang=kotlin}
-val document: dynamic = js("document")
-println("${document.querySelectorAll("a").length} links on ${document.title}")
+import kotlinx.browser.document
+import org.w3c.dom.asList
+
+println("${document.querySelectorAll("a").asList().size} links on ${document.title}")
 ```
 
 The page starts running Javascript the first time a box under it runs, and again after it
