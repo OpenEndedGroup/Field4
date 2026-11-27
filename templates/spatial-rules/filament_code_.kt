@@ -1,5 +1,6 @@
 import afield.data.graph.SpatialLifetime.MATCH
 
+val fadeSeconds = 0.7
 val world = SpatialRuleWorld()
 val ink = Vec4(0.8f, 0.92f, 1f, 1f)
 
@@ -36,8 +37,8 @@ world.rules("filaments") {
         }
 
         val released = now
-        while (now - released < 0.7) {
-            draw(spatialStroke(ends, ink, width = 2.0, opacity = 1.0 - (now - released) / 0.7))
+        while (now - released < fadeSeconds) {
+            draw(spatialStroke(ends, ink, width = 2.0, opacity = 1.0 - (now - released) / fadeSeconds))
             nextFrame()
         }
     }
