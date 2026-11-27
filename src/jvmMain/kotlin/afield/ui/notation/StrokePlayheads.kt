@@ -1,4 +1,3 @@
-@file:afield.runtime.completion.CompletionCategory("Notation")
 package afield.ui.notation
 
 import afield.math.linalg.Vec2

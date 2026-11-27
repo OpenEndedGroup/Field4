@@ -299,10 +299,21 @@ score above. The piano roll shows the three tracks, and the yellow lines are the
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_drawn_score/playheads-roll.png" wait="3" capture="box" open-outputs="true" w="1180" h="460" padding="18" timeout="90" name="chain-drawn-score-playheads-roll" embed=true alt="Three piano rolls over 32 beats, one per track: the wave's steps jumping up a fourth at each meeting, the rising line's steps closing up and opening out as its rate changes, and the arc's paired ratchet strikes"}
 notation { threeStrokes() }
 val run = StrokePlayheadsDocs.run(StrokePlayheadsDocs.readStrokes(thisBox))
-val rolls = ["wave", "rise", "arc"].map { name ->
-    name to patTimed(run.notes.filter { it.track == name }.map { TimedNote(it.start, it.end, it.note, it.gain) }, beats = 32.0)
-}
-showPatRollOf(*rolls.toTypedArray(), title = "three playheads", subtitle = "${run.meetings.size} meetings", cycles = 1, pitched = true)
+val rolls =
+    ["wave", "rise", "arc"].map { name ->
+        name to
+            patTimed(
+                run.notes.filter { it.track == name }.map { TimedNote(it.start, it.end, it.note, it.gain) },
+                beats = 32.0,
+            )
+    }
+showPatRollOf(
+    *rolls.toTypedArray(),
+    title = "three playheads",
+    subtitle = "${run.meetings.size} meetings",
+    cycles = 1,
+    pitched = true,
+)
 ```
 
 All three, 32 beats at 120 beats a minute:
