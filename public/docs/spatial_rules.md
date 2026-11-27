@@ -2023,8 +2023,8 @@ play(world, w = w, h = h, after = { markdown("Tree", "$here seeds, $standing bra
 
 Fourteen posts lean and slide along the ground. Each is an edge from a foot to a head, drawn as a
 spindle skinned onto it. The spindle is drawn once, in a bind pose, lying between two bind
-points, (0, 0) and (200, 0). A `SkinnedLine` made from it poses it between the edge's ends each
-frame: it turns the spindle the shortest way from the bind direction to the edge's, stretches it
+points, (0, 0) and (200, 0). Each post makes its own [`SkinnedLine`](reference/graphics.md#flineskin-kt-skinnedline). On every frame,
+[`pose`](reference/graphics.md#flineskin-kt--skinnedline--pose) turns the spindle the shortest way from the bind direction to the edge's, stretches it
 along the edge by whatever it takes to reach both ends, and moves it into place. Across the edge
 it stretches less: with `across = 0.5` its width grows by the square root of its stretch along,
 so a post thins a little as it lengthens and fattens as it shortens.
