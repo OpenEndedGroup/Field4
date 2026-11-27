@@ -27,7 +27,17 @@ fun installLiveOutputIframeClient() {
     if (window.asDynamic().fieldElectron == null) return
     registerOnOpen(Message("live-output-iframe-ready"))
     // Cookie changes in a watched web profile, passed on to the server as they happen.
+    // Pages a `Box.web` page visits arrive naming the page; add its box, output area and profile.
     window.asDynamic().fieldElectron.onWebProfileEvent { change: dynamic ->
+        if (change.kind == "visit" || change.kind == "title") {
+            val element = webPageElement(change.page) ?: return@onWebProfileEvent
+            val box = element.closest(".box") ?: return@onWebProfileEvent
+            change.boxUid = box.asDynamic().uid
+            change.channel = element.closest(".disclosure")?.asDynamic()?.__disclosureId ?: ""
+            val partition = element.getAttribute("partition") ?: ""
+            change.directory = if (partition.startsWith("field-path:"))
+                js("decodeURIComponent")(partition.removePrefix("field-path:")) else ""
+        }
         send(Message("web-profile-event").payload(Json.parseToJsonElement(JSON.stringify(change))))
     }
     handlers.put("live-output-iframe-command") { message, _ ->
@@ -179,4 +189,25 @@ fun installLiveOutputIframeClient() {
         })
         Handled.yes
     }
+}
+
+/** The iframe or webview a navigation report names: `{frameName}` for an iframe, `{guestId}` for a webview. */
+private fun webPageElement(page: dynamic): Element? {
+    val frameName = page?.frameName as? String
+    if (frameName != null) {
+        val frames = document.querySelectorAll(".disclosure-content iframe")
+        for (i in 0 until frames.length) {
+            val frame = frames.item(i) as? Element ?: continue
+            if (frame.getAttribute("data-field-live-name") == frameName) return frame
+        }
+        return null
+    }
+    val guestId = page?.guestId ?: return null
+    val views = document.querySelectorAll("webview.field-web-page")
+    for (i in 0 until views.length) {
+        val view = views.item(i) as? Element ?: continue
+        val id = runCatching { view.asDynamic().getWebContentsId() }.getOrNull()
+        if (id == guestId) return view
+    }
+    return null
 }

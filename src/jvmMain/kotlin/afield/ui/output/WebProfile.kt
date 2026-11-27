@@ -198,7 +198,11 @@ fun Box.onCookieChange(profile: WebProfile, name: String = "cookies", onChange: 
 internal object WebProfileEvents {
     fun dispatch(document: SessionInformation, message: JsonElement) {
         val o = message as? JsonObject ?: return
-        if ((o["kind"] as? JsonPrimitive)?.contentOrNull != "cookie") return
+        when ((o["kind"] as? JsonPrimitive)?.contentOrNull) {
+            "visit", "title" -> return reportWebNavigation(document, o)
+            "cookie" -> {}
+            else -> return
+        }
         val directory = (o["directory"] as? JsonPrimitive)?.contentOrNull ?: ""
         val cookie = o["cookie"]?.let(WebCookie::from) ?: return
         val change = WebCookieChange(cookie,

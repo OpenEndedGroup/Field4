@@ -4,7 +4,7 @@
 
 Turning a value into something you can look at, without leaving the box.
 
-74 source file(s), 2089 public symbol(s), 1493 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+75 source file(s), 2108 public symbol(s), 1501 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -3283,6 +3283,50 @@ One frame read back by [`readCells`](visualization.md#shapeasciigpu-kt--readcell
 | --- | --- |
 | <a id="shapeasciigpu-kt--shapeasciireadback--scene"></a><code class="highlight"><span class="k">val</span> <span class="n">scene</span><span class="p">:</span> <span class="nc">Img</span></code> | The scene target's pixels, RGB in `0..1`, top row first. |
 | <a id="shapeasciigpu-kt--shapeasciireadback--frame"></a><code class="highlight"><span class="k">val</span> <span class="n">frame</span><span class="p">:</span> <span class="nc">AsciiFrame</span></code> | The characters the GPU chose for that scene. |
+
+## WebHistory.kt { #webhistory-kt }
+
+`src/jvmMain/kotlin/afield/ui/output/WebHistory.kt` — [read the source](source/jvmMain/afield/ui/output/WebHistory/)
+
+### Top-level values { #webhistory-kt-values }
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="webhistory-kt--history"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">WebProfile</span><span class="p">.</span><span class="n">history</span><span class="p">:</span> <span class="nc">WebHistory</span></code>](source/jvmMain/afield/ui/output/WebHistory/#L128) | The history of this profile's pages. |
+
+### WebVisit { #webhistory-kt-webvisit }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">WebVisit</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">time</span><span class="p">:</span> <span class="nc">Instant</span><span class="p">,</span> <span class="k">val</span> <span class="n">url</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">from</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">box</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">boxName</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">status</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">inPage</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>](source/jvmMain/afield/ui/output/WebHistory/#L29)
+
+One page a `web(...)` page visited.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="webhistory-kt--webvisit--id"></a><code class="highlight"><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="webhistory-kt--webvisit--time"></a><code class="highlight"><span class="k">val</span> <span class="n">time</span><span class="p">:</span> <span class="nc">Instant</span></code> |  |
+| <a id="webhistory-kt--webvisit--url"></a><code class="highlight"><span class="k">val</span> <span class="n">url</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="webhistory-kt--webvisit--title"></a><code class="highlight"><span class="k">val</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="webhistory-kt--webvisit--from"></a><code class="highlight"><span class="k">val</span> <span class="n">from</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <a id="webhistory-kt--webvisit--box"></a><code class="highlight"><span class="k">val</span> <span class="n">box</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="webhistory-kt--webvisit--boxname"></a><code class="highlight"><span class="k">val</span> <span class="n">boxName</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="webhistory-kt--webvisit--channel"></a><code class="highlight"><span class="k">val</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="webhistory-kt--webvisit--status"></a><code class="highlight"><span class="k">val</span> <span class="n">status</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <a id="webhistory-kt--webvisit--inpage"></a><code class="highlight"><span class="k">val</span> <span class="n">inPage</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <a id="webhistory-kt--webvisit--host"></a>[<code class="highlight"><span class="k">val</span> <span class="n">host</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/ui/output/WebHistory/#L42) | The host part of [`url`](visualization.md#webhistory-kt--webvisit--url), such as `en.wikipedia.org`; empty if it has none. |
+
+### WebHistory { #webhistory-kt-webhistory }
+
+[<code class="highlight"><span class="k">class</span> <span class="nc">WebHistory</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">file</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span></code>](source/jvmMain/afield/ui/output/WebHistory/#L59)
+
+The pages one [`WebProfile`](visualization.md#webprofile-kt-webprofile)'s `web(...)` pages have visited, from [`WebProfile.history`](visualization.md#webhistory-kt--history).
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="webhistory-kt--webhistory--file"></a><code class="highlight"><span class="k">val</span> <span class="n">file</span><span class="p">:</span> <span class="nc">File</span></code> | The file the visits are written to; it may not exist yet. |
+| <a id="webhistory-kt--webhistory--visits"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">visits</span><span class="p">(</span><span class="n">since</span><span class="p">:</span> <span class="nc">Instant</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">until</span><span class="p">:</span> <span class="nc">Instant</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">host</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">contains</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">box</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">limit</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">WebVisit</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ui/output/WebHistory/#L69) | The visits recorded, oldest first. Every filter is optional: `since` and `until` bound the time, `host` matches the host or any subdomain of it, `contains` looks in the address and title (ignoring case), `box` keeps one box's pages (by uid or name), and `limit` keeps only the most recent that many. |
+| <a id="webhistory-kt--webhistory--links"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">links</span><span class="p">(</span><span class="n">since</span><span class="p">:</span> <span class="nc">Instant</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">host</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="nc">Int</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ui/output/WebHistory/#L87) | The links followed between pages: each pair is an address and the one visited straight after it in the same page, with how many times that happened. A graph of how the profile's pages were browsed, ready to draw. |
+| <a id="webhistory-kt--webhistory--clear"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">clear</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/ui/output/WebHistory/#L92) | Forget every visit: the file is deleted. |
+| <a id="webhistory-kt--webhistory--tostring"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/ui/output/WebHistory/#L124) |  |
 
 ## WebProfile.kt { #webprofile-kt }
 
