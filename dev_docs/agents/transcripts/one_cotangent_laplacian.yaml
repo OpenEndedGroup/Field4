@@ -31,7 +31,8 @@ operations:
           // L annihilates constants, and the lumped mass adds up to the surface area.
           var rowSumMax = 0.0
           val rowSums = DoubleArray(ball.vertexCount)
-          for (col in 0 until laplacian.numCols) for (k in laplacian.col_idx[col] until laplacian.col_idx[col + 1]) rowSums[laplacian.nz_rows[k]] += laplacian.nz_values[k]
+          for (col in 0 until laplacian.numCols) for (k in laplacian.col_idx[col] until laplacian.col_idx[col + 1]) rowSums[
+              laplacian.nz_rows[k]] += laplacian.nz_values[k]
           for (s in rowSums) rowSumMax = maxOf(rowSumMax, kotlin.math.abs(s))
           println("${topo.edgeCount} edge weights, ${weights.count { it < 0 }} negative (obtuse pairs)")
           println("sum of mass %.5f, surface area %.5f, max |L·1| %.2e".format(mass.sum(), ball.surfaceArea(), rowSumMax))
@@ -63,14 +64,22 @@ operations:
           val source = ball.nearestVertex(0, 1, 0)
           val distance = ball.geodesicDistance(source)
           val mean = ball.meanCurvature()
-          println("farthest point %.3f along the surface; mean curvature %.2f to %.2f".format(distance.max(), mean.min(), mean.max()))
+          println(
+              "farthest point %.3f along the surface; mean curvature %.2f to %.2f".format(distance.max(), mean.min(), mean.max()),
+          )
 
           three(height = 340) {
               columns(2)
               panel(title = "geodesic distance from the north pole")
               mesh(ball.colouredBy(distance), wireframe = false)
               val rings = ball.evenIsolines(distance, 0.25).flatten()
-              lines(rings.map { r -> r.map { vec(it.x * 1.01f, it.y * 1.01f, it.z * 1.01f) }.toFLine3(vec(1.0, 1.0, 1.0, 0.95), 1.4) }, id = "rings", panel = 0)
+              lines(
+                  rings.map { r ->
+                      r.map { vec(it.x * 1.01f, it.y * 1.01f, it.z * 1.01f) }.toFLine3(vec(1.0, 1.0, 1.0, 0.95), 1.4)
+                  },
+                  id = "rings",
+                  panel = 0,
+              )
               panel(title = "mean curvature")
               mesh(ball.colouredBy(mean, -3.0, 4.0), wireframe = false)
           }
@@ -96,10 +105,14 @@ operations:
           println("${planar.vertexCount} vertices; mean |μ| of the harmonic map %.3f".format(map.meanModulus))
 
           val positions = FloatArray(square.vertexCount * 3)
-          for (i in 0 until square.vertexCount) { positions[3 * i] = map.u[i].toFloat(); positions[3 * i + 1] = map.v[i].toFloat() }
+          for (i in 0 until square.vertexCount) {
+              positions[3 * i] = map.u[i].toFloat()
+              positions[3 * i + 1] = map.v[i].toFloat()
+          }
           val mapped = TriMesh(positions, square.indices.copyOf())
           // A checkerboard on the square's own coordinates shows where each cell went.
-          val checker = DoubleArray(square.vertexCount) { i -> kotlin.math.sin(6.0 * square.x(i)) * kotlin.math.sin(6.0 * square.y(i)) }
+          val checker =
+              DoubleArray(square.vertexCount) { i -> kotlin.math.sin(6.0 * square.x(i)) * kotlin.math.sin(6.0 * square.y(i)) }
           val top = ThreeCameraSpec(yawDegrees = 0.0, pitchDegrees = 0.0)
           three(height = 340) {
               columns(2)
