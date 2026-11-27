@@ -91,3 +91,35 @@ test("profile requests reach the named profile's cookies, and the shared one wit
   profiles[dir].emit({}, { name: "n" }, "inserted", false);
   assert.deepEqual(sent, [["field4-web-profile-event", { directory: dir, kind: "cookie", cookie: { name: "n" }, cause: "inserted", removed: false }]]);
 });
+
+test("navigation reports name web() iframes and profile webviews, and nothing else", () => {
+  const { installNavigationReports } = require("./web-profiles.cjs");
+  const handlers = {};
+  const sent = [];
+  const mainFrame = { name: "" };
+  const contents = {
+    mainFrame,
+    isDestroyed: () => false,
+    on: (name, fn) => { handlers[name] = fn; },
+    send: (channel, message) => sent.push(message),
+  };
+  const frames = {
+    "1:10": { name: "field-live-iframe-web-abc", parent: mainFrame, url: "https://a.example/" },
+    "1:11": { name: "plot-output", parent: mainFrame, url: "https://b.example/" },
+  };
+  installNavigationReports(contents, { webFrameMain: { fromId: (p, r) => frames[`${p}:${r}`] } });
+  handlers["did-frame-navigate"]({}, "https://a.example/", 200, "OK", false, 1, 10);
+  handlers["did-frame-navigate"]({}, "https://b.example/", 200, "OK", false, 1, 11);
+  handlers["did-frame-navigate"]({}, "https://field/", 200, "OK", true, 1, 1);
+  handlers["did-navigate-in-page"]({}, "https://a.example/#x", false, 1, 10);
+  const guestHandlers = {};
+  handlers["did-attach-webview"]({}, { id: 7, on: (name, fn) => { guestHandlers[name] = fn; }, getURL: () => "https://c.example/" });
+  guestHandlers["did-navigate"]({}, "https://c.example/", 200);
+  guestHandlers["page-title-updated"]({}, "C");
+  assert.deepEqual(sent, [
+    { kind: "visit", page: { frameName: "field-live-iframe-web-abc" }, url: "https://a.example/", status: 200, inPage: false },
+    { kind: "visit", page: { frameName: "field-live-iframe-web-abc" }, url: "https://a.example/#x", status: 200, inPage: true },
+    { kind: "visit", page: { guestId: 7 }, url: "https://c.example/", status: 200, inPage: false },
+    { kind: "title", page: { guestId: 7 }, url: "https://c.example/", title: "C" },
+  ]);
+});

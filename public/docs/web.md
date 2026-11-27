@@ -254,6 +254,37 @@ new one added (`inserted`).
     Cookies are reached through Field's Electron window, so these calls need it showing this
     document, as the other page calls do.
 
+## History
+
+Field keeps a history of every page a `web(...)` page visits: its address and title, when, which
+box and output area showed it, and the address the page was on just before. Each profile keeps
+its own, in its directory; pages without a profile keep theirs in `web-history.jsonl` in the
+document's `files/`. Like the profile, the history stays with the document.
+
+`history.visits()` reads it back, oldest first:
+
+```diffstatic {data-lang=kotlin}
+webProfile("github").history.visits(host = "github.com", limit = 10).forEach {
+    println("${it.time}  ${it.title.ifEmpty { it.url }}")
+}
+```
+
+`host` also matches subdomains; `since` and `until` bound the time; `contains` searches the
+address and title; `box` keeps one box's pages, by name or uid; and `limit` keeps the most recent
+that many. `sharedWebProfile.history` is the history of pages without a profile.
+
+Each visit's `from` is the address its page showed just before, so the history is also a graph of
+which page led to which. `links()` counts each step:
+
+```diffstatic {data-lang=kotlin}
+sharedWebProfile.history.links(host = "wikipedia.org").forEach { (step, count) ->
+    println("$count×  ${step.first.substringAfterLast('/')} → ${step.second.substringAfterLast('/')}")
+}
+```
+
+`history.clear()` forgets it all. The file is plain JSON, one visit per line, so other programs can
+read it too.
+
 ## Ads and trackers
 
 Field blocks ads and trackers in the pages it shows. It uses the filter lists uBlock Origin uses

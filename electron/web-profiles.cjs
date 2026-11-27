@@ -73,6 +73,55 @@ function installProfileWebviews(contents, { session, log = () => {}, onNewSessio
   });
 }
 
+// Reports every page a `Box.web` page visits to the Field page [contents] that shows it, as
+// `field4-web-profile-event` messages: `{ kind: "visit", page, url, status, inPage }` when it
+// navigates, and `{ kind: "title", page, url, title }` when its title is known. [page] says which
+// page: `{ frameName }` for a web() iframe, `{ guestId }` for a profile webview. The Field page
+// matches it to a box and output area and passes it on to the server, which keeps the history.
+// Only web() pages are reported: other output iframes (Field's own visualizations) are not.
+const WEB_FRAME_PREFIX = "field-live-iframe-web-";
+
+function installNavigationReports(contents, { log = () => {}, webFrameMain = null } = {}) {
+  const report = message => {
+    if (!contents.isDestroyed()) contents.send("field4-web-profile-event", message);
+  };
+  const webFrame = (processId, routingId) => {
+    try {
+      const frame = (webFrameMain || require("electron").webFrameMain).fromId(processId, routingId);
+      if (!frame || frame.parent !== contents.mainFrame || !String(frame.name).startsWith(WEB_FRAME_PREFIX)) return null;
+      return frame;
+    } catch (_) { return null; }
+  };
+  const reportTitle = (frame, page) => {
+    frame.executeJavaScript("document.title").then(title => {
+      if (title) report({ kind: "title", page, url: frame.url, title: String(title) });
+    }, () => {});
+  };
+  contents.on("did-frame-navigate", (_e, url, status, _statusText, isMainFrame, processId, routingId) => {
+    if (isMainFrame) return;
+    const frame = webFrame(processId, routingId);
+    if (frame) report({ kind: "visit", page: { frameName: frame.name }, url, status, inPage: false });
+  });
+  contents.on("did-navigate-in-page", (_e, url, isMainFrame, processId, routingId) => {
+    if (isMainFrame) return;
+    const frame = webFrame(processId, routingId);
+    if (frame) report({ kind: "visit", page: { frameName: frame.name }, url, status: 200, inPage: true });
+  });
+  contents.on("did-frame-finish-load", (_e, isMainFrame, processId, routingId) => {
+    if (isMainFrame) return;
+    const frame = webFrame(processId, routingId);
+    if (frame) reportTitle(frame, { frameName: frame.name });
+  });
+  contents.on("did-attach-webview", (_e, guest) => {
+    const page = { guestId: guest.id };
+    guest.on("did-navigate", (_ev, url, status) => report({ kind: "visit", page, url, status, inPage: false }));
+    guest.on("did-navigate-in-page", (_ev, url, isMainFrame) => {
+      if (isMainFrame) report({ kind: "visit", page, url, status: 200, inPage: true });
+    });
+    guest.on("page-title-updated", (_ev, title) => report({ kind: "title", page, url: guest.getURL(), title }));
+  });
+}
+
 // The cookie fields a caller may set; Electron rejects unknown ones.
 const COOKIE_FIELDS = ["url", "name", "value", "domain", "path", "secure", "httpOnly", "expirationDate", "sameSite"];
 const FILTER_FIELDS = ["url", "name", "domain", "path", "secure", "session", "httpOnly"];
@@ -130,4 +179,4 @@ async function handleProfileRequest(request, sender, { session, log = () => {}, 
   }
 }
 
-module.exports = { handleProfileRequest, PARTITION_PREFIX, profileDirectory, sessionForDirectory, applyProfilePreferences, installProfileWebviews };
+module.exports = { installNavigationReports, handleProfileRequest, PARTITION_PREFIX, profileDirectory, sessionForDirectory, applyProfilePreferences, installProfileWebviews };

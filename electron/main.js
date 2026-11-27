@@ -1618,6 +1618,7 @@ function createMainWindow() {
     installPageShortcuts(tab.view.webContents);
     installEditableContextMenu(tab.view.webContents);
     if (!remoteOrigin) {
+      require("./web-profiles.cjs").installNavigationReports(tab.view.webContents, { log: diagnosticLog });
       require("./web-profiles.cjs").installProfileWebviews(tab.view.webContents, {
         session,
         log: diagnosticLog,
