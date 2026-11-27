@@ -86,6 +86,93 @@ slit without trouble.
 The opened circle sheet covers 2.019 times the hull area of the closed square. That is slightly
 more than the rotating squares' 2 at 45°, and the volume grows by about 1.5% as the bridges stretch.
 
+## Stretched until it pops up
+
+Everything above stays in the plane. A real cut sheet does not have to. Pull a thin one by two
+opposite edges and, past a small strain, its tiles tilt out of the plane and the hinges twist, so
+the flat sheet turns into a textured 3D surface. Ahmad Rafsanjani and Katia Bertoldi measured and
+simulated this in
+[Buckling-Induced Kirigami](https://doi.org/10.1103/PhysRevLett.118.084301) (Phys. Rev. Lett. 118,
+084301, 2017), on the same pattern of mutually orthogonal cuts used here. (See also Shyu et al.,
+[A kirigami approach to engineering elasticity in nanocomposites through patterned defects](https://doi.org/10.1038/nmat4327),
+Nature Materials 14, 785–789, 2015.)
+
+`afield.examples.chain.KirigamiPopUp` simulates the cut plate from the first section. Each tile is a
+rigid plate. Each hinge is that section's bridge: a ligament `2 * gap` long from tile to tile,
+`bridge` wide along its cut and `thickness` thick. Beam theory gives it four stiffnesses:
+
+- `stretch`, holding the two tiles together at the hinge;
+- `inPlane`, resisting a turn about the sheet normal, which goes as `t · bridge³`;
+- `fold`, resisting a turn about the cut, out of the plane, which goes as `bridge · t³`;
+- `twist`, resisting a turn about the ligament's own axis, also as `bridge · t³`.
+
+The left column of tiles is clamped and the right column is pulled along the sheet. Each strain
+step starts from the last pose and relaxes the sheet to the nearest energy minimum. Every hinge is
+cut with a random rest kink of 0.001 rad, the small imperfection that decides which way each tile
+tips.
+
+The solver is `afield.simulation.physics.HingedPlates`, which relaxes rigid plates joined by those
+four-stiffness hinges by Levenberg–Marquardt. Field's particle solver, `SimdVerlet`, is the wrong
+tool here: its particles have no orientation, so a ligament cannot twist, and its constraint
+stiffness is multiplied by the iteration count, so there is no force to read a stress from.
+
+The sweep below stretches three sheets, 0.06, 0.08 and 0.12 thick, to 4% in steps of 0.1%:
+
+```diffstatic {data-lang=kotlin}
+import afield.examples.chain.KirigamiPopUp
+
+val strains = (0..40).map { it * 0.001 }
+val runs = [0.06, 0.08, 0.12].map { t -> t to KirigamiPopUp.sheet(thickness = t).sweep(strains) }
+for ((t, states) in runs) println("t = $t: flat until strain ${100 * KirigamiPopUp.threshold(states)}%")
+```
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_kirigami_solid/popup_sweep.png" capture="box" open-outputs="true" wait-output=true wait-output-kind="all" wait-output-contains="t = 0.12" embed=true force=true timeout="420" padding="18" name="chain-kirigami-popup-sweep" alt="Two Field charts against strain from 0 to 4%. Above, the mean tile tilt of three sheets, 0.06, 0.08 and 0.12 thick: each stays at zero, then rises at its own threshold, marked by a vertical rule, near 0.3%, 0.5% and 1%, and climbs to between 6.9 and 9.2 degrees at 4%. Below, the stress of all three rises along one line until each sheet's threshold, where its curve bends to a shallower slope." macro-file="../../dev_docs/agents/transcripts/kirigami_popup.yaml" capture-box="kirigami_popup_sweep"}
+// Built and launched from dev_docs/agents/transcripts/kirigami_popup.yaml.
+```
+
+Each sheet stays flat, with tilts below 0.04° where the imperfection alone puts them, until a
+critical strain. Then the tiles tilt, and the tilt keeps growing with the stretch. The thresholds
+the box prints are 0.31%, 0.51% and 1.04% for the three thicknesses. At the threshold the stress
+curve bends to a shallower slope: once the tiles can tilt, the sheet extends more easily. Before
+the threshold the three stress curves lie on one line. The sheet is then opening in its plane,
+and the in-plane stiffness per unit cross-section does not depend on the thickness.
+
+You can see why the threshold depends on the thickness by comparing the two ways the sheet can
+extend. Opening in the plane, by the rotating-squares mechanism, turns each tile by an angle
+proportional to the strain `ε`, and so costs about `inPlane · ε²`. Tilting extends the sheet only
+at second order in the tilt, so the tilt goes as `√ε` and the cost is about `fold · ε`. The first
+is cheaper while `ε` is below about `fold / inPlane = (t / bridge)²`, and the second is cheaper
+above it. Dividing each measured threshold by `(t / bridge)²` gives 0.0122, 0.0115 and 0.0104,
+which are nearly constant while the thickness doubles. Halving the sheet's thickness lowers its
+threshold from 1.04% to 0.31%, about three and a half times.
+
+The 0.06 sheet at 6% strain, path traced from three-quarters above. The tiles stand at up to 23°
+to the floor, every ligament is twisted between its two tilted tiles, and the random kinks decide
+which way each tile tips, so the tilts do not form a regular pattern:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_kirigami_solid/popup_traced.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="popped sheet traced" embed=true hidden=true timeout="600" name="chain-kirigami-popup-traced" alt="A path-traced 8 by 8 kirigami sheet of orange and blue tiles, seen from three-quarters above over a grey floor. The tiles have tipped out of the plane at different angles, each joined to its neighbours at the corners by small pale ligaments, and their tilts cast an uneven pattern of shadows on the floor." macro-file="../../dev_docs/agents/transcripts/kirigami_popup.yaml" capture-box="kirigami_popup_trace"}
+// Built and launched from dev_docs/agents/transcripts/kirigami_popup.yaml.
+```
+
+The same box, launched, stretches the sheet from flat to 6% in steps of 0.25% and traces every
+step:
+
+```diffstatic_runner {data-lang=kotlin capture="native-window" capture-box="kirigami_popup_trace" transcript="dev_docs/agents/transcripts/kirigami_popup.yaml" video="assets/chain_kirigami_solid/popup.mp4" duration="24" wait="0" timeout="600" embed=true hidden=true name="chain-kirigami-popup-video" alt="A flat 8 by 8 sheet of orange and blue tiles is stretched step by step. For the first moments it stays flat, then its tiles begin to tip out of the plane, and the tilts grow until the sheet is a field of tilted tiles casting shadows on the floor."}
+// The transcript launches the box, which ramps the strain from 0 to 6%; record the ramp.
+```
+
+The [kirigami_popup](agent_transcripts.md#kirigami_popup) starting point has the sweep and the
+traced sheet as boxes. Drag the trace box's `stretch (%)` slider and the sheet relaxes to that
+strain, stepping 0.25% at a time from where it is, so it stays on the branch it is on, and the
+tracer starts again on the new pose.
+
+??? aside "What this model leaves out"
+    Tiles are rigid, and each ligament is one beam element, which is rough for a ligament shorter
+    than it is wide (0.08 by 0.12 here). Tiles do not touch each other, so nothing stops two
+    neighbours passing through each other at large tilts. A rigid plate with point hinges is the
+    smallest model that can show the threshold and its `(t / bridge)²` scaling. It does not
+    reproduce the paper's finite-element numbers.
+
 ## What crosses each hop
 
 | hop | the call | what crosses | what stops here |
@@ -95,8 +182,12 @@ more than the rotating squares' 2 at 45°, and the volume grows by about 1.5% as
 | region to a solid | [`Section.extruded`](reference/graphics.md) | the region's contours and a thickness | nothing, since a straight extrusion is exact |
 | solid to numbers | `Solid.genus`, `Solid.decompose`, `Solid.volume` | a closed surface | the tile graph, which the genus has to match to show that no bridge was lost |
 | solid to a picture | [`TriMesh.renderPng`](reference/graphics.md) | positions and indices | everything but the shape |
+| tiles and bridges to a stretched sheet | `KirigamiPopUp.sheet`, `Sheet.stretch` | tile centres, hinge points and the ligament stiffnesses | the region. The plates are rigid, so only their poses move |
+| sheet to a picture in 3D | `Sheet.mesh`, `importTriMesh` | each tile and ligament as a prism, posed | the hinge forces |
 
-Every check on this page also runs headless in CI as the `chain.kirigami-solid` test, at 0°, 15°, 30° and
+The pop-up sweep runs headless in CI as the `chain.kirigami-popup` test. It checks that each sheet relaxes, stays flat below half its threshold and buckles above it, and that the thresholds divided by `(t / bridge)²` agree to within 35%.
+
+Every check on the solid also runs headless in CI as the `chain.kirigami-solid` test, at 0°, 15°, 30° and
 45° and for both states of the circle sheet: the gap at each hinge (below 4e-15), the genus against `hinges − tiles + 1`, one part, a
 watertight mesh, and Manifold's volume against the region's area times the thickness.
 
@@ -112,8 +203,14 @@ values.
   holds the hinges, the opened tiles, the bridged region and the measurements.
 * [`KirigamiInverseDesign.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/geometry/conformal/KirigamiInverseDesign.kt)
   is Choi's inverse design: the constraints, the solve, the closed pattern and the deployment.
+* [`KirigamiPopUp.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/examples/chain/KirigamiPopUp.kt)
+  stretches the sheet and measures its tilt and stress;
+  [`HingedPlates.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/simulation/physics/HingedPlates.kt)
+  is the solver.
 * The [kirigami_solid_chain](agent_transcripts.md#kirigami_solid_chain) starting point has the same steps
   as a document.
+* The [kirigami_popup](agent_transcripts.md#kirigami_popup) starting point has the pop-up sweep and
+  the path-traced sheet with its stretch slider.
 
 ## Where to go next
 
@@ -121,4 +218,6 @@ values.
   inverse problem.
 - [A Word Cut as a Stencil](chain_stencil_bridges.md), for bridges that hold the islands of a stencil in place.
 - [Manifold](manifold.md), for `Section`, offsets and the rest of the 2D-to-3D toolkit.
+- [Buckling-Induced Kirigami](https://doi.org/10.1103/PhysRevLett.118.084301), the paper behind the pop-up section.
+- [Progressive Path Tracing](path_tracing.md), for the tracer that draws the popped sheet.
 - [Examples that cross several parts of Field](chains.md), for the other chains.
