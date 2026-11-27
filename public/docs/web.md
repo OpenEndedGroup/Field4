@@ -181,6 +181,33 @@ above, and the drawing follows. A box that draws a page another box shows reache
     These calls need the page visible in Field's Electron window. A page whose panel is closed, or
     a document open only in another browser, has nothing for them to reach.
 
+## Ads and trackers
+
+Field blocks ads and trackers in the pages it shows. It uses the filter lists uBlock Origin uses
+(EasyList, EasyPrivacy and uBlock's own), through Ghostery's filter engine. Matching requests
+never leave the machine, and element-hiding rules tidy away the empty slots they leave. Field's
+own pages are never filtered.
+
+`blocking()` says what was blocked on a page, and `setBlocking(false)` turns blocking off for
+that page's site (for a site that breaks without its ads, or one you want to support). Field
+reloads the page and remembers the choice for the site:
+
+```diffstatic {data-lang=kotlin}
+val page = web("www.theguardian.com")
+page.blocking().thenAccept { b ->
+    println("${b.blocked} requests blocked on ${b.site}")
+    b.recent.take(5).forEach { println("  ${it.type}: ${it.url.take(80)}") }
+}
+```
+
+```diffstatic {data-lang=kotlin}
+web("www.theguardian.com").setBlocking(false)
+```
+
+The lists are downloaded when Field starts and kept for a few days; offline, the kept copy is used.
+To change the lists, set `AFIELD_WEB_BLOCKING` before starting Field: `ads` (the default),
+`full` (adds annoyances such as cookie banners and newsletter pop-ups), or `off`.
+
 ## Where to go next
 
 - [Box Output](box_output.md): channels, and opening and closing panels.
@@ -195,7 +222,9 @@ above, and the drawing follows. A box that draws a page another box shows reache
 - Source: [`LiveOutputIframe.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/ui/output/LiveOutputIframe.kt)
   (`web()` and the handle), [`fieldWeb.js`](https://github.com/OpenEndedGroup/Field4/blob/main/src/commonMain/resources/fieldWeb.js)
   (the bar), and [`framing-relief.cjs`](https://github.com/OpenEndedGroup/Field4/blob/main/electron/framing-relief.cjs)
-  (why any site can be framed, and keep its login, in Field's window).
+  (why any site can be framed, and keep its login, in Field's window), and
+  [`content-blocker.cjs`](https://github.com/OpenEndedGroup/Field4/blob/main/electron/content-blocker.cjs)
+  (ads and trackers).
 
 `web()` and every member of `LiveOutputIframe` are in the reference, under
 [LiveOutputIframe.kt](reference/visualization.md#liveoutputiframe-kt).

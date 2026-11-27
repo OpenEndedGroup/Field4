@@ -2265,6 +2265,19 @@ function createMainWindow() {
         contents.devToolsWebContents?.focus();
         return { value: frame.url, frameUrl: frame.url };
       }
+      if (request.operation === "blocking") {
+        // Content blocking for the site this frame shows: its counts, and an allow-list switch.
+        const blocker = require("./content-blocker.cjs").contentBlocker();
+        if (!blocker) return { value: { mode: "off", enabled: false }, frameUrl: frame.url };
+        const action = String(request.params?.action || "status");
+        if (action === "allow" || action === "block") {
+          blocker.setAllowed(blocker.statusFor(frame).site, action === "allow");
+          frame.reload?.();
+        } else if (action !== "status") {
+          throw new Error(`Unknown blocking action '${action}'`);
+        }
+        return { value: blocker.statusFor(frame), frameUrl: frame.url };
+      }
       if (request.operation === "cdp") {
         const debug = contents.debugger;
         if (!debug.isAttached()) debug.attach("1.3");
@@ -2466,6 +2479,12 @@ app.whenReady().then(() => {
     process.env.APP_URL || "https://localhost:9092/welcome",
     diagnosticLog,
   );
+  // Ads and trackers in framed and presented sites, on the same webRequest pipeline.
+  require("./content-blocker.cjs").installContentBlocker(
+    session.defaultSession,
+    process.env.APP_URL || "https://localhost:9092/welcome",
+    { app, log: diagnosticLog },
+  ).catch(error => diagnosticLog("content-blocker-install-failed", { error: String(error?.stack || error) }));
   createMainWindow();
   if (process.env.FIELD_PRESENTATION_PROJECT) {
     require("./presentation").openPresentation(process.env.FIELD_PRESENTATION_PROJECT)

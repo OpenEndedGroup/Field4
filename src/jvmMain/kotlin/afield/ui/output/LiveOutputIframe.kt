@@ -231,6 +231,27 @@ class LiveOutputIframe internal constructor(
         LiveOutputIframeBridge.send(document, target, "devtools", timeoutMillis = timeoutMillis)
             .thenApply { (it.value as? JsonPrimitive)?.contentOrNull ?: it.frameUrl }
 
+    /**
+     * What Field's ad and tracker blocker has done to this page: how many of its requests were
+     * blocked, the most recent of them, and whether its site is filtered at all.
+     *
+     * The count is for the page now showing in the iframe, ads nested in frames inside it
+     * included; it starts again when the page navigates to another document.
+     */
+    fun blocking(timeoutMillis: Long = 10_000): CompletableFuture<WebBlocking> = blockingAction("status", timeoutMillis)
+
+    /**
+     * Stop (false) or resume (true) blocking on this page's site, then reload the page. The
+     * choice is remembered for the site across pages, documents and restarts of Field.
+     */
+    fun setBlocking(enabled: Boolean, timeoutMillis: Long = 10_000): CompletableFuture<WebBlocking> =
+        blockingAction(if (enabled) "block" else "allow", timeoutMillis)
+
+    private fun blockingAction(action: String, timeoutMillis: Long): CompletableFuture<WebBlocking> =
+        LiveOutputIframeBridge.send(document, target, "blocking",
+            params = JsonObject(mapOf("action" to JsonPrimitive(action))), timeoutMillis = timeoutMillis)
+            .thenApply { WebBlocking.from(it.value) }
+
     /** Current DOM source and document metadata, or matching elements for a CSS selector. */
     fun inspect(selector: String = "", timeoutMillis: Long = 10_000): CompletableFuture<JsonElement> {
         val quoted = JsonPrimitive(selector).toString()
@@ -373,5 +394,44 @@ internal object LiveOutputIframeBridge {
             ))
         }.onFailure { future.completeExceptionally(it) }
         return future
+    }
+}
+
+/**
+ * Content blocking for one web page, from [LiveOutputIframe.blocking].
+ *
+ * [mode] is `ads` (ads and trackers), `full` (also annoyances such as cookie banners) or `off`,
+ * chosen with `AFIELD_WEB_BLOCKING` when Field starts. [enabled] is false until the filter lists
+ * have loaded. [allowed] means the user turned blocking off for [site].
+ */
+data class WebBlocking(
+    val mode: String,
+    val enabled: Boolean,
+    val site: String,
+    val allowed: Boolean,
+    val blocked: Int,
+    val recent: List<BlockedRequest>,
+    val totalBlocked: Int,
+) {
+    /** One blocked request: its [url], Chromium's resource [type], and whether it was [redirected] to a stand-in. */
+    data class BlockedRequest(val url: String, val type: String, val redirected: Boolean)
+
+    internal companion object {
+        fun from(value: JsonElement): WebBlocking {
+            val o = value as? JsonObject ?: JsonObject(emptyMap())
+            fun str(key: String) = (o[key] as? JsonPrimitive)?.contentOrNull ?: ""
+            fun bool(key: String) = (o[key] as? JsonPrimitive)?.contentOrNull == "true"
+            fun int(key: String) = (o[key] as? JsonPrimitive)?.contentOrNull?.toIntOrNull() ?: 0
+            val recent = (o["recent"] as? kotlinx.serialization.json.JsonArray).orEmpty().mapNotNull { entry ->
+                val r = entry as? JsonObject ?: return@mapNotNull null
+                BlockedRequest(
+                    (r["url"] as? JsonPrimitive)?.contentOrNull ?: "",
+                    (r["type"] as? JsonPrimitive)?.contentOrNull ?: "",
+                    (r["redirected"] as? JsonPrimitive)?.contentOrNull == "true",
+                )
+            }
+            return WebBlocking(str("mode").ifEmpty { "off" }, bool("enabled"), str("site"), bool("allowed"),
+                int("blocked"), recent, int("totalBlocked"))
+        }
     }
 }

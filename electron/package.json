@@ -15,5 +15,8 @@
     "electron": {
       "@electron/get": "3.1.0"
     }
+  },
+  "dependencies": {
+    "@ghostery/adblocker-electron": "2.20.3"
   }
 }
