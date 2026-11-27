@@ -37,7 +37,8 @@ three {
 `EpicycleGeometry.fit` takes a regularly sampled periodic function. Pass power-of-two sample
 counts and a lambda from phase to position. The first axis varies fastest. The fit keeps one
 mode per conjugate pair and handles the DC and Nyquist terms separately. The two-phase
-`sampleSurface` closes both seams in its triangle indices.
+`sampleSurface` closes both seams in its triangle indices. The [drawing machine comparisons](#more-drawing-machines)
+show what changes when you change the links or how they carry rotation.
 
 ### Fit an epicycle to an FLine
 
@@ -539,6 +540,349 @@ uses direct shading.
     uv run --project . --group backdoor python tools/field_backdoor.py --scratch --json \
       --command 'run-jvm-main afield.examples.four.SpectralBunnyFilm --timeout 420 --arg /tmp/bunny.mp4 --arg 144 --arg 640 --arg 360'
     ```
+
+## More drawing machines
+
+The torus machine adds its links as vectors. A joint can also carry the rotation of the link
+before it, or two circular motions can stand in for one elliptical motion.
+
+### Rotations in different orders
+
+Each joint turns in the coordinate frame carried by the previous joint. Both machines have the
+same axes, clocks, and link lengths. The second machine connects the same joints in reverse
+order. Their traces differ because rotating around one axis changes the direction of the next.
+The faint lines show the tip paths over the same interval of time.
+
+```diffstatic_runner {data-lang=kotlin video="assets/spectral_geometry/rotation-order.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" restart-target="false" wait="1.2" duration="10" fps="24" timeout="240" padding="10" embed=true name="rotation-order" alt="Two machines with three articulated joints. Connecting the same joints in reverse order gives a different spatial tip path."}
+:::static
+import afield.geometry.spectral.PhaseClock
+import kotlin.math.sin
+import kotlin.math.sqrt
+
+val clock = PhaseClock(doubleArrayOf(1.0, sqrt(2.0), sqrt(3.0)), doubleArrayOf(0.6, 1.8, 2.4))
+val axes = [vec(0, 0, 1), vec(0.23, 1, 0.16).normalize(), vec(0.57, 0.33, 1).normalize()]
+val orders = [[0, 1, 2], [2, 1, 0]]
+val titles = ["A → B → C", "C → B → A"]
+val duration = 24.0
+
+fun joints(time: Double, order: List<Int>): List<Vec3> {
+    val phases = clock.phase(time)
+    val frame = Quat()
+    val position = vec(0, 0, 0)
+    return buildList {
+        add(Vec3(position))
+        for (joint in order) {
+            frame.mul(quat(1.15 * sin(phases[joint]), axes[joint]))
+            position.add(frame.transform(vec(0.68, 0, 0)))
+            add(Vec3(position))
+        }
+    }
+}
+
+:::fold Tip paths and camera
+val poses = orders.map { order -> List(1000) { joints(duration * it / 999, order) } }
+val traces = poses.map { chain ->
+    polylineFrom(chain.map { it.last() }).apply { color = vec(0.82, 0.82, 0.82, 0.74) }
+}
+val bearing = icosphereMesh(subdivisions = 1, radius = 0.056)
+val camera = ThreeCameraSpec(yawDegrees = 19.0, pitchDegrees = 24.0, upAxis = ThreeUpAxis.Z)
+val pointsInBothViews = poses.flatten().flatten()
+val margin = vec(0.08, 0.08, 0.08)
+val low = vec(pointsInBothViews.minOf { it.x }, pointsInBothViews.minOf { it.y }, pointsInBothViews.minOf { it.z }).sub(margin)
+val high = vec(pointsInBothViews.maxOf { it.x }, pointsInBothViews.maxOf { it.y }, pointsInBothViews.maxOf { it.z }).add(margin)
+val started = AnimationClock.nowSeconds()
+var opened = false
+:::endfold
+
+animate {
+    val now = AnimationClock.nowSeconds()
+    val t = if (AnimationClock.isFrameIndexed()) now else (now - started).coerceAtLeast(0.0)
+    three(name = "rotation-order", width = 900, height = 430) {
+        background("#080808")
+        helpers(false)
+        columns(2)
+        for ((i, order) in orders.withIndex()) {
+            panel(title = titles[i], camera = camera)
+            fitTo(low, high, panel = i)
+            lines([traces[i]], id = "trace-$i")
+            val points = joints(t, order)
+            for (j in 0 until points.lastIndex) {
+                mesh(tubeMesh([points[j], points[j + 1]], radius = 0.029, sides = 8),
+                    wireframe = false, id = "link-$i-$j")
+            }
+            for ((j, p) in points.withIndex()) {
+                mesh(bearing, wireframe = false, unlit = j == points.lastIndex, id = "joint-$i-$j",
+                    transform = translation(p.x.toDouble(), p.y.toDouble(), p.z.toDouble()))
+            }
+        }
+    }
+    if (!opened) {
+        displayOpen("main")
+        opened = true
+    }
+}
+```
+
+### Two circles draw one ellipse
+
+Watch the hub and the moving joint on the right. The first link turns one way and the second
+turns the other way. Both machines use the same clock, and their bright tips stay in step
+around the same tilted ellipse. Each link starts where the previous one ends.
+
+```diffstatic_runner {data-lang=kotlin video="assets/spectral_geometry/two-circles.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" restart-target="false" wait="1.2" duration="10" fps="24" timeout="240" padding="10" embed=true name="two-circles" alt="An elliptical oscillator beside two linked circles turning in opposite directions. The white tips follow the same ellipse in step."}
+:::static
+import afield.geometry.spectral.EllipseHarmonic
+import afield.geometry.spectral.EpicycleGeometry
+import afield.geometry.spectral.PhaseClock
+import kotlin.math.PI
+
+val ellipse = EllipseHarmonic(intArrayOf(1), vec(1.4, 0.16, 0.18), vec(-0.04, 0.20, 0.63))
+val pair = ellipse.counterRotatingCircles()
+val machines = [
+    EpicycleGeometry(1, vec(0, 0, 0), [ellipse]),
+    EpicycleGeometry(1, vec(0, 0, 0), pair.toList()),
+]
+val clock = PhaseClock(doubleArrayOf(2 * PI / 10), doubleArrayOf(0.32))
+val trace = polylineFrom(machines[0].trace(clock, 0.0, 10.0 / 256, 256), closed = true).apply {
+    color = vec(0.94, 0.94, 0.94, 0.83)
+}
+
+:::fold Show the moving links
+val camera = ThreeCameraSpec(yawDegrees = 9.0, pitchDegrees = 70.0)
+val hub = icosphereMesh(subdivisions = 1, radius = 0.045)
+val pen = icosphereMesh(subdivisions = 1, radius = 0.067)
+val start = AnimationClock.nowSeconds()
+var opened = false
+
+animate {
+    val now = AnimationClock.nowSeconds()
+    val time = if (AnimationClock.isFrameIndexed()) now else (now - start).coerceAtLeast(0.0)
+    val phase = clock.phase(time)
+    three(name = "two-circles", width = 900, height = 364) {
+        background("#080808")
+        helpers(false)
+        columns(2)
+        for ((i, machine) in machines.withIndex()) {
+            panel(title = ["One ellipse", "Two counter-rotating circles"][i], camera = camera)
+            fitTo(vec(-1.52, -0.34, -0.75), vec(1.52, 0.34, 0.75), panel = i)
+            val guides = machine.orbits(phase, segments = 72).onEach {
+                it.color = vec(0.65, 0.65, 0.65, 0.63)
+            }
+            lines(guides + trace, id = "guides-$i")
+            val joints = machine.partialSums(phase)
+            for (j in 0 until joints.lastIndex) {
+                val rod = tubeMesh([joints[j], joints[j + 1]], radius = 0.026, sides = 8)
+                mesh(rod, wireframe = false, unlit = true, id = "rod-$i-$j",
+                    material = ThreeSurfaceMaterial(color = if (j == 0) floatArrayOf(0.72f, 0.72f, 0.72f)
+                        else floatArrayOf(0.40f, 0.40f, 0.40f)))
+            }
+            for ((j, p) in joints.withIndex()) {
+                val isTip = j == joints.lastIndex
+                mesh(if (isTip) pen else hub, wireframe = false, unlit = true, id = "joint-$i-$j",
+                    transform = translation(p.x.toDouble(), p.y.toDouble(), p.z.toDouble()))
+            }
+        }
+    }
+    if (!opened) {
+        displayOpen("main")
+        opened = true
+    }
+}
+:::endfold
+```
+
+## Spherical harmonics
+
+Start with a sphere, twist it, and add a belt of folds. Fit the three output coordinates as
+functions of direction on the original sphere. At low degrees the reconstruction keeps the
+broad silhouette. Higher degrees recover the pleats around the belt. The grid shows degrees 1 through 16 in order. All views use the same sphere mesh, scale, and camera.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/spectral_geometry/spherical-shell.png" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" wait="1.0" padding="10" embed=true name="spherical-shell" alt="A four by four grid of the folded shell at every degree from 1 through 16. The pleats reappear as the degree rises."}
+:::static
+import afield.geometry.spectral.SphericalHarmonics
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.exp
+import kotlin.math.pow
+import kotlin.math.sin
+import kotlin.math.sqrt
+
+fun shell(direction: Vec3): Vec3 {
+    val z = direction.z.toDouble()
+    val phi = atan2(direction.y.toDouble(), direction.x.toDouble())
+    val ring = (1 - z * z).coerceAtLeast(0.0)
+    val fold = exp(-9 * (z - 0.18).pow(2)) * ring.pow(4) * cos(8 * (phi - 0.60 * z))
+    val radius = sqrt(ring) * (1 + 0.27 * fold + 0.13 * ring * cos(2 * phi))
+    val twist = phi + 0.65 * z
+    return vec(radius * cos(twist), radius * sin(twist), 0.89 * z + 0.21 * fold)
+}
+
+val basis = SphericalHarmonics(maxDegree = 16)
+val spectrum = basis.fit { shell(it) }
+val sphere = icosphereMesh(subdivisions = 3)
+val degrees = 1..16
+
+:::fold Rebuild on the same directions and display
+fun surface(point: (Vec3) -> Vec3): TriMesh {
+    val vertices = FloatArray(sphere.vertexCount * 3)
+    for (i in 0 until sphere.vertexCount) {
+        val p = point(sphere.position(i))
+        vertices[3 * i] = p.x
+        vertices[3 * i + 1] = p.y
+        vertices[3 * i + 2] = p.z
+    }
+    return TriMesh(vertices, sphere.indices).withVertexNormals()
+}
+
+val surfaces = degrees.map { degree ->
+    surface { basis.evaluate(spectrum, it, throughDegree = degree) }
+}
+three(name = "spherical-shell", width = 880, height = 822) {
+    background("#080808")
+    helpers(false)
+    columns(4)
+    shot(keys = [ThreeShotKey(0.0, distance = 0.81), ThreeShotKey(1.0, distance = 0.81)])
+    val camera = ThreeCameraSpec(yawDegrees = 22.0, pitchDegrees = 24.0, padding = 0.99, upAxis = ThreeUpAxis.Z)
+    for ((i, geometry) in surfaces.withIndex()) {
+        panel(title = "Degree ${i + 1}", camera = camera)
+        fitTo(vec(-1.33, -1.33, -1.0), vec(1.33, 1.33, 1.0), panel = i)
+        mesh(geometry, wireframe = false, id = "shell-$i")
+    }
+}
+displayOpen("main")
+:::endfold
+```
+
+### The Stanford Bunny in spherical harmonics
+
+The scan needs a direction-to-position map before we can use the same fit. One way to get
+one is to start inside the head and take the farthest scan intersection in each direction.
+That gives a radial envelope. Where a ray crosses the scan several times, it keeps the last
+crossing, so deep occluded gaps can fill in. Read the grid left to right, top to bottom,
+from degree 1 to 16. Each row uses the same camera and scale.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/spectral_geometry/spherical-bunny-grid.png" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" wait="1.0" timeout="150" padding="10" embed=true name="spherical-bunny-grid" alt="A four by four grid of spherical harmonic reconstructions of the Stanford Bunny's radial envelope, one view for each degree from 1 through 16."}
+:::static
+import afield.geometry.spectral.SphericalHarmonics
+
+val scan = meshFromAnyFile("public/docs/assets/spectral_geometry/bun_zipper.ply")
+    .repaired().normalized(2.0).decimate(3200).repaired().fillHoles().mesh
+val bounds = scan.bounds()
+val bvh = scan.bvh()
+
+:::fold Pick a point inside the head
+// Sample a small box under the ears in normalized scan coordinates.
+val candidates = buildList {
+    for (ix in 0..6) for (iy in 0..6) for (iz in 0..6) {
+        add(vec(-0.80 + 0.047 * ix, 0.27 + 0.042 * iy, -0.04 + 0.060 * iz))
+    }
+}
+val origin = candidates.minBy(bvh::signedDistance)
+check(bvh.signedDistance(origin) < 0.0)
+:::endfold
+
+val basis = SphericalHarmonics(maxDegree = 16)
+val spectrum = basis.fit(latitudes = 68) { direction ->
+    bvh.raycastAll(origin, direction).last().point
+}
+val sphere = icosphereMesh(subdivisions = 3)
+
+:::fold Put all sixteen cuts on the same scale
+three(name = "spherical-bunny-grid", width = 880, height = 822) {
+    background("#080808")
+    helpers(false)
+    columns(4)
+    shot(keys = [ThreeShotKey(0.0, distance = 0.81), ThreeShotKey(1.0, distance = 0.81)])
+    val camera = ThreeCameraSpec(yawDegrees = -34.0, pitchDegrees = 10.0, padding = 1.04)
+    val margin = vec(0.11, 0.11, 0.11)
+    val low = Vec3(bounds.min).sub(margin)
+    val high = Vec3(bounds.max).add(margin)
+    for (degree in 1..16) {
+        val positions = FloatArray(3 * sphere.vertexCount)
+        for (i in 0 until sphere.vertexCount) {
+            val position = basis.evaluate(spectrum, sphere.position(i), throughDegree = degree)
+            positions[3 * i] = position.x
+            positions[3 * i + 1] = position.y
+            positions[3 * i + 2] = position.z
+        }
+        panel(title = "Degree $degree", camera = camera)
+        fitTo(low, high, panel = degree - 1)
+        mesh(TriMesh(positions, sphere.indices).withVertexNormals(), wireframe = false, id = "bunny-$degree")
+    }
+}
+displayOpen("main")
+:::endfold
+```
+
+#### A low orbit around the paws
+
+The sealed scan turns beside the spherical fit. Both make two low turns while the fit advances
+one degree per second, from 1 through 32. Compare the paws and haunches each time they pass through
+profile. The radial envelope still bridges some of the space between the paws.
+
+```diffstatic_runner {data-lang=kotlin video="assets/spectral_geometry/spherical-bunny-turntable.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" restart-target="false" wait="1.2" duration="32" fps="24" timeout="360" padding="10" embed=true name="spherical-bunny-turntable" alt="Two low turns around the Stanford Bunny scan and its spherical fit, advancing one degree per second from 1 through 32."}
+:::static
+import afield.geometry.spectral.SphericalHarmonics
+import kotlin.math.PI
+import kotlin.math.sin
+
+:::fold Fit the same radial envelope through degree 32
+val scan = meshFromAnyFile("public/docs/assets/spectral_geometry/bun_zipper.ply")
+    .repaired().normalized(2.0).decimate(3200).repaired().fillHoles().mesh.withVertexNormals()
+val bvh = scan.bvh()
+val candidates = buildList {
+    for (ix in 0..6) for (iy in 0..6) for (iz in 0..6) {
+        add(vec(-0.80 + 0.047 * ix, 0.27 + 0.042 * iy, -0.04 + 0.060 * iz))
+    }
+}
+val origin = candidates.minBy(bvh::signedDistance)
+check(bvh.signedDistance(origin) < 0.0)
+val basis = SphericalHarmonics(maxDegree = 32)
+val spectrum = basis.fit(latitudes = 68) { direction ->
+    bvh.raycastAll(origin, direction).last().point
+}
+val sphere = icosphereMesh(subdivisions = 4)
+val reconstructions = mutableMapOf<Int, TriMesh>()
+fun atDegree(degree: Int): TriMesh = reconstructions.getOrPut(degree) {
+    val positions = FloatArray(3 * sphere.vertexCount)
+    for (i in 0 until sphere.vertexCount) {
+        val p = basis.evaluate(spectrum, sphere.position(i), throughDegree = degree)
+        positions[3 * i] = p.x
+        positions[3 * i + 1] = p.y
+        positions[3 * i + 2] = p.z
+    }
+    TriMesh(positions, sphere.indices).withVertexNormals()
+}
+:::endfold
+
+val start = AnimationClock.nowSeconds()
+var opened = false
+animate {
+    val now = AnimationClock.nowSeconds()
+    val time = if (AnimationClock.isFrameIndexed()) now else (now - start).coerceAtLeast(0.0)
+    val elapsed = time % 32.0
+    val degree = elapsed.toInt() + 1
+    val fitted = atDegree(degree)
+    val angle = 2 * PI * elapsed / 16.0
+    val transform = Matrix4f().rotateY(angle.toFloat()).get(FloatArray(16))
+    val camera = ThreeCameraSpec(yawDegrees = -34.0, pitchDegrees = 3.0 - 12.0 * sin(angle))
+    three(name = "spherical-bunny-turntable", width = 920, height = 400) {
+        background("#080808")
+        helpers(false)
+        columns(2)
+        shot(keys = [ThreeShotKey(0.0, distance = 0.82), ThreeShotKey(1.0, distance = 0.82)])
+        for ((i, geometry) in [scan, fitted].withIndex()) {
+            panel(title = ["Stanford Bunny scan", "Spherical fit · degree $degree"][i], camera = camera)
+            fitTo(vec(-1.22, -1.03, -1.22), vec(1.22, 1.03, 1.22), panel = i)
+            mesh(geometry, transform = transform, wireframe = false, id = "bunny-turn-$i")
+        }
+    }
+    if (!opened) {
+        displayOpen("main")
+        opened = true
+    }
+}
+```
 
 ## Shared coefficients and Vulkan evaluation
 

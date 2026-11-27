@@ -32,6 +32,49 @@ import kotlin.test.assertTrue
 
 class SpectralGeometryTest {
     @Test
+    fun orientedEllipsesSplitIntoOppositeCircles() {
+        val coefficients = listOf(
+            Vec3(2f, -1f, 0.5f) to Vec3(0.3f, 1.1f, 0.8f),
+            Vec3(1f, 2f, 3f) to Vec3(-2f, -4f, -6f),
+            Vec3() to Vec3(0f, 0f, 2f),
+            Vec3() to Vec3(),
+        )
+        for ((a, b) in coefficients) {
+            val ellipse = EllipseHarmonic(intArrayOf(3, -2), a, b)
+            val (forward, reverse) = ellipse.counterRotatingCircles()
+            for (circle in listOf(forward, reverse)) {
+                val (major, minor) = circle.radii()
+                assertEquals(major, minor, 2e-6)
+                assertEquals(ellipse.mode.toList(), circle.mode.toList())
+            }
+            assertTrue(forward.a.cross(forward.b).dot(reverse.a.cross(reverse.b)) <= 0f)
+            for (i in 0..32) {
+                val angle = 2 * PI * i / 32
+                val restored = forward.at(angle).add(reverse.at(angle))
+                assertTrue(restored.distance(ellipse.at(angle)) < 2e-6f)
+            }
+        }
+    }
+
+    @Test
+    fun sphericalProjectionReconstructsAndFiltersCoordinateMaps() {
+        val basis = SphericalHarmonics(5)
+        fun source(p: Vec3) = Vec3(2f + p.x, p.y * p.z, p.x * p.x - p.y * p.y)
+        val spectrum = basis.fit(sample = ::source)
+        assertEquals(36, spectrum.modeCount)
+        assertEquals(4.0, spectrum.energy(0), 1e-6)
+        assertEquals(1.0 / 3.0, (1..3).sumOf(spectrum::energy), 1e-6)
+        val firstDegree = spectrum.bandPass(0.0, sqrt(2.0))
+        val directions = listOf(Vec3(0f, 0f, 1f), Vec3(0f, 0f, -1f), Vec3(1f, 2f, 3f).normalize(), Vec3(-3f, 4f, -1f).normalize())
+        for (direction in directions) {
+            assertTrue(basis.evaluate(spectrum, direction).distance(source(direction)) < 2e-6f)
+            val linear = Vec3(2f + direction.x, 0f, 0f)
+            assertTrue(basis.evaluate(firstDegree, direction).distance(linear) < 2e-6f)
+            assertTrue(basis.evaluate(spectrum, direction, throughDegree = 1).distance(linear) < 2e-6f)
+        }
+    }
+
+    @Test
     fun torusFitClocksAndRotation() {
         val torus = EpicycleGeometry.torus(1.2, 0.3)
         val fitted = EpicycleGeometry.fit(intArrayOf(16, 8), minEnergy = 1e-10) {

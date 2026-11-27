@@ -61,6 +61,31 @@ class EllipseHarmonic(mode: IntArray, a: Vec3, b: Vec3) {
         return major to minor
     }
 
+    /** Two circles whose displacements sum to this ellipse at every phase. */
+    fun counterRotatingCircles(): Pair<EllipseHarmonic, EllipseHarmonic> {
+        val a = Vector3d(cosine.x.toDouble(), cosine.y.toDouble(), cosine.z.toDouble())
+        val b = Vector3d(sine.x.toDouble(), sine.y.toDouble(), sine.z.toDouble())
+        val normal = a.cross(b, Vector3d())
+        if (normal.lengthSquared() == 0.0) {
+            // A line has no preferred plane. Choose one through its direction.
+            val direction = if (a.lengthSquared() > 0) a else b
+            if (direction.lengthSquared() == 0.0) return this to this
+            val axis = if (kotlin.math.abs(direction.x) <= direction.length() * 0.5) {
+                Vector3d(1.0, 0.0, 0.0)
+            } else {
+                Vector3d(0.0, 1.0, 0.0)
+            }
+            direction.cross(axis, normal)
+        }
+        normal.normalize()
+        val turnedB = normal.cross(b, Vector3d())
+        val forward = Vector3d(a).sub(turnedB).mul(0.5)
+        val reverse = Vector3d(a).add(turnedB).mul(0.5)
+        fun point(v: Vector3d) = Vec3(v.x.toFloat(), v.y.toFloat(), v.z.toFloat())
+        return EllipseHarmonic(lattice, point(forward), point(normal.cross(forward, Vector3d()))) to
+            EllipseHarmonic(lattice, point(reverse), point(normal.cross(reverse, Vector3d()).negate()))
+    }
+
     fun at(angle: Double): Vec3 = Vec3(cosine).mul(cos(angle).toFloat()).fma(sin(angle).toFloat(), sine)
 
     internal fun angle(phase: DoubleArray): Double =
