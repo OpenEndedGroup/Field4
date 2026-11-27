@@ -65,12 +65,15 @@ fun installLiveOutputIframeClient() {
             fail("Output area '${command.channel}' is not displayed in this Electron view")
             return@put Handled.yes
         }
-        val frames = channel.querySelectorAll(".disclosure-content iframe")
+        // A `Box.web` page with a profile is a <webview>, which Electron reaches by its webContents id.
+        val frames = channel.querySelectorAll(".disclosure-content iframe, .disclosure-content webview")
         if (frames.length != 1) {
             fail("Output area '${command.channel}' must contain exactly one iframe; found ${frames.length}")
             return@put Handled.yes
         }
-        val frame = frames.item(0) as HTMLIFrameElement
+        val element = frames.item(0).asDynamic()
+        val isWebview = (element.tagName as String).lowercase() == "webview"
+        val frame = element.unsafeCast<HTMLIFrameElement>()
         if (command.operation == "navigate") {
             if (command.url.isBlank()) {
                 fail("Iframe URL cannot be empty")
@@ -84,7 +87,7 @@ fun installLiveOutputIframeClient() {
                         kotlinx.serialization.json.JsonPrimitive(frame.src), frame.src)
                 ))
             }
-            frame.asDynamic().addEventListener("load", loaded, js("({once:true})"))
+            frame.asDynamic().addEventListener(if (isWebview) "did-stop-loading" else "load", loaded, js("({once:true})"))
             timer = window.setTimeout({
                 frame.asDynamic().removeEventListener("load", loaded)
                 fail("Iframe navigation timed out after ${command.timeoutMillis}ms")
@@ -104,6 +107,14 @@ fun installLiveOutputIframeClient() {
         request.frameName = frameName
         if (fixedName != null) request.id = fixedName.removePrefix("field-live-iframe-")
         request.frameUrl = frame.src
+        if (isWebview) {
+            val guestId = runCatching { element.getWebContentsId() }.getOrNull()
+            if (guestId == null) {
+                fail("The webview for '${command.channel}' has not attached yet")
+                return@put Handled.yes
+            }
+            request.guestId = guestId
+        }
         if (command.operation == "screenshot" || command.operation == "devtools") {
             // An output area panned off the canvas has no pixels to capture, and DevTools inspects
             // the frame at a point on screen. Bring it into view the way a reader would, by panning
