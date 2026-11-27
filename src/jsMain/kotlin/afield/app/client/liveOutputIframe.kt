@@ -26,12 +26,34 @@ import kotlin.js.jsTypeOf
 fun installLiveOutputIframeClient() {
     if (window.asDynamic().fieldElectron == null) return
     registerOnOpen(Message("live-output-iframe-ready"))
+    // Cookie changes in a watched web profile, passed on to the server as they happen.
+    window.asDynamic().fieldElectron.onWebProfileEvent { change: dynamic ->
+        send(Message("web-profile-event").payload(Json.parseToJsonElement(JSON.stringify(change))))
+    }
     handlers.put("live-output-iframe-command") { message, _ ->
         val command = Json.decodeFromJsonElement<LiveOutputIframeCommand>(message.payload!!)
         fun fail(reason: String) {
             send(Message("live-output-iframe-reply").payload(
                 LiveOutputIframeReply(command.id, false, error = reason)
             ))
+        }
+        // A web profile's cookies belong to no iframe: Electron answers them directly. The
+        // command's `url` names the profile directory ("" for Field's shared session) and its
+        // `method` the action.
+        if (command.operation == "profile") {
+            val request = JSON.parse<dynamic>("{}")
+            request.directory = command.url
+            request.action = command.method
+            request.params = JSON.parse<dynamic>(Json.encodeToString(command.params))
+            val promise = window.asDynamic().fieldElectron.webProfile(request).unsafeCast<Promise<dynamic>>()
+            promise.then({ answer: dynamic ->
+                val value = if (jsTypeOf(answer) == "undefined") JsonNull
+                    else Json.parseToJsonElement(JSON.stringify(answer))
+                send(Message("live-output-iframe-reply").payload(LiveOutputIframeReply(command.id, true, value)))
+            }, { error: dynamic ->
+                fail(error?.message as? String ?: error.toString())
+            })
+            return@put Handled.yes
         }
         val boxes = document.querySelectorAll(".box")
         var box: Element? = null

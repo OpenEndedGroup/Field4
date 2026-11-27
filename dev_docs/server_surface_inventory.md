@@ -301,7 +301,7 @@ Ktor's containment check applies to it as it does to the five above.
 
 ## The `/ws` command surface
 
-159 command names, in the `handlers` table. This is the real command API, it is roughly twice
+160 command names, in the `handlers` table. This is the real command API, it is roughly twice
 the size of the HTTP write surface, and until this page nothing enumerated it. It is not the
 only `/ws` dispatch table: ten more channels live in `rawHandlers` and are counted in
 [their own section](#the-other-ws-dispatch-table-rawhandlers) below.
@@ -317,7 +317,7 @@ the file, and the reach is described per file below in prose that a human checke
 
 | declaring file | commands |
 | --- | --- |
-| `Server.kt` | 62 |
+| `Server.kt` | 63 |
 | `agent_backdoor.kt` | 28 |
 | `history.kt` | 14 |
 | `executing.kt` | 10 |
@@ -348,7 +348,7 @@ What each of those reaches, checked against the code rather than inferred from t
 
 | file | what its commands reach |
 | --- | --- |
-| `Server.kt` | document and box state, the completion engine, clipboard, layers, FLine editing, `set-string`, which writes box source to disk, the live output iframe ready/reply relay, and review decisions for the attached document’s text-frame edits. The relay accepts client readiness and replies within the existing `/ws` trust boundary; a native client can claim readiness, and a matching pending reply is accepted only from the selected socket |
+| `Server.kt` | document and box state, the completion engine, clipboard, layers, FLine editing, `set-string`, which writes box source to disk, the live output iframe ready/reply relay, cookie changes in a watched web profile (`web-profile-event`, which only reaches box callbacks registered by `onCookieChange` for the same document and profile), and review decisions for the attached document’s text-frame edits. The relay accepts client readiness and replies within the existing `/ws` trust boundary; a native client can claim readiness, and a matching pending reply is accepted only from the selected socket |
 | `agent_backdoor.kt` | the agent path: read/write boxes, run transcripts, screenshot, macros. The published automation surface |
 | `history.kt` | the document history store — versions, screenshots, restore |
 | `executing.kt` | **box execution.** `launch-all`, `launch-batch`, `launch-fragment`, `stop-box`, `stop-all`, `interrupt-box`. This is arbitrary Kotlin in Field's own JVM |
@@ -562,6 +562,7 @@ reach to a client that `agent-eval` and `launch-all` already let run arbitrary c
 | `symbol-context` | `Server.kt` |
 | `transcript-line-activity` | `history.kt` |
 | `vec2-update` | `Server.kt` |
+| `web-profile-event` | `Server.kt` |
 
 ## The other `/ws` dispatch table: `rawHandlers`
 

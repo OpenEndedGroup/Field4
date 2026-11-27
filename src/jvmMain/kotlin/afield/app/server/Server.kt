@@ -3037,6 +3037,11 @@ class Server {
                 Handled.yes
             })
 
+            handlers["web-profile-event"] = mutableSetOf({ message, _ ->
+                afield.ui.output.WebProfileEvents.dispatch(thisSessionInfo.get(), message.payload!!)
+                Handled.yes
+            })
+
             handlers["text-frame-review"] = mutableSetOf({ message, reply ->
                 val result = runCatching {
                     val info = thisSessionInfo.get()

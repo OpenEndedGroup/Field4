@@ -119,6 +119,14 @@ contextBridge.exposeInMainWorld("fieldElectron", {
   outputIframe(request) {
     return ipcRenderer.invoke("field4-live-output-iframe", request);
   },
+  // A web profile's cookies (web-profiles.cjs): get, set, remove, flush, and watching for changes.
+  webProfile(request) {
+    return ipcRenderer.invoke("field4-web-profile", request);
+  },
+  onWebProfileEvent(callback) {
+    if (typeof callback !== "function") return;
+    ipcRenderer.on("field4-web-profile-event", (_event, change) => callback(change));
+  },
   captureHistoryScreenshot() {
     return ipcRenderer.invoke("field4-history-capture-window");
   },

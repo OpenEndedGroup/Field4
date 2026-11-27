@@ -201,7 +201,8 @@ web("github.com", profile = "%project/web-profiles/github")
 
 Pages with the same profile share its logins; a page with another profile, or none, sees none of
 them. The bar shows the profile's name at its right end, with the directory as its tooltip.
-`webProfileDirectory("github")` gives the directory itself.
+`webProfileDirectory("github")` gives the directory itself, and
+[cookies from code](#cookies-from-code) reads and writes what is in it.
 
 A page with a profile works only in Field's Electron window. Everything on
 [`LiveOutputIframe`](#working-with-the-page-from-code) works on it, and so does
@@ -212,6 +213,46 @@ A page with a profile works only in Field's Electron window. Everything on
     or of a document or project that contains it, can use those logins. Keep profiles out of
     anything you share or commit. A profile also grows with the site's cache, to tens or hundreds
     of megabytes for a busy site.
+
+## Cookies from code
+
+`webProfile("github")` is the profile `web(url, profile = "github")` uses, and its `cookies` read
+and write the cookies its pages see. Each call returns a future:
+
+```diffstatic {data-lang=kotlin}
+val github = webProfile("github")
+github.cookies.get("https://github.com").thenAccept { cookies ->
+    cookies.forEach { println("${it.name}  expires ${it.expires ?: "when Field quits"}") }
+}
+```
+
+`get(url)` gives the cookies a request to that address would carry; `get()` with no address gives
+every cookie in the profile, and `name` and `domain` narrow either. `set` adds or replaces one, and
+a page in the profile sees it on its next request:
+
+```diffstatic {data-lang=kotlin}
+webProfile("github").cookies.set("https://github.com", "tz", "Europe/Paris")
+```
+
+`remove(url, name)` takes one away, `clear(url)` every cookie for an address, and `clear()` the
+whole profile, which logs every page in it out. `sharedWebProfile` is the profile of pages
+without one.
+
+`onCookieChange` calls back whenever a cookie in the profile changes, whether a page or code
+changed it. Running the box again replaces the watch, and stopping the box ends it:
+
+```diffstatic {data-lang=kotlin}
+onCookieChange(webProfile("github")) { change ->
+    println("${if (change.removed) "-" else "+"} ${change.cookie.name} (${change.cause})")
+}
+```
+
+Changing a cookie's value arrives as two changes: the old value removed (`overwrite`) and the
+new one added (`inserted`).
+
+!!! note
+    Cookies are reached through Field's Electron window, so these calls need it showing this
+    document, as the other page calls do.
 
 ## Ads and trackers
 

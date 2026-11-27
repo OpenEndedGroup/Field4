@@ -4,7 +4,7 @@
 
 Turning a value into something you can look at, without leaving the box.
 
-73 source file(s), 2065 public symbol(s), 1479 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+74 source file(s), 2089 public symbol(s), 1493 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -3283,6 +3283,75 @@ One frame read back by [`readCells`](visualization.md#shapeasciigpu-kt--readcell
 | --- | --- |
 | <a id="shapeasciigpu-kt--shapeasciireadback--scene"></a><code class="highlight"><span class="k">val</span> <span class="n">scene</span><span class="p">:</span> <span class="nc">Img</span></code> | The scene target's pixels, RGB in `0..1`, top row first. |
 | <a id="shapeasciigpu-kt--shapeasciireadback--frame"></a><code class="highlight"><span class="k">val</span> <span class="n">frame</span><span class="p">:</span> <span class="nc">AsciiFrame</span></code> | The characters the GPU chose for that scene. |
+
+## WebProfile.kt { #webprofile-kt }
+
+`src/jvmMain/kotlin/afield/ui/output/WebProfile.kt` — [read the source](source/jvmMain/afield/ui/output/WebProfile/)
+
+**Used in:** [A Web Page in a Box](../web.md)
+
+### Top-level functions { #webprofile-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="webprofile-kt--webprofile"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">webProfile</span><span class="p">(</span><span class="n">profile</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">WebProfile</span></code>](source/jvmMain/afield/ui/output/WebProfile/#L55) | The web profile called `profile`: the same name or file spec that `web(url, profile = ...)` takes, so `webProfile("github")` is the profile `web("github.com", profile = "github")` logs in with. Its directory is made if it is missing. |
+| <a id="webprofile-kt--oncookiechange"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">onCookieChange</span><span class="p">(</span><span class="n">profile</span><span class="p">:</span> <span class="nc">WebProfile</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;cookies&quot;</span><span class="p">,</span> <span class="n">onChange</span><span class="p">:</span> <span class="k">suspend</span> <span class="p">(</span><span class="nc">WebCookieChange</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/ui/output/WebProfile/#L178) | Call `onChange` for every cookie that is set, changed or removed in `profile` from now on, by a page or by code. |
+
+### Top-level values { #webprofile-kt-values }
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="webprofile-kt--sharedwebprofile"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">Box</span><span class="p">.</span><span class="n">sharedWebProfile</span><span class="p">:</span> <span class="nc">WebProfile</span></code>](source/jvmMain/afield/ui/output/WebProfile/#L58) | The profile `web(url)` pages without a profile share with each other and with Field itself. |
+
+### WebProfile { #webprofile-kt-webprofile }
+
+[<code class="highlight"><span class="k">class</span> <span class="nc">WebProfile</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">internal</span> <span class="k">val</span> <span class="n">document</span><span class="p">:</span> <span class="nc">SessionInformation</span><span class="p">,</span> <span class="k">val</span> <span class="n">directory</span><span class="p">:</span> <span class="nc">File</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/ui/output/WebProfile/#L33)
+
+A web profile: where `web(url, profile = ...)` pages keep their cookies, logins and storage. Get one with [`webProfile`](visualization.md#webprofile-kt--webprofile), or [`sharedWebProfile`](visualization.md#webprofile-kt--sharedwebprofile) for the pages that have no profile (and Field's own pages). [`cookies`](visualization.md#webprofile-kt--webprofile--cookies) reads and writes its cookies while Field's Electron window is open.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="webprofile-kt--webprofile--directory"></a><code class="highlight"><span class="k">val</span> <span class="n">directory</span><span class="p">:</span> <span class="nc">File</span><span class="o">?</span></code> | The profile's directory; null for the shared profile. |
+| <a id="webprofile-kt--webprofile--cookies"></a>[<code class="highlight"><span class="k">val</span> <span class="n">cookies</span><span class="p">:</span> <span class="nc">WebCookies</span></code>](source/jvmMain/afield/ui/output/WebProfile/#L39) | This profile's cookies. |
+| <a id="webprofile-kt--webprofile--tostring"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/ui/output/WebProfile/#L47) |  |
+
+### WebCookie { #webprofile-kt-webcookie }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">WebCookie</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">domain</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;/&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">secure</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">httpOnly</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">expires</span><span class="p">:</span> <span class="nc">Instant</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">sameSite</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;unspecified&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">hostOnly</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span></code>](source/jvmMain/afield/ui/output/WebProfile/#L64)
+
+One cookie, as Chromium stores it. [`expires`](visualization.md#webprofile-kt--webcookie--expires) is null for a session cookie, which lasts until Field quits. [`sameSite`](visualization.md#webprofile-kt--webcookie--samesite) is `unspecified`, `no_restriction`, `lax` or `strict`.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="webprofile-kt--webcookie--name"></a><code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="webprofile-kt--webcookie--value"></a><code class="highlight"><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="webprofile-kt--webcookie--domain"></a><code class="highlight"><span class="k">val</span> <span class="n">domain</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="webprofile-kt--webcookie--path"></a><code class="highlight"><span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="webprofile-kt--webcookie--secure"></a><code class="highlight"><span class="k">val</span> <span class="n">secure</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <a id="webprofile-kt--webcookie--httponly"></a><code class="highlight"><span class="k">val</span> <span class="n">httpOnly</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <a id="webprofile-kt--webcookie--expires"></a><code class="highlight"><span class="k">val</span> <span class="n">expires</span><span class="p">:</span> <span class="nc">Instant</span><span class="o">?</span></code> |  |
+| <a id="webprofile-kt--webcookie--samesite"></a><code class="highlight"><span class="k">val</span> <span class="n">sameSite</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="webprofile-kt--webcookie--hostonly"></a><code class="highlight"><span class="k">val</span> <span class="n">hostOnly</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+
+### WebCookieChange { #webprofile-kt-webcookiechange }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">WebCookieChange</span><span class="p">(</span><span class="k">val</span> <span class="n">cookie</span><span class="p">:</span> <span class="nc">WebCookie</span><span class="p">,</span> <span class="k">val</span> <span class="n">removed</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">cause</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/ui/output/WebProfile/#L102)
+
+A change to a cookie in a watched profile, from [`onCookieChange`](visualization.md#webprofile-kt--oncookiechange). `removed` is true when the cookie went away; `cause` is Chromium's reason: `inserted` (a new or changed cookie), `explicit` (a page or this API removed it), `overwrite` (the old value of a cookie being replaced, which is followed by the `inserted` new one), `expired`, `evicted` or `expired-overwrite`.
+
+### WebCookies { #webprofile-kt-webcookies }
+
+[<code class="highlight"><span class="k">class</span> <span class="nc">WebCookies</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">profile</span><span class="p">:</span> <span class="nc">WebProfile</span><span class="p">)</span></code>](source/jvmMain/afield/ui/output/WebProfile/#L108)
+
+The cookies of one [`WebProfile`](visualization.md#webprofile-kt-webprofile). Every call returns a future and needs Field's Electron window showing this document.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="webprofile-kt--webcookies--get"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">get</span><span class="p">(</span><span class="n">url</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">domain</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">WebCookie</span><span class="p">&gt;</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ui/output/WebProfile/#L113) | The cookies a request to `url` would carry, or every cookie in the profile when `url` is null. `name` and `domain` narrow the answer further. |
+| <a id="webprofile-kt--webcookies--set"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">set</span><span class="p">(</span><span class="n">url</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">domain</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">secure</span><span class="p">:</span> <span class="nc">Boolean</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">httpOnly</span><span class="p">:</span> <span class="nc">Boolean</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">expires</span><span class="p">:</span> <span class="nc">Instant</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">sameSite</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">Unit</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ui/output/WebProfile/#L121) | Set a cookie for `url`. Leave `domain` null for a cookie only `url`'s host gets; give one (`.example.com`) to share it with subdomains. `expires` null makes a session cookie. |
+| <a id="webprofile-kt--webcookies--remove"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">remove</span><span class="p">(</span><span class="n">url</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">Unit</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ui/output/WebProfile/#L133) | Remove the cookie called `name` that a request to `url` would carry. |
+| <a id="webprofile-kt--webcookies--clear"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">clear</span><span class="p">(</span><span class="n">url</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ui/output/WebProfile/#L137) | Remove every cookie `url` would carry, or every cookie in the profile when `url` is null; completes with how many. |
+| <a id="webprofile-kt--webcookies--flush"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">flush</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">Unit</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ui/output/WebProfile/#L146) | Write cookies to the profile's directory now rather than when Chromium next gets round to it. |
 
 ## callbacks.kt { #callbacks-kt }
 

@@ -73,4 +73,61 @@ function installProfileWebviews(contents, { session, log = () => {}, onNewSessio
   });
 }
 
-module.exports = { PARTITION_PREFIX, profileDirectory, sessionForDirectory, applyProfilePreferences, installProfileWebviews };
+// The cookie fields a caller may set; Electron rejects unknown ones.
+const COOKIE_FIELDS = ["url", "name", "value", "domain", "path", "secure", "httpOnly", "expirationDate", "sameSite"];
+const FILTER_FIELDS = ["url", "name", "domain", "path", "secure", "session", "httpOnly"];
+
+function pick(source, fields) {
+  const result = {};
+  for (const field of fields) {
+    if (source && source[field] !== undefined && source[field] !== null && source[field] !== "") result[field] = source[field];
+  }
+  return result;
+}
+
+const watchers = new Map(); // Session -> Set<webContents> told about its cookie changes
+
+// Answers a `profile` request from a Field page: [request.directory] names a profile ("" is the
+// shared session Field's own pages use), [request.action] what to do with its cookies.
+async function handleProfileRequest(request, sender, { session, log = () => {}, onNewSession = () => {} }) {
+  const directory = request?.directory ? profileDirectory(PARTITION_PREFIX + encodeURIComponent(request.directory)) : "";
+  if (directory === null) throw new Error(`Not a profile directory: ${request?.directory}`);
+  const target = directory ? sessionForDirectory(directory, { session, log, onNewSession }) : session.defaultSession;
+  const params = request?.params || {};
+  switch (request?.action) {
+    case "cookies-get":
+      return await target.cookies.get(pick(params, FILTER_FIELDS));
+    case "cookies-set": {
+      const cookie = pick(params, COOKIE_FIELDS);
+      if (!cookie.url) throw new Error("A cookie needs the url it belongs to");
+      await target.cookies.set(cookie);
+      return true;
+    }
+    case "cookies-remove":
+      if (!params.url || !params.name) throw new Error("Removing a cookie needs its url and name");
+      await target.cookies.remove(String(params.url), String(params.name));
+      return true;
+    case "cookies-flush":
+      await target.cookies.flushStore();
+      return true;
+    case "cookies-watch": {
+      let listeners = watchers.get(target);
+      if (!listeners) {
+        listeners = new Set();
+        watchers.set(target, listeners);
+        target.cookies.on("changed", (_event, cookie, cause, removed) => {
+          for (const contents of listeners) {
+            if (contents.isDestroyed()) { listeners.delete(contents); continue; }
+            contents.send("field4-web-profile-event", { directory, kind: "cookie", cookie, cause, removed });
+          }
+        });
+      }
+      listeners.add(sender);
+      return true;
+    }
+    default:
+      throw new Error(`Unknown web profile action '${request?.action}'`);
+  }
+}
+
+module.exports = { handleProfileRequest, PARTITION_PREFIX, profileDirectory, sessionForDirectory, applyProfilePreferences, installProfileWebviews };
