@@ -421,7 +421,7 @@ To see it all at once, open the [map of the docs](../docs_map.md): every page, a
 - [audio](examples.md#trackingresonatorresynthesisexample-kt)
 - [brief](examples.md#briefeditorextensionworkout-kt)
 - [ceres](examples.md#ceresarchitecturaldslsmoke-kt)
-- [chain](examples.md#kirigamisolidchain-kt)
+- [chain](examples.md#kirigamipopup-kt)
 - [datalog](examples.md#datalogeditorextensionworkout-kt)
 - [faust](examples.md#faustboxexamples-kt)
 - <span class="reference-internal">[forth](examples.md#forthinterpretersmoketest-kt)</span>
@@ -688,13 +688,13 @@ To see it all at once, open the [map of the docs](../docs_map.md): every page, a
 
 ## Reference pages
 
-**44510 public symbols across 1961 source files**, 26719 of them (60%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**44537 public symbols across 1963 source files**, 26745 of them (60%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
 | Category | Files | Symbols | Documented | Covers |
 | --- | --- | --- | --- | --- |
-| [Examples](examples.md) | 244 | 783 | 350 (44%) | Runnable examples, galleries and verification programs. |
+| [Examples](examples.md) | 245 | 793 | 359 (45%) | Runnable examples, galleries and verification programs. |
 | [Internal](internal.md) | 27 | 260 | 100 (38%) | Implementation details explicitly marked Internal by their source. |
 | [Lighting](lighting.md) | 8 | 216 | 208 (96%) | Light sources, fixtures and control protocols for working with physical and rendered lighting. |
 | [Networking](networking.md) | 22 | 539 | 323 (59%) | OSC messages, discovery and query interfaces for connecting Field to other applications and devices. |
@@ -705,7 +705,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Renderers](renderers.md) | 49 | 930 | 534 (57%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 596 | 440 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 787 | 530 (67%) | Nonlinear least squares, aimed at geometry. |
-| [Simulation](simulation.md) | 58 | 1961 | 1173 (59%) | Making a shape behave. |
+| [Simulation](simulation.md) | 59 | 1978 | 1190 (60%) | Making a shape behave. |
 | [Imaging](imaging.md) | 56 | 976 | 532 (54%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
 | [ALife](alife.md) | 24 | 1381 | 1252 (90%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 16 | 632 | 424 (67%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
@@ -1465,6 +1465,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [HeadTrackedSpatial.kt](patterns.md#headtrackedspatial-kt) | Patterns | 29 | 20 | The seam between a tracked head and `patSpatial`'s listener. | [A pattern in space: `pat` → Dough → Steam Audio](../pat_spatial.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [HeadTrackedSpatialSmokeTest.kt](patterns.md#headtrackedspatialsmoketest-kt) | Patterns · internal | 2 | 1 | The listener half of `patSpatial`'s audio check: the pattern holds still and the head moves. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>visualization/<wbr></small> [heatmap.kt](visualization.md#heatmap-kt) | Visualization | 6 | 6 | A rectangular array of numbers as a colour-mapped picture in a box output, in one call. | [Geometry from disk](../geometry_from_disk.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>physics/<wbr></small> [HingedPlates.kt](simulation.md#hingedplates-kt) | Simulation | 17 | 17 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>history/<wbr></small> [history.kt](workspace.md#history-kt) | Workspace · internal | 30 | 15 | A document's version history on disk: listing, diffing, searching, naming and restoring the saved versions under its `backups/` folder, plus the RPC handlers behind the history browser. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [HistoryFileInlineSmokeTest.kt](examples.md#historyfileinlinesmoketest-kt) | Examples · internal | 2 | 0 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>history/<wbr></small> [HistoryMetrics.kt](workspace.md#historymetrics-kt) | Workspace · internal | 9 | 1 | Per-version activity and screenshot records for a document, stored in its `history_metrics.edn` beside `metadata.edn`. |  |
@@ -1545,7 +1546,8 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>keyframes/<wbr></small> [keyframeTidy.kt](graphics.md#keyframetidy-kt) | Graphics | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>keyframes/<wbr></small> [keyframeTypeLibrary.kt](graphics.md#keyframetypelibrary-kt) | Graphics | 10 | 9 | The key types every keyframe editor offers beyond its five built-in ones: the easing family, splines that look past the segment to the keys either side, shapes, and shaped noise. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>conformal/<wbr></small> [KirigamiInverseDesign.kt](math.md#kirigamiinversedesign-kt) | Math | 20 | 20 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>chain/<wbr></small> [KirigamiSolidChain.kt](examples.md#kirigamisolidchain-kt) | Examples | 16 | 15 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>chain/<wbr></small> [KirigamiPopUp.kt](examples.md#kirigamipopup-kt) | Examples | 8 | 7 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>chain/<wbr></small> [KirigamiSolidChain.kt](examples.md#kirigamisolidchain-kt) | Examples | 18 | 17 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [KitDedicatedHost.kt](workspace.md#kitdedicatedhost-kt) | Workspace | 5 | 3 | The compatibility route for a project that already has its own launcher, workspace and document conventions and wants to appear in Welcome's kit library without adopting Field's. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [KitFirstOpen.kt](workspace.md#kitfirstopen-kt) | Workspace | 3 | 3 | A document copied from a kit's starting point runs its roles, in the kit's launch order, the first time it opens, so it does something without `field_kit.py activate`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [KitInstances.kt](workspace.md#kitinstances-kt) | Workspace | 25 | 25 | A document copied from a kit's starting point, the record of what it received, and the three-way comparison that updates it. |  |

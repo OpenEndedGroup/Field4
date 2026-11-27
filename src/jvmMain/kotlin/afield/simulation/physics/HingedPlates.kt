@@ -1,4 +1,4 @@
-@file:afield.runtime.completion.CompletionCategory("Physics")
+@file:afield.runtime.completion.CompletionCategory("Simulation")
 
 package afield.simulation.physics
 
