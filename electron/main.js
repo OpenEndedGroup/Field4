@@ -2341,6 +2341,21 @@ function createMainWindow() {
   ipcMain.on("field4-canvas-find-result", onCanvasFindResult);
   ipcMain.removeHandler("field4-history-capture-window");
   ipcMain.handle("field4-history-capture-window", onHistoryCaptureWindow);
+  ipcMain.removeHandler("field4-web-profile");
+  ipcMain.handle("field4-web-profile", (event, request) => {
+    // Only a Field page (never a remote tab or a framed site) may reach a profile's cookies.
+    const tab = activeTab();
+    const contents = liveContents(tab);
+    if (!contents || event.sender !== contents || tab.remoteOrigin ||
+        event.senderFrame?.routingId !== contents.mainFrame.routingId) {
+      throw new Error("Web profiles answer only the active Field tab");
+    }
+    return require("./web-profiles.cjs").handleProfileRequest(request, event.sender, {
+      session,
+      log: diagnosticLog,
+      onNewSession: profile => require("./content-blocker.cjs").contentBlocker()?.attach(profile),
+    });
+  });
   ipcMain.removeHandler("field4-live-output-iframe");
   ipcMain.handle("field4-live-output-iframe", onLiveOutputIframe);
   ipcMain.removeHandler("field4-microphone-access");

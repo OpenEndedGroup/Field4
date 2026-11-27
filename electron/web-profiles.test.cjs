@@ -48,3 +48,46 @@ test("a webview without a profile partition is refused", () => {
   handlers["will-attach-webview"]({ preventDefault: () => { prevented = true; } }, {}, { partition: "persist:x", src: "https://a" });
   assert.equal(prevented, true);
 });
+
+// A stand-in for an Electron session's cookie store.
+function fakeCookieSession() {
+  const calls = [];
+  let changed = null;
+  return {
+    calls,
+    emit: (...args) => changed(...args),
+    cookies: {
+      get: async filter => { calls.push(["get", filter]); return [{ name: "a", value: "1" }]; },
+      set: async cookie => { calls.push(["set", cookie]); },
+      remove: async (url, name) => { calls.push(["remove", url, name]); },
+      flushStore: async () => { calls.push(["flush"]); },
+      on: (event, fn) => { if (event === "changed") changed = fn; },
+    },
+  };
+}
+
+test("profile requests reach the named profile's cookies, and the shared one with no directory", async () => {
+  const shared = fakeCookieSession();
+  const profiles = {};
+  const session = {
+    defaultSession: shared,
+    fromPath: dir => (profiles[dir] ??= fakeCookieSession()),
+  };
+  const dir = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "field-profile-")), "web-profiles", "b");
+  const { handleProfileRequest } = require("./web-profiles.cjs");
+  assert.deepEqual(await handleProfileRequest({ directory: "", action: "cookies-get", params: { url: "https://x", junk: 1, name: "" } }, null, { session }),
+    [{ name: "a", value: "1" }]);
+  assert.deepEqual(shared.calls, [["get", { url: "https://x" }]]);
+  await handleProfileRequest({ directory: dir, action: "cookies-set", params: { url: "https://x", name: "n", value: "v", evil: true } }, null, { session });
+  assert.deepEqual(profiles[dir].calls, [["set", { url: "https://x", name: "n", value: "v" }]]);
+  await assert.rejects(handleProfileRequest({ directory: dir, action: "cookies-set", params: { name: "n" } }, null, { session }), /url/);
+  await assert.rejects(handleProfileRequest({ directory: "relative", action: "cookies-get" }, null, { session }), /Not a profile/);
+  await assert.rejects(handleProfileRequest({ directory: "", action: "drop-tables" }, null, { session }), /Unknown/);
+
+  const sent = [];
+  const sender = { isDestroyed: () => false, send: (channel, change) => sent.push([channel, change]) };
+  await handleProfileRequest({ directory: dir, action: "cookies-watch" }, sender, { session });
+  await handleProfileRequest({ directory: dir, action: "cookies-watch" }, sender, { session });
+  profiles[dir].emit({}, { name: "n" }, "inserted", false);
+  assert.deepEqual(sent, [["field4-web-profile-event", { directory: dir, kind: "cookie", cookie: { name: "n" }, cause: "inserted", removed: false }]]);
+});

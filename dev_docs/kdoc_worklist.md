@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 26609 of 44357 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 26623 of 44381 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2113 undocumented entry points** (types, top-level functions and values) and 14858 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2113 undocumented entry points** (types, top-level functions and values) and 14867 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -238,6 +238,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [SolidExact.kt](../src/jvmMain/kotlin/afield/lang/solidsl/SolidExact.kt) | Graphics | solid_notation | 0 | 9 | 68% |
 | [SimulationClock.kt](../src/jvmMain/kotlin/afield/runtime/lifecycle/SimulationClock.kt) | Workspace | profiling_timeline | 0 | 9 | 43% |
 | [SourceStudy.kt](../src/jvmMain/kotlin/afield/study/source/SourceStudy.kt) | Workspace | studies | 0 | 9 | 79% |
+| [WebProfile.kt](../src/jvmMain/kotlin/afield/ui/output/WebProfile.kt) | Visualization | web | 0 | 9 | 58% |
 | [guide.kt](../src/jvmMain/kotlin/afield/ai/learning/pen/guide.kt) | Machine learning | a_pen_that_sees | 0 | 8 | 42% |
 | [CsoundInstance.kt](../src/jvmMain/kotlin/afield/audio/csound/CsoundInstance.kt) | Synthesis | sound_paths | 0 | 8 | 84% |
 | [HeadTrackedSpatial.kt](../src/jvmMain/kotlin/afield/audio/synth/HeadTrackedSpatial.kt) | Patterns | pat_spatial | 0 | 8 | 68% |

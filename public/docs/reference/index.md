@@ -688,7 +688,7 @@ To see it all at once, open the [map of the docs](../docs_map.md): every page, a
 
 ## Reference pages
 
-**44357 public symbols across 1955 source files**, 26609 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**44381 public symbols across 1956 source files**, 26623 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -710,7 +710,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [ALife](alife.md) | 24 | 1381 | 1252 (90%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 16 | 632 | 424 (67%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Search](search.md) | 11 | 509 | 503 (98%) | Optimisation over a space you can only sample. |
-| [Visualization](visualization.md) | 73 | 2065 | 1479 (71%) | Turning a value into something you can look at, without leaving the box. |
+| [Visualization](visualization.md) | 74 | 2089 | 1493 (71%) | Turning a value into something you can look at, without leaving the box. |
 | [Synthesis](synthesis.md) | 56 | 2060 | 1160 (56%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
 | [Patterns](patterns.md) | 40 | 1332 | 729 (54%) | Musical time, as a value. |
 | [Audio](audio.md) | 101 | 2687 | 1437 (53%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
@@ -2663,6 +2663,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>reconstruction/<wbr></small> [WaylandReconstructionSmoke.kt](imaging.md#waylandreconstructionsmoke-kt) | Imaging | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>onnx/<wbr></small> [WebcamPerceptionDemo.kt](examples.md#webcamperceptiondemo-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>texture/<wbr>video/<wbr></small> [WebcamTexture.kt](graphics.md#webcamtexture-kt) | Graphics | 14 | 7 | Exposes a webcam as an RGBA Vulkan texture, captured through OpenCV. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>output/<wbr></small> [WebProfile.kt](visualization.md#webprofile-kt) | Visualization | 24 | 14 |  | [A Web Page in a Box](../web.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [WebPublication.kt](workspace.md#webpublication-kt) | Workspace | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>webrtc/<wbr></small> [WebRTC.kt](imaging.md#webrtc-kt) | Imaging | 35 | 28 | WebRTC video for Field 4 graphics: publish a render target to a classroom, and sample anyone's published stream as a texture. | [WebRTC Streams](../webrtc.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>webrtc/<wbr></small> [WebRTCPublish.kt](imaging.md#webrtcpublish-kt) | Imaging | 1 | 1 | Publishing what Field renders as a WebRTC stream, and the colour conversion that makes the stream look like the window. |  |
