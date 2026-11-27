@@ -5300,6 +5300,23 @@ has to equal the sheet's 169 quads, which the box checks and says in words. See
 
 [Open →](offline.html?file=assets/agent_transcripts/physics_manifold_path_trace/metadata.edn)
 
+### kirigami_popup
+
+**A kirigami sheet stretched until it pops up**, the last section of
+[A Kirigami Sheet, Cut and Counted](chain_kirigami_solid.md#stretched-until-it-pops-up). The cut
+plate of [kirigami_solid_chain](#kirigami_solid_chain) becomes rigid tiles joined by ligaments that
+fold and twist far more easily than they bend in the plane. *Tilt and stress against stretch* pulls
+sheets 0.06, 0.08 and 0.12 thick to 4% and charts the mean tile tilt, flat until a threshold of
+0.31%, 0.51% and 1.04%, and the stress, which softens at the same strains. *The popped sheet, path
+traced* stretches the 0.06 sheet from flat to 6% under the path tracer; drag its `stretch (%)`
+slider to buckle it to any strain.
+
+- Stretching and measuring the sheet:
+  [`KirigamiPopUp`](reference/examples.md#kirigamipopup-kt-kirigamipopup); the solver:
+  [`HingedPlates`](reference/simulation.md#hingedplates-kt-hingedplates).
+
+[Open →](offline.html?file=assets/agent_transcripts/kirigami_popup/metadata.edn)
+
 ### pattern_particles
 
 Four boxes and the whole chain from a rhythm to a GPU push constant.

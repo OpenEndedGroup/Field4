@@ -94,7 +94,8 @@ on the way: about 17% in one tile's edge length or corner angle, and none at eit
   which also has triangle, hexagon and 3-D patterns.
 - [FLine examples](fline_examples.md) for drawing filled shapes with `lines` and `showPlaneGrid`.
 - [A Kirigami Sheet, Cut and Counted](chain_kirigami_solid.md), which gives each hinge a width
-  and turns both sheets on this page into solids you could cut, with their genus counted.
+  and turns both sheets on this page into solids you could cut, with their genus counted. Its last
+  section stretches the cut sheet until its tiles tilt out of the plane.
 - [Teichmüller maps](explainer_teichmuller.md), a talk on the conformal and quasi-conformal maps of
   the same package, `afield.geometry.conformal`, after Choi's work on leaf shapes.
 - [The kirigami_choi transcript](agent_transcripts.md#kirigami_choi), to open both boxes.

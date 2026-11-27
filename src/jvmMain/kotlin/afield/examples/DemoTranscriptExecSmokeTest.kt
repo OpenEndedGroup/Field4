@@ -908,6 +908,9 @@ object DemoTranscriptExecSmokeTest {
         "polytope_layer_stack_path_trace",
         "photo_mount_path_trace",
         "physics_manifold_path_trace",
+        // chain_kirigami_solid.md#stretched-until-it-pops-up: the HingedPlates sweep is covered by the
+        // FIELD_TEST chain.kirigami-popup and HingedPlatesTest; the trace box needs the window.
+        "kirigami_popup",
         // chain_rhino_render.md: the Save Small .3dm through PathTraceScene.rhino. Its CPU half is
         // RhinoPathTraceTest, which needs the optional openNURBS wrapper as well.
         "rhino_path_trace",
