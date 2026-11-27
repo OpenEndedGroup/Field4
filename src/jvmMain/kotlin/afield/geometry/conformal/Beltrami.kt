@@ -22,7 +22,7 @@
  * constraints, and its `|μ|` is the same everywhere. [teichmullerMap] finds one by the
  * quasi-conformal iteration of the T-map paper: solve, measure `μ`, smooth it, make its modulus the
  * mean modulus, solve again. The Teichmüller distance between two shapes is `½ log K` of that map,
- * which Choi, Chan, Lui, Mahadevan and co-authors use to compare leaf and wing outlines ("Planar
+ * which Choi and Mahadevan use to compare leaf and wing outlines ("Planar
  * morphometrics using Teichmüller maps", Proc. R. Soc. A 474, 2018).
  *
  *     import afield.geometry.conformal.*

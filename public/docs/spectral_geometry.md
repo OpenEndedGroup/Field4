@@ -911,3 +911,8 @@ buffer evaluator for larger spectra or live coefficient animation.
 ## API reference
 
 - Spectral geometry implementations: [`EpicycleGeometry`](reference/graphics.md#epicycles-kt-epicyclegeometry), [`EpicycleGeometry.torus`](reference/graphics.md#epicycles-kt--epicyclegeometry-companion--torus), [`EpicycleGeometry.fit`](reference/graphics.md#epicycles-kt--epicyclegeometry-companion--fit), [`PhaseClock`](reference/graphics.md#epicycles-kt-phaseclock), [`PhaseClock.phase`](reference/graphics.md#epicycles-kt--phaseclock--phase), [`CotangentLaplacian`](reference/graphics.md#manifoldharmonics-kt-cotangentlaplacian), [`CotangentLaplacian.basis`](reference/graphics.md#manifoldharmonics-kt--cotangentlaplacian--basis), [`PlaneWaveField`](reference/graphics.md#planewaves-kt-planewavefield), [`PlaneWaveField.fitDirectional`](reference/graphics.md#planewaves-kt--planewavefield-companion--fitdirectional).
+
+## Where to go next
+
+- [Teichmüller maps](explainer_teichmuller.md): the cotangent Laplacian of a planar mesh as the
+  linear Beltrami solver with μ = 0, and the maps of least distortion built on it.

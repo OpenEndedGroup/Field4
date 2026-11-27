@@ -47,7 +47,7 @@ constraints make that opened sheet come from a real cut pattern that closes into
   flatter than π − 0.4.
 
 The solve is `afield.geometry.conformal.KirigamiInverseDesign`, which the box calls. Choi solves this with MATLAB's interior-point `fmincon`, starting from a conformal map of the
-standard pattern onto the disc. The box squashes the standard pattern onto the circle and runs
+standard pattern onto the disc (the kind of map the [Teichmüller maps](explainer_teichmuller.md) talk builds). The box skips that map: it squashes the standard pattern onto the circle and runs
 Field's Levenberg–Marquardt solver, [`leastSquaresAD`](reference/math.md#leastsquares-kt--leastsquaresad),
 which differentiates the residuals and drives them down to about 1e-13. The box
 then glues the rigid tiles back together, cut side to cut side, to recover the closed cut pattern:
@@ -95,4 +95,6 @@ on the way: about 17% in one tile's edge length or corner angle, and none at eit
 - [FLine examples](fline_examples.md) for drawing filled shapes with `lines` and `showPlaneGrid`.
 - [A Kirigami Sheet, Cut and Counted](chain_kirigami_solid.md), which gives each hinge a width
   and turns both sheets on this page into solids you could cut, with their genus counted.
+- [Teichmüller maps](explainer_teichmuller.md), a talk on the conformal and quasi-conformal maps of
+  the same package, `afield.geometry.conformal`, after Choi's work on leaf shapes.
 - [The kirigami_choi transcript](agent_transcripts.md#kirigami_choi), to open both boxes.
