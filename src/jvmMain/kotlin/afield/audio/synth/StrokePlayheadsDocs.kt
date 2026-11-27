@@ -82,8 +82,8 @@ object StrokePlayheadsDocs {
         ),
         PlayheadTrack(
             "rise", strokes.getValue("rise"), passBeats = 6.0, stepBeats = 1.0, degrees = listOf(0, 4, 3),
-            root = 60.0, pingPong = true, onMeet = MeetAction.RATE, rateFactor = 2.0, probability = 0.9,
-            lfos = listOf(PlayheadLfo(LfoDestination.LENGTH, periodBeats = 6.0, depth = 0.15, freezeAt = 16.0)),
+            root = 60.0, pingPong = true, onMeet = MeetAction.RATE, rateFactor = 2.0, probability = 0.9, length = 0.8,
+            lfos = listOf(PlayheadLfo(LfoDestination.LENGTH, periodBeats = 6.0, depth = 0.1, freezeAt = 16.0)),
         ),
         PlayheadTrack(
             "arc", strokes.getValue("arc"), passBeats = 5.0, stepBeats = 2.0, degrees = listOf(0, 3), ratchet = 2,
