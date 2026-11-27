@@ -126,7 +126,7 @@ fun Box.web(url: String, channel: String = "web", width: Int = 1000, height: Int
             profile: String? = null): LiveOutputIframe {
     require(width in 200..4000 && height in 100..4000) { "web: width must be 200..4000 and height 100..4000" }
     val directory = profile?.let { webProfileDirectory(it) }
-    display(channel, webPanel(webAddress(url), width, height, directory))
+    display(channel, webPanel(webAddress(url), width, height, directory, boxId = id))
     displayOpen(channel)
     return outputIframe(channel)
 }
@@ -168,9 +168,11 @@ internal fun webAddress(text: String): String {
  * directory; Field's Electron window gives it a session stored there. A webview is not an iframe
  * to the panel sizer, so the panel states the page's size through `data-afield-intrinsic-*`.
  */
-internal fun webPanel(url: String, width: Int, height: Int, profile: File? = null): String {
+internal fun webPanel(url: String, width: Int, height: Int, profile: File? = null, boxId: String = ""): String {
     val attribute = escapeAttribute(url)
-    val name = "field-live-iframe-web-" + UUID.randomUUID()
+    // The box's uid is in the name, so a RemoteJS head in this page can be routed the Javascript
+    // boxes under this box (afield.lang.remotejs.WebPageHeads), even after Field restarts.
+    val name = WEB_PAGE_NAME_PREFIX + (if (boxId.isEmpty()) "" else "$boxId~") + UUID.randomUUID()
     val page = if (profile == null) {
         """<iframe class="field-web-page" name="$name" data-field-live-name="$name" src="$attribute" data-afield-autosize="off" """ +
             """style="width:${width}px;height:${height}px"></iframe>"""
@@ -188,6 +190,9 @@ internal fun webPanel(url: String, width: Int, height: Int, profile: File? = nul
         (if (profile == null) "" else """<span class="field-web-profile" title="${escapeAttribute(profile.path)}">${escapeAttribute(profile.name)}</span>""") +
         """</div>""" + page + """</div>"""
 }
+
+/** How the name of every `web(...)` page starts; electron/user-scripts.cjs and page-heads.cjs read it too. */
+const val WEB_PAGE_NAME_PREFIX = "field-live-iframe-web-"
 
 /** The prefix of a webview `partition` that names a profile directory; electron/web-profiles.cjs reads it. */
 internal const val WEB_PROFILE_PARTITION = "field-path:"

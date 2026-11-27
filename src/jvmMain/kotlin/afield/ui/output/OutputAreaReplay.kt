@@ -59,6 +59,10 @@ internal class OutputAreaReplay(private val maxCharacters: Int = 8_000_000) {
         }
     }
 
+    /** Channels whose panel's HTML contains [text], in insertion order. */
+    @Synchronized
+    fun channelsContaining(text: String): List<String> = panels.filterValues { text in it.html }.keys.toList()
+
     /** Channels that currently hold a panel, in insertion order. */
     @Synchronized
     fun channels(): List<String> = panels.keys.toList()

@@ -326,6 +326,30 @@ once; a removed script stays in effect in pages it already ran in until they rel
 Scripts run in the page a `web(...)` shows, not in frames inside it, such as ads. An error goes to
 the page's console, which `devTools()` opens.
 
+## Javascript boxes inside the page
+
+A page can also be a [Javascript root](remotejs.md). Right-click the box that calls `web(...)`
+and choose **Set Main Language: Javascript**; then every Javascript box connected under it runs
+inside that page, with everything a Javascript box has: `print` beside the line, errors marked on
+the line that raised them, the box's last value, Stop and `launch`. It is a live console into the
+site, kept in boxes:
+
+```diffstatic {data-lang=javascript}
+const repos = [...document.querySelectorAll("[itemprop~='name'] a, a[data-hovercard-type='repository']")]
+repos.forEach(a => a.style.outline = "2px solid #48c9ff")
+repos.map(a => a.textContent.trim())
+```
+
+Under `web("github.com/OpenEndedGroup")` that outlines every repository on the page and gives back
+their names. The code runs beside the page's own scripts the way a browser extension's does: it
+shares the page's DOM, so it can read and change anything on the page, but not the variables the
+page's scripts keep (a `userScript` runs among those). A site's Content-Security-Policy does not
+stop it, so it works on GitHub as well as on Wikipedia.
+
+The page starts running Javascript the first time a box under it runs, and again after it
+navigates, since each new page starts fresh. Javascript boxes that are not under a page keep
+running in your ordinary [RemoteJS](remotejs.md) browser tab or headset, and never in a page.
+
 ## Ads and trackers
 
 Field blocks ads and trackers in the pages it shows. It uses the filter lists uBlock Origin uses
@@ -370,8 +394,9 @@ To change the lists, set `AFIELD_WEB_BLOCKING` before starting Field: `ads` (the
   (why any site can be framed, and keep its login, in Field's window),
   [`content-blocker.cjs`](https://github.com/OpenEndedGroup/Field4/blob/main/electron/content-blocker.cjs)
   (ads and trackers), [`web-profiles.cjs`](https://github.com/OpenEndedGroup/Field4/blob/main/electron/web-profiles.cjs)
-  (profiles, cookies and history), and [`user-scripts.cjs`](https://github.com/OpenEndedGroup/Field4/blob/main/electron/user-scripts.cjs)
-  (user scripts and styles).
+  (profiles, cookies and history), [`user-scripts.cjs`](https://github.com/OpenEndedGroup/Field4/blob/main/electron/user-scripts.cjs)
+  (user scripts and styles), and [`page-heads.cjs`](https://github.com/OpenEndedGroup/Field4/blob/main/electron/page-heads.cjs)
+  (Javascript boxes inside a page).
 
 `web()` and every member of `LiveOutputIframe` are in the reference, under
 [LiveOutputIframe.kt](reference/visualization.md#liveoutputiframe-kt).

@@ -75,6 +75,8 @@ function globToRegExp(glob) {
   return "^" + String(glob).split("*").map(part => part.replace(/[.+?^${}()|[\]\\]/g, "\\$&")).join(".*") + "$";
 }
 
+const cdp = require("./cdp-targets.cjs");
+
 async function send(target, method, params = {}, sessionId) {
   return target.contents.debugger.sendCommand(method, params, sessionId || undefined);
 }
@@ -102,33 +104,28 @@ function applyNow(target) {
   for (const frame of frames) frame.executeJavaScript(source).catch(() => {});
 }
 
+// A new frame in a watched Field tab gets the loader before it runs (cdp-targets.cjs pauses it).
+cdp.onFrameAttached(async (record, sessionId, info) => {
+  if (info.type !== "iframe") return;
+  const target = [...targets].find(t => t.attached && t.guestProfile === null && t.contents === record.contents);
+  if (!target) return;
+  await send(target, "Page.enable", {}, sessionId);
+  await install(target, sessionId);
+});
+
 async function attach(target) {
   const { contents } = target;
   if (contents.isDestroyed()) return;
-  const debug = contents.debugger;
-  if (!debug.isAttached()) debug.attach("1.3");
-  debug.on("message", async (_event, method, params, sessionId) => {
-    if (method === "Target.attachedToTarget") {
-      const child = params.sessionId;
-      try {
-        if (params.targetInfo?.type === "iframe") {
-          await send(target, "Page.enable", {}, child);
-          await install(target, child);
-        }
-      } catch (error) {
-        log("user-scripts-install-failed", { error: String(error?.message || error) });
-      } finally {
-        // A frame waits, paused, until told to run: it must always be told, even after a failure.
-        send(target, "Runtime.runIfWaitingForDebugger", {}, child).catch(() => {});
-      }
-    } else if (method === "Target.detachedFromTarget") {
-      target.sessions.delete(params.sessionId);
-    }
-  });
   contents.once("destroyed", () => targets.delete(target));
+  const record = await cdp.ensure(contents, { log });
   if (target.guestProfile === null) {
-    // A Field tab: the page is Field's own; its out-of-process frames are the sites.
-    await send(target, "Target.setAutoAttach", { autoAttach: true, waitForDebuggerOnStart: true, flatten: true });
+    // A Field tab: the page is Field's own; its out-of-process frames are the sites. Frames
+    // attached before this target was watched get the loader now.
+    for (const [sessionId, info] of record.sessions) {
+      if (info.type !== "iframe") continue;
+      await send(target, "Page.enable", {}, sessionId).catch(() => {});
+      await install(target, sessionId).catch(() => {});
+    }
   } else {
     await send(target, "Page.enable");
     await install(target, "");
