@@ -1991,6 +1991,50 @@
         "public/docs/assets/agent_transcripts/fline_fill_rule/metadata.edn": "b671b3a4b8f2724133f5568f11d066b9be07168e2c462fe679dbf669e5dcb175"
       }
     },
+    "assets/agent_transcripts/fline_gpu_layers/metadata.edn": {
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-27T13:50:30.982Z",
+      "channels": 1,
+      "file": "assets/web_publications/fline_gpu_layers/document/metadata.edn",
+      "files": {
+        "assets/web_publications/fline_gpu_layers/document/metadata.edn": "0585b11ba38f5ab4c60c0f14753534cc53e50a2e8f4fb3f3a62bce0f5572b7f6",
+        "assets/web_publications/fline_gpu_layers/document/outputs.json": "f2fb39542ac3faf7c48cec1c84744d6d2083661d64bea1f4cbbb18c7bfbf9f5a",
+        "assets/web_publications/fline_gpu_layers/outputs/0.html": "a8ed648419f9d9aa7e676abcfbab9186dc5fa072b4c4a059e6d3e912c8fc3c23"
+      },
+      "kinds": [
+        "native-image"
+      ],
+      "outputs": "assets/web_publications/fline_gpu_layers/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/fline_gpu_layers.yaml": "1dd787141542d0ff7d4f77d5edf8155e4277e2ab069bc973b88e73ad33ae22b1",
+        "public/docs/afield_four_graphics.md#capture-box=flg_renderer": "f58bf4884e114779d4f7edc7c1478c2fe786cd0dc2b60c9996af4a4ca19022dd",
+        "public/docs/assets/afield_four_graphics/fline-layers-spatial.png": "d5b5990ee7e275df75096c39be1dbe0f4d096420046ba55eebcc3baa41c99d07",
+        "public/docs/assets/agent_transcripts/fline_gpu_layers/flg_fills_code_.kt": "7cb84fad480baaa6feef7474a8064126987d5b8966a1f9b8783fc155c963d1de",
+        "public/docs/assets/agent_transcripts/fline_gpu_layers/flg_fills_fragment_.glsl": "06158e9779553c8e03d98e1c3ee6f760db208732cee08ea56b9e54f322285c96",
+        "public/docs/assets/agent_transcripts/fline_gpu_layers/flg_fills_vertex_.glsl": "1e9afeef2dc05afd15535c74572c995295adfe3b1e1e6e35daf885f4fd21ca71",
+        "public/docs/assets/agent_transcripts/fline_gpu_layers/flg_layers_code_.kt": "0eb31fd5eb056a2efa59d8640739359fc80a49b60e123878c0061f7baa79dcb6",
+        "public/docs/assets/agent_transcripts/fline_gpu_layers/flg_points_code_.kt": "aaee5c1dcb861a599d3912ac0dd513cc2be90892776870f4506573db04f6a4f0",
+        "public/docs/assets/agent_transcripts/fline_gpu_layers/flg_points_fragment_.glsl": "64acd6954b018c1c97f3604caab04c35b859931501396883b5d62ed62a6b900a",
+        "public/docs/assets/agent_transcripts/fline_gpu_layers/flg_points_vertex_.glsl": "a4965f067f5e273d037c9e45f0e2ef7f7b7bc61f4601f351bc8c7c8f21712264",
+        "public/docs/assets/agent_transcripts/fline_gpu_layers/flg_renderer_code_.kt": "ca6299d039c6b09e5e843846bdb83f4f9a35eafd7b27d84d3902dbc6bc3cb3b2",
+        "public/docs/assets/agent_transcripts/fline_gpu_layers/flg_scene_code_.kt": "8fab44648f05301f9ab405defb41076632e699504a4329d175370fb6a84d5d5b",
+        "public/docs/assets/agent_transcripts/fline_gpu_layers/flg_stroke_lines_code_.kt": "c74142084cef4232308379f65110405aa62e164ca8c44439925b30895f622597",
+        "public/docs/assets/agent_transcripts/fline_gpu_layers/flg_stroke_lines_fragment_.glsl": "06158e9779553c8e03d98e1c3ee6f760db208732cee08ea56b9e54f322285c96",
+        "public/docs/assets/agent_transcripts/fline_gpu_layers/flg_stroke_lines_vertex_.glsl": "87ff30eae97280e3806fc0db719f1d885e9b389ade4e2c40c85950b0ca5497c6",
+        "public/docs/assets/agent_transcripts/fline_gpu_layers/flg_strokes_code_.kt": "4bc68a38f1098cfb3a62544ea74d722eab057d0345f285c9c00715e511c37a3c",
+        "public/docs/assets/agent_transcripts/fline_gpu_layers/flg_strokes_fragment_.glsl": "bb8aaf7551509978bd6b225ffc6a1233f6c64ae4d4c26f9410807867abdc7a9a",
+        "public/docs/assets/agent_transcripts/fline_gpu_layers/flg_strokes_joined_code_.kt": "0946d853317976286cb4e836e1bc1cd1105a9095a9ab1bc5792cffb062d4b466",
+        "public/docs/assets/agent_transcripts/fline_gpu_layers/flg_strokes_joined_fragment_.glsl": "1547881931cd90ecfd5c5267dd51e50eb0bceceaca228d3106925b2bc6442daa",
+        "public/docs/assets/agent_transcripts/fline_gpu_layers/flg_strokes_joined_vertex_.glsl": "ab32994d61318ba1cef34a0c0204623632a98619f589d9c7409f8202dd9f878f",
+        "public/docs/assets/agent_transcripts/fline_gpu_layers/flg_strokes_vertex_.glsl": "44063a363104ecc8851efa66beaba4bec0b3c9e8cd901c26a248758fc4e751a6",
+        "public/docs/assets/agent_transcripts/fline_gpu_layers/guides/spatial_rules.md": "2804cca34f3d47fa429b8f67faafb82344a399747b2f4a40ab2899df47359bff",
+        "public/docs/assets/agent_transcripts/fline_gpu_layers/metadata.edn": "4ee5133b61860b16afc9a79e7ca18f61332c285a65310b4d32b50c2bbc35e861"
+      },
+      "supplementalSources": [
+        "public/docs/afield_four_graphics.md#capture-box=flg_renderer",
+        "public/docs/assets/afield_four_graphics/fline-layers-spatial.png"
+      ]
+    },
     "assets/agent_transcripts/fline_hit_records/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
       "capturedAt": "2026-11-18T15:02:40.198Z",
