@@ -76,8 +76,8 @@ val (closed, opened) = KirigamiSolidChain.measureDesign(design, gap = 0.01)
 // Built and launched from dev_docs/agents/transcripts/kirigami_solid_chain.yaml.
 ```
 
-With slits 0.02 wide, both states have genus 49, as the tile graph predicts. Widen them to 0.08 and
-Manifold reports 47. The design has tiles whose edges are as short as a third of a unit and whose corners
+With slits 0.02 wide (`gap = 0.01` in the readout), both states have genus 49, as the tile graph
+predicts. Widen them to 0.08 (`gap = 0.04`) and Manifold reports 47. The design has tiles whose edges are as short as a third of a unit and whose corners
 are as sharp as 0.4 rad, so pulling every edge in by 0.04 moves a sharp corner far enough that its
 bridge no longer meets the tile. Two hinges stop holding, and the genus check catches it even though
 the solid is still one part. The rotating squares, whose tiles are all unit squares, take the wider
