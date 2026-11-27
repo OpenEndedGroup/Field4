@@ -48,7 +48,8 @@ constraints make that opened sheet come from a real cut pattern that closes into
 
 Choi solves this with MATLAB's interior-point `fmincon`, starting from a conformal map of the
 standard pattern onto the disc. The box squashes the standard pattern onto the circle and runs
-Field's Levenberg–Marquardt (`leastSquaresAD`), which brings every constraint to about 1e-13. It
+Field's Levenberg–Marquardt solver, [`leastSquaresAD`](reference/math.md#leastsquares-kt--leastsquaresad),
+which differentiates the residuals and drives them down to about 1e-13. The box
 then glues the rigid tiles back together, cut side to cut side, to recover the closed cut pattern:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="box" capture-box="kirigami_inverse_circle" screenshot="assets/kirigami/inverse_circle.png" transcript="dev_docs/agents/transcripts/kirigami_choi.yaml" padding="8" wait="1" timeout="400" embed=true hidden=true name="kirigami-inverse-circle" alt="Three panels: a square cut pattern of irregular orange and blue quadrilaterals, the same sheet halfway open, and the sheet fully open inside a red circle whose rim its outermost corners touch; below, an open slider and a larger view of the opened sheet in its circle."}
