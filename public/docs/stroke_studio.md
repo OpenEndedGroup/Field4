@@ -5,7 +5,8 @@ begins at the silhouettes. Short marks accumulate into longer runs, paint advanc
 interiors, and ribbons spill past the edges. Every visible mark belongs to a stroke that was
 born, has a shape in world space, and will eventually disappear.
 
-Browse the boxes and shader properties in the offline viewer below.
+Explore the boxes and shader properties in the viewer below, or open the document in Field to
+run the drawing and change it.
 
 <iframe
   src="offline.html?zip=assets/stroke_studio/stroke_studio.zip"
@@ -26,8 +27,8 @@ This example uses a single camera.
 
 ## Give the brush a moving surface
 
-The scene pass produces three images. Lit RGB is the color the brushes are trying to
-approximate. Two position attachments record the visible surface point at the current and
+The scene pass produces three images. Lit RGB gives the brushes the color they are trying to
+paint. Two position attachments record the visible surface point at the current and
 previous scene times, with the surface ID in alpha. The previous position belongs to the
 **same surface point**. Transform the hit into the ball’s local coordinates at the current time, then transform it
 back with the previous center and rotation. Rays that miss the balls hit the inside of an
@@ -96,8 +97,7 @@ steps toward the projected or authored velocity field. Coherent edges can suppor
 longer runs. Where coherence is low, a strong enough color error can lay down shorter
 marks, subject to the same front and span checks.
 
-The direction field answers where a mark might go. The signed color error answers what
-it should deposit. The birth pass averages `lit - canvas - feedbackGain * paint` along the
+The direction field guides each mark; the signed color error determines what it deposits. The birth pass averages `lit - canvas - feedbackGain * paint` along the
 accepted path. The default **Pigment fraction** deposits 55% of that signed residual.
 Negative components remove excess pigment as the ribbon draws. Both the feedback and
 the draw target retain signed RGB, so neighboring strokes can respond to that correction

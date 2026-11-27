@@ -757,9 +757,8 @@ displayOpen("main")
 
 ### The Stanford Bunny in spherical harmonics
 
-The scan needs a direction-to-position map before we can use the same fit. One way to get
-one is to start inside the head and take the farthest scan intersection in each direction.
-That gives a radial envelope. Where a ray crosses the scan several times, it keeps the last
+To fit the scan the same way, first turn each direction into a position. Start inside the head
+and take the farthest scan intersection in each direction to make a radial envelope. Where a ray crosses the scan several times, it keeps the last
 crossing, so deep occluded gaps can fill in. Read the grid left to right, top to bottom,
 from degree 1 to 16. Each row uses the same camera and scale.
 

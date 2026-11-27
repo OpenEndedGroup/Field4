@@ -6,7 +6,8 @@ How different are two leaves? One answer: bend one onto the other, and measure h
 had to distort it. This talk builds that idea from nothing: maps that keep angles, maps that turn
 small circles into ellipses, the map that distorts least, and the distance between shapes it gives.
 
-After the work of Gary P. T. Choi, L. Mahadevan, Lok Ming Lui and co-authors. Words and figures made in Field.
+The talk follows work by Gary P. T. Choi, L. Mahadevan, Lok Ming Lui and co-authors. Its words
+and figures were made in Field.
 
 [Open →](offline.html?file=assets/agent_transcripts/explainer_teichmuller/metadata.edn)
 
@@ -28,8 +29,8 @@ A map moves every point of the plane somewhere else. The map z + a·z² bends th
 two grid lines cross they still cross at a right angle, and each small circle comes out as a circle,
 grown or shrunk and turned. A map that keeps every angle is **conformal**.
 
-The figure pushes a grid of small circles through one of three maps and colours each by how far it
-is from a circle. Choose the map with **map**, and how strongly it acts with **amount**.
+Push a grid of small circles through one of three maps. Each is coloured by how far it ends up
+from a circle. Choose the map with **map**, and how strongly it acts with **amount**.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_teichmuller/circles.png" execution="launch" wait-output=true wait="2" timeout="300" embed=true name="explainer-teichmuller-circles" alt="A grid of small circles bent by the map z plus a times z squared: the grid lines curve but still cross at right angles, and every circle is still round and blue, with map and amount sliders"}
 :::fold imports
@@ -353,7 +354,7 @@ Choi and Mahadevan compare planar shapes this way: leaves, insect wings, the out
 Mark matching landmarks, let the outline slide between them, and find the Teichmüller map. Here the
 landmarks are the tip, the base, and the margin a third and two thirds of the way up.
 
-Our leaves are mirror-symmetric, and that makes the map exact. The best map is then symmetric too,
+These leaves are mirror-symmetric, which lets us find the map exactly. The best map is symmetric too,
 so it carries the midrib to the midrib, and each half-leaf, with its base, two margin landmarks and
 tip, is a four-cornered region. Any such region maps conformally onto exactly one shape of
 rectangle, and between two rectangles with their corners matched the least distorting map is a
