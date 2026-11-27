@@ -32,7 +32,7 @@ start(renderer::run)
 <!-- field-box id="kirigami_popup_trace" index="1" -->
 
 ```edn [field-box id="kirigami_popup_trace" role="properties"]
-{"id" "kirigami_popup_trace" "index" 1 "name" "the popped sheet, path traced" "parents" ["root" "kirigami_popup_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "kirigami_popup_renderer"} "name" "the popped sheet, path traced" "_tombstone" false "frame" #afield/rect [700.0 40.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kirigami_popup_trace_code_.kt" "lines" 106 "characters" 3788 "sha256" "2dc9b2eba199c1991b0518637372e0b9a1895661e1d9da989c60016a23acbf52"}]}
+{"id" "kirigami_popup_trace" "index" 1 "name" "the popped sheet, path traced" "parents" ["root" "kirigami_popup_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "kirigami_popup_renderer"} "name" "the popped sheet, path traced" "_tombstone" false "frame" #afield/rect [2400.0 40.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kirigami_popup_trace_code_.kt" "lines" 106 "characters" 3788 "sha256" "2dc9b2eba199c1991b0518637372e0b9a1895661e1d9da989c60016a23acbf52"}]}
 ```
 
 ```kotlin [field-property box="kirigami_popup_trace" name="code" path="kirigami_popup_trace_code_.kt"]

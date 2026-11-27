@@ -67,7 +67,7 @@ operations:
   - create:
       box: kirigami_popup_trace
       name: the popped sheet, path traced
-      frame: { x: 700.0, y: 40.0, w: 300.0, h: 70.0 }
+      frame: { x: 2400.0, y: 40.0, w: 300.0, h: 70.0 }
       properties:
         code: |
           import afield.examples.chain.KirigamiPopUp

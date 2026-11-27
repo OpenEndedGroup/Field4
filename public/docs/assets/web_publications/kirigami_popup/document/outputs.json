@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-27T11:58:00.983Z",
+  "documentName": "kirigami_popup",
+  "outputs": [
+    {
+      "uid": "kirigami_popup_trace",
+      "channel": "Vulkan window · still image",
+      "open": true,
+      "path": "outputs/0.html",
+      "width": 4112,
+      "height": 2524,
+      "kinds": [
+        "native-image"
+      ],
+      "warnings": []
+    }
+  ]
+}
