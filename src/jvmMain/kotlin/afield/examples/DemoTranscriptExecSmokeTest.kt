@@ -701,6 +701,9 @@ object DemoTranscriptExecSmokeTest {
         // mesh_examples.md#distance-along-the-surface-and-carving-toolpaths: heat geodesics, isolines,
         // a spiral toolpath and roughing passes; pure CPU, three { } output.
         "geodesic_carving",
+        // mesh_examples.md: the shared cotangent Laplacian under smoothing, heat geodesics, mean curvature
+        // and a harmonic map of a flat TriMesh; pure CPU, three { } output.
+        "one_cotangent_laplacian",
         // sorting_networks_examples.md's four fences as boxes, pure CPU. Only the two drawing boxes are
         // launched: the two annealing boxes search for 70 and 90 seconds, and the docs runner executes
         // them for the page's captures.

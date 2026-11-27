@@ -1322,6 +1322,19 @@ counts, χ, genus, area, volume and bounds. Every box is pure CPU and runs on it
 
 [Open →](offline.html?file=assets/agent_transcripts/mesh_geometry_examples/metadata.edn)
 
+### one_cotangent_laplacian
+
+**One cotangent Laplacian, four uses.** The [mesh worked example](mesh_examples.md)'s shared
+operator in three boxes. *The operator itself* builds `cotangentWeights`, `barycentricVertexAreas`
+and `cotangentLaplacianMatrix` on a lumpy sphere and prints that the mass adds up to the surface
+area and that `L` sends constants to zero, then smooths a noisy copy with cotangent Taubin. *Heat
+geodesics and mean curvature* draws distance rings from the north pole and the signed mean
+curvature, both from the same `L`. *A flat TriMesh through the Beltrami solver* turns `planeMesh`
+into a `PlanarMesh` with `toPlanarMesh()` and maps the square harmonically onto the unit disc.
+Every box is pure CPU and runs on its own.
+
+[Open →](offline.html?file=assets/agent_transcripts/one_cotangent_laplacian/metadata.edn)
+
 ### geometry_from_disk
 
 [Geometry from disk](geometry_from_disk.md) as three boxes, all of them

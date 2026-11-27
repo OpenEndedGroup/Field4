@@ -424,6 +424,12 @@ Both smoothers take `cotangent = true` for the cotangent-weighted Laplacian, whi
 choice on an irregular triangulation because it weights by the geometry rather than by valence, and
 `withVertexNormals()` recomputes the shading normals afterwards.
 
+Smoothing, the heat-method geodesics, mean curvature and the spectral basis all use one cotangent
+Laplacian. `topology().cotangentWeights()` gives the edge weights, `(cot α + cot β)/2` per edge,
+and a boundary edge keeps its single `cot α / 2`. `barycentricVertexAreas()` gives the lumped mass,
+and `topology().cotangentLaplacianMatrix(weights, mass, massScale, lScale)` assembles
+`massScale·M + lScale·L` as a sparse matrix for your own solves.
+
 ## Decimate to a budget, and know the price
 
 `decimate(targetTriangles)` is quadric-error-metric edge collapse: each vertex accumulates the
