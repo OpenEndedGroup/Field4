@@ -66,6 +66,13 @@ sealed class KotlinJsHeadProfile(
     val optionNames: Set<String> = emptySet(),
 ) {
     abstract fun connectedHeadCount(): Int
+
+    /**
+     * The connected heads that would run [box]'s code: for a box under a `web(...)` page, that page's
+     * (starting a head there if it has none; see [WebPageHeads]), otherwise the ordinary ones.
+     */
+    open fun connectedHeadCount(box: Box): Int = connectedHeadCount()
+
     abstract fun send(
         box: Box,
         selection: KotlinJsHeadSelection,
@@ -229,6 +236,11 @@ private class RemoteProfile(
     }
 
     override fun connectedHeadCount(): Int = knownOpenRemoteClients.keys.count(::matches)
+
+    override fun connectedHeadCount(box: Box): Int {
+        val forThisBox = WebPageHeads.recipientsFilter(target(box))
+        return knownOpenRemoteClients.entries.count { matches(it.key) && forThisBox(it.key, it.value) }
+    }
 
     override fun send(
         box: Box,

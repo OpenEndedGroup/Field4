@@ -346,6 +346,15 @@ shares the page's DOM, so it can read and change anything on the page, but not t
 page's scripts keep (a `userScript` runs among those). A site's Content-Security-Policy does not
 stop it, so it works on GitHub as well as on Wikipedia.
 
+Kotlin works too. Make the `web(...)` box a [Kotlin → head](kotlin_in_the_head.md) root
+instead, and the Kotlin boxes under it are compiled to Javascript and run in the page the same
+way. The page's DOM is reached through `js(...)`:
+
+```diffstatic {data-lang=kotlin}
+val document: dynamic = js("document")
+println("${document.querySelectorAll("a").length} links on ${document.title}")
+```
+
 The page starts running Javascript the first time a box under it runs, and again after it
 navigates, since each new page starts fresh. Javascript boxes that are not under a page keep
 running in your ordinary [RemoteJS](remotejs.md) browser tab or headset, and never in a page.

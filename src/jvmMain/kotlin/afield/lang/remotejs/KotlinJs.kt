@@ -305,13 +305,14 @@ class KotlinJsExecution : BoxExecution {
             settle.finish(false, e.message ?: "Invalid Kotlin/JS head marker")
             return
         }
-        val connected = selection.profile.connectedHeadCount()
+        val connected = selection.profile.connectedHeadCount(inside)
 
         if (connected == 0 && selection.profile != KotlinJsHeadProfiles.visionMetal) {
             // Nothing would run it; this used to compile, warn in a toast and report success.
+            val reason = WebPageHeads.pageOwnerOf(inside)?.let { RemoteJsBoxSurface.noPageHead(it.name) } ?: RemoteJsBoxSurface.NO_HEAD
             notify("Warning! no connected ${selection.profile.id} heads", "kotlinjs")
-            inside.output.errorProxy(RemoteJsBoxSurface.NO_HEAD, "code", -1)
-            settle.finish(false, RemoteJsBoxSurface.NO_HEAD)
+            inside.output.errorProxy(reason, "code", -1)
+            settle.finish(false, reason)
             return
         } else if (connected == 0)
             notify("compiling Kotlin → ${selection.profile.id}; program will replay when the head connects", "kotlinjs")
