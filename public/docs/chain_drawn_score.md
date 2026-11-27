@@ -339,7 +339,10 @@ notation.clear()
 val startedAt = AnimationClock.nowSeconds()
 loop {
     val beat = (AnimationClock.nowSeconds() - startedAt) / secondsPerBeat
-    lines(StrokePlayheadsDocs.timeline(run, strokes, minOf(beat, 32.0)), framing = LinesFraming.fixed(240.0, 20.0, 840.0, 460.0))
+    lines(
+        StrokePlayheadsDocs.timeline(run, strokes, minOf(beat, 32.0)),
+        framing = LinesFraming.fixed(240.0, 20.0, 840.0, 460.0),
+    )
     frame()
 }
 ```
