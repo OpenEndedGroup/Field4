@@ -152,13 +152,13 @@ Evolution takes seconds, so `go` runs the search in a cancellable worker corouti
 reference publishes the latest completed champion to the drawing loop. Stopping or relaunching the
 box cancels its search; worker failures appear in the editor.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/evolving_creatures/watching.png" execution="launch" wait="30.0" timeout="120" capture="box" open-outputs="true" w="480" h="520" padding="14"}
+```diff_runner {data-lang=kotlin screenshot="assets/evolving_creatures/watching.png" execution="launch" wait="30.0" timeout="120" capture="box" open-outputs="true" w="480" h="520" padding="14"}
+:::after
 import afield.simulation.creatures.*
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-:::fold the WaterSurface contact model, as above
 class WaterSurface : ContactModel {
     override fun foot(index: Int) = object : ContactModel.Foot {
         var planted: Float2? = null
@@ -180,9 +180,7 @@ class WaterSurface : ContactModel {
     }
 }
 
-:::endfold
 
-:::fold the config from "Evolving one"
 val config = EvolutionConfig(
     populationSize = 24,
     generations = 25,
@@ -197,7 +195,6 @@ val config = EvolutionConfig(
         fitness = { e -> e.netCentroidMotion - 2f * e.meanStretchError - 0.05f * e.meanActuationEffort },
     ),
 )
-:::endfold
 
 // The worker publishes complete evaluations; the drawing loop reads one snapshot per frame.
 val champion = AtomicReference<CreatureEvaluation?>(null)
@@ -283,10 +280,10 @@ loop {
 Then after: forty bodies a generation for sixty generations, and the winner watched for four times
 as long as it was judged, so that it has room to go somewhere.
 
-```diffstatic_runner {data-lang=kotlin video="assets/evolving_creatures/champion_3d.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="16" fps="20" timeout="300" w="900" embed=true name="creature-3d-after" alt="the evolved water bug in a low tracking shot, scooting along the water as the grid slides past beneath it"}
+```diff_runner {data-lang=kotlin video="assets/evolving_creatures/champion_3d.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="16" fps="20" timeout="300" w="900" embed=true name="creature-3d-after" alt="the evolved water bug in a low tracking shot, scooting along the water as the grid slides past beneath it"}
+:::after
 import afield.simulation.creatures.*
 
-:::fold the WaterSurface contact model, as above
 class WaterSurface : ContactModel {
     override fun foot(index: Int) = object : ContactModel.Foot {
         var planted: Float2? = null
@@ -308,7 +305,6 @@ class WaterSurface : ContactModel {
     }
 }
 
-:::endfold
 
 val config = EvolutionConfig(
     populationSize = 40,
