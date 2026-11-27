@@ -1619,6 +1619,8 @@ function createMainWindow() {
     installEditableContextMenu(tab.view.webContents);
     if (!remoteOrigin) {
       require("./web-profiles.cjs").installNavigationReports(tab.view.webContents, { log: diagnosticLog });
+      require("./user-scripts.cjs").setLog(diagnosticLog);
+      require("./user-scripts.cjs").watch(tab.view.webContents);
       require("./web-profiles.cjs").installProfileWebviews(tab.view.webContents, {
         session,
         log: diagnosticLog,

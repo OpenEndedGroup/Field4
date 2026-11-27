@@ -4,7 +4,7 @@
 
 Turning a value into something you can look at, without leaving the box.
 
-76 source file(s), 2157 public symbol(s), 1536 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+77 source file(s), 2160 public symbol(s), 1539 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -3427,6 +3427,20 @@ One frame read back by [`readCells`](visualization.md#shapeasciigpu-kt--readcell
 | --- | --- |
 | <a id="shapeasciigpu-kt--shapeasciireadback--scene"></a><code class="highlight"><span class="k">val</span> <span class="n">scene</span><span class="p">:</span> <span class="nc">Img</span></code> | The scene target's pixels, RGB in `0..1`, top row first. |
 | <a id="shapeasciigpu-kt--shapeasciireadback--frame"></a><code class="highlight"><span class="k">val</span> <span class="n">frame</span><span class="p">:</span> <span class="nc">AsciiFrame</span></code> | The characters the GPU chose for that scene. |
+
+## UserScripts.kt { #userscripts-kt }
+
+`src/jvmMain/kotlin/afield/ui/output/UserScripts.kt` — [read the source](source/jvmMain/afield/ui/output/UserScripts/)
+
+**Used in:** [A Web Page in a Box](../web.md)
+
+### Top-level functions { #userscripts-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="userscripts-kt--userscript"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">userScript</span><span class="p">(</span><span class="n">match</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">runAt</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;end&quot;</span><span class="p">,</span> <span class="n">profile</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;script&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/ui/output/UserScripts/#L45) | Run `source`, Javascript, in every `web(...)` page whose address matches `match`, from now on: at the start of each matching document, and straight away in a matching page that is already open. Field's TamperMonkey. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">userScript</span><span class="p">(</span><span class="n">match</span><span class="p">:</span> <span class="nc">Regex</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">runAt</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;end&quot;</span><span class="p">,</span> <span class="n">profile</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;script&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/ui/output/UserScripts/#L50) | [`userScript`](visualization.md#userscripts-kt--userscript) with a regular expression for the address, for patterns a `*` cannot say. |
+| <a id="userscripts-kt--userstyle"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">userStyle</span><span class="p">(</span><span class="n">match</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">css</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">profile</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;style&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/ui/output/UserScripts/#L65) | Apply the stylesheet `css` to every `web(...)` page whose address matches `match` (a pattern as [`userScript`](visualization.md#userscripts-kt--userscript) takes). It applies from the start of each document, and to open pages at once; running the box again with new CSS restyles open pages without reloading them, and stopping the box takes the style off. One style per box and `name`. Rules may need `!important` to beat the site's own. |
 
 ## WebHistory.kt { #webhistory-kt }
 
