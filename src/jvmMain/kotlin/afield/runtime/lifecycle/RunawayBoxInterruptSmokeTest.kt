@@ -65,7 +65,13 @@ object RunawayBoxInterruptSmokeTest {
 
     private class Outcome(val ok: Boolean, val error: String, val stdout: String, val ms: Long)
 
-    private fun run(info: SessionInformation, box: Box, code: String): Outcome {
+    /**
+     * Runs [code] in [box] and returns its verdict and output. Output the box sends from a coroutine,
+     * such as `history()`'s rate-limited chart, can arrive after the verdict, so a scenario that
+     * reads it names it in [awaitOutput]: the output is then collected until it appears, for up to
+     * ten seconds after the verdict.
+     */
+    private fun run(info: SessionInformation, box: Box, code: String, awaitOutput: String? = null): Outcome {
         val verdict = CompletableFuture<JsonObject>()
         val out = StringBuilder()
         val exec = Execute(uid = box.id, type = "code", line = 0, code = code, singleLine = false, requestId = "runaway-${requests++}")
@@ -76,6 +82,10 @@ object RunawayBoxInterruptSmokeTest {
             else synchronized(out) { out.append(message.payload.toString()).append('\n') }
         }, null, info)
         val payload = verdict.get(180, TimeUnit.SECONDS)
+        if (awaitOutput != null) {
+            val deadline = System.currentTimeMillis() + 10_000
+            while (System.currentTimeMillis() < deadline && awaitOutput !in synchronized(out) { out.toString() }) Thread.sleep(20)
+        }
         return Outcome(payload["success"]?.jsonPrimitive?.content == "true",
             payload["error"]?.jsonPrimitive?.content.orEmpty(), synchronized(out) { out.toString() }, (t1 - t0) / 1_000_000)
     }
@@ -179,7 +189,7 @@ object RunawayBoxInterruptSmokeTest {
             fun runG(name: String): Pair<Outcome, afield.ui.output.RawDecoration?> {
                 val b = createAgentBox(info, name, Rect(0.0, 0.0, 100.0, 100.0), emptyMap())
                 b.properties["code"] = gCode
-                val o = run(info, b, gCode)
+                val o = run(info, b, gCode, awaitOutput = "<svg")
                 return o to b.decorationState["g_beep"]
             }
             val refusedBefore = afield.runtime.bytecode.CallSites.refused
