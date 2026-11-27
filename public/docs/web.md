@@ -256,8 +256,8 @@ new one added (`inserted`).
 
 ## History
 
-Field keeps a history of every page a `web(...)` page visits: its address and title, when, which
-box and output area showed it, and the address the page was on just before. Each profile keeps
+Field remembers each page you visit with `web(...)`: its address and title, the time, the box and
+output area that showed it, and the address you came from. Each profile keeps
 its own, in its directory; pages without a profile keep theirs in `web-history.jsonl` in the
 document's `files/`. Like the profile, the history stays with the document.
 
@@ -296,7 +296,7 @@ val dropFootnotes = """document.querySelectorAll("sup.reference").forEach(note =
 userScript("en.wikipedia.org", dropFootnotes)
 ```
 
-The first argument is a host, for every page on it, or a pattern where `*` matches anything:
+The first argument selects a host, or a pattern where `*` matches anything:
 `"https://github.com/"` followed by `*` is every GitHub page over https. The script runs in the page
 itself, so it can use the page's own variables as well as its DOM, and the site's
 Content-Security-Policy does not stop it. `runAt` says when: `"end"` (the default) once the HTML has
@@ -368,7 +368,7 @@ for you) is saved, without a dialog, into the document's `files/downloads/`, und
 site gave it, with ` (1)`, ` (2)` and so on added if that name is taken. It is then a file like
 any other in the document: `"downloads/report.pdf".file` finds it.
 
-`onDownload` hears each download as it finishes:
+Use `onDownload` to respond when a download finishes:
 
 ```diffstatic {data-lang=kotlin}
 onDownload { d ->

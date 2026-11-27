@@ -1,10 +1,9 @@
 # A Kirigami Sheet, Cut and Counted
 
-The [kirigami page](kirigami.md) opens a sheet of rotating squares by turning rigid tiles about
-hinges, and each hinge there is a single shared point. That is exact for the mechanism, but you
-cannot cut it: a point of material holds nothing together. This page gives every hinge a width, hands the
-sheet to `afield.geometry.solid.manifold` as a 2D region, extrudes it into a solid, and measures
-the result. The [kirigami_solid_chain](agent_transcripts.md#kirigami_solid_chain) starting point has
+On the [kirigami page](kirigami.md), rigid tiles turn around hinges made of single points. That
+describes the mechanism exactly, but a point of material won't hold a cut sheet together. Let's
+give each hinge a width, turn the sheet into a 2D region with `afield.geometry.solid.manifold`,
+extrude it into a solid, and measure the result. The [kirigami_solid_chain](agent_transcripts.md#kirigami_solid_chain) starting point has
 all three boxes.
 
 The construction is in [`KirigamiSolidChain`](reference/examples.md#kirigamisolidchain-kt-kirigamisolidchain).
@@ -44,8 +43,8 @@ plate in one piece. An extra connection between tiles can add a cycle.
 
 ## Opened
 
-Build the same region with the tiles at their opened positions and print that instead. The bridges stretch
-across wider slits, and nothing else changes.
+Now build the region with its tiles open. The bridges stretch across wider slits, while the
+connections between tiles stay the same.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_kirigami_solid/deployed.png" capture="box" open-outputs="true" wait-output=true wait-output-kind="all" wait-output-contains="45 deg" embed=true force=true timeout="300" padding="18" name="chain-kirigami-deployed" alt="Four grey renders of the bridged sheet at 0, 15, 30 and 45 degrees, each captioned genus 49: closed slits, then squares turning against each other with diamond holes opening between them" macro-file="../../dev_docs/agents/transcripts/kirigami_solid_chain.yaml" capture-box="kirigami_deployed"}
 // Built and launched from dev_docs/agents/transcripts/kirigami_solid_chain.yaml.
@@ -58,9 +57,8 @@ measured hull falls a little short of that (1.987 at 45°) because the outer edg
 is shrunk by `gap` and has teeth where the tiles turn.
 
 The volume does change: it rises from 5.524 closed to 5.621 at 30°, because each bridge bar spans a
-wider slit as the sheet opens. A plate printed already open is not the same object as a plate cut
-closed and pulled open. In the printed one the bridges are longer and straight, and in the cut one
-they bend.
+wider slit as the sheet opens. A plate printed open has longer, straight bridges. Cut it closed and pull it open instead, and
+those bridges bend.
 
 ## The sheet that opens into a circle
 
