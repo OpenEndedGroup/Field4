@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 26786 of 44599 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 26812 of 44660 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2113 undocumented entry points** (types, top-level functions and values) and 14920 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2113 undocumented entry points** (types, top-level functions and values) and 14955 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -115,7 +115,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Elements.kt](../src/jvmMain/kotlin/afield/geometry/euclid/Elements.kt) | Graphics | euclid_elements | 1 | 0 | 97% |
 | [FabricatePostEffects.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/FabricatePostEffects.kt) | Renderers | fabricate_renderer | 1 | 0 | 75% |
 | [stats.kt](../src/jvmMain/kotlin/afield/math/statistics/stats.kt) | Math | statistics_examples | 0 | 153 | 12% |
-| [Creatures.kt](../src/jvmMain/kotlin/afield/simulation/creatures/Creatures.kt) | Simulation | evolving_creatures | 0 | 126 | 21% |
+| [Creatures.kt](../src/jvmMain/kotlin/afield/simulation/creatures/Creatures.kt) | Simulation | evolving_creatures | 0 | 127 | 21% |
 | [ThreeJsInspector.kt](../src/jvmMain/kotlin/afield/graphics/three/ThreeJsInspector.kt) | Graphics | fline_examples, three_output, geometry_review | 0 | 64 | 32% |
 | [TypedAst.kt](../src/jvmMain/kotlin/afield/lang/fieldml/type/TypedAst.kt) | Languages | fieldml_stages | 0 | 60 | 34% |
 | [Expr.kt](../src/jvmMain/kotlin/afield/lang/fieldml/ast/Expr.kt) | Languages | fieldml_stages | 0 | 57 | 38% |
@@ -667,6 +667,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [KratosStudy.kt](../src/jvmMain/kotlin/afield/simulation/kratos/KratosStudy.kt) | Simulation | — | 0 | 39 | 45% |
 | [PianoModel.kt](../src/jvmMain/kotlin/afield/audio/synth/PianoModel.kt) | Synthesis | — | 0 | 38 | 7% |
 | [GestureReplayMain.kt](../src/jvmMain/kotlin/afield/graphics/paint/GestureReplayMain.kt) | Internal | — | 0 | 35 | 10% |
+| [CreatureMarathon.kt](../src/jvmMain/kotlin/afield/simulation/creatures/CreatureMarathon.kt) | Simulation | — | 0 | 34 | 43% |
 | [BoxBytecode.kt](../src/jvmMain/kotlin/afield/runtime/bytecode/BoxBytecode.kt) | Workspace | — | 0 | 33 | 45% |
 | [Score.kt](../src/jvmMain/kotlin/afield/animation/motion/Score.kt) | Simulation | — | 0 | 30 | 60% |
 | [FabricatePassChain.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/FabricatePassChain.kt) | Renderers | — | 0 | 30 | 58% |

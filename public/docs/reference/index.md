@@ -631,7 +631,7 @@ To see it all at once, open the [map of the docs](../docs_map.md): every page, a
 
 - *agents* — [ALife](alife.md#alife-kt) · [Simulation](simulation.md#alife-bonded-kt)
 - *automata* — [ALife](alife.md#alife-ca-kt) · [Data](data.md#booleannetworks-kt)
-- [creatures](simulation.md#creatures-kt)
+- [creatures](simulation.md#creaturemarathon-kt)
 - [flow](simulation.md#flowshaders-kt)
 - [kratos](simulation.md#kratosdemo-kt)
 - [optics](simulation.md#cameraoptics-kt)
@@ -688,7 +688,7 @@ To see it all at once, open the [map of the docs](../docs_map.md): every page, a
 
 ## Reference pages
 
-**44599 public symbols across 1968 source files**, 26786 of them (60%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**44660 public symbols across 1969 source files**, 26812 of them (60%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -705,7 +705,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Renderers](renderers.md) | 49 | 930 | 534 (57%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 596 | 440 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 787 | 530 (67%) | Nonlinear least squares, aimed at geometry. |
-| [Simulation](simulation.md) | 59 | 1978 | 1190 (60%) | Making a shape behave. |
+| [Simulation](simulation.md) | 60 | 2039 | 1216 (59%) | Making a shape behave. |
 | [Imaging](imaging.md) | 56 | 976 | 532 (54%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
 | [ALife](alife.md) | 24 | 1381 | 1252 (90%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 16 | 632 | 424 (67%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
@@ -1035,7 +1035,8 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>ai/<wbr></small> [CorpusMicroscope.kt](audio-ai.md#corpusmicroscope-kt) | Audio AI | 2 | 2 | The audition surface for a corpus nearest-neighbour query: the query window and every window the search returned, as players on one shared relative timeline. | [Corpus microscope: from recordings to related windows](../audio_ai_corpus_microscope.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>ai/<wbr></small> [CorpusOperations.kt](audio-ai.md#corpusoperations-kt) | Audio AI | 9 | 9 | Multi-scale corpus operations: segment a source into overlapping windows, embed each window with grouped audio descriptors, and retrieve neighbours by weighted distance. | [Corpus microscope: from recordings to related windows](../audio_ai_corpus_microscope.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>statistics/<wbr></small> [correlations.kt](math.md#correlations-kt) | Math | 18 | 18 | Measures of statistical dependence between two equal-length `DoubleArray`s, batch and rolling. | [Values over time: interpolants & keyframes](../interpolants_examples.md), [Measuring dependence between two signals](../statistics_examples.md) |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>creatures/<wbr></small> [Creatures.kt](simulation.md#creatures-kt) | Simulation | 160 | 34 | Evolving 2D creatures: a genetic algorithm over bodies of points and springs whose every point is a foot with a cyclic contact program, and whose joints are angle motors following cyclic target curves. | [Evolving Creatures](../evolving_creatures.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>creatures/<wbr></small> [CreatureMarathon.kt](simulation.md#creaturemarathon-kt) | Simulation | 60 | 26 | Long, resumable creature evolutions that leave a file of finished creatures behind. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>creatures/<wbr></small> [Creatures.kt](simulation.md#creatures-kt) | Simulation | 161 | 34 | Evolving 2D creatures: a genetic algorithm over bodies of points and springs whose every point is a foot with a cyclic contact program, and whose joints are angle motors following cyclic target curves. | [Evolving Creatures](../evolving_creatures.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [CrossBoxContextInheritanceSmokeTest.kt](examples.md#crossboxcontextinheritancesmoketest-kt) | Examples · internal | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>csound/<wbr></small> [CsdDocument.kt](audio.md#csddocument-kt) | Audio | 19 | 14 | Reads a Csound box's text as a `.csd` document and maps box lines to its options, orchestra, score and instruments. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [CsoundBox.kt](synthesis.md#csoundbox-kt) | Synthesis | 35 | 29 | The box-facing side of Csound: an orchestra and a score as a sound source, with control channels both ways. | [Csound](../csound.md) |
