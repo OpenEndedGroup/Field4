@@ -36,6 +36,7 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.Serializable
 import kotlin.math.*
 import kotlin.random.Random
 
@@ -65,6 +66,7 @@ private const val DEFAULT_MAX_CENTER_SPEED = 4.0f
  * receiver, which is how edge crossings and lateral drift are measured. [normalizedOr] returns its
  * fallback rather than a non-finite vector when the length is near zero.
  */
+@Serializable
 data class Float2(val x: Float, val y: Float) {
     operator fun plus(other: Float2) = Float2(x + other.x, y + other.y)
     operator fun minus(other: Float2) = Float2(x - other.x, y - other.y)
@@ -92,6 +94,7 @@ data class Float2(val x: Float, val y: Float) {
  * [normalized] puts the lower index first, which is how [CreatureGenome.normalized] can recognise the
  * same edge written either way around and drop the duplicate.
  */
+@Serializable
 data class EdgeGene(val a: Int, val b: Int) {
     fun normalized(): EdgeGene =
         if (a <= b) this else EdgeGene(b, a)
@@ -107,6 +110,7 @@ data class EdgeGene(val a: Int, val b: Int) {
  * returns a value between zero and [strength]; a program with no duty or no strength returns zero
  * everywhere, which is how a point that never touches down is written.
  */
+@Serializable
 data class ContactProgram(
     val phase: Float,
     val duty: Float = 0.35f,
@@ -139,6 +143,7 @@ data class ContactProgram(
  * writing one joint drive the same motion; [shifted] rotates the knots, moving the joint in phase
  * without changing the shape of its curve.
  */
+@Serializable
 data class JointProgram(
     val pivot: Int,
     val a: Int,
@@ -199,6 +204,7 @@ data class JointProgram(
  * four constraint slots per particle; and no two edges may cross, which keeps a body from being threaded
  * through itself.
  */
+@Serializable
 data class CreatureGenome(
     val points: List<Float2>,
     val edges: List<EdgeGene>,
@@ -859,6 +865,12 @@ private data class PhaseInterval(val start: Float, val end: Float)
  * range once [stagnationGenerations] have passed without the champion improving, which with the default
  * 80 against the default 12 [generations] cannot happen; it is a setting for the long runs a box leaves
  * going, and lowering it is how you reach it.
+ *
+ * [seedGenomes] starts the search from creatures you already have instead of from scratch: the first
+ * generation is those genomes, then mutants of them (each mutated [mutationSteps] times) until the
+ * population is full. With the immigrant knobs at zero the whole run stays one family, which is how a
+ * champion is refined rather than replaced; since elites carry forward untouched, the result can only
+ * score at least as well as the best seed.
  */
 data class EvolutionConfig(
     val populationSize: Int = 28,
@@ -879,7 +891,8 @@ data class EvolutionConfig(
     val alwaysUpFootFraction: Float = 0f,
     val cyclingFootFraction: Float = 0f,
     val simulation: CreatureSimulationConfig = CreatureSimulationConfig(),
-    val randomSeed: Int = 1
+    val randomSeed: Int = 1,
+    val seedGenomes: List<CreatureGenome> = emptyList()
 )
 
 /**
@@ -1217,7 +1230,16 @@ object CreatureEvolution {
 
         val random = Random(config.randomSeed)
         val fastSimulation = config.simulation.copy(recordFrames = false)
-        var population = MutableList(config.populationSize) {
+        val seeds = config.seedGenomes.take(config.populationSize)
+        var population = MutableList(config.populationSize) { index ->
+            if (seeds.isNotEmpty()) {
+                if (index < seeds.size) return@MutableList seeds[index]
+                var child = seeds[index % seeds.size]
+                repeat(random.nextInt(config.mutationSteps.first, config.mutationSteps.last + 1)) {
+                    child = mutate(child, random, config)
+                }
+                return@MutableList child
+            }
             randomGenome(
                 random = random,
                 minPoints = config.minPoints,

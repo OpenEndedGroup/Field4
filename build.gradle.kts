@@ -2182,6 +2182,19 @@ tasks.register<JavaExec>("runKratosStudy") {
     args((project.findProperty("kratos") as String? ?: "").split(" ").filter { it.isNotBlank() })
 }
 
+// An overnight creature evolution: exploration runs, then refinements of the best champions, saved
+// after every run to <dir>/marathon.json and resumable. Any MarathonPlan field passes as --name value:
+//   ./gradlew runCreatureMarathon -Pmarathon="--dir field-user-dir/creature_marathon/run1 --threads 10"
+tasks.register<JavaExec>("runCreatureMarathon") {
+    group = "application"
+    description = "Evolves creatures for hours and saves every champion to a resumable marathon.json. -Pmarathon=\"--dir <folder> …\" passes arguments."
+    javaLauncher.set(javaToolchains.fieldLauncher())
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.simulation.creatures.CreatureMarathonRun")
+    jvmArgs(vectorizationJvmArgs)
+    args((project.findProperty("marathon") as String? ?: "").split(" ").filter { it.isNotBlank() })
+}
+
 tasks.register<JavaExec>("runSkinningEvidence") {
     group = "verification"
     description = "Regenerates the rigged glTF fixture, measures skeletal skinning against it, and writes the deformation frames under dev_docs/agents/evidence/skinning."
