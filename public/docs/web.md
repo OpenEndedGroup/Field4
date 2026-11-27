@@ -285,6 +285,47 @@ sharedWebProfile.history.links(host = "wikipedia.org").forEach { (step, count) -
 `history.clear()` forgets it all. The file is plain JSON, one visit per line, so other programs can
 read it too.
 
+## User scripts and styles
+
+`userScript` runs Javascript in every `web(...)` page at an address, each time a page there
+loads, the way a userscript manager such as TamperMonkey does. A page at that address that is
+already open runs it straight away:
+
+```diffstatic {data-lang=kotlin}
+val dropFootnotes = """document.querySelectorAll("sup.reference").forEach(note => note.remove())"""
+userScript("en.wikipedia.org", dropFootnotes)
+```
+
+The first argument is a host, for every page on it, or a pattern where `*` matches anything:
+`"https://github.com/"` followed by `*` is every GitHub page over https. The script runs in the page
+itself, so it can use the page's own variables as well as its DOM, and the site's
+Content-Security-Policy does not stop it. `runAt` says when: `"end"` (the default) once the HTML has
+been read, `"idle"` once the page has finished loading, or `"start"`, before any of the page's own
+scripts, to change what they see:
+
+```diffstatic {data-lang=kotlin}
+userScript(
+    "en.wikipedia.org",
+    "window.matchMedia = () => ({ matches: false, addEventListener() {} })",
+    runAt = "start",
+    name = "no-dark-mode",
+)
+```
+
+`userStyle` adds a stylesheet the same way. Running the box again with new CSS restyles open pages
+without reloading them, so you can edit a site's look as you watch:
+
+```diffstatic {data-lang=kotlin}
+userStyle("news.ycombinator.com", "body, td { font-family: 'Iosevka Web', monospace !important }")
+```
+
+Each box keeps one script and one style under each `name`. Running the box again replaces them;
+stopping it removes them, so new pages no longer get them. A removed style comes off open pages at
+once; a removed script stays in effect in pages it already ran in until they reload. With
+`profile = "github"`, only pages with that [profile](#profiles-a-page-with-its-own-logins) run it.
+Scripts run in the page a `web(...)` shows, not in frames inside it, such as ads. An error goes to
+the page's console, which `devTools()` opens.
+
 ## Ads and trackers
 
 Field blocks ads and trackers in the pages it shows. It uses the filter lists uBlock Origin uses
@@ -328,8 +369,9 @@ To change the lists, set `AFIELD_WEB_BLOCKING` before starting Field: `ads` (the
   (the bar), [`framing-relief.cjs`](https://github.com/OpenEndedGroup/Field4/blob/main/electron/framing-relief.cjs)
   (why any site can be framed, and keep its login, in Field's window),
   [`content-blocker.cjs`](https://github.com/OpenEndedGroup/Field4/blob/main/electron/content-blocker.cjs)
-  (ads and trackers), and [`web-profiles.cjs`](https://github.com/OpenEndedGroup/Field4/blob/main/electron/web-profiles.cjs)
-  (profiles).
+  (ads and trackers), [`web-profiles.cjs`](https://github.com/OpenEndedGroup/Field4/blob/main/electron/web-profiles.cjs)
+  (profiles, cookies and history), and [`user-scripts.cjs`](https://github.com/OpenEndedGroup/Field4/blob/main/electron/user-scripts.cjs)
+  (user scripts and styles).
 
 `web()` and every member of `LiveOutputIframe` are in the reference, under
 [LiveOutputIframe.kt](reference/visualization.md#liveoutputiframe-kt).
