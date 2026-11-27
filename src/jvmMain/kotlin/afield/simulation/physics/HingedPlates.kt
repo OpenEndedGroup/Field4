@@ -241,8 +241,11 @@ class HingedPlates(centres: List<DoubleArray>) {
      */
     data class Relaxed(val iterations: Int, val energy: Double, val gradient: Double)
 
-    /** Moves every free plate to the nearest energy minimum: Levenberg–Marquardt, stopping when a step changes no coordinate by more than [tolerance]. */
-    fun relax(maxIterations: Int = 60, tolerance: Double = 1e-11): Relaxed {
+    /**
+     * Moves every free plate to the nearest energy minimum: Levenberg–Marquardt, stopping when a step
+     * changes no coordinate by more than [tolerance] or lowers the energy by less than a part in 1e15.
+     */
+    fun relax(maxIterations: Int = 60, tolerance: Double = 1e-9): Relaxed {
         val free = (0 until count).filter { !fixed[it] }
         val slot = IntArray(count) { -1 }
         free.forEachIndexed { k, plate -> slot[plate] = 6 * k }
@@ -252,7 +255,6 @@ class HingedPlates(centres: List<DoubleArray>) {
         var iterations = 0
         val r = DoubleArray(6)
         val jac = Array(6) { DoubleArray(12) }
-        var worst = 0.0
         while (iterations < maxIterations && m > 0) {
             iterations++
             val normal = Array(m) { DoubleArray(m) }
@@ -269,7 +271,6 @@ class HingedPlates(centres: List<DoubleArray>) {
                     }
                 }
             }
-            worst = g.maxOf { abs(it) }
             var accepted = false
             while (!accepted && damping < 1e12) {
                 val a = Array(m) { i -> normal[i].copyOf().also { it[i] += damping * max(normal[i][i], 1e-12) + 1e-14 } }
@@ -287,9 +288,10 @@ class HingedPlates(centres: List<DoubleArray>) {
                 val candidate = energy()
                 if (candidate <= energy) {
                     accepted = true
+                    val improvement = energy - candidate
                     energy = candidate
                     damping = max(damping * 0.3, 1e-12)
-                    if (step.maxOf { abs(it) } < tolerance) return Relaxed(iterations, energy, worst)
+                    if (step.maxOf { abs(it) } < tolerance || improvement <= 1e-15 * energy) return Relaxed(iterations, energy, residualGradient())
                 } else {
                     position.indices.forEach { position[it] = savedP[it] }
                     rotation.indices.forEach { rotation[it] = savedR[it] }
@@ -298,7 +300,12 @@ class HingedPlates(centres: List<DoubleArray>) {
             }
             if (!accepted) break
         }
-        return Relaxed(iterations, energy, worst)
+        return Relaxed(iterations, energy, residualGradient())
+    }
+
+    private fun residualGradient(): Double {
+        val g = gradient()
+        return (0 until 6 * count).filter { !fixed[it / 6] }.maxOfOrNull { abs(g[it]) } ?: 0.0
     }
 
     /** Plate [plate]'s normal: its rotation applied to body `z`. */

@@ -1,0 +1,176 @@
+name: kirigami_popup
+description: >
+  The cut sheet of kirigami_solid_chain, stretched until it buckles out of its plane (buckling-induced
+  kirigami, after Rafsanjani & Bertoldi, PRL 118, 084301, 2017). Every tile is a rigid plate and every
+  hinge is the solid chain's bridge, a ligament with the beam stiffnesses of its width, length and
+  thickness, so it folds and twists far more easily than it bends in the plane. The left column of
+  tiles is clamped and the right column pulled.
+    1. kirigami_popup_renderer — the window and renderer the path tracer draws into.
+    2. kirigami_popup_sweep    — three sheets, 0.06, 0.08 and 0.12 thick, stretched to 4%: the mean
+                                 tile tilt and the stress against the strain, with each sheet's
+                                 buckling threshold. Pure compute; Field charts.
+    3. kirigami_popup_trace    — the 0.06 sheet stretched from 0 to 6% in steps, each pose
+                                 path-traced, then held; the stretch slider moves it to any strain.
+  Every number comes from `afield.examples.chain.KirigamiPopUp` over
+  `afield.simulation.physics.HingedPlates`, which CI runs as the FIELD_TEST `chain.kirigami-popup`.
+  The page is public/docs/chain_kirigami_solid.md. Needs a live renderer for box 3.
+docs:
+  - page: chain_kirigami_solid.md
+    why: "The section on stretching the sheet until it pops up is this document."
+operations:
+  - create:
+      box: kirigami_popup_renderer
+      name: path tracing renderer
+      frame: { x: 40.0, y: 40.0, w: 220.0, h: 60.0 }
+      properties:
+        code: |
+          import afield.graphics.vulkan.util.Options
+
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+          Options.enableHDR = false
+          once.renderer {
+              window = Window("Field · Kirigami, popped")
+              Renderer(window)
+          }
+          start(renderer::run)
+  - create:
+      box: kirigami_popup_sweep
+      name: tilt and stress against stretch
+      frame: { x: 320.0, y: 40.0, w: 300.0, h: 70.0 }
+      properties:
+        code: |
+          import afield.examples.chain.KirigamiPopUp
+
+          // Three sheets, each stretched through the same strains, every step relaxed from the last.
+          val strains = (0..40).map { it * 0.001 }
+          val thicknesses = [0.06, 0.08, 0.12]
+          val runs = thicknesses.map { t -> t to KirigamiPopUp.sheet(thickness = t).sweep(strains) }
+
+          val percent = strains.map { it * 100 }
+          val tilt = Chart(title = "tiles tilt once the sheet buckles", xLabel = "strain (%)", yLabel = "mean tile tilt (degrees)")
+          val stress = Chart(title = "and the sheet softens", xLabel = "strain (%)", yLabel = "stress / E (x 1000)")
+          for ((t, states) in runs) {
+              val critical = KirigamiPopUp.threshold(states)
+              val at4 = states.last()
+              println(
+                  "t = $t: flat until strain %.2f%%, threshold / (t / bridge)^2 = %.4f; at 4%% mean tilt %.1f deg, max %.1f deg"
+                      .format(100 * critical, critical / ((t / 0.12) * (t / 0.12)), at4.meanTilt, at4.maxTilt),
+              )
+              tilt.line("t = $t", percent, states.map { it.meanTilt })
+              tilt.vrule(100 * critical, "%.2f%%".format(100 * critical))
+              stress.line("t = $t", percent, states.map { 1000 * it.stress })
+          }
+          display("tilt", tilt)
+          display("stress", stress)
+  - create:
+      box: kirigami_popup_trace
+      name: the popped sheet, path traced
+      frame: { x: 700.0, y: 40.0, w: 300.0, h: 70.0 }
+      properties:
+        code: |
+          import afield.examples.chain.KirigamiPopUp
+          import afield.graphics.scene.fabricated.PathTraceEnvironment
+          import afield.graphics.scene.fabricated.PathTraceMaterial
+          import afield.graphics.scene.fabricated.PathTraceScene
+          import afield.graphics.scene.fabricated.PathTracingRenderer
+          import afield.graphics.scene.fabricated.importTriMesh
+          import afield.graphics.vulkan.util.Camera
+          import java.io.File
+
+          prop<PathTracingRenderer>(tracer)
+
+          val sheet = KirigamiPopUp.sheet(thickness = 0.06)
+
+          // Move to a strain in steps of at most 0.25%, each relaxed from the last, so the sheet stays on one branch.
+          fun stretchTo(target: Double): KirigamiPopUp.State {
+              var state = sheet.stretch(sheet.strain)
+              while (abs(target - sheet.strain) > 1e-9) {
+                  state = sheet.stretch(sheet.strain + (target - sheet.strain).coerceIn(-0.0025, 0.0025))
+              }
+              return state
+          }
+
+          val environment = PathTraceEnvironment.fromFile(File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath)
+
+          // The tracer's scene is a snapshot, so every new pose is a new tracer under the same name.
+          fun trace(): PathTracingRenderer {
+              val posed = sheet.mesh()
+              val scene = PathTraceScene()
+              val even = scene.material(PathTraceMaterial.plastic(0.95f, 0.42f, 0.10f, 0.3f))
+              val odd = scene.material(PathTraceMaterial.plastic(0.10f, 0.38f, 0.85f, 0.3f))
+              val ligament = scene.material(PathTraceMaterial.plastic(0.93f, 0.91f, 0.86f, 0.45f))
+              val floor = scene.material(PathTraceMaterial.plastic(0.55f, 0.56f, 0.58f, 0.6f))
+              scene.importTriMesh(
+                  posed.mesh,
+                  { t ->
+                      when (posed.parts[t]) {
+                          KirigamiPopUp.Part.EVEN_TILE -> even
+                          KirigamiPopUp.Part.ODD_TILE -> odd
+                          KirigamiPopUp.Part.LIGAMENT -> ligament
+                      }
+                  },
+              )
+              val reach = 30f
+              val y = -0.9f
+              scene.quad(Vector3f(-reach, y, -reach), Vector3f(reach, y, -reach), Vector3f(reach, y, reach), Vector3f(-reach, y, reach), floor)
+              val camera = Camera(renderer).also {
+                  it.at.set(8.0f, 8.5f, 11.5f)
+                  it.target.set(0f, -0.6f, 0.4f)
+                  it.p.fov = 0.62
+              }
+              return PathTracingRenderer(renderer, scene, environment, 1200, 736, camera, name = "kirigami-popup").install().also {
+                  it.samplesPerFrame = 4
+                  it.maxBounces = 6
+                  it.exposure = 1.1f
+                  it.environmentRotation = 2.1f
+                  it.indirectClamp = 10f
+                  it.blitToScreen()
+              }
+          }
+
+          fun report(state: KirigamiPopUp.State) = markdown(
+              "strain **%.2f%%**: mean tile tilt %.1f°, largest %.1f°, stress %.2e E"
+                  .format(100 * state.strain, state.meanTilt, state.maxTilt, state.stress),
+          )
+
+          // Launching stretches the sheet from flat to 6%, tracing each pose; then it holds. The slider moves it anywhere.
+          val ramp = (0..24).map { it * 0.0025 }.toMutableList()
+          var wanted = ramp.last()
+          slider("stretch (%)", min = 0.0, max = 6.0, step = 0.25, initialValue = 6.0) {
+              ramp.clear()
+              wanted = it / 100
+          }
+
+          var state = stretchTo(ramp.removeAt(0))
+          tracer = trace()
+          report(state)
+          var converged = false
+          frames {
+              while (true) {
+                  val next = when {
+                      ramp.isNotEmpty() && tracer.samples >= 32 -> ramp.removeAt(0)
+                      ramp.isEmpty() && abs(wanted - sheet.strain) > 1e-9 -> wanted
+                      else -> null
+                  }
+                  if (next != null) {
+                      state = stretchTo(next)
+                      tracer = trace()
+                      report(state)
+                      converged = false
+                  }
+                  if (!converged && ramp.isEmpty() && tracer.samples >= 600) {
+                      converged = true
+                      println("popped sheet traced at strain %.2f%%: %d samples".format(100 * sheet.strain, tracer.samples))
+                  }
+                  frame()
+              }
+          }
+  - connect: { parent: kirigami_popup_renderer, child: kirigami_popup_trace }
+  - launch: { box: kirigami_popup_renderer, property: code, strand: renderer }
+  - await: { wait: pending }
+  - wait: { frames: 3 }
+  - launch: { box: kirigami_popup_sweep, property: code }
+  - await: { wait: pending }
+  - launch: { box: kirigami_popup_trace, property: code }
+  - await: { wait: pending }

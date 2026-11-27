@@ -246,7 +246,10 @@ object KirigamiPopUp {
                 "  t = $t (t/bridge %.2f): threshold strain %.4f, at strain %.3f mean tilt %.2f deg, max %.2f deg, stress %.3e"
                     .format(t / 0.12, critical, last.strain, last.meanTilt, last.maxTilt, last.stress),
             )
-            check("t = $t relaxed", states.all { it.gradient < 1e-6 }, "worst gradient %.1e".format(states.maxOf { it.gradient }))
+            check(
+                "t = $t relaxed", states.all { it.gradient < 1e-6 },
+                "worst gradient %.1e, at most %d iterations a step".format(states.maxOf { it.gradient }, states.maxOf { it.iterations }),
+            )
             check("t = $t buckles", critical.isFinite() && last.meanTilt > 5.0, "threshold %.4f, final mean tilt %.2f".format(critical, last.meanTilt))
             val flat = states.filter { it.strain < 0.5 * critical }
             check("t = $t flat below threshold", flat.isNotEmpty() && flat.all { it.meanTilt < 0.2 }, "largest tilt there %.3f deg".format(flat.maxOfOrNull { it.meanTilt } ?: Double.NaN))
