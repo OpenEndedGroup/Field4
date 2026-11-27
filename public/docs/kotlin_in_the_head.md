@@ -77,6 +77,10 @@ keepAlive() // ask the head to keep ticking frames
 `onStart`/`onFrame`/`onStop`/`keepAlive` are inert during a plain Execute; they come alive on
 **Launch**, and the head runs registered `onStop` callbacks exactly once on relaunch or Stop.
 
+The head can also be someone else's web page: make a box that shows one with `web(...)` a
+Kotlin → head root, and the boxes under it run inside that page, with no profile marker. See
+[A Web Page in a Box](web.md#javascript-boxes-inside-the-page).
+
 ## Printing, errors, display and controls
 
 The browser profiles (`remoteAR`, `tone`, and no marker) give a box the same output a Kotlin box on
