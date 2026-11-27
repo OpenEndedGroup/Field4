@@ -322,6 +322,28 @@ All three, 32 beats at 120 beats a minute:
 // Offline-rendered by StrokePlayheadsDocs.renderWav("stroke-playheads").
 ```
 
+The same 32 beats as a moving timeline, at the tempo of the clip above. Each dot is a playhead
+and swells when its track strikes; a ring flashes where two playheads meet; the bar along the
+bottom counts the beats, with a tick at every meeting. The box re-runs the sequence with frames
+every fortieth of a beat (the notes and meetings are the same) and draws the frame for the
+animation's clock on every Field frame:
+
+```diffstatic_runner {data-lang=kotlin video="assets/chain_drawn_score/playheads-timeline.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="16.5" fps="20" timeout="300" w="1000" embed=true name="chain-drawn-score-playheads-timeline" alt="The three strokes, blue wave, red rising line and green arc, with a dot moving along each; the dots pulse as their tracks strike, orange rings flash and spread where two dots pass the same crossing, and a bar along the bottom fills through the 32 beats with ticks at the meetings"}
+notation { threeStrokes() }
+val strokes = StrokePlayheadsDocs.readStrokes(thisBox)
+val seq = StrokePlayheads(StrokePlayheadsDocs.tracks(strokes), MeetingRule.Crossing(windowBeats = 1.0), seed = 4)
+val run = seq.run(beats = 32.0, frameEvery = 1.0 / 40)
+val secondsPerBeat = 0.5 // 32 beats in 16 seconds, as the clip plays them
+notation.clear()
+
+val startedAt = AnimationClock.nowSeconds()
+loop {
+    val beat = (AnimationClock.nowSeconds() - startedAt) / secondsPerBeat
+    lines(StrokePlayheadsDocs.timeline(run, strokes, minOf(beat, 32.0)), framing = LinesFraming.fixed(240.0, 20.0, 840.0, 460.0))
+    frame()
+}
+```
+
 To check that the changes really come only at meetings, the box below renders each track on its
 own. It finds the onsets and pitches with the same detectors as above, without being told the
 notes. For `wave` it takes each heard pitch minus the step's untransposed pitch, which gives the

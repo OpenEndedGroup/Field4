@@ -2,6 +2,11 @@
 package afield.audio.synth
 
 import afield.audio.engine.WavFloatArrayWriter
+import afield.geometry.path.FLine
+import afield.graphics.render.color
+import afield.graphics.render.filled
+import afield.graphics.render.stroked
+import afield.graphics.render.thickness
 import afield.document.graph.Box
 import afield.math.linalg.Vec2
 import afield.math.linalg.vec
@@ -173,6 +178,59 @@ object StrokePlayheadsDocs {
         return notes.indices.map { k -> Math.round(heard.heard[k].second - wave.pitchOf(k)).toInt() }
     }
 
+    /** Track colours, as [threeStrokes] draws them, as RGBA 0..1. */
+    private val COLOURS = listOf(vec(0.10, 0.44, 0.76, 1.0), vec(0.88, 0.19, 0.19, 1.0), vec(0.18, 0.62, 0.27, 1.0))
+
+    private fun ring(c: Vec2, r: Double, segments: Int = 28): FLine {
+        val f = FLine()
+        for (k in 0..segments) {
+            val a = 2 * PI * k / segments
+            if (k == 0) f.moveTo(c.x + r * kotlin.math.cos(a), c.y + r * sin(a)) else f.lineTo(c.x + r * kotlin.math.cos(a), c.y + r * sin(a))
+        }
+        return f
+    }
+
+    /**
+     * The run drawn at [beat], for a moving timeline: the strokes, each playhead as a dot that
+     * swells when its track strikes, a ring that flashes and fades where two playheads have just
+     * met, and a bar along the bottom for the 32 beats. [run] must hold frames finer than the
+     * animation's frame rate; the page records it with `frameEvery = 1.0 / 40`.
+     */
+    fun timeline(run: StrokePlayheads.Run, strokes: Map<String, List<Vec2>>, beat: Double): List<FLine> {
+        val out = ArrayList<FLine>()
+        out += FLine().moveTo(LEFT, TOP).lineTo(LEFT + WIDTH, TOP).lineTo(LEFT + WIDTH, TOP + HEIGHT).lineTo(LEFT, TOP + HEIGHT).lineTo(LEFT, TOP)
+            .also { it.color = vec(0.53, 0.56, 0.59, 1.0); it.thickness = 1.0 }
+        val names = strokes.keys.toList()
+        names.forEachIndexed { i, n ->
+            val f = FLine()
+            strokes.getValue(n).forEachIndexed { k, p -> if (k == 0) f.moveTo(p) else f.lineTo(p) }
+            out += f.also { it.color = vec(COLOURS[i].x, COLOURS[i].y, COLOURS[i].z, 0.55); it.thickness = 3.0 }
+        }
+        // Meetings: a ring that flashes at the meeting and fades over one beat.
+        for (m in run.meetings) {
+            val age = beat - m.beat
+            if (age < 0 || age > 1.0) continue
+            val a = 1.0 - age
+            out += ring(m.where, 14.0 + 30.0 * age).also { it.color = vec(0.94, 0.55, 0.0, a); it.thickness = 2.0 + 4.0 * a }
+            out += ring(m.where, 10.0).also { it.color = vec(1.0, 0.85, 0.3, a); it.filled = true; it.stroked = false }
+        }
+        // Playheads: the frame nearest [beat], each dot swelling for a moment after its track strikes.
+        val frame = run.frames.lastOrNull { it.beat <= beat + 1e-9 } ?: run.frames.first()
+        names.forEachIndexed { i, n ->
+            val since = run.notes.filter { it.track == n && it.start <= beat }.maxOfOrNull { it.start }?.let { beat - it } ?: 9.0
+            val r = 7.0 + 7.0 * maxOf(0.0, 1.0 - since / 0.25)
+            out += ring(frame.positions[i], r).also { it.color = COLOURS[i]; it.filled = true; it.stroked = false }
+        }
+        // The 32 beats, along the bottom.
+        val y = TOP + HEIGHT + 24
+        out += FLine().moveTo(LEFT, y).lineTo(LEFT + WIDTH, y).also { it.color = vec(0.35, 0.37, 0.4, 1.0); it.thickness = 4.0 }
+        out += FLine().moveTo(LEFT, y).lineTo(LEFT + WIDTH * (beat / BEATS).coerceIn(0.0, 1.0), y)
+            .also { it.color = vec(0.94, 0.55, 0.0, 1.0); it.thickness = 4.0 }
+        for (m in run.meetings) out += FLine().moveTo(LEFT + WIDTH * m.beat / BEATS, y - 8).lineTo(LEFT + WIDTH * m.beat / BEATS, y + 8)
+            .also { it.color = vec(1.0, 0.85, 0.3, if (m.beat <= beat) 1.0 else 0.35); it.thickness = 2.0 }
+        return out
+    }
+
     @JvmStatic
     fun main(args: Array<String>) {
         val dir = File(args.getOrNull(0) ?: File(System.getProperty("java.io.tmpdir"), "stroke-playheads").path)
@@ -209,6 +267,9 @@ object StrokePlayheadsDocs {
         }
         println("wave: heard transposition changed $heardChanges times, each across a meeting")
         check(heardChanges > 0) { "the wave never changed" }
+        val fine = StrokePlayheads(tracks(strokes()), MeetingRule.Crossing(WINDOW), seed = SEED).run(BEATS, frameEvery = 1.0 / 40)
+        check(fine.notes == run.notes && fine.meetings == run.meetings) { "recording finer frames changed the music" }
+        check(timeline(fine, strokes(), 21.6).size > 8) { "the timeline at a meeting drew no ring" }
         println("stroke playheads heard")
     }
 }
