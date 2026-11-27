@@ -2290,6 +2290,12 @@ function createMainWindow() {
         contents.devToolsWebContents?.focus();
         return { value: frame.url, frameUrl: frame.url };
       }
+      if (request.operation === "head") {
+        // A RemoteJS head in this page, for the Javascript boxes under its web() box (page-heads.cjs).
+        const value = await require("./page-heads.cjs").injectHead({ frame, contents, guest }, request.frameName,
+          String(request.params?.socketUrl || ""), { log: diagnosticLog });
+        return { value, frameUrl: frame.url };
+      }
       if (request.operation === "blocking") {
         // Content blocking for the site this frame shows: its counts, and an allow-list switch.
         const blocker = require("./content-blocker.cjs").contentBlocker();
