@@ -2,7 +2,7 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 26604 of 44338 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 26631 of 44365 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
 **2113 undocumented entry points** (types, top-level functions and values) and 14844 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
@@ -1161,7 +1161,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [BoxAiToolsSmokeTest.kt](../src/jvmMain/kotlin/afield/examples/ai/BoxAiToolsSmokeTest.kt) | Examples | — | 0 | 1 | 50% |
 | [DocumentStudySmokeTest.kt](../src/jvmMain/kotlin/afield/examples/ai/DocumentStudySmokeTest.kt) | Examples | — | 0 | 1 | 50% |
 | [RectslBoxToolsSmokeTest.kt](../src/jvmMain/kotlin/afield/examples/ai/RectslBoxToolsSmokeTest.kt) | Examples | — | 0 | 1 | 50% |
-| [KirigamiSolidChain.kt](../src/jvmMain/kotlin/afield/examples/chain/KirigamiSolidChain.kt) | Examples | — | 0 | 1 | 88% |
+| [KirigamiSolidChain.kt](../src/jvmMain/kotlin/afield/examples/chain/KirigamiSolidChain.kt) | Examples | — | 0 | 1 | 93% |
 | [PhotoToSolidChain.kt](../src/jvmMain/kotlin/afield/examples/chain/PhotoToSolidChain.kt) | Examples | — | 0 | 1 | 88% |
 | [AlifeShaderSystemsSmoke.kt](../src/jvmMain/kotlin/afield/examples/four/AlifeShaderSystemsSmoke.kt) | Examples | — | 0 | 1 | 50% |
 | [AtmosphereGpuParitySmoke.kt](../src/jvmMain/kotlin/afield/examples/four/AtmosphereGpuParitySmoke.kt) | Examples | — | 0 | 1 | 50% |

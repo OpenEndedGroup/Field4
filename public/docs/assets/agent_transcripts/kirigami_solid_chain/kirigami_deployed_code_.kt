@@ -7,9 +7,15 @@ val stages = listOf(0.0, 15.0, 30.0, 45.0).map { it to KirigamiSolidChain.measur
 for ((deg, m) in stages) {
     val s = cos(m.angle) + sin(m.angle)
     println(
-        "%4.0f deg  genus %d  parts %d  hull area x%.3f  (cos+sin)^2 %.3f  hinge gap %.0e".format(
-            deg, m.genus, m.parts, m.hullArea / closed.hullArea, s * s, m.hingeGap,
-        ),
+        "%4.0f deg  genus %d  parts %d  hull area x%.3f  (cos+sin)^2 %.3f  hinge gap %.0e"
+            .format(
+                deg,
+                m.genus,
+                m.parts,
+                m.hullArea / closed.hullArea,
+                s * s,
+                m.hingeGap,
+            ),
     )
 }
 
@@ -17,7 +23,11 @@ showImgGrid(
     *stages
         .map { (deg, m) ->
             "${deg.toInt()} deg, genus ${m.genus}" to
-                imgFromBytes(m.mesh.renderPng(MeshView(yawDegrees = 0.0, pitchDegrees = 55.0, width = 520, height = 520)))
+                imgFromBytes(
+                    m.mesh.renderPng(
+                        MeshView(yawDegrees = 25.0, pitchDegrees = 40.0, distance = 2.7, width = 520, height = 520),
+                    ),
+                )
         }
         .toTypedArray(),
     columns = 4,

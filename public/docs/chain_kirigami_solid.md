@@ -67,7 +67,7 @@ square sheet opens into a circle. That solve is `afield.geometry.conformal.Kirig
 and the page's box calls it. Its tiles are irregular quadrilaterals, but its hinges are the same
 112 cuts, so `KirigamiSolidChain.bridgedSection` takes them unchanged, closed or opened:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val design = KirigamiInverseDesign(n = 8).solve()
 val (closed, opened) = KirigamiSolidChain.measureDesign(design, gap = 0.01)
 ```

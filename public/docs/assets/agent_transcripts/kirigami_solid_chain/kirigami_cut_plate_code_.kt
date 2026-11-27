@@ -14,7 +14,15 @@ val report = listOf(
 )
 report.forEach { println(it) }
 display("numbers", "<pre>${report.joinToString("\n")}</pre>")
-display(
-    "render",
-    imgFromBytes(plate.mesh.renderPng(MeshView(yawDegrees = 0.0, pitchDegrees = 70.0, width = 760, height = 620))),
+
+// A three-quarter view from above; the CPU rasteriser needs no Window.
+showImgGrid(
+    "the cut plate, 0.1 thick" to
+        imgFromBytes(
+            plate.mesh.renderPng(
+                MeshView(yawDegrees = 25.0, pitchDegrees = 40.0, distance = 2.7, width = 900, height = 600),
+            ),
+        ),
+    columns = 1,
+    cellSide = 600,
 )
