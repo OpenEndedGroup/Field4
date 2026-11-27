@@ -6272,6 +6272,33 @@
         "public/docs/assets/agent_transcripts/stippling/stipple_relaxing_code_.kt": "16dd6e5760dd9c67d8255734a1e912f4f5d1796a39298788459b99a870ce69f5"
       }
     },
+    "assets/agent_transcripts/stroke_playheads/metadata.edn": {
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-27T09:50:13.653Z",
+      "channels": 3,
+      "file": "assets/web_publications/stroke_playheads/document/metadata.edn",
+      "files": {
+        "assets/web_publications/stroke_playheads/document/metadata.edn": "8114497b319fe347b7ecaf544349e8ce558adab71728f2f6b21c64e38d054115",
+        "assets/web_publications/stroke_playheads/document/outputs.json": "e25d48746492d7afbadd953c898b1026a84ac367e5f4cec1133920d57547e870",
+        "assets/web_publications/stroke_playheads/outputs/0.html": "aebc95bda3a3c8f9288b7b3e8d1a89167d1fc72428194d6ed475bdf24d60ef04",
+        "assets/web_publications/stroke_playheads/outputs/1.html": "05a514cace5771dc3916d9e4eaab95d97fc1ddd20b18c1bc7794dcd77aeb6397",
+        "assets/web_publications/stroke_playheads/outputs/2.html": "319cc92a834d0d05b4d08e76d8d9d9db6fc98ee545314015f17a0e26234f1f66"
+      },
+      "kinds": [
+        "plotly",
+        "svg"
+      ],
+      "outputs": "assets/web_publications/stroke_playheads/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/stroke_playheads.yaml": "be203ffbad319209abee24b4de4a42234072214c246378cc39bac68e3407b683",
+        "public/docs/assets/agent_transcripts/stroke_playheads/guides/chain_drawn_score.md": "8feb46d653963a06768afc85c87027c9105f2acde2ff182b8eb4e48096f56e12",
+        "public/docs/assets/agent_transcripts/stroke_playheads/metadata.edn": "8a6e9ddd15ebd07d1c0439a89d1b90fa9f37ce95a76e3a3818175f3eaeecad96",
+        "public/docs/assets/agent_transcripts/stroke_playheads/sp_listen_code_.kt": "fcdee329c2eac93b4ac3dd87351e55853ae2a64a480a248337a5f897a94211d7",
+        "public/docs/assets/agent_transcripts/stroke_playheads/sp_meet_code_.kt": "9d15c589e0d1d40cca2e29e53f01221740a22be7f8b7d9db0f205e13e73084c8",
+        "public/docs/assets/agent_transcripts/stroke_playheads/sp_play_code_.kt": "bb0c953a7593a81c6d65d164125aa418a716e7a9aaa30c6703077dafcde0d26d",
+        "public/docs/assets/agent_transcripts/stroke_playheads/sp_strokes_code_.kt": "89ac0117698371668bd5dc5455bcac9b9462a2bd8e29afffda61bc6f2c1b419c"
+      }
+    },
     "assets/agent_transcripts/studies_rings/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
       "capturedAt": "2026-11-18T16:09:42.806Z",

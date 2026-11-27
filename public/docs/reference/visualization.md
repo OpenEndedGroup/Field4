@@ -4,7 +4,7 @@
 
 Turning a value into something you can look at, without leaving the box.
 
-75 source file(s), 2108 public symbol(s), 1501 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+76 source file(s), 2157 public symbol(s), 1536 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -2567,6 +2567,150 @@ One frame of the stroke layer, as the JSON the page draws (`strokeLayer.kt` in t
 | <a id="strokelayerframes-kt--strokelayerframes--encode"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">encode</span><span class="p">(</span><span class="n">trail</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">strokes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/ui/notation/StrokeLayerFrames/#L45) | The frame for `trail` and every stroke's lines with its default width. |
 | <a id="strokelayerframes-kt--strokelayerframes--indexedpositions"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">indexedPositions</span><span class="p">(</span><span class="n">lines</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">FloatArray</span></code>](source/jvmMain/afield/ui/notation/StrokeLayerFrames/#L60) | The positions [`Stroke.closestOutput`](visualization.md#strokesketch-kt--stroke--closestoutput) searches: every node end point of `lines` not marked [`FLine.ignore`](visualization.md#strokeverbs-kt--ignore), as x, y pairs. |
 | <a id="strokelayerframes-kt--strokelayerframes--css"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">css</span><span class="p">(</span><span class="n">c</span><span class="p">:</span> <span class="nc">Vec4</span><span class="o">?</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/ui/notation/StrokeLayerFrames/#L191) | `c` as a CSS colour; white when null (an FLine's default). |
+
+## StrokePlayheads.kt { #strokeplayheads-kt }
+
+Playheads that travel along drawn strokes, and what happens when two of them meet — a sequencer
+after the method of anima (https://llllllll.co/t/anima/75862), the norns/Grid sequencer that
+grew out of Crim's Animator. This is built from that description, not from its code.
+
+Every stroke is a [`PlayheadTrack`](visualization.md#strokeplayheads-kt-playheadtrack). Its playhead moves along the stroke at its own [rate](visualization.md#strokeplayheads-kt--playheadtrack--rate)
+and direction, wrapping or ping-ponging at the ends, and on its own step clock it strikes a note
+from its [degrees](visualization.md#strokeplayheads-kt--playheadtrack--degrees) with a [probability](visualization.md#strokeplayheads-kt--playheadtrack--probability) and a
+[ratchet](visualization.md#strokeplayheads-kt--playheadtrack--ratchet). Pitch, rate and direction change only when two playheads
+*meet* ([`MeetingRule`](visualization.md#strokeplayheads-kt-meetingrule)): then each of the two applies its own [`MeetAction`](visualization.md#strokeplayheads-kt-meetaction). Two [`PlayheadLfo`](visualization.md#strokeplayheads-kt-playheadlfo)s per
+track move gain, note length or probability between meetings, and either can be frozen.
+
+[`StrokePlayheads`](visualization.md#strokeplayheads-kt-strokeplayheads) is a pure simulation in beats with a seeded random source: the same strokes
+and settings give the same notes and meetings every time, so it is unit-testable and its output
+is a list of `TimedNote`-shaped [`PlayheadNote`](visualization.md#strokeplayheads-kt-playheadnote)s a pattern can play. Nothing here touches an audio
+graph; play the notes through a pattern, whose scheduling is the audio thread's.
+[restroke](visualization.md#strokeplayheads-kt--strokeplayheads--restroke) swaps a track's stroke and keeps its playhead's place, so a
+stroke can be redrawn between runs while the sequence carries on.
+
+`src/jvmMain/kotlin/afield/ui/notation/StrokePlayheads.kt` — [read the source](source/jvmMain/afield/ui/notation/StrokePlayheads/)
+
+**Used in:** [A Drawn Score, Heard](../chain_drawn_score.md)
+
+### MeetAction { #strokeplayheads-kt-meetaction }
+
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">MeetAction</span></code>](source/jvmMain/afield/ui/notation/StrokePlayheads/#L32)
+
+What a track does to itself when its playhead meets another.
+
+Constants: `TRANSPOSE`, `RATE`, `REVERSE`, `NONE`.
+
+### LfoDestination { #strokeplayheads-kt-lfodestination }
+
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">LfoDestination</span></code>](source/jvmMain/afield/ui/notation/StrokePlayheads/#L47)
+
+What a [`PlayheadLfo`](visualization.md#strokeplayheads-kt-playheadlfo) moves. None of these is pitch, rate or direction: those change only at meetings.
+
+Constants: `GAIN`, `LENGTH`, `PROBABILITY`.
+
+### PlayheadLfo { #strokeplayheads-kt-playheadlfo }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">PlayheadLfo</span><span class="p">(</span><span class="k">val</span> <span class="n">destination</span><span class="p">:</span> <span class="nc">LfoDestination</span><span class="p">,</span> <span class="k">val</span> <span class="n">periodBeats</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">depth</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">phase</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">var</span> <span class="n">freezeAt</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="nc">Double</span><span class="p">.</span><span class="nc">POSITIVE&#95;INFINITY</span><span class="p">)</span></code>](source/jvmMain/afield/ui/notation/StrokePlayheads/#L59)
+
+A sine LFO on one destination of a track: `depth * sin(2π (beat / periodBeats + phase))`, added to the destination's base value. From [`freezeAt`](visualization.md#strokeplayheads-kt--playheadlfo--freezeat) on it holds the value it had then.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="strokeplayheads-kt--playheadlfo--destination"></a><code class="highlight"><span class="k">val</span> <span class="n">destination</span><span class="p">:</span> <span class="nc">LfoDestination</span></code> |  |
+| <a id="strokeplayheads-kt--playheadlfo--periodbeats"></a><code class="highlight"><span class="k">val</span> <span class="n">periodBeats</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="strokeplayheads-kt--playheadlfo--depth"></a><code class="highlight"><span class="k">val</span> <span class="n">depth</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="strokeplayheads-kt--playheadlfo--phase"></a><code class="highlight"><span class="k">val</span> <span class="n">phase</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="strokeplayheads-kt--playheadlfo--freezeat"></a><code class="highlight"><span class="k">var</span> <span class="n">freezeAt</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="strokeplayheads-kt--playheadlfo--value"></a>[<code class="highlight"><span class="k">fun</span> <span class="k">value</span><span class="p">(</span><span class="n">beat</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/ui/notation/StrokePlayheads/#L69) | The LFO's value at `beat`, held from [`freezeAt`](visualization.md#strokeplayheads-kt--playheadlfo--freezeat). |
+
+### PlayheadTrack { #strokeplayheads-kt-playheadtrack }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">PlayheadTrack</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">passBeats</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">8.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">stepBeats</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span> <span class="k">val</span> <span class="n">degrees</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">listOf</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">root</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">60.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">scale</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">listOf</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">9</span><span class="p">)</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">var</span> <span class="n">direction</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="k">val</span> <span class="n">pingPong</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">probability</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">ratchet</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="k">val</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.8</span><span class="p">,</span> <span class="k">val</span> <span class="n">length</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.4</span><span class="p">,</span> <span class="k">val</span> <span class="n">onMeet</span><span class="p">:</span> <span class="nc">MeetAction</span> <span class="o">=</span> <span class="nc">MeetAction</span><span class="p">.</span><span class="nc">TRANSPOSE</span><span class="p">,</span> <span class="k">val</span> <span class="n">transposeStep</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">5.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">rateFactor</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.5</span><span class="p">,</span> <span class="k">val</span> <span class="n">lfos</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PlayheadLfo</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/ui/notation/StrokePlayheads/#L84)
+
+One stroke as a track. Times are beats; [`rate`](visualization.md#strokeplayheads-kt--playheadtrack--rate) 1 crosses the whole stroke in [`passBeats`](visualization.md#strokeplayheads-kt--playheadtrack--passbeats).
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="strokeplayheads-kt--playheadtrack--name"></a><code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="strokeplayheads-kt--playheadtrack--passbeats"></a><code class="highlight"><span class="k">val</span> <span class="n">passBeats</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="strokeplayheads-kt--playheadtrack--stepbeats"></a><code class="highlight"><span class="k">val</span> <span class="n">stepBeats</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="strokeplayheads-kt--playheadtrack--degrees"></a><code class="highlight"><span class="k">val</span> <span class="n">degrees</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code> |  |
+| <a id="strokeplayheads-kt--playheadtrack--root"></a><code class="highlight"><span class="k">val</span> <span class="n">root</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="strokeplayheads-kt--playheadtrack--scale"></a><code class="highlight"><span class="k">val</span> <span class="n">scale</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code> |  |
+| <a id="strokeplayheads-kt--playheadtrack--direction"></a><code class="highlight"><span class="k">var</span> <span class="n">direction</span><span class="p">:</span> <span class="nc">Int</span></code> | +1 runs from the stroke's first point to its last, -1 back. |
+| <a id="strokeplayheads-kt--playheadtrack--pingpong"></a><code class="highlight"><span class="k">val</span> <span class="n">pingPong</span><span class="p">:</span> <span class="nc">Boolean</span></code> | Bounce at the ends instead of wrapping round. |
+| <a id="strokeplayheads-kt--playheadtrack--probability"></a><code class="highlight"><span class="k">val</span> <span class="n">probability</span><span class="p">:</span> <span class="nc">Double</span></code> | Chance each step strikes, 0..1, before the LFOs. |
+| <a id="strokeplayheads-kt--playheadtrack--ratchet"></a><code class="highlight"><span class="k">val</span> <span class="n">ratchet</span><span class="p">:</span> <span class="nc">Int</span></code> | Strikes per step, evenly spaced. |
+| <a id="strokeplayheads-kt--playheadtrack--gain"></a><code class="highlight"><span class="k">val</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Double</span></code> | Base gain, 0..1. |
+| <a id="strokeplayheads-kt--playheadtrack--length"></a><code class="highlight"><span class="k">val</span> <span class="n">length</span><span class="p">:</span> <span class="nc">Double</span></code> | Base note length, as a fraction of the step. |
+| <a id="strokeplayheads-kt--playheadtrack--onmeet"></a><code class="highlight"><span class="k">val</span> <span class="n">onMeet</span><span class="p">:</span> <span class="nc">MeetAction</span></code> | What this track does when it meets another. |
+| <a id="strokeplayheads-kt--playheadtrack--transposestep"></a><code class="highlight"><span class="k">val</span> <span class="n">transposeStep</span><span class="p">:</span> <span class="nc">Double</span></code> | Semitones per `MeetAction.TRANSPOSE`. |
+| <a id="strokeplayheads-kt--playheadtrack--ratefactor"></a><code class="highlight"><span class="k">val</span> <span class="n">rateFactor</span><span class="p">:</span> <span class="nc">Double</span></code> | Factor per `MeetAction.RATE`. |
+| <a id="strokeplayheads-kt--playheadtrack--lfos"></a><code class="highlight"><span class="k">val</span> <span class="n">lfos</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PlayheadLfo</span><span class="p">&gt;</span></code> | Up to two LFOs. |
+| <a id="strokeplayheads-kt--playheadtrack--at"></a>[<code class="highlight"><span class="k">var</span> <span class="n">at</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/ui/notation/StrokePlayheads/#L124) | Where the playhead is, as a fraction 0..1 of the stroke. |
+| <a id="strokeplayheads-kt--playheadtrack--rate"></a>[<code class="highlight"><span class="k">var</span> <span class="n">rate</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/ui/notation/StrokePlayheads/#L127) | The rate now; `MeetAction.RATE` changes it. |
+| <a id="strokeplayheads-kt--playheadtrack--transpose"></a>[<code class="highlight"><span class="k">var</span> <span class="n">transpose</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/ui/notation/StrokePlayheads/#L130) | Semitones added now; `MeetAction.TRANSPOSE` changes it. |
+| <a id="strokeplayheads-kt--playheadtrack--position"></a>[<code class="highlight"><span class="k">val</span> <span class="n">position</span><span class="p">:</span> <span class="nc">Vec2</span></code>](source/jvmMain/afield/ui/notation/StrokePlayheads/#L137) | The playhead's position on the canvas. |
+| <a id="strokeplayheads-kt--playheadtrack--points"></a>[<code class="highlight"><span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ui/notation/StrokePlayheads/#L140) | The stroke as it is now. |
+| <a id="strokeplayheads-kt--playheadtrack--pitchof"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">pitchOf</span><span class="p">(</span><span class="n">k</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/ui/notation/StrokePlayheads/#L143) | MIDI pitch of step `k` with the current transposition. |
+
+### MeetingRule { #strokeplayheads-kt-meetingrule }
+
+[<code class="highlight"><span class="k">sealed</span> <span class="k">class</span> <span class="nc">MeetingRule</span></code>](source/jvmMain/afield/ui/notation/StrokePlayheads/#L154)
+
+How two playheads meet.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="strokeplayheads-kt--meetingrule--radius"></a>[<code class="highlight"><span class="k">class</span> <span class="nf">Radius</span><span class="p">(</span><span class="k">val</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">rearm</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.5</span><span class="p">)</span> <span class="p">:</span> <span class="nc">MeetingRule</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/ui/notation/StrokePlayheads/#L156) | When they come within `radius` world units; it re-arms once they are `rearm` × radius apart. |
+| <a id="strokeplayheads-kt--meetingrule--crossing"></a>[<code class="highlight"><span class="k">class</span> <span class="nf">Crossing</span><span class="p">(</span><span class="k">val</span> <span class="n">windowBeats</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span> <span class="p">:</span> <span class="nc">MeetingRule</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/ui/notation/StrokePlayheads/#L159) | When both pass the same crossing of their strokes within `windowBeats` of each other. |
+
+### PlayheadNote { #strokeplayheads-kt-playheadnote }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PlayheadNote</span><span class="p">(</span><span class="k">val</span> <span class="n">track</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">start</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">end</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">note</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/ui/notation/StrokePlayheads/#L163)
+
+A struck note: `start` to `end` in beats, MIDI `note`, [`gain`](visualization.md#strokeplayheads-kt--playheadtrack--gain) 0..1, from `track`.
+
+### PlayheadMeeting { #strokeplayheads-kt-playheadmeeting }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PlayheadMeeting</span><span class="p">(</span><span class="k">val</span> <span class="n">beat</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="k">where</span><span class="p">:</span> <span class="nc">Vec2</span><span class="p">)</span></code>](source/jvmMain/afield/ui/notation/StrokePlayheads/#L166)
+
+Two playheads met at `beat`, at [`where`](workspace.md#rewritedsl-kt--where) on the canvas; `a` and `b` are track names.
+
+### PlayheadChange { #strokeplayheads-kt-playheadchange }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PlayheadChange</span><span class="p">(</span><span class="k">val</span> <span class="n">beat</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">track</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">action</span><span class="p">:</span> <span class="nc">MeetAction</span><span class="p">,</span> <span class="k">val</span> <span class="n">transpose</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">rate</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">direction</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/ui/notation/StrokePlayheads/#L169)
+
+Track `track`'s [`action`](internal.md#extensions-kt--action) took effect at `beat`, leaving its transpose, rate and direction as given.
+
+### PlayheadFrame { #strokeplayheads-kt-playheadframe }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">PlayheadFrame</span><span class="p">(</span><span class="k">val</span> <span class="n">beat</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">positions</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/ui/notation/StrokePlayheads/#L172)
+
+Where every playhead was at `beat`.
+
+### StrokeCrossing { #strokeplayheads-kt-strokecrossing }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">StrokeCrossing</span><span class="p">(</span><span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">atA</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">atB</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="k">where</span><span class="p">:</span> <span class="nc">Vec2</span><span class="p">)</span></code>](source/jvmMain/afield/ui/notation/StrokePlayheads/#L175)
+
+A crossing of two tracks' strokes: track indices, each stroke's fraction there, and the point.
+
+### StrokePlayheads { #strokeplayheads-kt-strokeplayheads }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">StrokePlayheads</span><span class="p">(</span><span class="k">val</span> <span class="n">tracks</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PlayheadTrack</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">rule</span><span class="p">:</span> <span class="nc">MeetingRule</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="k">val</span> <span class="n">tick</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="p">/</span> <span class="mi">96</span><span class="p">)</span></code>](source/jvmMain/afield/ui/notation/StrokePlayheads/#L187)
+
+The simulation. [`tick`](visualization.md#strokeplayheads-kt--strokeplayheads--tick) is the time step in beats; meetings are found at tick times, notes are struck on each track's exact step clock.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="strokeplayheads-kt--strokeplayheads--tracks"></a><code class="highlight"><span class="k">val</span> <span class="n">tracks</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PlayheadTrack</span><span class="p">&gt;</span></code> |  |
+| <a id="strokeplayheads-kt--strokeplayheads--rule"></a><code class="highlight"><span class="k">val</span> <span class="n">rule</span><span class="p">:</span> <span class="nc">MeetingRule</span></code> |  |
+| <a id="strokeplayheads-kt--strokeplayheads--tick"></a><code class="highlight"><span class="k">val</span> <span class="n">tick</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="strokeplayheads-kt--strokeplayheads--crossings"></a>[<code class="highlight"><span class="k">val</span> <span class="n">crossings</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">StrokeCrossing</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ui/notation/StrokePlayheads/#L202) | Every crossing of every pair of strokes, as they are now. |
+| <a id="strokeplayheads-kt--strokeplayheads--run"></a>[<code class="highlight"><span class="k">class</span> <span class="nf">Run</span><span class="p">(</span><span class="k">val</span> <span class="n">notes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PlayheadNote</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">meetings</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PlayheadMeeting</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">changes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PlayheadChange</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">frames</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PlayheadFrame</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/ui/notation/StrokePlayheads/#L205) | Everything one [`run`](visualization.md#strokeplayheads-kt--strokeplayheads--run-2) produced. |
+| <a id="strokeplayheads-kt--strokeplayheads--restroke"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">restroke</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/ui/notation/StrokePlayheads/#L221) | Replaces track `name`'s stroke with `points` and keeps its playhead at the same fraction of the stroke, so a redrawn stroke carries the sequence on rather than restarting it. |
+| <a id="strokeplayheads-kt--strokeplayheads--run-2"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">run</span><span class="p">(</span><span class="n">beats</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">frameEvery</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.25</span><span class="p">)</span><span class="p">:</span> <span class="nc">Run</span></code>](source/jvmMain/afield/ui/notation/StrokePlayheads/#L229) | Runs for `beats` more beats, recording a frame every `frameEvery` beats. |
+| <a id="strokeplayheads-kt--strokeplayheads-companion--strokecrossings"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">strokeCrossings</span><span class="p">(</span><span class="n">tracks</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PlayheadTrack</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">StrokeCrossing</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ui/notation/StrokePlayheads/#L348) | Every crossing of every pair of the tracks' strokes, with each stroke's fraction there. |
 
 ## StrokeSketch.kt { #strokesketch-kt }
 
@@ -5331,7 +5475,7 @@ callbacks; everything else goes through Skia's SVG canvas.
 
 `src/jvmMain/kotlin/afield/ui/visualization/someSkiko.kt` — [read the source](source/jvmMain/afield/ui/visualization/someSkiko/)
 
-**Used in:** [Filming a Timeline](../filming_a_timeline.md), [Presenting with Field](../presentation_studio.md), [Drawing on iPad](../drawing_on.md)
+**Used in:** [Filming a Timeline](../filming_a_timeline.md), [Presenting with Field](../presentation_studio.md), [A Drawn Score, Heard](../chain_drawn_score.md)
 
 ### Top-level functions { #someskiko-kt-functions }
 

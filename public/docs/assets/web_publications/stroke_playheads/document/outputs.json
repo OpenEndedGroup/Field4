@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-27T09:50:13.653Z",
+  "documentName": "stroke_playheads",
+  "outputs": [
+    {
+      "uid": "sp_listen",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly"
+      ],
+      "width": 712,
+      "height": 458,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "sp_play",
+      "channel": "roll",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 1116,
+      "height": 359,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "sp_play",
+      "channel": "audio",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/2.html"
+    }
+  ]
+}
