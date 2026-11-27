@@ -119,6 +119,7 @@ values.
 
 - [Kirigami: cut patterns that open into a shape](kirigami.md), for the mechanism and Choi's
   inverse problem.
+- [Teichmüller maps](explainer_teichmuller.md), the talk on the rest of `afield.geometry.conformal`.
 - [A Word Cut as a Stencil](chain_stencil_bridges.md), for bridges that hold the islands of a stencil in place.
 - [Manifold](manifold.md), for `Section`, offsets and the rest of the 2D-to-3D toolkit.
 - [Examples that cross several parts of Field](chains.md), for the other chains.

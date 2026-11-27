@@ -517,3 +517,8 @@ See also: [Sound](explainer_sound.md), [Cameras and Lenses](explainer_cameras.md
 
 - [Explainers](chains.md#explainers): all the talks.
 - [Presenting with Field](presentation_studio.md): give this talk, or build your own.
+- [Kirigami: cut patterns that open into a shape](kirigami.md): Choi's inverse kirigami design, the
+  other half of `afield.geometry.conformal`, and [A Kirigami Sheet, Cut and Counted](chain_kirigami_solid.md),
+  which turns its sheets into solids.
+- [Spectral geometry](spectral_geometry.md): the cotangent Laplacian, which is the linear Beltrami
+  solver's matrix when μ = 0.
