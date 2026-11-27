@@ -67,7 +67,7 @@ operations:
           // Looking down +z at a 600 × 360 drawing, centred on it. Lines in pixel-like units, y down.
           once.flineCamera {
               Camera(renderer).apply {
-                  at = vec(300, 180, -420)
+                  at = vec(300, 180, -260)
                   target = vec(300, 180, 0)
                   up = vec(0, -1, 0)
               }

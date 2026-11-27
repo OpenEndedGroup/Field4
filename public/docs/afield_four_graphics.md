@@ -2210,6 +2210,9 @@ Field computes pixel coverage in several places, and they answer different quest
   front to back, on the CPU or as a compute shader). Both project splats with `SplatRaster.project`.
 - **A filled curved `FLine` on the GPU:** [Slug filled paths](slug_paths.md), analytic curve
   coverage evaluated in the fragment shader.
+- **A list of FLines that changes every frame, drawn on the GPU in 3D:** `FLineLayers`
+  ([A changing list of FLines](#fline-layers)), tessellated on the CPU once per distinct line, with
+  analytically antialiased strokes in its "strokes, joined" box.
 - **A filled or stroked `FLine` in a GPU buffer, as a mask or field a shader reads:**
   `BufferCanvas.fill(line, value, rule)` and `BufferCanvas.stroke(line, width, value)` write exact
   area coverage into the buffer, under non-zero or even-odd, however the outline overlaps itself
@@ -2559,6 +2562,166 @@ method is from *[Pixels on a screen](https://whitebeard.blog/posts/pixels-on-a-s
 on umgeni, a compiler for Nile that renders the SVG tiger from Gezira kernels; Field's kernels are
 written from that description. Round joins and caps, Gezira's other blend modes and image
 textures are not implemented here; on the GPU, strokes are outlined on the CPU once at load.
+
+## A changing list of FLines { #fline-layers }
+
+The tiger's FLines go up once and stay there. A [spatial rules](spatial_rules.md) world makes new
+FLines every frame, and so does most generative drawing. `FLineLayers` is for that: you give it a
+list of FLines each frame, and it draws them on the renderer as three layers, strokes, fills and
+points. Each layer is one draw call whose vertex shader reads its vertices straight out of a
+buffer, so the number of draws stays at three however many lines there are.
+
+The [FLine layers starting point](agent_transcripts.md#fline_gpu_layers) has a parent box that owns
+the layers, one draw box for each layer, and a spatial rules world as the scene. The parent makes
+the `FLineLayers` and the `Camera` the draw boxes share, publishes both to the boxes beneath it, and
+uploads the list once a frame:
+
+```diffstatic {data-lang=kotlin}
+prop<FLineLayers>(flineLayers)
+prop<Camera>(flineCamera)
+
+// `once`: the draw boxes hold these buffers' addresses, so re-running this box keeps them.
+once.flineLayers { FLineLayers(renderer, samplesPerCubic = 16) }
+
+once.flineCamera {
+    Camera(renderer).apply {
+        at = vec(300, 180, -260)
+        target = vec(300, 180, 0)
+        up = vec(0, -1, 0)
+    }
+}
+
+var frame = 0
+loop {
+    flineLayers.upload()
+
+    frame++
+    if (frame % 30 == 0) markdown("upload", "`${flineLayers.stats}`")
+}
+```
+
+Any box beneath it draws by changing `flineLayers.lines`. The scene box replaces the list with what
+its world drew this frame:
+
+```diffstatic {data-lang=kotlin}
+loop {
+    flineLayers.lines.clear()
+    flineLayers.lines += world.step(AnimationClock.nowSeconds())
+}.end { world.close() }
+```
+
+Seeds drift, nearby seeds bond, and triangles of bonds fill in, drawn by the three layers in the
+native window:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/fline-layers-spatial.png" alt="Pale blue translucent triangles joined edge to edge across a black window, a web of thin white bond lines over them with a small white dot at each seed, and a few bonds and lone seeds at the edges with no triangle; one triangle near the centre is still dark, just starting to fade in" timeout="240" capture="native-window" native-wait-frames="120" trim-native=true embed=true name="fline-layers-spatial" macro-file="../../dev_docs/agents/transcripts/fline_gpu_layers.yaml" capture-box="flg_renderer"}
+// dev_docs/agents/transcripts/fline_gpu_layers.yaml: the starting point, as it opens
+```
+
+### What an upload costs
+
+Spatial rules make every line a new `FLine` object every frame, so `upload` does not ask whether a
+line is the same object as last frame. It asks whether it has the same content:
+
+1. Each line gets a content key, a 64-bit hash of its points, its node kinds and its drawing
+   attributes (`color`, `thickness`, `filled`, `stroked`, `pointed`, `pointSize`, `fillRule`,
+   `fillHint`, and per-node `color` and `pointSize`).
+2. A key seen this frame or the frame before reuses its vertices. Only new content is flattened
+   and tessellated.
+3. The buffers are per swapchain image, and each remembers which key it holds at which place. A
+   line that is already in this image's buffer, at the same place, is not copied again.
+
+So a scene that does not change writes nothing, even when every line in it is rebuilt each frame.
+A change near the end of the list rewrites only the end; a change near the front moves every
+line after it and rewrites them, though without tessellating them again. `flineLayers.stats`
+says what the last upload did: how many lines it packed, how many bytes it wrote and skipped, and
+how long the hashing, packing and writing took. The parent above prints it in its `upload` output.
+
+### The vertex layout
+
+All three layers use one 32-byte vertex, which every shader in the starting point declares:
+
+```diffstatic {data-lang=glsl}
+struct FLineVertex {
+    vec4 position; // xyz: world position; w: what each layer needs, below
+    vec4 color;    // straight-alpha RGBA, 0..1
+};
+```
+
+| layer | what the vertices are | `position.w` | drawn as |
+| --- | --- | --- | --- |
+| strokes | each stroked line flattened into runs of points | `thickness` in pixels, negative on the first point of a run | six vertices per segment |
+| fills | fans: a centre, then a ring | how many vertices back the fan's centre is; 0 at a centre | three vertices per stored vertex |
+| points | one per node of each `pointed` line (not `close`) | the dot's radius in pixels, `pointSize * 3` | six vertices per dot |
+
+The breaks between runs, and between fans, are in the vertex data rather than in an index buffer.
+A stroke segment that would join the last point of one run to the first point of the next is
+dropped by the vertex shader, which sees the negative `w`. A fill triangle is
+`(v[k - w], v[k], v[k + 1])`, and there is none where `v[k]` or `v[k + 1]` is a centre.
+
+### Fills: how much tessellation
+
+A filled line's `fillHint` says how much tessellating it needs:
+
+| `fillHint` | for | what it does |
+| --- | --- | --- |
+| `FillHint.HOLES` (the default) | anything, including rings inside rings | the full tessellator, under the line's `fillRule` |
+| `FillHint.NO_HOLES` | several shapes in one line, none inside another | each subpath triangulated on its own |
+| `FillHint.STAR` | dots, convex polygons, most blobs | one fan about each subpath's centroid, with no tessellator at all |
+
+A tessellated triangle is stored as a three-vertex fan, so all three kinds share the fill layer and
+its one draw. The scene above fills its bond triangles as fans:
+
+```diffstatic {data-lang=kotlin}
+whileLive { draw(spatialFill(triangle, skin, opacity = min(1.0, age / 0.5)).apply { fillHint = FillHint.STAR }) }
+```
+
+A subpath given `STAR` that is not star-shaped about its centroid draws folded-over triangles.
+Fill colour is the line's colour; per-node colours reach strokes and points but not fills.
+
+### Three ways to stroke
+
+The starting point has three stroke boxes beneath the parent. All three register their module under
+the same name, `"fline strokes"`, so launching one replaces whichever was drawing:
+
+- **strokes**, which is launched when the starting point opens, draws each segment as a rectangle
+  `thickness` pixels wide and cuts a capsule out of it in the fragment shader. It is the cheapest
+  wide stroke, but a translucent line darkens wherever its segments overlap: at every join, and
+  along a tightly sampled curve.
+- **strokes, joined** draws the same rectangles, and its fragment shader treats each run as one
+  shape. Each pixel measures its distance to its own segment and to the `NEIGHBOURS` segments
+  either side, and only the nearest one draws it, at the coverage the run's outline gives. The
+  edge is antialiased from the whole run's outline, and every pixel of a run is blended once.
+- **stroke lines** draws hardware lines, two vertices per segment, one pixel wide whatever
+  `thickness` says (Apple's Vulkan drivers have no wide lines).
+
+Six translucent strokes, 6 to 56 pixels thick, drawn by **strokes**: each join shows as a brighter
+disc, and the folds at the right as a brighter wedge.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/fline-layers-strokes.png" alt="Six gold translucent strokes against black, each a gentle wave ending in a sharp zigzag at the right, growing from a hairline at the top to a very thick stroke at the bottom; along every stroke a brighter disc marks each join between segments, and the zigzags at the right have a brighter wedge where the stroke folds back over itself" timeout="240" capture="native-window" native-wait-frames="60" trim-native=true embed=true name="fline-layers-strokes" macro-file="../../dev_docs/agents/transcripts/docs_capture/fline_gpu_layers_strokes.yaml" capture-box="flg_renderer"}
+// dev_docs/agents/transcripts/docs_capture/fline_gpu_layers_strokes.yaml: "strokes"
+```
+
+The same strokes drawn by **strokes, joined**, launched over the first:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/fline-layers-strokes-joined.png" alt="The same six gold waves with their zigzags, now an even tone from end to end: no brighter discs at the joins and no brighter wedge where the zigzags fold back, with smooth round ends" timeout="240" capture="native-window" native-wait-frames="60" trim-native=true embed=true name="fline-layers-strokes-joined" macro-file="../../dev_docs/agents/transcripts/docs_capture/fline_gpu_layers_strokes.yaml" capture-box="flg_renderer" run-box="flg_strokes_joined" execution="launch"}
+// dev_docs/agents/transcripts/docs_capture/fline_gpu_layers_strokes.yaml: then "strokes, joined"
+```
+
+**strokes, joined** pays for that in its fragment shader: up to `2 × NEIGHBOURS + 1` segment
+distances for each pixel a stroke covers. A run that comes back on itself further along than
+`NEIGHBOURS` segments still overlaps there. Raise `NEIGHBOURS` in its fragment shader if your lines
+do that.
+
+### What the layers do not do
+
+- **Paint order between layers.** Within a layer, a later line draws over an earlier one. Across
+  layers it does not: every fill is drawn in the fill box's draw, so a later line's fill cannot
+  cover an earlier line's stroke, as it would in SVG, Skia or the tiger.
+- **Antialiased fill edges.** Fills are plain triangles, so their edges are as smooth as the
+  window's multisampling makes them.
+- **Exact coverage.** For a fixed document drawn exactly under any fill rule, use the
+  [GPU tiger's](#gezira-gpu-tiger) `GeziraGpuScene`; for one exact filled path,
+  [Slug](slug_paths.md).
 
 ## Stopping the renderer
 
