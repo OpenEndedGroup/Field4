@@ -15,6 +15,8 @@
 // one, `Cross-Origin-Embedder-Policy: credentialless` (its cross-origin subresources then load
 // without cookies, as a third-party frame's mostly do anyway).
 
+const { pipelineFor } = require("./web-request-pipeline.cjs");
+
 const FRAME_ANCESTORS = /^\s*frame-ancestors(\s|$)/i;
 
 function headerValues(value) {
@@ -129,40 +131,36 @@ function shouldRelaxCookies(details, fieldOrigin) {
     originOf(topLevelUrl(details)) === fieldOrigin;
 }
 
-// Installs the relief on [session] for frames inside pages served from [fieldUrl]'s origin.
-// A session has one onHeadersReceived listener; this one owns the default session's.
+// Installs the relief on [session]'s webRequest pipeline for frames inside pages served from
+// [fieldUrl]'s origin, as two handlers: "framing-relief" and "cookie-relief".
 function installFramingRelief(session, fieldUrl, log = () => {}) {
   const fieldOrigin = originOf(fieldUrl);
   const isolatedTabs = new Set(); // webContents ids whose current Field page is COEP-isolated
-  session.webRequest.onHeadersReceived((details, callback) => {
+  const pipeline = pipelineFor(session, log);
+  pipeline.add("onHeadersReceived", "framing-relief", details => {
     if (details.resourceType === "mainFrame") {
       if (details.webContentsId != null) {
         if (originOf(details.url) === fieldOrigin && isolatesPage(details.responseHeaders)) isolatedTabs.add(details.webContentsId);
         else isolatedTabs.delete(details.webContentsId);
       }
-      callback({});
-      return;
+      return null;
     }
-    let headers = details.responseHeaders;
-    let changed = false;
-    if (shouldRelax(details, fieldOrigin)) {
-      const isolatedParent = isolatedTabs.has(details.webContentsId);
-      const relaxed = relaxFramingHeaders(headers, { isolatedParent });
-      if (relaxed) {
-        headers = relaxed; changed = true;
-        log("framing-relief", { url: details.url, top: topLevelUrl(details), isolatedParent });
-      }
-    }
-    if (shouldRelaxCookies(details, fieldOrigin)) {
-      const relaxed = relaxThirdPartyCookies(headers);
-      if (relaxed) { headers = relaxed; changed = true; }
-    }
-    callback(changed ? { responseHeaders: headers } : {});
-  });
+    if (!shouldRelax(details, fieldOrigin)) return null;
+    const isolatedParent = isolatedTabs.has(details.webContentsId);
+    const relaxed = relaxFramingHeaders(details.responseHeaders, { isolatedParent });
+    if (!relaxed) return null;
+    log("framing-relief", { url: details.url, top: topLevelUrl(details), isolatedParent });
+    return { responseHeaders: relaxed };
+  }, { order: 10 });
+  pipeline.add("onHeadersReceived", "cookie-relief", details => {
+    if (!shouldRelaxCookies(details, fieldOrigin)) return null;
+    const relaxed = relaxThirdPartyCookies(details.responseHeaders);
+    return relaxed ? { responseHeaders: relaxed } : null;
+  }, { order: 20 });
   return fieldOrigin;
 }
 
 module.exports = {
   relaxFramingHeaders, isolatesPage, shouldRelax,
-  relaxCookie, relaxThirdPartyCookies, shouldRelaxCookies, installFramingRelief,
+  relaxCookie, relaxThirdPartyCookies, shouldRelaxCookies, installFramingRelief, originOf, topLevelUrl,
 };
