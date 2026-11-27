@@ -147,6 +147,12 @@ These chains end in something you could print, mount, hang or light.
     **[An SVG Tiger, Painted](chain_tiger_paint.md).** The tiger's few hundred SVG paths, read
     into FLines and handed to brushes, knives, stipple, outlines, watercolour and a straw.
 
+-   ![A bridged rotating-squares sheet at four opening angles, each genus 49](assets/chain_kirigami_solid/deployed.png)
+
+    **[A Kirigami Sheet, Cut and Counted](chain_kirigami_solid.md).** Give each hinge of a
+    rotating-squares sheet a width, extrude it with Manifold, and check its genus against the
+    tile graph at every opening angle.
+
 -   ![Nested offset contours, red and blue, around a rounded shape with a soft waist](assets/chain_squircle_offsets/offsets.png)
 
     **[A Drawn Outline, Repaired and Offset](chain_squircle_offsets.md).** Two squircles joined

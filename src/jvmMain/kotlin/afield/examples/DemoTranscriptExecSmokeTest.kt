@@ -434,6 +434,9 @@ object DemoTranscriptExecSmokeTest {
         // Two pure-CPU kirigami boxes (Choi, Dudte & Mahadevan 2019): lines / showPlaneGrid, sliders,
         // L-BFGS + Levenberg-Marquardt. The inverse-design box runs about 30 s. No Window, no Renderer.
         "kirigami_choi",
+        // Two pure-CPU boxes: the rotating-squares sheet as a bridged Manifold Section, extruded and
+        // measured; pictures are TriMesh.renderPng and lines, so no Window and no Renderer.
+        "kirigami_solid_chain",
         // Three pure-CPU colour boxes (colors_examples.md contrastScale): display HTML and lines -> drawToSVG.
         "contrast_scale_demo",
         // Two more of the same shape: the interior-Close demo reverses, subdivides and dashes

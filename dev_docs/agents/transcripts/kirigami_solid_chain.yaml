@@ -1,0 +1,139 @@
+name: kirigami_solid_chain
+description: >
+  A rotating-squares kirigami sheet, the pattern of the kirigami_choi transcript's first box, becomes
+  a solid you could laser-cut or print, as three pure-compute boxes with no Window and no Renderer.
+  The kirigami page treats a hinge as one shared point; here every tile is shrunk so the cuts are
+  slits, and every hinge becomes a short bar of material across its slit. Manifold extrudes the
+  region and reports its genus, which the tile graph predicts as hinges - tiles + 1.
+    1. kirigami_cut_plate  — the closed sheet as a cut plate: 64 tiles, 112 hinges, genus 49, one
+                             piece, watertight, volume = area x thickness. Draws the 2D region and
+                             renders the plate with the CPU rasteriser.
+    2. kirigami_deployed   — the same construction at 0, 15, 30 and 45 degrees: the genus does not
+                             change, and the hull area grows as (cos + sin)^2, doubling at 45 degrees.
+    3. kirigami_circle_solid — Choi's inverse-designed sheet that opens into a circle, solved by
+                             KirigamiInverseDesign (about 35 s, cached), bridged closed and opened.
+  Every number comes from `afield.examples.chain.KirigamiSolidChain`, which CI runs as the FIELD_TEST
+  `chain.kirigami-solid`. The page is public/docs/chain_kirigami_solid.md.
+docs:
+  - page: chain_kirigami_solid.md
+    why: "Walks through this kirigami-to-solid chain step by step."
+operations:
+  - create:
+      box: kirigami_cut_plate
+      name: the closed sheet, cut with hinges you can make
+      frame: { x: 60.0, y: 60.0, w: 420.0, h: 90.0 }
+      properties:
+        code: |
+          import afield.examples.chain.KirigamiSolidChain
+
+          // gap: half a slit's width. bridge: how far each hinge bar runs along its cut.
+          val n = 8
+          val gap = 0.04
+          val bridge = 0.12
+          val plate = KirigamiSolidChain.measure(n, angle = 0.0, thickness = 0.1, gap = gap, bridge = bridge)
+
+          val report = listOf(
+              "${plate.tiles} tiles, ${plate.hinges} hinges",
+              "genus ${plate.genus}, and hinges - tiles + 1 = ${plate.predictedGenus}",
+              "${plate.parts} part, watertight=${plate.watertight}",
+              "volume %.6f = area %.6f x thickness 0.1".format(plate.volume, plate.sectionArea),
+          )
+          report.forEach { println(it) }
+          display("numbers", "<pre>${report.joinToString("\n")}</pre>")
+
+          // A three-quarter view from above; the CPU rasteriser needs no Window.
+          showImgGrid(
+              "the cut plate, 0.1 thick" to
+                  imgFromBytes(
+                      plate.mesh.renderPng(
+                          MeshView(yawDegrees = 25.0, pitchDegrees = 40.0, distance = 2.7, width = 900, height = 600),
+                      ),
+                  ),
+              columns = 1,
+              cellSide = 600,
+          )
+  - create:
+      box: kirigami_deployed
+      name: the same solid, opened
+      frame: { x: 60.0, y: 1600.0, w: 420.0, h: 90.0 }
+      properties:
+        code: |
+          import afield.examples.chain.KirigamiSolidChain
+          import kotlin.math.cos
+          import kotlin.math.sin
+
+          val closed = KirigamiSolidChain.measure(angle = 0.0)
+          val stages = listOf(0.0, 15.0, 30.0, 45.0).map { it to KirigamiSolidChain.measure(angle = Math.toRadians(it)) }
+          for ((deg, m) in stages) {
+              val s = cos(m.angle) + sin(m.angle)
+              println(
+                  "%4.0f deg  genus %d  parts %d  hull area x%.3f  (cos+sin)^2 %.3f  hinge gap %.0e"
+                      .format(
+                          deg,
+                          m.genus,
+                          m.parts,
+                          m.hullArea / closed.hullArea,
+                          s * s,
+                          m.hingeGap,
+                      ),
+              )
+          }
+
+          showImgGrid(
+              *stages
+                  .map { (deg, m) ->
+                      "${deg.toInt()} deg, genus ${m.genus}" to
+                          imgFromBytes(
+                              m.mesh.renderPng(
+                                  MeshView(yawDegrees = 25.0, pitchDegrees = 40.0, distance = 2.7, width = 520, height = 520),
+                              ),
+                          )
+                  }
+                  .toTypedArray(),
+              columns = 4,
+              cellSide = 300,
+          )
+  - create:
+      box: kirigami_circle_solid
+      name: the sheet that opens into a circle, as a solid
+      frame: { x: 60.0, y: 3200.0, w: 420.0, h: 90.0 }
+      properties:
+        code: |
+          import afield.examples.chain.KirigamiSolidChain
+          import afield.geometry.conformal.KirigamiInverseDesign
+
+          watchdog = 300 // the solve takes about half a minute the first time; then it is cached
+          val design = cached("kirigami-circle-8") { KirigamiInverseDesign(n = 8).solve() }
+          println("design residual %.1e after %d iterations".format(design.residual, design.iterations))
+
+          // Tiles here are as small as a third of a unit and as sharp as 0.4 rad, so the slit is narrower.
+          fun report(gap: Double): List<String> {
+              val (shut, open) = KirigamiSolidChain.measureDesign(design, gap = gap)
+              return listOf(
+                  "gap $gap: closed genus ${shut.genus}, opened genus ${open.genus} (hinges - tiles + 1 = ${shut.predictedGenus})",
+                  "  ${shut.parts} part closed, ${open.parts} opened, watertight ${shut.watertight && open.watertight}",
+                  "  volume %.4f closed, %.4f opened; opened hull / closed hull %.3f"
+                      .format(shut.volume, open.volume, open.hullArea / shut.hullArea),
+              )
+          }
+          val lines = report(0.01) + report(0.04)
+          lines.forEach { println(it) }
+          display("numbers", "<pre>${lines.joinToString("\n")}</pre>")
+
+          val (shut, open) = KirigamiSolidChain.measureDesign(design, gap = 0.01)
+          fun view(m: KirigamiSolidChain.Measured) = imgFromBytes(
+              m.mesh.renderPng(MeshView(yawDegrees = 25.0, pitchDegrees = 40.0, distance = 2.7, width = 620, height = 520)),
+          )
+          showImgGrid(
+              "cut pattern, closed" to view(shut),
+              "opened onto the circle" to view(open),
+              columns = 2,
+              cellSide = 420,
+          )
+  - execute: { box: kirigami_cut_plate, property: code }
+  - execute: { box: kirigami_deployed, property: code }
+  - execute: { box: kirigami_circle_solid, property: code }
+  - await:
+      wait: pending
+  - wait:
+      millis: 500

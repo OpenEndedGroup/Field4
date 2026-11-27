@@ -46,7 +46,7 @@ constraints make that opened sheet come from a real cut pattern that closes into
 - **No overlap.** No cut closes below 0.15 rad, and no tile corner is sharper than 0.4 rad or
   flatter than π − 0.4.
 
-Choi solves this with MATLAB's interior-point `fmincon`, starting from a conformal map of the
+The solve is `afield.geometry.conformal.KirigamiInverseDesign`, which the box calls. Choi solves this with MATLAB's interior-point `fmincon`, starting from a conformal map of the
 standard pattern onto the disc. The box squashes the standard pattern onto the circle and runs
 Field's Levenberg–Marquardt (`leastSquaresAD`), which brings every constraint to about 1e-13. It
 then glues the rigid tiles back together, cut side to cut side, to recover the closed cut pattern:
@@ -92,4 +92,6 @@ on the way: about 17% in one tile's edge length or corner angle, and none at eit
   paper, and Choi's [inverse-kirigami-design](https://github.com/garyptchoi/inverse-kirigami-design),
   which also has triangle, hexagon and 3-D patterns.
 - [FLine examples](fline_examples.md) for drawing filled shapes with `lines` and `showPlaneGrid`.
+- [A Kirigami Sheet, Cut and Counted](chain_kirigami_solid.md), which gives each hinge a width
+  and turns both sheets on this page into solids you could cut, with their genus counted.
 - [The kirigami_choi transcript](agent_transcripts.md#kirigami_choi), to open both boxes.

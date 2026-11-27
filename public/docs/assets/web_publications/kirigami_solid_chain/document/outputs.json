@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-27T09:08:56.663Z",
+  "documentName": "kirigami_solid_chain",
+  "outputs": [
+    {
+      "uid": "kirigami_deployed",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 912,
+      "height": 254,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "kirigami_circle_solid",
+      "channel": "numbers",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 328,
+      "height": 106,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "kirigami_circle_solid",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 882,
+      "height": 402,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "kirigami_cut_plate",
+      "channel": "numbers",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 227,
+      "height": 80,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "kirigami_cut_plate",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 632,
+      "height": 450,
+      "path": "outputs/4.html"
+    }
+  ]
+}

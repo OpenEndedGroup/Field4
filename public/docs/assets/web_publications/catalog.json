@@ -2783,31 +2783,55 @@
     },
     "assets/agent_transcripts/kirigami_choi/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "capturedAt": "2026-11-26T21:58:47.007Z",
+      "capturedAt": "2026-11-27T09:08:51.643Z",
       "channels": 8,
       "file": "assets/web_publications/kirigami_choi/document/metadata.edn",
       "files": {
-        "assets/web_publications/kirigami_choi/document/metadata.edn": "30939dcff101a669f5b03e0237445da4b7708c4b08b31db979f193e691ed45bd",
-        "assets/web_publications/kirigami_choi/document/outputs.json": "1315b45a9804e9196c1611648e7649d8519df00e95c1bcaf1468a3f5eade53cf",
-        "assets/web_publications/kirigami_choi/outputs/0.html": "7d6bb33354b132e932de3d4b6add0f176d45a8396a6f84a237690a6a8f7cd5bc",
-        "assets/web_publications/kirigami_choi/outputs/1.html": "9961f58306c8dd4a6903680d67ed62633557f1f8cd95854f6aa95be470a99e7e",
-        "assets/web_publications/kirigami_choi/outputs/2.html": "fac3318e4f281b8347c9c9de14e9d1edd5b8c00cf59a853bfae99b438c79d6aa",
-        "assets/web_publications/kirigami_choi/outputs/3.html": "29afc33600047b89f009b950367d2fe5fd0399c7768d9586856f35312e637b79",
-        "assets/web_publications/kirigami_choi/outputs/4.html": "f409c75e85403c2a9297010fbeeb898f5e535fa5278ff76a45881e142fa67ff8",
-        "assets/web_publications/kirigami_choi/outputs/5.html": "05e75151558a0ca1b9e5f1f39bce2e3d53096eb4fdcb9fb550acde99e4fdbcb6",
-        "assets/web_publications/kirigami_choi/outputs/6.html": "81d4d202eff81a535cd69272d3e22f8f7d357225341cba22633ee6bb57aaf684",
-        "assets/web_publications/kirigami_choi/outputs/7.html": "d48e8d36b07114c5b0bb29ddeb0f99dd2cb8845d265066684f21b945fcd377b4"
+        "assets/web_publications/kirigami_choi/document/metadata.edn": "dd8ceb858c5b28b076c2a61511488578cfd16ca80d65f10ed5d8d3f56cdb54ba",
+        "assets/web_publications/kirigami_choi/document/outputs.json": "7342d4835602d62226260705864daf8de333d604ee7ba1d6c14a7f234b004f40",
+        "assets/web_publications/kirigami_choi/outputs/0.html": "9b0e4a47c474a1f7af435168f1ee65a0a676bf48a16bee9f4f44fa14232bc39f",
+        "assets/web_publications/kirigami_choi/outputs/1.html": "c7ac3c49a6045d451a29d891e6a252f515a02c376522b12a7986a143a3138cd9",
+        "assets/web_publications/kirigami_choi/outputs/2.html": "6133a9c1d3695e45c7d32359c67ec640f1e6d5cb6cc151d259e77f9e5db73451",
+        "assets/web_publications/kirigami_choi/outputs/3.html": "2681833a2b835ea8cc7c83c83734c378c12ae6f3451e18629adafc522df4815e",
+        "assets/web_publications/kirigami_choi/outputs/4.html": "f59e68faa6d0073ec6453c753301449997608592b0e62b4a8463eec2b3ba2a80",
+        "assets/web_publications/kirigami_choi/outputs/5.html": "e3cc68e6932d9e762b7f5dc3cafd77dbce0b33ecfa0167e57930c77053eaa0b4",
+        "assets/web_publications/kirigami_choi/outputs/6.html": "05811ac3a7d472fd8780c6f91edfa0bff1bbeb0edd4824640a815c62b44dc522",
+        "assets/web_publications/kirigami_choi/outputs/7.html": "aba5ea172c2c616616c4ba9bbb4a599e5a44be112a3a3c1ab96bd05b710ebba9"
       },
       "kinds": [
         "svg"
       ],
       "outputs": "assets/web_publications/kirigami_choi/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/kirigami_choi.yaml": "da42ee7eb49df350eb7a48796cbf18b8f4ddfd68b1531d8e65681588b3e88850",
+        "dev_docs/agents/transcripts/kirigami_choi.yaml": "6fd81588c1cbfed2c4f8c2b14b14d8e6ae2587caf2f99c29c978fcff365f5f70",
         "public/docs/assets/agent_transcripts/kirigami_choi/guides/kirigami.md": "673a9e68decf00c9bcfb2bcc26d1f5cbc5c48fe22846911df66ad2d4e589252c",
         "public/docs/assets/agent_transcripts/kirigami_choi/kirigami_inverse_circle_code_.kt": "f223887dc4f6656e97c5d3a85bf4f0aea14f6fdc6a606d85328317cffb523e9c",
         "public/docs/assets/agent_transcripts/kirigami_choi/kirigami_rotating_squares_code_.kt": "ced38c35fb79e7b6b518aa13c506dd34a570e281132e7ea22fb8047b2ba8c449",
         "public/docs/assets/agent_transcripts/kirigami_choi/metadata.edn": "025f675e90037621b7fa07d902de87291c5b3e0e91d5cb16097ce72e6090df19"
+      }
+    },
+    "assets/agent_transcripts/kirigami_solid_chain/metadata.edn": {
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-27T09:08:56.663Z",
+      "channels": 5,
+      "file": "assets/web_publications/kirigami_solid_chain/document/metadata.edn",
+      "files": {
+        "assets/web_publications/kirigami_solid_chain/document/metadata.edn": "dd001b6abe319c1e8135a590a27073f7b5b248c84f4e13f9f0ded7a01ef36ac2",
+        "assets/web_publications/kirigami_solid_chain/document/outputs.json": "589b62bf28280414f01701f2bbd07d8b86e65be6042d724ed7a90d4589a29626",
+        "assets/web_publications/kirigami_solid_chain/outputs/0.html": "ab572bf5430d0a20f15ca92d34bf4e436b0b6081114121255e9d4766fb1a5bc3",
+        "assets/web_publications/kirigami_solid_chain/outputs/1.html": "351dae799f36ac215baf5309cf336ebb05f9744bd230d26db293691439299639",
+        "assets/web_publications/kirigami_solid_chain/outputs/2.html": "6529d04277582399e3c7926e6cae5867af816e8459eef4427f35dda3f07b3d77",
+        "assets/web_publications/kirigami_solid_chain/outputs/3.html": "69b205607289ef0f4c59184693f098b0fe3b00a502b94e6b52493093d18c437c",
+        "assets/web_publications/kirigami_solid_chain/outputs/4.html": "04e740388613d91c1afdbf6a576689a214956647695c1b58db5573a236f8cdea"
+      },
+      "kinds": [],
+      "outputs": "assets/web_publications/kirigami_solid_chain/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/kirigami_solid_chain.yaml": "ec090bd2e43509d7c2a97da690e6e31f9980a593f4489db029019397903bfcfc",
+        "public/docs/assets/agent_transcripts/kirigami_solid_chain/guides/chain_kirigami_solid.md": "3df059a824072976d2e0c97c23c27f7d1cf010abc002432a731f6a6ee928b413",
+        "public/docs/assets/agent_transcripts/kirigami_solid_chain/kirigami_cut_plate_code_.kt": "b906c57566380fc8933be3f538bd50e5841980d4a3877ecf6d80e2615c79cbf8",
+        "public/docs/assets/agent_transcripts/kirigami_solid_chain/kirigami_deployed_code_.kt": "470cfb6c2d18675deb57b2d881786f6496315cbd72ed5f1ecdf77570c591cb12",
+        "public/docs/assets/agent_transcripts/kirigami_solid_chain/metadata.edn": "fffc6a22364ed74440e018e05b6de25f592829b24b7f9f33a9c42c058de72f89"
       }
     },
     "assets/agent_transcripts/kmeans_emeans/metadata.edn": {
