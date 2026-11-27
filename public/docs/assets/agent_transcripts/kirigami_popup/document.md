@@ -32,7 +32,7 @@ start(renderer::run)
 <!-- field-box id="kirigami_popup_trace" index="1" -->
 
 ```edn [field-box id="kirigami_popup_trace" role="properties"]
-{"id" "kirigami_popup_trace" "index" 1 "name" "the popped sheet, path traced" "parents" ["root" "kirigami_popup_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "kirigami_popup_renderer"} "name" "the popped sheet, path traced" "_tombstone" false "frame" #afield/rect [700.0 40.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kirigami_popup_trace_code_.kt" "lines" 97 "characters" 3691 "sha256" "86088c5dba56c6dda202c62319fa7112efc7da8827404b1801115c2887217f85"}]}
+{"id" "kirigami_popup_trace" "index" 1 "name" "the popped sheet, path traced" "parents" ["root" "kirigami_popup_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "kirigami_popup_renderer"} "name" "the popped sheet, path traced" "_tombstone" false "frame" #afield/rect [700.0 40.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kirigami_popup_trace_code_.kt" "lines" 106 "characters" 3788 "sha256" "2dc9b2eba199c1991b0518637372e0b9a1895661e1d9da989c60016a23acbf52"}]}
 ```
 
 ```kotlin [field-property box="kirigami_popup_trace" name="code" path="kirigami_popup_trace_code_.kt"]
@@ -58,7 +58,8 @@ fun stretchTo(target: Double): KirigamiPopUp.State {
     return state
 }
 
-val environment = PathTraceEnvironment.fromFile(File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath)
+val environment =
+    PathTraceEnvironment.fromFile(File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath)
 
 // The tracer's scene is a snapshot, so every new pose is a new tracer under the same name.
 fun trace(): PathTracingRenderer {
@@ -80,20 +81,28 @@ fun trace(): PathTracingRenderer {
     )
     val reach = 30f
     val y = -0.9f
-    scene.quad(Vector3f(-reach, y, -reach), Vector3f(reach, y, -reach), Vector3f(reach, y, reach), Vector3f(-reach, y, reach), floor)
+    scene.quad(
+        Vector3f(-reach, y, -reach),
+        Vector3f(reach, y, -reach),
+        Vector3f(reach, y, reach),
+        Vector3f(-reach, y, reach),
+        floor,
+    )
     val camera = Camera(renderer).also {
         it.at.set(8.0f, 8.5f, 11.5f)
         it.target.set(0f, -0.6f, 0.4f)
         it.p.fov = 0.62
     }
-    return PathTracingRenderer(renderer, scene, environment, 1200, 736, camera, name = "kirigami-popup").install().also {
-        it.samplesPerFrame = 4
-        it.maxBounces = 6
-        it.exposure = 1.1f
-        it.environmentRotation = 2.1f
-        it.indirectClamp = 10f
-        it.blitToScreen()
-    }
+    return PathTracingRenderer(renderer, scene, environment, 1200, 736, camera, name = "kirigami-popup")
+        .install()
+        .also {
+            it.samplesPerFrame = 4
+            it.maxBounces = 6
+            it.exposure = 1.1f
+            it.environmentRotation = 2.1f
+            it.indirectClamp = 10f
+            it.blitToScreen()
+        }
 }
 
 fun report(state: KirigamiPopUp.State) = markdown(
@@ -140,7 +149,7 @@ frames {
 <!-- field-box id="kirigami_popup_sweep" index="2" -->
 
 ```edn [field-box id="kirigami_popup_sweep" role="properties"]
-{"id" "kirigami_popup_sweep" "index" 2 "name" "tilt and stress against stretch" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "tilt and stress against stretch" "_tombstone" false "frame" #afield/rect [320.0 40.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kirigami_popup_sweep_code_.kt" "lines" 23 "characters" 1164 "sha256" "5824ca6cf72e5904189a9099ad03b754af781280bcfa38b6ae9bddbe4b0f4165"}]}
+{"id" "kirigami_popup_sweep" "index" 2 "name" "tilt and stress against stretch" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "tilt and stress against stretch" "_tombstone" false "frame" #afield/rect [320.0 40.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kirigami_popup_sweep_code_.kt" "lines" 24 "characters" 1168 "sha256" "50cdec6fc1914fb3324f3fc8117327e0ff5160654bc4ea88973bc97b25356bed"}]}
 ```
 
 ```kotlin [field-property box="kirigami_popup_sweep" name="code" path="kirigami_popup_sweep_code_.kt"]
@@ -152,7 +161,8 @@ val thicknesses = [0.06, 0.08, 0.12]
 val runs = thicknesses.map { t -> t to KirigamiPopUp.sheet(thickness = t).sweep(strains) }
 
 val percent = strains.map { it * 100 }
-val tilt = Chart(title = "tiles tilt once the sheet buckles", xLabel = "strain (%)", yLabel = "mean tile tilt (degrees)")
+val tilt =
+    Chart(title = "tiles tilt once the sheet buckles", xLabel = "strain (%)", yLabel = "mean tile tilt (degrees)")
 val stress = Chart(title = "and the sheet softens", xLabel = "strain (%)", yLabel = "stress / E (x 1000)")
 for ((t, states) in runs) {
     val critical = KirigamiPopUp.threshold(states)

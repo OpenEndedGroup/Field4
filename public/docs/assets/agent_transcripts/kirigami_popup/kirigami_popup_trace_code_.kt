@@ -20,7 +20,8 @@ fun stretchTo(target: Double): KirigamiPopUp.State {
     return state
 }
 
-val environment = PathTraceEnvironment.fromFile(File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath)
+val environment =
+    PathTraceEnvironment.fromFile(File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath)
 
 // The tracer's scene is a snapshot, so every new pose is a new tracer under the same name.
 fun trace(): PathTracingRenderer {
@@ -42,20 +43,28 @@ fun trace(): PathTracingRenderer {
     )
     val reach = 30f
     val y = -0.9f
-    scene.quad(Vector3f(-reach, y, -reach), Vector3f(reach, y, -reach), Vector3f(reach, y, reach), Vector3f(-reach, y, reach), floor)
+    scene.quad(
+        Vector3f(-reach, y, -reach),
+        Vector3f(reach, y, -reach),
+        Vector3f(reach, y, reach),
+        Vector3f(-reach, y, reach),
+        floor,
+    )
     val camera = Camera(renderer).also {
         it.at.set(8.0f, 8.5f, 11.5f)
         it.target.set(0f, -0.6f, 0.4f)
         it.p.fov = 0.62
     }
-    return PathTracingRenderer(renderer, scene, environment, 1200, 736, camera, name = "kirigami-popup").install().also {
-        it.samplesPerFrame = 4
-        it.maxBounces = 6
-        it.exposure = 1.1f
-        it.environmentRotation = 2.1f
-        it.indirectClamp = 10f
-        it.blitToScreen()
-    }
+    return PathTracingRenderer(renderer, scene, environment, 1200, 736, camera, name = "kirigami-popup")
+        .install()
+        .also {
+            it.samplesPerFrame = 4
+            it.maxBounces = 6
+            it.exposure = 1.1f
+            it.environmentRotation = 2.1f
+            it.indirectClamp = 10f
+            it.blitToScreen()
+        }
 }
 
 fun report(state: KirigamiPopUp.State) = markdown(

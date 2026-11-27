@@ -6,7 +6,8 @@ val thicknesses = [0.06, 0.08, 0.12]
 val runs = thicknesses.map { t -> t to KirigamiPopUp.sheet(thickness = t).sweep(strains) }
 
 val percent = strains.map { it * 100 }
-val tilt = Chart(title = "tiles tilt once the sheet buckles", xLabel = "strain (%)", yLabel = "mean tile tilt (degrees)")
+val tilt =
+    Chart(title = "tiles tilt once the sheet buckles", xLabel = "strain (%)", yLabel = "mean tile tilt (degrees)")
 val stress = Chart(title = "and the sheet softens", xLabel = "strain (%)", yLabel = "stress / E (x 1000)")
 for ((t, states) in runs) {
     val critical = KirigamiPopUp.threshold(states)
