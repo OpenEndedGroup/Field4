@@ -197,6 +197,16 @@ class GeneratedArtifactSelectionTests(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertNotIn("checkBoxCodeFormat", task_names([path]))
 
+    def test_box_code_format_runs_when_the_formatter_changes(self) -> None:
+        import tools.check_staged_generated_artifacts as guard
+        for path in guard.FORMATTER_INPUTS:
+            with self.subTest(path=path):
+                self.assertTrue((Path(guard.__file__).parent.parent / path).exists(), path)
+                self.assertIn("checkBoxCodeFormat", task_names([path]))
+        kotlin = (Path(guard.__file__).parent.parent / "src/jvmMain/kotlin/afield/examples/BoxCodeFormat.kt").read_text()
+        for path in guard.FORMATTER_INPUTS:
+            self.assertIn(f'"{path}"', kotlin, "BoxCodeFormat.FORMATTER_INPUTS must list the same paths")
+
     def test_materialized_transcript_selects_bundle_and_index(self) -> None:
         self.assertEqual(
             task_names(["public/docs/assets/agent_transcripts/hello/metadata.edn"]),
