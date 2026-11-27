@@ -421,7 +421,7 @@ To see it all at once, open the [map of the docs](../docs_map.md): every page, a
 - [audio](examples.md#trackingresonatorresynthesisexample-kt)
 - [brief](examples.md#briefeditorextensionworkout-kt)
 - [ceres](examples.md#ceresarchitecturaldslsmoke-kt)
-- [chain](examples.md#phototosolidchain-kt)
+- [chain](examples.md#kirigamisolidchain-kt)
 - [datalog](examples.md#datalogeditorextensionworkout-kt)
 - [faust](examples.md#faustboxexamples-kt)
 - <span class="reference-internal">[forth](examples.md#forthinterpretersmoketest-kt)</span>
@@ -688,13 +688,13 @@ To see it all at once, open the [map of the docs](../docs_map.md): every page, a
 
 ## Reference pages
 
-**44329 public symbols across 1954 source files**, 26596 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**44338 public symbols across 1955 source files**, 26604 of them (60%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
 | Category | Files | Symbols | Documented | Covers |
 | --- | --- | --- | --- | --- |
-| [Examples](examples.md) | 243 | 767 | 335 (43%) | Runnable examples, galleries and verification programs. |
+| [Examples](examples.md) | 244 | 776 | 343 (44%) | Runnable examples, galleries and verification programs. |
 | [Internal](internal.md) | 27 | 260 | 100 (38%) | Implementation details explicitly marked Internal by their source. |
 | [Lighting](lighting.md) | 8 | 216 | 208 (96%) | Light sources, fixtures and control protocols for working with physical and rendered lighting. |
 | [Networking](networking.md) | 22 | 539 | 323 (59%) | OSC messages, discovery and query interfaces for connecting Field to other applications and devices. |
@@ -1544,6 +1544,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [KeyframeSweepDemo.kt](examples.md#keyframesweepdemo-kt) | Examples | 6 | 5 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>keyframes/<wbr></small> [keyframeTidy.kt](graphics.md#keyframetidy-kt) | Graphics | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>keyframes/<wbr></small> [keyframeTypeLibrary.kt](graphics.md#keyframetypelibrary-kt) | Graphics | 10 | 9 | The key types every keyframe editor offers beyond its five built-in ones: the easing family, splines that look past the segment to the keys either side, shapes, and shaped noise. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>chain/<wbr></small> [KirigamiSolidChain.kt](examples.md#kirigamisolidchain-kt) | Examples | 9 | 8 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [KitDedicatedHost.kt](workspace.md#kitdedicatedhost-kt) | Workspace | 5 | 3 | The compatibility route for a project that already has its own launcher, workspace and document conventions and wants to appear in Welcome's kit library without adopting Field's. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [KitFirstOpen.kt](workspace.md#kitfirstopen-kt) | Workspace | 3 | 3 | A document copied from a kit's starting point runs its roles, in the kit's launch order, the first time it opens, so it does something without `field_kit.py activate`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [KitInstances.kt](workspace.md#kitinstances-kt) | Workspace | 25 | 25 | A document copied from a kit's starting point, the record of what it received, and the three-way comparison that updates it. |  |
