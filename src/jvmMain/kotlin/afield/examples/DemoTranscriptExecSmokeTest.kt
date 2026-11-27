@@ -1028,6 +1028,10 @@ object DemoTranscriptExecSmokeTest {
         "gezira_gpu_winding",
         // The whole tiger through GeziraGpuScene (2026-11-22); needs a native Window and a GPU.
         "gezira_gpu_tiger",
+        // FLineLayers (2026-11-27): a list of FLines as three vertex-pulled layers, with three
+        // stroke modes and a spatial rules scene. Needs a native Window and a GPU; the
+        // fline-layers-* captures in afield_four_graphics.md check the pixels.
+        "fline_gpu_layers",
         "threebox",
         "rectsl_dataviz",
         "rectsl_plot_axes",

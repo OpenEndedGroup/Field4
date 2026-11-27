@@ -4502,6 +4502,18 @@ difference.
 
 [Open →](offline.html?file=assets/agent_transcripts/gezira_gpu_tiger/metadata.edn)
 
+### fline_gpu_layers
+
+**A changing list of FLines on the GPU.** [A changing list of FLines](afield_four_graphics.md#fline-layers)
+as boxes: a renderer; "FLine layers", which owns an `FLineLayers` and a `Camera` and uploads the list
+once a frame, re-packing only lines whose content changed; "strokes", "fills" and "points", each a
+`moduleHere` pipeline with its shaders in its own properties, drawing one layer in one draw; two
+alternative stroke boxes, "stroke lines" (hardware lines) and "strokes, joined" (each run
+antialiased as one shape), which replace "strokes" by name when launched; and a spatial rules world
+whose drawing becomes the list every frame.
+
+[Open →](offline.html?file=assets/agent_transcripts/fline_gpu_layers/metadata.edn)
+
 ### gpu_state
 
 A stateful GPU simulation: 40,000 particles whose positions and velocities live in a
