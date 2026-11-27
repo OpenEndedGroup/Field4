@@ -92,4 +92,6 @@ on the way: about 17% in one tile's edge length or corner angle, and none at eit
   paper, and Choi's [inverse-kirigami-design](https://github.com/garyptchoi/inverse-kirigami-design),
   which also has triangle, hexagon and 3-D patterns.
 - [FLine examples](fline_examples.md) for drawing filled shapes with `lines` and `showPlaneGrid`.
+- [A Kirigami Sheet, Cut and Counted](chain_kirigami_solid.md), which gives each hinge a width
+  and turns the rotating-squares sheet into a solid you could cut, with its genus counted.
 - [The kirigami_choi transcript](agent_transcripts.md#kirigami_choi), to open both boxes.

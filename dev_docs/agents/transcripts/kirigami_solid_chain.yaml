@@ -1,0 +1,81 @@
+name: kirigami_solid_chain
+description: >
+  A rotating-squares kirigami sheet, the pattern of the kirigami_choi transcript's first box, becomes
+  a solid you could laser-cut or print, as two pure-compute boxes with no Window and no Renderer.
+  The kirigami page treats a hinge as one shared point; here every tile is shrunk so the cuts are
+  slits, and every hinge becomes a short bar of material across its slit. Manifold extrudes the
+  region and reports its genus, which the tile graph predicts as hinges - tiles + 1.
+    1. kirigami_cut_plate  — the closed sheet as a cut plate: 64 tiles, 112 hinges, genus 49, one
+                             piece, watertight, volume = area x thickness. Draws the 2D region and
+                             renders the plate with the CPU rasteriser.
+    2. kirigami_deployed   — the same construction at 0, 15, 30 and 45 degrees: the genus does not
+                             change, and the hull area grows as (cos + sin)^2, doubling at 45 degrees.
+  Every number comes from `afield.examples.chain.KirigamiSolidChain`, which CI runs as the FIELD_TEST
+  `chain.kirigami-solid`. The page is public/docs/chain_kirigami_solid.md.
+docs:
+  - page: chain_kirigami_solid.md
+    why: "Walks through this kirigami-to-solid chain step by step."
+operations:
+  - create:
+      box: kirigami_cut_plate
+      name: the closed sheet, cut with hinges you can make
+      frame: { x: 60.0, y: 60.0, w: 420.0, h: 90.0 }
+      properties:
+        code: |
+          import afield.examples.chain.KirigamiSolidChain
+
+          // gap: half a slit's width. bridge: how far each hinge bar runs along its cut.
+          val n = 8
+          val gap = 0.04
+          val bridge = 0.12
+          val plate = KirigamiSolidChain.measure(n, angle = 0.0, thickness = 0.1, gap = gap, bridge = bridge)
+
+          val report = listOf(
+              "${plate.tiles} tiles, ${plate.hinges} hinges",
+              "genus ${plate.genus}, and hinges - tiles + 1 = ${plate.predictedGenus}",
+              "${plate.parts} part, watertight=${plate.watertight}",
+              "volume %.6f = area %.6f x thickness 0.1".format(plate.volume, plate.sectionArea),
+          )
+          report.forEach { println(it) }
+          display("numbers", "<pre>${report.joinToString("\n")}</pre>")
+          display(
+              "render",
+              imgFromBytes(plate.mesh.renderPng(MeshView(yawDegrees = 0.0, pitchDegrees = 70.0, width = 760, height = 620))),
+          )
+  - create:
+      box: kirigami_deployed
+      name: the same solid, opened
+      frame: { x: 60.0, y: 1600.0, w: 420.0, h: 90.0 }
+      properties:
+        code: |
+          import afield.examples.chain.KirigamiSolidChain
+          import kotlin.math.cos
+          import kotlin.math.sin
+
+          val closed = KirigamiSolidChain.measure(angle = 0.0)
+          val stages = listOf(0.0, 15.0, 30.0, 45.0).map { it to KirigamiSolidChain.measure(angle = Math.toRadians(it)) }
+          for ((deg, m) in stages) {
+              val s = cos(m.angle) + sin(m.angle)
+              println(
+                  "%4.0f deg  genus %d  parts %d  hull area x%.3f  (cos+sin)^2 %.3f  hinge gap %.0e".format(
+                      deg, m.genus, m.parts, m.hullArea / closed.hullArea, s * s, m.hingeGap,
+                  ),
+              )
+          }
+
+          showImgGrid(
+              *stages
+                  .map { (deg, m) ->
+                      "${deg.toInt()} deg, genus ${m.genus}" to
+                          imgFromBytes(m.mesh.renderPng(MeshView(yawDegrees = 0.0, pitchDegrees = 55.0, width = 520, height = 520)))
+                  }
+                  .toTypedArray(),
+              columns = 4,
+              cellSide = 300,
+          )
+  - execute: { box: kirigami_cut_plate, property: code }
+  - execute: { box: kirigami_deployed, property: code }
+  - await:
+      wait: pending
+  - wait:
+      millis: 500

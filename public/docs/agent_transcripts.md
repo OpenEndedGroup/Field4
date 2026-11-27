@@ -1789,6 +1789,23 @@ hinges; launch it to watch the sheet open and close.
 
 [Open →](offline.html?file=assets/agent_transcripts/kirigami_choi/metadata.edn)
 
+### kirigami_solid_chain
+
+**A kirigami sheet you could cut**, the two boxes of
+[A Kirigami Sheet, Cut and Counted](chain_kirigami_solid.md). The rotating-squares sheet of
+[kirigami_choi](#kirigami_choi) has hinges that are single points; here every tile is shrunk so the
+cuts become slits and every hinge becomes a short bar across its slit, and Manifold extrudes the
+region into a solid. *Cut plate* draws the closed pattern and reports 64 tiles, 112 hinges and a
+genus of 49, the `hinges − tiles + 1` the tile graph predicts, in one watertight part. *Deployed*
+rebuilds it at 0°, 15°, 30° and 45°: the genus does not move, the hull area approaches
+`(cos θ + sin θ)²`, and the volume grows as the bridges stretch. Every picture is
+`TriMesh.renderPng`, so there is no Window and no Renderer.
+
+- Constructing the region and solid:
+  [`KirigamiSolidChain`](reference/examples.md#kirigamisolidchain-kt-kirigamisolidchain).
+
+[Open →](offline.html?file=assets/agent_transcripts/kirigami_solid_chain/metadata.edn)
+
 ### contrast_scale_demo
 
 **Accessible ten-step ramps from one colour**, the companion to
