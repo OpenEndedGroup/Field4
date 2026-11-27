@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 26604 of 44345 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 26608 of 44356 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2113 undocumented entry points** (types, top-level functions and values) and 14851 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2113 undocumented entry points** (types, top-level functions and values) and 14858 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -227,6 +227,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [SolidGradient.kt](../src/jvmMain/kotlin/afield/lang/solidsl/SolidGradient.kt) | Graphics | solid_notation | 0 | 10 | 62% |
 | [SolidPointCloudFit.kt](../src/jvmMain/kotlin/afield/lang/solidsl/SolidPointCloudFit.kt) | Graphics | solid_notation | 0 | 10 | 50% |
 | [alife_bonded.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_bonded.kt) | Simulation | alife_examples | 0 | 10 | 81% |
+| [LiveOutputIframe.kt](../src/jvmMain/kotlin/afield/ui/output/LiveOutputIframe.kt) | Visualization | web | 0 | 10 | 64% |
 | [LinesHandles.kt](../src/jvmMain/kotlin/afield/ui/visualization/LinesHandles.kt) | Visualization | presentation_studio | 0 | 10 | 50% |
 | [DrawnMorphDocs.kt](../src/jvmMain/kotlin/afield/audio/synth/DrawnMorphDocs.kt) | Patterns | chain_drawn_morph | 0 | 9 | 59% |
 | [PatSoundDocs.kt](../src/jvmMain/kotlin/afield/audio/synth/PatSoundDocs.kt) | Patterns | distributions, chain_drawn_score, sound | 0 | 9 | 70% |
@@ -319,7 +320,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [alife_flow_lenia.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_flow_lenia.kt) | ALife | alife_examples, agent_transcripts | 0 | 3 | 90% |
 | [alife_particle_lenia_motion.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_particle_lenia_motion.kt) | ALife | particle_lenia | 0 | 3 | 90% |
 | [alife_physarum_gpu.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_physarum_gpu.kt) | ALife | agent_transcripts, alife_examples | 0 | 3 | 93% |
-| [LiveOutputIframe.kt](../src/jvmMain/kotlin/afield/ui/output/LiveOutputIframe.kt) | Visualization | web | 0 | 3 | 82% |
 | [corpora.kt](../src/jvmMain/kotlin/afield/ai/learning/pen/corpora.kt) | Machine learning | teaching_a_pen, a_pen_that_sees, learned_pen | 0 | 2 | 93% |
 | [PatchyWeb.kt](../src/jvmMain/kotlin/afield/app/server/PatchyWeb.kt) | Graphics | patchy | 0 | 2 | 81% |
 | [DoughDspSoundDocs.kt](../src/jvmMain/kotlin/afield/audio/synth/DoughDspSoundDocs.kt) | Synthesis | dough_dsp_sound | 0 | 2 | 87% |
