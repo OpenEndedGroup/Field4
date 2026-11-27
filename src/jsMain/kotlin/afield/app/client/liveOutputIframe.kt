@@ -29,6 +29,10 @@ fun installLiveOutputIframeClient() {
     // Cookie changes in a watched web profile, passed on to the server as they happen.
     // Pages a `Box.web` page visits arrive naming the page; add its box, output area and profile.
     window.asDynamic().fieldElectron.onWebProfileEvent { change: dynamic ->
+        if (change.kind == "download" && change.page != null) {
+            // A download from a profile webview: say which box's page it came from.
+            webPageElement(change.page)?.closest(".box")?.let { change.boxUid = it.asDynamic().uid }
+        }
         if (change.kind == "visit" || change.kind == "title") {
             val element = webPageElement(change.page) ?: return@onWebProfileEvent
             val box = element.closest(".box") ?: return@onWebProfileEvent

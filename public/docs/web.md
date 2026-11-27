@@ -348,16 +348,38 @@ stop it, so it works on GitHub as well as on Wikipedia.
 
 Kotlin works too. Make the `web(...)` box a [Kotlin → head](kotlin_in_the_head.md) root
 instead, and the Kotlin boxes under it are compiled to Javascript and run in the page the same
-way. The page's DOM is reached through `js(...)`:
+way, with the browser's API typed, as `kotlinx.browser` and `org.w3c.dom`:
 
 ```diffstatic {data-lang=kotlin}
-val document: dynamic = js("document")
-println("${document.querySelectorAll("a").length} links on ${document.title}")
+import kotlinx.browser.document
+import org.w3c.dom.asList
+
+println("${document.querySelectorAll("a").asList().size} links on ${document.title}")
 ```
 
 The page starts running Javascript the first time a box under it runs, and again after it
 navigates, since each new page starts fresh. Javascript boxes that are not under a page keep
 running in your ordinary [RemoteJS](remotejs.md) browser tab or headset, and never in a page.
+
+## Downloads
+
+A file a page offers for download (a link with `download`, an attachment, a file the page makes
+for you) is saved, without a dialog, into the document's `files/downloads/`, under the name the
+site gave it, with ` (1)`, ` (2)` and so on added if that name is taken. It is then a file like
+any other in the document: `"downloads/report.pdf".file` finds it.
+
+`onDownload` hears each download as it finishes:
+
+```diffstatic {data-lang=kotlin}
+onDownload { d ->
+    if (d.completed) println("${d.file.name}: ${d.bytes} bytes of ${d.mimeType}")
+}
+```
+
+`state` is `completed`, `cancelled` or `interrupted`. Running the box again replaces the watch
+and stopping it ends it. `webDownloadsFolder()` gives the folder. Downloads start going there once
+a box in the document has called `web(...)`; Field's own downloads, such as an exported image, are
+not affected.
 
 ## Ads and trackers
 
@@ -404,7 +426,8 @@ To change the lists, set `AFIELD_WEB_BLOCKING` before starting Field: `ads` (the
   [`content-blocker.cjs`](https://github.com/OpenEndedGroup/Field4/blob/main/electron/content-blocker.cjs)
   (ads and trackers), [`web-profiles.cjs`](https://github.com/OpenEndedGroup/Field4/blob/main/electron/web-profiles.cjs)
   (profiles, cookies and history), [`user-scripts.cjs`](https://github.com/OpenEndedGroup/Field4/blob/main/electron/user-scripts.cjs)
-  (user scripts and styles), and [`page-heads.cjs`](https://github.com/OpenEndedGroup/Field4/blob/main/electron/page-heads.cjs)
+  (user scripts and styles), [`web-downloads.cjs`](https://github.com/OpenEndedGroup/Field4/blob/main/electron/web-downloads.cjs)
+  (downloads), and [`page-heads.cjs`](https://github.com/OpenEndedGroup/Field4/blob/main/electron/page-heads.cjs)
   (Javascript boxes inside a page).
 
 `web()` and every member of `LiveOutputIframe` are in the reference, under
