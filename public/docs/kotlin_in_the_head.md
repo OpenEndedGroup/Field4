@@ -81,6 +81,9 @@ The head can also be someone else's web page: make a box that shows one with `we
 Kotlin → head root, and the boxes under it run inside that page, with no profile marker. See
 [A Web Page in a Box](web.md#javascript-boxes-inside-the-page).
 
+Every Kotlin → head box can use the browser's API typed: `kotlinx.browser` (`document`, `window`,
+`localStorage`) and the `org.w3c.dom` element types, as in any Kotlin/JS program.
+
 ## Printing, errors, display and controls
 
 The browser profiles (`remoteAR`, `tone`, and no marker) give a box the same output a Kotlin box on

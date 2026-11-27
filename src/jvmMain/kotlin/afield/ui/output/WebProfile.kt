@@ -200,6 +200,7 @@ internal object WebProfileEvents {
         val o = message as? JsonObject ?: return
         when ((o["kind"] as? JsonPrimitive)?.contentOrNull) {
             "visit", "title" -> return reportWebNavigation(document, o)
+            "download" -> return WebDownloads.dispatch(document, o)
             "cookie" -> {}
             else -> return
         }
