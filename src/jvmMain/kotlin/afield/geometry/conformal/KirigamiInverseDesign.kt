@@ -19,7 +19,7 @@ import kotlin.math.sin
  * (Apache-2.0), re-derived in Kotlin over Field's Levenberg–Marquardt ([leastSquaresAD]).
  *
  * ```kotlin
- * val design = KirigamiInverseDesign(n = 8).solveCircle()
+ * val design = KirigamiInverseDesign(n = 8).solve()
  * design.opened   // every point of the opened sheet, x0 y0 x1 y1 ...
  * design.closed   // the same points in the closed, square cut pattern
  * ```
@@ -29,6 +29,10 @@ import kotlin.math.sin
  * closed sheet's interior/edge/corner nodes, a square closed outline, the outermost points on the
  * target, no cut closing below `minOpening`, and no tile corner outside `[minCorner, π − minCorner]`.
  * The `kirigami_choi` transcript's inverse-design box calls this class.
+ *
+ * It shares a package with [LinearBeltramiSolver] but not its solver: where Choi starts from a
+ * conformal map of the standard sheet onto the target, [solve] starts from the standard sheet squashed
+ * onto it by a closed-form square-to-disc map, scaled to the outline's radius.
  *
  * @param n tiles per side of the sheet.
  * @param minOpening the smallest angle, in radians, any cut may close to in the opened sheet.

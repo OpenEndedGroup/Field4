@@ -2,6 +2,8 @@ import afield.data.graph.SpatialLifetime.MATCH
 
 val rings = 50
 val samples = 20
+val joinRadius = 19.0
+val releaseRadius = 23.0 // A wider release radius keeps existing threads from flickering.
 val world = SpatialRuleWorld(parallelSearch = true)
 val filamentInk = vec(0.43, 0.83, 1.0, 0.66)
 val bandInk = vec(1.0, 0.66, 0.29, 0.64)
@@ -51,7 +53,7 @@ world.source("a thousand moving points") {
 }
 
 world.rules("surface links") {
-    val nearby = points("sample").pairsWithin(19.0, leave = 23.0)
+    val nearby = points("sample").pairsWithin(joinRadius, leave = releaseRadius)
     onEnter("thread nearby samples", nearby) { (a, b) ->
         edge("thread", a, b, lifetime = MATCH)
         val ink = if (a["band"] == b["band"]) filamentInk else bandInk
@@ -63,7 +65,7 @@ world.rules("surface links") {
             end3 = b.pos
             val t = now - start
             val alpha = ((now - born) / 0.33).coerceIn(0.0, 1.0)
-            val width = 0.65 + 0.9 * (1 - start3.distance(end3) / 23.0).coerceIn(0.0, 1.0)
+            val width = 0.65 + 0.9 * (1 - start3.distance(end3) / releaseRadius).coerceIn(0.0, 1.0)
             draw(spatialStroke([project(start3, t), project(end3, t)], ink, width, alpha))
             nextFrame()
         }

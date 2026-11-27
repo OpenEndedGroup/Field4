@@ -14,9 +14,9 @@ Follow the talk figure by figure on this page. Each figure is a box in the docum
 code and what it draws, with the slide that uses it in the margin. **Open →** shows the whole
 document beside the page; **Open in Field·4** imports an editable copy. To give the talk, run its
 `deck` box in Field's desktop app. [Live figures beside prose](presentation_studio.md#live-figures-beside-prose)
-shows how to build a deck like this one. The computation is in
-[`afield.geometry.conformal`](reference/index.md): the Beltrami coefficient of a map on a triangle
-mesh, the linear Beltrami solver, the quasi-conformal iteration, and maps onto rectangles.
+shows how to build a deck like this one. The [conformal geometry reference](reference/math.md#beltrami-kt) covers the
+Beltrami coefficient of a map on a triangle mesh, the linear solver, the quasi-conformal
+iteration, and maps onto rectangles.
 
 ## Maps that keep angles
 
@@ -224,9 +224,9 @@ the map.
 </figure>
 
 On a computer the plane is a mesh of triangles and a map moves each vertex. Given μ on every
-triangle, the **linear Beltrami solver** finds the map: each coordinate solves one sparse linear
-system. In the figure the square's edges are held and one point inside, white, is dragged to the
-orange dot. The left map asks for μ = 0, as conformal as it can be.
+triangle, [`LinearBeltramiSolver.solve`](reference/math.md#beltrami-kt--linearbeltramisolver--solve) finds the map. Each coordinate solves one sparse linear system. In the figure the square's edges are held and one point inside, white, is dragged to the
+orange dot. [`harmonicMap`](reference/math.md#beltrami-kt--harmonicmap) asks for μ = 0 on the left.
+On the right, [`teichmullerMap`](reference/math.md#beltrami-kt--teichmullermap) iterates to spread the distortion evenly.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_teichmuller/landmark.png" execution="launch" wait-output=true wait="3" timeout="300" embed=true name="explainer-teichmuller-landmark" alt="Two squares of triangles: on the left the harmonic map, blue with an orange and white knot of folded triangles round the dragged point; on the right the Teichmüller map, one even orange, with landmark x and y sliders"}
 :::fold imports
@@ -517,3 +517,8 @@ See also: [Sound](explainer_sound.md), [Cameras and Lenses](explainer_cameras.md
 
 - [Explainers](chains.md#explainers): all the talks.
 - [Presenting with Field](presentation_studio.md): give this talk, or build your own.
+- [Kirigami: cut patterns that open into a shape](kirigami.md): Choi's inverse kirigami design, the
+  other half of `afield.geometry.conformal`, and [A Kirigami Sheet, Cut and Counted](chain_kirigami_solid.md),
+  which turns its sheets into solids.
+- [Spectral geometry](spectral_geometry.md): the cotangent Laplacian, which is the linear Beltrami
+  solver's matrix when μ = 0.

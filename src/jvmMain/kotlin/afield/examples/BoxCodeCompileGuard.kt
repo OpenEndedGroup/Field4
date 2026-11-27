@@ -36,6 +36,10 @@ object BoxCodeCompileGuard {
         "alife_evolution" to "independent boxes; evolve_lenia/evolve_ca/map_elites hold the Runloop 17-29 s each",
         // Five independent vehicle boxes; evolved_wiring alone holds the Runloop 18 s.
         "braitenberg_where_next" to "independent boxes; evolved_wiring holds the Runloop 18 s",
+        // Three independent pure-compute search boxes (66.5 s of GraalJS compile-and-simulate in
+        // the smoke sweep); on 2026-11-27 at load ~135 morpho_search_adder held the Runloop 30.0 s
+        // and the watchdog interrupted it, the only red in a whole-tree run of this guard.
+        "morpho_circuit_search" to "independent boxes; morpho_search_adder held the Runloop 30 s at load ~135",
     )
 
     @JvmStatic

@@ -65,6 +65,9 @@ function installProfileWebviews(contents, { session, log = () => {}, onNewSessio
     applyProfilePreferences(webPreferences, sessionForDirectory(directory, { session, log, onNewSession }));
   });
   contents.on("did-attach-webview", (_event, guest) => {
+    // User scripts reach the webview's page, as its profile.
+    const directory = [...sessions.keys()].find(dir => path.resolve(dir) === path.resolve(guest.session.storagePath || "")) ?? "";
+    require("./user-scripts.cjs").watch(guest, directory);
     // A link with target=_blank, or window.open, stays in this page rather than opening a window.
     guest.setWindowOpenHandler(({ url }) => {
       if (/^https?:/i.test(url)) guest.loadURL(url).catch(() => {});
@@ -139,6 +142,17 @@ const watchers = new Map(); // Session -> Set<webContents> told about its cookie
 // Answers a `profile` request from a Field page: [request.directory] names a profile ("" is the
 // shared session Field's own pages use), [request.action] what to do with its cookies.
 async function handleProfileRequest(request, sender, { session, log = () => {}, onNewSession = () => {} }) {
+  // Where this Field tab's web() downloads go (web-downloads.cjs).
+  if (request?.action === "downloads-dir") return require("./web-downloads.cjs").setFolder(sender, String(request.params?.folder || ""));
+  // User scripts and styles share this channel; they belong to no one profile (user-scripts.cjs).
+  if (String(request?.action || "").startsWith("userscript-")) {
+    const scripts = require("./user-scripts.cjs");
+    const params = request.params || {};
+    if (request.action === "userscript-add") return await scripts.register(params);
+    if (request.action === "userscript-remove") return await scripts.unregister(params);
+    if (request.action === "userscript-list") return scripts.list();
+    throw new Error(`Unknown web profile action '${request.action}'`);
+  }
   const directory = request?.directory ? profileDirectory(PARTITION_PREFIX + encodeURIComponent(request.directory)) : "";
   if (directory === null) throw new Error(`Not a profile directory: ${request?.directory}`);
   const target = directory ? sessionForDirectory(directory, { session, log, onNewSession }) : session.defaultSession;

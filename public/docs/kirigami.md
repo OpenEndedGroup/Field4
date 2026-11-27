@@ -47,8 +47,9 @@ constraints make that opened sheet come from a real cut pattern that closes into
   flatter than π − 0.4.
 
 The solve is `afield.geometry.conformal.KirigamiInverseDesign`, which the box calls. Choi solves this with MATLAB's interior-point `fmincon`, starting from a conformal map of the
-standard pattern onto the disc. The box squashes the standard pattern onto the circle and runs
-Field's Levenberg–Marquardt (`leastSquaresAD`), which brings every constraint to about 1e-13. It
+standard pattern onto the disc (the kind of map the [Teichmüller maps](explainer_teichmuller.md) talk builds). The box skips that map: it squashes the standard pattern onto the circle and runs
+Field's Levenberg–Marquardt solver, [`leastSquaresAD`](reference/math.md#leastsquares-kt--leastsquaresad),
+which differentiates the residuals and drives them down to about 1e-13. The box
 then glues the rigid tiles back together, cut side to cut side, to recover the closed cut pattern:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="box" capture-box="kirigami_inverse_circle" screenshot="assets/kirigami/inverse_circle.png" transcript="dev_docs/agents/transcripts/kirigami_choi.yaml" padding="8" wait="1" timeout="400" embed=true hidden=true name="kirigami-inverse-circle" alt="Three panels: a square cut pattern of irregular orange and blue quadrilaterals, the same sheet halfway open, and the sheet fully open inside a red circle whose rim its outermost corners touch; below, an open slider and a larger view of the opened sheet in its circle."}
@@ -95,4 +96,6 @@ on the way: about 17% in one tile's edge length or corner angle, and none at eit
 - [A Kirigami Sheet, Cut and Counted](chain_kirigami_solid.md), which gives each hinge a width
   and turns both sheets on this page into solids you could cut, with their genus counted. Its last
   section stretches the cut sheet until its tiles tilt out of the plane.
+- [Teichmüller maps](explainer_teichmuller.md), a talk on the conformal and quasi-conformal maps of
+  the same package, `afield.geometry.conformal`, after Choi's work on leaf shapes.
 - [The kirigami_choi transcript](agent_transcripts.md#kirigami_choi), to open both boxes.

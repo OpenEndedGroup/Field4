@@ -285,6 +285,102 @@ sharedWebProfile.history.links(host = "wikipedia.org").forEach { (step, count) -
 `history.clear()` forgets it all. The file is plain JSON, one visit per line, so other programs can
 read it too.
 
+## User scripts and styles
+
+`userScript` runs Javascript in every `web(...)` page at an address, each time a page there
+loads, the way a userscript manager such as TamperMonkey does. A page at that address that is
+already open runs it straight away:
+
+```diffstatic {data-lang=kotlin}
+val dropFootnotes = """document.querySelectorAll("sup.reference").forEach(note => note.remove())"""
+userScript("en.wikipedia.org", dropFootnotes)
+```
+
+The first argument is a host, for every page on it, or a pattern where `*` matches anything:
+`"https://github.com/"` followed by `*` is every GitHub page over https. The script runs in the page
+itself, so it can use the page's own variables as well as its DOM, and the site's
+Content-Security-Policy does not stop it. `runAt` says when: `"end"` (the default) once the HTML has
+been read, `"idle"` once the page has finished loading, or `"start"`, before any of the page's own
+scripts, to change what they see:
+
+```diffstatic {data-lang=kotlin}
+userScript(
+    "en.wikipedia.org",
+    "window.matchMedia = () => ({ matches: false, addEventListener() {} })",
+    runAt = "start",
+    name = "no-dark-mode",
+)
+```
+
+`userStyle` adds a stylesheet the same way. Running the box again with new CSS restyles open pages
+without reloading them, so you can edit a site's look as you watch:
+
+```diffstatic {data-lang=kotlin}
+userStyle("news.ycombinator.com", "body, td { font-family: 'Iosevka Web', monospace !important }")
+```
+
+Each box keeps one script and one style under each `name`. Running the box again replaces them;
+stopping it removes them, so new pages no longer get them. A removed style comes off open pages at
+once; a removed script stays in effect in pages it already ran in until they reload. With
+`profile = "github"`, only pages with that [profile](#profiles-a-page-with-its-own-logins) run it.
+Scripts run in the page a `web(...)` shows, not in frames inside it, such as ads. An error goes to
+the page's console, which `devTools()` opens.
+
+## Javascript boxes inside the page
+
+A page can also be a [Javascript root](remotejs.md). Right-click the box that calls `web(...)`
+and choose **Set Main Language: Javascript**; then every Javascript box connected under it runs
+inside that page, with everything a Javascript box has: `print` beside the line, errors marked on
+the line that raised them, the box's last value, Stop and `launch`. It is a live console into the
+site, kept in boxes:
+
+```diffstatic {data-lang=javascript}
+const repos = [...document.querySelectorAll("[itemprop~='name'] a, a[data-hovercard-type='repository']")]
+repos.forEach(a => a.style.outline = "2px solid #48c9ff")
+repos.map(a => a.textContent.trim())
+```
+
+Under `web("github.com/OpenEndedGroup")` that outlines every repository on the page and gives back
+their names. The code runs beside the page's own scripts the way a browser extension's does: it
+shares the page's DOM, so it can read and change anything on the page, but not the variables the
+page's scripts keep (a `userScript` runs among those). A site's Content-Security-Policy does not
+stop it, so it works on GitHub as well as on Wikipedia.
+
+Kotlin works too. Make the `web(...)` box a [Kotlin → head](kotlin_in_the_head.md) root
+instead, and the Kotlin boxes under it are compiled to Javascript and run in the page the same
+way, with the browser's API typed, as `kotlinx.browser` and `org.w3c.dom`:
+
+```diffstatic {data-lang=kotlin}
+import kotlinx.browser.document
+import org.w3c.dom.asList
+
+println("${document.querySelectorAll("a").asList().size} links on ${document.title}")
+```
+
+The page starts running Javascript the first time a box under it runs, and again after it
+navigates, since each new page starts fresh. Javascript boxes that are not under a page keep
+running in your ordinary [RemoteJS](remotejs.md) browser tab or headset, and never in a page.
+
+## Downloads
+
+A file a page offers for download (a link with `download`, an attachment, a file the page makes
+for you) is saved, without a dialog, into the document's `files/downloads/`, under the name the
+site gave it, with ` (1)`, ` (2)` and so on added if that name is taken. It is then a file like
+any other in the document: `"downloads/report.pdf".file` finds it.
+
+`onDownload` hears each download as it finishes:
+
+```diffstatic {data-lang=kotlin}
+onDownload { d ->
+    if (d.completed) println("${d.file.name}: ${d.bytes} bytes of ${d.mimeType}")
+}
+```
+
+`state` is `completed`, `cancelled` or `interrupted`. Running the box again replaces the watch
+and stopping it ends it. `webDownloadsFolder()` gives the folder. Downloads start going there once
+a box in the document has called `web(...)`; Field's own downloads, such as an exported image, are
+not affected.
+
 ## Ads and trackers
 
 Field blocks ads and trackers in the pages it shows. It uses the filter lists uBlock Origin uses
@@ -328,8 +424,11 @@ To change the lists, set `AFIELD_WEB_BLOCKING` before starting Field: `ads` (the
   (the bar), [`framing-relief.cjs`](https://github.com/OpenEndedGroup/Field4/blob/main/electron/framing-relief.cjs)
   (why any site can be framed, and keep its login, in Field's window),
   [`content-blocker.cjs`](https://github.com/OpenEndedGroup/Field4/blob/main/electron/content-blocker.cjs)
-  (ads and trackers), and [`web-profiles.cjs`](https://github.com/OpenEndedGroup/Field4/blob/main/electron/web-profiles.cjs)
-  (profiles).
+  (ads and trackers), [`web-profiles.cjs`](https://github.com/OpenEndedGroup/Field4/blob/main/electron/web-profiles.cjs)
+  (profiles, cookies and history), [`user-scripts.cjs`](https://github.com/OpenEndedGroup/Field4/blob/main/electron/user-scripts.cjs)
+  (user scripts and styles), [`web-downloads.cjs`](https://github.com/OpenEndedGroup/Field4/blob/main/electron/web-downloads.cjs)
+  (downloads), and [`page-heads.cjs`](https://github.com/OpenEndedGroup/Field4/blob/main/electron/page-heads.cjs)
+  (Javascript boxes inside a page).
 
 `web()` and every member of `LiveOutputIframe` are in the reference, under
 [LiveOutputIframe.kt](reference/visualization.md#liveoutputiframe-kt).

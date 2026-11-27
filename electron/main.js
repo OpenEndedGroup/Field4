@@ -1619,10 +1619,15 @@ function createMainWindow() {
     installEditableContextMenu(tab.view.webContents);
     if (!remoteOrigin) {
       require("./web-profiles.cjs").installNavigationReports(tab.view.webContents, { log: diagnosticLog });
+      require("./user-scripts.cjs").setLog(diagnosticLog);
+      require("./user-scripts.cjs").watch(tab.view.webContents);
       require("./web-profiles.cjs").installProfileWebviews(tab.view.webContents, {
         session,
         log: diagnosticLog,
-        onNewSession: profile => require("./content-blocker.cjs").contentBlocker()?.attach(profile),
+        onNewSession: profile => {
+        require("./content-blocker.cjs").contentBlocker()?.attach(profile);
+        require("./web-downloads.cjs").watchSession(profile);
+      },
       });
     }
 
@@ -2288,6 +2293,12 @@ function createMainWindow() {
         contents.devToolsWebContents?.focus();
         return { value: frame.url, frameUrl: frame.url };
       }
+      if (request.operation === "head") {
+        // A RemoteJS head in this page, for the Javascript boxes under its web() box (page-heads.cjs).
+        const value = await require("./page-heads.cjs").injectHead({ frame, contents, guest }, request.frameName,
+          String(request.params?.socketUrl || ""), { log: diagnosticLog });
+        return { value, frameUrl: frame.url };
+      }
       if (request.operation === "blocking") {
         // Content blocking for the site this frame shows: its counts, and an allow-list switch.
         const blocker = require("./content-blocker.cjs").contentBlocker();
@@ -2354,7 +2365,10 @@ function createMainWindow() {
     return require("./web-profiles.cjs").handleProfileRequest(request, event.sender, {
       session,
       log: diagnosticLog,
-      onNewSession: profile => require("./content-blocker.cjs").contentBlocker()?.attach(profile),
+      onNewSession: profile => {
+        require("./content-blocker.cjs").contentBlocker()?.attach(profile);
+        require("./web-downloads.cjs").watchSession(profile);
+      },
     });
   });
   ipcMain.removeHandler("field4-live-output-iframe");
@@ -2517,6 +2531,9 @@ app.whenReady().then(() => {
     process.env.APP_URL || "https://localhost:9092/welcome",
     diagnosticLog,
   );
+  // Downloads from web() pages land in the document's files (web-downloads.cjs).
+  require("./web-downloads.cjs").configure({ fieldUrl: process.env.APP_URL || "https://localhost:9092/welcome", log: diagnosticLog });
+  require("./web-downloads.cjs").watchSession(session.defaultSession);
   // Ads and trackers in framed and presented sites, on the same webRequest pipeline.
   require("./content-blocker.cjs").installContentBlocker(
     session.defaultSession,

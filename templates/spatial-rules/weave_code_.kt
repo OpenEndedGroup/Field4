@@ -2,6 +2,7 @@ import afield.data.graph.SpatialLifetime.MATCH
 import afield.data.graph.inspectOnClick
 import java.util.concurrent.atomic.AtomicLong
 
+val stitchFadeSeconds = 0.65
 val world = SpatialRuleWorld(parallelSearch = true)
 val stitchInk = Vec4(0.35f, 0.75f, 0.91f, 0.70f)
 val weaveInk = Vec4(0.97f, 0.70f, 0.34f, 0.88f)
@@ -70,8 +71,8 @@ world.rules("weaving") {
         }
 
         val released = now
-        while (now - released < 0.65) {
-            draw(spatialStroke(path, stitchInk, width = 1.4, opacity = 1.0 - (now - released) / 0.65))
+        while (now - released < stitchFadeSeconds) {
+            draw(spatialStroke(path, stitchInk, width = 1.4, opacity = 1.0 - (now - released) / stitchFadeSeconds))
             nextFrame()
         }
     }

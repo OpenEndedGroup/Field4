@@ -40,6 +40,10 @@ object RemoteJsBoxSurface {
     /** The error a run gets when no browser head is connected to run it. */
     const val NO_HEAD = "No RemoteJS head is connected: open one (remoteAr() in a Kotlin box, or /extensions/remote_ar/index.html) and run again"
 
+    /** The error a box under a web() page gets when that page could not be given a head. */
+    fun noPageHead(pageBox: String) =
+        "The page in '$pageBox' is not running Javascript: it needs Field's Electron window showing it, and the page loaded"
+
     /** The box uid inside a [target] code name, or null for a name that is not a box's. */
     fun uidOf(codeName: String?): String? {
         if (codeName == null || !codeName.startsWith("box_")) return null

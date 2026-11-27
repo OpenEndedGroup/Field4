@@ -31,6 +31,15 @@ for review, rather than silently changing their semantics.
   so the existing debt does not block anyone: touched corpus files must pass the idiom checker,
   and touched top-level transcripts must pass the compile/replay guard. Broader execution,
   GPU work and docs captures stay with the smoke catalog and the docs runner (the nightly).
+- Whole tree: run either gate with `AFIELD_GUARD_CHANGED_PATHS_FILE` unset and no arguments.
+  On 2026-11-27 (base `08b2dc2280`, load ~135) `checkBoxCodeFormat` took 27 s over 1203 files
+  and found 0 to format, plus 132 `skipped ... ParseError` lines, which are non-Kotlin `code`
+  (Clojure, Lua, Python, RemoteJS, morpho...) and are not failures. `checkBoxCodeCompiles` took
+  29m54s over every transcript, with one red: `morpho_circuit_search`, a Runloop-watchdog stall
+  of 30.0 s, not a compile error. It moved to `COMPILE_ONLY_HERE`. The earlier reports of ~70
+  format and 31 compile failures were already fixed on `main`. The format gate is cheap enough to
+  run on every landing; the compile gate costs as much as the smoke sweep, so it belongs in the
+  nightly.
 
 ## Reading and following an example
 

@@ -695,7 +695,9 @@ animate {
 
 Start with a sphere, twist it, and add a belt of folds. Fit the three output coordinates as
 functions of direction on the original sphere. At low degrees the reconstruction keeps the
-broad silhouette. Higher degrees recover the pleats around the belt. The grid shows degrees 1 through 16 in order. All views use the same sphere mesh, scale, and camera.
+broad silhouette. Higher degrees recover the pleats around the belt.
+[`SphericalHarmonics.fit`](reference/graphics.md#sphericalharmonics-kt--sphericalharmonics--fit) computes the coefficients once. Each panel calls [`evaluate`](reference/graphics.md#sphericalharmonics-kt--sphericalharmonics--evaluate) with its own cutoff degree.
+The grid shows degrees 1 through 16 in order on the same sphere mesh, scale, and camera.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/spectral_geometry/spherical-shell.png" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" wait="1.0" padding="10" embed=true name="spherical-shell" alt="A four by four grid of the folded shell at every degree from 1 through 16. The pleats reappear as the degree rises."}
 :::static
@@ -909,3 +911,8 @@ buffer evaluator for larger spectra or live coefficient animation.
 ## API reference
 
 - Spectral geometry implementations: [`EpicycleGeometry`](reference/graphics.md#epicycles-kt-epicyclegeometry), [`EpicycleGeometry.torus`](reference/graphics.md#epicycles-kt--epicyclegeometry-companion--torus), [`EpicycleGeometry.fit`](reference/graphics.md#epicycles-kt--epicyclegeometry-companion--fit), [`PhaseClock`](reference/graphics.md#epicycles-kt-phaseclock), [`PhaseClock.phase`](reference/graphics.md#epicycles-kt--phaseclock--phase), [`CotangentLaplacian`](reference/graphics.md#manifoldharmonics-kt-cotangentlaplacian), [`CotangentLaplacian.basis`](reference/graphics.md#manifoldharmonics-kt--cotangentlaplacian--basis), [`PlaneWaveField`](reference/graphics.md#planewaves-kt-planewavefield), [`PlaneWaveField.fitDirectional`](reference/graphics.md#planewaves-kt--planewavefield-companion--fitdirectional).
+
+## Where to go next
+
+- [Teichmüller maps](explainer_teichmuller.md): the cotangent Laplacian of a planar mesh as the
+  linear Beltrami solver with μ = 0, and the maps of least distortion built on it.

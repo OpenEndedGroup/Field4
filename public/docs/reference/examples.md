@@ -144,7 +144,7 @@ The landing guard that box code still compiles: each named transcript goes down 
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="boxcodecompileguard-kt--boxcodecompileguard--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/BoxCodeCompileGuard/#L42) |  |
+| <a id="boxcodecompileguard-kt--boxcodecompileguard--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/BoxCodeCompileGuard/#L46) |  |
 
 ## BoxCodeFormat.kt { #boxcodeformat-kt }
 

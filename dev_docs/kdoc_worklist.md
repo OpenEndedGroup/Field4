@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 26745 of 44537 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 26755 of 44553 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2113 undocumented entry points** (types, top-level functions and values) and 14900 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2113 undocumented entry points** (types, top-level functions and values) and 14906 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -228,7 +228,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [SolidGradient.kt](../src/jvmMain/kotlin/afield/lang/solidsl/SolidGradient.kt) | Graphics | solid_notation | 0 | 10 | 62% |
 | [SolidPointCloudFit.kt](../src/jvmMain/kotlin/afield/lang/solidsl/SolidPointCloudFit.kt) | Graphics | solid_notation | 0 | 10 | 50% |
 | [alife_bonded.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_bonded.kt) | Simulation | alife_examples | 0 | 10 | 81% |
-| [LiveOutputIframe.kt](../src/jvmMain/kotlin/afield/ui/output/LiveOutputIframe.kt) | Visualization | web | 0 | 10 | 65% |
+| [LiveOutputIframe.kt](../src/jvmMain/kotlin/afield/ui/output/LiveOutputIframe.kt) | Visualization | web | 0 | 10 | 66% |
 | [LinesHandles.kt](../src/jvmMain/kotlin/afield/ui/visualization/LinesHandles.kt) | Visualization | presentation_studio | 0 | 10 | 50% |
 | [DrawnMorphDocs.kt](../src/jvmMain/kotlin/afield/audio/synth/DrawnMorphDocs.kt) | Patterns | chain_drawn_morph | 0 | 9 | 59% |
 | [PatSoundDocs.kt](../src/jvmMain/kotlin/afield/audio/synth/PatSoundDocs.kt) | Patterns | distributions, chain_drawn_score, sound | 0 | 9 | 70% |
@@ -436,7 +436,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [JSONLineServer.kt](../src/jvmMain/kotlin/afield/io/process/JSONLineServer.kt) | Data | — | 3 | 28 | 3% |
 | [ComputeModule.kt](../src/jvmMain/kotlin/afield/graphics/render/ComputeModule.kt) | Graphics | — | 3 | 27 | 12% |
 | [MeshModule.kt](../src/jvmMain/kotlin/afield/graphics/render/MeshModule.kt) | Graphics | — | 3 | 27 | 5% |
-| [KotlinJsHeadProfiles.kt](../src/jvmMain/kotlin/afield/lang/remotejs/KotlinJsHeadProfiles.kt) | Languages | — | 3 | 22 | 13% |
+| [KotlinJsHeadProfiles.kt](../src/jvmMain/kotlin/afield/lang/remotejs/KotlinJsHeadProfiles.kt) | Languages | — | 3 | 22 | 16% |
 | [SymbolAtTool.kt](../src/jvmMain/kotlin/afield/ai/agent/SymbolAtTool.kt) | AI4 | — | 3 | 13 | 27% |
 | [MeshMesh.kt](../src/jvmMain/kotlin/afield/graphics/render/MeshMesh.kt) | Graphics | — | 3 | 11 | 17% |
 | [AiToolUseImprovementCli.kt](../src/jvmMain/kotlin/afield/ai/tools/tooluse/AiToolUseImprovementCli.kt) | AI4 | — | 3 | 9 | 7% |
@@ -876,6 +876,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [StrokeSketch.kt](../src/jvmMain/kotlin/afield/ui/notation/StrokeSketch.kt) | Visualization | — | 0 | 6 | 76% |
 | [FileChooser.kt](../src/jvmMain/kotlin/afield/ui/output/FileChooser.kt) | Visualization | — | 0 | 6 | 56% |
 | [LineNoteTools.kt](../src/jvmMain/kotlin/afield/ui/output/LineNoteTools.kt) | Workspace | — | 0 | 6 | 45% |
+| [WebDownloads.kt](../src/jvmMain/kotlin/afield/ui/output/WebDownloads.kt) | Visualization | — | 0 | 6 | 40% |
 | [StudyBuildAwaits.kt](../src/jvmMain/kotlin/afield/ai/agent/StudyBuildAwaits.kt) | AI4 | — | 0 | 5 | 73% |
 | [AiRunJournal.kt](../src/jvmMain/kotlin/afield/ai/conversation/AiRunJournal.kt) | AI4 | — | 0 | 5 | 37% |
 | [AiThreadContinuation.kt](../src/jvmMain/kotlin/afield/ai/conversation/AiThreadContinuation.kt) | AI4 | — | 0 | 5 | 28% |

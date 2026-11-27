@@ -317,7 +317,9 @@ fun executeRemoteJS(
     knownOpenRemoteClients.entries.removeIf { it.value.outgoing.isClosedForSend }
     remoteClientCapabilities.keys.retainAll(knownOpenRemoteClients.keys)
 
-    val recipients = knownOpenRemoteClients.entries.filter { filterSession(it.key, it.value) }
+    // A box under a web() page runs in that page's head, and other boxes never do (WebPageHeads).
+    val pageFilter = WebPageHeads.recipientsFilter(filename)
+    val recipients = knownOpenRemoteClients.entries.filter { filterSession(it.key, it.value) && pageFilter(it.key, it.value) }
     if (recipients.isEmpty()) {
         // With no browser there will be no authoritative response. Preserve the old
         // behavior of showing the local parser diagnostic instead of failing silently.
@@ -615,15 +617,21 @@ class RemoteJSExectution : BoxExecution {
         }
 
         knownOpenRemoteClients.entries.removeIf { it.value.outgoing.isClosedForSend }
-        if (knownOpenRemoteClients.isEmpty()) {
+        // The heads this box's code goes to: its web() page's, starting one there if need be, or
+        // the ordinary heads (WebPageHeads).
+        val pageOwner = WebPageHeads.pageOwnerOf(inside)
+        val forThisBox = WebPageHeads.recipientsFilter(target(inside))
+        val recipients = knownOpenRemoteClients.entries.count { forThisBox(it.key, it.value) }
+        if (recipients == 0) {
             // Nothing will run this code. It used to settle as a success, so a backdoor `run`
             // reported ok=true for code no browser ever saw.
+            val reason = if (pageOwner != null) RemoteJsBoxSurface.noPageHead(pageOwner.name) else RemoteJsBoxSurface.NO_HEAD
             notify("Warning! no connected remote clients", "remotejs")
-            inside.output.errorProxy(RemoteJsBoxSurface.NO_HEAD, "code", -1)
-            settle(false, RemoteJsBoxSurface.NO_HEAD)
+            inside.output.errorProxy(reason, "code", -1)
+            settle(false, reason)
             return
         }
-        notify("$announce in ${knownOpenRemoteClients.size} browser(s)", "remotejs")
+        notify("$announce in $recipients browser(s)", "remotejs")
 
         try {
             body { settle(true) }
