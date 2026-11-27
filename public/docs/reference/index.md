@@ -688,7 +688,7 @@ To see it all at once, open the [map of the docs](../docs_map.md): every page, a
 
 ## Reference pages
 
-**44510 public symbols across 1961 source files**, 26719 of them (60%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**44513 public symbols across 1962 source files**, 26722 of them (60%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -710,7 +710,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [ALife](alife.md) | 24 | 1381 | 1252 (90%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 16 | 632 | 424 (67%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Search](search.md) | 11 | 509 | 503 (98%) | Optimisation over a space you can only sample. |
-| [Visualization](visualization.md) | 76 | 2157 | 1536 (71%) | Turning a value into something you can look at, without leaving the box. |
+| [Visualization](visualization.md) | 77 | 2160 | 1539 (71%) | Turning a value into something you can look at, without leaving the box. |
 | [Synthesis](synthesis.md) | 56 | 2060 | 1160 (56%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
 | [Patterns](patterns.md) | 41 | 1355 | 745 (54%) | Musical time, as a value. |
 | [Audio](audio.md) | 101 | 2687 | 1437 (53%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
@@ -2604,6 +2604,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [upstreamcheck.kt](workspace.md#upstreamcheck-kt) | Workspace · internal | 11 | 8 | Field is distributed as source: you clone it and you build it. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>settings/<wbr></small> [UserKeybindingsManager.kt](workspace.md#userkeybindingsmanager-kt) | Workspace | 8 | 5 | Reads, generates and live-reloads `~/.afield/keybindings.yaml`, the user's keyboard shortcut overrides, and sends the resolved bindings to connected clients. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>memory/<wbr></small> [UserMemory.kt](machine-learning.md#usermemory-kt) | Machine learning | 24 | 16 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>output/<wbr></small> [UserScripts.kt](visualization.md#userscripts-kt) | Visualization | 3 | 3 |  | [A Web Page in a Box](../web.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [UserThemeManager.kt](workspace.md#userthememanager-kt) | Workspace · internal | 3 | 1 | Serves the user's CSS theme from `~/.afield/theme.css` to the browser and pushes it again whenever the file changes. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>diagnostics/<wbr></small> [util.kt](workspace.md#util-kt) | Workspace | 20 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>util/<wbr></small> [util.kt](graphics.md#util-kt) | Graphics | 5 | 5 | Small helpers shared by the Vulkan renderer: the host OS, memory-type selection and result checking. |  |
