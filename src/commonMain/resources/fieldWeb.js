@@ -5,6 +5,9 @@
 //
 // History is the bar's own, one list per page: the tab's history would also step through every
 // other output iframe and could take the Field page itself back.
+//
+// A page with a web profile is a <webview> (Field's Electron window only). A webview has its own
+// history and tells us where it is, so for one the bar uses that instead.
 (() => {
   const PREFIX = "field-live-iframe-";
   const pages = new WeakMap();
@@ -86,12 +89,38 @@
     return /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed) ? trimmed : "https://" + trimmed;
   }
 
-  const frameOf = element => element.closest(".field-web")?.querySelector("iframe.field-web-page");
+  const frameOf = element => element.closest(".field-web")?.querySelector(".field-web-page");
+  const isWebview = element => element?.tagName === "WEBVIEW";
+
+  // A webview's bar reads the webview itself: listen once to each one found.
+  const watched = new WeakSet();
+  function watchWebview(view) {
+    if (watched.has(view)) return;
+    watched.add(view);
+    const update = () => {
+      const parts = partsOf(view);
+      if (!parts) return;
+      let back = false, forward = false, url = view.getAttribute("src") || "";
+      try { back = view.canGoBack(); forward = view.canGoForward(); url = view.getURL() || url; } catch (_) {}
+      parts.back.disabled = !back;
+      parts.forward.disabled = !forward;
+      if (document.activeElement !== parts.address) parts.address.value = url;
+    };
+    for (const name of ["did-navigate", "did-navigate-in-page", "did-stop-loading", "dom-ready"]) {
+      view.addEventListener(name, update);
+    }
+  }
+  const watchWebviews = () => document.querySelectorAll("webview.field-web-page").forEach(watchWebview);
+  new MutationObserver(watchWebviews).observe(document.documentElement, { childList: true, subtree: true });
 
   document.addEventListener("click", event => {
     const button = event.target.closest?.("[data-field-web]");
     const frame = button && frameOf(button);
     if (!frame || button.disabled) return;
+    if (isWebview(frame)) {
+      if (button.dataset.fieldWeb === "back") frame.goBack(); else frame.goForward();
+      return;
+    }
     const state = stateOf(frame);
     const step = button.dataset.fieldWeb === "back" ? -1 : 1;
     const index = state.index + step;
@@ -107,6 +136,12 @@
     if (event.key === "Enter") {
       const url = address(input.value);
       if (!url) return;
+      if (isWebview(frame)) {
+        frame.loadURL(url).catch(() => {});
+        input.blur();
+        event.stopPropagation();
+        return;
+      }
       const state = stateOf(frame);
       state.history.splice(state.index + 1);
       state.history.push(url);
@@ -114,6 +149,12 @@
       go(frame, url);
       input.blur();
     } else if (event.key === "Escape") {
+      if (isWebview(frame)) {
+        try { input.value = frame.getURL(); } catch (_) {}
+        input.blur();
+        event.stopPropagation();
+        return;
+      }
       const state = stateOf(frame);
       input.value = state.history[state.index];
       input.blur();

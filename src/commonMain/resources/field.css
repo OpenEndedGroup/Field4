@@ -654,6 +654,19 @@ body.canvas-pan-latched .outputArea * {
 .field-web-url:focus {
     border-color: #48c9ff;
 }
+/* A page with a web profile is a <webview>, which lays its page out as a flex child. */
+webview.field-web-page {
+    display: flex;
+    border: 0;
+}
+/* The profile's name at the end of the bar; its path is the tooltip. */
+.field-web-profile {
+    flex: none;
+    color: #8a8a8a;
+    border: 1px solid #333;
+    border-radius: 5px;
+    padding: 3px 8px;
+}
 
 .disclosure-content.ai-chat-content {
     overflow: hidden;

@@ -1600,7 +1600,9 @@ function createMainWindow() {
           contextIsolation: true,
           ...(remoteOrigin
             ? { session: remoteSession(remoteOrigin), sandbox: true }
-            : { preload: FIELD_PRELOAD, sandbox: false }),
+            // A Field page may hold <webview>s: `Box.web(url, profile = ...)` pages, each in
+            // its own profile's session (web-profiles.cjs refuses any other webview).
+            : { preload: FIELD_PRELOAD, sandbox: false, webviewTag: true }),
           defaultFontFamily: FIELD_DEFAULT_FONT_FAMILY,
         },
       }),
@@ -1615,6 +1617,13 @@ function createMainWindow() {
     installPageBackgroundGuard(tab);
     installPageShortcuts(tab.view.webContents);
     installEditableContextMenu(tab.view.webContents);
+    if (!remoteOrigin) {
+      require("./web-profiles.cjs").installProfileWebviews(tab.view.webContents, {
+        session,
+        log: diagnosticLog,
+        onNewSession: profile => require("./content-blocker.cjs").contentBlocker()?.attach(profile),
+      });
+    }
 
     const updateTitle = (url = contentsUrl(tab)) => {
       tab.url = url || tab.url;
@@ -2189,9 +2198,17 @@ function createMainWindow() {
         request.frameName !== `field-live-iframe-${request.id}`) {
       throw new Error("Invalid live iframe request");
     }
-    const candidates = contents.mainFrame.framesInSubtree.filter(frame =>
+    // A page with a web profile is a <webview>: its own webContents, which this tab hosts.
+    let guest = null;
+    if (request.guestId != null) {
+      guest = require("electron").webContents.fromId(Number(request.guestId));
+      if (!guest || guest.isDestroyed() || guest.hostWebContents !== contents) {
+        throw new Error(`Could not find the live webview for ${request.frameName}`);
+      }
+    }
+    const candidates = guest ? [guest.mainFrame] : contents.mainFrame.framesInSubtree.filter(frame =>
       !frame.isDestroyed() && frame !== contents.mainFrame);
-    let frames = candidates.filter(frame => frame.name === request.frameName);
+    let frames = guest ? candidates : candidates.filter(frame => frame.name === request.frameName);
     // WebFrameMain.name can retain the navigation-time name after an iframe is renamed. Ask each
     // child in its own context; this also works when that child is on another localhost origin.
     if (frames.length === 0) {
@@ -2257,6 +2274,11 @@ function createMainWindow() {
             rect.width <= 0 || rect.height <= 0) {
           throw new Error("The iframe has no visible area to inspect");
         }
+        if (guest) {
+          // A webview has DevTools of its own, showing its page directly.
+          guest.openDevTools({ mode: "detach", activate: true });
+          return { value: frame.url, frameUrl: frame.url };
+        }
         const zoom = contents.getZoomFactor() || 1;
         const x = Math.round((rect.x + rect.width / 2) * zoom);
         const y = Math.round((rect.y + rect.height / 2) * zoom);
@@ -2279,7 +2301,7 @@ function createMainWindow() {
         return { value: blocker.statusFor(frame), frameUrl: frame.url };
       }
       if (request.operation === "cdp") {
-        const debug = contents.debugger;
+        const debug = (guest || contents).debugger;
         if (!debug.isAttached()) debug.attach("1.3");
         const value = await debug.sendCommand(
           String(request.method || ""), request.params || {}, request.sessionId || undefined);

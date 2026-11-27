@@ -181,6 +181,38 @@ above, and the drawing follows. A box that draws a page another box shows reache
     These calls need the page visible in Field's Electron window. A page whose panel is closed, or
     a document open only in another browser, has nothing for them to reach.
 
+## Profiles: a page with its own logins
+
+A page normally shares cookies and logins with every other page in Field's window. Give it a
+`profile` and it keeps them, along with its local storage and cache, in a directory of its own:
+
+```diffstatic {data-lang=kotlin}
+web("github.com", profile = "github")
+```
+
+The profile is a [file spec](files_and_paths.md), and the directory is made the first time it is
+used. A bare name such as `"github"` is `web-profiles/github` in the document's `files/`
+directory, so the login travels with the document. To share one login across every document in a
+project, name a directory there:
+
+```diffstatic {data-lang=kotlin}
+web("github.com", profile = "%project/web-profiles/github")
+```
+
+Pages with the same profile share its logins; a page with another profile, or none, sees none of
+them. The bar shows the profile's name at its right end, with the directory as its tooltip.
+`webProfileDirectory("github")` gives the directory itself.
+
+A page with a profile works only in Field's Electron window. Everything on
+[`LiveOutputIframe`](#working-with-the-page-from-code) works on it, and so does
+[blocking](#ads-and-trackers). `devTools()` opens DevTools on the page itself.
+
+!!! warning
+    A profile directory holds the site's login cookies. Anyone who gets a copy of the directory,
+    or of a document or project that contains it, can use those logins. Keep profiles out of
+    anything you share or commit. A profile also grows with the site's cache, to tens or hundreds
+    of megabytes for a busy site.
+
 ## Ads and trackers
 
 Field blocks ads and trackers in the pages it shows. It uses the filter lists uBlock Origin uses
@@ -221,10 +253,11 @@ To change the lists, set `AFIELD_WEB_BLOCKING` before starting Field: `ads` (the
 - [Drawing from data](drawing_from_data.md): other material to draw from.
 - Source: [`LiveOutputIframe.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/ui/output/LiveOutputIframe.kt)
   (`web()` and the handle), [`fieldWeb.js`](https://github.com/OpenEndedGroup/Field4/blob/main/src/commonMain/resources/fieldWeb.js)
-  (the bar), and [`framing-relief.cjs`](https://github.com/OpenEndedGroup/Field4/blob/main/electron/framing-relief.cjs)
-  (why any site can be framed, and keep its login, in Field's window), and
+  (the bar), [`framing-relief.cjs`](https://github.com/OpenEndedGroup/Field4/blob/main/electron/framing-relief.cjs)
+  (why any site can be framed, and keep its login, in Field's window),
   [`content-blocker.cjs`](https://github.com/OpenEndedGroup/Field4/blob/main/electron/content-blocker.cjs)
-  (ads and trackers).
+  (ads and trackers), and [`web-profiles.cjs`](https://github.com/OpenEndedGroup/Field4/blob/main/electron/web-profiles.cjs)
+  (profiles).
 
 `web()` and every member of `LiveOutputIframe` are in the reference, under
 [LiveOutputIframe.kt](reference/visualization.md#liveoutputiframe-kt).

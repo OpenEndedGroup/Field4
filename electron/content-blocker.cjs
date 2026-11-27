@@ -259,7 +259,8 @@ async function loadEngine(mode, cacheDir, fetchImpl, log) {
 
 let installed = null;
 
-// Installs blocking on [session]'s pipeline. The engine loads in the background; until it has,
+// Installs blocking on [session]'s pipeline; `contentBlocker().attach(other)` adds another session
+// (a web profile's) to the same engine, allow list and counts. The engine loads in the background; until it has,
 // requests pass unfiltered. Resolves to the ContentBlocker (or null when blocking is off).
 async function installContentBlocker(session, fieldUrl, { app, log = () => {} } = {}) {
   const mode = blockingMode();
@@ -276,15 +277,22 @@ async function installContentBlocker(session, fieldUrl, { app, log = () => {} } 
     log,
   });
   installed = blocker;
-  const pipeline = pipelineFor(session, log);
-  pipeline.add("onBeforeRequest", "content-blocker", details => blocker.beforeRequest(details), { order: 10 });
-  pipeline.add("onHeadersReceived", "content-blocker", details => blocker.headersReceived(details), { order: 30 });
+  blocker.sessions = new Set();
+  blocker.attach = target => {
+    if (blocker.sessions.has(target)) return;
+    blocker.sessions.add(target);
+    const pipeline = pipelineFor(target, log);
+    pipeline.add("onBeforeRequest", "content-blocker", details => blocker.beforeRequest(details), { order: 10 });
+    pipeline.add("onHeadersReceived", "content-blocker", details => blocker.headersReceived(details), { order: 30 });
+  };
+  blocker.attach(session);
   app.on("web-contents-created", (_event, contents) => {
-    if (contents.session !== session) return;
     contents.on("frame-created", (_e, { frame }) => {
+      if (!blocker.sessions.has(contents.session)) return;
       frame?.on?.("dom-ready", () => blocker.injectCosmetics(frame));
     });
     contents.on("did-frame-finish-load", (_e, _isMain, processId, routingId) => {
+      if (!blocker.sessions.has(contents.session)) return;
       const { webFrameMain } = require("electron");
       blocker.injectCosmetics(webFrameMain.fromId(processId, routingId));
     });

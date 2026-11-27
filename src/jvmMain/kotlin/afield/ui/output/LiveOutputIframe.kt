@@ -39,6 +39,9 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 import java.util.UUID
+import java.io.File
+import java.net.URLEncoder
+import afield.document.workspace.files
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -102,16 +105,51 @@ fun Box.outputIframe(boxName: String, channel: String): LiveOutputIframe {
  * web("github.com", channel = "github", height = 800)
  * ```
  *
+ * With a [profile], the page keeps its cookies, logins, local storage and cache in a directory of
+ * its own instead of sharing Field's. The profile is a [files] spec, made if it does not exist: a
+ * bare name such as `"github"` is `web-profiles/github` in the document's `files/` directory, and
+ * `"%project/web-profiles/github"` shares one login across the documents of a project. Two pages
+ * with the same profile share it; a page with another profile, or none, sees none of it. A page
+ * with a profile needs Field's Electron window.
+ *
+ * ```kotlin
+ * web("github.com", profile = "github")
+ * ```
+ *
  * @param url the first page; a bare host such as `github.com` gets `https://`
  * @param channel output-area channel, and its disclosure title
  * @param width page width in CSS pixels
  * @param height page height in CSS pixels, not counting the bar
+ * @param profile where the page keeps its cookies and storage, as a [files] spec; null shares Field's
  */
-fun Box.web(url: String, channel: String = "web", width: Int = 1000, height: Int = 640): LiveOutputIframe {
+fun Box.web(url: String, channel: String = "web", width: Int = 1000, height: Int = 640,
+            profile: String? = null): LiveOutputIframe {
     require(width in 200..4000 && height in 100..4000) { "web: width must be 200..4000 and height 100..4000" }
-    display(channel, webPanel(webAddress(url), width, height))
+    val directory = profile?.let { webProfileDirectory(it) }
+    display(channel, webPanel(webAddress(url), width, height, directory))
     displayOpen(channel)
     return outputIframe(channel)
+}
+
+/**
+ * The directory a [web] profile called [profile] keeps its cookies and storage in, made if it is
+ * missing. A bare name is `web-profiles/<name>`; anything else is resolved by [files] as written.
+ */
+fun webProfileDirectory(profile: String): File {
+    val directory = files.file(webProfileSpec(profile))
+    if (!directory.isDirectory) {
+        require(!directory.exists()) { "web: profile '$profile' is a file, not a directory: $directory" }
+        directory.mkdirs()
+    }
+    return directory.absoluteFile
+}
+
+/** A bare profile name lives under `web-profiles/`; a path, `%root/` or `~/` spec stands as it is. */
+internal fun webProfileSpec(profile: String): String {
+    val trimmed = profile.trim()
+    require(trimmed.isNotEmpty()) { "web: the profile cannot be empty" }
+    val bare = !trimmed.contains('/') && !trimmed.contains('\\') && !trimmed.startsWith("%") && !trimmed.startsWith("~")
+    return if (bare) "web-profiles/$trimmed" else trimmed
 }
 
 /** What the address bar does to typed text: keep a scheme it has, otherwise add `https://`. */
@@ -125,19 +163,40 @@ internal fun webAddress(text: String): String {
  * The bar and the page as output HTML; `fieldWeb.js` in the Field page runs the bar. The iframe is
  * named from the start: Electron finds a frame by the name it had when it first navigated, and a
  * framed site's address soon stops matching `src`, so a name given later would never be found.
+ *
+ * With a [profile] directory the page is a `<webview>` instead, whose `partition` names that
+ * directory; Field's Electron window gives it a session stored there. A webview is not an iframe
+ * to the panel sizer, so the panel states the page's size through `data-afield-intrinsic-*`.
  */
-internal fun webPanel(url: String, width: Int, height: Int): String {
-    val attribute = url.replace("&", "&amp;").replace("\"", "&quot;").replace("<", "&lt;")
+internal fun webPanel(url: String, width: Int, height: Int, profile: File? = null): String {
+    val attribute = escapeAttribute(url)
     val name = "field-live-iframe-web-" + UUID.randomUUID()
-    return """<div class="field-web">""" +
+    val page = if (profile == null) {
+        """<iframe class="field-web-page" name="$name" data-field-live-name="$name" src="$attribute" data-afield-autosize="off" """ +
+            """style="width:${width}px;height:${height}px"></iframe>"""
+    } else {
+        val partition = escapeAttribute(WEB_PROFILE_PARTITION + URLEncoder.encode(profile.absolutePath, Charsets.UTF_8))
+        """<webview class="field-web-page" data-field-live-name="$name" src="$attribute" partition="$partition" """ +
+            """data-field-web-profile="${escapeAttribute(profile.name)}" style="width:${width}px;height:${height}px"></webview>"""
+    }
+    val stated = if (profile == null) "" else """ data-afield-intrinsic-width="$width" data-afield-intrinsic-height="${height + WEB_BAR_HEIGHT}""""
+    return """<div class="field-web"$stated>""" +
         """<div class="field-web-bar">""" +
         """<button type="button" data-field-web="back" title="Back" disabled>&#8249;</button>""" +
         """<button type="button" data-field-web="forward" title="Forward" disabled>&#8250;</button>""" +
         """<input class="field-web-url" type="text" spellcheck="false" autocomplete="off" value="$attribute" aria-label="Address">""" +
-        """</div>""" +
-        """<iframe class="field-web-page" name="$name" data-field-live-name="$name" src="$attribute" data-afield-autosize="off" """ +
-        """style="width:${width}px;height:${height}px"></iframe></div>"""
+        (if (profile == null) "" else """<span class="field-web-profile" title="${escapeAttribute(profile.path)}">${escapeAttribute(profile.name)}</span>""") +
+        """</div>""" + page + """</div>"""
 }
+
+/** The prefix of a webview `partition` that names a profile directory; electron/web-profiles.cjs reads it. */
+internal const val WEB_PROFILE_PARTITION = "field-path:"
+
+/** The bar's height in CSS pixels (`.field-web-bar`: 12px text, 6px padding, a 1px rule). */
+private const val WEB_BAR_HEIGHT = 33
+
+private fun escapeAttribute(text: String) =
+    text.replace("&", "&amp;").replace("\"", "&quot;").replace("<", "&lt;")
 
 /** The running [watchIframe] for each box and name, so a box run again replaces its watch. */
 private val iframeWatches = ConcurrentHashMap<Pair<String, String>, Job>()
