@@ -109,11 +109,19 @@ object BoxCodeFormat {
         return transcripts() + demoScripts + tracked + docsPages()
     }
 
+    // The formatter's own inputs; tools/check_staged_generated_artifacts.py FORMATTER_INPUTS lists the same paths.
+    private val FORMATTER_INPUTS = setOf(
+        "src/jvmMain/kotlin/afield/examples/BoxCodeFormat.kt",
+        "libs/ktfmt-0.65-SNAPSHOT-kotlin-2.5.jar",
+    )
+
     // `--guard` limits the corpus to the paths the lander says a branch touched, the same
     // AFIELD_GUARD_CHANGED_PATHS_FILE listing checkBoxIdioms reads. Without it the whole corpus is checked.
     private fun guardScope(corpus: List<File>, guard: Boolean): List<File> {
         val listing = System.getenv("AFIELD_GUARD_CHANGED_PATHS_FILE")?.takeIf { guard && it.isNotBlank() } ?: return corpus
         val changed = File(listing).readLines().map(String::trim).filter(String::isNotEmpty).toSet()
+        // A change to the formatter can reformat files nobody touched, so it checks everything.
+        if (changed.any { it in FORMATTER_INPUTS }) return corpus
         val root = File("").absoluteFile
         return corpus.filter { it.absoluteFile.relativeTo(root).invariantSeparatorsPath in changed }
     }

@@ -194,7 +194,17 @@ _PACKAGED_PAGES = frozenset(
 )
 
 
+# The formatter itself. A change here can reformat files the branch never touched, so the guard
+# selects on it and BoxCodeFormat.guardScope then checks the whole corpus. Keep the two lists equal.
+FORMATTER_INPUTS = (
+    "src/jvmMain/kotlin/afield/examples/BoxCodeFormat.kt",
+    "libs/ktfmt-0.65-SNAPSHOT-kotlin-2.5.jar",
+)
+
+
 def _formatted_box_code(path: str) -> bool:
+    if path in FORMATTER_INPUTS:
+        return True
     # BoxCodeFormat.allCorpora: top-level transcripts, *_code_.kt sidecars outside the generated
     # starting points, and the docs pages directly under public/docs.
     if path.startswith(("public/docs/assets/agent_transcripts/", "dev_docs/agents/demos/function_conversation_example/")) or path in _PACKAGED_PAGES:
