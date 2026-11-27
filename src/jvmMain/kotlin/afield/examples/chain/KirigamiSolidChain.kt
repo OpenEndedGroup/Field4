@@ -1,5 +1,6 @@
 package afield.examples.chain
 
+import afield.geometry.conformal.KirigamiInverseDesign
 import afield.geometry.mesh.MeshView
 import afield.geometry.mesh.TriMesh
 import afield.geometry.mesh.renderPng
@@ -20,7 +21,7 @@ id: chain.kirigami-solid
 runner: jvm-main
 entrypoint: afield.examples.chain.KirigamiSolidChain
 tags: [smoke, chain, kirigami, manifold, mesh, cpu]
-timeoutSec: 300
+timeoutSec: 600
 expect:
   exitCode: 0
   stdoutContains:
@@ -98,47 +99,81 @@ object KirigamiSolidChain {
     }
 
     /**
-     * The fabricable 2D region: tiles shrunk by [gap] on every side, plus one bar per hinge of width
-     * [bridge] reaching from one tile's shrunk corner to the other's along their cut edges.
+     * A hinge to bridge, by corner index within each tile: tile [tileA]'s corner [hingeA] is joined to
+     * tile [tileB]'s corner [hingeB], and [endA] / [endB] are the far corners of the cut edge each side.
      */
-    fun section(n: Int, angle: Double, gap: Double = 0.04, bridge: Double = 0.12): Section {
-        val tiles = deploy(n, angle)
-        fun centre(k: Int): DoubleArray {
-            val c = tiles[k].values
-            return doubleArrayOf(c.sumOf { it[0] } / 4, c.sumOf { it[1] } / 4)
+    data class Bridge(val tileA: Int, val hingeA: Int, val endA: Int, val tileB: Int, val hingeB: Int, val endB: Int)
+
+    /** The rotating-squares hinges as [Bridge]s, for [bridgedSection]. */
+    fun bridges(n: Int): List<Bridge> = hinges(n).map { h ->
+        val (ia, ja) = h.a % n to h.a / n
+        val (ib, jb) = h.b % n to h.b / n
+        val ca = cornerNodes(ia, ja)
+        val cb = cornerNodes(ib, jb)
+        Bridge(h.a, ca.indexOf(h.node), ca.indexOf(h.along), h.b, cb.indexOf(h.node), cb.indexOf(h.along))
+    }
+
+    /** [polygon] with every edge moved inward by [gap]; exact for a convex polygon of either winding. */
+    fun inset(polygon: List<DoubleArray>, gap: Double): List<DoubleArray> {
+        val m = polygon.size
+        val area = (0 until m).sumOf { polygon[it][0] * polygon[(it + 1) % m][1] - polygon[(it + 1) % m][0] * polygon[it][1] }
+        val side = if (area > 0) 1.0 else -1.0
+        fun inward(i: Int): DoubleArray {
+            val p = polygon[i]
+            val q = polygon[(i + 1) % m]
+            val l = hypot(q[0] - p[0], q[1] - p[1])
+            return doubleArrayOf(-side * (q[1] - p[1]) / l, side * (q[0] - p[0]) / l)
         }
-        val shrink = 1 - 2 * gap
-        fun inset(k: Int, node: Pair<Int, Int>): DoubleArray {
-            val c = centre(k)
-            val p = tiles[k].getValue(node)
-            return doubleArrayOf(c[0] + (p[0] - c[0]) * shrink, c[1] + (p[1] - c[1]) * shrink)
+        return (0 until m).map { i ->
+            val n1 = inward((i + m - 1) % m)
+            val n2 = inward(i)
+            val k = gap / (1 + n1[0] * n2[0] + n1[1] * n2[1])
+            doubleArrayOf(polygon[i][0] + k * (n1[0] + n2[0]), polygon[i][1] + k * (n1[1] + n2[1]))
         }
-        val parts = mutableListOf<Section>()
-        for (k in tiles.indices) {
-            val i = k % n
-            val j = k / n
-            parts += Section.ofDoublePolygon(cornerNodes(i, j).map { inset(k, it).let { p -> p[0] to p[1] } })
-        }
-        for (h in hinges(n)) {
-            val ends = mutableListOf<List<Pair<Double, Double>>>()
-            for (k in listOf(h.a, h.b)) {
-                val p = inset(k, h.node)
-                val q = inset(k, h.along)
+    }
+
+    /**
+     * The fabricable 2D region for any quad sheet: every tile of [tiles] inset by [gap], so each cut is
+     * a slit `2 * gap` wide, plus one bar per [Bridge] reaching [bridge] along the cut from one tile's
+     * inset hinge corner to the other's. The bar joins those two tiles and no others.
+     */
+    fun bridgedSection(tiles: List<List<DoubleArray>>, bridges: List<Bridge>, gap: Double = 0.04, bridge: Double = 0.12): Section {
+        val insets = tiles.map { inset(it, gap) }
+        val parts = insets.map { t -> Section.ofDoublePolygon(t.map { it[0] to it[1] }, FillRule.NON_ZERO) }.toMutableList()
+        for (b in bridges) {
+            val ends = listOf(Triple(b.tileA, b.hingeA, b.endA), Triple(b.tileB, b.hingeB, b.endB)).map { (k, h, e) ->
+                val p = insets[k][h]
+                val q = insets[k][e]
                 val len = hypot(q[0] - p[0], q[1] - p[1])
                 val ux = (q[0] - p[0]) / len
                 val uy = (q[1] - p[1]) / len
                 // Start a little inside the tile so the bar overlaps it rather than touching an edge.
-                val c = centre(k)
+                val c = doubleArrayOf(insets[k].sumOf { it[0] } / insets[k].size, insets[k].sumOf { it[1] } / insets[k].size)
                 val cl = hypot(c[0] - p[0], c[1] - p[1])
                 val ex = (c[0] - p[0]) / cl * gap * 0.5
                 val ey = (c[1] - p[1]) / cl * gap * 0.5
-                ends += listOf((p[0] + ex) to (p[1] + ey), (p[0] + ex + ux * bridge) to (p[1] + ey + uy * bridge))
+                listOf((p[0] + ex) to (p[1] + ey), (p[0] + ex + ux * bridge) to (p[1] + ey + uy * bridge))
             }
             // Walk A's end out and B's end back, so the quad is simple; NON_ZERO fills it either way round.
             val quad = listOf(ends[0][0], ends[0][1], ends[1][1], ends[1][0])
             parts += Section.ofDoublePolygon(quad, FillRule.NON_ZERO).hull()
         }
         return Section.union(parts)
+    }
+
+    /** The rotating-squares region at opening [angle] (radians): [bridgedSection] over [deploy]. */
+    fun section(n: Int, angle: Double, gap: Double = 0.04, bridge: Double = 0.12): Section {
+        val tiles = deploy(n, angle).mapIndexed { k, corners -> cornerNodes(k % n, k / n).map { corners.getValue(it) } }
+        return bridgedSection(tiles, bridges(n), gap, bridge)
+    }
+
+    /** The inverse-designed sheet's tiles at [state] (its opened or closed points) and its cuts as [Bridge]s. */
+    fun designSheet(design: KirigamiInverseDesign.Design, state: DoubleArray): Pair<List<List<DoubleArray>>, List<Bridge>> {
+        val tiles = design.problem.tiles
+        val bridges = design.problem.cuts.map { c ->
+            Bridge(c.tileA, tiles[c.tileA].indexOf(c.hinge), tiles[c.tileA].indexOf(c.endA), c.tileB, tiles[c.tileB].indexOf(c.hinge), tiles[c.tileB].indexOf(c.endB))
+        }
+        return design.tileCorners(state) to bridges
     }
 
     /** What the solid measures. */
@@ -160,15 +195,19 @@ object KirigamiSolidChain {
         val predictedGenus: Int get() = hinges - tiles + 1
     }
 
-    /** Builds the solid at [angle] (radians), [thickness] thick, and measures it. */
-    fun measure(n: Int = 8, angle: Double, thickness: Double = 0.1, gap: Double = 0.04, bridge: Double = 0.12): Measured {
-        val region = section(n, angle, gap, bridge)
-        val solid: Solid = region.extruded(thickness)
+    /** Builds the rotating-squares solid at [angle] (radians), [thickness] thick, and measures it. */
+    fun measure(n: Int = 8, angle: Double, thickness: Double = 0.1, gap: Double = 0.04, bridge: Double = 0.12): Measured =
+        measureRegion(section(n, angle, gap, bridge), angle, thickness, hinges(n).size, n * n, hingeGap(n, angle))
+
+    /** Extrudes [region] by [thickness] and measures the solid. */
+    fun measureRegion(region: Section, angle: Double, thickness: Double, hinges: Int, tiles: Int, hingeGap: Double): Measured {
+        // Lay the sheet flat, thickness along +y, so a camera above it is above it.
+        val solid: Solid = region.extruded(thickness).rotated(-90.0, 0.0, 0.0)
         val mesh = solid.toTriMesh()
         return Measured(
             angle = angle,
-            hinges = hinges(n).size,
-            tiles = n * n,
+            hinges = hinges,
+            tiles = tiles,
             sectionArea = region.area,
             hullArea = region.hull().area,
             volume = solid.volume,
@@ -176,9 +215,21 @@ object KirigamiSolidChain {
             genus = solid.genus,
             parts = solid.decompose().size,
             watertight = mesh.topology().isWatertight,
-            hingeGap = hingeGap(n, angle),
+            hingeGap = hingeGap,
             mesh = mesh,
         )
+    }
+
+    /**
+     * The inverse-designed circle sheet, closed and opened, as bridged solids. Tile sizes vary, so the
+     * hinge gap is 0 by construction (a hinge is one shared point of the design).
+     */
+    fun measureDesign(design: KirigamiInverseDesign.Design, thickness: Double = 0.1, gap: Double = 0.01, bridge: Double = 0.12): Pair<Measured, Measured> {
+        fun at(state: DoubleArray, angle: Double): Measured {
+            val (tiles, bridges) = designSheet(design, state)
+            return measureRegion(bridgedSection(tiles, bridges, gap, bridge), angle, thickness, bridges.size, tiles.size, 0.0)
+        }
+        return at(design.closed, 0.0) to at(design.opened, Double.NaN)
     }
 
     private var failures = 0
@@ -206,6 +257,16 @@ object KirigamiSolidChain {
             val s = cos(m.angle) + sin(m.angle)
             println("    hull area ratio %.4f (lattice (cos+sin)^2 = %.4f)".format(ratio, s * s))
         }
+        val design = KirigamiInverseDesign(n = 8).solve()
+        check("circle design residual", design.residual < 1e-8, "%.1e after %d iterations".format(design.residual, design.iterations))
+        val (shut, open) = measureDesign(design, gap = 0.01)
+        for ((label, m) in listOf("closed" to shut, "opened" to open)) {
+            check("circle $label genus", m.genus == m.predictedGenus, "Manifold ${m.genus}, hinges - tiles + 1 = ${m.predictedGenus}")
+            check("circle $label one piece", m.parts == 1, "${m.parts} part(s)")
+            check("circle $label watertight", m.watertight, "${m.watertight}")
+            check("circle $label volume = area x thickness", abs(m.volume - m.sectionArea * 0.1) < 1e-9, "%.6f".format(m.volume))
+        }
+        println("    circle hull area ratio %.4f".format(open.hullArea / shut.hullArea))
         if (args.isNotEmpty()) {
             val out = File(args[0]).apply { mkdirs() }
             File(out, "kirigami_solid.png").writeBytes(measure(angle = Math.toRadians(30.0)).mesh.renderPng(MeshView()))

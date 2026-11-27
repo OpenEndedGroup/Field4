@@ -5,7 +5,7 @@ hinges, and each hinge there is a single shared point. That is exact for the mec
 cannot cut it: a point of material holds nothing together. This page gives every hinge a width, hands the
 sheet to `afield.geometry.solid.manifold` as a 2D region, extrudes it into a solid, and measures
 the result. The [kirigami_solid_chain](agent_transcripts.md#kirigami_solid_chain) starting point has
-both boxes.
+all three boxes.
 
 The construction is in `afield.examples.chain.KirigamiSolidChain`:
 
@@ -23,7 +23,7 @@ that meet pair left to right when `a + b` is even and top to bottom when it is o
 At an opening angle of zero the region is the pattern you would send to a laser cutter: a square
 plate with its slits, and one bridge at every hinge.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_kirigami_solid/cut_plate.png" capture="box" open-outputs="true" wait-output=true wait-output-kind="all" wait-output-contains="x thickness 0.1" embed=true force=true timeout="300" padding="18" name="chain-kirigami-cut-plate" alt="Four lines reading 64 tiles and 112 hinges, genus 49 against hinges minus tiles plus one equals 49, one watertight part, and volume 5.524480 equal to area 55.244800 times thickness 0.1, above a grey render of the square cut plate seen at an angle, its slits and hinge bridges visible" macro-file="../../dev_docs/agents/transcripts/kirigami_solid_chain.yaml" capture-box="kirigami_cut_plate"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_kirigami_solid/cut_plate.png" capture="box" open-outputs="true" wait-output=true wait-output-kind="all" wait-output-contains="x thickness 0.1" embed=true force=true timeout="300" padding="18" name="chain-kirigami-cut-plate" alt="Four lines reading 64 tiles and 112 hinges, genus 49 against hinges minus tiles plus one equals 49, one watertight part, and volume 5.524480 equal to area 55.244800 times thickness 0.1, above a grey render of the square cut plate seen from above at three-quarters, its slits and hinge bridges visible" macro-file="../../dev_docs/agents/transcripts/kirigami_solid_chain.yaml" capture-box="kirigami_cut_plate"}
 // Built and launched from dev_docs/agents/transcripts/kirigami_solid_chain.yaml.
 ```
 
@@ -60,6 +60,32 @@ wider slit as the sheet opens. A plate printed already open is not the same obje
 closed and pulled open. In the printed one the bridges are longer and straight, and in the cut one
 they bend.
 
+## The sheet that opens into a circle
+
+The [kirigami page](kirigami.md)'s second box solves Choi's inverse problem: which cut pattern of a
+square sheet opens into a circle. That solve is `afield.geometry.conformal.KirigamiInverseDesign`,
+and the page's box calls it. Its tiles are irregular quadrilaterals, but its hinges are the same
+112 cuts, so `KirigamiSolidChain.bridgedSection` takes them unchanged, closed or opened:
+
+```kotlin
+val design = KirigamiInverseDesign(n = 8).solve()
+val (closed, opened) = KirigamiSolidChain.measureDesign(design, gap = 0.01)
+```
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_kirigami_solid/circle.png" capture="box" open-outputs="true" wait-output=true wait-output-kind="all" wait-output-contains="gap 0.04" embed=true force=true timeout="400" padding="18" name="chain-kirigami-circle" alt="Lines of numbers giving, for a slit half-width of 0.01, genus 49 closed and opened against a predicted 49, one watertight part, the two volumes and an opened-to-closed hull ratio of 2.019, then for 0.04 a genus of 47; below, grey renders of the square cut pattern of irregular tiles and of the same solid opened onto a circle, both seen from above at three-quarters" macro-file="../../dev_docs/agents/transcripts/kirigami_solid_chain.yaml" capture-box="kirigami_circle_solid"}
+// Built and launched from dev_docs/agents/transcripts/kirigami_solid_chain.yaml.
+```
+
+With slits 0.02 wide, both states have genus 49, as the tile graph predicts. Widen them to 0.08 and
+Manifold reports 47. The design has tiles whose edges are as short as a third of a unit and whose corners
+are as sharp as 0.4 rad, so pulling every edge in by 0.04 moves a sharp corner far enough that its
+bridge no longer meets the tile. Two hinges stop holding, and the genus check catches it even though
+the solid is still one part. The rotating squares, whose tiles are all unit squares, take the wider
+slit without trouble.
+
+The opened circle sheet covers 2.019 times the hull area of the closed square. That is slightly
+more than the rotating squares' 2 at 45°, and the volume grows by about 1.5% as the bridges stretch.
+
 ## What crosses each hop
 
 | hop | the call | what crosses | what stops here |
@@ -71,22 +97,21 @@ they bend.
 | solid to a picture | [`TriMesh.renderPng`](reference/graphics.md) | positions and indices | everything but the shape |
 
 Every check on this page also runs headless in CI as the `chain.kirigami-solid` test, at 0°, 15°, 30° and
-45°: the gap at each hinge (below 4e-15), the genus against `hinges − tiles + 1`, one part, a
+45° and for both states of the circle sheet: the gap at each hinge (below 4e-15), the genus against `hinges − tiles + 1`, one part, a
 watertight mesh, and Manifold's volume against the region's area times the thickness.
 
 ## The limits of this route
 
-The chain uses the rotating-squares sheet and not the kirigami page's inverse-designed circle. The
-circle's 35-second solve lives in its box's code and has no library entry point yet. Its tiles are
-quadrilaterals with the same hinge layout, so `section` would take them unchanged once that solve
-returns corner positions. The bridges are straight bars of constant width. A real hinge needs a
-width and length chosen for its material, so treat `gap` and `bridge` as settings for your
-material, not as recommended values.
+The bridges are straight bars of constant width. A real hinge needs a width and length chosen for
+its material, so treat `gap` and `bridge` as settings for your material, not as recommended
+values.
 
 ## Where the code is
 
 * [`KirigamiSolidChain.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/examples/chain/KirigamiSolidChain.kt)
   holds the hinges, the opened tiles, the bridged region and the measurements.
+* [`KirigamiInverseDesign.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/geometry/conformal/KirigamiInverseDesign.kt)
+  is Choi's inverse design: the constraints, the solve, the closed pattern and the deployment.
 * The [kirigami_solid_chain](agent_transcripts.md#kirigami_solid_chain) starting point has the same steps
   as a document.
 
