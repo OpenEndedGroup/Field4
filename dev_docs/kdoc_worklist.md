@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 26601 of 44341 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 26604 of 44345 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2113 undocumented entry points** (types, top-level functions and values) and 14850 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2113 undocumented entry points** (types, top-level functions and values) and 14851 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -100,7 +100,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [MatrixProfile.kt](../src/jvmMain/kotlin/afield/math/matrixprofile/MatrixProfile.kt) | Math | matrix_profile, agent_transcripts | 2 | 0 | 86% |
 | [Decorations.kt](../src/jvmMain/kotlin/afield/graphics/text/sentences/Decorations.kt) | Graphics | fline_examples | 1 | 64 | 23% |
 | [Functions.kt](../src/jvmMain/kotlin/afield/math/functions/Functions.kt) | Math | functions_examples | 1 | 47 | 84% |
-| [Epicycles.kt](../src/jvmMain/kotlin/afield/geometry/spectral/Epicycles.kt) | Graphics | spectral_geometry | 1 | 19 | 28% |
+| [Epicycles.kt](../src/jvmMain/kotlin/afield/geometry/spectral/Epicycles.kt) | Graphics | spectral_geometry | 1 | 19 | 31% |
 | [NeuralClouds.kt](../src/jvmMain/kotlin/afield/graphics/volume/NeuralClouds.kt) | Graphics | path_tracing | 1 | 19 | 66% |
 | [DrawingOn.kt](../src/jvmMain/kotlin/afield/io/drawingon/DrawingOn.kt) | Networking | drawing_on | 1 | 16 | 34% |
 | [FunctionStudy.kt](../src/jvmMain/kotlin/afield/math/functions/FunctionStudy.kt) | Function | function_conversation | 1 | 13 | 51% |
@@ -1235,6 +1235,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [ManifoldSmokeTest.kt](../src/jvmMain/kotlin/afield/geometry/solid/manifold/ManifoldSmokeTest.kt) | Graphics | — | 0 | 1 | 50% |
 | [SolidCraftBuilderSmokeTest.kt](../src/jvmMain/kotlin/afield/geometry/solid/solidcraft/SolidCraftBuilderSmokeTest.kt) | Graphics | — | 0 | 1 | 50% |
 | [SolidCraftSmokeTest.kt](../src/jvmMain/kotlin/afield/geometry/solid/solidcraft/SolidCraftSmokeTest.kt) | Graphics | — | 0 | 1 | 50% |
+| [SphericalHarmonics.kt](../src/jvmMain/kotlin/afield/geometry/spectral/SphericalHarmonics.kt) | Graphics | — | 0 | 1 | 66% |
 | [GeziraGpuProbe.kt](../src/jvmMain/kotlin/afield/graphics/nile/GeziraGpuProbe.kt) | Graphics | — | 0 | 1 | 80% |
 | [GeziraGpuTigerProbe.kt](../src/jvmMain/kotlin/afield/graphics/nile/GeziraGpuTigerProbe.kt) | Graphics | — | 0 | 1 | 75% |
 | [PaintToolbox.kt](../src/jvmMain/kotlin/afield/graphics/paint/PaintToolbox.kt) | Graphics | — | 0 | 1 | 94% |
