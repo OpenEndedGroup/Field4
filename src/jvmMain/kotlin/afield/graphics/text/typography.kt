@@ -316,9 +316,15 @@ object Typefaces {
      * called it, and does the work inline instead.
      *
      * Long enough that a cold font-directory walk on a slow disk is not mistaken for a deadlock, short
-     * enough that the fallback happens inside a single box execution.
+     * enough that the fallback happens inside a single box execution (the box watchdog interrupts at
+     * 30 s by default).
+     *
+     * Measured 2026-11-27 at a load average of ~270 on 10 cores: a bare headless JVM took 2.1–2.5 s
+     * for its first glyph, and the Field and Gradle test JVMs, already headless, missed the old 4 s
+     * on every attempt (`TypographyTest`, `stdlib.typography.gallery`). The trap this guards never
+     * answers at all, so a wider margin costs nothing but the wait before the error.
      */
-    private const val WARM_TIMEOUT_MS = 4_000L
+    private const val WARM_TIMEOUT_MS = 15_000L
 
     @Volatile
     private var warmed = false
@@ -404,7 +410,10 @@ object Typefaces {
     private fun stallMessage(what: String) =
         "afield.stdlib typography: $what did not answer within ${WARM_TIMEOUT_MS}ms, so this JVM cannot read " +
             "glyph outlines.\n  stuck at: ${lastWarmStall ?: "unknown"}\n" +
-            "  This is the macOS -XstartOnFirstThread trap: CFontManager dispatches to the process's first " +
+            if (System.getProperty("java.awt.headless") == "true")
+                "  This JVM is already headless, so it is not the -XstartOnFirstThread trap: the platform font " +
+                    "service is slow or not answering (a heavily loaded machine has done this)."
+            else "  This is the macOS -XstartOnFirstThread trap: CFontManager dispatches to the process's first " +
             "thread and waits, and nothing here is pumping that run loop. Start the JVM with " +
             "-Djava.awt.headless=true (it must be set BEFORE any AWT class initialises — see " +
             "Typefaces.warm and the jvm-main galleries, which all set it in the first line of main)."

@@ -8646,7 +8646,7 @@ Box code that never returns is thrown out of, and Field carries on ([`BoxInterru
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="runawayboxinterruptsmoketest-kt--runawayboxinterruptsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/lifecycle/RunawayBoxInterruptSmokeTest/#L95) |  |
+| <a id="runawayboxinterruptsmoketest-kt--runawayboxinterruptsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/lifecycle/RunawayBoxInterruptSmokeTest/#L105) |  |
 
 ## Runloop.kt { #runloop-kt }
 
