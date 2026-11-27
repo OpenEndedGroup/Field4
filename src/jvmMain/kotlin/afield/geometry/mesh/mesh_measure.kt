@@ -191,29 +191,21 @@ fun TriMesh.solidCentroid(): Vec3 {
  */
 fun TriMesh.mixedVertexAreas(): DoubleArray {
     val out = DoubleArray(vertexCount)
+    val pos = widen(positions)
+    fun len2(a: Int, b: Int): Double {
+        val dx = pos[a * 3] - pos[b * 3]; val dy = pos[a * 3 + 1] - pos[b * 3 + 1]; val dz = pos[a * 3 + 2] - pos[b * 3 + 2]
+        return dx * dx + dy * dy + dz * dz
+    }
     for (t in 0 until triangleCount) {
         val i = ia(t); val j = ib(t); val k = ic(t)
-        val pi = position(i); val pj = position(j); val pk = position(k)
         val area = triangleArea(t)
         if (area <= 0.0) continue
-        fun cot(at: Vec3, b: Vec3, c: Vec3): Double {
-            val ux = (b.x - at.x).toDouble(); val uy = (b.y - at.y).toDouble(); val uz = (b.z - at.z).toDouble()
-            val vx = (c.x - at.x).toDouble(); val vy = (c.y - at.y).toDouble(); val vz = (c.z - at.z).toDouble()
-            val dot = ux * vx + uy * vy + uz * vz
-            val cx = uy * vz - uz * vy; val cy = uz * vx - ux * vz; val cz = ux * vy - uy * vx
-            val len = sqrt(cx * cx + cy * cy + cz * cz)
-            return if (len < 1e-18) 0.0 else dot / len
-        }
-        val cotI = cot(pi, pj, pk); val cotJ = cot(pj, pk, pi); val cotK = cot(pk, pi, pj)
+        val cotI = cornerCotangent(pos, i, j, k); val cotJ = cornerCotangent(pos, j, k, i); val cotK = cornerCotangent(pos, k, i, j)
         val obtuse = cotI < 0.0 || cotJ < 0.0 || cotK < 0.0
         if (!obtuse) {
-            fun len2(a: Vec3, b: Vec3): Double {
-                val dx = (a.x - b.x).toDouble(); val dy = (a.y - b.y).toDouble(); val dz = (a.z - b.z).toDouble()
-                return dx * dx + dy * dy + dz * dz
-            }
-            out[i] += (len2(pi, pj) * cotK + len2(pi, pk) * cotJ) / 8.0
-            out[j] += (len2(pj, pk) * cotI + len2(pj, pi) * cotK) / 8.0
-            out[k] += (len2(pk, pi) * cotJ + len2(pk, pj) * cotI) / 8.0
+            out[i] += (len2(i, j) * cotK + len2(i, k) * cotJ) / 8.0
+            out[j] += (len2(j, k) * cotI + len2(j, i) * cotK) / 8.0
+            out[k] += (len2(k, i) * cotJ + len2(k, j) * cotI) / 8.0
         } else {
             // The obtuse corner takes half, the other two a quarter each.
             val obtuseVertex = when {
@@ -273,26 +265,11 @@ fun TriMesh.meanCurvature(): DoubleArray {
     val areas = mixedVertexAreas()
     val withNormals = if (hasNormals) this else withVertexNormals()
     val lx = DoubleArray(vertexCount); val ly = DoubleArray(vertexCount); val lz = DoubleArray(vertexCount)
+    val weights = topo.cotangentWeights()
     for (e in 0 until topo.edgeCount) {
         val (a, b) = topo.edges[e]
-        var cotSum = 0.0
-        for (t in topo.edgeTriangles[e]) {
-            val c = run {
-                val ta = ia(t); val tb = ib(t); val tc = ic(t)
-                when {
-                    ta != a && ta != b -> ta
-                    tb != a && tb != b -> tb
-                    else -> tc
-                }
-            }
-            val pa = position(a); val pb = position(b); val pc = position(c)
-            val ux = (pa.x - pc.x).toDouble(); val uy = (pa.y - pc.y).toDouble(); val uz = (pa.z - pc.z).toDouble()
-            val vx = (pb.x - pc.x).toDouble(); val vy = (pb.y - pc.y).toDouble(); val vz = (pb.z - pc.z).toDouble()
-            val dot = ux * vx + uy * vy + uz * vz
-            val cx = uy * vz - uz * vy; val cy = uz * vx - ux * vz; val cz = ux * vy - uy * vx
-            val len = sqrt(cx * cx + cy * cy + cz * cz)
-            if (len > 1e-18) cotSum += dot / len
-        }
+        // cot α + cot β, twice the shared edge weight.
+        val cotSum = 2.0 * weights[e]
         val dx = (x(b) - x(a)).toDouble(); val dy = (y(b) - y(a)).toDouble(); val dz = (z(b) - z(a)).toDouble()
         lx[a] += cotSum * dx; ly[a] += cotSum * dy; lz[a] += cotSum * dz
         lx[b] -= cotSum * dx; ly[b] -= cotSum * dy; lz[b] -= cotSum * dz

@@ -3,13 +3,14 @@
 package afield.geometry.spectral
 
 import afield.geometry.mesh.TriMesh
+import afield.geometry.mesh.barycentricVertexAreas
+import afield.geometry.mesh.cotangentLaplacianMatrix
 import afield.geometry.mesh.topology
 import afield.geometry.mesh.withVertexNormals
 import afield.geometry.path.FLine
 import afield.math.linalg.Vec3
 import org.ejml.data.DMatrixRMaj
 import org.ejml.data.DMatrixSparseCSC
-import org.ejml.data.DMatrixSparseTriplet
 import org.ejml.dense.row.factory.DecompositionFactory_DDRM
 import org.ejml.ops.DConvertMatrixStruct
 import org.ejml.sparse.FillReducing
@@ -20,7 +21,11 @@ import kotlin.math.cos
 import kotlin.math.sqrt
 import kotlin.random.Random
 
-/** Natural Neumann FEM stiffness and lumped vertex areas on a welded triangle mesh. */
+/**
+ * Natural Neumann FEM stiffness and lumped vertex areas on a welded triangle mesh: the shared
+ * [cotangentLaplacianMatrix] and [barycentricVertexAreas] from `afield.geometry.mesh`, checked for
+ * degenerate faces and isolated vertices, with the generalized eigenproblem `Lϕ = λMϕ` on top.
+ */
 class CotangentLaplacian(source: TriMesh) {
     private val mesh = TriMesh(source.positions.copyOf(), source.indices.copyOf(),
         uvs = source.uvs?.copyOf(), colors = source.colors?.copyOf())
@@ -34,36 +39,18 @@ class CotangentLaplacian(source: TriMesh) {
     init {
         require(!mesh.isEmpty && mesh.positions.all { it.isFinite() }) { "Manifold harmonics need finite triangles" }
         require(topology.isManifold) { "Manifold harmonics need a manifold triangle mesh" }
-        val weights = DoubleArray(topology.edgeCount)
         for (face in 0 until mesh.triangleCount) {
-            val corners = intArrayOf(mesh.ia(face), mesh.ib(face), mesh.ic(face))
-            val (a, b, c) = corners.map { position(it) }
+            val a = position(mesh.ia(face)); val b = position(mesh.ib(face)); val c = position(mesh.ic(face))
             val ab = Vector3d(b).sub(a)
             val ac = Vector3d(c).sub(a)
             val bc = Vector3d(c).sub(b)
             val twiceArea = ab.cross(ac, Vector3d()).length()
             val longest2 = maxOf(ab.lengthSquared(), ac.lengthSquared(), bc.lengthSquared())
             require(twiceArea > 1e-12 * longest2) { "Degenerate or extremely skinny face $face" }
-            val cotangents = doubleArrayOf(ab.dot(ac), -ab.dot(bc), ac.dot(bc))
-            for (i in 0..2) {
-                mass[corners[i]] += twiceArea / 6
-                val edge = topology.edgeOf(corners[(i + 1) % 3], corners[(i + 2) % 3])
-                weights[edge] += cotangents[i] / (2 * twiceArea)
-            }
         }
+        mesh.barycentricVertexAreas().copyInto(mass)
         require(mass.all { it > 0 }) { "Remove isolated vertices before computing a manifold basis" }
-        val triplets = DMatrixSparseTriplet(vertexCount, vertexCount, vertexCount + 2 * weights.size)
-        val diagonal = DoubleArray(vertexCount)
-        for ((index, edge) in topology.edges.withIndex()) {
-            val (i, j) = edge
-            val w = weights[index]
-            triplets.addItem(i, j, -w)
-            triplets.addItem(j, i, -w)
-            diagonal[i] += w
-            diagonal[j] += w
-        }
-        for (i in diagonal.indices) triplets.addItem(i, i, diagonal[i])
-        stiffness = DConvertMatrixStruct.convert(triplets, null as DMatrixSparseCSC?)
+        stiffness = topology.cotangentLaplacianMatrix()
     }
 
     internal fun position(index: Int): Vector3d =

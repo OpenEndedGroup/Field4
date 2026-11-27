@@ -51,11 +51,11 @@ class HeatGeodesics(val mesh: TriMesh, timeScale: Double = 1.0) {
     private val topo = mesh.topology()
     private val pos = DoubleArray(n * 3) { mesh.positions[it].toDouble() }
 
-    /** Lumped (barycentric) area per vertex. */
-    private val area = DoubleArray(n)
+    /** Lumped (barycentric) area per vertex, [TriMesh.barycentricVertexAreas]. */
+    private val area = mesh.barycentricVertexAreas()
 
-    /** Per edge, `(cot α + cot β) / 2`. */
-    private val weight = DoubleArray(topo.edgeCount)
+    /** Per edge, `(cot α + cot β) / 2`: the shared [MeshTopology.cotangentWeights]. */
+    private val weight = topo.cotangentWeights(pos)
 
     private val heatSolver = LinearSolverFactory_DSCC.cholesky(FillReducing.NONE)
     private val poissonSolver = LinearSolverFactory_DSCC.cholesky(FillReducing.NONE)
@@ -66,16 +66,9 @@ class HeatGeodesics(val mesh: TriMesh, timeScale: Double = 1.0) {
         for (e in 0 until topo.edgeCount) {
             val (a, b) = topo.edges[e]
             edgeSum += sqrt(dist2(a, b))
-            var cotSum = 0.0
-            for (t in topo.edgeTriangles[e]) cotSum += cotOpposite(t, a, b)
-            weight[e] = cotSum / 2.0
         }
         val h = edgeSum / topo.edgeCount.coerceAtLeast(1)
         time = h * h * timeScale
-        for (t in 0 until mesh.triangleCount) {
-            val third = triangleArea(t) / 3.0
-            area[mesh.ia(t)] += third; area[mesh.ib(t)] += third; area[mesh.ic(t)] += third
-        }
         // An isolated vertex has no area and no edges; give it a little so both systems stay definite.
         val floor = h * h * 1e-6
         for (i in 0 until n) if (area[i] <= 0.0) area[i] = floor
@@ -85,21 +78,9 @@ class HeatGeodesics(val mesh: TriMesh, timeScale: Double = 1.0) {
         require(poissonSolver.setA(assemble(1.0, 1e-8))) { "Poisson system did not factor — is the mesh degenerate?" }
     }
 
-    /** `massScale · M + lScale · L`, as a sparse symmetric matrix. */
-    private fun assemble(lScale: Double, massScale: Double, fixed: Set<Int> = emptySet()): DMatrixSparseCSC {
-        val trip = DMatrixSparseTriplet(n, n, n + 4 * topo.edgeCount)
-        val diag = DoubleArray(n) { massScale * area[it] }
-        for (e in 0 until topo.edgeCount) {
-            val (a, b) = topo.edges[e]
-            val w = lScale * weight[e]
-            // A fixed (Dirichlet) vertex keeps only its identity row; its value is zero, so the column
-            // drops out of every other row without changing the right-hand side.
-            if (a !in fixed && b !in fixed) { trip.addItem(a, b, -w); trip.addItem(b, a, -w) }
-            diag[a] += w; diag[b] += w
-        }
-        for (i in 0 until n) trip.addItem(i, i, if (i in fixed) 1.0 else diag[i])
-        return DConvertMatrixStruct.convert(trip, null as DMatrixSparseCSC?)
-    }
+    /** `massScale · M + lScale · L`, as a sparse symmetric matrix: [MeshTopology.cotangentLaplacianMatrix]. */
+    private fun assemble(lScale: Double, massScale: Double, fixed: Set<Int> = emptySet()): DMatrixSparseCSC =
+        topo.cotangentLaplacianMatrix(weight, area, massScale, lScale, fixed)
 
     /**
      * Geodesic distance from the nearest of [sources] (vertex indices) to every vertex, in the mesh's
@@ -164,8 +145,8 @@ class HeatGeodesics(val mesh: TriMesh, timeScale: Double = 1.0) {
     private fun addDivergence(div: DMatrixRMaj, i: Int, j: Int, k: Int, x: DoubleArray) {
         val e1x = pos[j * 3] - pos[i * 3]; val e1y = pos[j * 3 + 1] - pos[i * 3 + 1]; val e1z = pos[j * 3 + 2] - pos[i * 3 + 2]
         val e2x = pos[k * 3] - pos[i * 3]; val e2y = pos[k * 3 + 1] - pos[i * 3 + 1]; val e2z = pos[k * 3 + 2] - pos[i * 3 + 2]
-        val cotK = cotAt(k, i, j) // angle at k, opposite edge ij
-        val cotJ = cotAt(j, k, i) // angle at j, opposite edge ik
+        val cotK = cornerCotangent(pos, k, i, j) // angle at k, opposite edge ij
+        val cotJ = cornerCotangent(pos, j, k, i) // angle at j, opposite edge ik
         div[i, 0] += 0.5 * (cotK * (e1x * x[0] + e1y * x[1] + e1z * x[2]) + cotJ * (e2x * x[0] + e2y * x[1] + e2z * x[2]))
     }
 
@@ -193,30 +174,9 @@ class HeatGeodesics(val mesh: TriMesh, timeScale: Double = 1.0) {
         return doubleArrayOf(ay * bz - az * by, az * bx - ax * bz, ax * by - ay * bx)
     }
 
-    private fun triangleArea(t: Int): Double {
-        val c = normal(mesh.ia(t), mesh.ib(t), mesh.ic(t))
-        return 0.5 * sqrt(c[0] * c[0] + c[1] * c[1] + c[2] * c[2])
-    }
-
     private fun dist2(a: Int, b: Int): Double {
         val dx = pos[a * 3] - pos[b * 3]; val dy = pos[a * 3 + 1] - pos[b * 3 + 1]; val dz = pos[a * 3 + 2] - pos[b * 3 + 2]
         return dx * dx + dy * dy + dz * dz
-    }
-
-    /** Cotangent of the angle at vertex [c] between edges to [a] and [b]. */
-    private fun cotAt(c: Int, a: Int, b: Int): Double {
-        val ux = pos[a * 3] - pos[c * 3]; val uy = pos[a * 3 + 1] - pos[c * 3 + 1]; val uz = pos[a * 3 + 2] - pos[c * 3 + 2]
-        val vx = pos[b * 3] - pos[c * 3]; val vy = pos[b * 3 + 1] - pos[c * 3 + 1]; val vz = pos[b * 3 + 2] - pos[c * 3 + 2]
-        val dot = ux * vx + uy * vy + uz * vz
-        val cx = uy * vz - uz * vy; val cy = uz * vx - ux * vz; val cz = ux * vy - uy * vx
-        val cross = sqrt(cx * cx + cy * cy + cz * cz)
-        return if (cross < 1e-18) 0.0 else dot / cross
-    }
-
-    private fun cotOpposite(t: Int, a: Int, b: Int): Double {
-        val ia = mesh.ia(t); val ib = mesh.ib(t); val ic = mesh.ic(t)
-        val c = if (ia != a && ia != b) ia else if (ib != a && ib != b) ib else ic
-        return cotAt(c, a, b)
     }
 }
 
@@ -764,6 +724,7 @@ fun TriMesh.windingAngle(
 
     // Minimise sum w_ij ((th_i + J_i) - (th_j + J_j))^2 over the original vertices th, with J the jump
     // carried by each corner: L th = b. Vertex 0 is pinned (the angle is defined up to a constant).
+    val wide = widen(positions)
     val trip = DMatrixSparseTriplet(n, n, 7 * n)
     val diag = DoubleArray(n)
     val off = HashMap<Long, Double>()
@@ -772,10 +733,9 @@ fun TriMesh.windingAngle(
         val c = intArrayOf(cutIndices[3 * t], cutIndices[3 * t + 1], cutIndices[3 * t + 2])
         for (e in 0..2) {
             val i = c[e]; val j = c[(e + 1) % 3]; val k = c[(e + 2) % 3]
-            val u = sub(p(originalOf[i]), p(originalOf[k])); val w2 = sub(p(originalOf[j]), p(originalOf[k]))
-            val cr = cross(u, w2)
-            val w = 0.5 * dot(u, w2) / sqrt(dot(cr, cr)).coerceAtLeast(1e-300)
             val a = originalOf[i]; val b = originalOf[j]
+            // This triangle's half of the edge's cotangent weight; summed over triangles it is [MeshTopology.cotangentWeights] on the kept surface.
+            val w = 0.5 * cornerCotangent(wide, originalOf[k], a, b)
             if (a == b) continue
             diag[a] += w; diag[b] += w
             // Each interior edge comes up once per triangle; the triplet form does not sum repeats.
