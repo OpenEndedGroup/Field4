@@ -1,0 +1,93 @@
+name: stroke_playheads
+description: >
+  Playheads along drawn strokes, after anima (https://llllllll.co/t/anima/75862, from Crim's
+  Animator): every stroke on the drawing is a track whose playhead travels along it, and tracks
+  change only where two playheads meet at a crossing of their strokes.
+
+  Run `strokes` first: it draws three crossing strokes named wave, rise and arc. `meet` reads them
+  back from notation.strokes, runs 32 beats with StrokePlayheads and circles every meeting on the
+  drawing. `play` renders the notes into an audio player and a piano roll per track. `listen back`
+  renders each track alone, finds its onsets and pitches, and plots the wave's heard transposition
+  against the meetings. Press Alt+D, redraw a stroke (keep its name) and run the boxes after
+  `strokes` again.
+
+  Companion to public/docs/chain_drawn_score.md. Pure CPU; no Window, no Renderer, no audio device.
+docs:
+  - page: chain_drawn_score.md
+    why: "Walks through playheads along strokes, their meetings, and listening back."
+operations:
+  - create:
+      box: sp_strokes
+      name: strokes
+      frame: { x: 20.0, y: 40.0, w: 190.0, h: 60.0 }
+      properties:
+        code: |
+          // Three crossing strokes in a frame named "anima": wave, rise and arc.
+          notation { threeStrokes() }
+          println("${notation.strokes.size} strokes drawn")
+  - create:
+      box: sp_meet
+      name: meet
+      frame: { x: 20.0, y: 500.0, w: 190.0, h: 60.0 }
+      properties:
+        code: |
+          // Each named stroke is a track; the tracks change only where two playheads meet.
+          val strokes = notation.strokes.filter { it.name != null }.associate { it.name!! to it.points }
+          val tracks = StrokePlayheadsDocs.tracks(strokes) // the three tracks and their settings
+          val run = StrokePlayheads(tracks, MeetingRule.Crossing(windowBeats = 1.0), seed = 4).run(beats = 32.0)
+          notation("meetings") {
+              stroke = "#f08c00"
+              for (m in run.meetings) ellipse(m.where.x - 14.0, m.where.y - 14.0, 28.0, 28.0)
+          }
+          println(run.meetings.joinToString("\n") { "beat %.2f: %s meets %s".format(it.beat, it.a, it.b) })
+  - create:
+      box: sp_play
+      name: play
+      frame: { x: 300.0, y: 500.0, w: 190.0, h: 60.0 }
+      properties:
+        code: |
+          // The notes as a pattern: a piano roll per track, and all three in an audio player.
+          val run = StrokePlayheadsDocs.run(StrokePlayheadsDocs.readStrokes(thisBox))
+          val timed = run.timedNotes()
+          val rolls =
+              ["wave", "rise", "arc"].map { name ->
+                  name to
+                      patTimed(
+                          run.notes.filter { it.track == name }.map { TimedNote(it.start, it.end, it.note, it.gain) },
+                          beats = 32.0,
+                      )
+              }
+          showPatRollOf(*rolls.toTypedArray(), title = "three playheads", cycles = 1, pitched = true, channel = "roll")
+          val voice = patVoice(wave = PatWave.TRIANGLE, decay = 0.004, sustain = 0.4)
+          showPatAudio(patTimed(timed, beats = 32.0), cycles = 1, cps = 1.0 / 16.0, voice = voice, channel = "audio")
+  - create:
+      box: sp_listen
+      name: listen back
+      frame: { x: 580.0, y: 500.0, w: 190.0, h: 60.0 }
+      properties:
+        code: |
+          // Each track rendered alone, its onsets and pitches found; the wave's heard transposition.
+          val run = StrokePlayheadsDocs.run(StrokePlayheadsDocs.readStrokes(thisBox))
+          val heard = StrokePlayheadsDocs.listen(run)
+          val shift = StrokePlayheadsDocs.heardTranspositions(run, heard.first { it.track == "wave" })
+          showSignals(
+              "heard transposition" to shift,
+              x = run.notes.filter { it.track == "wave" }.map { it.start },
+              marks = run.meetings.map { "%s/%s".format(it.a, it.b) to it.beat },
+              title = "wave: transposition heard, meetings marked",
+              xTitle = "beats",
+              yTitle = "semitones",
+          )
+          println(heard.joinToString("\n") { it.describe() })
+  - execute:
+      box: sp_strokes
+      property: code
+  - execute:
+      box: sp_meet
+      property: code
+  - execute:
+      box: sp_play
+      property: code
+  - execute:
+      box: sp_listen
+      property: code
