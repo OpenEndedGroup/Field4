@@ -421,7 +421,7 @@ To see it all at once, open the [map of the docs](../docs_map.md): every page, a
 - [audio](examples.md#trackingresonatorresynthesisexample-kt)
 - [brief](examples.md#briefeditorextensionworkout-kt)
 - [ceres](examples.md#ceresarchitecturaldslsmoke-kt)
-- [chain](examples.md#kirigamisolidchain-kt)
+- [chain](examples.md#kirigamipopup-kt)
 - [datalog](examples.md#datalogeditorextensionworkout-kt)
 - [faust](examples.md#faustboxexamples-kt)
 - <span class="reference-internal">[forth](examples.md#forthinterpretersmoketest-kt)</span>
@@ -688,29 +688,29 @@ To see it all at once, open the [map of the docs](../docs_map.md): every page, a
 
 ## Reference pages
 
-**44523 public symbols across 1964 source files**, 26732 of them (60%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**44599 public symbols across 1968 source files**, 26786 of them (60%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
 | Category | Files | Symbols | Documented | Covers |
 | --- | --- | --- | --- | --- |
-| [Examples](examples.md) | 244 | 783 | 350 (44%) | Runnable examples, galleries and verification programs. |
+| [Examples](examples.md) | 245 | 793 | 359 (45%) | Runnable examples, galleries and verification programs. |
 | [Internal](internal.md) | 27 | 260 | 100 (38%) | Implementation details explicitly marked Internal by their source. |
 | [Lighting](lighting.md) | 8 | 216 | 208 (96%) | Light sources, fixtures and control protocols for working with physical and rendered lighting. |
 | [Networking](networking.md) | 22 | 539 | 323 (59%) | OSC messages, discovery and query interfaces for connecting Field to other applications and devices. |
 | [Video](video.md) | 14 | 195 | 194 (99%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 63 | 2742 | 2102 (76%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 30 | 1378 | 641 (46%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 475 | 11336 | 7190 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 476 | 11375 | 7214 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 49 | 930 | 534 (57%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 596 | 440 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 787 | 530 (67%) | Nonlinear least squares, aimed at geometry. |
-| [Simulation](simulation.md) | 58 | 1961 | 1173 (59%) | Making a shape behave. |
+| [Simulation](simulation.md) | 59 | 1978 | 1190 (60%) | Making a shape behave. |
 | [Imaging](imaging.md) | 56 | 976 | 532 (54%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
 | [ALife](alife.md) | 24 | 1381 | 1252 (90%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 16 | 632 | 424 (67%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Search](search.md) | 11 | 509 | 503 (98%) | Optimisation over a space you can only sample. |
-| [Visualization](visualization.md) | 77 | 2161 | 1540 (71%) | Turning a value into something you can look at, without leaving the box. |
+| [Visualization](visualization.md) | 78 | 2171 | 1544 (71%) | Turning a value into something you can look at, without leaving the box. |
 | [Synthesis](synthesis.md) | 56 | 2060 | 1160 (56%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
 | [Patterns](patterns.md) | 41 | 1355 | 745 (54%) | Musical time, as a value. |
 | [Audio](audio.md) | 101 | 2687 | 1437 (53%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
@@ -1304,6 +1304,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr></small> [FLineInstructionTrajectories.kt](graphics.md#flineinstructiontrajectories-kt) | Graphics | 16 | 9 | Traces how the points of a changing drawing move from frame to frame, as one trajectory line per point. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>graphics/<wbr></small> [FLineInstructionTrajectoryTrackerSmokeTest.kt](examples.md#flineinstructiontrajectorytrackersmoketest-kt) | Examples · internal | 3 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr></small> [FLineInterpolation.kt](graphics.md#flineinterpolation-kt) | Graphics | 62 | 18 | Morphing one `FLine` into another: align, match and blend two drawings so any in-between shape can be drawn. | [FLine examples (Field graphics)](../fline_examples.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr></small> [FLineLayers.kt](graphics.md#flinelayers-kt) | Graphics | 39 | 24 |  | [Field 4 Graphics](../afield_four_graphics.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr></small> [FLineLpc.kt](graphics.md#flinelpc-kt) | Graphics | 17 | 17 |  | [Signal examples: time and frequency](../spectral_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr></small> [FLineMeasure.kt](graphics.md#flinemeasure-kt) | Graphics | 48 | 48 | Measuring, locating, trimming and crossing an `FLine`. | [FLine examples (Field graphics)](../fline_examples.md), [Field 4 Graphics](../afield_four_graphics.md), [Body and hand tracking](../body_tracking.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>text/<wbr>sentences/<wbr></small> [Flines.kt](graphics.md#flines-kt) | Graphics | 45 | 21 | Converts a laid-out `Diagram` into `FLine`s ready to draw. | [Sentence diagrams](../sentence_diagrams.md) |
@@ -1465,6 +1466,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [HeadTrackedSpatial.kt](patterns.md#headtrackedspatial-kt) | Patterns | 29 | 20 | The seam between a tracked head and `patSpatial`'s listener. | [A pattern in space: `pat` → Dough → Steam Audio](../pat_spatial.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [HeadTrackedSpatialSmokeTest.kt](patterns.md#headtrackedspatialsmoketest-kt) | Patterns · internal | 2 | 1 | The listener half of `patSpatial`'s audio check: the pattern holds still and the head moves. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>visualization/<wbr></small> [heatmap.kt](visualization.md#heatmap-kt) | Visualization | 6 | 6 | A rectangular array of numbers as a colour-mapped picture in a box output, in one call. | [Geometry from disk](../geometry_from_disk.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>physics/<wbr></small> [HingedPlates.kt](simulation.md#hingedplates-kt) | Simulation | 17 | 17 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>history/<wbr></small> [history.kt](workspace.md#history-kt) | Workspace · internal | 30 | 15 | A document's version history on disk: listing, diffing, searching, naming and restoring the saved versions under its `backups/` folder, plus the RPC handlers behind the history browser. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [HistoryFileInlineSmokeTest.kt](examples.md#historyfileinlinesmoketest-kt) | Examples · internal | 2 | 0 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>history/<wbr></small> [HistoryMetrics.kt](workspace.md#historymetrics-kt) | Workspace · internal | 9 | 1 | Per-version activity and screenshot records for a document, stored in its `history_metrics.edn` beside `metadata.edn`. |  |
@@ -1545,7 +1547,8 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>keyframes/<wbr></small> [keyframeTidy.kt](graphics.md#keyframetidy-kt) | Graphics | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>keyframes/<wbr></small> [keyframeTypeLibrary.kt](graphics.md#keyframetypelibrary-kt) | Graphics | 10 | 9 | The key types every keyframe editor offers beyond its five built-in ones: the easing family, splines that look past the segment to the keys either side, shapes, and shaped noise. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>conformal/<wbr></small> [KirigamiInverseDesign.kt](math.md#kirigamiinversedesign-kt) | Math | 20 | 20 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>chain/<wbr></small> [KirigamiSolidChain.kt](examples.md#kirigamisolidchain-kt) | Examples | 16 | 15 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>chain/<wbr></small> [KirigamiPopUp.kt](examples.md#kirigamipopup-kt) | Examples | 8 | 7 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>chain/<wbr></small> [KirigamiSolidChain.kt](examples.md#kirigamisolidchain-kt) | Examples | 18 | 17 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [KitDedicatedHost.kt](workspace.md#kitdedicatedhost-kt) | Workspace | 5 | 3 | The compatibility route for a project that already has its own launcher, workspace and document conventions and wants to appear in Welcome's kit library without adopting Field's. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [KitFirstOpen.kt](workspace.md#kitfirstopen-kt) | Workspace | 3 | 3 | A document copied from a kit's starting point runs its roles, in the kit's launch order, the first time it opens, so it does something without `field_kit.py activate`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [KitInstances.kt](workspace.md#kitinstances-kt) | Workspace | 25 | 25 | A document copied from a kit's starting point, the record of what it received, and the three-way comparison that updates it. |  |
@@ -2669,6 +2672,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>reconstruction/<wbr></small> [WaylandReconstructionSmoke.kt](imaging.md#waylandreconstructionsmoke-kt) | Imaging | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>onnx/<wbr></small> [WebcamPerceptionDemo.kt](examples.md#webcamperceptiondemo-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>texture/<wbr>video/<wbr></small> [WebcamTexture.kt](graphics.md#webcamtexture-kt) | Graphics | 14 | 7 | Exposes a webcam as an RGBA Vulkan texture, captured through OpenCV. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>output/<wbr></small> [WebDownloads.kt](visualization.md#webdownloads-kt) | Visualization | 10 | 4 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>output/<wbr></small> [WebHistory.kt](visualization.md#webhistory-kt) | Visualization | 19 | 8 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>remotejs/<wbr></small> [WebPageHeads.kt](languages.md#webpageheads-kt) | Languages | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>output/<wbr></small> [WebProfile.kt](visualization.md#webprofile-kt) | Visualization | 24 | 14 |  | [A Web Page in a Box](../web.md) |

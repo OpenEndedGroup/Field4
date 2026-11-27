@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-27T13:50:30.982Z",
+  "documentName": "fline_gpu_layers",
+  "outputs": [
+    {
+      "uid": "flg_renderer",
+      "channel": "Vulkan window · still image",
+      "open": true,
+      "path": "outputs/0.html",
+      "width": 1600,
+      "height": 982,
+      "kinds": [
+        "native-image"
+      ],
+      "warnings": []
+    }
+  ]
+}

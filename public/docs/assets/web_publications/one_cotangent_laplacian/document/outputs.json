@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-27T14:32:46.477Z",
+  "documentName": "one_cotangent_laplacian",
+  "outputs": [
+    {
+      "uid": "heat-and-curvature",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 480,
+      "height": 340,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "flat-harmonic-map",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 480,
+      "height": 340,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "cotangent-operator",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 480,
+      "height": 340,
+      "path": "outputs/2.html"
+    }
+  ]
+}

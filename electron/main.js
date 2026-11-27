@@ -1624,7 +1624,10 @@ function createMainWindow() {
       require("./web-profiles.cjs").installProfileWebviews(tab.view.webContents, {
         session,
         log: diagnosticLog,
-        onNewSession: profile => require("./content-blocker.cjs").contentBlocker()?.attach(profile),
+        onNewSession: profile => {
+        require("./content-blocker.cjs").contentBlocker()?.attach(profile);
+        require("./web-downloads.cjs").watchSession(profile);
+      },
       });
     }
 
@@ -2362,7 +2365,10 @@ function createMainWindow() {
     return require("./web-profiles.cjs").handleProfileRequest(request, event.sender, {
       session,
       log: diagnosticLog,
-      onNewSession: profile => require("./content-blocker.cjs").contentBlocker()?.attach(profile),
+      onNewSession: profile => {
+        require("./content-blocker.cjs").contentBlocker()?.attach(profile);
+        require("./web-downloads.cjs").watchSession(profile);
+      },
     });
   });
   ipcMain.removeHandler("field4-live-output-iframe");
@@ -2525,6 +2531,9 @@ app.whenReady().then(() => {
     process.env.APP_URL || "https://localhost:9092/welcome",
     diagnosticLog,
   );
+  // Downloads from web() pages land in the document's files (web-downloads.cjs).
+  require("./web-downloads.cjs").configure({ fieldUrl: process.env.APP_URL || "https://localhost:9092/welcome", log: diagnosticLog });
+  require("./web-downloads.cjs").watchSession(session.defaultSession);
   // Ads and trackers in framed and presented sites, on the same webRequest pipeline.
   require("./content-blocker.cjs").installContentBlocker(
     session.defaultSession,

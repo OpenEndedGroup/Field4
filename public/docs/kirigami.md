@@ -5,13 +5,13 @@ against each other: pull on the sheet and it opens into a lattice of squares and
 Choi, Levi H. Dudte and L. Mahadevan asked the inverse question in
 [Programming shape using kirigami tessellations](https://doi.org/10.1038/s41563-019-0452-y)
 (Nature Materials 18, 999–1004, 2019): which cut pattern of a square sheet opens into a circle, or
-into any other outline you choose? This page builds both halves in two Field boxes, using the
-hinge layout, constraints and target shape from Choi's
+into any other outline you choose? Here you can open a sheet of rotating squares, then solve for
+a pattern that opens into a circle. The two Field boxes use the hinge layout, constraints and target from Choi's
 [inverse-kirigami-design](https://github.com/garyptchoi/inverse-kirigami-design) code (Apache-2.0),
 written again in Kotlin over Field's own solvers.
 
-Both boxes are in the [kirigami_choi](agent_transcripts.md#kirigami_choi) transcript. Open it,
-run the boxes, and drag their sliders.
+Open [kirigami_choi](agent_transcripts.md#kirigami_choi) to try both boxes in Field. Run them
+and drag their sliders to open the sheets.
 
 ## Rotating squares
 
@@ -47,8 +47,9 @@ constraints make that opened sheet come from a real cut pattern that closes into
   flatter than π − 0.4.
 
 The solve is `afield.geometry.conformal.KirigamiInverseDesign`, which the box calls. Choi solves this with MATLAB's interior-point `fmincon`, starting from a conformal map of the
-standard pattern onto the disc. The box squashes the standard pattern onto the circle and runs
-Field's Levenberg–Marquardt (`leastSquaresAD`), which brings every constraint to about 1e-13. It
+standard pattern onto the disc (the kind of map the [Teichmüller maps](explainer_teichmuller.md) talk builds). The box skips that map: it squashes the standard pattern onto the circle and runs
+Field's Levenberg–Marquardt solver, [`leastSquaresAD`](reference/math.md#leastsquares-kt--leastsquaresad),
+which differentiates the residuals and drives them down to about 1e-13. The box
 then glues the rigid tiles back together, cut side to cut side, to recover the closed cut pattern:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="box" capture-box="kirigami_inverse_circle" screenshot="assets/kirigami/inverse_circle.png" transcript="dev_docs/agents/transcripts/kirigami_choi.yaml" padding="8" wait="1" timeout="400" embed=true hidden=true name="kirigami-inverse-circle" alt="Three panels: a square cut pattern of irregular orange and blue quadrilaterals, the same sheet halfway open, and the sheet fully open inside a red circle whose rim its outermost corners touch; below, an open slider and a larger view of the opened sheet in its circle."}
@@ -93,5 +94,8 @@ on the way: about 17% in one tile's edge length or corner angle, and none at eit
   which also has triangle, hexagon and 3-D patterns.
 - [FLine examples](fline_examples.md) for drawing filled shapes with `lines` and `showPlaneGrid`.
 - [A Kirigami Sheet, Cut and Counted](chain_kirigami_solid.md), which gives each hinge a width
-  and turns both sheets on this page into solids you could cut, with their genus counted.
+  and turns both sheets on this page into solids you could cut, with their genus counted. Its last
+  section stretches the cut sheet until its tiles tilt out of the plane.
+- [Teichmüller maps](explainer_teichmuller.md), a talk on the conformal and quasi-conformal maps of
+  the same package, `afield.geometry.conformal`, after Choi's work on leaf shapes.
 - [The kirigami_choi transcript](agent_transcripts.md#kirigami_choi), to open both boxes.

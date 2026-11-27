@@ -127,6 +127,7 @@ fun Box.web(url: String, channel: String = "web", width: Int = 1000, height: Int
     require(width in 200..4000 && height in 100..4000) { "web: width must be 200..4000 and height 100..4000" }
     val directory = profile?.let { webProfileDirectory(it) }
     display(channel, webPanel(webAddress(url), width, height, directory, boxId = id))
+    WebDownloads.tellElectron(inside)
     displayOpen(channel)
     return outputIframe(channel)
 }

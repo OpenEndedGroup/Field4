@@ -1354,3 +1354,5 @@ Build a scene with meshes, lines and points using [`three { … }`](three_output
 For volume meshes, use [TetGen](tetgen.md) to fill a closed surface with tetrahedra.
 [A photograph, closed and mounted](chain_photo_to_solid.md) starts with a depth estimate and
 builds the closed mesh from it.
+[Teichmüller maps](explainer_teichmuller.md) maps planar triangle meshes onto each other with the
+least distortion.

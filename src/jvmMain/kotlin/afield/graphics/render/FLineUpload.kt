@@ -66,6 +66,10 @@ import afield.ui.visualization.*
  * Writes [FLine]s into GPU vertex streams: [pointsOut], [linesOut] and [trianglesOut] sample lines into [DynamicallyWriteable] position and colour buffers.
  *
  * [FLineMap] is a named, ordered collection of lines with a revision hash for change detection.
+ *
+ * For drawing a whole, changing list of lines every frame, use [FLineLayers] instead: one
+ * vertex-pulled buffer per layer, packed by content so unchanged lines cost neither tessellation
+ * nor a copy (`dev_docs/agents/transcripts/fline_gpu_layers.yaml` is the box-level example).
  */
 
 

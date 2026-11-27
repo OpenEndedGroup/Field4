@@ -564,6 +564,27 @@ run is the backstop for it. Name the commit that made the artifact stale in the 
 fix, not a workaround — but read the diff before committing it, and check that the regeneration is
 purely additive rather than quietly absorbing an unrelated change.
 
+## Step 2.6 — The box-code gates over the whole tree
+
+A landing runs `checkBoxCodeFormat` and `checkBoxCodeCompiles` only on the files its branch touched,
+so a box that stops compiling because of a change somewhere else (an API it calls, the REPL's import
+set, load on the machine) reaches nobody until someone edits that file. This step is the whole-tree
+pass. Run it on the pristine tree, after Step 2.5:
+
+```
+cd $FIXTREE
+env -u AFIELD_GUARD_CHANGED_PATHS_FILE ./gradlew --no-daemon checkBoxCodeFormat   > "$LOGDIR/ci-boxformat.log" 2>&1
+env -u AFIELD_GUARD_CHANGED_PATHS_FILE ./gradlew --no-daemon checkBoxCodeCompiles > "$LOGDIR/ci-boxcompiles.log" 2>&1
+```
+
+Measured 2026-11-27 at `08b2dc2280`: the format pass checks 1203 files in about 27 s (its 132
+"skipped ParseError" lines are boxes in other languages, skipped by design); the compile pass takes
+about 30 minutes and had one red, `morpho_circuit_search`, a box that held the Runloop past the
+30 s watchdog under load, now compile-only in `BoxCodeCompileGuard.COMPILE_ONLY_HERE`. Record both
+counts in the report. A compile red is a real failure: name the document and box, and say whether it
+is a compile error or a timeout. Fix a compile error on the fix branch; a timeout in a document whose
+boxes are independent goes into `COMPILE_ONLY_HERE` with a one-line reason, never a longer watchdog.
+
 ## Step 3 — Diff warnings against the baseline
 
 Read `$JOURNAL/$BASELINE` (JSON). Its shape:
@@ -838,6 +859,7 @@ _Run started $START. Built `main` @ $BASE_SHORT — "<subject>". Fix branch: $FI
 - Mode: full recapture (FIELD_DOCS_RUNNER_MODE=always). Wall-clock <mm:ss>.
 - Captures: <pass>/<total>. Failures: <list with id + cause + regression?/flaky?>.
 - Smoke catalog: <pass>/<total>, <mm:ss>.
+- Box code (whole tree): format <n> of <files> need formatting; compiles <reds> red in <mm:ss> (<document/box, compile error or timeout>).
 ### Timing (slowest captures)
 | Capture id | seconds |
 |---|---|

@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 26732 of 44523 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 26786 of 44599 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2113 undocumented entry points** (types, top-level functions and values) and 14899 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2113 undocumented entry points** (types, top-level functions and values) and 14920 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -193,6 +193,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Resolve.kt](../src/jvmMain/kotlin/afield/io/resolve/Resolve.kt) | Networking | davinci_resolve | 0 | 15 | 75% |
 | [QualifiedSource.kt](../src/jvmMain/kotlin/afield/study/source/QualifiedSource.kt) | Workspace | qualified_sources | 0 | 15 | 76% |
 | [Speech.kt](../src/jvmMain/kotlin/afield/audio/synth/Speech.kt) | Synthesis | spectral_examples | 0 | 14 | 61% |
+| [FLineLayers.kt](../src/jvmMain/kotlin/afield/graphics/render/FLineLayers.kt) | Graphics | afield_four_graphics | 0 | 14 | 61% |
 | [ThreeScene.kt](../src/jvmMain/kotlin/afield/graphics/three/ThreeScene.kt) | Graphics | three_output, spectral_geometry | 0 | 14 | 84% |
 | [DrawingOnCapture.kt](../src/jvmMain/kotlin/afield/io/drawingon/DrawingOnCapture.kt) | Networking | drawing_on | 0 | 14 | 57% |
 | [StrokePlayheads.kt](../src/jvmMain/kotlin/afield/ui/notation/StrokePlayheads.kt) | Visualization | chain_drawn_score | 0 | 14 | 71% |
@@ -876,6 +877,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [StrokeSketch.kt](../src/jvmMain/kotlin/afield/ui/notation/StrokeSketch.kt) | Visualization | — | 0 | 6 | 76% |
 | [FileChooser.kt](../src/jvmMain/kotlin/afield/ui/output/FileChooser.kt) | Visualization | — | 0 | 6 | 56% |
 | [LineNoteTools.kt](../src/jvmMain/kotlin/afield/ui/output/LineNoteTools.kt) | Workspace | — | 0 | 6 | 45% |
+| [WebDownloads.kt](../src/jvmMain/kotlin/afield/ui/output/WebDownloads.kt) | Visualization | — | 0 | 6 | 40% |
 | [StudyBuildAwaits.kt](../src/jvmMain/kotlin/afield/ai/agent/StudyBuildAwaits.kt) | AI4 | — | 0 | 5 | 73% |
 | [AiRunJournal.kt](../src/jvmMain/kotlin/afield/ai/conversation/AiRunJournal.kt) | AI4 | — | 0 | 5 | 37% |
 | [AiThreadContinuation.kt](../src/jvmMain/kotlin/afield/ai/conversation/AiThreadContinuation.kt) | AI4 | — | 0 | 5 | 28% |
@@ -1165,7 +1167,8 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [BoxAiToolsSmokeTest.kt](../src/jvmMain/kotlin/afield/examples/ai/BoxAiToolsSmokeTest.kt) | Examples | — | 0 | 1 | 50% |
 | [DocumentStudySmokeTest.kt](../src/jvmMain/kotlin/afield/examples/ai/DocumentStudySmokeTest.kt) | Examples | — | 0 | 1 | 50% |
 | [RectslBoxToolsSmokeTest.kt](../src/jvmMain/kotlin/afield/examples/ai/RectslBoxToolsSmokeTest.kt) | Examples | — | 0 | 1 | 50% |
-| [KirigamiSolidChain.kt](../src/jvmMain/kotlin/afield/examples/chain/KirigamiSolidChain.kt) | Examples | — | 0 | 1 | 93% |
+| [KirigamiPopUp.kt](../src/jvmMain/kotlin/afield/examples/chain/KirigamiPopUp.kt) | Examples | — | 0 | 1 | 87% |
+| [KirigamiSolidChain.kt](../src/jvmMain/kotlin/afield/examples/chain/KirigamiSolidChain.kt) | Examples | — | 0 | 1 | 94% |
 | [PhotoToSolidChain.kt](../src/jvmMain/kotlin/afield/examples/chain/PhotoToSolidChain.kt) | Examples | — | 0 | 1 | 88% |
 | [AlifeShaderSystemsSmoke.kt](../src/jvmMain/kotlin/afield/examples/four/AlifeShaderSystemsSmoke.kt) | Examples | — | 0 | 1 | 50% |
 | [AtmosphereGpuParitySmoke.kt](../src/jvmMain/kotlin/afield/examples/four/AtmosphereGpuParitySmoke.kt) | Examples | — | 0 | 1 | 50% |
