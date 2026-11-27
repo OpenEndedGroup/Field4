@@ -2812,13 +2812,13 @@
     },
     "assets/agent_transcripts/kirigami_popup/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "capturedAt": "2026-11-27T11:58:00.983Z",
+      "capturedAt": "2026-11-27T12:57:46.602Z",
       "channels": 1,
       "file": "assets/web_publications/kirigami_popup/document/metadata.edn",
       "files": {
-        "assets/web_publications/kirigami_popup/document/metadata.edn": "081f9d1d02a4f54865f3b2b3b7c30a2d74d934a0b562ac14a44bb2665c6a4259",
-        "assets/web_publications/kirigami_popup/document/outputs.json": "fc02610afef8c7c74dca4c1a031361b7edbeb862b340d879a7d95d11941d1f8a",
-        "assets/web_publications/kirigami_popup/outputs/0.html": "67fe9943d09c87c4e7f9ba71a8acc0a81561ad0c1cc374974f6802da27d30b56"
+        "assets/web_publications/kirigami_popup/document/metadata.edn": "8fad3e407f9bad82d93eeeac64a8cd6039935839fd0319fd132d5f13df759825",
+        "assets/web_publications/kirigami_popup/document/outputs.json": "f545b668b0713f03e497609ee942e09ac9a87944d0ebfb8aa36fa4a5f5c32a44",
+        "assets/web_publications/kirigami_popup/outputs/0.html": "7dae5a3021b32b32d599538e016e7c20d08e3b0c8e0dfcdd50c138f0665cbb55"
       },
       "kinds": [
         "native-image"
@@ -2830,9 +2830,9 @@
         "public/docs/assets/agent_transcripts/kirigami_popup/kirigami_popup_renderer_code_.kt": "5984f57e373dab8121f2d18cf9a76a30452db2e23cc9ace4820d082b0ae5bb9e",
         "public/docs/assets/agent_transcripts/kirigami_popup/kirigami_popup_sweep_code_.kt": "50cdec6fc1914fb3324f3fc8117327e0ff5160654bc4ea88973bc97b25356bed",
         "public/docs/assets/agent_transcripts/kirigami_popup/kirigami_popup_trace_code_.kt": "2dc9b2eba199c1991b0518637372e0b9a1895661e1d9da989c60016a23acbf52",
-        "public/docs/assets/agent_transcripts/kirigami_popup/metadata.edn": "5b4d603bb1c21847281fe4f8e4a7ab4533a8fa6582a949e2b652fee588ac5482",
-        "public/docs/assets/chain_kirigami_solid/popup_traced.png": "07cfc2398eb6bbf73d5ee0bb9e54334311a951e45a20c1f71461dfd3877fef11",
-        "public/docs/chain_kirigami_solid.md#capture-box=kirigami_popup_trace": "7cd76740325412f2f48c9cd5e61b8412d4f44382e00230b7aecea9260bf18c35"
+        "public/docs/assets/agent_transcripts/kirigami_popup/metadata.edn": "8c36bf4954f98316e73d3faf35cf46ad83f063bbf08a62dafe0fdd69c26bc4a7",
+        "public/docs/assets/chain_kirigami_solid/popup_traced.png": "e8ef00314da8c629aec954efa72af90dfd33c8a0c5679418d674caacab8d26eb",
+        "public/docs/chain_kirigami_solid.md#capture-box=kirigami_popup_trace": "e444929f18f004e14d65dfd0bc44946078aa585aa230bda899cddc44c02b3078"
       },
       "supplementalSources": [
         "public/docs/assets/chain_kirigami_solid/popup_traced.png",
